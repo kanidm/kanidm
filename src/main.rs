@@ -2,43 +2,24 @@ extern crate serde;
 extern crate serde_json;
 #[macro_use]
 extern crate serde_derive;
-#[macro_use]
-extern crate diesel;
 extern crate actix;
 extern crate actix_web;
-extern crate r2d2;
-extern crate uuid;
 extern crate futures;
+extern crate uuid;
 
 use actix::prelude::*;
 use actix_web::{
-    http, middleware, App, AsyncResponder, FutureResponse, HttpResponse, Path, HttpRequest,
-    State,
+    http, middleware, App, AsyncResponder, FutureResponse, HttpRequest, HttpResponse, Path, State,
 };
 
-use diesel::prelude::*;
-use diesel::r2d2::ConnectionManager;
 use futures::Future;
 
-mod be;
-mod entry;
-mod server;
-mod log;
-mod event;
-
-// Helper for internal logging.
-macro_rules! log_event {
-    ($log_addr:expr, $($arg:tt)*) => ({
-        use log::LogEvent;
-        $log_addr.do_send(
-            LogEvent {
-                msg: std::fmt::format(
-                    format_args!($($arg)*)
-                )
-            }
-        )
-    })
-}
+#[macro_use]
+extern crate rsidm;
+use rsidm::be;
+use rsidm::event;
+use rsidm::log::{self, EventLog};
+use rsidm::server;
 
 struct AppState {
     qe: actix::Addr<server::QueryServer>,
@@ -53,23 +34,24 @@ fn index(req: &HttpRequest<AppState>) -> HttpResponse {
     HttpResponse::Ok().body("Hello\n")
 }
 
-fn class_list(
-    (name, state): (Path<String>, State<AppState>),
-) -> FutureResponse<HttpResponse>
-{
+fn class_list((name, state): (Path<String>, State<AppState>)) -> FutureResponse<HttpResponse> {
     // println!("request to class_list");
     state
         .qe
         .send(
-            server::ListClass {
-                class_name: name.into_inner(),
-            }
+            // This is where we need to parse the request into an event
+            // LONG TERM
+            // Make a search REQUEST, and create the audit struct here, then
+            // pass it to the server
+            event::SearchEvent::new()
         )
+        // TODO: How to time this part of the code?
         // What does this do?
         .from_err()
         .and_then(|res| match res {
             // What type is entry?
-            Ok(entry) => Ok(HttpResponse::Ok().json(entry)),
+            Ok(event::EventResult::Search{ entries }) => Ok(HttpResponse::Ok().json(entries)),
+            Ok(_) => Ok(HttpResponse::Ok().into()),
             // Can we properly report this?
             Err(_) => Ok(HttpResponse::InternalServerError().into()),
         })
@@ -81,16 +63,18 @@ fn main() {
     let sys = actix::System::new("rsidm-server");
 
     // read the config (if any?)
+    // How do we make the config accesible to all threads/workers? clone it?
+    // Make it an Arc<Config>?
 
     // Until this point, we probably want to write to stderr
     // Start up the logging system: for now it just maps to stderr
     let log_addr = log::start();
 
     // Starting the BE chooses the path.
-    let be_addr = be::start(log_addr.clone(), be::BackendType::SQLite, "test.db");
+    // let be_addr = be::start(log_addr.clone(), be::BackendType::SQLite, "test.db", 8);
 
     // Start the query server with the given be
-    let server_addr = server::start(log_addr.clone(), be_addr);
+    let server_addr = server::start(log_addr.clone(), "test.db", 8);
 
     // start the web server
     actix_web::server::new(move || {
@@ -102,13 +86,11 @@ fn main() {
         .resource("/", |r| r.f(index))
         .resource("/{class_list}", |r| r.method(http::Method::GET).with(class_list))
         .resource("/{class_list}/", |r| r.method(http::Method::GET).with(class_list))
+    }).bind("127.0.0.1:8080")
+    .unwrap()
+    .start();
 
-    })
-        .bind("127.0.0.1:8080")
-        .unwrap()
-        .start();
-
-    log_event!(log_addr, "Starting rsidm on 127.0.0.1:8080");
+    log_event!(log_addr, "Starting rsidm on http://127.0.0.1:8080");
 
     // all the needed routes / views
 
@@ -122,5 +104,3 @@ mod tests {
         println!("It works!");
     }
 }
-
-

@@ -1,27 +1,75 @@
-
-use serde_json::{Value, Error};
-
+use serde_json::{Error, Value};
+use std::collections::BTreeMap;
 
 // make a trait entry for everything to adhere to?
 //  * How to get indexs out?
 //  * How to track pending diffs?
 
+// Entry is really similar to serde Value, but limits the possibility
+// of what certain types could be.
+//
+// The idea of an entry is that we have
+// an entry that looks like:
+//
+// {
+//    'class': ['object', ...],
+//    'attr': ['value', ...],
+//    'attr': ['value', ...],
+//    ...
+// }
+//
+// When we send this as a result to clients, we could embed other objects as:
+//
+// {
+//    'attr': [
+//        'value': {
+//        },
+//    ],
+// }
+//
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Entry {
+    attrs: BTreeMap<String, Vec<String>>,
+}
 
+impl Entry {
+    pub fn new() -> Self {
+        Entry {
+            attrs: BTreeMap::new()
+        }
+    }
+
+    // This should always work? It's only on validate that we'll build
+    // a list of syntax violations ...
+    pub fn add_ava(&mut self, attr: String, value: String) -> Result<(), ()> {
+        // get_mut to access value
+        self.attrs.entry(attr)
+            .and_modify(|v| { v.push(value.clone()) })
+            .or_insert(vec!(value));
+
+
+        Ok(())
+
+    }
+
+    pub fn validate(&self) -> bool {
+        // We need access to the current system schema here now ...
+        true
+    }
 }
 
 // pub trait Entry {
-    //fn to_json_str(&self) -> String;
-    // fn to_index_diff -> ???
-    // from_json_str() -> Self;
-    //
-    // Does this match a filter or not?a
-    // fn apply_filter -> Result<bool, ()>
+//fn to_json_str(&self) -> String;
+// fn to_index_diff -> ???
+// from_json_str() -> Self;
+//
+// Does this match a filter or not?a
+// fn apply_filter -> Result<bool, ()>
 // }
 
 //enum Credential {
-    //?
+//?
 //}
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -41,8 +89,6 @@ enum Credential {
     },
 }
 
-
-
 #[derive(Serialize, Deserialize, Debug)]
 struct User {
     username: String,
@@ -57,7 +103,6 @@ struct User {
     sshpublickey: Vec<String>,
 
     credentials: Vec<Credential>,
-
 }
 
 impl User {
@@ -73,7 +118,6 @@ impl User {
             sshpublickey: Vec::new(),
             credentials: Vec::new(),
         }
-
     }
 
     // We need a way to "diff" two User objects
@@ -91,10 +135,9 @@ impl User {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use super::User;
+    use super::{User, Entry};
     use serde_json;
 
     #[test]
@@ -103,15 +146,26 @@ mod tests {
 
         println!("u: {:?}", u);
 
-        let d = serde_json::to_string(&u).unwrap();
+        let d = serde_json::to_string_pretty(&u).unwrap();
 
         println!("d: {}", d.as_str());
 
         let u2: User = serde_json::from_str(d.as_str()).unwrap();
 
         println!("u2: {:?}", u2);
+    }
+
+    #[test]
+    fn test_entry_basic() {
+        let mut e: Entry = Entry::new();
+
+        e.add_ava(String::from("userid"), String::from("william")).unwrap();
+
+        assert!(e.validate());
+
+        let d = serde_json::to_string_pretty(&e).unwrap();
+
+        println!("d: {}", d.as_str());
 
     }
 }
-
-
