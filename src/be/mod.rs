@@ -4,6 +4,8 @@ use actix::prelude::*;
 use serde_json;
 use r2d2_sqlite::SqliteConnectionManager;
 use r2d2::Pool;
+use rusqlite::NO_PARAMS;
+use rusqlite::types::ToSql;
 // use uuid;
 
 use super::log::EventLog;
@@ -28,6 +30,12 @@ impl BackendAuditEvent {
             time_end: (),
         }
     }
+}
+
+#[derive(Debug)]
+struct IdEntry {
+    id: i32,
+    data: String
 }
 
 pub enum BackendType {
@@ -59,9 +67,18 @@ impl Backend {
             .expect("Failed to create pool");
 
         {
+            let conn = pool.get().unwrap();
             // Perform any migrations as required?
             // I think we only need the core table here, indexing will do it's own
             // thing later
+            // conn.execute("PRAGMA journal_mode=WAL;", NO_PARAMS).unwrap();
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS id2entry (
+                    id INTEGER PRIMARY KEY ASC,
+                    data TEXT NOT NULL
+                )
+                ", NO_PARAMS
+                ).unwrap();
 
             // Create a version table for migration indication
 
@@ -99,10 +116,31 @@ impl Backend {
         log_event!(self.log, "serialising: {:?}", ser_entries);
 
         // THIS IS PROBABLY THE BIT WHERE YOU NEED DB ABSTRACTION
-        // Start a txn
-        // write them all
-        // TODO: update indexes (as needed)
-        // Commit the txn
+        {
+            let conn = self.pool.get().unwrap();
+            // Start a txn
+            conn.execute("BEGIN TRANSACTION", NO_PARAMS).unwrap();
+
+            for ser_entry in ser_entries {
+                conn.execute("INSERT INTO id2entry (data) VALUES (?1)", &[&ser_entry as &ToSql]).unwrap();
+            }
+
+            // write them all
+            let mut stmt = conn.prepare("SELECT id, data FROM id2entry").unwrap();
+            let id2entry_iter = stmt
+                .query_map(NO_PARAMS, |row|
+                    IdEntry {
+                        id: row.get(0),
+                        data: row.get(1)
+                    }
+                ).unwrap();
+            for row in id2entry_iter {
+                println!("{:?}", row);
+            }
+            // TODO: update indexes (as needed)
+            // Commit the txn
+            conn.execute("COMMIT TRANSACTION", NO_PARAMS).unwrap();
+        }
 
         log_event!(self.log, "End create");
         // End the timer?
@@ -153,7 +191,7 @@ mod tests {
             System::run(|| {
                 let test_log = log::start();
 
-                let mut be = Backend::new(test_log.clone(), "");
+                let mut be = Backend::new(test_log.clone(), "/tmp/test.db");
 
                 // Could wrap another future here for the future::ok bit...
                 let fut = $test_fn(test_log, be);
