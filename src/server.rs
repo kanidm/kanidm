@@ -85,4 +85,67 @@ impl Handler<SearchEvent> for QueryServer {
     }
 }
 
+impl Handler<CreateEvent> for QueryServer {
+    type Result = Result<EventResult, ()>;
+
+    fn handle(&mut self, msg: CreateEvent, _: &mut Self::Context) -> Self::Result {
+        log_event!(self.log, "Begin event {:?}", msg);
+        Err(())
+    }
+}
+
 // Auth requests? How do we structure these ...
+
+#[cfg(test)]
+mod tests {
+    extern crate actix;
+    use actix::prelude::*;
+
+    extern crate futures;
+    use futures::future;
+    use futures::future::lazy;
+    use futures::future::Future;
+
+    extern crate tokio;
+
+    use super::super::be::Backend;
+    use super::super::log::{self, EventLog, LogEvent};
+    use super::super::server::QueryServer;
+
+    macro_rules! run_test {
+        ($test_fn:expr) => {{
+            System::run(|| {
+                let test_log = log::start();
+
+                let mut be = Backend::new(test_log.clone(), "");
+                let mut test_server = QueryServer::new(test_log.clone(), be);
+
+                // Could wrap another future here for the future::ok bit...
+                let fut = $test_fn(test_log, test_server);
+                let comp_fut = fut.map_err(|()| ()).and_then(|r| {
+                    println!("Stopping actix ...");
+                    actix::System::current().stop();
+                    future::result(Ok(()))
+                });
+
+                tokio::spawn(comp_fut);
+            });
+        }};
+    }
+
+    #[test]
+    fn test_be_create_user() {
+        run_test!(|log, mut server: QueryServer| {
+            let r1 = server.search().unwrap();
+            assert!(r1.len() == 0);
+
+            let cr = server.create();
+            assert!(cr.is_ok());
+
+            let r2 = server.search().unwrap();
+            assert!(r2.len() == 1);
+
+            future::ok(())
+        });
+    }
+}

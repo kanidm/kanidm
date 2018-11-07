@@ -43,25 +43,15 @@ impl Filter {
         // Go through the filter components and check them in the entry.
         // This is recursive!!!!
         match self {
-            Filter::Eq(_, _) => {
-                false
-            }
-            Filter::Sub(_, _) => {
-                false
-            }
+            Filter::Eq(_, _) => false,
+            Filter::Sub(_, _) => false,
             Filter::Pres(attr) => {
                 // Given attr, is is present in the entry?
                 e.pres(attr.as_str())
             }
-            Filter::Or(_) => {
-                false
-            }
-            Filter::And(_) => {
-                false
-            }
-            Filter::Not(_) => {
-                false
-            }
+            Filter::Or(_) => false,
+            Filter::And(_) => false,
+            Filter::Not(_) => false,
         }
     }
 }

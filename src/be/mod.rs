@@ -35,6 +35,8 @@ impl BackendAuditEvent {
 
 #[derive(Debug)]
 struct IdEntry {
+    // FIXME: This should be u64, but sqlite uses i32 ...
+    // Should we use a bigint pk and just be done?
     id: i32,
     data: String,
 }
@@ -151,6 +153,12 @@ impl Backend {
         // Alloc a vec for the entries.
         // FIXME: Make this actually a good size for the result set ...
         // FIXME: Actually compute indexes here.
+        // So to make this use indexes, we can use the filter type and
+        // destructure it to work out what we need to actually search (if
+        // possible) to create the candidate set.
+        // Unlike DS, even if we don't get the index back, we can just pass
+        // to the in-memory filter test and be done.
+
         let mut raw_entries: Vec<String> = Vec::new();
         {
             // Actually do a search now!

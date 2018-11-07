@@ -57,16 +57,27 @@ macro_rules! run_test {
 
 #[test]
 fn test_schema() {
-    run_test!(|log: actix::Addr<EventLog>, server| log.send(LogEvent {
-        msg: String::from("Test log event")
-    }));
+    run_test!(
+        |log: actix::Addr<EventLog>, server: actix::Addr<QueryServer>| log.send(LogEvent {
+            msg: String::from("Test log event")
+        })
+    );
 }
 
 /*
 #[test]
 fn test_be_create_user() {
-    run_test!(|log, be, server| {
-        println!("It works");
+    run_test!(|log, server: actix::Addr<QueryServer>| {
+        let r1 = server.search();
+        assert!(r1.len() == 0);
+
+        let cr = server.create();
+        assert!(cr.is_ok());
+
+        let r2 = server.search();
+        assert!(r2.len() == 1);
+
+        future::ok(())
     });
 }
 */
