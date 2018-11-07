@@ -12,7 +12,7 @@ pub enum Filter {
     // This is attr - value
     Eq(String, String),
     Sub(String, String),
-    Pres(String, String),
+    Pres(String),
     Or(Vec<Filter>),
     And(Vec<Filter>),
     Not(Vec<Filter>),
@@ -39,9 +39,30 @@ impl Filter {
     // What other parse types do we need?
 
     // Assert if this filter matches the entry (no index)
-    pub fn entry_match_no_index(e: Entry) -> bool {
+    pub fn entry_match_no_index(&self, e: &Entry) -> bool {
         // Go through the filter components and check them in the entry.
-        false
+        // This is recursive!!!!
+        match self {
+            Filter::Eq(_, _) => {
+                false
+            }
+            Filter::Sub(_, _) => {
+                false
+            }
+            Filter::Pres(attr) => {
+                // Given attr, is is present in the entry?
+                e.pres(attr.as_str())
+            }
+            Filter::Or(_) => {
+                false
+            }
+            Filter::And(_) => {
+                false
+            }
+            Filter::Not(_) => {
+                false
+            }
+        }
     }
 }
 

@@ -146,7 +146,7 @@ impl Backend {
     }
 
     // Take filter, and AuditEvent ref?
-    pub fn search(&self, filter: Filter) -> Vec<Entry> {
+    pub fn search(&self, filt: Filter) -> Vec<Entry> {
         // Do things
         // Alloc a vec for the entries.
         // FIXME: Make this actually a good size for the result set ...
@@ -177,10 +177,10 @@ impl Backend {
         // Now, de-serialise the raw_entries back to entries
         let entries: Vec<Entry> = raw_entries
             .iter()
-            .map(|val| {
+            .filter_map(|val| {
                 // TODO: Should we do better than unwrap?
-                let e = serde_json::from_str(val.as_str()).unwrap();
-                if filter.entry_match_no_index(e) {
+                let e: Entry = serde_json::from_str(val.as_str()).unwrap();
+                if filt.entry_match_no_index(&e) {
                     Some(e)
                 } else {
                     None
@@ -220,6 +220,7 @@ mod tests {
     extern crate tokio;
 
     use super::super::entry::Entry;
+    use super::super::filter::Filter;
     use super::super::log::{self, EventLog, LogEvent};
     use super::{Backend, BackendError};
 
@@ -261,7 +262,9 @@ mod tests {
 
             assert!(single_result.is_ok());
 
-            let entries = be.search();
+            // Construct a filter
+            let filt = Filter::Pres(String::from("userid"));
+            let entries = be.search(filt);
             println!("{:?}", entries);
 
             // There should only be one entry so is this enough?

@@ -56,6 +56,10 @@ impl Entry {
         // We need access to the current system schema here now ...
         true
     }
+
+    pub fn pres(&self, attr: &str) -> bool {
+        self.attrs.contains_key(attr)
+    }
 }
 
 // pub trait Entry {
@@ -167,4 +171,18 @@ mod tests {
 
         println!("d: {}", d.as_str());
     }
+
+    #[test]
+    fn test_entry_pres() {
+        let mut e: Entry = Entry::new();
+
+        e.add_ava(String::from("userid"), String::from("william"))
+            .unwrap();
+
+        assert!(e.validate());
+
+        assert!(e.pres("userid"));
+        assert!(!e.pres("name"));
+    }
 }
+
