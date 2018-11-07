@@ -9,9 +9,9 @@ use rsidm::server::{self, QueryServer};
 // use be;
 
 extern crate futures;
-use futures::future::Future;
-use futures::future::lazy;
 use futures::future;
+use futures::future::lazy;
+use futures::future::Future;
 
 extern crate tokio;
 use tokio::executor::current_thread::CurrentThread;
@@ -41,29 +41,25 @@ macro_rules! run_test {
 
             // Now chain them ...
             // Now append the server shutdown.
-            let comp_fut = fut.map_err(|_| ())
-                .and_then(|r| {
-                    println!("Stopping actix ...");
-                    actix::System::current().stop();
-                    future::result(Ok(()))
-                });
+            let comp_fut = fut.map_err(|_| ()).and_then(|r| {
+                println!("Stopping actix ...");
+                actix::System::current().stop();
+                future::result(Ok(()))
+            });
 
             // Run the future
             tokio::spawn(comp_fut);
             // We DO NOT need teardown, as sqlite is in mem
             // let the tables hit the floor
         });
-
     }};
 }
 
 #[test]
 fn test_schema() {
-    run_test!(|log: actix::Addr<EventLog>, server| {
-        log.send(LogEvent {
-            msg: String::from("Test log event")
-        })
-    });
+    run_test!(|log: actix::Addr<EventLog>, server| log.send(LogEvent {
+        msg: String::from("Test log event")
+    }));
 }
 
 /*
@@ -74,4 +70,3 @@ fn test_be_create_user() {
     });
 }
 */
-

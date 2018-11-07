@@ -76,5 +76,3 @@ pub struct AuditEvent {
     time_start: (),
     time_end: (),
 }
-
-

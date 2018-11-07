@@ -1,6 +1,5 @@
 use actix::prelude::*;
 
-
 // Helper for internal logging.
 #[macro_export]
 macro_rules! log_event {

@@ -36,7 +36,7 @@ pub struct Entry {
 impl Entry {
     pub fn new() -> Self {
         Entry {
-            attrs: BTreeMap::new()
+            attrs: BTreeMap::new(),
         }
     }
 
@@ -44,13 +44,12 @@ impl Entry {
     // a list of syntax violations ...
     pub fn add_ava(&mut self, attr: String, value: String) -> Result<(), ()> {
         // get_mut to access value
-        self.attrs.entry(attr)
-            .and_modify(|v| { v.push(value.clone()) })
-            .or_insert(vec!(value));
-
+        self.attrs
+            .entry(attr)
+            .and_modify(|v| v.push(value.clone()))
+            .or_insert(vec![value]);
 
         Ok(())
-
     }
 
     pub fn validate(&self) -> bool {
@@ -137,7 +136,7 @@ impl User {
 
 #[cfg(test)]
 mod tests {
-    use super::{User, Entry};
+    use super::{Entry, User};
     use serde_json;
 
     #[test]
@@ -159,13 +158,13 @@ mod tests {
     fn test_entry_basic() {
         let mut e: Entry = Entry::new();
 
-        e.add_ava(String::from("userid"), String::from("william")).unwrap();
+        e.add_ava(String::from("userid"), String::from("william"))
+            .unwrap();
 
         assert!(e.validate());
 
         let d = serde_json::to_string_pretty(&e).unwrap();
 
         println!("d: {}", d.as_str());
-
     }
 }

@@ -5,9 +5,9 @@ extern crate serde_derive;
 extern crate actix;
 extern crate actix_web;
 extern crate futures;
-extern crate rusqlite;
 extern crate r2d2;
 extern crate r2d2_sqlite;
+extern crate rusqlite;
 extern crate uuid;
 
 use actix::prelude::*;

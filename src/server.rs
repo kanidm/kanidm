@@ -2,14 +2,14 @@ use actix::prelude::*;
 
 use be::Backend;
 use entry::Entry;
-use event::{SearchEvent, CreateEvent, EventResult};
+use event::{CreateEvent, EventResult, SearchEvent};
 use log::EventLog;
 
 pub fn start(
     log: actix::Addr<EventLog>,
     // be: actix::Addr<BackendActor>,
     path: &str,
-    threads: usize
+    threads: usize,
 ) -> actix::Addr<QueryServer> {
     // Create the BE connection
     // probably need a config type soon ....
