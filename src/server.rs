@@ -51,6 +51,8 @@ impl QueryServer {
     }
 
     // What should this take?
+    // This should probably take raw encoded entries? Or sohuld they
+    // be handled by fe?
     pub fn create(&mut self) -> Result<(), ()> {
         Ok(())
     }
@@ -96,6 +98,7 @@ impl Handler<CreateEvent> for QueryServer {
 
 // Auth requests? How do we structure these ...
 
+
 #[cfg(test)]
 mod tests {
     extern crate actix;
@@ -108,9 +111,9 @@ mod tests {
 
     extern crate tokio;
 
+    use super::super::server::QueryServer;
     use super::super::be::Backend;
     use super::super::log::{self, EventLog, LogEvent};
-    use super::super::server::QueryServer;
 
     macro_rules! run_test {
         ($test_fn:expr) => {{
@@ -132,6 +135,7 @@ mod tests {
             });
         }};
     }
+
 
     #[test]
     fn test_be_create_user() {
