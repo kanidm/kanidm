@@ -11,9 +11,6 @@ pub enum EventResult {
     Create,
 }
 
-#[derive(Debug)]
-pub struct RawSearchEvent {}
-
 // At the top we get "event types" and they contain the needed
 // actions, and a generic event component.
 
@@ -21,8 +18,6 @@ pub struct RawSearchEvent {}
 pub struct SearchEvent {
     pub filter: Filter,
     class: (), // String
-    // It could be better to box this later ...
-    event: AuditEvent,
 }
 
 impl Message for SearchEvent {
@@ -34,10 +29,6 @@ impl SearchEvent {
         SearchEvent {
             filter: filter,
             class: (),
-            event: AuditEvent {
-                time_start: (),
-                time_end: (),
-            },
         }
     }
     // We need event -> some kind of json event string for logging
@@ -50,7 +41,6 @@ pub struct CreateEvent {
     // input that we plan to parse.
     pub entries: Vec<Entry>,
     // It could be better to box this later ...
-    event: AuditEvent,
 }
 
 impl Message for CreateEvent {
@@ -59,24 +49,6 @@ impl Message for CreateEvent {
 
 impl CreateEvent {
     pub fn new(entries: Vec<Entry>) -> Self {
-        CreateEvent {
-            entries: entries,
-            event: AuditEvent {
-                time_start: (),
-                time_end: (),
-            },
-        }
+        CreateEvent { entries: entries }
     }
-}
-
-// This structure tracks and event lifecycle, and is eventually
-// sent to the logging system where it's structured and written
-// out to the current logging BE.
-#[derive(Debug)]
-pub struct AuditEvent {
-    // vec of start/end points of various parts of the event?
-    // We probably need some functions for this. Is there a way in rust
-    // to automatically annotate line numbers of code?
-    time_start: (),
-    time_end: (),
 }

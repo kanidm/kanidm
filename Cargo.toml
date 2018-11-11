@@ -18,6 +18,9 @@ path = "src/main.rs"
 [dependencies]
 actix = "0.7"
 actix-web = "0.7"
+bytes = "0.4"
+env_logger = "0.5"
+
 
 tokio = "0.1"
 futures = "0.1"

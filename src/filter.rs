@@ -43,7 +43,7 @@ impl Filter {
 
     // This is probably not safe, so it's for internal test cases
     // only because I'm familiar with the syntax ... you have been warned.
-    fn from_ldap_string(ldap_string: String) -> Result<Self, ()> {
+    fn from_ldap_string(_ldap_string: String) -> Result<Self, ()> {
         // For now return an empty filters
         Ok(Filter::And(Vec::new()))
     }

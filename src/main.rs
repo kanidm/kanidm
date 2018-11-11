@@ -3,23 +3,30 @@ extern crate serde_json;
 // #[macro_use]
 extern crate actix;
 extern crate actix_web;
+extern crate bytes;
+extern crate env_logger;
 extern crate futures;
 extern crate serde_derive;
 extern crate uuid;
 
 // use actix::prelude::*;
 use actix_web::{
-    http, App, AsyncResponder, FutureResponse, HttpRequest, HttpResponse, Path, State,
+    error, http, middleware, App, AsyncResponder, Error, FutureResponse, HttpMessage, HttpRequest,
+    HttpResponse, Path, State,
 };
 
-use futures::Future;
+use bytes::BytesMut;
+use futures::{future, Future, Stream};
 
 #[macro_use]
 extern crate rsidm;
 use rsidm::event;
 use rsidm::filter::Filter;
 use rsidm::log;
+use rsidm::proto::SearchRequest;
 use rsidm::server;
+
+const MAX_SIZE: usize = 262_144; //256k
 
 struct AppState {
     qe: actix::Addr<server::QueryServer>,
@@ -64,7 +71,53 @@ fn class_list((_name, state): (Path<String>, State<AppState>)) -> FutureResponse
         .responder()
 }
 
+// Based on actix web example json
+fn search(req: &HttpRequest<AppState>) -> Box<Future<Item = HttpResponse, Error = Error>> {
+    println!("{:?}", req);
+    // HttpRequest::payload() is stream of Bytes objects
+    req.payload()
+        .from_err()
+        // `fold` will asynchronously read each chunk of the request body and
+        // call supplied closure, then it resolves to result of closure
+        .fold(BytesMut::new(), move |mut body, chunk| {
+            // limit max size of in-memory payload
+            if (body.len() + chunk.len()) > MAX_SIZE {
+                Err(error::ErrorBadRequest("Request size too large."))
+            } else {
+                body.extend_from_slice(&chunk);
+                Ok(body)
+            }
+        })
+        .and_then(|body| {
+            // body is loaded, now we can deserialize serde-json
+            // FIXME: THIS IS FUCKING AWFUL
+            let obj = serde_json::from_slice::<SearchRequest>(&body).unwrap();
+            // Dispatch a search
+            println!("{:?}", obj);
+            // We have to resolve this NOW else we break everything :(
+            /*
+            req.state().qe.send(
+                event::SearchEvent::new(obj.filter)
+            )
+            .from_err()
+            .and_then(|res| future::result(match res {
+                // What type is entry?
+                Ok(event::EventResult::Search { entries }) => Ok(HttpResponse::Ok().json(entries)),
+                Ok(_) => Ok(HttpResponse::Ok().into()),
+                // Can we properly report this?
+                Err(_) => Ok(HttpResponse::InternalServerError().into()),
+            }))
+            */
+            Ok(HttpResponse::InternalServerError().into())
+        })
+        .responder()
+}
+
 fn main() {
+    // Configure the middleware logger
+    ::std::env::set_var("RUST_LOG", "actix_web=info");
+    env_logger::init();
+
     let sys = actix::System::new("rsidm-server");
 
     // read the config (if any?)
@@ -75,10 +128,7 @@ fn main() {
     // Start up the logging system: for now it just maps to stderr
     let log_addr = log::start();
 
-    // Starting the BE chooses the path.
-    // let be_addr = be::start(log_addr.clone(), be::BackendType::SQLite, "test.db", 8);
-
-    // Start the query server with the given be
+    // Start the query server with the given be path: future config
     let server_addr = server::start(log_addr.clone(), "test.db", 8);
 
     // start the web server
@@ -87,12 +137,14 @@ fn main() {
             qe: server_addr.clone(),
         })
         // Connect all our end points here.
-        // .middleware(middleware::Logger::default())
+        .middleware(middleware::Logger::default())
         .resource("/", |r| r.f(index))
-        .resource("/{class_list}", |r| {
+        .resource("/search", |r| r.method(http::Method::POST).a(search))
+        // Add an ldap compat search function type?
+        .resource("/list/{class_list}", |r| {
             r.method(http::Method::GET).with(class_list)
         })
-        .resource("/{class_list}/", |r| {
+        .resource("/list/{class_list}/", |r| {
             r.method(http::Method::GET).with(class_list)
         })
     })
@@ -101,16 +153,9 @@ fn main() {
     .start();
 
     log_event!(log_addr, "Starting rsidm on http://127.0.0.1:8080");
+    // curl --header "Content-Type: application/json" --request POST --data '{"name":"xyz","number":3}'  http://127.0.0.1:8080/manual
 
     // all the needed routes / views
 
     let _ = sys.run();
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_simple_create() {
-        println!("It works!");
-    }
 }

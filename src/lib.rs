@@ -20,8 +20,11 @@ extern crate uuid;
 // This has to be before be so the import order works
 #[macro_use]
 pub mod log;
-pub mod be;
+#[macro_use]
+mod audit;
+mod be;
 pub mod entry;
 pub mod event;
 pub mod filter;
+pub mod proto;
 pub mod server;

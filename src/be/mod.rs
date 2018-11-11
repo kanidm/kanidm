@@ -1,5 +1,4 @@
 //! Db executor actor
-use actix::prelude::*;
 
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
@@ -8,9 +7,9 @@ use rusqlite::NO_PARAMS;
 use serde_json;
 // use uuid;
 
+use super::audit::AuditEvent;
 use super::entry::Entry;
 use super::filter::Filter;
-use super::log::EventLog;
 
 mod idl;
 mod mem_be;
@@ -41,10 +40,12 @@ struct IdEntry {
     data: String,
 }
 
+/*
 pub enum BackendType {
     Memory, // isn't memory just sqlite with file :memory: ?
     SQLite,
 }
+*/
 
 #[derive(Debug, PartialEq)]
 pub enum BackendError {
@@ -52,14 +53,14 @@ pub enum BackendError {
 }
 
 pub struct Backend {
-    log: actix::Addr<EventLog>,
     pool: Pool<SqliteConnectionManager>,
 }
 
-// In the future this will do the routing betwene the chosen backends etc.
+// In the future this will do the routing between the chosen backends etc.
 impl Backend {
-    pub fn new(log: actix::Addr<EventLog>, path: &str) -> Self {
+    pub fn new(audit: &mut AuditEvent, path: &str) -> Self {
         // this has a ::memory() type, but will path == "" work?
+        audit.start_event("backend_new");
         let manager = SqliteConnectionManager::file(path);
         let builder1 = Pool::builder();
         let builder2 = if path == "" {
@@ -92,15 +93,17 @@ impl Backend {
             // Create the core db
         }
 
-        log_event!(log, "Starting DB worker ...");
-        Backend {
-            log: log,
-            pool: pool,
-        }
+        audit_log!(audit, "Starting DB workers ...");
+        audit.end_event("backend_new");
+        Backend { pool: pool }
     }
 
-    pub fn create(&mut self, entries: &Vec<Entry>) -> Result<BackendAuditEvent, BackendError> {
-        log_event!(self.log, "Begin create");
+    pub fn create(
+        &mut self,
+        au: &mut AuditEvent,
+        entries: &Vec<Entry>,
+    ) -> Result<BackendAuditEvent, BackendError> {
+        au.start_event("be_create");
 
         let be_audit = BackendAuditEvent::new();
         // Start be audit timer
@@ -123,7 +126,7 @@ impl Backend {
             })
             .collect();
 
-        log_event!(self.log, "serialising: {:?}", ser_entries);
+        audit_log!(au, "serialising: {:?}", ser_entries);
 
         // THIS IS PROBABLY THE BIT WHERE YOU NEED DB ABSTRACTION
         {
@@ -145,13 +148,13 @@ impl Backend {
             conn.execute("COMMIT TRANSACTION", NO_PARAMS).unwrap();
         }
 
-        log_event!(self.log, "End create");
+        au.end_event("be_create");
         // End the timer?
         Ok(be_audit)
     }
 
     // Take filter, and AuditEvent ref?
-    pub fn search(&self, filt: &Filter) -> Result<Vec<Entry>, ()> {
+    pub fn search(&self, au: &mut AuditEvent, filt: &Filter) -> Result<Vec<Entry>, ()> {
         // Do things
         // Alloc a vec for the entries.
         // FIXME: Make this actually a good size for the result set ...
@@ -161,6 +164,7 @@ impl Backend {
         // possible) to create the candidate set.
         // Unlike DS, even if we don't get the index back, we can just pass
         // to the in-memory filter test and be done.
+        au.start_event("be_search");
 
         let mut raw_entries: Vec<String> = Vec::new();
         {
@@ -178,7 +182,7 @@ impl Backend {
                 })
                 .unwrap();
             for row in id2entry_iter {
-                println!("{:?}", row);
+                audit_log!(au, "raw entry: {:?}", row);
                 // FIXME: Handle this properly.
                 raw_entries.push(row.unwrap().data);
             }
@@ -200,6 +204,7 @@ impl Backend {
             })
             .collect();
 
+        au.end_event("be_search");
         Ok(entries)
     }
 
@@ -212,7 +217,6 @@ impl Clone for Backend {
     fn clone(&self) -> Self {
         // Make another Be and close the pool.
         Backend {
-            log: self.log.clone(),
             pool: self.pool.clone(),
         }
     }
@@ -231,21 +235,25 @@ mod tests {
 
     extern crate tokio;
 
+    use super::super::audit::AuditEvent;
     use super::super::entry::Entry;
     use super::super::filter::Filter;
-    use super::super::log::{self, EventLog};
+    use super::super::log;
     use super::{Backend, BackendError};
 
     macro_rules! run_test {
         ($test_fn:expr) => {{
             System::run(|| {
+                let mut audit = AuditEvent::new();
+
                 let test_log = log::start();
 
-                let be = Backend::new(test_log.clone(), "");
+                let be = Backend::new(&mut audit, "");
 
                 // Could wrap another future here for the future::ok bit...
-                let fut = $test_fn(test_log, be);
-                let comp_fut = fut.map_err(|()| ()).and_then(|r| {
+                let fut = $test_fn(&mut audit, be);
+                let comp_fut = fut.map_err(|()| ()).and_then(move |_r| {
+                    test_log.do_send(audit);
                     println!("Stopping actix ...");
                     actix::System::current().stop();
                     future::result(Ok(()))
@@ -258,11 +266,11 @@ mod tests {
 
     #[test]
     fn test_simple_create() {
-        run_test!(|log: actix::Addr<EventLog>, mut be: Backend| {
-            log_event!(log, "Simple Create");
+        run_test!(|audit: &mut AuditEvent, mut be: Backend| {
+            audit_log!(audit, "Simple Create");
 
-            let empty_result = be.create(&Vec::new());
-            log_event!(log, "{:?}", empty_result);
+            let empty_result = be.create(audit, &Vec::new());
+            audit_log!(audit, "{:?}", empty_result);
             assert_eq!(empty_result, Err(BackendError::EmptyRequest));
 
             let mut e: Entry = Entry::new();
@@ -270,14 +278,13 @@ mod tests {
                 .unwrap();
             assert!(e.validate());
 
-            let single_result = be.create(&vec![e]);
+            let single_result = be.create(audit, &vec![e]);
 
             assert!(single_result.is_ok());
 
             // Construct a filter
             let filt = Filter::Pres(String::from("userid"));
-            let entries = be.search(&filt).unwrap();
-            println!("{:?}", entries);
+            let entries = be.search(audit, &filt).unwrap();
 
             // There should only be one entry so is this enough?
             assert!(entries.first().is_some());
@@ -291,24 +298,24 @@ mod tests {
 
     #[test]
     fn test_simple_search() {
-        run_test!(|log: actix::Addr<EventLog>, be| {
-            log_event!(log, "Simple Search");
+        run_test!(|audit: &mut AuditEvent, be| {
+            audit_log!(audit, "Simple Search");
             future::ok(())
         });
     }
 
     #[test]
     fn test_simple_modify() {
-        run_test!(|log: actix::Addr<EventLog>, be| {
-            log_event!(log, "Simple Modify");
+        run_test!(|audit: &mut AuditEvent, be| {
+            audit_log!(audit, "Simple Modify");
             future::ok(())
         });
     }
 
     #[test]
     fn test_simple_delete() {
-        run_test!(|log: actix::Addr<EventLog>, be| {
-            log_event!(log, "Simple Delete");
+        run_test!(|audit: &mut AuditEvent, be| {
+            audit_log!(audit, "Simple Delete");
             future::ok(())
         });
     }
