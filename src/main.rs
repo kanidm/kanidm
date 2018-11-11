@@ -1,24 +1,24 @@
 extern crate serde;
 extern crate serde_json;
-#[macro_use]
-extern crate serde_derive;
+// #[macro_use]
 extern crate actix;
 extern crate actix_web;
 extern crate futures;
+extern crate serde_derive;
 extern crate uuid;
 
-use actix::prelude::*;
+// use actix::prelude::*;
 use actix_web::{
-    http, middleware, App, AsyncResponder, FutureResponse, HttpRequest, HttpResponse, Path, State,
+    http, App, AsyncResponder, FutureResponse, HttpRequest, HttpResponse, Path, State,
 };
 
 use futures::Future;
 
 #[macro_use]
 extern crate rsidm;
-use rsidm::be;
 use rsidm::event;
-use rsidm::log::{self, EventLog};
+use rsidm::filter::Filter;
+use rsidm::log;
 use rsidm::server;
 
 struct AppState {
@@ -34,8 +34,10 @@ fn index(req: &HttpRequest<AppState>) -> HttpResponse {
     HttpResponse::Ok().body("Hello\n")
 }
 
-fn class_list((name, state): (Path<String>, State<AppState>)) -> FutureResponse<HttpResponse> {
+fn class_list((_name, state): (Path<String>, State<AppState>)) -> FutureResponse<HttpResponse> {
     // println!("request to class_list");
+    let filt = Filter::Pres(String::from("objectclass"));
+
     state
         .qe
         .send(
@@ -43,14 +45,17 @@ fn class_list((name, state): (Path<String>, State<AppState>)) -> FutureResponse<
             // LONG TERM
             // Make a search REQUEST, and create the audit struct here, then
             // pass it to the server
-            event::SearchEvent::new()
+            //
+            // FIXME: Don't use SEARCHEVENT here!!!!
+            //
+            event::SearchEvent::new(filt),
         )
         // TODO: How to time this part of the code?
         // What does this do?
         .from_err()
         .and_then(|res| match res {
             // What type is entry?
-            Ok(event::EventResult::Search{ entries }) => Ok(HttpResponse::Ok().json(entries)),
+            Ok(event::EventResult::Search { entries }) => Ok(HttpResponse::Ok().json(entries)),
             Ok(_) => Ok(HttpResponse::Ok().into()),
             // Can we properly report this?
             Err(_) => Ok(HttpResponse::InternalServerError().into()),
@@ -84,9 +89,14 @@ fn main() {
         // Connect all our end points here.
         // .middleware(middleware::Logger::default())
         .resource("/", |r| r.f(index))
-        .resource("/{class_list}", |r| r.method(http::Method::GET).with(class_list))
-        .resource("/{class_list}/", |r| r.method(http::Method::GET).with(class_list))
-    }).bind("127.0.0.1:8080")
+        .resource("/{class_list}", |r| {
+            r.method(http::Method::GET).with(class_list)
+        })
+        .resource("/{class_list}/", |r| {
+            r.method(http::Method::GET).with(class_list)
+        })
+    })
+    .bind("127.0.0.1:8080")
     .unwrap()
     .start();
 

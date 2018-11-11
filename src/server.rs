@@ -46,15 +46,26 @@ impl QueryServer {
     // Actually conduct a search request
     // This is the core of the server, as it processes the entire event
     // applies all parts required in order and more.
-    pub fn search(&mut self) -> Result<Vec<Entry>, ()> {
-        Ok(Vec::new())
+    pub fn search(&mut self, se: &SearchEvent) -> Result<Vec<Entry>, ()> {
+        match self.be.search(&se.filter) {
+            Ok(r) => Ok(r),
+            Err(_) => Err(()),
+        }
     }
 
     // What should this take?
     // This should probably take raw encoded entries? Or sohuld they
     // be handled by fe?
-    pub fn create(&mut self) -> Result<(), ()> {
-        Ok(())
+    pub fn create(&mut self, ce: &CreateEvent) -> Result<(), ()> {
+        // Start a txn
+        // Run any pre checks
+        // We may change from ce.entries later to something else?
+        match self.be.create(&ce.entries) {
+            Ok(_) => Ok(()),
+            Err(_) => Err(()),
+        }
+        // Run and post checks
+        // Commit/Abort the txn
     }
 }
 
@@ -75,8 +86,10 @@ impl Handler<SearchEvent> for QueryServer {
         // Parse what we need from the event?
         // What kind of event is it?
 
+        // In the future we'll likely change search event ...
+
         // was this ok?
-        let res = match self.search() {
+        let res = match self.search(&msg) {
             Ok(entries) => Ok(EventResult::Search { entries: entries }),
             Err(e) => Err(e),
         };
@@ -92,12 +105,19 @@ impl Handler<CreateEvent> for QueryServer {
 
     fn handle(&mut self, msg: CreateEvent, _: &mut Self::Context) -> Self::Result {
         log_event!(self.log, "Begin event {:?}", msg);
-        Err(())
+
+        let res = match self.create(&msg) {
+            Ok(()) => Ok(EventResult::Create),
+            Err(e) => Err(e),
+        };
+
+        log_event!(self.log, "End event {:?}", msg);
+        // At the end of the event we send it for logging.
+        res
     }
 }
 
 // Auth requests? How do we structure these ...
-
 
 #[cfg(test)]
 mod tests {
@@ -106,26 +126,28 @@ mod tests {
 
     extern crate futures;
     use futures::future;
-    use futures::future::lazy;
     use futures::future::Future;
 
     extern crate tokio;
 
-    use super::super::server::QueryServer;
     use super::super::be::Backend;
-    use super::super::log::{self, EventLog, LogEvent};
+    use super::super::entry::Entry;
+    use super::super::event::{CreateEvent, SearchEvent};
+    use super::super::filter::Filter;
+    use super::super::log;
+    use super::super::server::QueryServer;
 
     macro_rules! run_test {
         ($test_fn:expr) => {{
             System::run(|| {
                 let test_log = log::start();
 
-                let mut be = Backend::new(test_log.clone(), "");
-                let mut test_server = QueryServer::new(test_log.clone(), be);
+                let be = Backend::new(test_log.clone(), "");
+                let test_server = QueryServer::new(test_log.clone(), be);
 
                 // Could wrap another future here for the future::ok bit...
                 let fut = $test_fn(test_log, test_server);
-                let comp_fut = fut.map_err(|()| ()).and_then(|r| {
+                let comp_fut = fut.map_err(|()| ()).and_then(|_r| {
                     println!("Stopping actix ...");
                     actix::System::current().stop();
                     future::result(Ok(()))
@@ -136,18 +158,32 @@ mod tests {
         }};
     }
 
-
     #[test]
     fn test_be_create_user() {
-        run_test!(|log, mut server: QueryServer| {
-            let r1 = server.search().unwrap();
+        run_test!(|_log, mut server: QueryServer| {
+            let filt = Filter::Pres(String::from("userid"));
+
+            let se1 = SearchEvent::new(filt.clone());
+            let se2 = SearchEvent::new(filt);
+
+            let mut e: Entry = Entry::new();
+            e.add_ava(String::from("userid"), String::from("william"))
+                .unwrap();
+
+            let expected = vec![e];
+
+            let ce = CreateEvent::new(expected.clone());
+
+            let r1 = server.search(&se1).unwrap();
             assert!(r1.len() == 0);
 
-            let cr = server.create();
+            let cr = server.create(&ce);
             assert!(cr.is_ok());
 
-            let r2 = server.search().unwrap();
+            let r2 = server.search(&se2).unwrap();
             assert!(r2.len() == 1);
+
+            assert_eq!(r2, expected);
 
             future::ok(())
         });

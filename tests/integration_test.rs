@@ -1,8 +1,6 @@
 extern crate actix;
 use actix::prelude::*;
 
-use std::panic;
-
 extern crate rsidm;
 use rsidm::log::{self, EventLog, LogEvent};
 use rsidm::server::{self, QueryServer};
@@ -10,11 +8,10 @@ use rsidm::server::{self, QueryServer};
 
 extern crate futures;
 use futures::future;
-use futures::future::lazy;
 use futures::future::Future;
 
 extern crate tokio;
-use tokio::executor::current_thread::CurrentThread;
+// use tokio::executor::current_thread::CurrentThread;
 
 // Test external behaviorus of the service.
 
@@ -41,7 +38,7 @@ macro_rules! run_test {
 
             // Now chain them ...
             // Now append the server shutdown.
-            let comp_fut = fut.map_err(|_| ()).and_then(|r| {
+            let comp_fut = fut.map_err(|_| ()).and_then(|_r| {
                 println!("Stopping actix ...");
                 actix::System::current().stop();
                 future::result(Ok(()))
@@ -58,7 +55,7 @@ macro_rules! run_test {
 #[test]
 fn test_schema() {
     run_test!(
-        |log: actix::Addr<EventLog>, server: actix::Addr<QueryServer>| log.send(LogEvent {
+        |log: actix::Addr<EventLog>, _server: actix::Addr<QueryServer>| log.send(LogEvent {
             msg: String::from("Test log event")
         })
     );

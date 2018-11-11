@@ -84,7 +84,8 @@ impl Backend {
                 )
                 ",
                 NO_PARAMS,
-            ).unwrap();
+            )
+            .unwrap();
 
             // Create a version table for migration indication
 
@@ -98,7 +99,7 @@ impl Backend {
         }
     }
 
-    pub fn create(&mut self, entries: Vec<Entry>) -> Result<BackendAuditEvent, BackendError> {
+    pub fn create(&mut self, entries: &Vec<Entry>) -> Result<BackendAuditEvent, BackendError> {
         log_event!(self.log, "Begin create");
 
         let be_audit = BackendAuditEvent::new();
@@ -119,7 +120,8 @@ impl Backend {
             .map(|val| {
                 // TODO: Should we do better than unwrap?
                 serde_json::to_string(&val).unwrap()
-            }).collect();
+            })
+            .collect();
 
         log_event!(self.log, "serialising: {:?}", ser_entries);
 
@@ -134,7 +136,8 @@ impl Backend {
                 conn.execute(
                     "INSERT INTO id2entry (data) VALUES (?1)",
                     &[&ser_entry as &ToSql],
-                ).unwrap();
+                )
+                .unwrap();
             }
 
             // TODO: update indexes (as needed)
@@ -148,7 +151,7 @@ impl Backend {
     }
 
     // Take filter, and AuditEvent ref?
-    pub fn search(&self, filt: Filter) -> Vec<Entry> {
+    pub fn search(&self, filt: &Filter) -> Result<Vec<Entry>, ()> {
         // Do things
         // Alloc a vec for the entries.
         // FIXME: Make this actually a good size for the result set ...
@@ -172,7 +175,8 @@ impl Backend {
                 .query_map(NO_PARAMS, |row| IdEntry {
                     id: row.get(0),
                     data: row.get(1),
-                }).unwrap();
+                })
+                .unwrap();
             for row in id2entry_iter {
                 println!("{:?}", row);
                 // FIXME: Handle this properly.
@@ -193,9 +197,10 @@ impl Backend {
                 } else {
                     None
                 }
-            }).collect();
+            })
+            .collect();
 
-        entries
+        Ok(entries)
     }
 
     pub fn modify() {}
@@ -222,14 +227,13 @@ mod tests {
 
     extern crate futures;
     use futures::future;
-    use futures::future::lazy;
     use futures::future::Future;
 
     extern crate tokio;
 
     use super::super::entry::Entry;
     use super::super::filter::Filter;
-    use super::super::log::{self, EventLog, LogEvent};
+    use super::super::log::{self, EventLog};
     use super::{Backend, BackendError};
 
     macro_rules! run_test {
@@ -237,7 +241,7 @@ mod tests {
             System::run(|| {
                 let test_log = log::start();
 
-                let mut be = Backend::new(test_log.clone(), "");
+                let be = Backend::new(test_log.clone(), "");
 
                 // Could wrap another future here for the future::ok bit...
                 let fut = $test_fn(test_log, be);
@@ -257,7 +261,7 @@ mod tests {
         run_test!(|log: actix::Addr<EventLog>, mut be: Backend| {
             log_event!(log, "Simple Create");
 
-            let empty_result = be.create(Vec::new());
+            let empty_result = be.create(&Vec::new());
             log_event!(log, "{:?}", empty_result);
             assert_eq!(empty_result, Err(BackendError::EmptyRequest));
 
@@ -266,13 +270,13 @@ mod tests {
                 .unwrap();
             assert!(e.validate());
 
-            let single_result = be.create(vec![e]);
+            let single_result = be.create(&vec![e]);
 
             assert!(single_result.is_ok());
 
             // Construct a filter
             let filt = Filter::Pres(String::from("userid"));
-            let entries = be.search(filt);
+            let entries = be.search(&filt).unwrap();
             println!("{:?}", entries);
 
             // There should only be one entry so is this enough?

@@ -1,4 +1,4 @@
-use serde_json::{Error, Value};
+// use serde_json::{Error, Value};
 use std::collections::BTreeMap;
 
 // make a trait entry for everything to adhere to?
@@ -59,6 +59,22 @@ impl Entry {
 
     pub fn pres(&self, attr: &str) -> bool {
         self.attrs.contains_key(attr)
+    }
+}
+
+impl Clone for Entry {
+    fn clone(&self) -> Entry {
+        Entry {
+            attrs: self.attrs.clone(),
+        }
+    }
+}
+
+impl PartialEq for Entry {
+    fn eq(&self, rhs: &Entry) -> bool {
+        // FIXME: This is naive. Later it should be schema
+        // aware checking.
+        self.attrs == rhs.attrs
     }
 }
 

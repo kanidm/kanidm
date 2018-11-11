@@ -1,3 +1,4 @@
+use super::filter::Filter;
 use actix::prelude::*;
 use entry::Entry;
 
@@ -10,12 +11,15 @@ pub enum EventResult {
     Create,
 }
 
+#[derive(Debug)]
+pub struct RawSearchEvent {}
+
 // At the top we get "event types" and they contain the needed
 // actions, and a generic event component.
 
 #[derive(Debug)]
 pub struct SearchEvent {
-    filter: (),
+    pub filter: Filter,
     class: (), // String
     // It could be better to box this later ...
     event: AuditEvent,
@@ -26,9 +30,9 @@ impl Message for SearchEvent {
 }
 
 impl SearchEvent {
-    pub fn new() -> Self {
+    pub fn new(filter: Filter) -> Self {
         SearchEvent {
-            filter: (),
+            filter: filter,
             class: (),
             event: AuditEvent {
                 time_start: (),
@@ -44,7 +48,7 @@ impl SearchEvent {
 pub struct CreateEvent {
     // This may still actually change to handle the *raw* nature of the
     // input that we plan to parse.
-    entries: Vec<Entry>,
+    pub entries: Vec<Entry>,
     // It could be better to box this later ...
     event: AuditEvent,
 }
@@ -54,9 +58,9 @@ impl Message for CreateEvent {
 }
 
 impl CreateEvent {
-    pub fn new() -> Self {
+    pub fn new(entries: Vec<Entry>) -> Self {
         CreateEvent {
-            entries: Vec::new(),
+            entries: entries,
             event: AuditEvent {
                 time_start: (),
                 time_end: (),
