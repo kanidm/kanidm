@@ -28,3 +28,4 @@ pub mod event;
 pub mod filter;
 pub mod proto;
 pub mod server;
+pub mod schema;
