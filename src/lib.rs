@@ -1,3 +1,7 @@
+
+#![feature(try_from)]
+
+
 extern crate serde;
 extern crate serde_json;
 #[macro_use]
@@ -24,8 +28,9 @@ pub mod log;
 mod audit;
 mod be;
 pub mod entry;
+pub mod error;
 pub mod event;
 pub mod filter;
 pub mod proto;
-pub mod server;
 pub mod schema;
+pub mod server;

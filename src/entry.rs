@@ -1,5 +1,8 @@
 // use serde_json::{Error, Value};
+use std::collections::btree_map::Iter as BTreeIter;
 use std::collections::BTreeMap;
+use std::marker::PhantomData;
+use std::slice::Iter as SliceIter;
 
 // make a trait entry for everything to adhere to?
 //  * How to get indexs out?
@@ -28,6 +31,49 @@ use std::collections::BTreeMap;
 // }
 //
 
+pub struct EntryClasses<'a> {
+    inner: Option<SliceIter<'a, String>>,
+    // _p: &'a PhantomData<()>,
+}
+
+impl<'a> Iterator for EntryClasses<'a> {
+    type Item = &'a String;
+
+    #[inline]
+    fn next(&mut self) -> Option<(&'a String)> {
+        match self.inner.iter_mut().next() {
+            Some(i) => i.next(),
+            None => None,
+        }
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        match self.inner.iter().next() {
+            Some(i) => i.size_hint(),
+            None => (0, None),
+        }
+    }
+}
+
+pub struct EntryAvas<'a> {
+    inner: BTreeIter<'a, String, Vec<String>>,
+}
+
+impl<'a> Iterator for EntryAvas<'a> {
+    type Item = (&'a String, &'a Vec<String>);
+
+    #[inline]
+    fn next(&mut self) -> Option<(&'a String, &'a Vec<String>)> {
+        self.inner.next()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Entry {
     attrs: BTreeMap<String, Vec<String>>,
@@ -52,6 +98,10 @@ impl Entry {
         Ok(())
     }
 
+    pub fn get_ava(&self, attr: &String) -> Option<&Vec<String>> {
+        self.attrs.get(attr)
+    }
+
     pub fn validate(&self) -> bool {
         // We need access to the current system schema here now ...
         true
@@ -59,6 +109,21 @@ impl Entry {
 
     pub fn pres(&self, attr: &str) -> bool {
         self.attrs.contains_key(attr)
+    }
+
+    pub fn classes(&self) -> EntryClasses {
+        // Get the class vec, if any?
+        // How do we indicate "empty?"
+        // FIXME: Actually handle this error ...
+        let c = self.attrs.get("class").map(|c| c.iter());
+        EntryClasses { inner: c }
+    }
+
+    pub fn avas(&self) -> EntryAvas {
+        // Get all attr:value pairs.
+        EntryAvas {
+            inner: self.attrs.iter(),
+        }
     }
 }
 
@@ -149,8 +214,10 @@ impl User {
     // We have to sort vecs ...
 
     // Is there a way to call this on serialise?
-    fn validate() -> Result<(), ()> {
-        Err(())
+    fn validate(&self) -> Result<(), ()> {
+        // Given a schema, validate our object is sane.
+
+        Ok(())
     }
 }
 
