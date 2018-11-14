@@ -5,6 +5,7 @@ use be::Backend;
 use entry::Entry;
 use event::{CreateEvent, EventResult, SearchEvent};
 use log::EventLog;
+use schema::Schema;
 
 pub fn start(log: actix::Addr<EventLog>, path: &str, threads: usize) -> actix::Addr<QueryServer> {
     let mut audit = AuditEvent::new();
@@ -12,12 +13,16 @@ pub fn start(log: actix::Addr<EventLog>, path: &str, threads: usize) -> actix::A
     // Create the BE connection
     // probably need a config type soon ....
     let be = Backend::new(&mut audit, path);
+    let mut schema = Schema::new();
+    schema.bootstrap_core();
     // now we clone it out in the startup I think
     // Should the be need a log clone ref? or pass it around?
     // it probably needs it ...
     audit.end_event("server_new");
     log.do_send(audit);
-    SyncArbiter::start(threads, move || QueryServer::new(log.clone(), be.clone()))
+    SyncArbiter::start(threads, move || {
+        QueryServer::new(log.clone(), be.clone(), schema.clone())
+    })
 }
 
 // This is the core of the server. It implements all
@@ -35,12 +40,17 @@ pub struct QueryServer {
     // I think the BE is build, configured and cloned? Maybe Backend
     // is a wrapper type to Arc<BackendInner> or something.
     be: Backend,
+    schema: Schema,
 }
 
 impl QueryServer {
-    pub fn new(log: actix::Addr<EventLog>, be: Backend) -> Self {
+    pub fn new(log: actix::Addr<EventLog>, be: Backend, schema: Schema) -> Self {
         log_event!(log, "Starting query worker ...");
-        QueryServer { log: log, be: be }
+        QueryServer {
+            log: log,
+            be: be,
+            schema: schema,
+        }
     }
 
     // Actually conduct a search request
@@ -59,6 +69,18 @@ impl QueryServer {
     pub fn create(&mut self, au: &mut AuditEvent, ce: &CreateEvent) -> Result<(), ()> {
         // Start a txn
         // Run any pre checks
+
+        let r = ce.entries.iter().fold(Ok(()), |acc, e| {
+            if acc.is_ok() {
+                self.schema.validate_entry(e).map_err(|_| ())
+            } else {
+                acc
+            }
+        });
+        if r.is_err() {
+            return r;
+        }
+
         // We may change from ce.entries later to something else?
         match self.be.create(au, &ce.entries) {
             Ok(_) => Ok(()),
@@ -146,6 +168,7 @@ mod tests {
     use super::super::event::{CreateEvent, SearchEvent};
     use super::super::filter::Filter;
     use super::super::log;
+    use super::super::schema::Schema;
     use super::super::server::QueryServer;
 
     macro_rules! run_test {
@@ -155,7 +178,9 @@ mod tests {
                 let test_log = log::start();
 
                 let be = Backend::new(&mut audit, "");
-                let test_server = QueryServer::new(test_log.clone(), be);
+                let mut schema = Schema::new();
+                schema.bootstrap_core();
+                let test_server = QueryServer::new(test_log.clone(), be, schema);
 
                 // Could wrap another future here for the future::ok bit...
                 let fut = $test_fn(test_log.clone(), test_server, &mut audit);
@@ -174,14 +199,22 @@ mod tests {
     #[test]
     fn test_be_create_user() {
         run_test!(|_log, mut server: QueryServer, audit: &mut AuditEvent| {
-            let filt = Filter::Pres(String::from("userid"));
+            let filt = Filter::Pres(String::from("name"));
 
             let se1 = SearchEvent::new(filt.clone());
             let se2 = SearchEvent::new(filt);
 
-            let mut e: Entry = Entry::new();
-            e.add_ava(String::from("userid"), String::from("william"))
-                .unwrap();
+            let e: Entry = serde_json::from_str(
+                r#"{
+                "attrs": {
+                    "class": ["person"],
+                    "name": ["testperson"],
+                    "description": ["testperson"],
+                    "displayname": ["testperson"]
+                }
+            }"#,
+            )
+            .unwrap();
 
             let expected = vec![e];
 
@@ -194,6 +227,7 @@ mod tests {
             assert!(cr.is_ok());
 
             let r2 = server.search(audit, &se2).unwrap();
+            println!("--> {:?}", r2);
             assert!(r2.len() == 1);
 
             assert_eq!(r2, expected);

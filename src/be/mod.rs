@@ -274,9 +274,7 @@ mod tests {
             assert_eq!(empty_result, Err(BackendError::EmptyRequest));
 
             let mut e: Entry = Entry::new();
-            e.add_ava(String::from("userid"), String::from("william"))
-                .unwrap();
-            assert!(e.validate());
+            e.add_ava(String::from("userid"), String::from("william"));
 
             let single_result = be.create(audit, &vec![e]);
 

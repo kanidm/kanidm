@@ -88,27 +88,48 @@ impl Entry {
 
     // This should always work? It's only on validate that we'll build
     // a list of syntax violations ...
-    pub fn add_ava(&mut self, attr: String, value: String) -> Result<(), ()> {
+    // If this already exists, we silently drop the event? Is that an
+    // acceptable interface?
+    // Should value here actually be a &str?
+    pub fn add_ava(&mut self, attr: String, value: String) {
         // get_mut to access value
+        // How do we make this turn into an ok / err?
         self.attrs
             .entry(attr)
-            .and_modify(|v| v.push(value.clone()))
+            .and_modify(|v| {
+                // Here we need to actually do a check/binary search ...
+                v.binary_search(&value).map_err(|idx| {
+                    // This cloning is to fix a borrow issue ...
+                    v.insert(idx, value.clone())
+                });
+            })
             .or_insert(vec![value]);
-
-        Ok(())
     }
 
     pub fn get_ava(&self, attr: &String) -> Option<&Vec<String>> {
         self.attrs.get(attr)
     }
 
-    pub fn validate(&self) -> bool {
-        // We need access to the current system schema here now ...
-        true
+    pub fn attribute_pres(&self, attr: &str) -> bool {
+        // FIXME: Do we need to normalise attr name?
+        self.attrs.contains_key(attr)
     }
 
-    pub fn pres(&self, attr: &str) -> bool {
-        self.attrs.contains_key(attr)
+    pub fn attribute_equality(&self, attr: &str, value: &str) -> bool {
+        // Do a schema aware equality?
+        // Either we get schema passed in.
+        // OR we assume based on schema normalisation on the way in
+        // that the equality here of the raw values MUST be correct.
+        // If we do this, we likely need a DB normalise function ...
+        // The other issue is we have to normalise what's in the filter
+        // but that could be done *before* we get here?
+
+        // FIXME: Make this binary_search
+
+        self.attrs.get(attr).map_or(false, |v| {
+            v.iter()
+                .fold(false, |acc, av| if acc { acc } else { value == av })
+        })
     }
 
     pub fn classes(&self) -> EntryClasses {
@@ -229,42 +250,55 @@ mod tests {
     #[test]
     fn test_user_basic() {
         let u: User = User::new("william", "William Brown");
-
-        println!("u: {:?}", u);
-
         let d = serde_json::to_string_pretty(&u).unwrap();
 
-        println!("d: {}", d.as_str());
-
         let u2: User = serde_json::from_str(d.as_str()).unwrap();
-
-        println!("u2: {:?}", u2);
     }
 
     #[test]
     fn test_entry_basic() {
         let mut e: Entry = Entry::new();
 
-        e.add_ava(String::from("userid"), String::from("william"))
-            .unwrap();
-
-        assert!(e.validate());
+        e.add_ava(String::from("userid"), String::from("william"));
 
         let d = serde_json::to_string_pretty(&e).unwrap();
+    }
 
-        println!("d: {}", d.as_str());
+    #[test]
+    fn test_entry_dup_value() {
+        // Schema doesn't matter here because we are duplicating a value
+        // it should fail!
+
+        // We still probably need schema here anyway to validate what we
+        // are adding ... Or do we validate after the changes are made in
+        // total?
+        let mut e: Entry = Entry::new();
+        e.add_ava(String::from("userid"), String::from("william"));
+        e.add_ava(String::from("userid"), String::from("william"));
+
+        let values = e.get_ava(&String::from("userid")).unwrap();
+        // Should only be one value!
+        assert_eq!(values.len(), 1)
     }
 
     #[test]
     fn test_entry_pres() {
         let mut e: Entry = Entry::new();
 
-        e.add_ava(String::from("userid"), String::from("william"))
-            .unwrap();
+        e.add_ava(String::from("userid"), String::from("william"));
 
-        assert!(e.validate());
+        assert!(e.attribute_pres("userid"));
+        assert!(!e.attribute_pres("name"));
+    }
 
-        assert!(e.pres("userid"));
-        assert!(!e.pres("name"));
+    #[test]
+    fn test_entry_equality() {
+        let mut e: Entry = Entry::new();
+
+        e.add_ava(String::from("userid"), String::from("william"));
+
+        assert!(e.attribute_equality("userid", "william"));
+        assert!(!e.attribute_equality("userid", "test"));
+        assert!(!e.attribute_equality("nonexist", "william"));
     }
 }
