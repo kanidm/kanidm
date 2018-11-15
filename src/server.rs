@@ -69,6 +69,7 @@ impl QueryServer {
     pub fn create(&mut self, au: &mut AuditEvent, ce: &CreateEvent) -> Result<(), ()> {
         // Start a txn
         // Run any pre checks
+        // FIXME: Normalise all entries incoming
 
         let r = ce.entries.iter().fold(Ok(()), |acc, e| {
             if acc.is_ok() {

@@ -181,14 +181,25 @@ impl SchemaAttribute {
         }
     }
 
-    pub fn normalise_ava(&self, attr_type: String, attr_value: String) {
-        // Given some types, we can normalise them in sane and consistent
-        // ways. This is generally used in add_ava, and filter
-        // modification.
+    pub fn normalise_syntax(&self, v: &String) -> String {
+        v.to_uppercase()
+    }
 
-        // Given the attr_type load the schema_attribute
-        // given the syntax, normalise.
+    pub fn normalise_index(&self, v: &String) -> String {
+        v.to_uppercase()
+    }
 
+    pub fn normalise_utf8string_insensitive(&self, v: &String) -> String {
+        v.to_lowercase()
+    }
+
+    pub fn normalise_value(&self, v: &String) -> String {
+        match self.syntax {
+            SyntaxType::SYNTAX_ID => self.normalise_syntax(v),
+            SyntaxType::INDEX_ID => self.normalise_index(v),
+            SyntaxType::UTF8STRING_INSENSITIVE => self.normalise_utf8string_insensitive(v),
+            _ => v.clone(),
+        }
     }
 }
 
@@ -705,8 +716,39 @@ impl Schema {
         Ok(())
     }
 
-    // Normalise also validates?
-    pub fn normalise_entry(&mut self) {}
+    pub fn normalise_entry(&mut self, entry: &Entry) -> Entry {
+        // We duplicate the entry here, because we can't
+        // modify what we got on the protocol level. It also
+        // lets us extend and change things.
+
+        let mut entry_new: Entry = Entry::new();
+        // Better hope we have the attribute type ...
+        let schema_attr_name = self.attributes.get("name").unwrap();
+        // For each ava
+        for (attr_name, avas) in entry.avas() {
+            let attr_name_normal: String = schema_attr_name.normalise_value(attr_name);
+            // Get the needed schema type
+            let schema_a_r = self.attributes.get(&attr_name_normal);
+            // if we can't find schema_a, clone and push
+            // else
+
+            let avas_normal: Vec<String> = match schema_a_r {
+                Some(schema_a) => {
+                    avas.iter()
+                        .map(|av| {
+                            // normalise those based on schema?
+                            schema_a.normalise_value(av)
+                        })
+                        .collect()
+                }
+                None => avas.clone(),
+            };
+            // now push those to the new entry.
+            entry_new.add_avas(attr_name_normal, avas_normal);
+        }
+        // Done!
+        entry_new
+    }
 
     // This needs to be recursive?
     pub fn validate_filter(&self, filt: &Filter) -> Result<(), SchemaError> {
@@ -1045,8 +1087,54 @@ mod tests {
         }"#,
         )
         .unwrap();
-
         assert_eq!(schema.validate_entry(&e_ok), Ok(()));
+    }
+
+    #[test]
+    fn test_schema_entry_normalise() {
+        // Check that entries can be normalised sanely
+        let mut schema = Schema::new();
+        schema.bootstrap_core();
+
+        // Check syntax to upper
+        // check index to upper
+        // insense to lower
+        // attr name to lower
+        let e_test: Entry = serde_json::from_str(
+            r#"{
+            "attrs": {
+                "class": ["extensibleobject"],
+                "name": ["TestPerson"],
+                "displayName": ["testperson"],
+                "syntax": ["utf8string"],
+                "index": ["equality"]
+            }
+        }"#,
+        )
+        .unwrap();
+        assert_eq!(
+            schema.validate_entry(&e_test),
+            Err(SchemaError::INVALID_ATTRIBUTE_SYNTAX)
+        );
+
+        let e_expect: Entry = serde_json::from_str(
+            r#"{
+            "attrs": {
+                "class": ["extensibleobject"],
+                "name": ["testperson"],
+                "displayname": ["testperson"],
+                "syntax": ["UTF8STRING"],
+                "index": ["EQUALITY"]
+            }
+        }"#,
+        )
+        .unwrap();
+        assert_eq!(schema.validate_entry(&e_expect), Ok(()));
+
+        let e_normalised = schema.normalise_entry(&e_test);
+
+        assert_eq!(schema.validate_entry(&e_normalised), Ok(()));
+        assert_eq!(e_expect, e_normalised);
     }
 
     #[test]

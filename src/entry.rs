@@ -1,5 +1,5 @@
 // use serde_json::{Error, Value};
-use std::collections::btree_map::Iter as BTreeIter;
+use std::collections::btree_map::{Iter as BTreeIter, IterMut as BTreeIterMut};
 use std::collections::BTreeMap;
 use std::marker::PhantomData;
 use std::slice::Iter as SliceIter;
@@ -74,6 +74,24 @@ impl<'a> Iterator for EntryAvas<'a> {
     }
 }
 
+pub struct EntryAvasMut<'a> {
+    inner: BTreeIterMut<'a, String, Vec<String>>,
+}
+
+impl<'a> Iterator for EntryAvasMut<'a> {
+    type Item = (&'a String, &'a mut Vec<String>);
+
+    #[inline]
+    fn next(&mut self) -> Option<(&'a String, &'a mut Vec<String>)> {
+        self.inner.next()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Entry {
     attrs: BTreeMap<String, Vec<String>>,
@@ -104,6 +122,12 @@ impl Entry {
                 });
             })
             .or_insert(vec![value]);
+    }
+
+    // FIXME: Should this collect from iter instead?
+    pub fn add_avas(&mut self, attr: String, values: Vec<String>) {
+        // Overwrite the existing value
+        let _ = self.attrs.insert(attr, values);
     }
 
     pub fn get_ava(&self, attr: &String) -> Option<&Vec<String>> {
@@ -141,9 +165,14 @@ impl Entry {
     }
 
     pub fn avas(&self) -> EntryAvas {
-        // Get all attr:value pairs.
         EntryAvas {
             inner: self.attrs.iter(),
+        }
+    }
+
+    pub fn avas_mut(&mut self) -> EntryAvasMut {
+        EntryAvasMut {
+            inner: self.attrs.iter_mut(),
         }
     }
 }
