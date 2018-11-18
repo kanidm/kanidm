@@ -19,9 +19,6 @@ macro_rules! log_event {
     })
 }
 
-// This is the core of the server. It implements all
-// the search and modify actions, applies access controls
-// and get's everything ready to push back to the fe code
 
 // We need to pass in config for this later
 // Or we need to pass in the settings for it IE level and dest?

@@ -12,7 +12,7 @@ extern crate uuid;
 // use actix::prelude::*;
 use actix_web::{
     error, http, middleware, App, AsyncResponder, Error, FutureResponse, HttpMessage, HttpRequest,
-    HttpResponse, Json, Path, State,
+    HttpResponse, Json, Path, State
 };
 
 use bytes::BytesMut;
@@ -89,6 +89,7 @@ fn search(
                 // FIXME: entries should not be EventResult type
                 Ok(entries) => Ok(HttpResponse::Ok().json(entries)),
                 Err(_) => Ok(HttpResponse::InternalServerError().into()),
+                // Err(_) => Ok(error::ErrorInternalServerError("Test error").into()),
             }),
     )
 }
@@ -161,6 +162,13 @@ fn main() {
         // Connect all our end points here.
         .middleware(middleware::Logger::default())
         .resource("/", |r| r.f(index))
+        // 
+        /*
+        .resource("/create", |r| {
+            r.method(http::Method::POST)
+                .with(create)
+        })
+        */
         // curl --header "Content-Type: application/json" --request POST --data '{ "filter" : { "Eq": ["class", "user"] }}'  http://127.0.0.1:8080/search
         .resource("/search", |r| {
             r.method(http::Method::POST)
