@@ -12,7 +12,7 @@ extern crate uuid;
 // use actix::prelude::*;
 use actix_web::{
     error, http, middleware, App, AsyncResponder, Error, FutureResponse, HttpMessage, HttpRequest,
-    HttpResponse, Path, State,
+    HttpResponse, Json, Path, State,
 };
 
 use bytes::BytesMut;
@@ -71,8 +71,30 @@ fn class_list((_name, state): (Path<String>, State<AppState>)) -> FutureResponse
         .responder()
 }
 
+fn search(
+    (item, req): (Json<SearchRequest>, HttpRequest<AppState>),
+) -> Box<Future<Item = HttpResponse, Error = Error>> {
+    Box::new(
+        req.state()
+            .qe
+            .send(
+                // FIXME: Item is BORROWED, so we have to .clone it.
+                // We should treat this as immutable and let the caller
+                // clone when mutation is required ...
+                // however, that involves lifetime complexities.
+                event::SearchEvent::new(item.filter.clone()),
+            )
+            .from_err()
+            .and_then(|res| match res {
+                // FIXME: entries should not be EventResult type
+                Ok(entries) => Ok(HttpResponse::Ok().json(entries)),
+                Err(_) => Ok(HttpResponse::InternalServerError().into()),
+            }),
+    )
+}
+
 // Based on actix web example json
-fn search(req: &HttpRequest<AppState>) -> Box<Future<Item = HttpResponse, Error = Error>> {
+fn search2(req: &HttpRequest<AppState>) -> Box<Future<Item = HttpResponse, Error = Error>> {
     println!("{:?}", req);
     // HttpRequest::payload() is stream of Bytes objects
     req.payload()
@@ -139,7 +161,17 @@ fn main() {
         // Connect all our end points here.
         .middleware(middleware::Logger::default())
         .resource("/", |r| r.f(index))
-        .resource("/search", |r| r.method(http::Method::POST).a(search))
+        // curl --header "Content-Type: application/json" --request POST --data '{ "filter" : { "Eq": ["class", "user"] }}'  http://127.0.0.1:8080/search
+        .resource("/search", |r| {
+            r.method(http::Method::POST)
+                /*
+                .with_config(extract_item_limit, |cfg| {
+                    cfg.0.limit(4096); // <- limit size of the payload
+                })
+                */
+                .with(search)
+        })
+        .resource("/search2", |r| r.method(http::Method::POST).a(search2))
         // Add an ldap compat search function type?
         .resource("/list/{class_list}", |r| {
             r.method(http::Method::GET).with(class_list)

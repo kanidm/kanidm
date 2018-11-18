@@ -3,7 +3,9 @@ use actix::prelude::*;
 use entry::Entry;
 
 // Should the event Result have the log items?
-#[derive(Debug)]
+// FIXME: Remove seralising here - each type should
+// have it's own result type!
+#[derive(Serialize, Deserialize, Debug)]
 pub enum EventResult {
     Search { entries: Vec<Entry> },
     Modify,
