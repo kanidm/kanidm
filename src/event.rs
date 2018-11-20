@@ -1,4 +1,5 @@
 use super::filter::Filter;
+use super::proto::{CreateRequest, SearchRequest};
 use actix::prelude::*;
 use entry::Entry;
 
@@ -27,9 +28,9 @@ impl Message for SearchEvent {
 }
 
 impl SearchEvent {
-    pub fn new(filter: Filter) -> Self {
+    pub fn new(request: SearchRequest) -> Self {
         SearchEvent {
-            filter: filter,
+            filter: request.filter,
             class: (),
         }
     }
@@ -50,7 +51,9 @@ impl Message for CreateEvent {
 }
 
 impl CreateEvent {
-    pub fn new(entries: Vec<Entry>) -> Self {
-        CreateEvent { entries: entries }
+    pub fn new(request: CreateRequest) -> Self {
+        CreateEvent {
+            entries: request.entries,
+        }
     }
 }

@@ -169,6 +169,7 @@ mod tests {
     use super::super::event::{CreateEvent, SearchEvent};
     use super::super::filter::Filter;
     use super::super::log;
+    use super::super::proto::{CreateRequest, SearchRequest};
     use super::super::schema::Schema;
     use super::super::server::QueryServer;
 
@@ -202,8 +203,8 @@ mod tests {
         run_test!(|_log, mut server: QueryServer, audit: &mut AuditEvent| {
             let filt = Filter::Pres(String::from("name"));
 
-            let se1 = SearchEvent::new(filt.clone());
-            let se2 = SearchEvent::new(filt);
+            let se1 = SearchEvent::new(SearchRequest::new(filt.clone()));
+            let se2 = SearchEvent::new(SearchRequest::new(filt));
 
             let e: Entry = serde_json::from_str(
                 r#"{
@@ -219,7 +220,7 @@ mod tests {
 
             let expected = vec![e];
 
-            let ce = CreateEvent::new(expected.clone());
+            let ce = CreateEvent::new(CreateRequest::new(expected.clone()));
 
             let r1 = server.search(audit, &se1).unwrap();
             assert!(r1.len() == 0);
