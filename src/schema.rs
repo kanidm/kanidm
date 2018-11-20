@@ -21,6 +21,7 @@ enum Ternary {
     False,
 }
 
+#[allow(non_camel_case_types)]
 #[derive(Debug, Clone, PartialEq)]
 pub enum IndexType {
     EQUALITY,
@@ -44,6 +45,7 @@ impl TryFrom<&str> for IndexType {
     }
 }
 
+#[allow(non_camel_case_types)]
 #[derive(Debug, Clone, PartialEq)]
 pub enum SyntaxType {
     // We need an insensitive string type too ...
@@ -94,19 +96,19 @@ impl SchemaAttribute {
     // Validation.
     fn validate_bool(&self, v: &String) -> Result<(), SchemaError> {
         bool::from_str(v.as_str())
-            .map_err(|_| SchemaError::INVALID_ATTRIBUTE_SYNTAX)
+            .map_err(|_| SchemaError::InvalidAttributeSyntax)
             .map(|_| ())
     }
 
     fn validate_syntax(&self, v: &String) -> Result<(), SchemaError> {
         SyntaxType::try_from(v.as_str())
-            .map_err(|_| SchemaError::INVALID_ATTRIBUTE_SYNTAX)
+            .map_err(|_| SchemaError::InvalidAttributeSyntax)
             .map(|_| ())
     }
 
     fn validate_index(&self, v: &String) -> Result<(), SchemaError> {
         IndexType::try_from(v.as_str())
-            .map_err(|_| SchemaError::INVALID_ATTRIBUTE_SYNTAX)
+            .map_err(|_| SchemaError::InvalidAttributeSyntax)
             .map(|_| ())
     }
 
@@ -116,7 +118,7 @@ impl SchemaAttribute {
         if &t == v {
             Ok(())
         } else {
-            Err(SchemaError::INVALID_ATTRIBUTE_SYNTAX)
+            Err(SchemaError::InvalidAttributeSyntax)
         }
     }
 
@@ -133,7 +135,7 @@ impl SchemaAttribute {
     pub fn validate_ava(&self, ava: &Vec<String>) -> Result<(), SchemaError> {
         // Check multivalue
         if self.multivalue == false && ava.len() > 1 {
-            return Err(SchemaError::INVALID_ATTRIBUTE_SYNTAX);
+            return Err(SchemaError::InvalidAttributeSyntax);
         };
         // If syntax, check the type is correct
         match self.syntax {
@@ -639,7 +641,7 @@ impl Schema {
         });
 
         if c_valid != Ternary::True {
-            return Err(SchemaError::INVALID_CLASS);
+            return Err(SchemaError::InvalidClass);
         };
 
         let classes: HashMap<String, &SchemaClass> = entry
@@ -666,6 +668,7 @@ impl Schema {
             .map(|s| (s.clone(), self.attributes.get(s).unwrap()))
             .collect();
 
+        /*
         let may: HashMap<String, &SchemaAttribute> = classes
             .iter()
             // Join our class systemmmust + must into one iter
@@ -678,16 +681,18 @@ impl Schema {
             })
             .map(|s| (s.clone(), self.attributes.get(s).unwrap()))
             .collect();
+        */
 
         // FIXME: Error needs to say what is missing
         // We need to return *all* missing attributes.
 
         // Check that all must are inplace
         //   for each attr in must, check it's present on our ent
-        for (attr_name, attr) in must {
+        // FIXME: Could we iter over only the attr_name
+        for (attr_name, _attr) in must {
             let avas = entry.get_ava(&attr_name);
             if avas.is_none() {
-                return Err(SchemaError::MISSING_MUST_ATTRIBUTE);
+                return Err(SchemaError::MissingMustAttribute);
             }
         }
 
@@ -706,7 +711,7 @@ impl Schema {
                 }
                 None => {
                     if !extensible {
-                        return Err(SchemaError::INVALID_ATTRIBUTE);
+                        return Err(SchemaError::InvalidAttribute);
                     }
                 }
             }
@@ -755,25 +760,25 @@ impl Schema {
         match filt {
             Filter::Eq(attr, value) => match self.attributes.get(attr) {
                 Some(schema_a) => schema_a.validate_value(value),
-                None => Err(SchemaError::INVALID_ATTRIBUTE),
+                None => Err(SchemaError::InvalidAttribute),
             },
             Filter::Sub(attr, value) => match self.attributes.get(attr) {
                 Some(schema_a) => schema_a.validate_value(value),
-                None => Err(SchemaError::INVALID_ATTRIBUTE),
+                None => Err(SchemaError::InvalidAttribute),
             },
             Filter::Pres(attr) => {
                 // This could be better as a contains_key
                 // because we never use the value
                 match self.attributes.get(attr) {
                     Some(_) => Ok(()),
-                    None => Err(SchemaError::INVALID_ATTRIBUTE),
+                    None => Err(SchemaError::InvalidAttribute),
                 }
             }
             Filter::Or(filters) => {
                 // This should never happen because
                 // optimising should remove them as invalid parts?
                 if filters.len() == 0 {
-                    return Err(SchemaError::EMPTY_FILTER);
+                    return Err(SchemaError::EmptyFilter);
                 };
                 filters.iter().fold(Ok(()), |acc, filt| {
                     if acc.is_ok() {
@@ -787,7 +792,7 @@ impl Schema {
                 // This should never happen because
                 // optimising should remove them as invalid parts?
                 if filters.len() == 0 {
-                    return Err(SchemaError::EMPTY_FILTER);
+                    return Err(SchemaError::EmptyFilter);
                 };
                 filters.iter().fold(Ok(()), |acc, filt| {
                     if acc.is_ok() {
@@ -801,7 +806,7 @@ impl Schema {
                 // This should never happen because
                 // optimising should remove them as invalid parts?
                 if filters.len() == 0 {
-                    return Err(SchemaError::EMPTY_FILTER);
+                    return Err(SchemaError::EmptyFilter);
                 };
                 filters.iter().fold(Ok(()), |acc, filt| {
                     if acc.is_ok() {
@@ -867,17 +872,6 @@ mod tests {
 
     #[test]
     fn test_schema_attribute_simple() {
-        let class_attribute = SchemaAttribute {
-            // class: vec![String::from("attributetype")],
-            name: String::from("class"),
-            description: String::from("The set of classes defining an object"),
-            system: true,
-            secret: false,
-            multivalue: true,
-            index: vec![IndexType::EQUALITY],
-            syntax: SyntaxType::UTF8STRING_INSENSITIVE,
-        };
-
         // Test schemaAttribute validation of types.
 
         // Test single value string
@@ -897,7 +891,7 @@ mod tests {
 
         let r2 =
             single_value_string.validate_ava(&vec![String::from("test1"), String::from("test2")]);
-        assert_eq!(r2, Err(SchemaError::INVALID_ATTRIBUTE_SYNTAX));
+        assert_eq!(r2, Err(SchemaError::InvalidAttributeSyntax));
 
         // test multivalue string, boolean
 
@@ -929,7 +923,7 @@ mod tests {
 
         let r3 =
             multi_value_boolean.validate_ava(&vec![String::from("test1"), String::from("test2")]);
-        assert_eq!(r3, Err(SchemaError::INVALID_ATTRIBUTE_SYNTAX));
+        assert_eq!(r3, Err(SchemaError::InvalidAttributeSyntax));
 
         let r4 =
             multi_value_boolean.validate_ava(&vec![String::from("true"), String::from("false")]);
@@ -951,7 +945,7 @@ mod tests {
         assert_eq!(r6, Ok(()));
 
         let r7 = single_value_syntax.validate_ava(&vec![String::from("thaeountaheu")]);
-        assert_eq!(r7, Err(SchemaError::INVALID_ATTRIBUTE_SYNTAX));
+        assert_eq!(r7, Err(SchemaError::InvalidAttributeSyntax));
 
         let single_value_index = SchemaAttribute {
             // class: vec![String::from("attributetype")],
@@ -968,7 +962,7 @@ mod tests {
         assert_eq!(r8, Ok(()));
 
         let r9 = single_value_index.validate_ava(&vec![String::from("thaeountaheu")]);
-        assert_eq!(r9, Err(SchemaError::INVALID_ATTRIBUTE_SYNTAX));
+        assert_eq!(r9, Err(SchemaError::InvalidAttributeSyntax));
     }
 
     #[test]
@@ -1002,7 +996,7 @@ mod tests {
 
         assert_eq!(
             schema.validate_entry(&e_no_class),
-            Err(SchemaError::INVALID_CLASS)
+            Err(SchemaError::InvalidClass)
         );
 
         let e_bad_class: Entry = serde_json::from_str(
@@ -1015,7 +1009,7 @@ mod tests {
         .unwrap();
         assert_eq!(
             schema.validate_entry(&e_bad_class),
-            Err(SchemaError::INVALID_CLASS)
+            Err(SchemaError::InvalidClass)
         );
 
         let e_attr_invalid: Entry = serde_json::from_str(
@@ -1029,7 +1023,7 @@ mod tests {
 
         assert_eq!(
             schema.validate_entry(&e_attr_invalid),
-            Err(SchemaError::MISSING_MUST_ATTRIBUTE)
+            Err(SchemaError::MissingMustAttribute)
         );
 
         let e_attr_invalid_may: Entry = serde_json::from_str(
@@ -1050,7 +1044,7 @@ mod tests {
 
         assert_eq!(
             schema.validate_entry(&e_attr_invalid_may),
-            Err(SchemaError::INVALID_ATTRIBUTE)
+            Err(SchemaError::InvalidAttribute)
         );
 
         let e_attr_invalid_syn: Entry = serde_json::from_str(
@@ -1070,7 +1064,7 @@ mod tests {
 
         assert_eq!(
             schema.validate_entry(&e_attr_invalid_syn),
-            Err(SchemaError::INVALID_ATTRIBUTE_SYNTAX)
+            Err(SchemaError::InvalidAttributeSyntax)
         );
 
         let e_ok: Entry = serde_json::from_str(
@@ -1114,7 +1108,7 @@ mod tests {
         .unwrap();
         assert_eq!(
             schema.validate_entry(&e_test),
-            Err(SchemaError::INVALID_ATTRIBUTE_SYNTAX)
+            Err(SchemaError::InvalidAttributeSyntax)
         );
 
         let e_expect: Entry = serde_json::from_str(
@@ -1154,7 +1148,7 @@ mod tests {
 
         assert_eq!(
             schema.validate_entry(&e_extensible_bad),
-            Err(SchemaError::INVALID_ATTRIBUTE_SYNTAX)
+            Err(SchemaError::InvalidAttributeSyntax)
         );
 
         let e_extensible: Entry = serde_json::from_str(
@@ -1210,7 +1204,7 @@ mod tests {
 
     #[test]
     fn test_schema_filter_validation() {
-        let mut schema = Schema::new();
+        let schema = Schema::new();
         // Test mixed case attr name
         let f_mixed: Filter = serde_json::from_str(
             r#"{
@@ -1222,7 +1216,7 @@ mod tests {
         .unwrap();
         assert_eq!(
             schema.validate_filter(&f_mixed),
-            Err(SchemaError::INVALID_ATTRIBUTE)
+            Err(SchemaError::InvalidAttribute)
         );
         // test syntax of bool
         let f_bool: Filter = serde_json::from_str(
@@ -1235,7 +1229,7 @@ mod tests {
         .unwrap();
         assert_eq!(
             schema.validate_filter(&f_bool),
-            Err(SchemaError::INVALID_ATTRIBUTE_SYNTAX)
+            Err(SchemaError::InvalidAttributeSyntax)
         );
         // test insensitise values
         let f_insense: Filter = serde_json::from_str(
@@ -1248,7 +1242,7 @@ mod tests {
         .unwrap();
         assert_eq!(
             schema.validate_filter(&f_insense),
-            Err(SchemaError::INVALID_ATTRIBUTE_SYNTAX)
+            Err(SchemaError::InvalidAttributeSyntax)
         );
         // Test the recursive structures validate
         let f_or_empty: Filter = serde_json::from_str(
@@ -1259,7 +1253,7 @@ mod tests {
         .unwrap();
         assert_eq!(
             schema.validate_filter(&f_or_empty),
-            Err(SchemaError::EMPTY_FILTER)
+            Err(SchemaError::EmptyFilter)
         );
         let f_or: Filter = serde_json::from_str(
             r#"{
@@ -1271,7 +1265,7 @@ mod tests {
         .unwrap();
         assert_eq!(
             schema.validate_filter(&f_or),
-            Err(SchemaError::INVALID_ATTRIBUTE_SYNTAX)
+            Err(SchemaError::InvalidAttributeSyntax)
         );
         let f_or_mult: Filter = serde_json::from_str(
             r#"{
@@ -1284,7 +1278,7 @@ mod tests {
         .unwrap();
         assert_eq!(
             schema.validate_filter(&f_or_mult),
-            Err(SchemaError::INVALID_ATTRIBUTE_SYNTAX)
+            Err(SchemaError::InvalidAttributeSyntax)
         );
         let f_or_ok: Filter = serde_json::from_str(
             r#"{

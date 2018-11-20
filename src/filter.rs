@@ -3,7 +3,6 @@
 // entry to assert it matches.
 
 use super::entry::Entry;
-use super::schema::Schema;
 use std::cmp::{Ordering, PartialOrd};
 
 // Perhaps make these json serialisable. Certainly would make parsing
@@ -128,7 +127,6 @@ impl PartialOrd for Filter {
 
 #[cfg(test)]
 mod tests {
-    use super::super::schema::Schema;
     use super::Filter;
     use serde_json;
     use std::cmp::{Ordering, PartialOrd};

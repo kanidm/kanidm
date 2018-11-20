@@ -19,7 +19,6 @@ macro_rules! log_event {
     })
 }
 
-
 // We need to pass in config for this later
 // Or we need to pass in the settings for it IE level and dest?
 // Is there an efficent way to set a log level filter in the macros

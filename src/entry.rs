@@ -1,7 +1,6 @@
 // use serde_json::{Error, Value};
 use std::collections::btree_map::{Iter as BTreeIter, IterMut as BTreeIterMut};
 use std::collections::BTreeMap;
-use std::marker::PhantomData;
 use std::slice::Iter as SliceIter;
 
 // make a trait entry for everything to adhere to?
@@ -116,10 +115,15 @@ impl Entry {
             .entry(attr)
             .and_modify(|v| {
                 // Here we need to actually do a check/binary search ...
-                v.binary_search(&value).map_err(|idx| {
-                    // This cloning is to fix a borrow issue ...
-                    v.insert(idx, value.clone())
-                });
+                // FIXME: Because map_err is lazy, this won't do anything on release
+                match v.binary_search(&value) {
+                    Ok(_) => {}
+                    Err(idx) => {
+                        // This cloning is to fix a borrow issue with the or_insert below.
+                        // Is there a better way?
+                        v.insert(idx, value.clone())
+                    }
+                }
             })
             .or_insert(vec![value]);
     }
@@ -281,7 +285,7 @@ mod tests {
         let u: User = User::new("william", "William Brown");
         let d = serde_json::to_string_pretty(&u).unwrap();
 
-        let u2: User = serde_json::from_str(d.as_str()).unwrap();
+        let _u2: User = serde_json::from_str(d.as_str()).unwrap();
     }
 
     #[test]
@@ -290,7 +294,7 @@ mod tests {
 
         e.add_ava(String::from("userid"), String::from("william"));
 
-        let d = serde_json::to_string_pretty(&e).unwrap();
+        let _d = serde_json::to_string_pretty(&e).unwrap();
     }
 
     #[test]

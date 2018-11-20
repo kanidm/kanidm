@@ -12,7 +12,7 @@ extern crate uuid;
 // use actix::prelude::*;
 use actix_web::{
     error, http, middleware, App, AsyncResponder, Error, FutureResponse, HttpMessage, HttpRequest,
-    HttpResponse, Json, Path, State
+    HttpResponse, Path, State,
 };
 
 use bytes::BytesMut;
@@ -72,68 +72,55 @@ fn class_list((_name, state): (Path<String>, State<AppState>)) -> FutureResponse
 }
 
 fn search(
-    (item, req): (Json<SearchRequest>, HttpRequest<AppState>),
-) -> Box<Future<Item = HttpResponse, Error = Error>> {
-    Box::new(
-        req.state()
-            .qe
-            .send(
-                // FIXME: Item is BORROWED, so we have to .clone it.
-                // We should treat this as immutable and let the caller
-                // clone when mutation is required ...
-                // however, that involves lifetime complexities.
-                event::SearchEvent::new(item.filter.clone()),
-            )
-            .from_err()
-            .and_then(|res| match res {
-                // FIXME: entries should not be EventResult type
-                Ok(entries) => Ok(HttpResponse::Ok().json(entries)),
-                Err(_) => Ok(HttpResponse::InternalServerError().into()),
-                // Err(_) => Ok(error::ErrorInternalServerError("Test error").into()),
-            }),
-    )
-}
-
-// Based on actix web example json
-fn search2(req: &HttpRequest<AppState>) -> Box<Future<Item = HttpResponse, Error = Error>> {
-    println!("{:?}", req);
+    (req, state): (HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
     // HttpRequest::payload() is stream of Bytes objects
     req.payload()
+        // `Future::from_err` acts like `?` in that it coerces the error type from
+        // the future into the final error type
         .from_err()
         // `fold` will asynchronously read each chunk of the request body and
         // call supplied closure, then it resolves to result of closure
         .fold(BytesMut::new(), move |mut body, chunk| {
             // limit max size of in-memory payload
             if (body.len() + chunk.len()) > MAX_SIZE {
-                Err(error::ErrorBadRequest("Request size too large."))
+                Err(error::ErrorBadRequest("overflow"))
             } else {
                 body.extend_from_slice(&chunk);
                 Ok(body)
             }
         })
-        .and_then(|body| {
-            // body is loaded, now we can deserialize serde-json
-            // FIXME: THIS IS FUCKING AWFUL
-            let obj = serde_json::from_slice::<SearchRequest>(&body).unwrap();
-            // Dispatch a search
-            println!("{:?}", obj);
-            // We have to resolve this NOW else we break everything :(
-            /*
-            req.state().qe.send(
-                event::SearchEvent::new(obj.filter)
-            )
-            .from_err()
-            .and_then(|res| future::result(match res {
-                // What type is entry?
-                Ok(event::EventResult::Search { entries }) => Ok(HttpResponse::Ok().json(entries)),
-                Ok(_) => Ok(HttpResponse::Ok().into()),
-                // Can we properly report this?
-                Err(_) => Ok(HttpResponse::InternalServerError().into()),
-            }))
-            */
-            Ok(HttpResponse::InternalServerError().into())
-        })
-        .responder()
+        // `Future::and_then` can be used to merge an asynchronous workflow with a
+        // synchronous workflow
+        .and_then(
+            move |body| -> Box<Future<Item = HttpResponse, Error = Error>> {
+                // body is loaded, now we can deserialize serde-json
+                let r_obj = serde_json::from_slice::<SearchRequest>(&body);
+
+                // Send to the db for create
+                match r_obj {
+                    Ok(obj) => {
+                        let res = state
+                            .qe
+                            .send(
+                                // Could make this a .into_inner() and move?
+                                event::SearchEvent::new(obj.filter),
+                            )
+                            .from_err()
+                            .and_then(|res| match res {
+                                Ok(entries) => Ok(HttpResponse::Ok().json(entries)),
+                                Err(_) => Ok(HttpResponse::InternalServerError().into()),
+                            });
+
+                        Box::new(res)
+                    }
+                    Err(e) => Box::new(future::err(error::ErrorBadRequest(format!(
+                        "Json Decode Failed: {:?}",
+                        e
+                    )))),
+                }
+            },
+        )
 }
 
 fn main() {
@@ -162,7 +149,7 @@ fn main() {
         // Connect all our end points here.
         .middleware(middleware::Logger::default())
         .resource("/", |r| r.f(index))
-        // 
+        //
         /*
         .resource("/create", |r| {
             r.method(http::Method::POST)
@@ -171,15 +158,8 @@ fn main() {
         */
         // curl --header "Content-Type: application/json" --request POST --data '{ "filter" : { "Eq": ["class", "user"] }}'  http://127.0.0.1:8080/search
         .resource("/search", |r| {
-            r.method(http::Method::POST)
-                /*
-                .with_config(extract_item_limit, |cfg| {
-                    cfg.0.limit(4096); // <- limit size of the payload
-                })
-                */
-                .with(search)
+            r.method(http::Method::POST).with_async(search)
         })
-        .resource("/search2", |r| r.method(http::Method::POST).a(search2))
         // Add an ldap compat search function type?
         .resource("/list/{class_list}", |r| {
             r.method(http::Method::GET).with(class_list)
