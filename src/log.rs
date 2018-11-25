@@ -33,6 +33,12 @@ pub struct EventLog {}
 
 impl Actor for EventLog {
     type Context = SyncContext<Self>;
+
+    /*
+    fn started(&mut self, ctx: &mut Self::Context) {
+        ctx.set_mailbox_capacity(1 << 31);
+    }
+    */
 }
 
 // What messages can we be sent. Basically this is all the possible

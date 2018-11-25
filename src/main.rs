@@ -183,9 +183,5 @@ fn main() {
     .start();
 
     log_event!(log_addr, "Starting rsidm on http://127.0.0.1:8080");
-    // curl --header "Content-Type: application/json" --request POST --data '{"name":"xyz","number":3}'  http://127.0.0.1:8080/manual
-
-    // all the needed routes / views
-
     let _ = sys.run();
 }

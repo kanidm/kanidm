@@ -94,6 +94,12 @@ impl QueryServer {
 
 impl Actor for QueryServer {
     type Context = SyncContext<Self>;
+
+    /*
+    fn started(&mut self, ctx: &mut Self::Context) {
+        ctx.set_mailbox_capacity(1 << 31);
+    }
+    */
 }
 
 // The server only recieves "Event" structures, which
