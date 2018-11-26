@@ -2,13 +2,23 @@ extern crate actix;
 use actix::prelude::*;
 
 extern crate rsidm;
+use rsidm::config::Configuration;
+use rsidm::core::create_server_core;
+use rsidm::entry::Entry;
+use rsidm::event::EventResult;
 use rsidm::log::{self, EventLog, LogEvent};
+use rsidm::proto::{CreateRequest, SearchRequest};
 use rsidm::server::{self, QueryServer};
 // use be;
+
+extern crate reqwest;
 
 extern crate futures;
 use futures::future;
 use futures::future::Future;
+
+use std::sync::mpsc;
+use std::thread;
 
 extern crate tokio;
 // use tokio::executor::current_thread::CurrentThread;
@@ -17,48 +27,61 @@ extern crate tokio;
 
 macro_rules! run_test {
     ($test_fn:expr) => {{
-        System::run(|| {
+        let (tx, rx) = mpsc::channel();
+
+        thread::spawn(|| {
             // setup
             // Create a server config in memory for use - use test settings
             // Create a log: In memory - for now it's just stdout
-            let test_log = log::start();
-            // Create the db as a temporary, see:
-            //     https://sqlite.org/inmemorydb.html
 
-            let test_server = server::start(test_log.clone(), "", 1);
+            System::run(move || {
+                let config = Configuration::new();
+                create_server_core(config);
 
-            // Do we need any fixtures?
-            // Yes probably, but they'll need to be futures as well ...
-            // later we could accept fixture as it's own future for re-use
-            // For now these can also bypass the FE code
-            // let fixture_fut = ();
-
-            // We have to spawn every test as a future
-            let fut = $test_fn(test_log, test_server);
-
-            // Now chain them ...
-            // Now append the server shutdown.
-            let comp_fut = fut.map_err(|_| ()).and_then(|_r| {
-                println!("Stopping actix ...");
-                actix::System::current().stop();
-                future::result(Ok(()))
+                // This appears to be bind random ...
+                // let srv = srv.bind("127.0.0.1:0").unwrap();
+                let _ = tx.send(System::current());
             });
-
-            // Run the future
-            tokio::spawn(comp_fut);
-            // We DO NOT need teardown, as sqlite is in mem
-            // let the tables hit the floor
         });
+        let sys = rx.recv().unwrap();
+        System::set_current(sys.clone());
+
+        // Do we need any fixtures?
+        // Yes probably, but they'll need to be futures as well ...
+        // later we could accept fixture as it's own future for re-use
+        $test_fn();
+
+        // We DO NOT need teardown, as sqlite is in mem
+        // let the tables hit the floor
+        let _ = sys.stop();
     }};
 }
 
 #[test]
-fn test_schema() {
-    run_test!(
-        |log: actix::Addr<EventLog>, _server: actix::Addr<QueryServer>| log.send(LogEvent {
-            msg: String::from("Test log event")
-        })
-    );
+fn test_server_proto() {
+    run_test!(|| {
+        let client = reqwest::Client::new();
+
+        let c = CreateRequest {
+            entries: Vec::new(),
+        };
+
+        let mut response = client
+            .post("http://127.0.0.1:8080/create")
+            .body(serde_json::to_string(&c).unwrap())
+            .send()
+            .unwrap();
+
+        println!("{:?}", response);
+        let r: EventResult = serde_json::from_str(response.text().unwrap().as_str()).unwrap();
+
+        println!("{:?}", r);
+
+        // deserialise the response here
+        // check it's valid.
+
+        ()
+    });
 }
 
 /*

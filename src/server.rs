@@ -1,8 +1,10 @@
 use actix::prelude::*;
 
 use audit::AuditEvent;
-use be::Backend;
+use be::{Backend, BackendError};
+
 use entry::Entry;
+use error::OperationError;
 use event::{CreateEvent, EventResult, SearchEvent};
 use log::EventLog;
 use schema::Schema;
@@ -56,24 +58,33 @@ impl QueryServer {
     // Actually conduct a search request
     // This is the core of the server, as it processes the entire event
     // applies all parts required in order and more.
-    pub fn search(&mut self, au: &mut AuditEvent, se: &SearchEvent) -> Result<Vec<Entry>, ()> {
-        match self.be.search(au, &se.filter) {
-            Ok(r) => Ok(r),
-            Err(_) => Err(()),
-        }
+    pub fn search(
+        &mut self,
+        au: &mut AuditEvent,
+        se: &SearchEvent,
+    ) -> Result<Vec<Entry>, OperationError> {
+        let res = self
+            .be
+            .search(au, &se.filter)
+            .map(|r| r)
+            .map_err(|_| OperationError::Backend);
+        // We'll add ACI later
+        res
     }
 
     // What should this take?
     // This should probably take raw encoded entries? Or sohuld they
     // be handled by fe?
-    pub fn create(&mut self, au: &mut AuditEvent, ce: &CreateEvent) -> Result<(), ()> {
+    pub fn create(&mut self, au: &mut AuditEvent, ce: &CreateEvent) -> Result<(), OperationError> {
         // Start a txn
         // Run any pre checks
         // FIXME: Normalise all entries incoming
 
         let r = ce.entries.iter().fold(Ok(()), |acc, e| {
             if acc.is_ok() {
-                self.schema.validate_entry(e).map_err(|_| ())
+                self.schema
+                    .validate_entry(e)
+                    .map_err(|_| OperationError::SchemaViolation)
             } else {
                 acc
             }
@@ -83,12 +94,18 @@ impl QueryServer {
         }
 
         // We may change from ce.entries later to something else?
-        match self.be.create(au, &ce.entries) {
-            Ok(_) => Ok(()),
-            Err(_) => Err(()),
-        }
+        let res = self
+            .be
+            .create(au, &ce.entries)
+            .map(|_| ())
+            .map_err(|e| match e {
+                BackendError::EmptyRequest => OperationError::EmptyRequest,
+                _ => OperationError::Backend,
+            });
+
         // Run and post checks
         // Commit/Abort the txn
+        res
     }
 }
 
@@ -108,7 +125,7 @@ impl Actor for QueryServer {
 // at this point our just is just to route to do_<action>
 
 impl Handler<SearchEvent> for QueryServer {
-    type Result = Result<EventResult, ()>;
+    type Result = Result<EventResult, OperationError>;
 
     fn handle(&mut self, msg: SearchEvent, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditEvent::new();
@@ -135,7 +152,7 @@ impl Handler<SearchEvent> for QueryServer {
 }
 
 impl Handler<CreateEvent> for QueryServer {
-    type Result = Result<EventResult, ()>;
+    type Result = Result<EventResult, OperationError>;
 
     fn handle(&mut self, msg: CreateEvent, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditEvent::new();
@@ -147,7 +164,7 @@ impl Handler<CreateEvent> for QueryServer {
             Err(e) => Err(e),
         };
 
-        audit_log!(audit, "End create event {:?}", msg);
+        audit_log!(audit, "End create event {:?} -> {:?}", msg, res);
         audit.end_event("create");
         // At the end of the event we send it for logging.
         self.log.do_send(audit);

@@ -12,6 +12,9 @@ extern crate r2d2_sqlite;
 extern crate rusqlite;
 extern crate uuid;
 
+extern crate bytes;
+extern crate env_logger;
+
 // use actix::prelude::*;
 // use actix_web::{
 //    http, middleware, App, AsyncResponder, FutureResponse, HttpRequest, HttpResponse, Path, State,
@@ -25,6 +28,8 @@ pub mod log;
 #[macro_use]
 mod audit;
 mod be;
+pub mod config;
+pub mod core;
 pub mod entry;
 pub mod error;
 pub mod event;

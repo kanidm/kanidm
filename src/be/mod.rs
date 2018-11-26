@@ -154,7 +154,7 @@ impl Backend {
     }
 
     // Take filter, and AuditEvent ref?
-    pub fn search(&self, au: &mut AuditEvent, filt: &Filter) -> Result<Vec<Entry>, ()> {
+    pub fn search(&self, au: &mut AuditEvent, filt: &Filter) -> Result<Vec<Entry>, BackendError> {
         // Do things
         // Alloc a vec for the entries.
         // FIXME: Make this actually a good size for the result set ...

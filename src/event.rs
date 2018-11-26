@@ -2,6 +2,7 @@ use super::filter::Filter;
 use super::proto::{CreateRequest, SearchRequest};
 use actix::prelude::*;
 use entry::Entry;
+use error::OperationError;
 
 // Should the event Result have the log items?
 // FIXME: Remove seralising here - each type should
@@ -24,7 +25,7 @@ pub struct SearchEvent {
 }
 
 impl Message for SearchEvent {
-    type Result = Result<EventResult, ()>;
+    type Result = Result<EventResult, OperationError>;
 }
 
 impl SearchEvent {
@@ -47,7 +48,7 @@ pub struct CreateEvent {
 }
 
 impl Message for CreateEvent {
-    type Result = Result<EventResult, ()>;
+    type Result = Result<EventResult, OperationError>;
 }
 
 impl CreateEvent {

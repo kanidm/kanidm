@@ -3,6 +3,11 @@ use super::filter::Filter;
 
 // These proto implementations are here because they have public definitions
 
+// FIXME: We probably need a proto entry to transform our
+// server core entry into.
+
+// FIXME: Proto Response as well here
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SearchRequest {
     pub filter: Filter,

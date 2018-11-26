@@ -8,3 +8,10 @@ pub enum SchemaError {
     InvalidAttributeSyntax,
     EmptyFilter,
 }
+
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+pub enum OperationError {
+    EmptyRequest,
+    Backend,
+    SchemaViolation,
+}
