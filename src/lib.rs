@@ -24,16 +24,17 @@ extern crate env_logger;
 
 // This has to be before be so the import order works
 #[macro_use]
-pub mod log;
+mod log;
 #[macro_use]
 mod audit;
 mod be;
+mod entry;
+mod event;
+mod schema;
+mod server;
+
 pub mod config;
 pub mod core;
-pub mod entry;
 pub mod error;
-pub mod event;
 pub mod filter;
-pub mod proto;
-pub mod schema;
-pub mod server;
+pub mod proto_v1;

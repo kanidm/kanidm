@@ -8,10 +8,10 @@ use bytes::BytesMut;
 use futures::{future, Future, Stream};
 
 use super::config::Configuration;
-use super::event::{CreateEvent, EventResult, SearchEvent};
+use super::event::{CreateEvent, SearchEvent, SearchResult};
 use super::filter::Filter;
 use super::log;
-use super::proto::{CreateRequest, SearchRequest};
+use super::proto_v1::{CreateRequest, SearchRequest, Response, SearchResponse};
 use super::server;
 
 struct AppState {
@@ -20,7 +20,7 @@ struct AppState {
 }
 
 macro_rules! json_event_decode {
-    ($req:expr, $state:expr, $event_type:ty, $message_type:ty) => {{
+    ($req:expr, $state:expr, $event_type:ty, $response_type:ty, $message_type:ty) => {{
         // This is copied every request. Is there a better way?
         // The issue is the fold move takes ownership of state if
         // we don't copy this here
@@ -58,11 +58,13 @@ macro_rules! json_event_decode {
                                 .send(
                                     // Could make this a .into_inner() and move?
                                     // event::SearchEvent::new(obj.filter),
-                                    <($event_type)>::new(obj),
+                                    <($event_type)>::from_request(obj),
                                 )
                                 .from_err()
                                 .and_then(|res| match res {
-                                    Ok(entries) => Ok(HttpResponse::Ok().json(entries)),
+                                    Ok(event_result) => Ok(HttpResponse::Ok().json(
+                                        event_result.response()
+                                        )),
                                     Err(e) => Ok(HttpResponse::InternalServerError().json(e)),
                                 });
 
@@ -101,15 +103,15 @@ fn class_list((_name, state): (Path<String>, State<AppState>)) -> FutureResponse
             //
             // FIXME: Don't use SEARCHEVENT here!!!!
             //
-            SearchEvent::new(SearchRequest::new(filt)),
+            SearchEvent::from_request(SearchRequest::new(filt)),
         )
         // TODO: How to time this part of the code?
         // What does this do?
         .from_err()
         .and_then(|res| match res {
             // What type is entry?
-            Ok(EventResult::Search { entries }) => Ok(HttpResponse::Ok().json(entries)),
-            Ok(_) => Ok(HttpResponse::Ok().into()),
+            Ok(search_result) => Ok(HttpResponse::Ok().json( search_result.response() )),
+            // Ok(_) => Ok(HttpResponse::Ok().into()),
             // Can we properly report this?
             Err(_) => Ok(HttpResponse::InternalServerError().into()),
         })
@@ -120,13 +122,13 @@ fn class_list((_name, state): (Path<String>, State<AppState>)) -> FutureResponse
 fn create(
     (req, state): (HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    json_event_decode!(req, state, CreateEvent, CreateRequest)
+    json_event_decode!(req, state, CreateEvent, Response, CreateRequest)
 }
 
 fn search(
     (req, state): (HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    json_event_decode!(req, state, SearchEvent, SearchRequest)
+    json_event_decode!(req, state, SearchEvent, SearchResponse, SearchRequest)
 }
 
 pub fn create_server_core(config: Configuration) {
@@ -153,19 +155,16 @@ pub fn create_server_core(config: Configuration) {
         // Connect all our end points here.
         .middleware(middleware::Logger::default())
         .resource("/", |r| r.f(index))
-        // curl --header "Content-Type: application/json" --request POST --data '{ "entries": [ {"attrs": {"class": ["group"], "name": ["testgroup"], "description": ["testperson"]}}]}'  http://127.0.0.1:8080/create
-        .resource("/create", |r| {
+        // curl --header "Content-Type: application/json" --request POST --data '{ "entries": [ {"attrs": {"class": ["group"], "name": ["testgroup"], "description": ["testperson"]}}]}'  http://127.0.0.1:8080/v1/create
+        .resource("/v1/create", |r| {
             r.method(http::Method::POST).with_async(create)
         })
-        // curl --header "Content-Type: application/json" --request POST --data '{ "filter" : { "Eq": ["class", "user"] }}'  http://127.0.0.1:8080/search
-        .resource("/search", |r| {
+        // curl --header "Content-Type: application/json" --request POST --data '{ "filter" : { "Eq": ["class", "user"] }}'  http://127.0.0.1:8080/v1/search
+        .resource("/v1/search", |r| {
             r.method(http::Method::POST).with_async(search)
         })
         // Add an ldap compat search function type?
-        .resource("/list/{class_list}", |r| {
-            r.method(http::Method::GET).with(class_list)
-        })
-        .resource("/list/{class_list}/", |r| {
+        .resource("/v1/list/{class_list}", |r| {
             r.method(http::Method::GET).with(class_list)
         })
     })

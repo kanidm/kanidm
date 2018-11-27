@@ -4,12 +4,7 @@ use actix::prelude::*;
 extern crate rsidm;
 use rsidm::config::Configuration;
 use rsidm::core::create_server_core;
-use rsidm::entry::Entry;
-use rsidm::event::EventResult;
-use rsidm::log::{self, EventLog, LogEvent};
-use rsidm::proto::{CreateRequest, SearchRequest};
-use rsidm::server::{self, QueryServer};
-// use be;
+use rsidm::proto_v1::{CreateRequest, SearchRequest, SearchResponse, Response, Entry};
 
 extern crate reqwest;
 
@@ -21,7 +16,6 @@ use std::sync::mpsc;
 use std::thread;
 
 extern crate tokio;
-// use tokio::executor::current_thread::CurrentThread;
 
 // Test external behaviorus of the service.
 
@@ -62,18 +56,30 @@ fn test_server_proto() {
     run_test!(|| {
         let client = reqwest::Client::new();
 
+        let e: Entry = serde_json::from_str(
+            r#"{
+            "attrs": {
+                "class": ["person"],
+                "name": ["testperson"],
+                "description": ["testperson"],
+                "displayname": ["testperson"]
+            }
+        }"#,
+        )
+        .unwrap();
+
         let c = CreateRequest {
-            entries: Vec::new(),
+            entries: vec![e]
         };
 
         let mut response = client
-            .post("http://127.0.0.1:8080/create")
+            .post("http://127.0.0.1:8080/v1/create")
             .body(serde_json::to_string(&c).unwrap())
             .send()
             .unwrap();
 
         println!("{:?}", response);
-        let r: EventResult = serde_json::from_str(response.text().unwrap().as_str()).unwrap();
+        let r: Response = serde_json::from_str(response.text().unwrap().as_str()).unwrap();
 
         println!("{:?}", r);
 

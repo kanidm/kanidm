@@ -1,4 +1,5 @@
 // use serde_json::{Error, Value};
+use super::proto_v1::Entry as ProtoEntry;
 use std::collections::btree_map::{Iter as BTreeIter, IterMut as BTreeIterMut};
 use std::collections::BTreeMap;
 use std::slice::Iter as SliceIter;
@@ -177,6 +178,29 @@ impl Entry {
     pub fn avas_mut(&mut self) -> EntryAvasMut {
         EntryAvasMut {
             inner: self.attrs.iter_mut(),
+        }
+    }
+
+    // FIXME: Can we consume protoentry?
+    pub fn from(e: &ProtoEntry) -> Self {
+        // Why not the trait? In the future we may want to extend
+        // this with server aware functions for changes of the
+        // incoming data.
+        Entry {
+            // For now, we do a straight move
+            attrs: e.attrs.clone(),
+        }
+    }
+
+    pub fn into(&self) -> ProtoEntry {
+        // It's very likely that at this stage we'll need to apply
+        // access controls, dynamic attributes or more.
+        // As a result, this may not even be the right place
+        // for the conversion as algorithmically it may be
+        // better to do this from the outside view. This can
+        // of course be identified and changed ...
+        ProtoEntry {
+            attrs: self.attrs.clone(),
         }
     }
 }

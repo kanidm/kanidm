@@ -1,5 +1,6 @@
 use super::filter::Filter;
-use super::proto::{CreateRequest, SearchRequest};
+use super::proto_v1::Entry as ProtoEntry;
+use super::proto_v1::{CreateRequest, SearchRequest, SearchResponse, Response};
 use actix::prelude::*;
 use entry::Entry;
 use error::OperationError;
@@ -7,12 +8,41 @@ use error::OperationError;
 // Should the event Result have the log items?
 // FIXME: Remove seralising here - each type should
 // have it's own result type!
-#[derive(Serialize, Deserialize, Debug)]
-pub enum EventResult {
-    Search { entries: Vec<Entry> },
-    Modify,
-    Delete,
-    Create,
+
+#[derive(Debug)]
+pub struct OpResult {
+}
+
+impl OpResult {
+    pub fn response(self) -> Response {
+        Response{}
+    }
+}
+
+#[derive(Debug)]
+pub struct SearchResult {
+    entries: Vec<ProtoEntry>,
+}
+
+impl SearchResult {
+    pub fn new(entries: Vec<Entry>) -> Self {
+        SearchResult {
+            // FIXME: Can we consume this iter?
+            entries: entries.iter().map(|e| {
+                // FIXME: The issue here is this probably is applying transforms
+                // like access control ... May need to change.
+                e.into()
+
+            }).collect()
+        }
+    }
+
+    // Consume self into a search response
+    pub fn response(self) -> SearchResponse {
+        SearchResponse {
+            entries: self.entries
+        }
+    }
 }
 
 // At the top we get "event types" and they contain the needed
@@ -25,11 +55,11 @@ pub struct SearchEvent {
 }
 
 impl Message for SearchEvent {
-    type Result = Result<EventResult, OperationError>;
+    type Result = Result<SearchResult, OperationError>;
 }
 
 impl SearchEvent {
-    pub fn new(request: SearchRequest) -> Self {
+    pub fn from_request(request: SearchRequest) -> Self {
         SearchEvent {
             filter: request.filter,
             class: (),
@@ -48,13 +78,25 @@ pub struct CreateEvent {
 }
 
 impl Message for CreateEvent {
-    type Result = Result<EventResult, OperationError>;
+    type Result = Result<OpResult, OperationError>;
 }
 
+// FIXME: Should this actually be in createEvent handler?
 impl CreateEvent {
-    pub fn new(request: CreateRequest) -> Self {
+    pub fn from_request(request: CreateRequest) -> Self {
         CreateEvent {
-            entries: request.entries,
+            // From ProtoEntry -> Entry
+            // What is the correct consuming iterator here? Can we
+            // even do that?
+            entries: request.entries.iter().map(|e|
+                Entry::from(e)
+            ).collect(),
+        }
+    }
+
+    pub fn from_vec(entries: Vec<Entry>) -> Self {
+        CreateEvent {
+            entries: entries
         }
     }
 }

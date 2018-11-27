@@ -5,7 +5,7 @@ use be::{Backend, BackendError};
 
 use entry::Entry;
 use error::OperationError;
-use event::{CreateEvent, EventResult, SearchEvent};
+use event::{CreateEvent, SearchEvent, SearchResult, OpResult};
 use log::EventLog;
 use schema::Schema;
 
@@ -125,7 +125,7 @@ impl Actor for QueryServer {
 // at this point our just is just to route to do_<action>
 
 impl Handler<SearchEvent> for QueryServer {
-    type Result = Result<EventResult, OperationError>;
+    type Result = Result<SearchResult, OperationError>;
 
     fn handle(&mut self, msg: SearchEvent, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditEvent::new();
@@ -139,7 +139,7 @@ impl Handler<SearchEvent> for QueryServer {
 
         // was this ok?
         let res = match self.search(&mut audit, &msg) {
-            Ok(entries) => Ok(EventResult::Search { entries: entries }),
+            Ok(entries) => Ok(SearchResult::new(entries)),
             Err(e) => Err(e),
         };
 
@@ -152,7 +152,7 @@ impl Handler<SearchEvent> for QueryServer {
 }
 
 impl Handler<CreateEvent> for QueryServer {
-    type Result = Result<EventResult, OperationError>;
+    type Result = Result<OpResult, OperationError>;
 
     fn handle(&mut self, msg: CreateEvent, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditEvent::new();
@@ -160,7 +160,7 @@ impl Handler<CreateEvent> for QueryServer {
         audit_log!(audit, "Begin create event {:?}", msg);
 
         let res = match self.create(&mut audit, &msg) {
-            Ok(()) => Ok(EventResult::Create),
+            Ok(()) => Ok(OpResult{}),
             Err(e) => Err(e),
         };
 
@@ -192,7 +192,8 @@ mod tests {
     use super::super::event::{CreateEvent, SearchEvent};
     use super::super::filter::Filter;
     use super::super::log;
-    use super::super::proto::{CreateRequest, SearchRequest};
+    use super::super::proto_v1::{CreateRequest, SearchRequest};
+    use super::super::proto_v1::Entry as ProtoEntry;
     use super::super::schema::Schema;
     use super::super::server::QueryServer;
 
@@ -226,8 +227,8 @@ mod tests {
         run_test!(|_log, mut server: QueryServer, audit: &mut AuditEvent| {
             let filt = Filter::Pres(String::from("name"));
 
-            let se1 = SearchEvent::new(SearchRequest::new(filt.clone()));
-            let se2 = SearchEvent::new(SearchRequest::new(filt));
+            let se1 = SearchEvent::from_request(SearchRequest::new(filt.clone()));
+            let se2 = SearchEvent::from_request(SearchRequest::new(filt));
 
             let e: Entry = serde_json::from_str(
                 r#"{
@@ -243,7 +244,7 @@ mod tests {
 
             let expected = vec![e];
 
-            let ce = CreateEvent::new(CreateRequest::new(expected.clone()));
+            let ce = CreateEvent::from_vec(expected.clone());
 
             let r1 = server.search(audit, &se1).unwrap();
             assert!(r1.len() == 0);
@@ -260,4 +261,8 @@ mod tests {
             future::ok(())
         });
     }
+
+    // Test Create Empty
+
+    // 
 }
