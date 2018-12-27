@@ -13,6 +13,7 @@ extern crate rusqlite;
 extern crate uuid;
 
 extern crate bytes;
+extern crate chrono;
 extern crate env_logger;
 
 // use actix::prelude::*;

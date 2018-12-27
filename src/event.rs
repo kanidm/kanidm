@@ -1,6 +1,6 @@
 use super::filter::Filter;
 use super::proto_v1::Entry as ProtoEntry;
-use super::proto_v1::{CreateRequest, SearchRequest, SearchResponse, Response};
+use super::proto_v1::{CreateRequest, Response, SearchRequest, SearchResponse};
 use actix::prelude::*;
 use entry::Entry;
 use error::OperationError;
@@ -10,12 +10,11 @@ use error::OperationError;
 // have it's own result type!
 
 #[derive(Debug)]
-pub struct OpResult {
-}
+pub struct OpResult {}
 
 impl OpResult {
     pub fn response(self) -> Response {
-        Response{}
+        Response {}
     }
 }
 
@@ -28,19 +27,21 @@ impl SearchResult {
     pub fn new(entries: Vec<Entry>) -> Self {
         SearchResult {
             // FIXME: Can we consume this iter?
-            entries: entries.iter().map(|e| {
-                // FIXME: The issue here is this probably is applying transforms
-                // like access control ... May need to change.
-                e.into()
-
-            }).collect()
+            entries: entries
+                .iter()
+                .map(|e| {
+                    // FIXME: The issue here is this probably is applying transforms
+                    // like access control ... May need to change.
+                    e.into()
+                })
+                .collect(),
         }
     }
 
     // Consume self into a search response
     pub fn response(self) -> SearchResponse {
         SearchResponse {
-            entries: self.entries
+            entries: self.entries,
         }
     }
 }
@@ -88,15 +89,11 @@ impl CreateEvent {
             // From ProtoEntry -> Entry
             // What is the correct consuming iterator here? Can we
             // even do that?
-            entries: request.entries.iter().map(|e|
-                Entry::from(e)
-            ).collect(),
+            entries: request.entries.iter().map(|e| Entry::from(e)).collect(),
         }
     }
 
     pub fn from_vec(entries: Vec<Entry>) -> Self {
-        CreateEvent {
-            entries: entries
-        }
+        CreateEvent { entries: entries }
     }
 }

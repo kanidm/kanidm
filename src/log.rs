@@ -1,7 +1,7 @@
 use actix::prelude::*;
 use serde_json;
 
-use super::audit::AuditEvent;
+use super::audit::AuditScope;
 
 // Helper for internal logging.
 #[macro_export]
@@ -62,10 +62,10 @@ impl Handler<LogEvent> for EventLog {
     }
 }
 
-impl Handler<AuditEvent> for EventLog {
+impl Handler<AuditScope> for EventLog {
     type Result = ();
 
-    fn handle(&mut self, event: AuditEvent, _: &mut SyncContext<Self>) -> Self::Result {
+    fn handle(&mut self, event: AuditScope, _: &mut SyncContext<Self>) -> Self::Result {
         let d = serde_json::to_string_pretty(&event).unwrap();
         println!("AUDIT: {}", d);
     }

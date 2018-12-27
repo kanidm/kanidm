@@ -11,7 +11,7 @@ use super::config::Configuration;
 use super::event::{CreateEvent, SearchEvent, SearchResult};
 use super::filter::Filter;
 use super::log;
-use super::proto_v1::{CreateRequest, SearchRequest, Response, SearchResponse};
+use super::proto_v1::{CreateRequest, Response, SearchRequest, SearchResponse};
 use super::server;
 
 struct AppState {
@@ -62,9 +62,9 @@ macro_rules! json_event_decode {
                                 )
                                 .from_err()
                                 .and_then(|res| match res {
-                                    Ok(event_result) => Ok(HttpResponse::Ok().json(
-                                        event_result.response()
-                                        )),
+                                    Ok(event_result) => {
+                                        Ok(HttpResponse::Ok().json(event_result.response()))
+                                    }
                                     Err(e) => Ok(HttpResponse::InternalServerError().json(e)),
                                 });
 
@@ -110,7 +110,7 @@ fn class_list((_name, state): (Path<String>, State<AppState>)) -> FutureResponse
         .from_err()
         .and_then(|res| match res {
             // What type is entry?
-            Ok(search_result) => Ok(HttpResponse::Ok().json( search_result.response() )),
+            Ok(search_result) => Ok(HttpResponse::Ok().json(search_result.response())),
             // Ok(_) => Ok(HttpResponse::Ok().into()),
             // Can we properly report this?
             Err(_) => Ok(HttpResponse::InternalServerError().into()),

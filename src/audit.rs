@@ -1,5 +1,9 @@
 use actix::prelude::*;
+use std::time::Duration;
 use std::time::SystemTime;
+
+use chrono::offset::Utc;
+use chrono::DateTime;
 
 #[macro_export]
 macro_rules! audit_log {
@@ -9,7 +13,7 @@ macro_rules! audit_log {
             print!("DEBUG AUDIT -> ");
             println!($($arg)*)
         }
-        $audit.raw_event(
+        $audit.log_event(
             fmt::format(
                 format_args!($($arg)*)
             )
@@ -17,81 +21,114 @@ macro_rules! audit_log {
     })
 }
 
+/*
+ * This should be used as:
+ * audit_segment(|au| {
+ *     // au is the inner audit
+ *     do your work
+ *     audit_log!(au, ...?)
+ *     nested_caller(&mut au, ...)
+ * })
+ */
+
+macro_rules! audit_segment {
+    ($au:expr, $fun:expr) => {{
+        use std::time::Instant;
+
+        let start = Instant::now();
+        // start timer.
+        // run fun with our derived audit event.
+        let r = $fun();
+        // end timer, and diff
+        let end = Instant::now();
+        let diff = end.duration_since(start);
+
+        println!("diff: {:?}", diff);
+
+        // Return the result. Hope this works!
+        return r;
+    }};
+}
+
 #[derive(Debug, Serialize, Deserialize)]
-struct AuditInner {
+enum AuditEvent {
+    log(AuditLog),
+    scope(AuditScope),
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct AuditLog {
+    time: String,
     name: String,
-    time: SystemTime,
 }
 
 // This structure tracks and event lifecycle, and is eventually
 // sent to the logging system where it's structured and written
 // out to the current logging BE.
 #[derive(Debug, Serialize, Deserialize)]
-pub struct AuditEvent {
+pub struct AuditScope {
     // vec of start/end points of various parts of the event?
     // We probably need some functions for this. Is there a way in rust
     // to automatically annotate line numbers of code?
-    events: Vec<AuditInner>,
+    time: String,
+    name: String,
+    duration: Option<Duration>,
+    events: Vec<AuditEvent>,
 }
 
 // Allow us to be sent to the log subsystem
-impl Message for AuditEvent {
+impl Message for AuditScope {
     type Result = ();
 }
 
-impl AuditEvent {
-    pub fn new() -> Self {
-        AuditEvent { events: Vec::new() }
-    }
+impl AuditScope {
+    pub fn new(name: &str) -> Self {
+        let t_now = SystemTime::now();
+        let datetime: DateTime<Utc> = t_now.into();
 
-    pub fn start_event(&mut self, name: &str) {
-        self.events.push(AuditInner {
+        AuditScope {
+            time: datetime.to_rfc3339(),
             name: String::from(name),
-            time: SystemTime::now(),
-        })
+            duration: None,
+            events: Vec::new(),
+        }
     }
 
-    pub fn raw_event(&mut self, data: String) {
-        self.events.push(AuditInner {
+    // Given a new audit event, append it in.
+    pub fn append_scope(&mut self, scope: AuditScope) {
+        self.events.push(AuditEvent::scope(scope))
+    }
+
+    pub fn log_event(&mut self, data: String) {
+        let t_now = SystemTime::now();
+        let datetime: DateTime<Utc> = t_now.into();
+
+        self.events.push(AuditEvent::log(AuditLog {
+            time: datetime.to_rfc3339(),
             name: data,
-            time: SystemTime::now(),
-        })
-    }
-
-    pub fn end_event(&mut self, name: &str) {
-        self.events.push(AuditInner {
-            name: String::from(name),
-            time: SystemTime::now(),
-        })
+        }))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::AuditEvent;
+    use super::AuditScope;
 
     // Create and remove. Perhaps add some core details?
     #[test]
     fn test_audit_simple() {
-        let mut au = AuditEvent::new();
-        au.start_event("test");
-        au.end_event("test");
+        let mut au = AuditScope::new("au");
         let d = serde_json::to_string_pretty(&au).unwrap();
         println!("{}", d);
     }
 
-    fn test_audit_nested_inner(au: &mut AuditEvent) {
-        au.start_event("inner");
-        au.end_event("inner");
-    }
+    fn test_audit_nested_inner(au: &mut AuditScope) {}
 
     // Test calling nested functions and getting the details added correctly?
     #[test]
     fn test_audit_nested() {
-        let mut au = AuditEvent::new();
-        au.start_event("test");
+        let mut au = AuditScope::new("au");
         test_audit_nested_inner(&mut au);
-        au.end_event("test");
         let d = serde_json::to_string_pretty(&au).unwrap();
         println!("{}", d);
     }
@@ -99,9 +136,7 @@ mod tests {
     // Test failing to close an event
     #[test]
     fn test_audit_no_close() {
-        let mut au = AuditEvent::new();
-        au.start_event("test");
-        au.start_event("inner");
+        let mut au = AuditScope::new("au");
         let d = serde_json::to_string_pretty(&au).unwrap();
         println!("{}", d);
     }

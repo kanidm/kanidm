@@ -26,7 +26,7 @@ pub struct Response {
 
 impl Response {
     pub fn new(_: ()) -> Self {
-        Response{}
+        Response {}
     }
 }
 
@@ -48,9 +48,7 @@ pub struct SearchResponse {
 
 impl SearchResponse {
     pub fn new(entries: Vec<Entry>) -> Self {
-        SearchResponse {
-            entries: entries
-        }
+        SearchResponse { entries: entries }
     }
 }
 

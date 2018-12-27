@@ -1,30 +1,36 @@
 use actix::prelude::*;
 
-use audit::AuditEvent;
+use audit::AuditScope;
 use be::{Backend, BackendError};
 
 use entry::Entry;
 use error::OperationError;
-use event::{CreateEvent, SearchEvent, SearchResult, OpResult};
+use event::{CreateEvent, OpResult, SearchEvent, SearchResult};
 use log::EventLog;
 use schema::Schema;
 
 pub fn start(log: actix::Addr<EventLog>, path: &str, threads: usize) -> actix::Addr<QueryServer> {
-    let mut audit = AuditEvent::new();
-    audit.start_event("server_new");
-    // Create the BE connection
-    // probably need a config type soon ....
-    let be = Backend::new(&mut audit, path);
-    let mut schema = Schema::new();
-    schema.bootstrap_core();
-    // now we clone it out in the startup I think
-    // Should the be need a log clone ref? or pass it around?
-    // it probably needs it ...
-    audit.end_event("server_new");
+    let mut audit = AuditScope::new("server_start");
+    audit_segment!(audit, || {
+        // Create the BE connection
+        // probably need a config type soon ....
+
+        // Create a new backend audit scope
+        let mut audit_be = AuditScope::new("backend_new");
+        let be = Backend::new(&mut audit_be, path);
+        audit.append_scope(audit_be);
+
+        let mut schema = Schema::new();
+        schema.bootstrap_core();
+        // now we clone it out in the startup I think
+        // Should the be need a log clone ref? or pass it around?
+        // it probably needs it ...
+        // audit.end_event("server_new");
+        SyncArbiter::start(threads, move || {
+            QueryServer::new(log.clone(), be.clone(), schema.clone())
+        })
+    });
     log.do_send(audit);
-    SyncArbiter::start(threads, move || {
-        QueryServer::new(log.clone(), be.clone(), schema.clone())
-    })
 }
 
 // This is the core of the server. It implements all
@@ -60,22 +66,25 @@ impl QueryServer {
     // applies all parts required in order and more.
     pub fn search(
         &mut self,
-        au: &mut AuditEvent,
+        au: &mut AuditScope,
         se: &SearchEvent,
     ) -> Result<Vec<Entry>, OperationError> {
+        let mut audit_be = AuditScope::new("backend_search");
         let res = self
             .be
-            .search(au, &se.filter)
+            .search(&mut audit_be, &se.filter)
             .map(|r| r)
             .map_err(|_| OperationError::Backend);
-        // We'll add ACI later
+        au.append_scope(audit_be);
+
+        // TODO: We'll add ACI later
         res
     }
 
     // What should this take?
     // This should probably take raw encoded entries? Or sohuld they
     // be handled by fe?
-    pub fn create(&mut self, au: &mut AuditEvent, ce: &CreateEvent) -> Result<(), OperationError> {
+    pub fn create(&mut self, au: &mut AuditScope, ce: &CreateEvent) -> Result<(), OperationError> {
         // Start a txn
         // Run any pre checks
         // FIXME: Normalise all entries incoming
@@ -93,15 +102,17 @@ impl QueryServer {
             return r;
         }
 
+        let mut audit_be = AuditScope::new("backend_create");
         // We may change from ce.entries later to something else?
         let res = self
             .be
-            .create(au, &ce.entries)
+            .create(&mut audit_be, &ce.entries)
             .map(|_| ())
             .map_err(|e| match e {
                 BackendError::EmptyRequest => OperationError::EmptyRequest,
                 _ => OperationError::Backend,
             });
+        au.append_scope(audit_be);
 
         // Run and post checks
         // Commit/Abort the txn
@@ -128,23 +139,24 @@ impl Handler<SearchEvent> for QueryServer {
     type Result = Result<SearchResult, OperationError>;
 
     fn handle(&mut self, msg: SearchEvent, _: &mut Self::Context) -> Self::Result {
-        let mut audit = AuditEvent::new();
-        audit.start_event("search");
-        audit_log!(audit, "Begin event {:?}", msg);
+        let mut audit = AuditScope::new("search");
+        let res = audit_segment!(&mut audit, || {
+            audit_log!(audit, "Begin event {:?}", msg);
 
-        // Parse what we need from the event?
-        // What kind of event is it?
+            // Parse what we need from the event?
+            // What kind of event is it?
 
-        // In the future we'll likely change search event ...
+            // In the future we'll likely change search event ...
 
-        // was this ok?
-        let res = match self.search(&mut audit, &msg) {
-            Ok(entries) => Ok(SearchResult::new(entries)),
-            Err(e) => Err(e),
-        };
+            // was this ok?
+            match self.search(&mut audit, &msg) {
+                Ok(entries) => Ok(SearchResult::new(entries)),
+                Err(e) => Err(e),
+            }
 
-        audit_log!(audit, "End event {:?}", msg);
-        audit.end_event("search");
+            // audit_log!(audit, "End event {:?}", msg);
+            // audit.end_event("search");
+        });
         // At the end of the event we send it for logging.
         self.log.do_send(audit);
         res
@@ -155,17 +167,15 @@ impl Handler<CreateEvent> for QueryServer {
     type Result = Result<OpResult, OperationError>;
 
     fn handle(&mut self, msg: CreateEvent, _: &mut Self::Context) -> Self::Result {
-        let mut audit = AuditEvent::new();
-        audit.start_event("create");
-        audit_log!(audit, "Begin create event {:?}", msg);
+        let mut audit = AuditScope::new("create");
+        let res = audit_segment!(&mut audit, || {
+            audit_log!(audit, "Begin create event {:?}", msg);
 
-        let res = match self.create(&mut audit, &msg) {
-            Ok(()) => Ok(OpResult{}),
-            Err(e) => Err(e),
-        };
-
-        audit_log!(audit, "End create event {:?} -> {:?}", msg, res);
-        audit.end_event("create");
+            match self.create(&mut audit, &msg) {
+                Ok(()) => Ok(OpResult {}),
+                Err(e) => Err(e),
+            }
+        });
         // At the end of the event we send it for logging.
         self.log.do_send(audit);
         // At the end of the event we send it for logging.
@@ -186,21 +196,21 @@ mod tests {
 
     extern crate tokio;
 
-    use super::super::audit::AuditEvent;
+    use super::super::audit::AuditScope;
     use super::super::be::Backend;
     use super::super::entry::Entry;
     use super::super::event::{CreateEvent, SearchEvent};
     use super::super::filter::Filter;
     use super::super::log;
-    use super::super::proto_v1::{CreateRequest, SearchRequest};
     use super::super::proto_v1::Entry as ProtoEntry;
+    use super::super::proto_v1::{CreateRequest, SearchRequest};
     use super::super::schema::Schema;
     use super::super::server::QueryServer;
 
     macro_rules! run_test {
         ($test_fn:expr) => {{
             System::run(|| {
-                let mut audit = AuditEvent::new();
+                let mut audit = AuditScope::new("run_test");
                 let test_log = log::start();
 
                 let be = Backend::new(&mut audit, "");
@@ -224,7 +234,7 @@ mod tests {
 
     #[test]
     fn test_be_create_user() {
-        run_test!(|_log, mut server: QueryServer, audit: &mut AuditEvent| {
+        run_test!(|_log, mut server: QueryServer, audit: &mut AuditScope| {
             let filt = Filter::Pres(String::from("name"));
 
             let se1 = SearchEvent::from_request(SearchRequest::new(filt.clone()));
@@ -264,5 +274,5 @@ mod tests {
 
     // Test Create Empty
 
-    // 
+    //
 }

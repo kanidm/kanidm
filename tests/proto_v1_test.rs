@@ -4,7 +4,7 @@ use actix::prelude::*;
 extern crate rsidm;
 use rsidm::config::Configuration;
 use rsidm::core::create_server_core;
-use rsidm::proto_v1::{CreateRequest, SearchRequest, SearchResponse, Response, Entry};
+use rsidm::proto_v1::{CreateRequest, Entry, Response, SearchRequest, SearchResponse};
 
 extern crate reqwest;
 
@@ -68,9 +68,7 @@ fn test_server_proto() {
         )
         .unwrap();
 
-        let c = CreateRequest {
-            entries: vec![e]
-        };
+        let c = CreateRequest { entries: vec![e] };
 
         let mut response = client
             .post("http://127.0.0.1:8080/v1/create")
