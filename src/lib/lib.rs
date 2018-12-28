@@ -33,6 +33,7 @@ mod entry;
 mod event;
 mod schema;
 mod server;
+mod plugins;
 
 pub mod config;
 pub mod core;

@@ -3,11 +3,13 @@ use actix::prelude::*;
 use audit::AuditScope;
 use be::{Backend, BackendError};
 
+use plugins;
 use entry::Entry;
 use error::OperationError;
 use event::{CreateEvent, OpResult, SearchEvent, SearchResult};
 use log::EventLog;
 use schema::Schema;
+
 
 pub fn start(log: actix::Addr<EventLog>, path: &str, threads: usize) -> actix::Addr<QueryServer> {
     let mut audit = AuditScope::new("server_start");
@@ -86,6 +88,9 @@ impl QueryServer {
     // be handled by fe?
     pub fn create(&mut self, au: &mut AuditScope, ce: &CreateEvent) -> Result<(), OperationError> {
         // Start a txn
+
+        // run any pre plugins
+
         // Run any pre checks
         // FIXME: Normalise all entries incoming
 
@@ -114,7 +119,7 @@ impl QueryServer {
             });
         au.append_scope(audit_be);
 
-        // Run and post checks
+        // Run any post plugins
         // Commit/Abort the txn
         res
     }

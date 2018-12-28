@@ -1,4 +1,4 @@
-use actix::SystemRunner;
+// use actix::SystemRunner;
 use actix_web::{
     error, http, middleware, App, AsyncResponder, Error, FutureResponse, HttpMessage, HttpRequest,
     HttpResponse, Path, State, Result,
@@ -9,7 +9,10 @@ use bytes::BytesMut;
 use futures::{future, Future, Stream};
 
 use super::config::Configuration;
-use super::event::{CreateEvent, SearchEvent, SearchResult};
+
+// SearchResult
+use super::event::{CreateEvent, SearchEvent,
+    };
 use super::filter::Filter;
 use super::log;
 use super::proto_v1::{CreateRequest, Response, SearchRequest, SearchResponse};
