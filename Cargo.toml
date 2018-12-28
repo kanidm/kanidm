@@ -1,7 +1,10 @@
+cargo-features = ["default-run"]
+
 [package]
 name = "rsidm"
 version = "0.1.0"
 authors = ["William Brown <william@blackhats.net.au>"]
+default-run = "rsidm_core"
 
 
 # We need three major binaries. The server itself, the unix client, and a cli
@@ -9,11 +12,15 @@ authors = ["William Brown <william@blackhats.net.au>"]
 
 [lib]
 name = "rsidm"
-path = "src/lib.rs"
+path = "src/lib/lib.rs"
 
 [[bin]]
 name = "rsidm_core"
-path = "src/main.rs"
+path = "src/server/main.rs"
+
+[[bin]]
+name = "rsidm_whoami"
+path = "src/clients/whoami.rs"
 
 
 
