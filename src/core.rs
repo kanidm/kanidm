@@ -1,8 +1,9 @@
 use actix::SystemRunner;
 use actix_web::{
     error, http, middleware, App, AsyncResponder, Error, FutureResponse, HttpMessage, HttpRequest,
-    HttpResponse, Path, State,
+    HttpResponse, Path, State, Result,
 };
+use actix_web::middleware::session::{self, RequestSession};
 
 use bytes::BytesMut;
 use futures::{future, Future, Stream};
@@ -131,6 +132,23 @@ fn search(
     json_event_decode!(req, state, SearchEvent, SearchResponse, SearchRequest)
 }
 
+fn whoami(req: &HttpRequest<AppState>) -> Result<&'static str> {
+    println!("{:?}", req);
+
+    // RequestSession trait is used for session access
+    let mut counter = 1;
+    if let Some(count) = req.session().get::<i32>("counter")? {
+        println!("SESSION value: {}", count);
+        counter = count + 1;
+        req.session().set("counter", counter)?;
+    } else {
+        req.session().set("counter", counter)?;
+    }
+
+    Ok("welcome!")
+}
+
+
 pub fn create_server_core(config: Configuration) {
     // Configure the middleware logger
     ::std::env::set_var("RUST_LOG", "actix_web=info");
@@ -154,7 +172,29 @@ pub fn create_server_core(config: Configuration) {
         })
         // Connect all our end points here.
         .middleware(middleware::Logger::default())
+        .middleware(session::SessionStorage::new(
+            // Signed prevents tampering. this 32 byte key MUST
+            // be generated (probably stored in DB for cross-host access)
+            session::CookieSessionBackend::signed(&[0; 32])
+            .path("/")
+            //.max_age() duration of the token life
+            // .domain() 
+            //.same_site() constraunt to the domain
+            // Disallow from js
+            .http_only(true)
+            .name("rsidm-session")
+            // This forces https only
+            .secure(false)
+        ))
         .resource("/", |r| r.f(index))
+        // curl --header ...?
+        .resource("/v1/whoami", |r| r.f(whoami))
+        // .resource("/v1/login", ...)
+        // .resource("/v1/logout", ...)
+        // .resource("/v1/token", ...) generate a token for id servers to use
+        //    on clients, IE linux machines. Workflow being login -> token
+        //    containing group uuids and information needed, as well as a
+        //    set of data for user stuff
         // curl --header "Content-Type: application/json" --request POST --data '{ "entries": [ {"attrs": {"class": ["group"], "name": ["testgroup"], "description": ["testperson"]}}]}'  http://127.0.0.1:8080/v1/create
         .resource("/v1/create", |r| {
             r.method(http::Method::POST).with_async(create)
