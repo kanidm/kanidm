@@ -7,7 +7,7 @@ use entry::Entry;
 use error::OperationError;
 use event::{CreateEvent, OpResult, SearchEvent, SearchResult};
 use log::EventLog;
-use plugins;
+use plugins::Plugins;
 use schema::Schema;
 
 pub fn start(log: actix::Addr<EventLog>, path: &str, threads: usize) -> actix::Addr<QueryServer> {
@@ -96,16 +96,26 @@ impl QueryServer {
         // based on request size in the frontend?
 
         // Copy the entries to a writeable form.
-        let mut candidates: Vec<_> = ce.entries.iter().collect();
+        let mut candidates: Vec<Entry> = ce.entries.iter()
+        .map(|er| er.clone())
+        .collect();
 
         // Start a txn
 
         // run any pre plugins, giving them the list of mutable candidates.
+        // pre-plugins are defined here in their correct order of calling!
+        // I have no intent to make these dynamic or configurable.
 
-        // Run any pre checks
-        // FIXME: Normalise all entries incoming
+        let mut audit_plugin_pre = AuditScope::new("plugin_pre_create");
+        let plug_pre_res = Plugins::run_pre_create(&mut self.be, &mut audit_plugin_pre, &mut candidates, ce, &self.schema);
+        au.append_scope(audit_plugin_pre);
 
-        let r = ce.entries.iter().fold(Ok(()), |acc, e| {
+        if plug_pre_res.is_err() {
+            audit_log!(au, "Create operation failed (plugin), {:?}", plug_pre_res);
+            return plug_pre_res;
+        }
+
+        let r = candidates.iter().fold(Ok(()), |acc, e| {
             if acc.is_ok() {
                 self.schema
                     .validate_entry(e)
@@ -115,26 +125,35 @@ impl QueryServer {
             }
         });
         if r.is_err() {
+            audit_log!(au, "Create operation failed (schema), {:?}", r);
             return r;
         }
+
+        // FIXME: Normalise all entries now.
 
         let mut audit_be = AuditScope::new("backend_create");
         // We may change from ce.entries later to something else?
         let res = self
             .be
-            .create(&mut audit_be, &ce.entries)
+            .create(&mut audit_be, &candidates)
             .map(|_| ())
             .map_err(|e| match e {
                 BackendError::EmptyRequest => OperationError::EmptyRequest,
                 _ => OperationError::Backend,
             });
+        au.append_scope(audit_be);
 
+        if res.is_err() {
+            audit_log!(au, "Create operation failed (backend), {:?}", r);
+            return res;
+        }
         // Run any post plugins
 
-        // Commit/Abort the txn
+        // Commit the txn
 
         // We are complete, finalise logging and return
-        au.append_scope(audit_be);
+
+        audit_log!(au, "Create operation success");
         res
     }
 }

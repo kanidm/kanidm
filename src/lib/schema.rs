@@ -668,21 +668,6 @@ impl Schema {
             .map(|s| (s.clone(), self.attributes.get(s).unwrap()))
             .collect();
 
-        /*
-        let may: HashMap<String, &SchemaAttribute> = classes
-            .iter()
-            // Join our class systemmmust + must into one iter
-            .flat_map(|(_, cls)| {
-                cls.systemmust
-                    .iter()
-                    .chain(cls.must.iter())
-                    .chain(cls.systemmay.iter())
-                    .chain(cls.may.iter())
-            })
-            .map(|s| (s.clone(), self.attributes.get(s).unwrap()))
-            .collect();
-        */
-
         // FIXME: Error needs to say what is missing
         // We need to return *all* missing attributes.
 
@@ -822,7 +807,9 @@ impl Schema {
     // Normalise *does not* validate.
     // Normalise just fixes some possible common issues, but it
     // can't fix *everything* possibly wrong ...
-    pub fn normalise_filter(&mut self) {}
+    pub fn normalise_filter(&mut self) {
+        unimplemented!()
+    }
 }
 
 #[cfg(test)]

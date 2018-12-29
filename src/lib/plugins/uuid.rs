@@ -9,9 +9,12 @@ use event::CreateEvent;
 use filter::Filter;
 use schema::Schema;
 
-struct UUID {}
+pub struct UUID {}
 
 impl Plugin for UUID {
+    fn id() -> &'static str {
+        "UUID"
+    }
     // Need to be given the backend(for testing ease)
     // audit
     // the mut set of entries to create
@@ -30,17 +33,36 @@ impl Plugin for UUID {
         for entry in cand.iter_mut() {
             let name_uuid = String::from("uuid");
 
+            audit_log!(au, "UUID check on entry: {:?}", entry);
+
             // if they don't have uuid, create it.
             // TODO: get_ava should have a str version for effeciency?
             let mut c_uuid = match entry.get_ava(&name_uuid) {
                 Some(u) => {
                     // Actually check we have a value, could be empty array ...
-                    let v = u.first().unwrap();
+                    if u.len() > 1 {
+                            audit_log!(au, "Entry defines uuid attr, but multiple values.");
+                            return Err(OperationError::Plugin)
+                    };
+
+                    let v = match u.first() {
+                        Some(v) => v,
+                        None => {
+                            audit_log!(au, "Entry defines uuid attr, but no value.");
+                            return Err(OperationError::Plugin)
+                            }
+                    };
+
                     // This could actually fail, so we probably need to handle
                     // this better ....
+                    // TODO: Make this a SCHEMA check, not a manual one.
+                    // 
                     match Uuid::parse_str(v.as_str()) {
                         Ok(up) => up,
-                        Err(_) => return Err(OperationError::Plugin),
+                        Err(_) => {
+                            audit_log!(au, "Entry contains invalid UUID content, rejecting out of principle.");
+                            return Err(OperationError::Plugin)
+                        }
                     }
                 }
                 None => Uuid::new_v4(),
@@ -48,7 +70,6 @@ impl Plugin for UUID {
 
             // Make it a string, so we can filter.
             let str_uuid = format!("{}", c_uuid);
-            println!("{}", str_uuid);
 
             let mut au_be = AuditScope::new("be_exist");
 
@@ -58,27 +79,25 @@ impl Plugin for UUID {
             let r = be.exists(&mut au_be, &filt);
 
             au.append_scope(au_be);
-            // end the scope?
+            // end the scope for the be operation.
 
             match r {
                 Ok(b) => {
                     if b == true {
+                        audit_log!(au, "UUID already exists, rejecting.");
                         return Err(OperationError::Plugin);
                     }
                 }
-                Err(e) => return Err(OperationError::Plugin),
+                Err(e) => {
+                    audit_log!(au, "Backend error occured checking UUID existance.");
+                    return Err(OperationError::Plugin)
+                }
             }
 
-            // check that the uuid is unique in the be (even if one is provided
-            //  we especially need to check that)
-
-            // if not unique, generate another, and try again.
-
-            // If it's okay, now put it into the entry.
-            // we may need to inject the base OC required for all objects in our
-            // server to support this?
             let str_uuid = format!("{}", c_uuid);
+            audit_log!(au, "Set UUID {} to entry", str_uuid);
             let ava_uuid: Vec<String> = vec![str_uuid];
+
             entry.set_avas(name_uuid, ava_uuid);
         }
         // done!
@@ -142,9 +161,6 @@ mod tests {
     // Check empty create
     #[test]
     fn test_pre_create_empty() {
-        // Need a macro to create all the bits here ...
-        // Macro needs preload entries, the create entries
-        // schema, identity for create event (later)
         let preload: Vec<Entry> = Vec::new();
         let mut create: Vec<Entry> = Vec::new();
         run_pre_create_test!(
@@ -169,9 +185,6 @@ mod tests {
     // check create where no uuid
     #[test]
     fn test_pre_create_no_uuid() {
-        // Need a macro to create all the bits here ...
-        // Macro needs preload entries, the create entries
-        // schema, identity for create event (later)
         let preload: Vec<Entry> = Vec::new();
 
         let e: Entry = serde_json::from_str(
@@ -208,16 +221,81 @@ mod tests {
     }
 
     // check unparseable uuid
+    #[test]
+    fn test_pre_create_uuid_invalid() {
+        let preload: Vec<Entry> = Vec::new();
+
+        let e: Entry = serde_json::from_str(
+            r#"{
+            "attrs": {
+                "class": ["person"],
+                "name": ["testperson"],
+                "description": ["testperson"],
+                "displayname": ["testperson"],
+                "uuid": ["xxxxxx"]
+            }
+        }"#,
+        )
+        .unwrap();
+
+        let mut create = vec![e.clone()];
+
+        run_pre_create_test!(
+            preload,
+            create,
+            false,
+            false,
+            |be: &mut Backend,
+             au: &mut AuditScope,
+             cand: &mut Vec<Entry>,
+             ce: &CreateEvent,
+             schema: &Schema| {
+                let r = UUID::pre_create(be, au, cand, ce, schema);
+                assert!(r.is_err());
+            }
+        );
+    }
+
     // check entry where uuid is empty list
+    #[test]
+    fn test_pre_create_uuid_empty() {
+        let preload: Vec<Entry> = Vec::new();
+
+        let e: Entry = serde_json::from_str(
+            r#"{
+            "attrs": {
+                "class": ["person"],
+                "name": ["testperson"],
+                "description": ["testperson"],
+                "displayname": ["testperson"],
+                "uuid": []
+            }
+        }"#,
+        )
+        .unwrap();
+
+        let mut create = vec![e.clone()];
+
+        run_pre_create_test!(
+            preload,
+            create,
+            false,
+            false,
+            |be: &mut Backend,
+             au: &mut AuditScope,
+             cand: &mut Vec<Entry>,
+             ce: &CreateEvent,
+             schema: &Schema| {
+                let r = UUID::pre_create(be, au, cand, ce, schema);
+                assert!(r.is_err());
+            }
+        );
+    }
+
 
     // check create where provided uuid is valid. It should be unchanged.
-
-    // check create where uuid already exists.
     #[test]
-    fn test_pre_create_uuid_exist() {
-        // Need a macro to create all the bits here ...
-        // Macro needs preload entries, the create entries
-        // schema, identity for create event (later)
+    fn test_pre_create_uuid_valid() {
         let preload: Vec<Entry> = Vec::new();
 
         let e: Entry = serde_json::from_str(
@@ -234,7 +312,78 @@ mod tests {
         .unwrap();
 
         let mut create = vec![e.clone()];
-        let mut preload = vec![e];
+
+        run_pre_create_test!(
+            preload,
+            create,
+            false,
+            false,
+            |be: &mut Backend,
+             au: &mut AuditScope,
+             cand: &mut Vec<Entry>,
+             ce: &CreateEvent,
+             schema: &Schema| {
+                let r = UUID::pre_create(be, au, cand, ce, schema);
+                assert!(r.is_ok());
+                let ue = cand.first().unwrap();
+                assert!(ue.attribute_equality("uuid", "79724141-3603-4060-b6bb-35c72772611d"));
+            }
+        );
+    }
+
+    #[test]
+    fn test_pre_create_uuid_valid_multi() {
+        let preload: Vec<Entry> = Vec::new();
+
+        let e: Entry = serde_json::from_str(
+            r#"{
+            "attrs": {
+                "class": ["person"],
+                "name": ["testperson"],
+                "description": ["testperson"],
+                "displayname": ["testperson"],
+                "uuid": ["79724141-3603-4060-b6bb-35c72772611d", "79724141-3603-4060-b6bb-35c72772611d"]
+            }
+        }"#,
+        )
+        .unwrap();
+
+        let mut create = vec![e.clone()];
+
+        run_pre_create_test!(
+            preload,
+            create,
+            false,
+            false,
+            |be: &mut Backend,
+             au: &mut AuditScope,
+             cand: &mut Vec<Entry>,
+             ce: &CreateEvent,
+             schema: &Schema| {
+                let r = UUID::pre_create(be, au, cand, ce, schema);
+                assert!(r.is_err());
+            }
+        );
+    }
+
+    // check create where uuid already exists.
+    #[test]
+    fn test_pre_create_uuid_exist() {
+        let e: Entry = serde_json::from_str(
+            r#"{
+            "attrs": {
+                "class": ["person"],
+                "name": ["testperson"],
+                "description": ["testperson"],
+                "displayname": ["testperson"],
+                "uuid": ["79724141-3603-4060-b6bb-35c72772611d"]
+            }
+        }"#,
+        )
+        .unwrap();
+
+        let mut create = vec![e.clone()];
+        let preload = vec![e];
 
         run_pre_create_test!(
             preload,

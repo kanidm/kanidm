@@ -12,7 +12,7 @@ macro_rules! audit_log {
     ($audit:expr, $($arg:tt)*) => ({
         use std::fmt;
         if cfg!(test) || cfg!(debug_assertions) {
-            print!("DEBUG AUDIT -> ");
+            print!("DEBUG AUDIT ({})-> ", $audit.id());
             println!($($arg)*)
         }
         $audit.log_event(
@@ -99,6 +99,10 @@ impl AuditScope {
             duration: None,
             events: Vec::new(),
         }
+    }
+
+    pub fn id(&self) -> &str {
+        self.name.as_str()
     }
 
     // Given a new audit event, append it in.
