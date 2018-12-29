@@ -191,16 +191,15 @@ impl Entry {
         Entry {
             // For now, we do a straight move, and we sort the incoming data
             // sets so that BST works.
-            attrs: e.attrs.iter()
+            attrs: e
+                .attrs
+                .iter()
                 .map(|(k, v)| {
                     let mut nv = v.clone();
                     nv.sort_unstable();
-                    (
-                        k.clone(),
-                        nv
-                    )
-                    })
-                .collect()
+                    (k.clone(), nv)
+                })
+                .collect(),
         }
     }
 

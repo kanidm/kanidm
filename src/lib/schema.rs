@@ -3,9 +3,9 @@ use super::error::SchemaError;
 use super::filter::Filter;
 use std::collections::HashMap;
 // Apparently this is nightly only?
+use regex::Regex;
 use std::convert::TryFrom;
 use std::str::FromStr;
-use regex::Regex;
 
 // representations of schema that confines object types, classes
 // and attributes. This ties in deeply with "Entry".
@@ -175,51 +175,41 @@ impl SchemaAttribute {
                     }
                 })
             }
-            SyntaxType::SYNTAX_ID => {
-                ava.iter().fold(Ok(()), |acc, v| {
-                    if acc.is_ok() {
-                        self.validate_syntax(v)
-                    } else {
-                        acc
-                    }
-                })
-            }
-            SyntaxType::UUID => {
-                ava.iter().fold(Ok(()), |acc, v| {
-                    if acc.is_ok() {
-                        self.validate_uuid(v)
-                    } else {
-                        acc
-                    }
-                })
-            }
-            SyntaxType::INDEX_ID => {
-                ava.iter().fold(Ok(()), |acc, v| {
-                    if acc.is_ok() {
-                        self.validate_index(v)
-                    } else {
-                        acc
-                    }
-                })
-            }
-            SyntaxType::UTF8STRING_INSENSITIVE => {
-                ava.iter().fold(Ok(()), |acc, v| {
-                    if acc.is_ok() {
-                        self.validate_utf8string_insensitive(v)
-                    } else {
-                        acc
-                    }
-                })
-            }
-            SyntaxType::UTF8STRING_PRINCIPAL => {
-                ava.iter().fold(Ok(()), |acc, v| {
-                    if acc.is_ok() {
-                        self.validate_principal(v)
-                    } else {
-                        acc
-                    }
-                })
-            }
+            SyntaxType::SYNTAX_ID => ava.iter().fold(Ok(()), |acc, v| {
+                if acc.is_ok() {
+                    self.validate_syntax(v)
+                } else {
+                    acc
+                }
+            }),
+            SyntaxType::UUID => ava.iter().fold(Ok(()), |acc, v| {
+                if acc.is_ok() {
+                    self.validate_uuid(v)
+                } else {
+                    acc
+                }
+            }),
+            SyntaxType::INDEX_ID => ava.iter().fold(Ok(()), |acc, v| {
+                if acc.is_ok() {
+                    self.validate_index(v)
+                } else {
+                    acc
+                }
+            }),
+            SyntaxType::UTF8STRING_INSENSITIVE => ava.iter().fold(Ok(()), |acc, v| {
+                if acc.is_ok() {
+                    self.validate_utf8string_insensitive(v)
+                } else {
+                    acc
+                }
+            }),
+            SyntaxType::UTF8STRING_PRINCIPAL => ava.iter().fold(Ok(()), |acc, v| {
+                if acc.is_ok() {
+                    self.validate_principal(v)
+                } else {
+                    acc
+                }
+            }),
             _ => Ok(()),
         }
     }
@@ -510,9 +500,7 @@ impl Schema {
                 description: String::from("A system created class that all objects must contain"),
                 systemmay: vec![],
                 may: vec![],
-                systemmust: vec![
-                    String::from("uuid"),
-                ],
+                systemmust: vec![String::from("uuid")],
                 must: vec![],
             },
         );
@@ -652,7 +640,11 @@ impl Schema {
                 description: String::from("Object representation of a group"),
                 systemmay: vec![String::from("description"), String::from("member")],
                 may: vec![],
-                systemmust: vec![String::from("class"), String::from("name"), String::from("principal_name")],
+                systemmust: vec![
+                    String::from("class"),
+                    String::from("name"),
+                    String::from("principal_name"),
+                ],
                 must: vec![],
             },
         );
@@ -922,7 +914,7 @@ mod tests {
 
     #[test]
     fn test_schema_syntax_principal() {
-            let sa = SchemaAttribute {
+        let sa = SchemaAttribute {
                 name: String::from("principal_name"),
                 description: String::from("The longform name of an object, derived from name and domain. Example: alice@project.org"),
                 system: true,
@@ -932,29 +924,19 @@ mod tests {
                 syntax: SyntaxType::UTF8STRING_PRINCIPAL,
             };
 
-        let r1 = sa.validate_principal(
-            &String::from("a@a")
-        );
+        let r1 = sa.validate_principal(&String::from("a@a"));
         assert!(r1.is_ok());
 
-        let r2 = sa.validate_principal(
-            &String::from("a@@a")
-        );
+        let r2 = sa.validate_principal(&String::from("a@@a"));
         assert!(r2.is_err());
 
-        let r3 = sa.validate_principal(
-            &String::from("a@a@a")
-        );
+        let r3 = sa.validate_principal(&String::from("a@a@a"));
         assert!(r3.is_err());
 
-        let r4 = sa.validate_principal(
-            &String::from("@a")
-        );
+        let r4 = sa.validate_principal(&String::from("@a"));
         assert!(r4.is_err());
 
-        let r5 = sa.validate_principal(
-            &String::from("a@")
-        );
+        let r5 = sa.validate_principal(&String::from("a@"));
         assert!(r5.is_err());
     }
 
