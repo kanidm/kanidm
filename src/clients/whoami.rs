@@ -1,4 +1,3 @@
-
 extern crate rsidm;
 
 use rsidm::proto_v1;

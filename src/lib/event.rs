@@ -51,6 +51,7 @@ impl SearchResult {
 
 #[derive(Debug)]
 pub struct SearchEvent {
+    pub internal: bool,
     pub filter: Filter,
     class: (), // String
 }
@@ -62,20 +63,24 @@ impl Message for SearchEvent {
 impl SearchEvent {
     pub fn from_request(request: SearchRequest) -> Self {
         SearchEvent {
+            internal: false,
             filter: request.filter,
             class: (),
         }
     }
-    // We need event -> some kind of json event string for logging
-    // Could we turn the event from json back to an event for testing later?
 }
 
+// Represents the decoded entries from the protocol -> internal entry representation
+// including information about the identity performing the request, and if the
+// request is internal or not.
 #[derive(Debug)]
 pub struct CreateEvent {
     // This may still actually change to handle the *raw* nature of the
     // input that we plan to parse.
     pub entries: Vec<Entry>,
-    // It could be better to box this later ...
+    /// Is the CreateEvent from an internal or external source?
+    /// This may affect which plugins are run ...
+    pub internal: bool,
 }
 
 impl Message for CreateEvent {
@@ -89,11 +94,16 @@ impl CreateEvent {
             // From ProtoEntry -> Entry
             // What is the correct consuming iterator here? Can we
             // even do that?
+            internal: false,
             entries: request.entries.iter().map(|e| Entry::from(e)).collect(),
         }
     }
 
+    // Is this an internal only function?
     pub fn from_vec(entries: Vec<Entry>) -> Self {
-        CreateEvent { entries: entries }
+        CreateEvent {
+            internal: false,
+            entries: entries,
+        }
     }
 }

@@ -130,7 +130,8 @@ impl Entry {
     }
 
     // FIXME: Should this collect from iter instead?
-    pub fn add_avas(&mut self, attr: String, values: Vec<String>) {
+    /// Overwrite the existing avas.
+    pub fn set_avas(&mut self, attr: String, values: Vec<String>) {
         // Overwrite the existing value
         let _ = self.attrs.insert(attr, values);
     }

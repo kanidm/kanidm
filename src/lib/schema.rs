@@ -749,7 +749,7 @@ impl Schema {
                 None => avas.clone(),
             };
             // now push those to the new entry.
-            entry_new.add_avas(attr_name_normal, avas_normal);
+            entry_new.set_avas(attr_name_normal, avas_normal);
         }
         // Done!
         entry_new

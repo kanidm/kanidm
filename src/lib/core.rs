@@ -1,9 +1,9 @@
 // use actix::SystemRunner;
+use actix_web::middleware::session::{self, RequestSession};
 use actix_web::{
     error, http, middleware, App, AsyncResponder, Error, FutureResponse, HttpMessage, HttpRequest,
-    HttpResponse, Path, State, Result,
+    HttpResponse, Path, Result, State,
 };
-use actix_web::middleware::session::{self, RequestSession};
 
 use bytes::BytesMut;
 use futures::{future, Future, Stream};
@@ -11,8 +11,7 @@ use futures::{future, Future, Stream};
 use super::config::Configuration;
 
 // SearchResult
-use super::event::{CreateEvent, SearchEvent,
-    };
+use super::event::{CreateEvent, SearchEvent};
 use super::filter::Filter;
 use super::log;
 use super::proto_v1::{CreateRequest, Response, SearchRequest, SearchResponse};
@@ -151,7 +150,6 @@ fn whoami(req: &HttpRequest<AppState>) -> Result<&'static str> {
     Ok("welcome!")
 }
 
-
 pub fn create_server_core(config: Configuration) {
     // Configure the middleware logger
     ::std::env::set_var("RUST_LOG", "actix_web=info");
@@ -179,15 +177,15 @@ pub fn create_server_core(config: Configuration) {
             // Signed prevents tampering. this 32 byte key MUST
             // be generated (probably stored in DB for cross-host access)
             session::CookieSessionBackend::signed(&[0; 32])
-            .path("/")
-            //.max_age() duration of the token life
-            // .domain() 
-            //.same_site() constraunt to the domain
-            // Disallow from js
-            .http_only(true)
-            .name("rsidm-session")
-            // This forces https only
-            .secure(false)
+                .path("/")
+                //.max_age() duration of the token life
+                // .domain()
+                //.same_site() constraunt to the domain
+                // Disallow from js
+                .http_only(true)
+                .name("rsidm-session")
+                // This forces https only
+                .secure(false),
         ))
         .resource("/", |r| r.f(index))
         // curl --header ...?

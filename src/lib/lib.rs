@@ -31,9 +31,10 @@ mod audit;
 mod be;
 mod entry;
 mod event;
+mod identity;
+mod plugins;
 mod schema;
 mod server;
-mod plugins;
 
 pub mod config;
 pub mod core;

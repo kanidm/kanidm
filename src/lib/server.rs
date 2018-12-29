@@ -3,13 +3,12 @@ use actix::prelude::*;
 use audit::AuditScope;
 use be::{Backend, BackendError};
 
-use plugins;
 use entry::Entry;
 use error::OperationError;
 use event::{CreateEvent, OpResult, SearchEvent, SearchResult};
 use log::EventLog;
+use plugins;
 use schema::Schema;
-
 
 pub fn start(log: actix::Addr<EventLog>, path: &str, threads: usize) -> actix::Addr<QueryServer> {
     let mut audit = AuditScope::new("server_start");
@@ -83,13 +82,22 @@ impl QueryServer {
         res
     }
 
-    // What should this take?
-    // This should probably take raw encoded entries? Or sohuld they
-    // be handled by fe?
     pub fn create(&mut self, au: &mut AuditScope, ce: &CreateEvent) -> Result<(), OperationError> {
+        // The create event is a raw, read only representation of the request
+        // that was made to us, including information about the identity
+        // performing the request.
+
+        // Log the request
+
+        // TODO: Do we need limits on number of creates, or do we constraint
+        // based on request size in the frontend?
+
+        // Copy the entries to a writeable form.
+        let mut candidates: Vec<_> = ce.entries.iter().collect();
+
         // Start a txn
 
-        // run any pre plugins
+        // run any pre plugins, giving them the list of mutable candidates.
 
         // Run any pre checks
         // FIXME: Normalise all entries incoming
@@ -117,10 +125,13 @@ impl QueryServer {
                 BackendError::EmptyRequest => OperationError::EmptyRequest,
                 _ => OperationError::Backend,
             });
-        au.append_scope(audit_be);
 
         // Run any post plugins
+
         // Commit/Abort the txn
+
+        // We are complete, finalise logging and return
+        au.append_scope(audit_be);
         res
     }
 }
