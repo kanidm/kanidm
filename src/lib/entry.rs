@@ -189,8 +189,18 @@ impl Entry {
         // this with server aware functions for changes of the
         // incoming data.
         Entry {
-            // For now, we do a straight move
-            attrs: e.attrs.clone(),
+            // For now, we do a straight move, and we sort the incoming data
+            // sets so that BST works.
+            attrs: e.attrs.iter()
+                .map(|(k, v)| {
+                    let mut nv = v.clone();
+                    nv.sort_unstable();
+                    (
+                        k.clone(),
+                        nv
+                    )
+                    })
+                .collect()
         }
     }
 

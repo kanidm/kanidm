@@ -5,7 +5,7 @@ use error::OperationError;
 use event::CreateEvent;
 use schema::Schema;
 
-mod uuid;
+mod base;
 
 trait Plugin {
     fn id() -> &'static str;
@@ -83,10 +83,10 @@ impl Plugins {
     ) -> Result<(), OperationError> {
         audit_segment!(audit_plugin_pre, || {
             // map chain?
-            let uuid_res = run_pre_create_plugin!(be, au, cand, ce, schema, uuid::UUID);
+            let base_res = run_pre_create_plugin!(be, au, cand, ce, schema, base::Base);
 
             // TODO, actually return the right thing ...
-            uuid_res
+            base_res
         })
     }
 }

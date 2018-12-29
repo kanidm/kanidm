@@ -5,6 +5,7 @@ use std::collections::HashMap;
 // Apparently this is nightly only?
 use std::convert::TryFrom;
 use std::str::FromStr;
+use regex::Regex;
 
 // representations of schema that confines object types, classes
 // and attributes. This ties in deeply with "Entry".
@@ -51,7 +52,9 @@ pub enum SyntaxType {
     // We need an insensitive string type too ...
     // We also need to "self host" a syntax type, and index type
     UTF8STRING,
+    UTF8STRING_PRINCIPAL,
     UTF8STRING_INSENSITIVE,
+    UUID,
     BOOLEAN,
     SYNTAX_ID,
     INDEX_ID,
@@ -63,8 +66,12 @@ impl TryFrom<&str> for SyntaxType {
     fn try_from(value: &str) -> Result<SyntaxType, Self::Error> {
         if value == "UTF8STRING" {
             Ok(SyntaxType::UTF8STRING)
+        } else if value == "UTF8STRING_PRINCIPAL" {
+            Ok(SyntaxType::UTF8STRING_PRINCIPAL)
         } else if value == "UTF8STRING_INSENSITIVE" {
             Ok(SyntaxType::UTF8STRING_INSENSITIVE)
+        } else if value == "UUID" {
+            Ok(SyntaxType::UUID)
         } else if value == "BOOLEAN" {
             Ok(SyntaxType::BOOLEAN)
         } else if value == "SYNTAX_ID" {
@@ -112,6 +119,23 @@ impl SchemaAttribute {
             .map(|_| ())
     }
 
+    fn validate_uuid(&self, v: &String) -> Result<(), SchemaError> {
+        unimplemented!()
+    }
+
+    fn validate_principal(&self, v: &String) -> Result<(), SchemaError> {
+        // Check that we actually have a valid principal name of the form
+        // X@Y No excess @ allowed.
+        lazy_static! {
+            static ref PRIN_RE: Regex = Regex::new("^[^@]+@[^@]+$").unwrap();
+        }
+        if PRIN_RE.is_match(v.as_str()) {
+            Ok(())
+        } else {
+            Err(SchemaError::InvalidAttributeSyntax)
+        }
+    }
+
     fn validate_utf8string_insensitive(&self, v: &String) -> Result<(), SchemaError> {
         // FIXME: Is there a way to do this that doesn't involve a copy?
         let t = v.to_lowercase();
@@ -127,7 +151,9 @@ impl SchemaAttribute {
             SyntaxType::BOOLEAN => self.validate_bool(v),
             SyntaxType::SYNTAX_ID => self.validate_syntax(v),
             SyntaxType::INDEX_ID => self.validate_index(v),
+            SyntaxType::UUID => self.validate_uuid(v),
             SyntaxType::UTF8STRING_INSENSITIVE => self.validate_utf8string_insensitive(v),
+            SyntaxType::UTF8STRING_PRINCIPAL => self.validate_principal(v),
             _ => Ok(()),
         }
     }
@@ -141,17 +167,16 @@ impl SchemaAttribute {
         match self.syntax {
             SyntaxType::BOOLEAN => {
                 ava.iter().fold(Ok(()), |acc, v| {
+                    // If acc is err, fold will skip it.
                     if acc.is_ok() {
                         self.validate_bool(v)
                     } else {
-                        // We got an error before, just skip the rest
                         acc
                     }
                 })
             }
             SyntaxType::SYNTAX_ID => {
                 ava.iter().fold(Ok(()), |acc, v| {
-                    // If acc is err, map will skip it.
                     if acc.is_ok() {
                         self.validate_syntax(v)
                     } else {
@@ -159,9 +184,17 @@ impl SchemaAttribute {
                     }
                 })
             }
+            SyntaxType::UUID => {
+                ava.iter().fold(Ok(()), |acc, v| {
+                    if acc.is_ok() {
+                        self.validate_uuid(v)
+                    } else {
+                        acc
+                    }
+                })
+            }
             SyntaxType::INDEX_ID => {
                 ava.iter().fold(Ok(()), |acc, v| {
-                    // If acc is err, map will skip it.
                     if acc.is_ok() {
                         self.validate_index(v)
                     } else {
@@ -171,9 +204,17 @@ impl SchemaAttribute {
             }
             SyntaxType::UTF8STRING_INSENSITIVE => {
                 ava.iter().fold(Ok(()), |acc, v| {
-                    // If acc is err, map will skip it.
                     if acc.is_ok() {
                         self.validate_utf8string_insensitive(v)
+                    } else {
+                        acc
+                    }
+                })
+            }
+            SyntaxType::UTF8STRING_PRINCIPAL => {
+                ava.iter().fold(Ok(()), |acc, v| {
+                    if acc.is_ok() {
+                        self.validate_principal(v)
                     } else {
                         acc
                     }
@@ -195,11 +236,16 @@ impl SchemaAttribute {
         v.to_lowercase()
     }
 
+    pub fn normalise_principal(&self, v: &String) -> String {
+        v.to_lowercase()
+    }
+
     pub fn normalise_value(&self, v: &String) -> String {
         match self.syntax {
             SyntaxType::SYNTAX_ID => self.normalise_syntax(v),
             SyntaxType::INDEX_ID => self.normalise_index(v),
             SyntaxType::UTF8STRING_INSENSITIVE => self.normalise_utf8string_insensitive(v),
+            SyntaxType::UTF8STRING_PRINCIPAL => self.normalise_principal(v),
             _ => v.clone(),
         }
     }
@@ -244,7 +290,6 @@ impl Schema {
         s.attributes.insert(
             String::from("class"),
             SchemaAttribute {
-                // class: vec![String::from("attributetype")],
                 name: String::from("class"),
                 description: String::from("The set of classes defining an object"),
                 system: true,
@@ -255,9 +300,20 @@ impl Schema {
             },
         );
         s.attributes.insert(
+            String::from("uuid"),
+            SchemaAttribute {
+                name: String::from("uuid"),
+                description: String::from("The universal unique id of the object"),
+                system: true,
+                secret: false,
+                multivalue: false,
+                index: vec![IndexType::EQUALITY],
+                syntax: SyntaxType::UUID,
+            },
+        );
+        s.attributes.insert(
             String::from("name"),
             SchemaAttribute {
-                // class: vec![String::from("attributetype")],
                 name: String::from("name"),
                 description: String::from("The shortform name of an object"),
                 system: true,
@@ -268,9 +324,20 @@ impl Schema {
             },
         );
         s.attributes.insert(
+            String::from("principal_name"),
+            SchemaAttribute {
+                name: String::from("principal_name"),
+                description: String::from("The longform name of an object, derived from name and domain. Example: alice@project.org"),
+                system: true,
+                secret: false,
+                multivalue: false,
+                index: vec![IndexType::EQUALITY],
+                syntax: SyntaxType::UTF8STRING_PRINCIPAL,
+            },
+        );
+        s.attributes.insert(
             String::from("description"),
             SchemaAttribute {
-                // class: vec![String::from("attributetype")],
                 name: String::from("description"),
                 description: String::from("A description of an attribute, object or class"),
                 system: true,
@@ -283,7 +350,6 @@ impl Schema {
         s.attributes.insert(
             String::from("system"),
             SchemaAttribute {
-                // class: vec![String::from("attributetype")],
                 name: String::from("system"),
                 description: String::from(
                     "Is this object or attribute provided from the core system?",
@@ -296,7 +362,6 @@ impl Schema {
             },
         );
         s.attributes.insert(String::from("secret"), SchemaAttribute {
-            // class: vec![String::from("attributetype")],
             name: String::from("secret"),
             description: String::from("If true, this value is always hidden internally to the server, even beyond access controls."),
             system: true,
@@ -306,7 +371,6 @@ impl Schema {
             syntax: SyntaxType::BOOLEAN,
         });
         s.attributes.insert(String::from("multivalue"), SchemaAttribute {
-            // class: vec![String::from("attributetype")],
             name: String::from("multivalue"),
             description: String::from("If true, this attribute is able to store multiple values rather than just a single value."),
             system: true,
@@ -318,7 +382,6 @@ impl Schema {
         s.attributes.insert(
             String::from("index"),
             SchemaAttribute {
-                // class: vec![String::from("attributetype")],
                 name: String::from("index"),
                 description: String::from(
                     "Describe the indexes to apply to instances of this attribute.",
@@ -333,7 +396,6 @@ impl Schema {
         s.attributes.insert(
             String::from("syntax"),
             SchemaAttribute {
-                // class: vec![String::from("attributetype")],
                 name: String::from("syntax"),
                 description: String::from(
                     "Describe the syntax of this attribute. This affects indexing and sorting.",
@@ -348,7 +410,6 @@ impl Schema {
         s.attributes.insert(
             String::from("systemmay"),
             SchemaAttribute {
-                // class: vec![String::from("attributetype")],
                 name: String::from("systemmay"),
                 description: String::from(
                     "A list of system provided optional attributes this class can store.",
@@ -363,7 +424,6 @@ impl Schema {
         s.attributes.insert(
             String::from("may"),
             SchemaAttribute {
-                // class: vec![String::from("attributetype")],
                 name: String::from("may"),
                 description: String::from(
                     "A user modifiable list of optional attributes this class can store.",
@@ -378,7 +438,6 @@ impl Schema {
         s.attributes.insert(
             String::from("systemmust"),
             SchemaAttribute {
-                // class: vec![String::from("attributetype")],
                 name: String::from("systemmust"),
                 description: String::from(
                     "A list of system provided required attributes this class must store.",
@@ -393,7 +452,6 @@ impl Schema {
         s.attributes.insert(
             String::from("must"),
             SchemaAttribute {
-                // class: vec![String::from("attributetype")],
                 name: String::from("must"),
                 description: String::from(
                     "A user modifiable list of required attributes this class must store.",
@@ -409,7 +467,6 @@ impl Schema {
         s.classes.insert(
             String::from("attributetype"),
             SchemaClass {
-                // class: vec![String::from("classtype")],
                 name: String::from("attributetype"),
                 description: String::from("Definition of a schema attribute"),
                 systemmay: vec![String::from("index")],
@@ -429,7 +486,6 @@ impl Schema {
         s.classes.insert(
             String::from("classtype"),
             SchemaClass {
-                // class: vec![String::from("classtype")],
                 name: String::from("classtype"),
                 description: String::from("Definition of a schema classtype"),
                 systemmay: vec![
@@ -448,9 +504,21 @@ impl Schema {
             },
         );
         s.classes.insert(
+            String::from("object"),
+            SchemaClass {
+                name: String::from("object"),
+                description: String::from("A system created class that all objects must contain"),
+                systemmay: vec![],
+                may: vec![],
+                systemmust: vec![
+                    String::from("uuid"),
+                ],
+                must: vec![],
+            },
+        );
+        s.classes.insert(
             String::from("extensibleobject"),
             SchemaClass {
-                // class: vec![String::from("classtype")],
                 name: String::from("extensibleobject"),
                 description: String::from("A class type that turns off all rules ..."),
                 systemmay: vec![],
@@ -473,7 +541,6 @@ impl Schema {
         self.attributes.insert(
             String::from("displayname"),
             SchemaAttribute {
-                // class: vec![String::from("attributetype")],
                 name: String::from("displayname"),
                 description: String::from("The publicly visible display name of this person"),
                 system: true,
@@ -488,7 +555,6 @@ impl Schema {
         self.attributes.insert(
             String::from("mail"),
             SchemaAttribute {
-                // class: vec![String::from("attributetype")],
                 name: String::from("mail"),
                 description: String::from("mail addresses of the object"),
                 system: true,
@@ -502,7 +568,6 @@ impl Schema {
         self.attributes.insert(
             String::from("memberof"),
             SchemaAttribute {
-                // class: vec![String::from("attributetype")],
                 name: String::from("memberof"),
                 description: String::from("reverse group membership of the object"),
                 system: true,
@@ -516,7 +581,6 @@ impl Schema {
         self.attributes.insert(
             String::from("ssh_publickey"),
             SchemaAttribute {
-                // class: vec![String::from("attributetype")],
                 name: String::from("ssh_publickey"),
                 description: String::from("SSH public keys of the object"),
                 system: true,
@@ -530,7 +594,6 @@ impl Schema {
         self.attributes.insert(
             String::from("password"),
             SchemaAttribute {
-                // class: vec![String::from("attributetype")],
                 name: String::from("password"),
                 description: String::from(
                     "password hash material of the object for authentication",
@@ -547,7 +610,6 @@ impl Schema {
         self.attributes.insert(
             String::from("member"),
             SchemaAttribute {
-                // class: vec![String::from("attributetype")],
                 name: String::from("member"),
                 description: String::from("List of members of the group"),
                 system: true,
@@ -576,6 +638,7 @@ impl Schema {
                 systemmust: vec![
                     String::from("class"),
                     String::from("name"),
+                    String::from("principal_name"),
                     String::from("displayname"),
                 ],
                 must: vec![],
@@ -589,7 +652,7 @@ impl Schema {
                 description: String::from("Object representation of a group"),
                 systemmay: vec![String::from("description"), String::from("member")],
                 may: vec![],
-                systemmust: vec![String::from("class"), String::from("name")],
+                systemmust: vec![String::from("class"), String::from("name"), String::from("principal_name")],
                 must: vec![],
             },
         );
@@ -855,6 +918,44 @@ mod tests {
 
         let r6 = SyntaxType::try_from("zzzzantheou");
         assert_eq!(r6, Err(()));
+    }
+
+    #[test]
+    fn test_schema_syntax_principal() {
+            let sa = SchemaAttribute {
+                name: String::from("principal_name"),
+                description: String::from("The longform name of an object, derived from name and domain. Example: alice@project.org"),
+                system: true,
+                secret: false,
+                multivalue: false,
+                index: vec![IndexType::EQUALITY],
+                syntax: SyntaxType::UTF8STRING_PRINCIPAL,
+            };
+
+        let r1 = sa.validate_principal(
+            &String::from("a@a")
+        );
+        assert!(r1.is_ok());
+
+        let r2 = sa.validate_principal(
+            &String::from("a@@a")
+        );
+        assert!(r2.is_err());
+
+        let r3 = sa.validate_principal(
+            &String::from("a@a@a")
+        );
+        assert!(r3.is_err());
+
+        let r4 = sa.validate_principal(
+            &String::from("@a")
+        );
+        assert!(r4.is_err());
+
+        let r5 = sa.validate_principal(
+            &String::from("a@")
+        );
+        assert!(r5.is_err());
     }
 
     #[test]
@@ -1168,6 +1269,7 @@ mod tests {
             "attrs": {
                 "class": ["person"],
                 "name": ["testperson"],
+                "principal_name": ["testperson@project.org"],
                 "description": ["testperson"],
                 "displayname": ["testperson"]
             }
@@ -1181,6 +1283,7 @@ mod tests {
             "attrs": {
                 "class": ["group"],
                 "name": ["testgroup"],
+                "principal_name": ["testgroup@project.org"],
                 "description": ["testperson"]
             }
         }"#,

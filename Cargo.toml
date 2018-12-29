@@ -32,7 +32,8 @@ env_logger = "0.5"
 reqwest = "0.9"
 
 chrono = "0.4"
-
+regex = "1"
+lazy_static = "1.2.0"
 
 tokio = "0.1"
 futures = "0.1"
