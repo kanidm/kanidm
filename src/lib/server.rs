@@ -73,6 +73,16 @@ impl QueryServer {
         au: &mut AuditScope,
         se: &SearchEvent,
     ) -> Result<Vec<Entry>, OperationError> {
+        // TODO: Validate the filter
+        // This is an important security step because it prevents us from
+        // performing un-indexed searches on attr's that don't exist in the
+        // server. This is why ExtensibleObject can only take schema that
+        // exists in the server, not arbitrary attr names.
+
+        // TODO: Normalise the filter
+
+        // TODO: Pre-search plugins
+
         let mut audit_be = AuditScope::new("backend_search");
         let res = self
             .be
@@ -81,7 +91,11 @@ impl QueryServer {
             .map_err(|_| OperationError::Backend);
         au.append_scope(audit_be);
 
-        // TODO: We'll add ACI later
+        // TODO: Post-search plugins
+
+        // TODO: We'll add ACI here. I think ACI should transform from
+        // internal -> proto entries since we have to anyway ...
+        // alternately, we can just clone again ...
         res
     }
 
@@ -96,9 +110,7 @@ impl QueryServer {
         // based on request size in the frontend?
 
         // Copy the entries to a writeable form.
-        let mut candidates: Vec<Entry> = ce.entries.iter()
-        .map(|er| er.clone())
-        .collect();
+        let mut candidates: Vec<Entry> = ce.entries.iter().map(|er| er.clone()).collect();
 
         // Start a txn
 
@@ -107,7 +119,13 @@ impl QueryServer {
         // I have no intent to make these dynamic or configurable.
 
         let mut audit_plugin_pre = AuditScope::new("plugin_pre_create");
-        let plug_pre_res = Plugins::run_pre_create(&mut self.be, &mut audit_plugin_pre, &mut candidates, ce, &self.schema);
+        let plug_pre_res = Plugins::run_pre_create(
+            &mut self.be,
+            &mut audit_plugin_pre,
+            &mut candidates,
+            ce,
+            &self.schema,
+        );
         au.append_scope(audit_plugin_pre);
 
         if plug_pre_res.is_err() {

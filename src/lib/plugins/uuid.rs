@@ -9,6 +9,14 @@ use event::CreateEvent;
 use filter::Filter;
 use schema::Schema;
 
+// TO FINISH
+/*
+Add UUID type
+Add base system class to all incoming objects (so we can add our values)
+Add normalisation step
+Add filter normaliser to search.
+*/
+
 pub struct UUID {}
 
 impl Plugin for UUID {
@@ -41,27 +49,30 @@ impl Plugin for UUID {
                 Some(u) => {
                     // Actually check we have a value, could be empty array ...
                     if u.len() > 1 {
-                            audit_log!(au, "Entry defines uuid attr, but multiple values.");
-                            return Err(OperationError::Plugin)
+                        audit_log!(au, "Entry defines uuid attr, but multiple values.");
+                        return Err(OperationError::Plugin);
                     };
 
                     let v = match u.first() {
                         Some(v) => v,
                         None => {
                             audit_log!(au, "Entry defines uuid attr, but no value.");
-                            return Err(OperationError::Plugin)
-                            }
+                            return Err(OperationError::Plugin);
+                        }
                     };
 
                     // This could actually fail, so we probably need to handle
                     // this better ....
                     // TODO: Make this a SCHEMA check, not a manual one.
-                    // 
+                    //
                     match Uuid::parse_str(v.as_str()) {
                         Ok(up) => up,
                         Err(_) => {
-                            audit_log!(au, "Entry contains invalid UUID content, rejecting out of principle.");
-                            return Err(OperationError::Plugin)
+                            audit_log!(
+                                au,
+                                "Entry contains invalid UUID content, rejecting out of principle."
+                            );
+                            return Err(OperationError::Plugin);
                         }
                     }
                 }
@@ -90,7 +101,7 @@ impl Plugin for UUID {
                 }
                 Err(e) => {
                     audit_log!(au, "Backend error occured checking UUID existance.");
-                    return Err(OperationError::Plugin)
+                    return Err(OperationError::Plugin);
                 }
             }
 
@@ -131,11 +142,8 @@ mod tests {
                 let mut be = Backend::new(&mut au, "");
 
                 // TODO: Preload entries here!
-                if ! $preload_entries.is_empty() {
-                    assert!(be.create(
-                        &mut au,
-                        &$preload_entries
-                    ).is_ok());
+                if !$preload_entries.is_empty() {
+                    assert!(be.create(&mut au, &$preload_entries).is_ok());
                 };
 
                 let ce = CreateEvent::from_vec($create_entries.clone());
@@ -291,7 +299,6 @@ mod tests {
             }
         );
     }
-
 
     // check create where provided uuid is valid. It should be unchanged.
     #[test]

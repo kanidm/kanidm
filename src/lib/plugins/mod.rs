@@ -49,7 +49,7 @@ trait Plugin {
     }
 }
 
-pub struct Plugins{}
+pub struct Plugins {}
 
 macro_rules! run_pre_create_plugin {
     (
@@ -61,14 +61,16 @@ macro_rules! run_pre_create_plugin {
         $target_plugin:ty
     ) => {{
         let mut audit_scope = AuditScope::new(<($target_plugin)>::id());
-        let r = audit_segment!(audit_scope, || {
-            <($target_plugin)>::pre_create(
-                $be, &mut audit_scope, $cand, $ce, $schema
-            )
-        });
+        let r = audit_segment!(audit_scope, || <($target_plugin)>::pre_create(
+            $be,
+            &mut audit_scope,
+            $cand,
+            $ce,
+            $schema
+        ));
         $au.append_scope(audit_scope);
         r
-    }}
+    }};
 }
 
 impl Plugins {
@@ -80,16 +82,13 @@ impl Plugins {
         schema: &Schema,
     ) -> Result<(), OperationError> {
         audit_segment!(audit_plugin_pre, || {
-
             // map chain?
             let uuid_res = run_pre_create_plugin!(be, au, cand, ce, schema, uuid::UUID);
-
 
             // TODO, actually return the right thing ...
             uuid_res
         })
     }
-
 }
 
 // We should define the order that plugins should run

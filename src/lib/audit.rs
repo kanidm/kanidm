@@ -1,7 +1,7 @@
 use actix::prelude::*;
+use std::fmt;
 use std::time::Duration;
 use std::time::SystemTime;
-use std::fmt;
 
 use chrono::offset::Utc;
 use chrono::DateTime;

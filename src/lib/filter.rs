@@ -55,24 +55,20 @@ impl Filter {
         // Go through the filter components and check them in the entry.
         // This is recursive!!!!
         match self {
-            Filter::Eq(attr, value) => {
-                e.attribute_equality(attr.as_str(), value.as_str())
-            }
-            Filter::Sub(attr, subvalue) => {
-                e.attribute_substring(attr.as_str(), subvalue.as_str())
-            }
+            Filter::Eq(attr, value) => e.attribute_equality(attr.as_str(), value.as_str()),
+            Filter::Sub(attr, subvalue) => e.attribute_substring(attr.as_str(), subvalue.as_str()),
             Filter::Pres(attr) => {
                 // Given attr, is is present in the entry?
                 e.attribute_pres(attr.as_str())
             }
             Filter::Or(_) => {
-                    unimplemented!();
+                unimplemented!();
             }
             Filter::And(_) => {
-                    unimplemented!();
+                unimplemented!();
             }
             Filter::Not(_) => {
-                    unimplemented!();
+                unimplemented!();
             }
         }
     }
