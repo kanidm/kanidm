@@ -1,9 +1,11 @@
 use actix::prelude::*;
 use std::time::Duration;
 use std::time::SystemTime;
+use std::fmt;
 
 use chrono::offset::Utc;
 use chrono::DateTime;
+use serde_json;
 
 #[macro_export]
 macro_rules! audit_log {
@@ -43,14 +45,12 @@ macro_rules! audit_segment {
         let end = Instant::now();
         let diff = end.duration_since(start);
 
-        println!("diff: {:?}", diff);
-
         // Return the result. Hope this works!
-        return r;
+        r
     }};
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 enum AuditEvent {
     log(AuditLog),
     scope(AuditScope),
@@ -65,7 +65,7 @@ struct AuditLog {
 // This structure tracks and event lifecycle, and is eventually
 // sent to the logging system where it's structured and written
 // out to the current logging BE.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct AuditScope {
     // vec of start/end points of various parts of the event?
     // We probably need some functions for this. Is there a way in rust
@@ -79,6 +79,13 @@ pub struct AuditScope {
 // Allow us to be sent to the log subsystem
 impl Message for AuditScope {
     type Result = ();
+}
+
+impl fmt::Display for AuditScope {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let d = serde_json::to_string_pretty(self).unwrap();
+        write!(f, "{}", d)
+    }
 }
 
 impl AuditScope {

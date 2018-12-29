@@ -4,9 +4,10 @@ use uuid::Uuid;
 use audit::AuditScope;
 use be::Backend;
 use entry::Entry;
-use event::CreateEvent;
-use schema::Schema;
 use error::OperationError;
+use event::CreateEvent;
+use filter::Filter;
+use schema::Schema;
 
 struct UUID {}
 
@@ -39,19 +40,34 @@ impl Plugin for UUID {
                     // this better ....
                     match Uuid::parse_str(v.as_str()) {
                         Ok(up) => up,
-                        Err(_) => {
-                            return Err(
-                                OperationError::Plugin
-                            )
-                        }
+                        Err(_) => return Err(OperationError::Plugin),
                     }
                 }
-                None => Uuid::new_v4()
+                None => Uuid::new_v4(),
             };
 
             // Make it a string, so we can filter.
-            println!("uuid: {}", c_uuid);
+            let str_uuid = format!("{}", c_uuid);
+            println!("{}", str_uuid);
 
+            let mut au_be = AuditScope::new("be_exist");
+
+            // We need to clone to the filter because it owns the content
+            let filt = Filter::Eq(name_uuid.clone(), str_uuid.clone());
+
+            let r = be.exists(&mut au_be, &filt);
+
+            au.append_scope(au_be);
+            // end the scope?
+
+            match r {
+                Ok(b) => {
+                    if b == true {
+                        return Err(OperationError::Plugin);
+                    }
+                }
+                Err(e) => return Err(OperationError::Plugin),
+            }
 
             // check that the uuid is unique in the be (even if one is provided
             //  we especially need to check that)
@@ -96,6 +112,12 @@ mod tests {
                 let mut be = Backend::new(&mut au, "");
 
                 // TODO: Preload entries here!
+                if ! $preload_entries.is_empty() {
+                    assert!(be.create(
+                        &mut au,
+                        &$preload_entries
+                    ).is_ok());
+                };
 
                 let ce = CreateEvent::from_vec($create_entries.clone());
                 let mut schema = Schema::new();
@@ -112,8 +134,8 @@ mod tests {
 
                 au.append_scope(au_test);
             });
-            // Dump the raw audit. Perhaps we should serialise this pretty?
-            println!("{:?}", au);
+            // Dump the raw audit log.
+            println!("{}", au);
         }};
     }
 
@@ -136,6 +158,7 @@ mod tests {
              ce: &CreateEvent,
              schema: &Schema| {
                 let r = UUID::pre_create(be, au, cand, ce, schema);
+
                 assert!(r.is_ok());
                 // Nothing should have changed.
                 assert!(cand.len() == 0);
@@ -190,6 +213,44 @@ mod tests {
     // check create where provided uuid is valid. It should be unchanged.
 
     // check create where uuid already exists.
+    #[test]
+    fn test_pre_create_uuid_exist() {
+        // Need a macro to create all the bits here ...
+        // Macro needs preload entries, the create entries
+        // schema, identity for create event (later)
+        let preload: Vec<Entry> = Vec::new();
+
+        let e: Entry = serde_json::from_str(
+            r#"{
+            "attrs": {
+                "class": ["person"],
+                "name": ["testperson"],
+                "description": ["testperson"],
+                "displayname": ["testperson"],
+                "uuid": ["79724141-3603-4060-b6bb-35c72772611d"]
+            }
+        }"#,
+        )
+        .unwrap();
+
+        let mut create = vec![e.clone()];
+        let mut preload = vec![e];
+
+        run_pre_create_test!(
+            preload,
+            create,
+            false,
+            false,
+            |be: &mut Backend,
+             au: &mut AuditScope,
+             cand: &mut Vec<Entry>,
+             ce: &CreateEvent,
+             schema: &Schema| {
+                let r = UUID::pre_create(be, au, cand, ce, schema);
+                assert!(r.is_err());
+            }
+        );
+    }
 
     // check create where uuid is a well-known
     // WARNING: This actually requires me to implement backend migrations and

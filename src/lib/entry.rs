@@ -146,13 +146,10 @@ impl Entry {
     }
 
     pub fn attribute_equality(&self, attr: &str, value: &str) -> bool {
-        // Do a schema aware equality?
-        // Either we get schema passed in.
-        // OR we assume based on schema normalisation on the way in
+        // we assume based on schema normalisation on the way in
         // that the equality here of the raw values MUST be correct.
-        // If we do this, we likely need a DB normalise function ...
-        // The other issue is we have to normalise what's in the filter
-        // but that could be done *before* we get here?
+        // We also normalise filters, to ensure that their values are
+        // syntax valid and will correctly match here with our indexes.
 
         // FIXME: Make this binary_search
 
@@ -160,6 +157,10 @@ impl Entry {
             v.iter()
                 .fold(false, |acc, av| if acc { acc } else { value == av })
         })
+    }
+
+    pub fn attribute_substring(&self, attr: &str, subvalue: &str) -> bool {
+        unimplemented!();
     }
 
     pub fn classes(&self) -> EntryClasses {

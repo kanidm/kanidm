@@ -55,15 +55,25 @@ impl Filter {
         // Go through the filter components and check them in the entry.
         // This is recursive!!!!
         match self {
-            Filter::Eq(_, _) => false,
-            Filter::Sub(_, _) => false,
+            Filter::Eq(attr, value) => {
+                e.attribute_equality(attr.as_str(), value.as_str())
+            }
+            Filter::Sub(attr, subvalue) => {
+                e.attribute_substring(attr.as_str(), subvalue.as_str())
+            }
             Filter::Pres(attr) => {
                 // Given attr, is is present in the entry?
                 e.attribute_pres(attr.as_str())
             }
-            Filter::Or(_) => false,
-            Filter::And(_) => false,
-            Filter::Not(_) => false,
+            Filter::Or(_) => {
+                    unimplemented!();
+            }
+            Filter::And(_) => {
+                    unimplemented!();
+            }
+            Filter::Not(_) => {
+                    unimplemented!();
+            }
         }
     }
 }
@@ -98,13 +108,12 @@ impl PartialEq for Filter {
 
 // remember, this isn't ordering by alphanumeric, this is ordering of
 // optimisation preference!
-//
 impl PartialOrd for Filter {
     fn partial_cmp(&self, rhs: &Filter) -> Option<Ordering> {
         match (self, rhs) {
             (Filter::Eq(a1, _), Filter::Eq(a2, _)) => {
                 // Order attr name, then value
-                // Later me may add rules to put certain attrs ahead due
+                // Later we may add rules to put certain attrs ahead due
                 // to optimisation rules
                 a1.partial_cmp(a2)
             }

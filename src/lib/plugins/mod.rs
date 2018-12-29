@@ -1,9 +1,9 @@
 use audit::AuditScope;
 use be::Backend;
 use entry::Entry;
+use error::OperationError;
 use event::CreateEvent;
 use schema::Schema;
-use error::OperationError;
 
 trait Plugin {
     fn pre_create(

@@ -4,6 +4,7 @@ use serde_json;
 use super::audit::AuditScope;
 
 // Helper for internal logging.
+// Should only be used at startup/shutdown
 #[macro_export]
 macro_rules! log_event {
     ($log_addr:expr, $($arg:tt)*) => ({
@@ -66,8 +67,7 @@ impl Handler<AuditScope> for EventLog {
     type Result = ();
 
     fn handle(&mut self, event: AuditScope, _: &mut SyncContext<Self>) -> Self::Result {
-        let d = serde_json::to_string_pretty(&event).unwrap();
-        println!("AUDIT: {}", d);
+        println!("AUDIT: {}", event);
     }
 }
 

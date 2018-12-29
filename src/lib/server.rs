@@ -12,7 +12,9 @@ use schema::Schema;
 
 pub fn start(log: actix::Addr<EventLog>, path: &str, threads: usize) -> actix::Addr<QueryServer> {
     let mut audit = AuditScope::new("server_start");
-    audit_segment!(audit, || {
+    let log_inner = log.clone();
+
+    let qs_addr = audit_segment!(audit, || {
         // Create the BE connection
         // probably need a config type soon ....
 
@@ -28,10 +30,11 @@ pub fn start(log: actix::Addr<EventLog>, path: &str, threads: usize) -> actix::A
         // it probably needs it ...
         // audit.end_event("server_new");
         SyncArbiter::start(threads, move || {
-            QueryServer::new(log.clone(), be.clone(), schema.clone())
+            QueryServer::new(log_inner.clone(), be.clone(), schema.clone())
         })
     });
     log.do_send(audit);
+    qs_addr
 }
 
 // This is the core of the server. It implements all
