@@ -498,7 +498,9 @@ impl Schema {
             SchemaClass {
                 name: String::from("object"),
                 description: String::from("A system created class that all objects must contain"),
-                systemmay: vec![],
+                systemmay: vec![
+                    String::from("principal_name"),
+                ],
                 may: vec![],
                 systemmust: vec![String::from("uuid")],
                 must: vec![],
@@ -626,7 +628,6 @@ impl Schema {
                 systemmust: vec![
                     String::from("class"),
                     String::from("name"),
-                    String::from("principal_name"),
                     String::from("displayname"),
                 ],
                 must: vec![],
@@ -643,7 +644,6 @@ impl Schema {
                 systemmust: vec![
                     String::from("class"),
                     String::from("name"),
-                    String::from("principal_name"),
                 ],
                 must: vec![],
             },
