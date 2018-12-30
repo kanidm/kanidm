@@ -62,3 +62,16 @@ impl CreateRequest {
         CreateRequest { entries: entries }
     }
 }
+
+// Login is a multi-step process potentially. First the client says who they
+// want to request
+//
+// we respond with a set of possible authentications that can proceed, and perhaps
+// we indicate which options must/may?
+//
+// The client can then step and negotiate each.
+//
+// This continues until a LoginSuccess, or LoginFailure is returned.
+//
+// On loginSuccess, we send a cookie, and that allows the token to be
+// generated. The cookie can be shared between servers.

@@ -1,21 +1,23 @@
 use audit::AuditScope;
-use be::Backend;
+use be::{BackendTransaction, BackendWriteTransaction};
 use entry::Entry;
 use error::OperationError;
 use event::CreateEvent;
-use schema::Schema;
+use schema::{SchemaTransaction, SchemaWriteTransaction};
 
 mod base;
+mod protected;
 
 trait Plugin {
     fn id() -> &'static str;
 
     fn pre_create(
-        be: &mut Backend,
-        au: &mut AuditScope,
-        cand: &mut Vec<Entry>,
-        ce: &CreateEvent,
-        schema: &Schema,
+        // TODO: I think this is wrong, it should be a query server
+        _be: &BackendWriteTransaction,
+        _au: &mut AuditScope,
+        _cand: &mut Vec<Entry>,
+        _ce: &CreateEvent,
+        _schema: &SchemaWriteTransaction,
     ) -> Result<(), OperationError> {
         Ok(())
     }
@@ -53,7 +55,7 @@ pub struct Plugins {}
 
 macro_rules! run_pre_create_plugin {
     (
-        $be:ident,
+        $be_txn:ident,
         $au:ident,
         $cand:ident,
         $ce:ident,
@@ -62,7 +64,7 @@ macro_rules! run_pre_create_plugin {
     ) => {{
         let mut audit_scope = AuditScope::new(<($target_plugin)>::id());
         let r = audit_segment!(audit_scope, || <($target_plugin)>::pre_create(
-            $be,
+            $be_txn,
             &mut audit_scope,
             $cand,
             $ce,
@@ -75,15 +77,15 @@ macro_rules! run_pre_create_plugin {
 
 impl Plugins {
     pub fn run_pre_create(
-        be: &mut Backend,
+        be_txn: &BackendWriteTransaction,
         au: &mut AuditScope,
         cand: &mut Vec<Entry>,
         ce: &CreateEvent,
-        schema: &Schema,
+        schema: &SchemaWriteTransaction,
     ) -> Result<(), OperationError> {
-        audit_segment!(audit_plugin_pre, || {
+        audit_segment!(au, || {
             // map chain?
-            let base_res = run_pre_create_plugin!(be, au, cand, ce, schema, base::Base);
+            let base_res = run_pre_create_plugin!(be_txn, au, cand, ce, schema, base::Base);
 
             // TODO, actually return the right thing ...
             base_res

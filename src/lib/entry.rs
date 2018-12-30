@@ -1,5 +1,6 @@
 // use serde_json::{Error, Value};
 use super::proto_v1::Entry as ProtoEntry;
+use filter::Filter;
 use std::collections::btree_map::{Iter as BTreeIter, IterMut as BTreeIterMut};
 use std::collections::BTreeMap;
 use std::slice::Iter as SliceIter;
@@ -159,7 +160,7 @@ impl Entry {
         })
     }
 
-    pub fn attribute_substring(&self, attr: &str, subvalue: &str) -> bool {
+    pub fn attribute_substring(&self, _attr: &str, _subvalue: &str) -> bool {
         unimplemented!();
     }
 
@@ -181,6 +182,10 @@ impl Entry {
         EntryAvasMut {
             inner: self.attrs.iter_mut(),
         }
+    }
+
+    pub fn filter_from_attrs(&self, attrs: Vec<&str>) -> Filter {
+        unimplemented!()
     }
 
     // FIXME: Can we consume protoentry?
@@ -278,50 +283,10 @@ struct User {
     credentials: Vec<Credential>,
 }
 
-impl User {
-    pub fn new(username: &str, displayname: &str) -> Self {
-        // Build a blank value
-        User {
-            username: String::from(username),
-            class: Vec::new(),
-            displayname: String::from(displayname),
-            legalname: None,
-            email: Vec::new(),
-            memberof: Vec::new(),
-            sshpublickey: Vec::new(),
-            credentials: Vec::new(),
-        }
-    }
-
-    // We need a way to "diff" two User objects
-    // as on a modification we want to track the set of changes
-    // that is occuring -- needed for indexing to function.
-
-    // Basically we just need to check if it changed, remove
-    // the "former" and add the "newer" value.
-
-    // We have to sort vecs ...
-
-    // Is there a way to call this on serialise?
-    fn validate(&self) -> Result<(), ()> {
-        // Given a schema, validate our object is sane.
-
-        Ok(())
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::{Entry, User};
     use serde_json;
-
-    #[test]
-    fn test_user_basic() {
-        let u: User = User::new("william", "William Brown");
-        let d = serde_json::to_string_pretty(&u).unwrap();
-
-        let _u2: User = serde_json::from_str(d.as_str()).unwrap();
-    }
 
     #[test]
     fn test_entry_basic() {

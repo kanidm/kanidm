@@ -1,5 +1,4 @@
 use actix::prelude::*;
-use serde_json;
 
 use super::audit::AuditScope;
 

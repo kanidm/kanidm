@@ -1,3 +1,5 @@
+use super::audit::AuditScope;
+use super::constants::*;
 use super::entry::Entry;
 use super::error::SchemaError;
 use super::filter::Filter;
@@ -8,6 +10,8 @@ use std::convert::TryFrom;
 use std::str::FromStr;
 use uuid::Uuid;
 
+use concread::cowcell::{CowCell, CowCellReadTxn, CowCellWriteTxn};
+
 // representations of schema that confines object types, classes
 // and attributes. This ties in deeply with "Entry".
 // This only defines the types, and how they are represented. For
@@ -15,6 +19,21 @@ use uuid::Uuid;
 //
 // In the future this will parse/read it's schema from the db
 // but we have to bootstrap with some core types.
+
+// TODO: Schema should be copy-on-write
+
+// TODO: Account should be a login-bind-able object
+//    needs account lock, timeout, policy?
+
+// TODO: system_info metadata object schema
+
+// TODO: system class to indicate the type is a system object?
+// just a class? Does the class imply protections?
+// probably just protection from delete and modify, except systemmay/systemmust/index?
+
+// TODO: Schema types -> Entry conversion
+
+// TODO: prefix on all schema types that are system?
 
 #[derive(Debug, PartialEq)]
 enum Ternary {
@@ -90,6 +109,7 @@ pub struct SchemaAttribute {
     // Is this ... used?
     // class: Vec<String>,
     name: String,
+    uuid: Uuid,
     // Perhaps later add aliases?
     description: String,
     system: bool,
@@ -233,7 +253,7 @@ impl SchemaAttribute {
         v.to_lowercase()
     }
 
-    pub fn normalise_uuid(&self, v:&String) -> String {
+    pub fn normalise_uuid(&self, v: &String) -> String {
         // We unwrap here as we should already have been validated ...
         let c_uuid = Uuid::parse_str(v.as_str()).unwrap();
         c_uuid.to_hyphenated().to_string()
@@ -257,6 +277,7 @@ pub struct SchemaClass {
     // Is this used?
     // class: Vec<String>,
     name: String,
+    uuid: Uuid,
     description: String,
     // This allows modification of system types to be extended in custom ways
     systemmay: Vec<String>,
@@ -267,67 +288,73 @@ pub struct SchemaClass {
 
 impl SchemaClass {
     // Implement Validation and Normalisation against entries
-    pub fn validate_entry(&self, entry: &Entry) -> Result<(), ()> {
-        Err(())
+    pub fn validate_entry(&self, _entry: &Entry) -> Result<(), ()> {
+        unimplemented!()
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct Schema {
+pub struct SchemaInner {
     // We contain sets of classes and attributes.
     classes: HashMap<String, SchemaClass>,
     attributes: HashMap<String, SchemaAttribute>,
 }
 
-impl Schema {
-    pub fn new() -> Self {
-        //
-        let mut s = Schema {
-            classes: HashMap::new(),
-            attributes: HashMap::new(),
-        };
-        // Bootstrap in definitions of our own schema types
-        // First, add all the needed core attributes for schema parsing
-        s.attributes.insert(
-            String::from("class"),
-            SchemaAttribute {
-                name: String::from("class"),
-                description: String::from("The set of classes defining an object"),
-                system: true,
-                secret: false,
-                multivalue: true,
-                index: vec![IndexType::EQUALITY],
-                syntax: SyntaxType::UTF8STRING_INSENSITIVE,
-            },
-        );
-        s.attributes.insert(
-            String::from("uuid"),
-            SchemaAttribute {
-                name: String::from("uuid"),
-                description: String::from("The universal unique id of the object"),
-                system: true,
-                secret: false,
-                multivalue: false,
-                index: vec![IndexType::EQUALITY],
-                syntax: SyntaxType::UUID,
-            },
-        );
-        s.attributes.insert(
-            String::from("name"),
-            SchemaAttribute {
-                name: String::from("name"),
-                description: String::from("The shortform name of an object"),
-                system: true,
-                secret: false,
-                multivalue: false,
-                index: vec![IndexType::EQUALITY],
-                syntax: SyntaxType::UTF8STRING_INSENSITIVE,
-            },
-        );
-        s.attributes.insert(
+impl SchemaInner {
+    pub fn new(audit: &mut AuditScope) -> Result<Self, ()> {
+        let mut au = AuditScope::new("schema_new");
+        let r = audit_segment!(au, || {
+            //
+            let mut s = SchemaInner {
+                classes: HashMap::new(),
+                attributes: HashMap::new(),
+            };
+            // Bootstrap in definitions of our own schema types
+            // First, add all the needed core attributes for schema parsing
+            s.attributes.insert(
+                String::from("class"),
+                SchemaAttribute {
+                    name: String::from("class"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_CLASS).unwrap(),
+                    description: String::from("The set of classes defining an object"),
+                    system: true,
+                    secret: false,
+                    multivalue: true,
+                    index: vec![IndexType::EQUALITY],
+                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                },
+            );
+            s.attributes.insert(
+                String::from("uuid"),
+                SchemaAttribute {
+                    name: String::from("uuid"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_UUID).unwrap(),
+                    description: String::from("The universal unique id of the object"),
+                    system: true,
+                    secret: false,
+                    multivalue: false,
+                    index: vec![IndexType::EQUALITY],
+                    syntax: SyntaxType::UUID,
+                },
+            );
+            s.attributes.insert(
+                String::from("name"),
+                SchemaAttribute {
+                    name: String::from("name"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_NAME).unwrap(),
+                    description: String::from("The shortform name of an object"),
+                    system: true,
+                    secret: false,
+                    multivalue: false,
+                    index: vec![IndexType::EQUALITY],
+                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                },
+            );
+            s.attributes.insert(
             String::from("principal_name"),
             SchemaAttribute {
                 name: String::from("principal_name"),
+                uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_PRINCIPAL_NAME).unwrap(),
                 description: String::from("The longform name of an object, derived from name and domain. Example: alice@project.org"),
                 system: true,
                 secret: false,
@@ -336,34 +363,41 @@ impl Schema {
                 syntax: SyntaxType::UTF8STRING_PRINCIPAL,
             },
         );
-        s.attributes.insert(
-            String::from("description"),
-            SchemaAttribute {
-                name: String::from("description"),
-                description: String::from("A description of an attribute, object or class"),
-                system: true,
-                secret: false,
-                multivalue: false,
-                index: vec![],
-                syntax: SyntaxType::UTF8STRING,
-            },
-        );
-        s.attributes.insert(
-            String::from("system"),
-            SchemaAttribute {
-                name: String::from("system"),
-                description: String::from(
-                    "Is this object or attribute provided from the core system?",
-                ),
-                system: true,
-                secret: false,
-                multivalue: false,
-                index: vec![],
-                syntax: SyntaxType::BOOLEAN,
-            },
-        );
-        s.attributes.insert(String::from("secret"), SchemaAttribute {
+            s.attributes.insert(
+                String::from("description"),
+                SchemaAttribute {
+                    name: String::from("description"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_DESCRIPTION).unwrap(),
+                    description: String::from("A description of an attribute, object or class"),
+                    system: true,
+                    secret: false,
+                    multivalue: false,
+                    index: vec![],
+                    syntax: SyntaxType::UTF8STRING,
+                },
+            );
+            s.attributes.insert(
+                // FIXME: Rename to system_provided? Or should we eschew this in favour of class?
+                // system_provided attr seems easier to provide access controls on, and can be
+                // part of object ...
+                String::from("system"),
+                SchemaAttribute {
+                    name: String::from("system"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_SYSTEM).unwrap(),
+                    description: String::from(
+                        "Is this object or attribute provided from the core system?",
+                    ),
+                    system: true,
+                    secret: false,
+                    multivalue: false,
+                    index: vec![],
+                    syntax: SyntaxType::BOOLEAN,
+                },
+            );
+            s.attributes.insert(String::from("secret"), SchemaAttribute {
+            // FIXME: Rename from system to schema_private? system_private? attr_private? private_attr?
             name: String::from("secret"),
+            uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_SECRET).unwrap(),
             description: String::from("If true, this value is always hidden internally to the server, even beyond access controls."),
             system: true,
             secret: false,
@@ -371,8 +405,9 @@ impl Schema {
             index: vec![],
             syntax: SyntaxType::BOOLEAN,
         });
-        s.attributes.insert(String::from("multivalue"), SchemaAttribute {
+            s.attributes.insert(String::from("multivalue"), SchemaAttribute {
             name: String::from("multivalue"),
+            uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_MULTIVALUE).unwrap(),
             description: String::from("If true, this attribute is able to store multiple values rather than just a single value."),
             system: true,
             secret: false,
@@ -380,306 +415,438 @@ impl Schema {
             index: vec![],
             syntax: SyntaxType::BOOLEAN,
         });
-        s.attributes.insert(
-            String::from("index"),
-            SchemaAttribute {
-                name: String::from("index"),
-                description: String::from(
-                    "Describe the indexes to apply to instances of this attribute.",
-                ),
-                system: true,
-                secret: false,
-                multivalue: false,
-                index: vec![],
-                syntax: SyntaxType::INDEX_ID,
-            },
-        );
-        s.attributes.insert(
-            String::from("syntax"),
-            SchemaAttribute {
-                name: String::from("syntax"),
-                description: String::from(
-                    "Describe the syntax of this attribute. This affects indexing and sorting.",
-                ),
-                system: true,
-                secret: false,
-                multivalue: false,
-                index: vec![IndexType::EQUALITY],
-                syntax: SyntaxType::SYNTAX_ID,
-            },
-        );
-        s.attributes.insert(
-            String::from("systemmay"),
-            SchemaAttribute {
-                name: String::from("systemmay"),
-                description: String::from(
-                    "A list of system provided optional attributes this class can store.",
-                ),
-                system: true,
-                secret: false,
-                multivalue: true,
-                index: vec![],
-                syntax: SyntaxType::UTF8STRING_INSENSITIVE,
-            },
-        );
-        s.attributes.insert(
-            String::from("may"),
-            SchemaAttribute {
-                name: String::from("may"),
-                description: String::from(
-                    "A user modifiable list of optional attributes this class can store.",
-                ),
-                system: true,
-                secret: false,
-                multivalue: false,
-                index: vec![],
-                syntax: SyntaxType::UTF8STRING_INSENSITIVE,
-            },
-        );
-        s.attributes.insert(
-            String::from("systemmust"),
-            SchemaAttribute {
-                name: String::from("systemmust"),
-                description: String::from(
-                    "A list of system provided required attributes this class must store.",
-                ),
-                system: true,
-                secret: false,
-                multivalue: false,
-                index: vec![],
-                syntax: SyntaxType::UTF8STRING_INSENSITIVE,
-            },
-        );
-        s.attributes.insert(
-            String::from("must"),
-            SchemaAttribute {
-                name: String::from("must"),
-                description: String::from(
-                    "A user modifiable list of required attributes this class must store.",
-                ),
-                system: true,
-                secret: false,
-                multivalue: false,
-                index: vec![],
-                syntax: SyntaxType::UTF8STRING_INSENSITIVE,
-            },
-        );
+            s.attributes.insert(
+                // FIXME: Rename to index_attribute? attr_index?
+                String::from("index"),
+                SchemaAttribute {
+                    name: String::from("index"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_INDEX).unwrap(),
+                    description: String::from(
+                        "Describe the indexes to apply to instances of this attribute.",
+                    ),
+                    system: true,
+                    secret: false,
+                    multivalue: false,
+                    index: vec![],
+                    syntax: SyntaxType::INDEX_ID,
+                },
+            );
+            s.attributes.insert(
+                // FIXME: Rename to attr_syntax?
+                String::from("syntax"),
+                SchemaAttribute {
+                    name: String::from("syntax"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_SYNTAX).unwrap(),
+                    description: String::from(
+                        "Describe the syntax of this attribute. This affects indexing and sorting.",
+                    ),
+                    system: true,
+                    secret: false,
+                    multivalue: false,
+                    index: vec![IndexType::EQUALITY],
+                    syntax: SyntaxType::SYNTAX_ID,
+                },
+            );
+            s.attributes.insert(
+                // FIXME: Rename to attribute_systemmay?
+                String::from("systemmay"),
+                SchemaAttribute {
+                    name: String::from("systemmay"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_SYSTEMMAY).unwrap(),
+                    description: String::from(
+                        "A list of system provided optional attributes this class can store.",
+                    ),
+                    system: true,
+                    secret: false,
+                    multivalue: true,
+                    index: vec![],
+                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                },
+            );
+            s.attributes.insert(
+                // FIXME: Rename to attribute_may? schema_may?
+                String::from("may"),
+                SchemaAttribute {
+                    name: String::from("may"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_MAY).unwrap(),
+                    description: String::from(
+                        "A user modifiable list of optional attributes this class can store.",
+                    ),
+                    system: true,
+                    secret: false,
+                    multivalue: false,
+                    index: vec![],
+                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                },
+            );
+            s.attributes.insert(
+                // FIXME: Rename to attribute_systemmust? schema_systemmust?
+                String::from("systemmust"),
+                SchemaAttribute {
+                    name: String::from("systemmust"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_SYSTEMMUST).unwrap(),
+                    description: String::from(
+                        "A list of system provided required attributes this class must store.",
+                    ),
+                    system: true,
+                    secret: false,
+                    multivalue: false,
+                    index: vec![],
+                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                },
+            );
+            s.attributes.insert(
+                // FIXME: Rename to attribute_must? schema_must?
+                String::from("must"),
+                SchemaAttribute {
+                    name: String::from("must"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_MUST).unwrap(),
+                    description: String::from(
+                        "A user modifiable list of required attributes this class must store.",
+                    ),
+                    system: true,
+                    secret: false,
+                    multivalue: false,
+                    index: vec![],
+                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                },
+            );
 
-        s.classes.insert(
-            String::from("attributetype"),
-            SchemaClass {
-                name: String::from("attributetype"),
-                description: String::from("Definition of a schema attribute"),
-                systemmay: vec![String::from("index")],
-                may: vec![],
-                systemmust: vec![
-                    String::from("class"),
-                    String::from("name"),
-                    String::from("system"),
-                    String::from("secret"),
-                    String::from("multivalue"),
-                    String::from("syntax"),
-                    String::from("description"),
-                ],
-                must: vec![],
-            },
-        );
-        s.classes.insert(
-            String::from("classtype"),
-            SchemaClass {
-                name: String::from("classtype"),
-                description: String::from("Definition of a schema classtype"),
-                systemmay: vec![
-                    String::from("systemmay"),
-                    String::from("may"),
-                    String::from("systemmust"),
-                    String::from("must"),
-                ],
-                may: vec![],
-                systemmust: vec![
-                    String::from("class"),
-                    String::from("name"),
-                    String::from("description"),
-                ],
-                must: vec![],
-            },
-        );
-        s.classes.insert(
-            String::from("object"),
-            SchemaClass {
-                name: String::from("object"),
-                description: String::from("A system created class that all objects must contain"),
-                systemmay: vec![
-                    String::from("principal_name"),
-                ],
-                may: vec![],
-                systemmust: vec![String::from("uuid")],
-                must: vec![],
-            },
-        );
-        s.classes.insert(
-            String::from("extensibleobject"),
-            SchemaClass {
-                name: String::from("extensibleobject"),
-                description: String::from("A class type that turns off all rules ..."),
-                systemmay: vec![],
-                may: vec![],
-                systemmust: vec![],
-                must: vec![],
-            },
-        );
+            s.classes.insert(
+                String::from("attributetype"),
+                SchemaClass {
+                    name: String::from("attributetype"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_ATTRIBUTETYPE).unwrap(),
+                    description: String::from("Definition of a schema attribute"),
+                    systemmay: vec![String::from("index")],
+                    may: vec![],
+                    systemmust: vec![
+                        String::from("class"),
+                        String::from("name"),
+                        String::from("system"),
+                        String::from("secret"),
+                        String::from("multivalue"),
+                        String::from("syntax"),
+                        String::from("description"),
+                    ],
+                    must: vec![],
+                },
+            );
+            s.classes.insert(
+                String::from("classtype"),
+                SchemaClass {
+                    name: String::from("classtype"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_CLASSTYPE).unwrap(),
+                    description: String::from("Definition of a schema classtype"),
+                    systemmay: vec![
+                        String::from("systemmay"),
+                        String::from("may"),
+                        String::from("systemmust"),
+                        String::from("must"),
+                    ],
+                    may: vec![],
+                    systemmust: vec![
+                        String::from("class"),
+                        String::from("name"),
+                        String::from("description"),
+                    ],
+                    must: vec![],
+                },
+            );
+            s.classes.insert(
+                String::from("object"),
+                SchemaClass {
+                    name: String::from("object"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_OBJECT).unwrap(),
+                    description: String::from(
+                        "A system created class that all objects must contain",
+                    ),
+                    systemmay: vec![
+                        // FIXME: Owner? Responsible? Contact?
+                        String::from("description"),
+                        String::from("principal_name"),
+                    ],
+                    may: vec![],
+                    systemmust: vec![
+                        String::from("class"),
+                        String::from("name"),
+                        String::from("uuid"),
+                    ],
+                    must: vec![],
+                },
+            );
+            s.classes.insert(
+                String::from("extensibleobject"),
+                SchemaClass {
+                    name: String::from("extensibleobject"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_EXTENSIBLEOBJECT).unwrap(),
+                    description: String::from("A class type that turns off all rules ..."),
+                    systemmay: vec![],
+                    may: vec![],
+                    systemmust: vec![],
+                    must: vec![],
+                },
+            );
 
-        s
+            match s.validate(&mut au) {
+                Ok(_) => Ok(s),
+                Err(e) => Err(e),
+            }
+        });
+
+        audit.append_scope(au);
+
+        r
     }
 
     // This shouldn't fail?
-    pub fn bootstrap_core(&mut self) {
+    pub fn bootstrap_core(&mut self, audit: &mut AuditScope) -> Result<(), ()> {
         // This will create a set of sane, system core schema that we can use
         // main types are users, groups
+        let mut au = AuditScope::new("schema_bootstrap_core");
+        let r = audit_segment!(au, || {
+            // Create attributes
+            // displayname // single
+            self.attributes.insert(
+                String::from("displayname"),
+                SchemaAttribute {
+                    name: String::from("displayname"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_DISPLAYNAME).unwrap(),
+                    description: String::from("The publicly visible display name of this person"),
+                    system: true,
+                    secret: false,
+                    multivalue: false,
+                    index: vec![IndexType::EQUALITY],
+                    syntax: SyntaxType::UTF8STRING,
+                },
+            );
+            // name // single
+            // mail // multi
+            self.attributes.insert(
+                String::from("mail"),
+                SchemaAttribute {
+                    name: String::from("mail"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_MAIL).unwrap(),
+                    description: String::from("mail addresses of the object"),
+                    system: true,
+                    secret: false,
+                    multivalue: true,
+                    index: vec![IndexType::EQUALITY],
+                    syntax: SyntaxType::UTF8STRING,
+                },
+            );
+            // memberof // multi
+            self.attributes.insert(
+                String::from("memberof"),
+                SchemaAttribute {
+                    name: String::from("memberof"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_MEMBEROF).unwrap(),
+                    description: String::from("reverse group membership of the object"),
+                    system: true,
+                    secret: false,
+                    multivalue: true,
+                    index: vec![IndexType::EQUALITY],
+                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                },
+            );
+            // ssh_publickey // multi
+            self.attributes.insert(
+                String::from("ssh_publickey"),
+                SchemaAttribute {
+                    name: String::from("ssh_publickey"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_SSH_PUBLICKEY).unwrap(),
+                    description: String::from("SSH public keys of the object"),
+                    system: true,
+                    secret: false,
+                    multivalue: true,
+                    index: vec![],
+                    syntax: SyntaxType::UTF8STRING,
+                },
+            );
+            // password // secret, multi
+            self.attributes.insert(
+                String::from("password"),
+                SchemaAttribute {
+                    name: String::from("password"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_PASSWORD).unwrap(),
+                    description: String::from(
+                        "password hash material of the object for authentication",
+                    ),
+                    system: true,
+                    secret: true,
+                    multivalue: true,
+                    index: vec![],
+                    syntax: SyntaxType::UTF8STRING,
+                },
+            );
+            //
+            // member
+            self.attributes.insert(
+                String::from("member"),
+                SchemaAttribute {
+                    name: String::from("member"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_MEMBER).unwrap(),
+                    description: String::from("List of members of the group"),
+                    system: true,
+                    secret: false,
+                    multivalue: true,
+                    index: vec![IndexType::EQUALITY],
+                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                },
+            );
 
-        // Create attributes
-        // displayname // single
-        self.attributes.insert(
-            String::from("displayname"),
-            SchemaAttribute {
-                name: String::from("displayname"),
-                description: String::from("The publicly visible display name of this person"),
-                system: true,
-                secret: false,
-                multivalue: false,
-                index: vec![IndexType::EQUALITY],
-                syntax: SyntaxType::UTF8STRING,
-            },
-        );
-        // name // single
-        // mail // multi
-        self.attributes.insert(
-            String::from("mail"),
-            SchemaAttribute {
-                name: String::from("mail"),
-                description: String::from("mail addresses of the object"),
-                system: true,
-                secret: false,
-                multivalue: true,
-                index: vec![IndexType::EQUALITY],
-                syntax: SyntaxType::UTF8STRING,
-            },
-        );
-        // memberof // multi
-        self.attributes.insert(
-            String::from("memberof"),
-            SchemaAttribute {
-                name: String::from("memberof"),
-                description: String::from("reverse group membership of the object"),
-                system: true,
-                secret: false,
-                multivalue: true,
-                index: vec![IndexType::EQUALITY],
-                syntax: SyntaxType::UTF8STRING_INSENSITIVE,
-            },
-        );
-        // ssh_publickey // multi
-        self.attributes.insert(
-            String::from("ssh_publickey"),
-            SchemaAttribute {
-                name: String::from("ssh_publickey"),
-                description: String::from("SSH public keys of the object"),
-                system: true,
-                secret: false,
-                multivalue: true,
-                index: vec![],
-                syntax: SyntaxType::UTF8STRING,
-            },
-        );
-        // password // secret, multi
-        self.attributes.insert(
-            String::from("password"),
-            SchemaAttribute {
-                name: String::from("password"),
-                description: String::from(
-                    "password hash material of the object for authentication",
-                ),
-                system: true,
-                secret: true,
-                multivalue: true,
-                index: vec![],
-                syntax: SyntaxType::UTF8STRING,
-            },
-        );
-        //
-        // member
-        self.attributes.insert(
-            String::from("member"),
-            SchemaAttribute {
-                name: String::from("member"),
-                description: String::from("List of members of the group"),
-                system: true,
-                secret: false,
-                multivalue: true,
-                index: vec![IndexType::EQUALITY],
-                syntax: SyntaxType::UTF8STRING_INSENSITIVE,
-            },
-        );
+            self.attributes.insert(
+                String::from("version"),
+                SchemaAttribute {
+                    name: String::from("version"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_VERSION).unwrap(),
+                    description: String::from(
+                        "The systems internal migration version for provided objects",
+                    ),
+                    system: true,
+                    secret: true,
+                    multivalue: false,
+                    index: vec![IndexType::EQUALITY],
+                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                },
+            );
 
-        // Create the classes that use it
-        // person
-        self.classes.insert(
-            String::from("person"),
-            SchemaClass {
-                name: String::from("person"),
-                description: String::from("Object representation of a person"),
-                systemmay: vec![
-                    String::from("description"),
-                    String::from("mail"),
-                    String::from("ssh_publickey"),
-                    String::from("memberof"),
-                    String::from("password"),
-                ],
-                may: vec![],
-                systemmust: vec![
-                    String::from("class"),
-                    String::from("name"),
-                    String::from("displayname"),
-                ],
-                must: vec![],
-            },
-        );
-        // group
-        self.classes.insert(
-            String::from("group"),
-            SchemaClass {
-                name: String::from("group"),
-                description: String::from("Object representation of a group"),
-                systemmay: vec![String::from("description"), String::from("member")],
-                may: vec![],
-                systemmust: vec![
-                    String::from("class"),
-                    String::from("name"),
-                ],
-                must: vec![],
-            },
-        );
+            self.attributes.insert(
+                String::from("domain"),
+                SchemaAttribute {
+                    name: String::from("domain"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_DOMAIN).unwrap(),
+                    description: String::from("A DNS Domain name entry."),
+                    system: true,
+                    secret: false,
+                    multivalue: true,
+                    index: vec![IndexType::EQUALITY],
+                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                },
+            );
+            // Create the classes that use it
+            // FIXME: Add account lock
+            self.classes.insert(
+                String::from("account"),
+                SchemaClass {
+                    name: String::from("account"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_ACCOUNT).unwrap(),
+                    description: String::from("Object representation of a person"),
+                    systemmay: vec![
+                        String::from("password"),
+                        String::from("ssh_publickey"),
+                        String::from("memberof"),
+                        // String::from("uidnumber"),
+                        // String::from("gidnumber"),
+                    ],
+                    may: vec![],
+                    systemmust: vec![String::from("displayname")],
+                    must: vec![],
+                },
+            );
+            self.classes.insert(
+                String::from("person"),
+                SchemaClass {
+                    name: String::from("person"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_PERSON).unwrap(),
+                    description: String::from("Object representation of a person"),
+                    systemmay: vec![
+                        String::from("mail"),
+                        String::from("memberof"),
+                        // String::from("password"),
+                    ],
+                    may: vec![],
+                    systemmust: vec![String::from("displayname")],
+                    must: vec![],
+                },
+            );
+            self.classes.insert(
+                String::from("group"),
+                SchemaClass {
+                    name: String::from("group"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_GROUP).unwrap(),
+                    description: String::from("Object representation of a group"),
+                    systemmay: vec![
+                        String::from("member"),
+                        // String::from("gidnumber"),
+                    ],
+                    may: vec![],
+                    systemmust: vec![],
+                    must: vec![],
+                },
+            );
+            self.classes.insert(
+                String::from("system_info"),
+                SchemaClass {
+                    name: String::from("system_info"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_SYSTEM_INFO).unwrap(),
+                    description: String::from("System metadata object class"),
+                    systemmay: vec![],
+                    may: vec![],
+                    systemmust: vec![
+                        String::from("version"),
+                        // Needed when we implement principalnames?
+                        String::from("domain"),
+                        // String::from("hostname"),
+                    ],
+                    must: vec![],
+                },
+            );
+
+            // Finally, validate our content is sane.
+            self.validate(&mut au)
+        });
+
+        audit.append_scope(au);
+
+        r
     }
 
-    pub fn validate(&self) -> Result<(), ()> {
+    pub fn validate(&self, audit: &mut AuditScope) -> Result<(), ()> {
         // FIXME: How can we make this return a proper result?
         //
-        // Do we need some functional bullshit?
-        // Validate our schema content is sane
-        // For now we only have a few basic methods for this, such as
-        // checking all our classes must/may are correct.
+        // TODO: Does this need to validate anything further at all? The UUID
+        // will be checked as part of the schema migration on startup, so I think
+        // just that all the content is sane is fine.
         for class in self.classes.values() {
+            // report the class we are checking
             for a in &class.systemmay {
-                assert!(self.attributes.contains_key(a));
+                // report the attribute.
+                audit_log!(
+                    audit,
+                    "validate systemmay class:attr -> {}:{}",
+                    class.name,
+                    a
+                );
+                if !self.attributes.contains_key(a) {
+                    return Err(());
+                }
             }
             for a in &class.may {
-                assert!(self.attributes.contains_key(a));
+                // report the attribute.
+                audit_log!(audit, "validate may class:attr -> {}:{}", class.name, a);
+                if !self.attributes.contains_key(a) {
+                    return Err(());
+                }
             }
             for a in &class.systemmust {
-                assert!(self.attributes.contains_key(a));
+                // report the attribute.
+                audit_log!(
+                    audit,
+                    "validate systemmust class:attr -> {}:{}",
+                    class.name,
+                    a
+                );
+                if !self.attributes.contains_key(a) {
+                    return Err(());
+                }
             }
             for a in &class.must {
-                assert!(self.attributes.contains_key(a));
+                // report the attribute.
+                audit_log!(audit, "validate must class:attr -> {}:{}", class.name, a);
+                if !self.attributes.contains_key(a) {
+                    return Err(());
+                }
             }
         }
 
@@ -772,7 +939,8 @@ impl Schema {
         Ok(())
     }
 
-    pub fn normalise_entry(&mut self, entry: &Entry) -> Entry {
+    // pub fn normalise_entry(&mut self, entry: &mut Entry) -> Result<(), SchemaError> {
+    pub fn normalise_entry(&self, entry: &Entry) -> Entry {
         // We duplicate the entry here, because we can't
         // modify what we got on the protocol level. It also
         // lets us extend and change things.
@@ -878,14 +1046,101 @@ impl Schema {
     }
 }
 
+
+// type Schema = CowCell<SchemaInner>;
+
+pub struct Schema {
+    inner: CowCell<SchemaInner>
+}
+
+pub struct SchemaWriteTransaction<'a> {
+    inner: CowCellWriteTxn<'a, SchemaInner>
+}
+
+impl<'a> SchemaWriteTransaction<'a> {
+    pub fn bootstrap_core(&mut self, audit: &mut AuditScope) -> Result<(), ()> {
+        self.inner.bootstrap_core(audit)
+    }
+
+    pub fn validate_entry(&self, entry: &Entry) -> Result<(), SchemaError> {
+        self.inner.validate_entry(entry)
+    }
+
+    pub fn normalise_entry(&self, entry: &Entry) -> Entry {
+        self.inner.normalise_entry(entry)
+    }
+
+    pub fn commit(mut self) -> Result<(), ()> {
+        unimplemented!();
+    }
+
+    pub fn validate_filter(&self, filt: &Filter) -> Result<(), SchemaError> {
+        self.inner.validate_filter(filt)
+    }
+}
+
+impl<'a> Drop for SchemaWriteTransaction<'a> {
+    fn drop(&mut self) {
+        // If commited != true, what do? abort?
+        // Is it valid to commit the schema, but not the be?
+        // This sounds like a problem for the query server.
+        // TODO: William of the future, don't be shit.
+        unimplemented!();
+    }
+}
+
+pub struct SchemaTransaction {
+    inner: CowCellReadTxn<SchemaInner>
+}
+
+impl SchemaTransaction {
+    pub fn validate(&self, audit: &mut AuditScope) -> Result<(), ()> {
+        self.inner.validate(audit)
+    }
+
+    pub fn validate_entry(&self, entry: &Entry) -> Result<(), SchemaError> {
+        self.inner.validate_entry(entry)
+    }
+
+    pub fn validate_filter(&self, filt: &Filter) -> Result<(), SchemaError> {
+        self.inner.validate_filter(filt)
+    }
+}
+
+impl Schema {
+    pub fn new(audit: &mut AuditScope) -> Result<Self, ()> {
+        SchemaInner::new(audit)
+            .map(|si| {
+                Schema {
+                    inner: CowCell::new(si)
+                }
+            })
+    }
+
+    pub fn read(&self) -> SchemaTransaction {
+        SchemaTransaction {
+            inner: self.inner.read()
+        }
+    }
+
+    pub fn write(&self) -> SchemaWriteTransaction {
+        SchemaWriteTransaction {
+            inner: self.inner.write()
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use super::super::audit::AuditScope;
+    use super::super::constants::*;
     use super::super::entry::Entry;
     use super::super::error::SchemaError;
     use super::super::filter::Filter;
     use super::{IndexType, Schema, SchemaAttribute, SchemaClass, SyntaxType};
     use serde_json;
     use std::convert::TryFrom;
+    use uuid::Uuid;
 
     #[test]
     fn test_schema_index_tryfrom() {
@@ -927,6 +1182,7 @@ mod tests {
     fn test_schema_syntax_principal() {
         let sa = SchemaAttribute {
                 name: String::from("principal_name"),
+                uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_PRINCIPAL_NAME).unwrap(),
                 description: String::from("The longform name of an object, derived from name and domain. Example: alice@project.org"),
                 system: true,
                 secret: false,
@@ -954,19 +1210,19 @@ mod tests {
     #[test]
     fn test_schema_normalise_uuid() {
         let sa = SchemaAttribute {
-                name: String::from("uuid"),
-                description: String::from("The universal unique id of the object"),
-                system: true,
-                secret: false,
-                multivalue: false,
-                index: vec![IndexType::EQUALITY],
-                syntax: SyntaxType::UUID,
-            };
+            name: String::from("uuid"),
+            uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_UUID).unwrap(),
+            description: String::from("The universal unique id of the object"),
+            system: true,
+            secret: false,
+            multivalue: false,
+            index: vec![IndexType::EQUALITY],
+            syntax: SyntaxType::UUID,
+        };
         let u1 = String::from("936DA01F9ABD4d9d80C702AF85C822A8");
 
         let un1 = sa.normalise_value(&u1);
         assert_eq!(un1, "936da01f-9abd-4d9d-80c7-02af85c822a8");
-
     }
 
     #[test]
@@ -977,6 +1233,7 @@ mod tests {
         let single_value_string = SchemaAttribute {
             // class: vec![String::from("attributetype")],
             name: String::from("single_value"),
+            uuid: Uuid::new_v4(),
             description: String::from(""),
             system: true,
             secret: false,
@@ -997,6 +1254,7 @@ mod tests {
         let multi_value_string = SchemaAttribute {
             // class: vec![String::from("attributetype")],
             name: String::from("mv_string"),
+            uuid: Uuid::new_v4(),
             description: String::from(""),
             system: true,
             secret: false,
@@ -1012,6 +1270,7 @@ mod tests {
         let multi_value_boolean = SchemaAttribute {
             // class: vec![String::from("attributetype")],
             name: String::from("mv_bool"),
+            uuid: Uuid::new_v4(),
             description: String::from(""),
             system: true,
             secret: false,
@@ -1032,6 +1291,7 @@ mod tests {
         let single_value_syntax = SchemaAttribute {
             // class: vec![String::from("attributetype")],
             name: String::from("sv_syntax"),
+            uuid: Uuid::new_v4(),
             description: String::from(""),
             system: true,
             secret: false,
@@ -1049,6 +1309,7 @@ mod tests {
         let single_value_index = SchemaAttribute {
             // class: vec![String::from("attributetype")],
             name: String::from("sv_index"),
+            uuid: Uuid::new_v4(),
             description: String::from(""),
             system: true,
             secret: false,
@@ -1072,8 +1333,11 @@ mod tests {
 
     #[test]
     fn test_schema_simple() {
-        let schema = Schema::new();
-        assert!(schema.validate().is_ok());
+        let mut audit = AuditScope::new("test_schema_simple");
+        let schema = Schema::new(&mut audit).unwrap();
+        let schema_ro = schema.read();
+        assert!(schema_ro.validate(&mut audit).is_ok());
+        println!("{}", audit);
     }
 
     #[test]
@@ -1086,7 +1350,9 @@ mod tests {
     fn test_schema_entries() {
         // Given an entry, assert it's schema is valid
         // We do
-        let schema = Schema::new();
+        let mut audit = AuditScope::new("test_schema_entries");
+        let schema_outer = Schema::new(&mut audit).unwrap();
+        let schema = schema_outer.read();
         let e_no_class: Entry = serde_json::from_str(
             r#"{
             "attrs": {}
@@ -1182,13 +1448,16 @@ mod tests {
         )
         .unwrap();
         assert_eq!(schema.validate_entry(&e_ok), Ok(()));
+        println!("{}", audit);
     }
 
     #[test]
     fn test_schema_entry_normalise() {
         // Check that entries can be normalised sanely
-        let mut schema = Schema::new();
-        schema.bootstrap_core();
+        let mut audit = AuditScope::new("test_schema_entry_normalise");
+        let mut schema_outer = Schema::new(&mut audit).unwrap();
+        let mut schema = schema_outer.write();
+        schema.bootstrap_core(&mut audit).unwrap();
 
         // Check syntax to upper
         // check index to upper
@@ -1229,11 +1498,14 @@ mod tests {
 
         assert_eq!(schema.validate_entry(&e_normalised), Ok(()));
         assert_eq!(e_expect, e_normalised);
+        println!("{}", audit);
     }
 
     #[test]
     fn test_schema_extensible() {
-        let schema = Schema::new();
+        let mut audit = AuditScope::new("test_schema_extensible");
+        let schema_outer = Schema::new(&mut audit).unwrap();
+        let schema = schema_outer.read();
         // Just because you are extensible, doesn't mean you can be lazy
 
         let e_extensible_bad: Entry = serde_json::from_str(
@@ -1263,6 +1535,7 @@ mod tests {
 
         /* Is okay because extensible! */
         assert_eq!(schema.validate_entry(&e_extensible), Ok(()));
+        println!("{}", audit);
     }
 
     #[test]
@@ -1272,8 +1545,10 @@ mod tests {
 
     #[test]
     fn test_schema_bootstrap() {
-        let mut schema = Schema::new();
-        schema.bootstrap_core();
+        let mut audit = AuditScope::new("test_schema_bootstrap");
+        let mut schema_outer = Schema::new(&mut audit).unwrap();
+        let mut schema = schema_outer.write();
+        schema.bootstrap_core(&mut audit).unwrap();
 
         // now test some entries
         let e_person: Entry = serde_json::from_str(
@@ -1302,11 +1577,14 @@ mod tests {
         )
         .unwrap();
         assert_eq!(schema.validate_entry(&e_group), Ok(()));
+        println!("{}", audit);
     }
 
     #[test]
     fn test_schema_filter_validation() {
-        let schema = Schema::new();
+        let mut audit = AuditScope::new("test_schema_filter_validation");
+        let schema_outer = Schema::new(&mut audit).unwrap();
+        let schema = schema_outer.read();
         // Test mixed case attr name
         let f_mixed: Filter = serde_json::from_str(
             r#"{
@@ -1392,6 +1670,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(schema.validate_filter(&f_or_ok), Ok(()));
+        println!("{}", audit);
     }
 
     #[test]

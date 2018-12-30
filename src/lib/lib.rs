@@ -20,6 +20,8 @@ extern crate regex;
 #[macro_use]
 extern crate lazy_static;
 
+extern crate concread;
+
 // use actix::prelude::*;
 // use actix_web::{
 //    http, middleware, App, AsyncResponder, FutureResponse, HttpRequest, HttpResponse, Path, State,
@@ -33,6 +35,7 @@ mod log;
 #[macro_use]
 mod audit;
 mod be;
+mod constants;
 mod entry;
 mod event;
 mod identity;

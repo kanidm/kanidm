@@ -45,6 +45,8 @@ macro_rules! audit_segment {
         let end = Instant::now();
         let diff = end.duration_since(start);
 
+        $au.set_duration(diff);
+
         // Return the result. Hope this works!
         r
     }};
@@ -52,8 +54,8 @@ macro_rules! audit_segment {
 
 #[derive(Serialize, Deserialize)]
 enum AuditEvent {
-    log(AuditLog),
-    scope(AuditScope),
+    Log(AuditLog),
+    Scope(AuditScope),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -83,6 +85,8 @@ impl Message for AuditScope {
 
 impl fmt::Display for AuditScope {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut depth = 0;
+        // write!(f, "{}: begin -> {}", self.time, self.name);
         let d = serde_json::to_string_pretty(self).unwrap();
         write!(f, "{}", d)
     }
@@ -105,16 +109,20 @@ impl AuditScope {
         self.name.as_str()
     }
 
+    pub fn set_duration(&mut self, diff: Duration) {
+        self.duration = Some(diff);
+    }
+
     // Given a new audit event, append it in.
     pub fn append_scope(&mut self, scope: AuditScope) {
-        self.events.push(AuditEvent::scope(scope))
+        self.events.push(AuditEvent::Scope(scope))
     }
 
     pub fn log_event(&mut self, data: String) {
         let t_now = SystemTime::now();
         let datetime: DateTime<Utc> = t_now.into();
 
-        self.events.push(AuditEvent::log(AuditLog {
+        self.events.push(AuditEvent::Log(AuditLog {
             time: datetime.to_rfc3339(),
             name: data,
         }))

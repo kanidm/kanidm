@@ -14,7 +14,7 @@ use super::config::Configuration;
 use super::event::{CreateEvent, SearchEvent};
 use super::filter::Filter;
 use super::log;
-use super::proto_v1::{CreateRequest, Response, SearchRequest, SearchResponse};
+use super::proto_v1::{CreateRequest, SearchRequest};
 use super::server;
 
 struct AppState {
@@ -157,8 +157,13 @@ pub fn create_server_core(config: Configuration) {
 
     // Until this point, we probably want to write to stderr
     // Start up the logging system: for now it just maps to stderr
+
+    // The log server is started on it's own thread
     let log_addr = log::start();
     log_event!(log_addr, "Starting rsidm with configuration: {:?}", config);
+
+    // Similar, create a stats thread which aggregates statistics from the
+    // server as they come in.
 
     // Start the query server with the given be path: future config
     let server_addr = server::start(log_addr.clone(), config.db_path.as_str(), config.threads);

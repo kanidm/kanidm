@@ -35,14 +35,16 @@ impl Filter {
         // If an or/not/and condition has no items, remove it
         //
         // If its the root item?
-        self.clone()
+        // self.clone()
+        unimplemented!()
     }
 
     // This is probably not safe, so it's for internal test cases
     // only because I'm familiar with the syntax ... you have been warned.
     fn from_ldap_string(_ldap_string: String) -> Result<Self, ()> {
+        unimplemented!()
         // For now return an empty filters
-        Ok(Filter::And(Vec::new()))
+        // Ok(Filter::And(Vec::new()))
     }
 
     // What other parse types do we need?
