@@ -299,8 +299,9 @@ mod tests {
             let e: Entry = serde_json::from_str(
                 r#"{
                 "attrs": {
-                    "class": ["person"],
+                    "class": ["object", "person"],
                     "name": ["testperson"],
+                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
                     "description": ["testperson"],
                     "displayname": ["testperson"]
                 }

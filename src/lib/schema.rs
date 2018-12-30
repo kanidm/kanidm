@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use regex::Regex;
 use std::convert::TryFrom;
 use std::str::FromStr;
+use uuid::Uuid;
 
 // representations of schema that confines object types, classes
 // and attributes. This ties in deeply with "Entry".
@@ -120,7 +121,9 @@ impl SchemaAttribute {
     }
 
     fn validate_uuid(&self, v: &String) -> Result<(), SchemaError> {
-        unimplemented!()
+        Uuid::parse_str(v.as_str())
+            .map_err(|_| SchemaError::InvalidAttributeSyntax)
+            .map(|_| ())
     }
 
     fn validate_principal(&self, v: &String) -> Result<(), SchemaError> {
@@ -230,10 +233,18 @@ impl SchemaAttribute {
         v.to_lowercase()
     }
 
+    pub fn normalise_uuid(&self, v:&String) -> String {
+        // We unwrap here as we should already have been validated ...
+        let c_uuid = Uuid::parse_str(v.as_str()).unwrap();
+        c_uuid.to_hyphenated().to_string()
+    }
+
+    // FIXME: This clones everything, which is expensive!
     pub fn normalise_value(&self, v: &String) -> String {
         match self.syntax {
             SyntaxType::SYNTAX_ID => self.normalise_syntax(v),
             SyntaxType::INDEX_ID => self.normalise_index(v),
+            SyntaxType::UUID => self.normalise_uuid(v),
             SyntaxType::UTF8STRING_INSENSITIVE => self.normalise_utf8string_insensitive(v),
             SyntaxType::UTF8STRING_PRINCIPAL => self.normalise_principal(v),
             _ => v.clone(),
@@ -941,6 +952,24 @@ mod tests {
     }
 
     #[test]
+    fn test_schema_normalise_uuid() {
+        let sa = SchemaAttribute {
+                name: String::from("uuid"),
+                description: String::from("The universal unique id of the object"),
+                system: true,
+                secret: false,
+                multivalue: false,
+                index: vec![IndexType::EQUALITY],
+                syntax: SyntaxType::UUID,
+            };
+        let u1 = String::from("936DA01F9ABD4d9d80C702AF85C822A8");
+
+        let un1 = sa.normalise_value(&u1);
+        assert_eq!(un1, "936da01f-9abd-4d9d-80c7-02af85c822a8");
+
+    }
+
+    #[test]
     fn test_schema_attribute_simple() {
         // Test schemaAttribute validation of types.
 
@@ -1038,6 +1067,7 @@ mod tests {
     #[test]
     fn test_schema_classes_simple() {
         // Test basic functions of simple attributes
+
     }
 
     #[test]
