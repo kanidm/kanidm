@@ -184,8 +184,38 @@ impl Entry {
         }
     }
 
-    pub fn filter_from_attrs(&self, attrs: Vec<&str>) -> Filter {
-        unimplemented!()
+    pub fn filter_from_attrs(&self, attrs: &Vec<String>) -> Option<Filter> {
+        // Generate a filter from the attributes requested and defined.
+        // Basically, this is a series of nested and's (which will be
+        // optimised down later: but if someone wants to solve flatten() ...)
+
+        // Take name: (a, b), name: (c, d) -> (name, a), (name, b), (name, c), (name, d)
+
+        let mut pairs: Vec<(String, String)> = Vec::new();
+
+        for attr in attrs {
+            match self.attrs.get(attr) {
+                Some(values) => {
+                    for v in values {
+                        pairs.push( (attr.clone(), v.clone() ) )
+                    }
+                }
+                None => {
+                    return None
+                }
+            }
+        }
+
+        // Now make this a filter?
+
+        let eq_filters = pairs.into_iter()
+            .map(|(attr, value)| {
+                Filter::Eq(attr, value)
+            })
+            .collect();
+
+
+        Some(Filter::And(eq_filters))
     }
 
     // FIXME: Can we consume protoentry?

@@ -1046,15 +1046,14 @@ impl SchemaInner {
     }
 }
 
-
 // type Schema = CowCell<SchemaInner>;
 
 pub struct Schema {
-    inner: CowCell<SchemaInner>
+    inner: CowCell<SchemaInner>,
 }
 
 pub struct SchemaWriteTransaction<'a> {
-    inner: CowCellWriteTxn<'a, SchemaInner>
+    inner: CowCellWriteTxn<'a, SchemaInner>,
 }
 
 impl<'a> SchemaWriteTransaction<'a> {
@@ -1070,27 +1069,26 @@ impl<'a> SchemaWriteTransaction<'a> {
         self.inner.normalise_entry(entry)
     }
 
-    pub fn commit(mut self) -> Result<(), ()> {
-        unimplemented!();
+    // TODO: Schema probably needs to be part of the backend, so that commits are wholly atomic
+    // but in the current design, we need to open be first, then schema, but we have to commit be
+    // first, then schema to ensure that the be content matches our schema. Saying this, if your
+    // schema commit fails we need to roll back still .... How great are transactions.
+    // At the least, this is what validation is for!
+    pub fn commit(mut self) {
+        self.inner.commit();
     }
 
     pub fn validate_filter(&self, filt: &Filter) -> Result<(), SchemaError> {
         self.inner.validate_filter(filt)
     }
-}
 
-impl<'a> Drop for SchemaWriteTransaction<'a> {
-    fn drop(&mut self) {
-        // If commited != true, what do? abort?
-        // Is it valid to commit the schema, but not the be?
-        // This sounds like a problem for the query server.
-        // TODO: William of the future, don't be shit.
-        unimplemented!();
+    pub fn validate(&self, audit: &mut AuditScope) -> Result<(), ()> {
+        self.inner.validate(audit)
     }
 }
 
 pub struct SchemaTransaction {
-    inner: CowCellReadTxn<SchemaInner>
+    inner: CowCellReadTxn<SchemaInner>,
 }
 
 impl SchemaTransaction {
@@ -1109,23 +1107,20 @@ impl SchemaTransaction {
 
 impl Schema {
     pub fn new(audit: &mut AuditScope) -> Result<Self, ()> {
-        SchemaInner::new(audit)
-            .map(|si| {
-                Schema {
-                    inner: CowCell::new(si)
-                }
-            })
+        SchemaInner::new(audit).map(|si| Schema {
+            inner: CowCell::new(si),
+        })
     }
 
     pub fn read(&self) -> SchemaTransaction {
         SchemaTransaction {
-            inner: self.inner.read()
+            inner: self.inner.read(),
         }
     }
 
     pub fn write(&self) -> SchemaWriteTransaction {
         SchemaWriteTransaction {
-            inner: self.inner.write()
+            inner: self.inner.write(),
         }
     }
 }

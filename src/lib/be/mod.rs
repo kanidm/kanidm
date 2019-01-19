@@ -72,7 +72,10 @@ pub trait BackendReadTransaction {
                 // conn.execute("BEGIN TRANSACTION", NO_PARAMS).unwrap();
 
                 // read them all
-                let mut stmt = self.get_conn().prepare("SELECT id, data FROM id2entry").unwrap();
+                let mut stmt = self
+                    .get_conn()
+                    .prepare("SELECT id, data FROM id2entry")
+                    .unwrap();
                 let id2entry_iter = stmt
                     .query_map(NO_PARAMS, |row| IdEntry {
                         id: row.get(0),
@@ -105,9 +108,7 @@ pub trait BackendReadTransaction {
             Ok(entries)
         })
     }
-
 }
-
 
 impl Drop for BackendTransaction {
     // Abort
@@ -143,7 +144,6 @@ impl BackendReadTransaction for BackendTransaction {
 
 static DBV_ID2ENTRY: &'static str = "id2entry";
 static DBV_INDEX: &'static str = "index";
-
 
 impl Drop for BackendWriteTransaction {
     // Abort
@@ -265,6 +265,7 @@ impl BackendWriteTransaction {
 
     pub fn commit(mut self) -> Result<(), ()> {
         println!("Commiting txn");
+        assert!(!self.committed);
         self.committed = true;
         self.conn
             .execute("COMMIT TRANSACTION", NO_PARAMS)
@@ -429,7 +430,9 @@ mod tests {
     use super::super::audit::AuditScope;
     use super::super::entry::Entry;
     use super::super::filter::Filter;
-    use super::{Backend, BackendError, BackendTransaction, BackendWriteTransaction, BackendReadTransaction};
+    use super::{
+        Backend, BackendError, BackendReadTransaction, BackendTransaction, BackendWriteTransaction,
+    };
 
     macro_rules! run_test {
         ($test_fn:expr) => {{

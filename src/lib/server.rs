@@ -5,7 +5,9 @@ use actix::prelude::*;
 use std::sync::Arc;
 
 use audit::AuditScope;
-use be::{Backend, BackendError, BackendReadTransaction, BackendTransaction, BackendWriteTransaction};
+use be::{
+    Backend, BackendError, BackendReadTransaction, BackendTransaction, BackendWriteTransaction,
+};
 
 use entry::Entry;
 use error::OperationError;
@@ -48,8 +50,10 @@ pub fn start(log: actix::Addr<EventLog>, path: &str, threads: usize) -> actix::A
             // system schema.
             // TODO: Trigger an index? This could be costly ...
             //   Perhaps a config option to say if we index on startup or not.
-            schema_write.commit();
+            // TODO: Check the results!
+            schema_write.validate(&mut audit);
             be_txn.commit();
+            schema_write.commit();
         }
 
         // Create a temporary query_server implementation
@@ -65,12 +69,18 @@ pub fn start(log: actix::Addr<EventLog>, path: &str, threads: usize) -> actix::A
         // First, check the system_info object. This stores some server information
         // and details. It's a pretty static thing.
         let mut audit_si = AuditScope::new("start_system_info");
-        audit_segment!(audit_si, || start_system_info(&mut audit_si, &query_server_write));
+        audit_segment!(audit_si, || start_system_info(
+            &mut audit_si,
+            &query_server_write
+        ));
         audit.append_scope(audit_si);
 
         // Check the anonymous object exists (migrations).
         let mut audit_an = AuditScope::new("start_anonymous");
-        audit_segment!(audit_an, || start_anonymous(&mut audit_an, &query_server_write));
+        audit_segment!(audit_an, || start_anonymous(
+            &mut audit_an,
+            &query_server_write
+        ));
         audit.append_scope(audit_an);
 
         // Check the admin object exists (migrations).
@@ -79,7 +89,9 @@ pub fn start(log: actix::Addr<EventLog>, path: &str, threads: usize) -> actix::A
 
         // We are good to go! Finally commit and consume the txn.
 
-        query_server_write.commit();
+        let mut audit_qsc = AuditScope::new("query_server_commit");
+        audit_segment!(audit_qsc, || query_server_write.commit(&mut audit_qsc));
+        audit.append_scope(audit_qsc);
 
         SyncArbiter::start(threads, move || {
             QueryServer::new(log_inner.clone(), be.clone(), schema.clone())
@@ -150,11 +162,7 @@ pub trait QueryServerReadTransaction {
 
     fn get_be_txn(&self) -> &Self::BackendTransactionType;
 
-    fn search(
-        &self,
-        au: &mut AuditScope,
-        se: &SearchEvent,
-    ) -> Result<Vec<Entry>, OperationError> {
+    fn search(&self, au: &mut AuditScope, se: &SearchEvent) -> Result<Vec<Entry>, OperationError> {
         // TODO: Validate the filter
         // This is an important security step because it prevents us from
         // performing un-indexed searches on attr's that don't exist in the
@@ -168,7 +176,8 @@ pub trait QueryServerReadTransaction {
         // TODO: Pre-search plugins
 
         let mut audit_be = AuditScope::new("backend_search");
-        let res = self.get_be_txn()
+        let res = self
+            .get_be_txn()
             .search(&mut audit_be, &se.filter)
             .map(|r| r)
             .map_err(|_| OperationError::Backend);
@@ -199,7 +208,6 @@ pub struct QueryServerTransaction {
     schema: SchemaTransaction,
 }
 
-
 // Actually conduct a search request
 // This is the core of the server, as it processes the entire event
 // applies all parts required in order and more.
@@ -216,7 +224,6 @@ pub struct QueryServerWriteTransaction<'a> {
     // be_write_txn: BackendWriteTransaction,
     // schema_write: SchemaWriteTransaction,
     // read: QueryServerTransaction,
-
     be_txn: BackendWriteTransaction,
     schema: SchemaWriteTransaction<'a>,
 }
@@ -250,11 +257,24 @@ impl QueryServer {
     }
 
     pub fn read(&self) -> QueryServerTransaction {
-        unimplemented!()
+        QueryServerTransaction {
+            be_txn: self.be.read(),
+            schema: self.schema.read(),
+        }
     }
 
     pub fn write(&self) -> QueryServerWriteTransaction {
-        unimplemented!()
+        QueryServerWriteTransaction {
+            // I think this is *not* needed, because commit is mut self which should
+            // take ownership of the value, and cause the commit to "only be run
+            // once".
+            //
+            // The commited flag is however used for abort-specific code in drop
+            // which today I don't think we have ... yet.
+            committed: false,
+            be_txn: self.be.write(),
+            schema: self.schema.write(),
+        }
     }
 }
 
@@ -315,7 +335,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         let mut audit_be = AuditScope::new("backend_create");
         // We may change from ce.entries later to something else?
-        let res = self.be_txn
+        let res = self
+            .be_txn
             .create(&mut audit_be, &norm_cand)
             .map(|_| ())
             .map_err(|e| match e {
@@ -374,7 +395,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // attributes and classes.
 
         // Create a filter from the entry for assertion.
-        let filt = e.filter_from_attrs(vec!["name"]);
+        let filt = match e.filter_from_attrs(&vec![String::from("name")]) {
+            Some(f) => f,
+            None => return Err(()),
+        };
 
         // Does it exist?
         match self.internal_exists(filt) {
@@ -407,8 +431,31 @@ impl<'a> QueryServerWriteTransaction<'a> {
         unimplemented!()
     }
 
-    pub fn commit(self) -> Result<(), ()> {
-        unimplemented!()
+    pub fn commit(mut self, audit: &mut AuditScope) -> Result<(), ()> {
+        let QueryServerWriteTransaction {
+            committed,
+            be_txn,
+            schema,
+        } = self;
+        assert!(!committed);
+        // Begin an audit.
+        // Validate the schema,
+        schema
+            .validate(audit)
+            // TODO: At this point, if validate passes, we probably actually want
+            // to perform a reload BEFORE we commit.
+            // Alternate, we attempt to reload during batch ops, but this seems
+            // costly.
+            .map(|_| {
+                // Backend Commit
+                be_txn.commit()
+            })
+            .map(|_| {
+                // Schema commit: Since validate passed and be is good, this
+                // must now also be good.
+                schema.commit()
+            })
+        // Audit done
     }
 }
 
@@ -468,7 +515,7 @@ impl Handler<CreateEvent> for QueryServer {
 
             match qs_write.create(&mut audit, &msg) {
                 Ok(()) => {
-                    qs_write.commit();
+                    qs_write.commit(&mut audit);
                     Ok(OpResult {})
                 }
                 Err(e) => Err(e),
@@ -503,7 +550,9 @@ mod tests {
     use super::super::proto_v1::Entry as ProtoEntry;
     use super::super::proto_v1::{CreateRequest, SearchRequest};
     use super::super::schema::Schema;
-    use super::super::server::{QueryServer, QueryServerWriteTransaction, QueryServerReadTransaction};
+    use super::super::server::{
+        QueryServer, QueryServerReadTransaction, QueryServerWriteTransaction,
+    };
 
     macro_rules! run_test {
         ($test_fn:expr) => {{
@@ -572,7 +621,7 @@ mod tests {
 
             assert_eq!(r2, expected);
 
-            assert!(server_txn.commit().is_ok());
+            assert!(server_txn.commit(audit).is_ok());
 
             future::ok(())
         });

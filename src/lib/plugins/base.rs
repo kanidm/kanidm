@@ -2,7 +2,7 @@ use plugins::Plugin;
 use uuid::Uuid;
 
 use audit::AuditScope;
-use be::{BackendTransaction, BackendReadTransaction, BackendWriteTransaction};
+use be::{BackendReadTransaction, BackendTransaction, BackendWriteTransaction};
 use entry::Entry;
 use error::OperationError;
 use event::CreateEvent;
@@ -170,10 +170,8 @@ mod tests {
                     &schema,
                 ));
 
-
                 schema.commit();
                 be_txn.commit();
-
 
                 au.append_scope(au_test);
             });
