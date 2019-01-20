@@ -108,6 +108,29 @@ pub trait BackendReadTransaction {
             Ok(entries)
         })
     }
+
+    /// Given a filter, assert some condition exists.
+    /// Basically, this is a specialised case of search, where we don't need to
+    /// load any candidates if they match. This is heavily used in uuid
+    /// refint and attr uniqueness.
+    fn exists(&self, au: &mut AuditScope, filt: &Filter) -> Result<bool, BackendError> {
+        let r = self.search(au, filt);
+        match r {
+            Ok(v) => {
+                if v.len() > 0 {
+                    audit_log!(au, "candidate exists {:?}", filt);
+                    Ok(true)
+                } else {
+                    audit_log!(au, "candidate does not exist {:?}", filt);
+                    Ok(false)
+                }
+            }
+            Err(e) => {
+                audit_log!(au, "error processing filt {:?}, {:?}", filt, e);
+                Err(e)
+            }
+        }
+    }
 }
 
 impl Drop for BackendTransaction {
@@ -221,29 +244,6 @@ impl BackendWriteTransaction {
 
             Ok(())
         })
-    }
-
-    /// Given a filter, assert some condition exists.
-    /// Basically, this is a specialised case of search, where we don't need to
-    /// load any candidates if they match. This is heavily used in uuid
-    /// refint and attr uniqueness.
-    pub fn exists(&self, au: &mut AuditScope, filt: &Filter) -> Result<bool, BackendError> {
-        let r = self.search(au, filt);
-        match r {
-            Ok(v) => {
-                if v.len() > 0 {
-                    audit_log!(au, "candidate exists {:?}", filt);
-                    Ok(true)
-                } else {
-                    audit_log!(au, "candidate does not exist {:?}", filt);
-                    Ok(false)
-                }
-            }
-            Err(e) => {
-                audit_log!(au, "error processing filt {:?}, {:?}", filt, e);
-                Err(e)
-            }
-        }
     }
 
     pub fn modify() {

@@ -16,4 +16,5 @@ pub enum OperationError {
     Backend,
     SchemaViolation,
     Plugin,
+    FilterGeneration,
 }

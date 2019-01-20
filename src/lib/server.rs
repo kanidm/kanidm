@@ -124,7 +124,7 @@ fn start_system_info(audit: &mut AuditScope, qs: &QueryServerWriteTransaction) {
     // check it's version
     // migrate
 
-    qs.internal_assert_or_create(e);
+    qs.internal_assert_or_create(audit, e);
 }
 
 fn start_anonymous(audit: &mut AuditScope, qs: &QueryServerWriteTransaction) {
@@ -147,7 +147,7 @@ fn start_anonymous(audit: &mut AuditScope, qs: &QueryServerWriteTransaction) {
     // if no, create
     // check it's version
     // migrate
-    qs.internal_migrate_or_create(e);
+    qs.internal_migrate_or_create(audit, e);
 }
 
 // This is the core of the server. It implements all
@@ -297,7 +297,7 @@ impl QueryServer {
 }
 
 impl<'a> QueryServerWriteTransaction<'a> {
-    pub fn create(&mut self, au: &mut AuditScope, ce: &CreateEvent) -> Result<(), OperationError> {
+    pub fn create(&self, au: &mut AuditScope, ce: &CreateEvent) -> Result<(), OperationError> {
         // The create event is a raw, read only representation of the request
         // that was made to us, including information about the identity
         // performing the request.
@@ -386,13 +386,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
     // and markers. They act as though they have the highest level privilege
     // IE there are no access control checks.
 
-    pub fn internal_exists_or_create(&self, e: Entry) -> Result<(), ()> {
+    pub fn internal_exists_or_create(&self, e: Entry) -> Result<(), OperationError> {
         // If the thing exists, stop.
         // if not, create from Entry.
         unimplemented!()
     }
 
-    pub fn internal_migrate_or_create(&self, e: Entry) -> Result<(), ()> {
+    pub fn internal_migrate_or_create(&self, audit: &mut AuditScope, e: Entry) -> Result<(), OperationError> {
         // if the thing exists, ensure the set of attributes on
         // Entry A match and are present (but don't delete multivalue, or extended
         // attributes in the situation.
@@ -403,50 +403,69 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // few attributes.
         //
         // This will extra classes an attributes alone!
-        unimplemented!()
-    }
-
-    // Should this take a be_txn?
-    pub fn internal_assert_or_create(&self, e: Entry) -> Result<(), ()> {
-        // If exists, ensure the object is exactly as provided
-        // else, if not exists, create it. IE no extra or excess
-        // attributes and classes.
-
-        // Create a filter from the entry for assertion.
-        let filt = match e.filter_from_attrs(&vec![String::from("name")]) {
+        let filt = match e.filter_from_attrs(&vec![String::from("name"), String::from("uuid")]) {
             Some(f) => f,
-            None => return Err(()),
+            None => return Err(OperationError::FilterGeneration),
         };
 
-        // Does it exist?
-        match self.internal_exists(filt) {
+        // Does it exist? (TODO: Should be search, not exists ...)
+        match self.internal_exists(audit, filt) {
             Ok(true) => {
                 // it exists. We need to ensure the content now.
                 unimplemented!()
             }
             Ok(false) => {
                 // It does not exist. Create it.
-                unimplemented!()
+                self.internal_create(audit, vec![e])
             }
             Err(e) => {
                 // An error occured. pass it back up.
-                Err(())
+                Err(e)
             }
         }
-        // If exist, check.
-        // if not the same, delete, then create
+    }
 
-        //  If not exist, create.
+    // Should this take a be_txn?
+    pub fn internal_assert_or_create(&self, audit: &mut AuditScope, e: Entry) -> Result<(), OperationError> {
+        // If exists, ensure the object is exactly as provided
+        // else, if not exists, create it. IE no extra or excess
+        // attributes and classes.
+
+        // Create a filter from the entry for assertion.
+        let filt = match e.filter_from_attrs(&vec![String::from("name"), String::from("uuid")]) {
+            Some(f) => f,
+            None => return Err(OperationError::FilterGeneration),
+        };
+
+        // Does it exist? (TODO: Should be search, not exists ...)
+        match self.internal_exists(audit, filt) {
+            Ok(true) => {
+                // it exists. We need to ensure the content now.
+                unimplemented!()
+            }
+            Ok(false) => {
+                // It does not exist. Create it.
+                self.internal_create(audit, vec![e])
+            }
+            Err(e) => {
+                // An error occured. pass it back up.
+                Err(e)
+            }
+        }
     }
 
     // These are where searches and other actions are actually implemented. This
     // is the "internal" version, where we define the event as being internal
     // only, allowing certain plugin by passes etc.
 
-    pub fn internal_create(qs: &QueryServer) -> Result<(), ()> {
-        // This will call qs.create(), after we generate a createEvent with internal
-        // types etc.
-        unimplemented!()
+    pub fn internal_create(&self, audit: &mut AuditScope, entries: Vec<Entry>) -> Result<(), OperationError> {
+        // Start the audit scope
+        let mut audit_int = AuditScope::new("internal_create");
+        // Create the CreateEvent
+        let ce = CreateEvent::new_internal(entries);
+        let res = self.create(&mut audit_int, &ce);
+        audit.append_scope(audit_int);
+        res
     }
 
     pub fn commit(mut self, audit: &mut AuditScope) -> Result<(), ()> {

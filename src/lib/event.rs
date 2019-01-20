@@ -108,6 +108,13 @@ impl CreateEvent {
             entries: entries,
         }
     }
+
+    pub fn new_internal(entries: Vec<Entry>) -> Self {
+        CreateEvent {
+            internal: true,
+            entries: entries,
+        }
+    }
 }
 
 #[derive(Debug)]
