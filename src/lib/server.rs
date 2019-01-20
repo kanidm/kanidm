@@ -11,7 +11,7 @@ use be::{
 
 use entry::Entry;
 use error::OperationError;
-use event::{CreateEvent, OpResult, SearchEvent, SearchResult, ExistsEvent};
+use event::{CreateEvent, ExistsEvent, OpResult, SearchEvent, SearchResult};
 use filter::Filter;
 use log::EventLog;
 use plugins::Plugins;
@@ -392,7 +392,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
         unimplemented!()
     }
 
-    pub fn internal_migrate_or_create(&self, audit: &mut AuditScope, e: Entry) -> Result<(), OperationError> {
+    pub fn internal_migrate_or_create(
+        &self,
+        audit: &mut AuditScope,
+        e: Entry,
+    ) -> Result<(), OperationError> {
         // if the thing exists, ensure the set of attributes on
         // Entry A match and are present (but don't delete multivalue, or extended
         // attributes in the situation.
@@ -426,7 +430,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     // Should this take a be_txn?
-    pub fn internal_assert_or_create(&self, audit: &mut AuditScope, e: Entry) -> Result<(), OperationError> {
+    pub fn internal_assert_or_create(
+        &self,
+        audit: &mut AuditScope,
+        e: Entry,
+    ) -> Result<(), OperationError> {
         // If exists, ensure the object is exactly as provided
         // else, if not exists, create it. IE no extra or excess
         // attributes and classes.
@@ -458,7 +466,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
     // is the "internal" version, where we define the event as being internal
     // only, allowing certain plugin by passes etc.
 
-    pub fn internal_create(&self, audit: &mut AuditScope, entries: Vec<Entry>) -> Result<(), OperationError> {
+    pub fn internal_create(
+        &self,
+        audit: &mut AuditScope,
+        entries: Vec<Entry>,
+    ) -> Result<(), OperationError> {
         // Start the audit scope
         let mut audit_int = AuditScope::new("internal_create");
         // Create the CreateEvent

@@ -120,7 +120,7 @@ impl CreateEvent {
 #[derive(Debug)]
 pub struct ExistsEvent {
     pub filter: Filter,
-    pub internal: bool
+    pub internal: bool,
 }
 
 impl Message for ExistsEvent {

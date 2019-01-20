@@ -197,23 +197,19 @@ impl Entry {
             match self.attrs.get(attr) {
                 Some(values) => {
                     for v in values {
-                        pairs.push( (attr.clone(), v.clone() ) )
+                        pairs.push((attr.clone(), v.clone()))
                     }
                 }
-                None => {
-                    return None
-                }
+                None => return None,
             }
         }
 
         // Now make this a filter?
 
-        let eq_filters = pairs.into_iter()
-            .map(|(attr, value)| {
-                Filter::Eq(attr, value)
-            })
+        let eq_filters = pairs
+            .into_iter()
+            .map(|(attr, value)| Filter::Eq(attr, value))
             .collect();
-
 
         Some(Filter::And(eq_filters))
     }
