@@ -1074,7 +1074,7 @@ impl<'a> SchemaWriteTransaction<'a> {
     // first, then schema to ensure that the be content matches our schema. Saying this, if your
     // schema commit fails we need to roll back still .... How great are transactions.
     // At the least, this is what validation is for!
-    pub fn commit(mut self) {
+    pub fn commit(self) {
         self.inner.commit();
     }
 

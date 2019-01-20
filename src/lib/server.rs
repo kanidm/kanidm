@@ -16,6 +16,7 @@ use filter::Filter;
 use log::EventLog;
 use plugins::Plugins;
 use schema::{Schema, SchemaTransaction, SchemaWriteTransaction};
+use constants::{JSON_ANONYMOUS_V1, JSON_SYSTEM_INFO_V1};
 
 pub fn start(log: actix::Addr<EventLog>, path: &str, threads: usize) -> actix::Addr<QueryServer> {
     let mut audit = AuditScope::new("server_start");
@@ -31,7 +32,7 @@ pub fn start(log: actix::Addr<EventLog>, path: &str, threads: usize) -> actix::A
         let be = Backend::new(&mut audit_be, path).unwrap();
         {
             // Create a new backend audit scope
-            let mut be_txn = be.write();
+            let be_txn = be.write();
             let mut schema_write = schema.write();
             audit.append_scope(audit_be);
 
@@ -58,38 +59,11 @@ pub fn start(log: actix::Addr<EventLog>, path: &str, threads: usize) -> actix::A
 
         // Create a temporary query_server implementation
         let query_server = QueryServer::new(log_inner.clone(), be.clone(), schema.clone());
-        // Start the qs txn
+
+        let mut audit_qsc = AuditScope::new("query_server_init");
         let query_server_write = query_server.write();
-
-        // TODO: Create required system objects if they are missing
-
-        // These will each manage their own transaction per operation, so the
-        // we don't need to maintain the be_txn again.
-
-        // First, check the system_info object. This stores some server information
-        // and details. It's a pretty static thing.
-        let mut audit_si = AuditScope::new("start_system_info");
-        audit_segment!(audit_si, || start_system_info(
-            &mut audit_si,
-            &query_server_write
-        ));
-        audit.append_scope(audit_si);
-
-        // Check the anonymous object exists (migrations).
-        let mut audit_an = AuditScope::new("start_anonymous");
-        audit_segment!(audit_an, || start_anonymous(
-            &mut audit_an,
-            &query_server_write
-        ));
-        audit.append_scope(audit_an);
-
-        // Check the admin object exists (migrations).
-
-        // Load access profiles and configure them.
-
+        query_server_write.initialise(&mut audit_qsc);
         // We are good to go! Finally commit and consume the txn.
-
-        let mut audit_qsc = AuditScope::new("query_server_commit");
         audit_segment!(audit_qsc, || query_server_write.commit(&mut audit_qsc));
         audit.append_scope(audit_qsc);
 
@@ -99,55 +73,6 @@ pub fn start(log: actix::Addr<EventLog>, path: &str, threads: usize) -> actix::A
     });
     log.do_send(audit);
     qs_addr
-}
-
-fn start_system_info(audit: &mut AuditScope, qs: &QueryServerWriteTransaction) {
-    // FIXME: Get the domain from the config
-    let e: Entry = serde_json::from_str(
-        r#"{
-        "attrs": {
-            "class": ["object", "system_info"],
-            "name": ["system_info"],
-            "uuid": [],
-            "description": ["System info and metadata object."],
-            "version": ["1"],
-            "domain": ["example.com"]
-        }
-    }"#,
-    )
-    .unwrap();
-
-    // Does it exist?
-    // if yes, load
-    // if no, create
-    // TODO: internal_create function to allow plugin + schema checks
-    // check it's version
-    // migrate
-
-    qs.internal_assert_or_create(audit, e);
-}
-
-fn start_anonymous(audit: &mut AuditScope, qs: &QueryServerWriteTransaction) {
-    // Does it exist?
-    let e: Entry = serde_json::from_str(
-        r#"{
-        "attrs": {
-            "class": ["object", "account"],
-            "name": ["anonymous"],
-            "uuid": [],
-            "description": ["Anonymous access account."],
-            "version": ["1"]
-
-        }
-    }"#,
-    )
-    .unwrap();
-
-    // if yes, load
-    // if no, create
-    // check it's version
-    // migrate
-    qs.internal_migrate_or_create(audit, e);
 }
 
 // This is the core of the server. It implements all
@@ -214,7 +139,7 @@ pub trait QueryServerReadTransaction {
         res
     }
 
-    fn internal_search(&self, au: &mut AuditScope, filter: Filter) -> Result<(), ()> {
+    fn internal_search(&self, _au: &mut AuditScope, _filter: Filter) -> Result<(), ()> {
         unimplemented!()
     }
 }
@@ -359,7 +284,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .map(|_| ())
             .map_err(|e| match e {
                 BackendError::EmptyRequest => OperationError::EmptyRequest,
-                _ => OperationError::Backend,
             });
         au.append_scope(audit_be);
 
@@ -480,7 +404,38 @@ impl<'a> QueryServerWriteTransaction<'a> {
         res
     }
 
-    pub fn commit(mut self, audit: &mut AuditScope) -> Result<(), ()> {
+    // This function is idempotent
+    pub fn initialise(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
+        // First, check the system_info object. This stores some server information
+        // and details. It's a pretty static thing.
+        let mut audit_si = AuditScope::new("start_system_info");
+        let res = audit_segment!(audit_si, || {
+            let e: Entry = serde_json::from_str(JSON_SYSTEM_INFO_V1).unwrap();
+            self.internal_assert_or_create(audit, e)
+        });
+        audit.append_scope(audit_si);
+        if res.is_err() {
+            return res;
+        }
+
+        // Check the anonymous object exists (migrations).
+        let mut audit_an = AuditScope::new("start_anonymous");
+        let res = audit_segment!(audit_an, || {
+            let e: Entry = serde_json::from_str(JSON_ANONYMOUS_V1).unwrap();
+            self.internal_migrate_or_create(audit, e)
+        });
+        audit.append_scope(audit_an);
+        if res.is_err() {
+            return res;
+        }
+
+        // Check the admin object exists (migrations).
+
+        // Load access profiles and configure them.
+        Ok(())
+    }
+
+    pub fn commit(self, audit: &mut AuditScope) -> Result<(), ()> {
         let QueryServerWriteTransaction {
             committed,
             be_txn,
@@ -560,7 +515,7 @@ impl Handler<CreateEvent> for QueryServer {
         let res = audit_segment!(&mut audit, || {
             audit_log!(audit, "Begin create event {:?}", msg);
 
-            let mut qs_write = self.write();
+            let qs_write = self.write();
 
             match qs_write.create(&mut audit, &msg) {
                 Ok(()) => {
@@ -678,5 +633,35 @@ mod tests {
 
     // Test Create Empty
 
-    //
+    // Test Init is Idempotent
+
+    #[test]
+    fn test_qs_init_idempotent_1() {
+        run_test!(|_log, mut server: QueryServer, audit: &mut AuditScope| {
+            {
+                // Setup and abort.
+                let server_txn = server.write();
+                assert!(server_txn.initialise(audit).is_ok());
+            }
+            {
+                let server_txn = server.write();
+                assert!(server_txn.initialise(audit).is_ok());
+                assert!(server_txn.initialise(audit).is_ok());
+                assert!(server_txn.commit(audit).is_ok());
+            }
+            {
+                // Now do it again in a new txn, but abort
+                let server_txn = server.write();
+                assert!(server_txn.initialise(audit).is_ok());
+            }
+            {
+                // Now do it again in a new txn.
+                let server_txn = server.write();
+                assert!(server_txn.initialise(audit).is_ok());
+                assert!(server_txn.commit(audit).is_ok());
+            }
+
+            future::ok(())
+        });
+    }
 }

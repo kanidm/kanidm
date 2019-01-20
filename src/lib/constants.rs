@@ -1,5 +1,27 @@
 pub static UUID_ADMIN: &'static str = "00000000-0000-0000-0000-000000000000";
+
 pub static UUID_ANONYMOUS: &'static str = "00000000-0000-0000-0000-ffffffffffff";
+pub static JSON_ANONYMOUS_V1: &'static str = r#"{
+    "attrs": {
+        "class": ["object", "account"],
+        "name": ["anonymous"],
+        "uuid": ["00000000-0000-0000-0000-ffffffffffff"],
+        "description": ["Anonymous access account."],
+        "version": ["1"]
+    }
+}"#;
+
+pub static UUID_SYSTEM_INFO: &'static str = "00000000-0000-0000-0000-ffffff000001";
+pub static JSON_SYSTEM_INFO_V1: &'static str = r#"{
+    "attrs": {
+        "class": ["object", "system_info"],
+        "name": ["system_info"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000001"],
+        "description": ["System info and metadata object."],
+        "version": ["1"],
+        "domain": ["example.com"]
+    }
+}"#;
 
 // Core
 pub static UUID_SCHEMA_ATTR_CLASS: &'static str = "aa0f193f-3010-4783-9c9e-f97edb14d8c2";

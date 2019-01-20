@@ -102,6 +102,7 @@ impl CreateEvent {
     }
 
     // Is this an internal only function?
+    #[cfg(test)]
     pub fn from_vec(entries: Vec<Entry>) -> Self {
         CreateEvent {
             internal: false,

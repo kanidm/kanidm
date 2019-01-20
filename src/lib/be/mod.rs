@@ -64,6 +64,9 @@ pub trait BackendReadTransaction {
         // Unlike DS, even if we don't get the index back, we can just pass
         // to the in-memory filter test and be done.
         audit_segment!(au, || {
+            // Do a final optimise of the filter
+            let filt = filt.optimise();
+
             let mut raw_entries: Vec<String> = Vec::new();
             {
                 // Actually do a search now!
@@ -114,7 +117,12 @@ pub trait BackendReadTransaction {
     /// load any candidates if they match. This is heavily used in uuid
     /// refint and attr uniqueness.
     fn exists(&self, au: &mut AuditScope, filt: &Filter) -> Result<bool, BackendError> {
-        let r = self.search(au, filt);
+        // Do a final optimise of the filter
+        // At the moment, technically search will do this, but it won't always be the
+        // case once this becomes a standalone function.
+        let filt = filt.optimise();
+
+        let r = self.search(au, &filt);
         match r {
             Ok(v) => {
                 if v.len() > 0 {
@@ -166,7 +174,7 @@ impl BackendReadTransaction for BackendTransaction {
 }
 
 static DBV_ID2ENTRY: &'static str = "id2entry";
-static DBV_INDEX: &'static str = "index";
+// static DBV_INDEX: &'static str = "index";
 
 impl Drop for BackendWriteTransaction {
     // Abort

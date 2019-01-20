@@ -22,7 +22,7 @@ pub enum Filter {
 impl Filter {
     // Does this need mut self? Aren't we returning
     // a new copied filter?
-    fn optimise(&self) -> Self {
+    pub fn optimise(&self) -> Self {
         // Apply optimisations to the filter
         // An easy way would be imple partialOrd
         // then do sort on the or/and/not
@@ -35,8 +35,7 @@ impl Filter {
         // If an or/not/and condition has no items, remove it
         //
         // If its the root item?
-        // self.clone()
-        unimplemented!()
+        self.clone()
     }
 
     // This is probably not safe, so it's for internal test cases
