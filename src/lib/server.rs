@@ -11,7 +11,7 @@ use be::{
 
 use entry::Entry;
 use error::OperationError;
-use event::{CreateEvent, OpResult, SearchEvent, SearchResult};
+use event::{CreateEvent, OpResult, SearchEvent, SearchResult, ExistsEvent};
 use filter::Filter;
 use log::EventLog;
 use plugins::Plugins;
@@ -191,12 +191,30 @@ pub trait QueryServerReadTransaction {
         res
     }
 
-    // Specialisation of search for exists or not
-    fn internal_exists(&self, filter: Filter) -> Result<bool, ()> {
-        unimplemented!()
+    fn exists(&self, au: &mut AuditScope, ee: &ExistsEvent) -> Result<bool, OperationError> {
+        let mut audit_be = AuditScope::new("backend_exists");
+        let res = self
+            .get_be_txn()
+            .exists(&mut audit_be, &ee.filter)
+            .map(|r| r)
+            .map_err(|_| OperationError::Backend);
+        au.append_scope(audit_be);
+        res
     }
 
-    fn internal_search(&self, filter: Filter) -> Result<(), ()> {
+    // From internal, generate an exists event and dispatch
+    fn internal_exists(&self, au: &mut AuditScope, filter: Filter) -> Result<bool, OperationError> {
+        let mut audit_int = AuditScope::new("internal_exists");
+        // Build an exists event
+        let ee = ExistsEvent::new_internal(filter);
+        // Submit it
+        let res = self.exists(&mut audit_int, &ee);
+        au.append_scope(audit_int);
+        // return result
+        res
+    }
+
+    fn internal_search(&self, au: &mut AuditScope, filter: Filter) -> Result<(), ()> {
         unimplemented!()
     }
 }

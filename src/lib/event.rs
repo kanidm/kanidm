@@ -9,6 +9,8 @@ use error::OperationError;
 // FIXME: Remove seralising here - each type should
 // have it's own result type!
 
+// TODO: Every event should have a uuid for logging analysis
+
 #[derive(Debug)]
 pub struct OpResult {}
 
@@ -104,6 +106,25 @@ impl CreateEvent {
         CreateEvent {
             internal: false,
             entries: entries,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct ExistsEvent {
+    pub filter: Filter,
+    pub internal: bool
+}
+
+impl Message for ExistsEvent {
+    type Result = Result<OpResult, OperationError>;
+}
+
+impl ExistsEvent {
+    pub fn new_internal(filter: Filter) -> Self {
+        ExistsEvent {
+            filter: filter,
+            internal: true,
         }
     }
 }
