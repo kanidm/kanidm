@@ -17,7 +17,7 @@ pub enum Filter {
     Pres(String),
     Or(Vec<Filter>),
     And(Vec<Filter>),
-    Not(Vec<Filter>),
+    Not(Box<Filter>),
 }
 
 impl Filter {
@@ -56,13 +56,27 @@ impl Filter {
                 e.attribute_pres(attr.as_str())
             }
             Filter::Or(l) => {
-                unimplemented!();
+                l.iter()
+                    .fold(false, |acc, f| {
+                        if acc {
+                            acc
+                        } else {
+                            f.entry_match_no_index(e)
+                        }
+                    })
             }
-            Filter::And(_) => {
-                unimplemented!();
+            Filter::And(l) => {
+                l.iter()
+                    .fold(true, |acc, f| {
+                        if acc {
+                            f.entry_match_no_index(e)
+                        } else {
+                            acc
+                        }
+                    })
             }
-            Filter::Not(_) => {
-                unimplemented!();
+            Filter::Not(f) => {
+                !f.entry_match_no_index(e)
             }
         }
     }
@@ -253,7 +267,7 @@ mod tests {
             Filter::Eq(String::from("userid"), String::from("alice")),
             Filter::Eq(String::from("uidNumber"), String::from("1001")),
         ]);
-        assert!(f_t4a.entry_match_no_index(&e));
+        assert!(!f_t4a.entry_match_no_index(&e));
     }
 
     #[test]
@@ -275,19 +289,19 @@ mod tests {
             Filter::Eq(String::from("userid"), String::from("william")),
             Filter::Eq(String::from("uidNumber"), String::from("1001")),
         ]);
-        assert!(f_t2a.entry_match_no_index(&e));
+        assert!(!f_t2a.entry_match_no_index(&e));
 
         let f_t3a = Filter::And(vec![
             Filter::Eq(String::from("userid"), String::from("alice")),
             Filter::Eq(String::from("uidNumber"), String::from("1000")),
         ]);
-        assert!(f_t3a.entry_match_no_index(&e));
+        assert!(!f_t3a.entry_match_no_index(&e));
 
         let f_t4a = Filter::And(vec![
             Filter::Eq(String::from("userid"), String::from("alice")),
             Filter::Eq(String::from("uidNumber"), String::from("1001")),
         ]);
-        assert!(f_t4a.entry_match_no_index(&e));
+        assert!(!f_t4a.entry_match_no_index(&e));
     }
 
     #[test]
