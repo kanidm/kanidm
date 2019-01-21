@@ -9,6 +9,7 @@ use be::{
     Backend, BackendError, BackendReadTransaction, BackendTransaction, BackendWriteTransaction,
 };
 
+use constants::{JSON_ANONYMOUS_V1, JSON_SYSTEM_INFO_V1};
 use entry::Entry;
 use error::OperationError;
 use event::{CreateEvent, ExistsEvent, OpResult, SearchEvent, SearchResult};
@@ -16,7 +17,6 @@ use filter::Filter;
 use log::EventLog;
 use plugins::Plugins;
 use schema::{Schema, SchemaTransaction, SchemaWriteTransaction};
-use constants::{JSON_ANONYMOUS_V1, JSON_SYSTEM_INFO_V1};
 
 pub fn start(log: actix::Addr<EventLog>, path: &str, threads: usize) -> actix::Addr<QueryServer> {
     let mut audit = AuditScope::new("server_start");

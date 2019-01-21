@@ -360,4 +360,5 @@ mod tests {
         assert!(!e.attribute_equality("userid", "test"));
         assert!(!e.attribute_equality("nonexist", "william"));
     }
+
 }

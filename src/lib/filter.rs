@@ -4,6 +4,7 @@
 
 use super::entry::Entry;
 use std::cmp::{Ordering, PartialOrd};
+use regex::Regex;
 
 // Perhaps make these json serialisable. Certainly would make parsing
 // simpler ...
@@ -38,14 +39,6 @@ impl Filter {
         self.clone()
     }
 
-    // This is probably not safe, so it's for internal test cases
-    // only because I'm familiar with the syntax ... you have been warned.
-    fn from_ldap_string(_ldap_string: String) -> Result<Self, ()> {
-        unimplemented!()
-        // For now return an empty filters
-        // Ok(Filter::And(Vec::new()))
-    }
-
     // What other parse types do we need?
 
     // FIXME: This check should be in ENTRY not here, because it's up to others
@@ -62,7 +55,7 @@ impl Filter {
                 // Given attr, is is present in the entry?
                 e.attribute_pres(attr.as_str())
             }
-            Filter::Or(_) => {
+            Filter::Or(l) => {
                 unimplemented!();
             }
             Filter::And(_) => {
@@ -134,6 +127,7 @@ impl PartialOrd for Filter {
 #[cfg(test)]
 mod tests {
     use super::Filter;
+    use entry::Entry;
     use serde_json;
     use std::cmp::{Ordering, PartialOrd};
 
@@ -226,5 +220,105 @@ mod tests {
 
         assert_eq!(f_t2a == f_t2b, true);
         assert_eq!(f_t2a == f_t2c, false);
+    }
+
+    #[test]
+    fn test_or_entry_filter() {
+        let e: Entry = serde_json::from_str(r#"{
+            "attrs": {
+                "userid": ["william"],
+                "uidNumber": ["1000"]
+            }
+        }"#).unwrap();
+
+        let f_t1a = Filter::Or(vec![
+            Filter::Eq(String::from("userid"), String::from("william")),
+            Filter::Eq(String::from("uidNumber"), String::from("1000")),
+        ]);
+        assert!(f_t1a.entry_match_no_index(&e));
+
+        let f_t2a = Filter::Or(vec![
+            Filter::Eq(String::from("userid"), String::from("william")),
+            Filter::Eq(String::from("uidNumber"), String::from("1001")),
+        ]);
+        assert!(f_t2a.entry_match_no_index(&e));
+
+        let f_t3a = Filter::Or(vec![
+            Filter::Eq(String::from("userid"), String::from("alice")),
+            Filter::Eq(String::from("uidNumber"), String::from("1000")),
+        ]);
+        assert!(f_t3a.entry_match_no_index(&e));
+
+        let f_t4a = Filter::Or(vec![
+            Filter::Eq(String::from("userid"), String::from("alice")),
+            Filter::Eq(String::from("uidNumber"), String::from("1001")),
+        ]);
+        assert!(f_t4a.entry_match_no_index(&e));
+    }
+
+    #[test]
+    fn test_and_entry_filter() {
+        let e: Entry = serde_json::from_str(r#"{
+            "attrs": {
+                "userid": ["william"],
+                "uidNumber": ["1000"]
+            }
+        }"#).unwrap();
+
+        let f_t1a = Filter::And(vec![
+            Filter::Eq(String::from("userid"), String::from("william")),
+            Filter::Eq(String::from("uidNumber"), String::from("1000")),
+        ]);
+        assert!(f_t1a.entry_match_no_index(&e));
+
+        let f_t2a = Filter::And(vec![
+            Filter::Eq(String::from("userid"), String::from("william")),
+            Filter::Eq(String::from("uidNumber"), String::from("1001")),
+        ]);
+        assert!(f_t2a.entry_match_no_index(&e));
+
+        let f_t3a = Filter::And(vec![
+            Filter::Eq(String::from("userid"), String::from("alice")),
+            Filter::Eq(String::from("uidNumber"), String::from("1000")),
+        ]);
+        assert!(f_t3a.entry_match_no_index(&e));
+
+        let f_t4a = Filter::And(vec![
+            Filter::Eq(String::from("userid"), String::from("alice")),
+            Filter::Eq(String::from("uidNumber"), String::from("1001")),
+        ]);
+        assert!(f_t4a.entry_match_no_index(&e));
+    }
+
+    #[test]
+    fn test_not_entry_filter() {
+        let e1: Entry = serde_json::from_str(r#"{
+            "attrs": {
+                "userid": ["william"],
+                "uidNumber": ["1000"]
+            }
+        }"#).unwrap();
+        assert!(false);
+    }
+
+    #[test]
+    fn test_nested_entry_filter() {
+        let e1: Entry = serde_json::from_str(r#"{
+            "attrs": {
+                "userid": ["william"],
+                "uidNumber": ["1000"]
+            }
+        }"#).unwrap();
+
+        let f_t1a = Filter::And(vec![
+            Filter::Eq(String::from("class"), String::from("person")),
+            Filter::And(vec![
+                Filter::Eq(String::from("uidNumber"), String::from("1001")),
+                Filter::Eq(String::from("uidNumber"), String::from("1000")),
+            ]),
+        ]);
+
+        println!("{:?}", f_t1a);
+        assert!(false);
     }
 }
