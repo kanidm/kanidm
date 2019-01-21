@@ -1021,19 +1021,8 @@ impl SchemaInner {
                     }
                 })
             }
-            Filter::Not(filters) => {
-                // This should never happen because
-                // optimising should remove them as invalid parts?
-                if filters.len() == 0 {
-                    return Err(SchemaError::EmptyFilter);
-                };
-                filters.iter().fold(Ok(()), |acc, filt| {
-                    if acc.is_ok() {
-                        self.validate_filter(filt)
-                    } else {
-                        acc
-                    }
-                })
+            Filter::Not(filter) => {
+                self.validate_filter(filter)
             }
         }
     }

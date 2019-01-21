@@ -319,20 +319,43 @@ mod tests {
     fn test_nested_entry_filter() {
         let e1: Entry = serde_json::from_str(r#"{
             "attrs": {
-                "userid": ["william"],
+                "class": ["person"],
+                "uidNumber": ["1000"]
+            }
+        }"#).unwrap();
+
+        let e2: Entry = serde_json::from_str(r#"{
+            "attrs": {
+                "class": ["person"],
+                "uidNumber": ["1001"]
+            }
+        }"#).unwrap();
+
+        let e3: Entry = serde_json::from_str(r#"{
+            "attrs": {
+                "class": ["person"],
+                "uidNumber": ["1002"]
+            }
+        }"#).unwrap();
+
+        let e4: Entry = serde_json::from_str(r#"{
+            "attrs": {
+                "class": ["group"],
                 "uidNumber": ["1000"]
             }
         }"#).unwrap();
 
         let f_t1a = Filter::And(vec![
             Filter::Eq(String::from("class"), String::from("person")),
-            Filter::And(vec![
+            Filter::Or(vec![
                 Filter::Eq(String::from("uidNumber"), String::from("1001")),
                 Filter::Eq(String::from("uidNumber"), String::from("1000")),
             ]),
         ]);
 
-        println!("{:?}", f_t1a);
-        assert!(false);
+        assert!(f_t1a.entry_match_no_index(&e1));
+        assert!(f_t1a.entry_match_no_index(&e2));
+        assert!(!f_t1a.entry_match_no_index(&e3));
+        assert!(!f_t1a.entry_match_no_index(&e4));
     }
 }
