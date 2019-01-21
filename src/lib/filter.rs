@@ -312,7 +312,17 @@ mod tests {
                 "uidNumber": ["1000"]
             }
         }"#).unwrap();
-        assert!(false);
+
+        let f_t1a = Filter::Not(Box::new(
+            Filter::Eq(String::from("userid"), String::from("alice")),
+        ));
+        assert!(f_t1a.entry_match_no_index(&e1));
+
+        let f_t2a = Filter::Not(Box::new(
+            Filter::Eq(String::from("userid"), String::from("william")),
+        ));
+        assert!(!f_t2a.entry_match_no_index(&e1));
+
     }
 
     #[test]
