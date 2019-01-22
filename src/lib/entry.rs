@@ -93,14 +93,18 @@ impl<'a> Iterator for EntryAvasMut<'a> {
     }
 }
 
+// This is a BE concept, so move it there!
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Entry {
+    pub id: Option<i64>,
     attrs: BTreeMap<String, Vec<String>>,
 }
 
 impl Entry {
     pub fn new() -> Self {
         Entry {
+            // This means NEVER COMMITED
+            id: None,
             attrs: BTreeMap::new(),
         }
     }
@@ -222,6 +226,7 @@ impl Entry {
         Entry {
             // For now, we do a straight move, and we sort the incoming data
             // sets so that BST works.
+            id: None,
             attrs: e
                 .attrs
                 .iter()
@@ -250,6 +255,7 @@ impl Entry {
 impl Clone for Entry {
     fn clone(&self) -> Entry {
         Entry {
+            id: self.id,
             attrs: self.attrs.clone(),
         }
     }

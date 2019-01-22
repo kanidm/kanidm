@@ -12,7 +12,7 @@ use be::{
 use constants::{JSON_ANONYMOUS_V1, JSON_SYSTEM_INFO_V1};
 use entry::Entry;
 use error::OperationError;
-use event::{CreateEvent, ExistsEvent, OpResult, SearchEvent, SearchResult};
+use event::{CreateEvent, ExistsEvent, OpResult, SearchEvent, SearchResult, DeleteEvent};
 use filter::Filter;
 use log::EventLog;
 use plugins::Plugins;
@@ -139,7 +139,7 @@ pub trait QueryServerReadTransaction {
         res
     }
 
-    fn internal_search(&self, _au: &mut AuditScope, _filter: Filter) -> Result<(), ()> {
+    fn internal_search(&self, _au: &mut AuditScope, _filter: Filter) -> Result<Vec<Entry>, OperationError> {
         unimplemented!()
     }
 }
@@ -258,7 +258,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
             if acc.is_ok() {
                 self.schema
                     .validate_entry(e)
-                    .map_err(|_| OperationError::SchemaViolation)
+                    .map_err(|err| {
+                        audit_log!(au, "Schema Violation: {:?}", err);
+                        OperationError::SchemaViolation
+                    })
             } else {
                 acc
             }
@@ -284,6 +287,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .map(|_| ())
             .map_err(|e| match e {
                 BackendError::EmptyRequest => OperationError::EmptyRequest,
+                BackendError::EntryMissingId => OperationError::InvalidRequestState,
             });
         au.append_scope(audit_be);
 
@@ -301,6 +305,41 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // We are complete, finalise logging and return
 
         audit_log!(au, "Create operation success");
+        res
+    }
+
+
+    pub fn delete(&self, au: &mut AuditScope, ce: &DeleteEvent) -> Result<(), OperationError> {
+        unimplemented!()
+    }
+
+    // These are where searches and other actions are actually implemented. This
+    // is the "internal" version, where we define the event as being internal
+    // only, allowing certain plugin by passes etc.
+
+    pub fn internal_create(
+        &self,
+        audit: &mut AuditScope,
+        entries: Vec<Entry>,
+    ) -> Result<(), OperationError> {
+        // Start the audit scope
+        let mut audit_int = AuditScope::new("internal_create");
+        // Create the CreateEvent
+        let ce = CreateEvent::new_internal(entries);
+        let res = self.create(&mut audit_int, &ce);
+        audit.append_scope(audit_int);
+        res
+    }
+
+    pub fn internal_delete(
+        &self,
+        audit: &mut AuditScope,
+        filter: Filter
+    ) -> Result<(), OperationError> {
+        let mut audit_int = AuditScope::new("internal_delete");
+        let de = DeleteEvent::new_internal(filter);
+        let res = self.delete(&mut audit_int, &de);
+        audit.append_scope(audit_int);
         res
     }
 
@@ -370,38 +409,27 @@ impl<'a> QueryServerWriteTransaction<'a> {
         };
 
         // Does it exist? (TODO: Should be search, not exists ...)
-        match self.internal_exists(audit, filt) {
-            Ok(true) => {
-                // it exists. We need to ensure the content now.
-                unimplemented!()
-            }
-            Ok(false) => {
-                // It does not exist. Create it.
-                self.internal_create(audit, vec![e])
+        match self.internal_search(audit, filt.clone()) {
+            Ok(results) => {
+                if results.len() == 0 {
+                    // It does not exist. Create it.
+                    self.internal_create(audit, vec![e])
+                } else if results.len() == 1 {
+                    // it exists. To guarantee content exactly as is, we compare if it's identical.
+                    if e != results[0] {
+                        self.internal_delete(audit, filt);
+                        self.internal_create(audit, vec![e]);
+                    };
+                    Ok(())
+                } else {
+                    Err(OperationError::InvalidDBState)
+                }
             }
             Err(e) => {
                 // An error occured. pass it back up.
                 Err(e)
             }
         }
-    }
-
-    // These are where searches and other actions are actually implemented. This
-    // is the "internal" version, where we define the event as being internal
-    // only, allowing certain plugin by passes etc.
-
-    pub fn internal_create(
-        &self,
-        audit: &mut AuditScope,
-        entries: Vec<Entry>,
-    ) -> Result<(), OperationError> {
-        // Start the audit scope
-        let mut audit_int = AuditScope::new("internal_create");
-        // Create the CreateEvent
-        let ce = CreateEvent::new_internal(entries);
-        let res = self.create(&mut audit_int, &ce);
-        audit.append_scope(audit_int);
-        res
     }
 
     // This function is idempotent
@@ -414,6 +442,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             self.internal_assert_or_create(audit, e)
         });
         audit.append_scope(audit_si);
+        assert!(res.is_ok());
         if res.is_err() {
             return res;
         }
@@ -425,6 +454,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             self.internal_migrate_or_create(audit, e)
         });
         audit.append_scope(audit_an);
+        assert!(res.is_ok());
         if res.is_err() {
             return res;
         }

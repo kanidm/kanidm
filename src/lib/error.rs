@@ -4,7 +4,7 @@ pub enum SchemaError {
     InvalidClass,
     // FIXME: Is there a way to say what we are missing on error?
     // Yes, add a string on the enum.
-    MissingMustAttribute,
+    MissingMustAttribute(String),
     InvalidAttribute,
     InvalidAttributeSyntax,
     EmptyFilter,
@@ -17,4 +17,6 @@ pub enum OperationError {
     SchemaViolation,
     Plugin,
     FilterGeneration,
+    InvalidDBState,
+    InvalidRequestState,
 }

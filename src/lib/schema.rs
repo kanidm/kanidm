@@ -910,7 +910,9 @@ impl SchemaInner {
         for (attr_name, _attr) in must {
             let avas = entry.get_ava(&attr_name);
             if avas.is_none() {
-                return Err(SchemaError::MissingMustAttribute);
+                return Err(SchemaError::MissingMustAttribute(
+                    String::from(attr_name)
+                ));
             }
         }
 
@@ -1373,7 +1375,7 @@ mod tests {
 
         assert_eq!(
             schema.validate_entry(&e_attr_invalid),
-            Err(SchemaError::MissingMustAttribute)
+            Err(SchemaError::MissingMustAttribute(String::from("system")))
         );
 
         let e_attr_invalid_may: Entry = serde_json::from_str(

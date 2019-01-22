@@ -7,7 +7,8 @@ pub static JSON_ANONYMOUS_V1: &'static str = r#"{
         "name": ["anonymous"],
         "uuid": ["00000000-0000-0000-0000-ffffffffffff"],
         "description": ["Anonymous access account."],
-        "version": ["1"]
+        "version": ["1"],
+        "displayname": ["Anonymous"]
     }
 }"#;
 

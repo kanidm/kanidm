@@ -17,9 +17,8 @@ mod sqlite_be;
 
 #[derive(Debug)]
 struct IdEntry {
-    // FIXME: This should be u64, but sqlite uses i32 ...
-    // Should we use a bigint pk and just be done?
-    id: i32,
+    // FIXME: This should be u64, but sqlite uses i64 ...
+    id: i64,
     data: String,
 }
 
@@ -33,6 +32,7 @@ pub enum BackendType {
 #[derive(Debug, PartialEq)]
 pub enum BackendError {
     EmptyRequest,
+    EntryMissingId,
 }
 
 pub struct Backend {
@@ -67,7 +67,7 @@ pub trait BackendReadTransaction {
             // Do a final optimise of the filter
             let filt = filt.optimise();
 
-            let mut raw_entries: Vec<String> = Vec::new();
+            let mut raw_entries: Vec<IdEntry> = Vec::new();
             {
                 // Actually do a search now!
                 // let conn = self.pool.get().unwrap();
@@ -87,19 +87,18 @@ pub trait BackendReadTransaction {
                     .unwrap();
                 for row in id2entry_iter {
                     audit_log!(au, "raw entry: {:?}", row);
-                    // FIXME: Handle this properly.
-                    raw_entries.push(row.unwrap().data);
+                    // FIXME: Handle possible errors correctly.
+                    raw_entries.push(row.unwrap());
                 }
-                // Rollback, we should have done nothing.
-                // conn.execute("ROLLBACK TRANSACTION", NO_PARAMS).unwrap();
             }
             // Do other things
-            // Now, de-serialise the raw_entries back to entries
+            // Now, de-serialise the raw_entries back to entries, and populate their ID's
             let entries: Vec<Entry> = raw_entries
                 .iter()
-                .filter_map(|val| {
+                .filter_map(|id_ent| {
                     // TODO: Should we do better than unwrap?
-                    let e: Entry = serde_json::from_str(val.as_str()).unwrap();
+                    let mut e: Entry = serde_json::from_str(id_ent.data.as_str()).unwrap();
+                    e.id = Some(id_ent.id);
                     if filt.entry_match_no_index(&e) {
                         Some(e)
                     } else {
@@ -206,6 +205,18 @@ impl BackendWriteTransaction {
         }
     }
 
+    fn get_id2entry_max_id(&self) -> i64 {
+        let mut stmt = self.conn.prepare("SELECT MAX(id) as id_max FROM id2entry").unwrap();
+        assert!(stmt.exists(NO_PARAMS).unwrap());
+
+        let i: Option<i64> = stmt.query_row(NO_PARAMS, |row| row.get(0))
+            .expect("failed to execute");
+        match i {
+            Some(e) => e,
+            None => 0,
+        }
+    }
+
     pub fn create(&self, au: &mut AuditScope, entries: &Vec<Entry>) -> Result<(), BackendError> {
         audit_segment!(au, || {
             // Start be audit timer
@@ -220,11 +231,18 @@ impl BackendWriteTransaction {
             // we do this outside the txn to avoid blocking needlessly.
             // However, it could be pointless due to the extra string allocs ...
 
-            let ser_entries: Vec<String> = entries
+            // Get the max id from the db. We store this ourselves to avoid max().
+            let mut id_max = self.get_id2entry_max_id();
+
+            let ser_entries: Vec<IdEntry> = entries
                 .iter()
                 .map(|val| {
                     // TODO: Should we do better than unwrap?
-                    serde_json::to_string(&val).unwrap()
+                    id_max = id_max + 1;
+                    IdEntry {
+                        id: id_max,
+                        data: serde_json::to_string(&val).unwrap(),
+                    }
                 })
                 .collect();
 
@@ -237,10 +255,11 @@ impl BackendWriteTransaction {
 
                 // write them all
                 for ser_entry in ser_entries {
+                    // TODO: Prepared statement.
                     self.conn
                         .execute(
-                            "INSERT INTO id2entry (data) VALUES (?1)",
-                            &[&ser_entry as &ToSql],
+                            "INSERT INTO id2entry (id, data) VALUES (?1, ?2)",
+                            &[&ser_entry.id as &ToSql, &ser_entry.data as &ToSql],
                         )
                         .unwrap();
                 }
@@ -254,20 +273,56 @@ impl BackendWriteTransaction {
         })
     }
 
-    pub fn modify() {
+    pub fn modify() -> Result<(), BackendError> {
         unimplemented!()
     }
 
-    pub fn delete() {
-        unimplemented!()
+    pub fn delete(&self, au: &mut AuditScope, entries: &Vec<Entry>) -> Result<(), BackendError> {
+        // Perform a search for the entries --> This is a problem for the caller
+
+        if entries.is_empty() {
+            // TODO: Better error
+            // End the timer
+            return Err(BackendError::EmptyRequest);
+        }
+
+        // Assert the Id's exist on the entry.
+        let id_list: Vec<i64> = entries.iter()
+            .filter_map(|entry| {
+                entry.id
+            })
+            .collect();
+
+        // Simple: If the list of id's is not the same as the input list, we are missing id's
+        if entries.len() != id_list.len() {
+            return Err(BackendError::EntryMissingId);
+        }
+
+
+
+        // Now, given the list of id's, delete them.
+        {
+            // SQL doesn't say if the thing "does or does not exist anymore". As a result,
+            // two deletes is a safe and valid operation. Given how we allocate ID's we are
+            // probably okay with this.
+
+            // TODO: ACTUALLY HANDLE THIS ERROR WILLIAM YOU LAZY SHIT.
+            let mut stmt = self.conn.prepare("DELETE FROM id2entry WHERE id = :id").unwrap();
+
+            id_list.iter().for_each(|id| {
+                stmt.execute(&[id]).unwrap();
+            });
+        }
+
+        Ok(())
     }
 
-    pub fn backup() {
+    pub fn backup() -> Result<(), BackendError> {
         unimplemented!()
     }
 
     // Should this be offline only?
-    pub fn restore() {
+    pub fn restore() -> Result<(), BackendError> {
         unimplemented!()
     }
 
@@ -286,7 +341,7 @@ impl BackendWriteTransaction {
 
     // ===== inner helpers =====
     // Some of these are not self due to use in new()
-    fn get_db_version_key(&self, key: &str) -> i32 {
+    fn get_db_version_key(&self, key: &str) -> i64 {
         match self.conn.query_row_named(
             "SELECT version FROM db_version WHERE id = :id",
             &[(":id", &key)],
@@ -458,6 +513,14 @@ mod tests {
         }};
     }
 
+    macro_rules! entry_exists {
+        ($audit:expr, $be:expr, $ent:expr) => {{
+            let filt = $ent.filter_from_attrs(&vec![String::from("userid")]).unwrap();
+            let entries = $be.search($audit, &filt).unwrap();
+            entries.first().is_some()
+        }}
+    }
+
     #[test]
     fn test_simple_create() {
         run_test!(|audit: &mut AuditScope, be: &BackendWriteTransaction| {
@@ -470,17 +533,12 @@ mod tests {
             let mut e: Entry = Entry::new();
             e.add_ava(String::from("userid"), String::from("william"));
 
-            let single_result = be.create(audit, &vec![e]);
+            let single_result = be.create(audit, &vec![e.clone()]);
 
             assert!(single_result.is_ok());
 
             // Construct a filter
-            let filt = Filter::Pres(String::from("userid"));
-            let entries = be.search(audit, &filt).unwrap();
-
-            // There should only be one entry so is this enough?
-            assert!(entries.first().is_some());
-            // Later we could check consistency of the entry saved ...
+            assert!(entry_exists!(audit, be, e));
         });
     }
 
@@ -502,6 +560,57 @@ mod tests {
     fn test_simple_delete() {
         run_test!(|audit: &mut AuditScope, be: &BackendWriteTransaction| {
             audit_log!(audit, "Simple Delete");
+
+            // First create some entries (3?)
+            let mut e1: Entry = Entry::new();
+            e1.add_ava(String::from("userid"), String::from("william"));
+
+            let mut e2: Entry = Entry::new();
+            e2.add_ava(String::from("userid"), String::from("alice"));
+
+            let mut e3: Entry = Entry::new();
+            e3.add_ava(String::from("userid"), String::from("lucy"));
+
+            assert!(be.create(audit, &vec![e1.clone(), e2.clone(), e3.clone()]).is_ok());
+            assert!(entry_exists!(audit, be, e1));
+            assert!(entry_exists!(audit, be, e2));
+            assert!(entry_exists!(audit, be, e3));
+
+
+            // You need to now retrieve the entries back out to get the entry id's
+            let mut results = be.search(audit, &Filter::Pres(String::from("userid"))).unwrap();
+
+            // Get these out to usable entries.
+            let r1 = results.remove(0);
+            let r2 = results.remove(0);
+            let r3 = results.remove(0);
+
+            // Delete one
+            assert!(be.delete(audit, &vec![r1.clone()]).is_ok());
+            assert!(! entry_exists!(audit, be, r1));
+
+            // delete none (no match filter)
+            assert!(be.delete(audit, &vec![]).is_err());
+
+            // Delete with no id
+            let mut e4: Entry = Entry::new();
+            e4.add_ava(String::from("userid"), String::from("amy"));
+
+            assert!(be.delete(audit, &vec![e4.clone()]).is_err());
+
+            assert!(entry_exists!(audit, be, r2));
+            assert!(entry_exists!(audit, be, r3));
+
+            // delete batch
+            assert!(be.delete(audit, &vec![r2.clone(), r3.clone()]).is_ok());
+
+            assert!(! entry_exists!(audit, be, r2));
+            assert!(! entry_exists!(audit, be, r3));
+
+            // delete none (no entries left)
+            // see fn delete for why this is ok, not err
+            assert!(be.delete(audit, &vec![r2.clone(), r3.clone()]).is_ok());
+
         });
     }
 }

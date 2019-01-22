@@ -136,3 +136,23 @@ impl ExistsEvent {
         }
     }
 }
+
+#[derive(Debug)]
+pub struct DeleteEvent {
+    pub filter: Filter,
+    pub internal: bool,
+}
+
+impl Message for DeleteEvent {
+    type Result = Result<OpResult, OperationError>;
+}
+
+impl DeleteEvent {
+    pub fn new_internal(filter: Filter) -> Self {
+        DeleteEvent {
+            filter: filter,
+            internal: true,
+        }
+    }
+}
+
