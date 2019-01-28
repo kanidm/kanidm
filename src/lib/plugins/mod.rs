@@ -1,6 +1,6 @@
 use audit::AuditScope;
 use be::{BackendTransaction, BackendWriteTransaction};
-use entry::Entry;
+use entry::{Entry, EntryInvalid, EntryNew};
 use error::OperationError;
 use event::CreateEvent;
 use schema::{SchemaTransaction, SchemaWriteTransaction};
@@ -15,7 +15,7 @@ trait Plugin {
         // TODO: I think this is wrong, it should be a query server
         _be: &BackendWriteTransaction,
         _au: &mut AuditScope,
-        _cand: &mut Vec<Entry>,
+        _cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         _ce: &CreateEvent,
         _schema: &SchemaWriteTransaction,
     ) -> Result<(), OperationError> {

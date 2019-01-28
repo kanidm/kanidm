@@ -8,7 +8,7 @@ use serde_json;
 // use uuid;
 
 use audit::AuditScope;
-use entry::Entry;
+use entry::{Entry, EntryValid, EntryNew, EntryCommitted};
 use filter::Filter;
 
 mod idl;
@@ -53,7 +53,7 @@ pub trait BackendReadTransaction {
     fn get_conn(&self) -> &r2d2::PooledConnection<r2d2_sqlite::SqliteConnectionManager>;
 
     // Take filter, and AuditScope ref?
-    fn search(&self, au: &mut AuditScope, filt: &Filter) -> Result<Vec<Entry>, BackendError> {
+    fn search(&self, au: &mut AuditScope, filt: &Filter) -> Result<Vec<Entry<EntryValid, EntryCommitted>>, BackendError> {
         // Do things
         // Alloc a vec for the entries.
         // FIXME: Make this actually a good size for the result set ...
@@ -93,11 +93,11 @@ pub trait BackendReadTransaction {
             }
             // Do other things
             // Now, de-serialise the raw_entries back to entries, and populate their ID's
-            let entries: Vec<Entry> = raw_entries
+            let entries: Vec<Entry<EntryValid, EntryCommitted>> = raw_entries
                 .iter()
                 .filter_map(|id_ent| {
                     // TODO: Should we do better than unwrap?
-                    let mut e: Entry = serde_json::from_str(id_ent.data.as_str()).unwrap();
+                    let mut e: Entry<EntryValid, EntryCommitted> = serde_json::from_str(id_ent.data.as_str()).unwrap();
                     e.id = Some(id_ent.id);
                     if filt.entry_match_no_index(&e) {
                         Some(e)
@@ -217,7 +217,7 @@ impl BackendWriteTransaction {
         }
     }
 
-    pub fn create(&self, au: &mut AuditScope, entries: &Vec<Entry>) -> Result<(), BackendError> {
+    pub fn create(&self, au: &mut AuditScope, entries: &Vec<Entry<EntryValid, EntryNew>>) -> Result<(), BackendError> {
         audit_segment!(au, || {
             // Start be audit timer
 
@@ -273,7 +273,7 @@ impl BackendWriteTransaction {
         })
     }
 
-    pub fn modify(&self, au: &mut AuditScope, entries: &Vec<Entry>) -> Result<(), BackendError> {
+    pub fn modify(&self, au: &mut AuditScope, entries: &Vec<Entry<EntryValid, EntryCommitted>>) -> Result<(), BackendError> {
         if entries.is_empty() {
             // TODO: Better error
             return Err(BackendError::EmptyRequest);
@@ -320,7 +320,7 @@ impl BackendWriteTransaction {
         Ok(())
     }
 
-    pub fn delete(&self, au: &mut AuditScope, entries: &Vec<Entry>) -> Result<(), BackendError> {
+    pub fn delete(&self, au: &mut AuditScope, entries: &Vec<Entry<EntryValid, EntryCommitted>>) -> Result<(), BackendError> {
         // Perform a search for the entries --> This is a problem for the caller
 
         if entries.is_empty() {

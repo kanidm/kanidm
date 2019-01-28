@@ -286,13 +286,6 @@ pub struct SchemaClass {
     must: Vec<String>,
 }
 
-impl SchemaClass {
-    // Implement Validation and Normalisation against entries
-    pub fn validate_entry(&self, _entry: &Entry) -> Result<(), ()> {
-        unimplemented!()
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct SchemaInner {
     // We contain sets of classes and attributes.
@@ -307,16 +300,8 @@ pub trait SchemaReadTransaction {
         self.get_inner().validate(audit)
     }
 
-    fn validate_entry(&self, entry: &Entry) -> Result<(), SchemaError> {
-        self.get_inner().validate_entry(entry)
-    }
-
     fn validate_filter(&self, filt: &Filter) -> Result<(), SchemaError> {
         self.get_inner().validate_filter(filt)
-    }
-
-    fn normalise_entry(&self, entry: &Entry) -> Entry {
-        self.get_inner().normalise_entry(entry)
     }
 
     fn normalise_modlist(&self, modlist: &ModifyList) -> ModifyList {
@@ -879,132 +864,6 @@ impl SchemaInner {
         }
 
         Ok(())
-    }
-
-    pub fn validate_entry(&self, entry: &Entry) -> Result<(), SchemaError> {
-        // First look at the classes on the entry.
-        // Now, check they are valid classes
-        //
-        // FIXME: We could restructure this to be a map that gets Some(class)
-        // if found, then do a len/filter/check on the resulting class set?
-        let c_valid = entry.classes().fold(Ternary::Empty, |acc, c| {
-            if acc == Ternary::False {
-                // Begin shortcircuit
-                acc
-            } else {
-                // Test the value (Could be True or Valid on entry.
-                // We
-                match self.classes.contains_key(c) {
-                    true => Ternary::True,
-                    false => Ternary::False,
-                }
-            }
-        });
-
-        if c_valid != Ternary::True {
-            return Err(SchemaError::InvalidClass);
-        };
-
-        let classes: HashMap<String, &SchemaClass> = entry
-            .classes()
-            .map(|c| (c.clone(), self.classes.get(c).unwrap()))
-            .collect();
-
-        let extensible = classes.contains_key("extensibleobject");
-
-        // What this is really doing is taking a set of classes, and building an
-        // "overall" class that describes this exact object for checking
-
-        //   for each class
-        //      add systemmust/must and systemmay/may to their lists
-        //      add anything from must also into may
-
-        // Now from the set of valid classes make a list of must/may
-        // FIXME: This is clone on read, which may be really slow. It also may
-        // be inefficent on duplicates etc.
-        let must: HashMap<String, &SchemaAttribute> = classes
-            .iter()
-            // Join our class systemmmust + must into one iter
-            .flat_map(|(_, cls)| cls.systemmust.iter().chain(cls.must.iter()))
-            .map(|s| (s.clone(), self.attributes.get(s).unwrap()))
-            .collect();
-
-        // FIXME: Error needs to say what is missing
-        // We need to return *all* missing attributes.
-
-        // Check that all must are inplace
-        //   for each attr in must, check it's present on our ent
-        // FIXME: Could we iter over only the attr_name
-        for (attr_name, _attr) in must {
-            let avas = entry.get_ava(&attr_name);
-            if avas.is_none() {
-                return Err(SchemaError::MissingMustAttribute(
-                    String::from(attr_name)
-                ));
-            }
-        }
-
-        // Check that any other attributes are in may
-        //   for each attr on the object, check it's in the may+must set
-        for (attr_name, avas) in entry.avas() {
-            match self.attributes.get(attr_name) {
-                Some(a_schema) => {
-                    // Now, for each type we do a *full* check of the syntax
-                    // and validity of the ava.
-                    let r = a_schema.validate_ava(avas);
-                    // FIXME: This block could be more functional
-                    if r.is_err() {
-                        return r;
-                    }
-                }
-                None => {
-                    if !extensible {
-                        return Err(SchemaError::InvalidAttribute);
-                    }
-                }
-            }
-        }
-
-        // Well, we got here, so okay!
-        Ok(())
-    }
-
-    // TODO: Restructure this when we change entry lifecycle types.
-    pub fn normalise_entry(&self, entry: &Entry) -> Entry {
-        // We duplicate the entry here, because we can't
-        // modify what we got on the protocol level. It also
-        // lets us extend and change things.
-
-        let mut entry_new: Entry = entry.clone_no_attrs();
-        // Better hope we have the attribute type ...
-        let schema_attr_name = self.attributes.get("name").unwrap();
-        // For each ava
-        for (attr_name, avas) in entry.avas() {
-            let attr_name_normal: String = schema_attr_name.normalise_value(attr_name);
-            // Get the needed schema type
-            let schema_a_r = self.attributes.get(&attr_name_normal);
-            // if we can't find schema_a, clone and push
-            // else
-
-            let avas_normal: Vec<String> = match schema_a_r {
-                Some(schema_a) => {
-                    avas.iter()
-                        .map(|av| {
-                            // normalise those based on schema?
-                            schema_a.normalise_value(av)
-                        })
-                        .collect()
-                }
-                None => avas.clone(),
-            };
-            // now push those to the new entry.
-            entry_new.set_avas(attr_name_normal, avas_normal);
-        }
-        // Mark it is valid
-        // entry_new.schema_validated = true;
-        // Done!
-        // TODO: Convert the entry type here to a validated type.
-        entry_new
     }
 
     // This needs to be recursive?

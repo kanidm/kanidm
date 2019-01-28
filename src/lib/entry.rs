@@ -108,26 +108,314 @@ impl<'a> Iterator for EntryAvasMut<'a> {
 // This is specifically important for the commit to the backend, as we only want to
 // commit validated types.
 
+pub struct EntryNew; // new
+pub struct EntryCommitted; // It's been in the DB, so it has an id
+// pub struct EntryPurged;
+
+pub struct EntryValid; // Asserted with schema.
+pub struct EntryInvalid; // Modified
+
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Entry {
+pub struct Entry<VALID, STATE> {
     pub id: Option<i64>,
     // Flag if we have been schema checked or not.
     // pub schema_validated: bool,
     attrs: BTreeMap<String, Vec<String>>,
 }
 
-impl Entry {
+impl Entry<EntryInvalid, EntryNew> {
     pub fn new() -> Self {
         Entry {
             // This means NEVER COMMITED
             id: None,
-            // TODO: Make this only on cfg(test/debug_assertions) builds.
-            // ALTERNATE: Convert to a different entry type on validate/normalise?
-            // CONVERT TO A TYPE
             attrs: BTreeMap::new(),
         }
     }
 
+    // FIXME: Can we consume protoentry?
+    pub fn from(e: &ProtoEntry) -> Self {
+        // Why not the trait? In the future we may want to extend
+        // this with server aware functions for changes of the
+        // incoming data.
+        Entry {
+            // For now, we do a straight move, and we sort the incoming data
+            // sets so that BST works.
+            id: None,
+            attrs: e
+                .attrs
+                .iter()
+                .map(|(k, v)| {
+                    let mut nv = v.clone();
+                    nv.sort_unstable();
+                    (k.clone(), nv)
+                })
+                .collect(),
+        }
+    }
+}
+
+impl<STATE> Entry<EntryInvalid, STATE> {
+    pub fn validate_entry(self, schema: SchemaReadTransaction) -> Result<Entry<EntryValid, STATE>, ()> {
+        // We need to clone before we start, as well be mutating content.
+        // We destructure:
+        let Entry { id, attrs } = self;
+
+        let mut ne = Entry {
+            id: id,
+            attrs: BTreeMap::new(),
+        };
+
+        // First normalise
+        for (attr_name, avas) in attrs.iter() {
+            let attr_name_normal: String = schema_attr_name.normalise_value(attr_name);
+            // Get the needed schema type
+            let schema_a_r = self.attributes.get(&attr_name_normal);
+
+            let avas_normal: Vec<String> = match schema_a_r {
+                Some(schema_a) => {
+                    avas.iter()
+                        .map(|av| {
+                            // normalise those based on schema?
+                            schema_a.normalise_value(av)
+                        })
+                        .collect()
+                }
+                None => avas.clone(),
+            };
+
+            ne.set_avas(attr_name_normal, avas_normal);
+        }
+        // Now validate.
+
+        // First look at the classes on the entry.
+        // Now, check they are valid classes
+        //
+        // FIXME: We could restructure this to be a map that gets Some(class)
+        // if found, then do a len/filter/check on the resulting class set?
+        let c_valid = ne.classes().fold(Ternary::Empty, |acc, c| {
+            if acc == Ternary::False {
+                // Begin shortcircuit
+                acc
+            } else {
+                // Test the value (Could be True or Valid on entry.
+                // We
+                match schema.classes.contains_key(c) {
+                    true => Ternary::True,
+                    false => Ternary::False,
+                }
+            }
+        });
+
+        if c_valid != Ternary::True {
+            return Err(SchemaError::InvalidClass);
+        };
+
+        let classes: HashMap<String, &SchemaClass> = entry
+            .classes()
+            .map(|c| (c.clone(), self.classes.get(c).unwrap()))
+            .collect();
+
+        let extensible = classes.contains_key("extensibleobject");
+
+        // What this is really doing is taking a set of classes, and building an
+        // "overall" class that describes this exact object for checking
+
+        //   for each class
+        //      add systemmust/must and systemmay/may to their lists
+        //      add anything from must also into may
+
+        // Now from the set of valid classes make a list of must/may
+        // FIXME: This is clone on read, which may be really slow. It also may
+        // be inefficent on duplicates etc.
+        let must: HashMap<String, &SchemaAttribute> = classes
+            .iter()
+            // Join our class systemmmust + must into one iter
+            .flat_map(|(_, cls)| cls.systemmust.iter().chain(cls.must.iter()))
+            .map(|s| (s.clone(), self.attributes.get(s).unwrap()))
+            .collect();
+
+        // FIXME: Error needs to say what is missing
+        // We need to return *all* missing attributes.
+
+        // Check that all must are inplace
+        //   for each attr in must, check it's present on our ent
+        // FIXME: Could we iter over only the attr_name
+        for (attr_name, _attr) in must {
+            let avas = entry.get_ava(&attr_name);
+            if avas.is_none() {
+                return Err(SchemaError::MissingMustAttribute(
+                    String::from(attr_name)
+                ));
+            }
+        }
+
+        // Check that any other attributes are in may
+        //   for each attr on the object, check it's in the may+must set
+        for (attr_name, avas) in entry.avas() {
+            match self.attributes.get(attr_name) {
+                Some(a_schema) => {
+                    // Now, for each type we do a *full* check of the syntax
+                    // and validity of the ava.
+                    let r = a_schema.validate_ava(avas);
+                    // FIXME: This block could be more functional
+                    if r.is_err() {
+                        return r;
+                    }
+                }
+                None => {
+                    if !extensible {
+                        return Err(SchemaError::InvalidAttribute);
+                    }
+                }
+            }
+        }
+
+        // Well, we got here, so okay!
+        Ok(())
+    }
+}
+
+impl<VALID, STATE> Clone for Entry<VALID, STATE> {
+    // Dirty modifiable state. Works on any other state to dirty them.
+    fn clone(&self) -> Entry<EntryInvalid, STATE> {
+        Entry {
+            id: self.id,
+            attrs: self.attrs.clone(),
+        }
+    }
+}
+
+impl<STATE> Entry<EntryValid, STATE> {
+    pub fn invalidate(self) -> Entry<EntryInvalid, STATE> {
+        Entry {
+            id: self.id,
+            attrs: self.attrs
+        }
+    }
+
+    pub fn seal(self) -> Entry<EntryValid, EntryCommitted> {
+        Entry {
+            id: self.id,
+            attrs: self.attrs
+        }
+    }
+
+    pub fn filter_from_attrs(&self, attrs: &Vec<String>) -> Option<Filter> {
+        // Generate a filter from the attributes requested and defined.
+        // Basically, this is a series of nested and's (which will be
+        // optimised down later: but if someone wants to solve flatten() ...)
+
+        // Take name: (a, b), name: (c, d) -> (name, a), (name, b), (name, c), (name, d)
+
+        let mut pairs: Vec<(String, String)> = Vec::new();
+
+        for attr in attrs {
+            match self.attrs.get(attr) {
+                Some(values) => {
+                    for v in values {
+                        pairs.push((attr.clone(), v.clone()))
+                    }
+                }
+                None => return None,
+            }
+        }
+
+        // Now make this a filter?
+
+        let eq_filters = pairs
+            .into_iter()
+            .map(|(attr, value)| Filter::Eq(attr, value))
+            .collect();
+
+        Some(Filter::And(eq_filters))
+    }
+
+    pub fn into(&self) -> ProtoEntry {
+        // It's very likely that at this stage we'll need to apply
+        // access controls, dynamic attributes or more.
+        // As a result, this may not even be the right place
+        // for the conversion as algorithmically it may be
+        // better to do this from the outside view. This can
+        // of course be identified and changed ...
+        ProtoEntry {
+            attrs: self.attrs.clone(),
+        }
+    }
+
+    pub fn gen_modlist_assert(&self, schema: &SchemaReadTransaction) -> Result<ModifyList, ()>
+    {
+        // Create a modlist from this entry. We make this assuming we want the entry
+        // to have this one as a subset of values. This means if we have single
+        // values, we'll replace, if they are multivalue, we present them.
+        let mut mods = ModifyList::new();
+
+        for (k, vs) in self.attrs.iter() {
+            // Get the schema attribute type out.
+            match schema.is_multivalue(k) {
+                Ok(r) => {
+                    if !r {
+                        // As this is single value, purge then present to maintain this
+                        // invariant
+                        mods.push_mod(Modify::Purged(k.clone()));
+                    }
+                }
+                Err(e) => {
+                    return Err(())
+                }
+            }
+            for v in vs {
+                mods.push_mod(Modify::Present(k.clone(), v.clone()));
+            }
+        }
+
+        Ok(mods)
+    }
+}
+
+impl<VALID, STATE> Entry<VALID, STATE> {
+    pub fn get_ava(&self, attr: &String) -> Option<&Vec<String>> {
+        self.attrs.get(attr)
+    }
+
+    pub fn attribute_pres(&self, attr: &str) -> bool {
+        // FIXME: Do we need to normalise attr name?
+        self.attrs.contains_key(attr)
+    }
+
+    pub fn attribute_equality(&self, attr: &str, value: &str) -> bool {
+        // we assume based on schema normalisation on the way in
+        // that the equality here of the raw values MUST be correct.
+        // We also normalise filters, to ensure that their values are
+        // syntax valid and will correctly match here with our indexes.
+
+        // FIXME: Make this binary_search
+
+        self.attrs.get(attr).map_or(false, |v| {
+            v.iter()
+                .fold(false, |acc, av| if acc { acc } else { value == av })
+        })
+    }
+
+    pub fn attribute_substring(&self, _attr: &str, _subvalue: &str) -> bool {
+        unimplemented!();
+    }
+
+    pub fn classes(&self) -> EntryClasses {
+        // Get the class vec, if any?
+        // How do we indicate "empty?"
+        // FIXME: Actually handle this error ...
+        let c = self.attrs.get("class").map(|c| c.iter());
+        EntryClasses { inner: c }
+    }
+
+    pub fn avas(&self) -> EntryAvas {
+        EntryAvas {
+            inner: self.attrs.iter(),
+        }
+    }
+}
+
+impl<STATE> Entry<EntryInvalid, STATE> {
     // This should always work? It's only on validate that we'll build
     // a list of syntax violations ...
     // If this already exists, we silently drop the event? Is that an
@@ -184,150 +472,14 @@ impl Entry {
         let _ = self.attrs.insert(attr, values);
     }
 
-    pub fn get_ava(&self, attr: &String) -> Option<&Vec<String>> {
-        self.attrs.get(attr)
-    }
-
-    pub fn attribute_pres(&self, attr: &str) -> bool {
-        // FIXME: Do we need to normalise attr name?
-        self.attrs.contains_key(attr)
-    }
-
-    pub fn attribute_equality(&self, attr: &str, value: &str) -> bool {
-        // we assume based on schema normalisation on the way in
-        // that the equality here of the raw values MUST be correct.
-        // We also normalise filters, to ensure that their values are
-        // syntax valid and will correctly match here with our indexes.
-
-        // FIXME: Make this binary_search
-
-        self.attrs.get(attr).map_or(false, |v| {
-            v.iter()
-                .fold(false, |acc, av| if acc { acc } else { value == av })
-        })
-    }
-
-    pub fn attribute_substring(&self, _attr: &str, _subvalue: &str) -> bool {
-        unimplemented!();
-    }
-
-    pub fn classes(&self) -> EntryClasses {
-        // Get the class vec, if any?
-        // How do we indicate "empty?"
-        // FIXME: Actually handle this error ...
-        let c = self.attrs.get("class").map(|c| c.iter());
-        EntryClasses { inner: c }
-    }
-
-    pub fn avas(&self) -> EntryAvas {
-        EntryAvas {
-            inner: self.attrs.iter(),
-        }
-    }
-
     pub fn avas_mut(&mut self) -> EntryAvasMut {
         EntryAvasMut {
             inner: self.attrs.iter_mut(),
         }
     }
 
-    pub fn filter_from_attrs(&self, attrs: &Vec<String>) -> Option<Filter> {
-        // Generate a filter from the attributes requested and defined.
-        // Basically, this is a series of nested and's (which will be
-        // optimised down later: but if someone wants to solve flatten() ...)
-
-        // Take name: (a, b), name: (c, d) -> (name, a), (name, b), (name, c), (name, d)
-
-        let mut pairs: Vec<(String, String)> = Vec::new();
-
-        for attr in attrs {
-            match self.attrs.get(attr) {
-                Some(values) => {
-                    for v in values {
-                        pairs.push((attr.clone(), v.clone()))
-                    }
-                }
-                None => return None,
-            }
-        }
-
-        // Now make this a filter?
-
-        let eq_filters = pairs
-            .into_iter()
-            .map(|(attr, value)| Filter::Eq(attr, value))
-            .collect();
-
-        Some(Filter::And(eq_filters))
-    }
-
-    // FIXME: Can we consume protoentry?
-    pub fn from(e: &ProtoEntry) -> Self {
-        // Why not the trait? In the future we may want to extend
-        // this with server aware functions for changes of the
-        // incoming data.
-        Entry {
-            // For now, we do a straight move, and we sort the incoming data
-            // sets so that BST works.
-            id: None,
-            attrs: e
-                .attrs
-                .iter()
-                .map(|(k, v)| {
-                    let mut nv = v.clone();
-                    nv.sort_unstable();
-                    (k.clone(), nv)
-                })
-                .collect(),
-        }
-    }
-
-    pub fn into(&self) -> ProtoEntry {
-        // It's very likely that at this stage we'll need to apply
-        // access controls, dynamic attributes or more.
-        // As a result, this may not even be the right place
-        // for the conversion as algorithmically it may be
-        // better to do this from the outside view. This can
-        // of course be identified and changed ...
-        ProtoEntry {
-            attrs: self.attrs.clone(),
-        }
-    }
-
-    pub fn gen_modlist_assert(&self, schema: &SchemaReadTransaction) -> Result<ModifyList, ()>
-    {
-        // Create a modlist from this entry. We make this assuming we want the entry
-        // to have this one as a subset of values. This means if we have single
-        // values, we'll replace, if they are multivalue, we present them.
-        //
-        // We assume the schema validaty of the entry is already checked, and
-        // normalisation performed.
-        let mut mods = ModifyList::new();
-
-        for (k, vs) in self.attrs.iter() {
-            // Get the schema attribute type out.
-            match schema.is_multivalue(k) {
-                Ok(r) => {
-                    if !r {
-                        // As this is single value, purge then present to maintain this
-                        // invariant
-                        mods.push_mod(Modify::Purged(k.clone()));
-                    }
-                }
-                Err(e) => {
-                    return Err(())
-                }
-            }
-            for v in vs {
-                mods.push_mod(Modify::Present(k.clone(), v.clone()));
-            }
-        }
-
-        Ok(mods)
-    }
-
     // Should this be schemaless, relying on checks of the modlist, and the entry validate after?
-    pub fn apply_modlist(&self, modlist: &ModifyList) -> Result<Entry, ()> {
+    pub fn apply_modlist(&self, modlist: &ModifyList) -> Result<Entry<EntryInvalid, STATE>, ()> {
         // Apply a modlist, generating a new entry that conforms to the changes.
         // This is effectively clone-and-transform
 
@@ -352,44 +504,15 @@ impl Entry {
         // return it
         Ok(ne)
     }
-
-    pub fn clone_no_attrs(&self) -> Entry {
-        Entry {
-            id: self.id,
-            attrs: BTreeMap::new(),
-        }
-    }
 }
 
-impl Clone for Entry {
-    fn clone(&self) -> Entry {
-        Entry {
-            id: self.id,
-            attrs: self.attrs.clone(),
-        }
-    }
-}
-
-impl PartialEq for Entry {
+impl<VALID, STATE> PartialEq for Entry<VALID, STATE> {
     fn eq(&self, rhs: &Entry) -> bool {
         // FIXME: This is naive. Later it should be schema
         // aware checking.
         self.attrs == rhs.attrs
     }
 }
-
-// pub trait Entry {
-//fn to_json_str(&self) -> String;
-// fn to_index_diff -> ???
-// from_json_str() -> Self;
-//
-// Does this match a filter or not?a
-// fn apply_filter -> Result<bool, ()>
-// }
-
-//enum Credential {
-//?
-//}
 
 #[derive(Serialize, Deserialize, Debug)]
 enum Credential {

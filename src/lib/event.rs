@@ -2,7 +2,7 @@ use super::filter::Filter;
 use super::proto_v1::Entry as ProtoEntry;
 use super::proto_v1::{CreateRequest, Response, SearchRequest, SearchResponse};
 use actix::prelude::*;
-use entry::Entry;
+use entry::{Entry, EntryInvalid, EntryNew, EntryValid, EntryCommitted};
 use error::OperationError;
 use modify::ModifyList;
 
@@ -27,7 +27,7 @@ pub struct SearchResult {
 }
 
 impl SearchResult {
-    pub fn new(entries: Vec<Entry>) -> Self {
+    pub fn new(entries: Vec<Entry<EntryValid, EntryCommitted>>) -> Self {
         SearchResult {
             // FIXME: Can we consume this iter?
             entries: entries
@@ -88,7 +88,7 @@ impl SearchEvent {
 pub struct CreateEvent {
     // This may still actually change to handle the *raw* nature of the
     // input that we plan to parse.
-    pub entries: Vec<Entry>,
+    pub entries: Vec<Entry<EntryInvalid, EntryNew>>,
     /// Is the CreateEvent from an internal or external source?
     /// This may affect which plugins are run ...
     pub internal: bool,
@@ -112,14 +112,14 @@ impl CreateEvent {
 
     // Is this an internal only function?
     #[cfg(test)]
-    pub fn from_vec(entries: Vec<Entry>) -> Self {
+    pub fn from_vec(entries: Vec<Entry<EntryInvalid, EntryNew>>) -> Self {
         CreateEvent {
             internal: false,
             entries: entries,
         }
     }
 
-    pub fn new_internal(entries: Vec<Entry>) -> Self {
+    pub fn new_internal(entries: Vec<Entry<EntryInvalid, EntryNew>>) -> Self {
         CreateEvent {
             internal: true,
             entries: entries,

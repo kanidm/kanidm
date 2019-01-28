@@ -10,7 +10,7 @@ use be::{
 };
 
 use constants::{JSON_ANONYMOUS_V1, JSON_SYSTEM_INFO_V1};
-use entry::Entry;
+use entry::{Entry, EntryNew, EntryCommitted, EntryValid, EntryInvalid};
 use error::OperationError;
 use event::{CreateEvent, ExistsEvent, OpResult, SearchEvent, SearchResult, DeleteEvent, ModifyEvent};
 use filter::Filter;
@@ -89,7 +89,7 @@ pub trait QueryServerReadTransaction {
 
     fn get_be_txn(&self) -> &Self::BackendTransactionType;
 
-    fn search(&self, au: &mut AuditScope, se: &SearchEvent) -> Result<Vec<Entry>, OperationError> {
+    fn search(&self, au: &mut AuditScope, se: &SearchEvent) -> Result<Vec<Entry<EntryValid, EntryCommitted>>, OperationError> {
         // TODO: Validate the filter
         // This is an important security step because it prevents us from
         // performing un-indexed searches on attr's that don't exist in the
@@ -141,7 +141,7 @@ pub trait QueryServerReadTransaction {
         res
     }
 
-    fn internal_search(&self, audit: &mut AuditScope, filter: Filter) -> Result<Vec<Entry>, OperationError> {
+    fn internal_search(&self, audit: &mut AuditScope, filter: Filter) -> Result<Vec<Entry<EntryValid, EntryCommitted>>, OperationError> {
 
         let mut audit_int = AuditScope::new("internal_search");
         let se = SearchEvent::new_internal(filter);
@@ -240,7 +240,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // based on request size in the frontend?
 
         // Copy the entries to a writeable form.
-        let mut candidates: Vec<Entry> = ce.entries.iter().map(|er| er.clone()).collect();
+        let mut candidates: Vec<Entry<EntryInvalid, EntryNew>> = ce.entries.iter().map(|er| er.clone()).collect();
 
         // run any pre plugins, giving them the list of mutable candidates.
         // pre-plugins are defined here in their correct order of calling!
@@ -281,7 +281,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Normalise all the data now it's validated.
         // FIXME: This normalisation COPIES everything, which may be
         // slow.
-        let norm_cand: Vec<Entry> = candidates
+        let norm_cand: Vec<Entry<EntryValid, EntryNew>> = candidates
             .iter()
             .map(|e| self.schema.normalise_entry(&e))
             .collect();
@@ -342,7 +342,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Clone a set of writeables.
         // Apply the modlist -> Remember, we have a set of origs
         // and the new modified ents.
-        let mut candidates: Vec<Entry> = pre_candidates.iter()
+        let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates.iter()
             .map(|er| {
                 er.apply_modlist(&me.modlist).unwrap()
             })
@@ -373,7 +373,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Normalise all the data now it's validated.
         // FIXME: This normalisation COPIES everything, which may be
         // slow.
-        let norm_cand: Vec<Entry> = candidates
+        let norm_cand: Vec<Entry<EntryValid, EntryCommitted>> = candidates
             .iter()
             .map(|e| self.schema.normalise_entry(&e))
             .collect();
@@ -411,7 +411,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub fn internal_create(
         &self,
         audit: &mut AuditScope,
-        entries: Vec<Entry>,
+        entries: Vec<Entry<EntryInvalid, EntryNew>>,
     ) -> Result<(), OperationError> {
         // Start the audit scope
         let mut audit_int = AuditScope::new("internal_create");
@@ -453,7 +453,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     // and markers. They act as though they have the highest level privilege
     // IE there are no access control checks.
 
-    pub fn internal_exists_or_create(&self, e: Entry) -> Result<(), OperationError> {
+    pub fn internal_exists_or_create(&self, e: Entry<EntryValid, EntryNew>) -> Result<(), OperationError> {
         // If the thing exists, stop.
         // if not, create from Entry.
         unimplemented!()
@@ -462,7 +462,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub fn internal_migrate_or_create(
         &self,
         audit: &mut AuditScope,
-        e: Entry,
+        e: Entry<EntryValid, EntryNew>,
     ) -> Result<(), OperationError> {
         // if the thing exists, ensure the set of attributes on
         // Entry A match and are present (but don't delete multivalue, or extended
@@ -512,7 +512,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub fn internal_assert_or_create(
         &self,
         audit: &mut AuditScope,
-        e: Entry,
+        e: Entry<EntryValid, EntryNew>,
     ) -> Result<(), OperationError> {
         // If exists, ensure the object is exactly as provided
         // else, if not exists, create it. IE no extra or excess
@@ -554,7 +554,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // and details. It's a pretty static thing.
         let mut audit_si = AuditScope::new("start_system_info");
         let res = audit_segment!(audit_si, || {
-            let e: Entry = serde_json::from_str(JSON_SYSTEM_INFO_V1).unwrap();
+            let e: Entry<EntryValid, EntryNew> = serde_json::from_str(JSON_SYSTEM_INFO_V1).unwrap();
             self.internal_assert_or_create(audit, e)
         });
         audit_log!(audit_si, "start_system_info -> result {:?}", res);
@@ -567,7 +567,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Check the anonymous object exists (migrations).
         let mut audit_an = AuditScope::new("start_anonymous");
         let res = audit_segment!(audit_an, || {
-            let e: Entry = serde_json::from_str(JSON_ANONYMOUS_V1).unwrap();
+            let e: Entry<EntryValid, EntryNew> = serde_json::from_str(JSON_ANONYMOUS_V1).unwrap();
             self.internal_migrate_or_create(audit, e)
         });
         audit_log!(audit_an, "start_anonymous -> result {:?}", res);
