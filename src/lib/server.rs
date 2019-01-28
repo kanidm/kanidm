@@ -11,7 +11,7 @@ use be::{
 
 use constants::{JSON_ANONYMOUS_V1, JSON_SYSTEM_INFO_V1};
 use entry::{Entry, EntryNew, EntryCommitted, EntryValid, EntryInvalid};
-use error::OperationError;
+use error::{OperationError, SchemaError};
 use event::{CreateEvent, ExistsEvent, OpResult, SearchEvent, SearchResult, DeleteEvent, ModifyEvent};
 use filter::Filter;
 use log::EventLog;
@@ -261,29 +261,33 @@ impl<'a> QueryServerWriteTransaction<'a> {
             return plug_pre_res;
         }
 
-        let r = candidates.iter().fold(Ok(()), |acc, e| {
-            if acc.is_ok() {
-                self.schema
-                    .validate_entry(e)
-                    .map_err(|err| {
-                        audit_log!(au, "Schema Violation: {:?}", err);
-                        OperationError::SchemaViolation
-                    })
-            } else {
-                acc
-            }
-        });
-        if r.is_err() {
-            audit_log!(au, "Create operation failed (schema), {:?}", r);
-            return r;
+        let (norm_cand, invalid_cand):
+            (Vec<Result<Entry<EntryValid, EntryNew>, _>>,
+             Vec<Result<_, SchemaError>>) = candidates.into_iter()
+            .map(|e| {
+                e.validate(&self.schema)
+            })
+            .partition(|&e| {
+                e.is_ok()
+            });
+
+        for err in invalid_cand {
+            audit_log!(au, "Schema Violation: {:?}", err);
         }
 
-        // Normalise all the data now it's validated.
-        // FIXME: This normalisation COPIES everything, which may be
-        // slow.
-        let norm_cand: Vec<Entry<EntryValid, EntryNew>> = candidates
-            .iter()
-            .map(|e| self.schema.normalise_entry(&e))
+        if invalid_cand.len() > 0 {
+            return Err(OperationError::SchemaViolation);
+        }
+
+        let norm_cand: Vec<Entry<EntryValid, EntryNew>> = norm_cand.into_iter()
+            .map(|e| {
+                match e {
+                    Ok(v) => v,
+                    Err(_) => {
+                        return Err(OperationError::InvalidState);
+                    }
+                }
+            })
             .collect();
 
         let mut audit_be = AuditScope::new("backend_create");
@@ -300,7 +304,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         if res.is_err() {
             // be_txn is dropped, ie aborted here.
-            audit_log!(au, "Create operation failed (backend), {:?}", r);
+            audit_log!(au, "Create operation failed (backend), {:?}", res);
             return res;
         }
         // Run any post plugins
@@ -344,7 +348,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // and the new modified ents.
         let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates.iter()
             .map(|er| {
-                er.apply_modlist(&me.modlist).unwrap()
+                // TODO: Deal with this properly william
+                er
+                    .invalidate()
+                    .apply_modlist(&me.modlist)
+                    .unwrap()
             })
             .collect();
 
@@ -352,31 +360,39 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Pre mod plugins
 
-        // Schema validate
-        let r = candidates.iter().fold(Ok(()), |acc, e| {
-            if acc.is_ok() {
-                self.schema
-                    .validate_entry(e)
-                    .map_err(|err| {
-                        audit_log!(au, "Schema Violation: {:?}", err);
-                        OperationError::SchemaViolation
-                    })
-            } else {
-                acc
-            }
-        });
-        if r.is_err() {
-            audit_log!(au, "Modify operation failed (schema), {:?}", r);
-            return r;
-        }
-
         // Normalise all the data now it's validated.
         // FIXME: This normalisation COPIES everything, which may be
         // slow.
-        let norm_cand: Vec<Entry<EntryValid, EntryCommitted>> = candidates
-            .iter()
-            .map(|e| self.schema.normalise_entry(&e))
+        let (norm_cand, invalid_cand):
+            (Vec<Result<Entry<EntryValid, EntryCommitted>, _>>,
+             Vec<Result<_, SchemaError>>) = candidates.into_iter()
+            .map(|e| {
+                e.validate(self.schema)
+            })
+            .partition(|&e| {
+                e.is_ok()
+            });
+
+        for err in invalid_cand {
+            audit_log!(au, "Schema Violation: {:?}", err);
+        }
+
+        if invalid_cand.len() > 0 {
+            return Err(OperationError::SchemaViolation);
+        }
+
+        let norm_cand: Vec<Entry<EntryValid, EntryCommitted>> = norm_cand.into_iter()
+            .map(|e| {
+                match e {
+                    Ok(v) => v,
+                    Err(_) => {
+                        return Err(OperationError::InvalidState);
+                    }
+                }
+            })
             .collect();
+
+        // Now map out the Oks?
 
         // Backend Modify
         let mut audit_be = AuditScope::new("backend_modify");
@@ -393,7 +409,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         if res.is_err() {
             // be_txn is dropped, ie aborted here.
-            audit_log!(au, "Modify operation failed (backend), {:?}", r);
+            audit_log!(au, "Modify operation failed (backend), {:?}", res);
             return res;
         }
 
@@ -483,7 +499,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             Ok(results) => {
                 if results.len() == 0 {
                     // It does not exist. Create it.
-                    self.internal_create(audit, vec![e])
+                    self.internal_create(audit, vec![e.invalidate()])
                 } else if results.len() == 1 {
                     // If the thing is subset, pass
                     match e.gen_modlist_assert(&self.schema) {
@@ -529,21 +545,21 @@ impl<'a> QueryServerWriteTransaction<'a> {
             Ok(results) => {
                 if results.len() == 0 {
                     // It does not exist. Create it.
-                    self.internal_create(audit, vec![e])
+                    self.internal_create(audit, vec![e.invalidate()])
                 } else if results.len() == 1 {
                     // it exists. To guarantee content exactly as is, we compare if it's identical.
-                    if e != results[0] {
+                    if e.compare(&results[0]) {
                         self.internal_delete(audit, filt);
-                        self.internal_create(audit, vec![e]);
+                        self.internal_create(audit, vec![e.invalidate()]);
                     };
                     Ok(())
                 } else {
                     Err(OperationError::InvalidDBState)
                 }
             }
-            Err(e) => {
+            Err(er) => {
                 // An error occured. pass it back up.
-                Err(e)
+                Err(er)
             }
         }
     }
@@ -695,7 +711,7 @@ mod tests {
 
     use super::super::audit::AuditScope;
     use super::super::be::{Backend, BackendTransaction};
-    use super::super::entry::Entry;
+    use super::super::entry::{Entry, EntryNew, EntryCommitted, EntryValid, EntryInvalid};
     use super::super::event::{CreateEvent, SearchEvent};
     use super::super::filter::Filter;
     use super::super::log;
@@ -744,7 +760,7 @@ mod tests {
             let se1 = SearchEvent::from_request(SearchRequest::new(filt.clone()));
             let se2 = SearchEvent::from_request(SearchRequest::new(filt));
 
-            let e: Entry = serde_json::from_str(
+            let e: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
                 r#"{
                 "attrs": {
                     "class": ["object", "person"],
@@ -757,9 +773,7 @@ mod tests {
             )
             .unwrap();
 
-            let expected = vec![e];
-
-            let ce = CreateEvent::from_vec(expected.clone());
+            let ce = CreateEvent::from_vec(vec![e.clone()]);
 
             let r1 = server_txn.search(audit, &se1).unwrap();
             assert!(r1.len() == 0);
@@ -770,6 +784,10 @@ mod tests {
             let r2 = server_txn.search(audit, &se2).unwrap();
             println!("--> {:?}", r2);
             assert!(r2.len() == 1);
+
+            let expected = unsafe {
+                vec![e.to_valid_committed()]
+            };
 
             assert_eq!(r2, expected);
 

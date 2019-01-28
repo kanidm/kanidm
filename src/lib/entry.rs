@@ -110,11 +110,15 @@ impl<'a> Iterator for EntryAvasMut<'a> {
 // This is specifically important for the commit to the backend, as we only want to
 // commit validated types.
 
+#[derive(Serialize, Deserialize, Debug)]
 pub struct EntryNew; // new
+#[derive(Serialize, Deserialize, Debug)]
 pub struct EntryCommitted; // It's been in the DB, so it has an id
 // pub struct EntryPurged;
 
+#[derive(Serialize, Deserialize, Debug)]
 pub struct EntryValid; // Asserted with schema.
+#[derive(Serialize, Deserialize, Debug)]
 pub struct EntryInvalid; // Modified
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -146,6 +150,8 @@ impl Entry<EntryInvalid, EntryNew> {
         Entry {
             // For now, we do a straight move, and we sort the incoming data
             // sets so that BST works.
+            state: EntryNew,
+            valid: EntryInvalid,
             id: None,
             attrs: e
                 .attrs
@@ -161,15 +167,10 @@ impl Entry<EntryInvalid, EntryNew> {
 }
 
 impl<STATE> Entry<EntryInvalid, STATE> {
-    pub fn validate_entry(self, schema: SchemaReadTransaction) -> Result<Entry<EntryValid, STATE>, ()> {
+    pub fn validate(self, schema: &SchemaReadTransaction) -> Result<Entry<EntryValid, STATE>, SchemaError> {
         // We need to clone before we start, as well be mutating content.
         // We destructure:
-        let Entry { id, attrs } = self;
-
-        let mut ne = Entry {
-            id: id,
-            attrs: BTreeMap::new(),
-        };
+        let Entry { valid, state, id, attrs } = self;
 
         let schema_classes = schema.get_classes();
         let schema_attributes = schema.get_attributes();
@@ -182,6 +183,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
             }
         };
 
+        let mut new_attrs = BTreeMap::new();
 
         // First normalise
         for (attr_name, avas) in attrs.iter() {
@@ -201,8 +203,16 @@ impl<STATE> Entry<EntryInvalid, STATE> {
                 None => avas.clone(),
             };
 
-            ne.set_avas(attr_name_normal, avas_normal);
+            // Should never fail!
+            new_attrs.insert(attr_name_normal, avas_normal).unwrap();
         }
+
+        let ne = Entry {
+            valid: EntryValid,
+            state: state,
+            id: id,
+            attrs: new_attrs,
+        };
         // Now validate.
 
         // First look at the classes on the entry.
@@ -306,9 +316,50 @@ impl<VALID, STATE> Clone for Entry<VALID, STATE> {
     }
 }
 
+/*
+ * A series of unsafe transitions allowing entries to skip certain steps in
+ * the process to facilitate eq/checks.
+ */
+impl<VALID, STATE> Entry<VALID, STATE> {
+    #[cfg(test)]
+    pub unsafe fn to_valid_new(self) -> Entry<EntryValid, EntryNew> {
+        Entry {
+            valid: EntryValid,
+            state: EntryNew,
+            id: self.id,
+            attrs: self.attrs,
+        }
+    }
+
+    pub unsafe fn to_valid_committed(self) -> Entry<EntryValid, EntryCommitted> {
+        Entry {
+            valid: EntryValid,
+            state: EntryCommittted,
+            id: self.id,
+            attrs: self.attrs,
+        }
+    }
+
+    // Both invalid states can be reached from "entry -> invalidate"
+}
+
+impl Entry<EntryValid, EntryNew> {
+    pub fn compare(&self, rhs: &Entry<EntryValid, EntryCommitted>) -> bool {
+        self.attrs == rhs.attrs
+    }
+}
+
+impl Entry<EntryValid, EntryCommitted> {
+    pub fn compare(&self, rhs: &Entry<EntryValid, EntryNew>) -> bool {
+        self.attrs == rhs.attrs
+    }
+}
+
 impl<STATE> Entry<EntryValid, STATE> {
     pub fn invalidate(self) -> Entry<EntryInvalid, STATE> {
         Entry {
+            valid: EntryInvalid,
+            state: self.state,
             id: self.id,
             attrs: self.attrs
         }
@@ -316,6 +367,8 @@ impl<STATE> Entry<EntryValid, STATE> {
 
     pub fn seal(self) -> Entry<EntryValid, EntryCommitted> {
         Entry {
+            valid: self.valid,
+            state: EntryCommitted,
             id: self.id,
             attrs: self.attrs
         }
@@ -607,13 +660,13 @@ struct User {
 
 #[cfg(test)]
 mod tests {
-    use super::{Entry, User};
+    use super::{Entry, EntryInvalid, EntryNew, User};
     use modify::{Modify, ModifyList};
     use serde_json;
 
     #[test]
     fn test_entry_basic() {
-        let mut e: Entry = Entry::new();
+        let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
 
         e.add_ava(String::from("userid"), String::from("william"));
 
@@ -628,7 +681,7 @@ mod tests {
         // We still probably need schema here anyway to validate what we
         // are adding ... Or do we validate after the changes are made in
         // total?
-        let mut e: Entry = Entry::new();
+        let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
         e.add_ava(String::from("userid"), String::from("william"));
         e.add_ava(String::from("userid"), String::from("william"));
 
@@ -639,7 +692,7 @@ mod tests {
 
     #[test]
     fn test_entry_pres() {
-        let mut e: Entry = Entry::new();
+        let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
         e.add_ava(String::from("userid"), String::from("william"));
 
         assert!(e.attribute_pres("userid"));
@@ -648,7 +701,7 @@ mod tests {
 
     #[test]
     fn test_entry_equality() {
-        let mut e: Entry = Entry::new();
+        let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
 
         e.add_ava(String::from("userid"), String::from("william"));
 
@@ -660,7 +713,7 @@ mod tests {
     #[test]
     fn test_entry_apply_modlist() {
         // Test application of changes to an entry.
-        let mut e: Entry = Entry::new();
+        let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
         e.add_ava(String::from("userid"), String::from("william"));
 
         let mods = ModifyList::new_list(vec![

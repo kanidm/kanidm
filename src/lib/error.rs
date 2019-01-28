@@ -21,4 +21,5 @@ pub enum OperationError {
     FilterGeneration,
     InvalidDBState,
     InvalidRequestState,
+    InvalidState,
 }

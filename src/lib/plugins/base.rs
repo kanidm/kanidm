@@ -133,7 +133,7 @@ mod tests {
 
     use audit::AuditScope;
     use be::{Backend, BackendWriteTransaction};
-    use entry::Entry;
+    use entry::{Entry, EntryInvalid, EntryNew};
     use event::CreateEvent;
     use schema::{Schema, SchemaWriteTransaction};
 
@@ -183,8 +183,8 @@ mod tests {
     // Check empty create
     #[test]
     fn test_pre_create_empty() {
-        let preload: Vec<Entry> = Vec::new();
-        let mut create: Vec<Entry> = Vec::new();
+        let preload: Vec<Entry<EntryInvalid, EntryNew>> = Vec::new();
+        let mut create: Vec<Entry<EntryInvalid, EntryNew>> = Vec::new();
         run_pre_create_test!(
             preload,
             create,
@@ -192,7 +192,7 @@ mod tests {
             false,
             |be: &BackendWriteTransaction,
              au: &mut AuditScope,
-             cand: &mut Vec<Entry>,
+             cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
              ce: &CreateEvent,
              schema: &SchemaWriteTransaction| {
                 let r = Base::pre_create(be, au, cand, ce, schema);
@@ -207,7 +207,7 @@ mod tests {
     // check create where no uuid
     #[test]
     fn test_pre_create_no_uuid() {
-        let preload: Vec<Entry> = Vec::new();
+        let preload: Vec<Entry<EntryInvalid, EntryNew>> = Vec::new();
 
         let e: Entry = serde_json::from_str(
             r#"{
@@ -230,7 +230,7 @@ mod tests {
             false,
             |be: &BackendWriteTransaction,
              au: &mut AuditScope,
-             cand: &mut Vec<Entry>,
+             cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
              ce: &CreateEvent,
              schema: &SchemaWriteTransaction| {
                 let r = Base::pre_create(be, au, cand, ce, schema);
@@ -245,7 +245,7 @@ mod tests {
     // check unparseable uuid
     #[test]
     fn test_pre_create_uuid_invalid() {
-        let preload: Vec<Entry> = Vec::new();
+        let preload: Vec<Entry<EntryInvalid, EntryNew>> = Vec::new();
 
         let e: Entry = serde_json::from_str(
             r#"{
@@ -269,7 +269,7 @@ mod tests {
             false,
             |be: &BackendWriteTransaction,
              au: &mut AuditScope,
-             cand: &mut Vec<Entry>,
+             cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
              ce: &CreateEvent,
              schema: &SchemaWriteTransaction| {
                 let r = Base::pre_create(be, au, cand, ce, schema);
@@ -281,7 +281,7 @@ mod tests {
     // check entry where uuid is empty list
     #[test]
     fn test_pre_create_uuid_empty() {
-        let preload: Vec<Entry> = Vec::new();
+        let preload: Vec<Entry<EntryInvalid, EntryNew>> = Vec::new();
 
         let e: Entry = serde_json::from_str(
             r#"{
@@ -305,7 +305,7 @@ mod tests {
             false,
             |be: &BackendWriteTransaction,
              au: &mut AuditScope,
-             cand: &mut Vec<Entry>,
+             cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
              ce: &CreateEvent,
              schema: &SchemaWriteTransaction| {
                 let r = Base::pre_create(be, au, cand, ce, schema);
@@ -317,7 +317,7 @@ mod tests {
     // check create where provided uuid is valid. It should be unchanged.
     #[test]
     fn test_pre_create_uuid_valid() {
-        let preload: Vec<Entry> = Vec::new();
+        let preload: Vec<Entry<EntryInvalid, EntryNew>> = Vec::new();
 
         let e: Entry = serde_json::from_str(
             r#"{
@@ -341,7 +341,7 @@ mod tests {
             false,
             |be: &BackendWriteTransaction,
              au: &mut AuditScope,
-             cand: &mut Vec<Entry>,
+             cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
              ce: &CreateEvent,
              schema: &SchemaWriteTransaction| {
                 let r = Base::pre_create(be, au, cand, ce, schema);
@@ -354,7 +354,7 @@ mod tests {
 
     #[test]
     fn test_pre_create_uuid_valid_multi() {
-        let preload: Vec<Entry> = Vec::new();
+        let preload: Vec<Entry<EntryInvalid, EntryNew>> = Vec::new();
 
         let e: Entry = serde_json::from_str(
             r#"{
@@ -378,7 +378,7 @@ mod tests {
             false,
             |be: &BackendWriteTransaction,
              au: &mut AuditScope,
-             cand: &mut Vec<Entry>,
+             cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
              ce: &CreateEvent,
              schema: &SchemaWriteTransaction| {
                 let r = Base::pre_create(be, au, cand, ce, schema);
@@ -390,7 +390,7 @@ mod tests {
     // check create where uuid already exists.
     #[test]
     fn test_pre_create_uuid_exist() {
-        let e: Entry = serde_json::from_str(
+        let e: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
             "attrs": {
                 "class": ["person"],
@@ -413,7 +413,7 @@ mod tests {
             false,
             |be: &BackendWriteTransaction,
              au: &mut AuditScope,
-             cand: &mut Vec<Entry>,
+             cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
              ce: &CreateEvent,
              schema: &SchemaWriteTransaction| {
                 let r = Base::pre_create(be, au, cand, ce, schema);

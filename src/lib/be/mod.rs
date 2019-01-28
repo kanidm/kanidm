@@ -99,7 +99,7 @@ pub trait BackendReadTransaction {
                     // TODO: Should we do better than unwrap?
                     let mut e: Entry<EntryValid, EntryCommitted> = serde_json::from_str(id_ent.data.as_str()).unwrap();
                     e.id = Some(id_ent.id);
-                    if filt.entry_match_no_index(&e) {
+                    if e.entry_match_no_index(&filt) {
                         Some(e)
                     } else {
                         None
@@ -556,7 +556,8 @@ mod tests {
 
     macro_rules! entry_exists {
         ($audit:expr, $be:expr, $ent:expr) => {{
-            let filt = $ent.filter_from_attrs(&vec![String::from("userid")]).unwrap();
+            let ei = unsafe { $ent.clone().to_valid_committed() };
+            let filt = ei.filter_from_attrs(&vec![String::from("userid")]).unwrap();
             let entries = $be.search($audit, &filt).unwrap();
             entries.first().is_some()
         }}
@@ -564,7 +565,8 @@ mod tests {
 
     macro_rules! entry_attr_pres {
         ($audit:expr, $be:expr, $ent:expr, $attr:expr) => {{
-            let filt = $ent.filter_from_attrs(&vec![String::from("userid")]).unwrap();
+            let ei = unsafe { $ent.clone().to_valid_committed() };
+            let filt = ei.filter_from_attrs(&vec![String::from("userid")]).unwrap();
             let entries = $be.search($audit, &filt).unwrap();
             match entries.first() {
                 Some(ent) => {
@@ -584,8 +586,9 @@ mod tests {
             audit_log!(audit, "{:?}", empty_result);
             assert_eq!(empty_result, Err(BackendError::EmptyRequest));
 
-            let mut e: Entry = Entry::new();
+            let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
             e.add_ava(String::from("userid"), String::from("william"));
+            let e = unsafe { e.to_valid_new() };
 
             let single_result = be.create(audit, &vec![e.clone()]);
 
@@ -608,10 +611,10 @@ mod tests {
         run_test!(|audit: &mut AuditScope, be: &BackendWriteTransaction| {
             audit_log!(audit, "Simple Modify");
             // First create some entries (3?)
-            let mut e1: Entry = Entry::new();
+            let mut e1: Entry<EntryInvalid, EntryNew> = Entry::new();
             e1.add_ava(String::from("userid"), String::from("william"));
 
-            let mut e2: Entry = Entry::new();
+            let mut e2: Entry<EntryInvalid, EntryNew> = Entry::new();
             e2.add_ava(String::from("userid"), String::from("alice"));
 
             assert!(be.create(audit, &vec![e1.clone(), e2.clone()]).is_ok());
@@ -622,11 +625,17 @@ mod tests {
             let mut results = be.search(audit, &Filter::Pres(String::from("userid"))).unwrap();
 
             // Get these out to usable entries.
-            let mut r1 = results.remove(0);
-            let mut r2 = results.remove(0);
+            let r1 = results.remove(0);
+            let r2 = results.remove(0);
+
+            let mut r1 = r1.invalidate();
+            let mut r2 = r2.invalidate();
 
             // Modify no id (err)
-            assert!(be.modify(audit, &vec![e1.clone()]).is_err());
+            // This is now impossible due to the state machine design.
+            // However, with some unsafe ....
+            let ue1 = unsafe { e1.clone().to_valid_committed() };
+            assert!(be.modify(audit, &vec![ue1]).is_err());
             // Modify none
             assert!(be.modify(audit, &vec![]).is_err());
 
@@ -634,17 +643,22 @@ mod tests {
             r1.add_ava(String::from("desc"), String::from("modified"));
             r2.add_ava(String::from("desc"), String::from("modified"));
 
+            // Now ... cheat.
+
+            vr1 = unsafe { r1.to_valid_committed() };
+            vr2 = unsafe { r2.to_valid_committed() };
+
             // Modify single
-            assert!(be.modify(audit, &vec![r1.clone()]).is_ok());
+            assert!(be.modify(audit, &vec![vr1.clone()]).is_ok());
             // Assert no other changes
-            assert!(entry_attr_pres!(audit, be, r1, "desc"));
-            assert!(! entry_attr_pres!(audit, be, r2, "desc"));
+            assert!(entry_attr_pres!(audit, be, vr1, "desc"));
+            assert!(! entry_attr_pres!(audit, be, vr2, "desc"));
 
             // Modify both
-            assert!(be.modify(audit, &vec![r1.clone(), r2.clone()]).is_ok());
+            assert!(be.modify(audit, &vec![vr1.clone(), vr2.clone()]).is_ok());
 
-            assert!(entry_attr_pres!(audit, be, r1, "desc"));
-            assert!(entry_attr_pres!(audit, be, r2, "desc"));
+            assert!(entry_attr_pres!(audit, be, vr1, "desc"));
+            assert!(entry_attr_pres!(audit, be, vr2, "desc"));
         });
     }
 
@@ -654,13 +668,13 @@ mod tests {
             audit_log!(audit, "Simple Delete");
 
             // First create some entries (3?)
-            let mut e1: Entry = Entry::new();
+            let mut e1: Entry<EntryInvalid, EntryNew> = Entry::new();
             e1.add_ava(String::from("userid"), String::from("william"));
 
-            let mut e2: Entry = Entry::new();
+            let mut e2: Entry<EntryInvalid, EntryNew> = Entry::new();
             e2.add_ava(String::from("userid"), String::from("alice"));
 
-            let mut e3: Entry = Entry::new();
+            let mut e3: Entry<EntryInvalid, EntryNew> = Entry::new();
             e3.add_ava(String::from("userid"), String::from("lucy"));
 
             assert!(be.create(audit, &vec![e1.clone(), e2.clone(), e3.clone()]).is_ok());
@@ -685,7 +699,9 @@ mod tests {
             assert!(be.delete(audit, &vec![]).is_err());
 
             // Delete with no id
-            let mut e4: Entry = Entry::new();
+            // WARNING: Normally, this isn't possible, but we are pursposefully breaking
+            // the state machine rules here!!!!
+            let mut e4: Entry<EntryValid, EntryCommitted> = Entry::new();
             e4.add_ava(String::from("userid"), String::from("amy"));
 
             assert!(be.delete(audit, &vec![e4.clone()]).is_err());

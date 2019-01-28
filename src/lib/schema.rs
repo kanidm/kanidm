@@ -312,7 +312,7 @@ pub trait SchemaReadTransaction {
         &self.get_inner().classes
     }
 
-    fn get_attributes(&self) -> HashMap<String, SchemaAttribute> {
+    fn get_attributes(&self) -> &HashMap<String, SchemaAttribute> {
         &self.get_inner().attributes
     }
 }
@@ -1009,7 +1009,7 @@ impl Schema {
 mod tests {
     use super::super::audit::AuditScope;
     use super::super::constants::*;
-    use super::super::entry::Entry;
+    use super::super::entry::{Entry, EntryInvalid, EntryNew};
     use super::super::error::SchemaError;
     use super::super::filter::Filter;
     use super::{IndexType, Schema, SchemaAttribute, SchemaClass, SyntaxType};
@@ -1229,7 +1229,7 @@ mod tests {
         let mut audit = AuditScope::new("test_schema_entries");
         let schema_outer = Schema::new(&mut audit).unwrap();
         let schema = schema_outer.read();
-        let e_no_class: Entry = serde_json::from_str(
+        let e_no_class: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
             "attrs": {}
         }"#,
@@ -1237,11 +1237,11 @@ mod tests {
         .unwrap();
 
         assert_eq!(
-            schema.validate_entry(&e_no_class),
+            e_no_class.validate(&schema),
             Err(SchemaError::InvalidClass)
         );
 
-        let e_bad_class: Entry = serde_json::from_str(
+        let e_bad_class: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
             "attrs": {
                 "class": ["zzzzzz"]
@@ -1250,11 +1250,11 @@ mod tests {
         )
         .unwrap();
         assert_eq!(
-            schema.validate_entry(&e_bad_class),
+            e_bad_class.validate_entry(&schema),
             Err(SchemaError::InvalidClass)
         );
 
-        let e_attr_invalid: Entry = serde_json::from_str(
+        let e_attr_invalid: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
             "attrs": {
                 "class": ["attributetype"]
@@ -1263,13 +1263,13 @@ mod tests {
         )
         .unwrap();
 
-        let res = schema.validate_entry(&e_attr_invalid);
+        let res = e_attr_invalid.validate_entry(&schema);
         assert!(match res {
             Err(SchemaError::MissingMustAttribute(_)) => true,
             _ => false,
         });
 
-        let e_attr_invalid_may: Entry = serde_json::from_str(
+        let e_attr_invalid_may: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
             "attrs": {
                 "class": ["attributetype"],
@@ -1286,11 +1286,11 @@ mod tests {
         .unwrap();
 
         assert_eq!(
-            schema.validate_entry(&e_attr_invalid_may),
+            e_attr_invalid_may.validate_entry(&schema),
             Err(SchemaError::InvalidAttribute)
         );
 
-        let e_attr_invalid_syn: Entry = serde_json::from_str(
+        let e_attr_invalid_syn: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
             "attrs": {
                 "class": ["attributetype"],
@@ -1306,11 +1306,11 @@ mod tests {
         .unwrap();
 
         assert_eq!(
-            schema.validate_entry(&e_attr_invalid_syn),
+            e_attr_invalid_syn.validate_entry(&schema),
             Err(SchemaError::InvalidAttributeSyntax)
         );
 
-        let e_ok: Entry = serde_json::from_str(
+        let e_ok: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
             "attrs": {
                 "class": ["attributetype"],
@@ -1340,7 +1340,7 @@ mod tests {
         // check index to upper
         // insense to lower
         // attr name to lower
-        let e_test: Entry = serde_json::from_str(
+        let e_test: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
             "attrs": {
                 "class": ["extensibleobject"],
@@ -1352,12 +1352,8 @@ mod tests {
         }"#,
         )
         .unwrap();
-        assert_eq!(
-            schema.validate_entry(&e_test),
-            Err(SchemaError::InvalidAttributeSyntax)
-        );
 
-        let e_expect: Entry = serde_json::from_str(
+        let e_expect: Entry<EntryValid, EntryNew> = serde_json::from_str(
             r#"{
             "attrs": {
                 "class": ["extensibleobject"],
@@ -1369,11 +1365,9 @@ mod tests {
         }"#,
         )
         .unwrap();
-        assert_eq!(schema.validate_entry(&e_expect), Ok(()));
 
-        let e_normalised = schema.normalise_entry(&e_test);
+        let e_normalised = e_test.validate(&schema);
 
-        assert_eq!(schema.validate_entry(&e_normalised), Ok(()));
         assert_eq!(e_expect, e_normalised);
         println!("{}", audit);
     }
@@ -1385,7 +1379,7 @@ mod tests {
         let schema = schema_outer.read();
         // Just because you are extensible, doesn't mean you can be lazy
 
-        let e_extensible_bad: Entry = serde_json::from_str(
+        let e_extensible_bad: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
             "attrs": {
                 "class": ["extensibleobject"],
@@ -1400,7 +1394,7 @@ mod tests {
             Err(SchemaError::InvalidAttributeSyntax)
         );
 
-        let e_extensible: Entry = serde_json::from_str(
+        let e_extensible: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
             "attrs": {
                 "class": ["extensibleobject"],
@@ -1428,7 +1422,7 @@ mod tests {
         schema.bootstrap_core(&mut audit).unwrap();
 
         // now test some entries
-        let e_person: Entry = serde_json::from_str(
+        let e_person: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
             "attrs": {
                 "class": ["person"],
@@ -1442,7 +1436,7 @@ mod tests {
         .unwrap();
         assert_eq!(schema.validate_entry(&e_person), Ok(()));
 
-        let e_group: Entry = serde_json::from_str(
+        let e_group: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
             "attrs": {
                 "class": ["group"],
