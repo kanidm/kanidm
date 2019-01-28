@@ -2,7 +2,6 @@
 // in parallel map/reduce style, or directly on a single
 // entry to assert it matches.
 
-use super::entry::{Entry, EntryValid, EntryCommitted};
 use std::cmp::{Ordering, PartialOrd};
 use regex::Regex;
 
@@ -41,48 +40,6 @@ impl Filter {
         //
         // If its the root item?
         self.clone()
-    }
-
-    // What other parse types do we need?
-
-    // FIXME: This check should be in ENTRY not here, because it's up to others
-    // to interpret filter meaning and application!!!
-
-    // Assert if this filter matches the entry (no index)
-    pub fn entry_match_no_index(&self, e: &Entry<EntryValid, EntryCommitted>) -> bool {
-        // Go through the filter components and check them in the entry.
-        // This is recursive!!!!
-        match self {
-            Filter::Eq(attr, value) => e.attribute_equality(attr.as_str(), value.as_str()),
-            Filter::Sub(attr, subvalue) => e.attribute_substring(attr.as_str(), subvalue.as_str()),
-            Filter::Pres(attr) => {
-                // Given attr, is is present in the entry?
-                e.attribute_pres(attr.as_str())
-            }
-            Filter::Or(l) => {
-                l.iter()
-                    .fold(false, |acc, f| {
-                        if acc {
-                            acc
-                        } else {
-                            f.entry_match_no_index(e)
-                        }
-                    })
-            }
-            Filter::And(l) => {
-                l.iter()
-                    .fold(true, |acc, f| {
-                        if acc {
-                            f.entry_match_no_index(e)
-                        } else {
-                            acc
-                        }
-                    })
-            }
-            Filter::Not(f) => {
-                !f.entry_match_no_index(e)
-            }
-        }
     }
 }
 
@@ -145,7 +102,7 @@ impl PartialOrd for Filter {
 #[cfg(test)]
 mod tests {
     use super::Filter;
-    use entry::Entry;
+    use entry::{Entry, EntryValid, EntryNew};
     use serde_json;
     use std::cmp::{Ordering, PartialOrd};
 
@@ -242,7 +199,7 @@ mod tests {
 
     #[test]
     fn test_or_entry_filter() {
-        let e: Entry = serde_json::from_str(r#"{
+        let e: Entry<EntryValid, EntryNew> = serde_json::from_str(r#"{
             "attrs": {
                 "userid": ["william"],
                 "uidNumber": ["1000"]
@@ -253,30 +210,30 @@ mod tests {
             Filter::Eq(String::from("userid"), String::from("william")),
             Filter::Eq(String::from("uidNumber"), String::from("1000")),
         ]);
-        assert!(f_t1a.entry_match_no_index(&e));
+        assert!(e.entry_match_no_index(&f_t1a));
 
         let f_t2a = Filter::Or(vec![
             Filter::Eq(String::from("userid"), String::from("william")),
             Filter::Eq(String::from("uidNumber"), String::from("1001")),
         ]);
-        assert!(f_t2a.entry_match_no_index(&e));
+        assert!(e.entry_match_no_index(&f_t2a));
 
         let f_t3a = Filter::Or(vec![
             Filter::Eq(String::from("userid"), String::from("alice")),
             Filter::Eq(String::from("uidNumber"), String::from("1000")),
         ]);
-        assert!(f_t3a.entry_match_no_index(&e));
+        assert!(e.entry_match_no_index(&f_t2a));
 
         let f_t4a = Filter::Or(vec![
             Filter::Eq(String::from("userid"), String::from("alice")),
             Filter::Eq(String::from("uidNumber"), String::from("1001")),
         ]);
-        assert!(!f_t4a.entry_match_no_index(&e));
+        assert!(!e.entry_match_no_index(&f_t4a));
     }
 
     #[test]
     fn test_and_entry_filter() {
-        let e: Entry = serde_json::from_str(r#"{
+        let e: Entry<EntryValid, EntryNew> = serde_json::from_str(r#"{
             "attrs": {
                 "userid": ["william"],
                 "uidNumber": ["1000"]
@@ -287,30 +244,30 @@ mod tests {
             Filter::Eq(String::from("userid"), String::from("william")),
             Filter::Eq(String::from("uidNumber"), String::from("1000")),
         ]);
-        assert!(f_t1a.entry_match_no_index(&e));
+        assert!(e.entry_match_no_index(&f_t1a));
 
         let f_t2a = Filter::And(vec![
             Filter::Eq(String::from("userid"), String::from("william")),
             Filter::Eq(String::from("uidNumber"), String::from("1001")),
         ]);
-        assert!(!f_t2a.entry_match_no_index(&e));
+        assert!(!e.entry_match_no_index(&f_t2a));
 
         let f_t3a = Filter::And(vec![
             Filter::Eq(String::from("userid"), String::from("alice")),
             Filter::Eq(String::from("uidNumber"), String::from("1000")),
         ]);
-        assert!(!f_t3a.entry_match_no_index(&e));
+        assert!(!e.entry_match_no_index(&f_t3a));
 
         let f_t4a = Filter::And(vec![
             Filter::Eq(String::from("userid"), String::from("alice")),
             Filter::Eq(String::from("uidNumber"), String::from("1001")),
         ]);
-        assert!(!f_t4a.entry_match_no_index(&e));
+        assert!(!e.entry_match_no_index(&f_t4a));
     }
 
     #[test]
     fn test_not_entry_filter() {
-        let e1: Entry = serde_json::from_str(r#"{
+        let e1: Entry<EntryValid, EntryNew> = serde_json::from_str(r#"{
             "attrs": {
                 "userid": ["william"],
                 "uidNumber": ["1000"]
@@ -320,39 +277,39 @@ mod tests {
         let f_t1a = Filter::Not(Box::new(
             Filter::Eq(String::from("userid"), String::from("alice")),
         ));
-        assert!(f_t1a.entry_match_no_index(&e1));
+        assert!(e1.entry_match_no_index(&f_t1a));
 
         let f_t2a = Filter::Not(Box::new(
             Filter::Eq(String::from("userid"), String::from("william")),
         ));
-        assert!(!f_t2a.entry_match_no_index(&e1));
+        assert!(!e1.entry_match_no_index(&f_t2a));
 
     }
 
     #[test]
     fn test_nested_entry_filter() {
-        let e1: Entry = serde_json::from_str(r#"{
+        let e1: Entry<EntryValid, EntryNew> = serde_json::from_str(r#"{
             "attrs": {
                 "class": ["person"],
                 "uidNumber": ["1000"]
             }
         }"#).unwrap();
 
-        let e2: Entry = serde_json::from_str(r#"{
+        let e2: Entry<EntryValid, EntryNew> = serde_json::from_str(r#"{
             "attrs": {
                 "class": ["person"],
                 "uidNumber": ["1001"]
             }
         }"#).unwrap();
 
-        let e3: Entry = serde_json::from_str(r#"{
+        let e3: Entry<EntryValid, EntryNew> = serde_json::from_str(r#"{
             "attrs": {
                 "class": ["person"],
                 "uidNumber": ["1002"]
             }
         }"#).unwrap();
 
-        let e4: Entry = serde_json::from_str(r#"{
+        let e4: Entry<EntryValid, EntryNew> = serde_json::from_str(r#"{
             "attrs": {
                 "class": ["group"],
                 "uidNumber": ["1000"]
@@ -367,9 +324,9 @@ mod tests {
             ]),
         ]);
 
-        assert!(f_t1a.entry_match_no_index(&e1));
-        assert!(f_t1a.entry_match_no_index(&e2));
-        assert!(!f_t1a.entry_match_no_index(&e3));
-        assert!(!f_t1a.entry_match_no_index(&e4));
+        assert!(e1.entry_match_no_index(&f_t1a));
+        assert!(e2.entry_match_no_index(&f_t1a));
+        assert!(!e3.entry_match_no_index(&f_t1a));
+        assert!(!e4.entry_match_no_index(&f_t1a));
     }
 }

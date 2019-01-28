@@ -321,6 +321,43 @@ impl<STATE> Entry<EntryValid, STATE> {
         }
     }
 
+    // Assert if this filter matches the entry (no index)
+    pub fn entry_match_no_index(&self, filter: &Filter) -> bool {
+        // Go through the filter components and check them in the entry.
+        // This is recursive!!!!
+        match filter {
+            Filter::Eq(attr, value) => self.attribute_equality(attr.as_str(), value.as_str()),
+            Filter::Sub(attr, subvalue) => self.attribute_substring(attr.as_str(), subvalue.as_str()),
+            Filter::Pres(attr) => {
+                // Given attr, is is present in the entry?
+                self.attribute_pres(attr.as_str())
+            }
+            Filter::Or(l) => {
+                l.iter()
+                    .fold(false, |acc, f| {
+                        if acc {
+                            acc
+                        } else {
+                            self.entry_match_no_index(f)
+                        }
+                    })
+            }
+            Filter::And(l) => {
+                l.iter()
+                    .fold(true, |acc, f| {
+                        if acc {
+                            self.entry_match_no_index(f)
+                        } else {
+                            acc
+                        }
+                    })
+            }
+            Filter::Not(f) => {
+                !self.entry_match_no_index(f)
+            }
+        }
+    }
+
     pub fn filter_from_attrs(&self, attrs: &Vec<String>) -> Option<Filter> {
         // Generate a filter from the attributes requested and defined.
         // Basically, this is a series of nested and's (which will be
