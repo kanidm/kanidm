@@ -3,9 +3,11 @@ use super::proto_v1::Entry as ProtoEntry;
 use filter::Filter;
 use std::collections::btree_map::{Iter as BTreeIter, IterMut as BTreeIterMut};
 use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::slice::Iter as SliceIter;
 use modify::{Modify, ModifyList};
-use schema::SchemaReadTransaction;
+use schema::{SchemaReadTransaction, SchemaAttribute, SchemaClass};
+use error::SchemaError;
 
 // make a trait entry for everything to adhere to?
 //  * How to get indexs out?
@@ -117,6 +119,8 @@ pub struct EntryInvalid; // Modified
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Entry<VALID, STATE> {
+    valid: VALID,
+    state: STATE,
     pub id: Option<i64>,
     // Flag if we have been schema checked or not.
     // pub schema_validated: bool,
@@ -127,6 +131,8 @@ impl Entry<EntryInvalid, EntryNew> {
     pub fn new() -> Self {
         Entry {
             // This means NEVER COMMITED
+            valid: EntryInvalid,
+            state: EntryNew,
             id: None,
             attrs: BTreeMap::new(),
         }
@@ -165,11 +171,23 @@ impl<STATE> Entry<EntryInvalid, STATE> {
             attrs: BTreeMap::new(),
         };
 
+        let schema_classes = schema.get_classes();
+        let schema_attributes = schema.get_attributes();
+
+        // This should never fail!
+        let schema_attr_name = match schema_attributes.get("name") {
+            Some(v) => v,
+            None => {
+                return Err(SchemaError::Corrupted);
+            }
+        };
+
+
         // First normalise
         for (attr_name, avas) in attrs.iter() {
             let attr_name_normal: String = schema_attr_name.normalise_value(attr_name);
             // Get the needed schema type
-            let schema_a_r = self.attributes.get(&attr_name_normal);
+            let schema_a_r = schema_attributes.get(&attr_name_normal);
 
             let avas_normal: Vec<String> = match schema_a_r {
                 Some(schema_a) => {
@@ -192,28 +210,24 @@ impl<STATE> Entry<EntryInvalid, STATE> {
         //
         // FIXME: We could restructure this to be a map that gets Some(class)
         // if found, then do a len/filter/check on the resulting class set?
-        let c_valid = ne.classes().fold(Ternary::Empty, |acc, c| {
-            if acc == Ternary::False {
-                // Begin shortcircuit
-                acc
-            } else {
-                // Test the value (Could be True or Valid on entry.
-                // We
-                match schema.classes.contains_key(c) {
-                    true => Ternary::True,
-                    false => Ternary::False,
-                }
-            }
-        });
 
-        if c_valid != Ternary::True {
+        let entry_classes = ne.classes();
+
+        let classes: HashMap<String, &SchemaClass> = entry_classes
+            .filter_map(|c| {
+                match schema_classes.get(c) {
+                    Some(cls) => {
+                        (c.clone(), cls)
+                    }
+                    None => None,
+                }
+            })
+            .collect();
+
+        if classes.len() != entry_classes.len() {
             return Err(SchemaError::InvalidClass);
         };
 
-        let classes: HashMap<String, &SchemaClass> = entry
-            .classes()
-            .map(|c| (c.clone(), self.classes.get(c).unwrap()))
-            .collect();
 
         let extensible = classes.contains_key("extensibleobject");
 
@@ -231,7 +245,12 @@ impl<STATE> Entry<EntryInvalid, STATE> {
             .iter()
             // Join our class systemmmust + must into one iter
             .flat_map(|(_, cls)| cls.systemmust.iter().chain(cls.must.iter()))
-            .map(|s| (s.clone(), self.attributes.get(s).unwrap()))
+            .map(|s| {
+                // This should NOT fail - if it does, it means our schema is
+                // in an invalid state!
+                // TODO: Make this return Corrupted on failure.
+                (s.clone(), schema_attributes.get(s).unwrap())
+            })
             .collect();
 
         // FIXME: Error needs to say what is missing
@@ -241,7 +260,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
         //   for each attr in must, check it's present on our ent
         // FIXME: Could we iter over only the attr_name
         for (attr_name, _attr) in must {
-            let avas = entry.get_ava(&attr_name);
+            let avas = ne.get_ava(&attr_name);
             if avas.is_none() {
                 return Err(SchemaError::MissingMustAttribute(
                     String::from(attr_name)
@@ -251,7 +270,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
 
         // Check that any other attributes are in may
         //   for each attr on the object, check it's in the may+must set
-        for (attr_name, avas) in entry.avas() {
+        for (attr_name, avas) in ne.avas() {
             match self.attributes.get(attr_name) {
                 Some(a_schema) => {
                     // Now, for each type we do a *full* check of the syntax
@@ -277,8 +296,10 @@ impl<STATE> Entry<EntryInvalid, STATE> {
 
 impl<VALID, STATE> Clone for Entry<VALID, STATE> {
     // Dirty modifiable state. Works on any other state to dirty them.
-    fn clone(&self) -> Entry<EntryInvalid, STATE> {
+    fn clone(&self) -> Entry<VALID, STATE> {
         Entry {
+            valid: self.valid,
+            state: self.state,
             id: self.id,
             attrs: self.attrs.clone(),
         }
@@ -507,7 +528,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
 }
 
 impl<VALID, STATE> PartialEq for Entry<VALID, STATE> {
-    fn eq(&self, rhs: &Entry) -> bool {
+    fn eq(&self, rhs: &Entry<VALID, STATE>) -> bool {
         // FIXME: This is naive. Later it should be schema
         // aware checking.
         self.attrs == rhs.attrs

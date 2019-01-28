@@ -8,6 +8,7 @@ pub enum SchemaError {
     InvalidAttribute,
     InvalidAttributeSyntax,
     EmptyFilter,
+    Corrupted,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]

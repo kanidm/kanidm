@@ -79,7 +79,7 @@ impl Plugins {
     pub fn run_pre_create(
         be_txn: &BackendWriteTransaction,
         au: &mut AuditScope,
-        cand: &mut Vec<Entry>,
+        cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         ce: &CreateEvent,
         schema: &SchemaWriteTransaction,
     ) -> Result<(), OperationError> {

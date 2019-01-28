@@ -3,7 +3,7 @@ use uuid::Uuid;
 
 use audit::AuditScope;
 use be::{BackendReadTransaction, BackendTransaction, BackendWriteTransaction};
-use entry::Entry;
+use entry::{Entry, EntryInvalid, EntryNew};
 use error::OperationError;
 use event::CreateEvent;
 use filter::Filter;
@@ -32,7 +32,7 @@ impl Plugin for Base {
     fn pre_create(
         be: &BackendWriteTransaction,
         au: &mut AuditScope,
-        cand: &mut Vec<Entry>,
+        cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         _ce: &CreateEvent,
         _schema: &SchemaWriteTransaction,
     ) -> Result<(), OperationError> {

@@ -1,6 +1,6 @@
 use super::audit::AuditScope;
 use super::constants::*;
-use super::entry::Entry;
+// use super::entry::Entry;
 use super::error::SchemaError;
 use super::filter::Filter;
 use std::collections::HashMap;
@@ -34,13 +34,6 @@ use concread::cowcell::{CowCell, CowCellReadTxn, CowCellWriteTxn};
 // TODO: Entry -> Schema given class. This is for loading from the db.
 
 // TODO: prefix on all schema types that are system?
-
-#[derive(Debug, PartialEq)]
-enum Ternary {
-    Empty,
-    True,
-    False,
-}
 
 #[allow(non_camel_case_types)]
 #[derive(Debug, Clone, PartialEq)]
@@ -310,6 +303,17 @@ pub trait SchemaReadTransaction {
 
     fn is_multivalue(&self, attr: &str) -> Result<bool, SchemaError> {
         self.get_inner().is_multivalue(attr)
+    }
+
+    // Probably need something like get_classes or similar
+    // so that externals can call and use this data.
+
+    fn get_classes(&self) -> &HashMap<String, SchemaClass> {
+        &self.get_inner().classes
+    }
+
+    fn get_attributes(&self) -> HashMap<String, SchemaAttribute> {
+        &self.get_inner().attributes
     }
 }
 

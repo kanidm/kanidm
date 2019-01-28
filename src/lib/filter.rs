@@ -2,7 +2,7 @@
 // in parallel map/reduce style, or directly on a single
 // entry to assert it matches.
 
-use super::entry::Entry;
+use super::entry::{Entry, EntryValid, EntryCommitted};
 use std::cmp::{Ordering, PartialOrd};
 use regex::Regex;
 
@@ -49,7 +49,7 @@ impl Filter {
     // to interpret filter meaning and application!!!
 
     // Assert if this filter matches the entry (no index)
-    pub fn entry_match_no_index(&self, e: &Entry) -> bool {
+    pub fn entry_match_no_index(&self, e: &Entry<EntryValid, EntryCommitted>) -> bool {
         // Go through the filter components and check them in the entry.
         // This is recursive!!!!
         match self {
