@@ -12,11 +12,13 @@ use be::{
 use constants::{JSON_ANONYMOUS_V1, JSON_SYSTEM_INFO_V1};
 use entry::Entry;
 use error::OperationError;
-use event::{CreateEvent, ExistsEvent, OpResult, SearchEvent, SearchResult, DeleteEvent};
+use event::{CreateEvent, ExistsEvent, OpResult, SearchEvent, SearchResult, DeleteEvent, ModifyEvent};
 use filter::Filter;
 use log::EventLog;
 use plugins::Plugins;
-use schema::{Schema, SchemaTransaction, SchemaWriteTransaction};
+use schema::{Schema, SchemaTransaction, SchemaReadTransaction, SchemaWriteTransaction};
+use modify::ModifyList;
+
 
 pub fn start(log: actix::Addr<EventLog>, path: &str, threads: usize) -> actix::Addr<QueryServer> {
     let mut audit = AuditScope::new("server_start");
@@ -139,8 +141,13 @@ pub trait QueryServerReadTransaction {
         res
     }
 
-    fn internal_search(&self, _au: &mut AuditScope, _filter: Filter) -> Result<Vec<Entry>, OperationError> {
-        unimplemented!()
+    fn internal_search(&self, audit: &mut AuditScope, filter: Filter) -> Result<Vec<Entry>, OperationError> {
+
+        let mut audit_int = AuditScope::new("internal_search");
+        let se = SearchEvent::new_internal(filter);
+        let res = self.search(&mut audit_int, &se);
+        audit.append_scope(audit_int);
+        res
     }
 }
 
@@ -313,6 +320,90 @@ impl<'a> QueryServerWriteTransaction<'a> {
         unimplemented!()
     }
 
+    pub fn modify(&self, au: &mut AuditScope, me: &ModifyEvent) -> Result<(), OperationError> {
+        // Get the candidates.
+        // Modify applies a modlist to a filter, so we need to internal search
+        // then apply.
+        // WARNING! Check access controls here!!!!
+        // How can we do the search with the permissions of the caller?
+
+        // TODO: Fix this filter clone ....
+        // Likely this will be fixed if search takes &filter, and then clone
+        // to normalise, instead of attempting to mut the filter on norm.
+        let pre_candidates = match self.internal_search(au, me.filter.clone()) {
+            Ok(results) => results,
+            Err(e) => return Err(e),
+        };
+
+        if pre_candidates.len() == 0 {
+            return Err(OperationError::NoMatchingEntries)
+        };
+
+        // Clone a set of writeables.
+        // Apply the modlist -> Remember, we have a set of origs
+        // and the new modified ents.
+        let mut candidates: Vec<Entry> = pre_candidates.iter()
+            .map(|er| {
+                er.apply_modlist(&me.modlist).unwrap()
+            })
+            .collect();
+
+        audit_log!(au, "modify: candidates -> {:?}", candidates);
+
+        // Pre mod plugins
+
+        // Schema validate
+        let r = candidates.iter().fold(Ok(()), |acc, e| {
+            if acc.is_ok() {
+                self.schema
+                    .validate_entry(e)
+                    .map_err(|err| {
+                        audit_log!(au, "Schema Violation: {:?}", err);
+                        OperationError::SchemaViolation
+                    })
+            } else {
+                acc
+            }
+        });
+        if r.is_err() {
+            audit_log!(au, "Modify operation failed (schema), {:?}", r);
+            return r;
+        }
+
+        // Normalise all the data now it's validated.
+        // FIXME: This normalisation COPIES everything, which may be
+        // slow.
+        let norm_cand: Vec<Entry> = candidates
+            .iter()
+            .map(|e| self.schema.normalise_entry(&e))
+            .collect();
+
+        // Backend Modify
+        let mut audit_be = AuditScope::new("backend_modify");
+
+        let res = self
+            .be_txn
+            .modify(&mut audit_be, &norm_cand)
+            .map(|_| ())
+            .map_err(|e| match e {
+                BackendError::EmptyRequest => OperationError::EmptyRequest,
+                BackendError::EntryMissingId => OperationError::InvalidRequestState,
+            });
+        au.append_scope(audit_be);
+
+        if res.is_err() {
+            // be_txn is dropped, ie aborted here.
+            audit_log!(au, "Modify operation failed (backend), {:?}", r);
+            return res;
+        }
+
+        // Post Plugins
+
+        // return
+        audit_log!(au, "Modify operation success");
+        res
+    }
+
     // These are where searches and other actions are actually implemented. This
     // is the "internal" version, where we define the event as being internal
     // only, allowing certain plugin by passes etc.
@@ -339,6 +430,19 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let mut audit_int = AuditScope::new("internal_delete");
         let de = DeleteEvent::new_internal(filter);
         let res = self.delete(&mut audit_int, &de);
+        audit.append_scope(audit_int);
+        res
+    }
+
+    pub fn internal_modify(
+        &self,
+        audit: &mut AuditScope,
+        filter: Filter,
+        modlist: ModifyList
+    ) -> Result<(), OperationError> {
+        let mut audit_int = AuditScope::new("internal_modify");
+        let me = ModifyEvent::new_internal(filter, modlist);
+        let res = self.modify(&mut audit_int, &me);
         audit.append_scope(audit_int);
         res
     }
@@ -370,20 +474,32 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // few attributes.
         //
         // This will extra classes an attributes alone!
-        let filt = match e.filter_from_attrs(&vec![String::from("name"), String::from("uuid")]) {
+        let filt = match e.filter_from_attrs(&vec![String::from("uuid")]) {
             Some(f) => f,
             None => return Err(OperationError::FilterGeneration),
         };
 
-        // Does it exist? (TODO: Should be search, not exists ...)
-        match self.internal_exists(audit, filt) {
-            Ok(true) => {
-                // it exists. We need to ensure the content now.
-                unimplemented!()
-            }
-            Ok(false) => {
-                // It does not exist. Create it.
-                self.internal_create(audit, vec![e])
+        match self.internal_search(audit, filt.clone()) {
+            Ok(results) => {
+                if results.len() == 0 {
+                    // It does not exist. Create it.
+                    self.internal_create(audit, vec![e])
+                } else if results.len() == 1 {
+                    // If the thing is subset, pass
+                    match e.gen_modlist_assert(&self.schema) {
+                        Ok(modlist) => {
+                            // Apply to &results[0]
+                            audit_log!(audit, "Generated modlist -> {:?}", modlist);
+                            self.internal_modify(audit, filt, modlist)
+                        }
+                        Err(e) => {
+                            unimplemented!()
+                            // No action required.
+                        }
+                    }
+                } else {
+                    Err(OperationError::InvalidDBState)
+                }
             }
             Err(e) => {
                 // An error occured. pass it back up.
@@ -403,7 +519,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // attributes and classes.
 
         // Create a filter from the entry for assertion.
-        let filt = match e.filter_from_attrs(&vec![String::from("name"), String::from("uuid")]) {
+        let filt = match e.filter_from_attrs(&vec![String::from("uuid")]) {
             Some(f) => f,
             None => return Err(OperationError::FilterGeneration),
         };
@@ -441,6 +557,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             let e: Entry = serde_json::from_str(JSON_SYSTEM_INFO_V1).unwrap();
             self.internal_assert_or_create(audit, e)
         });
+        audit_log!(audit_si, "start_system_info -> result {:?}", res);
         audit.append_scope(audit_si);
         assert!(res.is_ok());
         if res.is_err() {
@@ -453,6 +570,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             let e: Entry = serde_json::from_str(JSON_ANONYMOUS_V1).unwrap();
             self.internal_migrate_or_create(audit, e)
         });
+        audit_log!(audit_an, "start_anonymous -> result {:?}", res);
         audit.append_scope(audit_an);
         assert!(res.is_ok());
         if res.is_err() {

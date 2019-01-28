@@ -20,6 +20,10 @@ pub enum Filter {
     Not(Box<Filter>),
 }
 
+// Change this so you have RawFilter and Filter. RawFilter is the "builder", and then
+// given a "schema" you can emit a Filter. For us internally, we can create Filter
+// directly still ...
+
 impl Filter {
     // Does this need mut self? Aren't we returning
     // a new copied filter?

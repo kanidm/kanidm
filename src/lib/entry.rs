@@ -4,6 +4,8 @@ use filter::Filter;
 use std::collections::btree_map::{Iter as BTreeIter, IterMut as BTreeIterMut};
 use std::collections::BTreeMap;
 use std::slice::Iter as SliceIter;
+use modify::{Modify, ModifyList};
+use schema::SchemaReadTransaction;
 
 // make a trait entry for everything to adhere to?
 //  * How to get indexs out?
@@ -94,9 +96,23 @@ impl<'a> Iterator for EntryAvasMut<'a> {
 }
 
 // This is a BE concept, so move it there!
+
+// Entry should have a lifecycle of types. THis is Raw (modifiable) and Entry (verified).
+// This way, we can move between them, but only certain actions are possible on either
+// This means modifications happen on Raw, but to move to Entry, you schema normalise.
+// Vice versa, you can for free, move to Raw, but you lose the validation.
+
+// Because this is type system it's "free" in the end, and means we force validation
+// at the correct and required points of the entries life.
+
+// This is specifically important for the commit to the backend, as we only want to
+// commit validated types.
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Entry {
     pub id: Option<i64>,
+    // Flag if we have been schema checked or not.
+    // pub schema_validated: bool,
     attrs: BTreeMap<String, Vec<String>>,
 }
 
@@ -105,6 +121,9 @@ impl Entry {
         Entry {
             // This means NEVER COMMITED
             id: None,
+            // TODO: Make this only on cfg(test/debug_assertions) builds.
+            // ALTERNATE: Convert to a different entry type on validate/normalise?
+            // CONVERT TO A TYPE
             attrs: BTreeMap::new(),
         }
     }
@@ -123,6 +142,7 @@ impl Entry {
                 // Here we need to actually do a check/binary search ...
                 // FIXME: Because map_err is lazy, this won't do anything on release
                 match v.binary_search(&value) {
+                    // It already exists, done!
                     Ok(_) => {}
                     Err(idx) => {
                         // This cloning is to fix a borrow issue with the or_insert below.
@@ -132,6 +152,29 @@ impl Entry {
                 }
             })
             .or_insert(vec![value]);
+    }
+
+    pub fn remove_ava(&mut self, attr: &String, value: &String) {
+        self.attrs
+            // TODO: Fix this clone ...
+            .entry(attr.clone())
+            .and_modify(|v| {
+                // Here we need to actually do a check/binary search ...
+                // FIXME: Because map_err is lazy, this won't do anything on release
+                match v.binary_search(&value) {
+                    // It exists, rm it.
+                    Ok(idx) => {
+                        v.remove(idx);
+                    }
+                    // It does not exist, move on.
+                    Err(_) => {
+                    }
+                }
+            });
+    }
+
+    pub fn purge_ava(&mut self, attr: &String) {
+        self.attrs.remove(attr);
     }
 
     // FIXME: Should this collect from iter instead?
@@ -250,6 +293,72 @@ impl Entry {
             attrs: self.attrs.clone(),
         }
     }
+
+    pub fn gen_modlist_assert(&self, schema: &SchemaReadTransaction) -> Result<ModifyList, ()>
+    {
+        // Create a modlist from this entry. We make this assuming we want the entry
+        // to have this one as a subset of values. This means if we have single
+        // values, we'll replace, if they are multivalue, we present them.
+        //
+        // We assume the schema validaty of the entry is already checked, and
+        // normalisation performed.
+        let mut mods = ModifyList::new();
+
+        for (k, vs) in self.attrs.iter() {
+            // Get the schema attribute type out.
+            match schema.is_multivalue(k) {
+                Ok(r) => {
+                    if !r {
+                        // As this is single value, purge then present to maintain this
+                        // invariant
+                        mods.push_mod(Modify::Purged(k.clone()));
+                    }
+                }
+                Err(e) => {
+                    return Err(())
+                }
+            }
+            for v in vs {
+                mods.push_mod(Modify::Present(k.clone(), v.clone()));
+            }
+        }
+
+        Ok(mods)
+    }
+
+    // Should this be schemaless, relying on checks of the modlist, and the entry validate after?
+    pub fn apply_modlist(&self, modlist: &ModifyList) -> Result<Entry, ()> {
+        // Apply a modlist, generating a new entry that conforms to the changes.
+        // This is effectively clone-and-transform
+
+        // clone the entry
+        let mut ne = self.clone();
+
+        // mutate
+        for modify in modlist.mods.iter() {
+            match modify {
+                Modify::Present(a, v) => {
+                    ne.add_ava(a.clone(), v.clone())
+                }
+                Modify::Removed(a, v) => {
+                    ne.remove_ava(a, v)
+                }
+                Modify::Purged(a) => {
+                    ne.purge_ava(a)
+                }
+            }
+        }
+
+        // return it
+        Ok(ne)
+    }
+
+    pub fn clone_no_attrs(&self) -> Entry {
+        Entry {
+            id: self.id,
+            attrs: BTreeMap::new(),
+        }
+    }
 }
 
 impl Clone for Entry {
@@ -318,6 +427,7 @@ struct User {
 #[cfg(test)]
 mod tests {
     use super::{Entry, User};
+    use modify::{Modify, ModifyList};
     use serde_json;
 
     #[test]
@@ -349,7 +459,6 @@ mod tests {
     #[test]
     fn test_entry_pres() {
         let mut e: Entry = Entry::new();
-
         e.add_ava(String::from("userid"), String::from("william"));
 
         assert!(e.attribute_pres("userid"));
@@ -367,4 +476,24 @@ mod tests {
         assert!(!e.attribute_equality("nonexist", "william"));
     }
 
+    #[test]
+    fn test_entry_apply_modlist() {
+        // Test application of changes to an entry.
+        let mut e: Entry = Entry::new();
+        e.add_ava(String::from("userid"), String::from("william"));
+
+        let mods = ModifyList::new_list(vec![
+            Modify::Present(String::from("attr"), String::from("value")),
+        ]);
+
+        let ne = e.apply_modlist(&mods).unwrap();
+
+        // Assert the changes are there
+        assert!(ne.attribute_equality("attr", "value"));
+
+
+        // Assert present for multivalue
+        // Assert purge on single/multi/empty value
+        // Assert removed on value that exists and doesn't exist
+    }
 }

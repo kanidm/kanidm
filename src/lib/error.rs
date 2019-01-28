@@ -14,6 +14,7 @@ pub enum SchemaError {
 pub enum OperationError {
     EmptyRequest,
     Backend,
+    NoMatchingEntries,
     SchemaViolation,
     Plugin,
     FilterGeneration,

@@ -20,7 +20,7 @@ pub struct Base {}
 
 impl Plugin for Base {
     fn id() -> &'static str {
-        "Base"
+        "plugin_base"
     }
     // Need to be given the backend(for testing ease)
     // audit

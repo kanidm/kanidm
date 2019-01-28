@@ -9,13 +9,12 @@ use regex::Regex;
 use std::convert::TryFrom;
 use std::str::FromStr;
 use uuid::Uuid;
+use modify::ModifyList;
 
 use concread::cowcell::{CowCell, CowCellReadTxn, CowCellWriteTxn};
 
 // representations of schema that confines object types, classes
 // and attributes. This ties in deeply with "Entry".
-// This only defines the types, and how they are represented. For
-// application and validation of the schema, see "Entry".
 //
 // In the future this will parse/read it's schema from the db
 // but we have to bootstrap with some core types.
@@ -32,6 +31,7 @@ use concread::cowcell::{CowCell, CowCellReadTxn, CowCellWriteTxn};
 // probably just protection from delete and modify, except systemmay/systemmust/index?
 
 // TODO: Schema types -> Entry conversion
+// TODO: Entry -> Schema given class. This is for loading from the db.
 
 // TODO: prefix on all schema types that are system?
 
@@ -298,6 +298,34 @@ pub struct SchemaInner {
     // We contain sets of classes and attributes.
     classes: HashMap<String, SchemaClass>,
     attributes: HashMap<String, SchemaAttribute>,
+}
+
+pub trait SchemaReadTransaction {
+    fn get_inner(&self) -> &SchemaInner;
+
+    fn validate(&self, audit: &mut AuditScope) -> Result<(), ()> {
+        self.get_inner().validate(audit)
+    }
+
+    fn validate_entry(&self, entry: &Entry) -> Result<(), SchemaError> {
+        self.get_inner().validate_entry(entry)
+    }
+
+    fn validate_filter(&self, filt: &Filter) -> Result<(), SchemaError> {
+        self.get_inner().validate_filter(filt)
+    }
+
+    fn normalise_entry(&self, entry: &Entry) -> Entry {
+        self.get_inner().normalise_entry(entry)
+    }
+
+    fn normalise_modlist(&self, modlist: &ModifyList) -> ModifyList {
+        unimplemented!()
+    }
+
+    fn is_multivalue(&self, attr: &str) -> Result<bool, SchemaError> {
+        self.get_inner().is_multivalue(attr)
+    }
 }
 
 impl SchemaInner {
@@ -941,13 +969,13 @@ impl SchemaInner {
         Ok(())
     }
 
-    // pub fn normalise_entry(&mut self, entry: &mut Entry) -> Result<(), SchemaError> {
+    // TODO: Restructure this when we change entry lifecycle types.
     pub fn normalise_entry(&self, entry: &Entry) -> Entry {
         // We duplicate the entry here, because we can't
         // modify what we got on the protocol level. It also
         // lets us extend and change things.
 
-        let mut entry_new: Entry = Entry::new();
+        let mut entry_new: Entry = entry.clone_no_attrs();
         // Better hope we have the attribute type ...
         let schema_attr_name = self.attributes.get("name").unwrap();
         // For each ava
@@ -972,7 +1000,10 @@ impl SchemaInner {
             // now push those to the new entry.
             entry_new.set_avas(attr_name_normal, avas_normal);
         }
+        // Mark it is valid
+        // entry_new.schema_validated = true;
         // Done!
+        // TODO: Convert the entry type here to a validated type.
         entry_new
     }
 
@@ -1035,6 +1066,17 @@ impl SchemaInner {
     pub fn normalise_filter(&mut self) {
         unimplemented!()
     }
+
+    fn is_multivalue(&self, attr_name: &str) -> Result<bool, SchemaError> {
+        match self.attributes.get(attr_name) {
+            Some(a_schema) => {
+                Ok(a_schema.multivalue)
+            }
+            None => {
+                return Err(SchemaError::InvalidAttribute);
+            }
+        }
+    }
 }
 
 // type Schema = CowCell<SchemaInner>;
@@ -1052,14 +1094,6 @@ impl<'a> SchemaWriteTransaction<'a> {
         self.inner.bootstrap_core(audit)
     }
 
-    pub fn validate_entry(&self, entry: &Entry) -> Result<(), SchemaError> {
-        self.inner.validate_entry(entry)
-    }
-
-    pub fn normalise_entry(&self, entry: &Entry) -> Entry {
-        self.inner.normalise_entry(entry)
-    }
-
     // TODO: Schema probably needs to be part of the backend, so that commits are wholly atomic
     // but in the current design, we need to open be first, then schema, but we have to commit be
     // first, then schema to ensure that the be content matches our schema. Saying this, if your
@@ -1068,13 +1102,12 @@ impl<'a> SchemaWriteTransaction<'a> {
     pub fn commit(self) {
         self.inner.commit();
     }
+}
 
-    pub fn validate_filter(&self, filt: &Filter) -> Result<(), SchemaError> {
-        self.inner.validate_filter(filt)
-    }
-
-    pub fn validate(&self, audit: &mut AuditScope) -> Result<(), ()> {
-        self.inner.validate(audit)
+impl<'a> SchemaReadTransaction for SchemaWriteTransaction<'a> {
+    fn get_inner(&self) -> &SchemaInner {
+        // Does this deref the CowCell for us?
+        &self.inner
     }
 }
 
@@ -1082,17 +1115,10 @@ pub struct SchemaTransaction {
     inner: CowCellReadTxn<SchemaInner>,
 }
 
-impl SchemaTransaction {
-    pub fn validate(&self, audit: &mut AuditScope) -> Result<(), ()> {
-        self.inner.validate(audit)
-    }
-
-    pub fn validate_entry(&self, entry: &Entry) -> Result<(), SchemaError> {
-        self.inner.validate_entry(entry)
-    }
-
-    pub fn validate_filter(&self, filt: &Filter) -> Result<(), SchemaError> {
-        self.inner.validate_filter(filt)
+impl SchemaReadTransaction for SchemaTransaction {
+    fn get_inner(&self) -> &SchemaInner {
+        // Does this deref the CowCell for us?
+        &self.inner
     }
 }
 
@@ -1124,6 +1150,7 @@ mod tests {
     use super::super::error::SchemaError;
     use super::super::filter::Filter;
     use super::{IndexType, Schema, SchemaAttribute, SchemaClass, SyntaxType};
+    use schema::SchemaReadTransaction;
     use serde_json;
     use std::convert::TryFrom;
     use uuid::Uuid;
@@ -1373,10 +1400,11 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(
-            schema.validate_entry(&e_attr_invalid),
-            Err(SchemaError::MissingMustAttribute(String::from("system")))
-        );
+        let res = schema.validate_entry(&e_attr_invalid);
+        assert!(match res {
+            Err(SchemaError::MissingMustAttribute(_)) => true,
+            _ => false,
+        });
 
         let e_attr_invalid_may: Entry = serde_json::from_str(
             r#"{

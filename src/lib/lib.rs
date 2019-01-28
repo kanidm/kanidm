@@ -42,6 +42,7 @@ mod identity;
 mod plugins;
 mod schema;
 mod server;
+mod modify;
 
 pub mod config;
 pub mod core;

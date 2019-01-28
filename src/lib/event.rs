@@ -4,6 +4,7 @@ use super::proto_v1::{CreateRequest, Response, SearchRequest, SearchResponse};
 use actix::prelude::*;
 use entry::Entry;
 use error::OperationError;
+use modify::ModifyList;
 
 // Should the event Result have the log items?
 // FIXME: Remove seralising here - each type should
@@ -67,6 +68,14 @@ impl SearchEvent {
         SearchEvent {
             internal: false,
             filter: request.filter,
+            class: (),
+        }
+    }
+
+    pub fn new_internal(filter: Filter) -> Self {
+        SearchEvent {
+            internal: true,
+            filter: filter,
             class: (),
         }
     }
@@ -151,6 +160,27 @@ impl DeleteEvent {
     pub fn new_internal(filter: Filter) -> Self {
         DeleteEvent {
             filter: filter,
+            internal: true,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct ModifyEvent {
+    pub filter: Filter,
+    pub modlist: ModifyList,
+    pub internal: bool,
+}
+
+impl Message for ModifyEvent {
+    type Result = Result<OpResult, OperationError>;
+}
+
+impl ModifyEvent {
+    pub fn new_internal(filter: Filter, modlist: ModifyList) -> Self {
+        ModifyEvent {
+            filter: filter,
+            modlist: modlist,
             internal: true,
         }
     }

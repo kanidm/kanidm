@@ -156,7 +156,7 @@ impl Drop for BackendTransaction {
 impl BackendTransaction {
     pub fn new(conn: r2d2::PooledConnection<SqliteConnectionManager>) -> Self {
         // Start the transaction
-        println!("Starting txn ...");
+        println!("Starting RO txn ...");
         // TODO: Way to flag that this will be a read?
         conn.execute("BEGIN TRANSACTION", NO_PARAMS).unwrap();
         BackendTransaction {
@@ -196,7 +196,7 @@ impl BackendReadTransaction for BackendWriteTransaction {
 impl BackendWriteTransaction {
     pub fn new(conn: r2d2::PooledConnection<SqliteConnectionManager>) -> Self {
         // Start the transaction
-        println!("Starting txn ...");
+        println!("Starting WR txn ...");
         // TODO: Way to flag that this will be a write?
         conn.execute("BEGIN TRANSACTION", NO_PARAMS).unwrap();
         BackendWriteTransaction {
@@ -273,8 +273,51 @@ impl BackendWriteTransaction {
         })
     }
 
-    pub fn modify() -> Result<(), BackendError> {
-        unimplemented!()
+    pub fn modify(&self, au: &mut AuditScope, entries: &Vec<Entry>) -> Result<(), BackendError> {
+        if entries.is_empty() {
+            // TODO: Better error
+            return Err(BackendError::EmptyRequest);
+        }
+
+        // Assert the Id's exist on the entry, and serialise them.
+        let ser_entries: Vec<IdEntry> = entries
+            .iter()
+            .filter_map(|e| {
+                match e.id {
+                    Some(id) => {
+                        Some(IdEntry {
+                            id: id,
+                            // TODO: Should we do better than unwrap?
+                            data: serde_json::to_string(&e).unwrap(),
+                        })
+                    }
+                    None => None
+                }
+            })
+            .collect();
+
+        audit_log!(au, "serialising: {:?}", ser_entries);
+
+        // Simple: If the list of id's is not the same as the input list, we are missing id's
+        // TODO: This check won't be needed once I rebuild the entry state types.
+        if entries.len() != ser_entries.len() {
+            return Err(BackendError::EntryMissingId);
+        }
+
+        // Now, given the list of id's, update them
+        {
+            // TODO: ACTUALLY HANDLE THIS ERROR WILLIAM YOU LAZY SHIT.
+            let mut stmt = self.conn.prepare("UPDATE id2entry SET data = :data WHERE id = :id").unwrap();
+
+            ser_entries.iter().for_each(|ser_ent| {
+                stmt.execute_named(&[
+                    (":id", &ser_ent.id),
+                    (":data", &ser_ent.data),
+                ]).unwrap();
+            });
+        }
+
+        Ok(())
     }
 
     pub fn delete(&self, au: &mut AuditScope, entries: &Vec<Entry>) -> Result<(), BackendError> {
@@ -282,7 +325,6 @@ impl BackendWriteTransaction {
 
         if entries.is_empty() {
             // TODO: Better error
-            // End the timer
             return Err(BackendError::EmptyRequest);
         }
 
@@ -294,11 +336,10 @@ impl BackendWriteTransaction {
             .collect();
 
         // Simple: If the list of id's is not the same as the input list, we are missing id's
+        // TODO: This check won't be needed once I rebuild the entry state types.
         if entries.len() != id_list.len() {
             return Err(BackendError::EntryMissingId);
         }
-
-
 
         // Now, given the list of id's, delete them.
         {
@@ -521,6 +562,19 @@ mod tests {
         }}
     }
 
+    macro_rules! entry_attr_pres {
+        ($audit:expr, $be:expr, $ent:expr, $attr:expr) => {{
+            let filt = $ent.filter_from_attrs(&vec![String::from("userid")]).unwrap();
+            let entries = $be.search($audit, &filt).unwrap();
+            match entries.first() {
+                Some(ent) => {
+                    ent.attribute_pres($attr)
+                }
+                None => false
+            }
+        }}
+    }
+
     #[test]
     fn test_simple_create() {
         run_test!(|audit: &mut AuditScope, be: &BackendWriteTransaction| {
@@ -553,6 +607,44 @@ mod tests {
     fn test_simple_modify() {
         run_test!(|audit: &mut AuditScope, be: &BackendWriteTransaction| {
             audit_log!(audit, "Simple Modify");
+            // First create some entries (3?)
+            let mut e1: Entry = Entry::new();
+            e1.add_ava(String::from("userid"), String::from("william"));
+
+            let mut e2: Entry = Entry::new();
+            e2.add_ava(String::from("userid"), String::from("alice"));
+
+            assert!(be.create(audit, &vec![e1.clone(), e2.clone()]).is_ok());
+            assert!(entry_exists!(audit, be, e1));
+            assert!(entry_exists!(audit, be, e2));
+
+            // You need to now retrieve the entries back out to get the entry id's
+            let mut results = be.search(audit, &Filter::Pres(String::from("userid"))).unwrap();
+
+            // Get these out to usable entries.
+            let mut r1 = results.remove(0);
+            let mut r2 = results.remove(0);
+
+            // Modify no id (err)
+            assert!(be.modify(audit, &vec![e1.clone()]).is_err());
+            // Modify none
+            assert!(be.modify(audit, &vec![]).is_err());
+
+            // Make some changes to r1, r2.
+            r1.add_ava(String::from("desc"), String::from("modified"));
+            r2.add_ava(String::from("desc"), String::from("modified"));
+
+            // Modify single
+            assert!(be.modify(audit, &vec![r1.clone()]).is_ok());
+            // Assert no other changes
+            assert!(entry_attr_pres!(audit, be, r1, "desc"));
+            assert!(! entry_attr_pres!(audit, be, r2, "desc"));
+
+            // Modify both
+            assert!(be.modify(audit, &vec![r1.clone(), r2.clone()]).is_ok());
+
+            assert!(entry_attr_pres!(audit, be, r1, "desc"));
+            assert!(entry_attr_pres!(audit, be, r2, "desc"));
         });
     }
 
