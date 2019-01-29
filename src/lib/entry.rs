@@ -131,7 +131,9 @@ pub struct EntryInvalid; // Modified
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Entry<VALID, STATE> {
+    #[serde(default = "EntryInvalid")]
     valid: VALID,
+    #[serde(default = "EntryNew")]
     state: STATE,
     pub id: Option<i64>,
     // Flag if we have been schema checked or not.
