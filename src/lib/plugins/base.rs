@@ -211,6 +211,8 @@ mod tests {
 
         let e: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
+            "valid": null,
+            "state": null,
             "attrs": {
                 "class": ["person"],
                 "name": ["testperson"],
@@ -249,6 +251,8 @@ mod tests {
 
         let e: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
+            "valid": null,
+            "state": null,
             "attrs": {
                 "class": ["person"],
                 "name": ["testperson"],
@@ -285,6 +289,8 @@ mod tests {
 
         let e: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
+            "valid": null,
+            "state": null,
             "attrs": {
                 "class": ["person"],
                 "name": ["testperson"],
@@ -321,6 +327,8 @@ mod tests {
 
         let e: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
+            "valid": null,
+            "state": null,
             "attrs": {
                 "class": ["person"],
                 "name": ["testperson"],
@@ -358,6 +366,8 @@ mod tests {
 
         let e: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
+            "valid": null,
+            "state": null,
             "attrs": {
                 "class": ["person"],
                 "name": ["testperson"],
@@ -392,6 +402,8 @@ mod tests {
     fn test_pre_create_uuid_exist() {
         let e: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
+            "valid": null,
+            "state": null,
             "attrs": {
                 "class": ["person"],
                 "name": ["testperson"],

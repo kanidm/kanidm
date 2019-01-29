@@ -1231,6 +1231,8 @@ mod tests {
         let schema = schema_outer.read();
         let e_no_class: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
+            "valid": null,
+            "state": null,
             "attrs": {}
         }"#,
         )
@@ -1243,6 +1245,8 @@ mod tests {
 
         let e_bad_class: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
+            "valid": null,
+            "state": null,
             "attrs": {
                 "class": ["zzzzzz"]
             }
@@ -1256,6 +1260,8 @@ mod tests {
 
         let e_attr_invalid: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
+            "valid": null,
+            "state": null,
             "attrs": {
                 "class": ["attributetype"]
             }
@@ -1271,6 +1277,8 @@ mod tests {
 
         let e_attr_invalid_may: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
+            "valid": null,
+            "state": null,
             "attrs": {
                 "class": ["attributetype"],
                 "name": ["testattr"],
@@ -1292,6 +1300,8 @@ mod tests {
 
         let e_attr_invalid_syn: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
+            "valid": null,
+            "state": null,
             "attrs": {
                 "class": ["attributetype"],
                 "name": ["testattr"],
@@ -1312,6 +1322,8 @@ mod tests {
 
         let e_ok: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
+            "valid": null,
+            "state": null,
             "attrs": {
                 "class": ["attributetype"],
                 "name": ["testattr"],
@@ -1342,6 +1354,8 @@ mod tests {
         // attr name to lower
         let e_test: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
+            "valid": null,
+            "state": null,
             "attrs": {
                 "class": ["extensibleobject"],
                 "name": ["TestPerson"],
@@ -1355,6 +1369,8 @@ mod tests {
 
         let e_expect: Entry<EntryValid, EntryNew> = serde_json::from_str(
             r#"{
+            "valid": null,
+            "state": null,
             "attrs": {
                 "class": ["extensibleobject"],
                 "name": ["testperson"],
@@ -1381,6 +1397,8 @@ mod tests {
 
         let e_extensible_bad: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
+            "valid": null,
+            "state": null,
             "attrs": {
                 "class": ["extensibleobject"],
                 "secret": ["zzzz"]
@@ -1396,6 +1414,8 @@ mod tests {
 
         let e_extensible: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
+            "valid": null,
+            "state": null,
             "attrs": {
                 "class": ["extensibleobject"],
                 "secret": ["true"]
@@ -1424,6 +1444,8 @@ mod tests {
         // now test some entries
         let e_person: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
+            "valid": null,
+            "state": null,
             "attrs": {
                 "class": ["person"],
                 "name": ["testperson"],
@@ -1438,6 +1460,8 @@ mod tests {
 
         let e_group: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
+            "valid": null,
+            "state": null,
             "attrs": {
                 "class": ["group"],
                 "name": ["testgroup"],

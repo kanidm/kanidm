@@ -200,6 +200,8 @@ mod tests {
     #[test]
     fn test_or_entry_filter() {
         let e: Entry<EntryValid, EntryNew> = serde_json::from_str(r#"{
+            "valid": null,
+            "state": null,
             "attrs": {
                 "userid": ["william"],
                 "uidNumber": ["1000"]
@@ -234,6 +236,8 @@ mod tests {
     #[test]
     fn test_and_entry_filter() {
         let e: Entry<EntryValid, EntryNew> = serde_json::from_str(r#"{
+            "valid": null,
+            "state": null,
             "attrs": {
                 "userid": ["william"],
                 "uidNumber": ["1000"]
@@ -268,6 +272,8 @@ mod tests {
     #[test]
     fn test_not_entry_filter() {
         let e1: Entry<EntryValid, EntryNew> = serde_json::from_str(r#"{
+            "valid": null,
+            "state": null,
             "attrs": {
                 "userid": ["william"],
                 "uidNumber": ["1000"]
@@ -289,6 +295,8 @@ mod tests {
     #[test]
     fn test_nested_entry_filter() {
         let e1: Entry<EntryValid, EntryNew> = serde_json::from_str(r#"{
+            "valid": null,
+            "state": null,
             "attrs": {
                 "class": ["person"],
                 "uidNumber": ["1000"]
@@ -296,6 +304,8 @@ mod tests {
         }"#).unwrap();
 
         let e2: Entry<EntryValid, EntryNew> = serde_json::from_str(r#"{
+            "valid": null,
+            "state": null,
             "attrs": {
                 "class": ["person"],
                 "uidNumber": ["1001"]
@@ -303,6 +313,8 @@ mod tests {
         }"#).unwrap();
 
         let e3: Entry<EntryValid, EntryNew> = serde_json::from_str(r#"{
+            "valid": null,
+            "state": null,
             "attrs": {
                 "class": ["person"],
                 "uidNumber": ["1002"]
@@ -310,6 +322,8 @@ mod tests {
         }"#).unwrap();
 
         let e4: Entry<EntryValid, EntryNew> = serde_json::from_str(r#"{
+            "valid": null,
+            "state": null,
             "attrs": {
                 "class": ["group"],
                 "uidNumber": ["1000"]

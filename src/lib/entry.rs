@@ -131,9 +131,7 @@ pub struct EntryInvalid; // Modified
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Entry<VALID, STATE> {
-    #[serde(default = "EntryInvalid")]
     valid: VALID,
-    #[serde(default = "EntryNew")]
     state: STATE,
     pub id: Option<i64>,
     // Flag if we have been schema checked or not.
@@ -214,7 +212,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
             };
 
             // Should never fail!
-            new_attrs.insert(attr_name_normal, avas_normal).unwrap();
+            let _ = new_attrs.insert(attr_name_normal, avas_normal);
         }
 
         let ne = Entry {
@@ -232,7 +230,12 @@ impl<STATE> Entry<EntryInvalid, STATE> {
         // if found, then do a len/filter/check on the resulting class set?
 
         {
-            let entry_classes = (&ne).classes();
+            // First, check we have class on the object ....
+            if !ne.attribute_pres("class") {
+                return Err(SchemaError::InvalidClass)
+            }
+
+            let entry_classes = ne.classes();
             let entry_classes_size = entry_classes.len();
 
             let classes: HashMap<String, &SchemaClass> = entry_classes
