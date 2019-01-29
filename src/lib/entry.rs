@@ -1,14 +1,14 @@
 // use serde_json::{Error, Value};
 use super::proto_v1::Entry as ProtoEntry;
+use error::SchemaError;
 use filter::Filter;
+use modify::{Modify, ModifyList};
+use schema::{SchemaAttribute, SchemaClass, SchemaReadTransaction};
 use std::collections::btree_map::{Iter as BTreeIter, IterMut as BTreeIterMut};
 use std::collections::BTreeMap;
 use std::collections::HashMap;
-use std::slice::Iter as SliceIter;
-use modify::{Modify, ModifyList};
-use schema::{SchemaReadTransaction, SchemaAttribute, SchemaClass};
-use error::SchemaError;
 use std::iter::ExactSizeIterator;
+use std::slice::Iter as SliceIter;
 
 // make a trait entry for everything to adhere to?
 //  * How to get indexs out?
@@ -122,7 +122,7 @@ impl<'a> Iterator for EntryAvasMut<'a> {
 pub struct EntryNew; // new
 #[derive(Clone, Copy, Serialize, Deserialize, Debug)]
 pub struct EntryCommitted; // It's been in the DB, so it has an id
-// pub struct EntryPurged;
+                           // pub struct EntryPurged;
 
 #[derive(Clone, Copy, Serialize, Deserialize, Debug)]
 pub struct EntryValid; // Asserted with schema.
@@ -175,10 +175,18 @@ impl Entry<EntryInvalid, EntryNew> {
 }
 
 impl<STATE> Entry<EntryInvalid, STATE> {
-    pub fn validate(self, schema: &SchemaReadTransaction) -> Result<Entry<EntryValid, STATE>, SchemaError> {
+    pub fn validate(
+        self,
+        schema: &SchemaReadTransaction,
+    ) -> Result<Entry<EntryValid, STATE>, SchemaError> {
         // We need to clone before we start, as well be mutating content.
         // We destructure:
-        let Entry { valid, state, id, attrs } = self;
+        let Entry {
+            valid,
+            state,
+            id,
+            attrs,
+        } = self;
 
         let schema_classes = schema.get_classes();
         let schema_attributes = schema.get_attributes();
@@ -232,27 +240,22 @@ impl<STATE> Entry<EntryInvalid, STATE> {
         {
             // First, check we have class on the object ....
             if !ne.attribute_pres("class") {
-                return Err(SchemaError::InvalidClass)
+                return Err(SchemaError::InvalidClass);
             }
 
             let entry_classes = ne.classes();
             let entry_classes_size = entry_classes.len();
 
             let classes: HashMap<String, &SchemaClass> = entry_classes
-                .filter_map(|c| {
-                    match schema_classes.get(c) {
-                        Some(cls) => {
-                            Some((c.clone(), cls))
-                        }
-                        None => None,
-                    }
+                .filter_map(|c| match schema_classes.get(c) {
+                    Some(cls) => Some((c.clone(), cls)),
+                    None => None,
                 })
                 .collect();
 
             if classes.len() != entry_classes_size {
                 return Err(SchemaError::InvalidClass);
             };
-
 
             let extensible = classes.contains_key("extensibleobject");
 
@@ -287,9 +290,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
             for (attr_name, _attr) in must {
                 let avas = ne.get_ava(&attr_name);
                 if avas.is_none() {
-                    return Err(SchemaError::MissingMustAttribute(
-                        String::from(attr_name)
-                    ));
+                    return Err(SchemaError::MissingMustAttribute(String::from(attr_name)));
                 }
             }
 
@@ -304,7 +305,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
                         // We have to destructure here to make type checker happy
                         match r {
                             Ok(_) => {}
-                            Err(e) => return Err(e)
+                            Err(e) => return Err(e),
                         }
                     }
                     None => {
@@ -321,9 +322,10 @@ impl<STATE> Entry<EntryInvalid, STATE> {
     }
 }
 
-impl<VALID, STATE> Clone for Entry<VALID, STATE> 
-    where VALID: Copy,
-          STATE: Copy,
+impl<VALID, STATE> Clone for Entry<VALID, STATE>
+where
+    VALID: Copy,
+    STATE: Copy,
 {
     // Dirty modifiable state. Works on any other state to dirty them.
     fn clone(&self) -> Entry<VALID, STATE> {
@@ -381,7 +383,7 @@ impl<STATE> Entry<EntryValid, STATE> {
             valid: EntryInvalid,
             state: self.state,
             id: self.id,
-            attrs: self.attrs
+            attrs: self.attrs,
         }
     }
 
@@ -390,7 +392,7 @@ impl<STATE> Entry<EntryValid, STATE> {
             valid: self.valid,
             state: EntryCommitted,
             id: self.id,
-            attrs: self.attrs
+            attrs: self.attrs,
         }
     }
 
@@ -400,34 +402,28 @@ impl<STATE> Entry<EntryValid, STATE> {
         // This is recursive!!!!
         match filter {
             Filter::Eq(attr, value) => self.attribute_equality(attr.as_str(), value.as_str()),
-            Filter::Sub(attr, subvalue) => self.attribute_substring(attr.as_str(), subvalue.as_str()),
+            Filter::Sub(attr, subvalue) => {
+                self.attribute_substring(attr.as_str(), subvalue.as_str())
+            }
             Filter::Pres(attr) => {
                 // Given attr, is is present in the entry?
                 self.attribute_pres(attr.as_str())
             }
-            Filter::Or(l) => {
-                l.iter()
-                    .fold(false, |acc, f| {
-                        if acc {
-                            acc
-                        } else {
-                            self.entry_match_no_index(f)
-                        }
-                    })
-            }
-            Filter::And(l) => {
-                l.iter()
-                    .fold(true, |acc, f| {
-                        if acc {
-                            self.entry_match_no_index(f)
-                        } else {
-                            acc
-                        }
-                    })
-            }
-            Filter::Not(f) => {
-                !self.entry_match_no_index(f)
-            }
+            Filter::Or(l) => l.iter().fold(false, |acc, f| {
+                if acc {
+                    acc
+                } else {
+                    self.entry_match_no_index(f)
+                }
+            }),
+            Filter::And(l) => l.iter().fold(true, |acc, f| {
+                if acc {
+                    self.entry_match_no_index(f)
+                } else {
+                    acc
+                }
+            }),
+            Filter::Not(f) => !self.entry_match_no_index(f),
         }
     }
 
@@ -473,8 +469,7 @@ impl<STATE> Entry<EntryValid, STATE> {
         }
     }
 
-    pub fn gen_modlist_assert(&self, schema: &SchemaReadTransaction) -> Result<ModifyList, ()>
-    {
+    pub fn gen_modlist_assert(&self, schema: &SchemaReadTransaction) -> Result<ModifyList, ()> {
         // Create a modlist from this entry. We make this assuming we want the entry
         // to have this one as a subset of values. This means if we have single
         // values, we'll replace, if they are multivalue, we present them.
@@ -490,9 +485,7 @@ impl<STATE> Entry<EntryValid, STATE> {
                         mods.push_mod(Modify::Purged(k.clone()));
                     }
                 }
-                Err(e) => {
-                    return Err(())
-                }
+                Err(e) => return Err(()),
             }
             for v in vs {
                 mods.push_mod(Modify::Present(k.clone(), v.clone()));
@@ -535,7 +528,11 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         // Get the class vec, if any?
         // How do we indicate "empty?"
         // FIXME: Actually handle this error ...
-        let v = self.attrs.get("class").map(|c| c.len()).expect("INVALID STATE, NO CLASS FOUND");
+        let v = self
+            .attrs
+            .get("class")
+            .map(|c| c.len())
+            .expect("INVALID STATE, NO CLASS FOUND");
         let c = self.attrs.get("class").map(|c| c.iter());
         EntryClasses { size: v, inner: c }
     }
@@ -548,7 +545,8 @@ impl<VALID, STATE> Entry<VALID, STATE> {
 }
 
 impl<STATE> Entry<EntryInvalid, STATE>
-    where STATE: Copy,
+where
+    STATE: Copy,
 {
     // This should always work? It's only on validate that we'll build
     // a list of syntax violations ...
@@ -589,8 +587,7 @@ impl<STATE> Entry<EntryInvalid, STATE>
                         v.remove(idx);
                     }
                     // It does not exist, move on.
-                    Err(_) => {
-                    }
+                    Err(_) => {}
                 }
             });
     }
@@ -618,26 +615,19 @@ impl<STATE> Entry<EntryInvalid, STATE>
         // This is effectively clone-and-transform
 
         // clone the entry
-        let mut ne: Entry<EntryInvalid, STATE> = 
-            Entry {
-                valid: self.valid,
-                state: self.state,
-                id: self.id,
-                attrs: self.attrs.clone(),
-            };
+        let mut ne: Entry<EntryInvalid, STATE> = Entry {
+            valid: self.valid,
+            state: self.state,
+            id: self.id,
+            attrs: self.attrs.clone(),
+        };
 
         // mutate
         for modify in modlist.mods.iter() {
             match modify {
-                Modify::Present(a, v) => {
-                    ne.add_ava(a.clone(), v.clone())
-                }
-                Modify::Removed(a, v) => {
-                    ne.remove_ava(a, v)
-                }
-                Modify::Purged(a) => {
-                    ne.purge_ava(a)
-                }
+                Modify::Present(a, v) => ne.add_ava(a.clone(), v.clone()),
+                Modify::Removed(a, v) => ne.remove_ava(a, v),
+                Modify::Purged(a) => ne.purge_ava(a),
             }
         }
 
@@ -745,15 +735,15 @@ mod tests {
         let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
         e.add_ava(String::from("userid"), String::from("william"));
 
-        let mods = ModifyList::new_list(vec![
-            Modify::Present(String::from("attr"), String::from("value")),
-        ]);
+        let mods = ModifyList::new_list(vec![Modify::Present(
+            String::from("attr"),
+            String::from("value"),
+        )]);
 
         let ne = e.apply_modlist(&mods).unwrap();
 
         // Assert the changes are there
         assert!(ne.attribute_equality("attr", "value"));
-
 
         // Assert present for multivalue
         // Assert purge on single/multi/empty value

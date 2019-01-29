@@ -5,11 +5,11 @@ use super::error::SchemaError;
 use super::filter::Filter;
 use std::collections::HashMap;
 // Apparently this is nightly only?
+use modify::ModifyList;
 use regex::Regex;
 use std::convert::TryFrom;
 use std::str::FromStr;
 use uuid::Uuid;
-use modify::ModifyList;
 
 use concread::cowcell::{CowCell, CowCellReadTxn, CowCellWriteTxn};
 
@@ -917,9 +917,7 @@ impl SchemaInner {
                     }
                 })
             }
-            Filter::Not(filter) => {
-                self.validate_filter(filter)
-            }
+            Filter::Not(filter) => self.validate_filter(filter),
         }
     }
 
@@ -932,9 +930,7 @@ impl SchemaInner {
 
     fn is_multivalue(&self, attr_name: &str) -> Result<bool, SchemaError> {
         match self.attributes.get(attr_name) {
-            Some(a_schema) => {
-                Ok(a_schema.multivalue)
-            }
+            Some(a_schema) => Ok(a_schema.multivalue),
             None => {
                 return Err(SchemaError::InvalidAttribute);
             }
@@ -1009,7 +1005,7 @@ impl Schema {
 mod tests {
     use super::super::audit::AuditScope;
     use super::super::constants::*;
-    use super::super::entry::{Entry, EntryValid, EntryInvalid, EntryNew};
+    use super::super::entry::{Entry, EntryInvalid, EntryNew, EntryValid};
     use super::super::error::SchemaError;
     use super::super::filter::Filter;
     use super::{IndexType, Schema, SchemaAttribute, SchemaClass, SyntaxType};
@@ -1238,10 +1234,7 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(
-            e_no_class.validate(&schema),
-            Err(SchemaError::InvalidClass)
-        );
+        assert_eq!(e_no_class.validate(&schema), Err(SchemaError::InvalidClass));
 
         let e_bad_class: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{

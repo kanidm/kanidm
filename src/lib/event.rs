@@ -2,7 +2,7 @@ use super::filter::Filter;
 use super::proto_v1::Entry as ProtoEntry;
 use super::proto_v1::{CreateRequest, Response, SearchRequest, SearchResponse};
 use actix::prelude::*;
-use entry::{Entry, EntryInvalid, EntryNew, EntryValid, EntryCommitted};
+use entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
 use error::OperationError;
 use modify::ModifyList;
 
@@ -185,4 +185,3 @@ impl ModifyEvent {
         }
     }
 }
-

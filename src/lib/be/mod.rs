@@ -8,7 +8,7 @@ use serde_json;
 // use uuid;
 
 use audit::AuditScope;
-use entry::{Entry, EntryValid, EntryNew, EntryCommitted};
+use entry::{Entry, EntryCommitted, EntryNew, EntryValid};
 use filter::Filter;
 
 mod idl;
@@ -53,7 +53,11 @@ pub trait BackendReadTransaction {
     fn get_conn(&self) -> &r2d2::PooledConnection<r2d2_sqlite::SqliteConnectionManager>;
 
     // Take filter, and AuditScope ref?
-    fn search(&self, au: &mut AuditScope, filt: &Filter) -> Result<Vec<Entry<EntryValid, EntryCommitted>>, BackendError> {
+    fn search(
+        &self,
+        au: &mut AuditScope,
+        filt: &Filter,
+    ) -> Result<Vec<Entry<EntryValid, EntryCommitted>>, BackendError> {
         // Do things
         // Alloc a vec for the entries.
         // FIXME: Make this actually a good size for the result set ...
@@ -97,7 +101,8 @@ pub trait BackendReadTransaction {
                 .iter()
                 .filter_map(|id_ent| {
                     // TODO: Should we do better than unwrap?
-                    let mut e: Entry<EntryValid, EntryCommitted> = serde_json::from_str(id_ent.data.as_str()).unwrap();
+                    let mut e: Entry<EntryValid, EntryCommitted> =
+                        serde_json::from_str(id_ent.data.as_str()).unwrap();
                     e.id = Some(id_ent.id);
                     if e.entry_match_no_index(&filt) {
                         Some(e)
@@ -206,10 +211,14 @@ impl BackendWriteTransaction {
     }
 
     fn get_id2entry_max_id(&self) -> i64 {
-        let mut stmt = self.conn.prepare("SELECT MAX(id) as id_max FROM id2entry").unwrap();
+        let mut stmt = self
+            .conn
+            .prepare("SELECT MAX(id) as id_max FROM id2entry")
+            .unwrap();
         assert!(stmt.exists(NO_PARAMS).unwrap());
 
-        let i: Option<i64> = stmt.query_row(NO_PARAMS, |row| row.get(0))
+        let i: Option<i64> = stmt
+            .query_row(NO_PARAMS, |row| row.get(0))
             .expect("failed to execute");
         match i {
             Some(e) => e,
@@ -217,7 +226,11 @@ impl BackendWriteTransaction {
         }
     }
 
-    pub fn create(&self, au: &mut AuditScope, entries: &Vec<Entry<EntryValid, EntryNew>>) -> Result<(), BackendError> {
+    pub fn create(
+        &self,
+        au: &mut AuditScope,
+        entries: &Vec<Entry<EntryValid, EntryNew>>,
+    ) -> Result<(), BackendError> {
         audit_segment!(au, || {
             // Start be audit timer
 
@@ -273,7 +286,11 @@ impl BackendWriteTransaction {
         })
     }
 
-    pub fn modify(&self, au: &mut AuditScope, entries: &Vec<Entry<EntryValid, EntryCommitted>>) -> Result<(), BackendError> {
+    pub fn modify(
+        &self,
+        au: &mut AuditScope,
+        entries: &Vec<Entry<EntryValid, EntryCommitted>>,
+    ) -> Result<(), BackendError> {
         if entries.is_empty() {
             // TODO: Better error
             return Err(BackendError::EmptyRequest);
@@ -291,7 +308,7 @@ impl BackendWriteTransaction {
                             data: serde_json::to_string(&e).unwrap(),
                         })
                     }
-                    None => None
+                    None => None,
                 }
             })
             .collect();
@@ -307,20 +324,25 @@ impl BackendWriteTransaction {
         // Now, given the list of id's, update them
         {
             // TODO: ACTUALLY HANDLE THIS ERROR WILLIAM YOU LAZY SHIT.
-            let mut stmt = self.conn.prepare("UPDATE id2entry SET data = :data WHERE id = :id").unwrap();
+            let mut stmt = self
+                .conn
+                .prepare("UPDATE id2entry SET data = :data WHERE id = :id")
+                .unwrap();
 
             ser_entries.iter().for_each(|ser_ent| {
-                stmt.execute_named(&[
-                    (":id", &ser_ent.id),
-                    (":data", &ser_ent.data),
-                ]).unwrap();
+                stmt.execute_named(&[(":id", &ser_ent.id), (":data", &ser_ent.data)])
+                    .unwrap();
             });
         }
 
         Ok(())
     }
 
-    pub fn delete(&self, au: &mut AuditScope, entries: &Vec<Entry<EntryValid, EntryCommitted>>) -> Result<(), BackendError> {
+    pub fn delete(
+        &self,
+        au: &mut AuditScope,
+        entries: &Vec<Entry<EntryValid, EntryCommitted>>,
+    ) -> Result<(), BackendError> {
         // Perform a search for the entries --> This is a problem for the caller
 
         if entries.is_empty() {
@@ -329,11 +351,7 @@ impl BackendWriteTransaction {
         }
 
         // Assert the Id's exist on the entry.
-        let id_list: Vec<i64> = entries.iter()
-            .filter_map(|entry| {
-                entry.id
-            })
-            .collect();
+        let id_list: Vec<i64> = entries.iter().filter_map(|entry| entry.id).collect();
 
         // Simple: If the list of id's is not the same as the input list, we are missing id's
         // TODO: This check won't be needed once I rebuild the entry state types.
@@ -348,7 +366,10 @@ impl BackendWriteTransaction {
             // probably okay with this.
 
             // TODO: ACTUALLY HANDLE THIS ERROR WILLIAM YOU LAZY SHIT.
-            let mut stmt = self.conn.prepare("DELETE FROM id2entry WHERE id = :id").unwrap();
+            let mut stmt = self
+                .conn
+                .prepare("DELETE FROM id2entry WHERE id = :id")
+                .unwrap();
 
             id_list.iter().for_each(|id| {
                 stmt.execute(&[id]).unwrap();
@@ -532,7 +553,7 @@ mod tests {
     extern crate tokio;
 
     use super::super::audit::AuditScope;
-    use super::super::entry::{Entry, EntryInvalid, EntryValid, EntryNew, EntryCommitted};
+    use super::super::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
     use super::super::filter::Filter;
     use super::{
         Backend, BackendError, BackendReadTransaction, BackendTransaction, BackendWriteTransaction,
@@ -560,7 +581,7 @@ mod tests {
             let filt = ei.filter_from_attrs(&vec![String::from("userid")]).unwrap();
             let entries = $be.search($audit, &filt).unwrap();
             entries.first().is_some()
-        }}
+        }};
     }
 
     macro_rules! entry_attr_pres {
@@ -569,12 +590,10 @@ mod tests {
             let filt = ei.filter_from_attrs(&vec![String::from("userid")]).unwrap();
             let entries = $be.search($audit, &filt).unwrap();
             match entries.first() {
-                Some(ent) => {
-                    ent.attribute_pres($attr)
-                }
-                None => false
+                Some(ent) => ent.attribute_pres($attr),
+                None => false,
             }
-        }}
+        }};
     }
 
     #[test]
@@ -625,7 +644,9 @@ mod tests {
             assert!(entry_exists!(audit, be, e2));
 
             // You need to now retrieve the entries back out to get the entry id's
-            let mut results = be.search(audit, &Filter::Pres(String::from("userid"))).unwrap();
+            let mut results = be
+                .search(audit, &Filter::Pres(String::from("userid")))
+                .unwrap();
 
             // Get these out to usable entries.
             let r1 = results.remove(0);
@@ -655,7 +676,7 @@ mod tests {
             assert!(be.modify(audit, &vec![vr1.clone()]).is_ok());
             // Assert no other changes
             assert!(entry_attr_pres!(audit, be, vr1, "desc"));
-            assert!(! entry_attr_pres!(audit, be, vr2, "desc"));
+            assert!(!entry_attr_pres!(audit, be, vr2, "desc"));
 
             // Modify both
             assert!(be.modify(audit, &vec![vr1.clone(), vr2.clone()]).is_ok());
@@ -689,9 +710,10 @@ mod tests {
             assert!(entry_exists!(audit, be, e2));
             assert!(entry_exists!(audit, be, e3));
 
-
             // You need to now retrieve the entries back out to get the entry id's
-            let mut results = be.search(audit, &Filter::Pres(String::from("userid"))).unwrap();
+            let mut results = be
+                .search(audit, &Filter::Pres(String::from("userid")))
+                .unwrap();
 
             // Get these out to usable entries.
             let r1 = results.remove(0);
@@ -700,7 +722,7 @@ mod tests {
 
             // Delete one
             assert!(be.delete(audit, &vec![r1.clone()]).is_ok());
-            assert!(! entry_exists!(audit, be, r1));
+            assert!(!entry_exists!(audit, be, r1));
 
             // delete none (no match filter)
             assert!(be.delete(audit, &vec![]).is_err());
@@ -721,13 +743,12 @@ mod tests {
             // delete batch
             assert!(be.delete(audit, &vec![r2.clone(), r3.clone()]).is_ok());
 
-            assert!(! entry_exists!(audit, be, r2));
-            assert!(! entry_exists!(audit, be, r3));
+            assert!(!entry_exists!(audit, be, r2));
+            assert!(!entry_exists!(audit, be, r3));
 
             // delete none (no entries left)
             // see fn delete for why this is ok, not err
             assert!(be.delete(audit, &vec![r2.clone(), r3.clone()]).is_ok());
-
         });
     }
 }

@@ -75,3 +75,23 @@ impl CreateRequest {
 //
 // On loginSuccess, we send a cookie, and that allows the token to be
 // generated. The cookie can be shared between servers.
+
+// Request auth for identity X
+pub struct AuthRequest {}
+
+// Respond with the list of auth types and nonce, etc.
+pub struct AuthResponse {}
+
+// Provide responses
+pub struct AuthProvide {}
+
+// After authprovide, we can move to AuthResponse (for more)
+// or below ...
+
+// Go away.
+// Provide reason?
+pub struct AuthDenied {}
+
+// Welcome friend.
+// On success provide entry "self", for group assertions?
+pub struct AuthSuccess {}

@@ -2,8 +2,8 @@
 // in parallel map/reduce style, or directly on a single
 // entry to assert it matches.
 
-use std::cmp::{Ordering, PartialOrd};
 use regex::Regex;
+use std::cmp::{Ordering, PartialOrd};
 
 // Perhaps make these json serialisable. Certainly would make parsing
 // simpler ...
@@ -102,7 +102,7 @@ impl PartialOrd for Filter {
 #[cfg(test)]
 mod tests {
     use super::Filter;
-    use entry::{Entry, EntryValid, EntryNew};
+    use entry::{Entry, EntryNew, EntryValid};
     use serde_json;
     use std::cmp::{Ordering, PartialOrd};
 
@@ -199,14 +199,17 @@ mod tests {
 
     #[test]
     fn test_or_entry_filter() {
-        let e: Entry<EntryValid, EntryNew> = serde_json::from_str(r#"{
+        let e: Entry<EntryValid, EntryNew> = serde_json::from_str(
+            r#"{
             "valid": null,
             "state": null,
             "attrs": {
                 "userid": ["william"],
                 "uidNumber": ["1000"]
             }
-        }"#).unwrap();
+        }"#,
+        )
+        .unwrap();
 
         let f_t1a = Filter::Or(vec![
             Filter::Eq(String::from("userid"), String::from("william")),
@@ -235,14 +238,17 @@ mod tests {
 
     #[test]
     fn test_and_entry_filter() {
-        let e: Entry<EntryValid, EntryNew> = serde_json::from_str(r#"{
+        let e: Entry<EntryValid, EntryNew> = serde_json::from_str(
+            r#"{
             "valid": null,
             "state": null,
             "attrs": {
                 "userid": ["william"],
                 "uidNumber": ["1000"]
             }
-        }"#).unwrap();
+        }"#,
+        )
+        .unwrap();
 
         let f_t1a = Filter::And(vec![
             Filter::Eq(String::from("userid"), String::from("william")),
@@ -271,64 +277,80 @@ mod tests {
 
     #[test]
     fn test_not_entry_filter() {
-        let e1: Entry<EntryValid, EntryNew> = serde_json::from_str(r#"{
+        let e1: Entry<EntryValid, EntryNew> = serde_json::from_str(
+            r#"{
             "valid": null,
             "state": null,
             "attrs": {
                 "userid": ["william"],
                 "uidNumber": ["1000"]
             }
-        }"#).unwrap();
+        }"#,
+        )
+        .unwrap();
 
-        let f_t1a = Filter::Not(Box::new(
-            Filter::Eq(String::from("userid"), String::from("alice")),
-        ));
+        let f_t1a = Filter::Not(Box::new(Filter::Eq(
+            String::from("userid"),
+            String::from("alice"),
+        )));
         assert!(e1.entry_match_no_index(&f_t1a));
 
-        let f_t2a = Filter::Not(Box::new(
-            Filter::Eq(String::from("userid"), String::from("william")),
-        ));
+        let f_t2a = Filter::Not(Box::new(Filter::Eq(
+            String::from("userid"),
+            String::from("william"),
+        )));
         assert!(!e1.entry_match_no_index(&f_t2a));
-
     }
 
     #[test]
     fn test_nested_entry_filter() {
-        let e1: Entry<EntryValid, EntryNew> = serde_json::from_str(r#"{
+        let e1: Entry<EntryValid, EntryNew> = serde_json::from_str(
+            r#"{
             "valid": null,
             "state": null,
             "attrs": {
                 "class": ["person"],
                 "uidNumber": ["1000"]
             }
-        }"#).unwrap();
+        }"#,
+        )
+        .unwrap();
 
-        let e2: Entry<EntryValid, EntryNew> = serde_json::from_str(r#"{
+        let e2: Entry<EntryValid, EntryNew> = serde_json::from_str(
+            r#"{
             "valid": null,
             "state": null,
             "attrs": {
                 "class": ["person"],
                 "uidNumber": ["1001"]
             }
-        }"#).unwrap();
+        }"#,
+        )
+        .unwrap();
 
-        let e3: Entry<EntryValid, EntryNew> = serde_json::from_str(r#"{
+        let e3: Entry<EntryValid, EntryNew> = serde_json::from_str(
+            r#"{
             "valid": null,
             "state": null,
             "attrs": {
                 "class": ["person"],
                 "uidNumber": ["1002"]
             }
-        }"#).unwrap();
+        }"#,
+        )
+        .unwrap();
 
-        let e4: Entry<EntryValid, EntryNew> = serde_json::from_str(r#"{
+        let e4: Entry<EntryValid, EntryNew> = serde_json::from_str(
+            r#"{
             "valid": null,
             "state": null,
             "attrs": {
                 "class": ["group"],
                 "uidNumber": ["1000"]
             }
-        }"#).unwrap();
+        }"#,
+        )
+        .unwrap();
 
         let f_t1a = Filter::And(vec![
             Filter::Eq(String::from("class"), String::from("person")),

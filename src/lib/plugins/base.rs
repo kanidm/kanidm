@@ -133,7 +133,7 @@ mod tests {
 
     use audit::AuditScope;
     use be::{Backend, BackendWriteTransaction};
-    use entry::{Entry, EntryValid, EntryInvalid, EntryNew};
+    use entry::{Entry, EntryInvalid, EntryNew, EntryValid};
     use event::CreateEvent;
     use schema::{Schema, SchemaWriteTransaction};
 

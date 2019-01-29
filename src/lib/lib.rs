@@ -39,10 +39,10 @@ mod constants;
 mod entry;
 mod event;
 mod identity;
+mod modify;
 mod plugins;
 mod schema;
 mod server;
-mod modify;
 
 pub mod config;
 pub mod core;

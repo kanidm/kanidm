@@ -10,15 +10,16 @@ use be::{
 };
 
 use constants::{JSON_ANONYMOUS_V1, JSON_SYSTEM_INFO_V1};
-use entry::{Entry, EntryNew, EntryCommitted, EntryValid, EntryInvalid};
+use entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
 use error::{OperationError, SchemaError};
-use event::{CreateEvent, ExistsEvent, OpResult, SearchEvent, SearchResult, DeleteEvent, ModifyEvent};
+use event::{
+    CreateEvent, DeleteEvent, ExistsEvent, ModifyEvent, OpResult, SearchEvent, SearchResult,
+};
 use filter::Filter;
 use log::EventLog;
-use plugins::Plugins;
-use schema::{Schema, SchemaTransaction, SchemaReadTransaction, SchemaWriteTransaction};
 use modify::ModifyList;
-
+use plugins::Plugins;
+use schema::{Schema, SchemaReadTransaction, SchemaTransaction, SchemaWriteTransaction};
 
 pub fn start(log: actix::Addr<EventLog>, path: &str, threads: usize) -> actix::Addr<QueryServer> {
     let mut audit = AuditScope::new("server_start");
@@ -89,7 +90,11 @@ pub trait QueryServerReadTransaction {
 
     fn get_be_txn(&self) -> &Self::BackendTransactionType;
 
-    fn search(&self, au: &mut AuditScope, se: &SearchEvent) -> Result<Vec<Entry<EntryValid, EntryCommitted>>, OperationError> {
+    fn search(
+        &self,
+        au: &mut AuditScope,
+        se: &SearchEvent,
+    ) -> Result<Vec<Entry<EntryValid, EntryCommitted>>, OperationError> {
         // TODO: Validate the filter
         // This is an important security step because it prevents us from
         // performing un-indexed searches on attr's that don't exist in the
@@ -141,8 +146,11 @@ pub trait QueryServerReadTransaction {
         res
     }
 
-    fn internal_search(&self, audit: &mut AuditScope, filter: Filter) -> Result<Vec<Entry<EntryValid, EntryCommitted>>, OperationError> {
-
+    fn internal_search(
+        &self,
+        audit: &mut AuditScope,
+        filter: Filter,
+    ) -> Result<Vec<Entry<EntryValid, EntryCommitted>>, OperationError> {
         let mut audit_int = AuditScope::new("internal_search");
         let se = SearchEvent::new_internal(filter);
         let res = self.search(&mut audit_int, &se);
@@ -240,7 +248,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // based on request size in the frontend?
 
         // Copy the entries to a writeable form.
-        let mut candidates: Vec<Entry<EntryInvalid, EntryNew>> = ce.entries.iter().map(|er| er.clone()).collect();
+        let mut candidates: Vec<Entry<EntryInvalid, EntryNew>> =
+            ce.entries.iter().map(|er| er.clone()).collect();
 
         // run any pre plugins, giving them the list of mutable candidates.
         // pre-plugins are defined here in their correct order of calling!
@@ -261,15 +270,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
             return plug_pre_res;
         }
 
-        let (norm_cand, invalid_cand):
-            (Vec<Result<Entry<EntryValid, EntryNew>, _>>,
-             Vec<Result<_, SchemaError>>) = candidates.into_iter()
-            .map(|e| {
-                e.validate(&self.schema)
-            })
-            .partition(|e| {
-                e.is_ok()
-            });
+        let (norm_cand, invalid_cand): (
+            Vec<Result<Entry<EntryValid, EntryNew>, _>>,
+            Vec<Result<_, SchemaError>>,
+        ) = candidates
+            .into_iter()
+            .map(|e| e.validate(&self.schema))
+            .partition(|e| e.is_ok());
 
         for err in invalid_cand.iter() {
             audit_log!(au, "Schema Violation: {:?}", err);
@@ -279,14 +286,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
             return Err(OperationError::SchemaViolation);
         }
 
-        let norm_cand: Vec<Entry<EntryValid, EntryNew>> = norm_cand.into_iter()
-            .map(|e| {
-                match e {
-                    Ok(v) => v,
-                    Err(_) => {
-                        panic!("Invalid data set state!!!")
-                    }
-                }
+        let norm_cand: Vec<Entry<EntryValid, EntryNew>> = norm_cand
+            .into_iter()
+            .map(|e| match e {
+                Ok(v) => v,
+                Err(_) => panic!("Invalid data set state!!!"),
             })
             .collect();
 
@@ -319,7 +323,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
         res
     }
 
-
     pub fn delete(&self, au: &mut AuditScope, ce: &DeleteEvent) -> Result<(), OperationError> {
         unimplemented!()
     }
@@ -340,19 +343,17 @@ impl<'a> QueryServerWriteTransaction<'a> {
         };
 
         if pre_candidates.len() == 0 {
-            return Err(OperationError::NoMatchingEntries)
+            return Err(OperationError::NoMatchingEntries);
         };
 
         // Clone a set of writeables.
         // Apply the modlist -> Remember, we have a set of origs
         // and the new modified ents.
-        let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates.into_iter()
+        let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
+            .into_iter()
             .map(|er| {
                 // TODO: Deal with this properly william
-                er
-                    .invalidate()
-                    .apply_modlist(&me.modlist)
-                    .unwrap()
+                er.invalidate().apply_modlist(&me.modlist).unwrap()
             })
             .collect();
 
@@ -364,15 +365,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // FIXME: This normalisation COPIES everything, which may be
         // slow.
 
-        let (norm_cand, invalid_cand):
-            (Vec<Result<Entry<EntryValid, EntryCommitted>, _>>,
-             Vec<Result<_, SchemaError>>) = candidates.into_iter()
-            .map(|e| {
-                e.validate(&self.schema)
-            })
-            .partition(|e| {
-                e.is_ok()
-            });
+        let (norm_cand, invalid_cand): (
+            Vec<Result<Entry<EntryValid, EntryCommitted>, _>>,
+            Vec<Result<_, SchemaError>>,
+        ) = candidates
+            .into_iter()
+            .map(|e| e.validate(&self.schema))
+            .partition(|e| e.is_ok());
 
         for err in invalid_cand.iter() {
             audit_log!(au, "Schema Violation: {:?}", err);
@@ -382,14 +381,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
             return Err(OperationError::SchemaViolation);
         }
 
-        let norm_cand: Vec<Entry<EntryValid, EntryCommitted>> = norm_cand.into_iter()
-            .map(|e| {
-                match e {
-                    Ok(v) => v,
-                    Err(_) => {
-                        panic!("Invalid data set state!!!")
-                    }
-                }
+        let norm_cand: Vec<Entry<EntryValid, EntryCommitted>> = norm_cand
+            .into_iter()
+            .map(|e| match e {
+                Ok(v) => v,
+                Err(_) => panic!("Invalid data set state!!!"),
             })
             .collect();
 
@@ -442,7 +438,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub fn internal_delete(
         &self,
         audit: &mut AuditScope,
-        filter: Filter
+        filter: Filter,
     ) -> Result<(), OperationError> {
         let mut audit_int = AuditScope::new("internal_delete");
         let de = DeleteEvent::new_internal(filter);
@@ -455,7 +451,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         &self,
         audit: &mut AuditScope,
         filter: Filter,
-        modlist: ModifyList
+        modlist: ModifyList,
     ) -> Result<(), OperationError> {
         let mut audit_int = AuditScope::new("internal_modify");
         let me = ModifyEvent::new_internal(filter, modlist);
@@ -470,7 +466,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
     // and markers. They act as though they have the highest level privilege
     // IE there are no access control checks.
 
-    pub fn internal_exists_or_create(&self, e: Entry<EntryValid, EntryNew>) -> Result<(), OperationError> {
+    pub fn internal_exists_or_create(
+        &self,
+        e: Entry<EntryValid, EntryNew>,
+    ) -> Result<(), OperationError> {
         // If the thing exists, stop.
         // if not, create from Entry.
         unimplemented!()
@@ -549,10 +548,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                     self.internal_create(audit, vec![e.invalidate()])
                 } else if results.len() == 1 {
                     // it exists. To guarantee content exactly as is, we compare if it's identical.
-                    audit_log!(audit, "LEFT -> {:?}", &e);
-                    audit_log!(audit, "RIGHT -> {:?}", &results[0]);
-
-                    if ! e.compare(&results[0]) {
+                    if !e.compare(&results[0]) {
                         self.internal_delete(audit, filt);
                         self.internal_create(audit, vec![e.invalidate()]);
                     };
@@ -715,7 +711,7 @@ mod tests {
 
     use super::super::audit::AuditScope;
     use super::super::be::{Backend, BackendTransaction};
-    use super::super::entry::{Entry, EntryNew, EntryCommitted, EntryValid, EntryInvalid};
+    use super::super::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
     use super::super::event::{CreateEvent, SearchEvent};
     use super::super::filter::Filter;
     use super::super::log;
@@ -791,9 +787,7 @@ mod tests {
             println!("--> {:?}", r2);
             assert!(r2.len() == 1);
 
-            let expected = unsafe {
-                vec![e.to_valid_committed()]
-            };
+            let expected = unsafe { vec![e.to_valid_committed()] };
 
             assert_eq!(r2, expected);
 
