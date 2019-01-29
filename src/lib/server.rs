@@ -267,11 +267,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .map(|e| {
                 e.validate(&self.schema)
             })
-            .partition(|&e| {
+            .partition(|e| {
                 e.is_ok()
             });
 
-        for err in invalid_cand {
+        for err in invalid_cand.iter() {
             audit_log!(au, "Schema Violation: {:?}", err);
         }
 
@@ -284,7 +284,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 match e {
                     Ok(v) => v,
                     Err(_) => {
-                        return Err(OperationError::InvalidState);
+                        panic!("Invalid data set state!!!")
                     }
                 }
             })
@@ -346,7 +346,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Clone a set of writeables.
         // Apply the modlist -> Remember, we have a set of origs
         // and the new modified ents.
-        let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates.iter()
+        let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates.into_iter()
             .map(|er| {
                 // TODO: Deal with this properly william
                 er
@@ -363,17 +363,18 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Normalise all the data now it's validated.
         // FIXME: This normalisation COPIES everything, which may be
         // slow.
+
         let (norm_cand, invalid_cand):
             (Vec<Result<Entry<EntryValid, EntryCommitted>, _>>,
              Vec<Result<_, SchemaError>>) = candidates.into_iter()
             .map(|e| {
-                e.validate(self.schema)
+                e.validate(&self.schema)
             })
-            .partition(|&e| {
+            .partition(|e| {
                 e.is_ok()
             });
 
-        for err in invalid_cand {
+        for err in invalid_cand.iter() {
             audit_log!(au, "Schema Violation: {:?}", err);
         }
 
@@ -386,7 +387,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 match e {
                     Ok(v) => v,
                     Err(_) => {
-                        return Err(OperationError::InvalidState);
+                        panic!("Invalid data set state!!!")
                     }
                 }
             })

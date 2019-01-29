@@ -101,15 +101,15 @@ impl TryFrom<&str> for SyntaxType {
 pub struct SchemaAttribute {
     // Is this ... used?
     // class: Vec<String>,
-    name: String,
-    uuid: Uuid,
+    pub name: String,
+    pub uuid: Uuid,
     // Perhaps later add aliases?
-    description: String,
-    system: bool,
-    secret: bool,
-    multivalue: bool,
-    index: Vec<IndexType>,
-    syntax: SyntaxType,
+    pub description: String,
+    pub system: bool,
+    pub secret: bool,
+    pub multivalue: bool,
+    pub index: Vec<IndexType>,
+    pub syntax: SyntaxType,
 }
 
 impl SchemaAttribute {
@@ -269,14 +269,14 @@ impl SchemaAttribute {
 pub struct SchemaClass {
     // Is this used?
     // class: Vec<String>,
-    name: String,
-    uuid: Uuid,
-    description: String,
+    pub name: String,
+    pub uuid: Uuid,
+    pub description: String,
     // This allows modification of system types to be extended in custom ways
-    systemmay: Vec<String>,
-    may: Vec<String>,
-    systemmust: Vec<String>,
-    must: Vec<String>,
+    pub systemmay: Vec<String>,
+    pub may: Vec<String>,
+    pub systemmust: Vec<String>,
+    pub must: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -1009,7 +1009,7 @@ impl Schema {
 mod tests {
     use super::super::audit::AuditScope;
     use super::super::constants::*;
-    use super::super::entry::{Entry, EntryInvalid, EntryNew};
+    use super::super::entry::{Entry, EntryValid, EntryInvalid, EntryNew};
     use super::super::error::SchemaError;
     use super::super::filter::Filter;
     use super::{IndexType, Schema, SchemaAttribute, SchemaClass, SyntaxType};
@@ -1250,7 +1250,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(
-            e_bad_class.validate_entry(&schema),
+            e_bad_class.validate(&schema),
             Err(SchemaError::InvalidClass)
         );
 
@@ -1263,7 +1263,7 @@ mod tests {
         )
         .unwrap();
 
-        let res = e_attr_invalid.validate_entry(&schema);
+        let res = e_attr_invalid.validate(&schema);
         assert!(match res {
             Err(SchemaError::MissingMustAttribute(_)) => true,
             _ => false,
@@ -1286,7 +1286,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(
-            e_attr_invalid_may.validate_entry(&schema),
+            e_attr_invalid_may.validate(&schema),
             Err(SchemaError::InvalidAttribute)
         );
 
@@ -1306,7 +1306,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(
-            e_attr_invalid_syn.validate_entry(&schema),
+            e_attr_invalid_syn.validate(&schema),
             Err(SchemaError::InvalidAttributeSyntax)
         );
 
@@ -1324,7 +1324,7 @@ mod tests {
         }"#,
         )
         .unwrap();
-        assert_eq!(schema.validate_entry(&e_ok), Ok(()));
+        assert!(e_ok.validate(&schema).is_ok());
         println!("{}", audit);
     }
 
@@ -1366,7 +1366,7 @@ mod tests {
         )
         .unwrap();
 
-        let e_normalised = e_test.validate(&schema);
+        let e_normalised = e_test.validate(&schema).unwrap();
 
         assert_eq!(e_expect, e_normalised);
         println!("{}", audit);
@@ -1390,7 +1390,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(
-            schema.validate_entry(&e_extensible_bad),
+            e_extensible_bad.validate(&schema),
             Err(SchemaError::InvalidAttributeSyntax)
         );
 
@@ -1405,7 +1405,7 @@ mod tests {
         .unwrap();
 
         /* Is okay because extensible! */
-        assert_eq!(schema.validate_entry(&e_extensible), Ok(()));
+        assert!(e_extensible.validate(&schema).is_ok());
         println!("{}", audit);
     }
 
@@ -1434,7 +1434,7 @@ mod tests {
         }"#,
         )
         .unwrap();
-        assert_eq!(schema.validate_entry(&e_person), Ok(()));
+        assert!(e_person.validate(&schema).is_ok());
 
         let e_group: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
@@ -1447,7 +1447,7 @@ mod tests {
         }"#,
         )
         .unwrap();
-        assert_eq!(schema.validate_entry(&e_group), Ok(()));
+        assert!(e_group.validate(&schema).is_ok());
         println!("{}", audit);
     }
 

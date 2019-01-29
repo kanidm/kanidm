@@ -532,7 +532,7 @@ mod tests {
     extern crate tokio;
 
     use super::super::audit::AuditScope;
-    use super::super::entry::Entry;
+    use super::super::entry::{Entry, EntryInvalid, EntryValid, EntryNew, EntryCommitted};
     use super::super::filter::Filter;
     use super::{
         Backend, BackendError, BackendReadTransaction, BackendTransaction, BackendWriteTransaction,
@@ -617,7 +617,10 @@ mod tests {
             let mut e2: Entry<EntryInvalid, EntryNew> = Entry::new();
             e2.add_ava(String::from("userid"), String::from("alice"));
 
-            assert!(be.create(audit, &vec![e1.clone(), e2.clone()]).is_ok());
+            let ve1 = unsafe { e1.clone().to_valid_new() };
+            let ve2 = unsafe { e2.clone().to_valid_new() };
+
+            assert!(be.create(audit, &vec![ve1, ve2]).is_ok());
             assert!(entry_exists!(audit, be, e1));
             assert!(entry_exists!(audit, be, e2));
 
@@ -645,8 +648,8 @@ mod tests {
 
             // Now ... cheat.
 
-            vr1 = unsafe { r1.to_valid_committed() };
-            vr2 = unsafe { r2.to_valid_committed() };
+            let vr1 = unsafe { r1.to_valid_committed() };
+            let vr2 = unsafe { r2.to_valid_committed() };
 
             // Modify single
             assert!(be.modify(audit, &vec![vr1.clone()]).is_ok());
@@ -677,7 +680,11 @@ mod tests {
             let mut e3: Entry<EntryInvalid, EntryNew> = Entry::new();
             e3.add_ava(String::from("userid"), String::from("lucy"));
 
-            assert!(be.create(audit, &vec![e1.clone(), e2.clone(), e3.clone()]).is_ok());
+            let ve1 = unsafe { e1.clone().to_valid_new() };
+            let ve2 = unsafe { e2.clone().to_valid_new() };
+            let ve3 = unsafe { e3.clone().to_valid_new() };
+
+            assert!(be.create(audit, &vec![ve1, ve2, ve3]).is_ok());
             assert!(entry_exists!(audit, be, e1));
             assert!(entry_exists!(audit, be, e2));
             assert!(entry_exists!(audit, be, e3));
@@ -701,10 +708,12 @@ mod tests {
             // Delete with no id
             // WARNING: Normally, this isn't possible, but we are pursposefully breaking
             // the state machine rules here!!!!
-            let mut e4: Entry<EntryValid, EntryCommitted> = Entry::new();
+            let mut e4: Entry<EntryInvalid, EntryNew> = Entry::new();
             e4.add_ava(String::from("userid"), String::from("amy"));
 
-            assert!(be.delete(audit, &vec![e4.clone()]).is_err());
+            let ve4 = unsafe { e4.clone().to_valid_committed() };
+
+            assert!(be.delete(audit, &vec![ve4]).is_err());
 
             assert!(entry_exists!(audit, be, r2));
             assert!(entry_exists!(audit, be, r3));

@@ -8,6 +8,7 @@ use std::slice::Iter as SliceIter;
 use modify::{Modify, ModifyList};
 use schema::{SchemaReadTransaction, SchemaAttribute, SchemaClass};
 use error::SchemaError;
+use std::iter::ExactSizeIterator;
 
 // make a trait entry for everything to adhere to?
 //  * How to get indexs out?
@@ -37,6 +38,7 @@ use error::SchemaError;
 //
 
 pub struct EntryClasses<'a> {
+    size: usize,
     inner: Option<SliceIter<'a, String>>,
     // _p: &'a PhantomData<()>,
 }
@@ -58,6 +60,12 @@ impl<'a> Iterator for EntryClasses<'a> {
             Some(i) => i.size_hint(),
             None => (0, None),
         }
+    }
+}
+
+impl<'a> ExactSizeIterator for EntryClasses<'a> {
+    fn len(&self) -> usize {
+        self.size
     }
 }
 
@@ -110,15 +118,15 @@ impl<'a> Iterator for EntryAvasMut<'a> {
 // This is specifically important for the commit to the backend, as we only want to
 // commit validated types.
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
 pub struct EntryNew; // new
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
 pub struct EntryCommitted; // It's been in the DB, so it has an id
 // pub struct EntryPurged;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
 pub struct EntryValid; // Asserted with schema.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
 pub struct EntryInvalid; // Modified
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -221,90 +229,97 @@ impl<STATE> Entry<EntryInvalid, STATE> {
         // FIXME: We could restructure this to be a map that gets Some(class)
         // if found, then do a len/filter/check on the resulting class set?
 
-        let entry_classes = ne.classes();
+        {
+            let entry_classes = (&ne).classes();
+            let entry_classes_size = entry_classes.len();
 
-        let classes: HashMap<String, &SchemaClass> = entry_classes
-            .filter_map(|c| {
-                match schema_classes.get(c) {
-                    Some(cls) => {
-                        (c.clone(), cls)
+            let classes: HashMap<String, &SchemaClass> = entry_classes
+                .filter_map(|c| {
+                    match schema_classes.get(c) {
+                        Some(cls) => {
+                            Some((c.clone(), cls))
+                        }
+                        None => None,
                     }
-                    None => None,
-                }
-            })
-            .collect();
+                })
+                .collect();
 
-        if classes.len() != entry_classes.len() {
-            return Err(SchemaError::InvalidClass);
-        };
+            if classes.len() != entry_classes_size {
+                return Err(SchemaError::InvalidClass);
+            };
 
 
-        let extensible = classes.contains_key("extensibleobject");
+            let extensible = classes.contains_key("extensibleobject");
 
-        // What this is really doing is taking a set of classes, and building an
-        // "overall" class that describes this exact object for checking
+            // What this is really doing is taking a set of classes, and building an
+            // "overall" class that describes this exact object for checking
 
-        //   for each class
-        //      add systemmust/must and systemmay/may to their lists
-        //      add anything from must also into may
+            //   for each class
+            //      add systemmust/must and systemmay/may to their lists
+            //      add anything from must also into may
 
-        // Now from the set of valid classes make a list of must/may
-        // FIXME: This is clone on read, which may be really slow. It also may
-        // be inefficent on duplicates etc.
-        let must: HashMap<String, &SchemaAttribute> = classes
-            .iter()
-            // Join our class systemmmust + must into one iter
-            .flat_map(|(_, cls)| cls.systemmust.iter().chain(cls.must.iter()))
-            .map(|s| {
-                // This should NOT fail - if it does, it means our schema is
-                // in an invalid state!
-                // TODO: Make this return Corrupted on failure.
-                (s.clone(), schema_attributes.get(s).unwrap())
-            })
-            .collect();
+            // Now from the set of valid classes make a list of must/may
+            // FIXME: This is clone on read, which may be really slow. It also may
+            // be inefficent on duplicates etc.
+            let must: HashMap<String, &SchemaAttribute> = classes
+                .iter()
+                // Join our class systemmmust + must into one iter
+                .flat_map(|(_, cls)| cls.systemmust.iter().chain(cls.must.iter()))
+                .map(|s| {
+                    // This should NOT fail - if it does, it means our schema is
+                    // in an invalid state!
+                    // TODO: Make this return Corrupted on failure.
+                    (s.clone(), schema_attributes.get(s).unwrap())
+                })
+                .collect();
 
-        // FIXME: Error needs to say what is missing
-        // We need to return *all* missing attributes.
+            // FIXME: Error needs to say what is missing
+            // We need to return *all* missing attributes.
 
-        // Check that all must are inplace
-        //   for each attr in must, check it's present on our ent
-        // FIXME: Could we iter over only the attr_name
-        for (attr_name, _attr) in must {
-            let avas = ne.get_ava(&attr_name);
-            if avas.is_none() {
-                return Err(SchemaError::MissingMustAttribute(
-                    String::from(attr_name)
-                ));
-            }
-        }
-
-        // Check that any other attributes are in may
-        //   for each attr on the object, check it's in the may+must set
-        for (attr_name, avas) in ne.avas() {
-            match self.attributes.get(attr_name) {
-                Some(a_schema) => {
-                    // Now, for each type we do a *full* check of the syntax
-                    // and validity of the ava.
-                    let r = a_schema.validate_ava(avas);
-                    // FIXME: This block could be more functional
-                    if r.is_err() {
-                        return r;
-                    }
-                }
-                None => {
-                    if !extensible {
-                        return Err(SchemaError::InvalidAttribute);
-                    }
+            // Check that all must are inplace
+            //   for each attr in must, check it's present on our ent
+            // FIXME: Could we iter over only the attr_name
+            for (attr_name, _attr) in must {
+                let avas = ne.get_ava(&attr_name);
+                if avas.is_none() {
+                    return Err(SchemaError::MissingMustAttribute(
+                        String::from(attr_name)
+                    ));
                 }
             }
-        }
+
+            // Check that any other attributes are in may
+            //   for each attr on the object, check it's in the may+must set
+            for (attr_name, avas) in ne.avas() {
+                match schema_attributes.get(attr_name) {
+                    Some(a_schema) => {
+                        // Now, for each type we do a *full* check of the syntax
+                        // and validity of the ava.
+                        let r = a_schema.validate_ava(avas);
+                        // We have to destructure here to make type checker happy
+                        match r {
+                            Ok(_) => {}
+                            Err(e) => return Err(e)
+                        }
+                    }
+                    None => {
+                        if !extensible {
+                            return Err(SchemaError::InvalidAttribute);
+                        }
+                    }
+                }
+            }
+        } // unborrow ne.
 
         // Well, we got here, so okay!
-        Ok(())
+        Ok(ne)
     }
 }
 
-impl<VALID, STATE> Clone for Entry<VALID, STATE> {
+impl<VALID, STATE> Clone for Entry<VALID, STATE> 
+    where VALID: Copy,
+          STATE: Copy,
+{
     // Dirty modifiable state. Works on any other state to dirty them.
     fn clone(&self) -> Entry<VALID, STATE> {
         Entry {
@@ -334,7 +349,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     pub unsafe fn to_valid_committed(self) -> Entry<EntryValid, EntryCommitted> {
         Entry {
             valid: EntryValid,
-            state: EntryCommittted,
+            state: EntryCommitted,
             id: self.id,
             attrs: self.attrs,
         }
@@ -515,8 +530,9 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         // Get the class vec, if any?
         // How do we indicate "empty?"
         // FIXME: Actually handle this error ...
+        let v = self.attrs.get("class").map(|c| c.len()).expect("INVALID STATE, NO CLASS FOUND");
         let c = self.attrs.get("class").map(|c| c.iter());
-        EntryClasses { inner: c }
+        EntryClasses { size: v, inner: c }
     }
 
     pub fn avas(&self) -> EntryAvas {
@@ -526,7 +542,9 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     }
 }
 
-impl<STATE> Entry<EntryInvalid, STATE> {
+impl<STATE> Entry<EntryInvalid, STATE>
+    where STATE: Copy,
+{
     // This should always work? It's only on validate that we'll build
     // a list of syntax violations ...
     // If this already exists, we silently drop the event? Is that an
@@ -595,7 +613,13 @@ impl<STATE> Entry<EntryInvalid, STATE> {
         // This is effectively clone-and-transform
 
         // clone the entry
-        let mut ne = self.clone();
+        let mut ne: Entry<EntryInvalid, STATE> = 
+            Entry {
+                valid: self.valid,
+                state: self.state,
+                id: self.id,
+                attrs: self.attrs.clone(),
+            };
 
         // mutate
         for modify in modlist.mods.iter() {
