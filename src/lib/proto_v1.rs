@@ -76,22 +76,41 @@ impl CreateRequest {
 // On loginSuccess, we send a cookie, and that allows the token to be
 // generated. The cookie can be shared between servers.
 
-// Request auth for identity X
-pub struct AuthRequest {}
+
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum AuthState {
+    Init(String, Vec<String>),
+    /*
+    Step(
+        Type(params ....)
+    ),
+    */
+}
+
+// Request auth for identity X with roles Y?
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AuthRequest {
+    pub state: AuthState
+}
 
 // Respond with the list of auth types and nonce, etc.
-pub struct AuthResponse {}
+// It can also contain a denied, or success.
+#[derive(Debug, Serialize, Deserialize)]
+pub enum AuthStatus {
+    Begin(String), // uuid of this session.
+    // Continue, // Keep going, here are the things you could still provide ...
+    // Go away, you made a mistake somewhere.
+    // Provide reason?
+    // Denied(String),
+    // Welcome friend.
+    // On success provide entry "self", for group assertions?
+    // We also provide the "cookie"/token?
+    // Success(String, Entry),
+}
 
-// Provide responses
-pub struct AuthProvide {}
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AuthResponse {
+    pub status: AuthStatus,
+}
 
-// After authprovide, we can move to AuthResponse (for more)
-// or below ...
-
-// Go away.
-// Provide reason?
-pub struct AuthDenied {}
-
-// Welcome friend.
-// On success provide entry "self", for group assertions?
-pub struct AuthSuccess {}

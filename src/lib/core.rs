@@ -11,10 +11,10 @@ use futures::{future, Future, Stream};
 use super::config::Configuration;
 
 // SearchResult
-use super::event::{CreateEvent, SearchEvent};
+use super::event::{CreateEvent, SearchEvent, AuthEvent};
 use super::filter::Filter;
 use super::log;
-use super::proto_v1::{CreateRequest, SearchRequest};
+use super::proto_v1::{CreateRequest, SearchRequest, AuthRequest, AuthResponse};
 use super::server;
 
 struct AppState {
@@ -85,43 +85,6 @@ macro_rules! json_event_decode {
 
 // Handle the various end points we need to expose
 
-/// simple handle
-fn index(req: &HttpRequest<AppState>) -> HttpResponse {
-    println!("{:?}", req);
-
-    HttpResponse::Ok().body("Hello\n")
-}
-
-fn class_list((_name, state): (Path<String>, State<AppState>)) -> FutureResponse<HttpResponse> {
-    // println!("request to class_list");
-    let filt = Filter::Pres(String::from("objectclass"));
-
-    state
-        .qe
-        .send(
-            // This is where we need to parse the request into an event
-            // LONG TERM
-            // Make a search REQUEST, and create the audit struct here, then
-            // pass it to the server
-            //
-            // FIXME: Don't use SEARCHEVENT here!!!!
-            //
-            SearchEvent::from_request(SearchRequest::new(filt)),
-        )
-        // TODO: How to time this part of the code?
-        // What does this do?
-        .from_err()
-        .and_then(|res| match res {
-            // What type is entry?
-            Ok(search_result) => Ok(HttpResponse::Ok().json(search_result.response())),
-            // Ok(_) => Ok(HttpResponse::Ok().into()),
-            // Can we properly report this?
-            Err(_) => Ok(HttpResponse::InternalServerError().into()),
-        })
-        // What does this do?
-        .responder()
-}
-
 fn create(
     (req, state): (HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
@@ -132,6 +95,78 @@ fn search(
     (req, state): (HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     json_event_decode!(req, state, SearchEvent, SearchResponse, SearchRequest)
+}
+
+// delete, modify
+
+fn auth(
+    (req, state): (HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let max_size = state.max_size;
+
+    req.payload()
+        .from_err()
+        .fold(BytesMut::new(), move |mut body, chunk| {
+            // limit max size of in-memory payload
+            if (body.len() + chunk.len()) > max_size {
+                Err(error::ErrorBadRequest("overflow"))
+            } else {
+                body.extend_from_slice(&chunk);
+                Ok(body)
+            }
+        })
+        .and_then(
+            move |body| -> Box<Future<Item = HttpResponse, Error = Error>> {
+                let r_obj = serde_json::from_slice::<AuthRequest>(&body);
+
+                // Send to the db for action
+                match r_obj {
+                    Ok(obj) => {
+                        // First, deal with some state management.
+                        // Do anything here first that's needed like getting the session details
+                        // out of the req cookie.
+                        let mut counter = 1;
+
+                        // TODO: Make this NOT UNWRAP. From the actix source unwrap here
+                        // seems to be related to the serde_json deserialise of the cookie
+                        // content, and because we control it's get/set it SHOULD be find
+                        // provided we use secure cookies. But we can't always trust that ...
+                        if let Some(count) = req.session().get::<i32>("counter").unwrap() {
+                            println!("SESSION value: {}", count);
+                            counter = count + 1;
+                            req.session().set("counter", counter).unwrap();
+                        } else {
+                            println!("INIT value: {}", counter);
+                            req.session().set("counter", counter).unwrap();
+                        };
+
+
+                        // We probably need to know if we allocate the cookie, that this is a
+                        // new session, and in that case, anything *except* authrequest init is
+                        // invalid.
+
+                        let res = state
+                            .qe
+                            .send(
+                                AuthEvent::from_request(obj),
+                            )
+                            .from_err()
+                            .and_then(|res| match res {
+                                Ok(event_result) => {
+                                    Ok(HttpResponse::Ok().json(event_result.response()))
+                                }
+                                Err(e) => Ok(HttpResponse::InternalServerError().json(e)),
+                            });
+
+                        Box::new(res)
+                    }
+                    Err(e) => Box::new(future::err(error::ErrorBadRequest(format!(
+                        "Json Decode Failed: {:?}",
+                        e
+                    )))),
+                }
+            },
+        )
 }
 
 fn whoami(req: &HttpRequest<AppState>) -> Result<&'static str> {
@@ -190,9 +225,10 @@ pub fn create_server_core(config: Configuration) {
                 .http_only(true)
                 .name("rsidm-session")
                 // This forces https only
+                // TODO: Make this a config value
                 .secure(false),
         ))
-        .resource("/", |r| r.f(index))
+        // .resource("/", |r| r.f(index))
         // curl --header ...?
         .resource("/v1/whoami", |r| r.f(whoami))
         // .resource("/v1/login", ...)
@@ -209,10 +245,18 @@ pub fn create_server_core(config: Configuration) {
         .resource("/v1/search", |r| {
             r.method(http::Method::POST).with_async(search)
         })
+
+        // This is one of the times we need cookies :)
+        // curl -b /tmp/cookie.jar -c /tmp/cookie.jar --header "Content-Type: application/json" --request POST --data '{ "state" : { "Init": ["Anonymous", []] }}'  http://127.0.0.1:8080/v1/auth
+        .resource("/v1/auth", |r| {
+            r.method(http::Method::POST).with_async(auth)
+        })
         // Add an ldap compat search function type?
+        /*
         .resource("/v1/list/{class_list}", |r| {
             r.method(http::Method::GET).with(class_list)
         })
+        */
     })
     .bind(config.address)
     .unwrap()

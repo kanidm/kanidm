@@ -14,6 +14,7 @@ use entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
 use error::{OperationError, SchemaError};
 use event::{
     CreateEvent, DeleteEvent, ExistsEvent, ModifyEvent, OpResult, SearchEvent, SearchResult,
+    AuthEvent, AuthResult,
 };
 use filter::Filter;
 use log::EventLog;
@@ -688,6 +689,21 @@ impl Handler<CreateEvent> for QueryServer {
                 }
                 Err(e) => Err(e),
             }
+        });
+        // At the end of the event we send it for logging.
+        self.log.do_send(audit);
+        res
+    }
+}
+
+impl Handler<AuthEvent> for QueryServer {
+    type Result = Result<AuthResult, OperationError>;
+
+    fn handle(&mut self, msg: AuthEvent, _: &mut Self::Context) -> Self::Result {
+        let mut audit = AuditScope::new("auth");
+        let res = audit_segment!(&mut audit, || {
+            audit_log!(audit, "Begin auth event {:?}", msg);
+            Err(OperationError::InvalidState)
         });
         // At the end of the event we send it for logging.
         self.log.do_send(audit);
