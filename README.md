@@ -1,6 +1,6 @@
-# Rs Identity Manager
+# Kanidm
 
-rsidm is an identity management platform written in rust. Our goals are:
+Kanidm is an identity management platform written in rust. Our goals are:
 
 * Modern identity management platform
 * Simple to deploy and integrate with
@@ -40,6 +40,7 @@ See CODE_OF_CONDUCT.md
 * Fully synchronous behaviour: ...
 * Generic database: ... (max db size etc)
 * Being LDAP: ...
+* GSSAPI/Kerberos
 
 ## More?
 
@@ -49,6 +50,11 @@ See CODE_OF_CONDUCT.md
 
 See the designs folder
 
+## Why do I see rsidm references?
+
+The original project name was rsidm while it was a thought experiment. Now that it's growing
+and developing, we gave it a better project name. Kani is Japanese for "crab". Rust's mascot
+is a crab. It all works out in the end.
 
 
 
