@@ -11,10 +11,12 @@ use futures::{future, Future, Stream};
 use super::config::Configuration;
 
 // SearchResult
-use super::event::{DeleteEvent, ModifyEvent, CreateEvent, SearchEvent, AuthEvent};
+use super::event::{AuthEvent, CreateEvent, DeleteEvent, ModifyEvent, SearchEvent};
 use super::filter::Filter;
 use super::log;
-use super::proto_v1::{DeleteRequest, ModifyRequest, CreateRequest, SearchRequest, AuthRequest, AuthResponse};
+use super::proto_v1::{
+    AuthRequest, AuthResponse, CreateRequest, DeleteRequest, ModifyRequest, SearchRequest,
+};
 use super::server;
 
 struct AppState {
@@ -152,16 +154,13 @@ fn auth(
                             req.session().set("counter", counter).unwrap();
                         };
 
-
                         // We probably need to know if we allocate the cookie, that this is a
                         // new session, and in that case, anything *except* authrequest init is
                         // invalid.
 
                         let res = state
                             .qe
-                            .send(
-                                AuthEvent::from_request(obj),
-                            )
+                            .send(AuthEvent::from_request(obj))
                             .from_err()
                             .and_then(|res| match res {
                                 Ok(event_result) => {
@@ -264,7 +263,6 @@ pub fn create_server_core(config: Configuration) {
         .resource("/v1/search", |r| {
             r.method(http::Method::POST).with_async(search)
         })
-
         // This is one of the times we need cookies :)
         // curl -b /tmp/cookie.jar -c /tmp/cookie.jar --header "Content-Type: application/json" --request POST --data '{ "state" : { "Init": ["Anonymous", []] }}'  http://127.0.0.1:8080/v1/auth
         .resource("/v1/auth", |r| {

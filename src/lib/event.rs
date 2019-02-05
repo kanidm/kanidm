@@ -1,6 +1,9 @@
 use super::filter::Filter;
 use super::proto_v1::Entry as ProtoEntry;
-use super::proto_v1::{CreateRequest, Response, SearchRequest, SearchResponse, AuthRequest, AuthResponse, AuthStatus, DeleteRequest, ModifyRequest};
+use super::proto_v1::{
+    AuthRequest, AuthResponse, AuthStatus, CreateRequest, DeleteRequest, ModifyRequest, Response,
+    SearchRequest, SearchResponse,
+};
 use actix::prelude::*;
 use entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
 use error::OperationError;
@@ -195,8 +198,7 @@ impl ModifyEvent {
 }
 
 #[derive(Debug)]
-pub struct AuthEvent {
-}
+pub struct AuthEvent {}
 
 impl Message for AuthEvent {
     type Result = Result<AuthResult, OperationError>;
@@ -206,16 +208,14 @@ impl AuthEvent {
     pub fn from_request(request: AuthRequest) -> Self {
         AuthEvent {}
     }
-
 }
 
-pub struct AuthResult {
-}
+pub struct AuthResult {}
 
 impl AuthResult {
     pub fn response(self) -> AuthResponse {
         AuthResponse {
-            status: AuthStatus::Begin(String::from("hello"))
+            status: AuthStatus::Begin(String::from("hello")),
         }
     }
 }

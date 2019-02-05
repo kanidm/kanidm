@@ -13,8 +13,8 @@ use constants::{JSON_ANONYMOUS_V1, JSON_SYSTEM_INFO_V1};
 use entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
 use error::{OperationError, SchemaError};
 use event::{
-    CreateEvent, DeleteEvent, ExistsEvent, ModifyEvent, OpResult, SearchEvent, SearchResult,
-    AuthEvent, AuthResult,
+    AuthEvent, AuthResult, CreateEvent, DeleteEvent, ExistsEvent, ModifyEvent, OpResult,
+    SearchEvent, SearchResult,
 };
 use filter::Filter;
 use log::EventLog;
