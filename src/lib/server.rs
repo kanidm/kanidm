@@ -774,10 +774,10 @@ mod tests {
     use super::super::audit::AuditScope;
     use super::super::be::{Backend, BackendTransaction};
     use super::super::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
-    use super::super::event::{CreateEvent, SearchEvent, ModifyEvent, DeleteEvent};
+    use super::super::event::{CreateEvent, DeleteEvent, ModifyEvent, SearchEvent};
     use super::super::filter::Filter;
-    use super::super::modify::{Modify, ModifyList};
     use super::super::log;
+    use super::super::modify::{Modify, ModifyList};
     use super::super::proto_v1::Entry as ProtoEntry;
     use super::super::proto_v1::{CreateRequest, SearchRequest};
     use super::super::schema::Schema;
@@ -934,54 +934,47 @@ mod tests {
             // Empty Modlist (filter is valid)
             let me_emp = ModifyEvent::from_filter(
                 Filter::Pres(String::from("class")),
-                ModifyList::new_list(
-                    vec![
-                    ]
-                )
+                ModifyList::new_list(vec![]),
             );
             assert!(server_txn.modify(audit, &me_emp).is_err());
 
             // Mod changes no objects
             let me_nochg = ModifyEvent::from_filter(
                 Filter::Eq(String::from("name"), String::from("Flarbalgarble")),
-                ModifyList::new_list(
-                    vec![
-                        Modify::Present(String::from("description"), String::from("anusaosu"))
-                    ]
-                )
+                ModifyList::new_list(vec![Modify::Present(
+                    String::from("description"),
+                    String::from("anusaosu"),
+                )]),
             );
             assert!(server_txn.modify(audit, &me_nochg).is_err());
 
             // Filter is invalid to schema
             let me_inv_f = ModifyEvent::from_filter(
                 Filter::Eq(String::from("tnanuanou"), String::from("Flarbalgarble")),
-                ModifyList::new_list(
-                    vec![
-                        Modify::Present(String::from("description"), String::from("anusaosu"))
-                    ]
-                )
+                ModifyList::new_list(vec![Modify::Present(
+                    String::from("description"),
+                    String::from("anusaosu"),
+                )]),
             );
             assert!(server_txn.modify(audit, &me_inv_f).is_err());
 
             // Mod is invalid to schema
             let me_inv_m = ModifyEvent::from_filter(
                 Filter::Pres(String::from("class")),
-                ModifyList::new_list(
-                    vec![
-                        Modify::Present(String::from("htnaonu"), String::from("anusaosu"))
-                    ]
-                )
+                ModifyList::new_list(vec![Modify::Present(
+                    String::from("htnaonu"),
+                    String::from("anusaosu"),
+                )]),
             );
             assert!(server_txn.modify(audit, &me_inv_m).is_err());
 
             // Mod single object
             let me_sin = ModifyEvent::from_filter(
                 Filter::Eq(String::from("name"), String::from("testperson2")),
-                ModifyList::new_list(
-                    vec![
-                        Modify::Present(String::from("description"), String::from("anusaosu"))
-                    ]
-                )
+                ModifyList::new_list(vec![Modify::Present(
+                    String::from("description"),
+                    String::from("anusaosu"),
+                )]),
             );
             assert!(server_txn.modify(audit, &me_sin).is_ok());
 
@@ -991,11 +984,10 @@ mod tests {
                     Filter::Eq(String::from("name"), String::from("testperson1")),
                     Filter::Eq(String::from("name"), String::from("testperson2")),
                 ]),
-                ModifyList::new_list(
-                    vec![
-                        Modify::Present(String::from("description"), String::from("anusaosu"))
-                    ]
-                )
+                ModifyList::new_list(vec![Modify::Present(
+                    String::from("description"),
+                    String::from("anusaosu"),
+                )]),
             );
             assert!(server_txn.modify(audit, &me_mult).is_ok());
 
@@ -1065,15 +1057,24 @@ mod tests {
             assert!(server_txn.delete(audit, &de_inv).is_err());
 
             // Delete deletes nothing
-            let de_empty = DeleteEvent::from_filter(Filter::Eq(String::from("uuid"), String::from("cc8e95b4-c24f-4d68-ba54-000000000000")));
+            let de_empty = DeleteEvent::from_filter(Filter::Eq(
+                String::from("uuid"),
+                String::from("cc8e95b4-c24f-4d68-ba54-000000000000"),
+            ));
             assert!(server_txn.delete(audit, &de_empty).is_err());
 
             // Delete matches one
-            let de_sin = DeleteEvent::from_filter(Filter::Eq(String::from("name"), String::from("testperson3")));
+            let de_sin = DeleteEvent::from_filter(Filter::Eq(
+                String::from("name"),
+                String::from("testperson3"),
+            ));
             assert!(server_txn.delete(audit, &de_sin).is_ok());
 
             // Delete matches many
-            let de_mult = DeleteEvent::from_filter(Filter::Eq(String::from("description"), String::from("testperson")));
+            let de_mult = DeleteEvent::from_filter(Filter::Eq(
+                String::from("description"),
+                String::from("testperson"),
+            ));
             assert!(server_txn.delete(audit, &de_mult).is_ok());
 
             assert!(server_txn.commit(audit).is_ok());
