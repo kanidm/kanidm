@@ -164,6 +164,14 @@ impl DeleteEvent {
         unimplemented!()
     }
 
+    #[cfg(test)]
+    pub fn from_filter(filter: Filter) -> Self {
+        DeleteEvent {
+            filter: filter,
+            internal: false,
+        }
+    }
+
     pub fn new_internal(filter: Filter) -> Self {
         DeleteEvent {
             filter: filter,
@@ -186,6 +194,15 @@ impl Message for ModifyEvent {
 impl ModifyEvent {
     pub fn from_request(request: ModifyRequest) -> Self {
         unimplemented!()
+    }
+
+    #[cfg(test)]
+    pub fn from_filter(filter: Filter, modlist: ModifyList) -> Self {
+        ModifyEvent {
+            filter: filter,
+            modlist: modlist,
+            internal: false,
+        }
     }
 
     pub fn new_internal(filter: Filter, modlist: ModifyList) -> Self {

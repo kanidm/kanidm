@@ -700,7 +700,22 @@ impl Handler<ModifyEvent> for QueryServer {
     type Result = Result<OpResult, OperationError>;
 
     fn handle(&mut self, msg: ModifyEvent, _: &mut Self::Context) -> Self::Result {
-        unimplemented!()
+        let mut audit = AuditScope::new("modify");
+        let res = audit_segment!(&mut audit, || {
+            audit_log!(audit, "Begin modify event {:?}", msg);
+
+            let qs_write = self.write();
+
+            match qs_write.modify(&mut audit, &msg) {
+                Ok(()) => {
+                    qs_write.commit(&mut audit);
+                    Ok(OpResult {})
+                }
+                Err(e) => Err(e),
+            }
+        });
+        self.log.do_send(audit);
+        res
     }
 }
 
@@ -708,7 +723,22 @@ impl Handler<DeleteEvent> for QueryServer {
     type Result = Result<OpResult, OperationError>;
 
     fn handle(&mut self, msg: DeleteEvent, _: &mut Self::Context) -> Self::Result {
-        unimplemented!()
+        let mut audit = AuditScope::new("delete");
+        let res = audit_segment!(&mut audit, || {
+            audit_log!(audit, "Begin delete event {:?}", msg);
+
+            let qs_write = self.write();
+
+            match qs_write.delete(&mut audit, &msg) {
+                Ok(()) => {
+                    qs_write.commit(&mut audit);
+                    Ok(OpResult {})
+                }
+                Err(e) => Err(e),
+            }
+        });
+        self.log.do_send(audit);
+        res
     }
 }
 
@@ -744,8 +774,9 @@ mod tests {
     use super::super::audit::AuditScope;
     use super::super::be::{Backend, BackendTransaction};
     use super::super::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
-    use super::super::event::{CreateEvent, SearchEvent};
+    use super::super::event::{CreateEvent, SearchEvent, ModifyEvent, DeleteEvent};
     use super::super::filter::Filter;
+    use super::super::modify::{Modify, ModifyList};
     use super::super::log;
     use super::super::proto_v1::Entry as ProtoEntry;
     use super::super::proto_v1::{CreateRequest, SearchRequest};
@@ -863,17 +894,112 @@ mod tests {
     fn test_qs_modify() {
         run_test!(|_log, mut server: QueryServer, audit: &mut AuditScope| {
             // Create an object
+            let mut server_txn = server.write();
 
-            // Empty Modlist
+            let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+                r#"{
+                "valid": null,
+                "state": null,
+                "attrs": {
+                    "class": ["object", "person"],
+                    "name": ["testperson1"],
+                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
+                    "description": ["testperson1"],
+                    "displayname": ["testperson1"]
+                }
+            }"#,
+            )
+            .unwrap();
+
+            let e2: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+                r#"{
+                "valid": null,
+                "state": null,
+                "attrs": {
+                    "class": ["object", "person"],
+                    "name": ["testperson2"],
+                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63932"],
+                    "description": ["testperson2"],
+                    "displayname": ["testperson2"]
+                }
+            }"#,
+            )
+            .unwrap();
+
+            let ce = CreateEvent::from_vec(vec![e1.clone(), e2.clone()]);
+
+            let cr = server_txn.create(audit, &ce);
+            assert!(cr.is_ok());
+
+            // Empty Modlist (filter is valid)
+            let me_emp = ModifyEvent::from_filter(
+                Filter::Pres(String::from("class")),
+                ModifyList::new_list(
+                    vec![
+                    ]
+                )
+            );
+            assert!(server_txn.modify(audit, &me_emp).is_err());
 
             // Mod changes no objects
+            let me_nochg = ModifyEvent::from_filter(
+                Filter::Eq(String::from("name"), String::from("Flarbalgarble")),
+                ModifyList::new_list(
+                    vec![
+                        Modify::Present(String::from("description"), String::from("anusaosu"))
+                    ]
+                )
+            );
+            assert!(server_txn.modify(audit, &me_nochg).is_err());
+
+            // Filter is invalid to schema
+            let me_inv_f = ModifyEvent::from_filter(
+                Filter::Eq(String::from("tnanuanou"), String::from("Flarbalgarble")),
+                ModifyList::new_list(
+                    vec![
+                        Modify::Present(String::from("description"), String::from("anusaosu"))
+                    ]
+                )
+            );
+            assert!(server_txn.modify(audit, &me_inv_f).is_err());
 
             // Mod is invalid to schema
+            let me_inv_m = ModifyEvent::from_filter(
+                Filter::Pres(String::from("class")),
+                ModifyList::new_list(
+                    vec![
+                        Modify::Present(String::from("htnaonu"), String::from("anusaosu"))
+                    ]
+                )
+            );
+            assert!(server_txn.modify(audit, &me_inv_m).is_err());
 
             // Mod single object
+            let me_sin = ModifyEvent::from_filter(
+                Filter::Eq(String::from("name"), String::from("testperson2")),
+                ModifyList::new_list(
+                    vec![
+                        Modify::Present(String::from("description"), String::from("anusaosu"))
+                    ]
+                )
+            );
+            assert!(server_txn.modify(audit, &me_sin).is_ok());
 
             // Mod multiple object
+            let me_mult = ModifyEvent::from_filter(
+                Filter::And(vec![
+                    Filter::Eq(String::from("name"), String::from("testperson1")),
+                    Filter::Eq(String::from("name"), String::from("testperson2")),
+                ]),
+                ModifyList::new_list(
+                    vec![
+                        Modify::Present(String::from("description"), String::from("anusaosu"))
+                    ]
+                )
+            );
+            assert!(server_txn.modify(audit, &me_mult).is_ok());
 
+            assert!(server_txn.commit(audit).is_ok());
             future::ok(())
         })
     }
@@ -882,15 +1008,75 @@ mod tests {
     fn test_qs_delete() {
         run_test!(|_log, mut server: QueryServer, audit: &mut AuditScope| {
             // Create
+            let mut server_txn = server.write();
 
-            // Empty filter
+            let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+                r#"{
+                "valid": null,
+                "state": null,
+                "attrs": {
+                    "class": ["object", "person"],
+                    "name": ["testperson1"],
+                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
+                    "description": ["testperson"],
+                    "displayname": ["testperson1"]
+                }
+            }"#,
+            )
+            .unwrap();
+
+            let e2: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+                r#"{
+                "valid": null,
+                "state": null,
+                "attrs": {
+                    "class": ["object", "person"],
+                    "name": ["testperson2"],
+                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63932"],
+                    "description": ["testperson"],
+                    "displayname": ["testperson2"]
+                }
+            }"#,
+            )
+            .unwrap();
+
+            let e3: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+                r#"{
+                "valid": null,
+                "state": null,
+                "attrs": {
+                    "class": ["object", "person"],
+                    "name": ["testperson3"],
+                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63933"],
+                    "description": ["testperson"],
+                    "displayname": ["testperson3"]
+                }
+            }"#,
+            )
+            .unwrap();
+
+            let ce = CreateEvent::from_vec(vec![e1.clone(), e2.clone(), e3.clone()]);
+
+            let cr = server_txn.create(audit, &ce);
+            assert!(cr.is_ok());
+
+            // Delete filter is syntax invalid
+            let de_inv = DeleteEvent::from_filter(Filter::Pres(String::from("nhtoaunaoehtnu")));
+            assert!(server_txn.delete(audit, &de_inv).is_err());
 
             // Delete deletes nothing
+            let de_empty = DeleteEvent::from_filter(Filter::Eq(String::from("uuid"), String::from("cc8e95b4-c24f-4d68-ba54-000000000000")));
+            assert!(server_txn.delete(audit, &de_empty).is_err());
 
-            // Delete matchs one
+            // Delete matches one
+            let de_sin = DeleteEvent::from_filter(Filter::Eq(String::from("name"), String::from("testperson3")));
+            assert!(server_txn.delete(audit, &de_sin).is_ok());
 
             // Delete matches many
+            let de_mult = DeleteEvent::from_filter(Filter::Eq(String::from("description"), String::from("testperson")));
+            assert!(server_txn.delete(audit, &de_mult).is_ok());
 
+            assert!(server_txn.commit(audit).is_ok());
             future::ok(())
         })
     }
