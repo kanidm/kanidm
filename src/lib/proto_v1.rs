@@ -63,6 +63,22 @@ impl CreateRequest {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DeleteRequest {
+    pub filter: Filter,
+}
+
+impl DeleteRequest {
+    pub fn new(filter: Filter) -> Self {
+        DeleteRequest { filter: filter }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ModifyRequest {
+    // Probably needs a modlist?
+}
+
 // Login is a multi-step process potentially. First the client says who they
 // want to request
 //

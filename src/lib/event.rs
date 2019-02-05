@@ -1,6 +1,6 @@
 use super::filter::Filter;
 use super::proto_v1::Entry as ProtoEntry;
-use super::proto_v1::{CreateRequest, Response, SearchRequest, SearchResponse, AuthRequest, AuthResponse, AuthStatus};
+use super::proto_v1::{CreateRequest, Response, SearchRequest, SearchResponse, AuthRequest, AuthResponse, AuthStatus, DeleteRequest, ModifyRequest};
 use actix::prelude::*;
 use entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
 use error::OperationError;
@@ -157,6 +157,10 @@ impl Message for DeleteEvent {
 }
 
 impl DeleteEvent {
+    pub fn from_request(request: DeleteRequest) -> Self {
+        unimplemented!()
+    }
+
     pub fn new_internal(filter: Filter) -> Self {
         DeleteEvent {
             filter: filter,
@@ -177,6 +181,10 @@ impl Message for ModifyEvent {
 }
 
 impl ModifyEvent {
+    pub fn from_request(request: ModifyRequest) -> Self {
+        unimplemented!()
+    }
+
     pub fn new_internal(filter: Filter, modlist: ModifyList) -> Self {
         ModifyEvent {
             filter: filter,

@@ -696,6 +696,22 @@ impl Handler<CreateEvent> for QueryServer {
     }
 }
 
+impl Handler<ModifyEvent> for QueryServer {
+    type Result = Result<OpResult, OperationError>;
+
+    fn handle(&mut self, msg: ModifyEvent, _: &mut Self::Context) -> Self::Result {
+        unimplemented!()
+    }
+}
+
+impl Handler<DeleteEvent> for QueryServer {
+    type Result = Result<OpResult, OperationError>;
+
+    fn handle(&mut self, msg: DeleteEvent, _: &mut Self::Context) -> Self::Result {
+        unimplemented!()
+    }
+}
+
 impl Handler<AuthEvent> for QueryServer {
     type Result = Result<AuthResult, OperationError>;
 

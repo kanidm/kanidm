@@ -11,10 +11,10 @@ use futures::{future, Future, Stream};
 use super::config::Configuration;
 
 // SearchResult
-use super::event::{CreateEvent, SearchEvent, AuthEvent};
+use super::event::{DeleteEvent, ModifyEvent, CreateEvent, SearchEvent, AuthEvent};
 use super::filter::Filter;
 use super::log;
-use super::proto_v1::{CreateRequest, SearchRequest, AuthRequest, AuthResponse};
+use super::proto_v1::{DeleteRequest, ModifyRequest, CreateRequest, SearchRequest, AuthRequest, AuthResponse};
 use super::server;
 
 struct AppState {
@@ -89,6 +89,18 @@ fn create(
     (req, state): (HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     json_event_decode!(req, state, CreateEvent, Response, CreateRequest)
+}
+
+fn modify(
+    (req, state): (HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    json_event_decode!(req, state, ModifyEvent, Response, ModifyRequest)
+}
+
+fn delete(
+    (req, state): (HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    json_event_decode!(req, state, DeleteEvent, Response, DeleteRequest)
 }
 
 fn search(
@@ -240,6 +252,13 @@ pub fn create_server_core(config: Configuration) {
         // curl --header "Content-Type: application/json" --request POST --data '{ "entries": [ {"attrs": {"class": ["group"], "name": ["testgroup"], "description": ["testperson"]}}]}'  http://127.0.0.1:8080/v1/create
         .resource("/v1/create", |r| {
             r.method(http::Method::POST).with_async(create)
+        })
+        // Should these actually be different method types?
+        .resource("/v1/modify", |r| {
+            r.method(http::Method::POST).with_async(modify)
+        })
+        .resource("/v1/delete", |r| {
+            r.method(http::Method::POST).with_async(delete)
         })
         // curl --header "Content-Type: application/json" --request POST --data '{ "filter" : { "Eq": ["class", "user"] }}'  http://127.0.0.1:8080/v1/search
         .resource("/v1/search", |r| {
