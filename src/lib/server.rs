@@ -784,7 +784,7 @@ mod tests {
     }
 
     #[test]
-    fn test_be_create_user() {
+    fn test_qs_create_user() {
         run_test!(|_log, mut server: QueryServer, audit: &mut AuditScope| {
             let mut server_txn = server.write();
             let filt = Filter::Pres(String::from("name"));
@@ -829,10 +829,6 @@ mod tests {
         });
     }
 
-    // Test Create Empty
-
-    // Test Init is Idempotent
-
     #[test]
     fn test_qs_init_idempotent_1() {
         run_test!(|_log, mut server: QueryServer, audit: &mut AuditScope| {
@@ -861,5 +857,41 @@ mod tests {
 
             future::ok(())
         });
+    }
+
+    #[test]
+    fn test_qs_modify() {
+        run_test!(|_log, mut server: QueryServer, audit: &mut AuditScope| {
+            // Create an object
+
+            // Empty Modlist
+
+            // Mod changes no objects
+
+            // Mod is invalid to schema
+
+            // Mod single object
+
+            // Mod multiple object
+
+            future::ok(())
+        })
+    }
+
+    #[test]
+    fn test_qs_delete() {
+        run_test!(|_log, mut server: QueryServer, audit: &mut AuditScope| {
+            // Create
+
+            // Empty filter
+
+            // Delete deletes nothing
+
+            // Delete matchs one
+
+            // Delete matches many
+
+            future::ok(())
+        })
     }
 }
