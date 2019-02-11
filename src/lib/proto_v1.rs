@@ -1,5 +1,5 @@
 // use super::entry::Entry;
-use super::filter::Filter;
+// use super::filter::Filter;
 use std::collections::BTreeMap;
 
 // These proto implementations are here because they have public definitions
@@ -14,6 +14,17 @@ use std::collections::BTreeMap;
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Entry {
     pub attrs: BTreeMap<String, Vec<String>>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum Filter {
+    // This is attr - value
+    Eq(String, String),
+    Sub(String, String),
+    Pres(String),
+    Or(Vec<Filter>),
+    And(Vec<Filter>),
+    Not(Box<Filter>),
 }
 
 // FIXME: Do I need proto filter?

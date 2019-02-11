@@ -16,7 +16,7 @@ use event::{
     AuthEvent, AuthResult, CreateEvent, DeleteEvent, ExistsEvent, ModifyEvent, OpResult,
     SearchEvent, SearchResult,
 };
-use filter::Filter;
+use filter::{Filter, FilterInvalid};
 use log::EventLog;
 use modify::ModifyList;
 use plugins::Plugins;
@@ -88,21 +88,29 @@ pub fn start(log: actix::Addr<EventLog>, path: &str, threads: usize) -> actix::A
 // the backend
 pub trait QueryServerReadTransaction {
     type BackendTransactionType: BackendReadTransaction;
-
     fn get_be_txn(&self) -> &Self::BackendTransactionType;
+
+    type SchemaTransactionType: SchemaReadTransaction;
+    fn get_schema(&self) -> &Self::SchemaTransactionType;
 
     fn search(
         &self,
         au: &mut AuditScope,
         se: &SearchEvent,
     ) -> Result<Vec<Entry<EntryValid, EntryCommitted>>, OperationError> {
-        // TODO: Validate the filter
+        // How to get schema?
         // This is an important security step because it prevents us from
         // performing un-indexed searches on attr's that don't exist in the
         // server. This is why ExtensibleObject can only take schema that
         // exists in the server, not arbitrary attr names.
 
         // TODO: Normalise the filter
+
+        // TODO: Validate the filter
+        let vf = match se.filter.validate(self.get_schema()) {
+            Ok(f) => f,
+            Err(e) => return Err(OperationError::SchemaViolation),
+        };
 
         // TODO: Assert access control allows the filter and requested attrs.
 
@@ -111,7 +119,7 @@ pub trait QueryServerReadTransaction {
         let mut audit_be = AuditScope::new("backend_search");
         let res = self
             .get_be_txn()
-            .search(&mut audit_be, &se.filter)
+            .search(&mut audit_be, &vf)
             .map(|r| r)
             .map_err(|_| OperationError::Backend);
         au.append_scope(audit_be);
@@ -126,9 +134,16 @@ pub trait QueryServerReadTransaction {
 
     fn exists(&self, au: &mut AuditScope, ee: &ExistsEvent) -> Result<bool, OperationError> {
         let mut audit_be = AuditScope::new("backend_exists");
+
+        // How to get schema?
+        let vf = match ee.filter.validate(self.get_schema()) {
+            Ok(f) => f,
+            Err(e) => return Err(OperationError::SchemaViolation),
+        };
+
         let res = self
             .get_be_txn()
-            .exists(&mut audit_be, &ee.filter)
+            .exists(&mut audit_be, &vf)
             .map(|r| r)
             .map_err(|_| OperationError::Backend);
         au.append_scope(audit_be);
@@ -136,7 +151,11 @@ pub trait QueryServerReadTransaction {
     }
 
     // From internal, generate an exists event and dispatch
-    fn internal_exists(&self, au: &mut AuditScope, filter: Filter) -> Result<bool, OperationError> {
+    fn internal_exists(
+        &self,
+        au: &mut AuditScope,
+        filter: Filter<FilterInvalid>,
+    ) -> Result<bool, OperationError> {
         let mut audit_int = AuditScope::new("internal_exists");
         // Build an exists event
         let ee = ExistsEvent::new_internal(filter);
@@ -150,7 +169,7 @@ pub trait QueryServerReadTransaction {
     fn internal_search(
         &self,
         audit: &mut AuditScope,
-        filter: Filter,
+        filter: Filter<FilterInvalid>,
     ) -> Result<Vec<Entry<EntryValid, EntryCommitted>>, OperationError> {
         let mut audit_int = AuditScope::new("internal_search");
         let se = SearchEvent::new_internal(filter);
@@ -176,6 +195,12 @@ impl QueryServerReadTransaction for QueryServerTransaction {
     fn get_be_txn(&self) -> &BackendTransaction {
         &self.be_txn
     }
+
+    type SchemaTransactionType = SchemaTransaction;
+
+    fn get_schema(&self) -> &SchemaTransaction {
+        &self.schema
+    }
 }
 
 pub struct QueryServerWriteTransaction<'a> {
@@ -192,6 +217,12 @@ impl<'a> QueryServerReadTransaction for QueryServerWriteTransaction<'a> {
 
     fn get_be_txn(&self) -> &BackendWriteTransaction {
         &self.be_txn
+    }
+
+    type SchemaTransactionType = SchemaWriteTransaction<'a>;
+
+    fn get_schema(&self) -> &SchemaWriteTransaction<'a> {
+        &self.schema
     }
 }
 
@@ -332,6 +363,16 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Get the candidates.
         // Modify applies a modlist to a filter, so we need to internal search
         // then apply.
+
+        // Validate input.
+
+        // Is the modlist non zero?
+        if me.modlist.len() == 0 {
+            return Err(OperationError::EmptyRequest);
+        }
+
+        // Is the filter invalid to schema?
+
         // WARNING! Check access controls here!!!!
         // How can we do the search with the permissions of the caller?
 
@@ -344,6 +385,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         };
 
         if pre_candidates.len() == 0 {
+            audit_log!(au, "modify: no candidates match filter {:?}", me.filter);
             return Err(OperationError::NoMatchingEntries);
         };
 
@@ -439,7 +481,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub fn internal_delete(
         &self,
         audit: &mut AuditScope,
-        filter: Filter,
+        filter: Filter<FilterInvalid>,
     ) -> Result<(), OperationError> {
         let mut audit_int = AuditScope::new("internal_delete");
         let de = DeleteEvent::new_internal(filter);
@@ -451,7 +493,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub fn internal_modify(
         &self,
         audit: &mut AuditScope,
-        filter: Filter,
+        filter: Filter<FilterInvalid>,
         modlist: ModifyList,
     ) -> Result<(), OperationError> {
         let mut audit_int = AuditScope::new("internal_modify");
@@ -492,7 +534,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         //
         // This will extra classes an attributes alone!
         let filt = match e.filter_from_attrs(&vec![String::from("uuid")]) {
-            Some(f) => f,
+            Some(f) => f.invalidate(),
             None => return Err(OperationError::FilterGeneration),
         };
 
@@ -537,7 +579,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Create a filter from the entry for assertion.
         let filt = match e.filter_from_attrs(&vec![String::from("uuid")]) {
-            Some(f) => f,
+            Some(f) => f.invalidate(),
             None => return Err(OperationError::FilterGeneration),
         };
 
@@ -774,11 +816,13 @@ mod tests {
     use super::super::audit::AuditScope;
     use super::super::be::{Backend, BackendTransaction};
     use super::super::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
+    use super::super::error::OperationError;
     use super::super::event::{CreateEvent, DeleteEvent, ModifyEvent, SearchEvent};
     use super::super::filter::Filter;
     use super::super::log;
     use super::super::modify::{Modify, ModifyList};
     use super::super::proto_v1::Entry as ProtoEntry;
+    use super::super::proto_v1::Filter as ProtoFilter;
     use super::super::proto_v1::{CreateRequest, SearchRequest};
     use super::super::schema::Schema;
     use super::super::server::{
@@ -818,7 +862,7 @@ mod tests {
     fn test_qs_create_user() {
         run_test!(|_log, mut server: QueryServer, audit: &mut AuditScope| {
             let mut server_txn = server.write();
-            let filt = Filter::Pres(String::from("name"));
+            let filt = ProtoFilter::Pres(String::from("name"));
 
             let se1 = SearchEvent::from_request(SearchRequest::new(filt.clone()));
             let se2 = SearchEvent::from_request(SearchRequest::new(filt));
@@ -936,7 +980,7 @@ mod tests {
                 Filter::Pres(String::from("class")),
                 ModifyList::new_list(vec![]),
             );
-            assert!(server_txn.modify(audit, &me_emp).is_err());
+            assert!(server_txn.modify(audit, &me_emp) == Err(OperationError::EmptyRequest));
 
             // Mod changes no objects
             let me_nochg = ModifyEvent::from_filter(
@@ -946,7 +990,7 @@ mod tests {
                     String::from("anusaosu"),
                 )]),
             );
-            assert!(server_txn.modify(audit, &me_nochg).is_err());
+            assert!(server_txn.modify(audit, &me_nochg) == Err(OperationError::NoMatchingEntries));
 
             // Filter is invalid to schema
             let me_inv_f = ModifyEvent::from_filter(
@@ -956,7 +1000,7 @@ mod tests {
                     String::from("anusaosu"),
                 )]),
             );
-            assert!(server_txn.modify(audit, &me_inv_f).is_err());
+            assert!(server_txn.modify(audit, &me_inv_f) == Err(OperationError::SchemaViolation));
 
             // Mod is invalid to schema
             let me_inv_m = ModifyEvent::from_filter(
@@ -966,7 +1010,7 @@ mod tests {
                     String::from("anusaosu"),
                 )]),
             );
-            assert!(server_txn.modify(audit, &me_inv_m).is_err());
+            assert!(server_txn.modify(audit, &me_inv_m) == Err(OperationError::SchemaViolation));
 
             // Mod single object
             let me_sin = ModifyEvent::from_filter(
@@ -980,7 +1024,7 @@ mod tests {
 
             // Mod multiple object
             let me_mult = ModifyEvent::from_filter(
-                Filter::And(vec![
+                Filter::Or(vec![
                     Filter::Eq(String::from("name"), String::from("testperson1")),
                     Filter::Eq(String::from("name"), String::from("testperson2")),
                 ]),

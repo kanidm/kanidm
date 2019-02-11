@@ -1,4 +1,4 @@
-use super::filter::Filter;
+use super::filter::{Filter, FilterInvalid};
 use super::proto_v1::Entry as ProtoEntry;
 use super::proto_v1::{
     AuthRequest, AuthResponse, AuthStatus, CreateRequest, DeleteRequest, ModifyRequest, Response,
@@ -58,7 +58,7 @@ impl SearchResult {
 #[derive(Debug)]
 pub struct SearchEvent {
     pub internal: bool,
-    pub filter: Filter,
+    pub filter: Filter<FilterInvalid>,
     class: (), // String
 }
 
@@ -70,12 +70,12 @@ impl SearchEvent {
     pub fn from_request(request: SearchRequest) -> Self {
         SearchEvent {
             internal: false,
-            filter: request.filter,
+            filter: Filter::from(&request.filter),
             class: (),
         }
     }
 
-    pub fn new_internal(filter: Filter) -> Self {
+    pub fn new_internal(filter: Filter<FilterInvalid>) -> Self {
         SearchEvent {
             internal: true,
             filter: filter,
@@ -132,7 +132,7 @@ impl CreateEvent {
 
 #[derive(Debug)]
 pub struct ExistsEvent {
-    pub filter: Filter,
+    pub filter: Filter<FilterInvalid>,
     pub internal: bool,
 }
 
@@ -141,7 +141,7 @@ impl Message for ExistsEvent {
 }
 
 impl ExistsEvent {
-    pub fn new_internal(filter: Filter) -> Self {
+    pub fn new_internal(filter: Filter<FilterInvalid>) -> Self {
         ExistsEvent {
             filter: filter,
             internal: true,
@@ -151,7 +151,7 @@ impl ExistsEvent {
 
 #[derive(Debug)]
 pub struct DeleteEvent {
-    pub filter: Filter,
+    pub filter: Filter<FilterInvalid>,
     pub internal: bool,
 }
 
@@ -165,14 +165,14 @@ impl DeleteEvent {
     }
 
     #[cfg(test)]
-    pub fn from_filter(filter: Filter) -> Self {
+    pub fn from_filter(filter: Filter<FilterInvalid>) -> Self {
         DeleteEvent {
             filter: filter,
             internal: false,
         }
     }
 
-    pub fn new_internal(filter: Filter) -> Self {
+    pub fn new_internal(filter: Filter<FilterInvalid>) -> Self {
         DeleteEvent {
             filter: filter,
             internal: true,
@@ -182,7 +182,7 @@ impl DeleteEvent {
 
 #[derive(Debug)]
 pub struct ModifyEvent {
-    pub filter: Filter,
+    pub filter: Filter<FilterInvalid>,
     pub modlist: ModifyList,
     pub internal: bool,
 }
@@ -197,7 +197,7 @@ impl ModifyEvent {
     }
 
     #[cfg(test)]
-    pub fn from_filter(filter: Filter, modlist: ModifyList) -> Self {
+    pub fn from_filter(filter: Filter<FilterInvalid>, modlist: ModifyList) -> Self {
         ModifyEvent {
             filter: filter,
             modlist: modlist,
@@ -205,7 +205,7 @@ impl ModifyEvent {
         }
     }
 
-    pub fn new_internal(filter: Filter, modlist: ModifyList) -> Self {
+    pub fn new_internal(filter: Filter<FilterInvalid>, modlist: ModifyList) -> Self {
         ModifyEvent {
             filter: filter,
             modlist: modlist,

@@ -2,28 +2,38 @@
 // in parallel map/reduce style, or directly on a single
 // entry to assert it matches.
 
+use error::SchemaError;
+use proto_v1::Filter as ProtoFilter;
 use regex::Regex;
+use schema::{SchemaAttribute, SchemaClass, SchemaReadTransaction};
 use std::cmp::{Ordering, PartialOrd};
+use std::marker::PhantomData;
 
 // Perhaps make these json serialisable. Certainly would make parsing
 // simpler ...
 
-#[derive(Serialize, Deserialize, Debug)]
-pub enum Filter {
+#[derive(Debug)]
+pub struct FilterValid;
+#[derive(Debug)]
+pub struct FilterInvalid;
+
+#[derive(Debug)]
+pub enum Filter<VALID> {
     // This is attr - value
     Eq(String, String),
     Sub(String, String),
     Pres(String),
-    Or(Vec<Filter>),
-    And(Vec<Filter>),
-    Not(Box<Filter>),
+    Or(Vec<Filter<VALID>>),
+    And(Vec<Filter<VALID>>),
+    Not(Box<Filter<VALID>>),
+    invalid(PhantomData<VALID>),
 }
 
 // Change this so you have RawFilter and Filter. RawFilter is the "builder", and then
 // given a "schema" you can emit a Filter. For us internally, we can create Filter
 // directly still ...
 
-impl Filter {
+impl Filter<FilterValid> {
     // Does this need mut self? Aren't we returning
     // a new copied filter?
     pub fn optimise(&self) -> Self {
@@ -41,9 +51,108 @@ impl Filter {
         // If its the root item?
         self.clone()
     }
+
+    pub fn invalidate(self) -> Filter<FilterInvalid> {
+        // Not used a lot, but probably a chance for improvement?
+        unimplemented!()
+    }
 }
 
-impl Clone for Filter {
+impl Filter<FilterInvalid> {
+    pub fn validate(
+        &self,
+        schema: &SchemaReadTransaction,
+    ) -> Result<Filter<FilterValid>, SchemaError> {
+        // TODO:
+        // First, normalise (if possible)
+        // Then, validate
+
+        // Optimisation is done at another stage.
+
+        // This probably needs some rework
+
+        let schema_attributes = schema.get_attributes();
+        let schema_name = schema_attributes
+            .get("name")
+            .expect("Critical: Core schema corrupt or missing.");
+
+        match self {
+            Filter::Eq(attr, value) => {
+                // Validate/normalise the attr name.
+                let attr_norm = schema_name.normalise_value(attr);
+                // Now check it exists
+                match schema_attributes.get(&attr_norm) {
+                    Some(schema_a) => {
+                        let value_norm = schema_a.normalise_value(value);
+                        schema_a
+                            .validate_value(value)
+                            // Okay, it worked, transform to a filter component
+                            .map(|_| Filter::Eq(attr_norm, value_norm))
+                        // On error, pass the error back out.
+                    }
+                    None => Err(SchemaError::InvalidAttribute),
+                }
+            }
+            _ => unimplemented!(),
+        }
+
+        /*
+        match self {
+            Filter::Eq(attr, value) => match schema_attributes.get(attr) {
+                Some(schema_a) => schema_a.validate_value(value),
+                None => Err(SchemaError::InvalidAttribute),
+            },
+            Filter::Sub(attr, value) => match schema_attributes.get(attr) {
+                Some(schema_a) => schema_a.validate_value(value),
+                None => Err(SchemaError::InvalidAttribute),
+            },
+            Filter::Pres(attr) => {
+                // This could be better as a contains_key
+                // because we never use the value
+                match schema_attributes.get(attr) {
+                    Some(_) => Ok(()),
+                    None => Err(SchemaError::InvalidAttribute),
+                }
+            }
+            Filter::Or(filters) => {
+                // This should never happen because
+                // optimising should remove them as invalid parts?
+                if filters.len() == 0 {
+                    return Err(SchemaError::EmptyFilter);
+                };
+                filters.iter().fold(Ok(()), |acc, filt| {
+                    if acc.is_ok() {
+                        self.validate(filt)
+                    } else {
+                        acc
+                    }
+                })
+            }
+            Filter::And(filters) => {
+                // This should never happen because
+                // optimising should remove them as invalid parts?
+                if filters.len() == 0 {
+                    return Err(SchemaError::EmptyFilter);
+                };
+                filters.iter().fold(Ok(()), |acc, filt| {
+                    if acc.is_ok() {
+                        self.validate(filt)
+                    } else {
+                        acc
+                    }
+                })
+            }
+            Filter::Not(filter) => self.validate(filter),
+        }
+        */
+    }
+
+    pub fn from(f: &ProtoFilter) -> Self {
+        unimplemented!()
+    }
+}
+
+impl Clone for Filter<FilterValid> {
     fn clone(&self) -> Self {
         // I think we only need to match self then new + clone?
         match self {
@@ -53,12 +162,34 @@ impl Clone for Filter {
             Filter::Or(l) => Filter::Or(l.clone()),
             Filter::And(l) => Filter::And(l.clone()),
             Filter::Not(l) => Filter::Not(l.clone()),
+            Filter::invalid(_) => {
+                // TODO: Is there a better way to not need to match the phantom?
+                unimplemented!()
+            }
         }
     }
 }
 
-impl PartialEq for Filter {
-    fn eq(&self, rhs: &Filter) -> bool {
+impl Clone for Filter<FilterInvalid> {
+    fn clone(&self) -> Self {
+        // I think we only need to match self then new + clone?
+        match self {
+            Filter::Eq(a, v) => Filter::Eq(a.clone(), v.clone()),
+            Filter::Sub(a, v) => Filter::Sub(a.clone(), v.clone()),
+            Filter::Pres(a) => Filter::Pres(a.clone()),
+            Filter::Or(l) => Filter::Or(l.clone()),
+            Filter::And(l) => Filter::And(l.clone()),
+            Filter::Not(l) => Filter::Not(l.clone()),
+            Filter::invalid(_) => {
+                // TODO: Is there a better way to not need to match the phantom?
+                unimplemented!()
+            }
+        }
+    }
+}
+
+impl PartialEq for Filter<FilterValid> {
+    fn eq(&self, rhs: &Filter<FilterValid>) -> bool {
         match (self, rhs) {
             (Filter::Eq(a1, v1), Filter::Eq(a2, v2)) => a1 == a2 && v1 == v2,
             (Filter::Sub(a1, v1), Filter::Sub(a2, v2)) => a1 == a2 && v1 == v2,
@@ -73,8 +204,8 @@ impl PartialEq for Filter {
 
 // remember, this isn't ordering by alphanumeric, this is ordering of
 // optimisation preference!
-impl PartialOrd for Filter {
-    fn partial_cmp(&self, rhs: &Filter) -> Option<Ordering> {
+impl PartialOrd for Filter<FilterValid> {
+    fn partial_cmp(&self, rhs: &Filter<FilterValid>) -> Option<Ordering> {
         match (self, rhs) {
             (Filter::Eq(a1, _), Filter::Eq(a2, _)) => {
                 // Order attr name, then value
@@ -101,26 +232,22 @@ impl PartialOrd for Filter {
 
 #[cfg(test)]
 mod tests {
-    use super::Filter;
+    use super::{Filter, FilterValid, FilterInvalid};
     use entry::{Entry, EntryNew, EntryValid};
     use serde_json;
     use std::cmp::{Ordering, PartialOrd};
 
     #[test]
     fn test_filter_simple() {
-        let filt = Filter::Eq(String::from("class"), String::from("user"));
-        let j = serde_json::to_string_pretty(&filt);
-        println!("{}", j.unwrap());
+        let filt: Filter<FilterInvalid> = Filter::Eq(String::from("class"), String::from("user"));
 
-        let complex_filt = Filter::And(vec![
+        let complex_filt: Filter<FilterInvalid> = Filter::And(vec![
             Filter::Or(vec![
                 Filter::Eq(String::from("userid"), String::from("test_a")),
                 Filter::Eq(String::from("userid"), String::from("test_b")),
             ]),
             Filter::Eq(String::from("class"), String::from("user")),
         ]);
-        let y = serde_json::to_string_pretty(&complex_filt);
-        println!("{}", y.unwrap());
     }
 
     #[test]
@@ -223,7 +350,7 @@ mod tests {
         ]);
         assert!(e.entry_match_no_index(&f_t2a));
 
-        let f_t3a = Filter::Or(vec![
+        let f_t3a: Filter<FilterInvalid> = Filter::Or(vec![
             Filter::Eq(String::from("userid"), String::from("alice")),
             Filter::Eq(String::from("uidNumber"), String::from("1000")),
         ]);

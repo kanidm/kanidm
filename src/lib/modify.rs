@@ -26,4 +26,8 @@ impl ModifyList {
     pub fn push_mod(&mut self, modify: Modify) {
         self.mods.push(modify)
     }
+
+    pub fn len(&self) -> usize {
+        self.mods.len()
+    }
 }

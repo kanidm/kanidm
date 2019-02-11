@@ -1,7 +1,7 @@
 // use serde_json::{Error, Value};
 use super::proto_v1::Entry as ProtoEntry;
 use error::SchemaError;
-use filter::Filter;
+use filter::{Filter, FilterValid};
 use modify::{Modify, ModifyList};
 use schema::{SchemaAttribute, SchemaClass, SchemaReadTransaction};
 use std::collections::btree_map::{Iter as BTreeIter, IterMut as BTreeIterMut};
@@ -397,7 +397,7 @@ impl<STATE> Entry<EntryValid, STATE> {
     }
 
     // Assert if this filter matches the entry (no index)
-    pub fn entry_match_no_index(&self, filter: &Filter) -> bool {
+    pub fn entry_match_no_index(&self, filter: &Filter<FilterValid>) -> bool {
         // Go through the filter components and check them in the entry.
         // This is recursive!!!!
         match filter {
@@ -424,10 +424,16 @@ impl<STATE> Entry<EntryValid, STATE> {
                 }
             }),
             Filter::Not(f) => !self.entry_match_no_index(f),
+            Filter::invalid(_) => {
+                // TODO: Is there a better way to not need to match the phantom?
+                unimplemented!()
+            }
         }
     }
 
-    pub fn filter_from_attrs(&self, attrs: &Vec<String>) -> Option<Filter> {
+    pub fn filter_from_attrs(&self, attrs: &Vec<String>) -> Option<Filter<FilterValid>> {
+        // Because we are a valid entry, a filter we create *must* be valid
+        //
         // Generate a filter from the attributes requested and defined.
         // Basically, this is a series of nested and's (which will be
         // optimised down later: but if someone wants to solve flatten() ...)

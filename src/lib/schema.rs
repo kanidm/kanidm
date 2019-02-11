@@ -2,7 +2,7 @@ use super::audit::AuditScope;
 use super::constants::*;
 // use super::entry::Entry;
 use super::error::SchemaError;
-use super::filter::Filter;
+// use super::filter::Filter;
 use std::collections::HashMap;
 // Apparently this is nightly only?
 use modify::ModifyList;
@@ -293,10 +293,6 @@ pub trait SchemaReadTransaction {
         self.get_inner().validate(audit)
     }
 
-    fn validate_filter(&self, filt: &Filter) -> Result<(), SchemaError> {
-        self.get_inner().validate_filter(filt)
-    }
-
     fn normalise_modlist(&self, modlist: &ModifyList) -> ModifyList {
         unimplemented!()
     }
@@ -388,7 +384,7 @@ impl SchemaInner {
                     description: String::from("A description of an attribute, object or class"),
                     system: true,
                     secret: false,
-                    multivalue: false,
+                    multivalue: true,
                     index: vec![],
                     syntax: SyntaxType::UTF8STRING,
                 },
@@ -870,57 +866,6 @@ impl SchemaInner {
         Ok(())
     }
 
-    // This needs to be recursive?
-    pub fn validate_filter(&self, filt: &Filter) -> Result<(), SchemaError> {
-        match filt {
-            Filter::Eq(attr, value) => match self.attributes.get(attr) {
-                Some(schema_a) => schema_a.validate_value(value),
-                None => Err(SchemaError::InvalidAttribute),
-            },
-            Filter::Sub(attr, value) => match self.attributes.get(attr) {
-                Some(schema_a) => schema_a.validate_value(value),
-                None => Err(SchemaError::InvalidAttribute),
-            },
-            Filter::Pres(attr) => {
-                // This could be better as a contains_key
-                // because we never use the value
-                match self.attributes.get(attr) {
-                    Some(_) => Ok(()),
-                    None => Err(SchemaError::InvalidAttribute),
-                }
-            }
-            Filter::Or(filters) => {
-                // This should never happen because
-                // optimising should remove them as invalid parts?
-                if filters.len() == 0 {
-                    return Err(SchemaError::EmptyFilter);
-                };
-                filters.iter().fold(Ok(()), |acc, filt| {
-                    if acc.is_ok() {
-                        self.validate_filter(filt)
-                    } else {
-                        acc
-                    }
-                })
-            }
-            Filter::And(filters) => {
-                // This should never happen because
-                // optimising should remove them as invalid parts?
-                if filters.len() == 0 {
-                    return Err(SchemaError::EmptyFilter);
-                };
-                filters.iter().fold(Ok(()), |acc, filt| {
-                    if acc.is_ok() {
-                        self.validate_filter(filt)
-                    } else {
-                        acc
-                    }
-                })
-            }
-            Filter::Not(filter) => self.validate_filter(filter),
-        }
-    }
-
     // Normalise *does not* validate.
     // Normalise just fixes some possible common issues, but it
     // can't fix *everything* possibly wrong ...
@@ -1007,7 +952,7 @@ mod tests {
     use super::super::constants::*;
     use super::super::entry::{Entry, EntryInvalid, EntryNew, EntryValid};
     use super::super::error::SchemaError;
-    use super::super::filter::Filter;
+    use super::super::filter::{Filter, FilterInvalid, FilterValid};
     use super::{IndexType, Schema, SchemaAttribute, SchemaClass, SyntaxType};
     use schema::SchemaReadTransaction;
     use serde_json;
@@ -1474,90 +1419,52 @@ mod tests {
         let schema_outer = Schema::new(&mut audit).unwrap();
         let schema = schema_outer.read();
         // Test mixed case attr name
-        let f_mixed: Filter = serde_json::from_str(
-            r#"{
-            "Eq": [
-                "ClAsS", "attributetype"
-                ]
-            }"#,
-        )
-        .unwrap();
+        let f_mixed = Filter::Eq("ClAsS".to_string(), "attributetype".to_string());
         assert_eq!(
-            schema.validate_filter(&f_mixed),
+            f_mixed.validate(&schema),
             Err(SchemaError::InvalidAttribute)
         );
         // test syntax of bool
-        let f_bool: Filter = serde_json::from_str(
-            r#"{
-            "Eq": [
-                "secret", "zzzz"
-                ]
-            }"#,
-        )
-        .unwrap();
+        let f_bool = Filter::Eq("secret".to_string(), "zzzz".to_string());
         assert_eq!(
-            schema.validate_filter(&f_bool),
+            f_bool.validate(&schema),
             Err(SchemaError::InvalidAttributeSyntax)
         );
-        // test insensitise values
-        let f_insense: Filter = serde_json::from_str(
-            r#"{
-            "Eq": [
-                "class", "AttributeType"
-                ]
-            }"#,
-        )
-        .unwrap();
+        // test insensitive values
+        let f_insense = Filter::Eq("class".to_string(), "AttributeType".to_string());
         assert_eq!(
-            schema.validate_filter(&f_insense),
+            f_insense.validate(&schema),
             Err(SchemaError::InvalidAttributeSyntax)
         );
         // Test the recursive structures validate
-        let f_or_empty: Filter = serde_json::from_str(
-            r#"{
-            "Or": []
-            }"#,
-        )
-        .unwrap();
+        let f_or_empty = Filter::Or(Vec::new());
+        assert_eq!(f_or_empty.validate(&schema), Err(SchemaError::EmptyFilter));
+        let f_or = Filter::Or(vec![
+            Filter::Eq("class".to_string(), "AttributeType".to_string()),
+        ]);
         assert_eq!(
-            schema.validate_filter(&f_or_empty),
-            Err(SchemaError::EmptyFilter)
-        );
-        let f_or: Filter = serde_json::from_str(
-            r#"{
-            "Or": [
-              { "Eq": ["class", "AttributeType"] }
-            ]
-            }"#,
-        )
-        .unwrap();
-        assert_eq!(
-            schema.validate_filter(&f_or),
+            f_or.validate(&schema),
             Err(SchemaError::InvalidAttributeSyntax)
         );
-        let f_or_mult: Filter = serde_json::from_str(
-            r#"{
-            "Or": [
-              { "Eq": ["class", "attributetype"] },
-              { "Eq": ["class", "AttributeType"] }
-            ]
-            }"#,
-        )
-        .unwrap();
+        let f_or_mult = Filter::Or(vec![
+            Filter::Eq("class".to_string(), "attributetype".to_string()),
+            Filter::Eq("class".to_string(), "AttributeType".to_string()),
+        ]);
         assert_eq!(
-            schema.validate_filter(&f_or_mult),
+            f_or_mult.validate(&schema),
             Err(SchemaError::InvalidAttributeSyntax)
         );
-        let f_or_ok: Filter = serde_json::from_str(
-            r#"{
-            "Or": [
-              { "Eq": ["class", "attributetype"] },
-              { "Eq": ["class", "classtype"] }
-            ]
-            }"#,
-        )
-        .unwrap();
-        assert_eq!(schema.validate_filter(&f_or_ok), Ok(()));
+        let f_or_ok = Filter::Or(vec![
+            Filter::Eq("class".to_string(), "attributetype".to_string()),
+            Filter::Eq("class".to_string(), "classtype".to_string()),
+        ]);
+        assert_eq!(
+            f_or_ok.validate(&schema),
+            Ok(Filter::Or::<FilterValid>(vec![
+                Filter::Eq("class".to_string(), "attributetype".to_string()),
+                Filter::Eq("class".to_string(), "classtype".to_string()),
+            ]))
+        );
         println!("{}", audit);
     }
 

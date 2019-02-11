@@ -9,7 +9,7 @@ use serde_json;
 
 use audit::AuditScope;
 use entry::{Entry, EntryCommitted, EntryNew, EntryValid};
-use filter::Filter;
+use filter::{Filter, FilterValid};
 
 mod idl;
 mod mem_be;
@@ -56,7 +56,7 @@ pub trait BackendReadTransaction {
     fn search(
         &self,
         au: &mut AuditScope,
-        filt: &Filter,
+        filt: &Filter<FilterValid>,
     ) -> Result<Vec<Entry<EntryValid, EntryCommitted>>, BackendError> {
         // Do things
         // Alloc a vec for the entries.
@@ -120,7 +120,11 @@ pub trait BackendReadTransaction {
     /// Basically, this is a specialised case of search, where we don't need to
     /// load any candidates if they match. This is heavily used in uuid
     /// refint and attr uniqueness.
-    fn exists(&self, au: &mut AuditScope, filt: &Filter) -> Result<bool, BackendError> {
+    fn exists(
+        &self,
+        au: &mut AuditScope,
+        filt: &Filter<FilterValid>,
+    ) -> Result<bool, BackendError> {
         // Do a final optimise of the filter
         // At the moment, technically search will do this, but it won't always be the
         // case once this becomes a standalone function.
