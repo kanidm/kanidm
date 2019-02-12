@@ -25,7 +25,7 @@ pub enum Filter<VALID> {
     Pres(String),
     Or(Vec<Filter<VALID>>),
     And(Vec<Filter<VALID>>),
-    Not(Box<Filter<VALID>>),
+    AndNot(Box<Filter<VALID>>),
     invalid(PhantomData<VALID>),
 }
 
@@ -71,6 +71,8 @@ impl Filter<FilterInvalid> {
 
         // This probably needs some rework
 
+        // TODO: Getting this each recursion could be slow. Maybe
+        // we need an inner functon that passes the reference?
         let schema_attributes = schema.get_attributes();
         let schema_name = schema_attributes
             .get("name")
@@ -93,7 +95,68 @@ impl Filter<FilterInvalid> {
                     None => Err(SchemaError::InvalidAttribute),
                 }
             }
-            _ => unimplemented!(),
+            Filter::Sub(attr, value) => {
+                // Validate/normalise the attr name.
+                let attr_norm = schema_name.normalise_value(attr);
+                // Now check it exists
+                match schema_attributes.get(&attr_norm) {
+                    Some(schema_a) => {
+                        let value_norm = schema_a.normalise_value(value);
+                        schema_a
+                            .validate_value(value)
+                            // Okay, it worked, transform to a filter component
+                            .map(|_| Filter::Sub(attr_norm, value_norm))
+                        // On error, pass the error back out.
+                    }
+                    None => Err(SchemaError::InvalidAttribute),
+                }
+            }
+            Filter::Pres(attr) => {
+                let attr_norm = schema_name.normalise_value(attr);
+                // Now check it exists
+                match schema_attributes.get(&attr_norm) {
+                    Some(schema_a) => {
+                        // Return our valid data
+                        Ok(Filter::Pres(attr_norm))
+                    }
+                    None => Err(SchemaError::InvalidAttribute),
+                }
+            }
+            Filter::Or(filters) => {
+                // If all filters are okay, return Ok(Filter::Or())
+                // If any is invalid, return the error.
+                // TODO: ftweedal says an empty or is a valid filter
+                // in mathematical terms.
+                if filters.len() == 0 {
+                    return Err(SchemaError::EmptyFilter);
+                };
+                let x: Result<Vec<_>, _> = filters
+                    .iter()
+                    .map(|filter| filter.validate(schema))
+                    .collect();
+                // Now put the valid filters into the Filter
+                x.map(|valid_filters| Filter::Or(valid_filters))
+            }
+            Filter::And(filters) => {
+                // TODO: ftweedal says an empty or is a valid filter
+                // in mathematical terms.
+                if filters.len() == 0 {
+                    return Err(SchemaError::EmptyFilter);
+                };
+                let x: Result<Vec<_>, _> = filters
+                    .iter()
+                    .map(|filter| filter.validate(schema))
+                    .collect();
+                // Now put the valid filters into the Filter
+                x.map(|valid_filters| Filter::And(valid_filters))
+            }
+            Filter::AndNot(filter) => {
+                // Just validate the inner
+                filter
+                    .validate(schema)
+                    .map(|r_filter| Filter::AndNot(Box::new(r_filter)))
+            }
+            _ => panic!(),
         }
 
         /*
@@ -161,7 +224,7 @@ impl Clone for Filter<FilterValid> {
             Filter::Pres(a) => Filter::Pres(a.clone()),
             Filter::Or(l) => Filter::Or(l.clone()),
             Filter::And(l) => Filter::And(l.clone()),
-            Filter::Not(l) => Filter::Not(l.clone()),
+            Filter::AndNot(l) => Filter::AndNot(l.clone()),
             Filter::invalid(_) => {
                 // TODO: Is there a better way to not need to match the phantom?
                 unimplemented!()
@@ -179,7 +242,7 @@ impl Clone for Filter<FilterInvalid> {
             Filter::Pres(a) => Filter::Pres(a.clone()),
             Filter::Or(l) => Filter::Or(l.clone()),
             Filter::And(l) => Filter::And(l.clone()),
-            Filter::Not(l) => Filter::Not(l.clone()),
+            Filter::AndNot(l) => Filter::AndNot(l.clone()),
             Filter::invalid(_) => {
                 // TODO: Is there a better way to not need to match the phantom?
                 unimplemented!()
@@ -196,7 +259,7 @@ impl PartialEq for Filter<FilterValid> {
             (Filter::Pres(a1), Filter::Pres(a2)) => a1 == a2,
             (Filter::Or(l1), Filter::Or(l2)) => l1 == l2,
             (Filter::And(l1), Filter::And(l2)) => l1 == l2,
-            (Filter::Not(l1), Filter::Not(l2)) => l1 == l2,
+            (Filter::AndNot(l1), Filter::AndNot(l2)) => l1 == l2,
             (_, _) => false,
         }
     }
@@ -232,7 +295,7 @@ impl PartialOrd for Filter<FilterValid> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Filter, FilterValid, FilterInvalid};
+    use super::{Filter, FilterInvalid, FilterValid};
     use entry::{Entry, EntryNew, EntryValid};
     use serde_json;
     use std::cmp::{Ordering, PartialOrd};
@@ -416,13 +479,13 @@ mod tests {
         )
         .unwrap();
 
-        let f_t1a = Filter::Not(Box::new(Filter::Eq(
+        let f_t1a = Filter::AndNot(Box::new(Filter::Eq(
             String::from("userid"),
             String::from("alice"),
         )));
         assert!(e1.entry_match_no_index(&f_t1a));
 
-        let f_t2a = Filter::Not(Box::new(Filter::Eq(
+        let f_t2a = Filter::AndNot(Box::new(Filter::Eq(
             String::from("userid"),
             String::from("william"),
         )));

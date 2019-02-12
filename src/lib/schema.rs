@@ -1418,12 +1418,13 @@ mod tests {
         let mut audit = AuditScope::new("test_schema_filter_validation");
         let schema_outer = Schema::new(&mut audit).unwrap();
         let schema = schema_outer.read();
-        // Test mixed case attr name
-        let f_mixed = Filter::Eq("ClAsS".to_string(), "attributetype".to_string());
+        // Test non existant attr name
+        let f_mixed = Filter::Eq("nonClAsS".to_string(), "attributetype".to_string());
         assert_eq!(
             f_mixed.validate(&schema),
             Err(SchemaError::InvalidAttribute)
         );
+
         // test syntax of bool
         let f_bool = Filter::Eq("secret".to_string(), "zzzz".to_string());
         assert_eq!(
@@ -1439,14 +1440,15 @@ mod tests {
         // Test the recursive structures validate
         let f_or_empty = Filter::Or(Vec::new());
         assert_eq!(f_or_empty.validate(&schema), Err(SchemaError::EmptyFilter));
-        let f_or = Filter::Or(vec![
-            Filter::Eq("class".to_string(), "AttributeType".to_string()),
-        ]);
+        let f_or = Filter::Or(vec![Filter::Eq(
+            "class".to_string(),
+            "AttributeType".to_string(),
+        )]);
         assert_eq!(
             f_or.validate(&schema),
             Err(SchemaError::InvalidAttributeSyntax)
         );
-        let f_or_mult = Filter::Or(vec![
+        let f_or_mult = Filter::And(vec![
             Filter::Eq("class".to_string(), "attributetype".to_string()),
             Filter::Eq("class".to_string(), "AttributeType".to_string()),
         ]);
@@ -1454,17 +1456,20 @@ mod tests {
             f_or_mult.validate(&schema),
             Err(SchemaError::InvalidAttributeSyntax)
         );
-        let f_or_ok = Filter::Or(vec![
+        let f_or_ok = Filter::AndNot(Box::new(Filter::And(vec![
             Filter::Eq("class".to_string(), "attributetype".to_string()),
-            Filter::Eq("class".to_string(), "classtype".to_string()),
-        ]);
+            Filter::Sub("class".to_string(), "classtype".to_string()),
+            Filter::Pres("class".to_string()),
+        ])));
         assert_eq!(
             f_or_ok.validate(&schema),
-            Ok(Filter::Or::<FilterValid>(vec![
+            Ok(Filter::AndNot::<FilterValid>(Box::new(Filter::And(vec![
                 Filter::Eq("class".to_string(), "attributetype".to_string()),
-                Filter::Eq("class".to_string(), "classtype".to_string()),
-            ]))
+                Filter::Sub("class".to_string(), "classtype".to_string()),
+                Filter::Pres("class".to_string()),
+            ]))))
         );
+        // Test mixed case attr name - this is a pass, due to normalisation
         println!("{}", audit);
     }
 

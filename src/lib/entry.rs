@@ -423,7 +423,7 @@ impl<STATE> Entry<EntryValid, STATE> {
                     acc
                 }
             }),
-            Filter::Not(f) => !self.entry_match_no_index(f),
+            Filter::AndNot(f) => !self.entry_match_no_index(f),
             Filter::invalid(_) => {
                 // TODO: Is there a better way to not need to match the phantom?
                 unimplemented!()
