@@ -368,6 +368,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Is the modlist non zero?
         if me.modlist.len() == 0 {
+            audit_log!(au, "modify: empty modify request");
             return Err(OperationError::EmptyRequest);
         }
 
@@ -381,7 +382,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // to normalise, instead of attempting to mut the filter on norm.
         let pre_candidates = match self.internal_search(au, me.filter.clone()) {
             Ok(results) => results,
-            Err(e) => return Err(e),
+            Err(e) => {
+                audit_log!(au, "modify: error in pre-candidate selection {:?}", e);
+                return Err(e)
+            }
         };
 
         if pre_candidates.len() == 0 {
@@ -984,7 +988,7 @@ mod tests {
 
             // Mod changes no objects
             let me_nochg = ModifyEvent::from_filter(
-                Filter::Eq(String::from("name"), String::from("Flarbalgarble")),
+                Filter::Eq(String::from("name"), String::from("flarbalgarble")),
                 ModifyList::new_list(vec![Modify::Present(
                     String::from("description"),
                     String::from("anusaosu"),
