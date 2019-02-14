@@ -1041,6 +1041,13 @@ mod tests {
     }
 
     #[test]
+    fn test_modify_invalid_class() {
+        // Test modifying an entry and adding an extra class, that would cause the entry
+        // to no longer conform to schema.
+        unimplemented!()
+    }
+
+    #[test]
     fn test_qs_delete() {
         run_test!(|_log, mut server: QueryServer, audit: &mut AuditScope| {
             // Create

@@ -158,56 +158,6 @@ impl Filter<FilterInvalid> {
             }
             _ => panic!(),
         }
-
-        /*
-        match self {
-            Filter::Eq(attr, value) => match schema_attributes.get(attr) {
-                Some(schema_a) => schema_a.validate_value(value),
-                None => Err(SchemaError::InvalidAttribute),
-            },
-            Filter::Sub(attr, value) => match schema_attributes.get(attr) {
-                Some(schema_a) => schema_a.validate_value(value),
-                None => Err(SchemaError::InvalidAttribute),
-            },
-            Filter::Pres(attr) => {
-                // This could be better as a contains_key
-                // because we never use the value
-                match schema_attributes.get(attr) {
-                    Some(_) => Ok(()),
-                    None => Err(SchemaError::InvalidAttribute),
-                }
-            }
-            Filter::Or(filters) => {
-                // This should never happen because
-                // optimising should remove them as invalid parts?
-                if filters.len() == 0 {
-                    return Err(SchemaError::EmptyFilter);
-                };
-                filters.iter().fold(Ok(()), |acc, filt| {
-                    if acc.is_ok() {
-                        self.validate(filt)
-                    } else {
-                        acc
-                    }
-                })
-            }
-            Filter::And(filters) => {
-                // This should never happen because
-                // optimising should remove them as invalid parts?
-                if filters.len() == 0 {
-                    return Err(SchemaError::EmptyFilter);
-                };
-                filters.iter().fold(Ok(()), |acc, filt| {
-                    if acc.is_ok() {
-                        self.validate(filt)
-                    } else {
-                        acc
-                    }
-                })
-            }
-            Filter::Not(filter) => self.validate(filter),
-        }
-        */
     }
 
     pub fn from(f: &ProtoFilter) -> Self {

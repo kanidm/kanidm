@@ -28,6 +28,109 @@ An example is that user Alice should only be able to search for objects where th
 is person, and where they are a memberOf "visible" group. Alice should only be able to
 see those users displayNames (not their legalName for example), and their public email.
 
+Worded a bit differently. You need permission over the scope of entries, you need to be able
+to read the attribute to filter on it, and you need to be able to read the attribute to recieve
+it in the result entry.
+
+Threat: If we search for '(&(name=william)(secretdata=x))', we should not allow this to
+proceed because you don't have the rights to read secret data, so you should not be allowed
+to filter on it. How does this work with two overlapping ACPs? For example one that allows read
+of name and description to class = group, and one that allows name to user. We don't want to
+say '(&(name=x)(description=foo))' and have it allowed, because we don't know the target class
+of the filter. Do we "unmatch" all users because they have no access to the filter components? (Could
+be done by inverting and putting in an AndNot of the non-matchable overlaps). Or do we just
+filter our description from the users returned (But that implies they DID match, which is a disclosure).
+
+More concrete:
+
+    search {
+        action: allow
+        targetscope: Eq("class", "group")
+        targetattr: name
+        targetattr: description
+    }
+
+    search {
+        action: allow
+        targetscope: Eq("class", "user")
+        targetattr: name
+    }
+
+    SearchRequest {
+        ...
+        filter: And: {
+            Pres("name"),
+            Pres("description"),
+        }
+    }
+
+A potential defense is:
+
+    acp class group: Pres(name) and Pres(desc) both in target attr, allow
+    acp class user: Pres(name) allow, Pres(desc) deny. Invert and Append
+
+    So the filter now is:
+    And: {
+        AndNot: {
+            Eq("class", "user")
+        },
+        And: {
+            Pres("name"),
+            Pres("description"),
+        },
+    }
+
+    This would now only allow access to the name/desc of group.
+
+If we extend this to a third, this would work. But a more complex example:
+
+    search {
+        action: allow
+        targetscope: Eq("class", "group")
+        targetattr: name
+        targetattr: description
+    }
+
+    search {
+        action: allow
+        targetscope: Eq("class", "user")
+        targetattr: name
+    }
+
+    search {
+        action: allow
+        targetscope: And(Eq("class", "user"), Eq("name", "william"))
+        targetattr: description
+    }
+
+Now we have a single user where we can read desc. So the compiled filter above as:
+
+    And: {
+        AndNot: {
+            Eq("class", "user")
+        },
+        And: {
+            Pres("name"),
+            Pres("description"),
+        },
+    }
+
+This would now be invalid, first, because we would see that class=user and william has no name
+so that would be excluded also. We also may not even have "class=user" in the second ACP, so we can't
+use subset filter matching to merge the two.
+
+As a result, I think the only possible valid solution is to perform the initial filter, then determine
+on the candidates if we *could* have have valid access to filter on all required attributes. IE
+this means even with an index look up, we still are required to perform some filter application
+on the candidates.
+
+I think this will mean on a possible candidate, we have to apply all ACP, then create a union of
+the resulting targetattrs, and then compared that set into the set of attributes in the filter.
+
+This will be slow on large candidate sets (potentially), but could be sped up with parallelism, caching
+or other. However, in the same step, we can also apply the step of extracting only the allowed
+read target attrs, so this is a valuable exercise.
+
 Delete Requirements
 -------------------
 
@@ -90,6 +193,8 @@ be best implemented as a compilation of self -> eq(uuid, self.uuid).
 
 Implementation Details
 ----------------------
+
+CHANGE: Receiver should be a group, and should be single value/multivalue? Can *only* be a group.
 
 Example profiles:
 
