@@ -52,9 +52,19 @@ impl Filter<FilterValid> {
         self.clone()
     }
 
-    pub fn invalidate(self) -> Filter<FilterInvalid> {
-        // Not used a lot, but probably a chance for improvement?
-        unimplemented!()
+    pub fn invalidate(&self) -> Filter<FilterInvalid> {
+        match self {
+            Filter::Eq(a, v) => Filter::Eq(a.clone(), v.clone()),
+            Filter::Sub(a, v) => Filter::Sub(a.clone(), v.clone()),
+            Filter::Pres(a) => Filter::Pres(a.clone()),
+            Filter::Or(l) => Filter::Or(l.iter().map(|f| f.invalidate()).collect()),
+            Filter::And(l) => Filter::And(l.iter().map(|f| f.invalidate()).collect()),
+            Filter::AndNot(l) => Filter::AndNot(Box::new(l.invalidate())),
+            Filter::invalid(_) => {
+                // TODO: Is there a better way to not need to match the phantom?
+                unimplemented!()
+            }
+        }
     }
 }
 
@@ -161,7 +171,14 @@ impl Filter<FilterInvalid> {
     }
 
     pub fn from(f: &ProtoFilter) -> Self {
-        unimplemented!()
+        match f {
+            ProtoFilter::Eq(a, v) => Filter::Eq(a.clone(), v.clone()),
+            ProtoFilter::Sub(a, v) => Filter::Sub(a.clone(), v.clone()),
+            ProtoFilter::Pres(a) => Filter::Pres(a.clone()),
+            ProtoFilter::Or(l) => Filter::Or(l.iter().map(|f| Self::from(f)).collect()),
+            ProtoFilter::And(l) => Filter::And(l.iter().map(|f| Self::from(f)).collect()),
+            ProtoFilter::AndNot(l) => Filter::AndNot(Box::new(Self::from(f))),
+        }
     }
 }
 

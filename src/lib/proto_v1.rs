@@ -24,7 +24,7 @@ pub enum Filter {
     Pres(String),
     Or(Vec<Filter>),
     And(Vec<Filter>),
-    Not(Box<Filter>),
+    AndNot(Box<Filter>),
 }
 
 // FIXME: Do I need proto filter?
