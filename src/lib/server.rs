@@ -379,7 +379,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             Ok(results) => results,
             Err(e) => {
                 audit_log!(au, "delete: error in pre-candidate selection {:?}", e);
-                return Err(e)
+                return Err(e);
             }
         };
 
@@ -394,10 +394,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Pre delete plugs
 
         // Audit
-        pre_candidates.iter()
-            .for_each(|cand| {
-                audit_log!(au, "delete: intent candidate {:?}", cand)
-            });
+        pre_candidates
+            .iter()
+            .for_each(|cand| audit_log!(au, "delete: intent candidate {:?}", cand));
 
         // Now, delete only what you can see
         let mut audit_be = AuditScope::new("backend_delete");
@@ -450,7 +449,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             Ok(results) => results,
             Err(e) => {
                 audit_log!(au, "modify: error in pre-candidate selection {:?}", e);
-                return Err(e)
+                return Err(e);
             }
         };
 
@@ -1114,7 +1113,71 @@ mod tests {
     fn test_modify_invalid_class() {
         // Test modifying an entry and adding an extra class, that would cause the entry
         // to no longer conform to schema.
-        unimplemented!()
+        run_test!(|_log, mut server: QueryServer, audit: &mut AuditScope| {
+            let mut server_txn = server.write();
+
+            let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+                r#"{
+                "valid": null,
+                "state": null,
+                "attrs": {
+                    "class": ["object", "person"],
+                    "name": ["testperson1"],
+                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
+                    "description": ["testperson1"],
+                    "displayname": ["testperson1"]
+                }
+            }"#,
+            )
+            .unwrap();
+
+            let ce = CreateEvent::from_vec(vec![e1.clone()]);
+
+            let cr = server_txn.create(audit, &ce);
+            assert!(cr.is_ok());
+
+            // Add class but no values
+            let me_sin = ModifyEvent::from_filter(
+                Filter::Eq(String::from("name"), String::from("testperson1")),
+                ModifyList::new_list(vec![Modify::Present(
+                    String::from("class"),
+                    String::from("system_info"),
+                )]),
+            );
+            assert!(server_txn.modify(audit, &me_sin).is_err());
+
+            // Add multivalue where not valid
+            let me_sin = ModifyEvent::from_filter(
+                Filter::Eq(String::from("name"), String::from("testperson1")),
+                ModifyList::new_list(vec![Modify::Present(
+                    String::from("name"),
+                    String::from("testpersonx"),
+                )]),
+            );
+            assert!(server_txn.modify(audit, &me_sin).is_err());
+
+            // add class and valid values?
+            let me_sin = ModifyEvent::from_filter(
+                Filter::Eq(String::from("name"), String::from("testperson1")),
+                ModifyList::new_list(vec![
+                    Modify::Present(String::from("class"), String::from("system_info")),
+                    Modify::Present(String::from("domain"), String::from("domain.name")),
+                    Modify::Present(String::from("version"), String::from("1")),
+                ]),
+            );
+            assert!(server_txn.modify(audit, &me_sin).is_ok());
+
+            // Replace a value
+            let me_sin = ModifyEvent::from_filter(
+                Filter::Eq(String::from("name"), String::from("testperson1")),
+                ModifyList::new_list(vec![
+                    Modify::Purged("name".to_string()),
+                    Modify::Present(String::from("name"), String::from("testpersonx")),
+                ]),
+            );
+            assert!(server_txn.modify(audit, &me_sin).is_ok());
+            future::ok(())
+        })
     }
 
     #[test]

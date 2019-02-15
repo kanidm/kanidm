@@ -61,7 +61,7 @@ pub struct SearchEvent {
     pub filter: Filter<FilterInvalid>,
     // TODO: Remove this
     class: (), // String
-    // TODO: Add list of attributes to request
+               // TODO: Add list of attributes to request
 }
 
 impl Message for SearchEvent {
