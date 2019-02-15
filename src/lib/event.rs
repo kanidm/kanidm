@@ -59,7 +59,9 @@ impl SearchResult {
 pub struct SearchEvent {
     pub internal: bool,
     pub filter: Filter<FilterInvalid>,
+    // TODO: Remove this
     class: (), // String
+    // TODO: Add list of attributes to request
 }
 
 impl Message for SearchEvent {
@@ -71,6 +73,14 @@ impl SearchEvent {
         SearchEvent {
             internal: false,
             filter: Filter::from(&request.filter),
+            class: (),
+        }
+    }
+
+    pub fn new_impersonate(filter: Filter<FilterInvalid>) -> Self {
+        SearchEvent {
+            internal: false,
+            filter: filter,
             class: (),
         }
     }

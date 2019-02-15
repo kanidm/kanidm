@@ -344,6 +344,18 @@ you want partial results - imagine someone wants to delete users A, B at the sam
 have access to A. They wwant this request to fail so they KNOW B was not deleted, rather than
 succeed and have B still exist with a partial delete status.
 
+However, the issue is Option 2 means that you could have And(Eq(attr, accessible), Eq(attr, denied)), and denial of that, would indicate presence of the denied attr. So option 1 makes sense in terms
+of preventing a security risk of info disclosure.
+
+This is also a concern for modification, where the modification attempt may or may not
+fail depending on the entries and if you can/can't see them.
+
+
+BETTER IDEA. You can only delete/modify within the scope of the read you have. If you can't
+read it (based on the read rules of search), you can't delete it. This is in addition to the filter
+rules of the delete applying as well. So doing a delete of Pres(class), will only delete
+in your READ SCOPE and will never disclose if you have no access.
+
 Create Application
 ------------------
 

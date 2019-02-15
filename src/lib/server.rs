@@ -177,6 +177,19 @@ pub trait QueryServerReadTransaction {
         audit.append_scope(audit_int);
         res
     }
+
+    // Who they are will go here
+    fn impersonate_search(
+        &self,
+        audit: &mut AuditScope,
+        filter: Filter<FilterInvalid>,
+    ) -> Result<Vec<Entry<EntryValid, EntryCommitted>>, OperationError> {
+        let mut audit_int = AuditScope::new("impersonate_search");
+        let se = SearchEvent::new_impersonate(filter);
+        let res = self.search(&mut audit_int, &se);
+        audit.append_scope(audit_int);
+        res
+    }
 }
 
 pub struct QueryServerTransaction {
@@ -355,8 +368,61 @@ impl<'a> QueryServerWriteTransaction<'a> {
         res
     }
 
-    pub fn delete(&self, au: &mut AuditScope, ce: &DeleteEvent) -> Result<(), OperationError> {
-        unimplemented!()
+    pub fn delete(&self, au: &mut AuditScope, de: &DeleteEvent) -> Result<(), OperationError> {
+        // Do you have access to view all the set members? Reduce based on your
+        // read permissions and attrs
+        // THIS IS PRETTY COMPLEX SEE THE DESIGN DOC
+        // In this case we need a search, but not INTERNAL to keep the same
+        // associated credentials.
+        // We only need to retrieve uuid though ...
+        let pre_candidates = match self.impersonate_search(au, de.filter.clone()) {
+            Ok(results) => results,
+            Err(e) => {
+                audit_log!(au, "delete: error in pre-candidate selection {:?}", e);
+                return Err(e)
+            }
+        };
+
+        // Apply access controls to reduce the set if required.
+
+        // Is the candidate set empty?
+        if pre_candidates.len() == 0 {
+            audit_log!(au, "delete: no candidates match filter {:?}", de.filter);
+            return Err(OperationError::NoMatchingEntries);
+        };
+
+        // Pre delete plugs
+
+        // Audit
+        pre_candidates.iter()
+            .for_each(|cand| {
+                audit_log!(au, "delete: intent candidate {:?}", cand)
+            });
+
+        // Now, delete only what you can see
+        let mut audit_be = AuditScope::new("backend_delete");
+
+        let res = self
+            .be_txn
+            .delete(&mut audit_be, &pre_candidates)
+            .map(|_| ())
+            .map_err(|e| match e {
+                BackendError::EmptyRequest => OperationError::EmptyRequest,
+                BackendError::EntryMissingId => OperationError::InvalidRequestState,
+            });
+        au.append_scope(audit_be);
+
+        if res.is_err() {
+            // be_txn is dropped, ie aborted here.
+            audit_log!(au, "Delete operation failed (backend), {:?}", res);
+            return res;
+        }
+
+        // Post delete plugs
+
+        // Send result
+        audit_log!(au, "Delete operation success");
+        res
     }
 
     pub fn modify(&self, au: &mut AuditScope, me: &ModifyEvent) -> Result<(), OperationError> {
@@ -380,7 +446,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // TODO: Fix this filter clone ....
         // Likely this will be fixed if search takes &filter, and then clone
         // to normalise, instead of attempting to mut the filter on norm.
-        let pre_candidates = match self.internal_search(au, me.filter.clone()) {
+        let pre_candidates = match self.impersonate_search(au, me.filter.clone()) {
             Ok(results) => results,
             Err(e) => {
                 audit_log!(au, "modify: error in pre-candidate selection {:?}", e);
