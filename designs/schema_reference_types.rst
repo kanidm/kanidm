@@ -42,6 +42,16 @@ Internally, during modify/create/search, we need to only use the UUID
 types because we won't have the transform step (but this is correct
 behaviour).
 
+test case
+---------
+
+given a new attribute type X with MUST, X has value UUID1 which is from object Y.
+
+Delete object Y, and ensure that it is handled correctly (reject the delete due to schema
+violation)
+
+If the attribute X was MAY, then allow the delete, and referential integrity.
+
 Question
 --------
 
