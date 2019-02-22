@@ -4,6 +4,7 @@ use actix_web::{
     error, http, middleware, App, AsyncResponder, Error, FutureResponse, HttpMessage, HttpRequest,
     HttpResponse, Path, Result, State,
 };
+use actix::Actor;
 
 use bytes::BytesMut;
 use futures::{future, Future, Stream};
@@ -17,7 +18,9 @@ use super::log;
 use super::proto_v1::{
     AuthRequest, AuthResponse, CreateRequest, DeleteRequest, ModifyRequest, SearchRequest,
 };
+use super::interval::IntervalActor;
 use super::server;
+
 
 struct AppState {
     qe: actix::Addr<server::QueryServer>,
@@ -213,6 +216,10 @@ pub fn create_server_core(config: Configuration) {
 
     // Start the query server with the given be path: future config
     let server_addr = server::start(log_addr.clone(), config.db_path.as_str(), config.threads);
+
+    // Setup timed events
+    let _int_addr = IntervalActor::new(server_addr.clone()).start();
+
     // Copy the max size
     let max_size = config.maximum_request;
 

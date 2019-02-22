@@ -1,3 +1,6 @@
+
+pub static PURGE_TIMEOUT: u64 = 3600;
+
 pub static UUID_ADMIN: &'static str = "00000000-0000-0000-0000-000000000000";
 
 pub static UUID_ANONYMOUS: &'static str = "00000000-0000-0000-0000-ffffffffffff";
@@ -20,7 +23,6 @@ pub static JSON_SYSTEM_INFO_V1: &'static str = r#"{
     "state": null,
     "attrs": {
         "class": ["object", "system_info"],
-        "name": ["system_info"],
         "uuid": ["00000000-0000-0000-0000-ffffff000001"],
         "description": ["System info and metadata object."],
         "version": ["1"],
@@ -49,6 +51,10 @@ pub static UUID_SCHEMA_CLASS_CLASSTYPE: &'static str = "ec1964f6-0c72-4373-954f-
 pub static UUID_SCHEMA_CLASS_OBJECT: &'static str = "579bb16d-1d85-4f8e-bb3b-6fc55af582fe";
 pub static UUID_SCHEMA_CLASS_EXTENSIBLEOBJECT: &'static str =
     "0fb2171d-372b-4d0d-9194-9a4d6846c324";
+
+pub static UUID_SCHEMA_CLASS_RECYCLED: &'static str = "813bb7e3-dadf-413d-acc4-197b03d55a4f";
+pub static UUID_SCHEMA_CLASS_TOMBSTONE: &'static str = "848a1224-0c3c-465f-abd0-10a32e21830e";
+
 
 // system supplementary
 pub static UUID_SCHEMA_ATTR_DISPLAYNAME: &'static str = "201bc966-954b-48f5-bf25-99ffed759861";

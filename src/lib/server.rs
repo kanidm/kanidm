@@ -14,7 +14,7 @@ use entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
 use error::{OperationError, SchemaError};
 use event::{
     AuthEvent, AuthResult, CreateEvent, DeleteEvent, ExistsEvent, ModifyEvent, OpResult,
-    SearchEvent, SearchResult,
+    SearchEvent, SearchResult, PurgeEvent,
 };
 use filter::{Filter, FilterInvalid};
 use log::EventLog;
@@ -399,10 +399,14 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .for_each(|cand| audit_log!(au, "delete: intent candidate {:?}", cand));
 
         // Now, delete only what you can see
+
+        // TODO: Delete actually just modifies these to add class -> recycled
+
         let mut audit_be = AuditScope::new("backend_delete");
 
         let res = self
             .be_txn
+            // Change this to an update, not delete.
             .delete(&mut audit_be, &pre_candidates)
             .map(|_| ())
             .map_err(|e| match e {
@@ -422,6 +426,59 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Send result
         audit_log!(au, "Delete operation success");
         res
+    }
+
+    pub fn purge_tombstones(&self, au: &mut AuditScope) -> Result<(), OperationError> {
+        // delete everything that is a tombstone.
+
+        // Search for tombstones
+        let ts = match self.internal_search(
+            au,
+            Filter::Eq("class".to_string(), "tombstone".to_string())
+        ) {
+            Ok(r) => {
+                r
+            }
+            Err(e) => {
+                return Err(e)
+            }
+        };
+
+        // TODO: Has an appropriate amount of time/condition past (ie replication events?)
+
+        // Delete them
+        let mut audit_be = AuditScope::new("backend_delete");
+
+        let res = self
+            .be_txn
+            // Change this to an update, not delete.
+            .delete(&mut audit_be, &ts)
+            .map(|_| ())
+            .map_err(|e| match e {
+                BackendError::EmptyRequest => OperationError::EmptyRequest,
+                BackendError::EntryMissingId => OperationError::InvalidRequestState,
+            });
+        au.append_scope(audit_be);
+
+        if res.is_err() {
+            // be_txn is dropped, ie aborted here.
+            audit_log!(au, "Tombstone purge operation failed (backend), {:?}", res);
+            return res;
+        }
+
+        // Send result
+        audit_log!(au, "Tombstone purge operation success");
+        res
+    }
+
+    pub fn purge_recycle(&self) -> Result<(), OperationError> {
+        // Send everything that is recycled to tombstone
+        unimplemented!()
+    }
+
+    pub fn revive_recycled(&self) -> Result<(), OperationError> {
+        // Revive an entry to live.
+        unimplemented!()
     }
 
     pub fn modify(&self, au: &mut AuditScope, me: &ModifyEvent) -> Result<(), OperationError> {
@@ -747,6 +804,8 @@ impl Actor for QueryServer {
         ctx.set_mailbox_capacity(1 << 31);
     }
     */
+
+
 }
 
 // The server only recieves "Event" structures, which
@@ -868,6 +927,29 @@ impl Handler<AuthEvent> for QueryServer {
     }
 }
 
+impl Handler<PurgeEvent> for QueryServer {
+    type Result = ();
+
+    fn handle(&mut self, msg: PurgeEvent, _: &mut Self::Context) -> Self::Result {
+        let mut audit = AuditScope::new("purge tombstones");
+        let res = audit_segment!(&mut audit, || {
+            audit_log!(audit, "Begin purge tombstone event {:?}", msg);
+            let qs_write = self.write();
+
+            let res = match qs_write.purge_tombstones(&mut audit) {
+                Ok(()) => {
+                    qs_write.commit(&mut audit);
+                    Ok(OpResult {})
+                }
+                Err(e) => Err(e),
+            };
+            audit_log!(audit, "Purge tombstones result: {:?}", res);
+        });
+        // At the end of the event we send it for logging.
+        self.log.do_send(audit);
+    }
+}
+
 // Auth requests? How do we structure these ...
 
 #[cfg(test)]
@@ -892,7 +974,9 @@ mod tests {
     use super::super::modify::{Modify, ModifyList};
     use super::super::proto_v1::Entry as ProtoEntry;
     use super::super::proto_v1::Filter as ProtoFilter;
-    use super::super::proto_v1::{CreateRequest, SearchRequest};
+    use super::super::proto_v1::{CreateRequest, SearchRequest, DeleteRequest, ModifyRequest};
+    use super::super::proto_v1::Modify as ProtoModify;
+    use super::super::proto_v1::ModifyList as ProtoModifyList;
     use super::super::schema::Schema;
     use super::super::server::{
         QueryServer, QueryServerReadTransaction, QueryServerWriteTransaction,
@@ -1265,4 +1349,80 @@ mod tests {
             future::ok(())
         })
     }
+
+    #[test]
+    fn test_qs_tombstone() {
+        run_test!(|_log, mut server: QueryServer, audit: &mut AuditScope| {
+            let mut server_txn = server.write();
+
+            let filt_ts = ProtoFilter::Eq(
+                String::from("class"),
+                String::from("tombstone")
+            );
+
+            let filt_i_ts = Filter::Eq(
+                String::from("class"),
+                String::from("tombstone")
+            );
+
+            // Create fake external requests. Probably from admin later
+            let me_ts = ModifyEvent::from_request(
+                ModifyRequest::new(
+                    filt_ts.clone(),
+                    ProtoModifyList::new_list(vec![
+                        ProtoModify::Present(String::from("class"), String::from("tombstone")),
+                    ]),
+                )
+            );
+            let de_ts = DeleteEvent::from_request(DeleteRequest::new(filt_ts.clone()));
+            let se_ts = SearchEvent::from_request(SearchRequest::new(filt_ts.clone()));
+
+
+            // First, create a tombstone
+            let e_ts: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+                r#"{
+                "valid": null,
+                "state": null,
+                "attrs": {
+                    "class": ["tombstone", "object"],
+                    "uuid": ["9557f49c-97a5-4277-a9a5-097d17eb8317"]
+                }
+            }"#,
+            )
+            .unwrap();
+
+            let ce = CreateEvent::from_vec(vec![e_ts]);
+            let cr = server_txn.create(audit, &ce);
+            assert!(cr.is_ok());
+
+            // Can it be seen (external search)
+            let r1 = server_txn.search(audit, &se_ts).unwrap();
+            assert!(r1.len() == 0);
+
+            // Can it be deleted (external delete)
+            // Should be err-no candidates.
+            assert!(server_txn.delete(audit, &de_ts).is_err());
+
+            // Can it be modified? (external modify)
+            // Should be err-no candidates
+            assert!(server_txn.modify(audit, &me_ts).is_err());
+
+            // Can it be seen (internal search)
+            // Internal search should see it.
+            let r2 = server_txn.internal_search(audit, filt_i_ts.clone()).unwrap();
+            assert!(r2.len() == 1);
+
+            // Now purge
+            assert!(server_txn.purge_tombstones(audit).is_ok());
+
+            // Assert it's gone
+            // Internal search should not see it.
+            let r3 = server_txn.internal_search(audit, filt_i_ts).unwrap();
+            assert!(r3.len() == 0);
+
+            assert!(server_txn.commit(audit).is_ok());
+            future::ok(())
+        })
+    }
+
 }

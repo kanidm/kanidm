@@ -39,6 +39,7 @@ mod constants;
 mod entry;
 mod event;
 mod identity;
+mod interval;
 mod modify;
 mod plugins;
 mod schema;

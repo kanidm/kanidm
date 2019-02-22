@@ -2,7 +2,7 @@ use super::filter::{Filter, FilterInvalid};
 use super::proto_v1::Entry as ProtoEntry;
 use super::proto_v1::{
     AuthRequest, AuthResponse, AuthStatus, CreateRequest, DeleteRequest, ModifyRequest, Response,
-    SearchRequest, SearchResponse,
+    SearchRequest, SearchResponse
 };
 use actix::prelude::*;
 use entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
@@ -72,7 +72,21 @@ impl SearchEvent {
     pub fn from_request(request: SearchRequest) -> Self {
         SearchEvent {
             internal: false,
-            filter: Filter::from(&request.filter),
+            filter: Filter::And(vec![
+                    Filter::AndNot(Box::new(
+                        Filter::Or(vec![
+                            Filter::Eq(
+                                "class".to_string(),
+                                "tombstone".to_string(),
+                            ),
+                            Filter::Eq(
+                                "class".to_string(),
+                                "recycled".to_string(),
+                            )
+                        ])
+                    )),
+                    Filter::from(&request.filter)
+                ]),
             class: (),
         }
     }
@@ -80,7 +94,21 @@ impl SearchEvent {
     pub fn new_impersonate(filter: Filter<FilterInvalid>) -> Self {
         SearchEvent {
             internal: false,
-            filter: filter,
+            filter: Filter::And(vec![
+                    Filter::AndNot(Box::new(
+                        Filter::Or(vec![
+                            Filter::Eq(
+                                "class".to_string(),
+                                "tombstone".to_string(),
+                            ),
+                            Filter::Eq(
+                                "class".to_string(),
+                                "recycled".to_string(),
+                            )
+                        ])
+                    )),
+                    filter
+                ]),
             class: (),
         }
     }
@@ -171,7 +199,10 @@ impl Message for DeleteEvent {
 
 impl DeleteEvent {
     pub fn from_request(request: DeleteRequest) -> Self {
-        unimplemented!()
+        DeleteEvent {
+            filter: Filter::from(&request.filter),
+            internal: false,
+        }
     }
 
     #[cfg(test)]
@@ -203,7 +234,25 @@ impl Message for ModifyEvent {
 
 impl ModifyEvent {
     pub fn from_request(request: ModifyRequest) -> Self {
-        unimplemented!()
+        ModifyEvent {
+            filter: Filter::And(vec![
+                    Filter::AndNot(Box::new(
+                        Filter::Or(vec![
+                            Filter::Eq(
+                                "class".to_string(),
+                                "tombstone".to_string(),
+                            ),
+                            Filter::Eq(
+                                "class".to_string(),
+                                "recycled".to_string(),
+                            )
+                        ])
+                    )),
+                    Filter::from(&request.filter)
+                ]),
+            modlist: ModifyList::from(&request.modlist),
+            internal: false
+        }
     }
 
     #[cfg(test)]
@@ -244,5 +293,19 @@ impl AuthResult {
         AuthResponse {
             status: AuthStatus::Begin(String::from("hello")),
         }
+    }
+}
+
+
+#[derive(Debug)]
+pub struct PurgeEvent {}
+
+impl Message for PurgeEvent {
+    type Result = ();
+}
+
+impl PurgeEvent {
+    pub fn new() -> Self {
+        PurgeEvent {}
     }
 }

@@ -7,6 +7,7 @@ use schema::{SchemaTransaction, SchemaWriteTransaction};
 
 mod base;
 mod protected;
+mod recycle;
 
 trait Plugin {
     fn id() -> &'static str;

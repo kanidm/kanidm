@@ -27,6 +27,25 @@ pub enum Filter {
     AndNot(Box<Filter>),
 }
 
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum Modify {
+    Present(String, String),
+    Removed(String, String),
+    Purged(String),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ModifyList {
+    pub mods: Vec<Modify>,
+}
+
+impl ModifyList {
+    pub fn new_list(mods: Vec<Modify>) -> Self {
+        ModifyList { mods: mods }
+    }
+}
+
 // FIXME: Do I need proto filter?
 // Probably yes, don't be shit william.
 
@@ -88,6 +107,17 @@ impl DeleteRequest {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ModifyRequest {
     // Probably needs a modlist?
+    pub filter: Filter,
+    pub modlist: ModifyList,
+}
+
+impl ModifyRequest {
+    pub fn new(filter: Filter, modlist: ModifyList) -> Self {
+        ModifyRequest {
+            filter: filter,
+            modlist: modlist,
+        }
+    }
 }
 
 // Login is a multi-step process potentially. First the client says who they

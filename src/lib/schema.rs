@@ -582,7 +582,7 @@ impl SchemaInner {
                     may: vec![],
                     systemmust: vec![
                         String::from("class"),
-                        String::from("name"),
+                        // String::from("name"),
                         String::from("uuid"),
                     ],
                     must: vec![],
@@ -593,10 +593,38 @@ impl SchemaInner {
                 SchemaClass {
                     name: String::from("extensibleobject"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_EXTENSIBLEOBJECT).unwrap(),
-                    description: String::from("A class type that turns off all rules ..."),
+                    description: String::from("A class type that has green hair and turns off all rules ..."),
                     systemmay: vec![],
                     may: vec![],
                     systemmust: vec![],
+                    must: vec![],
+                },
+            );
+            /* These two classes are core to the entry lifecycle for recycling and tombstoning */
+            s.classes.insert(
+                String::from("recycled"),
+                SchemaClass {
+                    name: String::from("recycled"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_RECYCLED).unwrap(),
+                    description: String::from("An object that has been deleted, but still recoverable via the revive operation. Recycled objects are not modifiable, only revivable."),
+                    systemmay: vec![],
+                    may: vec![],
+                    systemmust: vec![],
+                    must: vec![],
+                },
+            );
+            s.classes.insert(
+                String::from("tombstone"),
+                SchemaClass {
+                    name: String::from("tombstone"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_TOMBSTONE).unwrap(),
+                    description: String::from("An object that is purged from the recycle bin. This is a system internal state. Tombstones have no attributes beside UUID."),
+                    systemmay: vec![],
+                    may: vec![],
+                    systemmust: vec![
+                        String::from("class"),
+                        String::from("uuid"),
+                    ],
                     must: vec![],
                 },
             );
@@ -753,7 +781,10 @@ impl SchemaInner {
                         // String::from("gidnumber"),
                     ],
                     may: vec![],
-                    systemmust: vec![String::from("displayname")],
+                    systemmust: vec![
+                        String::from("displayname"),
+                        String::from("name")
+                    ],
                     must: vec![],
                 },
             );
@@ -769,7 +800,10 @@ impl SchemaInner {
                         // String::from("password"),
                     ],
                     may: vec![],
-                    systemmust: vec![String::from("displayname")],
+                    systemmust: vec![
+                        String::from("displayname"),
+                        String::from("name")
+                    ],
                     must: vec![],
                 },
             );
@@ -784,7 +818,9 @@ impl SchemaInner {
                         // String::from("gidnumber"),
                     ],
                     may: vec![],
-                    systemmust: vec![],
+                    systemmust: vec![
+                        String::from("name"),
+                    ],
                     must: vec![],
                 },
             );
