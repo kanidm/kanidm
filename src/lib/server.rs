@@ -376,6 +376,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // In this case we need a search, but not INTERNAL to keep the same
         // associated credentials.
         // We only need to retrieve uuid though ...
+
+        // Now, delete only what you can see
         let pre_candidates = match self.impersonate_search(au, de.filter.clone()) {
             Ok(results) => results,
             Err(e) => {
@@ -392,23 +394,61 @@ impl<'a> QueryServerWriteTransaction<'a> {
             return Err(OperationError::NoMatchingEntries);
         };
 
+        let modlist = 
+                ModifyList::new_list(vec![Modify::Present(
+                    String::from("class"),
+                    String::from("recycled"),
+                )]);
+
+        let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
+            .into_iter()
+            .map(|er| {
+                // TODO: Deal with this properly william
+                er.invalidate().apply_modlist(&modlist).unwrap()
+            })
+            .collect();
+
+        audit_log!(au, "delete: candidates -> {:?}", candidates);
+
         // Pre delete plugs
 
-        // Audit
-        pre_candidates
-            .iter()
-            .for_each(|cand| audit_log!(au, "delete: intent candidate {:?}", cand));
 
-        // Now, delete only what you can see
+        // FIXME: This normalisation COPIES everything, which may be
+        // slow.
 
-        // TODO: Delete actually just modifies these to add class -> recycled
+        let (norm_cand, invalid_cand): (
+            Vec<Result<Entry<EntryValid, EntryCommitted>, _>>,
+            Vec<Result<_, SchemaError>>,
+        ) = candidates
+            .into_iter()
+            .map(|e| e.validate(&self.schema))
+            .partition(|e| e.is_ok());
 
-        let mut audit_be = AuditScope::new("backend_delete");
+        for err in invalid_cand.iter() {
+            audit_log!(au, "Schema Violation: {:?}", err);
+        }
+
+        if invalid_cand.len() > 0 {
+            return Err(OperationError::SchemaViolation);
+        }
+
+        let del_cand: Vec<Entry<EntryValid, EntryCommitted>> = norm_cand
+            .into_iter()
+            .map(|e| match e {
+                Ok(v) => {
+                    audit_log!(au, "delete: intent candidate {:?}", v);
+                    v
+                }
+                Err(_) => panic!("Invalid data set state!!!"),
+            })
+            .collect();
+
+        let mut audit_be = AuditScope::new("backend_modify");
 
         let res = self
             .be_txn
             // Change this to an update, not delete.
-            .delete(&mut audit_be, &pre_candidates)
+            .modify(&mut audit_be, &del_cand)
             .map(|_| ())
             .map_err(|e| match e {
                 BackendError::EmptyRequest => OperationError::EmptyRequest,
@@ -478,7 +518,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
         };
 
         // Modify them to strip all avas except uuid
-
         let tombstone_cand = rc.iter().map(|e| e.to_tombstone()).collect();
 
         // Backend Modify
@@ -1604,12 +1643,45 @@ mod tests {
     #[test]
     fn test_qs_recycle_advanced() {
         run_test!(|_log, mut server: QueryServer, audit: &mut AuditScope| {
+            // Create items
             let mut server_txn = server.write();
 
-            // Create items
+            let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+                r#"{
+                "valid": null,
+                "state": null,
+                "attrs": {
+                    "class": ["object", "person"],
+                    "name": ["testperson1"],
+                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
+                    "description": ["testperson"],
+                    "displayname": ["testperson1"]
+                }
+            }"#,
+            )
+            .unwrap();
+            let ce = CreateEvent::from_vec(vec![e1]);
+
+            let cr = server_txn.create(audit, &ce);
+            assert!(cr.is_ok());
             // Delete and ensure they became recycled.
+            let de_sin = DeleteEvent::from_filter(Filter::Eq(
+                String::from("name"),
+                String::from("testperson1"),
+            ));
+            assert!(server_txn.delete(audit, &de_sin).is_ok());
             // After a delete -> recycle, create duplicate name etc.
+
+            // Can in be seen by special search? (external recycle search)
+            let filt_rc = ProtoFilter::Eq(String::from("class"), String::from("recycled"));
+            let sre_rc = SearchEvent::from_rec_request(SearchRecycledRequest::new(filt_rc.clone()));
+            let r2 = server_txn.search(audit, &sre_rc).unwrap();
+            assert!(r2.len() == 1);
+
             // Create dup uuid (rej)
+            let cr = server_txn.create(audit, &ce);
+            assert!(cr.is_err());
+
             assert!(server_txn.commit(audit).is_ok());
             future::ok(())
         })
