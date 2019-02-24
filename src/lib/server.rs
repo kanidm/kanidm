@@ -394,11 +394,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
             return Err(OperationError::NoMatchingEntries);
         };
 
-        let modlist = 
-                ModifyList::new_list(vec![Modify::Present(
-                    String::from("class"),
-                    String::from("recycled"),
-                )]);
+        let modlist = ModifyList::new_list(vec![Modify::Present(
+            String::from("class"),
+            String::from("recycled"),
+        )]);
 
         let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
             .into_iter()
@@ -411,7 +410,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
         audit_log!(au, "delete: candidates -> {:?}", candidates);
 
         // Pre delete plugs
-
 
         // FIXME: This normalisation COPIES everything, which may be
         // slow.
