@@ -168,3 +168,31 @@ pub enum AuthStatus {
 pub struct AuthResponse {
     pub status: AuthStatus,
 }
+
+
+/* Recycle Requests area */
+
+// Only two actions on recycled is possible. Search and Revive.
+
+pub struct SearchRecycledRequest {
+    pub filter: Filter,
+}
+
+impl SearchRecycledRequest {
+    pub fn new(filter: Filter) -> Self {
+        SearchRecycledRequest { filter: filter }
+    }
+}
+
+
+// Need a search response here later.
+
+pub struct ReviveRecycledRequest {
+    pub filter: Filter,
+}
+
+impl ReviveRecycledRequest {
+    pub fn new(filter: Filter) -> Self {
+        ReviveRecycledRequest { filter: filter }
+    }
+}

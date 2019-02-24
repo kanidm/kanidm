@@ -14,11 +14,11 @@ use entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
 use error::{OperationError, SchemaError};
 use event::{
     AuthEvent, AuthResult, CreateEvent, DeleteEvent, ExistsEvent, ModifyEvent, OpResult,
-    SearchEvent, SearchResult, PurgeEvent,
+    SearchEvent, SearchResult, PurgeEvent, ReviveRecycledEvent
 };
 use filter::{Filter, FilterInvalid};
 use log::EventLog;
-use modify::ModifyList;
+use modify::{ModifyList, Modify};
 use plugins::Plugins;
 use schema::{Schema, SchemaReadTransaction, SchemaTransaction, SchemaWriteTransaction};
 
@@ -103,6 +103,7 @@ pub trait QueryServerReadTransaction {
         // performing un-indexed searches on attr's that don't exist in the
         // server. This is why ExtensibleObject can only take schema that
         // exists in the server, not arbitrary attr names.
+        audit_log!(au, "search: filter -> {:?}", se.filter);
 
         // TODO: Normalise the filter
 
@@ -471,14 +472,75 @@ impl<'a> QueryServerWriteTransaction<'a> {
         res
     }
 
-    pub fn purge_recycle(&self) -> Result<(), OperationError> {
+    pub fn purge_recycled(&self, au: &mut AuditScope) -> Result<(), OperationError> {
         // Send everything that is recycled to tombstone
-        unimplemented!()
+        // Search all recycled
+        let rc = match self.internal_search(
+            au,
+            Filter::Eq("class".to_string(), "recycled".to_string())
+        ) {
+            Ok(r) => {
+                r
+            }
+            Err(e) => {
+                return Err(e)
+            }
+        };
+
+        // Modify them to strip all avas except uuid
+
+        let tombstone_cand = rc.iter().map(|e| {
+            e.to_tombstone()
+        }).collect();
+
+        // Backend Modify
+        let mut audit_be = AuditScope::new("backend_modify");
+
+        let res = self
+            .be_txn
+            .modify(&mut audit_be, &tombstone_cand)
+            .map(|_| ())
+            .map_err(|e| match e {
+                BackendError::EmptyRequest => OperationError::EmptyRequest,
+                BackendError::EntryMissingId => OperationError::InvalidRequestState,
+            });
+        au.append_scope(audit_be);
+
+        if res.is_err() {
+            // be_txn is dropped, ie aborted here.
+            audit_log!(au, "Purge recycled operation failed (backend), {:?}", res);
+            return res;
+        }
+
+        // return
+        audit_log!(au, "Purge recycled operation success");
+        res
     }
 
-    pub fn revive_recycled(&self) -> Result<(), OperationError> {
-        // Revive an entry to live.
-        unimplemented!()
+    // Should this take a revive event?
+    pub fn revive_recycled(&self, au: &mut AuditScope, re: &ReviveRecycledEvent) -> Result<(), OperationError> {
+        // Revive an entry to live. This is a specialised (limited)
+        // modify proxy.
+        //
+        // impersonate modify will require ability to search the class=recycled
+        // and the ability to remove that from the object.
+
+        // create the modify
+        // tl;dr, remove the class=recycled
+        let modlist = ModifyList::new_list(vec![
+            Modify::Removed(
+                "class".to_string(),
+                "recycled".to_string(),
+            ),
+        ]);
+
+        // Now impersonate the modify
+        self.impersonate_modify(
+            au,
+            re.filter.clone(),
+            modlist
+        )
+
     }
 
     pub fn modify(&self, au: &mut AuditScope, me: &ModifyEvent) -> Result<(), OperationError> {
@@ -623,6 +685,19 @@ impl<'a> QueryServerWriteTransaction<'a> {
         modlist: ModifyList,
     ) -> Result<(), OperationError> {
         let mut audit_int = AuditScope::new("internal_modify");
+        let me = ModifyEvent::new_internal(filter, modlist);
+        let res = self.modify(&mut audit_int, &me);
+        audit.append_scope(audit_int);
+        res
+    }
+
+    pub fn impersonate_modify(
+        &self,
+        audit: &mut AuditScope,
+        filter: Filter<FilterInvalid>,
+        modlist: ModifyList,
+    ) -> Result<(), OperationError> {
+        let mut audit_int = AuditScope::new("impersonate_modify");
         let me = ModifyEvent::new_internal(filter, modlist);
         let res = self.modify(&mut audit_int, &me);
         audit.append_scope(audit_int);
@@ -968,13 +1043,13 @@ mod tests {
     use super::super::be::{Backend, BackendTransaction};
     use super::super::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
     use super::super::error::OperationError;
-    use super::super::event::{CreateEvent, DeleteEvent, ModifyEvent, SearchEvent};
+    use super::super::event::{CreateEvent, DeleteEvent, ModifyEvent, SearchEvent, ReviveRecycledEvent};
     use super::super::filter::Filter;
     use super::super::log;
     use super::super::modify::{Modify, ModifyList};
     use super::super::proto_v1::Entry as ProtoEntry;
     use super::super::proto_v1::Filter as ProtoFilter;
-    use super::super::proto_v1::{CreateRequest, SearchRequest, DeleteRequest, ModifyRequest};
+    use super::super::proto_v1::{CreateRequest, SearchRequest, DeleteRequest, ModifyRequest, SearchRecycledRequest, ReviveRecycledRequest};
     use super::super::proto_v1::Modify as ProtoModify;
     use super::super::proto_v1::ModifyList as ProtoModifyList;
     use super::super::schema::Schema;
@@ -1425,4 +1500,151 @@ mod tests {
         })
     }
 
+    #[test]
+    fn test_qs_recycle_simple() {
+        run_test!(|_log, mut server: QueryServer, audit: &mut AuditScope| {
+            let mut server_txn = server.write();
+
+            let filt_rc = ProtoFilter::Eq(
+                String::from("class"),
+                String::from("recycled")
+            );
+
+            let filt_i_rc = Filter::Eq(
+                String::from("class"),
+                String::from("recycled")
+            );
+
+            let filt_i_ts = Filter::Eq(
+                String::from("class"),
+                String::from("tombstone")
+            );
+
+            let filt_i_per = Filter::Eq(
+                String::from("class"),
+                String::from("person")
+            );
+
+            // Create fake external requests. Probably from admin later
+            let me_rc = ModifyEvent::from_request(
+                ModifyRequest::new(
+                    filt_rc.clone(),
+                    ProtoModifyList::new_list(vec![
+                        ProtoModify::Present(String::from("class"), String::from("recycled")),
+                    ]),
+                )
+            );
+            let de_rc = DeleteEvent::from_request(DeleteRequest::new(filt_rc.clone()));
+            let se_rc = SearchEvent::from_request(SearchRequest::new(filt_rc.clone()));
+
+            let sre_rc = SearchEvent::from_rec_request(
+                SearchRecycledRequest::new(
+                    filt_rc.clone()
+                )
+            );
+
+            let rre_rc = ReviveRecycledEvent::from_request(
+                ReviveRecycledRequest::new(
+                    ProtoFilter::Eq(
+                        "name".to_string(),
+                        "testperson1".to_string(),
+                    )
+                )
+            );
+
+            // Create some recycled objects
+            let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+                r#"{
+                "valid": null,
+                "state": null,
+                "attrs": {
+                    "class": ["object", "person", "recycled"],
+                    "name": ["testperson1"],
+                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
+                    "description": ["testperson"],
+                    "displayname": ["testperson1"]
+                }
+            }"#,
+            )
+            .unwrap();
+
+            let e2: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+                r#"{
+                "valid": null,
+                "state": null,
+                "attrs": {
+                    "class": ["object", "person", "recycled"],
+                    "name": ["testperson2"],
+                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63932"],
+                    "description": ["testperson"],
+                    "displayname": ["testperson2"]
+                }
+            }"#,
+            )
+            .unwrap();
+
+
+            let ce = CreateEvent::from_vec(vec![e1, e2]);
+            let cr = server_txn.create(audit, &ce);
+            assert!(cr.is_ok());
+
+            // Can it be seen (external search)
+            let r1 = server_txn.search(audit, &se_rc).unwrap();
+            assert!(r1.len() == 0);
+
+            // Can it be deleted (external delete)
+            // Should be err-no candidates.
+            assert!(server_txn.delete(audit, &de_rc).is_err());
+
+            // Can it be modified? (external modify)
+            // Should be err-no candidates
+            assert!(server_txn.modify(audit, &me_rc).is_err());
+
+            // Can in be seen by special search? (external recycle search)
+            let r2 = server_txn.search(audit, &sre_rc).unwrap();
+            assert!(r2.len() == 2);
+
+            // Can it be seen (internal search)
+            // Internal search should see it.
+            let r2 = server_txn.internal_search(audit, filt_i_rc.clone()).unwrap();
+            assert!(r2.len() == 2);
+
+            // There are now two options
+            //  revival
+            assert!(server_txn.revive_recycled(audit, &rre_rc).is_ok());
+
+            //  purge to tombstone
+            assert!(server_txn.purge_recycled(audit).is_ok());
+
+            // Should be no recycled objects.
+            let r3 = server_txn.internal_search(audit, filt_i_rc.clone()).unwrap();
+            assert!(r3.len() == 0);
+
+            // There should be one tombstone
+            let r4 = server_txn.internal_search(audit, filt_i_ts.clone()).unwrap();
+            assert!(r4.len() == 1);
+
+            // There should be one entry
+            let r5 = server_txn.internal_search(audit, filt_i_per.clone()).unwrap();
+            assert!(r5.len() == 1);
+
+            assert!(server_txn.commit(audit).is_ok());
+            future::ok(())
+        })
+    }
+
+    // The delete test above should be unaffected by recycle anyway
+    #[test]
+    fn test_qs_recycle_advanced() {
+        run_test!(|_log, mut server: QueryServer, audit: &mut AuditScope| {
+            let mut server_txn = server.write();
+
+            // Create items
+            // Delete and ensure they became recycled.
+            // After a delete -> recycle, create duplicate name etc.
+            // Create dup uuid (rej)
+            assert!(server_txn.commit(audit).is_ok());
+            future::ok(())
+        })
+    }
 }
