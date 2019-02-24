@@ -593,7 +593,9 @@ impl SchemaInner {
                 SchemaClass {
                     name: String::from("extensibleobject"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_EXTENSIBLEOBJECT).unwrap(),
-                    description: String::from("A class type that has green hair and turns off all rules ..."),
+                    description: String::from(
+                        "A class type that has green hair and turns off all rules ...",
+                    ),
                     systemmay: vec![],
                     may: vec![],
                     systemmust: vec![],
@@ -781,10 +783,7 @@ impl SchemaInner {
                         // String::from("gidnumber"),
                     ],
                     may: vec![],
-                    systemmust: vec![
-                        String::from("displayname"),
-                        String::from("name")
-                    ],
+                    systemmust: vec![String::from("displayname"), String::from("name")],
                     must: vec![],
                 },
             );
@@ -800,10 +799,7 @@ impl SchemaInner {
                         // String::from("password"),
                     ],
                     may: vec![],
-                    systemmust: vec![
-                        String::from("displayname"),
-                        String::from("name")
-                    ],
+                    systemmust: vec![String::from("displayname"), String::from("name")],
                     must: vec![],
                 },
             );
@@ -818,9 +814,7 @@ impl SchemaInner {
                         // String::from("gidnumber"),
                     ],
                     may: vec![],
-                    systemmust: vec![
-                        String::from("name"),
-                    ],
+                    systemmust: vec![String::from("name")],
                     must: vec![],
                 },
             );

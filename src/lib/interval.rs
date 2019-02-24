@@ -1,10 +1,9 @@
-use std::time::Duration;
 use actix::prelude::*;
+use std::time::Duration;
 
-use server::QueryServer;
-use event::PurgeEvent;
 use constants::PURGE_TIMEOUT;
-
+use event::PurgeEvent;
+use server::QueryServer;
 
 pub struct IntervalActor {
     // Store any addresses we require
@@ -13,9 +12,7 @@ pub struct IntervalActor {
 
 impl IntervalActor {
     pub fn new(server: actix::Addr<QueryServer>) -> Self {
-        IntervalActor {
-            server: server,
-        }
+        IntervalActor { server: server }
     }
 
     // Define new events here
@@ -35,4 +32,3 @@ impl Actor for IntervalActor {
         });
     }
 }
-

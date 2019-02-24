@@ -1,10 +1,10 @@
 // use actix::SystemRunner;
+use actix::Actor;
 use actix_web::middleware::session::{self, RequestSession};
 use actix_web::{
     error, http, middleware, App, AsyncResponder, Error, FutureResponse, HttpMessage, HttpRequest,
     HttpResponse, Path, Result, State,
 };
-use actix::Actor;
 
 use bytes::BytesMut;
 use futures::{future, Future, Stream};
@@ -14,13 +14,12 @@ use super::config::Configuration;
 // SearchResult
 use super::event::{AuthEvent, CreateEvent, DeleteEvent, ModifyEvent, SearchEvent};
 use super::filter::Filter;
+use super::interval::IntervalActor;
 use super::log;
 use super::proto_v1::{
     AuthRequest, AuthResponse, CreateRequest, DeleteRequest, ModifyRequest, SearchRequest,
 };
-use super::interval::IntervalActor;
 use super::server;
-
 
 struct AppState {
     qe: actix::Addr<server::QueryServer>,

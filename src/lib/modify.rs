@@ -1,5 +1,5 @@
-use proto_v1::ModifyList as ProtoModifyList;
 use proto_v1::Modify as ProtoModify;
+use proto_v1::ModifyList as ProtoModifyList;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Modify {
@@ -14,15 +14,9 @@ pub enum Modify {
 impl Modify {
     pub fn from(m: &ProtoModify) -> Self {
         match m {
-            ProtoModify::Present(a, v) => {
-                Modify::Present(a.clone(), v.clone())
-            }
-            ProtoModify::Removed(a, v) => {
-                Modify::Removed(a.clone(), v.clone())
-            }
-            ProtoModify::Purged(a) => {
-                Modify::Purged(a.clone())
-            }
+            ProtoModify::Present(a, v) => Modify::Present(a.clone(), v.clone()),
+            ProtoModify::Removed(a, v) => Modify::Removed(a.clone(), v.clone()),
+            ProtoModify::Purged(a) => Modify::Purged(a.clone()),
         }
     }
 }
@@ -54,11 +48,7 @@ impl ModifyList {
         // For each ProtoModify, do a from.
 
         ModifyList {
-            mods: ml.mods.iter()
-                .map(|pm| {
-                    Modify::from(pm)
-                })
-                .collect()
+            mods: ml.mods.iter().map(|pm| Modify::from(pm)).collect(),
         }
     }
 }

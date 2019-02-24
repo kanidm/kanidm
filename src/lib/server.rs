@@ -14,11 +14,11 @@ use entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
 use error::{OperationError, SchemaError};
 use event::{
     AuthEvent, AuthResult, CreateEvent, DeleteEvent, ExistsEvent, ModifyEvent, OpResult,
-    SearchEvent, SearchResult, PurgeEvent, ReviveRecycledEvent
+    PurgeEvent, ReviveRecycledEvent, SearchEvent, SearchResult,
 };
 use filter::{Filter, FilterInvalid};
 use log::EventLog;
-use modify::{ModifyList, Modify};
+use modify::{Modify, ModifyList};
 use plugins::Plugins;
 use schema::{Schema, SchemaReadTransaction, SchemaTransaction, SchemaWriteTransaction};
 
@@ -433,16 +433,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // delete everything that is a tombstone.
 
         // Search for tombstones
-        let ts = match self.internal_search(
-            au,
-            Filter::Eq("class".to_string(), "tombstone".to_string())
-        ) {
-            Ok(r) => {
-                r
-            }
-            Err(e) => {
-                return Err(e)
-            }
+        let ts = match self
+            .internal_search(au, Filter::Eq("class".to_string(), "tombstone".to_string()))
+        {
+            Ok(r) => r,
+            Err(e) => return Err(e),
         };
 
         // TODO: Has an appropriate amount of time/condition past (ie replication events?)
@@ -475,23 +470,16 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub fn purge_recycled(&self, au: &mut AuditScope) -> Result<(), OperationError> {
         // Send everything that is recycled to tombstone
         // Search all recycled
-        let rc = match self.internal_search(
-            au,
-            Filter::Eq("class".to_string(), "recycled".to_string())
-        ) {
-            Ok(r) => {
-                r
-            }
-            Err(e) => {
-                return Err(e)
-            }
+        let rc = match self
+            .internal_search(au, Filter::Eq("class".to_string(), "recycled".to_string()))
+        {
+            Ok(r) => r,
+            Err(e) => return Err(e),
         };
 
         // Modify them to strip all avas except uuid
 
-        let tombstone_cand = rc.iter().map(|e| {
-            e.to_tombstone()
-        }).collect();
+        let tombstone_cand = rc.iter().map(|e| e.to_tombstone()).collect();
 
         // Backend Modify
         let mut audit_be = AuditScope::new("backend_modify");
@@ -518,7 +506,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     // Should this take a revive event?
-    pub fn revive_recycled(&self, au: &mut AuditScope, re: &ReviveRecycledEvent) -> Result<(), OperationError> {
+    pub fn revive_recycled(
+        &self,
+        au: &mut AuditScope,
+        re: &ReviveRecycledEvent,
+    ) -> Result<(), OperationError> {
         // Revive an entry to live. This is a specialised (limited)
         // modify proxy.
         //
@@ -527,20 +519,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // create the modify
         // tl;dr, remove the class=recycled
-        let modlist = ModifyList::new_list(vec![
-            Modify::Removed(
-                "class".to_string(),
-                "recycled".to_string(),
-            ),
-        ]);
+        let modlist = ModifyList::new_list(vec![Modify::Removed(
+            "class".to_string(),
+            "recycled".to_string(),
+        )]);
 
         // Now impersonate the modify
-        self.impersonate_modify(
-            au,
-            re.filter.clone(),
-            modlist
-        )
-
+        self.impersonate_modify(au, re.filter.clone(), modlist)
     }
 
     pub fn modify(&self, au: &mut AuditScope, me: &ModifyEvent) -> Result<(), OperationError> {
@@ -879,8 +864,6 @@ impl Actor for QueryServer {
         ctx.set_mailbox_capacity(1 << 31);
     }
     */
-
-
 }
 
 // The server only recieves "Event" structures, which
@@ -1043,15 +1026,20 @@ mod tests {
     use super::super::be::{Backend, BackendTransaction};
     use super::super::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
     use super::super::error::OperationError;
-    use super::super::event::{CreateEvent, DeleteEvent, ModifyEvent, SearchEvent, ReviveRecycledEvent};
+    use super::super::event::{
+        CreateEvent, DeleteEvent, ModifyEvent, ReviveRecycledEvent, SearchEvent,
+    };
     use super::super::filter::Filter;
     use super::super::log;
     use super::super::modify::{Modify, ModifyList};
     use super::super::proto_v1::Entry as ProtoEntry;
     use super::super::proto_v1::Filter as ProtoFilter;
-    use super::super::proto_v1::{CreateRequest, SearchRequest, DeleteRequest, ModifyRequest, SearchRecycledRequest, ReviveRecycledRequest};
     use super::super::proto_v1::Modify as ProtoModify;
     use super::super::proto_v1::ModifyList as ProtoModifyList;
+    use super::super::proto_v1::{
+        CreateRequest, DeleteRequest, ModifyRequest, ReviveRecycledRequest, SearchRecycledRequest,
+        SearchRequest,
+    };
     use super::super::schema::Schema;
     use super::super::server::{
         QueryServer, QueryServerReadTransaction, QueryServerWriteTransaction,
@@ -1430,28 +1418,20 @@ mod tests {
         run_test!(|_log, mut server: QueryServer, audit: &mut AuditScope| {
             let mut server_txn = server.write();
 
-            let filt_ts = ProtoFilter::Eq(
-                String::from("class"),
-                String::from("tombstone")
-            );
+            let filt_ts = ProtoFilter::Eq(String::from("class"), String::from("tombstone"));
 
-            let filt_i_ts = Filter::Eq(
-                String::from("class"),
-                String::from("tombstone")
-            );
+            let filt_i_ts = Filter::Eq(String::from("class"), String::from("tombstone"));
 
             // Create fake external requests. Probably from admin later
-            let me_ts = ModifyEvent::from_request(
-                ModifyRequest::new(
-                    filt_ts.clone(),
-                    ProtoModifyList::new_list(vec![
-                        ProtoModify::Present(String::from("class"), String::from("tombstone")),
-                    ]),
-                )
-            );
+            let me_ts = ModifyEvent::from_request(ModifyRequest::new(
+                filt_ts.clone(),
+                ProtoModifyList::new_list(vec![ProtoModify::Present(
+                    String::from("class"),
+                    String::from("tombstone"),
+                )]),
+            ));
             let de_ts = DeleteEvent::from_request(DeleteRequest::new(filt_ts.clone()));
             let se_ts = SearchEvent::from_request(SearchRequest::new(filt_ts.clone()));
-
 
             // First, create a tombstone
             let e_ts: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
@@ -1484,7 +1464,9 @@ mod tests {
 
             // Can it be seen (internal search)
             // Internal search should see it.
-            let r2 = server_txn.internal_search(audit, filt_i_ts.clone()).unwrap();
+            let r2 = server_txn
+                .internal_search(audit, filt_i_ts.clone())
+                .unwrap();
             assert!(r2.len() == 1);
 
             // Now purge
@@ -1505,52 +1487,30 @@ mod tests {
         run_test!(|_log, mut server: QueryServer, audit: &mut AuditScope| {
             let mut server_txn = server.write();
 
-            let filt_rc = ProtoFilter::Eq(
-                String::from("class"),
-                String::from("recycled")
-            );
+            let filt_rc = ProtoFilter::Eq(String::from("class"), String::from("recycled"));
 
-            let filt_i_rc = Filter::Eq(
-                String::from("class"),
-                String::from("recycled")
-            );
+            let filt_i_rc = Filter::Eq(String::from("class"), String::from("recycled"));
 
-            let filt_i_ts = Filter::Eq(
-                String::from("class"),
-                String::from("tombstone")
-            );
+            let filt_i_ts = Filter::Eq(String::from("class"), String::from("tombstone"));
 
-            let filt_i_per = Filter::Eq(
-                String::from("class"),
-                String::from("person")
-            );
+            let filt_i_per = Filter::Eq(String::from("class"), String::from("person"));
 
             // Create fake external requests. Probably from admin later
-            let me_rc = ModifyEvent::from_request(
-                ModifyRequest::new(
-                    filt_rc.clone(),
-                    ProtoModifyList::new_list(vec![
-                        ProtoModify::Present(String::from("class"), String::from("recycled")),
-                    ]),
-                )
-            );
+            let me_rc = ModifyEvent::from_request(ModifyRequest::new(
+                filt_rc.clone(),
+                ProtoModifyList::new_list(vec![ProtoModify::Present(
+                    String::from("class"),
+                    String::from("recycled"),
+                )]),
+            ));
             let de_rc = DeleteEvent::from_request(DeleteRequest::new(filt_rc.clone()));
             let se_rc = SearchEvent::from_request(SearchRequest::new(filt_rc.clone()));
 
-            let sre_rc = SearchEvent::from_rec_request(
-                SearchRecycledRequest::new(
-                    filt_rc.clone()
-                )
-            );
+            let sre_rc = SearchEvent::from_rec_request(SearchRecycledRequest::new(filt_rc.clone()));
 
-            let rre_rc = ReviveRecycledEvent::from_request(
-                ReviveRecycledRequest::new(
-                    ProtoFilter::Eq(
-                        "name".to_string(),
-                        "testperson1".to_string(),
-                    )
-                )
-            );
+            let rre_rc = ReviveRecycledEvent::from_request(ReviveRecycledRequest::new(
+                ProtoFilter::Eq("name".to_string(), "testperson1".to_string()),
+            ));
 
             // Create some recycled objects
             let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
@@ -1583,7 +1543,6 @@ mod tests {
             )
             .unwrap();
 
-
             let ce = CreateEvent::from_vec(vec![e1, e2]);
             let cr = server_txn.create(audit, &ce);
             assert!(cr.is_ok());
@@ -1606,7 +1565,9 @@ mod tests {
 
             // Can it be seen (internal search)
             // Internal search should see it.
-            let r2 = server_txn.internal_search(audit, filt_i_rc.clone()).unwrap();
+            let r2 = server_txn
+                .internal_search(audit, filt_i_rc.clone())
+                .unwrap();
             assert!(r2.len() == 2);
 
             // There are now two options
@@ -1617,15 +1578,21 @@ mod tests {
             assert!(server_txn.purge_recycled(audit).is_ok());
 
             // Should be no recycled objects.
-            let r3 = server_txn.internal_search(audit, filt_i_rc.clone()).unwrap();
+            let r3 = server_txn
+                .internal_search(audit, filt_i_rc.clone())
+                .unwrap();
             assert!(r3.len() == 0);
 
             // There should be one tombstone
-            let r4 = server_txn.internal_search(audit, filt_i_ts.clone()).unwrap();
+            let r4 = server_txn
+                .internal_search(audit, filt_i_ts.clone())
+                .unwrap();
             assert!(r4.len() == 1);
 
             // There should be one entry
-            let r5 = server_txn.internal_search(audit, filt_i_per.clone()).unwrap();
+            let r5 = server_txn
+                .internal_search(audit, filt_i_per.clone())
+                .unwrap();
             assert!(r5.len() == 1);
 
             assert!(server_txn.commit(audit).is_ok());

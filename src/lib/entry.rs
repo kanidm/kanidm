@@ -381,7 +381,9 @@ impl Entry<EntryValid, EntryCommitted> {
 
     pub fn to_tombstone(&self) -> Self {
         // Duplicate this to a tombstone entry.
-        let uuid_ava = self.get_ava(&String::from("uuid")).expect("Corrupted entry!");
+        let uuid_ava = self
+            .get_ava(&String::from("uuid"))
+            .expect("Corrupted entry!");
         let class_ava = vec!["object".to_string(), "tombstone".to_string()];
 
         let mut attrs_new: BTreeMap<String, Vec<String>> = BTreeMap::new();

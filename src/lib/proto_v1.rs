@@ -27,7 +27,6 @@ pub enum Filter {
     AndNot(Box<Filter>),
 }
 
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Modify {
     Present(String, String),
@@ -169,7 +168,6 @@ pub struct AuthResponse {
     pub status: AuthStatus,
 }
 
-
 /* Recycle Requests area */
 
 // Only two actions on recycled is possible. Search and Revive.
@@ -183,7 +181,6 @@ impl SearchRecycledRequest {
         SearchRecycledRequest { filter: filter }
     }
 }
-
 
 // Need a search response here later.
 

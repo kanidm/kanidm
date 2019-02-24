@@ -1,4 +1,3 @@
-
 pub static PURGE_TIMEOUT: u64 = 3600;
 
 pub static UUID_ADMIN: &'static str = "00000000-0000-0000-0000-000000000000";
@@ -54,7 +53,6 @@ pub static UUID_SCHEMA_CLASS_EXTENSIBLEOBJECT: &'static str =
 
 pub static UUID_SCHEMA_CLASS_RECYCLED: &'static str = "813bb7e3-dadf-413d-acc4-197b03d55a4f";
 pub static UUID_SCHEMA_CLASS_TOMBSTONE: &'static str = "848a1224-0c3c-465f-abd0-10a32e21830e";
-
 
 // system supplementary
 pub static UUID_SCHEMA_ATTR_DISPLAYNAME: &'static str = "201bc966-954b-48f5-bf25-99ffed759861";

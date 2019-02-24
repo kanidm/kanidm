@@ -2,7 +2,7 @@ use super::filter::{Filter, FilterInvalid};
 use super::proto_v1::Entry as ProtoEntry;
 use super::proto_v1::{
     AuthRequest, AuthResponse, AuthStatus, CreateRequest, DeleteRequest, ModifyRequest, Response,
-    SearchRequest, SearchResponse, SearchRecycledRequest, ReviveRecycledRequest
+    ReviveRecycledRequest, SearchRecycledRequest, SearchRequest, SearchResponse,
 };
 use actix::prelude::*;
 use entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
@@ -73,20 +73,12 @@ impl SearchEvent {
         SearchEvent {
             internal: false,
             filter: Filter::And(vec![
-                    Filter::AndNot(Box::new(
-                        Filter::Or(vec![
-                            Filter::Eq(
-                                "class".to_string(),
-                                "tombstone".to_string(),
-                            ),
-                            Filter::Eq(
-                                "class".to_string(),
-                                "recycled".to_string(),
-                            )
-                        ])
-                    )),
-                    Filter::from(&request.filter)
-                ]),
+                Filter::AndNot(Box::new(Filter::Or(vec![
+                    Filter::Eq("class".to_string(), "tombstone".to_string()),
+                    Filter::Eq("class".to_string(), "recycled".to_string()),
+                ]))),
+                Filter::from(&request.filter),
+            ]),
             class: (),
         }
     }
@@ -102,12 +94,9 @@ impl SearchEvent {
     pub fn from_rec_request(request: SearchRecycledRequest) -> Self {
         SearchEvent {
             filter: Filter::And(vec![
-                        Filter::Eq(
-                            "class".to_string(),
-                            "recycled".to_string(),
-                        ),
-                        Filter::from(&request.filter)
-                    ]),
+                Filter::Eq("class".to_string(), "recycled".to_string()),
+                Filter::from(&request.filter),
+            ]),
             internal: false,
             class: (),
         }
@@ -201,20 +190,12 @@ impl DeleteEvent {
     pub fn from_request(request: DeleteRequest) -> Self {
         DeleteEvent {
             filter: Filter::And(vec![
-                    Filter::AndNot(Box::new(
-                        Filter::Or(vec![
-                            Filter::Eq(
-                                "class".to_string(),
-                                "tombstone".to_string(),
-                            ),
-                            Filter::Eq(
-                                "class".to_string(),
-                                "recycled".to_string(),
-                            )
-                        ])
-                    )),
-                    Filter::from(&request.filter)
-                ]),
+                Filter::AndNot(Box::new(Filter::Or(vec![
+                    Filter::Eq("class".to_string(), "tombstone".to_string()),
+                    Filter::Eq("class".to_string(), "recycled".to_string()),
+                ]))),
+                Filter::from(&request.filter),
+            ]),
             internal: false,
         }
     }
@@ -250,22 +231,14 @@ impl ModifyEvent {
     pub fn from_request(request: ModifyRequest) -> Self {
         ModifyEvent {
             filter: Filter::And(vec![
-                    Filter::AndNot(Box::new(
-                        Filter::Or(vec![
-                            Filter::Eq(
-                                "class".to_string(),
-                                "tombstone".to_string(),
-                            ),
-                            Filter::Eq(
-                                "class".to_string(),
-                                "recycled".to_string(),
-                            )
-                        ])
-                    )),
-                    Filter::from(&request.filter)
-                ]),
+                Filter::AndNot(Box::new(Filter::Or(vec![
+                    Filter::Eq("class".to_string(), "tombstone".to_string()),
+                    Filter::Eq("class".to_string(), "recycled".to_string()),
+                ]))),
+                Filter::from(&request.filter),
+            ]),
             modlist: ModifyList::from(&request.modlist),
-            internal: false
+            internal: false,
         }
     }
 
@@ -310,7 +283,6 @@ impl AuthResult {
     }
 }
 
-
 #[derive(Debug)]
 pub struct PurgeEvent {}
 
@@ -338,12 +310,9 @@ impl ReviveRecycledEvent {
     pub fn from_request(request: ReviveRecycledRequest) -> Self {
         ReviveRecycledEvent {
             filter: Filter::And(vec![
-                        Filter::Eq(
-                            "class".to_string(),
-                            "recycled".to_string(),
-                        ),
-                        Filter::from(&request.filter)
-                    ]),
+                Filter::Eq("class".to_string(), "recycled".to_string()),
+                Filter::from(&request.filter),
+            ]),
             internal: false,
         }
     }
