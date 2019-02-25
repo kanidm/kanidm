@@ -110,7 +110,8 @@ pub trait QueryServerReadTransaction {
         // TODO: Validate the filter
         let vf = match se.filter.validate(self.get_schema()) {
             Ok(f) => f,
-            Err(e) => return Err(OperationError::SchemaViolation),
+            // TODO: Do something with this error
+            Err(e) => return Err(OperationError::SchemaViolation(e)),
         };
 
         // TODO: Assert access control allows the filter and requested attrs.
@@ -139,7 +140,8 @@ pub trait QueryServerReadTransaction {
         // How to get schema?
         let vf = match ee.filter.validate(self.get_schema()) {
             Ok(f) => f,
-            Err(e) => return Err(OperationError::SchemaViolation),
+            // TODO: Do something with this error
+            Err(e) => return Err(OperationError::SchemaViolation(e)),
         };
 
         let res = self
@@ -316,6 +318,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             return plug_pre_res;
         }
 
+        // TODO: Rework this to be better.
         let (norm_cand, invalid_cand): (
             Vec<Result<Entry<EntryValid, EntryNew>, _>>,
             Vec<Result<_, SchemaError>>,
@@ -328,8 +331,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             audit_log!(au, "Schema Violation: {:?}", err);
         }
 
-        if invalid_cand.len() > 0 {
-            return Err(OperationError::SchemaViolation);
+        for err in invalid_cand.iter() {
+            return Err(OperationError::SchemaViolation(err.unwrap_err()));
         }
 
         let norm_cand: Vec<Entry<EntryValid, EntryNew>> = norm_cand
@@ -399,7 +402,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             String::from("recycled"),
         )]);
 
-        let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
+        let candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
             .into_iter()
             .map(|er| {
                 // TODO: Deal with this properly william
@@ -426,8 +429,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
             audit_log!(au, "Schema Violation: {:?}", err);
         }
 
-        if invalid_cand.len() > 0 {
-            return Err(OperationError::SchemaViolation);
+        // TODO: Make this better
+        for err in invalid_cand.iter() {
+            return Err(OperationError::SchemaViolation(err.unwrap_err()));
         }
 
         let del_cand: Vec<Entry<EntryValid, EntryCommitted>> = norm_cand
@@ -602,7 +606,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Clone a set of writeables.
         // Apply the modlist -> Remember, we have a set of origs
         // and the new modified ents.
-        let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
+        let candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
             .into_iter()
             .map(|er| {
                 // TODO: Deal with this properly william
@@ -630,8 +634,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
             audit_log!(au, "Schema Violation: {:?}", err);
         }
 
-        if invalid_cand.len() > 0 {
-            return Err(OperationError::SchemaViolation);
+        // TODO: Make this better
+        for err in invalid_cand.iter() {
+            return Err(OperationError::SchemaViolation(err.unwrap_err()));
         }
 
         let norm_cand: Vec<Entry<EntryValid, EntryCommitted>> = norm_cand
@@ -865,7 +870,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         Ok(())
     }
 
-    pub fn commit(self, audit: &mut AuditScope) -> Result<(), ()> {
+    pub fn commit(self, audit: &mut AuditScope) -> Result<(), OperationError> {
         let QueryServerWriteTransaction {
             committed,
             be_txn,
@@ -880,14 +885,14 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // to perform a reload BEFORE we commit.
             // Alternate, we attempt to reload during batch ops, but this seems
             // costly.
-            .map(|_| {
+            .and_then(|_| {
                 // Backend Commit
                 be_txn.commit()
-            })
-            .map(|_| {
-                // Schema commit: Since validate passed and be is good, this
-                // must now also be good.
-                schema.commit()
+                .and_then(|_| {
+                    // Schema commit: Since validate passed and be is good, this
+                    // must now also be good.
+                    schema.commit()
+                })
             })
         // Audit done
     }
@@ -947,13 +952,13 @@ impl Handler<CreateEvent> for QueryServer {
 
             let qs_write = self.write();
 
-            match qs_write.create(&mut audit, &msg) {
-                Ok(()) => {
-                    qs_write.commit(&mut audit);
-                    Ok(OpResult {})
-                }
-                Err(e) => Err(e),
-            }
+            qs_write.create(&mut audit, &msg)
+                .and_then(|_| {
+                    qs_write.commit(&mut audit)
+                        .map(|_| {
+                            OpResult {}
+                        })
+                })
         });
         // At the end of the event we send it for logging.
         self.log.do_send(audit);
@@ -971,13 +976,13 @@ impl Handler<ModifyEvent> for QueryServer {
 
             let qs_write = self.write();
 
-            match qs_write.modify(&mut audit, &msg) {
-                Ok(()) => {
-                    qs_write.commit(&mut audit);
-                    Ok(OpResult {})
-                }
-                Err(e) => Err(e),
-            }
+            qs_write.modify(&mut audit, &msg)
+                .and_then(|_| {
+                    qs_write.commit(&mut audit)
+                        .map(|_| {
+                            OpResult {}
+                        })
+                })
         });
         self.log.do_send(audit);
         res
@@ -994,13 +999,13 @@ impl Handler<DeleteEvent> for QueryServer {
 
             let qs_write = self.write();
 
-            match qs_write.delete(&mut audit, &msg) {
-                Ok(()) => {
-                    qs_write.commit(&mut audit);
-                    Ok(OpResult {})
-                }
-                Err(e) => Err(e),
-            }
+            qs_write.delete(&mut audit, &msg)
+                .and_then(|_| {
+                    qs_write.commit(&mut audit)
+                        .map(|_| {
+                            OpResult {}
+                        })
+                })
         });
         self.log.do_send(audit);
         res
@@ -1031,17 +1036,19 @@ impl Handler<PurgeEvent> for QueryServer {
             audit_log!(audit, "Begin purge tombstone event {:?}", msg);
             let qs_write = self.write();
 
-            let res = match qs_write.purge_tombstones(&mut audit) {
-                Ok(()) => {
-                    qs_write.commit(&mut audit);
-                    Ok(OpResult {})
-                }
-                Err(e) => Err(e),
-            };
+            let res = qs_write.purge_tombstones(&mut audit)
+                .map(|_| {
+                    qs_write.commit(&mut audit)
+                        .map(|_| {
+                            OpResult {}
+                        })
+                });
             audit_log!(audit, "Purge tombstones result: {:?}", res);
+            res.expect("Invalid Server State");
         });
         // At the end of the event we send it for logging.
         self.log.do_send(audit);
+        res
     }
 }
 
@@ -1668,8 +1675,6 @@ mod tests {
                 String::from("testperson1"),
             ));
             assert!(server_txn.delete(audit, &de_sin).is_ok());
-            // After a delete -> recycle, create duplicate name etc.
-
             // Can in be seen by special search? (external recycle search)
             let filt_rc = ProtoFilter::Eq(String::from("class"), String::from("recycled"));
             let sre_rc = SearchEvent::from_rec_request(SearchRecycledRequest::new(filt_rc.clone()));
@@ -1677,6 +1682,7 @@ mod tests {
             assert!(r2.len() == 1);
 
             // Create dup uuid (rej)
+            // After a delete -> recycle, create duplicate name etc.
             let cr = server_txn.create(audit, &ce);
             assert!(cr.is_err());
 

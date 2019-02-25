@@ -1,4 +1,6 @@
-#[derive(Debug, PartialEq)]
+// use rusqlite::Error as RusqliteError;
+
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum SchemaError {
     NotImplemented,
     InvalidClass,
@@ -16,10 +18,11 @@ pub enum OperationError {
     EmptyRequest,
     Backend,
     NoMatchingEntries,
-    SchemaViolation,
+    SchemaViolation(SchemaError),
     Plugin,
     FilterGeneration,
     InvalidDBState,
     InvalidRequestState,
     InvalidState,
+    BackendEngine,
 }

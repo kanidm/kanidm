@@ -140,6 +140,7 @@ pub struct Entry<VALID, STATE> {
 }
 
 impl Entry<EntryInvalid, EntryNew> {
+    /*
     pub fn new() -> Self {
         Entry {
             // This means NEVER COMMITED
@@ -149,6 +150,7 @@ impl Entry<EntryInvalid, EntryNew> {
             attrs: BTreeMap::new(),
         }
     }
+    */
 
     // FIXME: Can we consume protoentry?
     pub fn from(e: &ProtoEntry) -> Self {
@@ -182,7 +184,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
         // We need to clone before we start, as well be mutating content.
         // We destructure:
         let Entry {
-            valid,
+            valid: _,
             state,
             id,
             attrs,
@@ -356,6 +358,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         }
     }
 
+    #[cfg(test)]
     pub unsafe fn to_valid_committed(self) -> Entry<EntryValid, EntryCommitted> {
         Entry {
             valid: EntryValid,
@@ -514,6 +517,7 @@ impl<STATE> Entry<EntryValid, STATE> {
                         mods.push_mod(Modify::Purged(k.clone()));
                     }
                 }
+                // TODO: Do something with this error properly.
                 Err(e) => return Err(()),
             }
             for v in vs {

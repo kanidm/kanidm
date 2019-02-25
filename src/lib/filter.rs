@@ -4,8 +4,7 @@
 
 use error::SchemaError;
 use proto_v1::Filter as ProtoFilter;
-use regex::Regex;
-use schema::{SchemaAttribute, SchemaClass, SchemaReadTransaction};
+use schema::{SchemaReadTransaction};
 use std::cmp::{Ordering, PartialOrd};
 use std::marker::PhantomData;
 
@@ -177,7 +176,7 @@ impl Filter<FilterInvalid> {
             ProtoFilter::Pres(a) => Filter::Pres(a.clone()),
             ProtoFilter::Or(l) => Filter::Or(l.iter().map(|f| Self::from(f)).collect()),
             ProtoFilter::And(l) => Filter::And(l.iter().map(|f| Self::from(f)).collect()),
-            ProtoFilter::AndNot(l) => Filter::AndNot(Box::new(Self::from(f))),
+            ProtoFilter::AndNot(l) => Filter::AndNot(Box::new(Self::from(l))),
         }
     }
 }

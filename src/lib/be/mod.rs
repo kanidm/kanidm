@@ -10,6 +10,7 @@ use serde_json;
 use audit::AuditScope;
 use entry::{Entry, EntryCommitted, EntryNew, EntryValid};
 use filter::{Filter, FilterValid};
+use error::OperationError;
 
 mod idl;
 mod mem_be;
@@ -392,7 +393,7 @@ impl BackendWriteTransaction {
         unimplemented!()
     }
 
-    pub fn commit(mut self) -> Result<(), ()> {
+    pub fn commit(mut self) -> Result<(), OperationError> {
         println!("Commiting txn");
         assert!(!self.committed);
         self.committed = true;
@@ -401,7 +402,7 @@ impl BackendWriteTransaction {
             .map(|_| ())
             .map_err(|e| {
                 println!("{:?}", e);
-                ()
+                OperationError::BackendEngine
             })
     }
 
@@ -490,7 +491,7 @@ impl BackendWriteTransaction {
 
 // In the future this will do the routing between the chosen backends etc.
 impl Backend {
-    pub fn new(audit: &mut AuditScope, path: &str) -> Result<Self, ()> {
+    pub fn new(audit: &mut AuditScope, path: &str) -> Result<Self, OperationError> {
         // this has a ::memory() type, but will path == "" work?
         audit_segment!(audit, || {
             let manager = SqliteConnectionManager::file(path);
@@ -755,4 +756,12 @@ mod tests {
             assert!(be.delete(audit, &vec![r2.clone(), r3.clone()]).is_ok());
         });
     }
+
+    #[test]
+    fn test_backup_restore() {
+        run_test!(|audit: &mut AuditScope, be: &BackendWriteTransaction| {
+            be.restore();
+            be.backup();
+        });
+    )
 }

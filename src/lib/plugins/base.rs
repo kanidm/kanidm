@@ -2,12 +2,12 @@ use plugins::Plugin;
 use uuid::Uuid;
 
 use audit::AuditScope;
-use be::{BackendReadTransaction, BackendTransaction, BackendWriteTransaction};
+use be::{BackendReadTransaction, BackendWriteTransaction};
 use entry::{Entry, EntryInvalid, EntryNew};
 use error::OperationError;
 use event::CreateEvent;
 use filter::Filter;
-use schema::{SchemaTransaction, SchemaWriteTransaction};
+use schema::{SchemaWriteTransaction};
 
 // TO FINISH
 /*

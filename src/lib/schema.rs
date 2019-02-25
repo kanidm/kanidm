@@ -1,7 +1,7 @@
 use super::audit::AuditScope;
 use super::constants::*;
 // use super::entry::Entry;
-use super::error::SchemaError;
+use super::error::{SchemaError, OperationError};
 // use super::filter::Filter;
 use std::collections::HashMap;
 // Apparently this is nightly only?
@@ -289,7 +289,7 @@ pub struct SchemaInner {
 pub trait SchemaReadTransaction {
     fn get_inner(&self) -> &SchemaInner;
 
-    fn validate(&self, audit: &mut AuditScope) -> Result<(), ()> {
+    fn validate(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
         self.get_inner().validate(audit)
     }
 
@@ -314,7 +314,7 @@ pub trait SchemaReadTransaction {
 }
 
 impl SchemaInner {
-    pub fn new(audit: &mut AuditScope) -> Result<Self, ()> {
+    pub fn new(audit: &mut AuditScope) -> Result<Self, OperationError> {
         let mut au = AuditScope::new("schema_new");
         let r = audit_segment!(au, || {
             //
@@ -643,7 +643,7 @@ impl SchemaInner {
     }
 
     // This shouldn't fail?
-    pub fn bootstrap_core(&mut self, audit: &mut AuditScope) -> Result<(), ()> {
+    pub fn bootstrap_core(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
         // This will create a set of sane, system core schema that we can use
         // main types are users, groups
         let mut au = AuditScope::new("schema_bootstrap_core");
@@ -845,9 +845,7 @@ impl SchemaInner {
         r
     }
 
-    pub fn validate(&self, audit: &mut AuditScope) -> Result<(), ()> {
-        // FIXME: How can we make this return a proper result?
-        //
+    pub fn validate(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
         // TODO: Does this need to validate anything further at all? The UUID
         // will be checked as part of the schema migration on startup, so I think
         // just that all the content is sane is fine.
@@ -862,14 +860,14 @@ impl SchemaInner {
                     a
                 );
                 if !self.attributes.contains_key(a) {
-                    return Err(());
+                    return Err(OperationError::SchemaViolation(SchemaError::Corrupted));
                 }
             }
             for a in &class.may {
                 // report the attribute.
                 audit_log!(audit, "validate may class:attr -> {}:{}", class.name, a);
                 if !self.attributes.contains_key(a) {
-                    return Err(());
+                    return Err(OperationError::SchemaViolation(SchemaError::Corrupted));
                 }
             }
             for a in &class.systemmust {
@@ -881,14 +879,14 @@ impl SchemaInner {
                     a
                 );
                 if !self.attributes.contains_key(a) {
-                    return Err(());
+                    return Err(OperationError::SchemaViolation(SchemaError::Corrupted));
                 }
             }
             for a in &class.must {
                 // report the attribute.
                 audit_log!(audit, "validate must class:attr -> {}:{}", class.name, a);
                 if !self.attributes.contains_key(a) {
-                    return Err(());
+                    return Err(OperationError::SchemaViolation(SchemaError::Corrupted));
                 }
             }
         }
@@ -924,7 +922,7 @@ pub struct SchemaWriteTransaction<'a> {
 }
 
 impl<'a> SchemaWriteTransaction<'a> {
-    pub fn bootstrap_core(&mut self, audit: &mut AuditScope) -> Result<(), ()> {
+    pub fn bootstrap_core(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
         self.inner.bootstrap_core(audit)
     }
 
@@ -933,8 +931,9 @@ impl<'a> SchemaWriteTransaction<'a> {
     // first, then schema to ensure that the be content matches our schema. Saying this, if your
     // schema commit fails we need to roll back still .... How great are transactions.
     // At the least, this is what validation is for!
-    pub fn commit(self) {
+    pub fn commit(self) -> Result<(), OperationError> {
         self.inner.commit();
+        Ok(())
     }
 }
 
@@ -957,7 +956,7 @@ impl SchemaReadTransaction for SchemaTransaction {
 }
 
 impl Schema {
-    pub fn new(audit: &mut AuditScope) -> Result<Self, ()> {
+    pub fn new(audit: &mut AuditScope) -> Result<Self, OperationError> {
         SchemaInner::new(audit).map(|si| Schema {
             inner: CowCell::new(si),
         })
