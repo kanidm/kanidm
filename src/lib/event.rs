@@ -284,15 +284,28 @@ impl AuthResult {
 }
 
 #[derive(Debug)]
-pub struct PurgeEvent {}
+pub struct PurgeTombstoneEvent {}
 
-impl Message for PurgeEvent {
+impl Message for PurgeTombstoneEvent {
     type Result = ();
 }
 
-impl PurgeEvent {
+impl PurgeTombstoneEvent {
     pub fn new() -> Self {
-        PurgeEvent {}
+        PurgeTombstoneEvent {}
+    }
+}
+
+#[derive(Debug)]
+pub struct PurgeRecycledEvent {}
+
+impl Message for PurgeRecycledEvent {
+    type Result = ();
+}
+
+impl PurgeRecycledEvent {
+    pub fn new() -> Self {
+        PurgeRecycledEvent {}
     }
 }
 

@@ -14,7 +14,7 @@ use entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
 use error::{OperationError, SchemaError};
 use event::{
     AuthEvent, AuthResult, CreateEvent, DeleteEvent, ExistsEvent, ModifyEvent, OpResult,
-    PurgeEvent, ReviveRecycledEvent, SearchEvent, SearchResult,
+    PurgeTombstoneEvent, PurgeRecycledEvent, ReviveRecycledEvent, SearchEvent, SearchResult,
 };
 use filter::{Filter, FilterInvalid};
 use log::EventLog;
@@ -1052,10 +1052,10 @@ impl Handler<AuthEvent> for QueryServer {
     }
 }
 
-impl Handler<PurgeEvent> for QueryServer {
+impl Handler<PurgeTombstoneEvent> for QueryServer {
     type Result = ();
 
-    fn handle(&mut self, msg: PurgeEvent, _: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, msg: PurgeTombstoneEvent, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("purge tombstones");
         let res = audit_segment!(&mut audit, || {
             audit_log!(audit, "Begin purge tombstone event {:?}", msg);
@@ -1065,6 +1065,27 @@ impl Handler<PurgeEvent> for QueryServer {
                 .purge_tombstones(&mut audit)
                 .map(|_| qs_write.commit(&mut audit).map(|_| OpResult {}));
             audit_log!(audit, "Purge tombstones result: {:?}", res);
+            res.expect("Invalid Server State");
+        });
+        // At the end of the event we send it for logging.
+        self.log.do_send(audit);
+        res
+    }
+}
+
+impl Handler<PurgeRecycledEvent> for QueryServer {
+    type Result = ();
+
+    fn handle(&mut self, msg: PurgeRecycledEvent, _: &mut Self::Context) -> Self::Result {
+        let mut audit = AuditScope::new("purge recycled");
+        let res = audit_segment!(&mut audit, || {
+            audit_log!(audit, "Begin purge recycled event {:?}", msg);
+            let qs_write = self.write();
+
+            let res = qs_write
+                .purge_recycled(&mut audit)
+                .map(|_| qs_write.commit(&mut audit).map(|_| OpResult {}));
+            audit_log!(audit, "Purge recycled result: {:?}", res);
             res.expect("Invalid Server State");
         });
         // At the end of the event we send it for logging.
