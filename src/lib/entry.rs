@@ -140,7 +140,7 @@ pub struct Entry<VALID, STATE> {
 }
 
 impl Entry<EntryInvalid, EntryNew> {
-    /*
+    #[cfg(test)]
     pub fn new() -> Self {
         Entry {
             // This means NEVER COMMITED
@@ -150,7 +150,6 @@ impl Entry<EntryInvalid, EntryNew> {
             attrs: BTreeMap::new(),
         }
     }
-    */
 
     // FIXME: Can we consume protoentry?
     pub fn from(e: &ProtoEntry) -> Self {

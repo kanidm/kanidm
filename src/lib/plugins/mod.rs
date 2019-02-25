@@ -1,9 +1,9 @@
 use audit::AuditScope;
-use be::{BackendWriteTransaction};
+use be::BackendWriteTransaction;
 use entry::{Entry, EntryInvalid, EntryNew};
 use error::OperationError;
 use event::CreateEvent;
-use schema::{SchemaWriteTransaction};
+use schema::SchemaWriteTransaction;
 
 mod base;
 mod protected;

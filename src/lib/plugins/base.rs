@@ -7,7 +7,7 @@ use entry::{Entry, EntryInvalid, EntryNew};
 use error::OperationError;
 use event::CreateEvent;
 use filter::Filter;
-use schema::{SchemaWriteTransaction};
+use schema::SchemaWriteTransaction;
 
 // TO FINISH
 /*

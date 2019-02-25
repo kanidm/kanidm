@@ -9,8 +9,8 @@ use serde_json;
 
 use audit::AuditScope;
 use entry::{Entry, EntryCommitted, EntryNew, EntryValid};
-use filter::{Filter, FilterValid};
 use error::OperationError;
+use filter::{Filter, FilterValid};
 
 mod idl;
 mod mem_be;
@@ -384,12 +384,12 @@ impl BackendWriteTransaction {
         Ok(())
     }
 
-    pub fn backup() -> Result<(), BackendError> {
+    pub fn backup(&self) -> Result<(), BackendError> {
         unimplemented!()
     }
 
     // Should this be offline only?
-    pub fn restore() -> Result<(), BackendError> {
+    pub fn restore(&self) -> Result<(), BackendError> {
         unimplemented!()
     }
 
@@ -763,5 +763,5 @@ mod tests {
             be.restore();
             be.backup();
         });
-    )
+    }
 }

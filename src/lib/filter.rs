@@ -4,7 +4,7 @@
 
 use error::SchemaError;
 use proto_v1::Filter as ProtoFilter;
-use schema::{SchemaReadTransaction};
+use schema::SchemaReadTransaction;
 use std::cmp::{Ordering, PartialOrd};
 use std::marker::PhantomData;
 

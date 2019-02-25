@@ -2,8 +2,7 @@
 use actix::Actor;
 use actix_web::middleware::session::{self, RequestSession};
 use actix_web::{
-    error, http, middleware, App, Error, HttpMessage, HttpRequest,
-    HttpResponse, Result, State,
+    error, http, middleware, App, Error, HttpMessage, HttpRequest, HttpResponse, Result, State,
 };
 
 use bytes::BytesMut;
@@ -15,9 +14,7 @@ use super::config::Configuration;
 use super::event::{AuthEvent, CreateEvent, DeleteEvent, ModifyEvent, SearchEvent};
 use super::interval::IntervalActor;
 use super::log;
-use super::proto_v1::{
-    AuthRequest, CreateRequest, DeleteRequest, ModifyRequest, SearchRequest,
-};
+use super::proto_v1::{AuthRequest, CreateRequest, DeleteRequest, ModifyRequest, SearchRequest};
 use super::server;
 
 struct AppState {

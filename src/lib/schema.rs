@@ -1,7 +1,7 @@
 use super::audit::AuditScope;
 use super::constants::*;
 // use super::entry::Entry;
-use super::error::{SchemaError, OperationError};
+use super::error::{OperationError, SchemaError};
 // use super::filter::Filter;
 use std::collections::HashMap;
 // Apparently this is nightly only?

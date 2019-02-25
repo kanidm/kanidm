@@ -319,6 +319,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         }
 
         // TODO: Rework this to be better.
+        /*
         let (norm_cand, invalid_cand): (
             Vec<Result<Entry<EntryValid, EntryNew>, _>>,
             Vec<Result<_, SchemaError>>,
@@ -342,6 +343,17 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 Err(_) => panic!("Invalid data set state!!!"),
             })
             .collect();
+        */
+
+        let res: Result<Vec<Entry<EntryValid, EntryNew>>, SchemaError> = candidates
+            .into_iter()
+            .map(|e| e.validate(&self.schema))
+            .collect();
+
+        let norm_cand: Vec<Entry<EntryValid, EntryNew>> = match res {
+            Ok(v) => v,
+            Err(e) => return Err(OperationError::SchemaViolation(e)),
+        };
 
         let mut audit_be = AuditScope::new("backend_create");
         // We may change from ce.entries later to something else?
@@ -417,6 +429,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // FIXME: This normalisation COPIES everything, which may be
         // slow.
 
+        /*
+
         let (norm_cand, invalid_cand): (
             Vec<Result<Entry<EntryValid, EntryCommitted>, _>>,
             Vec<Result<_, SchemaError>>,
@@ -444,6 +458,18 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 Err(_) => panic!("Invalid data set state!!!"),
             })
             .collect();
+
+        */
+
+        let res: Result<Vec<Entry<EntryValid, EntryCommitted>>, SchemaError> = candidates
+            .into_iter()
+            .map(|e| e.validate(&self.schema))
+            .collect();
+
+        let del_cand: Vec<Entry<_, _>> = match res {
+            Ok(v) => v,
+            Err(e) => return Err(OperationError::SchemaViolation(e)),
+        };
 
         let mut audit_be = AuditScope::new("backend_modify");
 
@@ -622,6 +648,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // FIXME: This normalisation COPIES everything, which may be
         // slow.
 
+        /*
         let (norm_cand, invalid_cand): (
             Vec<Result<Entry<EntryValid, EntryCommitted>, _>>,
             Vec<Result<_, SchemaError>>,
@@ -646,6 +673,17 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 Err(_) => panic!("Invalid data set state!!!"),
             })
             .collect();
+        */
+
+        let res: Result<Vec<Entry<EntryValid, EntryCommitted>>, SchemaError> = candidates
+            .into_iter()
+            .map(|e| e.validate(&self.schema))
+            .collect();
+
+        let norm_cand: Vec<Entry<_, _>> = match res {
+            Ok(v) => v,
+            Err(e) => return Err(OperationError::SchemaViolation(e)),
+        };
 
         // Now map out the Oks?
 
@@ -887,8 +925,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // costly.
             .and_then(|_| {
                 // Backend Commit
-                be_txn.commit()
-                .and_then(|_| {
+                be_txn.commit().and_then(|_| {
                     // Schema commit: Since validate passed and be is good, this
                     // must now also be good.
                     schema.commit()
@@ -952,13 +989,9 @@ impl Handler<CreateEvent> for QueryServer {
 
             let qs_write = self.write();
 
-            qs_write.create(&mut audit, &msg)
-                .and_then(|_| {
-                    qs_write.commit(&mut audit)
-                        .map(|_| {
-                            OpResult {}
-                        })
-                })
+            qs_write
+                .create(&mut audit, &msg)
+                .and_then(|_| qs_write.commit(&mut audit).map(|_| OpResult {}))
         });
         // At the end of the event we send it for logging.
         self.log.do_send(audit);
@@ -976,13 +1009,9 @@ impl Handler<ModifyEvent> for QueryServer {
 
             let qs_write = self.write();
 
-            qs_write.modify(&mut audit, &msg)
-                .and_then(|_| {
-                    qs_write.commit(&mut audit)
-                        .map(|_| {
-                            OpResult {}
-                        })
-                })
+            qs_write
+                .modify(&mut audit, &msg)
+                .and_then(|_| qs_write.commit(&mut audit).map(|_| OpResult {}))
         });
         self.log.do_send(audit);
         res
@@ -999,13 +1028,9 @@ impl Handler<DeleteEvent> for QueryServer {
 
             let qs_write = self.write();
 
-            qs_write.delete(&mut audit, &msg)
-                .and_then(|_| {
-                    qs_write.commit(&mut audit)
-                        .map(|_| {
-                            OpResult {}
-                        })
-                })
+            qs_write
+                .delete(&mut audit, &msg)
+                .and_then(|_| qs_write.commit(&mut audit).map(|_| OpResult {}))
         });
         self.log.do_send(audit);
         res
@@ -1036,13 +1061,9 @@ impl Handler<PurgeEvent> for QueryServer {
             audit_log!(audit, "Begin purge tombstone event {:?}", msg);
             let qs_write = self.write();
 
-            let res = qs_write.purge_tombstones(&mut audit)
-                .map(|_| {
-                    qs_write.commit(&mut audit)
-                        .map(|_| {
-                            OpResult {}
-                        })
-                });
+            let res = qs_write
+                .purge_tombstones(&mut audit)
+                .map(|_| qs_write.commit(&mut audit).map(|_| OpResult {}));
             audit_log!(audit, "Purge tombstones result: {:?}", res);
             res.expect("Invalid Server State");
         });
@@ -1069,7 +1090,7 @@ mod tests {
     use super::super::audit::AuditScope;
     use super::super::be::{Backend, BackendTransaction};
     use super::super::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
-    use super::super::error::OperationError;
+    use super::super::error::{OperationError, SchemaError};
     use super::super::event::{
         CreateEvent, DeleteEvent, ModifyEvent, ReviveRecycledEvent, SearchEvent,
     };
@@ -1260,7 +1281,12 @@ mod tests {
                     String::from("anusaosu"),
                 )]),
             );
-            assert!(server_txn.modify(audit, &me_inv_f) == Err(OperationError::SchemaViolation));
+            assert!(
+                server_txn.modify(audit, &me_inv_f)
+                    == Err(OperationError::SchemaViolation(
+                        SchemaError::InvalidAttribute
+                    ))
+            );
 
             // Mod is invalid to schema
             let me_inv_m = ModifyEvent::from_filter(
@@ -1270,7 +1296,12 @@ mod tests {
                     String::from("anusaosu"),
                 )]),
             );
-            assert!(server_txn.modify(audit, &me_inv_m) == Err(OperationError::SchemaViolation));
+            assert!(
+                server_txn.modify(audit, &me_inv_m)
+                    == Err(OperationError::SchemaViolation(
+                        SchemaError::InvalidAttribute
+                    ))
+            );
 
             // Mod single object
             let me_sin = ModifyEvent::from_filter(
