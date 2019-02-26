@@ -2,7 +2,7 @@ use actix::prelude::*;
 use std::time::Duration;
 
 use constants::PURGE_TIMEOUT;
-use event::{PurgeTombstoneEvent, PurgeRecycledEvent};
+use event::{PurgeRecycledEvent, PurgeTombstoneEvent};
 use server::QueryServer;
 
 pub struct IntervalActor {

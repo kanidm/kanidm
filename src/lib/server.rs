@@ -14,7 +14,7 @@ use entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
 use error::{OperationError, SchemaError};
 use event::{
     AuthEvent, AuthResult, CreateEvent, DeleteEvent, ExistsEvent, ModifyEvent, OpResult,
-    PurgeTombstoneEvent, PurgeRecycledEvent, ReviveRecycledEvent, SearchEvent, SearchResult,
+    PurgeRecycledEvent, PurgeTombstoneEvent, ReviveRecycledEvent, SearchEvent, SearchResult,
 };
 use filter::{Filter, FilterInvalid};
 use log::EventLog;
@@ -22,7 +22,11 @@ use modify::{Modify, ModifyList};
 use plugins::Plugins;
 use schema::{Schema, SchemaReadTransaction, SchemaTransaction, SchemaWriteTransaction};
 
-pub fn start(log: actix::Addr<EventLog>, path: &str, threads: usize) -> Result<actix::Addr<QueryServer>, OperationError> {
+pub fn start(
+    log: actix::Addr<EventLog>,
+    path: &str,
+    threads: usize,
+) -> Result<actix::Addr<QueryServer>, OperationError> {
     let mut audit = AuditScope::new("server_start");
     let log_inner = log.clone();
 
@@ -57,21 +61,17 @@ pub fn start(log: actix::Addr<EventLog>, path: &str, threads: usize) -> Result<a
 
             // Now load the remaining backend schema into memory.
             // TODO: Schema elements should be versioned individually.
-            match schema_write.bootstrap_core(&mut audit)
+            match schema_write
+                .bootstrap_core(&mut audit)
                 // TODO: Backend setup indexes as needed from schema, for the core
                 // system schema.
                 // TODO: Trigger an index? This could be costly ...
                 //   Perhaps a config option to say if we index on startup or not.
                 // TODO: Check the results!
-                .and_then(|_| {
-                    schema_write.validate(&mut audit)
-                })
-                .and_then(|_| {
-                    be_txn.commit()
-                })
-                .and_then(|_| {
-                    schema_write.commit()
-                }) {
+                .and_then(|_| schema_write.validate(&mut audit))
+                .and_then(|_| be_txn.commit())
+                .and_then(|_| schema_write.commit())
+            {
                 Ok(_) => {}
                 Err(e) => return Err(e),
             }
@@ -82,11 +82,11 @@ pub fn start(log: actix::Addr<EventLog>, path: &str, threads: usize) -> Result<a
 
         let mut audit_qsc = AuditScope::new("query_server_init");
         let query_server_write = query_server.write();
-        match query_server_write.initialise(&mut audit_qsc)
-            .and_then(|_| {
-                audit_segment!(audit_qsc, || query_server_write.commit(&mut audit_qsc))
-            }) {
-        // We are good to go! Finally commit and consume the txn.
+        match query_server_write
+            .initialise(&mut audit_qsc)
+            .and_then(|_| audit_segment!(audit_qsc, || query_server_write.commit(&mut audit_qsc)))
+        {
+            // We are good to go! Finally commit and consume the txn.
             Ok(_) => {}
             Err(e) => return Err(e),
         };
@@ -882,9 +882,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                     // it exists. To guarantee content exactly as is, we compare if it's identical.
                     if !e.compare(&results[0]) {
                         self.internal_delete(audit, filt)
-                            .and_then(|_| {
-                                self.internal_create(audit, vec![e.invalidate()])
-                            })
+                            .and_then(|_| self.internal_create(audit, vec![e.invalidate()]))
                     } else {
                         // No action required
                         Ok(())

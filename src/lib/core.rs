@@ -210,7 +210,8 @@ pub fn create_server_core(config: Configuration) {
     // server as they come in.
 
     // Start the query server with the given be path: future config
-    let server_addr = match server::start(log_addr.clone(), config.db_path.as_str(), config.threads) {
+    let server_addr = match server::start(log_addr.clone(), config.db_path.as_str(), config.threads)
+    {
         Ok(addr) => addr,
         Err(e) => {
             // Oh shiiiiiiii

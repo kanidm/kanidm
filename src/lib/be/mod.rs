@@ -350,7 +350,6 @@ impl BackendWriteTransaction {
     ) -> Result<(), BackendError> {
         // Perform a search for the entries --> This is a problem for the caller
         audit_segment!(au, || {
-
             if entries.is_empty() {
                 // TODO: Better error
                 return Err(BackendError::EmptyRequest);
@@ -513,10 +512,7 @@ impl Backend {
             // Now complete our setup with a txn
             let r = {
                 let be_txn = be.write();
-                be_txn.setup(audit)
-                    .and_then(|_| {
-                        be_txn.commit()
-                    })
+                be_txn.setup(audit).and_then(|_| be_txn.commit())
             };
 
             audit_log!(audit, "be new setup: {:?}", r);
