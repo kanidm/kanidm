@@ -858,10 +858,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 } else if results.len() == 1 {
                     // it exists. To guarantee content exactly as is, we compare if it's identical.
                     if !e.compare(&results[0]) {
-                        self.internal_delete(audit, filt);
-                        self.internal_create(audit, vec![e.invalidate()]);
-                    };
-                    Ok(())
+                        self.internal_delete(audit, filt)
+                            .and_then(
+                                self.internal_create(audit, vec![e.invalidate()])
+                            )
+                    }
                 } else {
                     Err(OperationError::InvalidDBState)
                 }
