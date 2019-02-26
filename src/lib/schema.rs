@@ -71,6 +71,7 @@ pub enum SyntaxType {
     BOOLEAN,
     SYNTAX_ID,
     INDEX_ID,
+    REFERENCE_UUID,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -91,6 +92,8 @@ impl TryFrom<&str> for SyntaxType {
             Ok(SyntaxType::SYNTAX_ID)
         } else if value == "INDEX_ID" {
             Ok(SyntaxType::INDEX_ID)
+        } else if value == "REFERENCE_UUID" {
+            Ok(SyntaxType::REFERENCE_UUID)
         } else {
             Err(())
         }
@@ -168,6 +171,9 @@ impl SchemaAttribute {
             SyntaxType::SYNTAX_ID => self.validate_syntax(v),
             SyntaxType::INDEX_ID => self.validate_index(v),
             SyntaxType::UUID => self.validate_uuid(v),
+            // Syntaxwise, these are the same.
+            // Referential integrity is handled in plugins.
+            SyntaxType::REFERENCE_UUID => self.validate_uuid(v),
             SyntaxType::UTF8STRING_INSENSITIVE => self.validate_utf8string_insensitive(v),
             SyntaxType::UTF8STRING_PRINCIPAL => self.validate_principal(v),
             _ => Ok(()),
@@ -199,6 +205,14 @@ impl SchemaAttribute {
                 }
             }),
             SyntaxType::UUID => ava.iter().fold(Ok(()), |acc, v| {
+                if acc.is_ok() {
+                    self.validate_uuid(v)
+                } else {
+                    acc
+                }
+            }),
+            // This is the same as a UUID, refint is a plugin
+            SyntaxType::REFERENCE_UUID => ava.iter().fold(Ok(()), |acc, v| {
                 if acc.is_ok() {
                     self.validate_uuid(v)
                 } else {
@@ -258,6 +272,7 @@ impl SchemaAttribute {
             SyntaxType::SYNTAX_ID => self.normalise_syntax(v),
             SyntaxType::INDEX_ID => self.normalise_index(v),
             SyntaxType::UUID => self.normalise_uuid(v),
+            SyntaxType::REFERENCE_UUID => self.normalise_uuid(v),
             SyntaxType::UTF8STRING_INSENSITIVE => self.normalise_utf8string_insensitive(v),
             SyntaxType::UTF8STRING_PRINCIPAL => self.normalise_principal(v),
             _ => v.clone(),
@@ -689,7 +704,7 @@ impl SchemaInner {
                     secret: false,
                     multivalue: true,
                     index: vec![IndexType::EQUALITY],
-                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                    syntax: SyntaxType::REFERENCE_UUID,
                 },
             );
             // ssh_publickey // multi
@@ -734,7 +749,7 @@ impl SchemaInner {
                     secret: false,
                     multivalue: true,
                     index: vec![IndexType::EQUALITY],
-                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                    syntax: SyntaxType::REFERENCE_UUID,
                 },
             );
 
