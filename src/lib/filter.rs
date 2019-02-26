@@ -124,7 +124,7 @@ impl Filter<FilterInvalid> {
                 let attr_norm = schema_name.normalise_value(attr);
                 // Now check it exists
                 match schema_attributes.get(&attr_norm) {
-                    Some(schema_a) => {
+                    Some(_attr_name) => {
                         // Return our valid data
                         Ok(Filter::Pres(attr_norm))
                     }

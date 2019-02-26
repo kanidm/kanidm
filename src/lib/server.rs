@@ -82,9 +82,11 @@ pub fn start(log: actix::Addr<EventLog>, path: &str, threads: usize) -> Result<a
 
         let mut audit_qsc = AuditScope::new("query_server_init");
         let query_server_write = query_server.write();
-        query_server_write.initialise(&mut audit_qsc);
+        match query_server_write.initialise(&mut audit_qsc)
+            .and_then(|_| {
+                audit_segment!(audit_qsc, || query_server_write.commit(&mut audit_qsc))
+            }) {
         // We are good to go! Finally commit and consume the txn.
-        match audit_segment!(audit_qsc, || query_server_write.commit(&mut audit_qsc)) {
             Ok(_) => {}
             Err(e) => return Err(e),
         };
@@ -838,7 +840,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                             audit_log!(audit, "Generated modlist -> {:?}", modlist);
                             self.internal_modify(audit, filt, modlist)
                         }
-                        Err(e) => {
+                        Err(_e) => {
                             unimplemented!()
                             // No action required.
                         }

@@ -349,39 +349,41 @@ impl BackendWriteTransaction {
         entries: &Vec<Entry<EntryValid, EntryCommitted>>,
     ) -> Result<(), BackendError> {
         // Perform a search for the entries --> This is a problem for the caller
+        audit_segment!(au, || {
 
-        if entries.is_empty() {
-            // TODO: Better error
-            return Err(BackendError::EmptyRequest);
-        }
+            if entries.is_empty() {
+                // TODO: Better error
+                return Err(BackendError::EmptyRequest);
+            }
 
-        // Assert the Id's exist on the entry.
-        let id_list: Vec<i64> = entries.iter().filter_map(|entry| entry.id).collect();
+            // Assert the Id's exist on the entry.
+            let id_list: Vec<i64> = entries.iter().filter_map(|entry| entry.id).collect();
 
-        // Simple: If the list of id's is not the same as the input list, we are missing id's
-        // TODO: This check won't be needed once I rebuild the entry state types.
-        if entries.len() != id_list.len() {
-            return Err(BackendError::EntryMissingId);
-        }
+            // Simple: If the list of id's is not the same as the input list, we are missing id's
+            // TODO: This check won't be needed once I rebuild the entry state types.
+            if entries.len() != id_list.len() {
+                return Err(BackendError::EntryMissingId);
+            }
 
-        // Now, given the list of id's, delete them.
-        {
-            // SQL doesn't say if the thing "does or does not exist anymore". As a result,
-            // two deletes is a safe and valid operation. Given how we allocate ID's we are
-            // probably okay with this.
+            // Now, given the list of id's, delete them.
+            {
+                // SQL doesn't say if the thing "does or does not exist anymore". As a result,
+                // two deletes is a safe and valid operation. Given how we allocate ID's we are
+                // probably okay with this.
 
-            // TODO: ACTUALLY HANDLE THIS ERROR WILLIAM YOU LAZY SHIT.
-            let mut stmt = self
-                .conn
-                .prepare("DELETE FROM id2entry WHERE id = :id")
-                .unwrap();
+                // TODO: ACTUALLY HANDLE THIS ERROR WILLIAM YOU LAZY SHIT.
+                let mut stmt = self
+                    .conn
+                    .prepare("DELETE FROM id2entry WHERE id = :id")
+                    .unwrap();
 
-            id_list.iter().for_each(|id| {
-                stmt.execute(&[id]).unwrap();
-            });
-        }
+                id_list.iter().for_each(|id| {
+                    stmt.execute(&[id]).unwrap();
+                });
+            }
 
-        Ok(())
+            Ok(())
+        })
     }
 
     pub fn backup(&self) -> Result<(), BackendError> {
@@ -422,7 +424,7 @@ impl BackendWriteTransaction {
         }
     }
 
-    pub fn setup(&self, audit: &mut AuditScope) -> Result<(), ()> {
+    pub fn setup(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
         {
             // self.conn.execute("BEGIN TRANSACTION", NO_PARAMS).unwrap();
 
@@ -511,8 +513,10 @@ impl Backend {
             // Now complete our setup with a txn
             let r = {
                 let be_txn = be.write();
-                be_txn.setup(audit);
-                be_txn.commit()
+                be_txn.setup(audit)
+                    .and_then(|_| {
+                        be_txn.commit()
+                    })
             };
 
             audit_log!(audit, "be new setup: {:?}", r);
