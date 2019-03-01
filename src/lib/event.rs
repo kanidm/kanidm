@@ -1,13 +1,14 @@
 use super::filter::{Filter, FilterInvalid};
 use super::proto_v1::Entry as ProtoEntry;
 use super::proto_v1::{
-    AuthRequest, AuthResponse, AuthStatus, CreateRequest, DeleteRequest, ModifyRequest, Response,
-    ReviveRecycledRequest, SearchRecycledRequest, SearchRequest, SearchResponse,
+    AuthRequest, AuthResponse, AuthStatus, CreateRequest, DeleteRequest, ModifyRequest,
+    OperationResponse, ReviveRecycledRequest, SearchRecycledRequest, SearchRequest, SearchResponse,
 };
-use actix::prelude::*;
 use entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
 use error::OperationError;
 use modify::ModifyList;
+
+use actix::prelude::*;
 
 // Should the event Result have the log items?
 // FIXME: Remove seralising here - each type should
@@ -19,8 +20,8 @@ use modify::ModifyList;
 pub struct OpResult {}
 
 impl OpResult {
-    pub fn response(self) -> Response {
-        Response {}
+    pub fn response(self) -> OperationResponse {
+        OperationResponse {}
     }
 }
 
@@ -62,10 +63,6 @@ pub struct SearchEvent {
     // TODO: Remove this
     class: (), // String
                // TODO: Add list of attributes to request
-}
-
-impl Message for SearchEvent {
-    type Result = Result<SearchResult, OperationError>;
 }
 
 impl SearchEvent {
@@ -124,10 +121,6 @@ pub struct CreateEvent {
     pub internal: bool,
 }
 
-impl Message for CreateEvent {
-    type Result = Result<OpResult, OperationError>;
-}
-
 // FIXME: Should this actually be in createEvent handler?
 impl CreateEvent {
     pub fn from_request(request: CreateRequest) -> Self {
@@ -163,10 +156,6 @@ pub struct ExistsEvent {
     pub internal: bool,
 }
 
-impl Message for ExistsEvent {
-    type Result = Result<OpResult, OperationError>;
-}
-
 impl ExistsEvent {
     pub fn new_internal(filter: Filter<FilterInvalid>) -> Self {
         ExistsEvent {
@@ -180,10 +169,6 @@ impl ExistsEvent {
 pub struct DeleteEvent {
     pub filter: Filter<FilterInvalid>,
     pub internal: bool,
-}
-
-impl Message for DeleteEvent {
-    type Result = Result<OpResult, OperationError>;
 }
 
 impl DeleteEvent {
@@ -223,10 +208,6 @@ pub struct ModifyEvent {
     pub internal: bool,
 }
 
-impl Message for ModifyEvent {
-    type Result = Result<OpResult, OperationError>;
-}
-
 impl ModifyEvent {
     pub fn from_request(request: ModifyRequest) -> Self {
         ModifyEvent {
@@ -263,10 +244,6 @@ impl ModifyEvent {
 #[derive(Debug)]
 pub struct AuthEvent {}
 
-impl Message for AuthEvent {
-    type Result = Result<AuthResult, OperationError>;
-}
-
 impl AuthEvent {
     pub fn from_request(request: AuthRequest) -> Self {
         AuthEvent {}
@@ -282,6 +259,8 @@ impl AuthResult {
         }
     }
 }
+
+// TODO: Are these part of the proto?
 
 #[derive(Debug)]
 pub struct PurgeTombstoneEvent {}

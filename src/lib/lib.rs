@@ -50,3 +50,4 @@ pub mod core;
 pub mod error;
 pub mod filter;
 pub mod proto_v1;
+mod proto_v1_actors;

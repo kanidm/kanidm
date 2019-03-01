@@ -4,7 +4,7 @@ use actix::prelude::*;
 extern crate rsidm;
 use rsidm::config::Configuration;
 use rsidm::core::create_server_core;
-use rsidm::proto_v1::{CreateRequest, Entry, Response, SearchRequest, SearchResponse};
+use rsidm::proto_v1::{CreateRequest, Entry, OperationResponse, SearchRequest, SearchResponse};
 
 extern crate reqwest;
 
@@ -77,7 +77,7 @@ fn test_server_proto() {
             .unwrap();
 
         println!("{:?}", response);
-        let r: Response = serde_json::from_str(response.text().unwrap().as_str()).unwrap();
+        let r: OperationResponse = serde_json::from_str(response.text().unwrap().as_str()).unwrap();
 
         println!("{:?}", r);
 

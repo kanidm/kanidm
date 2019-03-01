@@ -11,19 +11,18 @@ use futures::{future, Future, Stream};
 use super::config::Configuration;
 
 // SearchResult
-use super::event::{AuthEvent, CreateEvent, DeleteEvent, ModifyEvent, SearchEvent};
 use super::interval::IntervalActor;
 use super::log;
 use super::proto_v1::{AuthRequest, CreateRequest, DeleteRequest, ModifyRequest, SearchRequest};
-use super::server;
+use super::proto_v1_actors::QueryServerV1;
 
 struct AppState {
-    qe: actix::Addr<server::QueryServer>,
+    qe: actix::Addr<QueryServerV1>,
     max_size: usize,
 }
 
 macro_rules! json_event_decode {
-    ($req:expr, $state:expr, $event_type:ty, $response_type:ty, $message_type:ty) => {{
+    ($req:expr, $state:expr, $event_type:ty, $message_type:ty) => {{
         // This is copied every request. Is there a better way?
         // The issue is the fold move takes ownership of state if
         // we don't copy this here
@@ -61,13 +60,12 @@ macro_rules! json_event_decode {
                                 .send(
                                     // Could make this a .into_inner() and move?
                                     // event::SearchEvent::new(obj.filter),
-                                    <($event_type)>::from_request(obj),
+                                    // <($event_type)>::from_request(obj),
+                                    obj,
                                 )
                                 .from_err()
                                 .and_then(|res| match res {
-                                    Ok(event_result) => {
-                                        Ok(HttpResponse::Ok().json(event_result.response()))
-                                    }
+                                    Ok(event_result) => Ok(HttpResponse::Ok().json(event_result)),
                                     Err(e) => Ok(HttpResponse::InternalServerError().json(e)),
                                 });
 
@@ -88,25 +86,25 @@ macro_rules! json_event_decode {
 fn create(
     (req, state): (HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    json_event_decode!(req, state, CreateEvent, Response, CreateRequest)
+    json_event_decode!(req, state, CreateEvent, CreateRequest)
 }
 
 fn modify(
     (req, state): (HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    json_event_decode!(req, state, ModifyEvent, Response, ModifyRequest)
+    json_event_decode!(req, state, ModifyEvent, ModifyRequest)
 }
 
 fn delete(
     (req, state): (HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    json_event_decode!(req, state, DeleteEvent, Response, DeleteRequest)
+    json_event_decode!(req, state, DeleteEvent, DeleteRequest)
 }
 
 fn search(
     (req, state): (HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    json_event_decode!(req, state, SearchEvent, SearchResponse, SearchRequest)
+    json_event_decode!(req, state, SearchEvent, SearchRequest)
 }
 
 // delete, modify
@@ -156,16 +154,10 @@ fn auth(
                         // new session, and in that case, anything *except* authrequest init is
                         // invalid.
 
-                        let res = state
-                            .qe
-                            .send(AuthEvent::from_request(obj))
-                            .from_err()
-                            .and_then(|res| match res {
-                                Ok(event_result) => {
-                                    Ok(HttpResponse::Ok().json(event_result.response()))
-                                }
-                                Err(e) => Ok(HttpResponse::InternalServerError().json(e)),
-                            });
+                        let res = state.qe.send(obj).from_err().and_then(|res| match res {
+                            Ok(event_result) => Ok(HttpResponse::Ok().json(event_result)),
+                            Err(e) => Ok(HttpResponse::InternalServerError().json(e)),
+                        });
 
                         Box::new(res)
                     }
@@ -210,14 +202,14 @@ pub fn create_server_core(config: Configuration) {
     // server as they come in.
 
     // Start the query server with the given be path: future config
-    let server_addr = match server::start(log_addr.clone(), config.db_path.as_str(), config.threads)
-    {
-        Ok(addr) => addr,
-        Err(e) => {
-            // Oh shiiiiiiii
-            unimplemented!()
-        }
-    };
+    let server_addr =
+        match QueryServerV1::start(log_addr.clone(), config.db_path.as_str(), config.threads) {
+            Ok(addr) => addr,
+            Err(e) => {
+                // Oh shiiiiiiii
+                unimplemented!()
+            }
+        };
 
     // Setup timed events
     let _int_addr = IntervalActor::new(server_addr.clone()).start();

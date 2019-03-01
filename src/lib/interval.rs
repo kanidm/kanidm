@@ -3,15 +3,16 @@ use std::time::Duration;
 
 use constants::PURGE_TIMEOUT;
 use event::{PurgeRecycledEvent, PurgeTombstoneEvent};
-use server::QueryServer;
+use proto_v1_actors::QueryServerV1;
+// use server::QueryServer;
 
 pub struct IntervalActor {
     // Store any addresses we require
-    server: actix::Addr<QueryServer>,
+    server: actix::Addr<QueryServerV1>,
 }
 
 impl IntervalActor {
-    pub fn new(server: actix::Addr<QueryServer>) -> Self {
+    pub fn new(server: actix::Addr<QueryServerV1>) -> Self {
         IntervalActor { server: server }
     }
 

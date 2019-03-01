@@ -1,5 +1,7 @@
 // use super::entry::Entry;
 // use super::filter::Filter;
+use actix::prelude::*;
+use error::OperationError;
 use std::collections::BTreeMap;
 
 // These proto implementations are here because they have public definitions
@@ -45,17 +47,12 @@ impl ModifyList {
     }
 }
 
-// FIXME: Do I need proto filter?
-// Probably yes, don't be shit william.
-
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Response {
-    // ?
-}
+pub struct OperationResponse {}
 
-impl Response {
+impl OperationResponse {
     pub fn new(_: ()) -> Self {
-        Response {}
+        OperationResponse {}
     }
 }
 
@@ -68,6 +65,10 @@ impl SearchRequest {
     pub fn new(filter: Filter) -> Self {
         SearchRequest { filter: filter }
     }
+}
+
+impl Message for SearchRequest {
+    type Result = Result<SearchResponse, OperationError>;
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -92,6 +93,10 @@ impl CreateRequest {
     }
 }
 
+impl Message for CreateRequest {
+    type Result = Result<OperationResponse, OperationError>;
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DeleteRequest {
     pub filter: Filter,
@@ -101,6 +106,10 @@ impl DeleteRequest {
     pub fn new(filter: Filter) -> Self {
         DeleteRequest { filter: filter }
     }
+}
+
+impl Message for DeleteRequest {
+    type Result = Result<OperationResponse, OperationError>;
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -117,6 +126,10 @@ impl ModifyRequest {
             modlist: modlist,
         }
     }
+}
+
+impl Message for ModifyRequest {
+    type Result = Result<OperationResponse, OperationError>;
 }
 
 // Login is a multi-step process potentially. First the client says who they
@@ -146,6 +159,10 @@ pub enum AuthState {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AuthRequest {
     pub state: AuthState,
+}
+
+impl Message for AuthRequest {
+    type Result = Result<OperationResponse, OperationError>;
 }
 
 // Respond with the list of auth types and nonce, etc.

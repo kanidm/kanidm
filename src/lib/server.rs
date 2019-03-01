@@ -1,7 +1,6 @@
-use actix::prelude::*;
-
 // This is really only used for long lived, high level types that need clone
 // that otherwise can't be cloned. Think Mutex.
+// use actix::prelude::*;
 use std::sync::Arc;
 
 use audit::AuditScope;
@@ -21,86 +20,6 @@ use log::EventLog;
 use modify::{Modify, ModifyList};
 use plugins::Plugins;
 use schema::{Schema, SchemaReadTransaction, SchemaTransaction, SchemaWriteTransaction};
-
-pub fn start(
-    log: actix::Addr<EventLog>,
-    path: &str,
-    threads: usize,
-) -> Result<actix::Addr<QueryServer>, OperationError> {
-    let mut audit = AuditScope::new("server_start");
-    let log_inner = log.clone();
-
-    let qs_addr: Result<actix::Addr<QueryServer>, _> = audit_segment!(audit, || {
-        // Create "just enough" schema for us to be able to load from
-        // disk ... Schema loading is one time where we validate the
-        // entries as we read them, so we need this here.
-        // FIXME: Handle results in start correctly
-        let schema = match Schema::new(&mut audit) {
-            Ok(s) => Arc::new(s),
-            Err(e) => return Err(e),
-        };
-
-        // Create a new backend audit scope
-        let mut audit_be = AuditScope::new("backend_new");
-        let be = match Backend::new(&mut audit_be, path) {
-            Ok(be) => be,
-            Err(e) => return Err(e),
-        };
-        audit.append_scope(audit_be);
-
-        {
-            let be_txn = be.write();
-            let mut schema_write = schema.write();
-
-            // Now, we have the initial schema in memory. Use this to trigger
-            // an index of the be for the core schema.
-
-            // Now search for the schema itself, and validate that the system
-            // in memory matches the BE on disk, and that it's syntactically correct.
-            // Write it out if changes are needed.
-
-            // Now load the remaining backend schema into memory.
-            // TODO: Schema elements should be versioned individually.
-            match schema_write
-                .bootstrap_core(&mut audit)
-                // TODO: Backend setup indexes as needed from schema, for the core
-                // system schema.
-                // TODO: Trigger an index? This could be costly ...
-                //   Perhaps a config option to say if we index on startup or not.
-                // TODO: Check the results!
-                .and_then(|_| schema_write.validate(&mut audit))
-                .and_then(|_| be_txn.commit())
-                .and_then(|_| schema_write.commit())
-            {
-                Ok(_) => {}
-                Err(e) => return Err(e),
-            }
-        }
-
-        // Create a temporary query_server implementation
-        let query_server = QueryServer::new(log_inner.clone(), be.clone(), schema.clone());
-
-        let mut audit_qsc = AuditScope::new("query_server_init");
-        let query_server_write = query_server.write();
-        match query_server_write
-            .initialise(&mut audit_qsc)
-            .and_then(|_| audit_segment!(audit_qsc, || query_server_write.commit(&mut audit_qsc)))
-        {
-            // We are good to go! Finally commit and consume the txn.
-            Ok(_) => {}
-            Err(e) => return Err(e),
-        };
-
-        audit.append_scope(audit_qsc);
-
-        let x = SyncArbiter::start(threads, move || {
-            QueryServer::new(log_inner.clone(), be.clone(), schema.clone())
-        });
-        Ok(x)
-    });
-    log.do_send(audit);
-    qs_addr
-}
 
 // This is the core of the server. It implements all
 // the search and modify actions, applies access controls
@@ -266,20 +185,15 @@ impl<'a> QueryServerReadTransaction for QueryServerWriteTransaction<'a> {
 }
 
 pub struct QueryServer {
-    log: actix::Addr<EventLog>,
-    // be: actix::Addr<BackendActor>,
-    // This probably needs to be Arc, or a ref. How do we want to manage this?
-    // I think the BE is build, configured and cloned? Maybe Backend
-    // is a wrapper type to Arc<BackendInner> or something.
+    // log: actix::Addr<EventLog>,
     be: Backend,
     schema: Arc<Schema>,
 }
 
 impl QueryServer {
-    pub fn new(log: actix::Addr<EventLog>, be: Backend, schema: Arc<Schema>) -> Self {
-        log_event!(log, "Starting query worker ...");
+    pub fn new(be: Backend, schema: Arc<Schema>) -> Self {
+        // log_event!(log, "Starting query worker ...");
         QueryServer {
-            log: log,
             be: be,
             schema: schema,
         }
@@ -960,165 +874,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 }
 
-impl Actor for QueryServer {
-    type Context = SyncContext<Self>;
-
-    /*
-    fn started(&mut self, ctx: &mut Self::Context) {
-        ctx.set_mailbox_capacity(1 << 31);
-    }
-    */
-}
-
-// The server only recieves "Event" structures, which
-// are whole self contained DB operations with all parsing
-// required complete. We still need to do certain validation steps, but
-// at this point our just is just to route to do_<action>
-
-impl Handler<SearchEvent> for QueryServer {
-    type Result = Result<SearchResult, OperationError>;
-
-    fn handle(&mut self, msg: SearchEvent, _: &mut Self::Context) -> Self::Result {
-        let mut audit = AuditScope::new("search");
-        let res = audit_segment!(&mut audit, || {
-            audit_log!(audit, "Begin event {:?}", msg);
-            // Begin a read
-            let qs_read = self.read();
-
-            // Parse what we need from the event?
-            // What kind of event is it?
-
-            // In the future we'll likely change search event ...
-
-            // End the read
-
-            // was this ok?
-            match qs_read.search(&mut audit, &msg) {
-                Ok(entries) => Ok(SearchResult::new(entries)),
-                Err(e) => Err(e),
-            }
-        });
-        // At the end of the event we send it for logging.
-        self.log.do_send(audit);
-        res
-    }
-}
-
-impl Handler<CreateEvent> for QueryServer {
-    type Result = Result<OpResult, OperationError>;
-
-    fn handle(&mut self, msg: CreateEvent, _: &mut Self::Context) -> Self::Result {
-        let mut audit = AuditScope::new("create");
-        let res = audit_segment!(&mut audit, || {
-            audit_log!(audit, "Begin create event {:?}", msg);
-
-            let qs_write = self.write();
-
-            qs_write
-                .create(&mut audit, &msg)
-                .and_then(|_| qs_write.commit(&mut audit).map(|_| OpResult {}))
-        });
-        // At the end of the event we send it for logging.
-        self.log.do_send(audit);
-        res
-    }
-}
-
-impl Handler<ModifyEvent> for QueryServer {
-    type Result = Result<OpResult, OperationError>;
-
-    fn handle(&mut self, msg: ModifyEvent, _: &mut Self::Context) -> Self::Result {
-        let mut audit = AuditScope::new("modify");
-        let res = audit_segment!(&mut audit, || {
-            audit_log!(audit, "Begin modify event {:?}", msg);
-
-            let qs_write = self.write();
-
-            qs_write
-                .modify(&mut audit, &msg)
-                .and_then(|_| qs_write.commit(&mut audit).map(|_| OpResult {}))
-        });
-        self.log.do_send(audit);
-        res
-    }
-}
-
-impl Handler<DeleteEvent> for QueryServer {
-    type Result = Result<OpResult, OperationError>;
-
-    fn handle(&mut self, msg: DeleteEvent, _: &mut Self::Context) -> Self::Result {
-        let mut audit = AuditScope::new("delete");
-        let res = audit_segment!(&mut audit, || {
-            audit_log!(audit, "Begin delete event {:?}", msg);
-
-            let qs_write = self.write();
-
-            qs_write
-                .delete(&mut audit, &msg)
-                .and_then(|_| qs_write.commit(&mut audit).map(|_| OpResult {}))
-        });
-        self.log.do_send(audit);
-        res
-    }
-}
-
-impl Handler<AuthEvent> for QueryServer {
-    type Result = Result<AuthResult, OperationError>;
-
-    fn handle(&mut self, msg: AuthEvent, _: &mut Self::Context) -> Self::Result {
-        let mut audit = AuditScope::new("auth");
-        let res = audit_segment!(&mut audit, || {
-            audit_log!(audit, "Begin auth event {:?}", msg);
-            Err(OperationError::InvalidState)
-        });
-        // At the end of the event we send it for logging.
-        self.log.do_send(audit);
-        res
-    }
-}
-
-impl Handler<PurgeTombstoneEvent> for QueryServer {
-    type Result = ();
-
-    fn handle(&mut self, msg: PurgeTombstoneEvent, _: &mut Self::Context) -> Self::Result {
-        let mut audit = AuditScope::new("purge tombstones");
-        let res = audit_segment!(&mut audit, || {
-            audit_log!(audit, "Begin purge tombstone event {:?}", msg);
-            let qs_write = self.write();
-
-            let res = qs_write
-                .purge_tombstones(&mut audit)
-                .map(|_| qs_write.commit(&mut audit).map(|_| OpResult {}));
-            audit_log!(audit, "Purge tombstones result: {:?}", res);
-            res.expect("Invalid Server State");
-        });
-        // At the end of the event we send it for logging.
-        self.log.do_send(audit);
-        res
-    }
-}
-
-impl Handler<PurgeRecycledEvent> for QueryServer {
-    type Result = ();
-
-    fn handle(&mut self, msg: PurgeRecycledEvent, _: &mut Self::Context) -> Self::Result {
-        let mut audit = AuditScope::new("purge recycled");
-        let res = audit_segment!(&mut audit, || {
-            audit_log!(audit, "Begin purge recycled event {:?}", msg);
-            let qs_write = self.write();
-
-            let res = qs_write
-                .purge_recycled(&mut audit)
-                .map(|_| qs_write.commit(&mut audit).map(|_| OpResult {}));
-            audit_log!(audit, "Purge recycled result: {:?}", res);
-            res.expect("Invalid Server State");
-        });
-        // At the end of the event we send it for logging.
-        self.log.do_send(audit);
-        res
-    }
-}
-
 // Auth requests? How do we structure these ...
 
 #[cfg(test)]
@@ -1158,36 +913,25 @@ mod tests {
 
     macro_rules! run_test {
         ($test_fn:expr) => {{
-            System::run(|| {
-                let mut audit = AuditScope::new("run_test");
-                let test_log = log::start();
+            let mut audit = AuditScope::new("run_test");
 
-                let be = Backend::new(&mut audit, "").unwrap();
-                let mut schema_outer = Schema::new(&mut audit).unwrap();
-                {
-                    let mut schema = schema_outer.write();
-                    schema.bootstrap_core(&mut audit).unwrap();
-                    schema.commit();
-                }
-                let test_server = QueryServer::new(test_log.clone(), be, Arc::new(schema_outer));
+            let be = Backend::new(&mut audit, "").unwrap();
+            let mut schema_outer = Schema::new(&mut audit).unwrap();
+            {
+                let mut schema = schema_outer.write();
+                schema.bootstrap_core(&mut audit).unwrap();
+                schema.commit();
+            }
+            let test_server = QueryServer::new(be, Arc::new(schema_outer));
 
-                // Could wrap another future here for the future::ok bit...
-                let fut = $test_fn(test_log.clone(), test_server, &mut audit);
-                let comp_fut = fut.map_err(|()| ()).and_then(move |_r| {
-                    test_log.do_send(audit);
-                    println!("Stopping actix ...");
-                    actix::System::current().stop();
-                    future::result(Ok(()))
-                });
-
-                tokio::spawn(comp_fut);
-            });
+            $test_fn(test_server, &mut audit);
+            // Any needed teardown?
         }};
     }
 
     #[test]
     fn test_qs_create_user() {
-        run_test!(|_log, mut server: QueryServer, audit: &mut AuditScope| {
+        run_test!(|mut server: QueryServer, audit: &mut AuditScope| {
             let mut server_txn = server.write();
             let filt = ProtoFilter::Pres(String::from("name"));
 
@@ -1226,14 +970,12 @@ mod tests {
             assert_eq!(r2, expected);
 
             assert!(server_txn.commit(audit).is_ok());
-
-            future::ok(())
         });
     }
 
     #[test]
     fn test_qs_init_idempotent_1() {
-        run_test!(|_log, mut server: QueryServer, audit: &mut AuditScope| {
+        run_test!(|mut server: QueryServer, audit: &mut AuditScope| {
             {
                 // Setup and abort.
                 let server_txn = server.write();
@@ -1256,14 +998,12 @@ mod tests {
                 assert!(server_txn.initialise(audit).is_ok());
                 assert!(server_txn.commit(audit).is_ok());
             }
-
-            future::ok(())
         });
     }
 
     #[test]
     fn test_qs_modify() {
-        run_test!(|_log, mut server: QueryServer, audit: &mut AuditScope| {
+        run_test!(|mut server: QueryServer, audit: &mut AuditScope| {
             // Create an object
             let mut server_txn = server.write();
 
@@ -1373,7 +1113,6 @@ mod tests {
             assert!(server_txn.modify(audit, &me_mult).is_ok());
 
             assert!(server_txn.commit(audit).is_ok());
-            future::ok(())
         })
     }
 
@@ -1381,7 +1120,7 @@ mod tests {
     fn test_modify_invalid_class() {
         // Test modifying an entry and adding an extra class, that would cause the entry
         // to no longer conform to schema.
-        run_test!(|_log, mut server: QueryServer, audit: &mut AuditScope| {
+        run_test!(|mut server: QueryServer, audit: &mut AuditScope| {
             let mut server_txn = server.write();
 
             let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
@@ -1444,13 +1183,12 @@ mod tests {
                 ]),
             );
             assert!(server_txn.modify(audit, &me_sin).is_ok());
-            future::ok(())
         })
     }
 
     #[test]
     fn test_qs_delete() {
-        run_test!(|_log, mut server: QueryServer, audit: &mut AuditScope| {
+        run_test!(|mut server: QueryServer, audit: &mut AuditScope| {
             // Create
             let mut server_txn = server.write();
 
@@ -1530,13 +1268,12 @@ mod tests {
             assert!(server_txn.delete(audit, &de_mult).is_ok());
 
             assert!(server_txn.commit(audit).is_ok());
-            future::ok(())
         })
     }
 
     #[test]
     fn test_qs_tombstone() {
-        run_test!(|_log, mut server: QueryServer, audit: &mut AuditScope| {
+        run_test!(|mut server: QueryServer, audit: &mut AuditScope| {
             let mut server_txn = server.write();
 
             let filt_ts = ProtoFilter::Eq(String::from("class"), String::from("tombstone"));
@@ -1599,13 +1336,12 @@ mod tests {
             assert!(r3.len() == 0);
 
             assert!(server_txn.commit(audit).is_ok());
-            future::ok(())
         })
     }
 
     #[test]
     fn test_qs_recycle_simple() {
-        run_test!(|_log, mut server: QueryServer, audit: &mut AuditScope| {
+        run_test!(|mut server: QueryServer, audit: &mut AuditScope| {
             let mut server_txn = server.write();
 
             let filt_rc = ProtoFilter::Eq(String::from("class"), String::from("recycled"));
@@ -1717,14 +1453,13 @@ mod tests {
             assert!(r5.len() == 1);
 
             assert!(server_txn.commit(audit).is_ok());
-            future::ok(())
         })
     }
 
     // The delete test above should be unaffected by recycle anyway
     #[test]
     fn test_qs_recycle_advanced() {
-        run_test!(|_log, mut server: QueryServer, audit: &mut AuditScope| {
+        run_test!(|mut server: QueryServer, audit: &mut AuditScope| {
             // Create items
             let mut server_txn = server.write();
 
@@ -1764,7 +1499,6 @@ mod tests {
             assert!(cr.is_err());
 
             assert!(server_txn.commit(audit).is_ok());
-            future::ok(())
         })
     }
 }
