@@ -500,7 +500,10 @@ impl<STATE> Entry<EntryValid, STATE> {
         }
     }
 
-    pub fn gen_modlist_assert(&self, schema: &SchemaReadTransaction) -> Result<ModifyList, ()> {
+    pub fn gen_modlist_assert(
+        &self,
+        schema: &SchemaReadTransaction,
+    ) -> Result<ModifyList, SchemaError> {
         // Create a modlist from this entry. We make this assuming we want the entry
         // to have this one as a subset of values. This means if we have single
         // values, we'll replace, if they are multivalue, we present them.
@@ -517,7 +520,7 @@ impl<STATE> Entry<EntryValid, STATE> {
                     }
                 }
                 // TODO: Do something with this error properly.
-                Err(e) => return Err(()),
+                Err(e) => return Err(e),
             }
             for v in vs {
                 mods.push_mod(Modify::Present(k.clone(), v.clone()));

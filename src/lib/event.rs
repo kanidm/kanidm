@@ -5,7 +5,7 @@ use super::proto_v1::{
     OperationResponse, ReviveRecycledRequest, SearchRecycledRequest, SearchRequest, SearchResponse,
 };
 use entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
-use error::OperationError;
+// use error::OperationError;
 use modify::ModifyList;
 
 use actix::prelude::*;
@@ -245,7 +245,7 @@ impl ModifyEvent {
 pub struct AuthEvent {}
 
 impl AuthEvent {
-    pub fn from_request(request: AuthRequest) -> Self {
+    pub fn from_request(_request: AuthRequest) -> Self {
         AuthEvent {}
     }
 }

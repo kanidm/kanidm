@@ -2,22 +2,15 @@ use actix::prelude::*;
 use std::sync::Arc;
 
 use audit::AuditScope;
-use be::{
-    Backend, BackendError, BackendReadTransaction, BackendTransaction, BackendWriteTransaction,
-};
+use be::Backend;
 
-use constants::{JSON_ANONYMOUS_V1, JSON_SYSTEM_INFO_V1};
-use entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
-use error::{OperationError, SchemaError};
+use error::OperationError;
 use event::{
-    AuthEvent, AuthResult, CreateEvent, DeleteEvent, ExistsEvent, ModifyEvent, OpResult,
-    PurgeRecycledEvent, PurgeTombstoneEvent, ReviveRecycledEvent, SearchEvent, SearchResult,
+    CreateEvent, DeleteEvent, ModifyEvent, OpResult, PurgeRecycledEvent, PurgeTombstoneEvent,
+    SearchEvent, SearchResult,
 };
-use filter::{Filter, FilterInvalid};
 use log::EventLog;
-use modify::{Modify, ModifyList};
-use plugins::Plugins;
-use schema::{Schema, SchemaReadTransaction, SchemaTransaction, SchemaWriteTransaction};
+use schema::{Schema, SchemaReadTransaction};
 
 use server::{QueryServer, QueryServerReadTransaction};
 

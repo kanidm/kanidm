@@ -11,12 +11,8 @@ use be::{
 use constants::{JSON_ANONYMOUS_V1, JSON_SYSTEM_INFO_V1};
 use entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
 use error::{OperationError, SchemaError};
-use event::{
-    AuthEvent, AuthResult, CreateEvent, DeleteEvent, ExistsEvent, ModifyEvent, OpResult,
-    PurgeRecycledEvent, PurgeTombstoneEvent, ReviveRecycledEvent, SearchEvent, SearchResult,
-};
+use event::{CreateEvent, DeleteEvent, ExistsEvent, ModifyEvent, ReviveRecycledEvent, SearchEvent};
 use filter::{Filter, FilterInvalid};
-use log::EventLog;
 use modify::{Modify, ModifyList};
 use plugins::Plugins;
 use schema::{Schema, SchemaReadTransaction, SchemaTransaction, SchemaWriteTransaction};
