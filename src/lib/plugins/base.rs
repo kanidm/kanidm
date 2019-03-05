@@ -157,7 +157,7 @@ mod tests {
                 };
 
                 let ce = CreateEvent::from_vec($create_entries.clone());
-                let mut schema_be = Schema::new(&mut au).unwrap();
+                let schema_be = Schema::new(&mut au).unwrap();
                 let mut schema = schema_be.write();
                 schema.bootstrap_core(&mut au).unwrap();
 
@@ -170,8 +170,8 @@ mod tests {
                     &schema,
                 ));
 
-                schema.commit();
-                be_txn.commit();
+                schema.commit().unwrap();
+                be_txn.commit().unwrap();
 
                 au.append_scope(au_test);
             });

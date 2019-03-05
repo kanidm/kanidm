@@ -1018,11 +1018,11 @@ mod tests {
             let mut audit = AuditScope::new("run_test");
 
             let be = Backend::new(&mut audit, "").unwrap();
-            let mut schema_outer = Schema::new(&mut audit).unwrap();
+            let schema_outer = Schema::new(&mut audit).unwrap();
             {
                 let mut schema = schema_outer.write();
                 schema.bootstrap_core(&mut audit).unwrap();
-                schema.commit();
+                schema.commit().unwrap();
             }
             let test_server = QueryServer::new(be, Arc::new(schema_outer));
 
@@ -1033,8 +1033,8 @@ mod tests {
 
     #[test]
     fn test_qs_create_user() {
-        run_test!(|mut server: QueryServer, audit: &mut AuditScope| {
-            let mut server_txn = server.write();
+        run_test!(|server: QueryServer, audit: &mut AuditScope| {
+            let server_txn = server.write();
             let filt = ProtoFilter::Pres(String::from("name"));
 
             let se1 = SearchEvent::from_request(SearchRequest::new(filt.clone()));
@@ -1077,7 +1077,7 @@ mod tests {
 
     #[test]
     fn test_qs_init_idempotent_1() {
-        run_test!(|mut server: QueryServer, audit: &mut AuditScope| {
+        run_test!(|server: QueryServer, audit: &mut AuditScope| {
             {
                 // Setup and abort.
                 let server_txn = server.write();
@@ -1105,9 +1105,9 @@ mod tests {
 
     #[test]
     fn test_qs_modify() {
-        run_test!(|mut server: QueryServer, audit: &mut AuditScope| {
+        run_test!(|server: QueryServer, audit: &mut AuditScope| {
             // Create an object
-            let mut server_txn = server.write();
+            let server_txn = server.write();
 
             let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
                 r#"{
@@ -1222,8 +1222,8 @@ mod tests {
     fn test_modify_invalid_class() {
         // Test modifying an entry and adding an extra class, that would cause the entry
         // to no longer conform to schema.
-        run_test!(|mut server: QueryServer, audit: &mut AuditScope| {
-            let mut server_txn = server.write();
+        run_test!(|server: QueryServer, audit: &mut AuditScope| {
+            let server_txn = server.write();
 
             let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
                 r#"{
@@ -1290,9 +1290,9 @@ mod tests {
 
     #[test]
     fn test_qs_delete() {
-        run_test!(|mut server: QueryServer, audit: &mut AuditScope| {
+        run_test!(|server: QueryServer, audit: &mut AuditScope| {
             // Create
-            let mut server_txn = server.write();
+            let server_txn = server.write();
 
             let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
                 r#"{
@@ -1375,8 +1375,8 @@ mod tests {
 
     #[test]
     fn test_qs_tombstone() {
-        run_test!(|mut server: QueryServer, audit: &mut AuditScope| {
-            let mut server_txn = server.write();
+        run_test!(|server: QueryServer, audit: &mut AuditScope| {
+            let server_txn = server.write();
 
             let filt_ts = ProtoFilter::Eq(String::from("class"), String::from("tombstone"));
 
@@ -1443,8 +1443,8 @@ mod tests {
 
     #[test]
     fn test_qs_recycle_simple() {
-        run_test!(|mut server: QueryServer, audit: &mut AuditScope| {
-            let mut server_txn = server.write();
+        run_test!(|server: QueryServer, audit: &mut AuditScope| {
+            let server_txn = server.write();
 
             let filt_rc = ProtoFilter::Eq(String::from("class"), String::from("recycled"));
 
@@ -1561,9 +1561,9 @@ mod tests {
     // The delete test above should be unaffected by recycle anyway
     #[test]
     fn test_qs_recycle_advanced() {
-        run_test!(|mut server: QueryServer, audit: &mut AuditScope| {
+        run_test!(|server: QueryServer, audit: &mut AuditScope| {
             // Create items
-            let mut server_txn = server.write();
+            let server_txn = server.write();
 
             let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
                 r#"{
@@ -1606,8 +1606,8 @@ mod tests {
 
     #[test]
     fn test_qs_name_to_uuid() {
-        run_test!(|mut server: QueryServer, audit: &mut AuditScope| {
-            let mut server_txn = server.write();
+        run_test!(|server: QueryServer, audit: &mut AuditScope| {
+            let server_txn = server.write();
 
             let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
                 r#"{
@@ -1644,8 +1644,8 @@ mod tests {
 
     #[test]
     fn test_qs_uuid_to_name() {
-        run_test!(|mut server: QueryServer, audit: &mut AuditScope| {
-            let mut server_txn = server.write();
+        run_test!(|server: QueryServer, audit: &mut AuditScope| {
+            let server_txn = server.write();
 
             let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
                 r#"{

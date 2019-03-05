@@ -569,7 +569,7 @@ mod tests {
             let mut audit = AuditScope::new("run_test");
 
             let be = Backend::new(&mut audit, "").unwrap();
-            let mut be_txn = be.write();
+            let be_txn = be.write();
 
             // Could wrap another future here for the future::ok bit...
             let r = $test_fn(&mut audit, &be_txn);

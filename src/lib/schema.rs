@@ -1329,7 +1329,7 @@ mod tests {
     fn test_schema_entry_normalise() {
         // Check that entries can be normalised sanely
         let mut audit = AuditScope::new("test_schema_entry_normalise");
-        let mut schema_outer = Schema::new(&mut audit).unwrap();
+        let schema_outer = Schema::new(&mut audit).unwrap();
         let mut schema = schema_outer.write();
         schema.bootstrap_core(&mut audit).unwrap();
 
@@ -1422,7 +1422,7 @@ mod tests {
     #[test]
     fn test_schema_bootstrap() {
         let mut audit = AuditScope::new("test_schema_bootstrap");
-        let mut schema_outer = Schema::new(&mut audit).unwrap();
+        let schema_outer = Schema::new(&mut audit).unwrap();
         let mut schema = schema_outer.write();
         schema.bootstrap_core(&mut audit).unwrap();
 
