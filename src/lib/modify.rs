@@ -27,6 +27,9 @@ pub struct ModifyList {
     pub mods: Vec<Modify>,
 }
 
+// TODO: ModifyList should be like filter and have valid/invalid to schema.
+// Or do we not care because the entry will be invalid at the end?
+
 impl ModifyList {
     pub fn new() -> Self {
         ModifyList { mods: Vec::new() }

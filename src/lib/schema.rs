@@ -4,8 +4,7 @@ use super::constants::*;
 use super::error::{OperationError, SchemaError};
 // use super::filter::Filter;
 use std::collections::HashMap;
-// Apparently this is nightly only?
-use modify::ModifyList;
+// use modify::ModifyList;
 use regex::Regex;
 use std::convert::TryFrom;
 use std::str::FromStr;
@@ -309,10 +308,6 @@ pub trait SchemaReadTransaction {
 
     fn validate(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
         self.get_inner().validate(audit)
-    }
-
-    fn normalise_modlist(&self, modlist: &ModifyList) -> ModifyList {
-        unimplemented!()
     }
 
     fn is_multivalue(&self, attr: &str) -> Result<bool, SchemaError> {
@@ -999,8 +994,8 @@ mod tests {
     use super::super::constants::*;
     use super::super::entry::{Entry, EntryInvalid, EntryNew, EntryValid};
     use super::super::error::SchemaError;
-    use super::super::filter::{Filter, FilterInvalid, FilterValid};
-    use super::{IndexType, Schema, SchemaAttribute, SchemaClass, SyntaxType};
+    use super::super::filter::{Filter, FilterValid};
+    use super::{IndexType, Schema, SchemaAttribute, SyntaxType};
     use schema::SchemaReadTransaction;
     use serde_json;
     use std::convert::TryFrom;

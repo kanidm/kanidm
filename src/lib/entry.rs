@@ -714,7 +714,7 @@ struct User {
 
 #[cfg(test)]
 mod tests {
-    use super::{Entry, EntryInvalid, EntryNew, User};
+    use super::{Entry, EntryInvalid, EntryNew};
     use modify::{Modify, ModifyList};
     use serde_json;
 

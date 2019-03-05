@@ -136,35 +136,9 @@ mod tests {
     // Create and remove. Perhaps add some core details?
     #[test]
     fn test_audit_simple() {
-        let mut au = AuditScope::new("au");
+        let au = AuditScope::new("au");
         let d = serde_json::to_string_pretty(&au).unwrap();
         println!("{}", d);
     }
 
-    fn test_audit_nested_inner(au: &mut AuditScope) {}
-
-    // Test calling nested functions and getting the details added correctly?
-    #[test]
-    fn test_audit_nested() {
-        let mut au = AuditScope::new("au");
-        test_audit_nested_inner(&mut au);
-        let d = serde_json::to_string_pretty(&au).unwrap();
-        println!("{}", d);
-    }
-
-    // Test failing to close an event
-    #[test]
-    fn test_audit_no_close() {
-        let mut au = AuditScope::new("au");
-        let d = serde_json::to_string_pretty(&au).unwrap();
-        println!("{}", d);
-    }
-
-    // Test logging
-    // specifically, logs should be sent to this struct and posted post-op
-    // rather that "during" the operation. They should be structured!
-    //
-    // IMO these should be structured as json?
-    #[test]
-    fn test_audit_logging() {}
 }

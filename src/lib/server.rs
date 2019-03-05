@@ -980,37 +980,38 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
 #[cfg(test)]
 mod tests {
+    /*
     extern crate actix;
     use actix::prelude::*;
 
     extern crate futures;
     use futures::future;
     use futures::future::Future;
-    use std::sync::Arc;
 
     extern crate tokio;
+    */
+    use std::sync::Arc;
+
 
     use super::super::audit::AuditScope;
-    use super::super::be::{Backend, BackendTransaction};
-    use super::super::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
+    use super::super::be::Backend;
+    use super::super::entry::{Entry, EntryInvalid, EntryNew};
     use super::super::error::{OperationError, SchemaError};
     use super::super::event::{
         CreateEvent, DeleteEvent, ModifyEvent, ReviveRecycledEvent, SearchEvent,
     };
     use super::super::filter::Filter;
-    use super::super::log;
     use super::super::modify::{Modify, ModifyList};
-    use super::super::proto_v1::Entry as ProtoEntry;
     use super::super::proto_v1::Filter as ProtoFilter;
     use super::super::proto_v1::Modify as ProtoModify;
     use super::super::proto_v1::ModifyList as ProtoModifyList;
     use super::super::proto_v1::{
-        CreateRequest, DeleteRequest, ModifyRequest, ReviveRecycledRequest, SearchRecycledRequest,
+        DeleteRequest, ModifyRequest, ReviveRecycledRequest, SearchRecycledRequest,
         SearchRequest,
     };
     use super::super::schema::Schema;
     use super::super::server::{
-        QueryServer, QueryServerReadTransaction, QueryServerWriteTransaction,
+        QueryServer, QueryServerReadTransaction
     };
 
     macro_rules! run_test {

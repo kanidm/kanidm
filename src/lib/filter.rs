@@ -280,16 +280,17 @@ impl PartialOrd for Filter<FilterValid> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Filter, FilterInvalid, FilterValid};
+    use super::{Filter, FilterInvalid};
     use entry::{Entry, EntryNew, EntryValid};
     use serde_json;
     use std::cmp::{Ordering, PartialOrd};
 
     #[test]
     fn test_filter_simple() {
-        let filt: Filter<FilterInvalid> = Filter::Eq(String::from("class"), String::from("user"));
+        // Test construction.
+        let _filt: Filter<FilterInvalid> = Filter::Eq(String::from("class"), String::from("user"));
 
-        let complex_filt: Filter<FilterInvalid> = Filter::And(vec![
+        let _complex_filt: Filter<FilterInvalid> = Filter::And(vec![
             Filter::Or(vec![
                 Filter::Eq(String::from("userid"), String::from("test_a")),
                 Filter::Eq(String::from("userid"), String::from("test_b")),
@@ -398,11 +399,11 @@ mod tests {
         ]);
         assert!(e.entry_match_no_index(&f_t2a));
 
-        let f_t3a: Filter<FilterInvalid> = Filter::Or(vec![
+        let f_t3a = Filter::Or(vec![
             Filter::Eq(String::from("userid"), String::from("alice")),
             Filter::Eq(String::from("uidNumber"), String::from("1000")),
         ]);
-        assert!(e.entry_match_no_index(&f_t2a));
+        assert!(e.entry_match_no_index(&f_t3a));
 
         let f_t4a = Filter::Or(vec![
             Filter::Eq(String::from("userid"), String::from("alice")),

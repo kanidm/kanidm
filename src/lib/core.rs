@@ -205,8 +205,9 @@ pub fn create_server_core(config: Configuration) {
     let server_addr =
         match QueryServerV1::start(log_addr.clone(), config.db_path.as_str(), config.threads) {
             Ok(addr) => addr,
-            Err(e) => {
+            Err(_e) => {
                 // Oh shiiiiiiii
+                // TODO: Handle this properly.
                 unimplemented!()
             }
         };

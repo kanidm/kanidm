@@ -27,7 +27,7 @@ pub struct QueryServerV1 {
 impl Actor for QueryServerV1 {
     type Context = SyncContext<Self>;
 
-    fn started(&mut self, ctx: &mut Self::Context) {
+    fn started(&mut self, _ctx: &mut Self::Context) {
         // ctx.set_mailbox_capacity(1 << 31);
     }
 }

@@ -385,12 +385,12 @@ impl BackendWriteTransaction {
         })
     }
 
-    pub fn backup(&self) -> Result<(), BackendError> {
+    pub fn backup(&self, audit: &mut AuditScope) -> Result<(), BackendError> {
         unimplemented!()
     }
 
     // Should this be offline only?
-    pub fn restore(&self) -> Result<(), BackendError> {
+    pub fn restore(&self, audit: &mut AuditScope) -> Result<(), BackendError> {
         unimplemented!()
     }
 
@@ -548,20 +548,12 @@ impl Clone for Backend {
 
 #[cfg(test)]
 mod tests {
-    extern crate actix;
-    use actix::prelude::*;
-
-    extern crate futures;
-    use futures::future;
-    use futures::future::Future;
-
-    extern crate tokio;
 
     use super::super::audit::AuditScope;
-    use super::super::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
+    use super::super::entry::{Entry, EntryInvalid, EntryNew};
     use super::super::filter::Filter;
     use super::{
-        Backend, BackendError, BackendReadTransaction, BackendTransaction, BackendWriteTransaction,
+        Backend, BackendError, BackendReadTransaction, BackendWriteTransaction,
     };
 
     macro_rules! run_test {
@@ -625,8 +617,9 @@ mod tests {
 
     #[test]
     fn test_simple_search() {
-        run_test!(|audit: &mut AuditScope, be: &BackendWriteTransaction| {
+        run_test!(|audit: &mut AuditScope, _be: &BackendWriteTransaction| {
             audit_log!(audit, "Simple Search");
+            unimplemented!();
         });
     }
 
@@ -760,8 +753,8 @@ mod tests {
     #[test]
     fn test_backup_restore() {
         run_test!(|audit: &mut AuditScope, be: &BackendWriteTransaction| {
-            be.restore();
-            be.backup();
+            be.restore(audit).unwrap();
+            be.backup(audit).unwrap();
         });
     }
 }
