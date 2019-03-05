@@ -261,9 +261,12 @@ impl SchemaAttribute {
     }
 
     pub fn normalise_uuid(&self, v: &String) -> String {
-        // We unwrap here as we should already have been validated ...
-        let c_uuid = Uuid::parse_str(v.as_str()).unwrap();
-        c_uuid.to_hyphenated().to_string()
+        // If we can, normalise, else return the original as a clone
+        // and validate will catch it later.
+        match Uuid::parse_str(v.as_str()) {
+            Ok(inner) => inner.to_hyphenated().to_string(),
+            Err(_) => v.clone(),
+        }
     }
 
     // FIXME: This clones everything, which is expensive!

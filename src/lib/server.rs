@@ -154,18 +154,47 @@ pub trait QueryServerReadTransaction {
         Ok(uuid_res)
     }
 
-    fn uuid_to_name(&self, audit: &mut AuditScope, &String) -> Result<String, OperationError> {
-        // Construct filter
+    fn uuid_to_name(
+        &self,
+        audit: &mut AuditScope,
+        uuid: &String,
+    ) -> Result<String, OperationError> {
+        // construct the filter
+        let filt = Filter::new_ignore_hidden(Filter::Eq("uuid".to_string(), uuid.clone()));
+        audit_log!(audit, "uuid_to_name: uuid -> {:?}", uuid);
 
         // Internal search - DO NOT SEARCH TOMBSTONES AND RECYCLE
+        let res = match self.internal_search(audit, filt) {
+            Ok(e) => e,
+            Err(e) => return Err(e),
+        };
 
-        // If result len == 0, error no such result
-        // if result len >= 2, error, invaid entry state.
+        audit_log!(audit, "uuid_to_name: results -- {:?}", res);
 
-        // Get the name
+        if res.len() == 0 {
+            // If result len == 0, error no such result
+            return Err(OperationError::NoMatchingEntries);
+        } else if res.len() >= 2 {
+            // if result len >= 2, error, invaid entry state.
+            return Err(OperationError::InvalidDBState);
+        }
 
-        // Return it.
-        unimplemented!();
+        // TODO: Is there a better solution here than this?
+        // Perhaps we could res.first, then unwrap the some
+        // for 0/1 case, but check len for >= 2 to eliminate that case.
+        let e = res.first().unwrap();
+        // Get the uuid from the entry. Again, check it exists, and only one.
+        let name_res = match e.get_ava(&String::from("name")) {
+            Some(vas) => match vas.first() {
+                Some(u) => u.clone(),
+                None => return Err(OperationError::InvalidEntryState),
+            },
+            None => return Err(OperationError::InvalidEntryState),
+        };
+
+        audit_log!(audit, "uuid_to_name: name <- {:?}", name_res);
+
+        Ok(name_res)
     }
 
     // From internal, generate an exists event and dispatch
@@ -1609,7 +1638,47 @@ mod tests {
             assert!(r3.is_ok());
             // Name is not syntax normalised (but exists)
             let r4 = server_txn.name_to_uuid(audit, &String::from("tEsTpErSoN1"));
-            println!("{:?}", r4);
+            assert!(r4.is_ok());
+        })
+    }
+
+    #[test]
+    fn test_qs_uuid_to_name() {
+        run_test!(|mut server: QueryServer, audit: &mut AuditScope| {
+            let mut server_txn = server.write();
+
+            let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+                r#"{
+                "valid": null,
+                "state": null,
+                "attrs": {
+                    "class": ["object", "person"],
+                    "name": ["testperson1"],
+                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
+                    "description": ["testperson"],
+                    "displayname": ["testperson1"]
+                }
+            }"#,
+            )
+            .unwrap();
+            let ce = CreateEvent::from_vec(vec![e1]);
+            let cr = server_txn.create(audit, &ce);
+            assert!(cr.is_ok());
+
+            // Name doesn't exist
+            let r1 = server_txn
+                .uuid_to_name(audit, &String::from("bae3f507-e6c3-44ba-ad01-f8ff1083534a"));
+            assert!(r1.is_err());
+            // Name doesn't exist (not syntax normalised)
+            let r2 = server_txn.uuid_to_name(audit, &String::from("bae3f507-e6c3-44ba-ad01"));
+            assert!(r2.is_err());
+            // Name does exist
+            let r3 = server_txn
+                .uuid_to_name(audit, &String::from("cc8e95b4-c24f-4d68-ba54-8bed76f63930"));
+            assert!(r3.is_ok());
+            // Name is not syntax normalised (but exists)
+            let r4 = server_txn
+                .uuid_to_name(audit, &String::from("CC8E95B4-C24F-4D68-BA54-8BED76F63930"));
             assert!(r4.is_ok());
         })
     }
