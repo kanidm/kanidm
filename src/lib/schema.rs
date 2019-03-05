@@ -1479,29 +1479,27 @@ mod tests {
         let f_insense = Filter::Eq("class".to_string(), "AttributeType".to_string());
         assert_eq!(
             f_insense.validate(&schema),
-            Err(SchemaError::InvalidAttributeSyntax)
+            Ok(Filter::Eq("class".to_string(), "attributetype".to_string()))
         );
         // Test the recursive structures validate
         let f_or_empty = Filter::Or(Vec::new());
         assert_eq!(f_or_empty.validate(&schema), Err(SchemaError::EmptyFilter));
-        let f_or = Filter::Or(vec![Filter::Eq(
-            "class".to_string(),
-            "AttributeType".to_string(),
-        )]);
+        let f_or = Filter::Or(vec![Filter::Eq("secret".to_string(), "zzzz".to_string())]);
         assert_eq!(
             f_or.validate(&schema),
             Err(SchemaError::InvalidAttributeSyntax)
         );
         let f_or_mult = Filter::And(vec![
             Filter::Eq("class".to_string(), "attributetype".to_string()),
-            Filter::Eq("class".to_string(), "AttributeType".to_string()),
+            Filter::Eq("secret".to_string(), "zzzzzzz".to_string()),
         ]);
         assert_eq!(
             f_or_mult.validate(&schema),
             Err(SchemaError::InvalidAttributeSyntax)
         );
+        // Test mixed case attr name - this is a pass, due to normalisation
         let f_or_ok = Filter::AndNot(Box::new(Filter::And(vec![
-            Filter::Eq("class".to_string(), "attributetype".to_string()),
+            Filter::Eq("Class".to_string(), "AttributeType".to_string()),
             Filter::Sub("class".to_string(), "classtype".to_string()),
             Filter::Pres("class".to_string()),
         ])));
@@ -1513,7 +1511,6 @@ mod tests {
                 Filter::Pres("class".to_string()),
             ]))))
         );
-        // Test mixed case attr name - this is a pass, due to normalisation
         println!("{}", audit);
     }
 

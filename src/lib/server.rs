@@ -36,21 +36,21 @@ pub trait QueryServerReadTransaction {
         au: &mut AuditScope,
         se: &SearchEvent,
     ) -> Result<Vec<Entry<EntryValid, EntryCommitted>>, OperationError> {
-        // How to get schema?
+        audit_log!(au, "search: filter -> {:?}", se.filter);
+
         // This is an important security step because it prevents us from
         // performing un-indexed searches on attr's that don't exist in the
         // server. This is why ExtensibleObject can only take schema that
         // exists in the server, not arbitrary attr names.
-        audit_log!(au, "search: filter -> {:?}", se.filter);
-
-        // TODO: Normalise the filter
-
-        // TODO: Validate the filter
+        //
+        // This normalises and validates in a single step.
         let vf = match se.filter.validate(self.get_schema()) {
             Ok(f) => f,
             // TODO: Do something with this error
             Err(e) => return Err(OperationError::SchemaViolation(e)),
         };
+
+        audit_log!(au, "search: valid filter -> {:?}", vf);
 
         // TODO: Assert access control allows the filter and requested attrs.
 
@@ -89,6 +89,83 @@ pub trait QueryServerReadTransaction {
             .map_err(|_| OperationError::Backend);
         au.append_scope(audit_be);
         res
+    }
+
+    // TODO: Should this actually be names_to_uuids and we do batches?
+    //  In the initial design "no", we can always write a batched
+    //  interface later.
+    //
+    // The main question is if we need association between the name and
+    // the request uuid - if we do, we need singular. If we don't, we can
+    // just do the batching.
+    //
+    // Filter conversion likely needs 1:1, due to and/or conversions
+    // but create/mod likely doesn't due to the nature of the attributes.
+    //
+    // In the end, singular is the simple and correct option, so lets do
+    // that first, and we can add batched (and cache!) later.
+    //
+    // Remember, we don't care if the name is invalid, because search
+    // will validate/normalise the filter we construct for us. COOL!
+    fn name_to_uuid(
+        &self,
+        audit: &mut AuditScope,
+        name: &String,
+    ) -> Result<String, OperationError> {
+        // For now this just constructs a filter and searches, but later
+        // we could actually improve this to contact the backend and do
+        // index searches, completely bypassing id2entry.
+
+        // construct the filter
+        let filt = Filter::new_ignore_hidden(Filter::Eq("name".to_string(), name.clone()));
+        audit_log!(audit, "name_to_uuid: name -> {:?}", name);
+
+        // Internal search - DO NOT SEARCH TOMBSTONES AND RECYCLE
+        let res = match self.internal_search(audit, filt) {
+            Ok(e) => e,
+            Err(e) => return Err(e),
+        };
+
+        audit_log!(audit, "name_to_uuid: results -- {:?}", res);
+
+        if res.len() == 0 {
+            // If result len == 0, error no such result
+            return Err(OperationError::NoMatchingEntries);
+        } else if res.len() >= 2 {
+            // if result len >= 2, error, invaid entry state.
+            return Err(OperationError::InvalidDBState);
+        }
+
+        // TODO: Is there a better solution here than this?
+        // Perhaps we could res.first, then unwrap the some
+        // for 0/1 case, but check len for >= 2 to eliminate that case.
+        let e = res.first().unwrap();
+        // Get the uuid from the entry. Again, check it exists, and only one.
+        let uuid_res = match e.get_ava(&String::from("uuid")) {
+            Some(vas) => match vas.first() {
+                Some(u) => u.clone(),
+                None => return Err(OperationError::InvalidEntryState),
+            },
+            None => return Err(OperationError::InvalidEntryState),
+        };
+
+        audit_log!(audit, "name_to_uuid: uuid <- {:?}", uuid_res);
+
+        Ok(uuid_res)
+    }
+
+    fn uuid_to_name(&self, audit: &mut AuditScope, &String) -> Result<String, OperationError> {
+        // Construct filter
+
+        // Internal search - DO NOT SEARCH TOMBSTONES AND RECYCLE
+
+        // If result len == 0, error no such result
+        // if result len >= 2, error, invaid entry state.
+
+        // Get the name
+
+        // Return it.
+        unimplemented!();
     }
 
     // From internal, generate an exists event and dispatch
@@ -1495,6 +1572,45 @@ mod tests {
             assert!(cr.is_err());
 
             assert!(server_txn.commit(audit).is_ok());
+        })
+    }
+
+    #[test]
+    fn test_qs_name_to_uuid() {
+        run_test!(|mut server: QueryServer, audit: &mut AuditScope| {
+            let mut server_txn = server.write();
+
+            let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+                r#"{
+                "valid": null,
+                "state": null,
+                "attrs": {
+                    "class": ["object", "person"],
+                    "name": ["testperson1"],
+                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
+                    "description": ["testperson"],
+                    "displayname": ["testperson1"]
+                }
+            }"#,
+            )
+            .unwrap();
+            let ce = CreateEvent::from_vec(vec![e1]);
+            let cr = server_txn.create(audit, &ce);
+            assert!(cr.is_ok());
+
+            // Name doesn't exist
+            let r1 = server_txn.name_to_uuid(audit, &String::from("testpers"));
+            assert!(r1.is_err());
+            // Name doesn't exist (not syntax normalised)
+            let r2 = server_txn.name_to_uuid(audit, &String::from("tEsTpErS"));
+            assert!(r2.is_err());
+            // Name does exist
+            let r3 = server_txn.name_to_uuid(audit, &String::from("testperson1"));
+            assert!(r3.is_ok());
+            // Name is not syntax normalised (but exists)
+            let r4 = server_txn.name_to_uuid(audit, &String::from("tEsTpErSoN1"));
+            println!("{:?}", r4);
+            assert!(r4.is_ok());
         })
     }
 }

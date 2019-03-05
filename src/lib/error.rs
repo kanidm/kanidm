@@ -24,5 +24,6 @@ pub enum OperationError {
     InvalidDBState,
     InvalidRequestState,
     InvalidState,
+    InvalidEntryState,
     BackendEngine,
 }

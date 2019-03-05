@@ -68,6 +68,25 @@ impl Filter<FilterValid> {
 }
 
 impl Filter<FilterInvalid> {
+    pub fn new_ignore_hidden(inner: Filter<FilterInvalid>) -> Self {
+        // Create a new filter, that ignores hidden entries.
+        Filter::And(vec![
+            Filter::AndNot(Box::new(Filter::Or(vec![
+                Filter::Eq("class".to_string(), "tombstone".to_string()),
+                Filter::Eq("class".to_string(), "recycled".to_string()),
+            ]))),
+            inner,
+        ])
+    }
+
+    pub fn new_recycled(inner: Filter<FilterInvalid>) -> Self {
+        // Create a filter that searches recycled items only.
+        Filter::And(vec![
+            Filter::Eq("class".to_string(), "recycled".to_string()),
+            inner,
+        ])
+    }
+
     pub fn validate(
         &self,
         schema: &SchemaReadTransaction,
@@ -96,7 +115,7 @@ impl Filter<FilterInvalid> {
                     Some(schema_a) => {
                         let value_norm = schema_a.normalise_value(value);
                         schema_a
-                            .validate_value(value)
+                            .validate_value(&value_norm)
                             // Okay, it worked, transform to a filter component
                             .map(|_| Filter::Eq(attr_norm, value_norm))
                         // On error, pass the error back out.
@@ -112,7 +131,7 @@ impl Filter<FilterInvalid> {
                     Some(schema_a) => {
                         let value_norm = schema_a.normalise_value(value);
                         schema_a
-                            .validate_value(value)
+                            .validate_value(&value_norm)
                             // Okay, it worked, transform to a filter component
                             .map(|_| Filter::Sub(attr_norm, value_norm))
                         // On error, pass the error back out.

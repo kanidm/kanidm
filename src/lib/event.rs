@@ -69,13 +69,7 @@ impl SearchEvent {
     pub fn from_request(request: SearchRequest) -> Self {
         SearchEvent {
             internal: false,
-            filter: Filter::And(vec![
-                Filter::AndNot(Box::new(Filter::Or(vec![
-                    Filter::Eq("class".to_string(), "tombstone".to_string()),
-                    Filter::Eq("class".to_string(), "recycled".to_string()),
-                ]))),
-                Filter::from(&request.filter),
-            ]),
+            filter: Filter::new_ignore_hidden(Filter::from(&request.filter)),
             class: (),
         }
     }
@@ -90,10 +84,7 @@ impl SearchEvent {
 
     pub fn from_rec_request(request: SearchRecycledRequest) -> Self {
         SearchEvent {
-            filter: Filter::And(vec![
-                Filter::Eq("class".to_string(), "recycled".to_string()),
-                Filter::from(&request.filter),
-            ]),
+            filter: Filter::new_recycled(Filter::from(&request.filter)),
             internal: false,
             class: (),
         }
@@ -174,13 +165,7 @@ pub struct DeleteEvent {
 impl DeleteEvent {
     pub fn from_request(request: DeleteRequest) -> Self {
         DeleteEvent {
-            filter: Filter::And(vec![
-                Filter::AndNot(Box::new(Filter::Or(vec![
-                    Filter::Eq("class".to_string(), "tombstone".to_string()),
-                    Filter::Eq("class".to_string(), "recycled".to_string()),
-                ]))),
-                Filter::from(&request.filter),
-            ]),
+            filter: Filter::new_ignore_hidden(Filter::from(&request.filter)),
             internal: false,
         }
     }
@@ -211,13 +196,7 @@ pub struct ModifyEvent {
 impl ModifyEvent {
     pub fn from_request(request: ModifyRequest) -> Self {
         ModifyEvent {
-            filter: Filter::And(vec![
-                Filter::AndNot(Box::new(Filter::Or(vec![
-                    Filter::Eq("class".to_string(), "tombstone".to_string()),
-                    Filter::Eq("class".to_string(), "recycled".to_string()),
-                ]))),
-                Filter::from(&request.filter),
-            ]),
+            filter: Filter::new_ignore_hidden(Filter::from(&request.filter)),
             modlist: ModifyList::from(&request.modlist),
             internal: false,
         }
@@ -301,10 +280,7 @@ impl Message for ReviveRecycledEvent {
 impl ReviveRecycledEvent {
     pub fn from_request(request: ReviveRecycledRequest) -> Self {
         ReviveRecycledEvent {
-            filter: Filter::And(vec![
-                Filter::Eq("class".to_string(), "recycled".to_string()),
-                Filter::from(&request.filter),
-            ]),
+            filter: Filter::new_recycled(Filter::from(&request.filter)),
             internal: false,
         }
     }
