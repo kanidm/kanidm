@@ -357,32 +357,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             return plug_pre_res;
         }
 
-        // TODO: Rework this to be better.
-        /*
-        let (norm_cand, invalid_cand): (
-            Vec<Result<Entry<EntryValid, EntryNew>, _>>,
-            Vec<Result<_, SchemaError>>,
-        ) = candidates
-            .into_iter()
-            .map(|e| e.validate(&self.schema))
-            .partition(|e| e.is_ok());
-
-        for err in invalid_cand.iter() {
-            audit_log!(au, "Schema Violation: {:?}", err);
-        }
-
-        for err in invalid_cand.iter() {
-            return Err(OperationError::SchemaViolation(err.unwrap_err()));
-        }
-
-        let norm_cand: Vec<Entry<EntryValid, EntryNew>> = norm_cand
-            .into_iter()
-            .map(|e| match e {
-                Ok(v) => v,
-                Err(_) => panic!("Invalid data set state!!!"),
-            })
-            .collect();
-        */
+        // NOTE: This is how you map from Vec<Result<T>> to Result<Vec<T>>
+        // remember, that you only get the first error and the iter terminates.
 
         let res: Result<Vec<Entry<EntryValid, EntryNew>>, SchemaError> = candidates
             .into_iter()
