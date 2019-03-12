@@ -2,7 +2,7 @@
 use super::proto_v1::Entry as ProtoEntry;
 use error::SchemaError;
 use filter::{Filter, FilterValid};
-use modify::{Modify, ModifyList};
+use modify::{Modify, ModifyList, ModifyValid, ModifyInvalid};
 use schema::{SchemaAttribute, SchemaClass, SchemaReadTransaction};
 use std::collections::btree_map::{Iter as BTreeIter, IterMut as BTreeIterMut};
 use std::collections::BTreeMap;
@@ -503,7 +503,7 @@ impl<STATE> Entry<EntryValid, STATE> {
     pub fn gen_modlist_assert(
         &self,
         schema: &SchemaReadTransaction,
-    ) -> Result<ModifyList, SchemaError> {
+    ) -> Result<ModifyList<ModifyInvalid>, SchemaError> {
         // Create a modlist from this entry. We make this assuming we want the entry
         // to have this one as a subset of values. This means if we have single
         // values, we'll replace, if they are multivalue, we present them.
@@ -645,7 +645,7 @@ where
     }
 
     // Should this be schemaless, relying on checks of the modlist, and the entry validate after?
-    pub fn apply_modlist(&self, modlist: &ModifyList) -> Result<Entry<EntryInvalid, STATE>, ()> {
+    pub fn apply_modlist(&self, modlist: &ModifyList<ModifyValid>) -> Result<Entry<EntryInvalid, STATE>, ()> {
         // Apply a modlist, generating a new entry that conforms to the changes.
         // This is effectively clone-and-transform
 
@@ -658,7 +658,7 @@ where
         };
 
         // mutate
-        for modify in modlist.mods.iter() {
+        for modify in modlist {
             match modify {
                 Modify::Present(a, v) => ne.add_ava(a.clone(), v.clone()),
                 Modify::Removed(a, v) => ne.remove_ava(a, v),
@@ -770,10 +770,12 @@ mod tests {
         let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
         e.add_ava(String::from("userid"), String::from("william"));
 
-        let mods = ModifyList::new_list(vec![Modify::Present(
-            String::from("attr"),
-            String::from("value"),
-        )]);
+        let mods = unsafe {
+            ModifyList::new_valid_list(vec![Modify::Present(
+                String::from("attr"),
+                String::from("value"),
+            )])
+        };
 
         let ne = e.apply_modlist(&mods).unwrap();
 

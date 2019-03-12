@@ -6,7 +6,7 @@ use super::proto_v1::{
 };
 use entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
 // use error::OperationError;
-use modify::ModifyList;
+use modify::{ModifyList, ModifyInvalid};
 
 use actix::prelude::*;
 
@@ -189,7 +189,7 @@ impl DeleteEvent {
 #[derive(Debug)]
 pub struct ModifyEvent {
     pub filter: Filter<FilterInvalid>,
-    pub modlist: ModifyList,
+    pub modlist: ModifyList<ModifyInvalid>,
     pub internal: bool,
 }
 
@@ -203,7 +203,7 @@ impl ModifyEvent {
     }
 
     #[cfg(test)]
-    pub fn from_filter(filter: Filter<FilterInvalid>, modlist: ModifyList) -> Self {
+    pub fn from_filter(filter: Filter<FilterInvalid>, modlist: ModifyList<ModifyInvalid>) -> Self {
         ModifyEvent {
             filter: filter,
             modlist: modlist,
@@ -211,7 +211,7 @@ impl ModifyEvent {
         }
     }
 
-    pub fn new_internal(filter: Filter<FilterInvalid>, modlist: ModifyList) -> Self {
+    pub fn new_internal(filter: Filter<FilterInvalid>, modlist: ModifyList<ModifyInvalid>) -> Self {
         ModifyEvent {
             filter: filter,
             modlist: modlist,

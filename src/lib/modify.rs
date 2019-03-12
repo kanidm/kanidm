@@ -1,6 +1,17 @@
 use proto_v1::Modify as ProtoModify;
 use proto_v1::ModifyList as ProtoModifyList;
 
+use error::SchemaError;
+use schema::{SchemaAttribute, SchemaReadTransaction};
+
+// Should this be std?
+use std::slice;
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ModifyValid;
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ModifyInvalid;
+
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Modify {
     // This value *should* exist.
@@ -22,36 +33,79 @@ impl Modify {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct ModifyList {
-    // And ordered list of changes to apply. Should this be state based?
-    pub mods: Vec<Modify>,
+pub struct ModifyList<VALID> {
+    valid: VALID,
+    // The order of this list matters. Each change must be done in order.
+    mods: Vec<Modify>,
 }
 
 // TODO: ModifyList should be like filter and have valid/invalid to schema.
 // Or do we not care because the entry will be invalid at the end?
 
-impl ModifyList {
+impl<'a> IntoIterator for &'a ModifyList<ModifyValid> {
+    type Item = &'a Modify;
+    type IntoIter = slice::Iter<'a, Modify>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.mods.iter()
+    }
+}
+
+
+impl ModifyList<ModifyInvalid> {
     pub fn new() -> Self {
-        ModifyList { mods: Vec::new() }
+        ModifyList {
+            valid: ModifyInvalid,
+            mods: Vec::new()
+        }
     }
 
     pub fn new_list(mods: Vec<Modify>) -> Self {
-        ModifyList { mods: mods }
+        ModifyList {
+            valid: ModifyInvalid,
+            mods: mods
+        }
     }
 
     pub fn push_mod(&mut self, modify: Modify) {
         self.mods.push(modify)
     }
 
-    pub fn len(&self) -> usize {
-        self.mods.len()
-    }
-
     pub fn from(ml: &ProtoModifyList) -> Self {
         // For each ProtoModify, do a from.
-
         ModifyList {
+            valid: ModifyInvalid,
             mods: ml.mods.iter().map(|pm| Modify::from(pm)).collect(),
         }
+    }
+
+    pub fn validate(&self,
+        schema: &SchemaReadTransaction,
+        ) -> Result<ModifyList<ModifyValid>, SchemaError> {
+        // Check that all attributes exist in the schema
+
+        // Normalise them
+
+        // Validate them
+
+        // Return new ModifyList!
+
+        unimplemented!()
+    }
+}
+
+impl ModifyList<ModifyValid> {
+    #[cfg(test)]
+    pub unsafe fn new_valid_list(mods: Vec<Modify>) -> Self {
+        ModifyList {
+            valid: ModifyValid,
+            mods: mods
+        }
+    }
+}
+
+impl<VALID> ModifyList<VALID> {
+    pub fn len(&self) -> usize {
+        self.mods.len()
     }
 }

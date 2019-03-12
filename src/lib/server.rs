@@ -13,7 +13,7 @@ use entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
 use error::{OperationError, SchemaError};
 use event::{CreateEvent, DeleteEvent, ExistsEvent, ModifyEvent, ReviveRecycledEvent, SearchEvent};
 use filter::{Filter, FilterInvalid};
-use modify::{Modify, ModifyList};
+use modify::{Modify, ModifyList, ModifyInvalid};
 use plugins::Plugins;
 use schema::{Schema, SchemaReadTransaction, SchemaTransaction, SchemaWriteTransaction};
 
@@ -448,10 +448,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
             return Err(OperationError::NoMatchingEntries);
         };
 
-        let modlist = ModifyList::new_list(vec![Modify::Present(
+        let modlist_inv = ModifyList::new_list(vec![Modify::Present(
             String::from("class"),
             String::from("recycled"),
         )]);
+
+        let modlist = match modlist_inv.validate(&self.schema) {
+            Ok(ml) => ml,
+            Err(e) => return Err(OperationError::SchemaViolation(e)),
+        };
 
         let candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
             .into_iter()
@@ -647,6 +652,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
             return Err(OperationError::EmptyRequest);
         }
 
+        // Is the modlist valid?
+        let modlist = match me.modlist.validate(&self.schema) {
+            Ok(ml) => ml,
+            Err(e) => return Err(OperationError::SchemaViolation(e)),
+        };
+
         // Is the filter invalid to schema?
 
         // WARNING! Check access controls here!!!!
@@ -675,7 +686,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .into_iter()
             .map(|er| {
                 // TODO: Deal with this properly william
-                er.invalidate().apply_modlist(&me.modlist).unwrap()
+                er.invalidate().apply_modlist(&modlist).unwrap()
             })
             .collect();
 
@@ -786,7 +797,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         &self,
         audit: &mut AuditScope,
         filter: Filter<FilterInvalid>,
-        modlist: ModifyList,
+        modlist: ModifyList<ModifyInvalid>,
     ) -> Result<(), OperationError> {
         let mut audit_int = AuditScope::new("internal_modify");
         let me = ModifyEvent::new_internal(filter, modlist);
@@ -799,7 +810,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         &self,
         audit: &mut AuditScope,
         filter: Filter<FilterInvalid>,
-        modlist: ModifyList,
+        modlist: ModifyList<ModifyInvalid>,
     ) -> Result<(), OperationError> {
         let mut audit_int = AuditScope::new("impersonate_modify");
         let me = ModifyEvent::new_internal(filter, modlist);
