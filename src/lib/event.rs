@@ -6,7 +6,7 @@ use super::proto_v1::{
 };
 use entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
 // use error::OperationError;
-use modify::{ModifyList, ModifyInvalid};
+use modify::{ModifyInvalid, ModifyList};
 
 use actix::prelude::*;
 

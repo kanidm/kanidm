@@ -552,9 +552,7 @@ mod tests {
     use super::super::audit::AuditScope;
     use super::super::entry::{Entry, EntryInvalid, EntryNew};
     use super::super::filter::Filter;
-    use super::{
-        Backend, BackendError, BackendReadTransaction, BackendWriteTransaction,
-    };
+    use super::{Backend, BackendError, BackendReadTransaction, BackendWriteTransaction};
 
     macro_rules! run_test {
         ($test_fn:expr) => {{

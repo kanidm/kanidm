@@ -13,7 +13,7 @@ use entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
 use error::{OperationError, SchemaError};
 use event::{CreateEvent, DeleteEvent, ExistsEvent, ModifyEvent, ReviveRecycledEvent, SearchEvent};
 use filter::{Filter, FilterInvalid};
-use modify::{Modify, ModifyList, ModifyInvalid};
+use modify::{Modify, ModifyInvalid, ModifyList};
 use plugins::Plugins;
 use schema::{Schema, SchemaReadTransaction, SchemaTransaction, SchemaWriteTransaction};
 
@@ -979,7 +979,6 @@ mod tests {
     */
     use std::sync::Arc;
 
-
     use super::super::audit::AuditScope;
     use super::super::be::Backend;
     use super::super::entry::{Entry, EntryInvalid, EntryNew};
@@ -993,13 +992,10 @@ mod tests {
     use super::super::proto_v1::Modify as ProtoModify;
     use super::super::proto_v1::ModifyList as ProtoModifyList;
     use super::super::proto_v1::{
-        DeleteRequest, ModifyRequest, ReviveRecycledRequest, SearchRecycledRequest,
-        SearchRequest,
+        DeleteRequest, ModifyRequest, ReviveRecycledRequest, SearchRecycledRequest, SearchRequest,
     };
     use super::super::schema::Schema;
-    use super::super::server::{
-        QueryServer, QueryServerReadTransaction
-    };
+    use super::super::server::{QueryServer, QueryServerReadTransaction};
 
     macro_rules! run_test {
         ($test_fn:expr) => {{

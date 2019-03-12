@@ -51,19 +51,18 @@ impl<'a> IntoIterator for &'a ModifyList<ModifyValid> {
     }
 }
 
-
 impl ModifyList<ModifyInvalid> {
     pub fn new() -> Self {
         ModifyList {
             valid: ModifyInvalid,
-            mods: Vec::new()
+            mods: Vec::new(),
         }
     }
 
     pub fn new_list(mods: Vec<Modify>) -> Self {
         ModifyList {
             valid: ModifyInvalid,
-            mods: mods
+            mods: mods,
         }
     }
 
@@ -79,50 +78,47 @@ impl ModifyList<ModifyInvalid> {
         }
     }
 
-    pub fn validate(&self,
+    pub fn validate(
+        &self,
         schema: &SchemaReadTransaction,
-        ) -> Result<ModifyList<ModifyValid>, SchemaError> {
-
+    ) -> Result<ModifyList<ModifyValid>, SchemaError> {
         let schema_attributes = schema.get_attributes();
         let schema_name = schema_attributes
             .get("name")
             .expect("Critical: Core schema corrupt or missing. To initiate a core transfer, please deposit substitute core in receptacle.");
 
-        let res: Result<Vec<Modify>, _> = (&self.mods).into_iter()
-            .map(|m| {
-                match m {
-                    Modify::Present(attr, value) => {
-                        let attr_norm = schema_name.normalise_value(&attr);
-                        match schema_attributes.get(&attr_norm) {
-                            Some(schema_a) => {
-                                let value_norm = schema_a.normalise_value(&value);
-                                schema_a
-                                    .validate_value(&value_norm)
-                                    .map(|_| Modify::Present(attr_norm, value_norm))
-                            }
-                            None => Err(SchemaError::InvalidAttribute),
+        let res: Result<Vec<Modify>, _> = (&self.mods)
+            .into_iter()
+            .map(|m| match m {
+                Modify::Present(attr, value) => {
+                    let attr_norm = schema_name.normalise_value(&attr);
+                    match schema_attributes.get(&attr_norm) {
+                        Some(schema_a) => {
+                            let value_norm = schema_a.normalise_value(&value);
+                            schema_a
+                                .validate_value(&value_norm)
+                                .map(|_| Modify::Present(attr_norm, value_norm))
                         }
+                        None => Err(SchemaError::InvalidAttribute),
                     }
-                    Modify::Removed(attr, value) => {
-                        let attr_norm = schema_name.normalise_value(&attr);
-                        match schema_attributes.get(&attr_norm) {
-                            Some(schema_a) => {
-                                let value_norm = schema_a.normalise_value(&value);
-                                schema_a
-                                    .validate_value(&value_norm)
-                                    .map(|_| Modify::Removed(attr_norm, value_norm))
-                            }
-                            None => Err(SchemaError::InvalidAttribute),
+                }
+                Modify::Removed(attr, value) => {
+                    let attr_norm = schema_name.normalise_value(&attr);
+                    match schema_attributes.get(&attr_norm) {
+                        Some(schema_a) => {
+                            let value_norm = schema_a.normalise_value(&value);
+                            schema_a
+                                .validate_value(&value_norm)
+                                .map(|_| Modify::Removed(attr_norm, value_norm))
                         }
+                        None => Err(SchemaError::InvalidAttribute),
                     }
-                    Modify::Purged(attr) => {
-                        let attr_norm = schema_name.normalise_value(&attr);
-                        match schema_attributes.get(&attr_norm) {
-                            Some(_attr_name) => {
-                                Ok(Modify::Purged(attr_norm))
-                            }
-                            None => Err(SchemaError::InvalidAttribute),
-                        }
+                }
+                Modify::Purged(attr) => {
+                    let attr_norm = schema_name.normalise_value(&attr);
+                    match schema_attributes.get(&attr_norm) {
+                        Some(_attr_name) => Ok(Modify::Purged(attr_norm)),
+                        None => Err(SchemaError::InvalidAttribute),
                     }
                 }
             })
@@ -146,7 +142,7 @@ impl ModifyList<ModifyValid> {
     pub unsafe fn new_valid_list(mods: Vec<Modify>) -> Self {
         ModifyList {
             valid: ModifyValid,
-            mods: mods
+            mods: mods,
         }
     }
 }

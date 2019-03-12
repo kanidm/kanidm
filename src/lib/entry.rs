@@ -2,7 +2,7 @@
 use super::proto_v1::Entry as ProtoEntry;
 use error::SchemaError;
 use filter::{Filter, FilterValid};
-use modify::{Modify, ModifyList, ModifyValid, ModifyInvalid};
+use modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use schema::{SchemaAttribute, SchemaClass, SchemaReadTransaction};
 use std::collections::btree_map::{Iter as BTreeIter, IterMut as BTreeIterMut};
 use std::collections::BTreeMap;
@@ -645,7 +645,10 @@ where
     }
 
     // Should this be schemaless, relying on checks of the modlist, and the entry validate after?
-    pub fn apply_modlist(&self, modlist: &ModifyList<ModifyValid>) -> Result<Entry<EntryInvalid, STATE>, ()> {
+    pub fn apply_modlist(
+        &self,
+        modlist: &ModifyList<ModifyValid>,
+    ) -> Result<Entry<EntryInvalid, STATE>, ()> {
         // Apply a modlist, generating a new entry that conforms to the changes.
         // This is effectively clone-and-transform
 
