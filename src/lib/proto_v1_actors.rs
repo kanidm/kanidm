@@ -132,21 +132,20 @@ impl Handler<SearchRequest> for QueryServerV1 {
     fn handle(&mut self, msg: SearchRequest, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("search");
         let res = audit_segment!(&mut audit, || {
-            // Make an event from the request
-            let srch = SearchEvent::from_request(msg);
-
-            audit_log!(audit, "Begin event {:?}", srch);
             // Begin a read
             let qs_read = self.qs.read();
 
-            // Parse what we need from the event?
-            // What kind of event is it?
+            // Make an event from the request
+            let srch = match SearchEvent::from_request(msg, &qs_read) {
+                Ok(s) => s,
+                Err(e) => {
+                    audit_log!(audit, "Failed to begin search: {:?}", e);
+                    return Err(e);
+                }
+            };
 
-            // In the future we'll likely change search event ...
+            audit_log!(audit, "Begin event {:?}", srch);
 
-            // End the read
-
-            // was this ok?
             match qs_read.search(&mut audit, &srch) {
                 Ok(entries) => {
                     let sr = SearchResult::new(entries);
@@ -190,11 +189,16 @@ impl Handler<ModifyRequest> for QueryServerV1 {
     fn handle(&mut self, msg: ModifyRequest, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("modify");
         let res = audit_segment!(&mut audit, || {
-            let mdf = ModifyEvent::from_request(msg);
+            let qs_write = self.qs.write();
+            let mdf = match ModifyEvent::from_request(msg, &qs_write) {
+                Ok(m) => m,
+                Err(e) => {
+                    audit_log!(audit, "Failed to begin modify: {:?}", e);
+                    return Err(e);
+                }
+            };
 
             audit_log!(audit, "Begin modify event {:?}", mdf);
-
-            let qs_write = self.qs.write();
 
             qs_write
                 .modify(&mut audit, &mdf)
@@ -211,11 +215,17 @@ impl Handler<DeleteRequest> for QueryServerV1 {
     fn handle(&mut self, msg: DeleteRequest, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("delete");
         let res = audit_segment!(&mut audit, || {
-            let del = DeleteEvent::from_request(msg);
+            let qs_write = self.qs.write();
+
+            let del = match DeleteEvent::from_request(msg, &qs_write) {
+                Ok(d) => d,
+                Err(e) => {
+                    audit_log!(audit, "Failed to begin delete: {:?}", e);
+                    return Err(e);
+                }
+            };
 
             audit_log!(audit, "Begin delete event {:?}", del);
-
-            let qs_write = self.qs.write();
 
             qs_write
                 .delete(&mut audit, &del)

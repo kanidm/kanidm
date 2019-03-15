@@ -15,7 +15,9 @@ use event::{CreateEvent, DeleteEvent, ExistsEvent, ModifyEvent, ReviveRecycledEv
 use filter::{Filter, FilterInvalid};
 use modify::{Modify, ModifyInvalid, ModifyList};
 use plugins::Plugins;
-use schema::{Schema, SchemaReadTransaction, SchemaTransaction, SchemaWriteTransaction};
+use schema::{
+    Schema, SchemaReadTransaction, SchemaTransaction, SchemaWriteTransaction, SyntaxType,
+};
 
 // This is the core of the server. It implements all
 // the search and modify actions, applies access controls
@@ -236,6 +238,55 @@ pub trait QueryServerReadTransaction {
         let res = self.search(&mut audit_int, &se);
         audit.append_scope(audit_int);
         res
+    }
+
+    // Do a schema aware clone, that fixes values that need some kind of alteration
+    // or lookup from the front end.
+    //
+    // For example, reference types.
+    //
+    // For passwords, hashing and changes will take place later.
+    //
+    // TODO: It could be argued that we should have a proper "Value" type, so that we can
+    // take care of this a bit cleaner, and do the checks in that, but I think for
+    // now this is good enough.
+    fn clone_value(&self, attr: &String, value: &String) -> Result<String, OperationError> {
+        let schema = self.get_schema();
+        // Lookup the attr
+        match schema.get_attributes().get(attr) {
+            Some(schema_a) => {
+                // Now check the type of the attribute ...
+                match schema_a.syntax {
+                    SyntaxType::REFERENCE_UUID => {
+                        // So, if possible, resolve the value
+                        // to a concrete uuid.
+                        // Is it already a UUID?
+                        // Yes, move along ...
+                        // No, attempt to resolve
+                        //  self.name_to_uuid()
+                        //    if resolve works, great
+                        //    if resolve fails, we need to fail.
+
+                        unimplemented!()
+                    }
+                    _ => {
+                        // Probs okay.
+                        Ok(value.clone())
+                    }
+                }
+            }
+            None => {
+                // Welp, you'll break when we hit schema validation soon anyway.
+                // Just clone in this case ...
+                // TODO: Honestly, we could just return the schema error here ...
+                Ok(value.clone())
+            }
+        }
+    }
+
+    // In the opposite direction, we can resolve values for presentation
+    fn resolve_value(&self, attr: &String, value: &String) -> Result<String, OperationError> {
+        Ok(value.clone())
     }
 }
 
@@ -1019,10 +1070,10 @@ mod tests {
     fn test_qs_create_user() {
         run_test!(|server: QueryServer, audit: &mut AuditScope| {
             let server_txn = server.write();
-            let filt = ProtoFilter::Pres(String::from("name"));
+            let filt = Filter::Pres(String::from("name"));
 
-            let se1 = SearchEvent::from_request(SearchRequest::new(filt.clone()));
-            let se2 = SearchEvent::from_request(SearchRequest::new(filt));
+            let se1 = SearchEvent::new_impersonate(filt.clone());
+            let se2 = SearchEvent::new_impersonate(filt);
 
             let e: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
                 r#"{
@@ -1367,15 +1418,21 @@ mod tests {
             let filt_i_ts = Filter::Eq(String::from("class"), String::from("tombstone"));
 
             // Create fake external requests. Probably from admin later
-            let me_ts = ModifyEvent::from_request(ModifyRequest::new(
-                filt_ts.clone(),
-                ProtoModifyList::new_list(vec![ProtoModify::Present(
-                    String::from("class"),
-                    String::from("tombstone"),
-                )]),
-            ));
-            let de_ts = DeleteEvent::from_request(DeleteRequest::new(filt_ts.clone()));
-            let se_ts = SearchEvent::from_request(SearchRequest::new(filt_ts.clone()));
+            // Should we do this with impersonate instead of using the external
+            let me_ts = ModifyEvent::from_request(
+                ModifyRequest::new(
+                    filt_ts.clone(),
+                    ProtoModifyList::new_list(vec![ProtoModify::Present(
+                        String::from("class"),
+                        String::from("tombstone"),
+                    )]),
+                ),
+                &server_txn,
+            )
+            .unwrap();
+            let de_ts = DeleteEvent::from_request(DeleteRequest::new(filt_ts.clone()), &server_txn)
+                .unwrap();
+            let se_ts = SearchEvent::new_ext_impersonate(filt_i_ts.clone());
 
             // First, create a tombstone
             let e_ts: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
@@ -1439,21 +1496,31 @@ mod tests {
             let filt_i_per = Filter::Eq(String::from("class"), String::from("person"));
 
             // Create fake external requests. Probably from admin later
-            let me_rc = ModifyEvent::from_request(ModifyRequest::new(
-                filt_rc.clone(),
-                ProtoModifyList::new_list(vec![ProtoModify::Present(
-                    String::from("class"),
-                    String::from("recycled"),
-                )]),
-            ));
-            let de_rc = DeleteEvent::from_request(DeleteRequest::new(filt_rc.clone()));
-            let se_rc = SearchEvent::from_request(SearchRequest::new(filt_rc.clone()));
+            let me_rc = ModifyEvent::from_request(
+                ModifyRequest::new(
+                    filt_rc.clone(),
+                    ProtoModifyList::new_list(vec![ProtoModify::Present(
+                        String::from("class"),
+                        String::from("recycled"),
+                    )]),
+                ),
+                &server_txn,
+            )
+            .unwrap();
+            let de_rc = DeleteEvent::from_request(DeleteRequest::new(filt_rc.clone()), &server_txn)
+                .unwrap();
+            let se_rc = SearchEvent::new_ext_impersonate(filt_i_rc.clone());
 
-            let sre_rc = SearchEvent::from_rec_request(SearchRecycledRequest::new(filt_rc.clone()));
+            let sre_rc = SearchEvent::new_rec_impersonate(filt_i_rc.clone());
 
-            let rre_rc = ReviveRecycledEvent::from_request(ReviveRecycledRequest::new(
-                ProtoFilter::Eq("name".to_string(), "testperson1".to_string()),
-            ));
+            let rre_rc = ReviveRecycledEvent::from_request(
+                ReviveRecycledRequest::new(ProtoFilter::Eq(
+                    "name".to_string(),
+                    "testperson1".to_string(),
+                )),
+                &server_txn,
+            )
+            .unwrap();
 
             // Create some recycled objects
             let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
@@ -1574,8 +1641,8 @@ mod tests {
             ));
             assert!(server_txn.delete(audit, &de_sin).is_ok());
             // Can in be seen by special search? (external recycle search)
-            let filt_rc = ProtoFilter::Eq(String::from("class"), String::from("recycled"));
-            let sre_rc = SearchEvent::from_rec_request(SearchRecycledRequest::new(filt_rc.clone()));
+            let filt_rc = Filter::Eq(String::from("class"), String::from("recycled"));
+            let sre_rc = SearchEvent::new_rec_impersonate(filt_rc.clone());
             let r2 = server_txn.search(audit, &sre_rc).unwrap();
             assert!(r2.len() == 1);
 

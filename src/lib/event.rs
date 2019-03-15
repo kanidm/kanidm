@@ -6,7 +6,9 @@ use super::proto_v1::{
 };
 use entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
 // use error::OperationError;
+use error::OperationError;
 use modify::{ModifyInvalid, ModifyList};
+use server::{QueryServerTransaction, QueryServerWriteTransaction};
 
 use actix::prelude::*;
 
@@ -66,14 +68,21 @@ pub struct SearchEvent {
 }
 
 impl SearchEvent {
-    pub fn from_request(request: SearchRequest) -> Self {
-        SearchEvent {
-            internal: false,
-            filter: Filter::new_ignore_hidden(Filter::from(&request.filter)),
-            class: (),
+    pub fn from_request(
+        request: SearchRequest,
+        qs: &QueryServerTransaction,
+    ) -> Result<Self, OperationError> {
+        match Filter::from_ro(&request.filter, qs) {
+            Ok(f) => Ok(SearchEvent {
+                internal: false,
+                filter: Filter::new_ignore_hidden(f),
+                class: (),
+            }),
+            Err(e) => Err(e),
         }
     }
 
+    // Just impersonate the account with no filter changes.
     pub fn new_impersonate(filter: Filter<FilterInvalid>) -> Self {
         SearchEvent {
             internal: false,
@@ -82,10 +91,33 @@ impl SearchEvent {
         }
     }
 
-    pub fn from_rec_request(request: SearchRecycledRequest) -> Self {
+    pub fn from_rec_request(
+        request: SearchRecycledRequest,
+        qs: &QueryServerTransaction,
+    ) -> Result<Self, OperationError> {
+        match Filter::from_ro(&request.filter, qs) {
+            Ok(f) => Ok(SearchEvent {
+                filter: Filter::new_recycled(f),
+                internal: false,
+                class: (),
+            }),
+            Err(e) => Err(e),
+        }
+    }
+
+    pub fn new_rec_impersonate(filter: Filter<FilterInvalid>) -> Self {
         SearchEvent {
-            filter: Filter::new_recycled(Filter::from(&request.filter)),
             internal: false,
+            filter: Filter::new_recycled(filter),
+            class: (),
+        }
+    }
+
+    /* Impersonate an external request */
+    pub fn new_ext_impersonate(filter: Filter<FilterInvalid>) -> Self {
+        SearchEvent {
+            internal: false,
+            filter: Filter::new_ignore_hidden(filter),
             class: (),
         }
     }
@@ -120,6 +152,7 @@ impl CreateEvent {
             // What is the correct consuming iterator here? Can we
             // even do that?
             internal: false,
+            // TODO: Transform references here.
             entries: request.entries.iter().map(|e| Entry::from(e)).collect(),
         }
     }
@@ -163,10 +196,17 @@ pub struct DeleteEvent {
 }
 
 impl DeleteEvent {
-    pub fn from_request(request: DeleteRequest) -> Self {
-        DeleteEvent {
-            filter: Filter::new_ignore_hidden(Filter::from(&request.filter)),
-            internal: false,
+    pub fn from_request(
+        request: DeleteRequest,
+        qs: &QueryServerWriteTransaction,
+    ) -> Result<Self, OperationError> {
+        match Filter::from_rw(&request.filter, qs) {
+            Ok(f) => Ok(DeleteEvent {
+                // TODO: Transform references here.
+                filter: Filter::new_ignore_hidden(f),
+                internal: false,
+            }),
+            Err(e) => Err(e),
         }
     }
 
@@ -194,11 +234,20 @@ pub struct ModifyEvent {
 }
 
 impl ModifyEvent {
-    pub fn from_request(request: ModifyRequest) -> Self {
-        ModifyEvent {
-            filter: Filter::new_ignore_hidden(Filter::from(&request.filter)),
-            modlist: ModifyList::from(&request.modlist),
-            internal: false,
+    pub fn from_request(
+        request: ModifyRequest,
+        qs: &QueryServerWriteTransaction,
+    ) -> Result<Self, OperationError> {
+        match Filter::from_rw(&request.filter, qs) {
+            Ok(f) => Ok(ModifyEvent {
+                // TODO: Transform references here.
+                filter: Filter::new_ignore_hidden(f),
+                // TODO: Transform references here.
+                modlist: ModifyList::from(&request.modlist),
+                internal: false,
+            }),
+
+            Err(e) => Err(e),
         }
     }
 
@@ -278,10 +327,17 @@ impl Message for ReviveRecycledEvent {
 }
 
 impl ReviveRecycledEvent {
-    pub fn from_request(request: ReviveRecycledRequest) -> Self {
-        ReviveRecycledEvent {
-            filter: Filter::new_recycled(Filter::from(&request.filter)),
-            internal: false,
+    pub fn from_request(
+        request: ReviveRecycledRequest,
+        qs: &QueryServerWriteTransaction,
+    ) -> Result<Self, OperationError> {
+        match Filter::from_rw(&request.filter, qs) {
+            Ok(f) => Ok(ReviveRecycledEvent {
+                // TODO: Transform references here (in theory should be none though)
+                filter: Filter::new_recycled(f),
+                internal: false,
+            }),
+            Err(e) => Err(e),
         }
     }
 }

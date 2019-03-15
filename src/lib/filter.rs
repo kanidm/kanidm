@@ -2,9 +2,13 @@
 // in parallel map/reduce style, or directly on a single
 // entry to assert it matches.
 
-use error::SchemaError;
+use be::BackendReadTransaction;
+use error::{OperationError, SchemaError};
 use proto_v1::Filter as ProtoFilter;
 use schema::SchemaReadTransaction;
+use server::{
+    QueryServer, QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
+};
 use std::cmp::{Ordering, PartialOrd};
 use std::marker::PhantomData;
 
@@ -188,14 +192,73 @@ impl Filter<FilterInvalid> {
         }
     }
 
-    pub fn from(f: &ProtoFilter) -> Self {
+    // TODO: This has to have two versions to account for ro/rw traits, because RS can't
+    // monomorphise on the trait to call clone_value. An option is to make a fn that
+    // takes "clone_value(t, a, v) instead, but that may have a similar issue.
+    pub fn from_ro(f: &ProtoFilter, qs: &QueryServerTransaction) -> Result<Self, OperationError> {
         match f {
-            ProtoFilter::Eq(a, v) => Filter::Eq(a.clone(), v.clone()),
-            ProtoFilter::Sub(a, v) => Filter::Sub(a.clone(), v.clone()),
-            ProtoFilter::Pres(a) => Filter::Pres(a.clone()),
-            ProtoFilter::Or(l) => Filter::Or(l.iter().map(|f| Self::from(f)).collect()),
-            ProtoFilter::And(l) => Filter::And(l.iter().map(|f| Self::from(f)).collect()),
-            ProtoFilter::AndNot(l) => Filter::AndNot(Box::new(Self::from(l))),
+            ProtoFilter::Eq(a, v) => match qs.clone_value(a, v) {
+                Ok(vc) => Ok(Filter::Eq(a.clone(), vc)),
+                Err(e) => Err(e),
+            },
+            ProtoFilter::Sub(a, v) => match qs.clone_value(a, v) {
+                Ok(vc) => Ok(Filter::Sub(a.clone(), vc)),
+                Err(e) => Err(e),
+            },
+            ProtoFilter::Pres(a) => Ok(Filter::Pres(a.clone())),
+            ProtoFilter::Or(l) => {
+                let inner: Result<Vec<_>, _> = l.iter().map(|f| Self::from_ro(f, qs)).collect();
+                match inner {
+                    Ok(lc) => Ok(Filter::Or(lc)),
+                    Err(e) => Err(e),
+                }
+            }
+            ProtoFilter::And(l) => {
+                let inner: Result<Vec<_>, _> = l.iter().map(|f| Self::from_ro(f, qs)).collect();
+                match inner {
+                    Ok(lc) => Ok(Filter::And(lc)),
+                    Err(e) => Err(e),
+                }
+            }
+            ProtoFilter::AndNot(l) => match Self::from_ro(l, qs) {
+                Ok(f) => Ok(Filter::AndNot(Box::new(f))),
+                Err(e) => Err(e),
+            },
+        }
+    }
+
+    pub fn from_rw(
+        f: &ProtoFilter,
+        qs: &QueryServerWriteTransaction,
+    ) -> Result<Self, OperationError> {
+        match f {
+            ProtoFilter::Eq(a, v) => match qs.clone_value(a, v) {
+                Ok(vc) => Ok(Filter::Eq(a.clone(), vc)),
+                Err(e) => Err(e),
+            },
+            ProtoFilter::Sub(a, v) => match qs.clone_value(a, v) {
+                Ok(vc) => Ok(Filter::Sub(a.clone(), vc)),
+                Err(e) => Err(e),
+            },
+            ProtoFilter::Pres(a) => Ok(Filter::Pres(a.clone())),
+            ProtoFilter::Or(l) => {
+                let inner: Result<Vec<_>, _> = l.iter().map(|f| Self::from_rw(f, qs)).collect();
+                match inner {
+                    Ok(lc) => Ok(Filter::Or(lc)),
+                    Err(e) => Err(e),
+                }
+            }
+            ProtoFilter::And(l) => {
+                let inner: Result<Vec<_>, _> = l.iter().map(|f| Self::from_rw(f, qs)).collect();
+                match inner {
+                    Ok(lc) => Ok(Filter::And(lc)),
+                    Err(e) => Err(e),
+                }
+            }
+            ProtoFilter::AndNot(l) => match Self::from_rw(l, qs) {
+                Ok(f) => Ok(Filter::AndNot(Box::new(f))),
+                Err(e) => Err(e),
+            },
         }
     }
 }
