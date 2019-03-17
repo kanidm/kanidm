@@ -1,8 +1,9 @@
 use proto_v1::Modify as ProtoModify;
 use proto_v1::ModifyList as ProtoModifyList;
 
-use error::SchemaError;
+use error::{OperationError, SchemaError};
 use schema::{SchemaAttribute, SchemaReadTransaction};
+use server::{QueryServerReadTransaction, QueryServerWriteTransaction};
 
 // Should this be std?
 use std::slice;
@@ -23,12 +24,12 @@ pub enum Modify {
 }
 
 impl Modify {
-    pub fn from(m: &ProtoModify) -> Self {
-        match m {
-            ProtoModify::Present(a, v) => Modify::Present(a.clone(), v.clone()),
-            ProtoModify::Removed(a, v) => Modify::Removed(a.clone(), v.clone()),
+    pub fn from(m: &ProtoModify, qs: &QueryServerWriteTransaction) -> Result<Self, OperationError> {
+        Ok(match m {
+            ProtoModify::Present(a, v) => Modify::Present(a.clone(), qs.clone_value(a, v)?),
+            ProtoModify::Removed(a, v) => Modify::Removed(a.clone(), qs.clone_value(a, v)?),
             ProtoModify::Purged(a) => Modify::Purged(a.clone()),
-        }
+        })
     }
 }
 
@@ -70,11 +71,18 @@ impl ModifyList<ModifyInvalid> {
         self.mods.push(modify)
     }
 
-    pub fn from(ml: &ProtoModifyList) -> Self {
+    pub fn from(
+        ml: &ProtoModifyList,
+        qs: &QueryServerWriteTransaction,
+    ) -> Result<Self, OperationError> {
         // For each ProtoModify, do a from.
-        ModifyList {
-            valid: ModifyInvalid,
-            mods: ml.mods.iter().map(|pm| Modify::from(pm)).collect(),
+        let inner: Result<Vec<_>, _> = ml.mods.iter().map(|pm| Modify::from(pm, qs)).collect();
+        match inner {
+            Ok(m) => Ok(ModifyList {
+                valid: ModifyInvalid,
+                mods: m,
+            }),
+            Err(e) => Err(e),
         }
     }
 

@@ -167,11 +167,17 @@ impl Handler<CreateRequest> for QueryServerV1 {
     fn handle(&mut self, msg: CreateRequest, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("create");
         let res = audit_segment!(&mut audit, || {
-            let crt = CreateEvent::from_request(msg);
+            let qs_write = self.qs.write();
+
+            let crt = match CreateEvent::from_request(msg, &qs_write) {
+                Ok(c) => c,
+                Err(e) => {
+                    audit_log!(audit, "Failed to begin create: {:?}", e);
+                    return Err(e);
+                }
+            };
 
             audit_log!(audit, "Begin create event {:?}", crt);
-
-            let qs_write = self.qs.write();
 
             qs_write
                 .create(&mut audit, &crt)

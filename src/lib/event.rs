@@ -62,9 +62,7 @@ impl SearchResult {
 pub struct SearchEvent {
     pub internal: bool,
     pub filter: Filter<FilterInvalid>,
-    // TODO: Remove this
-    class: (), // String
-               // TODO: Add list of attributes to request
+    // TODO: Add list of attributes to request
 }
 
 impl SearchEvent {
@@ -76,7 +74,6 @@ impl SearchEvent {
             Ok(f) => Ok(SearchEvent {
                 internal: false,
                 filter: Filter::new_ignore_hidden(f),
-                class: (),
             }),
             Err(e) => Err(e),
         }
@@ -87,7 +84,6 @@ impl SearchEvent {
         SearchEvent {
             internal: false,
             filter: filter,
-            class: (),
         }
     }
 
@@ -99,7 +95,6 @@ impl SearchEvent {
             Ok(f) => Ok(SearchEvent {
                 filter: Filter::new_recycled(f),
                 internal: false,
-                class: (),
             }),
             Err(e) => Err(e),
         }
@@ -109,7 +104,6 @@ impl SearchEvent {
         SearchEvent {
             internal: false,
             filter: Filter::new_recycled(filter),
-            class: (),
         }
     }
 
@@ -118,7 +112,6 @@ impl SearchEvent {
         SearchEvent {
             internal: false,
             filter: Filter::new_ignore_hidden(filter),
-            class: (),
         }
     }
 
@@ -126,7 +119,6 @@ impl SearchEvent {
         SearchEvent {
             internal: true,
             filter: filter,
-            class: (),
         }
     }
 }
@@ -146,14 +138,21 @@ pub struct CreateEvent {
 
 // FIXME: Should this actually be in createEvent handler?
 impl CreateEvent {
-    pub fn from_request(request: CreateRequest) -> Self {
-        CreateEvent {
-            // From ProtoEntry -> Entry
-            // What is the correct consuming iterator here? Can we
-            // even do that?
-            internal: false,
-            // TODO: Transform references here.
-            entries: request.entries.iter().map(|e| Entry::from(e)).collect(),
+    pub fn from_request(
+        request: CreateRequest,
+        qs: &QueryServerWriteTransaction,
+    ) -> Result<Self, OperationError> {
+        let rentries: Result<Vec<_>, _> =
+            request.entries.iter().map(|e| Entry::from(e, qs)).collect();
+        match rentries {
+            Ok(entries) => Ok(CreateEvent {
+                // From ProtoEntry -> Entry
+                // What is the correct consuming iterator here? Can we
+                // even do that?
+                internal: false,
+                entries: entries,
+            }),
+            Err(e) => Err(e),
         }
     }
 
@@ -202,7 +201,6 @@ impl DeleteEvent {
     ) -> Result<Self, OperationError> {
         match Filter::from_rw(&request.filter, qs) {
             Ok(f) => Ok(DeleteEvent {
-                // TODO: Transform references here.
                 filter: Filter::new_ignore_hidden(f),
                 internal: false,
             }),
@@ -239,13 +237,14 @@ impl ModifyEvent {
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         match Filter::from_rw(&request.filter, qs) {
-            Ok(f) => Ok(ModifyEvent {
-                // TODO: Transform references here.
-                filter: Filter::new_ignore_hidden(f),
-                // TODO: Transform references here.
-                modlist: ModifyList::from(&request.modlist),
-                internal: false,
-            }),
+            Ok(f) => match ModifyList::from(&request.modlist, qs) {
+                Ok(m) => Ok(ModifyEvent {
+                    filter: Filter::new_ignore_hidden(f),
+                    modlist: m,
+                    internal: false,
+                }),
+                Err(e) => Err(e),
+            },
 
             Err(e) => Err(e),
         }
@@ -333,7 +332,6 @@ impl ReviveRecycledEvent {
     ) -> Result<Self, OperationError> {
         match Filter::from_rw(&request.filter, qs) {
             Ok(f) => Ok(ReviveRecycledEvent {
-                // TODO: Transform references here (in theory should be none though)
                 filter: Filter::new_recycled(f),
                 internal: false,
             }),

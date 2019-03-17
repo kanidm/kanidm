@@ -1,9 +1,10 @@
 // use serde_json::{Error, Value};
 use super::proto_v1::Entry as ProtoEntry;
-use error::SchemaError;
+use error::{OperationError, SchemaError};
 use filter::{Filter, FilterValid};
 use modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use schema::{SchemaAttribute, SchemaClass, SchemaReadTransaction};
+use server::{QueryServerReadTransaction, QueryServerWriteTransaction};
 use std::collections::btree_map::{Iter as BTreeIter, IterMut as BTreeIterMut};
 use std::collections::BTreeMap;
 use std::collections::HashMap;
@@ -152,26 +153,42 @@ impl Entry<EntryInvalid, EntryNew> {
     }
 
     // FIXME: Can we consume protoentry?
-    pub fn from(e: &ProtoEntry) -> Self {
+    pub fn from(e: &ProtoEntry, qs: &QueryServerWriteTransaction) -> Result<Self, OperationError> {
         // Why not the trait? In the future we may want to extend
         // this with server aware functions for changes of the
         // incoming data.
-        Entry {
+
+        // Somehow we need to take the tree of e attrs, and convert
+        // all ref types to our types ...
+
+        let map2: Result<BTreeMap<String, Vec<String>>, OperationError> = e
+            .attrs
+            .iter()
+            .map(|(k, v)| {
+                let nv: Result<Vec<_>, _> = v.iter().map(|vr| qs.clone_value(&k, vr)).collect();
+                match nv {
+                    Ok(mut nvi) => {
+                        nvi.sort_unstable();
+                        Ok((k.clone(), nvi))
+                    }
+                    Err(e) => Err(e),
+                }
+            })
+            .collect();
+
+        let x = match map2 {
+            Ok(v) => v,
+            Err(e) => return Err(e),
+        };
+
+        Ok(Entry {
             // For now, we do a straight move, and we sort the incoming data
             // sets so that BST works.
             state: EntryNew,
             valid: EntryInvalid,
             id: None,
-            attrs: e
-                .attrs
-                .iter()
-                .map(|(k, v)| {
-                    let mut nv = v.clone();
-                    nv.sort_unstable();
-                    (k.clone(), nv)
-                })
-                .collect(),
-        }
+            attrs: x,
+        })
     }
 }
 
