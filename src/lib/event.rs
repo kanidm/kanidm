@@ -1,3 +1,4 @@
+use audit::AuditScope;
 use super::filter::{Filter, FilterInvalid};
 use super::proto_v1::Entry as ProtoEntry;
 use super::proto_v1::{
@@ -67,10 +68,11 @@ pub struct SearchEvent {
 
 impl SearchEvent {
     pub fn from_request(
+        audit: &mut AuditScope,
         request: SearchRequest,
         qs: &QueryServerTransaction,
     ) -> Result<Self, OperationError> {
-        match Filter::from_ro(&request.filter, qs) {
+        match Filter::from_ro(audit, &request.filter, qs) {
             Ok(f) => Ok(SearchEvent {
                 internal: false,
                 filter: Filter::new_ignore_hidden(f),
@@ -88,10 +90,11 @@ impl SearchEvent {
     }
 
     pub fn from_rec_request(
+        audit: &mut AuditScope,
         request: SearchRecycledRequest,
         qs: &QueryServerTransaction,
     ) -> Result<Self, OperationError> {
-        match Filter::from_ro(&request.filter, qs) {
+        match Filter::from_ro(audit, &request.filter, qs) {
             Ok(f) => Ok(SearchEvent {
                 filter: Filter::new_recycled(f),
                 internal: false,
@@ -139,11 +142,12 @@ pub struct CreateEvent {
 // FIXME: Should this actually be in createEvent handler?
 impl CreateEvent {
     pub fn from_request(
+        audit: &mut AuditScope,
         request: CreateRequest,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         let rentries: Result<Vec<_>, _> =
-            request.entries.iter().map(|e| Entry::from(e, qs)).collect();
+            request.entries.iter().map(|e| Entry::from(audit, e, qs)).collect();
         match rentries {
             Ok(entries) => Ok(CreateEvent {
                 // From ProtoEntry -> Entry
@@ -196,10 +200,11 @@ pub struct DeleteEvent {
 
 impl DeleteEvent {
     pub fn from_request(
+        audit: &mut AuditScope,
         request: DeleteRequest,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        match Filter::from_rw(&request.filter, qs) {
+        match Filter::from_rw(audit, &request.filter, qs) {
             Ok(f) => Ok(DeleteEvent {
                 filter: Filter::new_ignore_hidden(f),
                 internal: false,
@@ -233,11 +238,12 @@ pub struct ModifyEvent {
 
 impl ModifyEvent {
     pub fn from_request(
+        audit: &mut AuditScope,
         request: ModifyRequest,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        match Filter::from_rw(&request.filter, qs) {
-            Ok(f) => match ModifyList::from(&request.modlist, qs) {
+        match Filter::from_rw(audit, &request.filter, qs) {
+            Ok(f) => match ModifyList::from(audit, &request.modlist, qs) {
                 Ok(m) => Ok(ModifyEvent {
                     filter: Filter::new_ignore_hidden(f),
                     modlist: m,
@@ -327,10 +333,11 @@ impl Message for ReviveRecycledEvent {
 
 impl ReviveRecycledEvent {
     pub fn from_request(
+        audit: &mut AuditScope,
         request: ReviveRecycledRequest,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        match Filter::from_rw(&request.filter, qs) {
+        match Filter::from_rw(audit, &request.filter, qs) {
             Ok(f) => Ok(ReviveRecycledEvent {
                 filter: Filter::new_recycled(f),
                 internal: false,

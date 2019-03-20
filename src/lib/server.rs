@@ -250,24 +250,39 @@ pub trait QueryServerReadTransaction {
     // TODO: It could be argued that we should have a proper "Value" type, so that we can
     // take care of this a bit cleaner, and do the checks in that, but I think for
     // now this is good enough.
-    fn clone_value(&self, attr: &String, value: &String) -> Result<String, OperationError> {
+    fn clone_value(&self,
+        audit: &mut AuditScope,
+        attr: &String,
+        value: &String
+        ) -> Result<String, OperationError> {
         let schema = self.get_schema();
+        // TODO: Normalise the attr, else lookup with fail ....
+        let schema_name = schema.get_attributes().get("name").expect("Schema corrupted");
+
+        // TODO: Should we return the normalise attr?
+        let temp_a = schema_name.normalise_value(attr);
+
         // Lookup the attr
-        match schema.get_attributes().get(attr) {
+        match schema.get_attributes().get(&temp_a) {
             Some(schema_a) => {
                 // Now check the type of the attribute ...
                 match schema_a.syntax {
                     SyntaxType::REFERENCE_UUID => {
-                        // So, if possible, resolve the value
-                        // to a concrete uuid.
-                        // Is it already a UUID?
-                        // Yes, move along ...
-                        // No, attempt to resolve
-                        //  self.name_to_uuid()
-                        //    if resolve works, great
-                        //    if resolve fails, we need to fail.
-
-                        unimplemented!()
+                        match schema_a.validate_value(value) {
+                            // So, if possible, resolve the value
+                            // to a concrete uuid.
+                            Ok(_) => {
+                                // TODO: Should this check existance?
+                                Ok(value.clone())
+                            }
+                            Err(_) => {
+                                // it's not a uuid, try to resolve it.
+                                // TODO: If this errors, should we actually pass
+                                // back a place holder "no such uuid" and then
+                                // fail an exists check later?
+                                Ok(self.name_to_uuid(audit, value)?)
+                            }
+                        }
                     }
                     _ => {
                         // Probs okay.
@@ -1420,6 +1435,7 @@ mod tests {
             // Create fake external requests. Probably from admin later
             // Should we do this with impersonate instead of using the external
             let me_ts = ModifyEvent::from_request(
+                audit,
                 ModifyRequest::new(
                     filt_ts.clone(),
                     ProtoModifyList::new_list(vec![ProtoModify::Present(
@@ -1430,7 +1446,7 @@ mod tests {
                 &server_txn,
             )
             .unwrap();
-            let de_ts = DeleteEvent::from_request(DeleteRequest::new(filt_ts.clone()), &server_txn)
+            let de_ts = DeleteEvent::from_request(audit, DeleteRequest::new(filt_ts.clone()), &server_txn)
                 .unwrap();
             let se_ts = SearchEvent::new_ext_impersonate(filt_i_ts.clone());
 
@@ -1497,6 +1513,7 @@ mod tests {
 
             // Create fake external requests. Probably from admin later
             let me_rc = ModifyEvent::from_request(
+                audit,
                 ModifyRequest::new(
                     filt_rc.clone(),
                     ProtoModifyList::new_list(vec![ProtoModify::Present(
@@ -1507,13 +1524,14 @@ mod tests {
                 &server_txn,
             )
             .unwrap();
-            let de_rc = DeleteEvent::from_request(DeleteRequest::new(filt_rc.clone()), &server_txn)
+            let de_rc = DeleteEvent::from_request(audit, DeleteRequest::new(filt_rc.clone()), &server_txn)
                 .unwrap();
             let se_rc = SearchEvent::new_ext_impersonate(filt_i_rc.clone());
 
             let sre_rc = SearchEvent::new_rec_impersonate(filt_i_rc.clone());
 
             let rre_rc = ReviveRecycledEvent::from_request(
+                audit,
                 ReviveRecycledRequest::new(ProtoFilter::Eq(
                     "name".to_string(),
                     "testperson1".to_string(),
@@ -1731,6 +1749,68 @@ mod tests {
             let r4 = server_txn
                 .uuid_to_name(audit, &String::from("CC8E95B4-C24F-4D68-BA54-8BED76F63930"));
             assert!(r4.is_ok());
+        })
+    }
+
+    #[test]
+    fn test_qs_clone_value() {
+        run_test!(|server: QueryServer, audit: &mut AuditScope| {
+            let server_txn = server.write();
+            let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+                r#"{
+                "valid": null,
+                "state": null,
+                "attrs": {
+                    "class": ["object", "person"],
+                    "name": ["testperson1"],
+                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
+                    "description": ["testperson"],
+                    "displayname": ["testperson1"]
+                }
+            }"#,
+            )
+            .unwrap();
+            let ce = CreateEvent::from_vec(vec![e1]);
+            let cr = server_txn.create(audit, &ce);
+            assert!(cr.is_ok());
+
+            // test attr not exist
+            let r1 = server_txn.clone_value(
+                audit,
+                &"tausau".to_string(),
+                &"naoeutnhaou".to_string(),
+            );
+
+            assert!(r1 == Ok("naoeutnhaou".to_string()));
+
+            // test attr not-normalised
+            // test attr not-reference
+            let r2 = server_txn.clone_value(
+                audit,
+                &"NaMe".to_string(),
+                &"NaMe".to_string(),
+            );
+
+            assert!(r2 == Ok("NaMe".to_string()));
+
+            // test attr reference
+            let r3 = server_txn.clone_value(
+                audit,
+                &"member".to_string(),
+                &"testperson1".to_string(),
+            );
+
+            assert!(r3 == Ok("cc8e95b4-c24f-4d68-ba54-8bed76f63930".to_string()));
+
+            // test attr reference already resolved.
+            let r4 = server_txn.clone_value(
+                audit,
+                &"member".to_string(),
+                &"cc8e95b4-c24f-4d68-ba54-8bed76f63930".to_string(),
+            );
+
+            println!("{:?}", r4);
+            assert!(r4 == Ok("cc8e95b4-c24f-4d68-ba54-8bed76f63930".to_string()));
         })
     }
 }

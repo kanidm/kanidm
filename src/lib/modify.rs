@@ -1,3 +1,4 @@
+use audit::AuditScope;
 use proto_v1::Modify as ProtoModify;
 use proto_v1::ModifyList as ProtoModifyList;
 
@@ -24,10 +25,14 @@ pub enum Modify {
 }
 
 impl Modify {
-    pub fn from(m: &ProtoModify, qs: &QueryServerWriteTransaction) -> Result<Self, OperationError> {
+    pub fn from(
+        audit: &mut AuditScope,
+        m: &ProtoModify,
+        qs: &QueryServerWriteTransaction
+        ) -> Result<Self, OperationError> {
         Ok(match m {
-            ProtoModify::Present(a, v) => Modify::Present(a.clone(), qs.clone_value(a, v)?),
-            ProtoModify::Removed(a, v) => Modify::Removed(a.clone(), qs.clone_value(a, v)?),
+            ProtoModify::Present(a, v) => Modify::Present(a.clone(), qs.clone_value(audit, a, v)?),
+            ProtoModify::Removed(a, v) => Modify::Removed(a.clone(), qs.clone_value(audit, a, v)?),
             ProtoModify::Purged(a) => Modify::Purged(a.clone()),
         })
     }
@@ -72,11 +77,12 @@ impl ModifyList<ModifyInvalid> {
     }
 
     pub fn from(
+        audit: &mut AuditScope,
         ml: &ProtoModifyList,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         // For each ProtoModify, do a from.
-        let inner: Result<Vec<_>, _> = ml.mods.iter().map(|pm| Modify::from(pm, qs)).collect();
+        let inner: Result<Vec<_>, _> = ml.mods.iter().map(|pm| Modify::from(audit, pm, qs)).collect();
         match inner {
             Ok(m) => Ok(ModifyList {
                 valid: ModifyInvalid,

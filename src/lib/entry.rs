@@ -1,4 +1,5 @@
 // use serde_json::{Error, Value};
+use audit::AuditScope;
 use super::proto_v1::Entry as ProtoEntry;
 use error::{OperationError, SchemaError};
 use filter::{Filter, FilterValid};
@@ -153,7 +154,11 @@ impl Entry<EntryInvalid, EntryNew> {
     }
 
     // FIXME: Can we consume protoentry?
-    pub fn from(e: &ProtoEntry, qs: &QueryServerWriteTransaction) -> Result<Self, OperationError> {
+    pub fn from(
+        audit: &mut AuditScope,
+        e: &ProtoEntry,
+        qs: &QueryServerWriteTransaction
+        ) -> Result<Self, OperationError> {
         // Why not the trait? In the future we may want to extend
         // this with server aware functions for changes of the
         // incoming data.
@@ -165,7 +170,7 @@ impl Entry<EntryInvalid, EntryNew> {
             .attrs
             .iter()
             .map(|(k, v)| {
-                let nv: Result<Vec<_>, _> = v.iter().map(|vr| qs.clone_value(&k, vr)).collect();
+                let nv: Result<Vec<_>, _> = v.iter().map(|vr| qs.clone_value(audit, &k, vr)).collect();
                 match nv {
                     Ok(mut nvi) => {
                         nvi.sort_unstable();
@@ -452,6 +457,7 @@ impl<STATE> Entry<EntryValid, STATE> {
                 self.attribute_pres(attr.as_str())
             }
             Filter::Or(l) => l.iter().fold(false, |acc, f| {
+                // Check with ftweedal about or filter zero len correctness.
                 if acc {
                     acc
                 } else {
@@ -459,6 +465,7 @@ impl<STATE> Entry<EntryValid, STATE> {
                 }
             }),
             Filter::And(l) => l.iter().fold(true, |acc, f| {
+                // Check with ftweedal about and filter zero len correctness.
                 if acc {
                     self.entry_match_no_index(f)
                 } else {
