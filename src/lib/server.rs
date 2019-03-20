@@ -250,14 +250,18 @@ pub trait QueryServerReadTransaction {
     // TODO: It could be argued that we should have a proper "Value" type, so that we can
     // take care of this a bit cleaner, and do the checks in that, but I think for
     // now this is good enough.
-    fn clone_value(&self,
+    fn clone_value(
+        &self,
         audit: &mut AuditScope,
         attr: &String,
-        value: &String
-        ) -> Result<String, OperationError> {
+        value: &String,
+    ) -> Result<String, OperationError> {
         let schema = self.get_schema();
         // TODO: Normalise the attr, else lookup with fail ....
-        let schema_name = schema.get_attributes().get("name").expect("Schema corrupted");
+        let schema_name = schema
+            .get_attributes()
+            .get("name")
+            .expect("Schema corrupted");
 
         // TODO: Should we return the normalise attr?
         let temp_a = schema_name.normalise_value(attr);
@@ -1446,8 +1450,9 @@ mod tests {
                 &server_txn,
             )
             .unwrap();
-            let de_ts = DeleteEvent::from_request(audit, DeleteRequest::new(filt_ts.clone()), &server_txn)
-                .unwrap();
+            let de_ts =
+                DeleteEvent::from_request(audit, DeleteRequest::new(filt_ts.clone()), &server_txn)
+                    .unwrap();
             let se_ts = SearchEvent::new_ext_impersonate(filt_i_ts.clone());
 
             // First, create a tombstone
@@ -1524,8 +1529,9 @@ mod tests {
                 &server_txn,
             )
             .unwrap();
-            let de_rc = DeleteEvent::from_request(audit, DeleteRequest::new(filt_rc.clone()), &server_txn)
-                .unwrap();
+            let de_rc =
+                DeleteEvent::from_request(audit, DeleteRequest::new(filt_rc.clone()), &server_txn)
+                    .unwrap();
             let se_rc = SearchEvent::new_ext_impersonate(filt_i_rc.clone());
 
             let sre_rc = SearchEvent::new_rec_impersonate(filt_i_rc.clone());
@@ -1775,30 +1781,20 @@ mod tests {
             assert!(cr.is_ok());
 
             // test attr not exist
-            let r1 = server_txn.clone_value(
-                audit,
-                &"tausau".to_string(),
-                &"naoeutnhaou".to_string(),
-            );
+            let r1 =
+                server_txn.clone_value(audit, &"tausau".to_string(), &"naoeutnhaou".to_string());
 
             assert!(r1 == Ok("naoeutnhaou".to_string()));
 
             // test attr not-normalised
             // test attr not-reference
-            let r2 = server_txn.clone_value(
-                audit,
-                &"NaMe".to_string(),
-                &"NaMe".to_string(),
-            );
+            let r2 = server_txn.clone_value(audit, &"NaMe".to_string(), &"NaMe".to_string());
 
             assert!(r2 == Ok("NaMe".to_string()));
 
             // test attr reference
-            let r3 = server_txn.clone_value(
-                audit,
-                &"member".to_string(),
-                &"testperson1".to_string(),
-            );
+            let r3 =
+                server_txn.clone_value(audit, &"member".to_string(), &"testperson1".to_string());
 
             assert!(r3 == Ok("cc8e95b4-c24f-4d68-ba54-8bed76f63930".to_string()));
 

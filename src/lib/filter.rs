@@ -199,8 +199,8 @@ impl Filter<FilterInvalid> {
     pub fn from_ro(
         audit: &mut AuditScope,
         f: &ProtoFilter,
-        qs: &QueryServerTransaction
-        ) -> Result<Self, OperationError> {
+        qs: &QueryServerTransaction,
+    ) -> Result<Self, OperationError> {
         Ok(match f {
             ProtoFilter::Eq(a, v) => Filter::Eq(a.clone(), qs.clone_value(audit, a, v)?),
             ProtoFilter::Sub(a, v) => Filter::Sub(a.clone(), qs.clone_value(audit, a, v)?),

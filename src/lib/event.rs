@@ -1,10 +1,10 @@
-use audit::AuditScope;
 use super::filter::{Filter, FilterInvalid};
 use super::proto_v1::Entry as ProtoEntry;
 use super::proto_v1::{
     AuthRequest, AuthResponse, AuthStatus, CreateRequest, DeleteRequest, ModifyRequest,
     OperationResponse, ReviveRecycledRequest, SearchRecycledRequest, SearchRequest, SearchResponse,
 };
+use audit::AuditScope;
 use entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
 // use error::OperationError;
 use error::OperationError;
@@ -146,8 +146,11 @@ impl CreateEvent {
         request: CreateRequest,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        let rentries: Result<Vec<_>, _> =
-            request.entries.iter().map(|e| Entry::from(audit, e, qs)).collect();
+        let rentries: Result<Vec<_>, _> = request
+            .entries
+            .iter()
+            .map(|e| Entry::from(audit, e, qs))
+            .collect();
         match rentries {
             Ok(entries) => Ok(CreateEvent {
                 // From ProtoEntry -> Entry

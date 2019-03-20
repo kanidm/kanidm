@@ -1,6 +1,6 @@
 // use serde_json::{Error, Value};
-use audit::AuditScope;
 use super::proto_v1::Entry as ProtoEntry;
+use audit::AuditScope;
 use error::{OperationError, SchemaError};
 use filter::{Filter, FilterValid};
 use modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
@@ -157,8 +157,8 @@ impl Entry<EntryInvalid, EntryNew> {
     pub fn from(
         audit: &mut AuditScope,
         e: &ProtoEntry,
-        qs: &QueryServerWriteTransaction
-        ) -> Result<Self, OperationError> {
+        qs: &QueryServerWriteTransaction,
+    ) -> Result<Self, OperationError> {
         // Why not the trait? In the future we may want to extend
         // this with server aware functions for changes of the
         // incoming data.
@@ -170,7 +170,8 @@ impl Entry<EntryInvalid, EntryNew> {
             .attrs
             .iter()
             .map(|(k, v)| {
-                let nv: Result<Vec<_>, _> = v.iter().map(|vr| qs.clone_value(audit, &k, vr)).collect();
+                let nv: Result<Vec<_>, _> =
+                    v.iter().map(|vr| qs.clone_value(audit, &k, vr)).collect();
                 match nv {
                     Ok(mut nvi) => {
                         nvi.sort_unstable();
