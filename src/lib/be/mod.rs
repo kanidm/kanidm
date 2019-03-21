@@ -385,15 +385,18 @@ impl BackendWriteTransaction {
         })
     }
 
+
     pub fn backup(&self,  audit: &mut AuditScope, dstPath: &str) -> Result<(), OperationError> {
         
-        //open connection to the destination
+        //uses SQLites connection.backup function which also catches fs errors
         let result = self.conn.backup(rusqlite::DatabaseName::Main, dstPath, None); 
 
         match result {
             
             Ok(_) => Ok(()),
             Err(e) => {
+                // TODO: figure out how to add sqlite errors into the OperationError::SQLiteError
+                // enum
                 audit_log!(audit, "Error in sqlite {:?}", e);
                 Err(OperationError::SQLiteError)
             }
@@ -761,14 +764,14 @@ mod tests {
         });
     }
     
-    pub static dbBackupFileName: &'static str = "./.backup_test.db";
+    pub static DB_BACKUP_FILENAME: &'static str = "./.backup_test.db";
 
     #[test]
     fn test_backup_restore() {
         
         run_test!(|audit: &mut AuditScope, be: &BackendWriteTransaction| {
              
-            let result = fs::remove_file(dbBackupFileName);
+            let result = fs::remove_file(DB_BACKUP_FILENAME);
             
             match result{
                 
@@ -778,13 +781,12 @@ mod tests {
                     // otherwise return the error 
                     match e.kind(){
                         std::io::ErrorKind::NotFound => {},
-                        _ => (),
+                        _ => panic!(),
 
                     }
                 },
                 _ => (),
             } 
-                
 
             be.backup(audit, "./.backup_test.db").unwrap();
             be.restore(audit).unwrap();
