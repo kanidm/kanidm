@@ -1,4 +1,4 @@
-// use rusqlite::Error as RusqliteError;
+//use rusqlite::Error as RusqliteError;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum SchemaError {
@@ -26,4 +26,5 @@ pub enum OperationError {
     InvalidState,
     InvalidEntryState,
     BackendEngine,
+    SQLiteError, //(RusqliteError)
 }
