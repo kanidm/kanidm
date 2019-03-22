@@ -385,19 +385,19 @@ impl BackendWriteTransaction {
         })
     }
 
-    pub fn backup(&self,  audit: &mut AuditScope, dstPath: &str) -> Result<(), OperationError> {
-        
+    pub fn backup(&self, audit: &mut AuditScope, dstPath: &str) -> Result<(), OperationError> {
         //open connection to the destination
-        let result = self.conn.backup(rusqlite::DatabaseName::Main, dstPath, None); 
+        let result = self
+            .conn
+            .backup(rusqlite::DatabaseName::Main, dstPath, None);
 
         match result {
-            
             Ok(_) => Ok(()),
             Err(e) => {
                 audit_log!(audit, "Error in sqlite {:?}", e);
                 Err(OperationError::SQLiteError)
             }
-       }
+        }
     }
 
     // Should this be offline only?
@@ -760,31 +760,25 @@ mod tests {
             assert!(be.delete(audit, &vec![r2.clone(), r3.clone()]).is_ok());
         });
     }
-    
+
     pub static dbBackupFileName: &'static str = "./.backup_test.db";
 
     #[test]
     fn test_backup_restore() {
-        
         run_test!(|audit: &mut AuditScope, be: &BackendWriteTransaction| {
-             
             let result = fs::remove_file(dbBackupFileName);
-            
-            match result{
-                
-                Err(e) => {
-                    
-                    // if the error is the file is not found, thats what we want so continue,
-                    // otherwise return the error 
-                    match e.kind(){
-                        std::io::ErrorKind::NotFound => {},
-                        _ => (),
 
+            match result {
+                Err(e) => {
+                    // if the error is the file is not found, thats what we want so continue,
+                    // otherwise return the error
+                    match e.kind() {
+                        std::io::ErrorKind::NotFound => {}
+                        _ => (),
                     }
-                },
+                }
                 _ => (),
-            } 
-                
+            }
 
             be.backup(audit, "./.backup_test.db").unwrap();
             be.restore(audit).unwrap();
