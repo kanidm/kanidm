@@ -391,13 +391,8 @@ impl BackendWriteTransaction {
             .conn
             .backup(rusqlite::DatabaseName::Main, dstPath, None);
 
-        match result {
-            Ok(_) => Ok(()),
-            Err(e) => {
-                audit_log!(audit, "Error in sqlite {:?}", e);
-                Err(OperationError::SQLiteError)
-            }
-        }
+        try_audit!(audit, result, "Error in sqlite {:?}", OperationError::SQLiteError);
+        Ok(())
     }
 
     // Should this be offline only?
