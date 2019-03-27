@@ -1,7 +1,7 @@
 use audit::AuditScope;
-use entry::{Entry, EntryInvalid, EntryNew};
+use entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
 use error::OperationError;
-use event::CreateEvent;
+use event::{CreateEvent, DeleteEvent, ModifyEvent, SearchEvent};
 use server::QueryServerWriteTransaction;
 
 mod base;
@@ -24,7 +24,13 @@ trait Plugin {
         Ok(())
     }
 
-    fn post_create() -> Result<(), OperationError> {
+    fn post_create(
+        _au: &mut AuditScope,
+        _qs: &QueryServerWriteTransaction,
+        // List of what we commited that was validate?
+        _cand: &Vec<Entry<EntryValid, EntryNew>>,
+        _ce: &CreateEvent,
+    ) -> Result<(), OperationError> {
         Ok(())
     }
 
@@ -32,7 +38,12 @@ trait Plugin {
         Ok(())
     }
 
-    fn post_modify() -> Result<(), OperationError> {
+    fn post_modify(
+        _au: &mut AuditScope,
+        _qs: &QueryServerWriteTransaction,
+        _cand: &Vec<Entry<EntryValid, EntryCommitted>>,
+        _ce: &ModifyEvent,
+    ) -> Result<(), OperationError> {
         Ok(())
     }
 
@@ -40,7 +51,12 @@ trait Plugin {
         Ok(())
     }
 
-    fn post_delete() -> Result<(), OperationError> {
+    fn post_delete(
+        _au: &mut AuditScope,
+        _qs: &QueryServerWriteTransaction,
+        _cand: &Vec<Entry<EntryValid, EntryCommitted>>,
+        _ce: &DeleteEvent,
+    ) -> Result<(), OperationError> {
         Ok(())
     }
 
@@ -54,6 +70,8 @@ trait Plugin {
 }
 
 pub struct Plugins {}
+
+// TODO: Should this be a function instead, to allow inlining and better debug?
 
 macro_rules! run_pre_create_plugin {
     (
@@ -91,6 +109,59 @@ impl Plugins {
             // TODO, actually return the right thing ...
             res
         })
+    }
+
+    pub fn run_post_create(
+        au: &mut AuditScope,
+        qs: &QueryServerWriteTransaction,
+        cand: &Vec<Entry<EntryValid, EntryNew>>,
+        ce: &CreateEvent,
+    ) -> Result<(), OperationError> {
+        Ok(())
+    }
+
+    pub fn run_pre_modify(
+        au: &mut AuditScope,
+        qs: &QueryServerWriteTransaction,
+        cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
+        me: &ModifyEvent,
+    ) -> Result<(), OperationError> {
+        Ok(())
+    }
+
+    pub fn run_post_modify(
+        au: &mut AuditScope,
+        qs: &QueryServerWriteTransaction,
+        cand: &Vec<Entry<EntryValid, EntryCommitted>>,
+        me: &ModifyEvent,
+    ) -> Result<(), OperationError> {
+        Ok(())
+    }
+
+    pub fn run_pre_delete(
+        au: &mut AuditScope,
+        qs: &QueryServerWriteTransaction,
+        cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
+        de: &DeleteEvent,
+    ) -> Result<(), OperationError> {
+        Ok(())
+    }
+
+    pub fn run_post_delete(
+        au: &mut AuditScope,
+        qs: &QueryServerWriteTransaction,
+        cand: &Vec<Entry<EntryValid, EntryCommitted>>,
+        de: &DeleteEvent,
+    ) -> Result<(), OperationError> {
+        Ok(())
+    }
+
+    pub fn run_pre_search(au: &mut AuditScope) -> Result<(), OperationError> {
+        Ok(())
+    }
+
+    pub fn run_post_search(au: &mut AuditScope) -> Result<(), OperationError> {
+        Ok(())
     }
 }
 
