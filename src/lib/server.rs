@@ -409,12 +409,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // I have no intent to make these dynamic or configurable.
 
         let mut audit_plugin_pre = AuditScope::new("plugin_pre_create");
-        let plug_pre_res = Plugins::run_pre_create(
-            &mut audit_plugin_pre,
-            &self,
-            &mut candidates,
-            ce,
-        );
+        let plug_pre_res =
+            Plugins::run_pre_create(&mut audit_plugin_pre, &self, &mut candidates, ce);
         au.append_scope(audit_plugin_pre);
 
         if plug_pre_res.is_err() {

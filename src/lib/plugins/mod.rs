@@ -5,10 +5,10 @@ use event::CreateEvent;
 use server::QueryServerWriteTransaction;
 
 mod base;
+mod failure;
 mod protected;
 mod recycle;
 mod refint;
-mod failure;
 
 trait Plugin {
     fn id() -> &'static str;
@@ -84,10 +84,9 @@ impl Plugins {
     ) -> Result<(), OperationError> {
         audit_segment!(au, || {
             // map chain?
-            let res = run_pre_create_plugin!(au, qs, cand, ce, base::Base)
-                .and_then(|_| {
-                    run_pre_create_plugin!(au, qs, cand, ce, refint::ReferentialIntegrity)
-                });
+            let res = run_pre_create_plugin!(au, qs, cand, ce, base::Base).and_then(|_| {
+                run_pre_create_plugin!(au, qs, cand, ce, refint::ReferentialIntegrity)
+            });
 
             // TODO, actually return the right thing ...
             res

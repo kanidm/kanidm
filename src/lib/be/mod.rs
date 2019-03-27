@@ -391,7 +391,12 @@ impl BackendWriteTransaction {
             .conn
             .backup(rusqlite::DatabaseName::Main, dstPath, None);
 
-        try_audit!(audit, result, "Error in sqlite {:?}", OperationError::SQLiteError);
+        try_audit!(
+            audit,
+            result,
+            "Error in sqlite {:?}",
+            OperationError::SQLiteError
+        );
         Ok(())
     }
 

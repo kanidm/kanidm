@@ -8,7 +8,7 @@ use error::OperationError;
 use event::CreateEvent;
 use filter::Filter;
 use schema::SchemaWriteTransaction;
-use server::{QueryServerWriteTransaction, QueryServerReadTransaction};
+use server::{QueryServerReadTransaction, QueryServerWriteTransaction};
 
 // TO FINISH
 /*
@@ -133,10 +133,10 @@ mod tests {
     use std::sync::Arc;
 
     use audit::AuditScope;
-    use be::{Backend};
+    use be::Backend;
     use entry::{Entry, EntryInvalid, EntryNew};
     use event::CreateEvent;
-    use schema::{Schema};
+    use schema::Schema;
     use server::{QueryServer, QueryServerWriteTransaction};
 
     macro_rules! run_pre_create_test {
@@ -197,12 +197,10 @@ mod tests {
             create,
             false,
             false,
-            |
-             au: &mut AuditScope,
-            qs: &QueryServerWriteTransaction,
+            |au: &mut AuditScope,
+             qs: &QueryServerWriteTransaction,
              cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
-             ce: &CreateEvent,
-             | {
+             ce: &CreateEvent| {
                 let r = Base::pre_create(au, qs, cand, ce);
 
                 assert!(r.is_ok());
@@ -238,12 +236,10 @@ mod tests {
             create,
             false,
             false,
-            |
-             au: &mut AuditScope,
-            qs: &QueryServerWriteTransaction,
+            |au: &mut AuditScope,
+             qs: &QueryServerWriteTransaction,
              cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
-             ce: &CreateEvent
-             | {
+             ce: &CreateEvent| {
                 let r = Base::pre_create(au, qs, cand, ce);
                 assert!(r.is_ok());
                 // Assert that the entry contains the attr "uuid" now.
@@ -280,12 +276,10 @@ mod tests {
             create,
             false,
             false,
-            |
-             au: &mut AuditScope,
-            qs: &QueryServerWriteTransaction,
+            |au: &mut AuditScope,
+             qs: &QueryServerWriteTransaction,
              cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
-             ce: &CreateEvent,
-             | {
+             ce: &CreateEvent| {
                 let r = Base::pre_create(au, qs, cand, ce);
                 assert!(r.is_err());
             }
@@ -319,12 +313,10 @@ mod tests {
             create,
             false,
             false,
-            |
-             au: &mut AuditScope,
-            qs: &QueryServerWriteTransaction,
+            |au: &mut AuditScope,
+             qs: &QueryServerWriteTransaction,
              cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
-             ce: &CreateEvent,
-            | {
+             ce: &CreateEvent| {
                 let r = Base::pre_create(au, qs, cand, ce);
                 assert!(r.is_err());
             }
@@ -358,12 +350,10 @@ mod tests {
             create,
             false,
             false,
-            |
-             au: &mut AuditScope,
-            qs: &QueryServerWriteTransaction,
+            |au: &mut AuditScope,
+             qs: &QueryServerWriteTransaction,
              cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
-             ce: &CreateEvent,
-             | {
+             ce: &CreateEvent| {
                 let r = Base::pre_create(au, qs, cand, ce);
                 assert!(r.is_ok());
                 let ue = cand.first().unwrap();
@@ -398,12 +388,10 @@ mod tests {
             create,
             false,
             false,
-            |
-             au: &mut AuditScope,
-            qs: &QueryServerWriteTransaction,
+            |au: &mut AuditScope,
+             qs: &QueryServerWriteTransaction,
              cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
-             ce: &CreateEvent,
-             | {
+             ce: &CreateEvent| {
                 let r = Base::pre_create(au, qs, cand, ce);
                 assert!(r.is_err());
             }
@@ -436,12 +424,10 @@ mod tests {
             create,
             false,
             false,
-            |
-             au: &mut AuditScope,
-            qs: &QueryServerWriteTransaction,
+            |au: &mut AuditScope,
+             qs: &QueryServerWriteTransaction,
              cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
-             ce: &CreateEvent
-             | {
+             ce: &CreateEvent| {
                 let r = Base::pre_create(au, qs, cand, ce);
                 assert!(r.is_err());
             }
