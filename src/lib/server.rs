@@ -22,10 +22,6 @@ use schema::{
 // This is the core of the server. It implements all
 // the search and modify actions, applies access controls
 // and get's everything ready to push back to the fe code
-
-// This is it's own actor, so we can have a write addr and a read addr,
-// and it allows serialisation that way rather than relying on
-// the backend
 pub trait QueryServerReadTransaction {
     type BackendTransactionType: BackendReadTransaction;
     fn get_be_txn(&self) -> &Self::BackendTransactionType;
@@ -414,11 +410,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         let mut audit_plugin_pre = AuditScope::new("plugin_pre_create");
         let plug_pre_res = Plugins::run_pre_create(
-            &self.be_txn,
             &mut audit_plugin_pre,
+            &self,
             &mut candidates,
             ce,
-            &self.schema,
         );
         au.append_scope(audit_plugin_pre);
 

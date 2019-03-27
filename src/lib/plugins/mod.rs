@@ -1,24 +1,25 @@
 use audit::AuditScope;
-use be::BackendWriteTransaction;
 use entry::{Entry, EntryInvalid, EntryNew};
 use error::OperationError;
 use event::CreateEvent;
-use schema::SchemaWriteTransaction;
+use server::QueryServerWriteTransaction;
 
 mod base;
 mod protected;
 mod recycle;
+mod refint;
+mod failure;
 
 trait Plugin {
     fn id() -> &'static str;
 
     fn pre_create(
-        // TODO: I think this is wrong, it should be a query server
-        _be: &BackendWriteTransaction,
+        // TODO: I think this is wrong, it should be a query server.
+        // Narators voice: He was wrong ... it must be a query server.
         _au: &mut AuditScope,
+        _qs: &QueryServerWriteTransaction,
         _cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         _ce: &CreateEvent,
-        _schema: &SchemaWriteTransaction,
     ) -> Result<(), OperationError> {
         Ok(())
     }
@@ -56,20 +57,18 @@ pub struct Plugins {}
 
 macro_rules! run_pre_create_plugin {
     (
-        $be_txn:ident,
         $au:ident,
+        $qs:ident,
         $cand:ident,
         $ce:ident,
-        $schema:ident,
         $target_plugin:ty
     ) => {{
         let mut audit_scope = AuditScope::new(<($target_plugin)>::id());
         let r = audit_segment!(audit_scope, || <($target_plugin)>::pre_create(
-            $be_txn,
             &mut audit_scope,
+            $qs,
             $cand,
             $ce,
-            $schema
         ));
         $au.append_scope(audit_scope);
         r
@@ -78,18 +77,20 @@ macro_rules! run_pre_create_plugin {
 
 impl Plugins {
     pub fn run_pre_create(
-        be_txn: &BackendWriteTransaction,
         au: &mut AuditScope,
+        qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         ce: &CreateEvent,
-        schema: &SchemaWriteTransaction,
     ) -> Result<(), OperationError> {
         audit_segment!(au, || {
             // map chain?
-            let base_res = run_pre_create_plugin!(be_txn, au, cand, ce, schema, base::Base);
+            let res = run_pre_create_plugin!(au, qs, cand, ce, base::Base)
+                .and_then(|_| {
+                    run_pre_create_plugin!(au, qs, cand, ce, refint::ReferentialIntegrity)
+                });
 
             // TODO, actually return the right thing ...
-            base_res
+            res
         })
     }
 }
