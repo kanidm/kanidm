@@ -22,10 +22,6 @@ use schema::{
 // This is the core of the server. It implements all
 // the search and modify actions, applies access controls
 // and get's everything ready to push back to the fe code
-
-// This is it's own actor, so we can have a write addr and a read addr,
-// and it allows serialisation that way rather than relying on
-// the backend
 pub trait QueryServerReadTransaction {
     type BackendTransactionType: BackendReadTransaction;
     fn get_be_txn(&self) -> &Self::BackendTransactionType;
@@ -56,7 +52,17 @@ pub trait QueryServerReadTransaction {
 
         // TODO: Assert access control allows the filter and requested attrs.
 
-        // TODO: Pre-search plugins
+        let mut audit_plugin_pre = AuditScope::new("plugin_pre_search");
+        let plug_pre_res = Plugins::run_pre_search(&mut audit_plugin_pre);
+        au.append_scope(audit_plugin_pre);
+
+        match plug_pre_res {
+            Ok(_) => {}
+            Err(e) => {
+                audit_log!(au, "Search operation failed (plugin), {:?}", e);
+                return Err(e);
+            }
+        }
 
         let mut audit_be = AuditScope::new("backend_search");
         let res = self
@@ -66,7 +72,21 @@ pub trait QueryServerReadTransaction {
             .map_err(|_| OperationError::Backend);
         au.append_scope(audit_be);
 
-        // TODO: Post-search plugins
+        if res.is_err() {
+            return res;
+        }
+
+        let mut audit_plugin_post = AuditScope::new("plugin_post_search");
+        let plug_post_res = Plugins::run_post_search(&mut audit_plugin_post);
+        au.append_scope(audit_plugin_post);
+
+        match plug_post_res {
+            Ok(_) => {}
+            Err(e) => {
+                audit_log!(au, "Search operation failed (plugin), {:?}", e);
+                return Err(e);
+            }
+        }
 
         // TODO: We'll add ACI here. I think ACI should transform from
         // internal -> proto entries since we have to anyway ...
@@ -413,13 +433,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // I have no intent to make these dynamic or configurable.
 
         let mut audit_plugin_pre = AuditScope::new("plugin_pre_create");
-        let plug_pre_res = Plugins::run_pre_create(
-            &self.be_txn,
-            &mut audit_plugin_pre,
-            &mut candidates,
-            ce,
-            &self.schema,
-        );
+        let plug_pre_res =
+            Plugins::run_pre_create(&mut audit_plugin_pre, &self, &mut candidates, ce);
         au.append_scope(audit_plugin_pre);
 
         if plug_pre_res.is_err() {
@@ -458,6 +473,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
             return res;
         }
         // Run any post plugins
+
+        let mut audit_plugin_post = AuditScope::new("plugin_post_create");
+        let plug_post_res = Plugins::run_post_create(&mut audit_plugin_post, &self, &norm_cand, ce);
+        au.append_scope(audit_plugin_post);
+
+        if plug_post_res.is_err() {
+            audit_log!(au, "Create operation failed (plugin), {:?}", plug_post_res);
+            return plug_post_res;
+        }
 
         // Commit the txn
         // let commit, commit!
@@ -504,7 +528,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             Err(e) => return Err(OperationError::SchemaViolation(e)),
         };
 
-        let candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
+        let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
             .into_iter()
             .map(|er| {
                 // TODO: Deal with this properly william
@@ -515,41 +539,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
         audit_log!(au, "delete: candidates -> {:?}", candidates);
 
         // Pre delete plugs
+        let mut audit_plugin_pre = AuditScope::new("plugin_pre_delete");
+        let plug_pre_res =
+            Plugins::run_pre_delete(&mut audit_plugin_pre, &self, &mut candidates, de);
+        au.append_scope(audit_plugin_pre);
 
-        // FIXME: This normalisation COPIES everything, which may be
-        // slow.
-
-        /*
-
-        let (norm_cand, invalid_cand): (
-            Vec<Result<Entry<EntryValid, EntryCommitted>, _>>,
-            Vec<Result<_, SchemaError>>,
-        ) = candidates
-            .into_iter()
-            .map(|e| e.validate(&self.schema))
-            .partition(|e| e.is_ok());
-
-        for err in invalid_cand.iter() {
-            audit_log!(au, "Schema Violation: {:?}", err);
+        if plug_pre_res.is_err() {
+            audit_log!(au, "Delete operation failed (plugin), {:?}", plug_pre_res);
+            return plug_pre_res;
         }
-
-        // TODO: Make this better
-        for err in invalid_cand.iter() {
-            return Err(OperationError::SchemaViolation(err.unwrap_err()));
-        }
-
-        let del_cand: Vec<Entry<EntryValid, EntryCommitted>> = norm_cand
-            .into_iter()
-            .map(|e| match e {
-                Ok(v) => {
-                    audit_log!(au, "delete: intent candidate {:?}", v);
-                    v
-                }
-                Err(_) => panic!("Invalid data set state!!!"),
-            })
-            .collect();
-
-        */
 
         let res: Result<Vec<Entry<EntryValid, EntryCommitted>>, SchemaError> = candidates
             .into_iter()
@@ -581,6 +579,14 @@ impl<'a> QueryServerWriteTransaction<'a> {
         }
 
         // Post delete plugs
+        let mut audit_plugin_post = AuditScope::new("plugin_post_delete");
+        let plug_post_res = Plugins::run_post_delete(&mut audit_plugin_post, &self, &del_cand, de);
+        au.append_scope(audit_plugin_post);
+
+        if plug_post_res.is_err() {
+            audit_log!(au, "Delete operation failed (plugin), {:?}", plug_post_res);
+            return plug_post_res;
+        }
 
         // Send result
         audit_log!(au, "Delete operation success");
@@ -728,7 +734,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Clone a set of writeables.
         // Apply the modlist -> Remember, we have a set of origs
         // and the new modified ents.
-        let candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
+        let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
             .into_iter()
             .map(|er| {
                 // TODO: Deal with this properly william
@@ -739,37 +745,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
         audit_log!(au, "modify: candidates -> {:?}", candidates);
 
         // Pre mod plugins
+        let mut audit_plugin_pre = AuditScope::new("plugin_pre_modify");
+        let plug_pre_res =
+            Plugins::run_pre_modify(&mut audit_plugin_pre, &self, &mut candidates, me);
+        au.append_scope(audit_plugin_pre);
 
-        // Normalise all the data now it's validated.
-        // FIXME: This normalisation COPIES everything, which may be
-        // slow.
-
-        /*
-        let (norm_cand, invalid_cand): (
-            Vec<Result<Entry<EntryValid, EntryCommitted>, _>>,
-            Vec<Result<_, SchemaError>>,
-        ) = candidates
-            .into_iter()
-            .map(|e| e.validate(&self.schema))
-            .partition(|e| e.is_ok());
-
-        for err in invalid_cand.iter() {
-            audit_log!(au, "Schema Violation: {:?}", err);
+        if plug_pre_res.is_err() {
+            audit_log!(au, "Modify operation failed (plugin), {:?}", plug_pre_res);
+            return plug_pre_res;
         }
-
-        // TODO: Make this better
-        for err in invalid_cand.iter() {
-            return Err(OperationError::SchemaViolation(err.unwrap_err()));
-        }
-
-        let norm_cand: Vec<Entry<EntryValid, EntryCommitted>> = norm_cand
-            .into_iter()
-            .map(|e| match e {
-                Ok(v) => v,
-                Err(_) => panic!("Invalid data set state!!!"),
-            })
-            .collect();
-        */
 
         let res: Result<Vec<Entry<EntryValid, EntryCommitted>>, SchemaError> = candidates
             .into_iter()
@@ -803,6 +787,14 @@ impl<'a> QueryServerWriteTransaction<'a> {
         }
 
         // Post Plugins
+        let mut audit_plugin_post = AuditScope::new("plugin_post_modify");
+        let plug_post_res = Plugins::run_post_modify(&mut audit_plugin_post, &self, &norm_cand, me);
+        au.append_scope(audit_plugin_post);
+
+        if plug_post_res.is_err() {
+            audit_log!(au, "Modify operation failed (plugin), {:?}", plug_post_res);
+            return plug_post_res;
+        }
 
         // return
         audit_log!(au, "Modify operation success");

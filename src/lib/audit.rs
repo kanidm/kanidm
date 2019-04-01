@@ -52,7 +52,6 @@ macro_rules! audit_segment {
     }};
 }
 
-
 macro_rules! try_audit {
     ($audit:ident, $result:expr, $logFormat:expr, $errorType:expr) => {
         match $result {
@@ -61,7 +60,7 @@ macro_rules! try_audit {
                 audit_log!($audit, $logFormat, e);
                 return Err($errorType);
             }
-        }       
+        }
     };
 }
 
