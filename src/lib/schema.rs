@@ -1,8 +1,8 @@
 use audit::AuditScope;
 use constants::*;
-use error::{OperationError, SchemaError, ConsistencyError};
-use std::collections::HashMap;
+use error::{ConsistencyError, OperationError, SchemaError};
 use regex::Regex;
+use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::str::FromStr;
 use uuid::Uuid;
@@ -303,9 +303,7 @@ pub struct SchemaInner {
 pub trait SchemaReadTransaction {
     fn get_inner(&self) -> &SchemaInner;
 
-    fn validate(&self, audit: &mut AuditScope) ->
-        Vec<Result<(), ConsistencyError>>
-    {
+    fn validate(&self, audit: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
         self.get_inner().validate(audit)
     }
 
@@ -863,9 +861,7 @@ impl SchemaInner {
         }
     }
 
-    pub fn validate(&self, audit: &mut AuditScope) ->
-        Vec<Result<(), ConsistencyError>>
-    {
+    pub fn validate(&self, audit: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
         let mut res = Vec::new();
         // TODO: Does this need to validate anything further at all? The UUID
         // will be checked as part of the schema migration on startup, so I think
@@ -881,22 +877,20 @@ impl SchemaInner {
                     a
                 );
                 if !self.attributes.contains_key(a) {
-                    res.push(
-                        Err(ConsistencyError::SchemaClassMissingAttribute(
-                            class.name.clone(), a.clone()
-                        ))
-                    )
+                    res.push(Err(ConsistencyError::SchemaClassMissingAttribute(
+                        class.name.clone(),
+                        a.clone(),
+                    )))
                 }
             }
             for a in &class.may {
                 // report the attribute.
                 audit_log!(audit, "validate may class:attr -> {}:{}", class.name, a);
                 if !self.attributes.contains_key(a) {
-                    res.push(
-                        Err(ConsistencyError::SchemaClassMissingAttribute(
-                            class.name.clone(), a.clone()
-                        ))
-                    )
+                    res.push(Err(ConsistencyError::SchemaClassMissingAttribute(
+                        class.name.clone(),
+                        a.clone(),
+                    )))
                 }
             }
             for a in &class.systemmust {
@@ -908,22 +902,20 @@ impl SchemaInner {
                     a
                 );
                 if !self.attributes.contains_key(a) {
-                    res.push(
-                        Err(ConsistencyError::SchemaClassMissingAttribute(
-                            class.name.clone(), a.clone()
-                        ))
-                    )
+                    res.push(Err(ConsistencyError::SchemaClassMissingAttribute(
+                        class.name.clone(),
+                        a.clone(),
+                    )))
                 }
             }
             for a in &class.must {
                 // report the attribute.
                 audit_log!(audit, "validate must class:attr -> {}:{}", class.name, a);
                 if !self.attributes.contains_key(a) {
-                    res.push(
-                        Err(ConsistencyError::SchemaClassMissingAttribute(
-                            class.name.clone(), a.clone()
-                        ))
-                    )
+                    res.push(Err(ConsistencyError::SchemaClassMissingAttribute(
+                        class.name.clone(),
+                        a.clone(),
+                    )))
                 }
             }
         }
@@ -1017,20 +1009,18 @@ mod tests {
     use audit::AuditScope;
     use constants::*;
     use entry::{Entry, EntryInvalid, EntryNew, EntryValid};
-    use error::{SchemaError, ConsistencyError};
+    use error::{ConsistencyError, SchemaError};
     use filter::{Filter, FilterValid};
-    use schema::{IndexType, Schema, SchemaAttribute, SyntaxType};
     use schema::SchemaReadTransaction;
+    use schema::{IndexType, Schema, SchemaAttribute, SyntaxType};
     use serde_json;
     use std::convert::TryFrom;
     use uuid::Uuid;
 
-    macro_rules! validate_schema{
+    macro_rules! validate_schema {
         ($sch:ident, $au:expr) => {{
             // Turns into a result type
-            let r: Result<Vec<()>, ConsistencyError> = $sch.validate($au)
-                .into_iter()
-                .collect();
+            let r: Result<Vec<()>, ConsistencyError> = $sch.validate($au).into_iter().collect();
             assert!(r.is_ok());
         }};
     }

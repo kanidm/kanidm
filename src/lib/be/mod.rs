@@ -9,7 +9,7 @@ use serde_json;
 
 use audit::AuditScope;
 use entry::{Entry, EntryCommitted, EntryNew, EntryValid};
-use error::{OperationError, ConsistencyError};
+use error::{ConsistencyError, OperationError};
 use filter::{Filter, FilterValid};
 
 mod idl;

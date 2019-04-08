@@ -10,7 +10,7 @@ use be::{
 
 use constants::{JSON_ANONYMOUS_V1, JSON_SYSTEM_INFO_V1};
 use entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
-use error::{OperationError, SchemaError, ConsistencyError};
+use error::{ConsistencyError, OperationError, SchemaError};
 use event::{CreateEvent, DeleteEvent, ExistsEvent, ModifyEvent, ReviveRecycledEvent, SearchEvent};
 use filter::{Filter, FilterInvalid};
 use modify::{Modify, ModifyInvalid, ModifyList};
@@ -331,42 +331,52 @@ pub trait QueryServerReadTransaction {
     // Verify the data content of the server is as expected. This will probably
     // call various functions for validation, including possibly plugin
     // verifications.
-    fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
+    fn verify(&self, au: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
+        let mut audit = AuditScope::new("verify");
 
-    // First do any internal checks we require.
-    //  * backend
-    let be_errs = self
-        .get_be_txn()
-        .verify();
+        // If we fail after backend, we need to return NOW because we can't
+        // assert any other faith in the DB states.
+        //  * backend
+        let be_errs = self.get_be_txn().verify();
 
-    // Now, do we have any error?
-    // If yes, return now.
+        if be_errs.len() != 0 {
+            au.append_scope(audit);
+            return be_errs;
+        }
 
-    //  * in memory schema consistency.
-    // let sc;
+        //  * in memory schema consistency.
+        let sc_errs = self.get_schema().validate(&mut audit);
 
+        if sc_errs.len() != 0 {
+            au.append_scope(audit);
+            return sc_errs;
+        }
 
-    // Now, do we have any error?
-    // If yes, return now.
+        //  * Indexing (req be + sch )
 
-    //  * Indexing (req be + sch )
+        /*
+        idx_errs = self.get_be_txn()
+            .verify_indexes();
 
-    // Now, do we have any error?
-    // If yes, return now.
+        if idx_errs.len() != 0 {
+            au.append_scope(audit);
+            return idx_errs;
+        }
+         */
 
-    // If we fail after backend, we need to return NOW because we can't
-    // assert any other faith in the DB states.
+        // Ok BE passed, lets move on to the content.
+        // Most of our checks are in the plugins, so we let them
+        // do their job.
 
-    // Ok BE passed, lets move on to the content
+        // Now, call the plugins verification system.
+        //  * name and uuid unique from base
+        //  * refint
+        //  * memberof
 
-    // * schema
+        // Join them all ...
 
-    // Now, call the plugins verification system.
-    //  * name and uuid unique from base
-    //  * refint
-    //  * memberof
-
-    // Finish up ...
+        // Finish up ...
+        au.append_scope(audit);
         Vec::new()
     }
 }

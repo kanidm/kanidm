@@ -30,12 +30,9 @@ pub enum OperationError {
     SQLiteError, //(RusqliteError)
 }
 
-
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum ConsistencyError {
     Unknown,
     // Class, Attribute
     SchemaClassMissingAttribute(String, String),
-
 }
-
