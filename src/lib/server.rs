@@ -52,6 +52,7 @@ pub trait QueryServerReadTransaction {
 
         // TODO: Assert access control allows the filter and requested attrs.
 
+        /*
         let mut audit_plugin_pre = AuditScope::new("plugin_pre_search");
         let plug_pre_res = Plugins::run_pre_search(&mut audit_plugin_pre);
         au.append_scope(audit_plugin_pre);
@@ -63,6 +64,7 @@ pub trait QueryServerReadTransaction {
                 return Err(e);
             }
         }
+        */
 
         let mut audit_be = AuditScope::new("backend_search");
         let res = self
@@ -76,6 +78,7 @@ pub trait QueryServerReadTransaction {
             return res;
         }
 
+        /*
         let mut audit_plugin_post = AuditScope::new("plugin_post_search");
         let plug_post_res = Plugins::run_post_search(&mut audit_plugin_post);
         au.append_scope(audit_plugin_post);
@@ -87,6 +90,7 @@ pub trait QueryServerReadTransaction {
                 return Err(e);
             }
         }
+        */
 
         // TODO: We'll add ACI here. I think ACI should transform from
         // internal -> proto entries since we have to anyway ...
@@ -327,7 +331,33 @@ pub trait QueryServerReadTransaction {
     fn resolve_value(&self, attr: &String, value: &String) -> Result<String, OperationError> {
         Ok(value.clone())
     }
+}
 
+pub struct QueryServerTransaction {
+    be_txn: BackendTransaction,
+    // Anything else? In the future, we'll need to have a schema transaction
+    // type, maybe others?
+    schema: SchemaTransaction,
+}
+
+// Actually conduct a search request
+// This is the core of the server, as it processes the entire event
+// applies all parts required in order and more.
+impl QueryServerReadTransaction for QueryServerTransaction {
+    type BackendTransactionType = BackendTransaction;
+
+    fn get_be_txn(&self) -> &BackendTransaction {
+        &self.be_txn
+    }
+
+    type SchemaTransactionType = SchemaTransaction;
+
+    fn get_schema(&self) -> &SchemaTransaction {
+        &self.schema
+    }
+}
+
+impl QueryServerTransaction {
     // Verify the data content of the server is as expected. This will probably
     // call various functions for validation, including possibly plugin
     // verifications.
@@ -353,7 +383,6 @@ pub trait QueryServerReadTransaction {
         }
 
         //  * Indexing (req be + sch )
-
         /*
         idx_errs = self.get_be_txn()
             .verify_indexes();
@@ -369,39 +398,11 @@ pub trait QueryServerReadTransaction {
         // do their job.
 
         // Now, call the plugins verification system.
-        //  * name and uuid unique from base
-        //  * refint
-        //  * memberof
-
-        // Join them all ...
+        let pl_errs = Plugins::run_verify(&mut audit, self);
 
         // Finish up ...
         au.append_scope(audit);
-        Vec::new()
-    }
-}
-
-pub struct QueryServerTransaction {
-    be_txn: BackendTransaction,
-    // Anything else? In the future, we'll need to have a schema transaction
-    // type, maybe others?
-    schema: SchemaTransaction,
-}
-
-// Actually conduct a search request
-// This is the core of the server, as it processes the entire event
-// applies all parts required in order and more.
-impl QueryServerReadTransaction for QueryServerTransaction {
-    type BackendTransactionType = BackendTransaction;
-
-    fn get_be_txn(&self) -> &BackendTransaction {
-        &self.be_txn
-    }
-
-    type SchemaTransactionType = SchemaTransaction;
-
-    fn get_schema(&self) -> &SchemaTransaction {
-        &self.schema
+        pl_errs
     }
 }
 

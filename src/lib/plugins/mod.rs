@@ -1,8 +1,10 @@
 use audit::AuditScope;
+use be::BackendReadTransaction;
 use entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
-use error::OperationError;
+use error::{ConsistencyError, OperationError};
 use event::{CreateEvent, DeleteEvent, ModifyEvent, SearchEvent};
-use server::QueryServerWriteTransaction;
+use schema::SchemaReadTransaction;
+use server::{QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction};
 
 mod base;
 mod failure;
@@ -60,12 +62,11 @@ trait Plugin {
         Ok(())
     }
 
-    fn pre_search() -> Result<(), OperationError> {
-        Ok(())
-    }
-
-    fn post_search() -> Result<(), OperationError> {
-        Ok(())
+    fn verify(
+        _au: &mut AuditScope,
+        _qs: &QueryServerTransaction,
+    ) -> Vec<Result<(), ConsistencyError>> {
+        Vec::new()
     }
 }
 
@@ -82,7 +83,7 @@ macro_rules! run_pre_create_plugin {
         $target_plugin:ty
     ) => {{
         let mut audit_scope = AuditScope::new(<($target_plugin)>::id());
-        let r = audit_segment!(audit_scope, || <($target_plugin)>::pre_create(
+        let mut r = audit_segment!(audit_scope, || <($target_plugin)>::pre_create(
             &mut audit_scope,
             $qs,
             $cand,
@@ -90,6 +91,23 @@ macro_rules! run_pre_create_plugin {
         ));
         $au.append_scope(audit_scope);
         r
+    }};
+}
+
+macro_rules! run_verify_plugin {
+    (
+        $au:ident,
+        $qs:ident,
+        $results:expr,
+        $target_plugin:ty
+    ) => {{
+        let mut audit_scope = AuditScope::new(<($target_plugin)>::id());
+        let mut r = audit_segment!(audit_scope, || <($target_plugin)>::verify(
+            &mut audit_scope,
+            $qs,
+        ));
+        $results.append(&mut r);
+        $au.append_scope(audit_scope);
     }};
 }
 
@@ -156,12 +174,14 @@ impl Plugins {
         Ok(())
     }
 
-    pub fn run_pre_search(au: &mut AuditScope) -> Result<(), OperationError> {
-        Ok(())
-    }
-
-    pub fn run_post_search(au: &mut AuditScope) -> Result<(), OperationError> {
-        Ok(())
+    pub fn run_verify(
+        au: &mut AuditScope,
+        qs: &QueryServerTransaction,
+    ) -> Vec<Result<(), ConsistencyError>> {
+        let mut results = Vec::new();
+        run_verify_plugin!(au, qs, &mut results, base::Base);
+        run_verify_plugin!(au, qs, &mut results, refint::ReferentialIntegrity);
+        results
     }
 }
 
