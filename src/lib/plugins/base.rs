@@ -4,11 +4,11 @@ use uuid::Uuid;
 use audit::AuditScope;
 use be::{BackendReadTransaction, BackendWriteTransaction};
 use entry::{Entry, EntryInvalid, EntryNew};
-use error::OperationError;
+use error::{ConsistencyError, OperationError};
 use event::CreateEvent;
 use filter::Filter;
 use schema::SchemaWriteTransaction;
-use server::{QueryServerReadTransaction, QueryServerWriteTransaction};
+use server::{QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction};
 
 // TO FINISH
 /*
@@ -124,6 +124,79 @@ impl Plugin for Base {
 
         Ok(())
     }
+
+    fn verify(
+        au: &mut AuditScope,
+        qs: &QueryServerTransaction,
+    ) -> Vec<Result<(), ConsistencyError>> {
+        let name_uuid = String::from("uuid");
+        // Verify all uuid's are unique?
+        // Probably the literally worst thing ...
+
+        // Search for class = *
+        let entries = match qs.internal_search(au, Filter::Pres("class".to_string())) {
+            Ok(r) => r,
+            Err(e) => {
+                // try_audit?
+                // TODO: So here, should be returning the oper error? That makes the errors
+                // recursive, so what is correct?
+                return vec![Err(ConsistencyError::QueryServerSearchFailure)];
+            }
+        };
+
+        let mut r_uniq = entries
+            .iter()
+            // do an exists checks on the uuid
+            .map(|e| {
+                // TODO: Could this be better?
+                let uuid = match e.get_ava(&name_uuid) {
+                    Some(u) => {
+                        if u.len() == 1 {
+                            Ok(u.first().expect("Ohh ffs, really?").clone())
+                        } else {
+                            Err(ConsistencyError::EntryUuidCorrupt(e.get_id()))
+                        }
+                    }
+                    None => Err(ConsistencyError::EntryUuidCorrupt(e.get_id())),
+                };
+
+                match uuid {
+                    Ok(u) => {
+                        let filt = Filter::Eq(name_uuid.clone(), u.clone());
+                        match qs.internal_search(au, filt) {
+                            Ok(r) => {
+                                if r.len() == 0 {
+                                    Err(ConsistencyError::UuidIndexCorrupt(u))
+                                } else if r.len() == 1 {
+                                    Ok(())
+                                } else {
+                                    Err(ConsistencyError::UuidNotUnique(u))
+                                }
+                            }
+                            Err(_) => Err(ConsistencyError::QueryServerSearchFailure),
+                        }
+                    }
+                    Err(e) => Err(e),
+                }
+            })
+            .filter(|v| v.is_err())
+            .collect();
+
+        /*
+        let mut r_name = entries.iter()
+            // do an eq internal search and validate == 1 (ignore ts + rc)
+            .map(|e| {
+            })
+            .filter(|v| {
+                v.is_err()
+            })
+            .collect();
+
+        r_uniq.append(r_name);
+        */
+
+        r_uniq
+    }
 }
 
 #[cfg(test)]
@@ -179,6 +252,8 @@ mod tests {
                     ));
                     assert!(qs_write.commit(&mut au).is_ok());
                 }
+                // Make sure there are no errors.
+                assert!(qs.verify(&mut au_test).len() == 0);
 
                 au.append_scope(au_test);
             });

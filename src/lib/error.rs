@@ -35,4 +35,8 @@ pub enum ConsistencyError {
     Unknown,
     // Class, Attribute
     SchemaClassMissingAttribute(String, String),
+    QueryServerSearchFailure,
+    EntryUuidCorrupt(i64),
+    UuidIndexCorrupt(String),
+    UuidNotUnique(String),
 }
