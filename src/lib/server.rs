@@ -10,7 +10,7 @@ use be::{
 
 use constants::{JSON_ANONYMOUS_V1, JSON_SYSTEM_INFO_V1};
 use entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
-use error::{OperationError, SchemaError};
+use error::{OperationError, SchemaError, ConsistencyError};
 use event::{CreateEvent, DeleteEvent, ExistsEvent, ModifyEvent, ReviveRecycledEvent, SearchEvent};
 use filter::{Filter, FilterInvalid};
 use modify::{Modify, ModifyInvalid, ModifyList};
@@ -326,6 +326,48 @@ pub trait QueryServerReadTransaction {
     // In the opposite direction, we can resolve values for presentation
     fn resolve_value(&self, attr: &String, value: &String) -> Result<String, OperationError> {
         Ok(value.clone())
+    }
+
+    // Verify the data content of the server is as expected. This will probably
+    // call various functions for validation, including possibly plugin
+    // verifications.
+    fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
+
+    // First do any internal checks we require.
+    //  * backend
+    let be_errs = self
+        .get_be_txn()
+        .verify();
+
+    // Now, do we have any error?
+    // If yes, return now.
+
+    //  * in memory schema consistency.
+    // let sc;
+
+
+    // Now, do we have any error?
+    // If yes, return now.
+
+    //  * Indexing (req be + sch )
+
+    // Now, do we have any error?
+    // If yes, return now.
+
+    // If we fail after backend, we need to return NOW because we can't
+    // assert any other faith in the DB states.
+
+    // Ok BE passed, lets move on to the content
+
+    // * schema
+
+    // Now, call the plugins verification system.
+    //  * name and uuid unique from base
+    //  * refint
+    //  * memberof
+
+    // Finish up ...
+        Vec::new()
     }
 }
 
@@ -1007,20 +1049,21 @@ impl<'a> QueryServerWriteTransaction<'a> {
         assert!(!committed);
         // Begin an audit.
         // Validate the schema,
-        schema
-            .validate(audit)
+
+        let r = schema.validate(audit);
+        if r.len() == 0 {
             // TODO: At this point, if validate passes, we probably actually want
             // to perform a reload BEFORE we commit.
             // Alternate, we attempt to reload during batch ops, but this seems
             // costly.
-            .and_then(|_| {
-                // Backend Commit
-                be_txn.commit().and_then(|_| {
-                    // Schema commit: Since validate passed and be is good, this
-                    // must now also be good.
-                    schema.commit()
-                })
+            be_txn.commit().and_then(|_| {
+                // Schema commit: Since validate passed and be is good, this
+                // must now also be good.
+                schema.commit()
             })
+        } else {
+            Err(OperationError::ConsistencyError(r))
+        }
         // Audit done
     }
 }

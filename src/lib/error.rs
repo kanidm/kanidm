@@ -18,6 +18,7 @@ pub enum OperationError {
     EmptyRequest,
     Backend,
     NoMatchingEntries,
+    ConsistencyError(Vec<Result<(), ConsistencyError>>),
     SchemaViolation(SchemaError),
     Plugin,
     FilterGeneration,
@@ -28,3 +29,13 @@ pub enum OperationError {
     BackendEngine,
     SQLiteError, //(RusqliteError)
 }
+
+
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+pub enum ConsistencyError {
+    Unknown,
+    // Class, Attribute
+    SchemaClassMissingAttribute(String, String),
+
+}
+
