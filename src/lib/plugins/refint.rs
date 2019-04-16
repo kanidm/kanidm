@@ -50,3 +50,6 @@ impl Plugin for ReferentialIntegrity {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {}

@@ -6,6 +6,9 @@ use event::{CreateEvent, DeleteEvent, ModifyEvent, SearchEvent};
 use schema::SchemaReadTransaction;
 use server::{QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction};
 
+#[macro_use]
+mod macros;
+
 mod base;
 mod failure;
 mod protected;
@@ -184,8 +187,3 @@ impl Plugins {
         results
     }
 }
-
-// We should define the order that plugins should run
-
-// How do we deal with plugin activation? Config?
-// What do plugins default to?

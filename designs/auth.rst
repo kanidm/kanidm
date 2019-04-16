@@ -1,6 +1,120 @@
 
-Auth Summary
-------------
+Authentication Use Cases
+------------------------
+
+There are many planned integrations for authentication for a service like this. The uses cases
+for what kind of auth are below:
+
+
+Kanidm account system
+=====================
+
+The login screen is presented to the user. They are challenged for a series of credentials.
+When they request an action that is of a certain privilege, they must re-provide the strongest
+credential (ie webauthn token, totp). Some actions may require another account to sign off on
+the action for it to persist.
+
+This applies to web or cli usage.
+
+SSO to websites
+===============
+
+The login screen is presented to the user. They are challenged for a series of credentials.
+They are then able to select any supplemental permissions (if any) they wish to request for
+the session, which may request further credentials. They are then redirected to the target
+site with an appropriate (oauth) token describing the requested rights.
+
+Login to workstation (connected)
+================================
+
+The user is prompted for a password and or token auth. These are verified by the kanidm server,
+and the login proceeds.
+
+Login to workstation (disconnected)
+===================================
+
+The user must have pre-configured their account after a successful authentication as above
+to support local password and token authentication. They are then able to provide 2fa when
+disconnected from the network.
+
+Sudo on workstation
+===================
+
+These are re-use of the above two scenarios
+
+Access to VPN or Wifi
+=====================
+
+The user provides their password OR they provide a distinct network access password which
+allows them access.
+
+MFA could be provided here with TOTP?
+
+SSH to machine (legacy, disconnected)
+=====================================
+
+The user pre-enrolls their SSH key to their account via the kanidm console. They are then able
+to ssh to the machine as usual with their key. SUDO rights are granted via password only once
+they are connected (see sudo on workstation).
+
+SSH to machine
+==============
+
+The user calls a special kanidm ssh command. This generates a once-off ssh key, and an authentication
+request is lodged to the system. Based on policy, the user may need to allow the request via a web
+console, or another user may need to sign off to allow the access. Once granted the module then
+allows the authentication to continue, and the ephemeral key is allowed access and the login
+completes. The key may only be valid for a short time.
+
+
+Additionally:
+
+* Support services must be able to assist in an account recovery situation
+* Some sites may wish allow self-sign up for accounts
+* Some sites may want self supporting account recovery
+
+* Accounts should support ephemeral or group-requests
+
+Implementation ideas for use cases
+----------------------------------
+
+* For identification:
+    * Issue "ID tokens" as an api where you lookup name/uuid and get the userentry + sshkeys + group
+      entries. This allows one-shot caching of relevent types, and groups would not store the member
+      link on the client. Allows the client to "cache" any extra details into the stored record as
+      required. This would be used for linux/mac to get uid/gid details and ssh keys for distribution.
+      * Would inherit search permissions for connection.
+      * Some service accounts with permission would get the ntpassword field in this for radius.
+      * Hosts can use anonymous or have a service account
+      * Allows cached/disconnected auth.
+      * Need to be checked periodically for validity (IE account revoke)
+
+* For authentication:
+    * Cookie/Auth proto - this is for checking pw's and mfa details as required from clients both web
+      cli and pam. This is probably the most important and core proto, as everything else will derive
+      from this session in some way.
+      * Must have a max lifetime or refresh time up to max life to allow revoking.
+      * If you want to "gain" higher privs, you need to auth-up to the shadow accounts extra requirements
+      * You would then have two ID's associated, which may have different lifetimes?
+
+    * SSH Key Distribution via the ID tokens (this is great for offline / disconnected auth ...).
+      * Clients can add password hashes to the ID tokens on successful auth.
+
+    * Request based auth proto - a service account creates an auth request, which then must be acknowledged
+      by the correct kanidm api, and when acknowledged the authentication can proceed.
+
+    * OAuth - This would issue a different token type as required with the right details embedded as
+      requested.
+
+    * Another idea: cli tool that says "I want to login" which generates an ephemeral key that only works
+      on that host, for that identity with those specific roles you have requested.
+
+Authorisation is a client-specific issue, we just need to provide the correct metadata for each client
+to be able to construct correct authorisations.
+
+
+Cookie/Token Auth Summary
+-------------------------
 
 * auth is a stepped protocol (similar to SASL)
 * we offer possible authentications
@@ -16,16 +130,16 @@ decisions from a single datapoint
 * each token can be unique based on the type of auth (ie 2fa needed to get access
 to admin groups)
 
-Auth Considerations
--------------------
+Cookie/Token Auth Considerations
+--------------------------------
 
 * Must prevent replay attacks from occuring at any point during the authentication process
 
 * Minimise (but not eliminate) state on the server. This means that an auth process must
   remain on a single server, but the token granted should be valid on any server.
 
-Auth Detail
------------
+Cookie/Token Auth Detail
+------------------------
 
 Clients begin with no cookie, and no session.
 

@@ -301,6 +301,22 @@ pub trait QueryServerReadTransaction {
                             // to a concrete uuid.
                             Ok(_) => {
                                 // TODO: Should this check existance?
+                                // Could this be a security risk for disclosure?
+                                //  So it would only reveal if a name/uuid did/did not exist
+                                // because this pre-acp check, but inversely, this means if we
+                                // fail fast here, we would not hae a situation where we would create
+                                // then ref-int would invalidate the structure immediately.
+                                //
+                                // I can see a situation where you would modify, and then immediately
+                                // have the mod removed because it would fail the refint (IE add
+                                // raw uuid X, then immediately it's removed)
+                                //
+                                // This would never be the case with resolved uuid's though, because
+                                // they are inside the txn. So do we just ignore this as an edge case?
+                                //
+                                // For now, refint will fight the raw uuid's, and will be tested to
+                                // assume they don't exist on create/mod/etc.. If this check was added
+                                // then refint may not need post_create handlers.
                                 Ok(value.clone())
                             }
                             Err(_) => {
