@@ -10,7 +10,7 @@ use be::{
 
 use constants::{JSON_ANONYMOUS_V1, JSON_SYSTEM_INFO_V1};
 use entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
-use error::{OperationError, SchemaError};
+use error::{ConsistencyError, OperationError, SchemaError};
 use event::{CreateEvent, DeleteEvent, ExistsEvent, ModifyEvent, ReviveRecycledEvent, SearchEvent};
 use filter::{Filter, FilterInvalid};
 use modify::{Modify, ModifyInvalid, ModifyList};
@@ -52,6 +52,7 @@ pub trait QueryServerReadTransaction {
 
         // TODO: Assert access control allows the filter and requested attrs.
 
+        /*
         let mut audit_plugin_pre = AuditScope::new("plugin_pre_search");
         let plug_pre_res = Plugins::run_pre_search(&mut audit_plugin_pre);
         au.append_scope(audit_plugin_pre);
@@ -63,6 +64,7 @@ pub trait QueryServerReadTransaction {
                 return Err(e);
             }
         }
+        */
 
         let mut audit_be = AuditScope::new("backend_search");
         let res = self
@@ -76,6 +78,7 @@ pub trait QueryServerReadTransaction {
             return res;
         }
 
+        /*
         let mut audit_plugin_post = AuditScope::new("plugin_post_search");
         let plug_post_res = Plugins::run_post_search(&mut audit_plugin_post);
         au.append_scope(audit_plugin_post);
@@ -87,6 +90,7 @@ pub trait QueryServerReadTransaction {
                 return Err(e);
             }
         }
+        */
 
         // TODO: We'll add ACI here. I think ACI should transform from
         // internal -> proto entries since we have to anyway ...
@@ -297,6 +301,22 @@ pub trait QueryServerReadTransaction {
                             // to a concrete uuid.
                             Ok(_) => {
                                 // TODO: Should this check existance?
+                                // Could this be a security risk for disclosure?
+                                //  So it would only reveal if a name/uuid did/did not exist
+                                // because this pre-acp check, but inversely, this means if we
+                                // fail fast here, we would not hae a situation where we would create
+                                // then ref-int would invalidate the structure immediately.
+                                //
+                                // I can see a situation where you would modify, and then immediately
+                                // have the mod removed because it would fail the refint (IE add
+                                // raw uuid X, then immediately it's removed)
+                                //
+                                // This would never be the case with resolved uuid's though, because
+                                // they are inside the txn. So do we just ignore this as an edge case?
+                                //
+                                // For now, refint will fight the raw uuid's, and will be tested to
+                                // assume they don't exist on create/mod/etc.. If this check was added
+                                // then refint may not need post_create handlers.
                                 Ok(value.clone())
                             }
                             Err(_) => {
@@ -350,6 +370,55 @@ impl QueryServerReadTransaction for QueryServerTransaction {
 
     fn get_schema(&self) -> &SchemaTransaction {
         &self.schema
+    }
+}
+
+impl QueryServerTransaction {
+    // Verify the data content of the server is as expected. This will probably
+    // call various functions for validation, including possibly plugin
+    // verifications.
+    fn verify(&self, au: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
+        let mut audit = AuditScope::new("verify");
+
+        // If we fail after backend, we need to return NOW because we can't
+        // assert any other faith in the DB states.
+        //  * backend
+        let be_errs = self.get_be_txn().verify();
+
+        if be_errs.len() != 0 {
+            au.append_scope(audit);
+            return be_errs;
+        }
+
+        //  * in memory schema consistency.
+        let sc_errs = self.get_schema().validate(&mut audit);
+
+        if sc_errs.len() != 0 {
+            au.append_scope(audit);
+            return sc_errs;
+        }
+
+        //  * Indexing (req be + sch )
+        /*
+        idx_errs = self.get_be_txn()
+            .verify_indexes();
+
+        if idx_errs.len() != 0 {
+            au.append_scope(audit);
+            return idx_errs;
+        }
+         */
+
+        // Ok BE passed, lets move on to the content.
+        // Most of our checks are in the plugins, so we let them
+        // do their job.
+
+        // Now, call the plugins verification system.
+        let pl_errs = Plugins::run_verify(&mut audit, self);
+
+        // Finish up ...
+        au.append_scope(audit);
+        pl_errs
     }
 }
 
@@ -410,6 +479,11 @@ impl QueryServer {
             be_txn: self.be.write(),
             schema: self.schema.write(),
         }
+    }
+
+    pub fn verify(&self, au: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
+        let r_txn = self.read();
+        r_txn.verify(au)
     }
 }
 
@@ -1007,20 +1081,21 @@ impl<'a> QueryServerWriteTransaction<'a> {
         assert!(!committed);
         // Begin an audit.
         // Validate the schema,
-        schema
-            .validate(audit)
+
+        let r = schema.validate(audit);
+        if r.len() == 0 {
             // TODO: At this point, if validate passes, we probably actually want
             // to perform a reload BEFORE we commit.
             // Alternate, we attempt to reload during batch ops, but this seems
             // costly.
-            .and_then(|_| {
-                // Backend Commit
-                be_txn.commit().and_then(|_| {
-                    // Schema commit: Since validate passed and be is good, this
-                    // must now also be good.
-                    schema.commit()
-                })
+            be_txn.commit().and_then(|_| {
+                // Schema commit: Since validate passed and be is good, this
+                // must now also be good.
+                schema.commit()
             })
+        } else {
+            Err(OperationError::ConsistencyError(r))
+        }
         // Audit done
     }
 }
@@ -1072,14 +1147,16 @@ mod tests {
             }
             let test_server = QueryServer::new(be, Arc::new(schema_outer));
 
-            $test_fn(test_server, &mut audit);
+            $test_fn(&test_server, &mut audit);
             // Any needed teardown?
+            // Make sure there are no errors.
+            assert!(test_server.verify(&mut audit).len() == 0);
         }};
     }
 
     #[test]
     fn test_qs_create_user() {
-        run_test!(|server: QueryServer, audit: &mut AuditScope| {
+        run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             let server_txn = server.write();
             let filt = Filter::Pres(String::from("name"));
 
@@ -1123,7 +1200,7 @@ mod tests {
 
     #[test]
     fn test_qs_init_idempotent_1() {
-        run_test!(|server: QueryServer, audit: &mut AuditScope| {
+        run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             {
                 // Setup and abort.
                 let server_txn = server.write();
@@ -1151,7 +1228,7 @@ mod tests {
 
     #[test]
     fn test_qs_modify() {
-        run_test!(|server: QueryServer, audit: &mut AuditScope| {
+        run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             // Create an object
             let server_txn = server.write();
 
@@ -1268,7 +1345,7 @@ mod tests {
     fn test_modify_invalid_class() {
         // Test modifying an entry and adding an extra class, that would cause the entry
         // to no longer conform to schema.
-        run_test!(|server: QueryServer, audit: &mut AuditScope| {
+        run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             let server_txn = server.write();
 
             let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
@@ -1336,7 +1413,7 @@ mod tests {
 
     #[test]
     fn test_qs_delete() {
-        run_test!(|server: QueryServer, audit: &mut AuditScope| {
+        run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             // Create
             let server_txn = server.write();
 
@@ -1421,7 +1498,7 @@ mod tests {
 
     #[test]
     fn test_qs_tombstone() {
-        run_test!(|server: QueryServer, audit: &mut AuditScope| {
+        run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             let server_txn = server.write();
 
             let filt_ts = ProtoFilter::Eq(String::from("class"), String::from("tombstone"));
@@ -1497,7 +1574,7 @@ mod tests {
 
     #[test]
     fn test_qs_recycle_simple() {
-        run_test!(|server: QueryServer, audit: &mut AuditScope| {
+        run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             let server_txn = server.write();
 
             let filt_rc = ProtoFilter::Eq(String::from("class"), String::from("recycled"));
@@ -1628,7 +1705,7 @@ mod tests {
     // The delete test above should be unaffected by recycle anyway
     #[test]
     fn test_qs_recycle_advanced() {
-        run_test!(|server: QueryServer, audit: &mut AuditScope| {
+        run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             // Create items
             let server_txn = server.write();
 
@@ -1673,7 +1750,7 @@ mod tests {
 
     #[test]
     fn test_qs_name_to_uuid() {
-        run_test!(|server: QueryServer, audit: &mut AuditScope| {
+        run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             let server_txn = server.write();
 
             let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
@@ -1711,7 +1788,7 @@ mod tests {
 
     #[test]
     fn test_qs_uuid_to_name() {
-        run_test!(|server: QueryServer, audit: &mut AuditScope| {
+        run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             let server_txn = server.write();
 
             let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
@@ -1752,7 +1829,7 @@ mod tests {
 
     #[test]
     fn test_qs_clone_value() {
-        run_test!(|server: QueryServer, audit: &mut AuditScope| {
+        run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             let server_txn = server.write();
             let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
                 r#"{

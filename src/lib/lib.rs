@@ -41,6 +41,7 @@ mod event;
 mod identity;
 mod interval;
 mod modify;
+#[macro_use]
 mod plugins;
 mod schema;
 mod server;

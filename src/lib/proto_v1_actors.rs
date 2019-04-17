@@ -87,7 +87,14 @@ impl QueryServerV1 {
                     // TODO: Trigger an index? This could be costly ...
                     //   Perhaps a config option to say if we index on startup or not.
                     // TODO: Check the results!
-                    .and_then(|_| schema_write.validate(&mut audit))
+                    .and_then(|_| {
+                        let r = schema_write.validate(&mut audit);
+                        if r.len() == 0 {
+                            Ok(())
+                        } else {
+                            Err(OperationError::ConsistencyError(r))
+                        }
+                    })
                     .and_then(|_| be_txn.commit())
                     .and_then(|_| schema_write.commit())
                 {

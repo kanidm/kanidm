@@ -9,7 +9,7 @@ use serde_json;
 
 use audit::AuditScope;
 use entry::{Entry, EntryCommitted, EntryNew, EntryValid};
-use error::OperationError;
+use error::{ConsistencyError, OperationError};
 use filter::{Filter, FilterValid};
 
 mod idl;
@@ -147,6 +147,10 @@ pub trait BackendReadTransaction {
                 Err(e)
             }
         }
+    }
+
+    fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
+        Vec::new()
     }
 }
 

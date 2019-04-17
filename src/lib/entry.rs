@@ -423,6 +423,10 @@ impl Entry<EntryValid, EntryCommitted> {
             attrs: attrs_new,
         }
     }
+
+    pub fn get_id(&self) -> i64 {
+        self.id.expect("ID corrupted!?!?")
+    }
 }
 
 impl<STATE> Entry<EntryValid, STATE> {

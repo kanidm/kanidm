@@ -1,11 +1,8 @@
-use super::audit::AuditScope;
-use super::constants::*;
-// use super::entry::Entry;
-use super::error::{OperationError, SchemaError};
-// use super::filter::Filter;
-use std::collections::HashMap;
-// use modify::ModifyList;
+use audit::AuditScope;
+use constants::*;
+use error::{ConsistencyError, OperationError, SchemaError};
 use regex::Regex;
+use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::str::FromStr;
 use uuid::Uuid;
@@ -306,7 +303,7 @@ pub struct SchemaInner {
 pub trait SchemaReadTransaction {
     fn get_inner(&self) -> &SchemaInner;
 
-    fn validate(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
+    fn validate(&self, audit: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
         self.get_inner().validate(audit)
     }
 
@@ -644,14 +641,16 @@ impl SchemaInner {
                 },
             );
 
-            match s.validate(&mut au) {
-                Ok(_) => Ok(s),
-                Err(e) => Err(e),
+            // TODO: Probably needs to do a collect.
+            let r = s.validate(&mut au);
+            if r.len() == 0 {
+                Ok(s)
+            } else {
+                Err(OperationError::ConsistencyError(r))
             }
         });
 
         audit.append_scope(au);
-
         r
     }
 
@@ -855,10 +854,15 @@ impl SchemaInner {
 
         audit.append_scope(au);
 
-        r
+        if r.len() == 0 {
+            Ok(())
+        } else {
+            Err(OperationError::ConsistencyError(r))
+        }
     }
 
-    pub fn validate(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
+    pub fn validate(&self, audit: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
+        let mut res = Vec::new();
         // TODO: Does this need to validate anything further at all? The UUID
         // will be checked as part of the schema migration on startup, so I think
         // just that all the content is sane is fine.
@@ -873,14 +877,20 @@ impl SchemaInner {
                     a
                 );
                 if !self.attributes.contains_key(a) {
-                    return Err(OperationError::SchemaViolation(SchemaError::Corrupted));
+                    res.push(Err(ConsistencyError::SchemaClassMissingAttribute(
+                        class.name.clone(),
+                        a.clone(),
+                    )))
                 }
             }
             for a in &class.may {
                 // report the attribute.
                 audit_log!(audit, "validate may class:attr -> {}:{}", class.name, a);
                 if !self.attributes.contains_key(a) {
-                    return Err(OperationError::SchemaViolation(SchemaError::Corrupted));
+                    res.push(Err(ConsistencyError::SchemaClassMissingAttribute(
+                        class.name.clone(),
+                        a.clone(),
+                    )))
                 }
             }
             for a in &class.systemmust {
@@ -892,19 +902,25 @@ impl SchemaInner {
                     a
                 );
                 if !self.attributes.contains_key(a) {
-                    return Err(OperationError::SchemaViolation(SchemaError::Corrupted));
+                    res.push(Err(ConsistencyError::SchemaClassMissingAttribute(
+                        class.name.clone(),
+                        a.clone(),
+                    )))
                 }
             }
             for a in &class.must {
                 // report the attribute.
                 audit_log!(audit, "validate must class:attr -> {}:{}", class.name, a);
                 if !self.attributes.contains_key(a) {
-                    return Err(OperationError::SchemaViolation(SchemaError::Corrupted));
+                    res.push(Err(ConsistencyError::SchemaClassMissingAttribute(
+                        class.name.clone(),
+                        a.clone(),
+                    )))
                 }
             }
         }
 
-        Ok(())
+        res
     }
 
     // Normalise *does not* validate.
@@ -990,16 +1006,24 @@ impl Schema {
 
 #[cfg(test)]
 mod tests {
-    use super::super::audit::AuditScope;
-    use super::super::constants::*;
-    use super::super::entry::{Entry, EntryInvalid, EntryNew, EntryValid};
-    use super::super::error::SchemaError;
-    use super::super::filter::{Filter, FilterValid};
-    use super::{IndexType, Schema, SchemaAttribute, SyntaxType};
+    use audit::AuditScope;
+    use constants::*;
+    use entry::{Entry, EntryInvalid, EntryNew, EntryValid};
+    use error::{ConsistencyError, SchemaError};
+    use filter::{Filter, FilterValid};
     use schema::SchemaReadTransaction;
+    use schema::{IndexType, Schema, SchemaAttribute, SyntaxType};
     use serde_json;
     use std::convert::TryFrom;
     use uuid::Uuid;
+
+    macro_rules! validate_schema {
+        ($sch:ident, $au:expr) => {{
+            // Turns into a result type
+            let r: Result<Vec<()>, ConsistencyError> = $sch.validate($au).into_iter().collect();
+            assert!(r.is_ok());
+        }};
+    }
 
     #[test]
     fn test_schema_index_tryfrom() {
@@ -1195,7 +1219,7 @@ mod tests {
         let mut audit = AuditScope::new("test_schema_simple");
         let schema = Schema::new(&mut audit).unwrap();
         let schema_ro = schema.read();
-        assert!(schema_ro.validate(&mut audit).is_ok());
+        validate_schema!(schema_ro, &mut audit);
         println!("{}", audit);
     }
 

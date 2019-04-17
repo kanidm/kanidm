@@ -4,11 +4,11 @@ use uuid::Uuid;
 use audit::AuditScope;
 use be::{BackendReadTransaction, BackendWriteTransaction};
 use entry::{Entry, EntryInvalid, EntryNew};
-use error::OperationError;
+use error::{ConsistencyError, OperationError};
 use event::CreateEvent;
 use filter::Filter;
 use schema::SchemaWriteTransaction;
-use server::{QueryServerReadTransaction, QueryServerWriteTransaction};
+use server::{QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction};
 
 // TO FINISH
 /*
@@ -124,12 +124,86 @@ impl Plugin for Base {
 
         Ok(())
     }
+
+    fn verify(
+        au: &mut AuditScope,
+        qs: &QueryServerTransaction,
+    ) -> Vec<Result<(), ConsistencyError>> {
+        let name_uuid = String::from("uuid");
+        // Verify all uuid's are unique?
+        // Probably the literally worst thing ...
+
+        // Search for class = *
+        let entries = match qs.internal_search(au, Filter::Pres("class".to_string())) {
+            Ok(r) => r,
+            Err(e) => {
+                // try_audit?
+                // TODO: So here, should be returning the oper error? That makes the errors
+                // recursive, so what is correct?
+                return vec![Err(ConsistencyError::QueryServerSearchFailure)];
+            }
+        };
+
+        let mut r_uniq = entries
+            .iter()
+            // do an exists checks on the uuid
+            .map(|e| {
+                // TODO: Could this be better?
+                let uuid = match e.get_ava(&name_uuid) {
+                    Some(u) => {
+                        if u.len() == 1 {
+                            Ok(u.first().expect("Ohh ffs, really?").clone())
+                        } else {
+                            Err(ConsistencyError::EntryUuidCorrupt(e.get_id()))
+                        }
+                    }
+                    None => Err(ConsistencyError::EntryUuidCorrupt(e.get_id())),
+                };
+
+                match uuid {
+                    Ok(u) => {
+                        let filt = Filter::Eq(name_uuid.clone(), u.clone());
+                        match qs.internal_search(au, filt) {
+                            Ok(r) => {
+                                if r.len() == 0 {
+                                    Err(ConsistencyError::UuidIndexCorrupt(u))
+                                } else if r.len() == 1 {
+                                    Ok(())
+                                } else {
+                                    Err(ConsistencyError::UuidNotUnique(u))
+                                }
+                            }
+                            Err(_) => Err(ConsistencyError::QueryServerSearchFailure),
+                        }
+                    }
+                    Err(e) => Err(e),
+                }
+            })
+            .filter(|v| v.is_err())
+            .collect();
+
+        /*
+        let mut r_name = entries.iter()
+            // do an eq internal search and validate == 1 (ignore ts + rc)
+            .map(|e| {
+            })
+            .filter(|v| {
+                v.is_err()
+            })
+            .collect();
+
+        r_uniq.append(r_name);
+        */
+
+        r_uniq
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::super::Plugin;
-    use super::Base;
+    #[macro_use]
+    use plugins::Plugin;
+    use plugins::base::Base;
     use std::sync::Arc;
 
     use audit::AuditScope;
@@ -138,54 +212,6 @@ mod tests {
     use event::CreateEvent;
     use schema::Schema;
     use server::{QueryServer, QueryServerWriteTransaction};
-
-    macro_rules! run_pre_create_test {
-        (
-            $preload_entries:ident,
-            $create_entries:ident,
-            $ident:ident,
-            $internal:ident,
-            $test_fn:expr
-        ) => {{
-            let mut au = AuditScope::new("run_pre_create_test");
-            audit_segment!(au, || {
-                // Create an in memory BE
-                let be = Backend::new(&mut au, "").unwrap();
-
-                let schema_outer = Schema::new(&mut au).unwrap();
-                {
-                    let mut schema = schema_outer.write();
-                    schema.bootstrap_core(&mut au).unwrap();
-                    schema.commit().unwrap();
-                }
-                let qs = QueryServer::new(be, Arc::new(schema_outer));
-
-                if !$preload_entries.is_empty() {
-                    let qs_write = qs.write();
-                    qs_write.internal_create(&mut au, $preload_entries);
-                    assert!(qs_write.commit(&mut au).is_ok());
-                }
-
-                let ce = CreateEvent::from_vec($create_entries.clone());
-
-                let mut au_test = AuditScope::new("pre_create_test");
-                {
-                    let qs_write = qs.write();
-                    audit_segment!(au_test, || $test_fn(
-                        &mut au_test,
-                        &qs_write,
-                        &mut $create_entries,
-                        &ce,
-                    ));
-                    assert!(qs_write.commit(&mut au).is_ok());
-                }
-
-                au.append_scope(au_test);
-            });
-            // Dump the raw audit log.
-            println!("{}", au);
-        }};
-    }
 
     // Check empty create
     #[test]
