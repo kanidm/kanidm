@@ -3,7 +3,14 @@ Authentication Use Cases
 ------------------------
 
 There are many planned integrations for authentication for a service like this. The uses cases
-for what kind of auth are below:
+for what kind of auth are below. It's important to consider that today a lot of identification
+is not just who you are, but what device you are using, so device security is paramount in the
+design of this system. We strongly recommend patching and full disk encryption, as well as
+high quality webauthn token like yubikeys or macOS touchid.
+
+As a result, most of the important parts of this system become the auditing and co-operation between
+admins on high security events and changes, rather than limiting time of credentials. An important
+part of this also is limitation of scope of the credential rather than time as well.
 
 
 Kanidm account system
@@ -40,7 +47,7 @@ disconnected from the network.
 Sudo on workstation
 ===================
 
-These are re-use of the above two scenarios
+These are re-use of the above two scenarios.
 
 Access to VPN or Wifi
 =====================
@@ -57,6 +64,9 @@ The user pre-enrolls their SSH key to their account via the kanidm console. They
 to ssh to the machine as usual with their key. SUDO rights are granted via password only once
 they are connected (see sudo on workstation).
 
+Agent forwarding is a concern in this scenario to limit scope and lateral movement. Can this be
+limited correctly? IMO no, so don't allow it.
+
 SSH to machine
 ==============
 
@@ -65,6 +75,17 @@ request is lodged to the system. Based on policy, the user may need to allow the
 console, or another user may need to sign off to allow the access. Once granted the module then
 allows the authentication to continue, and the ephemeral key is allowed access and the login
 completes. The key may only be valid for a short time.
+
+Agent forwarding is not a concern in this scenario due to the fact the key is only allowed to be used
+for this specific host.
+
+SSH via a bastion host
+======================
+
+This would work with the ssh to machine scenario, but in thiscase the key is granted rights to the
+bastion and the target machine so that agent forwarding can work.
+
+Is there a way to ensure that only this series of jumps is allowed?
 
 
 Additionally:
