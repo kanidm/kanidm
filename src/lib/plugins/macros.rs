@@ -1,45 +1,59 @@
-#[macro_escape]
+// #[macro_escape]
+
+macro_rules! setup_test {
+    (
+        $au:expr,
+        $preload_entries:ident
+    ) => {{
+        // Create an in memory BE
+        let be = Backend::new($au, "").unwrap();
+
+        let schema_outer = Schema::new($au).unwrap();
+        {
+            let mut schema = schema_outer.write();
+            schema.bootstrap_core($au).unwrap();
+            schema.commit().unwrap();
+        }
+        let qs = QueryServer::new(be, Arc::new(schema_outer));
+
+        if !$preload_entries.is_empty() {
+            let qs_write = qs.write();
+            qs_write.internal_create($au, $preload_entries);
+            assert!(qs_write.commit($au).is_ok());
+        }
+        qs
+    }};
+}
+
 // Test helpers for all plugins.
 #[macro_export]
-macro_rules! run_pre_create_test {
+macro_rules! run_create_test {
     (
-            $preload_entries:ident,
-            $create_entries:ident,
-            $ident:ident,
-            $internal:ident,
-            $test_fn:expr
-        ) => {{
-        let mut au = AuditScope::new("run_pre_create_test");
+        $expect:expr,
+        $preload_entries:ident,
+        $create_entries:ident,
+        $internal:ident,
+        $check:expr
+    ) => {{
+        let mut au = AuditScope::new("run_create_test");
         audit_segment!(au, || {
-            // Create an in memory BE
-            let be = Backend::new(&mut au, "").unwrap();
+            let qs = setup_test!(&mut au, $preload_entries);
 
-            let schema_outer = Schema::new(&mut au).unwrap();
-            {
-                let mut schema = schema_outer.write();
-                schema.bootstrap_core(&mut au).unwrap();
-                schema.commit().unwrap();
-            }
-            let qs = QueryServer::new(be, Arc::new(schema_outer));
+            let ce = if $internal {
+                CreateEvent::new_internal($create_entries.clone())
+            } else {
+                CreateEvent::from_vec($create_entries.clone())
+            };
 
-            if !$preload_entries.is_empty() {
-                let qs_write = qs.write();
-                qs_write.internal_create(&mut au, $preload_entries);
-                assert!(qs_write.commit(&mut au).is_ok());
-            }
-
-            let ce = CreateEvent::from_vec($create_entries.clone());
-
-            let mut au_test = AuditScope::new("pre_create_test");
+            let mut au_test = AuditScope::new("create_test");
             {
                 let qs_write = qs.write();
-                audit_segment!(au_test, || $test_fn(
-                    &mut au_test,
-                    &qs_write,
-                    &mut $create_entries,
-                    &ce,
-                ));
-                assert!(qs_write.commit(&mut au).is_ok());
+                let r = qs_write.create(&mut au_test, &ce);
+                assert!(r == $expect);
+                $check(&mut au_test, &qs_write);
+                r.map(|_| {
+                    assert!(qs_write.commit(&mut au_test).is_ok());
+                });
             }
             // Make sure there are no errors.
             assert!(qs.verify(&mut au_test).len() == 0);
@@ -51,16 +65,81 @@ macro_rules! run_pre_create_test {
     }};
 }
 
-/*
 #[macro_export]
-macro_rules! run_post_create_test {
+macro_rules! run_modify_test {
+    (
+        $expect:expr,
+        $preload_entries:ident,
+        $modify_filter:ident,
+        $modify_list:ident,
+        $internal:ident,
+        $check:expr
+    ) => {{
+        let mut au = AuditScope::new("run_modify_test");
+        audit_segment!(au, || {
+            let qs = setup_test!(&mut au, $preload_entries);
+
+            let me = if $internal {
+                ModifyEvent::new_internal($)
+            } else {
+                ModifyEvent::from_filter($modify_entries.clone())
+            };
+
+            let mut au_test = AuditScope::new("modify_test");
+            {
+                let qs_write = qs.write();
+                let r = qs_write.modify(&mut au_test, &me);
+                $check(&mut au_test, &qs_write);
+                assert!(r == $expect);
+                r.map(|_| {
+                    assert!(qs_write.commit(&mut au_test).is_ok());
+                });
+            }
+            // Make sure there are no errors.
+            assert!(qs.verify(&mut au_test).len() == 0);
+
+            au.append_scope(au_test);
+        });
+        // Dump the raw audit log.
+        println!("{}", au);
+    }};
 }
 
 #[macro_export]
-macro_rules! run_post_modify_test {
-}
+macro_rules! run_delete_test {
+    (
+        $expect:expr,
+        $preload_entries:ident,
+        $delete_filter:ident,
+        $internal:ident,
+        $check:expr
+    ) => {{
+        let mut au = AuditScope::new("run_delete_test");
+        audit_segment!(au, || {
+            let qs = setup_test!(&mut au, $preload_entries);
 
-#[macro_export]
-macro_rules! run_post_delete_test {
+            let de = if $internal {
+                DeleteEvent::new_internal($delete_filter.clone())
+            } else {
+                DeleteEvent::from_filter($delete_filter.clone())
+            };
+
+            let mut au_test = AuditScope::new("delete_test");
+            {
+                let qs_write = qs.write();
+                let r = qs_write.delete(&mut au_test, &de);
+                $check(&mut au_test, &qs_write);
+                assert!(r == $expect);
+                r.map(|_| {
+                    assert!(qs_write.commit(&mut au_test).is_ok());
+                });
+            }
+            // Make sure there are no errors.
+            assert!(qs.verify(&mut au_test).len() == 0);
+
+            au.append_scope(au_test);
+        });
+        // Dump the raw audit log.
+        println!("{}", au);
+    }};
 }
-*/

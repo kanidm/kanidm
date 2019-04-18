@@ -1,10 +1,10 @@
-use audit::AuditScope;
-use proto_v1::Modify as ProtoModify;
-use proto_v1::ModifyList as ProtoModifyList;
+use crate::audit::AuditScope;
+use crate::proto_v1::Modify as ProtoModify;
+use crate::proto_v1::ModifyList as ProtoModifyList;
 
-use error::{OperationError, SchemaError};
-use schema::{SchemaAttribute, SchemaReadTransaction};
-use server::{QueryServerReadTransaction, QueryServerWriteTransaction};
+use crate::error::{OperationError, SchemaError};
+use crate::schema::SchemaReadTransaction;
+use crate::server::{QueryServerReadTransaction, QueryServerWriteTransaction};
 
 // Should this be std?
 use std::slice;

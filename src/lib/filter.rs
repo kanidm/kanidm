@@ -2,13 +2,12 @@
 // in parallel map/reduce style, or directly on a single
 // entry to assert it matches.
 
-use audit::AuditScope;
-use be::BackendReadTransaction;
-use error::{OperationError, SchemaError};
-use proto_v1::Filter as ProtoFilter;
-use schema::SchemaReadTransaction;
-use server::{
-    QueryServer, QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
+use crate::audit::AuditScope;
+use crate::error::{OperationError, SchemaError};
+use crate::proto_v1::Filter as ProtoFilter;
+use crate::schema::SchemaReadTransaction;
+use crate::server::{
+    QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
 };
 use std::cmp::{Ordering, PartialOrd};
 use std::marker::PhantomData;
@@ -30,7 +29,7 @@ pub enum Filter<VALID> {
     Or(Vec<Filter<VALID>>),
     And(Vec<Filter<VALID>>),
     AndNot(Box<Filter<VALID>>),
-    invalid(PhantomData<VALID>),
+    Invalid(PhantomData<VALID>),
 }
 
 // Change this so you have RawFilter and Filter. RawFilter is the "builder", and then
@@ -64,7 +63,7 @@ impl Filter<FilterValid> {
             Filter::Or(l) => Filter::Or(l.iter().map(|f| f.invalidate()).collect()),
             Filter::And(l) => Filter::And(l.iter().map(|f| f.invalidate()).collect()),
             Filter::AndNot(l) => Filter::AndNot(Box::new(l.invalidate())),
-            Filter::invalid(_) => {
+            Filter::Invalid(_) => {
                 // TODO: Is there a better way to not need to match the phantom?
                 unimplemented!()
             }
@@ -253,7 +252,7 @@ impl Clone for Filter<FilterValid> {
             Filter::Or(l) => Filter::Or(l.clone()),
             Filter::And(l) => Filter::And(l.clone()),
             Filter::AndNot(l) => Filter::AndNot(l.clone()),
-            Filter::invalid(_) => {
+            Filter::Invalid(_) => {
                 // TODO: Is there a better way to not need to match the phantom?
                 unimplemented!()
             }
@@ -271,7 +270,7 @@ impl Clone for Filter<FilterInvalid> {
             Filter::Or(l) => Filter::Or(l.clone()),
             Filter::And(l) => Filter::And(l.clone()),
             Filter::AndNot(l) => Filter::AndNot(l.clone()),
-            Filter::invalid(_) => {
+            Filter::Invalid(_) => {
                 // TODO: Is there a better way to not need to match the phantom?
                 unimplemented!()
             }
@@ -323,8 +322,8 @@ impl PartialOrd for Filter<FilterValid> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Filter, FilterInvalid};
-    use entry::{Entry, EntryNew, EntryValid};
+    use crate::entry::{Entry, EntryNew, EntryValid};
+    use crate::filter::{Filter, FilterInvalid};
     use serde_json;
     use std::cmp::{Ordering, PartialOrd};
 

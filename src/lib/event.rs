@@ -1,15 +1,19 @@
-use super::filter::{Filter, FilterInvalid};
-use super::proto_v1::Entry as ProtoEntry;
-use super::proto_v1::{
+use crate::audit::AuditScope;
+use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
+use crate::filter::{Filter, FilterInvalid};
+use crate::proto_v1::Entry as ProtoEntry;
+use crate::proto_v1::{
     AuthRequest, AuthResponse, AuthStatus, CreateRequest, DeleteRequest, ModifyRequest,
-    OperationResponse, ReviveRecycledRequest, SearchRecycledRequest, SearchRequest, SearchResponse,
+    OperationResponse, ReviveRecycledRequest, SearchRequest, SearchResponse,
 };
-use audit::AuditScope;
-use entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
 // use error::OperationError;
-use error::OperationError;
-use modify::{ModifyInvalid, ModifyList};
-use server::{QueryServerTransaction, QueryServerWriteTransaction};
+use crate::error::OperationError;
+use crate::modify::{ModifyInvalid, ModifyList};
+use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
+
+// Only used for internal tests
+#[cfg(test)]
+use crate::proto_v1::SearchRecycledRequest;
 
 use actix::prelude::*;
 
@@ -89,6 +93,7 @@ impl SearchEvent {
         }
     }
 
+    #[cfg(test)]
     pub fn from_rec_request(
         audit: &mut AuditScope,
         request: SearchRecycledRequest,
@@ -103,6 +108,7 @@ impl SearchEvent {
         }
     }
 
+    #[cfg(test)]
     pub fn new_rec_impersonate(filter: Filter<FilterInvalid>) -> Self {
         SearchEvent {
             internal: false,
@@ -110,6 +116,7 @@ impl SearchEvent {
         }
     }
 
+    #[cfg(test)]
     /* Impersonate an external request */
     pub fn new_ext_impersonate(filter: Filter<FilterInvalid>) -> Self {
         SearchEvent {

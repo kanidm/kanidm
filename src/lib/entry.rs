@@ -1,11 +1,11 @@
 // use serde_json::{Error, Value};
-use super::proto_v1::Entry as ProtoEntry;
-use audit::AuditScope;
-use error::{OperationError, SchemaError};
-use filter::{Filter, FilterValid};
-use modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
-use schema::{SchemaAttribute, SchemaClass, SchemaReadTransaction};
-use server::{QueryServerReadTransaction, QueryServerWriteTransaction};
+use crate::audit::AuditScope;
+use crate::error::{OperationError, SchemaError};
+use crate::filter::{Filter, FilterValid};
+use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
+use crate::proto_v1::Entry as ProtoEntry;
+use crate::schema::{SchemaAttribute, SchemaClass, SchemaReadTransaction};
+use crate::server::{QueryServerReadTransaction, QueryServerWriteTransaction};
 use std::collections::btree_map::{Iter as BTreeIter, IterMut as BTreeIterMut};
 use std::collections::BTreeMap;
 use std::collections::HashMap;
@@ -478,7 +478,7 @@ impl<STATE> Entry<EntryValid, STATE> {
                 }
             }),
             Filter::AndNot(f) => !self.entry_match_no_index(f),
-            Filter::invalid(_) => {
+            Filter::Invalid(_) => {
                 // TODO: Is there a better way to not need to match the phantom?
                 unimplemented!()
             }
@@ -746,8 +746,8 @@ struct User {
 
 #[cfg(test)]
 mod tests {
-    use super::{Entry, EntryInvalid, EntryNew};
-    use modify::{Modify, ModifyList};
+    use crate::entry::{Entry, EntryInvalid, EntryNew};
+    use crate::modify::{Modify, ModifyList};
     use serde_json;
 
     #[test]

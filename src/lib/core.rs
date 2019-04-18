@@ -8,13 +8,13 @@ use actix_web::{
 use bytes::BytesMut;
 use futures::{future, Future, Stream};
 
-use super::config::Configuration;
+use crate::config::Configuration;
 
 // SearchResult
-use super::interval::IntervalActor;
-use super::log;
-use super::proto_v1::{AuthRequest, CreateRequest, DeleteRequest, ModifyRequest, SearchRequest};
-use super::proto_v1_actors::QueryServerV1;
+use crate::interval::IntervalActor;
+use crate::log;
+use crate::proto_v1::{AuthRequest, CreateRequest, DeleteRequest, ModifyRequest, SearchRequest};
+use crate::proto_v1_actors::QueryServerV1;
 
 struct AppState {
     qe: actix::Addr<QueryServerV1>,
@@ -205,10 +205,12 @@ pub fn create_server_core(config: Configuration) {
     let server_addr =
         match QueryServerV1::start(log_addr.clone(), config.db_path.as_str(), config.threads) {
             Ok(addr) => addr,
-            Err(_e) => {
-                // Oh shiiiiiiii
-                // TODO: Handle this properly.
-                unimplemented!()
+            Err(e) => {
+                println!(
+                    "An unknown failure in startup has occured - exiting -> {:?}",
+                    e
+                );
+                return;
             }
         };
 
@@ -217,6 +219,7 @@ pub fn create_server_core(config: Configuration) {
 
     // Copy the max size
     let max_size = config.maximum_request;
+    let secure_cookies = config.secure_cookies;
 
     // start the web server
     actix_web::server::new(move || {
@@ -238,8 +241,7 @@ pub fn create_server_core(config: Configuration) {
                 .http_only(true)
                 .name("rsidm-session")
                 // This forces https only
-                // TODO: Make this a config value
-                .secure(false),
+                .secure(secure_cookies),
         ))
         // .resource("/", |r| r.f(index))
         // curl --header ...?
