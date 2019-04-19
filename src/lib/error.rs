@@ -28,6 +28,8 @@ pub enum OperationError {
     InvalidEntryState,
     BackendEngine,
     SQLiteError, //(RusqliteError)
+    FsError,
+    SerdeJsonError,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
