@@ -1,20 +1,20 @@
 use actix::prelude::*;
 use std::sync::Arc;
 
-use audit::AuditScope;
-use be::Backend;
+use crate::audit::AuditScope;
+use crate::be::Backend;
 
-use error::OperationError;
-use event::{
+use crate::error::OperationError;
+use crate::event::{
     CreateEvent, DeleteEvent, ModifyEvent, OpResult, PurgeRecycledEvent, PurgeTombstoneEvent,
     SearchEvent, SearchResult,
 };
-use log::EventLog;
-use schema::{Schema, SchemaReadTransaction};
+use crate::log::EventLog;
+use crate::schema::{Schema, SchemaReadTransaction};
 
-use server::{QueryServer, QueryServerReadTransaction};
+use crate::server::{QueryServer, QueryServerReadTransaction};
 
-use proto_v1::{
+use crate::proto_v1::{
     AuthRequest, CreateRequest, DeleteRequest, ModifyRequest, OperationResponse, SearchRequest,
     SearchResponse,
 };

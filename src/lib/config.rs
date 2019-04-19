@@ -5,6 +5,7 @@ pub struct Configuration {
     pub db_path: String,
     pub maximum_request: usize,
     // db type later
+    pub secure_cookies: bool,
 }
 
 impl Configuration {
@@ -14,8 +15,9 @@ impl Configuration {
             threads: 8,
             db_path: String::from(""),
             maximum_request: 262144, // 256k
-                                     // log type
-                                     // log path
+            // log type
+            // log path
+            secure_cookies: true,
         }
     }
 }

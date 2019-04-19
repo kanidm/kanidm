@@ -7,10 +7,10 @@ use rusqlite::NO_PARAMS;
 use serde_json;
 // use uuid;
 
-use audit::AuditScope;
-use entry::{Entry, EntryCommitted, EntryNew, EntryValid};
-use error::{ConsistencyError, OperationError};
-use filter::{Filter, FilterValid};
+use crate::audit::AuditScope;
+use crate::entry::{Entry, EntryCommitted, EntryNew, EntryValid};
+use crate::error::{ConsistencyError, OperationError};
+use crate::filter::{Filter, FilterValid};
 
 mod idl;
 mod mem_be;

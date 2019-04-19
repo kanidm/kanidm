@@ -1,6 +1,6 @@
-use audit::AuditScope;
-use constants::*;
-use error::{ConsistencyError, OperationError, SchemaError};
+use crate::audit::AuditScope;
+use crate::constants::*;
+use crate::error::{ConsistencyError, OperationError, SchemaError};
 use regex::Regex;
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -1006,13 +1006,13 @@ impl Schema {
 
 #[cfg(test)]
 mod tests {
-    use audit::AuditScope;
-    use constants::*;
-    use entry::{Entry, EntryInvalid, EntryNew, EntryValid};
-    use error::{ConsistencyError, SchemaError};
-    use filter::{Filter, FilterValid};
-    use schema::SchemaReadTransaction;
-    use schema::{IndexType, Schema, SchemaAttribute, SyntaxType};
+    use crate::audit::AuditScope;
+    use crate::constants::*;
+    use crate::entry::{Entry, EntryInvalid, EntryNew, EntryValid};
+    use crate::error::{ConsistencyError, SchemaError};
+    use crate::filter::{Filter, FilterValid};
+    use crate::schema::SchemaReadTransaction;
+    use crate::schema::{IndexType, Schema, SchemaAttribute, SyntaxType};
     use serde_json;
     use std::convert::TryFrom;
     use uuid::Uuid;

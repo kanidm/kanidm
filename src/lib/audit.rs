@@ -62,6 +62,24 @@ macro_rules! try_audit {
             }
         }
     };
+    ($audit:ident, $result:expr, $logFormat:expr) => {
+        match $result {
+            Ok(v) => v,
+            Err(e) => {
+                audit_log!($audit, $logFormat, e);
+                return Err(e);
+            }
+        }
+    };
+    ($audit:ident, $result:expr) => {
+        match $result {
+            Ok(v) => v,
+            Err(e) => {
+                audit_log!($audit, "error -> {:?}", e);
+                return Err(e);
+            }
+        }
+    };
 }
 
 #[derive(Serialize, Deserialize)]
@@ -143,7 +161,7 @@ impl AuditScope {
 
 #[cfg(test)]
 mod tests {
-    use super::AuditScope;
+    use crate::audit::AuditScope;
 
     // Create and remove. Perhaps add some core details?
     #[test]

@@ -1,13 +1,13 @@
 use actix::prelude::*;
 
-use super::audit::AuditScope;
+use crate::audit::AuditScope;
 
 // Helper for internal logging.
 // Should only be used at startup/shutdown
 #[macro_export]
 macro_rules! log_event {
     ($log_addr:expr, $($arg:tt)*) => ({
-        use log::LogEvent;
+        use crate::log::LogEvent;
         use std::fmt;
         $log_addr.do_send(
             LogEvent {
