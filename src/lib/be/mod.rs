@@ -1,11 +1,11 @@
 //! Db executor actor
 
-use std::fs;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::types::ToSql;
 use rusqlite::NO_PARAMS;
 use serde_json;
+use std::fs;
 // use uuid;
 
 use crate::audit::AuditScope;
@@ -236,8 +236,7 @@ impl BackendWriteTransaction {
         }
     }
 
-    // I am assuming this function should be private, wasn't really sure what to call it
-    fn _create<T: serde::Serialize>(
+    fn internal_create<T: serde::Serialize>(
         &self,
         au: &mut AuditScope,
         entries: &Vec<Entry<EntryValid, T>>,
@@ -274,8 +273,6 @@ impl BackendWriteTransaction {
 
             // THIS IS PROBABLY THE BIT WHERE YOU NEED DB ABSTRACTION
             {
-                // Start a txn
-                // self.conn.execute("BEGIN TRANSACTION", NO_PARAMS).unwrap();
                 let mut stmt = try_audit!(
                     au,
                     self.conn
@@ -299,8 +296,6 @@ impl BackendWriteTransaction {
                 }
 
                 // TODO: update indexes (as needed)
-                // Commit the txn
-                // conn.execute("COMMIT TRANSACTION", NO_PARAMS).unwrap();
             }
 
             Ok(())
@@ -312,9 +307,9 @@ impl BackendWriteTransaction {
         au: &mut AuditScope,
         entries: &Vec<Entry<EntryValid, EntryNew>>,
     ) -> Result<(), OperationError> {
-        // figured we would want a audit_segment to wrap _create so when doing profiling we can
+        // figured we would want a audit_segment to wrap internal_create so when doing profiling we can
         // tell which function is calling it. either this one or restore.
-        audit_segment!(au, || { self._create(au, entries) })
+        audit_segment!(au, || { self.internal_create(au, entries) })
     }
 
     pub fn modify(
@@ -444,7 +439,7 @@ impl BackendWriteTransaction {
             })
             .collect();
 
-        let mut serializedEntries = serde_json::to_string(&entries);
+        let mut serializedEntries = serde_json::to_string_pretty(&entries);
 
         let serializedEntriesStr = try_audit!(
             audit,
@@ -454,7 +449,7 @@ impl BackendWriteTransaction {
         );
 
         let result = fs::write(dstPath, serializedEntriesStr);
-            
+
         try_audit!(
             audit,
             result,
@@ -465,7 +460,18 @@ impl BackendWriteTransaction {
         Ok(())
     }
 
-    // Should this be offline only?
+    pub unsafe fn purge(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
+        // remove all entries from database
+        try_audit!(
+            audit,
+            self.conn.execute("DELETE FROM id2entry", NO_PARAMS),
+            "rustqlite error {:?}",
+            OperationError::SQLiteError
+        );
+
+        Ok(())
+    }
+
     pub fn restore(&self, audit: &mut AuditScope, srcPath: &str) -> Result<(), OperationError> {
         // load all entries into RAM, may need to change this later
         // if the size of the database compared to RAM is an issue
@@ -478,6 +484,10 @@ impl BackendWriteTransaction {
             OperationError::FsError
         );
 
+        unsafe {
+            self.purge(audit);
+        }
+
         let entriesOption: Result<Vec<Entry<EntryValid, EntryCommitted>>, serde_json::Error> =
             serde_json::from_str(&serializedString);
 
@@ -487,16 +497,9 @@ impl BackendWriteTransaction {
             "serde_json error {:?}",
             OperationError::SerdeJsonError
         );
-      
-        // remove all entries from database
-        try_audit!(audit, 
-            self.conn.execute("DELETE FROM id2entry", NO_PARAMS ),
-            "rustqlite error {:?}",
-            OperationError::SQLiteError
-        );
 
-        self._create(audit, &entries)
-        
+        self.internal_create(audit, &entries)
+
         // run re-index after db is restored
         // run db verify
     }
@@ -661,7 +664,9 @@ mod tests {
     use super::super::audit::AuditScope;
     use super::super::entry::{Entry, EntryInvalid, EntryNew};
     use super::super::filter::Filter;
-    use super::{Backend, BackendError, OperationError, BackendReadTransaction, BackendWriteTransaction};
+    use super::{
+        Backend, BackendError, BackendReadTransaction, BackendWriteTransaction, OperationError,
+    };
 
     macro_rules! run_test {
         ($test_fn:expr) => {{
@@ -862,6 +867,25 @@ mod tests {
     #[test]
     fn test_backup_restore() {
         run_test!(|audit: &mut AuditScope, be: &BackendWriteTransaction| {
+            // First create some entries (3?)
+            let mut e1: Entry<EntryInvalid, EntryNew> = Entry::new();
+            e1.add_ava(String::from("userid"), String::from("william"));
+
+            let mut e2: Entry<EntryInvalid, EntryNew> = Entry::new();
+            e2.add_ava(String::from("userid"), String::from("alice"));
+
+            let mut e3: Entry<EntryInvalid, EntryNew> = Entry::new();
+            e3.add_ava(String::from("userid"), String::from("lucy"));
+
+            let ve1 = unsafe { e1.clone().to_valid_new() };
+            let ve2 = unsafe { e2.clone().to_valid_new() };
+            let ve3 = unsafe { e3.clone().to_valid_new() };
+
+            assert!(be.create(audit, &vec![ve1, ve2, ve3]).is_ok());
+            assert!(entry_exists!(audit, be, e1));
+            assert!(entry_exists!(audit, be, e2));
+            assert!(entry_exists!(audit, be, e3));
+
             let result = fs::remove_file(DB_BACKUP_FILE_NAME);
 
             match result {
