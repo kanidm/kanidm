@@ -1,11 +1,11 @@
 //! Db executor actor
 
+use std::fs;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::types::ToSql;
 use rusqlite::NO_PARAMS;
 use serde_json;
-use std::fs;
 // use uuid;
 
 use crate::audit::AuditScope;
@@ -454,7 +454,7 @@ impl BackendWriteTransaction {
         );
 
         let result = fs::write(dstPath, serializedEntriesStr);
-
+            
         try_audit!(
             audit,
             result,
@@ -487,17 +487,16 @@ impl BackendWriteTransaction {
             "serde_json error {:?}",
             OperationError::SerdeJsonError
         );
-
+      
         // remove all entries from database
-        try_audit!(
-            audit,
-            self.conn.execute("DELETE FROM id2entry", NO_PARAMS),
+        try_audit!(audit, 
+            self.conn.execute("DELETE FROM id2entry", NO_PARAMS ),
             "rustqlite error {:?}",
             OperationError::SQLiteError
         );
 
         self._create(audit, &entries)
-
+        
         // run re-index after db is restored
         // run db verify
     }
@@ -662,9 +661,7 @@ mod tests {
     use super::super::audit::AuditScope;
     use super::super::entry::{Entry, EntryInvalid, EntryNew};
     use super::super::filter::Filter;
-    use super::{
-        Backend, BackendError, BackendReadTransaction, BackendWriteTransaction, OperationError,
-    };
+    use super::{Backend, BackendError, OperationError, BackendReadTransaction, BackendWriteTransaction};
 
     macro_rules! run_test {
         ($test_fn:expr) => {{
