@@ -1,7 +1,7 @@
 // use super::entry::Entry;
 // use super::filter::Filter;
+use crate::error::OperationError;
 use actix::prelude::*;
-use error::OperationError;
 use std::collections::BTreeMap;
 
 // These proto implementations are here because they have public definitions

@@ -3,19 +3,21 @@
 // use actix::prelude::*;
 use std::sync::Arc;
 
-use audit::AuditScope;
-use be::{
+use crate::audit::AuditScope;
+use crate::be::{
     Backend, BackendError, BackendReadTransaction, BackendTransaction, BackendWriteTransaction,
 };
 
-use constants::{JSON_ANONYMOUS_V1, JSON_SYSTEM_INFO_V1};
-use entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
-use error::{ConsistencyError, OperationError, SchemaError};
-use event::{CreateEvent, DeleteEvent, ExistsEvent, ModifyEvent, ReviveRecycledEvent, SearchEvent};
-use filter::{Filter, FilterInvalid};
-use modify::{Modify, ModifyInvalid, ModifyList};
-use plugins::Plugins;
-use schema::{
+use crate::constants::{JSON_ANONYMOUS_V1, JSON_SYSTEM_INFO_V1};
+use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
+use crate::error::{ConsistencyError, OperationError, SchemaError};
+use crate::event::{
+    CreateEvent, DeleteEvent, ExistsEvent, ModifyEvent, ReviveRecycledEvent, SearchEvent,
+};
+use crate::filter::{Filter, FilterInvalid};
+use crate::modify::{Modify, ModifyInvalid, ModifyList};
+use crate::plugins::Plugins;
+use crate::schema::{
     Schema, SchemaReadTransaction, SchemaTransaction, SchemaWriteTransaction, SyntaxType,
 };
 
@@ -344,7 +346,7 @@ pub trait QueryServerReadTransaction {
     }
 
     // In the opposite direction, we can resolve values for presentation
-    fn resolve_value(&self, attr: &String, value: &String) -> Result<String, OperationError> {
+    fn resolve_value(&self, _attr: &String, value: &String) -> Result<String, OperationError> {
         Ok(value.clone())
     }
 }
@@ -939,7 +941,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
     pub fn internal_exists_or_create(
         &self,
-        e: Entry<EntryValid, EntryNew>,
+        _e: Entry<EntryValid, EntryNew>,
     ) -> Result<(), OperationError> {
         // If the thing exists, stop.
         // if not, create from Entry.
@@ -1116,23 +1118,21 @@ mod tests {
     */
     use std::sync::Arc;
 
-    use super::super::audit::AuditScope;
-    use super::super::be::Backend;
-    use super::super::entry::{Entry, EntryInvalid, EntryNew};
-    use super::super::error::{OperationError, SchemaError};
-    use super::super::event::{
-        CreateEvent, DeleteEvent, ModifyEvent, ReviveRecycledEvent, SearchEvent,
-    };
-    use super::super::filter::Filter;
-    use super::super::modify::{Modify, ModifyList};
-    use super::super::proto_v1::Filter as ProtoFilter;
-    use super::super::proto_v1::Modify as ProtoModify;
-    use super::super::proto_v1::ModifyList as ProtoModifyList;
-    use super::super::proto_v1::{
+    use crate::audit::AuditScope;
+    use crate::be::Backend;
+    use crate::entry::{Entry, EntryInvalid, EntryNew};
+    use crate::error::{OperationError, SchemaError};
+    use crate::event::{CreateEvent, DeleteEvent, ModifyEvent, ReviveRecycledEvent, SearchEvent};
+    use crate::filter::Filter;
+    use crate::modify::{Modify, ModifyList};
+    use crate::proto_v1::Filter as ProtoFilter;
+    use crate::proto_v1::Modify as ProtoModify;
+    use crate::proto_v1::ModifyList as ProtoModifyList;
+    use crate::proto_v1::{
         DeleteRequest, ModifyRequest, ReviveRecycledRequest, SearchRecycledRequest, SearchRequest,
     };
-    use super::super::schema::Schema;
-    use super::super::server::{QueryServer, QueryServerReadTransaction};
+    use crate::schema::Schema;
+    use crate::server::{QueryServer, QueryServerReadTransaction};
 
     macro_rules! run_test {
         ($test_fn:expr) => {{

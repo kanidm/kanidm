@@ -1,10 +1,8 @@
-use audit::AuditScope;
-use be::BackendReadTransaction;
-use entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
-use error::{ConsistencyError, OperationError};
-use event::{CreateEvent, DeleteEvent, ModifyEvent, SearchEvent};
-use schema::SchemaReadTransaction;
-use server::{QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction};
+use crate::audit::AuditScope;
+use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
+use crate::error::{ConsistencyError, OperationError};
+use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
+use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
 
 #[macro_use]
 mod macros;
@@ -86,7 +84,7 @@ macro_rules! run_pre_create_plugin {
         $target_plugin:ty
     ) => {{
         let mut audit_scope = AuditScope::new(<($target_plugin)>::id());
-        let mut r = audit_segment!(audit_scope, || <($target_plugin)>::pre_create(
+        let r = audit_segment!(audit_scope, || <($target_plugin)>::pre_create(
             &mut audit_scope,
             $qs,
             $cand,
@@ -133,46 +131,46 @@ impl Plugins {
     }
 
     pub fn run_post_create(
-        au: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
-        cand: &Vec<Entry<EntryValid, EntryNew>>,
-        ce: &CreateEvent,
+        _au: &mut AuditScope,
+        _qs: &QueryServerWriteTransaction,
+        _cand: &Vec<Entry<EntryValid, EntryNew>>,
+        _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         Ok(())
     }
 
     pub fn run_pre_modify(
-        au: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
-        cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
-        me: &ModifyEvent,
+        _au: &mut AuditScope,
+        _qs: &QueryServerWriteTransaction,
+        _cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
+        _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
         Ok(())
     }
 
     pub fn run_post_modify(
-        au: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
-        cand: &Vec<Entry<EntryValid, EntryCommitted>>,
-        me: &ModifyEvent,
+        _au: &mut AuditScope,
+        _qs: &QueryServerWriteTransaction,
+        _cand: &Vec<Entry<EntryValid, EntryCommitted>>,
+        _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
         Ok(())
     }
 
     pub fn run_pre_delete(
-        au: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
-        cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
-        de: &DeleteEvent,
+        _au: &mut AuditScope,
+        _qs: &QueryServerWriteTransaction,
+        _cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
+        _de: &DeleteEvent,
     ) -> Result<(), OperationError> {
         Ok(())
     }
 
     pub fn run_post_delete(
-        au: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
-        cand: &Vec<Entry<EntryValid, EntryCommitted>>,
-        de: &DeleteEvent,
+        _au: &mut AuditScope,
+        _qs: &QueryServerWriteTransaction,
+        _cand: &Vec<Entry<EntryValid, EntryCommitted>>,
+        _de: &DeleteEvent,
     ) -> Result<(), OperationError> {
         Ok(())
     }
