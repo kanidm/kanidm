@@ -537,10 +537,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .be_txn
             .create(&mut audit_be, &norm_cand)
             .map(|_| ())
-            .map_err(|e| match e {
-                BackendError::EmptyRequest => OperationError::EmptyRequest,
-                BackendError::EntryMissingId => OperationError::InvalidRequestState,
-            });
+            .map_err(|e| e);
+
         au.append_scope(audit_be);
 
         if res.is_err() {

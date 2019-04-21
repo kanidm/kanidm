@@ -5,6 +5,7 @@ use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::types::ToSql;
 use rusqlite::NO_PARAMS;
 use serde_json;
+use std::fs;
 // use uuid;
 
 use crate::audit::AuditScope;
@@ -235,18 +236,18 @@ impl BackendWriteTransaction {
         }
     }
 
-    pub fn create(
+    fn internal_create<T: serde::Serialize>(
         &self,
         au: &mut AuditScope,
-        entries: &Vec<Entry<EntryValid, EntryNew>>,
-    ) -> Result<(), BackendError> {
+        entries: &Vec<Entry<EntryValid, T>>,
+    ) -> Result<(), OperationError> {
         audit_segment!(au, || {
             // Start be audit timer
 
             if entries.is_empty() {
                 // TODO: Better error
                 // End the timer
-                return Err(BackendError::EmptyRequest);
+                return Err(OperationError::EmptyRequest);
             }
 
             // Turn all the entries into relevent json/cbor types
@@ -272,27 +273,43 @@ impl BackendWriteTransaction {
 
             // THIS IS PROBABLY THE BIT WHERE YOU NEED DB ABSTRACTION
             {
-                // Start a txn
-                // self.conn.execute("BEGIN TRANSACTION", NO_PARAMS).unwrap();
+                let mut stmt = try_audit!(
+                    au,
+                    self.conn
+                        .prepare("INSERT INTO id2entry (id, data) VALUES (:id, :data)"),
+                    "rusqlite error {:?}",
+                    OperationError::SQLiteError
+                );
 
                 // write them all
                 for ser_entry in ser_entries {
                     // TODO: Prepared statement.
-                    self.conn
-                        .execute(
-                            "INSERT INTO id2entry (id, data) VALUES (?1, ?2)",
-                            &[&ser_entry.id as &ToSql, &ser_entry.data as &ToSql],
-                        )
-                        .unwrap();
+                    try_audit!(
+                        au,
+                        stmt.execute_named(&[
+                            (":id", &ser_entry.id as &ToSql),
+                            (":data", &ser_entry.data as &ToSql)
+                        ]),
+                        "rusqlite error {:?}",
+                        OperationError::SQLiteError
+                    );
                 }
 
                 // TODO: update indexes (as needed)
-                // Commit the txn
-                // conn.execute("COMMIT TRANSACTION", NO_PARAMS).unwrap();
             }
 
             Ok(())
         })
+    }
+
+    pub fn create(
+        &self,
+        au: &mut AuditScope,
+        entries: &Vec<Entry<EntryValid, EntryNew>>,
+    ) -> Result<(), OperationError> {
+        // figured we would want a audit_segment to wrap internal_create so when doing profiling we can
+        // tell which function is calling it. either this one or restore.
+        audit_segment!(au, || { self.internal_create(au, entries) })
     }
 
     pub fn modify(
@@ -390,23 +407,101 @@ impl BackendWriteTransaction {
     }
 
     pub fn backup(&self, audit: &mut AuditScope, dstPath: &str) -> Result<(), OperationError> {
-        //open connection to the destination
-        let result = self
-            .conn
-            .backup(rusqlite::DatabaseName::Main, dstPath, None);
+        // load all entries into RAM, may need to change this later
+        // if the size of the database compared to RAM is an issue
+        let mut raw_entries: Vec<IdEntry> = Vec::new();
+
+        {
+            let mut stmt = self
+                .get_conn()
+                .prepare("SELECT id, data FROM id2entry")
+                .unwrap();
+
+            let id2entry_iter = stmt
+                .query_map(NO_PARAMS, |row| IdEntry {
+                    id: row.get(0),
+                    data: row.get(1),
+                })
+                .unwrap();
+
+            for row in id2entry_iter {
+                raw_entries.push(row.unwrap());
+            }
+        }
+
+        let entries: Vec<Entry<EntryValid, EntryCommitted>> = raw_entries
+            .iter()
+            .filter_map(|id_ent| {
+                let mut e: Entry<EntryValid, EntryCommitted> =
+                    serde_json::from_str(id_ent.data.as_str()).unwrap();
+                e.id = Some(id_ent.id);
+                Some(e)
+            })
+            .collect();
+
+        let mut serializedEntries = serde_json::to_string_pretty(&entries);
+
+        let serializedEntriesStr = try_audit!(
+            audit,
+            serializedEntries,
+            "serde error {:?}",
+            OperationError::SerdeJsonError
+        );
+
+        let result = fs::write(dstPath, serializedEntriesStr);
 
         try_audit!(
             audit,
             result,
-            "Error in sqlite {:?}",
-            OperationError::SQLiteError
+            "fs::write error {:?}",
+            OperationError::FsError
         );
+
         Ok(())
     }
 
-    // Should this be offline only?
-    pub fn restore(&self, audit: &mut AuditScope) -> Result<(), BackendError> {
-        unimplemented!()
+    pub unsafe fn purge(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
+        // remove all entries from database
+        try_audit!(
+            audit,
+            self.conn.execute("DELETE FROM id2entry", NO_PARAMS),
+            "rustqlite error {:?}",
+            OperationError::SQLiteError
+        );
+
+        Ok(())
+    }
+
+    pub fn restore(&self, audit: &mut AuditScope, srcPath: &str) -> Result<(), OperationError> {
+        // load all entries into RAM, may need to change this later
+        // if the size of the database compared to RAM is an issue
+        let mut serializedStringOption = fs::read_to_string(srcPath);
+
+        let mut serializedString = try_audit!(
+            audit,
+            serializedStringOption,
+            "fs::read_to_string {:?}",
+            OperationError::FsError
+        );
+
+        unsafe {
+            self.purge(audit);
+        }
+
+        let entriesOption: Result<Vec<Entry<EntryValid, EntryCommitted>>, serde_json::Error> =
+            serde_json::from_str(&serializedString);
+
+        let entries = try_audit!(
+            audit,
+            entriesOption,
+            "serde_json error {:?}",
+            OperationError::SerdeJsonError
+        );
+
+        self.internal_create(audit, &entries)
+
+        // run re-index after db is restored
+        // run db verify
     }
 
     pub fn commit(mut self) -> Result<(), OperationError> {
@@ -569,7 +664,9 @@ mod tests {
     use super::super::audit::AuditScope;
     use super::super::entry::{Entry, EntryInvalid, EntryNew};
     use super::super::filter::Filter;
-    use super::{Backend, BackendError, BackendReadTransaction, BackendWriteTransaction};
+    use super::{
+        Backend, BackendError, BackendReadTransaction, BackendWriteTransaction, OperationError,
+    };
 
     macro_rules! run_test {
         ($test_fn:expr) => {{
@@ -615,7 +712,7 @@ mod tests {
 
             let empty_result = be.create(audit, &Vec::new());
             audit_log!(audit, "{:?}", empty_result);
-            assert_eq!(empty_result, Err(BackendError::EmptyRequest));
+            assert_eq!(empty_result, Err(OperationError::EmptyRequest));
 
             let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
             e.add_ava(String::from("userid"), String::from("william"));
@@ -765,12 +862,31 @@ mod tests {
         });
     }
 
-    pub static dbBackupFileName: &'static str = "./.backup_test.db";
+    pub static DB_BACKUP_FILE_NAME: &'static str = "./.backup_test.db";
 
     #[test]
     fn test_backup_restore() {
         run_test!(|audit: &mut AuditScope, be: &BackendWriteTransaction| {
-            let result = fs::remove_file(dbBackupFileName);
+            // First create some entries (3?)
+            let mut e1: Entry<EntryInvalid, EntryNew> = Entry::new();
+            e1.add_ava(String::from("userid"), String::from("william"));
+
+            let mut e2: Entry<EntryInvalid, EntryNew> = Entry::new();
+            e2.add_ava(String::from("userid"), String::from("alice"));
+
+            let mut e3: Entry<EntryInvalid, EntryNew> = Entry::new();
+            e3.add_ava(String::from("userid"), String::from("lucy"));
+
+            let ve1 = unsafe { e1.clone().to_valid_new() };
+            let ve2 = unsafe { e2.clone().to_valid_new() };
+            let ve3 = unsafe { e3.clone().to_valid_new() };
+
+            assert!(be.create(audit, &vec![ve1, ve2, ve3]).is_ok());
+            assert!(entry_exists!(audit, be, e1));
+            assert!(entry_exists!(audit, be, e2));
+            assert!(entry_exists!(audit, be, e3));
+
+            let result = fs::remove_file(DB_BACKUP_FILE_NAME);
 
             match result {
                 Err(e) => {
@@ -784,8 +900,8 @@ mod tests {
                 _ => (),
             }
 
-            be.backup(audit, "./.backup_test.db").unwrap();
-            be.restore(audit).unwrap();
+            be.backup(audit, DB_BACKUP_FILE_NAME).unwrap();
+            be.restore(audit, DB_BACKUP_FILE_NAME).unwrap();
         });
     }
 }
