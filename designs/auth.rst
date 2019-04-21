@@ -23,6 +23,8 @@ the action for it to persist.
 
 This applies to web or cli usage.
 
+Similar to sudo the privilege lasts for a short time within the session (ie 5 minutes).
+
 SSO to websites
 ===============
 
@@ -30,6 +32,8 @@ The login screen is presented to the user. They are challenged for a series of c
 They are then able to select any supplemental permissions (if any) they wish to request for
 the session, which may request further credentials. They are then redirected to the target
 site with an appropriate (oauth) token describing the requested rights.
+
+https://developers.google.com/identity/sign-in/web/incremental-auth
 
 Login to workstation (connected)
 ================================
@@ -79,6 +83,13 @@ completes. The key may only be valid for a short time.
 Agent forwarding is not a concern in this scenario due to the fact the key is only allowed to be used
 for this specific host.
 
+_W: Probably the main one is if a group/permission is granted always or ephemerally on the session. But that's per group/permission.
+I want to limit the amount of configuration policy here, because there are lots of ways that over configuration can create
+too many scenarios to effective audit and test. 
+So the permissions would probably come down to something like "always", "request", and "request-approve", where always is
+you always have that, request means you have to re-auth then the permission lasts for X time, and request-approve
+would mean you have to request, reauth, then someone else signs off on the approval to grant. 
+
 SSH via a bastion host
 ======================
 
@@ -95,6 +106,15 @@ Additionally:
 * Some sites may want self supporting account recovery
 
 * Accounts should support ephemeral or group-requests
+
+References:
+
+Secure SSH Key Storage
+https://github.com/sekey/sekey
+https://gist.github.com/lizthegrey/9c21673f33186a9cc775464afbdce820
+
+Secure Bastion hosting
+https://krypt.co/docs/ssh/using-a-bastion-host.html
 
 Implementation ideas for use cases
 ----------------------------------
