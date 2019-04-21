@@ -35,6 +35,13 @@ macro_rules! run_create_test {
         $internal:ident,
         $check:expr
     ) => {{
+        use std::sync::Arc;
+        use crate::audit::AuditScope;
+        use crate::event::CreateEvent;
+        use crate::server::QueryServer;
+        use crate::schema::Schema;
+        use crate::be::Backend;
+
         let mut au = AuditScope::new("run_create_test");
         audit_segment!(au, || {
             let qs = setup_test!(&mut au, $preload_entries);

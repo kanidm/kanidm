@@ -189,17 +189,11 @@ impl Plugin for Base {
 mod tests {
     #[macro_use]
     use crate::plugins::Plugin;
-    use std::sync::Arc;
-
-    use crate::audit::AuditScope;
-    use crate::be::Backend;
     use crate::entry::{Entry, EntryInvalid, EntryNew};
     use crate::error::OperationError;
-    use crate::event::CreateEvent;
     use crate::filter::Filter;
-    use crate::schema::Schema;
     use crate::server::QueryServerReadTransaction;
-    use crate::server::{QueryServer, QueryServerWriteTransaction};
+    use crate::server::QueryServerWriteTransaction;
 
     // check create where no uuid
     #[test]
