@@ -9,7 +9,7 @@
 // when that is written, as they *both* manipulate and alter entry reference
 // data, so we should be careful not to step on each other.
 
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 
 use crate::audit::AuditScope;
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
@@ -64,7 +64,6 @@ impl Plugin for ReferentialIntegrity {
         cand: &Vec<Entry<EntryValid, EntryNew>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        let name_uuid = String::from("uuid");
         let schema = qs.get_schema();
         let ref_types = schema.get_reference_types();
 
@@ -140,16 +139,72 @@ impl Plugin for ReferentialIntegrity {
     }
 
     fn verify(
-        _au: &mut AuditScope,
-        _qs: &QueryServerTransaction,
+        au: &mut AuditScope,
+        qs: &QueryServerTransaction,
     ) -> Vec<Result<(), ConsistencyError>> {
+        let name_uuid = "uuid".to_string();
         // Get all entries as cand
         //      build a cand-uuid set
-        //
-        // For all entries (live)
-        //      For each reference type in entry
-        //          Is the reference value in our cand set?
-        Vec::new()
+        let filt_in: Filter<FilterInvalid> =
+            Filter::new_ignore_hidden(Filter::Pres("class".to_string()));
+
+        let all_cand = match qs
+            .internal_search(au, filt_in)
+            .map_err(|_| Err(ConsistencyError::QueryServerSearchFailure))
+        {
+            Ok(all_cand) => all_cand,
+            Err(e) => return vec![e],
+        };
+
+        let (acu, err): (
+            Vec<Result<&String, ConsistencyError>>,
+            Vec<Result<&String, ConsistencyError>>,
+        ) = all_cand
+            .iter()
+            .map(|e| {
+                e.get_ava(&name_uuid)
+                    .ok_or(ConsistencyError::EntryUuidCorrupt(e.get_id()))
+                    .map(|v| v.first().expect("Can not fail!!!"))
+            })
+            .partition(|v| v.is_ok());
+
+        if err.len() > 0 {
+            return err
+                .into_iter()
+                .map(|v| Err(v.expect_err("Can not fail!!!")))
+                .collect();
+        }
+
+        let acu_map: HashMap<&String, ()> = acu
+            .into_iter()
+            .map(|v| v.expect("Can not fail!!!"))
+            .map(|v| (v, ()))
+            .collect();
+
+        let schema = qs.get_schema();
+        let ref_types = schema.get_reference_types();
+
+        let mut res = Vec::new();
+        // For all cands
+        for c in &all_cand {
+            // For all reference in each cand.
+            for rtype in ref_types.values() {
+                match c.get_ava(&rtype.name) {
+                    // If the attribute is present
+                    Some(vs) => {
+                        // For each value in the set.
+                        for v in vs {
+                            if acu_map.get(v).is_none() {
+                                res.push(Err(ConsistencyError::RefintNotUpheld(c.get_id())))
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        res
     }
 }
 
@@ -514,9 +569,7 @@ mod tests {
             preload,
             Filter::Eq("name".to_string(), "testgroup_a".to_string()),
             false,
-            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
-                unimplemented!();
-            }
+            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {}
         );
     }
 
@@ -564,9 +617,7 @@ mod tests {
             preload,
             Filter::Eq("name".to_string(), "testgroup_b".to_string()),
             false,
-            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
-                unimplemented!();
-            }
+            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {}
         );
     }
 
@@ -595,9 +646,7 @@ mod tests {
             preload,
             Filter::Eq("name".to_string(), "testgroup_b".to_string()),
             false,
-            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
-                unimplemented!();
-            }
+            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {}
         );
     }
 }
