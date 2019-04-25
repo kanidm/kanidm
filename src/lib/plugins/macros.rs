@@ -18,7 +18,7 @@ macro_rules! setup_test {
 
         if !$preload_entries.is_empty() {
             let qs_write = qs.write();
-            qs_write.internal_create($au, $preload_entries);
+            qs_write.internal_create($au, $preload_entries).unwrap();
             assert!(qs_write.commit($au).is_ok());
         }
         qs

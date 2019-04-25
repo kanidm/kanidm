@@ -181,12 +181,16 @@ impl Plugin for ReferentialIntegrity {
             .map(|v| (v, ()))
             .collect();
 
+        // DEBUG HACKS!!!
+        println!("{:?}", acu_map);
+
         let schema = qs.get_schema();
         let ref_types = schema.get_reference_types();
 
         let mut res = Vec::new();
         // For all cands
         for c in &all_cand {
+            println!("cand -> {:?}", c);
             // For all reference in each cand.
             for rtype in ref_types.values() {
                 match c.get_ava(&rtype.name) {
@@ -203,6 +207,8 @@ impl Plugin for ReferentialIntegrity {
                 }
             }
         }
+
+        println!("{:?}", res);
 
         res
     }
@@ -236,7 +242,7 @@ mod tests {
         .unwrap();
 
         let create = vec![e.clone()];
-        let preload = vec![e];
+        let preload = Vec::new();
         run_create_test!(
             Err(OperationError::Plugin),
             preload,
