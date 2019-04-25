@@ -282,6 +282,17 @@ impl ModifyEvent {
             internal: true,
         }
     }
+
+    pub fn new_impersonate(
+        filter: Filter<FilterInvalid>,
+        modlist: ModifyList<ModifyInvalid>,
+    ) -> Self {
+        ModifyEvent {
+            filter: filter,
+            modlist: modlist,
+            internal: false,
+        }
+    }
 }
 
 #[derive(Debug)]

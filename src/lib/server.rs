@@ -815,8 +815,21 @@ impl<'a> QueryServerWriteTransaction<'a> {
         };
 
         if pre_candidates.len() == 0 {
-            audit_log!(au, "modify: no candidates match filter {:?}", me.filter);
-            return Err(OperationError::NoMatchingEntries);
+            if me.internal {
+                audit_log!(
+                    au,
+                    "modify: no candidates match filter ... continuing {:?}",
+                    me.filter
+                );
+                return Ok(());
+            } else {
+                audit_log!(
+                    au,
+                    "modify: no candidates match filter, failure {:?}",
+                    me.filter
+                );
+                return Err(OperationError::NoMatchingEntries);
+            }
         };
 
         // Clone a set of writeables.
@@ -940,7 +953,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         modlist: ModifyList<ModifyInvalid>,
     ) -> Result<(), OperationError> {
         let mut audit_int = AuditScope::new("impersonate_modify");
-        let me = ModifyEvent::new_internal(filter, modlist);
+        let me = ModifyEvent::new_impersonate(filter, modlist);
         let res = self.modify(&mut audit_int, &me);
         audit.append_scope(audit_int);
         res

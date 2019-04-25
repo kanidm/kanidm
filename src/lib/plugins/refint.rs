@@ -16,7 +16,7 @@ use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
 use crate::error::{ConsistencyError, OperationError};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::filter::{Filter, FilterInvalid};
-use crate::modify::{Modify, ModifyList, ModifyValid};
+use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use crate::plugins::Plugin;
 use crate::schema::SchemaReadTransaction;
 use crate::server::QueryServerReadTransaction;
@@ -116,26 +116,63 @@ impl Plugin for ReferentialIntegrity {
     }
 
     fn post_delete(
-        _au: &mut AuditScope,
-        _qs: &QueryServerWriteTransaction,
-        _cand: &Vec<Entry<EntryValid, EntryCommitted>>,
+        au: &mut AuditScope,
+        qs: &QueryServerWriteTransaction,
+        cand: &Vec<Entry<EntryValid, EntryCommitted>>,
         _ce: &DeleteEvent,
     ) -> Result<(), OperationError> {
         // Delete is pretty different to the other pre checks. This is
         // actually the bulk of the work we'll do to clean up references
         // when they are deleted.
+        let uuid_name = "uuid".to_string();
 
         // Find all reference types in the schema
+        let schema = qs.get_schema();
+        let ref_types = schema.get_reference_types();
         // Get the UUID of all entries we are deleting
+        let uuids: Vec<&String> = cand
+            .iter()
+            .map(|e| e.get_ava(&uuid_name).ok_or(OperationError::Plugin))
+            .collect::<Result<Vec<_>, _>>()?
+            .into_iter()
+            .flatten()
+            .collect();
+
         // Generate a filter which is the set of all schema reference types
         // as EQ to all uuid of all entries in delete.
-        //
+        let filt: Filter<FilterInvalid> = Filter::Or(
+            uuids
+                .iter()
+                .map(|u| {
+                    ref_types
+                        .values()
+                        .map(move |r_type| Filter::Eq(r_type.name.clone(), u.to_string()))
+                })
+                .flatten()
+                .collect(),
+        );
+
+        audit_log!(au, "refint post_delete filter {:?}", filt);
+
         // Create a modlist:
         //    In each, create a "removed" for each attr:uuid pair
-        //
-        //
+        let modlist: ModifyList<ModifyInvalid> = ModifyList::new_list(
+            uuids
+                .iter()
+                .map(|u| {
+                    ref_types
+                        .values()
+                        .map(move |r_type| Modify::Removed(r_type.name.clone(), u.to_string()))
+                })
+                .flatten()
+                .collect(),
+        );
+
+        audit_log!(au, "refint post_delete modlist {:?}", modlist);
+
         // Do an internal modify to apply the modlist and filter.
-        Ok(())
+
+        qs.internal_modify(au, filt, modlist)
     }
 
     fn verify(
