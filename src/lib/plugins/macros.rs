@@ -35,12 +35,12 @@ macro_rules! run_create_test {
         $internal:ident,
         $check:expr
     ) => {{
-        use std::sync::Arc;
         use crate::audit::AuditScope;
-        use crate::event::CreateEvent;
-        use crate::server::QueryServer;
-        use crate::schema::Schema;
         use crate::be::Backend;
+        use crate::event::CreateEvent;
+        use crate::schema::Schema;
+        use crate::server::QueryServer;
+        use std::sync::Arc;
 
         let mut au = AuditScope::new("run_create_test");
         audit_segment!(au, || {
@@ -77,19 +77,26 @@ macro_rules! run_modify_test {
     (
         $expect:expr,
         $preload_entries:ident,
-        $modify_filter:ident,
-        $modify_list:ident,
+        $modify_filter:expr,
+        $modify_list:expr,
         $internal:ident,
         $check:expr
     ) => {{
+        use crate::audit::AuditScope;
+        use crate::be::Backend;
+        use crate::event::ModifyEvent;
+        use crate::schema::Schema;
+        use crate::server::QueryServer;
+        use std::sync::Arc;
+
         let mut au = AuditScope::new("run_modify_test");
         audit_segment!(au, || {
             let qs = setup_test!(&mut au, $preload_entries);
 
             let me = if $internal {
-                ModifyEvent::new_internal($)
+                ModifyEvent::new_internal($modify_filter, $modify_list)
             } else {
-                ModifyEvent::from_filter($modify_entries.clone())
+                ModifyEvent::from_filter($modify_filter, $modify_list)
             };
 
             let mut au_test = AuditScope::new("modify_test");
@@ -117,10 +124,17 @@ macro_rules! run_delete_test {
     (
         $expect:expr,
         $preload_entries:ident,
-        $delete_filter:ident,
+        $delete_filter:expr,
         $internal:ident,
         $check:expr
     ) => {{
+        use crate::audit::AuditScope;
+        use crate::be::Backend;
+        use crate::event::DeleteEvent;
+        use crate::schema::Schema;
+        use crate::server::QueryServer;
+        use std::sync::Arc;
+
         let mut au = AuditScope::new("run_delete_test");
         audit_segment!(au, || {
             let qs = setup_test!(&mut au, $preload_entries);

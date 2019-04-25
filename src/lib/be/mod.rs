@@ -309,7 +309,7 @@ impl BackendWriteTransaction {
     ) -> Result<(), OperationError> {
         // figured we would want a audit_segment to wrap internal_create so when doing profiling we can
         // tell which function is calling it. either this one or restore.
-        audit_segment!(au, || { self.internal_create(au, entries) })
+        audit_segment!(au, || self.internal_create(au, entries))
     }
 
     pub fn modify(

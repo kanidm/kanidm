@@ -9,35 +9,110 @@
 // when that is written, as they *both* manipulate and alter entry reference
 // data, so we should be careful not to step on each other.
 
+use std::collections::BTreeMap;
+
 use crate::audit::AuditScope;
-use crate::entry::{Entry, EntryCommitted, EntryNew, EntryValid};
-use crate::error::OperationError;
+use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
+use crate::error::{ConsistencyError, OperationError};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
+use crate::filter::{Filter, FilterInvalid};
+use crate::modify::{Modify, ModifyList, ModifyValid};
 use crate::plugins::Plugin;
-use crate::server::QueryServerWriteTransaction;
+use crate::schema::SchemaReadTransaction;
+use crate::server::QueryServerReadTransaction;
+use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
+
+// NOTE: This *must* be after base.rs!!!
 
 pub struct ReferentialIntegrity;
+
+impl ReferentialIntegrity {
+    fn check_uuid_exists(
+        au: &mut AuditScope,
+        qs: &QueryServerWriteTransaction,
+        uuid: &String,
+    ) -> Result<(), OperationError> {
+        let mut au_qs = AuditScope::new("qs_exist");
+        let filt_in: Filter<FilterInvalid> =
+            Filter::new_ignore_hidden(Filter::Eq("uuid".to_string(), uuid.clone()));
+        let r = qs.internal_exists(au, filt_in);
+        au.append_scope(au_qs);
+
+        let b = try_audit!(au, r);
+        // Is the reference in the qs?
+        if b {
+            Ok(())
+        } else {
+            Err(OperationError::Plugin)
+        }
+    }
+}
 
 impl Plugin for ReferentialIntegrity {
     fn id() -> &'static str {
         "referential_integrity"
     }
 
+    // Is there a possible issue doing this as pre? We haven't normalised the values in the entries
+    // so as a result, can we trust the UUID values? Should we actually wait until *after* normalisation
+    // to do these checks? We aren't going to make changes to the entries, only reject the operation
+    // or allow it ... Are my plugin hooks too "coarse"? Should we have pre/pre-schema-checked?
+    // Or is post still relevant?
     fn post_create(
-        _au: &mut AuditScope,
-        _qs: &QueryServerWriteTransaction,
-        _cand: &Vec<Entry<EntryValid, EntryNew>>,
+        au: &mut AuditScope,
+        qs: &QueryServerWriteTransaction,
+        cand: &Vec<Entry<EntryValid, EntryNew>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
+        let name_uuid = String::from("uuid");
+        let schema = qs.get_schema();
+        let ref_types = schema.get_reference_types();
+
+        // For all cands
+        for c in cand {
+            // For all reference in each cand.
+            for rtype in ref_types.values() {
+                match c.get_ava(&rtype.name) {
+                    // If the attribute is present
+                    Some(vs) => {
+                        // For each value in the set.
+                        for v in vs {
+                            Self::check_uuid_exists(au, qs, v)?
+                        }
+                    }
+                    None => {}
+                }
+            }
+        }
         Ok(())
     }
 
     fn post_modify(
-        _au: &mut AuditScope,
-        _qs: &QueryServerWriteTransaction,
+        au: &mut AuditScope,
+        qs: &QueryServerWriteTransaction,
         _cand: &Vec<Entry<EntryValid, EntryCommitted>>,
-        _ce: &ModifyEvent,
+        me: &ModifyEvent,
+        modlist: &ModifyList<ModifyValid>,
     ) -> Result<(), OperationError> {
+        let schema = qs.get_schema();
+        let ref_types = schema.get_reference_types();
+
+        // For all mods
+        for modify in modlist.into_iter() {
+            match &modify {
+                // If the mod affects a reference type and being ADDED.
+                Modify::Present(a, v) => {
+                    match ref_types.get(a) {
+                        Some(a_type) => {
+                            // So it is a reference type, now check it.
+                            Self::check_uuid_exists(au, qs, v)?
+                        }
+                        None => {}
+                    }
+                }
+                _ => {}
+            }
+        }
         Ok(())
     }
 
@@ -47,7 +122,34 @@ impl Plugin for ReferentialIntegrity {
         _cand: &Vec<Entry<EntryValid, EntryCommitted>>,
         _ce: &DeleteEvent,
     ) -> Result<(), OperationError> {
+        // Delete is pretty different to the other pre checks. This is
+        // actually the bulk of the work we'll do to clean up references
+        // when they are deleted.
+
+        // Find all reference types in the schema
+        // Get the UUID of all entries we are deleting
+        // Generate a filter which is the set of all schema reference types
+        // as EQ to all uuid of all entries in delete.
+        //
+        // Create a modlist:
+        //    In each, create a "removed" for each attr:uuid pair
+        //
+        //
+        // Do an internal modify to apply the modlist and filter.
         Ok(())
+    }
+
+    fn verify(
+        _au: &mut AuditScope,
+        _qs: &QueryServerTransaction,
+    ) -> Vec<Result<(), ConsistencyError>> {
+        // Get all entries as cand
+        //      build a cand-uuid set
+        //
+        // For all entries (live)
+        //      For each reference type in entry
+        //          Is the reference value in our cand set?
+        Vec::new()
     }
 }
 
@@ -57,8 +159,9 @@ mod tests {
     use crate::plugins::Plugin;
     use crate::entry::{Entry, EntryInvalid, EntryNew};
     use crate::error::OperationError;
-    use crate::server::{QueryServerWriteTransaction, QueryServerReadTransaction};
     use crate::filter::Filter;
+    use crate::modify::{Modify, ModifyList};
+    use crate::server::{QueryServerReadTransaction, QueryServerWriteTransaction};
 
     // The create references a uuid that doesn't exist - reject
     #[test]
@@ -91,8 +194,7 @@ mod tests {
     // The create references a uuid that does exist - validate
     #[test]
     fn test_create_uuid_reference_exist() {
-        let ea: Entry<EntryInvalid, EntryNew> =
-        serde_json::from_str(
+        let ea: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
             "valid": null,
             "state": null,
@@ -106,8 +208,7 @@ mod tests {
         )
         .unwrap();
 
-        let eb: Entry<EntryInvalid, EntryNew> =
-        serde_json::from_str(
+        let eb: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
             "valid": null,
             "state": null,
@@ -131,7 +232,10 @@ mod tests {
             false,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 let cands = qs
-                    .internal_search(au, Filter::Eq("name".to_string(), "testgroup_b".to_string()))
+                    .internal_search(
+                        au,
+                        Filter::Eq("name".to_string(), "testgroup_b".to_string()),
+                    )
                     .unwrap();
                 let ue = cands.first().unwrap();
             }
@@ -177,48 +281,323 @@ mod tests {
     // Modify references a different object - allow
     #[test]
     fn test_modify_uuid_reference_exist() {
-        unimplemented!();
+        let ea: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            r#"{
+            "valid": null,
+            "state": null,
+            "attrs": {
+                "class": ["group"],
+                "name": ["testgroup_a"],
+                "description": ["testgroup"],
+                "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
+            }
+        }"#,
+        )
+        .unwrap();
+
+        let eb: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            r#"{
+            "valid": null,
+            "state": null,
+            "attrs": {
+                "class": ["group"],
+                "name": ["testgroup_b"],
+                "description": ["testgroup"]
+            }
+        }"#,
+        )
+        .unwrap();
+
+        let preload = vec![ea, eb];
+
+        run_modify_test!(
+            Ok(()),
+            preload,
+            Filter::Eq("name".to_string(), "testgroup_b".to_string()),
+            ModifyList::new_list(vec![Modify::Present(
+                "member".to_string(),
+                "d2b496bd-8493-47b7-8142-f568b5cf47ee".to_string()
+            )]),
+            false,
+            |_, _| {}
+        );
     }
 
     // Modify reference something that doesn't exist - must be rejected
     #[test]
     fn test_modify_uuid_reference_not_exist() {
-        unimplemented!();
+        let eb: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            r#"{
+            "valid": null,
+            "state": null,
+            "attrs": {
+                "class": ["group"],
+                "name": ["testgroup_b"],
+                "description": ["testgroup"]
+            }
+        }"#,
+        )
+        .unwrap();
+
+        let preload = vec![eb];
+
+        run_modify_test!(
+            Err(OperationError::Plugin),
+            preload,
+            Filter::Eq("name".to_string(), "testgroup_b".to_string()),
+            ModifyList::new_list(vec![Modify::Present(
+                "member".to_string(),
+                "d2b496bd-8493-47b7-8142-f568b5cf47ee".to_string()
+            )]),
+            false,
+            |_, _| {}
+        );
     }
 
-    // Modify removes an entry that something else pointed to. - must remove ref in other
-    #[test]
-    fn test_modify_remove_referent() {
-        unimplemented!();
-    }
-
-    // Modify removes the reference to an entry - doesn't need a test
+    // Modify removes the reference to an entry
     #[test]
     fn test_modify_remove_referee() {
-        unimplemented!();
+        let ea: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            r#"{
+            "valid": null,
+            "state": null,
+            "attrs": {
+                "class": ["group"],
+                "name": ["testgroup_a"],
+                "description": ["testgroup"],
+                "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
+            }
+        }"#,
+        )
+        .unwrap();
+
+        let eb: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            r#"{
+            "valid": null,
+            "state": null,
+            "attrs": {
+                "class": ["group"],
+                "name": ["testgroup_b"],
+                "description": ["testgroup"],
+                "member": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
+            }
+        }"#,
+        )
+        .unwrap();
+
+        let preload = vec![ea, eb];
+
+        run_modify_test!(
+            Ok(()),
+            preload,
+            Filter::Eq("name".to_string(), "testgroup_b".to_string()),
+            ModifyList::new_list(vec![Modify::Purged("member".to_string())]),
+            false,
+            |_, _| {}
+        );
     }
 
     // Modify adds reference to self - allow
     #[test]
     fn test_modify_uuid_reference_self() {
-        unimplemented!();
+        let ea: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            r#"{
+            "valid": null,
+            "state": null,
+            "attrs": {
+                "class": ["group"],
+                "name": ["testgroup_a"],
+                "description": ["testgroup"],
+                "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
+            }
+        }"#,
+        )
+        .unwrap();
+
+        let preload = vec![ea];
+
+        run_modify_test!(
+            Ok(()),
+            preload,
+            Filter::Eq("name".to_string(), "testgroup_a".to_string()),
+            ModifyList::new_list(vec![Modify::Present(
+                "member".to_string(),
+                "d2b496bd-8493-47b7-8142-f568b5cf47ee".to_string()
+            )]),
+            false,
+            |_, _| {}
+        );
+    }
+
+    // Test that deleted entries can not be referenced
+    #[test]
+    fn test_modify_reference_deleted() {
+        let ea: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            r#"{
+            "valid": null,
+            "state": null,
+            "attrs": {
+                "class": ["group", "recycled"],
+                "name": ["testgroup_a"],
+                "description": ["testgroup"],
+                "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
+            }
+        }"#,
+        )
+        .unwrap();
+
+        let eb: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            r#"{
+            "valid": null,
+            "state": null,
+            "attrs": {
+                "class": ["group"],
+                "name": ["testgroup_b"],
+                "description": ["testgroup"]
+            }
+        }"#,
+        )
+        .unwrap();
+
+        let preload = vec![ea, eb];
+
+        run_modify_test!(
+            Err(OperationError::Plugin),
+            preload,
+            Filter::Eq("name".to_string(), "testgroup_b".to_string()),
+            ModifyList::new_list(vec![Modify::Present(
+                "member".to_string(),
+                "d2b496bd-8493-47b7-8142-f568b5cf47ee".to_string()
+            )]),
+            false,
+            |_, _| {}
+        );
     }
 
     // Delete of something that is referenced - must remove ref in other (unless would make inconsistent)
+    //
+    // This is the valid case, where the reference is MAY.
     #[test]
-    fn test_delete_remove_referent() {
-        unimplemented!();
+    fn test_delete_remove_referent_valid() {
+        let ea: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            r#"{
+            "valid": null,
+            "state": null,
+            "attrs": {
+                "class": ["group"],
+                "name": ["testgroup_a"],
+                "description": ["testgroup"],
+                "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
+            }
+        }"#,
+        )
+        .unwrap();
+
+        let eb: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            r#"{
+            "valid": null,
+            "state": null,
+            "attrs": {
+                "class": ["group"],
+                "name": ["testgroup_b"],
+                "description": ["testgroup"],
+                "member": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
+            }
+        }"#,
+        )
+        .unwrap();
+
+        let preload = vec![ea, eb];
+
+        run_delete_test!(
+            Ok(()),
+            preload,
+            Filter::Eq("name".to_string(), "testgroup_a".to_string()),
+            false,
+            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
+                unimplemented!();
+            }
+        );
     }
 
-    // Delete of something that holds references - doesn't need a test
+    // Delete of something that is referenced - must remove ref in other (unless would make inconsistent)
+    //
+    // this is the invalid case, where the reference is MUST.
+    #[test]
+    fn test_delete_remove_referent_invalid() {}
+
+    // Delete of something that holds references.
     #[test]
     fn test_delete_remove_referee() {
-        unimplemented!();
+        let ea: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            r#"{
+            "valid": null,
+            "state": null,
+            "attrs": {
+                "class": ["group"],
+                "name": ["testgroup_a"],
+                "description": ["testgroup"],
+                "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
+            }
+        }"#,
+        )
+        .unwrap();
+
+        let eb: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            r#"{
+            "valid": null,
+            "state": null,
+            "attrs": {
+                "class": ["group"],
+                "name": ["testgroup_b"],
+                "description": ["testgroup"],
+                "member": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
+            }
+        }"#,
+        )
+        .unwrap();
+
+        let preload = vec![ea, eb];
+
+        run_delete_test!(
+            Ok(()),
+            preload,
+            Filter::Eq("name".to_string(), "testgroup_b".to_string()),
+            false,
+            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
+                unimplemented!();
+            }
+        );
     }
 
-    // Delete something that has a self reference
+    // Delete something that has a self reference.
     #[test]
     fn test_delete_remove_reference_self() {
-        unimplemented!();
+        let eb: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            r#"{
+            "valid": null,
+            "state": null,
+            "attrs": {
+                "class": ["group"],
+                "name": ["testgroup_b"],
+                "description": ["testgroup"],
+                "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"],
+                "member": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
+            }
+        }"#,
+        )
+        .unwrap();
+
+        let preload = vec![eb];
+
+        run_delete_test!(
+            Ok(()),
+            preload,
+            Filter::Eq("name".to_string(), "testgroup_b".to_string()),
+            false,
+            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
+                unimplemented!();
+            }
+        );
     }
 }

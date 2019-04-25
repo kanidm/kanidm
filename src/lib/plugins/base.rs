@@ -2,10 +2,11 @@ use crate::plugins::Plugin;
 use uuid::Uuid;
 
 use crate::audit::AuditScope;
-use crate::entry::{Entry, EntryInvalid, EntryNew};
+use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew};
 use crate::error::{ConsistencyError, OperationError};
-use crate::event::CreateEvent;
+use crate::event::{CreateEvent, ModifyEvent};
 use crate::filter::{Filter, FilterInvalid};
+use crate::modify::{ModifyList, ModifyValid};
 use crate::server::{
     QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
 };
@@ -30,7 +31,7 @@ impl Plugin for Base {
     //     contains who is creating them
     // the schema of the running instance
 
-    fn pre_create(
+    fn pre_create_transform(
         au: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
@@ -110,6 +111,16 @@ impl Plugin for Base {
         }
         // done!
 
+        Ok(())
+    }
+
+    fn pre_modify(
+        _au: &mut AuditScope,
+        _qs: &QueryServerWriteTransaction,
+        _cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
+        _me: &ModifyEvent,
+        _modlist: &ModifyList<ModifyValid>,
+    ) -> Result<(), OperationError> {
         Ok(())
     }
 
@@ -361,6 +372,13 @@ mod tests {
     }
 
     // check create where uuid already exists.
+    // -- check create where uuid is a well-known
+    // This second case is technically handled as well-known
+    // types are created "at startup" so it's not possible
+    // to create one.
+    //
+    // To solidify this, we could make a range of min-max well knowns
+    // to ensure we always have a name space to draw from?
     #[test]
     fn test_pre_create_uuid_exist() {
         let e: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
@@ -390,8 +408,34 @@ mod tests {
         );
     }
 
-    // check create where uuid is a well-known
-    // WARNING: This actually requires me to implement backend migrations and
-    // creation of default objects in the DB on new() if they don't exist, and
-    // to potentially support migrations of said objects.
+    #[test]
+    fn test_pre_create_double_uuid() {
+        // Test adding two entries with the same uuid
+        unimplemented!();
+    }
+
+    #[test]
+    fn test_modify_uuid() {
+        // Modify existing uuid
+        // IE replace.
+        unimplemented!();
+    }
+
+    #[test]
+    fn test_modify_uuid_extend() {
+        // Add another uuid to a type
+        unimplemented!();
+    }
+
+    #[test]
+    fn test_modify_remove_uuid() {
+        // Test attempting to remove a uuid
+        unimplemented!();
+    }
+
+    #[test]
+    fn test_modify_purge_uuid() {
+        // Test attempting to purge uuid
+        unimplemented!();
+    }
 }

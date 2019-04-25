@@ -2,6 +2,7 @@ use crate::audit::AuditScope;
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
 use crate::error::{ConsistencyError, OperationError};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
+use crate::modify::{ModifyList, ModifyValid};
 use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
 
 #[macro_use]
@@ -16,9 +17,9 @@ mod refint;
 trait Plugin {
     fn id() -> &'static str;
 
-    fn pre_create(
-        // TODO: I think this is wrong, it should be a query server.
-        // Narators voice: He was wrong ... it must be a query server.
+    // TODO: These should all return OperationError::Unimplemented
+
+    fn pre_create_transform(
         _au: &mut AuditScope,
         _qs: &QueryServerWriteTransaction,
         _cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
@@ -27,36 +28,62 @@ trait Plugin {
         Ok(())
     }
 
+    /*
+    fn pre_create(
+        _au: &mut AuditScope,
+        _qs: &QueryServerWriteTransaction,
+        // List of what we will commit that is valid?
+        _cand: &Vec<Entry<EntryValid, EntryNew>>,
+        _ce: &CreateEvent,
+    ) -> Result<(), OperationError> {
+        Ok(())
+    }
+    */
+
     fn post_create(
         _au: &mut AuditScope,
         _qs: &QueryServerWriteTransaction,
-        // List of what we commited that was validate?
+        // List of what we commited that was valid?
         _cand: &Vec<Entry<EntryValid, EntryNew>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         Ok(())
     }
 
-    fn pre_modify() -> Result<(), OperationError> {
+    fn pre_modify(
+        _au: &mut AuditScope,
+        _qs: &QueryServerWriteTransaction,
+        _cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
+        _me: &ModifyEvent,
+        _modlist: &ModifyList<ModifyValid>,
+    ) -> Result<(), OperationError> {
         Ok(())
     }
 
     fn post_modify(
         _au: &mut AuditScope,
         _qs: &QueryServerWriteTransaction,
+        // List of what we modified that was valid?
         _cand: &Vec<Entry<EntryValid, EntryCommitted>>,
         _ce: &ModifyEvent,
+        _modlist: &ModifyList<ModifyValid>,
     ) -> Result<(), OperationError> {
         Ok(())
     }
 
-    fn pre_delete() -> Result<(), OperationError> {
+    fn pre_delete(
+        _au: &mut AuditScope,
+        _qs: &QueryServerWriteTransaction,
+        _cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
+        _de: &DeleteEvent,
+    ) -> Result<(), OperationError> {
         Ok(())
     }
 
     fn post_delete(
         _au: &mut AuditScope,
         _qs: &QueryServerWriteTransaction,
+        // List of what we delete that was valid?
         _cand: &Vec<Entry<EntryValid, EntryCommitted>>,
         _ce: &DeleteEvent,
     ) -> Result<(), OperationError> {
@@ -75,6 +102,27 @@ pub struct Plugins {}
 
 // TODO: Should this be a function instead, to allow inlining and better debug?
 
+macro_rules! run_pre_create_transform_plugin {
+    (
+        $au:ident,
+        $qs:ident,
+        $cand:ident,
+        $ce:ident,
+        $target_plugin:ty
+    ) => {{
+        let mut audit_scope = AuditScope::new(<($target_plugin)>::id());
+        let r = audit_segment!(audit_scope, || <($target_plugin)>::pre_create_transform(
+            &mut audit_scope,
+            $qs,
+            $cand,
+            $ce,
+        ));
+        $au.append_scope(audit_scope);
+        r
+    }};
+}
+
+/*
 macro_rules! run_pre_create_plugin {
     (
         $au:ident,
@@ -85,6 +133,111 @@ macro_rules! run_pre_create_plugin {
     ) => {{
         let mut audit_scope = AuditScope::new(<($target_plugin)>::id());
         let r = audit_segment!(audit_scope, || <($target_plugin)>::pre_create(
+            &mut audit_scope,
+            $qs,
+            $cand,
+            $ce,
+        ));
+        $au.append_scope(audit_scope);
+        r
+    }};
+}
+*/
+
+macro_rules! run_post_create_plugin {
+    (
+        $au:ident,
+        $qs:ident,
+        $cand:ident,
+        $ce:ident,
+        $target_plugin:ty
+    ) => {{
+        let mut audit_scope = AuditScope::new(<($target_plugin)>::id());
+        let r = audit_segment!(audit_scope, || <($target_plugin)>::post_create(
+            &mut audit_scope,
+            $qs,
+            $cand,
+            $ce,
+        ));
+        $au.append_scope(audit_scope);
+        r
+    }};
+}
+
+macro_rules! run_pre_modify_plugin {
+    (
+        $au:ident,
+        $qs:ident,
+        $cand:ident,
+        $ce:ident,
+        $ml:ident,
+        $target_plugin:ty
+    ) => {{
+        let mut audit_scope = AuditScope::new(<($target_plugin)>::id());
+        let r = audit_segment!(audit_scope, || <($target_plugin)>::pre_modify(
+            &mut audit_scope,
+            $qs,
+            $cand,
+            $ce,
+            $ml
+        ));
+        $au.append_scope(audit_scope);
+        r
+    }};
+}
+
+macro_rules! run_post_modify_plugin {
+    (
+        $au:ident,
+        $qs:ident,
+        $cand:ident,
+        $ce:ident,
+        $ml:ident,
+        $target_plugin:ty
+    ) => {{
+        let mut audit_scope = AuditScope::new(<($target_plugin)>::id());
+        let r = audit_segment!(audit_scope, || <($target_plugin)>::post_modify(
+            &mut audit_scope,
+            $qs,
+            $cand,
+            $ce,
+            $ml
+        ));
+        $au.append_scope(audit_scope);
+        r
+    }};
+}
+
+macro_rules! run_pre_delete_plugin {
+    (
+        $au:ident,
+        $qs:ident,
+        $cand:ident,
+        $ce:ident,
+        $target_plugin:ty
+    ) => {{
+        let mut audit_scope = AuditScope::new(<($target_plugin)>::id());
+        let r = audit_segment!(audit_scope, || <($target_plugin)>::pre_delete(
+            &mut audit_scope,
+            $qs,
+            $cand,
+            $ce,
+        ));
+        $au.append_scope(audit_scope);
+        r
+    }};
+}
+
+macro_rules! run_post_delete_plugin {
+    (
+        $au:ident,
+        $qs:ident,
+        $cand:ident,
+        $ce:ident,
+        $target_plugin:ty
+    ) => {{
+        let mut audit_scope = AuditScope::new(<($target_plugin)>::id());
+        let r = audit_segment!(audit_scope, || <($target_plugin)>::post_delete(
             &mut audit_scope,
             $qs,
             $cand,
@@ -113,66 +266,116 @@ macro_rules! run_verify_plugin {
 }
 
 impl Plugins {
-    pub fn run_pre_create(
+    pub fn run_pre_create_transform(
         au: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         audit_segment!(au, || {
-            // map chain?
-            let res = run_pre_create_plugin!(au, qs, cand, ce, base::Base).and_then(|_| {
-                run_pre_create_plugin!(au, qs, cand, ce, refint::ReferentialIntegrity)
-            });
+            let res =
+                run_pre_create_transform_plugin!(au, qs, cand, ce, base::Base).and_then(|_| {
+                    run_pre_create_transform_plugin!(au, qs, cand, ce, refint::ReferentialIntegrity)
+                });
 
-            // TODO, actually return the right thing ...
             res
         })
     }
 
-    pub fn run_post_create(
-        _au: &mut AuditScope,
-        _qs: &QueryServerWriteTransaction,
-        _cand: &Vec<Entry<EntryValid, EntryNew>>,
-        _ce: &CreateEvent,
+    /*
+    pub fn run_pre_create(
+        au: &mut AuditScope,
+        qs: &QueryServerWriteTransaction,
+        cand: &Vec<Entry<EntryValid, EntryNew>>,
+        ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        Ok(())
+        audit_segment!(au, || {
+            let res = run_pre_create_plugin!(au, qs, cand, ce, base::Base).and_then(|_| {
+                run_pre_create_plugin!(au, qs, cand, ce, refint::ReferentialIntegrity)
+            });
+
+            res
+        })
+    }
+    */
+
+    pub fn run_post_create(
+        au: &mut AuditScope,
+        qs: &QueryServerWriteTransaction,
+        cand: &Vec<Entry<EntryValid, EntryNew>>,
+        ce: &CreateEvent,
+    ) -> Result<(), OperationError> {
+        audit_segment!(au, || {
+            let res = run_post_create_plugin!(au, qs, cand, ce, base::Base).and_then(|_| {
+                run_post_create_plugin!(au, qs, cand, ce, refint::ReferentialIntegrity)
+            });
+
+            res
+        })
     }
 
     pub fn run_pre_modify(
-        _au: &mut AuditScope,
-        _qs: &QueryServerWriteTransaction,
-        _cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
-        _me: &ModifyEvent,
+        au: &mut AuditScope,
+        qs: &QueryServerWriteTransaction,
+        cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
+        me: &ModifyEvent,
+        modlist: &ModifyList<ModifyValid>,
     ) -> Result<(), OperationError> {
-        Ok(())
+        audit_segment!(au, || {
+            let res =
+                run_pre_modify_plugin!(au, qs, cand, me, modlist, base::Base).and_then(|_| {
+                    run_pre_modify_plugin!(au, qs, cand, me, modlist, refint::ReferentialIntegrity)
+                });
+
+            res
+        })
     }
 
     pub fn run_post_modify(
-        _au: &mut AuditScope,
-        _qs: &QueryServerWriteTransaction,
-        _cand: &Vec<Entry<EntryValid, EntryCommitted>>,
-        _me: &ModifyEvent,
+        au: &mut AuditScope,
+        qs: &QueryServerWriteTransaction,
+        cand: &Vec<Entry<EntryValid, EntryCommitted>>,
+        me: &ModifyEvent,
+        modlist: &ModifyList<ModifyValid>,
     ) -> Result<(), OperationError> {
-        Ok(())
+        audit_segment!(au, || {
+            let res =
+                run_post_modify_plugin!(au, qs, cand, me, modlist, base::Base).and_then(|_| {
+                    run_post_modify_plugin!(au, qs, cand, me, modlist, refint::ReferentialIntegrity)
+                });
+
+            res
+        })
     }
 
     pub fn run_pre_delete(
-        _au: &mut AuditScope,
-        _qs: &QueryServerWriteTransaction,
-        _cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
-        _de: &DeleteEvent,
+        au: &mut AuditScope,
+        qs: &QueryServerWriteTransaction,
+        cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
+        de: &DeleteEvent,
     ) -> Result<(), OperationError> {
-        Ok(())
+        audit_segment!(au, || {
+            let res = run_pre_delete_plugin!(au, qs, cand, de, base::Base).and_then(|_| {
+                run_pre_delete_plugin!(au, qs, cand, de, refint::ReferentialIntegrity)
+            });
+
+            res
+        })
     }
 
     pub fn run_post_delete(
-        _au: &mut AuditScope,
-        _qs: &QueryServerWriteTransaction,
-        _cand: &Vec<Entry<EntryValid, EntryCommitted>>,
-        _de: &DeleteEvent,
+        au: &mut AuditScope,
+        qs: &QueryServerWriteTransaction,
+        cand: &Vec<Entry<EntryValid, EntryCommitted>>,
+        de: &DeleteEvent,
     ) -> Result<(), OperationError> {
-        Ok(())
+        audit_segment!(au, || {
+            let res = run_post_delete_plugin!(au, qs, cand, de, base::Base).and_then(|_| {
+                run_post_delete_plugin!(au, qs, cand, de, refint::ReferentialIntegrity)
+            });
+
+            res
+        })
     }
 
     pub fn run_verify(
