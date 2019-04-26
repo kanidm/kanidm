@@ -53,11 +53,21 @@ impl Plugin for ReferentialIntegrity {
         "referential_integrity"
     }
 
-    // Is there a possible issue doing this as pre? We haven't normalised the values in the entries
-    // so as a result, can we trust the UUID values? Should we actually wait until *after* normalisation
-    // to do these checks? We aren't going to make changes to the entries, only reject the operation
-    // or allow it ... Are my plugin hooks too "coarse"? Should we have pre/pre-schema-checked?
-    // Or is post still relevant?
+
+    // Why are these checks all in post?
+    //
+    // There is a situation to account for which is that a create or mod
+    // may introduce the entry which is also to be referenced in the same
+    // transaction. Rather than have seperate verification paths - one to
+    // check the UUID is in the cand set, and one to check the UUID exists
+    // in the DB, we do the "correct" thing, write to the DB, and then assert
+    // that the DB content is complete and valid instead.
+    //
+    // Yes, this does mean we do more work to add/index/rollback in an error
+    // condition, *but* it means we only have developed a single verification
+    // so we can assert stronger trust in it's correct operation and interaction
+    // in complex scenarioes - It actually simplifies the check from "could
+    // be in cand AND db" to simply "is it in the DB?".
     fn post_create(
         au: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
@@ -218,16 +228,12 @@ impl Plugin for ReferentialIntegrity {
             .map(|v| (v, ()))
             .collect();
 
-        // DEBUG HACKS!!!
-        println!("{:?}", acu_map);
-
         let schema = qs.get_schema();
         let ref_types = schema.get_reference_types();
 
         let mut res = Vec::new();
         // For all cands
         for c in &all_cand {
-            println!("cand -> {:?}", c);
             // For all reference in each cand.
             for rtype in ref_types.values() {
                 match c.get_ava(&rtype.name) {
@@ -244,8 +250,6 @@ impl Plugin for ReferentialIntegrity {
                 }
             }
         }
-
-        println!("{:?}", res);
 
         res
     }
