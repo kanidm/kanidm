@@ -539,6 +539,20 @@ impl<STATE> Entry<EntryValid, STATE> {
         let mut mods = ModifyList::new();
 
         for (k, vs) in self.attrs.iter() {
+            // WHY?! We skip uuid here because it is INVALID for a UUID
+            // to be in a modlist, and the base.rs plugin will fail if it
+            // is there. This actually doesn't matter, because to apply the
+            // modlist in these situations we already know the entry MUST
+            // exist with that UUID, we only need to conform it's other
+            // attributes into the same state.
+            //
+            // In the future, if we make uuid a real entry type, then this
+            // check can "go away" because uuid will never exist as an ava.
+            //
+            // TODO: Remove this check when uuid becomes a real attribute.
+            if k == "uuid" {
+                continue;
+            }
             // Get the schema attribute type out.
             match schema.is_multivalue(k) {
                 Ok(r) => {
@@ -548,7 +562,7 @@ impl<STATE> Entry<EntryValid, STATE> {
                         mods.push_mod(Modify::Purged(k.clone()));
                     }
                 }
-                // TODO: Do something with this error properly.
+                // A schema error happened, fail the whole operation.
                 Err(e) => return Err(e),
             }
             for v in vs {
