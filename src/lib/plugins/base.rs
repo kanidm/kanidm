@@ -1,11 +1,13 @@
 use crate::plugins::Plugin;
+use std::collections::BTreeMap;
 use uuid::Uuid;
 
 use crate::audit::AuditScope;
-use crate::entry::{Entry, EntryInvalid, EntryNew};
+use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew};
 use crate::error::{ConsistencyError, OperationError};
-use crate::event::CreateEvent;
+use crate::event::{CreateEvent, ModifyEvent};
 use crate::filter::{Filter, FilterInvalid};
+use crate::modify::{Modify, ModifyList, ModifyValid};
 use crate::server::{
     QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
 };
@@ -16,6 +18,16 @@ Add normalisation step
 Add filter normaliser to search.
 Add principal name generation
 */
+
+// This module has some special properties around it's operation, namely that it
+// has to make a certain number of assertions *early* in the entry lifecycle around
+// names and uuids since these have such signifigance to every other part of the
+// servers operation. As a result, this is the ONLY PLUGIN that does validation in the
+// pre_create_transform step, where every other SHOULD use the post_* hooks for all
+// validation operations.
+//
+// Additionally, this plugin WILL block and deny certain modifications to uuids and
+// more to prevent intentional DB damage.
 
 pub struct Base {}
 
@@ -30,16 +42,15 @@ impl Plugin for Base {
     //     contains who is creating them
     // the schema of the running instance
 
-    fn pre_create(
+    fn pre_create_transform(
         au: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
+        let name_uuid = String::from("uuid");
         // For each candidate
         for entry in cand.iter_mut() {
-            let name_uuid = String::from("uuid");
-
             audit_log!(au, "Base check on entry: {:?}", entry);
 
             // First, ensure we have the 'object', class in the class set.
@@ -73,43 +84,88 @@ impl Plugin for Base {
                 None => Uuid::new_v4().to_hyphenated().to_string(),
             };
 
-            // Make it a string, so we can filter.
-            let mut au_qs = AuditScope::new("qs_exist");
+            audit_log!(au, "Setting temporary UUID {} to entry", c_uuid);
+            let ava_uuid: Vec<String> = vec![c_uuid];
 
-            // We need to clone to the filter because it owns the content
-            // Now, str_uuid could we invalid, but the filter validation step here will check
-            // that for us *and* if we fails, we return because the value was not valid. If it
-            // works, great, we can check for duplication.
-            let filt_in: Filter<FilterInvalid> = Filter::Eq(name_uuid.clone(), c_uuid.clone());
-            // let schema_ro = qs.get_schema();
-            // let filt = try_audit!(au, filt_in.validate(schema_ro));
+            entry.set_avas(name_uuid.clone(), ava_uuid);
+            audit_log!(au, "Temporary entry state: {:?}", entry);
+        }
 
-            let r = qs.internal_exists(&mut au_qs, filt_in);
+        // Now, every cand has a UUID - create a cand uuid set from it.
+        let mut cand_uuid: BTreeMap<&String, ()> = BTreeMap::new();
 
-            au.append_scope(au_qs);
-            // end the scope for the be operation.
-
-            match r {
-                Ok(b) => {
-                    if b == true {
-                        audit_log!(au, "Base already exists, rejecting.");
-                        return Err(OperationError::Plugin);
-                    }
+        // As we insert into the set, if a duplicate is found, return an error
+        // that a duplicate exists.
+        for entry in cand.iter() {
+            let uuid_ref = entry
+                .get_ava(&name_uuid)
+                .ok_or(OperationError::Plugin)?
+                .first()
+                .ok_or(OperationError::Plugin)?;
+            audit_log!(au, "Entry valid UUID: {:?}", entry);
+            match cand_uuid.insert(uuid_ref, ()) {
+                Some(v) => {
+                    audit_log!(au, "uuid duplicate found in create set! {:?}", v);
+                    return Err(OperationError::Plugin);
                 }
-                Err(e) => {
-                    audit_log!(au, "Error occured checking Base existance. {:?}", e);
+                None => {}
+            }
+        }
+
+        // Now from each element, generate a filter to search for all of them
+        //
+        // NOTE: We don't exclude recycled or tombstones here!
+
+        let filt_in: Filter<FilterInvalid> = Filter::Or(
+            cand_uuid
+                .keys()
+                .map(|u| Filter::Eq("uuid".to_string(), u.to_string()))
+                .collect(),
+        );
+
+        // If any results exist, fail as a duplicate UUID is present.
+        // TODO: Can we report which UUID exists? Probably yes, we do
+        // internal searh and report the UUID *OR* we alter internal_exists
+        // to return UUID sets.
+
+        let mut au_qs = AuditScope::new("qs_exist");
+        let r = qs.internal_exists(&mut au_qs, filt_in);
+        au.append_scope(au_qs);
+
+        match r {
+            Ok(b) => {
+                if b == true {
+                    audit_log!(au, "A UUID already exists, rejecting.");
                     return Err(OperationError::Plugin);
                 }
             }
-
-            audit_log!(au, "Setting UUID {} to entry", c_uuid);
-            let ava_uuid: Vec<String> = vec![c_uuid];
-
-            entry.set_avas(name_uuid, ava_uuid);
-            audit_log!(au, "Final entry state: {:?}", entry);
+            Err(e) => {
+                audit_log!(au, "Error occured checking UUID existance. {:?}", e);
+                return Err(OperationError::Plugin);
+            }
         }
-        // done!
 
+        Ok(())
+    }
+
+    fn pre_modify(
+        au: &mut AuditScope,
+        _qs: &QueryServerWriteTransaction,
+        _cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
+        _me: &ModifyEvent,
+        modlist: &ModifyList<ModifyValid>,
+    ) -> Result<(), OperationError> {
+        for modify in modlist.into_iter() {
+            let attr = match &modify {
+                Modify::Present(a, _) => a,
+                Modify::Removed(a, _) => a,
+                Modify::Purged(a) => a,
+            };
+            if attr == "uuid" {
+                audit_log!(au, "Modifications to UUID's are NOT ALLOWED");
+                return Err(OperationError::Plugin);
+            }
+        }
         Ok(())
     }
 
@@ -189,17 +245,12 @@ impl Plugin for Base {
 mod tests {
     #[macro_use]
     use crate::plugins::Plugin;
-    use std::sync::Arc;
-
-    use crate::audit::AuditScope;
-    use crate::be::Backend;
     use crate::entry::{Entry, EntryInvalid, EntryNew};
     use crate::error::OperationError;
-    use crate::event::CreateEvent;
     use crate::filter::Filter;
-    use crate::schema::Schema;
+    use crate::modify::{Modify, ModifyInvalid, ModifyList};
     use crate::server::QueryServerReadTransaction;
-    use crate::server::{QueryServer, QueryServerWriteTransaction};
+    use crate::server::QueryServerWriteTransaction;
 
     // check create where no uuid
     #[test]
@@ -367,6 +418,13 @@ mod tests {
     }
 
     // check create where uuid already exists.
+    // -- check create where uuid is a well-known
+    // This second case is technically handled as well-known
+    // types are created "at startup" so it's not possible
+    // to create one.
+    //
+    // To solidify this, we could make a range of min-max well knowns
+    // to ensure we always have a name space to draw from?
     #[test]
     fn test_pre_create_uuid_exist() {
         let e: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
@@ -396,8 +454,143 @@ mod tests {
         );
     }
 
-    // check create where uuid is a well-known
-    // WARNING: This actually requires me to implement backend migrations and
-    // creation of default objects in the DB on new() if they don't exist, and
-    // to potentially support migrations of said objects.
+    #[test]
+    fn test_pre_create_double_uuid() {
+        // Test adding two entries with the same uuid
+        let preload: Vec<Entry<EntryInvalid, EntryNew>> = Vec::new();
+
+        let ea: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            r#"{
+            "valid": null,
+            "state": null,
+            "attrs": {
+                "class": ["person"],
+                "name": ["testperson_a"],
+                "description": ["testperson"],
+                "displayname": ["testperson"],
+                "uuid": ["79724141-3603-4060-b6bb-35c72772611d"]
+            }
+        }"#,
+        )
+        .unwrap();
+
+        let eb: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            r#"{
+            "valid": null,
+            "state": null,
+            "attrs": {
+                "class": ["person"],
+                "name": ["testperson_a"],
+                "description": ["testperson"],
+                "displayname": ["testperson"],
+                "uuid": ["79724141-3603-4060-b6bb-35c72772611d"]
+            }
+        }"#,
+        )
+        .unwrap();
+
+        let create = vec![ea, eb];
+
+        run_create_test!(
+            Err(OperationError::Plugin),
+            preload,
+            create,
+            false,
+            |_, _| {}
+        );
+    }
+
+    // All of these *SHOULD* be blocked?
+    #[test]
+    fn test_modify_uuid_present() {
+        // Add another uuid to a type
+        let ea: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            r#"{
+            "valid": null,
+            "state": null,
+            "attrs": {
+                "class": ["group"],
+                "name": ["testgroup_a"],
+                "description": ["testgroup"],
+                "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
+            }
+        }"#,
+        )
+        .unwrap();
+
+        let preload = vec![ea];
+
+        run_modify_test!(
+            Err(OperationError::Plugin),
+            preload,
+            Filter::Eq("name".to_string(), "testgroup_a".to_string()),
+            ModifyList::new_list(vec![Modify::Present(
+                "uuid".to_string(),
+                "f15a7219-1d15-44e3-a7b4-bec899c07788".to_string()
+            )]),
+            false,
+            |_, _| {}
+        );
+    }
+
+    #[test]
+    fn test_modify_uuid_removed() {
+        // Test attempting to remove a uuid
+        let ea: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            r#"{
+            "valid": null,
+            "state": null,
+            "attrs": {
+                "class": ["group"],
+                "name": ["testgroup_a"],
+                "description": ["testgroup"],
+                "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
+            }
+        }"#,
+        )
+        .unwrap();
+
+        let preload = vec![ea];
+
+        run_modify_test!(
+            Err(OperationError::Plugin),
+            preload,
+            Filter::Eq("name".to_string(), "testgroup_a".to_string()),
+            ModifyList::new_list(vec![Modify::Removed(
+                "uuid".to_string(),
+                "f15a7219-1d15-44e3-a7b4-bec899c07788".to_string()
+            )]),
+            false,
+            |_, _| {}
+        );
+    }
+
+    #[test]
+    fn test_modify_uuid_purged() {
+        // Test attempting to purge uuid
+        let ea: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            r#"{
+            "valid": null,
+            "state": null,
+            "attrs": {
+                "class": ["group"],
+                "name": ["testgroup_a"],
+                "description": ["testgroup"],
+                "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
+            }
+        }"#,
+        )
+        .unwrap();
+
+        let preload = vec![ea];
+
+        run_modify_test!(
+            Err(OperationError::Plugin),
+            preload,
+            Filter::Eq("name".to_string(), "testgroup_a".to_string()),
+            ModifyList::new_list(vec![Modify::Purged("uuid".to_string())]),
+            false,
+            |_, _| {}
+        );
+    }
 }

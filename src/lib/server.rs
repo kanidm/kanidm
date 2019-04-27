@@ -508,15 +508,20 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // pre-plugins are defined here in their correct order of calling!
         // I have no intent to make these dynamic or configurable.
 
-        let mut audit_plugin_pre = AuditScope::new("plugin_pre_create");
-        let plug_pre_res =
-            Plugins::run_pre_create(&mut audit_plugin_pre, &self, &mut candidates, ce);
-        au.append_scope(audit_plugin_pre);
+        let mut audit_plugin_pre_transform = AuditScope::new("plugin_pre_create_transform");
+        let plug_pre_transform_res = Plugins::run_pre_create_transform(
+            &mut audit_plugin_pre_transform,
+            &self,
+            &mut candidates,
+            ce,
+        );
+        au.append_scope(audit_plugin_pre_transform);
 
-        if plug_pre_res.is_err() {
-            audit_log!(au, "Create operation failed (plugin), {:?}", plug_pre_res);
-            return plug_pre_res;
-        }
+        let _ = try_audit!(
+            au,
+            plug_pre_transform_res,
+            "Create operation failed (plugin), {:?}"
+        );
 
         // NOTE: This is how you map from Vec<Result<T>> to Result<Vec<T>>
         // remember, that you only get the first error and the iter terminates.
@@ -530,6 +535,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
             Ok(v) => v,
             Err(e) => return Err(OperationError::SchemaViolation(e)),
         };
+
+        /*
+        let mut audit_plugin_pre = AuditScope::new("plugin_pre_create");
+        let plug_pre_res =
+            Plugins::run_pre_create(&mut audit_plugin_pre, &self, &norm_cand, ce);
+        au.append_scope(audit_plugin_pre);
+
+        let _ = try_audit!(au, plug_pre_res, "Create operation failed (plugin), {:?}");
+        */
 
         let mut audit_be = AuditScope::new("backend_create");
         // We may change from ce.entries later to something else?
@@ -801,8 +815,21 @@ impl<'a> QueryServerWriteTransaction<'a> {
         };
 
         if pre_candidates.len() == 0 {
-            audit_log!(au, "modify: no candidates match filter {:?}", me.filter);
-            return Err(OperationError::NoMatchingEntries);
+            if me.internal {
+                audit_log!(
+                    au,
+                    "modify: no candidates match filter ... continuing {:?}",
+                    me.filter
+                );
+                return Ok(());
+            } else {
+                audit_log!(
+                    au,
+                    "modify: no candidates match filter, failure {:?}",
+                    me.filter
+                );
+                return Err(OperationError::NoMatchingEntries);
+            }
         };
 
         // Clone a set of writeables.
@@ -821,7 +848,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Pre mod plugins
         let mut audit_plugin_pre = AuditScope::new("plugin_pre_modify");
         let plug_pre_res =
-            Plugins::run_pre_modify(&mut audit_plugin_pre, &self, &mut candidates, me);
+            Plugins::run_pre_modify(&mut audit_plugin_pre, &self, &mut candidates, me, &modlist);
         au.append_scope(audit_plugin_pre);
 
         if plug_pre_res.is_err() {
@@ -862,7 +889,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Post Plugins
         let mut audit_plugin_post = AuditScope::new("plugin_post_modify");
-        let plug_post_res = Plugins::run_post_modify(&mut audit_plugin_post, &self, &norm_cand, me);
+        let plug_post_res =
+            Plugins::run_post_modify(&mut audit_plugin_post, &self, &norm_cand, me, &modlist);
         au.append_scope(audit_plugin_post);
 
         if plug_post_res.is_err() {
@@ -925,7 +953,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         modlist: ModifyList<ModifyInvalid>,
     ) -> Result<(), OperationError> {
         let mut audit_int = AuditScope::new("impersonate_modify");
-        let me = ModifyEvent::new_internal(filter, modlist);
+        let me = ModifyEvent::new_impersonate(filter, modlist);
         let res = self.modify(&mut audit_int, &me);
         audit.append_scope(audit_int);
         res

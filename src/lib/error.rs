@@ -41,4 +41,5 @@ pub enum ConsistencyError {
     EntryUuidCorrupt(i64),
     UuidIndexCorrupt(String),
     UuidNotUnique(String),
+    RefintNotUpheld(i64),
 }

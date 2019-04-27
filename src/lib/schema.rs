@@ -321,6 +321,16 @@ pub trait SchemaReadTransaction {
     fn get_attributes(&self) -> &HashMap<String, SchemaAttribute> {
         &self.get_inner().attributes
     }
+
+    fn get_reference_types(&self) -> HashMap<&String, &SchemaAttribute> {
+        self.get_attributes()
+            .iter()
+            .filter(|(_, sa)| match &sa.syntax {
+                SyntaxType::REFERENCE_UUID => true,
+                _ => false,
+            })
+            .collect()
+    }
 }
 
 impl SchemaInner {
