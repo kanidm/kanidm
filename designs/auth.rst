@@ -296,3 +296,34 @@ system yet), method two probably is the best, but you need token constraint
 to make sure you can't replay to another host.
 
 
+
+Brain Dump Internal Details
+===========================
+
+Credentials should be a real struct on entry, that is serialised to str to dbentry. This allows repl
+to still work, but then we can actually keep detailed structures for types in the DB instead. When
+we send to proto entry, we could probably keep it as a real struct on protoentry, but then we could
+eliminate all private types from transmission.
+
+
+When we login, we need to know what groups/roles are relevant to that authentication. To achieve this
+we can have each group contain a policy of auth types (the credentials above all provide an auth
+type). The login then has a known auth type of "how" they logged in, so when we go to generate
+the users "token" for that session, we can correlate these, and only attach groups that satisfy
+the authentication type requirements.
+
+IE the session associates the method you used to login to your token and a cookie.
+
+If you require extra groups, then we should support a token refresh that given the prior auth +
+extra factors, we can then re-issue the token to support the extra groups as presented. We may
+also want some auth types to NOT allow refresh.
+
+We may want groups to support expiry where they are not valid past some time stamp. This may
+required tagging or other details.
+
+
+How do we ensure integrity of the token? Do we have to? Is the clients job to trust the token given
+the TLS tunnel?
+
+
+

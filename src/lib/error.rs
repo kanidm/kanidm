@@ -23,6 +23,7 @@ pub enum OperationError {
     Plugin,
     FilterGeneration,
     InvalidDBState,
+    InvalidEntryID,
     InvalidRequestState,
     InvalidState,
     InvalidEntryState,
@@ -38,8 +39,8 @@ pub enum ConsistencyError {
     // Class, Attribute
     SchemaClassMissingAttribute(String, String),
     QueryServerSearchFailure,
-    EntryUuidCorrupt(i64),
+    EntryUuidCorrupt(u64),
     UuidIndexCorrupt(String),
     UuidNotUnique(String),
-    RefintNotUpheld(i64),
+    RefintNotUpheld(u64),
 }

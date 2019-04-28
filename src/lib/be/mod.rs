@@ -5,36 +5,26 @@ use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::types::ToSql;
 use rusqlite::NO_PARAMS;
 use serde_json;
+use std::convert::TryFrom;
 use std::fs;
 // use uuid;
 
 use crate::audit::AuditScope;
+use crate::be::dbentry::DbEntry;
 use crate::entry::{Entry, EntryCommitted, EntryNew, EntryValid};
 use crate::error::{ConsistencyError, OperationError};
 use crate::filter::{Filter, FilterValid};
 
+pub mod dbentry;
 mod idl;
 mod mem_be;
 mod sqlite_be;
 
 #[derive(Debug)]
 struct IdEntry {
-    // FIXME: This should be u64, but sqlite uses i64 ...
+    // TODO: for now this is i64 to make sqlite work, but entry is u64 for indexing reasons!
     id: i64,
     data: String,
-}
-
-/*
-pub enum BackendType {
-    Memory, // isn't memory just sqlite with file :memory: ?
-    SQLite,
-}
-*/
-
-#[derive(Debug, PartialEq)]
-pub enum BackendError {
-    EmptyRequest,
-    EntryMissingId,
 }
 
 pub struct Backend {
@@ -59,7 +49,7 @@ pub trait BackendReadTransaction {
         &self,
         au: &mut AuditScope,
         filt: &Filter<FilterValid>,
-    ) -> Result<Vec<Entry<EntryValid, EntryCommitted>>, BackendError> {
+    ) -> Result<Vec<Entry<EntryValid, EntryCommitted>>, OperationError> {
         // Do things
         // Alloc a vec for the entries.
         // FIXME: Make this actually a good size for the result set ...
@@ -99,13 +89,17 @@ pub trait BackendReadTransaction {
             }
             // Do other things
             // Now, de-serialise the raw_entries back to entries, and populate their ID's
+
             let entries: Vec<Entry<EntryValid, EntryCommitted>> = raw_entries
                 .iter()
-                .filter_map(|id_ent| {
-                    // TODO: Should we do better than unwrap?
-                    let mut e: Entry<EntryValid, EntryCommitted> =
-                        serde_json::from_str(id_ent.data.as_str()).unwrap();
-                    e.id = Some(id_ent.id);
+                .map(|id_ent| {
+                    // TODO: Should we do better than unwrap? And if so, how?
+                    // we need to map this error, so probably need to collect to Result<Vec<_>, _>
+                    // and then to try_audit! on that.
+                    let db_e = serde_json::from_str(id_ent.data.as_str()).unwrap();
+                    Entry::from_dbentry(db_e, u64::try_from(id_ent.id).unwrap())
+                })
+                .filter_map(|e| {
                     if e.entry_match_no_index(&filt) {
                         Some(e)
                     } else {
@@ -126,7 +120,7 @@ pub trait BackendReadTransaction {
         &self,
         au: &mut AuditScope,
         filt: &Filter<FilterValid>,
-    ) -> Result<bool, BackendError> {
+    ) -> Result<bool, OperationError> {
         // Do a final optimise of the filter
         // At the moment, technically search will do this, but it won't always be the
         // case once this becomes a standalone function.
@@ -236,14 +230,65 @@ impl BackendWriteTransaction {
         }
     }
 
-    fn internal_create<T: serde::Serialize>(
+    fn internal_create(
         &self,
         au: &mut AuditScope,
-        entries: &Vec<Entry<EntryValid, T>>,
+        dbentries: &Vec<DbEntry>,
     ) -> Result<(), OperationError> {
-        audit_segment!(au, || {
-            // Start be audit timer
+        // Get the max id from the db. We store this ourselves to avoid max() calls.
+        let mut id_max = self.get_id2entry_max_id();
 
+        let ser_entries: Vec<IdEntry> = dbentries
+            .iter()
+            .map(|ser_db_e| {
+                id_max = id_max + 1;
+
+                IdEntry {
+                    id: id_max,
+                    // TODO: Should we do better than unwrap?
+                    data: serde_json::to_string(&ser_db_e).unwrap(),
+                }
+            })
+            .collect();
+
+        audit_log!(au, "serialising: {:?}", ser_entries);
+
+        // THIS IS PROBABLY THE BIT WHERE YOU NEED DB ABSTRACTION
+        {
+            let mut stmt = try_audit!(
+                au,
+                self.conn
+                    .prepare("INSERT INTO id2entry (id, data) VALUES (:id, :data)"),
+                "rusqlite error {:?}",
+                OperationError::SQLiteError
+            );
+
+            // write them all
+            for ser_entry in ser_entries {
+                // TODO: Prepared statement.
+                try_audit!(
+                    au,
+                    stmt.execute_named(&[
+                        (":id", &ser_entry.id as &ToSql),
+                        (":data", &ser_entry.data as &ToSql)
+                    ]),
+                    "rusqlite error {:?}",
+                    OperationError::SQLiteError
+                );
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn create(
+        &self,
+        au: &mut AuditScope,
+        entries: &Vec<Entry<EntryValid, EntryNew>>,
+    ) -> Result<(), OperationError> {
+        // figured we would want a audit_segment to wrap internal_create so when doing profiling we can
+        // tell which function is calling it. either this one or restore.
+        audit_segment!(au, || {
             if entries.is_empty() {
                 // TODO: Better error
                 // End the timer
@@ -254,111 +299,80 @@ impl BackendWriteTransaction {
             // we do this outside the txn to avoid blocking needlessly.
             // However, it could be pointless due to the extra string allocs ...
 
-            // Get the max id from the db. We store this ourselves to avoid max().
-            let mut id_max = self.get_id2entry_max_id();
+            let dbentries: Vec<_> = entries.iter().map(|e| e.into_dbentry()).collect();
 
-            let ser_entries: Vec<IdEntry> = entries
-                .iter()
-                .map(|val| {
-                    // TODO: Should we do better than unwrap?
-                    id_max = id_max + 1;
-                    IdEntry {
-                        id: id_max,
-                        data: serde_json::to_string(&val).unwrap(),
-                    }
-                })
-                .collect();
+            self.internal_create(au, &dbentries)
 
-            audit_log!(au, "serialising: {:?}", ser_entries);
-
-            // THIS IS PROBABLY THE BIT WHERE YOU NEED DB ABSTRACTION
-            {
-                let mut stmt = try_audit!(
-                    au,
-                    self.conn
-                        .prepare("INSERT INTO id2entry (id, data) VALUES (:id, :data)"),
-                    "rusqlite error {:?}",
-                    OperationError::SQLiteError
-                );
-
-                // write them all
-                for ser_entry in ser_entries {
-                    // TODO: Prepared statement.
-                    try_audit!(
-                        au,
-                        stmt.execute_named(&[
-                            (":id", &ser_entry.id as &ToSql),
-                            (":data", &ser_entry.data as &ToSql)
-                        ]),
-                        "rusqlite error {:?}",
-                        OperationError::SQLiteError
-                    );
-                }
-
-                // TODO: update indexes (as needed)
-            }
-
-            Ok(())
+            // TODO: update indexes (as needed)
         })
-    }
-
-    pub fn create(
-        &self,
-        au: &mut AuditScope,
-        entries: &Vec<Entry<EntryValid, EntryNew>>,
-    ) -> Result<(), OperationError> {
-        // figured we would want a audit_segment to wrap internal_create so when doing profiling we can
-        // tell which function is calling it. either this one or restore.
-        audit_segment!(au, || self.internal_create(au, entries))
     }
 
     pub fn modify(
         &self,
         au: &mut AuditScope,
         entries: &Vec<Entry<EntryValid, EntryCommitted>>,
-    ) -> Result<(), BackendError> {
+    ) -> Result<(), OperationError> {
         if entries.is_empty() {
-            // TODO: Better error
-            return Err(BackendError::EmptyRequest);
+            return Err(OperationError::EmptyRequest);
         }
 
         // Assert the Id's exist on the entry, and serialise them.
-        let ser_entries: Vec<IdEntry> = entries
+        // Now, that means the ID must be > 0!!!
+        let ser_entries: Result<Vec<IdEntry>, _> = entries
             .iter()
-            .filter_map(|e| {
-                match e.id {
-                    Some(id) => {
-                        Some(IdEntry {
-                            id: id,
-                            // TODO: Should we do better than unwrap?
-                            data: serde_json::to_string(&e).unwrap(),
-                        })
-                    }
-                    None => None,
-                }
+            .map(|e| {
+                let db_e = e.into_dbentry();
+
+                let id = i64::try_from(e.get_id())
+                    .map_err(|_| OperationError::InvalidEntryID)
+                    .and_then(|id| {
+                        if id == 0 {
+                            Err(OperationError::InvalidEntryID)
+                        } else {
+                            Ok(id)
+                        }
+                    })?;
+
+                let data =
+                    serde_json::to_string(&db_e).map_err(|_| OperationError::SerdeJsonError)?;
+
+                Ok(IdEntry {
+                    // TODO: Instead of getting these from the entry, we could lookup
+                    // uuid -> id in the index.
+                    id: id,
+                    data: data,
+                })
             })
             .collect();
+
+        let ser_entries = try_audit!(au, ser_entries);
 
         audit_log!(au, "serialising: {:?}", ser_entries);
 
         // Simple: If the list of id's is not the same as the input list, we are missing id's
         // TODO: This check won't be needed once I rebuild the entry state types.
         if entries.len() != ser_entries.len() {
-            return Err(BackendError::EntryMissingId);
+            return Err(OperationError::InvalidEntryState);
         }
 
         // Now, given the list of id's, update them
         {
-            // TODO: ACTUALLY HANDLE THIS ERROR WILLIAM YOU LAZY SHIT.
-            let mut stmt = self
-                .conn
-                .prepare("UPDATE id2entry SET data = :data WHERE id = :id")
-                .unwrap();
+            let mut stmt = try_audit!(
+                au,
+                self.conn
+                    .prepare("UPDATE id2entry SET data = :data WHERE id = :id"),
+                "RusqliteError: {:?}",
+                OperationError::SQLiteError
+            );
 
-            ser_entries.iter().for_each(|ser_ent| {
-                stmt.execute_named(&[(":id", &ser_ent.id), (":data", &ser_ent.data)])
-                    .unwrap();
-            });
+            for ser_ent in ser_entries.iter() {
+                try_audit!(
+                    au,
+                    stmt.execute_named(&[(":id", &ser_ent.id), (":data", &ser_ent.data)]),
+                    "RusqliteError: {:?}",
+                    OperationError::SQLiteError
+                );
+            }
         }
 
         Ok(())
@@ -368,21 +382,36 @@ impl BackendWriteTransaction {
         &self,
         au: &mut AuditScope,
         entries: &Vec<Entry<EntryValid, EntryCommitted>>,
-    ) -> Result<(), BackendError> {
+    ) -> Result<(), OperationError> {
         // Perform a search for the entries --> This is a problem for the caller
         audit_segment!(au, || {
             if entries.is_empty() {
                 // TODO: Better error
-                return Err(BackendError::EmptyRequest);
+                return Err(OperationError::EmptyRequest);
             }
 
             // Assert the Id's exist on the entry.
-            let id_list: Vec<i64> = entries.iter().filter_map(|entry| entry.id).collect();
+            let id_list: Result<Vec<i64>, _> = entries
+                .iter()
+                .map(|e| {
+                    i64::try_from(e.get_id())
+                        .map_err(|_| OperationError::InvalidEntryID)
+                        .and_then(|id| {
+                            if id == 0 {
+                                Err(OperationError::InvalidEntryID)
+                            } else {
+                                Ok(id)
+                            }
+                        })
+                })
+                .collect();
+
+            let id_list = try_audit!(au, id_list);
 
             // Simple: If the list of id's is not the same as the input list, we are missing id's
             // TODO: This check won't be needed once I rebuild the entry state types.
             if entries.len() != id_list.len() {
-                return Err(BackendError::EntryMissingId);
+                return Err(OperationError::InvalidEntryState);
             }
 
             // Now, given the list of id's, delete them.
@@ -429,14 +458,9 @@ impl BackendWriteTransaction {
             }
         }
 
-        let entries: Vec<Entry<EntryValid, EntryCommitted>> = raw_entries
+        let entries: Vec<DbEntry> = raw_entries
             .iter()
-            .filter_map(|id_ent| {
-                let mut e: Entry<EntryValid, EntryCommitted> =
-                    serde_json::from_str(id_ent.data.as_str()).unwrap();
-                e.id = Some(id_ent.id);
-                Some(e)
-            })
+            .map(|id_ent| serde_json::from_str(id_ent.data.as_str()).unwrap())
             .collect();
 
         let mut serializedEntries = serde_json::to_string_pretty(&entries);
@@ -488,7 +512,7 @@ impl BackendWriteTransaction {
             self.purge(audit);
         }
 
-        let entriesOption: Result<Vec<Entry<EntryValid, EntryCommitted>>, serde_json::Error> =
+        let entriesOption: Result<Vec<DbEntry>, serde_json::Error> =
             serde_json::from_str(&serializedString);
 
         let entries = try_audit!(
@@ -500,8 +524,9 @@ impl BackendWriteTransaction {
 
         self.internal_create(audit, &entries)
 
-        // run re-index after db is restored
-        // run db verify
+        // TODO: run re-index after db is restored
+        // TODO; run db verify
+        // self.verify(audit)
     }
 
     pub fn commit(mut self) -> Result<(), OperationError> {
@@ -664,9 +689,7 @@ mod tests {
     use super::super::audit::AuditScope;
     use super::super::entry::{Entry, EntryInvalid, EntryNew};
     use super::super::filter::Filter;
-    use super::{
-        Backend, BackendError, BackendReadTransaction, BackendWriteTransaction, OperationError,
-    };
+    use super::{Backend, BackendReadTransaction, BackendWriteTransaction, OperationError};
 
     macro_rules! run_test {
         ($test_fn:expr) => {{
@@ -729,9 +752,27 @@ mod tests {
 
     #[test]
     fn test_simple_search() {
-        run_test!(|audit: &mut AuditScope, _be: &BackendWriteTransaction| {
+        run_test!(|audit: &mut AuditScope, be: &BackendWriteTransaction| {
             audit_log!(audit, "Simple Search");
-            unimplemented!();
+
+            let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
+            e.add_ava(String::from("userid"), String::from("claire"));
+            let e = unsafe { e.to_valid_new() };
+
+            let single_result = be.create(audit, &vec![e.clone()]);
+            assert!(single_result.is_ok());
+            // Test a simple EQ search
+
+            let filt = Filter::Eq("userid".to_string(), "claire".to_string());
+
+            let r = be.search(audit, &filt);
+            assert!(r.expect("Search failed!").len() == 1);
+
+            // Test empty search
+
+            // Test class pres
+
+            // Search with no results
         });
     }
 

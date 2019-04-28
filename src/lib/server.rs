@@ -4,9 +4,7 @@
 use std::sync::Arc;
 
 use crate::audit::AuditScope;
-use crate::be::{
-    Backend, BackendError, BackendReadTransaction, BackendTransaction, BackendWriteTransaction,
-};
+use crate::be::{Backend, BackendReadTransaction, BackendTransaction, BackendWriteTransaction};
 
 use crate::constants::{JSON_ANONYMOUS_V1, JSON_SYSTEM_INFO_V1};
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
@@ -106,7 +104,6 @@ pub trait QueryServerReadTransaction {
         // How to get schema?
         let vf = match ee.filter.validate(self.get_schema()) {
             Ok(f) => f,
-            // TODO: Do something with this error
             Err(e) => return Err(OperationError::SchemaViolation(e)),
         };
 
@@ -649,15 +646,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         let mut audit_be = AuditScope::new("backend_modify");
 
-        let res = self
-            .be_txn
-            // Change this to an update, not delete.
-            .modify(&mut audit_be, &del_cand)
-            .map(|_| ())
-            .map_err(|e| match e {
-                BackendError::EmptyRequest => OperationError::EmptyRequest,
-                BackendError::EntryMissingId => OperationError::InvalidRequestState,
-            });
+        let res = self.be_txn.modify(&mut audit_be, &del_cand);
         au.append_scope(audit_be);
 
         if res.is_err() {
@@ -700,12 +689,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let res = self
             .be_txn
             // Change this to an update, not delete.
-            .delete(&mut audit_be, &ts)
-            .map(|_| ())
-            .map_err(|e| match e {
-                BackendError::EmptyRequest => OperationError::EmptyRequest,
-                BackendError::EntryMissingId => OperationError::InvalidRequestState,
-            });
+            .delete(&mut audit_be, &ts);
         au.append_scope(audit_be);
 
         if res.is_err() {
@@ -735,14 +719,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Backend Modify
         let mut audit_be = AuditScope::new("backend_modify");
 
-        let res = self
-            .be_txn
-            .modify(&mut audit_be, &tombstone_cand)
-            .map(|_| ())
-            .map_err(|e| match e {
-                BackendError::EmptyRequest => OperationError::EmptyRequest,
-                BackendError::EntryMissingId => OperationError::InvalidRequestState,
-            });
+        let res = self.be_txn.modify(&mut audit_be, &tombstone_cand);
         au.append_scope(audit_be);
 
         if res.is_err() {
@@ -871,14 +848,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Backend Modify
         let mut audit_be = AuditScope::new("backend_modify");
 
-        let res = self
-            .be_txn
-            .modify(&mut audit_be, &norm_cand)
-            .map(|_| ())
-            .map_err(|e| match e {
-                BackendError::EmptyRequest => OperationError::EmptyRequest,
-                BackendError::EntryMissingId => OperationError::InvalidRequestState,
-            });
+        let res = self.be_txn.modify(&mut audit_be, &norm_cand);
         au.append_scope(audit_be);
 
         if res.is_err() {

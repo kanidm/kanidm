@@ -156,7 +156,7 @@ impl CreateEvent {
         let rentries: Result<Vec<_>, _> = request
             .entries
             .iter()
-            .map(|e| Entry::from(audit, e, qs))
+            .map(|e| Entry::from_proto_entry(audit, e, qs))
             .collect();
         match rentries {
             Ok(entries) => Ok(CreateEvent {
