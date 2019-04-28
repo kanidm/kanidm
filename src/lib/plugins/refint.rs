@@ -279,7 +279,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("Json parse failure");
 
         let create = vec![e.clone()];
         let preload = Vec::new();
@@ -307,7 +307,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("Json parse failure");
 
         let eb: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
@@ -321,7 +321,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("Json parse failure");
 
         let preload = vec![ea];
         let create = vec![eb];
@@ -337,8 +337,8 @@ mod tests {
                         au,
                         Filter::Eq("name".to_string(), "testgroup_b".to_string()),
                     )
-                    .unwrap();
-                let ue = cands.first().unwrap();
+                    .expect("Internal search failure");
+                let ue = cands.first().expect("No cand");
             }
         );
     }
@@ -361,7 +361,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("Json parse failure");
 
         let create = vec![e];
 
@@ -373,8 +373,8 @@ mod tests {
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(au, Filter::Eq("name".to_string(), "testgroup".to_string()))
-                    .unwrap();
-                let ue = cands.first().unwrap();
+                    .expect("Internal search failure");
+                let ue = cands.first().expect("No cand");
             }
         );
     }
@@ -394,7 +394,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("Json parse failure");
 
         let eb: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
@@ -407,7 +407,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("Json parse failure");
 
         let preload = vec![ea, eb];
 
@@ -438,7 +438,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("Json parse failure");
 
         let preload = vec![eb];
 
@@ -470,7 +470,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("Json parse failure");
 
         let eb: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
@@ -484,7 +484,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("Json parse failure");
 
         let preload = vec![ea, eb];
 
@@ -513,7 +513,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("Json parse failure");
 
         let preload = vec![ea];
 
@@ -545,7 +545,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("Json parse failure");
 
         let eb: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
@@ -558,7 +558,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("Json parse failure");
 
         let preload = vec![ea, eb];
 
@@ -592,7 +592,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("Json parse failure");
 
         let eb: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
@@ -606,7 +606,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("Json parse failure");
 
         let preload = vec![ea, eb];
 
@@ -640,7 +640,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("Json parse failure");
 
         let eb: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
@@ -654,7 +654,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("Json parse failure");
 
         let preload = vec![ea, eb];
 
@@ -683,7 +683,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("Json parse failure");
 
         let preload = vec![eb];
 

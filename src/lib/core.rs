@@ -135,19 +135,35 @@ fn auth(
                         // First, deal with some state management.
                         // Do anything here first that's needed like getting the session details
                         // out of the req cookie.
-                        let mut counter = 1;
+                        // let mut counter = 1;
 
-                        // TODO: Make this NOT UNWRAP. From the actix source unwrap here
+                        // From the actix source errors here
                         // seems to be related to the serde_json deserialise of the cookie
-                        // content, and because we control it's get/set it SHOULD be find
+                        // content, and because we control it's get/set it SHOULD be fine
                         // provided we use secure cookies. But we can't always trust that ...
-                        if let Some(count) = req.session().get::<i32>("counter").unwrap() {
-                            println!("SESSION value: {}", count);
-                            counter = count + 1;
-                            req.session().set("counter", counter).unwrap();
-                        } else {
-                            println!("INIT value: {}", counter);
-                            req.session().set("counter", counter).unwrap();
+                        let maybe_count = match req.session().get::<i32>("counter") {
+                            Ok(c) => c,
+                            Err(e) => {
+                                return Box::new(future::err(e));
+                            }
+                        };
+
+                        let c = match maybe_count {
+                            Some(count) => {
+                                println!("SESSION value: {}", count);
+                                count + 1
+                            }
+                            None => {
+                                println!("INIT value: 1");
+                                1
+                            }
+                        };
+
+                        match req.session().set("counter", c) {
+                            Ok(_) => {}
+                            Err(e) => {
+                                return Box::new(future::err(e));
+                            }
                         };
 
                         // We probably need to know if we allocate the cookie, that this is a
@@ -280,6 +296,6 @@ pub fn create_server_core(config: Configuration) {
         */
     })
     .bind(config.address)
-    .unwrap()
+    .expect("Failed to initialise server!")
     .start();
 }

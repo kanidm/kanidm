@@ -6,19 +6,21 @@ macro_rules! setup_test {
         $preload_entries:ident
     ) => {{
         // Create an in memory BE
-        let be = Backend::new($au, "").unwrap();
+        let be = Backend::new($au, "").expect("Failed to init BE");
 
-        let schema_outer = Schema::new($au).unwrap();
+        let schema_outer = Schema::new($au).expect("Failed to init schema");
         {
             let mut schema = schema_outer.write();
-            schema.bootstrap_core($au).unwrap();
-            schema.commit().unwrap();
+            schema.bootstrap_core($au).expect("Failed to init schema");
+            schema.commit().expect("Failed to commit schema");
         }
         let qs = QueryServer::new(be, Arc::new(schema_outer));
 
         if !$preload_entries.is_empty() {
             let qs_write = qs.write();
-            qs_write.internal_create($au, $preload_entries).unwrap();
+            qs_write
+                .internal_create($au, $preload_entries)
+                .expect("Failed to preload entries");
             assert!(qs_write.commit($au).is_ok());
         }
         qs

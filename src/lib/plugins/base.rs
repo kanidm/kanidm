@@ -269,7 +269,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("json parse failure");
 
         let create = vec![e];
 
@@ -281,8 +281,8 @@ mod tests {
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(au, Filter::Eq("name".to_string(), "testperson".to_string()))
-                    .unwrap();
-                let ue = cands.first().unwrap();
+                    .expect("Internal search failure");
+                let ue = cands.first().expect("No cand");
                 assert!(ue.attribute_pres("uuid"));
             }
         );
@@ -306,7 +306,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("json parse failure");
 
         let create = vec![e.clone()];
 
@@ -337,7 +337,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("json parse failure");
 
         let create = vec![e.clone()];
 
@@ -368,7 +368,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("json parse failure");
 
         let create = vec![e.clone()];
 
@@ -380,8 +380,8 @@ mod tests {
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(au, Filter::Eq("name".to_string(), "testperson".to_string()))
-                    .unwrap();
-                let ue = cands.first().unwrap();
+                    .expect("Internal search failure");
+                let ue = cands.first().expect("No cand");
                 assert!(ue.attribute_equality("uuid", "79724141-3603-4060-b6bb-35c72772611d"));
             }
         );
@@ -404,7 +404,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("json parse failure");
 
         let create = vec![e.clone()];
 
@@ -440,7 +440,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("json parse failure");
 
         let create = vec![e.clone()];
         let preload = vec![e];
@@ -472,7 +472,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("json parse failure");
 
         let eb: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
@@ -487,7 +487,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("json parse failure");
 
         let create = vec![ea, eb];
 
@@ -516,7 +516,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("json parse failure");
 
         let preload = vec![ea];
 
@@ -548,7 +548,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("json parse failure");
 
         let preload = vec![ea];
 
@@ -580,7 +580,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("json parse failure");
 
         let preload = vec![ea];
 

@@ -161,10 +161,8 @@ pub trait QueryServerReadTransaction {
             return Err(OperationError::InvalidDBState);
         }
 
-        // TODO: Is there a better solution here than this?
-        // Perhaps we could res.first, then unwrap the some
-        // for 0/1 case, but check len for >= 2 to eliminate that case.
-        let e = res.first().unwrap();
+        // TODO: fine for 0/1 case, but check len for >= 2 to eliminate that case.
+        let e = res.first().ok_or(OperationError::NoMatchingEntries)?;
         // Get the uuid from the entry. Again, check it exists, and only one.
         let uuid_res = match e.get_ava(&String::from("uuid")) {
             Some(vas) => match vas.first() {
@@ -204,10 +202,8 @@ pub trait QueryServerReadTransaction {
             return Err(OperationError::InvalidDBState);
         }
 
-        // TODO: Is there a better solution here than this?
-        // Perhaps we could res.first, then unwrap the some
-        // for 0/1 case, but check len for >= 2 to eliminate that case.
-        let e = res.first().unwrap();
+        // fine for 0/1 case, but check len for >= 2 to eliminate that case.
+        let e = res.first().ok_or(OperationError::NoMatchingEntries)?;
         // Get the uuid from the entry. Again, check it exists, and only one.
         let name_res = match e.get_ava(&String::from("name")) {
             Some(vas) => match vas.first() {
@@ -613,13 +609,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
             Err(e) => return Err(OperationError::SchemaViolation(e)),
         };
 
-        let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
+        let mut candidates: Result<Vec<Entry<EntryInvalid, EntryCommitted>>, _> = pre_candidates
             .into_iter()
-            .map(|er| {
-                // TODO: Deal with this properly william
-                er.invalidate().apply_modlist(&modlist).unwrap()
-            })
+            .map(|er| er.invalidate().apply_modlist(&modlist))
             .collect();
+
+        let mut candidates = try_audit!(au, candidates);
 
         audit_log!(au, "delete: candidates -> {:?}", candidates);
 
@@ -812,13 +807,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Clone a set of writeables.
         // Apply the modlist -> Remember, we have a set of origs
         // and the new modified ents.
-        let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
+        let mut candidates: Result<Vec<Entry<EntryInvalid, EntryCommitted>>, _> = pre_candidates
             .into_iter()
-            .map(|er| {
-                // TODO: Deal with this properly william
-                er.invalidate().apply_modlist(&modlist).unwrap()
-            })
+            .map(|er| er.invalidate().apply_modlist(&modlist))
             .collect();
+
+        let mut candidates = try_audit!(au, candidates);
 
         audit_log!(au, "modify: candidates -> {:?}", candidates);
 
@@ -1040,10 +1034,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // First, check the system_info object. This stores some server information
         // and details. It's a pretty static thing.
         let mut audit_si = AuditScope::new("start_system_info");
-        let res = audit_segment!(audit_si, || {
-            let e: Entry<EntryValid, EntryNew> = serde_json::from_str(JSON_SYSTEM_INFO_V1).unwrap();
-            self.internal_assert_or_create(audit, e)
-        });
+        let res = audit_segment!(audit_si, || serde_json::from_str(JSON_SYSTEM_INFO_V1)
+            .map_err(|_| OperationError::SerdeJsonError)
+            .and_then(
+                |e: Entry<EntryValid, EntryNew>| self.internal_assert_or_create(audit, e)
+            ));
         audit_log!(audit_si, "start_system_info -> result {:?}", res);
         audit.append_scope(audit_si);
         assert!(res.is_ok());
@@ -1053,10 +1048,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Check the anonymous object exists (migrations).
         let mut audit_an = AuditScope::new("start_anonymous");
-        let res = audit_segment!(audit_an, || {
-            let e: Entry<EntryValid, EntryNew> = serde_json::from_str(JSON_ANONYMOUS_V1).unwrap();
-            self.internal_migrate_or_create(audit, e)
-        });
+        let res = audit_segment!(audit_an, || serde_json::from_str(JSON_ANONYMOUS_V1)
+            .map_err(|_| OperationError::SerdeJsonError)
+            .and_then(
+                |e: Entry<EntryValid, EntryNew>| self.internal_migrate_or_create(audit, e)
+            ));
         audit_log!(audit_an, "start_anonymous -> result {:?}", res);
         audit.append_scope(audit_an);
         assert!(res.is_ok());
@@ -1134,12 +1130,14 @@ mod tests {
         ($test_fn:expr) => {{
             let mut audit = AuditScope::new("run_test");
 
-            let be = Backend::new(&mut audit, "").unwrap();
-            let schema_outer = Schema::new(&mut audit).unwrap();
+            let be = Backend::new(&mut audit, "").expect("Failed to init be");
+            let schema_outer = Schema::new(&mut audit).expect("Failed to init schema");
             {
                 let mut schema = schema_outer.write();
-                schema.bootstrap_core(&mut audit).unwrap();
-                schema.commit().unwrap();
+                schema
+                    .bootstrap_core(&mut audit)
+                    .expect("Failed to bootstrap schema");
+                schema.commit().expect("Failed to commit schema");
             }
             let test_server = QueryServer::new(be, Arc::new(schema_outer));
 
@@ -1172,17 +1170,17 @@ mod tests {
                 }
             }"#,
             )
-            .unwrap();
+            .expect("json failure");
 
             let ce = CreateEvent::from_vec(vec![e.clone()]);
 
-            let r1 = server_txn.search(audit, &se1).unwrap();
+            let r1 = server_txn.search(audit, &se1).expect("search failure");
             assert!(r1.len() == 0);
 
             let cr = server_txn.create(audit, &ce);
             assert!(cr.is_ok());
 
-            let r2 = server_txn.search(audit, &se2).unwrap();
+            let r2 = server_txn.search(audit, &se2).expect("search failure");
             println!("--> {:?}", r2);
             assert!(r2.len() == 1);
 
@@ -1241,7 +1239,7 @@ mod tests {
                 }
             }"#,
             )
-            .unwrap();
+            .expect("json failure");
 
             let e2: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
                 r#"{
@@ -1256,7 +1254,7 @@ mod tests {
                 }
             }"#,
             )
-            .unwrap();
+            .expect("json failure");
 
             let ce = CreateEvent::from_vec(vec![e1.clone(), e2.clone()]);
 
@@ -1357,7 +1355,7 @@ mod tests {
                 }
             }"#,
             )
-            .unwrap();
+            .expect("json failure");
 
             let ce = CreateEvent::from_vec(vec![e1.clone()]);
 
@@ -1426,7 +1424,7 @@ mod tests {
                 }
             }"#,
             )
-            .unwrap();
+            .expect("json failure");
 
             let e2: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
                 r#"{
@@ -1441,7 +1439,7 @@ mod tests {
                 }
             }"#,
             )
-            .unwrap();
+            .expect("json failure");
 
             let e3: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
                 r#"{
@@ -1456,7 +1454,7 @@ mod tests {
                 }
             }"#,
             )
-            .unwrap();
+            .expect("json failure");
 
             let ce = CreateEvent::from_vec(vec![e1.clone(), e2.clone(), e3.clone()]);
 
@@ -1514,10 +1512,10 @@ mod tests {
                 ),
                 &server_txn,
             )
-            .unwrap();
+            .expect("modify event create failed");
             let de_ts =
                 DeleteEvent::from_request(audit, DeleteRequest::new(filt_ts.clone()), &server_txn)
-                    .unwrap();
+                    .expect("delete event create failed");
             let se_ts = SearchEvent::new_ext_impersonate(filt_i_ts.clone());
 
             // First, create a tombstone
@@ -1531,14 +1529,14 @@ mod tests {
                 }
             }"#,
             )
-            .unwrap();
+            .expect("json failure");
 
             let ce = CreateEvent::from_vec(vec![e_ts]);
             let cr = server_txn.create(audit, &ce);
             assert!(cr.is_ok());
 
             // Can it be seen (external search)
-            let r1 = server_txn.search(audit, &se_ts).unwrap();
+            let r1 = server_txn.search(audit, &se_ts).expect("search failed");
             assert!(r1.len() == 0);
 
             // Can it be deleted (external delete)
@@ -1553,7 +1551,7 @@ mod tests {
             // Internal search should see it.
             let r2 = server_txn
                 .internal_search(audit, filt_i_ts.clone())
-                .unwrap();
+                .expect("internal search failed");
             assert!(r2.len() == 1);
 
             // Now purge
@@ -1561,7 +1559,9 @@ mod tests {
 
             // Assert it's gone
             // Internal search should not see it.
-            let r3 = server_txn.internal_search(audit, filt_i_ts).unwrap();
+            let r3 = server_txn
+                .internal_search(audit, filt_i_ts)
+                .expect("internal search failed");
             assert!(r3.len() == 0);
 
             assert!(server_txn.commit(audit).is_ok());
@@ -1593,10 +1593,10 @@ mod tests {
                 ),
                 &server_txn,
             )
-            .unwrap();
+            .expect("modify event create failed");
             let de_rc =
                 DeleteEvent::from_request(audit, DeleteRequest::new(filt_rc.clone()), &server_txn)
-                    .unwrap();
+                    .expect("delete event create failed");
             let se_rc = SearchEvent::new_ext_impersonate(filt_i_rc.clone());
 
             let sre_rc = SearchEvent::new_rec_impersonate(filt_i_rc.clone());
@@ -1609,7 +1609,7 @@ mod tests {
                 )),
                 &server_txn,
             )
-            .unwrap();
+            .expect("revive recycled create failed");
 
             // Create some recycled objects
             let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
@@ -1625,7 +1625,7 @@ mod tests {
                 }
             }"#,
             )
-            .unwrap();
+            .expect("json failure");
 
             let e2: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
                 r#"{
@@ -1640,14 +1640,14 @@ mod tests {
                 }
             }"#,
             )
-            .unwrap();
+            .expect("json failure");
 
             let ce = CreateEvent::from_vec(vec![e1, e2]);
             let cr = server_txn.create(audit, &ce);
             assert!(cr.is_ok());
 
             // Can it be seen (external search)
-            let r1 = server_txn.search(audit, &se_rc).unwrap();
+            let r1 = server_txn.search(audit, &se_rc).expect("search failed");
             assert!(r1.len() == 0);
 
             // Can it be deleted (external delete)
@@ -1659,14 +1659,14 @@ mod tests {
             assert!(server_txn.modify(audit, &me_rc).is_err());
 
             // Can in be seen by special search? (external recycle search)
-            let r2 = server_txn.search(audit, &sre_rc).unwrap();
+            let r2 = server_txn.search(audit, &sre_rc).expect("search failed");
             assert!(r2.len() == 2);
 
             // Can it be seen (internal search)
             // Internal search should see it.
             let r2 = server_txn
                 .internal_search(audit, filt_i_rc.clone())
-                .unwrap();
+                .expect("internal search failed");
             assert!(r2.len() == 2);
 
             // There are now two options
@@ -1679,19 +1679,19 @@ mod tests {
             // Should be no recycled objects.
             let r3 = server_txn
                 .internal_search(audit, filt_i_rc.clone())
-                .unwrap();
+                .expect("internal search failed");
             assert!(r3.len() == 0);
 
             // There should be one tombstone
             let r4 = server_txn
                 .internal_search(audit, filt_i_ts.clone())
-                .unwrap();
+                .expect("internal search failed");
             assert!(r4.len() == 1);
 
             // There should be one entry
             let r5 = server_txn
                 .internal_search(audit, filt_i_per.clone())
-                .unwrap();
+                .expect("internal search failed");
             assert!(r5.len() == 1);
 
             assert!(server_txn.commit(audit).is_ok());
@@ -1718,7 +1718,7 @@ mod tests {
                 }
             }"#,
             )
-            .unwrap();
+            .expect("json failure");
             let ce = CreateEvent::from_vec(vec![e1]);
 
             let cr = server_txn.create(audit, &ce);
@@ -1732,7 +1732,7 @@ mod tests {
             // Can in be seen by special search? (external recycle search)
             let filt_rc = Filter::Eq(String::from("class"), String::from("recycled"));
             let sre_rc = SearchEvent::new_rec_impersonate(filt_rc.clone());
-            let r2 = server_txn.search(audit, &sre_rc).unwrap();
+            let r2 = server_txn.search(audit, &sre_rc).expect("search failed");
             assert!(r2.len() == 1);
 
             // Create dup uuid (rej)
@@ -1762,7 +1762,7 @@ mod tests {
                 }
             }"#,
             )
-            .unwrap();
+            .expect("json failure");
             let ce = CreateEvent::from_vec(vec![e1]);
             let cr = server_txn.create(audit, &ce);
             assert!(cr.is_ok());
@@ -1800,7 +1800,7 @@ mod tests {
                 }
             }"#,
             )
-            .unwrap();
+            .expect("json failure");
             let ce = CreateEvent::from_vec(vec![e1]);
             let cr = server_txn.create(audit, &ce);
             assert!(cr.is_ok());
@@ -1840,7 +1840,7 @@ mod tests {
                 }
             }"#,
             )
-            .unwrap();
+            .expect("json failure");
             let ce = CreateEvent::from_vec(vec![e1]);
             let cr = server_txn.create(audit, &ce);
             assert!(cr.is_ok());

@@ -142,7 +142,8 @@ impl SchemaAttribute {
         // Check that we actually have a valid principal name of the form
         // X@Y No excess @ allowed.
         lazy_static! {
-            static ref PRIN_RE: Regex = Regex::new("^[^@]+@[^@]+$").unwrap();
+            static ref PRIN_RE: Regex =
+                Regex::new("^[^@]+@[^@]+$").expect("Unable to parse static regex");
         }
         if PRIN_RE.is_match(v.as_str()) {
             Ok(())
@@ -348,7 +349,8 @@ impl SchemaInner {
                 String::from("class"),
                 SchemaAttribute {
                     name: String::from("class"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_CLASS).unwrap(),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_CLASS)
+                        .expect("unable to parse static uuid"),
                     description: String::from("The set of classes defining an object"),
                     system: true,
                     secret: false,
@@ -361,7 +363,8 @@ impl SchemaInner {
                 String::from("uuid"),
                 SchemaAttribute {
                     name: String::from("uuid"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_UUID).unwrap(),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_UUID)
+                        .expect("unable to parse static uuid"),
                     description: String::from("The universal unique id of the object"),
                     system: true,
                     secret: false,
@@ -374,7 +377,8 @@ impl SchemaInner {
                 String::from("name"),
                 SchemaAttribute {
                     name: String::from("name"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_NAME).unwrap(),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_NAME)
+                        .expect("unable to parse static uuid"),
                     description: String::from("The shortform name of an object"),
                     system: true,
                     secret: false,
@@ -387,7 +391,7 @@ impl SchemaInner {
             String::from("principal_name"),
             SchemaAttribute {
                 name: String::from("principal_name"),
-                uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_PRINCIPAL_NAME).unwrap(),
+                uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_PRINCIPAL_NAME).expect("unable to parse static uuid"),
                 description: String::from("The longform name of an object, derived from name and domain. Example: alice@project.org"),
                 system: true,
                 secret: false,
@@ -400,7 +404,8 @@ impl SchemaInner {
                 String::from("description"),
                 SchemaAttribute {
                     name: String::from("description"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_DESCRIPTION).unwrap(),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_DESCRIPTION)
+                        .expect("unable to parse static uuid"),
                     description: String::from("A description of an attribute, object or class"),
                     system: true,
                     secret: false,
@@ -416,7 +421,8 @@ impl SchemaInner {
                 String::from("system"),
                 SchemaAttribute {
                     name: String::from("system"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_SYSTEM).unwrap(),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_SYSTEM)
+                        .expect("unable to parse static uuid"),
                     description: String::from(
                         "Is this object or attribute provided from the core system?",
                     ),
@@ -430,7 +436,7 @@ impl SchemaInner {
             s.attributes.insert(String::from("secret"), SchemaAttribute {
             // FIXME: Rename from system to schema_private? system_private? attr_private? private_attr?
             name: String::from("secret"),
-            uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_SECRET).unwrap(),
+            uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_SECRET).expect("unable to parse static uuid"),
             description: String::from("If true, this value is always hidden internally to the server, even beyond access controls."),
             system: true,
             secret: false,
@@ -440,7 +446,7 @@ impl SchemaInner {
         });
             s.attributes.insert(String::from("multivalue"), SchemaAttribute {
             name: String::from("multivalue"),
-            uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_MULTIVALUE).unwrap(),
+            uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_MULTIVALUE).expect("unable to parse static uuid"),
             description: String::from("If true, this attribute is able to store multiple values rather than just a single value."),
             system: true,
             secret: false,
@@ -453,7 +459,8 @@ impl SchemaInner {
                 String::from("index"),
                 SchemaAttribute {
                     name: String::from("index"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_INDEX).unwrap(),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_INDEX)
+                        .expect("unable to parse static uuid"),
                     description: String::from(
                         "Describe the indexes to apply to instances of this attribute.",
                     ),
@@ -469,7 +476,8 @@ impl SchemaInner {
                 String::from("syntax"),
                 SchemaAttribute {
                     name: String::from("syntax"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_SYNTAX).unwrap(),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_SYNTAX)
+                        .expect("unable to parse static uuid"),
                     description: String::from(
                         "Describe the syntax of this attribute. This affects indexing and sorting.",
                     ),
@@ -485,7 +493,8 @@ impl SchemaInner {
                 String::from("systemmay"),
                 SchemaAttribute {
                     name: String::from("systemmay"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_SYSTEMMAY).unwrap(),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_SYSTEMMAY)
+                        .expect("unable to parse static uuid"),
                     description: String::from(
                         "A list of system provided optional attributes this class can store.",
                     ),
@@ -501,7 +510,8 @@ impl SchemaInner {
                 String::from("may"),
                 SchemaAttribute {
                     name: String::from("may"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_MAY).unwrap(),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_MAY)
+                        .expect("unable to parse static uuid"),
                     description: String::from(
                         "A user modifiable list of optional attributes this class can store.",
                     ),
@@ -517,7 +527,8 @@ impl SchemaInner {
                 String::from("systemmust"),
                 SchemaAttribute {
                     name: String::from("systemmust"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_SYSTEMMUST).unwrap(),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_SYSTEMMUST)
+                        .expect("unable to parse static uuid"),
                     description: String::from(
                         "A list of system provided required attributes this class must store.",
                     ),
@@ -533,7 +544,8 @@ impl SchemaInner {
                 String::from("must"),
                 SchemaAttribute {
                     name: String::from("must"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_MUST).unwrap(),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_MUST)
+                        .expect("unable to parse static uuid"),
                     description: String::from(
                         "A user modifiable list of required attributes this class must store.",
                     ),
@@ -549,7 +561,8 @@ impl SchemaInner {
                 String::from("attributetype"),
                 SchemaClass {
                     name: String::from("attributetype"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_ATTRIBUTETYPE).unwrap(),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_ATTRIBUTETYPE)
+                        .expect("unable to parse static uuid"),
                     description: String::from("Definition of a schema attribute"),
                     systemmay: vec![String::from("index")],
                     may: vec![],
@@ -569,7 +582,8 @@ impl SchemaInner {
                 String::from("classtype"),
                 SchemaClass {
                     name: String::from("classtype"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_CLASSTYPE).unwrap(),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_CLASSTYPE)
+                        .expect("unable to parse static uuid"),
                     description: String::from("Definition of a schema classtype"),
                     systemmay: vec![
                         String::from("systemmay"),
@@ -590,7 +604,8 @@ impl SchemaInner {
                 String::from("object"),
                 SchemaClass {
                     name: String::from("object"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_OBJECT).unwrap(),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_OBJECT)
+                        .expect("unable to parse static uuid"),
                     description: String::from(
                         "A system created class that all objects must contain",
                     ),
@@ -612,7 +627,8 @@ impl SchemaInner {
                 String::from("extensibleobject"),
                 SchemaClass {
                     name: String::from("extensibleobject"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_EXTENSIBLEOBJECT).unwrap(),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_EXTENSIBLEOBJECT)
+                        .expect("unable to parse static uuid"),
                     description: String::from(
                         "A class type that has green hair and turns off all rules ...",
                     ),
@@ -627,7 +643,7 @@ impl SchemaInner {
                 String::from("recycled"),
                 SchemaClass {
                     name: String::from("recycled"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_RECYCLED).unwrap(),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_RECYCLED).expect("unable to parse static uuid"),
                     description: String::from("An object that has been deleted, but still recoverable via the revive operation. Recycled objects are not modifiable, only revivable."),
                     systemmay: vec![],
                     may: vec![],
@@ -639,7 +655,7 @@ impl SchemaInner {
                 String::from("tombstone"),
                 SchemaClass {
                     name: String::from("tombstone"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_TOMBSTONE).unwrap(),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_TOMBSTONE).expect("unable to parse static uuid"),
                     description: String::from("An object that is purged from the recycle bin. This is a system internal state. Tombstones have no attributes beside UUID."),
                     systemmay: vec![],
                     may: vec![],
@@ -676,7 +692,8 @@ impl SchemaInner {
                 String::from("displayname"),
                 SchemaAttribute {
                     name: String::from("displayname"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_DISPLAYNAME).unwrap(),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_DISPLAYNAME)
+                        .expect("unable to parse static uuid"),
                     description: String::from("The publicly visible display name of this person"),
                     system: true,
                     secret: false,
@@ -691,7 +708,8 @@ impl SchemaInner {
                 String::from("mail"),
                 SchemaAttribute {
                     name: String::from("mail"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_MAIL).unwrap(),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_MAIL)
+                        .expect("unable to parse static uuid"),
                     description: String::from("mail addresses of the object"),
                     system: true,
                     secret: false,
@@ -705,7 +723,8 @@ impl SchemaInner {
                 String::from("memberof"),
                 SchemaAttribute {
                     name: String::from("memberof"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_MEMBEROF).unwrap(),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_MEMBEROF)
+                        .expect("unable to parse static uuid"),
                     description: String::from("reverse group membership of the object"),
                     system: true,
                     secret: false,
@@ -719,7 +738,8 @@ impl SchemaInner {
                 String::from("ssh_publickey"),
                 SchemaAttribute {
                     name: String::from("ssh_publickey"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_SSH_PUBLICKEY).unwrap(),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_SSH_PUBLICKEY)
+                        .expect("unable to parse static uuid"),
                     description: String::from("SSH public keys of the object"),
                     system: true,
                     secret: false,
@@ -733,7 +753,8 @@ impl SchemaInner {
                 String::from("password"),
                 SchemaAttribute {
                     name: String::from("password"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_PASSWORD).unwrap(),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_PASSWORD)
+                        .expect("unable to parse static uuid"),
                     description: String::from(
                         "password hash material of the object for authentication",
                     ),
@@ -750,7 +771,8 @@ impl SchemaInner {
                 String::from("member"),
                 SchemaAttribute {
                     name: String::from("member"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_MEMBER).unwrap(),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_MEMBER)
+                        .expect("unable to parse static uuid"),
                     description: String::from("List of members of the group"),
                     system: true,
                     secret: false,
@@ -764,7 +786,8 @@ impl SchemaInner {
                 String::from("version"),
                 SchemaAttribute {
                     name: String::from("version"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_VERSION).unwrap(),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_VERSION)
+                        .expect("unable to parse static uuid"),
                     description: String::from(
                         "The systems internal migration version for provided objects",
                     ),
@@ -780,7 +803,8 @@ impl SchemaInner {
                 String::from("domain"),
                 SchemaAttribute {
                     name: String::from("domain"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_DOMAIN).unwrap(),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_DOMAIN)
+                        .expect("unable to parse static uuid"),
                     description: String::from("A DNS Domain name entry."),
                     system: true,
                     secret: false,
@@ -795,7 +819,8 @@ impl SchemaInner {
                 String::from("account"),
                 SchemaClass {
                     name: String::from("account"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_ACCOUNT).unwrap(),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_ACCOUNT)
+                        .expect("unable to parse static uuid"),
                     description: String::from("Object representation of a person"),
                     systemmay: vec![
                         String::from("password"),
@@ -813,7 +838,8 @@ impl SchemaInner {
                 String::from("person"),
                 SchemaClass {
                     name: String::from("person"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_PERSON).unwrap(),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_PERSON)
+                        .expect("unable to parse static uuid"),
                     description: String::from("Object representation of a person"),
                     systemmay: vec![
                         String::from("mail"),
@@ -829,7 +855,8 @@ impl SchemaInner {
                 String::from("group"),
                 SchemaClass {
                     name: String::from("group"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_GROUP).unwrap(),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_GROUP)
+                        .expect("unable to parse static uuid"),
                     description: String::from("Object representation of a group"),
                     systemmay: vec![
                         String::from("member"),
@@ -844,7 +871,8 @@ impl SchemaInner {
                 String::from("system_info"),
                 SchemaClass {
                     name: String::from("system_info"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_SYSTEM_INFO).unwrap(),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_SYSTEM_INFO)
+                        .expect("unable to parse static uuid"),
                     description: String::from("System metadata object class"),
                     systemmay: vec![],
                     may: vec![],
@@ -1075,7 +1103,7 @@ mod tests {
     fn test_schema_syntax_principal() {
         let sa = SchemaAttribute {
                 name: String::from("principal_name"),
-                uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_PRINCIPAL_NAME).unwrap(),
+                uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_PRINCIPAL_NAME).expect("unable to parse static uuid"),
                 description: String::from("The longform name of an object, derived from name and domain. Example: alice@project.org"),
                 system: true,
                 secret: false,
@@ -1104,7 +1132,7 @@ mod tests {
     fn test_schema_normalise_uuid() {
         let sa = SchemaAttribute {
             name: String::from("uuid"),
-            uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_UUID).unwrap(),
+            uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_UUID).expect("unable to parse static uuid"),
             description: String::from("The universal unique id of the object"),
             system: true,
             secret: false,
@@ -1227,7 +1255,7 @@ mod tests {
     #[test]
     fn test_schema_simple() {
         let mut audit = AuditScope::new("test_schema_simple");
-        let schema = Schema::new(&mut audit).unwrap();
+        let schema = Schema::new(&mut audit).expect("failed to create schema");
         let schema_ro = schema.read();
         validate_schema!(schema_ro, &mut audit);
         println!("{}", audit);
@@ -1244,7 +1272,7 @@ mod tests {
         // Given an entry, assert it's schema is valid
         // We do
         let mut audit = AuditScope::new("test_schema_entries");
-        let schema_outer = Schema::new(&mut audit).unwrap();
+        let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
         let schema = schema_outer.read();
         let e_no_class: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
@@ -1253,7 +1281,7 @@ mod tests {
             "attrs": {}
         }"#,
         )
-        .unwrap();
+        .expect("json parse failure");
 
         assert_eq!(e_no_class.validate(&schema), Err(SchemaError::InvalidClass));
 
@@ -1266,7 +1294,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("json parse failure");
         assert_eq!(
             e_bad_class.validate(&schema),
             Err(SchemaError::InvalidClass)
@@ -1281,7 +1309,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("json parse failure");
 
         let res = e_attr_invalid.validate(&schema);
         assert!(match res {
@@ -1305,7 +1333,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("json parse failure");
 
         assert_eq!(
             e_attr_invalid_may.validate(&schema),
@@ -1327,7 +1355,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("json parse failure");
 
         assert_eq!(
             e_attr_invalid_syn.validate(&schema),
@@ -1349,7 +1377,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("json parse failure");
         assert!(e_ok.validate(&schema).is_ok());
         println!("{}", audit);
     }
@@ -1358,9 +1386,11 @@ mod tests {
     fn test_schema_entry_normalise() {
         // Check that entries can be normalised sanely
         let mut audit = AuditScope::new("test_schema_entry_normalise");
-        let schema_outer = Schema::new(&mut audit).unwrap();
+        let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
         let mut schema = schema_outer.write();
-        schema.bootstrap_core(&mut audit).unwrap();
+        schema
+            .bootstrap_core(&mut audit)
+            .expect("failed to bootstrap schema");
 
         // Check syntax to upper
         // check index to upper
@@ -1379,7 +1409,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("json parse failure");
 
         let e_expect: Entry<EntryValid, EntryNew> = serde_json::from_str(
             r#"{
@@ -1394,9 +1424,9 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("json parse failure");
 
-        let e_normalised = e_test.validate(&schema).unwrap();
+        let e_normalised = e_test.validate(&schema).expect("validation failure");
 
         assert_eq!(e_expect, e_normalised);
         println!("{}", audit);
@@ -1405,7 +1435,7 @@ mod tests {
     #[test]
     fn test_schema_extensible() {
         let mut audit = AuditScope::new("test_schema_extensible");
-        let schema_outer = Schema::new(&mut audit).unwrap();
+        let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
         let schema = schema_outer.read();
         // Just because you are extensible, doesn't mean you can be lazy
 
@@ -1419,7 +1449,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("json parse failure");
 
         assert_eq!(
             e_extensible_bad.validate(&schema),
@@ -1436,7 +1466,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("json parse failure");
 
         /* Is okay because extensible! */
         assert!(e_extensible.validate(&schema).is_ok());
@@ -1451,9 +1481,11 @@ mod tests {
     #[test]
     fn test_schema_bootstrap() {
         let mut audit = AuditScope::new("test_schema_bootstrap");
-        let schema_outer = Schema::new(&mut audit).unwrap();
+        let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
         let mut schema = schema_outer.write();
-        schema.bootstrap_core(&mut audit).unwrap();
+        schema
+            .bootstrap_core(&mut audit)
+            .expect("schema bootstrap failed");
 
         // now test some entries
         let e_person: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
@@ -1469,7 +1501,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("json parse failure");
         assert!(e_person.validate(&schema).is_ok());
 
         let e_group: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
@@ -1484,7 +1516,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("json parse failure");
         assert!(e_group.validate(&schema).is_ok());
         println!("{}", audit);
     }
@@ -1492,7 +1524,7 @@ mod tests {
     #[test]
     fn test_schema_filter_validation() {
         let mut audit = AuditScope::new("test_schema_filter_validation");
-        let schema_outer = Schema::new(&mut audit).unwrap();
+        let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
         let schema = schema_outer.read();
         // Test non existant attr name
         let f_mixed = Filter::Eq("nonClAsS".to_string(), "attributetype".to_string());

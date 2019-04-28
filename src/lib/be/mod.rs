@@ -66,49 +66,61 @@ pub trait BackendReadTransaction {
             let mut raw_entries: Vec<IdEntry> = Vec::new();
             {
                 // Actually do a search now!
-                // let conn = self.pool.get().unwrap();
-                // Start a txn
-                // conn.execute("BEGIN TRANSACTION", NO_PARAMS).unwrap();
-
                 // read them all
-                let mut stmt = self
-                    .get_conn()
-                    .prepare("SELECT id, data FROM id2entry")
-                    .unwrap();
-                let id2entry_iter = stmt
-                    .query_map(NO_PARAMS, |row| IdEntry {
+                let mut stmt = try_audit!(
+                    au,
+                    self.get_conn().prepare("SELECT id, data FROM id2entry"),
+                    "SQLite Error {:?}",
+                    OperationError::SQLiteError
+                );
+                let id2entry_iter = try_audit!(
+                    au,
+                    stmt.query_map(NO_PARAMS, |row| IdEntry {
                         id: row.get(0),
                         data: row.get(1),
-                    })
-                    .unwrap();
+                    }),
+                    "SQLite Error {:?}",
+                    OperationError::SQLiteError
+                );
+
                 for row in id2entry_iter {
-                    audit_log!(au, "raw entry: {:?}", row);
-                    // FIXME: Handle possible errors correctly.
-                    raw_entries.push(row.unwrap());
+                    // audit_log!(au, "raw entry: {:?}", row);
+                    raw_entries.push(try_audit!(
+                        au,
+                        row,
+                        "SQLite Error {:?}",
+                        OperationError::SQLiteError
+                    ));
                 }
             }
             // Do other things
             // Now, de-serialise the raw_entries back to entries, and populate their ID's
 
-            let entries: Vec<Entry<EntryValid, EntryCommitted>> = raw_entries
+            let entries: Result<Vec<Entry<EntryValid, EntryCommitted>>, _> = raw_entries
                 .iter()
-                .map(|id_ent| {
-                    // TODO: Should we do better than unwrap? And if so, how?
-                    // we need to map this error, so probably need to collect to Result<Vec<_>, _>
-                    // and then to try_audit! on that.
-                    let db_e = serde_json::from_str(id_ent.data.as_str()).unwrap();
-                    Entry::from_dbentry(db_e, u64::try_from(id_ent.id).unwrap())
-                })
-                .filter_map(|e| {
+                .filter_map(|id_ent| {
+                    let db_e = match serde_json::from_str(id_ent.data.as_str())
+                        .map_err(|_| OperationError::SerdeJsonError)
+                    {
+                        Ok(v) => v,
+                        Err(e) => return Some(Err(e)),
+                    };
+                    let id = match u64::try_from(id_ent.id)
+                        .map_err(|_| OperationError::InvalidEntryID)
+                    {
+                        Ok(v) => v,
+                        Err(e) => return Some(Err(e)),
+                    };
+                    let e = Entry::from_dbentry(db_e, id);
                     if e.entry_match_no_index(&filt) {
-                        Some(e)
+                        Some(Ok(e))
                     } else {
                         None
                     }
                 })
                 .collect();
 
-            Ok(entries)
+            entries
         })
     }
 
@@ -157,7 +169,11 @@ impl Drop for BackendTransaction {
             println!("Aborting txn");
             self.conn
                 .execute("ROLLBACK TRANSACTION", NO_PARAMS)
-                .unwrap();
+                // TODO: Can we do this without expect? I think we can't due
+                // to the way drop works.
+                //
+                // We may need to change how we do transactions to not rely on drop
+                .expect("Unable to rollback transaction! Can not proceed!!!");
         }
     }
 }
@@ -166,8 +182,11 @@ impl BackendTransaction {
     pub fn new(conn: r2d2::PooledConnection<SqliteConnectionManager>) -> Self {
         // Start the transaction
         println!("Starting RO txn ...");
-        // TODO: Way to flag that this will be a read?
-        conn.execute("BEGIN TRANSACTION", NO_PARAMS).unwrap();
+        // TODO: Way to flag that this will be a read only?
+        // TODO: Can we do this without expect? I think we need to change the type
+        // signature here if we wanted to...
+        conn.execute("BEGIN TRANSACTION", NO_PARAMS)
+            .expect("Unable to begin transaction!");
         BackendTransaction {
             committed: false,
             conn: conn,
@@ -191,7 +210,11 @@ impl Drop for BackendWriteTransaction {
             println!("Aborting txn");
             self.conn
                 .execute("ROLLBACK TRANSACTION", NO_PARAMS)
-                .unwrap();
+                // TODO: Can we do this without expect? I think we can't due
+                // to the way drop works.
+                //
+                // We may need to change how we do transactions to not rely on drop
+                .expect("Unable to rollback transaction! Can not proceed!!!");
         }
     }
 }
@@ -207,27 +230,37 @@ impl BackendWriteTransaction {
         // Start the transaction
         println!("Starting WR txn ...");
         // TODO: Way to flag that this will be a write?
-        conn.execute("BEGIN TRANSACTION", NO_PARAMS).unwrap();
+        // TODO: Can we do this without expect? I think we need to change the type
+        // signature here if we wanted to...
+        conn.execute("BEGIN TRANSACTION", NO_PARAMS)
+            .expect("Unable to begin transaction!");
         BackendWriteTransaction {
             committed: false,
             conn: conn,
         }
     }
 
-    fn get_id2entry_max_id(&self) -> i64 {
+    fn get_id2entry_max_id(&self) -> Result<i64, OperationError> {
         let mut stmt = self
             .conn
             .prepare("SELECT MAX(id) as id_max FROM id2entry")
-            .unwrap();
-        assert!(stmt.exists(NO_PARAMS).unwrap());
+            .map_err(|_| OperationError::SQLiteError)?;
+        // This exists checks for if any rows WERE returned
+        // that way we know to shortcut or not.
+        let v = stmt
+            .exists(NO_PARAMS)
+            .map_err(|_| OperationError::SQLiteError)?;
 
-        let i: Option<i64> = stmt
-            .query_row(NO_PARAMS, |row| row.get(0))
-            .expect("failed to execute");
-        match i {
-            Some(e) => e,
-            None => 0,
-        }
+        Ok(if v {
+            // We have some rows, let get max!
+            let i: Option<i64> = stmt
+                .query_row(NO_PARAMS, |row| row.get(0))
+                .map_err(|_| OperationError::SQLiteError)?;
+            i.unwrap_or(0)
+        } else {
+            // No rows are present, return a 0.
+            0
+        })
     }
 
     fn internal_create(
@@ -236,22 +269,25 @@ impl BackendWriteTransaction {
         dbentries: &Vec<DbEntry>,
     ) -> Result<(), OperationError> {
         // Get the max id from the db. We store this ourselves to avoid max() calls.
-        let mut id_max = self.get_id2entry_max_id();
+        let mut id_max = self.get_id2entry_max_id()?;
 
-        let ser_entries: Vec<IdEntry> = dbentries
+        let ser_entries: Result<Vec<IdEntry>, _> = dbentries
             .iter()
             .map(|ser_db_e| {
                 id_max = id_max + 1;
+                let data =
+                    serde_json::to_string(&ser_db_e).map_err(|_| OperationError::SerdeJsonError)?;
 
-                IdEntry {
+                Ok(IdEntry {
                     id: id_max,
-                    // TODO: Should we do better than unwrap?
-                    data: serde_json::to_string(&ser_db_e).unwrap(),
-                }
+                    data: data,
+                })
             })
             .collect();
 
         audit_log!(au, "serialising: {:?}", ser_entries);
+
+        let ser_entries = ser_entries?;
 
         // THIS IS PROBABLY THE BIT WHERE YOU NEED DB ABSTRACTION
         {
@@ -421,14 +457,17 @@ impl BackendWriteTransaction {
                 // probably okay with this.
 
                 // TODO: ACTUALLY HANDLE THIS ERROR WILLIAM YOU LAZY SHIT.
-                let mut stmt = self
-                    .conn
-                    .prepare("DELETE FROM id2entry WHERE id = :id")
-                    .unwrap();
+                let mut stmt = try_audit!(
+                    au,
+                    self.conn.prepare("DELETE FROM id2entry WHERE id = :id"),
+                    "SQLite Error {:?}",
+                    OperationError::SQLiteError
+                );
 
-                id_list.iter().for_each(|id| {
-                    stmt.execute(&[id]).unwrap();
-                });
+                for id in id_list.iter() {
+                    stmt.execute(&[id])
+                        .map_err(|_| OperationError::SQLiteError)?;
+                }
             }
 
             Ok(())
@@ -441,27 +480,37 @@ impl BackendWriteTransaction {
         let mut raw_entries: Vec<IdEntry> = Vec::new();
 
         {
-            let mut stmt = self
-                .get_conn()
-                .prepare("SELECT id, data FROM id2entry")
-                .unwrap();
+            let mut stmt = try_audit!(
+                audit,
+                self.get_conn().prepare("SELECT id, data FROM id2entry"),
+                "sqlite error {:?}",
+                OperationError::SQLiteError
+            );
 
-            let id2entry_iter = stmt
-                .query_map(NO_PARAMS, |row| IdEntry {
+            let id2entry_iter = try_audit!(
+                audit,
+                stmt.query_map(NO_PARAMS, |row| IdEntry {
                     id: row.get(0),
                     data: row.get(1),
-                })
-                .unwrap();
+                }),
+                "sqlite error {:?}",
+                OperationError::SQLiteError
+            );
 
             for row in id2entry_iter {
-                raw_entries.push(row.unwrap());
+                raw_entries.push(row.map_err(|_| OperationError::SQLiteError)?);
             }
         }
 
-        let entries: Vec<DbEntry> = raw_entries
+        let entries: Result<Vec<DbEntry>, _> = raw_entries
             .iter()
-            .map(|id_ent| serde_json::from_str(id_ent.data.as_str()).unwrap())
+            .map(|id_ent| {
+                serde_json::from_str(id_ent.data.as_str())
+                    .map_err(|_| OperationError::SerdeJsonError)
+            })
             .collect();
+
+        let entries = entries?;
 
         let mut serializedEntries = serde_json::to_string_pretty(&entries);
 
@@ -560,9 +609,8 @@ impl BackendWriteTransaction {
 
     pub fn setup(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
         {
-            // self.conn.execute("BEGIN TRANSACTION", NO_PARAMS).unwrap();
-
-            // conn.execute("PRAGMA journal_mode=WAL;", NO_PARAMS).unwrap();
+            // TODO:
+            // conn.execute("PRAGMA journal_mode=WAL;", NO_PARAMS)
             //
             // This stores versions of components. For example:
             // ----------------------
@@ -576,16 +624,19 @@ impl BackendWriteTransaction {
             // rolled back individually, by upgraded in isolation, and more
             //
             // NEVER CHANGE THIS DEFINITION.
-            self.conn
-                .execute(
+            try_audit!(
+                audit,
+                self.conn.execute(
                     "CREATE TABLE IF NOT EXISTS db_version (
                         id TEXT PRIMARY KEY,
                         version INTEGER
                     )
                     ",
                     NO_PARAMS,
-                )
-                .unwrap();
+                ),
+                "sqlite error {:?}",
+                OperationError::SQLiteError
+            );
 
             // If the table is empty, populate the versions as 0.
             let mut dbv_id2entry = self.get_db_version_key(DBV_ID2ENTRY);
@@ -594,27 +645,33 @@ impl BackendWriteTransaction {
             // Check db_version here.
             //   * if 0 -> create v1.
             if dbv_id2entry == 0 {
-                self.conn
-                    .execute(
+                try_audit!(
+                    audit,
+                    self.conn.execute(
                         "CREATE TABLE IF NOT EXISTS id2entry (
                             id INTEGER PRIMARY KEY ASC,
                             data TEXT NOT NULL
                         )
                         ",
                         NO_PARAMS,
-                    )
-                    .unwrap();
+                    ),
+                    "sqlite error {:?}",
+                    OperationError::SQLiteError
+                );
                 dbv_id2entry = 1;
                 audit_log!(audit, "dbv_id2entry migrated -> {}", dbv_id2entry);
             }
             //   * if v1 -> complete.
 
-            self.conn
-                .execute_named(
+            try_audit!(
+                audit,
+                self.conn.execute_named(
                     "INSERT OR REPLACE INTO db_version (id, version) VALUES(:id, :dbv_id2entry)",
                     &[(":id", &DBV_ID2ENTRY), (":dbv_id2entry", &dbv_id2entry)],
-                )
-                .unwrap();
+                ),
+                "sqlite error {:?}",
+                OperationError::SQLiteError
+            );
 
             // NOTE: Indexing is configured in a different step!
             // Indexing uses a db version flag to represent the version
@@ -660,12 +717,20 @@ impl Backend {
     }
 
     pub fn read(&self) -> BackendTransaction {
-        let conn = self.pool.get().unwrap();
+        // TODO: Don't use expect
+        let conn = self
+            .pool
+            .get()
+            .expect("Unable to get connection from pool!!!");
         BackendTransaction::new(conn)
     }
 
     pub fn write(&self) -> BackendWriteTransaction {
-        let conn = self.pool.get().unwrap();
+        // TODO: Don't use expect
+        let conn = self
+            .pool
+            .get()
+            .expect("Unable to get connection from pool!!!");
         BackendWriteTransaction::new(conn)
     }
 }
@@ -695,7 +760,7 @@ mod tests {
         ($test_fn:expr) => {{
             let mut audit = AuditScope::new("run_test");
 
-            let be = Backend::new(&mut audit, "").unwrap();
+            let be = Backend::new(&mut audit, "").expect("Failed to setup backend");
             let be_txn = be.write();
 
             // Could wrap another future here for the future::ok bit...
@@ -710,8 +775,10 @@ mod tests {
     macro_rules! entry_exists {
         ($audit:expr, $be:expr, $ent:expr) => {{
             let ei = unsafe { $ent.clone().to_valid_committed() };
-            let filt = ei.filter_from_attrs(&vec![String::from("userid")]).unwrap();
-            let entries = $be.search($audit, &filt).unwrap();
+            let filt = ei
+                .filter_from_attrs(&vec![String::from("userid")])
+                .expect("failed to generate filter");
+            let entries = $be.search($audit, &filt).expect("failed to search");
             entries.first().is_some()
         }};
     }
@@ -719,8 +786,10 @@ mod tests {
     macro_rules! entry_attr_pres {
         ($audit:expr, $be:expr, $ent:expr, $attr:expr) => {{
             let ei = unsafe { $ent.clone().to_valid_committed() };
-            let filt = ei.filter_from_attrs(&vec![String::from("userid")]).unwrap();
-            let entries = $be.search($audit, &filt).unwrap();
+            let filt = ei
+                .filter_from_attrs(&vec![String::from("userid")])
+                .expect("failed to generate filter");
+            let entries = $be.search($audit, &filt).expect("failed to search");
             match entries.first() {
                 Some(ent) => ent.attribute_pres($attr),
                 None => false,
@@ -797,7 +866,7 @@ mod tests {
             // You need to now retrieve the entries back out to get the entry id's
             let mut results = be
                 .search(audit, &Filter::Pres(String::from("userid")))
-                .unwrap();
+                .expect("Failed to search");
 
             // Get these out to usable entries.
             let r1 = results.remove(0);
@@ -864,7 +933,7 @@ mod tests {
             // You need to now retrieve the entries back out to get the entry id's
             let mut results = be
                 .search(audit, &Filter::Pres(String::from("userid")))
-                .unwrap();
+                .expect("Failed to search");
 
             // Get these out to usable entries.
             let r1 = results.remove(0);
@@ -941,8 +1010,10 @@ mod tests {
                 _ => (),
             }
 
-            be.backup(audit, DB_BACKUP_FILE_NAME).unwrap();
-            be.restore(audit, DB_BACKUP_FILE_NAME).unwrap();
+            be.backup(audit, DB_BACKUP_FILE_NAME)
+                .expect("Backup failed!");
+            be.restore(audit, DB_BACKUP_FILE_NAME)
+                .expect("Restore failed!");
         });
     }
 }

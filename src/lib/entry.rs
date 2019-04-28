@@ -294,17 +294,21 @@ impl<STATE> Entry<EntryInvalid, STATE> {
             // Now from the set of valid classes make a list of must/may
             // FIXME: This is clone on read, which may be really slow. It also may
             // be inefficent on duplicates etc.
-            let must: HashMap<String, &SchemaAttribute> = classes
+            let must: Result<HashMap<String, &SchemaAttribute>, _> = classes
                 .iter()
                 // Join our class systemmmust + must into one iter
                 .flat_map(|(_, cls)| cls.systemmust.iter().chain(cls.must.iter()))
                 .map(|s| {
                     // This should NOT fail - if it does, it means our schema is
                     // in an invalid state!
-                    // TODO: Make this return Corrupted on failure.
-                    (s.clone(), schema_attributes.get(s).unwrap())
+                    Ok((
+                        s.clone(),
+                        schema_attributes.get(s).ok_or(SchemaError::Corrupted)?,
+                    ))
                 })
                 .collect();
+
+            let must = must?;
 
             // FIXME: Error needs to say what is missing
             // We need to return *all* missing attributes.
@@ -724,7 +728,7 @@ where
     pub fn apply_modlist(
         &self,
         modlist: &ModifyList<ModifyValid>,
-    ) -> Result<Entry<EntryInvalid, STATE>, ()> {
+    ) -> Result<Entry<EntryInvalid, STATE>, OperationError> {
         // Apply a modlist, generating a new entry that conforms to the changes.
         // This is effectively clone-and-transform
 
@@ -815,7 +819,9 @@ mod tests {
         e.add_ava(String::from("userid"), String::from("william"));
         e.add_ava(String::from("userid"), String::from("william"));
 
-        let values = e.get_ava(&String::from("userid")).unwrap();
+        let values = e
+            .get_ava(&String::from("userid"))
+            .expect("Failed to get ava");
         // Should only be one value!
         assert_eq!(values.len(), 1)
     }
@@ -853,7 +859,7 @@ mod tests {
             )])
         };
 
-        let ne = e.apply_modlist(&mods).unwrap();
+        let ne = e.apply_modlist(&mods).expect("Failed to apply modlist");
 
         // Assert the changes are there
         assert!(ne.attribute_equality("attr", "value"));

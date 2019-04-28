@@ -427,7 +427,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("Json parse failure");
 
         let f_t1a = Filter::Or(vec![
             Filter::Eq(String::from("userid"), String::from("william")),
@@ -466,7 +466,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("Json parse failure");
 
         let f_t1a = Filter::And(vec![
             Filter::Eq(String::from("userid"), String::from("william")),
@@ -505,7 +505,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("Json parse failure");
 
         let f_t1a = Filter::AndNot(Box::new(Filter::Eq(
             String::from("userid"),
@@ -532,7 +532,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("Json parse failure");
 
         let e2: Entry<EntryValid, EntryNew> = serde_json::from_str(
             r#"{
@@ -544,7 +544,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("Json parse failure");
 
         let e3: Entry<EntryValid, EntryNew> = serde_json::from_str(
             r#"{
@@ -556,7 +556,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("Json parse failure");
 
         let e4: Entry<EntryValid, EntryNew> = serde_json::from_str(
             r#"{
@@ -568,7 +568,7 @@ mod tests {
             }
         }"#,
         )
-        .unwrap();
+        .expect("Json parse failure");
 
         let f_t1a = Filter::And(vec![
             Filter::Eq(String::from("class"), String::from("person")),
