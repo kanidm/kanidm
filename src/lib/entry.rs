@@ -6,6 +6,9 @@ use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use crate::proto_v1::Entry as ProtoEntry;
 use crate::schema::{SchemaAttribute, SchemaClass, SchemaReadTransaction};
 use crate::server::{QueryServerReadTransaction, QueryServerWriteTransaction};
+
+use crate::be::dbentry::{DbEntry, DbEntryV1, DbEntryVers};
+
 use std::collections::btree_map::{Iter as BTreeIter, IterMut as BTreeIterMut};
 use std::collections::BTreeMap;
 use std::collections::HashMap;
@@ -120,24 +123,23 @@ impl<'a> Iterator for EntryAvasMut<'a> {
 // This is specifically important for the commit to the backend, as we only want to
 // commit validated types.
 
-#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
+#[derive(Clone, Copy, Debug, Deserialize)]
 pub struct EntryNew; // new
-#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
-pub struct EntryCommitted; // It's been in the DB, so it has an id
-                           // pub struct EntryPurged;
+#[derive(Clone, Copy, Debug, Deserialize)]
+pub struct EntryCommitted {
+    id: u64,
+} // It's been in the DB, so it has an id
+  // pub struct EntryPurged;
 
-#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
+#[derive(Clone, Copy, Debug, Deserialize)]
 pub struct EntryValid; // Asserted with schema.
-#[derive(Clone, Copy, Serialize, Deserialize, Debug)]
+#[derive(Clone, Copy, Debug, Deserialize)]
 pub struct EntryInvalid; // Modified
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug, Deserialize)]
 pub struct Entry<VALID, STATE> {
     valid: VALID,
     state: STATE,
-    pub id: Option<i64>,
-    // Flag if we have been schema checked or not.
-    // pub schema_validated: bool,
     attrs: BTreeMap<String, Vec<String>>,
 }
 
@@ -148,13 +150,12 @@ impl Entry<EntryInvalid, EntryNew> {
             // This means NEVER COMMITED
             valid: EntryInvalid,
             state: EntryNew,
-            id: None,
             attrs: BTreeMap::new(),
         }
     }
 
     // FIXME: Can we consume protoentry?
-    pub fn from(
+    pub fn from_proto_entry(
         audit: &mut AuditScope,
         e: &ProtoEntry,
         qs: &QueryServerWriteTransaction,
@@ -192,7 +193,6 @@ impl Entry<EntryInvalid, EntryNew> {
             // sets so that BST works.
             state: EntryNew,
             valid: EntryInvalid,
-            id: None,
             attrs: x,
         })
     }
@@ -208,7 +208,6 @@ impl<STATE> Entry<EntryInvalid, STATE> {
         let Entry {
             valid: _,
             state,
-            id,
             attrs,
         } = self;
 
@@ -253,7 +252,6 @@ impl<STATE> Entry<EntryInvalid, STATE> {
         let ne = Entry {
             valid: EntryValid,
             state: state,
-            id: id,
             attrs: new_attrs,
         };
         // Now validate.
@@ -359,7 +357,6 @@ where
         Entry {
             valid: self.valid,
             state: self.state,
-            id: self.id,
             attrs: self.attrs.clone(),
         }
     }
@@ -375,22 +372,32 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         Entry {
             valid: EntryValid,
             state: EntryNew,
-            id: self.id,
             attrs: self.attrs,
         }
     }
+}
+// Both invalid states can be reached from "entry -> invalidate"
 
+impl<VALID> Entry<VALID, EntryNew> {
     #[cfg(test)]
     pub unsafe fn to_valid_committed(self) -> Entry<EntryValid, EntryCommitted> {
         Entry {
             valid: EntryValid,
-            state: EntryCommitted,
-            id: self.id,
+            state: EntryCommitted { id: 0 },
             attrs: self.attrs,
         }
     }
+}
 
-    // Both invalid states can be reached from "entry -> invalidate"
+impl<VALID> Entry<VALID, EntryCommitted> {
+    #[cfg(test)]
+    pub unsafe fn to_valid_committed(self) -> Entry<EntryValid, EntryCommitted> {
+        Entry {
+            valid: EntryValid,
+            state: self.state,
+            attrs: self.attrs,
+        }
+    }
 }
 
 impl Entry<EntryValid, EntryNew> {
@@ -418,23 +425,48 @@ impl Entry<EntryValid, EntryCommitted> {
 
         Entry {
             valid: EntryValid,
-            state: EntryCommitted,
-            id: self.id,
+            state: self.state,
             attrs: attrs_new,
         }
     }
 
-    pub fn get_id(&self) -> i64 {
-        self.id.expect("ID corrupted!?!?")
+    pub fn get_id(&self) -> u64 {
+        self.state.id
+    }
+
+    pub fn from_dbentry(db_e: DbEntry, id: u64) -> Self {
+        Entry {
+            valid: EntryValid,
+            state: EntryCommitted { id },
+            attrs: match db_e.ent {
+                DbEntryVers::V1(v1) => v1.attrs,
+            },
+        }
     }
 }
 
 impl<STATE> Entry<EntryValid, STATE> {
+    // Returns the entry in the latest DbEntry format we are aware of.
+    pub fn into_dbentry(&self) -> DbEntry {
+        // In the future this will do extra work to process uuid
+        // into "attributes" suitable for dbentry storage.
+
+        // How will this work with replication?
+        //
+        // Alternately, we may have higher-level types that translate entry
+        // into proper structures, and they themself emit/modify entries?
+
+        DbEntry {
+            ent: DbEntryVers::V1(DbEntryV1 {
+                attrs: self.attrs.clone(),
+            }),
+        }
+    }
+
     pub fn invalidate(self) -> Entry<EntryInvalid, STATE> {
         Entry {
             valid: EntryInvalid,
             state: self.state,
-            id: self.id,
             attrs: self.attrs,
         }
     }
@@ -442,8 +474,9 @@ impl<STATE> Entry<EntryValid, STATE> {
     pub fn seal(self) -> Entry<EntryValid, EntryCommitted> {
         Entry {
             valid: self.valid,
-            state: EntryCommitted,
-            id: self.id,
+            state: EntryCommitted {
+                id: unimplemented!(),
+            },
             attrs: self.attrs,
         }
     }
@@ -699,7 +732,6 @@ where
         let mut ne: Entry<EntryInvalid, STATE> = Entry {
             valid: self.valid,
             state: self.state,
-            id: self.id,
             attrs: self.attrs.clone(),
         };
 
@@ -769,8 +801,6 @@ mod tests {
         let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
 
         e.add_ava(String::from("userid"), String::from("william"));
-
-        let _d = serde_json::to_string_pretty(&e).unwrap();
     }
 
     #[test]

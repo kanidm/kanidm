@@ -53,7 +53,6 @@ impl Plugin for ReferentialIntegrity {
         "referential_integrity"
     }
 
-
     // Why are these checks all in post?
     //
     // There is a situation to account for which is that a create or mod
