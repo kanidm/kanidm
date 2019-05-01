@@ -827,6 +827,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
             return plug_pre_res;
         }
 
+        // TODO: There is a potential optimisation here, where if
+        // candidates == pre-candidates, then we don't need to store anything
+        // because we effectively just did an assert. However, like all
+        // optimisations, this could be premature - so we for now, just
+        // do the CORRECT thing and recommit as we may find later we always
+        // want to add CSN's or other.
+
         let res: Result<Vec<Entry<EntryValid, EntryCommitted>>, SchemaError> = candidates
             .into_iter()
             .map(|e| e.validate(&self.schema))
