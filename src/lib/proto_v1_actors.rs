@@ -6,8 +6,8 @@ use crate::be::Backend;
 
 use crate::error::OperationError;
 use crate::event::{
-    CreateEvent, DeleteEvent, ModifyEvent, OpResult, PurgeRecycledEvent, PurgeTombstoneEvent,
-    SearchEvent, SearchResult,
+    CreateEvent, DeleteEvent, ModifyEvent, PurgeRecycledEvent, PurgeTombstoneEvent, SearchEvent,
+    SearchResult,
 };
 use crate::log::EventLog;
 use crate::schema::{Schema, SchemaReadTransaction};
@@ -275,7 +275,7 @@ impl Handler<PurgeTombstoneEvent> for QueryServerV1 {
 
             let res = qs_write
                 .purge_tombstones(&mut audit)
-                .map(|_| qs_write.commit(&mut audit).map(|_| OpResult {}));
+                .and_then(|_| qs_write.commit(&mut audit));
             audit_log!(audit, "Purge tombstones result: {:?}", res);
             res.expect("Invalid Server State");
         });
@@ -296,7 +296,7 @@ impl Handler<PurgeRecycledEvent> for QueryServerV1 {
 
             let res = qs_write
                 .purge_recycled(&mut audit)
-                .map(|_| qs_write.commit(&mut audit).map(|_| OpResult {}));
+                .and_then(|_| qs_write.commit(&mut audit));
             audit_log!(audit, "Purge recycled result: {:?}", res);
             res.expect("Invalid Server State");
         });

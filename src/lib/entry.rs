@@ -143,6 +143,12 @@ pub struct Entry<VALID, STATE> {
     attrs: BTreeMap<String, Vec<String>>,
 }
 
+impl<STATE> std::fmt::Display for Entry<EntryValid, STATE> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.get_uuid())
+    }
+}
+
 impl Entry<EntryInvalid, EntryNew> {
     #[cfg(test)]
     pub fn new() -> Self {
@@ -475,6 +481,7 @@ impl<STATE> Entry<EntryValid, STATE> {
         }
     }
 
+    /*
     pub fn seal(self) -> Entry<EntryValid, EntryCommitted> {
         Entry {
             valid: self.valid,
@@ -483,6 +490,16 @@ impl<STATE> Entry<EntryValid, STATE> {
             },
             attrs: self.attrs,
         }
+    }
+    */
+
+    pub fn get_uuid(&self) -> &String {
+        // TODO: Make this not unwrap!!!
+        self.attrs
+            .get("uuid")
+            .expect("UUID ATTR NOT PRESENT, INVALID ENTRY STATE!!!")
+            .first()
+            .expect("UUID VALUE NOT PRESENT, INVALID ENTRY STATE!!!")
     }
 
     // Assert if this filter matches the entry (no index)
@@ -612,6 +629,7 @@ impl<STATE> Entry<EntryValid, STATE> {
 }
 
 impl<VALID, STATE> Entry<VALID, STATE> {
+    /* WARNING: Should these TODO move to EntryValid only? */
     pub fn get_ava(&self, attr: &String) -> Option<&Vec<String>> {
         self.attrs.get(attr)
     }
@@ -619,6 +637,16 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     pub fn attribute_pres(&self, attr: &str) -> bool {
         // FIXME: Do we need to normalise attr name?
         self.attrs.contains_key(attr)
+    }
+
+    pub fn attribute_value_pres(&self, attr: &str, value: &str) -> bool {
+        match self.attrs.get(attr) {
+            Some(v_list) => match v_list.binary_search(&value.to_string()) {
+                Ok(_) => true,
+                Err(_) => false,
+            },
+            None => false,
+        }
     }
 
     pub fn attribute_equality(&self, attr: &str, value: &str) -> bool {
@@ -725,31 +753,19 @@ where
     }
 
     // Should this be schemaless, relying on checks of the modlist, and the entry validate after?
-    pub fn apply_modlist(
-        &self,
-        modlist: &ModifyList<ModifyValid>,
-    ) -> Result<Entry<EntryInvalid, STATE>, OperationError> {
+    pub fn apply_modlist(&mut self, modlist: &ModifyList<ModifyValid>) {
+        // -> Result<Entry<EntryInvalid, STATE>, OperationError> {
         // Apply a modlist, generating a new entry that conforms to the changes.
         // This is effectively clone-and-transform
-
-        // clone the entry
-        let mut ne: Entry<EntryInvalid, STATE> = Entry {
-            valid: self.valid,
-            state: self.state,
-            attrs: self.attrs.clone(),
-        };
 
         // mutate
         for modify in modlist {
             match modify {
-                Modify::Present(a, v) => ne.add_ava(a.clone(), v.clone()),
-                Modify::Removed(a, v) => ne.remove_ava(a, v),
-                Modify::Purged(a) => ne.purge_ava(a),
+                Modify::Present(a, v) => self.add_ava(a.clone(), v.clone()),
+                Modify::Removed(a, v) => self.remove_ava(a, v),
+                Modify::Purged(a) => self.purge_ava(a),
             }
         }
-
-        // return it
-        Ok(ne)
     }
 }
 
@@ -798,7 +814,7 @@ struct User {
 mod tests {
     use crate::entry::{Entry, EntryInvalid, EntryNew};
     use crate::modify::{Modify, ModifyList};
-    use serde_json;
+    // use serde_json;
 
     #[test]
     fn test_entry_basic() {
@@ -859,10 +875,10 @@ mod tests {
             )])
         };
 
-        let ne = e.apply_modlist(&mods).expect("Failed to apply modlist");
+        e.apply_modlist(&mods);
 
         // Assert the changes are there
-        assert!(ne.attribute_equality("attr", "value"));
+        assert!(e.attribute_equality("attr", "value"));
 
         // Assert present for multivalue
         // Assert purge on single/multi/empty value

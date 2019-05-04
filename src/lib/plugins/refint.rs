@@ -12,7 +12,7 @@
 use std::collections::HashMap;
 
 use crate::audit::AuditScope;
-use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
+use crate::entry::{Entry, EntryCommitted, EntryNew, EntryValid};
 use crate::error::{ConsistencyError, OperationError};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::filter::{Filter, FilterInvalid};
@@ -30,12 +30,13 @@ impl ReferentialIntegrity {
     fn check_uuid_exists(
         au: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
+        rtype: &String,
         uuid: &String,
     ) -> Result<(), OperationError> {
         let mut au_qs = AuditScope::new("qs_exist");
         let filt_in: Filter<FilterInvalid> =
             Filter::new_ignore_hidden(Filter::Eq("uuid".to_string(), uuid.clone()));
-        let r = qs.internal_exists(au, filt_in);
+        let r = qs.internal_exists(&mut au_qs, filt_in);
         au.append_scope(au_qs);
 
         let b = try_audit!(au, r);
@@ -43,6 +44,12 @@ impl ReferentialIntegrity {
         if b {
             Ok(())
         } else {
+            audit_log!(
+                au,
+                "{:?}:{:?} UUID reference not found in database",
+                rtype,
+                uuid
+            );
             Err(OperationError::Plugin)
         }
     }
@@ -85,7 +92,7 @@ impl Plugin for ReferentialIntegrity {
                     Some(vs) => {
                         // For each value in the set.
                         for v in vs {
-                            Self::check_uuid_exists(au, qs, v)?
+                            Self::check_uuid_exists(au, qs, &rtype.name, v)?
                         }
                     }
                     None => {}
@@ -98,8 +105,9 @@ impl Plugin for ReferentialIntegrity {
     fn post_modify(
         au: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
+        _pre_cand: &Vec<Entry<EntryValid, EntryCommitted>>,
         _cand: &Vec<Entry<EntryValid, EntryCommitted>>,
-        me: &ModifyEvent,
+        _me: &ModifyEvent,
         modlist: &ModifyList<ModifyValid>,
     ) -> Result<(), OperationError> {
         let schema = qs.get_schema();
@@ -113,7 +121,7 @@ impl Plugin for ReferentialIntegrity {
                     match ref_types.get(a) {
                         Some(a_type) => {
                             // So it is a reference type, now check it.
-                            Self::check_uuid_exists(au, qs, v)?
+                            Self::check_uuid_exists(au, qs, &a_type.name, v)?
                         }
                         None => {}
                     }
@@ -148,7 +156,8 @@ impl Plugin for ReferentialIntegrity {
             .collect();
 
         // Generate a filter which is the set of all schema reference types
-        // as EQ to all uuid of all entries in delete.
+        // as EQ to all uuid of all entries in delete. - this INCLUDES recycled
+        // types too!
         let filt: Filter<FilterInvalid> = Filter::Or(
             uuids
                 .iter()
@@ -256,8 +265,8 @@ impl Plugin for ReferentialIntegrity {
 
 #[cfg(test)]
 mod tests {
-    #[macro_use]
-    use crate::plugins::Plugin;
+    // #[macro_use]
+    // use crate::plugins::Plugin;
     use crate::entry::{Entry, EntryInvalid, EntryNew};
     use crate::error::OperationError;
     use crate::filter::Filter;
@@ -338,7 +347,7 @@ mod tests {
                         Filter::Eq("name".to_string(), "testgroup_b".to_string()),
                     )
                     .expect("Internal search failure");
-                let ue = cands.first().expect("No cand");
+                let _ue = cands.first().expect("No cand");
             }
         );
     }
@@ -374,7 +383,7 @@ mod tests {
                 let cands = qs
                     .internal_search(au, Filter::Eq("name".to_string(), "testgroup".to_string()))
                     .expect("Internal search failure");
-                let ue = cands.first().expect("No cand");
+                let _ue = cands.first().expect("No cand");
             }
         );
     }
@@ -615,7 +624,7 @@ mod tests {
             preload,
             Filter::Eq("name".to_string(), "testgroup_a".to_string()),
             false,
-            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {}
+            |_au: &mut AuditScope, _qs: &QueryServerWriteTransaction| {}
         );
     }
 
@@ -663,7 +672,7 @@ mod tests {
             preload,
             Filter::Eq("name".to_string(), "testgroup_b".to_string()),
             false,
-            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {}
+            |_au: &mut AuditScope, _qs: &QueryServerWriteTransaction| {}
         );
     }
 
@@ -692,7 +701,7 @@ mod tests {
             preload,
             Filter::Eq("name".to_string(), "testgroup_b".to_string()),
             false,
-            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {}
+            |_au: &mut AuditScope, _qs: &QueryServerWriteTransaction| {}
         );
     }
 }

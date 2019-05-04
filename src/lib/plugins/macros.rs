@@ -60,9 +60,14 @@ macro_rules! run_create_test {
                 let r = qs_write.create(&mut au_test, &ce);
                 assert!(r == $expect);
                 $check(&mut au_test, &qs_write);
-                r.map(|_| {
-                    assert!(qs_write.commit(&mut au_test).is_ok());
-                });
+                match r {
+                    Ok(_) => {
+                        qs_write.commit(&mut au_test).expect("commit failure!");
+                    }
+                    Err(e) => {
+                        audit_log!(&mut au_test, "Rolling back => {:?}", e);
+                    }
+                }
             }
             // Make sure there are no errors.
             assert!(qs.verify(&mut au_test).len() == 0);
@@ -107,9 +112,14 @@ macro_rules! run_modify_test {
                 let r = qs_write.modify(&mut au_test, &me);
                 $check(&mut au_test, &qs_write);
                 assert!(r == $expect);
-                r.map(|_| {
-                    assert!(qs_write.commit(&mut au_test).is_ok());
-                });
+                match r {
+                    Ok(_) => {
+                        qs_write.commit(&mut au_test).expect("commit failure!");
+                    }
+                    Err(e) => {
+                        audit_log!(&mut au_test, "Rolling back => {:?}", e);
+                    }
+                }
             }
             // Make sure there are no errors.
             assert!(qs.verify(&mut au_test).len() == 0);
@@ -153,9 +163,14 @@ macro_rules! run_delete_test {
                 let r = qs_write.delete(&mut au_test, &de);
                 $check(&mut au_test, &qs_write);
                 assert!(r == $expect);
-                r.map(|_| {
-                    assert!(qs_write.commit(&mut au_test).is_ok());
-                });
+                match r {
+                    Ok(_) => {
+                        qs_write.commit(&mut au_test).expect("commit failure!");
+                    }
+                    Err(e) => {
+                        audit_log!(&mut au_test, "Rolling back => {:?}", e);
+                    }
+                }
             }
             // Make sure there are no errors.
             assert!(qs.verify(&mut au_test).len() == 0);

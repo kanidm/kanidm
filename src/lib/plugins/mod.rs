@@ -10,6 +10,7 @@ mod macros;
 
 mod base;
 mod failure;
+mod memberof;
 mod protected;
 mod recycle;
 mod refint;
@@ -64,6 +65,7 @@ trait Plugin {
         _au: &mut AuditScope,
         _qs: &QueryServerWriteTransaction,
         // List of what we modified that was valid?
+        _pre_cand: &Vec<Entry<EntryValid, EntryCommitted>>,
         _cand: &Vec<Entry<EntryValid, EntryCommitted>>,
         _ce: &ModifyEvent,
         _modlist: &ModifyList<ModifyValid>,
@@ -190,6 +192,7 @@ macro_rules! run_post_modify_plugin {
     (
         $au:ident,
         $qs:ident,
+        $pre_cand:ident,
         $cand:ident,
         $ce:ident,
         $ml:ident,
@@ -199,6 +202,7 @@ macro_rules! run_post_modify_plugin {
         let r = audit_segment!(audit_scope, || <($target_plugin)>::post_modify(
             &mut audit_scope,
             $qs,
+            $pre_cand,
             $cand,
             $ce,
             $ml
@@ -308,6 +312,7 @@ impl Plugins {
         audit_segment!(au, || {
             let res = run_post_create_plugin!(au, qs, cand, ce, base::Base).and_then(|_| {
                 run_post_create_plugin!(au, qs, cand, ce, refint::ReferentialIntegrity)
+                    .and_then(|_| run_post_create_plugin!(au, qs, cand, ce, memberof::MemberOf))
             });
 
             res
@@ -334,14 +339,34 @@ impl Plugins {
     pub fn run_post_modify(
         au: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
+        pre_cand: &Vec<Entry<EntryValid, EntryCommitted>>,
         cand: &Vec<Entry<EntryValid, EntryCommitted>>,
         me: &ModifyEvent,
         modlist: &ModifyList<ModifyValid>,
     ) -> Result<(), OperationError> {
         audit_segment!(au, || {
-            let res =
-                run_post_modify_plugin!(au, qs, cand, me, modlist, base::Base).and_then(|_| {
-                    run_post_modify_plugin!(au, qs, cand, me, modlist, refint::ReferentialIntegrity)
+            let res = run_post_modify_plugin!(au, qs, pre_cand, cand, me, modlist, base::Base)
+                .and_then(|_| {
+                    run_post_modify_plugin!(
+                        au,
+                        qs,
+                        pre_cand,
+                        cand,
+                        me,
+                        modlist,
+                        refint::ReferentialIntegrity
+                    )
+                    .and_then(|_| {
+                        run_post_modify_plugin!(
+                            au,
+                            qs,
+                            pre_cand,
+                            cand,
+                            me,
+                            modlist,
+                            memberof::MemberOf
+                        )
+                    })
                 });
 
             res
@@ -372,6 +397,7 @@ impl Plugins {
         audit_segment!(au, || {
             let res = run_post_delete_plugin!(au, qs, cand, de, base::Base).and_then(|_| {
                 run_post_delete_plugin!(au, qs, cand, de, refint::ReferentialIntegrity)
+                    .and_then(|_| run_post_delete_plugin!(au, qs, cand, de, memberof::MemberOf))
             });
 
             res
@@ -385,6 +411,7 @@ impl Plugins {
         let mut results = Vec::new();
         run_verify_plugin!(au, qs, &mut results, base::Base);
         run_verify_plugin!(au, qs, &mut results, refint::ReferentialIntegrity);
+        run_verify_plugin!(au, qs, &mut results, memberof::MemberOf);
         results
     }
 }
