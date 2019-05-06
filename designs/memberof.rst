@@ -153,7 +153,13 @@ changes occur, we have completed the operation.
 Considerations
 --------------
 
-* Preventing recursion: As of course, we are 
+* Preventing recursion: As of course, we are using a recursive algo, it has to end. The base case
+is "is there no groups with differences" which causes us to NO-OP and return.
 
-* Replication
+* Replication; Because each server has MO, then content of the member of should be consistent. However
+what should be considered is the changelog items to ensure that the member changes are accurately
+reflected inside of the members.
+
+* Fixup: Simply apply a modify of "purged: *memberof*", and that should cause
+recalculation. (testing needed).
 
