@@ -250,9 +250,9 @@ pub fn create_server_core(config: Configuration) {
             // be generated (probably stored in DB for cross-host access)
             session::CookieSessionBackend::signed(&[0; 32])
                 .path("/")
-                //.max_age() duration of the token life
-                // .domain()
-                //.same_site() constraunt to the domain
+                //.max_age() duration of the token life TODO make this proper!
+                .domain("localhost")
+                .same_site(cookie::SameSite::Strict) // constrain to the domain
                 // Disallow from js
                 .http_only(true)
                 .name("rsidm-session")
