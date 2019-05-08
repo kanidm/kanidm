@@ -164,13 +164,7 @@ pub trait QueryServerReadTransaction {
         // TODO: fine for 0/1 case, but check len for >= 2 to eliminate that case.
         let e = res.first().ok_or(OperationError::NoMatchingEntries)?;
         // Get the uuid from the entry. Again, check it exists, and only one.
-        let uuid_res = match e.get_ava(&String::from("uuid")) {
-            Some(vas) => match vas.first() {
-                Some(u) => u.clone(),
-                None => return Err(OperationError::InvalidEntryState),
-            },
-            None => return Err(OperationError::InvalidEntryState),
-        };
+        let uuid_res: String = e.get_uuid().to_string();
 
         audit_log!(audit, "name_to_uuid: uuid <- {:?}", uuid_res);
 

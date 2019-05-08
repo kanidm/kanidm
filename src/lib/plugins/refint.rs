@@ -141,19 +141,12 @@ impl Plugin for ReferentialIntegrity {
         // Delete is pretty different to the other pre checks. This is
         // actually the bulk of the work we'll do to clean up references
         // when they are deleted.
-        let uuid_name = "uuid".to_string();
 
         // Find all reference types in the schema
         let schema = qs.get_schema();
         let ref_types = schema.get_reference_types();
         // Get the UUID of all entries we are deleting
-        let uuids: Vec<&String> = cand
-            .iter()
-            .map(|e| e.get_ava(&uuid_name).ok_or(OperationError::Plugin))
-            .collect::<Result<Vec<_>, _>>()?
-            .into_iter()
-            .flatten()
-            .collect();
+        let uuids: Vec<&String> = cand.iter().map(|e| e.get_uuid()).collect();
 
         // Generate a filter which is the set of all schema reference types
         // as EQ to all uuid of all entries in delete. - this INCLUDES recycled
@@ -197,7 +190,6 @@ impl Plugin for ReferentialIntegrity {
         au: &mut AuditScope,
         qs: &QueryServerTransaction,
     ) -> Vec<Result<(), ConsistencyError>> {
-        let name_uuid = "uuid".to_string();
         // Get all entries as cand
         //      build a cand-uuid set
         let filt_in: Filter<FilterInvalid> =
@@ -211,30 +203,9 @@ impl Plugin for ReferentialIntegrity {
             Err(e) => return vec![e],
         };
 
-        let (acu, err): (
-            Vec<Result<&String, ConsistencyError>>,
-            Vec<Result<&String, ConsistencyError>>,
-        ) = all_cand
-            .iter()
-            .map(|e| {
-                e.get_ava(&name_uuid)
-                    .ok_or(ConsistencyError::EntryUuidCorrupt(e.get_id()))
-                    .map(|v| v.first().expect("Can not fail!!!"))
-            })
-            .partition(|v| v.is_ok());
+        let acu: Vec<&String> = all_cand.iter().map(|e| e.get_uuid()).collect();
 
-        if err.len() > 0 {
-            return err
-                .into_iter()
-                .map(|v| Err(v.expect_err("Can not fail!!!")))
-                .collect();
-        }
-
-        let acu_map: HashMap<&String, ()> = acu
-            .into_iter()
-            .map(|v| v.expect("Can not fail!!!"))
-            .map(|v| (v, ()))
-            .collect();
+        let acu_map: HashMap<&String, ()> = acu.into_iter().map(|v| (v, ())).collect();
 
         let schema = qs.get_schema();
         let ref_types = schema.get_reference_types();

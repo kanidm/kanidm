@@ -4,7 +4,9 @@ pub static _UUID_ADMIN: &'static str = "00000000-0000-0000-0000-000000000000";
 
 pub static _UUID_ANONYMOUS: &'static str = "00000000-0000-0000-0000-ffffffffffff";
 pub static JSON_ANONYMOUS_V1: &'static str = r#"{
-    "valid": null,
+    "valid": {
+        "uuid": "00000000-0000-0000-0000-ffffffffffff"
+    },
     "state": null,
     "attrs": {
         "class": ["account", "object"],
@@ -18,7 +20,9 @@ pub static JSON_ANONYMOUS_V1: &'static str = r#"{
 
 pub static _UUID_SYSTEM_INFO: &'static str = "00000000-0000-0000-0000-ffffff000001";
 pub static JSON_SYSTEM_INFO_V1: &'static str = r#"{
-    "valid": null,
+    "valid": {
+        "uuid": "00000000-0000-0000-0000-ffffff000001"
+    },
     "state": null,
     "attrs": {
         "class": ["object", "system_info"],

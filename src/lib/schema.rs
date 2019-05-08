@@ -1288,11 +1288,27 @@ mod tests {
         let mut audit = AuditScope::new("test_schema_entries");
         let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
         let schema = schema_outer.read();
-        let e_no_class: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let e_no_uuid: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
             "valid": null,
             "state": null,
             "attrs": {}
+        }"#,
+        )
+        .expect("json parse failure");
+
+        assert_eq!(
+            e_no_uuid.validate(&schema),
+            Err(SchemaError::MissingMustAttribute("uuid".to_string()))
+        );
+
+        let e_no_class: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            r#"{
+            "valid": null,
+            "state": null,
+            "attrs": {
+                "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"]
+            }
         }"#,
         )
         .expect("json parse failure");
@@ -1304,6 +1320,7 @@ mod tests {
             "valid": null,
             "state": null,
             "attrs": {
+                "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
                 "class": ["zzzzzz"]
             }
         }"#,
@@ -1319,6 +1336,7 @@ mod tests {
             "valid": null,
             "state": null,
             "attrs": {
+                "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
                 "class": ["attributetype"]
             }
         }"#,
@@ -1343,6 +1361,7 @@ mod tests {
                 "secret": ["false"],
                 "multivalue": ["false"],
                 "syntax": ["UTF8STRING"],
+                "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
                 "zzzzz": ["zzzz"]
             }
         }"#,
@@ -1365,6 +1384,7 @@ mod tests {
                 "system": ["false"],
                 "secret": ["false"],
                 "multivalue": ["zzzzz"],
+                "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
                 "syntax": ["UTF8STRING"]
             }
         }"#,
@@ -1387,6 +1407,7 @@ mod tests {
                 "system": ["false"],
                 "secret": ["false"],
                 "multivalue": ["true"],
+                "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
                 "syntax": ["UTF8STRING"]
             }
         }"#,
@@ -1419,6 +1440,7 @@ mod tests {
                 "name": ["TestPerson"],
                 "displayName": ["testperson"],
                 "syntax": ["utf8string"],
+                "UUID": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
                 "index": ["equality"]
             }
         }"#,
@@ -1427,13 +1449,16 @@ mod tests {
 
         let e_expect: Entry<EntryValid, EntryNew> = serde_json::from_str(
             r#"{
-            "valid": null,
+            "valid": {
+                "uuid": "db237e8a-0079-4b8c-8a56-593b22aa44d1"
+            },
             "state": null,
             "attrs": {
                 "class": ["extensibleobject"],
                 "name": ["testperson"],
                 "displayname": ["testperson"],
                 "syntax": ["UTF8STRING"],
+                "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
                 "index": ["EQUALITY"]
             }
         }"#,
@@ -1459,6 +1484,7 @@ mod tests {
             "state": null,
             "attrs": {
                 "class": ["extensibleobject"],
+                "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
                 "secret": ["zzzz"]
             }
         }"#,
@@ -1476,6 +1502,7 @@ mod tests {
             "state": null,
             "attrs": {
                 "class": ["extensibleobject"],
+                "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
                 "secret": ["true"]
             }
         }"#,
@@ -1511,6 +1538,7 @@ mod tests {
                 "name": ["testperson"],
                 "principal_name": ["testperson@project.org"],
                 "description": ["testperson"],
+                "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
                 "displayname": ["testperson"]
             }
         }"#,
@@ -1526,6 +1554,7 @@ mod tests {
                 "class": ["group"],
                 "name": ["testgroup"],
                 "principal_name": ["testgroup@project.org"],
+                "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
                 "description": ["testperson"]
             }
         }"#,

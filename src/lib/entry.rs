@@ -131,10 +131,16 @@ pub struct EntryCommitted {
 } // It's been in the DB, so it has an id
   // pub struct EntryPurged;
 
+#[derive(Clone, Debug, Deserialize)]
+pub struct EntryValid {
+    // Asserted with schema, so we know it has a UUID now ...
+    uuid: String,
+}
+
+// Modified, can't be sure of it's content! We therefore disregard the UUID
+// and on validate, we check it again.
 #[derive(Clone, Copy, Debug, Deserialize)]
-pub struct EntryValid; // Asserted with schema.
-#[derive(Clone, Copy, Debug, Deserialize)]
-pub struct EntryInvalid; // Modified
+pub struct EntryInvalid;
 
 #[derive(Debug, Deserialize)]
 pub struct Entry<VALID, STATE> {
@@ -205,6 +211,13 @@ impl Entry<EntryInvalid, EntryNew> {
 }
 
 impl<STATE> Entry<EntryInvalid, STATE> {
+    fn get_uuid(&self) -> Option<&String> {
+        match self.attrs.get("uuid") {
+            Some(vs) => vs.first(),
+            None => None,
+        }
+    }
+
     pub fn validate(
         self,
         schema: &SchemaReadTransaction,
@@ -230,7 +243,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
 
         let mut new_attrs = BTreeMap::new();
 
-        // First normalise
+        // First normalise - this checks and fixes our UUID.
         for (attr_name, avas) in attrs.iter() {
             let attr_name_normal: String = schema_attr_name.normalise_value(attr_name);
             // Get the needed schema type
@@ -255,8 +268,16 @@ impl<STATE> Entry<EntryInvalid, STATE> {
             let _ = new_attrs.insert(attr_name_normal, avas_normal);
         }
 
+        let uuid: String = match new_attrs.get("uuid") {
+            Some(vs) => match vs.first() {
+                Some(uuid) => uuid.to_string(),
+                None => return Err(SchemaError::MissingMustAttribute("uuid".to_string())),
+            },
+            None => return Err(SchemaError::MissingMustAttribute("uuid".to_string())),
+        };
+
         let ne = Entry {
-            valid: EntryValid,
+            valid: EntryValid { uuid },
             state: state,
             attrs: new_attrs,
         };
@@ -359,13 +380,13 @@ impl<STATE> Entry<EntryInvalid, STATE> {
 
 impl<VALID, STATE> Clone for Entry<VALID, STATE>
 where
-    VALID: Copy,
+    VALID: Clone,
     STATE: Copy,
 {
     // Dirty modifiable state. Works on any other state to dirty them.
     fn clone(&self) -> Entry<VALID, STATE> {
         Entry {
-            valid: self.valid,
+            valid: self.valid.clone(),
             state: self.state,
             attrs: self.attrs.clone(),
         }
@@ -376,11 +397,13 @@ where
  * A series of unsafe transitions allowing entries to skip certain steps in
  * the process to facilitate eq/checks.
  */
-impl<VALID, STATE> Entry<VALID, STATE> {
+impl Entry<EntryInvalid, EntryCommitted> {
     #[cfg(test)]
     pub unsafe fn to_valid_new(self) -> Entry<EntryValid, EntryNew> {
         Entry {
-            valid: EntryValid,
+            valid: EntryValid {
+                uuid: self.get_uuid().expect("Invalid uuid").to_string(),
+            },
             state: EntryNew,
             attrs: self.attrs,
         }
@@ -388,22 +411,37 @@ impl<VALID, STATE> Entry<VALID, STATE> {
 }
 // Both invalid states can be reached from "entry -> invalidate"
 
-impl<VALID> Entry<VALID, EntryNew> {
+impl Entry<EntryInvalid, EntryNew> {
+    #[cfg(test)]
+    pub unsafe fn to_valid_new(self) -> Entry<EntryValid, EntryNew> {
+        Entry {
+            valid: EntryValid {
+                uuid: self.get_uuid().expect("Invalid uuid").to_string(),
+            },
+            state: EntryNew,
+            attrs: self.attrs,
+        }
+    }
+
     #[cfg(test)]
     pub unsafe fn to_valid_committed(self) -> Entry<EntryValid, EntryCommitted> {
         Entry {
-            valid: EntryValid,
+            valid: EntryValid {
+                uuid: self.get_uuid().expect("Invalid uuid").to_string(),
+            },
             state: EntryCommitted { id: 0 },
             attrs: self.attrs,
         }
     }
 }
 
-impl<VALID> Entry<VALID, EntryCommitted> {
+impl Entry<EntryInvalid, EntryCommitted> {
     #[cfg(test)]
     pub unsafe fn to_valid_committed(self) -> Entry<EntryValid, EntryCommitted> {
         Entry {
-            valid: EntryValid,
+            valid: EntryValid {
+                uuid: self.get_uuid().expect("Invalid uuid").to_string(),
+            },
             state: self.state,
             attrs: self.attrs,
         }
@@ -411,30 +449,42 @@ impl<VALID> Entry<VALID, EntryCommitted> {
 }
 
 impl Entry<EntryValid, EntryNew> {
+    #[cfg(test)]
+    pub unsafe fn to_valid_committed(self) -> Entry<EntryValid, EntryCommitted> {
+        Entry {
+            valid: self.valid,
+            state: EntryCommitted { id: 0 },
+            attrs: self.attrs,
+        }
+    }
+
     pub fn compare(&self, rhs: &Entry<EntryValid, EntryCommitted>) -> bool {
         self.attrs == rhs.attrs
     }
 }
 
 impl Entry<EntryValid, EntryCommitted> {
+    #[cfg(test)]
+    pub unsafe fn to_valid_committed(self) -> Entry<EntryValid, EntryCommitted> {
+        // NO-OP to satisfy macros.
+        self
+    }
+
     pub fn compare(&self, rhs: &Entry<EntryValid, EntryNew>) -> bool {
         self.attrs == rhs.attrs
     }
 
     pub fn to_tombstone(&self) -> Self {
         // Duplicate this to a tombstone entry.
-        let uuid_ava = self
-            .get_ava(&String::from("uuid"))
-            .expect("Corrupted entry!");
         let class_ava = vec!["object".to_string(), "tombstone".to_string()];
 
         let mut attrs_new: BTreeMap<String, Vec<String>> = BTreeMap::new();
 
-        attrs_new.insert("uuid".to_string(), uuid_ava.clone());
+        attrs_new.insert("uuid".to_string(), vec![self.valid.uuid.clone()]);
         attrs_new.insert("class".to_string(), class_ava);
 
         Entry {
-            valid: EntryValid,
+            valid: self.valid.clone(),
             state: self.state,
             attrs: attrs_new,
         }
@@ -445,12 +495,22 @@ impl Entry<EntryValid, EntryCommitted> {
     }
 
     pub fn from_dbentry(db_e: DbEntry, id: u64) -> Self {
+        let attrs = match db_e.ent {
+            DbEntryVers::V1(v1) => v1.attrs,
+        };
+
+        // TODO: Tidy this!
+        let uuid: String = match attrs.get("uuid") {
+            Some(vs) => vs.first(),
+            None => None,
+        }
+        .expect("NO UUID PRESENT CORRUPT")
+        .clone();
+
         Entry {
-            valid: EntryValid,
+            valid: EntryValid { uuid: uuid },
             state: EntryCommitted { id },
-            attrs: match db_e.ent {
-                DbEntryVers::V1(v1) => v1.attrs,
-            },
+            attrs: attrs,
         }
     }
 }
@@ -481,25 +541,8 @@ impl<STATE> Entry<EntryValid, STATE> {
         }
     }
 
-    /*
-    pub fn seal(self) -> Entry<EntryValid, EntryCommitted> {
-        Entry {
-            valid: self.valid,
-            state: EntryCommitted {
-                id: unimplemented!(),
-            },
-            attrs: self.attrs,
-        }
-    }
-    */
-
     pub fn get_uuid(&self) -> &String {
-        // TODO: Make this not unwrap!!!
-        self.attrs
-            .get("uuid")
-            .expect("UUID ATTR NOT PRESENT, INVALID ENTRY STATE!!!")
-            .first()
-            .expect("UUID VALUE NOT PRESENT, INVALID ENTRY STATE!!!")
+        &self.valid.uuid
     }
 
     // Assert if this filter matches the entry (no index)
