@@ -733,6 +733,20 @@ impl SchemaInner {
                     syntax: SyntaxType::REFERENCE_UUID,
                 },
             );
+            self.attributes.insert(
+                String::from("directmemberof"),
+                SchemaAttribute {
+                    name: String::from("directmemberof"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_DIRECTMEMBEROF)
+                        .expect("unable to parse static uuid"),
+                    description: String::from("reverse direct group membership of the object"),
+                    system: true,
+                    secret: false,
+                    multivalue: true,
+                    index: vec![IndexType::EQUALITY],
+                    syntax: SyntaxType::REFERENCE_UUID,
+                },
+            );
             // ssh_publickey // multi
             self.attributes.insert(
                 String::from("ssh_publickey"),

@@ -12,6 +12,7 @@ extern crate uuid;
 
 extern crate bytes;
 extern crate chrono;
+extern crate cookie;
 extern crate env_logger;
 
 extern crate regex;

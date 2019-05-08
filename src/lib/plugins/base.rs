@@ -243,12 +243,12 @@ impl Plugin for Base {
 
 #[cfg(test)]
 mod tests {
-    #[macro_use]
-    use crate::plugins::Plugin;
+    // #[macro_use]
+    // use crate::plugins::Plugin;
     use crate::entry::{Entry, EntryInvalid, EntryNew};
     use crate::error::OperationError;
     use crate::filter::Filter;
-    use crate::modify::{Modify, ModifyInvalid, ModifyList};
+    use crate::modify::{Modify, ModifyList};
     use crate::server::QueryServerReadTransaction;
     use crate::server::QueryServerWriteTransaction;
 

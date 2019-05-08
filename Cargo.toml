@@ -1,10 +1,10 @@
-cargo-features = ["default-run"]
+# cargo-features = ["default-run"]
 
 [package]
 name = "rsidm"
 version = "0.1.0"
 authors = ["William Brown <william@blackhats.net.au>"]
-default-run = "rsidm_core"
+# default-run = "rsidm_core"
 edition = "2018"
 
 
@@ -33,6 +33,7 @@ env_logger = "0.5"
 reqwest = "0.9"
 
 chrono = "0.4"
+cookie = "0.11"
 regex = "1"
 lazy_static = "1.2.0"
 

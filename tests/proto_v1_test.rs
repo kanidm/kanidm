@@ -4,13 +4,13 @@ use actix::prelude::*;
 extern crate rsidm;
 use rsidm::config::Configuration;
 use rsidm::core::create_server_core;
-use rsidm::proto_v1::{CreateRequest, Entry, OperationResponse, SearchRequest, SearchResponse};
+use rsidm::proto_v1::{CreateRequest, Entry, OperationResponse};
 
 extern crate reqwest;
 
 extern crate futures;
-use futures::future;
-use futures::future::Future;
+// use futures::future;
+// use futures::future::Future;
 
 use std::sync::mpsc;
 use std::thread;

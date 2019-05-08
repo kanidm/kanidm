@@ -609,12 +609,14 @@ impl<'a> QueryServerWriteTransaction<'a> {
             Err(e) => return Err(OperationError::SchemaViolation(e)),
         };
 
-        let mut candidates: Result<Vec<Entry<EntryInvalid, EntryCommitted>>, _> = pre_candidates
-            .into_iter()
-            .map(|er| er.invalidate().apply_modlist(&modlist))
+        let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
+            .iter()
+            .map(|er| er.clone().invalidate())
             .collect();
 
-        let mut candidates = try_audit!(au, candidates);
+        candidates
+            .iter_mut()
+            .for_each(|er| er.apply_modlist(&modlist));
 
         audit_log!(au, "delete: candidates -> {:?}", candidates);
 
@@ -807,12 +809,16 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Clone a set of writeables.
         // Apply the modlist -> Remember, we have a set of origs
         // and the new modified ents.
-        let mut candidates: Result<Vec<Entry<EntryInvalid, EntryCommitted>>, _> = pre_candidates
-            .into_iter()
-            .map(|er| er.invalidate().apply_modlist(&modlist))
+        let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
+            .iter()
+            .map(|er| er.clone().invalidate())
             .collect();
 
-        let mut candidates = try_audit!(au, candidates);
+        candidates
+            .iter_mut()
+            .for_each(|er| er.apply_modlist(&modlist));
+
+        // let mut candidates = try_audit!(au, candidates);
 
         audit_log!(au, "modify: candidates -> {:?}", candidates);
 
@@ -833,6 +839,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // optimisations, this could be premature - so we for now, just
         // do the CORRECT thing and recommit as we may find later we always
         // want to add CSN's or other.
+        //
+        // memberOf actually wants the pre cand list and the norm_cand list to see what
+        // changed. Could be optimised, but this is correct still ...
 
         let res: Result<Vec<Entry<EntryValid, EntryCommitted>>, SchemaError> = candidates
             .into_iter()
@@ -860,8 +869,14 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Post Plugins
         let mut audit_plugin_post = AuditScope::new("plugin_post_modify");
-        let plug_post_res =
-            Plugins::run_post_modify(&mut audit_plugin_post, &self, &norm_cand, me, &modlist);
+        let plug_post_res = Plugins::run_post_modify(
+            &mut audit_plugin_post,
+            &self,
+            &pre_candidates,
+            &norm_cand,
+            me,
+            &modlist,
+        );
         au.append_scope(audit_plugin_post);
 
         if plug_post_res.is_err() {
@@ -1127,9 +1142,7 @@ mod tests {
     use crate::proto_v1::Filter as ProtoFilter;
     use crate::proto_v1::Modify as ProtoModify;
     use crate::proto_v1::ModifyList as ProtoModifyList;
-    use crate::proto_v1::{
-        DeleteRequest, ModifyRequest, ReviveRecycledRequest, SearchRecycledRequest, SearchRequest,
-    };
+    use crate::proto_v1::{DeleteRequest, ModifyRequest, ReviveRecycledRequest};
     use crate::schema::Schema;
     use crate::server::{QueryServer, QueryServerReadTransaction};
 

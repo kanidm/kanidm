@@ -474,7 +474,7 @@ impl BackendWriteTransaction {
         })
     }
 
-    pub fn backup(&self, audit: &mut AuditScope, dstPath: &str) -> Result<(), OperationError> {
+    pub fn backup(&self, audit: &mut AuditScope, dst_path: &str) -> Result<(), OperationError> {
         // load all entries into RAM, may need to change this later
         // if the size of the database compared to RAM is an issue
         let mut raw_entries: Vec<IdEntry> = Vec::new();
@@ -512,16 +512,16 @@ impl BackendWriteTransaction {
 
         let entries = entries?;
 
-        let mut serializedEntries = serde_json::to_string_pretty(&entries);
+        let serialized_entries = serde_json::to_string_pretty(&entries);
 
-        let serializedEntriesStr = try_audit!(
+        let serialized_entries_str = try_audit!(
             audit,
-            serializedEntries,
+            serialized_entries,
             "serde error {:?}",
             OperationError::SerdeJsonError
         );
 
-        let result = fs::write(dstPath, serializedEntriesStr);
+        let result = fs::write(dst_path, serialized_entries_str);
 
         try_audit!(
             audit,
@@ -545,28 +545,26 @@ impl BackendWriteTransaction {
         Ok(())
     }
 
-    pub fn restore(&self, audit: &mut AuditScope, srcPath: &str) -> Result<(), OperationError> {
+    pub fn restore(&self, audit: &mut AuditScope, src_path: &str) -> Result<(), OperationError> {
         // load all entries into RAM, may need to change this later
         // if the size of the database compared to RAM is an issue
-        let mut serializedStringOption = fs::read_to_string(srcPath);
+        let serialized_string_option = fs::read_to_string(src_path);
 
-        let mut serializedString = try_audit!(
+        let serialized_string = try_audit!(
             audit,
-            serializedStringOption,
+            serialized_string_option,
             "fs::read_to_string {:?}",
             OperationError::FsError
         );
 
-        unsafe {
-            self.purge(audit);
-        }
+        try_audit!(audit, unsafe { self.purge(audit) });
 
-        let entriesOption: Result<Vec<DbEntry>, serde_json::Error> =
-            serde_json::from_str(&serializedString);
+        let entries_option: Result<Vec<DbEntry>, serde_json::Error> =
+            serde_json::from_str(&serialized_string);
 
         let entries = try_audit!(
             audit,
-            entriesOption,
+            entries_option,
             "serde_json error {:?}",
             OperationError::SerdeJsonError
         );

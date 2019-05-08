@@ -43,4 +43,5 @@ pub enum ConsistencyError {
     UuidIndexCorrupt(String),
     UuidNotUnique(String),
     RefintNotUpheld(u64),
+    MemberOfInvalid(u64),
 }

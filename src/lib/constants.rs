@@ -61,6 +61,7 @@ pub static UUID_SCHEMA_ATTR_MEMBEROF: &'static str = "2ff1abc8-2f64-4f41-9e3d-33
 pub static UUID_SCHEMA_ATTR_SSH_PUBLICKEY: &'static str = "52f2f13f-d35c-4cca-9f43-90a12c968f72";
 pub static UUID_SCHEMA_ATTR_PASSWORD: &'static str = "a5121082-be54-4624-a307-383839b0366b";
 pub static UUID_SCHEMA_ATTR_MEMBER: &'static str = "cbb7cb55-1d48-4b89-8da7-8d570e755b47";
+pub static UUID_SCHEMA_ATTR_DIRECTMEMBEROF: &'static str = "63f6a766-3838-48e3-bd78-0fb1152b862f";
 pub static UUID_SCHEMA_ATTR_VERSION: &'static str = "896d5095-b3ae-451e-a91f-4314165b5395";
 pub static UUID_SCHEMA_ATTR_DOMAIN: &'static str = "c9926716-eaaa-4c83-a1ab-1ed4372a7491";
 
