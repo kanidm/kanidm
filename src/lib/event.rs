@@ -63,9 +63,70 @@ impl SearchResult {
 // At the top we get "event types" and they contain the needed
 // actions, and a generic event component.
 
+#[derive(Debug, Clone)]
+pub enum EventOrigin {
+    // External event, needs a UUID associated! Perhaps even an Entry/User to improve ACP checks?
+    User(String),
+    // Probably will bypass access profiles in many cases ...
+    Internal,
+    // Not used yet, but indicates that this change or event was triggered by a replication
+    // event - may not even be needed ...
+    // Replication,
+}
+
+#[derive(Debug, Clone)]
+pub struct Event {
+    // The event's initiator aka origin source.
+    // This importantly, is used for access control!
+    pub origin: EventOrigin,
+}
+
+impl Event {
+    pub fn from_request(
+        _audit: &mut AuditScope,
+        // _qs: &QueryServerTransaction,
+        user_uuid: &str,
+    ) -> Result<Self, OperationError> {
+        // Do we need to check or load the entry from the user_uuid?
+        // In the future, probably yes.
+        //
+        // For now, no.
+        Ok(Event {
+            origin: EventOrigin::User(user_uuid.to_string()),
+        })
+    }
+
+    pub fn from_internal() -> Self {
+        Event {
+            origin: EventOrigin::Internal,
+        }
+    }
+
+    #[cfg(test)]
+    pub fn from_impersonate_uuid(uuid: &str) -> Self {
+        Event {
+            origin: EventOrigin::User(uuid.to_string()),
+        }
+    }
+
+    pub fn from_impersonate(event: &Self) -> Self {
+        // TODO: In the future, we could change some of this data
+        // to reflect the fact we are infact impersonating the action
+        // rather than the user explicitly requesting it. Could matter
+        // to audits and logs to determine what happened.
+        event.clone()
+    }
+
+    /*
+    pub fn is_internal(&self) -> bool {
+        match
+    }
+    */
+}
+
 #[derive(Debug)]
 pub struct SearchEvent {
-    pub internal: bool,
+    pub event: Event,
     pub filter: Filter<FilterInvalid>,
     // TODO: Add list of attributes to request
 }
@@ -78,7 +139,11 @@ impl SearchEvent {
     ) -> Result<Self, OperationError> {
         match Filter::from_ro(audit, &request.filter, qs) {
             Ok(f) => Ok(SearchEvent {
-                internal: false,
+                event: Event::from_request(
+                    audit,
+                    //qs,
+                    request.user_uuid.as_str(),
+                )?,
                 filter: Filter::new_ignore_hidden(f),
             }),
             Err(e) => Err(e),
@@ -86,9 +151,17 @@ impl SearchEvent {
     }
 
     // Just impersonate the account with no filter changes.
-    pub fn new_impersonate(filter: Filter<FilterInvalid>) -> Self {
+    #[cfg(test)]
+    pub fn new_impersonate_uuid(user_uuid: &str, filter: Filter<FilterInvalid>) -> Self {
         SearchEvent {
-            internal: false,
+            event: Event::from_impersonate_uuid(user_uuid),
+            filter: filter,
+        }
+    }
+
+    pub fn new_impersonate(event: &Event, filter: Filter<FilterInvalid>) -> Self {
+        SearchEvent {
+            event: Event::from_impersonate(event),
             filter: filter,
         }
     }
@@ -101,33 +174,38 @@ impl SearchEvent {
     ) -> Result<Self, OperationError> {
         match Filter::from_ro(audit, &request.filter, qs) {
             Ok(f) => Ok(SearchEvent {
+                event: Event::from_request(
+                    audit,
+                    // qs,
+                    request.user_uuid.as_str(),
+                )?,
                 filter: Filter::new_recycled(f),
-                internal: false,
             }),
             Err(e) => Err(e),
         }
     }
 
     #[cfg(test)]
-    pub fn new_rec_impersonate(filter: Filter<FilterInvalid>) -> Self {
+    /* Impersonate a request for recycled objects */
+    pub fn new_rec_impersonate_uuid(user_uuid: &str, filter: Filter<FilterInvalid>) -> Self {
         SearchEvent {
-            internal: false,
+            event: Event::from_impersonate_uuid(user_uuid),
             filter: Filter::new_recycled(filter),
         }
     }
 
     #[cfg(test)]
-    /* Impersonate an external request */
-    pub fn new_ext_impersonate(filter: Filter<FilterInvalid>) -> Self {
+    /* Impersonate an external request AKA filter ts + recycle */
+    pub fn new_ext_impersonate_uuid(user_uuid: &str, filter: Filter<FilterInvalid>) -> Self {
         SearchEvent {
-            internal: false,
+            event: Event::from_impersonate_uuid(user_uuid),
             filter: Filter::new_ignore_hidden(filter),
         }
     }
 
     pub fn new_internal(filter: Filter<FilterInvalid>) -> Self {
         SearchEvent {
-            internal: true,
+            event: Event::from_internal(),
             filter: filter,
         }
     }
@@ -138,12 +216,12 @@ impl SearchEvent {
 // request is internal or not.
 #[derive(Debug)]
 pub struct CreateEvent {
+    pub event: Event,
     // This may still actually change to handle the *raw* nature of the
     // input that we plan to parse.
     pub entries: Vec<Entry<EntryInvalid, EntryNew>>,
-    /// Is the CreateEvent from an internal or external source?
-    /// This may affect which plugins are run ...
-    pub internal: bool,
+    // Is the CreateEvent from an internal or external source?
+    // This may affect which plugins are run ...
 }
 
 // FIXME: Should this actually be in createEvent handler?
@@ -163,7 +241,11 @@ impl CreateEvent {
                 // From ProtoEntry -> Entry
                 // What is the correct consuming iterator here? Can we
                 // even do that?
-                internal: false,
+                event: Event::from_request(
+                    audit,
+                    // qs,
+                    request.user_uuid.as_str(),
+                )?,
                 entries: entries,
             }),
             Err(e) => Err(e),
@@ -172,16 +254,19 @@ impl CreateEvent {
 
     // Is this an internal only function?
     #[cfg(test)]
-    pub fn from_vec(entries: Vec<Entry<EntryInvalid, EntryNew>>) -> Self {
+    pub fn new_impersonate_uuid(
+        user_uuid: &str,
+        entries: Vec<Entry<EntryInvalid, EntryNew>>,
+    ) -> Self {
         CreateEvent {
-            internal: false,
+            event: Event::from_impersonate_uuid(user_uuid),
             entries: entries,
         }
     }
 
     pub fn new_internal(entries: Vec<Entry<EntryInvalid, EntryNew>>) -> Self {
         CreateEvent {
-            internal: true,
+            event: Event::from_internal(),
             entries: entries,
         }
     }
@@ -189,23 +274,23 @@ impl CreateEvent {
 
 #[derive(Debug)]
 pub struct ExistsEvent {
+    pub event: Event,
     pub filter: Filter<FilterInvalid>,
-    pub internal: bool,
 }
 
 impl ExistsEvent {
     pub fn new_internal(filter: Filter<FilterInvalid>) -> Self {
         ExistsEvent {
+            event: Event::from_internal(),
             filter: filter,
-            internal: true,
         }
     }
 }
 
 #[derive(Debug)]
 pub struct DeleteEvent {
+    pub event: Event,
     pub filter: Filter<FilterInvalid>,
-    pub internal: bool,
 }
 
 impl DeleteEvent {
@@ -216,34 +301,38 @@ impl DeleteEvent {
     ) -> Result<Self, OperationError> {
         match Filter::from_rw(audit, &request.filter, qs) {
             Ok(f) => Ok(DeleteEvent {
+                event: Event::from_request(
+                    audit,
+                    // qs,
+                    request.user_uuid.as_str(),
+                )?,
                 filter: Filter::new_ignore_hidden(f),
-                internal: false,
             }),
             Err(e) => Err(e),
         }
     }
 
     #[cfg(test)]
-    pub fn from_filter(filter: Filter<FilterInvalid>) -> Self {
+    pub fn new_impersonate_uuid(user_uuid: &str, filter: Filter<FilterInvalid>) -> Self {
         DeleteEvent {
+            event: Event::from_impersonate_uuid(user_uuid),
             filter: filter,
-            internal: false,
         }
     }
 
     pub fn new_internal(filter: Filter<FilterInvalid>) -> Self {
         DeleteEvent {
+            event: Event::from_internal(),
             filter: filter,
-            internal: true,
         }
     }
 }
 
 #[derive(Debug)]
 pub struct ModifyEvent {
+    pub event: Event,
     pub filter: Filter<FilterInvalid>,
     pub modlist: ModifyList<ModifyInvalid>,
-    pub internal: bool,
 }
 
 impl ModifyEvent {
@@ -255,9 +344,13 @@ impl ModifyEvent {
         match Filter::from_rw(audit, &request.filter, qs) {
             Ok(f) => match ModifyList::from(audit, &request.modlist, qs) {
                 Ok(m) => Ok(ModifyEvent {
+                    event: Event::from_request(
+                        audit,
+                        // qs,
+                        request.user_uuid.as_str(),
+                    )?,
                     filter: Filter::new_ignore_hidden(f),
                     modlist: m,
-                    internal: false,
                 }),
                 Err(e) => Err(e),
             },
@@ -266,37 +359,44 @@ impl ModifyEvent {
         }
     }
 
-    #[cfg(test)]
-    pub fn from_filter(filter: Filter<FilterInvalid>, modlist: ModifyList<ModifyInvalid>) -> Self {
-        ModifyEvent {
-            filter: filter,
-            modlist: modlist,
-            internal: false,
-        }
-    }
-
     pub fn new_internal(filter: Filter<FilterInvalid>, modlist: ModifyList<ModifyInvalid>) -> Self {
         ModifyEvent {
+            event: Event::from_internal(),
             filter: filter,
             modlist: modlist,
-            internal: true,
         }
     }
 
-    pub fn new_impersonate(
+    #[cfg(test)]
+    pub fn new_impersonate_uuid(
+        user_uuid: &str,
         filter: Filter<FilterInvalid>,
         modlist: ModifyList<ModifyInvalid>,
     ) -> Self {
         ModifyEvent {
+            event: Event::from_impersonate_uuid(user_uuid),
             filter: filter,
             modlist: modlist,
-            internal: false,
+        }
+    }
+
+    pub fn new_impersonate(
+        event: &Event,
+        filter: Filter<FilterInvalid>,
+        modlist: ModifyList<ModifyInvalid>,
+    ) -> Self {
+        ModifyEvent {
+            event: Event::from_impersonate(event),
+            filter: filter,
+            modlist: modlist,
         }
     }
 }
 
 #[derive(Debug)]
-pub struct AuthEvent {}
+pub struct AuthEvent {
+    // pub event: Event,
+}
 
 impl AuthEvent {
     pub fn from_request(_request: AuthRequest) -> Self {
@@ -317,7 +417,9 @@ impl AuthResult {
 // TODO: Are these part of the proto?
 
 #[derive(Debug)]
-pub struct PurgeTombstoneEvent {}
+pub struct PurgeTombstoneEvent {
+    pub event: Event,
+}
 
 impl Message for PurgeTombstoneEvent {
     type Result = ();
@@ -325,12 +427,16 @@ impl Message for PurgeTombstoneEvent {
 
 impl PurgeTombstoneEvent {
     pub fn new() -> Self {
-        PurgeTombstoneEvent {}
+        PurgeTombstoneEvent {
+            event: Event::from_internal(),
+        }
     }
 }
 
 #[derive(Debug)]
-pub struct PurgeRecycledEvent {}
+pub struct PurgeRecycledEvent {
+    pub event: Event,
+}
 
 impl Message for PurgeRecycledEvent {
     type Result = ();
@@ -338,14 +444,16 @@ impl Message for PurgeRecycledEvent {
 
 impl PurgeRecycledEvent {
     pub fn new() -> Self {
-        PurgeRecycledEvent {}
+        PurgeRecycledEvent {
+            event: Event::from_internal(),
+        }
     }
 }
 
 #[derive(Debug)]
 pub struct ReviveRecycledEvent {
+    pub event: Event,
     pub filter: Filter<FilterInvalid>,
-    pub internal: bool,
 }
 
 impl Message for ReviveRecycledEvent {
@@ -360,8 +468,12 @@ impl ReviveRecycledEvent {
     ) -> Result<Self, OperationError> {
         match Filter::from_rw(audit, &request.filter, qs) {
             Ok(f) => Ok(ReviveRecycledEvent {
+                event: Event::from_request(
+                    audit,
+                    // qs,
+                    request.user_uuid.as_str(),
+                )?,
                 filter: Filter::new_recycled(f),
-                internal: false,
             }),
             Err(e) => Err(e),
         }

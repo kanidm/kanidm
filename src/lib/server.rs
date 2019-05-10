@@ -10,7 +10,8 @@ use crate::constants::{JSON_ANONYMOUS_V1, JSON_SYSTEM_INFO_V1};
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
 use crate::error::{ConsistencyError, OperationError, SchemaError};
 use crate::event::{
-    CreateEvent, DeleteEvent, ExistsEvent, ModifyEvent, ReviveRecycledEvent, SearchEvent,
+    CreateEvent, DeleteEvent, Event, EventOrigin, ExistsEvent, ModifyEvent, ReviveRecycledEvent,
+    SearchEvent,
 };
 use crate::filter::{Filter, FilterInvalid};
 use crate::modify::{Modify, ModifyInvalid, ModifyList};
@@ -245,9 +246,10 @@ pub trait QueryServerReadTransaction {
         &self,
         audit: &mut AuditScope,
         filter: Filter<FilterInvalid>,
+        event: &Event,
     ) -> Result<Vec<Entry<EntryValid, EntryCommitted>>, OperationError> {
         let mut audit_int = AuditScope::new("impersonate_search");
-        let se = SearchEvent::new_impersonate(filter);
+        let se = SearchEvent::new_impersonate(event, filter);
         let res = self.search(&mut audit_int, &se);
         audit.append_scope(audit_int);
         res
@@ -577,7 +579,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // We only need to retrieve uuid though ...
 
         // Now, delete only what you can see
-        let pre_candidates = match self.impersonate_search(au, de.filter.clone()) {
+        let pre_candidates = match self.impersonate_search(au, de.filter.clone(), &de.event) {
             Ok(results) => results,
             Err(e) => {
                 audit_log!(au, "delete: error in pre-candidate selection {:?}", e);
@@ -744,7 +746,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         )]);
 
         // Now impersonate the modify
-        self.impersonate_modify(au, re.filter.clone(), modlist)
+        self.impersonate_modify(au, re.filter.clone(), modlist, &re.event)
     }
 
     pub fn modify(&self, au: &mut AuditScope, me: &ModifyEvent) -> Result<(), OperationError> {
@@ -774,7 +776,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // TODO: Fix this filter clone ....
         // Likely this will be fixed if search takes &filter, and then clone
         // to normalise, instead of attempting to mut the filter on norm.
-        let pre_candidates = match self.impersonate_search(au, me.filter.clone()) {
+        let pre_candidates = match self.impersonate_search(au, me.filter.clone(), &me.event) {
             Ok(results) => results,
             Err(e) => {
                 audit_log!(au, "modify: error in pre-candidate selection {:?}", e);
@@ -783,20 +785,23 @@ impl<'a> QueryServerWriteTransaction<'a> {
         };
 
         if pre_candidates.len() == 0 {
-            if me.internal {
-                audit_log!(
-                    au,
-                    "modify: no candidates match filter ... continuing {:?}",
-                    me.filter
-                );
-                return Ok(());
-            } else {
-                audit_log!(
-                    au,
-                    "modify: no candidates match filter, failure {:?}",
-                    me.filter
-                );
-                return Err(OperationError::NoMatchingEntries);
+            match me.event.origin {
+                EventOrigin::Internal => {
+                    audit_log!(
+                        au,
+                        "modify: no candidates match filter ... continuing {:?}",
+                        me.filter
+                    );
+                    return Ok(());
+                }
+                _ => {
+                    audit_log!(
+                        au,
+                        "modify: no candidates match filter, failure {:?}",
+                        me.filter
+                    );
+                    return Err(OperationError::NoMatchingEntries);
+                }
             }
         };
 
@@ -931,9 +936,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
         audit: &mut AuditScope,
         filter: Filter<FilterInvalid>,
         modlist: ModifyList<ModifyInvalid>,
+        event: &Event,
     ) -> Result<(), OperationError> {
         let mut audit_int = AuditScope::new("impersonate_modify");
-        let me = ModifyEvent::new_impersonate(filter, modlist);
+        let me = ModifyEvent::new_impersonate(event, filter, modlist);
         let res = self.modify(&mut audit_int, &me);
         audit.append_scope(audit_int);
         res
@@ -1128,6 +1134,7 @@ mod tests {
 
     use crate::audit::AuditScope;
     use crate::be::Backend;
+    use crate::constants::UUID_ADMIN;
     use crate::entry::{Entry, EntryInvalid, EntryNew};
     use crate::error::{OperationError, SchemaError};
     use crate::event::{CreateEvent, DeleteEvent, ModifyEvent, ReviveRecycledEvent, SearchEvent};
@@ -1168,8 +1175,8 @@ mod tests {
             let server_txn = server.write();
             let filt = Filter::Pres(String::from("name"));
 
-            let se1 = SearchEvent::new_impersonate(filt.clone());
-            let se2 = SearchEvent::new_impersonate(filt);
+            let se1 = SearchEvent::new_impersonate_uuid(UUID_ADMIN, filt.clone());
+            let se2 = SearchEvent::new_impersonate_uuid(UUID_ADMIN, filt);
 
             let e: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
                 r#"{
@@ -1186,7 +1193,7 @@ mod tests {
             )
             .expect("json failure");
 
-            let ce = CreateEvent::from_vec(vec![e.clone()]);
+            let ce = CreateEvent::new_internal(vec![e.clone()]);
 
             let r1 = server_txn.search(audit, &se1).expect("search failure");
             assert!(r1.len() == 0);
@@ -1270,20 +1277,21 @@ mod tests {
             )
             .expect("json failure");
 
-            let ce = CreateEvent::from_vec(vec![e1.clone(), e2.clone()]);
+            let ce = CreateEvent::new_internal(vec![e1.clone(), e2.clone()]);
 
             let cr = server_txn.create(audit, &ce);
             assert!(cr.is_ok());
 
             // Empty Modlist (filter is valid)
-            let me_emp = ModifyEvent::from_filter(
+            let me_emp = ModifyEvent::new_internal(
                 Filter::Pres(String::from("class")),
                 ModifyList::new_list(vec![]),
             );
             assert!(server_txn.modify(audit, &me_emp) == Err(OperationError::EmptyRequest));
 
             // Mod changes no objects
-            let me_nochg = ModifyEvent::from_filter(
+            let me_nochg = ModifyEvent::new_impersonate_uuid(
+                UUID_ADMIN,
                 Filter::Eq(String::from("name"), String::from("flarbalgarble")),
                 ModifyList::new_list(vec![Modify::Present(
                     String::from("description"),
@@ -1293,7 +1301,7 @@ mod tests {
             assert!(server_txn.modify(audit, &me_nochg) == Err(OperationError::NoMatchingEntries));
 
             // Filter is invalid to schema
-            let me_inv_f = ModifyEvent::from_filter(
+            let me_inv_f = ModifyEvent::new_internal(
                 Filter::Eq(String::from("tnanuanou"), String::from("Flarbalgarble")),
                 ModifyList::new_list(vec![Modify::Present(
                     String::from("description"),
@@ -1308,7 +1316,7 @@ mod tests {
             );
 
             // Mod is invalid to schema
-            let me_inv_m = ModifyEvent::from_filter(
+            let me_inv_m = ModifyEvent::new_internal(
                 Filter::Pres(String::from("class")),
                 ModifyList::new_list(vec![Modify::Present(
                     String::from("htnaonu"),
@@ -1323,7 +1331,7 @@ mod tests {
             );
 
             // Mod single object
-            let me_sin = ModifyEvent::from_filter(
+            let me_sin = ModifyEvent::new_internal(
                 Filter::Eq(String::from("name"), String::from("testperson2")),
                 ModifyList::new_list(vec![Modify::Present(
                     String::from("description"),
@@ -1333,7 +1341,7 @@ mod tests {
             assert!(server_txn.modify(audit, &me_sin).is_ok());
 
             // Mod multiple object
-            let me_mult = ModifyEvent::from_filter(
+            let me_mult = ModifyEvent::new_internal(
                 Filter::Or(vec![
                     Filter::Eq(String::from("name"), String::from("testperson1")),
                     Filter::Eq(String::from("name"), String::from("testperson2")),
@@ -1371,13 +1379,13 @@ mod tests {
             )
             .expect("json failure");
 
-            let ce = CreateEvent::from_vec(vec![e1.clone()]);
+            let ce = CreateEvent::new_internal(vec![e1.clone()]);
 
             let cr = server_txn.create(audit, &ce);
             assert!(cr.is_ok());
 
             // Add class but no values
-            let me_sin = ModifyEvent::from_filter(
+            let me_sin = ModifyEvent::new_internal(
                 Filter::Eq(String::from("name"), String::from("testperson1")),
                 ModifyList::new_list(vec![Modify::Present(
                     String::from("class"),
@@ -1387,7 +1395,7 @@ mod tests {
             assert!(server_txn.modify(audit, &me_sin).is_err());
 
             // Add multivalue where not valid
-            let me_sin = ModifyEvent::from_filter(
+            let me_sin = ModifyEvent::new_internal(
                 Filter::Eq(String::from("name"), String::from("testperson1")),
                 ModifyList::new_list(vec![Modify::Present(
                     String::from("name"),
@@ -1397,7 +1405,7 @@ mod tests {
             assert!(server_txn.modify(audit, &me_sin).is_err());
 
             // add class and valid values?
-            let me_sin = ModifyEvent::from_filter(
+            let me_sin = ModifyEvent::new_internal(
                 Filter::Eq(String::from("name"), String::from("testperson1")),
                 ModifyList::new_list(vec![
                     Modify::Present(String::from("class"), String::from("system_info")),
@@ -1408,7 +1416,7 @@ mod tests {
             assert!(server_txn.modify(audit, &me_sin).is_ok());
 
             // Replace a value
-            let me_sin = ModifyEvent::from_filter(
+            let me_sin = ModifyEvent::new_internal(
                 Filter::Eq(String::from("name"), String::from("testperson1")),
                 ModifyList::new_list(vec![
                     Modify::Purged("name".to_string()),
@@ -1470,31 +1478,31 @@ mod tests {
             )
             .expect("json failure");
 
-            let ce = CreateEvent::from_vec(vec![e1.clone(), e2.clone(), e3.clone()]);
+            let ce = CreateEvent::new_internal(vec![e1.clone(), e2.clone(), e3.clone()]);
 
             let cr = server_txn.create(audit, &ce);
             assert!(cr.is_ok());
 
             // Delete filter is syntax invalid
-            let de_inv = DeleteEvent::from_filter(Filter::Pres(String::from("nhtoaunaoehtnu")));
+            let de_inv = DeleteEvent::new_internal(Filter::Pres(String::from("nhtoaunaoehtnu")));
             assert!(server_txn.delete(audit, &de_inv).is_err());
 
             // Delete deletes nothing
-            let de_empty = DeleteEvent::from_filter(Filter::Eq(
+            let de_empty = DeleteEvent::new_internal(Filter::Eq(
                 String::from("uuid"),
                 String::from("cc8e95b4-c24f-4d68-ba54-000000000000"),
             ));
             assert!(server_txn.delete(audit, &de_empty).is_err());
 
             // Delete matches one
-            let de_sin = DeleteEvent::from_filter(Filter::Eq(
+            let de_sin = DeleteEvent::new_internal(Filter::Eq(
                 String::from("name"),
                 String::from("testperson3"),
             ));
             assert!(server_txn.delete(audit, &de_sin).is_ok());
 
             // Delete matches many
-            let de_mult = DeleteEvent::from_filter(Filter::Eq(
+            let de_mult = DeleteEvent::new_internal(Filter::Eq(
                 String::from("description"),
                 String::from("testperson"),
             ));
@@ -1523,14 +1531,18 @@ mod tests {
                         String::from("class"),
                         String::from("tombstone"),
                     )]),
+                    UUID_ADMIN,
                 ),
                 &server_txn,
             )
             .expect("modify event create failed");
-            let de_ts =
-                DeleteEvent::from_request(audit, DeleteRequest::new(filt_ts.clone()), &server_txn)
-                    .expect("delete event create failed");
-            let se_ts = SearchEvent::new_ext_impersonate(filt_i_ts.clone());
+            let de_ts = DeleteEvent::from_request(
+                audit,
+                DeleteRequest::new(filt_ts.clone(), UUID_ADMIN),
+                &server_txn,
+            )
+            .expect("delete event create failed");
+            let se_ts = SearchEvent::new_ext_impersonate_uuid(UUID_ADMIN, filt_i_ts.clone());
 
             // First, create a tombstone
             let e_ts: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
@@ -1545,7 +1557,7 @@ mod tests {
             )
             .expect("json failure");
 
-            let ce = CreateEvent::from_vec(vec![e_ts]);
+            let ce = CreateEvent::new_internal(vec![e_ts]);
             let cr = server_txn.create(audit, &ce);
             assert!(cr.is_ok());
 
@@ -1604,23 +1616,27 @@ mod tests {
                         String::from("class"),
                         String::from("recycled"),
                     )]),
+                    UUID_ADMIN,
                 ),
                 &server_txn,
             )
             .expect("modify event create failed");
-            let de_rc =
-                DeleteEvent::from_request(audit, DeleteRequest::new(filt_rc.clone()), &server_txn)
-                    .expect("delete event create failed");
-            let se_rc = SearchEvent::new_ext_impersonate(filt_i_rc.clone());
+            let de_rc = DeleteEvent::from_request(
+                audit,
+                DeleteRequest::new(filt_rc.clone(), UUID_ADMIN),
+                &server_txn,
+            )
+            .expect("delete event create failed");
+            let se_rc = SearchEvent::new_ext_impersonate_uuid(UUID_ADMIN, filt_i_rc.clone());
 
-            let sre_rc = SearchEvent::new_rec_impersonate(filt_i_rc.clone());
+            let sre_rc = SearchEvent::new_rec_impersonate_uuid(UUID_ADMIN, filt_i_rc.clone());
 
             let rre_rc = ReviveRecycledEvent::from_request(
                 audit,
-                ReviveRecycledRequest::new(ProtoFilter::Eq(
-                    "name".to_string(),
-                    "testperson1".to_string(),
-                )),
+                ReviveRecycledRequest::new(
+                    ProtoFilter::Eq("name".to_string(), "testperson1".to_string()),
+                    UUID_ADMIN,
+                ),
                 &server_txn,
             )
             .expect("revive recycled create failed");
@@ -1656,7 +1672,7 @@ mod tests {
             )
             .expect("json failure");
 
-            let ce = CreateEvent::from_vec(vec![e1, e2]);
+            let ce = CreateEvent::new_internal(vec![e1, e2]);
             let cr = server_txn.create(audit, &ce);
             assert!(cr.is_ok());
 
@@ -1733,19 +1749,19 @@ mod tests {
             }"#,
             )
             .expect("json failure");
-            let ce = CreateEvent::from_vec(vec![e1]);
+            let ce = CreateEvent::new_internal(vec![e1]);
 
             let cr = server_txn.create(audit, &ce);
             assert!(cr.is_ok());
             // Delete and ensure they became recycled.
-            let de_sin = DeleteEvent::from_filter(Filter::Eq(
+            let de_sin = DeleteEvent::new_internal(Filter::Eq(
                 String::from("name"),
                 String::from("testperson1"),
             ));
             assert!(server_txn.delete(audit, &de_sin).is_ok());
             // Can in be seen by special search? (external recycle search)
             let filt_rc = Filter::Eq(String::from("class"), String::from("recycled"));
-            let sre_rc = SearchEvent::new_rec_impersonate(filt_rc.clone());
+            let sre_rc = SearchEvent::new_rec_impersonate_uuid(UUID_ADMIN, filt_rc.clone());
             let r2 = server_txn.search(audit, &sre_rc).expect("search failed");
             assert!(r2.len() == 1);
 
@@ -1777,7 +1793,7 @@ mod tests {
             }"#,
             )
             .expect("json failure");
-            let ce = CreateEvent::from_vec(vec![e1]);
+            let ce = CreateEvent::new_internal(vec![e1]);
             let cr = server_txn.create(audit, &ce);
             assert!(cr.is_ok());
 
@@ -1815,7 +1831,7 @@ mod tests {
             }"#,
             )
             .expect("json failure");
-            let ce = CreateEvent::from_vec(vec![e1]);
+            let ce = CreateEvent::new_internal(vec![e1]);
             let cr = server_txn.create(audit, &ce);
             assert!(cr.is_ok());
 
@@ -1855,7 +1871,7 @@ mod tests {
             }"#,
             )
             .expect("json failure");
-            let ce = CreateEvent::from_vec(vec![e1]);
+            let ce = CreateEvent::new_internal(vec![e1]);
             let cr = server_txn.create(audit, &ce);
             assert!(cr.is_ok());
 

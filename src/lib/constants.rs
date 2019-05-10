@@ -1,6 +1,6 @@
 pub static PURGE_TIMEOUT: u64 = 3600;
 
-pub static _UUID_ADMIN: &'static str = "00000000-0000-0000-0000-000000000000";
+pub static UUID_ADMIN: &'static str = "00000000-0000-0000-0000-000000000000";
 
 pub static _UUID_ANONYMOUS: &'static str = "00000000-0000-0000-0000-ffffffffffff";
 pub static JSON_ANONYMOUS_V1: &'static str = r#"{

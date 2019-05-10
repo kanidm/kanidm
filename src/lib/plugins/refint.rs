@@ -267,7 +267,7 @@ mod tests {
             Err(OperationError::Plugin),
             preload,
             create,
-            false,
+            None,
             |_, _| {}
         );
     }
@@ -310,7 +310,7 @@ mod tests {
             Ok(()),
             preload,
             create,
-            false,
+            None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(
@@ -349,7 +349,7 @@ mod tests {
             Ok(()),
             preload,
             create,
-            false,
+            None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(au, Filter::Eq("name".to_string(), "testgroup".to_string()))
@@ -399,7 +399,7 @@ mod tests {
                 "member".to_string(),
                 "d2b496bd-8493-47b7-8142-f568b5cf47ee".to_string()
             )]),
-            false,
+            None,
             |_, _| {}
         );
     }
@@ -430,7 +430,7 @@ mod tests {
                 "member".to_string(),
                 "d2b496bd-8493-47b7-8142-f568b5cf47ee".to_string()
             )]),
-            false,
+            None,
             |_, _| {}
         );
     }
@@ -473,7 +473,7 @@ mod tests {
             preload,
             Filter::Eq("name".to_string(), "testgroup_b".to_string()),
             ModifyList::new_list(vec![Modify::Purged("member".to_string())]),
-            false,
+            None,
             |_, _| {}
         );
     }
@@ -505,7 +505,7 @@ mod tests {
                 "member".to_string(),
                 "d2b496bd-8493-47b7-8142-f568b5cf47ee".to_string()
             )]),
-            false,
+            None,
             |_, _| {}
         );
     }
@@ -550,7 +550,7 @@ mod tests {
                 "member".to_string(),
                 "d2b496bd-8493-47b7-8142-f568b5cf47ee".to_string()
             )]),
-            false,
+            None,
             |_, _| {}
         );
     }
@@ -594,7 +594,7 @@ mod tests {
             Ok(()),
             preload,
             Filter::Eq("name".to_string(), "testgroup_a".to_string()),
-            false,
+            None,
             |_au: &mut AuditScope, _qs: &QueryServerWriteTransaction| {}
         );
     }
@@ -642,7 +642,7 @@ mod tests {
             Ok(()),
             preload,
             Filter::Eq("name".to_string(), "testgroup_b".to_string()),
-            false,
+            None,
             |_au: &mut AuditScope, _qs: &QueryServerWriteTransaction| {}
         );
     }
@@ -671,7 +671,7 @@ mod tests {
             Ok(()),
             preload,
             Filter::Eq("name".to_string(), "testgroup_b".to_string()),
-            false,
+            None,
             |_au: &mut AuditScope, _qs: &QueryServerWriteTransaction| {}
         );
     }

@@ -34,7 +34,8 @@ mod log;
 #[macro_use]
 mod audit;
 mod be;
-mod constants;
+// TODO: Should this be public?
+pub mod constants;
 mod entry;
 mod event;
 mod identity;

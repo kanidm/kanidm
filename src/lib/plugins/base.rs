@@ -264,7 +264,7 @@ mod tests {
             Ok(()),
             preload,
             create,
-            false,
+            None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(au, Filter::Eq("name".to_string(), "testperson".to_string()))
@@ -301,7 +301,7 @@ mod tests {
             Err(OperationError::Plugin),
             preload,
             create,
-            false,
+            None,
             |_, _| {}
         );
     }
@@ -332,7 +332,7 @@ mod tests {
             Err(OperationError::Plugin),
             preload,
             create,
-            false,
+            None,
             |_, _| {}
         );
     }
@@ -363,7 +363,7 @@ mod tests {
             Ok(()),
             preload,
             create,
-            false,
+            None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(au, Filter::Eq("name".to_string(), "testperson".to_string()))
@@ -399,7 +399,7 @@ mod tests {
             Err(OperationError::Plugin),
             preload,
             create,
-            false,
+            None,
             |_, _| {}
         );
     }
@@ -436,7 +436,7 @@ mod tests {
             Err(OperationError::Plugin),
             preload,
             create,
-            false,
+            None,
             |_, _| {}
         );
     }
@@ -482,7 +482,7 @@ mod tests {
             Err(OperationError::Plugin),
             preload,
             create,
-            false,
+            None,
             |_, _| {}
         );
     }
@@ -515,7 +515,7 @@ mod tests {
                 "uuid".to_string(),
                 "f15a7219-1d15-44e3-a7b4-bec899c07788".to_string()
             )]),
-            false,
+            None,
             |_, _| {}
         );
     }
@@ -547,7 +547,7 @@ mod tests {
                 "uuid".to_string(),
                 "f15a7219-1d15-44e3-a7b4-bec899c07788".to_string()
             )]),
-            false,
+            None,
             |_, _| {}
         );
     }
@@ -576,7 +576,7 @@ mod tests {
             preload,
             Filter::Eq("name".to_string(), "testgroup_a".to_string()),
             ModifyList::new_list(vec![Modify::Purged("uuid".to_string())]),
-            false,
+            None,
             |_, _| {}
         );
     }
