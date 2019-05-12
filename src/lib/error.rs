@@ -27,6 +27,7 @@ pub enum OperationError {
     InvalidRequestState,
     InvalidState,
     InvalidEntryState,
+    InvalidACPState,
     BackendEngine,
     SQLiteError, //(RusqliteError)
     FsError,

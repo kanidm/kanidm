@@ -53,7 +53,7 @@ impl Plugin for Base {
             audit_log!(au, "Base check on entry: {:?}", entry);
 
             // First, ensure we have the 'object', class in the class set.
-            entry.add_ava(String::from("class"), String::from("object"));
+            entry.add_ava("class", "object");
 
             audit_log!(au, "Object should now be in entry: {:?}", entry);
 
@@ -61,7 +61,7 @@ impl Plugin for Base {
 
             // if they don't have uuid, create it.
             // TODO: get_ava should have a str version for effeciency?
-            let c_uuid: String = match entry.get_ava(&"uuid".to_string()) {
+            let c_uuid: String = match entry.get_ava("uuid") {
                 Some(u) => {
                     // Actually check we have a value, could be empty array ...
                     // TODO: Should this be left to schema to assert the value?
@@ -86,7 +86,7 @@ impl Plugin for Base {
             audit_log!(au, "Setting temporary UUID {} to entry", c_uuid);
             let ava_uuid: Vec<String> = vec![c_uuid];
 
-            entry.set_avas("uuid".to_string(), ava_uuid);
+            entry.set_avas("uuid", ava_uuid);
             audit_log!(au, "Temporary entry state: {:?}", entry);
         }
 
@@ -97,7 +97,7 @@ impl Plugin for Base {
         // that a duplicate exists.
         for entry in cand.iter() {
             let uuid_ref = entry
-                .get_ava(&"uuid".to_string())
+                .get_ava("uuid")
                 .ok_or(OperationError::Plugin)?
                 .first()
                 .ok_or(OperationError::Plugin)?;

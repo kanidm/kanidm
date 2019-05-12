@@ -805,11 +805,8 @@ mod tests {
             assert_eq!(empty_result, Err(OperationError::EmptyRequest));
 
             let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
-            e.add_ava(String::from("userid"), String::from("william"));
-            e.add_ava(
-                "uuid".to_string(),
-                "db237e8a-0079-4b8c-8a56-593b22aa44d1".to_string(),
-            );
+            e.add_ava("userid", "william");
+            e.add_ava("uuid", "db237e8a-0079-4b8c-8a56-593b22aa44d1");
             let e = unsafe { e.to_valid_new() };
 
             let single_result = be.create(audit, &vec![e.clone()]);
@@ -827,11 +824,8 @@ mod tests {
             audit_log!(audit, "Simple Search");
 
             let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
-            e.add_ava(String::from("userid"), String::from("claire"));
-            e.add_ava(
-                "uuid".to_string(),
-                "db237e8a-0079-4b8c-8a56-593b22aa44d1".to_string(),
-            );
+            e.add_ava("userid", "claire");
+            e.add_ava("uuid", "db237e8a-0079-4b8c-8a56-593b22aa44d1");
             let e = unsafe { e.to_valid_new() };
 
             let single_result = be.create(audit, &vec![e.clone()]);
@@ -857,18 +851,12 @@ mod tests {
             audit_log!(audit, "Simple Modify");
             // First create some entries (3?)
             let mut e1: Entry<EntryInvalid, EntryNew> = Entry::new();
-            e1.add_ava(String::from("userid"), String::from("william"));
-            e1.add_ava(
-                "uuid".to_string(),
-                "db237e8a-0079-4b8c-8a56-593b22aa44d1".to_string(),
-            );
+            e1.add_ava("userid", "william");
+            e1.add_ava("uuid", "db237e8a-0079-4b8c-8a56-593b22aa44d1");
 
             let mut e2: Entry<EntryInvalid, EntryNew> = Entry::new();
-            e2.add_ava(String::from("userid"), String::from("alice"));
-            e2.add_ava(
-                "uuid".to_string(),
-                "4b6228ab-1dbe-42a4-a9f5-f6368222438e".to_string(),
-            );
+            e2.add_ava("userid", "alice");
+            e2.add_ava("uuid", "4b6228ab-1dbe-42a4-a9f5-f6368222438e");
 
             let ve1 = unsafe { e1.clone().to_valid_new() };
             let ve2 = unsafe { e2.clone().to_valid_new() };
@@ -898,8 +886,8 @@ mod tests {
             assert!(be.modify(audit, &vec![]).is_err());
 
             // Make some changes to r1, r2.
-            r1.add_ava(String::from("desc"), String::from("modified"));
-            r2.add_ava(String::from("desc"), String::from("modified"));
+            r1.add_ava("desc", "modified");
+            r2.add_ava("desc", "modified");
 
             // Now ... cheat.
 
@@ -927,25 +915,16 @@ mod tests {
 
             // First create some entries (3?)
             let mut e1: Entry<EntryInvalid, EntryNew> = Entry::new();
-            e1.add_ava(String::from("userid"), String::from("william"));
-            e1.add_ava(
-                "uuid".to_string(),
-                "db237e8a-0079-4b8c-8a56-593b22aa44d1".to_string(),
-            );
+            e1.add_ava("userid", "william");
+            e1.add_ava("uuid", "db237e8a-0079-4b8c-8a56-593b22aa44d1");
 
             let mut e2: Entry<EntryInvalid, EntryNew> = Entry::new();
-            e2.add_ava(String::from("userid"), String::from("alice"));
-            e2.add_ava(
-                "uuid".to_string(),
-                "4b6228ab-1dbe-42a4-a9f5-f6368222438e".to_string(),
-            );
+            e2.add_ava("userid", "alice");
+            e2.add_ava("uuid", "4b6228ab-1dbe-42a4-a9f5-f6368222438e");
 
             let mut e3: Entry<EntryInvalid, EntryNew> = Entry::new();
-            e3.add_ava(String::from("userid"), String::from("lucy"));
-            e3.add_ava(
-                "uuid".to_string(),
-                "7b23c99d-c06b-4a9a-a958-3afa56383e1d".to_string(),
-            );
+            e3.add_ava("userid", "lucy");
+            e3.add_ava("uuid", "7b23c99d-c06b-4a9a-a958-3afa56383e1d");
 
             let ve1 = unsafe { e1.clone().to_valid_new() };
             let ve2 = unsafe { e2.clone().to_valid_new() };
@@ -977,11 +956,8 @@ mod tests {
             // WARNING: Normally, this isn't possible, but we are pursposefully breaking
             // the state machine rules here!!!!
             let mut e4: Entry<EntryInvalid, EntryNew> = Entry::new();
-            e4.add_ava(String::from("userid"), String::from("amy"));
-            e4.add_ava(
-                "uuid".to_string(),
-                "21d816b5-1f6a-4696-b7c1-6ed06d22ed81".to_string(),
-            );
+            e4.add_ava("userid", "amy");
+            e4.add_ava("uuid", "21d816b5-1f6a-4696-b7c1-6ed06d22ed81");
 
             let ve4 = unsafe { e4.clone().to_valid_committed() };
 
@@ -1009,25 +985,16 @@ mod tests {
         run_test!(|audit: &mut AuditScope, be: &BackendWriteTransaction| {
             // First create some entries (3?)
             let mut e1: Entry<EntryInvalid, EntryNew> = Entry::new();
-            e1.add_ava(String::from("userid"), String::from("william"));
-            e1.add_ava(
-                "uuid".to_string(),
-                "db237e8a-0079-4b8c-8a56-593b22aa44d1".to_string(),
-            );
+            e1.add_ava("userid", "william");
+            e1.add_ava("uuid", "db237e8a-0079-4b8c-8a56-593b22aa44d1");
 
             let mut e2: Entry<EntryInvalid, EntryNew> = Entry::new();
-            e2.add_ava(String::from("userid"), String::from("alice"));
-            e2.add_ava(
-                "uuid".to_string(),
-                "4b6228ab-1dbe-42a4-a9f5-f6368222438e".to_string(),
-            );
+            e2.add_ava("userid", "alice");
+            e2.add_ava("uuid", "4b6228ab-1dbe-42a4-a9f5-f6368222438e");
 
             let mut e3: Entry<EntryInvalid, EntryNew> = Entry::new();
-            e3.add_ava(String::from("userid"), String::from("lucy"));
-            e3.add_ava(
-                "uuid".to_string(),
-                "7b23c99d-c06b-4a9a-a958-3afa56383e1d".to_string(),
-            );
+            e3.add_ava("userid", "lucy");
+            e3.add_ava("uuid", "7b23c99d-c06b-4a9a-a958-3afa56383e1d");
 
             let ve1 = unsafe { e1.clone().to_valid_new() };
             let ve2 = unsafe { e2.clone().to_valid_new() };

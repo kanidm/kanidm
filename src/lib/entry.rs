@@ -575,6 +575,13 @@ impl<STATE> Entry<EntryValid, STATE> {
                 }
             }),
             Filter::AndNot(f) => !self.entry_match_no_index(f),
+            Filter::SelfUUID => {
+                // So we should never actually get to this point, BECAUSE
+                // filter SHOULD have resolved self to a uuid of the current
+                // event owner. How we handle that is still murkey for now,
+                // but in the shortterm we choose honorable ends and panics.
+                unimplemented!()
+            }
             Filter::Invalid(_) => {
                 // TODO: Is there a better way to not need to match the phantom?
                 unimplemented!()
@@ -673,8 +680,22 @@ impl<STATE> Entry<EntryValid, STATE> {
 
 impl<VALID, STATE> Entry<VALID, STATE> {
     /* WARNING: Should these TODO move to EntryValid only? */
-    pub fn get_ava(&self, attr: &String) -> Option<&Vec<String>> {
+    pub fn get_ava(&self, attr: &str) -> Option<&Vec<String>> {
         self.attrs.get(attr)
+    }
+
+    // Returns NONE if there is more than ONE!!!!
+    pub fn get_ava_single(&self, attr: &str) -> Option<&String> {
+        match self.attrs.get(attr) {
+            Some(vs) => {
+                if vs.len() != 1 {
+                    None
+                } else {
+                    vs.first()
+                }
+            }
+            None => None,
+        }
     }
 
     pub fn attribute_pres(&self, attr: &str) -> bool {
@@ -739,35 +760,38 @@ where
     // If this already exists, we silently drop the event? Is that an
     // acceptable interface?
     // Should value here actually be a &str?
-    pub fn add_ava(&mut self, attr: String, value: String) {
+    pub fn add_ava(&mut self, attr: &str, value: &str) {
         // get_mut to access value
         // How do we make this turn into an ok / err?
         self.attrs
-            .entry(attr)
+            .entry(attr.to_string())
             .and_modify(|v| {
                 // Here we need to actually do a check/binary search ...
                 // FIXME: Because map_err is lazy, this won't do anything on release
-                match v.binary_search(&value) {
+                // TODO: Is there a way to avoid the double to_string here?
+                match v.binary_search(&value.to_string()) {
                     // It already exists, done!
                     Ok(_) => {}
                     Err(idx) => {
                         // This cloning is to fix a borrow issue with the or_insert below.
                         // Is there a better way?
-                        v.insert(idx, value.clone())
+                        v.insert(idx, value.to_string())
                     }
                 }
             })
-            .or_insert(vec![value]);
+            .or_insert(vec![value.to_string()]);
     }
 
-    pub fn remove_ava(&mut self, attr: &String, value: &String) {
+    pub fn remove_ava(&mut self, attr: &str, value: &str) {
+        // TODO fix this to_string
+        let mv = value.to_string();
         self.attrs
-            // TODO: Fix this clone ...
-            .entry(attr.clone())
+            // TODO: Fix this to_string
+            .entry(attr.to_string())
             .and_modify(|v| {
                 // Here we need to actually do a check/binary search ...
                 // FIXME: Because map_err is lazy, this won't do anything on release
-                match v.binary_search(&value) {
+                match v.binary_search(&mv) {
                     // It exists, rm it.
                     Ok(idx) => {
                         v.remove(idx);
@@ -778,15 +802,16 @@ where
             });
     }
 
-    pub fn purge_ava(&mut self, attr: &String) {
+    pub fn purge_ava(&mut self, attr: &str) {
         self.attrs.remove(attr);
     }
 
     // FIXME: Should this collect from iter instead?
+    // TODO: Should this be a Vec<&str>
     /// Overwrite the existing avas.
-    pub fn set_avas(&mut self, attr: String, values: Vec<String>) {
+    pub fn set_avas(&mut self, attr: &str, values: Vec<String>) {
         // Overwrite the existing value
-        let _ = self.attrs.insert(attr, values);
+        let _ = self.attrs.insert(attr.to_string(), values);
     }
 
     pub fn avas_mut(&mut self) -> EntryAvasMut {
@@ -804,9 +829,9 @@ where
         // mutate
         for modify in modlist {
             match modify {
-                Modify::Present(a, v) => self.add_ava(a.clone(), v.clone()),
-                Modify::Removed(a, v) => self.remove_ava(a, v),
-                Modify::Purged(a) => self.purge_ava(a),
+                Modify::Present(a, v) => self.add_ava(a.as_str(), v.as_str()),
+                Modify::Removed(a, v) => self.remove_ava(a.as_str(), v.as_str()),
+                Modify::Purged(a) => self.purge_ava(a.as_str()),
             }
         }
     }
@@ -863,7 +888,7 @@ mod tests {
     fn test_entry_basic() {
         let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
 
-        e.add_ava(String::from("userid"), String::from("william"));
+        e.add_ava("userid", "william");
     }
 
     #[test]
@@ -875,12 +900,10 @@ mod tests {
         // are adding ... Or do we validate after the changes are made in
         // total?
         let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
-        e.add_ava(String::from("userid"), String::from("william"));
-        e.add_ava(String::from("userid"), String::from("william"));
+        e.add_ava("userid", "william");
+        e.add_ava("userid", "william");
 
-        let values = e
-            .get_ava(&String::from("userid"))
-            .expect("Failed to get ava");
+        let values = e.get_ava("userid").expect("Failed to get ava");
         // Should only be one value!
         assert_eq!(values.len(), 1)
     }
@@ -888,7 +911,7 @@ mod tests {
     #[test]
     fn test_entry_pres() {
         let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
-        e.add_ava(String::from("userid"), String::from("william"));
+        e.add_ava("userid", "william");
 
         assert!(e.attribute_pres("userid"));
         assert!(!e.attribute_pres("name"));
@@ -898,7 +921,7 @@ mod tests {
     fn test_entry_equality() {
         let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
 
-        e.add_ava(String::from("userid"), String::from("william"));
+        e.add_ava("userid", "william");
 
         assert!(e.attribute_equality("userid", "william"));
         assert!(!e.attribute_equality("userid", "test"));
@@ -909,7 +932,7 @@ mod tests {
     fn test_entry_apply_modlist() {
         // Test application of changes to an entry.
         let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
-        e.add_ava(String::from("userid"), String::from("william"));
+        e.add_ava("userid", "william");
 
         let mods = unsafe {
             ModifyList::new_valid_list(vec![Modify::Present(

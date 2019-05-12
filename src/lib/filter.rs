@@ -29,6 +29,7 @@ pub enum Filter<VALID> {
     Or(Vec<Filter<VALID>>),
     And(Vec<Filter<VALID>>),
     AndNot(Box<Filter<VALID>>),
+    SelfUUID,
     Invalid(PhantomData<VALID>),
 }
 
@@ -63,6 +64,7 @@ impl Filter<FilterValid> {
             Filter::Or(l) => Filter::Or(l.iter().map(|f| f.invalidate()).collect()),
             Filter::And(l) => Filter::And(l.iter().map(|f| f.invalidate()).collect()),
             Filter::AndNot(l) => Filter::AndNot(Box::new(l.invalidate())),
+            Filter::SelfUUID => Filter::SelfUUID,
             Filter::Invalid(_) => {
                 // TODO: Is there a better way to not need to match the phantom?
                 unimplemented!()
@@ -215,6 +217,7 @@ impl Filter<FilterInvalid> {
                     .collect::<Result<Vec<_>, _>>()?,
             ),
             ProtoFilter::AndNot(l) => Filter::AndNot(Box::new(Self::from_ro(audit, l, qs)?)),
+            ProtoFilter::SelfUUID => Filter::SelfUUID,
         })
     }
 
@@ -238,6 +241,7 @@ impl Filter<FilterInvalid> {
                     .collect::<Result<Vec<_>, _>>()?,
             ),
             ProtoFilter::AndNot(l) => Filter::AndNot(Box::new(Self::from_rw(audit, l, qs)?)),
+            ProtoFilter::SelfUUID => Filter::SelfUUID,
         })
     }
 }
@@ -252,6 +256,7 @@ impl Clone for Filter<FilterValid> {
             Filter::Or(l) => Filter::Or(l.clone()),
             Filter::And(l) => Filter::And(l.clone()),
             Filter::AndNot(l) => Filter::AndNot(l.clone()),
+            Filter::SelfUUID => Filter::SelfUUID,
             Filter::Invalid(_) => {
                 // TODO: Is there a better way to not need to match the phantom?
                 unimplemented!()
@@ -270,6 +275,7 @@ impl Clone for Filter<FilterInvalid> {
             Filter::Or(l) => Filter::Or(l.clone()),
             Filter::And(l) => Filter::And(l.clone()),
             Filter::AndNot(l) => Filter::AndNot(l.clone()),
+            Filter::SelfUUID => Filter::SelfUUID,
             Filter::Invalid(_) => {
                 // TODO: Is there a better way to not need to match the phantom?
                 unimplemented!()
@@ -286,6 +292,7 @@ impl PartialEq for Filter<FilterValid> {
             (Filter::Pres(a1), Filter::Pres(a2)) => a1 == a2,
             (Filter::Or(l1), Filter::Or(l2)) => l1 == l2,
             (Filter::And(l1), Filter::And(l2)) => l1 == l2,
+            (Filter::SelfUUID, Filter::SelfUUID) => true,
             (Filter::AndNot(l1), Filter::AndNot(l2)) => l1 == l2,
             (_, _) => false,
         }

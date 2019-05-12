@@ -43,6 +43,7 @@ mod interval;
 mod modify;
 #[macro_use]
 mod plugins;
+mod access;
 mod schema;
 mod server;
 
