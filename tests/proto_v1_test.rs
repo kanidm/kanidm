@@ -3,6 +3,7 @@ use actix::prelude::*;
 
 extern crate rsidm;
 use rsidm::config::Configuration;
+use rsidm::constants::UUID_ADMIN;
 use rsidm::core::create_server_core;
 use rsidm::proto_v1::{CreateRequest, Entry, OperationResponse};
 
@@ -68,7 +69,10 @@ fn test_server_proto() {
         )
         .unwrap();
 
-        let c = CreateRequest { entries: vec![e] };
+        let c = CreateRequest {
+            entries: vec![e],
+            user_uuid: UUID_ADMIN.to_string(),
+        };
 
         let mut response = client
             .post("http://127.0.0.1:8080/v1/create")

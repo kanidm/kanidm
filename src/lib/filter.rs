@@ -419,10 +419,13 @@ mod tests {
     fn test_or_entry_filter() {
         let e: Entry<EntryValid, EntryNew> = serde_json::from_str(
             r#"{
-            "valid": null,
+            "valid": {
+                "uuid": "db237e8a-0079-4b8c-8a56-593b22aa44d1"
+            },
             "state": null,
             "attrs": {
                 "userid": ["william"],
+                "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
                 "uidNumber": ["1000"]
             }
         }"#,
@@ -458,10 +461,13 @@ mod tests {
     fn test_and_entry_filter() {
         let e: Entry<EntryValid, EntryNew> = serde_json::from_str(
             r#"{
-            "valid": null,
+            "valid": {
+                "uuid": "db237e8a-0079-4b8c-8a56-593b22aa44d1"
+            },
             "state": null,
             "attrs": {
                 "userid": ["william"],
+                "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
                 "uidNumber": ["1000"]
             }
         }"#,
@@ -497,10 +503,13 @@ mod tests {
     fn test_not_entry_filter() {
         let e1: Entry<EntryValid, EntryNew> = serde_json::from_str(
             r#"{
-            "valid": null,
+            "valid": {
+                "uuid": "db237e8a-0079-4b8c-8a56-593b22aa44d1"
+            },
             "state": null,
             "attrs": {
                 "userid": ["william"],
+                "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
                 "uidNumber": ["1000"]
             }
         }"#,
@@ -524,10 +533,13 @@ mod tests {
     fn test_nested_entry_filter() {
         let e1: Entry<EntryValid, EntryNew> = serde_json::from_str(
             r#"{
-            "valid": null,
+            "valid": {
+                "uuid": "db237e8a-0079-4b8c-8a56-593b22aa44d1"
+            },
             "state": null,
             "attrs": {
                 "class": ["person"],
+                "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
                 "uidNumber": ["1000"]
             }
         }"#,
@@ -536,10 +548,13 @@ mod tests {
 
         let e2: Entry<EntryValid, EntryNew> = serde_json::from_str(
             r#"{
-            "valid": null,
+            "valid": {
+                "uuid": "4b6228ab-1dbe-42a4-a9f5-f6368222438e"
+            },
             "state": null,
             "attrs": {
                 "class": ["person"],
+                "uuid": ["4b6228ab-1dbe-42a4-a9f5-f6368222438e"],
                 "uidNumber": ["1001"]
             }
         }"#,
@@ -548,10 +563,13 @@ mod tests {
 
         let e3: Entry<EntryValid, EntryNew> = serde_json::from_str(
             r#"{
-            "valid": null,
+            "valid": {
+                "uuid": "7b23c99d-c06b-4a9a-a958-3afa56383e1d"
+            },
             "state": null,
             "attrs": {
                 "class": ["person"],
+                "uuid": ["7b23c99d-c06b-4a9a-a958-3afa56383e1d"],
                 "uidNumber": ["1002"]
             }
         }"#,
@@ -560,10 +578,13 @@ mod tests {
 
         let e4: Entry<EntryValid, EntryNew> = serde_json::from_str(
             r#"{
-            "valid": null,
+            "valid": {
+                "uuid": "21d816b5-1f6a-4696-b7c1-6ed06d22ed81"
+            },
             "state": null,
             "attrs": {
                 "class": ["group"],
+                "uuid": ["21d816b5-1f6a-4696-b7c1-6ed06d22ed81"],
                 "uidNumber": ["1000"]
             }
         }"#,

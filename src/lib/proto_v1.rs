@@ -59,11 +59,15 @@ impl OperationResponse {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SearchRequest {
     pub filter: Filter,
+    pub user_uuid: String,
 }
 
 impl SearchRequest {
-    pub fn new(filter: Filter) -> Self {
-        SearchRequest { filter: filter }
+    pub fn new(filter: Filter, user_uuid: &str) -> Self {
+        SearchRequest {
+            filter: filter,
+            user_uuid: user_uuid.to_string(),
+        }
     }
 }
 
@@ -85,11 +89,15 @@ impl SearchResponse {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateRequest {
     pub entries: Vec<Entry>,
+    pub user_uuid: String,
 }
 
 impl CreateRequest {
-    pub fn new(entries: Vec<Entry>) -> Self {
-        CreateRequest { entries: entries }
+    pub fn new(entries: Vec<Entry>, user_uuid: &str) -> Self {
+        CreateRequest {
+            entries: entries,
+            user_uuid: user_uuid.to_string(),
+        }
     }
 }
 
@@ -100,11 +108,15 @@ impl Message for CreateRequest {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DeleteRequest {
     pub filter: Filter,
+    pub user_uuid: String,
 }
 
 impl DeleteRequest {
-    pub fn new(filter: Filter) -> Self {
-        DeleteRequest { filter: filter }
+    pub fn new(filter: Filter, user_uuid: &str) -> Self {
+        DeleteRequest {
+            filter: filter,
+            user_uuid: user_uuid.to_string(),
+        }
     }
 }
 
@@ -117,13 +129,15 @@ pub struct ModifyRequest {
     // Probably needs a modlist?
     pub filter: Filter,
     pub modlist: ModifyList,
+    pub user_uuid: String,
 }
 
 impl ModifyRequest {
-    pub fn new(filter: Filter, modlist: ModifyList) -> Self {
+    pub fn new(filter: Filter, modlist: ModifyList, user_uuid: &str) -> Self {
         ModifyRequest {
             filter: filter,
             modlist: modlist,
+            user_uuid: user_uuid.to_string(),
         }
     }
 }
@@ -159,6 +173,7 @@ pub enum AuthState {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AuthRequest {
     pub state: AuthState,
+    pub user_uuid: String,
 }
 
 impl Message for AuthRequest {
@@ -191,11 +206,15 @@ pub struct AuthResponse {
 
 pub struct SearchRecycledRequest {
     pub filter: Filter,
+    pub user_uuid: String,
 }
 
 impl SearchRecycledRequest {
-    pub fn new(filter: Filter) -> Self {
-        SearchRecycledRequest { filter: filter }
+    pub fn new(filter: Filter, user_uuid: &str) -> Self {
+        SearchRecycledRequest {
+            filter: filter,
+            user_uuid: user_uuid.to_string(),
+        }
     }
 }
 
@@ -203,10 +222,14 @@ impl SearchRecycledRequest {
 
 pub struct ReviveRecycledRequest {
     pub filter: Filter,
+    pub user_uuid: String,
 }
 
 impl ReviveRecycledRequest {
-    pub fn new(filter: Filter) -> Self {
-        ReviveRecycledRequest { filter: filter }
+    pub fn new(filter: Filter, user_uuid: &str) -> Self {
+        ReviveRecycledRequest {
+            filter: filter,
+            user_uuid: user_uuid.to_string(),
+        }
     }
 }

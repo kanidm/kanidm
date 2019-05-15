@@ -48,7 +48,6 @@ impl Plugin for Base {
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        let name_uuid = String::from("uuid");
         // For each candidate
         for entry in cand.iter_mut() {
             audit_log!(au, "Base check on entry: {:?}", entry);
@@ -62,7 +61,7 @@ impl Plugin for Base {
 
             // if they don't have uuid, create it.
             // TODO: get_ava should have a str version for effeciency?
-            let c_uuid: String = match entry.get_ava(&name_uuid) {
+            let c_uuid: String = match entry.get_ava(&"uuid".to_string()) {
                 Some(u) => {
                     // Actually check we have a value, could be empty array ...
                     // TODO: Should this be left to schema to assert the value?
@@ -87,7 +86,7 @@ impl Plugin for Base {
             audit_log!(au, "Setting temporary UUID {} to entry", c_uuid);
             let ava_uuid: Vec<String> = vec![c_uuid];
 
-            entry.set_avas(name_uuid.clone(), ava_uuid);
+            entry.set_avas("uuid".to_string(), ava_uuid);
             audit_log!(au, "Temporary entry state: {:?}", entry);
         }
 
@@ -98,7 +97,7 @@ impl Plugin for Base {
         // that a duplicate exists.
         for entry in cand.iter() {
             let uuid_ref = entry
-                .get_ava(&name_uuid)
+                .get_ava(&"uuid".to_string())
                 .ok_or(OperationError::Plugin)?
                 .first()
                 .ok_or(OperationError::Plugin)?;
@@ -173,7 +172,6 @@ impl Plugin for Base {
         au: &mut AuditScope,
         qs: &QueryServerTransaction,
     ) -> Vec<Result<(), ConsistencyError>> {
-        let name_uuid = String::from("uuid");
         // Verify all uuid's are unique?
         // Probably the literally worst thing ...
 
@@ -190,35 +188,24 @@ impl Plugin for Base {
             .iter()
             // do an exists checks on the uuid
             .map(|e| {
-                // TODO: Could this be better?
-                let uuid = match e.get_ava(&name_uuid) {
-                    Some(u) => {
-                        if u.len() == 1 {
-                            Ok(u.first().expect("Ohh ffs, really?").clone())
-                        } else {
-                            Err(ConsistencyError::EntryUuidCorrupt(e.get_id()))
-                        }
-                    }
-                    None => Err(ConsistencyError::EntryUuidCorrupt(e.get_id())),
-                };
+                // To get the entry deserialised, a UUID MUST EXIST, else an expect
+                // will be thrown in the deserialise (possibly it will be better
+                // handled later). But it means this check only needs to validate
+                // uniqueness!
+                let uuid: &String = e.get_uuid();
 
-                match uuid {
-                    Ok(u) => {
-                        let filt = Filter::Eq(name_uuid.clone(), u.clone());
-                        match qs.internal_search(au, filt) {
-                            Ok(r) => {
-                                if r.len() == 0 {
-                                    Err(ConsistencyError::UuidIndexCorrupt(u))
-                                } else if r.len() == 1 {
-                                    Ok(())
-                                } else {
-                                    Err(ConsistencyError::UuidNotUnique(u))
-                                }
-                            }
-                            Err(_) => Err(ConsistencyError::QueryServerSearchFailure),
+                let filt = Filter::Eq("uuid".to_string(), uuid.to_string());
+                match qs.internal_search(au, filt) {
+                    Ok(r) => {
+                        if r.len() == 0 {
+                            Err(ConsistencyError::UuidIndexCorrupt(uuid.to_string()))
+                        } else if r.len() == 1 {
+                            Ok(())
+                        } else {
+                            Err(ConsistencyError::UuidNotUnique(uuid.to_string()))
                         }
                     }
-                    Err(e) => Err(e),
+                    Err(_) => Err(ConsistencyError::QueryServerSearchFailure),
                 }
             })
             .filter(|v| v.is_err())
@@ -277,7 +264,7 @@ mod tests {
             Ok(()),
             preload,
             create,
-            false,
+            None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(au, Filter::Eq("name".to_string(), "testperson".to_string()))
@@ -314,7 +301,7 @@ mod tests {
             Err(OperationError::Plugin),
             preload,
             create,
-            false,
+            None,
             |_, _| {}
         );
     }
@@ -345,7 +332,7 @@ mod tests {
             Err(OperationError::Plugin),
             preload,
             create,
-            false,
+            None,
             |_, _| {}
         );
     }
@@ -376,7 +363,7 @@ mod tests {
             Ok(()),
             preload,
             create,
-            false,
+            None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(au, Filter::Eq("name".to_string(), "testperson".to_string()))
@@ -412,7 +399,7 @@ mod tests {
             Err(OperationError::Plugin),
             preload,
             create,
-            false,
+            None,
             |_, _| {}
         );
     }
@@ -449,7 +436,7 @@ mod tests {
             Err(OperationError::Plugin),
             preload,
             create,
-            false,
+            None,
             |_, _| {}
         );
     }
@@ -495,7 +482,7 @@ mod tests {
             Err(OperationError::Plugin),
             preload,
             create,
-            false,
+            None,
             |_, _| {}
         );
     }
@@ -528,7 +515,7 @@ mod tests {
                 "uuid".to_string(),
                 "f15a7219-1d15-44e3-a7b4-bec899c07788".to_string()
             )]),
-            false,
+            None,
             |_, _| {}
         );
     }
@@ -560,7 +547,7 @@ mod tests {
                 "uuid".to_string(),
                 "f15a7219-1d15-44e3-a7b4-bec899c07788".to_string()
             )]),
-            false,
+            None,
             |_, _| {}
         );
     }
@@ -589,7 +576,7 @@ mod tests {
             preload,
             Filter::Eq("name".to_string(), "testgroup_a".to_string()),
             ModifyList::new_list(vec![Modify::Purged("uuid".to_string())]),
-            false,
+            None,
             |_, _| {}
         );
     }

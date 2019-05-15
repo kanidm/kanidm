@@ -509,7 +509,7 @@ mod tests {
             Ok(()),
             preload,
             create,
-            false,
+            None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
@@ -543,7 +543,7 @@ mod tests {
             Ok(()),
             preload,
             create,
-            false,
+            None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
@@ -598,7 +598,7 @@ mod tests {
             Ok(()),
             preload,
             create,
-            false,
+            None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
@@ -660,7 +660,7 @@ mod tests {
             Ok(()),
             preload,
             create,
-            false,
+            None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
@@ -727,7 +727,7 @@ mod tests {
                 "member".to_string(),
                 UUID_B.to_string()
             )]),
-            false,
+            None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
@@ -765,7 +765,7 @@ mod tests {
                 "member".to_string(),
                 UUID_B.to_string()
             )]),
-            false,
+            None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
@@ -821,7 +821,7 @@ mod tests {
                 "member".to_string(),
                 UUID_C.to_string()
             )]),
-            false,
+            None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
@@ -880,7 +880,7 @@ mod tests {
                 "member".to_string(),
                 UUID_A.to_string()
             )]),
-            false,
+            None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
@@ -950,7 +950,7 @@ mod tests {
                 "member".to_string(),
                 UUID_A.to_string()
             )]),
-            false,
+            None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
@@ -1020,7 +1020,7 @@ mod tests {
                 "member".to_string(),
                 UUID_B.to_string()
             )]),
-            false,
+            None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
@@ -1061,7 +1061,7 @@ mod tests {
                 "member".to_string(),
                 UUID_B.to_string()
             )]),
-            false,
+            None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
@@ -1121,7 +1121,7 @@ mod tests {
                 "member".to_string(),
                 UUID_C.to_string()
             )]),
-            false,
+            None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
@@ -1191,7 +1191,7 @@ mod tests {
                 "member".to_string(),
                 UUID_A.to_string()
             )]),
-            false,
+            None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
@@ -1280,7 +1280,7 @@ mod tests {
                 Modify::Removed("member".to_string(), UUID_A.to_string()),
                 Modify::Removed("member".to_string(), UUID_D.to_string()),
             ]),
-            false,
+            None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
@@ -1344,7 +1344,7 @@ mod tests {
             Ok(()),
             preload,
             Filter::Eq("uuid".to_string(), UUID_A.to_string()),
-            false,
+            None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
@@ -1381,7 +1381,7 @@ mod tests {
             Ok(()),
             preload,
             Filter::Eq("uuid".to_string(), UUID_A.to_string()),
-            false,
+            None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
@@ -1428,7 +1428,7 @@ mod tests {
             Ok(()),
             preload,
             Filter::Eq("uuid".to_string(), UUID_B.to_string()),
-            false,
+            None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
@@ -1484,7 +1484,7 @@ mod tests {
             Ok(()),
             preload,
             Filter::Eq("uuid".to_string(), UUID_A.to_string()),
-            false,
+            None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
@@ -1554,7 +1554,7 @@ mod tests {
             Ok(()),
             preload,
             Filter::Eq("uuid".to_string(), UUID_B.to_string()),
-            false,
+            None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID

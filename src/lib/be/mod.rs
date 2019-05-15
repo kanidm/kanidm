@@ -806,6 +806,10 @@ mod tests {
 
             let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
             e.add_ava(String::from("userid"), String::from("william"));
+            e.add_ava(
+                "uuid".to_string(),
+                "db237e8a-0079-4b8c-8a56-593b22aa44d1".to_string(),
+            );
             let e = unsafe { e.to_valid_new() };
 
             let single_result = be.create(audit, &vec![e.clone()]);
@@ -824,6 +828,10 @@ mod tests {
 
             let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
             e.add_ava(String::from("userid"), String::from("claire"));
+            e.add_ava(
+                "uuid".to_string(),
+                "db237e8a-0079-4b8c-8a56-593b22aa44d1".to_string(),
+            );
             let e = unsafe { e.to_valid_new() };
 
             let single_result = be.create(audit, &vec![e.clone()]);
@@ -850,9 +858,17 @@ mod tests {
             // First create some entries (3?)
             let mut e1: Entry<EntryInvalid, EntryNew> = Entry::new();
             e1.add_ava(String::from("userid"), String::from("william"));
+            e1.add_ava(
+                "uuid".to_string(),
+                "db237e8a-0079-4b8c-8a56-593b22aa44d1".to_string(),
+            );
 
             let mut e2: Entry<EntryInvalid, EntryNew> = Entry::new();
             e2.add_ava(String::from("userid"), String::from("alice"));
+            e2.add_ava(
+                "uuid".to_string(),
+                "4b6228ab-1dbe-42a4-a9f5-f6368222438e".to_string(),
+            );
 
             let ve1 = unsafe { e1.clone().to_valid_new() };
             let ve2 = unsafe { e2.clone().to_valid_new() };
@@ -912,12 +928,24 @@ mod tests {
             // First create some entries (3?)
             let mut e1: Entry<EntryInvalid, EntryNew> = Entry::new();
             e1.add_ava(String::from("userid"), String::from("william"));
+            e1.add_ava(
+                "uuid".to_string(),
+                "db237e8a-0079-4b8c-8a56-593b22aa44d1".to_string(),
+            );
 
             let mut e2: Entry<EntryInvalid, EntryNew> = Entry::new();
             e2.add_ava(String::from("userid"), String::from("alice"));
+            e2.add_ava(
+                "uuid".to_string(),
+                "4b6228ab-1dbe-42a4-a9f5-f6368222438e".to_string(),
+            );
 
             let mut e3: Entry<EntryInvalid, EntryNew> = Entry::new();
             e3.add_ava(String::from("userid"), String::from("lucy"));
+            e3.add_ava(
+                "uuid".to_string(),
+                "7b23c99d-c06b-4a9a-a958-3afa56383e1d".to_string(),
+            );
 
             let ve1 = unsafe { e1.clone().to_valid_new() };
             let ve2 = unsafe { e2.clone().to_valid_new() };
@@ -950,6 +978,10 @@ mod tests {
             // the state machine rules here!!!!
             let mut e4: Entry<EntryInvalid, EntryNew> = Entry::new();
             e4.add_ava(String::from("userid"), String::from("amy"));
+            e4.add_ava(
+                "uuid".to_string(),
+                "21d816b5-1f6a-4696-b7c1-6ed06d22ed81".to_string(),
+            );
 
             let ve4 = unsafe { e4.clone().to_valid_committed() };
 
@@ -978,12 +1010,24 @@ mod tests {
             // First create some entries (3?)
             let mut e1: Entry<EntryInvalid, EntryNew> = Entry::new();
             e1.add_ava(String::from("userid"), String::from("william"));
+            e1.add_ava(
+                "uuid".to_string(),
+                "db237e8a-0079-4b8c-8a56-593b22aa44d1".to_string(),
+            );
 
             let mut e2: Entry<EntryInvalid, EntryNew> = Entry::new();
             e2.add_ava(String::from("userid"), String::from("alice"));
+            e2.add_ava(
+                "uuid".to_string(),
+                "4b6228ab-1dbe-42a4-a9f5-f6368222438e".to_string(),
+            );
 
             let mut e3: Entry<EntryInvalid, EntryNew> = Entry::new();
             e3.add_ava(String::from("userid"), String::from("lucy"));
+            e3.add_ava(
+                "uuid".to_string(),
+                "7b23c99d-c06b-4a9a-a958-3afa56383e1d".to_string(),
+            );
 
             let ve1 = unsafe { e1.clone().to_valid_new() };
             let ve2 = unsafe { e2.clone().to_valid_new() };
