@@ -123,15 +123,15 @@ impl<'a> Iterator for EntryAvasMut<'a> {
 // This is specifically important for the commit to the backend, as we only want to
 // commit validated types.
 
-#[derive(Clone, Copy, Debug, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct EntryNew; // new
-#[derive(Clone, Copy, Debug, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct EntryCommitted {
     id: u64,
 } // It's been in the DB, so it has an id
   // pub struct EntryPurged;
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct EntryValid {
     // Asserted with schema, so we know it has a UUID now ...
     uuid: String,
@@ -139,10 +139,10 @@ pub struct EntryValid {
 
 // Modified, can't be sure of it's content! We therefore disregard the UUID
 // and on validate, we check it again.
-#[derive(Clone, Copy, Debug, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct EntryInvalid;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Entry<VALID, STATE> {
     valid: VALID,
     state: STATE,

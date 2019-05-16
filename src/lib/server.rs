@@ -1147,28 +1147,6 @@ mod tests {
     use crate::schema::Schema;
     use crate::server::{QueryServer, QueryServerReadTransaction};
 
-    macro_rules! run_test {
-        ($test_fn:expr) => {{
-            let mut audit = AuditScope::new("run_test");
-
-            let be = Backend::new(&mut audit, "").expect("Failed to init be");
-            let schema_outer = Schema::new(&mut audit).expect("Failed to init schema");
-            {
-                let mut schema = schema_outer.write();
-                schema
-                    .bootstrap_core(&mut audit)
-                    .expect("Failed to bootstrap schema");
-                schema.commit().expect("Failed to commit schema");
-            }
-            let test_server = QueryServer::new(be, Arc::new(schema_outer));
-
-            $test_fn(&test_server, &mut audit);
-            // Any needed teardown?
-            // Make sure there are no errors.
-            assert!(test_server.verify(&mut audit).len() == 0);
-        }};
-    }
-
     #[test]
     fn test_qs_create_user() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {

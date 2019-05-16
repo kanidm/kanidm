@@ -40,6 +40,8 @@ mod entry;
 mod event;
 mod identity;
 mod interval;
+#[macro_use]
+mod macros;
 mod modify;
 #[macro_use]
 mod plugins;

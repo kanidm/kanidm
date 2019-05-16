@@ -1,4 +1,3 @@
-// #[macro_escape]
 
 macro_rules! setup_test {
     (
