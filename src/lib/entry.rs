@@ -414,12 +414,19 @@ impl Entry<EntryInvalid, EntryCommitted> {
 impl Entry<EntryInvalid, EntryNew> {
     #[cfg(test)]
     pub unsafe fn to_valid_new(self) -> Entry<EntryValid, EntryNew> {
+
+
         Entry {
             valid: EntryValid {
                 uuid: self.get_uuid().expect("Invalid uuid").to_string(),
             },
             state: EntryNew,
-            attrs: self.attrs,
+            attrs: self.attrs.into_iter()
+            .map(|(k, mut v)| {
+                v.sort_unstable();
+                (k, v)
+            })
+            .collect(),
         }
     }
 
@@ -430,7 +437,12 @@ impl Entry<EntryInvalid, EntryNew> {
                 uuid: self.get_uuid().expect("Invalid uuid").to_string(),
             },
             state: EntryCommitted { id: 0 },
-            attrs: self.attrs,
+            attrs: self.attrs.into_iter()
+            .map(|(k, mut v)| {
+                v.sort_unstable();
+                (k, v)
+            })
+            .collect(),
         }
     }
 }
@@ -443,7 +455,12 @@ impl Entry<EntryInvalid, EntryCommitted> {
                 uuid: self.get_uuid().expect("Invalid uuid").to_string(),
             },
             state: self.state,
-            attrs: self.attrs,
+            attrs: self.attrs.into_iter()
+            .map(|(k, mut v)| {
+                v.sort_unstable();
+                (k, v)
+            })
+            .collect(),
         }
     }
 }
@@ -454,7 +471,12 @@ impl Entry<EntryValid, EntryNew> {
         Entry {
             valid: self.valid,
             state: EntryCommitted { id: 0 },
-            attrs: self.attrs,
+            attrs: self.attrs.into_iter()
+            .map(|(k, mut v)| {
+                v.sort_unstable();
+                (k, v)
+            })
+            .collect(),
         }
     }
 

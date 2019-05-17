@@ -17,6 +17,7 @@
 
 use concread::cowcell::{CowCell, CowCellReadTxn, CowCellWriteTxn};
 use std::convert::TryFrom;
+use std::collections::BTreeMap;
 
 use crate::audit::AuditScope;
 use crate::entry::{Entry, EntryCommitted, EntryValid};
@@ -29,27 +30,22 @@ use crate::server::{QueryServerReadTransaction, QueryServerTransaction};
 // PARSE ENTRY TO ACP, AND ACP MANAGEMENT
 // =========================================================================
 
+#[derive(Debug, Clone)]
 struct AccessControlSearch {
     acp: AccessControlProfile,
     attrs: Vec<String>,
 }
 
-impl
-    TryFrom<(
-        &mut AuditScope,
-        &QueryServerTransaction,
-        &Entry<EntryValid, EntryCommitted>,
-    )> for AccessControlSearch
-{
-    type Error = OperationError;
-
+impl AccessControlSearch {
     fn try_from(
-        (audit, qs, value): (
-            &mut AuditScope,
-            &QueryServerTransaction,
-            &Entry<EntryValid, EntryCommitted>,
-        ),
-    ) -> Result<Self, Self::Error> {
+            audit: &mut AuditScope,
+            qs: &QueryServerTransaction,
+            value: &Entry<EntryValid, EntryCommitted>,
+    ) -> Result<Self, OperationError> {
+        if !value.attribute_value_pres("class", "access_control_search") {
+            audit_log!(audit, "class access_control_search not present.");
+            return Err(OperationError::InvalidACPState);
+        }
 
         let attrs = try_audit!(audit, value.get_ava("acp_search_attr")
             .ok_or(OperationError::InvalidACPState)
@@ -66,39 +62,68 @@ impl
     }
 }
 
-
+#[derive(Debug, Clone)]
 struct AccessControlDelete {
     acp: AccessControlProfile,
 }
 
-impl
-    TryFrom<(
-        &mut AuditScope,
-        &QueryServerTransaction,
-        &Entry<EntryValid, EntryCommitted>,
-    )> for AccessControlDelete
-{
-    type Error = OperationError;
-
+impl AccessControlDelete {
     fn try_from(
-        (audit, qs, value): (
-            &mut AuditScope,
-            &QueryServerTransaction,
-            &Entry<EntryValid, EntryCommitted>,
-        ),
-    ) -> Result<Self, Self::Error> {
+            audit: &mut AuditScope,
+            qs: &QueryServerTransaction,
+            value: &Entry<EntryValid, EntryCommitted>,
+    ) -> Result<Self, OperationError> {
+        if !value.attribute_value_pres("class", "access_control_delete") {
+            audit_log!(audit, "class access_control_delete not present.");
+            return Err(OperationError::InvalidACPState);
+        }
+
         Ok(AccessControlDelete {
             acp: AccessControlProfile::try_from(audit, qs, value)?
         })
     }
 }
 
+#[derive(Debug, Clone)]
 struct AccessControlCreate {
     acp: AccessControlProfile,
     classes: Vec<String>,
     attrs: Vec<String>,
 }
 
+impl AccessControlCreate
+{
+    fn try_from(
+            audit: &mut AuditScope,
+            qs: &QueryServerTransaction,
+            value: &Entry<EntryValid, EntryCommitted>,
+    ) -> Result<Self, OperationError> {
+        if !value.attribute_value_pres("class", "access_control_create") {
+            audit_log!(audit, "class access_control_create not present.");
+            return Err(OperationError::InvalidACPState);
+        }
+
+        let attrs = value.get_ava("acp_create_attr")
+            .map(|vs: &Vec<String>| {
+                vs.clone()
+            })
+            .unwrap_or_else(|| Vec::new());
+
+        let classes = value.get_ava("acp_create_class")
+            .map(|vs: &Vec<String>| {
+                vs.clone()
+            })
+            .unwrap_or_else(|| Vec::new());
+
+        Ok(AccessControlCreate {
+            acp: AccessControlProfile::try_from(audit, qs, value)?,
+            classes: classes,
+            attrs: attrs,
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
 struct AccessControlModify {
     acp: AccessControlProfile,
     classes: Vec<String>,
@@ -106,6 +131,46 @@ struct AccessControlModify {
     remattrs: Vec<String>,
 }
 
+impl AccessControlModify
+{
+    fn try_from(
+            audit: &mut AuditScope,
+            qs: &QueryServerTransaction,
+            value: &Entry<EntryValid, EntryCommitted>,
+    ) -> Result<Self, OperationError> {
+        if !value.attribute_value_pres("class", "access_control_modify") {
+            audit_log!(audit, "class access_control_modify not present.");
+            return Err(OperationError::InvalidACPState);
+        }
+
+        let presattrs = value.get_ava("acp_modify_presentattr")
+            .map(|vs: &Vec<String>| {
+                vs.clone()
+            })
+            .unwrap_or_else(|| Vec::new());
+
+        let remattrs = value.get_ava("acp_modify_removedattr")
+            .map(|vs: &Vec<String>| {
+                vs.clone()
+            })
+            .unwrap_or_else(|| Vec::new());
+
+        let classes = value.get_ava("acp_modify_class")
+            .map(|vs: &Vec<String>| {
+                vs.clone()
+            })
+            .unwrap_or_else(|| Vec::new());
+
+        Ok(AccessControlModify {
+            acp: AccessControlProfile::try_from(audit, qs, value)?,
+            classes: classes,
+            presattrs: presattrs,
+            remattrs: remattrs,
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
 struct AccessControlProfile {
     name: String,
     uuid: String,
@@ -167,21 +232,88 @@ impl AccessControlProfile
 }
 
 // =========================================================================
-// ACP operations
+// ACP transactions and management for server bits.
 // =========================================================================
 
+#[derive(Debug, Clone)]
+struct AccessControlsInner {
+    // What is the correct key here?
+    acps_search: BTreeMap<String, AccessControlSearch>,
+    acps_create: BTreeMap<String, AccessControlCreate>,
+    acps_modify: BTreeMap<String, AccessControlModify>,
+    acps_delete: BTreeMap<String, AccessControlDelete>,
+}
+
+impl AccessControlsInner {
+    fn new(audit: &mut AuditScope) -> Result<Self, OperationError> {
+        Ok(AccessControlsInner {
+            acps_search: BTreeMap::new(),
+            acps_create: BTreeMap::new(),
+            acps_modify: BTreeMap::new(),
+            acps_delete: BTreeMap::new(),
+        })
+    }
+}
+
+pub struct AccessControls {
+    inner: CowCell<AccessControlsInner>,
+}
+
+pub struct AccessControlsWriteTransaction<'a> {
+    inner: CowCellWriteTxn<'a, AccessControlsInner>,
+}
+
+impl<'a> AccessControlsWriteTransaction<'a> {
+    // Contains the methods needed to setup and create acps
+}
+
 // =========================================================================
-// ACP transactions and management for server.
+// ACP operations (Should this actually be on the ACP's themself?
 // =========================================================================
+
+pub struct AccessControlsReadTransaction {
+    inner: CowCellReadTxn<AccessControlsInner>,
+}
+
+impl AccessControlsReadTransaction {
+    // Contains all the way to eval acps to entries
+}
+
 
 // =========================================================================
 // ACP transaction operations
 // =========================================================================
 
+
+impl AccessControls {
+    pub fn new(audit: &mut AuditScope) -> Result<Self, OperationError> {
+        AccessControlsInner::new(audit).map(|aci| {
+            AccessControls {
+                inner: CowCell::new(aci),
+            }
+        })
+    }
+
+    pub fn read(&self) -> AccessControlsReadTransaction {
+        AccessControlsReadTransaction {
+            inner: self.inner.read(),
+        }
+    }
+
+    pub fn write(&self) -> AccessControlsWriteTransaction {
+        AccessControlsWriteTransaction {
+            inner: self.inner.write(),
+        }
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use crate::entry::{Entry, EntryCommitted, EntryValid, EntryNew, EntryInvalid};
-    use crate::access::AccessControlProfile;
+    use crate::access::{AccessControlProfile, AccessControlSearch,
+        AccessControlModify, AccessControlCreate, AccessControlDelete,
+    };
     use std::convert::TryFrom;
     use crate::audit::AuditScope;
     use crate::server::QueryServerTransaction;
@@ -284,7 +416,7 @@ mod tests {
                     "state": null,
                     "attrs": {
                         "class": ["object", "access_control_profile"],
-                        "name": ["acp_invalid"],
+                        "name": ["acp_valid"],
                         "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
                         "acp_receiver": [
                             "{\"Eq\":[\"name\",\"a\"]}"
@@ -300,9 +432,324 @@ mod tests {
     }
 
     #[test]
+    fn test_access_acp_delete_parser() {
+        run_test!(|qs: &QueryServer, audit: &mut AuditScope| {
+            let qs_read = qs.read();
+
+            acp_from_entry_err!(audit, &qs_read,
+                r#"{
+                    "valid": null,
+                    "state": null,
+                    "attrs": {
+                        "class": ["object", "access_control_profile"],
+                        "name": ["acp_valid"],
+                        "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
+                        "acp_receiver": [
+                            "{\"Eq\":[\"name\",\"a\"]}"
+                        ],
+                        "acp_targetscope": [
+                            "{\"Eq\":[\"name\",\"a\"]}"
+                        ]
+                    }
+                }"#,
+                AccessControlDelete
+            );
+
+            acp_from_entry_ok!(audit, &qs_read,
+                r#"{
+                    "valid": null,
+                    "state": null,
+                    "attrs": {
+                        "class": ["object", "access_control_profile", "access_control_delete"],
+                        "name": ["acp_valid"],
+                        "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
+                        "acp_receiver": [
+                            "{\"Eq\":[\"name\",\"a\"]}"
+                        ],
+                        "acp_targetscope": [
+                            "{\"Eq\":[\"name\",\"a\"]}"
+                        ]
+                    }
+                }"#,
+                AccessControlDelete
+            );
+        })
+    }
+
+    #[test]
     fn test_access_acp_search_parser() {
         run_test!(|qs: &QueryServer, audit: &mut AuditScope| {
             // Test that parsing search access controls works.
+            let qs_read = qs.read();
+
+            // Missing class acp
+            acp_from_entry_err!(audit, &qs_read,
+                r#"{
+                    "valid": null,
+                    "state": null,
+                    "attrs": {
+                        "class": ["object", "access_control_search"],
+                        "name": ["acp_invalid"],
+                        "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
+                        "acp_receiver": [
+                            "{\"Eq\":[\"name\",\"a\"]}"
+                        ],
+                        "acp_targetscope": [
+                            "{\"Eq\":[\"name\",\"a\"]}"
+                        ],
+                        "acp_search_attr": ["name", "class"]
+                    }
+                }"#,
+                AccessControlSearch
+            );
+
+            // Missing class acs
+            acp_from_entry_err!(audit, &qs_read,
+                r#"{
+                    "valid": null,
+                    "state": null,
+                    "attrs": {
+                        "class": ["object", "access_control_profile"],
+                        "name": ["acp_invalid"],
+                        "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
+                        "acp_receiver": [
+                            "{\"Eq\":[\"name\",\"a\"]}"
+                        ],
+                        "acp_targetscope": [
+                            "{\"Eq\":[\"name\",\"a\"]}"
+                        ],
+                        "acp_search_attr": ["name", "class"]
+                    }
+                }"#,
+                AccessControlSearch
+            );
+
+            // Missing attr acp_search_attr
+            acp_from_entry_err!(audit, &qs_read,
+                r#"{
+                    "valid": null,
+                    "state": null,
+                    "attrs": {
+                        "class": ["object", "access_control_profile", "access_control_search"],
+                        "name": ["acp_invalid"],
+                        "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
+                        "acp_receiver": [
+                            "{\"Eq\":[\"name\",\"a\"]}"
+                        ],
+                        "acp_targetscope": [
+                            "{\"Eq\":[\"name\",\"a\"]}"
+                        ]
+                    }
+                }"#,
+                AccessControlSearch
+            );
+
+            // All good!
+            acp_from_entry_ok!(audit, &qs_read,
+                r#"{
+                    "valid": null,
+                    "state": null,
+                    "attrs": {
+                        "class": ["object", "access_control_profile", "access_control_search"],
+                        "name": ["acp_valid"],
+                        "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
+                        "acp_receiver": [
+                            "{\"Eq\":[\"name\",\"a\"]}"
+                        ],
+                        "acp_targetscope": [
+                            "{\"Eq\":[\"name\",\"a\"]}"
+                        ],
+                        "acp_search_attr": ["name", "class"]
+                    }
+                }"#,
+                AccessControlSearch
+            );
+        })
+    }
+
+    #[test]
+    fn test_access_acp_modify_parser() {
+        run_test!(|qs: &QueryServer, audit: &mut AuditScope| {
+            // Test that parsing modify access controls works.
+            let qs_read = qs.read();
+
+            acp_from_entry_err!(audit, &qs_read,
+                r#"{
+                    "valid": null,
+                    "state": null,
+                    "attrs": {
+                        "class": ["object", "access_control_profile"],
+                        "name": ["acp_valid"],
+                        "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
+                        "acp_receiver": [
+                            "{\"Eq\":[\"name\",\"a\"]}"
+                        ],
+                        "acp_targetscope": [
+                            "{\"Eq\":[\"name\",\"a\"]}"
+                        ],
+                        "acp_modify_removedattr": ["name"],
+                        "acp_modify_presentattr": ["name"],
+                        "acp_modify_class": ["object"]
+                    }
+                }"#,
+                AccessControlModify
+            );
+
+            acp_from_entry_ok!(audit, &qs_read,
+                r#"{
+                    "valid": null,
+                    "state": null,
+                    "attrs": {
+                        "class": ["object", "access_control_profile", "access_control_modify"],
+                        "name": ["acp_valid"],
+                        "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
+                        "acp_receiver": [
+                            "{\"Eq\":[\"name\",\"a\"]}"
+                        ],
+                        "acp_targetscope": [
+                            "{\"Eq\":[\"name\",\"a\"]}"
+                        ]
+                    }
+                }"#,
+                AccessControlModify
+            );
+
+            acp_from_entry_ok!(audit, &qs_read,
+                r#"{
+                    "valid": null,
+                    "state": null,
+                    "attrs": {
+                        "class": ["object", "access_control_profile", "access_control_modify"],
+                        "name": ["acp_valid"],
+                        "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
+                        "acp_receiver": [
+                            "{\"Eq\":[\"name\",\"a\"]}"
+                        ],
+                        "acp_targetscope": [
+                            "{\"Eq\":[\"name\",\"a\"]}"
+                        ],
+                        "acp_modify_removedattr": ["name"],
+                        "acp_modify_presentattr": ["name"],
+                        "acp_modify_class": ["object"]
+                    }
+                }"#,
+                AccessControlModify
+            );
+        })
+    }
+
+    #[test]
+    fn test_access_acp_create_parser() {
+        run_test!(|qs: &QueryServer, audit: &mut AuditScope| {
+            // Test that parsing create access controls works.
+            let qs_read = qs.read();
+
+            acp_from_entry_err!(audit, &qs_read,
+                r#"{
+                    "valid": null,
+                    "state": null,
+                    "attrs": {
+                        "class": ["object", "access_control_profile"],
+                        "name": ["acp_valid"],
+                        "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
+                        "acp_receiver": [
+                            "{\"Eq\":[\"name\",\"a\"]}"
+                        ],
+                        "acp_targetscope": [
+                            "{\"Eq\":[\"name\",\"a\"]}"
+                        ],
+                        "acp_create_class": ["object"],
+                        "acp_create_attr": ["name"]
+                    }
+                }"#,
+                AccessControlCreate
+            );
+
+            acp_from_entry_ok!(audit, &qs_read,
+                r#"{
+                    "valid": null,
+                    "state": null,
+                    "attrs": {
+                        "class": ["object", "access_control_profile", "access_control_create"],
+                        "name": ["acp_valid"],
+                        "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
+                        "acp_receiver": [
+                            "{\"Eq\":[\"name\",\"a\"]}"
+                        ],
+                        "acp_targetscope": [
+                            "{\"Eq\":[\"name\",\"a\"]}"
+                        ]
+                    }
+                }"#,
+                AccessControlCreate
+            );
+
+            acp_from_entry_ok!(audit, &qs_read,
+                r#"{
+                    "valid": null,
+                    "state": null,
+                    "attrs": {
+                        "class": ["object", "access_control_profile", "access_control_create"],
+                        "name": ["acp_valid"],
+                        "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
+                        "acp_receiver": [
+                            "{\"Eq\":[\"name\",\"a\"]}"
+                        ],
+                        "acp_targetscope": [
+                            "{\"Eq\":[\"name\",\"a\"]}"
+                        ],
+                        "acp_create_class": ["object"],
+                        "acp_create_attr": ["name"]
+                    }
+                }"#,
+                AccessControlCreate
+            );
+        })
+    }
+
+    #[test]
+    fn test_access_acp_compound_parser() {
+        run_test!(|qs: &QueryServer, audit: &mut AuditScope| {
+            // Test that parsing compound access controls works. This means that
+            // given a single &str, we can evaluate all types from a single record.
+            // This is valid, and could exist, IE a rule to allow create, search and modify
+            // over a single scope.
+            let qs_read = qs.read();
+
+            let e: &str =
+                r#"{
+                    "valid": null,
+                    "state": null,
+                    "attrs": {
+                        "class": [
+                            "object",
+                            "access_control_profile",
+                            "access_control_create",
+                            "access_control_delete",
+                            "access_control_modify",
+                            "access_control_search"
+                        ],
+                        "name": ["acp_valid"],
+                        "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
+                        "acp_receiver": [
+                            "{\"Eq\":[\"name\",\"a\"]}"
+                        ],
+                        "acp_targetscope": [
+                            "{\"Eq\":[\"name\",\"a\"]}"
+                        ],
+                        "acp_search_attr": ["name"],
+                        "acp_create_class": ["object"],
+                        "acp_create_attr": ["name"],
+                        "acp_modify_removedattr": ["name"],
+                        "acp_modify_presentattr": ["name"],
+                        "acp_modify_class": ["object"]
+                    }
+                }"#;
+
+            acp_from_entry_ok!(audit, &qs_read, e, AccessControlCreate);
+            acp_from_entry_ok!(audit, &qs_read, e, AccessControlDelete);
+            acp_from_entry_ok!(audit, &qs_read, e, AccessControlModify);
+            acp_from_entry_ok!(audit, &qs_read, e, AccessControlSearch);
         })
     }
 }
