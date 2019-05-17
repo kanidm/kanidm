@@ -3,7 +3,7 @@ use crate::proto_v1::Modify as ProtoModify;
 use crate::proto_v1::ModifyList as ProtoModifyList;
 
 use crate::error::{OperationError, SchemaError};
-use crate::schema::SchemaReadTransaction;
+use crate::schema::SchemaTransaction;
 use crate::server::{QueryServerReadTransaction, QueryServerWriteTransaction};
 
 // Should this be std?
@@ -98,7 +98,7 @@ impl ModifyList<ModifyInvalid> {
 
     pub fn validate(
         &self,
-        schema: &SchemaReadTransaction,
+        schema: &SchemaTransaction,
     ) -> Result<ModifyList<ModifyValid>, SchemaError> {
         let schema_attributes = schema.get_attributes();
         let schema_name = schema_attributes

@@ -18,7 +18,7 @@ use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::filter::{Filter, FilterInvalid};
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use crate::plugins::Plugin;
-use crate::schema::SchemaReadTransaction;
+use crate::schema::SchemaTransaction;
 use crate::server::QueryServerReadTransaction;
 use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
 

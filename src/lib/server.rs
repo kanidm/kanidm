@@ -4,7 +4,7 @@
 use std::sync::Arc;
 
 use crate::audit::AuditScope;
-use crate::be::{Backend, BackendReadTransaction, BackendTransaction, BackendWriteTransaction};
+use crate::be::{Backend, BackendTransaction, BackendReadTransaction, BackendWriteTransaction};
 
 use crate::constants::{JSON_ANONYMOUS_V1, JSON_SYSTEM_INFO_V1};
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
@@ -17,17 +17,17 @@ use crate::filter::{Filter, FilterInvalid};
 use crate::modify::{Modify, ModifyInvalid, ModifyList};
 use crate::plugins::Plugins;
 use crate::schema::{
-    Schema, SchemaReadTransaction, SchemaTransaction, SchemaWriteTransaction, SyntaxType,
+    Schema, SchemaTransaction, SchemaReadTransaction, SchemaWriteTransaction, SyntaxType,
 };
 
 // This is the core of the server. It implements all
 // the search and modify actions, applies access controls
 // and get's everything ready to push back to the fe code
 pub trait QueryServerReadTransaction {
-    type BackendTransactionType: BackendReadTransaction;
-    fn get_be_txn(&self) -> &Self::BackendTransactionType;
+    type BackendReadTransactionType: BackendTransaction;
+    fn get_be_txn(&self) -> &Self::BackendReadTransactionType;
 
-    type SchemaTransactionType: SchemaReadTransaction;
+    type SchemaTransactionType: SchemaTransaction;
     fn get_schema(&self) -> &Self::SchemaTransactionType;
 
     fn search(
@@ -341,25 +341,25 @@ pub trait QueryServerReadTransaction {
 }
 
 pub struct QueryServerTransaction {
-    be_txn: BackendTransaction,
+    be_txn: BackendReadTransaction,
     // Anything else? In the future, we'll need to have a schema transaction
     // type, maybe others?
-    schema: SchemaTransaction,
+    schema: SchemaReadTransaction,
 }
 
 // Actually conduct a search request
 // This is the core of the server, as it processes the entire event
 // applies all parts required in order and more.
 impl QueryServerReadTransaction for QueryServerTransaction {
-    type BackendTransactionType = BackendTransaction;
+    type BackendReadTransactionType = BackendReadTransaction;
 
-    fn get_be_txn(&self) -> &BackendTransaction {
+    fn get_be_txn(&self) -> &BackendReadTransaction {
         &self.be_txn
     }
 
-    type SchemaTransactionType = SchemaTransaction;
+    type SchemaTransactionType = SchemaReadTransaction;
 
-    fn get_schema(&self) -> &SchemaTransaction {
+    fn get_schema(&self) -> &SchemaReadTransaction {
         &self.schema
     }
 }
@@ -423,7 +423,7 @@ pub struct QueryServerWriteTransaction<'a> {
 }
 
 impl<'a> QueryServerReadTransaction for QueryServerWriteTransaction<'a> {
-    type BackendTransactionType = BackendWriteTransaction;
+    type BackendReadTransactionType = BackendWriteTransaction;
 
     fn get_be_txn(&self) -> &BackendWriteTransaction {
         &self.be_txn

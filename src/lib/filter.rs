@@ -5,7 +5,7 @@
 use crate::audit::AuditScope;
 use crate::error::{OperationError, SchemaError};
 use crate::proto_v1::Filter as ProtoFilter;
-use crate::schema::SchemaReadTransaction;
+use crate::schema::SchemaTransaction;
 use crate::server::{
     QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
 };
@@ -95,7 +95,7 @@ impl Filter<FilterInvalid> {
 
     pub fn validate(
         &self,
-        schema: &SchemaReadTransaction,
+        schema: &SchemaTransaction,
     ) -> Result<Filter<FilterValid>, SchemaError> {
         // TODO:
         // First, normalise (if possible)

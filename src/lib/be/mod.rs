@@ -31,7 +31,7 @@ pub struct Backend {
     pool: Pool<SqliteConnectionManager>,
 }
 
-pub struct BackendTransaction {
+pub struct BackendReadTransaction {
     committed: bool,
     conn: r2d2::PooledConnection<SqliteConnectionManager>,
 }
@@ -41,7 +41,7 @@ pub struct BackendWriteTransaction {
     conn: r2d2::PooledConnection<SqliteConnectionManager>,
 }
 
-pub trait BackendReadTransaction {
+pub trait BackendTransaction {
     fn get_conn(&self) -> &r2d2::PooledConnection<r2d2_sqlite::SqliteConnectionManager>;
 
     // Take filter, and AuditScope ref?
@@ -161,7 +161,7 @@ pub trait BackendReadTransaction {
     }
 }
 
-impl Drop for BackendTransaction {
+impl Drop for BackendReadTransaction {
     // Abort
     // TODO: Is this correct for RO txn?
     fn drop(self: &mut Self) {
@@ -178,7 +178,7 @@ impl Drop for BackendTransaction {
     }
 }
 
-impl BackendTransaction {
+impl BackendReadTransaction {
     pub fn new(conn: r2d2::PooledConnection<SqliteConnectionManager>) -> Self {
         // Start the transaction
         println!("Starting RO txn ...");
@@ -187,14 +187,14 @@ impl BackendTransaction {
         // signature here if we wanted to...
         conn.execute("BEGIN TRANSACTION", NO_PARAMS)
             .expect("Unable to begin transaction!");
-        BackendTransaction {
+        BackendReadTransaction {
             committed: false,
             conn: conn,
         }
     }
 }
 
-impl BackendReadTransaction for BackendTransaction {
+impl BackendTransaction for BackendReadTransaction {
     fn get_conn(&self) -> &r2d2::PooledConnection<r2d2_sqlite::SqliteConnectionManager> {
         &self.conn
     }
@@ -219,7 +219,7 @@ impl Drop for BackendWriteTransaction {
     }
 }
 
-impl BackendReadTransaction for BackendWriteTransaction {
+impl BackendTransaction for BackendWriteTransaction {
     fn get_conn(&self) -> &r2d2::PooledConnection<r2d2_sqlite::SqliteConnectionManager> {
         &self.conn
     }
@@ -714,13 +714,13 @@ impl Backend {
         })
     }
 
-    pub fn read(&self) -> BackendTransaction {
+    pub fn read(&self) -> BackendReadTransaction {
         // TODO: Don't use expect
         let conn = self
             .pool
             .get()
             .expect("Unable to get connection from pool!!!");
-        BackendTransaction::new(conn)
+        BackendReadTransaction::new(conn)
     }
 
     pub fn write(&self) -> BackendWriteTransaction {
@@ -752,7 +752,7 @@ mod tests {
     use super::super::audit::AuditScope;
     use super::super::entry::{Entry, EntryInvalid, EntryNew};
     use super::super::filter::Filter;
-    use super::{Backend, BackendReadTransaction, BackendWriteTransaction, OperationError};
+    use super::{Backend, BackendTransaction, BackendWriteTransaction, OperationError};
 
     macro_rules! run_test {
         ($test_fn:expr) => {{

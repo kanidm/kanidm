@@ -10,7 +10,7 @@ use crate::event::{
     SearchResult,
 };
 use crate::log::EventLog;
-use crate::schema::{Schema, SchemaReadTransaction};
+use crate::schema::{Schema, SchemaTransaction};
 
 use crate::server::{QueryServer, QueryServerReadTransaction};
 

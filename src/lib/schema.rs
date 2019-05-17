@@ -328,7 +328,7 @@ pub struct SchemaInner {
     attributes: HashMap<String, SchemaAttribute>,
 }
 
-pub trait SchemaReadTransaction {
+pub trait SchemaTransaction {
     fn get_inner(&self) -> &SchemaInner;
 
     fn validate(&self, audit: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
@@ -1272,18 +1272,18 @@ impl<'a> SchemaWriteTransaction<'a> {
     }
 }
 
-impl<'a> SchemaReadTransaction for SchemaWriteTransaction<'a> {
+impl<'a> SchemaTransaction for SchemaWriteTransaction<'a> {
     fn get_inner(&self) -> &SchemaInner {
         // Does this deref the CowCell for us?
         &self.inner
     }
 }
 
-pub struct SchemaTransaction {
+pub struct SchemaReadTransaction {
     inner: CowCellReadTxn<SchemaInner>,
 }
 
-impl SchemaReadTransaction for SchemaTransaction {
+impl SchemaTransaction for SchemaReadTransaction {
     fn get_inner(&self) -> &SchemaInner {
         // Does this deref the CowCell for us?
         &self.inner
@@ -1297,8 +1297,8 @@ impl Schema {
         })
     }
 
-    pub fn read(&self) -> SchemaTransaction {
-        SchemaTransaction {
+    pub fn read(&self) -> SchemaReadTransaction {
+        SchemaReadTransaction {
             inner: self.inner.read(),
         }
     }
@@ -1317,7 +1317,7 @@ mod tests {
     use crate::entry::{Entry, EntryInvalid, EntryNew, EntryValid};
     use crate::error::{ConsistencyError, SchemaError};
     use crate::filter::{Filter, FilterValid};
-    use crate::schema::SchemaReadTransaction;
+    use crate::schema::SchemaTransaction;
     use crate::schema::{IndexType, Schema, SchemaAttribute, SyntaxType};
     use serde_json;
     use std::convert::TryFrom;

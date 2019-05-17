@@ -4,7 +4,7 @@ use crate::error::{OperationError, SchemaError};
 use crate::filter::{Filter, FilterValid};
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use crate::proto_v1::Entry as ProtoEntry;
-use crate::schema::{SchemaAttribute, SchemaClass, SchemaReadTransaction};
+use crate::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
 use crate::server::{QueryServerReadTransaction, QueryServerWriteTransaction};
 
 use crate::be::dbentry::{DbEntry, DbEntryV1, DbEntryVers};
@@ -220,7 +220,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
 
     pub fn validate(
         self,
-        schema: &SchemaReadTransaction,
+        schema: &SchemaTransaction,
     ) -> Result<Entry<EntryValid, STATE>, SchemaError> {
         // We need to clone before we start, as well be mutating content.
         // We destructure:
@@ -657,7 +657,7 @@ impl<STATE> Entry<EntryValid, STATE> {
 
     pub fn gen_modlist_assert(
         &self,
-        schema: &SchemaReadTransaction,
+        schema: &SchemaTransaction,
     ) -> Result<ModifyList<ModifyInvalid>, SchemaError> {
         // Create a modlist from this entry. We make this assuming we want the entry
         // to have this one as a subset of values. This means if we have single
