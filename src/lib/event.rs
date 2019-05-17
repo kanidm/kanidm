@@ -117,11 +117,12 @@ impl Event {
         event.clone()
     }
 
-    /*
     pub fn is_internal(&self) -> bool {
-        match
+        match self.origin {
+            EventOrigin::Internal => true,
+            _ => false,
+        }
     }
-    */
 }
 
 #[derive(Debug)]
@@ -148,6 +149,10 @@ impl SearchEvent {
             }),
             Err(e) => Err(e),
         }
+    }
+
+    pub fn is_internal(&self) -> bool {
+        self.event.is_internal()
     }
 
     // Just impersonate the account with no filter changes.

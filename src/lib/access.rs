@@ -24,22 +24,24 @@ use crate::entry::{Entry, EntryCommitted, EntryValid};
 use crate::error::OperationError;
 use crate::filter::{Filter, FilterValid};
 use crate::proto_v1::Filter as ProtoFilter;
-use crate::server::{QueryServerReadTransaction, QueryServerTransaction};
+use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
+
+use crate::event::SearchEvent;
 
 // =========================================================================
 // PARSE ENTRY TO ACP, AND ACP MANAGEMENT
 // =========================================================================
 
 #[derive(Debug, Clone)]
-struct AccessControlSearch {
+pub struct AccessControlSearch {
     acp: AccessControlProfile,
     attrs: Vec<String>,
 }
 
 impl AccessControlSearch {
-    fn try_from(
+    pub fn try_from(
         audit: &mut AuditScope,
-        qs: &QueryServerReadTransaction,
+        qs: &QueryServerWriteTransaction,
         value: &Entry<EntryValid, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         if !value.attribute_value_pres("class", "access_control_search") {
@@ -62,17 +64,36 @@ impl AccessControlSearch {
             attrs: attrs,
         })
     }
+
+    #[cfg(test)]
+    unsafe fn from_raw(
+        name: &str,
+        uuid: &str,
+        receiver: Filter<FilterValid>,
+        targetscope: Filter<FilterValid>,
+        attrs: &str,
+    ) -> Self {
+        AccessControlSearch {
+            acp: AccessControlProfile {
+                name: name.to_string(),
+                uuid: uuid.to_string(),
+                receiver: receiver,
+                targetscope: targetscope,
+            },
+            attrs: attrs.split_whitespace().map(|s| s.to_string()).collect(),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
-struct AccessControlDelete {
+pub struct AccessControlDelete {
     acp: AccessControlProfile,
 }
 
 impl AccessControlDelete {
-    fn try_from(
+    pub fn try_from(
         audit: &mut AuditScope,
-        qs: &QueryServerReadTransaction,
+        qs: &QueryServerWriteTransaction,
         value: &Entry<EntryValid, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         if !value.attribute_value_pres("class", "access_control_delete") {
@@ -87,16 +108,16 @@ impl AccessControlDelete {
 }
 
 #[derive(Debug, Clone)]
-struct AccessControlCreate {
+pub struct AccessControlCreate {
     acp: AccessControlProfile,
     classes: Vec<String>,
     attrs: Vec<String>,
 }
 
 impl AccessControlCreate {
-    fn try_from(
+    pub fn try_from(
         audit: &mut AuditScope,
-        qs: &QueryServerReadTransaction,
+        qs: &QueryServerWriteTransaction,
         value: &Entry<EntryValid, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         if !value.attribute_value_pres("class", "access_control_create") {
@@ -123,7 +144,7 @@ impl AccessControlCreate {
 }
 
 #[derive(Debug, Clone)]
-struct AccessControlModify {
+pub struct AccessControlModify {
     acp: AccessControlProfile,
     classes: Vec<String>,
     presattrs: Vec<String>,
@@ -131,9 +152,9 @@ struct AccessControlModify {
 }
 
 impl AccessControlModify {
-    fn try_from(
+    pub fn try_from(
         audit: &mut AuditScope,
-        qs: &QueryServerReadTransaction,
+        qs: &QueryServerWriteTransaction,
         value: &Entry<EntryValid, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         if !value.attribute_value_pres("class", "access_control_modify") {
@@ -176,7 +197,7 @@ struct AccessControlProfile {
 impl AccessControlProfile {
     fn try_from(
         audit: &mut AuditScope,
-        qs: &QueryServerReadTransaction,
+        qs: &QueryServerWriteTransaction,
         value: &Entry<EntryValid, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         // Assert we have class access_control_profile
@@ -215,7 +236,7 @@ impl AccessControlProfile {
             serde_json::from_str(receiver_raw.as_str())
                 .map_err(|_| OperationError::InvalidACPState)
         );
-        let receiver_i = try_audit!(audit, Filter::from_ro(audit, &receiver_f, qs));
+        let receiver_i = try_audit!(audit, Filter::from_rw(audit, &receiver_f, qs));
         let receiver = try_audit!(
             audit,
             receiver_i
@@ -229,7 +250,7 @@ impl AccessControlProfile {
             serde_json::from_str(targetscope_raw.as_str())
                 .map_err(|_| OperationError::InvalidACPState)
         );
-        let targetscope_i = try_audit!(audit, Filter::from_ro(audit, &targetscope_f, qs));
+        let targetscope_i = try_audit!(audit, Filter::from_rw(audit, &targetscope_f, qs));
         let targetscope = try_audit!(
             audit,
             targetscope_i
@@ -278,6 +299,30 @@ pub trait AccessControlsTransaction {
     fn get_inner(&self) -> &AccessControlsInner;
 
     // Contains all the way to eval acps to entries
+    fn search_filter_entries(
+        &self,
+        audit: &mut AuditScope,
+        se: &SearchEvent,
+        entries: Vec<Entry<EntryValid, EntryCommitted>>,
+    ) -> Result<Vec<Entry<EntryValid, EntryCommitted>>, OperationError> {
+        // If this is an internal search, return our working set.
+        if se.is_internal() {
+            return Ok(entries);
+        }
+
+        // First get the set of acps that apply to this receiver
+
+        // Now for that set, apply them to the entries.
+
+        unimplemented!();
+    }
+
+    fn search_filter_entry_attributes(
+        &self,
+        entries: &Vec<Entry<EntryValid, EntryCommitted>>,
+    ) -> Result<Vec<Entry<EntryValid, EntryCommitted>>, OperationError> {
+        unimplemented!();
+    }
 }
 
 pub struct AccessControlsWriteTransaction<'a> {
@@ -285,9 +330,66 @@ pub struct AccessControlsWriteTransaction<'a> {
 }
 
 impl<'a> AccessControlsWriteTransaction<'a> {
-    // Contains the methods needed to setup and create acps
-    pub fn update_from_what(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
-        unimplemented!();
+    fn get_inner_mut(&mut self) -> &mut AccessControlsInner {
+        &mut self.inner
+    }
+
+    // We have a method to update each set, so that if an error
+    // occurs we KNOW it's an error, rather than using errors as
+    // part of the logic (IE try-parse-fail method).
+    pub fn update_search(&mut self, acps: Vec<AccessControlSearch>) -> Result<(), OperationError> {
+        // Clear the existing tree. We don't care that we are wiping it
+        // because we have the transactions to protect us from errors
+        // to allow rollbacks.
+        let mut inner = self.get_inner_mut();
+        inner.acps_search.clear();
+        for acp in acps {
+            let uuid = acp.acp.uuid.clone();
+            inner
+                .acps_search
+                .insert(uuid, acp)
+                .ok_or(OperationError::InvalidACPState)?;
+        }
+        Ok(())
+    }
+
+    pub fn update_create(&mut self, acps: Vec<AccessControlCreate>) -> Result<(), OperationError> {
+        let mut inner = self.get_inner_mut();
+        inner.acps_create.clear();
+        for acp in acps {
+            let uuid = acp.acp.uuid.clone();
+            inner
+                .acps_create
+                .insert(uuid, acp)
+                .ok_or(OperationError::InvalidACPState)?;
+        }
+        Ok(())
+    }
+
+    pub fn update_modify(&mut self, acps: Vec<AccessControlModify>) -> Result<(), OperationError> {
+        let mut inner = self.get_inner_mut();
+        inner.acps_modify.clear();
+        for acp in acps {
+            let uuid = acp.acp.uuid.clone();
+            inner
+                .acps_modify
+                .insert(uuid, acp)
+                .ok_or(OperationError::InvalidACPState)?;
+        }
+        Ok(())
+    }
+
+    pub fn update_delete(&mut self, acps: Vec<AccessControlDelete>) -> Result<(), OperationError> {
+        let mut inner = self.get_inner_mut();
+        inner.acps_delete.clear();
+        for acp in acps {
+            let uuid = acp.acp.uuid.clone();
+            inner
+                .acps_delete
+                .insert(uuid, acp)
+                .ok_or(OperationError::InvalidACPState)?;
+        }
+        Ok(())
     }
 
     pub fn commit(self) -> Result<(), OperationError> {
@@ -344,13 +446,15 @@ impl AccessControls {
 mod tests {
     use crate::access::{
         AccessControlCreate, AccessControlDelete, AccessControlModify, AccessControlProfile,
-        AccessControlSearch,
+        AccessControlSearch, AccessControls, AccessControlsTransaction,
     };
     use crate::audit::AuditScope;
     use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
-    use crate::server::QueryServerReadTransaction;
+    use crate::server::QueryServerWriteTransaction;
     use std::convert::TryFrom;
 
+    use crate::event::SearchEvent;
+    use crate::filter::Filter;
     use crate::proto_v1::Filter as ProtoFilter;
 
     macro_rules! acp_from_entry_err {
@@ -395,11 +499,11 @@ mod tests {
             // really protects us *a lot* here, but it's nice to have defence and
             // layers of validation.
 
-            let qs_read = qs.read();
+            let qs_write = qs.write();
 
             acp_from_entry_err!(
                 audit,
-                &qs_read,
+                &qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -414,7 +518,7 @@ mod tests {
 
             acp_from_entry_err!(
                 audit,
-                &qs_read,
+                &qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -429,7 +533,7 @@ mod tests {
 
             acp_from_entry_err!(
                 audit,
-                &qs_read,
+                &qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -447,7 +551,7 @@ mod tests {
             // "\"Self\""
             acp_from_entry_ok!(
                 audit,
-                &qs_read,
+                &qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -471,11 +575,11 @@ mod tests {
     #[test]
     fn test_access_acp_delete_parser() {
         run_test!(|qs: &QueryServer, audit: &mut AuditScope| {
-            let qs_read = qs.read();
+            let qs_write = qs.write();
 
             acp_from_entry_err!(
                 audit,
-                &qs_read,
+                &qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -496,7 +600,7 @@ mod tests {
 
             acp_from_entry_ok!(
                 audit,
-                &qs_read,
+                &qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -521,12 +625,12 @@ mod tests {
     fn test_access_acp_search_parser() {
         run_test!(|qs: &QueryServer, audit: &mut AuditScope| {
             // Test that parsing search access controls works.
-            let qs_read = qs.read();
+            let qs_write = qs.write();
 
             // Missing class acp
             acp_from_entry_err!(
                 audit,
-                &qs_read,
+                &qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -549,7 +653,7 @@ mod tests {
             // Missing class acs
             acp_from_entry_err!(
                 audit,
-                &qs_read,
+                &qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -572,7 +676,7 @@ mod tests {
             // Missing attr acp_search_attr
             acp_from_entry_err!(
                 audit,
-                &qs_read,
+                &qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -594,7 +698,7 @@ mod tests {
             // All good!
             acp_from_entry_ok!(
                 audit,
-                &qs_read,
+                &qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -620,11 +724,11 @@ mod tests {
     fn test_access_acp_modify_parser() {
         run_test!(|qs: &QueryServer, audit: &mut AuditScope| {
             // Test that parsing modify access controls works.
-            let qs_read = qs.read();
+            let qs_write = qs.write();
 
             acp_from_entry_err!(
                 audit,
-                &qs_read,
+                &qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -648,7 +752,7 @@ mod tests {
 
             acp_from_entry_ok!(
                 audit,
-                &qs_read,
+                &qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -669,7 +773,7 @@ mod tests {
 
             acp_from_entry_ok!(
                 audit,
-                &qs_read,
+                &qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -697,11 +801,11 @@ mod tests {
     fn test_access_acp_create_parser() {
         run_test!(|qs: &QueryServer, audit: &mut AuditScope| {
             // Test that parsing create access controls works.
-            let qs_read = qs.read();
+            let qs_write = qs.write();
 
             acp_from_entry_err!(
                 audit,
-                &qs_read,
+                &qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -724,7 +828,7 @@ mod tests {
 
             acp_from_entry_ok!(
                 audit,
-                &qs_read,
+                &qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -745,7 +849,7 @@ mod tests {
 
             acp_from_entry_ok!(
                 audit,
-                &qs_read,
+                &qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -775,7 +879,7 @@ mod tests {
             // given a single &str, we can evaluate all types from a single record.
             // This is valid, and could exist, IE a rule to allow create, search and modify
             // over a single scope.
-            let qs_read = qs.read();
+            let qs_write = qs.write();
 
             let e: &str = r#"{
                     "valid": null,
@@ -806,10 +910,73 @@ mod tests {
                     }
                 }"#;
 
-            acp_from_entry_ok!(audit, &qs_read, e, AccessControlCreate);
-            acp_from_entry_ok!(audit, &qs_read, e, AccessControlDelete);
-            acp_from_entry_ok!(audit, &qs_read, e, AccessControlModify);
-            acp_from_entry_ok!(audit, &qs_read, e, AccessControlSearch);
+            acp_from_entry_ok!(audit, &qs_write, e, AccessControlCreate);
+            acp_from_entry_ok!(audit, &qs_write, e, AccessControlDelete);
+            acp_from_entry_ok!(audit, &qs_write, e, AccessControlModify);
+            acp_from_entry_ok!(audit, &qs_write, e, AccessControlSearch);
         })
+    }
+
+    #[test]
+    fn test_access_internal_search() {
+        // Test that an internal search bypasses ACS
+        let se = SearchEvent::new_internal(Filter::Pres("class".to_string()));
+
+        let acs_test = unsafe {
+            AccessControlSearch::from_raw(
+                "test_acp",
+                "d38640c4-0254-49f9-99b7-8ba7d0233f3d",
+                Filter::Pres("class".to_string()), // apply to all people
+                Filter::Pres("nomatchy".to_string()), // apply to none - ie no allowed results
+                "name",                            // allow to this attr, but we don't eval this.
+            )
+        };
+
+        let ac = AccessControls::new();
+        let mut acw = ac.write();
+        acw.update_search(vec![acs_test]);
+
+        let acw = acw;
+
+        let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            r#"{
+                "valid": null,
+                "state": null,
+                "attrs": {
+                    "class": ["object"],
+                    "name": ["testperson1"],
+                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"]
+                }
+                }"#,
+        )
+        .expect("json failure");
+        let ev1 = unsafe { e1.to_valid_committed() };
+
+        let expect = vec![ev1.clone()];
+        let entries = vec![ev1];
+
+        let mut audit = AuditScope::new("test_access_internal_search");
+
+        let res = acw.search_filter_entries(&mut audit, &se, entries.clone());
+
+        // should be ok, and same as expect.
+        assert!(res.expect("failed") == entries);
+    }
+
+    #[test]
+    fn test_access_enforce_search() {
+        // Test that entries from a search are reduced by acps
+
+        // First, we need to resolve the ACS based on SE data. This means
+        // that filter self-params need to be updated and evaluated.
+        //
+        // Importantly, self is resolved via the event, not the QS, so we avoid
+        // many of the loop-style issues we had to parse/update acps in the first place.
+
+    }
+
+    #[test]
+    fn test_access_enforce_search_attrs() {
+        // Test that attributes are correctly limited.
     }
 }

@@ -7,6 +7,7 @@ use crate::audit::AuditScope;
 use crate::be::{Backend, BackendReadTransaction, BackendTransaction, BackendWriteTransaction};
 
 use crate::access::{
+    AccessControlCreate, AccessControlDelete, AccessControlModify, AccessControlSearch,
     AccessControls, AccessControlsReadTransaction, AccessControlsTransaction,
     AccessControlsWriteTransaction,
 };
@@ -33,6 +34,9 @@ pub trait QueryServerTransaction {
 
     type SchemaTransactionType: SchemaTransaction;
     fn get_schema(&self) -> &Self::SchemaTransactionType;
+
+    type AccessControlsTransactionType: AccessControlsTransaction;
+    fn get_accesscontrols(&self) -> &Self::AccessControlsTransactionType;
 
     fn search(
         &self,
@@ -79,9 +83,21 @@ pub trait QueryServerTransaction {
             .map_err(|_| OperationError::Backend);
         au.append_scope(audit_be);
 
-        if res.is_err() {
-            return res;
-        }
+        let res = try_audit!(au, res);
+
+        // Apply ACP before we let the plugins "have at it".
+        // WARNING; for external searches this is NOT the only
+        // ACP application. There is a second application to reduce the
+        // attribute set on the entries!
+        //
+        // TODO: Make a search_ext that applies search_filter_entry_attributes
+        // and does Entry -> EntryReduced.
+        let mut audit_acp = AuditScope::new("access_control_profiles");
+        let access = self.get_accesscontrols();
+        let acp_res = access.search_filter_entries(&mut audit_acp, se, res);
+
+        au.append_scope(audit_acp);
+        let acp_res = try_audit!(au, acp_res);
 
         /*
         let mut audit_plugin_post = AuditScope::new("plugin_post_search");
@@ -97,10 +113,7 @@ pub trait QueryServerTransaction {
         }
         */
 
-        // TODO: We'll add ACI here. I think ACI should transform from
-        // internal -> proto entries since we have to anyway ...
-        // alternately, we can just clone again ...
-        res
+        Ok(acp_res)
     }
 
     fn exists(&self, au: &mut AuditScope, ee: &ExistsEvent) -> Result<bool, OperationError> {
@@ -367,6 +380,12 @@ impl QueryServerTransaction for QueryServerReadTransaction {
     fn get_schema(&self) -> &SchemaReadTransaction {
         &self.schema
     }
+
+    type AccessControlsTransactionType = AccessControlsReadTransaction;
+
+    fn get_accesscontrols(&self) -> &AccessControlsReadTransaction {
+        &self.accesscontrols
+    }
 }
 
 impl QueryServerReadTransaction {
@@ -439,6 +458,12 @@ impl<'a> QueryServerTransaction for QueryServerWriteTransaction<'a> {
 
     fn get_schema(&self) -> &SchemaWriteTransaction<'a> {
         &self.schema
+    }
+
+    type AccessControlsTransactionType = AccessControlsWriteTransaction<'a>;
+
+    fn get_accesscontrols(&self) -> &AccessControlsWriteTransaction<'a> {
+        &self.accesscontrols
     }
 }
 
@@ -1104,8 +1129,73 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
     fn reload_accesscontrols(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
         // supply entries to the writable access controls to reload from.
-        // This has to be done in FOUR passes for each type!
+        // This has to be done in FOUR passes - one for each type!
+        //
+        // Note, we have to do the search, parse, then submit here, because of the
+        // requirement to have the write query server reference in the parse stage - this
+        // would cause a rust double-borrow if we had AccessControls to try to handle
+        // the entry lists themself.
 
+        // Update search
+        let filt = Filter::new_ignore_hidden(Filter::And(vec![
+            Filter::Eq("class".to_string(), "access_control_profile".to_string()),
+            Filter::Eq("class".to_string(), "access_control_search".to_string()),
+        ]));
+
+        let res = try_audit!(audit, self.internal_search(audit, filt));
+        let search_acps: Result<Vec<_>, _> = res
+            .iter()
+            .map(|e| AccessControlSearch::try_from(audit, self, e))
+            .collect();
+
+        let search_acps = try_audit!(audit, search_acps);
+
+        try_audit!(audit, self.accesscontrols.update_search(search_acps));
+        // Update create
+        let filt = Filter::new_ignore_hidden(Filter::And(vec![
+            Filter::Eq("class".to_string(), "access_control_profile".to_string()),
+            Filter::Eq("class".to_string(), "access_control_create".to_string()),
+        ]));
+
+        let res = try_audit!(audit, self.internal_search(audit, filt));
+        let create_acps: Result<Vec<_>, _> = res
+            .iter()
+            .map(|e| AccessControlCreate::try_from(audit, self, e))
+            .collect();
+
+        let create_acps = try_audit!(audit, create_acps);
+
+        try_audit!(audit, self.accesscontrols.update_create(create_acps));
+        // Update modify
+        let filt = Filter::new_ignore_hidden(Filter::And(vec![
+            Filter::Eq("class".to_string(), "access_control_profile".to_string()),
+            Filter::Eq("class".to_string(), "access_control_modify".to_string()),
+        ]));
+
+        let res = try_audit!(audit, self.internal_search(audit, filt));
+        let modify_acps: Result<Vec<_>, _> = res
+            .iter()
+            .map(|e| AccessControlModify::try_from(audit, self, e))
+            .collect();
+
+        let modify_acps = try_audit!(audit, modify_acps);
+
+        try_audit!(audit, self.accesscontrols.update_modify(modify_acps));
+        // Update delete
+        let filt = Filter::new_ignore_hidden(Filter::And(vec![
+            Filter::Eq("class".to_string(), "access_control_profile".to_string()),
+            Filter::Eq("class".to_string(), "access_control_delete".to_string()),
+        ]));
+
+        let res = try_audit!(audit, self.internal_search(audit, filt));
+        let delete_acps: Result<Vec<_>, _> = res
+            .iter()
+            .map(|e| AccessControlDelete::try_from(audit, self, e))
+            .collect();
+
+        let delete_acps = try_audit!(audit, delete_acps);
+
+        try_audit!(audit, self.accesscontrols.update_delete(delete_acps));
         // Alternately, we just get ACP class, and just let acctrl work it out ...
         Ok(())
     }
@@ -1115,6 +1205,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.reload_schema(audit)?;
         // Determine if we need to update access control profiles
         // based on any modifications that have occured.
+        // IF SCHEMA CHANGED WE MUST ALSO RELOAD!!! IE if schema had an attr removed
+        // that we rely on we MUST fail this!
         self.reload_accesscontrols(audit)?;
 
         // Now destructure the transaction ready to reset it.
@@ -1798,7 +1890,7 @@ mod tests {
                     "description": ["testperson"],
                     "displayname": ["testperson1"]
                 }
-            }"#,
+                }"#,
             )
             .expect("json failure");
             let ce = CreateEvent::new_internal(vec![e1]);
