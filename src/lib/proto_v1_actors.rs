@@ -12,7 +12,7 @@ use crate::event::{
 use crate::log::EventLog;
 use crate::schema::{Schema, SchemaTransaction};
 
-use crate::server::{QueryServer, QueryServerReadTransaction};
+use crate::server::{QueryServer, QueryServerTransaction};
 
 use crate::proto_v1::{
     AuthRequest, CreateRequest, DeleteRequest, ModifyRequest, OperationResponse, SearchRequest,

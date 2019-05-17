@@ -7,7 +7,7 @@ use crate::error::{OperationError, SchemaError};
 use crate::proto_v1::Filter as ProtoFilter;
 use crate::schema::SchemaTransaction;
 use crate::server::{
-    QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
+    QueryServerTransaction, QueryServerReadTransaction, QueryServerWriteTransaction,
 };
 use std::cmp::{Ordering, PartialOrd};
 use std::marker::PhantomData;
@@ -200,7 +200,7 @@ impl Filter<FilterInvalid> {
     pub fn from_ro(
         audit: &mut AuditScope,
         f: &ProtoFilter,
-        qs: &QueryServerTransaction,
+        qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         Ok(match f {
             ProtoFilter::Eq(a, v) => Filter::Eq(a.clone(), qs.clone_value(audit, a, v)?),

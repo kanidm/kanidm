@@ -5,7 +5,7 @@ use crate::filter::{Filter, FilterValid};
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use crate::proto_v1::Entry as ProtoEntry;
 use crate::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
-use crate::server::{QueryServerReadTransaction, QueryServerWriteTransaction};
+use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
 
 use crate::be::dbentry::{DbEntry, DbEntryV1, DbEntryVers};
 

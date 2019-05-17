@@ -9,7 +9,7 @@ use crate::proto_v1::{
 // use error::OperationError;
 use crate::error::OperationError;
 use crate::modify::{ModifyInvalid, ModifyList};
-use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
+use crate::server::{QueryServerReadTransaction, QueryServerWriteTransaction};
 
 // Only used for internal tests
 #[cfg(test)]
@@ -84,7 +84,7 @@ pub struct Event {
 impl Event {
     pub fn from_request(
         _audit: &mut AuditScope,
-        // _qs: &QueryServerTransaction,
+        // _qs: &QueryServerReadTransaction,
         user_uuid: &str,
     ) -> Result<Self, OperationError> {
         // Do we need to check or load the entry from the user_uuid?
@@ -135,7 +135,7 @@ impl SearchEvent {
     pub fn from_request(
         audit: &mut AuditScope,
         request: SearchRequest,
-        qs: &QueryServerTransaction,
+        qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         match Filter::from_ro(audit, &request.filter, qs) {
             Ok(f) => Ok(SearchEvent {
@@ -170,7 +170,7 @@ impl SearchEvent {
     pub fn from_rec_request(
         audit: &mut AuditScope,
         request: SearchRecycledRequest,
-        qs: &QueryServerTransaction,
+        qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         match Filter::from_ro(audit, &request.filter, qs) {
             Ok(f) => Ok(SearchEvent {

@@ -17,8 +17,8 @@ use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::filter::{Filter, FilterInvalid};
 use crate::modify::{Modify, ModifyList, ModifyValid};
 use crate::plugins::Plugin;
-use crate::server::QueryServerReadTransaction;
-use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
+use crate::server::QueryServerTransaction;
+use crate::server::{QueryServerReadTransaction, QueryServerWriteTransaction};
 
 use std::collections::BTreeMap;
 
@@ -275,7 +275,7 @@ impl Plugin for MemberOf {
 
     fn verify(
         au: &mut AuditScope,
-        qs: &QueryServerTransaction,
+        qs: &QueryServerReadTransaction,
     ) -> Vec<Result<(), ConsistencyError>> {
         let mut r = Vec::new();
 
@@ -374,7 +374,7 @@ mod tests {
     // use crate::error::OperationError;
     use crate::filter::Filter;
     use crate::modify::{Modify, ModifyList};
-    use crate::server::{QueryServerReadTransaction, QueryServerWriteTransaction};
+    use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
 
     static EA: &'static str = r#"{
             "valid": null,

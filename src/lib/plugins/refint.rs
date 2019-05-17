@@ -19,8 +19,8 @@ use crate::filter::{Filter, FilterInvalid};
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use crate::plugins::Plugin;
 use crate::schema::SchemaTransaction;
-use crate::server::QueryServerReadTransaction;
-use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
+use crate::server::QueryServerTransaction;
+use crate::server::{QueryServerReadTransaction, QueryServerWriteTransaction};
 
 // NOTE: This *must* be after base.rs!!!
 
@@ -188,7 +188,7 @@ impl Plugin for ReferentialIntegrity {
 
     fn verify(
         au: &mut AuditScope,
-        qs: &QueryServerTransaction,
+        qs: &QueryServerReadTransaction,
     ) -> Vec<Result<(), ConsistencyError>> {
         // Get all entries as cand
         //      build a cand-uuid set
@@ -242,7 +242,7 @@ mod tests {
     use crate::error::OperationError;
     use crate::filter::Filter;
     use crate::modify::{Modify, ModifyList};
-    use crate::server::{QueryServerReadTransaction, QueryServerWriteTransaction};
+    use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
 
     // The create references a uuid that doesn't exist - reject
     #[test]

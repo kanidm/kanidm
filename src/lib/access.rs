@@ -24,7 +24,7 @@ use crate::entry::{Entry, EntryCommitted, EntryValid};
 use crate::error::OperationError;
 use crate::filter::{Filter, FilterValid};
 use crate::proto_v1::Filter as ProtoFilter;
-use crate::server::{QueryServerReadTransaction, QueryServerTransaction};
+use crate::server::{QueryServerTransaction, QueryServerReadTransaction};
 
 // =========================================================================
 // PARSE ENTRY TO ACP, AND ACP MANAGEMENT
@@ -39,7 +39,7 @@ struct AccessControlSearch {
 impl AccessControlSearch {
     fn try_from(
             audit: &mut AuditScope,
-            qs: &QueryServerTransaction,
+            qs: &QueryServerReadTransaction,
             value: &Entry<EntryValid, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         if !value.attribute_value_pres("class", "access_control_search") {
@@ -70,7 +70,7 @@ struct AccessControlDelete {
 impl AccessControlDelete {
     fn try_from(
             audit: &mut AuditScope,
-            qs: &QueryServerTransaction,
+            qs: &QueryServerReadTransaction,
             value: &Entry<EntryValid, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         if !value.attribute_value_pres("class", "access_control_delete") {
@@ -95,7 +95,7 @@ impl AccessControlCreate
 {
     fn try_from(
             audit: &mut AuditScope,
-            qs: &QueryServerTransaction,
+            qs: &QueryServerReadTransaction,
             value: &Entry<EntryValid, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         if !value.attribute_value_pres("class", "access_control_create") {
@@ -135,7 +135,7 @@ impl AccessControlModify
 {
     fn try_from(
             audit: &mut AuditScope,
-            qs: &QueryServerTransaction,
+            qs: &QueryServerReadTransaction,
             value: &Entry<EntryValid, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         if !value.attribute_value_pres("class", "access_control_modify") {
@@ -182,7 +182,7 @@ impl AccessControlProfile
 {
     fn try_from(
             audit: &mut AuditScope,
-            qs: &QueryServerTransaction,
+            qs: &QueryServerReadTransaction,
             value: &Entry<EntryValid, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         // Assert we have class access_control_profile
@@ -316,7 +316,7 @@ mod tests {
     };
     use std::convert::TryFrom;
     use crate::audit::AuditScope;
-    use crate::server::QueryServerTransaction;
+    use crate::server::QueryServerReadTransaction;
 
     use crate::proto_v1::Filter as ProtoFilter;
 

@@ -23,9 +23,9 @@ use crate::schema::{
 // This is the core of the server. It implements all
 // the search and modify actions, applies access controls
 // and get's everything ready to push back to the fe code
-pub trait QueryServerReadTransaction {
-    type BackendReadTransactionType: BackendTransaction;
-    fn get_be_txn(&self) -> &Self::BackendReadTransactionType;
+pub trait QueryServerTransaction {
+    type BackendTransactionType: BackendTransaction;
+    fn get_be_txn(&self) -> &Self::BackendTransactionType;
 
     type SchemaTransactionType: SchemaTransaction;
     fn get_schema(&self) -> &Self::SchemaTransactionType;
@@ -340,7 +340,7 @@ pub trait QueryServerReadTransaction {
     }
 }
 
-pub struct QueryServerTransaction {
+pub struct QueryServerReadTransaction {
     be_txn: BackendReadTransaction,
     // Anything else? In the future, we'll need to have a schema transaction
     // type, maybe others?
@@ -350,8 +350,8 @@ pub struct QueryServerTransaction {
 // Actually conduct a search request
 // This is the core of the server, as it processes the entire event
 // applies all parts required in order and more.
-impl QueryServerReadTransaction for QueryServerTransaction {
-    type BackendReadTransactionType = BackendReadTransaction;
+impl QueryServerTransaction for QueryServerReadTransaction {
+    type BackendTransactionType = BackendReadTransaction;
 
     fn get_be_txn(&self) -> &BackendReadTransaction {
         &self.be_txn
@@ -364,7 +364,7 @@ impl QueryServerReadTransaction for QueryServerTransaction {
     }
 }
 
-impl QueryServerTransaction {
+impl QueryServerReadTransaction {
     // Verify the data content of the server is as expected. This will probably
     // call various functions for validation, including possibly plugin
     // verifications.
@@ -417,13 +417,13 @@ pub struct QueryServerWriteTransaction<'a> {
     committed: bool,
     // be_write_txn: BackendWriteTransaction,
     // schema_write: SchemaWriteTransaction,
-    // read: QueryServerTransaction,
+    // read: QueryServerReadTransaction,
     be_txn: BackendWriteTransaction,
     schema: SchemaWriteTransaction<'a>,
 }
 
-impl<'a> QueryServerReadTransaction for QueryServerWriteTransaction<'a> {
-    type BackendReadTransactionType = BackendWriteTransaction;
+impl<'a> QueryServerTransaction for QueryServerWriteTransaction<'a> {
+    type BackendTransactionType = BackendWriteTransaction;
 
     fn get_be_txn(&self) -> &BackendWriteTransaction {
         &self.be_txn
@@ -451,8 +451,8 @@ impl QueryServer {
         }
     }
 
-    pub fn read(&self) -> QueryServerTransaction {
-        QueryServerTransaction {
+    pub fn read(&self) -> QueryServerReadTransaction {
+        QueryServerReadTransaction {
             be_txn: self.be.read(),
             schema: self.schema.read(),
         }
@@ -1145,7 +1145,7 @@ mod tests {
     use crate::proto_v1::ModifyList as ProtoModifyList;
     use crate::proto_v1::{DeleteRequest, ModifyRequest, ReviveRecycledRequest};
     use crate::schema::Schema;
-    use crate::server::{QueryServer, QueryServerReadTransaction};
+    use crate::server::{QueryServer, QueryServerTransaction};
 
     #[test]
     fn test_qs_create_user() {

@@ -9,7 +9,7 @@ use crate::event::{CreateEvent, ModifyEvent};
 use crate::filter::{Filter, FilterInvalid};
 use crate::modify::{Modify, ModifyList, ModifyValid};
 use crate::server::{
-    QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
+    QueryServerTransaction, QueryServerReadTransaction, QueryServerWriteTransaction,
 };
 
 // TO FINISH
@@ -170,7 +170,7 @@ impl Plugin for Base {
 
     fn verify(
         au: &mut AuditScope,
-        qs: &QueryServerTransaction,
+        qs: &QueryServerReadTransaction,
     ) -> Vec<Result<(), ConsistencyError>> {
         // Verify all uuid's are unique?
         // Probably the literally worst thing ...
@@ -236,7 +236,7 @@ mod tests {
     use crate::error::OperationError;
     use crate::filter::Filter;
     use crate::modify::{Modify, ModifyList};
-    use crate::server::QueryServerReadTransaction;
+    use crate::server::QueryServerTransaction;
     use crate::server::QueryServerWriteTransaction;
 
     // check create where no uuid

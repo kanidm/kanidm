@@ -4,7 +4,7 @@ use crate::proto_v1::ModifyList as ProtoModifyList;
 
 use crate::error::{OperationError, SchemaError};
 use crate::schema::SchemaTransaction;
-use crate::server::{QueryServerReadTransaction, QueryServerWriteTransaction};
+use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
 
 // Should this be std?
 use std::slice;
