@@ -1,11 +1,9 @@
-
 macro_rules! run_test {
     ($test_fn:expr) => {{
-
         use crate::audit::AuditScope;
-        use crate::server::QueryServer;
         use crate::be::Backend;
         use crate::schema::Schema;
+        use crate::server::QueryServer;
         use std::sync::Arc;
 
         let mut audit = AuditScope::new("run_test");
@@ -20,6 +18,8 @@ macro_rules! run_test {
             schema.commit().expect("Failed to commit schema");
         }
         let test_server = QueryServer::new(be, Arc::new(schema_outer));
+        // TODO: This may need to call initialise to be "complete". For now we don't
+        // to provide a super minimal test env
 
         $test_fn(&test_server, &mut audit);
         // Any needed teardown?

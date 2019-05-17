@@ -7,7 +7,7 @@ use crate::error::{OperationError, SchemaError};
 use crate::proto_v1::Filter as ProtoFilter;
 use crate::schema::SchemaTransaction;
 use crate::server::{
-    QueryServerTransaction, QueryServerReadTransaction, QueryServerWriteTransaction,
+    QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
 };
 use std::cmp::{Ordering, PartialOrd};
 use std::marker::PhantomData;
@@ -93,10 +93,7 @@ impl Filter<FilterInvalid> {
         ])
     }
 
-    pub fn validate(
-        &self,
-        schema: &SchemaTransaction,
-    ) -> Result<Filter<FilterValid>, SchemaError> {
+    pub fn validate(&self, schema: &SchemaTransaction) -> Result<Filter<FilterValid>, SchemaError> {
         // TODO:
         // First, normalise (if possible)
         // Then, validate

@@ -16,15 +16,15 @@
 //
 
 use concread::cowcell::{CowCell, CowCellReadTxn, CowCellWriteTxn};
-use std::convert::TryFrom;
 use std::collections::BTreeMap;
+use std::convert::TryFrom;
 
 use crate::audit::AuditScope;
 use crate::entry::{Entry, EntryCommitted, EntryValid};
 use crate::error::OperationError;
 use crate::filter::{Filter, FilterValid};
 use crate::proto_v1::Filter as ProtoFilter;
-use crate::server::{QueryServerTransaction, QueryServerReadTransaction};
+use crate::server::{QueryServerReadTransaction, QueryServerTransaction};
 
 // =========================================================================
 // PARSE ENTRY TO ACP, AND ACP MANAGEMENT
@@ -38,20 +38,22 @@ struct AccessControlSearch {
 
 impl AccessControlSearch {
     fn try_from(
-            audit: &mut AuditScope,
-            qs: &QueryServerReadTransaction,
-            value: &Entry<EntryValid, EntryCommitted>,
+        audit: &mut AuditScope,
+        qs: &QueryServerReadTransaction,
+        value: &Entry<EntryValid, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         if !value.attribute_value_pres("class", "access_control_search") {
             audit_log!(audit, "class access_control_search not present.");
             return Err(OperationError::InvalidACPState);
         }
 
-        let attrs = try_audit!(audit, value.get_ava("acp_search_attr")
-            .ok_or(OperationError::InvalidACPState)
-            .map(|vs: &Vec<String>| {
-                vs.clone()
-            }));
+        let attrs = try_audit!(
+            audit,
+            value
+                .get_ava("acp_search_attr")
+                .ok_or(OperationError::InvalidACPState)
+                .map(|vs: &Vec<String>| vs.clone())
+        );
 
         let acp = AccessControlProfile::try_from(audit, qs, value)?;
 
@@ -69,9 +71,9 @@ struct AccessControlDelete {
 
 impl AccessControlDelete {
     fn try_from(
-            audit: &mut AuditScope,
-            qs: &QueryServerReadTransaction,
-            value: &Entry<EntryValid, EntryCommitted>,
+        audit: &mut AuditScope,
+        qs: &QueryServerReadTransaction,
+        value: &Entry<EntryValid, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         if !value.attribute_value_pres("class", "access_control_delete") {
             audit_log!(audit, "class access_control_delete not present.");
@@ -79,7 +81,7 @@ impl AccessControlDelete {
         }
 
         Ok(AccessControlDelete {
-            acp: AccessControlProfile::try_from(audit, qs, value)?
+            acp: AccessControlProfile::try_from(audit, qs, value)?,
         })
     }
 }
@@ -91,28 +93,25 @@ struct AccessControlCreate {
     attrs: Vec<String>,
 }
 
-impl AccessControlCreate
-{
+impl AccessControlCreate {
     fn try_from(
-            audit: &mut AuditScope,
-            qs: &QueryServerReadTransaction,
-            value: &Entry<EntryValid, EntryCommitted>,
+        audit: &mut AuditScope,
+        qs: &QueryServerReadTransaction,
+        value: &Entry<EntryValid, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         if !value.attribute_value_pres("class", "access_control_create") {
             audit_log!(audit, "class access_control_create not present.");
             return Err(OperationError::InvalidACPState);
         }
 
-        let attrs = value.get_ava("acp_create_attr")
-            .map(|vs: &Vec<String>| {
-                vs.clone()
-            })
+        let attrs = value
+            .get_ava("acp_create_attr")
+            .map(|vs: &Vec<String>| vs.clone())
             .unwrap_or_else(|| Vec::new());
 
-        let classes = value.get_ava("acp_create_class")
-            .map(|vs: &Vec<String>| {
-                vs.clone()
-            })
+        let classes = value
+            .get_ava("acp_create_class")
+            .map(|vs: &Vec<String>| vs.clone())
             .unwrap_or_else(|| Vec::new());
 
         Ok(AccessControlCreate {
@@ -131,34 +130,30 @@ struct AccessControlModify {
     remattrs: Vec<String>,
 }
 
-impl AccessControlModify
-{
+impl AccessControlModify {
     fn try_from(
-            audit: &mut AuditScope,
-            qs: &QueryServerReadTransaction,
-            value: &Entry<EntryValid, EntryCommitted>,
+        audit: &mut AuditScope,
+        qs: &QueryServerReadTransaction,
+        value: &Entry<EntryValid, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         if !value.attribute_value_pres("class", "access_control_modify") {
             audit_log!(audit, "class access_control_modify not present.");
             return Err(OperationError::InvalidACPState);
         }
 
-        let presattrs = value.get_ava("acp_modify_presentattr")
-            .map(|vs: &Vec<String>| {
-                vs.clone()
-            })
+        let presattrs = value
+            .get_ava("acp_modify_presentattr")
+            .map(|vs: &Vec<String>| vs.clone())
             .unwrap_or_else(|| Vec::new());
 
-        let remattrs = value.get_ava("acp_modify_removedattr")
-            .map(|vs: &Vec<String>| {
-                vs.clone()
-            })
+        let remattrs = value
+            .get_ava("acp_modify_removedattr")
+            .map(|vs: &Vec<String>| vs.clone())
             .unwrap_or_else(|| Vec::new());
 
-        let classes = value.get_ava("acp_modify_class")
-            .map(|vs: &Vec<String>| {
-                vs.clone()
-            })
+        let classes = value
+            .get_ava("acp_modify_class")
+            .map(|vs: &Vec<String>| vs.clone())
             .unwrap_or_else(|| Vec::new());
 
         Ok(AccessControlModify {
@@ -178,12 +173,11 @@ struct AccessControlProfile {
     targetscope: Filter<FilterValid>,
 }
 
-impl AccessControlProfile
-{
+impl AccessControlProfile {
     fn try_from(
-            audit: &mut AuditScope,
-            qs: &QueryServerReadTransaction,
-            value: &Entry<EntryValid, EntryCommitted>,
+        audit: &mut AuditScope,
+        qs: &QueryServerReadTransaction,
+        value: &Entry<EntryValid, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         // Assert we have class access_control_profile
         if !value.attribute_value_pres("class", "access_control_profile") {
@@ -192,35 +186,56 @@ impl AccessControlProfile
         }
 
         // copy name
-        let name = try_audit!(audit, value
-            .get_ava_single("name")
-            .ok_or(OperationError::InvalidACPState));
+        let name = try_audit!(
+            audit,
+            value
+                .get_ava_single("name")
+                .ok_or(OperationError::InvalidACPState)
+        );
         // copy uuid
         let uuid = value.get_uuid();
         // receiver, and turn to real filter
-        let receiver_raw = try_audit!(audit, value
-            .get_ava_single("acp_receiver")
-            .ok_or(OperationError::InvalidACPState));
+        let receiver_raw = try_audit!(
+            audit,
+            value
+                .get_ava_single("acp_receiver")
+                .ok_or(OperationError::InvalidACPState)
+        );
         // targetscope, and turn to real filter
-        let targetscope_raw = try_audit!(audit, value
-            .get_ava_single("acp_targetscope")
-            .ok_or(OperationError::InvalidACPState));
+        let targetscope_raw = try_audit!(
+            audit,
+            value
+                .get_ava_single("acp_targetscope")
+                .ok_or(OperationError::InvalidACPState)
+        );
 
         audit_log!(audit, "RAW receiver {:?}", receiver_raw);
-        let receiver_f: ProtoFilter = try_audit!(audit, serde_json::from_str(receiver_raw.as_str())
-            .map_err(|_| OperationError::InvalidACPState));
+        let receiver_f: ProtoFilter = try_audit!(
+            audit,
+            serde_json::from_str(receiver_raw.as_str())
+                .map_err(|_| OperationError::InvalidACPState)
+        );
         let receiver_i = try_audit!(audit, Filter::from_ro(audit, &receiver_f, qs));
-        let receiver = try_audit!(audit, receiver_i
-            .validate(qs.get_schema())
-            .map_err(|e| OperationError::SchemaViolation(e)));
+        let receiver = try_audit!(
+            audit,
+            receiver_i
+                .validate(qs.get_schema())
+                .map_err(|e| OperationError::SchemaViolation(e))
+        );
 
         audit_log!(audit, "RAW tscope {:?}", targetscope_raw);
-        let targetscope_f: ProtoFilter = try_audit!(audit, serde_json::from_str(targetscope_raw.as_str())
-            .map_err(|_| OperationError::InvalidACPState));
+        let targetscope_f: ProtoFilter = try_audit!(
+            audit,
+            serde_json::from_str(targetscope_raw.as_str())
+                .map_err(|_| OperationError::InvalidACPState)
+        );
         let targetscope_i = try_audit!(audit, Filter::from_ro(audit, &targetscope_f, qs));
-        let targetscope = try_audit!(audit, targetscope_i
-            .validate(qs.get_schema())
-            .map_err(|e| OperationError::SchemaViolation(e)));
+        let targetscope = try_audit!(
+            audit,
+            targetscope_i
+                .validate(qs.get_schema())
+                .map_err(|e| OperationError::SchemaViolation(e))
+        );
 
         Ok(AccessControlProfile {
             name: name.clone(),
@@ -245,18 +260,24 @@ struct AccessControlsInner {
 }
 
 impl AccessControlsInner {
-    fn new(audit: &mut AuditScope) -> Result<Self, OperationError> {
-        Ok(AccessControlsInner {
+    fn new() -> Self {
+        AccessControlsInner {
             acps_search: BTreeMap::new(),
             acps_create: BTreeMap::new(),
             acps_modify: BTreeMap::new(),
             acps_delete: BTreeMap::new(),
-        })
+        }
     }
 }
 
 pub struct AccessControls {
     inner: CowCell<AccessControlsInner>,
+}
+
+pub trait AccessControlsTransaction {
+    fn get_inner(&self) -> &AccessControlsInner;
+
+    // Contains all the way to eval acps to entries
 }
 
 pub struct AccessControlsWriteTransaction<'a> {
@@ -265,6 +286,20 @@ pub struct AccessControlsWriteTransaction<'a> {
 
 impl<'a> AccessControlsWriteTransaction<'a> {
     // Contains the methods needed to setup and create acps
+    pub fn update_from_what(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
+        unimplemented!();
+    }
+
+    pub fn commit(self) -> Result<(), OperationError> {
+        self.inner.commit();
+        Ok(())
+    }
+}
+
+impl<'a> AccessControlsTransaction for AccessControlsWriteTransaction<'a> {
+    fn get_inner(&self) -> &AccessControlsInner {
+        &self.inner
+    }
 }
 
 // =========================================================================
@@ -275,23 +310,21 @@ pub struct AccessControlsReadTransaction {
     inner: CowCellReadTxn<AccessControlsInner>,
 }
 
-impl AccessControlsReadTransaction {
-    // Contains all the way to eval acps to entries
+impl AccessControlsTransaction for AccessControlsReadTransaction {
+    fn get_inner(&self) -> &AccessControlsInner {
+        &self.inner
+    }
 }
-
 
 // =========================================================================
 // ACP transaction operations
 // =========================================================================
 
-
 impl AccessControls {
-    pub fn new(audit: &mut AuditScope) -> Result<Self, OperationError> {
-        AccessControlsInner::new(audit).map(|aci| {
-            AccessControls {
-                inner: CowCell::new(aci),
-            }
-        })
+    pub fn new() -> Self {
+        AccessControls {
+            inner: CowCell::new(AccessControlsInner::new()),
+        }
     }
 
     pub fn read(&self) -> AccessControlsReadTransaction {
@@ -307,20 +340,20 @@ impl AccessControls {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use crate::entry::{Entry, EntryCommitted, EntryValid, EntryNew, EntryInvalid};
-    use crate::access::{AccessControlProfile, AccessControlSearch,
-        AccessControlModify, AccessControlCreate, AccessControlDelete,
+    use crate::access::{
+        AccessControlCreate, AccessControlDelete, AccessControlModify, AccessControlProfile,
+        AccessControlSearch,
     };
-    use std::convert::TryFrom;
     use crate::audit::AuditScope;
+    use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
     use crate::server::QueryServerReadTransaction;
+    use std::convert::TryFrom;
 
     use crate::proto_v1::Filter as ProtoFilter;
 
-    macro_rules! acp_from_entry_err{
+    macro_rules! acp_from_entry_err {
         (
             $audit:expr,
             $qs:expr,
@@ -330,14 +363,12 @@ mod tests {
             let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str($e).expect("json failure");
             let ev1 = unsafe { e1.to_valid_committed() };
 
-            let r1 = <$type>::try_from(
-                $audit, $qs, &ev1
-            );
+            let r1 = <$type>::try_from($audit, $qs, &ev1);
             assert!(r1.is_err());
         }};
     }
 
-    macro_rules! acp_from_entry_ok{
+    macro_rules! acp_from_entry_ok {
         (
             $audit:expr,
             $qs:expr,
@@ -347,9 +378,7 @@ mod tests {
             let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str($e).expect("json failure");
             let ev1 = unsafe { e1.to_valid_committed() };
 
-            let r1 = <$type>::try_from(
-                $audit, $qs, &ev1
-            );
+            let r1 = <$type>::try_from($audit, $qs, &ev1);
             assert!(r1.is_ok());
             r1.unwrap()
         }};
@@ -368,7 +397,9 @@ mod tests {
 
             let qs_read = qs.read();
 
-            acp_from_entry_err!(audit, &qs_read,
+            acp_from_entry_err!(
+                audit,
+                &qs_read,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -381,7 +412,9 @@ mod tests {
                 AccessControlProfile
             );
 
-            acp_from_entry_err!(audit, &qs_read,
+            acp_from_entry_err!(
+                audit,
+                &qs_read,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -394,7 +427,9 @@ mod tests {
                 AccessControlProfile
             );
 
-            acp_from_entry_err!(audit, &qs_read,
+            acp_from_entry_err!(
+                audit,
+                &qs_read,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -410,7 +445,9 @@ mod tests {
             );
 
             // "\"Self\""
-            acp_from_entry_ok!(audit, &qs_read,
+            acp_from_entry_ok!(
+                audit,
+                &qs_read,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -436,7 +473,9 @@ mod tests {
         run_test!(|qs: &QueryServer, audit: &mut AuditScope| {
             let qs_read = qs.read();
 
-            acp_from_entry_err!(audit, &qs_read,
+            acp_from_entry_err!(
+                audit,
+                &qs_read,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -455,7 +494,9 @@ mod tests {
                 AccessControlDelete
             );
 
-            acp_from_entry_ok!(audit, &qs_read,
+            acp_from_entry_ok!(
+                audit,
+                &qs_read,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -483,7 +524,9 @@ mod tests {
             let qs_read = qs.read();
 
             // Missing class acp
-            acp_from_entry_err!(audit, &qs_read,
+            acp_from_entry_err!(
+                audit,
+                &qs_read,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -504,7 +547,9 @@ mod tests {
             );
 
             // Missing class acs
-            acp_from_entry_err!(audit, &qs_read,
+            acp_from_entry_err!(
+                audit,
+                &qs_read,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -525,7 +570,9 @@ mod tests {
             );
 
             // Missing attr acp_search_attr
-            acp_from_entry_err!(audit, &qs_read,
+            acp_from_entry_err!(
+                audit,
+                &qs_read,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -545,7 +592,9 @@ mod tests {
             );
 
             // All good!
-            acp_from_entry_ok!(audit, &qs_read,
+            acp_from_entry_ok!(
+                audit,
+                &qs_read,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -573,7 +622,9 @@ mod tests {
             // Test that parsing modify access controls works.
             let qs_read = qs.read();
 
-            acp_from_entry_err!(audit, &qs_read,
+            acp_from_entry_err!(
+                audit,
+                &qs_read,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -595,7 +646,9 @@ mod tests {
                 AccessControlModify
             );
 
-            acp_from_entry_ok!(audit, &qs_read,
+            acp_from_entry_ok!(
+                audit,
+                &qs_read,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -614,7 +667,9 @@ mod tests {
                 AccessControlModify
             );
 
-            acp_from_entry_ok!(audit, &qs_read,
+            acp_from_entry_ok!(
+                audit,
+                &qs_read,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -644,7 +699,9 @@ mod tests {
             // Test that parsing create access controls works.
             let qs_read = qs.read();
 
-            acp_from_entry_err!(audit, &qs_read,
+            acp_from_entry_err!(
+                audit,
+                &qs_read,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -665,7 +722,9 @@ mod tests {
                 AccessControlCreate
             );
 
-            acp_from_entry_ok!(audit, &qs_read,
+            acp_from_entry_ok!(
+                audit,
+                &qs_read,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -684,7 +743,9 @@ mod tests {
                 AccessControlCreate
             );
 
-            acp_from_entry_ok!(audit, &qs_read,
+            acp_from_entry_ok!(
+                audit,
+                &qs_read,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -716,8 +777,7 @@ mod tests {
             // over a single scope.
             let qs_read = qs.read();
 
-            let e: &str =
-                r#"{
+            let e: &str = r#"{
                     "valid": null,
                     "state": null,
                     "attrs": {
@@ -753,4 +813,3 @@ mod tests {
         })
     }
 }
-

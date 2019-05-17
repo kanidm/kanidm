@@ -4,8 +4,12 @@
 use std::sync::Arc;
 
 use crate::audit::AuditScope;
-use crate::be::{Backend, BackendTransaction, BackendReadTransaction, BackendWriteTransaction};
+use crate::be::{Backend, BackendReadTransaction, BackendTransaction, BackendWriteTransaction};
 
+use crate::access::{
+    AccessControls, AccessControlsReadTransaction, AccessControlsTransaction,
+    AccessControlsWriteTransaction,
+};
 use crate::constants::{JSON_ANONYMOUS_V1, JSON_SYSTEM_INFO_V1};
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
 use crate::error::{ConsistencyError, OperationError, SchemaError};
@@ -17,7 +21,7 @@ use crate::filter::{Filter, FilterInvalid};
 use crate::modify::{Modify, ModifyInvalid, ModifyList};
 use crate::plugins::Plugins;
 use crate::schema::{
-    Schema, SchemaTransaction, SchemaReadTransaction, SchemaWriteTransaction, SyntaxType,
+    Schema, SchemaReadTransaction, SchemaTransaction, SchemaWriteTransaction, SyntaxType,
 };
 
 // This is the core of the server. It implements all
@@ -345,6 +349,7 @@ pub struct QueryServerReadTransaction {
     // Anything else? In the future, we'll need to have a schema transaction
     // type, maybe others?
     schema: SchemaReadTransaction,
+    accesscontrols: AccessControlsReadTransaction,
 }
 
 // Actually conduct a search request
@@ -420,6 +425,7 @@ pub struct QueryServerWriteTransaction<'a> {
     // read: QueryServerReadTransaction,
     be_txn: BackendWriteTransaction,
     schema: SchemaWriteTransaction<'a>,
+    accesscontrols: AccessControlsWriteTransaction<'a>,
 }
 
 impl<'a> QueryServerTransaction for QueryServerWriteTransaction<'a> {
@@ -440,6 +446,7 @@ pub struct QueryServer {
     // log: actix::Addr<EventLog>,
     be: Backend,
     schema: Arc<Schema>,
+    accesscontrols: Arc<AccessControls>,
 }
 
 impl QueryServer {
@@ -448,6 +455,7 @@ impl QueryServer {
         QueryServer {
             be: be,
             schema: schema,
+            accesscontrols: Arc::new(AccessControls::new()),
         }
     }
 
@@ -455,6 +463,7 @@ impl QueryServer {
         QueryServerReadTransaction {
             be_txn: self.be.read(),
             schema: self.schema.read(),
+            accesscontrols: self.accesscontrols.read(),
         }
     }
 
@@ -469,6 +478,7 @@ impl QueryServer {
             committed: false,
             be_txn: self.be.write(),
             schema: self.schema.write(),
+            accesscontrols: self.accesscontrols.write(),
         }
     }
 
@@ -559,10 +569,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
             audit_log!(au, "Create operation failed (plugin), {:?}", plug_post_res);
             return plug_post_res;
         }
-
-        // Commit the txn
-        // let commit, commit!
-        // be_txn.commit();
 
         // We are complete, finalise logging and return
 
@@ -1084,31 +1090,55 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Check the admin object exists (migrations).
 
-        // Load access profiles and configure them.
+        // Create any system default schema entries.
+
+        // Create any system default access profile entries.
+
         Ok(())
     }
 
-    pub fn commit(self, audit: &mut AuditScope) -> Result<(), OperationError> {
+    fn reload_schema(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
+        // supply entries to the writable schema to reload from.
+        Ok(())
+    }
+
+    fn reload_accesscontrols(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
+        // supply entries to the writable access controls to reload from.
+        // This has to be done in FOUR passes for each type!
+
+        // Alternately, we just get ACP class, and just let acctrl work it out ...
+        Ok(())
+    }
+
+    pub fn commit(mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
+        // Reload the schema from qs.
+        self.reload_schema(audit)?;
+        // Determine if we need to update access control profiles
+        // based on any modifications that have occured.
+        self.reload_accesscontrols(audit)?;
+
+        // Now destructure the transaction ready to reset it.
         let QueryServerWriteTransaction {
             committed,
             be_txn,
             schema,
+            accesscontrols,
         } = self;
         assert!(!committed);
         // Begin an audit.
-        // Validate the schema,
-
+        // Validate the schema as we just loaded it.
         let r = schema.validate(audit);
+
         if r.len() == 0 {
             // TODO: At this point, if validate passes, we probably actually want
-            // to perform a reload BEFORE we commit.
+            // to perform a schema reload BEFORE we be commit. Because the be holds
+            // all the data, we need everything to be consistent *first* as the be
+            // is the last point we can really backout!
             // Alternate, we attempt to reload during batch ops, but this seems
             // costly.
-            be_txn.commit().and_then(|_| {
-                // Schema commit: Since validate passed and be is good, this
-                // must now also be good.
-                schema.commit()
-            })
+            schema
+                .commit()
+                .and_then(|_| accesscontrols.commit().and_then(|_| be_txn.commit()))
         } else {
             Err(OperationError::ConsistencyError(r))
         }

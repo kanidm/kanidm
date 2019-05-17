@@ -1246,8 +1246,6 @@ impl SchemaInner {
     }
 }
 
-// type Schema = CowCell<SchemaInner>;
-
 pub struct Schema {
     inner: CowCell<SchemaInner>,
 }

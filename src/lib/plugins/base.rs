@@ -9,7 +9,7 @@ use crate::event::{CreateEvent, ModifyEvent};
 use crate::filter::{Filter, FilterInvalid};
 use crate::modify::{Modify, ModifyList, ModifyValid};
 use crate::server::{
-    QueryServerTransaction, QueryServerReadTransaction, QueryServerWriteTransaction,
+    QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
 };
 
 // TO FINISH
