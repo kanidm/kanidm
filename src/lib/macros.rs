@@ -18,8 +18,12 @@ macro_rules! run_test {
             schema.commit().expect("Failed to commit schema");
         }
         let test_server = QueryServer::new(be, Arc::new(schema_outer));
-        // TODO: This may need to call initialise to be "complete". For now we don't
-        // to provide a super minimal test env
+
+        {
+            let ts_write = test_server.write();
+            ts_write.initialise(&mut audit).expect("Init failed!");
+            ts_write.commit(&mut audit).expect("Commit failed!");
+        }
 
         $test_fn(&test_server, &mut audit);
         // Any needed teardown?

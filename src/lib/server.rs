@@ -11,7 +11,7 @@ use crate::access::{
     AccessControls, AccessControlsReadTransaction, AccessControlsTransaction,
     AccessControlsWriteTransaction,
 };
-use crate::constants::{JSON_ANONYMOUS_V1, JSON_SYSTEM_INFO_V1};
+use crate::constants::{JSON_ADMIN_V1, JSON_ANONYMOUS_V1, JSON_SYSTEM_INFO_V1};
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
 use crate::error::{ConsistencyError, OperationError, SchemaError};
 use crate::event::{
@@ -270,6 +270,33 @@ pub trait QueryServerTransaction {
         let res = self.search(&mut audit_int, &se);
         audit.append_scope(audit_int);
         res
+    }
+
+    // Get a single entry by it's UUID. This is heavily relied on for internal
+    // server operations, especially in login and acp checks for acp.
+    fn internal_search_uuid(
+        &self,
+        audit: &mut AuditScope,
+        uuid: &str,
+    ) -> Result<Entry<EntryValid, EntryCommitted>, OperationError> {
+        let mut audit_int = AuditScope::new("internal_search_uuid");
+        let se = SearchEvent::new_internal(Filter::new_ignore_hidden(Filter::Eq(
+            "uuid".to_string(),
+            uuid.to_string(),
+        )));
+        let res = self.search(&mut audit_int, &se);
+        audit.append_scope(audit_int);
+        match res {
+            Ok(vs) => {
+                if vs.len() > 1 {
+                    return Err(OperationError::NoMatchingEntries);
+                }
+                vs.into_iter()
+                    .next()
+                    .ok_or(OperationError::NoMatchingEntries)
+            }
+            Err(e) => Err(e),
+        }
     }
 
     // Do a schema aware clone, that fixes values that need some kind of alteration
@@ -1114,6 +1141,18 @@ impl<'a> QueryServerWriteTransaction<'a> {
         }
 
         // Check the admin object exists (migrations).
+        let mut audit_an = AuditScope::new("start_admin");
+        let res = audit_segment!(audit_an, || serde_json::from_str(JSON_ADMIN_V1)
+            .map_err(|_| OperationError::SerdeJsonError)
+            .and_then(
+                |e: Entry<EntryValid, EntryNew>| self.internal_migrate_or_create(audit, e)
+            ));
+        audit_log!(audit_an, "start_admin -> result {:?}", res);
+        audit.append_scope(audit_an);
+        assert!(res.is_ok());
+        if res.is_err() {
+            return res;
+        }
 
         // Create any system default schema entries.
 
@@ -1256,7 +1295,7 @@ mod tests {
 
     use crate::audit::AuditScope;
     use crate::be::Backend;
-    use crate::constants::UUID_ADMIN;
+    use crate::constants::{JSON_ADMIN_V1, UUID_ADMIN};
     use crate::entry::{Entry, EntryInvalid, EntryNew};
     use crate::error::{OperationError, SchemaError};
     use crate::event::{CreateEvent, DeleteEvent, ModifyEvent, ReviveRecycledEvent, SearchEvent};
@@ -1273,10 +1312,11 @@ mod tests {
     fn test_qs_create_user() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             let server_txn = server.write();
-            let filt = Filter::Pres(String::from("name"));
+            let filt = Filter::Eq(String::from("name"), String::from("testperson"));
 
-            let se1 = SearchEvent::new_impersonate_uuid(UUID_ADMIN, filt.clone());
-            let se2 = SearchEvent::new_impersonate_uuid(UUID_ADMIN, filt);
+            let se1 =
+                unsafe { SearchEvent::new_impersonate_entry_ser(JSON_ADMIN_V1, filt.clone()) };
+            let se2 = unsafe { SearchEvent::new_impersonate_entry_ser(JSON_ADMIN_V1, filt) };
 
             let e: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
                 r#"{
@@ -1390,14 +1430,16 @@ mod tests {
             assert!(server_txn.modify(audit, &me_emp) == Err(OperationError::EmptyRequest));
 
             // Mod changes no objects
-            let me_nochg = ModifyEvent::new_impersonate_uuid(
-                UUID_ADMIN,
-                Filter::Eq(String::from("name"), String::from("flarbalgarble")),
-                ModifyList::new_list(vec![Modify::Present(
-                    String::from("description"),
-                    String::from("anusaosu"),
-                )]),
-            );
+            let me_nochg = unsafe {
+                ModifyEvent::new_impersonate_entry_ser(
+                    JSON_ADMIN_V1,
+                    Filter::Eq(String::from("name"), String::from("flarbalgarble")),
+                    ModifyList::new_list(vec![Modify::Present(
+                        String::from("description"),
+                        String::from("anusaosu"),
+                    )]),
+                )
+            };
             assert!(server_txn.modify(audit, &me_nochg) == Err(OperationError::NoMatchingEntries));
 
             // Filter is invalid to schema
@@ -1642,7 +1684,9 @@ mod tests {
                 &server_txn,
             )
             .expect("delete event create failed");
-            let se_ts = SearchEvent::new_ext_impersonate_uuid(UUID_ADMIN, filt_i_ts.clone());
+            let se_ts = unsafe {
+                SearchEvent::new_ext_impersonate_entry_ser(JSON_ADMIN_V1, filt_i_ts.clone())
+            };
 
             // First, create a tombstone
             let e_ts: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
@@ -1727,9 +1771,13 @@ mod tests {
                 &server_txn,
             )
             .expect("delete event create failed");
-            let se_rc = SearchEvent::new_ext_impersonate_uuid(UUID_ADMIN, filt_i_rc.clone());
+            let se_rc = unsafe {
+                SearchEvent::new_ext_impersonate_entry_ser(JSON_ADMIN_V1, filt_i_rc.clone())
+            };
 
-            let sre_rc = SearchEvent::new_rec_impersonate_uuid(UUID_ADMIN, filt_i_rc.clone());
+            let sre_rc = unsafe {
+                SearchEvent::new_rec_impersonate_entry_ser(JSON_ADMIN_V1, filt_i_rc.clone())
+            };
 
             let rre_rc = ReviveRecycledEvent::from_request(
                 audit,
@@ -1861,7 +1909,9 @@ mod tests {
             assert!(server_txn.delete(audit, &de_sin).is_ok());
             // Can in be seen by special search? (external recycle search)
             let filt_rc = Filter::Eq(String::from("class"), String::from("recycled"));
-            let sre_rc = SearchEvent::new_rec_impersonate_uuid(UUID_ADMIN, filt_rc.clone());
+            let sre_rc = unsafe {
+                SearchEvent::new_rec_impersonate_entry_ser(JSON_ADMIN_V1, filt_rc.clone())
+            };
             let r2 = server_txn.search(audit, &sre_rc).expect("search failed");
             assert!(r2.len() == 1);
 

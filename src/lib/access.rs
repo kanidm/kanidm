@@ -314,7 +314,8 @@ pub trait AccessControlsTransaction {
 
         // Now for that set, apply them to the entries.
 
-        unimplemented!();
+        // unimplemented!();
+        Ok(entries)
     }
 
     fn search_filter_entry_attributes(
@@ -917,26 +918,29 @@ mod tests {
         })
     }
 
+    macro_rules! test_acp_search {
+        (
+            $se:expr,
+            $controls:expr,
+            $entries:expr,
+            $expect:expr
+        ) => {{
+            let ac = AccessControls::new();
+            let mut acw = ac.write();
+            acw.update_search($controls);
+            let acw = acw;
+
+            let mut audit = AuditScope::new("test_acp_search");
+            let res = acw.search_filter_entries(&mut audit, $se, $entries);
+            // should be ok, and same as expect.
+            assert!(res.expect("op failed") == $expect);
+        }};
+    }
+
     #[test]
     fn test_access_internal_search() {
         // Test that an internal search bypasses ACS
         let se = SearchEvent::new_internal(Filter::Pres("class".to_string()));
-
-        let acs_test = unsafe {
-            AccessControlSearch::from_raw(
-                "test_acp",
-                "d38640c4-0254-49f9-99b7-8ba7d0233f3d",
-                Filter::Pres("class".to_string()), // apply to all people
-                Filter::Pres("nomatchy".to_string()), // apply to none - ie no allowed results
-                "name",                            // allow to this attr, but we don't eval this.
-            )
-        };
-
-        let ac = AccessControls::new();
-        let mut acw = ac.write();
-        acw.update_search(vec![acs_test]);
-
-        let acw = acw;
 
         let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
@@ -955,12 +959,21 @@ mod tests {
         let expect = vec![ev1.clone()];
         let entries = vec![ev1];
 
-        let mut audit = AuditScope::new("test_access_internal_search");
-
-        let res = acw.search_filter_entries(&mut audit, &se, entries.clone());
-
-        // should be ok, and same as expect.
-        assert!(res.expect("failed") == entries);
+        // This acp basically is "allow access to stuff, but not this".
+        test_acp_search!(
+            &se,
+            vec![unsafe {
+                AccessControlSearch::from_raw(
+                    "test_acp",
+                    "d38640c4-0254-49f9-99b7-8ba7d0233f3d",
+                    Filter::Pres("class".to_string()), // apply to all people
+                    Filter::Pres("nomatchy".to_string()), // apply to none - ie no allowed results
+                    "name", // allow to this attr, but we don't eval this.
+                )
+            }],
+            entries,
+            expect
+        );
     }
 
     #[test]
