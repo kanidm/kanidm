@@ -122,7 +122,12 @@ impl Filter<FilterValidResolved> {
         // If an or/not/and condition has no items, remove it
         //
         // If its the root item?
-        self.clone()
+
+        Filter {
+            state: FilterValidResolved {
+                inner: self.state.inner.optimise(),
+            },
+        }
     }
 
     // It's not possible to invalid a resolved filter, because we don't know
@@ -483,14 +488,15 @@ impl PartialEq for FilterResolved {
             (FilterResolved::Eq(a1, v1), FilterResolved::Eq(a2, v2)) => a1 == a2 && v1 == v2,
             (FilterResolved::Sub(a1, v1), FilterResolved::Sub(a2, v2)) => a1 == a2 && v1 == v2,
             (FilterResolved::Pres(a1), FilterResolved::Pres(a2)) => a1 == a2,
-            (FilterResolved::Or(l1), FilterResolved::Or(l2)) => l1 == l2,
-            (FilterResolved::And(l1), FilterResolved::And(l2)) => l1 == l2,
-            (FilterResolved::AndNot(l1), FilterResolved::AndNot(l2)) => l1 == l2,
-            // Eq and Pres can attempt to match, but we don't want that ...
+            (FilterResolved::And(vs1), FilterResolved::And(vs2)) => vs1 == vs2,
+            (FilterResolved::Or(vs1), FilterResolved::Or(vs2)) => vs1 == vs2,
+            (FilterResolved::AndNot(f1), FilterResolved::AndNot(f2)) => f1 == f2,
             (_, _) => false,
         }
     }
 }
+
+impl Eq for FilterResolved {}
 
 /*
  * Only needed in tests, in run time order only matters on the inner for
@@ -507,26 +513,37 @@ impl PartialOrd for Filter<FilterValidResolved> {
 // optimisation preference!
 impl PartialOrd for FilterResolved {
     fn partial_cmp(&self, rhs: &FilterResolved) -> Option<Ordering> {
+        Some(self.cmp(rhs))
+    }
+}
+
+impl Ord for FilterResolved {
+    fn cmp(&self, rhs: &FilterResolved) -> Ordering {
         match (self, rhs) {
-            (FilterResolved::Eq(a1, _), FilterResolved::Eq(a2, _)) => {
-                // Order attr name, then value
-                // Later we may add rules to put certain attrs ahead due
-                // to optimisation rules
-                a1.partial_cmp(a2)
+            (FilterResolved::Eq(a1, v1), FilterResolved::Eq(a2, v2)) => {
+                // Later this is how we will promote or demote values. We may
+                // need to make this schema aware ...
+                match a1.cmp(a2) {
+                    Ordering::Equal => v1.cmp(v2),
+                    o => o,
+                }
             }
-            (FilterResolved::Sub(a1, _), FilterResolved::Sub(a2, _)) => a1.partial_cmp(a2),
-            (FilterResolved::Pres(a1), FilterResolved::Pres(a2)) => a1.partial_cmp(a2),
+            (FilterResolved::Sub(a1, v1), FilterResolved::Sub(a2, v2)) => match a1.cmp(a2) {
+                Ordering::Equal => v1.cmp(v2),
+                o => o,
+            },
+            (FilterResolved::Pres(a1), FilterResolved::Pres(a2)) => a1.cmp(a2),
             (FilterResolved::Eq(_, _), _) => {
                 // Always higher prefer Eq over all else, as these will have
                 // the best indexes and return smallest candidates.
-                Some(Ordering::Less)
+                Ordering::Less
             }
-            (_, FilterResolved::Eq(_, _)) => Some(Ordering::Greater),
-            (FilterResolved::Pres(_), _) => Some(Ordering::Less),
-            (_, FilterResolved::Pres(_)) => Some(Ordering::Greater),
-            (FilterResolved::Sub(_, _), _) => Some(Ordering::Greater),
-            (_, FilterResolved::Sub(_, _)) => Some(Ordering::Less),
-            (_, _) => Some(Ordering::Equal),
+            (_, FilterResolved::Eq(_, _)) => Ordering::Greater,
+            (FilterResolved::Pres(_), _) => Ordering::Less,
+            (_, FilterResolved::Pres(_)) => Ordering::Greater,
+            (FilterResolved::Sub(_, _), _) => Ordering::Greater,
+            (_, FilterResolved::Sub(_, _)) => Ordering::Less,
+            (_, _) => Ordering::Equal,
         }
     }
 }
@@ -599,6 +616,66 @@ impl FilterResolved {
             },
         }
     }
+
+    fn optimise(&self) -> Self {
+        // Most optimisations only matter around or/and terms.
+        match self {
+            FilterResolved::And(f_list) => {
+                // first, optimise all our inner elements
+                let (f_list_and, mut f_list_new): (Vec<_>, Vec<_>) = f_list
+                    .iter()
+                    .map(|f_ref| f_ref.optimise())
+                    .partition(|f| match f {
+                        FilterResolved::And(_) => true,
+                        _ => false,
+                    });
+
+                // now, iterate over this list - for each "and" term, fold
+                // it's elements to this level.
+                // This is one of the most important improvements because it means
+                // that we can compare terms such that:
+                //
+                // (&(class=*)(&(uid=foo)))
+                // if we did not and fold, this would remain as is. However, by and
+                // folding, we can optimise to:
+                // (&(uid=foo)(class=*))
+                // Which will be faster when indexed as the uid=foo will trigger
+                // shortcutting
+                f_list_and.into_iter().for_each(|fc| match fc {
+                    FilterResolved::And(mut l) => f_list_new.append(&mut l),
+                    _ => {}
+                });
+
+                // finally, optimise this list by sorting.
+                f_list_new.sort_unstable();
+                f_list_new.dedup();
+
+                // return!
+                FilterResolved::And(f_list_new)
+            }
+            FilterResolved::Or(f_list) => {
+                let (f_list_or, mut f_list_new): (Vec<_>, Vec<_>) = f_list
+                    .iter()
+                    .map(|f_ref| f_ref.optimise())
+                    .partition(|f| match f {
+                        FilterResolved::Or(_) => true,
+                        _ => false,
+                    });
+
+                f_list_or.into_iter().for_each(|fc| match fc {
+                    FilterResolved::Or(mut l) => f_list_new.append(&mut l),
+                    _ => {}
+                });
+
+                // sort, but reverse so that sub-optimal elements are later!
+                f_list_new.sort_unstable_by(|a, b| b.cmp(a));
+                f_list_new.dedup();
+
+                FilterResolved::Or(f_list_new)
+            }
+            f => f.clone(),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -620,9 +697,115 @@ mod tests {
         ]));
     }
 
+    macro_rules! filter_optimise_assert {
+        (
+            $init:expr,
+            $expect:expr
+        ) => {{
+            #[allow(unused_imports)]
+            use crate::filter::{f_and, f_andnot, f_eq, f_or, f_pres, f_sub};
+            use crate::filter::{Filter, FilterInvalid};
+            let f_init: Filter<FilterInvalid> = Filter::new($init);
+            let f_expect: Filter<FilterInvalid> = Filter::new($expect);
+            // Create a resolved filter, via the most unsafe means possible!
+            let f_init_r = unsafe { f_init.to_valid_resolved() };
+            let f_init_o = f_init_r.optimise();
+            let f_init_e = unsafe { f_expect.to_valid_resolved() };
+            println!("--");
+            println!("init   --> {:?}", f_init_r);
+            println!("opt    --> {:?}", f_init_o);
+            println!("expect --> {:?}", f_init_e);
+            assert!(f_init_o == f_init_e);
+        }};
+    }
+
     #[test]
     fn test_filter_optimise() {
         // Given sets of "optimisable" filters, optimise them.
+        filter_optimise_assert!(
+            f_and(vec![f_and(vec![f_eq("class", "test")])]),
+            f_and(vec![f_eq("class", "test")])
+        );
+
+        filter_optimise_assert!(
+            f_or(vec![f_or(vec![f_eq("class", "test")])]),
+            f_or(vec![f_eq("class", "test")])
+        );
+
+        filter_optimise_assert!(
+            f_and(vec![f_or(vec![f_and(vec![f_eq("class", "test")])])]),
+            f_and(vec![f_or(vec![f_and(vec![f_eq("class", "test")])])])
+        );
+
+        // Later this can test duplicate filter detection.
+        filter_optimise_assert!(
+            f_and(vec![
+                f_and(vec![f_eq("class", "test")]),
+                f_sub("class", "te"),
+                f_pres("class"),
+                f_eq("class", "test")
+            ]),
+            f_and(vec![
+                f_eq("class", "test"),
+                f_pres("class"),
+                f_sub("class", "te"),
+            ])
+        );
+
+        // Test dedup removes only the correct element despite padding.
+        filter_optimise_assert!(
+            f_and(vec![
+                f_and(vec![
+                    f_eq("class", "foo"),
+                    f_eq("class", "test"),
+                    f_eq("uid", "bar"),
+                ]),
+                f_sub("class", "te"),
+                f_pres("class"),
+                f_eq("class", "test")
+            ]),
+            f_and(vec![
+                f_eq("class", "foo"),
+                f_eq("class", "test"),
+                f_eq("uid", "bar"),
+                f_pres("class"),
+                f_sub("class", "te"),
+            ])
+        );
+
+        filter_optimise_assert!(
+            f_or(vec![
+                f_eq("class", "test"),
+                f_pres("class"),
+                f_sub("class", "te"),
+                f_or(vec![f_eq("class", "test")]),
+            ]),
+            f_or(vec![
+                f_sub("class", "te"),
+                f_pres("class"),
+                f_eq("class", "test")
+            ])
+        );
+
+        // Test dedup doesn't affect nested items incorrectly.
+        filter_optimise_assert!(
+            f_or(vec![
+                f_eq("class", "test"),
+                f_and(vec![
+                    f_eq("class", "test"),
+                    f_eq("term", "test"),
+                    f_or(vec![f_eq("class", "test")])
+                ]),
+            ]),
+            f_or(vec![
+                f_and(vec![
+                    f_eq("class", "test"),
+                    f_eq("term", "test"),
+                    f_or(vec![f_eq("class", "test")])
+                ]),
+                f_eq("class", "test"),
+            ])
+        );
     }
 
     #[test]
