@@ -10,34 +10,102 @@ use crate::server::{
     QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
 };
 use std::cmp::{Ordering, PartialOrd};
-use std::marker::PhantomData;
 
-// Perhaps make these json serialisable. Certainly would make parsing
-// simpler ...
+// Default filter is safe, ignores all hidden types!
 
-#[derive(Debug)]
-pub struct FilterValid;
-#[derive(Debug)]
-pub struct FilterInvalid;
+pub fn f_eq<'a>(a: &'a str, v: &'a str) -> FC<'a> {
+    FC::Eq(a, v)
+}
 
-#[derive(Debug)]
-pub enum Filter<VALID> {
+pub fn f_sub<'a>(a: &'a str, v: &'a str) -> FC<'a> {
+    FC::Sub(a, v)
+}
+
+pub fn f_pres<'a>(a: &'a str) -> FC<'a> {
+    FC::Pres(a)
+}
+
+pub fn f_or<'a>(vs: Vec<FC<'a>>) -> FC<'a> {
+    FC::Or(vs)
+}
+
+pub fn f_and<'a>(vs: Vec<FC<'a>>) -> FC<'a> {
+    FC::And(vs)
+}
+
+pub fn f_andnot<'a>(fc: FC<'a>) -> FC<'a> {
+    FC::AndNot(Box::new(fc))
+}
+
+pub fn f_self<'a>() -> FC<'a> {
+    FC::SelfUUID
+}
+
+// This is the short-form for tests and internal filters that can then
+// be transformed into a filter for the server to use.
+#[derive(Debug, Deserialize)]
+pub enum FC<'a> {
+    Eq(&'a str, &'a str),
+    Sub(&'a str, &'a str),
+    Pres(&'a str),
+    Or(Vec<FC<'a>>),
+    And(Vec<FC<'a>>),
+    AndNot(Box<FC<'a>>),
+    SelfUUID,
+    // Not(Box<FC>),
+}
+
+// This is the filters internal representation.
+#[derive(Debug, Clone, PartialEq)]
+enum FilterComp {
     // This is attr - value
     Eq(String, String),
     Sub(String, String),
     Pres(String),
-    Or(Vec<Filter<VALID>>),
-    And(Vec<Filter<VALID>>),
-    AndNot(Box<Filter<VALID>>),
+    Or(Vec<FilterComp>),
+    And(Vec<FilterComp>),
+    AndNot(Box<FilterComp>),
     SelfUUID,
-    Invalid(PhantomData<VALID>),
+    // Does this mean we can add a true not to the type now?
+    // Not(Box<FilterComp>),
 }
 
-// Change this so you have RawFilter and Filter. RawFilter is the "builder", and then
-// given a "schema" you can emit a Filter. For us internally, we can create Filter
-// directly still ...
+// This is the fully resolved internal representation. Note the lack of Not and selfUUID
+// because these are resolved into And(Pres(class), AndNot(term)) and Eq(uuid, ...).
+// Importantly, we make this accessible to Entry so that it can then match on filters
+// properly.
+#[derive(Debug, Clone)]
+pub enum FilterResolved {
+    // This is attr - value
+    Eq(String, String),
+    Sub(String, String),
+    Pres(String),
+    Or(Vec<FilterResolved>),
+    And(Vec<FilterResolved>),
+    AndNot(Box<FilterResolved>),
+}
 
-impl Filter<FilterValid> {
+#[derive(Debug, Clone)]
+pub struct FilterInvalid {
+    inner: FilterComp,
+}
+
+#[derive(Debug, Clone)]
+pub struct FilterValid {
+    inner: FilterComp,
+}
+
+#[derive(Debug, Clone)]
+pub struct FilterValidResolved {
+    inner: FilterResolved,
+}
+
+#[derive(Debug, Clone)]
+pub struct Filter<STATE> {
+    state: STATE,
+}
+
+impl Filter<FilterValidResolved> {
     // Does this need mut self? Aren't we returning
     // a new copied filter?
     pub fn optimise(&self) -> Self {
@@ -56,44 +124,182 @@ impl Filter<FilterValid> {
         self.clone()
     }
 
-    pub fn invalidate(&self) -> Filter<FilterInvalid> {
-        match self {
-            Filter::Eq(a, v) => Filter::Eq(a.clone(), v.clone()),
-            Filter::Sub(a, v) => Filter::Sub(a.clone(), v.clone()),
-            Filter::Pres(a) => Filter::Pres(a.clone()),
-            Filter::Or(l) => Filter::Or(l.iter().map(|f| f.invalidate()).collect()),
-            Filter::And(l) => Filter::And(l.iter().map(|f| f.invalidate()).collect()),
-            Filter::AndNot(l) => Filter::AndNot(Box::new(l.invalidate())),
-            Filter::SelfUUID => Filter::SelfUUID,
-            Filter::Invalid(_) => {
-                // TODO: Is there a better way to not need to match the phantom?
-                unimplemented!()
-            }
+    // It's not possible to invalid a resolved filter, because we don't know
+    // what the origin of the Self or Not keywords were.
+    //
+    // Saying this, we have entry -> filter_from_attrs. Should that return
+    // a valid or validResolved? If it does valid resolved we need invalidate
+    // so we can down cast and then re-validate and re-resolve ...
+
+    // Allow the entry crate to read the internals of the filter.
+    // more likely, we should move entry matching HERE ...
+    pub fn to_inner(&self) -> &FilterResolved {
+        &self.state.inner
+    }
+}
+
+impl Filter<FilterValid> {
+    pub fn invalidate(self) -> Filter<FilterInvalid> {
+        // Just move the state.
+        Filter {
+            state: FilterInvalid {
+                inner: self.state.inner,
+            },
         }
+    }
+
+    pub fn resolve(self) -> Result<Filter<FilterValidResolved>, OperationError> {
+        unimplemented!();
     }
 }
 
 impl Filter<FilterInvalid> {
-    pub fn new_ignore_hidden(inner: Filter<FilterInvalid>) -> Self {
-        // Create a new filter, that ignores hidden entries.
-        Filter::And(vec![
-            Filter::AndNot(Box::new(Filter::Or(vec![
-                Filter::Eq("class".to_string(), "tombstone".to_string()),
-                Filter::Eq("class".to_string(), "recycled".to_string()),
-            ]))),
-            inner,
-        ])
+    pub fn new(inner: FC) -> Self {
+        let fc = FilterComp::new(inner);
+        Filter {
+            state: FilterInvalid { inner: fc },
+        }
     }
 
-    pub fn new_recycled(inner: Filter<FilterInvalid>) -> Self {
+    pub fn new_ignore_hidden(inner: FC) -> Self {
+        let fc = FilterComp::new(inner);
+        Filter {
+            state: FilterInvalid {
+                inner: FilterComp::new_ignore_hidden(fc),
+            },
+        }
+    }
+
+    pub fn to_ignore_hidden(self) -> Self {
+        // Destructure the former filter, and surround it with an ignore_hidden.
+        Filter {
+            state: FilterInvalid {
+                inner: FilterComp::new_ignore_hidden(self.state.inner),
+            },
+        }
+    }
+
+    pub fn new_recycled(inner: FC) -> Self {
         // Create a filter that searches recycled items only.
-        Filter::And(vec![
-            Filter::Eq("class".to_string(), "recycled".to_string()),
-            inner,
-        ])
+        let fc = FilterComp::new(inner);
+        Filter {
+            state: FilterInvalid {
+                inner: FilterComp::new_recycled(fc),
+            },
+        }
+    }
+
+    pub fn to_recycled(self) -> Self {
+        // Destructure the former filter and surround it with a recycled only query
+        Filter {
+            state: FilterInvalid {
+                inner: FilterComp::new_recycled(self.state.inner),
+            },
+        }
+    }
+
+    #[cfg(test)]
+    pub unsafe fn to_valid_resolved(self) -> Filter<FilterValidResolved> {
+        // YOLO.
+        // tl;dr - panic if there is a Self term because we don't have the QS
+        // to resolve the uuid. Perhaps in the future we can provide a uuid
+        // to this for the resolving to make it safer ...
+        //
+        // Saying this, we COULD also use this chance to resolve name->uuid
+        // instead of in the proto translation layer ...
+        Filter {
+            state: FilterValidResolved {
+                inner: FilterResolved::from_invalid(self.state.inner),
+            },
+        }
+    }
+
+    #[cfg(test)]
+    pub unsafe fn to_valid(self) -> Filter<FilterValid> {
+        Filter {
+            state: FilterValid {
+                inner: self.state.inner,
+            },
+        }
+    }
+
+    #[cfg(test)]
+    pub unsafe fn from_str(fc: &str) -> Self {
+        let f: FC = serde_json::from_str(fc).expect("Failure parsing filter!");
+        Filter {
+            state: FilterInvalid {
+                inner: FilterComp::new(f),
+            },
+        }
     }
 
     pub fn validate(&self, schema: &SchemaTransaction) -> Result<Filter<FilterValid>, SchemaError> {
+        Ok(Filter {
+            state: FilterValid {
+                inner: self.state.inner.validate(schema)?,
+            },
+        })
+    }
+
+    // TODO: This has to have two versions to account for ro/rw traits, because RS can't
+    // monomorphise on the trait to call clone_value. An option is to make a fn that
+    // takes "clone_value(t, a, v) instead, but that may have a similar issue.
+    pub fn from_ro(
+        audit: &mut AuditScope,
+        f: &ProtoFilter,
+        qs: &QueryServerReadTransaction,
+    ) -> Result<Self, OperationError> {
+        Ok(Filter {
+            state: FilterInvalid {
+                inner: FilterComp::from_ro(audit, f, qs)?,
+            },
+        })
+    }
+
+    pub fn from_rw(
+        audit: &mut AuditScope,
+        f: &ProtoFilter,
+        qs: &QueryServerWriteTransaction,
+    ) -> Result<Self, OperationError> {
+        Ok(Filter {
+            state: FilterInvalid {
+                inner: FilterComp::from_rw(audit, f, qs)?,
+            },
+        })
+    }
+}
+
+impl FilterComp {
+    fn new(fc: FC) -> Self {
+        match fc {
+            FC::Eq(a, v) => FilterComp::Eq(a.to_string(), v.to_string()),
+            FC::Sub(a, v) => FilterComp::Sub(a.to_string(), v.to_string()),
+            FC::Pres(a) => FilterComp::Pres(a.to_string()),
+            FC::Or(v) => FilterComp::Or(v.into_iter().map(|c| FilterComp::new(c)).collect()),
+            FC::And(v) => FilterComp::And(v.into_iter().map(|c| FilterComp::new(c)).collect()),
+            FC::AndNot(b) => FilterComp::AndNot(Box::new(FilterComp::new(*b))),
+            FC::SelfUUID => FilterComp::SelfUUID,
+        }
+    }
+
+    fn new_ignore_hidden(fc: FilterComp) -> Self {
+        FilterComp::And(vec![
+            FilterComp::AndNot(Box::new(FilterComp::Or(vec![
+                FilterComp::Eq("class".to_string(), "tombstone".to_string()),
+                FilterComp::Eq("class".to_string(), "recycled".to_string()),
+            ]))),
+            fc,
+        ])
+    }
+
+    fn new_recycled(fc: FilterComp) -> Self {
+        FilterComp::And(vec![
+            FilterComp::Eq("class".to_string(), "recycled".to_string()),
+            fc,
+        ])
+    }
+
+    pub fn validate(&self, schema: &SchemaTransaction) -> Result<FilterComp, SchemaError> {
         // TODO:
         // First, normalise (if possible)
         // Then, validate
@@ -110,7 +316,7 @@ impl Filter<FilterInvalid> {
             .expect("Critical: Core schema corrupt or missing.");
 
         match self {
-            Filter::Eq(attr, value) => {
+            FilterComp::Eq(attr, value) => {
                 // Validate/normalise the attr name.
                 let attr_norm = schema_name.normalise_value(attr);
                 // Now check it exists
@@ -120,13 +326,13 @@ impl Filter<FilterInvalid> {
                         schema_a
                             .validate_value(&value_norm)
                             // Okay, it worked, transform to a filter component
-                            .map(|_| Filter::Eq(attr_norm, value_norm))
+                            .map(|_| FilterComp::Eq(attr_norm, value_norm))
                         // On error, pass the error back out.
                     }
                     None => Err(SchemaError::InvalidAttribute),
                 }
             }
-            Filter::Sub(attr, value) => {
+            FilterComp::Sub(attr, value) => {
                 // Validate/normalise the attr name.
                 let attr_norm = schema_name.normalise_value(attr);
                 // Now check it exists
@@ -136,24 +342,24 @@ impl Filter<FilterInvalid> {
                         schema_a
                             .validate_value(&value_norm)
                             // Okay, it worked, transform to a filter component
-                            .map(|_| Filter::Sub(attr_norm, value_norm))
+                            .map(|_| FilterComp::Sub(attr_norm, value_norm))
                         // On error, pass the error back out.
                     }
                     None => Err(SchemaError::InvalidAttribute),
                 }
             }
-            Filter::Pres(attr) => {
+            FilterComp::Pres(attr) => {
                 let attr_norm = schema_name.normalise_value(attr);
                 // Now check it exists
                 match schema_attributes.get(&attr_norm) {
                     Some(_attr_name) => {
                         // Return our valid data
-                        Ok(Filter::Pres(attr_norm))
+                        Ok(FilterComp::Pres(attr_norm))
                     }
                     None => Err(SchemaError::InvalidAttribute),
                 }
             }
-            Filter::Or(filters) => {
+            FilterComp::Or(filters) => {
                 // If all filters are okay, return Ok(Filter::Or())
                 // If any is invalid, return the error.
                 // TODO: ftweedal says an empty or is a valid filter
@@ -166,9 +372,9 @@ impl Filter<FilterInvalid> {
                     .map(|filter| filter.validate(schema))
                     .collect();
                 // Now put the valid filters into the Filter
-                x.map(|valid_filters| Filter::Or(valid_filters))
+                x.map(|valid_filters| FilterComp::Or(valid_filters))
             }
-            Filter::And(filters) => {
+            FilterComp::And(filters) => {
                 // TODO: ftweedal says an empty or is a valid filter
                 // in mathematical terms.
                 if filters.len() == 0 {
@@ -179,147 +385,173 @@ impl Filter<FilterInvalid> {
                     .map(|filter| filter.validate(schema))
                     .collect();
                 // Now put the valid filters into the Filter
-                x.map(|valid_filters| Filter::And(valid_filters))
+                x.map(|valid_filters| FilterComp::And(valid_filters))
             }
-            Filter::AndNot(filter) => {
+            FilterComp::AndNot(filter) => {
                 // Just validate the inner
                 filter
                     .validate(schema)
-                    .map(|r_filter| Filter::AndNot(Box::new(r_filter)))
+                    .map(|r_filter| FilterComp::AndNot(Box::new(r_filter)))
             }
-            _ => panic!(),
+            FilterComp::SelfUUID => {
+                // Pretty hard to mess this one up ;)
+                Ok(FilterComp::SelfUUID)
+            }
         }
     }
 
-    // TODO: This has to have two versions to account for ro/rw traits, because RS can't
-    // monomorphise on the trait to call clone_value. An option is to make a fn that
-    // takes "clone_value(t, a, v) instead, but that may have a similar issue.
-    pub fn from_ro(
+    fn from_ro(
         audit: &mut AuditScope,
         f: &ProtoFilter,
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         Ok(match f {
-            ProtoFilter::Eq(a, v) => Filter::Eq(a.clone(), qs.clone_value(audit, a, v)?),
-            ProtoFilter::Sub(a, v) => Filter::Sub(a.clone(), qs.clone_value(audit, a, v)?),
-            ProtoFilter::Pres(a) => Filter::Pres(a.clone()),
-            ProtoFilter::Or(l) => Filter::Or(
+            ProtoFilter::Eq(a, v) => FilterComp::Eq(a.clone(), qs.clone_value(audit, a, v)?),
+            ProtoFilter::Sub(a, v) => FilterComp::Sub(a.clone(), qs.clone_value(audit, a, v)?),
+            ProtoFilter::Pres(a) => FilterComp::Pres(a.clone()),
+            ProtoFilter::Or(l) => FilterComp::Or(
                 l.iter()
                     .map(|f| Self::from_ro(audit, f, qs))
                     .collect::<Result<Vec<_>, _>>()?,
             ),
-            ProtoFilter::And(l) => Filter::And(
+            ProtoFilter::And(l) => FilterComp::And(
                 l.iter()
                     .map(|f| Self::from_ro(audit, f, qs))
                     .collect::<Result<Vec<_>, _>>()?,
             ),
-            ProtoFilter::AndNot(l) => Filter::AndNot(Box::new(Self::from_ro(audit, l, qs)?)),
-            ProtoFilter::SelfUUID => Filter::SelfUUID,
+            ProtoFilter::AndNot(l) => FilterComp::AndNot(Box::new(Self::from_ro(audit, l, qs)?)),
+            ProtoFilter::SelfUUID => FilterComp::SelfUUID,
         })
     }
 
-    pub fn from_rw(
+    fn from_rw(
         audit: &mut AuditScope,
         f: &ProtoFilter,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         Ok(match f {
-            ProtoFilter::Eq(a, v) => Filter::Eq(a.clone(), qs.clone_value(audit, a, v)?),
-            ProtoFilter::Sub(a, v) => Filter::Sub(a.clone(), qs.clone_value(audit, a, v)?),
-            ProtoFilter::Pres(a) => Filter::Pres(a.clone()),
-            ProtoFilter::Or(l) => Filter::Or(
+            ProtoFilter::Eq(a, v) => FilterComp::Eq(a.clone(), qs.clone_value(audit, a, v)?),
+            ProtoFilter::Sub(a, v) => FilterComp::Sub(a.clone(), qs.clone_value(audit, a, v)?),
+            ProtoFilter::Pres(a) => FilterComp::Pres(a.clone()),
+            ProtoFilter::Or(l) => FilterComp::Or(
                 l.iter()
                     .map(|f| Self::from_rw(audit, f, qs))
                     .collect::<Result<Vec<_>, _>>()?,
             ),
-            ProtoFilter::And(l) => Filter::And(
+            ProtoFilter::And(l) => FilterComp::And(
                 l.iter()
                     .map(|f| Self::from_rw(audit, f, qs))
                     .collect::<Result<Vec<_>, _>>()?,
             ),
-            ProtoFilter::AndNot(l) => Filter::AndNot(Box::new(Self::from_rw(audit, l, qs)?)),
-            ProtoFilter::SelfUUID => Filter::SelfUUID,
+            ProtoFilter::AndNot(l) => FilterComp::AndNot(Box::new(Self::from_rw(audit, l, qs)?)),
+            ProtoFilter::SelfUUID => FilterComp::SelfUUID,
         })
     }
 }
 
-impl Clone for Filter<FilterValid> {
-    fn clone(&self) -> Self {
-        // I think we only need to match self then new + clone?
-        match self {
-            Filter::Eq(a, v) => Filter::Eq(a.clone(), v.clone()),
-            Filter::Sub(a, v) => Filter::Sub(a.clone(), v.clone()),
-            Filter::Pres(a) => Filter::Pres(a.clone()),
-            Filter::Or(l) => Filter::Or(l.clone()),
-            Filter::And(l) => Filter::And(l.clone()),
-            Filter::AndNot(l) => Filter::AndNot(l.clone()),
-            Filter::SelfUUID => Filter::SelfUUID,
-            Filter::Invalid(_) => {
-                // TODO: Is there a better way to not need to match the phantom?
-                unimplemented!()
-            }
-        }
+/* We only configure partial eq if cfg test on the invalid/valid types */
+#[cfg(test)]
+impl PartialEq for Filter<FilterInvalid> {
+    fn eq(&self, rhs: &Filter<FilterInvalid>) -> bool {
+        self.state.inner == rhs.state.inner
     }
 }
 
-impl Clone for Filter<FilterInvalid> {
-    fn clone(&self) -> Self {
-        // I think we only need to match self then new + clone?
-        match self {
-            Filter::Eq(a, v) => Filter::Eq(a.clone(), v.clone()),
-            Filter::Sub(a, v) => Filter::Sub(a.clone(), v.clone()),
-            Filter::Pres(a) => Filter::Pres(a.clone()),
-            Filter::Or(l) => Filter::Or(l.clone()),
-            Filter::And(l) => Filter::And(l.clone()),
-            Filter::AndNot(l) => Filter::AndNot(l.clone()),
-            Filter::SelfUUID => Filter::SelfUUID,
-            Filter::Invalid(_) => {
-                // TODO: Is there a better way to not need to match the phantom?
-                unimplemented!()
-            }
-        }
-    }
-}
-
+#[cfg(test)]
 impl PartialEq for Filter<FilterValid> {
     fn eq(&self, rhs: &Filter<FilterValid>) -> bool {
+        self.state.inner == rhs.state.inner
+    }
+}
+
+impl PartialEq for Filter<FilterValidResolved> {
+    fn eq(&self, rhs: &Filter<FilterValidResolved>) -> bool {
+        self.state.inner == rhs.state.inner
+    }
+}
+
+impl PartialEq for FilterResolved {
+    fn eq(&self, rhs: &FilterResolved) -> bool {
         match (self, rhs) {
-            (Filter::Eq(a1, v1), Filter::Eq(a2, v2)) => a1 == a2 && v1 == v2,
-            (Filter::Sub(a1, v1), Filter::Sub(a2, v2)) => a1 == a2 && v1 == v2,
-            (Filter::Pres(a1), Filter::Pres(a2)) => a1 == a2,
-            (Filter::Or(l1), Filter::Or(l2)) => l1 == l2,
-            (Filter::And(l1), Filter::And(l2)) => l1 == l2,
-            (Filter::SelfUUID, Filter::SelfUUID) => true,
-            (Filter::AndNot(l1), Filter::AndNot(l2)) => l1 == l2,
+            (FilterResolved::Eq(a1, v1), FilterResolved::Eq(a2, v2)) => a1 == a2 && v1 == v2,
+            (FilterResolved::Sub(a1, v1), FilterResolved::Sub(a2, v2)) => a1 == a2 && v1 == v2,
+            (FilterResolved::Pres(a1), FilterResolved::Pres(a2)) => a1 == a2,
+            (FilterResolved::Or(l1), FilterResolved::Or(l2)) => l1 == l2,
+            (FilterResolved::And(l1), FilterResolved::And(l2)) => l1 == l2,
+            (FilterResolved::AndNot(l1), FilterResolved::AndNot(l2)) => l1 == l2,
+            // Eq and Pres can attempt to match, but we don't want that ...
             (_, _) => false,
         }
     }
 }
 
+/*
+ * Only needed in tests, in run time order only matters on the inner for
+ * optimisation.
+ */
+#[cfg(test)]
+impl PartialOrd for Filter<FilterValidResolved> {
+    fn partial_cmp(&self, rhs: &Filter<FilterValidResolved>) -> Option<Ordering> {
+        self.state.inner.partial_cmp(&rhs.state.inner)
+    }
+}
+
 // remember, this isn't ordering by alphanumeric, this is ordering of
 // optimisation preference!
-impl PartialOrd for Filter<FilterValid> {
-    fn partial_cmp(&self, rhs: &Filter<FilterValid>) -> Option<Ordering> {
+impl PartialOrd for FilterResolved {
+    fn partial_cmp(&self, rhs: &FilterResolved) -> Option<Ordering> {
         match (self, rhs) {
-            (Filter::Eq(a1, _), Filter::Eq(a2, _)) => {
+            (FilterResolved::Eq(a1, _), FilterResolved::Eq(a2, _)) => {
                 // Order attr name, then value
                 // Later we may add rules to put certain attrs ahead due
                 // to optimisation rules
                 a1.partial_cmp(a2)
             }
-            (Filter::Sub(a1, _), Filter::Sub(a2, _)) => a1.partial_cmp(a2),
-            (Filter::Pres(a1), Filter::Pres(a2)) => a1.partial_cmp(a2),
-            (Filter::Eq(_, _), _) => {
+            (FilterResolved::Sub(a1, _), FilterResolved::Sub(a2, _)) => a1.partial_cmp(a2),
+            (FilterResolved::Pres(a1), FilterResolved::Pres(a2)) => a1.partial_cmp(a2),
+            (FilterResolved::Eq(_, _), _) => {
                 // Always higher prefer Eq over all else, as these will have
                 // the best indexes and return smallest candidates.
                 Some(Ordering::Less)
             }
-            (_, Filter::Eq(_, _)) => Some(Ordering::Greater),
-            (Filter::Pres(_), _) => Some(Ordering::Less),
-            (_, Filter::Pres(_)) => Some(Ordering::Greater),
-            (Filter::Sub(_, _), _) => Some(Ordering::Greater),
-            (_, Filter::Sub(_, _)) => Some(Ordering::Less),
+            (_, FilterResolved::Eq(_, _)) => Some(Ordering::Greater),
+            (FilterResolved::Pres(_), _) => Some(Ordering::Less),
+            (_, FilterResolved::Pres(_)) => Some(Ordering::Greater),
+            (FilterResolved::Sub(_, _), _) => Some(Ordering::Greater),
+            (_, FilterResolved::Sub(_, _)) => Some(Ordering::Less),
             (_, _) => Some(Ordering::Equal),
+        }
+    }
+}
+
+impl FilterResolved {
+    #[cfg(test)]
+    unsafe fn from_invalid(fc: FilterComp) -> Self {
+        match fc {
+            FilterComp::Eq(a, v) => FilterResolved::Eq(a, v),
+            FilterComp::Sub(a, v) => FilterResolved::Sub(a, v),
+            FilterComp::Pres(a) => FilterResolved::Pres(a),
+            FilterComp::Or(vs) => FilterResolved::Or(
+                vs.into_iter()
+                    .map(|v| unsafe { FilterResolved::from_invalid(v) })
+                    .collect(),
+            ),
+            FilterComp::And(vs) => FilterResolved::And(
+                vs.into_iter()
+                    .map(|v| unsafe { FilterResolved::from_invalid(v) })
+                    .collect(),
+            ),
+            FilterComp::AndNot(f) => {
+                // TODO: pattern match box here. (AndNot(box f)).
+                // We have to clone f into our space here because pattern matching can
+                // not today remove the box, and we need f in our ownership. Since
+                // AndNot currently is a rare request, cloning is not the worst thing
+                // here ...
+                FilterResolved::AndNot(Box::new(unsafe {
+                    FilterResolved::from_invalid((*f).clone())
+                }))
+            }
+            FilterComp::SelfUUID => panic!("Not possible to resolve SelfUUID in from_invalid!"),
         }
     }
 }
@@ -334,15 +566,13 @@ mod tests {
     #[test]
     fn test_filter_simple() {
         // Test construction.
-        let _filt: Filter<FilterInvalid> = Filter::Eq(String::from("class"), String::from("user"));
+        let _filt: Filter<FilterInvalid> = filter!(f_eq("class", "user"));
 
-        let _complex_filt: Filter<FilterInvalid> = Filter::And(vec![
-            Filter::Or(vec![
-                Filter::Eq(String::from("userid"), String::from("test_a")),
-                Filter::Eq(String::from("userid"), String::from("test_b")),
-            ]),
-            Filter::Eq(String::from("class"), String::from("user")),
-        ]);
+        // AFTER
+        let _complex_filt: Filter<FilterInvalid> = filter!(f_and!([
+            f_or!([f_eq("userid", "test_a"), f_eq("userid", "test_b"),]),
+            f_sub("class", "user"),
+        ]));
     }
 
     #[test]
@@ -352,22 +582,23 @@ mod tests {
 
     #[test]
     fn test_filter_eq() {
-        let f_t1a = Filter::Pres(String::from("userid"));
-        let f_t1b = Filter::Pres(String::from("userid"));
-        let f_t1c = Filter::Pres(String::from("zzzz"));
+        let f_t1a = filter!(f_pres("userid"));
+        let f_t1b = filter!(f_pres("userid"));
+        let f_t1c = filter!(f_pres("zzzz"));
 
         assert_eq!(f_t1a == f_t1b, true);
         assert_eq!(f_t1a == f_t1c, false);
         assert_eq!(f_t1b == f_t1c, false);
 
-        let f_t2a = Filter::And(vec![f_t1a]);
-        let f_t2b = Filter::And(vec![f_t1b]);
-        let f_t2c = Filter::And(vec![f_t1c]);
+        let f_t2a = filter!(f_and!([f_pres("userid")]));
+        let f_t2b = filter!(f_and!([f_pres("userid")]));
+        let f_t2c = filter!(f_and!([f_pres("zzzz")]));
         assert_eq!(f_t2a == f_t2b, true);
         assert_eq!(f_t2a == f_t2c, false);
         assert_eq!(f_t2b == f_t2c, false);
 
-        assert_eq!(f_t2c == Filter::Pres(String::from("test")), false);
+        assert_eq!(f_t2c == f_t1a, false);
+        assert_eq!(f_t2c == f_t1c, false);
     }
 
     #[test]
@@ -375,24 +606,24 @@ mod tests {
         // Test that we uphold the rules of partialOrd
         // Basic equality
         // Test the two major paths here (str vs list)
-        let f_t1a = Filter::Pres(String::from("userid"));
-        let f_t1b = Filter::Pres(String::from("userid"));
+        let f_t1a = unsafe { filter_resolved!(f_pres("userid")) };
+        let f_t1b = unsafe { filter_resolved!(f_pres("userid")) };
 
         assert_eq!(f_t1a.partial_cmp(&f_t1b), Some(Ordering::Equal));
         assert_eq!(f_t1b.partial_cmp(&f_t1a), Some(Ordering::Equal));
 
-        let f_t2a = Filter::And(vec![]);
-        let f_t2b = Filter::And(vec![]);
+        let f_t2a = unsafe { filter_resolved!(f_and!([])) };
+        let f_t2b = unsafe { filter_resolved!(f_and!([])) };
         assert_eq!(f_t2a.partial_cmp(&f_t2b), Some(Ordering::Equal));
         assert_eq!(f_t2b.partial_cmp(&f_t2a), Some(Ordering::Equal));
 
         // antisymmetry: if a < b then !(a > b), as well as a > b implying !(a < b); and
-        let f_t3b = Filter::Eq(String::from("userid"), String::from(""));
+        let f_t3b = unsafe { filter_resolved!(f_eq("userid", "")) };
         assert_eq!(f_t1a.partial_cmp(&f_t3b), Some(Ordering::Greater));
         assert_eq!(f_t3b.partial_cmp(&f_t1a), Some(Ordering::Less));
 
         // transitivity: a < b and b < c implies a < c. The same must hold for both == and >.
-        let f_t4b = Filter::Sub(String::from("userid"), String::from(""));
+        let f_t4b = unsafe { filter_resolved!(f_sub("userid", "")) };
         assert_eq!(f_t1a.partial_cmp(&f_t4b), Some(Ordering::Less));
         assert_eq!(f_t3b.partial_cmp(&f_t4b), Some(Ordering::Less));
 
@@ -404,16 +635,16 @@ mod tests {
     fn test_filter_clone() {
         // Test that cloning filters yields the same result regardless of
         // complexity.
-        let f_t1a = Filter::Pres(String::from("userid"));
+        let f_t1a = unsafe { filter_resolved!(f_pres("userid")) };
         let f_t1b = f_t1a.clone();
-        let f_t1c = Filter::Pres(String::from("zzzz"));
+        let f_t1c = unsafe { filter_resolved!(f_pres("zzzz")) };
 
         assert_eq!(f_t1a == f_t1b, true);
         assert_eq!(f_t1a == f_t1c, false);
 
-        let f_t2a = Filter::And(vec![f_t1a]);
-        let f_t2b = f_t2a.clone();
-        let f_t2c = Filter::And(vec![f_t1c]);
+        let f_t2a = unsafe { filter_resolved!(f_and!([f_pres("userid")])) };
+        let f_t2b = f_t1a.clone();
+        let f_t2c = unsafe { filter_resolved!(f_and!([f_pres("zzzz")])) };
 
         assert_eq!(f_t2a == f_t2b, true);
         assert_eq!(f_t2a == f_t2c, false);
@@ -430,34 +661,36 @@ mod tests {
             "attrs": {
                 "userid": ["william"],
                 "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
-                "uidNumber": ["1000"]
+                "uidnumber": ["1000"]
             }
         }"#,
         )
         .expect("Json parse failure");
 
-        let f_t1a = Filter::Or(vec![
-            Filter::Eq(String::from("userid"), String::from("william")),
-            Filter::Eq(String::from("uidNumber"), String::from("1000")),
-        ]);
+        let f_t1a = unsafe {
+            filter_resolved!(f_or!([
+                f_eq("userid", "william"),
+                f_eq("uidnumber", "1000"),
+            ]))
+        };
         assert!(e.entry_match_no_index(&f_t1a));
 
-        let f_t2a = Filter::Or(vec![
-            Filter::Eq(String::from("userid"), String::from("william")),
-            Filter::Eq(String::from("uidNumber"), String::from("1001")),
-        ]);
+        let f_t2a = unsafe {
+            filter_resolved!(f_or!([
+                f_eq("userid", "william"),
+                f_eq("uidnumber", "1001"),
+            ]))
+        };
         assert!(e.entry_match_no_index(&f_t2a));
 
-        let f_t3a = Filter::Or(vec![
-            Filter::Eq(String::from("userid"), String::from("alice")),
-            Filter::Eq(String::from("uidNumber"), String::from("1000")),
-        ]);
+        let f_t3a = unsafe {
+            filter_resolved!(f_or!([f_eq("userid", "alice"), f_eq("uidnumber", "1000"),]))
+        };
         assert!(e.entry_match_no_index(&f_t3a));
 
-        let f_t4a = Filter::Or(vec![
-            Filter::Eq(String::from("userid"), String::from("alice")),
-            Filter::Eq(String::from("uidNumber"), String::from("1001")),
-        ]);
+        let f_t4a = unsafe {
+            filter_resolved!(f_or!([f_eq("userid", "alice"), f_eq("uidnumber", "1001"),]))
+        };
         assert!(!e.entry_match_no_index(&f_t4a));
     }
 
@@ -472,34 +705,40 @@ mod tests {
             "attrs": {
                 "userid": ["william"],
                 "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
-                "uidNumber": ["1000"]
+                "uidnumber": ["1000"]
             }
         }"#,
         )
         .expect("Json parse failure");
 
-        let f_t1a = Filter::And(vec![
-            Filter::Eq(String::from("userid"), String::from("william")),
-            Filter::Eq(String::from("uidNumber"), String::from("1000")),
-        ]);
+        let f_t1a = unsafe {
+            filter_resolved!(f_and!([
+                f_eq("userid", "william"),
+                f_eq("uidnumber", "1000"),
+            ]))
+        };
         assert!(e.entry_match_no_index(&f_t1a));
 
-        let f_t2a = Filter::And(vec![
-            Filter::Eq(String::from("userid"), String::from("william")),
-            Filter::Eq(String::from("uidNumber"), String::from("1001")),
-        ]);
+        let f_t2a = unsafe {
+            filter_resolved!(f_and!([
+                f_eq("userid", "william"),
+                f_eq("uidnumber", "1001"),
+            ]))
+        };
         assert!(!e.entry_match_no_index(&f_t2a));
 
-        let f_t3a = Filter::And(vec![
-            Filter::Eq(String::from("userid"), String::from("alice")),
-            Filter::Eq(String::from("uidNumber"), String::from("1000")),
-        ]);
+        let f_t3a = unsafe {
+            filter_resolved!(f_and!(
+                [f_eq("userid", "alice"), f_eq("uidnumber", "1000"),]
+            ))
+        };
         assert!(!e.entry_match_no_index(&f_t3a));
 
-        let f_t4a = Filter::And(vec![
-            Filter::Eq(String::from("userid"), String::from("alice")),
-            Filter::Eq(String::from("uidNumber"), String::from("1001")),
-        ]);
+        let f_t4a = unsafe {
+            filter_resolved!(f_and!(
+                [f_eq("userid", "alice"), f_eq("uidnumber", "1001"),]
+            ))
+        };
         assert!(!e.entry_match_no_index(&f_t4a));
     }
 
@@ -514,22 +753,16 @@ mod tests {
             "attrs": {
                 "userid": ["william"],
                 "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
-                "uidNumber": ["1000"]
+                "uidnumber": ["1000"]
             }
         }"#,
         )
         .expect("Json parse failure");
 
-        let f_t1a = Filter::AndNot(Box::new(Filter::Eq(
-            String::from("userid"),
-            String::from("alice"),
-        )));
+        let f_t1a = unsafe { filter_resolved!(f_andnot(f_eq("userid", "alice"))) };
         assert!(e1.entry_match_no_index(&f_t1a));
 
-        let f_t2a = Filter::AndNot(Box::new(Filter::Eq(
-            String::from("userid"),
-            String::from("william"),
-        )));
+        let f_t2a = unsafe { filter_resolved!(f_andnot(f_eq("userid", "william"))) };
         assert!(!e1.entry_match_no_index(&f_t2a));
     }
 
@@ -544,7 +777,7 @@ mod tests {
             "attrs": {
                 "class": ["person"],
                 "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
-                "uidNumber": ["1000"]
+                "uidnumber": ["1000"]
             }
         }"#,
         )
@@ -559,7 +792,7 @@ mod tests {
             "attrs": {
                 "class": ["person"],
                 "uuid": ["4b6228ab-1dbe-42a4-a9f5-f6368222438e"],
-                "uidNumber": ["1001"]
+                "uidnumber": ["1001"]
             }
         }"#,
         )
@@ -574,7 +807,7 @@ mod tests {
             "attrs": {
                 "class": ["person"],
                 "uuid": ["7b23c99d-c06b-4a9a-a958-3afa56383e1d"],
-                "uidNumber": ["1002"]
+                "uidnumber": ["1002"]
             }
         }"#,
         )
@@ -589,19 +822,18 @@ mod tests {
             "attrs": {
                 "class": ["group"],
                 "uuid": ["21d816b5-1f6a-4696-b7c1-6ed06d22ed81"],
-                "uidNumber": ["1000"]
+                "uidnumber": ["1000"]
             }
         }"#,
         )
         .expect("Json parse failure");
 
-        let f_t1a = Filter::And(vec![
-            Filter::Eq(String::from("class"), String::from("person")),
-            Filter::Or(vec![
-                Filter::Eq(String::from("uidNumber"), String::from("1001")),
-                Filter::Eq(String::from("uidNumber"), String::from("1000")),
-            ]),
-        ]);
+        let f_t1a = unsafe {
+            filter_resolved!(f_and!([
+                f_eq("class", "person"),
+                f_or!([f_eq("uidnumber", "1001"), f_eq("uidnumber", "1000")])
+            ]))
+        };
 
         assert!(e1.entry_match_no_index(&f_t1a));
         assert!(e2.entry_match_no_index(&f_t1a));

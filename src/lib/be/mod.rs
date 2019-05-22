@@ -13,7 +13,7 @@ use crate::audit::AuditScope;
 use crate::be::dbentry::DbEntry;
 use crate::entry::{Entry, EntryCommitted, EntryNew, EntryValid};
 use crate::error::{ConsistencyError, OperationError};
-use crate::filter::{Filter, FilterValid};
+use crate::filter::{Filter, FilterValidResolved};
 
 pub mod dbentry;
 mod idl;
@@ -48,7 +48,7 @@ pub trait BackendTransaction {
     fn search(
         &self,
         au: &mut AuditScope,
-        filt: &Filter<FilterValid>,
+        filt: &Filter<FilterValidResolved>,
     ) -> Result<Vec<Entry<EntryValid, EntryCommitted>>, OperationError> {
         // Do things
         // Alloc a vec for the entries.
@@ -131,7 +131,7 @@ pub trait BackendTransaction {
     fn exists(
         &self,
         au: &mut AuditScope,
-        filt: &Filter<FilterValid>,
+        filt: &Filter<FilterValidResolved>,
     ) -> Result<bool, OperationError> {
         // Do a final optimise of the filter
         // At the moment, technically search will do this, but it won't always be the
@@ -751,7 +751,6 @@ mod tests {
 
     use super::super::audit::AuditScope;
     use super::super::entry::{Entry, EntryInvalid, EntryNew};
-    use super::super::filter::Filter;
     use super::{Backend, BackendTransaction, BackendWriteTransaction, OperationError};
 
     macro_rules! run_test {
@@ -773,9 +772,11 @@ mod tests {
     macro_rules! entry_exists {
         ($audit:expr, $be:expr, $ent:expr) => {{
             let ei = unsafe { $ent.clone().to_valid_committed() };
-            let filt = ei
-                .filter_from_attrs(&vec![String::from("userid")])
-                .expect("failed to generate filter");
+            let filt = unsafe {
+                ei.filter_from_attrs(&vec![String::from("userid")])
+                    .expect("failed to generate filter")
+                    .to_valid_resolved()
+            };
             let entries = $be.search($audit, &filt).expect("failed to search");
             entries.first().is_some()
         }};
@@ -784,9 +785,11 @@ mod tests {
     macro_rules! entry_attr_pres {
         ($audit:expr, $be:expr, $ent:expr, $attr:expr) => {{
             let ei = unsafe { $ent.clone().to_valid_committed() };
-            let filt = ei
-                .filter_from_attrs(&vec![String::from("userid")])
-                .expect("failed to generate filter");
+            let filt = unsafe {
+                ei.filter_from_attrs(&vec![String::from("userid")])
+                    .expect("failed to generate filter")
+                    .to_valid_resolved()
+            };
             let entries = $be.search($audit, &filt).expect("failed to search");
             match entries.first() {
                 Some(ent) => ent.attribute_pres($attr),
@@ -832,7 +835,7 @@ mod tests {
             assert!(single_result.is_ok());
             // Test a simple EQ search
 
-            let filt = Filter::Eq("userid".to_string(), "claire".to_string());
+            let filt = unsafe { filter_resolved!(f_eq("userid", "claire")) };
 
             let r = be.search(audit, &filt);
             assert!(r.expect("Search failed!").len() == 1);
@@ -867,7 +870,7 @@ mod tests {
 
             // You need to now retrieve the entries back out to get the entry id's
             let mut results = be
-                .search(audit, &Filter::Pres(String::from("userid")))
+                .search(audit, unsafe { &filter_resolved!(f_pres("userid")) })
                 .expect("Failed to search");
 
             // Get these out to usable entries.
@@ -937,7 +940,7 @@ mod tests {
 
             // You need to now retrieve the entries back out to get the entry id's
             let mut results = be
-                .search(audit, &Filter::Pres(String::from("userid")))
+                .search(audit, unsafe { &filter_resolved!(f_pres("userid")) })
                 .expect("Failed to search");
 
             // Get these out to usable entries.

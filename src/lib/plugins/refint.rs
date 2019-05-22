@@ -15,7 +15,6 @@ use crate::audit::AuditScope;
 use crate::entry::{Entry, EntryCommitted, EntryNew, EntryValid};
 use crate::error::{ConsistencyError, OperationError};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
-use crate::filter::{Filter, FilterInvalid};
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use crate::plugins::Plugin;
 use crate::schema::SchemaTransaction;
@@ -34,8 +33,7 @@ impl ReferentialIntegrity {
         uuid: &String,
     ) -> Result<(), OperationError> {
         let mut au_qs = AuditScope::new("qs_exist");
-        let filt_in: Filter<FilterInvalid> =
-            Filter::new_ignore_hidden(Filter::Eq("uuid".to_string(), uuid.clone()));
+        let filt_in = filter!(f_eq("uuid", uuid));
         let r = qs.internal_exists(&mut au_qs, filt_in);
         au.append_scope(au_qs);
 
@@ -151,17 +149,15 @@ impl Plugin for ReferentialIntegrity {
         // Generate a filter which is the set of all schema reference types
         // as EQ to all uuid of all entries in delete. - this INCLUDES recycled
         // types too!
-        let filt: Filter<FilterInvalid> = Filter::Or(
+        let filt = filter!(FC::Or(
             uuids
                 .iter()
-                .map(|u| {
-                    ref_types
-                        .values()
-                        .map(move |r_type| Filter::Eq(r_type.name.clone(), u.to_string()))
-                })
+                .map(|u| ref_types
+                    .values()
+                    .map(move |r_type| f_eq(r_type.name.as_str(), u)))
                 .flatten()
                 .collect(),
-        );
+        ));
 
         audit_log!(au, "refint post_delete filter {:?}", filt);
 
@@ -192,8 +188,7 @@ impl Plugin for ReferentialIntegrity {
     ) -> Vec<Result<(), ConsistencyError>> {
         // Get all entries as cand
         //      build a cand-uuid set
-        let filt_in: Filter<FilterInvalid> =
-            Filter::new_ignore_hidden(Filter::Pres("class".to_string()));
+        let filt_in = filter!(f_pres("class"));
 
         let all_cand = match qs
             .internal_search(au, filt_in)
@@ -240,7 +235,6 @@ mod tests {
     // use crate::plugins::Plugin;
     use crate::entry::{Entry, EntryInvalid, EntryNew};
     use crate::error::OperationError;
-    use crate::filter::Filter;
     use crate::modify::{Modify, ModifyList};
     use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
 
@@ -313,10 +307,7 @@ mod tests {
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 let cands = qs
-                    .internal_search(
-                        au,
-                        Filter::Eq("name".to_string(), "testgroup_b".to_string()),
-                    )
+                    .internal_search(au, filter!(f_eq("name", "testgroup_b")))
                     .expect("Internal search failure");
                 let _ue = cands.first().expect("No cand");
             }
@@ -352,7 +343,7 @@ mod tests {
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 let cands = qs
-                    .internal_search(au, Filter::Eq("name".to_string(), "testgroup".to_string()))
+                    .internal_search(au, filter!(f_eq("name", "testgroup")))
                     .expect("Internal search failure");
                 let _ue = cands.first().expect("No cand");
             }
@@ -394,7 +385,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            Filter::Eq("name".to_string(), "testgroup_b".to_string()),
+            filter!(f_eq("name", "testgroup_b")),
             ModifyList::new_list(vec![Modify::Present(
                 "member".to_string(),
                 "d2b496bd-8493-47b7-8142-f568b5cf47ee".to_string()
@@ -425,7 +416,7 @@ mod tests {
         run_modify_test!(
             Err(OperationError::Plugin),
             preload,
-            Filter::Eq("name".to_string(), "testgroup_b".to_string()),
+            filter!(f_eq("name", "testgroup_b")),
             ModifyList::new_list(vec![Modify::Present(
                 "member".to_string(),
                 "d2b496bd-8493-47b7-8142-f568b5cf47ee".to_string()
@@ -471,7 +462,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            Filter::Eq("name".to_string(), "testgroup_b".to_string()),
+            filter!(f_eq("name", "testgroup_b")),
             ModifyList::new_list(vec![Modify::Purged("member".to_string())]),
             None,
             |_, _| {}
@@ -500,7 +491,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            Filter::Eq("name".to_string(), "testgroup_a".to_string()),
+            filter!(f_eq("name", "testgroup_a")),
             ModifyList::new_list(vec![Modify::Present(
                 "member".to_string(),
                 "d2b496bd-8493-47b7-8142-f568b5cf47ee".to_string()
@@ -545,7 +536,7 @@ mod tests {
         run_modify_test!(
             Err(OperationError::Plugin),
             preload,
-            Filter::Eq("name".to_string(), "testgroup_b".to_string()),
+            filter!(f_eq("name", "testgroup_b")),
             ModifyList::new_list(vec![Modify::Present(
                 "member".to_string(),
                 "d2b496bd-8493-47b7-8142-f568b5cf47ee".to_string()
@@ -593,7 +584,7 @@ mod tests {
         run_delete_test!(
             Ok(()),
             preload,
-            Filter::Eq("name".to_string(), "testgroup_a".to_string()),
+            filter!(f_eq("name", "testgroup_a")),
             None,
             |_au: &mut AuditScope, _qs: &QueryServerWriteTransaction| {}
         );
@@ -641,7 +632,7 @@ mod tests {
         run_delete_test!(
             Ok(()),
             preload,
-            Filter::Eq("name".to_string(), "testgroup_b".to_string()),
+            filter!(f_eq("name", "testgroup_b")),
             None,
             |_au: &mut AuditScope, _qs: &QueryServerWriteTransaction| {}
         );
@@ -670,7 +661,7 @@ mod tests {
         run_delete_test!(
             Ok(()),
             preload,
-            Filter::Eq("name".to_string(), "testgroup_b".to_string()),
+            filter!(f_eq("name", "testgroup_b")),
             None,
             |_au: &mut AuditScope, _qs: &QueryServerWriteTransaction| {}
         );

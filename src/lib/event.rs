@@ -168,7 +168,7 @@ impl SearchEvent {
         match Filter::from_ro(audit, &request.filter, qs) {
             Ok(f) => Ok(SearchEvent {
                 event: Event::from_ro_request(audit, qs, request.user_uuid.as_str())?,
-                filter: Filter::new_ignore_hidden(f),
+                filter: f.to_ignore_hidden(),
             }),
             Err(e) => Err(e),
         }
@@ -203,7 +203,7 @@ impl SearchEvent {
         match Filter::from_ro(audit, &request.filter, qs) {
             Ok(f) => Ok(SearchEvent {
                 event: Event::from_ro_request(audit, qs, request.user_uuid.as_str())?,
-                filter: Filter::new_recycled(f),
+                filter: f.to_recycled(),
             }),
             Err(e) => Err(e),
         }
@@ -214,7 +214,7 @@ impl SearchEvent {
     pub unsafe fn new_rec_impersonate_entry_ser(e: &str, filter: Filter<FilterInvalid>) -> Self {
         SearchEvent {
             event: unsafe { Event::from_impersonate_entry_ser(e) },
-            filter: Filter::new_recycled(filter),
+            filter: filter.to_recycled(),
         }
     }
 
@@ -223,7 +223,7 @@ impl SearchEvent {
     pub unsafe fn new_ext_impersonate_entry_ser(e: &str, filter: Filter<FilterInvalid>) -> Self {
         SearchEvent {
             event: unsafe { Event::from_impersonate_entry_ser(e) },
-            filter: Filter::new_ignore_hidden(filter),
+            filter: filter.to_ignore_hidden(),
         }
     }
 
@@ -322,7 +322,7 @@ impl DeleteEvent {
         match Filter::from_rw(audit, &request.filter, qs) {
             Ok(f) => Ok(DeleteEvent {
                 event: Event::from_rw_request(audit, qs, request.user_uuid.as_str())?,
-                filter: Filter::new_ignore_hidden(f),
+                filter: f.to_ignore_hidden(),
             }),
             Err(e) => Err(e),
         }
@@ -361,7 +361,7 @@ impl ModifyEvent {
             Ok(f) => match ModifyList::from(audit, &request.modlist, qs) {
                 Ok(m) => Ok(ModifyEvent {
                     event: Event::from_rw_request(audit, qs, request.user_uuid.as_str())?,
-                    filter: Filter::new_ignore_hidden(f),
+                    filter: f.to_ignore_hidden(),
                     modlist: m,
                 }),
                 Err(e) => Err(e),
@@ -481,7 +481,7 @@ impl ReviveRecycledEvent {
         match Filter::from_rw(audit, &request.filter, qs) {
             Ok(f) => Ok(ReviveRecycledEvent {
                 event: Event::from_rw_request(audit, qs, request.user_uuid.as_str())?,
-                filter: Filter::new_recycled(f),
+                filter: f.to_recycled(),
             }),
             Err(e) => Err(e),
         }

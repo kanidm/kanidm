@@ -450,13 +450,13 @@ mod tests {
         AccessControlSearch, AccessControls, AccessControlsTransaction,
     };
     use crate::audit::AuditScope;
-    use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
-    use crate::server::QueryServerWriteTransaction;
+    use crate::entry::{Entry, EntryInvalid, EntryNew};
+    // use crate::server::QueryServerWriteTransaction;
     use std::convert::TryFrom;
 
     use crate::event::SearchEvent;
-    use crate::filter::Filter;
-    use crate::proto_v1::Filter as ProtoFilter;
+    // use crate::filter::Filter;
+    // use crate::proto_v1::Filter as ProtoFilter;
 
     macro_rules! acp_from_entry_err {
         (
@@ -940,7 +940,7 @@ mod tests {
     #[test]
     fn test_access_internal_search() {
         // Test that an internal search bypasses ACS
-        let se = SearchEvent::new_internal(Filter::Pres("class".to_string()));
+        let se = SearchEvent::new_internal(filter!(f_pres("class")));
 
         let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
             r#"{
@@ -966,8 +966,8 @@ mod tests {
                 AccessControlSearch::from_raw(
                     "test_acp",
                     "d38640c4-0254-49f9-99b7-8ba7d0233f3d",
-                    Filter::Pres("class".to_string()), // apply to all people
-                    Filter::Pres("nomatchy".to_string()), // apply to none - ie no allowed results
+                    unsafe { filter_valid!(f_pres("class")) }, // apply to all people
+                    unsafe { filter_valid!(f_pres("nomatchy")) }, // apply to none - ie no allowed results
                     "name", // allow to this attr, but we don't eval this.
                 )
             }],

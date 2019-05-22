@@ -14,7 +14,6 @@ use crate::audit::AuditScope;
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
 use crate::error::{ConsistencyError, OperationError};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
-use crate::filter::{Filter, FilterInvalid};
 use crate::modify::{Modify, ModifyList, ModifyValid};
 use crate::plugins::Plugin;
 use crate::server::QueryServerTransaction;
@@ -93,10 +92,7 @@ fn apply_memberof(
             au,
             qs.internal_search(
                 au,
-                Filter::new_ignore_hidden(Filter::And(vec![
-                    Filter::Eq("class".to_string(), "group".to_string()),
-                    Filter::Eq("member".to_string(), a_uuid.to_string()),
-                ]))
+                filter!(f_and!([f_eq("class", "group"), f_eq("member", a_uuid)]))
             )
         );
         // get UUID of all groups + all memberof values
@@ -158,11 +154,7 @@ fn apply_memberof(
 
         try_audit!(
             au,
-            qs.internal_modify(
-                au,
-                Filter::Eq("uuid".to_string(), a_uuid.to_string()),
-                modlist,
-            )
+            qs.internal_modify(au, filter!(f_eq("uuid", a_uuid)), modlist,)
         );
     }
 
@@ -279,8 +271,7 @@ impl Plugin for MemberOf {
     ) -> Vec<Result<(), ConsistencyError>> {
         let mut r = Vec::new();
 
-        let filt_in: Filter<FilterInvalid> =
-            Filter::new_ignore_hidden(Filter::Pres("class".to_string()));
+        let filt_in = filter!(f_pres("class"));
 
         let all_cand = match qs
             .internal_search(au, filt_in)
@@ -295,8 +286,7 @@ impl Plugin for MemberOf {
             // create new map
             let mo_set: BTreeMap<String, ()> = BTreeMap::new();
             // searcch direct memberships of live groups.
-            let filt_in: Filter<FilterInvalid> =
-                Filter::new_ignore_hidden(Filter::Eq("member".to_string(), e.get_uuid().clone()));
+            let filt_in = filter!(f_eq("member", e.get_uuid().as_str()));
 
             let direct_memberof = match qs
                 .internal_search(au, filt_in)
@@ -372,7 +362,6 @@ mod tests {
     // use crate::plugins::Plugin;
     use crate::entry::{Entry, EntryInvalid, EntryNew};
     // use crate::error::OperationError;
-    use crate::filter::Filter;
     use crate::modify::{Modify, ModifyList};
     use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
 
@@ -433,12 +422,7 @@ mod tests {
             $mo:expr,
             $cand:expr
         ) => {{
-            let filt = Filter::And(vec![
-                // Assert EA
-                Filter::Eq("uuid".to_string(), $ea.to_string()),
-                // is memberof EB
-                Filter::Eq($mo.to_string(), $eb.to_string()),
-            ]);
+            let filt = filter!(f_and!([f_eq("uuid", $ea), f_eq($mo, $eb)]));
             let cands = $qs
                 .internal_search($au, filt)
                 .expect("Internal search failure");
@@ -721,7 +705,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            Filter::Eq("uuid".to_string(), UUID_A.to_string()),
+            filter!(f_eq("uuid", UUID_A)),
             ModifyList::new_list(vec![Modify::Present(
                 "member".to_string(),
                 UUID_B.to_string()
@@ -759,7 +743,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            Filter::Eq("uuid".to_string(), UUID_A.to_string()),
+            filter!(f_eq("uuid", UUID_A)),
             ModifyList::new_list(vec![Modify::Present(
                 "member".to_string(),
                 UUID_B.to_string()
@@ -815,7 +799,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            Filter::Eq("uuid".to_string(), UUID_B.to_string()),
+            filter!(f_eq("uuid", UUID_B)),
             ModifyList::new_list(vec![Modify::Present(
                 "member".to_string(),
                 UUID_C.to_string()
@@ -874,7 +858,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            Filter::Eq("uuid".to_string(), UUID_C.to_string()),
+            filter!(f_eq("uuid", UUID_C)),
             ModifyList::new_list(vec![Modify::Present(
                 "member".to_string(),
                 UUID_A.to_string()
@@ -941,10 +925,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            Filter::Or(vec![
-                Filter::Eq("uuid".to_string(), UUID_C.to_string()),
-                Filter::Eq("uuid".to_string(), UUID_D.to_string()),
-            ]),
+            filter!(f_or!([f_eq("uuid", UUID_C), f_eq("uuid", UUID_D),])),
             ModifyList::new_list(vec![Modify::Present(
                 "member".to_string(),
                 UUID_A.to_string()
@@ -1014,7 +995,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            Filter::Eq("uuid".to_string(), UUID_A.to_string()),
+            filter!(f_eq("uuid", UUID_A)),
             ModifyList::new_list(vec![Modify::Removed(
                 "member".to_string(),
                 UUID_B.to_string()
@@ -1055,7 +1036,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            Filter::Eq("uuid".to_string(), UUID_A.to_string()),
+            filter!(f_eq("uuid", UUID_A)),
             ModifyList::new_list(vec![Modify::Removed(
                 "member".to_string(),
                 UUID_B.to_string()
@@ -1115,7 +1096,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            Filter::Eq("uuid".to_string(), UUID_B.to_string()),
+            filter!(f_eq("uuid", UUID_B)),
             ModifyList::new_list(vec![Modify::Removed(
                 "member".to_string(),
                 UUID_C.to_string()
@@ -1185,7 +1166,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            Filter::Eq("uuid".to_string(), UUID_C.to_string()),
+            filter!(f_eq("uuid", UUID_C)),
             ModifyList::new_list(vec![Modify::Removed(
                 "member".to_string(),
                 UUID_A.to_string()
@@ -1274,7 +1255,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            Filter::Eq("uuid".to_string(), UUID_C.to_string()),
+            filter!(f_eq("uuid", UUID_C)),
             ModifyList::new_list(vec![
                 Modify::Removed("member".to_string(), UUID_A.to_string()),
                 Modify::Removed("member".to_string(), UUID_D.to_string()),
@@ -1342,7 +1323,7 @@ mod tests {
         run_delete_test!(
             Ok(()),
             preload,
-            Filter::Eq("uuid".to_string(), UUID_A.to_string()),
+            filter!(f_eq("uuid", UUID_A)),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
@@ -1379,7 +1360,7 @@ mod tests {
         run_delete_test!(
             Ok(()),
             preload,
-            Filter::Eq("uuid".to_string(), UUID_A.to_string()),
+            filter!(f_eq("uuid", UUID_A)),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
@@ -1426,7 +1407,7 @@ mod tests {
         run_delete_test!(
             Ok(()),
             preload,
-            Filter::Eq("uuid".to_string(), UUID_B.to_string()),
+            filter!(f_eq("uuid", UUID_B)),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
@@ -1482,7 +1463,7 @@ mod tests {
         run_delete_test!(
             Ok(()),
             preload,
-            Filter::Eq("uuid".to_string(), UUID_A.to_string()),
+            filter!(f_eq("uuid", UUID_A)),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
@@ -1552,7 +1533,7 @@ mod tests {
         run_delete_test!(
             Ok(()),
             preload,
-            Filter::Eq("uuid".to_string(), UUID_B.to_string()),
+            filter!(f_eq("uuid", UUID_B)),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is

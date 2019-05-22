@@ -1,3 +1,4 @@
+#[cfg(test)]
 macro_rules! setup_test {
     (
         $au:expr,
@@ -26,6 +27,7 @@ macro_rules! setup_test {
 }
 
 // Test helpers for all plugins.
+#[cfg(test)]
 #[macro_export]
 macro_rules! run_create_test {
     (
@@ -78,6 +80,7 @@ macro_rules! run_create_test {
     }};
 }
 
+#[cfg(test)]
 #[macro_export]
 macro_rules! run_modify_test {
     (
@@ -131,6 +134,7 @@ macro_rules! run_modify_test {
     }};
 }
 
+#[cfg(test)]
 #[macro_export]
 macro_rules! run_delete_test {
     (

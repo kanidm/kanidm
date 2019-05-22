@@ -1314,14 +1314,14 @@ mod tests {
     use crate::constants::*;
     use crate::entry::{Entry, EntryInvalid, EntryNew, EntryValid};
     use crate::error::{ConsistencyError, SchemaError};
-    use crate::filter::{Filter, FilterValid};
+    // use crate::filter::{Filter, FilterValid};
     use crate::schema::SchemaTransaction;
     use crate::schema::{IndexType, Schema, SchemaAttribute, SyntaxType};
     use serde_json;
     use std::convert::TryFrom;
     use uuid::Uuid;
 
-    use crate::proto_v1::Filter as ProtoFilter;
+    // use crate::proto_v1::Filter as ProtoFilter;
 
     macro_rules! validate_schema {
         ($sch:ident, $au:expr) => {{
@@ -1862,53 +1862,55 @@ mod tests {
         let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
         let schema = schema_outer.read();
         // Test non existant attr name
-        let f_mixed = Filter::Eq("nonClAsS".to_string(), "attributetype".to_string());
+        let f_mixed = filter_all!(f_eq("nonClAsS", "attributetype"));
         assert_eq!(
             f_mixed.validate(&schema),
             Err(SchemaError::InvalidAttribute)
         );
 
         // test syntax of bool
-        let f_bool = Filter::Eq("secret".to_string(), "zzzz".to_string());
+        let f_bool = filter_all!(f_eq("secret", "zzzz"));
         assert_eq!(
             f_bool.validate(&schema),
             Err(SchemaError::InvalidAttributeSyntax)
         );
         // test insensitive values
-        let f_insense = Filter::Eq("class".to_string(), "AttributeType".to_string());
+        let f_insense = filter_all!(f_eq("class", "AttributeType"));
         assert_eq!(
             f_insense.validate(&schema),
-            Ok(Filter::Eq("class".to_string(), "attributetype".to_string()))
+            Ok(unsafe { filter_valid!(f_eq("class", "attributetype")) })
         );
         // Test the recursive structures validate
-        let f_or_empty = Filter::Or(Vec::new());
+        let f_or_empty = filter_all!(f_or!([]));
         assert_eq!(f_or_empty.validate(&schema), Err(SchemaError::EmptyFilter));
-        let f_or = Filter::Or(vec![Filter::Eq("secret".to_string(), "zzzz".to_string())]);
+        let f_or = filter_all!(f_or!([f_eq("secret", "zzzz")]));
         assert_eq!(
             f_or.validate(&schema),
             Err(SchemaError::InvalidAttributeSyntax)
         );
-        let f_or_mult = Filter::And(vec![
-            Filter::Eq("class".to_string(), "attributetype".to_string()),
-            Filter::Eq("secret".to_string(), "zzzzzzz".to_string()),
-        ]);
+        let f_or_mult = filter_all!(f_and!([
+            f_eq("class", "attributetype"),
+            f_eq("secret", "zzzzzzz"),
+        ]));
         assert_eq!(
             f_or_mult.validate(&schema),
             Err(SchemaError::InvalidAttributeSyntax)
         );
         // Test mixed case attr name - this is a pass, due to normalisation
-        let f_or_ok = Filter::AndNot(Box::new(Filter::And(vec![
-            Filter::Eq("Class".to_string(), "AttributeType".to_string()),
-            Filter::Sub("class".to_string(), "classtype".to_string()),
-            Filter::Pres("class".to_string()),
+        let f_or_ok = filter_all!(f_andnot(f_and!([
+            f_eq("Class", "AttributeType"),
+            f_sub("class", "classtype"),
+            f_pres("class")
         ])));
         assert_eq!(
             f_or_ok.validate(&schema),
-            Ok(Filter::AndNot::<FilterValid>(Box::new(Filter::And(vec![
-                Filter::Eq("class".to_string(), "attributetype".to_string()),
-                Filter::Sub("class".to_string(), "classtype".to_string()),
-                Filter::Pres("class".to_string()),
-            ]))))
+            Ok(unsafe {
+                filter_valid!(f_andnot(f_and!([
+                    f_eq("class", "attributetype"),
+                    f_sub("class", "classtype"),
+                    f_pres("class")
+                ])))
+            })
         );
         println!("{}", audit);
     }

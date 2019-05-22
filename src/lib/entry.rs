@@ -1,7 +1,7 @@
 // use serde_json::{Error, Value};
 use crate::audit::AuditScope;
 use crate::error::{OperationError, SchemaError};
-use crate::filter::{Filter, FilterValid};
+use crate::filter::{Filter, FilterInvalid, FilterResolved, FilterValidResolved};
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use crate::proto_v1::Entry as ProtoEntry;
 use crate::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
@@ -574,51 +574,49 @@ impl<STATE> Entry<EntryValid, STATE> {
     }
 
     // Assert if this filter matches the entry (no index)
-    pub fn entry_match_no_index(&self, filter: &Filter<FilterValid>) -> bool {
+    fn entry_match_no_index_inner(&self, filter: &FilterResolved) -> bool {
         // Go through the filter components and check them in the entry.
         // This is recursive!!!!
         match filter {
-            Filter::Eq(attr, value) => self.attribute_equality(attr.as_str(), value.as_str()),
-            Filter::Sub(attr, subvalue) => {
+            FilterResolved::Eq(attr, value) => {
+                self.attribute_equality(attr.as_str(), value.as_str())
+            }
+            FilterResolved::Sub(attr, subvalue) => {
                 self.attribute_substring(attr.as_str(), subvalue.as_str())
             }
-            Filter::Pres(attr) => {
+            FilterResolved::Pres(attr) => {
                 // Given attr, is is present in the entry?
                 self.attribute_pres(attr.as_str())
             }
-            Filter::Or(l) => l.iter().fold(false, |acc, f| {
+            FilterResolved::Or(l) => l.iter().fold(false, |acc, f| {
                 // Check with ftweedal about or filter zero len correctness.
                 if acc {
                     acc
                 } else {
-                    self.entry_match_no_index(f)
+                    self.entry_match_no_index_inner(f)
                 }
             }),
-            Filter::And(l) => l.iter().fold(true, |acc, f| {
+            FilterResolved::And(l) => l.iter().fold(true, |acc, f| {
                 // Check with ftweedal about and filter zero len correctness.
                 if acc {
-                    self.entry_match_no_index(f)
+                    self.entry_match_no_index_inner(f)
                 } else {
                     acc
                 }
             }),
-            Filter::AndNot(f) => !self.entry_match_no_index(f),
-            Filter::SelfUUID => {
-                // So we should never actually get to this point, BECAUSE
-                // filter SHOULD have resolved self to a uuid of the current
-                // event owner. How we handle that is still murkey for now,
-                // but in the shortterm we choose honorable ends and panics.
-                unimplemented!()
-            }
-            Filter::Invalid(_) => {
-                // TODO: Is there a better way to not need to match the phantom?
-                unimplemented!()
-            }
+            FilterResolved::AndNot(f) => !self.entry_match_no_index_inner(f),
         }
     }
 
-    pub fn filter_from_attrs(&self, attrs: &Vec<String>) -> Option<Filter<FilterValid>> {
-        // Because we are a valid entry, a filter we create *must* be valid
+    pub fn entry_match_no_index(&self, filter: &Filter<FilterValidResolved>) -> bool {
+        self.entry_match_no_index_inner(filter.to_inner())
+    }
+
+    pub fn filter_from_attrs(&self, attrs: &Vec<String>) -> Option<Filter<FilterInvalid>> {
+        // Because we are a valid entry, a filter we create still may not
+        // be valid because the internal server entry templates are still
+        // created by humans! Plus double checking something already valid
+        // is not bad ...
         //
         // Generate a filter from the attributes requested and defined.
         // Basically, this is a series of nested and's (which will be
@@ -626,27 +624,25 @@ impl<STATE> Entry<EntryValid, STATE> {
 
         // Take name: (a, b), name: (c, d) -> (name, a), (name, b), (name, c), (name, d)
 
-        let mut pairs: Vec<(String, String)> = Vec::new();
+        let mut pairs: Vec<(&str, &str)> = Vec::new();
 
         for attr in attrs {
             match self.attrs.get(attr) {
                 Some(values) => {
                     for v in values {
-                        pairs.push((attr.clone(), v.clone()))
+                        pairs.push((attr, v))
                     }
                 }
                 None => return None,
             }
         }
 
-        // Now make this a filter?
-
-        let eq_filters = pairs
-            .into_iter()
-            .map(|(attr, value)| Filter::Eq(attr, value))
-            .collect();
-
-        Some(Filter::And(eq_filters))
+        Some(filter!(f_and(
+            pairs
+                .into_iter()
+                .map(|(attr, value)| f_eq(attr, value))
+                .collect()
+        )))
     }
 
     pub fn into(&self) -> ProtoEntry {

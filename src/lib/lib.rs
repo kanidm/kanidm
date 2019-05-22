@@ -30,6 +30,8 @@ extern crate concread;
 
 // This has to be before be so the import order works
 #[macro_use]
+mod macros;
+#[macro_use]
 mod log;
 #[macro_use]
 mod audit;
@@ -40,8 +42,6 @@ mod entry;
 mod event;
 mod identity;
 mod interval;
-#[macro_use]
-mod macros;
 mod modify;
 #[macro_use]
 mod plugins;
