@@ -4,6 +4,7 @@
 
 use crate::audit::AuditScope;
 use crate::error::{OperationError, SchemaError};
+use crate::event::{Event, EventOrigin};
 use crate::proto_v1::Filter as ProtoFilter;
 use crate::schema::SchemaTransaction;
 use crate::server::{
@@ -148,8 +149,14 @@ impl Filter<FilterValid> {
         }
     }
 
-    pub fn resolve(self) -> Result<Filter<FilterValidResolved>, OperationError> {
-        unimplemented!();
+    pub fn resolve(self, ev: &Event) -> Result<Filter<FilterValidResolved>, OperationError> {
+        // Given a filter, resolve Not and SelfUUID to real terms.
+        Ok(Filter {
+            state: FilterValidResolved {
+                inner: FilterResolved::resolve(self.state.inner, ev)
+                    .ok_or(OperationError::FilterUUIDResolution)?,
+            },
+        })
     }
 }
 
@@ -554,6 +561,44 @@ impl FilterResolved {
             FilterComp::SelfUUID => panic!("Not possible to resolve SelfUUID in from_invalid!"),
         }
     }
+
+    fn resolve(fc: FilterComp, ev: &Event) -> Option<Self> {
+        match fc {
+            FilterComp::Eq(a, v) => Some(FilterResolved::Eq(a, v)),
+            FilterComp::Sub(a, v) => Some(FilterResolved::Sub(a, v)),
+            FilterComp::Pres(a) => Some(FilterResolved::Pres(a)),
+            FilterComp::Or(vs) => {
+                let fi: Option<Vec<_>> = vs
+                    .into_iter()
+                    .map(|f| FilterResolved::resolve(f, ev))
+                    .collect();
+                fi.map(|fv| FilterResolved::Or(fv))
+            }
+            FilterComp::And(vs) => {
+                let fi: Option<Vec<_>> = vs
+                    .into_iter()
+                    .map(|f| FilterResolved::resolve(f, ev))
+                    .collect();
+                fi.map(|fv| FilterResolved::And(fv))
+            }
+            FilterComp::AndNot(f) => {
+                // TODO: pattern match box here. (AndNot(box f)).
+                // We have to clone f into our space here because pattern matching can
+                // not today remove the box, and we need f in our ownership. Since
+                // AndNot currently is a rare request, cloning is not the worst thing
+                // here ...
+                FilterResolved::resolve((*f).clone(), ev)
+                    .map(|fi| FilterResolved::AndNot(Box::new(fi)))
+            }
+            FilterComp::SelfUUID => match &ev.origin {
+                EventOrigin::User(e) => Some(FilterResolved::Eq(
+                    "uuid".to_string(),
+                    e.get_uuid().to_string(),
+                )),
+                _ => None,
+            },
+        }
+    }
 }
 
 #[cfg(test)]
@@ -643,7 +688,7 @@ mod tests {
         assert_eq!(f_t1a == f_t1c, false);
 
         let f_t2a = unsafe { filter_resolved!(f_and!([f_pres("userid")])) };
-        let f_t2b = f_t1a.clone();
+        let f_t2b = f_t2a.clone();
         let f_t2c = unsafe { filter_resolved!(f_and!([f_pres("zzzz")])) };
 
         assert_eq!(f_t2a == f_t2b, true);

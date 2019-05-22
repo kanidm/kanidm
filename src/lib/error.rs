@@ -22,6 +22,7 @@ pub enum OperationError {
     SchemaViolation(SchemaError),
     Plugin,
     FilterGeneration,
+    FilterUUIDResolution,
     InvalidDBState,
     InvalidEntryID,
     InvalidRequestState,

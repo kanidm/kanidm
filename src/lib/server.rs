@@ -60,7 +60,7 @@ pub trait QueryServerTransaction {
         audit_log!(au, "search: valid filter -> {:?}", vf);
 
         // Now resolve all references.
-        let vfr = try_audit!(au, vf.resolve());
+        let vfr = try_audit!(au, vf.resolve(&se.event));
 
         // TODO: Assert access control allows the filter and requested attrs.
 
@@ -128,7 +128,7 @@ pub trait QueryServerTransaction {
             Err(e) => return Err(OperationError::SchemaViolation(e)),
         };
 
-        let vfr = try_audit!(au, vf.resolve());
+        let vfr = try_audit!(au, vf.resolve(&ee.event));
 
         let res = self
             .get_be_txn()
