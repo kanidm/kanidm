@@ -3,7 +3,7 @@ use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
 use crate::error::{ConsistencyError, OperationError};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::modify::{ModifyList, ModifyValid};
-use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
+use crate::server::{QueryServerReadTransaction, QueryServerWriteTransaction};
 
 #[macro_use]
 mod macros;
@@ -94,7 +94,7 @@ trait Plugin {
 
     fn verify(
         _au: &mut AuditScope,
-        _qs: &QueryServerTransaction,
+        _qs: &QueryServerReadTransaction,
     ) -> Vec<Result<(), ConsistencyError>> {
         Vec::new()
     }
@@ -406,7 +406,7 @@ impl Plugins {
 
     pub fn run_verify(
         au: &mut AuditScope,
-        qs: &QueryServerTransaction,
+        qs: &QueryServerReadTransaction,
     ) -> Vec<Result<(), ConsistencyError>> {
         let mut results = Vec::new();
         run_verify_plugin!(au, qs, &mut results, base::Base);

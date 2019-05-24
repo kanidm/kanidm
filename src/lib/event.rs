@@ -9,7 +9,9 @@ use crate::proto_v1::{
 // use error::OperationError;
 use crate::error::OperationError;
 use crate::modify::{ModifyInvalid, ModifyList};
-use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
+use crate::server::{
+    QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
+};
 
 // Only used for internal tests
 #[cfg(test)]
@@ -66,7 +68,7 @@ impl SearchResult {
 #[derive(Debug, Clone)]
 pub enum EventOrigin {
     // External event, needs a UUID associated! Perhaps even an Entry/User to improve ACP checks?
-    User(String),
+    User(Entry<EntryValid, EntryCommitted>),
     // Probably will bypass access profiles in many cases ...
     Internal,
     // Not used yet, but indicates that this change or event was triggered by a replication
@@ -82,17 +84,35 @@ pub struct Event {
 }
 
 impl Event {
-    pub fn from_request(
-        _audit: &mut AuditScope,
-        // _qs: &QueryServerTransaction,
+    pub fn from_ro_request(
+        audit: &mut AuditScope,
+        qs: &QueryServerReadTransaction,
         user_uuid: &str,
     ) -> Result<Self, OperationError> {
         // Do we need to check or load the entry from the user_uuid?
         // In the future, probably yes.
         //
         // For now, no.
+        let e = try_audit!(audit, qs.internal_search_uuid(audit, user_uuid));
+
         Ok(Event {
-            origin: EventOrigin::User(user_uuid.to_string()),
+            origin: EventOrigin::User(e),
+        })
+    }
+
+    pub fn from_rw_request(
+        audit: &mut AuditScope,
+        qs: &QueryServerWriteTransaction,
+        user_uuid: &str,
+    ) -> Result<Self, OperationError> {
+        // Do we need to check or load the entry from the user_uuid?
+        // In the future, probably yes.
+        //
+        // For now, no.
+        let e = try_audit!(audit, qs.internal_search_uuid(audit, user_uuid));
+
+        Ok(Event {
+            origin: EventOrigin::User(e),
         })
     }
 
@@ -103,10 +123,17 @@ impl Event {
     }
 
     #[cfg(test)]
-    pub fn from_impersonate_uuid(uuid: &str) -> Self {
+    pub fn from_impersonate_entry(e: Entry<EntryValid, EntryCommitted>) -> Self {
         Event {
-            origin: EventOrigin::User(uuid.to_string()),
+            origin: EventOrigin::User(e),
         }
+    }
+
+    #[cfg(test)]
+    pub unsafe fn from_impersonate_entry_ser(e: &str) -> Self {
+        let ei: Entry<EntryValid, EntryNew> =
+            serde_json::from_str(e).expect("Failed to deserialise!");
+        Self::from_impersonate_entry(unsafe { ei.to_valid_committed() })
     }
 
     pub fn from_impersonate(event: &Self) -> Self {
@@ -117,11 +144,12 @@ impl Event {
         event.clone()
     }
 
-    /*
     pub fn is_internal(&self) -> bool {
-        match
+        match self.origin {
+            EventOrigin::Internal => true,
+            _ => false,
+        }
     }
-    */
 }
 
 #[derive(Debug)]
@@ -135,26 +163,26 @@ impl SearchEvent {
     pub fn from_request(
         audit: &mut AuditScope,
         request: SearchRequest,
-        qs: &QueryServerTransaction,
+        qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         match Filter::from_ro(audit, &request.filter, qs) {
             Ok(f) => Ok(SearchEvent {
-                event: Event::from_request(
-                    audit,
-                    //qs,
-                    request.user_uuid.as_str(),
-                )?,
-                filter: Filter::new_ignore_hidden(f),
+                event: Event::from_ro_request(audit, qs, request.user_uuid.as_str())?,
+                filter: f.to_ignore_hidden(),
             }),
             Err(e) => Err(e),
         }
     }
 
+    pub fn is_internal(&self) -> bool {
+        self.event.is_internal()
+    }
+
     // Just impersonate the account with no filter changes.
     #[cfg(test)]
-    pub fn new_impersonate_uuid(user_uuid: &str, filter: Filter<FilterInvalid>) -> Self {
+    pub unsafe fn new_impersonate_entry_ser(e: &str, filter: Filter<FilterInvalid>) -> Self {
         SearchEvent {
-            event: Event::from_impersonate_uuid(user_uuid),
+            event: unsafe { Event::from_impersonate_entry_ser(e) },
             filter: filter,
         }
     }
@@ -170,16 +198,12 @@ impl SearchEvent {
     pub fn from_rec_request(
         audit: &mut AuditScope,
         request: SearchRecycledRequest,
-        qs: &QueryServerTransaction,
+        qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         match Filter::from_ro(audit, &request.filter, qs) {
             Ok(f) => Ok(SearchEvent {
-                event: Event::from_request(
-                    audit,
-                    // qs,
-                    request.user_uuid.as_str(),
-                )?,
-                filter: Filter::new_recycled(f),
+                event: Event::from_ro_request(audit, qs, request.user_uuid.as_str())?,
+                filter: f.to_recycled(),
             }),
             Err(e) => Err(e),
         }
@@ -187,19 +211,19 @@ impl SearchEvent {
 
     #[cfg(test)]
     /* Impersonate a request for recycled objects */
-    pub fn new_rec_impersonate_uuid(user_uuid: &str, filter: Filter<FilterInvalid>) -> Self {
+    pub unsafe fn new_rec_impersonate_entry_ser(e: &str, filter: Filter<FilterInvalid>) -> Self {
         SearchEvent {
-            event: Event::from_impersonate_uuid(user_uuid),
-            filter: Filter::new_recycled(filter),
+            event: unsafe { Event::from_impersonate_entry_ser(e) },
+            filter: filter.to_recycled(),
         }
     }
 
     #[cfg(test)]
     /* Impersonate an external request AKA filter ts + recycle */
-    pub fn new_ext_impersonate_uuid(user_uuid: &str, filter: Filter<FilterInvalid>) -> Self {
+    pub unsafe fn new_ext_impersonate_entry_ser(e: &str, filter: Filter<FilterInvalid>) -> Self {
         SearchEvent {
-            event: Event::from_impersonate_uuid(user_uuid),
-            filter: Filter::new_ignore_hidden(filter),
+            event: unsafe { Event::from_impersonate_entry_ser(e) },
+            filter: filter.to_ignore_hidden(),
         }
     }
 
@@ -241,11 +265,7 @@ impl CreateEvent {
                 // From ProtoEntry -> Entry
                 // What is the correct consuming iterator here? Can we
                 // even do that?
-                event: Event::from_request(
-                    audit,
-                    // qs,
-                    request.user_uuid.as_str(),
-                )?,
+                event: Event::from_rw_request(audit, qs, request.user_uuid.as_str())?,
                 entries: entries,
             }),
             Err(e) => Err(e),
@@ -254,12 +274,12 @@ impl CreateEvent {
 
     // Is this an internal only function?
     #[cfg(test)]
-    pub fn new_impersonate_uuid(
-        user_uuid: &str,
+    pub unsafe fn new_impersonate_entry_ser(
+        e: &str,
         entries: Vec<Entry<EntryInvalid, EntryNew>>,
     ) -> Self {
         CreateEvent {
-            event: Event::from_impersonate_uuid(user_uuid),
+            event: unsafe { Event::from_impersonate_entry_ser(e) },
             entries: entries,
         }
     }
@@ -301,21 +321,17 @@ impl DeleteEvent {
     ) -> Result<Self, OperationError> {
         match Filter::from_rw(audit, &request.filter, qs) {
             Ok(f) => Ok(DeleteEvent {
-                event: Event::from_request(
-                    audit,
-                    // qs,
-                    request.user_uuid.as_str(),
-                )?,
-                filter: Filter::new_ignore_hidden(f),
+                event: Event::from_rw_request(audit, qs, request.user_uuid.as_str())?,
+                filter: f.to_ignore_hidden(),
             }),
             Err(e) => Err(e),
         }
     }
 
     #[cfg(test)]
-    pub fn new_impersonate_uuid(user_uuid: &str, filter: Filter<FilterInvalid>) -> Self {
+    pub unsafe fn new_impersonate_entry_ser(e: &str, filter: Filter<FilterInvalid>) -> Self {
         DeleteEvent {
-            event: Event::from_impersonate_uuid(user_uuid),
+            event: unsafe { Event::from_impersonate_entry_ser(e) },
             filter: filter,
         }
     }
@@ -344,12 +360,8 @@ impl ModifyEvent {
         match Filter::from_rw(audit, &request.filter, qs) {
             Ok(f) => match ModifyList::from(audit, &request.modlist, qs) {
                 Ok(m) => Ok(ModifyEvent {
-                    event: Event::from_request(
-                        audit,
-                        // qs,
-                        request.user_uuid.as_str(),
-                    )?,
-                    filter: Filter::new_ignore_hidden(f),
+                    event: Event::from_rw_request(audit, qs, request.user_uuid.as_str())?,
+                    filter: f.to_ignore_hidden(),
                     modlist: m,
                 }),
                 Err(e) => Err(e),
@@ -368,13 +380,13 @@ impl ModifyEvent {
     }
 
     #[cfg(test)]
-    pub fn new_impersonate_uuid(
-        user_uuid: &str,
+    pub unsafe fn new_impersonate_entry_ser(
+        e: &str,
         filter: Filter<FilterInvalid>,
         modlist: ModifyList<ModifyInvalid>,
     ) -> Self {
         ModifyEvent {
-            event: Event::from_impersonate_uuid(user_uuid),
+            event: unsafe { Event::from_impersonate_entry_ser(e) },
             filter: filter,
             modlist: modlist,
         }
@@ -468,12 +480,8 @@ impl ReviveRecycledEvent {
     ) -> Result<Self, OperationError> {
         match Filter::from_rw(audit, &request.filter, qs) {
             Ok(f) => Ok(ReviveRecycledEvent {
-                event: Event::from_request(
-                    audit,
-                    // qs,
-                    request.user_uuid.as_str(),
-                )?,
-                filter: Filter::new_recycled(f),
+                event: Event::from_rw_request(audit, qs, request.user_uuid.as_str())?,
+                filter: f.to_recycled(),
             }),
             Err(e) => Err(e),
         }

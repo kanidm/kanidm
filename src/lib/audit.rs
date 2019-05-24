@@ -75,7 +75,7 @@ macro_rules! try_audit {
         match $result {
             Ok(v) => v,
             Err(e) => {
-                audit_log!($audit, "error -> {:?}", e);
+                audit_log!($audit, "error @ {} {} -> {:?}", file!(), line!(), e);
                 return Err(e);
             }
         }

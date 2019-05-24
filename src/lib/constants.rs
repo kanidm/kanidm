@@ -1,6 +1,20 @@
 pub static PURGE_TIMEOUT: u64 = 3600;
 
 pub static UUID_ADMIN: &'static str = "00000000-0000-0000-0000-000000000000";
+pub static JSON_ADMIN_V1: &'static str = r#"{
+    "valid": {
+        "uuid": "00000000-0000-0000-0000-000000000000"
+    },
+    "state": null,
+    "attrs": {
+        "class": ["account", "object"],
+        "name": ["admin"],
+        "uuid": ["00000000-0000-0000-0000-000000000000"],
+        "description": ["Builtin Admin account."],
+        "version": ["1"],
+        "displayname": ["Administrator"]
+    }
+}"#;
 
 pub static _UUID_ANONYMOUS: &'static str = "00000000-0000-0000-0000-ffffffffffff";
 pub static JSON_ANONYMOUS_V1: &'static str = r#"{
@@ -68,8 +82,30 @@ pub static UUID_SCHEMA_ATTR_MEMBER: &'static str = "cbb7cb55-1d48-4b89-8da7-8d57
 pub static UUID_SCHEMA_ATTR_DIRECTMEMBEROF: &'static str = "63f6a766-3838-48e3-bd78-0fb1152b862f";
 pub static UUID_SCHEMA_ATTR_VERSION: &'static str = "896d5095-b3ae-451e-a91f-4314165b5395";
 pub static UUID_SCHEMA_ATTR_DOMAIN: &'static str = "c9926716-eaaa-4c83-a1ab-1ed4372a7491";
+pub static UUID_SCHEMA_ATTR_ACP_ALLOW: &'static str = "160ebaaf-5251-444c-aa41-8d1a572c147a";
+pub static UUID_SCHEMA_ATTR_ACP_ENABLE: &'static str = "7346a4a6-3dae-4e48-b606-a1c0c2abeba0";
+pub static UUID_SCHEMA_ATTR_ACP_RECEIVER: &'static str = "8e48d272-7818-400f-ac74-6ae05e6c79b8";
+pub static UUID_SCHEMA_ATTR_ACP_TARGETSCOPE: &'static str = "424bb6f3-44a1-4af8-8f4c-782a18f9240e";
+pub static UUID_SCHEMA_ATTR_ACP_SEARCH_ATTR: &'static str = "2ad9f789-9a9b-483b-8398-4734ef7b744f";
+pub static UUID_SCHEMA_ATTR_ACP_CREATE_CLASS: &'static str = "4daeee27-7b4a-48a1-bbb7-3bc30865c1aa";
+pub static UUID_SCHEMA_ATTR_ACP_CREATE_ATTR: &'static str = "cbe953bc-9999-4536-818d-0bbb6a0ab7a6";
+pub static UUID_SCHEMA_ATTR_ACP_MODIFY_REMOVEDATTR: &'static str =
+    "67f98a76-74c4-4bf1-8baa-6e6a5b7b064d";
+pub static UUID_SCHEMA_ATTR_ACP_MODIFY_PRESENTATTR: &'static str =
+    "2df6a429-e060-40e1-8551-be101aff3496";
+pub static UUID_SCHEMA_ATTR_ACP_MODIFY_CLASS: &'static str = "a6f0cf6e-c748-4aa4-8c77-9f1cb89b7f4a";
 
 pub static UUID_SCHEMA_CLASS_PERSON: &'static str = "86c4d9e8-3820-45d7-8a8c-d3c522287010";
 pub static UUID_SCHEMA_CLASS_GROUP: &'static str = "c0e4e58c-1a2e-4bc3-ad56-5950ef810ea7";
 pub static UUID_SCHEMA_CLASS_ACCOUNT: &'static str = "8bbff87c-1731-455e-a0e7-bf1d0908e983";
 pub static UUID_SCHEMA_CLASS_SYSTEM_INFO: &'static str = "510b2a38-0577-4680-b0ad-836ca3415e6c";
+pub static UUID_SCHEMA_CLASS_ACCESS_CONTROL_PROFILE: &'static str =
+    "78dd6c9a-ac61-4e53-928f-6e8b810a469b";
+pub static UUID_SCHEMA_CLASS_ACCESS_CONTROL_SEARCH: &'static str =
+    "1bbf256b-51a4-4716-9db8-ec51bb207ed5";
+pub static UUID_SCHEMA_CLASS_ACCESS_CONTROL_DELETE: &'static str =
+    "48af3c4d-0ba1-48de-a2b1-194f27ac1df1";
+pub static UUID_SCHEMA_CLASS_ACCESS_CONTROL_MODIFY: &'static str =
+    "fd860561-9d0a-4f12-be30-406834292d46";
+pub static UUID_SCHEMA_CLASS_ACCESS_CONTROL_CREATE: &'static str =
+    "58c5c197-51d8-4c30-9a8e-b8a0bb0eaacd";

@@ -13,7 +13,7 @@ use crate::audit::AuditScope;
 use crate::be::dbentry::DbEntry;
 use crate::entry::{Entry, EntryCommitted, EntryNew, EntryValid};
 use crate::error::{ConsistencyError, OperationError};
-use crate::filter::{Filter, FilterValid};
+use crate::filter::{Filter, FilterValidResolved};
 
 pub mod dbentry;
 mod idl;
@@ -31,7 +31,7 @@ pub struct Backend {
     pool: Pool<SqliteConnectionManager>,
 }
 
-pub struct BackendTransaction {
+pub struct BackendReadTransaction {
     committed: bool,
     conn: r2d2::PooledConnection<SqliteConnectionManager>,
 }
@@ -41,14 +41,14 @@ pub struct BackendWriteTransaction {
     conn: r2d2::PooledConnection<SqliteConnectionManager>,
 }
 
-pub trait BackendReadTransaction {
+pub trait BackendTransaction {
     fn get_conn(&self) -> &r2d2::PooledConnection<r2d2_sqlite::SqliteConnectionManager>;
 
     // Take filter, and AuditScope ref?
     fn search(
         &self,
         au: &mut AuditScope,
-        filt: &Filter<FilterValid>,
+        filt: &Filter<FilterValidResolved>,
     ) -> Result<Vec<Entry<EntryValid, EntryCommitted>>, OperationError> {
         // Do things
         // Alloc a vec for the entries.
@@ -131,7 +131,7 @@ pub trait BackendReadTransaction {
     fn exists(
         &self,
         au: &mut AuditScope,
-        filt: &Filter<FilterValid>,
+        filt: &Filter<FilterValidResolved>,
     ) -> Result<bool, OperationError> {
         // Do a final optimise of the filter
         // At the moment, technically search will do this, but it won't always be the
@@ -161,7 +161,7 @@ pub trait BackendReadTransaction {
     }
 }
 
-impl Drop for BackendTransaction {
+impl Drop for BackendReadTransaction {
     // Abort
     // TODO: Is this correct for RO txn?
     fn drop(self: &mut Self) {
@@ -178,7 +178,7 @@ impl Drop for BackendTransaction {
     }
 }
 
-impl BackendTransaction {
+impl BackendReadTransaction {
     pub fn new(conn: r2d2::PooledConnection<SqliteConnectionManager>) -> Self {
         // Start the transaction
         println!("Starting RO txn ...");
@@ -187,14 +187,14 @@ impl BackendTransaction {
         // signature here if we wanted to...
         conn.execute("BEGIN TRANSACTION", NO_PARAMS)
             .expect("Unable to begin transaction!");
-        BackendTransaction {
+        BackendReadTransaction {
             committed: false,
             conn: conn,
         }
     }
 }
 
-impl BackendReadTransaction for BackendTransaction {
+impl BackendTransaction for BackendReadTransaction {
     fn get_conn(&self) -> &r2d2::PooledConnection<r2d2_sqlite::SqliteConnectionManager> {
         &self.conn
     }
@@ -219,7 +219,7 @@ impl Drop for BackendWriteTransaction {
     }
 }
 
-impl BackendReadTransaction for BackendWriteTransaction {
+impl BackendTransaction for BackendWriteTransaction {
     fn get_conn(&self) -> &r2d2::PooledConnection<r2d2_sqlite::SqliteConnectionManager> {
         &self.conn
     }
@@ -714,13 +714,13 @@ impl Backend {
         })
     }
 
-    pub fn read(&self) -> BackendTransaction {
+    pub fn read(&self) -> BackendReadTransaction {
         // TODO: Don't use expect
         let conn = self
             .pool
             .get()
             .expect("Unable to get connection from pool!!!");
-        BackendTransaction::new(conn)
+        BackendReadTransaction::new(conn)
     }
 
     pub fn write(&self) -> BackendWriteTransaction {
@@ -751,8 +751,7 @@ mod tests {
 
     use super::super::audit::AuditScope;
     use super::super::entry::{Entry, EntryInvalid, EntryNew};
-    use super::super::filter::Filter;
-    use super::{Backend, BackendReadTransaction, BackendWriteTransaction, OperationError};
+    use super::{Backend, BackendTransaction, BackendWriteTransaction, OperationError};
 
     macro_rules! run_test {
         ($test_fn:expr) => {{
@@ -773,9 +772,11 @@ mod tests {
     macro_rules! entry_exists {
         ($audit:expr, $be:expr, $ent:expr) => {{
             let ei = unsafe { $ent.clone().to_valid_committed() };
-            let filt = ei
-                .filter_from_attrs(&vec![String::from("userid")])
-                .expect("failed to generate filter");
+            let filt = unsafe {
+                ei.filter_from_attrs(&vec![String::from("userid")])
+                    .expect("failed to generate filter")
+                    .to_valid_resolved()
+            };
             let entries = $be.search($audit, &filt).expect("failed to search");
             entries.first().is_some()
         }};
@@ -784,9 +785,11 @@ mod tests {
     macro_rules! entry_attr_pres {
         ($audit:expr, $be:expr, $ent:expr, $attr:expr) => {{
             let ei = unsafe { $ent.clone().to_valid_committed() };
-            let filt = ei
-                .filter_from_attrs(&vec![String::from("userid")])
-                .expect("failed to generate filter");
+            let filt = unsafe {
+                ei.filter_from_attrs(&vec![String::from("userid")])
+                    .expect("failed to generate filter")
+                    .to_valid_resolved()
+            };
             let entries = $be.search($audit, &filt).expect("failed to search");
             match entries.first() {
                 Some(ent) => ent.attribute_pres($attr),
@@ -805,11 +808,8 @@ mod tests {
             assert_eq!(empty_result, Err(OperationError::EmptyRequest));
 
             let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
-            e.add_ava(String::from("userid"), String::from("william"));
-            e.add_ava(
-                "uuid".to_string(),
-                "db237e8a-0079-4b8c-8a56-593b22aa44d1".to_string(),
-            );
+            e.add_ava("userid", "william");
+            e.add_ava("uuid", "db237e8a-0079-4b8c-8a56-593b22aa44d1");
             let e = unsafe { e.to_valid_new() };
 
             let single_result = be.create(audit, &vec![e.clone()]);
@@ -827,18 +827,15 @@ mod tests {
             audit_log!(audit, "Simple Search");
 
             let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
-            e.add_ava(String::from("userid"), String::from("claire"));
-            e.add_ava(
-                "uuid".to_string(),
-                "db237e8a-0079-4b8c-8a56-593b22aa44d1".to_string(),
-            );
+            e.add_ava("userid", "claire");
+            e.add_ava("uuid", "db237e8a-0079-4b8c-8a56-593b22aa44d1");
             let e = unsafe { e.to_valid_new() };
 
             let single_result = be.create(audit, &vec![e.clone()]);
             assert!(single_result.is_ok());
             // Test a simple EQ search
 
-            let filt = Filter::Eq("userid".to_string(), "claire".to_string());
+            let filt = unsafe { filter_resolved!(f_eq("userid", "claire")) };
 
             let r = be.search(audit, &filt);
             assert!(r.expect("Search failed!").len() == 1);
@@ -857,18 +854,12 @@ mod tests {
             audit_log!(audit, "Simple Modify");
             // First create some entries (3?)
             let mut e1: Entry<EntryInvalid, EntryNew> = Entry::new();
-            e1.add_ava(String::from("userid"), String::from("william"));
-            e1.add_ava(
-                "uuid".to_string(),
-                "db237e8a-0079-4b8c-8a56-593b22aa44d1".to_string(),
-            );
+            e1.add_ava("userid", "william");
+            e1.add_ava("uuid", "db237e8a-0079-4b8c-8a56-593b22aa44d1");
 
             let mut e2: Entry<EntryInvalid, EntryNew> = Entry::new();
-            e2.add_ava(String::from("userid"), String::from("alice"));
-            e2.add_ava(
-                "uuid".to_string(),
-                "4b6228ab-1dbe-42a4-a9f5-f6368222438e".to_string(),
-            );
+            e2.add_ava("userid", "alice");
+            e2.add_ava("uuid", "4b6228ab-1dbe-42a4-a9f5-f6368222438e");
 
             let ve1 = unsafe { e1.clone().to_valid_new() };
             let ve2 = unsafe { e2.clone().to_valid_new() };
@@ -879,7 +870,7 @@ mod tests {
 
             // You need to now retrieve the entries back out to get the entry id's
             let mut results = be
-                .search(audit, &Filter::Pres(String::from("userid")))
+                .search(audit, unsafe { &filter_resolved!(f_pres("userid")) })
                 .expect("Failed to search");
 
             // Get these out to usable entries.
@@ -898,8 +889,8 @@ mod tests {
             assert!(be.modify(audit, &vec![]).is_err());
 
             // Make some changes to r1, r2.
-            r1.add_ava(String::from("desc"), String::from("modified"));
-            r2.add_ava(String::from("desc"), String::from("modified"));
+            r1.add_ava("desc", "modified");
+            r2.add_ava("desc", "modified");
 
             // Now ... cheat.
 
@@ -927,25 +918,16 @@ mod tests {
 
             // First create some entries (3?)
             let mut e1: Entry<EntryInvalid, EntryNew> = Entry::new();
-            e1.add_ava(String::from("userid"), String::from("william"));
-            e1.add_ava(
-                "uuid".to_string(),
-                "db237e8a-0079-4b8c-8a56-593b22aa44d1".to_string(),
-            );
+            e1.add_ava("userid", "william");
+            e1.add_ava("uuid", "db237e8a-0079-4b8c-8a56-593b22aa44d1");
 
             let mut e2: Entry<EntryInvalid, EntryNew> = Entry::new();
-            e2.add_ava(String::from("userid"), String::from("alice"));
-            e2.add_ava(
-                "uuid".to_string(),
-                "4b6228ab-1dbe-42a4-a9f5-f6368222438e".to_string(),
-            );
+            e2.add_ava("userid", "alice");
+            e2.add_ava("uuid", "4b6228ab-1dbe-42a4-a9f5-f6368222438e");
 
             let mut e3: Entry<EntryInvalid, EntryNew> = Entry::new();
-            e3.add_ava(String::from("userid"), String::from("lucy"));
-            e3.add_ava(
-                "uuid".to_string(),
-                "7b23c99d-c06b-4a9a-a958-3afa56383e1d".to_string(),
-            );
+            e3.add_ava("userid", "lucy");
+            e3.add_ava("uuid", "7b23c99d-c06b-4a9a-a958-3afa56383e1d");
 
             let ve1 = unsafe { e1.clone().to_valid_new() };
             let ve2 = unsafe { e2.clone().to_valid_new() };
@@ -958,7 +940,7 @@ mod tests {
 
             // You need to now retrieve the entries back out to get the entry id's
             let mut results = be
-                .search(audit, &Filter::Pres(String::from("userid")))
+                .search(audit, unsafe { &filter_resolved!(f_pres("userid")) })
                 .expect("Failed to search");
 
             // Get these out to usable entries.
@@ -977,11 +959,8 @@ mod tests {
             // WARNING: Normally, this isn't possible, but we are pursposefully breaking
             // the state machine rules here!!!!
             let mut e4: Entry<EntryInvalid, EntryNew> = Entry::new();
-            e4.add_ava(String::from("userid"), String::from("amy"));
-            e4.add_ava(
-                "uuid".to_string(),
-                "21d816b5-1f6a-4696-b7c1-6ed06d22ed81".to_string(),
-            );
+            e4.add_ava("userid", "amy");
+            e4.add_ava("uuid", "21d816b5-1f6a-4696-b7c1-6ed06d22ed81");
 
             let ve4 = unsafe { e4.clone().to_valid_committed() };
 
@@ -1009,25 +988,16 @@ mod tests {
         run_test!(|audit: &mut AuditScope, be: &BackendWriteTransaction| {
             // First create some entries (3?)
             let mut e1: Entry<EntryInvalid, EntryNew> = Entry::new();
-            e1.add_ava(String::from("userid"), String::from("william"));
-            e1.add_ava(
-                "uuid".to_string(),
-                "db237e8a-0079-4b8c-8a56-593b22aa44d1".to_string(),
-            );
+            e1.add_ava("userid", "william");
+            e1.add_ava("uuid", "db237e8a-0079-4b8c-8a56-593b22aa44d1");
 
             let mut e2: Entry<EntryInvalid, EntryNew> = Entry::new();
-            e2.add_ava(String::from("userid"), String::from("alice"));
-            e2.add_ava(
-                "uuid".to_string(),
-                "4b6228ab-1dbe-42a4-a9f5-f6368222438e".to_string(),
-            );
+            e2.add_ava("userid", "alice");
+            e2.add_ava("uuid", "4b6228ab-1dbe-42a4-a9f5-f6368222438e");
 
             let mut e3: Entry<EntryInvalid, EntryNew> = Entry::new();
-            e3.add_ava(String::from("userid"), String::from("lucy"));
-            e3.add_ava(
-                "uuid".to_string(),
-                "7b23c99d-c06b-4a9a-a958-3afa56383e1d".to_string(),
-            );
+            e3.add_ava("userid", "lucy");
+            e3.add_ava("uuid", "7b23c99d-c06b-4a9a-a958-3afa56383e1d");
 
             let ve1 = unsafe { e1.clone().to_valid_new() };
             let ve2 = unsafe { e2.clone().to_valid_new() };

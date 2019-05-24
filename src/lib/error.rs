@@ -22,11 +22,13 @@ pub enum OperationError {
     SchemaViolation(SchemaError),
     Plugin,
     FilterGeneration,
+    FilterUUIDResolution,
     InvalidDBState,
     InvalidEntryID,
     InvalidRequestState,
     InvalidState,
     InvalidEntryState,
+    InvalidACPState,
     BackendEngine,
     SQLiteError, //(RusqliteError)
     FsError,

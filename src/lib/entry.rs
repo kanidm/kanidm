@@ -1,11 +1,11 @@
 // use serde_json::{Error, Value};
 use crate::audit::AuditScope;
 use crate::error::{OperationError, SchemaError};
-use crate::filter::{Filter, FilterValid};
+use crate::filter::{Filter, FilterInvalid, FilterResolved, FilterValidResolved};
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use crate::proto_v1::Entry as ProtoEntry;
-use crate::schema::{SchemaAttribute, SchemaClass, SchemaReadTransaction};
-use crate::server::{QueryServerReadTransaction, QueryServerWriteTransaction};
+use crate::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
+use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
 
 use crate::be::dbentry::{DbEntry, DbEntryV1, DbEntryVers};
 
@@ -123,15 +123,15 @@ impl<'a> Iterator for EntryAvasMut<'a> {
 // This is specifically important for the commit to the backend, as we only want to
 // commit validated types.
 
-#[derive(Clone, Copy, Debug, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct EntryNew; // new
-#[derive(Clone, Copy, Debug, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct EntryCommitted {
     id: u64,
 } // It's been in the DB, so it has an id
   // pub struct EntryPurged;
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct EntryValid {
     // Asserted with schema, so we know it has a UUID now ...
     uuid: String,
@@ -139,10 +139,10 @@ pub struct EntryValid {
 
 // Modified, can't be sure of it's content! We therefore disregard the UUID
 // and on validate, we check it again.
-#[derive(Clone, Copy, Debug, Deserialize)]
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct EntryInvalid;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Entry<VALID, STATE> {
     valid: VALID,
     state: STATE,
@@ -220,7 +220,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
 
     pub fn validate(
         self,
-        schema: &SchemaReadTransaction,
+        schema: &SchemaTransaction,
     ) -> Result<Entry<EntryValid, STATE>, SchemaError> {
         // We need to clone before we start, as well be mutating content.
         // We destructure:
@@ -419,7 +419,14 @@ impl Entry<EntryInvalid, EntryNew> {
                 uuid: self.get_uuid().expect("Invalid uuid").to_string(),
             },
             state: EntryNew,
-            attrs: self.attrs,
+            attrs: self
+                .attrs
+                .into_iter()
+                .map(|(k, mut v)| {
+                    v.sort_unstable();
+                    (k, v)
+                })
+                .collect(),
         }
     }
 
@@ -430,7 +437,14 @@ impl Entry<EntryInvalid, EntryNew> {
                 uuid: self.get_uuid().expect("Invalid uuid").to_string(),
             },
             state: EntryCommitted { id: 0 },
-            attrs: self.attrs,
+            attrs: self
+                .attrs
+                .into_iter()
+                .map(|(k, mut v)| {
+                    v.sort_unstable();
+                    (k, v)
+                })
+                .collect(),
         }
     }
 }
@@ -443,7 +457,14 @@ impl Entry<EntryInvalid, EntryCommitted> {
                 uuid: self.get_uuid().expect("Invalid uuid").to_string(),
             },
             state: self.state,
-            attrs: self.attrs,
+            attrs: self
+                .attrs
+                .into_iter()
+                .map(|(k, mut v)| {
+                    v.sort_unstable();
+                    (k, v)
+                })
+                .collect(),
         }
     }
 }
@@ -454,7 +475,14 @@ impl Entry<EntryValid, EntryNew> {
         Entry {
             valid: self.valid,
             state: EntryCommitted { id: 0 },
-            attrs: self.attrs,
+            attrs: self
+                .attrs
+                .into_iter()
+                .map(|(k, mut v)| {
+                    v.sort_unstable();
+                    (k, v)
+                })
+                .collect(),
         }
     }
 
@@ -546,44 +574,49 @@ impl<STATE> Entry<EntryValid, STATE> {
     }
 
     // Assert if this filter matches the entry (no index)
-    pub fn entry_match_no_index(&self, filter: &Filter<FilterValid>) -> bool {
+    fn entry_match_no_index_inner(&self, filter: &FilterResolved) -> bool {
         // Go through the filter components and check them in the entry.
         // This is recursive!!!!
         match filter {
-            Filter::Eq(attr, value) => self.attribute_equality(attr.as_str(), value.as_str()),
-            Filter::Sub(attr, subvalue) => {
+            FilterResolved::Eq(attr, value) => {
+                self.attribute_equality(attr.as_str(), value.as_str())
+            }
+            FilterResolved::Sub(attr, subvalue) => {
                 self.attribute_substring(attr.as_str(), subvalue.as_str())
             }
-            Filter::Pres(attr) => {
+            FilterResolved::Pres(attr) => {
                 // Given attr, is is present in the entry?
                 self.attribute_pres(attr.as_str())
             }
-            Filter::Or(l) => l.iter().fold(false, |acc, f| {
+            FilterResolved::Or(l) => l.iter().fold(false, |acc, f| {
                 // Check with ftweedal about or filter zero len correctness.
                 if acc {
                     acc
                 } else {
-                    self.entry_match_no_index(f)
+                    self.entry_match_no_index_inner(f)
                 }
             }),
-            Filter::And(l) => l.iter().fold(true, |acc, f| {
+            FilterResolved::And(l) => l.iter().fold(true, |acc, f| {
                 // Check with ftweedal about and filter zero len correctness.
                 if acc {
-                    self.entry_match_no_index(f)
+                    self.entry_match_no_index_inner(f)
                 } else {
                     acc
                 }
             }),
-            Filter::AndNot(f) => !self.entry_match_no_index(f),
-            Filter::Invalid(_) => {
-                // TODO: Is there a better way to not need to match the phantom?
-                unimplemented!()
-            }
+            FilterResolved::AndNot(f) => !self.entry_match_no_index_inner(f),
         }
     }
 
-    pub fn filter_from_attrs(&self, attrs: &Vec<String>) -> Option<Filter<FilterValid>> {
-        // Because we are a valid entry, a filter we create *must* be valid
+    pub fn entry_match_no_index(&self, filter: &Filter<FilterValidResolved>) -> bool {
+        self.entry_match_no_index_inner(filter.to_inner())
+    }
+
+    pub fn filter_from_attrs(&self, attrs: &Vec<String>) -> Option<Filter<FilterInvalid>> {
+        // Because we are a valid entry, a filter we create still may not
+        // be valid because the internal server entry templates are still
+        // created by humans! Plus double checking something already valid
+        // is not bad ...
         //
         // Generate a filter from the attributes requested and defined.
         // Basically, this is a series of nested and's (which will be
@@ -591,27 +624,25 @@ impl<STATE> Entry<EntryValid, STATE> {
 
         // Take name: (a, b), name: (c, d) -> (name, a), (name, b), (name, c), (name, d)
 
-        let mut pairs: Vec<(String, String)> = Vec::new();
+        let mut pairs: Vec<(&str, &str)> = Vec::new();
 
         for attr in attrs {
             match self.attrs.get(attr) {
                 Some(values) => {
                     for v in values {
-                        pairs.push((attr.clone(), v.clone()))
+                        pairs.push((attr, v))
                     }
                 }
                 None => return None,
             }
         }
 
-        // Now make this a filter?
-
-        let eq_filters = pairs
-            .into_iter()
-            .map(|(attr, value)| Filter::Eq(attr, value))
-            .collect();
-
-        Some(Filter::And(eq_filters))
+        Some(filter!(f_and(
+            pairs
+                .into_iter()
+                .map(|(attr, value)| f_eq(attr, value))
+                .collect()
+        )))
     }
 
     pub fn into(&self) -> ProtoEntry {
@@ -628,7 +659,7 @@ impl<STATE> Entry<EntryValid, STATE> {
 
     pub fn gen_modlist_assert(
         &self,
-        schema: &SchemaReadTransaction,
+        schema: &SchemaTransaction,
     ) -> Result<ModifyList<ModifyInvalid>, SchemaError> {
         // Create a modlist from this entry. We make this assuming we want the entry
         // to have this one as a subset of values. This means if we have single
@@ -673,8 +704,22 @@ impl<STATE> Entry<EntryValid, STATE> {
 
 impl<VALID, STATE> Entry<VALID, STATE> {
     /* WARNING: Should these TODO move to EntryValid only? */
-    pub fn get_ava(&self, attr: &String) -> Option<&Vec<String>> {
+    pub fn get_ava(&self, attr: &str) -> Option<&Vec<String>> {
         self.attrs.get(attr)
+    }
+
+    // Returns NONE if there is more than ONE!!!!
+    pub fn get_ava_single(&self, attr: &str) -> Option<&String> {
+        match self.attrs.get(attr) {
+            Some(vs) => {
+                if vs.len() != 1 {
+                    None
+                } else {
+                    vs.first()
+                }
+            }
+            None => None,
+        }
     }
 
     pub fn attribute_pres(&self, attr: &str) -> bool {
@@ -739,35 +784,38 @@ where
     // If this already exists, we silently drop the event? Is that an
     // acceptable interface?
     // Should value here actually be a &str?
-    pub fn add_ava(&mut self, attr: String, value: String) {
+    pub fn add_ava(&mut self, attr: &str, value: &str) {
         // get_mut to access value
         // How do we make this turn into an ok / err?
         self.attrs
-            .entry(attr)
+            .entry(attr.to_string())
             .and_modify(|v| {
                 // Here we need to actually do a check/binary search ...
                 // FIXME: Because map_err is lazy, this won't do anything on release
-                match v.binary_search(&value) {
+                // TODO: Is there a way to avoid the double to_string here?
+                match v.binary_search(&value.to_string()) {
                     // It already exists, done!
                     Ok(_) => {}
                     Err(idx) => {
                         // This cloning is to fix a borrow issue with the or_insert below.
                         // Is there a better way?
-                        v.insert(idx, value.clone())
+                        v.insert(idx, value.to_string())
                     }
                 }
             })
-            .or_insert(vec![value]);
+            .or_insert(vec![value.to_string()]);
     }
 
-    pub fn remove_ava(&mut self, attr: &String, value: &String) {
+    pub fn remove_ava(&mut self, attr: &str, value: &str) {
+        // TODO fix this to_string
+        let mv = value.to_string();
         self.attrs
-            // TODO: Fix this clone ...
-            .entry(attr.clone())
+            // TODO: Fix this to_string
+            .entry(attr.to_string())
             .and_modify(|v| {
                 // Here we need to actually do a check/binary search ...
                 // FIXME: Because map_err is lazy, this won't do anything on release
-                match v.binary_search(&value) {
+                match v.binary_search(&mv) {
                     // It exists, rm it.
                     Ok(idx) => {
                         v.remove(idx);
@@ -778,15 +826,16 @@ where
             });
     }
 
-    pub fn purge_ava(&mut self, attr: &String) {
+    pub fn purge_ava(&mut self, attr: &str) {
         self.attrs.remove(attr);
     }
 
     // FIXME: Should this collect from iter instead?
+    // TODO: Should this be a Vec<&str>
     /// Overwrite the existing avas.
-    pub fn set_avas(&mut self, attr: String, values: Vec<String>) {
+    pub fn set_avas(&mut self, attr: &str, values: Vec<String>) {
         // Overwrite the existing value
-        let _ = self.attrs.insert(attr, values);
+        let _ = self.attrs.insert(attr.to_string(), values);
     }
 
     pub fn avas_mut(&mut self) -> EntryAvasMut {
@@ -804,9 +853,9 @@ where
         // mutate
         for modify in modlist {
             match modify {
-                Modify::Present(a, v) => self.add_ava(a.clone(), v.clone()),
-                Modify::Removed(a, v) => self.remove_ava(a, v),
-                Modify::Purged(a) => self.purge_ava(a),
+                Modify::Present(a, v) => self.add_ava(a.as_str(), v.as_str()),
+                Modify::Removed(a, v) => self.remove_ava(a.as_str(), v.as_str()),
+                Modify::Purged(a) => self.purge_ava(a.as_str()),
             }
         }
     }
@@ -863,7 +912,7 @@ mod tests {
     fn test_entry_basic() {
         let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
 
-        e.add_ava(String::from("userid"), String::from("william"));
+        e.add_ava("userid", "william");
     }
 
     #[test]
@@ -875,12 +924,10 @@ mod tests {
         // are adding ... Or do we validate after the changes are made in
         // total?
         let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
-        e.add_ava(String::from("userid"), String::from("william"));
-        e.add_ava(String::from("userid"), String::from("william"));
+        e.add_ava("userid", "william");
+        e.add_ava("userid", "william");
 
-        let values = e
-            .get_ava(&String::from("userid"))
-            .expect("Failed to get ava");
+        let values = e.get_ava("userid").expect("Failed to get ava");
         // Should only be one value!
         assert_eq!(values.len(), 1)
     }
@@ -888,7 +935,7 @@ mod tests {
     #[test]
     fn test_entry_pres() {
         let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
-        e.add_ava(String::from("userid"), String::from("william"));
+        e.add_ava("userid", "william");
 
         assert!(e.attribute_pres("userid"));
         assert!(!e.attribute_pres("name"));
@@ -898,7 +945,7 @@ mod tests {
     fn test_entry_equality() {
         let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
 
-        e.add_ava(String::from("userid"), String::from("william"));
+        e.add_ava("userid", "william");
 
         assert!(e.attribute_equality("userid", "william"));
         assert!(!e.attribute_equality("userid", "test"));
@@ -909,7 +956,7 @@ mod tests {
     fn test_entry_apply_modlist() {
         // Test application of changes to an entry.
         let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
-        e.add_ava(String::from("userid"), String::from("william"));
+        e.add_ava("userid", "william");
 
         let mods = unsafe {
             ModifyList::new_valid_list(vec![Modify::Present(

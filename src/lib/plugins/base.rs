@@ -6,7 +6,6 @@ use crate::audit::AuditScope;
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew};
 use crate::error::{ConsistencyError, OperationError};
 use crate::event::{CreateEvent, ModifyEvent};
-use crate::filter::{Filter, FilterInvalid};
 use crate::modify::{Modify, ModifyList, ModifyValid};
 use crate::server::{
     QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
@@ -53,7 +52,7 @@ impl Plugin for Base {
             audit_log!(au, "Base check on entry: {:?}", entry);
 
             // First, ensure we have the 'object', class in the class set.
-            entry.add_ava(String::from("class"), String::from("object"));
+            entry.add_ava("class", "object");
 
             audit_log!(au, "Object should now be in entry: {:?}", entry);
 
@@ -61,7 +60,7 @@ impl Plugin for Base {
 
             // if they don't have uuid, create it.
             // TODO: get_ava should have a str version for effeciency?
-            let c_uuid: String = match entry.get_ava(&"uuid".to_string()) {
+            let c_uuid: String = match entry.get_ava("uuid") {
                 Some(u) => {
                     // Actually check we have a value, could be empty array ...
                     // TODO: Should this be left to schema to assert the value?
@@ -86,7 +85,7 @@ impl Plugin for Base {
             audit_log!(au, "Setting temporary UUID {} to entry", c_uuid);
             let ava_uuid: Vec<String> = vec![c_uuid];
 
-            entry.set_avas("uuid".to_string(), ava_uuid);
+            entry.set_avas("uuid", ava_uuid);
             audit_log!(au, "Temporary entry state: {:?}", entry);
         }
 
@@ -97,7 +96,7 @@ impl Plugin for Base {
         // that a duplicate exists.
         for entry in cand.iter() {
             let uuid_ref = entry
-                .get_ava(&"uuid".to_string())
+                .get_ava("uuid")
                 .ok_or(OperationError::Plugin)?
                 .first()
                 .ok_or(OperationError::Plugin)?;
@@ -115,12 +114,7 @@ impl Plugin for Base {
         //
         // NOTE: We don't exclude recycled or tombstones here!
 
-        let filt_in: Filter<FilterInvalid> = Filter::Or(
-            cand_uuid
-                .keys()
-                .map(|u| Filter::Eq("uuid".to_string(), u.to_string()))
-                .collect(),
-        );
+        let filt_in = filter_all!(FC::Or(cand_uuid.keys().map(|u| f_eq("uuid", u)).collect(),));
 
         // If any results exist, fail as a duplicate UUID is present.
         // TODO: Can we report which UUID exists? Probably yes, we do
@@ -170,13 +164,13 @@ impl Plugin for Base {
 
     fn verify(
         au: &mut AuditScope,
-        qs: &QueryServerTransaction,
+        qs: &QueryServerReadTransaction,
     ) -> Vec<Result<(), ConsistencyError>> {
         // Verify all uuid's are unique?
         // Probably the literally worst thing ...
 
         // Search for class = *
-        let entries = match qs.internal_search(au, Filter::Pres("class".to_string())) {
+        let entries = match qs.internal_search(au, filter!(f_pres("class"))) {
             Ok(v) => v,
             Err(e) => {
                 audit_log!(au, "Internal Search Failure: {:?}", e);
@@ -194,7 +188,7 @@ impl Plugin for Base {
                 // uniqueness!
                 let uuid: &String = e.get_uuid();
 
-                let filt = Filter::Eq("uuid".to_string(), uuid.to_string());
+                let filt = filter!(f_eq("uuid", uuid));
                 match qs.internal_search(au, filt) {
                     Ok(r) => {
                         if r.len() == 0 {
@@ -234,9 +228,8 @@ mod tests {
     // use crate::plugins::Plugin;
     use crate::entry::{Entry, EntryInvalid, EntryNew};
     use crate::error::OperationError;
-    use crate::filter::Filter;
     use crate::modify::{Modify, ModifyList};
-    use crate::server::QueryServerReadTransaction;
+    use crate::server::QueryServerTransaction;
     use crate::server::QueryServerWriteTransaction;
 
     // check create where no uuid
@@ -267,7 +260,7 @@ mod tests {
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 let cands = qs
-                    .internal_search(au, Filter::Eq("name".to_string(), "testperson".to_string()))
+                    .internal_search(au, filter!(f_eq("name", "testperson")))
                     .expect("Internal search failure");
                 let ue = cands.first().expect("No cand");
                 assert!(ue.attribute_pres("uuid"));
@@ -366,7 +359,7 @@ mod tests {
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 let cands = qs
-                    .internal_search(au, Filter::Eq("name".to_string(), "testperson".to_string()))
+                    .internal_search(au, filter!(f_eq("name", "testperson")))
                     .expect("Internal search failure");
                 let ue = cands.first().expect("No cand");
                 assert!(ue.attribute_equality("uuid", "79724141-3603-4060-b6bb-35c72772611d"));
@@ -510,7 +503,7 @@ mod tests {
         run_modify_test!(
             Err(OperationError::Plugin),
             preload,
-            Filter::Eq("name".to_string(), "testgroup_a".to_string()),
+            filter!(f_eq("name", "testgroup_a")),
             ModifyList::new_list(vec![Modify::Present(
                 "uuid".to_string(),
                 "f15a7219-1d15-44e3-a7b4-bec899c07788".to_string()
@@ -542,7 +535,7 @@ mod tests {
         run_modify_test!(
             Err(OperationError::Plugin),
             preload,
-            Filter::Eq("name".to_string(), "testgroup_a".to_string()),
+            filter!(f_eq("name", "testgroup_a")),
             ModifyList::new_list(vec![Modify::Removed(
                 "uuid".to_string(),
                 "f15a7219-1d15-44e3-a7b4-bec899c07788".to_string()
@@ -574,7 +567,7 @@ mod tests {
         run_modify_test!(
             Err(OperationError::Plugin),
             preload,
-            Filter::Eq("name".to_string(), "testgroup_a".to_string()),
+            filter!(f_eq("name", "testgroup_a")),
             ModifyList::new_list(vec![Modify::Purged("uuid".to_string())]),
             None,
             |_, _| {}

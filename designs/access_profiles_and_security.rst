@@ -227,7 +227,7 @@ Example profiles:
     create {
         action: allow
         receiver: Eq("name", "alice")
-        createscope: And(Eq("class", "person"), Eq("location", "AU"))
+        targetscope: And(Eq("class", "person"), Eq("location", "AU"))
         createattr: location
         createattr: legalName
         createattr: mail
@@ -261,15 +261,15 @@ Example profiles:
         action: allow
         receiver: Eq("name", "alice")
         targetscope: Eq("memberof", "students")
-        purgedattr: sshkeys
-        description: Allow allice to purge sshkeys from members of the students group.
+        removedattr: sshkeys
+        description: Allow allice to purge or remove sshkeys from members of the students group,
+            but not add new ones
     }
 
     modify {
         action: allow
         receiver: Eq("name", "alice")
         targetscope: Eq("memberof", "students")
-        purgedattr: sshkeys
         removedattr: sshkeys
         presentattr: sshkeys
         description: Allow alice full control over the ssh keys attribute on members of students.
@@ -288,6 +288,35 @@ Example profiles:
         description: Allow alice to grant any class to members of students.
     }
 
+Formalised Schema
+-----------------
+
+A complete schema would be:
+
+    attributes:
+    * acp_allow  single value, bool
+    * acp_enable  single value, bool
+    * acp_receiver  single value, filter
+    * acp_targetscope  single value, filter
+    * acp_search_attr  multi value, utf8 case insense
+    * acp_create_class  multi value, utf8 case insense
+    * acp_create_attr  multi value, utf8 case insense
+    * acp_modify_removedattr  multi value, utf8 case insense
+    * acp_modify_presentattr  multi value, utf8 case insense
+    * acp_modify_class  multi value, utf8 case insense
+
+    classes:
+    * access_control_profile MUST [acp_receiver, acp_targetscope] MAY [description] MAY acp_allow
+    * access_control_search MUST [acp_search_attr]
+    * access_control_delete
+    * access_control_modify MAY [acp_modify_removedattr, acp_modify_presentattr, acp_modify_class]
+    * access_control_create MAY [acp_create_class, acp_create_attr]
+
+Important, but empty sets really mean empty sets! The ACP code will assert that both
+access_control_profile *and* one of the search/delete/modify/create classes exists on an ACP. An
+important factor of this design is now the ability to *compose* mulitple ACP's to a single entry
+allowing a create/delete/modify to exist! However, each one must still list their respective actions
+to allow proper granularity.
 
 Search Application
 ------------------

@@ -1,5 +1,4 @@
-// #[macro_escape]
-
+#[cfg(test)]
 macro_rules! setup_test {
     (
         $au:expr,
@@ -28,6 +27,7 @@ macro_rules! setup_test {
 }
 
 // Test helpers for all plugins.
+#[cfg(test)]
 #[macro_export]
 macro_rules! run_create_test {
     (
@@ -50,7 +50,9 @@ macro_rules! run_create_test {
 
             let ce = match $internal {
                 None => CreateEvent::new_internal($create_entries.clone()),
-                Some(uuid) => CreateEvent::new_impersonate_uuid(uuid, $create_entries.clone()),
+                Some(e_str) => unsafe {
+                    CreateEvent::new_impersonate_entry_ser(e_str, $create_entries.clone())
+                },
             };
 
             let mut au_test = AuditScope::new("create_test");
@@ -78,6 +80,7 @@ macro_rules! run_create_test {
     }};
 }
 
+#[cfg(test)]
 #[macro_export]
 macro_rules! run_modify_test {
     (
@@ -101,7 +104,9 @@ macro_rules! run_modify_test {
 
             let me = match $internal {
                 None => ModifyEvent::new_internal($modify_filter, $modify_list),
-                Some(uuid) => ModifyEvent::new_impersonate_uuid(uuid, $modify_filter, $modify_list),
+                Some(e_str) => unsafe {
+                    ModifyEvent::new_impersonate_entry_ser(e_str, $modify_filter, $modify_list)
+                },
             };
 
             let mut au_test = AuditScope::new("modify_test");
@@ -129,6 +134,7 @@ macro_rules! run_modify_test {
     }};
 }
 
+#[cfg(test)]
 #[macro_export]
 macro_rules! run_delete_test {
     (
@@ -150,7 +156,9 @@ macro_rules! run_delete_test {
             let qs = setup_test!(&mut au, $preload_entries);
 
             let de = match $internal {
-                Some(uuid) => DeleteEvent::new_impersonate_uuid(uuid, $delete_filter.clone()),
+                Some(e_str) => unsafe {
+                    DeleteEvent::new_impersonate_entry_ser(e_str, $delete_filter.clone())
+                },
                 None => DeleteEvent::new_internal($delete_filter.clone()),
             };
 

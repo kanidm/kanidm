@@ -1,6 +1,7 @@
 use crate::audit::AuditScope;
 use crate::constants::*;
 use crate::error::{ConsistencyError, OperationError, SchemaError};
+use crate::proto_v1::Filter as ProtoFilter;
 use regex::Regex;
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -68,6 +69,7 @@ pub enum SyntaxType {
     SYNTAX_ID,
     INDEX_ID,
     REFERENCE_UUID,
+    JSON_FILTER,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -90,6 +92,8 @@ impl TryFrom<&str> for SyntaxType {
             Ok(SyntaxType::INDEX_ID)
         } else if value == "REFERENCE_UUID" {
             Ok(SyntaxType::REFERENCE_UUID)
+        } else if value == "JSON_FILTER" {
+            Ok(SyntaxType::JSON_FILTER)
         } else {
             Err(())
         }
@@ -152,6 +156,28 @@ impl SchemaAttribute {
         }
     }
 
+    fn validate_json_filter(&self, v: &String) -> Result<(), SchemaError> {
+        // I *think* we just check if this can become a ProtoFilter v1
+        // rather than anything more complex.
+
+        // Can it be deserialised? I think that's all we can do because
+        // it's only when we go to apply that we can do the actual filter
+        // conversion, resolution of Self, and validation etc.
+
+        // In my mind there are some risks here, like the fact that we defer evaluation
+        // and checking until we go to use the value, but we ccould make a plugin similar
+        // to refint that verifies all of these filters still compile and schema check
+        // after any kind of modification.
+
+        // Storing these as protofilter has value in terms of the fact we don't need
+        // filter to be seralisable when we go to add state type data to it, and we can
+        // then do conversions inside operations to resolve Self -> Bound UUID as required.
+
+        serde_json::from_str(v.as_str())
+            .map_err(|_| SchemaError::InvalidAttributeSyntax)
+            .map(|_: ProtoFilter| ())
+    }
+
     fn validate_utf8string_insensitive(&self, v: &String) -> Result<(), SchemaError> {
         // FIXME: Is there a way to do this that doesn't involve a copy?
         let t = v.to_lowercase();
@@ -173,6 +199,7 @@ impl SchemaAttribute {
             SyntaxType::REFERENCE_UUID => self.validate_uuid(v),
             SyntaxType::UTF8STRING_INSENSITIVE => self.validate_utf8string_insensitive(v),
             SyntaxType::UTF8STRING_PRINCIPAL => self.validate_principal(v),
+            SyntaxType::JSON_FILTER => self.validate_json_filter(v),
             _ => Ok(()),
         }
     }
@@ -301,7 +328,7 @@ pub struct SchemaInner {
     attributes: HashMap<String, SchemaAttribute>,
 }
 
-pub trait SchemaReadTransaction {
+pub trait SchemaTransaction {
     fn get_inner(&self) -> &SchemaInner;
 
     fn validate(&self, audit: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
@@ -827,6 +854,161 @@ impl SchemaInner {
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
             );
+
+            // ACP related attributes
+            self.attributes.insert(
+                String::from("acp_allow"),
+                SchemaAttribute {
+                    name: String::from("acp_allow"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_ALLOW)
+                        .expect("unable to parse static uuid"),
+                    description: String::from(
+                        "A flag to determine if this is a deny or allow ACP. True is allow.",
+                    ),
+                    system: true,
+                    secret: false,
+                    multivalue: false,
+                    index: vec![IndexType::EQUALITY],
+                    syntax: SyntaxType::BOOLEAN,
+                },
+            );
+            self.attributes.insert(
+                String::from("acp_enable"),
+                SchemaAttribute {
+                    name: String::from("acp_enable"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_ENABLE)
+                        .expect("unable to parse static uuid"),
+                    description: String::from("A flag to determine if this ACP is active for application. True is enabled, and enforce. False is checked but not enforced."),
+                    system: true,
+                    secret: false,
+                    multivalue: false,
+                    index: vec![IndexType::EQUALITY],
+                    syntax: SyntaxType::BOOLEAN,
+                },
+            );
+
+            self.attributes.insert(
+                String::from("acp_receiver"),
+                SchemaAttribute {
+                    name: String::from("acp_receiver"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_RECEIVER)
+                        .expect("unable to parse static uuid"),
+                    description: String::from(
+                        "Who the ACP applies to, constraining or allowing operations.",
+                    ),
+                    system: true,
+                    secret: false,
+                    multivalue: false,
+                    index: vec![IndexType::EQUALITY, IndexType::SUBSTRING],
+                    syntax: SyntaxType::JSON_FILTER,
+                },
+            );
+            self.attributes.insert(
+                String::from("acp_targetscope"),
+                SchemaAttribute {
+                    name: String::from("acp_targetscope"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_TARGETSCOPE)
+                        .expect("unable to parse static uuid"),
+                    description: String::from(
+                        "The effective targets of the ACP, IE what will be acted upon.",
+                    ),
+                    system: true,
+                    secret: false,
+                    multivalue: false,
+                    index: vec![IndexType::EQUALITY, IndexType::SUBSTRING],
+                    syntax: SyntaxType::JSON_FILTER,
+                },
+            );
+            self.attributes.insert(
+                String::from("acp_search_attr"),
+                SchemaAttribute {
+                    name: String::from("acp_search_attr"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_SEARCH_ATTR)
+                        .expect("unable to parse static uuid"),
+                    description: String::from("The attributes that may be viewed or searched by the reciever on targetscope."),
+                    system: true,
+                    secret: false,
+                    multivalue: true,
+                    index: vec![IndexType::EQUALITY],
+                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                },
+            );
+            self.attributes.insert(
+                String::from("acp_create_class"),
+                SchemaAttribute {
+                    name: String::from("acp_create_class"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_CREATE_CLASS)
+                        .expect("unable to parse static uuid"),
+                    description: String::from(
+                        "The set of classes that can be created on a new entry.",
+                    ),
+                    system: true,
+                    secret: false,
+                    multivalue: true,
+                    index: vec![IndexType::EQUALITY],
+                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                },
+            );
+            self.attributes.insert(
+                String::from("acp_create_attr"),
+                SchemaAttribute {
+                    name: String::from("acp_create_attr"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_CREATE_ATTR)
+                        .expect("unable to parse static uuid"),
+                    description: String::from(
+                        "The set of attribute types that can be created on an entry.",
+                    ),
+                    system: true,
+                    secret: false,
+                    multivalue: true,
+                    index: vec![IndexType::EQUALITY],
+                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                },
+            );
+
+            self.attributes.insert(
+                String::from("acp_modify_removedattr"),
+                SchemaAttribute {
+                    name: String::from("acp_modify_removedattr"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_MODIFY_REMOVEDATTR)
+                        .expect("unable to parse static uuid"),
+                    description: String::from("The set of attribute types that could be removed or purged in a modification."),
+                    system: true,
+                    secret: false,
+                    multivalue: true,
+                    index: vec![IndexType::EQUALITY],
+                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                },
+            );
+            self.attributes.insert(
+                String::from("acp_modify_presentattr"),
+                SchemaAttribute {
+                    name: String::from("acp_modify_presentattr"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_MODIFY_PRESENTATTR)
+                        .expect("unable to parse static uuid"),
+                    description: String::from("The set of attribute types that could be added or asserted in a modification."),
+                    system: true,
+                    secret: false,
+                    multivalue: true,
+                    index: vec![IndexType::EQUALITY],
+                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                },
+            );
+            self.attributes.insert(
+                String::from("acp_modify_class"),
+                SchemaAttribute {
+                    name: String::from("acp_modify_class"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_MODIFY_CLASS)
+                        .expect("unable to parse static uuid"),
+                    description: String::from("The set of class values that could be asserted or added to an entry. Only applies to modify::present operations on class."),
+                    system: true,
+                    secret: false,
+                    multivalue: true,
+                    index: vec![IndexType::EQUALITY],
+                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                },
+            );
+
             // Create the classes that use it
             // FIXME: Add account lock
             self.classes.insert(
@@ -896,6 +1078,78 @@ impl SchemaInner {
                         String::from("domain"),
                         // String::from("hostname"),
                     ],
+                    must: vec![],
+                },
+            );
+            self.classes.insert(
+                String::from("access_control_profile"),
+                SchemaClass {
+                    name: String::from("access_control_profile"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_ACCESS_CONTROL_PROFILE)
+                        .expect("unable to parse static uuid"),
+                    description: String::from("System Access Control Profile Class"),
+                    systemmay: vec!["description".to_string()],
+                    may: vec![],
+                    systemmust: vec!["acp_receiver".to_string(), "acp_targetscope".to_string()],
+                    must: vec![],
+                },
+            );
+            self.classes.insert(
+                String::from("access_control_search"),
+                SchemaClass {
+                    name: String::from("access_control_search"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_ACCESS_CONTROL_SEARCH)
+                        .expect("unable to parse static uuid"),
+                    description: String::from("System Access Control Search Class"),
+                    systemmay: vec![],
+                    may: vec![],
+                    systemmust: vec!["acp_search_attr".to_string()],
+                    must: vec![],
+                },
+            );
+            self.classes.insert(
+                String::from("access_control_delete"),
+                SchemaClass {
+                    name: String::from("access_control_delete"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_ACCESS_CONTROL_DELETE)
+                        .expect("unable to parse static uuid"),
+                    description: String::from("System Access Control DELETE Class"),
+                    systemmay: vec![],
+                    may: vec![],
+                    systemmust: vec![],
+                    must: vec![],
+                },
+            );
+            self.classes.insert(
+                String::from("access_control_modify"),
+                SchemaClass {
+                    name: String::from("access_control_modify"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_ACCESS_CONTROL_MODIFY)
+                        .expect("unable to parse static uuid"),
+                    description: String::from("System Access Control Modify Class"),
+                    systemmay: vec![
+                        "acp_modify_removedattr".to_string(),
+                        "acp_modify_presentattr".to_string(),
+                        "acp_modify_class".to_string(),
+                    ],
+                    may: vec![],
+                    systemmust: vec![],
+                    must: vec![],
+                },
+            );
+            self.classes.insert(
+                String::from("access_control_create"),
+                SchemaClass {
+                    name: String::from("access_control_create"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_ACCESS_CONTROL_CREATE)
+                        .expect("unable to parse static uuid"),
+                    description: String::from("System Access Control Create Class"),
+                    systemmay: vec![
+                        "acp_create_class".to_string(),
+                        "acp_create_attr".to_string(),
+                    ],
+                    may: vec![],
+                    systemmust: vec![],
                     must: vec![],
                 },
             );
@@ -992,8 +1246,6 @@ impl SchemaInner {
     }
 }
 
-// type Schema = CowCell<SchemaInner>;
-
 pub struct Schema {
     inner: CowCell<SchemaInner>,
 }
@@ -1018,18 +1270,18 @@ impl<'a> SchemaWriteTransaction<'a> {
     }
 }
 
-impl<'a> SchemaReadTransaction for SchemaWriteTransaction<'a> {
+impl<'a> SchemaTransaction for SchemaWriteTransaction<'a> {
     fn get_inner(&self) -> &SchemaInner {
         // Does this deref the CowCell for us?
         &self.inner
     }
 }
 
-pub struct SchemaTransaction {
+pub struct SchemaReadTransaction {
     inner: CowCellReadTxn<SchemaInner>,
 }
 
-impl SchemaReadTransaction for SchemaTransaction {
+impl SchemaTransaction for SchemaReadTransaction {
     fn get_inner(&self) -> &SchemaInner {
         // Does this deref the CowCell for us?
         &self.inner
@@ -1043,8 +1295,8 @@ impl Schema {
         })
     }
 
-    pub fn read(&self) -> SchemaTransaction {
-        SchemaTransaction {
+    pub fn read(&self) -> SchemaReadTransaction {
+        SchemaReadTransaction {
             inner: self.inner.read(),
         }
     }
@@ -1062,12 +1314,14 @@ mod tests {
     use crate::constants::*;
     use crate::entry::{Entry, EntryInvalid, EntryNew, EntryValid};
     use crate::error::{ConsistencyError, SchemaError};
-    use crate::filter::{Filter, FilterValid};
-    use crate::schema::SchemaReadTransaction;
+    // use crate::filter::{Filter, FilterValid};
+    use crate::schema::SchemaTransaction;
     use crate::schema::{IndexType, Schema, SchemaAttribute, SyntaxType};
     use serde_json;
     use std::convert::TryFrom;
     use uuid::Uuid;
+
+    // use crate::proto_v1::Filter as ProtoFilter;
 
     macro_rules! validate_schema {
         ($sch:ident, $au:expr) => {{
@@ -1140,6 +1394,44 @@ mod tests {
 
         let r5 = sa.validate_principal(&String::from("a@"));
         assert!(r5.is_err());
+    }
+
+    #[test]
+    fn test_schema_syntax_json_filter() {
+        let sa = SchemaAttribute {
+            name: String::from("acp_receiver"),
+            uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_RECEIVER)
+                .expect("unable to parse static uuid"),
+            description: String::from(
+                "Who the ACP applies to, constraining or allowing operations.",
+            ),
+            system: true,
+            secret: false,
+            multivalue: false,
+            index: vec![IndexType::EQUALITY, IndexType::SUBSTRING],
+            syntax: SyntaxType::JSON_FILTER,
+        };
+
+        // Outright wrong
+        let r1 = sa.validate_json_filter(&String::from("Whargarble lol not a filter"));
+        assert!(r1.is_err());
+        // Json error
+        let r2 = sa.validate_json_filter(&String::from(
+            "{\"And\":[{\"Eq\":[\"a\",\"a\"]},\"Self\",]}",
+        ));
+        assert!(r2.is_err());
+        // Invalid keyword
+        let r3 = sa.validate_json_filter(&String::from(
+            "{\"And\":[{\"Nalf\":[\"a\",\"a\"]},\"Self\"]}",
+        ));
+        assert!(r3.is_err());
+        // valid
+        let r4 = sa.validate_json_filter(&String::from("{\"Or\":[{\"Eq\":[\"a\",\"a\"]}]}"));
+        assert!(r4.is_ok());
+        // valid with self keyword
+        let r5 =
+            sa.validate_json_filter(&String::from("{\"And\":[{\"Eq\":[\"a\",\"a\"]},\"Self\"]}"));
+        assert!(r5.is_ok());
     }
 
     #[test]
@@ -1570,53 +1862,55 @@ mod tests {
         let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
         let schema = schema_outer.read();
         // Test non existant attr name
-        let f_mixed = Filter::Eq("nonClAsS".to_string(), "attributetype".to_string());
+        let f_mixed = filter_all!(f_eq("nonClAsS", "attributetype"));
         assert_eq!(
             f_mixed.validate(&schema),
             Err(SchemaError::InvalidAttribute)
         );
 
         // test syntax of bool
-        let f_bool = Filter::Eq("secret".to_string(), "zzzz".to_string());
+        let f_bool = filter_all!(f_eq("secret", "zzzz"));
         assert_eq!(
             f_bool.validate(&schema),
             Err(SchemaError::InvalidAttributeSyntax)
         );
         // test insensitive values
-        let f_insense = Filter::Eq("class".to_string(), "AttributeType".to_string());
+        let f_insense = filter_all!(f_eq("class", "AttributeType"));
         assert_eq!(
             f_insense.validate(&schema),
-            Ok(Filter::Eq("class".to_string(), "attributetype".to_string()))
+            Ok(unsafe { filter_valid!(f_eq("class", "attributetype")) })
         );
         // Test the recursive structures validate
-        let f_or_empty = Filter::Or(Vec::new());
+        let f_or_empty = filter_all!(f_or!([]));
         assert_eq!(f_or_empty.validate(&schema), Err(SchemaError::EmptyFilter));
-        let f_or = Filter::Or(vec![Filter::Eq("secret".to_string(), "zzzz".to_string())]);
+        let f_or = filter_all!(f_or!([f_eq("secret", "zzzz")]));
         assert_eq!(
             f_or.validate(&schema),
             Err(SchemaError::InvalidAttributeSyntax)
         );
-        let f_or_mult = Filter::And(vec![
-            Filter::Eq("class".to_string(), "attributetype".to_string()),
-            Filter::Eq("secret".to_string(), "zzzzzzz".to_string()),
-        ]);
+        let f_or_mult = filter_all!(f_and!([
+            f_eq("class", "attributetype"),
+            f_eq("secret", "zzzzzzz"),
+        ]));
         assert_eq!(
             f_or_mult.validate(&schema),
             Err(SchemaError::InvalidAttributeSyntax)
         );
         // Test mixed case attr name - this is a pass, due to normalisation
-        let f_or_ok = Filter::AndNot(Box::new(Filter::And(vec![
-            Filter::Eq("Class".to_string(), "AttributeType".to_string()),
-            Filter::Sub("class".to_string(), "classtype".to_string()),
-            Filter::Pres("class".to_string()),
+        let f_or_ok = filter_all!(f_andnot(f_and!([
+            f_eq("Class", "AttributeType"),
+            f_sub("class", "classtype"),
+            f_pres("class")
         ])));
         assert_eq!(
             f_or_ok.validate(&schema),
-            Ok(Filter::AndNot::<FilterValid>(Box::new(Filter::And(vec![
-                Filter::Eq("class".to_string(), "attributetype".to_string()),
-                Filter::Sub("class".to_string(), "classtype".to_string()),
-                Filter::Pres("class".to_string()),
-            ]))))
+            Ok(unsafe {
+                filter_valid!(f_andnot(f_and!([
+                    f_eq("class", "attributetype"),
+                    f_sub("class", "classtype"),
+                    f_pres("class")
+                ])))
+            })
         );
         println!("{}", audit);
     }

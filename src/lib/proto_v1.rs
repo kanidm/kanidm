@@ -27,6 +27,8 @@ pub enum Filter {
     Or(Vec<Filter>),
     And(Vec<Filter>),
     AndNot(Box<Filter>),
+    #[serde(rename = "Self")]
+    SelfUUID,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

@@ -6,7 +6,12 @@ use std::sync::Arc;
 use crate::audit::AuditScope;
 use crate::be::{Backend, BackendReadTransaction, BackendTransaction, BackendWriteTransaction};
 
-use crate::constants::{JSON_ANONYMOUS_V1, JSON_SYSTEM_INFO_V1};
+use crate::access::{
+    AccessControlCreate, AccessControlDelete, AccessControlModify, AccessControlSearch,
+    AccessControls, AccessControlsReadTransaction, AccessControlsTransaction,
+    AccessControlsWriteTransaction,
+};
+use crate::constants::{JSON_ADMIN_V1, JSON_ANONYMOUS_V1, JSON_SYSTEM_INFO_V1};
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
 use crate::error::{ConsistencyError, OperationError, SchemaError};
 use crate::event::{
@@ -23,12 +28,15 @@ use crate::schema::{
 // This is the core of the server. It implements all
 // the search and modify actions, applies access controls
 // and get's everything ready to push back to the fe code
-pub trait QueryServerReadTransaction {
-    type BackendTransactionType: BackendReadTransaction;
+pub trait QueryServerTransaction {
+    type BackendTransactionType: BackendTransaction;
     fn get_be_txn(&self) -> &Self::BackendTransactionType;
 
-    type SchemaTransactionType: SchemaReadTransaction;
+    type SchemaTransactionType: SchemaTransaction;
     fn get_schema(&self) -> &Self::SchemaTransactionType;
+
+    type AccessControlsTransactionType: AccessControlsTransaction;
+    fn get_accesscontrols(&self) -> &Self::AccessControlsTransactionType;
 
     fn search(
         &self,
@@ -51,6 +59,9 @@ pub trait QueryServerReadTransaction {
 
         audit_log!(au, "search: valid filter -> {:?}", vf);
 
+        // Now resolve all references.
+        let vfr = try_audit!(au, vf.resolve(&se.event));
+
         // TODO: Assert access control allows the filter and requested attrs.
 
         /*
@@ -70,14 +81,26 @@ pub trait QueryServerReadTransaction {
         let mut audit_be = AuditScope::new("backend_search");
         let res = self
             .get_be_txn()
-            .search(&mut audit_be, &vf)
+            .search(&mut audit_be, &vfr)
             .map(|r| r)
             .map_err(|_| OperationError::Backend);
         au.append_scope(audit_be);
 
-        if res.is_err() {
-            return res;
-        }
+        let res = try_audit!(au, res);
+
+        // Apply ACP before we let the plugins "have at it".
+        // WARNING; for external searches this is NOT the only
+        // ACP application. There is a second application to reduce the
+        // attribute set on the entries!
+        //
+        // TODO: Make a search_ext that applies search_filter_entry_attributes
+        // and does Entry -> EntryReduced.
+        let mut audit_acp = AuditScope::new("access_control_profiles");
+        let access = self.get_accesscontrols();
+        let acp_res = access.search_filter_entries(&mut audit_acp, se, res);
+
+        au.append_scope(audit_acp);
+        let acp_res = try_audit!(au, acp_res);
 
         /*
         let mut audit_plugin_post = AuditScope::new("plugin_post_search");
@@ -93,10 +116,7 @@ pub trait QueryServerReadTransaction {
         }
         */
 
-        // TODO: We'll add ACI here. I think ACI should transform from
-        // internal -> proto entries since we have to anyway ...
-        // alternately, we can just clone again ...
-        res
+        Ok(acp_res)
     }
 
     fn exists(&self, au: &mut AuditScope, ee: &ExistsEvent) -> Result<bool, OperationError> {
@@ -108,9 +128,11 @@ pub trait QueryServerReadTransaction {
             Err(e) => return Err(OperationError::SchemaViolation(e)),
         };
 
+        let vfr = try_audit!(au, vf.resolve(&ee.event));
+
         let res = self
             .get_be_txn()
-            .exists(&mut audit_be, &vf)
+            .exists(&mut audit_be, &vfr)
             .map(|r| r)
             .map_err(|_| OperationError::Backend);
         au.append_scope(audit_be);
@@ -143,7 +165,7 @@ pub trait QueryServerReadTransaction {
         // index searches, completely bypassing id2entry.
 
         // construct the filter
-        let filt = Filter::new_ignore_hidden(Filter::Eq("name".to_string(), name.clone()));
+        let filt = filter!(f_eq("name", name));
         audit_log!(audit, "name_to_uuid: name -> {:?}", name);
 
         // Internal search - DO NOT SEARCH TOMBSTONES AND RECYCLE
@@ -178,7 +200,7 @@ pub trait QueryServerReadTransaction {
         uuid: &String,
     ) -> Result<String, OperationError> {
         // construct the filter
-        let filt = Filter::new_ignore_hidden(Filter::Eq("uuid".to_string(), uuid.clone()));
+        let filt = filter!(f_eq("uuid", uuid));
         audit_log!(audit, "uuid_to_name: uuid -> {:?}", uuid);
 
         // Internal search - DO NOT SEARCH TOMBSTONES AND RECYCLE
@@ -253,6 +275,30 @@ pub trait QueryServerReadTransaction {
         let res = self.search(&mut audit_int, &se);
         audit.append_scope(audit_int);
         res
+    }
+
+    // Get a single entry by it's UUID. This is heavily relied on for internal
+    // server operations, especially in login and acp checks for acp.
+    fn internal_search_uuid(
+        &self,
+        audit: &mut AuditScope,
+        uuid: &str,
+    ) -> Result<Entry<EntryValid, EntryCommitted>, OperationError> {
+        let mut audit_int = AuditScope::new("internal_search_uuid");
+        let se = SearchEvent::new_internal(filter!(f_eq("uuid", uuid)));
+        let res = self.search(&mut audit_int, &se);
+        audit.append_scope(audit_int);
+        match res {
+            Ok(vs) => {
+                if vs.len() > 1 {
+                    return Err(OperationError::NoMatchingEntries);
+                }
+                vs.into_iter()
+                    .next()
+                    .ok_or(OperationError::NoMatchingEntries)
+            }
+            Err(e) => Err(e),
+        }
     }
 
     // Do a schema aware clone, that fixes values that need some kind of alteration
@@ -340,31 +386,38 @@ pub trait QueryServerReadTransaction {
     }
 }
 
-pub struct QueryServerTransaction {
-    be_txn: BackendTransaction,
+pub struct QueryServerReadTransaction {
+    be_txn: BackendReadTransaction,
     // Anything else? In the future, we'll need to have a schema transaction
     // type, maybe others?
-    schema: SchemaTransaction,
+    schema: SchemaReadTransaction,
+    accesscontrols: AccessControlsReadTransaction,
 }
 
 // Actually conduct a search request
 // This is the core of the server, as it processes the entire event
 // applies all parts required in order and more.
-impl QueryServerReadTransaction for QueryServerTransaction {
-    type BackendTransactionType = BackendTransaction;
+impl QueryServerTransaction for QueryServerReadTransaction {
+    type BackendTransactionType = BackendReadTransaction;
 
-    fn get_be_txn(&self) -> &BackendTransaction {
+    fn get_be_txn(&self) -> &BackendReadTransaction {
         &self.be_txn
     }
 
-    type SchemaTransactionType = SchemaTransaction;
+    type SchemaTransactionType = SchemaReadTransaction;
 
-    fn get_schema(&self) -> &SchemaTransaction {
+    fn get_schema(&self) -> &SchemaReadTransaction {
         &self.schema
+    }
+
+    type AccessControlsTransactionType = AccessControlsReadTransaction;
+
+    fn get_accesscontrols(&self) -> &AccessControlsReadTransaction {
+        &self.accesscontrols
     }
 }
 
-impl QueryServerTransaction {
+impl QueryServerReadTransaction {
     // Verify the data content of the server is as expected. This will probably
     // call various functions for validation, including possibly plugin
     // verifications.
@@ -417,12 +470,13 @@ pub struct QueryServerWriteTransaction<'a> {
     committed: bool,
     // be_write_txn: BackendWriteTransaction,
     // schema_write: SchemaWriteTransaction,
-    // read: QueryServerTransaction,
+    // read: QueryServerReadTransaction,
     be_txn: BackendWriteTransaction,
     schema: SchemaWriteTransaction<'a>,
+    accesscontrols: AccessControlsWriteTransaction<'a>,
 }
 
-impl<'a> QueryServerReadTransaction for QueryServerWriteTransaction<'a> {
+impl<'a> QueryServerTransaction for QueryServerWriteTransaction<'a> {
     type BackendTransactionType = BackendWriteTransaction;
 
     fn get_be_txn(&self) -> &BackendWriteTransaction {
@@ -434,12 +488,19 @@ impl<'a> QueryServerReadTransaction for QueryServerWriteTransaction<'a> {
     fn get_schema(&self) -> &SchemaWriteTransaction<'a> {
         &self.schema
     }
+
+    type AccessControlsTransactionType = AccessControlsWriteTransaction<'a>;
+
+    fn get_accesscontrols(&self) -> &AccessControlsWriteTransaction<'a> {
+        &self.accesscontrols
+    }
 }
 
 pub struct QueryServer {
     // log: actix::Addr<EventLog>,
     be: Backend,
     schema: Arc<Schema>,
+    accesscontrols: Arc<AccessControls>,
 }
 
 impl QueryServer {
@@ -448,13 +509,15 @@ impl QueryServer {
         QueryServer {
             be: be,
             schema: schema,
+            accesscontrols: Arc::new(AccessControls::new()),
         }
     }
 
-    pub fn read(&self) -> QueryServerTransaction {
-        QueryServerTransaction {
+    pub fn read(&self) -> QueryServerReadTransaction {
+        QueryServerReadTransaction {
             be_txn: self.be.read(),
             schema: self.schema.read(),
+            accesscontrols: self.accesscontrols.read(),
         }
     }
 
@@ -469,6 +532,7 @@ impl QueryServer {
             committed: false,
             be_txn: self.be.write(),
             schema: self.schema.write(),
+            accesscontrols: self.accesscontrols.write(),
         }
     }
 
@@ -559,10 +623,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
             audit_log!(au, "Create operation failed (plugin), {:?}", plug_post_res);
             return plug_post_res;
         }
-
-        // Commit the txn
-        // let commit, commit!
-        // be_txn.commit();
 
         // We are complete, finalise logging and return
 
@@ -667,9 +727,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // delete everything that is a tombstone.
 
         // Search for tombstones
-        let ts = match self
-            .internal_search(au, Filter::Eq("class".to_string(), "tombstone".to_string()))
-        {
+        let ts = match self.internal_search(au, filter_all!(f_eq("class", "tombstone"))) {
             Ok(r) => r,
             Err(e) => return Err(e),
         };
@@ -699,9 +757,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub fn purge_recycled(&self, au: &mut AuditScope) -> Result<(), OperationError> {
         // Send everything that is recycled to tombstone
         // Search all recycled
-        let rc = match self
-            .internal_search(au, Filter::Eq("class".to_string(), "recycled".to_string()))
-        {
+        let rc = match self.internal_search(au, filter_all!(f_eq("class", "recycled"))) {
             Ok(r) => r,
             Err(e) => return Err(e),
         };
@@ -976,7 +1032,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         //
         // This will extra classes an attributes alone!
         let filt = match e.filter_from_attrs(&vec![String::from("uuid")]) {
-            Some(f) => f.invalidate(),
+            Some(f) => f,
             None => return Err(OperationError::FilterGeneration),
         };
 
@@ -1021,7 +1077,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Create a filter from the entry for assertion.
         let filt = match e.filter_from_attrs(&vec![String::from("uuid")]) {
-            Some(f) => f.invalidate(),
+            Some(f) => f,
             None => return Err(OperationError::FilterGeneration),
         };
 
@@ -1083,32 +1139,135 @@ impl<'a> QueryServerWriteTransaction<'a> {
         }
 
         // Check the admin object exists (migrations).
+        let mut audit_an = AuditScope::new("start_admin");
+        let res = audit_segment!(audit_an, || serde_json::from_str(JSON_ADMIN_V1)
+            .map_err(|_| OperationError::SerdeJsonError)
+            .and_then(
+                |e: Entry<EntryValid, EntryNew>| self.internal_migrate_or_create(audit, e)
+            ));
+        audit_log!(audit_an, "start_admin -> result {:?}", res);
+        audit.append_scope(audit_an);
+        assert!(res.is_ok());
+        if res.is_err() {
+            return res;
+        }
 
-        // Load access profiles and configure them.
+        // Create any system default schema entries.
+
+        // Create any system default access profile entries.
+
         Ok(())
     }
 
-    pub fn commit(self, audit: &mut AuditScope) -> Result<(), OperationError> {
+    fn reload_schema(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
+        // supply entries to the writable schema to reload from.
+        Ok(())
+    }
+
+    fn reload_accesscontrols(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
+        // supply entries to the writable access controls to reload from.
+        // This has to be done in FOUR passes - one for each type!
+        //
+        // Note, we have to do the search, parse, then submit here, because of the
+        // requirement to have the write query server reference in the parse stage - this
+        // would cause a rust double-borrow if we had AccessControls to try to handle
+        // the entry lists themself.
+
+        // Update search
+        let filt = filter!(f_and!([
+            f_eq("class", "access_control_profile"),
+            f_eq("class", "access_control_search"),
+        ]));
+
+        let res = try_audit!(audit, self.internal_search(audit, filt));
+        let search_acps: Result<Vec<_>, _> = res
+            .iter()
+            .map(|e| AccessControlSearch::try_from(audit, self, e))
+            .collect();
+
+        let search_acps = try_audit!(audit, search_acps);
+
+        try_audit!(audit, self.accesscontrols.update_search(search_acps));
+        // Update create
+        let filt = filter!(f_and!([
+            f_eq("class", "access_control_profile"),
+            f_eq("class", "access_control_create"),
+        ]));
+
+        let res = try_audit!(audit, self.internal_search(audit, filt));
+        let create_acps: Result<Vec<_>, _> = res
+            .iter()
+            .map(|e| AccessControlCreate::try_from(audit, self, e))
+            .collect();
+
+        let create_acps = try_audit!(audit, create_acps);
+
+        try_audit!(audit, self.accesscontrols.update_create(create_acps));
+        // Update modify
+        let filt = filter!(f_and!([
+            f_eq("class", "access_control_profile"),
+            f_eq("class", "access_control_modify"),
+        ]));
+
+        let res = try_audit!(audit, self.internal_search(audit, filt));
+        let modify_acps: Result<Vec<_>, _> = res
+            .iter()
+            .map(|e| AccessControlModify::try_from(audit, self, e))
+            .collect();
+
+        let modify_acps = try_audit!(audit, modify_acps);
+
+        try_audit!(audit, self.accesscontrols.update_modify(modify_acps));
+        // Update delete
+        let filt = filter!(f_and!([
+            f_eq("class", "access_control_profile"),
+            f_eq("class", "access_control_delete"),
+        ]));
+
+        let res = try_audit!(audit, self.internal_search(audit, filt));
+        let delete_acps: Result<Vec<_>, _> = res
+            .iter()
+            .map(|e| AccessControlDelete::try_from(audit, self, e))
+            .collect();
+
+        let delete_acps = try_audit!(audit, delete_acps);
+
+        try_audit!(audit, self.accesscontrols.update_delete(delete_acps));
+        // Alternately, we just get ACP class, and just let acctrl work it out ...
+        Ok(())
+    }
+
+    pub fn commit(mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
+        // Reload the schema from qs.
+        self.reload_schema(audit)?;
+        // Determine if we need to update access control profiles
+        // based on any modifications that have occured.
+        // IF SCHEMA CHANGED WE MUST ALSO RELOAD!!! IE if schema had an attr removed
+        // that we rely on we MUST fail this!
+        self.reload_accesscontrols(audit)?;
+
+        // Now destructure the transaction ready to reset it.
         let QueryServerWriteTransaction {
             committed,
             be_txn,
             schema,
+            accesscontrols,
         } = self;
         assert!(!committed);
         // Begin an audit.
-        // Validate the schema,
-
+        // Validate the schema as we just loaded it.
         let r = schema.validate(audit);
+
         if r.len() == 0 {
             // TODO: At this point, if validate passes, we probably actually want
-            // to perform a reload BEFORE we commit.
+            // to perform a schema reload BEFORE we be commit. Because the be holds
+            // all the data, we need everything to be consistent *first* as the be
+            // is the last point we can really backout!
             // Alternate, we attempt to reload during batch ops, but this seems
             // costly.
-            be_txn.commit().and_then(|_| {
-                // Schema commit: Since validate passed and be is good, this
-                // must now also be good.
-                schema.commit()
-            })
+            schema
+                .commit()
+                .and_then(|_| accesscontrols.commit().and_then(|_| be_txn.commit()))
         } else {
             Err(OperationError::ConsistencyError(r))
         }
@@ -1129,54 +1288,33 @@ mod tests {
     use futures::future::Future;
 
     extern crate tokio;
-    */
     use std::sync::Arc;
-
-    use crate::audit::AuditScope;
     use crate::be::Backend;
-    use crate::constants::UUID_ADMIN;
+    use crate::filter::Filter;
+    use crate::schema::Schema;
+    use crate::audit::AuditScope;
+    */
+
+    use crate::constants::{JSON_ADMIN_V1, UUID_ADMIN};
     use crate::entry::{Entry, EntryInvalid, EntryNew};
     use crate::error::{OperationError, SchemaError};
     use crate::event::{CreateEvent, DeleteEvent, ModifyEvent, ReviveRecycledEvent, SearchEvent};
-    use crate::filter::Filter;
     use crate::modify::{Modify, ModifyList};
     use crate::proto_v1::Filter as ProtoFilter;
     use crate::proto_v1::Modify as ProtoModify;
     use crate::proto_v1::ModifyList as ProtoModifyList;
     use crate::proto_v1::{DeleteRequest, ModifyRequest, ReviveRecycledRequest};
-    use crate::schema::Schema;
-    use crate::server::{QueryServer, QueryServerReadTransaction};
-
-    macro_rules! run_test {
-        ($test_fn:expr) => {{
-            let mut audit = AuditScope::new("run_test");
-
-            let be = Backend::new(&mut audit, "").expect("Failed to init be");
-            let schema_outer = Schema::new(&mut audit).expect("Failed to init schema");
-            {
-                let mut schema = schema_outer.write();
-                schema
-                    .bootstrap_core(&mut audit)
-                    .expect("Failed to bootstrap schema");
-                schema.commit().expect("Failed to commit schema");
-            }
-            let test_server = QueryServer::new(be, Arc::new(schema_outer));
-
-            $test_fn(&test_server, &mut audit);
-            // Any needed teardown?
-            // Make sure there are no errors.
-            assert!(test_server.verify(&mut audit).len() == 0);
-        }};
-    }
+    use crate::server::QueryServerTransaction;
 
     #[test]
     fn test_qs_create_user() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             let server_txn = server.write();
-            let filt = Filter::Pres(String::from("name"));
+            let filt = filter!(f_eq("name", "testperson"));
 
-            let se1 = SearchEvent::new_impersonate_uuid(UUID_ADMIN, filt.clone());
-            let se2 = SearchEvent::new_impersonate_uuid(UUID_ADMIN, filt);
+            let se1 =
+                unsafe { SearchEvent::new_impersonate_entry_ser(JSON_ADMIN_V1, filt.clone()) };
+            let se2 = unsafe { SearchEvent::new_impersonate_entry_ser(JSON_ADMIN_V1, filt) };
 
             let e: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
                 r#"{
@@ -1283,26 +1421,26 @@ mod tests {
             assert!(cr.is_ok());
 
             // Empty Modlist (filter is valid)
-            let me_emp = ModifyEvent::new_internal(
-                Filter::Pres(String::from("class")),
-                ModifyList::new_list(vec![]),
-            );
+            let me_emp =
+                ModifyEvent::new_internal(filter!(f_pres("class")), ModifyList::new_list(vec![]));
             assert!(server_txn.modify(audit, &me_emp) == Err(OperationError::EmptyRequest));
 
             // Mod changes no objects
-            let me_nochg = ModifyEvent::new_impersonate_uuid(
-                UUID_ADMIN,
-                Filter::Eq(String::from("name"), String::from("flarbalgarble")),
-                ModifyList::new_list(vec![Modify::Present(
-                    String::from("description"),
-                    String::from("anusaosu"),
-                )]),
-            );
+            let me_nochg = unsafe {
+                ModifyEvent::new_impersonate_entry_ser(
+                    JSON_ADMIN_V1,
+                    filter!(f_eq("name", "flarbalgarble")),
+                    ModifyList::new_list(vec![Modify::Present(
+                        String::from("description"),
+                        String::from("anusaosu"),
+                    )]),
+                )
+            };
             assert!(server_txn.modify(audit, &me_nochg) == Err(OperationError::NoMatchingEntries));
 
             // Filter is invalid to schema
             let me_inv_f = ModifyEvent::new_internal(
-                Filter::Eq(String::from("tnanuanou"), String::from("Flarbalgarble")),
+                filter!(f_eq("tnanuanou", "Flarbalgarble")),
                 ModifyList::new_list(vec![Modify::Present(
                     String::from("description"),
                     String::from("anusaosu"),
@@ -1317,7 +1455,7 @@ mod tests {
 
             // Mod is invalid to schema
             let me_inv_m = ModifyEvent::new_internal(
-                Filter::Pres(String::from("class")),
+                filter!(f_pres("class")),
                 ModifyList::new_list(vec![Modify::Present(
                     String::from("htnaonu"),
                     String::from("anusaosu"),
@@ -1332,7 +1470,7 @@ mod tests {
 
             // Mod single object
             let me_sin = ModifyEvent::new_internal(
-                Filter::Eq(String::from("name"), String::from("testperson2")),
+                filter!(f_eq("name", "testperson2")),
                 ModifyList::new_list(vec![Modify::Present(
                     String::from("description"),
                     String::from("anusaosu"),
@@ -1342,10 +1480,10 @@ mod tests {
 
             // Mod multiple object
             let me_mult = ModifyEvent::new_internal(
-                Filter::Or(vec![
-                    Filter::Eq(String::from("name"), String::from("testperson1")),
-                    Filter::Eq(String::from("name"), String::from("testperson2")),
-                ]),
+                filter!(f_or!([
+                    f_eq("name", "testperson1"),
+                    f_eq("name", "testperson2"),
+                ])),
                 ModifyList::new_list(vec![Modify::Present(
                     String::from("description"),
                     String::from("anusaosu"),
@@ -1386,7 +1524,7 @@ mod tests {
 
             // Add class but no values
             let me_sin = ModifyEvent::new_internal(
-                Filter::Eq(String::from("name"), String::from("testperson1")),
+                filter!(f_eq("name", "testperson1")),
                 ModifyList::new_list(vec![Modify::Present(
                     String::from("class"),
                     String::from("system_info"),
@@ -1396,7 +1534,7 @@ mod tests {
 
             // Add multivalue where not valid
             let me_sin = ModifyEvent::new_internal(
-                Filter::Eq(String::from("name"), String::from("testperson1")),
+                filter!(f_eq("name", "testperson1")),
                 ModifyList::new_list(vec![Modify::Present(
                     String::from("name"),
                     String::from("testpersonx"),
@@ -1406,7 +1544,7 @@ mod tests {
 
             // add class and valid values?
             let me_sin = ModifyEvent::new_internal(
-                Filter::Eq(String::from("name"), String::from("testperson1")),
+                filter!(f_eq("name", "testperson1")),
                 ModifyList::new_list(vec![
                     Modify::Present(String::from("class"), String::from("system_info")),
                     Modify::Present(String::from("domain"), String::from("domain.name")),
@@ -1417,7 +1555,7 @@ mod tests {
 
             // Replace a value
             let me_sin = ModifyEvent::new_internal(
-                Filter::Eq(String::from("name"), String::from("testperson1")),
+                filter!(f_eq("name", "testperson1")),
                 ModifyList::new_list(vec![
                     Modify::Purged("name".to_string()),
                     Modify::Present(String::from("name"), String::from("testpersonx")),
@@ -1484,28 +1622,22 @@ mod tests {
             assert!(cr.is_ok());
 
             // Delete filter is syntax invalid
-            let de_inv = DeleteEvent::new_internal(Filter::Pres(String::from("nhtoaunaoehtnu")));
+            let de_inv = DeleteEvent::new_internal(filter!(f_pres("nhtoaunaoehtnu")));
             assert!(server_txn.delete(audit, &de_inv).is_err());
 
             // Delete deletes nothing
-            let de_empty = DeleteEvent::new_internal(Filter::Eq(
-                String::from("uuid"),
-                String::from("cc8e95b4-c24f-4d68-ba54-000000000000"),
-            ));
+            let de_empty = DeleteEvent::new_internal(filter!(f_eq(
+                "uuid",
+                "cc8e95b4-c24f-4d68-ba54-000000000000"
+            )));
             assert!(server_txn.delete(audit, &de_empty).is_err());
 
             // Delete matches one
-            let de_sin = DeleteEvent::new_internal(Filter::Eq(
-                String::from("name"),
-                String::from("testperson3"),
-            ));
+            let de_sin = DeleteEvent::new_internal(filter!(f_eq("name", "testperson3")));
             assert!(server_txn.delete(audit, &de_sin).is_ok());
 
             // Delete matches many
-            let de_mult = DeleteEvent::new_internal(Filter::Eq(
-                String::from("description"),
-                String::from("testperson"),
-            ));
+            let de_mult = DeleteEvent::new_internal(filter!(f_eq("description", "testperson")));
             assert!(server_txn.delete(audit, &de_mult).is_ok());
 
             assert!(server_txn.commit(audit).is_ok());
@@ -1519,7 +1651,7 @@ mod tests {
 
             let filt_ts = ProtoFilter::Eq(String::from("class"), String::from("tombstone"));
 
-            let filt_i_ts = Filter::Eq(String::from("class"), String::from("tombstone"));
+            let filt_i_ts = filter_all!(f_eq("class", "tombstone"));
 
             // Create fake external requests. Probably from admin later
             // Should we do this with impersonate instead of using the external
@@ -1542,7 +1674,9 @@ mod tests {
                 &server_txn,
             )
             .expect("delete event create failed");
-            let se_ts = SearchEvent::new_ext_impersonate_uuid(UUID_ADMIN, filt_i_ts.clone());
+            let se_ts = unsafe {
+                SearchEvent::new_ext_impersonate_entry_ser(JSON_ADMIN_V1, filt_i_ts.clone())
+            };
 
             // First, create a tombstone
             let e_ts: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
@@ -1601,11 +1735,11 @@ mod tests {
 
             let filt_rc = ProtoFilter::Eq(String::from("class"), String::from("recycled"));
 
-            let filt_i_rc = Filter::Eq(String::from("class"), String::from("recycled"));
+            let filt_i_rc = filter_all!(f_eq("class", "recycled"));
 
-            let filt_i_ts = Filter::Eq(String::from("class"), String::from("tombstone"));
+            let filt_i_ts = filter_all!(f_eq("class", "tombstone"));
 
-            let filt_i_per = Filter::Eq(String::from("class"), String::from("person"));
+            let filt_i_per = filter_all!(f_eq("class", "person"));
 
             // Create fake external requests. Probably from admin later
             let me_rc = ModifyEvent::from_request(
@@ -1627,9 +1761,13 @@ mod tests {
                 &server_txn,
             )
             .expect("delete event create failed");
-            let se_rc = SearchEvent::new_ext_impersonate_uuid(UUID_ADMIN, filt_i_rc.clone());
+            let se_rc = unsafe {
+                SearchEvent::new_ext_impersonate_entry_ser(JSON_ADMIN_V1, filt_i_rc.clone())
+            };
 
-            let sre_rc = SearchEvent::new_rec_impersonate_uuid(UUID_ADMIN, filt_i_rc.clone());
+            let sre_rc = unsafe {
+                SearchEvent::new_rec_impersonate_entry_ser(JSON_ADMIN_V1, filt_i_rc.clone())
+            };
 
             let rre_rc = ReviveRecycledEvent::from_request(
                 audit,
@@ -1754,14 +1892,13 @@ mod tests {
             let cr = server_txn.create(audit, &ce);
             assert!(cr.is_ok());
             // Delete and ensure they became recycled.
-            let de_sin = DeleteEvent::new_internal(Filter::Eq(
-                String::from("name"),
-                String::from("testperson1"),
-            ));
+            let de_sin = DeleteEvent::new_internal(filter!(f_eq("name", "testperson1")));
             assert!(server_txn.delete(audit, &de_sin).is_ok());
             // Can in be seen by special search? (external recycle search)
-            let filt_rc = Filter::Eq(String::from("class"), String::from("recycled"));
-            let sre_rc = SearchEvent::new_rec_impersonate_uuid(UUID_ADMIN, filt_rc.clone());
+            let filt_rc = filter_all!(f_eq("class", "recycled"));
+            let sre_rc = unsafe {
+                SearchEvent::new_rec_impersonate_entry_ser(JSON_ADMIN_V1, filt_rc.clone())
+            };
             let r2 = server_txn.search(audit, &sre_rc).expect("search failed");
             assert!(r2.len() == 1);
 
@@ -1790,7 +1927,7 @@ mod tests {
                     "description": ["testperson"],
                     "displayname": ["testperson1"]
                 }
-            }"#,
+                }"#,
             )
             .expect("json failure");
             let ce = CreateEvent::new_internal(vec![e1]);
