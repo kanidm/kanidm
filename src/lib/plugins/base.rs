@@ -6,7 +6,7 @@ use crate::audit::AuditScope;
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew};
 use crate::error::{ConsistencyError, OperationError};
 use crate::event::{CreateEvent, ModifyEvent};
-use crate::modify::{Modify, ModifyList, ModifyValid};
+use crate::modify::Modify;
 use crate::server::{
     QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
 };
@@ -145,10 +145,9 @@ impl Plugin for Base {
         au: &mut AuditScope,
         _qs: &QueryServerWriteTransaction,
         _cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
-        _me: &ModifyEvent,
-        modlist: &ModifyList<ModifyValid>,
+        me: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        for modify in modlist.into_iter() {
+        for modify in me.modlist.into_iter() {
             let attr = match &modify {
                 Modify::Present(a, _) => a,
                 Modify::Removed(a, _) => a,
@@ -380,7 +379,7 @@ mod tests {
                 "name": ["testperson"],
                 "description": ["testperson"],
                 "displayname": ["testperson"],
-                "uuid": ["79724141-3603-4060-b6bb-35c72772611d", "79724141-3603-4060-b6bb-35c72772611d"]
+                "uuid": ["79724141-3603-4060-b6bb-35c72772611d", "79724141-3603-4060-b6bb-35c72772611e"]
             }
         }"#,
         )

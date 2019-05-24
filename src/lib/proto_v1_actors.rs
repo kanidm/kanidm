@@ -153,7 +153,7 @@ impl Handler<SearchRequest> for QueryServerV1 {
 
             audit_log!(audit, "Begin event {:?}", srch);
 
-            match qs_read.search(&mut audit, &srch) {
+            match qs_read.search_ext(&mut audit, &srch) {
                 Ok(entries) => {
                     let sr = SearchResult::new(entries);
                     // Now convert to a response, and return

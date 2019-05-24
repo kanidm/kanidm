@@ -1,6 +1,6 @@
 use crate::audit::AuditScope;
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
-use crate::filter::{Filter, FilterInvalid};
+use crate::filter::{Filter, FilterValid};
 use crate::proto_v1::Entry as ProtoEntry;
 use crate::proto_v1::{
     AuthRequest, AuthResponse, AuthStatus, CreateRequest, DeleteRequest, ModifyRequest,
@@ -8,12 +8,18 @@ use crate::proto_v1::{
 };
 // use error::OperationError;
 use crate::error::OperationError;
-use crate::modify::{ModifyInvalid, ModifyList};
+use crate::modify::{ModifyList, ModifyValid};
 use crate::server::{
     QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
 };
+// Bring in schematransaction trait for validate
+// use crate::schema::SchemaTransaction;
 
 // Only used for internal tests
+#[cfg(test)]
+use crate::filter::FilterInvalid;
+#[cfg(test)]
+use crate::modify::ModifyInvalid;
 #[cfg(test)]
 use crate::proto_v1::SearchRecycledRequest;
 
@@ -133,7 +139,7 @@ impl Event {
     pub unsafe fn from_impersonate_entry_ser(e: &str) -> Self {
         let ei: Entry<EntryValid, EntryNew> =
             serde_json::from_str(e).expect("Failed to deserialise!");
-        Self::from_impersonate_entry(unsafe { ei.to_valid_committed() })
+        Self::from_impersonate_entry(ei.to_valid_committed())
     }
 
     pub fn from_impersonate(event: &Self) -> Self {
@@ -143,19 +149,15 @@ impl Event {
         // to audits and logs to determine what happened.
         event.clone()
     }
-
-    pub fn is_internal(&self) -> bool {
-        match self.origin {
-            EventOrigin::Internal => true,
-            _ => false,
-        }
-    }
 }
 
 #[derive(Debug)]
 pub struct SearchEvent {
     pub event: Event,
-    pub filter: Filter<FilterInvalid>,
+    // This is the filter as we apply and process it.
+    pub filter: Filter<FilterValid>,
+    // This is the original filter, for the purpose of ACI checking.
+    pub filter_orig: Filter<FilterValid>,
     // TODO: Add list of attributes to request
 }
 
@@ -168,29 +170,52 @@ impl SearchEvent {
         match Filter::from_ro(audit, &request.filter, qs) {
             Ok(f) => Ok(SearchEvent {
                 event: Event::from_ro_request(audit, qs, request.user_uuid.as_str())?,
-                filter: f.to_ignore_hidden(),
+                // We do need to do this twice to account for the ignore_hidden
+                // changes.
+                filter: f
+                    .clone()
+                    .to_ignore_hidden()
+                    .validate(qs.get_schema())
+                    .map_err(|e| OperationError::SchemaViolation(e))?,
+                filter_orig: f
+                    .validate(qs.get_schema())
+                    .map_err(|e| OperationError::SchemaViolation(e))?,
             }),
             Err(e) => Err(e),
         }
-    }
-
-    pub fn is_internal(&self) -> bool {
-        self.event.is_internal()
     }
 
     // Just impersonate the account with no filter changes.
     #[cfg(test)]
     pub unsafe fn new_impersonate_entry_ser(e: &str, filter: Filter<FilterInvalid>) -> Self {
         SearchEvent {
-            event: unsafe { Event::from_impersonate_entry_ser(e) },
-            filter: filter,
+            event: Event::from_impersonate_entry_ser(e),
+            filter: filter.clone().to_valid(),
+            filter_orig: filter.to_valid(),
         }
     }
 
-    pub fn new_impersonate(event: &Event, filter: Filter<FilterInvalid>) -> Self {
+    #[cfg(test)]
+    pub unsafe fn new_impersonate_entry(
+        e: Entry<EntryValid, EntryCommitted>,
+        filter: Filter<FilterInvalid>,
+    ) -> Self {
+        SearchEvent {
+            event: Event::from_impersonate_entry(e),
+            filter: filter.clone().to_valid(),
+            filter_orig: filter.to_valid(),
+        }
+    }
+
+    pub fn new_impersonate(
+        event: &Event,
+        filter: Filter<FilterValid>,
+        filter_orig: Filter<FilterValid>,
+    ) -> Self {
         SearchEvent {
             event: Event::from_impersonate(event),
             filter: filter,
+            filter_orig: filter_orig,
         }
     }
 
@@ -203,7 +228,14 @@ impl SearchEvent {
         match Filter::from_ro(audit, &request.filter, qs) {
             Ok(f) => Ok(SearchEvent {
                 event: Event::from_ro_request(audit, qs, request.user_uuid.as_str())?,
-                filter: f.to_recycled(),
+                filter: f
+                    .clone()
+                    .to_recycled()
+                    .validate(qs.get_schema())
+                    .map_err(|e| OperationError::SchemaViolation(e))?,
+                filter_orig: f
+                    .validate(qs.get_schema())
+                    .map_err(|e| OperationError::SchemaViolation(e))?,
             }),
             Err(e) => Err(e),
         }
@@ -211,26 +243,44 @@ impl SearchEvent {
 
     #[cfg(test)]
     /* Impersonate a request for recycled objects */
-    pub unsafe fn new_rec_impersonate_entry_ser(e: &str, filter: Filter<FilterInvalid>) -> Self {
+    pub unsafe fn new_rec_impersonate_entry(
+        e: Entry<EntryValid, EntryCommitted>,
+        filter: Filter<FilterInvalid>,
+    ) -> Self {
         SearchEvent {
-            event: unsafe { Event::from_impersonate_entry_ser(e) },
-            filter: filter.to_recycled(),
+            event: Event::from_impersonate_entry(e),
+            filter: filter.clone().to_recycled().to_valid(),
+            filter_orig: filter.to_valid(),
         }
     }
 
     #[cfg(test)]
     /* Impersonate an external request AKA filter ts + recycle */
-    pub unsafe fn new_ext_impersonate_entry_ser(e: &str, filter: Filter<FilterInvalid>) -> Self {
+    pub unsafe fn new_ext_impersonate_entry(
+        e: Entry<EntryValid, EntryCommitted>,
+        filter: Filter<FilterInvalid>,
+    ) -> Self {
         SearchEvent {
-            event: unsafe { Event::from_impersonate_entry_ser(e) },
-            filter: filter.to_ignore_hidden(),
+            event: Event::from_impersonate_entry(e),
+            filter: filter.clone().to_ignore_hidden().to_valid(),
+            filter_orig: filter.to_valid(),
         }
     }
 
-    pub fn new_internal(filter: Filter<FilterInvalid>) -> Self {
+    #[cfg(test)]
+    pub unsafe fn new_internal_invalid(filter: Filter<FilterInvalid>) -> Self {
         SearchEvent {
             event: Event::from_internal(),
-            filter: filter,
+            filter: filter.clone().to_valid(),
+            filter_orig: filter.to_valid(),
+        }
+    }
+
+    pub fn new_internal(filter: Filter<FilterValid>) -> Self {
+        SearchEvent {
+            event: Event::from_internal(),
+            filter: filter.clone(),
+            filter_orig: filter,
         }
     }
 }
@@ -295,14 +345,27 @@ impl CreateEvent {
 #[derive(Debug)]
 pub struct ExistsEvent {
     pub event: Event,
-    pub filter: Filter<FilterInvalid>,
+    // This is the filter, as it will be processed.
+    pub filter: Filter<FilterValid>,
+    // This is the original filter, for the purpose of ACI checking.
+    pub filter_orig: Filter<FilterValid>,
 }
 
 impl ExistsEvent {
-    pub fn new_internal(filter: Filter<FilterInvalid>) -> Self {
+    pub fn new_internal(filter: Filter<FilterValid>) -> Self {
         ExistsEvent {
             event: Event::from_internal(),
-            filter: filter,
+            filter: filter.clone(),
+            filter_orig: filter,
+        }
+    }
+
+    #[cfg(test)]
+    pub unsafe fn new_internal_invalid(filter: Filter<FilterInvalid>) -> Self {
+        ExistsEvent {
+            event: Event::from_internal(),
+            filter: filter.clone().to_valid(),
+            filter_orig: filter.to_valid(),
         }
     }
 }
@@ -310,7 +373,10 @@ impl ExistsEvent {
 #[derive(Debug)]
 pub struct DeleteEvent {
     pub event: Event,
-    pub filter: Filter<FilterInvalid>,
+    // This is the filter, as it will be processed.
+    pub filter: Filter<FilterValid>,
+    // This is the original filter, for the purpose of ACI checking.
+    pub filter_orig: Filter<FilterValid>,
 }
 
 impl DeleteEvent {
@@ -322,7 +388,14 @@ impl DeleteEvent {
         match Filter::from_rw(audit, &request.filter, qs) {
             Ok(f) => Ok(DeleteEvent {
                 event: Event::from_rw_request(audit, qs, request.user_uuid.as_str())?,
-                filter: f.to_ignore_hidden(),
+                filter: f
+                    .clone()
+                    .to_ignore_hidden()
+                    .validate(qs.get_schema())
+                    .map_err(|e| OperationError::SchemaViolation(e))?,
+                filter_orig: f
+                    .validate(qs.get_schema())
+                    .map_err(|e| OperationError::SchemaViolation(e))?,
             }),
             Err(e) => Err(e),
         }
@@ -331,15 +404,26 @@ impl DeleteEvent {
     #[cfg(test)]
     pub unsafe fn new_impersonate_entry_ser(e: &str, filter: Filter<FilterInvalid>) -> Self {
         DeleteEvent {
-            event: unsafe { Event::from_impersonate_entry_ser(e) },
-            filter: filter,
+            event: Event::from_impersonate_entry_ser(e),
+            filter: filter.clone().to_valid(),
+            filter_orig: filter.to_valid(),
         }
     }
 
-    pub fn new_internal(filter: Filter<FilterInvalid>) -> Self {
+    #[cfg(test)]
+    pub unsafe fn new_internal_invalid(filter: Filter<FilterInvalid>) -> Self {
         DeleteEvent {
             event: Event::from_internal(),
-            filter: filter,
+            filter: filter.clone().to_valid(),
+            filter_orig: filter.to_valid(),
+        }
+    }
+
+    pub fn new_internal(filter: Filter<FilterValid>) -> Self {
+        DeleteEvent {
+            event: Event::from_internal(),
+            filter: filter.clone(),
+            filter_orig: filter,
         }
     }
 }
@@ -347,8 +431,11 @@ impl DeleteEvent {
 #[derive(Debug)]
 pub struct ModifyEvent {
     pub event: Event,
-    pub filter: Filter<FilterInvalid>,
-    pub modlist: ModifyList<ModifyInvalid>,
+    // This is the filter, as it will be processed.
+    pub filter: Filter<FilterValid>,
+    // This is the original filter, for the purpose of ACI checking.
+    pub filter_orig: Filter<FilterValid>,
+    pub modlist: ModifyList<ModifyValid>,
 }
 
 impl ModifyEvent {
@@ -361,8 +448,17 @@ impl ModifyEvent {
             Ok(f) => match ModifyList::from(audit, &request.modlist, qs) {
                 Ok(m) => Ok(ModifyEvent {
                     event: Event::from_rw_request(audit, qs, request.user_uuid.as_str())?,
-                    filter: f.to_ignore_hidden(),
-                    modlist: m,
+                    filter: f
+                        .clone()
+                        .to_ignore_hidden()
+                        .validate(qs.get_schema())
+                        .map_err(|e| OperationError::SchemaViolation(e))?,
+                    filter_orig: f
+                        .validate(qs.get_schema())
+                        .map_err(|e| OperationError::SchemaViolation(e))?,
+                    modlist: m
+                        .validate(qs.get_schema())
+                        .map_err(|e| OperationError::SchemaViolation(e))?,
                 }),
                 Err(e) => Err(e),
             },
@@ -371,11 +467,25 @@ impl ModifyEvent {
         }
     }
 
-    pub fn new_internal(filter: Filter<FilterInvalid>, modlist: ModifyList<ModifyInvalid>) -> Self {
+    pub fn new_internal(filter: Filter<FilterValid>, modlist: ModifyList<ModifyValid>) -> Self {
         ModifyEvent {
             event: Event::from_internal(),
-            filter: filter,
+            filter: filter.clone(),
+            filter_orig: filter,
             modlist: modlist,
+        }
+    }
+
+    #[cfg(test)]
+    pub unsafe fn new_internal_invalid(
+        filter: Filter<FilterInvalid>,
+        modlist: ModifyList<ModifyInvalid>,
+    ) -> Self {
+        ModifyEvent {
+            event: Event::from_internal(),
+            filter: filter.clone().to_valid(),
+            filter_orig: filter.to_valid(),
+            modlist: modlist.to_valid(),
         }
     }
 
@@ -386,20 +496,23 @@ impl ModifyEvent {
         modlist: ModifyList<ModifyInvalid>,
     ) -> Self {
         ModifyEvent {
-            event: unsafe { Event::from_impersonate_entry_ser(e) },
-            filter: filter,
-            modlist: modlist,
+            event: Event::from_impersonate_entry_ser(e),
+            filter: filter.clone().to_valid(),
+            filter_orig: filter.to_valid(),
+            modlist: modlist.to_valid(),
         }
     }
 
     pub fn new_impersonate(
         event: &Event,
-        filter: Filter<FilterInvalid>,
-        modlist: ModifyList<ModifyInvalid>,
+        filter: Filter<FilterValid>,
+        filter_orig: Filter<FilterValid>,
+        modlist: ModifyList<ModifyValid>,
     ) -> Self {
         ModifyEvent {
             event: Event::from_impersonate(event),
             filter: filter,
+            filter_orig: filter_orig,
             modlist: modlist,
         }
     }
@@ -465,7 +578,12 @@ impl PurgeRecycledEvent {
 #[derive(Debug)]
 pub struct ReviveRecycledEvent {
     pub event: Event,
-    pub filter: Filter<FilterInvalid>,
+    // This is the filter, as it will be processed.
+    pub filter: Filter<FilterValid>,
+    // Unlike the others, because of how this works, we don't need the orig filter
+    // to be retained, because the filter is the orig filter for this check.
+    //
+    // It will be duplicated into the modify event as it exists.
 }
 
 impl Message for ReviveRecycledEvent {
@@ -481,7 +599,10 @@ impl ReviveRecycledEvent {
         match Filter::from_rw(audit, &request.filter, qs) {
             Ok(f) => Ok(ReviveRecycledEvent {
                 event: Event::from_rw_request(audit, qs, request.user_uuid.as_str())?,
-                filter: f.to_recycled(),
+                filter: f
+                    .to_recycled()
+                    .validate(qs.get_schema())
+                    .map_err(|e| OperationError::SchemaViolation(e))?,
             }),
             Err(e) => Err(e),
         }

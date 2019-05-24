@@ -14,7 +14,7 @@ use crate::audit::AuditScope;
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
 use crate::error::{ConsistencyError, OperationError};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
-use crate::modify::{Modify, ModifyList, ModifyValid};
+use crate::modify::{Modify, ModifyList};
 use crate::plugins::Plugin;
 use crate::server::QueryServerTransaction;
 use crate::server::{QueryServerReadTransaction, QueryServerWriteTransaction};
@@ -188,7 +188,6 @@ impl Plugin for MemberOf {
         pre_cand: &Vec<Entry<EntryValid, EntryCommitted>>,
         cand: &Vec<Entry<EntryValid, EntryCommitted>>,
         _me: &ModifyEvent,
-        _modlist: &ModifyList<ModifyValid>,
     ) -> Result<(), OperationError> {
         // The condition here is critical - ONLY trigger on entries where changes occur!
         let mut changed: Vec<&String> = pre_cand
@@ -226,7 +225,7 @@ impl Plugin for MemberOf {
     }
 
     fn pre_delete(
-        au: &mut AuditScope,
+        _au: &mut AuditScope,
         _qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _de: &DeleteEvent,
@@ -284,7 +283,7 @@ impl Plugin for MemberOf {
         // for each entry in the DB (live).
         for e in all_cand {
             // create new map
-            let mo_set: BTreeMap<String, ()> = BTreeMap::new();
+            // let mo_set: BTreeMap<String, ()> = BTreeMap::new();
             // searcch direct memberships of live groups.
             let filt_in = filter!(f_eq("member", e.get_uuid().as_str()));
 

@@ -856,6 +856,8 @@ impl SchemaInner {
             );
 
             // ACP related attributes
+            /*
+             * temporarily disabled while I decide if it's relevant at all ...
             self.attributes.insert(
                 String::from("acp_allow"),
                 SchemaAttribute {
@@ -872,6 +874,7 @@ impl SchemaInner {
                     syntax: SyntaxType::BOOLEAN,
                 },
             );
+            */
             self.attributes.insert(
                 String::from("acp_enable"),
                 SchemaAttribute {
@@ -1090,7 +1093,11 @@ impl SchemaInner {
                     description: String::from("System Access Control Profile Class"),
                     systemmay: vec!["description".to_string()],
                     may: vec![],
-                    systemmust: vec!["acp_receiver".to_string(), "acp_targetscope".to_string()],
+                    systemmust: vec![
+                        "acp_enable".to_string(),
+                        "acp_receiver".to_string(),
+                        "acp_targetscope".to_string(),
+                    ],
                     must: vec![],
                 },
             );
@@ -1312,7 +1319,7 @@ impl Schema {
 mod tests {
     use crate::audit::AuditScope;
     use crate::constants::*;
-    use crate::entry::{Entry, EntryInvalid, EntryNew, EntryValid};
+    use crate::entry::{Entry, EntryInvalid, EntryNew, EntryNormalised, EntryValid};
     use crate::error::{ConsistencyError, SchemaError};
     // use crate::filter::{Filter, FilterValid};
     use crate::schema::SchemaTransaction;
@@ -1710,9 +1717,9 @@ mod tests {
     }
 
     #[test]
-    fn test_schema_entry_normalise() {
-        // Check that entries can be normalised sanely
-        let mut audit = AuditScope::new("test_schema_entry_normalise");
+    fn test_schema_entry_validate() {
+        // Check that entries can be normalised and validated sanely
+        let mut audit = AuditScope::new("test_schema_entry_validate");
         let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
         let mut schema = schema_outer.write();
         schema
@@ -1757,9 +1764,61 @@ mod tests {
         )
         .expect("json parse failure");
 
-        let e_normalised = e_test.validate(&schema).expect("validation failure");
+        let e_valid = e_test.validate(&schema).expect("validation failure");
 
-        assert_eq!(e_expect, e_normalised);
+        assert_eq!(e_expect, e_valid);
+        println!("{}", audit);
+    }
+
+    #[test]
+    fn test_schema_entry_normalise() {
+        // Check that entries can be normalised sanely
+        let mut audit = AuditScope::new("test_schema_entry_normalise");
+        let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
+        let mut schema = schema_outer.write();
+        schema
+            .bootstrap_core(&mut audit)
+            .expect("failed to bootstrap schema");
+
+        // Check that an entry normalises, despite being inconsistent to
+        // schema.
+        let e_test: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            r#"{
+            "valid": null,
+            "state": null,
+            "attrs": {
+                "class": ["extensibleobject"],
+                "name": ["TestPerson"],
+                "displayName": ["testperson"],
+                "syntax": ["utf8string"],
+                "NotAllowed": ["Some Value"],
+                "UUID": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
+                "index": ["equality"]
+            }
+        }"#,
+        )
+        .expect("json parse failure");
+
+        let e_expect: Entry<EntryNormalised, EntryNew> = serde_json::from_str(
+            r#"{
+            "valid": null,
+            "state": null,
+            "attrs": {
+                "class": ["extensibleobject"],
+                "name": ["testperson"],
+                "displayname": ["testperson"],
+                "syntax": ["UTF8STRING"],
+                "notallowed": ["Some Value"],
+                "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
+                "index": ["EQUALITY"]
+            }
+        }"#,
+        )
+        .expect("json parse failure");
+
+        let e_normal = e_test.normalise(&schema).expect("validation failure");
+
+        assert_eq!(e_expect, e_normal);
         println!("{}", audit);
     }
 
