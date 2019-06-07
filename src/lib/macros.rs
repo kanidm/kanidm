@@ -35,6 +35,20 @@ macro_rules! run_test {
 
 #[allow(unused_macros)]
 #[macro_export]
+macro_rules! modlist {
+    (
+        $vs:expr
+    ) => {{
+        #[allow(unused_imports)]
+        use crate::modify::{m_pres, m_purge, m_remove};
+        use crate::modify::{Modify, ModifyList};
+        let s: Box<[Modify]> = Box::new($vs);
+        ModifyList::new_list(s.into_vec())
+    }};
+}
+
+#[allow(unused_macros)]
+#[macro_export]
 macro_rules! f_and {
     (
         $vs:expr

@@ -103,7 +103,7 @@ macro_rules! run_modify_test {
             let qs = setup_test!(&mut au, $preload_entries);
 
             let me = match $internal {
-                None => ModifyEvent::new_internal($modify_filter, $modify_list),
+                None => unsafe { ModifyEvent::new_internal_invalid($modify_filter, $modify_list) },
                 Some(e_str) => unsafe {
                     ModifyEvent::new_impersonate_entry_ser(e_str, $modify_filter, $modify_list)
                 },
@@ -159,7 +159,7 @@ macro_rules! run_delete_test {
                 Some(e_str) => unsafe {
                     DeleteEvent::new_impersonate_entry_ser(e_str, $delete_filter.clone())
                 },
-                None => DeleteEvent::new_internal($delete_filter.clone()),
+                None => unsafe { DeleteEvent::new_internal_invalid($delete_filter.clone()) },
             };
 
             let mut au_test = AuditScope::new("delete_test");

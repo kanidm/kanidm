@@ -11,6 +11,7 @@ use crate::server::{
     QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
 };
 use std::cmp::{Ordering, PartialOrd};
+use std::collections::BTreeSet;
 
 // Default filter is safe, ignores all hidden types!
 
@@ -154,14 +155,21 @@ impl Filter<FilterValid> {
         }
     }
 
-    pub fn resolve(self, ev: &Event) -> Result<Filter<FilterValidResolved>, OperationError> {
+    pub fn resolve(&self, ev: &Event) -> Result<Filter<FilterValidResolved>, OperationError> {
         // Given a filter, resolve Not and SelfUUID to real terms.
         Ok(Filter {
             state: FilterValidResolved {
-                inner: FilterResolved::resolve(self.state.inner, ev)
+                inner: FilterResolved::resolve(self.state.inner.clone(), ev)
                     .ok_or(OperationError::FilterUUIDResolution)?,
             },
         })
+    }
+
+    pub fn get_attr_set(&self) -> BTreeSet<&str> {
+        // Recurse through the filter getting an attribute set.
+        let mut r_set: BTreeSet<&str> = BTreeSet::new();
+        self.state.inner.get_attr_set(&mut r_set);
+        r_set
     }
 }
 
@@ -212,13 +220,12 @@ impl Filter<FilterInvalid> {
 
     #[cfg(test)]
     pub unsafe fn to_valid_resolved(self) -> Filter<FilterValidResolved> {
+        // There is a good reason this function only exists in tests ...
+        //
         // YOLO.
         // tl;dr - panic if there is a Self term because we don't have the QS
         // to resolve the uuid. Perhaps in the future we can provide a uuid
-        // to this for the resolving to make it safer ...
-        //
-        // Saying this, we COULD also use this chance to resolve name->uuid
-        // instead of in the proto translation layer ...
+        // to this for the resolving to make it safer and test case usable.
         Filter {
             state: FilterValidResolved {
                 inner: FilterResolved::from_invalid(self.state.inner),
@@ -228,6 +235,12 @@ impl Filter<FilterInvalid> {
 
     #[cfg(test)]
     pub unsafe fn to_valid(self) -> Filter<FilterValid> {
+        // There is a good reason this function only exists in tests ...
+        //
+        // YOLO.
+        // tl;dr - blindly accept that this filter and it's ava's MUST have
+        // been normalised and exist in schema. If they don't things may subtely
+        // break, fail, or explode. As subtle as an explosion can be.
         Filter {
             state: FilterValid {
                 inner: self.state.inner,
@@ -309,6 +322,26 @@ impl FilterComp {
             FilterComp::Eq("class".to_string(), "recycled".to_string()),
             fc,
         ])
+    }
+
+    fn get_attr_set<'a>(&'a self, r_set: &mut BTreeSet<&'a str>) {
+        match self {
+            FilterComp::Eq(attr, _) => {
+                r_set.insert(attr.as_str());
+            }
+            FilterComp::Sub(attr, _) => {
+                r_set.insert(attr.as_str());
+            }
+            FilterComp::Pres(attr) => {
+                r_set.insert(attr.as_str());
+            }
+            FilterComp::Or(vs) => vs.iter().for_each(|f| f.get_attr_set(r_set)),
+            FilterComp::And(vs) => vs.iter().for_each(|f| f.get_attr_set(r_set)),
+            FilterComp::AndNot(f) => f.get_attr_set(r_set),
+            FilterComp::SelfUUID => {
+                r_set.insert("uuid");
+            }
+        }
     }
 
     pub fn validate(&self, schema: &SchemaTransaction) -> Result<FilterComp, SchemaError> {
@@ -557,12 +590,12 @@ impl FilterResolved {
             FilterComp::Pres(a) => FilterResolved::Pres(a),
             FilterComp::Or(vs) => FilterResolved::Or(
                 vs.into_iter()
-                    .map(|v| unsafe { FilterResolved::from_invalid(v) })
+                    .map(|v| FilterResolved::from_invalid(v))
                     .collect(),
             ),
             FilterComp::And(vs) => FilterResolved::And(
                 vs.into_iter()
-                    .map(|v| unsafe { FilterResolved::from_invalid(v) })
+                    .map(|v| FilterResolved::from_invalid(v))
                     .collect(),
             ),
             FilterComp::AndNot(f) => {
@@ -571,9 +604,7 @@ impl FilterResolved {
                 // not today remove the box, and we need f in our ownership. Since
                 // AndNot currently is a rare request, cloning is not the worst thing
                 // here ...
-                FilterResolved::AndNot(Box::new(unsafe {
-                    FilterResolved::from_invalid((*f).clone())
-                }))
+                FilterResolved::AndNot(Box::new(FilterResolved::from_invalid((*f).clone())))
             }
             FilterComp::SelfUUID => panic!("Not possible to resolve SelfUUID in from_invalid!"),
         }
@@ -684,6 +715,7 @@ mod tests {
     use crate::filter::{Filter, FilterInvalid};
     use serde_json;
     use std::cmp::{Ordering, PartialOrd};
+    use std::collections::BTreeSet;
 
     #[test]
     fn test_filter_simple() {
@@ -1067,5 +1099,27 @@ mod tests {
         assert!(e2.entry_match_no_index(&f_t1a));
         assert!(!e3.entry_match_no_index(&f_t1a));
         assert!(!e4.entry_match_no_index(&f_t1a));
+    }
+
+    #[test]
+    fn test_attr_set_filter() {
+        let mut f_expect = BTreeSet::new();
+        f_expect.insert("userid");
+        f_expect.insert("class");
+        // Given filters, get their expected attribute sets.
+        let f_t1a =
+            unsafe { filter_valid!(f_and!([f_eq("userid", "alice"), f_eq("class", "1001"),])) };
+
+        assert!(f_t1a.get_attr_set() == f_expect);
+
+        let f_t2a = unsafe {
+            filter_valid!(f_and!([
+                f_eq("userid", "alice"),
+                f_eq("class", "1001"),
+                f_eq("userid", "claire"),
+            ]))
+        };
+
+        assert!(f_t2a.get_attr_set() == f_expect);
     }
 }

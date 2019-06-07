@@ -11,9 +11,13 @@ use crate::be::dbentry::{DbEntry, DbEntryV1, DbEntryVers};
 
 use std::collections::btree_map::{Iter as BTreeIter, IterMut as BTreeIterMut};
 use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 use std::collections::HashMap;
 use std::iter::ExactSizeIterator;
 use std::slice::Iter as SliceIter;
+
+#[cfg(test)]
+use uuid::Uuid;
 
 // make a trait entry for everything to adhere to?
 //  * How to get indexs out?
@@ -142,6 +146,9 @@ pub struct EntryValid {
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct EntryInvalid;
 
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+pub struct EntryNormalised;
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Entry<VALID, STATE> {
     valid: VALID,
@@ -210,65 +217,15 @@ impl Entry<EntryInvalid, EntryNew> {
     }
 }
 
-impl<STATE> Entry<EntryInvalid, STATE> {
-    fn get_uuid(&self) -> Option<&String> {
-        match self.attrs.get("uuid") {
-            Some(vs) => vs.first(),
-            None => None,
-        }
-    }
-
+impl<STATE> Entry<EntryNormalised, STATE> {
     pub fn validate(
         self,
         schema: &SchemaTransaction,
     ) -> Result<Entry<EntryValid, STATE>, SchemaError> {
-        // We need to clone before we start, as well be mutating content.
-        // We destructure:
-        let Entry {
-            valid: _,
-            state,
-            attrs,
-        } = self;
-
         let schema_classes = schema.get_classes();
         let schema_attributes = schema.get_attributes();
 
-        // This should never fail!
-        let schema_attr_name = match schema_attributes.get("name") {
-            Some(v) => v,
-            None => {
-                return Err(SchemaError::Corrupted);
-            }
-        };
-
-        let mut new_attrs = BTreeMap::new();
-
-        // First normalise - this checks and fixes our UUID.
-        for (attr_name, avas) in attrs.iter() {
-            let attr_name_normal: String = schema_attr_name.normalise_value(attr_name);
-            // Get the needed schema type
-            let schema_a_r = schema_attributes.get(&attr_name_normal);
-
-            let mut avas_normal: Vec<String> = match schema_a_r {
-                Some(schema_a) => {
-                    avas.iter()
-                        .map(|av| {
-                            // normalise those based on schema?
-                            schema_a.normalise_value(av)
-                        })
-                        .collect()
-                }
-                None => avas.clone(),
-            };
-
-            // Ensure they are ordered property.
-            avas_normal.sort_unstable();
-
-            // Should never fail!
-            let _ = new_attrs.insert(attr_name_normal, avas_normal);
-        }
-
-        let uuid: String = match new_attrs.get("uuid") {
+        let uuid: String = match &self.attrs.get("uuid") {
             Some(vs) => match vs.first() {
                 Some(uuid) => uuid.to_string(),
                 None => return Err(SchemaError::MissingMustAttribute("uuid".to_string())),
@@ -276,12 +233,13 @@ impl<STATE> Entry<EntryInvalid, STATE> {
             None => return Err(SchemaError::MissingMustAttribute("uuid".to_string())),
         };
 
+        // Build the new valid entry ...
         let ne = Entry {
             valid: EntryValid { uuid },
-            state: state,
-            attrs: new_attrs,
+            state: self.state,
+            attrs: self.attrs,
         };
-        // Now validate.
+        // Now validate it!
 
         // First look at the classes on the entry.
         // Now, check they are valid classes
@@ -376,6 +334,93 @@ impl<STATE> Entry<EntryInvalid, STATE> {
         // Well, we got here, so okay!
         Ok(ne)
     }
+
+    pub fn invalidate(self) -> Entry<EntryInvalid, STATE> {
+        Entry {
+            valid: EntryInvalid,
+            state: self.state,
+            attrs: self.attrs,
+        }
+    }
+
+    pub fn entry_match_no_index(&self, filter: &Filter<FilterValidResolved>) -> bool {
+        self.entry_match_no_index_inner(filter.to_inner())
+    }
+}
+
+impl<STATE> Entry<EntryInvalid, STATE> {
+    fn get_uuid(&self) -> Option<&String> {
+        match self.attrs.get("uuid") {
+            Some(vs) => vs.first(),
+            None => None,
+        }
+    }
+
+    pub fn normalise(
+        self,
+        schema: &SchemaTransaction,
+    ) -> Result<Entry<EntryNormalised, STATE>, SchemaError> {
+        let Entry {
+            valid: _,
+            state,
+            attrs,
+        } = self;
+
+        let schema_attributes = schema.get_attributes();
+
+        // This should never fail!
+        let schema_attr_name = match schema_attributes.get("name") {
+            Some(v) => v,
+            None => {
+                return Err(SchemaError::Corrupted);
+            }
+        };
+
+        let mut new_attrs = BTreeMap::new();
+
+        // First normalise - this checks and fixes our UUID format
+        // but should not remove multiple values.
+        for (attr_name, avas) in attrs.iter() {
+            let attr_name_normal: String = schema_attr_name.normalise_value(attr_name);
+            // Get the needed schema type
+            let schema_a_r = schema_attributes.get(&attr_name_normal);
+
+            let mut avas_normal: Vec<String> = match schema_a_r {
+                Some(schema_a) => {
+                    avas.iter()
+                        .map(|av| {
+                            // normalise those based on schema?
+                            schema_a.normalise_value(av)
+                        })
+                        .collect()
+                }
+                None => avas.clone(),
+            };
+
+            // Ensure they are ordered property, with no dupes.
+            avas_normal.sort_unstable();
+            avas_normal.dedup();
+
+            // Should never fail!
+            let _ = new_attrs.insert(attr_name_normal, avas_normal);
+        }
+
+        Ok(Entry {
+            valid: EntryNormalised,
+            state: state,
+            attrs: new_attrs,
+        })
+    }
+
+    pub fn validate(
+        self,
+        schema: &SchemaTransaction,
+    ) -> Result<Entry<EntryValid, STATE>, SchemaError> {
+        // We need to clone before we start, as well be mutating content.
+        // We destructure:
+
+        self.normalise(schema).and_then(|e| e.validate(schema))
+    }
 }
 
 impl<VALID, STATE> Clone for Entry<VALID, STATE>
@@ -431,10 +476,29 @@ impl Entry<EntryInvalid, EntryNew> {
     }
 
     #[cfg(test)]
+    pub unsafe fn to_valid_normal(self) -> Entry<EntryNormalised, EntryNew> {
+        Entry {
+            valid: EntryNormalised,
+            state: EntryNew,
+            attrs: self
+                .attrs
+                .into_iter()
+                .map(|(k, mut v)| {
+                    v.sort_unstable();
+                    (k, v)
+                })
+                .collect(),
+        }
+    }
+
+    #[cfg(test)]
     pub unsafe fn to_valid_committed(self) -> Entry<EntryValid, EntryCommitted> {
         Entry {
             valid: EntryValid {
-                uuid: self.get_uuid().expect("Invalid uuid").to_string(),
+                uuid: self
+                    .get_uuid()
+                    .map(|u| u.to_string())
+                    .unwrap_or_else(|| Uuid::new_v4().to_hyphenated().to_string()),
             },
             state: EntryCommitted { id: 0 },
             attrs: self
@@ -541,6 +605,34 @@ impl Entry<EntryValid, EntryCommitted> {
             attrs: attrs,
         }
     }
+
+    pub fn reduce_attributes(self, allowed_attrs: BTreeSet<&str>) -> Self {
+        // TODO: Make this inplace, not copying.
+        // Remove all attrs from our tree that are NOT in the allowed set.
+
+        let Entry {
+            valid: s_valid,
+            state: s_state,
+            attrs: s_attrs,
+        } = self;
+
+        let f_attrs: BTreeMap<_, _> = s_attrs
+            .into_iter()
+            .filter_map(|(k, v)| {
+                if allowed_attrs.contains(k.as_str()) {
+                    Some((k, v))
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        Entry {
+            valid: s_valid,
+            state: s_state,
+            attrs: f_attrs,
+        }
+    }
 }
 
 impl<STATE> Entry<EntryValid, STATE> {
@@ -573,41 +665,6 @@ impl<STATE> Entry<EntryValid, STATE> {
         &self.valid.uuid
     }
 
-    // Assert if this filter matches the entry (no index)
-    fn entry_match_no_index_inner(&self, filter: &FilterResolved) -> bool {
-        // Go through the filter components and check them in the entry.
-        // This is recursive!!!!
-        match filter {
-            FilterResolved::Eq(attr, value) => {
-                self.attribute_equality(attr.as_str(), value.as_str())
-            }
-            FilterResolved::Sub(attr, subvalue) => {
-                self.attribute_substring(attr.as_str(), subvalue.as_str())
-            }
-            FilterResolved::Pres(attr) => {
-                // Given attr, is is present in the entry?
-                self.attribute_pres(attr.as_str())
-            }
-            FilterResolved::Or(l) => l.iter().fold(false, |acc, f| {
-                // Check with ftweedal about or filter zero len correctness.
-                if acc {
-                    acc
-                } else {
-                    self.entry_match_no_index_inner(f)
-                }
-            }),
-            FilterResolved::And(l) => l.iter().fold(true, |acc, f| {
-                // Check with ftweedal about and filter zero len correctness.
-                if acc {
-                    self.entry_match_no_index_inner(f)
-                } else {
-                    acc
-                }
-            }),
-            FilterResolved::AndNot(f) => !self.entry_match_no_index_inner(f),
-        }
-    }
-
     pub fn entry_match_no_index(&self, filter: &Filter<FilterValidResolved>) -> bool {
         self.entry_match_no_index_inner(filter.to_inner())
     }
@@ -637,7 +694,7 @@ impl<STATE> Entry<EntryValid, STATE> {
             }
         }
 
-        Some(filter!(f_and(
+        Some(filter_all!(f_and(
             pairs
                 .into_iter()
                 .map(|(attr, value)| f_eq(attr, value))
@@ -704,8 +761,17 @@ impl<STATE> Entry<EntryValid, STATE> {
 
 impl<VALID, STATE> Entry<VALID, STATE> {
     /* WARNING: Should these TODO move to EntryValid only? */
+    // TODO: Should this be Vec<&str>?
     pub fn get_ava(&self, attr: &str) -> Option<&Vec<String>> {
         self.attrs.get(attr)
+    }
+
+    pub fn get_ava_set(&self, attr: &str) -> Option<BTreeSet<&str>> {
+        self.get_ava(attr).map(|vs| {
+            // Map the vec to a BTreeSet instead.
+            let r: BTreeSet<&str> = vs.iter().map(|a| a.as_str()).collect();
+            r
+        })
     }
 
     // Returns NONE if there is more than ONE!!!!
@@ -720,6 +786,12 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             }
             None => None,
         }
+    }
+
+    pub fn get_ava_names(&self) -> BTreeSet<&str> {
+        // Get the set of all attribute names in the entry
+        let r: BTreeSet<&str> = self.attrs.keys().map(|a| a.as_str()).collect();
+        r
     }
 
     pub fn attribute_pres(&self, attr: &str) -> bool {
@@ -771,6 +843,43 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     pub fn avas(&self) -> EntryAvas {
         EntryAvas {
             inner: self.attrs.iter(),
+        }
+    }
+
+    // This is private, but exists on all types, so that valid and normal can then
+    // expose the simpler wrapper for entry_match_no_index only.
+    // Assert if this filter matches the entry (no index)
+    fn entry_match_no_index_inner(&self, filter: &FilterResolved) -> bool {
+        // Go through the filter components and check them in the entry.
+        // This is recursive!!!!
+        match filter {
+            FilterResolved::Eq(attr, value) => {
+                self.attribute_equality(attr.as_str(), value.as_str())
+            }
+            FilterResolved::Sub(attr, subvalue) => {
+                self.attribute_substring(attr.as_str(), subvalue.as_str())
+            }
+            FilterResolved::Pres(attr) => {
+                // Given attr, is is present in the entry?
+                self.attribute_pres(attr.as_str())
+            }
+            FilterResolved::Or(l) => l.iter().fold(false, |acc, f| {
+                // Check with ftweedal about or filter zero len correctness.
+                if acc {
+                    acc
+                } else {
+                    self.entry_match_no_index_inner(f)
+                }
+            }),
+            FilterResolved::And(l) => l.iter().fold(true, |acc, f| {
+                // Check with ftweedal about and filter zero len correctness.
+                if acc {
+                    self.entry_match_no_index_inner(f)
+                } else {
+                    acc
+                }
+            }),
+            FilterResolved::AndNot(f) => !self.entry_match_no_index_inner(f),
         }
     }
 }
@@ -863,8 +972,16 @@ where
 
 impl<VALID, STATE> PartialEq for Entry<VALID, STATE> {
     fn eq(&self, rhs: &Entry<VALID, STATE>) -> bool {
-        // FIXME: This is naive. Later it should be schema
-        // aware checking.
+        // This may look naive - but it is correct. This is because
+        // all items that end up in an item MUST have passed through
+        // schema validation and normalisation so we can assume that
+        // all rules were applied correctly. Thus we can just simply
+        // do a char-compare like this.
+        //
+        // Of course, this is only true on the "Valid" types ... the others
+        // are not guaranteed to support this ... but more likely that will
+        // just end in eager false-results. We'll never say something is true
+        // that should NOT be.
         self.attrs == rhs.attrs
     }
 }

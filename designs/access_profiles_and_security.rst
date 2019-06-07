@@ -393,7 +393,12 @@ createevent, ensure the classes only contain the set in createclass, then finall
 filter_no_index to the entry to entry. If all of this passes, the create is allowed.
 
 A key point, is that there is no union of create aci's - the WHOLE aci must pass, not parts of
-multiple.
+multiple. This means if a control say "allows creating group with member" and "allows creating
+user with name", creating a gorup with name is not allowed - despite your ability to create
+an entry with "name" it's classes don't match. This way, the admin of the service can define
+create controls with really specific intent to how they'll be used, without risk of two
+controls causing un-intended effects (users that are also groups, or allowing values that
+were not intended).
 
 An important consideration is how to handle overlapping aci. If two aci *could* match the create
 should we enforce both conditions are upheld? Or only a single upheld aci allows the create?

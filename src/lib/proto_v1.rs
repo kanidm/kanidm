@@ -235,3 +235,14 @@ impl ReviveRecycledRequest {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::proto_v1::Filter as ProtoFilter;
+    #[test]
+    fn test_protofilter_simple() {
+        let pf: ProtoFilter = ProtoFilter::Pres("class".to_string());
+
+        println!("{:?}", serde_json::to_string(&pf).expect("JSON failure"));
+    }
+}

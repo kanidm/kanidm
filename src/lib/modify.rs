@@ -24,6 +24,21 @@ pub enum Modify {
     Purged(String),
 }
 
+#[allow(dead_code)]
+pub fn m_pres(a: &str, v: &str) -> Modify {
+    Modify::Present(a.to_string(), v.to_string())
+}
+
+#[allow(dead_code)]
+pub fn m_remove(a: &str, v: &str) -> Modify {
+    Modify::Removed(a.to_string(), v.to_string())
+}
+
+#[allow(dead_code)]
+pub fn m_purge(a: &str) -> Modify {
+    Modify::Purged(a.to_string())
+}
+
 impl Modify {
     pub fn from(
         audit: &mut AuditScope,
@@ -153,6 +168,14 @@ impl ModifyList<ModifyInvalid> {
             mods: valid_mods,
         })
     }
+
+    #[cfg(test)]
+    pub unsafe fn to_valid(self) -> ModifyList<ModifyValid> {
+        ModifyList {
+            valid: ModifyValid,
+            mods: self.mods,
+        }
+    }
 }
 
 impl ModifyList<ModifyValid> {
@@ -162,6 +185,10 @@ impl ModifyList<ModifyValid> {
             valid: ModifyValid,
             mods: mods,
         }
+    }
+
+    pub fn iter(&self) -> slice::Iter<Modify> {
+        self.mods.iter()
     }
 }
 

@@ -62,6 +62,7 @@ pub trait BackendTransaction {
         audit_segment!(au, || {
             // Do a final optimise of the filter
             let filt = filt.optimise();
+            audit_log!(au, "filter optimised to --> {:?}", filt);
 
             let mut raw_entries: Vec<IdEntry> = Vec::new();
             {
@@ -137,20 +138,21 @@ pub trait BackendTransaction {
         // At the moment, technically search will do this, but it won't always be the
         // case once this becomes a standalone function.
         let filt = filt.optimise();
+        audit_log!(au, "filter optimised to --> {:?}", filt);
 
         let r = self.search(au, &filt);
         match r {
             Ok(v) => {
                 if v.len() > 0 {
-                    audit_log!(au, "candidate exists {:?}", filt);
+                    audit_log!(au, "candidate exists");
                     Ok(true)
                 } else {
-                    audit_log!(au, "candidate does not exist {:?}", filt);
+                    audit_log!(au, "candidate does not exist");
                     Ok(false)
                 }
             }
             Err(e) => {
-                audit_log!(au, "error processing filt {:?}, {:?}", filt, e);
+                audit_log!(au, "error processing exists {:?}", e);
                 Err(e)
             }
         }

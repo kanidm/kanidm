@@ -16,6 +16,69 @@ pub static JSON_ADMIN_V1: &'static str = r#"{
     }
 }"#;
 
+pub static _UUID_IDM_ADMINS: &'static str = "00000000-0000-0000-0000-000000000001";
+pub static JSON_IDM_ADMINS_V1: &'static str = r#"{
+    "valid": {
+        "uuid": "00000000-0000-0000-0000-000000000001"
+    },
+    "state": null,
+    "attrs": {
+        "class": ["group", "object"],
+        "name": ["idm_admins"],
+        "uuid": ["00000000-0000-0000-0000-000000000001"],
+        "description": ["Builtin IDM Administrators Group."],
+        "version": ["1"],
+        "member": ["00000000-0000-0000-0000-000000000000"]
+    }
+}"#;
+
+pub static _UUID_IDM_ADMINS_ACP_SEARCH_V1: &'static str = "00000000-0000-0000-0000-ffffff000002";
+pub static JSON_IDM_ADMINS_ACP_SEARCH_V1: &'static str = r#"{
+    "valid": {
+        "uuid": "00000000-0000-0000-0000-ffffff000002"
+    },
+    "state": null,
+    "attrs": {
+        "class": ["object", "access_control_profile", "access_control_search"],
+        "name": ["idm_admins_acp_search"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000002"],
+        "description": ["Builtin IDM Administrators Access Controls."],
+        "version": ["1"],
+        "acp_enable": ["true"],
+        "acp_receiver": [
+            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000001\"]}"
+        ],
+        "acp_targetscope": [
+            "{\"Pres\":\"class\"}"
+        ],
+        "acp_search_attr": ["name", "class", "uuid"]
+    }
+}"#;
+
+pub static _UUID_IDM_ADMINS_ACP_REVIVE_V1: &'static str = "00000000-0000-0000-0000-ffffff000003";
+pub static JSON_IDM_ADMINS_ACP_REVIVE_V1: &'static str = r#"{
+    "valid": {
+        "uuid": "00000000-0000-0000-0000-ffffff000003"
+    },
+    "state": null,
+    "attrs": {
+        "class": ["object", "access_control_profile", "access_control_modify"],
+        "name": ["idm_admins_acp_revive"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000003"],
+        "description": ["Builtin IDM Administrators Access Controls."],
+        "version": ["1"],
+        "acp_enable": ["true"],
+        "acp_receiver": [
+            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000001\"]}"
+        ],
+        "acp_targetscope": [
+            "{\"Eq\":[\"class\",\"recycled\"]}"
+        ],
+        "acp_modify_removedattr": ["class"],
+        "acp_modify_class": ["recycled"]
+    }
+}"#;
+
 pub static _UUID_ANONYMOUS: &'static str = "00000000-0000-0000-0000-ffffffffffff";
 pub static JSON_ANONYMOUS_V1: &'static str = r#"{
     "valid": {
@@ -109,3 +172,26 @@ pub static UUID_SCHEMA_CLASS_ACCESS_CONTROL_MODIFY: &'static str =
     "fd860561-9d0a-4f12-be30-406834292d46";
 pub static UUID_SCHEMA_CLASS_ACCESS_CONTROL_CREATE: &'static str =
     "58c5c197-51d8-4c30-9a8e-b8a0bb0eaacd";
+
+// ============ TEST DATA ============
+#[cfg(test)]
+pub static JSON_TESTPERSON1: &'static str = r#"{
+    "valid": null,
+    "state": null,
+    "attrs": {
+        "class": ["object"],
+        "name": ["testperson1"],
+        "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"]
+    }
+}"#;
+
+#[cfg(test)]
+pub static JSON_TESTPERSON2: &'static str = r#"{
+    "valid": null,
+    "state": null,
+    "attrs": {
+        "class": ["object"],
+        "name": ["testperson2"],
+        "uuid": ["538faac7-4d29-473b-a59d-23023ac19955"]
+    }
+}"#;

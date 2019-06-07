@@ -33,6 +33,7 @@ pub enum OperationError {
     SQLiteError, //(RusqliteError)
     FsError,
     SerdeJsonError,
+    AccessDenied,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]

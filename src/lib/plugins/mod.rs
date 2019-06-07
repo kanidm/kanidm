@@ -2,7 +2,6 @@ use crate::audit::AuditScope;
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
 use crate::error::{ConsistencyError, OperationError};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
-use crate::modify::{ModifyList, ModifyValid};
 use crate::server::{QueryServerReadTransaction, QueryServerWriteTransaction};
 
 #[macro_use]
@@ -56,7 +55,6 @@ trait Plugin {
         _qs: &QueryServerWriteTransaction,
         _cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
-        _modlist: &ModifyList<ModifyValid>,
     ) -> Result<(), OperationError> {
         Ok(())
     }
@@ -68,7 +66,6 @@ trait Plugin {
         _pre_cand: &Vec<Entry<EntryValid, EntryCommitted>>,
         _cand: &Vec<Entry<EntryValid, EntryCommitted>>,
         _ce: &ModifyEvent,
-        _modlist: &ModifyList<ModifyValid>,
     ) -> Result<(), OperationError> {
         Ok(())
     }
@@ -172,7 +169,6 @@ macro_rules! run_pre_modify_plugin {
         $qs:ident,
         $cand:ident,
         $ce:ident,
-        $ml:ident,
         $target_plugin:ty
     ) => {{
         let mut audit_scope = AuditScope::new(<($target_plugin)>::id());
@@ -180,8 +176,7 @@ macro_rules! run_pre_modify_plugin {
             &mut audit_scope,
             $qs,
             $cand,
-            $ce,
-            $ml
+            $ce
         ));
         $au.append_scope(audit_scope);
         r
@@ -195,7 +190,6 @@ macro_rules! run_post_modify_plugin {
         $pre_cand:ident,
         $cand:ident,
         $ce:ident,
-        $ml:ident,
         $target_plugin:ty
     ) => {{
         let mut audit_scope = AuditScope::new(<($target_plugin)>::id());
@@ -204,8 +198,7 @@ macro_rules! run_post_modify_plugin {
             $qs,
             $pre_cand,
             $cand,
-            $ce,
-            $ml
+            $ce
         ));
         $au.append_scope(audit_scope);
         r
@@ -324,13 +317,11 @@ impl Plugins {
         qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         me: &ModifyEvent,
-        modlist: &ModifyList<ModifyValid>,
     ) -> Result<(), OperationError> {
         audit_segment!(au, || {
-            let res =
-                run_pre_modify_plugin!(au, qs, cand, me, modlist, base::Base).and_then(|_| {
-                    run_pre_modify_plugin!(au, qs, cand, me, modlist, refint::ReferentialIntegrity)
-                });
+            let res = run_pre_modify_plugin!(au, qs, cand, me, base::Base).and_then(|_| {
+                run_pre_modify_plugin!(au, qs, cand, me, refint::ReferentialIntegrity)
+            });
 
             res
         })
@@ -342,30 +333,20 @@ impl Plugins {
         pre_cand: &Vec<Entry<EntryValid, EntryCommitted>>,
         cand: &Vec<Entry<EntryValid, EntryCommitted>>,
         me: &ModifyEvent,
-        modlist: &ModifyList<ModifyValid>,
     ) -> Result<(), OperationError> {
         audit_segment!(au, || {
-            let res = run_post_modify_plugin!(au, qs, pre_cand, cand, me, modlist, base::Base)
-                .and_then(|_| {
+            let res =
+                run_post_modify_plugin!(au, qs, pre_cand, cand, me, base::Base).and_then(|_| {
                     run_post_modify_plugin!(
                         au,
                         qs,
                         pre_cand,
                         cand,
                         me,
-                        modlist,
                         refint::ReferentialIntegrity
                     )
                     .and_then(|_| {
-                        run_post_modify_plugin!(
-                            au,
-                            qs,
-                            pre_cand,
-                            cand,
-                            me,
-                            modlist,
-                            memberof::MemberOf
-                        )
+                        run_post_modify_plugin!(au, qs, pre_cand, cand, me, memberof::MemberOf)
                     })
                 });
 

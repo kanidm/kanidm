@@ -15,7 +15,7 @@ use crate::audit::AuditScope;
 use crate::entry::{Entry, EntryCommitted, EntryNew, EntryValid};
 use crate::error::{ConsistencyError, OperationError};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
-use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
+use crate::modify::{Modify, ModifyInvalid, ModifyList};
 use crate::plugins::Plugin;
 use crate::schema::SchemaTransaction;
 use crate::server::QueryServerTransaction;
@@ -105,14 +105,13 @@ impl Plugin for ReferentialIntegrity {
         qs: &QueryServerWriteTransaction,
         _pre_cand: &Vec<Entry<EntryValid, EntryCommitted>>,
         _cand: &Vec<Entry<EntryValid, EntryCommitted>>,
-        _me: &ModifyEvent,
-        modlist: &ModifyList<ModifyValid>,
+        me: &ModifyEvent,
     ) -> Result<(), OperationError> {
         let schema = qs.get_schema();
         let ref_types = schema.get_reference_types();
 
         // For all mods
-        for modify in modlist.into_iter() {
+        for modify in me.modlist.into_iter() {
             match &modify {
                 // If the mod affects a reference type and being ADDED.
                 Modify::Present(a, v) => {
