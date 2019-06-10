@@ -6,6 +6,64 @@ use std::collections::BTreeMap;
 
 // These proto implementations are here because they have public definitions
 
+
+/* ===== higher level types ===== */
+// These are all types that are conceptually layers ontop of entry and
+// friends. They allow us to process more complex requests and provide
+// domain specific fields for the purposes of IDM, over the normal
+// entry/ava/filter types. These related deeply to schema.
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Group {
+    pub name: String,
+    pub uuid: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Claim {
+    pub name: String,
+    pub uuid: String,
+    // These can be ephemeral, or shortlived in a session.
+    // some may even need requesting.
+    // pub expiry: DateTime
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Application {
+    pub name: String,
+    pub uuid: String,
+}
+
+// The currently authenticated user, and any required metadata for them
+// to properly authorise them. This is similar in nature to oauth and the krb
+// PAC/PAD structures. Currently we only use this internally, but we should
+// consider making it "parseable" by the client so they can have per-session
+// group/authorisation data.
+//
+// This structure and how it works will *very much* change over time from this
+// point onward!
+//
+// It's likely that this must have a relationship to the server's user structure
+// and to the Entry so that filters or access controls can be applied.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct UserAuthToken {
+    // When this data should be considered invalid. Interpretation
+    // may depend on the client application.
+    // pub expiry: DateTime,
+    pub name: String,
+    pub displayname: String,
+    pub uuid: String,
+    pub application: Option<Application>,
+    pub groups: Vec<Group>,
+    pub claims: Vec<Claim>,
+    // Should we allow supplemental ava's to be added on request?
+}
+
+// UAT will need a downcast to Entry, which adds in the claims to the entry
+// for the purpose of filtering.
+
+/* ===== low level proto types ===== */
+
 // FIXME: We probably need a proto entry to transform our
 // server core entry into. We also need to get from proto
 // entry to our actual entry.
@@ -236,6 +294,38 @@ impl ReviveRecycledRequest {
     }
 }
 
+// This doesn't need seralise because it's only accessed via a "get".
+#[derive(Debug)]
+pub struct WhoamiRequest {
+    pub uat: Option<UserAuthToken>,
+}
+
+impl Message for WhoamiRequest {
+    type Result = Result<WhoamiResponse, OperationError>;
+}
+
+impl WhoamiRequest {
+    pub fn new(uat: Option<UserAuthToken>) -> Self {
+        WhoamiRequest {
+            uat: uat,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct WhoamiResponse {
+    // Should we just embed the entry? Or destructure it?
+    pub youare: Entry
+}
+
+impl WhoamiResponse {
+    pub fn new(e: Entry) -> Self {
+        WhoamiResponse {
+            youare: e
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::proto_v1::Filter as ProtoFilter;
@@ -246,3 +336,5 @@ mod tests {
         println!("{:?}", serde_json::to_string(&pf).expect("JSON failure"));
     }
 }
+
+

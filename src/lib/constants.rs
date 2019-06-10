@@ -1,3 +1,9 @@
+
+// On test builds, define to 60 seconds
+#[cfg(test)]
+pub static PURGE_TIMEOUT: u64 = 60;
+// For production, 1 hour.
+#[cfg(not(test))]
 pub static PURGE_TIMEOUT: u64 = 3600;
 
 pub static UUID_ADMIN: &'static str = "00000000-0000-0000-0000-000000000000";

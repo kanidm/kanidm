@@ -13,15 +13,21 @@ use crate::config::Configuration;
 // SearchResult
 use crate::interval::IntervalActor;
 use crate::log;
-use crate::proto_v1::{AuthRequest, CreateRequest, DeleteRequest, ModifyRequest, SearchRequest};
+use crate::proto_v1::{AuthRequest, CreateRequest, DeleteRequest, ModifyRequest, SearchRequest, WhoamiRequest, WhoamiResponse, UserAuthToken};
 use crate::proto_v1_actors::QueryServerV1;
+use crate::error::OperationError;
 
 struct AppState {
     qe: actix::Addr<QueryServerV1>,
     max_size: usize,
 }
 
-macro_rules! json_event_decode {
+fn get_current_user(req: &HttpRequest<AppState>) -> Option<UserAuthToken> {
+    None
+    // unimplemented!();
+}
+
+macro_rules! json_event_post {
     ($req:expr, $state:expr, $event_type:ty, $message_type:ty) => {{
         // This is copied every request. Is there a better way?
         // The issue is the fold move takes ownership of state if
@@ -52,7 +58,7 @@ macro_rules! json_event_decode {
                     // let r_obj = serde_json::from_slice::<SearchRequest>(&body);
                     let r_obj = serde_json::from_slice::<$message_type>(&body);
 
-                    // Send to the db for create
+                    // Send to the db for handling
                     match r_obj {
                         Ok(obj) => {
                             let res = $state
@@ -81,33 +87,65 @@ macro_rules! json_event_decode {
     }};
 }
 
+macro_rules! json_event_get {
+    ($req:expr, $state:expr, $event_type:ty, $message_type:ty) => {{
+        // Get current auth data - remember, the QS checks if the
+        // none/some is okay, because it's too hard to make it work here
+        // with all the async parts.
+        let uat = get_current_user(&$req);
+
+        // New event, feed current auth data from the token to it.
+        let obj = <($message_type)>::new(uat);
+
+        let res = $state.qe
+            .send(obj)
+            .from_err()
+            .and_then(|res| match res {
+                Ok(event_result) => Ok(HttpResponse::Ok().json(event_result)),
+                Err(e) => Ok(HttpResponse::InternalServerError().json(e)),
+            });
+
+        Box::new(res)
+    }}
+}
+
 // Handle the various end points we need to expose
 
 fn create(
     (req, state): (HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    json_event_decode!(req, state, CreateEvent, CreateRequest)
+    json_event_post!(req, state, CreateEvent, CreateRequest)
 }
 
 fn modify(
     (req, state): (HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    json_event_decode!(req, state, ModifyEvent, ModifyRequest)
+    json_event_post!(req, state, ModifyEvent, ModifyRequest)
 }
 
 fn delete(
     (req, state): (HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    json_event_decode!(req, state, DeleteEvent, DeleteRequest)
+    json_event_post!(req, state, DeleteEvent, DeleteRequest)
 }
 
 fn search(
     (req, state): (HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    json_event_decode!(req, state, SearchEvent, SearchRequest)
+    json_event_post!(req, state, SearchEvent, SearchRequest)
+}
+
+fn whoami(
+    (req, state): (HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    // Actually this may not work as it assumes post not get.
+    json_event_get!(req, state, WhoamiEvent, WhoamiRequest)
 }
 
 // delete, modify
+
+// We probably need an extract auth or similar to handle the different
+// types (cookie, bearer), and to generic this over get/post.
 
 fn auth(
     (req, state): (HttpRequest<AppState>, State<AppState>),
@@ -186,22 +224,6 @@ fn auth(
         )
 }
 
-fn whoami(req: &HttpRequest<AppState>) -> Result<&'static str> {
-    println!("{:?}", req);
-
-    // RequestSession trait is used for session access
-    let mut counter = 1;
-    if let Some(count) = req.session().get::<i32>("counter")? {
-        println!("SESSION value: {}", count);
-        counter = count + 1;
-        req.session().set("counter", counter)?;
-    } else {
-        req.session().set("counter", counter)?;
-    }
-
-    Ok("welcome!")
-}
-
 pub fn create_server_core(config: Configuration) {
     // Configure the middleware logger
     ::std::env::set_var("RUST_LOG", "actix_web=info");
@@ -261,7 +283,9 @@ pub fn create_server_core(config: Configuration) {
         ))
         // .resource("/", |r| r.f(index))
         // curl --header ...?
-        .resource("/v1/whoami", |r| r.f(whoami))
+        .resource("/v1/whoami", |r| {
+            r.method(http::Method::GET).with_async(whoami)
+        })
         // .resource("/v1/login", ...)
         // .resource("/v1/logout", ...)
         // .resource("/v1/token", ...) generate a token for id servers to use

@@ -4,7 +4,7 @@ use crate::filter::{Filter, FilterValid};
 use crate::proto_v1::Entry as ProtoEntry;
 use crate::proto_v1::{
     AuthRequest, AuthResponse, AuthStatus, CreateRequest, DeleteRequest, ModifyRequest,
-    OperationResponse, ReviveRecycledRequest, SearchRequest, SearchResponse,
+    OperationResponse, ReviveRecycledRequest, SearchRequest, SearchResponse, WhoamiResponse, WhoamiRequest, UserAuthToken,
 };
 // use error::OperationError;
 use crate::error::OperationError;
@@ -48,13 +48,13 @@ pub struct SearchResult {
 impl SearchResult {
     pub fn new(entries: Vec<Entry<EntryValid, EntryCommitted>>) -> Self {
         SearchResult {
-            // FIXME: Can we consume this iter?
             entries: entries
                 .iter()
                 .map(|e| {
-                    // FIXME: The issue here is this probably is applying transforms
-                    // like access control ... May need to change.
-                    e.into()
+                    // All the needed transforms for this result are done
+                    // in search_ext. This is just an entry -> protoentry
+                    // step.
+                    e.into_pe()
                 })
                 .collect(),
         }
@@ -100,6 +100,24 @@ impl Event {
         //
         // For now, no.
         let e = try_audit!(audit, qs.internal_search_uuid(audit, user_uuid));
+
+        Ok(Event {
+            origin: EventOrigin::User(e),
+        })
+    }
+
+    pub fn from_ro_uat(
+        audit: &mut AuditScope,
+        qs: &QueryServerReadTransaction,
+        uat: Option<UserAuthToken>,
+    ) -> Result<Self, OperationError> {
+
+
+        let uat = uat.ok_or(OperationError::NotAuthenticated)?;
+
+        let e = try_audit!(audit, qs.internal_search_uuid(audit, uat.uuid.as_str()));
+        // FIXME: Now apply claims from the uat into the Entry
+        // to allow filtering.
 
         Ok(Event {
             origin: EventOrigin::User(e),
@@ -183,6 +201,22 @@ impl SearchEvent {
             }),
             Err(e) => Err(e),
         }
+    }
+
+    pub fn from_whoami_request(
+        audit: &mut AuditScope,
+        request: WhoamiRequest,
+        qs: &QueryServerReadTransaction,
+    ) -> Result<Self, OperationError> {
+        Ok(SearchEvent {
+            event: Event::from_ro_uat(audit, qs, request.uat)?,
+            filter: filter!(f_self())
+                .validate(qs.get_schema())
+                .map_err(|e| OperationError::SchemaViolation(e))?,
+            filter_orig: filter_all!(f_self())
+                .validate(qs.get_schema())
+                .map_err(|e| OperationError::SchemaViolation(e))?,
+        })
     }
 
     // Just impersonate the account with no filter changes.
@@ -535,6 +569,24 @@ impl AuthResult {
     pub fn response(self) -> AuthResponse {
         AuthResponse {
             status: AuthStatus::Begin(String::from("hello")),
+        }
+    }
+}
+
+pub struct WhoamiResult {
+    youare: ProtoEntry
+}
+
+impl WhoamiResult {
+    pub fn new(e: Entry<EntryValid, EntryCommitted>) -> Self {
+        WhoamiResult {
+            youare: e.into_pe()
+        }
+    }
+
+    pub fn response(self) -> WhoamiResponse {
+        WhoamiResponse {
+            youare: self.youare
         }
     }
 }

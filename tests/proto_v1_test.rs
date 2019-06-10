@@ -23,14 +23,13 @@ extern crate tokio;
 macro_rules! run_test {
     ($test_fn:expr) => {{
         let (tx, rx) = mpsc::channel();
+        let config = Configuration::new();
+        // Setup the config ...
 
-        thread::spawn(|| {
-            // setup
-            // Create a server config in memory for use - use test settings
-            // Create a log: In memory - for now it's just stdout
-
+        thread::spawn(move || {
+            // Spawn a thread for the test runner, this should have a unique
+            // port....
             System::run(move || {
-                let config = Configuration::new();
                 create_server_core(config);
 
                 // This appears to be bind random ...
@@ -44,7 +43,12 @@ macro_rules! run_test {
         // Do we need any fixtures?
         // Yes probably, but they'll need to be futures as well ...
         // later we could accept fixture as it's own future for re-use
-        $test_fn();
+
+        // Setup the client, and the address we selected.
+        let client = reqwest::Client::new();
+        let addr = "http://127.0.0.1:8080";
+
+        $test_fn(client, addr);
 
         // We DO NOT need teardown, as sqlite is in mem
         // let the tables hit the floor
@@ -54,9 +58,7 @@ macro_rules! run_test {
 
 #[test]
 fn test_server_proto() {
-    run_test!(|| {
-        let client = reqwest::Client::new();
-
+    run_test!(|client, addr| {
         let e: Entry = serde_json::from_str(
             r#"{
             "attrs": {
@@ -75,7 +77,7 @@ fn test_server_proto() {
         };
 
         let mut response = client
-            .post("http://127.0.0.1:8080/v1/create")
+            .post(concat!(addr, "/v1/create"))
             .body(serde_json::to_string(&c).unwrap())
             .send()
             .unwrap();
@@ -89,6 +91,13 @@ fn test_server_proto() {
         // check it's valid.
 
         ()
+    });
+}
+
+#[test]
+fn test_server_whoami_anonymous() {
+    run_test!(|client, addr| {
+        
     });
 }
 

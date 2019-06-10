@@ -702,7 +702,10 @@ impl<STATE> Entry<EntryValid, STATE> {
         )))
     }
 
-    pub fn into(&self) -> ProtoEntry {
+    // FIXME: This should probably have an entry state for "reduced"
+    // and then only that state can provide the into_pe type, so that we
+    // can guarantee that all entries must have been security checked.
+    pub fn into_pe(&self) -> ProtoEntry {
         // It's very likely that at this stage we'll need to apply
         // access controls, dynamic attributes or more.
         // As a result, this may not even be the right place

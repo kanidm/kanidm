@@ -34,6 +34,7 @@ pub enum OperationError {
     FsError,
     SerdeJsonError,
     AccessDenied,
+    NotAuthenticated,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]

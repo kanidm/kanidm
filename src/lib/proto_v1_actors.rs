@@ -7,7 +7,7 @@ use crate::be::Backend;
 use crate::error::OperationError;
 use crate::event::{
     CreateEvent, DeleteEvent, ModifyEvent, PurgeRecycledEvent, PurgeTombstoneEvent, SearchEvent,
-    SearchResult,
+    SearchResult, WhoamiResult
 };
 use crate::log::EventLog;
 use crate::schema::{Schema, SchemaTransaction};
@@ -16,7 +16,7 @@ use crate::server::{QueryServer, QueryServerTransaction};
 
 use crate::proto_v1::{
     AuthRequest, CreateRequest, DeleteRequest, ModifyRequest, OperationResponse, SearchRequest,
-    SearchResponse,
+    SearchResponse, WhoamiRequest, WhoamiResponse
 };
 
 pub struct QueryServerV1 {
@@ -263,6 +263,55 @@ impl Handler<AuthRequest> for QueryServerV1 {
         res
     }
 }
+
+impl Handler<WhoamiRequest> for QueryServerV1 {
+    type Result = Result<WhoamiResponse, OperationError>;
+
+    fn handle(&mut self, msg: WhoamiRequest, _: &mut Self::Context) -> Self::Result {
+        let mut audit = AuditScope::new("whoami");
+        let res = audit_segment!(&mut audit, || {
+            // Begin a read
+            let qs_read = self.qs.read();
+
+            // Make an event from the whoami request. This will process the event and
+            // generate a selfuuid search.
+            let srch = match SearchEvent::from_whoami_request(&mut audit, msg, &qs_read) {
+                Ok(s) => s,
+                Err(e) => {
+                    audit_log!(audit, "Failed to begin whoami: {:?}", e);
+                    return Err(e);
+                }
+            };
+
+            audit_log!(audit, "Begin event {:?}", srch);
+
+            match qs_read.search_ext(&mut audit, &srch) {
+                Ok(mut entries) => {
+                    // assert there is only one ...
+                    match entries.len() {
+                        0 => Err(OperationError::NoMatchingEntries),
+                        1 => {
+                            let e = entries.pop().expect("Entry length mismatch!!!");
+                            // Now convert to a response, and return
+                            let wr = WhoamiResult::new(e);
+                            Ok(wr.response())
+                        }
+                        // Somehow we matched multiple, which should be impossible.
+                        _ => Err(OperationError::InvalidState),
+                    }
+                }
+                // Something else went wrong ...
+                Err(e) => Err(e),
+            }
+        });
+        // Should we log the final result?
+        // At the end of the event we send it for logging.
+        self.log.do_send(audit);
+        res
+    }
+}
+
+// These below are internal only types.
 
 impl Handler<PurgeTombstoneEvent> for QueryServerV1 {
     type Result = ();

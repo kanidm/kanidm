@@ -168,6 +168,8 @@ that have unique cookie keys to prevent forgery of writable master cookies)
 of group uuids + names derferenced so that a client can make all authorisation
 decisions from a single datapoint
 
+* Groups require the ability to be ephemeral/temporary or permament.
+
 * each token can be unique based on the type of auth (ie 2fa needed to get access
 to admin groups)
 
@@ -324,6 +326,75 @@ required tagging or other details.
 
 How do we ensure integrity of the token? Do we have to? Is the clients job to trust the token given
 the TLS tunnel?
+
+More Brain Dumping
+==================
+
+- need a way to just pw check even if mfa is on (for sudo). Perhaps have a seperate sudo password attr?
+- ntpassword attr is seperate
+- a way to check application pw which attaches certain rights (is this just a generalisation of sudo?)
+    - the provided token (bearer etc?) contains the "memberof" for the session.
+    - How to determine what memberof an api provides? Could be policy object that says "api pw of name X
+        is allowed Y, Z group". Could be that the user is presented with a list or subset of the related?
+        Could be both?
+    - Means we need a "name" and "type" for the api password, also need to be able to search
+    on both of those details potentially.
+
+- The oauth system is just a case of follow that and provide the scope/groups as required.
+
+- That would make userPassword and webauthn only for webui and api direct access.
+    - All other pw validations would use application pw case.
+    - SSH would just read ssh key - should this have a similar group filter/allow
+        mechanism like aplication pw?
+
+- Groups take a "type"
+    - credentials also have a "type"
+    - The credential if used can provide groups of "type" to that session during auth token
+        generation
+    - An auth request says it as an auth of type X, to associate what creds it might check.
+
+
+- Means a change to auth to take an entry as part of auth, or at least, it's group list for the
+    session. 
+
+
+- policy to define if pw types like sudo or radius are linked.
+    - Some applications may need to read a credential type.
+    - attribute/value tagging required?
+
+
+apptype: unix
+
+apptype: groupware
+
+group: admins
+ type: unix  <<-- indicates it's a requested group
+
+group: emailusers
+ type: groupware <<-- indicates it's a requested group
+
+user: admin
+memberof: admins <<-- Should this be in mo if they are reqgroups? I think yes, because it's only for that "session"
+                      based on the cred do they get the "group list" in cred.
+memberof: emailusers
+cred: {
+    'type': unix,
+    'hash': ...
+    'grants': 'admins'
+}
+cred: {
+    'type': groupware
+    'hash': ...,
+    'grants': 'emailusers',
+}
+cred: {
+    'type': blah
+    'hash': ...,
+    'grants': 'bar', // Can't work because not a memberof bar. Should this only grant valid MO's?
+}
+
+ntpassword: ... <<-- needs limited read, and doesn't allocate groups.
+sshPublicKey: ... <<-- different due to needing anon read.
 
 
 
