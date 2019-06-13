@@ -15,8 +15,11 @@ extern crate futures;
 
 use std::sync::mpsc;
 use std::thread;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 extern crate tokio;
+
+static port_alloc: AtomicUsize = AtomicUsize::new(8080);
 
 // Test external behaviorus of the service.
 
@@ -46,7 +49,8 @@ macro_rules! run_test {
 
         // Setup the client, and the address we selected.
         let client = reqwest::Client::new();
-        let addr = "http://127.0.0.1:8080";
+        let port = port_alloc.fetch_add(1, Ordering::SeqCst);
+        let addr = format!("http://127.0.0.1:{}", port);
 
         $test_fn(client, addr);
 
@@ -97,7 +101,9 @@ fn test_server_proto() {
 #[test]
 fn test_server_whoami_anonymous() {
     run_test!(|client, addr| {
-        
+        // First show we are un-authenticated.
+        // Now login as anonymous
+        // Now do a whoami.
     });
 }
 
