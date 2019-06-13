@@ -4,7 +4,8 @@ use crate::filter::{Filter, FilterValid};
 use crate::proto_v1::Entry as ProtoEntry;
 use crate::proto_v1::{
     AuthRequest, AuthResponse, AuthStatus, CreateRequest, DeleteRequest, ModifyRequest,
-    OperationResponse, ReviveRecycledRequest, SearchRequest, SearchResponse, WhoamiResponse, WhoamiRequest, UserAuthToken,
+    OperationResponse, ReviveRecycledRequest, SearchRequest, SearchResponse, UserAuthToken,
+    WhoamiRequest, WhoamiResponse,
 };
 // use error::OperationError;
 use crate::error::OperationError;
@@ -111,8 +112,6 @@ impl Event {
         qs: &QueryServerReadTransaction,
         uat: Option<UserAuthToken>,
     ) -> Result<Self, OperationError> {
-
-
         let uat = uat.ok_or(OperationError::NotAuthenticated)?;
 
         let e = try_audit!(audit, qs.internal_search_uuid(audit, uat.uuid.as_str()));
@@ -205,11 +204,11 @@ impl SearchEvent {
 
     pub fn from_whoami_request(
         audit: &mut AuditScope,
-        request: WhoamiRequest,
+        uat: Option<UserAuthToken>,
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         Ok(SearchEvent {
-            event: Event::from_ro_uat(audit, qs, request.uat)?,
+            event: Event::from_ro_uat(audit, qs, uat)?,
             filter: filter!(f_self())
                 .validate(qs.get_schema())
                 .map_err(|e| OperationError::SchemaViolation(e))?,
@@ -574,19 +573,19 @@ impl AuthResult {
 }
 
 pub struct WhoamiResult {
-    youare: ProtoEntry
+    youare: ProtoEntry,
 }
 
 impl WhoamiResult {
     pub fn new(e: Entry<EntryValid, EntryCommitted>) -> Self {
         WhoamiResult {
-            youare: e.into_pe()
+            youare: e.into_pe(),
         }
     }
 
     pub fn response(self) -> WhoamiResponse {
         WhoamiResponse {
-            youare: self.youare
+            youare: self.youare,
         }
     }
 }

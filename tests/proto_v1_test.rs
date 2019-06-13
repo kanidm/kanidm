@@ -5,7 +5,7 @@ extern crate rsidm;
 use rsidm::config::Configuration;
 use rsidm::constants::UUID_ADMIN;
 use rsidm::core::create_server_core;
-use rsidm::proto_v1::{CreateRequest, Entry, OperationResponse};
+use rsidm::proto_v1::{CreateRequest, Entry, OperationResponse, WhoamiRequest};
 
 extern crate reqwest;
 
@@ -13,56 +13,55 @@ extern crate futures;
 // use futures::future;
 // use futures::future::Future;
 
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc;
 use std::thread;
-use std::sync::atomic::{AtomicUsize, Ordering};
 
 extern crate tokio;
 
-static port_alloc: AtomicUsize = AtomicUsize::new(8080);
+static PORT_ALLOC: AtomicUsize = AtomicUsize::new(8080);
 
 // Test external behaviorus of the service.
 
-macro_rules! run_test {
-    ($test_fn:expr) => {{
-        let (tx, rx) = mpsc::channel();
-        let config = Configuration::new();
-        // Setup the config ...
+fn run_test(test_fn: fn(reqwest::Client, &str) -> ()) {
+    let (tx, rx) = mpsc::channel();
+    let port = PORT_ALLOC.fetch_add(1, Ordering::SeqCst);
+    let mut config = Configuration::new();
+    config.address = format!("127.0.0.1:{}", port);
+    // Setup the config ...
 
-        thread::spawn(move || {
-            // Spawn a thread for the test runner, this should have a unique
-            // port....
-            System::run(move || {
-                create_server_core(config);
+    thread::spawn(move || {
+        // Spawn a thread for the test runner, this should have a unique
+        // port....
+        System::run(move || {
+            create_server_core(config);
 
-                // This appears to be bind random ...
-                // let srv = srv.bind("127.0.0.1:0").unwrap();
-                let _ = tx.send(System::current());
-            });
+            // This appears to be bind random ...
+            // let srv = srv.bind("127.0.0.1:0").unwrap();
+            let _ = tx.send(System::current());
         });
-        let sys = rx.recv().unwrap();
-        System::set_current(sys.clone());
+    });
+    let sys = rx.recv().unwrap();
+    System::set_current(sys.clone());
 
-        // Do we need any fixtures?
-        // Yes probably, but they'll need to be futures as well ...
-        // later we could accept fixture as it's own future for re-use
+    // Do we need any fixtures?
+    // Yes probably, but they'll need to be futures as well ...
+    // later we could accept fixture as it's own future for re-use
 
-        // Setup the client, and the address we selected.
-        let client = reqwest::Client::new();
-        let port = port_alloc.fetch_add(1, Ordering::SeqCst);
-        let addr = format!("http://127.0.0.1:{}", port);
+    // Setup the client, and the address we selected.
+    let client = reqwest::Client::new();
+    let addr = format!("http://127.0.0.1:{}", port);
 
-        $test_fn(client, addr);
+    test_fn(client, addr.as_str());
 
-        // We DO NOT need teardown, as sqlite is in mem
-        // let the tables hit the floor
-        let _ = sys.stop();
-    }};
+    // We DO NOT need teardown, as sqlite is in mem
+    // let the tables hit the floor
+    let _ = sys.stop();
 }
 
 #[test]
 fn test_server_proto() {
-    run_test!(|client, addr| {
+    run_test(|client: reqwest::Client, addr: &str| {
         let e: Entry = serde_json::from_str(
             r#"{
             "attrs": {
@@ -80,8 +79,10 @@ fn test_server_proto() {
             user_uuid: UUID_ADMIN.to_string(),
         };
 
+        let dest = format!("{}/v1/create", addr);
+
         let mut response = client
-            .post(concat!(addr, "/v1/create"))
+            .post(dest.as_str())
             .body(serde_json::to_string(&c).unwrap())
             .send()
             .unwrap();
@@ -100,7 +101,7 @@ fn test_server_proto() {
 
 #[test]
 fn test_server_whoami_anonymous() {
-    run_test!(|client, addr| {
+    run_test(|client: reqwest::Client, addr: &str| {
         // First show we are un-authenticated.
         // Now login as anonymous
         // Now do a whoami.

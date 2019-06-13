@@ -55,3 +55,4 @@ pub mod error;
 pub mod filter;
 pub mod proto_v1;
 mod proto_v1_actors;
+mod proto_v1_messages;

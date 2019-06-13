@@ -1,7 +1,7 @@
-extern crate rsidm;
 extern crate reqwest;
+extern crate rsidm;
 
-use rsidm::proto_v1::{WhoamiResponse};
+use rsidm::proto_v1::{WhoamiRequest, WhoamiResponse};
 
 fn main() {
     println!("Hello whoami");
@@ -10,8 +10,10 @@ fn main() {
     // we should check who we are plus show the auth token that the server
     // would generate for us.
 
-    let whoami_req = WhoamiRequest {
-    };
+    let whoami_req = WhoamiRequest {};
+
+    // FIXME TODO: Make this url configurable!!!
+    let client = reqwest::Client::new();
 
     let mut response = client
         .get("http://127.0.0.1:8080/v1/whoami")

@@ -81,7 +81,7 @@ macro_rules! filter {
         #[allow(unused_imports)]
         use crate::filter::FC;
         #[allow(unused_imports)]
-        use crate::filter::{f_and, f_andnot, f_eq, f_or, f_pres, f_sub, f_self};
+        use crate::filter::{f_and, f_andnot, f_eq, f_or, f_pres, f_self, f_sub};
         Filter::new_ignore_hidden($fc)
     }};
 }
@@ -96,7 +96,7 @@ macro_rules! filter_rec {
         #[allow(unused_imports)]
         use crate::filter::FC;
         #[allow(unused_imports)]
-        use crate::filter::{f_and, f_andnot, f_eq, f_or, f_pres, f_sub, f_self};
+        use crate::filter::{f_and, f_andnot, f_eq, f_or, f_pres, f_self, f_sub};
         Filter::new_recycled($fc)
     }};
 }
@@ -111,7 +111,7 @@ macro_rules! filter_all {
         #[allow(unused_imports)]
         use crate::filter::FC;
         #[allow(unused_imports)]
-        use crate::filter::{f_and, f_andnot, f_eq, f_or, f_pres, f_sub, f_self};
+        use crate::filter::{f_and, f_andnot, f_eq, f_or, f_pres, f_self, f_sub};
         Filter::new($fc)
     }};
 }

@@ -7,7 +7,7 @@ use crate::be::Backend;
 use crate::error::OperationError;
 use crate::event::{
     CreateEvent, DeleteEvent, ModifyEvent, PurgeRecycledEvent, PurgeTombstoneEvent, SearchEvent,
-    SearchResult, WhoamiResult
+    SearchResult, WhoamiResult,
 };
 use crate::log::EventLog;
 use crate::schema::{Schema, SchemaTransaction};
@@ -16,8 +16,10 @@ use crate::server::{QueryServer, QueryServerTransaction};
 
 use crate::proto_v1::{
     AuthRequest, CreateRequest, DeleteRequest, ModifyRequest, OperationResponse, SearchRequest,
-    SearchResponse, WhoamiRequest, WhoamiResponse
+    SearchResponse, UserAuthToken, WhoamiRequest, WhoamiResponse,
 };
+
+use crate::proto_v1_messages::WhoamiMessage;
 
 pub struct QueryServerV1 {
     log: actix::Addr<EventLog>,
@@ -264,10 +266,10 @@ impl Handler<AuthRequest> for QueryServerV1 {
     }
 }
 
-impl Handler<WhoamiRequest> for QueryServerV1 {
+impl Handler<WhoamiMessage> for QueryServerV1 {
     type Result = Result<WhoamiResponse, OperationError>;
 
-    fn handle(&mut self, msg: WhoamiRequest, _: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, msg: WhoamiMessage, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("whoami");
         let res = audit_segment!(&mut audit, || {
             // Begin a read
@@ -275,7 +277,11 @@ impl Handler<WhoamiRequest> for QueryServerV1 {
 
             // Make an event from the whoami request. This will process the event and
             // generate a selfuuid search.
-            let srch = match SearchEvent::from_whoami_request(&mut audit, msg, &qs_read) {
+            // FIXME: This current handles the unauthenticated check, and will
+            // trigger the failure, but if we can manage to work out async
+            // then move this to core.rs, and don't allow Option<UAT> to get
+            // this far.
+            let srch = match SearchEvent::from_whoami_request(&mut audit, msg.uat, &qs_read) {
                 Ok(s) => s,
                 Err(e) => {
                     audit_log!(audit, "Failed to begin whoami: {:?}", e);

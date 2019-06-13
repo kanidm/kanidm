@@ -6,7 +6,6 @@ use std::collections::BTreeMap;
 
 // These proto implementations are here because they have public definitions
 
-
 /* ===== higher level types ===== */
 // These are all types that are conceptually layers ontop of entry and
 // friends. They allow us to process more complex requests and provide
@@ -296,33 +295,23 @@ impl ReviveRecycledRequest {
 
 // This doesn't need seralise because it's only accessed via a "get".
 #[derive(Debug)]
-pub struct WhoamiRequest {
-    pub uat: Option<UserAuthToken>,
-}
-
-impl Message for WhoamiRequest {
-    type Result = Result<WhoamiResponse, OperationError>;
-}
+pub struct WhoamiRequest {}
 
 impl WhoamiRequest {
-    pub fn new(uat: Option<UserAuthToken>) -> Self {
-        WhoamiRequest {
-            uat: uat,
-        }
+    pub fn new() -> Self {
+        WhoamiRequest {}
     }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct WhoamiResponse {
     // Should we just embed the entry? Or destructure it?
-    pub youare: Entry
+    pub youare: Entry,
 }
 
 impl WhoamiResponse {
     pub fn new(e: Entry) -> Self {
-        WhoamiResponse {
-            youare: e
-        }
+        WhoamiResponse { youare: e }
     }
 }
 
@@ -336,5 +325,3 @@ mod tests {
         println!("{:?}", serde_json::to_string(&pf).expect("JSON failure"));
     }
 }
-
-

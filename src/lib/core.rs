@@ -11,11 +11,15 @@ use futures::{future, Future, Stream};
 use crate::config::Configuration;
 
 // SearchResult
+use crate::error::OperationError;
 use crate::interval::IntervalActor;
 use crate::log;
-use crate::proto_v1::{AuthRequest, CreateRequest, DeleteRequest, ModifyRequest, SearchRequest, WhoamiRequest, WhoamiResponse, UserAuthToken};
+use crate::proto_v1::{
+    AuthRequest, CreateRequest, DeleteRequest, ModifyRequest, SearchRequest, UserAuthToken,
+    WhoamiRequest, WhoamiResponse,
+};
 use crate::proto_v1_actors::QueryServerV1;
-use crate::error::OperationError;
+use crate::proto_v1_messages::WhoamiMessage;
 
 struct AppState {
     qe: actix::Addr<QueryServerV1>,
@@ -97,16 +101,13 @@ macro_rules! json_event_get {
         // New event, feed current auth data from the token to it.
         let obj = <($message_type)>::new(uat);
 
-        let res = $state.qe
-            .send(obj)
-            .from_err()
-            .and_then(|res| match res {
-                Ok(event_result) => Ok(HttpResponse::Ok().json(event_result)),
-                Err(e) => Ok(HttpResponse::InternalServerError().json(e)),
-            });
+        let res = $state.qe.send(obj).from_err().and_then(|res| match res {
+            Ok(event_result) => Ok(HttpResponse::Ok().json(event_result)),
+            Err(e) => Ok(HttpResponse::InternalServerError().json(e)),
+        });
 
         Box::new(res)
-    }}
+    }};
 }
 
 // Handle the various end points we need to expose
@@ -139,7 +140,7 @@ fn whoami(
     (req, state): (HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     // Actually this may not work as it assumes post not get.
-    json_event_get!(req, state, WhoamiEvent, WhoamiRequest)
+    json_event_get!(req, state, WhoamiEvent, WhoamiMessage)
 }
 
 // delete, modify
@@ -227,7 +228,10 @@ fn auth(
 pub fn create_server_core(config: Configuration) {
     // Configure the middleware logger
     ::std::env::set_var("RUST_LOG", "actix_web=info");
-    env_logger::init();
+    // We can't setup env logger in tests because it's not thread safe,
+    // so it causes a race condition inside of proto_v1_tests.
+    // TODO: Can we fix this? Perhaps a config setting?
+    // env_logger::init();
 
     // Until this point, we probably want to write to stderr
     // Start up the logging system: for now it just maps to stderr
