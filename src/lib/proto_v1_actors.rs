@@ -251,14 +251,60 @@ impl Handler<DeleteRequest> for QueryServerV1 {
     }
 }
 
+
+// Need an auth session storage. LRU?
+// requires a lock ...
+// needs session id, entry, etc.
+
 impl Handler<AuthRequest> for QueryServerV1 {
-    type Result = Result<OperationResponse, OperationError>;
+    type Result = Result<UserAuthToken, OperationError>;
 
     fn handle(&mut self, msg: AuthRequest, _: &mut Self::Context) -> Self::Result {
+        // This is probably the first function that really implements logic
+        // "on top" of the db server concept. In this case we check if
+        // the credentials provided is sufficient to say if someone is
+        // "authenticated" or not.
         let mut audit = AuditScope::new("auth");
         let res = audit_segment!(&mut audit, || {
             audit_log!(audit, "Begin auth event {:?}", msg);
-            Err(OperationError::InvalidState)
+            // Start a read
+            //
+            // Actually we may not need this - at the time we issue the auth-init
+            // we could generate the uat, the nonce and cache hashes in memory,
+            // then this can just be fully without a txn.
+            //
+            // We do need a txn so that we can process/search and claims
+            // or related based on the quality of the provided auth steps
+            //
+            // We *DO NOT* need a write though, because I think that lock outs
+            // and rate limits are *per server* and *in memory* only.
+            let qs_read = self.qs.read();
+
+            // Check anything needed? Get the current auth-session-id from request
+            // because it associates to the nonce's etc which were all cached.
+
+            // FIXME!!! This hack is to get anonymous, then we just use them
+            // to generate the UAT.
+            let se_anon = SearchEvent::new_internal(
+                filter!()
+            );
+
+            // Get the first / single entry we expect here ....
+            let entry = ...;
+
+            // If everything is good, finally issue the token. Oui oui!
+            // Also send an async message to self to log the auth as provided.
+            // Alternately, open a write, and commit the needed security metadata here
+            // now rather than async (probably better for lock-outs etc)
+            //
+            // TODO: Async message the account owner about the login?
+            //
+            // The lockouts could also be an in-memory concept too?
+            match anon_entry.to_userauthtoken() {
+                Some(uat) => Ok(uat),
+                None => Err(OperationError::InvalidState),
+            }
+            // Else, non non non!
         });
         // At the end of the event we send it for logging.
         self.log.do_send(audit);

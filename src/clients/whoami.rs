@@ -17,7 +17,6 @@ fn main() {
 
     let mut response = client
         .get("http://127.0.0.1:8080/v1/whoami")
-        // .body(serde_json::to_string(&whoami_req).unwrap())
         .send()
         .unwrap();
 

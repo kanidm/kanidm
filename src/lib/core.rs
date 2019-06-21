@@ -27,6 +27,7 @@ struct AppState {
 }
 
 fn get_current_user(req: &HttpRequest<AppState>) -> Option<UserAuthToken> {
+    println!("{:?}", req.session());
     None
     // unimplemented!();
 }
@@ -103,7 +104,14 @@ macro_rules! json_event_get {
 
         let res = $state.qe.send(obj).from_err().and_then(|res| match res {
             Ok(event_result) => Ok(HttpResponse::Ok().json(event_result)),
-            Err(e) => Ok(HttpResponse::InternalServerError().json(e)),
+            Err(e) => {
+                match e {
+                    OperationError::NotAuthenticated => {
+                        Ok(HttpResponse::Unauthorized().json(e))
+                    }
+                    _ => Ok(HttpResponse::InternalServerError().json(e)),
+                }
+            }
         });
 
         Box::new(res)
@@ -142,8 +150,6 @@ fn whoami(
     // Actually this may not work as it assumes post not get.
     json_event_get!(req, state, WhoamiEvent, WhoamiMessage)
 }
-
-// delete, modify
 
 // We probably need an extract auth or similar to handle the different
 // types (cookie, bearer), and to generic this over get/post.
@@ -209,8 +215,15 @@ fn auth(
                         // new session, and in that case, anything *except* authrequest init is
                         // invalid.
 
+                        // HACK HACK HACK!!! TODO THIS SHIT IS BAD
+                        // For now, log in everyone as anonymous!
                         let res = state.qe.send(obj).from_err().and_then(|res| match res {
-                            Ok(event_result) => Ok(HttpResponse::Ok().json(event_result)),
+                            Ok(uat) => {
+                                match req.session().set("uat", uat) {
+                                    Ok(_) => Ok(HttpResponse::Ok().json("authentication success")),
+                                    Err(e) => Ok(HttpResponse::InternalServerError().json(e)),
+                                }
+                            }
                             Err(e) => Ok(HttpResponse::InternalServerError().json(e)),
                         });
 

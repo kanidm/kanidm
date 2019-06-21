@@ -236,7 +236,7 @@ pub struct AuthRequest {
 }
 
 impl Message for AuthRequest {
-    type Result = Result<OperationResponse, OperationError>;
+    type Result = Result<UserAuthToken, OperationError>;
 }
 
 // Respond with the list of auth types and nonce, etc.

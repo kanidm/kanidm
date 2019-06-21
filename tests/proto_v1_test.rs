@@ -13,9 +13,9 @@ extern crate futures;
 // use futures::future;
 // use futures::future::Future;
 
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc;
 use std::thread;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 extern crate tokio;
 
@@ -49,7 +49,10 @@ fn run_test(test_fn: fn(reqwest::Client, &str) -> ()) {
     // later we could accept fixture as it's own future for re-use
 
     // Setup the client, and the address we selected.
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .cookie_store(true)
+        .build()
+        .expect("Unexpected reqwest builder failure!");
     let addr = format!("http://127.0.0.1:{}", port);
 
     test_fn(client, addr.as_str());
@@ -103,10 +106,47 @@ fn test_server_proto() {
 fn test_server_whoami_anonymous() {
     run_test(|client: reqwest::Client, addr: &str| {
         // First show we are un-authenticated.
+        let whoami_dest = format!("{}/v1/create", addr);
+        let auth_dest = format!("{}/v1/auth", addr);
+
+        let mut response = client
+            .get(whoami_dest.as_str());
+            .send()
+            .unwrap();
+
+        // https://docs.rs/reqwest/0.9.15/reqwest/struct.Response.html
+        println!("{:?}", response);
+
+        assert!(response.status() == reqwest::StatusCode::UNAUTHORIZED);
+
         // Now login as anonymous
+        // This sets a cookie to say who you are:
+        // Initiate - this should say what details are needed.
+
+        // Send the credentials required
+
+        let mut response = client
+            .post(auth_dest.as_str())
+            // .body()
+            .send()
+            .unwrap()
+        assert!(response.status() == reqwest::StatusCode::OK);
+
         // Now do a whoami.
+        let mut response = client
+            .get(whoami_dest.as_str());
+            .send()
+            .unwrap();
+        assert!(response.status() == reqwest::StatusCode::OK);
+
+        // Check the json now ... response.json()
+
     });
 }
+
+// Test hitting all auth-required endpoints and assert they give unauthorized.
+
+
 
 /*
 #[test]

@@ -34,6 +34,8 @@ the session, which may request further credentials. They are then redirected to 
 site with an appropriate (oauth) token describing the requested rights.
 
 https://developers.google.com/identity/sign-in/web/incremental-auth
+https://openid.net/specs/openid-connect-core-1_0.html#UserInfo
+https://tools.ietf.org/html/rfc7519
 
 Login to workstation (connected)
 ================================
@@ -187,14 +189,57 @@ Cookie/Token Auth Detail
 Clients begin with no cookie, and no session.
 
 The client sends an AuthRequest to the server in the Init state. Any other request
-results in AuthDenied due to lack of cookie.
+results in AuthDenied due to lack of cookie. This should contain the optional
+application id.
+
+struct AuthClientRequest {
+    name: String
+    application: Option<String>
+}
 
 The server issues a cookie, and allocates a session id to the cookie. The session id is
 also stored in the server with a timeout. The AuthResponse indicates the current possible
-auth types that can proceed.
+auth types that can proceed. This should provided challenges or nonces if required by the auth type.
+
+enum AuthAllowed {
+    Anonymous,
+    Password,
+    Webauthn {
+        challenge: // see the webauthn implementation for this
+    },
+    TOTP,
+}
+
+enum AuthState {
+    Response {
+        next: AuthAllowedMech
+    },
+    AuthDenied,
+    AuthSuccess,
+}
+
+struct AuthServerResponse {
+    state AuthState
+}
 
 The client now sends the cookie and an AuthRequest with type Step, that contains the type
-of authentication credential being provided.
+of authentication credential being provided, and any other details. This COULD contain multiple
+credentials, or a single one.
+
+enum AuthCredential {
+    Anonymous,
+    Password { String },
+    Webauthn {
+        // see the webauthn impl for all the bits this will contain ...
+    },
+    TOTP {
+        String
+    }
+}
+
+struct AuthClientStep {
+    Vec<AuthDetails>
+}
 
 The server verifies the credential, and marks that type of credential as failed or fufilled.
 On failure of a credential, AuthDenied is immediately sent. On success of a credential
@@ -213,6 +258,9 @@ the state machine part way through. THe server enforces the client must always a
 initial authRequest, which cause the client to always be denied.
 * If the AuthRequest is started but not completed, we time it out within a set number of minutes
 by walking the set of sessions and purging incomplete ones which have passed the time stamp.
+* The session id is in the cookie to eliminate leaking of the session id (secure cookies), and
+to prevent tampering of the session id if possible. It's not perfect, but it helps to prevent
+casual attkcs. The session id itself is really the thing that protects us from replays.
 
 Auth Questions
 --------------
