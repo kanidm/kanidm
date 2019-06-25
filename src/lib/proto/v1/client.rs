@@ -4,43 +4,23 @@
 // attempt to reflect and map to a simple representation of
 // the protocol, which was intended to be easy-to-use and accessible.
 
-
-
-
-struct ClientV1 {
-    
-}
+struct ClientV1 {}
 
 impl ClientV1 {
-    fn auth_anonymous() -> () {
+    fn auth_anonymous() -> () {}
 
-    }
+    fn auth_password() -> () {}
 
-    fn auth_password() -> () {
+    fn auth_application_password() -> () {}
 
-    }
-
-    fn auth_application_password() -> () {
-    }
-
-    fn whoami() -> () {
-
-    }
+    fn whoami() -> () {}
 
     // The four raw operations.
-    fn search() -> () {
+    fn search() -> () {}
 
-    }
+    fn modify() -> () {}
 
-    fn modify() -> () {
-    }
+    fn create() -> () {}
 
-    fn create() -> () {
-    }
-
-    fn delete() -> () {
-    }
-
+    fn delete() -> () {}
 }
-
-

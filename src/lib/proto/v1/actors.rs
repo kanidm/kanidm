@@ -12,8 +12,9 @@ use crate::event::{
 use crate::log::EventLog;
 use crate::schema::{Schema, SchemaTransaction};
 
-use crate::server::{QueryServer, QueryServerTransaction};
 use crate::constants::UUID_ANONYMOUS;
+use crate::idm::server::IdmServer;
+use crate::server::{QueryServer, QueryServerTransaction};
 
 use crate::proto::v1::{
     AuthRequest, CreateRequest, DeleteRequest, ModifyRequest, OperationResponse, SearchRequest,
@@ -25,6 +26,7 @@ use crate::proto::v1::messages::WhoamiMessage;
 pub struct QueryServerV1 {
     log: actix::Addr<EventLog>,
     qs: QueryServer,
+    idms: IdmServer,
 }
 
 impl Actor for QueryServerV1 {
@@ -40,10 +42,15 @@ impl QueryServerV1 {
         log_event!(log, "Starting query server v1 worker ...");
         QueryServerV1 {
             log: log,
-            qs: QueryServer::new(be, schema),
+            qs: QueryServer::new(be.clone(), schema.clone()),
+            idms: IdmServer::new(be, schema),
         }
     }
 
+    // TODO: We could move most of the be/schema/qs setup and startup
+    // outside of this call, then pass in "what we need" in a cloneable
+    // form, this way we could have seperate Idm vs Qs threads, and dedicated
+    // threads for write vs read
     pub fn start(
         log: actix::Addr<EventLog>,
         path: &str,
@@ -252,7 +259,6 @@ impl Handler<DeleteRequest> for QueryServerV1 {
     }
 }
 
-
 // Need an auth session storage. LRU?
 // requires a lock ...
 // needs session id, entry, etc.
@@ -268,56 +274,24 @@ impl Handler<AuthRequest> for QueryServerV1 {
         let mut audit = AuditScope::new("auth");
         let res = audit_segment!(&mut audit, || {
             audit_log!(audit, "Begin auth event {:?}", msg);
-            // Start a read
-            //
-            // Actually we may not need this - at the time we issue the auth-init
-            // we could generate the uat, the nonce and cache hashes in memory,
-            // then this can just be fully without a txn.
-            //
-            // We do need a txn so that we can process/search and claims
-            // or related based on the quality of the provided auth steps
-            //
-            // We *DO NOT* need a write though, because I think that lock outs
-            // and rate limits are *per server* and *in memory* only.
-            let qs_read = self.qs.read();
 
-            // Check anything needed? Get the current auth-session-id from request
-            // because it associates to the nonce's etc which were all cached.
+            let idm_write = self.idms.write();
 
-            // FIXME!!! This hack is to get anonymous, then we just use them
-            // to generate the UAT.
-            let filter_anon = 
-                filter!(
-                    f_eq("uuid", UUID_ANONYMOUS)
-                )
-                .validate(qs_read.get_schema())
-                .map_err(|e| OperationError::SchemaViolation(e))?;
+            let r = idm_write.auth();
+            // If this was ok, commit. In some cases, errors
+            // can also require a commit. Is this right?
+            match &r {
+                Ok(_) => {
+                    // We always commit
+                    idm_write.commit();
+                }
 
-            let se_anon = SearchEvent::new_internal(filter_anon);
-
-            // Get the first / single entry we expect here ....
-            // let entry = ...;
-            unimplemented!();
-
-            // If everything is good, finally issue the token. Oui oui!
-            // Also send an async message to self to log the auth as provided.
-            // Alternately, open a write, and commit the needed security metadata here
-            // now rather than async (probably better for lock-outs etc)
-            //
-            // TODO: Async message the account owner about the login?
-            //
-            // The lockouts could also be an in-memory concept too?
-
-
-            /*
-            match anon_entry.to_userauthtoken() {
-                Some(uat) => Ok(uat),
-                None => Err(OperationError::InvalidState),
-            }
-            */
-
-
-            // Else, non non non!
+                Err(e) => match e {
+                    _ => {}
+                },
+            };
+            // Return the result.
+            r
         });
         // At the end of the event we send it for logging.
         self.log.do_send(audit);

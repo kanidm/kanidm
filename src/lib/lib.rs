@@ -47,9 +47,9 @@ mod modify;
 #[macro_use]
 mod plugins;
 mod access;
+mod idm;
 mod schema;
 mod server;
-mod idm;
 
 pub mod config;
 pub mod core;

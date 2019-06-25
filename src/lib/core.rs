@@ -14,12 +14,12 @@ use crate::config::Configuration;
 use crate::error::OperationError;
 use crate::interval::IntervalActor;
 use crate::log;
+use crate::proto::v1::actors::QueryServerV1;
+use crate::proto::v1::messages::WhoamiMessage;
 use crate::proto::v1::{
     AuthRequest, CreateRequest, DeleteRequest, ModifyRequest, SearchRequest, UserAuthToken,
     WhoamiRequest, WhoamiResponse,
 };
-use crate::proto::v1::actors::QueryServerV1;
-use crate::proto::v1::messages::WhoamiMessage;
 
 struct AppState {
     qe: actix::Addr<QueryServerV1>,
@@ -104,14 +104,10 @@ macro_rules! json_event_get {
 
         let res = $state.qe.send(obj).from_err().and_then(|res| match res {
             Ok(event_result) => Ok(HttpResponse::Ok().json(event_result)),
-            Err(e) => {
-                match e {
-                    OperationError::NotAuthenticated => {
-                        Ok(HttpResponse::Unauthorized().json(e))
-                    }
-                    _ => Ok(HttpResponse::InternalServerError().json(e)),
-                }
-            }
+            Err(e) => match e {
+                OperationError::NotAuthenticated => Ok(HttpResponse::Unauthorized().json(e)),
+                _ => Ok(HttpResponse::InternalServerError().json(e)),
+            },
         });
 
         Box::new(res)
@@ -217,16 +213,22 @@ fn auth(
 
                         // HACK HACK HACK!!! TODO THIS SHIT IS BAD
                         // For now, log in everyone as anonymous!
-                        let res = state.qe.send(obj).from_err().and_then(move |res| match res {
-                            Ok(uat) => {
-                                match req.session().set("uat", uat) {
-                                    Ok(_) => Ok(HttpResponse::Ok().json("authentication success")),
-                                    // TODO: Make this error better
-                                    Err(e) => Ok(HttpResponse::InternalServerError().json(())),
+                        let res = state
+                            .qe
+                            .send(obj)
+                            .from_err()
+                            .and_then(move |res| match res {
+                                Ok(uat) => {
+                                    match req.session().set("uat", uat) {
+                                        Ok(_) => {
+                                            Ok(HttpResponse::Ok().json("authentication success"))
+                                        }
+                                        // TODO: Make this error better
+                                        Err(e) => Ok(HttpResponse::InternalServerError().json(())),
+                                    }
                                 }
-                            }
-                            Err(e) => Ok(HttpResponse::InternalServerError().json(e)),
-                        });
+                                Err(e) => Ok(HttpResponse::InternalServerError().json(e)),
+                            });
 
                         Box::new(res)
                     }

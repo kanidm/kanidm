@@ -13,9 +13,9 @@ extern crate futures;
 // use futures::future;
 // use futures::future::Future;
 
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc;
 use std::thread;
-use std::sync::atomic::{AtomicUsize, Ordering};
 
 extern crate tokio;
 
@@ -109,10 +109,7 @@ fn test_server_whoami_anonymous() {
         let whoami_dest = format!("{}/v1/create", addr);
         let auth_dest = format!("{}/v1/auth", addr);
 
-        let mut response = client
-            .get(whoami_dest.as_str())
-            .send()
-            .unwrap();
+        let mut response = client.get(whoami_dest.as_str()).send().unwrap();
 
         // https://docs.rs/reqwest/0.9.15/reqwest/struct.Response.html
         println!("{:?}", response);
@@ -133,20 +130,14 @@ fn test_server_whoami_anonymous() {
         assert!(response.status() == reqwest::StatusCode::OK);
 
         // Now do a whoami.
-        let mut response = client
-            .get(whoami_dest.as_str())
-            .send()
-            .unwrap();
+        let mut response = client.get(whoami_dest.as_str()).send().unwrap();
         assert!(response.status() == reqwest::StatusCode::OK);
 
         // Check the json now ... response.json()
-
     });
 }
 
 // Test hitting all auth-required endpoints and assert they give unauthorized.
-
-
 
 /*
 #[test]

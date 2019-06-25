@@ -4,10 +4,9 @@ use crate::error::OperationError;
 use actix::prelude::*;
 use std::collections::BTreeMap;
 
-
 pub(crate) mod actors;
-pub(crate) mod messages;
 pub mod client;
+pub(crate) mod messages;
 
 // These proto implementations are here because they have public definitions
 
