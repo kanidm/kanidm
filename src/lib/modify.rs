@@ -1,6 +1,6 @@
 use crate::audit::AuditScope;
-use crate::proto_v1::Modify as ProtoModify;
-use crate::proto_v1::ModifyList as ProtoModifyList;
+use crate::proto::v1::Modify as ProtoModify;
+use crate::proto::v1::ModifyList as ProtoModifyList;
 
 use crate::error::{OperationError, SchemaError};
 use crate::schema::SchemaTransaction;

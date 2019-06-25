@@ -15,12 +15,12 @@ use crate::schema::{Schema, SchemaTransaction};
 use crate::server::{QueryServer, QueryServerTransaction};
 use crate::constants::UUID_ANONYMOUS;
 
-use crate::proto_v1::{
+use crate::proto::v1::{
     AuthRequest, CreateRequest, DeleteRequest, ModifyRequest, OperationResponse, SearchRequest,
     SearchResponse, UserAuthToken, WhoamiRequest, WhoamiResponse,
 };
 
-use crate::proto_v1_messages::WhoamiMessage;
+use crate::proto::v1::messages::WhoamiMessage;
 
 pub struct QueryServerV1 {
     log: actix::Addr<EventLog>,

@@ -1,7 +1,7 @@
 extern crate reqwest;
 extern crate rsidm;
 
-use rsidm::proto_v1::{WhoamiRequest, WhoamiResponse};
+use rsidm::proto::v1::{WhoamiRequest, WhoamiResponse};
 
 fn main() {
     println!("Hello whoami");

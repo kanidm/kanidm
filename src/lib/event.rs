@@ -1,8 +1,8 @@
 use crate::audit::AuditScope;
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
 use crate::filter::{Filter, FilterValid};
-use crate::proto_v1::Entry as ProtoEntry;
-use crate::proto_v1::{
+use crate::proto::v1::Entry as ProtoEntry;
+use crate::proto::v1::{
     AuthRequest, AuthResponse, AuthStatus, CreateRequest, DeleteRequest, ModifyRequest,
     OperationResponse, ReviveRecycledRequest, SearchRequest, SearchResponse, UserAuthToken,
     WhoamiRequest, WhoamiResponse,
@@ -22,7 +22,7 @@ use crate::filter::FilterInvalid;
 #[cfg(test)]
 use crate::modify::ModifyInvalid;
 #[cfg(test)]
-use crate::proto_v1::SearchRecycledRequest;
+use crate::proto::v1::SearchRecycledRequest;
 
 use actix::prelude::*;
 

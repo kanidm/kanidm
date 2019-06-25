@@ -1,7 +1,7 @@
 use crate::error::OperationError;
 use actix::prelude::*;
 
-use crate::proto_v1::{UserAuthToken, WhoamiRequest, WhoamiResponse};
+use crate::proto::v1::{UserAuthToken, WhoamiRequest, WhoamiResponse};
 
 pub struct WhoamiMessage {
     pub uat: Option<UserAuthToken>,

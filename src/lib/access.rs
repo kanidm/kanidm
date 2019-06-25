@@ -23,7 +23,7 @@ use crate::entry::{Entry, EntryCommitted, EntryNew, EntryNormalised, EntryValid}
 use crate::error::OperationError;
 use crate::filter::{Filter, FilterValid};
 use crate::modify::Modify;
-use crate::proto_v1::Filter as ProtoFilter;
+use crate::proto::v1::Filter as ProtoFilter;
 use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
 
 use crate::event::{CreateEvent, DeleteEvent, EventOrigin, ModifyEvent, SearchEvent};

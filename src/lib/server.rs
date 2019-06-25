@@ -1480,10 +1480,10 @@ mod tests {
     use crate::error::{OperationError, SchemaError};
     use crate::event::{CreateEvent, DeleteEvent, ModifyEvent, ReviveRecycledEvent, SearchEvent};
     use crate::modify::{Modify, ModifyList};
-    use crate::proto_v1::Filter as ProtoFilter;
-    use crate::proto_v1::Modify as ProtoModify;
-    use crate::proto_v1::ModifyList as ProtoModifyList;
-    use crate::proto_v1::{DeleteRequest, ModifyRequest, ReviveRecycledRequest};
+    use crate::proto::v1::Filter as ProtoFilter;
+    use crate::proto::v1::Modify as ProtoModify;
+    use crate::proto::v1::ModifyList as ProtoModifyList;
+    use crate::proto::v1::{DeleteRequest, ModifyRequest, ReviveRecycledRequest};
     use crate::server::QueryServerTransaction;
 
     #[test]

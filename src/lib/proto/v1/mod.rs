@@ -4,6 +4,11 @@ use crate::error::OperationError;
 use actix::prelude::*;
 use std::collections::BTreeMap;
 
+
+pub(crate) mod actors;
+pub(crate) mod messages;
+pub mod client;
+
 // These proto implementations are here because they have public definitions
 
 /* ===== higher level types ===== */
@@ -317,7 +322,7 @@ impl WhoamiResponse {
 
 #[cfg(test)]
 mod tests {
-    use crate::proto_v1::Filter as ProtoFilter;
+    use crate::proto::v1::Filter as ProtoFilter;
     #[test]
     fn test_protofilter_simple() {
         let pf: ProtoFilter = ProtoFilter::Pres("class".to_string());

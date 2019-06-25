@@ -3,8 +3,8 @@ use crate::audit::AuditScope;
 use crate::error::{OperationError, SchemaError};
 use crate::filter::{Filter, FilterInvalid, FilterResolved, FilterValidResolved};
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
-use crate::proto_v1::Entry as ProtoEntry;
-use crate::proto_v1::UserAuthToken;
+use crate::proto::v1::Entry as ProtoEntry;
+use crate::proto::v1::UserAuthToken;
 use crate::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
 use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
 

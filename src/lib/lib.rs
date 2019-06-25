@@ -40,7 +40,8 @@ mod be;
 pub mod constants;
 mod entry;
 mod event;
-mod identity;
+// TODO: Does this need pub?
+mod filter;
 mod interval;
 mod modify;
 #[macro_use]
@@ -48,14 +49,9 @@ mod plugins;
 mod access;
 mod schema;
 mod server;
-mod idmserver;
-mod proto_v1_actors;
-mod proto_v1_messages;
+mod idm;
 
 pub mod config;
 pub mod core;
 pub mod error;
-// TODO: Does this need pub?
-pub mod filter;
-pub mod proto_v1;
-pub mod proto_v1_client;
+pub mod proto;

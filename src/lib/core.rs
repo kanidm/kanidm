@@ -14,12 +14,12 @@ use crate::config::Configuration;
 use crate::error::OperationError;
 use crate::interval::IntervalActor;
 use crate::log;
-use crate::proto_v1::{
+use crate::proto::v1::{
     AuthRequest, CreateRequest, DeleteRequest, ModifyRequest, SearchRequest, UserAuthToken,
     WhoamiRequest, WhoamiResponse,
 };
-use crate::proto_v1_actors::QueryServerV1;
-use crate::proto_v1_messages::WhoamiMessage;
+use crate::proto::v1::actors::QueryServerV1;
+use crate::proto::v1::messages::WhoamiMessage;
 
 struct AppState {
     qe: actix::Addr<QueryServerV1>,

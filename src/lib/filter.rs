@@ -5,7 +5,7 @@
 use crate::audit::AuditScope;
 use crate::error::{OperationError, SchemaError};
 use crate::event::{Event, EventOrigin};
-use crate::proto_v1::Filter as ProtoFilter;
+use crate::proto::v1::Filter as ProtoFilter;
 use crate::schema::SchemaTransaction;
 use crate::server::{
     QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,

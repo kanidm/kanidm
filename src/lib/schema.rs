@@ -1,7 +1,7 @@
 use crate::audit::AuditScope;
 use crate::constants::*;
 use crate::error::{ConsistencyError, OperationError, SchemaError};
-use crate::proto_v1::Filter as ProtoFilter;
+use crate::proto::v1::Filter as ProtoFilter;
 use regex::Regex;
 use std::collections::HashMap;
 use std::convert::TryFrom;
