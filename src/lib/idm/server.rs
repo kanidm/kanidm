@@ -107,3 +107,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
         unimplemented!();
     }
 }
+
+impl<'a> IdmServerReadTransaction<'a> {
+    pub fn whoami() -> () {}
+}

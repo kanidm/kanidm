@@ -305,6 +305,7 @@ impl Handler<WhoamiMessage> for QueryServerV1 {
     fn handle(&mut self, msg: WhoamiMessage, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("whoami");
         let res = audit_segment!(&mut audit, || {
+            // TODO: Move this to IdmServer!!!
             // Begin a read
             let qs_read = self.qs.read();
 
