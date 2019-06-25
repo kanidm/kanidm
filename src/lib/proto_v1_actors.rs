@@ -13,6 +13,7 @@ use crate::log::EventLog;
 use crate::schema::{Schema, SchemaTransaction};
 
 use crate::server::{QueryServer, QueryServerTransaction};
+use crate::constants::UUID_ANONYMOUS;
 
 use crate::proto_v1::{
     AuthRequest, CreateRequest, DeleteRequest, ModifyRequest, OperationResponse, SearchRequest,
@@ -285,12 +286,18 @@ impl Handler<AuthRequest> for QueryServerV1 {
 
             // FIXME!!! This hack is to get anonymous, then we just use them
             // to generate the UAT.
-            let se_anon = SearchEvent::new_internal(
-                filter!()
-            );
+            let filter_anon = 
+                filter!(
+                    f_eq("uuid", UUID_ANONYMOUS)
+                )
+                .validate(qs_read.get_schema())
+                .map_err(|e| OperationError::SchemaViolation(e))?;
+
+            let se_anon = SearchEvent::new_internal(filter_anon);
 
             // Get the first / single entry we expect here ....
-            let entry = ...;
+            // let entry = ...;
+            unimplemented!();
 
             // If everything is good, finally issue the token. Oui oui!
             // Also send an async message to self to log the auth as provided.
@@ -300,10 +307,16 @@ impl Handler<AuthRequest> for QueryServerV1 {
             // TODO: Async message the account owner about the login?
             //
             // The lockouts could also be an in-memory concept too?
+
+
+            /*
             match anon_entry.to_userauthtoken() {
                 Some(uat) => Ok(uat),
                 None => Err(OperationError::InvalidState),
             }
+            */
+
+
             // Else, non non non!
         });
         // At the end of the event we send it for logging.

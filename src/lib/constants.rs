@@ -84,7 +84,7 @@ pub static JSON_IDM_ADMINS_ACP_REVIVE_V1: &'static str = r#"{
     }
 }"#;
 
-pub static _UUID_ANONYMOUS: &'static str = "00000000-0000-0000-0000-ffffffffffff";
+pub static UUID_ANONYMOUS: &'static str = "00000000-0000-0000-0000-ffffffffffff";
 pub static JSON_ANONYMOUS_V1: &'static str = r#"{
     "valid": {
         "uuid": "00000000-0000-0000-0000-ffffffffffff"

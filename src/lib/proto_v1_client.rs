@@ -11,4 +11,36 @@ struct ClientV1 {
     
 }
 
+impl ClientV1 {
+    fn auth_anonymous() -> () {
+
+    }
+
+    fn auth_password() -> () {
+
+    }
+
+    fn auth_application_password() -> () {
+    }
+
+    fn whoami() -> () {
+
+    }
+
+    // The four raw operations.
+    fn search() -> () {
+
+    }
+
+    fn modify() -> () {
+    }
+
+    fn create() -> () {
+    }
+
+    fn delete() -> () {
+    }
+
+}
+
 

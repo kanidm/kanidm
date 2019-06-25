@@ -27,7 +27,7 @@ struct AppState {
 }
 
 fn get_current_user(req: &HttpRequest<AppState>) -> Option<UserAuthToken> {
-    println!("{:?}", req.session());
+    // println!("{:?}", req.session());
     None
     // unimplemented!();
 }
@@ -217,11 +217,12 @@ fn auth(
 
                         // HACK HACK HACK!!! TODO THIS SHIT IS BAD
                         // For now, log in everyone as anonymous!
-                        let res = state.qe.send(obj).from_err().and_then(|res| match res {
+                        let res = state.qe.send(obj).from_err().and_then(move |res| match res {
                             Ok(uat) => {
                                 match req.session().set("uat", uat) {
                                     Ok(_) => Ok(HttpResponse::Ok().json("authentication success")),
-                                    Err(e) => Ok(HttpResponse::InternalServerError().json(e)),
+                                    // TODO: Make this error better
+                                    Err(e) => Ok(HttpResponse::InternalServerError().json(())),
                                 }
                             }
                             Err(e) => Ok(HttpResponse::InternalServerError().json(e)),

@@ -48,11 +48,14 @@ mod plugins;
 mod access;
 mod schema;
 mod server;
+mod idmserver;
+mod proto_v1_actors;
+mod proto_v1_messages;
 
 pub mod config;
 pub mod core;
 pub mod error;
+// TODO: Does this need pub?
 pub mod filter;
 pub mod proto_v1;
-mod proto_v1_actors;
-mod proto_v1_messages;
+pub mod proto_v1_client;

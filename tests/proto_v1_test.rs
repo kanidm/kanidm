@@ -110,7 +110,7 @@ fn test_server_whoami_anonymous() {
         let auth_dest = format!("{}/v1/auth", addr);
 
         let mut response = client
-            .get(whoami_dest.as_str());
+            .get(whoami_dest.as_str())
             .send()
             .unwrap();
 
@@ -129,12 +129,12 @@ fn test_server_whoami_anonymous() {
             .post(auth_dest.as_str())
             // .body()
             .send()
-            .unwrap()
+            .unwrap();
         assert!(response.status() == reqwest::StatusCode::OK);
 
         // Now do a whoami.
         let mut response = client
-            .get(whoami_dest.as_str());
+            .get(whoami_dest.as_str())
             .send()
             .unwrap();
         assert!(response.status() == reqwest::StatusCode::OK);
