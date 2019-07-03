@@ -1,12 +1,11 @@
-use crate::entry::{Entry, EntryValid, EntryCommitted};
-use crate::error::OperationError;
 use crate::constants::UUID_ANONYMOUS;
+use crate::entry::{Entry, EntryCommitted, EntryValid};
+use crate::error::OperationError;
 
 use crate::proto::v1::AuthAllowed;
 
 use std::convert::TryFrom;
 use uuid::Uuid;
-
 
 #[derive(Debug, Clone)]
 pub(crate) struct Account {
@@ -22,7 +21,6 @@ pub(crate) struct Account {
     // groups?
     // claims?
     // account expiry?
-
 }
 
 impl TryFrom<Entry<EntryValid, EntryCommitted>> for Account {
@@ -31,12 +29,17 @@ impl TryFrom<Entry<EntryValid, EntryCommitted>> for Account {
     fn try_from(value: Entry<EntryValid, EntryCommitted>) -> Result<Self, Self::Error> {
         // Check the classes
         if !value.attribute_value_pres("class", "account") {
-            return Err(OperationError::InvalidAccountState("Missing class: account"))
+            return Err(OperationError::InvalidAccountState(
+                "Missing class: account",
+            ));
         }
 
         // Now extract our needed attributes
-        let name = value.get_ava_single("name")
-            .ok_or(OperationError::InvalidAccountState("Missing attribute: name"))?
+        let name = value
+            .get_ava_single("name")
+            .ok_or(OperationError::InvalidAccountState(
+                "Missing attribute: name",
+            ))?
             .clone();
 
         let uuid = value.get_uuid().clone();
@@ -49,8 +52,7 @@ impl TryFrom<Entry<EntryValid, EntryCommitted>> for Account {
 }
 
 impl Account {
-    pub fn validate_cred(&mut self) -> () {
-    }
+    pub fn validate_cred(&mut self) -> () {}
 
     fn auth_mech_anonymous(&self) -> Option<AuthAllowed> {
         if self.uuid == UUID_ANONYMOUS {
@@ -79,17 +81,16 @@ impl Account {
 #[cfg(test)]
 mod tests {
     use crate::constants::JSON_ANONYMOUS_V1;
+    use crate::entry::{Entry, EntryNew, EntryValid};
     use crate::idm::account::Account;
-    use crate::entry::{Entry, EntryValid, EntryNew};
     use crate::proto::v1::AuthAllowed;
 
     use std::convert::TryFrom;
 
-
-
     #[test]
     fn test_idm_account_from_anonymous() {
-        let anon_e: Entry<EntryValid, EntryNew> = serde_json::from_str(JSON_ANONYMOUS_V1).expect("Json deserialise failure!");
+        let anon_e: Entry<EntryValid, EntryNew> =
+            serde_json::from_str(JSON_ANONYMOUS_V1).expect("Json deserialise failure!");
         let anon_e = unsafe { anon_e.to_valid_committed() };
 
         let anon_account = Account::try_from(anon_e).expect("Must not fail");
@@ -103,13 +104,12 @@ mod tests {
 
         let auth_mechs = anon_account.valid_auth_mechs();
 
-        assert!(true == auth_mechs.iter().fold(false, |acc, x| {
-            match x {
+        assert!(
+            true == auth_mechs.iter().fold(false, |acc, x| match x {
                 AuthAllowed::Anonymous => true,
                 _ => acc,
-            }
-        }));
-
+            })
+        );
     }
 
     #[test]

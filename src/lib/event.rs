@@ -3,9 +3,9 @@ use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
 use crate::filter::{Filter, FilterValid};
 use crate::proto::v1::Entry as ProtoEntry;
 use crate::proto::v1::{
-    AuthRequest, AuthResponse, AuthStep, CreateRequest, DeleteRequest, ModifyRequest,
-    OperationResponse, ReviveRecycledRequest, SearchRequest, SearchResponse, UserAuthToken,
-    WhoamiRequest, WhoamiResponse, AuthAllowed, AuthState
+    AuthAllowed, AuthRequest, AuthResponse, AuthState, AuthStep, CreateRequest, DeleteRequest,
+    ModifyRequest, OperationResponse, ReviveRecycledRequest, SearchRequest, SearchResponse,
+    UserAuthToken, WhoamiRequest, WhoamiResponse,
 };
 // use error::OperationError;
 use crate::error::OperationError;
@@ -567,7 +567,7 @@ impl AuthEvent {
             // TODO: Change to AuthMessage, and fill in uat?
             event: None,
             step: msg.req.step,
-            sessionid: msg.sessionid
+            sessionid: msg.sessionid,
         }
     }
 }

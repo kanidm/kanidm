@@ -2,7 +2,7 @@ use crate::error::OperationError;
 use actix::prelude::*;
 use uuid::Uuid;
 
-use crate::proto::v1::{UserAuthToken, WhoamiRequest, WhoamiResponse, AuthRequest, AuthResponse};
+use crate::proto::v1::{AuthRequest, AuthResponse, UserAuthToken, WhoamiRequest, WhoamiResponse};
 
 // These are used when the request (IE Get) has no intrising request
 // type. Additionally, they are used in some requests where we need
@@ -43,4 +43,3 @@ impl AuthMessage {
 impl Message for AuthMessage {
     type Result = Result<AuthResponse, OperationError>;
 }
-

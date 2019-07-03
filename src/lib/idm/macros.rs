@@ -1,14 +1,15 @@
 #[cfg(test)]
 macro_rules! entry_str_to_account {
     ($entry_str:expr) => {{
-        use crate::entry::{Entry, EntryValid, EntryNew};
+        use crate::entry::{Entry, EntryNew, EntryValid};
         use crate::idm::account::Account;
 
-        let e: Entry<EntryValid, EntryNew> = serde_json::from_str($entry_str).expect("Json deserialise failure!");
+        let e: Entry<EntryValid, EntryNew> =
+            serde_json::from_str($entry_str).expect("Json deserialise failure!");
         let e = unsafe { e.to_valid_committed() };
 
         Account::try_from(e).expect("Account conversion failure")
-    }}
+    }};
 }
 
 #[cfg(test)]
@@ -16,9 +17,9 @@ macro_rules! run_idm_test {
     ($test_fn:expr) => {{
         use crate::audit::AuditScope;
         use crate::be::Backend;
+        use crate::idm::server::IdmServer;
         use crate::schema::Schema;
         use crate::server::QueryServer;
-        use crate::idm::server::IdmServer;
         use std::sync::Arc;
 
         let mut audit = AuditScope::new("run_test");
@@ -49,4 +50,3 @@ macro_rules! run_idm_test {
         assert!(test_server.verify(&mut audit).len() == 0);
     }};
 }
-

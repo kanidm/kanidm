@@ -6,8 +6,8 @@ use crate::be::Backend;
 
 use crate::error::OperationError;
 use crate::event::{
-    CreateEvent, DeleteEvent, ModifyEvent, PurgeRecycledEvent, PurgeTombstoneEvent, SearchEvent,
-    SearchResult, WhoamiResult, AuthResult, AuthEvent
+    AuthEvent, AuthResult, CreateEvent, DeleteEvent, ModifyEvent, PurgeRecycledEvent,
+    PurgeTombstoneEvent, SearchEvent, SearchResult, WhoamiResult,
 };
 use crate::log::EventLog;
 use crate::schema::{Schema, SchemaTransaction};
@@ -17,11 +17,11 @@ use crate::idm::server::IdmServer;
 use crate::server::{QueryServer, QueryServerTransaction};
 
 use crate::proto::v1::{
-    AuthRequest, CreateRequest, DeleteRequest, ModifyRequest, OperationResponse, SearchRequest,
-    SearchResponse, UserAuthToken, WhoamiRequest, WhoamiResponse, AuthResponse, AuthState
+    AuthRequest, AuthResponse, AuthState, CreateRequest, DeleteRequest, ModifyRequest,
+    OperationResponse, SearchRequest, SearchResponse, UserAuthToken, WhoamiRequest, WhoamiResponse,
 };
 
-use crate::proto::v1::messages::{WhoamiMessage, AuthMessage};
+use crate::proto::v1::messages::{AuthMessage, WhoamiMessage};
 
 pub struct QueryServerV1 {
     log: actix::Addr<EventLog>,
@@ -288,8 +288,9 @@ impl Handler<AuthMessage> for QueryServerV1 {
 
             // Generally things like auth denied are in Ok() msgs
             // so true errors should always trigger a rollback.
-            let r = idm_write.auth(&mut audit, &ae)
-                .and_then(|r| idm_write.commit().map(|_| r) );
+            let r = idm_write
+                .auth(&mut audit, &ae)
+                .and_then(|r| idm_write.commit().map(|_| r));
 
             audit_log!(audit, "Sending result -> {:?}", r);
             // Build the result.

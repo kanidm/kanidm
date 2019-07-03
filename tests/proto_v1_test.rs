@@ -5,7 +5,10 @@ extern crate rsidm;
 use rsidm::config::Configuration;
 use rsidm::constants::UUID_ADMIN;
 use rsidm::core::create_server_core;
-use rsidm::proto::v1::{CreateRequest, Entry, OperationResponse, WhoamiRequest, AuthStep, AuthRequest, AuthResponse, AuthState};
+use rsidm::proto::v1::{
+    AuthRequest, AuthResponse, AuthState, AuthStep, CreateRequest, Entry, OperationResponse,
+    WhoamiRequest,
+};
 
 extern crate reqwest;
 

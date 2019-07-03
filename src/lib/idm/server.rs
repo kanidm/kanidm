@@ -1,18 +1,18 @@
-use crate::be::Backend;
 use crate::audit::AuditScope;
+use crate::be::Backend;
 use crate::constants::UUID_ANONYMOUS;
 use crate::error::OperationError;
 use crate::event::{AuthEvent, AuthResult, SearchEvent};
-use crate::proto::v1::{UserAuthToken, AuthResponse, AuthState, AuthStep};
+use crate::idm::account::Account;
+use crate::proto::v1::{AuthResponse, AuthState, AuthStep, UserAuthToken};
 use crate::schema::Schema;
 use crate::server::{QueryServer, QueryServerTransaction};
-use crate::idm::account::Account;
 use concread::cowcell::{CowCell, CowCellReadTxn, CowCellWriteTxn};
 
 use std::collections::BTreeMap;
+use std::convert::TryFrom;
 use std::sync::Arc;
 use uuid::Uuid;
-use std::convert::TryFrom;
 // use lru::LruCache;
 
 pub struct IdmServer {
@@ -66,12 +66,16 @@ impl IdmServer {
 struct AuthSession {
     // Do we store a copy of the entry?
     // How do we know what claims to add?
-    pub account: Account
+    pub account: Account,
 }
 
 impl<'a> IdmServerWriteTransaction<'a> {
     // TODO: This should be something else, not the proto token!
-    pub fn auth(&mut self, au: &mut AuditScope, ae: &AuthEvent) -> Result<AuthResult, OperationError> {
+    pub fn auth(
+        &mut self,
+        au: &mut AuditScope,
+        ae: &AuthEvent,
+    ) -> Result<AuthResult, OperationError> {
         audit_log!(au, "Received AuthEvent -> {:?}", ae);
 
         // Match on the auth event, to see what we need to do.
@@ -113,7 +117,6 @@ impl<'a> IdmServerWriteTransaction<'a> {
                             // f_eq("uuid", name.as_str()),
                         ]));
 
-
                         // Get the first / single entry we expect here ....
                         let entry = match qs_read.internal_search(au, filter_entry) {
                             Ok(mut entries) => {
@@ -121,8 +124,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
                                 if entries.len() >= 2 {
                                     return Err(OperationError::InvalidDBState);
                                 }
-                                entries.pop()
-                                    .ok_or(OperationError::NoMatchingEntries)?
+                                entries.pop().ok_or(OperationError::NoMatchingEntries)?
                             }
                             Err(e) => {
                                 // Something went wrong! Abort!
@@ -143,9 +145,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
 
                         let next_mech = account.valid_auth_mechs();
 
-                        let auth_session = AuthSession {
-                            account: account
-                        };
+                        let auth_session = AuthSession { account: account };
 
                         self.sessions.insert(sessionid, auth_session);
 
@@ -159,29 +159,28 @@ impl<'a> IdmServerWriteTransaction<'a> {
             AuthStep::Creds(creds) => {
                 // Do we have a session?
                 // Process the credentials here as required.
-                        // If everything is good, finally issue the token. Oui oui!
-                        // Also send an async message to self to log the auth as provided.
-                        // Alternately, open a write, and commit the needed security metadata here
-                        // now rather than async (probably better for lock-outs etc)
-                        //
-                        // TODO: Async message the account owner about the login?
+                // If everything is good, finally issue the token. Oui oui!
+                // Also send an async message to self to log the auth as provided.
+                // Alternately, open a write, and commit the needed security metadata here
+                // now rather than async (probably better for lock-outs etc)
+                //
+                // TODO: Async message the account owner about the login?
 
-                        //
-                        // The lockouts could also be an in-memory concept too?
+                //
+                // The lockouts could also be an in-memory concept too?
 
-                        /*
-                        match anon_entry.to_userauthtoken() {
-                            Some(uat) => Ok(uat),
-                            None => Err(OperationError::InvalidState),
-                        }
-                        */
+                /*
+                match anon_entry.to_userauthtoken() {
+                    Some(uat) => Ok(uat),
+                    None => Err(OperationError::InvalidState),
+                }
+                */
 
-                        // Else, non non non!
+                // Else, non non non!
                 println!("{:?}", creds);
                 unimplemented!();
             }
         }
-
     }
 
     pub fn commit(self) -> Result<(), OperationError> {
@@ -212,6 +211,3 @@ mod tests {
 
     // Test sending anonymous but with no session init.
 }
-
-
-
