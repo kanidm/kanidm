@@ -7,7 +7,7 @@ use crate::be::Backend;
 use crate::error::OperationError;
 use crate::event::{
     CreateEvent, DeleteEvent, ModifyEvent, PurgeRecycledEvent, PurgeTombstoneEvent, SearchEvent,
-    SearchResult, WhoamiResult,
+    SearchResult, WhoamiResult, AuthResult, AuthEvent
 };
 use crate::log::EventLog;
 use crate::schema::{Schema, SchemaTransaction};
@@ -18,10 +18,10 @@ use crate::server::{QueryServer, QueryServerTransaction};
 
 use crate::proto::v1::{
     AuthRequest, CreateRequest, DeleteRequest, ModifyRequest, OperationResponse, SearchRequest,
-    SearchResponse, UserAuthToken, WhoamiRequest, WhoamiResponse,
+    SearchResponse, UserAuthToken, WhoamiRequest, WhoamiResponse, AuthResponse, AuthState
 };
 
-use crate::proto::v1::messages::WhoamiMessage;
+use crate::proto::v1::messages::{WhoamiMessage, AuthMessage};
 
 pub struct QueryServerV1 {
     log: actix::Addr<EventLog>,
@@ -38,12 +38,12 @@ impl Actor for QueryServerV1 {
 }
 
 impl QueryServerV1 {
-    pub fn new(log: actix::Addr<EventLog>, be: Backend, schema: Arc<Schema>) -> Self {
+    pub fn new(log: actix::Addr<EventLog>, qs: QueryServer) -> Self {
         log_event!(log, "Starting query server v1 worker ...");
         QueryServerV1 {
             log: log,
-            qs: QueryServer::new(be.clone(), schema.clone()),
-            idms: IdmServer::new(be, schema),
+            qs: qs.clone(),
+            idms: IdmServer::new(qs),
         }
     }
 
@@ -63,9 +63,8 @@ impl QueryServerV1 {
             // Create "just enough" schema for us to be able to load from
             // disk ... Schema loading is one time where we validate the
             // entries as we read them, so we need this here.
-            // FIXME: Handle results in start correctly
             let schema = match Schema::new(&mut audit) {
-                Ok(s) => Arc::new(s),
+                Ok(s) => s,
                 Err(e) => return Err(e),
             };
 
@@ -113,10 +112,12 @@ impl QueryServerV1 {
                 }
             }
 
-            // Create a temporary query_server implementation
-            let query_server = QueryServer::new(be.clone(), schema.clone());
+            // Create a query_server implementation
+            let query_server = QueryServer::new(be, schema);
 
             let mut audit_qsc = AuditScope::new("query_server_init");
+            // This may need to be two parts, one for schema, one for everything else
+            // that way we can reload schema in between.
             let query_server_write = query_server.write();
             match query_server_write.initialise(&mut audit_qsc).and_then(|_| {
                 audit_segment!(audit_qsc, || query_server_write.commit(&mut audit_qsc))
@@ -125,11 +126,13 @@ impl QueryServerV1 {
                 Ok(_) => {}
                 Err(e) => return Err(e),
             };
+            // What's important about this initial setup here is that it also triggers
+            // the schema and acp reload, so they are now configured correctly!
 
             audit.append_scope(audit_qsc);
 
             let x = SyncArbiter::start(threads, move || {
-                QueryServerV1::new(log_inner.clone(), be.clone(), schema.clone())
+                QueryServerV1::new(log_inner.clone(), query_server.clone())
             });
             Ok(x)
         });
@@ -263,10 +266,10 @@ impl Handler<DeleteRequest> for QueryServerV1 {
 // requires a lock ...
 // needs session id, entry, etc.
 
-impl Handler<AuthRequest> for QueryServerV1 {
-    type Result = Result<UserAuthToken, OperationError>;
+impl Handler<AuthMessage> for QueryServerV1 {
+    type Result = Result<AuthResponse, OperationError>;
 
-    fn handle(&mut self, msg: AuthRequest, _: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, msg: AuthMessage, _: &mut Self::Context) -> Self::Result {
         // This is probably the first function that really implements logic
         // "on top" of the db server concept. In this case we check if
         // the credentials provided is sufficient to say if someone is
@@ -275,23 +278,22 @@ impl Handler<AuthRequest> for QueryServerV1 {
         let res = audit_segment!(&mut audit, || {
             audit_log!(audit, "Begin auth event {:?}", msg);
 
-            let idm_write = self.idms.write();
+            // Destructure it.
+            // Convert the AuthRequest to an AuthEvent that the idm server
+            // can use.
 
-            let r = idm_write.auth();
-            // If this was ok, commit. In some cases, errors
-            // can also require a commit. Is this right?
-            match &r {
-                Ok(_) => {
-                    // We always commit
-                    idm_write.commit();
-                }
+            let mut idm_write = self.idms.write();
 
-                Err(e) => match e {
-                    _ => {}
-                },
-            };
-            // Return the result.
-            r
+            let ae = AuthEvent::from_message(msg);
+
+            // Generally things like auth denied are in Ok() msgs
+            // so true errors should always trigger a rollback.
+            let r = idm_write.auth(&mut audit, &ae)
+                .and_then(|r| idm_write.commit().map(|_| r) );
+
+            audit_log!(audit, "Sending result -> {:?}", r);
+            // Build the result.
+            r.map(|r| r.response())
         });
         // At the end of the event we send it for logging.
         self.log.do_send(audit);

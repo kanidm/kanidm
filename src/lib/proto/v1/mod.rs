@@ -3,6 +3,7 @@
 use crate::error::OperationError;
 use actix::prelude::*;
 use std::collections::BTreeMap;
+use uuid::Uuid;
 
 pub(crate) mod actors;
 pub mod client;
@@ -221,46 +222,60 @@ impl Message for ModifyRequest {
 //
 // On loginSuccess, we send a cookie, and that allows the token to be
 // generated. The cookie can be shared between servers.
+#[derive(Debug, Serialize, Deserialize)]
+pub enum AuthCredential {
+    Anonymous,
+    Password(String),
+    // TOTP(String),
+}
 
 #[derive(Debug, Serialize, Deserialize)]
-pub enum AuthState {
-    Init(String, Vec<String>),
+pub enum AuthStep {
+    // name, application id?
+    Init(String, Option<String>),
     /*
     Step(
         Type(params ....)
     ),
     */
+    Creds(Vec<AuthCredential>),
+    // Should we have a "finalise" type to attempt to finish based on
+    // what we have given?
 }
 
 // Request auth for identity X with roles Y?
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AuthRequest {
-    pub state: AuthState,
-    pub user_uuid: String,
-}
-
-impl Message for AuthRequest {
-    type Result = Result<UserAuthToken, OperationError>;
+    pub step: AuthStep,
 }
 
 // Respond with the list of auth types and nonce, etc.
 // It can also contain a denied, or success.
 #[derive(Debug, Serialize, Deserialize)]
-pub enum AuthStatus {
-    Begin(String), // uuid of this session.
-                   // Continue, // Keep going, here are the things you could still provide ...
-                   // Go away, you made a mistake somewhere.
-                   // Provide reason?
-                   // Denied(String),
-                   // Welcome friend.
-                   // On success provide entry "self", for group assertions?
-                   // We also provide the "cookie"/token?
-                   // Success(String, Entry),
+pub enum AuthAllowed {
+    Anonymous,
+    Password,
+    // TOTP,
+    // Webauthn(String),
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum AuthState {
+    // Everything is good, your cookie has been issued, and a token is set here
+    // for the client to view.
+    Success(UserAuthToken),
+    // Something was bad, your session is terminated and no cookie.
+    Denied,
+    // Continue to auth, allowed mechanisms listed.
+    Continue(Vec<AuthAllowed>),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AuthResponse {
-    pub status: AuthStatus,
+    // TODO: Consider moving to an AuthMessageResponse type, and leave the proto
+    // without the session id because it's not necesary to know.
+    pub sessionid: Uuid,
+    pub state: AuthState,
 }
 
 /* Recycle Requests area */

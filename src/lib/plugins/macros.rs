@@ -13,7 +13,7 @@ macro_rules! setup_test {
             schema.bootstrap_core($au).expect("Failed to init schema");
             schema.commit().expect("Failed to commit schema");
         }
-        let qs = QueryServer::new(be, Arc::new(schema_outer));
+        let qs = QueryServer::new(be, schema_outer);
 
         if !$preload_entries.is_empty() {
             let qs_write = qs.write();
@@ -42,7 +42,6 @@ macro_rules! run_create_test {
         use crate::event::CreateEvent;
         use crate::schema::Schema;
         use crate::server::QueryServer;
-        use std::sync::Arc;
 
         let mut au = AuditScope::new("run_create_test");
         audit_segment!(au, || {
@@ -96,7 +95,6 @@ macro_rules! run_modify_test {
         use crate::event::ModifyEvent;
         use crate::schema::Schema;
         use crate::server::QueryServer;
-        use std::sync::Arc;
 
         let mut au = AuditScope::new("run_modify_test");
         audit_segment!(au, || {
@@ -149,7 +147,6 @@ macro_rules! run_delete_test {
         use crate::event::DeleteEvent;
         use crate::schema::Schema;
         use crate::server::QueryServer;
-        use std::sync::Arc;
 
         let mut au = AuditScope::new("run_delete_test");
         audit_segment!(au, || {

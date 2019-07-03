@@ -554,6 +554,7 @@ impl<'a> QueryServerTransaction for QueryServerWriteTransaction<'a> {
     }
 }
 
+#[derive(Clone)]
 pub struct QueryServer {
     // log: actix::Addr<EventLog>,
     be: Backend,
@@ -562,11 +563,11 @@ pub struct QueryServer {
 }
 
 impl QueryServer {
-    pub fn new(be: Backend, schema: Arc<Schema>) -> Self {
+    pub fn new(be: Backend, schema: Schema) -> Self {
         // log_event!(log, "Starting query worker ...");
         QueryServer {
             be: be,
-            schema: schema,
+            schema: Arc::new(schema),
             accesscontrols: Arc::new(AccessControls::new()),
         }
     }
@@ -1459,22 +1460,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
 #[cfg(test)]
 mod tests {
-    /*
-    extern crate actix;
-    use actix::prelude::*;
-
-    extern crate futures;
-    use futures::future;
-    use futures::future::Future;
-
-    extern crate tokio;
-    use std::sync::Arc;
-    use crate::be::Backend;
-    use crate::filter::Filter;
-    use crate::schema::Schema;
-    use crate::audit::AuditScope;
-    */
-
     use crate::constants::{JSON_ADMIN_V1, UUID_ADMIN};
     use crate::entry::{Entry, EntryInvalid, EntryNew};
     use crate::error::{OperationError, SchemaError};

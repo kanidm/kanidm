@@ -5,7 +5,7 @@ extern crate rsidm;
 use rsidm::config::Configuration;
 use rsidm::constants::UUID_ADMIN;
 use rsidm::core::create_server_core;
-use rsidm::proto::v1::{CreateRequest, Entry, OperationResponse, WhoamiRequest};
+use rsidm::proto::v1::{CreateRequest, Entry, OperationResponse, WhoamiRequest, AuthStep, AuthRequest, AuthResponse, AuthState};
 
 extern crate reqwest;
 
@@ -106,10 +106,10 @@ fn test_server_proto() {
 fn test_server_whoami_anonymous() {
     run_test(|client: reqwest::Client, addr: &str| {
         // First show we are un-authenticated.
-        let whoami_dest = format!("{}/v1/create", addr);
+        let whoami_dest = format!("{}/v1/whoami", addr);
         let auth_dest = format!("{}/v1/auth", addr);
 
-        let mut response = client.get(whoami_dest.as_str()).send().unwrap();
+        let response = client.get(whoami_dest.as_str()).send().unwrap();
 
         // https://docs.rs/reqwest/0.9.15/reqwest/struct.Response.html
         println!("{:?}", response);
@@ -117,20 +117,34 @@ fn test_server_whoami_anonymous() {
         assert!(response.status() == reqwest::StatusCode::UNAUTHORIZED);
 
         // Now login as anonymous
-        // This sets a cookie to say who you are:
-        // Initiate - this should say what details are needed.
 
-        // Send the credentials required
+        // Setup the auth initialisation
+        let auth_init = AuthRequest {
+            step: AuthStep::Init("anonymous".to_string(), None),
+        };
 
         let mut response = client
             .post(auth_dest.as_str())
-            // .body()
+            .body(serde_json::to_string(&auth_init).unwrap())
             .send()
             .unwrap();
         assert!(response.status() == reqwest::StatusCode::OK);
+        // Check that we got the next step
+        let r: AuthResponse = serde_json::from_str(response.text().unwrap().as_str()).unwrap();
+        println!("==> AUTHRESPONSE ==> {:?}", r);
+
+        assert!(match &r.state {
+            AuthState::Continue(all_list) => {
+                // Check anonymous is present?
+                true
+            }
+            _ => false,
+        });
+
+        // Send the credentials required now
 
         // Now do a whoami.
-        let mut response = client.get(whoami_dest.as_str()).send().unwrap();
+        let response = client.get(whoami_dest.as_str()).send().unwrap();
         assert!(response.status() == reqwest::StatusCode::OK);
 
         // Check the json now ... response.json()

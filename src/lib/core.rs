@@ -15,11 +15,13 @@ use crate::error::OperationError;
 use crate::interval::IntervalActor;
 use crate::log;
 use crate::proto::v1::actors::QueryServerV1;
-use crate::proto::v1::messages::WhoamiMessage;
+use crate::proto::v1::messages::{WhoamiMessage, AuthMessage};
 use crate::proto::v1::{
     AuthRequest, CreateRequest, DeleteRequest, ModifyRequest, SearchRequest, UserAuthToken,
-    WhoamiRequest, WhoamiResponse,
+    WhoamiRequest, WhoamiResponse, AuthResponse, AuthState
 };
+
+use uuid::Uuid;
 
 struct AppState {
     qe: actix::Addr<QueryServerV1>,
@@ -176,60 +178,62 @@ fn auth(
                         // First, deal with some state management.
                         // Do anything here first that's needed like getting the session details
                         // out of the req cookie.
-                        // let mut counter = 1;
+
+                        // TODO: Set/Assert that the auth-session came from this server!
+                        // This is an important security step!
+                        // Alternately, use a UUID instead of usize for session id, and select
+                        // a specific type (not uuid4)
 
                         // From the actix source errors here
                         // seems to be related to the serde_json deserialise of the cookie
                         // content, and because we control it's get/set it SHOULD be fine
                         // provided we use secure cookies. But we can't always trust that ...
-                        let maybe_count = match req.session().get::<i32>("counter") {
+                        let maybe_sessionid = match req.session().get::<Uuid>("auth-session-id") {
                             Ok(c) => c,
                             Err(e) => {
                                 return Box::new(future::err(e));
                             }
                         };
 
-                        let c = match maybe_count {
-                            Some(count) => {
-                                println!("SESSION value: {}", count);
-                                count + 1
-                            }
-                            None => {
-                                println!("INIT value: 1");
-                                1
-                            }
-                        };
-
-                        match req.session().set("counter", c) {
-                            Ok(_) => {}
-                            Err(e) => {
-                                return Box::new(future::err(e));
-                            }
-                        };
+                        let auth_msg = AuthMessage::new(obj, maybe_sessionid);
 
                         // We probably need to know if we allocate the cookie, that this is a
                         // new session, and in that case, anything *except* authrequest init is
                         // invalid.
-
-                        // HACK HACK HACK!!! TODO THIS SHIT IS BAD
-                        // For now, log in everyone as anonymous!
                         let res = state
                             .qe
-                            .send(obj)
+                            .send(auth_msg)
                             .from_err()
                             .and_then(move |res| match res {
-                                Ok(uat) => {
-                                    match req.session().set("uat", uat) {
-                                        Ok(_) => {
-                                            Ok(HttpResponse::Ok().json("authentication success"))
+                                Ok(ar) => {
+                                    match &ar.state {
+                                        AuthState::Success(uat) => {
+                                            // Remove the auth-session-id
+                                            req.session().remove("auth-session-id");
+                                            // Set the uat into the cookie
+                                            match req.session().set("uat", uat) {
+                                                Ok(_) => Ok(HttpResponse::Ok().json(ar)),
+                                                Err(_) => Ok(HttpResponse::InternalServerError().json(())),
+                                            }
                                         }
-                                        // TODO: Make this error better
-                                        Err(e) => Ok(HttpResponse::InternalServerError().json(())),
+                                        AuthState::Denied => {
+                                            // Remove the auth-session-id
+                                            req.session().remove("auth-session-id");
+                                            Ok(HttpResponse::Ok().json(ar))
+                                        }
+                                        AuthState::Continue(_) => {
+                                            // TODO: Where do we get the auth-session-id from?
+                                            // Ensure the auth-session-id is set
+                                            match req.session().set("auth-session-id", ar.sessionid) {
+                                                Ok(_) => Ok(HttpResponse::Ok().json(ar)),
+                                                Err(_) => Ok(HttpResponse::InternalServerError().json(())),
+                                            }
+                                        }
                                     }
                                 }
                                 Err(e) => Ok(HttpResponse::InternalServerError().json(e)),
-                            });
-
+                            }
+                        );
                         Box::new(res)
                     }
                     Err(e) => Box::new(future::err(error::ErrorBadRequest(format!(

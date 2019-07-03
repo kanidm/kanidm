@@ -3,9 +3,9 @@ use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
 use crate::filter::{Filter, FilterValid};
 use crate::proto::v1::Entry as ProtoEntry;
 use crate::proto::v1::{
-    AuthRequest, AuthResponse, AuthStatus, CreateRequest, DeleteRequest, ModifyRequest,
+    AuthRequest, AuthResponse, AuthStep, CreateRequest, DeleteRequest, ModifyRequest,
     OperationResponse, ReviveRecycledRequest, SearchRequest, SearchResponse, UserAuthToken,
-    WhoamiRequest, WhoamiResponse,
+    WhoamiRequest, WhoamiResponse, AuthAllowed, AuthState
 };
 // use error::OperationError;
 use crate::error::OperationError;
@@ -13,6 +13,8 @@ use crate::modify::{ModifyList, ModifyValid};
 use crate::server::{
     QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
 };
+
+use crate::proto::v1::messages::AuthMessage;
 // Bring in schematransaction trait for validate
 // use crate::schema::SchemaTransaction;
 
@@ -25,6 +27,7 @@ use crate::modify::ModifyInvalid;
 use crate::proto::v1::SearchRecycledRequest;
 
 use actix::prelude::*;
+use uuid::Uuid;
 
 // Should the event Result have the log items?
 // FIXME: Remove seralising here - each type should
@@ -553,21 +556,35 @@ impl ModifyEvent {
 
 #[derive(Debug)]
 pub struct AuthEvent {
-    // pub event: Event,
+    pub event: Option<Event>,
+    pub step: AuthStep,
+    pub sessionid: Option<Uuid>,
 }
 
 impl AuthEvent {
-    pub fn from_request(_request: AuthRequest) -> Self {
-        AuthEvent {}
+    pub fn from_message(msg: AuthMessage) -> Self {
+        AuthEvent {
+            // TODO: Change to AuthMessage, and fill in uat?
+            event: None,
+            step: msg.req.step,
+            sessionid: msg.sessionid
+        }
     }
 }
 
-pub struct AuthResult {}
+// Probably should be a struct with the session id present.
+#[derive(Debug)]
+pub struct AuthResult {
+    pub sessionid: Uuid,
+    // TODO: Make this an event specific authstate type?
+    pub state: AuthState,
+}
 
 impl AuthResult {
     pub fn response(self) -> AuthResponse {
         AuthResponse {
-            status: AuthStatus::Begin(String::from("hello")),
+            sessionid: self.sessionid,
+            state: self.state,
         }
     }
 }
