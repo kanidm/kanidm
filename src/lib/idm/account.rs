@@ -1,4 +1,3 @@
-use crate::constants::UUID_ANONYMOUS;
 use crate::entry::{Entry, EntryCommitted, EntryValid};
 use crate::error::OperationError;
 
@@ -15,8 +14,8 @@ pub(crate) struct Account {
     // We do need to decide if we'll cache the entry, or if we just "work out"
     // what the ops should be based on the values we cache here ... That's a future
     // william problem I think :)
-    uuid: String,
-    name: String,
+    pub uuid: String,
+    pub name: String,
     // creds (various types)
     // groups?
     // claims?
@@ -51,29 +50,6 @@ impl TryFrom<Entry<EntryValid, EntryCommitted>> for Account {
     }
 }
 
-impl Account {
-    pub fn validate_cred(&mut self) -> () {}
-
-    fn auth_mech_anonymous(&self) -> Option<AuthAllowed> {
-        if self.uuid == UUID_ANONYMOUS {
-            Some(AuthAllowed::Anonymous)
-        } else {
-            None
-        }
-    }
-
-    pub fn valid_auth_mechs(&self) -> Vec<AuthAllowed> {
-        let mut valid = Vec::new();
-
-        match self.auth_mech_anonymous() {
-            Some(a) => valid.push(a),
-            None => {}
-        }
-
-        valid
-    }
-}
-
 // Need to also add a "to UserAuthToken" ...
 
 // Need tests for conversion and the cred validations
@@ -96,20 +72,6 @@ mod tests {
         let anon_account = Account::try_from(anon_e).expect("Must not fail");
         println!("{:?}", anon_account);
         // I think that's it? we may want to check anonymous mech ...
-    }
-
-    #[test]
-    fn test_idm_account_anonymous_auth_mech() {
-        let anon_account = entry_str_to_account!(JSON_ANONYMOUS_V1);
-
-        let auth_mechs = anon_account.valid_auth_mechs();
-
-        assert!(
-            true == auth_mechs.iter().fold(false, |acc, x| match x {
-                AuthAllowed::Anonymous => true,
-                _ => acc,
-            })
-        );
     }
 
     #[test]

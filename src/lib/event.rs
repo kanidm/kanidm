@@ -3,9 +3,9 @@ use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
 use crate::filter::{Filter, FilterValid};
 use crate::proto::v1::Entry as ProtoEntry;
 use crate::proto::v1::{
-    AuthAllowed, AuthRequest, AuthResponse, AuthState, AuthStep, CreateRequest, DeleteRequest,
-    ModifyRequest, OperationResponse, ReviveRecycledRequest, SearchRequest, SearchResponse,
-    UserAuthToken, WhoamiRequest, WhoamiResponse,
+    AuthAllowed, AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep, CreateRequest,
+    DeleteRequest, ModifyRequest, OperationResponse, ReviveRecycledRequest, SearchRequest,
+    SearchResponse, UserAuthToken, WhoamiRequest, WhoamiResponse,
 };
 // use error::OperationError;
 use crate::error::OperationError;
@@ -365,7 +365,7 @@ impl CreateEvent {
         entries: Vec<Entry<EntryInvalid, EntryNew>>,
     ) -> Self {
         CreateEvent {
-            event: unsafe { Event::from_impersonate_entry_ser(e) },
+            event: Event::from_impersonate_entry_ser(e),
             entries: entries,
         }
     }
@@ -555,19 +555,96 @@ impl ModifyEvent {
 }
 
 #[derive(Debug)]
+pub struct AuthEventStepInit {
+    pub name: String,
+    pub appid: Option<String>,
+}
+
+#[derive(Debug)]
+pub struct AuthEventStepCreds {
+    pub sessionid: Uuid,
+    pub creds: Vec<AuthCredential>,
+}
+
+#[derive(Debug)]
+pub enum AuthEventStep {
+    Init(AuthEventStepInit),
+    Creds(AuthEventStepCreds),
+}
+
+impl AuthEventStep {
+    fn from_authstep(aus: AuthStep, sid: Option<Uuid>) -> Result<Self, OperationError> {
+        match aus {
+            AuthStep::Init(name, appid) => {
+                if sid.is_some() {
+                    Err(OperationError::InvalidAuthState(
+                        "session id present in init",
+                    ))
+                } else {
+                    Ok(AuthEventStep::Init(AuthEventStepInit {
+                        name: name,
+                        appid: appid,
+                    }))
+                }
+            }
+            AuthStep::Creds(creds) => match sid {
+                Some(ssid) => Ok(AuthEventStep::Creds(AuthEventStepCreds {
+                    sessionid: ssid,
+                    creds: creds,
+                })),
+                None => Err(OperationError::InvalidAuthState(
+                    "session id not present in cred",
+                )),
+            },
+        }
+    }
+
+    #[cfg(test)]
+    pub fn anonymous_init() -> Self {
+        AuthEventStep::Init(AuthEventStepInit {
+            name: "anonymous".to_string(),
+            appid: None,
+        })
+    }
+
+    #[cfg(test)]
+    pub fn anonymous_cred_step(sid: Uuid) -> Self {
+        AuthEventStep::Creds(AuthEventStepCreds {
+            sessionid: sid,
+            creds: vec![AuthCredential::Anonymous],
+        })
+    }
+}
+
+#[derive(Debug)]
 pub struct AuthEvent {
     pub event: Option<Event>,
-    pub step: AuthStep,
-    pub sessionid: Option<Uuid>,
+    pub step: AuthEventStep,
+    // pub sessionid: Option<Uuid>,
 }
 
 impl AuthEvent {
-    pub fn from_message(msg: AuthMessage) -> Self {
-        AuthEvent {
+    pub fn from_message(msg: AuthMessage) -> Result<Self, OperationError> {
+        Ok(AuthEvent {
             // TODO: Change to AuthMessage, and fill in uat?
             event: None,
-            step: msg.req.step,
-            sessionid: msg.sessionid,
+            step: AuthEventStep::from_authstep(msg.req.step, msg.sessionid)?,
+        })
+    }
+
+    #[cfg(test)]
+    pub fn anonymous_init() -> Self {
+        AuthEvent {
+            event: None,
+            step: AuthEventStep::anonymous_init(),
+        }
+    }
+
+    #[cfg(test)]
+    pub fn anonymous_cred_step(sid: Uuid) -> Self {
+        AuthEvent {
+            event: None,
+            step: AuthEventStep::anonymous_cred_step(sid),
         }
     }
 }

@@ -36,6 +36,8 @@ pub enum OperationError {
     SerdeJsonError,
     AccessDenied,
     NotAuthenticated,
+    InvalidAuthState(&'static str),
+    InvalidSessionState,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]

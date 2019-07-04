@@ -284,7 +284,7 @@ impl Handler<AuthMessage> for QueryServerV1 {
 
             let mut idm_write = self.idms.write();
 
-            let ae = AuthEvent::from_message(msg);
+            let ae = try_audit!(audit, AuthEvent::from_message(msg));
 
             // Generally things like auth denied are in Ok() msgs
             // so true errors should always trigger a rollback.

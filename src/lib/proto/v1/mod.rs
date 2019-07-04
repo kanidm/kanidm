@@ -251,7 +251,7 @@ pub struct AuthRequest {
 
 // Respond with the list of auth types and nonce, etc.
 // It can also contain a denied, or success.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub enum AuthAllowed {
     Anonymous,
     Password,
