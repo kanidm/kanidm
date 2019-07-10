@@ -115,6 +115,7 @@ impl Event {
         qs: &QueryServerReadTransaction,
         uat: Option<UserAuthToken>,
     ) -> Result<Self, OperationError> {
+        audit_log!(audit, "from_ro_uat -> {:?}", uat);
         let uat = uat.ok_or(OperationError::NotAuthenticated)?;
 
         let e = try_audit!(audit, qs.internal_search_uuid(audit, uat.uuid.as_str()));

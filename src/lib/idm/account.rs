@@ -1,7 +1,10 @@
 use crate::entry::{Entry, EntryCommitted, EntryValid};
 use crate::error::OperationError;
 
-use crate::proto::v1::AuthAllowed;
+use crate::proto::v1::{AuthAllowed, UserAuthToken};
+
+use crate::idm::claim::Claim;
+use crate::idm::group::Group;
 
 use std::convert::TryFrom;
 use uuid::Uuid;
@@ -14,8 +17,10 @@ pub(crate) struct Account {
     // We do need to decide if we'll cache the entry, or if we just "work out"
     // what the ops should be based on the values we cache here ... That's a future
     // william problem I think :)
-    pub uuid: String,
     pub name: String,
+    pub displayname: String,
+    pub uuid: String,
+    pub groups: Vec<Group>,
     // creds (various types)
     // groups?
     // claims?
@@ -41,11 +46,43 @@ impl TryFrom<Entry<EntryValid, EntryCommitted>> for Account {
             ))?
             .clone();
 
+        let displayname = value
+            .get_ava_single("displayname")
+            .ok_or(OperationError::InvalidAccountState(
+                "Missing attribute: displayname",
+            ))?
+            .clone();
+
+        // TODO: Resolve groups!!!!
+        let groups = Vec::new();
+
         let uuid = value.get_uuid().clone();
 
         Ok(Account {
             uuid: uuid,
             name: name,
+            displayname: displayname,
+            groups: groups,
+        })
+    }
+}
+
+impl Account {
+    // Could this actually take a claims list and application instead?
+    pub(crate) fn to_userauthtoken(&self, claims: Vec<Claim>) -> Option<UserAuthToken> {
+        // This could consume self?
+        // The cred handler provided is what authenticated this user, so we can use it to
+        // process what the proper claims should be.
+
+        // Get the claims from the cred_h
+
+        Some(UserAuthToken {
+            name: self.name.clone(),
+            displayname: self.name.clone(),
+            uuid: self.uuid.clone(),
+            application: None,
+            groups: self.groups.iter().map(|g| g.into_proto()).collect(),
+            claims: claims.iter().map(|c| c.into_proto()).collect(),
         })
     }
 }

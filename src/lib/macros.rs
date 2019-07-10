@@ -6,6 +6,9 @@ macro_rules! run_test {
         use crate::schema::Schema;
         use crate::server::QueryServer;
 
+        use env_logger;
+        let _ = env_logger::builder().is_test(true).try_init();
+
         let mut audit = AuditScope::new("run_test");
 
         let be = Backend::new(&mut audit, "").expect("Failed to init be");

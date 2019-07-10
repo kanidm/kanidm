@@ -29,8 +29,10 @@ path = "src/clients/whoami.rs"
 actix = "0.7"
 actix-web = "0.7"
 bytes = "0.4"
-env_logger = "0.5"
-reqwest = "0.9"
+log = "0.4"
+env_logger = "0.6"
+# reqwest = "0.9"
+reqwest = { path = "../reqwest" }
 
 chrono = "0.4"
 cookie = "0.11"

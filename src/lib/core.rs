@@ -11,9 +11,9 @@ use futures::{future, Future, Stream};
 use crate::config::Configuration;
 
 // SearchResult
+use crate::async_log;
 use crate::error::OperationError;
 use crate::interval::IntervalActor;
-use crate::log;
 use crate::proto::v1::actors::QueryServerV1;
 use crate::proto::v1::messages::{AuthMessage, WhoamiMessage};
 use crate::proto::v1::{
@@ -29,9 +29,13 @@ struct AppState {
 }
 
 fn get_current_user(req: &HttpRequest<AppState>) -> Option<UserAuthToken> {
-    // println!("{:?}", req.session());
-    None
-    // unimplemented!();
+    match req.session().get::<UserAuthToken>("uat") {
+        Ok(maybe_uat) => maybe_uat,
+        Err(_) => {
+            // return Box::new(future::err(e));
+            None
+        }
+    }
 }
 
 macro_rules! json_event_post {
@@ -195,6 +199,8 @@ fn auth(
                             }
                         };
 
+                        println!("CORE: {:?}", maybe_sessionid);
+
                         let auth_msg = AuthMessage::new(obj, maybe_sessionid);
 
                         // We probably need to know if we allocate the cookie, that this is a
@@ -266,7 +272,7 @@ pub fn create_server_core(config: Configuration) {
     // Start up the logging system: for now it just maps to stderr
 
     // The log server is started on it's own thread
-    let log_addr = log::start();
+    let log_addr = async_log::start();
     log_event!(log_addr, "Starting rsidm with configuration: {:?}", config);
 
     // Similar, create a stats thread which aggregates statistics from the
@@ -291,6 +297,7 @@ pub fn create_server_core(config: Configuration) {
     // Copy the max size
     let max_size = config.maximum_request;
     let secure_cookies = config.secure_cookies;
+    let domain = config.domain.clone();
 
     // start the web server
     actix_web::server::new(move || {
@@ -301,17 +308,18 @@ pub fn create_server_core(config: Configuration) {
         // Connect all our end points here.
         .middleware(middleware::Logger::default())
         .middleware(session::SessionStorage::new(
-            // Signed prevents tampering. this 32 byte key MUST
+            // TODO: Signed prevents tampering. this 32 byte key MUST
             // be generated (probably stored in DB for cross-host access)
             session::CookieSessionBackend::signed(&[0; 32])
-                .path("/")
+                // Limit to path?
+                // .path("/")
                 //.max_age() duration of the token life TODO make this proper!
-                .domain("localhost")
-                .same_site(cookie::SameSite::Strict) // constrain to the domain
-                // Disallow from js
-                .http_only(true)
+                // .domain(domain.as_str())
+                // .same_site(cookie::SameSite::Strict) // constrain to the domain
+                // Disallow from js and ...?
+                .http_only(false)
                 .name("rsidm-session")
-                // This forces https only
+                // This forces https only if true
                 .secure(secure_cookies),
         ))
         // .resource("/", |r| r.f(index))

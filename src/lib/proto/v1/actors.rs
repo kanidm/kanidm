@@ -4,12 +4,12 @@ use std::sync::Arc;
 use crate::audit::AuditScope;
 use crate::be::Backend;
 
+use crate::async_log::EventLog;
 use crate::error::OperationError;
 use crate::event::{
     AuthEvent, AuthResult, CreateEvent, DeleteEvent, ModifyEvent, PurgeRecycledEvent,
     PurgeTombstoneEvent, SearchEvent, SearchResult, WhoamiResult,
 };
-use crate::log::EventLog;
 use crate::schema::{Schema, SchemaTransaction};
 
 use crate::constants::UUID_ANONYMOUS;
@@ -26,7 +26,7 @@ use crate::proto::v1::messages::{AuthMessage, WhoamiMessage};
 pub struct QueryServerV1 {
     log: actix::Addr<EventLog>,
     qs: QueryServer,
-    idms: IdmServer,
+    idms: Arc<IdmServer>,
 }
 
 impl Actor for QueryServerV1 {
@@ -38,12 +38,12 @@ impl Actor for QueryServerV1 {
 }
 
 impl QueryServerV1 {
-    pub fn new(log: actix::Addr<EventLog>, qs: QueryServer) -> Self {
+    pub fn new(log: actix::Addr<EventLog>, qs: QueryServer, idms: Arc<IdmServer>) -> Self {
         log_event!(log, "Starting query server v1 worker ...");
         QueryServerV1 {
             log: log,
-            qs: qs.clone(),
-            idms: IdmServer::new(qs),
+            qs: qs,
+            idms: idms,
         }
     }
 
@@ -113,6 +113,8 @@ impl QueryServerV1 {
             }
 
             // Create a query_server implementation
+            // TODO: FIXME: CRITICAL: Schema must be ARC/Cow properly!!! Right now it's
+            // not!!!
             let query_server = QueryServer::new(be, schema);
 
             let mut audit_qsc = AuditScope::new("query_server_init");
@@ -129,10 +131,14 @@ impl QueryServerV1 {
             // What's important about this initial setup here is that it also triggers
             // the schema and acp reload, so they are now configured correctly!
 
+            // We generate a SINGLE idms only!
+
+            let idms = Arc::new(IdmServer::new(query_server.clone()));
+
             audit.append_scope(audit_qsc);
 
             let x = SyncArbiter::start(threads, move || {
-                QueryServerV1::new(log_inner.clone(), query_server.clone())
+                QueryServerV1::new(log_inner.clone(), query_server.clone(), idms.clone())
             });
             Ok(x)
         });

@@ -124,7 +124,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
                 // continue, and helps to keep non-needed entry specific data
                 // out of the LRU.
                 let account = Account::try_from(entry)?;
-                let auth_session = AuthSession { account: account };
+                let auth_session = AuthSession::new(account, init.appid.clone());
 
                 // Get the set of mechanisms that can proceed. This is tied
                 // to the session so that it can mutate state and have progression
@@ -134,6 +134,9 @@ impl<'a> IdmServerWriteTransaction<'a> {
                 // TODO: Check that no session id of the same value
                 // already existed, if so, error!
                 self.sessions.insert(sessionid, auth_session);
+
+                // Debugging: ensure we really inserted ...
+                assert!(self.sessions.get(&sessionid).is_some());
 
                 Ok(AuthResult {
                     sessionid: sessionid,
@@ -146,40 +149,20 @@ impl<'a> IdmServerWriteTransaction<'a> {
                 let auth_session = try_audit!(
                     au,
                     (*self.sessions)
+                        // Why is the session missing?
                         .get_mut(&creds.sessionid)
                         .ok_or(OperationError::InvalidSessionState)
                 );
                 // Process the credentials here as required.
                 // Basically throw them at the auth_session and see what
                 // falls out.
-                let r = auth_session.validate_creds(&creds.creds);
-
-                // If everything is good, finally issue the token. Oui oui!
-
-                // Also send an async message to self to log the auth as provided.
-                // Alternately, open a write, and commit the needed security metadata here
-                // now rather than async (probably better for lock-outs etc)
-                //
-                // TODO: Async message the account owner about the login?
-
-                //
-                // The lockouts could also be an in-memory concept too?
-
-                /*
-                match anon_entry.to_userauthtoken() {
-                    Some(uat) => Ok(uat),
-                    None => Err(OperationError::InvalidState),
-                }
-                */
-
-                // Else, non non non!
-                // println!("{:?}", creds);
-                match r {
-                    Ok(_) => {
-                        unimplemented!();
+                auth_session.validate_creds(&creds.creds).map(|aus| {
+                    AuthResult {
+                        // Is this right?
+                        sessionid: creds.sessionid,
+                        state: aus,
                     }
-                    Err(e) => Err(e),
-                }
+                })
             }
         }
     }
@@ -204,64 +187,74 @@ mod tests {
     #[test]
     fn test_idm_anonymous_auth() {
         run_idm_test!(|_qs: &QueryServer, idms: &IdmServer, au: &mut AuditScope| {
-            // Start and test anonymous auth.
-            let mut idms_write = idms.write();
-            // Send the initial auth event for initialising the session
-            let anon_init = AuthEvent::anonymous_init();
-            // Expect success
-            let r1 = idms_write.auth(au, &anon_init);
-            /* Some weird lifetime shit happens here ... */
-            // audit_log!(au, "r1 ==> {:?}", r1);
+            let sid = {
+                // Start and test anonymous auth.
+                let mut idms_write = idms.write();
+                // Send the initial auth event for initialising the session
+                let anon_init = AuthEvent::anonymous_init();
+                // Expect success
+                let r1 = idms_write.auth(au, &anon_init);
+                /* Some weird lifetime shit happens here ... */
+                // audit_log!(au, "r1 ==> {:?}", r1);
 
-            let sid = match r1 {
-                Ok(ar) => {
-                    let AuthResult { sessionid, state } = ar;
-                    match state {
-                        AuthState::Continue(mut conts) => {
-                            // Should only be one auth mech
-                            assert!(conts.len() == 1);
-                            // And it should be anonymous
-                            let m = conts.pop().expect("Should not fail");
-                            assert!(m == AuthAllowed::Anonymous);
-                        }
-                        _ => {
-                            panic!();
-                        }
-                    };
-                    // Now pass back the sessionid, we are good to continue.
-                    sessionid
-                }
-                Err(e) => {
-                    // Should not occur!
-                    panic!();
-                }
+                let sid = match r1 {
+                    Ok(ar) => {
+                        let AuthResult { sessionid, state } = ar;
+                        match state {
+                            AuthState::Continue(mut conts) => {
+                                // Should only be one auth mech
+                                assert!(conts.len() == 1);
+                                // And it should be anonymous
+                                let m = conts.pop().expect("Should not fail");
+                                assert!(m == AuthAllowed::Anonymous);
+                            }
+                            _ => {
+                                panic!();
+                            }
+                        };
+                        // Now pass back the sessionid, we are good to continue.
+                        sessionid
+                    }
+                    Err(e) => {
+                        // Should not occur!
+                        panic!();
+                    }
+                };
+
+                println!("sessionid is ==> {:?}", sid);
+
+                idms_write.commit().expect("Must not fail");
+
+                sid
             };
+            {
+                let mut idms_write = idms.write();
+                // Now send the anonymous request, given the session id.
+                let anon_step = AuthEvent::anonymous_cred_step(sid);
 
-            println!("sessionid is ==> {:?}", sid);
+                // Expect success
+                let r2 = idms_write.auth(au, &anon_step);
+                println!("r2 ==> {:?}", r2);
 
-            // Now send the anonymous request, given the session id.
-            let anon_step = AuthEvent::anonymous_cred_step(sid);
-
-            // Expect success
-            let r2 = idms_write.auth(au, &anon_step);
-            println!("r2 ==> {:?}", r2);
-
-            match r2 {
-                Ok(ar) => {
-                    let AuthResult { sessionid, state } = ar;
-                    match state {
-                        AuthState::Success(uat) => {
-                            // Check the uat.
-                        }
-                        _ => {
-                            panic!();
+                match r2 {
+                    Ok(ar) => {
+                        let AuthResult { sessionid, state } = ar;
+                        match state {
+                            AuthState::Success(uat) => {
+                                // Check the uat.
+                            }
+                            _ => {
+                                panic!();
+                            }
                         }
                     }
-                }
-                Err(e) => {
-                    // Should not occur!
-                    panic!();
-                }
+                    Err(e) => {
+                        // Should not occur!
+                        panic!();
+                    }
+                };
+
+                idms_write.commit().expect("Must not fail");
             }
         });
     }

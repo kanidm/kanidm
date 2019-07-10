@@ -37,6 +37,21 @@ pub static JSON_IDM_ADMINS_V1: &'static str = r#"{
     }
 }"#;
 
+pub static _UUID_SYSTEM_INFO: &'static str = "00000000-0000-0000-0000-ffffff000001";
+pub static JSON_SYSTEM_INFO_V1: &'static str = r#"{
+    "valid": {
+        "uuid": "00000000-0000-0000-0000-ffffff000001"
+    },
+    "state": null,
+    "attrs": {
+        "class": ["object", "system_info"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000001"],
+        "description": ["System info and metadata object."],
+        "version": ["1"],
+        "domain": ["example.com"]
+    }
+}"#;
+
 pub static _UUID_IDM_ADMINS_ACP_SEARCH_V1: &'static str = "00000000-0000-0000-0000-ffffff000002";
 pub static JSON_IDM_ADMINS_ACP_SEARCH_V1: &'static str = r#"{
     "valid": {
@@ -84,6 +99,29 @@ pub static JSON_IDM_ADMINS_ACP_REVIVE_V1: &'static str = r#"{
     }
 }"#;
 
+pub static _UUID_IDM_SELF_ACP_READ_V1: &'static str = "00000000-0000-0000-0000-ffffff000004";
+pub static JSON_IDM_SELF_ACP_READ_V1: &'static str = r#"{
+    "valid": {
+        "uuid": "00000000-0000-0000-0000-ffffff000004"
+    },
+    "state": null,
+    "attrs": {
+        "class": ["object", "access_control_profile", "access_control_search"],
+        "name": ["idm_self_acp_read"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000004"],
+        "description": ["Builtin IDM Control for self read - required for whoami."],
+        "version": ["1"],
+        "acp_enable": ["true"],
+        "acp_receiver": [
+            "\"Self\""
+        ],
+        "acp_targetscope": [
+            "\"Self\""
+        ],
+        "acp_search_attr": ["name", "uuid"]
+    }
+}"#;
+
 pub static UUID_ANONYMOUS: &'static str = "00000000-0000-0000-0000-ffffffffffff";
 pub static JSON_ANONYMOUS_V1: &'static str = r#"{
     "valid": {
@@ -97,21 +135,6 @@ pub static JSON_ANONYMOUS_V1: &'static str = r#"{
         "description": ["Anonymous access account."],
         "version": ["1"],
         "displayname": ["Anonymous"]
-    }
-}"#;
-
-pub static _UUID_SYSTEM_INFO: &'static str = "00000000-0000-0000-0000-ffffff000001";
-pub static JSON_SYSTEM_INFO_V1: &'static str = r#"{
-    "valid": {
-        "uuid": "00000000-0000-0000-0000-ffffff000001"
-    },
-    "state": null,
-    "attrs": {
-        "class": ["object", "system_info"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000001"],
-        "description": ["System info and metadata object."],
-        "version": ["1"],
-        "domain": ["example.com"]
     }
 }"#;
 

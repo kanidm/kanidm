@@ -6,8 +6,8 @@ use rsidm::config::Configuration;
 use rsidm::constants::UUID_ADMIN;
 use rsidm::core::create_server_core;
 use rsidm::proto::v1::{
-    AuthRequest, AuthResponse, AuthState, AuthStep, CreateRequest, Entry, OperationResponse,
-    WhoamiRequest,
+    AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep, CreateRequest, Entry,
+    OperationResponse, WhoamiRequest,
 };
 
 extern crate reqwest;
@@ -20,6 +20,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc;
 use std::thread;
 
+extern crate env_logger;
 extern crate tokio;
 
 static PORT_ALLOC: AtomicUsize = AtomicUsize::new(8080);
@@ -27,6 +28,7 @@ static PORT_ALLOC: AtomicUsize = AtomicUsize::new(8080);
 // Test external behaviorus of the service.
 
 fn run_test(test_fn: fn(reqwest::Client, &str) -> ()) {
+    let _ = env_logger::builder().is_test(true).try_init();
     let (tx, rx) = mpsc::channel();
     let port = PORT_ALLOC.fetch_add(1, Ordering::SeqCst);
     let mut config = Configuration::new();
@@ -138,16 +140,39 @@ fn test_server_whoami_anonymous() {
 
         assert!(match &r.state {
             AuthState::Continue(all_list) => {
-                // Check anonymous is present?
+                // Check anonymous is present? It will fail on next step if not ...
                 true
             }
             _ => false,
         });
 
         // Send the credentials required now
+        let auth_anon = AuthRequest {
+            step: AuthStep::Creds(vec![AuthCredential::Anonymous]),
+        };
+
+        let mut response = client
+            .post(auth_dest.as_str())
+            .body(serde_json::to_string(&auth_anon).unwrap())
+            .send()
+            .unwrap();
+        assert!(response.status() == reqwest::StatusCode::OK);
+        // Check that we got the next step
+        let r: AuthResponse = serde_json::from_str(response.text().unwrap().as_str()).unwrap();
+        println!("==> AUTHRESPONSE ==> {:?}", r);
+
+        assert!(match &r.state {
+            AuthState::Success(uat) => {
+                println!("==> Authed as uat; {:?}", uat);
+                true
+            }
+            _ => false,
+        });
 
         // Now do a whoami.
-        let response = client.get(whoami_dest.as_str()).send().unwrap();
+        let mut response = client.get(whoami_dest.as_str()).send().unwrap();
+        println!("WHOAMI -> {}", response.text().unwrap().as_str());
+        println!("WHOAMI STATUS -> {}", response.status());
         assert!(response.status() == reqwest::StatusCode::OK);
 
         // Check the json now ... response.json()

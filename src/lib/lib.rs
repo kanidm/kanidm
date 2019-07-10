@@ -1,3 +1,5 @@
+#[macro_use]
+extern crate log;
 extern crate serde;
 extern crate serde_json;
 #[macro_use]
@@ -32,7 +34,7 @@ extern crate concread;
 #[macro_use]
 mod macros;
 #[macro_use]
-mod log;
+mod async_log;
 #[macro_use]
 mod audit;
 mod be;

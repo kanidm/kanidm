@@ -13,7 +13,7 @@ use crate::access::{
 };
 use crate::constants::{
     JSON_ADMIN_V1, JSON_ANONYMOUS_V1, JSON_IDM_ADMINS_ACP_REVIVE_V1, JSON_IDM_ADMINS_ACP_SEARCH_V1,
-    JSON_IDM_ADMINS_V1, JSON_SYSTEM_INFO_V1,
+    JSON_IDM_ADMINS_V1, JSON_IDM_SELF_ACP_READ_V1, JSON_SYSTEM_INFO_V1,
 };
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryNormalised, EntryValid};
 use crate::error::{ConsistencyError, OperationError, SchemaError};
@@ -1301,16 +1301,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
         }
 
         // Check the admin object exists (migrations).
-        let mut audit_an = AuditScope::new("start_admin");
-        let res = self.internal_migrate_or_create_str(&mut audit_an, JSON_ADMIN_V1);
-        audit.append_scope(audit_an);
-        if res.is_err() {
-            return res;
-        }
-
         // Create the default idm_admin group.
-        let mut audit_an = AuditScope::new("start_idm_admins");
-        let res = self.internal_migrate_or_create_str(&mut audit_an, JSON_IDM_ADMINS_V1);
+        let mut audit_an = AuditScope::new("start_idm_admin_migrations");
+        let res = self
+            .internal_migrate_or_create_str(&mut audit_an, JSON_ADMIN_V1)
+            .and_then(|_| self.internal_migrate_or_create_str(&mut audit_an, JSON_IDM_ADMINS_V1));
         audit.append_scope(audit_an);
         if res.is_err() {
             return res;
@@ -1319,15 +1314,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Create any system default schema entries.
 
         // Create any system default access profile entries.
-        let mut audit_an = AuditScope::new("start_idm_admins_acp");
-        let res = self.internal_migrate_or_create_str(&mut audit_an, JSON_IDM_ADMINS_ACP_SEARCH_V1);
-        audit.append_scope(audit_an);
-        if res.is_err() {
-            return res;
-        }
-
-        let mut audit_an = AuditScope::new("start_idm_admins_acp");
-        let res = self.internal_migrate_or_create_str(&mut audit_an, JSON_IDM_ADMINS_ACP_REVIVE_V1);
+        let mut audit_an = AuditScope::new("start_idm_migrations_internal");
+        let res = self
+            .internal_migrate_or_create_str(&mut audit_an, JSON_IDM_ADMINS_ACP_SEARCH_V1)
+            .and_then(|_| {
+                self.internal_migrate_or_create_str(&mut audit_an, JSON_IDM_ADMINS_ACP_REVIVE_V1)
+            })
+            .and_then(|_| {
+                self.internal_migrate_or_create_str(&mut audit_an, JSON_IDM_SELF_ACP_READ_V1)
+            });
         audit.append_scope(audit_an);
         if res.is_err() {
             return res;

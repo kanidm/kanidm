@@ -446,3 +446,20 @@ sshPublicKey: ... <<-- different due to needing anon read.
 
 
 
+
+Some Dirty Rust Brain Dumps
+===========================
+
+- Credentials need per-cred locking
+    - This means they have to be in memory and uniquely ided.
+    - How can we display to a user that a credential back-off is inplace?
+
+- UAT need to know what Credential was used and it's state.
+    - The Credential associates the claims
+
+
+
+
+
+
+

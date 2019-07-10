@@ -634,10 +634,6 @@ impl Entry<EntryValid, EntryCommitted> {
             attrs: f_attrs,
         }
     }
-
-    pub fn to_userauthtoken(self) -> Option<UserAuthToken> {
-        unimplemented!();
-    }
 }
 
 impl<STATE> Entry<EntryValid, STATE> {

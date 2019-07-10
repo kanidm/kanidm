@@ -12,8 +12,11 @@ macro_rules! audit_log {
     ($audit:expr, $($arg:tt)*) => ({
         use std::fmt;
         if cfg!(test) || cfg!(debug_assertions) {
-            print!("DEBUG AUDIT ({}:{} {})-> ", file!(), line!(), $audit.id());
-            println!($($arg)*)
+            // debug!("DEBUG AUDIT ({}:{} {})-> ", file!(), line!(), $audit.id());
+            // debug!($($arg)*)
+            // debug!("DEBUG AUDIT ({}:{} {})-> ", file!(), line!(), $audit.id());
+            // debug!("line: {}", line!());
+            debug!($($arg)*)
         }
         $audit.log_event(
             fmt::format(
