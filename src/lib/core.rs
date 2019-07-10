@@ -183,11 +183,6 @@ fn auth(
                         // Do anything here first that's needed like getting the session details
                         // out of the req cookie.
 
-                        // TODO: Set/Assert that the auth-session came from this server!
-                        // This is an important security step!
-                        // Alternately, use a UUID instead of usize for session id, and select
-                        // a specific type (not uuid4)
-
                         // From the actix source errors here
                         // seems to be related to the serde_json deserialise of the cookie
                         // content, and because we control it's get/set it SHOULD be fine
@@ -198,8 +193,6 @@ fn auth(
                                 return Box::new(future::err(e));
                             }
                         };
-
-                        println!("CORE: {:?}", maybe_sessionid);
 
                         let auth_msg = AuthMessage::new(obj, maybe_sessionid);
 
@@ -261,17 +254,10 @@ fn auth(
 }
 
 pub fn create_server_core(config: Configuration) {
-    // Configure the middleware logger
-    ::std::env::set_var("RUST_LOG", "actix_web=info");
-    // We can't setup env logger in tests because it's not thread safe,
-    // so it causes a race condition inside of proto_v1_tests.
-    // TODO: Can we fix this? Perhaps a config setting?
-    // env_logger::init();
+    // Until this point, we probably want to write to the log macro fns.
 
-    // Until this point, we probably want to write to stderr
-    // Start up the logging system: for now it just maps to stderr
-
-    // The log server is started on it's own thread
+    // The log server is started on it's own thread, and is contacted
+    // asynchronously.
     let log_addr = async_log::start();
     log_event!(log_addr, "Starting rsidm with configuration: {:?}", config);
 

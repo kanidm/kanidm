@@ -120,7 +120,8 @@ impl fmt::Display for AuditScope {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut _depth = 0;
         // write!(f, "{}: begin -> {}", self.time, self.name);
-        let d = serde_json::to_string_pretty(self).map_err(|_| fmt::Error)?;
+        // to_string_pretty
+        let d = serde_json::to_string(self).map_err(|_| fmt::Error)?;
         write!(f, "{}", d)
     }
 }

@@ -168,7 +168,7 @@ impl Drop for BackendReadTransaction {
     // TODO: Is this correct for RO txn?
     fn drop(self: &mut Self) {
         if !self.committed {
-            println!("Aborting txn");
+            debug!("Aborting BE RO txn");
             self.conn
                 .execute("ROLLBACK TRANSACTION", NO_PARAMS)
                 // TODO: Can we do this without expect? I think we can't due
@@ -183,7 +183,7 @@ impl Drop for BackendReadTransaction {
 impl BackendReadTransaction {
     pub fn new(conn: r2d2::PooledConnection<SqliteConnectionManager>) -> Self {
         // Start the transaction
-        println!("Starting RO txn ...");
+        debug!("Starting BE RO txn ...");
         // TODO: Way to flag that this will be a read only?
         // TODO: Can we do this without expect? I think we need to change the type
         // signature here if we wanted to...
@@ -209,7 +209,7 @@ impl Drop for BackendWriteTransaction {
     // Abort
     fn drop(self: &mut Self) {
         if !self.committed {
-            println!("Aborting txn");
+            debug!("Aborting BE WR txn");
             self.conn
                 .execute("ROLLBACK TRANSACTION", NO_PARAMS)
                 // TODO: Can we do this without expect? I think we can't due
@@ -230,7 +230,7 @@ impl BackendTransaction for BackendWriteTransaction {
 impl BackendWriteTransaction {
     pub fn new(conn: r2d2::PooledConnection<SqliteConnectionManager>) -> Self {
         // Start the transaction
-        println!("Starting WR txn ...");
+        debug!("Starting BE WR txn ...");
         // TODO: Way to flag that this will be a write?
         // TODO: Can we do this without expect? I think we need to change the type
         // signature here if we wanted to...
@@ -579,7 +579,7 @@ impl BackendWriteTransaction {
     }
 
     pub fn commit(mut self) -> Result<(), OperationError> {
-        println!("Commiting txn");
+        debug!("Commiting BE txn");
         assert!(!self.committed);
         self.committed = true;
         self.conn

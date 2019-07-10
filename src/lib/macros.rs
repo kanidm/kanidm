@@ -7,6 +7,7 @@ macro_rules! run_test {
         use crate::server::QueryServer;
 
         use env_logger;
+        ::std::env::set_var("RUST_LOG", "actix_web=debug,rsidm=debug");
         let _ = env_logger::builder().is_test(true).try_init();
 
         let mut audit = AuditScope::new("run_test");
