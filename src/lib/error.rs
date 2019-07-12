@@ -28,12 +28,16 @@ pub enum OperationError {
     InvalidRequestState,
     InvalidState,
     InvalidEntryState,
-    InvalidACPState,
+    InvalidACPState(&'static str),
+    InvalidAccountState(&'static str),
     BackendEngine,
     SQLiteError, //(RusqliteError)
     FsError,
     SerdeJsonError,
     AccessDenied,
+    NotAuthenticated,
+    InvalidAuthState(&'static str),
+    InvalidSessionState,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]

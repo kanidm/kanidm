@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use crate::constants::PURGE_TIMEOUT;
 use crate::event::{PurgeRecycledEvent, PurgeTombstoneEvent};
-use crate::proto_v1_actors::QueryServerV1;
+use crate::proto::v1::actors::QueryServerV1;
 
 pub struct IntervalActor {
     // Store any addresses we require

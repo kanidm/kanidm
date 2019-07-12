@@ -1,10 +1,11 @@
 use crate::audit::AuditScope;
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
 use crate::filter::{Filter, FilterValid};
-use crate::proto_v1::Entry as ProtoEntry;
-use crate::proto_v1::{
-    AuthRequest, AuthResponse, AuthStatus, CreateRequest, DeleteRequest, ModifyRequest,
-    OperationResponse, ReviveRecycledRequest, SearchRequest, SearchResponse,
+use crate::proto::v1::Entry as ProtoEntry;
+use crate::proto::v1::{
+    AuthAllowed, AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep, CreateRequest,
+    DeleteRequest, ModifyRequest, OperationResponse, ReviveRecycledRequest, SearchRequest,
+    SearchResponse, UserAuthToken, WhoamiRequest, WhoamiResponse,
 };
 // use error::OperationError;
 use crate::error::OperationError;
@@ -12,6 +13,8 @@ use crate::modify::{ModifyList, ModifyValid};
 use crate::server::{
     QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
 };
+
+use crate::proto::v1::messages::AuthMessage;
 // Bring in schematransaction trait for validate
 // use crate::schema::SchemaTransaction;
 
@@ -21,9 +24,10 @@ use crate::filter::FilterInvalid;
 #[cfg(test)]
 use crate::modify::ModifyInvalid;
 #[cfg(test)]
-use crate::proto_v1::SearchRecycledRequest;
+use crate::proto::v1::SearchRecycledRequest;
 
 use actix::prelude::*;
+use uuid::Uuid;
 
 // Should the event Result have the log items?
 // FIXME: Remove seralising here - each type should
@@ -48,13 +52,13 @@ pub struct SearchResult {
 impl SearchResult {
     pub fn new(entries: Vec<Entry<EntryValid, EntryCommitted>>) -> Self {
         SearchResult {
-            // FIXME: Can we consume this iter?
             entries: entries
                 .iter()
                 .map(|e| {
-                    // FIXME: The issue here is this probably is applying transforms
-                    // like access control ... May need to change.
-                    e.into()
+                    // All the needed transforms for this result are done
+                    // in search_ext. This is just an entry -> protoentry
+                    // step.
+                    e.into_pe()
                 })
                 .collect(),
         }
@@ -100,6 +104,23 @@ impl Event {
         //
         // For now, no.
         let e = try_audit!(audit, qs.internal_search_uuid(audit, user_uuid));
+
+        Ok(Event {
+            origin: EventOrigin::User(e),
+        })
+    }
+
+    pub fn from_ro_uat(
+        audit: &mut AuditScope,
+        qs: &QueryServerReadTransaction,
+        uat: Option<UserAuthToken>,
+    ) -> Result<Self, OperationError> {
+        audit_log!(audit, "from_ro_uat -> {:?}", uat);
+        let uat = uat.ok_or(OperationError::NotAuthenticated)?;
+
+        let e = try_audit!(audit, qs.internal_search_uuid(audit, uat.uuid.as_str()));
+        // FIXME: Now apply claims from the uat into the Entry
+        // to allow filtering.
 
         Ok(Event {
             origin: EventOrigin::User(e),
@@ -183,6 +204,22 @@ impl SearchEvent {
             }),
             Err(e) => Err(e),
         }
+    }
+
+    pub fn from_whoami_request(
+        audit: &mut AuditScope,
+        uat: Option<UserAuthToken>,
+        qs: &QueryServerReadTransaction,
+    ) -> Result<Self, OperationError> {
+        Ok(SearchEvent {
+            event: Event::from_ro_uat(audit, qs, uat)?,
+            filter: filter!(f_self())
+                .validate(qs.get_schema())
+                .map_err(|e| OperationError::SchemaViolation(e))?,
+            filter_orig: filter_all!(f_self())
+                .validate(qs.get_schema())
+                .map_err(|e| OperationError::SchemaViolation(e))?,
+        })
     }
 
     // Just impersonate the account with no filter changes.
@@ -329,7 +366,7 @@ impl CreateEvent {
         entries: Vec<Entry<EntryInvalid, EntryNew>>,
     ) -> Self {
         CreateEvent {
-            event: unsafe { Event::from_impersonate_entry_ser(e) },
+            event: Event::from_impersonate_entry_ser(e),
             entries: entries,
         }
     }
@@ -519,22 +556,131 @@ impl ModifyEvent {
 }
 
 #[derive(Debug)]
-pub struct AuthEvent {
-    // pub event: Event,
+pub struct AuthEventStepInit {
+    pub name: String,
+    pub appid: Option<String>,
 }
 
-impl AuthEvent {
-    pub fn from_request(_request: AuthRequest) -> Self {
-        AuthEvent {}
+#[derive(Debug)]
+pub struct AuthEventStepCreds {
+    pub sessionid: Uuid,
+    pub creds: Vec<AuthCredential>,
+}
+
+#[derive(Debug)]
+pub enum AuthEventStep {
+    Init(AuthEventStepInit),
+    Creds(AuthEventStepCreds),
+}
+
+impl AuthEventStep {
+    fn from_authstep(aus: AuthStep, sid: Option<Uuid>) -> Result<Self, OperationError> {
+        match aus {
+            AuthStep::Init(name, appid) => {
+                if sid.is_some() {
+                    Err(OperationError::InvalidAuthState(
+                        "session id present in init",
+                    ))
+                } else {
+                    Ok(AuthEventStep::Init(AuthEventStepInit {
+                        name: name,
+                        appid: appid,
+                    }))
+                }
+            }
+            AuthStep::Creds(creds) => match sid {
+                Some(ssid) => Ok(AuthEventStep::Creds(AuthEventStepCreds {
+                    sessionid: ssid,
+                    creds: creds,
+                })),
+                None => Err(OperationError::InvalidAuthState(
+                    "session id not present in cred",
+                )),
+            },
+        }
+    }
+
+    #[cfg(test)]
+    pub fn anonymous_init() -> Self {
+        AuthEventStep::Init(AuthEventStepInit {
+            name: "anonymous".to_string(),
+            appid: None,
+        })
+    }
+
+    #[cfg(test)]
+    pub fn anonymous_cred_step(sid: Uuid) -> Self {
+        AuthEventStep::Creds(AuthEventStepCreds {
+            sessionid: sid,
+            creds: vec![AuthCredential::Anonymous],
+        })
     }
 }
 
-pub struct AuthResult {}
+#[derive(Debug)]
+pub struct AuthEvent {
+    pub event: Option<Event>,
+    pub step: AuthEventStep,
+    // pub sessionid: Option<Uuid>,
+}
+
+impl AuthEvent {
+    pub fn from_message(msg: AuthMessage) -> Result<Self, OperationError> {
+        Ok(AuthEvent {
+            // TODO: Change to AuthMessage, and fill in uat?
+            event: None,
+            step: AuthEventStep::from_authstep(msg.req.step, msg.sessionid)?,
+        })
+    }
+
+    #[cfg(test)]
+    pub fn anonymous_init() -> Self {
+        AuthEvent {
+            event: None,
+            step: AuthEventStep::anonymous_init(),
+        }
+    }
+
+    #[cfg(test)]
+    pub fn anonymous_cred_step(sid: Uuid) -> Self {
+        AuthEvent {
+            event: None,
+            step: AuthEventStep::anonymous_cred_step(sid),
+        }
+    }
+}
+
+// Probably should be a struct with the session id present.
+#[derive(Debug)]
+pub struct AuthResult {
+    pub sessionid: Uuid,
+    // TODO: Make this an event specific authstate type?
+    pub state: AuthState,
+}
 
 impl AuthResult {
     pub fn response(self) -> AuthResponse {
         AuthResponse {
-            status: AuthStatus::Begin(String::from("hello")),
+            sessionid: self.sessionid,
+            state: self.state,
+        }
+    }
+}
+
+pub struct WhoamiResult {
+    youare: ProtoEntry,
+}
+
+impl WhoamiResult {
+    pub fn new(e: Entry<EntryValid, EntryCommitted>) -> Self {
+        WhoamiResult {
+            youare: e.into_pe(),
+        }
+    }
+
+    pub fn response(self) -> WhoamiResponse {
+        WhoamiResponse {
+            youare: self.youare,
         }
     }
 }

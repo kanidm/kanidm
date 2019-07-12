@@ -3,8 +3,70 @@
 use crate::error::OperationError;
 use actix::prelude::*;
 use std::collections::BTreeMap;
+use uuid::Uuid;
+
+pub(crate) mod actors;
+pub mod client;
+pub(crate) mod messages;
 
 // These proto implementations are here because they have public definitions
+
+/* ===== higher level types ===== */
+// These are all types that are conceptually layers ontop of entry and
+// friends. They allow us to process more complex requests and provide
+// domain specific fields for the purposes of IDM, over the normal
+// entry/ava/filter types. These related deeply to schema.
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Group {
+    pub name: String,
+    pub uuid: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Claim {
+    pub name: String,
+    pub uuid: String,
+    // These can be ephemeral, or shortlived in a session.
+    // some may even need requesting.
+    // pub expiry: DateTime
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Application {
+    pub name: String,
+    pub uuid: String,
+}
+
+// The currently authenticated user, and any required metadata for them
+// to properly authorise them. This is similar in nature to oauth and the krb
+// PAC/PAD structures. Currently we only use this internally, but we should
+// consider making it "parseable" by the client so they can have per-session
+// group/authorisation data.
+//
+// This structure and how it works will *very much* change over time from this
+// point onward!
+//
+// It's likely that this must have a relationship to the server's user structure
+// and to the Entry so that filters or access controls can be applied.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct UserAuthToken {
+    // When this data should be considered invalid. Interpretation
+    // may depend on the client application.
+    // pub expiry: DateTime,
+    pub name: String,
+    pub displayname: String,
+    pub uuid: String,
+    pub application: Option<Application>,
+    pub groups: Vec<Group>,
+    pub claims: Vec<Claim>,
+    // Should we allow supplemental ava's to be added on request?
+}
+
+// UAT will need a downcast to Entry, which adds in the claims to the entry
+// for the purpose of filtering.
+
+/* ===== low level proto types ===== */
 
 // FIXME: We probably need a proto entry to transform our
 // server core entry into. We also need to get from proto
@@ -160,46 +222,60 @@ impl Message for ModifyRequest {
 //
 // On loginSuccess, we send a cookie, and that allows the token to be
 // generated. The cookie can be shared between servers.
+#[derive(Debug, Serialize, Deserialize)]
+pub enum AuthCredential {
+    Anonymous,
+    Password(String),
+    // TOTP(String),
+}
 
 #[derive(Debug, Serialize, Deserialize)]
-pub enum AuthState {
-    Init(String, Vec<String>),
+pub enum AuthStep {
+    // name, application id?
+    Init(String, Option<String>),
     /*
     Step(
         Type(params ....)
     ),
     */
+    Creds(Vec<AuthCredential>),
+    // Should we have a "finalise" type to attempt to finish based on
+    // what we have given?
 }
 
 // Request auth for identity X with roles Y?
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AuthRequest {
-    pub state: AuthState,
-    pub user_uuid: String,
-}
-
-impl Message for AuthRequest {
-    type Result = Result<OperationResponse, OperationError>;
+    pub step: AuthStep,
 }
 
 // Respond with the list of auth types and nonce, etc.
 // It can also contain a denied, or success.
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub enum AuthAllowed {
+    Anonymous,
+    Password,
+    // TOTP,
+    // Webauthn(String),
+}
+
 #[derive(Debug, Serialize, Deserialize)]
-pub enum AuthStatus {
-    Begin(String), // uuid of this session.
-                   // Continue, // Keep going, here are the things you could still provide ...
-                   // Go away, you made a mistake somewhere.
-                   // Provide reason?
-                   // Denied(String),
-                   // Welcome friend.
-                   // On success provide entry "self", for group assertions?
-                   // We also provide the "cookie"/token?
-                   // Success(String, Entry),
+pub enum AuthState {
+    // Everything is good, your cookie has been issued, and a token is set here
+    // for the client to view.
+    Success(UserAuthToken),
+    // Something was bad, your session is terminated and no cookie.
+    Denied,
+    // Continue to auth, allowed mechanisms listed.
+    Continue(Vec<AuthAllowed>),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AuthResponse {
-    pub status: AuthStatus,
+    // TODO: Consider moving to an AuthMessageResponse type, and leave the proto
+    // without the session id because it's not necesary to know.
+    pub sessionid: Uuid,
+    pub state: AuthState,
 }
 
 /* Recycle Requests area */
@@ -236,9 +312,31 @@ impl ReviveRecycledRequest {
     }
 }
 
+// This doesn't need seralise because it's only accessed via a "get".
+#[derive(Debug)]
+pub struct WhoamiRequest {}
+
+impl WhoamiRequest {
+    pub fn new() -> Self {
+        WhoamiRequest {}
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct WhoamiResponse {
+    // Should we just embed the entry? Or destructure it?
+    pub youare: Entry,
+}
+
+impl WhoamiResponse {
+    pub fn new(e: Entry) -> Self {
+        WhoamiResponse { youare: e }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::proto_v1::Filter as ProtoFilter;
+    use crate::proto::v1::Filter as ProtoFilter;
     #[test]
     fn test_protofilter_simple() {
         let pf: ProtoFilter = ProtoFilter::Pres("class".to_string());

@@ -5,7 +5,10 @@ macro_rules! run_test {
         use crate::be::Backend;
         use crate::schema::Schema;
         use crate::server::QueryServer;
-        use std::sync::Arc;
+
+        use env_logger;
+        ::std::env::set_var("RUST_LOG", "actix_web=debug,rsidm=debug");
+        let _ = env_logger::builder().is_test(true).try_init();
 
         let mut audit = AuditScope::new("run_test");
 
@@ -18,7 +21,7 @@ macro_rules! run_test {
                 .expect("Failed to bootstrap schema");
             schema.commit().expect("Failed to commit schema");
         }
-        let test_server = QueryServer::new(be, Arc::new(schema_outer));
+        let test_server = QueryServer::new(be, schema_outer);
 
         {
             let ts_write = test_server.write();
@@ -81,7 +84,7 @@ macro_rules! filter {
         #[allow(unused_imports)]
         use crate::filter::FC;
         #[allow(unused_imports)]
-        use crate::filter::{f_and, f_andnot, f_eq, f_or, f_pres, f_sub};
+        use crate::filter::{f_and, f_andnot, f_eq, f_or, f_pres, f_self, f_sub};
         Filter::new_ignore_hidden($fc)
     }};
 }
@@ -96,7 +99,7 @@ macro_rules! filter_rec {
         #[allow(unused_imports)]
         use crate::filter::FC;
         #[allow(unused_imports)]
-        use crate::filter::{f_and, f_andnot, f_eq, f_or, f_pres, f_sub};
+        use crate::filter::{f_and, f_andnot, f_eq, f_or, f_pres, f_self, f_sub};
         Filter::new_recycled($fc)
     }};
 }
@@ -111,7 +114,7 @@ macro_rules! filter_all {
         #[allow(unused_imports)]
         use crate::filter::FC;
         #[allow(unused_imports)]
-        use crate::filter::{f_and, f_andnot, f_eq, f_or, f_pres, f_sub};
+        use crate::filter::{f_and, f_andnot, f_eq, f_or, f_pres, f_self, f_sub};
         Filter::new($fc)
     }};
 }

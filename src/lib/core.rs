@@ -11,17 +11,34 @@ use futures::{future, Future, Stream};
 use crate::config::Configuration;
 
 // SearchResult
+use crate::async_log;
+use crate::error::OperationError;
 use crate::interval::IntervalActor;
-use crate::log;
-use crate::proto_v1::{AuthRequest, CreateRequest, DeleteRequest, ModifyRequest, SearchRequest};
-use crate::proto_v1_actors::QueryServerV1;
+use crate::proto::v1::actors::QueryServerV1;
+use crate::proto::v1::messages::{AuthMessage, WhoamiMessage};
+use crate::proto::v1::{
+    AuthRequest, AuthResponse, AuthState, CreateRequest, DeleteRequest, ModifyRequest,
+    SearchRequest, UserAuthToken, WhoamiRequest, WhoamiResponse,
+};
+
+use uuid::Uuid;
 
 struct AppState {
     qe: actix::Addr<QueryServerV1>,
     max_size: usize,
 }
 
-macro_rules! json_event_decode {
+fn get_current_user(req: &HttpRequest<AppState>) -> Option<UserAuthToken> {
+    match req.session().get::<UserAuthToken>("uat") {
+        Ok(maybe_uat) => maybe_uat,
+        Err(_) => {
+            // return Box::new(future::err(e));
+            None
+        }
+    }
+}
+
+macro_rules! json_event_post {
     ($req:expr, $state:expr, $event_type:ty, $message_type:ty) => {{
         // This is copied every request. Is there a better way?
         // The issue is the fold move takes ownership of state if
@@ -52,7 +69,7 @@ macro_rules! json_event_decode {
                     // let r_obj = serde_json::from_slice::<SearchRequest>(&body);
                     let r_obj = serde_json::from_slice::<$message_type>(&body);
 
-                    // Send to the db for create
+                    // Send to the db for handling
                     match r_obj {
                         Ok(obj) => {
                             let res = $state
@@ -81,33 +98,63 @@ macro_rules! json_event_decode {
     }};
 }
 
+macro_rules! json_event_get {
+    ($req:expr, $state:expr, $event_type:ty, $message_type:ty) => {{
+        // Get current auth data - remember, the QS checks if the
+        // none/some is okay, because it's too hard to make it work here
+        // with all the async parts.
+        let uat = get_current_user(&$req);
+
+        // New event, feed current auth data from the token to it.
+        let obj = <($message_type)>::new(uat);
+
+        let res = $state.qe.send(obj).from_err().and_then(|res| match res {
+            Ok(event_result) => Ok(HttpResponse::Ok().json(event_result)),
+            Err(e) => match e {
+                OperationError::NotAuthenticated => Ok(HttpResponse::Unauthorized().json(e)),
+                _ => Ok(HttpResponse::InternalServerError().json(e)),
+            },
+        });
+
+        Box::new(res)
+    }};
+}
+
 // Handle the various end points we need to expose
 
 fn create(
     (req, state): (HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    json_event_decode!(req, state, CreateEvent, CreateRequest)
+    json_event_post!(req, state, CreateEvent, CreateRequest)
 }
 
 fn modify(
     (req, state): (HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    json_event_decode!(req, state, ModifyEvent, ModifyRequest)
+    json_event_post!(req, state, ModifyEvent, ModifyRequest)
 }
 
 fn delete(
     (req, state): (HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    json_event_decode!(req, state, DeleteEvent, DeleteRequest)
+    json_event_post!(req, state, DeleteEvent, DeleteRequest)
 }
 
 fn search(
     (req, state): (HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    json_event_decode!(req, state, SearchEvent, SearchRequest)
+    json_event_post!(req, state, SearchEvent, SearchRequest)
 }
 
-// delete, modify
+fn whoami(
+    (req, state): (HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    // Actually this may not work as it assumes post not get.
+    json_event_get!(req, state, WhoamiEvent, WhoamiMessage)
+}
+
+// We probably need an extract auth or similar to handle the different
+// types (cookie, bearer), and to generic this over get/post.
 
 fn auth(
     (req, state): (HttpRequest<AppState>, State<AppState>),
@@ -135,46 +182,66 @@ fn auth(
                         // First, deal with some state management.
                         // Do anything here first that's needed like getting the session details
                         // out of the req cookie.
-                        // let mut counter = 1;
 
                         // From the actix source errors here
                         // seems to be related to the serde_json deserialise of the cookie
                         // content, and because we control it's get/set it SHOULD be fine
                         // provided we use secure cookies. But we can't always trust that ...
-                        let maybe_count = match req.session().get::<i32>("counter") {
+                        let maybe_sessionid = match req.session().get::<Uuid>("auth-session-id") {
                             Ok(c) => c,
                             Err(e) => {
                                 return Box::new(future::err(e));
                             }
                         };
 
-                        let c = match maybe_count {
-                            Some(count) => {
-                                println!("SESSION value: {}", count);
-                                count + 1
-                            }
-                            None => {
-                                println!("INIT value: 1");
-                                1
-                            }
-                        };
-
-                        match req.session().set("counter", c) {
-                            Ok(_) => {}
-                            Err(e) => {
-                                return Box::new(future::err(e));
-                            }
-                        };
+                        let auth_msg = AuthMessage::new(obj, maybe_sessionid);
 
                         // We probably need to know if we allocate the cookie, that this is a
                         // new session, and in that case, anything *except* authrequest init is
                         // invalid.
-
-                        let res = state.qe.send(obj).from_err().and_then(|res| match res {
-                            Ok(event_result) => Ok(HttpResponse::Ok().json(event_result)),
-                            Err(e) => Ok(HttpResponse::InternalServerError().json(e)),
-                        });
-
+                        let res =
+                            state
+                                .qe
+                                .send(auth_msg)
+                                .from_err()
+                                .and_then(move |res| match res {
+                                    Ok(ar) => {
+                                        match &ar.state {
+                                            AuthState::Success(uat) => {
+                                                // Remove the auth-session-id
+                                                req.session().remove("auth-session-id");
+                                                // Set the uat into the cookie
+                                                match req.session().set("uat", uat) {
+                                                    Ok(_) => Ok(HttpResponse::Ok().json(ar)),
+                                                    Err(_) => {
+                                                        Ok(HttpResponse::InternalServerError()
+                                                            .json(()))
+                                                    }
+                                                }
+                                            }
+                                            AuthState::Denied => {
+                                                // Remove the auth-session-id
+                                                req.session().remove("auth-session-id");
+                                                Ok(HttpResponse::Ok().json(ar))
+                                            }
+                                            AuthState::Continue(_) => {
+                                                // TODO: Where do we get the auth-session-id from?
+                                                // Ensure the auth-session-id is set
+                                                match req
+                                                    .session()
+                                                    .set("auth-session-id", ar.sessionid)
+                                                {
+                                                    Ok(_) => Ok(HttpResponse::Ok().json(ar)),
+                                                    Err(_) => {
+                                                        Ok(HttpResponse::InternalServerError()
+                                                            .json(()))
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    Err(e) => Ok(HttpResponse::InternalServerError().json(e)),
+                                });
                         Box::new(res)
                     }
                     Err(e) => Box::new(future::err(error::ErrorBadRequest(format!(
@@ -186,32 +253,12 @@ fn auth(
         )
 }
 
-fn whoami(req: &HttpRequest<AppState>) -> Result<&'static str> {
-    println!("{:?}", req);
-
-    // RequestSession trait is used for session access
-    let mut counter = 1;
-    if let Some(count) = req.session().get::<i32>("counter")? {
-        println!("SESSION value: {}", count);
-        counter = count + 1;
-        req.session().set("counter", counter)?;
-    } else {
-        req.session().set("counter", counter)?;
-    }
-
-    Ok("welcome!")
-}
-
 pub fn create_server_core(config: Configuration) {
-    // Configure the middleware logger
-    ::std::env::set_var("RUST_LOG", "actix_web=info");
-    env_logger::init();
+    // Until this point, we probably want to write to the log macro fns.
 
-    // Until this point, we probably want to write to stderr
-    // Start up the logging system: for now it just maps to stderr
-
-    // The log server is started on it's own thread
-    let log_addr = log::start();
+    // The log server is started on it's own thread, and is contacted
+    // asynchronously.
+    let log_addr = async_log::start();
     log_event!(log_addr, "Starting rsidm with configuration: {:?}", config);
 
     // Similar, create a stats thread which aggregates statistics from the
@@ -236,6 +283,7 @@ pub fn create_server_core(config: Configuration) {
     // Copy the max size
     let max_size = config.maximum_request;
     let secure_cookies = config.secure_cookies;
+    let domain = config.domain.clone();
 
     // start the web server
     actix_web::server::new(move || {
@@ -246,22 +294,25 @@ pub fn create_server_core(config: Configuration) {
         // Connect all our end points here.
         .middleware(middleware::Logger::default())
         .middleware(session::SessionStorage::new(
-            // Signed prevents tampering. this 32 byte key MUST
+            // TODO: Signed prevents tampering. this 32 byte key MUST
             // be generated (probably stored in DB for cross-host access)
             session::CookieSessionBackend::signed(&[0; 32])
-                .path("/")
+                // Limit to path?
+                // .path("/")
                 //.max_age() duration of the token life TODO make this proper!
-                .domain("localhost")
-                .same_site(cookie::SameSite::Strict) // constrain to the domain
-                // Disallow from js
-                .http_only(true)
+                // .domain(domain.as_str())
+                // .same_site(cookie::SameSite::Strict) // constrain to the domain
+                // Disallow from js and ...?
+                .http_only(false)
                 .name("rsidm-session")
-                // This forces https only
+                // This forces https only if true
                 .secure(secure_cookies),
         ))
         // .resource("/", |r| r.f(index))
         // curl --header ...?
-        .resource("/v1/whoami", |r| r.f(whoami))
+        .resource("/v1/whoami", |r| {
+            r.method(http::Method::GET).with_async(whoami)
+        })
         // .resource("/v1/login", ...)
         // .resource("/v1/logout", ...)
         // .resource("/v1/token", ...) generate a token for id servers to use

@@ -34,6 +34,8 @@ the session, which may request further credentials. They are then redirected to 
 site with an appropriate (oauth) token describing the requested rights.
 
 https://developers.google.com/identity/sign-in/web/incremental-auth
+https://openid.net/specs/openid-connect-core-1_0.html#UserInfo
+https://tools.ietf.org/html/rfc7519
 
 Login to workstation (connected)
 ================================
@@ -168,6 +170,8 @@ that have unique cookie keys to prevent forgery of writable master cookies)
 of group uuids + names derferenced so that a client can make all authorisation
 decisions from a single datapoint
 
+* Groups require the ability to be ephemeral/temporary or permament.
+
 * each token can be unique based on the type of auth (ie 2fa needed to get access
 to admin groups)
 
@@ -185,14 +189,57 @@ Cookie/Token Auth Detail
 Clients begin with no cookie, and no session.
 
 The client sends an AuthRequest to the server in the Init state. Any other request
-results in AuthDenied due to lack of cookie.
+results in AuthDenied due to lack of cookie. This should contain the optional
+application id.
+
+struct AuthClientRequest {
+    name: String
+    application: Option<String>
+}
 
 The server issues a cookie, and allocates a session id to the cookie. The session id is
 also stored in the server with a timeout. The AuthResponse indicates the current possible
-auth types that can proceed.
+auth types that can proceed. This should provided challenges or nonces if required by the auth type.
+
+enum AuthAllowed {
+    Anonymous,
+    Password,
+    Webauthn {
+        challenge: // see the webauthn implementation for this
+    },
+    TOTP,
+}
+
+enum AuthState {
+    Response {
+        next: AuthAllowedMech
+    },
+    AuthDenied,
+    AuthSuccess,
+}
+
+struct AuthServerResponse {
+    state AuthState
+}
 
 The client now sends the cookie and an AuthRequest with type Step, that contains the type
-of authentication credential being provided.
+of authentication credential being provided, and any other details. This COULD contain multiple
+credentials, or a single one.
+
+enum AuthCredential {
+    Anonymous,
+    Password { String },
+    Webauthn {
+        // see the webauthn impl for all the bits this will contain ...
+    },
+    TOTP {
+        String
+    }
+}
+
+struct AuthClientStep {
+    Vec<AuthDetails>
+}
 
 The server verifies the credential, and marks that type of credential as failed or fufilled.
 On failure of a credential, AuthDenied is immediately sent. On success of a credential
@@ -211,6 +258,9 @@ the state machine part way through. THe server enforces the client must always a
 initial authRequest, which cause the client to always be denied.
 * If the AuthRequest is started but not completed, we time it out within a set number of minutes
 by walking the set of sessions and purging incomplete ones which have passed the time stamp.
+* The session id is in the cookie to eliminate leaking of the session id (secure cookies), and
+to prevent tampering of the session id if possible. It's not perfect, but it helps to prevent
+casual attkcs. The session id itself is really the thing that protects us from replays.
 
 Auth Questions
 --------------
@@ -324,6 +374,92 @@ required tagging or other details.
 
 How do we ensure integrity of the token? Do we have to? Is the clients job to trust the token given
 the TLS tunnel?
+
+More Brain Dumping
+==================
+
+- need a way to just pw check even if mfa is on (for sudo). Perhaps have a seperate sudo password attr?
+- ntpassword attr is seperate
+- a way to check application pw which attaches certain rights (is this just a generalisation of sudo?)
+    - the provided token (bearer etc?) contains the "memberof" for the session.
+    - How to determine what memberof an api provides? Could be policy object that says "api pw of name X
+        is allowed Y, Z group". Could be that the user is presented with a list or subset of the related?
+        Could be both?
+    - Means we need a "name" and "type" for the api password, also need to be able to search
+    on both of those details potentially.
+
+- The oauth system is just a case of follow that and provide the scope/groups as required.
+
+- That would make userPassword and webauthn only for webui and api direct access.
+    - All other pw validations would use application pw case.
+    - SSH would just read ssh key - should this have a similar group filter/allow
+        mechanism like aplication pw?
+
+- Groups take a "type"
+    - credentials also have a "type"
+    - The credential if used can provide groups of "type" to that session during auth token
+        generation
+    - An auth request says it as an auth of type X, to associate what creds it might check.
+
+
+- Means a change to auth to take an entry as part of auth, or at least, it's group list for the
+    session. 
+
+
+- policy to define if pw types like sudo or radius are linked.
+    - Some applications may need to read a credential type.
+    - attribute/value tagging required?
+
+
+apptype: unix
+
+apptype: groupware
+
+group: admins
+ type: unix  <<-- indicates it's a requested group
+
+group: emailusers
+ type: groupware <<-- indicates it's a requested group
+
+user: admin
+memberof: admins <<-- Should this be in mo if they are reqgroups? I think yes, because it's only for that "session"
+                      based on the cred do they get the "group list" in cred.
+memberof: emailusers
+cred: {
+    'type': unix,
+    'hash': ...
+    'grants': 'admins'
+}
+cred: {
+    'type': groupware
+    'hash': ...,
+    'grants': 'emailusers',
+}
+cred: {
+    'type': blah
+    'hash': ...,
+    'grants': 'bar', // Can't work because not a memberof bar. Should this only grant valid MO's?
+}
+
+ntpassword: ... <<-- needs limited read, and doesn't allocate groups.
+sshPublicKey: ... <<-- different due to needing anon read.
+
+
+
+
+Some Dirty Rust Brain Dumps
+===========================
+
+- Credentials need per-cred locking
+    - This means they have to be in memory and uniquely ided.
+    - How can we display to a user that a credential back-off is inplace?
+
+- UAT need to know what Credential was used and it's state.
+    - The Credential associates the claims
+
+
+
+
 
 
 

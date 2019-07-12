@@ -23,7 +23,7 @@ use crate::entry::{Entry, EntryCommitted, EntryNew, EntryNormalised, EntryValid}
 use crate::error::OperationError;
 use crate::filter::{Filter, FilterValid};
 use crate::modify::Modify;
-use crate::proto_v1::Filter as ProtoFilter;
+use crate::proto::v1::Filter as ProtoFilter;
 use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
 
 use crate::event::{CreateEvent, DeleteEvent, EventOrigin, ModifyEvent, SearchEvent};
@@ -47,14 +47,16 @@ impl AccessControlSearch {
     ) -> Result<Self, OperationError> {
         if !value.attribute_value_pres("class", "access_control_search") {
             audit_log!(audit, "class access_control_search not present.");
-            return Err(OperationError::InvalidACPState);
+            return Err(OperationError::InvalidACPState(
+                "Missing access_control_search",
+            ));
         }
 
         let attrs = try_audit!(
             audit,
             value
                 .get_ava("acp_search_attr")
-                .ok_or(OperationError::InvalidACPState)
+                .ok_or(OperationError::InvalidACPState("Missing acp_search_attr"))
                 .map(|vs: &Vec<String>| vs.clone())
         );
 
@@ -99,7 +101,9 @@ impl AccessControlDelete {
     ) -> Result<Self, OperationError> {
         if !value.attribute_value_pres("class", "access_control_delete") {
             audit_log!(audit, "class access_control_delete not present.");
-            return Err(OperationError::InvalidACPState);
+            return Err(OperationError::InvalidACPState(
+                "Missing access_control_delete",
+            ));
         }
 
         Ok(AccessControlDelete {
@@ -142,7 +146,9 @@ impl AccessControlCreate {
     ) -> Result<Self, OperationError> {
         if !value.attribute_value_pres("class", "access_control_create") {
             audit_log!(audit, "class access_control_create not present.");
-            return Err(OperationError::InvalidACPState);
+            return Err(OperationError::InvalidACPState(
+                "Missing access_control_create",
+            ));
         }
 
         let attrs = value
@@ -203,7 +209,9 @@ impl AccessControlModify {
     ) -> Result<Self, OperationError> {
         if !value.attribute_value_pres("class", "access_control_modify") {
             audit_log!(audit, "class access_control_modify not present.");
-            return Err(OperationError::InvalidACPState);
+            return Err(OperationError::InvalidACPState(
+                "Missing access_control_modify",
+            ));
         }
 
         let presattrs = value
@@ -273,7 +281,9 @@ impl AccessControlProfile {
         // Assert we have class access_control_profile
         if !value.attribute_value_pres("class", "access_control_profile") {
             audit_log!(audit, "class access_control_profile not present.");
-            return Err(OperationError::InvalidACPState);
+            return Err(OperationError::InvalidACPState(
+                "Missing access_control_profile",
+            ));
         }
 
         // copy name
@@ -281,7 +291,7 @@ impl AccessControlProfile {
             audit,
             value
                 .get_ava_single("name")
-                .ok_or(OperationError::InvalidACPState)
+                .ok_or(OperationError::InvalidACPState("Missing name"))
         );
         // copy uuid
         let uuid = value.get_uuid();
@@ -290,21 +300,21 @@ impl AccessControlProfile {
             audit,
             value
                 .get_ava_single("acp_receiver")
-                .ok_or(OperationError::InvalidACPState)
+                .ok_or(OperationError::InvalidACPState("Missing acp_receiver"))
         );
         // targetscope, and turn to real filter
         let targetscope_raw = try_audit!(
             audit,
             value
                 .get_ava_single("acp_targetscope")
-                .ok_or(OperationError::InvalidACPState)
+                .ok_or(OperationError::InvalidACPState("Missing acp_targetscope"))
         );
 
         audit_log!(audit, "RAW receiver {:?}", receiver_raw);
         let receiver_f: ProtoFilter = try_audit!(
             audit,
             serde_json::from_str(receiver_raw.as_str())
-                .map_err(|_| OperationError::InvalidACPState)
+                .map_err(|_| OperationError::InvalidACPState("Invalid acp_receiver"))
         );
         let receiver_i = try_audit!(audit, Filter::from_rw(audit, &receiver_f, qs));
         let receiver = try_audit!(
@@ -319,7 +329,7 @@ impl AccessControlProfile {
             audit,
             serde_json::from_str(targetscope_raw.as_str()).map_err(|e| {
                 audit_log!(audit, "JSON error {:?}", e);
-                OperationError::InvalidACPState
+                OperationError::InvalidACPState("Invalid acp_targetscope")
             })
         );
         let targetscope_i = try_audit!(audit, Filter::from_rw(audit, &targetscope_f, qs));
@@ -382,6 +392,7 @@ pub trait AccessControlsTransaction {
         // If this is an internal search, return our working set.
         let rec_entry: &Entry<EntryValid, EntryCommitted> = match &se.event.origin {
             EventOrigin::Internal => {
+                audit_log!(audit, "Internal operation, bypassing access check");
                 // No need to check ACS
                 return Ok(entries);
             }

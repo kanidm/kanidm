@@ -1,7 +1,7 @@
 use crate::audit::AuditScope;
 use crate::constants::*;
 use crate::error::{ConsistencyError, OperationError, SchemaError};
-use crate::proto_v1::Filter as ProtoFilter;
+use crate::proto::v1::Filter as ProtoFilter;
 use regex::Regex;
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -15,8 +15,6 @@ use concread::cowcell::{CowCell, CowCellReadTxn, CowCellWriteTxn};
 //
 // In the future this will parse/read it's schema from the db
 // but we have to bootstrap with some core types.
-
-// TODO: Schema should be copy-on-write
 
 // TODO: Account should be a login-bind-able object
 //    needs account lock, timeout, policy?

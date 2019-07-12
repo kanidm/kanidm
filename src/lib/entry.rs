@@ -3,7 +3,8 @@ use crate::audit::AuditScope;
 use crate::error::{OperationError, SchemaError};
 use crate::filter::{Filter, FilterInvalid, FilterResolved, FilterValidResolved};
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
-use crate::proto_v1::Entry as ProtoEntry;
+use crate::proto::v1::Entry as ProtoEntry;
+use crate::proto::v1::UserAuthToken;
 use crate::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
 use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
 
@@ -702,7 +703,10 @@ impl<STATE> Entry<EntryValid, STATE> {
         )))
     }
 
-    pub fn into(&self) -> ProtoEntry {
+    // FIXME: This should probably have an entry state for "reduced"
+    // and then only that state can provide the into_pe type, so that we
+    // can guarantee that all entries must have been security checked.
+    pub fn into_pe(&self) -> ProtoEntry {
         // It's very likely that at this stage we'll need to apply
         // access controls, dynamic attributes or more.
         // As a result, this may not even be the right place

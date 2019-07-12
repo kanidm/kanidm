@@ -1,9 +1,6 @@
 FROM opensuse/tumbleweed:latest
 MAINTAINER william@blackhats.net.au
 
-# /usr/bin/docker run --restart always --name lifx registry.blackhats.net.au/lifx
-RUN echo HTTP_PROXY="http://proxy-bne1.net.blackhats.net.au:3128" > /etc/sysconfig/proxy
-
 COPY . /home/rsidm/
 
 WORKDIR /home/rsidm/
