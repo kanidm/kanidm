@@ -16,12 +16,12 @@ name = "rsidm"
 path = "src/lib/lib.rs"
 
 [[bin]]
-name = "rsidm_core"
+name = "rsidmd"
 path = "src/server/main.rs"
 
 [[bin]]
-name = "rsidm_whoami"
-path = "src/clients/whoami.rs"
+name = "kanidm"
+path = "src/clients/main.rs"
 
 
 [dependencies]
@@ -43,12 +43,15 @@ tokio = "0.1"
 futures = "0.1"
 uuid = { version = "0.7", features = ["serde", "v4"] }
 serde = "1.0"
+serde_cbor = "0.10"
 serde_json = "1.0"
 serde_derive = "1.0"
 
 rusqlite = { version = "0.15", features = ["backup"] }
 r2d2 = "0.8"
 r2d2_sqlite = "0.7"
+
+structopt = { version = "0.2", default-features = false }
 
 concread = "0.1"
 

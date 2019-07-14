@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Configuration {
     pub address: String,
@@ -21,6 +23,16 @@ impl Configuration {
             // log path
             // TODO: default true in prd
             secure_cookies: false,
+        }
+    }
+
+    pub fn update_db_path(&mut self, p: &PathBuf) {
+        match p.to_str() {
+            Some(p) => self.db_path = p.to_string(),
+            None => {
+                error!("Invalid DB path supplied");
+                std::process::exit(1);
+            }
         }
     }
 }
