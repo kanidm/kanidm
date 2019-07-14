@@ -53,7 +53,7 @@ impl QueryServerV1 {
     // threads for write vs read
     pub fn start(
         log: actix::Addr<EventLog>,
-        path: &str,
+        be: Backend,
         threads: usize,
     ) -> Result<actix::Addr<QueryServerV1>, OperationError> {
         let mut audit = AuditScope::new("server_start");
@@ -67,14 +67,6 @@ impl QueryServerV1 {
                 Ok(s) => s,
                 Err(e) => return Err(e),
             };
-
-            // Create a new backend audit scope
-            let mut audit_be = AuditScope::new("backend_new");
-            let be = match Backend::new(&mut audit_be, path) {
-                Ok(be) => be,
-                Err(e) => return Err(e),
-            };
-            audit.append_scope(audit_be);
 
             {
                 let be_txn = be.write();

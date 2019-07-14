@@ -12,6 +12,8 @@ use crate::config::Configuration;
 
 // SearchResult
 use crate::async_log;
+use crate::audit::AuditScope;
+use crate::be::{Backend, BackendTransaction};
 use crate::error::OperationError;
 use crate::interval::IntervalActor;
 use crate::proto::v1::actors::QueryServerV1;
@@ -253,6 +255,62 @@ fn auth(
         )
 }
 
+fn setup_backend(config: &Configuration) -> Result<Backend, OperationError> {
+    let mut audit_be = AuditScope::new("backend_setup");
+    let be = Backend::new(&mut audit_be, config.db_path.as_str());
+    // debug!
+    debug!("{}", audit_be);
+    be
+}
+
+pub fn backup_server_core(config: Configuration, dst_path: &str) {
+    let be = match setup_backend(&config) {
+        Ok(be) => be,
+        Err(e) => {
+            error!("Failed to setup BE: {:?}", e);
+            return;
+        }
+    };
+    let mut audit = AuditScope::new("backend_backup");
+
+    let be_ro_txn = be.read();
+    let r = be_ro_txn.backup(&mut audit, dst_path);
+    debug!("{}", audit);
+    match r {
+        Ok(_) => info!("Backup success!"),
+        Err(e) => {
+            error!("Backup failed: {:?}", e);
+            std::process::exit(1);
+        }
+    };
+    // Let the txn abort, even on success.
+}
+
+pub fn restore_server_core(config: Configuration, dst_path: &str) {
+    let be = match setup_backend(&config) {
+        Ok(be) => be,
+        Err(e) => {
+            error!("Failed to setup BE: {:?}", e);
+            return;
+        }
+    };
+    let mut audit = AuditScope::new("backend_restore");
+
+    let be_wr_txn = be.write();
+    let r = be_wr_txn
+        .restore(&mut audit, dst_path)
+        .and_then(|_| be_wr_txn.commit());
+    debug!("{}", audit);
+
+    match r {
+        Ok(_) => info!("Restore success!"),
+        Err(e) => {
+            error!("Restore failed: {:?}", e);
+            std::process::exit(1);
+        }
+    };
+}
+
 pub fn create_server_core(config: Configuration) {
     // Until this point, we probably want to write to the log macro fns.
 
@@ -264,18 +322,26 @@ pub fn create_server_core(config: Configuration) {
     // Similar, create a stats thread which aggregates statistics from the
     // server as they come in.
 
+    // Setup the be for the qs.
+    let be = match setup_backend(&config) {
+        Ok(be) => be,
+        Err(e) => {
+            error!("Failed to setup BE: {:?}", e);
+            return;
+        }
+    };
+
     // Start the query server with the given be path: future config
-    let server_addr =
-        match QueryServerV1::start(log_addr.clone(), config.db_path.as_str(), config.threads) {
-            Ok(addr) => addr,
-            Err(e) => {
-                println!(
-                    "An unknown failure in startup has occured - exiting -> {:?}",
-                    e
-                );
-                return;
-            }
-        };
+    let server_addr = match QueryServerV1::start(log_addr.clone(), be, config.threads) {
+        Ok(addr) => addr,
+        Err(e) => {
+            println!(
+                "An unknown failure in startup has occured - exiting -> {:?}",
+                e
+            );
+            return;
+        }
+    };
 
     // Setup timed events
     let _int_addr = IntervalActor::new(server_addr.clone()).start();

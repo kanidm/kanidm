@@ -4,6 +4,7 @@ use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::types::ToSql;
 use rusqlite::NO_PARAMS;
+use serde_cbor;
 use serde_json;
 use std::convert::TryFrom;
 use std::fs;
@@ -24,7 +25,7 @@ mod sqlite_be;
 struct IdEntry {
     // TODO: for now this is i64 to make sqlite work, but entry is u64 for indexing reasons!
     id: i64,
-    data: String,
+    data: Vec<u8>,
 }
 
 pub struct Backend {
@@ -100,8 +101,8 @@ pub trait BackendTransaction {
             let entries: Result<Vec<Entry<EntryValid, EntryCommitted>>, _> = raw_entries
                 .iter()
                 .filter_map(|id_ent| {
-                    let db_e = match serde_json::from_str(id_ent.data.as_str())
-                        .map_err(|_| OperationError::SerdeJsonError)
+                    let db_e = match serde_cbor::from_slice(id_ent.data.as_slice())
+                        .map_err(|_| OperationError::SerdeCborError)
                     {
                         Ok(v) => v,
                         Err(e) => return Some(Err(e)),
@@ -160,6 +161,65 @@ pub trait BackendTransaction {
 
     fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
         Vec::new()
+    }
+
+    fn backup(&self, audit: &mut AuditScope, dst_path: &str) -> Result<(), OperationError> {
+        // load all entries into RAM, may need to change this later
+        // if the size of the database compared to RAM is an issue
+        let mut raw_entries: Vec<IdEntry> = Vec::new();
+
+        {
+            let mut stmt = try_audit!(
+                audit,
+                self.get_conn().prepare("SELECT id, data FROM id2entry"),
+                "sqlite error {:?}",
+                OperationError::SQLiteError
+            );
+
+            let id2entry_iter = try_audit!(
+                audit,
+                stmt.query_map(NO_PARAMS, |row| IdEntry {
+                    id: row.get(0),
+                    data: row.get(1),
+                }),
+                "sqlite error {:?}",
+                OperationError::SQLiteError
+            );
+
+            for row in id2entry_iter {
+                raw_entries.push(row.map_err(|_| OperationError::SQLiteError)?);
+            }
+        }
+
+        let entries: Result<Vec<DbEntry>, _> = raw_entries
+            .iter()
+            .map(|id_ent| {
+                serde_cbor::from_slice(id_ent.data.as_slice())
+                    .map_err(|_| OperationError::SerdeJsonError)
+            })
+            .collect();
+
+        let entries = entries?;
+
+        let serialized_entries = serde_json::to_string_pretty(&entries);
+
+        let serialized_entries_str = try_audit!(
+            audit,
+            serialized_entries,
+            "serde error {:?}",
+            OperationError::SerdeJsonError
+        );
+
+        let result = fs::write(dst_path, serialized_entries_str);
+
+        try_audit!(
+            audit,
+            result,
+            "fs::write error {:?}",
+            OperationError::FsError
+        );
+
+        Ok(())
     }
 }
 
@@ -278,7 +338,7 @@ impl BackendWriteTransaction {
             .map(|ser_db_e| {
                 id_max = id_max + 1;
                 let data =
-                    serde_json::to_string(&ser_db_e).map_err(|_| OperationError::SerdeJsonError)?;
+                    serde_cbor::to_vec(&ser_db_e).map_err(|_| OperationError::SerdeCborError)?;
 
                 Ok(IdEntry {
                     id: id_max,
@@ -371,8 +431,7 @@ impl BackendWriteTransaction {
                         }
                     })?;
 
-                let data =
-                    serde_json::to_string(&db_e).map_err(|_| OperationError::SerdeJsonError)?;
+                let data = serde_cbor::to_vec(&db_e).map_err(|_| OperationError::SerdeCborError)?;
 
                 Ok(IdEntry {
                     // TODO: Instead of getting these from the entry, we could lookup
@@ -474,65 +533,6 @@ impl BackendWriteTransaction {
 
             Ok(())
         })
-    }
-
-    pub fn backup(&self, audit: &mut AuditScope, dst_path: &str) -> Result<(), OperationError> {
-        // load all entries into RAM, may need to change this later
-        // if the size of the database compared to RAM is an issue
-        let mut raw_entries: Vec<IdEntry> = Vec::new();
-
-        {
-            let mut stmt = try_audit!(
-                audit,
-                self.get_conn().prepare("SELECT id, data FROM id2entry"),
-                "sqlite error {:?}",
-                OperationError::SQLiteError
-            );
-
-            let id2entry_iter = try_audit!(
-                audit,
-                stmt.query_map(NO_PARAMS, |row| IdEntry {
-                    id: row.get(0),
-                    data: row.get(1),
-                }),
-                "sqlite error {:?}",
-                OperationError::SQLiteError
-            );
-
-            for row in id2entry_iter {
-                raw_entries.push(row.map_err(|_| OperationError::SQLiteError)?);
-            }
-        }
-
-        let entries: Result<Vec<DbEntry>, _> = raw_entries
-            .iter()
-            .map(|id_ent| {
-                serde_json::from_str(id_ent.data.as_str())
-                    .map_err(|_| OperationError::SerdeJsonError)
-            })
-            .collect();
-
-        let entries = entries?;
-
-        let serialized_entries = serde_json::to_string_pretty(&entries);
-
-        let serialized_entries_str = try_audit!(
-            audit,
-            serialized_entries,
-            "serde error {:?}",
-            OperationError::SerdeJsonError
-        );
-
-        let result = fs::write(dst_path, serialized_entries_str);
-
-        try_audit!(
-            audit,
-            result,
-            "fs::write error {:?}",
-            OperationError::FsError
-        );
-
-        Ok(())
     }
 
     pub unsafe fn purge(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
@@ -650,7 +650,7 @@ impl BackendWriteTransaction {
                     self.conn.execute(
                         "CREATE TABLE IF NOT EXISTS id2entry (
                             id INTEGER PRIMARY KEY ASC,
-                            data TEXT NOT NULL
+                            data BLOB NOT NULL
                         )
                         ",
                         NO_PARAMS,

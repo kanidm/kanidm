@@ -34,6 +34,7 @@ pub enum OperationError {
     SQLiteError, //(RusqliteError)
     FsError,
     SerdeJsonError,
+    SerdeCborError,
     AccessDenied,
     NotAuthenticated,
     InvalidAuthState(&'static str),
