@@ -4,7 +4,7 @@ use crate::error::{OperationError, SchemaError};
 use crate::filter::{Filter, FilterInvalid, FilterResolved, FilterValidResolved};
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use crate::proto::v1::Entry as ProtoEntry;
-use crate::proto::v1::UserAuthToken;
+use crate::schema::{IndexType, SyntaxType};
 use crate::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
 use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
 
@@ -16,6 +16,9 @@ use std::collections::BTreeSet;
 use std::collections::HashMap;
 use std::iter::ExactSizeIterator;
 use std::slice::Iter as SliceIter;
+
+use std::convert::TryFrom;
+use std::str::FromStr;
 
 #[cfg(test)]
 use uuid::Uuid;
@@ -251,6 +254,7 @@ impl<STATE> Entry<EntryNormalised, STATE> {
         {
             // First, check we have class on the object ....
             if !ne.attribute_pres("class") {
+                debug!("Missing attribute class");
                 return Err(SchemaError::InvalidClass);
             }
 
@@ -265,6 +269,7 @@ impl<STATE> Entry<EntryNormalised, STATE> {
                 .collect();
 
             if classes.len() != entry_classes_size {
+                debug!("Class on entry not found in schema?");
                 return Err(SchemaError::InvalidClass);
             };
 
@@ -280,6 +285,9 @@ impl<STATE> Entry<EntryNormalised, STATE> {
             // Now from the set of valid classes make a list of must/may
             // FIXME: This is clone on read, which may be really slow. It also may
             // be inefficent on duplicates etc.
+            //
+            // NOTE: We still need this on extensible, because we still need to satisfy
+            // our other must conditions too!
             let must: Result<HashMap<String, &SchemaAttribute>, _> = classes
                 .iter()
                 // Join our class systemmmust + must into one iter
@@ -296,9 +304,6 @@ impl<STATE> Entry<EntryNormalised, STATE> {
 
             let must = must?;
 
-            // FIXME: Error needs to say what is missing
-            // We need to return *all* missing attributes.
-
             // Check that all must are inplace
             //   for each attr in must, check it's present on our ent
             // FIXME: Could we iter over only the attr_name
@@ -309,22 +314,76 @@ impl<STATE> Entry<EntryNormalised, STATE> {
                 }
             }
 
-            // Check that any other attributes are in may
-            //   for each attr on the object, check it's in the may+must set
-            for (attr_name, avas) in ne.avas() {
-                match schema_attributes.get(attr_name) {
-                    Some(a_schema) => {
-                        // Now, for each type we do a *full* check of the syntax
-                        // and validity of the ava.
-                        let r = a_schema.validate_ava(avas);
-                        // We have to destructure here to make type checker happy
-                        match r {
-                            Ok(_) => {}
-                            Err(e) => return Err(e),
+            if extensible {
+                for (attr_name, avas) in ne.avas() {
+                    match schema_attributes.get(attr_name) {
+                        Some(a_schema) => {
+                            // Now, for each type we do a *full* check of the syntax
+                            // and validity of the ava.
+                            let r = a_schema.validate_ava(avas);
+                            if r.is_err() {
+                                debug!("Failed to validate: {}", attr_name);
+                                return Err(r.unwrap_err());
+                            }
+                            // We have to destructure here to make type checker happy
+                            match r {
+                                Ok(_) => {}
+                                Err(e) => {}
+                            }
+                        }
+                        None => {
+                            debug!("Invalid Attribute for extensible object");
+                            return Err(SchemaError::InvalidAttribute);
                         }
                     }
-                    None => {
-                        if !extensible {
+                }
+            } else {
+                let may: Result<HashMap<String, &SchemaAttribute>, _> = classes
+                    .iter()
+                    // Join our class systemmmust + must + systemmay + may into one.
+                    .flat_map(|(_, cls)| {
+                        cls.systemmust
+                            .iter()
+                            .chain(cls.must.iter())
+                            .chain(cls.systemmay.iter())
+                            .chain(cls.may.iter())
+                    })
+                    .map(|s| {
+                        // This should NOT fail - if it does, it means our schema is
+                        // in an invalid state!
+                        Ok((
+                            s.clone(),
+                            schema_attributes.get(s).ok_or(SchemaError::Corrupted)?,
+                        ))
+                    })
+                    .collect();
+
+                let may = may?;
+
+                // FIXME: Error needs to say what is missing
+                // We need to return *all* missing attributes.
+
+                // Check that any other attributes are in may
+                //   for each attr on the object, check it's in the may+must set
+                for (attr_name, avas) in ne.avas() {
+                    debug!("Checking {}", attr_name);
+                    match may.get(attr_name) {
+                        Some(a_schema) => {
+                            // Now, for each type we do a *full* check of the syntax
+                            // and validity of the ava.
+                            let r = a_schema.validate_ava(avas);
+                            if r.is_err() {
+                                debug!("Failed to validate: {}", attr_name);
+                                return Err(r.unwrap_err());
+                            }
+                            // We have to destructure here to make type checker happy
+                            match r {
+                                Ok(_) => {}
+                                Err(e) => {}
+                            }
+                        }
+                        None => {
+                            debug!("Invalid Attribute for may+must set");
                             return Err(SchemaError::InvalidAttribute);
                         }
                     }
@@ -632,6 +691,52 @@ impl Entry<EntryValid, EntryCommitted> {
             valid: s_valid,
             state: s_state,
             attrs: f_attrs,
+        }
+    }
+
+    // These are special types to allow returning typed values from
+    // an entry, if we "know" what we expect to receive.
+
+    /// This returns an array of IndexTypes, when the type is an Optional
+    /// multivalue in schema - IE this will *not* fail if the attribute is
+    /// empty, yielding and empty array instead.
+    ///
+    /// However, the converstion to IndexType is fallaible, so in case of a failure
+    /// to convert, an Err is returned.
+    pub(crate) fn get_ava_opt_index(&self, attr: &str) -> Result<Vec<IndexType>, ()> {
+        match self.attrs.get(attr) {
+            Some(av) => {
+                let r: Result<Vec<_>, _> =
+                    av.iter().map(|v| IndexType::try_from(v.as_str())).collect();
+                r
+            }
+            None => Ok(Vec::new()),
+        }
+    }
+
+    /// Get a bool from an ava
+    pub fn get_ava_single_bool(&self, attr: &str) -> Option<bool> {
+        match self.get_ava_single(attr) {
+            Some(a) => bool::from_str(a.as_str()).ok(),
+            None => None,
+        }
+    }
+
+    pub fn get_ava_single_syntax(&self, attr: &str) -> Option<SyntaxType> {
+        match self.get_ava_single(attr) {
+            Some(a) => SyntaxType::try_from(a.as_str()).ok(),
+            None => None,
+        }
+    }
+
+    /// This is a cloning interface on getting ava's with optional
+    /// existance. It's used in the schema code for must/may/systemmust/systemmay
+    /// access. It should probably be avoided due to the clone unless you
+    /// are aware of the consequences.
+    pub(crate) fn get_ava_opt(&self, attr: &str) -> Vec<String> {
+        match self.attrs.get(attr) {
+            Some(a) => a.clone(),
+            None => Vec::new(),
         }
     }
 }
@@ -990,37 +1095,91 @@ impl<VALID, STATE> PartialEq for Entry<VALID, STATE> {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-enum Credential {
-    Password {
-        name: String,
-        hash: String,
-    },
-    TOTPPassword {
-        name: String,
-        hash: String,
-        totp_secret: String,
-    },
-    SshPublicKey {
-        name: String,
-        data: String,
-    },
+impl From<&SchemaAttribute> for Entry<EntryValid, EntryNew> {
+    fn from(s: &SchemaAttribute) -> Self {
+        // Convert an Attribute to an entry ... make it good!
+        let uuid_str = s.uuid.to_hyphenated().to_string();
+        let uuid_v = vec![uuid_str.clone()];
+
+        let name_v = vec![s.name.clone()];
+        let desc_v = vec![s.description.clone()];
+
+        let system_v = vec![if s.system {
+            "true".to_string()
+        } else {
+            "false".to_string()
+        }];
+
+        let secret_v = vec![if s.secret {
+            "true".to_string()
+        } else {
+            "false".to_string()
+        }];
+
+        let multivalue_v = vec![if s.multivalue {
+            "true".to_string()
+        } else {
+            "false".to_string()
+        }];
+
+        let index_v: Vec<_> = s.index.iter().map(|i| i.to_string()).collect();
+
+        let syntax_v = vec![s.syntax.to_string()];
+
+        // Build the BTreeMap of the attributes relevant
+        let mut attrs: BTreeMap<String, Vec<String>> = BTreeMap::new();
+        attrs.insert("name".to_string(), name_v);
+        attrs.insert("description".to_string(), desc_v);
+        attrs.insert("uuid".to_string(), uuid_v);
+        attrs.insert("system".to_string(), system_v);
+        attrs.insert("secret".to_string(), secret_v);
+        attrs.insert("multivalue".to_string(), multivalue_v);
+        attrs.insert("index".to_string(), index_v);
+        attrs.insert("syntax".to_string(), syntax_v);
+        attrs.insert(
+            "class".to_string(),
+            vec!["object".to_string(), "attributetype".to_string()],
+        );
+
+        // Insert stuff.
+
+        Entry {
+            valid: EntryValid {
+                uuid: uuid_str.clone(),
+            },
+            state: EntryNew,
+            attrs: attrs,
+        }
+    }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-struct User {
-    username: String,
-    // Could this be derived from self? Do we even need schema?
-    class: Vec<String>,
-    displayname: String,
-    legalname: Option<String>,
-    email: Vec<String>,
-    // uuid?
-    // need to support deref later ...
-    memberof: Vec<String>,
-    sshpublickey: Vec<String>,
+impl From<&SchemaClass> for Entry<EntryValid, EntryNew> {
+    fn from(s: &SchemaClass) -> Self {
+        let uuid_str = s.uuid.to_hyphenated().to_string();
+        let uuid_v = vec![uuid_str.clone()];
 
-    credentials: Vec<Credential>,
+        let name_v = vec![s.name.clone()];
+        let desc_v = vec![s.description.clone()];
+
+        let mut attrs: BTreeMap<String, Vec<String>> = BTreeMap::new();
+        attrs.insert("name".to_string(), name_v);
+        attrs.insert("description".to_string(), desc_v);
+        attrs.insert("uuid".to_string(), uuid_v);
+        attrs.insert(
+            "class".to_string(),
+            vec!["object".to_string(), "classtype".to_string()],
+        );
+        attrs.insert("systemmay".to_string(), s.systemmay.clone());
+        attrs.insert("systemmust".to_string(), s.systemmust.clone());
+
+        Entry {
+            valid: EntryValid {
+                uuid: uuid_str.clone(),
+            },
+            state: EntryNew,
+            attrs: attrs,
+        }
+    }
 }
 
 #[cfg(test)]

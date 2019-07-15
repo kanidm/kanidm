@@ -1,13 +1,12 @@
 use crate::entry::{Entry, EntryCommitted, EntryValid};
 use crate::error::OperationError;
 
-use crate::proto::v1::{AuthAllowed, UserAuthToken};
+use crate::proto::v1::UserAuthToken;
 
 use crate::idm::claim::Claim;
 use crate::idm::group::Group;
 
 use std::convert::TryFrom;
-use uuid::Uuid;
 
 #[derive(Debug, Clone)]
 pub(crate) struct Account {

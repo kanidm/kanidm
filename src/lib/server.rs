@@ -13,7 +13,10 @@ use crate::access::{
 };
 use crate::constants::{
     JSON_ADMIN_V1, JSON_ANONYMOUS_V1, JSON_IDM_ADMINS_ACP_REVIVE_V1, JSON_IDM_ADMINS_ACP_SEARCH_V1,
-    JSON_IDM_ADMINS_V1, JSON_IDM_SELF_ACP_READ_V1, JSON_SYSTEM_INFO_V1,
+    JSON_IDM_ADMINS_V1, JSON_IDM_SELF_ACP_READ_V1, JSON_SCHEMA_ATTR_DISPLAYNAME,
+    JSON_SCHEMA_ATTR_MAIL, JSON_SCHEMA_ATTR_PASSWORD, JSON_SCHEMA_ATTR_SSH_PUBLICKEY,
+    JSON_SCHEMA_CLASS_ACCOUNT, JSON_SCHEMA_CLASS_GROUP, JSON_SCHEMA_CLASS_PERSON,
+    JSON_SYSTEM_INFO_V1,
 };
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryNormalised, EntryValid};
 use crate::error::{ConsistencyError, OperationError, SchemaError};
@@ -25,7 +28,8 @@ use crate::filter::{Filter, FilterInvalid, FilterValid};
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use crate::plugins::Plugins;
 use crate::schema::{
-    Schema, SchemaReadTransaction, SchemaTransaction, SchemaWriteTransaction, SyntaxType,
+    Schema, SchemaAttribute, SchemaClass, SchemaReadTransaction, SchemaTransaction,
+    SchemaWriteTransaction, SyntaxType,
 };
 
 // This is the core of the server. It implements all
@@ -593,6 +597,23 @@ impl QueryServer {
             schema: self.schema.write(),
             accesscontrols: self.accesscontrols.write(),
         }
+    }
+
+    pub(crate) fn initialise_helper(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
+        let ts_write_1 = self.write();
+        ts_write_1
+            .initialise_schema_core(audit)
+            .and_then(|_| ts_write_1.commit(audit))?;
+
+        let ts_write_2 = self.write();
+        ts_write_2
+            .initialise_schema_idm(audit)
+            .and_then(|_| ts_write_2.commit(audit))?;
+
+        let ts_write_3 = self.write();
+        ts_write_3
+            .initialise_idm(audit)
+            .and_then(|_| ts_write_3.commit(audit))
     }
 
     pub fn verify(&self, au: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
@@ -1188,7 +1209,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // attributes in the situation.
         // If not exist, create from Entry B
         //
-        // WARNING: this requires schema awareness for multivalue types!
+        // TODO: WARNING: this requires schema awareness for multivalue types!
         // We need to either do a schema aware merge, or we just overwrite those
         // few attributes.
         //
@@ -1269,8 +1290,52 @@ impl<'a> QueryServerWriteTransaction<'a> {
         }
     }
 
+    pub fn initialise_schema_core(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
+        // Load in all the "core" schema, that we already have in "memory".
+        let entries = self.schema.to_entries();
+
+        // internal_migrate_or_create.
+        let r: Result<_, _> = entries
+            .into_iter()
+            .map(|e| {
+                audit_log!(
+                    audit,
+                    "init schema -> {}",
+                    serde_json::to_string_pretty(&e).unwrap()
+                );
+                self.internal_migrate_or_create(audit, e)
+            })
+            .collect();
+        assert!(r.is_ok());
+        r
+    }
+
+    pub fn initialise_schema_idm(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
+        // List of IDM schemas to init.
+        let idm_schema: Vec<&str> = vec![
+            JSON_SCHEMA_ATTR_DISPLAYNAME,
+            JSON_SCHEMA_ATTR_MAIL,
+            JSON_SCHEMA_ATTR_SSH_PUBLICKEY,
+            JSON_SCHEMA_ATTR_PASSWORD,
+            JSON_SCHEMA_CLASS_PERSON,
+            JSON_SCHEMA_CLASS_GROUP,
+            JSON_SCHEMA_CLASS_ACCOUNT,
+        ];
+
+        let mut audit_si = AuditScope::new("start_initialise_schema_idm");
+        let r: Result<Vec<()>, _> = idm_schema
+            .iter()
+            .map(|e_str| self.internal_migrate_or_create_str(&mut audit_si, e_str))
+            .collect();
+        audit.append_scope(audit_si);
+        assert!(r.is_ok());
+
+        // TODO: Should we log the set of failures some how?
+        r.map(|_| ())
+    }
+
     // This function is idempotent
-    pub fn initialise(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
+    pub fn initialise_idm(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
         // First, check the system_info object. This stores some server information
         // and details. It's a pretty static thing.
         let mut audit_si = AuditScope::new("start_system_info");
@@ -1331,9 +1396,42 @@ impl<'a> QueryServerWriteTransaction<'a> {
         Ok(())
     }
 
-    fn reload_schema(&mut self, _audit: &mut AuditScope) -> Result<(), OperationError> {
+    fn reload_schema(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
         // supply entries to the writable schema to reload from.
-        Ok(())
+        // find all attributes.
+        let filt = filter!(f_eq("class", "attributetype"));
+        let res = try_audit!(audit, self.internal_search(audit, filt));
+        // load them.
+        let attributetypes: Result<Vec<_>, _> = res
+            .iter()
+            .map(|e| SchemaAttribute::try_from(audit, e))
+            .collect();
+        let attributetypes = try_audit!(audit, attributetypes);
+
+        try_audit!(audit, self.schema.update_attributes(attributetypes));
+
+        // find all classes
+        let filt = filter!(f_eq("class", "classtype"));
+        let res = try_audit!(audit, self.internal_search(audit, filt));
+        // load them.
+        let classtypes: Result<Vec<_>, _> = res
+            .iter()
+            .map(|e| SchemaClass::try_from(audit, e))
+            .collect();
+        let classtypes = try_audit!(audit, classtypes);
+
+        try_audit!(audit, self.schema.update_classes(classtypes));
+
+        // validate.
+        let valid_r = self.schema.validate(audit);
+
+        // Translate the result.
+        if valid_r.len() == 0 {
+            Ok(())
+        } else {
+            // Log the failures?
+            unimplemented!();
+        }
     }
 
     fn reload_accesscontrols(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
@@ -1414,6 +1512,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     pub fn commit(mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
+        // TODO: This could be faster if we cache the set of classes changed
+        // in an operation so we can check if we need to do the reload or not
+        //
         // Reload the schema from qs.
         self.reload_schema(audit)?;
         // Determine if we need to update access control profiles
@@ -1514,30 +1615,31 @@ mod tests {
     }
 
     #[test]
-    fn test_qs_init_idempotent_1() {
+    fn test_qs_init_idempotent_schema_core() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             {
                 // Setup and abort.
                 let server_txn = server.write();
-                assert!(server_txn.initialise(audit).is_ok());
+                assert!(server_txn.initialise_schema_core(audit).is_ok());
             }
             {
                 let server_txn = server.write();
-                assert!(server_txn.initialise(audit).is_ok());
-                assert!(server_txn.initialise(audit).is_ok());
+                assert!(server_txn.initialise_schema_core(audit).is_ok());
+                assert!(server_txn.initialise_schema_core(audit).is_ok());
                 assert!(server_txn.commit(audit).is_ok());
             }
             {
                 // Now do it again in a new txn, but abort
                 let server_txn = server.write();
-                assert!(server_txn.initialise(audit).is_ok());
+                assert!(server_txn.initialise_schema_core(audit).is_ok());
             }
             {
                 // Now do it again in a new txn.
                 let server_txn = server.write();
-                assert!(server_txn.initialise(audit).is_ok());
+                assert!(server_txn.initialise_schema_core(audit).is_ok());
                 assert!(server_txn.commit(audit).is_ok());
             }
+            // TODO: Check the content is as expected
         });
     }
 
@@ -2233,6 +2335,170 @@ mod tests {
 
             println!("{:?}", r4);
             assert!(r4 == Ok("cc8e95b4-c24f-4d68-ba54-8bed76f63930".to_string()));
+        })
+    }
+
+    #[test]
+    fn test_qs_dynamic_schema_class() {
+        run_test!(|server: &QueryServer, audit: &mut AuditScope| {
+            let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+                r#"{
+                "valid": null,
+                "state": null,
+                "attrs": {
+                    "class": ["object", "testclass"],
+                    "name": ["testobj1"],
+                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"]
+                }
+            }"#,
+            )
+            .expect("json failure");
+
+            // Class definition
+            let e_cd: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+                r#"{
+                "valid": null,
+                "state": null,
+                "attrs": {
+                    "class": ["object", "classtype"],
+                    "name": ["testclass"],
+                    "uuid": ["cfcae205-31c3-484b-8ced-667d1709c5e3"],
+                    "description": ["Test Class"]
+                }
+            }"#,
+            )
+            .expect("json failure");
+
+            let server_txn = server.write();
+            // Add a new class.
+            let ce_class = CreateEvent::new_internal(vec![e_cd.clone()]);
+            assert!(server_txn.create(audit, &ce_class).is_ok());
+            // Trying to add it now should fail.
+            let ce_fail = CreateEvent::new_internal(vec![e1.clone()]);
+            assert!(server_txn.create(audit, &ce_fail).is_err());
+
+            // Commit
+            server_txn.commit(audit).expect("should not fail");
+
+            // Start a new write
+            let server_txn = server.write();
+            // Add the class to an object
+            // should work
+            let ce_work = CreateEvent::new_internal(vec![e1.clone()]);
+            assert!(server_txn.create(audit, &ce_work).is_ok());
+
+            // Commit
+            server_txn.commit(audit).expect("should not fail");
+
+            // Start a new write
+            let server_txn = server.write();
+            // delete the class
+            let de_class =
+                unsafe { DeleteEvent::new_internal_invalid(filter!(f_eq("name", "testclass"))) };
+            assert!(server_txn.delete(audit, &de_class).is_ok());
+            // Commit
+            server_txn.commit(audit).expect("should not fail");
+
+            // Start a new write
+            let server_txn = server.write();
+            // Trying to add now should fail
+            let ce_fail = CreateEvent::new_internal(vec![e1.clone()]);
+            assert!(server_txn.create(audit, &ce_fail).is_err());
+            // Search our entry
+            let testobj1 = server_txn
+                .internal_search_uuid(audit, "cc8e95b4-c24f-4d68-ba54-8bed76f63930")
+                .expect("failed");
+            assert!(testobj1.attribute_value_pres("class", "testclass"));
+
+            // Should still be good
+            server_txn.commit(audit).expect("should not fail");
+            // Commit.
+        })
+    }
+
+    #[test]
+    fn test_qs_dynamic_schema_attr() {
+        run_test!(|server: &QueryServer, audit: &mut AuditScope| {
+            let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+                r#"{
+                "valid": null,
+                "state": null,
+                "attrs": {
+                    "class": ["object", "extensibleobject"],
+                    "name": ["testobj1"],
+                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
+                    "testattr": ["test"]
+                }
+            }"#,
+            )
+            .expect("json failure");
+
+            // Attribute definition
+            let e_ad: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+                r#"{
+                "valid": null,
+                "state": null,
+                "attrs": {
+                    "class": ["object", "attributetype"],
+                    "name": ["testattr"],
+                    "uuid": ["cfcae205-31c3-484b-8ced-667d1709c5e3"],
+                    "description": ["Test Attribute"],
+                    "multivalue": ["false"],
+                    "secret": ["false"],
+                    "syntax": ["UTF8STRING"],
+                    "system": ["false"]
+                }
+            }"#,
+            )
+            .expect("json failure");
+
+            let server_txn = server.write();
+            // Add a new attribute.
+            let ce_attr = CreateEvent::new_internal(vec![e_ad.clone()]);
+            assert!(server_txn.create(audit, &ce_attr).is_ok());
+            // Trying to add it now should fail. (use extensible object)
+            let ce_fail = CreateEvent::new_internal(vec![e1.clone()]);
+            assert!(server_txn.create(audit, &ce_fail).is_err());
+
+            // Commit
+            server_txn.commit(audit).expect("should not fail");
+
+            // Start a new write
+            let server_txn = server.write();
+            // Add the attr to an object
+            // should work
+            let ce_work = CreateEvent::new_internal(vec![e1.clone()]);
+            assert!(server_txn.create(audit, &ce_work).is_ok());
+
+            // Commit
+            server_txn.commit(audit).expect("should not fail");
+
+            // Start a new write
+            let server_txn = server.write();
+            // delete the attr
+            let de_attr =
+                unsafe { DeleteEvent::new_internal_invalid(filter!(f_eq("name", "testattr"))) };
+            assert!(server_txn.delete(audit, &de_attr).is_ok());
+            // Commit
+            server_txn.commit(audit).expect("should not fail");
+
+            // Start a new write
+            let server_txn = server.write();
+            // Trying to add now should fail
+            let ce_fail = CreateEvent::new_internal(vec![e1.clone()]);
+            assert!(server_txn.create(audit, &ce_fail).is_err());
+            // Search our attribute - should FAIL
+            let filt = filter!(f_eq("testattr", "test"));
+            assert!(server_txn.internal_search(audit, filt).is_err());
+            // Search the entry - the attribute will still be present
+            // even if we can't search on it.
+            let testobj1 = server_txn
+                .internal_search_uuid(audit, "cc8e95b4-c24f-4d68-ba54-8bed76f63930")
+                .expect("failed");
+            assert!(testobj1.attribute_value_pres("testattr", "test"));
+
+            server_txn.commit(audit).expect("should not fail");
+            // Commit.
         })
     }
 }

@@ -347,7 +347,7 @@ impl BackendWriteTransaction {
             })
             .collect();
 
-        audit_log!(au, "serialising: {:?}", ser_entries);
+        // audit_log!(au, "serialising: {:?}", ser_entries);
 
         let ser_entries = ser_entries?;
 
@@ -444,7 +444,7 @@ impl BackendWriteTransaction {
 
         let ser_entries = try_audit!(au, ser_entries);
 
-        audit_log!(au, "serialising: {:?}", ser_entries);
+        // audit_log!(au, "serialising: {:?}", ser_entries);
 
         // Simple: If the list of id's is not the same as the input list, we are missing id's
         // TODO: This check won't be needed once I rebuild the entry state types.

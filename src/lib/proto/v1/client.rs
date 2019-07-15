@@ -4,6 +4,7 @@
 // attempt to reflect and map to a simple representation of
 // the protocol, which was intended to be easy-to-use and accessible.
 
+/*
 struct ClientV1 {}
 
 impl ClientV1 {
@@ -24,3 +25,4 @@ impl ClientV1 {
 
     fn delete() -> () {}
 }
+*/
