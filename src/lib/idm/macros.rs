@@ -20,7 +20,6 @@ macro_rules! run_idm_test {
         use crate::idm::server::IdmServer;
         use crate::schema::Schema;
         use crate::server::QueryServer;
-        use std::sync::Arc;
 
         use env_logger;
         ::std::env::set_var("RUST_LOG", "actix_web=debug,rsidm=debug");
@@ -30,21 +29,11 @@ macro_rules! run_idm_test {
 
         let be = Backend::new(&mut audit, "").expect("Failed to init be");
         let schema_outer = Schema::new(&mut audit).expect("Failed to init schema");
-        {
-            let mut schema = schema_outer.write();
-            schema
-                .bootstrap_core(&mut audit)
-                .expect("Failed to bootstrap schema");
-            schema.commit().expect("Failed to commit schema");
-        }
 
         let test_server = QueryServer::new(be, schema_outer);
-
-        {
-            let ts_write = test_server.write();
-            ts_write.initialise(&mut audit).expect("Init failed!");
-            ts_write.commit(&mut audit).expect("Commit failed!");
-        }
+        test_server
+            .initialise_helper(&mut audit)
+            .expect("init failed");
 
         let test_idm_server = IdmServer::new(test_server.clone());
 

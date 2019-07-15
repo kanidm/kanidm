@@ -19,8 +19,8 @@ use crate::interval::IntervalActor;
 use crate::proto::v1::actors::QueryServerV1;
 use crate::proto::v1::messages::{AuthMessage, WhoamiMessage};
 use crate::proto::v1::{
-    AuthRequest, AuthResponse, AuthState, CreateRequest, DeleteRequest, ModifyRequest,
-    SearchRequest, UserAuthToken, WhoamiRequest, WhoamiResponse,
+    AuthRequest, AuthState, CreateRequest, DeleteRequest, ModifyRequest, SearchRequest,
+    UserAuthToken,
 };
 
 use uuid::Uuid;

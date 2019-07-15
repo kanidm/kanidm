@@ -7,18 +7,17 @@ use crate::be::Backend;
 use crate::async_log::EventLog;
 use crate::error::OperationError;
 use crate::event::{
-    AuthEvent, AuthResult, CreateEvent, DeleteEvent, ModifyEvent, PurgeRecycledEvent,
-    PurgeTombstoneEvent, SearchEvent, SearchResult, WhoamiResult,
+    AuthEvent, CreateEvent, DeleteEvent, ModifyEvent, PurgeRecycledEvent, PurgeTombstoneEvent,
+    SearchEvent, SearchResult, WhoamiResult,
 };
-use crate::schema::{Schema, SchemaTransaction};
+use crate::schema::Schema;
 
-use crate::constants::UUID_ANONYMOUS;
 use crate::idm::server::IdmServer;
 use crate::server::{QueryServer, QueryServerTransaction};
 
 use crate::proto::v1::{
-    AuthRequest, AuthResponse, AuthState, CreateRequest, DeleteRequest, ModifyRequest,
-    OperationResponse, SearchRequest, SearchResponse, UserAuthToken, WhoamiRequest, WhoamiResponse,
+    AuthResponse, CreateRequest, DeleteRequest, ModifyRequest, OperationResponse, SearchRequest,
+    SearchResponse, WhoamiResponse,
 };
 
 use crate::proto::v1::messages::{AuthMessage, WhoamiMessage};
@@ -68,60 +67,19 @@ impl QueryServerV1 {
                 Err(e) => return Err(e),
             };
 
-            {
-                let be_txn = be.write();
-                let mut schema_write = schema.write();
-
-                // Now, we have the initial schema in memory. Use this to trigger
-                // an index of the be for the core schema.
-
-                // Now search for the schema itself, and validate that the system
-                // in memory matches the BE on disk, and that it's syntactically correct.
-                // Write it out if changes are needed.
-
-                // Now load the remaining backend schema into memory.
-                // TODO: Schema elements should be versioned individually.
-                match schema_write
-                    .bootstrap_core(&mut audit)
-                    // TODO: Backend setup indexes as needed from schema, for the core
-                    // system schema.
-                    // TODO: Trigger an index? This could be costly ...
-                    //   Perhaps a config option to say if we index on startup or not.
-                    // TODO: Check the results!
-                    .and_then(|_| {
-                        let r = schema_write.validate(&mut audit);
-                        if r.len() == 0 {
-                            Ok(())
-                        } else {
-                            Err(OperationError::ConsistencyError(r))
-                        }
-                    })
-                    .and_then(|_| be_txn.commit())
-                    .and_then(|_| schema_write.commit())
-                {
-                    Ok(_) => {}
-                    Err(e) => return Err(e),
-                }
-            }
-
             // Create a query_server implementation
-            // TODO: FIXME: CRITICAL: Schema must be ARC/Cow properly!!! Right now it's
-            // not!!!
             let query_server = QueryServer::new(be, schema);
 
             let mut audit_qsc = AuditScope::new("query_server_init");
-            // This may need to be two parts, one for schema, one for everything else
-            // that way we can reload schema in between.
-            let query_server_write = query_server.write();
-            match query_server_write.initialise(&mut audit_qsc).and_then(|_| {
-                audit_segment!(audit_qsc, || query_server_write.commit(&mut audit_qsc))
-            }) {
-                // We are good to go! Finally commit and consume the txn.
-                Ok(_) => {}
-                Err(e) => return Err(e),
-            };
+            // TODO: Should the IDM parts be broken out to the IdmSerner?
             // What's important about this initial setup here is that it also triggers
             // the schema and acp reload, so they are now configured correctly!
+            // Initialise the schema core.
+            //
+            // Now search for the schema itself, and validate that the system
+            // in memory matches the BE on disk, and that it's syntactically correct.
+            // Write it out if changes are needed.
+            query_server.initialise_helper(&mut audit_qsc)?;
 
             // We generate a SINGLE idms only!
 
