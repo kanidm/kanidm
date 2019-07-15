@@ -1,7 +1,10 @@
 use crate::audit::AuditScope;
 use crate::constants::*;
+use crate::entry::{Entry, EntryCommitted, EntryValid};
 use crate::error::{ConsistencyError, OperationError, SchemaError};
 use crate::proto::v1::Filter as ProtoFilter;
+use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
+
 use regex::Regex;
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -15,9 +18,6 @@ use concread::cowcell::{CowCell, CowCellReadTxn, CowCellWriteTxn};
 //
 // In the future this will parse/read it's schema from the db
 // but we have to bootstrap with some core types.
-
-// TODO: Account should be a login-bind-able object
-//    needs account lock, timeout, policy?
 
 // TODO: system_info metadata object schema
 
@@ -114,6 +114,93 @@ pub struct SchemaAttribute {
 }
 
 impl SchemaAttribute {
+    pub fn try_from(
+        audit: &mut AuditScope,
+        qs: &QueryServerWriteTransaction,
+        value: &Entry<EntryValid, EntryCommitted>,
+    ) -> Result<Self, OperationError> {
+        // Convert entry to a schema attribute.
+        // class
+        if !value.attribute_value_pres("class", "attributetype") {
+            audit_log!(audit, "class attribute type not present");
+            return Err(OperationError::InvalidSchemaState("missing attributetype"));
+        }
+
+        // uuid
+        // TODO: Alloc and free of string here?
+        let uuid = try_audit!(
+            audit,
+            Uuid::parse_str(value.get_uuid().as_str())
+                .map_err(|_| OperationError::InvalidSchemaState("Invalid UUID"))
+        );
+
+        // name
+        let name = try_audit!(
+            audit,
+            value
+                .get_ava_single("name")
+                .ok_or(OperationError::InvalidSchemaState("missing name"))
+        );
+        // description
+        let description = try_audit!(
+            audit,
+            value
+                .get_ava_single("description")
+                .ok_or(OperationError::InvalidSchemaState("missing description"))
+        );
+
+        // HOW TO: convert to bool?
+        // system
+        let system = try_audit!(
+            audit,
+            value
+                .get_ava_single_bool("system")
+                .ok_or(OperationError::InvalidSchemaState(
+                    "missing or invalid system"
+                ))
+        );
+        // secret
+        let secret = try_audit!(
+            audit,
+            value
+                .get_ava_single_bool("secret")
+                .ok_or(OperationError::InvalidSchemaState("missing secret"))
+        );
+        // multivalue
+        let multivalue = try_audit!(
+            audit,
+            value
+                .get_ava_single_bool("multivalue")
+                .ok_or(OperationError::InvalidSchemaState("missing multivalue"))
+        );
+        // index vec
+        // even if empty, it SHOULD be present ... (is that value to put an empty set?)
+        let index = try_audit!(
+            audit,
+            value
+                .get_ava_index("index")
+                .ok_or(OperationError::InvalidSchemaState("missing index"))
+        );
+        // syntax type
+        let syntax = try_audit!(
+            audit,
+            value
+                .get_ava_single_syntax("syntax")
+                .ok_or(OperationError::InvalidSchemaState("missing syntax"))
+        );
+
+        Ok(SchemaAttribute {
+            name: name.clone(),
+            uuid: uuid.clone(),
+            description: description.clone(),
+            system: system,
+            secret: secret,
+            multivalue: multivalue,
+            index: index,
+            syntax: syntax,
+        })
+    }
+
     // Implement Equality, PartialOrd, Normalisation,
     // Validation.
     fn validate_bool(&self, v: &String) -> Result<(), SchemaError> {
@@ -317,6 +404,17 @@ pub struct SchemaClass {
     pub may: Vec<String>,
     pub systemmust: Vec<String>,
     pub must: Vec<String>,
+}
+
+impl SchemaClass {
+    pub fn try_from(
+        audit: &mut AuditScope,
+        qs: &QueryServerWriteTransaction,
+        value: &Entry<EntryValid, EntryCommitted>,
+    ) -> Result<Self, OperationError> {
+        // Convert entry to a schema class.
+        unimplemented!();
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -1334,6 +1432,168 @@ mod tests {
             let r: Result<Vec<()>, ConsistencyError> = $sch.validate($au).into_iter().collect();
             assert!(r.is_ok());
         }};
+    }
+
+    macro_rules! sch_from_entry_ok {
+        (
+            $audit:expr,
+            $qs:expr,
+            $e:expr,
+            $type:ty
+        ) => {{
+            let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str($e).expect("json failure");
+            let ev1 = unsafe { e1.to_valid_committed() };
+
+            let r1 = <$type>::try_from($audit, $qs, &ev1);
+            assert!(r1.is_ok());
+        }};
+    }
+
+    macro_rules! sch_from_entry_err {
+        (
+            $audit:expr,
+            $qs:expr,
+            $e:expr,
+            $type:ty
+        ) => {{
+            let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str($e).expect("json failure");
+            let ev1 = unsafe { e1.to_valid_committed() };
+
+            let r1 = <$type>::try_from($audit, $qs, &ev1);
+            assert!(r1.is_err());
+        }};
+    }
+
+    #[test]
+    fn test_schema_attribute_from_entry() {
+        run_test!(|qs: &QueryServer, audit: &mut AuditScope| {
+            let qs_write = qs.write();
+            sch_from_entry_err!(
+                audit,
+                &qs_write,
+                r#"{
+                    "valid": null,
+                    "state": null,
+                    "attrs": {
+                        "class": ["object", "attributetype"],
+                        "name": ["schema_attr_test"],
+                        "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"]
+                    }
+                }"#,
+                SchemaAttribute
+            );
+
+            sch_from_entry_err!(
+                audit,
+                &qs_write,
+                r#"{
+                    "valid": null,
+                    "state": null,
+                    "attrs": {
+                        "class": ["object", "attributetype"],
+                        "name": ["schema_attr_test"],
+                        "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"],
+                        "system": ["false"],
+                        "secret": ["false"],
+                        "multivalue": ["false"],
+                        "index": ["EQUALITY"],
+                        "syntax": ["UTF8STRING"]
+                    }
+                }"#,
+                SchemaAttribute
+            );
+
+            sch_from_entry_err!(
+                audit,
+                &qs_write,
+                r#"{
+                    "valid": null,
+                    "state": null,
+                    "attrs": {
+                        "class": ["object", "attributetype"],
+                        "name": ["schema_attr_test"],
+                        "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"],
+                        "description": ["Test attr parsing"],
+                        "system": ["thoeunaouhnt"],
+                        "secret": ["false"],
+                        "multivalue": ["false"],
+                        "index": ["EQUALITY"],
+                        "syntax": ["UTF8STRING"]
+                    }
+                }"#,
+                SchemaAttribute
+            );
+
+            sch_from_entry_err!(
+                audit,
+                &qs_write,
+                r#"{
+                    "valid": null,
+                    "state": null,
+                    "attrs": {
+                        "class": ["object", "attributetype"],
+                        "name": ["schema_attr_test"],
+                        "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"],
+                        "description": ["Test attr parsing"],
+                        "system": ["true"],
+                        "secret": ["false"],
+                        "multivalue": ["false"],
+                        "index": ["NTEHNOU"],
+                        "syntax": ["UTF8STRING"]
+                    }
+                }"#,
+                SchemaAttribute
+            );
+
+            sch_from_entry_err!(
+                audit,
+                &qs_write,
+                r#"{
+                    "valid": null,
+                    "state": null,
+                    "attrs": {
+                        "class": ["object", "attributetype"],
+                        "name": ["schema_attr_test"],
+                        "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"],
+                        "description": ["Test attr parsing"],
+                        "system": ["true"],
+                        "secret": ["false"],
+                        "multivalue": ["false"],
+                        "index": ["EQUALITY"],
+                        "syntax": ["TNEOUNTUH"]
+                    }
+                }"#,
+                SchemaAttribute
+            );
+
+            sch_from_entry_ok!(
+                audit,
+                &qs_write,
+                r#"{
+                    "valid": null,
+                    "state": null,
+                    "attrs": {
+                        "class": ["object", "attributetype"],
+                        "name": ["schema_attr_test"],
+                        "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"],
+                        "description": ["Test attr parsing"],
+                        "system": ["false"],
+                        "secret": ["false"],
+                        "multivalue": ["false"],
+                        "index": ["EQUALITY"],
+                        "syntax": ["UTF8STRING"]
+                    }
+                }"#,
+                SchemaAttribute
+            );
+        });
+    }
+
+    #[test]
+    fn test_schema_class_from_entry() {
+        run_test!(|qs: &QueryServer, audit: &mut AuditScope| {
+            let qs_write = qs.write();
+        });
     }
 
     #[test]

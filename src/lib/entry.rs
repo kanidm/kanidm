@@ -5,6 +5,7 @@ use crate::filter::{Filter, FilterInvalid, FilterResolved, FilterValidResolved};
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use crate::proto::v1::Entry as ProtoEntry;
 use crate::proto::v1::UserAuthToken;
+use crate::schema::{IndexType, SyntaxType};
 use crate::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
 use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
 
@@ -16,6 +17,9 @@ use std::collections::BTreeSet;
 use std::collections::HashMap;
 use std::iter::ExactSizeIterator;
 use std::slice::Iter as SliceIter;
+
+use std::convert::TryFrom;
+use std::str::FromStr;
 
 #[cfg(test)]
 use uuid::Uuid;
@@ -770,6 +774,23 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         self.attrs.get(attr)
     }
 
+    // Typed set result for attr ...
+    // This is more costly due to the clone on read.
+    //
+    pub fn get_ava_index(&self, attr: &str) -> Option<Vec<IndexType>> {
+        match self.attrs.get(attr) {
+            Some(av) => {
+                let r: Result<Vec<_>, _> =
+                    av.iter().map(|v| IndexType::try_from(v.as_str())).collect();
+                match r {
+                    Ok(v) => Some(v),
+                    Err(_) => None,
+                }
+            }
+            None => None,
+        }
+    }
+
     pub fn get_ava_set(&self, attr: &str) -> Option<BTreeSet<&str>> {
         self.get_ava(attr).map(|vs| {
             // Map the vec to a BTreeSet instead.
@@ -788,6 +809,28 @@ impl<VALID, STATE> Entry<VALID, STATE> {
                     vs.first()
                 }
             }
+            None => None,
+        }
+    }
+
+    // These are typed helpers - later they will probably be based on whatever change to
+    // attribute storage we make ...
+    pub fn get_ava_single_bool(&self, attr: &str) -> Option<bool> {
+        match self.get_ava_single(attr) {
+            Some(a) => match bool::from_str(a.as_str()) {
+                Ok(b) => Some(b),
+                Err(_) => None,
+            },
+            None => None,
+        }
+    }
+
+    pub fn get_ava_single_syntax(&self, attr: &str) -> Option<SyntaxType> {
+        match self.get_ava_single(attr) {
+            Some(a) => match SyntaxType::try_from(a.as_str()) {
+                Ok(b) => Some(b),
+                Err(_) => None,
+            },
             None => None,
         }
     }
