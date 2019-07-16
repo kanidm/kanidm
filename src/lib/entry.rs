@@ -638,6 +638,52 @@ impl Entry<EntryValid, EntryCommitted> {
             attrs: f_attrs,
         }
     }
+
+    // These are special types to allow returning typed values from
+    // an entry, if we "know" what we expect to receive.
+
+    /// This returns an array of IndexTypes, when the type is an Optional
+    /// multivalue in schema - IE this will *not* fail if the attribute is
+    /// empty, yielding and empty array instead.
+    ///
+    /// However, the converstion to IndexType is fallaible, so in case of a failure
+    /// to convert, an Err is returned.
+    pub(crate) fn get_ava_opt_index(&self, attr: &str) -> Result<Vec<IndexType>, ()> {
+        match self.attrs.get(attr) {
+            Some(av) => {
+                let r: Result<Vec<_>, _> =
+                    av.iter().map(|v| IndexType::try_from(v.as_str())).collect();
+                r
+            }
+            None => Ok(Vec::new()),
+        }
+    }
+
+    /// Get a bool from an ava
+    pub fn get_ava_single_bool(&self, attr: &str) -> Option<bool> {
+        match self.get_ava_single(attr) {
+            Some(a) => bool::from_str(a.as_str()).ok(),
+            None => None,
+        }
+    }
+
+    pub fn get_ava_single_syntax(&self, attr: &str) -> Option<SyntaxType> {
+        match self.get_ava_single(attr) {
+            Some(a) => SyntaxType::try_from(a.as_str()).ok(),
+            None => None,
+        }
+    }
+
+    /// This is a cloning interface on getting ava's with optional
+    /// existance. It's used in the schema code for must/may/systemmust/systemmay
+    /// access. It should probably be avoided due to the clone unless you
+    /// are aware of the consequences.
+    pub(crate) fn get_ava_opt(&self, attr: &str) -> Vec<String> {
+        match self.attrs.get(attr) {
+            Some(a) => a.clone(),
+            None => Vec::new(),
+        }
+    }
 }
 
 impl<STATE> Entry<EntryValid, STATE> {
@@ -774,23 +820,6 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         self.attrs.get(attr)
     }
 
-    // Typed set result for attr ...
-    // This is more costly due to the clone on read.
-    //
-    pub fn get_ava_index(&self, attr: &str) -> Option<Vec<IndexType>> {
-        match self.attrs.get(attr) {
-            Some(av) => {
-                let r: Result<Vec<_>, _> =
-                    av.iter().map(|v| IndexType::try_from(v.as_str())).collect();
-                match r {
-                    Ok(v) => Some(v),
-                    Err(_) => None,
-                }
-            }
-            None => None,
-        }
-    }
-
     pub fn get_ava_set(&self, attr: &str) -> Option<BTreeSet<&str>> {
         self.get_ava(attr).map(|vs| {
             // Map the vec to a BTreeSet instead.
@@ -809,28 +838,6 @@ impl<VALID, STATE> Entry<VALID, STATE> {
                     vs.first()
                 }
             }
-            None => None,
-        }
-    }
-
-    // These are typed helpers - later they will probably be based on whatever change to
-    // attribute storage we make ...
-    pub fn get_ava_single_bool(&self, attr: &str) -> Option<bool> {
-        match self.get_ava_single(attr) {
-            Some(a) => match bool::from_str(a.as_str()) {
-                Ok(b) => Some(b),
-                Err(_) => None,
-            },
-            None => None,
-        }
-    }
-
-    pub fn get_ava_single_syntax(&self, attr: &str) -> Option<SyntaxType> {
-        match self.get_ava_single(attr) {
-            Some(a) => match SyntaxType::try_from(a.as_str()) {
-                Ok(b) => Some(b),
-                Err(_) => None,
-            },
             None => None,
         }
     }

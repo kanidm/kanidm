@@ -149,7 +149,6 @@ impl SchemaAttribute {
                 .ok_or(OperationError::InvalidSchemaState("missing description"))
         );
 
-        // HOW TO: convert to bool?
         // system
         let system = try_audit!(
             audit,
@@ -159,6 +158,7 @@ impl SchemaAttribute {
                     "missing or invalid system"
                 ))
         );
+
         // secret
         let secret = try_audit!(
             audit,
@@ -175,11 +175,12 @@ impl SchemaAttribute {
         );
         // index vec
         // even if empty, it SHOULD be present ... (is that value to put an empty set?)
+        // The get_ava_opt_index handles the optional case for us :)
         let index = try_audit!(
             audit,
             value
-                .get_ava_index("index")
-                .ok_or(OperationError::InvalidSchemaState("missing index"))
+                .get_ava_opt_index("index")
+                .map_err(|_| OperationError::InvalidSchemaState("Invalid index"))
         );
         // syntax type
         let syntax = try_audit!(
@@ -413,7 +414,50 @@ impl SchemaClass {
         value: &Entry<EntryValid, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         // Convert entry to a schema class.
-        unimplemented!();
+        if !value.attribute_value_pres("class", "classtype") {
+            audit_log!(audit, "class classtype not present");
+            return Err(OperationError::InvalidSchemaState("missing classtype"));
+        }
+
+        // uuid
+        // TODO: Alloc and free of string here?
+        let uuid = try_audit!(
+            audit,
+            Uuid::parse_str(value.get_uuid().as_str())
+                .map_err(|_| OperationError::InvalidSchemaState("Invalid UUID"))
+        );
+
+        // name
+        let name = try_audit!(
+            audit,
+            value
+                .get_ava_single("name")
+                .ok_or(OperationError::InvalidSchemaState("missing name"))
+        );
+        // description
+        let description = try_audit!(
+            audit,
+            value
+                .get_ava_single("description")
+                .ok_or(OperationError::InvalidSchemaState("missing description"))
+        );
+
+        // These are all "optional" lists of strings.
+
+        let systemmay = value.get_ava_opt("systemmay");
+        let systemmust = value.get_ava_opt("systemmust");
+        let may = value.get_ava_opt("may");
+        let must = value.get_ava_opt("must");
+
+        Ok(SchemaClass {
+            name: name.clone(),
+            uuid: uuid,
+            description: description.clone(),
+            systemmay: systemmay,
+            systemmust: systemmust,
+            may: may,
+            must: must,
+        })
     }
 }
 
@@ -1419,7 +1463,7 @@ mod tests {
     use crate::error::{ConsistencyError, SchemaError};
     // use crate::filter::{Filter, FilterValid};
     use crate::schema::SchemaTransaction;
-    use crate::schema::{IndexType, Schema, SchemaAttribute, SyntaxType};
+    use crate::schema::{IndexType, Schema, SchemaAttribute, SchemaClass, SyntaxType};
     use serde_json;
     use std::convert::TryFrom;
     use uuid::Uuid;
@@ -1566,6 +1610,28 @@ mod tests {
                 SchemaAttribute
             );
 
+            // Index is allowed to be empty
+            sch_from_entry_ok!(
+                audit,
+                &qs_write,
+                r#"{
+                    "valid": null,
+                    "state": null,
+                    "attrs": {
+                        "class": ["object", "attributetype"],
+                        "name": ["schema_attr_test"],
+                        "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"],
+                        "description": ["Test attr parsing"],
+                        "system": ["false"],
+                        "secret": ["false"],
+                        "multivalue": ["false"],
+                        "syntax": ["UTF8STRING"]
+                    }
+                }"#,
+                SchemaAttribute
+            );
+
+            // Index present
             sch_from_entry_ok!(
                 audit,
                 &qs_write,
@@ -1593,6 +1659,127 @@ mod tests {
     fn test_schema_class_from_entry() {
         run_test!(|qs: &QueryServer, audit: &mut AuditScope| {
             let qs_write = qs.write();
+
+            sch_from_entry_err!(
+                audit,
+                &qs_write,
+                r#"{
+                    "valid": null,
+                    "state": null,
+                    "attrs": {
+                        "class": ["object", "classtype"],
+                        "name": ["schema_class_test"],
+                        "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"]
+                    }
+                }"#,
+                SchemaClass
+            );
+
+            sch_from_entry_err!(
+                audit,
+                &qs_write,
+                r#"{
+                    "valid": null,
+                    "state": null,
+                    "attrs": {
+                        "class": ["object"],
+                        "name": ["schema_class_test"],
+                        "description": ["class test"],
+                        "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"]
+                    }
+                }"#,
+                SchemaClass
+            );
+
+            // Classes can be valid with no attributes provided.
+            sch_from_entry_ok!(
+                audit,
+                &qs_write,
+                r#"{
+                    "valid": null,
+                    "state": null,
+                    "attrs": {
+                        "class": ["object", "classtype"],
+                        "name": ["schema_class_test"],
+                        "description": ["class test"],
+                        "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"]
+                    }
+                }"#,
+                SchemaClass
+            );
+
+            // Classes with various may/must
+            sch_from_entry_ok!(
+                audit,
+                &qs_write,
+                r#"{
+                    "valid": null,
+                    "state": null,
+                    "attrs": {
+                        "class": ["object", "classtype"],
+                        "name": ["schema_class_test"],
+                        "description": ["class test"],
+                        "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"],
+                        "systemmust": ["d"]
+                    }
+                }"#,
+                SchemaClass
+            );
+
+            sch_from_entry_ok!(
+                audit,
+                &qs_write,
+                r#"{
+                    "valid": null,
+                    "state": null,
+                    "attrs": {
+                        "class": ["object", "classtype"],
+                        "name": ["schema_class_test"],
+                        "description": ["class test"],
+                        "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"],
+                        "systemmay": ["c"]
+                    }
+                }"#,
+                SchemaClass
+            );
+
+            sch_from_entry_ok!(
+                audit,
+                &qs_write,
+                r#"{
+                    "valid": null,
+                    "state": null,
+                    "attrs": {
+                        "class": ["object", "classtype"],
+                        "name": ["schema_class_test"],
+                        "description": ["class test"],
+                        "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"],
+                        "may": ["a"],
+                        "must": ["b"]
+                    }
+                }"#,
+                SchemaClass
+            );
+
+            sch_from_entry_ok!(
+                audit,
+                &qs_write,
+                r#"{
+                    "valid": null,
+                    "state": null,
+                    "attrs": {
+                        "class": ["object", "classtype"],
+                        "name": ["schema_class_test"],
+                        "description": ["class test"],
+                        "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"],
+                        "may": ["a"],
+                        "must": ["b"],
+                        "systemmay": ["c"],
+                        "systemmust": ["d"]
+                    }
+                }"#,
+                SchemaClass
+            );
         });
     }
 
