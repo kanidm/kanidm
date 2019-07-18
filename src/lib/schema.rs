@@ -243,6 +243,7 @@ impl SchemaAttribute {
     }
 
     fn validate_index(&self, v: &String) -> Result<(), SchemaError> {
+        debug!("validate_index -> {}", v);
         IndexType::try_from(v.as_str())
             .map_err(|_| SchemaError::InvalidAttributeSyntax)
             .map(|_| ())
@@ -317,8 +318,11 @@ impl SchemaAttribute {
     }
 
     pub fn validate_ava(&self, ava: &Vec<String>) -> Result<(), SchemaError> {
+        debug!("Checking for ... {:?}", self);
+        debug!("Checking ava -> {:?}", ava);
         // Check multivalue
         if self.multivalue == false && ava.len() > 1 {
+            debug!("Ava len > 1 on single value attribute!");
             return Err(SchemaError::InvalidAttributeSyntax);
         };
         // If syntax, check the type is correct
@@ -357,6 +361,7 @@ impl SchemaAttribute {
             }),
             SyntaxType::INDEX_ID => ava.iter().fold(Ok(()), |acc, v| {
                 if acc.is_ok() {
+                    debug!("Checking index ... {}", v);
                     self.validate_index(v)
                 } else {
                     acc
@@ -659,7 +664,7 @@ impl SchemaInner {
                     ),
                     system: true,
                     secret: false,
-                    multivalue: false,
+                    multivalue: true,
                     index: vec![],
                     syntax: SyntaxType::INDEX_ID,
                 },
@@ -710,7 +715,7 @@ impl SchemaInner {
                     ),
                     system: true,
                     secret: false,
-                    multivalue: false,
+                    multivalue: true,
                     index: vec![],
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
@@ -727,7 +732,7 @@ impl SchemaInner {
                     ),
                     system: true,
                     secret: false,
-                    multivalue: false,
+                    multivalue: true,
                     index: vec![],
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
@@ -744,7 +749,7 @@ impl SchemaInner {
                     ),
                     system: true,
                     secret: false,
-                    multivalue: false,
+                    multivalue: true,
                     index: vec![],
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
@@ -2075,9 +2080,6 @@ mod tests {
         let mut audit = AuditScope::new("test_schema_entry_validate");
         let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
         let mut schema = schema_outer.write();
-        schema
-            .bootstrap_core(&mut audit)
-            .expect("failed to bootstrap schema");
 
         // Check syntax to upper
         // check index to upper
@@ -2090,10 +2092,9 @@ mod tests {
             "attrs": {
                 "class": ["extensibleobject"],
                 "name": ["TestPerson"],
-                "displayName": ["testperson"],
                 "syntax": ["utf8string"],
                 "UUID": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
-                "index": ["equality"]
+                "InDeX": ["equality"]
             }
         }"#,
         )
@@ -2108,7 +2109,6 @@ mod tests {
             "attrs": {
                 "class": ["extensibleobject"],
                 "name": ["testperson"],
-                "displayname": ["testperson"],
                 "syntax": ["UTF8STRING"],
                 "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
                 "index": ["EQUALITY"]
@@ -2129,9 +2129,6 @@ mod tests {
         let mut audit = AuditScope::new("test_schema_entry_normalise");
         let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
         let mut schema = schema_outer.write();
-        schema
-            .bootstrap_core(&mut audit)
-            .expect("failed to bootstrap schema");
 
         // Check that an entry normalises, despite being inconsistent to
         // schema.
@@ -2142,7 +2139,6 @@ mod tests {
             "attrs": {
                 "class": ["extensibleobject"],
                 "name": ["TestPerson"],
-                "displayName": ["testperson"],
                 "syntax": ["utf8string"],
                 "NotAllowed": ["Some Value"],
                 "UUID": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
@@ -2159,7 +2155,6 @@ mod tests {
             "attrs": {
                 "class": ["extensibleobject"],
                 "name": ["testperson"],
-                "displayname": ["testperson"],
                 "syntax": ["UTF8STRING"],
                 "notallowed": ["Some Value"],
                 "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
@@ -2215,56 +2210,6 @@ mod tests {
 
         /* Is okay because extensible! */
         assert!(e_extensible.validate(&schema).is_ok());
-        println!("{}", audit);
-    }
-
-    #[test]
-    fn test_schema_loading() {
-        // Validate loading schema from entries
-    }
-
-    #[test]
-    fn test_schema_bootstrap() {
-        let mut audit = AuditScope::new("test_schema_bootstrap");
-        let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
-        let mut schema = schema_outer.write();
-        schema
-            .bootstrap_core(&mut audit)
-            .expect("schema bootstrap failed");
-
-        // now test some entries
-        let e_person: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
-            r#"{
-            "valid": null,
-            "state": null,
-            "attrs": {
-                "class": ["person"],
-                "name": ["testperson"],
-                "principal_name": ["testperson@project.org"],
-                "description": ["testperson"],
-                "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
-                "displayname": ["testperson"]
-            }
-        }"#,
-        )
-        .expect("json parse failure");
-        assert!(e_person.validate(&schema).is_ok());
-
-        let e_group: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
-            r#"{
-            "valid": null,
-            "state": null,
-            "attrs": {
-                "class": ["group"],
-                "name": ["testgroup"],
-                "principal_name": ["testgroup@project.org"],
-                "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
-                "description": ["testperson"]
-            }
-        }"#,
-        )
-        .expect("json parse failure");
-        assert!(e_group.validate(&schema).is_ok());
         println!("{}", audit);
     }
 

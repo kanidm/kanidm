@@ -255,6 +255,7 @@ impl<STATE> Entry<EntryNormalised, STATE> {
         {
             // First, check we have class on the object ....
             if !ne.attribute_pres("class") {
+                debug!("Missing attribute class");
                 return Err(SchemaError::InvalidClass);
             }
 
@@ -269,6 +270,7 @@ impl<STATE> Entry<EntryNormalised, STATE> {
                 .collect();
 
             if classes.len() != entry_classes_size {
+                debug!("Class on entry not found in schema?");
                 return Err(SchemaError::InvalidClass);
             };
 
@@ -324,7 +326,10 @@ impl<STATE> Entry<EntryNormalised, STATE> {
                         // We have to destructure here to make type checker happy
                         match r {
                             Ok(_) => {}
-                            Err(e) => return Err(e),
+                            Err(e) => {
+                                debug!("Failed to validate: {}", attr_name);
+                                return Err(e)
+                            }
                         }
                     }
                     None => {
@@ -1112,7 +1117,7 @@ impl From<&SchemaClass> for Entry<EntryValid, EntryNew> {
         attrs.insert("uuid".to_string(), uuid_v);
         attrs.insert(
             "class".to_string(),
-            vec!["object".to_string(), "attributetype".to_string()],
+            vec!["object".to_string(), "classtype".to_string()],
         );
         attrs.insert("systemmay".to_string(), s.systemmay.clone());
         attrs.insert("systemmust".to_string(), s.systemmust.clone());

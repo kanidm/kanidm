@@ -68,17 +68,7 @@ impl QueryServerV1 {
                 Err(e) => return Err(e),
             };
 
-            {
-                let be_txn = be.write();
-                let mut schema_write = schema.write();
-
-                // Now, we have the initial schema in memory. Use this to trigger
-                // an index of the be for the core schema.
-            }
-
             // Create a query_server implementation
-            // TODO: FIXME: CRITICAL: Schema must be ARC/Cow properly!!! Right now it's
-            // not!!!
             let query_server = QueryServer::new(be, schema);
 
             let mut audit_qsc = AuditScope::new("query_server_init");

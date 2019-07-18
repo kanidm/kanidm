@@ -349,23 +349,22 @@ pub static UUID_SCHEMA_CLASS_PERSON: &'static str = "86c4d9e8-3820-45d7-8a8c-d3c
 pub static JSON_SCHEMA_CLASS_PERSON: &'static str = r#"
   {
     "valid": {
-      "uuid": "8bbff87c-1731-455e-a0e7-bf1d0908e983"
+      "uuid": "86c4d9e8-3820-45d7-8a8c-d3c522287010"
     },
     "state": null,
     "attrs": {
       "class": [
         "object",
-        "attributetype"
+        "classtype"
       ],
       "description": [
         "Object representation of a person"
       ],
       "name": [
-        "account"
+        "person"
       ],
       "systemmay": [
-        "password",
-        "ssh_publickey",
+        "mail",
         "memberof"
       ],
       "systemmust": [
@@ -373,7 +372,7 @@ pub static JSON_SCHEMA_CLASS_PERSON: &'static str = r#"
         "name"
       ],
       "uuid": [
-        "8bbff87c-1731-455e-a0e7-bf1d0908e983"
+        "86c4d9e8-3820-45d7-8a8c-d3c522287010"
       ]
     }
   }
@@ -388,7 +387,7 @@ pub static JSON_SCHEMA_CLASS_GROUP: &'static str = r#"
     "attrs": {
       "class": [
         "object",
-        "attributetype"
+        "classtype"
       ],
       "description": [
         "Object representation of a group"
@@ -418,7 +417,7 @@ pub static JSON_SCHEMA_CLASS_ACCOUNT: &'static str = r#"
     "attrs": {
       "class": [
         "object",
-        "attributetype"
+        "classtype"
       ],
       "description": [
         "Object representation of a person"

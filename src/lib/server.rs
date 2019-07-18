@@ -1293,19 +1293,22 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub fn initialise_schema_core(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
         // Load in all the "core" schema, that we already have in "memory".
         let entries = self.schema.to_entries();
-        println!("{}", serde_json::to_string_pretty(&entries).unwrap());
 
         // internal_migrate_or_create.
         let r: Result<_, _> = entries
             .into_iter()
-            .map(|e| self.internal_migrate_or_create(audit, e))
+            .map(|e| {
+                audit_log!(audit, "init schema -> {}", serde_json::to_string_pretty(&e).unwrap());
+                self.internal_migrate_or_create(audit, e)
+            })
             .collect();
+        assert!(r.is_ok());
         r
     }
 
     pub fn initialise_schema_idm(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
+        // List of IDM schemas to init.
         let idm_schema: Vec<&str> = vec![
-            // List of idm schemas.
             JSON_SCHEMA_ATTR_DISPLAYNAME,
             JSON_SCHEMA_ATTR_MAIL,
             JSON_SCHEMA_ATTR_SSH_PUBLICKEY,
@@ -2329,5 +2332,32 @@ mod tests {
             println!("{:?}", r4);
             assert!(r4 == Ok("cc8e95b4-c24f-4d68-ba54-8bed76f63930".to_string()));
         })
+    }
+
+    #[test]
+    fn test_qs_dynamic_schema() {
+        run_test!(|server: &QueryServer, audit: &mut AuditScope| {
+            let server_txn = server.write();
+            // Add a new class.
+            // Trying to add it now should fail.
+
+            // Commit
+
+            // Start a new write
+            // Add the class
+            // should work
+
+            // Commit
+
+            // Start a new write
+            // delete the class
+            // Commit
+
+            // Start a new write
+            // Trying to add now should fail
+            // Search our entry
+            // Should still be good
+            // Commit.
+        }
     }
 }
