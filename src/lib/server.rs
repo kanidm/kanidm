@@ -13,7 +13,10 @@ use crate::access::{
 };
 use crate::constants::{
     JSON_ADMIN_V1, JSON_ANONYMOUS_V1, JSON_IDM_ADMINS_ACP_REVIVE_V1, JSON_IDM_ADMINS_ACP_SEARCH_V1,
-    JSON_IDM_ADMINS_V1, JSON_IDM_SELF_ACP_READ_V1, JSON_SYSTEM_INFO_V1,
+    JSON_IDM_ADMINS_V1, JSON_IDM_SELF_ACP_READ_V1, JSON_SCHEMA_ATTR_DISPLAYNAME,
+    JSON_SCHEMA_ATTR_MAIL, JSON_SCHEMA_ATTR_PASSWORD, JSON_SCHEMA_ATTR_SSH_PUBLICKEY,
+    JSON_SCHEMA_CLASS_ACCOUNT, JSON_SCHEMA_CLASS_GROUP, JSON_SCHEMA_CLASS_PERSON,
+    JSON_SYSTEM_INFO_V1,
 };
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryNormalised, EntryValid};
 use crate::error::{ConsistencyError, OperationError, SchemaError};
@@ -25,7 +28,8 @@ use crate::filter::{Filter, FilterInvalid, FilterValid};
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use crate::plugins::Plugins;
 use crate::schema::{
-    Schema, SchemaReadTransaction, SchemaTransaction, SchemaWriteTransaction, SyntaxType,
+    Schema, SchemaAttribute, SchemaClass, SchemaReadTransaction, SchemaTransaction,
+    SchemaWriteTransaction, SyntaxType,
 };
 
 // This is the core of the server. It implements all
@@ -593,6 +597,23 @@ impl QueryServer {
             schema: self.schema.write(),
             accesscontrols: self.accesscontrols.write(),
         }
+    }
+
+    pub(crate) fn initialise_helper(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
+        let ts_write_1 = self.write();
+        ts_write_1
+            .initialise_schema_core(audit)
+            .and_then(|_| ts_write_1.commit(audit))?;
+
+        let ts_write_2 = self.write();
+        ts_write_2
+            .initialise_schema_idm(audit)
+            .and_then(|_| ts_write_2.commit(audit))?;
+
+        let ts_write_3 = self.write();
+        ts_write_3
+            .initialise_idm(audit)
+            .and_then(|_| ts_write_3.commit(audit))
     }
 
     pub fn verify(&self, au: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
@@ -1188,7 +1209,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // attributes in the situation.
         // If not exist, create from Entry B
         //
-        // WARNING: this requires schema awareness for multivalue types!
+        // TODO: WARNING: this requires schema awareness for multivalue types!
         // We need to either do a schema aware merge, or we just overwrite those
         // few attributes.
         //
@@ -1269,8 +1290,45 @@ impl<'a> QueryServerWriteTransaction<'a> {
         }
     }
 
+    pub fn initialise_schema_core(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
+        // Load in all the "core" schema, that we already have in "memory".
+        let entries = self.schema.to_entries();
+        println!("{}", serde_json::to_string_pretty(&entries).unwrap());
+
+        // internal_migrate_or_create.
+        let r: Result<_, _> = entries
+            .into_iter()
+            .map(|e| self.internal_migrate_or_create(audit, e))
+            .collect();
+        r
+    }
+
+    pub fn initialise_schema_idm(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
+        let idm_schema: Vec<&str> = vec![
+            // List of idm schemas.
+            JSON_SCHEMA_ATTR_DISPLAYNAME,
+            JSON_SCHEMA_ATTR_MAIL,
+            JSON_SCHEMA_ATTR_SSH_PUBLICKEY,
+            JSON_SCHEMA_ATTR_PASSWORD,
+            JSON_SCHEMA_CLASS_PERSON,
+            JSON_SCHEMA_CLASS_GROUP,
+            JSON_SCHEMA_CLASS_ACCOUNT,
+        ];
+
+        let mut audit_si = AuditScope::new("start_initialise_schema_idm");
+        let r: Result<Vec<()>, _> = idm_schema
+            .iter()
+            .map(|e_str| self.internal_migrate_or_create_str(&mut audit_si, e_str))
+            .collect();
+        audit.append_scope(audit_si);
+        assert!(r.is_ok());
+
+        // TODO: Should we log the set of failures some how?
+        r.map(|_| ())
+    }
+
     // This function is idempotent
-    pub fn initialise(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
+    pub fn initialise_idm(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
         // First, check the system_info object. This stores some server information
         // and details. It's a pretty static thing.
         let mut audit_si = AuditScope::new("start_system_info");
@@ -1331,9 +1389,42 @@ impl<'a> QueryServerWriteTransaction<'a> {
         Ok(())
     }
 
-    fn reload_schema(&mut self, _audit: &mut AuditScope) -> Result<(), OperationError> {
+    fn reload_schema(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
         // supply entries to the writable schema to reload from.
-        Ok(())
+        // find all attributes.
+        let filt = filter!(f_eq("class", "attributetype"));
+        let res = try_audit!(audit, self.internal_search(audit, filt));
+        // load them.
+        let attributetypes: Result<Vec<_>, _> = res
+            .iter()
+            .map(|e| SchemaAttribute::try_from(audit, self, e))
+            .collect();
+        let attributetypes = try_audit!(audit, attributetypes);
+
+        try_audit!(audit, self.schema.update_attributes(attributetypes));
+
+        // find all classes
+        let filt = filter!(f_eq("class", "classtype"));
+        let res = try_audit!(audit, self.internal_search(audit, filt));
+        // load them.
+        let classtypes: Result<Vec<_>, _> = res
+            .iter()
+            .map(|e| SchemaClass::try_from(audit, self, e))
+            .collect();
+        let classtypes = try_audit!(audit, classtypes);
+
+        try_audit!(audit, self.schema.update_classes(classtypes));
+
+        // validate.
+        let valid_r = self.schema.validate(audit);
+
+        // Translate the result.
+        if valid_r.len() == 0 {
+            Ok(())
+        } else {
+            // Log the failures?
+            unimplemented!();
+        }
     }
 
     fn reload_accesscontrols(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
@@ -1414,6 +1505,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     pub fn commit(mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
+        // TODO: This could be faster if we cache the set of classes changed
+        // in an operation so we can check if we need to do the reload or not
+        //
         // Reload the schema from qs.
         self.reload_schema(audit)?;
         // Determine if we need to update access control profiles
@@ -1514,30 +1608,31 @@ mod tests {
     }
 
     #[test]
-    fn test_qs_init_idempotent_1() {
+    fn test_qs_init_idempotent_schema_core() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             {
                 // Setup and abort.
                 let server_txn = server.write();
-                assert!(server_txn.initialise(audit).is_ok());
+                assert!(server_txn.initialise_schema_core(audit).is_ok());
             }
             {
                 let server_txn = server.write();
-                assert!(server_txn.initialise(audit).is_ok());
-                assert!(server_txn.initialise(audit).is_ok());
+                assert!(server_txn.initialise_schema_core(audit).is_ok());
+                assert!(server_txn.initialise_schema_core(audit).is_ok());
                 assert!(server_txn.commit(audit).is_ok());
             }
             {
                 // Now do it again in a new txn, but abort
                 let server_txn = server.write();
-                assert!(server_txn.initialise(audit).is_ok());
+                assert!(server_txn.initialise_schema_core(audit).is_ok());
             }
             {
                 // Now do it again in a new txn.
                 let server_txn = server.write();
-                assert!(server_txn.initialise(audit).is_ok());
+                assert!(server_txn.initialise_schema_core(audit).is_ok());
                 assert!(server_txn.commit(audit).is_ok());
             }
+            // TODO: Check the content is as expected
         });
     }
 

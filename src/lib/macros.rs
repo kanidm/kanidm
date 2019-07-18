@@ -14,20 +14,11 @@ macro_rules! run_test {
 
         let be = Backend::new(&mut audit, "").expect("Failed to init be");
         let schema_outer = Schema::new(&mut audit).expect("Failed to init schema");
-        {
-            let mut schema = schema_outer.write();
-            schema
-                .bootstrap_core(&mut audit)
-                .expect("Failed to bootstrap schema");
-            schema.commit().expect("Failed to commit schema");
-        }
         let test_server = QueryServer::new(be, schema_outer);
 
-        {
-            let ts_write = test_server.write();
-            ts_write.initialise(&mut audit).expect("Init failed!");
-            ts_write.commit(&mut audit).expect("Commit failed!");
-        }
+        test_server
+            .initialise_helper(&mut audit)
+            .expect("init failed!");
 
         $test_fn(&test_server, &mut audit);
         // Any needed teardown?

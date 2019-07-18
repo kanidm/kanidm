@@ -1,6 +1,6 @@
 use crate::audit::AuditScope;
 use crate::constants::*;
-use crate::entry::{Entry, EntryCommitted, EntryValid};
+use crate::entry::{Entry, EntryCommitted, EntryNew, EntryValid};
 use crate::error::{ConsistencyError, OperationError, SchemaError};
 use crate::proto::v1::Filter as ProtoFilter;
 use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
@@ -54,6 +54,16 @@ impl TryFrom<&str> for IndexType {
     }
 }
 
+impl IndexType {
+    pub fn to_string(&self) -> String {
+        String::from(match self {
+            IndexType::EQUALITY => "EQUALITY",
+            IndexType::PRESENCE => "PRESENCE",
+            IndexType::SUBSTRING => "SUBSTRING",
+        })
+    }
+}
+
 #[allow(non_camel_case_types)]
 #[derive(Debug, Clone, PartialEq)]
 pub enum SyntaxType {
@@ -95,6 +105,22 @@ impl TryFrom<&str> for SyntaxType {
         } else {
             Err(())
         }
+    }
+}
+
+impl SyntaxType {
+    pub fn to_string(&self) -> String {
+        String::from(match self {
+            SyntaxType::UTF8STRING => "UTF8STRING",
+            SyntaxType::UTF8STRING_PRINCIPAL => "UTF8STRING_PRINCIPAL",
+            SyntaxType::UTF8STRING_INSENSITIVE => "UTF8STRING_INSENSITIVE",
+            SyntaxType::UUID => "UUID",
+            SyntaxType::BOOLEAN => "BOOLEAN",
+            SyntaxType::SYNTAX_ID => "SYNTAX_ID",
+            SyntaxType::INDEX_ID => "INDEX_ID",
+            SyntaxType::REFERENCE_UUID => "REFERENCE_UUID",
+            SyntaxType::JSON_FILTER => "JSON_FILTER",
+        })
     }
 }
 
@@ -723,6 +749,219 @@ impl SchemaInner {
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
             );
+            // SYSINFO attrs
+            // ACP attributes.
+            s.attributes.insert(
+                String::from("acp_enable"),
+                SchemaAttribute {
+                    name: String::from("acp_enable"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_ENABLE)
+                        .expect("unable to parse static uuid"),
+                    description: String::from("A flag to determine if this ACP is active for application. True is enabled, and enforce. False is checked but not enforced."),
+                    system: true,
+                    secret: false,
+                    multivalue: false,
+                    index: vec![IndexType::EQUALITY],
+                    syntax: SyntaxType::BOOLEAN,
+                },
+            );
+
+            s.attributes.insert(
+                String::from("acp_receiver"),
+                SchemaAttribute {
+                    name: String::from("acp_receiver"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_RECEIVER)
+                        .expect("unable to parse static uuid"),
+                    description: String::from(
+                        "Who the ACP applies to, constraining or allowing operations.",
+                    ),
+                    system: true,
+                    secret: false,
+                    multivalue: false,
+                    index: vec![IndexType::EQUALITY, IndexType::SUBSTRING],
+                    syntax: SyntaxType::JSON_FILTER,
+                },
+            );
+            s.attributes.insert(
+                String::from("acp_targetscope"),
+                SchemaAttribute {
+                    name: String::from("acp_targetscope"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_TARGETSCOPE)
+                        .expect("unable to parse static uuid"),
+                    description: String::from(
+                        "The effective targets of the ACP, IE what will be acted upon.",
+                    ),
+                    system: true,
+                    secret: false,
+                    multivalue: false,
+                    index: vec![IndexType::EQUALITY, IndexType::SUBSTRING],
+                    syntax: SyntaxType::JSON_FILTER,
+                },
+            );
+            s.attributes.insert(
+                String::from("acp_search_attr"),
+                SchemaAttribute {
+                    name: String::from("acp_search_attr"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_SEARCH_ATTR)
+                        .expect("unable to parse static uuid"),
+                    description: String::from("The attributes that may be viewed or searched by the reciever on targetscope."),
+                    system: true,
+                    secret: false,
+                    multivalue: true,
+                    index: vec![IndexType::EQUALITY],
+                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                },
+            );
+            s.attributes.insert(
+                String::from("acp_create_class"),
+                SchemaAttribute {
+                    name: String::from("acp_create_class"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_CREATE_CLASS)
+                        .expect("unable to parse static uuid"),
+                    description: String::from(
+                        "The set of classes that can be created on a new entry.",
+                    ),
+                    system: true,
+                    secret: false,
+                    multivalue: true,
+                    index: vec![IndexType::EQUALITY],
+                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                },
+            );
+            s.attributes.insert(
+                String::from("acp_create_attr"),
+                SchemaAttribute {
+                    name: String::from("acp_create_attr"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_CREATE_ATTR)
+                        .expect("unable to parse static uuid"),
+                    description: String::from(
+                        "The set of attribute types that can be created on an entry.",
+                    ),
+                    system: true,
+                    secret: false,
+                    multivalue: true,
+                    index: vec![IndexType::EQUALITY],
+                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                },
+            );
+
+            s.attributes.insert(
+                String::from("acp_modify_removedattr"),
+                SchemaAttribute {
+                    name: String::from("acp_modify_removedattr"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_MODIFY_REMOVEDATTR)
+                        .expect("unable to parse static uuid"),
+                    description: String::from("The set of attribute types that could be removed or purged in a modification."),
+                    system: true,
+                    secret: false,
+                    multivalue: true,
+                    index: vec![IndexType::EQUALITY],
+                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                },
+            );
+            s.attributes.insert(
+                String::from("acp_modify_presentattr"),
+                SchemaAttribute {
+                    name: String::from("acp_modify_presentattr"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_MODIFY_PRESENTATTR)
+                        .expect("unable to parse static uuid"),
+                    description: String::from("The set of attribute types that could be added or asserted in a modification."),
+                    system: true,
+                    secret: false,
+                    multivalue: true,
+                    index: vec![IndexType::EQUALITY],
+                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                },
+            );
+            s.attributes.insert(
+                String::from("acp_modify_class"),
+                SchemaAttribute {
+                    name: String::from("acp_modify_class"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_MODIFY_CLASS)
+                        .expect("unable to parse static uuid"),
+                    description: String::from("The set of class values that could be asserted or added to an entry. Only applies to modify::present operations on class."),
+                    system: true,
+                    secret: false,
+                    multivalue: true,
+                    index: vec![IndexType::EQUALITY],
+                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                },
+            );
+            // MO/Member
+            s.attributes.insert(
+                String::from("memberof"),
+                SchemaAttribute {
+                    name: String::from("memberof"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_MEMBEROF)
+                        .expect("unable to parse static uuid"),
+                    description: String::from("reverse group membership of the object"),
+                    system: true,
+                    secret: false,
+                    multivalue: true,
+                    index: vec![IndexType::EQUALITY],
+                    syntax: SyntaxType::REFERENCE_UUID,
+                },
+            );
+            s.attributes.insert(
+                String::from("directmemberof"),
+                SchemaAttribute {
+                    name: String::from("directmemberof"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_DIRECTMEMBEROF)
+                        .expect("unable to parse static uuid"),
+                    description: String::from("reverse direct group membership of the object"),
+                    system: true,
+                    secret: false,
+                    multivalue: true,
+                    index: vec![IndexType::EQUALITY],
+                    syntax: SyntaxType::REFERENCE_UUID,
+                },
+            );
+            s.attributes.insert(
+                String::from("member"),
+                SchemaAttribute {
+                    name: String::from("member"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_MEMBER)
+                        .expect("unable to parse static uuid"),
+                    description: String::from("List of members of the group"),
+                    system: true,
+                    secret: false,
+                    multivalue: true,
+                    index: vec![IndexType::EQUALITY],
+                    syntax: SyntaxType::REFERENCE_UUID,
+                },
+            );
+            // Migration related
+            s.attributes.insert(
+                String::from("version"),
+                SchemaAttribute {
+                    name: String::from("version"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_VERSION)
+                        .expect("unable to parse static uuid"),
+                    description: String::from(
+                        "The systems internal migration version for provided objects",
+                    ),
+                    system: true,
+                    secret: true,
+                    multivalue: false,
+                    index: vec![IndexType::EQUALITY],
+                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                },
+            );
+            // Domain for sysinfo
+            s.attributes.insert(
+                String::from("domain"),
+                SchemaAttribute {
+                    name: String::from("domain"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_DOMAIN)
+                        .expect("unable to parse static uuid"),
+                    description: String::from("A DNS Domain name entry."),
+                    system: true,
+                    secret: false,
+                    multivalue: true,
+                    index: vec![IndexType::EQUALITY],
+                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                },
+            );
 
             s.classes.insert(
                 String::from("attributetype"),
@@ -833,380 +1072,8 @@ impl SchemaInner {
                     must: vec![],
                 },
             );
-
-            // TODO: Probably needs to do a collect.
-            let r = s.validate(&mut au);
-            if r.len() == 0 {
-                Ok(s)
-            } else {
-                Err(OperationError::ConsistencyError(r))
-            }
-        });
-
-        audit.append_scope(au);
-        r
-    }
-
-    // This shouldn't fail?
-    pub fn bootstrap_core(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
-        // This will create a set of sane, system core schema that we can use
-        // main types are users, groups
-        let mut au = AuditScope::new("schema_bootstrap_core");
-        let r = audit_segment!(au, || {
-            // Create attributes
-            // displayname // single
-            self.attributes.insert(
-                String::from("displayname"),
-                SchemaAttribute {
-                    name: String::from("displayname"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_DISPLAYNAME)
-                        .expect("unable to parse static uuid"),
-                    description: String::from("The publicly visible display name of this person"),
-                    system: true,
-                    secret: false,
-                    multivalue: false,
-                    index: vec![IndexType::EQUALITY],
-                    syntax: SyntaxType::UTF8STRING,
-                },
-            );
-            // name // single
-            // mail // multi
-            self.attributes.insert(
-                String::from("mail"),
-                SchemaAttribute {
-                    name: String::from("mail"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_MAIL)
-                        .expect("unable to parse static uuid"),
-                    description: String::from("mail addresses of the object"),
-                    system: true,
-                    secret: false,
-                    multivalue: true,
-                    index: vec![IndexType::EQUALITY],
-                    syntax: SyntaxType::UTF8STRING,
-                },
-            );
-            // memberof // multi
-            self.attributes.insert(
-                String::from("memberof"),
-                SchemaAttribute {
-                    name: String::from("memberof"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_MEMBEROF)
-                        .expect("unable to parse static uuid"),
-                    description: String::from("reverse group membership of the object"),
-                    system: true,
-                    secret: false,
-                    multivalue: true,
-                    index: vec![IndexType::EQUALITY],
-                    syntax: SyntaxType::REFERENCE_UUID,
-                },
-            );
-            self.attributes.insert(
-                String::from("directmemberof"),
-                SchemaAttribute {
-                    name: String::from("directmemberof"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_DIRECTMEMBEROF)
-                        .expect("unable to parse static uuid"),
-                    description: String::from("reverse direct group membership of the object"),
-                    system: true,
-                    secret: false,
-                    multivalue: true,
-                    index: vec![IndexType::EQUALITY],
-                    syntax: SyntaxType::REFERENCE_UUID,
-                },
-            );
-            // ssh_publickey // multi
-            self.attributes.insert(
-                String::from("ssh_publickey"),
-                SchemaAttribute {
-                    name: String::from("ssh_publickey"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_SSH_PUBLICKEY)
-                        .expect("unable to parse static uuid"),
-                    description: String::from("SSH public keys of the object"),
-                    system: true,
-                    secret: false,
-                    multivalue: true,
-                    index: vec![],
-                    syntax: SyntaxType::UTF8STRING,
-                },
-            );
-            // password // secret, multi
-            self.attributes.insert(
-                String::from("password"),
-                SchemaAttribute {
-                    name: String::from("password"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_PASSWORD)
-                        .expect("unable to parse static uuid"),
-                    description: String::from(
-                        "password hash material of the object for authentication",
-                    ),
-                    system: true,
-                    secret: true,
-                    multivalue: true,
-                    index: vec![],
-                    syntax: SyntaxType::UTF8STRING,
-                },
-            );
-            //
-            // member
-            self.attributes.insert(
-                String::from("member"),
-                SchemaAttribute {
-                    name: String::from("member"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_MEMBER)
-                        .expect("unable to parse static uuid"),
-                    description: String::from("List of members of the group"),
-                    system: true,
-                    secret: false,
-                    multivalue: true,
-                    index: vec![IndexType::EQUALITY],
-                    syntax: SyntaxType::REFERENCE_UUID,
-                },
-            );
-
-            self.attributes.insert(
-                String::from("version"),
-                SchemaAttribute {
-                    name: String::from("version"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_VERSION)
-                        .expect("unable to parse static uuid"),
-                    description: String::from(
-                        "The systems internal migration version for provided objects",
-                    ),
-                    system: true,
-                    secret: true,
-                    multivalue: false,
-                    index: vec![IndexType::EQUALITY],
-                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
-                },
-            );
-
-            self.attributes.insert(
-                String::from("domain"),
-                SchemaAttribute {
-                    name: String::from("domain"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_DOMAIN)
-                        .expect("unable to parse static uuid"),
-                    description: String::from("A DNS Domain name entry."),
-                    system: true,
-                    secret: false,
-                    multivalue: true,
-                    index: vec![IndexType::EQUALITY],
-                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
-                },
-            );
-
-            // ACP related attributes
-            /*
-             * temporarily disabled while I decide if it's relevant at all ...
-            self.attributes.insert(
-                String::from("acp_allow"),
-                SchemaAttribute {
-                    name: String::from("acp_allow"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_ALLOW)
-                        .expect("unable to parse static uuid"),
-                    description: String::from(
-                        "A flag to determine if this is a deny or allow ACP. True is allow.",
-                    ),
-                    system: true,
-                    secret: false,
-                    multivalue: false,
-                    index: vec![IndexType::EQUALITY],
-                    syntax: SyntaxType::BOOLEAN,
-                },
-            );
-            */
-            self.attributes.insert(
-                String::from("acp_enable"),
-                SchemaAttribute {
-                    name: String::from("acp_enable"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_ENABLE)
-                        .expect("unable to parse static uuid"),
-                    description: String::from("A flag to determine if this ACP is active for application. True is enabled, and enforce. False is checked but not enforced."),
-                    system: true,
-                    secret: false,
-                    multivalue: false,
-                    index: vec![IndexType::EQUALITY],
-                    syntax: SyntaxType::BOOLEAN,
-                },
-            );
-
-            self.attributes.insert(
-                String::from("acp_receiver"),
-                SchemaAttribute {
-                    name: String::from("acp_receiver"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_RECEIVER)
-                        .expect("unable to parse static uuid"),
-                    description: String::from(
-                        "Who the ACP applies to, constraining or allowing operations.",
-                    ),
-                    system: true,
-                    secret: false,
-                    multivalue: false,
-                    index: vec![IndexType::EQUALITY, IndexType::SUBSTRING],
-                    syntax: SyntaxType::JSON_FILTER,
-                },
-            );
-            self.attributes.insert(
-                String::from("acp_targetscope"),
-                SchemaAttribute {
-                    name: String::from("acp_targetscope"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_TARGETSCOPE)
-                        .expect("unable to parse static uuid"),
-                    description: String::from(
-                        "The effective targets of the ACP, IE what will be acted upon.",
-                    ),
-                    system: true,
-                    secret: false,
-                    multivalue: false,
-                    index: vec![IndexType::EQUALITY, IndexType::SUBSTRING],
-                    syntax: SyntaxType::JSON_FILTER,
-                },
-            );
-            self.attributes.insert(
-                String::from("acp_search_attr"),
-                SchemaAttribute {
-                    name: String::from("acp_search_attr"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_SEARCH_ATTR)
-                        .expect("unable to parse static uuid"),
-                    description: String::from("The attributes that may be viewed or searched by the reciever on targetscope."),
-                    system: true,
-                    secret: false,
-                    multivalue: true,
-                    index: vec![IndexType::EQUALITY],
-                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
-                },
-            );
-            self.attributes.insert(
-                String::from("acp_create_class"),
-                SchemaAttribute {
-                    name: String::from("acp_create_class"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_CREATE_CLASS)
-                        .expect("unable to parse static uuid"),
-                    description: String::from(
-                        "The set of classes that can be created on a new entry.",
-                    ),
-                    system: true,
-                    secret: false,
-                    multivalue: true,
-                    index: vec![IndexType::EQUALITY],
-                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
-                },
-            );
-            self.attributes.insert(
-                String::from("acp_create_attr"),
-                SchemaAttribute {
-                    name: String::from("acp_create_attr"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_CREATE_ATTR)
-                        .expect("unable to parse static uuid"),
-                    description: String::from(
-                        "The set of attribute types that can be created on an entry.",
-                    ),
-                    system: true,
-                    secret: false,
-                    multivalue: true,
-                    index: vec![IndexType::EQUALITY],
-                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
-                },
-            );
-
-            self.attributes.insert(
-                String::from("acp_modify_removedattr"),
-                SchemaAttribute {
-                    name: String::from("acp_modify_removedattr"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_MODIFY_REMOVEDATTR)
-                        .expect("unable to parse static uuid"),
-                    description: String::from("The set of attribute types that could be removed or purged in a modification."),
-                    system: true,
-                    secret: false,
-                    multivalue: true,
-                    index: vec![IndexType::EQUALITY],
-                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
-                },
-            );
-            self.attributes.insert(
-                String::from("acp_modify_presentattr"),
-                SchemaAttribute {
-                    name: String::from("acp_modify_presentattr"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_MODIFY_PRESENTATTR)
-                        .expect("unable to parse static uuid"),
-                    description: String::from("The set of attribute types that could be added or asserted in a modification."),
-                    system: true,
-                    secret: false,
-                    multivalue: true,
-                    index: vec![IndexType::EQUALITY],
-                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
-                },
-            );
-            self.attributes.insert(
-                String::from("acp_modify_class"),
-                SchemaAttribute {
-                    name: String::from("acp_modify_class"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_MODIFY_CLASS)
-                        .expect("unable to parse static uuid"),
-                    description: String::from("The set of class values that could be asserted or added to an entry. Only applies to modify::present operations on class."),
-                    system: true,
-                    secret: false,
-                    multivalue: true,
-                    index: vec![IndexType::EQUALITY],
-                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
-                },
-            );
-
-            // Create the classes that use it
-            // FIXME: Add account lock
-            self.classes.insert(
-                String::from("account"),
-                SchemaClass {
-                    name: String::from("account"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_ACCOUNT)
-                        .expect("unable to parse static uuid"),
-                    description: String::from("Object representation of a person"),
-                    systemmay: vec![
-                        String::from("password"),
-                        String::from("ssh_publickey"),
-                        String::from("memberof"),
-                        // String::from("uidnumber"),
-                        // String::from("gidnumber"),
-                    ],
-                    may: vec![],
-                    systemmust: vec![String::from("displayname"), String::from("name")],
-                    must: vec![],
-                },
-            );
-            self.classes.insert(
-                String::from("person"),
-                SchemaClass {
-                    name: String::from("person"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_PERSON)
-                        .expect("unable to parse static uuid"),
-                    description: String::from("Object representation of a person"),
-                    systemmay: vec![
-                        String::from("mail"),
-                        String::from("memberof"),
-                        // String::from("password"),
-                    ],
-                    may: vec![],
-                    systemmust: vec![String::from("displayname"), String::from("name")],
-                    must: vec![],
-                },
-            );
-            self.classes.insert(
-                String::from("group"),
-                SchemaClass {
-                    name: String::from("group"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_GROUP)
-                        .expect("unable to parse static uuid"),
-                    description: String::from("Object representation of a group"),
-                    systemmay: vec![
-                        String::from("member"),
-                        // String::from("gidnumber"),
-                    ],
-                    may: vec![],
-                    systemmust: vec![String::from("name")],
-                    must: vec![],
-                },
-            );
-            self.classes.insert(
+            // sysinfo
+            s.classes.insert(
                 String::from("system_info"),
                 SchemaClass {
                     name: String::from("system_info"),
@@ -1224,7 +1091,8 @@ impl SchemaInner {
                     must: vec![],
                 },
             );
-            self.classes.insert(
+            // ACP
+            s.classes.insert(
                 String::from("access_control_profile"),
                 SchemaClass {
                     name: String::from("access_control_profile"),
@@ -1241,7 +1109,7 @@ impl SchemaInner {
                     must: vec![],
                 },
             );
-            self.classes.insert(
+            s.classes.insert(
                 String::from("access_control_search"),
                 SchemaClass {
                     name: String::from("access_control_search"),
@@ -1254,7 +1122,7 @@ impl SchemaInner {
                     must: vec![],
                 },
             );
-            self.classes.insert(
+            s.classes.insert(
                 String::from("access_control_delete"),
                 SchemaClass {
                     name: String::from("access_control_delete"),
@@ -1267,7 +1135,7 @@ impl SchemaInner {
                     must: vec![],
                 },
             );
-            self.classes.insert(
+            s.classes.insert(
                 String::from("access_control_modify"),
                 SchemaClass {
                     name: String::from("access_control_modify"),
@@ -1284,7 +1152,7 @@ impl SchemaInner {
                     must: vec![],
                 },
             );
-            self.classes.insert(
+            s.classes.insert(
                 String::from("access_control_create"),
                 SchemaClass {
                     name: String::from("access_control_create"),
@@ -1301,17 +1169,17 @@ impl SchemaInner {
                 },
             );
 
-            // Finally, validate our content is sane.
-            self.validate(&mut au)
+            // TODO: Probably needs to do a collect.
+            let r = s.validate(&mut au);
+            if r.len() == 0 {
+                Ok(s)
+            } else {
+                Err(OperationError::ConsistencyError(r))
+            }
         });
 
         audit.append_scope(au);
-
-        if r.len() == 0 {
-            Ok(())
-        } else {
-            Err(OperationError::ConsistencyError(r))
-        }
+        r
     }
 
     pub fn validate(&self, audit: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
@@ -1402,10 +1270,6 @@ pub struct SchemaWriteTransaction<'a> {
 }
 
 impl<'a> SchemaWriteTransaction<'a> {
-    pub fn bootstrap_core(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
-        self.inner.bootstrap_core(audit)
-    }
-
     // TODO: Schema probably needs to be part of the backend, so that commits are wholly atomic
     // but in the current design, we need to open be first, then schema, but we have to commit be
     // first, then schema to ensure that the be content matches our schema. Saying this, if your
@@ -1414,6 +1278,50 @@ impl<'a> SchemaWriteTransaction<'a> {
     pub fn commit(self) -> Result<(), OperationError> {
         self.inner.commit();
         Ok(())
+    }
+
+    pub fn update_attributes(
+        &mut self,
+        attributetypes: Vec<SchemaAttribute>,
+    ) -> Result<(), OperationError> {
+        // purge all old attributes.
+        self.inner.attributes.clear();
+        // Update with new ones.
+        // TODO: Do we need to check for dups?
+        attributetypes.into_iter().for_each(|a| {
+            self.inner.attributes.insert(a.name.clone(), a);
+        });
+        Ok(())
+    }
+
+    pub fn update_classes(
+        &mut self,
+        attributetypes: Vec<SchemaClass>,
+    ) -> Result<(), OperationError> {
+        // purge all old attributes.
+        self.inner.classes.clear();
+        // Update with new ones.
+        // TODO: Do we need to check for dups?
+        attributetypes.into_iter().for_each(|a| {
+            self.inner.classes.insert(a.name.clone(), a);
+        });
+        Ok(())
+    }
+
+    pub fn to_entries(&self) -> Vec<Entry<EntryValid, EntryNew>> {
+        let r: Vec<_> = self
+            .inner
+            .attributes
+            .values()
+            .map(|a| Entry::<EntryValid, EntryNew>::from(a))
+            .chain(
+                self.inner
+                    .classes
+                    .values()
+                    .map(|c| Entry::<EntryValid, EntryNew>::from(c)),
+            )
+            .collect();
+        r
     }
 }
 

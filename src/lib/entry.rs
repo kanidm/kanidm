@@ -1040,37 +1040,91 @@ impl<VALID, STATE> PartialEq for Entry<VALID, STATE> {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-enum Credential {
-    Password {
-        name: String,
-        hash: String,
-    },
-    TOTPPassword {
-        name: String,
-        hash: String,
-        totp_secret: String,
-    },
-    SshPublicKey {
-        name: String,
-        data: String,
-    },
+impl From<&SchemaAttribute> for Entry<EntryValid, EntryNew> {
+    fn from(s: &SchemaAttribute) -> Self {
+        // Convert an Attribute to an entry ... make it good!
+        let uuid_str = s.uuid.to_hyphenated().to_string();
+        let uuid_v = vec![uuid_str.clone()];
+
+        let name_v = vec![s.name.clone()];
+        let desc_v = vec![s.description.clone()];
+
+        let system_v = vec![if s.system {
+            "true".to_string()
+        } else {
+            "false".to_string()
+        }];
+
+        let secret_v = vec![if s.secret {
+            "true".to_string()
+        } else {
+            "false".to_string()
+        }];
+
+        let multivalue_v = vec![if s.multivalue {
+            "true".to_string()
+        } else {
+            "false".to_string()
+        }];
+
+        let index_v: Vec<_> = s.index.iter().map(|i| i.to_string()).collect();
+
+        let syntax_v = vec![s.syntax.to_string()];
+
+        // Build the BTreeMap of the attributes relevant
+        let mut attrs: BTreeMap<String, Vec<String>> = BTreeMap::new();
+        attrs.insert("name".to_string(), name_v);
+        attrs.insert("description".to_string(), desc_v);
+        attrs.insert("uuid".to_string(), uuid_v);
+        attrs.insert("system".to_string(), system_v);
+        attrs.insert("secret".to_string(), secret_v);
+        attrs.insert("multivalue".to_string(), multivalue_v);
+        attrs.insert("index".to_string(), index_v);
+        attrs.insert("syntax".to_string(), syntax_v);
+        attrs.insert(
+            "class".to_string(),
+            vec!["object".to_string(), "attributetype".to_string()],
+        );
+
+        // Insert stuff.
+
+        Entry {
+            valid: EntryValid {
+                uuid: uuid_str.clone(),
+            },
+            state: EntryNew,
+            attrs: attrs,
+        }
+    }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-struct User {
-    username: String,
-    // Could this be derived from self? Do we even need schema?
-    class: Vec<String>,
-    displayname: String,
-    legalname: Option<String>,
-    email: Vec<String>,
-    // uuid?
-    // need to support deref later ...
-    memberof: Vec<String>,
-    sshpublickey: Vec<String>,
+impl From<&SchemaClass> for Entry<EntryValid, EntryNew> {
+    fn from(s: &SchemaClass) -> Self {
+        let uuid_str = s.uuid.to_hyphenated().to_string();
+        let uuid_v = vec![uuid_str.clone()];
 
-    credentials: Vec<Credential>,
+        let name_v = vec![s.name.clone()];
+        let desc_v = vec![s.description.clone()];
+
+        let mut attrs: BTreeMap<String, Vec<String>> = BTreeMap::new();
+        attrs.insert("name".to_string(), name_v);
+        attrs.insert("description".to_string(), desc_v);
+        attrs.insert("uuid".to_string(), uuid_v);
+        attrs.insert(
+            "class".to_string(),
+            vec!["object".to_string(), "attributetype".to_string()],
+        );
+        attrs.insert("systemmay".to_string(), s.systemmay.clone());
+        attrs.insert("systemmust".to_string(), s.systemmust.clone());
+
+        Entry {
+            valid: EntryValid {
+                uuid: uuid_str.clone(),
+            },
+            state: EntryNew,
+            attrs: attrs,
+        }
+    }
 }
 
 #[cfg(test)]

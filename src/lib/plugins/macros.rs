@@ -8,12 +8,8 @@ macro_rules! setup_test {
         let be = Backend::new($au, "").expect("Failed to init BE");
 
         let schema_outer = Schema::new($au).expect("Failed to init schema");
-        {
-            let mut schema = schema_outer.write();
-            schema.bootstrap_core($au).expect("Failed to init schema");
-            schema.commit().expect("Failed to commit schema");
-        }
         let qs = QueryServer::new(be, schema_outer);
+        qs.initialise_helper($au).expect("init failed!");
 
         if !$preload_entries.is_empty() {
             let qs_write = qs.write();
