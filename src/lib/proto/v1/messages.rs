@@ -2,7 +2,7 @@ use crate::error::OperationError;
 use actix::prelude::*;
 use uuid::Uuid;
 
-use crate::proto::v1::{AuthRequest, AuthResponse, UserAuthToken, WhoamiRequest, WhoamiResponse};
+use crate::proto::v1::{AuthRequest, AuthResponse, UserAuthToken, WhoamiResponse};
 
 // These are used when the request (IE Get) has no intrising request
 // type. Additionally, they are used in some requests where we need

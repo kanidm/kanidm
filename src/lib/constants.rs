@@ -16,7 +16,6 @@ pub static JSON_ADMIN_V1: &'static str = r#"{
         "name": ["admin"],
         "uuid": ["00000000-0000-0000-0000-000000000000"],
         "description": ["Builtin Admin account."],
-        "version": ["1"],
         "displayname": ["Administrator"]
     }
 }"#;
@@ -32,7 +31,6 @@ pub static JSON_IDM_ADMINS_V1: &'static str = r#"{
         "name": ["idm_admins"],
         "uuid": ["00000000-0000-0000-0000-000000000001"],
         "description": ["Builtin IDM Administrators Group."],
-        "version": ["1"],
         "member": ["00000000-0000-0000-0000-000000000000"]
     }
 }"#;
@@ -63,7 +61,6 @@ pub static JSON_IDM_ADMINS_ACP_SEARCH_V1: &'static str = r#"{
         "name": ["idm_admins_acp_search"],
         "uuid": ["00000000-0000-0000-0000-ffffff000002"],
         "description": ["Builtin IDM Administrators Access Controls."],
-        "version": ["1"],
         "acp_enable": ["true"],
         "acp_receiver": [
             "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000001\"]}"
@@ -86,7 +83,6 @@ pub static JSON_IDM_ADMINS_ACP_REVIVE_V1: &'static str = r#"{
         "name": ["idm_admins_acp_revive"],
         "uuid": ["00000000-0000-0000-0000-ffffff000003"],
         "description": ["Builtin IDM Administrators Access Controls."],
-        "version": ["1"],
         "acp_enable": ["true"],
         "acp_receiver": [
             "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000001\"]}"
@@ -110,7 +106,6 @@ pub static JSON_IDM_SELF_ACP_READ_V1: &'static str = r#"{
         "name": ["idm_self_acp_read"],
         "uuid": ["00000000-0000-0000-0000-ffffff000004"],
         "description": ["Builtin IDM Control for self read - required for whoami."],
-        "version": ["1"],
         "acp_enable": ["true"],
         "acp_receiver": [
             "\"Self\""
@@ -133,7 +128,6 @@ pub static JSON_ANONYMOUS_V1: &'static str = r#"{
         "name": ["anonymous"],
         "uuid": ["00000000-0000-0000-0000-ffffffffffff"],
         "description": ["Anonymous access account."],
-        "version": ["1"],
         "displayname": ["Anonymous"]
     }
 }"#;
@@ -428,7 +422,8 @@ pub static JSON_SCHEMA_CLASS_ACCOUNT: &'static str = r#"
       "systemmay": [
         "password",
         "ssh_publickey",
-        "memberof"
+        "memberof",
+        "directmemberof"
       ],
       "systemmust": [
         "displayname",

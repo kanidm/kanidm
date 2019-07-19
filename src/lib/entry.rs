@@ -4,7 +4,6 @@ use crate::error::{OperationError, SchemaError};
 use crate::filter::{Filter, FilterInvalid, FilterResolved, FilterValidResolved};
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use crate::proto::v1::Entry as ProtoEntry;
-use crate::proto::v1::UserAuthToken;
 use crate::schema::{IndexType, SyntaxType};
 use crate::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
 use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
@@ -286,6 +285,9 @@ impl<STATE> Entry<EntryNormalised, STATE> {
             // Now from the set of valid classes make a list of must/may
             // FIXME: This is clone on read, which may be really slow. It also may
             // be inefficent on duplicates etc.
+            //
+            // NOTE: We still need this on extensible, because we still need to satisfy
+            // our other must conditions too!
             let must: Result<HashMap<String, &SchemaAttribute>, _> = classes
                 .iter()
                 // Join our class systemmmust + must into one iter
@@ -302,9 +304,6 @@ impl<STATE> Entry<EntryNormalised, STATE> {
 
             let must = must?;
 
-            // FIXME: Error needs to say what is missing
-            // We need to return *all* missing attributes.
-
             // Check that all must are inplace
             //   for each attr in must, check it's present on our ent
             // FIXME: Could we iter over only the attr_name
@@ -315,25 +314,76 @@ impl<STATE> Entry<EntryNormalised, STATE> {
                 }
             }
 
-            // Check that any other attributes are in may
-            //   for each attr on the object, check it's in the may+must set
-            for (attr_name, avas) in ne.avas() {
-                match schema_attributes.get(attr_name) {
-                    Some(a_schema) => {
-                        // Now, for each type we do a *full* check of the syntax
-                        // and validity of the ava.
-                        let r = a_schema.validate_ava(avas);
-                        // We have to destructure here to make type checker happy
-                        match r {
-                            Ok(_) => {}
-                            Err(e) => {
+            if extensible {
+                for (attr_name, avas) in ne.avas() {
+                    match schema_attributes.get(attr_name) {
+                        Some(a_schema) => {
+                            // Now, for each type we do a *full* check of the syntax
+                            // and validity of the ava.
+                            let r = a_schema.validate_ava(avas);
+                            if r.is_err() {
                                 debug!("Failed to validate: {}", attr_name);
-                                return Err(e);
+                                return Err(r.unwrap_err());
+                            }
+                            // We have to destructure here to make type checker happy
+                            match r {
+                                Ok(_) => {}
+                                Err(e) => {}
                             }
                         }
+                        None => {
+                            debug!("Invalid Attribute for extensible object");
+                            return Err(SchemaError::InvalidAttribute);
+                        }
                     }
-                    None => {
-                        if !extensible {
+                }
+            } else {
+                let may: Result<HashMap<String, &SchemaAttribute>, _> = classes
+                    .iter()
+                    // Join our class systemmmust + must + systemmay + may into one.
+                    .flat_map(|(_, cls)| {
+                        cls.systemmust
+                            .iter()
+                            .chain(cls.must.iter())
+                            .chain(cls.systemmay.iter())
+                            .chain(cls.may.iter())
+                    })
+                    .map(|s| {
+                        // This should NOT fail - if it does, it means our schema is
+                        // in an invalid state!
+                        Ok((
+                            s.clone(),
+                            schema_attributes.get(s).ok_or(SchemaError::Corrupted)?,
+                        ))
+                    })
+                    .collect();
+
+                let may = may?;
+
+                // FIXME: Error needs to say what is missing
+                // We need to return *all* missing attributes.
+
+                // Check that any other attributes are in may
+                //   for each attr on the object, check it's in the may+must set
+                for (attr_name, avas) in ne.avas() {
+                    debug!("Checking {}", attr_name);
+                    match may.get(attr_name) {
+                        Some(a_schema) => {
+                            // Now, for each type we do a *full* check of the syntax
+                            // and validity of the ava.
+                            let r = a_schema.validate_ava(avas);
+                            if r.is_err() {
+                                debug!("Failed to validate: {}", attr_name);
+                                return Err(r.unwrap_err());
+                            }
+                            // We have to destructure here to make type checker happy
+                            match r {
+                                Ok(_) => {}
+                                Err(e) => {}
+                            }
+                        }
+                        None => {
+                            debug!("Invalid Attribute for may+must set");
                             return Err(SchemaError::InvalidAttribute);
                         }
                     }

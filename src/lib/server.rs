@@ -1404,7 +1404,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // load them.
         let attributetypes: Result<Vec<_>, _> = res
             .iter()
-            .map(|e| SchemaAttribute::try_from(audit, self, e))
+            .map(|e| SchemaAttribute::try_from(audit, e))
             .collect();
         let attributetypes = try_audit!(audit, attributetypes);
 
@@ -1416,7 +1416,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // load them.
         let classtypes: Result<Vec<_>, _> = res
             .iter()
-            .map(|e| SchemaClass::try_from(audit, self, e))
+            .map(|e| SchemaClass::try_from(audit, e))
             .collect();
         let classtypes = try_audit!(audit, classtypes);
 
@@ -2339,31 +2339,166 @@ mod tests {
     }
 
     #[test]
-    fn test_qs_dynamic_schema() {
+    fn test_qs_dynamic_schema_class() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
+            let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+                r#"{
+                "valid": null,
+                "state": null,
+                "attrs": {
+                    "class": ["object", "testclass"],
+                    "name": ["testobj1"],
+                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"]
+                }
+            }"#,
+            )
+            .expect("json failure");
+
+            // Class definition
+            let e_cd: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+                r#"{
+                "valid": null,
+                "state": null,
+                "attrs": {
+                    "class": ["object", "classtype"],
+                    "name": ["testclass"],
+                    "uuid": ["cfcae205-31c3-484b-8ced-667d1709c5e3"],
+                    "description": ["Test Class"]
+                }
+            }"#,
+            )
+            .expect("json failure");
+
             let server_txn = server.write();
             // Add a new class.
+            let ce_class = CreateEvent::new_internal(vec![e_cd.clone()]);
+            assert!(server_txn.create(audit, &ce_class).is_ok());
             // Trying to add it now should fail.
+            let ce_fail = CreateEvent::new_internal(vec![e1.clone()]);
+            assert!(server_txn.create(audit, &ce_fail).is_err());
 
             // Commit
+            server_txn.commit(audit).expect("should not fail");
 
             // Start a new write
-            // Add the class
+            let server_txn = server.write();
+            // Add the class to an object
             // should work
+            let ce_work = CreateEvent::new_internal(vec![e1.clone()]);
+            assert!(server_txn.create(audit, &ce_work).is_ok());
 
             // Commit
+            server_txn.commit(audit).expect("should not fail");
 
             // Start a new write
+            let server_txn = server.write();
             // delete the class
+            let de_class =
+                unsafe { DeleteEvent::new_internal_invalid(filter!(f_eq("name", "testclass"))) };
+            assert!(server_txn.delete(audit, &de_class).is_ok());
             // Commit
+            server_txn.commit(audit).expect("should not fail");
 
             // Start a new write
+            let server_txn = server.write();
             // Trying to add now should fail
+            let ce_fail = CreateEvent::new_internal(vec![e1.clone()]);
+            assert!(server_txn.create(audit, &ce_fail).is_err());
             // Search our entry
-            // Should still be good
-            // Commit.
+            let testobj1 = server_txn
+                .internal_search_uuid(audit, "cc8e95b4-c24f-4d68-ba54-8bed76f63930")
+                .expect("failed");
+            assert!(testobj1.attribute_value_pres("class", "testclass"));
 
-            unimplemented!();
+            // Should still be good
+            server_txn.commit(audit).expect("should not fail");
+            // Commit.
+        })
+    }
+
+    #[test]
+    fn test_qs_dynamic_schema_attr() {
+        run_test!(|server: &QueryServer, audit: &mut AuditScope| {
+            let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+                r#"{
+                "valid": null,
+                "state": null,
+                "attrs": {
+                    "class": ["object", "extensibleobject"],
+                    "name": ["testobj1"],
+                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
+                    "testattr": ["test"]
+                }
+            }"#,
+            )
+            .expect("json failure");
+
+            // Attribute definition
+            let e_ad: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+                r#"{
+                "valid": null,
+                "state": null,
+                "attrs": {
+                    "class": ["object", "attributetype"],
+                    "name": ["testattr"],
+                    "uuid": ["cfcae205-31c3-484b-8ced-667d1709c5e3"],
+                    "description": ["Test Attribute"],
+                    "multivalue": ["false"],
+                    "secret": ["false"],
+                    "syntax": ["UTF8STRING"],
+                    "system": ["false"]
+                }
+            }"#,
+            )
+            .expect("json failure");
+
+            let server_txn = server.write();
+            // Add a new attribute.
+            let ce_attr = CreateEvent::new_internal(vec![e_ad.clone()]);
+            assert!(server_txn.create(audit, &ce_attr).is_ok());
+            // Trying to add it now should fail. (use extensible object)
+            let ce_fail = CreateEvent::new_internal(vec![e1.clone()]);
+            assert!(server_txn.create(audit, &ce_fail).is_err());
+
+            // Commit
+            server_txn.commit(audit).expect("should not fail");
+
+            // Start a new write
+            let server_txn = server.write();
+            // Add the attr to an object
+            // should work
+            let ce_work = CreateEvent::new_internal(vec![e1.clone()]);
+            assert!(server_txn.create(audit, &ce_work).is_ok());
+
+            // Commit
+            server_txn.commit(audit).expect("should not fail");
+
+            // Start a new write
+            let server_txn = server.write();
+            // delete the attr
+            let de_attr =
+                unsafe { DeleteEvent::new_internal_invalid(filter!(f_eq("name", "testattr"))) };
+            assert!(server_txn.delete(audit, &de_attr).is_ok());
+            // Commit
+            server_txn.commit(audit).expect("should not fail");
+
+            // Start a new write
+            let server_txn = server.write();
+            // Trying to add now should fail
+            let ce_fail = CreateEvent::new_internal(vec![e1.clone()]);
+            assert!(server_txn.create(audit, &ce_fail).is_err());
+            // Search our attribute - should FAIL
+            let filt = filter!(f_eq("testattr", "test"));
+            assert!(server_txn.internal_search(audit, filt).is_err());
+            // Search the entry - the attribute will still be present
+            // even if we can't search on it.
+            let testobj1 = server_txn
+                .internal_search_uuid(audit, "cc8e95b4-c24f-4d68-ba54-8bed76f63930")
+                .expect("failed");
+            assert!(testobj1.attribute_value_pres("testattr", "test"));
+
+            server_txn.commit(audit).expect("should not fail");
+            // Commit.
         })
     }
 }

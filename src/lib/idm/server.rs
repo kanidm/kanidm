@@ -1,18 +1,14 @@
 use crate::audit::AuditScope;
-use crate::be::Backend;
-use crate::constants::UUID_ANONYMOUS;
 use crate::error::OperationError;
-use crate::event::{AuthEvent, AuthEventStep, AuthEventStepInit, AuthResult, SearchEvent};
+use crate::event::{AuthEvent, AuthEventStep, AuthResult};
 use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
-use crate::proto::v1::{AuthResponse, AuthState, UserAuthToken};
-use crate::schema::Schema;
+use crate::proto::v1::AuthState;
 use crate::server::{QueryServer, QueryServerTransaction};
-use concread::cowcell::{CowCell, CowCellReadTxn, CowCellWriteTxn};
+use concread::cowcell::{CowCell, CowCellWriteTxn};
 
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
-use std::sync::Arc;
 use uuid::Uuid;
 // use lru::LruCache;
 

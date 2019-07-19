@@ -36,6 +36,10 @@ impl CredHandler {
         match self {
             CredHandler::Anonymous => {
                 creds.iter().fold(CredState::Denied, |acc, cred| {
+                    // TODO: if denied, continue returning denied.
+                    // TODO: if continue, contunue returning continue.
+                    // How to do this correctly?
+
                     // There is no "continuation" from this type.
                     match cred {
                         AuthCredential::Anonymous => {
@@ -43,8 +47,9 @@ impl CredHandler {
                             CredState::Success(Vec::new())
                         }
                         _ => {
-                            // Should we have a reason in Denied so that we
-                            CredState::Denied
+                            // Should we have a reason in Denied so that we can say why denied?
+                            acc
+                            // CredState::Denied
                         }
                     }
                 })
@@ -163,8 +168,6 @@ impl AuthSession {
 #[cfg(test)]
 mod tests {
     use crate::constants::JSON_ANONYMOUS_V1;
-    use crate::entry::{Entry, EntryNew, EntryValid};
-    use crate::idm::account::Account;
     use crate::idm::authsession::AuthSession;
     use crate::proto::v1::AuthAllowed;
 

@@ -7,18 +7,17 @@ use crate::be::Backend;
 use crate::async_log::EventLog;
 use crate::error::OperationError;
 use crate::event::{
-    AuthEvent, AuthResult, CreateEvent, DeleteEvent, ModifyEvent, PurgeRecycledEvent,
-    PurgeTombstoneEvent, SearchEvent, SearchResult, WhoamiResult,
+    AuthEvent, CreateEvent, DeleteEvent, ModifyEvent, PurgeRecycledEvent, PurgeTombstoneEvent,
+    SearchEvent, SearchResult, WhoamiResult,
 };
-use crate::schema::{Schema, SchemaTransaction};
+use crate::schema::Schema;
 
-use crate::constants::UUID_ANONYMOUS;
 use crate::idm::server::IdmServer;
 use crate::server::{QueryServer, QueryServerTransaction};
 
 use crate::proto::v1::{
-    AuthRequest, AuthResponse, AuthState, CreateRequest, DeleteRequest, ModifyRequest,
-    OperationResponse, SearchRequest, SearchResponse, UserAuthToken, WhoamiRequest, WhoamiResponse,
+    AuthResponse, CreateRequest, DeleteRequest, ModifyRequest, OperationResponse, SearchRequest,
+    SearchResponse, WhoamiResponse,
 };
 
 use crate::proto::v1::messages::{AuthMessage, WhoamiMessage};

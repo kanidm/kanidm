@@ -20,7 +20,6 @@ macro_rules! run_idm_test {
         use crate::idm::server::IdmServer;
         use crate::schema::Schema;
         use crate::server::QueryServer;
-        use std::sync::Arc;
 
         use env_logger;
         ::std::env::set_var("RUST_LOG", "actix_web=debug,rsidm=debug");

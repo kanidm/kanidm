@@ -3,7 +3,7 @@ use crate::constants::*;
 use crate::entry::{Entry, EntryCommitted, EntryNew, EntryValid};
 use crate::error::{ConsistencyError, OperationError, SchemaError};
 use crate::proto::v1::Filter as ProtoFilter;
-use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
+use crate::server::QueryServerWriteTransaction;
 
 use regex::Regex;
 use std::collections::HashMap;
@@ -142,7 +142,6 @@ pub struct SchemaAttribute {
 impl SchemaAttribute {
     pub fn try_from(
         audit: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
         value: &Entry<EntryValid, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         // Convert entry to a schema attribute.
@@ -441,7 +440,6 @@ pub struct SchemaClass {
 impl SchemaClass {
     pub fn try_from(
         audit: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
         value: &Entry<EntryValid, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         // Convert entry to a schema class.
@@ -1021,9 +1019,9 @@ impl SchemaInner {
                         "A system created class that all objects must contain",
                     ),
                     systemmay: vec![
-                        // FIXME: Owner? Responsible? Contact?
+                        // TODO: Owner? Responsible? Contact?
                         String::from("description"),
-                        String::from("principal_name"),
+                        String::from("name"),
                     ],
                     may: vec![],
                     systemmust: vec![
@@ -1268,6 +1266,7 @@ impl SchemaInner {
         match self.attributes.get(attr_name) {
             Some(a_schema) => Ok(a_schema.multivalue),
             None => {
+                debug!("Attribute does not exist?!");
                 return Err(SchemaError::InvalidAttribute);
             }
         }
@@ -1402,14 +1401,13 @@ mod tests {
     macro_rules! sch_from_entry_ok {
         (
             $audit:expr,
-            $qs:expr,
             $e:expr,
             $type:ty
         ) => {{
             let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str($e).expect("json failure");
             let ev1 = unsafe { e1.to_valid_committed() };
 
-            let r1 = <$type>::try_from($audit, $qs, &ev1);
+            let r1 = <$type>::try_from($audit, &ev1);
             assert!(r1.is_ok());
         }};
     }
@@ -1417,25 +1415,22 @@ mod tests {
     macro_rules! sch_from_entry_err {
         (
             $audit:expr,
-            $qs:expr,
             $e:expr,
             $type:ty
         ) => {{
             let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str($e).expect("json failure");
             let ev1 = unsafe { e1.to_valid_committed() };
 
-            let r1 = <$type>::try_from($audit, $qs, &ev1);
+            let r1 = <$type>::try_from($audit, &ev1);
             assert!(r1.is_err());
         }};
     }
 
     #[test]
     fn test_schema_attribute_from_entry() {
-        run_test!(|qs: &QueryServer, audit: &mut AuditScope| {
-            let qs_write = qs.write();
+        run_test!(|_qs: &QueryServer, audit: &mut AuditScope| {
             sch_from_entry_err!(
                 audit,
-                &qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -1450,7 +1445,6 @@ mod tests {
 
             sch_from_entry_err!(
                 audit,
-                &qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -1470,7 +1464,6 @@ mod tests {
 
             sch_from_entry_err!(
                 audit,
-                &qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -1491,7 +1484,6 @@ mod tests {
 
             sch_from_entry_err!(
                 audit,
-                &qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -1512,7 +1504,6 @@ mod tests {
 
             sch_from_entry_err!(
                 audit,
-                &qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -1534,7 +1525,6 @@ mod tests {
             // Index is allowed to be empty
             sch_from_entry_ok!(
                 audit,
-                &qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -1555,7 +1545,6 @@ mod tests {
             // Index present
             sch_from_entry_ok!(
                 audit,
-                &qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -1578,12 +1567,9 @@ mod tests {
 
     #[test]
     fn test_schema_class_from_entry() {
-        run_test!(|qs: &QueryServer, audit: &mut AuditScope| {
-            let qs_write = qs.write();
-
+        run_test!(|_qs: &QueryServer, audit: &mut AuditScope| {
             sch_from_entry_err!(
                 audit,
-                &qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -1598,7 +1584,6 @@ mod tests {
 
             sch_from_entry_err!(
                 audit,
-                &qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -1615,7 +1600,6 @@ mod tests {
             // Classes can be valid with no attributes provided.
             sch_from_entry_ok!(
                 audit,
-                &qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -1632,7 +1616,6 @@ mod tests {
             // Classes with various may/must
             sch_from_entry_ok!(
                 audit,
-                &qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -1649,7 +1632,6 @@ mod tests {
 
             sch_from_entry_ok!(
                 audit,
-                &qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -1666,7 +1648,6 @@ mod tests {
 
             sch_from_entry_ok!(
                 audit,
-                &qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -1684,7 +1665,6 @@ mod tests {
 
             sch_from_entry_ok!(
                 audit,
-                &qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
