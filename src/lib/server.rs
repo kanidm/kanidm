@@ -1298,7 +1298,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let r: Result<_, _> = entries
             .into_iter()
             .map(|e| {
-                audit_log!(audit, "init schema -> {}", serde_json::to_string_pretty(&e).unwrap());
+                audit_log!(
+                    audit,
+                    "init schema -> {}",
+                    serde_json::to_string_pretty(&e).unwrap()
+                );
                 self.internal_migrate_or_create(audit, e)
             })
             .collect();
@@ -2358,6 +2362,8 @@ mod tests {
             // Search our entry
             // Should still be good
             // Commit.
-        }
+
+            unimplemented!();
+        })
     }
 }

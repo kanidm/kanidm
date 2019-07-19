@@ -1196,12 +1196,14 @@ impl SchemaInner {
             // report the class we are checking
             for a in &class.systemmay {
                 // report the attribute.
+                /*
                 audit_log!(
                     audit,
                     "validate systemmay class:attr -> {}:{}",
                     class.name,
                     a
                 );
+                */
                 if !self.attributes.contains_key(a) {
                     res.push(Err(ConsistencyError::SchemaClassMissingAttribute(
                         class.name.clone(),
@@ -1211,7 +1213,9 @@ impl SchemaInner {
             }
             for a in &class.may {
                 // report the attribute.
+                /*
                 audit_log!(audit, "validate may class:attr -> {}:{}", class.name, a);
+                */
                 if !self.attributes.contains_key(a) {
                     res.push(Err(ConsistencyError::SchemaClassMissingAttribute(
                         class.name.clone(),
@@ -1221,12 +1225,14 @@ impl SchemaInner {
             }
             for a in &class.systemmust {
                 // report the attribute.
+                /*
                 audit_log!(
                     audit,
                     "validate systemmust class:attr -> {}:{}",
                     class.name,
                     a
                 );
+                */
                 if !self.attributes.contains_key(a) {
                     res.push(Err(ConsistencyError::SchemaClassMissingAttribute(
                         class.name.clone(),
@@ -1236,7 +1242,9 @@ impl SchemaInner {
             }
             for a in &class.must {
                 // report the attribute.
+                /*
                 audit_log!(audit, "validate must class:attr -> {}:{}", class.name, a);
+                */
                 if !self.attributes.contains_key(a) {
                     res.push(Err(ConsistencyError::SchemaClassMissingAttribute(
                         class.name.clone(),

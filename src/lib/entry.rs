@@ -328,7 +328,7 @@ impl<STATE> Entry<EntryNormalised, STATE> {
                             Ok(_) => {}
                             Err(e) => {
                                 debug!("Failed to validate: {}", attr_name);
-                                return Err(e)
+                                return Err(e);
                             }
                         }
                     }
