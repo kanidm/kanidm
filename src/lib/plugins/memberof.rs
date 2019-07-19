@@ -129,7 +129,10 @@ fn apply_memberof(
         // first add a purged memberof to remove all mo we no longer
         // support.
         // TODO: Could this be more efficient
+        // TODO: Could this affect replication? Or should the CL work out the
+        // true diff of the operation?
         let mo_purge = vec![
+            Modify::Present("class".to_string(), "memberof".to_string()),
             Modify::Purged("memberof".to_string()),
             Modify::Purged("directmemberof".to_string()),
         ];
@@ -368,7 +371,7 @@ mod tests {
             "valid": null,
             "state": null,
             "attrs": {
-                "class": ["group"],
+                "class": ["group", "memberof"],
                 "name": ["testgroup_a"],
                 "uuid": ["aaaaaaaa-f82e-4484-a407-181aa03bda5c"]
             }
@@ -380,7 +383,7 @@ mod tests {
             "valid": null,
             "state": null,
             "attrs": {
-                "class": ["group"],
+                "class": ["group", "memberof"],
                 "name": ["testgroup_b"],
                 "uuid": ["bbbbbbbb-2438-4384-9891-48f4c8172e9b"]
             }
@@ -392,7 +395,7 @@ mod tests {
             "valid": null,
             "state": null,
             "attrs": {
-                "class": ["group"],
+                "class": ["group", "memberof"],
                 "name": ["testgroup_c"],
                 "uuid": ["cccccccc-9b01-423f-9ba6-51aa4bbd5dd2"]
             }
@@ -404,7 +407,7 @@ mod tests {
             "valid": null,
             "state": null,
             "attrs": {
-                "class": ["group"],
+                "class": ["group", "memberof"],
                 "name": ["testgroup_d"],
                 "uuid": ["dddddddd-2ab3-48e3-938d-1b4754cd2984"]
             }

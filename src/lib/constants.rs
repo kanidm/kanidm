@@ -172,6 +172,7 @@ pub static UUID_SCHEMA_CLASS_CLASSTYPE: &'static str = "ec1964f6-0c72-4373-954f-
 pub static UUID_SCHEMA_CLASS_OBJECT: &'static str = "579bb16d-1d85-4f8e-bb3b-6fc55af582fe";
 pub static UUID_SCHEMA_CLASS_EXTENSIBLEOBJECT: &'static str =
     "0fb2171d-372b-4d0d-9194-9a4d6846c324";
+pub static UUID_SCHEMA_CLASS_MEMBEROF: &'static str = "6c02b1d2-5f05-4216-8a82-b39a8b681be9";
 
 pub static UUID_SCHEMA_CLASS_RECYCLED: &'static str = "813bb7e3-dadf-413d-acc4-197b03d55a4f";
 pub static UUID_SCHEMA_CLASS_TOMBSTONE: &'static str = "848a1224-0c3c-465f-abd0-10a32e21830e";
@@ -371,6 +372,7 @@ pub static JSON_SCHEMA_CLASS_PERSON: &'static str = r#"
     }
   }
 "#;
+
 pub static UUID_SCHEMA_CLASS_GROUP: &'static str = "c0e4e58c-1a2e-4bc3-ad56-5950ef810ea7";
 pub static JSON_SCHEMA_CLASS_GROUP: &'static str = r#"
   {
@@ -421,9 +423,7 @@ pub static JSON_SCHEMA_CLASS_ACCOUNT: &'static str = r#"
       ],
       "systemmay": [
         "password",
-        "ssh_publickey",
-        "memberof",
-        "directmemberof"
+        "ssh_publickey"
       ],
       "systemmust": [
         "displayname",

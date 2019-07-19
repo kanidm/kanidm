@@ -4,6 +4,10 @@ macro_rules! setup_test {
         $au:expr,
         $preload_entries:ident
     ) => {{
+        use env_logger;
+        ::std::env::set_var("RUST_LOG", "actix_web=debug,rsidm=debug");
+        let _ = env_logger::builder().is_test(true).try_init();
+
         // Create an in memory BE
         let be = Backend::new($au, "").expect("Failed to init BE");
 
@@ -54,6 +58,7 @@ macro_rules! run_create_test {
             {
                 let qs_write = qs.write();
                 let r = qs_write.create(&mut au_test, &ce);
+                debug!("r: {:?}", r);
                 assert!(r == $expect);
                 $check(&mut au_test, &qs_write);
                 match r {

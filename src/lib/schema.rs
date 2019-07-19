@@ -1033,6 +1033,22 @@ impl SchemaInner {
                 },
             );
             s.classes.insert(
+                String::from("memberof"),
+                SchemaClass {
+                    name: String::from("memberof"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_MEMBEROF)
+                        .expect("unable to parse static uuid"),
+                    description: String::from("Class that is dynamically added to recepients of memberof or directmemberof"),
+                    systemmay: vec![
+                        "memberof".to_string(),
+                        "directmemberof".to_string()
+                    ],
+                    may: vec![],
+                    systemmust: vec![],
+                    must: vec![],
+                },
+            );
+            s.classes.insert(
                 String::from("extensibleobject"),
                 SchemaClass {
                     name: String::from("extensibleobject"),
@@ -1982,7 +1998,7 @@ mod tests {
             "state": null,
             "attrs": {
                 "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
-                "class": ["attributetype"]
+                "class": ["object", "attributetype"]
             }
         }"#,
         )
@@ -1999,7 +2015,7 @@ mod tests {
             "valid": null,
             "state": null,
             "attrs": {
-                "class": ["attributetype"],
+                "class": ["object", "attributetype"],
                 "name": ["testattr"],
                 "description": ["testattr"],
                 "system": ["false"],
@@ -2023,7 +2039,7 @@ mod tests {
             "valid": null,
             "state": null,
             "attrs": {
-                "class": ["attributetype"],
+                "class": ["object", "attributetype"],
                 "name": ["testattr"],
                 "description": ["testattr"],
                 "system": ["false"],
@@ -2046,7 +2062,7 @@ mod tests {
             "valid": null,
             "state": null,
             "attrs": {
-                "class": ["attributetype"],
+                "class": ["object", "attributetype"],
                 "name": ["testattr"],
                 "description": ["testattr"],
                 "system": ["false"],
