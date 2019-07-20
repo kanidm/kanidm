@@ -1104,12 +1104,6 @@ impl From<&SchemaAttribute> for Entry<EntryValid, EntryNew> {
         let name_v = vec![s.name.clone()];
         let desc_v = vec![s.description.clone()];
 
-        let system_v = vec![if s.system {
-            "true".to_string()
-        } else {
-            "false".to_string()
-        }];
-
         let secret_v = vec![if s.secret {
             "true".to_string()
         } else {
@@ -1131,14 +1125,17 @@ impl From<&SchemaAttribute> for Entry<EntryValid, EntryNew> {
         attrs.insert("name".to_string(), name_v);
         attrs.insert("description".to_string(), desc_v);
         attrs.insert("uuid".to_string(), uuid_v);
-        attrs.insert("system".to_string(), system_v);
         attrs.insert("secret".to_string(), secret_v);
         attrs.insert("multivalue".to_string(), multivalue_v);
         attrs.insert("index".to_string(), index_v);
         attrs.insert("syntax".to_string(), syntax_v);
         attrs.insert(
             "class".to_string(),
-            vec!["object".to_string(), "attributetype".to_string()],
+            vec![
+                "object".to_string(),
+                "system".to_string(),
+                "attributetype".to_string(),
+            ],
         );
 
         // Insert stuff.
@@ -1167,7 +1164,11 @@ impl From<&SchemaClass> for Entry<EntryValid, EntryNew> {
         attrs.insert("uuid".to_string(), uuid_v);
         attrs.insert(
             "class".to_string(),
-            vec!["object".to_string(), "classtype".to_string()],
+            vec![
+                "object".to_string(),
+                "system".to_string(),
+                "classtype".to_string(),
+            ],
         );
         attrs.insert("systemmay".to_string(), s.systemmay.clone());
         attrs.insert("systemmust".to_string(), s.systemmust.clone());

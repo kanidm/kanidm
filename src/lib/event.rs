@@ -170,6 +170,13 @@ impl Event {
         // to audits and logs to determine what happened.
         event.clone()
     }
+
+    pub fn is_internal(&self) -> bool {
+        match self.origin {
+            EventOrigin::Internal => true,
+            _ => false,
+        }
+    }
 }
 
 #[derive(Debug)]

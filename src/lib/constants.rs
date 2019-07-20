@@ -138,7 +138,6 @@ pub static UUID_SCHEMA_ATTR_UUID: &'static str = "642a893b-fe1a-4fe1-805d-fb78e7
 pub static UUID_SCHEMA_ATTR_NAME: &'static str = "27be9127-5ba1-4c06-bce9-7250f2c7f630";
 pub static UUID_SCHEMA_ATTR_PRINCIPAL_NAME: &'static str = "64dda3ac-12cb-4000-9b30-97a92767ccab";
 pub static UUID_SCHEMA_ATTR_DESCRIPTION: &'static str = "a4da35a2-c5fb-4f8f-a341-72cd39ec9eee";
-pub static UUID_SCHEMA_ATTR_SYSTEM: &'static str = "ee28df1e-cf02-49ca-80b5-8310fb619377";
 pub static UUID_SCHEMA_ATTR_SECRET: &'static str = "0231c61a-0a43-4987-9293-8732ed9459fa";
 pub static UUID_SCHEMA_ATTR_MULTIVALUE: &'static str = "8a6a8bf3-7053-42e2-8cda-15af7a197513";
 pub static UUID_SCHEMA_ATTR_INDEX: &'static str = "2c5ff455-0709-4f67-a37c-35ff7e67bfff";
@@ -187,6 +186,7 @@ pub static UUID_SCHEMA_CLASS_ACCESS_CONTROL_MODIFY: &'static str =
     "fd860561-9d0a-4f12-be30-406834292d46";
 pub static UUID_SCHEMA_CLASS_ACCESS_CONTROL_CREATE: &'static str =
     "58c5c197-51d8-4c30-9a8e-b8a0bb0eaacd";
+pub static UUID_SCHEMA_CLASS_SYSTEM: &'static str = "ee28df1e-cf02-49ca-80b5-8310fb619377";
 
 // system supplementary
 pub static UUID_SCHEMA_ATTR_DISPLAYNAME: &'static str = "201bc966-954b-48f5-bf25-99ffed759861";
@@ -198,6 +198,7 @@ pub static JSON_SCHEMA_ATTR_DISPLAYNAME: &'static str = r#"{
     "attrs": {
       "class": [
         "object",
+        "system",
         "attributetype"
       ],
       "description": [
@@ -218,9 +219,6 @@ pub static JSON_SCHEMA_ATTR_DISPLAYNAME: &'static str = r#"{
       "syntax": [
         "UTF8STRING"
       ],
-      "system": [
-        "true"
-      ],
       "uuid": [
         "201bc966-954b-48f5-bf25-99ffed759861"
       ]
@@ -236,6 +234,7 @@ pub static JSON_SCHEMA_ATTR_MAIL: &'static str = r#"
     "attrs": {
       "class": [
         "object",
+        "system",
         "attributetype"
       ],
       "description": [
@@ -256,9 +255,6 @@ pub static JSON_SCHEMA_ATTR_MAIL: &'static str = r#"
       "syntax": [
         "UTF8STRING"
       ],
-      "system": [
-        "true"
-      ],
       "uuid": [
         "fae94676-720b-461b-9438-bfe8cfd7e6cd"
       ]
@@ -275,6 +271,7 @@ pub static JSON_SCHEMA_ATTR_SSH_PUBLICKEY: &'static str = r#"
     "attrs": {
       "class": [
         "object",
+        "system",
         "attributetype"
       ],
       "description": [
@@ -293,9 +290,6 @@ pub static JSON_SCHEMA_ATTR_SSH_PUBLICKEY: &'static str = r#"
       "syntax": [
         "UTF8STRING"
       ],
-      "system": [
-        "true"
-      ],
       "uuid": [
         "52f2f13f-d35c-4cca-9f43-90a12c968f72"
       ]
@@ -312,6 +306,7 @@ pub static JSON_SCHEMA_ATTR_PASSWORD: &'static str = r#"
     "attrs": {
       "class": [
         "object",
+        "system",
         "attributetype"
       ],
       "description": [
@@ -330,9 +325,6 @@ pub static JSON_SCHEMA_ATTR_PASSWORD: &'static str = r#"
       "syntax": [
         "UTF8STRING"
       ],
-      "system": [
-        "true"
-      ],
       "uuid": [
         "a5121082-be54-4624-a307-383839b0366b"
       ]
@@ -350,6 +342,7 @@ pub static JSON_SCHEMA_CLASS_PERSON: &'static str = r#"
     "attrs": {
       "class": [
         "object",
+        "system",
         "classtype"
       ],
       "description": [
@@ -383,6 +376,7 @@ pub static JSON_SCHEMA_CLASS_GROUP: &'static str = r#"
     "attrs": {
       "class": [
         "object",
+        "system",
         "classtype"
       ],
       "description": [
@@ -413,6 +407,7 @@ pub static JSON_SCHEMA_CLASS_ACCOUNT: &'static str = r#"
     "attrs": {
       "class": [
         "object",
+        "system",
         "classtype"
       ],
       "description": [

@@ -40,6 +40,7 @@ pub enum OperationError {
     NotAuthenticated,
     InvalidAuthState(&'static str),
     InvalidSessionState,
+    SystemProtectedObject,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
