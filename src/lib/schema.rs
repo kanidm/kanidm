@@ -19,15 +19,6 @@ use concread::cowcell::{CowCell, CowCellReadTxn, CowCellWriteTxn};
 // In the future this will parse/read it's schema from the db
 // but we have to bootstrap with some core types.
 
-// TODO: system_info metadata object schema
-
-// TODO: system class to indicate the type is a system object?
-// just a class? Does the class imply protections?
-// probably just protection from delete and modify, except systemmay/systemmust/index?
-
-// TODO: Schema types -> Entry conversion
-// TODO: Entry -> Schema given class. This is for loading from the db.
-
 // TODO: prefix on all schema types that are system?
 
 #[allow(non_camel_case_types)]
@@ -132,7 +123,8 @@ pub struct SchemaAttribute {
     pub uuid: Uuid,
     // Perhaps later add aliases?
     pub description: String,
-    pub system: bool,
+    // TODO: Remove this field, it does nothing
+    // and will be replaced by a different specific schema element.
     pub secret: bool,
     pub multivalue: bool,
     pub index: Vec<IndexType>,
@@ -174,16 +166,6 @@ impl SchemaAttribute {
                 .ok_or(OperationError::InvalidSchemaState("missing description"))
         );
 
-        // system
-        let system = try_audit!(
-            audit,
-            value
-                .get_ava_single_bool("system")
-                .ok_or(OperationError::InvalidSchemaState(
-                    "missing or invalid system"
-                ))
-        );
-
         // secret
         let secret = try_audit!(
             audit,
@@ -219,7 +201,6 @@ impl SchemaAttribute {
             name: name.clone(),
             uuid: uuid.clone(),
             description: description.clone(),
-            system: system,
             secret: secret,
             multivalue: multivalue,
             index: index,
@@ -548,7 +529,6 @@ impl SchemaInner {
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_CLASS)
                         .expect("unable to parse static uuid"),
                     description: String::from("The set of classes defining an object"),
-                    system: true,
                     secret: false,
                     multivalue: true,
                     index: vec![IndexType::EQUALITY],
@@ -562,7 +542,6 @@ impl SchemaInner {
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_UUID)
                         .expect("unable to parse static uuid"),
                     description: String::from("The universal unique id of the object"),
-                    system: true,
                     secret: false,
                     multivalue: false,
                     index: vec![IndexType::EQUALITY],
@@ -576,7 +555,6 @@ impl SchemaInner {
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_NAME)
                         .expect("unable to parse static uuid"),
                     description: String::from("The shortform name of an object"),
-                    system: true,
                     secret: false,
                     multivalue: false,
                     index: vec![IndexType::EQUALITY],
@@ -585,17 +563,16 @@ impl SchemaInner {
             );
             s.attributes.insert(
             String::from("principal_name"),
-            SchemaAttribute {
-                name: String::from("principal_name"),
-                uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_PRINCIPAL_NAME).expect("unable to parse static uuid"),
-                description: String::from("The longform name of an object, derived from name and domain. Example: alice@project.org"),
-                system: true,
-                secret: false,
-                multivalue: false,
-                index: vec![IndexType::EQUALITY],
-                syntax: SyntaxType::UTF8STRING_PRINCIPAL,
-            },
-        );
+                SchemaAttribute {
+                    name: String::from("principal_name"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_PRINCIPAL_NAME).expect("unable to parse static uuid"),
+                    description: String::from("The longform name of an object, derived from name and domain. Example: alice@project.org"),
+                    secret: false,
+                    multivalue: false,
+                    index: vec![IndexType::EQUALITY],
+                    syntax: SyntaxType::UTF8STRING_PRINCIPAL,
+                },
+            );
             s.attributes.insert(
                 String::from("description"),
                 SchemaAttribute {
@@ -603,53 +580,31 @@ impl SchemaInner {
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_DESCRIPTION)
                         .expect("unable to parse static uuid"),
                     description: String::from("A description of an attribute, object or class"),
-                    system: true,
                     secret: false,
                     multivalue: true,
                     index: vec![],
                     syntax: SyntaxType::UTF8STRING,
                 },
             );
-            s.attributes.insert(
-                // FIXME: Rename to system_provided? Or should we eschew this in favour of class?
-                // system_provided attr seems easier to provide access controls on, and can be
-                // part of object ...
-                String::from("system"),
-                SchemaAttribute {
-                    name: String::from("system"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_SYSTEM)
-                        .expect("unable to parse static uuid"),
-                    description: String::from(
-                        "Is this object or attribute provided from the core system?",
-                    ),
-                    system: true,
-                    secret: false,
-                    multivalue: false,
-                    index: vec![],
-                    syntax: SyntaxType::BOOLEAN,
-                },
-            );
             s.attributes.insert(String::from("secret"), SchemaAttribute {
-            // FIXME: Rename from system to schema_private? system_private? attr_private? private_attr?
-            name: String::from("secret"),
-            uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_SECRET).expect("unable to parse static uuid"),
-            description: String::from("If true, this value is always hidden internally to the server, even beyond access controls."),
-            system: true,
-            secret: false,
-            multivalue: false,
-            index: vec![],
-            syntax: SyntaxType::BOOLEAN,
-        });
+                // FIXME: Rename from system to schema_private? system_private? attr_private? private_attr?
+                name: String::from("secret"),
+                uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_SECRET).expect("unable to parse static uuid"),
+                description: String::from("If true, this value is always hidden internally to the server, even beyond access controls."),
+                secret: false,
+                multivalue: false,
+                index: vec![],
+                syntax: SyntaxType::BOOLEAN,
+            });
             s.attributes.insert(String::from("multivalue"), SchemaAttribute {
-            name: String::from("multivalue"),
-            uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_MULTIVALUE).expect("unable to parse static uuid"),
-            description: String::from("If true, this attribute is able to store multiple values rather than just a single value."),
-            system: true,
-            secret: false,
-            multivalue: false,
-            index: vec![],
-            syntax: SyntaxType::BOOLEAN,
-        });
+                name: String::from("multivalue"),
+                uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_MULTIVALUE).expect("unable to parse static uuid"),
+                description: String::from("If true, this attribute is able to store multiple values rather than just a single value."),
+                secret: false,
+                multivalue: false,
+                index: vec![],
+                syntax: SyntaxType::BOOLEAN,
+            });
             s.attributes.insert(
                 // FIXME: Rename to index_attribute? attr_index?
                 String::from("index"),
@@ -660,7 +615,6 @@ impl SchemaInner {
                     description: String::from(
                         "Describe the indexes to apply to instances of this attribute.",
                     ),
-                    system: true,
                     secret: false,
                     multivalue: true,
                     index: vec![],
@@ -677,7 +631,6 @@ impl SchemaInner {
                     description: String::from(
                         "Describe the syntax of this attribute. This affects indexing and sorting.",
                     ),
-                    system: true,
                     secret: false,
                     multivalue: false,
                     index: vec![IndexType::EQUALITY],
@@ -694,7 +647,6 @@ impl SchemaInner {
                     description: String::from(
                         "A list of system provided optional attributes this class can store.",
                     ),
-                    system: true,
                     secret: false,
                     multivalue: true,
                     index: vec![],
@@ -711,7 +663,6 @@ impl SchemaInner {
                     description: String::from(
                         "A user modifiable list of optional attributes this class can store.",
                     ),
-                    system: true,
                     secret: false,
                     multivalue: true,
                     index: vec![],
@@ -728,7 +679,6 @@ impl SchemaInner {
                     description: String::from(
                         "A list of system provided required attributes this class must store.",
                     ),
-                    system: true,
                     secret: false,
                     multivalue: true,
                     index: vec![],
@@ -745,7 +695,6 @@ impl SchemaInner {
                     description: String::from(
                         "A user modifiable list of required attributes this class must store.",
                     ),
-                    system: true,
                     secret: false,
                     multivalue: true,
                     index: vec![],
@@ -761,7 +710,6 @@ impl SchemaInner {
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_ENABLE)
                         .expect("unable to parse static uuid"),
                     description: String::from("A flag to determine if this ACP is active for application. True is enabled, and enforce. False is checked but not enforced."),
-                    system: true,
                     secret: false,
                     multivalue: false,
                     index: vec![IndexType::EQUALITY],
@@ -778,7 +726,6 @@ impl SchemaInner {
                     description: String::from(
                         "Who the ACP applies to, constraining or allowing operations.",
                     ),
-                    system: true,
                     secret: false,
                     multivalue: false,
                     index: vec![IndexType::EQUALITY, IndexType::SUBSTRING],
@@ -794,7 +741,6 @@ impl SchemaInner {
                     description: String::from(
                         "The effective targets of the ACP, IE what will be acted upon.",
                     ),
-                    system: true,
                     secret: false,
                     multivalue: false,
                     index: vec![IndexType::EQUALITY, IndexType::SUBSTRING],
@@ -808,7 +754,6 @@ impl SchemaInner {
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_SEARCH_ATTR)
                         .expect("unable to parse static uuid"),
                     description: String::from("The attributes that may be viewed or searched by the reciever on targetscope."),
-                    system: true,
                     secret: false,
                     multivalue: true,
                     index: vec![IndexType::EQUALITY],
@@ -824,7 +769,6 @@ impl SchemaInner {
                     description: String::from(
                         "The set of classes that can be created on a new entry.",
                     ),
-                    system: true,
                     secret: false,
                     multivalue: true,
                     index: vec![IndexType::EQUALITY],
@@ -840,7 +784,6 @@ impl SchemaInner {
                     description: String::from(
                         "The set of attribute types that can be created on an entry.",
                     ),
-                    system: true,
                     secret: false,
                     multivalue: true,
                     index: vec![IndexType::EQUALITY],
@@ -855,7 +798,6 @@ impl SchemaInner {
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_MODIFY_REMOVEDATTR)
                         .expect("unable to parse static uuid"),
                     description: String::from("The set of attribute types that could be removed or purged in a modification."),
-                    system: true,
                     secret: false,
                     multivalue: true,
                     index: vec![IndexType::EQUALITY],
@@ -869,7 +811,6 @@ impl SchemaInner {
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_MODIFY_PRESENTATTR)
                         .expect("unable to parse static uuid"),
                     description: String::from("The set of attribute types that could be added or asserted in a modification."),
-                    system: true,
                     secret: false,
                     multivalue: true,
                     index: vec![IndexType::EQUALITY],
@@ -883,7 +824,6 @@ impl SchemaInner {
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_MODIFY_CLASS)
                         .expect("unable to parse static uuid"),
                     description: String::from("The set of class values that could be asserted or added to an entry. Only applies to modify::present operations on class."),
-                    system: true,
                     secret: false,
                     multivalue: true,
                     index: vec![IndexType::EQUALITY],
@@ -898,7 +838,6 @@ impl SchemaInner {
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_MEMBEROF)
                         .expect("unable to parse static uuid"),
                     description: String::from("reverse group membership of the object"),
-                    system: true,
                     secret: false,
                     multivalue: true,
                     index: vec![IndexType::EQUALITY],
@@ -912,7 +851,6 @@ impl SchemaInner {
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_DIRECTMEMBEROF)
                         .expect("unable to parse static uuid"),
                     description: String::from("reverse direct group membership of the object"),
-                    system: true,
                     secret: false,
                     multivalue: true,
                     index: vec![IndexType::EQUALITY],
@@ -926,7 +864,6 @@ impl SchemaInner {
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_MEMBER)
                         .expect("unable to parse static uuid"),
                     description: String::from("List of members of the group"),
-                    system: true,
                     secret: false,
                     multivalue: true,
                     index: vec![IndexType::EQUALITY],
@@ -943,7 +880,6 @@ impl SchemaInner {
                     description: String::from(
                         "The systems internal migration version for provided objects",
                     ),
-                    system: true,
                     secret: true,
                     multivalue: false,
                     index: vec![IndexType::EQUALITY],
@@ -958,7 +894,6 @@ impl SchemaInner {
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_DOMAIN)
                         .expect("unable to parse static uuid"),
                     description: String::from("A DNS Domain name entry."),
-                    system: true,
                     secret: false,
                     multivalue: true,
                     index: vec![IndexType::EQUALITY],
@@ -978,7 +913,6 @@ impl SchemaInner {
                     systemmust: vec![
                         String::from("class"),
                         String::from("name"),
-                        String::from("system"),
                         String::from("secret"),
                         String::from("multivalue"),
                         String::from("syntax"),
@@ -1182,6 +1116,19 @@ impl SchemaInner {
                         "acp_create_class".to_string(),
                         "acp_create_attr".to_string(),
                     ],
+                    may: vec![],
+                    systemmust: vec![],
+                    must: vec![],
+                },
+            );
+            s.classes.insert(
+                String::from("system"),
+                SchemaClass {
+                    name: String::from("system"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_SYSTEM)
+                        .expect("unable to parse static uuid"),
+                    description: String::from("A class denoting that a type is system generated and protected. It has special internal behaviour."),
+                    systemmay: vec![],
                     may: vec![],
                     systemmust: vec![],
                     must: vec![],
@@ -1468,7 +1415,6 @@ mod tests {
                         "class": ["object", "attributetype"],
                         "name": ["schema_attr_test"],
                         "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"],
-                        "system": ["false"],
                         "secret": ["false"],
                         "multivalue": ["false"],
                         "index": ["EQUALITY"],
@@ -1488,9 +1434,8 @@ mod tests {
                         "name": ["schema_attr_test"],
                         "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"],
                         "description": ["Test attr parsing"],
-                        "system": ["thoeunaouhnt"],
                         "secret": ["false"],
-                        "multivalue": ["false"],
+                        "multivalue": ["htouaoeu"],
                         "index": ["EQUALITY"],
                         "syntax": ["UTF8STRING"]
                     }
@@ -1508,7 +1453,6 @@ mod tests {
                         "name": ["schema_attr_test"],
                         "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"],
                         "description": ["Test attr parsing"],
-                        "system": ["true"],
                         "secret": ["false"],
                         "multivalue": ["false"],
                         "index": ["NTEHNOU"],
@@ -1528,7 +1472,6 @@ mod tests {
                         "name": ["schema_attr_test"],
                         "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"],
                         "description": ["Test attr parsing"],
-                        "system": ["true"],
                         "secret": ["false"],
                         "multivalue": ["false"],
                         "index": ["EQUALITY"],
@@ -1549,7 +1492,6 @@ mod tests {
                         "name": ["schema_attr_test"],
                         "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"],
                         "description": ["Test attr parsing"],
-                        "system": ["false"],
                         "secret": ["false"],
                         "multivalue": ["false"],
                         "syntax": ["UTF8STRING"]
@@ -1569,7 +1511,6 @@ mod tests {
                         "name": ["schema_attr_test"],
                         "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"],
                         "description": ["Test attr parsing"],
-                        "system": ["false"],
                         "secret": ["false"],
                         "multivalue": ["false"],
                         "index": ["EQUALITY"],
@@ -1742,7 +1683,6 @@ mod tests {
                 name: String::from("principal_name"),
                 uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_PRINCIPAL_NAME).expect("unable to parse static uuid"),
                 description: String::from("The longform name of an object, derived from name and domain. Example: alice@project.org"),
-                system: true,
                 secret: false,
                 multivalue: false,
                 index: vec![IndexType::EQUALITY],
@@ -1774,7 +1714,6 @@ mod tests {
             description: String::from(
                 "Who the ACP applies to, constraining or allowing operations.",
             ),
-            system: true,
             secret: false,
             multivalue: false,
             index: vec![IndexType::EQUALITY, IndexType::SUBSTRING],
@@ -1809,7 +1748,6 @@ mod tests {
             name: String::from("uuid"),
             uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_UUID).expect("unable to parse static uuid"),
             description: String::from("The universal unique id of the object"),
-            system: true,
             secret: false,
             multivalue: false,
             index: vec![IndexType::EQUALITY],
@@ -1831,7 +1769,6 @@ mod tests {
             name: String::from("single_value"),
             uuid: Uuid::new_v4(),
             description: String::from(""),
-            system: true,
             secret: false,
             multivalue: false,
             index: vec![IndexType::EQUALITY],
@@ -1852,7 +1789,6 @@ mod tests {
             name: String::from("mv_string"),
             uuid: Uuid::new_v4(),
             description: String::from(""),
-            system: true,
             secret: false,
             multivalue: true,
             index: vec![IndexType::EQUALITY],
@@ -1868,7 +1804,6 @@ mod tests {
             name: String::from("mv_bool"),
             uuid: Uuid::new_v4(),
             description: String::from(""),
-            system: true,
             secret: false,
             multivalue: true,
             index: vec![IndexType::EQUALITY],
@@ -1889,7 +1824,6 @@ mod tests {
             name: String::from("sv_syntax"),
             uuid: Uuid::new_v4(),
             description: String::from(""),
-            system: true,
             secret: false,
             multivalue: false,
             index: vec![IndexType::EQUALITY],
@@ -1907,7 +1841,6 @@ mod tests {
             name: String::from("sv_index"),
             uuid: Uuid::new_v4(),
             description: String::from(""),
-            system: true,
             secret: false,
             multivalue: false,
             index: vec![IndexType::EQUALITY],
@@ -2018,7 +1951,6 @@ mod tests {
                 "class": ["object", "attributetype"],
                 "name": ["testattr"],
                 "description": ["testattr"],
-                "system": ["false"],
                 "secret": ["false"],
                 "multivalue": ["false"],
                 "syntax": ["UTF8STRING"],
@@ -2042,7 +1974,6 @@ mod tests {
                 "class": ["object", "attributetype"],
                 "name": ["testattr"],
                 "description": ["testattr"],
-                "system": ["false"],
                 "secret": ["false"],
                 "multivalue": ["zzzzz"],
                 "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
@@ -2065,7 +1996,6 @@ mod tests {
                 "class": ["object", "attributetype"],
                 "name": ["testattr"],
                 "description": ["testattr"],
-                "system": ["false"],
                 "secret": ["false"],
                 "multivalue": ["true"],
                 "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],

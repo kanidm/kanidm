@@ -698,14 +698,14 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         let norm_cand: Vec<Entry<_, _>> = try_audit!(au, res);
 
-        /*
+        // Run any pre-create plugins now with schema validated entries.
+        // This is important for normalisation of certain types IE class
+        // or attributes for these checks.
         let mut audit_plugin_pre = AuditScope::new("plugin_pre_create");
-        let plug_pre_res =
-            Plugins::run_pre_create(&mut audit_plugin_pre, &self, &norm_cand, ce);
+        let plug_pre_res = Plugins::run_pre_create(&mut audit_plugin_pre, &self, &norm_cand, ce);
         au.append_scope(audit_plugin_pre);
 
         let _ = try_audit!(au, plug_pre_res, "Create operation failed (plugin), {:?}");
-        */
 
         let mut audit_be = AuditScope::new("backend_create");
         // We may change from ce.entries later to something else?
@@ -2445,8 +2445,7 @@ mod tests {
                     "description": ["Test Attribute"],
                     "multivalue": ["false"],
                     "secret": ["false"],
-                    "syntax": ["UTF8STRING"],
-                    "system": ["false"]
+                    "syntax": ["UTF8STRING"]
                 }
             }"#,
             )

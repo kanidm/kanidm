@@ -17,18 +17,19 @@ mod refint;
 trait Plugin {
     fn id() -> &'static str;
 
-    // TODO: These should all return OperationError::Unimplemented
-
     fn pre_create_transform(
         _au: &mut AuditScope,
         _qs: &QueryServerWriteTransaction,
         _cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        Ok(())
+        debug!(
+            "plugin {} has an unimplemented pre_create_transform!",
+            Self::id()
+        );
+        Err(OperationError::Plugin)
     }
 
-    /*
     fn pre_create(
         _au: &mut AuditScope,
         _qs: &QueryServerWriteTransaction,
@@ -36,9 +37,9 @@ trait Plugin {
         _cand: &Vec<Entry<EntryValid, EntryNew>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        Ok(())
+        debug!("plugin {} has an unimplemented pre_create!", Self::id());
+        Err(OperationError::Plugin)
     }
-    */
 
     fn post_create(
         _au: &mut AuditScope,
@@ -47,7 +48,8 @@ trait Plugin {
         _cand: &Vec<Entry<EntryValid, EntryNew>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        Ok(())
+        debug!("plugin {} has an unimplemented post_create!", Self::id());
+        Err(OperationError::Plugin)
     }
 
     fn pre_modify(
@@ -56,7 +58,8 @@ trait Plugin {
         _cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        Ok(())
+        debug!("plugin {} has an unimplemented pre_modify!", Self::id());
+        Err(OperationError::Plugin)
     }
 
     fn post_modify(
@@ -67,7 +70,8 @@ trait Plugin {
         _cand: &Vec<Entry<EntryValid, EntryCommitted>>,
         _ce: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        Ok(())
+        debug!("plugin {} has an unimplemented post_modify!", Self::id());
+        Err(OperationError::Plugin)
     }
 
     fn pre_delete(
@@ -76,7 +80,8 @@ trait Plugin {
         _cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _de: &DeleteEvent,
     ) -> Result<(), OperationError> {
-        Ok(())
+        debug!("plugin {} has an unimplemented pre_delete!", Self::id());
+        Err(OperationError::Plugin)
     }
 
     fn post_delete(
@@ -86,14 +91,16 @@ trait Plugin {
         _cand: &Vec<Entry<EntryValid, EntryCommitted>>,
         _ce: &DeleteEvent,
     ) -> Result<(), OperationError> {
-        Ok(())
+        debug!("plugin {} has an unimplemented post_delete!", Self::id());
+        Err(OperationError::Plugin)
     }
 
     fn verify(
         _au: &mut AuditScope,
         _qs: &QueryServerReadTransaction,
     ) -> Vec<Result<(), ConsistencyError>> {
-        Vec::new()
+        debug!("plugin {} has an unimplemented verify!", Self::id());
+        vec![Err(ConsistencyError::Unknown)]
     }
 }
 
@@ -121,7 +128,6 @@ macro_rules! run_pre_create_transform_plugin {
     }};
 }
 
-/*
 macro_rules! run_pre_create_plugin {
     (
         $au:ident,
@@ -141,7 +147,6 @@ macro_rules! run_pre_create_plugin {
         r
     }};
 }
-*/
 
 macro_rules! run_post_create_plugin {
     (
@@ -270,16 +275,12 @@ impl Plugins {
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         audit_segment!(au, || {
-            let res =
-                run_pre_create_transform_plugin!(au, qs, cand, ce, base::Base).and_then(|_| {
-                    run_pre_create_transform_plugin!(au, qs, cand, ce, refint::ReferentialIntegrity)
-                });
+            let res = run_pre_create_transform_plugin!(au, qs, cand, ce, base::Base);
 
             res
         })
     }
 
-    /*
     pub fn run_pre_create(
         au: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
@@ -287,14 +288,11 @@ impl Plugins {
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         audit_segment!(au, || {
-            let res = run_pre_create_plugin!(au, qs, cand, ce, base::Base).and_then(|_| {
-                run_pre_create_plugin!(au, qs, cand, ce, refint::ReferentialIntegrity)
-            });
+            let res = run_pre_create_plugin!(au, qs, cand, ce, protected::Protected);
 
             res
         })
     }
-    */
 
     pub fn run_post_create(
         au: &mut AuditScope,
@@ -303,10 +301,8 @@ impl Plugins {
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         audit_segment!(au, || {
-            let res = run_post_create_plugin!(au, qs, cand, ce, base::Base).and_then(|_| {
-                run_post_create_plugin!(au, qs, cand, ce, refint::ReferentialIntegrity)
-                    .and_then(|_| run_post_create_plugin!(au, qs, cand, ce, memberof::MemberOf))
-            });
+            let res = run_post_create_plugin!(au, qs, cand, ce, refint::ReferentialIntegrity)
+                .and_then(|_| run_post_create_plugin!(au, qs, cand, ce, memberof::MemberOf));
 
             res
         })
@@ -319,9 +315,8 @@ impl Plugins {
         me: &ModifyEvent,
     ) -> Result<(), OperationError> {
         audit_segment!(au, || {
-            let res = run_pre_modify_plugin!(au, qs, cand, me, base::Base).and_then(|_| {
-                run_pre_modify_plugin!(au, qs, cand, me, refint::ReferentialIntegrity)
-            });
+            let res = run_pre_modify_plugin!(au, qs, cand, me, protected::Protected)
+                .and_then(|_| run_pre_modify_plugin!(au, qs, cand, me, base::Base));
 
             res
         })
@@ -336,19 +331,10 @@ impl Plugins {
     ) -> Result<(), OperationError> {
         audit_segment!(au, || {
             let res =
-                run_post_modify_plugin!(au, qs, pre_cand, cand, me, base::Base).and_then(|_| {
-                    run_post_modify_plugin!(
-                        au,
-                        qs,
-                        pre_cand,
-                        cand,
-                        me,
-                        refint::ReferentialIntegrity
-                    )
+                run_post_modify_plugin!(au, qs, pre_cand, cand, me, refint::ReferentialIntegrity)
                     .and_then(|_| {
                         run_post_modify_plugin!(au, qs, pre_cand, cand, me, memberof::MemberOf)
-                    })
-                });
+                    });
 
             res
         })
@@ -361,10 +347,7 @@ impl Plugins {
         de: &DeleteEvent,
     ) -> Result<(), OperationError> {
         audit_segment!(au, || {
-            let res = run_pre_delete_plugin!(au, qs, cand, de, base::Base).and_then(|_| {
-                run_pre_delete_plugin!(au, qs, cand, de, refint::ReferentialIntegrity)
-            });
-
+            let res = run_pre_delete_plugin!(au, qs, cand, de, protected::Protected);
             res
         })
     }
@@ -376,10 +359,8 @@ impl Plugins {
         de: &DeleteEvent,
     ) -> Result<(), OperationError> {
         audit_segment!(au, || {
-            let res = run_post_delete_plugin!(au, qs, cand, de, base::Base).and_then(|_| {
-                run_post_delete_plugin!(au, qs, cand, de, refint::ReferentialIntegrity)
-                    .and_then(|_| run_post_delete_plugin!(au, qs, cand, de, memberof::MemberOf))
-            });
+            let res = run_post_delete_plugin!(au, qs, cand, de, refint::ReferentialIntegrity)
+                .and_then(|_| run_post_delete_plugin!(au, qs, cand, de, memberof::MemberOf));
 
             res
         })
