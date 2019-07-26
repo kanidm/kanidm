@@ -15,13 +15,11 @@
 //   requirements (also search).
 //
 
-// TODO: Purge all reference to acp_allow/deny
-
 use concread::cowcell::{CowCell, CowCellReadTxn, CowCellWriteTxn};
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::audit::AuditScope;
-use crate::entry::{Entry, EntryCommitted, EntryNew, EntryNormalised, EntryValid};
+use crate::entry::{Entry, EntryCommitted, EntryNew, EntryNormalised, EntryReduced, EntryValid};
 use crate::error::OperationError;
 use crate::filter::{Filter, FilterValid};
 use crate::modify::Modify;
@@ -518,7 +516,7 @@ pub trait AccessControlsTransaction {
         se: &SearchEvent,
         // TODO: This could actually take a &mut Vec and modify in place!
         entries: Vec<Entry<EntryValid, EntryCommitted>>,
-    ) -> Result<Vec<Entry<EntryValid, EntryCommitted>>, OperationError> {
+    ) -> Result<Vec<Entry<EntryReduced, EntryCommitted>>, OperationError> {
         /*
          * Super similar to above (could even re-use some parts). Given a set of entries,
          * reduce the attribute sets on them to "what is visible". This is ONLY called on
@@ -532,8 +530,9 @@ pub trait AccessControlsTransaction {
         // interface is beyond me ....
         let rec_entry: &Entry<EntryValid, EntryCommitted> = match &se.event.origin {
             EventOrigin::Internal => {
+                audit_log!(audit, "IMPOSSIBLE STATE: Internal search in external interface?! Returning empty for safety.");
                 // No need to check ACS
-                return Ok(entries);
+                return Ok(Vec::new());
             }
             EventOrigin::User(e) => &e,
         };
@@ -574,7 +573,7 @@ pub trait AccessControlsTransaction {
         // CAN'T see instead.
 
         //  For each entry
-        let allowed_entries: Vec<Entry<EntryValid, EntryCommitted>> = entries
+        let allowed_entries: Vec<Entry<EntryReduced, EntryCommitted>> = entries
             .into_iter()
             .map(|e| {
                 // Get the set of attributes you can see
@@ -754,12 +753,11 @@ pub trait AccessControlsTransaction {
                 // set that apply to the entry that is performing the operation
                 let scoped_acp: Vec<&AccessControlModify> = related_acp
                     .iter()
-                    // TODO: I don't like that acm here is a
-                    // &&
-                    .filter_map(|acm| {
+                    .filter_map(|acm: &&AccessControlModify| {
                         // TODO: We are continually compiling and using these
                         // in a tight loop, so this is a possible oppurtunity
-                        // to cache or handle these better.
+                        // to cache or handle these filters better - filter compiler
+                        // cache maybe?
                         let f_val = acm.acp.targetscope.clone();
                         match f_val.resolve(&me.event) {
                             Ok(f_res) => {
@@ -1189,7 +1187,7 @@ mod tests {
         AccessControlSearch, AccessControls, AccessControlsTransaction,
     };
     use crate::audit::AuditScope;
-    use crate::entry::{Entry, EntryInvalid, EntryNew};
+    use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryReduced};
     // use crate::server::QueryServerWriteTransaction;
 
     use crate::event::{CreateEvent, DeleteEvent, ModifyEvent, SearchEvent};
@@ -1785,10 +1783,14 @@ mod tests {
                 .search_filter_entry_attributes(&mut audit, $se, res)
                 .expect("operation failed");
 
-            println!("expect --> {:?}", $expect);
+            // Help the type checker for the expect set.
+            let expect_set: Vec<Entry<EntryReduced, EntryCommitted>> =
+                $expect.into_iter().map(|e| e.to_reduced()).collect();
+
+            println!("expect --> {:?}", expect_set);
             println!("result --> {:?}", reduced);
             // should be ok, and same as expect.
-            assert!(reduced == $expect);
+            assert!(reduced == expect_set);
         }};
     }
 

@@ -117,6 +117,8 @@ pub static JSON_IDM_SELF_ACP_READ_V1: &'static str = r#"{
     }
 }"#;
 
+pub static UUID_DOES_NOT_EXIST: &'static str = "00000000-0000-0000-0000-fffffffffffe";
+
 pub static UUID_ANONYMOUS: &'static str = "00000000-0000-0000-0000-ffffffffffff";
 pub static JSON_ANONYMOUS_V1: &'static str = r#"{
     "valid": {
@@ -133,12 +135,12 @@ pub static JSON_ANONYMOUS_V1: &'static str = r#"{
 }"#;
 
 // Core
+// TODO: All these should be internal range uuids instead.
 pub static UUID_SCHEMA_ATTR_CLASS: &'static str = "aa0f193f-3010-4783-9c9e-f97edb14d8c2";
 pub static UUID_SCHEMA_ATTR_UUID: &'static str = "642a893b-fe1a-4fe1-805d-fb78e7f83ee7";
 pub static UUID_SCHEMA_ATTR_NAME: &'static str = "27be9127-5ba1-4c06-bce9-7250f2c7f630";
 pub static UUID_SCHEMA_ATTR_PRINCIPAL_NAME: &'static str = "64dda3ac-12cb-4000-9b30-97a92767ccab";
 pub static UUID_SCHEMA_ATTR_DESCRIPTION: &'static str = "a4da35a2-c5fb-4f8f-a341-72cd39ec9eee";
-pub static UUID_SCHEMA_ATTR_SECRET: &'static str = "0231c61a-0a43-4987-9293-8732ed9459fa";
 pub static UUID_SCHEMA_ATTR_MULTIVALUE: &'static str = "8a6a8bf3-7053-42e2-8cda-15af7a197513";
 pub static UUID_SCHEMA_ATTR_INDEX: &'static str = "2c5ff455-0709-4f67-a37c-35ff7e67bfff";
 pub static UUID_SCHEMA_ATTR_SYNTAX: &'static str = "85e8c2c7-3852-48dd-bfc9-d0982a50e2ef";
@@ -213,9 +215,6 @@ pub static JSON_SCHEMA_ATTR_DISPLAYNAME: &'static str = r#"{
       "name": [
         "displayname"
       ],
-      "secret": [
-        "false"
-      ],
       "syntax": [
         "UTF8STRING"
       ],
@@ -249,9 +248,6 @@ pub static JSON_SCHEMA_ATTR_MAIL: &'static str = r#"
       "name": [
         "mail"
       ],
-      "secret": [
-        "false"
-      ],
       "syntax": [
         "UTF8STRING"
       ],
@@ -284,9 +280,6 @@ pub static JSON_SCHEMA_ATTR_SSH_PUBLICKEY: &'static str = r#"
       "name": [
         "ssh_publickey"
       ],
-      "secret": [
-        "false"
-      ],
       "syntax": [
         "UTF8STRING"
       ],
@@ -318,9 +311,6 @@ pub static JSON_SCHEMA_ATTR_PASSWORD: &'static str = r#"
       ],
       "name": [
         "password"
-      ],
-      "secret": [
-        "true"
       ],
       "syntax": [
         "UTF8STRING"

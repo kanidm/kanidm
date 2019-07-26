@@ -13,12 +13,12 @@ use uuid::Uuid;
 // use lru::LruCache;
 
 pub struct IdmServer {
-    // Need an auth-session table to save in progress authentications
-    // sessions:
+    // There is a good reason to keep this single thread - it
+    // means that limits to sessions can be easily applied and checked to
+    // variaous accounts, and we have a good idea of how to structure the
+    // in memory caches related to locking.
     //
-    // TODO: This should be Lru
-    // TODO: AuthSession should be per-session mutex to keep locking on the
-    //   cell low to allow more concurrent auths.
+    // TODO: This needs a mark-and-sweep gc to be added.
     sessions: CowCell<BTreeMap<Uuid, AuthSession>>,
     // Need a reference to the query server.
     qs: QueryServer,
@@ -60,7 +60,6 @@ impl IdmServer {
 }
 
 impl<'a> IdmServerWriteTransaction<'a> {
-    // TODO: This should be something else, not the proto token!
     pub fn auth(
         &mut self,
         au: &mut AuditScope,

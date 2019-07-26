@@ -19,7 +19,7 @@ trait Plugin {
 
     fn pre_create_transform(
         _au: &mut AuditScope,
-        _qs: &QueryServerWriteTransaction,
+        _qs: &mut QueryServerWriteTransaction,
         _cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
@@ -32,7 +32,7 @@ trait Plugin {
 
     fn pre_create(
         _au: &mut AuditScope,
-        _qs: &QueryServerWriteTransaction,
+        _qs: &mut QueryServerWriteTransaction,
         // List of what we will commit that is valid?
         _cand: &Vec<Entry<EntryValid, EntryNew>>,
         _ce: &CreateEvent,
@@ -43,7 +43,7 @@ trait Plugin {
 
     fn post_create(
         _au: &mut AuditScope,
-        _qs: &QueryServerWriteTransaction,
+        _qs: &mut QueryServerWriteTransaction,
         // List of what we commited that was valid?
         _cand: &Vec<Entry<EntryValid, EntryNew>>,
         _ce: &CreateEvent,
@@ -54,7 +54,7 @@ trait Plugin {
 
     fn pre_modify(
         _au: &mut AuditScope,
-        _qs: &QueryServerWriteTransaction,
+        _qs: &mut QueryServerWriteTransaction,
         _cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
@@ -64,7 +64,7 @@ trait Plugin {
 
     fn post_modify(
         _au: &mut AuditScope,
-        _qs: &QueryServerWriteTransaction,
+        _qs: &mut QueryServerWriteTransaction,
         // List of what we modified that was valid?
         _pre_cand: &Vec<Entry<EntryValid, EntryCommitted>>,
         _cand: &Vec<Entry<EntryValid, EntryCommitted>>,
@@ -76,7 +76,7 @@ trait Plugin {
 
     fn pre_delete(
         _au: &mut AuditScope,
-        _qs: &QueryServerWriteTransaction,
+        _qs: &mut QueryServerWriteTransaction,
         _cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _de: &DeleteEvent,
     ) -> Result<(), OperationError> {
@@ -86,7 +86,7 @@ trait Plugin {
 
     fn post_delete(
         _au: &mut AuditScope,
-        _qs: &QueryServerWriteTransaction,
+        _qs: &mut QueryServerWriteTransaction,
         // List of what we delete that was valid?
         _cand: &Vec<Entry<EntryValid, EntryCommitted>>,
         _ce: &DeleteEvent,
@@ -270,7 +270,7 @@ macro_rules! run_verify_plugin {
 impl Plugins {
     pub fn run_pre_create_transform(
         au: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
@@ -283,7 +283,7 @@ impl Plugins {
 
     pub fn run_pre_create(
         au: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         cand: &Vec<Entry<EntryValid, EntryNew>>,
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
@@ -296,7 +296,7 @@ impl Plugins {
 
     pub fn run_post_create(
         au: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         cand: &Vec<Entry<EntryValid, EntryNew>>,
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
@@ -310,7 +310,7 @@ impl Plugins {
 
     pub fn run_pre_modify(
         au: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         me: &ModifyEvent,
     ) -> Result<(), OperationError> {
@@ -324,7 +324,7 @@ impl Plugins {
 
     pub fn run_post_modify(
         au: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         pre_cand: &Vec<Entry<EntryValid, EntryCommitted>>,
         cand: &Vec<Entry<EntryValid, EntryCommitted>>,
         me: &ModifyEvent,
@@ -342,7 +342,7 @@ impl Plugins {
 
     pub fn run_pre_delete(
         au: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         de: &DeleteEvent,
     ) -> Result<(), OperationError> {
@@ -354,7 +354,7 @@ impl Plugins {
 
     pub fn run_post_delete(
         au: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         cand: &Vec<Entry<EntryValid, EntryCommitted>>,
         de: &DeleteEvent,
     ) -> Result<(), OperationError> {

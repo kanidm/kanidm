@@ -53,8 +53,8 @@ pub trait BackendTransaction {
     ) -> Result<Vec<Entry<EntryValid, EntryCommitted>>, OperationError> {
         // Do things
         // Alloc a vec for the entries.
-        // FIXME: Make this actually a good size for the result set ...
-        // FIXME: Actually compute indexes here.
+        // TODO: Make this actually a good size for the result set ...
+        // TODO: Actually compute indexes here.
         // So to make this use indexes, we can use the filter type and
         // destructure it to work out what we need to actually search (if
         // possible) to create the candidate set.
@@ -101,6 +101,7 @@ pub trait BackendTransaction {
             let entries: Result<Vec<Entry<EntryValid, EntryCommitted>>, _> = raw_entries
                 .iter()
                 .filter_map(|id_ent| {
+                    // We need the matches here to satisfy the filter map
                     let db_e = match serde_cbor::from_slice(id_ent.data.as_slice())
                         .map_err(|_| OperationError::SerdeCborError)
                     {
@@ -113,7 +114,11 @@ pub trait BackendTransaction {
                         Ok(v) => v,
                         Err(e) => return Some(Err(e)),
                     };
-                    let e = Entry::from_dbentry(db_e, id);
+                    let e =
+                        match Entry::from_dbentry(db_e, id).ok_or(OperationError::CorruptedEntry) {
+                            Ok(v) => v,
+                            Err(e) => return Some(Err(e)),
+                        };
                     if e.entry_match_no_index(&filt) {
                         Some(Ok(e))
                     } else {
@@ -224,17 +229,15 @@ pub trait BackendTransaction {
 }
 
 impl Drop for BackendReadTransaction {
-    // Abort
-    // TODO: Is this correct for RO txn?
+    // Abort - so far this has proven reliable to use drop here.
     fn drop(self: &mut Self) {
         if !self.committed {
             debug!("Aborting BE RO txn");
             self.conn
                 .execute("ROLLBACK TRANSACTION", NO_PARAMS)
-                // TODO: Can we do this without expect? I think we can't due
-                // to the way drop works.
-                //
-                // We may need to change how we do transactions to not rely on drop
+                // We can't do this without expect.
+                // We may need to change how we do transactions to not rely on drop if
+                // it becomes and issue :(
                 .expect("Unable to rollback transaction! Can not proceed!!!");
         }
     }
@@ -244,9 +247,11 @@ impl BackendReadTransaction {
     pub fn new(conn: r2d2::PooledConnection<SqliteConnectionManager>) -> Self {
         // Start the transaction
         debug!("Starting BE RO txn ...");
-        // TODO: Way to flag that this will be a read only?
-        // TODO: Can we do this without expect? I think we need to change the type
-        // signature here if we wanted to...
+        // I'm happy for this to be an expect, because this is a huge failure
+        // of the server ... but if it happens a lot we should consider making
+        // this a Result<>
+        //
+        // There is no way to flag this is an RO operation.
         conn.execute("BEGIN TRANSACTION", NO_PARAMS)
             .expect("Unable to begin transaction!");
         BackendReadTransaction {
@@ -263,7 +268,6 @@ impl BackendTransaction for BackendReadTransaction {
 }
 
 static DBV_ID2ENTRY: &'static str = "id2entry";
-// static DBV_INDEX: &'static str = "index";
 
 impl Drop for BackendWriteTransaction {
     // Abort
@@ -272,10 +276,6 @@ impl Drop for BackendWriteTransaction {
             debug!("Aborting BE WR txn");
             self.conn
                 .execute("ROLLBACK TRANSACTION", NO_PARAMS)
-                // TODO: Can we do this without expect? I think we can't due
-                // to the way drop works.
-                //
-                // We may need to change how we do transactions to not rely on drop
                 .expect("Unable to rollback transaction! Can not proceed!!!");
         }
     }
@@ -291,9 +291,6 @@ impl BackendWriteTransaction {
     pub fn new(conn: r2d2::PooledConnection<SqliteConnectionManager>) -> Self {
         // Start the transaction
         debug!("Starting BE WR txn ...");
-        // TODO: Way to flag that this will be a write?
-        // TODO: Can we do this without expect? I think we need to change the type
-        // signature here if we wanted to...
         conn.execute("BEGIN TRANSACTION", NO_PARAMS)
             .expect("Unable to begin transaction!");
         BackendWriteTransaction {
@@ -347,11 +344,7 @@ impl BackendWriteTransaction {
             })
             .collect();
 
-        // audit_log!(au, "serialising: {:?}", ser_entries);
-
         let ser_entries = ser_entries?;
-
-        // THIS IS PROBABLY THE BIT WHERE YOU NEED DB ABSTRACTION
         {
             let mut stmt = try_audit!(
                 au,
@@ -388,8 +381,10 @@ impl BackendWriteTransaction {
         // tell which function is calling it. either this one or restore.
         audit_segment!(au, || {
             if entries.is_empty() {
-                // TODO: Better error
-                // End the timer
+                audit_log!(
+                    au,
+                    "No entries provided to BE to create, invalid server call!"
+                );
                 return Err(OperationError::EmptyRequest);
             }
 
@@ -411,6 +406,10 @@ impl BackendWriteTransaction {
         entries: &Vec<Entry<EntryValid, EntryCommitted>>,
     ) -> Result<(), OperationError> {
         if entries.is_empty() {
+            audit_log!(
+                au,
+                "No entries provided to BE to modify, invalid server call!"
+            );
             return Err(OperationError::EmptyRequest);
         }
 
@@ -434,8 +433,10 @@ impl BackendWriteTransaction {
                 let data = serde_cbor::to_vec(&db_e).map_err(|_| OperationError::SerdeCborError)?;
 
                 Ok(IdEntry {
-                    // TODO: Instead of getting these from the entry, we could lookup
+                    // TODO: Instead of getting these from the server entry struct , we could lookup
                     // uuid -> id in the index.
+                    //
+                    // relies on the uuid -> id index being correct (and implemented)
                     id: id,
                     data: data,
                 })
@@ -447,7 +448,9 @@ impl BackendWriteTransaction {
         // audit_log!(au, "serialising: {:?}", ser_entries);
 
         // Simple: If the list of id's is not the same as the input list, we are missing id's
-        // TODO: This check won't be needed once I rebuild the entry state types.
+        //
+        // The entry state checks prevent this from really ever being triggered, but we
+        // still prefer paranoia :)
         if entries.len() != ser_entries.len() {
             return Err(OperationError::InvalidEntryState);
         }
@@ -483,7 +486,10 @@ impl BackendWriteTransaction {
         // Perform a search for the entries --> This is a problem for the caller
         audit_segment!(au, || {
             if entries.is_empty() {
-                // TODO: Better error
+                audit_log!(
+                    au,
+                    "No entries provided to BE to delete, invalid server call!"
+                );
                 return Err(OperationError::EmptyRequest);
             }
 
@@ -506,7 +512,6 @@ impl BackendWriteTransaction {
             let id_list = try_audit!(au, id_list);
 
             // Simple: If the list of id's is not the same as the input list, we are missing id's
-            // TODO: This check won't be needed once I rebuild the entry state types.
             if entries.len() != id_list.len() {
                 return Err(OperationError::InvalidEntryState);
             }
@@ -516,8 +521,6 @@ impl BackendWriteTransaction {
                 // SQL doesn't say if the thing "does or does not exist anymore". As a result,
                 // two deletes is a safe and valid operation. Given how we allocate ID's we are
                 // probably okay with this.
-
-                // TODO: ACTUALLY HANDLE THIS ERROR WILLIAM YOU LAZY SHIT.
                 let mut stmt = try_audit!(
                     au,
                     self.conn.prepare("DELETE FROM id2entry WHERE id = :id"),
@@ -571,11 +574,15 @@ impl BackendWriteTransaction {
             OperationError::SerdeJsonError
         );
 
-        self.internal_create(audit, &entries)
+        self.internal_create(audit, &entries)?;
 
+        let vr = self.verify();
+        if vr.len() == 0 {
+            Ok(())
+        } else {
+            Err(OperationError::ConsistencyError(vr))
+        }
         // TODO: run re-index after db is restored
-        // TODO; run db verify
-        // self.verify(audit)
     }
 
     pub fn commit(mut self) -> Result<(), OperationError> {
@@ -611,7 +618,7 @@ impl BackendWriteTransaction {
         {
             // TODO:
             // conn.execute("PRAGMA journal_mode=WAL;", NO_PARAMS)
-            //
+
             // This stores versions of components. For example:
             // ----------------------
             // | id       | version |
@@ -694,7 +701,7 @@ impl Backend {
                 // a single DB thread, else we cause consistency issues.
                 builder1.max_size(1)
             } else {
-                // FIXME: Make this configurable
+                // TODO: Make this configurable
                 builder1.max_size(8)
             };
             // Look at max_size and thread_pool here for perf later
@@ -717,7 +724,6 @@ impl Backend {
     }
 
     pub fn read(&self) -> BackendReadTransaction {
-        // TODO: Don't use expect
         let conn = self
             .pool
             .get()
@@ -726,7 +732,6 @@ impl Backend {
     }
 
     pub fn write(&self) -> BackendWriteTransaction {
-        // TODO: Don't use expect
         let conn = self
             .pool
             .get()

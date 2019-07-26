@@ -143,7 +143,7 @@ impl Handler<CreateRequest> for QueryServerV1 {
     fn handle(&mut self, msg: CreateRequest, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("create");
         let res = audit_segment!(&mut audit, || {
-            let qs_write = self.qs.write();
+            let mut qs_write = self.qs.write();
 
             let crt = match CreateEvent::from_request(&mut audit, msg, &qs_write) {
                 Ok(c) => c,
@@ -171,7 +171,7 @@ impl Handler<ModifyRequest> for QueryServerV1 {
     fn handle(&mut self, msg: ModifyRequest, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("modify");
         let res = audit_segment!(&mut audit, || {
-            let qs_write = self.qs.write();
+            let mut qs_write = self.qs.write();
             let mdf = match ModifyEvent::from_request(&mut audit, msg, &qs_write) {
                 Ok(m) => m,
                 Err(e) => {
@@ -197,7 +197,7 @@ impl Handler<DeleteRequest> for QueryServerV1 {
     fn handle(&mut self, msg: DeleteRequest, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("delete");
         let res = audit_segment!(&mut audit, || {
-            let qs_write = self.qs.write();
+            let mut qs_write = self.qs.write();
 
             let del = match DeleteEvent::from_request(&mut audit, msg, &qs_write) {
                 Ok(d) => d,
@@ -270,7 +270,7 @@ impl Handler<WhoamiMessage> for QueryServerV1 {
 
             // Make an event from the whoami request. This will process the event and
             // generate a selfuuid search.
-            // FIXME: This current handles the unauthenticated check, and will
+            // TODO: This current handles the unauthenticated check, and will
             // trigger the failure, but if we can manage to work out async
             // then move this to core.rs, and don't allow Option<UAT> to get
             // this far.

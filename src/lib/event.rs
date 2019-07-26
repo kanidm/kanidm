@@ -1,5 +1,5 @@
 use crate::audit::AuditScope;
-use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
+use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryReduced, EntryValid};
 use crate::filter::{Filter, FilterValid};
 use crate::proto::v1::Entry as ProtoEntry;
 use crate::proto::v1::{
@@ -30,7 +30,7 @@ use actix::prelude::*;
 use uuid::Uuid;
 
 // Should the event Result have the log items?
-// FIXME: Remove seralising here - each type should
+// TODO: Remove seralising here - each type should
 // have it's own result type!
 
 // TODO: Every event should have a uuid for logging analysis
@@ -50,7 +50,7 @@ pub struct SearchResult {
 }
 
 impl SearchResult {
-    pub fn new(entries: Vec<Entry<EntryValid, EntryCommitted>>) -> Self {
+    pub fn new(entries: Vec<Entry<EntryReduced, EntryCommitted>>) -> Self {
         SearchResult {
             entries: entries
                 .iter()
@@ -119,7 +119,7 @@ impl Event {
         let uat = uat.ok_or(OperationError::NotAuthenticated)?;
 
         let e = try_audit!(audit, qs.internal_search_uuid(audit, uat.uuid.as_str()));
-        // FIXME: Now apply claims from the uat into the Entry
+        // TODO: Now apply claims from the uat into the Entry
         // to allow filtering.
 
         Ok(Event {
@@ -342,7 +342,7 @@ pub struct CreateEvent {
     // This may affect which plugins are run ...
 }
 
-// FIXME: Should this actually be in createEvent handler?
+// TODO: Should this actually be in createEvent handler?
 impl CreateEvent {
     pub fn from_request(
         audit: &mut AuditScope,
@@ -679,7 +679,7 @@ pub struct WhoamiResult {
 }
 
 impl WhoamiResult {
-    pub fn new(e: Entry<EntryValid, EntryCommitted>) -> Self {
+    pub fn new(e: Entry<EntryReduced, EntryCommitted>) -> Self {
         WhoamiResult {
             youare: e.into_pe(),
         }

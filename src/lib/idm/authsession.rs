@@ -13,7 +13,7 @@ enum CredState {
     Success(Vec<Claim>),
     Continue(Vec<AuthAllowed>),
     // TODO: Should we have a reason in Denied so that we
-    Denied,
+    Denied(&'static str),
 }
 
 #[derive(Clone, Debug)]
@@ -35,24 +35,27 @@ impl CredHandler {
     pub fn validate(&mut self, creds: &Vec<AuthCredential>) -> CredState {
         match self {
             CredHandler::Anonymous => {
-                creds.iter().fold(CredState::Denied, |acc, cred| {
-                    // TODO: if denied, continue returning denied.
-                    // TODO: if continue, contunue returning continue.
-                    // How to do this correctly?
+                creds.iter().fold(
+                    CredState::Denied("non-anonymous credential provided"),
+                    |acc, cred| {
+                        // TODO: if denied, continue returning denied.
+                        // TODO: if continue, contunue returning continue.
+                        // How to do this correctly?
 
-                    // There is no "continuation" from this type.
-                    match cred {
-                        AuthCredential::Anonymous => {
-                            // For anonymous, no claims will ever be issued.
-                            CredState::Success(Vec::new())
+                        // There is no "continuation" from this type.
+                        match cred {
+                            AuthCredential::Anonymous => {
+                                // For anonymous, no claims will ever be issued.
+                                CredState::Success(Vec::new())
+                            }
+                            _ => {
+                                // Should we have a reason in Denied so that we can say why denied?
+                                acc
+                                // CredState::Denied
+                            }
                         }
-                        _ => {
-                            // Should we have a reason in Denied so that we can say why denied?
-                            acc
-                            // CredState::Denied
-                        }
-                    }
-                })
+                    },
+                )
             }
         }
     }
@@ -137,9 +140,9 @@ impl AuthSession {
                 Ok(AuthState::Success(uat))
             }
             CredState::Continue(allowed) => Ok(AuthState::Continue(allowed)),
-            CredState::Denied => {
+            CredState::Denied(reason) => {
                 self.finished = true;
-                Ok(AuthState::Denied)
+                Ok(AuthState::Denied(reason.to_string()))
             }
         }
         // Also send an async message to self to log the auth as provided.

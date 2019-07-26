@@ -74,7 +74,7 @@ impl Plugin for ReferentialIntegrity {
     // be in cand AND db" to simply "is it in the DB?".
     fn post_create(
         au: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         cand: &Vec<Entry<EntryValid, EntryNew>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
@@ -102,7 +102,7 @@ impl Plugin for ReferentialIntegrity {
 
     fn post_modify(
         au: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         _pre_cand: &Vec<Entry<EntryValid, EntryCommitted>>,
         _cand: &Vec<Entry<EntryValid, EntryCommitted>>,
         me: &ModifyEvent,
@@ -131,7 +131,7 @@ impl Plugin for ReferentialIntegrity {
 
     fn post_delete(
         au: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         cand: &Vec<Entry<EntryValid, EntryCommitted>>,
         _ce: &DeleteEvent,
     ) -> Result<(), OperationError> {

@@ -221,13 +221,12 @@ fn auth(
                                                     }
                                                 }
                                             }
-                                            AuthState::Denied => {
+                                            AuthState::Denied(_) => {
                                                 // Remove the auth-session-id
                                                 req.session().remove("auth-session-id");
                                                 Ok(HttpResponse::Ok().json(ar))
                                             }
                                             AuthState::Continue(_) => {
-                                                // TODO: Where do we get the auth-session-id from?
                                                 // Ensure the auth-session-id is set
                                                 match req
                                                     .session()

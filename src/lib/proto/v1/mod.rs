@@ -68,7 +68,7 @@ pub struct UserAuthToken {
 
 /* ===== low level proto types ===== */
 
-// FIXME: We probably need a proto entry to transform our
+// TODO: We probably need a proto entry to transform our
 // server core entry into. We also need to get from proto
 // entry to our actual entry.
 //
@@ -265,7 +265,7 @@ pub enum AuthState {
     // for the client to view.
     Success(UserAuthToken),
     // Something was bad, your session is terminated and no cookie.
-    Denied,
+    Denied(String),
     // Continue to auth, allowed mechanisms listed.
     Continue(Vec<AuthAllowed>),
 }

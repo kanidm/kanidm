@@ -19,7 +19,7 @@ impl Plugin for Protected {
 
     fn pre_create(
         au: &mut AuditScope,
-        _qs: &QueryServerWriteTransaction,
+        _qs: &mut QueryServerWriteTransaction,
         // List of what we will commit that is valid?
         cand: &Vec<Entry<EntryValid, EntryNew>>,
         ce: &CreateEvent,
@@ -46,7 +46,7 @@ impl Plugin for Protected {
 
     fn pre_modify(
         au: &mut AuditScope,
-        _qs: &QueryServerWriteTransaction,
+        _qs: &mut QueryServerWriteTransaction,
         // Should these be EntryValid?
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         me: &ModifyEvent,
@@ -118,7 +118,7 @@ impl Plugin for Protected {
 
     fn pre_delete(
         au: &mut AuditScope,
-        _qs: &QueryServerWriteTransaction,
+        _qs: &mut QueryServerWriteTransaction,
         // Should these be EntryValid
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         de: &DeleteEvent,
