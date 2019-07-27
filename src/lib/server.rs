@@ -952,10 +952,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Is the filter invalid to schema?
         // This is now done in the event transform
 
-        // TODO: Fix this filter clone ....
-        // Likely this will be fixed if search takes &filter, and then clone
-        // to normalise, instead of attempting to mut the filter on norm.
-        //
         // This also checks access controls due to use of the impersonation.
         let pre_candidates = match self.impersonate_search_valid(
             au,
@@ -1673,7 +1669,6 @@ mod tests {
                 assert!(server_txn.initialise_schema_core(audit).is_ok());
                 assert!(server_txn.commit(audit).is_ok());
             }
-            // TODO: Check the content is as expected
         });
     }
 

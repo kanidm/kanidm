@@ -356,9 +356,6 @@ impl BackendWriteTransaction {
 
             // write them all
             for ser_entry in ser_entries {
-                // TODO: Prepared statement.
-                // Actually, I'm not sure we can - prepared stmt are per-conn, and we don't
-                // hold conns for that long? Maybe we should just rely on the stmt cache in sqlite?
                 try_audit!(
                     au,
                     stmt.execute_named(&[
@@ -618,8 +615,8 @@ impl BackendWriteTransaction {
 
     pub fn setup(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
         {
-            // TODO:
-            // conn.execute("PRAGMA journal_mode=WAL;", NO_PARAMS)
+            // Enable WAL mode, which is just faster and better.
+            self.conn.execute("PRAGMA journal_mode=WAL;", NO_PARAMS);
 
             // This stores versions of components. For example:
             // ----------------------
@@ -693,7 +690,7 @@ impl BackendWriteTransaction {
 
 // In the future this will do the routing between the chosen backends etc.
 impl Backend {
-    pub fn new(audit: &mut AuditScope, path: &str) -> Result<Self, OperationError> {
+    pub fn new(audit: &mut AuditScope, path: &str, pool_size: u32) -> Result<Self, OperationError> {
         // this has a ::memory() type, but will path == "" work?
         audit_segment!(audit, || {
             let manager = SqliteConnectionManager::file(path);
@@ -703,8 +700,7 @@ impl Backend {
                 // a single DB thread, else we cause consistency issues.
                 builder1.max_size(1)
             } else {
-                // TODO: Make this configurable
-                builder1.max_size(8)
+                builder1.max_size(pool_size)
             };
             // Look at max_size and thread_pool here for perf later
             let pool = builder2.build(manager).expect("Failed to create pool");
@@ -766,7 +762,7 @@ mod tests {
         ($test_fn:expr) => {{
             let mut audit = AuditScope::new("run_test");
 
-            let be = Backend::new(&mut audit, "").expect("Failed to setup backend");
+            let be = Backend::new(&mut audit, "", 1).expect("Failed to setup backend");
             let be_txn = be.write();
 
             // Could wrap another future here for the future::ok bit...

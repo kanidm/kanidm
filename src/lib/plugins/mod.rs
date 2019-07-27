@@ -106,7 +106,9 @@ trait Plugin {
 
 pub struct Plugins {}
 
-// TODO: Should this be a function instead, to allow inlining and better debug?
+// Should this be a function instead, to allow inlining and better debug?
+// Probably not - I use this to generate the audit scope of the plugin from the type
+// and the ty can't really be "passed" to the fns with fn pointer stuff.
 
 macro_rules! run_pre_create_transform_plugin {
     (

@@ -257,7 +257,8 @@ fn auth(
 
 fn setup_backend(config: &Configuration) -> Result<Backend, OperationError> {
     let mut audit_be = AuditScope::new("backend_setup");
-    let be = Backend::new(&mut audit_be, config.db_path.as_str());
+    let pool_size: u32 = config.threads as u32;
+    let be = Backend::new(&mut audit_be, config.db_path.as_str(), pool_size);
     // debug!
     debug!("{}", audit_be);
     be

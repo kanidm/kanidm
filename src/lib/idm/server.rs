@@ -126,8 +126,11 @@ impl<'a> IdmServerWriteTransaction<'a> {
                 // of what's next, or ordering.
                 let next_mech = auth_session.valid_auth_mechs();
 
-                // TODO: Check that no session id of the same value
-                // already existed, if so, error!
+                // If we have a session of the same id, return an error (despite how
+                // unlikely this is ...
+                if self.sessions.contains_key(&sessionid) {
+                    return Err(OperationError::InvalidSessionState);
+                }
                 self.sessions.insert(sessionid, auth_session);
 
                 // Debugging: ensure we really inserted ...

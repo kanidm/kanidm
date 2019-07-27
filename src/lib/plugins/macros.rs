@@ -9,7 +9,7 @@ macro_rules! setup_test {
         let _ = env_logger::builder().is_test(true).try_init();
 
         // Create an in memory BE
-        let be = Backend::new($au, "").expect("Failed to init BE");
+        let be = Backend::new($au, "", 1).expect("Failed to init BE");
 
         let schema_outer = Schema::new($au).expect("Failed to init schema");
         let qs = QueryServer::new(be, schema_outer);
