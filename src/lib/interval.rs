@@ -32,7 +32,7 @@ impl Actor for IntervalActor {
     type Context = actix::Context<Self>;
 
     fn started(&mut self, ctx: &mut Self::Context) {
-        // TODO: This timeout could be configurable from config?
+        // TODO #65: This timeout could be configurable from config?
         ctx.run_interval(Duration::from_secs(PURGE_TIMEOUT), move |act, _ctx| {
             act.purge_recycled();
         });

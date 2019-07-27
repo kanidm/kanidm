@@ -1183,7 +1183,7 @@ pub struct SchemaWriteTransaction<'a> {
 }
 
 impl<'a> SchemaWriteTransaction<'a> {
-    // TODO: Schema probably needs to be part of the backend, so that commits are wholly atomic
+    // Schema probably needs to be part of the backend, so that commits are wholly atomic
     // but in the current design, we need to open be first, then schema, but we have to commit be
     // first, then schema to ensure that the be content matches our schema. Saying this, if your
     // schema commit fails we need to roll back still .... How great are transactions.

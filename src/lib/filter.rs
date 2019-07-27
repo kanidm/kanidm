@@ -266,7 +266,7 @@ impl Filter<FilterInvalid> {
         })
     }
 
-    // TODO: This has to have two versions to account for ro/rw traits, because RS can't
+    // This has to have two versions to account for ro/rw traits, because RS can't
     // monomorphise on the trait to call clone_value. An option is to make a fn that
     // takes "clone_value(t, a, v) instead, but that may have a similar issue.
     pub fn from_ro(
@@ -345,15 +345,11 @@ impl FilterComp {
     }
 
     pub fn validate(&self, schema: &SchemaTransaction) -> Result<FilterComp, SchemaError> {
-        // TODO:
-        // First, normalise (if possible)
-        // Then, validate
-
         // Optimisation is done at another stage.
 
         // This probably needs some rework
 
-        // TODO: Getting this each recursion could be slow. Maybe
+        // Getting this each recursion could be slow. Maybe
         // we need an inner functon that passes the reference?
         let schema_attributes = schema.get_attributes();
         let schema_name = schema_attributes

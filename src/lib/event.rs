@@ -29,12 +29,6 @@ use crate::proto::v1::SearchRecycledRequest;
 use actix::prelude::*;
 use uuid::Uuid;
 
-// Should the event Result have the log items?
-// TODO: Remove seralising here - each type should
-// have it's own result type!
-
-// TODO: Every event should have a uuid for logging analysis
-
 #[derive(Debug)]
 pub struct OpResult {}
 
@@ -119,7 +113,7 @@ impl Event {
         let uat = uat.ok_or(OperationError::NotAuthenticated)?;
 
         let e = try_audit!(audit, qs.internal_search_uuid(audit, uat.uuid.as_str()));
-        // TODO: Now apply claims from the uat into the Entry
+        // TODO #64: Now apply claims from the uat into the Entry
         // to allow filtering.
 
         Ok(Event {
@@ -164,7 +158,7 @@ impl Event {
     }
 
     pub fn from_impersonate(event: &Self) -> Self {
-        // TODO: In the future, we could change some of this data
+        // TODO #64 ?: In the future, we could change some of this data
         // to reflect the fact we are infact impersonating the action
         // rather than the user explicitly requesting it. Could matter
         // to audits and logs to determine what happened.
@@ -342,7 +336,6 @@ pub struct CreateEvent {
     // This may affect which plugins are run ...
 }
 
-// TODO: Should this actually be in createEvent handler?
 impl CreateEvent {
     pub fn from_request(
         audit: &mut AuditScope,
@@ -634,7 +627,6 @@ pub struct AuthEvent {
 impl AuthEvent {
     pub fn from_message(msg: AuthMessage) -> Result<Self, OperationError> {
         Ok(AuthEvent {
-            // TODO: Change to AuthMessage, and fill in uat?
             event: None,
             step: AuthEventStep::from_authstep(msg.req.step, msg.sessionid)?,
         })
@@ -661,7 +653,6 @@ impl AuthEvent {
 #[derive(Debug)]
 pub struct AuthResult {
     pub sessionid: Uuid,
-    // TODO: Make this an event specific authstate type?
     pub state: AuthState,
 }
 
@@ -691,8 +682,6 @@ impl WhoamiResult {
         }
     }
 }
-
-// TODO: Are these part of the proto?
 
 #[derive(Debug)]
 pub struct PurgeTombstoneEvent {

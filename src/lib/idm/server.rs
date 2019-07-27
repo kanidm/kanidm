@@ -18,7 +18,7 @@ pub struct IdmServer {
     // variaous accounts, and we have a good idea of how to structure the
     // in memory caches related to locking.
     //
-    // TODO: This needs a mark-and-sweep gc to be added.
+    // TODO #60: This needs a mark-and-sweep gc to be added.
     sessions: CowCell<BTreeMap<Uuid, AuthSession>>,
     // Need a reference to the query server.
     qs: QueryServer,
@@ -39,7 +39,7 @@ pub struct IdmServerReadTransaction<'a> {
 }
 
 impl IdmServer {
-    // TODO: Make number of authsessions configurable!!!
+    // TODO #59: Make number of authsessions configurable!!!
     pub fn new(qs: QueryServer) -> IdmServer {
         IdmServer {
             sessions: CowCell::new(BTreeMap::new()),
@@ -135,7 +135,6 @@ impl<'a> IdmServerWriteTransaction<'a> {
 
                 Ok(AuthResult {
                     sessionid: sessionid,
-                    // TODO: Change this to a better internal type?
                     state: AuthState::Continue(next_mech),
                 })
             }

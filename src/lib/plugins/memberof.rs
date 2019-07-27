@@ -106,7 +106,7 @@ fn apply_memberof(
         let mut mo_set: Vec<_> = groups
             .iter()
             .map(|g| {
-                // TODO: This could be more effecient
+                // TODO #61: This could be more effecient
                 let mut v = vec![g.get_uuid().clone()];
                 match g.get_ava("memberof") {
                     Some(mos) => {
@@ -129,8 +129,8 @@ fn apply_memberof(
 
         // first add a purged memberof to remove all mo we no longer
         // support.
-        // TODO: Could this be more efficient
-        // TODO: Could this affect replication? Or should the CL work out the
+        // TODO #61: Could this be more efficient
+        // TODO #68: Could this affect replication? Or should the CL work out the
         // true diff of the operation?
         let mo_purge = vec![
             Modify::Present("class".to_string(), "memberof".to_string()),
@@ -170,7 +170,7 @@ impl Plugin for MemberOf {
         "memberof"
     }
 
-    // TODO: We could make this more effecient by limiting change detection to ONLY member/memberof
+    // TODO #61: We could make this more effecient by limiting change detection to ONLY member/memberof
     // attrs rather than any attrs.
 
     fn post_create(

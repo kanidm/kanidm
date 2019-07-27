@@ -23,7 +23,7 @@ mod sqlite_be;
 
 #[derive(Debug)]
 struct IdEntry {
-    // TODO: for now this is i64 to make sqlite work, but entry is u64 for indexing reasons!
+    // TODO #20: for now this is i64 to make sqlite work, but entry is u64 for indexing reasons!
     id: i64,
     data: Vec<u8>,
 }
@@ -53,8 +53,8 @@ pub trait BackendTransaction {
     ) -> Result<Vec<Entry<EntryValid, EntryCommitted>>, OperationError> {
         // Do things
         // Alloc a vec for the entries.
-        // TODO: Make this actually a good size for the result set ...
-        // TODO: Actually compute indexes here.
+        // TODO #8: Make this actually a good size for the result set ...
+        // TODO #8: Actually compute indexes here.
         // So to make this use indexes, we can use the filter type and
         // destructure it to work out what we need to actually search (if
         // possible) to create the candidate set.
@@ -357,6 +357,8 @@ impl BackendWriteTransaction {
             // write them all
             for ser_entry in ser_entries {
                 // TODO: Prepared statement.
+                // Actually, I'm not sure we can - prepared stmt are per-conn, and we don't
+                // hold conns for that long? Maybe we should just rely on the stmt cache in sqlite?
                 try_audit!(
                     au,
                     stmt.execute_named(&[
@@ -396,7 +398,7 @@ impl BackendWriteTransaction {
 
             self.internal_create(au, &dbentries)
 
-            // TODO: update indexes (as needed)
+            // TODO #8: update indexes (as needed)
         })
     }
 
@@ -433,7 +435,7 @@ impl BackendWriteTransaction {
                 let data = serde_cbor::to_vec(&db_e).map_err(|_| OperationError::SerdeCborError)?;
 
                 Ok(IdEntry {
-                    // TODO: Instead of getting these from the server entry struct , we could lookup
+                    // TODO #8: Instead of getting these from the server entry struct , we could lookup
                     // uuid -> id in the index.
                     //
                     // relies on the uuid -> id index being correct (and implemented)
@@ -582,7 +584,7 @@ impl BackendWriteTransaction {
         } else {
             Err(OperationError::ConsistencyError(vr))
         }
-        // TODO: run re-index after db is restored
+        // TODO #8: run re-index after db is restored
     }
 
     pub fn commit(mut self) -> Result<(), OperationError> {

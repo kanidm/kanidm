@@ -35,7 +35,6 @@ use crate::event::{CreateEvent, DeleteEvent, EventOrigin, ModifyEvent, SearchEve
 #[derive(Debug, Clone)]
 pub struct AccessControlSearch {
     acp: AccessControlProfile,
-    // TODO: Make this a BTreeSet?
     attrs: Vec<String>,
 }
 
@@ -132,9 +131,7 @@ impl AccessControlDelete {
 #[derive(Debug, Clone)]
 pub struct AccessControlCreate {
     acp: AccessControlProfile,
-    // TODO: Make this a BTreeSet?
     classes: Vec<String>,
-    // TODO: Make this a BTreeSet?
     attrs: Vec<String>,
 }
 
@@ -193,11 +190,8 @@ impl AccessControlCreate {
 #[derive(Debug, Clone)]
 pub struct AccessControlModify {
     acp: AccessControlProfile,
-    // TODO: Make this a BTreeSet?
     classes: Vec<String>,
-    // TODO: Make this a BTreeSet?
     presattrs: Vec<String>,
-    // TODO: Make this a BTreeSet?
     remattrs: Vec<String>,
 }
 
@@ -514,7 +508,6 @@ pub trait AccessControlsTransaction {
         &self,
         audit: &mut AuditScope,
         se: &SearchEvent,
-        // TODO: This could actually take a &mut Vec and modify in place!
         entries: Vec<Entry<EntryValid, EntryCommitted>>,
     ) -> Result<Vec<Entry<EntryReduced, EntryCommitted>>, OperationError> {
         /*
@@ -568,7 +561,8 @@ pub trait AccessControlsTransaction {
 
         audit_log!(audit, "Related acs -> {:?}", related_acp);
 
-        // Get the set of attributes requested by the caller - TODO: This currently
+        // Get the set of attributes requested by the caller
+        // TODO #69: This currently
         // is ALL ATTRIBUTES, so we actually work here to just remove things we
         // CAN'T see instead.
 
@@ -754,7 +748,7 @@ pub trait AccessControlsTransaction {
                 let scoped_acp: Vec<&AccessControlModify> = related_acp
                     .iter()
                     .filter_map(|acm: &&AccessControlModify| {
-                        // TODO: We are continually compiling and using these
+                        // We are continually compiling and using these
                         // in a tight loop, so this is a possible oppurtunity
                         // to cache or handle these filters better - filter compiler
                         // cache maybe?

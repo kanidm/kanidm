@@ -329,7 +329,7 @@ pub trait QueryServerTransaction {
     //
     // For passwords, hashing and changes will take place later.
     //
-    // TODO: It could be argued that we should have a proper "Value" type, so that we can
+    // TODO #66: It could be argued that we should have a proper "Value" type, so that we can
     // take care of this a bit cleaner, and do the checks in that, but I think for
     // now this is good enough.
     fn clone_value(
@@ -581,7 +581,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Log the request
 
-        // TODO: Do we need limits on number of creates, or do we constraint
+        // TODO #67: Do we need limits on number of creates, or do we constraint
         // based on request size in the frontend?
 
         // Copy the entries to a writeable form.
@@ -853,7 +853,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             Err(e) => return Err(e),
         };
 
-        // TODO: Has an appropriate amount of time/condition past (ie replication events?)
+        // TODO #68: Has an appropriate amount of time/condition past (ie replication events?)
 
         // Delete them
         let mut audit_be = AuditScope::new("backend_delete");

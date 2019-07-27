@@ -68,12 +68,10 @@ pub struct UserAuthToken {
 
 /* ===== low level proto types ===== */
 
-// TODO: We probably need a proto entry to transform our
-// server core entry into. We also need to get from proto
-// entry to our actual entry.
+// ProtoEntry vs Entry
+// There is a good future reason for this seperation. It allows changing
+// the in memory server core entry type, without affecting the protoEntry type
 //
-// There is agood future reason for this seperation. It allows changing
-// the in memory server core entry type, without affecting the proto
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Entry {

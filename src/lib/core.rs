@@ -7,6 +7,7 @@ use actix_web::{
 
 use bytes::BytesMut;
 use futures::{future, Future, Stream};
+use time::Duration;
 
 use crate::config::Configuration;
 
@@ -349,6 +350,7 @@ pub fn create_server_core(config: Configuration) {
     let max_size = config.maximum_request;
     let secure_cookies = config.secure_cookies;
     let domain = config.domain.clone();
+    let cookie_key: [u8; 32] = config.cookie_key.clone();
 
     // start the web server
     actix_web::server::new(move || {
@@ -359,12 +361,18 @@ pub fn create_server_core(config: Configuration) {
         // Connect all our end points here.
         .middleware(middleware::Logger::default())
         .middleware(session::SessionStorage::new(
-            // TODO: Signed prevents tampering. this 32 byte key MUST
-            // be generated (probably stored in DB for cross-host access)
-            session::CookieSessionBackend::signed(&[0; 32])
+            // Signed prevents tampering. this 32 byte key MUST
+            // be generated (probably a cli option, and it's up to the
+            // server process to coordinate these on hosts). IE an RODC
+            // could have a different key than our write servers to prevent
+            // disclosure of a writeable token in case of compromise. It does
+            // mean that you can't load balance between the rodc and the write
+            // though, but that's tottaly reasonable.
+            session::CookieSessionBackend::signed(&cookie_key)
                 // Limit to path?
                 // .path("/")
-                //.max_age() duration of the token life TODO make this proper!
+                // TODO #63: make this configurable!
+                .max_age(Duration::hours(1))
                 // .domain(domain.as_str())
                 // .same_site(cookie::SameSite::Strict) // constrain to the domain
                 // Disallow from js and ...?

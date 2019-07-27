@@ -12,7 +12,6 @@ use crate::proto::v1::{AuthAllowed, AuthCredential, AuthState};
 enum CredState {
     Success(Vec<Claim>),
     Continue(Vec<AuthAllowed>),
-    // TODO: Should we have a reason in Denied so that we
     Denied(&'static str),
 }
 
@@ -36,27 +35,32 @@ impl CredHandler {
         match self {
             CredHandler::Anonymous => {
                 creds.iter().fold(
-                    CredState::Denied("non-anonymous credential provided"),
+                    CredState::Continue(vec![AuthAllowed::Anonymous]),
                     |acc, cred| {
-                        // TODO: if denied, continue returning denied.
-                        // TODO: if continue, contunue returning continue.
-                        // How to do this correctly?
-
-                        // There is no "continuation" from this type.
-                        match cred {
-                            AuthCredential::Anonymous => {
-                                // For anonymous, no claims will ever be issued.
-                                CredState::Success(Vec::new())
-                            }
+                        // There is no "continuation" from this type - we only set it at
+                        // the start assuming there is no values in the iter so we can tell
+                        // the session to continue up to some timelimit.
+                        match acc {
+                            // If denied, continue returning denied.
+                            CredState::Denied(_) => acc,
+                            // We have a continue or success, it's important we keep checking here
+                            // after the success, because if they sent "multiple" anonymous or
+                            // they sent anon + password, we need to handle both cases. Double anon
+                            // is okay, but anything else is instant failure, even if we already
+                            // had a success.
                             _ => {
-                                // Should we have a reason in Denied so that we can say why denied?
-                                acc
-                                // CredState::Denied
+                                match cred {
+                                    AuthCredential::Anonymous => {
+                                        // For anonymous, no claims will ever be issued.
+                                        CredState::Success(Vec::new())
+                                    }
+                                    _ => CredState::Denied("non-anonymous credential provided"),
+                                }
                             }
-                        }
+                        } // end match acc
                     },
                 )
-            }
+            } // end credhandler::anonymous
         }
     }
 
@@ -108,7 +112,7 @@ impl AuthSession {
         // Is the whole account locked?
         // What about in memory account locking? Is that something
         // we store in the account somehow?
-        // TODO: Implement handler locking!
+        // TODO #59: Implement handler locking!
 
         AuthSession {
             account: account,
@@ -149,7 +153,7 @@ impl AuthSession {
         // Alternately, open a write, and commit the needed security metadata here
         // now rather than async (probably better for lock-outs etc)
         //
-        // TODO: Async message the account owner about the login?
+        // TODO #59: Async message the account owner about the login?
         // If this fails, how can we in memory lock the account?
         //
         // The lockouts could also be an in-memory concept too?
@@ -159,7 +163,6 @@ impl AuthSession {
     }
 
     pub fn valid_auth_mechs(&self) -> Vec<AuthAllowed> {
-        // TODO: This needs logging ....
         if self.finished {
             Vec::new()
         } else {

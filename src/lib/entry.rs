@@ -947,11 +947,9 @@ impl<VALID, STATE> Entry<VALID, STATE> {
 
     pub fn attribute_substring(&self, attr: &str, subvalue: &str) -> bool {
         match self.attrs.get(attr) {
-            Some(v_list) => {
-                v_list
-                    .iter()
-                    .fold(false, |acc, v| if acc { acc } else { v.contains(subvalue) })
-            }
+            Some(v_list) => v_list
+                .iter()
+                .fold(false, |acc, v| if acc { acc } else { v.contains(subvalue) }),
             None => false,
         }
     }
