@@ -13,7 +13,8 @@ Kanidm is an identity management platform written in rust. Our goals are:
 * Correct and secure behaviour by default
 
 Today the project is still under heavy development to achieve these goals - we don't expect a fully
-functional release before early 2020.
+functional release before early 2020. It is important to note that not all needed security features
+of the system have been completed yet!
 
 ## Code of Conduct
 
@@ -55,6 +56,12 @@ Details to come ...
 * Fully synchronous behaviour: This is slow.
 * Generic database: We don't want to be another NoSQL database, we want to be an IDM solution.
 * Being LDAP/GSSAPI/Kerberos: These are all legacy protocols that are hard to use and confine our thinking - we should avoid "being like them".
+
+## Designs
+
+See the [designs] folder
+
+[designs]: https://github.com/Firstyear/kanidm/tree/master/designs
 
 ## Get involved
 
@@ -116,11 +123,6 @@ always stop and reset with:
 git rebase --abort
 ```
 
-
-
-## Designs
-
-See the designs folder
 
 ## Why do I see rsidm references?
 
