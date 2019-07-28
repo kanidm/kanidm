@@ -12,6 +12,19 @@ use std::collections::HashSet;
 
 pub struct Protected {}
 
+// Here is the declaration of all the attrs that can be altered by
+// a call on a system object. We trust they are allowed because
+// schema will have checked this, and we don't allow class changes!
+
+lazy_static! {
+    static ref ALLOWED_ATTRS: HashSet<&'static str> = {
+        let mut m = HashSet::new();
+        m.insert("must");
+        m.insert("may");
+        m
+    };
+}
+
 impl Plugin for Protected {
     fn id() -> &'static str {
         "plugin_protected"
@@ -19,7 +32,7 @@ impl Plugin for Protected {
 
     fn pre_create(
         au: &mut AuditScope,
-        _qs: &QueryServerWriteTransaction,
+        _qs: &mut QueryServerWriteTransaction,
         // List of what we will commit that is valid?
         cand: &Vec<Entry<EntryValid, EntryNew>>,
         ce: &CreateEvent,
@@ -46,7 +59,7 @@ impl Plugin for Protected {
 
     fn pre_modify(
         au: &mut AuditScope,
-        _qs: &QueryServerWriteTransaction,
+        _qs: &mut QueryServerWriteTransaction,
         // Should these be EntryValid?
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         me: &ModifyEvent,
@@ -102,15 +115,9 @@ impl Plugin for Protected {
                     Modify::Removed(a, _) => a,
                     Modify::Purged(a) => a,
                 };
-                // TODO: This should be a set or some kind of structure?
-                // I had issues statically allocating this though ... alternately
-                // we could make it a "configurable" type?
-                if a == "must" {
-                    Ok(())
-                } else if a == "may" {
-                    Ok(())
-                } else {
-                    Err(OperationError::SystemProtectedObject)
+                match ALLOWED_ATTRS.get(a.as_str()) {
+                    Some(_) => Ok(()),
+                    None => Err(OperationError::SystemProtectedObject),
                 }
             }
         })
@@ -118,7 +125,7 @@ impl Plugin for Protected {
 
     fn pre_delete(
         au: &mut AuditScope,
-        _qs: &QueryServerWriteTransaction,
+        _qs: &mut QueryServerWriteTransaction,
         // Should these be EntryValid
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         de: &DeleteEvent,

@@ -10,7 +10,9 @@ extern crate actix_web;
 extern crate futures;
 extern crate r2d2;
 extern crate r2d2_sqlite;
+extern crate rand;
 extern crate rusqlite;
+extern crate time;
 extern crate uuid;
 
 extern crate bytes;
@@ -39,11 +41,9 @@ mod async_log;
 #[macro_use]
 mod audit;
 mod be;
-// TODO: Should this be public?
 pub mod constants;
 mod entry;
 mod event;
-// TODO: Does this need pub?
 mod filter;
 mod interval;
 mod modify;

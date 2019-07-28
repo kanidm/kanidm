@@ -13,12 +13,12 @@ use uuid::Uuid;
 // use lru::LruCache;
 
 pub struct IdmServer {
-    // Need an auth-session table to save in progress authentications
-    // sessions:
+    // There is a good reason to keep this single thread - it
+    // means that limits to sessions can be easily applied and checked to
+    // variaous accounts, and we have a good idea of how to structure the
+    // in memory caches related to locking.
     //
-    // TODO: This should be Lru
-    // TODO: AuthSession should be per-session mutex to keep locking on the
-    //   cell low to allow more concurrent auths.
+    // TODO #60: This needs a mark-and-sweep gc to be added.
     sessions: CowCell<BTreeMap<Uuid, AuthSession>>,
     // Need a reference to the query server.
     qs: QueryServer,
@@ -39,7 +39,7 @@ pub struct IdmServerReadTransaction<'a> {
 }
 
 impl IdmServer {
-    // TODO: Make number of authsessions configurable!!!
+    // TODO #59: Make number of authsessions configurable!!!
     pub fn new(qs: QueryServer) -> IdmServer {
         IdmServer {
             sessions: CowCell::new(BTreeMap::new()),
@@ -60,7 +60,6 @@ impl IdmServer {
 }
 
 impl<'a> IdmServerWriteTransaction<'a> {
-    // TODO: This should be something else, not the proto token!
     pub fn auth(
         &mut self,
         au: &mut AuditScope,
@@ -119,7 +118,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
                 // typing and functionality so we can assess what auth types can
                 // continue, and helps to keep non-needed entry specific data
                 // out of the LRU.
-                let account = Account::try_from(entry)?;
+                let account = Account::try_from_entry(entry)?;
                 let auth_session = AuthSession::new(account, init.appid.clone());
 
                 // Get the set of mechanisms that can proceed. This is tied
@@ -127,8 +126,11 @@ impl<'a> IdmServerWriteTransaction<'a> {
                 // of what's next, or ordering.
                 let next_mech = auth_session.valid_auth_mechs();
 
-                // TODO: Check that no session id of the same value
-                // already existed, if so, error!
+                // If we have a session of the same id, return an error (despite how
+                // unlikely this is ...
+                if self.sessions.contains_key(&sessionid) {
+                    return Err(OperationError::InvalidSessionState);
+                }
                 self.sessions.insert(sessionid, auth_session);
 
                 // Debugging: ensure we really inserted ...
@@ -136,7 +138,6 @@ impl<'a> IdmServerWriteTransaction<'a> {
 
                 Ok(AuthResult {
                     sessionid: sessionid,
-                    // TODO: Change this to a better internal type?
                     state: AuthState::Continue(next_mech),
                 })
             }
@@ -152,7 +153,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
                 // Process the credentials here as required.
                 // Basically throw them at the auth_session and see what
                 // falls out.
-                auth_session.validate_creds(&creds.creds).map(|aus| {
+                auth_session.validate_creds(au, &creds.creds).map(|aus| {
                     AuthResult {
                         // Is this right?
                         sessionid: creds.sessionid,

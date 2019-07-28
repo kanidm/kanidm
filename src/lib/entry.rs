@@ -153,6 +153,9 @@ pub struct EntryInvalid;
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct EntryNormalised;
 
+#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+pub struct EntryReduced;
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Entry<VALID, STATE> {
     valid: VALID,
@@ -177,7 +180,11 @@ impl Entry<EntryInvalid, EntryNew> {
         }
     }
 
-    // FIXME: Can we consume protoentry?
+    // Could we consume protoentry?
+    //
+    // I think we could, but that would limit us to how protoentry works,
+    // where we are likely to actually change the Entry type here and how
+    // we store and represent types and data.
     pub fn from_proto_entry(
         audit: &mut AuditScope,
         e: &ProtoEntry,
@@ -189,7 +196,6 @@ impl Entry<EntryInvalid, EntryNew> {
 
         // Somehow we need to take the tree of e attrs, and convert
         // all ref types to our types ...
-
         let map2: Result<BTreeMap<String, Vec<String>>, OperationError> = e
             .attrs
             .iter()
@@ -245,12 +251,7 @@ impl<STATE> Entry<EntryNormalised, STATE> {
         };
         // Now validate it!
 
-        // First look at the classes on the entry.
-        // Now, check they are valid classes
-        //
-        // FIXME: We could restructure this to be a map that gets Some(class)
-        // if found, then do a len/filter/check on the resulting class set?
-
+        // We scope here to limit the time of borrow of ne.
         {
             // First, check we have class on the object ....
             if !ne.attribute_pres("class") {
@@ -258,14 +259,14 @@ impl<STATE> Entry<EntryNormalised, STATE> {
                 return Err(SchemaError::InvalidClass);
             }
 
-            let entry_classes = ne.classes();
+            // Do we have extensible?
+            let extensible = ne.attribute_value_pres("class", "extensibleobject");
+
+            let entry_classes = ne.classes().ok_or(SchemaError::InvalidClass)?;
             let entry_classes_size = entry_classes.len();
 
-            let classes: HashMap<String, &SchemaClass> = entry_classes
-                .filter_map(|c| match schema_classes.get(c) {
-                    Some(cls) => Some((c.clone(), cls)),
-                    None => None,
-                })
+            let classes: Vec<&SchemaClass> = entry_classes
+                .filter_map(|c| schema_classes.get(c))
                 .collect();
 
             if classes.len() != entry_classes_size {
@@ -273,32 +274,26 @@ impl<STATE> Entry<EntryNormalised, STATE> {
                 return Err(SchemaError::InvalidClass);
             };
 
-            let extensible = classes.contains_key("extensibleobject");
-
             // What this is really doing is taking a set of classes, and building an
-            // "overall" class that describes this exact object for checking
+            // "overall" class that describes this exact object for checking. IE we
+            // build a super must/may set from the small class must/may sets.
 
             //   for each class
             //      add systemmust/must and systemmay/may to their lists
             //      add anything from must also into may
 
             // Now from the set of valid classes make a list of must/may
-            // FIXME: This is clone on read, which may be really slow. It also may
-            // be inefficent on duplicates etc.
             //
             // NOTE: We still need this on extensible, because we still need to satisfy
-            // our other must conditions too!
-            let must: Result<HashMap<String, &SchemaAttribute>, _> = classes
+            // our other must conditions as well!
+            let must: Result<Vec<&SchemaAttribute>, _> = classes
                 .iter()
                 // Join our class systemmmust + must into one iter
-                .flat_map(|(_, cls)| cls.systemmust.iter().chain(cls.must.iter()))
+                .flat_map(|cls| cls.systemmust.iter().chain(cls.must.iter()))
                 .map(|s| {
                     // This should NOT fail - if it does, it means our schema is
                     // in an invalid state!
-                    Ok((
-                        s.clone(),
-                        schema_attributes.get(s).ok_or(SchemaError::Corrupted)?,
-                    ))
+                    Ok(schema_attributes.get(s).ok_or(SchemaError::Corrupted)?)
                 })
                 .collect();
 
@@ -306,11 +301,10 @@ impl<STATE> Entry<EntryNormalised, STATE> {
 
             // Check that all must are inplace
             //   for each attr in must, check it's present on our ent
-            // FIXME: Could we iter over only the attr_name
-            for (attr_name, _attr) in must {
-                let avas = ne.get_ava(&attr_name);
+            for attr in must {
+                let avas = ne.get_ava(&attr.name);
                 if avas.is_none() {
-                    return Err(SchemaError::MissingMustAttribute(String::from(attr_name)));
+                    return Err(SchemaError::MissingMustAttribute(attr.name.clone()));
                 }
             }
 
@@ -338,10 +332,13 @@ impl<STATE> Entry<EntryNormalised, STATE> {
                     }
                 }
             } else {
-                let may: Result<HashMap<String, &SchemaAttribute>, _> = classes
+                // We clone string here, but it's so we can check all
+                // the values in "may" ar here - so we can't avoid this look up. What we
+                // could do though, is have &String based on the schemaattribute though?;
+                let may: Result<HashMap<&String, &SchemaAttribute>, _> = classes
                     .iter()
                     // Join our class systemmmust + must + systemmay + may into one.
-                    .flat_map(|(_, cls)| {
+                    .flat_map(|cls| {
                         cls.systemmust
                             .iter()
                             .chain(cls.must.iter())
@@ -351,17 +348,17 @@ impl<STATE> Entry<EntryNormalised, STATE> {
                     .map(|s| {
                         // This should NOT fail - if it does, it means our schema is
                         // in an invalid state!
-                        Ok((
-                            s.clone(),
-                            schema_attributes.get(s).ok_or(SchemaError::Corrupted)?,
-                        ))
+                        Ok((s, schema_attributes.get(s).ok_or(SchemaError::Corrupted)?))
                     })
                     .collect();
 
                 let may = may?;
 
-                // FIXME: Error needs to say what is missing
-                // We need to return *all* missing attributes.
+                // TODO #70: Error needs to say what is missing
+                // We need to return *all* missing attributes, not just the first error
+                // we find. This will probably take a rewrite of the function definition
+                // to return a result<_, vec<schemaerror>> and for the schema errors to take
+                // information about what is invalid. It's pretty nontrivial.
 
                 // Check that any other attributes are in may
                 //   for each attr on the object, check it's in the may+must set
@@ -646,28 +643,37 @@ impl Entry<EntryValid, EntryCommitted> {
         self.state.id
     }
 
-    pub fn from_dbentry(db_e: DbEntry, id: u64) -> Self {
+    pub fn from_dbentry(db_e: DbEntry, id: u64) -> Option<Self> {
         let attrs = match db_e.ent {
             DbEntryVers::V1(v1) => v1.attrs,
         };
 
-        // TODO: Tidy this!
         let uuid: String = match attrs.get("uuid") {
             Some(vs) => vs.first(),
             None => None,
-        }
-        .expect("NO UUID PRESENT CORRUPT")
+        }?
         .clone();
 
-        Entry {
+        Some(Entry {
             valid: EntryValid { uuid: uuid },
             state: EntryCommitted { id },
             attrs: attrs,
+        })
+    }
+
+    #[cfg(test)]
+    pub fn to_reduced(self) -> Entry<EntryReduced, EntryCommitted> {
+        Entry {
+            valid: EntryReduced,
+            state: self.state,
+            attrs: self.attrs,
         }
     }
 
-    pub fn reduce_attributes(self, allowed_attrs: BTreeSet<&str>) -> Self {
-        // TODO: Make this inplace, not copying.
+    pub fn reduce_attributes(
+        self,
+        allowed_attrs: BTreeSet<&str>,
+    ) -> Entry<EntryReduced, EntryCommitted> {
         // Remove all attrs from our tree that are NOT in the allowed set.
 
         let Entry {
@@ -688,7 +694,7 @@ impl Entry<EntryValid, EntryCommitted> {
             .collect();
 
         Entry {
-            valid: s_valid,
+            valid: EntryReduced,
             state: s_state,
             attrs: f_attrs,
         }
@@ -808,21 +814,6 @@ impl<STATE> Entry<EntryValid, STATE> {
         )))
     }
 
-    // FIXME: This should probably have an entry state for "reduced"
-    // and then only that state can provide the into_pe type, so that we
-    // can guarantee that all entries must have been security checked.
-    pub fn into_pe(&self) -> ProtoEntry {
-        // It's very likely that at this stage we'll need to apply
-        // access controls, dynamic attributes or more.
-        // As a result, this may not even be the right place
-        // for the conversion as algorithmically it may be
-        // better to do this from the outside view. This can
-        // of course be identified and changed ...
-        ProtoEntry {
-            attrs: self.attrs.clone(),
-        }
-    }
-
     pub fn gen_modlist_assert(
         &self,
         schema: &SchemaTransaction,
@@ -843,7 +834,11 @@ impl<STATE> Entry<EntryValid, STATE> {
             // In the future, if we make uuid a real entry type, then this
             // check can "go away" because uuid will never exist as an ava.
             //
-            // TODO: Remove this check when uuid becomes a real attribute.
+            // NOTE: Remove this check when uuid becomes a real attribute.
+            // UUID is now a real attribute, but it also has an ava for db_entry
+            // conversion - so what do? If we remove it here, we could have CSN issue with
+            // repl on uuid conflict, but it probably shouldn't be an ava either ...
+            // as a result, I think we need to keep this continue line to not cause issues.
             if k == "uuid" {
                 continue;
             }
@@ -868,9 +863,29 @@ impl<STATE> Entry<EntryValid, STATE> {
     }
 }
 
+impl Entry<EntryReduced, EntryCommitted> {
+    pub fn into_pe(&self) -> ProtoEntry {
+        // It's very likely that at this stage we'll need to apply
+        // access controls, dynamic attributes or more.
+        // As a result, this may not even be the right place
+        // for the conversion as algorithmically it may be
+        // better to do this from the outside view. This can
+        // of course be identified and changed ...
+        ProtoEntry {
+            attrs: self.attrs.clone(),
+        }
+    }
+}
+
+// impl<STATE> Entry<EntryValid, STATE> {
 impl<VALID, STATE> Entry<VALID, STATE> {
-    /* WARNING: Should these TODO move to EntryValid only? */
-    // TODO: Should this be Vec<&str>?
+    /*
+     * WARNING: Should these TODO move to EntryValid only?
+     * I've tried to do this once, but the issue is that there
+     * is a lot of code in normalised and other states that
+     * relies on the ability to get ava. I think we may not be
+     * able to do so "easily".
+     */
     pub fn get_ava(&self, attr: &str) -> Option<&Vec<String>> {
         self.attrs.get(attr)
     }
@@ -904,11 +919,23 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     }
 
     pub fn attribute_pres(&self, attr: &str) -> bool {
-        // FIXME: Do we need to normalise attr name?
+        // Note, we don't normalise attr name, but I think that's not
+        // something we should over-optimise on.
         self.attrs.contains_key(attr)
     }
 
     pub fn attribute_value_pres(&self, attr: &str, value: &str) -> bool {
+        // Yeah, this is techdebt, but both names of this fn are valid - we are
+        // checking if an attribute-value is equal to, or asserting it's present
+        // as a pair. So I leave both, and let the compiler work it out.
+        self.attribute_equality(attr, value)
+    }
+
+    pub fn attribute_equality(&self, attr: &str, value: &str) -> bool {
+        // we assume based on schema normalisation on the way in
+        // that the equality here of the raw values MUST be correct.
+        // We also normalise filters, to ensure that their values are
+        // syntax valid and will correctly match here with our indexes.
         match self.attrs.get(attr) {
             Some(v_list) => match v_list.binary_search(&value.to_string()) {
                 Ok(_) => true,
@@ -918,35 +945,21 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         }
     }
 
-    pub fn attribute_equality(&self, attr: &str, value: &str) -> bool {
-        // we assume based on schema normalisation on the way in
-        // that the equality here of the raw values MUST be correct.
-        // We also normalise filters, to ensure that their values are
-        // syntax valid and will correctly match here with our indexes.
-
-        // FIXME: Make this binary_search
-
-        self.attrs.get(attr).map_or(false, |v| {
-            v.iter()
-                .fold(false, |acc, av| if acc { acc } else { value == av })
-        })
+    pub fn attribute_substring(&self, attr: &str, subvalue: &str) -> bool {
+        match self.attrs.get(attr) {
+            Some(v_list) => v_list
+                .iter()
+                .fold(false, |acc, v| if acc { acc } else { v.contains(subvalue) }),
+            None => false,
+        }
     }
 
-    pub fn attribute_substring(&self, _attr: &str, _subvalue: &str) -> bool {
-        unimplemented!();
-    }
-
-    pub fn classes(&self) -> EntryClasses {
+    pub fn classes(&self) -> Option<EntryClasses> {
         // Get the class vec, if any?
         // How do we indicate "empty?"
-        // FIXME: Actually handle this error ...
-        let v = self
-            .attrs
-            .get("class")
-            .map(|c| c.len())
-            .expect("INVALID STATE, NO CLASS FOUND");
+        let v = self.attrs.get("class").map(|c| c.len())?;
         let c = self.attrs.get("class").map(|c| c.iter());
-        EntryClasses { size: v, inner: c }
+        Some(EntryClasses { size: v, inner: c })
     }
 
     pub fn avas(&self) -> EntryAvas {
@@ -1001,22 +1014,20 @@ where
     // a list of syntax violations ...
     // If this already exists, we silently drop the event? Is that an
     // acceptable interface?
-    // Should value here actually be a &str?
     pub fn add_ava(&mut self, attr: &str, value: &str) {
-        // get_mut to access value
         // How do we make this turn into an ok / err?
         self.attrs
             .entry(attr.to_string())
             .and_modify(|v| {
                 // Here we need to actually do a check/binary search ...
-                // FIXME: Because map_err is lazy, this won't do anything on release
-                // TODO: Is there a way to avoid the double to_string here?
                 match v.binary_search(&value.to_string()) {
                     // It already exists, done!
                     Ok(_) => {}
                     Err(idx) => {
                         // This cloning is to fix a borrow issue with the or_insert below.
                         // Is there a better way?
+                        //
+                        // I think it's only run once anyway, so non-issue?
                         v.insert(idx, value.to_string())
                     }
                 }
@@ -1025,31 +1036,26 @@ where
     }
 
     pub fn remove_ava(&mut self, attr: &str, value: &str) {
-        // TODO fix this to_string
+        // It would be great to remove these extra allocations, but they
+        // really don't cost much :(
         let mv = value.to_string();
-        self.attrs
-            // TODO: Fix this to_string
-            .entry(attr.to_string())
-            .and_modify(|v| {
-                // Here we need to actually do a check/binary search ...
-                // FIXME: Because map_err is lazy, this won't do anything on release
-                match v.binary_search(&mv) {
-                    // It exists, rm it.
-                    Ok(idx) => {
-                        v.remove(idx);
-                    }
-                    // It does not exist, move on.
-                    Err(_) => {}
+        self.attrs.entry(attr.to_string()).and_modify(|v| {
+            // Here we need to actually do a check/binary search ...
+            match v.binary_search(&mv) {
+                // It exists, rm it.
+                Ok(idx) => {
+                    v.remove(idx);
                 }
-            });
+                // It does not exist, move on.
+                Err(_) => {}
+            }
+        });
     }
 
     pub fn purge_ava(&mut self, attr: &str) {
         self.attrs.remove(attr);
     }
 
-    // FIXME: Should this collect from iter instead?
-    // TODO: Should this be a Vec<&str>
     /// Overwrite the existing avas.
     pub fn set_avas(&mut self, attr: &str, values: Vec<String>) {
         // Overwrite the existing value
@@ -1063,6 +1069,7 @@ where
     }
 
     // Should this be schemaless, relying on checks of the modlist, and the entry validate after?
+    // YES. Makes it very cheap.
     pub fn apply_modlist(&mut self, modlist: &ModifyList<ModifyValid>) {
         // -> Result<Entry<EntryInvalid, STATE>, OperationError> {
         // Apply a modlist, generating a new entry that conforms to the changes.
@@ -1104,12 +1111,6 @@ impl From<&SchemaAttribute> for Entry<EntryValid, EntryNew> {
         let name_v = vec![s.name.clone()];
         let desc_v = vec![s.description.clone()];
 
-        let secret_v = vec![if s.secret {
-            "true".to_string()
-        } else {
-            "false".to_string()
-        }];
-
         let multivalue_v = vec![if s.multivalue {
             "true".to_string()
         } else {
@@ -1125,7 +1126,6 @@ impl From<&SchemaAttribute> for Entry<EntryValid, EntryNew> {
         attrs.insert("name".to_string(), name_v);
         attrs.insert("description".to_string(), desc_v);
         attrs.insert("uuid".to_string(), uuid_v);
-        attrs.insert("secret".to_string(), secret_v);
         attrs.insert("multivalue".to_string(), multivalue_v);
         attrs.insert("index".to_string(), index_v);
         attrs.insert("syntax".to_string(), syntax_v);
@@ -1231,6 +1231,21 @@ mod tests {
         assert!(e.attribute_equality("userid", "william"));
         assert!(!e.attribute_equality("userid", "test"));
         assert!(!e.attribute_equality("nonexist", "william"));
+    }
+
+    #[test]
+    fn test_entry_substring() {
+        let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
+
+        e.add_ava("userid", "william");
+
+        assert!(e.attribute_substring("userid", "william"));
+        assert!(e.attribute_substring("userid", "will"));
+        assert!(e.attribute_substring("userid", "liam"));
+        assert!(e.attribute_substring("userid", "lli"));
+        assert!(!e.attribute_substring("userid", "llim"));
+        assert!(!e.attribute_substring("userid", "bob"));
+        assert!(!e.attribute_substring("userid", "wl"));
     }
 
     #[test]

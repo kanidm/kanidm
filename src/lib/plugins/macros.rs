@@ -9,14 +9,14 @@ macro_rules! setup_test {
         let _ = env_logger::builder().is_test(true).try_init();
 
         // Create an in memory BE
-        let be = Backend::new($au, "").expect("Failed to init BE");
+        let be = Backend::new($au, "", 1).expect("Failed to init BE");
 
         let schema_outer = Schema::new($au).expect("Failed to init schema");
         let qs = QueryServer::new(be, schema_outer);
         qs.initialise_helper($au).expect("init failed!");
 
         if !$preload_entries.is_empty() {
-            let qs_write = qs.write();
+            let mut qs_write = qs.write();
             qs_write
                 .internal_create($au, $preload_entries)
                 .expect("Failed to preload entries");
@@ -56,7 +56,7 @@ macro_rules! run_create_test {
 
             let mut au_test = AuditScope::new("create_test");
             {
-                let qs_write = qs.write();
+                let mut qs_write = qs.write();
                 let r = qs_write.create(&mut au_test, &ce);
                 debug!("r: {:?}", r);
                 assert!(r == $expect);
@@ -110,7 +110,7 @@ macro_rules! run_modify_test {
 
             let mut au_test = AuditScope::new("modify_test");
             {
-                let qs_write = qs.write();
+                let mut qs_write = qs.write();
                 let r = qs_write.modify(&mut au_test, &me);
                 $check(&mut au_test, &qs_write);
                 assert!(r == $expect);
@@ -162,7 +162,7 @@ macro_rules! run_delete_test {
 
             let mut au_test = AuditScope::new("delete_test");
             {
-                let qs_write = qs.write();
+                let mut qs_write = qs.write();
                 let r = qs_write.delete(&mut au_test, &de);
                 $check(&mut au_test, &qs_write);
                 assert!(r == $expect);

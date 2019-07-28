@@ -68,12 +68,10 @@ pub struct UserAuthToken {
 
 /* ===== low level proto types ===== */
 
-// FIXME: We probably need a proto entry to transform our
-// server core entry into. We also need to get from proto
-// entry to our actual entry.
+// ProtoEntry vs Entry
+// There is a good future reason for this seperation. It allows changing
+// the in memory server core entry type, without affecting the protoEntry type
 //
-// There is agood future reason for this seperation. It allows changing
-// the in memory server core entry type, without affecting the proto
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Entry {
@@ -265,15 +263,13 @@ pub enum AuthState {
     // for the client to view.
     Success(UserAuthToken),
     // Something was bad, your session is terminated and no cookie.
-    Denied,
+    Denied(String),
     // Continue to auth, allowed mechanisms listed.
     Continue(Vec<AuthAllowed>),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AuthResponse {
-    // TODO: Consider moving to an AuthMessageResponse type, and leave the proto
-    // without the session id because it's not necesary to know.
     pub sessionid: Uuid,
     pub state: AuthState,
 }

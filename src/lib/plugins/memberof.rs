@@ -50,10 +50,11 @@ where
         .flatten()
         .collect();
 
-    // Sort
-    // TODO: promote groups to head of the affected_uuids set!
-    // this could be assisted by indexing in the future by providing a custom compare
-    // algo!!!
+    // IDEA: promote groups to head of the affected_uuids set!
+    //
+    // This isn't worth doing - it's only used in create/delete, it would not
+    // really make a large performance difference. Better to target improvements
+    // in the apply_memberof fn.
     affected_uuids.sort();
     // Remove dups
     affected_uuids.dedup();
@@ -63,7 +64,7 @@ where
 
 fn apply_memberof(
     au: &mut AuditScope,
-    qs: &QueryServerWriteTransaction,
+    qs: &mut QueryServerWriteTransaction,
     affected_uuids: Vec<&String>,
 ) -> Result<(), OperationError> {
     audit_log!(au, " => entering apply_memberof");
@@ -105,7 +106,7 @@ fn apply_memberof(
         let mut mo_set: Vec<_> = groups
             .iter()
             .map(|g| {
-                // TODO: This could be more effecient
+                // TODO #61: This could be more effecient
                 let mut v = vec![g.get_uuid().clone()];
                 match g.get_ava("memberof") {
                     Some(mos) => {
@@ -128,8 +129,8 @@ fn apply_memberof(
 
         // first add a purged memberof to remove all mo we no longer
         // support.
-        // TODO: Could this be more efficient
-        // TODO: Could this affect replication? Or should the CL work out the
+        // TODO #61: Could this be more efficient
+        // TODO #68: Could this affect replication? Or should the CL work out the
         // true diff of the operation?
         let mo_purge = vec![
             Modify::Present("class".to_string(), "memberof".to_string()),
@@ -169,12 +170,12 @@ impl Plugin for MemberOf {
         "memberof"
     }
 
-    // TODO: We could make this more effecient by limiting change detection to ONLY member/memberof
+    // TODO #61: We could make this more effecient by limiting change detection to ONLY member/memberof
     // attrs rather than any attrs.
 
     fn post_create(
         au: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         cand: &Vec<Entry<EntryValid, EntryNew>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
@@ -187,7 +188,7 @@ impl Plugin for MemberOf {
 
     fn post_modify(
         au: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         pre_cand: &Vec<Entry<EntryValid, EntryCommitted>>,
         cand: &Vec<Entry<EntryValid, EntryCommitted>>,
         _me: &ModifyEvent,
@@ -198,16 +199,17 @@ impl Plugin for MemberOf {
             .zip(cand.iter())
             .filter(|(pre, post)| {
                 // This is the base case to break cycles in recursion!
-                pre != post
-                    && (
-                        // AND if it was a group, or will become a group.
+                (
+                        // If it was a group, or will become a group.
                         post.attribute_value_pres("class", "group")
                             || pre.attribute_value_pres("class", "group")
                     )
+                    // And the group has changed ...
+                    && pre != post
+                // Then memberof should be updated!
             })
             // Flatten the pre-post tuples. We no longer care if it was
             // pre-post
-            // TODO: Could this be more effecient?
             .flat_map(|(pre, post)| vec![pre, post])
             .inspect(|e| {
                 audit_log!(au, "group reporting change: {:?}", e);
@@ -229,7 +231,7 @@ impl Plugin for MemberOf {
 
     fn pre_delete(
         _au: &mut AuditScope,
-        _qs: &QueryServerWriteTransaction,
+        _qs: &mut QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _de: &DeleteEvent,
     ) -> Result<(), OperationError> {
@@ -256,7 +258,7 @@ impl Plugin for MemberOf {
 
     fn post_delete(
         au: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         cand: &Vec<Entry<EntryValid, EntryCommitted>>,
         _ce: &DeleteEvent,
     ) -> Result<(), OperationError> {

@@ -117,6 +117,8 @@ pub static JSON_IDM_SELF_ACP_READ_V1: &'static str = r#"{
     }
 }"#;
 
+pub static UUID_DOES_NOT_EXIST: &'static str = "00000000-0000-0000-0000-fffffffffffe";
+
 pub static UUID_ANONYMOUS: &'static str = "00000000-0000-0000-0000-ffffffffffff";
 pub static JSON_ANONYMOUS_V1: &'static str = r#"{
     "valid": {
@@ -133,66 +135,63 @@ pub static JSON_ANONYMOUS_V1: &'static str = r#"{
 }"#;
 
 // Core
-pub static UUID_SCHEMA_ATTR_CLASS: &'static str = "aa0f193f-3010-4783-9c9e-f97edb14d8c2";
-pub static UUID_SCHEMA_ATTR_UUID: &'static str = "642a893b-fe1a-4fe1-805d-fb78e7f83ee7";
-pub static UUID_SCHEMA_ATTR_NAME: &'static str = "27be9127-5ba1-4c06-bce9-7250f2c7f630";
-pub static UUID_SCHEMA_ATTR_PRINCIPAL_NAME: &'static str = "64dda3ac-12cb-4000-9b30-97a92767ccab";
-pub static UUID_SCHEMA_ATTR_DESCRIPTION: &'static str = "a4da35a2-c5fb-4f8f-a341-72cd39ec9eee";
-pub static UUID_SCHEMA_ATTR_SECRET: &'static str = "0231c61a-0a43-4987-9293-8732ed9459fa";
-pub static UUID_SCHEMA_ATTR_MULTIVALUE: &'static str = "8a6a8bf3-7053-42e2-8cda-15af7a197513";
-pub static UUID_SCHEMA_ATTR_INDEX: &'static str = "2c5ff455-0709-4f67-a37c-35ff7e67bfff";
-pub static UUID_SCHEMA_ATTR_SYNTAX: &'static str = "85e8c2c7-3852-48dd-bfc9-d0982a50e2ef";
-pub static UUID_SCHEMA_ATTR_SYSTEMMAY: &'static str = "f3842165-90ad-4465-ad71-1de63f8c98a1";
-pub static UUID_SCHEMA_ATTR_MAY: &'static str = "7adb7e2d-af8f-492e-8f1c-c5d9b7c47b5f";
-pub static UUID_SCHEMA_ATTR_SYSTEMMUST: &'static str = "e2e4abc4-7083-41ea-a663-43d904d949ce";
-pub static UUID_SCHEMA_ATTR_MUST: &'static str = "40e88ca8-06d7-4a51-b538-1125e51c02e0";
-pub static UUID_SCHEMA_ATTR_MEMBEROF: &'static str = "2ff1abc8-2f64-4f41-9e3d-33d44616a112";
-pub static UUID_SCHEMA_ATTR_MEMBER: &'static str = "cbb7cb55-1d48-4b89-8da7-8d570e755b47";
-pub static UUID_SCHEMA_ATTR_DIRECTMEMBEROF: &'static str = "63f6a766-3838-48e3-bd78-0fb1152b862f";
-pub static UUID_SCHEMA_ATTR_VERSION: &'static str = "896d5095-b3ae-451e-a91f-4314165b5395";
-pub static UUID_SCHEMA_ATTR_DOMAIN: &'static str = "c9926716-eaaa-4c83-a1ab-1ed4372a7491";
-/*
-pub static UUID_SCHEMA_ATTR_ACP_ALLOW: &'static str = "160ebaaf-5251-444c-aa41-8d1a572c147a";
-*/
-pub static UUID_SCHEMA_ATTR_ACP_ENABLE: &'static str = "7346a4a6-3dae-4e48-b606-a1c0c2abeba0";
-pub static UUID_SCHEMA_ATTR_ACP_RECEIVER: &'static str = "8e48d272-7818-400f-ac74-6ae05e6c79b8";
-pub static UUID_SCHEMA_ATTR_ACP_TARGETSCOPE: &'static str = "424bb6f3-44a1-4af8-8f4c-782a18f9240e";
-pub static UUID_SCHEMA_ATTR_ACP_SEARCH_ATTR: &'static str = "2ad9f789-9a9b-483b-8398-4734ef7b744f";
-pub static UUID_SCHEMA_ATTR_ACP_CREATE_CLASS: &'static str = "4daeee27-7b4a-48a1-bbb7-3bc30865c1aa";
-pub static UUID_SCHEMA_ATTR_ACP_CREATE_ATTR: &'static str = "cbe953bc-9999-4536-818d-0bbb6a0ab7a6";
+// Schema uuids start at 00000000-0000-0000-0000-ffff00000000
+pub static UUID_SCHEMA_ATTR_CLASS: &'static str = "00000000-0000-0000-0000-ffff00000000";
+pub static UUID_SCHEMA_ATTR_UUID: &'static str = "00000000-0000-0000-0000-ffff00000001";
+pub static UUID_SCHEMA_ATTR_NAME: &'static str = "00000000-0000-0000-0000-ffff00000002";
+pub static UUID_SCHEMA_ATTR_PRINCIPAL_NAME: &'static str = "00000000-0000-0000-0000-ffff00000003";
+pub static UUID_SCHEMA_ATTR_DESCRIPTION: &'static str = "00000000-0000-0000-0000-ffff00000004";
+pub static UUID_SCHEMA_ATTR_MULTIVALUE: &'static str = "00000000-0000-0000-0000-ffff00000005";
+pub static UUID_SCHEMA_ATTR_INDEX: &'static str = "00000000-0000-0000-0000-ffff00000006";
+pub static UUID_SCHEMA_ATTR_SYNTAX: &'static str = "00000000-0000-0000-0000-ffff00000007";
+pub static UUID_SCHEMA_ATTR_SYSTEMMAY: &'static str = "00000000-0000-0000-0000-ffff00000008";
+pub static UUID_SCHEMA_ATTR_MAY: &'static str = "00000000-0000-0000-0000-ffff00000009";
+pub static UUID_SCHEMA_ATTR_SYSTEMMUST: &'static str = "00000000-0000-0000-0000-ffff00000010";
+pub static UUID_SCHEMA_ATTR_MUST: &'static str = "00000000-0000-0000-0000-ffff00000011";
+pub static UUID_SCHEMA_ATTR_MEMBEROF: &'static str = "00000000-0000-0000-0000-ffff00000012";
+pub static UUID_SCHEMA_ATTR_MEMBER: &'static str = "00000000-0000-0000-0000-ffff00000013";
+pub static UUID_SCHEMA_ATTR_DIRECTMEMBEROF: &'static str = "00000000-0000-0000-0000-ffff00000014";
+pub static UUID_SCHEMA_ATTR_VERSION: &'static str = "00000000-0000-0000-0000-ffff00000015";
+pub static UUID_SCHEMA_ATTR_DOMAIN: &'static str = "00000000-0000-0000-0000-ffff00000016";
+pub static UUID_SCHEMA_ATTR_ACP_ENABLE: &'static str = "00000000-0000-0000-0000-ffff00000017";
+pub static UUID_SCHEMA_ATTR_ACP_RECEIVER: &'static str = "00000000-0000-0000-0000-ffff00000018";
+pub static UUID_SCHEMA_ATTR_ACP_TARGETSCOPE: &'static str = "00000000-0000-0000-0000-ffff00000019";
+pub static UUID_SCHEMA_ATTR_ACP_SEARCH_ATTR: &'static str = "00000000-0000-0000-0000-ffff00000020";
+pub static UUID_SCHEMA_ATTR_ACP_CREATE_CLASS: &'static str = "00000000-0000-0000-0000-ffff00000021";
+pub static UUID_SCHEMA_ATTR_ACP_CREATE_ATTR: &'static str = "00000000-0000-0000-0000-ffff00000022";
 pub static UUID_SCHEMA_ATTR_ACP_MODIFY_REMOVEDATTR: &'static str =
-    "67f98a76-74c4-4bf1-8baa-6e6a5b7b064d";
+    "00000000-0000-0000-0000-ffff00000023";
 pub static UUID_SCHEMA_ATTR_ACP_MODIFY_PRESENTATTR: &'static str =
-    "2df6a429-e060-40e1-8551-be101aff3496";
-pub static UUID_SCHEMA_ATTR_ACP_MODIFY_CLASS: &'static str = "a6f0cf6e-c748-4aa4-8c77-9f1cb89b7f4a";
+    "00000000-0000-0000-0000-ffff00000024";
+pub static UUID_SCHEMA_ATTR_ACP_MODIFY_CLASS: &'static str = "00000000-0000-0000-0000-ffff00000025";
 
-pub static UUID_SCHEMA_CLASS_ATTRIBUTETYPE: &'static str = "ed65a356-a4d9-45a8-b4b9-5d40d9acdb7e";
-pub static UUID_SCHEMA_CLASS_CLASSTYPE: &'static str = "ec1964f6-0c72-4373-954f-f3a603c5f8bb";
-pub static UUID_SCHEMA_CLASS_OBJECT: &'static str = "579bb16d-1d85-4f8e-bb3b-6fc55af582fe";
+pub static UUID_SCHEMA_CLASS_ATTRIBUTETYPE: &'static str = "00000000-0000-0000-0000-ffff00000026";
+pub static UUID_SCHEMA_CLASS_CLASSTYPE: &'static str = "00000000-0000-0000-0000-ffff00000027";
+pub static UUID_SCHEMA_CLASS_OBJECT: &'static str = "00000000-0000-0000-0000-ffff00000028";
 pub static UUID_SCHEMA_CLASS_EXTENSIBLEOBJECT: &'static str =
-    "0fb2171d-372b-4d0d-9194-9a4d6846c324";
-pub static UUID_SCHEMA_CLASS_MEMBEROF: &'static str = "6c02b1d2-5f05-4216-8a82-b39a8b681be9";
+    "00000000-0000-0000-0000-ffff00000029";
+pub static UUID_SCHEMA_CLASS_MEMBEROF: &'static str = "00000000-0000-0000-0000-ffff00000030";
 
-pub static UUID_SCHEMA_CLASS_RECYCLED: &'static str = "813bb7e3-dadf-413d-acc4-197b03d55a4f";
-pub static UUID_SCHEMA_CLASS_TOMBSTONE: &'static str = "848a1224-0c3c-465f-abd0-10a32e21830e";
-pub static UUID_SCHEMA_CLASS_SYSTEM_INFO: &'static str = "510b2a38-0577-4680-b0ad-836ca3415e6c";
+pub static UUID_SCHEMA_CLASS_RECYCLED: &'static str = "00000000-0000-0000-0000-ffff00000031";
+pub static UUID_SCHEMA_CLASS_TOMBSTONE: &'static str = "00000000-0000-0000-0000-ffff00000032";
+pub static UUID_SCHEMA_CLASS_SYSTEM_INFO: &'static str = "00000000-0000-0000-0000-ffff00000033";
 pub static UUID_SCHEMA_CLASS_ACCESS_CONTROL_PROFILE: &'static str =
-    "78dd6c9a-ac61-4e53-928f-6e8b810a469b";
+    "00000000-0000-0000-0000-ffff00000034";
 pub static UUID_SCHEMA_CLASS_ACCESS_CONTROL_SEARCH: &'static str =
-    "1bbf256b-51a4-4716-9db8-ec51bb207ed5";
+    "00000000-0000-0000-0000-ffff00000035";
 pub static UUID_SCHEMA_CLASS_ACCESS_CONTROL_DELETE: &'static str =
-    "48af3c4d-0ba1-48de-a2b1-194f27ac1df1";
+    "00000000-0000-0000-0000-ffff00000036";
 pub static UUID_SCHEMA_CLASS_ACCESS_CONTROL_MODIFY: &'static str =
-    "fd860561-9d0a-4f12-be30-406834292d46";
+    "00000000-0000-0000-0000-ffff00000037";
 pub static UUID_SCHEMA_CLASS_ACCESS_CONTROL_CREATE: &'static str =
-    "58c5c197-51d8-4c30-9a8e-b8a0bb0eaacd";
-pub static UUID_SCHEMA_CLASS_SYSTEM: &'static str = "ee28df1e-cf02-49ca-80b5-8310fb619377";
+    "00000000-0000-0000-0000-ffff00000038";
+pub static UUID_SCHEMA_CLASS_SYSTEM: &'static str = "00000000-0000-0000-0000-ffff00000039";
 
 // system supplementary
-pub static UUID_SCHEMA_ATTR_DISPLAYNAME: &'static str = "201bc966-954b-48f5-bf25-99ffed759861";
+pub static UUID_SCHEMA_ATTR_DISPLAYNAME: &'static str = "00000000-0000-0000-0000-ffff00000040";
 pub static JSON_SCHEMA_ATTR_DISPLAYNAME: &'static str = r#"{
     "valid": {
-      "uuid": "201bc966-954b-48f5-bf25-99ffed759861"
+      "uuid": "00000000-0000-0000-0000-ffff00000040"
     },
     "state": null,
     "attrs": {
@@ -213,22 +212,19 @@ pub static JSON_SCHEMA_ATTR_DISPLAYNAME: &'static str = r#"{
       "name": [
         "displayname"
       ],
-      "secret": [
-        "false"
-      ],
       "syntax": [
         "UTF8STRING"
       ],
       "uuid": [
-        "201bc966-954b-48f5-bf25-99ffed759861"
+        "00000000-0000-0000-0000-ffff00000040"
       ]
     }
 }"#;
-pub static UUID_SCHEMA_ATTR_MAIL: &'static str = "fae94676-720b-461b-9438-bfe8cfd7e6cd";
+pub static UUID_SCHEMA_ATTR_MAIL: &'static str = "00000000-0000-0000-0000-ffff00000041";
 pub static JSON_SCHEMA_ATTR_MAIL: &'static str = r#"
   {
     "valid": {
-      "uuid": "fae94676-720b-461b-9438-bfe8cfd7e6cd"
+      "uuid": "00000000-0000-0000-0000-ffff00000041"
     },
     "state": null,
     "attrs": {
@@ -249,23 +245,20 @@ pub static JSON_SCHEMA_ATTR_MAIL: &'static str = r#"
       "name": [
         "mail"
       ],
-      "secret": [
-        "false"
-      ],
       "syntax": [
         "UTF8STRING"
       ],
       "uuid": [
-        "fae94676-720b-461b-9438-bfe8cfd7e6cd"
+        "00000000-0000-0000-0000-ffff00000041"
       ]
     }
   }
 "#;
-pub static UUID_SCHEMA_ATTR_SSH_PUBLICKEY: &'static str = "52f2f13f-d35c-4cca-9f43-90a12c968f72";
+pub static UUID_SCHEMA_ATTR_SSH_PUBLICKEY: &'static str = "00000000-0000-0000-0000-ffff00000042";
 pub static JSON_SCHEMA_ATTR_SSH_PUBLICKEY: &'static str = r#"
   {
     "valid": {
-      "uuid": "52f2f13f-d35c-4cca-9f43-90a12c968f72"
+      "uuid": "00000000-0000-0000-0000-ffff00000042"
     },
     "state": null,
     "attrs": {
@@ -284,23 +277,20 @@ pub static JSON_SCHEMA_ATTR_SSH_PUBLICKEY: &'static str = r#"
       "name": [
         "ssh_publickey"
       ],
-      "secret": [
-        "false"
-      ],
       "syntax": [
         "UTF8STRING"
       ],
       "uuid": [
-        "52f2f13f-d35c-4cca-9f43-90a12c968f72"
+        "00000000-0000-0000-0000-ffff00000042"
       ]
     }
   }
 "#;
-pub static UUID_SCHEMA_ATTR_PASSWORD: &'static str = "a5121082-be54-4624-a307-383839b0366b";
+pub static UUID_SCHEMA_ATTR_PASSWORD: &'static str = "00000000-0000-0000-0000-ffff00000043";
 pub static JSON_SCHEMA_ATTR_PASSWORD: &'static str = r#"
   {
     "valid": {
-      "uuid": "a5121082-be54-4624-a307-383839b0366b"
+      "uuid": "00000000-0000-0000-0000-ffff00000043"
     },
     "state": null,
     "attrs": {
@@ -319,24 +309,21 @@ pub static JSON_SCHEMA_ATTR_PASSWORD: &'static str = r#"
       "name": [
         "password"
       ],
-      "secret": [
-        "true"
-      ],
       "syntax": [
         "UTF8STRING"
       ],
       "uuid": [
-        "a5121082-be54-4624-a307-383839b0366b"
+        "00000000-0000-0000-0000-ffff00000043"
       ]
     }
   }
 "#;
 
-pub static UUID_SCHEMA_CLASS_PERSON: &'static str = "86c4d9e8-3820-45d7-8a8c-d3c522287010";
+pub static UUID_SCHEMA_CLASS_PERSON: &'static str = "00000000-0000-0000-0000-ffff00000044";
 pub static JSON_SCHEMA_CLASS_PERSON: &'static str = r#"
   {
     "valid": {
-      "uuid": "86c4d9e8-3820-45d7-8a8c-d3c522287010"
+      "uuid": "00000000-0000-0000-0000-ffff00000044"
     },
     "state": null,
     "attrs": {
@@ -360,17 +347,17 @@ pub static JSON_SCHEMA_CLASS_PERSON: &'static str = r#"
         "name"
       ],
       "uuid": [
-        "86c4d9e8-3820-45d7-8a8c-d3c522287010"
+        "00000000-0000-0000-0000-ffff00000044"
       ]
     }
   }
 "#;
 
-pub static UUID_SCHEMA_CLASS_GROUP: &'static str = "c0e4e58c-1a2e-4bc3-ad56-5950ef810ea7";
+pub static UUID_SCHEMA_CLASS_GROUP: &'static str = "00000000-0000-0000-0000-ffff00000045";
 pub static JSON_SCHEMA_CLASS_GROUP: &'static str = r#"
   {
     "valid": {
-      "uuid": "c0e4e58c-1a2e-4bc3-ad56-5950ef810ea7"
+      "uuid": "00000000-0000-0000-0000-ffff00000045"
     },
     "state": null,
     "attrs": {
@@ -392,16 +379,16 @@ pub static JSON_SCHEMA_CLASS_GROUP: &'static str = r#"
         "name"
       ],
       "uuid": [
-        "c0e4e58c-1a2e-4bc3-ad56-5950ef810ea7"
+        "00000000-0000-0000-0000-ffff00000045"
       ]
     }
   }
 "#;
-pub static UUID_SCHEMA_CLASS_ACCOUNT: &'static str = "8bbff87c-1731-455e-a0e7-bf1d0908e983";
+pub static UUID_SCHEMA_CLASS_ACCOUNT: &'static str = "00000000-0000-0000-0000-ffff00000046";
 pub static JSON_SCHEMA_CLASS_ACCOUNT: &'static str = r#"
   {
     "valid": {
-      "uuid": "8bbff87c-1731-455e-a0e7-bf1d0908e983"
+      "uuid": "00000000-0000-0000-0000-ffff00000046"
     },
     "state": null,
     "attrs": {
@@ -425,7 +412,7 @@ pub static JSON_SCHEMA_CLASS_ACCOUNT: &'static str = r#"
         "name"
       ],
       "uuid": [
-        "8bbff87c-1731-455e-a0e7-bf1d0908e983"
+        "00000000-0000-0000-0000-ffff00000046"
       ]
     }
   }

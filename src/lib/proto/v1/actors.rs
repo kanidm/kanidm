@@ -46,7 +46,7 @@ impl QueryServerV1 {
         }
     }
 
-    // TODO: We could move most of the be/schema/qs setup and startup
+    // TODO #54: We could move most of the be/schema/qs setup and startup
     // outside of this call, then pass in "what we need" in a cloneable
     // form, this way we could have seperate Idm vs Qs threads, and dedicated
     // threads for write vs read
@@ -71,7 +71,7 @@ impl QueryServerV1 {
             let query_server = QueryServer::new(be, schema);
 
             let mut audit_qsc = AuditScope::new("query_server_init");
-            // TODO: Should the IDM parts be broken out to the IdmSerner?
+            // TODO #62: Should the IDM parts be broken out to the IdmServer?
             // What's important about this initial setup here is that it also triggers
             // the schema and acp reload, so they are now configured correctly!
             // Initialise the schema core.
@@ -143,7 +143,7 @@ impl Handler<CreateRequest> for QueryServerV1 {
     fn handle(&mut self, msg: CreateRequest, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("create");
         let res = audit_segment!(&mut audit, || {
-            let qs_write = self.qs.write();
+            let mut qs_write = self.qs.write();
 
             let crt = match CreateEvent::from_request(&mut audit, msg, &qs_write) {
                 Ok(c) => c,
@@ -171,7 +171,7 @@ impl Handler<ModifyRequest> for QueryServerV1 {
     fn handle(&mut self, msg: ModifyRequest, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("modify");
         let res = audit_segment!(&mut audit, || {
-            let qs_write = self.qs.write();
+            let mut qs_write = self.qs.write();
             let mdf = match ModifyEvent::from_request(&mut audit, msg, &qs_write) {
                 Ok(m) => m,
                 Err(e) => {
@@ -197,7 +197,7 @@ impl Handler<DeleteRequest> for QueryServerV1 {
     fn handle(&mut self, msg: DeleteRequest, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("delete");
         let res = audit_segment!(&mut audit, || {
-            let qs_write = self.qs.write();
+            let mut qs_write = self.qs.write();
 
             let del = match DeleteEvent::from_request(&mut audit, msg, &qs_write) {
                 Ok(d) => d,
@@ -264,13 +264,14 @@ impl Handler<WhoamiMessage> for QueryServerV1 {
     fn handle(&mut self, msg: WhoamiMessage, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("whoami");
         let res = audit_segment!(&mut audit, || {
-            // TODO: Move this to IdmServer!!!
+            // TODO #62: Move this to IdmServer!!!
             // Begin a read
             let qs_read = self.qs.read();
 
             // Make an event from the whoami request. This will process the event and
             // generate a selfuuid search.
-            // FIXME: This current handles the unauthenticated check, and will
+            //
+            // This current handles the unauthenticated check, and will
             // trigger the failure, but if we can manage to work out async
             // then move this to core.rs, and don't allow Option<UAT> to get
             // this far.

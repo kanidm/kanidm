@@ -1,8 +1,10 @@
 use crate::plugins::Plugin;
-use std::collections::BTreeMap;
+use std::collections::BTreeSet;
+use std::ops::Bound::Included;
 use uuid::Uuid;
 
 use crate::audit::AuditScope;
+use crate::constants::{UUID_ADMIN, UUID_ANONYMOUS, UUID_DOES_NOT_EXIST};
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew};
 use crate::error::{ConsistencyError, OperationError};
 use crate::event::{CreateEvent, ModifyEvent};
@@ -10,13 +12,6 @@ use crate::modify::Modify;
 use crate::server::{
     QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
 };
-
-// TO FINISH
-/*
-Add normalisation step
-Add filter normaliser to search.
-Add principal name generation
-*/
 
 // This module has some special properties around it's operation, namely that it
 // has to make a certain number of assertions *early* in the entry lifecycle around
@@ -43,9 +38,9 @@ impl Plugin for Base {
 
     fn pre_create_transform(
         au: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
-        _ce: &CreateEvent,
+        ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         // For each candidate
         for entry in cand.iter_mut() {
@@ -59,17 +54,16 @@ impl Plugin for Base {
             // If they have a name, but no principal name, derive it.
 
             // if they don't have uuid, create it.
-            // TODO: get_ava should have a str version for effeciency?
             let c_uuid: String = match entry.get_ava("uuid") {
                 Some(u) => {
                     // Actually check we have a value, could be empty array ...
-                    // TODO: Should this be left to schema to assert the value?
                     if u.len() > 1 {
                         audit_log!(au, "Entry defines uuid attr, but multiple values.");
                         return Err(OperationError::Plugin);
                     };
 
                     // Schema of the value v, is checked in the filter generation. Neat!
+                    // That way we don't need to check it here either.
 
                     // Should this be forgiving and just generate the UUID?
                     // NO! If you tried to specify it, but didn't give it, then you made
@@ -90,7 +84,7 @@ impl Plugin for Base {
         }
 
         // Now, every cand has a UUID - create a cand uuid set from it.
-        let mut cand_uuid: BTreeMap<&String, ()> = BTreeMap::new();
+        let mut cand_uuid: BTreeSet<&str> = BTreeSet::new();
 
         // As we insert into the set, if a duplicate is found, return an error
         // that a duplicate exists.
@@ -101,26 +95,54 @@ impl Plugin for Base {
                 .first()
                 .ok_or(OperationError::Plugin)?;
             audit_log!(au, "Entry valid UUID: {:?}", entry);
-            match cand_uuid.insert(uuid_ref, ()) {
-                Some(v) => {
-                    audit_log!(au, "uuid duplicate found in create set! {:?}", v);
+            match cand_uuid.insert(uuid_ref.as_str()) {
+                false => {
+                    audit_log!(au, "uuid duplicate found in create set! {:?}", uuid_ref);
                     return Err(OperationError::Plugin);
                 }
-                None => {}
+                true => {}
             }
+        }
+
+        // Check that the system-protected range is not in the cand_uuid, unless we are
+        // an internal operation.
+        if !ce.event.is_internal() {
+            // The internal set is bounded by: UUID_ADMIN -> UUID_ANONYMOUS
+            // Sadly we need to allocate these to strings to make references, sigh.
+            // let uuid_admin: String = UUID_ADMIN.to_string();
+            // let uuid_anon: String = UUID_ANONYMOUS.to_string();
+            let overlap: usize = cand_uuid.range(UUID_ADMIN..UUID_ANONYMOUS).count();
+            if overlap != 0 {
+                audit_log!(
+                    au,
+                    "uuid from protected system UUID range found in create set! {:?}",
+                    overlap
+                );
+                return Err(OperationError::Plugin);
+            }
+        }
+
+        if cand_uuid.contains(UUID_DOES_NOT_EXIST) {
+            audit_log!(
+                au,
+                "uuid \"does not exist\" found in create set! {:?}",
+                UUID_DOES_NOT_EXIST
+            );
+            return Err(OperationError::Plugin);
         }
 
         // Now from each element, generate a filter to search for all of them
         //
-        // NOTE: We don't exclude recycled or tombstones here!
-
-        let filt_in = filter_all!(FC::Or(cand_uuid.keys().map(|u| f_eq("uuid", u)).collect(),));
+        // IMPORTANT: We don't exclude recycled or tombstones here!
+        let filt_in = filter_all!(FC::Or(cand_uuid.iter().map(|u| f_eq("uuid", u)).collect(),));
 
         // If any results exist, fail as a duplicate UUID is present.
-        // TODO: Can we report which UUID exists? Probably yes, we do
-        // internal searh and report the UUID *OR* we alter internal_exists
-        // to return UUID sets.
-
+        // TODO #69: Can we report which UUID exists? Probably yes, we do
+        // internal search and report the UUID *OR* we alter internal_exists
+        // to return UUID sets. This can be done as an extension to #69 where the
+        // internal exists is actually a wrapper around a search for uuid internally
+        //
+        // But does it add value? How many people will try to custom define/add uuid?
         let mut au_qs = AuditScope::new("qs_exist");
         let r = qs.internal_exists(&mut au_qs, filt_in);
         au.append_scope(au_qs);
@@ -143,7 +165,7 @@ impl Plugin for Base {
 
     fn pre_modify(
         au: &mut AuditScope,
-        _qs: &QueryServerWriteTransaction,
+        _qs: &mut QueryServerWriteTransaction,
         _cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         me: &ModifyEvent,
     ) -> Result<(), OperationError> {
@@ -225,11 +247,43 @@ impl Plugin for Base {
 mod tests {
     // #[macro_use]
     // use crate::plugins::Plugin;
+    use crate::constants::JSON_ADMIN_V1;
     use crate::entry::{Entry, EntryInvalid, EntryNew};
     use crate::error::OperationError;
     use crate::modify::{Modify, ModifyList};
     use crate::server::QueryServerTransaction;
     use crate::server::QueryServerWriteTransaction;
+
+    static JSON_ADMIN_ALLOW_ALL: &'static str = r#"{
+        "valid": null,
+        "state": null,
+        "attrs": {
+            "class": [
+                "object",
+                "access_control_profile",
+                "access_control_modify",
+                "access_control_create",
+                "access_control_delete",
+                "access_control_search"
+            ],
+            "name": ["idm_admins_acp_allow_all_test"],
+            "uuid": ["bb18f746-a409-497d-928c-5455d4aef4f7"],
+            "description": ["Builtin IDM Administrators Access Controls."],
+            "acp_enable": ["true"],
+            "acp_receiver": [
+                "{\"Eq\":[\"uuid\",\"00000000-0000-0000-0000-000000000000\"]}"
+            ],
+            "acp_targetscope": [
+                "{\"Pres\":\"class\"}"
+            ],
+            "acp_search_attr": ["name", "class", "uuid"],
+            "acp_modify_class": ["system"],
+            "acp_modify_removedattr": ["class", "displayname", "may", "must"],
+            "acp_modify_presentattr": ["class", "displayname", "may", "must"],
+            "acp_create_class": ["object", "person", "system"],
+            "acp_create_attr": ["name", "class", "description", "displayname", "uuid"]
+        }
+    }"#;
 
     // check create where no uuid
     #[test]
@@ -568,6 +622,73 @@ mod tests {
             preload,
             filter!(f_eq("name", "testgroup_a")),
             ModifyList::new_list(vec![Modify::Purged("uuid".to_string())]),
+            None,
+            |_, _| {}
+        );
+    }
+
+    #[test]
+    fn test_protected_uuid_range() {
+        // Test an external create, it should fail.
+        // Testing internal create is not super needed, due to migrations at start
+        // up testing this every time we run :P
+        let acp: Entry<EntryInvalid, EntryNew> =
+            serde_json::from_str(JSON_ADMIN_ALLOW_ALL).expect("json parse failure");
+
+        let preload = vec![acp];
+
+        let e: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            r#"{
+            "valid": null,
+            "state": null,
+            "attrs": {
+                "class": ["person", "system"],
+                "name": ["testperson"],
+                "uuid": ["00000000-0000-0000-0000-f0f0f0f0f0f0"],
+                "description": ["testperson"],
+                "displayname": ["testperson"]
+            }
+        }"#,
+        )
+        .expect("json parse failure");
+
+        let create = vec![e.clone()];
+
+        run_create_test!(
+            Err(OperationError::Plugin),
+            preload,
+            create,
+            Some(JSON_ADMIN_V1),
+            |_, _| {}
+        );
+    }
+
+    #[test]
+    fn test_protected_uuid_does_not_exist() {
+        // Test that internal create of "does not exist" will fail.
+        let preload = Vec::new();
+
+        let e: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            r#"{
+            "valid": null,
+            "state": null,
+            "attrs": {
+                "class": ["person", "system"],
+                "name": ["testperson"],
+                "uuid": ["00000000-0000-0000-0000-fffffffffffe"],
+                "description": ["testperson"],
+                "displayname": ["testperson"]
+            }
+        }"#,
+        )
+        .expect("json parse failure");
+
+        let create = vec![e.clone()];
+
+        run_create_test!(
+            Err(OperationError::Plugin),
+            preload,
+            create,
             None,
             |_, _| {}
         );

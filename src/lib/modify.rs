@@ -60,9 +60,6 @@ pub struct ModifyList<VALID> {
     mods: Vec<Modify>,
 }
 
-// TODO: ModifyList should be like filter and have valid/invalid to schema.
-// Or do we not care because the entry will be invalid at the end?
-
 impl<'a> IntoIterator for &'a ModifyList<ModifyValid> {
     type Item = &'a Modify;
     type IntoIter = slice::Iter<'a, Modify>;

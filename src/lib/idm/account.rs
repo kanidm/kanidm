@@ -26,10 +26,11 @@ pub(crate) struct Account {
     // account expiry?
 }
 
-impl TryFrom<Entry<EntryValid, EntryCommitted>> for Account {
-    type Error = OperationError;
-
-    fn try_from(value: Entry<EntryValid, EntryCommitted>) -> Result<Self, Self::Error> {
+impl Account {
+    // TODO #71: We need a second try_from that doesn't do group resolve for test cases I think.
+    pub(crate) fn try_from_entry(
+        value: Entry<EntryValid, EntryCommitted>,
+    ) -> Result<Self, OperationError> {
         // Check the classes
         if !value.attribute_value_pres("class", "account") {
             return Err(OperationError::InvalidAccountState(
@@ -52,7 +53,7 @@ impl TryFrom<Entry<EntryValid, EntryCommitted>> for Account {
             ))?
             .clone();
 
-        // TODO: Resolve groups!!!!
+        // TODO #71: Resolve groups!!!!
         let groups = Vec::new();
 
         let uuid = value.get_uuid().clone();
@@ -64,9 +65,7 @@ impl TryFrom<Entry<EntryValid, EntryCommitted>> for Account {
             groups: groups,
         })
     }
-}
 
-impl Account {
     // Could this actually take a claims list and application instead?
     pub(crate) fn to_userauthtoken(&self, claims: Vec<Claim>) -> Option<UserAuthToken> {
         // This could consume self?
@@ -105,7 +104,7 @@ mod tests {
             serde_json::from_str(JSON_ANONYMOUS_V1).expect("Json deserialise failure!");
         let anon_e = unsafe { anon_e.to_valid_committed() };
 
-        let anon_account = Account::try_from(anon_e).expect("Must not fail");
+        let anon_account = Account::try_from_entry(anon_e).expect("Must not fail");
         println!("{:?}", anon_account);
         // I think that's it? we may want to check anonymous mech ...
     }

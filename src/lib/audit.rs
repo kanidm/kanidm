@@ -48,6 +48,7 @@ macro_rules! audit_segment {
         let end = Instant::now();
         let diff = end.duration_since(start);
 
+        audit_log!($au, "duration -> {:?}", diff);
         $au.set_duration(diff);
 
         // Return the result. Hope this works!

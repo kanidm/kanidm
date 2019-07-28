@@ -12,7 +12,7 @@ macro_rules! run_test {
 
         let mut audit = AuditScope::new("run_test");
 
-        let be = Backend::new(&mut audit, "").expect("Failed to init be");
+        let be = Backend::new(&mut audit, "", 1).expect("Failed to init be");
         let schema_outer = Schema::new(&mut audit).expect("Failed to init schema");
         let test_server = QueryServer::new(be, schema_outer);
 
