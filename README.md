@@ -1,6 +1,6 @@
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Firstyear/kanidm/master/artwork/logo.svg" width="20%" height="auto" />
+  <img src="https://raw.githubusercontent.com/Firstyear/kanidm/master/artwork/logo-small.png" width="20%" height="auto" />
 </p>
 
 # Kanidm
