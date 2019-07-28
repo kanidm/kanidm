@@ -1,3 +1,8 @@
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Firstyear/kanidm/master/artwork/logo.svg" width="20%" height="auto" />
+</p>
+
 # Kanidm
 
 Kanidm is an identity management platform written in rust. Our goals are:
