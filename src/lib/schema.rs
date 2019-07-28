@@ -19,7 +19,7 @@ use concread::cowcell::{CowCell, CowCellReadTxn, CowCellWriteTxn};
 // In the future this will parse/read it's schema from the db
 // but we have to bootstrap with some core types.
 
-// TODO: prefix on all schema types that are system?
+// TODO #72: prefix on all schema types that are system?
 
 #[allow(non_camel_case_types)]
 #[derive(Debug, Clone, PartialEq)]
@@ -377,7 +377,7 @@ impl SchemaAttribute {
         }
     }
 
-    // TODO: This clones everything, which is expensive!
+    // NOTE: This clones values, but it's hard to see a way around it.
     pub fn normalise_value(&self, v: &String) -> String {
         match self.syntax {
             SyntaxType::SYNTAX_ID => self.normalise_syntax(v),

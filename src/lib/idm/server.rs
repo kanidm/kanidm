@@ -118,7 +118,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
                 // typing and functionality so we can assess what auth types can
                 // continue, and helps to keep non-needed entry specific data
                 // out of the LRU.
-                let account = Account::try_from(entry)?;
+                let account = Account::try_from_entry(entry)?;
                 let auth_session = AuthSession::new(account, init.appid.clone());
 
                 // Get the set of mechanisms that can proceed. This is tied
@@ -153,7 +153,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
                 // Process the credentials here as required.
                 // Basically throw them at the auth_session and see what
                 // falls out.
-                auth_session.validate_creds(&creds.creds).map(|aus| {
+                auth_session.validate_creds(au, &creds.creds).map(|aus| {
                     AuthResult {
                         // Is this right?
                         sessionid: creds.sessionid,

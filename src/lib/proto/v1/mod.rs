@@ -270,8 +270,6 @@ pub enum AuthState {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AuthResponse {
-    // TODO: Consider moving to an AuthMessageResponse type, and leave the proto
-    // without the session id because it's not necesary to know.
     pub sessionid: Uuid,
     pub state: AuthState,
 }

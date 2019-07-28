@@ -8,7 +8,7 @@ macro_rules! entry_str_to_account {
             serde_json::from_str($entry_str).expect("Json deserialise failure!");
         let e = unsafe { e.to_valid_committed() };
 
-        Account::try_from(e).expect("Account conversion failure")
+        Account::try_from_entry(e).expect("Account conversion failure")
     }};
 }
 

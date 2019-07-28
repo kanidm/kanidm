@@ -180,7 +180,7 @@ pub struct SearchEvent {
     pub filter: Filter<FilterValid>,
     // This is the original filter, for the purpose of ACI checking.
     pub filter_orig: Filter<FilterValid>,
-    // TODO: Add list of attributes to request
+    // TODO #83: Add list of attributes to request
 }
 
 impl SearchEvent {

@@ -1,3 +1,4 @@
+use crate::audit::AuditScope;
 use crate::constants::UUID_ANONYMOUS;
 use crate::error::OperationError;
 use crate::idm::account::Account;
@@ -123,9 +124,9 @@ impl AuthSession {
     }
 
     // This should return a AuthResult or similar state of checking?
-    // TODO: This needs some logging ....
     pub fn validate_creds(
         &mut self,
+        au: &mut AuditScope,
         creds: &Vec<AuthCredential>,
     ) -> Result<AuthState, OperationError> {
         if self.finished {
@@ -136,6 +137,7 @@ impl AuthSession {
 
         match self.handler.validate(creds) {
             CredState::Success(claims) => {
+                audit_log!(au, "Successful cred handling");
                 self.finished = true;
                 let uat = self
                     .account
@@ -143,9 +145,13 @@ impl AuthSession {
                     .ok_or(OperationError::InvalidState)?;
                 Ok(AuthState::Success(uat))
             }
-            CredState::Continue(allowed) => Ok(AuthState::Continue(allowed)),
+            CredState::Continue(allowed) => {
+                audit_log!(au, "Request credential continuation: {:?}", allowed);
+                Ok(AuthState::Continue(allowed))
+            }
             CredState::Denied(reason) => {
                 self.finished = true;
+                audit_log!(au, "Credentials denied: {}", reason);
                 Ok(AuthState::Denied(reason.to_string()))
             }
         }

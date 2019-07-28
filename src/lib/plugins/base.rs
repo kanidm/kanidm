@@ -137,9 +137,10 @@ impl Plugin for Base {
         let filt_in = filter_all!(FC::Or(cand_uuid.iter().map(|u| f_eq("uuid", u)).collect(),));
 
         // If any results exist, fail as a duplicate UUID is present.
-        // TODO: Can we report which UUID exists? Probably yes, we do
+        // TODO #69: Can we report which UUID exists? Probably yes, we do
         // internal search and report the UUID *OR* we alter internal_exists
-        // to return UUID sets.
+        // to return UUID sets. This can be done as an extension to #69 where the
+        // internal exists is actually a wrapper around a search for uuid internally
         //
         // But does it add value? How many people will try to custom define/add uuid?
         let mut au_qs = AuditScope::new("qs_exist");

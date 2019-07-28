@@ -136,56 +136,56 @@ pub static JSON_ANONYMOUS_V1: &'static str = r#"{
 
 // Core
 // Schema uuids start at 00000000-0000-0000-0000-ffff00000000
-pub static UUID_SCHEMA_ATTR_CLASS: &'static str =           "00000000-0000-0000-0000-ffff00000000";
-pub static UUID_SCHEMA_ATTR_UUID: &'static str =            "00000000-0000-0000-0000-ffff00000001";
-pub static UUID_SCHEMA_ATTR_NAME: &'static str =            "00000000-0000-0000-0000-ffff00000002";
-pub static UUID_SCHEMA_ATTR_PRINCIPAL_NAME: &'static str =  "00000000-0000-0000-0000-ffff00000003";
-pub static UUID_SCHEMA_ATTR_DESCRIPTION: &'static str =     "00000000-0000-0000-0000-ffff00000004";
-pub static UUID_SCHEMA_ATTR_MULTIVALUE: &'static str =      "00000000-0000-0000-0000-ffff00000005";
-pub static UUID_SCHEMA_ATTR_INDEX: &'static str =           "00000000-0000-0000-0000-ffff00000006";
-pub static UUID_SCHEMA_ATTR_SYNTAX: &'static str =          "00000000-0000-0000-0000-ffff00000007";
-pub static UUID_SCHEMA_ATTR_SYSTEMMAY: &'static str =       "00000000-0000-0000-0000-ffff00000008";
-pub static UUID_SCHEMA_ATTR_MAY: &'static str =             "00000000-0000-0000-0000-ffff00000009";
-pub static UUID_SCHEMA_ATTR_SYSTEMMUST: &'static str =      "00000000-0000-0000-0000-ffff00000010";
-pub static UUID_SCHEMA_ATTR_MUST: &'static str =            "00000000-0000-0000-0000-ffff00000011";
-pub static UUID_SCHEMA_ATTR_MEMBEROF: &'static str =        "00000000-0000-0000-0000-ffff00000012";
-pub static UUID_SCHEMA_ATTR_MEMBER: &'static str =          "00000000-0000-0000-0000-ffff00000013";
-pub static UUID_SCHEMA_ATTR_DIRECTMEMBEROF: &'static str =  "00000000-0000-0000-0000-ffff00000014";
-pub static UUID_SCHEMA_ATTR_VERSION: &'static str =         "00000000-0000-0000-0000-ffff00000015";
-pub static UUID_SCHEMA_ATTR_DOMAIN: &'static str =          "00000000-0000-0000-0000-ffff00000016";
-pub static UUID_SCHEMA_ATTR_ACP_ENABLE: &'static str =      "00000000-0000-0000-0000-ffff00000017";
-pub static UUID_SCHEMA_ATTR_ACP_RECEIVER: &'static str =    "00000000-0000-0000-0000-ffff00000018";
+pub static UUID_SCHEMA_ATTR_CLASS: &'static str = "00000000-0000-0000-0000-ffff00000000";
+pub static UUID_SCHEMA_ATTR_UUID: &'static str = "00000000-0000-0000-0000-ffff00000001";
+pub static UUID_SCHEMA_ATTR_NAME: &'static str = "00000000-0000-0000-0000-ffff00000002";
+pub static UUID_SCHEMA_ATTR_PRINCIPAL_NAME: &'static str = "00000000-0000-0000-0000-ffff00000003";
+pub static UUID_SCHEMA_ATTR_DESCRIPTION: &'static str = "00000000-0000-0000-0000-ffff00000004";
+pub static UUID_SCHEMA_ATTR_MULTIVALUE: &'static str = "00000000-0000-0000-0000-ffff00000005";
+pub static UUID_SCHEMA_ATTR_INDEX: &'static str = "00000000-0000-0000-0000-ffff00000006";
+pub static UUID_SCHEMA_ATTR_SYNTAX: &'static str = "00000000-0000-0000-0000-ffff00000007";
+pub static UUID_SCHEMA_ATTR_SYSTEMMAY: &'static str = "00000000-0000-0000-0000-ffff00000008";
+pub static UUID_SCHEMA_ATTR_MAY: &'static str = "00000000-0000-0000-0000-ffff00000009";
+pub static UUID_SCHEMA_ATTR_SYSTEMMUST: &'static str = "00000000-0000-0000-0000-ffff00000010";
+pub static UUID_SCHEMA_ATTR_MUST: &'static str = "00000000-0000-0000-0000-ffff00000011";
+pub static UUID_SCHEMA_ATTR_MEMBEROF: &'static str = "00000000-0000-0000-0000-ffff00000012";
+pub static UUID_SCHEMA_ATTR_MEMBER: &'static str = "00000000-0000-0000-0000-ffff00000013";
+pub static UUID_SCHEMA_ATTR_DIRECTMEMBEROF: &'static str = "00000000-0000-0000-0000-ffff00000014";
+pub static UUID_SCHEMA_ATTR_VERSION: &'static str = "00000000-0000-0000-0000-ffff00000015";
+pub static UUID_SCHEMA_ATTR_DOMAIN: &'static str = "00000000-0000-0000-0000-ffff00000016";
+pub static UUID_SCHEMA_ATTR_ACP_ENABLE: &'static str = "00000000-0000-0000-0000-ffff00000017";
+pub static UUID_SCHEMA_ATTR_ACP_RECEIVER: &'static str = "00000000-0000-0000-0000-ffff00000018";
 pub static UUID_SCHEMA_ATTR_ACP_TARGETSCOPE: &'static str = "00000000-0000-0000-0000-ffff00000019";
 pub static UUID_SCHEMA_ATTR_ACP_SEARCH_ATTR: &'static str = "00000000-0000-0000-0000-ffff00000020";
-pub static UUID_SCHEMA_ATTR_ACP_CREATE_CLASS: &'static str ="00000000-0000-0000-0000-ffff00000021";
+pub static UUID_SCHEMA_ATTR_ACP_CREATE_CLASS: &'static str = "00000000-0000-0000-0000-ffff00000021";
 pub static UUID_SCHEMA_ATTR_ACP_CREATE_ATTR: &'static str = "00000000-0000-0000-0000-ffff00000022";
 pub static UUID_SCHEMA_ATTR_ACP_MODIFY_REMOVEDATTR: &'static str =
-                                                            "00000000-0000-0000-0000-ffff00000023";
+    "00000000-0000-0000-0000-ffff00000023";
 pub static UUID_SCHEMA_ATTR_ACP_MODIFY_PRESENTATTR: &'static str =
-                                                            "00000000-0000-0000-0000-ffff00000024";
-pub static UUID_SCHEMA_ATTR_ACP_MODIFY_CLASS: &'static str ="00000000-0000-0000-0000-ffff00000025";
+    "00000000-0000-0000-0000-ffff00000024";
+pub static UUID_SCHEMA_ATTR_ACP_MODIFY_CLASS: &'static str = "00000000-0000-0000-0000-ffff00000025";
 
-pub static UUID_SCHEMA_CLASS_ATTRIBUTETYPE: &'static str =  "00000000-0000-0000-0000-ffff00000026";
-pub static UUID_SCHEMA_CLASS_CLASSTYPE: &'static str =      "00000000-0000-0000-0000-ffff00000027";
-pub static UUID_SCHEMA_CLASS_OBJECT: &'static str =         "00000000-0000-0000-0000-ffff00000028";
+pub static UUID_SCHEMA_CLASS_ATTRIBUTETYPE: &'static str = "00000000-0000-0000-0000-ffff00000026";
+pub static UUID_SCHEMA_CLASS_CLASSTYPE: &'static str = "00000000-0000-0000-0000-ffff00000027";
+pub static UUID_SCHEMA_CLASS_OBJECT: &'static str = "00000000-0000-0000-0000-ffff00000028";
 pub static UUID_SCHEMA_CLASS_EXTENSIBLEOBJECT: &'static str =
-                                                            "00000000-0000-0000-0000-ffff00000029";
-pub static UUID_SCHEMA_CLASS_MEMBEROF: &'static str =       "00000000-0000-0000-0000-ffff00000030";
+    "00000000-0000-0000-0000-ffff00000029";
+pub static UUID_SCHEMA_CLASS_MEMBEROF: &'static str = "00000000-0000-0000-0000-ffff00000030";
 
-pub static UUID_SCHEMA_CLASS_RECYCLED: &'static str =       "00000000-0000-0000-0000-ffff00000031";
-pub static UUID_SCHEMA_CLASS_TOMBSTONE: &'static str =      "00000000-0000-0000-0000-ffff00000032";
-pub static UUID_SCHEMA_CLASS_SYSTEM_INFO: &'static str =    "00000000-0000-0000-0000-ffff00000033";
+pub static UUID_SCHEMA_CLASS_RECYCLED: &'static str = "00000000-0000-0000-0000-ffff00000031";
+pub static UUID_SCHEMA_CLASS_TOMBSTONE: &'static str = "00000000-0000-0000-0000-ffff00000032";
+pub static UUID_SCHEMA_CLASS_SYSTEM_INFO: &'static str = "00000000-0000-0000-0000-ffff00000033";
 pub static UUID_SCHEMA_CLASS_ACCESS_CONTROL_PROFILE: &'static str =
-                                                                    "00000000-0000-0000-0000-ffff00000034";
+    "00000000-0000-0000-0000-ffff00000034";
 pub static UUID_SCHEMA_CLASS_ACCESS_CONTROL_SEARCH: &'static str =
-                                                                    "00000000-0000-0000-0000-ffff00000035";
+    "00000000-0000-0000-0000-ffff00000035";
 pub static UUID_SCHEMA_CLASS_ACCESS_CONTROL_DELETE: &'static str =
-                                                                    "00000000-0000-0000-0000-ffff00000036";
+    "00000000-0000-0000-0000-ffff00000036";
 pub static UUID_SCHEMA_CLASS_ACCESS_CONTROL_MODIFY: &'static str =
-                                                                    "00000000-0000-0000-0000-ffff00000037";
+    "00000000-0000-0000-0000-ffff00000037";
 pub static UUID_SCHEMA_CLASS_ACCESS_CONTROL_CREATE: &'static str =
-                                                                    "00000000-0000-0000-0000-ffff00000038";
-pub static UUID_SCHEMA_CLASS_SYSTEM: &'static str =                 "00000000-0000-0000-0000-ffff00000039";
+    "00000000-0000-0000-0000-ffff00000038";
+pub static UUID_SCHEMA_CLASS_SYSTEM: &'static str = "00000000-0000-0000-0000-ffff00000039";
 
 // system supplementary
 pub static UUID_SCHEMA_ATTR_DISPLAYNAME: &'static str = "00000000-0000-0000-0000-ffff00000040";

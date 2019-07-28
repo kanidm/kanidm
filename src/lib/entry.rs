@@ -332,10 +332,10 @@ impl<STATE> Entry<EntryNormalised, STATE> {
                     }
                 }
             } else {
-                // TODO: Again, we clone string here, but it's so we can check all
+                // We clone string here, but it's so we can check all
                 // the values in "may" ar here - so we can't avoid this look up. What we
                 // could do though, is have &String based on the schemaattribute though?;
-                let may: Result<HashMap<String, &SchemaAttribute>, _> = classes
+                let may: Result<HashMap<&String, &SchemaAttribute>, _> = classes
                     .iter()
                     // Join our class systemmmust + must + systemmay + may into one.
                     .flat_map(|cls| {
@@ -348,18 +348,17 @@ impl<STATE> Entry<EntryNormalised, STATE> {
                     .map(|s| {
                         // This should NOT fail - if it does, it means our schema is
                         // in an invalid state!
-                        Ok((
-                            s.clone(),
-                            schema_attributes.get(s).ok_or(SchemaError::Corrupted)?,
-                        ))
+                        Ok((s, schema_attributes.get(s).ok_or(SchemaError::Corrupted)?))
                     })
                     .collect();
 
                 let may = may?;
 
-                // TODO: Error needs to say what is missing
+                // TODO #70: Error needs to say what is missing
                 // We need to return *all* missing attributes, not just the first error
-                // we find.
+                // we find. This will probably take a rewrite of the function definition
+                // to return a result<_, vec<schemaerror>> and for the schema errors to take
+                // information about what is invalid. It's pretty nontrivial.
 
                 // Check that any other attributes are in may
                 //   for each attr on the object, check it's in the may+must set
@@ -835,10 +834,11 @@ impl<STATE> Entry<EntryValid, STATE> {
             // In the future, if we make uuid a real entry type, then this
             // check can "go away" because uuid will never exist as an ava.
             //
-            // TODO: Remove this check when uuid becomes a real attribute.
+            // NOTE: Remove this check when uuid becomes a real attribute.
             // UUID is now a real attribute, but it also has an ava for db_entry
             // conversion - so what do? If we remove it here, we could have CSN issue with
             // repl on uuid conflict, but it probably shouldn't be an ava either ...
+            // as a result, I think we need to keep this continue line to not cause issues.
             if k == "uuid" {
                 continue;
             }
