@@ -9,45 +9,52 @@ Kanidm is an identity management platform written in rust. Our goals are:
 
 * Modern identity management platform
 * Simple to deploy and integrate with
-* extensible
-* correct
+* Extensible for various needs
+* Correct and secure behaviour by default
+
+Today the project is still under heavy development to achieve these goals - we don't expect a fully
+functional release before early 2020.
 
 ## Code of Conduct
 
-See CODE_OF_CONDUCT.md
+See [CODE_OF_CONDUCT.md]
 
-## Examples
+[CODE_OF_CONDUCT.md]: https://github.com/Firstyear/kanidm/blob/master/CODE_OF_CONDUCT.md
 
-## MVP features
+## Some key ideas
 
-* Pam/nsswitch clients (with offline auth, and local totp)
-* CLI for admin
+* All people should be respected and able to be respresented securely.
+* Devices represent users and their identities - they are part of the authentication.
+* Human error occurs - we should be designed to minimise human mistakes and empower people.
+* The system should be easy to understand and reason about for users and admins.
+
+## Quick start
+
+Details to come ...
+
+## Implemented/Planned features
+
+* RBAC design
+* SSH key distribution for servers
+* Pam/nsswitch clients (with limited offline auth)
+* Sudo rule distribution via nsswitch
+* CLI and WebUI for administration
 * OIDC/Oauth
-* SSH key distribution
-* MFA (TOTP)
-* In memory read cache (cow)
-* backup/restore
-
-## Planned features
-
-* Replicated database backend (389-ds, couchdb, or custom repl proto)
-* SAML
-* Read Only Replicas
-* Certificate distribution?
-* Web UI for admin
+* Claims (limited by time and credential scope)
+* MFA (Webauthn, TOTP)
+* Highly concurrent desgin (MVCC, COW)
+* Replication (async multiple active write servers, read only servers)
 * Account impersonation
-* Webauthn
-* Sudo rule distribution via nsswitch?
+* RADIUS integration
+* Self service UI with wifi enrollment, claim management and more.
+* Synchronisation to other IDM services
 
 ## Features we want to avoid
 
-* Audit: This is better solved by ...
-* Fully synchronous behaviour: ...
-* Generic database: ... (max db size etc)
-* Being LDAP: ...
-* GSSAPI/Kerberos
-
-## More?
+* Auditing: This is better solved by SIEM software, so we should generate data they can consume.
+* Fully synchronous behaviour: This is slow.
+* Generic database: We don't want to be another NoSQL database, we want to be an IDM solution.
+* Being LDAP/GSSAPI/Kerberos: These are all legacy protocols that are hard to use and confine our thinking - we should avoid "being like them".
 
 ## Get involved
 
