@@ -7,7 +7,7 @@ use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
 use crate::error::OperationError;
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::modify::Modify;
-use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
+use crate::server::QueryServerWriteTransaction;
 use std::collections::HashSet;
 
 pub struct Protected {}

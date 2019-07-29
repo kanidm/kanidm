@@ -17,7 +17,7 @@ impl Configuration {
     pub fn new() -> Self {
         let mut c = Configuration {
             address: String::from("127.0.0.1:8080"),
-            domain: String::from("127.0.0.1"),
+            domain: String::from("localhost"),
             threads: 8,
             db_path: String::from(""),
             maximum_request: 262144, // 256k

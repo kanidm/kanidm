@@ -7,9 +7,11 @@ pub struct Group {
 }
 
 impl Group {
+    /*
     pub fn new() -> Self {
         Group {}
     }
+    */
 
     pub fn into_proto(&self) -> ProtoGroup {
         unimplemented!();

@@ -3,7 +3,6 @@ use crate::constants::*;
 use crate::entry::{Entry, EntryCommitted, EntryNew, EntryValid};
 use crate::error::{ConsistencyError, OperationError, SchemaError};
 use crate::proto::v1::Filter as ProtoFilter;
-use crate::server::QueryServerWriteTransaction;
 
 use regex::Regex;
 use std::collections::HashMap;
@@ -1086,7 +1085,7 @@ impl SchemaInner {
         r
     }
 
-    pub fn validate(&self, audit: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
+    pub fn validate(&self, _audit: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
         let mut res = Vec::new();
         // Does this need to validate anything further at all? The UUID
         // will be checked as part of the schema migration on startup, so I think
@@ -1936,7 +1935,7 @@ mod tests {
         // Check that entries can be normalised and validated sanely
         let mut audit = AuditScope::new("test_schema_entry_validate");
         let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
-        let mut schema = schema_outer.write();
+        let schema = schema_outer.write();
 
         // Check syntax to upper
         // check index to upper
@@ -1985,7 +1984,7 @@ mod tests {
         // Check that entries can be normalised sanely
         let mut audit = AuditScope::new("test_schema_entry_normalise");
         let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
-        let mut schema = schema_outer.write();
+        let schema = schema_outer.write();
 
         // Check that an entry normalises, despite being inconsistent to
         // schema.

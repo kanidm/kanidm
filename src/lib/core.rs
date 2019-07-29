@@ -15,6 +15,8 @@ use crate::config::Configuration;
 use crate::async_log;
 use crate::audit::AuditScope;
 use crate::be::{Backend, BackendTransaction};
+use crate::schema::Schema;
+use crate::server::QueryServer;
 use crate::error::OperationError;
 use crate::interval::IntervalActor;
 use crate::proto::v1::actors::QueryServerV1;
@@ -312,6 +314,43 @@ pub fn restore_server_core(config: Configuration, dst_path: &str) {
     };
 }
 
+pub fn verify_server_core(config: Configuration) {
+    let mut audit = AuditScope::new("server_verify");
+    // Setup the be
+    let be = match setup_backend(&config) {
+        Ok(be) => be,
+        Err(e) => {
+            error!("Failed to setup BE: {:?}", e);
+            return;
+        }
+    };
+    // setup the qs - without initialise!
+    let schema_mem = match Schema::new(&mut audit) {
+        Ok(sc) => sc,
+        Err(e) => {
+            error!("Failed to setup in memory schema: {:?}", e);
+            return;
+        }
+    };
+    let server = QueryServer::new(be, schema_mem);
+
+    // Run verifications.
+    let r = server.verify(&mut audit);
+
+    debug!("{}", audit);
+
+    if r.len() == 0 {
+        std::process::exit(0);
+    } else {
+        for er in r {
+            error!("{:?}", er);
+        }
+        std::process::exit(1);
+    }
+
+    // Now add IDM server verifications?
+}
+
 pub fn create_server_core(config: Configuration) {
     // Until this point, we probably want to write to the log macro fns.
 
@@ -350,7 +389,7 @@ pub fn create_server_core(config: Configuration) {
     // Copy the max size
     let max_size = config.maximum_request;
     let secure_cookies = config.secure_cookies;
-    let domain = config.domain.clone();
+    // let domain = config.domain.clone();
     let cookie_key: [u8; 32] = config.cookie_key.clone();
 
     // start the web server

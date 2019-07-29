@@ -8,7 +8,6 @@ use serde_cbor;
 use serde_json;
 use std::convert::TryFrom;
 use std::fs;
-// use uuid;
 
 use crate::audit::AuditScope;
 use crate::be::dbentry::DbEntry;
@@ -616,7 +615,21 @@ impl BackendWriteTransaction {
     pub fn setup(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
         {
             // Enable WAL mode, which is just faster and better.
-            self.conn.execute("PRAGMA journal_mode=WAL;", NO_PARAMS);
+            //
+            // We have to use stmt + prepare because execute can't handle
+            // the "wal" row on result when this works!
+            let mut wal_stmt = try_audit!(
+                audit,
+                self.conn.prepare("PRAGMA journal_mode=WAL;"),
+                "sqlite error {:?}",
+                OperationError::SQLiteError
+            );
+            try_audit!(
+                audit,
+                wal_stmt.query(NO_PARAMS),
+                "sqlite error {:?}",
+                OperationError::SQLiteError
+            );
 
             // This stores versions of components. For example:
             // ----------------------
