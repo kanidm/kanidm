@@ -211,7 +211,9 @@ mod tests {
                                 assert!(m == AuthAllowed::Anonymous);
                             }
                             _ => {
-                                error!("A critical error has occured! We have a non-continue result!");
+                                error!(
+                                    "A critical error has occured! We have a non-continue result!"
+                                );
                                 panic!();
                             }
                         };
@@ -242,13 +244,18 @@ mod tests {
 
                 match r2 {
                     Ok(ar) => {
-                        let AuthResult { sessionid: _, state } = ar;
+                        let AuthResult {
+                            sessionid: _,
+                            state,
+                        } = ar;
                         match state {
                             AuthState::Success(_uat) => {
                                 // Check the uat.
                             }
                             _ => {
-                                error!("A critical error has occured! We have a non-succcess result!");
+                                error!(
+                                    "A critical error has occured! We have a non-succcess result!"
+                                );
                                 panic!();
                             }
                         }

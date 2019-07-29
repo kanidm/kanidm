@@ -402,7 +402,6 @@ impl<STATE> Entry<EntryNormalised, STATE> {
 }
 
 impl<STATE> Entry<EntryInvalid, STATE> {
-
     // This is only used in tests today, but I don't want to cfg test it.
     #[allow(dead_code)]
     fn get_uuid(&self) -> Option<&String> {

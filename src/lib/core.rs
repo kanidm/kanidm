@@ -15,8 +15,6 @@ use crate::config::Configuration;
 use crate::async_log;
 use crate::audit::AuditScope;
 use crate::be::{Backend, BackendTransaction};
-use crate::schema::Schema;
-use crate::server::QueryServer;
 use crate::error::OperationError;
 use crate::interval::IntervalActor;
 use crate::proto::v1::actors::QueryServerV1;
@@ -25,6 +23,8 @@ use crate::proto::v1::{
     AuthRequest, AuthState, CreateRequest, DeleteRequest, ModifyRequest, SearchRequest,
     UserAuthToken,
 };
+use crate::schema::Schema;
+use crate::server::QueryServer;
 
 use uuid::Uuid;
 

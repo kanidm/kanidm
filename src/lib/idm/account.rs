@@ -6,7 +6,6 @@ use crate::proto::v1::UserAuthToken;
 use crate::idm::claim::Claim;
 use crate::idm::group::Group;
 
-
 #[derive(Debug, Clone)]
 pub(crate) struct Account {
     // Later these could be &str if we cache entry here too ...

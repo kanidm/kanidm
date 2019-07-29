@@ -18,4 +18,3 @@ impl Claim {
         unimplemented!();
     }
 }
-

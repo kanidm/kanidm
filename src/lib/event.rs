@@ -4,8 +4,7 @@ use crate::filter::{Filter, FilterValid};
 use crate::proto::v1::Entry as ProtoEntry;
 use crate::proto::v1::{
     AuthCredential, AuthResponse, AuthState, AuthStep, CreateRequest, DeleteRequest, ModifyRequest,
-    ReviveRecycledRequest, SearchRequest, SearchResponse, UserAuthToken,
-    WhoamiResponse,
+    ReviveRecycledRequest, SearchRequest, SearchResponse, UserAuthToken, WhoamiResponse,
 };
 // use error::OperationError;
 use crate::error::OperationError;

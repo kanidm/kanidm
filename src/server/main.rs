@@ -9,7 +9,9 @@ extern crate structopt;
 extern crate log;
 
 use rsidm::config::Configuration;
-use rsidm::core::{backup_server_core, create_server_core, restore_server_core, verify_server_core};
+use rsidm::core::{
+    backup_server_core, create_server_core, restore_server_core, verify_server_core,
+};
 
 use std::path::PathBuf;
 use structopt::StructOpt;
