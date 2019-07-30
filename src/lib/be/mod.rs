@@ -15,6 +15,7 @@ use crate::entry::{Entry, EntryCommitted, EntryNew, EntryValid};
 use crate::error::{ConsistencyError, OperationError};
 use crate::filter::{Filter, FilterValidResolved};
 
+pub mod dbvalue;
 pub mod dbentry;
 mod idl;
 mod mem_be;

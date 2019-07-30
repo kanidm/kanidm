@@ -7,6 +7,7 @@ use crate::proto::v1::Entry as ProtoEntry;
 use crate::schema::{IndexType, SyntaxType};
 use crate::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
 use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
+use crate::value::Value;
 
 use crate::be::dbentry::{DbEntry, DbEntryV1, DbEntryVers};
 
@@ -160,7 +161,7 @@ pub struct EntryReduced;
 pub struct Entry<VALID, STATE> {
     valid: VALID,
     state: STATE,
-    attrs: BTreeMap<String, Vec<String>>,
+    attrs: BTreeMap<String, Vec<Value>>,
 }
 
 impl<STATE> std::fmt::Display for Entry<EntryValid, STATE> {

@@ -44,6 +44,7 @@ mod async_log;
 mod audit;
 mod be;
 pub mod constants;
+mod value;
 mod entry;
 mod event;
 mod filter;

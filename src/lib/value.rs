@@ -1,0 +1,221 @@
+use crate::be::dbvalue::DbValueV1;
+
+use uuid::Uuid;
+
+#[allow(non_camel_case_types)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub enum IndexType {
+    EQUALITY,
+    PRESENCE,
+    SUBSTRING,
+}
+
+impl TryFrom<&str> for IndexType {
+    type Error = ();
+
+    fn try_from(value: &str) -> Result<IndexType, Self::Error> {
+        if value == "EQUALITY" {
+            Ok(IndexType::EQUALITY)
+        } else if value == "PRESENCE" {
+            Ok(IndexType::PRESENCE)
+        } else if value == "SUBSTRING" {
+            Ok(IndexType::SUBSTRING)
+        } else {
+            Err(())
+        }
+    }
+}
+
+impl IndexType {
+    pub fn to_string(&self) -> String {
+        String::from(match self {
+            IndexType::EQUALITY => "EQUALITY",
+            IndexType::PRESENCE => "PRESENCE",
+            IndexType::SUBSTRING => "SUBSTRING",
+        })
+    }
+}
+
+#[allow(non_camel_case_types)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+pub enum SyntaxType {
+    // We need an insensitive string type too ...
+    // We also need to "self host" a syntax type, and index type
+    UTF8STRING,
+    UTF8STRING_PRINCIPAL,
+    UTF8STRING_INSENSITIVE,
+    UUID,
+    BOOLEAN,
+    SYNTAX_ID,
+    INDEX_ID,
+    REFERENCE_UUID,
+    JSON_FILTER,
+}
+
+impl TryFrom<&str> for SyntaxType {
+    type Error = ();
+
+    fn try_from(value: &str) -> Result<SyntaxType, Self::Error> {
+        if value == "UTF8STRING" {
+            Ok(SyntaxType::UTF8STRING)
+        } else if value == "UTF8STRING_PRINCIPAL" {
+            Ok(SyntaxType::UTF8STRING_PRINCIPAL)
+        } else if value == "UTF8STRING_INSENSITIVE" {
+            Ok(SyntaxType::UTF8STRING_INSENSITIVE)
+        } else if value == "UUID" {
+            Ok(SyntaxType::UUID)
+        } else if value == "BOOLEAN" {
+            Ok(SyntaxType::BOOLEAN)
+        } else if value == "SYNTAX_ID" {
+            Ok(SyntaxType::SYNTAX_ID)
+        } else if value == "INDEX_ID" {
+            Ok(SyntaxType::INDEX_ID)
+        } else if value == "REFERENCE_UUID" {
+            Ok(SyntaxType::REFERENCE_UUID)
+        } else if value == "JSON_FILTER" {
+            Ok(SyntaxType::JSON_FILTER)
+        } else {
+            Err(())
+        }
+    }
+}
+
+impl SyntaxType {
+    pub fn to_string(&self) -> String {
+        String::from(match self {
+            SyntaxType::UTF8STRING => "UTF8STRING",
+            SyntaxType::UTF8STRING_PRINCIPAL => "UTF8STRING_PRINCIPAL",
+            SyntaxType::UTF8STRING_INSENSITIVE => "UTF8STRING_INSENSITIVE",
+            SyntaxType::UUID => "UUID",
+            SyntaxType::BOOLEAN => "BOOLEAN",
+            SyntaxType::SYNTAX_ID => "SYNTAX_ID",
+            SyntaxType::INDEX_ID => "INDEX_ID",
+            SyntaxType::REFERENCE_UUID => "REFERENCE_UUID",
+            SyntaxType::JSON_FILTER => "JSON_FILTER",
+        })
+    }
+}
+
+// Do I need partialOrd too
+#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+pub (crate) enum Value {
+    Utf8(String),
+    Iutf8(String),
+    Uuid(Uuid),
+    Bool(bool),
+    Syntax(SyntaxType),
+    Index(IndexType),
+    Refer(Uuid),
+    JsonFilt(String),
+}
+
+// Need new_<type> -> Result<_, _>
+// Need from_db_value
+// Need to_db_value
+// Need to_string for most types.
+
+impl From<String> for Value {
+    fn from(s: String) -> Self {
+        Value::Utf8(s)
+    }
+}
+
+impl From<&str> for Value {
+    fn from(s: &str) -> Self {
+        Value::Utf8(s.to_string())
+    }
+}
+
+impl Value {
+    // I get the feeling this will have a lot of matching ... sigh.
+    fn new_utf8(s: String) -> Self {
+        Value::Utf8(s)
+    }
+
+    fn new_insensitive_utf8(s: String) -> Self {
+        Value::Iutf8(s)
+    }
+
+    fn new_uuid(s: String) -> Option<Self> {
+        unimplemented!();
+    }
+
+    fn new_bool(s: String) -> Option<Self> {
+        unimplemented!();
+    }
+
+    fn new_syntax(s: String) -> Option<Self> {
+        unimplemented!();
+    }
+
+    fn new_index(s: String) -> Option<Self> {
+        unimplemented!();
+    }
+
+    fn new_reference(s: String) -> Option<Self> {
+        unimplemented!();
+    }
+
+    fn new_json_filter(s: String) -> Option<Self> {
+        unimplemented!();
+    }
+
+    // Converters between DBRepr -> MemRepr. It's likely many of these
+    // will be just wrappers to our from str types.
+
+    // Keep this updated with DbValueV1 in be::dbvalue.
+    fn from_db_valuev1(v: DbValueV1) -> Option<Self> {
+        unimplemented!();
+    }
+
+    fn to_db_valuev1(&self) -> DbValueV1 {
+        unimplemented!();
+    }
+
+    fn to_string(&self) -> String {
+        unimplemented!();
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use crate::value::*;
+
+    #[test]
+    fn test_value_index_tryfrom() {
+        let r1 = IndexType::try_from("EQUALITY");
+        assert_eq!(r1, Ok(IndexType::EQUALITY));
+
+        let r2 = IndexType::try_from("PRESENCE");
+        assert_eq!(r2, Ok(IndexType::PRESENCE));
+
+        let r3 = IndexType::try_from("SUBSTRING");
+        assert_eq!(r3, Ok(IndexType::SUBSTRING));
+
+        let r4 = IndexType::try_from("thaoeusaneuh");
+        assert_eq!(r4, Err(()));
+    }
+
+    #[test]
+    fn test_value_syntax_tryfrom() {
+        let r1 = SyntaxType::try_from("UTF8STRING");
+        assert_eq!(r1, Ok(SyntaxType::UTF8STRING));
+
+        let r2 = SyntaxType::try_from("UTF8STRING_INSENSITIVE");
+        assert_eq!(r2, Ok(SyntaxType::UTF8STRING_INSENSITIVE));
+
+        let r3 = SyntaxType::try_from("BOOLEAN");
+        assert_eq!(r3, Ok(SyntaxType::BOOLEAN));
+
+        let r4 = SyntaxType::try_from("SYNTAX_ID");
+        assert_eq!(r4, Ok(SyntaxType::SYNTAX_ID));
+
+        let r5 = SyntaxType::try_from("INDEX_ID");
+        assert_eq!(r5, Ok(SyntaxType::INDEX_ID));
+
+        let r6 = SyntaxType::try_from("zzzzantheou");
+        assert_eq!(r6, Err(()));
+    }
+
+}

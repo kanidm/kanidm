@@ -3,6 +3,7 @@ use crate::constants::*;
 use crate::entry::{Entry, EntryCommitted, EntryNew, EntryValid};
 use crate::error::{ConsistencyError, OperationError, SchemaError};
 use crate::proto::v1::Filter as ProtoFilter;
+use crate::value::{SyntaxType, IndexType};
 
 use regex::Regex;
 use std::collections::HashMap;
@@ -20,99 +21,6 @@ use concread::cowcell::{CowCell, CowCellReadTxn, CowCellWriteTxn};
 
 // TODO #72: prefix on all schema types that are system?
 
-#[allow(non_camel_case_types)]
-#[derive(Debug, Clone, PartialEq)]
-pub enum IndexType {
-    EQUALITY,
-    PRESENCE,
-    SUBSTRING,
-}
-
-impl TryFrom<&str> for IndexType {
-    type Error = ();
-
-    fn try_from(value: &str) -> Result<IndexType, Self::Error> {
-        if value == "EQUALITY" {
-            Ok(IndexType::EQUALITY)
-        } else if value == "PRESENCE" {
-            Ok(IndexType::PRESENCE)
-        } else if value == "SUBSTRING" {
-            Ok(IndexType::SUBSTRING)
-        } else {
-            Err(())
-        }
-    }
-}
-
-impl IndexType {
-    pub fn to_string(&self) -> String {
-        String::from(match self {
-            IndexType::EQUALITY => "EQUALITY",
-            IndexType::PRESENCE => "PRESENCE",
-            IndexType::SUBSTRING => "SUBSTRING",
-        })
-    }
-}
-
-#[allow(non_camel_case_types)]
-#[derive(Debug, Clone, PartialEq)]
-pub enum SyntaxType {
-    // We need an insensitive string type too ...
-    // We also need to "self host" a syntax type, and index type
-    UTF8STRING,
-    UTF8STRING_PRINCIPAL,
-    UTF8STRING_INSENSITIVE,
-    UUID,
-    BOOLEAN,
-    SYNTAX_ID,
-    INDEX_ID,
-    REFERENCE_UUID,
-    JSON_FILTER,
-}
-
-impl TryFrom<&str> for SyntaxType {
-    type Error = ();
-
-    fn try_from(value: &str) -> Result<SyntaxType, Self::Error> {
-        if value == "UTF8STRING" {
-            Ok(SyntaxType::UTF8STRING)
-        } else if value == "UTF8STRING_PRINCIPAL" {
-            Ok(SyntaxType::UTF8STRING_PRINCIPAL)
-        } else if value == "UTF8STRING_INSENSITIVE" {
-            Ok(SyntaxType::UTF8STRING_INSENSITIVE)
-        } else if value == "UUID" {
-            Ok(SyntaxType::UUID)
-        } else if value == "BOOLEAN" {
-            Ok(SyntaxType::BOOLEAN)
-        } else if value == "SYNTAX_ID" {
-            Ok(SyntaxType::SYNTAX_ID)
-        } else if value == "INDEX_ID" {
-            Ok(SyntaxType::INDEX_ID)
-        } else if value == "REFERENCE_UUID" {
-            Ok(SyntaxType::REFERENCE_UUID)
-        } else if value == "JSON_FILTER" {
-            Ok(SyntaxType::JSON_FILTER)
-        } else {
-            Err(())
-        }
-    }
-}
-
-impl SyntaxType {
-    pub fn to_string(&self) -> String {
-        String::from(match self {
-            SyntaxType::UTF8STRING => "UTF8STRING",
-            SyntaxType::UTF8STRING_PRINCIPAL => "UTF8STRING_PRINCIPAL",
-            SyntaxType::UTF8STRING_INSENSITIVE => "UTF8STRING_INSENSITIVE",
-            SyntaxType::UUID => "UUID",
-            SyntaxType::BOOLEAN => "BOOLEAN",
-            SyntaxType::SYNTAX_ID => "SYNTAX_ID",
-            SyntaxType::INDEX_ID => "INDEX_ID",
-            SyntaxType::REFERENCE_UUID => "REFERENCE_UUID",
-            SyntaxType::JSON_FILTER => "JSON_FILTER",
-        })
-    }
-}
 
 #[derive(Debug, Clone)]
 pub struct SchemaAttribute {
@@ -1572,42 +1480,6 @@ mod tests {
                 SchemaClass
             );
         });
-    }
-
-    #[test]
-    fn test_schema_index_tryfrom() {
-        let r1 = IndexType::try_from("EQUALITY");
-        assert_eq!(r1, Ok(IndexType::EQUALITY));
-
-        let r2 = IndexType::try_from("PRESENCE");
-        assert_eq!(r2, Ok(IndexType::PRESENCE));
-
-        let r3 = IndexType::try_from("SUBSTRING");
-        assert_eq!(r3, Ok(IndexType::SUBSTRING));
-
-        let r4 = IndexType::try_from("thaoeusaneuh");
-        assert_eq!(r4, Err(()));
-    }
-
-    #[test]
-    fn test_schema_syntax_tryfrom() {
-        let r1 = SyntaxType::try_from("UTF8STRING");
-        assert_eq!(r1, Ok(SyntaxType::UTF8STRING));
-
-        let r2 = SyntaxType::try_from("UTF8STRING_INSENSITIVE");
-        assert_eq!(r2, Ok(SyntaxType::UTF8STRING_INSENSITIVE));
-
-        let r3 = SyntaxType::try_from("BOOLEAN");
-        assert_eq!(r3, Ok(SyntaxType::BOOLEAN));
-
-        let r4 = SyntaxType::try_from("SYNTAX_ID");
-        assert_eq!(r4, Ok(SyntaxType::SYNTAX_ID));
-
-        let r5 = SyntaxType::try_from("INDEX_ID");
-        assert_eq!(r5, Ok(SyntaxType::INDEX_ID));
-
-        let r6 = SyntaxType::try_from("zzzzantheou");
-        assert_eq!(r6, Err(()));
     }
 
     #[test]
