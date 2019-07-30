@@ -183,8 +183,6 @@ mod tests {
     use crate::idm::authsession::AuthSession;
     use crate::proto::v1::AuthAllowed;
 
-    use std::convert::TryFrom;
-
     #[test]
     fn test_idm_account_anonymous_auth_mech() {
         let anon_account = entry_str_to_account!(JSON_ANONYMOUS_V1);

@@ -1,3 +1,5 @@
+#![deny(warnings)]
+
 extern crate actix;
 extern crate env_logger;
 
@@ -7,7 +9,9 @@ extern crate structopt;
 extern crate log;
 
 use rsidm::config::Configuration;
-use rsidm::core::{backup_server_core, create_server_core, restore_server_core};
+use rsidm::core::{
+    backup_server_core, create_server_core, restore_server_core, verify_server_core,
+};
 
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -44,6 +48,8 @@ enum Opt {
     Backup(BackupOpt),
     #[structopt(name = "restore")]
     Restore(RestoreOpt),
+    #[structopt(name = "verify")]
+    Verify(ServerOpt),
 }
 
 fn main() {
@@ -96,6 +102,12 @@ fn main() {
                 }
             };
             restore_server_core(config, p);
+        }
+        Opt::Verify(vopt) => {
+            info!("Running in restore mode ...");
+
+            config.update_db_path(&vopt.db_path);
+            verify_server_core(config);
         }
     }
 }

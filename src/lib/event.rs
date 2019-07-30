@@ -4,8 +4,7 @@ use crate::filter::{Filter, FilterValid};
 use crate::proto::v1::Entry as ProtoEntry;
 use crate::proto::v1::{
     AuthCredential, AuthResponse, AuthState, AuthStep, CreateRequest, DeleteRequest, ModifyRequest,
-    OperationResponse, ReviveRecycledRequest, SearchRequest, SearchResponse, UserAuthToken,
-    WhoamiResponse,
+    ReviveRecycledRequest, SearchRequest, SearchResponse, UserAuthToken, WhoamiResponse,
 };
 // use error::OperationError;
 use crate::error::OperationError;
@@ -28,15 +27,6 @@ use crate::proto::v1::SearchRecycledRequest;
 
 use actix::prelude::*;
 use uuid::Uuid;
-
-#[derive(Debug)]
-pub struct OpResult {}
-
-impl OpResult {
-    pub fn response(self) -> OperationResponse {
-        OperationResponse {}
-    }
-}
 
 #[derive(Debug)]
 pub struct SearchResult {
@@ -258,6 +248,7 @@ impl SearchEvent {
     }
 
     #[cfg(test)]
+    #[allow(dead_code)]
     pub fn from_rec_request(
         audit: &mut AuditScope,
         request: SearchRecycledRequest,
@@ -398,6 +389,7 @@ impl ExistsEvent {
     }
 
     #[cfg(test)]
+    #[allow(dead_code)]
     pub unsafe fn new_internal_invalid(filter: Filter<FilterInvalid>) -> Self {
         ExistsEvent {
             event: Event::from_internal(),

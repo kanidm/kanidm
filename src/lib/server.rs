@@ -1561,8 +1561,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             be_txn,
             schema,
             accesscontrols,
-            changed_schema,
-            changed_acp,
+            changed_schema: _,
+            changed_acp: _,
         } = self;
         assert!(!committed);
         // Begin an audit.

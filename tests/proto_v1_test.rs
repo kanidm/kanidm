@@ -1,3 +1,8 @@
+#![deny(warnings)]
+
+#[macro_use]
+extern crate log;
+
 extern crate actix;
 use actix::prelude::*;
 
@@ -7,7 +12,7 @@ use rsidm::constants::UUID_ADMIN;
 use rsidm::core::create_server_core;
 use rsidm::proto::v1::{
     AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep, CreateRequest, Entry,
-    OperationResponse, WhoamiRequest,
+    OperationResponse,
 };
 
 extern crate reqwest;
@@ -139,7 +144,7 @@ fn test_server_whoami_anonymous() {
         println!("==> AUTHRESPONSE ==> {:?}", r);
 
         assert!(match &r.state {
-            AuthState::Continue(all_list) => {
+            AuthState::Continue(_all_list) => {
                 // Check anonymous is present? It will fail on next step if not ...
                 true
             }
@@ -156,6 +161,7 @@ fn test_server_whoami_anonymous() {
             .body(serde_json::to_string(&auth_anon).unwrap())
             .send()
             .unwrap();
+        debug!("{}", response.status());
         assert!(response.status() == reqwest::StatusCode::OK);
         // Check that we got the next step
         let r: AuthResponse = serde_json::from_str(response.text().unwrap().as_str()).unwrap();

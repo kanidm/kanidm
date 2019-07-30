@@ -8,7 +8,6 @@ use crate::server::{QueryServer, QueryServerTransaction};
 use concread::cowcell::{CowCell, CowCellWriteTxn};
 
 use std::collections::BTreeMap;
-use std::convert::TryFrom;
 use uuid::Uuid;
 // use lru::LruCache;
 
@@ -32,11 +31,13 @@ pub struct IdmServerWriteTransaction<'a> {
     qs: &'a QueryServer,
 }
 
+/*
 pub struct IdmServerReadTransaction<'a> {
     // This contains read-only methods, like getting users, groups
     // and other structured content.
     qs: &'a QueryServer,
 }
+*/
 
 impl IdmServer {
     // TODO #59: Make number of authsessions configurable!!!
@@ -54,9 +55,11 @@ impl IdmServer {
         }
     }
 
+    /*
     pub fn read(&self) -> IdmServerReadTransaction {
         IdmServerReadTransaction { qs: &self.qs }
     }
+    */
 }
 
 impl<'a> IdmServerWriteTransaction<'a> {
@@ -170,9 +173,11 @@ impl<'a> IdmServerWriteTransaction<'a> {
     }
 }
 
+/*
 impl<'a> IdmServerReadTransaction<'a> {
     pub fn whoami() -> () {}
 }
+*/
 
 // Need tests of the sessions and the auth ...
 
@@ -206,6 +211,9 @@ mod tests {
                                 assert!(m == AuthAllowed::Anonymous);
                             }
                             _ => {
+                                error!(
+                                    "A critical error has occured! We have a non-continue result!"
+                                );
                                 panic!();
                             }
                         };
@@ -214,6 +222,7 @@ mod tests {
                     }
                     Err(e) => {
                         // Should not occur!
+                        error!("A critical error has occured! {:?}", e);
                         panic!();
                     }
                 };
@@ -235,17 +244,24 @@ mod tests {
 
                 match r2 {
                     Ok(ar) => {
-                        let AuthResult { sessionid, state } = ar;
+                        let AuthResult {
+                            sessionid: _,
+                            state,
+                        } = ar;
                         match state {
-                            AuthState::Success(uat) => {
+                            AuthState::Success(_uat) => {
                                 // Check the uat.
                             }
                             _ => {
+                                error!(
+                                    "A critical error has occured! We have a non-succcess result!"
+                                );
                                 panic!();
                             }
                         }
                     }
                     Err(e) => {
+                        error!("A critical error has occured! {:?}", e);
                         // Should not occur!
                         panic!();
                     }

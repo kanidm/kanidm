@@ -15,30 +15,37 @@ use std::collections::BTreeSet;
 
 // Default filter is safe, ignores all hidden types!
 
+#[allow(dead_code)]
 pub fn f_eq<'a>(a: &'a str, v: &'a str) -> FC<'a> {
     FC::Eq(a, v)
 }
 
+#[allow(dead_code)]
 pub fn f_sub<'a>(a: &'a str, v: &'a str) -> FC<'a> {
     FC::Sub(a, v)
 }
 
+#[allow(dead_code)]
 pub fn f_pres<'a>(a: &'a str) -> FC<'a> {
     FC::Pres(a)
 }
 
+#[allow(dead_code)]
 pub fn f_or<'a>(vs: Vec<FC<'a>>) -> FC<'a> {
     FC::Or(vs)
 }
 
+#[allow(dead_code)]
 pub fn f_and<'a>(vs: Vec<FC<'a>>) -> FC<'a> {
     FC::And(vs)
 }
 
+#[allow(dead_code)]
 pub fn f_andnot<'a>(fc: FC<'a>) -> FC<'a> {
     FC::AndNot(Box::new(fc))
 }
 
+#[allow(dead_code)]
 pub fn f_self<'a>() -> FC<'a> {
     FC::SelfUUID
 }

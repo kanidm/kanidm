@@ -6,8 +6,6 @@ use crate::proto::v1::UserAuthToken;
 use crate::idm::claim::Claim;
 use crate::idm::group::Group;
 
-use std::convert::TryFrom;
-
 #[derive(Debug, Clone)]
 pub(crate) struct Account {
     // Later these could be &str if we cache entry here too ...
@@ -94,9 +92,6 @@ mod tests {
     use crate::constants::JSON_ANONYMOUS_V1;
     use crate::entry::{Entry, EntryNew, EntryValid};
     use crate::idm::account::Account;
-    use crate::proto::v1::AuthAllowed;
-
-    use std::convert::TryFrom;
 
     #[test]
     fn test_idm_account_from_anonymous() {

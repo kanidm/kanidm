@@ -6,11 +6,13 @@ pub struct Claim {
 }
 
 impl Claim {
+    /*
     pub fn new() -> Self {
         Claim {
             // Fill this in!
         }
     }
+    */
 
     pub fn into_proto(&self) -> ProtoClaim {
         unimplemented!();

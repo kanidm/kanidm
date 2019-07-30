@@ -315,14 +315,12 @@ impl<STATE> Entry<EntryNormalised, STATE> {
                             // Now, for each type we do a *full* check of the syntax
                             // and validity of the ava.
                             let r = a_schema.validate_ava(avas);
-                            if r.is_err() {
-                                debug!("Failed to validate: {}", attr_name);
-                                return Err(r.unwrap_err());
-                            }
-                            // We have to destructure here to make type checker happy
                             match r {
                                 Ok(_) => {}
-                                Err(e) => {}
+                                Err(e) => {
+                                    debug!("Failed to validate: {}", attr_name);
+                                    return Err(e);
+                                }
                             }
                         }
                         None => {
@@ -369,14 +367,12 @@ impl<STATE> Entry<EntryNormalised, STATE> {
                             // Now, for each type we do a *full* check of the syntax
                             // and validity of the ava.
                             let r = a_schema.validate_ava(avas);
-                            if r.is_err() {
-                                debug!("Failed to validate: {}", attr_name);
-                                return Err(r.unwrap_err());
-                            }
-                            // We have to destructure here to make type checker happy
                             match r {
                                 Ok(_) => {}
-                                Err(e) => {}
+                                Err(e) => {
+                                    debug!("Failed to validate: {}", attr_name);
+                                    return Err(e);
+                                }
                             }
                         }
                         None => {
@@ -406,6 +402,8 @@ impl<STATE> Entry<EntryNormalised, STATE> {
 }
 
 impl<STATE> Entry<EntryInvalid, STATE> {
+    // This is only used in tests today, but I don't want to cfg test it.
+    #[allow(dead_code)]
     fn get_uuid(&self) -> Option<&String> {
         match self.attrs.get("uuid") {
             Some(vs) => vs.first(),
@@ -677,7 +675,7 @@ impl Entry<EntryValid, EntryCommitted> {
         // Remove all attrs from our tree that are NOT in the allowed set.
 
         let Entry {
-            valid: s_valid,
+            valid: _s_valid,
             state: s_state,
             attrs: s_attrs,
         } = self;
