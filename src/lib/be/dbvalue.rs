@@ -1,4 +1,4 @@
-
+use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum DbValueV1 {

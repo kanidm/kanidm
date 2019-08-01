@@ -258,44 +258,6 @@ impl SchemaAttribute {
             _ => Ok(()),
         }
     }
-
-    pub fn normalise_syntax(&self, v: &String) -> String {
-        v.to_uppercase()
-    }
-
-    pub fn normalise_index(&self, v: &String) -> String {
-        v.to_uppercase()
-    }
-
-    pub fn normalise_utf8string_insensitive(&self, v: &String) -> String {
-        v.to_lowercase()
-    }
-
-    pub fn normalise_principal(&self, v: &String) -> String {
-        v.to_lowercase()
-    }
-
-    pub fn normalise_uuid(&self, v: &String) -> String {
-        // If we can, normalise, else return the original as a clone
-        // and validate will catch it later.
-        match Uuid::parse_str(v.as_str()) {
-            Ok(inner) => inner.to_hyphenated().to_string(),
-            Err(_) => v.clone(),
-        }
-    }
-
-    // NOTE: This clones values, but it's hard to see a way around it.
-    pub fn normalise_value(&self, v: &String) -> String {
-        match self.syntax {
-            SyntaxType::SYNTAX_ID => self.normalise_syntax(v),
-            SyntaxType::INDEX_ID => self.normalise_index(v),
-            SyntaxType::UUID => self.normalise_uuid(v),
-            SyntaxType::REFERENCE_UUID => self.normalise_uuid(v),
-            SyntaxType::UTF8STRING_INSENSITIVE => self.normalise_utf8string_insensitive(v),
-            SyntaxType::UTF8STRING_PRINCIPAL => self.normalise_principal(v),
-            _ => v.clone(),
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -1189,13 +1151,12 @@ impl Schema {
 mod tests {
     use crate::audit::AuditScope;
     use crate::constants::*;
-    use crate::entry::{Entry, EntryInvalid, EntryNew, EntryNormalised, EntryValid};
+    use crate::entry::{Entry, EntryInvalid, EntryNew, EntryValid};
     use crate::error::{ConsistencyError, SchemaError};
     // use crate::filter::{Filter, FilterValid};
     use crate::schema::SchemaTransaction;
     use crate::schema::{IndexType, Schema, SchemaAttribute, SchemaClass, SyntaxType};
     use serde_json;
-    use std::convert::TryFrom;
     use uuid::Uuid;
 
     // use crate::proto_v1::Filter as ProtoFilter;
@@ -1851,6 +1812,7 @@ mod tests {
         println!("{}", audit);
     }
 
+    /*
     #[test]
     fn test_schema_entry_normalise() {
         // Check that entries can be normalised sanely
@@ -1897,6 +1859,7 @@ mod tests {
         assert_eq!(e_expect, e_normal);
         println!("{}", audit);
     }
+    */
 
     #[test]
     fn test_schema_extensible() {

@@ -19,7 +19,7 @@ use crate::constants::{
     JSON_SYSTEM_INFO_V1, UUID_DOES_NOT_EXIST,
 };
 use crate::entry::{
-    Entry, EntryCommitted, EntryInvalid, EntryNew, EntryNormalised, EntryReduced, EntryValid,
+    Entry, EntryCommitted, EntryInvalid, EntryNew, EntryReduced, EntryValid,
 };
 use crate::error::{ConsistencyError, OperationError, SchemaError};
 use crate::event::{
@@ -31,8 +31,9 @@ use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use crate::plugins::Plugins;
 use crate::schema::{
     Schema, SchemaAttribute, SchemaClass, SchemaReadTransaction, SchemaTransaction,
-    SchemaWriteTransaction, SyntaxType,
+    SchemaWriteTransaction
 };
+use crate::value::{SyntaxType};
 
 // This is the core of the server. It implements all
 // the search and modify actions, applies access controls
@@ -585,9 +586,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // based on request size in the frontend?
 
         // Copy the entries to a writeable form.
-        let candidates: Vec<Entry<EntryInvalid, EntryNew>> =
+        let norm_cand: Vec<Entry<EntryInvalid, EntryNew>> =
             ce.entries.iter().map(|er| er.clone()).collect();
 
+        /*
         // Normalise but DO NOT validate the entries.
         let norm_cand: Result<Vec<Entry<EntryNormalised, EntryNew>>, _> = candidates
             .into_iter()
@@ -598,6 +600,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .collect();
 
         let norm_cand = try_audit!(au, norm_cand);
+        */
 
         // Handle the error.
 

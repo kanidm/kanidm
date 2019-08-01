@@ -19,7 +19,7 @@ use concread::cowcell::{CowCell, CowCellReadTxn, CowCellWriteTxn};
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::audit::AuditScope;
-use crate::entry::{Entry, EntryCommitted, EntryNew, EntryNormalised, EntryReduced, EntryValid};
+use crate::entry::{Entry, EntryCommitted, EntryNew, EntryInvalid, EntryReduced, EntryValid};
 use crate::error::OperationError;
 use crate::filter::{Filter, FilterValid};
 use crate::modify::Modify;
@@ -817,7 +817,7 @@ pub trait AccessControlsTransaction {
         &self,
         audit: &mut AuditScope,
         ce: &CreateEvent,
-        entries: &Vec<Entry<EntryNormalised, EntryNew>>,
+        entries: &Vec<Entry<EntryInvalid, EntryNew>>,
     ) -> Result<bool, OperationError> {
         audit_log!(audit, "Access check for event: {:?}", ce);
 

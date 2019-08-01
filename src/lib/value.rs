@@ -1,9 +1,13 @@
 use crate::be::dbvalue::DbValueV1;
+use crate::audit::AuditScope;
+use crate::server::QueryServerWriteTransaction;
+use crate::error::OperationError;
 
+use std::convert::TryFrom;
 use uuid::Uuid;
 
 #[allow(non_camel_case_types)]
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
 pub enum IndexType {
     EQUALITY,
     PRESENCE,
@@ -37,7 +41,7 @@ impl IndexType {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
 pub enum SyntaxType {
     // We need an insensitive string type too ...
     // We also need to "self host" a syntax type, and index type
@@ -97,7 +101,7 @@ impl SyntaxType {
 }
 
 // Do I need partialOrd too
-#[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
 pub (crate) enum Value {
     Utf8(String),
     Iutf8(String),
@@ -126,18 +130,32 @@ impl From<&str> for Value {
     }
 }
 
+impl From<&Uuid> for Value {
+    fn from(u: &Uuid) -> Self {
+        Value::Uuid(u.clone())
+    }
+}
+
 impl Value {
+
+    pub fn from_attr(audit: &AuditScope, qs: &QueryServerWriteTransaction, attr: &String, value: &String) -> Result<Self, OperationError> {
+        unimplemented!();
+    }
+
     // I get the feeling this will have a lot of matching ... sigh.
     fn new_utf8(s: String) -> Self {
         Value::Utf8(s)
     }
 
     fn new_insensitive_utf8(s: String) -> Self {
-        Value::Iutf8(s)
+        Value::Iutf8(s.to_lowercase())
     }
 
     fn new_uuid(s: String) -> Option<Self> {
-        unimplemented!();
+        match Uuid::parse_str(s.as_str()) {
+            Ok(u) => Some(Value::Uuid(u)),
+            Err(_) => None,
+        }
     }
 
     fn new_bool(s: String) -> Option<Self> {

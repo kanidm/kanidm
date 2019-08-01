@@ -5,6 +5,7 @@ use crate::proto::v1::ModifyList as ProtoModifyList;
 use crate::error::{OperationError, SchemaError};
 use crate::schema::SchemaTransaction;
 use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
+use crate::value::Value;
 
 // Should this be std?
 use std::slice;
@@ -17,9 +18,9 @@ pub struct ModifyInvalid;
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Modify {
     // This value *should* exist.
-    Present(String, String),
+    Present(String, Value),
     // This value *should not* exist.
-    Removed(String, String),
+    Removed(String, Value),
     // This attr *should not* exist.
     Purged(String),
 }

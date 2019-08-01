@@ -10,6 +10,7 @@ use crate::schema::SchemaTransaction;
 use crate::server::{
     QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
 };
+use crate::value::Value;
 use std::cmp::{Ordering, PartialOrd};
 use std::collections::BTreeSet;
 
@@ -68,7 +69,7 @@ pub enum FC<'a> {
 #[derive(Debug, Clone, PartialEq)]
 enum FilterComp {
     // This is attr - value
-    Eq(String, String),
+    Eq(String, Value),
     Sub(String, String),
     Pres(String),
     Or(Vec<FilterComp>),
@@ -86,7 +87,7 @@ enum FilterComp {
 #[derive(Debug, Clone)]
 pub enum FilterResolved {
     // This is attr - value
-    Eq(String, String),
+    Eq(String, Value),
     Sub(String, String),
     Pres(String),
     Or(Vec<FilterResolved>),

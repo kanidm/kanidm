@@ -4,9 +4,9 @@ use crate::error::{OperationError, SchemaError};
 use crate::filter::{Filter, FilterInvalid, FilterResolved, FilterValidResolved};
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use crate::proto::v1::Entry as ProtoEntry;
-use crate::schema::{IndexType, SyntaxType};
+use crate::value::{SyntaxType, IndexType};
 use crate::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
-use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
+use crate::server::{QueryServerWriteTransaction};
 use crate::value::Value;
 
 use crate::be::dbentry::{DbEntry, DbEntryV1, DbEntryVers};
@@ -17,12 +17,10 @@ use std::collections::BTreeSet;
 use std::collections::HashMap;
 use std::iter::ExactSizeIterator;
 use std::slice::Iter as SliceIter;
+use uuid::Uuid;
 
 use std::convert::TryFrom;
 use std::str::FromStr;
-
-#[cfg(test)]
-use uuid::Uuid;
 
 // make a trait entry for everything to adhere to?
 //  * How to get indexs out?
@@ -143,7 +141,7 @@ pub struct EntryCommitted {
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct EntryValid {
     // Asserted with schema, so we know it has a UUID now ...
-    uuid: String,
+    uuid: Uuid,
 }
 
 // Modified, can't be sure of it's content! We therefore disregard the UUID
@@ -151,8 +149,9 @@ pub struct EntryValid {
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct EntryInvalid;
 
-#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
-pub struct EntryNormalised;
+// This state can't exist because everything is normalised now with Value types
+// #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+// pub struct EntryNormalised;
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct EntryReduced;
@@ -197,12 +196,12 @@ impl Entry<EntryInvalid, EntryNew> {
 
         // Somehow we need to take the tree of e attrs, and convert
         // all ref types to our types ...
-        let map2: Result<BTreeMap<String, Vec<String>>, OperationError> = e
+        let map2: Result<BTreeMap<String, Vec<Value>>, OperationError> = e
             .attrs
             .iter()
             .map(|(k, v)| {
-                let nv: Result<Vec<_>, _> =
-                    v.iter().map(|vr| qs.clone_value(audit, &k, vr)).collect();
+                let nv: Result<Vec<Value>, _> =
+                    v.iter().map(|vr| Value::from_attr(audit, qs, &k, vr)).collect();
                 match nv {
                     Ok(mut nvi) => {
                         nvi.sort_unstable();
@@ -213,10 +212,7 @@ impl Entry<EntryInvalid, EntryNew> {
             })
             .collect();
 
-        let x = match map2 {
-            Ok(v) => v,
-            Err(e) => return Err(e),
-        };
+        let x = map2?;
 
         Ok(Entry {
             // For now, we do a straight move, and we sort the incoming data
@@ -228,7 +224,91 @@ impl Entry<EntryInvalid, EntryNew> {
     }
 }
 
-impl<STATE> Entry<EntryNormalised, STATE> {
+impl<STATE> Entry<EntryInvalid, STATE> {
+    // This is only used in tests today, but I don't want to cfg test it.
+    #[allow(dead_code)]
+    fn get_uuid(&self) -> Option<&Uuid> {
+        match self.attrs.get("uuid") {
+            Some(vs) => match vs.first() {
+                Some(uv) => match uv {
+                    Value::Uuid(u) => Some(&u),
+                    _ => None,
+                }
+                _ => None,
+            }
+            None => None,
+        }
+    }
+
+    /*
+    pub fn normalise(
+        self,
+        schema: &SchemaTransaction,
+    ) -> Result<Entry<EntryNormalised, STATE>, SchemaError> {
+        let Entry {
+            valid: _,
+            state,
+            attrs,
+        } = self;
+
+        let schema_attributes = schema.get_attributes();
+
+        // This should never fail!
+        let schema_attr_name = match schema_attributes.get("name") {
+            Some(v) => v,
+            None => {
+                return Err(SchemaError::Corrupted);
+            }
+        };
+
+        let mut new_attrs = BTreeMap::new();
+
+        // First normalise - this checks and fixes our UUID format
+        // but should not remove multiple values.
+        for (attr_name, avas) in attrs.iter() {
+            let attr_name_normal: String = schema_attr_name.normalise_value(attr_name);
+            // Get the needed schema type
+            let schema_a_r = schema_attributes.get(&attr_name_normal);
+
+            let mut avas_normal: Vec<String> = match schema_a_r {
+                Some(schema_a) => {
+                    avas.iter()
+                        .map(|av| {
+                            // normalise those based on schema?
+                            schema_a.normalise_value(av)
+                        })
+                        .collect()
+                }
+                None => avas.clone(),
+            };
+
+            // Ensure they are ordered property, with no dupes.
+            avas_normal.sort_unstable();
+            avas_normal.dedup();
+
+            // Should never fail!
+            let _ = new_attrs.insert(attr_name_normal, avas_normal);
+        }
+
+        Ok(Entry {
+            valid: EntryNormalised,
+            state: state,
+            attrs: new_attrs,
+        })
+    }
+
+    pub fn validate(
+        self,
+        schema: &SchemaTransaction,
+    ) -> Result<Entry<EntryValid, STATE>, SchemaError> {
+        // We need to clone before we start, as well be mutating content.
+        // We destructure:
+
+        // self.normalise(schema).and_then(|e| e.validate(schema))
+        e.validate(schema)
+    }
+    */
+
     pub fn validate(
         self,
         schema: &SchemaTransaction,
@@ -236,9 +316,12 @@ impl<STATE> Entry<EntryNormalised, STATE> {
         let schema_classes = schema.get_classes();
         let schema_attributes = schema.get_attributes();
 
-        let uuid: String = match &self.attrs.get("uuid") {
+        let uuid: Uuid = match &self.attrs.get("uuid") {
             Some(vs) => match vs.first() {
-                Some(uuid) => uuid.to_string(),
+                Some(uuid_v) => match uuid_v {
+                    Value::Uuid(uuid) => uuid.clone(),
+                    _ => return Err(SchemaError::InvalidAttribute),
+                }
                 None => return Err(SchemaError::MissingMustAttribute("uuid".to_string())),
             },
             None => return Err(SchemaError::MissingMustAttribute("uuid".to_string())),
@@ -388,95 +471,6 @@ impl<STATE> Entry<EntryNormalised, STATE> {
         // Well, we got here, so okay!
         Ok(ne)
     }
-
-    pub fn invalidate(self) -> Entry<EntryInvalid, STATE> {
-        Entry {
-            valid: EntryInvalid,
-            state: self.state,
-            attrs: self.attrs,
-        }
-    }
-
-    pub fn entry_match_no_index(&self, filter: &Filter<FilterValidResolved>) -> bool {
-        self.entry_match_no_index_inner(filter.to_inner())
-    }
-}
-
-impl<STATE> Entry<EntryInvalid, STATE> {
-    // This is only used in tests today, but I don't want to cfg test it.
-    #[allow(dead_code)]
-    fn get_uuid(&self) -> Option<&String> {
-        match self.attrs.get("uuid") {
-            Some(vs) => vs.first(),
-            None => None,
-        }
-    }
-
-    pub fn normalise(
-        self,
-        schema: &SchemaTransaction,
-    ) -> Result<Entry<EntryNormalised, STATE>, SchemaError> {
-        let Entry {
-            valid: _,
-            state,
-            attrs,
-        } = self;
-
-        let schema_attributes = schema.get_attributes();
-
-        // This should never fail!
-        let schema_attr_name = match schema_attributes.get("name") {
-            Some(v) => v,
-            None => {
-                return Err(SchemaError::Corrupted);
-            }
-        };
-
-        let mut new_attrs = BTreeMap::new();
-
-        // First normalise - this checks and fixes our UUID format
-        // but should not remove multiple values.
-        for (attr_name, avas) in attrs.iter() {
-            let attr_name_normal: String = schema_attr_name.normalise_value(attr_name);
-            // Get the needed schema type
-            let schema_a_r = schema_attributes.get(&attr_name_normal);
-
-            let mut avas_normal: Vec<String> = match schema_a_r {
-                Some(schema_a) => {
-                    avas.iter()
-                        .map(|av| {
-                            // normalise those based on schema?
-                            schema_a.normalise_value(av)
-                        })
-                        .collect()
-                }
-                None => avas.clone(),
-            };
-
-            // Ensure they are ordered property, with no dupes.
-            avas_normal.sort_unstable();
-            avas_normal.dedup();
-
-            // Should never fail!
-            let _ = new_attrs.insert(attr_name_normal, avas_normal);
-        }
-
-        Ok(Entry {
-            valid: EntryNormalised,
-            state: state,
-            attrs: new_attrs,
-        })
-    }
-
-    pub fn validate(
-        self,
-        schema: &SchemaTransaction,
-    ) -> Result<Entry<EntryValid, STATE>, SchemaError> {
-        // We need to clone before we start, as well be mutating content.
-        // We destructure:
-
-        self.normalise(schema).and_then(|e| e.validate(schema))
-    }
 }
 
 impl<VALID, STATE> Clone for Entry<VALID, STATE>
@@ -531,6 +525,7 @@ impl Entry<EntryInvalid, EntryNew> {
         }
     }
 
+    /*
     #[cfg(test)]
     pub unsafe fn to_valid_normal(self) -> Entry<EntryNormalised, EntryNew> {
         Entry {
@@ -546,6 +541,7 @@ impl Entry<EntryInvalid, EntryNew> {
                 .collect(),
         }
     }
+    */
 
     #[cfg(test)]
     pub unsafe fn to_valid_committed(self) -> Entry<EntryValid, EntryCommitted> {
@@ -623,12 +619,17 @@ impl Entry<EntryValid, EntryCommitted> {
     }
 
     pub fn to_tombstone(&self) -> Self {
-        // Duplicate this to a tombstone entry.
-        let class_ava = vec!["object".to_string(), "tombstone".to_string()];
+        // Duplicate this to a tombstone entry
+        let class_ava = vec![
+            Value::from("object"),
+            Value::from("tombstone"),
+        ];
 
-        let mut attrs_new: BTreeMap<String, Vec<String>> = BTreeMap::new();
+        let mut attrs_new: BTreeMap<String, Vec<Value>> = BTreeMap::new();
 
-        attrs_new.insert("uuid".to_string(), vec![self.valid.uuid.clone()]);
+        attrs_new.insert("uuid".to_string(), vec![
+            Value::from(&self.valid.uuid)
+        ]);
         attrs_new.insert("class".to_string(), class_ava);
 
         Entry {
@@ -652,6 +653,8 @@ impl Entry<EntryValid, EntryCommitted> {
             None => None,
         }?
         .clone();
+
+        // Convert attrs from db format to value
 
         Some(Entry {
             valid: EntryValid { uuid: uuid },
@@ -923,6 +926,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         self.attrs.contains_key(attr)
     }
 
+    #[inline]
     pub fn attribute_value_pres(&self, attr: &str, value: &str) -> bool {
         // Yeah, this is techdebt, but both names of this fn are valid - we are
         // checking if an attribute-value is equal to, or asserting it's present
