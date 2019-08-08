@@ -120,13 +120,18 @@ pub (crate) enum Value {
 
 impl From<String> for Value {
     fn from(s: String) -> Self {
-        Value::Utf8(s)
+        Value::from(s.as_str())
     }
 }
 
 impl From<&str> for Value {
     fn from(s: &str) -> Self {
-        Value::Utf8(s.to_string())
+        // Fuzzy match for uuid's
+        // TODO: Will I regret this?
+        match Uuid::parse_str(s) {
+            Ok(u) => Value::Uuid(u),
+            Err(_) => Value::Utf8(s.to_string()),
+        }
     }
 }
 
@@ -147,7 +152,7 @@ impl Value {
         Value::Utf8(s)
     }
 
-    fn new_insensitive_utf8(s: String) -> Self {
+    pub fn new_insensitive_utf8(s: String) -> Self {
         Value::Iutf8(s.to_lowercase())
     }
 
@@ -178,20 +183,71 @@ impl Value {
         unimplemented!();
     }
 
+    pub fn contains(&self, s: &str) -> bool {
+        unimplemented!();
+    }
+
     // Converters between DBRepr -> MemRepr. It's likely many of these
     // will be just wrappers to our from str types.
 
     // Keep this updated with DbValueV1 in be::dbvalue.
-    fn from_db_valuev1(v: DbValueV1) -> Option<Self> {
+    pub(crate) fn from_db_valuev1(v: DbValueV1) -> Self {
         unimplemented!();
     }
 
-    fn to_db_valuev1(&self) -> DbValueV1 {
+    pub(crate) fn to_db_valuev1(&self) -> DbValueV1 {
         unimplemented!();
     }
 
-    fn to_string(&self) -> String {
+    /// Convert to a proto/public value that can be read and consumed.
+    pub(crate) fn to_proto_string_clone(&self) -> String {
         unimplemented!();
+    }
+
+    pub fn to_str(&self) -> Option<&str> {
+        match self {
+            Value::Utf8(s) => Some(s.as_str()),
+            Value::Iutf8(s) => Some(s.as_str()),
+            _ => None,
+        }
+    }
+
+    pub fn as_string(&self) -> Option<&String> {
+        match self {
+            Value::Utf8(s) => Some(s),
+            Value::Iutf8(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn to_uuid(&self) -> Option<&Uuid> {
+        match self {
+            Value::Uuid(u) => Some(&u),
+            Value::Refer(u) => Some(&u),
+            _ => None,
+        }
+    }
+
+    pub fn to_indextype(&self) -> Option<&IndexType> {
+        match self {
+            Value::Index(i) => Some(&i),
+            _ => None,
+        }
+    }
+
+    pub fn to_syntaxtype(&self) -> Option<&SyntaxType> {
+        match self {
+            Value::Syntax(s) => Some(&s),
+            _ => None,
+        }
+    }
+
+    pub fn to_bool(&self) -> Option<bool> {
+        match self {
+            // *v is to invoke a clone, but this is cheap af
+            Value::Bool(v) => Some(*v),
+            _ => None,
+        }
     }
 }
 

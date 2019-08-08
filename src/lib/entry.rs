@@ -19,8 +19,8 @@ use std::iter::ExactSizeIterator;
 use std::slice::Iter as SliceIter;
 use uuid::Uuid;
 
-use std::convert::TryFrom;
-use std::str::FromStr;
+// use std::convert::TryFrom;
+// use std::str::FromStr;
 
 // make a trait entry for everything to adhere to?
 //  * How to get indexs out?
@@ -51,15 +51,15 @@ use std::str::FromStr;
 
 pub struct EntryClasses<'a> {
     size: usize,
-    inner: Option<SliceIter<'a, String>>,
+    inner: Option<SliceIter<'a, Value>>,
     // _p: &'a PhantomData<()>,
 }
 
 impl<'a> Iterator for EntryClasses<'a> {
-    type Item = &'a String;
+    type Item = &'a Value;
 
     #[inline]
-    fn next(&mut self) -> Option<(&'a String)> {
+    fn next(&mut self) -> Option<(&'a Value)> {
         match self.inner.iter_mut().next() {
             Some(i) => i.next(),
             None => None,
@@ -82,14 +82,14 @@ impl<'a> ExactSizeIterator for EntryClasses<'a> {
 }
 
 pub struct EntryAvas<'a> {
-    inner: BTreeIter<'a, String, Vec<String>>,
+    inner: BTreeIter<'a, String, Vec<Value>>,
 }
 
 impl<'a> Iterator for EntryAvas<'a> {
-    type Item = (&'a String, &'a Vec<String>);
+    type Item = (&'a String, &'a Vec<Value>);
 
     #[inline]
-    fn next(&mut self) -> Option<(&'a String, &'a Vec<String>)> {
+    fn next(&mut self) -> Option<(&'a String, &'a Vec<Value>)> {
         self.inner.next()
     }
 
@@ -100,14 +100,14 @@ impl<'a> Iterator for EntryAvas<'a> {
 }
 
 pub struct EntryAvasMut<'a> {
-    inner: BTreeIterMut<'a, String, Vec<String>>,
+    inner: BTreeIterMut<'a, String, Vec<Value>>,
 }
 
 impl<'a> Iterator for EntryAvasMut<'a> {
-    type Item = (&'a String, &'a mut Vec<String>);
+    type Item = (&'a String, &'a mut Vec<Value>);
 
     #[inline]
-    fn next(&mut self) -> Option<(&'a String, &'a mut Vec<String>)> {
+    fn next(&mut self) -> Option<(&'a String, &'a mut Vec<Value>)> {
         self.inner.next()
     }
 
@@ -344,13 +344,20 @@ impl<STATE> Entry<EntryInvalid, STATE> {
             }
 
             // Do we have extensible?
-            let extensible = ne.attribute_value_pres("class", "extensibleobject");
+            let extensible = ne.attribute_value_pres("class",
+                // TODO: lazy static?
+                &Value::new_insensitive_utf8("extensibleobject".to_string())
+            );
 
             let entry_classes = ne.classes().ok_or(SchemaError::InvalidClass)?;
             let entry_classes_size = entry_classes.len();
 
             let classes: Vec<&SchemaClass> = entry_classes
-                .filter_map(|c| schema_classes.get(c))
+                .filter_map(|c| {
+                    c.as_string().map(|s| {
+                        schema_classes.get(s)
+                    })
+                })
                 .collect();
 
             if classes.len() != entry_classes_size {
@@ -497,7 +504,7 @@ impl Entry<EntryInvalid, EntryCommitted> {
     pub unsafe fn to_valid_new(self) -> Entry<EntryValid, EntryNew> {
         Entry {
             valid: EntryValid {
-                uuid: self.get_uuid().expect("Invalid uuid").to_string(),
+                uuid: self.get_uuid().expect("Invalid uuid").clone(),
             },
             state: EntryNew,
             attrs: self.attrs,
@@ -511,7 +518,7 @@ impl Entry<EntryInvalid, EntryNew> {
     pub unsafe fn to_valid_new(self) -> Entry<EntryValid, EntryNew> {
         Entry {
             valid: EntryValid {
-                uuid: self.get_uuid().expect("Invalid uuid").to_string(),
+                uuid: self.get_uuid().expect("Invalid uuid").clone(),
             },
             state: EntryNew,
             attrs: self
@@ -644,17 +651,27 @@ impl Entry<EntryValid, EntryCommitted> {
     }
 
     pub fn from_dbentry(db_e: DbEntry, id: u64) -> Option<Self> {
-        let attrs = match db_e.ent {
-            DbEntryVers::V1(v1) => v1.attrs,
+        // Convert attrs from db format to value
+        let attrs: BTreeMap<String, Vec<Value>> = match db_e.ent {
+            DbEntryVers::V1(v1) => {
+                v1.attrs.into_iter()
+                    .map(|(k, vs)| {
+                        let vv: Vec<Value> = vs.into_iter()
+                            .map(|v| Value::from_db_valuev1(v))
+                            .collect();
+                        (k, vv)
+                    })
+                    .collect()
+            }
         };
 
-        let uuid: String = match attrs.get("uuid") {
+        let uuid: Uuid = match attrs.get("uuid") {
             Some(vs) => vs.first(),
             None => None,
         }?
+        // Now map value -> uuid
+        .to_uuid()?
         .clone();
-
-        // Convert attrs from db format to value
 
         Some(Entry {
             valid: EntryValid { uuid: uuid },
@@ -711,11 +728,13 @@ impl Entry<EntryValid, EntryCommitted> {
     ///
     /// However, the converstion to IndexType is fallaible, so in case of a failure
     /// to convert, an Err is returned.
-    pub(crate) fn get_ava_opt_index(&self, attr: &str) -> Result<Vec<IndexType>, ()> {
+    pub(crate) fn get_ava_opt_index(&self, attr: &str) -> Result<Vec<&IndexType>, ()> {
         match self.attrs.get(attr) {
             Some(av) => {
                 let r: Result<Vec<_>, _> =
-                    av.iter().map(|v| IndexType::try_from(v.as_str())).collect();
+                    av.iter().map(|v| {
+                        v.to_indextype().ok_or(())
+                    }).collect();
                 r
             }
             None => Ok(Vec::new()),
@@ -725,26 +744,33 @@ impl Entry<EntryValid, EntryCommitted> {
     /// Get a bool from an ava
     pub fn get_ava_single_bool(&self, attr: &str) -> Option<bool> {
         match self.get_ava_single(attr) {
-            Some(a) => bool::from_str(a.as_str()).ok(),
+            Some(a) => a.to_bool(),
             None => None,
         }
     }
 
-    pub fn get_ava_single_syntax(&self, attr: &str) -> Option<SyntaxType> {
+    pub fn get_ava_single_syntax(&self, attr: &str) -> Option<&SyntaxType> {
         match self.get_ava_single(attr) {
-            Some(a) => SyntaxType::try_from(a.as_str()).ok(),
+            Some(a) => a.to_syntaxtype(),
             None => None,
         }
     }
 
-    /// This is a cloning interface on getting ava's with optional
-    /// existance. It's used in the schema code for must/may/systemmust/systemmay
-    /// access. It should probably be avoided due to the clone unless you
-    /// are aware of the consequences.
-    pub(crate) fn get_ava_opt(&self, attr: &str) -> Vec<String> {
+    /// This interface will get &str (if possible), and then any caller is
+    /// responsible to clone.
+    pub(crate) fn get_ava_opt_str(&self, attr: &str) -> Option<Vec<&str>> {
         match self.attrs.get(attr) {
-            Some(a) => a.clone(),
-            None => Vec::new(),
+            Some(a) => {
+                let r: Vec<_> = a.iter()
+                    .filter_map(|v| v.to_str())
+                    .collect();
+                if r.len() == 0 {
+                    None
+                } else {
+                    Some(r)
+                }
+            }
+            None => None,
         }
     }
 }
@@ -762,7 +788,14 @@ impl<STATE> Entry<EntryValid, STATE> {
 
         DbEntry {
             ent: DbEntryVers::V1(DbEntryV1 {
-                attrs: self.attrs.clone(),
+                attrs: self.attrs.iter().map(|(k, vs)| {
+                    let dbvs: Vec<_> = vs.iter()
+                        .map(|v| {
+                            v.to_db_valuev1()
+                        })
+                        .collect();
+                    (k.clone(), dbvs)
+                }).collect(),
             }),
         }
     }
@@ -775,7 +808,7 @@ impl<STATE> Entry<EntryValid, STATE> {
         }
     }
 
-    pub fn get_uuid(&self) -> &String {
+    pub fn get_uuid(&self) -> &Uuid {
         &self.valid.uuid
     }
 
@@ -795,7 +828,7 @@ impl<STATE> Entry<EntryValid, STATE> {
 
         // Take name: (a, b), name: (c, d) -> (name, a), (name, b), (name, c), (name, d)
 
-        let mut pairs: Vec<(&str, &str)> = Vec::new();
+        let mut pairs: Vec<(&str, &Value)> = Vec::new();
 
         for attr in attrs {
             match self.attrs.get(attr) {
@@ -867,14 +900,18 @@ impl<STATE> Entry<EntryValid, STATE> {
 
 impl Entry<EntryReduced, EntryCommitted> {
     pub fn into_pe(&self) -> ProtoEntry {
-        // It's very likely that at this stage we'll need to apply
-        // access controls, dynamic attributes or more.
-        // As a result, this may not even be the right place
-        // for the conversion as algorithmically it may be
-        // better to do this from the outside view. This can
-        // of course be identified and changed ...
+        // Turn values -> Strings.
         ProtoEntry {
-            attrs: self.attrs.clone(),
+            attrs: self.attrs.iter()
+                .map(|(k, vs)| {
+                    let pvs: Vec<_> = vs.iter()
+                        .map(|v| {
+                            v.to_proto_string_clone()
+                        })
+                        .collect();
+                    (k.clone(), pvs)
+                })
+                .collect(),
         }
     }
 }
@@ -888,20 +925,20 @@ impl<VALID, STATE> Entry<VALID, STATE> {
      * relies on the ability to get ava. I think we may not be
      * able to do so "easily".
      */
-    pub fn get_ava(&self, attr: &str) -> Option<&Vec<String>> {
+    pub fn get_ava(&self, attr: &str) -> Option<&Vec<Value>> {
         self.attrs.get(attr)
     }
 
-    pub fn get_ava_set(&self, attr: &str) -> Option<BTreeSet<&str>> {
+    pub fn get_ava_set(&self, attr: &str) -> Option<BTreeSet<&Value>> {
         self.get_ava(attr).map(|vs| {
             // Map the vec to a BTreeSet instead.
-            let r: BTreeSet<&str> = vs.iter().map(|a| a.as_str()).collect();
+            let r: BTreeSet<&Value> = vs.iter().collect();
             r
         })
     }
 
     // Returns NONE if there is more than ONE!!!!
-    pub fn get_ava_single(&self, attr: &str) -> Option<&String> {
+    pub fn get_ava_single(&self, attr: &str) -> Option<&Value> {
         match self.attrs.get(attr) {
             Some(vs) => {
                 if vs.len() != 1 {
@@ -927,20 +964,20 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     }
 
     #[inline]
-    pub fn attribute_value_pres(&self, attr: &str, value: &str) -> bool {
+    pub fn attribute_value_pres(&self, attr: &str, value: &Value) -> bool {
         // Yeah, this is techdebt, but both names of this fn are valid - we are
         // checking if an attribute-value is equal to, or asserting it's present
         // as a pair. So I leave both, and let the compiler work it out.
         self.attribute_equality(attr, value)
     }
 
-    pub fn attribute_equality(&self, attr: &str, value: &str) -> bool {
+    pub fn attribute_equality(&self, attr: &str, value: &Value) -> bool {
         // we assume based on schema normalisation on the way in
         // that the equality here of the raw values MUST be correct.
         // We also normalise filters, to ensure that their values are
         // syntax valid and will correctly match here with our indexes.
         match self.attrs.get(attr) {
-            Some(v_list) => match v_list.binary_search(&value.to_string()) {
+            Some(v_list) => match v_list.binary_search(&value) {
                 Ok(_) => true,
                 Err(_) => false,
             },
@@ -979,7 +1016,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         // This is recursive!!!!
         match filter {
             FilterResolved::Eq(attr, value) => {
-                self.attribute_equality(attr.as_str(), value.as_str())
+                self.attribute_equality(attr.as_str(), value)
             }
             FilterResolved::Sub(attr, subvalue) => {
                 self.attribute_substring(attr.as_str(), subvalue.as_str())
@@ -1017,13 +1054,13 @@ where
     // a list of syntax violations ...
     // If this already exists, we silently drop the event? Is that an
     // acceptable interface?
-    pub fn add_ava(&mut self, attr: &str, value: &str) {
+    pub fn add_ava(&mut self, attr: &str, value: &Value) {
         // How do we make this turn into an ok / err?
         self.attrs
             .entry(attr.to_string())
             .and_modify(|v| {
                 // Here we need to actually do a check/binary search ...
-                match v.binary_search(&value.to_string()) {
+                match v.binary_search(value) {
                     // It already exists, done!
                     Ok(_) => {}
                     Err(idx) => {
@@ -1031,20 +1068,19 @@ where
                         // Is there a better way?
                         //
                         // I think it's only run once anyway, so non-issue?
-                        v.insert(idx, value.to_string())
+                        v.insert(idx, value.clone())
                     }
                 }
             })
-            .or_insert(vec![value.to_string()]);
+            .or_insert(vec![value.clone()]);
     }
 
-    pub fn remove_ava(&mut self, attr: &str, value: &str) {
+    pub fn remove_ava(&mut self, attr: &str, value: &Value) {
         // It would be great to remove these extra allocations, but they
         // really don't cost much :(
-        let mv = value.to_string();
         self.attrs.entry(attr.to_string()).and_modify(|v| {
             // Here we need to actually do a check/binary search ...
-            match v.binary_search(&mv) {
+            match v.binary_search(&value) {
                 // It exists, rm it.
                 Ok(idx) => {
                     v.remove(idx);
@@ -1081,8 +1117,8 @@ where
         // mutate
         for modify in modlist {
             match modify {
-                Modify::Present(a, v) => self.add_ava(a.as_str(), v.as_str()),
-                Modify::Removed(a, v) => self.remove_ava(a.as_str(), v.as_str()),
+                Modify::Present(a, v) => self.add_ava(a.as_str(), v),
+                Modify::Removed(a, v) => self.remove_ava(a.as_str(), v),
                 Modify::Purged(a) => self.purge_ava(a.as_str()),
             }
         }
@@ -1108,8 +1144,8 @@ impl<VALID, STATE> PartialEq for Entry<VALID, STATE> {
 impl From<&SchemaAttribute> for Entry<EntryValid, EntryNew> {
     fn from(s: &SchemaAttribute) -> Self {
         // Convert an Attribute to an entry ... make it good!
-        let uuid_str = s.uuid.to_hyphenated().to_string();
-        let uuid_v = vec![uuid_str.clone()];
+        let uuid = s.uuid.clone();
+        let uuid_v = vec![Value::from(&uuid)];
 
         let name_v = vec![s.name.clone()];
         let desc_v = vec![s.description.clone()];
@@ -1145,7 +1181,7 @@ impl From<&SchemaAttribute> for Entry<EntryValid, EntryNew> {
 
         Entry {
             valid: EntryValid {
-                uuid: uuid_str.clone(),
+                uuid: uuid,
             },
             state: EntryNew,
             attrs: attrs,
@@ -1155,8 +1191,8 @@ impl From<&SchemaAttribute> for Entry<EntryValid, EntryNew> {
 
 impl From<&SchemaClass> for Entry<EntryValid, EntryNew> {
     fn from(s: &SchemaClass) -> Self {
-        let uuid_str = s.uuid.to_hyphenated().to_string();
-        let uuid_v = vec![uuid_str.clone()];
+        let uuid = s.uuid.clone();
+        let uuid_v = vec![Value::from(&uuid)];
 
         let name_v = vec![s.name.clone()];
         let desc_v = vec![s.description.clone()];
@@ -1178,7 +1214,7 @@ impl From<&SchemaClass> for Entry<EntryValid, EntryNew> {
 
         Entry {
             valid: EntryValid {
-                uuid: uuid_str.clone(),
+                uuid: uuid,
             },
             state: EntryNew,
             attrs: attrs,
@@ -1190,7 +1226,6 @@ impl From<&SchemaClass> for Entry<EntryValid, EntryNew> {
 mod tests {
     use crate::entry::{Entry, EntryInvalid, EntryNew};
     use crate::modify::{Modify, ModifyList};
-    // use serde_json;
 
     #[test]
     fn test_entry_basic() {

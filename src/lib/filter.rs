@@ -17,7 +17,7 @@ use std::collections::BTreeSet;
 // Default filter is safe, ignores all hidden types!
 
 #[allow(dead_code)]
-pub fn f_eq<'a>(a: &'a str, v: &'a str) -> FC<'a> {
+pub fn f_eq<'a>(a: &'a str, v: &'a Value) -> FC<'a> {
     FC::Eq(a, v)
 }
 
@@ -55,7 +55,7 @@ pub fn f_self<'a>() -> FC<'a> {
 // be transformed into a filter for the server to use.
 #[derive(Debug, Deserialize)]
 pub enum FC<'a> {
-    Eq(&'a str, &'a str),
+    Eq(&'a str, &'a Value),
     Sub(&'a str, &'a str),
     Pres(&'a str),
     Or(Vec<FC<'a>>),

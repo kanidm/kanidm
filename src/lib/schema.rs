@@ -3,7 +3,7 @@ use crate::constants::*;
 use crate::entry::{Entry, EntryCommitted, EntryNew, EntryValid};
 use crate::error::{ConsistencyError, OperationError, SchemaError};
 use crate::proto::v1::Filter as ProtoFilter;
-use crate::value::{SyntaxType, IndexType};
+use crate::value::{Value, SyntaxType, IndexType};
 
 use regex::Regex;
 use std::collections::HashMap;
@@ -191,7 +191,7 @@ impl SchemaAttribute {
         }
     }
 
-    pub fn validate_ava(&self, ava: &Vec<String>) -> Result<(), SchemaError> {
+    pub fn validate_ava(&self, ava: &Vec<Value>) -> Result<(), SchemaError> {
         debug!("Checking for ... {:?}", self);
         debug!("Checking ava -> {:?}", ava);
         // Check multivalue
