@@ -10,19 +10,21 @@ use crate::schema::SchemaTransaction;
 use crate::server::{
     QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
 };
-use crate::value::Value;
+use crate::value::PartialValue;
 use std::cmp::{Ordering, PartialOrd};
 use std::collections::BTreeSet;
 
 // Default filter is safe, ignores all hidden types!
 
+// This is &Value so we can lazy static then clone, but perhaps we can reconsider
+// later if this should just take Value.
 #[allow(dead_code)]
-pub fn f_eq<'a>(a: &'a str, v: &'a Value) -> FC<'a> {
+pub fn f_eq<'a>(a: &'a str, v: PartialValue) -> FC<'a> {
     FC::Eq(a, v)
 }
 
 #[allow(dead_code)]
-pub fn f_sub<'a>(a: &'a str, v: &'a str) -> FC<'a> {
+pub fn f_sub<'a>(a: &'a str, v: PartialValue) -> FC<'a> {
     FC::Sub(a, v)
 }
 
@@ -55,8 +57,8 @@ pub fn f_self<'a>() -> FC<'a> {
 // be transformed into a filter for the server to use.
 #[derive(Debug, Deserialize)]
 pub enum FC<'a> {
-    Eq(&'a str, &'a Value),
-    Sub(&'a str, &'a str),
+    Eq(&'a str, PartialValue),
+    Sub(&'a str, PartialValue),
     Pres(&'a str),
     Or(Vec<FC<'a>>),
     And(Vec<FC<'a>>),
@@ -69,8 +71,8 @@ pub enum FC<'a> {
 #[derive(Debug, Clone, PartialEq)]
 enum FilterComp {
     // This is attr - value
-    Eq(String, Value),
-    Sub(String, String),
+    Eq(String, PartialValue),
+    Sub(String, PartialValue),
     Pres(String),
     Or(Vec<FilterComp>),
     And(Vec<FilterComp>),
@@ -87,8 +89,8 @@ enum FilterComp {
 #[derive(Debug, Clone)]
 pub enum FilterResolved {
     // This is attr - value
-    Eq(String, Value),
-    Sub(String, String),
+    Eq(String, PartialValue),
+    Sub(String, PartialValue),
     Pres(String),
     Or(Vec<FilterResolved>),
     And(Vec<FilterResolved>),
@@ -305,8 +307,8 @@ impl Filter<FilterInvalid> {
 impl FilterComp {
     fn new(fc: FC) -> Self {
         match fc {
-            FC::Eq(a, v) => FilterComp::Eq(a.to_string(), v.to_string()),
-            FC::Sub(a, v) => FilterComp::Sub(a.to_string(), v.to_string()),
+            FC::Eq(a, v) => FilterComp::Eq(a.to_string(), v),
+            FC::Sub(a, v) => FilterComp::Sub(a.to_string(), v),
             FC::Pres(a) => FilterComp::Pres(a.to_string()),
             FC::Or(v) => FilterComp::Or(v.into_iter().map(|c| FilterComp::new(c)).collect()),
             FC::And(v) => FilterComp::And(v.into_iter().map(|c| FilterComp::new(c)).collect()),
@@ -318,8 +320,8 @@ impl FilterComp {
     fn new_ignore_hidden(fc: FilterComp) -> Self {
         FilterComp::And(vec![
             FilterComp::AndNot(Box::new(FilterComp::Or(vec![
-                FilterComp::Eq("class".to_string(), "tombstone".to_string()),
-                FilterComp::Eq("class".to_string(), "recycled".to_string()),
+                FilterComp::Eq("class".to_string(), PartialValue::new_iutf8("tombstone")),
+                FilterComp::Eq("class".to_string(), PartialValue::new_iutf8("recycled")),
             ]))),
             fc,
         ])
@@ -327,7 +329,7 @@ impl FilterComp {
 
     fn new_recycled(fc: FilterComp) -> Self {
         FilterComp::And(vec![
-            FilterComp::Eq("class".to_string(), "recycled".to_string()),
+            FilterComp::Eq("class".to_string(), PartialValue::new_iutf8("recycled")),
             fc,
         ])
     }
@@ -360,22 +362,21 @@ impl FilterComp {
         // Getting this each recursion could be slow. Maybe
         // we need an inner functon that passes the reference?
         let schema_attributes = schema.get_attributes();
-        let schema_name = schema_attributes
-            .get("name")
-            .expect("Critical: Core schema corrupt or missing.");
+        // We used to check the attr_name by normalising it (lowercasing)
+        // but should we? I think we actually should just call a special
+        // handler on schema to fix it up.
 
         match self {
             FilterComp::Eq(attr, value) => {
                 // Validate/normalise the attr name.
-                let attr_norm = schema_name.normalise_value(attr);
+                let attr_norm = schema.normalise_attr_name(attr);
                 // Now check it exists
                 match schema_attributes.get(&attr_norm) {
                     Some(schema_a) => {
-                        let value_norm = schema_a.normalise_value(value);
                         schema_a
-                            .validate_value(&value_norm)
+                            .validate_partialvalue(&value)
                             // Okay, it worked, transform to a filter component
-                            .map(|_| FilterComp::Eq(attr_norm, value_norm))
+                            .map(|_| FilterComp::Eq(attr_norm, value.clone()))
                         // On error, pass the error back out.
                     }
                     None => Err(SchemaError::InvalidAttribute),
@@ -383,22 +384,21 @@ impl FilterComp {
             }
             FilterComp::Sub(attr, value) => {
                 // Validate/normalise the attr name.
-                let attr_norm = schema_name.normalise_value(attr);
+                let attr_norm = schema.normalise_attr_name(attr);
                 // Now check it exists
                 match schema_attributes.get(&attr_norm) {
                     Some(schema_a) => {
-                        let value_norm = schema_a.normalise_value(value);
                         schema_a
-                            .validate_value(&value_norm)
+                            .validate_partialvalue(&value)
                             // Okay, it worked, transform to a filter component
-                            .map(|_| FilterComp::Sub(attr_norm, value_norm))
+                            .map(|_| FilterComp::Sub(attr_norm, value.clone()))
                         // On error, pass the error back out.
                     }
                     None => Err(SchemaError::InvalidAttribute),
                 }
             }
             FilterComp::Pres(attr) => {
-                let attr_norm = schema_name.normalise_value(attr);
+                let attr_norm = schema.normalise_attr_name(attr);
                 // Now check it exists
                 match schema_attributes.get(&attr_norm) {
                     Some(_attr_name) => {
@@ -455,8 +455,8 @@ impl FilterComp {
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         Ok(match f {
-            ProtoFilter::Eq(a, v) => FilterComp::Eq(a.clone(), qs.clone_value(audit, a, v)?),
-            ProtoFilter::Sub(a, v) => FilterComp::Sub(a.clone(), qs.clone_value(audit, a, v)?),
+            ProtoFilter::Eq(a, v) => FilterComp::Eq(a.clone(), qs.clone_partialvalue(audit, a, v)?),
+            ProtoFilter::Sub(a, v) => FilterComp::Sub(a.clone(), qs.clone_partialvalue(audit, a, v)?),
             ProtoFilter::Pres(a) => FilterComp::Pres(a.clone()),
             ProtoFilter::Or(l) => FilterComp::Or(
                 l.iter()
@@ -479,8 +479,8 @@ impl FilterComp {
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         Ok(match f {
-            ProtoFilter::Eq(a, v) => FilterComp::Eq(a.clone(), qs.clone_value(audit, a, v)?),
-            ProtoFilter::Sub(a, v) => FilterComp::Sub(a.clone(), qs.clone_value(audit, a, v)?),
+            ProtoFilter::Eq(a, v) => FilterComp::Eq(a.clone(), qs.clone_partialvalue(audit, a, v)?),
+            ProtoFilter::Sub(a, v) => FilterComp::Sub(a.clone(), qs.clone_partialvalue(audit, a, v)?),
             ProtoFilter::Pres(a) => FilterComp::Pres(a.clone()),
             ProtoFilter::Or(l) => FilterComp::Or(
                 l.iter()
@@ -645,7 +645,7 @@ impl FilterResolved {
             FilterComp::SelfUUID => match &ev.origin {
                 EventOrigin::User(e) => Some(FilterResolved::Eq(
                     "uuid".to_string(),
-                    e.get_uuid().to_string(),
+                    PartialValue::new_uuid(e.get_uuid().clone()),
                 )),
                 _ => None,
             },

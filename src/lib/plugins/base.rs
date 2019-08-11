@@ -1,5 +1,6 @@
 use crate::plugins::Plugin;
 use std::collections::BTreeSet;
+// TODO: Should be able to generate all uuid's via Value.
 use uuid::Uuid;
 
 use crate::audit::AuditScope;
@@ -11,6 +12,11 @@ use crate::modify::Modify;
 use crate::server::{
     QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
 };
+use crate::value::{PartialValue, Value};
+
+lazy_static! {
+    static ref CLASS_OBJECT: Value = Value::new_class("object");
+}
 
 // This module has some special properties around it's operation, namely that it
 // has to make a certain number of assertions *early* in the entry lifecycle around
@@ -46,14 +52,14 @@ impl Plugin for Base {
             audit_log!(au, "Base check on entry: {:?}", entry);
 
             // First, ensure we have the 'object', class in the class set.
-            entry.add_ava("class", "object");
+            entry.add_ava("class", &CLASS_OBJECT);
 
             audit_log!(au, "Object should now be in entry: {:?}", entry);
 
             // If they have a name, but no principal name, derive it.
 
             // if they don't have uuid, create it.
-            let c_uuid: String = match entry.get_ava("uuid") {
+            let c_uuid: Value = match entry.get_ava("uuid") {
                 Some(u) => {
                     // Actually check we have a value, could be empty array ...
                     if u.len() > 1 {
@@ -67,34 +73,38 @@ impl Plugin for Base {
                     // Should this be forgiving and just generate the UUID?
                     // NO! If you tried to specify it, but didn't give it, then you made
                     // a mistake and your intent is unknown.
-                    try_audit!(
+                    let v: Value = try_audit!(
                         au,
-                        u.first().ok_or(OperationError::Plugin).map(|v| v.clone())
-                    )
+                        u.first().ok_or(OperationError::Plugin).map(|v| (*v).clone())
+                    );
+                    v
                 }
-                None => Uuid::new_v4().to_hyphenated().to_string(),
+                None => Value::from(Uuid::new_v4()),
             };
 
-            audit_log!(au, "Setting temporary UUID {} to entry", c_uuid);
-            let ava_uuid: Vec<String> = vec![c_uuid];
+            audit_log!(au, "Setting temporary UUID {:?} to entry", c_uuid);
+            let ava_uuid: Vec<Value> = vec![c_uuid];
 
             entry.set_avas("uuid", ava_uuid);
             audit_log!(au, "Temporary entry state: {:?}", entry);
         }
 
         // Now, every cand has a UUID - create a cand uuid set from it.
-        let mut cand_uuid: BTreeSet<&str> = BTreeSet::new();
+        let mut cand_uuid: BTreeSet<&Uuid> = BTreeSet::new();
 
         // As we insert into the set, if a duplicate is found, return an error
         // that a duplicate exists.
+        //
+        // Remember, we have to use the ava here, not the get_uuid types because
+        // we may not have filled in the uuid field yet.
         for entry in cand.iter() {
-            let uuid_ref = entry
-                .get_ava("uuid")
+            let uuid_ref: &Uuid = entry
+                .get_ava_single("uuid")
                 .ok_or(OperationError::Plugin)?
-                .first()
+                .to_uuid()
                 .ok_or(OperationError::Plugin)?;
             audit_log!(au, "Entry valid UUID: {:?}", entry);
-            match cand_uuid.insert(uuid_ref.as_str()) {
+            match cand_uuid.insert(uuid_ref) {
                 false => {
                     audit_log!(au, "uuid duplicate found in create set! {:?}", uuid_ref);
                     return Err(OperationError::Plugin);
@@ -106,11 +116,17 @@ impl Plugin for Base {
         // Check that the system-protected range is not in the cand_uuid, unless we are
         // an internal operation.
         if !ce.event.is_internal() {
+
+            // TODO: We can't lazy static this as you can't borrow the type down to what
+            // range and contains on btreeset need, but can we possibly make these staticly
+            // part of the struct somehow at init. rather than needing to parse a lot?
+            let uuid_admin: Uuid = Uuid::parse_str(UUID_ADMIN).unwrap();
+            let uuid_anonymous: Uuid = Uuid::parse_str(UUID_ANONYMOUS).unwrap();
             // The internal set is bounded by: UUID_ADMIN -> UUID_ANONYMOUS
             // Sadly we need to allocate these to strings to make references, sigh.
             // let uuid_admin: String = UUID_ADMIN.to_string();
             // let uuid_anon: String = UUID_ANONYMOUS.to_string();
-            let overlap: usize = cand_uuid.range(UUID_ADMIN..UUID_ANONYMOUS).count();
+            let overlap: usize = cand_uuid.range(uuid_admin..uuid_anonymous).count();
             if overlap != 0 {
                 audit_log!(
                     au,
@@ -121,7 +137,8 @@ impl Plugin for Base {
             }
         }
 
-        if cand_uuid.contains(UUID_DOES_NOT_EXIST) {
+        let uuid_does_not_exist: Uuid = Uuid::parse_str(UUID_DOES_NOT_EXIST).unwrap();
+        if cand_uuid.contains(&uuid_does_not_exist) {
             audit_log!(
                 au,
                 "uuid \"does not exist\" found in create set! {:?}",
@@ -133,7 +150,11 @@ impl Plugin for Base {
         // Now from each element, generate a filter to search for all of them
         //
         // IMPORTANT: We don't exclude recycled or tombstones here!
-        let filt_in = filter_all!(FC::Or(cand_uuid.iter().map(|u| f_eq("uuid", u)).collect(),));
+        let filt_in = filter_all!(FC::Or(
+            cand_uuid.iter().map(|u| {
+                FC::Eq("uuid", PartialValue::new_uuid(*u.clone()))
+            })
+            .collect(),));
 
         // If any results exist, fail as a duplicate UUID is present.
         // TODO #69: Can we report which UUID exists? Probably yes, we do
@@ -206,9 +227,9 @@ impl Plugin for Base {
                 // will be thrown in the deserialise (possibly it will be better
                 // handled later). But it means this check only needs to validate
                 // uniqueness!
-                let uuid: &String = e.get_uuid();
+                let uuid: &Uuid = e.get_uuid();
 
-                let filt = filter!(f_eq("uuid", uuid));
+                let filt = filter!(FC::Eq("uuid", PartialValue::new_uuid(uuid.clone())));
                 match qs.internal_search(au, filt) {
                     Ok(r) => {
                         if r.len() == 0 {

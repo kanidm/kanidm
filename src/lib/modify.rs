@@ -5,7 +5,7 @@ use crate::proto::v1::ModifyList as ProtoModifyList;
 use crate::error::{OperationError, SchemaError};
 use crate::schema::SchemaTransaction;
 use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
-use crate::value::Value;
+use crate::value::{PartialValue, Value};
 
 // Should this be std?
 use std::slice;
@@ -20,19 +20,19 @@ pub enum Modify {
     // This value *should* exist.
     Present(String, Value),
     // This value *should not* exist.
-    Removed(String, Value),
+    Removed(String, PartialValue),
     // This attr *should not* exist.
     Purged(String),
 }
 
 #[allow(dead_code)]
-pub fn m_pres(a: &str, v: &str) -> Modify {
-    Modify::Present(a.to_string(), v.to_string())
+pub fn m_pres(a: &str, v: &Value) -> Modify {
+    Modify::Present(a.to_string(), v.clone())
 }
 
 #[allow(dead_code)]
-pub fn m_remove(a: &str, v: &str) -> Modify {
-    Modify::Removed(a.to_string(), v.to_string())
+pub fn m_remove(a: &str, v: &PartialValue) -> Modify {
+    Modify::Removed(a.to_string(), v.clone())
 }
 
 #[allow(dead_code)]
@@ -48,7 +48,7 @@ impl Modify {
     ) -> Result<Self, OperationError> {
         Ok(match m {
             ProtoModify::Present(a, v) => Modify::Present(a.clone(), qs.clone_value(audit, a, v)?),
-            ProtoModify::Removed(a, v) => Modify::Removed(a.clone(), qs.clone_value(audit, a, v)?),
+            ProtoModify::Removed(a, v) => Modify::Removed(a.clone(), qs.clone_partialvalue(audit, a, v)?),
             ProtoModify::Purged(a) => Modify::Purged(a.clone()),
         })
     }
@@ -114,39 +114,40 @@ impl ModifyList<ModifyInvalid> {
         schema: &SchemaTransaction,
     ) -> Result<ModifyList<ModifyValid>, SchemaError> {
         let schema_attributes = schema.get_attributes();
+        /*
         let schema_name = schema_attributes
             .get("name")
             .expect("Critical: Core schema corrupt or missing. To initiate a core transfer, please deposit substitute core in receptacle.");
+        */
 
         let res: Result<Vec<Modify>, _> = (&self.mods)
             .into_iter()
             .map(|m| match m {
                 Modify::Present(attr, value) => {
-                    let attr_norm = schema_name.normalise_value(&attr);
+                    let attr_norm = schema.normalise_attr_name(attr);
                     match schema_attributes.get(&attr_norm) {
                         Some(schema_a) => {
-                            let value_norm = schema_a.normalise_value(&value);
                             schema_a
-                                .validate_value(&value_norm)
-                                .map(|_| Modify::Present(attr_norm, value_norm))
+                                .validate_value(&value)
+                                .map(|_| Modify::Present(attr_norm, value.clone()))
                         }
                         None => Err(SchemaError::InvalidAttribute),
                     }
                 }
+                // TODO: Should this be a partial value type?
                 Modify::Removed(attr, value) => {
-                    let attr_norm = schema_name.normalise_value(&attr);
+                    let attr_norm = schema.normalise_attr_name(attr);
                     match schema_attributes.get(&attr_norm) {
                         Some(schema_a) => {
-                            let value_norm = schema_a.normalise_value(&value);
                             schema_a
-                                .validate_value(&value_norm)
-                                .map(|_| Modify::Removed(attr_norm, value_norm))
+                                .validate_partialvalue(&value)
+                                .map(|_| Modify::Removed(attr_norm, value.clone()))
                         }
                         None => Err(SchemaError::InvalidAttribute),
                     }
                 }
                 Modify::Purged(attr) => {
-                    let attr_norm = schema_name.normalise_value(&attr);
+                    let attr_norm = schema.normalise_attr_name(attr);
                     match schema_attributes.get(&attr_norm) {
                         Some(_attr_name) => Ok(Modify::Purged(attr_norm)),
                         None => Err(SchemaError::InvalidAttribute),

@@ -5,6 +5,7 @@ use crate::error::OperationError;
 
 use std::convert::TryFrom;
 use uuid::Uuid;
+use std::borrow::Borrow;
 
 #[allow(non_camel_case_types)]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
@@ -100,7 +101,40 @@ impl SyntaxType {
     }
 }
 
-// Do I need partialOrd too
+#[derive(Debug, Clone, Eq, Ord, PartialOrd, PartialEq, Deserialize, Serialize)]
+pub (crate) enum PartialValue {
+    Utf8(String),
+    Iutf8(String),
+    Uuid(Uuid),
+    Bool(bool),
+    Syntax(SyntaxType),
+    Index(IndexType),
+    Refer(Uuid),
+    // Does this make sense?
+    // TODO: We'll probably add tagging to this type for the partial matching
+    JsonFilt(String),
+}
+
+impl PartialValue {
+    pub fn new_utf8(s: String) -> Self {
+        PartialValue::Utf8(s)
+    }
+
+    pub fn new_utf8s(s: &str) -> Self {
+        PartialValue::Utf8(s.to_string())
+    }
+
+    pub fn new_iutf8(s: &str) -> Self {
+        PartialValue::Iutf8(s.to_lowercase())
+    }
+
+    pub fn new_uuid(u: Uuid) -> Self {
+        PartialValue::Uuid(u)
+    }
+}
+
+// TODO: Store everything as partialValue and then have a extra ref to extra data
+// for that type as needed?
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
 pub (crate) enum Value {
     Utf8(String),
@@ -113,10 +147,24 @@ pub (crate) enum Value {
     JsonFilt(String),
 }
 
+// TODO: Impl display
+
 // Need new_<type> -> Result<_, _>
 // Need from_db_value
 // Need to_db_value
 // Need to_string for most types.
+
+impl From<bool> for Value {
+    fn from(b: bool) -> Self {
+        Value::Bool(b)
+    }
+}
+
+impl From<&bool> for Value {
+    fn from(b: &bool) -> Self {
+        Value::Bool(*b)
+    }
+}
 
 impl From<String> for Value {
     fn from(s: String) -> Self {
@@ -141,6 +189,36 @@ impl From<&Uuid> for Value {
     }
 }
 
+impl From<Uuid> for Value {
+    fn from(u: Uuid) -> Self {
+        Value::Uuid(u)
+    }
+}
+
+impl From<SyntaxType> for Value {
+    fn from(s: SyntaxType) -> Self {
+        Value::Syntax(s)
+    }
+}
+
+impl From<&SyntaxType> for Value {
+    fn from(s: &SyntaxType) -> Self {
+        Value::Syntax(s.clone())
+    }
+}
+
+impl From<IndexType> for Value {
+    fn from(i: IndexType) -> Self {
+        Value::Index(i)
+    }
+}
+
+impl From<&IndexType> for Value {
+    fn from(i: &IndexType) -> Self {
+        Value::Index(i.clone())
+    }
+}
+
 impl Value {
 
     pub fn from_attr(audit: &AuditScope, qs: &QueryServerWriteTransaction, attr: &String, value: &String) -> Result<Self, OperationError> {
@@ -156,34 +234,42 @@ impl Value {
         Value::Iutf8(s.to_lowercase())
     }
 
-    fn new_uuid(s: String) -> Option<Self> {
+    fn new_uuid(s: &String) -> Option<Self> {
         match Uuid::parse_str(s.as_str()) {
             Ok(u) => Some(Value::Uuid(u)),
             Err(_) => None,
         }
     }
 
-    fn new_bool(s: String) -> Option<Self> {
+    pub fn new_class(s: &str) -> Self {
+        Value::Iutf8(s.to_lowercase())
+    }
+
+    pub fn new_attr(s: &str) -> Self {
+        Value::Iutf8(s.to_lowercase())
+    }
+
+    fn new_bool(s: &String) -> Option<Self> {
         unimplemented!();
     }
 
-    fn new_syntax(s: String) -> Option<Self> {
+    fn new_syntax(s: &String) -> Option<Self> {
         unimplemented!();
     }
 
-    fn new_index(s: String) -> Option<Self> {
+    fn new_index(s: &String) -> Option<Self> {
         unimplemented!();
     }
 
-    fn new_reference(s: String) -> Option<Self> {
+    fn new_reference(s: &String) -> Option<Self> {
         unimplemented!();
     }
 
-    fn new_json_filter(s: String) -> Option<Self> {
+    fn new_json_filter(s: &String) -> Option<Self> {
         unimplemented!();
     }
 
-    pub fn contains(&self, s: &str) -> bool {
+    pub fn contains(&self, s: &PartialValue) -> bool {
         unimplemented!();
     }
 
@@ -244,13 +330,23 @@ impl Value {
 
     pub fn to_bool(&self) -> Option<bool> {
         match self {
-            // *v is to invoke a clone, but this is cheap af
+            // *v is to invoke a copy, but this is cheap af
             Value::Bool(v) => Some(*v),
             _ => None,
         }
     }
+
+    pub fn to_partialvalue(&self) -> PartialValue {
+        // Match on self to become a partialvalue.
+        unimplemented!()
+    }
 }
 
+impl Borrow<PartialValue> for Value {
+    fn borrow(&self) -> &PartialValue {
+        unimplemented!();
+    }
+}
 
 #[cfg(test)]
 mod tests {

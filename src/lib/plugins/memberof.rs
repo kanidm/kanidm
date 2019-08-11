@@ -18,29 +18,35 @@ use crate::modify::{Modify, ModifyList};
 use crate::plugins::Plugin;
 use crate::server::QueryServerTransaction;
 use crate::server::{QueryServerReadTransaction, QueryServerWriteTransaction};
+use crate::value::{PartialValue, Value};
 
 use std::collections::BTreeMap;
+use uuid::Uuid;
+
+lazy_static! {
+    static ref CLASS_GROUP: PartialValue = PartialValue::new_iutf8("group");
+}
 
 pub struct MemberOf;
 
 fn affected_uuids<'a, STATE>(
     au: &mut AuditScope,
     changed: Vec<&'a Entry<EntryValid, STATE>>,
-) -> Vec<&'a String>
+) -> Vec<&'a Uuid>
 where
     STATE: std::fmt::Debug,
 {
     // From the list of groups which were changed in this operation:
     let changed_groups: Vec<_> = changed
         .into_iter()
-        .filter(|e| e.attribute_value_pres("class", "group"))
+        .filter(|e| e.attribute_value_pres("class", &CLASS_GROUP))
         .inspect(|e| {
             audit_log!(au, "group reporting change: {:?}", e);
         })
         .collect();
 
     // Now, build a map of all UUID's that will require updates as a result of this change
-    let mut affected_uuids: Vec<&String> = changed_groups
+    let mut affected_uuids: Vec<&Uuid> = changed_groups
         .iter()
         .filter_map(|e| {
             // Only groups with member get collected up here.
@@ -48,6 +54,9 @@ where
         })
         // Flatten the member's to the list.
         .flatten()
+        .filter_map(|uv| {
+            uv.to_uuid()
+        })
         .collect();
 
     // IDEA: promote groups to head of the affected_uuids set!
@@ -65,7 +74,7 @@ where
 fn apply_memberof(
     au: &mut AuditScope,
     qs: &mut QueryServerWriteTransaction,
-    affected_uuids: Vec<&String>,
+    affected_uuids: Vec<&Uuid>,
 ) -> Result<(), OperationError> {
     audit_log!(au, " => entering apply_memberof");
     audit_log!(au, "affected uuids -> {:?}", affected_uuids);
@@ -93,17 +102,20 @@ fn apply_memberof(
             au,
             qs.internal_search(
                 au,
-                filter!(f_and!([f_eq("class", "group"), f_eq("member", a_uuid)]))
+                filter!(f_and!([
+                    f_eq("class", CLASS_GROUP.clone()),
+                    f_eq("member", PartialValue::new_uuid(a_uuid.clone()))
+                ]))
             )
         );
         // get UUID of all groups + all memberof values
-        let mut dir_mo_set: Vec<_> = groups.iter().map(|g| g.get_uuid().clone()).collect();
+        let mut dir_mo_set: Vec<Value> = groups.iter().map(|g| g.get_uuid().clone()).collect();
 
         // No need to dedup this. Sorting could be of questionable
         // value too though ...
         dir_mo_set.sort();
 
-        let mut mo_set: Vec<_> = groups
+        let mut mo_set: Vec<Value> = groups
             .iter()
             .map(|g| {
                 // TODO #61: This could be more effecient
@@ -133,7 +145,7 @@ fn apply_memberof(
         // TODO #68: Could this affect replication? Or should the CL work out the
         // true diff of the operation?
         let mo_purge = vec![
-            Modify::Present("class".to_string(), "memberof".to_string()),
+            Modify::Present("class".to_string(), Value::new_class("memberof")),
             Modify::Purged("memberof".to_string()),
             Modify::Purged("directmemberof".to_string()),
         ];
@@ -158,7 +170,7 @@ fn apply_memberof(
 
         try_audit!(
             au,
-            qs.internal_modify(au, filter!(f_eq("uuid", a_uuid)), modlist,)
+            qs.internal_modify(au, filter!(f_eq("uuid", PartialValue::new_uuid(a_uuid))), modlist,)
         );
     }
 
@@ -368,6 +380,7 @@ mod tests {
     // use crate::error::OperationError;
     use crate::modify::{Modify, ModifyList};
     use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
+    use crate::value::{PartialValue};
 
     static EA: &'static str = r#"{
             "valid": null,
@@ -426,7 +439,10 @@ mod tests {
             $mo:expr,
             $cand:expr
         ) => {{
-            let filt = filter!(f_and!([f_eq("uuid", $ea), f_eq($mo, $eb)]));
+            let filt = filter!(f_and!([
+                f_eq("uuid", PartialValue::new_uuid($ea)),
+                f_eq($mo, PartialValue::new_refer($eb))
+            ]));
             let cands = $qs
                 .internal_search($au, filt)
                 .expect("Internal search failure");

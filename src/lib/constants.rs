@@ -1,3 +1,4 @@
+
 // On test builds, define to 60 seconds
 #[cfg(test)]
 pub static PURGE_TIMEOUT: u64 = 60;
@@ -6,6 +7,9 @@ pub static PURGE_TIMEOUT: u64 = 60;
 pub static PURGE_TIMEOUT: u64 = 3600;
 
 pub static UUID_ADMIN: &'static str = "00000000-0000-0000-0000-000000000000";
+pub static UUID_DOES_NOT_EXIST: &'static str = "00000000-0000-0000-0000-fffffffffffe";
+pub static UUID_ANONYMOUS: &'static str = "00000000-0000-0000-0000-ffffffffffff";
+
 pub static JSON_ADMIN_V1: &'static str = r#"{
     "valid": {
         "uuid": "00000000-0000-0000-0000-000000000000"
@@ -117,9 +121,6 @@ pub static JSON_IDM_SELF_ACP_READ_V1: &'static str = r#"{
     }
 }"#;
 
-pub static UUID_DOES_NOT_EXIST: &'static str = "00000000-0000-0000-0000-fffffffffffe";
-
-pub static UUID_ANONYMOUS: &'static str = "00000000-0000-0000-0000-ffffffffffff";
 pub static JSON_ANONYMOUS_V1: &'static str = r#"{
     "valid": {
         "uuid": "00000000-0000-0000-0000-ffffffffffff"

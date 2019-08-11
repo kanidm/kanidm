@@ -771,7 +771,7 @@ mod tests {
     use super::super::audit::AuditScope;
     use super::super::entry::{Entry, EntryInvalid, EntryNew};
     use super::{Backend, BackendTransaction, BackendWriteTransaction, OperationError};
-    use crate::value::Value;
+    use crate::value::{PartialValue, Value};
 
     macro_rules! run_test {
         ($test_fn:expr) => {{
@@ -855,7 +855,7 @@ mod tests {
             assert!(single_result.is_ok());
             // Test a simple EQ search
 
-            let filt = unsafe { filter_resolved!(f_eq("userid", Value::from("claire"))) };
+            let filt = unsafe { filter_resolved!(f_eq("userid", PartialValue::new_utf8s("claire"))) };
 
             let r = be.search(audit, &filt);
             assert!(r.expect("Search failed!").len() == 1);
@@ -909,8 +909,8 @@ mod tests {
             assert!(be.modify(audit, &vec![]).is_err());
 
             // Make some changes to r1, r2.
-            r1.add_ava("desc", "modified");
-            r2.add_ava("desc", "modified");
+            r1.add_ava("desc", &Value::from("modified"));
+            r2.add_ava("desc", &Value::from("modified"));
 
             // Now ... cheat.
 

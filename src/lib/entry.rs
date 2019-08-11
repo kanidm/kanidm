@@ -7,7 +7,7 @@ use crate::proto::v1::Entry as ProtoEntry;
 use crate::value::{SyntaxType, IndexType};
 use crate::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
 use crate::server::{QueryServerWriteTransaction};
-use crate::value::Value;
+use crate::value::{Value, PartialValue};
 
 use crate::be::dbentry::{DbEntry, DbEntryV1, DbEntryVers};
 
@@ -16,7 +16,7 @@ use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::collections::HashMap;
 use std::iter::ExactSizeIterator;
-use std::slice::Iter as SliceIter;
+use std::collections::btree_set::Iter as BTreeSetIter;
 use uuid::Uuid;
 
 // use std::convert::TryFrom;
@@ -49,9 +49,14 @@ use uuid::Uuid;
 // }
 //
 
+lazy_static! {
+    static ref CLASS_EXTENSIBLE: PartialValue =
+        PartialValue::new_utf8s("extensibleobject");
+}
+
 pub struct EntryClasses<'a> {
     size: usize,
-    inner: Option<SliceIter<'a, Value>>,
+    inner: Option<BTreeSetIter<'a, Value>>,
     // _p: &'a PhantomData<()>,
 }
 
@@ -82,14 +87,14 @@ impl<'a> ExactSizeIterator for EntryClasses<'a> {
 }
 
 pub struct EntryAvas<'a> {
-    inner: BTreeIter<'a, String, Vec<Value>>,
+    inner: BTreeIter<'a, String, BTreeSet<Value>>,
 }
 
 impl<'a> Iterator for EntryAvas<'a> {
-    type Item = (&'a String, &'a Vec<Value>);
+    type Item = (&'a String, &'a BTreeSet<Value>);
 
     #[inline]
-    fn next(&mut self) -> Option<(&'a String, &'a Vec<Value>)> {
+    fn next(&mut self) -> Option<(&'a String, &'a BTreeSet<Value>)> {
         self.inner.next()
     }
 
@@ -100,14 +105,14 @@ impl<'a> Iterator for EntryAvas<'a> {
 }
 
 pub struct EntryAvasMut<'a> {
-    inner: BTreeIterMut<'a, String, Vec<Value>>,
+    inner: BTreeIterMut<'a, String, BTreeSet<Value>>,
 }
 
 impl<'a> Iterator for EntryAvasMut<'a> {
-    type Item = (&'a String, &'a mut Vec<Value>);
+    type Item = (&'a String, &'a mut BTreeSet<Value>);
 
     #[inline]
-    fn next(&mut self) -> Option<(&'a String, &'a mut Vec<Value>)> {
+    fn next(&mut self) -> Option<(&'a String, &'a mut BTreeSet<Value>)> {
         self.inner.next()
     }
 
@@ -160,7 +165,8 @@ pub struct EntryReduced;
 pub struct Entry<VALID, STATE> {
     valid: VALID,
     state: STATE,
-    attrs: BTreeMap<String, Vec<Value>>,
+    // We may need to change this to BTreeSet to allow borrow of Value -> PartialValue for lookups.
+    attrs: BTreeMap<String, BTreeSet<Value>>,
 }
 
 impl<STATE> std::fmt::Display for Entry<EntryValid, STATE> {
@@ -196,15 +202,14 @@ impl Entry<EntryInvalid, EntryNew> {
 
         // Somehow we need to take the tree of e attrs, and convert
         // all ref types to our types ...
-        let map2: Result<BTreeMap<String, Vec<Value>>, OperationError> = e
+        let map2: Result<BTreeMap<String, BTreeSet<Value>>, OperationError> = e
             .attrs
             .iter()
             .map(|(k, v)| {
-                let nv: Result<Vec<Value>, _> =
+                let nv: Result<BTreeSet<Value>, _> =
                     v.iter().map(|vr| Value::from_attr(audit, qs, &k, vr)).collect();
                 match nv {
                     Ok(mut nvi) => {
-                        nvi.sort_unstable();
                         Ok((k.clone(), nvi))
                     }
                     Err(e) => Err(e),
@@ -229,7 +234,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
     #[allow(dead_code)]
     fn get_uuid(&self) -> Option<&Uuid> {
         match self.attrs.get("uuid") {
-            Some(vs) => match vs.first() {
+            Some(vs) => match vs.iter().take(1).next() {
                 Some(uv) => match uv {
                     Value::Uuid(u) => Some(&u),
                     _ => None,
@@ -317,7 +322,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
         let schema_attributes = schema.get_attributes();
 
         let uuid: Uuid = match &self.attrs.get("uuid") {
-            Some(vs) => match vs.first() {
+            Some(vs) => match vs.iter().take(1).next() {
                 Some(uuid_v) => match uuid_v {
                     Value::Uuid(uuid) => uuid.clone(),
                     _ => return Err(SchemaError::InvalidAttribute),
@@ -344,19 +349,19 @@ impl<STATE> Entry<EntryInvalid, STATE> {
             }
 
             // Do we have extensible?
-            let extensible = ne.attribute_value_pres("class",
-                // TODO: lazy static?
-                &Value::new_insensitive_utf8("extensibleobject".to_string())
-            );
+            let extensible = ne.attribute_value_pres("class", &CLASS_EXTENSIBLE);
 
             let entry_classes = ne.classes().ok_or(SchemaError::InvalidClass)?;
             let entry_classes_size = entry_classes.len();
 
             let classes: Vec<&SchemaClass> = entry_classes
-                .filter_map(|c| {
-                    c.as_string().map(|s| {
+                // we specify types here to help me clarify a few things in the
+                // development process :)
+                .filter_map(|c: &Value| {
+                    let x: Option<&SchemaClass> = c.as_string().and_then(|s| {
                         schema_classes.get(s)
-                    })
+                    });
+                    x
                 })
                 .collect();
 
@@ -521,14 +526,7 @@ impl Entry<EntryInvalid, EntryNew> {
                 uuid: self.get_uuid().expect("Invalid uuid").clone(),
             },
             state: EntryNew,
-            attrs: self
-                .attrs
-                .into_iter()
-                .map(|(k, mut v)| {
-                    v.sort_unstable();
-                    (k, v)
-                })
-                .collect(),
+            attrs: self.attrs
         }
     }
 
@@ -556,18 +554,11 @@ impl Entry<EntryInvalid, EntryNew> {
             valid: EntryValid {
                 uuid: self
                     .get_uuid()
-                    .map(|u| u.to_string())
-                    .unwrap_or_else(|| Uuid::new_v4().to_hyphenated().to_string()),
+                    .and_then(|u| Some(u.clone()))
+                    .unwrap_or_else(|| Uuid::new_v4()),
             },
             state: EntryCommitted { id: 0 },
-            attrs: self
-                .attrs
-                .into_iter()
-                .map(|(k, mut v)| {
-                    v.sort_unstable();
-                    (k, v)
-                })
-                .collect(),
+            attrs: self.attrs,
         }
     }
 }
@@ -577,17 +568,10 @@ impl Entry<EntryInvalid, EntryCommitted> {
     pub unsafe fn to_valid_committed(self) -> Entry<EntryValid, EntryCommitted> {
         Entry {
             valid: EntryValid {
-                uuid: self.get_uuid().expect("Invalid uuid").to_string(),
+                uuid: self.get_uuid().expect("Missing UUID!").clone(),
             },
             state: self.state,
-            attrs: self
-                .attrs
-                .into_iter()
-                .map(|(k, mut v)| {
-                    v.sort_unstable();
-                    (k, v)
-                })
-                .collect(),
+            attrs: self.attrs,
         }
     }
 }
@@ -598,14 +582,7 @@ impl Entry<EntryValid, EntryNew> {
         Entry {
             valid: self.valid,
             state: EntryCommitted { id: 0 },
-            attrs: self
-                .attrs
-                .into_iter()
-                .map(|(k, mut v)| {
-                    v.sort_unstable();
-                    (k, v)
-                })
-                .collect(),
+            attrs: self.attrs,
         }
     }
 
@@ -627,14 +604,14 @@ impl Entry<EntryValid, EntryCommitted> {
 
     pub fn to_tombstone(&self) -> Self {
         // Duplicate this to a tombstone entry
-        let class_ava = vec![
+        let class_ava = btreeset![
             Value::from("object"),
-            Value::from("tombstone"),
+            Value::from("tombstone")
         ];
 
-        let mut attrs_new: BTreeMap<String, Vec<Value>> = BTreeMap::new();
+        let mut attrs_new: BTreeMap<String, BTreeSet<Value>> = BTreeMap::new();
 
-        attrs_new.insert("uuid".to_string(), vec![
+        attrs_new.insert("uuid".to_string(), btreeset![
             Value::from(&self.valid.uuid)
         ]);
         attrs_new.insert("class".to_string(), class_ava);
@@ -652,11 +629,11 @@ impl Entry<EntryValid, EntryCommitted> {
 
     pub fn from_dbentry(db_e: DbEntry, id: u64) -> Option<Self> {
         // Convert attrs from db format to value
-        let attrs: BTreeMap<String, Vec<Value>> = match db_e.ent {
+        let attrs: BTreeMap<String, BTreeSet<Value>> = match db_e.ent {
             DbEntryVers::V1(v1) => {
                 v1.attrs.into_iter()
                     .map(|(k, vs)| {
-                        let vv: Vec<Value> = vs.into_iter()
+                        let vv: BTreeSet<Value> = vs.into_iter()
                             .map(|v| Value::from_db_valuev1(v))
                             .collect();
                         (k, vv)
@@ -666,7 +643,7 @@ impl Entry<EntryValid, EntryCommitted> {
         };
 
         let uuid: Uuid = match attrs.get("uuid") {
-            Some(vs) => vs.first(),
+            Some(vs) => vs.iter().take(1).next(),
             None => None,
         }?
         // Now map value -> uuid
@@ -844,7 +821,10 @@ impl<STATE> Entry<EntryValid, STATE> {
         Some(filter_all!(f_and(
             pairs
                 .into_iter()
-                .map(|(attr, value)| f_eq(attr, value))
+                .map(|(attr, value)| {
+                    // We use FC directly here instead of f_eq to avoid an excess clone.
+                    FC::Eq(attr, value.to_partialvalue())
+                })
                 .collect()
         )))
     }
@@ -925,16 +905,21 @@ impl<VALID, STATE> Entry<VALID, STATE> {
      * relies on the ability to get ava. I think we may not be
      * able to do so "easily".
      */
-    pub fn get_ava(&self, attr: &str) -> Option<&Vec<Value>> {
-        self.attrs.get(attr)
+    pub fn get_ava(&self, attr: &str) -> Option<Vec<&Value>> {
+        match self.attrs.get(attr) {
+            Some(vs) => {
+                let x: Vec<_> = vs.iter().collect();
+                Some(x)
+            }
+            None => None
+        }
     }
 
     pub fn get_ava_set(&self, attr: &str) -> Option<BTreeSet<&Value>> {
-        self.get_ava(attr).map(|vs| {
-            // Map the vec to a BTreeSet instead.
-            let r: BTreeSet<&Value> = vs.iter().collect();
-            r
-        })
+        self.attrs.get(attr)
+            .and_then(|vs| {
+                Some(vs.iter().collect())
+            })
     }
 
     // Returns NONE if there is more than ONE!!!!
@@ -944,7 +929,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
                 if vs.len() != 1 {
                     None
                 } else {
-                    vs.first()
+                    vs.iter().take(1).next()
                 }
             }
             None => None,
@@ -964,28 +949,25 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     }
 
     #[inline]
-    pub fn attribute_value_pres(&self, attr: &str, value: &Value) -> bool {
+    pub fn attribute_value_pres(&self, attr: &str, value: &PartialValue) -> bool {
         // Yeah, this is techdebt, but both names of this fn are valid - we are
         // checking if an attribute-value is equal to, or asserting it's present
         // as a pair. So I leave both, and let the compiler work it out.
         self.attribute_equality(attr, value)
     }
 
-    pub fn attribute_equality(&self, attr: &str, value: &Value) -> bool {
+    pub fn attribute_equality(&self, attr: &str, value: &PartialValue) -> bool {
         // we assume based on schema normalisation on the way in
         // that the equality here of the raw values MUST be correct.
         // We also normalise filters, to ensure that their values are
         // syntax valid and will correctly match here with our indexes.
         match self.attrs.get(attr) {
-            Some(v_list) => match v_list.binary_search(&value) {
-                Ok(_) => true,
-                Err(_) => false,
-            },
+            Some(v_list) => v_list.contains(value),
             None => false,
         }
     }
 
-    pub fn attribute_substring(&self, attr: &str, subvalue: &str) -> bool {
+    pub fn attribute_substring(&self, attr: &str, subvalue: &PartialValue) -> bool {
         match self.attrs.get(attr) {
             Some(v_list) => v_list
                 .iter()
@@ -1019,7 +1001,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
                 self.attribute_equality(attr.as_str(), value)
             }
             FilterResolved::Sub(attr, subvalue) => {
-                self.attribute_substring(attr.as_str(), subvalue.as_str())
+                self.attribute_substring(attr.as_str(), subvalue)
             }
             FilterResolved::Pres(attr) => {
                 // Given attr, is is present in the entry?
@@ -1060,34 +1042,21 @@ where
             .entry(attr.to_string())
             .and_modify(|v| {
                 // Here we need to actually do a check/binary search ...
-                match v.binary_search(value) {
+                if v.contains(value) {
                     // It already exists, done!
-                    Ok(_) => {}
-                    Err(idx) => {
-                        // This cloning is to fix a borrow issue with the or_insert below.
-                        // Is there a better way?
-                        //
-                        // I think it's only run once anyway, so non-issue?
-                        v.insert(idx, value.clone())
-                    }
+                } else {
+                    v.insert(value.clone());
                 }
             })
-            .or_insert(vec![value.clone()]);
+            .or_insert(btreeset![value.clone()]);
     }
 
-    pub fn remove_ava(&mut self, attr: &str, value: &Value) {
+    fn remove_ava(&mut self, attr: &str, value: &PartialValue) {
         // It would be great to remove these extra allocations, but they
         // really don't cost much :(
         self.attrs.entry(attr.to_string()).and_modify(|v| {
             // Here we need to actually do a check/binary search ...
-            match v.binary_search(&value) {
-                // It exists, rm it.
-                Ok(idx) => {
-                    v.remove(idx);
-                }
-                // It does not exist, move on.
-                Err(_) => {}
-            }
+            v.remove(value);
         });
     }
 
@@ -1096,9 +1065,10 @@ where
     }
 
     /// Overwrite the existing avas.
-    pub fn set_avas(&mut self, attr: &str, values: Vec<String>) {
-        // Overwrite the existing value
-        let _ = self.attrs.insert(attr.to_string(), values);
+    pub fn set_avas(&mut self, attr: &str, values: Vec<Value>) {
+        // Overwrite the existing value, build a tree from the list.
+        let x: BTreeSet<_> = values.into_iter().collect();
+        let _ = self.attrs.insert(attr.to_string(), x);
     }
 
     pub fn avas_mut(&mut self) -> EntryAvasMut {
@@ -1145,23 +1115,19 @@ impl From<&SchemaAttribute> for Entry<EntryValid, EntryNew> {
     fn from(s: &SchemaAttribute) -> Self {
         // Convert an Attribute to an entry ... make it good!
         let uuid = s.uuid.clone();
-        let uuid_v = vec![Value::from(&uuid)];
+        let uuid_v = btreeset![Value::from(&uuid)];
 
-        let name_v = vec![s.name.clone()];
-        let desc_v = vec![s.description.clone()];
+        let name_v = btreeset![Value::new_insensitive_utf8(s.name.clone())];
+        let desc_v = btreeset![Value::from(s.description.clone())];
 
-        let multivalue_v = vec![if s.multivalue {
-            "true".to_string()
-        } else {
-            "false".to_string()
-        }];
+        let multivalue_v = btreeset![Value::from(s.multivalue)];
 
-        let index_v: Vec<_> = s.index.iter().map(|i| i.to_string()).collect();
+        let index_v: BTreeSet<_> = s.index.iter().map(|i| Value::from(i)).collect();
 
-        let syntax_v = vec![s.syntax.to_string()];
+        let syntax_v = btreeset![Value::from(s.syntax)];
 
         // Build the BTreeMap of the attributes relevant
-        let mut attrs: BTreeMap<String, Vec<String>> = BTreeMap::new();
+        let mut attrs: BTreeMap<String, BTreeSet<Value>> = BTreeMap::new();
         attrs.insert("name".to_string(), name_v);
         attrs.insert("description".to_string(), desc_v);
         attrs.insert("uuid".to_string(), uuid_v);
@@ -1170,10 +1136,13 @@ impl From<&SchemaAttribute> for Entry<EntryValid, EntryNew> {
         attrs.insert("syntax".to_string(), syntax_v);
         attrs.insert(
             "class".to_string(),
-            vec![
-                "object".to_string(),
-                "system".to_string(),
-                "attributetype".to_string(),
+            btreeset![
+                Value::new_insensitive_utf8(
+                "object".to_string()),
+                Value::new_insensitive_utf8(
+                "system".to_string()),
+                Value::new_insensitive_utf8(
+                "attributetype".to_string())
             ],
         );
 
@@ -1192,25 +1161,42 @@ impl From<&SchemaAttribute> for Entry<EntryValid, EntryNew> {
 impl From<&SchemaClass> for Entry<EntryValid, EntryNew> {
     fn from(s: &SchemaClass) -> Self {
         let uuid = s.uuid.clone();
-        let uuid_v = vec![Value::from(&uuid)];
+        let uuid_v = btreeset![Value::from(&uuid)];
 
-        let name_v = vec![s.name.clone()];
-        let desc_v = vec![s.description.clone()];
+        let name_v = btreeset![Value::new_insensitive_utf8(s.name.clone())];
+        let desc_v = btreeset![Value::from(s.description.clone())];
 
-        let mut attrs: BTreeMap<String, Vec<String>> = BTreeMap::new();
+        let mut attrs: BTreeMap<String, BTreeSet<Value>> = BTreeMap::new();
         attrs.insert("name".to_string(), name_v);
         attrs.insert("description".to_string(), desc_v);
         attrs.insert("uuid".to_string(), uuid_v);
         attrs.insert(
             "class".to_string(),
-            vec![
-                "object".to_string(),
-                "system".to_string(),
-                "classtype".to_string(),
+            btreeset![
+                Value::new_insensitive_utf8(
+                "object".to_string()),
+                Value::new_insensitive_utf8(
+                "system".to_string()),
+                Value::new_insensitive_utf8(
+                "classtype".to_string())
             ],
         );
-        attrs.insert("systemmay".to_string(), s.systemmay.clone());
-        attrs.insert("systemmust".to_string(), s.systemmust.clone());
+        attrs.insert("systemmay".to_string(),
+            s.systemmay.iter()
+                .map(|sm| {
+                    Value::new_insensitive_utf8(
+                        sm.clone()
+                    )
+                })
+                .collect());
+        attrs.insert("systemmust".to_string(), s.systemmust.iter()
+            .map(|sm| {
+                    Value::new_insensitive_utf8(
+                        sm.clone()
+                    )
+
+            }).collect()
+        );
 
         Entry {
             valid: EntryValid {
@@ -1226,6 +1212,7 @@ impl From<&SchemaClass> for Entry<EntryValid, EntryNew> {
 mod tests {
     use crate::entry::{Entry, EntryInvalid, EntryNew};
     use crate::modify::{Modify, ModifyList};
+    use crate::value::Value;
 
     #[test]
     fn test_entry_basic() {
@@ -1264,11 +1251,11 @@ mod tests {
     fn test_entry_equality() {
         let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
 
-        e.add_ava("userid", "william");
+        e.add_ava("userid", Value::from("william"));
 
-        assert!(e.attribute_equality("userid", "william"));
-        assert!(!e.attribute_equality("userid", "test"));
-        assert!(!e.attribute_equality("nonexist", "william"));
+        assert!(e.attribute_equality("userid", Value::from("william")));
+        assert!(!e.attribute_equality("userid", Value::from("test")));
+        assert!(!e.attribute_equality("nonexist", Value::from("william")));
     }
 
     #[test]

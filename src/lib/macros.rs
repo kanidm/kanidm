@@ -148,3 +148,52 @@ macro_rules! filter_resolved {
         f.to_valid_resolved()
     }};
 }
+
+#[cfg(test)]
+#[allow(unused_macros)]
+#[macro_export]
+macro_rules! pvalue_utf8 {
+    (
+        $v:expr
+    ) => {{
+        use crate::value::PartialValue;
+        PartialValue::new_utf8(v.to_string())
+    }};
+}
+
+#[cfg(test)]
+#[allow(unused_macros)]
+#[macro_export]
+macro_rules! pvalue_iutf8 {
+    (
+        $v:expr
+    ) => {{
+        use crate::value::PartialValue;
+        PartialValue::new_iutf8(v.to_string())
+    }};
+}
+
+#[allow(unused_macros)]
+#[macro_export]
+macro_rules! btreeset {
+    () => (
+        compile_error!("BTreeSet needs at least 1 element")
+    );
+    ($e:expr) => ({
+        let mut x: BTreeSet<_> = BTreeSet::new();
+        assert!(x.insert($e));
+        x
+    });
+    ($e:expr,) => ({
+        let mut x: BTreeSet<_> = BTreeSet::new();
+        assert!(x.insert($e));
+        x
+    });
+    ($e:expr, $($item:expr),*) => ({
+        let mut x: BTreeSet<_> = BTreeSet::new();
+        assert!(x.insert($e));
+        $(assert!(x.insert($item));)*
+        x
+    });
+}
+

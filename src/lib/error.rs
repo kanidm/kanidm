@@ -22,6 +22,8 @@ pub enum OperationError {
     Plugin,
     FilterGeneration,
     FilterUUIDResolution,
+    InvalidAttributeName(String),
+    InvalidAttribute(&'static str),
     InvalidDBState,
     InvalidEntryID,
     InvalidRequestState,

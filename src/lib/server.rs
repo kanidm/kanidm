@@ -33,7 +33,7 @@ use crate::schema::{
     Schema, SchemaAttribute, SchemaClass, SchemaReadTransaction, SchemaTransaction,
     SchemaWriteTransaction
 };
-use crate::value::{SyntaxType};
+use crate::value::{PartialValue, Value, SyntaxType};
 
 // This is the core of the server. It implements all
 // the search and modify actions, applies access controls
@@ -159,10 +159,11 @@ pub trait QueryServerTransaction {
         // index searches, completely bypassing id2entry.
 
         // construct the filter
-        let filt = filter!(f_eq("name", name));
+        let filt = filter!(f_eq("name", Value::new_insensitive_utf8(name)));
         audit_log!(audit, "name_to_uuid: name -> {:?}", name);
 
         // Internal search - DO NOT SEARCH TOMBSTONES AND RECYCLE
+        // TODO: Should we just search everything? It's a uuid to name ...
         let res = match self.internal_search(audit, filt) {
             Ok(e) => e,
             Err(e) => return Err(e),
@@ -323,71 +324,92 @@ pub trait QueryServerTransaction {
         }
     }
 
-    // Do a schema aware clone, that fixes values that need some kind of alteration
-    // or lookup from the front end.
-    //
-    // For example, reference types.
-    //
-    // For passwords, hashing and changes will take place later.
-    //
-    // TODO #66: It could be argued that we should have a proper "Value" type, so that we can
-    // take care of this a bit cleaner, and do the checks in that, but I think for
-    // now this is good enough.
+    /// Do a schema aware conversion from a String:String to String:Value for modification
+    /// present.
     fn clone_value(
         &self,
         audit: &mut AuditScope,
         attr: &String,
         value: &String,
-    ) -> Result<String, OperationError> {
+    ) -> Result<Value, OperationError> {
         let schema = self.get_schema();
-        let schema_name = schema
-            .get_attributes()
-            .get("name")
-            .expect("Schema corrupted");
 
         // Should we return the normalise attr?
         // no, I think that it's not up to us to normalise this all the time.
-        let temp_a = schema_name.normalise_value(attr);
+        // TODO: I think maybe we should?
+        let temp_a = schema.normalise_attr_name(attr);
 
         // Lookup the attr
         match schema.get_attributes().get(&temp_a) {
             Some(schema_a) => {
-                // Now check the type of the attribute ...
                 match schema_a.syntax {
-                    SyntaxType::REFERENCE_UUID => {
-                        match schema_a.validate_value(value) {
-                            // So, if possible, resolve the value
-                            // to a concrete uuid.
-                            Ok(_) => {
-                                // It's a uuid - we do NOT check for existance, because that
-                                // could be revealing or disclosing - it is up to acp to assert
-                                // if we can see the value or not, and it's not up to us to
-                                // assert the filter value exists.
-                                Ok(value.clone())
-                            }
-                            Err(_) => {
+                    SyntaxType::UTF8STRING => {
+                        Value::new_utf8(value.clone())
+                    }
+                    SyntaxType::UTF8STRING_PRINCIPAL => {
+                        Err(OperationError::InvalidAttribute("No longer supported type"))
+                    }
+                    SyntaxType::UTF8STRING_INSENSITIVE => {
+                        Value::new_insensitive_utf8(value.clone())
+                    }
+                    SyntaxType::BOOLEAN => {
+                        Value::new_bool(value)
+                            .ok_or(OperationError::InvalidAttribute("Invalid boolean syntax"))
+                    }
+                    SyntaxType::SYNTAX_ID => {
+                        Value::new_syntax(value)
+                            .ok_or(OperationError::InvalidAttribute("Invalid Syntax syntax"))
+                    }
+                    SyntaxType::INDEX_ID => {
+                        Value::new_index(value)
+                            .ok_or(OperationError::InvalidAttribute("Invalid Index syntax"))
+                    }
+                    SyntaxType::UUID => {
+                        // It's a uuid - we do NOT check for existance, because that
+                        // could be revealing or disclosing - it is up to acp to assert
+                        // if we can see the value or not, and it's not up to us to
+                        // assert the filter value exists.
+                        Value::new_uuid(value)
+                            .or_else(|| {
                                 // it's not a uuid, try to resolve it.
                                 // if the value is NOT found, we map to "does not exist" to allow
                                 // the value to continue being evaluated, which of course, will fail
                                 // all subsequent filter tests because it ... well, doesn't exist.
                                 self.name_to_uuid(audit, value)
-                                    .or_else(|_| Ok(UUID_DOES_NOT_EXIST.to_string()))
-                            }
-                        }
+                                    .or_else(|_| Value::new_uuid(UUID_DOES_NOT_EXIST.to_string()))
+                            })
+                            .ok_or(OperationError::InvalidAttribute("Invalid UUID syntax"))
                     }
-                    _ => {
-                        // Probs okay.
-                        Ok(value.clone())
+                    SyntaxType::REFERENCE_UUID => {
+                        // See comments above.
+                        Value::new_uuid(value)
+                            .or_else(|| {
+                                self.name_to_uuid(audit, value)
+                                    .or_else(|_| Value::new_uuid(UUID_DOES_NOT_EXIST.to_string()))
+                            })
+                            .ok_or(OperationError::InvalidAttribute("Invalid UUID syntax"))
+                    }
+                    SyntaxType::JSON_FILTER => {
+                        Value::new_json_filter(value)
+                            .ok_or(OperationError::InvalidAttribute("Invalid Filter syntax"))
                     }
                 }
             }
             None => {
-                // No attribute of this name exists - clone the value anyway, because
-                // the schema check will fail soon, and it's beyond this functions
-                // purpose to validate your content anyway.
-                Ok(value.clone())
+                // No attribute of this name exists - fail fast, there is no point to
+                // proceed, as nothing can be satisfied.
+                Err(OperationError::InvalidAttributeName(temp_a))
             }
         }
+    }
+
+    fn clone_partialvalue(
+        &self,
+        audit: &mut AuditScope,
+        attr: &String,
+        value: &String,
+    ) -> Result<PartialValue, OperationError> {
+        unimplemented!();
     }
 
     // In the opposite direction, we can resolve values for presentation

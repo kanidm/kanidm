@@ -3,13 +3,14 @@ use crate::constants::*;
 use crate::entry::{Entry, EntryCommitted, EntryNew, EntryValid};
 use crate::error::{ConsistencyError, OperationError, SchemaError};
 use crate::proto::v1::Filter as ProtoFilter;
-use crate::value::{Value, SyntaxType, IndexType};
+use crate::value::{PartialValue, Value, SyntaxType, IndexType};
 
 use regex::Regex;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::str::FromStr;
 use uuid::Uuid;
+use std::collections::BTreeSet;
 
 use concread::cowcell::{CowCell, CowCellReadTxn, CowCellWriteTxn};
 
@@ -175,7 +176,16 @@ impl SchemaAttribute {
         }
     }
 
-    pub fn validate_value(&self, v: &String) -> Result<(), SchemaError> {
+    // TODO: There may be a difference between a value and a filter value on complex
+    // types - IE a complex type may have multiple parts that are secret, but a filter
+    // on that may only use a single tagged attribute for example.
+    pub fn validate_partialvalue(&self, v: &PartialValue) -> Result<(), SchemaError> {
+        unimplemented!();
+    }
+
+    pub fn validate_value(&self, v: &Value) -> Result<(), SchemaError> {
+        unimplemented!();
+        /*
         match self.syntax {
             SyntaxType::BOOLEAN => self.validate_bool(v),
             SyntaxType::SYNTAX_ID => self.validate_syntax(v),
@@ -189,9 +199,10 @@ impl SchemaAttribute {
             SyntaxType::JSON_FILTER => self.validate_json_filter(v),
             _ => Ok(()),
         }
+        */
     }
 
-    pub fn validate_ava(&self, ava: &Vec<Value>) -> Result<(), SchemaError> {
+    pub fn validate_ava(&self, ava: &BTreeSet<Value>) -> Result<(), SchemaError> {
         debug!("Checking for ... {:?}", self);
         debug!("Checking ava -> {:?}", ava);
         // Check multivalue
@@ -342,6 +353,11 @@ pub trait SchemaTransaction {
 
     fn is_multivalue(&self, attr: &str) -> Result<bool, SchemaError> {
         self.get_inner().is_multivalue(attr)
+    }
+
+    fn normalise_attr_name(&self, an: &str) -> String {
+        // Will duplicate.
+        an.to_lowercase()
     }
 
     // Probably need something like get_classes or similar
