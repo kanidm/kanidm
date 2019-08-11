@@ -15,8 +15,8 @@ use crate::entry::{Entry, EntryCommitted, EntryNew, EntryValid};
 use crate::error::{ConsistencyError, OperationError};
 use crate::filter::{Filter, FilterValidResolved};
 
-pub mod dbvalue;
 pub mod dbentry;
+pub mod dbvalue;
 mod idl;
 mod mem_be;
 mod sqlite_be;
@@ -855,7 +855,8 @@ mod tests {
             assert!(single_result.is_ok());
             // Test a simple EQ search
 
-            let filt = unsafe { filter_resolved!(f_eq("userid", PartialValue::new_utf8s("claire"))) };
+            let filt =
+                unsafe { filter_resolved!(f_eq("userid", PartialValue::new_utf8s("claire"))) };
 
             let r = be.search(audit, &filt);
             assert!(r.expect("Search failed!").len() == 1);

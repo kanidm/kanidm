@@ -456,7 +456,9 @@ impl FilterComp {
     ) -> Result<Self, OperationError> {
         Ok(match f {
             ProtoFilter::Eq(a, v) => FilterComp::Eq(a.clone(), qs.clone_partialvalue(audit, a, v)?),
-            ProtoFilter::Sub(a, v) => FilterComp::Sub(a.clone(), qs.clone_partialvalue(audit, a, v)?),
+            ProtoFilter::Sub(a, v) => {
+                FilterComp::Sub(a.clone(), qs.clone_partialvalue(audit, a, v)?)
+            }
             ProtoFilter::Pres(a) => FilterComp::Pres(a.clone()),
             ProtoFilter::Or(l) => FilterComp::Or(
                 l.iter()
@@ -480,7 +482,9 @@ impl FilterComp {
     ) -> Result<Self, OperationError> {
         Ok(match f {
             ProtoFilter::Eq(a, v) => FilterComp::Eq(a.clone(), qs.clone_partialvalue(audit, a, v)?),
-            ProtoFilter::Sub(a, v) => FilterComp::Sub(a.clone(), qs.clone_partialvalue(audit, a, v)?),
+            ProtoFilter::Sub(a, v) => {
+                FilterComp::Sub(a.clone(), qs.clone_partialvalue(audit, a, v)?)
+            }
             ProtoFilter::Pres(a) => FilterComp::Pres(a.clone()),
             ProtoFilter::Or(l) => FilterComp::Or(
                 l.iter()

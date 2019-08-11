@@ -48,7 +48,9 @@ impl Modify {
     ) -> Result<Self, OperationError> {
         Ok(match m {
             ProtoModify::Present(a, v) => Modify::Present(a.clone(), qs.clone_value(audit, a, v)?),
-            ProtoModify::Removed(a, v) => Modify::Removed(a.clone(), qs.clone_partialvalue(audit, a, v)?),
+            ProtoModify::Removed(a, v) => {
+                Modify::Removed(a.clone(), qs.clone_partialvalue(audit, a, v)?)
+            }
             ProtoModify::Purged(a) => Modify::Purged(a.clone()),
         })
     }
@@ -126,11 +128,9 @@ impl ModifyList<ModifyInvalid> {
                 Modify::Present(attr, value) => {
                     let attr_norm = schema.normalise_attr_name(attr);
                     match schema_attributes.get(&attr_norm) {
-                        Some(schema_a) => {
-                            schema_a
-                                .validate_value(&value)
-                                .map(|_| Modify::Present(attr_norm, value.clone()))
-                        }
+                        Some(schema_a) => schema_a
+                            .validate_value(&value)
+                            .map(|_| Modify::Present(attr_norm, value.clone())),
                         None => Err(SchemaError::InvalidAttribute),
                     }
                 }
@@ -138,11 +138,9 @@ impl ModifyList<ModifyInvalid> {
                 Modify::Removed(attr, value) => {
                     let attr_norm = schema.normalise_attr_name(attr);
                     match schema_attributes.get(&attr_norm) {
-                        Some(schema_a) => {
-                            schema_a
-                                .validate_partialvalue(&value)
-                                .map(|_| Modify::Removed(attr_norm, value.clone()))
-                        }
+                        Some(schema_a) => schema_a
+                            .validate_partialvalue(&value)
+                            .map(|_| Modify::Removed(attr_norm, value.clone())),
                         None => Err(SchemaError::InvalidAttribute),
                     }
                 }

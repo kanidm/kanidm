@@ -1,11 +1,11 @@
-use crate::be::dbvalue::DbValueV1;
 use crate::audit::AuditScope;
-use crate::server::QueryServerWriteTransaction;
+use crate::be::dbvalue::DbValueV1;
 use crate::error::OperationError;
+use crate::server::QueryServerWriteTransaction;
 
+use std::borrow::Borrow;
 use std::convert::TryFrom;
 use uuid::Uuid;
-use std::borrow::Borrow;
 
 #[allow(non_camel_case_types)]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
@@ -102,7 +102,7 @@ impl SyntaxType {
 }
 
 #[derive(Debug, Clone, Eq, Ord, PartialOrd, PartialEq, Deserialize, Serialize)]
-pub (crate) enum PartialValue {
+pub(crate) enum PartialValue {
     Utf8(String),
     Iutf8(String),
     Uuid(Uuid),
@@ -136,7 +136,7 @@ impl PartialValue {
 // TODO: Store everything as partialValue and then have a extra ref to extra data
 // for that type as needed?
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
-pub (crate) enum Value {
+pub(crate) enum Value {
     Utf8(String),
     Iutf8(String),
     Uuid(Uuid),
@@ -220,8 +220,12 @@ impl From<&IndexType> for Value {
 }
 
 impl Value {
-
-    pub fn from_attr(audit: &AuditScope, qs: &QueryServerWriteTransaction, attr: &String, value: &String) -> Result<Self, OperationError> {
+    pub fn from_attr(
+        audit: &AuditScope,
+        qs: &QueryServerWriteTransaction,
+        attr: &String,
+        value: &String,
+    ) -> Result<Self, OperationError> {
         unimplemented!();
     }
 

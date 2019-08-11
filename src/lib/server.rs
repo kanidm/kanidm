@@ -18,9 +18,7 @@ use crate::constants::{
     JSON_SCHEMA_CLASS_ACCOUNT, JSON_SCHEMA_CLASS_GROUP, JSON_SCHEMA_CLASS_PERSON,
     JSON_SYSTEM_INFO_V1, UUID_DOES_NOT_EXIST,
 };
-use crate::entry::{
-    Entry, EntryCommitted, EntryInvalid, EntryNew, EntryReduced, EntryValid,
-};
+use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryReduced, EntryValid};
 use crate::error::{ConsistencyError, OperationError, SchemaError};
 use crate::event::{
     CreateEvent, DeleteEvent, Event, EventOrigin, ExistsEvent, ModifyEvent, ReviveRecycledEvent,
@@ -31,9 +29,9 @@ use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use crate::plugins::Plugins;
 use crate::schema::{
     Schema, SchemaAttribute, SchemaClass, SchemaReadTransaction, SchemaTransaction,
-    SchemaWriteTransaction
+    SchemaWriteTransaction,
 };
-use crate::value::{PartialValue, Value, SyntaxType};
+use crate::value::{PartialValue, SyntaxType, Value};
 
 // This is the core of the server. It implements all
 // the search and modify actions, applies access controls
@@ -343,27 +341,19 @@ pub trait QueryServerTransaction {
         match schema.get_attributes().get(&temp_a) {
             Some(schema_a) => {
                 match schema_a.syntax {
-                    SyntaxType::UTF8STRING => {
-                        Value::new_utf8(value.clone())
-                    }
+                    SyntaxType::UTF8STRING => Value::new_utf8(value.clone()),
                     SyntaxType::UTF8STRING_PRINCIPAL => {
                         Err(OperationError::InvalidAttribute("No longer supported type"))
                     }
                     SyntaxType::UTF8STRING_INSENSITIVE => {
                         Value::new_insensitive_utf8(value.clone())
                     }
-                    SyntaxType::BOOLEAN => {
-                        Value::new_bool(value)
-                            .ok_or(OperationError::InvalidAttribute("Invalid boolean syntax"))
-                    }
-                    SyntaxType::SYNTAX_ID => {
-                        Value::new_syntax(value)
-                            .ok_or(OperationError::InvalidAttribute("Invalid Syntax syntax"))
-                    }
-                    SyntaxType::INDEX_ID => {
-                        Value::new_index(value)
-                            .ok_or(OperationError::InvalidAttribute("Invalid Index syntax"))
-                    }
+                    SyntaxType::BOOLEAN => Value::new_bool(value)
+                        .ok_or(OperationError::InvalidAttribute("Invalid boolean syntax")),
+                    SyntaxType::SYNTAX_ID => Value::new_syntax(value)
+                        .ok_or(OperationError::InvalidAttribute("Invalid Syntax syntax")),
+                    SyntaxType::INDEX_ID => Value::new_index(value)
+                        .ok_or(OperationError::InvalidAttribute("Invalid Index syntax")),
                     SyntaxType::UUID => {
                         // It's a uuid - we do NOT check for existance, because that
                         // could be revealing or disclosing - it is up to acp to assert
@@ -389,10 +379,8 @@ pub trait QueryServerTransaction {
                             })
                             .ok_or(OperationError::InvalidAttribute("Invalid UUID syntax"))
                     }
-                    SyntaxType::JSON_FILTER => {
-                        Value::new_json_filter(value)
-                            .ok_or(OperationError::InvalidAttribute("Invalid Filter syntax"))
-                    }
+                    SyntaxType::JSON_FILTER => Value::new_json_filter(value)
+                        .ok_or(OperationError::InvalidAttribute("Invalid Filter syntax")),
                 }
             }
             None => {

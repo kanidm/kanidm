@@ -19,7 +19,7 @@ use concread::cowcell::{CowCell, CowCellReadTxn, CowCellWriteTxn};
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::audit::AuditScope;
-use crate::entry::{Entry, EntryCommitted, EntryNew, EntryInvalid, EntryReduced, EntryValid};
+use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryReduced, EntryValid};
 use crate::error::OperationError;
 use crate::filter::{Filter, FilterValid};
 use crate::modify::Modify;

@@ -54,9 +54,7 @@ where
         })
         // Flatten the member's to the list.
         .flatten()
-        .filter_map(|uv| {
-            uv.to_uuid()
-        })
+        .filter_map(|uv| uv.to_uuid())
         .collect();
 
     // IDEA: promote groups to head of the affected_uuids set!
@@ -170,7 +168,11 @@ fn apply_memberof(
 
         try_audit!(
             au,
-            qs.internal_modify(au, filter!(f_eq("uuid", PartialValue::new_uuid(a_uuid))), modlist,)
+            qs.internal_modify(
+                au,
+                filter!(f_eq("uuid", PartialValue::new_uuid(a_uuid))),
+                modlist,
+            )
         );
     }
 
@@ -380,7 +382,7 @@ mod tests {
     // use crate::error::OperationError;
     use crate::modify::{Modify, ModifyList};
     use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
-    use crate::value::{PartialValue};
+    use crate::value::PartialValue;
 
     static EA: &'static str = r#"{
             "valid": null,

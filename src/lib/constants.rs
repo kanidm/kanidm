@@ -1,4 +1,3 @@
-
 // On test builds, define to 60 seconds
 #[cfg(test)]
 pub static PURGE_TIMEOUT: u64 = 60;

@@ -3,14 +3,14 @@ use crate::constants::*;
 use crate::entry::{Entry, EntryCommitted, EntryNew, EntryValid};
 use crate::error::{ConsistencyError, OperationError, SchemaError};
 use crate::proto::v1::Filter as ProtoFilter;
-use crate::value::{PartialValue, Value, SyntaxType, IndexType};
+use crate::value::{IndexType, PartialValue, SyntaxType, Value};
 
 use regex::Regex;
+use std::collections::BTreeSet;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::str::FromStr;
 use uuid::Uuid;
-use std::collections::BTreeSet;
 
 use concread::cowcell::{CowCell, CowCellReadTxn, CowCellWriteTxn};
 
@@ -21,7 +21,6 @@ use concread::cowcell::{CowCell, CowCellReadTxn, CowCellWriteTxn};
 // but we have to bootstrap with some core types.
 
 // TODO #72: prefix on all schema types that are system?
-
 
 #[derive(Debug, Clone)]
 pub struct SchemaAttribute {

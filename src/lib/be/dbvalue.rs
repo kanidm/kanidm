@@ -11,5 +11,3 @@ pub enum DbValueV1 {
     RF(Uuid),
     JF(String),
 }
-
-

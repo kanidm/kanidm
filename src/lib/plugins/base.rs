@@ -75,7 +75,9 @@ impl Plugin for Base {
                     // a mistake and your intent is unknown.
                     let v: Value = try_audit!(
                         au,
-                        u.first().ok_or(OperationError::Plugin).map(|v| (*v).clone())
+                        u.first()
+                            .ok_or(OperationError::Plugin)
+                            .map(|v| (*v).clone())
                     );
                     v
                 }
@@ -116,7 +118,6 @@ impl Plugin for Base {
         // Check that the system-protected range is not in the cand_uuid, unless we are
         // an internal operation.
         if !ce.event.is_internal() {
-
             // TODO: We can't lazy static this as you can't borrow the type down to what
             // range and contains on btreeset need, but can we possibly make these staticly
             // part of the struct somehow at init. rather than needing to parse a lot?
@@ -151,10 +152,11 @@ impl Plugin for Base {
         //
         // IMPORTANT: We don't exclude recycled or tombstones here!
         let filt_in = filter_all!(FC::Or(
-            cand_uuid.iter().map(|u| {
-                FC::Eq("uuid", PartialValue::new_uuid(*u.clone()))
-            })
-            .collect(),));
+            cand_uuid
+                .iter()
+                .map(|u| FC::Eq("uuid", PartialValue::new_uuid(*u.clone())))
+                .collect(),
+        ));
 
         // If any results exist, fail as a duplicate UUID is present.
         // TODO #69: Can we report which UUID exists? Probably yes, we do
