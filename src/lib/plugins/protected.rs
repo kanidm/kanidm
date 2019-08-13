@@ -8,6 +8,7 @@ use crate::error::OperationError;
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::modify::Modify;
 use crate::server::QueryServerWriteTransaction;
+use crate::value::{Value, PartialValue};
 use std::collections::HashSet;
 
 pub struct Protected {}
@@ -23,6 +24,8 @@ lazy_static! {
         m.insert("may");
         m
     };
+    static ref VCLASS_SYSTEM: Value = Value::new_class("system");
+    static ref PVCLASS_SYSTEM: PartialValue = PartialValue::new_class("system");
 }
 
 impl Plugin for Protected {
@@ -48,7 +51,7 @@ impl Plugin for Protected {
         cand.iter().fold(Ok(()), |acc, cand| match acc {
             Err(_) => acc,
             Ok(_) => {
-                if cand.attribute_value_pres("class", "system") {
+                if cand.attribute_value_pres("class", &PVCLASS_SYSTEM) {
                     Err(OperationError::SystemProtectedObject)
                 } else {
                     acc
@@ -78,7 +81,7 @@ impl Plugin for Protected {
             } else {
                 match m {
                     Modify::Present(a, v) => {
-                        if a == "class" && v == "system" {
+                        if a == "class" && &v == &VCLASS_SYSTEM {
                             Err(OperationError::SystemProtectedObject)
                         } else {
                             Ok(())
@@ -94,7 +97,7 @@ impl Plugin for Protected {
             if acc {
                 acc
             } else {
-                c.attribute_value_pres("class", "system")
+                c.attribute_value_pres("class", &PVCLASS_SYSTEM)
             }
         });
 
@@ -141,7 +144,7 @@ impl Plugin for Protected {
         cand.iter().fold(Ok(()), |acc, cand| match acc {
             Err(_) => acc,
             Ok(_) => {
-                if cand.attribute_value_pres("class", "system") {
+                if cand.attribute_value_pres("class", &PVCLASS_SYSTEM) {
                     Err(OperationError::SystemProtectedObject)
                 } else {
                     acc

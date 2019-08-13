@@ -721,6 +721,21 @@ impl Entry<EntryValid, EntryCommitted> {
         }
     }
 
+    pub fn get_ava_reference_uuid(&self, attr: &str) -> Option<Vec<&Uuid>> {
+        // If any value is NOT a reference, return none!
+        match self.attrs.get(attr) {
+            Some(av) => {
+                let v: Option<Vec<&Uuid>> = av.iter()
+                    .map(|e| {
+                        e.to_ref_uuid()
+                    })
+                    .collect();
+                v
+            }
+            None => None,
+        }
+    }
+
     /// This interface will get &str (if possible), and then any caller is
     /// responsible to clone.
     pub(crate) fn get_ava_opt_str(&self, attr: &str) -> Option<Vec<&str>> {
@@ -1187,7 +1202,7 @@ mod tests {
     fn test_entry_basic() {
         let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
 
-        e.add_ava("userid", "william");
+        e.add_ava("userid", &Value::from("william"));
     }
 
     #[test]
@@ -1199,8 +1214,8 @@ mod tests {
         // are adding ... Or do we validate after the changes are made in
         // total?
         let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
-        e.add_ava("userid", "william");
-        e.add_ava("userid", "william");
+        e.add_ava("userid", &Value::from("william"));
+        e.add_ava("userid", &Value::from("william"));
 
         let values = e.get_ava("userid").expect("Failed to get ava");
         // Should only be one value!
@@ -1210,7 +1225,7 @@ mod tests {
     #[test]
     fn test_entry_pres() {
         let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
-        e.add_ava("userid", "william");
+        e.add_ava("userid", &Value::from("william"));
 
         assert!(e.attribute_pres("userid"));
         assert!(!e.attribute_pres("name"));
@@ -1220,11 +1235,13 @@ mod tests {
     fn test_entry_equality() {
         let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
 
-        e.add_ava("userid", Value::from("william"));
+        e.add_ava("userid", &Value::from("william"));
 
-        assert!(e.attribute_equality("userid", Value::from("william")));
-        assert!(!e.attribute_equality("userid", Value::from("test")));
-        assert!(!e.attribute_equality("nonexist", Value::from("william")));
+        assert!(e.attribute_equality("userid", &Value::from("william")));
+        assert!(!e.attribute_equality("userid", &Value::from("test")));
+        assert!(!e.attribute_equality("nonexist", &Value::from("william")));
+        // Also test non-matching attr syntax
+        assert!(!e.attribute_equality("userid", &Value::new_class("william")));
     }
 
     #[test]

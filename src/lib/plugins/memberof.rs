@@ -20,7 +20,7 @@ use crate::server::QueryServerTransaction;
 use crate::server::{QueryServerReadTransaction, QueryServerWriteTransaction};
 use crate::value::{PartialValue, Value};
 
-use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 use uuid::Uuid;
 
 lazy_static! {
@@ -107,20 +107,31 @@ fn apply_memberof(
             )
         );
         // get UUID of all groups + all memberof values
-        let mut dir_mo_set: Vec<Value> = groups.iter().map(|g| g.get_uuid().clone()).collect();
+        let mut dir_mo_set: Vec<Value> = groups.iter().map(|g| {
+            // These are turned into reference values.
+            Value::new_reference(
+                g.get_uuid().clone()
+            )
+        }).collect();
 
         // No need to dedup this. Sorting could be of questionable
         // value too though ...
         dir_mo_set.sort();
+        dir_mo_set.dedup();
 
         let mut mo_set: Vec<Value> = groups
             .iter()
             .map(|g| {
                 // TODO #61: This could be more effecient
-                let mut v = vec![g.get_uuid().clone()];
+                let mut v = vec![
+                    Value::new_reference(
+                        g.get_uuid().clone()
+                    )
+                ];
                 match g.get_ava("memberof") {
                     Some(mos) => {
                         for mo in mos {
+                            // This is cloning the existing reference values
                             v.push(mo.clone())
                         }
                     }
@@ -170,7 +181,7 @@ fn apply_memberof(
             au,
             qs.internal_modify(
                 au,
-                filter!(f_eq("uuid", PartialValue::new_uuid(a_uuid))),
+                filter!(f_eq("uuid", PartialValue::new_uuid(a_uuid.clone()))),
                 modlist,
             )
         );
@@ -208,15 +219,15 @@ impl Plugin for MemberOf {
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
         // The condition here is critical - ONLY trigger on entries where changes occur!
-        let mut changed: Vec<&String> = pre_cand
+        let mut changed: Vec<&Uuid> = pre_cand
             .iter()
             .zip(cand.iter())
             .filter(|(pre, post)| {
                 // This is the base case to break cycles in recursion!
                 (
                         // If it was a group, or will become a group.
-                        post.attribute_value_pres("class", "group")
-                            || pre.attribute_value_pres("class", "group")
+                        post.attribute_value_pres("class", &CLASS_GROUP)
+                            || pre.attribute_value_pres("class", &CLASS_GROUP)
                     )
                     // And the group has changed ...
                     && pre != post
@@ -230,13 +241,13 @@ impl Plugin for MemberOf {
             })
             .filter_map(|e| {
                 // Only groups with member get collected up here.
-                e.get_ava("member")
+                e.get_ava_reference_uuid("member")
             })
-            // Flatten the uuid lists.
+            // Flatten the uuid reference lists.
             .flatten()
             .collect();
 
-        // Now tidy them up.
+        // Now tidy them up to reduce excesse searches/work.
         changed.sort();
         changed.dedup();
 
@@ -304,7 +315,7 @@ impl Plugin for MemberOf {
             // create new map
             // let mo_set: BTreeMap<String, ()> = BTreeMap::new();
             // searcch direct memberships of live groups.
-            let filt_in = filter!(f_eq("member", e.get_uuid().as_str()));
+            let filt_in = filter!(f_eq("member", PartialValue::new_refer(e.get_uuid().clone()) ));
 
             let direct_memberof = match qs
                 .internal_search(au, filt_in)
@@ -315,18 +326,16 @@ impl Plugin for MemberOf {
             };
             // for all direct -> add uuid to map
 
-            let d_groups_set: BTreeMap<&String, ()> =
-                direct_memberof.iter().map(|e| (e.get_uuid(), ())).collect();
+            let d_groups_set: BTreeSet<&Uuid> =
+                direct_memberof.iter().map(|e| e.get_uuid()).collect();
 
             audit_log!(au, "Direct groups {:?} -> {:?}", e.get_uuid(), d_groups_set);
 
-            let dmos = match e.get_ava(&"directmemberof".to_string()) {
+            let dmos: Vec<&Uuid> = match e.get_ava_reference_uuid("directmemberof") {
                 // Avoid a reference issue to return empty set
-                Some(dmos) => dmos.clone(),
-                None => {
-                    // No memberof, return empty set.
-                    Vec::new()
-                }
+                Some(dmos) => dmos,
+                // No memberof, return empty set.
+                None => Vec::new(),
             };
 
             audit_log!(au, "DMO groups {:?} -> {:?}", e.get_uuid(), dmos);
@@ -343,7 +352,7 @@ impl Plugin for MemberOf {
             };
 
             for mo_uuid in dmos {
-                if !d_groups_set.contains_key(&mo_uuid) {
+                if !d_groups_set.contains(mo_uuid) {
                     audit_log!(
                         au,
                         "Entry {:?}, MO {:?} not in direct groups",
@@ -383,6 +392,7 @@ mod tests {
     use crate::modify::{Modify, ModifyList};
     use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
     use crate::value::PartialValue;
+    use uuid::Uuid;
 
     static EA: &'static str = r#"{
             "valid": null,
@@ -394,7 +404,7 @@ mod tests {
             }
         }"#;
 
-    static UUID_A: &'static str = "aaaaaaaa-f82e-4484-a407-181aa03bda5c";
+    static UUID_A: Uuid = Uuid::parse_str("aaaaaaaa-f82e-4484-a407-181aa03bda5c").unwrap();
 
     static EB: &'static str = r#"{
             "valid": null,
@@ -406,7 +416,7 @@ mod tests {
             }
         }"#;
 
-    static UUID_B: &'static str = "bbbbbbbb-2438-4384-9891-48f4c8172e9b";
+    static UUID_B: Uuid = Uuid::parse_str("bbbbbbbb-2438-4384-9891-48f4c8172e9b").unwrap();
 
     static EC: &'static str = r#"{
             "valid": null,
@@ -418,7 +428,7 @@ mod tests {
             }
         }"#;
 
-    static UUID_C: &'static str = "cccccccc-9b01-423f-9ba6-51aa4bbd5dd2";
+    static UUID_C: Uuid = Uuid::parse_str("cccccccc-9b01-423f-9ba6-51aa4bbd5dd2").unwrap();
 
     static ED: &'static str = r#"{
             "valid": null,
@@ -430,7 +440,7 @@ mod tests {
             }
         }"#;
 
-    static UUID_D: &'static str = "dddddddd-2ab3-48e3-938d-1b4754cd2984";
+    static UUID_D: Uuid = Uuid::parse_str("dddddddd-2ab3-48e3-938d-1b4754cd2984").unwrap();
 
     macro_rules! assert_memberof_int {
         (

@@ -28,6 +28,14 @@ use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
 
 use crate::event::{CreateEvent, DeleteEvent, EventOrigin, ModifyEvent, SearchEvent};
 
+lazy_static! {
+    static ref CLASS_ACS: PartialValue = PartialValue::new_iutf8("access_control_search");
+    static ref CLASS_ACC: PartialValue = PartialValue::new_iutf8("access_control_create");
+    static ref CLASS_ACD: PartialValue = PartialValue::new_iutf8("access_control_delete");
+    static ref CLASS_ACM: PartialValue = PartialValue::new_iutf8("access_control_modify");
+    static ref CLASS_ACP: PartialValue = PartialValue::new_iutf8("access_control_profile");
+}
+
 // =========================================================================
 // PARSE ENTRY TO ACP, AND ACP MANAGEMENT
 // =========================================================================
@@ -44,7 +52,7 @@ impl AccessControlSearch {
         qs: &QueryServerWriteTransaction,
         value: &Entry<EntryValid, EntryCommitted>,
     ) -> Result<Self, OperationError> {
-        if !value.attribute_value_pres("class", "access_control_search") {
+        if !value.attribute_value_pres("class", &CLASS_ACS) {
             audit_log!(audit, "class access_control_search not present.");
             return Err(OperationError::InvalidACPState(
                 "Missing access_control_search",
@@ -98,7 +106,7 @@ impl AccessControlDelete {
         qs: &QueryServerWriteTransaction,
         value: &Entry<EntryValid, EntryCommitted>,
     ) -> Result<Self, OperationError> {
-        if !value.attribute_value_pres("class", "access_control_delete") {
+        if !value.attribute_value_pres("class", &CLASS_ACD) {
             audit_log!(audit, "class access_control_delete not present.");
             return Err(OperationError::InvalidACPState(
                 "Missing access_control_delete",
@@ -141,7 +149,7 @@ impl AccessControlCreate {
         qs: &QueryServerWriteTransaction,
         value: &Entry<EntryValid, EntryCommitted>,
     ) -> Result<Self, OperationError> {
-        if !value.attribute_value_pres("class", "access_control_create") {
+        if !value.attribute_value_pres("class", &CLASS_ACD) {
             audit_log!(audit, "class access_control_create not present.");
             return Err(OperationError::InvalidACPState(
                 "Missing access_control_create",
@@ -201,7 +209,7 @@ impl AccessControlModify {
         qs: &QueryServerWriteTransaction,
         value: &Entry<EntryValid, EntryCommitted>,
     ) -> Result<Self, OperationError> {
-        if !value.attribute_value_pres("class", "access_control_modify") {
+        if !value.attribute_value_pres("class", &CLASS_ACM) {
             audit_log!(audit, "class access_control_modify not present.");
             return Err(OperationError::InvalidACPState(
                 "Missing access_control_modify",
@@ -273,7 +281,7 @@ impl AccessControlProfile {
         value: &Entry<EntryValid, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         // Assert we have class access_control_profile
-        if !value.attribute_value_pres("class", "access_control_profile") {
+        if !value.attribute_value_pres("class", &CLASS_ACP) {
             audit_log!(audit, "class access_control_profile not present.");
             return Err(OperationError::InvalidACPState(
                 "Missing access_control_profile",

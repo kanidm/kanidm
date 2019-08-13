@@ -55,4 +55,5 @@ pub enum ConsistencyError {
     UuidNotUnique(String),
     RefintNotUpheld(u64),
     MemberOfInvalid(u64),
+    InvalidAttributeType(&'static str),
 }

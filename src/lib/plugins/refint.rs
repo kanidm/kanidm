@@ -9,7 +9,7 @@
 // when that is written, as they *both* manipulate and alter entry reference
 // data, so we should be careful not to step on each other.
 
-use std::collections::HashMap;
+use std::collections::BTreeSet;
 
 use crate::audit::AuditScope;
 use crate::entry::{Entry, EntryCommitted, EntryNew, EntryValid};
@@ -20,6 +20,8 @@ use crate::plugins::Plugin;
 use crate::schema::SchemaTransaction;
 use crate::server::QueryServerTransaction;
 use crate::server::{QueryServerReadTransaction, QueryServerWriteTransaction};
+use crate::value::{PartialValue, Value};
+use uuid::Uuid;
 
 // NOTE: This *must* be after base.rs!!!
 
@@ -30,15 +32,18 @@ impl ReferentialIntegrity {
         au: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
         rtype: &String,
-        uuid: &String,
+        uuid_value: &Value,
     ) -> Result<(), OperationError> {
+        let uuid = uuid_value.to_ref_uuid()
+            .ok_or(OperationError::Plugin)?;
         let mut au_qs = AuditScope::new("qs_exist");
-        let filt_in = filter!(f_eq("uuid", uuid));
+        // NOTE: This only checks LIVE entries (not using filter_all)
+        let filt_in = filter!(f_eq("uuid", PartialValue::new_uuid(uuid.clone())));
         let r = qs.internal_exists(&mut au_qs, filt_in);
         au.append_scope(au_qs);
 
         let b = try_audit!(au, r);
-        // Is the reference in the qs?
+        // Is the reference in the result set?
         if b {
             Ok(())
         } else {
@@ -143,17 +148,20 @@ impl Plugin for ReferentialIntegrity {
         let schema = qs.get_schema();
         let ref_types = schema.get_reference_types();
         // Get the UUID of all entries we are deleting
-        let uuids: Vec<&String> = cand.iter().map(|e| e.get_uuid()).collect();
+        let uuids: Vec<&Uuid> = cand.iter().map(|e| e.get_uuid()).collect();
 
         // Generate a filter which is the set of all schema reference types
         // as EQ to all uuid of all entries in delete. - this INCLUDES recycled
         // types too!
-        let filt = filter!(FC::Or(
+        let filt = filter_all!(FC::Or(
             uuids
                 .iter()
                 .map(|u| ref_types
                     .values()
-                    .map(move |r_type| f_eq(r_type.name.as_str(), u)))
+                    .map(move |r_type| {
+                        // For everything that references the uuid's in the deleted set.
+                        f_eq(r_type.name.as_str(), PartialValue::new_refer(*u.clone()))
+                    }))
                 .flatten()
                 .collect(),
         ));
@@ -168,7 +176,9 @@ impl Plugin for ReferentialIntegrity {
                 .map(|u| {
                     ref_types
                         .values()
-                        .map(move |r_type| Modify::Removed(r_type.name.clone(), u.to_string()))
+                        .map(move |r_type| {
+                            Modify::Removed(r_type.name.clone(), PartialValue::new_refer(*u.clone()))
+                        })
                 })
                 .flatten()
                 .collect(),
@@ -197,9 +207,7 @@ impl Plugin for ReferentialIntegrity {
             Err(e) => return vec![e],
         };
 
-        let acu: Vec<&String> = all_cand.iter().map(|e| e.get_uuid()).collect();
-
-        let acu_map: HashMap<&String, ()> = acu.into_iter().map(|v| (v, ())).collect();
+        let acu_map: BTreeSet<&Uuid> = all_cand.iter().map(|e| e.get_uuid()).collect();
 
         let schema = qs.get_schema();
         let ref_types = schema.get_reference_types();
@@ -214,8 +222,15 @@ impl Plugin for ReferentialIntegrity {
                     Some(vs) => {
                         // For each value in the set.
                         for v in vs {
-                            if acu_map.get(v).is_none() {
-                                res.push(Err(ConsistencyError::RefintNotUpheld(c.get_id())))
+                            match v.to_ref_uuid() {
+                                Some(vu) =>  {
+                                    if acu_map.get(vu).is_none() {
+                                        res.push(Err(ConsistencyError::RefintNotUpheld(c.get_id())))
+                                    }
+                                }
+                                None => {
+                                    res.push(Err(ConsistencyError::InvalidAttributeType( "A non-value-ref type was found." )))
+                                }
                             }
                         }
                     }

@@ -128,8 +128,17 @@ impl PartialValue {
         PartialValue::Iutf8(s.to_lowercase())
     }
 
+    #[inline]
+    pub fn new_class(s: &str) -> Self {
+        PartialValue::new_iutf8(s)
+    }
+
     pub fn new_uuid(u: Uuid) -> Self {
         PartialValue::Uuid(u)
+    }
+
+    pub fn new_refer(u: Uuid) -> Self {
+        PartialValue::Refer(u)
     }
 }
 
@@ -265,7 +274,7 @@ impl Value {
         unimplemented!();
     }
 
-    fn new_reference(s: &String) -> Option<Self> {
+    pub fn new_reference(u: Uuid) -> Self {
         unimplemented!();
     }
 
@@ -306,6 +315,15 @@ impl Value {
         match self {
             Value::Utf8(s) => Some(s),
             Value::Iutf8(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    // We need a seperate to-ref_uuid to distinguish from normal uuids
+    // in refint plugin.
+    pub fn to_ref_uuid(&self) -> Option<&Uuid> {
+        match self {
+            Value::Refer(u) => Some(&u),
             _ => None,
         }
     }

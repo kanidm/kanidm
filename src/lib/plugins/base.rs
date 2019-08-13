@@ -17,6 +17,9 @@ use crate::value::{PartialValue, Value};
 lazy_static! {
     static ref CLASS_OBJECT: Value = Value::new_class("object");
 }
+static uuid_admin: Uuid = Uuid::parse_str(UUID_ADMIN).unwrap();
+static uuid_anonymous: Uuid = Uuid::parse_str(UUID_ANONYMOUS).unwrap();
+static uuid_does_not_exist: Uuid = Uuid::parse_str(UUID_DOES_NOT_EXIST).unwrap();
 
 // This module has some special properties around it's operation, namely that it
 // has to make a certain number of assertions *early* in the entry lifecycle around
@@ -121,8 +124,6 @@ impl Plugin for Base {
             // TODO: We can't lazy static this as you can't borrow the type down to what
             // range and contains on btreeset need, but can we possibly make these staticly
             // part of the struct somehow at init. rather than needing to parse a lot?
-            let uuid_admin: Uuid = Uuid::parse_str(UUID_ADMIN).unwrap();
-            let uuid_anonymous: Uuid = Uuid::parse_str(UUID_ANONYMOUS).unwrap();
             // The internal set is bounded by: UUID_ADMIN -> UUID_ANONYMOUS
             // Sadly we need to allocate these to strings to make references, sigh.
             // let uuid_admin: String = UUID_ADMIN.to_string();
@@ -138,7 +139,6 @@ impl Plugin for Base {
             }
         }
 
-        let uuid_does_not_exist: Uuid = Uuid::parse_str(UUID_DOES_NOT_EXIST).unwrap();
         if cand_uuid.contains(&uuid_does_not_exist) {
             audit_log!(
                 au,
