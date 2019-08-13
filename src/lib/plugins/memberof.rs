@@ -107,12 +107,13 @@ fn apply_memberof(
             )
         );
         // get UUID of all groups + all memberof values
-        let mut dir_mo_set: Vec<Value> = groups.iter().map(|g| {
-            // These are turned into reference values.
-            Value::new_reference(
-                g.get_uuid().clone()
-            )
-        }).collect();
+        let mut dir_mo_set: Vec<Value> = groups
+            .iter()
+            .map(|g| {
+                // These are turned into reference values.
+                Value::new_reference(g.get_uuid().clone())
+            })
+            .collect();
 
         // No need to dedup this. Sorting could be of questionable
         // value too though ...
@@ -123,11 +124,7 @@ fn apply_memberof(
             .iter()
             .map(|g| {
                 // TODO #61: This could be more effecient
-                let mut v = vec![
-                    Value::new_reference(
-                        g.get_uuid().clone()
-                    )
-                ];
+                let mut v = vec![Value::new_reference(g.get_uuid().clone())];
                 match g.get_ava("memberof") {
                     Some(mos) => {
                         for mo in mos {
@@ -315,7 +312,10 @@ impl Plugin for MemberOf {
             // create new map
             // let mo_set: BTreeMap<String, ()> = BTreeMap::new();
             // searcch direct memberships of live groups.
-            let filt_in = filter!(f_eq("member", PartialValue::new_refer(e.get_uuid().clone()) ));
+            let filt_in = filter!(f_eq(
+                "member",
+                PartialValue::new_refer(e.get_uuid().clone())
+            ));
 
             let direct_memberof = match qs
                 .internal_search(au, filt_in)

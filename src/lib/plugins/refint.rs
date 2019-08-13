@@ -34,8 +34,7 @@ impl ReferentialIntegrity {
         rtype: &String,
         uuid_value: &Value,
     ) -> Result<(), OperationError> {
-        let uuid = uuid_value.to_ref_uuid()
-            .ok_or(OperationError::Plugin)?;
+        let uuid = uuid_value.to_ref_uuid().ok_or(OperationError::Plugin)?;
         let mut au_qs = AuditScope::new("qs_exist");
         // NOTE: This only checks LIVE entries (not using filter_all)
         let filt_in = filter!(f_eq("uuid", PartialValue::new_uuid(uuid.clone())));
@@ -156,12 +155,10 @@ impl Plugin for ReferentialIntegrity {
         let filt = filter_all!(FC::Or(
             uuids
                 .iter()
-                .map(|u| ref_types
-                    .values()
-                    .map(move |r_type| {
-                        // For everything that references the uuid's in the deleted set.
-                        f_eq(r_type.name.as_str(), PartialValue::new_refer(*u.clone()))
-                    }))
+                .map(|u| ref_types.values().map(move |r_type| {
+                    // For everything that references the uuid's in the deleted set.
+                    f_eq(r_type.name.as_str(), PartialValue::new_refer(*u.clone()))
+                }))
                 .flatten()
                 .collect(),
         ));
@@ -174,11 +171,9 @@ impl Plugin for ReferentialIntegrity {
             uuids
                 .iter()
                 .map(|u| {
-                    ref_types
-                        .values()
-                        .map(move |r_type| {
-                            Modify::Removed(r_type.name.clone(), PartialValue::new_refer(*u.clone()))
-                        })
+                    ref_types.values().map(move |r_type| {
+                        Modify::Removed(r_type.name.clone(), PartialValue::new_refer(*u.clone()))
+                    })
                 })
                 .flatten()
                 .collect(),
@@ -223,14 +218,14 @@ impl Plugin for ReferentialIntegrity {
                         // For each value in the set.
                         for v in vs {
                             match v.to_ref_uuid() {
-                                Some(vu) =>  {
+                                Some(vu) => {
                                     if acu_map.get(vu).is_none() {
                                         res.push(Err(ConsistencyError::RefintNotUpheld(c.get_id())))
                                     }
                                 }
-                                None => {
-                                    res.push(Err(ConsistencyError::InvalidAttributeType( "A non-value-ref type was found." )))
-                                }
+                                None => res.push(Err(ConsistencyError::InvalidAttributeType(
+                                    "A non-value-ref type was found.",
+                                ))),
                             }
                         }
                     }

@@ -725,11 +725,7 @@ impl Entry<EntryValid, EntryCommitted> {
         // If any value is NOT a reference, return none!
         match self.attrs.get(attr) {
             Some(av) => {
-                let v: Option<Vec<&Uuid>> = av.iter()
-                    .map(|e| {
-                        e.to_ref_uuid()
-                    })
-                    .collect();
+                let v: Option<Vec<&Uuid>> = av.iter().map(|e| e.to_ref_uuid()).collect();
                 v
             }
             None => None,

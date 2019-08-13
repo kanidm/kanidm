@@ -8,7 +8,7 @@ use crate::error::OperationError;
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::modify::Modify;
 use crate::server::QueryServerWriteTransaction;
-use crate::value::{Value, PartialValue};
+use crate::value::{PartialValue, Value};
 use std::collections::HashSet;
 
 pub struct Protected {}
