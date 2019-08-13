@@ -17,6 +17,7 @@
 
 use concread::cowcell::{CowCell, CowCellReadTxn, CowCellWriteTxn};
 use std::collections::{BTreeMap, BTreeSet};
+use uuid::Uuid;
 
 use crate::audit::AuditScope;
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryReduced, EntryValid};
@@ -25,6 +26,7 @@ use crate::filter::{Filter, FilterValid};
 use crate::modify::Modify;
 use crate::proto::v1::Filter as ProtoFilter;
 use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
+use crate::value::{PartialValue};
 
 use crate::event::{CreateEvent, DeleteEvent, EventOrigin, ModifyEvent, SearchEvent};
 
@@ -43,6 +45,7 @@ lazy_static! {
 #[derive(Debug, Clone)]
 pub struct AccessControlSearch {
     acp: AccessControlProfile,
+    // TODO: Should this change to Value? May help to reduce transformations during processing.
     attrs: Vec<String>,
 }
 
@@ -62,9 +65,8 @@ impl AccessControlSearch {
         let attrs = try_audit!(
             audit,
             value
-                .get_ava("acp_search_attr")
+                .get_ava_opt_string("acp_search_attr")
                 .ok_or(OperationError::InvalidACPState("Missing acp_search_attr"))
-                .map(|vs: &Vec<String>| vs.clone())
         );
 
         let acp = AccessControlProfile::try_from(audit, qs, value)?;
@@ -157,13 +159,11 @@ impl AccessControlCreate {
         }
 
         let attrs = value
-            .get_ava("acp_create_attr")
-            .map(|vs: &Vec<String>| vs.clone())
+            .get_ava_opt_string("acp_create_attr")
             .unwrap_or_else(|| Vec::new());
 
         let classes = value
-            .get_ava("acp_create_class")
-            .map(|vs: &Vec<String>| vs.clone())
+            .get_ava_opt_string("acp_create_class")
             .unwrap_or_else(|| Vec::new());
 
         Ok(AccessControlCreate {
@@ -217,18 +217,15 @@ impl AccessControlModify {
         }
 
         let presattrs = value
-            .get_ava("acp_modify_presentattr")
-            .map(|vs: &Vec<String>| vs.clone())
+            .get_ava_opt_string("acp_modify_presentattr")
             .unwrap_or_else(|| Vec::new());
 
         let remattrs = value
-            .get_ava("acp_modify_removedattr")
-            .map(|vs: &Vec<String>| vs.clone())
+            .get_ava_opt_string("acp_modify_removedattr")
             .unwrap_or_else(|| Vec::new());
 
         let classes = value
-            .get_ava("acp_modify_class")
-            .map(|vs: &Vec<String>| vs.clone())
+            .get_ava_opt_string("acp_modify_class")
             .unwrap_or_else(|| Vec::new());
 
         Ok(AccessControlModify {
@@ -269,7 +266,7 @@ impl AccessControlModify {
 #[derive(Debug, Clone)]
 struct AccessControlProfile {
     name: String,
-    uuid: String,
+    uuid: Uuid,
     receiver: Filter<FilterValid>,
     targetscope: Filter<FilterValid>,
 }
@@ -292,32 +289,26 @@ impl AccessControlProfile {
         let name = try_audit!(
             audit,
             value
-                .get_ava_single("name")
+                .get_ava_single_str("name")
                 .ok_or(OperationError::InvalidACPState("Missing name"))
-        );
+        ).to_string();
         // copy uuid
-        let uuid = value.get_uuid();
+        let uuid = value.get_uuid().clone();
         // receiver, and turn to real filter
-        let receiver_raw = try_audit!(
+        let receiver_f: ProtoFilter = try_audit!(
             audit,
             value
-                .get_ava_single("acp_receiver")
+                .get_ava_single_protofilter("acp_receiver")
                 .ok_or(OperationError::InvalidACPState("Missing acp_receiver"))
         );
         // targetscope, and turn to real filter
-        let targetscope_raw = try_audit!(
+        let targetscope_f: ProtoFilter = try_audit!(
             audit,
             value
-                .get_ava_single("acp_targetscope")
+                .get_ava_single_protofilter("acp_targetscope")
                 .ok_or(OperationError::InvalidACPState("Missing acp_targetscope"))
         );
 
-        audit_log!(audit, "RAW receiver {:?}", receiver_raw);
-        let receiver_f: ProtoFilter = try_audit!(
-            audit,
-            serde_json::from_str(receiver_raw.as_str())
-                .map_err(|_| OperationError::InvalidACPState("Invalid acp_receiver"))
-        );
         let receiver_i = try_audit!(audit, Filter::from_rw(audit, &receiver_f, qs));
         let receiver = try_audit!(
             audit,
@@ -326,14 +317,6 @@ impl AccessControlProfile {
                 .map_err(|e| OperationError::SchemaViolation(e))
         );
 
-        audit_log!(audit, "RAW tscope {:?}", targetscope_raw);
-        let targetscope_f: ProtoFilter = try_audit!(
-            audit,
-            serde_json::from_str(targetscope_raw.as_str()).map_err(|e| {
-                audit_log!(audit, "JSON error {:?}", e);
-                OperationError::InvalidACPState("Invalid acp_targetscope")
-            })
-        );
         let targetscope_i = try_audit!(audit, Filter::from_rw(audit, &targetscope_f, qs));
         let targetscope = try_audit!(
             audit,
@@ -343,8 +326,8 @@ impl AccessControlProfile {
         );
 
         Ok(AccessControlProfile {
-            name: name.clone(),
-            uuid: uuid.clone(),
+            name: name,
+            uuid: uuid,
             receiver: receiver,
             targetscope: targetscope,
         })
@@ -727,14 +710,14 @@ pub trait AccessControlsTransaction {
             .filter_map(|m| match m {
                 Modify::Present(a, v) => {
                     if a.as_str() == "class" {
-                        Some(v.as_str())
+                        v.to_str()
                     } else {
                         None
                     }
                 }
                 Modify::Removed(a, v) => {
                     if a.as_str() == "class" {
-                        Some(v.as_str())
+                        v.to_str()
                     } else {
                         None
                     }

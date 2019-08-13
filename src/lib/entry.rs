@@ -8,6 +8,7 @@ use crate::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
 use crate::server::QueryServerWriteTransaction;
 use crate::value::{IndexType, SyntaxType};
 use crate::value::{PartialValue, Value};
+use crate::proto::v1::Filter as ProtoFilter;
 
 use crate::be::dbentry::{DbEntry, DbEntryV1, DbEntryVers};
 
@@ -732,8 +733,7 @@ impl Entry<EntryValid, EntryCommitted> {
         }
     }
 
-    /// This interface will get &str (if possible), and then any caller is
-    /// responsible to clone.
+    /// This interface will get &str (if possible).
     pub(crate) fn get_ava_opt_str(&self, attr: &str) -> Option<Vec<&str>> {
         match self.attrs.get(attr) {
             Some(a) => {
@@ -746,6 +746,31 @@ impl Entry<EntryValid, EntryCommitted> {
             }
             None => None,
         }
+    }
+
+    pub(crate) fn get_ava_opt_string(&self, attr: &str) -> Option<Vec<String>> {
+        match self.attrs.get(attr) {
+            Some(a) => {
+                let r: Vec<String> = a.iter().filter_map(|v| {
+                    v.as_string().map(|s| s.clone())
+                }).collect();
+                if r.len() == 0 {
+                    None
+                } else {
+                    Some(r)
+                }
+            }
+            None => None,
+        }
+    }
+
+    pub fn get_ava_single_str(&self, attr: &str) -> Option<&str> {
+        self.get_ava_single(attr)
+            .and_then(|v| v.to_str())
+    }
+
+    pub fn get_ava_single_protofilter(&self, attr: &str) -> Option<ProtoFilter> {
+        unimplemented!()
     }
 }
 
