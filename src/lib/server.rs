@@ -1609,6 +1609,7 @@ mod tests {
     use crate::proto::v1::ModifyList as ProtoModifyList;
     use crate::proto::v1::{DeleteRequest, ModifyRequest, ReviveRecycledRequest};
     use crate::server::QueryServerTransaction;
+    use crate::value::PartialValue;
 
     #[test]
     fn test_qs_create_user() {
@@ -2450,7 +2451,7 @@ mod tests {
             let testobj1 = server_txn
                 .internal_search_uuid(audit, "cc8e95b4-c24f-4d68-ba54-8bed76f63930")
                 .expect("failed");
-            assert!(testobj1.attribute_value_pres("class", "testclass"));
+            assert!(testobj1.attribute_value_pres("class", PartialValue::new_iutf8("testclass")));
 
             // Should still be good
             server_txn.commit(audit).expect("should not fail");
@@ -2517,7 +2518,7 @@ mod tests {
             let mut server_txn = server.write();
             // delete the attr
             let de_attr =
-                unsafe { DeleteEvent::new_internal_invalid(filter!(f_eq("name", "testattr"))) };
+                unsafe { DeleteEvent::new_internal_invalid(filter!(f_eq("name", PartialValue::new_iutf8("testattr")))) };
             assert!(server_txn.delete(audit, &de_attr).is_ok());
             // Commit
             server_txn.commit(audit).expect("should not fail");
@@ -2528,14 +2529,14 @@ mod tests {
             let ce_fail = CreateEvent::new_internal(vec![e1.clone()]);
             assert!(server_txn.create(audit, &ce_fail).is_err());
             // Search our attribute - should FAIL
-            let filt = filter!(f_eq("testattr", "test"));
+            let filt = filter!(f_eq("testattr", PartialValue::new_utf8s("test")));
             assert!(server_txn.internal_search(audit, filt).is_err());
             // Search the entry - the attribute will still be present
             // even if we can't search on it.
             let testobj1 = server_txn
                 .internal_search_uuid(audit, "cc8e95b4-c24f-4d68-ba54-8bed76f63930")
                 .expect("failed");
-            assert!(testobj1.attribute_value_pres("testattr", "test"));
+            assert!(testobj1.attribute_value_pres("testattr", PartialValue::new_utf8s("test")));
 
             server_txn.commit(audit).expect("should not fail");
             // Commit.
