@@ -157,7 +157,7 @@ pub trait QueryServerTransaction {
         // index searches, completely bypassing id2entry.
 
         // construct the filter
-        let filt = filter!(f_eq("name", Value::new_insensitive_utf8(name)));
+        let filt = filter!(f_eq("name", PartialValue::new_iutf8(name)));
         audit_log!(audit, "name_to_uuid: name -> {:?}", name);
 
         // Internal search - DO NOT SEARCH TOMBSTONES AND RECYCLE
@@ -2517,8 +2517,12 @@ mod tests {
             // Start a new write
             let mut server_txn = server.write();
             // delete the attr
-            let de_attr =
-                unsafe { DeleteEvent::new_internal_invalid(filter!(f_eq("name", PartialValue::new_iutf8("testattr")))) };
+            let de_attr = unsafe {
+                DeleteEvent::new_internal_invalid(filter!(f_eq(
+                    "name",
+                    PartialValue::new_iutf8("testattr")
+                )))
+            };
             assert!(server_txn.delete(audit, &de_attr).is_ok());
             // Commit
             server_txn.commit(audit).expect("should not fail");

@@ -5,8 +5,9 @@ use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
 use crate::proto::v1::AuthState;
 use crate::server::{QueryServer, QueryServerTransaction};
-use concread::cowcell::{CowCell, CowCellWriteTxn};
+use crate::value::PartialValue;
 
+use concread::cowcell::{CowCell, CowCellWriteTxn};
 use std::collections::BTreeMap;
 use uuid::Uuid;
 // use lru::LruCache;
@@ -94,7 +95,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
                 // because it associates to the nonce's etc which were all cached.
 
                 let filter_entry = filter!(f_or!([
-                    f_eq("name", init.name.as_str()),
+                    f_eq("name", PartialValue::new_iutf8(init.name.as_str())),
                     // This currently says invalid syntax, which is correct, but also
                     // annoying because it would be nice to search both ...
                     // f_eq("uuid", name.as_str()),

@@ -2,14 +2,10 @@ use crate::audit::AuditScope;
 use crate::constants::*;
 use crate::entry::{Entry, EntryCommitted, EntryNew, EntryValid};
 use crate::error::{ConsistencyError, OperationError, SchemaError};
-use crate::proto::v1::Filter as ProtoFilter;
 use crate::value::{IndexType, PartialValue, SyntaxType, Value};
 
-use regex::Regex;
 use std::collections::BTreeSet;
 use std::collections::HashMap;
-use std::convert::TryFrom;
-use std::str::FromStr;
 use uuid::Uuid;
 
 use concread::cowcell::{CowCell, CowCellReadTxn, CowCellWriteTxn};
@@ -21,6 +17,8 @@ use concread::cowcell::{CowCell, CowCellReadTxn, CowCellWriteTxn};
 // but we have to bootstrap with some core types.
 
 // TODO #72: prefix on all schema types that are system?
+static PVCLASS_ATTRIBUTETYPE: PartialValue = PartialValue::new_class("attributetype");
+static PVCLASS_CLASSTYPE: PartialValue = PartialValue::new_class("classtype");
 
 #[derive(Debug, Clone)]
 pub struct SchemaAttribute {
@@ -42,30 +40,26 @@ impl SchemaAttribute {
     ) -> Result<Self, OperationError> {
         // Convert entry to a schema attribute.
         // class
-        if !value.attribute_value_pres("class", "attributetype") {
+        if !value.attribute_value_pres("class", &PVCLASS_ATTRIBUTETYPE) {
             audit_log!(audit, "class attribute type not present");
             return Err(OperationError::InvalidSchemaState("missing attributetype"));
         }
 
         // uuid
-        let uuid = try_audit!(
-            audit,
-            Uuid::parse_str(value.get_uuid().as_str())
-                .map_err(|_| OperationError::InvalidSchemaState("Invalid UUID"))
-        );
+        let uuid = value.get_uuid().clone();
 
         // name
         let name = try_audit!(
             audit,
             value
-                .get_ava_single("name")
+                .get_ava_single_string("name")
                 .ok_or(OperationError::InvalidSchemaState("missing name"))
         );
         // description
         let description = try_audit!(
             audit,
             value
-                .get_ava_single("description")
+                .get_ava_single_string("description")
                 .ok_or(OperationError::InvalidSchemaState("missing description"))
         );
 
@@ -83,6 +77,7 @@ impl SchemaAttribute {
             audit,
             value
                 .get_ava_opt_index("index")
+                .and_then(|vv: Vec<&IndexType>| Ok(vv.iter().map(|v| *v.clone()).collect()))
                 .map_err(|_| OperationError::InvalidSchemaState("Invalid index"))
         );
         // syntax type
@@ -90,13 +85,14 @@ impl SchemaAttribute {
             audit,
             value
                 .get_ava_single_syntax("syntax")
+                .and_then(|s: &SyntaxType| Some(s.clone()))
                 .ok_or(OperationError::InvalidSchemaState("missing syntax"))
         );
 
         Ok(SchemaAttribute {
-            name: name.clone(),
-            uuid: uuid.clone(),
-            description: description.clone(),
+            name: name,
+            uuid: uuid,
+            description: description,
             multivalue: multivalue,
             index: index,
             syntax: syntax,
@@ -105,46 +101,39 @@ impl SchemaAttribute {
 
     // Implement Equality, PartialOrd, Normalisation,
     // Validation.
-    fn validate_bool(&self, v: &String) -> Result<(), SchemaError> {
-        bool::from_str(v.as_str())
-            .map_err(|_| SchemaError::InvalidAttributeSyntax)
-            .map(|_| ())
-    }
-
-    fn validate_syntax(&self, v: &String) -> Result<(), SchemaError> {
-        SyntaxType::try_from(v.as_str())
-            .map_err(|_| SchemaError::InvalidAttributeSyntax)
-            .map(|_| ())
-    }
-
-    fn validate_index(&self, v: &String) -> Result<(), SchemaError> {
-        debug!("validate_index -> {}", v);
-        IndexType::try_from(v.as_str())
-            .map_err(|_| SchemaError::InvalidAttributeSyntax)
-            .map(|_| ())
-    }
-
-    fn validate_uuid(&self, v: &String) -> Result<(), SchemaError> {
-        Uuid::parse_str(v.as_str())
-            .map_err(|_| SchemaError::InvalidAttributeSyntax)
-            .map(|_| ())
-    }
-
-    fn validate_principal(&self, v: &String) -> Result<(), SchemaError> {
-        // Check that we actually have a valid principal name of the form
-        // X@Y No excess @ allowed.
-        lazy_static! {
-            static ref PRIN_RE: Regex =
-                Regex::new("^[^@]+@[^@]+$").expect("Unable to parse static regex");
-        }
-        if PRIN_RE.is_match(v.as_str()) {
+    fn validate_bool(&self, v: &Value) -> Result<(), SchemaError> {
+        if v.is_bool() {
             Ok(())
         } else {
             Err(SchemaError::InvalidAttributeSyntax)
         }
     }
 
-    fn validate_json_filter(&self, v: &String) -> Result<(), SchemaError> {
+    fn validate_syntax(&self, v: &Value) -> Result<(), SchemaError> {
+        if v.is_syntax() {
+            Ok(())
+        } else {
+            Err(SchemaError::InvalidAttributeSyntax)
+        }
+    }
+
+    fn validate_index(&self, v: &Value) -> Result<(), SchemaError> {
+        if v.is_index() {
+            Ok(())
+        } else {
+            Err(SchemaError::InvalidAttributeSyntax)
+        }
+    }
+
+    fn validate_uuid(&self, v: &Value) -> Result<(), SchemaError> {
+        if v.is_uuid() {
+            Ok(())
+        } else {
+            Err(SchemaError::InvalidAttributeSyntax)
+        }
+    }
+
+    fn validate_json_filter(&self, v: &Value) -> Result<(), SchemaError> {
         // I *think* we just check if this can become a ProtoFilter v1
         // rather than anything more complex.
 
@@ -161,14 +150,15 @@ impl SchemaAttribute {
         // filter to be seralisable when we go to add state type data to it, and we can
         // then do conversions inside operations to resolve Self -> Bound UUID as required.
 
-        serde_json::from_str(v.as_str())
-            .map_err(|_| SchemaError::InvalidAttributeSyntax)
-            .map(|_: ProtoFilter| ())
+        if v.is_json_filter() {
+            Ok(())
+        } else {
+            Err(SchemaError::InvalidAttributeSyntax)
+        }
     }
 
-    fn validate_utf8string_insensitive(&self, v: &String) -> Result<(), SchemaError> {
-        let t = v.to_lowercase();
-        if &t == v {
+    fn validate_utf8string_insensitive(&self, v: &Value) -> Result<(), SchemaError> {
+        if v.is_insensitive_utf8() {
             Ok(())
         } else {
             Err(SchemaError::InvalidAttributeSyntax)
@@ -194,7 +184,6 @@ impl SchemaAttribute {
             // Referential integrity is handled in plugins.
             SyntaxType::REFERENCE_UUID => self.validate_uuid(v),
             SyntaxType::UTF8STRING_INSENSITIVE => self.validate_utf8string_insensitive(v),
-            SyntaxType::UTF8STRING_PRINCIPAL => self.validate_principal(v),
             SyntaxType::JSON_FILTER => self.validate_json_filter(v),
             _ => Ok(()),
         }
@@ -245,7 +234,7 @@ impl SchemaAttribute {
             }),
             SyntaxType::INDEX_ID => ava.iter().fold(Ok(()), |acc, v| {
                 if acc.is_ok() {
-                    debug!("Checking index ... {}", v);
+                    debug!("Checking index ... {:?}", v);
                     self.validate_index(v)
                 } else {
                     acc
@@ -254,13 +243,6 @@ impl SchemaAttribute {
             SyntaxType::UTF8STRING_INSENSITIVE => ava.iter().fold(Ok(()), |acc, v| {
                 if acc.is_ok() {
                     self.validate_utf8string_insensitive(v)
-                } else {
-                    acc
-                }
-            }),
-            SyntaxType::UTF8STRING_PRINCIPAL => ava.iter().fold(Ok(()), |acc, v| {
-                if acc.is_ok() {
-                    self.validate_principal(v)
                 } else {
                     acc
                 }
@@ -290,44 +272,55 @@ impl SchemaClass {
         value: &Entry<EntryValid, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         // Convert entry to a schema class.
-        if !value.attribute_value_pres("class", "classtype") {
+        if !value.attribute_value_pres("class", &PVCLASS_CLASSTYPE) {
             audit_log!(audit, "class classtype not present");
             return Err(OperationError::InvalidSchemaState("missing classtype"));
         }
 
         // uuid
-        let uuid = try_audit!(
-            audit,
-            Uuid::parse_str(value.get_uuid().as_str())
-                .map_err(|_| OperationError::InvalidSchemaState("Invalid UUID"))
-        );
+        let uuid = value.get_uuid().clone();
 
         // name
         let name = try_audit!(
             audit,
             value
-                .get_ava_single("name")
+                .get_ava_single_string("name")
                 .ok_or(OperationError::InvalidSchemaState("missing name"))
         );
         // description
         let description = try_audit!(
             audit,
             value
-                .get_ava_single("description")
+                .get_ava_single_string("description")
                 .ok_or(OperationError::InvalidSchemaState("missing description"))
         );
 
         // These are all "optional" lists of strings.
-
-        let systemmay = value.get_ava_opt("systemmay");
-        let systemmust = value.get_ava_opt("systemmust");
-        let may = value.get_ava_opt("may");
-        let must = value.get_ava_opt("must");
+        let systemmay =
+            value
+                .get_ava_opt_string("systemmay")
+                .ok_or(OperationError::InvalidSchemaState(
+                    "Missing or invalid systemmay",
+                ))?;
+        let systemmust =
+            value
+                .get_ava_opt_string("systemmust")
+                .ok_or(OperationError::InvalidSchemaState(
+                    "Missing or invalid systemmust",
+                ))?;
+        let may = value
+            .get_ava_opt_string("may")
+            .ok_or(OperationError::InvalidSchemaState("Missing or invalid may"))?;
+        let must = value
+            .get_ava_opt_string("must")
+            .ok_or(OperationError::InvalidSchemaState(
+                "Missing or invalid must",
+            ))?;
 
         Ok(SchemaClass {
-            name: name.clone(),
+            name: name,
             uuid: uuid,
-            description: description.clone(),
+            description: description,
             systemmay: systemmay,
             systemmust: systemmust,
             may: may,
@@ -426,17 +419,6 @@ impl SchemaInner {
                     multivalue: false,
                     index: vec![IndexType::EQUALITY],
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
-                },
-            );
-            s.attributes.insert(
-            String::from("principal_name"),
-                SchemaAttribute {
-                    name: String::from("principal_name"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_PRINCIPAL_NAME).expect("unable to parse static uuid"),
-                    description: String::from("The longform name of an object, derived from name and domain. Example: alice@project.org"),
-                    multivalue: false,
-                    index: vec![IndexType::EQUALITY],
-                    syntax: SyntaxType::UTF8STRING_PRINCIPAL,
                 },
             );
             s.attributes.insert(

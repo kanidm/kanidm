@@ -4,11 +4,11 @@ use crate::error::{OperationError, SchemaError};
 use crate::filter::{Filter, FilterInvalid, FilterResolved, FilterValidResolved};
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use crate::proto::v1::Entry as ProtoEntry;
+use crate::proto::v1::Filter as ProtoFilter;
 use crate::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
 use crate::server::QueryServerWriteTransaction;
 use crate::value::{IndexType, SyntaxType};
 use crate::value::{PartialValue, Value};
-use crate::proto::v1::Filter as ProtoFilter;
 
 use crate::be::dbentry::{DbEntry, DbEntryV1, DbEntryVers};
 
@@ -744,29 +744,36 @@ impl Entry<EntryValid, EntryCommitted> {
                     Some(r)
                 }
             }
-            None => None,
+            None => Some(Vec::new()),
         }
     }
 
     pub(crate) fn get_ava_opt_string(&self, attr: &str) -> Option<Vec<String>> {
         match self.attrs.get(attr) {
             Some(a) => {
-                let r: Vec<String> = a.iter().filter_map(|v| {
-                    v.as_string().map(|s| s.clone())
-                }).collect();
+                let r: Vec<String> = a
+                    .iter()
+                    .filter_map(|v| v.as_string().map(|s| s.clone()))
+                    .collect();
                 if r.len() == 0 {
+                    // Corrupt?
                     None
                 } else {
                     Some(r)
                 }
             }
-            None => None,
+            None => Some(Vec::new()),
         }
     }
 
     pub fn get_ava_single_str(&self, attr: &str) -> Option<&str> {
+        self.get_ava_single(attr).and_then(|v| v.to_str())
+    }
+
+    pub fn get_ava_single_string(&self, attr: &str) -> Option<String> {
         self.get_ava_single(attr)
-            .and_then(|v| v.to_str())
+            .and_then(|v: &Value| v.as_string())
+            .and_then(|s: &String| Some((*s).clone()))
     }
 
     pub fn get_ava_single_protofilter(&self, attr: &str) -> Option<ProtoFilter> {
@@ -939,6 +946,13 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         self.attrs
             .get(attr)
             .and_then(|vs| Some(vs.iter().collect()))
+    }
+
+    pub fn get_ava_set_str(&self, attr: &str) -> Option<BTreeSet<&str>> {
+        self.attrs.get(attr).and_then(|vs| {
+            let x: Option<BTreeSet<_>> = vs.iter().map(|s| s.to_str()).collect();
+            x
+        })
     }
 
     // Returns NONE if there is more than ONE!!!!
@@ -1217,7 +1231,7 @@ impl From<&SchemaClass> for Entry<EntryValid, EntryNew> {
 mod tests {
     use crate::entry::{Entry, EntryInvalid, EntryNew};
     use crate::modify::{Modify, ModifyList};
-    use crate::value::Value;
+    use crate::value::{PartialValue, Value};
 
     #[test]
     fn test_entry_basic() {
@@ -1258,45 +1272,45 @@ mod tests {
 
         e.add_ava("userid", &Value::from("william"));
 
-        assert!(e.attribute_equality("userid", &Value::from("william")));
-        assert!(!e.attribute_equality("userid", &Value::from("test")));
-        assert!(!e.attribute_equality("nonexist", &Value::from("william")));
+        assert!(e.attribute_equality("userid", &PartialValue::new_utf8s("william")));
+        assert!(!e.attribute_equality("userid", &PartialValue::new_utf8s("test")));
+        assert!(!e.attribute_equality("nonexist", &PartialValue::new_utf8s("william")));
         // Also test non-matching attr syntax
-        assert!(!e.attribute_equality("userid", &Value::new_class("william")));
+        assert!(!e.attribute_equality("userid", &PartialValue::new_class("william")));
     }
 
     #[test]
     fn test_entry_substring() {
         let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
 
-        e.add_ava("userid", "william");
+        e.add_ava("userid", &Value::from("william"));
 
-        assert!(e.attribute_substring("userid", "william"));
-        assert!(e.attribute_substring("userid", "will"));
-        assert!(e.attribute_substring("userid", "liam"));
-        assert!(e.attribute_substring("userid", "lli"));
-        assert!(!e.attribute_substring("userid", "llim"));
-        assert!(!e.attribute_substring("userid", "bob"));
-        assert!(!e.attribute_substring("userid", "wl"));
+        assert!(e.attribute_substring("userid", &PartialValue::new_utf8s("william")));
+        assert!(e.attribute_substring("userid", &PartialValue::new_utf8s("will")));
+        assert!(e.attribute_substring("userid", &PartialValue::new_utf8s("liam")));
+        assert!(e.attribute_substring("userid", &PartialValue::new_utf8s("lli")));
+        assert!(!e.attribute_substring("userid", &PartialValue::new_utf8s("llim")));
+        assert!(!e.attribute_substring("userid", &PartialValue::new_utf8s("bob")));
+        assert!(!e.attribute_substring("userid", &PartialValue::new_utf8s("wl")));
     }
 
     #[test]
     fn test_entry_apply_modlist() {
         // Test application of changes to an entry.
         let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
-        e.add_ava("userid", "william");
+        e.add_ava("userid", &Value::from("william"));
 
         let mods = unsafe {
             ModifyList::new_valid_list(vec![Modify::Present(
                 String::from("attr"),
-                String::from("value"),
+                Value::from("value"),
             )])
         };
 
         e.apply_modlist(&mods);
 
         // Assert the changes are there
-        assert!(e.attribute_equality("attr", "value"));
+        assert!(e.attribute_equality("attr", &PartialValue::new_iutf8("value")));
 
         // Assert present for multivalue
         // Assert purge on single/multi/empty value

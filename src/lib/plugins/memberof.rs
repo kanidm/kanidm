@@ -391,7 +391,7 @@ mod tests {
     // use crate::error::OperationError;
     use crate::modify::{Modify, ModifyList};
     use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
-    use crate::value::PartialValue;
+    use crate::value::{PartialValue, Value};
     use uuid::Uuid;
 
     static EA: &'static str = r#"{
@@ -516,7 +516,7 @@ mod tests {
         let eb: Entry<EntryInvalid, EntryNew> =
             serde_json::from_str(EB).expect("Json parse failure");
 
-        ea.add_ava("member", UUID_B);
+        ea.add_ava("member", &Value::new_refer(&UUID_B));
 
         let preload = Vec::new();
         let create = vec![ea, eb];
@@ -549,8 +549,8 @@ mod tests {
         let ec: Entry<EntryInvalid, EntryNew> =
             serde_json::from_str(EC).expect("Json parse failure");
 
-        ea.add_ava("member", UUID_B);
-        eb.add_ava("member", UUID_C);
+        ea.add_ava("member", &Value::new_refer(&UUID_B));
+        eb.add_ava("member", &Value::new_refer(&UUID_C));
 
         let preload = Vec::new();
         let create = vec![ea, eb, ec];
@@ -603,9 +603,9 @@ mod tests {
         let mut ec: Entry<EntryInvalid, EntryNew> =
             serde_json::from_str(EC).expect("Json parse failure");
 
-        ea.add_ava("member", UUID_B);
-        eb.add_ava("member", UUID_C);
-        ec.add_ava("member", UUID_A);
+        ea.add_ava("member", &Value::new_refer(&UUID_B));
+        eb.add_ava("member", &Value::new_refer(&UUID_C));
+        ec.add_ava("member", &Value::new_refer(&UUID_A));
 
         let preload = Vec::new();
         let create = vec![ea, eb, ec];
@@ -661,13 +661,13 @@ mod tests {
         let mut ed: Entry<EntryInvalid, EntryNew> =
             serde_json::from_str(ED).expect("Json parse failure");
 
-        ea.add_ava("member", UUID_B);
-        eb.add_ava("member", UUID_C);
+        ea.add_ava("member", &Value::new_refer(&UUID_B));
+        eb.add_ava("member", &Value::new_refer(&UUID_C));
 
-        ec.add_ava("member", UUID_A);
-        ec.add_ava("member", UUID_D);
+        ec.add_ava("member", &Value::new_refer(&UUID_A));
+        ec.add_ava("member", &Value::new_refer(&UUID_D));
 
-        ed.add_ava("member", UUID_A);
+        ed.add_ava("member", &Value::new_refer(&UUID_A));
 
         let preload = Vec::new();
         let create = vec![ea, eb, ec, ed];
@@ -769,7 +769,7 @@ mod tests {
         let ec: Entry<EntryInvalid, EntryNew> =
             serde_json::from_str(EC).expect("Json parse failure");
 
-        eb.add_ava("member", UUID_C);
+        eb.add_ava("member", &Value::new_refer(&UUID_C));
 
         let preload = vec![ea, eb, ec];
         run_modify_test!(
@@ -825,7 +825,7 @@ mod tests {
         let ec: Entry<EntryInvalid, EntryNew> =
             serde_json::from_str(EC).expect("Json parse failure");
 
-        ea.add_ava("member", UUID_B);
+        ea.add_ava("member", &Value::new_refer(&UUID_B));
 
         let preload = vec![ea, eb, ec];
         run_modify_test!(
@@ -883,8 +883,8 @@ mod tests {
         let ec: Entry<EntryInvalid, EntryNew> =
             serde_json::from_str(EC).expect("Json parse failure");
 
-        ea.add_ava("member", UUID_B);
-        eb.add_ava("member", UUID_C);
+        ea.add_ava("member", &Value::new_refer(&UUID_B));
+        eb.add_ava("member", &Value::new_refer(&UUID_C));
 
         let preload = vec![ea, eb, ec];
         run_modify_test!(
@@ -949,9 +949,9 @@ mod tests {
         let ed: Entry<EntryInvalid, EntryNew> =
             serde_json::from_str(ED).expect("Json parse failure");
 
-        ea.add_ava("member", UUID_B);
-        eb.add_ava("member", UUID_C);
-        ec.add_ava("member", UUID_D);
+        ea.add_ava("member", &Value::new_refer(&UUID_B));
+        eb.add_ava("member", &Value::new_refer(&UUID_C));
+        ec.add_ava("member", &Value::new_refer(&UUID_D));
 
         let preload = vec![ea, eb, ec, ed];
         run_modify_test!(
@@ -1020,8 +1020,8 @@ mod tests {
         let mut eb: Entry<EntryInvalid, EntryNew> =
             serde_json::from_str(EB).expect("Json parse failure");
 
-        ea.add_ava("member", UUID_B);
-        eb.add_ava("memberof", UUID_A);
+        ea.add_ava("member", &Value::new_refer(&UUID_B));
+        eb.add_ava("memberof", &Value::new_refer(&UUID_A));
 
         let preload = vec![ea, eb];
         run_modify_test!(
@@ -1059,10 +1059,10 @@ mod tests {
         let mut ec: Entry<EntryInvalid, EntryNew> =
             serde_json::from_str(EC).expect("Json parse failure");
 
-        ea.add_ava("member", UUID_B);
-        eb.add_ava("memberof", UUID_A);
-        eb.add_ava("member", UUID_C);
-        ec.add_ava("memberof", UUID_B);
+        ea.add_ava("member", &Value::new_refer(&UUID_B));
+        eb.add_ava("memberof", &Value::new_refer(&UUID_A));
+        eb.add_ava("member", &Value::new_refer(&UUID_C));
+        ec.add_ava("memberof", &Value::new_refer(&UUID_B));
 
         let preload = vec![ea, eb, ec];
         run_modify_test!(
@@ -1118,11 +1118,11 @@ mod tests {
         let mut ec: Entry<EntryInvalid, EntryNew> =
             serde_json::from_str(EC).expect("Json parse failure");
 
-        ea.add_ava("member", UUID_B);
-        eb.add_ava("memberof", UUID_A);
-        eb.add_ava("member", UUID_C);
-        ec.add_ava("memberof", UUID_B);
-        ec.add_ava("memberof", UUID_A);
+        ea.add_ava("member", &Value::new_refer(&UUID_B));
+        eb.add_ava("memberof", &Value::new_refer(&UUID_A));
+        eb.add_ava("member", &Value::new_refer(&UUID_C));
+        ec.add_ava("memberof", &Value::new_refer(&UUID_B));
+        ec.add_ava("memberof", &Value::new_refer(&UUID_A));
 
         let preload = vec![ea, eb, ec];
         run_modify_test!(
@@ -1179,20 +1179,20 @@ mod tests {
         let mut ec: Entry<EntryInvalid, EntryNew> =
             serde_json::from_str(EC).expect("Json parse failure");
 
-        ea.add_ava("member", UUID_B);
-        ea.add_ava("memberof", UUID_C);
-        ea.add_ava("memberof", UUID_B);
-        ea.add_ava("memberof", UUID_A);
+        ea.add_ava("member", &Value::new_refer(&UUID_B));
+        ea.add_ava("memberof", &Value::new_refer(&UUID_C));
+        ea.add_ava("memberof", &Value::new_refer(&UUID_B));
+        ea.add_ava("memberof", &Value::new_refer(&UUID_A));
 
-        eb.add_ava("member", UUID_C);
-        eb.add_ava("memberof", UUID_C);
-        eb.add_ava("memberof", UUID_B);
-        eb.add_ava("memberof", UUID_A);
+        eb.add_ava("member", &Value::new_refer(&UUID_C));
+        eb.add_ava("memberof", &Value::new_refer(&UUID_C));
+        eb.add_ava("memberof", &Value::new_refer(&UUID_B));
+        eb.add_ava("memberof", &Value::new_refer(&UUID_A));
 
-        ec.add_ava("member", UUID_A);
-        ec.add_ava("memberof", UUID_C);
-        ec.add_ava("memberof", UUID_B);
-        ec.add_ava("memberof", UUID_A);
+        ec.add_ava("member", &Value::new_refer(&UUID_A));
+        ec.add_ava("memberof", &Value::new_refer(&UUID_C));
+        ec.add_ava("memberof", &Value::new_refer(&UUID_B));
+        ec.add_ava("memberof", &Value::new_refer(&UUID_A));
 
         let preload = vec![ea, eb, ec];
         run_modify_test!(
@@ -1258,30 +1258,30 @@ mod tests {
         let mut ed: Entry<EntryInvalid, EntryNew> =
             serde_json::from_str(ED).expect("Json parse failure");
 
-        ea.add_ava("member", UUID_B);
-        ea.add_ava("memberof", UUID_D);
-        ea.add_ava("memberof", UUID_C);
-        ea.add_ava("memberof", UUID_B);
-        ea.add_ava("memberof", UUID_A);
+        ea.add_ava("member", &Value::new_refer(&UUID_B));
+        ea.add_ava("memberof", &Value::new_refer(&UUID_D));
+        ea.add_ava("memberof", &Value::new_refer(&UUID_C));
+        ea.add_ava("memberof", &Value::new_refer(&UUID_B));
+        ea.add_ava("memberof", &Value::new_refer(&UUID_A));
 
-        eb.add_ava("member", UUID_C);
-        eb.add_ava("memberof", UUID_D);
-        eb.add_ava("memberof", UUID_C);
-        eb.add_ava("memberof", UUID_B);
-        eb.add_ava("memberof", UUID_A);
+        eb.add_ava("member", &Value::new_refer(&UUID_C));
+        eb.add_ava("memberof", &Value::new_refer(&UUID_D));
+        eb.add_ava("memberof", &Value::new_refer(&UUID_C));
+        eb.add_ava("memberof", &Value::new_refer(&UUID_B));
+        eb.add_ava("memberof", &Value::new_refer(&UUID_A));
 
-        ec.add_ava("member", UUID_A);
-        ec.add_ava("member", UUID_D);
-        ec.add_ava("memberof", UUID_D);
-        ec.add_ava("memberof", UUID_C);
-        ec.add_ava("memberof", UUID_B);
-        ec.add_ava("memberof", UUID_A);
+        ec.add_ava("member", &Value::new_refer(&UUID_A));
+        ec.add_ava("member", &Value::new_refer(&UUID_D));
+        ec.add_ava("memberof", &Value::new_refer(&UUID_D));
+        ec.add_ava("memberof", &Value::new_refer(&UUID_C));
+        ec.add_ava("memberof", &Value::new_refer(&UUID_B));
+        ec.add_ava("memberof", &Value::new_refer(&UUID_A));
 
-        ed.add_ava("member", UUID_A);
-        ed.add_ava("memberof", UUID_D);
-        ed.add_ava("memberof", UUID_C);
-        ed.add_ava("memberof", UUID_B);
-        ed.add_ava("memberof", UUID_A);
+        ed.add_ava("member", &Value::new_refer(&UUID_A));
+        ed.add_ava("memberof", &Value::new_refer(&UUID_D));
+        ed.add_ava("memberof", &Value::new_refer(&UUID_C));
+        ed.add_ava("memberof", &Value::new_refer(&UUID_B));
+        ed.add_ava("memberof", &Value::new_refer(&UUID_A));
 
         let preload = vec![ea, eb, ec, ed];
         run_modify_test!(
@@ -1348,8 +1348,8 @@ mod tests {
         let mut eb: Entry<EntryInvalid, EntryNew> =
             serde_json::from_str(EB).expect("Json parse failure");
 
-        ea.add_ava("member", UUID_B);
-        eb.add_ava("memberof", UUID_A);
+        ea.add_ava("member", &Value::new_refer(&UUID_B));
+        eb.add_ava("memberof", &Value::new_refer(&UUID_A));
 
         let preload = vec![ea, eb];
         run_delete_test!(
@@ -1381,12 +1381,12 @@ mod tests {
         let mut ec: Entry<EntryInvalid, EntryNew> =
             serde_json::from_str(EC).expect("Json parse failure");
 
-        ea.add_ava("member", UUID_B);
-        eb.add_ava("memberof", UUID_A);
+        ea.add_ava("member", &Value::new_refer(&UUID_B));
+        eb.add_ava("memberof", &Value::new_refer(&UUID_A));
 
-        eb.add_ava("member", UUID_C);
-        ec.add_ava("memberof", UUID_A);
-        ec.add_ava("memberof", UUID_B);
+        eb.add_ava("member", &Value::new_refer(&UUID_C));
+        ec.add_ava("memberof", &Value::new_refer(&UUID_A));
+        ec.add_ava("memberof", &Value::new_refer(&UUID_B));
 
         let preload = vec![ea, eb, ec];
         run_delete_test!(
@@ -1428,12 +1428,12 @@ mod tests {
         let mut ec: Entry<EntryInvalid, EntryNew> =
             serde_json::from_str(EC).expect("Json parse failure");
 
-        ea.add_ava("member", UUID_B);
-        eb.add_ava("memberof", UUID_A);
+        ea.add_ava("member", &Value::new_refer(&UUID_B));
+        eb.add_ava("memberof", &Value::new_refer(&UUID_A));
 
-        eb.add_ava("member", UUID_C);
-        ec.add_ava("memberof", UUID_A);
-        ec.add_ava("memberof", UUID_B);
+        eb.add_ava("member", &Value::new_refer(&UUID_C));
+        ec.add_ava("memberof", &Value::new_refer(&UUID_A));
+        ec.add_ava("memberof", &Value::new_refer(&UUID_B));
 
         let preload = vec![ea, eb, ec];
         run_delete_test!(
@@ -1476,20 +1476,20 @@ mod tests {
         let mut ec: Entry<EntryInvalid, EntryNew> =
             serde_json::from_str(EC).expect("Json parse failure");
 
-        ea.add_ava("member", UUID_B);
-        ea.add_ava("memberof", UUID_A);
-        ea.add_ava("memberof", UUID_B);
-        ea.add_ava("memberof", UUID_C);
+        ea.add_ava("member", &Value::new_refer(&UUID_B));
+        ea.add_ava("memberof", &Value::new_refer(&UUID_A));
+        ea.add_ava("memberof", &Value::new_refer(&UUID_B));
+        ea.add_ava("memberof", &Value::new_refer(&UUID_C));
 
-        eb.add_ava("member", UUID_C);
-        eb.add_ava("memberof", UUID_A);
-        eb.add_ava("memberof", UUID_B);
-        eb.add_ava("memberof", UUID_C);
+        eb.add_ava("member", &Value::new_refer(&UUID_C));
+        eb.add_ava("memberof", &Value::new_refer(&UUID_A));
+        eb.add_ava("memberof", &Value::new_refer(&UUID_B));
+        eb.add_ava("memberof", &Value::new_refer(&UUID_C));
 
-        ec.add_ava("member", UUID_A);
-        ec.add_ava("memberof", UUID_A);
-        ec.add_ava("memberof", UUID_B);
-        ec.add_ava("memberof", UUID_C);
+        ec.add_ava("member", &Value::new_refer(&UUID_A));
+        ec.add_ava("memberof", &Value::new_refer(&UUID_A));
+        ec.add_ava("memberof", &Value::new_refer(&UUID_B));
+        ec.add_ava("memberof", &Value::new_refer(&UUID_C));
 
         let preload = vec![ea, eb, ec];
         run_delete_test!(
@@ -1536,30 +1536,30 @@ mod tests {
         let mut ed: Entry<EntryInvalid, EntryNew> =
             serde_json::from_str(ED).expect("Json parse failure");
 
-        ea.add_ava("member", UUID_B);
-        ea.add_ava("memberof", UUID_A);
-        ea.add_ava("memberof", UUID_B);
-        ea.add_ava("memberof", UUID_C);
-        ea.add_ava("memberof", UUID_D);
+        ea.add_ava("member", &Value::new_refer(&UUID_B));
+        ea.add_ava("memberof", &Value::new_refer(&UUID_A));
+        ea.add_ava("memberof", &Value::new_refer(&UUID_B));
+        ea.add_ava("memberof", &Value::new_refer(&UUID_C));
+        ea.add_ava("memberof", &Value::new_refer(&UUID_D));
 
-        eb.add_ava("member", UUID_C);
-        eb.add_ava("memberof", UUID_A);
-        eb.add_ava("memberof", UUID_B);
-        eb.add_ava("memberof", UUID_C);
-        eb.add_ava("memberof", UUID_D);
+        eb.add_ava("member", &Value::new_refer(&UUID_C));
+        eb.add_ava("memberof", &Value::new_refer(&UUID_A));
+        eb.add_ava("memberof", &Value::new_refer(&UUID_B));
+        eb.add_ava("memberof", &Value::new_refer(&UUID_C));
+        eb.add_ava("memberof", &Value::new_refer(&UUID_D));
 
-        ec.add_ava("member", UUID_A);
-        ec.add_ava("member", UUID_D);
-        ec.add_ava("memberof", UUID_A);
-        ec.add_ava("memberof", UUID_B);
-        ec.add_ava("memberof", UUID_C);
-        ec.add_ava("memberof", UUID_D);
+        ec.add_ava("member", &Value::new_refer(&UUID_A));
+        ec.add_ava("member", &Value::new_refer(&UUID_D));
+        ec.add_ava("memberof", &Value::new_refer(&UUID_A));
+        ec.add_ava("memberof", &Value::new_refer(&UUID_B));
+        ec.add_ava("memberof", &Value::new_refer(&UUID_C));
+        ec.add_ava("memberof", &Value::new_refer(&UUID_D));
 
-        ed.add_ava("member", UUID_A);
-        ed.add_ava("memberof", UUID_A);
-        ed.add_ava("memberof", UUID_B);
-        ed.add_ava("memberof", UUID_C);
-        ed.add_ava("memberof", UUID_D);
+        ed.add_ava("member", &Value::new_refer(&UUID_A));
+        ed.add_ava("memberof", &Value::new_refer(&UUID_A));
+        ed.add_ava("memberof", &Value::new_refer(&UUID_B));
+        ed.add_ava("memberof", &Value::new_refer(&UUID_C));
+        ed.add_ava("memberof", &Value::new_refer(&UUID_D));
 
         let preload = vec![ea, eb, ec, ed];
         run_delete_test!(

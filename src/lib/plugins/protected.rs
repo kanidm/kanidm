@@ -24,9 +24,9 @@ lazy_static! {
         m.insert("may");
         m
     };
-    static ref VCLASS_SYSTEM: Value = Value::new_class("system");
-    static ref PVCLASS_SYSTEM: PartialValue = PartialValue::new_class("system");
 }
+static VCLASS_SYSTEM: Value = Value::new_class("system");
+static PVCLASS_SYSTEM: PartialValue = PartialValue::new_class("system");
 
 impl Plugin for Protected {
     fn id() -> &'static str {
@@ -81,7 +81,7 @@ impl Plugin for Protected {
             } else {
                 match m {
                     Modify::Present(a, v) => {
-                        if a == "class" && &v == &VCLASS_SYSTEM {
+                        if a == "class" && v == &VCLASS_SYSTEM {
                             Err(OperationError::SystemProtectedObject)
                         } else {
                             Ok(())

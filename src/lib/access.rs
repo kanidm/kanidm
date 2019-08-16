@@ -26,7 +26,7 @@ use crate::filter::{Filter, FilterValid};
 use crate::modify::Modify;
 use crate::proto::v1::Filter as ProtoFilter;
 use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
-use crate::value::{PartialValue};
+use crate::value::PartialValue;
 
 use crate::event::{CreateEvent, DeleteEvent, EventOrigin, ModifyEvent, SearchEvent};
 
@@ -291,7 +291,8 @@ impl AccessControlProfile {
             value
                 .get_ava_single_str("name")
                 .ok_or(OperationError::InvalidACPState("Missing name"))
-        ).to_string();
+        )
+        .to_string();
         // copy uuid
         let uuid = value.get_uuid().clone();
         // receiver, and turn to real filter
@@ -341,10 +342,10 @@ impl AccessControlProfile {
 #[derive(Debug, Clone)]
 pub struct AccessControlsInner {
     // What is the correct key here?
-    acps_search: BTreeMap<String, AccessControlSearch>,
-    acps_create: BTreeMap<String, AccessControlCreate>,
-    acps_modify: BTreeMap<String, AccessControlModify>,
-    acps_delete: BTreeMap<String, AccessControlDelete>,
+    acps_search: BTreeMap<Uuid, AccessControlSearch>,
+    acps_create: BTreeMap<Uuid, AccessControlCreate>,
+    acps_modify: BTreeMap<Uuid, AccessControlModify>,
+    acps_delete: BTreeMap<Uuid, AccessControlDelete>,
 }
 
 impl AccessControlsInner {
@@ -710,14 +711,20 @@ pub trait AccessControlsTransaction {
             .filter_map(|m| match m {
                 Modify::Present(a, v) => {
                     if a.as_str() == "class" {
-                        v.to_str()
+                        // Here we have an option<&str> which could mean there is a risk of
+                        // a malicious entity attempting to trick us by masking class mods
+                        // in non-iutf8 types. However, the server first won't respect their
+                        // existance, and second, we would have failed the mod at schema checking
+                        // earlier in the process as these were not correctly type. As a result
+                        // we can trust these to be correct here and not to be "None".
+                        Some(v.to_str_unwrap())
                     } else {
                         None
                     }
                 }
                 Modify::Removed(a, v) => {
                     if a.as_str() == "class" {
-                        v.to_str()
+                        Some(v.to_str_unwrap())
                     } else {
                         None
                     }
@@ -873,9 +880,12 @@ pub trait AccessControlsTransaction {
                 // I still think if this is None, we should just fail here ...
                 // because it shouldn't be possible to match.
 
-                let create_classes: BTreeSet<&str> = match e.get_ava_set("class") {
+                let create_classes: BTreeSet<&str> = match e.get_ava_set_str("class") {
                     Some(s) => s,
-                    None => return false,
+                    None => {
+                        audit_log!(audit, "Class set failed to build - corrupted entry?");
+                        return false;
+                    }
                 };
 
                 related_acp.iter().fold(false, |r_acc, accr| {

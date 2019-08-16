@@ -721,6 +721,7 @@ impl FilterResolved {
 mod tests {
     use crate::entry::{Entry, EntryNew, EntryValid};
     use crate::filter::{Filter, FilterInvalid};
+    use crate::value::PartialValue;
     use serde_json;
     use std::cmp::{Ordering, PartialOrd};
     use std::collections::BTreeSet;
@@ -728,12 +729,15 @@ mod tests {
     #[test]
     fn test_filter_simple() {
         // Test construction.
-        let _filt: Filter<FilterInvalid> = filter!(f_eq("class", "user"));
+        let _filt: Filter<FilterInvalid> = filter!(f_eq("class", PartialValue::new_class("user")));
 
         // AFTER
         let _complex_filt: Filter<FilterInvalid> = filter!(f_and!([
-            f_or!([f_eq("userid", "test_a"), f_eq("userid", "test_b"),]),
-            f_sub("class", "user"),
+            f_or!([
+                f_eq("userid", PartialValue::new_iutf8("test_a")),
+                f_eq("userid", PartialValue::new_iutf8("test_b")),
+            ]),
+            f_sub("class", PartialValue::new_class("user")),
         ]));
     }
 
@@ -763,32 +767,44 @@ mod tests {
     fn test_filter_optimise() {
         // Given sets of "optimisable" filters, optimise them.
         filter_optimise_assert!(
-            f_and(vec![f_and(vec![f_eq("class", "test")])]),
-            f_and(vec![f_eq("class", "test")])
+            f_and(vec![f_and(vec![f_eq(
+                "class",
+                PartialValue::new_class("test")
+            )])]),
+            f_and(vec![f_eq("class", PartialValue::new_class("test"))])
         );
 
         filter_optimise_assert!(
-            f_or(vec![f_or(vec![f_eq("class", "test")])]),
-            f_or(vec![f_eq("class", "test")])
+            f_or(vec![f_or(vec![f_eq(
+                "class",
+                PartialValue::new_class("test")
+            )])]),
+            f_or(vec![f_eq("class", PartialValue::new_class("test"))])
         );
 
         filter_optimise_assert!(
-            f_and(vec![f_or(vec![f_and(vec![f_eq("class", "test")])])]),
-            f_and(vec![f_or(vec![f_and(vec![f_eq("class", "test")])])])
+            f_and(vec![f_or(vec![f_and(vec![f_eq(
+                "class",
+                PartialValue::new_class("test")
+            )])])]),
+            f_and(vec![f_or(vec![f_and(vec![f_eq(
+                "class",
+                PartialValue::new_class("test")
+            )])])])
         );
 
         // Later this can test duplicate filter detection.
         filter_optimise_assert!(
             f_and(vec![
-                f_and(vec![f_eq("class", "test")]),
-                f_sub("class", "te"),
+                f_and(vec![f_eq("class", PartialValue::new_class("test"))]),
+                f_sub("class", PartialValue::new_class("te")),
                 f_pres("class"),
-                f_eq("class", "test")
+                f_eq("class", PartialValue::new_class("test"))
             ]),
             f_and(vec![
-                f_eq("class", "test"),
+                f_eq("class", PartialValue::new_class("test")),
                 f_pres("class"),
-                f_sub("class", "te"),
+                f_sub("class", PartialValue::new_class("te")),
             ])
         );
 
@@ -796,54 +812,54 @@ mod tests {
         filter_optimise_assert!(
             f_and(vec![
                 f_and(vec![
-                    f_eq("class", "foo"),
-                    f_eq("class", "test"),
-                    f_eq("uid", "bar"),
+                    f_eq("class", PartialValue::new_class("foo")),
+                    f_eq("class", PartialValue::new_class("test")),
+                    f_eq("uid", PartialValue::new_class("bar")),
                 ]),
-                f_sub("class", "te"),
+                f_sub("class", PartialValue::new_class("te")),
                 f_pres("class"),
-                f_eq("class", "test")
+                f_eq("class", PartialValue::new_class("test"))
             ]),
             f_and(vec![
-                f_eq("class", "foo"),
-                f_eq("class", "test"),
-                f_eq("uid", "bar"),
+                f_eq("class", PartialValue::new_class("foo")),
+                f_eq("class", PartialValue::new_class("test")),
+                f_eq("uid", PartialValue::new_class("bar")),
                 f_pres("class"),
-                f_sub("class", "te"),
+                f_sub("class", PartialValue::new_class("te")),
             ])
         );
 
         filter_optimise_assert!(
             f_or(vec![
-                f_eq("class", "test"),
+                f_eq("class", PartialValue::new_class("test")),
                 f_pres("class"),
-                f_sub("class", "te"),
-                f_or(vec![f_eq("class", "test")]),
+                f_sub("class", PartialValue::new_class("te")),
+                f_or(vec![f_eq("class", PartialValue::new_class("test"))]),
             ]),
             f_or(vec![
-                f_sub("class", "te"),
+                f_sub("class", PartialValue::new_class("te")),
                 f_pres("class"),
-                f_eq("class", "test")
+                f_eq("class", PartialValue::new_class("test"))
             ])
         );
 
         // Test dedup doesn't affect nested items incorrectly.
         filter_optimise_assert!(
             f_or(vec![
-                f_eq("class", "test"),
+                f_eq("class", PartialValue::new_class("test")),
                 f_and(vec![
-                    f_eq("class", "test"),
-                    f_eq("term", "test"),
-                    f_or(vec![f_eq("class", "test")])
+                    f_eq("class", PartialValue::new_class("test")),
+                    f_eq("term", PartialValue::new_class("test")),
+                    f_or(vec![f_eq("class", PartialValue::new_class("test"))])
                 ]),
             ]),
             f_or(vec![
                 f_and(vec![
-                    f_eq("class", "test"),
-                    f_eq("term", "test"),
-                    f_or(vec![f_eq("class", "test")])
+                    f_eq("class", PartialValue::new_class("test")),
+                    f_eq("term", PartialValue::new_class("test")),
+                    f_or(vec![f_eq("class", PartialValue::new_class("test"))])
                 ]),
-                f_eq("class", "test"),
+                f_eq("class", PartialValue::new_class("test")),
             ])
         );
     }
@@ -886,12 +902,12 @@ mod tests {
         assert_eq!(f_t2b.partial_cmp(&f_t2a), Some(Ordering::Equal));
 
         // antisymmetry: if a < b then !(a > b), as well as a > b implying !(a < b); and
-        let f_t3b = unsafe { filter_resolved!(f_eq("userid", "")) };
+        let f_t3b = unsafe { filter_resolved!(f_eq("userid", PartialValue::new_iutf8(""))) };
         assert_eq!(f_t1a.partial_cmp(&f_t3b), Some(Ordering::Greater));
         assert_eq!(f_t3b.partial_cmp(&f_t1a), Some(Ordering::Less));
 
         // transitivity: a < b and b < c implies a < c. The same must hold for both == and >.
-        let f_t4b = unsafe { filter_resolved!(f_sub("userid", "")) };
+        let f_t4b = unsafe { filter_resolved!(f_sub("userid", PartialValue::new_iutf8(""))) };
         assert_eq!(f_t1a.partial_cmp(&f_t4b), Some(Ordering::Less));
         assert_eq!(f_t3b.partial_cmp(&f_t4b), Some(Ordering::Less));
 
@@ -937,27 +953,33 @@ mod tests {
 
         let f_t1a = unsafe {
             filter_resolved!(f_or!([
-                f_eq("userid", "william"),
-                f_eq("uidnumber", "1000"),
+                f_eq("userid", PartialValue::new_iutf8("william")),
+                f_eq("uidnumber", PartialValue::new_iutf8("1000")),
             ]))
         };
         assert!(e.entry_match_no_index(&f_t1a));
 
         let f_t2a = unsafe {
             filter_resolved!(f_or!([
-                f_eq("userid", "william"),
-                f_eq("uidnumber", "1001"),
+                f_eq("userid", PartialValue::new_iutf8("william")),
+                f_eq("uidnumber", PartialValue::new_iutf8("1001")),
             ]))
         };
         assert!(e.entry_match_no_index(&f_t2a));
 
         let f_t3a = unsafe {
-            filter_resolved!(f_or!([f_eq("userid", "alice"), f_eq("uidnumber", "1000"),]))
+            filter_resolved!(f_or!([
+                f_eq("userid", PartialValue::new_iutf8("alice")),
+                f_eq("uidnumber", PartialValue::new_iutf8("1000")),
+            ]))
         };
         assert!(e.entry_match_no_index(&f_t3a));
 
         let f_t4a = unsafe {
-            filter_resolved!(f_or!([f_eq("userid", "alice"), f_eq("uidnumber", "1001"),]))
+            filter_resolved!(f_or!([
+                f_eq("userid", PartialValue::new_iutf8("alice")),
+                f_eq("uidnumber", PartialValue::new_iutf8("1001")),
+            ]))
         };
         assert!(!e.entry_match_no_index(&f_t4a));
     }
@@ -981,31 +1003,33 @@ mod tests {
 
         let f_t1a = unsafe {
             filter_resolved!(f_and!([
-                f_eq("userid", "william"),
-                f_eq("uidnumber", "1000"),
+                f_eq("userid", PartialValue::new_iutf8("william")),
+                f_eq("uidnumber", PartialValue::new_iutf8("1000")),
             ]))
         };
         assert!(e.entry_match_no_index(&f_t1a));
 
         let f_t2a = unsafe {
             filter_resolved!(f_and!([
-                f_eq("userid", "william"),
-                f_eq("uidnumber", "1001"),
+                f_eq("userid", PartialValue::new_iutf8("william")),
+                f_eq("uidnumber", PartialValue::new_iutf8("1001")),
             ]))
         };
         assert!(!e.entry_match_no_index(&f_t2a));
 
         let f_t3a = unsafe {
-            filter_resolved!(f_and!(
-                [f_eq("userid", "alice"), f_eq("uidnumber", "1000"),]
-            ))
+            filter_resolved!(f_and!([
+                f_eq("userid", PartialValue::new_iutf8("alice")),
+                f_eq("uidnumber", PartialValue::new_iutf8("1000")),
+            ]))
         };
         assert!(!e.entry_match_no_index(&f_t3a));
 
         let f_t4a = unsafe {
-            filter_resolved!(f_and!(
-                [f_eq("userid", "alice"), f_eq("uidnumber", "1001"),]
-            ))
+            filter_resolved!(f_and!([
+                f_eq("userid", PartialValue::new_iutf8("alice")),
+                f_eq("uidnumber", PartialValue::new_iutf8("1001")),
+            ]))
         };
         assert!(!e.entry_match_no_index(&f_t4a));
     }
@@ -1027,10 +1051,13 @@ mod tests {
         )
         .expect("Json parse failure");
 
-        let f_t1a = unsafe { filter_resolved!(f_andnot(f_eq("userid", "alice"))) };
+        let f_t1a =
+            unsafe { filter_resolved!(f_andnot(f_eq("userid", PartialValue::new_iutf8("alice")))) };
         assert!(e1.entry_match_no_index(&f_t1a));
 
-        let f_t2a = unsafe { filter_resolved!(f_andnot(f_eq("userid", "william"))) };
+        let f_t2a = unsafe {
+            filter_resolved!(f_andnot(f_eq("userid", PartialValue::new_iutf8("william"))))
+        };
         assert!(!e1.entry_match_no_index(&f_t2a));
     }
 
@@ -1098,8 +1125,11 @@ mod tests {
 
         let f_t1a = unsafe {
             filter_resolved!(f_and!([
-                f_eq("class", "person"),
-                f_or!([f_eq("uidnumber", "1001"), f_eq("uidnumber", "1000")])
+                f_eq("class", PartialValue::new_class("person")),
+                f_or!([
+                    f_eq("uidnumber", PartialValue::new_iutf8("1001")),
+                    f_eq("uidnumber", PartialValue::new_iutf8("1000"))
+                ])
             ]))
         };
 
@@ -1114,17 +1144,22 @@ mod tests {
         let mut f_expect = BTreeSet::new();
         f_expect.insert("userid");
         f_expect.insert("class");
-        // Given filters, get their expected attribute sets.
-        let f_t1a =
-            unsafe { filter_valid!(f_and!([f_eq("userid", "alice"), f_eq("class", "1001"),])) };
+        // Given filters, get their expected attribute sets - this is used by access control profiles
+        // to determine what attrs we are requesting regardless of the partialvalue.
+        let f_t1a = unsafe {
+            filter_valid!(f_and!([
+                f_eq("userid", PartialValue::new_iutf8("alice")),
+                f_eq("class", PartialValue::new_iutf8("1001")),
+            ]))
+        };
 
         assert!(f_t1a.get_attr_set() == f_expect);
 
         let f_t2a = unsafe {
             filter_valid!(f_and!([
-                f_eq("userid", "alice"),
-                f_eq("class", "1001"),
-                f_eq("userid", "claire"),
+                f_eq("userid", PartialValue::new_iutf8("alice")),
+                f_eq("class", PartialValue::new_iutf8("1001")),
+                f_eq("userid", PartialValue::new_iutf8("claire")),
             ]))
         };
 

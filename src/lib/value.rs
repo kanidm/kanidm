@@ -47,7 +47,6 @@ pub enum SyntaxType {
     // We need an insensitive string type too ...
     // We also need to "self host" a syntax type, and index type
     UTF8STRING,
-    UTF8STRING_PRINCIPAL,
     UTF8STRING_INSENSITIVE,
     UUID,
     BOOLEAN,
@@ -63,8 +62,6 @@ impl TryFrom<&str> for SyntaxType {
     fn try_from(value: &str) -> Result<SyntaxType, Self::Error> {
         if value == "UTF8STRING" {
             Ok(SyntaxType::UTF8STRING)
-        } else if value == "UTF8STRING_PRINCIPAL" {
-            Ok(SyntaxType::UTF8STRING_PRINCIPAL)
         } else if value == "UTF8STRING_INSENSITIVE" {
             Ok(SyntaxType::UTF8STRING_INSENSITIVE)
         } else if value == "UUID" {
@@ -89,7 +86,6 @@ impl SyntaxType {
     pub fn to_string(&self) -> String {
         String::from(match self {
             SyntaxType::UTF8STRING => "UTF8STRING",
-            SyntaxType::UTF8STRING_PRINCIPAL => "UTF8STRING_PRINCIPAL",
             SyntaxType::UTF8STRING_INSENSITIVE => "UTF8STRING_INSENSITIVE",
             SyntaxType::UUID => "UUID",
             SyntaxType::BOOLEAN => "BOOLEAN",
@@ -137,8 +133,27 @@ impl PartialValue {
         PartialValue::Uuid(u)
     }
 
+    pub fn new_uuids(us: &str) -> Option<Self> {
+        match Uuid::parse_str(us.as_str()) {
+            Ok(u) => Some(PartialValue::Uuid(u)),
+            Err(_) => None,
+        }
+    }
+
     pub fn new_refer(u: Uuid) -> Self {
         PartialValue::Refer(u)
+    }
+
+    pub fn to_str(&self) -> Option<&str> {
+        match self {
+            PartialValue::Utf8(s) => Some(s.as_str()),
+            PartialValue::Iutf8(s) => Some(s.as_str()),
+            _ => None,
+        }
+    }
+
+    pub fn to_str_unwrap(&self) -> &str {
+        self.to_str().expect("An invalid value was returned!!!")
     }
 }
 
@@ -247,10 +262,26 @@ impl Value {
         Value::Iutf8(s.to_lowercase())
     }
 
+    pub fn is_insensitive_utf8(&self) -> bool {
+        match self {
+            Value::Iutf8(_) => true,
+            _ => false,
+        }
+    }
+
     fn new_uuid(s: &String) -> Option<Self> {
         match Uuid::parse_str(s.as_str()) {
             Ok(u) => Some(Value::Uuid(u)),
             Err(_) => None,
+        }
+    }
+
+    // Is this correct? Should ref be seperate?
+    pub fn is_uuid(&self) -> bool {
+        match self {
+            Value::Uuid(_) => true,
+            Value::Refer(_) => true,
+            _ => false,
         }
     }
 
@@ -266,19 +297,55 @@ impl Value {
         unimplemented!();
     }
 
+    #[inline]
+    pub fn is_bool(&self) -> bool {
+        match self {
+            Value::Bool(_) => true,
+            _ => false,
+        }
+    }
+
     fn new_syntax(s: &String) -> Option<Self> {
         unimplemented!();
+    }
+
+    pub fn is_syntax(&self) -> bool {
+        match self {
+            Value::Syntax(_) => true,
+            _ => false,
+        }
     }
 
     fn new_index(s: &String) -> Option<Self> {
         unimplemented!();
     }
 
+    pub fn is_index(&self) -> bool {
+        match self {
+            Value::Index(_) => true,
+            _ => false,
+        }
+    }
+
     pub fn new_reference(u: Uuid) -> Self {
-        unimplemented!();
+        Value::Uuid(u)
+    }
+
+    pub fn new_refer(u: &Uuid) -> Self {
+        Self::new_reference(u.clone())
     }
 
     fn new_json_filter(s: &String) -> Option<Self> {
+        unimplemented!();
+        /*
+        use crate::proto::v1::Filter as ProtoFilter;
+                serde_json::from_str(v.as_str())
+                    .map_err(|_| SchemaError::InvalidAttributeSyntax)
+                    .map(|_: ProtoFilter| ())
+                */
+    }
+
+    pub fn is_json_filter(&self) -> bool {
         unimplemented!();
     }
 
@@ -309,6 +376,10 @@ impl Value {
             Value::Iutf8(s) => Some(s.as_str()),
             _ => None,
         }
+    }
+
+    pub fn to_str_unwrap(&self) -> &str {
+        self.to_str().expect("An invalid value was returned!!!")
     }
 
     pub fn as_string(&self) -> Option<&String> {

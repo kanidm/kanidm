@@ -275,6 +275,7 @@ mod tests {
     use crate::modify::{Modify, ModifyList};
     use crate::server::QueryServerTransaction;
     use crate::server::QueryServerWriteTransaction;
+    use crate::value::{PartialValue, Value};
 
     static JSON_ADMIN_ALLOW_ALL: &'static str = r#"{
         "valid": null,
@@ -335,7 +336,10 @@ mod tests {
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 let cands = qs
-                    .internal_search(au, filter!(f_eq("name", "testperson")))
+                    .internal_search(
+                        au,
+                        filter!(f_eq("name", PartialValue::new_iutf8("testperson"))),
+                    )
                     .expect("Internal search failure");
                 let ue = cands.first().expect("No cand");
                 assert!(ue.attribute_pres("uuid"));
@@ -434,10 +438,16 @@ mod tests {
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 let cands = qs
-                    .internal_search(au, filter!(f_eq("name", "testperson")))
+                    .internal_search(
+                        au,
+                        filter!(f_eq("name", PartialValue::new_iutf8("testperson"))),
+                    )
                     .expect("Internal search failure");
                 let ue = cands.first().expect("No cand");
-                assert!(ue.attribute_equality("uuid", "79724141-3603-4060-b6bb-35c72772611d"));
+                assert!(ue.attribute_equality(
+                    "uuid",
+                    &PartialValue::new_uuids("79724141-3603-4060-b6bb-35c72772611d").unwrap()
+                ));
             }
         );
     }
@@ -578,10 +588,10 @@ mod tests {
         run_modify_test!(
             Err(OperationError::Plugin),
             preload,
-            filter!(f_eq("name", "testgroup_a")),
+            filter!(f_eq("name", PartialValue::new_iutf8("testgroup_a"))),
             ModifyList::new_list(vec![Modify::Present(
                 "uuid".to_string(),
-                "f15a7219-1d15-44e3-a7b4-bec899c07788".to_string()
+                Value::from("f15a7219-1d15-44e3-a7b4-bec899c07788")
             )]),
             None,
             |_, _| {}
@@ -610,10 +620,10 @@ mod tests {
         run_modify_test!(
             Err(OperationError::Plugin),
             preload,
-            filter!(f_eq("name", "testgroup_a")),
+            filter!(f_eq("name", PartialValue::new_iutf8("testgroup_a"))),
             ModifyList::new_list(vec![Modify::Removed(
                 "uuid".to_string(),
-                "f15a7219-1d15-44e3-a7b4-bec899c07788".to_string()
+                PartialValue::new_uuid("f15a7219-1d15-44e3-a7b4-bec899c07788")
             )]),
             None,
             |_, _| {}
@@ -642,7 +652,7 @@ mod tests {
         run_modify_test!(
             Err(OperationError::Plugin),
             preload,
-            filter!(f_eq("name", "testgroup_a")),
+            filter!(f_eq("name", PartialValue::new_iutf8("testgroup_a"))),
             ModifyList::new_list(vec![Modify::Purged("uuid".to_string())]),
             None,
             |_, _| {}
