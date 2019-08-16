@@ -299,9 +299,9 @@ pub trait QueryServerTransaction {
     fn internal_search_uuid(
         &self,
         audit: &mut AuditScope,
-        uuid: &str,
+        uuid: &Uuid,
     ) -> Result<Entry<EntryValid, EntryCommitted>, OperationError> {
-        let filter = filter!(f_eq("uuid", uuid));
+        let filter = filter!(f_eq("uuid", PartialValue::new_uuid(uuid.clone())));
         let f_valid = filter
             .validate(self.get_schema())
             .map_err(|e| OperationError::SchemaViolation(e))?;
@@ -341,12 +341,9 @@ pub trait QueryServerTransaction {
         match schema.get_attributes().get(&temp_a) {
             Some(schema_a) => {
                 match schema_a.syntax {
-                    SyntaxType::UTF8STRING => Value::new_utf8(value.clone()),
-                    SyntaxType::UTF8STRING_PRINCIPAL => {
-                        Err(OperationError::InvalidAttribute("No longer supported type"))
-                    }
+                    SyntaxType::UTF8STRING => Ok(Value::new_utf8(value.clone())),
                     SyntaxType::UTF8STRING_INSENSITIVE => {
-                        Value::new_insensitive_utf8(value.clone())
+                        Ok(Value::new_insensitive_utf8(value.clone()))
                     }
                     SyntaxType::BOOLEAN => Value::new_bool(value)
                         .ok_or(OperationError::InvalidAttribute("Invalid boolean syntax")),

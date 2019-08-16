@@ -254,7 +254,7 @@ impl Value {
     }
 
     // I get the feeling this will have a lot of matching ... sigh.
-    fn new_utf8(s: String) -> Self {
+    pub fn new_utf8(s: String) -> Self {
         Value::Utf8(s)
     }
 
@@ -269,7 +269,7 @@ impl Value {
         }
     }
 
-    fn new_uuid(s: &String) -> Option<Self> {
+    pub fn new_uuid(s: &String) -> Option<Self> {
         match Uuid::parse_str(s.as_str()) {
             Ok(u) => Some(Value::Uuid(u)),
             Err(_) => None,
@@ -293,7 +293,7 @@ impl Value {
         Value::Iutf8(s.to_lowercase())
     }
 
-    fn new_bool(s: &String) -> Option<Self> {
+    pub fn new_bool(s: &String) -> Option<Self> {
         unimplemented!();
     }
 
@@ -305,7 +305,7 @@ impl Value {
         }
     }
 
-    fn new_syntax(s: &String) -> Option<Self> {
+    pub fn new_syntax(s: &String) -> Option<Self> {
         unimplemented!();
     }
 
@@ -316,7 +316,7 @@ impl Value {
         }
     }
 
-    fn new_index(s: &String) -> Option<Self> {
+    pub fn new_index(s: &String) -> Option<Self> {
         unimplemented!();
     }
 
