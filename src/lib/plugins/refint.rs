@@ -246,6 +246,7 @@ mod tests {
     use crate::error::OperationError;
     use crate::modify::{Modify, ModifyList};
     use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
+    use crate::value::{PartialValue, Value};
 
     // The create references a uuid that doesn't exist - reject
     #[test]
@@ -316,7 +317,10 @@ mod tests {
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 let cands = qs
-                    .internal_search(au, filter!(f_eq("name", "testgroup_b")))
+                    .internal_search(
+                        au,
+                        filter!(f_eq("name", PartialValue::new_iutf8("testgroup_b"))),
+                    )
                     .expect("Internal search failure");
                 let _ue = cands.first().expect("No cand");
             }
@@ -352,7 +356,10 @@ mod tests {
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 let cands = qs
-                    .internal_search(au, filter!(f_eq("name", "testgroup")))
+                    .internal_search(
+                        au,
+                        filter!(f_eq("name", PartialValue::new_iutf8("testgroup"))),
+                    )
                     .expect("Internal search failure");
                 let _ue = cands.first().expect("No cand");
             }
@@ -394,10 +401,10 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", "testgroup_b")),
+            filter!(f_eq("name", PartialValue::new_iutf8("testgroup_b"))),
             ModifyList::new_list(vec![Modify::Present(
                 "member".to_string(),
-                "d2b496bd-8493-47b7-8142-f568b5cf47ee".to_string()
+                Value::new_refers("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
             )]),
             None,
             |_, _| {}
@@ -425,10 +432,10 @@ mod tests {
         run_modify_test!(
             Err(OperationError::Plugin),
             preload,
-            filter!(f_eq("name", "testgroup_b")),
+            filter!(f_eq("name", PartialValue::new_iutf8("testgroup_b"))),
             ModifyList::new_list(vec![Modify::Present(
                 "member".to_string(),
-                "d2b496bd-8493-47b7-8142-f568b5cf47ee".to_string()
+                Value::new_refers("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
             )]),
             None,
             |_, _| {}
@@ -471,7 +478,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", "testgroup_b")),
+            filter!(f_eq("name", PartialValue::new_iutf8("testgroup_b"))),
             ModifyList::new_list(vec![Modify::Purged("member".to_string())]),
             None,
             |_, _| {}
@@ -500,10 +507,10 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", "testgroup_a")),
+            filter!(f_eq("name", PartialValue::new_iutf8("testgroup_a"))),
             ModifyList::new_list(vec![Modify::Present(
                 "member".to_string(),
-                "d2b496bd-8493-47b7-8142-f568b5cf47ee".to_string()
+                Value::new_refers("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
             )]),
             None,
             |_, _| {}
@@ -545,10 +552,10 @@ mod tests {
         run_modify_test!(
             Err(OperationError::Plugin),
             preload,
-            filter!(f_eq("name", "testgroup_b")),
+            filter!(f_eq("name", PartialValue::new_iutf8("testgroup_b"))),
             ModifyList::new_list(vec![Modify::Present(
                 "member".to_string(),
-                "d2b496bd-8493-47b7-8142-f568b5cf47ee".to_string()
+                Value::new_refers("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
             )]),
             None,
             |_, _| {}
@@ -593,7 +600,7 @@ mod tests {
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", "testgroup_a")),
+            filter!(f_eq("name", PartialValue::new_iutf8("testgroup_a"))),
             None,
             |_au: &mut AuditScope, _qs: &QueryServerWriteTransaction| {}
         );
@@ -641,7 +648,7 @@ mod tests {
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", "testgroup_b")),
+            filter!(f_eq("name", PartialValue::new_iutf8("testgroup_b"))),
             None,
             |_au: &mut AuditScope, _qs: &QueryServerWriteTransaction| {}
         );
@@ -670,7 +677,7 @@ mod tests {
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", "testgroup_b")),
+            filter!(f_eq("name", PartialValue::new_iutf8("testgroup_b"))),
             None,
             |_au: &mut AuditScope, _qs: &QueryServerWriteTransaction| {}
         );

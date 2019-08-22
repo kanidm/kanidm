@@ -88,7 +88,7 @@ impl AccessControlSearch {
         AccessControlSearch {
             acp: AccessControlProfile {
                 name: name.to_string(),
-                uuid: uuid.to_string(),
+                uuid: Uuid::parse_str(uuid).unwrap(),
                 receiver: receiver,
                 targetscope: targetscope,
             },
@@ -130,7 +130,7 @@ impl AccessControlDelete {
         AccessControlDelete {
             acp: AccessControlProfile {
                 name: name.to_string(),
-                uuid: uuid.to_string(),
+                uuid: Uuid::parse_str(uuid).unwrap(),
                 receiver: receiver,
                 targetscope: targetscope,
             },
@@ -185,7 +185,7 @@ impl AccessControlCreate {
         AccessControlCreate {
             acp: AccessControlProfile {
                 name: name.to_string(),
-                uuid: uuid.to_string(),
+                uuid: Uuid::parse_str(uuid).unwrap(),
                 receiver: receiver,
                 targetscope: targetscope,
             },
@@ -249,7 +249,7 @@ impl AccessControlModify {
         AccessControlModify {
             acp: AccessControlProfile {
                 name: name.to_string(),
-                uuid: uuid.to_string(),
+                uuid: Uuid::parse_str(uuid).unwrap(),
                 receiver: receiver,
                 targetscope: targetscope,
             },
@@ -1189,6 +1189,7 @@ mod tests {
     // use crate::filter::Filter;
     // use crate::proto_v1::Filter as ProtoFilter;
     use crate::constants::{JSON_ADMIN_V1, JSON_ANONYMOUS_V1, JSON_TESTPERSON1, JSON_TESTPERSON2};
+    use crate::value::{PartialValue, Value};
 
     macro_rules! acp_from_entry_err {
         (
@@ -1740,9 +1741,9 @@ mod tests {
                 "test_acp",
                 "d38640c4-0254-49f9-99b7-8ba7d0233f3d",
                 // apply to admin only
-                filter_valid!(f_eq("name", "admin")),
+                filter_valid!(f_eq("name", PartialValue::new_iutf8("admin"))),
                 // Allow admin to read only testperson1
-                filter_valid!(f_eq("name", "testperson1")),
+                filter_valid!(f_eq("name", PartialValue::new_iutf8("testperson1"))),
                 // In that read, admin may only view the "name" attribute, or query on
                 // the name attribute. Any other query (should be) rejected.
                 "name",
@@ -1815,7 +1816,7 @@ mod tests {
         let se_anon = unsafe {
             SearchEvent::new_impersonate_entry_ser(
                 JSON_ANONYMOUS_V1,
-                filter_all!(f_eq("name", "testperson1")),
+                filter_all!(f_eq("name", PartialValue::new_iutf8("testperson1"))),
             )
         };
 
@@ -1824,9 +1825,9 @@ mod tests {
                 "test_acp",
                 "d38640c4-0254-49f9-99b7-8ba7d0233f3d",
                 // apply to anonymous only
-                filter_valid!(f_eq("name", "anonymous")),
+                filter_valid!(f_eq("name", PartialValue::new_iutf8("anonymous"))),
                 // Allow anonymous to read only testperson1
-                filter_valid!(f_eq("name", "testperson1")),
+                filter_valid!(f_eq("name", PartialValue::new_iutf8("testperson1"))),
                 // In that read, admin may only view the "name" attribute, or query on
                 // the name attribute. Any other query (should be) rejected.
                 "name",
@@ -1871,23 +1872,23 @@ mod tests {
         let me_pres = unsafe {
             ModifyEvent::new_impersonate_entry_ser(
                 JSON_ADMIN_V1,
-                filter_all!(f_eq("name", "testperson1")),
-                modlist!([m_pres("name", "value")]),
+                filter_all!(f_eq("name", PartialValue::new_iutf8("testperson1"))),
+                modlist!([m_pres("name", &Value::new_iutf8s("value"))]),
             )
         };
         // Name rem
         let me_rem = unsafe {
             ModifyEvent::new_impersonate_entry_ser(
                 JSON_ADMIN_V1,
-                filter_all!(f_eq("name", "testperson1")),
-                modlist!([m_remove("name", "value")]),
+                filter_all!(f_eq("name", PartialValue::new_iutf8("testperson1"))),
+                modlist!([m_remove("name", &PartialValue::new_iutf8("value"))]),
             )
         };
         // Name purge
         let me_purge = unsafe {
             ModifyEvent::new_impersonate_entry_ser(
                 JSON_ADMIN_V1,
-                filter_all!(f_eq("name", "testperson1")),
+                filter_all!(f_eq("name", PartialValue::new_iutf8("testperson1"))),
                 modlist!([m_purge("name")]),
             )
         };
@@ -1896,23 +1897,23 @@ mod tests {
         let me_pres_class = unsafe {
             ModifyEvent::new_impersonate_entry_ser(
                 JSON_ADMIN_V1,
-                filter_all!(f_eq("name", "testperson1")),
-                modlist!([m_pres("class", "account")]),
+                filter_all!(f_eq("name", PartialValue::new_iutf8("testperson1"))),
+                modlist!([m_pres("class", &Value::new_class("account"))]),
             )
         };
         // Class account rem
         let me_rem_class = unsafe {
             ModifyEvent::new_impersonate_entry_ser(
                 JSON_ADMIN_V1,
-                filter_all!(f_eq("name", "testperson1")),
-                modlist!([m_remove("class", "account")]),
+                filter_all!(f_eq("name", PartialValue::new_iutf8("testperson1"))),
+                modlist!([m_remove("class", &PartialValue::new_class("account"))]),
             )
         };
         // Class purge
         let me_purge_class = unsafe {
             ModifyEvent::new_impersonate_entry_ser(
                 JSON_ADMIN_V1,
-                filter_all!(f_eq("name", "testperson1")),
+                filter_all!(f_eq("name", PartialValue::new_iutf8("testperson1"))),
                 modlist!([m_purge("class")]),
             )
         };
@@ -1923,9 +1924,9 @@ mod tests {
                 "test_modify_allow",
                 "87bfe9b8-7600-431e-a492-1dde64bbc455",
                 // Apply to admin
-                filter_valid!(f_eq("name", "admin")),
+                filter_valid!(f_eq("name", PartialValue::new_iutf8("admin"))),
                 // To modify testperson
-                filter_valid!(f_eq("name", "testperson1")),
+                filter_valid!(f_eq("name", PartialValue::new_iutf8("testperson1"))),
                 // Allow pres name and class
                 "name class",
                 // Allow rem name and class
@@ -1940,9 +1941,9 @@ mod tests {
                 "test_modify_deny",
                 "87bfe9b8-7600-431e-a492-1dde64bbc456",
                 // Apply to admin
-                filter_valid!(f_eq("name", "admin")),
+                filter_valid!(f_eq("name", PartialValue::new_iutf8("admin"))),
                 // To modify testperson
-                filter_valid!(f_eq("name", "testperson1")),
+                filter_valid!(f_eq("name", PartialValue::new_iutf8("testperson1"))),
                 // Allow pres name and class
                 "member class",
                 // Allow rem name and class
@@ -1957,9 +1958,9 @@ mod tests {
                 "test_modify_no_class",
                 "87bfe9b8-7600-431e-a492-1dde64bbc457",
                 // Apply to admin
-                filter_valid!(f_eq("name", "admin")),
+                filter_valid!(f_eq("name", PartialValue::new_iutf8("admin"))),
                 // To modify testperson
-                filter_valid!(f_eq("name", "testperson1")),
+                filter_valid!(f_eq("name", PartialValue::new_iutf8("testperson1"))),
                 // Allow pres name and class
                 "name class",
                 // Allow rem name and class
@@ -2066,24 +2067,20 @@ mod tests {
 
     #[test]
     fn test_access_enforce_create() {
-        let e1: Entry<EntryInvalid, EntryNew> =
+        let ev1: Entry<EntryInvalid, EntryNew> =
             serde_json::from_str(JSON_TEST_CREATE_AC1).expect("json failure");
-        let ev1 = unsafe { e1.to_valid_normal() };
         let r1_set = vec![ev1.clone()];
 
-        let e2: Entry<EntryInvalid, EntryNew> =
+        let ev2: Entry<EntryInvalid, EntryNew> =
             serde_json::from_str(JSON_TEST_CREATE_AC2).expect("json failure");
-        let ev2 = unsafe { e2.to_valid_normal() };
         let r2_set = vec![ev2.clone()];
 
-        let e3: Entry<EntryInvalid, EntryNew> =
+        let ev3: Entry<EntryInvalid, EntryNew> =
             serde_json::from_str(JSON_TEST_CREATE_AC3).expect("json failure");
-        let ev3 = unsafe { e3.to_valid_normal() };
         let r3_set = vec![ev3.clone()];
 
-        let e4: Entry<EntryInvalid, EntryNew> =
+        let ev4: Entry<EntryInvalid, EntryNew> =
             serde_json::from_str(JSON_TEST_CREATE_AC4).expect("json failure");
-        let ev4 = unsafe { e4.to_valid_normal() };
         let r4_set = vec![ev4.clone()];
 
         // In this case, we can make the create event with an empty entry
@@ -2098,10 +2095,10 @@ mod tests {
                 "test_create",
                 "87bfe9b8-7600-431e-a492-1dde64bbc453",
                 // Apply to admin
-                filter_valid!(f_eq("name", "admin")),
+                filter_valid!(f_eq("name", PartialValue::new_iutf8("admin"))),
                 // To create matching filter testperson
                 // Can this be empty?
-                filter_valid!(f_eq("name", "testperson1")),
+                filter_valid!(f_eq("name", PartialValue::new_iutf8("testperson1"))),
                 // classes
                 "account",
                 // attrs
@@ -2114,9 +2111,9 @@ mod tests {
                 "test_create_2",
                 "87bfe9b8-7600-431e-a492-1dde64bbc454",
                 // Apply to admin
-                filter_valid!(f_eq("name", "admin")),
+                filter_valid!(f_eq("name", PartialValue::new_iutf8("admin"))),
                 // To create matching filter testperson
-                filter_valid!(f_eq("name", "testperson1")),
+                filter_valid!(f_eq("name", PartialValue::new_iutf8("testperson1"))),
                 // classes
                 "group",
                 // attrs
@@ -2167,14 +2164,14 @@ mod tests {
         let de_admin = unsafe {
             DeleteEvent::new_impersonate_entry_ser(
                 JSON_ADMIN_V1,
-                filter_all!(f_eq("name", "testperson1")),
+                filter_all!(f_eq("name", PartialValue::new_iutf8("testperson1"))),
             )
         };
 
         let de_anon = unsafe {
             DeleteEvent::new_impersonate_entry_ser(
                 JSON_ANONYMOUS_V1,
-                filter_all!(f_eq("name", "testperson1")),
+                filter_all!(f_eq("name", PartialValue::new_iutf8("testperson1"))),
             )
         };
 
@@ -2183,9 +2180,9 @@ mod tests {
                 "test_delete",
                 "87bfe9b8-7600-431e-a492-1dde64bbc453",
                 // Apply to admin
-                filter_valid!(f_eq("name", "admin")),
+                filter_valid!(f_eq("name", PartialValue::new_iutf8("admin"))),
                 // To delete testperson
-                filter_valid!(f_eq("name", "testperson1")),
+                filter_valid!(f_eq("name", PartialValue::new_iutf8("testperson1"))),
             )
         };
 

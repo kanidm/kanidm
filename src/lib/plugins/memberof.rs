@@ -737,10 +737,10 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", UUID_A)),
+            filter!(f_eq("uuid", PartialValue::new_uuidr(&UUID_A))),
             ModifyList::new_list(vec![Modify::Present(
                 "member".to_string(),
-                UUID_B.to_string()
+                Value::new_refer(&UUID_B)
             )]),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
@@ -775,10 +775,10 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", UUID_A)),
+            filter!(f_eq("uuid", PartialValue::new_uuidr(&UUID_A))),
             ModifyList::new_list(vec![Modify::Present(
                 "member".to_string(),
-                UUID_B.to_string()
+                Value::new_refer(&UUID_B)
             )]),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
@@ -831,10 +831,10 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", UUID_B)),
+            filter!(f_eq("uuid", PartialValue::new_uuidr(&UUID_B))),
             ModifyList::new_list(vec![Modify::Present(
                 "member".to_string(),
-                UUID_C.to_string()
+                Value::new_refer(&UUID_C)
             )]),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
@@ -890,10 +890,10 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", UUID_C)),
+            filter!(f_eq("uuid", PartialValue::new_uuidr(&UUID_C))),
             ModifyList::new_list(vec![Modify::Present(
                 "member".to_string(),
-                UUID_A.to_string()
+                Value::new_refer(&UUID_A)
             )]),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
@@ -957,10 +957,13 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_or!([f_eq("uuid", UUID_C), f_eq("uuid", UUID_D),])),
+            filter!(f_or!([
+                f_eq("uuid", PartialValue::new_uuidr(&UUID_C)),
+                f_eq("uuid", PartialValue::new_uuidr(&UUID_D)),
+            ])),
             ModifyList::new_list(vec![Modify::Present(
                 "member".to_string(),
-                UUID_A.to_string()
+                Value::new_refer(&UUID_A)
             )]),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
@@ -1027,10 +1030,10 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", UUID_A)),
+            filter!(f_eq("uuid", PartialValue::new_uuidr(&UUID_A))),
             ModifyList::new_list(vec![Modify::Removed(
                 "member".to_string(),
-                UUID_B.to_string()
+                PartialValue::new_refer_r(&UUID_B)
             )]),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
@@ -1068,10 +1071,10 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", UUID_A)),
+            filter!(f_eq("uuid", PartialValue::new_uuidr(&UUID_A))),
             ModifyList::new_list(vec![Modify::Removed(
                 "member".to_string(),
-                UUID_B.to_string()
+                PartialValue::new_refer_r(&UUID_B)
             )]),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
@@ -1128,10 +1131,10 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", UUID_B)),
+            filter!(f_eq("uuid", PartialValue::new_uuidr(&UUID_B))),
             ModifyList::new_list(vec![Modify::Removed(
                 "member".to_string(),
-                UUID_C.to_string()
+                PartialValue::new_refer_r(&UUID_C)
             )]),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
@@ -1198,10 +1201,10 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", UUID_C)),
+            filter!(f_eq("uuid", PartialValue::new_uuidr(&UUID_C))),
             ModifyList::new_list(vec![Modify::Removed(
                 "member".to_string(),
-                UUID_A.to_string()
+                PartialValue::new_refer_r(&UUID_A)
             )]),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
@@ -1287,10 +1290,10 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", UUID_C)),
+            filter!(f_eq("uuid", PartialValue::new_uuidr(&UUID_C))),
             ModifyList::new_list(vec![
-                Modify::Removed("member".to_string(), UUID_A.to_string()),
-                Modify::Removed("member".to_string(), UUID_D.to_string()),
+                Modify::Removed("member".to_string(), PartialValue::new_uuidr(&UUID_A)),
+                Modify::Removed("member".to_string(), PartialValue::new_uuidr(&UUID_D)),
             ]),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
@@ -1355,7 +1358,7 @@ mod tests {
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", UUID_A)),
+            filter!(f_eq("uuid", PartialValue::new_uuidr(&UUID_A))),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
@@ -1392,7 +1395,7 @@ mod tests {
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", UUID_A)),
+            filter!(f_eq("uuid", PartialValue::new_uuidr(&UUID_A))),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
@@ -1439,7 +1442,7 @@ mod tests {
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", UUID_B)),
+            filter!(f_eq("uuid", PartialValue::new_uuidr(&UUID_B))),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
@@ -1495,7 +1498,7 @@ mod tests {
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", UUID_A)),
+            filter!(f_eq("uuid", PartialValue::new_uuidr(&UUID_A))),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
@@ -1565,7 +1568,7 @@ mod tests {
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", UUID_B)),
+            filter!(f_eq("uuid", PartialValue::new_uuidr(&UUID_B))),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is

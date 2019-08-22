@@ -87,7 +87,12 @@ impl Event {
         // In the future, probably yes.
         //
         // For now, no.
-        let e = try_audit!(audit, qs.internal_search_uuid(audit, user_uuid));
+        let u = try_audit!(
+            audit,
+            Uuid::parse_str(user_uuid).map_err(|_| OperationError::InvalidUuid)
+        );
+
+        let e = try_audit!(audit, qs.internal_search_uuid(audit, &u));
 
         Ok(Event {
             origin: EventOrigin::User(e),
@@ -101,8 +106,12 @@ impl Event {
     ) -> Result<Self, OperationError> {
         audit_log!(audit, "from_ro_uat -> {:?}", uat);
         let uat = uat.ok_or(OperationError::NotAuthenticated)?;
+        let u = try_audit!(
+            audit,
+            Uuid::parse_str(uat.uuid.as_str()).map_err(|_| OperationError::InvalidUuid)
+        );
 
-        let e = try_audit!(audit, qs.internal_search_uuid(audit, uat.uuid.as_str()));
+        let e = try_audit!(audit, qs.internal_search_uuid(audit, &u));
         // TODO #64: Now apply claims from the uat into the Entry
         // to allow filtering.
 
@@ -120,7 +129,11 @@ impl Event {
         // In the future, probably yes.
         //
         // For now, no.
-        let e = try_audit!(audit, qs.internal_search_uuid(audit, user_uuid));
+        let u = try_audit!(
+            audit,
+            Uuid::parse_str(user_uuid).map_err(|_| OperationError::InvalidUuid)
+        );
+        let e = try_audit!(audit, qs.internal_search_uuid(audit, &u));
 
         Ok(Event {
             origin: EventOrigin::User(e),

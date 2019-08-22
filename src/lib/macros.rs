@@ -180,16 +180,19 @@ macro_rules! btreeset {
         compile_error!("BTreeSet needs at least 1 element")
     );
     ($e:expr) => ({
+        use std::collections::BTreeSet;
         let mut x: BTreeSet<_> = BTreeSet::new();
         assert!(x.insert($e));
         x
     });
     ($e:expr,) => ({
+        use std::collections::BTreeSet;
         let mut x: BTreeSet<_> = BTreeSet::new();
         assert!(x.insert($e));
         x
     });
     ($e:expr, $($item:expr),*) => ({
+        use std::collections::BTreeSet;
         let mut x: BTreeSet<_> = BTreeSet::new();
         assert!(x.insert($e));
         $(assert!(x.insert($item));)*

@@ -168,11 +168,11 @@ impl SchemaAttribute {
     // TODO: There may be a difference between a value and a filter value on complex
     // types - IE a complex type may have multiple parts that are secret, but a filter
     // on that may only use a single tagged attribute for example.
-    pub fn validate_partialvalue(&self, v: &PartialValue) -> Result<(), SchemaError> {
+    pub fn validate_partialvalue(&self, _v: &PartialValue) -> Result<(), SchemaError> {
         unimplemented!();
     }
 
-    pub fn validate_value(&self, v: &Value) -> Result<(), SchemaError> {
+    pub fn validate_value(&self, _v: &Value) -> Result<(), SchemaError> {
         unimplemented!();
         /*
         match self.syntax {
@@ -1147,12 +1147,13 @@ impl Schema {
 #[cfg(test)]
 mod tests {
     use crate::audit::AuditScope;
-    use crate::constants::*;
+    // use crate::constants::*;
     use crate::entry::{Entry, EntryInvalid, EntryNew, EntryValid};
     use crate::error::{ConsistencyError, SchemaError};
     // use crate::filter::{Filter, FilterValid};
     use crate::schema::SchemaTransaction;
     use crate::schema::{IndexType, Schema, SchemaAttribute, SchemaClass, SyntaxType};
+    use crate::value::{PartialValue, Value};
     use serde_json;
     use uuid::Uuid;
 
@@ -1441,85 +1442,6 @@ mod tests {
     }
 
     #[test]
-    fn test_schema_syntax_principal() {
-        let sa = SchemaAttribute {
-                name: String::from("principal_name"),
-                uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_PRINCIPAL_NAME).expect("unable to parse static uuid"),
-                description: String::from("The longform name of an object, derived from name and domain. Example: alice@project.org"),
-                multivalue: false,
-                index: vec![IndexType::EQUALITY],
-                syntax: SyntaxType::UTF8STRING_PRINCIPAL,
-            };
-
-        let r1 = sa.validate_principal(&String::from("a@a"));
-        assert!(r1.is_ok());
-
-        let r2 = sa.validate_principal(&String::from("a@@a"));
-        assert!(r2.is_err());
-
-        let r3 = sa.validate_principal(&String::from("a@a@a"));
-        assert!(r3.is_err());
-
-        let r4 = sa.validate_principal(&String::from("@a"));
-        assert!(r4.is_err());
-
-        let r5 = sa.validate_principal(&String::from("a@"));
-        assert!(r5.is_err());
-    }
-
-    #[test]
-    fn test_schema_syntax_json_filter() {
-        let sa = SchemaAttribute {
-            name: String::from("acp_receiver"),
-            uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_RECEIVER)
-                .expect("unable to parse static uuid"),
-            description: String::from(
-                "Who the ACP applies to, constraining or allowing operations.",
-            ),
-            multivalue: false,
-            index: vec![IndexType::EQUALITY, IndexType::SUBSTRING],
-            syntax: SyntaxType::JSON_FILTER,
-        };
-
-        // Outright wrong
-        let r1 = sa.validate_json_filter(&String::from("Whargarble lol not a filter"));
-        assert!(r1.is_err());
-        // Json error
-        let r2 = sa.validate_json_filter(&String::from(
-            "{\"And\":[{\"Eq\":[\"a\",\"a\"]},\"Self\",]}",
-        ));
-        assert!(r2.is_err());
-        // Invalid keyword
-        let r3 = sa.validate_json_filter(&String::from(
-            "{\"And\":[{\"Nalf\":[\"a\",\"a\"]},\"Self\"]}",
-        ));
-        assert!(r3.is_err());
-        // valid
-        let r4 = sa.validate_json_filter(&String::from("{\"Or\":[{\"Eq\":[\"a\",\"a\"]}]}"));
-        assert!(r4.is_ok());
-        // valid with self keyword
-        let r5 =
-            sa.validate_json_filter(&String::from("{\"And\":[{\"Eq\":[\"a\",\"a\"]},\"Self\"]}"));
-        assert!(r5.is_ok());
-    }
-
-    #[test]
-    fn test_schema_normalise_uuid() {
-        let sa = SchemaAttribute {
-            name: String::from("uuid"),
-            uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_UUID).expect("unable to parse static uuid"),
-            description: String::from("The universal unique id of the object"),
-            multivalue: false,
-            index: vec![IndexType::EQUALITY],
-            syntax: SyntaxType::UUID,
-        };
-        let u1 = String::from("936DA01F9ABD4d9d80C702AF85C822A8");
-
-        let un1 = sa.normalise_value(&u1);
-        assert_eq!(un1, "936da01f-9abd-4d9d-80c7-02af85c822a8");
-    }
-
-    #[test]
     fn test_schema_attribute_simple() {
         // Test schemaAttribute validation of types.
 
@@ -1534,11 +1456,13 @@ mod tests {
             syntax: SyntaxType::UTF8STRING_INSENSITIVE,
         };
 
-        let r1 = single_value_string.validate_ava(&vec![String::from("test")]);
+        let r1 = single_value_string.validate_ava(&btreeset![Value::new_iutf8s("test")]);
         assert_eq!(r1, Ok(()));
 
-        let r2 =
-            single_value_string.validate_ava(&vec![String::from("test1"), String::from("test2")]);
+        let r2 = single_value_string.validate_ava(&btreeset![
+            Value::new_iutf8s("test1"),
+            Value::new_iutf8s("test2")
+        ]);
         assert_eq!(r2, Err(SchemaError::InvalidAttributeSyntax));
 
         // test multivalue string, boolean
@@ -1553,8 +1477,10 @@ mod tests {
             syntax: SyntaxType::UTF8STRING,
         };
 
-        let r5 =
-            multi_value_string.validate_ava(&vec![String::from("test1"), String::from("test2")]);
+        let r5 = multi_value_string.validate_ava(&btreeset![
+            Value::new_iutf8s("test1"),
+            Value::new_iutf8s("test2")
+        ]);
         assert_eq!(r5, Ok(()));
 
         let multi_value_boolean = SchemaAttribute {
@@ -1567,12 +1493,15 @@ mod tests {
             syntax: SyntaxType::BOOLEAN,
         };
 
-        let r3 =
-            multi_value_boolean.validate_ava(&vec![String::from("test1"), String::from("test2")]);
+        let r3 = multi_value_boolean.validate_ava(&btreeset![
+            Value::new_bool(true),
+            Value::new_iutf8s("test1"),
+            Value::new_iutf8s("test2")
+        ]);
         assert_eq!(r3, Err(SchemaError::InvalidAttributeSyntax));
 
-        let r4 =
-            multi_value_boolean.validate_ava(&vec![String::from("true"), String::from("false")]);
+        let r4 = multi_value_boolean
+            .validate_ava(&btreeset![Value::new_bool(true), Value::new_bool(false)]);
         assert_eq!(r4, Ok(()));
 
         // syntax_id and index_type values
@@ -1586,10 +1515,11 @@ mod tests {
             syntax: SyntaxType::SYNTAX_ID,
         };
 
-        let r6 = single_value_syntax.validate_ava(&vec![String::from("UTF8STRING")]);
+        let r6 =
+            single_value_syntax.validate_ava(&btreeset![Value::new_syntaxs("UTF8STRING").unwrap()]);
         assert_eq!(r6, Ok(()));
 
-        let r7 = single_value_syntax.validate_ava(&vec![String::from("thaeountaheu")]);
+        let r7 = single_value_syntax.validate_ava(&btreeset![Value::new_utf8s("thaeountaheu")]);
         assert_eq!(r7, Err(SchemaError::InvalidAttributeSyntax));
 
         let single_value_index = SchemaAttribute {
@@ -1602,17 +1532,12 @@ mod tests {
             syntax: SyntaxType::INDEX_ID,
         };
         //
-        let r8 = single_value_index.validate_ava(&vec![String::from("EQUALITY")]);
+        let r8 =
+            single_value_index.validate_ava(&btreeset![Value::new_indexs("EQUALITY").unwrap()]);
         assert_eq!(r8, Ok(()));
 
-        let r9 = single_value_index.validate_ava(&vec![String::from("thaeountaheu")]);
+        let r9 = single_value_index.validate_ava(&btreeset![Value::new_utf8s("thaeountaheu")]);
         assert_eq!(r9, Err(SchemaError::InvalidAttributeSyntax));
-    }
-
-    #[test]
-    fn test_schema_classes_simple() {
-        // Test basic functions of simple attributes
-
     }
 
     #[test]
@@ -1622,12 +1547,6 @@ mod tests {
         let schema_ro = schema.read();
         validate_schema!(schema_ro, &mut audit);
         println!("{}", audit);
-    }
-
-    #[test]
-    fn test_schema_export_validate() {
-        // Test exporting schema to entries, then validate them
-        // as legitimate entries.
     }
 
     #[test]
@@ -1907,35 +1826,35 @@ mod tests {
         let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
         let schema = schema_outer.read();
         // Test non existant attr name
-        let f_mixed = filter_all!(f_eq("nonClAsS", "attributetype"));
+        let f_mixed = filter_all!(f_eq("nonClAsS", PartialValue::new_class("attributetype")));
         assert_eq!(
             f_mixed.validate(&schema),
             Err(SchemaError::InvalidAttribute)
         );
 
         // test syntax of bool
-        let f_bool = filter_all!(f_eq("multivalue", "zzzz"));
+        let f_bool = filter_all!(f_eq("multivalue", PartialValue::new_iutf8("zzzz")));
         assert_eq!(
             f_bool.validate(&schema),
             Err(SchemaError::InvalidAttributeSyntax)
         );
         // test insensitive values
-        let f_insense = filter_all!(f_eq("class", "AttributeType"));
+        let f_insense = filter_all!(f_eq("class", PartialValue::new_class("AttributeType")));
         assert_eq!(
             f_insense.validate(&schema),
-            Ok(unsafe { filter_valid!(f_eq("class", "attributetype")) })
+            Ok(unsafe { filter_valid!(f_eq("class", PartialValue::new_class("attributetype"))) })
         );
         // Test the recursive structures validate
         let f_or_empty = filter_all!(f_or!([]));
         assert_eq!(f_or_empty.validate(&schema), Err(SchemaError::EmptyFilter));
-        let f_or = filter_all!(f_or!([f_eq("multivalue", "zzzz")]));
+        let f_or = filter_all!(f_or!([f_eq("multivalue", PartialValue::new_iutf8("zzzz"))]));
         assert_eq!(
             f_or.validate(&schema),
             Err(SchemaError::InvalidAttributeSyntax)
         );
         let f_or_mult = filter_all!(f_and!([
-            f_eq("class", "attributetype"),
-            f_eq("multivalue", "zzzzzzz"),
+            f_eq("class", PartialValue::new_class("attributetype")),
+            f_eq("multivalue", PartialValue::new_iutf8("zzzzzzz")),
         ]));
         assert_eq!(
             f_or_mult.validate(&schema),
@@ -1943,16 +1862,16 @@ mod tests {
         );
         // Test mixed case attr name - this is a pass, due to normalisation
         let f_or_ok = filter_all!(f_andnot(f_and!([
-            f_eq("Class", "AttributeType"),
-            f_sub("class", "classtype"),
+            f_eq("Class", PartialValue::new_class("AttributeType")),
+            f_sub("class", PartialValue::new_class("classtype")),
             f_pres("class")
         ])));
         assert_eq!(
             f_or_ok.validate(&schema),
             Ok(unsafe {
                 filter_valid!(f_andnot(f_and!([
-                    f_eq("class", "attributetype"),
-                    f_sub("class", "classtype"),
+                    f_eq("class", PartialValue::new_class("attributetype")),
+                    f_sub("class", PartialValue::new_class("classtype")),
                     f_pres("class")
                 ])))
             })

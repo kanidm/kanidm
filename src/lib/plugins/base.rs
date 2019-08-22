@@ -17,9 +17,6 @@ use crate::value::{PartialValue, Value};
 lazy_static! {
     static ref CLASS_OBJECT: Value = Value::new_class("object");
 }
-static uuid_admin: Uuid = Uuid::parse_str(UUID_ADMIN).unwrap();
-static uuid_anonymous: Uuid = Uuid::parse_str(UUID_ANONYMOUS).unwrap();
-static uuid_does_not_exist: Uuid = Uuid::parse_str(UUID_DOES_NOT_EXIST).unwrap();
 
 // This module has some special properties around it's operation, namely that it
 // has to make a certain number of assertions *early* in the entry lifecycle around
@@ -126,9 +123,7 @@ impl Plugin for Base {
             // part of the struct somehow at init. rather than needing to parse a lot?
             // The internal set is bounded by: UUID_ADMIN -> UUID_ANONYMOUS
             // Sadly we need to allocate these to strings to make references, sigh.
-            // let uuid_admin: String = UUID_ADMIN.to_string();
-            // let uuid_anon: String = UUID_ANONYMOUS.to_string();
-            let overlap: usize = cand_uuid.range(uuid_admin..uuid_anonymous).count();
+            let overlap: usize = cand_uuid.range(UUID_ADMIN..UUID_ANONYMOUS).count();
             if overlap != 0 {
                 audit_log!(
                     au,
@@ -139,7 +134,7 @@ impl Plugin for Base {
             }
         }
 
-        if cand_uuid.contains(&uuid_does_not_exist) {
+        if cand_uuid.contains(&UUID_DOES_NOT_EXIST) {
             audit_log!(
                 au,
                 "uuid \"does not exist\" found in create set! {:?}",
@@ -623,7 +618,7 @@ mod tests {
             filter!(f_eq("name", PartialValue::new_iutf8("testgroup_a"))),
             ModifyList::new_list(vec![Modify::Removed(
                 "uuid".to_string(),
-                PartialValue::new_uuid("f15a7219-1d15-44e3-a7b4-bec899c07788")
+                PartialValue::new_uuids("f15a7219-1d15-44e3-a7b4-bec899c07788").unwrap()
             )]),
             None,
             |_, _| {}

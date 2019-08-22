@@ -29,6 +29,7 @@ pub enum OperationError {
     InvalidRequestState,
     InvalidState,
     InvalidEntryState,
+    InvalidUuid,
     InvalidACPState(&'static str),
     InvalidSchemaState(&'static str),
     InvalidAccountState(&'static str),

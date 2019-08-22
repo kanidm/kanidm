@@ -1,3 +1,5 @@
+use uuid::Uuid;
+
 // On test builds, define to 60 seconds
 #[cfg(test)]
 pub static PURGE_TIMEOUT: u64 = 60;
@@ -5,9 +7,11 @@ pub static PURGE_TIMEOUT: u64 = 60;
 #[cfg(not(test))]
 pub static PURGE_TIMEOUT: u64 = 3600;
 
-pub static UUID_ADMIN: &'static str = "00000000-0000-0000-0000-000000000000";
-pub static UUID_DOES_NOT_EXIST: &'static str = "00000000-0000-0000-0000-fffffffffffe";
-pub static UUID_ANONYMOUS: &'static str = "00000000-0000-0000-0000-ffffffffffff";
+pub static STR_UUID_ADMIN: &'static str = "00000000-0000-0000-0000-000000000000";
+pub static UUID_ADMIN: Uuid = Uuid::parse_str(STR_UUID_ADMIN).unwrap();
+pub static UUID_DOES_NOT_EXIST: Uuid =
+    Uuid::parse_str("00000000-0000-0000-0000-fffffffffffe").unwrap();
+pub static UUID_ANONYMOUS: Uuid = Uuid::parse_str("00000000-0000-0000-0000-ffffffffffff").unwrap();
 
 pub static JSON_ADMIN_V1: &'static str = r#"{
     "valid": {

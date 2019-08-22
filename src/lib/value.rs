@@ -5,6 +5,7 @@ use crate::server::QueryServerWriteTransaction;
 
 use std::borrow::Borrow;
 use std::convert::TryFrom;
+use std::str::FromStr;
 use uuid::Uuid;
 
 #[allow(non_camel_case_types)]
@@ -124,6 +125,10 @@ impl PartialValue {
         PartialValue::Iutf8(s.to_lowercase())
     }
 
+    pub fn new_bool(b: bool) -> Self {
+        PartialValue::Bool(b)
+    }
+
     #[inline]
     pub fn new_class(s: &str) -> Self {
         PartialValue::new_iutf8(s)
@@ -133,8 +138,12 @@ impl PartialValue {
         PartialValue::Uuid(u)
     }
 
+    pub fn new_uuidr(u: &Uuid) -> Self {
+        PartialValue::Uuid(u.clone())
+    }
+
     pub fn new_uuids(us: &str) -> Option<Self> {
-        match Uuid::parse_str(us.as_str()) {
+        match Uuid::parse_str(us) {
             Ok(u) => Some(PartialValue::Uuid(u)),
             Err(_) => None,
         }
@@ -142,6 +151,10 @@ impl PartialValue {
 
     pub fn new_refer(u: Uuid) -> Self {
         PartialValue::Refer(u)
+    }
+
+    pub fn new_refer_r(u: &Uuid) -> Self {
+        PartialValue::Refer(u.clone())
     }
 
     pub fn to_str(&self) -> Option<&str> {
@@ -245,10 +258,10 @@ impl From<&IndexType> for Value {
 
 impl Value {
     pub fn from_attr(
-        audit: &AuditScope,
-        qs: &QueryServerWriteTransaction,
-        attr: &String,
-        value: &String,
+        _audit: &AuditScope,
+        _qs: &QueryServerWriteTransaction,
+        _attr: &String,
+        _value: &String,
     ) -> Result<Self, OperationError> {
         unimplemented!();
     }
@@ -258,7 +271,15 @@ impl Value {
         Value::Utf8(s)
     }
 
+    pub fn new_utf8s(s: &str) -> Self {
+        Value::Utf8(s.to_string())
+    }
+
     pub fn new_insensitive_utf8(s: String) -> Self {
+        Value::Iutf8(s.to_lowercase())
+    }
+
+    pub fn new_iutf8s(s: &str) -> Self {
         Value::Iutf8(s.to_lowercase())
     }
 
@@ -269,11 +290,19 @@ impl Value {
         }
     }
 
-    pub fn new_uuid(s: &String) -> Option<Self> {
-        match Uuid::parse_str(s.as_str()) {
+    pub fn new_uuid(u: Uuid) -> Self {
+        Value::Uuid(u)
+    }
+
+    pub fn new_uuids(s: &str) -> Option<Self> {
+        match Uuid::parse_str(s) {
             Ok(u) => Some(Value::Uuid(u)),
             Err(_) => None,
         }
+    }
+
+    pub fn new_uuidr(u: &Uuid) -> Self {
+        Value::Uuid(u.clone())
     }
 
     // Is this correct? Should ref be seperate?
@@ -293,8 +322,15 @@ impl Value {
         Value::Iutf8(s.to_lowercase())
     }
 
-    pub fn new_bool(s: &String) -> Option<Self> {
-        unimplemented!();
+    pub fn new_bool(b: bool) -> Self {
+        Value::Bool(b)
+    }
+
+    pub fn new_bools(s: &str) -> Option<Self> {
+        match bool::from_str(s) {
+            Ok(b) => Some(Value::Bool(b)),
+            Err(_) => None,
+        }
     }
 
     #[inline]
@@ -305,8 +341,16 @@ impl Value {
         }
     }
 
-    pub fn new_syntax(s: &String) -> Option<Self> {
+    pub fn new_syntax(_s: &String) -> Option<Self> {
         unimplemented!();
+    }
+
+    pub fn new_syntaxs(_s: &str) -> Option<Self> {
+        unimplemented!();
+    }
+
+    pub fn new_syntaxr(s: &SyntaxType) -> Self {
+        Value::Syntax(s.clone())
     }
 
     pub fn is_syntax(&self) -> bool {
@@ -316,7 +360,11 @@ impl Value {
         }
     }
 
-    pub fn new_index(s: &String) -> Option<Self> {
+    pub fn new_index(_s: &String) -> Option<Self> {
+        unimplemented!();
+    }
+
+    pub fn new_indexs(_s: &str) -> Option<Self> {
         unimplemented!();
     }
 
@@ -328,14 +376,21 @@ impl Value {
     }
 
     pub fn new_reference(u: Uuid) -> Self {
-        Value::Uuid(u)
+        Value::Refer(u)
     }
 
     pub fn new_refer(u: &Uuid) -> Self {
         Self::new_reference(u.clone())
     }
 
-    fn new_json_filter(s: &String) -> Option<Self> {
+    pub fn new_refers(us: &str) -> Option<Self> {
+        match Uuid::parse_str(us) {
+            Ok(u) => Some(Self::new_reference(u)),
+            Err(_) => None,
+        }
+    }
+
+    pub fn new_json_filter(_s: &String) -> Option<Self> {
         unimplemented!();
         /*
         use crate::proto::v1::Filter as ProtoFilter;
@@ -349,7 +404,7 @@ impl Value {
         unimplemented!();
     }
 
-    pub fn contains(&self, s: &PartialValue) -> bool {
+    pub fn contains(&self, _s: &PartialValue) -> bool {
         unimplemented!();
     }
 
@@ -357,7 +412,7 @@ impl Value {
     // will be just wrappers to our from str types.
 
     // Keep this updated with DbValueV1 in be::dbvalue.
-    pub(crate) fn from_db_valuev1(v: DbValueV1) -> Self {
+    pub(crate) fn from_db_valuev1(_v: DbValueV1) -> Self {
         unimplemented!();
     }
 
@@ -481,4 +536,57 @@ mod tests {
         assert_eq!(r6, Err(()));
     }
 
+    /*
+    #[test]
+    fn test_schema_syntax_json_filter() {
+        let sa = SchemaAttribute {
+            name: String::from("acp_receiver"),
+            uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_RECEIVER)
+                .expect("unable to parse static uuid"),
+            description: String::from(
+                "Who the ACP applies to, constraining or allowing operations.",
+            ),
+            multivalue: false,
+            index: vec![IndexType::EQUALITY, IndexType::SUBSTRING],
+            syntax: SyntaxType::JSON_FILTER,
+        };
+
+        // Outright wrong
+        let r1 = sa.validate_json_filter(&String::from("Whargarble lol not a filter"));
+        assert!(r1.is_err());
+        // Json error
+        let r2 = sa.validate_json_filter(&String::from(
+            "{\"And\":[{\"Eq\":[\"a\",\"a\"]},\"Self\",]}",
+        ));
+        assert!(r2.is_err());
+        // Invalid keyword
+        let r3 = sa.validate_json_filter(&String::from(
+            "{\"And\":[{\"Nalf\":[\"a\",\"a\"]},\"Self\"]}",
+        ));
+        assert!(r3.is_err());
+        // valid
+        let r4 = sa.validate_json_filter(&String::from("{\"Or\":[{\"Eq\":[\"a\",\"a\"]}]}"));
+        assert!(r4.is_ok());
+        // valid with self keyword
+        let r5 =
+            sa.validate_json_filter(&String::from("{\"And\":[{\"Eq\":[\"a\",\"a\"]},\"Self\"]}"));
+        assert!(r5.is_ok());
+    }
+
+    #[test]
+    fn test_schema_normalise_uuid() {
+        let sa = SchemaAttribute {
+            name: String::from("uuid"),
+            uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_UUID).expect("unable to parse static uuid"),
+            description: String::from("The universal unique id of the object"),
+            multivalue: false,
+            index: vec![IndexType::EQUALITY],
+            syntax: SyntaxType::UUID,
+        };
+        let u1 = String::from("936DA01F9ABD4d9d80C702AF85C822A8");
+
+        let un1 = sa.normalise_value(&u1);
+        assert_eq!(un1, "936da01f-9abd-4d9d-80c7-02af85c822a8");
+    }
+    */
 }

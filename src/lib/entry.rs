@@ -211,7 +211,7 @@ impl Entry<EntryInvalid, EntryNew> {
                     .map(|vr| Value::from_attr(audit, qs, &k, vr))
                     .collect();
                 match nv {
-                    Ok(mut nvi) => Ok((k.clone(), nvi)),
+                    Ok(nvi) => Ok((k.clone(), nvi)),
                     Err(e) => Err(e),
                 }
             })
@@ -776,7 +776,7 @@ impl Entry<EntryValid, EntryCommitted> {
             .and_then(|s: &String| Some((*s).clone()))
     }
 
-    pub fn get_ava_single_protofilter(&self, attr: &str) -> Option<ProtoFilter> {
+    pub fn get_ava_single_protofilter(&self, _attr: &str) -> Option<ProtoFilter> {
         unimplemented!()
     }
 }
@@ -816,10 +816,6 @@ impl<STATE> Entry<EntryValid, STATE> {
 
     pub fn get_uuid(&self) -> &Uuid {
         &self.valid.uuid
-    }
-
-    pub fn entry_match_no_index(&self, filter: &Filter<FilterValidResolved>) -> bool {
-        self.entry_match_no_index_inner(filter.to_inner())
     }
 
     pub fn filter_from_attrs(&self, attrs: &Vec<String>) -> Option<Filter<FilterInvalid>> {
@@ -1023,6 +1019,14 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         }
     }
 
+    // Since EntryValid/Invalid is just about class adherenece, not Value correctness, we
+    // can now apply filters to invalid entries - why? Because even if they aren't class
+    // valid, we still have strict typing checks between the filter -> entry to guarantee
+    // they should be functional. We'll never match something that isn't syntactially valid.
+    pub fn entry_match_no_index(&self, filter: &Filter<FilterValidResolved>) -> bool {
+        self.entry_match_no_index_inner(filter.to_inner())
+    }
+
     // This is private, but exists on all types, so that valid and normal can then
     // expose the simpler wrapper for entry_match_no_index only.
     // Assert if this filter matches the entry (no index)
@@ -1155,7 +1159,7 @@ impl From<&SchemaAttribute> for Entry<EntryValid, EntryNew> {
 
         let index_v: BTreeSet<_> = s.index.iter().map(|i| Value::from(i)).collect();
 
-        let syntax_v = btreeset![Value::from(s.syntax)];
+        let syntax_v = btreeset![Value::new_syntaxr(&s.syntax)];
 
         // Build the BTreeMap of the attributes relevant
         let mut attrs: BTreeMap<String, BTreeSet<Value>> = BTreeMap::new();

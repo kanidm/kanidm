@@ -159,6 +159,7 @@ mod tests {
     use crate::constants::JSON_ADMIN_V1;
     use crate::entry::{Entry, EntryInvalid, EntryNew};
     use crate::error::OperationError;
+    use crate::value::{PartialValue, Value};
 
     static JSON_ADMIN_ALLOW_ALL: &'static str = r#"{
         "valid": null,
@@ -248,8 +249,11 @@ mod tests {
         run_modify_test!(
             Err(OperationError::SystemProtectedObject),
             preload,
-            filter!(f_eq("name", "testperson")),
-            modlist!([m_purge("displayname"), m_pres("displayname", "system test"),]),
+            filter!(f_eq("name", PartialValue::new_iutf8("testperson"))),
+            modlist!([
+                m_purge("displayname"),
+                m_pres("displayname", &Value::new_utf8s("system test")),
+            ]),
             Some(JSON_ADMIN_V1),
             |_, _| {}
         );
@@ -279,8 +283,8 @@ mod tests {
         run_modify_test!(
             Err(OperationError::SystemProtectedObject),
             preload,
-            filter!(f_eq("name", "testperson")),
-            modlist!([m_pres("class", "system"),]),
+            filter!(f_eq("name", PartialValue::new_iutf8("testperson"))),
+            modlist!([m_pres("class", &Value::new_class("system")),]),
             Some(JSON_ADMIN_V1),
             |_, _| {}
         );
@@ -310,8 +314,11 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", "testclass")),
-            modlist!([m_pres("may", "name"), m_pres("must", "name"),]),
+            filter!(f_eq("name", PartialValue::new_iutf8("testperson"))),
+            modlist!([
+                m_pres("may", &Value::new_iutf8s("name")),
+                m_pres("must", &Value::new_iutf8s("name")),
+            ]),
             Some(JSON_ADMIN_V1),
             |_, _| {}
         );
@@ -341,7 +348,7 @@ mod tests {
         run_delete_test!(
             Err(OperationError::SystemProtectedObject),
             preload,
-            filter!(f_eq("name", "testperson")),
+            filter!(f_eq("name", PartialValue::new_iutf8("testperson"))),
             Some(JSON_ADMIN_V1),
             |_, _| {}
         );
