@@ -12,8 +12,7 @@ pub static STR_UUID_ANONYMOUS: &'static str = "00000000-0000-0000-0000-fffffffff
 pub static STR_UUID_DOES_NOT_EXIST: &'static str = "00000000-0000-0000-0000-fffffffffffe";
 lazy_static! {
     pub static ref UUID_ADMIN: Uuid = Uuid::parse_str(STR_UUID_ADMIN).unwrap();
-    pub static ref UUID_DOES_NOT_EXIST: Uuid =
-        Uuid::parse_str(STR_UUID_DOES_NOT_EXIST).unwrap();
+    pub static ref UUID_DOES_NOT_EXIST: Uuid = Uuid::parse_str(STR_UUID_DOES_NOT_EXIST).unwrap();
     pub static ref UUID_ANONYMOUS: Uuid = Uuid::parse_str(STR_UUID_ANONYMOUS).unwrap();
 }
 

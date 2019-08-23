@@ -1288,8 +1288,14 @@ mod tests {
             preload,
             filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_C).unwrap())),
             ModifyList::new_list(vec![
-                Modify::Removed("member".to_string(), PartialValue::new_uuids(&UUID_A).unwrap()),
-                Modify::Removed("member".to_string(), PartialValue::new_uuids(&UUID_D).unwrap()),
+                Modify::Removed(
+                    "member".to_string(),
+                    PartialValue::new_uuids(&UUID_A).unwrap()
+                ),
+                Modify::Removed(
+                    "member".to_string(),
+                    PartialValue::new_uuids(&UUID_D).unwrap()
+                ),
             ]),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {

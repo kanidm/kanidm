@@ -79,7 +79,10 @@ impl SchemaAttribute {
             audit,
             value
                 .get_ava_opt_index("index")
-                .and_then(|vv: Vec<&IndexType>| Ok(vv.into_iter().map(|v: &IndexType| v.clone()).collect()))
+                .and_then(|vv: Vec<&IndexType>| Ok(vv
+                    .into_iter()
+                    .map(|v: &IndexType| v.clone())
+                    .collect()))
                 .map_err(|_| OperationError::InvalidSchemaState("Invalid index"))
         );
         // syntax type
