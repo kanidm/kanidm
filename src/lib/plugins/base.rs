@@ -4,6 +4,7 @@ use std::collections::BTreeSet;
 use uuid::Uuid;
 
 use crate::audit::AuditScope;
+// use crate::constants::{STR_UUID_ADMIN, STR_UUID_ANONYMOUS, STR_UUID_DOES_NOT_EXIST};
 use crate::constants::{UUID_ADMIN, UUID_ANONYMOUS, UUID_DOES_NOT_EXIST};
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew};
 use crate::error::{ConsistencyError, OperationError};
@@ -115,6 +116,11 @@ impl Plugin for Base {
             }
         }
 
+        // Setup UUIDS because lazy_static can't create a type valid for range.
+        let uuid_admin = UUID_ADMIN.clone();
+        let uuid_anonymous = UUID_ANONYMOUS.clone();
+        let uuid_does_not_exist = UUID_DOES_NOT_EXIST.clone();
+
         // Check that the system-protected range is not in the cand_uuid, unless we are
         // an internal operation.
         if !ce.event.is_internal() {
@@ -123,7 +129,7 @@ impl Plugin for Base {
             // part of the struct somehow at init. rather than needing to parse a lot?
             // The internal set is bounded by: UUID_ADMIN -> UUID_ANONYMOUS
             // Sadly we need to allocate these to strings to make references, sigh.
-            let overlap: usize = cand_uuid.range(UUID_ADMIN..UUID_ANONYMOUS).count();
+            let overlap: usize = cand_uuid.range(uuid_admin..uuid_anonymous).count();
             if overlap != 0 {
                 audit_log!(
                     au,
@@ -134,11 +140,11 @@ impl Plugin for Base {
             }
         }
 
-        if cand_uuid.contains(&UUID_DOES_NOT_EXIST) {
+        if cand_uuid.contains(&uuid_does_not_exist) {
             audit_log!(
                 au,
                 "uuid \"does not exist\" found in create set! {:?}",
-                UUID_DOES_NOT_EXIST
+                uuid_does_not_exist
             );
             return Err(OperationError::Plugin);
         }

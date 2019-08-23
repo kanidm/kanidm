@@ -99,7 +99,7 @@ impl SyntaxType {
 }
 
 #[derive(Debug, Clone, Eq, Ord, PartialOrd, PartialEq, Deserialize, Serialize)]
-pub(crate) enum PartialValue {
+pub enum PartialValue {
     Utf8(String),
     Iutf8(String),
     Uuid(Uuid),
@@ -157,6 +157,13 @@ impl PartialValue {
         PartialValue::Refer(u.clone())
     }
 
+    pub fn new_refer_s(us: &str) -> Option<Self> {
+        match Uuid::parse_str(us) {
+            Ok(u) => Some(PartialValue::Refer(u)),
+            Err(_) => None,
+        }
+    }
+
     pub fn to_str(&self) -> Option<&str> {
         match self {
             PartialValue::Utf8(s) => Some(s.as_str()),
@@ -173,7 +180,7 @@ impl PartialValue {
 // TODO: Store everything as partialValue and then have a extra ref to extra data
 // for that type as needed?
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
-pub(crate) enum Value {
+pub enum Value {
     Utf8(String),
     Iutf8(String),
     Uuid(Uuid),

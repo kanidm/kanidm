@@ -733,6 +733,7 @@ impl Entry<EntryValid, EntryCommitted> {
         }
     }
 
+    /*
     /// This interface will get &str (if possible).
     pub(crate) fn get_ava_opt_str(&self, attr: &str) -> Option<Vec<&str>> {
         match self.attrs.get(attr) {
@@ -747,6 +748,7 @@ impl Entry<EntryValid, EntryCommitted> {
             None => Some(Vec::new()),
         }
     }
+    */
 
     pub(crate) fn get_ava_opt_string(&self, attr: &str) -> Option<Vec<String>> {
         match self.attrs.get(attr) {

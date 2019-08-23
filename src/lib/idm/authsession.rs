@@ -101,7 +101,7 @@ impl AuthSession {
                 // We want the primary handler - this is where we make a decision
                 // based on the anonymous ... in theory this could be cleaner
                 // and interact with the account more?
-                if account.uuid == UUID_ANONYMOUS {
+                if account.uuid == UUID_ANONYMOUS.clone() {
                     CredHandler::Anonymous
                 } else {
                     unimplemented!();

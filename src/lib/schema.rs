@@ -17,8 +17,10 @@ use concread::cowcell::{CowCell, CowCellReadTxn, CowCellWriteTxn};
 // but we have to bootstrap with some core types.
 
 // TODO #72: prefix on all schema types that are system?
-static PVCLASS_ATTRIBUTETYPE: PartialValue = PartialValue::new_class("attributetype");
-static PVCLASS_CLASSTYPE: PartialValue = PartialValue::new_class("classtype");
+lazy_static! {
+    static ref PVCLASS_ATTRIBUTETYPE: PartialValue = PartialValue::new_class("attributetype");
+    static ref PVCLASS_CLASSTYPE: PartialValue = PartialValue::new_class("classtype");
+}
 
 #[derive(Debug, Clone)]
 pub struct SchemaAttribute {
@@ -77,7 +79,7 @@ impl SchemaAttribute {
             audit,
             value
                 .get_ava_opt_index("index")
-                .and_then(|vv: Vec<&IndexType>| Ok(vv.iter().map(|v| *v.clone()).collect()))
+                .and_then(|vv: Vec<&IndexType>| Ok(vv.into_iter().map(|v: &IndexType| v.clone()).collect()))
                 .map_err(|_| OperationError::InvalidSchemaState("Invalid index"))
         );
         // syntax type
@@ -133,6 +135,7 @@ impl SchemaAttribute {
         }
     }
 
+    /*
     fn validate_json_filter(&self, v: &Value) -> Result<(), SchemaError> {
         // I *think* we just check if this can become a ProtoFilter v1
         // rather than anything more complex.
@@ -156,6 +159,7 @@ impl SchemaAttribute {
             Err(SchemaError::InvalidAttributeSyntax)
         }
     }
+    */
 
     fn validate_utf8string_insensitive(&self, v: &Value) -> Result<(), SchemaError> {
         if v.is_insensitive_utf8() {

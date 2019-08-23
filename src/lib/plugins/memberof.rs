@@ -392,7 +392,11 @@ mod tests {
     use crate::modify::{Modify, ModifyList};
     use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
     use crate::value::{PartialValue, Value};
-    use uuid::Uuid;
+
+    static UUID_A: &'static str = "aaaaaaaa-f82e-4484-a407-181aa03bda5c";
+    static UUID_B: &'static str = "bbbbbbbb-2438-4384-9891-48f4c8172e9b";
+    static UUID_C: &'static str = "cccccccc-9b01-423f-9ba6-51aa4bbd5dd2";
+    static UUID_D: &'static str = "dddddddd-2ab3-48e3-938d-1b4754cd2984";
 
     static EA: &'static str = r#"{
             "valid": null,
@@ -404,8 +408,6 @@ mod tests {
             }
         }"#;
 
-    static UUID_A: Uuid = Uuid::parse_str("aaaaaaaa-f82e-4484-a407-181aa03bda5c").unwrap();
-
     static EB: &'static str = r#"{
             "valid": null,
             "state": null,
@@ -415,8 +417,6 @@ mod tests {
                 "uuid": ["bbbbbbbb-2438-4384-9891-48f4c8172e9b"]
             }
         }"#;
-
-    static UUID_B: Uuid = Uuid::parse_str("bbbbbbbb-2438-4384-9891-48f4c8172e9b").unwrap();
 
     static EC: &'static str = r#"{
             "valid": null,
@@ -428,8 +428,6 @@ mod tests {
             }
         }"#;
 
-    static UUID_C: Uuid = Uuid::parse_str("cccccccc-9b01-423f-9ba6-51aa4bbd5dd2").unwrap();
-
     static ED: &'static str = r#"{
             "valid": null,
             "state": null,
@@ -439,8 +437,6 @@ mod tests {
                 "uuid": ["dddddddd-2ab3-48e3-938d-1b4754cd2984"]
             }
         }"#;
-
-    static UUID_D: Uuid = Uuid::parse_str("dddddddd-2ab3-48e3-938d-1b4754cd2984").unwrap();
 
     macro_rules! assert_memberof_int {
         (
@@ -452,8 +448,8 @@ mod tests {
             $cand:expr
         ) => {{
             let filt = filter!(f_and!([
-                f_eq("uuid", PartialValue::new_uuid($ea)),
-                f_eq($mo, PartialValue::new_refer($eb))
+                f_eq("uuid", PartialValue::new_uuids($ea).unwrap()),
+                f_eq($mo, PartialValue::new_refer_s($eb).unwrap())
             ]));
             let cands = $qs
                 .internal_search($au, filt)
@@ -516,7 +512,7 @@ mod tests {
         let eb: Entry<EntryInvalid, EntryNew> =
             serde_json::from_str(EB).expect("Json parse failure");
 
-        ea.add_ava("member", &Value::new_refer(&UUID_B));
+        ea.add_ava("member", &Value::new_refers(&UUID_B).unwrap());
 
         let preload = Vec::new();
         let create = vec![ea, eb];
@@ -549,8 +545,8 @@ mod tests {
         let ec: Entry<EntryInvalid, EntryNew> =
             serde_json::from_str(EC).expect("Json parse failure");
 
-        ea.add_ava("member", &Value::new_refer(&UUID_B));
-        eb.add_ava("member", &Value::new_refer(&UUID_C));
+        ea.add_ava("member", &Value::new_refers(&UUID_B).unwrap());
+        eb.add_ava("member", &Value::new_refers(&UUID_C).unwrap());
 
         let preload = Vec::new();
         let create = vec![ea, eb, ec];
@@ -603,9 +599,9 @@ mod tests {
         let mut ec: Entry<EntryInvalid, EntryNew> =
             serde_json::from_str(EC).expect("Json parse failure");
 
-        ea.add_ava("member", &Value::new_refer(&UUID_B));
-        eb.add_ava("member", &Value::new_refer(&UUID_C));
-        ec.add_ava("member", &Value::new_refer(&UUID_A));
+        ea.add_ava("member", &Value::new_refers(&UUID_B).unwrap());
+        eb.add_ava("member", &Value::new_refers(&UUID_C).unwrap());
+        ec.add_ava("member", &Value::new_refers(&UUID_A).unwrap());
 
         let preload = Vec::new();
         let create = vec![ea, eb, ec];
@@ -661,13 +657,13 @@ mod tests {
         let mut ed: Entry<EntryInvalid, EntryNew> =
             serde_json::from_str(ED).expect("Json parse failure");
 
-        ea.add_ava("member", &Value::new_refer(&UUID_B));
-        eb.add_ava("member", &Value::new_refer(&UUID_C));
+        ea.add_ava("member", &Value::new_refers(&UUID_B).unwrap());
+        eb.add_ava("member", &Value::new_refers(&UUID_C).unwrap());
 
-        ec.add_ava("member", &Value::new_refer(&UUID_A));
-        ec.add_ava("member", &Value::new_refer(&UUID_D));
+        ec.add_ava("member", &Value::new_refers(&UUID_A).unwrap());
+        ec.add_ava("member", &Value::new_refers(&UUID_D).unwrap());
 
-        ed.add_ava("member", &Value::new_refer(&UUID_A));
+        ed.add_ava("member", &Value::new_refers(&UUID_A).unwrap());
 
         let preload = Vec::new();
         let create = vec![ea, eb, ec, ed];
@@ -737,10 +733,10 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuidr(&UUID_A))),
+            filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_A).unwrap())),
             ModifyList::new_list(vec![Modify::Present(
                 "member".to_string(),
-                Value::new_refer(&UUID_B)
+                Value::new_refers(&UUID_B).unwrap()
             )]),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
@@ -769,16 +765,16 @@ mod tests {
         let ec: Entry<EntryInvalid, EntryNew> =
             serde_json::from_str(EC).expect("Json parse failure");
 
-        eb.add_ava("member", &Value::new_refer(&UUID_C));
+        eb.add_ava("member", &Value::new_refers(&UUID_C).unwrap());
 
         let preload = vec![ea, eb, ec];
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuidr(&UUID_A))),
+            filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_A).unwrap())),
             ModifyList::new_list(vec![Modify::Present(
                 "member".to_string(),
-                Value::new_refer(&UUID_B)
+                Value::new_refers(&UUID_B).unwrap()
             )]),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
@@ -825,16 +821,16 @@ mod tests {
         let ec: Entry<EntryInvalid, EntryNew> =
             serde_json::from_str(EC).expect("Json parse failure");
 
-        ea.add_ava("member", &Value::new_refer(&UUID_B));
+        ea.add_ava("member", &Value::new_refers(&UUID_B).unwrap());
 
         let preload = vec![ea, eb, ec];
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuidr(&UUID_B))),
+            filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_B).unwrap())),
             ModifyList::new_list(vec![Modify::Present(
                 "member".to_string(),
-                Value::new_refer(&UUID_C)
+                Value::new_refers(&UUID_C).unwrap()
             )]),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
@@ -883,17 +879,17 @@ mod tests {
         let ec: Entry<EntryInvalid, EntryNew> =
             serde_json::from_str(EC).expect("Json parse failure");
 
-        ea.add_ava("member", &Value::new_refer(&UUID_B));
-        eb.add_ava("member", &Value::new_refer(&UUID_C));
+        ea.add_ava("member", &Value::new_refers(&UUID_B).unwrap());
+        eb.add_ava("member", &Value::new_refers(&UUID_C).unwrap());
 
         let preload = vec![ea, eb, ec];
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuidr(&UUID_C))),
+            filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_C).unwrap())),
             ModifyList::new_list(vec![Modify::Present(
                 "member".to_string(),
-                Value::new_refer(&UUID_A)
+                Value::new_refers(&UUID_A).unwrap()
             )]),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
@@ -949,21 +945,21 @@ mod tests {
         let ed: Entry<EntryInvalid, EntryNew> =
             serde_json::from_str(ED).expect("Json parse failure");
 
-        ea.add_ava("member", &Value::new_refer(&UUID_B));
-        eb.add_ava("member", &Value::new_refer(&UUID_C));
-        ec.add_ava("member", &Value::new_refer(&UUID_D));
+        ea.add_ava("member", &Value::new_refers(&UUID_B).unwrap());
+        eb.add_ava("member", &Value::new_refers(&UUID_C).unwrap());
+        ec.add_ava("member", &Value::new_refers(&UUID_D).unwrap());
 
         let preload = vec![ea, eb, ec, ed];
         run_modify_test!(
             Ok(()),
             preload,
             filter!(f_or!([
-                f_eq("uuid", PartialValue::new_uuidr(&UUID_C)),
-                f_eq("uuid", PartialValue::new_uuidr(&UUID_D)),
+                f_eq("uuid", PartialValue::new_uuids(&UUID_C).unwrap()),
+                f_eq("uuid", PartialValue::new_uuids(&UUID_D).unwrap()),
             ])),
             ModifyList::new_list(vec![Modify::Present(
                 "member".to_string(),
-                Value::new_refer(&UUID_A)
+                Value::new_refers(&UUID_A).unwrap()
             )]),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
@@ -1023,17 +1019,17 @@ mod tests {
         let mut eb: Entry<EntryInvalid, EntryNew> =
             serde_json::from_str(EB).expect("Json parse failure");
 
-        ea.add_ava("member", &Value::new_refer(&UUID_B));
-        eb.add_ava("memberof", &Value::new_refer(&UUID_A));
+        ea.add_ava("member", &Value::new_refers(&UUID_B).unwrap());
+        eb.add_ava("memberof", &Value::new_refers(&UUID_A).unwrap());
 
         let preload = vec![ea, eb];
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuidr(&UUID_A))),
+            filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_A).unwrap())),
             ModifyList::new_list(vec![Modify::Removed(
                 "member".to_string(),
-                PartialValue::new_refer_r(&UUID_B)
+                PartialValue::new_refer_s(&UUID_B).unwrap()
             )]),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
@@ -1062,19 +1058,19 @@ mod tests {
         let mut ec: Entry<EntryInvalid, EntryNew> =
             serde_json::from_str(EC).expect("Json parse failure");
 
-        ea.add_ava("member", &Value::new_refer(&UUID_B));
-        eb.add_ava("memberof", &Value::new_refer(&UUID_A));
-        eb.add_ava("member", &Value::new_refer(&UUID_C));
-        ec.add_ava("memberof", &Value::new_refer(&UUID_B));
+        ea.add_ava("member", &Value::new_refers(&UUID_B).unwrap());
+        eb.add_ava("memberof", &Value::new_refers(&UUID_A).unwrap());
+        eb.add_ava("member", &Value::new_refers(&UUID_C).unwrap());
+        ec.add_ava("memberof", &Value::new_refers(&UUID_B).unwrap());
 
         let preload = vec![ea, eb, ec];
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuidr(&UUID_A))),
+            filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_A).unwrap())),
             ModifyList::new_list(vec![Modify::Removed(
                 "member".to_string(),
-                PartialValue::new_refer_r(&UUID_B)
+                PartialValue::new_refer_s(&UUID_B).unwrap()
             )]),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
@@ -1121,20 +1117,20 @@ mod tests {
         let mut ec: Entry<EntryInvalid, EntryNew> =
             serde_json::from_str(EC).expect("Json parse failure");
 
-        ea.add_ava("member", &Value::new_refer(&UUID_B));
-        eb.add_ava("memberof", &Value::new_refer(&UUID_A));
-        eb.add_ava("member", &Value::new_refer(&UUID_C));
-        ec.add_ava("memberof", &Value::new_refer(&UUID_B));
-        ec.add_ava("memberof", &Value::new_refer(&UUID_A));
+        ea.add_ava("member", &Value::new_refers(&UUID_B).unwrap());
+        eb.add_ava("memberof", &Value::new_refers(&UUID_A).unwrap());
+        eb.add_ava("member", &Value::new_refers(&UUID_C).unwrap());
+        ec.add_ava("memberof", &Value::new_refers(&UUID_B).unwrap());
+        ec.add_ava("memberof", &Value::new_refers(&UUID_A).unwrap());
 
         let preload = vec![ea, eb, ec];
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuidr(&UUID_B))),
+            filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_B).unwrap())),
             ModifyList::new_list(vec![Modify::Removed(
                 "member".to_string(),
-                PartialValue::new_refer_r(&UUID_C)
+                PartialValue::new_refer_s(&UUID_C).unwrap()
             )]),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
@@ -1182,29 +1178,29 @@ mod tests {
         let mut ec: Entry<EntryInvalid, EntryNew> =
             serde_json::from_str(EC).expect("Json parse failure");
 
-        ea.add_ava("member", &Value::new_refer(&UUID_B));
-        ea.add_ava("memberof", &Value::new_refer(&UUID_C));
-        ea.add_ava("memberof", &Value::new_refer(&UUID_B));
-        ea.add_ava("memberof", &Value::new_refer(&UUID_A));
+        ea.add_ava("member", &Value::new_refers(&UUID_B).unwrap());
+        ea.add_ava("memberof", &Value::new_refers(&UUID_C).unwrap());
+        ea.add_ava("memberof", &Value::new_refers(&UUID_B).unwrap());
+        ea.add_ava("memberof", &Value::new_refers(&UUID_A).unwrap());
 
-        eb.add_ava("member", &Value::new_refer(&UUID_C));
-        eb.add_ava("memberof", &Value::new_refer(&UUID_C));
-        eb.add_ava("memberof", &Value::new_refer(&UUID_B));
-        eb.add_ava("memberof", &Value::new_refer(&UUID_A));
+        eb.add_ava("member", &Value::new_refers(&UUID_C).unwrap());
+        eb.add_ava("memberof", &Value::new_refers(&UUID_C).unwrap());
+        eb.add_ava("memberof", &Value::new_refers(&UUID_B).unwrap());
+        eb.add_ava("memberof", &Value::new_refers(&UUID_A).unwrap());
 
-        ec.add_ava("member", &Value::new_refer(&UUID_A));
-        ec.add_ava("memberof", &Value::new_refer(&UUID_C));
-        ec.add_ava("memberof", &Value::new_refer(&UUID_B));
-        ec.add_ava("memberof", &Value::new_refer(&UUID_A));
+        ec.add_ava("member", &Value::new_refers(&UUID_A).unwrap());
+        ec.add_ava("memberof", &Value::new_refers(&UUID_C).unwrap());
+        ec.add_ava("memberof", &Value::new_refers(&UUID_B).unwrap());
+        ec.add_ava("memberof", &Value::new_refers(&UUID_A).unwrap());
 
         let preload = vec![ea, eb, ec];
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuidr(&UUID_C))),
+            filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_C).unwrap())),
             ModifyList::new_list(vec![Modify::Removed(
                 "member".to_string(),
-                PartialValue::new_refer_r(&UUID_A)
+                PartialValue::new_refer_s(&UUID_A).unwrap()
             )]),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
@@ -1261,39 +1257,39 @@ mod tests {
         let mut ed: Entry<EntryInvalid, EntryNew> =
             serde_json::from_str(ED).expect("Json parse failure");
 
-        ea.add_ava("member", &Value::new_refer(&UUID_B));
-        ea.add_ava("memberof", &Value::new_refer(&UUID_D));
-        ea.add_ava("memberof", &Value::new_refer(&UUID_C));
-        ea.add_ava("memberof", &Value::new_refer(&UUID_B));
-        ea.add_ava("memberof", &Value::new_refer(&UUID_A));
+        ea.add_ava("member", &Value::new_refers(&UUID_B).unwrap());
+        ea.add_ava("memberof", &Value::new_refers(&UUID_D).unwrap());
+        ea.add_ava("memberof", &Value::new_refers(&UUID_C).unwrap());
+        ea.add_ava("memberof", &Value::new_refers(&UUID_B).unwrap());
+        ea.add_ava("memberof", &Value::new_refers(&UUID_A).unwrap());
 
-        eb.add_ava("member", &Value::new_refer(&UUID_C));
-        eb.add_ava("memberof", &Value::new_refer(&UUID_D));
-        eb.add_ava("memberof", &Value::new_refer(&UUID_C));
-        eb.add_ava("memberof", &Value::new_refer(&UUID_B));
-        eb.add_ava("memberof", &Value::new_refer(&UUID_A));
+        eb.add_ava("member", &Value::new_refers(&UUID_C).unwrap());
+        eb.add_ava("memberof", &Value::new_refers(&UUID_D).unwrap());
+        eb.add_ava("memberof", &Value::new_refers(&UUID_C).unwrap());
+        eb.add_ava("memberof", &Value::new_refers(&UUID_B).unwrap());
+        eb.add_ava("memberof", &Value::new_refers(&UUID_A).unwrap());
 
-        ec.add_ava("member", &Value::new_refer(&UUID_A));
-        ec.add_ava("member", &Value::new_refer(&UUID_D));
-        ec.add_ava("memberof", &Value::new_refer(&UUID_D));
-        ec.add_ava("memberof", &Value::new_refer(&UUID_C));
-        ec.add_ava("memberof", &Value::new_refer(&UUID_B));
-        ec.add_ava("memberof", &Value::new_refer(&UUID_A));
+        ec.add_ava("member", &Value::new_refers(&UUID_A).unwrap());
+        ec.add_ava("member", &Value::new_refers(&UUID_D).unwrap());
+        ec.add_ava("memberof", &Value::new_refers(&UUID_D).unwrap());
+        ec.add_ava("memberof", &Value::new_refers(&UUID_C).unwrap());
+        ec.add_ava("memberof", &Value::new_refers(&UUID_B).unwrap());
+        ec.add_ava("memberof", &Value::new_refers(&UUID_A).unwrap());
 
-        ed.add_ava("member", &Value::new_refer(&UUID_A));
-        ed.add_ava("memberof", &Value::new_refer(&UUID_D));
-        ed.add_ava("memberof", &Value::new_refer(&UUID_C));
-        ed.add_ava("memberof", &Value::new_refer(&UUID_B));
-        ed.add_ava("memberof", &Value::new_refer(&UUID_A));
+        ed.add_ava("member", &Value::new_refers(&UUID_A).unwrap());
+        ed.add_ava("memberof", &Value::new_refers(&UUID_D).unwrap());
+        ed.add_ava("memberof", &Value::new_refers(&UUID_C).unwrap());
+        ed.add_ava("memberof", &Value::new_refers(&UUID_B).unwrap());
+        ed.add_ava("memberof", &Value::new_refers(&UUID_A).unwrap());
 
         let preload = vec![ea, eb, ec, ed];
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuidr(&UUID_C))),
+            filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_C).unwrap())),
             ModifyList::new_list(vec![
-                Modify::Removed("member".to_string(), PartialValue::new_uuidr(&UUID_A)),
-                Modify::Removed("member".to_string(), PartialValue::new_uuidr(&UUID_D)),
+                Modify::Removed("member".to_string(), PartialValue::new_uuids(&UUID_A).unwrap()),
+                Modify::Removed("member".to_string(), PartialValue::new_uuids(&UUID_D).unwrap()),
             ]),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
@@ -1351,14 +1347,14 @@ mod tests {
         let mut eb: Entry<EntryInvalid, EntryNew> =
             serde_json::from_str(EB).expect("Json parse failure");
 
-        ea.add_ava("member", &Value::new_refer(&UUID_B));
-        eb.add_ava("memberof", &Value::new_refer(&UUID_A));
+        ea.add_ava("member", &Value::new_refers(&UUID_B).unwrap());
+        eb.add_ava("memberof", &Value::new_refers(&UUID_A).unwrap());
 
         let preload = vec![ea, eb];
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuidr(&UUID_A))),
+            filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_A).unwrap())),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
@@ -1384,18 +1380,18 @@ mod tests {
         let mut ec: Entry<EntryInvalid, EntryNew> =
             serde_json::from_str(EC).expect("Json parse failure");
 
-        ea.add_ava("member", &Value::new_refer(&UUID_B));
-        eb.add_ava("memberof", &Value::new_refer(&UUID_A));
+        ea.add_ava("member", &Value::new_refers(&UUID_B).unwrap());
+        eb.add_ava("memberof", &Value::new_refers(&UUID_A).unwrap());
 
-        eb.add_ava("member", &Value::new_refer(&UUID_C));
-        ec.add_ava("memberof", &Value::new_refer(&UUID_A));
-        ec.add_ava("memberof", &Value::new_refer(&UUID_B));
+        eb.add_ava("member", &Value::new_refers(&UUID_C).unwrap());
+        ec.add_ava("memberof", &Value::new_refers(&UUID_A).unwrap());
+        ec.add_ava("memberof", &Value::new_refers(&UUID_B).unwrap());
 
         let preload = vec![ea, eb, ec];
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuidr(&UUID_A))),
+            filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_A).unwrap())),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
@@ -1431,18 +1427,18 @@ mod tests {
         let mut ec: Entry<EntryInvalid, EntryNew> =
             serde_json::from_str(EC).expect("Json parse failure");
 
-        ea.add_ava("member", &Value::new_refer(&UUID_B));
-        eb.add_ava("memberof", &Value::new_refer(&UUID_A));
+        ea.add_ava("member", &Value::new_refers(&UUID_B).unwrap());
+        eb.add_ava("memberof", &Value::new_refers(&UUID_A).unwrap());
 
-        eb.add_ava("member", &Value::new_refer(&UUID_C));
-        ec.add_ava("memberof", &Value::new_refer(&UUID_A));
-        ec.add_ava("memberof", &Value::new_refer(&UUID_B));
+        eb.add_ava("member", &Value::new_refers(&UUID_C).unwrap());
+        ec.add_ava("memberof", &Value::new_refers(&UUID_A).unwrap());
+        ec.add_ava("memberof", &Value::new_refers(&UUID_B).unwrap());
 
         let preload = vec![ea, eb, ec];
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuidr(&UUID_B))),
+            filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_B).unwrap())),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
@@ -1479,26 +1475,26 @@ mod tests {
         let mut ec: Entry<EntryInvalid, EntryNew> =
             serde_json::from_str(EC).expect("Json parse failure");
 
-        ea.add_ava("member", &Value::new_refer(&UUID_B));
-        ea.add_ava("memberof", &Value::new_refer(&UUID_A));
-        ea.add_ava("memberof", &Value::new_refer(&UUID_B));
-        ea.add_ava("memberof", &Value::new_refer(&UUID_C));
+        ea.add_ava("member", &Value::new_refers(&UUID_B).unwrap());
+        ea.add_ava("memberof", &Value::new_refers(&UUID_A).unwrap());
+        ea.add_ava("memberof", &Value::new_refers(&UUID_B).unwrap());
+        ea.add_ava("memberof", &Value::new_refers(&UUID_C).unwrap());
 
-        eb.add_ava("member", &Value::new_refer(&UUID_C));
-        eb.add_ava("memberof", &Value::new_refer(&UUID_A));
-        eb.add_ava("memberof", &Value::new_refer(&UUID_B));
-        eb.add_ava("memberof", &Value::new_refer(&UUID_C));
+        eb.add_ava("member", &Value::new_refers(&UUID_C).unwrap());
+        eb.add_ava("memberof", &Value::new_refers(&UUID_A).unwrap());
+        eb.add_ava("memberof", &Value::new_refers(&UUID_B).unwrap());
+        eb.add_ava("memberof", &Value::new_refers(&UUID_C).unwrap());
 
-        ec.add_ava("member", &Value::new_refer(&UUID_A));
-        ec.add_ava("memberof", &Value::new_refer(&UUID_A));
-        ec.add_ava("memberof", &Value::new_refer(&UUID_B));
-        ec.add_ava("memberof", &Value::new_refer(&UUID_C));
+        ec.add_ava("member", &Value::new_refers(&UUID_A).unwrap());
+        ec.add_ava("memberof", &Value::new_refers(&UUID_A).unwrap());
+        ec.add_ava("memberof", &Value::new_refers(&UUID_B).unwrap());
+        ec.add_ava("memberof", &Value::new_refers(&UUID_C).unwrap());
 
         let preload = vec![ea, eb, ec];
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuidr(&UUID_A))),
+            filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_A).unwrap())),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
@@ -1539,36 +1535,36 @@ mod tests {
         let mut ed: Entry<EntryInvalid, EntryNew> =
             serde_json::from_str(ED).expect("Json parse failure");
 
-        ea.add_ava("member", &Value::new_refer(&UUID_B));
-        ea.add_ava("memberof", &Value::new_refer(&UUID_A));
-        ea.add_ava("memberof", &Value::new_refer(&UUID_B));
-        ea.add_ava("memberof", &Value::new_refer(&UUID_C));
-        ea.add_ava("memberof", &Value::new_refer(&UUID_D));
+        ea.add_ava("member", &Value::new_refers(&UUID_B).unwrap());
+        ea.add_ava("memberof", &Value::new_refers(&UUID_A).unwrap());
+        ea.add_ava("memberof", &Value::new_refers(&UUID_B).unwrap());
+        ea.add_ava("memberof", &Value::new_refers(&UUID_C).unwrap());
+        ea.add_ava("memberof", &Value::new_refers(&UUID_D).unwrap());
 
-        eb.add_ava("member", &Value::new_refer(&UUID_C));
-        eb.add_ava("memberof", &Value::new_refer(&UUID_A));
-        eb.add_ava("memberof", &Value::new_refer(&UUID_B));
-        eb.add_ava("memberof", &Value::new_refer(&UUID_C));
-        eb.add_ava("memberof", &Value::new_refer(&UUID_D));
+        eb.add_ava("member", &Value::new_refers(&UUID_C).unwrap());
+        eb.add_ava("memberof", &Value::new_refers(&UUID_A).unwrap());
+        eb.add_ava("memberof", &Value::new_refers(&UUID_B).unwrap());
+        eb.add_ava("memberof", &Value::new_refers(&UUID_C).unwrap());
+        eb.add_ava("memberof", &Value::new_refers(&UUID_D).unwrap());
 
-        ec.add_ava("member", &Value::new_refer(&UUID_A));
-        ec.add_ava("member", &Value::new_refer(&UUID_D));
-        ec.add_ava("memberof", &Value::new_refer(&UUID_A));
-        ec.add_ava("memberof", &Value::new_refer(&UUID_B));
-        ec.add_ava("memberof", &Value::new_refer(&UUID_C));
-        ec.add_ava("memberof", &Value::new_refer(&UUID_D));
+        ec.add_ava("member", &Value::new_refers(&UUID_A).unwrap());
+        ec.add_ava("member", &Value::new_refers(&UUID_D).unwrap());
+        ec.add_ava("memberof", &Value::new_refers(&UUID_A).unwrap());
+        ec.add_ava("memberof", &Value::new_refers(&UUID_B).unwrap());
+        ec.add_ava("memberof", &Value::new_refers(&UUID_C).unwrap());
+        ec.add_ava("memberof", &Value::new_refers(&UUID_D).unwrap());
 
-        ed.add_ava("member", &Value::new_refer(&UUID_A));
-        ed.add_ava("memberof", &Value::new_refer(&UUID_A));
-        ed.add_ava("memberof", &Value::new_refer(&UUID_B));
-        ed.add_ava("memberof", &Value::new_refer(&UUID_C));
-        ed.add_ava("memberof", &Value::new_refer(&UUID_D));
+        ed.add_ava("member", &Value::new_refers(&UUID_A).unwrap());
+        ed.add_ava("memberof", &Value::new_refers(&UUID_A).unwrap());
+        ed.add_ava("memberof", &Value::new_refers(&UUID_B).unwrap());
+        ed.add_ava("memberof", &Value::new_refers(&UUID_C).unwrap());
+        ed.add_ava("memberof", &Value::new_refers(&UUID_D).unwrap());
 
         let preload = vec![ea, eb, ec, ed];
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", PartialValue::new_uuidr(&UUID_B))),
+            filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_B).unwrap())),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is

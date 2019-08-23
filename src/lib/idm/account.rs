@@ -9,7 +9,9 @@ use crate::value::PartialValue;
 
 use uuid::Uuid;
 
-static PVCLASS_ACCOUNT: PartialValue = PartialValue::new_class("account");
+lazy_static! {
+    static ref PVCLASS_ACCOUNT: PartialValue = PartialValue::new_class("account");
+}
 
 #[derive(Debug, Clone)]
 pub(crate) struct Account {

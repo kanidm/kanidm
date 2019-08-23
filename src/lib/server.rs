@@ -609,7 +609,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // based on request size in the frontend?
 
         // Copy the entries to a writeable form.
-        let candidates: Vec<Entry<EntryInvalid, EntryNew>> =
+        let mut candidates: Vec<Entry<EntryInvalid, EntryNew>> =
             ce.entries.iter().map(|er| er.clone()).collect();
 
         // This is no longer needed due to how we transform to Value as a strong type on

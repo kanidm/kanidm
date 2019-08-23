@@ -24,9 +24,9 @@ lazy_static! {
         m.insert("may");
         m
     };
+    static ref PVCLASS_SYSTEM: PartialValue = PartialValue::new_class("system");
+    static ref VCLASS_SYSTEM: Value = Value::new_class("system");
 }
-static VCLASS_SYSTEM: Value = Value::new_class("system");
-static PVCLASS_SYSTEM: PartialValue = PartialValue::new_class("system");
 
 impl Plugin for Protected {
     fn id() -> &'static str {
@@ -81,7 +81,8 @@ impl Plugin for Protected {
             } else {
                 match m {
                     Modify::Present(a, v) => {
-                        if a == "class" && v == &VCLASS_SYSTEM {
+                        // TODO: Can we avoid this clone?
+                        if a == "class" && v == &(VCLASS_SYSTEM.clone()) {
                             Err(OperationError::SystemProtectedObject)
                         } else {
                             Ok(())
