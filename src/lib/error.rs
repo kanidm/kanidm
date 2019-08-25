@@ -16,7 +16,7 @@ pub enum OperationError {
     EmptyRequest,
     Backend,
     NoMatchingEntries,
-    CorruptedEntry,
+    CorruptedEntry(u64),
     ConsistencyError(Vec<Result<(), ConsistencyError>>),
     SchemaViolation(SchemaError),
     Plugin,

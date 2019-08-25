@@ -250,7 +250,7 @@ mod tests {
         run_modify_test!(
             Err(OperationError::SystemProtectedObject),
             preload,
-            filter!(f_eq("name", PartialValue::new_iutf8("testperson"))),
+            filter!(f_eq("name", PartialValue::new_iutf8s("testperson"))),
             modlist!([
                 m_purge("displayname"),
                 m_pres("displayname", &Value::new_utf8s("system test")),
@@ -284,7 +284,7 @@ mod tests {
         run_modify_test!(
             Err(OperationError::SystemProtectedObject),
             preload,
-            filter!(f_eq("name", PartialValue::new_iutf8("testperson"))),
+            filter!(f_eq("name", PartialValue::new_iutf8s("testperson"))),
             modlist!([m_pres("class", &Value::new_class("system")),]),
             Some(JSON_ADMIN_V1),
             |_, _| {}
@@ -315,7 +315,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iutf8("testperson"))),
+            filter!(f_eq("name", PartialValue::new_iutf8s("testperson"))),
             modlist!([
                 m_pres("may", &Value::new_iutf8s("name")),
                 m_pres("must", &Value::new_iutf8s("name")),
@@ -349,7 +349,7 @@ mod tests {
         run_delete_test!(
             Err(OperationError::SystemProtectedObject),
             preload,
-            filter!(f_eq("name", PartialValue::new_iutf8("testperson"))),
+            filter!(f_eq("name", PartialValue::new_iutf8s("testperson"))),
             Some(JSON_ADMIN_V1),
             |_, _| {}
         );

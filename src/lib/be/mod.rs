@@ -114,11 +114,12 @@ pub trait BackendTransaction {
                         Ok(v) => v,
                         Err(e) => return Some(Err(e)),
                     };
-                    let e =
-                        match Entry::from_dbentry(db_e, id).ok_or(OperationError::CorruptedEntry) {
-                            Ok(v) => v,
-                            Err(e) => return Some(Err(e)),
-                        };
+                    let e = match Entry::from_dbentry(db_e, id)
+                        .map_err(|_| OperationError::CorruptedEntry(id))
+                    {
+                        Ok(v) => v,
+                        Err(e) => return Some(Err(e)),
+                    };
                     if e.entry_match_no_index(&filt) {
                         Some(Ok(e))
                     } else {

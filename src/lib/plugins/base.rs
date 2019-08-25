@@ -82,7 +82,7 @@ impl Plugin for Base {
                     );
                     v
                 }
-                None => Value::from(Uuid::new_v4()),
+                None => Value::new_uuid(Uuid::new_v4()),
             };
 
             audit_log!(au, "Setting temporary UUID {:?} to entry", c_uuid);
@@ -339,7 +339,7 @@ mod tests {
                 let cands = qs
                     .internal_search(
                         au,
-                        filter!(f_eq("name", PartialValue::new_iutf8("testperson"))),
+                        filter!(f_eq("name", PartialValue::new_iutf8s("testperson"))),
                     )
                     .expect("Internal search failure");
                 let ue = cands.first().expect("No cand");
@@ -441,7 +441,7 @@ mod tests {
                 let cands = qs
                     .internal_search(
                         au,
-                        filter!(f_eq("name", PartialValue::new_iutf8("testperson"))),
+                        filter!(f_eq("name", PartialValue::new_iutf8s("testperson"))),
                     )
                     .expect("Internal search failure");
                 let ue = cands.first().expect("No cand");
@@ -589,7 +589,7 @@ mod tests {
         run_modify_test!(
             Err(OperationError::Plugin),
             preload,
-            filter!(f_eq("name", PartialValue::new_iutf8("testgroup_a"))),
+            filter!(f_eq("name", PartialValue::new_iutf8s("testgroup_a"))),
             ModifyList::new_list(vec![Modify::Present(
                 "uuid".to_string(),
                 Value::from("f15a7219-1d15-44e3-a7b4-bec899c07788")
@@ -621,7 +621,7 @@ mod tests {
         run_modify_test!(
             Err(OperationError::Plugin),
             preload,
-            filter!(f_eq("name", PartialValue::new_iutf8("testgroup_a"))),
+            filter!(f_eq("name", PartialValue::new_iutf8s("testgroup_a"))),
             ModifyList::new_list(vec![Modify::Removed(
                 "uuid".to_string(),
                 PartialValue::new_uuids("f15a7219-1d15-44e3-a7b4-bec899c07788").unwrap()
@@ -653,7 +653,7 @@ mod tests {
         run_modify_test!(
             Err(OperationError::Plugin),
             preload,
-            filter!(f_eq("name", PartialValue::new_iutf8("testgroup_a"))),
+            filter!(f_eq("name", PartialValue::new_iutf8s("testgroup_a"))),
             ModifyList::new_list(vec![Modify::Purged("uuid".to_string())]),
             None,
             |_, _| {}

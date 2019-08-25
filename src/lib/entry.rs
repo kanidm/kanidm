@@ -135,15 +135,15 @@ impl<'a> Iterator for EntryAvasMut<'a> {
 // This is specifically important for the commit to the backend, as we only want to
 // commit validated types.
 
-#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug)]
 pub struct EntryNew; // new
-#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug)]
 pub struct EntryCommitted {
     id: u64,
 } // It's been in the DB, so it has an id
   // pub struct EntryPurged;
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug)]
 pub struct EntryValid {
     // Asserted with schema, so we know it has a UUID now ...
     uuid: Uuid,
@@ -151,17 +151,17 @@ pub struct EntryValid {
 
 // Modified, can't be sure of it's content! We therefore disregard the UUID
 // and on validate, we check it again.
-#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug)]
 pub struct EntryInvalid;
 
 // This state can't exist because everything is normalised now with Value types
 // #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 // pub struct EntryNormalised;
 
-#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug)]
 pub struct EntryReduced;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct Entry<VALID, STATE> {
     valid: VALID,
     state: STATE,
@@ -235,10 +235,8 @@ impl<STATE> Entry<EntryInvalid, STATE> {
     fn get_uuid(&self) -> Option<&Uuid> {
         match self.attrs.get("uuid") {
             Some(vs) => match vs.iter().take(1).next() {
-                Some(uv) => match uv {
-                    Value::Uuid(u) => Some(&u),
-                    _ => None,
-                },
+                // Uv is a value that might contain uuid - we hope it does!
+                Some(uv) => uv.to_uuid(),
                 _ => None,
             },
             None => None,
@@ -323,9 +321,9 @@ impl<STATE> Entry<EntryInvalid, STATE> {
 
         let uuid: Uuid = match &self.attrs.get("uuid") {
             Some(vs) => match vs.iter().take(1).next() {
-                Some(uuid_v) => match uuid_v {
-                    Value::Uuid(uuid) => uuid.clone(),
-                    _ => return Err(SchemaError::InvalidAttribute),
+                Some(uuid_v) => match uuid_v.to_uuid() {
+                    Some(uuid) => *uuid,
+                    None => return Err(SchemaError::InvalidAttribute),
                 },
                 None => return Err(SchemaError::MissingMustAttribute("uuid".to_string())),
             },
@@ -602,11 +600,14 @@ impl Entry<EntryValid, EntryCommitted> {
 
     pub fn to_tombstone(&self) -> Self {
         // Duplicate this to a tombstone entry
-        let class_ava = btreeset![Value::from("object"), Value::from("tombstone")];
+        let class_ava = btreeset![Value::new_class("object"), Value::new_class("tombstone")];
 
         let mut attrs_new: BTreeMap<String, BTreeSet<Value>> = BTreeMap::new();
 
-        attrs_new.insert("uuid".to_string(), btreeset![Value::from(&self.valid.uuid)]);
+        attrs_new.insert(
+            "uuid".to_string(),
+            btreeset![Value::new_uuidr(&self.valid.uuid)],
+        );
         attrs_new.insert("class".to_string(), class_ava);
 
         Entry {
@@ -620,29 +621,36 @@ impl Entry<EntryValid, EntryCommitted> {
         self.state.id
     }
 
-    pub fn from_dbentry(db_e: DbEntry, id: u64) -> Option<Self> {
+    pub fn from_dbentry(db_e: DbEntry, id: u64) -> Result<Self, ()> {
         // Convert attrs from db format to value
-        let attrs: BTreeMap<String, BTreeSet<Value>> = match db_e.ent {
+        let r_attrs: Result<BTreeMap<String, BTreeSet<Value>>, ()> = match db_e.ent {
             DbEntryVers::V1(v1) => v1
                 .attrs
                 .into_iter()
                 .map(|(k, vs)| {
-                    let vv: BTreeSet<Value> =
+                    let vv: Result<BTreeSet<Value>, ()> =
                         vs.into_iter().map(|v| Value::from_db_valuev1(v)).collect();
-                    (k, vv)
+                    match vv {
+                        Ok(vv) => Ok((k, vv)),
+                        Err(e) => Err(e),
+                    }
                 })
                 .collect(),
         };
 
+        let attrs = r_attrs?;
+
         let uuid: Uuid = match attrs.get("uuid") {
             Some(vs) => vs.iter().take(1).next(),
             None => None,
-        }?
+        }
+        .ok_or(())?
         // Now map value -> uuid
-        .to_uuid()?
+        .to_uuid()
+        .ok_or(())?
         .clone();
 
-        Some(Entry {
+        Ok(Entry {
             valid: EntryValid { uuid: uuid },
             state: EntryCommitted { id },
             attrs: attrs,
@@ -1152,16 +1160,16 @@ impl From<&SchemaAttribute> for Entry<EntryValid, EntryNew> {
     fn from(s: &SchemaAttribute) -> Self {
         // Convert an Attribute to an entry ... make it good!
         let uuid = s.uuid.clone();
-        let uuid_v = btreeset![Value::from(&uuid)];
+        let uuid_v = btreeset![Value::new_uuidr(&uuid)];
 
-        let name_v = btreeset![Value::new_insensitive_utf8(s.name.clone())];
-        let desc_v = btreeset![Value::from(s.description.clone())];
+        let name_v = btreeset![Value::new_iutf8(s.name.clone())];
+        let desc_v = btreeset![Value::new_utf8(s.description.clone())];
 
         let multivalue_v = btreeset![Value::from(s.multivalue)];
 
-        let index_v: BTreeSet<_> = s.index.iter().map(|i| Value::from(i)).collect();
+        let index_v: BTreeSet<_> = s.index.iter().map(|i| Value::from(i.clone())).collect();
 
-        let syntax_v = btreeset![Value::new_syntaxr(&s.syntax)];
+        let syntax_v = btreeset![Value::from(s.syntax.clone())];
 
         // Build the BTreeMap of the attributes relevant
         let mut attrs: BTreeMap<String, BTreeSet<Value>> = BTreeMap::new();
@@ -1174,9 +1182,9 @@ impl From<&SchemaAttribute> for Entry<EntryValid, EntryNew> {
         attrs.insert(
             "class".to_string(),
             btreeset![
-                Value::new_insensitive_utf8("object".to_string()),
-                Value::new_insensitive_utf8("system".to_string()),
-                Value::new_insensitive_utf8("attributetype".to_string())
+                Value::new_class("object"),
+                Value::new_class("system"),
+                Value::new_class("attributetype")
             ],
         );
 
@@ -1193,10 +1201,10 @@ impl From<&SchemaAttribute> for Entry<EntryValid, EntryNew> {
 impl From<&SchemaClass> for Entry<EntryValid, EntryNew> {
     fn from(s: &SchemaClass) -> Self {
         let uuid = s.uuid.clone();
-        let uuid_v = btreeset![Value::from(&uuid)];
+        let uuid_v = btreeset![Value::new_uuidr(&uuid)];
 
-        let name_v = btreeset![Value::new_insensitive_utf8(s.name.clone())];
-        let desc_v = btreeset![Value::from(s.description.clone())];
+        let name_v = btreeset![Value::new_iutf8(s.name.clone())];
+        let desc_v = btreeset![Value::new_utf8(s.description.clone())];
 
         let mut attrs: BTreeMap<String, BTreeSet<Value>> = BTreeMap::new();
         attrs.insert("name".to_string(), name_v);
@@ -1205,25 +1213,31 @@ impl From<&SchemaClass> for Entry<EntryValid, EntryNew> {
         attrs.insert(
             "class".to_string(),
             btreeset![
-                Value::new_insensitive_utf8("object".to_string()),
-                Value::new_insensitive_utf8("system".to_string()),
-                Value::new_insensitive_utf8("classtype".to_string())
+                Value::new_class("object"),
+                Value::new_class("system"),
+                Value::new_class("classtype")
             ],
         );
-        attrs.insert(
-            "systemmay".to_string(),
-            s.systemmay
-                .iter()
-                .map(|sm| Value::new_insensitive_utf8(sm.clone()))
-                .collect(),
-        );
-        attrs.insert(
-            "systemmust".to_string(),
-            s.systemmust
-                .iter()
-                .map(|sm| Value::new_insensitive_utf8(sm.clone()))
-                .collect(),
-        );
+
+        if s.systemmay.len() > 0 {
+            attrs.insert(
+                "systemmay".to_string(),
+                s.systemmay
+                    .iter()
+                    .map(|sm| Value::new_attr(sm.as_str()))
+                    .collect(),
+            );
+        }
+
+        if s.systemmust.len() > 0 {
+            attrs.insert(
+                "systemmust".to_string(),
+                s.systemmust
+                    .iter()
+                    .map(|sm| Value::new_attr(sm.as_str()))
+                    .collect(),
+            );
+        }
 
         Entry {
             valid: EntryValid { uuid: uuid },
@@ -1316,7 +1330,7 @@ mod tests {
         e.apply_modlist(&mods);
 
         // Assert the changes are there
-        assert!(e.attribute_equality("attr", &PartialValue::new_iutf8("value")));
+        assert!(e.attribute_equality("attr", &PartialValue::new_iutf8s("value")));
 
         // Assert present for multivalue
         // Assert purge on single/multi/empty value

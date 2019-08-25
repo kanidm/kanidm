@@ -4,6 +4,7 @@ use crate::entry::{Entry, EntryCommitted, EntryNew, EntryValid};
 use crate::error::{ConsistencyError, OperationError, SchemaError};
 use crate::value::{IndexType, PartialValue, SyntaxType, Value};
 
+use std::borrow::Borrow;
 use std::collections::BTreeSet;
 use std::collections::HashMap;
 use uuid::Uuid;
@@ -175,26 +176,31 @@ impl SchemaAttribute {
     // TODO: There may be a difference between a value and a filter value on complex
     // types - IE a complex type may have multiple parts that are secret, but a filter
     // on that may only use a single tagged attribute for example.
-    pub fn validate_partialvalue(&self, _v: &PartialValue) -> Result<(), SchemaError> {
-        unimplemented!();
+    pub fn validate_partialvalue(&self, v: &PartialValue) -> Result<(), SchemaError> {
+        let r = match self.syntax {
+            SyntaxType::BOOLEAN => v.is_bool(),
+            SyntaxType::SYNTAX_ID => v.is_syntax(),
+            SyntaxType::INDEX_ID => v.is_index(),
+            SyntaxType::UUID => v.is_uuid(),
+            SyntaxType::REFERENCE_UUID => v.is_refer(),
+            SyntaxType::UTF8STRING_INSENSITIVE => v.is_iutf8(),
+            SyntaxType::UTF8STRING => v.is_utf8(),
+            SyntaxType::JSON_FILTER => v.is_json_filter(),
+        };
+        if r {
+            Ok(())
+        } else {
+            Err(SchemaError::InvalidAttributeSyntax)
+        }
     }
 
-    pub fn validate_value(&self, _v: &Value) -> Result<(), SchemaError> {
-        unimplemented!();
-        /*
-        match self.syntax {
-            SyntaxType::BOOLEAN => self.validate_bool(v),
-            SyntaxType::SYNTAX_ID => self.validate_syntax(v),
-            SyntaxType::INDEX_ID => self.validate_index(v),
-            SyntaxType::UUID => self.validate_uuid(v),
-            // Syntaxwise, these are the same.
-            // Referential integrity is handled in plugins.
-            SyntaxType::REFERENCE_UUID => self.validate_uuid(v),
-            SyntaxType::UTF8STRING_INSENSITIVE => self.validate_utf8string_insensitive(v),
-            SyntaxType::JSON_FILTER => self.validate_json_filter(v),
-            _ => Ok(()),
-        }
-        */
+    pub fn validate_value(&self, v: &Value) -> Result<(), SchemaError> {
+        let r = v.validate();
+        // TODO: Fix this validation - I think due to the design of Value it may not
+        // be possible for this to fail due to how we parse.
+        assert!(r);
+        let pv: &PartialValue = v.borrow();
+        self.validate_partialvalue(pv)
     }
 
     pub fn validate_ava(&self, ava: &BTreeSet<Value>) -> Result<(), SchemaError> {
@@ -278,6 +284,7 @@ impl SchemaClass {
         audit: &mut AuditScope,
         value: &Entry<EntryValid, EntryCommitted>,
     ) -> Result<Self, OperationError> {
+        audit_log!(audit, "{:?}", value);
         // Convert entry to a schema class.
         if !value.attribute_value_pres("class", &PVCLASS_CLASSTYPE) {
             audit_log!(audit, "class classtype not present");
@@ -1840,7 +1847,7 @@ mod tests {
         );
 
         // test syntax of bool
-        let f_bool = filter_all!(f_eq("multivalue", PartialValue::new_iutf8("zzzz")));
+        let f_bool = filter_all!(f_eq("multivalue", PartialValue::new_iutf8s("zzzz")));
         assert_eq!(
             f_bool.validate(&schema),
             Err(SchemaError::InvalidAttributeSyntax)
@@ -1854,14 +1861,17 @@ mod tests {
         // Test the recursive structures validate
         let f_or_empty = filter_all!(f_or!([]));
         assert_eq!(f_or_empty.validate(&schema), Err(SchemaError::EmptyFilter));
-        let f_or = filter_all!(f_or!([f_eq("multivalue", PartialValue::new_iutf8("zzzz"))]));
+        let f_or = filter_all!(f_or!([f_eq(
+            "multivalue",
+            PartialValue::new_iutf8s("zzzz")
+        )]));
         assert_eq!(
             f_or.validate(&schema),
             Err(SchemaError::InvalidAttributeSyntax)
         );
         let f_or_mult = filter_all!(f_and!([
             f_eq("class", PartialValue::new_class("attributetype")),
-            f_eq("multivalue", PartialValue::new_iutf8("zzzzzzz")),
+            f_eq("multivalue", PartialValue::new_iutf8s("zzzzzzz")),
         ]));
         assert_eq!(
             f_or_mult.validate(&schema),

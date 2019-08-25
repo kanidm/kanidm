@@ -320,8 +320,8 @@ impl FilterComp {
     fn new_ignore_hidden(fc: FilterComp) -> Self {
         FilterComp::And(vec![
             FilterComp::AndNot(Box::new(FilterComp::Or(vec![
-                FilterComp::Eq("class".to_string(), PartialValue::new_iutf8("tombstone")),
-                FilterComp::Eq("class".to_string(), PartialValue::new_iutf8("recycled")),
+                FilterComp::Eq("class".to_string(), PartialValue::new_iutf8s("tombstone")),
+                FilterComp::Eq("class".to_string(), PartialValue::new_iutf8s("recycled")),
             ]))),
             fc,
         ])
@@ -329,7 +329,7 @@ impl FilterComp {
 
     fn new_recycled(fc: FilterComp) -> Self {
         FilterComp::And(vec![
-            FilterComp::Eq("class".to_string(), PartialValue::new_iutf8("recycled")),
+            FilterComp::Eq("class".to_string(), PartialValue::new_iutf8s("recycled")),
             fc,
         ])
     }
@@ -734,8 +734,8 @@ mod tests {
         // AFTER
         let _complex_filt: Filter<FilterInvalid> = filter!(f_and!([
             f_or!([
-                f_eq("userid", PartialValue::new_iutf8("test_a")),
-                f_eq("userid", PartialValue::new_iutf8("test_b")),
+                f_eq("userid", PartialValue::new_iutf8s("test_a")),
+                f_eq("userid", PartialValue::new_iutf8s("test_b")),
             ]),
             f_sub("class", PartialValue::new_class("user")),
         ]));
@@ -902,12 +902,12 @@ mod tests {
         assert_eq!(f_t2b.partial_cmp(&f_t2a), Some(Ordering::Equal));
 
         // antisymmetry: if a < b then !(a > b), as well as a > b implying !(a < b); and
-        let f_t3b = unsafe { filter_resolved!(f_eq("userid", PartialValue::new_iutf8(""))) };
+        let f_t3b = unsafe { filter_resolved!(f_eq("userid", PartialValue::new_iutf8s(""))) };
         assert_eq!(f_t1a.partial_cmp(&f_t3b), Some(Ordering::Greater));
         assert_eq!(f_t3b.partial_cmp(&f_t1a), Some(Ordering::Less));
 
         // transitivity: a < b and b < c implies a < c. The same must hold for both == and >.
-        let f_t4b = unsafe { filter_resolved!(f_sub("userid", PartialValue::new_iutf8(""))) };
+        let f_t4b = unsafe { filter_resolved!(f_sub("userid", PartialValue::new_iutf8s(""))) };
         assert_eq!(f_t1a.partial_cmp(&f_t4b), Some(Ordering::Less));
         assert_eq!(f_t3b.partial_cmp(&f_t4b), Some(Ordering::Less));
 
@@ -953,32 +953,32 @@ mod tests {
 
         let f_t1a = unsafe {
             filter_resolved!(f_or!([
-                f_eq("userid", PartialValue::new_iutf8("william")),
-                f_eq("uidnumber", PartialValue::new_iutf8("1000")),
+                f_eq("userid", PartialValue::new_iutf8s("william")),
+                f_eq("uidnumber", PartialValue::new_iutf8s("1000")),
             ]))
         };
         assert!(e.entry_match_no_index(&f_t1a));
 
         let f_t2a = unsafe {
             filter_resolved!(f_or!([
-                f_eq("userid", PartialValue::new_iutf8("william")),
-                f_eq("uidnumber", PartialValue::new_iutf8("1001")),
+                f_eq("userid", PartialValue::new_iutf8s("william")),
+                f_eq("uidnumber", PartialValue::new_iutf8s("1001")),
             ]))
         };
         assert!(e.entry_match_no_index(&f_t2a));
 
         let f_t3a = unsafe {
             filter_resolved!(f_or!([
-                f_eq("userid", PartialValue::new_iutf8("alice")),
-                f_eq("uidnumber", PartialValue::new_iutf8("1000")),
+                f_eq("userid", PartialValue::new_iutf8s("alice")),
+                f_eq("uidnumber", PartialValue::new_iutf8s("1000")),
             ]))
         };
         assert!(e.entry_match_no_index(&f_t3a));
 
         let f_t4a = unsafe {
             filter_resolved!(f_or!([
-                f_eq("userid", PartialValue::new_iutf8("alice")),
-                f_eq("uidnumber", PartialValue::new_iutf8("1001")),
+                f_eq("userid", PartialValue::new_iutf8s("alice")),
+                f_eq("uidnumber", PartialValue::new_iutf8s("1001")),
             ]))
         };
         assert!(!e.entry_match_no_index(&f_t4a));
@@ -1003,32 +1003,32 @@ mod tests {
 
         let f_t1a = unsafe {
             filter_resolved!(f_and!([
-                f_eq("userid", PartialValue::new_iutf8("william")),
-                f_eq("uidnumber", PartialValue::new_iutf8("1000")),
+                f_eq("userid", PartialValue::new_iutf8s("william")),
+                f_eq("uidnumber", PartialValue::new_iutf8s("1000")),
             ]))
         };
         assert!(e.entry_match_no_index(&f_t1a));
 
         let f_t2a = unsafe {
             filter_resolved!(f_and!([
-                f_eq("userid", PartialValue::new_iutf8("william")),
-                f_eq("uidnumber", PartialValue::new_iutf8("1001")),
+                f_eq("userid", PartialValue::new_iutf8s("william")),
+                f_eq("uidnumber", PartialValue::new_iutf8s("1001")),
             ]))
         };
         assert!(!e.entry_match_no_index(&f_t2a));
 
         let f_t3a = unsafe {
             filter_resolved!(f_and!([
-                f_eq("userid", PartialValue::new_iutf8("alice")),
-                f_eq("uidnumber", PartialValue::new_iutf8("1000")),
+                f_eq("userid", PartialValue::new_iutf8s("alice")),
+                f_eq("uidnumber", PartialValue::new_iutf8s("1000")),
             ]))
         };
         assert!(!e.entry_match_no_index(&f_t3a));
 
         let f_t4a = unsafe {
             filter_resolved!(f_and!([
-                f_eq("userid", PartialValue::new_iutf8("alice")),
-                f_eq("uidnumber", PartialValue::new_iutf8("1001")),
+                f_eq("userid", PartialValue::new_iutf8s("alice")),
+                f_eq("uidnumber", PartialValue::new_iutf8s("1001")),
             ]))
         };
         assert!(!e.entry_match_no_index(&f_t4a));
@@ -1051,12 +1051,16 @@ mod tests {
         )
         .expect("Json parse failure");
 
-        let f_t1a =
-            unsafe { filter_resolved!(f_andnot(f_eq("userid", PartialValue::new_iutf8("alice")))) };
+        let f_t1a = unsafe {
+            filter_resolved!(f_andnot(f_eq("userid", PartialValue::new_iutf8s("alice"))))
+        };
         assert!(e1.entry_match_no_index(&f_t1a));
 
         let f_t2a = unsafe {
-            filter_resolved!(f_andnot(f_eq("userid", PartialValue::new_iutf8("william"))))
+            filter_resolved!(f_andnot(f_eq(
+                "userid",
+                PartialValue::new_iutf8s("william")
+            )))
         };
         assert!(!e1.entry_match_no_index(&f_t2a));
     }
@@ -1127,8 +1131,8 @@ mod tests {
             filter_resolved!(f_and!([
                 f_eq("class", PartialValue::new_class("person")),
                 f_or!([
-                    f_eq("uidnumber", PartialValue::new_iutf8("1001")),
-                    f_eq("uidnumber", PartialValue::new_iutf8("1000"))
+                    f_eq("uidnumber", PartialValue::new_iutf8s("1001")),
+                    f_eq("uidnumber", PartialValue::new_iutf8s("1000"))
                 ])
             ]))
         };
@@ -1148,8 +1152,8 @@ mod tests {
         // to determine what attrs we are requesting regardless of the partialvalue.
         let f_t1a = unsafe {
             filter_valid!(f_and!([
-                f_eq("userid", PartialValue::new_iutf8("alice")),
-                f_eq("class", PartialValue::new_iutf8("1001")),
+                f_eq("userid", PartialValue::new_iutf8s("alice")),
+                f_eq("class", PartialValue::new_iutf8s("1001")),
             ]))
         };
 
@@ -1157,9 +1161,9 @@ mod tests {
 
         let f_t2a = unsafe {
             filter_valid!(f_and!([
-                f_eq("userid", PartialValue::new_iutf8("alice")),
-                f_eq("class", PartialValue::new_iutf8("1001")),
-                f_eq("userid", PartialValue::new_iutf8("claire")),
+                f_eq("userid", PartialValue::new_iutf8s("alice")),
+                f_eq("class", PartialValue::new_iutf8s("1001")),
+                f_eq("userid", PartialValue::new_iutf8s("claire")),
             ]))
         };
 

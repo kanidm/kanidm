@@ -19,7 +19,7 @@ pub enum IndexType {
 impl TryFrom<&str> for IndexType {
     type Error = ();
 
-    fn try_from(value: &str) -> Result<IndexType, Self::Error> {
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
         if value == "EQUALITY" {
             Ok(IndexType::EQUALITY)
         } else if value == "PRESENCE" {
@@ -32,6 +32,19 @@ impl TryFrom<&str> for IndexType {
     }
 }
 
+impl TryFrom<usize> for IndexType {
+    type Error = ();
+
+    fn try_from(value: usize) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(IndexType::EQUALITY),
+            1 => Ok(IndexType::PRESENCE),
+            2 => Ok(IndexType::SUBSTRING),
+            _ => Err(()),
+        }
+    }
+}
+
 impl IndexType {
     pub fn to_string(&self) -> String {
         String::from(match self {
@@ -39,6 +52,14 @@ impl IndexType {
             IndexType::PRESENCE => "PRESENCE",
             IndexType::SUBSTRING => "SUBSTRING",
         })
+    }
+
+    pub fn to_usize(&self) -> usize {
+        match self {
+            IndexType::EQUALITY => 0,
+            IndexType::PRESENCE => 1,
+            IndexType::SUBSTRING => 2,
+        }
     }
 }
 
@@ -83,6 +104,24 @@ impl TryFrom<&str> for SyntaxType {
     }
 }
 
+impl TryFrom<usize> for SyntaxType {
+    type Error = ();
+
+    fn try_from(value: usize) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(SyntaxType::UTF8STRING),
+            1 => Ok(SyntaxType::UTF8STRING_INSENSITIVE),
+            2 => Ok(SyntaxType::UUID),
+            3 => Ok(SyntaxType::BOOLEAN),
+            4 => Ok(SyntaxType::SYNTAX_ID),
+            5 => Ok(SyntaxType::INDEX_ID),
+            6 => Ok(SyntaxType::REFERENCE_UUID),
+            7 => Ok(SyntaxType::JSON_FILTER),
+            _ => Err(()),
+        }
+    }
+}
+
 impl SyntaxType {
     pub fn to_string(&self) -> String {
         String::from(match self {
@@ -95,6 +134,19 @@ impl SyntaxType {
             SyntaxType::REFERENCE_UUID => "REFERENCE_UUID",
             SyntaxType::JSON_FILTER => "JSON_FILTER",
         })
+    }
+
+    pub fn to_usize(&self) -> usize {
+        match self {
+            SyntaxType::UTF8STRING => 0,
+            SyntaxType::UTF8STRING_INSENSITIVE => 1,
+            SyntaxType::UUID => 2,
+            SyntaxType::BOOLEAN => 3,
+            SyntaxType::SYNTAX_ID => 4,
+            SyntaxType::INDEX_ID => 5,
+            SyntaxType::REFERENCE_UUID => 6,
+            SyntaxType::JSON_FILTER => 7,
+        }
     }
 }
 
@@ -121,17 +173,52 @@ impl PartialValue {
         PartialValue::Utf8(s.to_string())
     }
 
-    pub fn new_iutf8(s: &str) -> Self {
+    pub fn is_utf8(&self) -> bool {
+        match self {
+            PartialValue::Utf8(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn new_iutf8s(s: &str) -> Self {
         PartialValue::Iutf8(s.to_lowercase())
+    }
+
+    #[inline]
+    pub fn new_class(s: &str) -> Self {
+        PartialValue::new_iutf8s(s)
+    }
+
+    /*
+    #[inline]
+    pub fn new_attr(s: &str) -> Self {
+        PartialValue::new_iutf8s(s)
+    }
+    */
+
+    pub fn is_iutf8(&self) -> bool {
+        match self {
+            PartialValue::Iutf8(_) => true,
+            _ => false,
+        }
     }
 
     pub fn new_bool(b: bool) -> Self {
         PartialValue::Bool(b)
     }
 
-    #[inline]
-    pub fn new_class(s: &str) -> Self {
-        PartialValue::new_iutf8(s)
+    pub fn new_bools(s: &str) -> Option<Self> {
+        match bool::from_str(s) {
+            Ok(b) => Some(PartialValue::Bool(b)),
+            Err(_) => None,
+        }
+    }
+
+    pub fn is_bool(&self) -> bool {
+        match self {
+            PartialValue::Bool(_) => true,
+            _ => false,
+        }
     }
 
     pub fn new_uuid(u: Uuid) -> Self {
@@ -146,6 +233,13 @@ impl PartialValue {
         match Uuid::parse_str(us) {
             Ok(u) => Some(PartialValue::Uuid(u)),
             Err(_) => None,
+        }
+    }
+
+    pub fn is_uuid(&self) -> bool {
+        match self {
+            PartialValue::Uuid(_) => true,
+            _ => false,
         }
     }
 
@@ -164,6 +258,42 @@ impl PartialValue {
         }
     }
 
+    pub fn is_refer(&self) -> bool {
+        match self {
+            PartialValue::Refer(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn new_indexs(_s: &str) -> Option<Self> {
+        unimplemented!();
+    }
+
+    pub fn is_index(&self) -> bool {
+        match self {
+            PartialValue::Index(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn new_syntaxs(_s: &str) -> Option<Self> {
+        unimplemented!();
+    }
+
+    pub fn is_syntax(&self) -> bool {
+        match self {
+            PartialValue::Syntax(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_json_filter(&self) -> bool {
+        match self {
+            PartialValue::JsonFilt(_) => true,
+            _ => false,
+        }
+    }
+
     pub fn to_str(&self) -> Option<&str> {
         match self {
             PartialValue::Utf8(s) => Some(s.as_str()),
@@ -175,20 +305,17 @@ impl PartialValue {
     pub fn to_str_unwrap(&self) -> &str {
         self.to_str().expect("An invalid value was returned!!!")
     }
+
+    pub fn contains(&self, _s: &PartialValue) -> bool {
+        false
+    }
 }
 
-// TODO: Store everything as partialValue and then have a extra ref to extra data
-// for that type as needed?
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
-pub enum Value {
-    Utf8(String),
-    Iutf8(String),
-    Uuid(Uuid),
-    Bool(bool),
-    Syntax(SyntaxType),
-    Index(IndexType),
-    Refer(Uuid),
-    JsonFilt(String),
+pub struct Value {
+    pv: PartialValue,
+    // Later we'll add extra data fields for different v types. They'll have to switch on
+    // pv somehow, so probably need optional or union?
 }
 
 // TODO: Impl display
@@ -200,66 +327,69 @@ pub enum Value {
 
 impl From<bool> for Value {
     fn from(b: bool) -> Self {
-        Value::Bool(b)
+        Value {
+            pv: PartialValue::Bool(b),
+        }
     }
 }
 
 impl From<&bool> for Value {
     fn from(b: &bool) -> Self {
-        Value::Bool(*b)
-    }
-}
-
-impl From<String> for Value {
-    fn from(s: String) -> Self {
-        Value::from(s.as_str())
-    }
-}
-
-impl From<&str> for Value {
-    fn from(s: &str) -> Self {
-        // Fuzzy match for uuid's
-        // TODO: Will I regret this?
-        match Uuid::parse_str(s) {
-            Ok(u) => Value::Uuid(u),
-            Err(_) => Value::Utf8(s.to_string()),
+        Value {
+            pv: PartialValue::Bool(*b),
         }
-    }
-}
-
-impl From<&Uuid> for Value {
-    fn from(u: &Uuid) -> Self {
-        Value::Uuid(u.clone())
-    }
-}
-
-impl From<Uuid> for Value {
-    fn from(u: Uuid) -> Self {
-        Value::Uuid(u)
     }
 }
 
 impl From<SyntaxType> for Value {
     fn from(s: SyntaxType) -> Self {
-        Value::Syntax(s)
-    }
-}
-
-impl From<&SyntaxType> for Value {
-    fn from(s: &SyntaxType) -> Self {
-        Value::Syntax(s.clone())
+        Value {
+            pv: PartialValue::Syntax(s),
+        }
     }
 }
 
 impl From<IndexType> for Value {
     fn from(i: IndexType) -> Self {
-        Value::Index(i)
+        Value {
+            pv: PartialValue::Index(i),
+        }
     }
 }
 
-impl From<&IndexType> for Value {
-    fn from(i: &IndexType) -> Self {
-        Value::Index(i.clone())
+// Because these are potentially ambiguous, we limit them to tests where we can contain
+// any....mistakes.
+#[cfg(test)]
+impl From<&str> for Value {
+    fn from(s: &str) -> Self {
+        // Fuzzy match for uuid's
+        // TODO: Will I regret this?
+        match Uuid::parse_str(s) {
+            Ok(u) => Value {
+                pv: PartialValue::Uuid(u),
+            },
+            Err(_) => Value {
+                pv: PartialValue::Utf8(s.to_string()),
+            },
+        }
+    }
+}
+
+#[cfg(test)]
+impl From<&Uuid> for Value {
+    fn from(u: &Uuid) -> Self {
+        Value {
+            pv: PartialValue::Uuid(u.clone()),
+        }
+    }
+}
+
+#[cfg(test)]
+impl From<Uuid> for Value {
+    fn from(u: Uuid) -> Self {
+        Value {
+            pv: PartialValue::Uuid(u),
+        }
     }
 }
 
@@ -275,126 +405,137 @@ impl Value {
 
     // I get the feeling this will have a lot of matching ... sigh.
     pub fn new_utf8(s: String) -> Self {
-        Value::Utf8(s)
+        Value {
+            pv: PartialValue::new_utf8(s),
+        }
     }
 
     pub fn new_utf8s(s: &str) -> Self {
-        Value::Utf8(s.to_string())
+        Value {
+            pv: PartialValue::new_utf8s(s),
+        }
     }
 
-    pub fn new_insensitive_utf8(s: String) -> Self {
-        Value::Iutf8(s.to_lowercase())
+    pub fn new_iutf8(s: String) -> Self {
+        Value {
+            pv: PartialValue::new_iutf8s(s.as_str()),
+        }
     }
 
     pub fn new_iutf8s(s: &str) -> Self {
-        Value::Iutf8(s.to_lowercase())
+        Value {
+            pv: PartialValue::new_iutf8s(s),
+        }
     }
 
     pub fn is_insensitive_utf8(&self) -> bool {
-        match self {
-            Value::Iutf8(_) => true,
+        match self.pv {
+            PartialValue::Iutf8(_) => true,
             _ => false,
         }
     }
 
     pub fn new_uuid(u: Uuid) -> Self {
-        Value::Uuid(u)
-    }
-
-    pub fn new_uuids(s: &str) -> Option<Self> {
-        match Uuid::parse_str(s) {
-            Ok(u) => Some(Value::Uuid(u)),
-            Err(_) => None,
+        Value {
+            pv: PartialValue::new_uuid(u),
         }
     }
 
+    pub fn new_uuids(s: &str) -> Option<Self> {
+        Some(Value {
+            pv: PartialValue::new_uuids(s)?,
+        })
+    }
+
     pub fn new_uuidr(u: &Uuid) -> Self {
-        Value::Uuid(u.clone())
+        Value {
+            pv: PartialValue::new_uuidr(u),
+        }
     }
 
     // Is this correct? Should ref be seperate?
     pub fn is_uuid(&self) -> bool {
-        match self {
-            Value::Uuid(_) => true,
-            Value::Refer(_) => true,
+        match self.pv {
+            PartialValue::Uuid(_) => true,
+            PartialValue::Refer(_) => true,
             _ => false,
         }
     }
 
     pub fn new_class(s: &str) -> Self {
-        Value::Iutf8(s.to_lowercase())
+        Value {
+            pv: PartialValue::new_iutf8s(s),
+        }
     }
 
     pub fn new_attr(s: &str) -> Self {
-        Value::Iutf8(s.to_lowercase())
+        Value {
+            pv: PartialValue::new_iutf8s(s),
+        }
     }
 
     pub fn new_bool(b: bool) -> Self {
-        Value::Bool(b)
+        Value {
+            pv: PartialValue::new_bool(b),
+        }
     }
 
     pub fn new_bools(s: &str) -> Option<Self> {
-        match bool::from_str(s) {
-            Ok(b) => Some(Value::Bool(b)),
-            Err(_) => None,
-        }
+        Some(Value {
+            pv: PartialValue::new_bools(s)?,
+        })
     }
 
     #[inline]
     pub fn is_bool(&self) -> bool {
-        match self {
-            Value::Bool(_) => true,
+        match self.pv {
+            PartialValue::Bool(_) => true,
             _ => false,
         }
     }
 
-    pub fn new_syntax(_s: &String) -> Option<Self> {
-        unimplemented!();
-    }
-
-    pub fn new_syntaxs(_s: &str) -> Option<Self> {
-        unimplemented!();
-    }
-
-    pub fn new_syntaxr(s: &SyntaxType) -> Self {
-        Value::Syntax(s.clone())
+    pub fn new_syntaxs(s: &str) -> Option<Self> {
+        Some(Value {
+            pv: PartialValue::new_syntaxs(s)?,
+        })
     }
 
     pub fn is_syntax(&self) -> bool {
-        match self {
-            Value::Syntax(_) => true,
+        match self.pv {
+            PartialValue::Syntax(_) => true,
             _ => false,
         }
     }
 
-    pub fn new_index(_s: &String) -> Option<Self> {
-        unimplemented!();
-    }
-
-    pub fn new_indexs(_s: &str) -> Option<Self> {
-        unimplemented!();
+    pub fn new_indexs(s: &str) -> Option<Self> {
+        Some(Value {
+            pv: PartialValue::new_indexs(s)?,
+        })
     }
 
     pub fn is_index(&self) -> bool {
-        match self {
-            Value::Index(_) => true,
+        match self.pv {
+            PartialValue::Index(_) => true,
             _ => false,
         }
     }
 
-    pub fn new_reference(u: Uuid) -> Self {
-        Value::Refer(u)
-    }
-
-    pub fn new_refer(u: &Uuid) -> Self {
-        Self::new_reference(u.clone())
-    }
-
-    pub fn new_refers(us: &str) -> Option<Self> {
-        match Uuid::parse_str(us) {
-            Ok(u) => Some(Self::new_reference(u)),
-            Err(_) => None,
+    pub fn new_refer(u: Uuid) -> Self {
+        Value {
+            pv: PartialValue::new_refer(u),
         }
+    }
+
+    pub fn new_refer_r(u: &Uuid) -> Self {
+        Value {
+            pv: PartialValue::new_refer_r(u),
+        }
+    }
+
+    pub fn new_refer_s(us: &str) -> Option<Self> {
+        Some(Value {
+            pv: PartialValue::new_refer_s(us)?,
+        })
     }
 
     pub fn new_json_filter(_s: &String) -> Option<Self> {
@@ -408,23 +549,66 @@ impl Value {
     }
 
     pub fn is_json_filter(&self) -> bool {
-        unimplemented!();
+        match self.pv {
+            PartialValue::JsonFilt(_) => true,
+            _ => false,
+        }
     }
 
-    pub fn contains(&self, _s: &PartialValue) -> bool {
-        unimplemented!();
+    pub fn contains(&self, s: &PartialValue) -> bool {
+        self.pv.contains(s)
     }
 
     // Converters between DBRepr -> MemRepr. It's likely many of these
     // will be just wrappers to our from str types.
 
     // Keep this updated with DbValueV1 in be::dbvalue.
-    pub(crate) fn from_db_valuev1(_v: DbValueV1) -> Self {
-        unimplemented!();
+    pub(crate) fn from_db_valuev1(v: DbValueV1) -> Result<Self, ()> {
+        // TODO: Should this actually take ownership? Or do we clone?
+        match v {
+            DbValueV1::U8(s) => Ok(Value {
+                pv: PartialValue::Utf8(s),
+            }),
+            DbValueV1::I8(s) => {
+                Ok(Value {
+                    // TODO: Should we be lowercasing here? The dbv should be normalised
+                    // already, but is there a risk of corruption/tampering if we don't touch this?
+                    pv: PartialValue::Iutf8(s.to_lowercase()),
+                })
+            }
+            DbValueV1::UU(u) => Ok(Value {
+                pv: PartialValue::Uuid(u),
+            }),
+            DbValueV1::BO(b) => Ok(Value {
+                pv: PartialValue::Bool(b),
+            }),
+            DbValueV1::SY(us) => Ok(Value {
+                pv: PartialValue::Syntax(SyntaxType::try_from(us)?),
+            }),
+            DbValueV1::IN(us) => Ok(Value {
+                pv: PartialValue::Index(IndexType::try_from(us)?),
+            }),
+            DbValueV1::RF(u) => Ok(Value {
+                pv: PartialValue::Refer(u),
+            }),
+            DbValueV1::JF(s) => Ok(Value {
+                pv: PartialValue::JsonFilt(s),
+            }),
+        }
     }
 
     pub(crate) fn to_db_valuev1(&self) -> DbValueV1 {
-        unimplemented!();
+        // TODO: Should this actually take ownership? Or do we clone?
+        match &self.pv {
+            PartialValue::Utf8(s) => DbValueV1::U8(s.clone()),
+            PartialValue::Iutf8(s) => DbValueV1::I8(s.clone()),
+            PartialValue::Uuid(u) => DbValueV1::UU(u.clone()),
+            PartialValue::Bool(b) => DbValueV1::BO(b.clone()),
+            PartialValue::Syntax(syn) => DbValueV1::SY(syn.to_usize()),
+            PartialValue::Index(it) => DbValueV1::IN(it.to_usize()),
+            PartialValue::Refer(u) => DbValueV1::RF(u.clone()),
+            PartialValue::JsonFilt(s) => DbValueV1::I8(s.clone()),
+        }
     }
 
     /// Convert to a proto/public value that can be read and consumed.
@@ -433,9 +617,9 @@ impl Value {
     }
 
     pub fn to_str(&self) -> Option<&str> {
-        match self {
-            Value::Utf8(s) => Some(s.as_str()),
-            Value::Iutf8(s) => Some(s.as_str()),
+        match &self.pv {
+            PartialValue::Utf8(s) => Some(s.as_str()),
+            PartialValue::Iutf8(s) => Some(s.as_str()),
             _ => None,
         }
     }
@@ -445,9 +629,9 @@ impl Value {
     }
 
     pub fn as_string(&self) -> Option<&String> {
-        match self {
-            Value::Utf8(s) => Some(s),
-            Value::Iutf8(s) => Some(s),
+        match &self.pv {
+            PartialValue::Utf8(s) => Some(s),
+            PartialValue::Iutf8(s) => Some(s),
             _ => None,
         }
     }
@@ -455,51 +639,57 @@ impl Value {
     // We need a seperate to-ref_uuid to distinguish from normal uuids
     // in refint plugin.
     pub fn to_ref_uuid(&self) -> Option<&Uuid> {
-        match self {
-            Value::Refer(u) => Some(&u),
+        match &self.pv {
+            PartialValue::Refer(u) => Some(&u),
             _ => None,
         }
     }
 
     pub fn to_uuid(&self) -> Option<&Uuid> {
-        match self {
-            Value::Uuid(u) => Some(&u),
-            Value::Refer(u) => Some(&u),
+        match &self.pv {
+            PartialValue::Uuid(u) => Some(&u),
             _ => None,
         }
     }
 
     pub fn to_indextype(&self) -> Option<&IndexType> {
-        match self {
-            Value::Index(i) => Some(&i),
+        match &self.pv {
+            PartialValue::Index(i) => Some(&i),
             _ => None,
         }
     }
 
     pub fn to_syntaxtype(&self) -> Option<&SyntaxType> {
-        match self {
-            Value::Syntax(s) => Some(&s),
+        match &self.pv {
+            PartialValue::Syntax(s) => Some(&s),
             _ => None,
         }
     }
 
     pub fn to_bool(&self) -> Option<bool> {
-        match self {
+        match self.pv {
             // *v is to invoke a copy, but this is cheap af
-            Value::Bool(v) => Some(*v),
+            PartialValue::Bool(v) => Some(v),
             _ => None,
         }
     }
 
     pub fn to_partialvalue(&self) -> PartialValue {
         // Match on self to become a partialvalue.
+        self.pv.clone()
+    }
+
+    pub fn validate(&self) -> bool {
+        // Validate that extra-data constraints on the type exist and are
+        // valid. IE json filter is really a filter, or cred types have supplemental
+        // data.
         unimplemented!()
     }
 }
 
 impl Borrow<PartialValue> for Value {
     fn borrow(&self) -> &PartialValue {
-        unimplemented!();
+        &self.pv
     }
 }
 

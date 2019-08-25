@@ -167,7 +167,7 @@ pub trait QueryServerTransaction {
         // index searches, completely bypassing id2entry.
 
         // construct the filter
-        let filt = filter!(f_eq("name", PartialValue::new_iutf8(name)));
+        let filt = filter!(f_eq("name", PartialValue::new_iutf8s(name)));
         audit_log!(audit, "name_to_uuid: name -> {:?}", name);
 
         // Internal search - DO NOT SEARCH TOMBSTONES AND RECYCLE
@@ -351,14 +351,12 @@ pub trait QueryServerTransaction {
             Some(schema_a) => {
                 match schema_a.syntax {
                     SyntaxType::UTF8STRING => Ok(Value::new_utf8(value.clone())),
-                    SyntaxType::UTF8STRING_INSENSITIVE => {
-                        Ok(Value::new_insensitive_utf8(value.clone()))
-                    }
-                    SyntaxType::BOOLEAN => Value::new_bools(value)
+                    SyntaxType::UTF8STRING_INSENSITIVE => Ok(Value::new_iutf8s(value.as_str())),
+                    SyntaxType::BOOLEAN => Value::new_bools(value.as_str())
                         .ok_or(OperationError::InvalidAttribute("Invalid boolean syntax")),
-                    SyntaxType::SYNTAX_ID => Value::new_syntax(value)
+                    SyntaxType::SYNTAX_ID => Value::new_syntaxs(value.as_str())
                         .ok_or(OperationError::InvalidAttribute("Invalid Syntax syntax")),
-                    SyntaxType::INDEX_ID => Value::new_index(value)
+                    SyntaxType::INDEX_ID => Value::new_indexs(value.as_str())
                         .ok_or(OperationError::InvalidAttribute("Invalid Index syntax")),
                     SyntaxType::UUID => {
                         // It's a uuid - we do NOT check for existance, because that
@@ -386,7 +384,7 @@ pub trait QueryServerTransaction {
                                 let un = self
                                     .name_to_uuid(audit, value)
                                     .unwrap_or_else(|_| UUID_DOES_NOT_EXIST.clone());
-                                Some(Value::new_reference(un))
+                                Some(Value::new_refer(un))
                             })
                             // I think this is unreachable due to how the .or_else works.
                             .ok_or(OperationError::InvalidAttribute("Invalid Reference syntax"))
@@ -1635,7 +1633,7 @@ mod tests {
     fn test_qs_create_user() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             let mut server_txn = server.write();
-            let filt = filter!(f_eq("name", PartialValue::new_iutf8("testperson")));
+            let filt = filter!(f_eq("name", PartialValue::new_iutf8s("testperson")));
             let admin = server_txn
                 .internal_search_uuid(audit, &UUID_ADMIN)
                 .expect("failed");
@@ -1760,7 +1758,7 @@ mod tests {
             let me_nochg = unsafe {
                 ModifyEvent::new_impersonate_entry_ser(
                     JSON_ADMIN_V1,
-                    filter!(f_eq("name", PartialValue::new_iutf8("flarbalgarble"))),
+                    filter!(f_eq("name", PartialValue::new_iutf8s("flarbalgarble"))),
                     ModifyList::new_list(vec![Modify::Present(
                         "description".to_string(),
                         Value::from("anusaosu"),
@@ -1775,7 +1773,7 @@ mod tests {
             // this.
             let r_inv_1 = server_txn.internal_modify(
                 audit,
-                filter!(f_eq("tnanuanou", PartialValue::new_iutf8("Flarbalgarble"))),
+                filter!(f_eq("tnanuanou", PartialValue::new_iutf8s("Flarbalgarble"))),
                 ModifyList::new_list(vec![Modify::Present(
                     "description".to_string(),
                     Value::from("anusaosu"),
@@ -1808,7 +1806,7 @@ mod tests {
             // Mod single object
             let me_sin = unsafe {
                 ModifyEvent::new_internal_invalid(
-                    filter!(f_eq("name", PartialValue::new_iutf8("testperson2"))),
+                    filter!(f_eq("name", PartialValue::new_iutf8s("testperson2"))),
                     ModifyList::new_list(vec![Modify::Present(
                         "description".to_string(),
                         Value::from("anusaosu"),
@@ -1821,8 +1819,8 @@ mod tests {
             let me_mult = unsafe {
                 ModifyEvent::new_internal_invalid(
                     filter!(f_or!([
-                        f_eq("name", PartialValue::new_iutf8("testperson1")),
-                        f_eq("name", PartialValue::new_iutf8("testperson2")),
+                        f_eq("name", PartialValue::new_iutf8s("testperson1")),
+                        f_eq("name", PartialValue::new_iutf8s("testperson2")),
                     ])),
                     ModifyList::new_list(vec![Modify::Present(
                         "description".to_string(),
@@ -1866,7 +1864,7 @@ mod tests {
             // Add class but no values
             let me_sin = unsafe {
                 ModifyEvent::new_internal_invalid(
-                    filter!(f_eq("name", PartialValue::new_iutf8("testperson1"))),
+                    filter!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
                     ModifyList::new_list(vec![Modify::Present(
                         "class".to_string(),
                         Value::new_class("system_info"),
@@ -1878,10 +1876,10 @@ mod tests {
             // Add multivalue where not valid
             let me_sin = unsafe {
                 ModifyEvent::new_internal_invalid(
-                    filter!(f_eq("name", PartialValue::new_iutf8("testperson1"))),
+                    filter!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
                     ModifyList::new_list(vec![Modify::Present(
                         "name".to_string(),
-                        Value::new_insensitive_utf8("testpersonx".to_string()),
+                        Value::new_iutf8s("testpersonx"),
                     )]),
                 )
             };
@@ -1890,7 +1888,7 @@ mod tests {
             // add class and valid values?
             let me_sin = unsafe {
                 ModifyEvent::new_internal_invalid(
-                    filter!(f_eq("name", PartialValue::new_iutf8("testperson1"))),
+                    filter!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
                     ModifyList::new_list(vec![
                         Modify::Present("class".to_string(), Value::new_class("system_info")),
                         Modify::Present("domain".to_string(), Value::new_iutf8s("domain.name")),
@@ -1903,7 +1901,7 @@ mod tests {
             // Replace a value
             let me_sin = unsafe {
                 ModifyEvent::new_internal_invalid(
-                    filter!(f_eq("name", PartialValue::new_iutf8("testperson1"))),
+                    filter!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
                     ModifyList::new_list(vec![
                         Modify::Purged("name".to_string()),
                         Modify::Present("name".to_string(), Value::new_iutf8s("testpersonx")),
@@ -1988,7 +1986,7 @@ mod tests {
             let de_sin = unsafe {
                 DeleteEvent::new_internal_invalid(filter!(f_eq(
                     "name",
-                    PartialValue::new_iutf8("testperson3")
+                    PartialValue::new_iutf8s("testperson3")
                 )))
             };
             assert!(server_txn.delete(audit, &de_sin).is_ok());
@@ -2262,7 +2260,7 @@ mod tests {
             let de_sin = unsafe {
                 DeleteEvent::new_internal_invalid(filter!(f_eq(
                     "name",
-                    PartialValue::new_iutf8("testperson1")
+                    PartialValue::new_iutf8s("testperson1")
                 )))
             };
             assert!(server_txn.delete(audit, &de_sin).is_ok());
@@ -2401,7 +2399,7 @@ mod tests {
             let r3 =
                 server_txn.clone_value(audit, &"member".to_string(), &"testperson1".to_string());
 
-            assert!(r3 == Ok(Value::new_refers("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap()));
+            assert!(r3 == Ok(Value::new_refer_s("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap()));
 
             // test attr reference already resolved.
             let r4 = server_txn.clone_value(
@@ -2411,7 +2409,7 @@ mod tests {
             );
 
             println!("{:?}", r4);
-            assert!(r4 == Ok(Value::new_refers("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap()));
+            assert!(r4 == Ok(Value::new_refer_s("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap()));
         })
     }
 
@@ -2473,7 +2471,7 @@ mod tests {
             let de_class = unsafe {
                 DeleteEvent::new_internal_invalid(filter!(f_eq(
                     "name",
-                    PartialValue::new_iutf8("testclass")
+                    PartialValue::new_iutf8s("testclass")
                 )))
             };
             assert!(server_txn.delete(audit, &de_class).is_ok());
@@ -2492,7 +2490,7 @@ mod tests {
                     &Uuid::parse_str("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap(),
                 )
                 .expect("failed");
-            assert!(testobj1.attribute_value_pres("class", &PartialValue::new_iutf8("testclass")));
+            assert!(testobj1.attribute_value_pres("class", &PartialValue::new_iutf8s("testclass")));
 
             // Should still be good
             server_txn.commit(audit).expect("should not fail");
@@ -2561,7 +2559,7 @@ mod tests {
             let de_attr = unsafe {
                 DeleteEvent::new_internal_invalid(filter!(f_eq(
                     "name",
-                    PartialValue::new_iutf8("testattr")
+                    PartialValue::new_iutf8s("testattr")
                 )))
             };
             assert!(server_txn.delete(audit, &de_attr).is_ok());
