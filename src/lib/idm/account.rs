@@ -99,9 +99,8 @@ mod tests {
 
     #[test]
     fn test_idm_account_from_anonymous() {
-        let anon_e: Entry<EntryValid, EntryNew> = unsafe {
-            Entry::unsafe_from_entry_str(JSON_ANONYMOUS_V1).to_valid_new()
-        };
+        let anon_e: Entry<EntryValid, EntryNew> =
+            unsafe { Entry::unsafe_from_entry_str(JSON_ANONYMOUS_V1).to_valid_new() };
         let anon_e = unsafe { anon_e.to_valid_committed() };
 
         let anon_account = Account::try_from_entry(anon_e).expect("Must not fail");

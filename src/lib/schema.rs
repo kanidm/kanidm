@@ -139,7 +139,14 @@ impl SchemaAttribute {
         }
     }
 
-    /*
+    fn validate_refer(&self, v: &Value) -> Result<(), SchemaError> {
+        if v.is_refer() {
+            Ok(())
+        } else {
+            Err(SchemaError::InvalidAttributeSyntax)
+        }
+    }
+
     fn validate_json_filter(&self, v: &Value) -> Result<(), SchemaError> {
         // I *think* we just check if this can become a ProtoFilter v1
         // rather than anything more complex.
@@ -163,10 +170,17 @@ impl SchemaAttribute {
             Err(SchemaError::InvalidAttributeSyntax)
         }
     }
-    */
 
     fn validate_utf8string_insensitive(&self, v: &Value) -> Result<(), SchemaError> {
         if v.is_insensitive_utf8() {
+            Ok(())
+        } else {
+            Err(SchemaError::InvalidAttributeSyntax)
+        }
+    }
+
+    fn validate_utf8string(&self, v: &Value) -> Result<(), SchemaError> {
+        if v.is_utf8() {
             Ok(())
         } else {
             Err(SchemaError::InvalidAttributeSyntax)
@@ -240,7 +254,7 @@ impl SchemaAttribute {
             // This is the same as a UUID, refint is a plugin
             SyntaxType::REFERENCE_UUID => ava.iter().fold(Ok(()), |acc, v| {
                 if acc.is_ok() {
-                    self.validate_uuid(v)
+                    self.validate_refer(v)
                 } else {
                     acc
                 }
@@ -260,7 +274,20 @@ impl SchemaAttribute {
                     acc
                 }
             }),
-            _ => Ok(()),
+            SyntaxType::UTF8STRING => ava.iter().fold(Ok(()), |acc, v| {
+                if acc.is_ok() {
+                    self.validate_utf8string(v)
+                } else {
+                    acc
+                }
+            }),
+            SyntaxType::JSON_FILTER => ava.iter().fold(Ok(()), |acc, v| {
+                if acc.is_ok() {
+                    self.validate_json_filter(v)
+                } else {
+                    acc
+                }
+            }),
         }
     }
 }
@@ -1575,8 +1602,7 @@ mod tests {
             "state": null,
             "attrs": {}
         }"#,
-        )
-        ;
+        );
 
         assert_eq!(
             e_no_uuid.validate(&schema),
@@ -1591,8 +1617,7 @@ mod tests {
                 "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"]
             }
         }"#,
-        )
-        ;
+        );
 
         assert_eq!(e_no_class.validate(&schema), Err(SchemaError::InvalidClass));
 
@@ -1605,8 +1630,7 @@ mod tests {
                 "class": ["zzzzzz"]
             }
         }"#,
-        )
-        ;
+        );
         assert_eq!(
             e_bad_class.validate(&schema),
             Err(SchemaError::InvalidClass)
@@ -1621,8 +1645,7 @@ mod tests {
                 "class": ["object", "attributetype"]
             }
         }"#,
-        )
-        ;
+        );
 
         let res = e_attr_invalid.validate(&schema);
         assert!(match res {
@@ -1644,8 +1667,7 @@ mod tests {
                 "zzzzz": ["zzzz"]
             }
         }"#,
-        )
-        ;
+        );
 
         assert_eq!(
             e_attr_invalid_may.validate(&schema),
@@ -1665,8 +1687,7 @@ mod tests {
                 "syntax": ["UTF8STRING"]
             }
         }"#,
-        )
-        ;
+        );
 
         assert_eq!(
             e_attr_invalid_syn.validate(&schema),
@@ -1686,8 +1707,7 @@ mod tests {
                 "syntax": ["UTF8STRING"]
             }
         }"#,
-        )
-        ;
+        );
         assert!(e_ok.validate(&schema).is_ok());
         println!("{}", audit);
     }
@@ -1715,11 +1735,11 @@ mod tests {
                 "InDeX": ["equality"]
             }
         }"#,
-        )
-        ;
+        );
 
-        let e_expect: Entry<EntryValid, EntryNew> = unsafe { Entry::unsafe_from_entry_str(
-            r#"{
+        let e_expect: Entry<EntryValid, EntryNew> = unsafe {
+            Entry::unsafe_from_entry_str(
+                r#"{
             "valid": {
                 "uuid": "db237e8a-0079-4b8c-8a56-593b22aa44d1"
             },
@@ -1732,8 +1752,9 @@ mod tests {
                 "index": ["EQUALITY"]
             }
         }"#,
-        ).to_valid_new() }
-        ;
+            )
+            .to_valid_new()
+        };
 
         let e_valid = e_test.validate(&schema).expect("validation failure");
 
@@ -1807,8 +1828,7 @@ mod tests {
                 "multivalue": ["zzzz"]
             }
         }"#,
-        )
-        ;
+        );
 
         assert_eq!(
             e_extensible_bad.validate(&schema),
@@ -1825,8 +1845,7 @@ mod tests {
                 "multivalue": ["true"]
             }
         }"#,
-        )
-        ;
+        );
 
         /* Is okay because extensible! */
         assert!(e_extensible.validate(&schema).is_ok());

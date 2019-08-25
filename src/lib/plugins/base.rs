@@ -48,6 +48,7 @@ impl Plugin for Base {
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
+        debug!("Entering base pre_create_transform");
         // For each candidate
         for entry in cand.iter_mut() {
             audit_log!(au, "Base check on entry: {:?}", entry);
@@ -325,8 +326,7 @@ mod tests {
                 "displayname": ["testperson"]
             }
         }"#,
-        )
-        ;
+        );
 
         let create = vec![e];
 
@@ -365,8 +365,7 @@ mod tests {
                 "uuid": ["xxxxxx"]
             }
         }"#,
-        )
-        ;
+        );
 
         let create = vec![e.clone()];
 
@@ -396,8 +395,7 @@ mod tests {
                 "uuid": []
             }
         }"#,
-        )
-        ;
+        );
 
         let create = vec![e.clone()];
 
@@ -427,8 +425,7 @@ mod tests {
                 "uuid": ["79724141-3603-4060-b6bb-35c72772611d"]
             }
         }"#,
-        )
-        ;
+        );
 
         let create = vec![e.clone()];
 
@@ -505,8 +502,7 @@ mod tests {
                 "uuid": ["79724141-3603-4060-b6bb-35c72772611d"]
             }
         }"#,
-        )
-        ;
+        );
 
         let create = vec![e.clone()];
         let preload = vec![e];
@@ -537,8 +533,7 @@ mod tests {
                 "uuid": ["79724141-3603-4060-b6bb-35c72772611d"]
             }
         }"#,
-        )
-        ;
+        );
 
         let eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
@@ -552,8 +547,7 @@ mod tests {
                 "uuid": ["79724141-3603-4060-b6bb-35c72772611d"]
             }
         }"#,
-        )
-        ;
+        );
 
         let create = vec![ea, eb];
 
@@ -581,8 +575,7 @@ mod tests {
                 "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
             }
         }"#,
-        )
-        ;
+        );
 
         let preload = vec![ea];
 
@@ -613,8 +606,7 @@ mod tests {
                 "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
             }
         }"#,
-        )
-        ;
+        );
 
         let preload = vec![ea];
 
@@ -645,8 +637,7 @@ mod tests {
                 "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
             }
         }"#,
-        )
-        ;
+        );
 
         let preload = vec![ea];
 
@@ -665,8 +656,7 @@ mod tests {
         // Test an external create, it should fail.
         // Testing internal create is not super needed, due to migrations at start
         // up testing this every time we run :P
-        let acp: Entry<EntryInvalid, EntryNew> =
-            Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
+        let acp: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
 
         let preload = vec![acp];
 
@@ -682,8 +672,7 @@ mod tests {
                 "displayname": ["testperson"]
             }
         }"#,
-        )
-        ;
+        );
 
         let create = vec![e.clone()];
 
@@ -713,8 +702,7 @@ mod tests {
                 "displayname": ["testperson"]
             }
         }"#,
-        )
-        ;
+        );
 
         let create = vec![e.clone()];
 

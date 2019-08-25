@@ -341,6 +341,8 @@ pub trait QueryServerTransaction {
     ) -> Result<Value, OperationError> {
         let schema = self.get_schema();
 
+        // TODO: Should this actually be a fn of Value?
+
         // Should we return the normalise attr?
         // no, I think that it's not up to us to normalise this all the time.
         // TODO: I think maybe we should?
@@ -379,7 +381,7 @@ pub trait QueryServerTransaction {
                     }
                     SyntaxType::REFERENCE_UUID => {
                         // See comments above.
-                        Value::new_uuids(value.as_str())
+                        Value::new_refer_s(value.as_str())
                             .or_else(|| {
                                 let un = self
                                     .name_to_uuid(audit, value)
@@ -659,7 +661,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let _ = try_audit!(
             au,
             plug_pre_transform_res,
-            "Create operation failed (plugin), {:?}"
+            "Create operation failed (pre_transform plugin), {:?}"
         );
 
         // NOTE: This is how you map from Vec<Result<T>> to Result<Vec<T>>
@@ -708,7 +710,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
         au.append_scope(audit_plugin_post);
 
         if plug_post_res.is_err() {
-            audit_log!(au, "Create operation failed (plugin), {:?}", plug_post_res);
+            audit_log!(
+                au,
+                "Create operation failed (post plugin), {:?}",
+                plug_post_res
+            );
             return plug_post_res;
         }
 
@@ -1658,8 +1664,7 @@ mod tests {
                     "displayname": ["testperson"]
                 }
             }"#,
-            )
-            ;
+            );
 
             let ce = CreateEvent::new_internal(vec![e.clone()]);
 
@@ -1727,8 +1732,7 @@ mod tests {
                     "displayname": ["testperson1"]
                 }
             }"#,
-            )
-            ;
+            );
 
             let e2: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
@@ -1742,8 +1746,7 @@ mod tests {
                     "displayname": ["testperson2"]
                 }
             }"#,
-            )
-            ;
+            );
 
             let ce = CreateEvent::new_internal(vec![e1.clone(), e2.clone()]);
 
@@ -1858,8 +1861,7 @@ mod tests {
                     "displayname": ["testperson1"]
                 }
             }"#,
-            )
-            ;
+            );
 
             let ce = CreateEvent::new_internal(vec![e1.clone()]);
 
@@ -1935,8 +1937,7 @@ mod tests {
                     "displayname": ["testperson1"]
                 }
             }"#,
-            )
-            ;
+            );
 
             let e2: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
@@ -1950,8 +1951,7 @@ mod tests {
                     "displayname": ["testperson2"]
                 }
             }"#,
-            )
-            ;
+            );
 
             let e3: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
@@ -1965,8 +1965,7 @@ mod tests {
                     "displayname": ["testperson3"]
                 }
             }"#,
-            )
-            ;
+            );
 
             let ce = CreateEvent::new_internal(vec![e1.clone(), e2.clone(), e3.clone()]);
 
@@ -2054,8 +2053,7 @@ mod tests {
                     "uuid": ["9557f49c-97a5-4277-a9a5-097d17eb8317"]
                 }
             }"#,
-            )
-            ;
+            );
 
             let ce = CreateEvent::new_internal(vec![e_ts]);
             let cr = server_txn.create(audit, &ce);
@@ -2159,8 +2157,7 @@ mod tests {
                     "displayname": ["testperson1"]
                 }
             }"#,
-            )
-            ;
+            );
 
             let e2: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
@@ -2174,8 +2171,7 @@ mod tests {
                     "displayname": ["testperson2"]
                 }
             }"#,
-            )
-            ;
+            );
 
             let ce = CreateEvent::new_internal(vec![e1, e2]);
             let cr = server_txn.create(audit, &ce);
@@ -2255,8 +2251,7 @@ mod tests {
                     "displayname": ["testperson1"]
                 }
             }"#,
-            )
-            ;
+            );
             let ce = CreateEvent::new_internal(vec![e1]);
 
             let cr = server_txn.create(audit, &ce);
@@ -2301,8 +2296,7 @@ mod tests {
                     "displayname": ["testperson1"]
                 }
                 }"#,
-            )
-            ;
+            );
             let ce = CreateEvent::new_internal(vec![e1]);
             let cr = server_txn.create(audit, &ce);
             assert!(cr.is_ok());
@@ -2339,8 +2333,7 @@ mod tests {
                     "displayname": ["testperson1"]
                 }
             }"#,
-            )
-            ;
+            );
             let ce = CreateEvent::new_internal(vec![e1]);
             let cr = server_txn.create(audit, &ce);
             assert!(cr.is_ok());
@@ -2382,8 +2375,7 @@ mod tests {
                     "displayname": ["testperson1"]
                 }
             }"#,
-            )
-            ;
+            );
             let ce = CreateEvent::new_internal(vec![e1]);
             let cr = server_txn.create(audit, &ce);
             assert!(cr.is_ok());
@@ -2431,8 +2423,7 @@ mod tests {
                     "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"]
                 }
             }"#,
-            )
-            ;
+            );
 
             // Class definition
             let e_cd: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
@@ -2446,8 +2437,7 @@ mod tests {
                     "description": ["Test Class"]
                 }
             }"#,
-            )
-            ;
+            );
 
             let mut server_txn = server.write();
             // Add a new class.
@@ -2517,8 +2507,7 @@ mod tests {
                     "testattr": ["test"]
                 }
             }"#,
-            )
-            ;
+            );
 
             // Attribute definition
             let e_ad: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
@@ -2534,8 +2523,7 @@ mod tests {
                     "syntax": ["UTF8STRING"]
                 }
             }"#,
-            )
-            ;
+            );
 
             let mut server_txn = server.write();
             // Add a new attribute.

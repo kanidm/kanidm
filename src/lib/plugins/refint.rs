@@ -34,7 +34,8 @@ impl ReferentialIntegrity {
         rtype: &String,
         uuid_value: &Value,
     ) -> Result<(), OperationError> {
-        let uuid = uuid_value.to_ref_uuid().ok_or(OperationError::Plugin)?;
+        debug!("{:?}", uuid_value);
+        let uuid = try_audit!(au, uuid_value.to_ref_uuid().ok_or(OperationError::Plugin));
         let mut au_qs = AuditScope::new("qs_exist");
         // NOTE: This only checks LIVE entries (not using filter_all)
         let filt_in = filter!(f_eq("uuid", PartialValue::new_uuid(uuid.clone())));
@@ -262,8 +263,7 @@ mod tests {
                 "member": ["ca85168c-91b7-49a8-b7bb-a3d5bb40e97e"]
             }
         }"#,
-        )
-        ;
+        );
 
         let create = vec![e.clone()];
         let preload = Vec::new();
@@ -290,8 +290,7 @@ mod tests {
                 "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
             }
         }"#,
-        )
-        ;
+        );
 
         let eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
@@ -304,8 +303,7 @@ mod tests {
                 "member": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
             }
         }"#,
-        )
-        ;
+        );
 
         let preload = vec![ea];
         let create = vec![eb];
@@ -344,8 +342,7 @@ mod tests {
                 "member": ["8cef42bc-2cac-43e4-96b3-8f54561885ca"]
             }
         }"#,
-        )
-        ;
+        );
 
         let create = vec![e];
 
@@ -380,8 +377,7 @@ mod tests {
                 "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
             }
         }"#,
-        )
-        ;
+        );
 
         let eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
@@ -393,8 +389,7 @@ mod tests {
                 "description": ["testgroup"]
             }
         }"#,
-        )
-        ;
+        );
 
         let preload = vec![ea, eb];
 
@@ -424,8 +419,7 @@ mod tests {
                 "description": ["testgroup"]
             }
         }"#,
-        )
-        ;
+        );
 
         let preload = vec![eb];
 
@@ -456,8 +450,7 @@ mod tests {
                 "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
             }
         }"#,
-        )
-        ;
+        );
 
         let eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
@@ -470,8 +463,7 @@ mod tests {
                 "member": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
             }
         }"#,
-        )
-        ;
+        );
 
         let preload = vec![ea, eb];
 
@@ -499,8 +491,7 @@ mod tests {
                 "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
             }
         }"#,
-        )
-        ;
+        );
 
         let preload = vec![ea];
 
@@ -531,8 +522,7 @@ mod tests {
                 "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
             }
         }"#,
-        )
-        ;
+        );
 
         let eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
@@ -544,8 +534,7 @@ mod tests {
                 "description": ["testgroup"]
             }
         }"#,
-        )
-        ;
+        );
 
         let preload = vec![ea, eb];
 
@@ -578,8 +567,7 @@ mod tests {
                 "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
             }
         }"#,
-        )
-        ;
+        );
 
         let eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
@@ -592,8 +580,7 @@ mod tests {
                 "member": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
             }
         }"#,
-        )
-        ;
+        );
 
         let preload = vec![ea, eb];
 
@@ -626,8 +613,7 @@ mod tests {
                 "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
             }
         }"#,
-        )
-        ;
+        );
 
         let eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
@@ -640,8 +626,7 @@ mod tests {
                 "member": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
             }
         }"#,
-        )
-        ;
+        );
 
         let preload = vec![ea, eb];
 
@@ -669,8 +654,7 @@ mod tests {
                 "member": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
             }
         }"#,
-        )
-        ;
+        );
 
         let preload = vec![eb];
 

@@ -155,8 +155,7 @@ impl Event {
 
     #[cfg(test)]
     pub unsafe fn from_impersonate_entry_ser(e: &str) -> Self {
-        let ei: Entry<EntryInvalid, EntryNew> =
-            Entry::unsafe_from_entry_str(e);
+        let ei: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(e);
         Self::from_impersonate_entry(ei.to_valid_committed())
     }
 

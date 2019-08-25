@@ -6,7 +6,7 @@ use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use crate::proto::v1::Entry as ProtoEntry;
 use crate::proto::v1::Filter as ProtoFilter;
 use crate::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
-use crate::server::QueryServerWriteTransaction;
+use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
 use crate::value::{IndexType, SyntaxType};
 use crate::value::{PartialValue, Value};
 
@@ -206,10 +206,8 @@ impl Entry<EntryInvalid, EntryNew> {
             .attrs
             .iter()
             .map(|(k, v)| {
-                let nv: Result<BTreeSet<Value>, _> = v
-                    .iter()
-                    .map(|vr| Value::from_attr(audit, qs, &k, vr))
-                    .collect();
+                let nv: Result<BTreeSet<Value>, _> =
+                    v.iter().map(|vr| qs.clone_value(audit, &k, vr)).collect();
                 match nv {
                     Ok(nvi) => Ok((k.clone(), nvi)),
                     Err(e) => Err(e),
@@ -229,19 +227,21 @@ impl Entry<EntryInvalid, EntryNew> {
     }
 
     pub fn from_proto_entry_str(
-        _audit: &mut AuditScope,
-        _es: &str,
-        _qs: &QueryServerWriteTransaction,
+        audit: &mut AuditScope,
+        es: &str,
+        qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         // str -> Proto entry
+        let pe: ProtoEntry = try_audit!(
+            audit,
+            serde_json::from_str(es).map_err(|_| OperationError::SerdeJsonError)
+        );
         // now call from_proto_entry
-        unimplemented!();
+        Self::from_proto_entry(audit, &pe, qs)
     }
 
     #[cfg(test)]
-    pub(crate) fn unsafe_from_entry_str(
-        _es: &str
-    ) -> Self {
+    pub(crate) fn unsafe_from_entry_str(_es: &str) -> Self {
         // Just use log directly here, it's testing
         // str -> proto entry
 
@@ -809,8 +809,13 @@ impl Entry<EntryValid, EntryCommitted> {
             .and_then(|s: &String| Some((*s).clone()))
     }
 
-    pub fn get_ava_single_protofilter(&self, _attr: &str) -> Option<ProtoFilter> {
-        unimplemented!()
+    pub fn get_ava_single_protofilter(&self, attr: &str) -> Option<ProtoFilter> {
+        self.get_ava_single(attr)
+            .and_then(|v: &Value| {
+                debug!("get_ava_single_protofilter -> {:?}", v);
+                v.as_json_filter()
+            })
+            .and_then(|f: &ProtoFilter| Some((*f).clone()))
     }
 }
 

@@ -935,8 +935,9 @@ mod tests {
 
     #[test]
     fn test_or_entry_filter() {
-        let e: Entry<EntryValid, EntryNew> = unsafe { Entry::unsafe_from_entry_str(
-            r#"{
+        let e: Entry<EntryValid, EntryNew> = unsafe {
+            Entry::unsafe_from_entry_str(
+                r#"{
             "valid": {
                 "uuid": "db237e8a-0079-4b8c-8a56-593b22aa44d1"
             },
@@ -947,7 +948,9 @@ mod tests {
                 "uidnumber": ["1000"]
             }
         }"#,
-        ).to_valid_new() };
+            )
+            .to_valid_new()
+        };
 
         let f_t1a = unsafe {
             filter_resolved!(f_or!([
@@ -984,8 +987,9 @@ mod tests {
 
     #[test]
     fn test_and_entry_filter() {
-        let e: Entry<EntryValid, EntryNew> = unsafe { Entry::unsafe_from_entry_str(
-            r#"{
+        let e: Entry<EntryValid, EntryNew> = unsafe {
+            Entry::unsafe_from_entry_str(
+                r#"{
             "valid": {
                 "uuid": "db237e8a-0079-4b8c-8a56-593b22aa44d1"
             },
@@ -996,7 +1000,9 @@ mod tests {
                 "uidnumber": ["1000"]
             }
         }"#,
-        ).to_valid_new() };
+            )
+            .to_valid_new()
+        };
 
         let f_t1a = unsafe {
             filter_resolved!(f_and!([
@@ -1033,8 +1039,9 @@ mod tests {
 
     #[test]
     fn test_not_entry_filter() {
-        let e1: Entry<EntryValid, EntryNew> = unsafe { Entry::unsafe_from_entry_str(
-            r#"{
+        let e1: Entry<EntryValid, EntryNew> = unsafe {
+            Entry::unsafe_from_entry_str(
+                r#"{
             "valid": {
                 "uuid": "db237e8a-0079-4b8c-8a56-593b22aa44d1"
             },
@@ -1045,7 +1052,9 @@ mod tests {
                 "uidnumber": ["1000"]
             }
         }"#,
-        ).to_valid_new() };
+            )
+            .to_valid_new()
+        };
 
         let f_t1a = unsafe {
             filter_resolved!(f_andnot(f_eq("userid", PartialValue::new_iutf8s("alice"))))
@@ -1063,8 +1072,9 @@ mod tests {
 
     #[test]
     fn test_nested_entry_filter() {
-        let e1: Entry<EntryValid, EntryNew> = unsafe { Entry::unsafe_from_entry_str(
-            r#"{
+        let e1: Entry<EntryValid, EntryNew> = unsafe {
+            Entry::unsafe_from_entry_str(
+                r#"{
             "valid": {
                 "uuid": "db237e8a-0079-4b8c-8a56-593b22aa44d1"
             },
@@ -1075,10 +1085,13 @@ mod tests {
                 "uidnumber": ["1000"]
             }
         }"#,
-        ).to_valid_new() };
+            )
+            .to_valid_new()
+        };
 
-        let e2: Entry<EntryValid, EntryNew> = unsafe { Entry::unsafe_from_entry_str(
-            r#"{
+        let e2: Entry<EntryValid, EntryNew> = unsafe {
+            Entry::unsafe_from_entry_str(
+                r#"{
             "valid": {
                 "uuid": "4b6228ab-1dbe-42a4-a9f5-f6368222438e"
             },
@@ -1089,10 +1102,13 @@ mod tests {
                 "uidnumber": ["1001"]
             }
         }"#,
-        ).to_valid_new() };
+            )
+            .to_valid_new()
+        };
 
-        let e3: Entry<EntryValid, EntryNew> = unsafe { Entry::unsafe_from_entry_str(
-            r#"{
+        let e3: Entry<EntryValid, EntryNew> = unsafe {
+            Entry::unsafe_from_entry_str(
+                r#"{
             "valid": {
                 "uuid": "7b23c99d-c06b-4a9a-a958-3afa56383e1d"
             },
@@ -1103,10 +1119,13 @@ mod tests {
                 "uidnumber": ["1002"]
             }
         }"#,
-        ).to_valid_new() };
+            )
+            .to_valid_new()
+        };
 
-        let e4: Entry<EntryValid, EntryNew> = unsafe { Entry::unsafe_from_entry_str(
-            r#"{
+        let e4: Entry<EntryValid, EntryNew> = unsafe {
+            Entry::unsafe_from_entry_str(
+                r#"{
             "valid": {
                 "uuid": "21d816b5-1f6a-4696-b7c1-6ed06d22ed81"
             },
@@ -1117,7 +1136,9 @@ mod tests {
                 "uidnumber": ["1000"]
             }
         }"#,
-        ).to_valid_new() };
+            )
+            .to_valid_new()
+        };
 
         let f_t1a = unsafe {
             filter_resolved!(f_and!([

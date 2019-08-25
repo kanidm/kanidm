@@ -1689,8 +1689,7 @@ mod tests {
                     "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"]
                 }
                 }"#,
-        )
-        ;
+        );
         let ev1 = unsafe { e1.to_valid_committed() };
 
         let expect = vec![ev1.clone()];
@@ -1716,12 +1715,10 @@ mod tests {
     #[test]
     fn test_access_enforce_search() {
         // Test that entries from a search are reduced by acps
-        let e1: Entry<EntryInvalid, EntryNew> =
-            Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
+        let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
         let ev1 = unsafe { e1.to_valid_committed() };
 
-        let e2: Entry<EntryInvalid, EntryNew> =
-            Entry::unsafe_from_entry_str(JSON_TESTPERSON2);
+        let e2: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON2);
         let ev2 = unsafe { e2.to_valid_committed() };
 
         let r_set = vec![ev1.clone(), ev2.clone()];
@@ -1803,8 +1800,7 @@ mod tests {
         // Test that attributes are correctly limited.
         // In this case, we test that a user can only see "name" despite the
         // class and uuid being present.
-        let e1: Entry<EntryInvalid, EntryNew> =
-            Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
+        let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
         let ev1 = unsafe { e1.to_valid_committed() };
         let r_set = vec![ev1.clone()];
 
@@ -1863,8 +1859,7 @@ mod tests {
 
     #[test]
     fn test_access_enforce_modify() {
-        let e1: Entry<EntryInvalid, EntryNew> =
-            Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
+        let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
         let ev1 = unsafe { e1.to_valid_committed() };
         let r_set = vec![ev1.clone()];
 
@@ -2067,20 +2062,16 @@ mod tests {
 
     #[test]
     fn test_access_enforce_create() {
-        let ev1: Entry<EntryInvalid, EntryNew> =
-            Entry::unsafe_from_entry_str(JSON_TEST_CREATE_AC1);
+        let ev1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_TEST_CREATE_AC1);
         let r1_set = vec![ev1.clone()];
 
-        let ev2: Entry<EntryInvalid, EntryNew> =
-            Entry::unsafe_from_entry_str(JSON_TEST_CREATE_AC2);
+        let ev2: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_TEST_CREATE_AC2);
         let r2_set = vec![ev2.clone()];
 
-        let ev3: Entry<EntryInvalid, EntryNew> =
-            Entry::unsafe_from_entry_str(JSON_TEST_CREATE_AC3);
+        let ev3: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_TEST_CREATE_AC3);
         let r3_set = vec![ev3.clone()];
 
-        let ev4: Entry<EntryInvalid, EntryNew> =
-            Entry::unsafe_from_entry_str(JSON_TEST_CREATE_AC4);
+        let ev4: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_TEST_CREATE_AC4);
         let r4_set = vec![ev4.clone()];
 
         // In this case, we can make the create event with an empty entry
@@ -2156,8 +2147,7 @@ mod tests {
 
     #[test]
     fn test_access_enforce_delete() {
-        let e1: Entry<EntryInvalid, EntryNew> =
-            Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
+        let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
         let ev1 = unsafe { e1.to_valid_committed() };
         let r_set = vec![ev1.clone()];
 

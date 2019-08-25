@@ -1,7 +1,5 @@
-use crate::audit::AuditScope;
 use crate::be::dbvalue::DbValueV1;
-use crate::error::OperationError;
-use crate::server::QueryServerWriteTransaction;
+use crate::proto::v1::Filter as ProtoFilter;
 
 use std::borrow::Borrow;
 use std::convert::TryFrom;
@@ -161,7 +159,7 @@ pub enum PartialValue {
     Refer(Uuid),
     // Does this make sense?
     // TODO: We'll probably add tagging to this type for the partial matching
-    JsonFilt(String),
+    JsonFilt(ProtoFilter),
 }
 
 impl PartialValue {
@@ -265,8 +263,12 @@ impl PartialValue {
         }
     }
 
-    pub fn new_indexs(_s: &str) -> Option<Self> {
-        unimplemented!();
+    pub fn new_indexs(s: &str) -> Option<Self> {
+        let i = match IndexType::try_from(s) {
+            Ok(i) => i,
+            Err(_) => return None,
+        };
+        Some(PartialValue::Index(i))
     }
 
     pub fn is_index(&self) -> bool {
@@ -276,8 +278,12 @@ impl PartialValue {
         }
     }
 
-    pub fn new_syntaxs(_s: &str) -> Option<Self> {
-        unimplemented!();
+    pub fn new_syntaxs(s: &str) -> Option<Self> {
+        let i = match SyntaxType::try_from(s) {
+            Ok(i) => i,
+            Err(_) => return None,
+        };
+        Some(PartialValue::Syntax(i))
     }
 
     pub fn is_syntax(&self) -> bool {
@@ -285,6 +291,14 @@ impl PartialValue {
             PartialValue::Syntax(_) => true,
             _ => false,
         }
+    }
+
+    pub fn new_json_filter(s: &str) -> Option<Self> {
+        let pf: ProtoFilter = match serde_json::from_str(s) {
+            Ok(pf) => pf,
+            Err(_) => return None,
+        };
+        Some(PartialValue::JsonFilt(pf))
     }
 
     pub fn is_json_filter(&self) -> bool {
@@ -394,15 +408,6 @@ impl From<Uuid> for Value {
 }
 
 impl Value {
-    pub fn from_attr(
-        _audit: &AuditScope,
-        _qs: &QueryServerWriteTransaction,
-        _attr: &String,
-        _value: &String,
-    ) -> Result<Self, OperationError> {
-        unimplemented!();
-    }
-
     // I get the feeling this will have a lot of matching ... sigh.
     pub fn new_utf8(s: String) -> Self {
         Value {
@@ -413,6 +418,13 @@ impl Value {
     pub fn new_utf8s(s: &str) -> Self {
         Value {
             pv: PartialValue::new_utf8s(s),
+        }
+    }
+
+    pub fn is_utf8(&self) -> bool {
+        match self.pv {
+            PartialValue::Utf8(_) => true,
+            _ => false,
         }
     }
 
@@ -457,7 +469,6 @@ impl Value {
     pub fn is_uuid(&self) -> bool {
         match self.pv {
             PartialValue::Uuid(_) => true,
-            PartialValue::Refer(_) => true,
             _ => false,
         }
     }
@@ -538,20 +549,30 @@ impl Value {
         })
     }
 
-    pub fn new_json_filter(_s: &String) -> Option<Self> {
-        unimplemented!();
-        /*
-        use crate::proto::v1::Filter as ProtoFilter;
-                serde_json::from_str(v.as_str())
-                    .map_err(|_| SchemaError::InvalidAttributeSyntax)
-                    .map(|_: ProtoFilter| ())
-                */
+    pub fn is_refer(&self) -> bool {
+        match self.pv {
+            PartialValue::Refer(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn new_json_filter(s: &str) -> Option<Self> {
+        Some(Value {
+            pv: PartialValue::new_json_filter(s)?,
+        })
     }
 
     pub fn is_json_filter(&self) -> bool {
         match self.pv {
             PartialValue::JsonFilt(_) => true,
             _ => false,
+        }
+    }
+
+    pub fn as_json_filter(&self) -> Option<&ProtoFilter> {
+        match &self.pv {
+            PartialValue::JsonFilt(f) => Some(f),
+            _ => None,
         }
     }
 
@@ -592,7 +613,10 @@ impl Value {
                 pv: PartialValue::Refer(u),
             }),
             DbValueV1::JF(s) => Ok(Value {
-                pv: PartialValue::JsonFilt(s),
+                pv: match PartialValue::new_json_filter(s.as_str()) {
+                    Some(pv) => pv,
+                    None => return Err(()),
+                },
             }),
         }
     }
@@ -607,7 +631,10 @@ impl Value {
             PartialValue::Syntax(syn) => DbValueV1::SY(syn.to_usize()),
             PartialValue::Index(it) => DbValueV1::IN(it.to_usize()),
             PartialValue::Refer(u) => DbValueV1::RF(u.clone()),
-            PartialValue::JsonFilt(s) => DbValueV1::I8(s.clone()),
+            PartialValue::JsonFilt(s) => DbValueV1::JF(
+                serde_json::to_string(s)
+                    .expect("A json filter value was corrupted during run-time"),
+            ),
         }
     }
 

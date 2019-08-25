@@ -196,8 +196,7 @@ mod tests {
     #[test]
     fn test_pre_create_deny() {
         // Test creating with class: system is rejected.
-        let acp: Entry<EntryInvalid, EntryNew> =
-            Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
+        let acp: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
 
         let preload = vec![acp];
 
@@ -212,8 +211,7 @@ mod tests {
                 "displayname": ["testperson"]
             }
         }"#,
-        )
-        ;
+        );
 
         let create = vec![e.clone()];
 
@@ -228,8 +226,7 @@ mod tests {
 
     #[test]
     fn test_pre_modify_system_deny() {
-        let acp: Entry<EntryInvalid, EntryNew> =
-            Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
+        let acp: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
         // Test modify of class to a system is denied
         let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
@@ -242,8 +239,7 @@ mod tests {
                 "displayname": ["testperson"]
             }
         }"#,
-        )
-        ;
+        );
 
         let preload = vec![acp, e.clone()];
 
@@ -262,8 +258,7 @@ mod tests {
 
     #[test]
     fn test_pre_modify_class_add_deny() {
-        let acp: Entry<EntryInvalid, EntryNew> =
-            Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
+        let acp: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
         // Show that adding a system class is denied
         let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
@@ -276,8 +271,7 @@ mod tests {
                 "displayname": ["testperson"]
             }
         }"#,
-        )
-        ;
+        );
 
         let preload = vec![acp, e.clone()];
 
@@ -293,8 +287,7 @@ mod tests {
 
     #[test]
     fn test_pre_modify_attr_must_may_allow() {
-        let acp: Entry<EntryInvalid, EntryNew> =
-            Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
+        let acp: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
         // Show that adding a system class is denied
         let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
@@ -307,8 +300,7 @@ mod tests {
                 "description": ["Test Class"]
             }
         }"#,
-        )
-        ;
+        );
 
         let preload = vec![acp, e.clone()];
 
@@ -327,8 +319,7 @@ mod tests {
 
     #[test]
     fn test_pre_delete_deny() {
-        let acp: Entry<EntryInvalid, EntryNew> =
-            Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
+        let acp: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
         // Test deleting with class: system is rejected.
         let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
@@ -341,8 +332,7 @@ mod tests {
                 "displayname": ["testperson"]
             }
         }"#,
-        )
-        ;
+        );
 
         let preload = vec![acp, e.clone()];
 
