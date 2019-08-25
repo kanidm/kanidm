@@ -251,7 +251,7 @@ mod tests {
     // The create references a uuid that doesn't exist - reject
     #[test]
     fn test_create_uuid_reference_not_exist() {
-        let e: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -263,7 +263,7 @@ mod tests {
             }
         }"#,
         )
-        .expect("Json parse failure");
+        ;
 
         let create = vec![e.clone()];
         let preload = Vec::new();
@@ -279,7 +279,7 @@ mod tests {
     // The create references a uuid that does exist - validate
     #[test]
     fn test_create_uuid_reference_exist() {
-        let ea: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -291,9 +291,9 @@ mod tests {
             }
         }"#,
         )
-        .expect("Json parse failure");
+        ;
 
-        let eb: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -305,7 +305,7 @@ mod tests {
             }
         }"#,
         )
-        .expect("Json parse failure");
+        ;
 
         let preload = vec![ea];
         let create = vec![eb];
@@ -332,7 +332,7 @@ mod tests {
     fn test_create_uuid_reference_self() {
         let preload: Vec<Entry<EntryInvalid, EntryNew>> = Vec::new();
 
-        let e: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -345,7 +345,7 @@ mod tests {
             }
         }"#,
         )
-        .expect("Json parse failure");
+        ;
 
         let create = vec![e];
 
@@ -369,7 +369,7 @@ mod tests {
     // Modify references a different object - allow
     #[test]
     fn test_modify_uuid_reference_exist() {
-        let ea: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -381,9 +381,9 @@ mod tests {
             }
         }"#,
         )
-        .expect("Json parse failure");
+        ;
 
-        let eb: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -394,7 +394,7 @@ mod tests {
             }
         }"#,
         )
-        .expect("Json parse failure");
+        ;
 
         let preload = vec![ea, eb];
 
@@ -414,7 +414,7 @@ mod tests {
     // Modify reference something that doesn't exist - must be rejected
     #[test]
     fn test_modify_uuid_reference_not_exist() {
-        let eb: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -425,7 +425,7 @@ mod tests {
             }
         }"#,
         )
-        .expect("Json parse failure");
+        ;
 
         let preload = vec![eb];
 
@@ -445,7 +445,7 @@ mod tests {
     // Modify removes the reference to an entry
     #[test]
     fn test_modify_remove_referee() {
-        let ea: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -457,9 +457,9 @@ mod tests {
             }
         }"#,
         )
-        .expect("Json parse failure");
+        ;
 
-        let eb: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -471,7 +471,7 @@ mod tests {
             }
         }"#,
         )
-        .expect("Json parse failure");
+        ;
 
         let preload = vec![ea, eb];
 
@@ -488,7 +488,7 @@ mod tests {
     // Modify adds reference to self - allow
     #[test]
     fn test_modify_uuid_reference_self() {
-        let ea: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -500,7 +500,7 @@ mod tests {
             }
         }"#,
         )
-        .expect("Json parse failure");
+        ;
 
         let preload = vec![ea];
 
@@ -520,7 +520,7 @@ mod tests {
     // Test that deleted entries can not be referenced
     #[test]
     fn test_modify_reference_deleted() {
-        let ea: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -532,9 +532,9 @@ mod tests {
             }
         }"#,
         )
-        .expect("Json parse failure");
+        ;
 
-        let eb: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -545,7 +545,7 @@ mod tests {
             }
         }"#,
         )
-        .expect("Json parse failure");
+        ;
 
         let preload = vec![ea, eb];
 
@@ -567,7 +567,7 @@ mod tests {
     // This is the valid case, where the reference is MAY.
     #[test]
     fn test_delete_remove_referent_valid() {
-        let ea: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -579,9 +579,9 @@ mod tests {
             }
         }"#,
         )
-        .expect("Json parse failure");
+        ;
 
-        let eb: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -593,7 +593,7 @@ mod tests {
             }
         }"#,
         )
-        .expect("Json parse failure");
+        ;
 
         let preload = vec![ea, eb];
 
@@ -615,7 +615,7 @@ mod tests {
     // Delete of something that holds references.
     #[test]
     fn test_delete_remove_referee() {
-        let ea: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -627,9 +627,9 @@ mod tests {
             }
         }"#,
         )
-        .expect("Json parse failure");
+        ;
 
-        let eb: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -641,7 +641,7 @@ mod tests {
             }
         }"#,
         )
-        .expect("Json parse failure");
+        ;
 
         let preload = vec![ea, eb];
 
@@ -657,7 +657,7 @@ mod tests {
     // Delete something that has a self reference.
     #[test]
     fn test_delete_remove_reference_self() {
-        let eb: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -670,7 +670,7 @@ mod tests {
             }
         }"#,
         )
-        .expect("Json parse failure");
+        ;
 
         let preload = vec![eb];
 

@@ -314,7 +314,7 @@ mod tests {
     fn test_pre_create_no_uuid() {
         let preload: Vec<Entry<EntryInvalid, EntryNew>> = Vec::new();
 
-        let e: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -326,7 +326,7 @@ mod tests {
             }
         }"#,
         )
-        .expect("json parse failure");
+        ;
 
         let create = vec![e];
 
@@ -353,7 +353,7 @@ mod tests {
     fn test_pre_create_uuid_invalid() {
         let preload: Vec<Entry<EntryInvalid, EntryNew>> = Vec::new();
 
-        let e: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -366,7 +366,7 @@ mod tests {
             }
         }"#,
         )
-        .expect("json parse failure");
+        ;
 
         let create = vec![e.clone()];
 
@@ -384,7 +384,7 @@ mod tests {
     fn test_pre_create_uuid_empty() {
         let preload: Vec<Entry<EntryInvalid, EntryNew>> = Vec::new();
 
-        let e: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -397,7 +397,7 @@ mod tests {
             }
         }"#,
         )
-        .expect("json parse failure");
+        ;
 
         let create = vec![e.clone()];
 
@@ -415,7 +415,7 @@ mod tests {
     fn test_pre_create_uuid_valid() {
         let preload: Vec<Entry<EntryInvalid, EntryNew>> = Vec::new();
 
-        let e: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -428,7 +428,7 @@ mod tests {
             }
         }"#,
         )
-        .expect("json parse failure");
+        ;
 
         let create = vec![e.clone()];
 
@@ -457,7 +457,7 @@ mod tests {
     fn test_pre_create_uuid_valid_multi() {
         let preload: Vec<Entry<EntryInvalid, EntryNew>> = Vec::new();
 
-        let e: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -470,7 +470,7 @@ mod tests {
             }
         }"#,
         )
-        .expect("json parse failure");
+        ;
 
         let create = vec![e.clone()];
 
@@ -493,7 +493,7 @@ mod tests {
     // to ensure we always have a name space to draw from?
     #[test]
     fn test_pre_create_uuid_exist() {
-        let e: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -506,7 +506,7 @@ mod tests {
             }
         }"#,
         )
-        .expect("json parse failure");
+        ;
 
         let create = vec![e.clone()];
         let preload = vec![e];
@@ -525,7 +525,7 @@ mod tests {
         // Test adding two entries with the same uuid
         let preload: Vec<Entry<EntryInvalid, EntryNew>> = Vec::new();
 
-        let ea: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -538,9 +538,9 @@ mod tests {
             }
         }"#,
         )
-        .expect("json parse failure");
+        ;
 
-        let eb: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -553,7 +553,7 @@ mod tests {
             }
         }"#,
         )
-        .expect("json parse failure");
+        ;
 
         let create = vec![ea, eb];
 
@@ -570,7 +570,7 @@ mod tests {
     #[test]
     fn test_modify_uuid_present() {
         // Add another uuid to a type
-        let ea: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -582,7 +582,7 @@ mod tests {
             }
         }"#,
         )
-        .expect("json parse failure");
+        ;
 
         let preload = vec![ea];
 
@@ -602,7 +602,7 @@ mod tests {
     #[test]
     fn test_modify_uuid_removed() {
         // Test attempting to remove a uuid
-        let ea: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -614,7 +614,7 @@ mod tests {
             }
         }"#,
         )
-        .expect("json parse failure");
+        ;
 
         let preload = vec![ea];
 
@@ -634,7 +634,7 @@ mod tests {
     #[test]
     fn test_modify_uuid_purged() {
         // Test attempting to purge uuid
-        let ea: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -646,7 +646,7 @@ mod tests {
             }
         }"#,
         )
-        .expect("json parse failure");
+        ;
 
         let preload = vec![ea];
 
@@ -666,11 +666,11 @@ mod tests {
         // Testing internal create is not super needed, due to migrations at start
         // up testing this every time we run :P
         let acp: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(JSON_ADMIN_ALLOW_ALL).expect("json parse failure");
+            Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
 
         let preload = vec![acp];
 
-        let e: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -683,7 +683,7 @@ mod tests {
             }
         }"#,
         )
-        .expect("json parse failure");
+        ;
 
         let create = vec![e.clone()];
 
@@ -701,7 +701,7 @@ mod tests {
         // Test that internal create of "does not exist" will fail.
         let preload = Vec::new();
 
-        let e: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -714,7 +714,7 @@ mod tests {
             }
         }"#,
         )
-        .expect("json parse failure");
+        ;
 
         let create = vec![e.clone()];
 

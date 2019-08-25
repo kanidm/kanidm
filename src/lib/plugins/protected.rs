@@ -197,11 +197,11 @@ mod tests {
     fn test_pre_create_deny() {
         // Test creating with class: system is rejected.
         let acp: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(JSON_ADMIN_ALLOW_ALL).expect("json parse failure");
+            Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
 
         let preload = vec![acp];
 
-        let e: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -213,7 +213,7 @@ mod tests {
             }
         }"#,
         )
-        .expect("json parse failure");
+        ;
 
         let create = vec![e.clone()];
 
@@ -229,9 +229,9 @@ mod tests {
     #[test]
     fn test_pre_modify_system_deny() {
         let acp: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(JSON_ADMIN_ALLOW_ALL).expect("json parse failure");
+            Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
         // Test modify of class to a system is denied
-        let e: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -243,7 +243,7 @@ mod tests {
             }
         }"#,
         )
-        .expect("json parse failure");
+        ;
 
         let preload = vec![acp, e.clone()];
 
@@ -263,9 +263,9 @@ mod tests {
     #[test]
     fn test_pre_modify_class_add_deny() {
         let acp: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(JSON_ADMIN_ALLOW_ALL).expect("json parse failure");
+            Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
         // Show that adding a system class is denied
-        let e: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -277,7 +277,7 @@ mod tests {
             }
         }"#,
         )
-        .expect("json parse failure");
+        ;
 
         let preload = vec![acp, e.clone()];
 
@@ -294,9 +294,9 @@ mod tests {
     #[test]
     fn test_pre_modify_attr_must_may_allow() {
         let acp: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(JSON_ADMIN_ALLOW_ALL).expect("json parse failure");
+            Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
         // Show that adding a system class is denied
-        let e: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -308,7 +308,7 @@ mod tests {
             }
         }"#,
         )
-        .expect("json parse failure");
+        ;
 
         let preload = vec![acp, e.clone()];
 
@@ -328,9 +328,9 @@ mod tests {
     #[test]
     fn test_pre_delete_deny() {
         let acp: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(JSON_ADMIN_ALLOW_ALL).expect("json parse failure");
+            Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
         // Test deleting with class: system is rejected.
-        let e: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -342,7 +342,7 @@ mod tests {
             }
         }"#,
         )
-        .expect("json parse failure");
+        ;
 
         let preload = vec![acp, e.clone()];
 

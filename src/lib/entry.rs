@@ -227,6 +227,29 @@ impl Entry<EntryInvalid, EntryNew> {
             attrs: x,
         })
     }
+
+    pub fn from_proto_entry_str(
+        _audit: &mut AuditScope,
+        _es: &str,
+        _qs: &QueryServerWriteTransaction,
+    ) -> Result<Self, OperationError> {
+        // str -> Proto entry
+        // now call from_proto_entry
+        unimplemented!();
+    }
+
+    #[cfg(test)]
+    pub(crate) fn unsafe_from_entry_str(
+        _es: &str
+    ) -> Self {
+        // Just use log directly here, it's testing
+        // str -> proto entry
+
+        // use a static map to convert str -> ava
+
+        // return the entry!
+        unimplemented!();
+    }
 }
 
 impl<STATE> Entry<EntryInvalid, STATE> {

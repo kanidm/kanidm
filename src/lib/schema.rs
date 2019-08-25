@@ -1168,7 +1168,6 @@ mod tests {
     use crate::schema::SchemaTransaction;
     use crate::schema::{IndexType, Schema, SchemaAttribute, SchemaClass, SyntaxType};
     use crate::value::{PartialValue, Value};
-    use serde_json;
     use uuid::Uuid;
 
     // use crate::proto_v1::Filter as ProtoFilter;
@@ -1187,7 +1186,7 @@ mod tests {
             $e:expr,
             $type:ty
         ) => {{
-            let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str($e).expect("json failure");
+            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str($e);
             let ev1 = unsafe { e1.to_valid_committed() };
 
             let r1 = <$type>::try_from($audit, &ev1);
@@ -1201,7 +1200,7 @@ mod tests {
             $e:expr,
             $type:ty
         ) => {{
-            let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str($e).expect("json failure");
+            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str($e);
             let ev1 = unsafe { e1.to_valid_committed() };
 
             let r1 = <$type>::try_from($audit, &ev1);
@@ -1570,21 +1569,21 @@ mod tests {
         let mut audit = AuditScope::new("test_schema_entries");
         let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
         let schema = schema_outer.read();
-        let e_no_uuid: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let e_no_uuid: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
             "attrs": {}
         }"#,
         )
-        .expect("json parse failure");
+        ;
 
         assert_eq!(
             e_no_uuid.validate(&schema),
             Err(SchemaError::MissingMustAttribute("uuid".to_string()))
         );
 
-        let e_no_class: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let e_no_class: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -1593,11 +1592,11 @@ mod tests {
             }
         }"#,
         )
-        .expect("json parse failure");
+        ;
 
         assert_eq!(e_no_class.validate(&schema), Err(SchemaError::InvalidClass));
 
-        let e_bad_class: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let e_bad_class: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -1607,13 +1606,13 @@ mod tests {
             }
         }"#,
         )
-        .expect("json parse failure");
+        ;
         assert_eq!(
             e_bad_class.validate(&schema),
             Err(SchemaError::InvalidClass)
         );
 
-        let e_attr_invalid: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let e_attr_invalid: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -1623,7 +1622,7 @@ mod tests {
             }
         }"#,
         )
-        .expect("json parse failure");
+        ;
 
         let res = e_attr_invalid.validate(&schema);
         assert!(match res {
@@ -1631,7 +1630,7 @@ mod tests {
             _ => false,
         });
 
-        let e_attr_invalid_may: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let e_attr_invalid_may: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -1646,14 +1645,14 @@ mod tests {
             }
         }"#,
         )
-        .expect("json parse failure");
+        ;
 
         assert_eq!(
             e_attr_invalid_may.validate(&schema),
             Err(SchemaError::InvalidAttribute)
         );
 
-        let e_attr_invalid_syn: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let e_attr_invalid_syn: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -1667,14 +1666,14 @@ mod tests {
             }
         }"#,
         )
-        .expect("json parse failure");
+        ;
 
         assert_eq!(
             e_attr_invalid_syn.validate(&schema),
             Err(SchemaError::InvalidAttributeSyntax)
         );
 
-        let e_ok: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let e_ok: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -1688,7 +1687,7 @@ mod tests {
             }
         }"#,
         )
-        .expect("json parse failure");
+        ;
         assert!(e_ok.validate(&schema).is_ok());
         println!("{}", audit);
     }
@@ -1704,7 +1703,7 @@ mod tests {
         // check index to upper
         // insense to lower
         // attr name to lower
-        let e_test: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let e_test: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -1717,9 +1716,9 @@ mod tests {
             }
         }"#,
         )
-        .expect("json parse failure");
+        ;
 
-        let e_expect: Entry<EntryValid, EntryNew> = serde_json::from_str(
+        let e_expect: Entry<EntryValid, EntryNew> = unsafe { Entry::unsafe_from_entry_str(
             r#"{
             "valid": {
                 "uuid": "db237e8a-0079-4b8c-8a56-593b22aa44d1"
@@ -1733,8 +1732,8 @@ mod tests {
                 "index": ["EQUALITY"]
             }
         }"#,
-        )
-        .expect("json parse failure");
+        ).to_valid_new() }
+        ;
 
         let e_valid = e_test.validate(&schema).expect("validation failure");
 
@@ -1766,7 +1765,7 @@ mod tests {
             }
         }"#,
         )
-        .expect("json parse failure");
+        ;
 
         let e_expect: Entry<EntryNormalised, EntryNew> = serde_json::from_str(
             r#"{
@@ -1782,7 +1781,7 @@ mod tests {
             }
         }"#,
         )
-        .expect("json parse failure");
+        ;
 
         let e_normal = e_test.normalise(&schema).expect("validation failure");
 
@@ -1798,7 +1797,7 @@ mod tests {
         let schema = schema_outer.read();
         // Just because you are extensible, doesn't mean you can be lazy
 
-        let e_extensible_bad: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let e_extensible_bad: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -1809,14 +1808,14 @@ mod tests {
             }
         }"#,
         )
-        .expect("json parse failure");
+        ;
 
         assert_eq!(
             e_extensible_bad.validate(&schema),
             Err(SchemaError::InvalidAttributeSyntax)
         );
 
-        let e_extensible: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let e_extensible: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -1827,7 +1826,7 @@ mod tests {
             }
         }"#,
         )
-        .expect("json parse failure");
+        ;
 
         /* Is okay because extensible! */
         assert!(e_extensible.validate(&schema).is_ok());

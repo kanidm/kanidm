@@ -1246,8 +1246,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
         audit: &mut AuditScope,
         e_str: &str,
     ) -> Result<(), OperationError> {
-        let res = audit_segment!(audit, || serde_json::from_str(e_str)
-            .map_err(|_| OperationError::SerdeJsonError)
+        let res = audit_segment!(audit, || Entry::from_proto_entry_str(audit, e_str, self)
+            .and_then(|e: Entry<EntryInvalid, EntryNew>| {
+                let schema = self.get_schema();
+                e.validate(schema)
+                    .map_err(|e| OperationError::SchemaViolation(e))
+            })
             .and_then(
                 |e: Entry<EntryValid, EntryNew>| self.internal_migrate_or_create(audit, e)
             ));
@@ -1304,6 +1308,25 @@ impl<'a> QueryServerWriteTransaction<'a> {
         }
     }
 
+    pub fn internal_assert_or_create_str(
+        &mut self,
+        audit: &mut AuditScope,
+        e_str: &str,
+    ) -> Result<(), OperationError> {
+        let res = audit_segment!(audit, || Entry::from_proto_entry_str(audit, e_str, self)
+            .and_then(|e: Entry<EntryInvalid, EntryNew>| {
+                let schema = self.get_schema();
+                e.validate(schema)
+                    .map_err(|e| OperationError::SchemaViolation(e))
+            })
+            .and_then(
+                |e: Entry<EntryValid, EntryNew>| self.internal_assert_or_create(audit, e)
+            ));
+        audit_log!(audit, "internal_assert_or_create_str -> result {:?}", res);
+        assert!(res.is_ok());
+        res
+    }
+
     // Should this take a be_txn?
     pub fn internal_assert_or_create(
         &mut self,
@@ -1356,11 +1379,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let r: Result<_, _> = entries
             .into_iter()
             .map(|e| {
-                audit_log!(
-                    audit,
-                    "init schema -> {}",
-                    serde_json::to_string_pretty(&e).unwrap()
-                );
+                audit_log!(audit, "init schema -> {}", e);
                 self.internal_migrate_or_create(audit, e)
             })
             .collect();
@@ -1395,28 +1414,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
     // This function is idempotent
     pub fn initialise_idm(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
         // First, check the system_info object. This stores some server information
-        // and details. It's a pretty static thing.
-        let mut audit_si = AuditScope::new("start_system_info");
-        let res = audit_segment!(audit_si, || serde_json::from_str(JSON_SYSTEM_INFO_V1)
-            .map_err(|_| OperationError::SerdeJsonError)
-            .and_then(
-                |e: Entry<EntryValid, EntryNew>| self.internal_assert_or_create(audit, e)
-            ));
-        audit_log!(audit_si, "start_system_info -> result {:?}", res);
-        audit.append_scope(audit_si);
-        assert!(res.is_ok());
-        if res.is_err() {
-            return res;
-        }
-
-        // Check the anonymous object exists (migrations).
-        let mut audit_an = AuditScope::new("start_anonymous");
-        let res = audit_segment!(audit_an, || serde_json::from_str(JSON_ANONYMOUS_V1)
-            .map_err(|_| OperationError::SerdeJsonError)
-            .and_then(
-                |e: Entry<EntryValid, EntryNew>| self.internal_migrate_or_create(audit, e)
-            ));
-        audit_log!(audit_an, "start_anonymous -> result {:?}", res);
+        // and details. It's a pretty static thing. Also check anonymous, important to many
+        // concepts.
+        let mut audit_an = AuditScope::new("start_system_core_items");
+        let res = self
+            .internal_assert_or_create_str(&mut audit_an, JSON_SYSTEM_INFO_V1)
+            .and_then(|_| self.internal_migrate_or_create_str(&mut audit_an, JSON_ANONYMOUS_V1));
         audit.append_scope(audit_an);
         assert!(res.is_ok());
         if res.is_err() {
@@ -1430,6 +1433,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .internal_migrate_or_create_str(&mut audit_an, JSON_ADMIN_V1)
             .and_then(|_| self.internal_migrate_or_create_str(&mut audit_an, JSON_IDM_ADMINS_V1));
         audit.append_scope(audit_an);
+        assert!(res.is_ok());
         if res.is_err() {
             return res;
         }
@@ -1447,6 +1451,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 self.internal_migrate_or_create_str(&mut audit_an, JSON_IDM_SELF_ACP_READ_V1)
             });
         audit.append_scope(audit_an);
+        assert!(res.is_ok());
         if res.is_err() {
             return res;
         }
@@ -1641,7 +1646,7 @@ mod tests {
             let se1 = unsafe { SearchEvent::new_impersonate_entry(admin.clone(), filt.clone()) };
             let se2 = unsafe { SearchEvent::new_impersonate_entry(admin, filt) };
 
-            let e: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -1654,7 +1659,7 @@ mod tests {
                 }
             }"#,
             )
-            .expect("json failure");
+            ;
 
             let ce = CreateEvent::new_internal(vec![e.clone()]);
 
@@ -1710,7 +1715,7 @@ mod tests {
             // Create an object
             let mut server_txn = server.write();
 
-            let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -1723,9 +1728,9 @@ mod tests {
                 }
             }"#,
             )
-            .expect("json failure");
+            ;
 
-            let e2: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            let e2: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -1738,7 +1743,7 @@ mod tests {
                 }
             }"#,
             )
-            .expect("json failure");
+            ;
 
             let ce = CreateEvent::new_internal(vec![e1.clone(), e2.clone()]);
 
@@ -1841,7 +1846,7 @@ mod tests {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             let mut server_txn = server.write();
 
-            let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -1854,7 +1859,7 @@ mod tests {
                 }
             }"#,
             )
-            .expect("json failure");
+            ;
 
             let ce = CreateEvent::new_internal(vec![e1.clone()]);
 
@@ -1918,7 +1923,7 @@ mod tests {
             // Create
             let mut server_txn = server.write();
 
-            let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -1931,9 +1936,9 @@ mod tests {
                 }
             }"#,
             )
-            .expect("json failure");
+            ;
 
-            let e2: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            let e2: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -1946,9 +1951,9 @@ mod tests {
                 }
             }"#,
             )
-            .expect("json failure");
+            ;
 
-            let e3: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            let e3: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -1961,7 +1966,7 @@ mod tests {
                 }
             }"#,
             )
-            .expect("json failure");
+            ;
 
             let ce = CreateEvent::new_internal(vec![e1.clone(), e2.clone(), e3.clone()]);
 
@@ -2040,7 +2045,7 @@ mod tests {
             let se_ts = unsafe { SearchEvent::new_ext_impersonate_entry(admin, filt_i_ts.clone()) };
 
             // First, create a tombstone
-            let e_ts: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            let e_ts: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -2050,7 +2055,7 @@ mod tests {
                 }
             }"#,
             )
-            .expect("json failure");
+            ;
 
             let ce = CreateEvent::new_internal(vec![e_ts]);
             let cr = server_txn.create(audit, &ce);
@@ -2142,7 +2147,7 @@ mod tests {
             .expect("revive recycled create failed");
 
             // Create some recycled objects
-            let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -2155,9 +2160,9 @@ mod tests {
                 }
             }"#,
             )
-            .expect("json failure");
+            ;
 
-            let e2: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            let e2: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -2170,7 +2175,7 @@ mod tests {
                 }
             }"#,
             )
-            .expect("json failure");
+            ;
 
             let ce = CreateEvent::new_internal(vec![e1, e2]);
             let cr = server_txn.create(audit, &ce);
@@ -2238,7 +2243,7 @@ mod tests {
                 .internal_search_uuid(audit, &UUID_ADMIN)
                 .expect("failed");
 
-            let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -2251,7 +2256,7 @@ mod tests {
                 }
             }"#,
             )
-            .expect("json failure");
+            ;
             let ce = CreateEvent::new_internal(vec![e1]);
 
             let cr = server_txn.create(audit, &ce);
@@ -2284,7 +2289,7 @@ mod tests {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             let mut server_txn = server.write();
 
-            let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -2297,7 +2302,7 @@ mod tests {
                 }
                 }"#,
             )
-            .expect("json failure");
+            ;
             let ce = CreateEvent::new_internal(vec![e1]);
             let cr = server_txn.create(audit, &ce);
             assert!(cr.is_ok());
@@ -2322,7 +2327,7 @@ mod tests {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             let mut server_txn = server.write();
 
-            let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -2335,7 +2340,7 @@ mod tests {
                 }
             }"#,
             )
-            .expect("json failure");
+            ;
             let ce = CreateEvent::new_internal(vec![e1]);
             let cr = server_txn.create(audit, &ce);
             assert!(cr.is_ok());
@@ -2365,7 +2370,7 @@ mod tests {
     fn test_qs_clone_value() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             let mut server_txn = server.write();
-            let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -2378,7 +2383,7 @@ mod tests {
                 }
             }"#,
             )
-            .expect("json failure");
+            ;
             let ce = CreateEvent::new_internal(vec![e1]);
             let cr = server_txn.create(audit, &ce);
             assert!(cr.is_ok());
@@ -2416,7 +2421,7 @@ mod tests {
     #[test]
     fn test_qs_dynamic_schema_class() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
-            let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -2427,10 +2432,10 @@ mod tests {
                 }
             }"#,
             )
-            .expect("json failure");
+            ;
 
             // Class definition
-            let e_cd: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            let e_cd: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -2442,7 +2447,7 @@ mod tests {
                 }
             }"#,
             )
-            .expect("json failure");
+            ;
 
             let mut server_txn = server.write();
             // Add a new class.
@@ -2501,7 +2506,7 @@ mod tests {
     #[test]
     fn test_qs_dynamic_schema_attr() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
-            let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -2513,10 +2518,10 @@ mod tests {
                 }
             }"#,
             )
-            .expect("json failure");
+            ;
 
             // Attribute definition
-            let e_ad: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            let e_ad: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -2530,7 +2535,7 @@ mod tests {
                 }
             }"#,
             )
-            .expect("json failure");
+            ;
 
             let mut server_txn = server.write();
             // Add a new attribute.

@@ -1198,7 +1198,7 @@ mod tests {
             $e:expr,
             $type:ty
         ) => {{
-            let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str($e).expect("json failure");
+            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str($e);
             let ev1 = unsafe { e1.to_valid_committed() };
 
             let r1 = <$type>::try_from($audit, $qs, &ev1);
@@ -1213,7 +1213,7 @@ mod tests {
             $e:expr,
             $type:ty
         ) => {{
-            let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str($e).expect("json failure");
+            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str($e);
             let ev1 = unsafe { e1.to_valid_committed() };
 
             let r1 = <$type>::try_from($audit, $qs, &ev1);
@@ -1679,7 +1679,7 @@ mod tests {
         // Test that an internal search bypasses ACS
         let se = unsafe { SearchEvent::new_internal_invalid(filter!(f_pres("class"))) };
 
-        let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
                 "valid": null,
                 "state": null,
@@ -1690,7 +1690,7 @@ mod tests {
                 }
                 }"#,
         )
-        .expect("json failure");
+        ;
         let ev1 = unsafe { e1.to_valid_committed() };
 
         let expect = vec![ev1.clone()];
@@ -1717,11 +1717,11 @@ mod tests {
     fn test_access_enforce_search() {
         // Test that entries from a search are reduced by acps
         let e1: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(JSON_TESTPERSON1).expect("json failure");
+            Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
         let ev1 = unsafe { e1.to_valid_committed() };
 
         let e2: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(JSON_TESTPERSON2).expect("json failure");
+            Entry::unsafe_from_entry_str(JSON_TESTPERSON2);
         let ev2 = unsafe { e2.to_valid_committed() };
 
         let r_set = vec![ev1.clone(), ev2.clone()];
@@ -1804,12 +1804,12 @@ mod tests {
         // In this case, we test that a user can only see "name" despite the
         // class and uuid being present.
         let e1: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(JSON_TESTPERSON1).expect("json failure");
+            Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
         let ev1 = unsafe { e1.to_valid_committed() };
         let r_set = vec![ev1.clone()];
 
         let ex1: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(JSON_TESTPERSON1_REDUCED).expect("json failure");
+            Entry::unsafe_from_entry_str(JSON_TESTPERSON1_REDUCED);
         let exv1 = unsafe { ex1.to_valid_committed() };
         let ex_anon = vec![exv1.clone()];
 
@@ -1864,7 +1864,7 @@ mod tests {
     #[test]
     fn test_access_enforce_modify() {
         let e1: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(JSON_TESTPERSON1).expect("json failure");
+            Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
         let ev1 = unsafe { e1.to_valid_committed() };
         let r_set = vec![ev1.clone()];
 
@@ -2068,19 +2068,19 @@ mod tests {
     #[test]
     fn test_access_enforce_create() {
         let ev1: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(JSON_TEST_CREATE_AC1).expect("json failure");
+            Entry::unsafe_from_entry_str(JSON_TEST_CREATE_AC1);
         let r1_set = vec![ev1.clone()];
 
         let ev2: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(JSON_TEST_CREATE_AC2).expect("json failure");
+            Entry::unsafe_from_entry_str(JSON_TEST_CREATE_AC2);
         let r2_set = vec![ev2.clone()];
 
         let ev3: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(JSON_TEST_CREATE_AC3).expect("json failure");
+            Entry::unsafe_from_entry_str(JSON_TEST_CREATE_AC3);
         let r3_set = vec![ev3.clone()];
 
         let ev4: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(JSON_TEST_CREATE_AC4).expect("json failure");
+            Entry::unsafe_from_entry_str(JSON_TEST_CREATE_AC4);
         let r4_set = vec![ev4.clone()];
 
         // In this case, we can make the create event with an empty entry
@@ -2157,7 +2157,7 @@ mod tests {
     #[test]
     fn test_access_enforce_delete() {
         let e1: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(JSON_TESTPERSON1).expect("json failure");
+            Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
         let ev1 = unsafe { e1.to_valid_committed() };
         let r_set = vec![ev1.clone()];
 

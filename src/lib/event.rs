@@ -155,8 +155,8 @@ impl Event {
 
     #[cfg(test)]
     pub unsafe fn from_impersonate_entry_ser(e: &str) -> Self {
-        let ei: Entry<EntryValid, EntryNew> =
-            serde_json::from_str(e).expect("Failed to deserialise!");
+        let ei: Entry<EntryInvalid, EntryNew> =
+            Entry::unsafe_from_entry_str(e);
         Self::from_impersonate_entry(ei.to_valid_committed())
     }
 
