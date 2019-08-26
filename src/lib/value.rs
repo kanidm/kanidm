@@ -18,14 +18,12 @@ impl TryFrom<&str> for IndexType {
     type Error = ();
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        if value == "EQUALITY" {
-            Ok(IndexType::EQUALITY)
-        } else if value == "PRESENCE" {
-            Ok(IndexType::PRESENCE)
-        } else if value == "SUBSTRING" {
-            Ok(IndexType::SUBSTRING)
-        } else {
-            Err(())
+        let n_value = value.to_uppercase();
+        match n_value.as_str() {
+            "EQUALITY" => Ok(IndexType::EQUALITY),
+            "PRESENCE" => Ok(IndexType::PRESENCE),
+            "SUBSTRING" => Ok(IndexType::SUBSTRING),
+            _ => Err(()),
         }
     }
 }
@@ -80,24 +78,17 @@ impl TryFrom<&str> for SyntaxType {
     type Error = ();
 
     fn try_from(value: &str) -> Result<SyntaxType, Self::Error> {
-        if value == "UTF8STRING" {
-            Ok(SyntaxType::UTF8STRING)
-        } else if value == "UTF8STRING_INSENSITIVE" {
-            Ok(SyntaxType::UTF8STRING_INSENSITIVE)
-        } else if value == "UUID" {
-            Ok(SyntaxType::UUID)
-        } else if value == "BOOLEAN" {
-            Ok(SyntaxType::BOOLEAN)
-        } else if value == "SYNTAX_ID" {
-            Ok(SyntaxType::SYNTAX_ID)
-        } else if value == "INDEX_ID" {
-            Ok(SyntaxType::INDEX_ID)
-        } else if value == "REFERENCE_UUID" {
-            Ok(SyntaxType::REFERENCE_UUID)
-        } else if value == "JSON_FILTER" {
-            Ok(SyntaxType::JSON_FILTER)
-        } else {
-            Err(())
+        let n_value = value.to_uppercase();
+        match n_value.as_str() {
+            "UTF8STRING" => Ok(SyntaxType::UTF8STRING),
+            "UTF8STRING_INSENSITIVE" => Ok(SyntaxType::UTF8STRING_INSENSITIVE),
+            "UUID" => Ok(SyntaxType::UUID),
+            "BOOLEAN" => Ok(SyntaxType::BOOLEAN),
+            "SYNTAX_ID" => Ok(SyntaxType::SYNTAX_ID),
+            "INDEX_ID" => Ok(SyntaxType::INDEX_ID),
+            "REFERENCE_UUID" => Ok(SyntaxType::REFERENCE_UUID),
+            "JSON_FILTER" => Ok(SyntaxType::JSON_FILTER),
+            _ => Err(()),
         }
     }
 }
@@ -320,8 +311,12 @@ impl PartialValue {
         self.to_str().expect("An invalid value was returned!!!")
     }
 
-    pub fn contains(&self, _s: &PartialValue) -> bool {
-        false
+    pub fn contains(&self, s: &PartialValue) -> bool {
+        match (self, s) {
+            (PartialValue::Utf8(s1), PartialValue::Utf8(s2)) => s1.contains(s2),
+            (PartialValue::Iutf8(s1), PartialValue::Iutf8(s2)) => s1.contains(s2),
+            _ => false,
+        }
     }
 }
 
@@ -710,7 +705,7 @@ impl Value {
         // Validate that extra-data constraints on the type exist and are
         // valid. IE json filter is really a filter, or cred types have supplemental
         // data.
-        unimplemented!()
+        true
     }
 }
 

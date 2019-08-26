@@ -54,7 +54,7 @@ where
         })
         // Flatten the member's to the list.
         .flatten()
-        .filter_map(|uv| uv.to_uuid())
+        .filter_map(|uv| uv.to_ref_uuid())
         .collect();
 
     // IDEA: promote groups to head of the affected_uuids set!
@@ -102,7 +102,7 @@ fn apply_memberof(
                 au,
                 filter!(f_and!([
                     f_eq("class", CLASS_GROUP.clone()),
-                    f_eq("member", PartialValue::new_uuid(a_uuid.clone()))
+                    f_eq("member", PartialValue::new_refer_r(a_uuid))
                 ]))
             )
         );
@@ -1248,11 +1248,11 @@ mod tests {
             ModifyList::new_list(vec![
                 Modify::Removed(
                     "member".to_string(),
-                    PartialValue::new_uuids(&UUID_A).unwrap()
+                    PartialValue::new_refer_s(&UUID_A).unwrap()
                 ),
                 Modify::Removed(
                     "member".to_string(),
-                    PartialValue::new_uuids(&UUID_D).unwrap()
+                    PartialValue::new_refer_s(&UUID_D).unwrap()
                 ),
             ]),
             None,

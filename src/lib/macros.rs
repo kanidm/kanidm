@@ -30,7 +30,9 @@ macro_rules! run_test {
         $test_fn(&test_server, &mut audit);
         // Any needed teardown?
         // Make sure there are no errors.
-        assert!(test_server.verify(&mut audit).len() == 0);
+        let verifications = test_server.verify(&mut audit);
+        audit_log!(audit, "Verification result: {:?}", verifications);
+        assert!(verifications.len() == 0);
     }};
 }
 

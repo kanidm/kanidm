@@ -31,11 +31,11 @@ use crate::value::PartialValue;
 use crate::event::{CreateEvent, DeleteEvent, EventOrigin, ModifyEvent, SearchEvent};
 
 lazy_static! {
-    static ref CLASS_ACS: PartialValue = PartialValue::new_iutf8s("access_control_search");
-    static ref CLASS_ACC: PartialValue = PartialValue::new_iutf8s("access_control_create");
-    static ref CLASS_ACD: PartialValue = PartialValue::new_iutf8s("access_control_delete");
-    static ref CLASS_ACM: PartialValue = PartialValue::new_iutf8s("access_control_modify");
-    static ref CLASS_ACP: PartialValue = PartialValue::new_iutf8s("access_control_profile");
+    static ref CLASS_ACS: PartialValue = PartialValue::new_class("access_control_search");
+    static ref CLASS_ACC: PartialValue = PartialValue::new_class("access_control_create");
+    static ref CLASS_ACD: PartialValue = PartialValue::new_class("access_control_delete");
+    static ref CLASS_ACM: PartialValue = PartialValue::new_class("access_control_modify");
+    static ref CLASS_ACP: PartialValue = PartialValue::new_class("access_control_profile");
 }
 
 // =========================================================================
@@ -65,7 +65,7 @@ impl AccessControlSearch {
         let attrs = try_audit!(
             audit,
             value
-                .get_ava_opt_string("acp_search_attr")
+                .get_ava_string("acp_search_attr")
                 .ok_or(OperationError::InvalidACPState("Missing acp_search_attr"))
         );
 
@@ -151,7 +151,7 @@ impl AccessControlCreate {
         qs: &QueryServerWriteTransaction,
         value: &Entry<EntryValid, EntryCommitted>,
     ) -> Result<Self, OperationError> {
-        if !value.attribute_value_pres("class", &CLASS_ACD) {
+        if !value.attribute_value_pres("class", &CLASS_ACC) {
             audit_log!(audit, "class access_control_create not present.");
             return Err(OperationError::InvalidACPState(
                 "Missing access_control_create",

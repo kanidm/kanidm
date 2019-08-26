@@ -218,8 +218,7 @@ impl SchemaAttribute {
     }
 
     pub fn validate_ava(&self, ava: &BTreeSet<Value>) -> Result<(), SchemaError> {
-        debug!("Checking for ... {:?}", self);
-        debug!("Checking ava -> {:?}", ava);
+        debug!("Checking for valid {:?} -> {:?}", self.name, ava);
         // Check multivalue
         if self.multivalue == false && ava.len() > 1 {
             debug!("Ava len > 1 on single value attribute!");
@@ -1518,8 +1517,8 @@ mod tests {
         };
 
         let r5 = multi_value_string.validate_ava(&btreeset![
-            Value::new_iutf8s("test1"),
-            Value::new_iutf8s("test2")
+            Value::new_utf8s("test1"),
+            Value::new_utf8s("test2")
         ]);
         assert_eq!(r5, Ok(()));
 

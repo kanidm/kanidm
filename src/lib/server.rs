@@ -341,11 +341,11 @@ pub trait QueryServerTransaction {
     ) -> Result<Value, OperationError> {
         let schema = self.get_schema();
 
-        // TODO: Should this actually be a fn of Value?
+        // Should this actually be a fn of Value - no - I think that introduces issues with the
+        // monomorphisation of the trait for transactions, so we should have this here.
 
-        // Should we return the normalise attr?
-        // no, I think that it's not up to us to normalise this all the time.
-        // TODO: I think maybe we should?
+        // Normalise the attribute name for lookup.
+        // TODO: Should we return this?
         let temp_a = schema.normalise_attr_name(attr);
 
         // Lookup the attr
@@ -405,11 +405,65 @@ pub trait QueryServerTransaction {
 
     fn clone_partialvalue(
         &self,
-        _audit: &mut AuditScope,
-        _attr: &String,
-        _value: &String,
+        audit: &mut AuditScope,
+        attr: &String,
+        value: &String,
     ) -> Result<PartialValue, OperationError> {
-        unimplemented!();
+        let schema = self.get_schema();
+        // TODO: Should we return this?
+        let temp_a = schema.normalise_attr_name(attr);
+
+        // Lookup the attr
+        match schema.get_attributes().get(&temp_a) {
+            Some(schema_a) => {
+                match schema_a.syntax {
+                    SyntaxType::UTF8STRING => Ok(PartialValue::new_utf8(value.clone())),
+                    SyntaxType::UTF8STRING_INSENSITIVE => {
+                        Ok(PartialValue::new_iutf8s(value.as_str()))
+                    }
+                    SyntaxType::BOOLEAN => PartialValue::new_bools(value.as_str())
+                        .ok_or(OperationError::InvalidAttribute("Invalid boolean syntax")),
+                    SyntaxType::SYNTAX_ID => PartialValue::new_syntaxs(value.as_str())
+                        .ok_or(OperationError::InvalidAttribute("Invalid Syntax syntax")),
+                    SyntaxType::INDEX_ID => PartialValue::new_indexs(value.as_str())
+                        .ok_or(OperationError::InvalidAttribute("Invalid Index syntax")),
+                    SyntaxType::UUID => {
+                        PartialValue::new_uuids(value.as_str())
+                            .or_else(|| {
+                                // it's not a uuid, try to resolve it.
+                                // if the value is NOT found, we map to "does not exist" to allow
+                                // the value to continue being evaluated, which of course, will fail
+                                // all subsequent filter tests because it ... well, doesn't exist.
+                                let un = self
+                                    .name_to_uuid(audit, value)
+                                    .unwrap_or_else(|_| UUID_DOES_NOT_EXIST.clone());
+                                Some(PartialValue::new_uuid(un))
+                            })
+                            // I think this is unreachable due to how the .or_else works.
+                            .ok_or(OperationError::InvalidAttribute("Invalid UUID syntax"))
+                    }
+                    SyntaxType::REFERENCE_UUID => {
+                        // See comments above.
+                        PartialValue::new_refer_s(value.as_str())
+                            .or_else(|| {
+                                let un = self
+                                    .name_to_uuid(audit, value)
+                                    .unwrap_or_else(|_| UUID_DOES_NOT_EXIST.clone());
+                                Some(PartialValue::new_refer(un))
+                            })
+                            // I think this is unreachable due to how the .or_else works.
+                            .ok_or(OperationError::InvalidAttribute("Invalid Reference syntax"))
+                    }
+                    SyntaxType::JSON_FILTER => PartialValue::new_json_filter(value)
+                        .ok_or(OperationError::InvalidAttribute("Invalid Filter syntax")),
+                }
+            }
+            None => {
+                // No attribute of this name exists - fail fast, there is no point to
+                // proceed, as nothing can be satisfied.
+                Err(OperationError::InvalidAttributeName(temp_a))
+            }
+        }
     }
 
     // In the opposite direction, we can resolve values for presentation
@@ -1499,7 +1553,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             Ok(())
         } else {
             // Log the failures?
-            unimplemented!();
+            audit_log!(audit, "Schema reload failed -> {:?}", valid_r);
+            return Err(OperationError::ConsistencyError(valid_r));
         }
     }
 

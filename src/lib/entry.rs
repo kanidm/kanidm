@@ -51,7 +51,7 @@ use uuid::Uuid;
 //
 
 lazy_static! {
-    static ref CLASS_EXTENSIBLE: PartialValue = PartialValue::new_utf8s("extensibleobject");
+    static ref CLASS_EXTENSIBLE: PartialValue = PartialValue::new_class("extensibleobject");
 }
 
 pub struct EntryClasses<'a> {
@@ -241,14 +241,91 @@ impl Entry<EntryInvalid, EntryNew> {
     }
 
     #[cfg(test)]
-    pub(crate) fn unsafe_from_entry_str(_es: &str) -> Self {
+    pub(crate) fn unsafe_from_entry_str(es: &str) -> Self {
         // Just use log directly here, it's testing
         // str -> proto entry
-
+        let pe: ProtoEntry = serde_json::from_str(es).expect("Invalid Proto Entry");
         // use a static map to convert str -> ava
+        let x: BTreeMap<String, BTreeSet<Value>> = pe.attrs.into_iter()
+            .map(|(k, vs)| {
+                let attr = k.to_lowercase();
+                let vv: BTreeSet<Value> = match attr.as_str() {
+                    "name" | "version" | "domain" => {
+                        vs.into_iter().map(|v| Value::new_iutf8(v)).collect()
+                    }
+                    "userid" | "uidnumber" => {
+                        warn!("WARNING: Use of unstabilised attributes userid/uidnumber");
+                        vs.into_iter().map(|v| Value::new_iutf8(v)).collect()
+                    }
+                    "class" | "acp_create_class" | "acp_modify_class"  => {
+                        vs.into_iter().map(|v| Value::new_class(v.as_str())).collect()
+                    }
+                    "acp_create_attr" | "acp_search_attr" | "acp_modify_removedattr" | "acp_modify_presentattr" |
+                    "systemmay" | "may" | "systemmust" | "must" 
+                    => {
+                        vs.into_iter().map(|v| Value::new_attr(v.as_str())).collect()
+                    }
+                    "uuid" => {
+                        vs.into_iter().map(|v| Value::new_uuids(v.as_str())
+                            .unwrap_or_else(|| {
+                                warn!("WARNING: Allowing syntax incorrect attribute to be presented UTF8 string");
+                                Value::new_utf8(v)
+                            })
+                        ).collect()
+                    }
+                    "member" | "memberof" | "directmemberof" => {
+                        vs.into_iter().map(|v| Value::new_refer_s(v.as_str()).unwrap() ).collect()
+                    }
+                    "acp_enable" | "multivalue" => {
+                        vs.into_iter().map(|v| Value::new_bools(v.as_str())
+                            .unwrap_or_else(|| {
+                                warn!("WARNING: Allowing syntax incorrect attribute to be presented UTF8 string");
+                                Value::new_utf8(v)
+                            })
+                            ).collect()
+                    }
+                    "syntax" => {
+                        vs.into_iter().map(|v| Value::new_syntaxs(v.as_str())
+                            .unwrap_or_else(|| {
+                                warn!("WARNING: Allowing syntax incorrect attribute to be presented UTF8 string");
+                                Value::new_utf8(v)
+                            })
+                        ).collect()
+                    }
+                    "index" => {
+                        vs.into_iter().map(|v| Value::new_indexs(v.as_str())
+                            .unwrap_or_else(|| {
+                                warn!("WARNING: Allowing syntax incorrect attribute to be presented UTF8 string");
+                                Value::new_utf8(v)
+                            })
+                        ).collect()
+                    }
+                    "acp_targetscope" | "acp_receiver" => {
+                        vs.into_iter().map(|v| Value::new_json_filter(v.as_str())
+                            .unwrap_or_else(|| {
+                                warn!("WARNING: Allowing syntax incorrect attribute to be presented UTF8 string");
+                                Value::new_utf8(v)
+                            })
+                        ).collect()
+                    }
+                    "displayname" | "description" => {
+                        vs.into_iter().map(|v| Value::new_utf8(v)).collect()
+                    }
+                    ia => {
+                        warn!("WARNING: Allowing invalid attribute {} to be interpretted as UTF8 string. YOU MAY ENCOUNTER ODD BEHAVIOUR!!!", ia);
+                        vs.into_iter().map(|v| Value::new_utf8(v)).collect()
+                    }
+                };
+                (attr, vv)
+            })
+            .collect();
 
         // return the entry!
-        unimplemented!();
+        Entry {
+            state: EntryNew,
+            valid: EntryInvalid,
+            attrs: x,
+        }
     }
 }
 
@@ -423,6 +500,8 @@ impl<STATE> Entry<EntryInvalid, STATE> {
                 }
             }
 
+            debug!("Extensible object -> {}", extensible);
+
             if extensible {
                 for (attr_name, avas) in ne.avas() {
                     match schema_attributes.get(attr_name) {
@@ -439,7 +518,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
                             }
                         }
                         None => {
-                            debug!("Invalid Attribute for extensible object");
+                            debug!("Invalid Attribute {} for extensible object", attr_name);
                             return Err(SchemaError::InvalidAttribute);
                         }
                     }
@@ -476,7 +555,6 @@ impl<STATE> Entry<EntryInvalid, STATE> {
                 // Check that any other attributes are in may
                 //   for each attr on the object, check it's in the may+must set
                 for (attr_name, avas) in ne.avas() {
-                    debug!("Checking {}", attr_name);
                     match may.get(attr_name) {
                         Some(a_schema) => {
                             // Now, for each type we do a *full* check of the syntax
@@ -491,7 +569,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
                             }
                         }
                         None => {
-                            debug!("Invalid Attribute for may+must set");
+                            debug!("Invalid Attribute {} for may+must set", attr_name);
                             return Err(SchemaError::InvalidAttribute);
                         }
                     }
@@ -796,6 +874,24 @@ impl Entry<EntryValid, EntryCommitted> {
                 }
             }
             None => Some(Vec::new()),
+        }
+    }
+
+    pub(crate) fn get_ava_string(&self, attr: &str) -> Option<Vec<String>> {
+        match self.attrs.get(attr) {
+            Some(a) => {
+                let r: Vec<String> = a
+                    .iter()
+                    .filter_map(|v| v.as_string().map(|s| s.clone()))
+                    .collect();
+                if r.len() == 0 {
+                    // Corrupt?
+                    None
+                } else {
+                    Some(r)
+                }
+            }
+            None => None,
         }
     }
 
@@ -1351,7 +1447,7 @@ mod tests {
         let mods = unsafe {
             ModifyList::new_valid_list(vec![Modify::Present(
                 String::from("attr"),
-                Value::from("value"),
+                Value::new_iutf8s("value"),
             )])
         };
 

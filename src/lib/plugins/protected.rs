@@ -307,7 +307,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iutf8s("testperson"))),
+            filter!(f_eq("name", PartialValue::new_iutf8s("testclass"))),
             modlist!([
                 m_pres("may", &Value::new_iutf8s("name")),
                 m_pres("must", &Value::new_iutf8s("name")),
