@@ -4,24 +4,24 @@ use crate::error::{OperationError, SchemaError};
 use crate::filter::{Filter, FilterInvalid, FilterResolved, FilterValidResolved};
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use crate::proto::v1::Entry as ProtoEntry;
-use crate::schema::{IndexType, SyntaxType};
+use crate::proto::v1::Filter as ProtoFilter;
 use crate::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
 use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
+use crate::value::{IndexType, SyntaxType};
+use crate::value::{PartialValue, Value};
 
 use crate::be::dbentry::{DbEntry, DbEntryV1, DbEntryVers};
 
 use std::collections::btree_map::{Iter as BTreeIter, IterMut as BTreeIterMut};
+use std::collections::btree_set::Iter as BTreeSetIter;
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::collections::HashMap;
 use std::iter::ExactSizeIterator;
-use std::slice::Iter as SliceIter;
-
-use std::convert::TryFrom;
-use std::str::FromStr;
-
-#[cfg(test)]
 use uuid::Uuid;
+
+// use std::convert::TryFrom;
+// use std::str::FromStr;
 
 // make a trait entry for everything to adhere to?
 //  * How to get indexs out?
@@ -50,17 +50,21 @@ use uuid::Uuid;
 // }
 //
 
+lazy_static! {
+    static ref CLASS_EXTENSIBLE: PartialValue = PartialValue::new_class("extensibleobject");
+}
+
 pub struct EntryClasses<'a> {
     size: usize,
-    inner: Option<SliceIter<'a, String>>,
+    inner: Option<BTreeSetIter<'a, Value>>,
     // _p: &'a PhantomData<()>,
 }
 
 impl<'a> Iterator for EntryClasses<'a> {
-    type Item = &'a String;
+    type Item = &'a Value;
 
     #[inline]
-    fn next(&mut self) -> Option<(&'a String)> {
+    fn next(&mut self) -> Option<(&'a Value)> {
         match self.inner.iter_mut().next() {
             Some(i) => i.next(),
             None => None,
@@ -83,14 +87,14 @@ impl<'a> ExactSizeIterator for EntryClasses<'a> {
 }
 
 pub struct EntryAvas<'a> {
-    inner: BTreeIter<'a, String, Vec<String>>,
+    inner: BTreeIter<'a, String, BTreeSet<Value>>,
 }
 
 impl<'a> Iterator for EntryAvas<'a> {
-    type Item = (&'a String, &'a Vec<String>);
+    type Item = (&'a String, &'a BTreeSet<Value>);
 
     #[inline]
-    fn next(&mut self) -> Option<(&'a String, &'a Vec<String>)> {
+    fn next(&mut self) -> Option<(&'a String, &'a BTreeSet<Value>)> {
         self.inner.next()
     }
 
@@ -101,14 +105,14 @@ impl<'a> Iterator for EntryAvas<'a> {
 }
 
 pub struct EntryAvasMut<'a> {
-    inner: BTreeIterMut<'a, String, Vec<String>>,
+    inner: BTreeIterMut<'a, String, BTreeSet<Value>>,
 }
 
 impl<'a> Iterator for EntryAvasMut<'a> {
-    type Item = (&'a String, &'a mut Vec<String>);
+    type Item = (&'a String, &'a mut BTreeSet<Value>);
 
     #[inline]
-    fn next(&mut self) -> Option<(&'a String, &'a mut Vec<String>)> {
+    fn next(&mut self) -> Option<(&'a String, &'a mut BTreeSet<Value>)> {
         self.inner.next()
     }
 
@@ -131,36 +135,38 @@ impl<'a> Iterator for EntryAvasMut<'a> {
 // This is specifically important for the commit to the backend, as we only want to
 // commit validated types.
 
-#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug)]
 pub struct EntryNew; // new
-#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug)]
 pub struct EntryCommitted {
     id: u64,
 } // It's been in the DB, so it has an id
   // pub struct EntryPurged;
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug)]
 pub struct EntryValid {
     // Asserted with schema, so we know it has a UUID now ...
-    uuid: String,
+    uuid: Uuid,
 }
 
 // Modified, can't be sure of it's content! We therefore disregard the UUID
 // and on validate, we check it again.
-#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug)]
 pub struct EntryInvalid;
 
-#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
-pub struct EntryNormalised;
+// This state can't exist because everything is normalised now with Value types
+// #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+// pub struct EntryNormalised;
 
-#[derive(Clone, Copy, Debug, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug)]
 pub struct EntryReduced;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct Entry<VALID, STATE> {
     valid: VALID,
     state: STATE,
-    attrs: BTreeMap<String, Vec<String>>,
+    // We may need to change this to BTreeSet to allow borrow of Value -> PartialValue for lookups.
+    attrs: BTreeMap<String, BTreeSet<Value>>,
 }
 
 impl<STATE> std::fmt::Display for Entry<EntryValid, STATE> {
@@ -196,26 +202,20 @@ impl Entry<EntryInvalid, EntryNew> {
 
         // Somehow we need to take the tree of e attrs, and convert
         // all ref types to our types ...
-        let map2: Result<BTreeMap<String, Vec<String>>, OperationError> = e
+        let map2: Result<BTreeMap<String, BTreeSet<Value>>, OperationError> = e
             .attrs
             .iter()
             .map(|(k, v)| {
-                let nv: Result<Vec<_>, _> =
+                let nv: Result<BTreeSet<Value>, _> =
                     v.iter().map(|vr| qs.clone_value(audit, &k, vr)).collect();
                 match nv {
-                    Ok(mut nvi) => {
-                        nvi.sort_unstable();
-                        Ok((k.clone(), nvi))
-                    }
+                    Ok(nvi) => Ok((k.clone(), nvi)),
                     Err(e) => Err(e),
                 }
             })
             .collect();
 
-        let x = match map2 {
-            Ok(v) => v,
-            Err(e) => return Err(e),
-        };
+        let x = map2?;
 
         Ok(Entry {
             // For now, we do a straight move, and we sort the incoming data
@@ -225,192 +225,125 @@ impl Entry<EntryInvalid, EntryNew> {
             attrs: x,
         })
     }
-}
 
-impl<STATE> Entry<EntryNormalised, STATE> {
-    pub fn validate(
-        self,
-        schema: &SchemaTransaction,
-    ) -> Result<Entry<EntryValid, STATE>, SchemaError> {
-        let schema_classes = schema.get_classes();
-        let schema_attributes = schema.get_attributes();
-
-        let uuid: String = match &self.attrs.get("uuid") {
-            Some(vs) => match vs.first() {
-                Some(uuid) => uuid.to_string(),
-                None => return Err(SchemaError::MissingMustAttribute("uuid".to_string())),
-            },
-            None => return Err(SchemaError::MissingMustAttribute("uuid".to_string())),
-        };
-
-        // Build the new valid entry ...
-        let ne = Entry {
-            valid: EntryValid { uuid },
-            state: self.state,
-            attrs: self.attrs,
-        };
-        // Now validate it!
-
-        // We scope here to limit the time of borrow of ne.
-        {
-            // First, check we have class on the object ....
-            if !ne.attribute_pres("class") {
-                debug!("Missing attribute class");
-                return Err(SchemaError::InvalidClass);
-            }
-
-            // Do we have extensible?
-            let extensible = ne.attribute_value_pres("class", "extensibleobject");
-
-            let entry_classes = ne.classes().ok_or(SchemaError::InvalidClass)?;
-            let entry_classes_size = entry_classes.len();
-
-            let classes: Vec<&SchemaClass> = entry_classes
-                .filter_map(|c| schema_classes.get(c))
-                .collect();
-
-            if classes.len() != entry_classes_size {
-                debug!("Class on entry not found in schema?");
-                return Err(SchemaError::InvalidClass);
-            };
-
-            // What this is really doing is taking a set of classes, and building an
-            // "overall" class that describes this exact object for checking. IE we
-            // build a super must/may set from the small class must/may sets.
-
-            //   for each class
-            //      add systemmust/must and systemmay/may to their lists
-            //      add anything from must also into may
-
-            // Now from the set of valid classes make a list of must/may
-            //
-            // NOTE: We still need this on extensible, because we still need to satisfy
-            // our other must conditions as well!
-            let must: Result<Vec<&SchemaAttribute>, _> = classes
-                .iter()
-                // Join our class systemmmust + must into one iter
-                .flat_map(|cls| cls.systemmust.iter().chain(cls.must.iter()))
-                .map(|s| {
-                    // This should NOT fail - if it does, it means our schema is
-                    // in an invalid state!
-                    Ok(schema_attributes.get(s).ok_or(SchemaError::Corrupted)?)
-                })
-                .collect();
-
-            let must = must?;
-
-            // Check that all must are inplace
-            //   for each attr in must, check it's present on our ent
-            for attr in must {
-                let avas = ne.get_ava(&attr.name);
-                if avas.is_none() {
-                    return Err(SchemaError::MissingMustAttribute(attr.name.clone()));
-                }
-            }
-
-            if extensible {
-                for (attr_name, avas) in ne.avas() {
-                    match schema_attributes.get(attr_name) {
-                        Some(a_schema) => {
-                            // Now, for each type we do a *full* check of the syntax
-                            // and validity of the ava.
-                            let r = a_schema.validate_ava(avas);
-                            match r {
-                                Ok(_) => {}
-                                Err(e) => {
-                                    debug!("Failed to validate: {}", attr_name);
-                                    return Err(e);
-                                }
-                            }
-                        }
-                        None => {
-                            debug!("Invalid Attribute for extensible object");
-                            return Err(SchemaError::InvalidAttribute);
-                        }
-                    }
-                }
-            } else {
-                // We clone string here, but it's so we can check all
-                // the values in "may" ar here - so we can't avoid this look up. What we
-                // could do though, is have &String based on the schemaattribute though?;
-                let may: Result<HashMap<&String, &SchemaAttribute>, _> = classes
-                    .iter()
-                    // Join our class systemmmust + must + systemmay + may into one.
-                    .flat_map(|cls| {
-                        cls.systemmust
-                            .iter()
-                            .chain(cls.must.iter())
-                            .chain(cls.systemmay.iter())
-                            .chain(cls.may.iter())
-                    })
-                    .map(|s| {
-                        // This should NOT fail - if it does, it means our schema is
-                        // in an invalid state!
-                        Ok((s, schema_attributes.get(s).ok_or(SchemaError::Corrupted)?))
-                    })
-                    .collect();
-
-                let may = may?;
-
-                // TODO #70: Error needs to say what is missing
-                // We need to return *all* missing attributes, not just the first error
-                // we find. This will probably take a rewrite of the function definition
-                // to return a result<_, vec<schemaerror>> and for the schema errors to take
-                // information about what is invalid. It's pretty nontrivial.
-
-                // Check that any other attributes are in may
-                //   for each attr on the object, check it's in the may+must set
-                for (attr_name, avas) in ne.avas() {
-                    debug!("Checking {}", attr_name);
-                    match may.get(attr_name) {
-                        Some(a_schema) => {
-                            // Now, for each type we do a *full* check of the syntax
-                            // and validity of the ava.
-                            let r = a_schema.validate_ava(avas);
-                            match r {
-                                Ok(_) => {}
-                                Err(e) => {
-                                    debug!("Failed to validate: {}", attr_name);
-                                    return Err(e);
-                                }
-                            }
-                        }
-                        None => {
-                            debug!("Invalid Attribute for may+must set");
-                            return Err(SchemaError::InvalidAttribute);
-                        }
-                    }
-                }
-            }
-        } // unborrow ne.
-
-        // Well, we got here, so okay!
-        Ok(ne)
+    pub fn from_proto_entry_str(
+        audit: &mut AuditScope,
+        es: &str,
+        qs: &QueryServerWriteTransaction,
+    ) -> Result<Self, OperationError> {
+        // str -> Proto entry
+        let pe: ProtoEntry = try_audit!(
+            audit,
+            serde_json::from_str(es).map_err(|_| OperationError::SerdeJsonError)
+        );
+        // now call from_proto_entry
+        Self::from_proto_entry(audit, &pe, qs)
     }
 
-    pub fn invalidate(self) -> Entry<EntryInvalid, STATE> {
+    #[cfg(test)]
+    pub(crate) fn unsafe_from_entry_str(es: &str) -> Self {
+        // Just use log directly here, it's testing
+        // str -> proto entry
+        let pe: ProtoEntry = serde_json::from_str(es).expect("Invalid Proto Entry");
+        // use a static map to convert str -> ava
+        let x: BTreeMap<String, BTreeSet<Value>> = pe.attrs.into_iter()
+            .map(|(k, vs)| {
+                let attr = k.to_lowercase();
+                let vv: BTreeSet<Value> = match attr.as_str() {
+                    "name" | "version" | "domain" => {
+                        vs.into_iter().map(|v| Value::new_iutf8(v)).collect()
+                    }
+                    "userid" | "uidnumber" => {
+                        warn!("WARNING: Use of unstabilised attributes userid/uidnumber");
+                        vs.into_iter().map(|v| Value::new_iutf8(v)).collect()
+                    }
+                    "class" | "acp_create_class" | "acp_modify_class"  => {
+                        vs.into_iter().map(|v| Value::new_class(v.as_str())).collect()
+                    }
+                    "acp_create_attr" | "acp_search_attr" | "acp_modify_removedattr" | "acp_modify_presentattr" |
+                    "systemmay" | "may" | "systemmust" | "must" 
+                    => {
+                        vs.into_iter().map(|v| Value::new_attr(v.as_str())).collect()
+                    }
+                    "uuid" => {
+                        vs.into_iter().map(|v| Value::new_uuids(v.as_str())
+                            .unwrap_or_else(|| {
+                                warn!("WARNING: Allowing syntax incorrect attribute to be presented UTF8 string");
+                                Value::new_utf8(v)
+                            })
+                        ).collect()
+                    }
+                    "member" | "memberof" | "directmemberof" => {
+                        vs.into_iter().map(|v| Value::new_refer_s(v.as_str()).unwrap() ).collect()
+                    }
+                    "acp_enable" | "multivalue" => {
+                        vs.into_iter().map(|v| Value::new_bools(v.as_str())
+                            .unwrap_or_else(|| {
+                                warn!("WARNING: Allowing syntax incorrect attribute to be presented UTF8 string");
+                                Value::new_utf8(v)
+                            })
+                            ).collect()
+                    }
+                    "syntax" => {
+                        vs.into_iter().map(|v| Value::new_syntaxs(v.as_str())
+                            .unwrap_or_else(|| {
+                                warn!("WARNING: Allowing syntax incorrect attribute to be presented UTF8 string");
+                                Value::new_utf8(v)
+                            })
+                        ).collect()
+                    }
+                    "index" => {
+                        vs.into_iter().map(|v| Value::new_indexs(v.as_str())
+                            .unwrap_or_else(|| {
+                                warn!("WARNING: Allowing syntax incorrect attribute to be presented UTF8 string");
+                                Value::new_utf8(v)
+                            })
+                        ).collect()
+                    }
+                    "acp_targetscope" | "acp_receiver" => {
+                        vs.into_iter().map(|v| Value::new_json_filter(v.as_str())
+                            .unwrap_or_else(|| {
+                                warn!("WARNING: Allowing syntax incorrect attribute to be presented UTF8 string");
+                                Value::new_utf8(v)
+                            })
+                        ).collect()
+                    }
+                    "displayname" | "description" => {
+                        vs.into_iter().map(|v| Value::new_utf8(v)).collect()
+                    }
+                    ia => {
+                        warn!("WARNING: Allowing invalid attribute {} to be interpretted as UTF8 string. YOU MAY ENCOUNTER ODD BEHAVIOUR!!!", ia);
+                        vs.into_iter().map(|v| Value::new_utf8(v)).collect()
+                    }
+                };
+                (attr, vv)
+            })
+            .collect();
+
+        // return the entry!
         Entry {
+            state: EntryNew,
             valid: EntryInvalid,
-            state: self.state,
-            attrs: self.attrs,
+            attrs: x,
         }
-    }
-
-    pub fn entry_match_no_index(&self, filter: &Filter<FilterValidResolved>) -> bool {
-        self.entry_match_no_index_inner(filter.to_inner())
     }
 }
 
 impl<STATE> Entry<EntryInvalid, STATE> {
     // This is only used in tests today, but I don't want to cfg test it.
     #[allow(dead_code)]
-    fn get_uuid(&self) -> Option<&String> {
+    fn get_uuid(&self) -> Option<&Uuid> {
         match self.attrs.get("uuid") {
-            Some(vs) => vs.first(),
+            Some(vs) => match vs.iter().take(1).next() {
+                // Uv is a value that might contain uuid - we hope it does!
+                Some(uv) => uv.to_uuid(),
+                _ => None,
+            },
             None => None,
         }
     }
 
+    /*
     pub fn normalise(
         self,
         schema: &SchemaTransaction,
@@ -474,7 +407,178 @@ impl<STATE> Entry<EntryInvalid, STATE> {
         // We need to clone before we start, as well be mutating content.
         // We destructure:
 
-        self.normalise(schema).and_then(|e| e.validate(schema))
+        // self.normalise(schema).and_then(|e| e.validate(schema))
+        e.validate(schema)
+    }
+    */
+
+    pub fn validate(
+        self,
+        schema: &SchemaTransaction,
+    ) -> Result<Entry<EntryValid, STATE>, SchemaError> {
+        let schema_classes = schema.get_classes();
+        let schema_attributes = schema.get_attributes();
+
+        let uuid: Uuid = match &self.attrs.get("uuid") {
+            Some(vs) => match vs.iter().take(1).next() {
+                Some(uuid_v) => match uuid_v.to_uuid() {
+                    Some(uuid) => *uuid,
+                    None => return Err(SchemaError::InvalidAttribute),
+                },
+                None => return Err(SchemaError::MissingMustAttribute("uuid".to_string())),
+            },
+            None => return Err(SchemaError::MissingMustAttribute("uuid".to_string())),
+        };
+
+        // Build the new valid entry ...
+        let ne = Entry {
+            valid: EntryValid { uuid },
+            state: self.state,
+            attrs: self.attrs,
+        };
+        // Now validate it!
+
+        // We scope here to limit the time of borrow of ne.
+        {
+            // First, check we have class on the object ....
+            if !ne.attribute_pres("class") {
+                debug!("Missing attribute class");
+                return Err(SchemaError::InvalidClass);
+            }
+
+            // Do we have extensible?
+            let extensible = ne.attribute_value_pres("class", &CLASS_EXTENSIBLE);
+
+            let entry_classes = ne.classes().ok_or(SchemaError::InvalidClass)?;
+            let entry_classes_size = entry_classes.len();
+
+            let classes: Vec<&SchemaClass> = entry_classes
+                // we specify types here to help me clarify a few things in the
+                // development process :)
+                .filter_map(|c: &Value| {
+                    let x: Option<&SchemaClass> = c.as_string().and_then(|s| schema_classes.get(s));
+                    x
+                })
+                .collect();
+
+            if classes.len() != entry_classes_size {
+                debug!("Class on entry not found in schema?");
+                return Err(SchemaError::InvalidClass);
+            };
+
+            // What this is really doing is taking a set of classes, and building an
+            // "overall" class that describes this exact object for checking. IE we
+            // build a super must/may set from the small class must/may sets.
+
+            //   for each class
+            //      add systemmust/must and systemmay/may to their lists
+            //      add anything from must also into may
+
+            // Now from the set of valid classes make a list of must/may
+            //
+            // NOTE: We still need this on extensible, because we still need to satisfy
+            // our other must conditions as well!
+            let must: Result<Vec<&SchemaAttribute>, _> = classes
+                .iter()
+                // Join our class systemmmust + must into one iter
+                .flat_map(|cls| cls.systemmust.iter().chain(cls.must.iter()))
+                .map(|s| {
+                    // This should NOT fail - if it does, it means our schema is
+                    // in an invalid state!
+                    Ok(schema_attributes.get(s).ok_or(SchemaError::Corrupted)?)
+                })
+                .collect();
+
+            let must = must?;
+
+            // Check that all must are inplace
+            //   for each attr in must, check it's present on our ent
+            for attr in must {
+                let avas = ne.get_ava(&attr.name);
+                if avas.is_none() {
+                    return Err(SchemaError::MissingMustAttribute(attr.name.clone()));
+                }
+            }
+
+            debug!("Extensible object -> {}", extensible);
+
+            if extensible {
+                for (attr_name, avas) in ne.avas() {
+                    match schema_attributes.get(attr_name) {
+                        Some(a_schema) => {
+                            // Now, for each type we do a *full* check of the syntax
+                            // and validity of the ava.
+                            let r = a_schema.validate_ava(avas);
+                            match r {
+                                Ok(_) => {}
+                                Err(e) => {
+                                    debug!("Failed to validate: {}", attr_name);
+                                    return Err(e);
+                                }
+                            }
+                        }
+                        None => {
+                            debug!("Invalid Attribute {} for extensible object", attr_name);
+                            return Err(SchemaError::InvalidAttribute);
+                        }
+                    }
+                }
+            } else {
+                // We clone string here, but it's so we can check all
+                // the values in "may" ar here - so we can't avoid this look up. What we
+                // could do though, is have &String based on the schemaattribute though?;
+                let may: Result<HashMap<&String, &SchemaAttribute>, _> = classes
+                    .iter()
+                    // Join our class systemmmust + must + systemmay + may into one.
+                    .flat_map(|cls| {
+                        cls.systemmust
+                            .iter()
+                            .chain(cls.must.iter())
+                            .chain(cls.systemmay.iter())
+                            .chain(cls.may.iter())
+                    })
+                    .map(|s| {
+                        // This should NOT fail - if it does, it means our schema is
+                        // in an invalid state!
+                        Ok((s, schema_attributes.get(s).ok_or(SchemaError::Corrupted)?))
+                    })
+                    .collect();
+
+                let may = may?;
+
+                // TODO #70: Error needs to say what is missing
+                // We need to return *all* missing attributes, not just the first error
+                // we find. This will probably take a rewrite of the function definition
+                // to return a result<_, vec<schemaerror>> and for the schema errors to take
+                // information about what is invalid. It's pretty nontrivial.
+
+                // Check that any other attributes are in may
+                //   for each attr on the object, check it's in the may+must set
+                for (attr_name, avas) in ne.avas() {
+                    match may.get(attr_name) {
+                        Some(a_schema) => {
+                            // Now, for each type we do a *full* check of the syntax
+                            // and validity of the ava.
+                            let r = a_schema.validate_ava(avas);
+                            match r {
+                                Ok(_) => {}
+                                Err(e) => {
+                                    debug!("Failed to validate: {}", attr_name);
+                                    return Err(e);
+                                }
+                            }
+                        }
+                        None => {
+                            debug!("Invalid Attribute {} for may+must set", attr_name);
+                            return Err(SchemaError::InvalidAttribute);
+                        }
+                    }
+                }
+            }
+        } // unborrow ne.
+
+        // Well, we got here, so okay!
+        Ok(ne)
     }
 }
 
@@ -502,7 +606,7 @@ impl Entry<EntryInvalid, EntryCommitted> {
     pub unsafe fn to_valid_new(self) -> Entry<EntryValid, EntryNew> {
         Entry {
             valid: EntryValid {
-                uuid: self.get_uuid().expect("Invalid uuid").to_string(),
+                uuid: self.get_uuid().expect("Invalid uuid").clone(),
             },
             state: EntryNew,
             attrs: self.attrs,
@@ -516,20 +620,14 @@ impl Entry<EntryInvalid, EntryNew> {
     pub unsafe fn to_valid_new(self) -> Entry<EntryValid, EntryNew> {
         Entry {
             valid: EntryValid {
-                uuid: self.get_uuid().expect("Invalid uuid").to_string(),
+                uuid: self.get_uuid().expect("Invalid uuid").clone(),
             },
             state: EntryNew,
-            attrs: self
-                .attrs
-                .into_iter()
-                .map(|(k, mut v)| {
-                    v.sort_unstable();
-                    (k, v)
-                })
-                .collect(),
+            attrs: self.attrs,
         }
     }
 
+    /*
     #[cfg(test)]
     pub unsafe fn to_valid_normal(self) -> Entry<EntryNormalised, EntryNew> {
         Entry {
@@ -545,6 +643,7 @@ impl Entry<EntryInvalid, EntryNew> {
                 .collect(),
         }
     }
+    */
 
     #[cfg(test)]
     pub unsafe fn to_valid_committed(self) -> Entry<EntryValid, EntryCommitted> {
@@ -552,18 +651,11 @@ impl Entry<EntryInvalid, EntryNew> {
             valid: EntryValid {
                 uuid: self
                     .get_uuid()
-                    .map(|u| u.to_string())
-                    .unwrap_or_else(|| Uuid::new_v4().to_hyphenated().to_string()),
+                    .and_then(|u| Some(u.clone()))
+                    .unwrap_or_else(|| Uuid::new_v4()),
             },
             state: EntryCommitted { id: 0 },
-            attrs: self
-                .attrs
-                .into_iter()
-                .map(|(k, mut v)| {
-                    v.sort_unstable();
-                    (k, v)
-                })
-                .collect(),
+            attrs: self.attrs,
         }
     }
 }
@@ -573,17 +665,10 @@ impl Entry<EntryInvalid, EntryCommitted> {
     pub unsafe fn to_valid_committed(self) -> Entry<EntryValid, EntryCommitted> {
         Entry {
             valid: EntryValid {
-                uuid: self.get_uuid().expect("Invalid uuid").to_string(),
+                uuid: self.get_uuid().expect("Missing UUID!").clone(),
             },
             state: self.state,
-            attrs: self
-                .attrs
-                .into_iter()
-                .map(|(k, mut v)| {
-                    v.sort_unstable();
-                    (k, v)
-                })
-                .collect(),
+            attrs: self.attrs,
         }
     }
 }
@@ -594,14 +679,7 @@ impl Entry<EntryValid, EntryNew> {
         Entry {
             valid: self.valid,
             state: EntryCommitted { id: 0 },
-            attrs: self
-                .attrs
-                .into_iter()
-                .map(|(k, mut v)| {
-                    v.sort_unstable();
-                    (k, v)
-                })
-                .collect(),
+            attrs: self.attrs,
         }
     }
 
@@ -622,12 +700,15 @@ impl Entry<EntryValid, EntryCommitted> {
     }
 
     pub fn to_tombstone(&self) -> Self {
-        // Duplicate this to a tombstone entry.
-        let class_ava = vec!["object".to_string(), "tombstone".to_string()];
+        // Duplicate this to a tombstone entry
+        let class_ava = btreeset![Value::new_class("object"), Value::new_class("tombstone")];
 
-        let mut attrs_new: BTreeMap<String, Vec<String>> = BTreeMap::new();
+        let mut attrs_new: BTreeMap<String, BTreeSet<Value>> = BTreeMap::new();
 
-        attrs_new.insert("uuid".to_string(), vec![self.valid.uuid.clone()]);
+        attrs_new.insert(
+            "uuid".to_string(),
+            btreeset![Value::new_uuidr(&self.valid.uuid)],
+        );
         attrs_new.insert("class".to_string(), class_ava);
 
         Entry {
@@ -641,18 +722,36 @@ impl Entry<EntryValid, EntryCommitted> {
         self.state.id
     }
 
-    pub fn from_dbentry(db_e: DbEntry, id: u64) -> Option<Self> {
-        let attrs = match db_e.ent {
-            DbEntryVers::V1(v1) => v1.attrs,
+    pub fn from_dbentry(db_e: DbEntry, id: u64) -> Result<Self, ()> {
+        // Convert attrs from db format to value
+        let r_attrs: Result<BTreeMap<String, BTreeSet<Value>>, ()> = match db_e.ent {
+            DbEntryVers::V1(v1) => v1
+                .attrs
+                .into_iter()
+                .map(|(k, vs)| {
+                    let vv: Result<BTreeSet<Value>, ()> =
+                        vs.into_iter().map(|v| Value::from_db_valuev1(v)).collect();
+                    match vv {
+                        Ok(vv) => Ok((k, vv)),
+                        Err(e) => Err(e),
+                    }
+                })
+                .collect(),
         };
 
-        let uuid: String = match attrs.get("uuid") {
-            Some(vs) => vs.first(),
+        let attrs = r_attrs?;
+
+        let uuid: Uuid = match attrs.get("uuid") {
+            Some(vs) => vs.iter().take(1).next(),
             None => None,
-        }?
+        }
+        .ok_or(())?
+        // Now map value -> uuid
+        .to_uuid()
+        .ok_or(())?
         .clone();
 
-        Some(Entry {
+        Ok(Entry {
             valid: EntryValid { uuid: uuid },
             state: EntryCommitted { id },
             attrs: attrs,
@@ -707,11 +806,10 @@ impl Entry<EntryValid, EntryCommitted> {
     ///
     /// However, the converstion to IndexType is fallaible, so in case of a failure
     /// to convert, an Err is returned.
-    pub(crate) fn get_ava_opt_index(&self, attr: &str) -> Result<Vec<IndexType>, ()> {
+    pub(crate) fn get_ava_opt_index(&self, attr: &str) -> Result<Vec<&IndexType>, ()> {
         match self.attrs.get(attr) {
             Some(av) => {
-                let r: Result<Vec<_>, _> =
-                    av.iter().map(|v| IndexType::try_from(v.as_str())).collect();
+                let r: Result<Vec<_>, _> = av.iter().map(|v| v.to_indextype().ok_or(())).collect();
                 r
             }
             None => Ok(Vec::new()),
@@ -721,27 +819,99 @@ impl Entry<EntryValid, EntryCommitted> {
     /// Get a bool from an ava
     pub fn get_ava_single_bool(&self, attr: &str) -> Option<bool> {
         match self.get_ava_single(attr) {
-            Some(a) => bool::from_str(a.as_str()).ok(),
+            Some(a) => a.to_bool(),
             None => None,
         }
     }
 
-    pub fn get_ava_single_syntax(&self, attr: &str) -> Option<SyntaxType> {
+    pub fn get_ava_single_syntax(&self, attr: &str) -> Option<&SyntaxType> {
         match self.get_ava_single(attr) {
-            Some(a) => SyntaxType::try_from(a.as_str()).ok(),
+            Some(a) => a.to_syntaxtype(),
             None => None,
         }
     }
 
-    /// This is a cloning interface on getting ava's with optional
-    /// existance. It's used in the schema code for must/may/systemmust/systemmay
-    /// access. It should probably be avoided due to the clone unless you
-    /// are aware of the consequences.
-    pub(crate) fn get_ava_opt(&self, attr: &str) -> Vec<String> {
+    pub fn get_ava_reference_uuid(&self, attr: &str) -> Option<Vec<&Uuid>> {
+        // If any value is NOT a reference, return none!
         match self.attrs.get(attr) {
-            Some(a) => a.clone(),
-            None => Vec::new(),
+            Some(av) => {
+                let v: Option<Vec<&Uuid>> = av.iter().map(|e| e.to_ref_uuid()).collect();
+                v
+            }
+            None => None,
         }
+    }
+
+    /*
+    /// This interface will get &str (if possible).
+    pub(crate) fn get_ava_opt_str(&self, attr: &str) -> Option<Vec<&str>> {
+        match self.attrs.get(attr) {
+            Some(a) => {
+                let r: Vec<_> = a.iter().filter_map(|v| v.to_str()).collect();
+                if r.len() == 0 {
+                    None
+                } else {
+                    Some(r)
+                }
+            }
+            None => Some(Vec::new()),
+        }
+    }
+    */
+
+    pub(crate) fn get_ava_opt_string(&self, attr: &str) -> Option<Vec<String>> {
+        match self.attrs.get(attr) {
+            Some(a) => {
+                let r: Vec<String> = a
+                    .iter()
+                    .filter_map(|v| v.as_string().map(|s| s.clone()))
+                    .collect();
+                if r.len() == 0 {
+                    // Corrupt?
+                    None
+                } else {
+                    Some(r)
+                }
+            }
+            None => Some(Vec::new()),
+        }
+    }
+
+    pub(crate) fn get_ava_string(&self, attr: &str) -> Option<Vec<String>> {
+        match self.attrs.get(attr) {
+            Some(a) => {
+                let r: Vec<String> = a
+                    .iter()
+                    .filter_map(|v| v.as_string().map(|s| s.clone()))
+                    .collect();
+                if r.len() == 0 {
+                    // Corrupt?
+                    None
+                } else {
+                    Some(r)
+                }
+            }
+            None => None,
+        }
+    }
+
+    pub fn get_ava_single_str(&self, attr: &str) -> Option<&str> {
+        self.get_ava_single(attr).and_then(|v| v.to_str())
+    }
+
+    pub fn get_ava_single_string(&self, attr: &str) -> Option<String> {
+        self.get_ava_single(attr)
+            .and_then(|v: &Value| v.as_string())
+            .and_then(|s: &String| Some((*s).clone()))
+    }
+
+    pub fn get_ava_single_protofilter(&self, attr: &str) -> Option<ProtoFilter> {
+        self.get_ava_single(attr)
+            .and_then(|v: &Value| {
+                debug!("get_ava_single_protofilter -> {:?}", v);
+                v.as_json_filter()
+            })
+            .and_then(|f: &ProtoFilter| Some((*f).clone()))
     }
 }
 
@@ -758,7 +928,14 @@ impl<STATE> Entry<EntryValid, STATE> {
 
         DbEntry {
             ent: DbEntryVers::V1(DbEntryV1 {
-                attrs: self.attrs.clone(),
+                attrs: self
+                    .attrs
+                    .iter()
+                    .map(|(k, vs)| {
+                        let dbvs: Vec<_> = vs.iter().map(|v| v.to_db_valuev1()).collect();
+                        (k.clone(), dbvs)
+                    })
+                    .collect(),
             }),
         }
     }
@@ -771,12 +948,8 @@ impl<STATE> Entry<EntryValid, STATE> {
         }
     }
 
-    pub fn get_uuid(&self) -> &String {
+    pub fn get_uuid(&self) -> &Uuid {
         &self.valid.uuid
-    }
-
-    pub fn entry_match_no_index(&self, filter: &Filter<FilterValidResolved>) -> bool {
-        self.entry_match_no_index_inner(filter.to_inner())
     }
 
     pub fn filter_from_attrs(&self, attrs: &Vec<String>) -> Option<Filter<FilterInvalid>> {
@@ -791,7 +964,7 @@ impl<STATE> Entry<EntryValid, STATE> {
 
         // Take name: (a, b), name: (c, d) -> (name, a), (name, b), (name, c), (name, d)
 
-        let mut pairs: Vec<(&str, &str)> = Vec::new();
+        let mut pairs: Vec<(&str, &Value)> = Vec::new();
 
         for attr in attrs {
             match self.attrs.get(attr) {
@@ -807,7 +980,10 @@ impl<STATE> Entry<EntryValid, STATE> {
         Some(filter_all!(f_and(
             pairs
                 .into_iter()
-                .map(|(attr, value)| f_eq(attr, value))
+                .map(|(attr, value)| {
+                    // We use FC directly here instead of f_eq to avoid an excess clone.
+                    FC::Eq(attr, value.to_partialvalue())
+                })
                 .collect()
         )))
     }
@@ -863,14 +1039,16 @@ impl<STATE> Entry<EntryValid, STATE> {
 
 impl Entry<EntryReduced, EntryCommitted> {
     pub fn into_pe(&self) -> ProtoEntry {
-        // It's very likely that at this stage we'll need to apply
-        // access controls, dynamic attributes or more.
-        // As a result, this may not even be the right place
-        // for the conversion as algorithmically it may be
-        // better to do this from the outside view. This can
-        // of course be identified and changed ...
+        // Turn values -> Strings.
         ProtoEntry {
-            attrs: self.attrs.clone(),
+            attrs: self
+                .attrs
+                .iter()
+                .map(|(k, vs)| {
+                    let pvs: Vec<_> = vs.iter().map(|v| v.to_proto_string_clone()).collect();
+                    (k.clone(), pvs)
+                })
+                .collect(),
         }
     }
 }
@@ -884,26 +1062,37 @@ impl<VALID, STATE> Entry<VALID, STATE> {
      * relies on the ability to get ava. I think we may not be
      * able to do so "easily".
      */
-    pub fn get_ava(&self, attr: &str) -> Option<&Vec<String>> {
-        self.attrs.get(attr)
+    pub fn get_ava(&self, attr: &str) -> Option<Vec<&Value>> {
+        match self.attrs.get(attr) {
+            Some(vs) => {
+                let x: Vec<_> = vs.iter().collect();
+                Some(x)
+            }
+            None => None,
+        }
     }
 
-    pub fn get_ava_set(&self, attr: &str) -> Option<BTreeSet<&str>> {
-        self.get_ava(attr).map(|vs| {
-            // Map the vec to a BTreeSet instead.
-            let r: BTreeSet<&str> = vs.iter().map(|a| a.as_str()).collect();
-            r
+    pub fn get_ava_set(&self, attr: &str) -> Option<BTreeSet<&Value>> {
+        self.attrs
+            .get(attr)
+            .and_then(|vs| Some(vs.iter().collect()))
+    }
+
+    pub fn get_ava_set_str(&self, attr: &str) -> Option<BTreeSet<&str>> {
+        self.attrs.get(attr).and_then(|vs| {
+            let x: Option<BTreeSet<_>> = vs.iter().map(|s| s.to_str()).collect();
+            x
         })
     }
 
     // Returns NONE if there is more than ONE!!!!
-    pub fn get_ava_single(&self, attr: &str) -> Option<&String> {
+    pub fn get_ava_single(&self, attr: &str) -> Option<&Value> {
         match self.attrs.get(attr) {
             Some(vs) => {
                 if vs.len() != 1 {
                     None
                 } else {
-                    vs.first()
+                    vs.iter().take(1).next()
                 }
             }
             None => None,
@@ -922,28 +1111,26 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         self.attrs.contains_key(attr)
     }
 
-    pub fn attribute_value_pres(&self, attr: &str, value: &str) -> bool {
+    #[inline]
+    pub fn attribute_value_pres(&self, attr: &str, value: &PartialValue) -> bool {
         // Yeah, this is techdebt, but both names of this fn are valid - we are
         // checking if an attribute-value is equal to, or asserting it's present
         // as a pair. So I leave both, and let the compiler work it out.
         self.attribute_equality(attr, value)
     }
 
-    pub fn attribute_equality(&self, attr: &str, value: &str) -> bool {
+    pub fn attribute_equality(&self, attr: &str, value: &PartialValue) -> bool {
         // we assume based on schema normalisation on the way in
         // that the equality here of the raw values MUST be correct.
         // We also normalise filters, to ensure that their values are
         // syntax valid and will correctly match here with our indexes.
         match self.attrs.get(attr) {
-            Some(v_list) => match v_list.binary_search(&value.to_string()) {
-                Ok(_) => true,
-                Err(_) => false,
-            },
+            Some(v_list) => v_list.contains(value),
             None => false,
         }
     }
 
-    pub fn attribute_substring(&self, attr: &str, subvalue: &str) -> bool {
+    pub fn attribute_substring(&self, attr: &str, subvalue: &PartialValue) -> bool {
         match self.attrs.get(attr) {
             Some(v_list) => v_list
                 .iter()
@@ -966,6 +1153,14 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         }
     }
 
+    // Since EntryValid/Invalid is just about class adherenece, not Value correctness, we
+    // can now apply filters to invalid entries - why? Because even if they aren't class
+    // valid, we still have strict typing checks between the filter -> entry to guarantee
+    // they should be functional. We'll never match something that isn't syntactially valid.
+    pub fn entry_match_no_index(&self, filter: &Filter<FilterValidResolved>) -> bool {
+        self.entry_match_no_index_inner(filter.to_inner())
+    }
+
     // This is private, but exists on all types, so that valid and normal can then
     // expose the simpler wrapper for entry_match_no_index only.
     // Assert if this filter matches the entry (no index)
@@ -973,11 +1168,9 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         // Go through the filter components and check them in the entry.
         // This is recursive!!!!
         match filter {
-            FilterResolved::Eq(attr, value) => {
-                self.attribute_equality(attr.as_str(), value.as_str())
-            }
+            FilterResolved::Eq(attr, value) => self.attribute_equality(attr.as_str(), value),
             FilterResolved::Sub(attr, subvalue) => {
-                self.attribute_substring(attr.as_str(), subvalue.as_str())
+                self.attribute_substring(attr.as_str(), subvalue)
             }
             FilterResolved::Pres(attr) => {
                 // Given attr, is is present in the entry?
@@ -1012,41 +1205,27 @@ where
     // a list of syntax violations ...
     // If this already exists, we silently drop the event? Is that an
     // acceptable interface?
-    pub fn add_ava(&mut self, attr: &str, value: &str) {
+    pub fn add_ava(&mut self, attr: &str, value: &Value) {
         // How do we make this turn into an ok / err?
         self.attrs
             .entry(attr.to_string())
             .and_modify(|v| {
                 // Here we need to actually do a check/binary search ...
-                match v.binary_search(&value.to_string()) {
+                if v.contains(value) {
                     // It already exists, done!
-                    Ok(_) => {}
-                    Err(idx) => {
-                        // This cloning is to fix a borrow issue with the or_insert below.
-                        // Is there a better way?
-                        //
-                        // I think it's only run once anyway, so non-issue?
-                        v.insert(idx, value.to_string())
-                    }
+                } else {
+                    v.insert(value.clone());
                 }
             })
-            .or_insert(vec![value.to_string()]);
+            .or_insert(btreeset![value.clone()]);
     }
 
-    pub fn remove_ava(&mut self, attr: &str, value: &str) {
+    fn remove_ava(&mut self, attr: &str, value: &PartialValue) {
         // It would be great to remove these extra allocations, but they
         // really don't cost much :(
-        let mv = value.to_string();
         self.attrs.entry(attr.to_string()).and_modify(|v| {
             // Here we need to actually do a check/binary search ...
-            match v.binary_search(&mv) {
-                // It exists, rm it.
-                Ok(idx) => {
-                    v.remove(idx);
-                }
-                // It does not exist, move on.
-                Err(_) => {}
-            }
+            v.remove(value);
         });
     }
 
@@ -1055,9 +1234,10 @@ where
     }
 
     /// Overwrite the existing avas.
-    pub fn set_avas(&mut self, attr: &str, values: Vec<String>) {
-        // Overwrite the existing value
-        let _ = self.attrs.insert(attr.to_string(), values);
+    pub fn set_avas(&mut self, attr: &str, values: Vec<Value>) {
+        // Overwrite the existing value, build a tree from the list.
+        let x: BTreeSet<_> = values.into_iter().collect();
+        let _ = self.attrs.insert(attr.to_string(), x);
     }
 
     pub fn avas_mut(&mut self) -> EntryAvasMut {
@@ -1076,8 +1256,8 @@ where
         // mutate
         for modify in modlist {
             match modify {
-                Modify::Present(a, v) => self.add_ava(a.as_str(), v.as_str()),
-                Modify::Removed(a, v) => self.remove_ava(a.as_str(), v.as_str()),
+                Modify::Present(a, v) => self.add_ava(a.as_str(), v),
+                Modify::Removed(a, v) => self.remove_ava(a.as_str(), v),
                 Modify::Purged(a) => self.purge_ava(a.as_str()),
             }
         }
@@ -1103,24 +1283,20 @@ impl<VALID, STATE> PartialEq for Entry<VALID, STATE> {
 impl From<&SchemaAttribute> for Entry<EntryValid, EntryNew> {
     fn from(s: &SchemaAttribute) -> Self {
         // Convert an Attribute to an entry ... make it good!
-        let uuid_str = s.uuid.to_hyphenated().to_string();
-        let uuid_v = vec![uuid_str.clone()];
+        let uuid = s.uuid.clone();
+        let uuid_v = btreeset![Value::new_uuidr(&uuid)];
 
-        let name_v = vec![s.name.clone()];
-        let desc_v = vec![s.description.clone()];
+        let name_v = btreeset![Value::new_iutf8(s.name.clone())];
+        let desc_v = btreeset![Value::new_utf8(s.description.clone())];
 
-        let multivalue_v = vec![if s.multivalue {
-            "true".to_string()
-        } else {
-            "false".to_string()
-        }];
+        let multivalue_v = btreeset![Value::from(s.multivalue)];
 
-        let index_v: Vec<_> = s.index.iter().map(|i| i.to_string()).collect();
+        let index_v: BTreeSet<_> = s.index.iter().map(|i| Value::from(i.clone())).collect();
 
-        let syntax_v = vec![s.syntax.to_string()];
+        let syntax_v = btreeset![Value::from(s.syntax.clone())];
 
         // Build the BTreeMap of the attributes relevant
-        let mut attrs: BTreeMap<String, Vec<String>> = BTreeMap::new();
+        let mut attrs: BTreeMap<String, BTreeSet<Value>> = BTreeMap::new();
         attrs.insert("name".to_string(), name_v);
         attrs.insert("description".to_string(), desc_v);
         attrs.insert("uuid".to_string(), uuid_v);
@@ -1129,19 +1305,17 @@ impl From<&SchemaAttribute> for Entry<EntryValid, EntryNew> {
         attrs.insert("syntax".to_string(), syntax_v);
         attrs.insert(
             "class".to_string(),
-            vec![
-                "object".to_string(),
-                "system".to_string(),
-                "attributetype".to_string(),
+            btreeset![
+                Value::new_class("object"),
+                Value::new_class("system"),
+                Value::new_class("attributetype")
             ],
         );
 
         // Insert stuff.
 
         Entry {
-            valid: EntryValid {
-                uuid: uuid_str.clone(),
-            },
+            valid: EntryValid { uuid: uuid },
             state: EntryNew,
             attrs: attrs,
         }
@@ -1150,31 +1324,47 @@ impl From<&SchemaAttribute> for Entry<EntryValid, EntryNew> {
 
 impl From<&SchemaClass> for Entry<EntryValid, EntryNew> {
     fn from(s: &SchemaClass) -> Self {
-        let uuid_str = s.uuid.to_hyphenated().to_string();
-        let uuid_v = vec![uuid_str.clone()];
+        let uuid = s.uuid.clone();
+        let uuid_v = btreeset![Value::new_uuidr(&uuid)];
 
-        let name_v = vec![s.name.clone()];
-        let desc_v = vec![s.description.clone()];
+        let name_v = btreeset![Value::new_iutf8(s.name.clone())];
+        let desc_v = btreeset![Value::new_utf8(s.description.clone())];
 
-        let mut attrs: BTreeMap<String, Vec<String>> = BTreeMap::new();
+        let mut attrs: BTreeMap<String, BTreeSet<Value>> = BTreeMap::new();
         attrs.insert("name".to_string(), name_v);
         attrs.insert("description".to_string(), desc_v);
         attrs.insert("uuid".to_string(), uuid_v);
         attrs.insert(
             "class".to_string(),
-            vec![
-                "object".to_string(),
-                "system".to_string(),
-                "classtype".to_string(),
+            btreeset![
+                Value::new_class("object"),
+                Value::new_class("system"),
+                Value::new_class("classtype")
             ],
         );
-        attrs.insert("systemmay".to_string(), s.systemmay.clone());
-        attrs.insert("systemmust".to_string(), s.systemmust.clone());
+
+        if s.systemmay.len() > 0 {
+            attrs.insert(
+                "systemmay".to_string(),
+                s.systemmay
+                    .iter()
+                    .map(|sm| Value::new_attr(sm.as_str()))
+                    .collect(),
+            );
+        }
+
+        if s.systemmust.len() > 0 {
+            attrs.insert(
+                "systemmust".to_string(),
+                s.systemmust
+                    .iter()
+                    .map(|sm| Value::new_attr(sm.as_str()))
+                    .collect(),
+            );
+        }
 
         Entry {
-            valid: EntryValid {
-                uuid: uuid_str.clone(),
-            },
+            valid: EntryValid { uuid: uuid },
             state: EntryNew,
             attrs: attrs,
         }
@@ -1185,13 +1375,13 @@ impl From<&SchemaClass> for Entry<EntryValid, EntryNew> {
 mod tests {
     use crate::entry::{Entry, EntryInvalid, EntryNew};
     use crate::modify::{Modify, ModifyList};
-    // use serde_json;
+    use crate::value::{PartialValue, Value};
 
     #[test]
     fn test_entry_basic() {
         let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
 
-        e.add_ava("userid", "william");
+        e.add_ava("userid", &Value::from("william"));
     }
 
     #[test]
@@ -1203,8 +1393,8 @@ mod tests {
         // are adding ... Or do we validate after the changes are made in
         // total?
         let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
-        e.add_ava("userid", "william");
-        e.add_ava("userid", "william");
+        e.add_ava("userid", &Value::from("william"));
+        e.add_ava("userid", &Value::from("william"));
 
         let values = e.get_ava("userid").expect("Failed to get ava");
         // Should only be one value!
@@ -1214,7 +1404,7 @@ mod tests {
     #[test]
     fn test_entry_pres() {
         let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
-        e.add_ava("userid", "william");
+        e.add_ava("userid", &Value::from("william"));
 
         assert!(e.attribute_pres("userid"));
         assert!(!e.attribute_pres("name"));
@@ -1224,45 +1414,47 @@ mod tests {
     fn test_entry_equality() {
         let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
 
-        e.add_ava("userid", "william");
+        e.add_ava("userid", &Value::from("william"));
 
-        assert!(e.attribute_equality("userid", "william"));
-        assert!(!e.attribute_equality("userid", "test"));
-        assert!(!e.attribute_equality("nonexist", "william"));
+        assert!(e.attribute_equality("userid", &PartialValue::new_utf8s("william")));
+        assert!(!e.attribute_equality("userid", &PartialValue::new_utf8s("test")));
+        assert!(!e.attribute_equality("nonexist", &PartialValue::new_utf8s("william")));
+        // Also test non-matching attr syntax
+        assert!(!e.attribute_equality("userid", &PartialValue::new_class("william")));
     }
 
     #[test]
     fn test_entry_substring() {
         let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
 
-        e.add_ava("userid", "william");
+        e.add_ava("userid", &Value::from("william"));
 
-        assert!(e.attribute_substring("userid", "william"));
-        assert!(e.attribute_substring("userid", "will"));
-        assert!(e.attribute_substring("userid", "liam"));
-        assert!(e.attribute_substring("userid", "lli"));
-        assert!(!e.attribute_substring("userid", "llim"));
-        assert!(!e.attribute_substring("userid", "bob"));
-        assert!(!e.attribute_substring("userid", "wl"));
+        assert!(e.attribute_substring("userid", &PartialValue::new_utf8s("william")));
+        assert!(e.attribute_substring("userid", &PartialValue::new_utf8s("will")));
+        assert!(e.attribute_substring("userid", &PartialValue::new_utf8s("liam")));
+        assert!(e.attribute_substring("userid", &PartialValue::new_utf8s("lli")));
+        assert!(!e.attribute_substring("userid", &PartialValue::new_utf8s("llim")));
+        assert!(!e.attribute_substring("userid", &PartialValue::new_utf8s("bob")));
+        assert!(!e.attribute_substring("userid", &PartialValue::new_utf8s("wl")));
     }
 
     #[test]
     fn test_entry_apply_modlist() {
         // Test application of changes to an entry.
         let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
-        e.add_ava("userid", "william");
+        e.add_ava("userid", &Value::from("william"));
 
         let mods = unsafe {
             ModifyList::new_valid_list(vec![Modify::Present(
                 String::from("attr"),
-                String::from("value"),
+                Value::new_iutf8s("value"),
             )])
         };
 
         e.apply_modlist(&mods);
 
         // Assert the changes are there
-        assert!(e.attribute_equality("attr", "value"));
+        assert!(e.attribute_equality("attr", &PartialValue::new_iutf8s("value")));
 
         // Assert present for multivalue
         // Assert purge on single/multi/empty value

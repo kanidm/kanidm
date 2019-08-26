@@ -78,7 +78,7 @@ pub struct Entry {
     pub attrs: BTreeMap<String, Vec<String>>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub enum Filter {
     // This is attr - value
     Eq(String, String),

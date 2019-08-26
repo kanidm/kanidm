@@ -2,6 +2,7 @@
 // that otherwise can't be cloned. Think Mutex.
 // use actix::prelude::*;
 use std::sync::Arc;
+use uuid::Uuid;
 
 use crate::audit::AuditScope;
 use crate::be::{Backend, BackendReadTransaction, BackendTransaction, BackendWriteTransaction};
@@ -18,9 +19,7 @@ use crate::constants::{
     JSON_SCHEMA_CLASS_ACCOUNT, JSON_SCHEMA_CLASS_GROUP, JSON_SCHEMA_CLASS_PERSON,
     JSON_SYSTEM_INFO_V1, UUID_DOES_NOT_EXIST,
 };
-use crate::entry::{
-    Entry, EntryCommitted, EntryInvalid, EntryNew, EntryNormalised, EntryReduced, EntryValid,
-};
+use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryReduced, EntryValid};
 use crate::error::{ConsistencyError, OperationError, SchemaError};
 use crate::event::{
     CreateEvent, DeleteEvent, Event, EventOrigin, ExistsEvent, ModifyEvent, ReviveRecycledEvent,
@@ -31,8 +30,22 @@ use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use crate::plugins::Plugins;
 use crate::schema::{
     Schema, SchemaAttribute, SchemaClass, SchemaReadTransaction, SchemaTransaction,
-    SchemaWriteTransaction, SyntaxType,
+    SchemaWriteTransaction,
 };
+use crate::value::{PartialValue, SyntaxType, Value};
+
+lazy_static! {
+    static ref PVCLASS_ATTRIBUTETYPE: PartialValue = PartialValue::new_class("attributetype");
+    static ref PVCLASS_CLASSTYPE: PartialValue = PartialValue::new_class("classtype");
+    static ref PVCLASS_TOMBSTONE: PartialValue = PartialValue::new_class("tombstone");
+    static ref PVCLASS_RECYCLED: PartialValue = PartialValue::new_class("recycled");
+    static ref PVCLASS_ACS: PartialValue = PartialValue::new_class("access_control_search");
+    static ref PVCLASS_ACD: PartialValue = PartialValue::new_class("access_control_delete");
+    static ref PVCLASS_ACM: PartialValue = PartialValue::new_class("access_control_modify");
+    static ref PVCLASS_ACC: PartialValue = PartialValue::new_class("access_control_create");
+    static ref PVCLASS_ACP: PartialValue = PartialValue::new_class("access_control_profile");
+    static ref PVACP_ENABLE_TRUE: PartialValue = PartialValue::new_bool(true);
+}
 
 // This is the core of the server. It implements all
 // the search and modify actions, applies access controls
@@ -148,20 +161,17 @@ pub trait QueryServerTransaction {
     //
     // Remember, we don't care if the name is invalid, because search
     // will validate/normalise the filter we construct for us. COOL!
-    fn name_to_uuid(
-        &self,
-        audit: &mut AuditScope,
-        name: &String,
-    ) -> Result<String, OperationError> {
+    fn name_to_uuid(&self, audit: &mut AuditScope, name: &str) -> Result<Uuid, OperationError> {
         // For now this just constructs a filter and searches, but later
         // we could actually improve this to contact the backend and do
         // index searches, completely bypassing id2entry.
 
         // construct the filter
-        let filt = filter!(f_eq("name", name));
+        let filt = filter!(f_eq("name", PartialValue::new_iutf8s(name)));
         audit_log!(audit, "name_to_uuid: name -> {:?}", name);
 
         // Internal search - DO NOT SEARCH TOMBSTONES AND RECYCLE
+        // TODO: Should we just search everything? It's a uuid to name ...
         let res = match self.internal_search(audit, filt) {
             Ok(e) => e,
             Err(e) => return Err(e),
@@ -180,20 +190,16 @@ pub trait QueryServerTransaction {
         // error should never be triggered due to the len checks above.
         let e = res.first().ok_or(OperationError::NoMatchingEntries)?;
         // Get the uuid from the entry. Again, check it exists, and only one.
-        let uuid_res: String = e.get_uuid().to_string();
+        let uuid_res: Uuid = e.get_uuid().clone();
 
         audit_log!(audit, "name_to_uuid: uuid <- {:?}", uuid_res);
 
         Ok(uuid_res)
     }
 
-    fn uuid_to_name(
-        &self,
-        audit: &mut AuditScope,
-        uuid: &String,
-    ) -> Result<String, OperationError> {
+    fn uuid_to_name(&self, audit: &mut AuditScope, uuid: &Uuid) -> Result<Value, OperationError> {
         // construct the filter
-        let filt = filter!(f_eq("uuid", uuid));
+        let filt = filter!(f_eq("uuid", PartialValue::new_uuidr(uuid)));
         audit_log!(audit, "uuid_to_name: uuid -> {:?}", uuid);
 
         // Internal search - DO NOT SEARCH TOMBSTONES AND RECYCLE
@@ -217,13 +223,16 @@ pub trait QueryServerTransaction {
         // Get the uuid from the entry. Again, check it exists, and only one.
         let name_res = match e.get_ava(&String::from("name")) {
             Some(vas) => match vas.first() {
-                Some(u) => u.clone(),
+                Some(u) => (*u).clone(),
                 None => return Err(OperationError::InvalidEntryState),
             },
             None => return Err(OperationError::InvalidEntryState),
         };
 
         audit_log!(audit, "uuid_to_name: name <- {:?}", name_res);
+
+        // Make sure it's the right type ...
+        assert!(name_res.is_insensitive_utf8());
 
         Ok(name_res)
     }
@@ -299,9 +308,9 @@ pub trait QueryServerTransaction {
     fn internal_search_uuid(
         &self,
         audit: &mut AuditScope,
-        uuid: &str,
+        uuid: &Uuid,
     ) -> Result<Entry<EntryValid, EntryCommitted>, OperationError> {
-        let filter = filter!(f_eq("uuid", uuid));
+        let filter = filter!(f_eq("uuid", PartialValue::new_uuid(uuid.clone())));
         let f_valid = filter
             .validate(self.get_schema())
             .map_err(|e| OperationError::SchemaViolation(e))?;
@@ -322,76 +331,145 @@ pub trait QueryServerTransaction {
         }
     }
 
-    // Do a schema aware clone, that fixes values that need some kind of alteration
-    // or lookup from the front end.
-    //
-    // For example, reference types.
-    //
-    // For passwords, hashing and changes will take place later.
-    //
-    // TODO #66: It could be argued that we should have a proper "Value" type, so that we can
-    // take care of this a bit cleaner, and do the checks in that, but I think for
-    // now this is good enough.
+    /// Do a schema aware conversion from a String:String to String:Value for modification
+    /// present.
     fn clone_value(
         &self,
         audit: &mut AuditScope,
         attr: &String,
         value: &String,
-    ) -> Result<String, OperationError> {
+    ) -> Result<Value, OperationError> {
         let schema = self.get_schema();
-        let schema_name = schema
-            .get_attributes()
-            .get("name")
-            .expect("Schema corrupted");
 
-        // Should we return the normalise attr?
-        // no, I think that it's not up to us to normalise this all the time.
-        let temp_a = schema_name.normalise_value(attr);
+        // Should this actually be a fn of Value - no - I think that introduces issues with the
+        // monomorphisation of the trait for transactions, so we should have this here.
+
+        // Normalise the attribute name for lookup.
+        // TODO: Should we return this?
+        let temp_a = schema.normalise_attr_name(attr);
 
         // Lookup the attr
         match schema.get_attributes().get(&temp_a) {
             Some(schema_a) => {
-                // Now check the type of the attribute ...
                 match schema_a.syntax {
-                    SyntaxType::REFERENCE_UUID => {
-                        match schema_a.validate_value(value) {
-                            // So, if possible, resolve the value
-                            // to a concrete uuid.
-                            Ok(_) => {
-                                // It's a uuid - we do NOT check for existance, because that
-                                // could be revealing or disclosing - it is up to acp to assert
-                                // if we can see the value or not, and it's not up to us to
-                                // assert the filter value exists.
-                                Ok(value.clone())
-                            }
-                            Err(_) => {
+                    SyntaxType::UTF8STRING => Ok(Value::new_utf8(value.clone())),
+                    SyntaxType::UTF8STRING_INSENSITIVE => Ok(Value::new_iutf8s(value.as_str())),
+                    SyntaxType::BOOLEAN => Value::new_bools(value.as_str())
+                        .ok_or(OperationError::InvalidAttribute("Invalid boolean syntax")),
+                    SyntaxType::SYNTAX_ID => Value::new_syntaxs(value.as_str())
+                        .ok_or(OperationError::InvalidAttribute("Invalid Syntax syntax")),
+                    SyntaxType::INDEX_ID => Value::new_indexs(value.as_str())
+                        .ok_or(OperationError::InvalidAttribute("Invalid Index syntax")),
+                    SyntaxType::UUID => {
+                        // It's a uuid - we do NOT check for existance, because that
+                        // could be revealing or disclosing - it is up to acp to assert
+                        // if we can see the value or not, and it's not up to us to
+                        // assert the filter value exists.
+                        Value::new_uuids(value.as_str())
+                            .or_else(|| {
                                 // it's not a uuid, try to resolve it.
                                 // if the value is NOT found, we map to "does not exist" to allow
                                 // the value to continue being evaluated, which of course, will fail
                                 // all subsequent filter tests because it ... well, doesn't exist.
-                                self.name_to_uuid(audit, value)
-                                    .or_else(|_| Ok(UUID_DOES_NOT_EXIST.to_string()))
-                            }
-                        }
+                                let un = self
+                                    .name_to_uuid(audit, value)
+                                    .unwrap_or_else(|_| UUID_DOES_NOT_EXIST.clone());
+                                Some(Value::new_uuid(un))
+                            })
+                            // I think this is unreachable due to how the .or_else works.
+                            .ok_or(OperationError::InvalidAttribute("Invalid UUID syntax"))
                     }
-                    _ => {
-                        // Probs okay.
-                        Ok(value.clone())
+                    SyntaxType::REFERENCE_UUID => {
+                        // See comments above.
+                        Value::new_refer_s(value.as_str())
+                            .or_else(|| {
+                                let un = self
+                                    .name_to_uuid(audit, value)
+                                    .unwrap_or_else(|_| UUID_DOES_NOT_EXIST.clone());
+                                Some(Value::new_refer(un))
+                            })
+                            // I think this is unreachable due to how the .or_else works.
+                            .ok_or(OperationError::InvalidAttribute("Invalid Reference syntax"))
                     }
+                    SyntaxType::JSON_FILTER => Value::new_json_filter(value)
+                        .ok_or(OperationError::InvalidAttribute("Invalid Filter syntax")),
                 }
             }
             None => {
-                // No attribute of this name exists - clone the value anyway, because
-                // the schema check will fail soon, and it's beyond this functions
-                // purpose to validate your content anyway.
-                Ok(value.clone())
+                // No attribute of this name exists - fail fast, there is no point to
+                // proceed, as nothing can be satisfied.
+                Err(OperationError::InvalidAttributeName(temp_a))
+            }
+        }
+    }
+
+    fn clone_partialvalue(
+        &self,
+        audit: &mut AuditScope,
+        attr: &String,
+        value: &String,
+    ) -> Result<PartialValue, OperationError> {
+        let schema = self.get_schema();
+        // TODO: Should we return this?
+        let temp_a = schema.normalise_attr_name(attr);
+
+        // Lookup the attr
+        match schema.get_attributes().get(&temp_a) {
+            Some(schema_a) => {
+                match schema_a.syntax {
+                    SyntaxType::UTF8STRING => Ok(PartialValue::new_utf8(value.clone())),
+                    SyntaxType::UTF8STRING_INSENSITIVE => {
+                        Ok(PartialValue::new_iutf8s(value.as_str()))
+                    }
+                    SyntaxType::BOOLEAN => PartialValue::new_bools(value.as_str())
+                        .ok_or(OperationError::InvalidAttribute("Invalid boolean syntax")),
+                    SyntaxType::SYNTAX_ID => PartialValue::new_syntaxs(value.as_str())
+                        .ok_or(OperationError::InvalidAttribute("Invalid Syntax syntax")),
+                    SyntaxType::INDEX_ID => PartialValue::new_indexs(value.as_str())
+                        .ok_or(OperationError::InvalidAttribute("Invalid Index syntax")),
+                    SyntaxType::UUID => {
+                        PartialValue::new_uuids(value.as_str())
+                            .or_else(|| {
+                                // it's not a uuid, try to resolve it.
+                                // if the value is NOT found, we map to "does not exist" to allow
+                                // the value to continue being evaluated, which of course, will fail
+                                // all subsequent filter tests because it ... well, doesn't exist.
+                                let un = self
+                                    .name_to_uuid(audit, value)
+                                    .unwrap_or_else(|_| UUID_DOES_NOT_EXIST.clone());
+                                Some(PartialValue::new_uuid(un))
+                            })
+                            // I think this is unreachable due to how the .or_else works.
+                            .ok_or(OperationError::InvalidAttribute("Invalid UUID syntax"))
+                    }
+                    SyntaxType::REFERENCE_UUID => {
+                        // See comments above.
+                        PartialValue::new_refer_s(value.as_str())
+                            .or_else(|| {
+                                let un = self
+                                    .name_to_uuid(audit, value)
+                                    .unwrap_or_else(|_| UUID_DOES_NOT_EXIST.clone());
+                                Some(PartialValue::new_refer(un))
+                            })
+                            // I think this is unreachable due to how the .or_else works.
+                            .ok_or(OperationError::InvalidAttribute("Invalid Reference syntax"))
+                    }
+                    SyntaxType::JSON_FILTER => PartialValue::new_json_filter(value)
+                        .ok_or(OperationError::InvalidAttribute("Invalid Filter syntax")),
+                }
+            }
+            None => {
+                // No attribute of this name exists - fail fast, there is no point to
+                // proceed, as nothing can be satisfied.
+                Err(OperationError::InvalidAttributeName(temp_a))
             }
         }
     }
 
     // In the opposite direction, we can resolve values for presentation
-    fn resolve_value(&self, _attr: &String, value: &String) -> Result<String, OperationError> {
-        Ok(value.clone())
+    fn resolve_value(&self, _attr: &String, _value: &Value) -> Result<String, OperationError> {
+        unimplemented!();
+        // Ok(value.clone())
     }
 }
 
@@ -585,9 +663,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // based on request size in the frontend?
 
         // Copy the entries to a writeable form.
-        let candidates: Vec<Entry<EntryInvalid, EntryNew>> =
+        let mut candidates: Vec<Entry<EntryInvalid, EntryNew>> =
             ce.entries.iter().map(|er| er.clone()).collect();
 
+        // This is no longer needed due to how we transform to Value as a strong type on
+        // entries.
+        /*
         // Normalise but DO NOT validate the entries.
         let norm_cand: Result<Vec<Entry<EntryNormalised, EntryNew>>, _> = candidates
             .into_iter()
@@ -598,6 +679,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .collect();
 
         let norm_cand = try_audit!(au, norm_cand);
+        */
 
         // Handle the error.
 
@@ -605,15 +687,17 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // create_allow_operation
         let mut audit_acp = AuditScope::new("access_control_profiles");
         let access = self.get_accesscontrols();
-        let acp_res = access.create_allow_operation(&mut audit_acp, ce, &norm_cand);
+        let acp_res = access.create_allow_operation(&mut audit_acp, ce, &candidates);
         au.append_scope(audit_acp);
         if try_audit!(au, acp_res) != true {
             return Err(OperationError::AccessDenied);
         }
 
         // Invalidate them all again ...
+        /*
         let mut candidates: Vec<Entry<EntryInvalid, EntryNew>> =
             norm_cand.into_iter().map(|e| e.invalidate()).collect();
+        */
 
         // run any pre plugins, giving them the list of mutable candidates.
         // pre-plugins are defined here in their correct order of calling!
@@ -631,7 +715,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let _ = try_audit!(
             au,
             plug_pre_transform_res,
-            "Create operation failed (plugin), {:?}"
+            "Create operation failed (pre_transform plugin), {:?}"
         );
 
         // NOTE: This is how you map from Vec<Result<T>> to Result<Vec<T>>
@@ -680,7 +764,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
         au.append_scope(audit_plugin_post);
 
         if plug_post_res.is_err() {
-            audit_log!(au, "Create operation failed (plugin), {:?}", plug_post_res);
+            audit_log!(
+                au,
+                "Create operation failed (post plugin), {:?}",
+                plug_post_res
+            );
             return plug_post_res;
         }
 
@@ -690,15 +778,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
             if acc {
                 acc
             } else {
-                e.attribute_value_pres("class", "classtype")
-                    || e.attribute_value_pres("class", "attributetype")
+                e.attribute_value_pres("class", &PVCLASS_CLASSTYPE)
+                    || e.attribute_value_pres("class", &PVCLASS_ATTRIBUTETYPE)
             }
         });
         self.changed_acp = norm_cand.iter().fold(false, |acc, e| {
             if acc {
                 acc
             } else {
-                e.attribute_value_pres("class", "access_control_profile")
+                e.attribute_value_pres("class", &PVCLASS_ACP)
             }
         });
         audit_log!(
@@ -754,7 +842,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         let modlist_inv = ModifyList::new_list(vec![Modify::Present(
             String::from("class"),
-            String::from("recycled"),
+            Value::new_class("recycled"),
         )]);
 
         let modlist = match modlist_inv.validate(&self.schema) {
@@ -821,15 +909,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
             if acc {
                 acc
             } else {
-                e.attribute_value_pres("class", "classtype")
-                    || e.attribute_value_pres("class", "attributetype")
+                e.attribute_value_pres("class", &PVCLASS_CLASSTYPE)
+                    || e.attribute_value_pres("class", &PVCLASS_ATTRIBUTETYPE)
             }
         });
         self.changed_acp = del_cand.iter().fold(false, |acc, e| {
             if acc {
                 acc
             } else {
-                e.attribute_value_pres("class", "access_control_profile")
+                e.attribute_value_pres("class", &PVCLASS_ACP)
             }
         });
         audit_log!(
@@ -848,10 +936,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // delete everything that is a tombstone.
 
         // Search for tombstones
-        let ts = match self.internal_search(au, filter_all!(f_eq("class", "tombstone"))) {
-            Ok(r) => r,
-            Err(e) => return Err(e),
-        };
+        let ts =
+            match self.internal_search(au, filter_all!(f_eq("class", PVCLASS_TOMBSTONE.clone()))) {
+                Ok(r) => r,
+                Err(e) => return Err(e),
+            };
 
         // TODO #68: Has an appropriate amount of time/condition past (ie replication events?)
 
@@ -878,10 +967,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub fn purge_recycled(&self, au: &mut AuditScope) -> Result<(), OperationError> {
         // Send everything that is recycled to tombstone
         // Search all recycled
-        let rc = match self.internal_search(au, filter_all!(f_eq("class", "recycled"))) {
-            Ok(r) => r,
-            Err(e) => return Err(e),
-        };
+        let rc =
+            match self.internal_search(au, filter_all!(f_eq("class", PVCLASS_RECYCLED.clone()))) {
+                Ok(r) => r,
+                Err(e) => return Err(e),
+            };
 
         // Modify them to strip all avas except uuid
         let tombstone_cand = rc.iter().map(|e| e.to_tombstone()).collect();
@@ -919,7 +1009,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // tl;dr, remove the class=recycled
         let modlist = ModifyList::new_list(vec![Modify::Removed(
             "class".to_string(),
-            "recycled".to_string(),
+            PVCLASS_RECYCLED.clone(),
         )]);
 
         let m_valid = try_audit!(
@@ -1083,8 +1173,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
                     if acc {
                         acc
                     } else {
-                        e.attribute_value_pres("class", "classtype")
-                            || e.attribute_value_pres("class", "attributetype")
+                        e.attribute_value_pres("class", &PVCLASS_CLASSTYPE)
+                            || e.attribute_value_pres("class", &PVCLASS_ATTRIBUTETYPE)
                     }
                 });
         self.changed_acp = norm_cand
@@ -1094,7 +1184,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 if acc {
                     acc
                 } else {
-                    e.attribute_value_pres("class", "access_control_profile")
+                    e.attribute_value_pres("class", &PVCLASS_ACP)
                 }
             });
         audit_log!(
@@ -1216,8 +1306,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
         audit: &mut AuditScope,
         e_str: &str,
     ) -> Result<(), OperationError> {
-        let res = audit_segment!(audit, || serde_json::from_str(e_str)
-            .map_err(|_| OperationError::SerdeJsonError)
+        let res = audit_segment!(audit, || Entry::from_proto_entry_str(audit, e_str, self)
+            .and_then(|e: Entry<EntryInvalid, EntryNew>| {
+                let schema = self.get_schema();
+                e.validate(schema)
+                    .map_err(|e| OperationError::SchemaViolation(e))
+            })
             .and_then(
                 |e: Entry<EntryValid, EntryNew>| self.internal_migrate_or_create(audit, e)
             ));
@@ -1274,6 +1368,25 @@ impl<'a> QueryServerWriteTransaction<'a> {
         }
     }
 
+    pub fn internal_assert_or_create_str(
+        &mut self,
+        audit: &mut AuditScope,
+        e_str: &str,
+    ) -> Result<(), OperationError> {
+        let res = audit_segment!(audit, || Entry::from_proto_entry_str(audit, e_str, self)
+            .and_then(|e: Entry<EntryInvalid, EntryNew>| {
+                let schema = self.get_schema();
+                e.validate(schema)
+                    .map_err(|e| OperationError::SchemaViolation(e))
+            })
+            .and_then(
+                |e: Entry<EntryValid, EntryNew>| self.internal_assert_or_create(audit, e)
+            ));
+        audit_log!(audit, "internal_assert_or_create_str -> result {:?}", res);
+        assert!(res.is_ok());
+        res
+    }
+
     // Should this take a be_txn?
     pub fn internal_assert_or_create(
         &mut self,
@@ -1326,11 +1439,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let r: Result<_, _> = entries
             .into_iter()
             .map(|e| {
-                audit_log!(
-                    audit,
-                    "init schema -> {}",
-                    serde_json::to_string_pretty(&e).unwrap()
-                );
+                audit_log!(audit, "init schema -> {}", e);
                 self.internal_migrate_or_create(audit, e)
             })
             .collect();
@@ -1365,28 +1474,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
     // This function is idempotent
     pub fn initialise_idm(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
         // First, check the system_info object. This stores some server information
-        // and details. It's a pretty static thing.
-        let mut audit_si = AuditScope::new("start_system_info");
-        let res = audit_segment!(audit_si, || serde_json::from_str(JSON_SYSTEM_INFO_V1)
-            .map_err(|_| OperationError::SerdeJsonError)
-            .and_then(
-                |e: Entry<EntryValid, EntryNew>| self.internal_assert_or_create(audit, e)
-            ));
-        audit_log!(audit_si, "start_system_info -> result {:?}", res);
-        audit.append_scope(audit_si);
-        assert!(res.is_ok());
-        if res.is_err() {
-            return res;
-        }
-
-        // Check the anonymous object exists (migrations).
-        let mut audit_an = AuditScope::new("start_anonymous");
-        let res = audit_segment!(audit_an, || serde_json::from_str(JSON_ANONYMOUS_V1)
-            .map_err(|_| OperationError::SerdeJsonError)
-            .and_then(
-                |e: Entry<EntryValid, EntryNew>| self.internal_migrate_or_create(audit, e)
-            ));
-        audit_log!(audit_an, "start_anonymous -> result {:?}", res);
+        // and details. It's a pretty static thing. Also check anonymous, important to many
+        // concepts.
+        let mut audit_an = AuditScope::new("start_system_core_items");
+        let res = self
+            .internal_assert_or_create_str(&mut audit_an, JSON_SYSTEM_INFO_V1)
+            .and_then(|_| self.internal_migrate_or_create_str(&mut audit_an, JSON_ANONYMOUS_V1));
         audit.append_scope(audit_an);
         assert!(res.is_ok());
         if res.is_err() {
@@ -1400,6 +1493,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .internal_migrate_or_create_str(&mut audit_an, JSON_ADMIN_V1)
             .and_then(|_| self.internal_migrate_or_create_str(&mut audit_an, JSON_IDM_ADMINS_V1));
         audit.append_scope(audit_an);
+        assert!(res.is_ok());
         if res.is_err() {
             return res;
         }
@@ -1417,6 +1511,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 self.internal_migrate_or_create_str(&mut audit_an, JSON_IDM_SELF_ACP_READ_V1)
             });
         audit.append_scope(audit_an);
+        assert!(res.is_ok());
         if res.is_err() {
             return res;
         }
@@ -1427,7 +1522,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     fn reload_schema(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
         // supply entries to the writable schema to reload from.
         // find all attributes.
-        let filt = filter!(f_eq("class", "attributetype"));
+        let filt = filter!(f_eq("class", PVCLASS_ATTRIBUTETYPE.clone()));
         let res = try_audit!(audit, self.internal_search(audit, filt));
         // load them.
         let attributetypes: Result<Vec<_>, _> = res
@@ -1439,7 +1534,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         try_audit!(audit, self.schema.update_attributes(attributetypes));
 
         // find all classes
-        let filt = filter!(f_eq("class", "classtype"));
+        let filt = filter!(f_eq("class", PVCLASS_CLASSTYPE.clone()));
         let res = try_audit!(audit, self.internal_search(audit, filt));
         // load them.
         let classtypes: Result<Vec<_>, _> = res
@@ -1458,7 +1553,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             Ok(())
         } else {
             // Log the failures?
-            unimplemented!();
+            audit_log!(audit, "Schema reload failed -> {:?}", valid_r);
+            return Err(OperationError::ConsistencyError(valid_r));
         }
     }
 
@@ -1473,9 +1569,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Update search
         let filt = filter!(f_and!([
-            f_eq("class", "access_control_profile"),
-            f_eq("class", "access_control_search"),
-            f_eq("acp_enable", "true"),
+            f_eq("class", PVCLASS_ACP.clone()),
+            f_eq("class", PVCLASS_ACS.clone()),
+            f_eq("acp_enable", PVACP_ENABLE_TRUE.clone()),
         ]));
 
         let res = try_audit!(audit, self.internal_search(audit, filt));
@@ -1489,9 +1585,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
         try_audit!(audit, self.accesscontrols.update_search(search_acps));
         // Update create
         let filt = filter!(f_and!([
-            f_eq("class", "access_control_profile"),
-            f_eq("class", "access_control_create"),
-            f_eq("acp_enable", "true"),
+            f_eq("class", PVCLASS_ACP.clone()),
+            f_eq("class", PVCLASS_ACC.clone()),
+            f_eq("acp_enable", PVACP_ENABLE_TRUE.clone()),
         ]));
 
         let res = try_audit!(audit, self.internal_search(audit, filt));
@@ -1505,9 +1601,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
         try_audit!(audit, self.accesscontrols.update_create(create_acps));
         // Update modify
         let filt = filter!(f_and!([
-            f_eq("class", "access_control_profile"),
-            f_eq("class", "access_control_modify"),
-            f_eq("acp_enable", "true"),
+            f_eq("class", PVCLASS_ACP.clone()),
+            f_eq("class", PVCLASS_ACM.clone()),
+            f_eq("acp_enable", PVACP_ENABLE_TRUE.clone()),
         ]));
 
         let res = try_audit!(audit, self.internal_search(audit, filt));
@@ -1521,9 +1617,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
         try_audit!(audit, self.accesscontrols.update_modify(modify_acps));
         // Update delete
         let filt = filter!(f_and!([
-            f_eq("class", "access_control_profile"),
-            f_eq("class", "access_control_delete"),
-            f_eq("acp_enable", "true"),
+            f_eq("class", PVCLASS_ACP.clone()),
+            f_eq("class", PVCLASS_ACD.clone()),
+            f_eq("acp_enable", PVACP_ENABLE_TRUE.clone()),
         ]));
 
         let res = try_audit!(audit, self.internal_search(audit, filt));
@@ -1586,7 +1682,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::constants::{JSON_ADMIN_V1, UUID_ADMIN};
+    use crate::constants::{JSON_ADMIN_V1, STR_UUID_ADMIN, UUID_ADMIN};
     use crate::entry::{Entry, EntryInvalid, EntryNew};
     use crate::error::{OperationError, SchemaError};
     use crate::event::{CreateEvent, DeleteEvent, ModifyEvent, ReviveRecycledEvent, SearchEvent};
@@ -1596,20 +1692,22 @@ mod tests {
     use crate::proto::v1::ModifyList as ProtoModifyList;
     use crate::proto::v1::{DeleteRequest, ModifyRequest, ReviveRecycledRequest};
     use crate::server::QueryServerTransaction;
+    use crate::value::{PartialValue, Value};
+    use uuid::Uuid;
 
     #[test]
     fn test_qs_create_user() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             let mut server_txn = server.write();
-            let filt = filter!(f_eq("name", "testperson"));
+            let filt = filter!(f_eq("name", PartialValue::new_iutf8s("testperson")));
             let admin = server_txn
-                .internal_search_uuid(audit, UUID_ADMIN)
+                .internal_search_uuid(audit, &UUID_ADMIN)
                 .expect("failed");
 
             let se1 = unsafe { SearchEvent::new_impersonate_entry(admin.clone(), filt.clone()) };
             let se2 = unsafe { SearchEvent::new_impersonate_entry(admin, filt) };
 
-            let e: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -1621,8 +1719,7 @@ mod tests {
                     "displayname": ["testperson"]
                 }
             }"#,
-            )
-            .expect("json failure");
+            );
 
             let ce = CreateEvent::new_internal(vec![e.clone()]);
 
@@ -1678,7 +1775,7 @@ mod tests {
             // Create an object
             let mut server_txn = server.write();
 
-            let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -1690,10 +1787,9 @@ mod tests {
                     "displayname": ["testperson1"]
                 }
             }"#,
-            )
-            .expect("json failure");
+            );
 
-            let e2: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            let e2: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -1705,8 +1801,7 @@ mod tests {
                     "displayname": ["testperson2"]
                 }
             }"#,
-            )
-            .expect("json failure");
+            );
 
             let ce = CreateEvent::new_internal(vec![e1.clone(), e2.clone()]);
 
@@ -1726,10 +1821,10 @@ mod tests {
             let me_nochg = unsafe {
                 ModifyEvent::new_impersonate_entry_ser(
                     JSON_ADMIN_V1,
-                    filter!(f_eq("name", "flarbalgarble")),
+                    filter!(f_eq("name", PartialValue::new_iutf8s("flarbalgarble"))),
                     ModifyList::new_list(vec![Modify::Present(
-                        String::from("description"),
-                        String::from("anusaosu"),
+                        "description".to_string(),
+                        Value::from("anusaosu"),
                     )]),
                 )
             };
@@ -1741,10 +1836,10 @@ mod tests {
             // this.
             let r_inv_1 = server_txn.internal_modify(
                 audit,
-                filter!(f_eq("tnanuanou", "Flarbalgarble")),
+                filter!(f_eq("tnanuanou", PartialValue::new_iutf8s("Flarbalgarble"))),
                 ModifyList::new_list(vec![Modify::Present(
-                    String::from("description"),
-                    String::from("anusaosu"),
+                    "description".to_string(),
+                    Value::from("anusaosu"),
                 )]),
             );
             assert!(
@@ -1759,8 +1854,8 @@ mod tests {
                 ModifyEvent::new_internal_invalid(
                     filter!(f_pres("class")),
                     ModifyList::new_list(vec![Modify::Present(
-                        String::from("htnaonu"),
-                        String::from("anusaosu"),
+                        "htnaonu".to_string(),
+                        Value::from("anusaosu"),
                     )]),
                 )
             };
@@ -1774,10 +1869,10 @@ mod tests {
             // Mod single object
             let me_sin = unsafe {
                 ModifyEvent::new_internal_invalid(
-                    filter!(f_eq("name", "testperson2")),
+                    filter!(f_eq("name", PartialValue::new_iutf8s("testperson2"))),
                     ModifyList::new_list(vec![Modify::Present(
-                        String::from("description"),
-                        String::from("anusaosu"),
+                        "description".to_string(),
+                        Value::from("anusaosu"),
                     )]),
                 )
             };
@@ -1787,12 +1882,12 @@ mod tests {
             let me_mult = unsafe {
                 ModifyEvent::new_internal_invalid(
                     filter!(f_or!([
-                        f_eq("name", "testperson1"),
-                        f_eq("name", "testperson2"),
+                        f_eq("name", PartialValue::new_iutf8s("testperson1")),
+                        f_eq("name", PartialValue::new_iutf8s("testperson2")),
                     ])),
                     ModifyList::new_list(vec![Modify::Present(
-                        String::from("description"),
-                        String::from("anusaosu"),
+                        "description".to_string(),
+                        Value::from("anusaosu"),
                     )]),
                 )
             };
@@ -1809,7 +1904,7 @@ mod tests {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             let mut server_txn = server.write();
 
-            let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -1821,8 +1916,7 @@ mod tests {
                     "displayname": ["testperson1"]
                 }
             }"#,
-            )
-            .expect("json failure");
+            );
 
             let ce = CreateEvent::new_internal(vec![e1.clone()]);
 
@@ -1832,10 +1926,10 @@ mod tests {
             // Add class but no values
             let me_sin = unsafe {
                 ModifyEvent::new_internal_invalid(
-                    filter!(f_eq("name", "testperson1")),
+                    filter!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
                     ModifyList::new_list(vec![Modify::Present(
-                        String::from("class"),
-                        String::from("system_info"),
+                        "class".to_string(),
+                        Value::new_class("system_info"),
                     )]),
                 )
             };
@@ -1844,10 +1938,10 @@ mod tests {
             // Add multivalue where not valid
             let me_sin = unsafe {
                 ModifyEvent::new_internal_invalid(
-                    filter!(f_eq("name", "testperson1")),
+                    filter!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
                     ModifyList::new_list(vec![Modify::Present(
-                        String::from("name"),
-                        String::from("testpersonx"),
+                        "name".to_string(),
+                        Value::new_iutf8s("testpersonx"),
                     )]),
                 )
             };
@@ -1856,11 +1950,11 @@ mod tests {
             // add class and valid values?
             let me_sin = unsafe {
                 ModifyEvent::new_internal_invalid(
-                    filter!(f_eq("name", "testperson1")),
+                    filter!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
                     ModifyList::new_list(vec![
-                        Modify::Present(String::from("class"), String::from("system_info")),
-                        Modify::Present(String::from("domain"), String::from("domain.name")),
-                        Modify::Present(String::from("version"), String::from("1")),
+                        Modify::Present("class".to_string(), Value::new_class("system_info")),
+                        Modify::Present("domain".to_string(), Value::new_iutf8s("domain.name")),
+                        Modify::Present("version".to_string(), Value::new_iutf8s("1")),
                     ]),
                 )
             };
@@ -1869,10 +1963,10 @@ mod tests {
             // Replace a value
             let me_sin = unsafe {
                 ModifyEvent::new_internal_invalid(
-                    filter!(f_eq("name", "testperson1")),
+                    filter!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
                     ModifyList::new_list(vec![
                         Modify::Purged("name".to_string()),
-                        Modify::Present(String::from("name"), String::from("testpersonx")),
+                        Modify::Present("name".to_string(), Value::new_iutf8s("testpersonx")),
                     ]),
                 )
             };
@@ -1886,7 +1980,7 @@ mod tests {
             // Create
             let mut server_txn = server.write();
 
-            let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -1898,10 +1992,9 @@ mod tests {
                     "displayname": ["testperson1"]
                 }
             }"#,
-            )
-            .expect("json failure");
+            );
 
-            let e2: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            let e2: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -1913,10 +2006,9 @@ mod tests {
                     "displayname": ["testperson2"]
                 }
             }"#,
-            )
-            .expect("json failure");
+            );
 
-            let e3: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            let e3: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -1928,8 +2020,7 @@ mod tests {
                     "displayname": ["testperson3"]
                 }
             }"#,
-            )
-            .expect("json failure");
+            );
 
             let ce = CreateEvent::new_internal(vec![e1.clone(), e2.clone(), e3.clone()]);
 
@@ -1945,19 +2036,26 @@ mod tests {
             let de_empty = unsafe {
                 DeleteEvent::new_internal_invalid(filter!(f_eq(
                     "uuid",
-                    "cc8e95b4-c24f-4d68-ba54-000000000000"
+                    PartialValue::new_uuids("cc8e95b4-c24f-4d68-ba54-000000000000").unwrap()
                 )))
             };
             assert!(server_txn.delete(audit, &de_empty).is_err());
 
             // Delete matches one
-            let de_sin =
-                unsafe { DeleteEvent::new_internal_invalid(filter!(f_eq("name", "testperson3"))) };
+            let de_sin = unsafe {
+                DeleteEvent::new_internal_invalid(filter!(f_eq(
+                    "name",
+                    PartialValue::new_iutf8s("testperson3")
+                )))
+            };
             assert!(server_txn.delete(audit, &de_sin).is_ok());
 
             // Delete matches many
             let de_mult = unsafe {
-                DeleteEvent::new_internal_invalid(filter!(f_eq("description", "testperson")))
+                DeleteEvent::new_internal_invalid(filter!(f_eq(
+                    "description",
+                    PartialValue::new_utf8s("testperson")
+                )))
             };
             assert!(server_txn.delete(audit, &de_mult).is_ok());
 
@@ -1970,12 +2068,12 @@ mod tests {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             let mut server_txn = server.write();
             let admin = server_txn
-                .internal_search_uuid(audit, UUID_ADMIN)
+                .internal_search_uuid(audit, &UUID_ADMIN)
                 .expect("failed");
 
-            let filt_ts = ProtoFilter::Eq(String::from("class"), String::from("tombstone"));
+            let filt_ts = ProtoFilter::Eq("class".to_string(), "tombstone".to_string());
 
-            let filt_i_ts = filter_all!(f_eq("class", "tombstone"));
+            let filt_i_ts = filter_all!(f_eq("class", PartialValue::new_class("tombstone")));
 
             // Create fake external requests. Probably from admin later
             // Should we do this with impersonate instead of using the external
@@ -1984,24 +2082,24 @@ mod tests {
                 ModifyRequest::new(
                     filt_ts.clone(),
                     ProtoModifyList::new_list(vec![ProtoModify::Present(
-                        String::from("class"),
-                        String::from("tombstone"),
+                        "class".to_string(),
+                        "tombstone".to_string(),
                     )]),
-                    UUID_ADMIN,
+                    STR_UUID_ADMIN,
                 ),
                 &server_txn,
             )
             .expect("modify event create failed");
             let de_ts = DeleteEvent::from_request(
                 audit,
-                DeleteRequest::new(filt_ts.clone(), UUID_ADMIN),
+                DeleteRequest::new(filt_ts.clone(), STR_UUID_ADMIN),
                 &server_txn,
             )
             .expect("delete event create failed");
             let se_ts = unsafe { SearchEvent::new_ext_impersonate_entry(admin, filt_i_ts.clone()) };
 
             // First, create a tombstone
-            let e_ts: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            let e_ts: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -2010,8 +2108,7 @@ mod tests {
                     "uuid": ["9557f49c-97a5-4277-a9a5-097d17eb8317"]
                 }
             }"#,
-            )
-            .expect("json failure");
+            );
 
             let ce = CreateEvent::new_internal(vec![e_ts]);
             let cr = server_txn.create(audit, &ce);
@@ -2055,16 +2152,16 @@ mod tests {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             let mut server_txn = server.write();
             let admin = server_txn
-                .internal_search_uuid(audit, UUID_ADMIN)
+                .internal_search_uuid(audit, &UUID_ADMIN)
                 .expect("failed");
 
-            let filt_rc = ProtoFilter::Eq(String::from("class"), String::from("recycled"));
+            let filt_rc = ProtoFilter::Eq("class".to_string(), "recycled".to_string());
 
-            let filt_i_rc = filter_all!(f_eq("class", "recycled"));
+            let filt_i_rc = filter_all!(f_eq("class", PartialValue::new_class("recycled")));
 
-            let filt_i_ts = filter_all!(f_eq("class", "tombstone"));
+            let filt_i_ts = filter_all!(f_eq("class", PartialValue::new_class("tombstone")));
 
-            let filt_i_per = filter_all!(f_eq("class", "person"));
+            let filt_i_per = filter_all!(f_eq("class", PartialValue::new_class("person")));
 
             // Create fake external requests. Probably from admin later
             let me_rc = ModifyEvent::from_request(
@@ -2072,17 +2169,17 @@ mod tests {
                 ModifyRequest::new(
                     filt_rc.clone(),
                     ProtoModifyList::new_list(vec![ProtoModify::Present(
-                        String::from("class"),
-                        String::from("recycled"),
+                        "class".to_string(),
+                        "recycled".to_string(),
                     )]),
-                    UUID_ADMIN,
+                    STR_UUID_ADMIN,
                 ),
                 &server_txn,
             )
             .expect("modify event create failed");
             let de_rc = DeleteEvent::from_request(
                 audit,
-                DeleteRequest::new(filt_rc.clone(), UUID_ADMIN),
+                DeleteRequest::new(filt_rc.clone(), STR_UUID_ADMIN),
                 &server_txn,
             )
             .expect("delete event create failed");
@@ -2096,14 +2193,14 @@ mod tests {
                 audit,
                 ReviveRecycledRequest::new(
                     ProtoFilter::Eq("name".to_string(), "testperson1".to_string()),
-                    UUID_ADMIN,
+                    STR_UUID_ADMIN,
                 ),
                 &server_txn,
             )
             .expect("revive recycled create failed");
 
             // Create some recycled objects
-            let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -2115,10 +2212,9 @@ mod tests {
                     "displayname": ["testperson1"]
                 }
             }"#,
-            )
-            .expect("json failure");
+            );
 
-            let e2: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            let e2: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -2130,8 +2226,7 @@ mod tests {
                     "displayname": ["testperson2"]
                 }
             }"#,
-            )
-            .expect("json failure");
+            );
 
             let ce = CreateEvent::new_internal(vec![e1, e2]);
             let cr = server_txn.create(audit, &ce);
@@ -2196,10 +2291,10 @@ mod tests {
             // Create items
             let mut server_txn = server.write();
             let admin = server_txn
-                .internal_search_uuid(audit, UUID_ADMIN)
+                .internal_search_uuid(audit, &UUID_ADMIN)
                 .expect("failed");
 
-            let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -2211,18 +2306,21 @@ mod tests {
                     "displayname": ["testperson1"]
                 }
             }"#,
-            )
-            .expect("json failure");
+            );
             let ce = CreateEvent::new_internal(vec![e1]);
 
             let cr = server_txn.create(audit, &ce);
             assert!(cr.is_ok());
             // Delete and ensure they became recycled.
-            let de_sin =
-                unsafe { DeleteEvent::new_internal_invalid(filter!(f_eq("name", "testperson1"))) };
+            let de_sin = unsafe {
+                DeleteEvent::new_internal_invalid(filter!(f_eq(
+                    "name",
+                    PartialValue::new_iutf8s("testperson1")
+                )))
+            };
             assert!(server_txn.delete(audit, &de_sin).is_ok());
             // Can in be seen by special search? (external recycle search)
-            let filt_rc = filter_all!(f_eq("class", "recycled"));
+            let filt_rc = filter_all!(f_eq("class", PartialValue::new_class("recycled")));
             let sre_rc = unsafe { SearchEvent::new_rec_impersonate_entry(admin, filt_rc.clone()) };
             let r2 = server_txn.search(audit, &sre_rc).expect("search failed");
             assert!(r2.len() == 1);
@@ -2241,7 +2339,7 @@ mod tests {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             let mut server_txn = server.write();
 
-            let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -2253,23 +2351,22 @@ mod tests {
                     "displayname": ["testperson1"]
                 }
                 }"#,
-            )
-            .expect("json failure");
+            );
             let ce = CreateEvent::new_internal(vec![e1]);
             let cr = server_txn.create(audit, &ce);
             assert!(cr.is_ok());
 
             // Name doesn't exist
-            let r1 = server_txn.name_to_uuid(audit, &String::from("testpers"));
+            let r1 = server_txn.name_to_uuid(audit, "testpers");
             assert!(r1.is_err());
             // Name doesn't exist (not syntax normalised)
-            let r2 = server_txn.name_to_uuid(audit, &String::from("tEsTpErS"));
+            let r2 = server_txn.name_to_uuid(audit, "tEsTpErS");
             assert!(r2.is_err());
             // Name does exist
-            let r3 = server_txn.name_to_uuid(audit, &String::from("testperson1"));
+            let r3 = server_txn.name_to_uuid(audit, "testperson1");
             assert!(r3.is_ok());
             // Name is not syntax normalised (but exists)
-            let r4 = server_txn.name_to_uuid(audit, &String::from("tEsTpErSoN1"));
+            let r4 = server_txn.name_to_uuid(audit, "tEsTpErSoN1");
             assert!(r4.is_ok());
         })
     }
@@ -2279,7 +2376,7 @@ mod tests {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             let mut server_txn = server.write();
 
-            let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -2291,26 +2388,28 @@ mod tests {
                     "displayname": ["testperson1"]
                 }
             }"#,
-            )
-            .expect("json failure");
+            );
             let ce = CreateEvent::new_internal(vec![e1]);
             let cr = server_txn.create(audit, &ce);
             assert!(cr.is_ok());
 
             // Name doesn't exist
-            let r1 = server_txn
-                .uuid_to_name(audit, &String::from("bae3f507-e6c3-44ba-ad01-f8ff1083534a"));
+            let r1 = server_txn.uuid_to_name(
+                audit,
+                &Uuid::parse_str("bae3f507-e6c3-44ba-ad01-f8ff1083534a").unwrap(),
+            );
             assert!(r1.is_err());
-            // Name doesn't exist (not syntax normalised)
-            let r2 = server_txn.uuid_to_name(audit, &String::from("bae3f507-e6c3-44ba-ad01"));
-            assert!(r2.is_err());
             // Name does exist
-            let r3 = server_txn
-                .uuid_to_name(audit, &String::from("cc8e95b4-c24f-4d68-ba54-8bed76f63930"));
+            let r3 = server_txn.uuid_to_name(
+                audit,
+                &Uuid::parse_str("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap(),
+            );
             assert!(r3.is_ok());
             // Name is not syntax normalised (but exists)
-            let r4 = server_txn
-                .uuid_to_name(audit, &String::from("CC8E95B4-C24F-4D68-BA54-8BED76F63930"));
+            let r4 = server_txn.uuid_to_name(
+                audit,
+                &Uuid::parse_str("CC8E95B4-C24F-4D68-BA54-8BED76F63930").unwrap(),
+            );
             assert!(r4.is_ok());
         })
     }
@@ -2319,7 +2418,7 @@ mod tests {
     fn test_qs_clone_value() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             let mut server_txn = server.write();
-            let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -2331,8 +2430,7 @@ mod tests {
                     "displayname": ["testperson1"]
                 }
             }"#,
-            )
-            .expect("json failure");
+            );
             let ce = CreateEvent::new_internal(vec![e1]);
             let cr = server_txn.create(audit, &ce);
             assert!(cr.is_ok());
@@ -2341,19 +2439,19 @@ mod tests {
             let r1 =
                 server_txn.clone_value(audit, &"tausau".to_string(), &"naoeutnhaou".to_string());
 
-            assert!(r1 == Ok("naoeutnhaou".to_string()));
+            assert!(r1.is_err());
 
             // test attr not-normalised
             // test attr not-reference
             let r2 = server_txn.clone_value(audit, &"NaMe".to_string(), &"NaMe".to_string());
 
-            assert!(r2 == Ok("NaMe".to_string()));
+            assert!(r2 == Ok(Value::new_iutf8s("NaMe")));
 
             // test attr reference
             let r3 =
                 server_txn.clone_value(audit, &"member".to_string(), &"testperson1".to_string());
 
-            assert!(r3 == Ok("cc8e95b4-c24f-4d68-ba54-8bed76f63930".to_string()));
+            assert!(r3 == Ok(Value::new_refer_s("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap()));
 
             // test attr reference already resolved.
             let r4 = server_txn.clone_value(
@@ -2363,14 +2461,14 @@ mod tests {
             );
 
             println!("{:?}", r4);
-            assert!(r4 == Ok("cc8e95b4-c24f-4d68-ba54-8bed76f63930".to_string()));
+            assert!(r4 == Ok(Value::new_refer_s("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap()));
         })
     }
 
     #[test]
     fn test_qs_dynamic_schema_class() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
-            let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -2380,11 +2478,10 @@ mod tests {
                     "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"]
                 }
             }"#,
-            )
-            .expect("json failure");
+            );
 
             // Class definition
-            let e_cd: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            let e_cd: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -2395,8 +2492,7 @@ mod tests {
                     "description": ["Test Class"]
                 }
             }"#,
-            )
-            .expect("json failure");
+            );
 
             let mut server_txn = server.write();
             // Add a new class.
@@ -2422,8 +2518,12 @@ mod tests {
             // Start a new write
             let mut server_txn = server.write();
             // delete the class
-            let de_class =
-                unsafe { DeleteEvent::new_internal_invalid(filter!(f_eq("name", "testclass"))) };
+            let de_class = unsafe {
+                DeleteEvent::new_internal_invalid(filter!(f_eq(
+                    "name",
+                    PartialValue::new_iutf8s("testclass")
+                )))
+            };
             assert!(server_txn.delete(audit, &de_class).is_ok());
             // Commit
             server_txn.commit(audit).expect("should not fail");
@@ -2435,9 +2535,12 @@ mod tests {
             assert!(server_txn.create(audit, &ce_fail).is_err());
             // Search our entry
             let testobj1 = server_txn
-                .internal_search_uuid(audit, "cc8e95b4-c24f-4d68-ba54-8bed76f63930")
+                .internal_search_uuid(
+                    audit,
+                    &Uuid::parse_str("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap(),
+                )
                 .expect("failed");
-            assert!(testobj1.attribute_value_pres("class", "testclass"));
+            assert!(testobj1.attribute_value_pres("class", &PartialValue::new_iutf8s("testclass")));
 
             // Should still be good
             server_txn.commit(audit).expect("should not fail");
@@ -2448,7 +2551,7 @@ mod tests {
     #[test]
     fn test_qs_dynamic_schema_attr() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
-            let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -2459,11 +2562,10 @@ mod tests {
                     "testattr": ["test"]
                 }
             }"#,
-            )
-            .expect("json failure");
+            );
 
             // Attribute definition
-            let e_ad: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+            let e_ad: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -2476,8 +2578,7 @@ mod tests {
                     "syntax": ["UTF8STRING"]
                 }
             }"#,
-            )
-            .expect("json failure");
+            );
 
             let mut server_txn = server.write();
             // Add a new attribute.
@@ -2503,8 +2604,12 @@ mod tests {
             // Start a new write
             let mut server_txn = server.write();
             // delete the attr
-            let de_attr =
-                unsafe { DeleteEvent::new_internal_invalid(filter!(f_eq("name", "testattr"))) };
+            let de_attr = unsafe {
+                DeleteEvent::new_internal_invalid(filter!(f_eq(
+                    "name",
+                    PartialValue::new_iutf8s("testattr")
+                )))
+            };
             assert!(server_txn.delete(audit, &de_attr).is_ok());
             // Commit
             server_txn.commit(audit).expect("should not fail");
@@ -2515,14 +2620,17 @@ mod tests {
             let ce_fail = CreateEvent::new_internal(vec![e1.clone()]);
             assert!(server_txn.create(audit, &ce_fail).is_err());
             // Search our attribute - should FAIL
-            let filt = filter!(f_eq("testattr", "test"));
+            let filt = filter!(f_eq("testattr", PartialValue::new_utf8s("test")));
             assert!(server_txn.internal_search(audit, filt).is_err());
             // Search the entry - the attribute will still be present
             // even if we can't search on it.
             let testobj1 = server_txn
-                .internal_search_uuid(audit, "cc8e95b4-c24f-4d68-ba54-8bed76f63930")
+                .internal_search_uuid(
+                    audit,
+                    &Uuid::parse_str("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap(),
+                )
                 .expect("failed");
-            assert!(testobj1.attribute_value_pres("testattr", "test"));
+            assert!(testobj1.attribute_value_pres("testattr", &PartialValue::new_utf8s("test")));
 
             server_txn.commit(audit).expect("should not fail");
             // Commit.

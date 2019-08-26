@@ -5,6 +5,13 @@ use crate::proto::v1::UserAuthToken;
 
 use crate::idm::claim::Claim;
 use crate::idm::group::Group;
+use crate::value::PartialValue;
+
+use uuid::Uuid;
+
+lazy_static! {
+    static ref PVCLASS_ACCOUNT: PartialValue = PartialValue::new_class("account");
+}
 
 #[derive(Debug, Clone)]
 pub(crate) struct Account {
@@ -16,7 +23,7 @@ pub(crate) struct Account {
     // william problem I think :)
     pub name: String,
     pub displayname: String,
-    pub uuid: String,
+    pub uuid: Uuid,
     pub groups: Vec<Group>,
     // creds (various types)
     // groups?
@@ -30,26 +37,23 @@ impl Account {
         value: Entry<EntryValid, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         // Check the classes
-        if !value.attribute_value_pres("class", "account") {
+        if !value.attribute_value_pres("class", &PVCLASS_ACCOUNT) {
             return Err(OperationError::InvalidAccountState(
                 "Missing class: account",
             ));
         }
 
         // Now extract our needed attributes
-        let name = value
-            .get_ava_single("name")
-            .ok_or(OperationError::InvalidAccountState(
-                "Missing attribute: name",
-            ))?
-            .clone();
+        let name =
+            value
+                .get_ava_single_string("name")
+                .ok_or(OperationError::InvalidAccountState(
+                    "Missing attribute: name",
+                ))?;
 
-        let displayname = value
-            .get_ava_single("displayname")
-            .ok_or(OperationError::InvalidAccountState(
-                "Missing attribute: displayname",
-            ))?
-            .clone();
+        let displayname = value.get_ava_single_string("displayname").ok_or(
+            OperationError::InvalidAccountState("Missing attribute: displayname"),
+        )?;
 
         // TODO #71: Resolve groups!!!!
         let groups = Vec::new();
@@ -75,7 +79,7 @@ impl Account {
         Some(UserAuthToken {
             name: self.name.clone(),
             displayname: self.name.clone(),
-            uuid: self.uuid.clone(),
+            uuid: self.uuid.to_hyphenated_ref().to_string(),
             application: None,
             groups: self.groups.iter().map(|g| g.into_proto()).collect(),
             claims: claims.iter().map(|c| c.into_proto()).collect(),
@@ -96,7 +100,7 @@ mod tests {
     #[test]
     fn test_idm_account_from_anonymous() {
         let anon_e: Entry<EntryValid, EntryNew> =
-            serde_json::from_str(JSON_ANONYMOUS_V1).expect("Json deserialise failure!");
+            unsafe { Entry::unsafe_from_entry_str(JSON_ANONYMOUS_V1).to_valid_new() };
         let anon_e = unsafe { anon_e.to_valid_committed() };
 
         let anon_account = Account::try_from_entry(anon_e).expect("Must not fail");

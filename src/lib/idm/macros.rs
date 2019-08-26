@@ -5,7 +5,7 @@ macro_rules! entry_str_to_account {
         use crate::idm::account::Account;
 
         let e: Entry<EntryValid, EntryNew> =
-            serde_json::from_str($entry_str).expect("Json deserialise failure!");
+            unsafe { Entry::unsafe_from_entry_str($entry_str).to_valid_new() };
         let e = unsafe { e.to_valid_committed() };
 
         Account::try_from_entry(e).expect("Account conversion failure")

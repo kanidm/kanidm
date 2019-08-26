@@ -18,29 +18,35 @@ use crate::modify::{Modify, ModifyList};
 use crate::plugins::Plugin;
 use crate::server::QueryServerTransaction;
 use crate::server::{QueryServerReadTransaction, QueryServerWriteTransaction};
+use crate::value::{PartialValue, Value};
 
-use std::collections::BTreeMap;
+use std::collections::BTreeSet;
+use uuid::Uuid;
+
+lazy_static! {
+    static ref CLASS_GROUP: PartialValue = PartialValue::new_iutf8s("group");
+}
 
 pub struct MemberOf;
 
 fn affected_uuids<'a, STATE>(
     au: &mut AuditScope,
     changed: Vec<&'a Entry<EntryValid, STATE>>,
-) -> Vec<&'a String>
+) -> Vec<&'a Uuid>
 where
     STATE: std::fmt::Debug,
 {
     // From the list of groups which were changed in this operation:
     let changed_groups: Vec<_> = changed
         .into_iter()
-        .filter(|e| e.attribute_value_pres("class", "group"))
+        .filter(|e| e.attribute_value_pres("class", &CLASS_GROUP))
         .inspect(|e| {
             audit_log!(au, "group reporting change: {:?}", e);
         })
         .collect();
 
     // Now, build a map of all UUID's that will require updates as a result of this change
-    let mut affected_uuids: Vec<&String> = changed_groups
+    let mut affected_uuids: Vec<&Uuid> = changed_groups
         .iter()
         .filter_map(|e| {
             // Only groups with member get collected up here.
@@ -48,6 +54,7 @@ where
         })
         // Flatten the member's to the list.
         .flatten()
+        .filter_map(|uv| uv.to_ref_uuid())
         .collect();
 
     // IDEA: promote groups to head of the affected_uuids set!
@@ -65,7 +72,7 @@ where
 fn apply_memberof(
     au: &mut AuditScope,
     qs: &mut QueryServerWriteTransaction,
-    affected_uuids: Vec<&String>,
+    affected_uuids: Vec<&Uuid>,
 ) -> Result<(), OperationError> {
     audit_log!(au, " => entering apply_memberof");
     audit_log!(au, "affected uuids -> {:?}", affected_uuids);
@@ -93,24 +100,35 @@ fn apply_memberof(
             au,
             qs.internal_search(
                 au,
-                filter!(f_and!([f_eq("class", "group"), f_eq("member", a_uuid)]))
+                filter!(f_and!([
+                    f_eq("class", CLASS_GROUP.clone()),
+                    f_eq("member", PartialValue::new_refer_r(a_uuid))
+                ]))
             )
         );
         // get UUID of all groups + all memberof values
-        let mut dir_mo_set: Vec<_> = groups.iter().map(|g| g.get_uuid().clone()).collect();
+        let mut dir_mo_set: Vec<Value> = groups
+            .iter()
+            .map(|g| {
+                // These are turned into reference values.
+                Value::new_refer(g.get_uuid().clone())
+            })
+            .collect();
 
         // No need to dedup this. Sorting could be of questionable
         // value too though ...
         dir_mo_set.sort();
+        dir_mo_set.dedup();
 
-        let mut mo_set: Vec<_> = groups
+        let mut mo_set: Vec<Value> = groups
             .iter()
             .map(|g| {
                 // TODO #61: This could be more effecient
-                let mut v = vec![g.get_uuid().clone()];
+                let mut v = vec![Value::new_refer(g.get_uuid().clone())];
                 match g.get_ava("memberof") {
                     Some(mos) => {
                         for mo in mos {
+                            // This is cloning the existing reference values
                             v.push(mo.clone())
                         }
                     }
@@ -133,7 +151,7 @@ fn apply_memberof(
         // TODO #68: Could this affect replication? Or should the CL work out the
         // true diff of the operation?
         let mo_purge = vec![
-            Modify::Present("class".to_string(), "memberof".to_string()),
+            Modify::Present("class".to_string(), Value::new_class("memberof")),
             Modify::Purged("memberof".to_string()),
             Modify::Purged("directmemberof".to_string()),
         ];
@@ -158,7 +176,11 @@ fn apply_memberof(
 
         try_audit!(
             au,
-            qs.internal_modify(au, filter!(f_eq("uuid", a_uuid)), modlist,)
+            qs.internal_modify(
+                au,
+                filter!(f_eq("uuid", PartialValue::new_uuid(a_uuid.clone()))),
+                modlist,
+            )
         );
     }
 
@@ -194,15 +216,15 @@ impl Plugin for MemberOf {
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
         // The condition here is critical - ONLY trigger on entries where changes occur!
-        let mut changed: Vec<&String> = pre_cand
+        let mut changed: Vec<&Uuid> = pre_cand
             .iter()
             .zip(cand.iter())
             .filter(|(pre, post)| {
                 // This is the base case to break cycles in recursion!
                 (
                         // If it was a group, or will become a group.
-                        post.attribute_value_pres("class", "group")
-                            || pre.attribute_value_pres("class", "group")
+                        post.attribute_value_pres("class", &CLASS_GROUP)
+                            || pre.attribute_value_pres("class", &CLASS_GROUP)
                     )
                     // And the group has changed ...
                     && pre != post
@@ -216,13 +238,13 @@ impl Plugin for MemberOf {
             })
             .filter_map(|e| {
                 // Only groups with member get collected up here.
-                e.get_ava("member")
+                e.get_ava_reference_uuid("member")
             })
-            // Flatten the uuid lists.
+            // Flatten the uuid reference lists.
             .flatten()
             .collect();
 
-        // Now tidy them up.
+        // Now tidy them up to reduce excesse searches/work.
         changed.sort();
         changed.dedup();
 
@@ -290,7 +312,10 @@ impl Plugin for MemberOf {
             // create new map
             // let mo_set: BTreeMap<String, ()> = BTreeMap::new();
             // searcch direct memberships of live groups.
-            let filt_in = filter!(f_eq("member", e.get_uuid().as_str()));
+            let filt_in = filter!(f_eq(
+                "member",
+                PartialValue::new_refer(e.get_uuid().clone())
+            ));
 
             let direct_memberof = match qs
                 .internal_search(au, filt_in)
@@ -301,18 +326,16 @@ impl Plugin for MemberOf {
             };
             // for all direct -> add uuid to map
 
-            let d_groups_set: BTreeMap<&String, ()> =
-                direct_memberof.iter().map(|e| (e.get_uuid(), ())).collect();
+            let d_groups_set: BTreeSet<&Uuid> =
+                direct_memberof.iter().map(|e| e.get_uuid()).collect();
 
             audit_log!(au, "Direct groups {:?} -> {:?}", e.get_uuid(), d_groups_set);
 
-            let dmos = match e.get_ava(&"directmemberof".to_string()) {
+            let dmos: Vec<&Uuid> = match e.get_ava_reference_uuid("directmemberof") {
                 // Avoid a reference issue to return empty set
-                Some(dmos) => dmos.clone(),
-                None => {
-                    // No memberof, return empty set.
-                    Vec::new()
-                }
+                Some(dmos) => dmos,
+                // No memberof, return empty set.
+                None => Vec::new(),
             };
 
             audit_log!(au, "DMO groups {:?} -> {:?}", e.get_uuid(), dmos);
@@ -329,7 +352,7 @@ impl Plugin for MemberOf {
             };
 
             for mo_uuid in dmos {
-                if !d_groups_set.contains_key(&mo_uuid) {
+                if !d_groups_set.contains(mo_uuid) {
                     audit_log!(
                         au,
                         "Entry {:?}, MO {:?} not in direct groups",
@@ -368,6 +391,12 @@ mod tests {
     // use crate::error::OperationError;
     use crate::modify::{Modify, ModifyList};
     use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
+    use crate::value::{PartialValue, Value};
+
+    static UUID_A: &'static str = "aaaaaaaa-f82e-4484-a407-181aa03bda5c";
+    static UUID_B: &'static str = "bbbbbbbb-2438-4384-9891-48f4c8172e9b";
+    static UUID_C: &'static str = "cccccccc-9b01-423f-9ba6-51aa4bbd5dd2";
+    static UUID_D: &'static str = "dddddddd-2ab3-48e3-938d-1b4754cd2984";
 
     static EA: &'static str = r#"{
             "valid": null,
@@ -379,8 +408,6 @@ mod tests {
             }
         }"#;
 
-    static UUID_A: &'static str = "aaaaaaaa-f82e-4484-a407-181aa03bda5c";
-
     static EB: &'static str = r#"{
             "valid": null,
             "state": null,
@@ -390,8 +417,6 @@ mod tests {
                 "uuid": ["bbbbbbbb-2438-4384-9891-48f4c8172e9b"]
             }
         }"#;
-
-    static UUID_B: &'static str = "bbbbbbbb-2438-4384-9891-48f4c8172e9b";
 
     static EC: &'static str = r#"{
             "valid": null,
@@ -403,8 +428,6 @@ mod tests {
             }
         }"#;
 
-    static UUID_C: &'static str = "cccccccc-9b01-423f-9ba6-51aa4bbd5dd2";
-
     static ED: &'static str = r#"{
             "valid": null,
             "state": null,
@@ -415,8 +438,6 @@ mod tests {
             }
         }"#;
 
-    static UUID_D: &'static str = "dddddddd-2ab3-48e3-938d-1b4754cd2984";
-
     macro_rules! assert_memberof_int {
         (
             $au:expr,
@@ -426,7 +447,10 @@ mod tests {
             $mo:expr,
             $cand:expr
         ) => {{
-            let filt = filter!(f_and!([f_eq("uuid", $ea), f_eq($mo, $eb)]));
+            let filt = filter!(f_and!([
+                f_eq("uuid", PartialValue::new_uuids($ea).unwrap()),
+                f_eq($mo, PartialValue::new_refer_s($eb).unwrap())
+            ]));
             let cands = $qs
                 .internal_search($au, filt)
                 .expect("Internal search failure");
@@ -482,13 +506,11 @@ mod tests {
     #[test]
     fn test_create_mo_single() {
         // A -> B
-        let mut ea: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EA).expect("Json parse failure");
+        let mut ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EA);
 
-        let eb: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EB).expect("Json parse failure");
+        let eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
-        ea.add_ava("member", UUID_B);
+        ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
 
         let preload = Vec::new();
         let create = vec![ea, eb];
@@ -512,17 +534,14 @@ mod tests {
     #[test]
     fn test_create_mo_nested() {
         // A -> B -> C
-        let mut ea: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EA).expect("Json parse failure");
+        let mut ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EA);
 
-        let mut eb: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EB).expect("Json parse failure");
+        let mut eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
-        let ec: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EC).expect("Json parse failure");
+        let ec: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
-        ea.add_ava("member", UUID_B);
-        eb.add_ava("member", UUID_C);
+        ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
+        eb.add_ava("member", &Value::new_refer_s(&UUID_C).unwrap());
 
         let preload = Vec::new();
         let create = vec![ea, eb, ec];
@@ -566,18 +585,15 @@ mod tests {
     fn test_create_mo_cycle() {
         // A -> B -> C -
         // ^-----------/
-        let mut ea: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EA).expect("Json parse failure");
+        let mut ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EA);
 
-        let mut eb: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EB).expect("Json parse failure");
+        let mut eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
-        let mut ec: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EC).expect("Json parse failure");
+        let mut ec: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
-        ea.add_ava("member", UUID_B);
-        eb.add_ava("member", UUID_C);
-        ec.add_ava("member", UUID_A);
+        ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
+        eb.add_ava("member", &Value::new_refer_s(&UUID_C).unwrap());
+        ec.add_ava("member", &Value::new_refer_s(&UUID_A).unwrap());
 
         let preload = Vec::new();
         let create = vec![ea, eb, ec];
@@ -621,25 +637,21 @@ mod tests {
         // A -> B -> C --> D -
         // ^-----------/    /
         // |---------------/
-        let mut ea: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EA).expect("Json parse failure");
+        let mut ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EA);
 
-        let mut eb: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EB).expect("Json parse failure");
+        let mut eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
-        let mut ec: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EC).expect("Json parse failure");
+        let mut ec: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
-        let mut ed: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(ED).expect("Json parse failure");
+        let mut ed: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(ED);
 
-        ea.add_ava("member", UUID_B);
-        eb.add_ava("member", UUID_C);
+        ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
+        eb.add_ava("member", &Value::new_refer_s(&UUID_C).unwrap());
 
-        ec.add_ava("member", UUID_A);
-        ec.add_ava("member", UUID_D);
+        ec.add_ava("member", &Value::new_refer_s(&UUID_A).unwrap());
+        ec.add_ava("member", &Value::new_refer_s(&UUID_D).unwrap());
 
-        ed.add_ava("member", UUID_A);
+        ed.add_ava("member", &Value::new_refer_s(&UUID_A).unwrap());
 
         let preload = Vec::new();
         let create = vec![ea, eb, ec, ed];
@@ -699,20 +711,18 @@ mod tests {
         // A    B
         // Add member
         // A -> B
-        let ea: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EA).expect("Json parse failure");
+        let ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EA);
 
-        let eb: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EB).expect("Json parse failure");
+        let eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
         let preload = vec![ea, eb];
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", UUID_A)),
+            filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_A).unwrap())),
             ModifyList::new_list(vec![Modify::Present(
                 "member".to_string(),
-                UUID_B.to_string()
+                Value::new_refer_s(&UUID_B).unwrap()
             )]),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
@@ -732,25 +742,22 @@ mod tests {
         // A    B -> C
         // Add member A -> B
         // A -> B -> C
-        let ea: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EA).expect("Json parse failure");
+        let ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EA);
 
-        let mut eb: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EB).expect("Json parse failure");
+        let mut eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
-        let ec: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EC).expect("Json parse failure");
+        let ec: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
-        eb.add_ava("member", UUID_C);
+        eb.add_ava("member", &Value::new_refer_s(&UUID_C).unwrap());
 
         let preload = vec![ea, eb, ec];
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", UUID_A)),
+            filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_A).unwrap())),
             ModifyList::new_list(vec![Modify::Present(
                 "member".to_string(),
-                UUID_B.to_string()
+                Value::new_refer_s(&UUID_B).unwrap()
             )]),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
@@ -788,25 +795,22 @@ mod tests {
         // A -> B    C
         // Add member B -> C
         // A -> B -> C
-        let mut ea: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EA).expect("Json parse failure");
+        let mut ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EA);
 
-        let eb: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EB).expect("Json parse failure");
+        let eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
-        let ec: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EC).expect("Json parse failure");
+        let ec: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
-        ea.add_ava("member", UUID_B);
+        ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
 
         let preload = vec![ea, eb, ec];
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", UUID_B)),
+            filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_B).unwrap())),
             ModifyList::new_list(vec![Modify::Present(
                 "member".to_string(),
-                UUID_C.to_string()
+                Value::new_refer_s(&UUID_C).unwrap()
             )]),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
@@ -846,26 +850,23 @@ mod tests {
         // Add member C -> A
         // A -> B -> C -
         // ^-----------/
-        let mut ea: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EA).expect("Json parse failure");
+        let mut ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EA);
 
-        let mut eb: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EB).expect("Json parse failure");
+        let mut eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
-        let ec: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EC).expect("Json parse failure");
+        let ec: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
-        ea.add_ava("member", UUID_B);
-        eb.add_ava("member", UUID_C);
+        ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
+        eb.add_ava("member", &Value::new_refer_s(&UUID_C).unwrap());
 
         let preload = vec![ea, eb, ec];
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", UUID_C)),
+            filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_C).unwrap())),
             ModifyList::new_list(vec![Modify::Present(
                 "member".to_string(),
-                UUID_A.to_string()
+                Value::new_refer_s(&UUID_A).unwrap()
             )]),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
@@ -909,30 +910,29 @@ mod tests {
         // A -> B -> C --> D -
         // ^-----------/    /
         // |---------------/
-        let mut ea: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EA).expect("Json parse failure");
+        let mut ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EA);
 
-        let mut eb: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EB).expect("Json parse failure");
+        let mut eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
-        let mut ec: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EC).expect("Json parse failure");
+        let mut ec: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
-        let ed: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(ED).expect("Json parse failure");
+        let ed: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(ED);
 
-        ea.add_ava("member", UUID_B);
-        eb.add_ava("member", UUID_C);
-        ec.add_ava("member", UUID_D);
+        ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
+        eb.add_ava("member", &Value::new_refer_s(&UUID_C).unwrap());
+        ec.add_ava("member", &Value::new_refer_s(&UUID_D).unwrap());
 
         let preload = vec![ea, eb, ec, ed];
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_or!([f_eq("uuid", UUID_C), f_eq("uuid", UUID_D),])),
+            filter!(f_or!([
+                f_eq("uuid", PartialValue::new_uuids(&UUID_C).unwrap()),
+                f_eq("uuid", PartialValue::new_uuids(&UUID_D).unwrap()),
+            ])),
             ModifyList::new_list(vec![Modify::Present(
                 "member".to_string(),
-                UUID_A.to_string()
+                Value::new_refer_s(&UUID_A).unwrap()
             )]),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
@@ -986,23 +986,21 @@ mod tests {
         // A -> B
         // remove member A -> B
         // A    B
-        let mut ea: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EA).expect("Json parse failure");
+        let mut ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EA);
 
-        let mut eb: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EB).expect("Json parse failure");
+        let mut eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
-        ea.add_ava("member", UUID_B);
-        eb.add_ava("memberof", UUID_A);
+        ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
+        eb.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
 
         let preload = vec![ea, eb];
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", UUID_A)),
+            filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_A).unwrap())),
             ModifyList::new_list(vec![Modify::Removed(
                 "member".to_string(),
-                UUID_B.to_string()
+                PartialValue::new_refer_s(&UUID_B).unwrap()
             )]),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
@@ -1022,28 +1020,25 @@ mod tests {
         // A -> B -> C
         // Remove A -> B
         // A    B -> C
-        let mut ea: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EA).expect("Json parse failure");
+        let mut ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EA);
 
-        let mut eb: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EB).expect("Json parse failure");
+        let mut eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
-        let mut ec: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EC).expect("Json parse failure");
+        let mut ec: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
-        ea.add_ava("member", UUID_B);
-        eb.add_ava("memberof", UUID_A);
-        eb.add_ava("member", UUID_C);
-        ec.add_ava("memberof", UUID_B);
+        ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
+        eb.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
+        eb.add_ava("member", &Value::new_refer_s(&UUID_C).unwrap());
+        ec.add_ava("memberof", &Value::new_refer_s(&UUID_B).unwrap());
 
         let preload = vec![ea, eb, ec];
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", UUID_A)),
+            filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_A).unwrap())),
             ModifyList::new_list(vec![Modify::Removed(
                 "member".to_string(),
-                UUID_B.to_string()
+                PartialValue::new_refer_s(&UUID_B).unwrap()
             )]),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
@@ -1081,29 +1076,26 @@ mod tests {
         // A -> B -> C
         // Remove B -> C
         // A -> B    C
-        let mut ea: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EA).expect("Json parse failure");
+        let mut ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EA);
 
-        let mut eb: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EB).expect("Json parse failure");
+        let mut eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
-        let mut ec: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EC).expect("Json parse failure");
+        let mut ec: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
-        ea.add_ava("member", UUID_B);
-        eb.add_ava("memberof", UUID_A);
-        eb.add_ava("member", UUID_C);
-        ec.add_ava("memberof", UUID_B);
-        ec.add_ava("memberof", UUID_A);
+        ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
+        eb.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
+        eb.add_ava("member", &Value::new_refer_s(&UUID_C).unwrap());
+        ec.add_ava("memberof", &Value::new_refer_s(&UUID_B).unwrap());
+        ec.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
 
         let preload = vec![ea, eb, ec];
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", UUID_B)),
+            filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_B).unwrap())),
             ModifyList::new_list(vec![Modify::Removed(
                 "member".to_string(),
-                UUID_C.to_string()
+                PartialValue::new_refer_s(&UUID_C).unwrap()
             )]),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
@@ -1142,38 +1134,35 @@ mod tests {
         // ^-----------/
         // Remove C -> A
         // A -> B -> C
-        let mut ea: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EA).expect("Json parse failure");
+        let mut ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EA);
 
-        let mut eb: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EB).expect("Json parse failure");
+        let mut eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
-        let mut ec: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EC).expect("Json parse failure");
+        let mut ec: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
-        ea.add_ava("member", UUID_B);
-        ea.add_ava("memberof", UUID_C);
-        ea.add_ava("memberof", UUID_B);
-        ea.add_ava("memberof", UUID_A);
+        ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
+        ea.add_ava("memberof", &Value::new_refer_s(&UUID_C).unwrap());
+        ea.add_ava("memberof", &Value::new_refer_s(&UUID_B).unwrap());
+        ea.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
 
-        eb.add_ava("member", UUID_C);
-        eb.add_ava("memberof", UUID_C);
-        eb.add_ava("memberof", UUID_B);
-        eb.add_ava("memberof", UUID_A);
+        eb.add_ava("member", &Value::new_refer_s(&UUID_C).unwrap());
+        eb.add_ava("memberof", &Value::new_refer_s(&UUID_C).unwrap());
+        eb.add_ava("memberof", &Value::new_refer_s(&UUID_B).unwrap());
+        eb.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
 
-        ec.add_ava("member", UUID_A);
-        ec.add_ava("memberof", UUID_C);
-        ec.add_ava("memberof", UUID_B);
-        ec.add_ava("memberof", UUID_A);
+        ec.add_ava("member", &Value::new_refer_s(&UUID_A).unwrap());
+        ec.add_ava("memberof", &Value::new_refer_s(&UUID_C).unwrap());
+        ec.add_ava("memberof", &Value::new_refer_s(&UUID_B).unwrap());
+        ec.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
 
         let preload = vec![ea, eb, ec];
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", UUID_C)),
+            filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_C).unwrap())),
             ModifyList::new_list(vec![Modify::Removed(
                 "member".to_string(),
-                UUID_A.to_string()
+                PartialValue::new_refer_s(&UUID_A).unwrap()
             )]),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
@@ -1218,51 +1207,53 @@ mod tests {
         // A -> B -> C    D -
         // ^                /
         // |---------------/
-        let mut ea: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EA).expect("Json parse failure");
+        let mut ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EA);
 
-        let mut eb: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EB).expect("Json parse failure");
+        let mut eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
-        let mut ec: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EC).expect("Json parse failure");
+        let mut ec: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
-        let mut ed: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(ED).expect("Json parse failure");
+        let mut ed: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(ED);
 
-        ea.add_ava("member", UUID_B);
-        ea.add_ava("memberof", UUID_D);
-        ea.add_ava("memberof", UUID_C);
-        ea.add_ava("memberof", UUID_B);
-        ea.add_ava("memberof", UUID_A);
+        ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
+        ea.add_ava("memberof", &Value::new_refer_s(&UUID_D).unwrap());
+        ea.add_ava("memberof", &Value::new_refer_s(&UUID_C).unwrap());
+        ea.add_ava("memberof", &Value::new_refer_s(&UUID_B).unwrap());
+        ea.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
 
-        eb.add_ava("member", UUID_C);
-        eb.add_ava("memberof", UUID_D);
-        eb.add_ava("memberof", UUID_C);
-        eb.add_ava("memberof", UUID_B);
-        eb.add_ava("memberof", UUID_A);
+        eb.add_ava("member", &Value::new_refer_s(&UUID_C).unwrap());
+        eb.add_ava("memberof", &Value::new_refer_s(&UUID_D).unwrap());
+        eb.add_ava("memberof", &Value::new_refer_s(&UUID_C).unwrap());
+        eb.add_ava("memberof", &Value::new_refer_s(&UUID_B).unwrap());
+        eb.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
 
-        ec.add_ava("member", UUID_A);
-        ec.add_ava("member", UUID_D);
-        ec.add_ava("memberof", UUID_D);
-        ec.add_ava("memberof", UUID_C);
-        ec.add_ava("memberof", UUID_B);
-        ec.add_ava("memberof", UUID_A);
+        ec.add_ava("member", &Value::new_refer_s(&UUID_A).unwrap());
+        ec.add_ava("member", &Value::new_refer_s(&UUID_D).unwrap());
+        ec.add_ava("memberof", &Value::new_refer_s(&UUID_D).unwrap());
+        ec.add_ava("memberof", &Value::new_refer_s(&UUID_C).unwrap());
+        ec.add_ava("memberof", &Value::new_refer_s(&UUID_B).unwrap());
+        ec.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
 
-        ed.add_ava("member", UUID_A);
-        ed.add_ava("memberof", UUID_D);
-        ed.add_ava("memberof", UUID_C);
-        ed.add_ava("memberof", UUID_B);
-        ed.add_ava("memberof", UUID_A);
+        ed.add_ava("member", &Value::new_refer_s(&UUID_A).unwrap());
+        ed.add_ava("memberof", &Value::new_refer_s(&UUID_D).unwrap());
+        ed.add_ava("memberof", &Value::new_refer_s(&UUID_C).unwrap());
+        ed.add_ava("memberof", &Value::new_refer_s(&UUID_B).unwrap());
+        ed.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
 
         let preload = vec![ea, eb, ec, ed];
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", UUID_C)),
+            filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_C).unwrap())),
             ModifyList::new_list(vec![
-                Modify::Removed("member".to_string(), UUID_A.to_string()),
-                Modify::Removed("member".to_string(), UUID_D.to_string()),
+                Modify::Removed(
+                    "member".to_string(),
+                    PartialValue::new_refer_s(&UUID_A).unwrap()
+                ),
+                Modify::Removed(
+                    "member".to_string(),
+                    PartialValue::new_refer_s(&UUID_D).unwrap()
+                ),
             ]),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
@@ -1314,20 +1305,18 @@ mod tests {
     #[test]
     fn test_delete_mo_simple() {
         // X -> B
-        let mut ea: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EA).expect("Json parse failure");
+        let mut ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EA);
 
-        let mut eb: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EB).expect("Json parse failure");
+        let mut eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
-        ea.add_ava("member", UUID_B);
-        eb.add_ava("memberof", UUID_A);
+        ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
+        eb.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
 
         let preload = vec![ea, eb];
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", UUID_A)),
+            filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_A).unwrap())),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
@@ -1344,27 +1333,24 @@ mod tests {
     #[test]
     fn test_delete_mo_nested_head() {
         // X -> B -> C
-        let mut ea: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EA).expect("Json parse failure");
+        let mut ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EA);
 
-        let mut eb: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EB).expect("Json parse failure");
+        let mut eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
-        let mut ec: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EC).expect("Json parse failure");
+        let mut ec: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
-        ea.add_ava("member", UUID_B);
-        eb.add_ava("memberof", UUID_A);
+        ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
+        eb.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
 
-        eb.add_ava("member", UUID_C);
-        ec.add_ava("memberof", UUID_A);
-        ec.add_ava("memberof", UUID_B);
+        eb.add_ava("member", &Value::new_refer_s(&UUID_C).unwrap());
+        ec.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
+        ec.add_ava("memberof", &Value::new_refer_s(&UUID_B).unwrap());
 
         let preload = vec![ea, eb, ec];
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", UUID_A)),
+            filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_A).unwrap())),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
@@ -1391,27 +1377,24 @@ mod tests {
     #[test]
     fn test_delete_mo_nested_branch() {
         // A -> X -> C
-        let mut ea: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EA).expect("Json parse failure");
+        let mut ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EA);
 
-        let mut eb: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EB).expect("Json parse failure");
+        let mut eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
-        let mut ec: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EC).expect("Json parse failure");
+        let mut ec: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
-        ea.add_ava("member", UUID_B);
-        eb.add_ava("memberof", UUID_A);
+        ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
+        eb.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
 
-        eb.add_ava("member", UUID_C);
-        ec.add_ava("memberof", UUID_A);
-        ec.add_ava("memberof", UUID_B);
+        eb.add_ava("member", &Value::new_refer_s(&UUID_C).unwrap());
+        ec.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
+        ec.add_ava("memberof", &Value::new_refer_s(&UUID_B).unwrap());
 
         let preload = vec![ea, eb, ec];
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", UUID_B)),
+            filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_B).unwrap())),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
@@ -1439,35 +1422,32 @@ mod tests {
     fn test_delete_mo_cycle() {
         // X -> B -> C -
         // ^-----------/
-        let mut ea: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EA).expect("Json parse failure");
+        let mut ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EA);
 
-        let mut eb: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EB).expect("Json parse failure");
+        let mut eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
-        let mut ec: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EC).expect("Json parse failure");
+        let mut ec: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
-        ea.add_ava("member", UUID_B);
-        ea.add_ava("memberof", UUID_A);
-        ea.add_ava("memberof", UUID_B);
-        ea.add_ava("memberof", UUID_C);
+        ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
+        ea.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
+        ea.add_ava("memberof", &Value::new_refer_s(&UUID_B).unwrap());
+        ea.add_ava("memberof", &Value::new_refer_s(&UUID_C).unwrap());
 
-        eb.add_ava("member", UUID_C);
-        eb.add_ava("memberof", UUID_A);
-        eb.add_ava("memberof", UUID_B);
-        eb.add_ava("memberof", UUID_C);
+        eb.add_ava("member", &Value::new_refer_s(&UUID_C).unwrap());
+        eb.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
+        eb.add_ava("memberof", &Value::new_refer_s(&UUID_B).unwrap());
+        eb.add_ava("memberof", &Value::new_refer_s(&UUID_C).unwrap());
 
-        ec.add_ava("member", UUID_A);
-        ec.add_ava("memberof", UUID_A);
-        ec.add_ava("memberof", UUID_B);
-        ec.add_ava("memberof", UUID_C);
+        ec.add_ava("member", &Value::new_refer_s(&UUID_A).unwrap());
+        ec.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
+        ec.add_ava("memberof", &Value::new_refer_s(&UUID_B).unwrap());
+        ec.add_ava("memberof", &Value::new_refer_s(&UUID_C).unwrap());
 
         let preload = vec![ea, eb, ec];
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", UUID_A)),
+            filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_A).unwrap())),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
@@ -1496,48 +1476,44 @@ mod tests {
         // A -> X -> C --> D -
         // ^-----------/    /
         // |---------------/
-        let mut ea: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EA).expect("Json parse failure");
+        let mut ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EA);
 
-        let mut eb: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EB).expect("Json parse failure");
+        let mut eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
-        let mut ec: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(EC).expect("Json parse failure");
+        let mut ec: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
-        let mut ed: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(ED).expect("Json parse failure");
+        let mut ed: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(ED);
 
-        ea.add_ava("member", UUID_B);
-        ea.add_ava("memberof", UUID_A);
-        ea.add_ava("memberof", UUID_B);
-        ea.add_ava("memberof", UUID_C);
-        ea.add_ava("memberof", UUID_D);
+        ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
+        ea.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
+        ea.add_ava("memberof", &Value::new_refer_s(&UUID_B).unwrap());
+        ea.add_ava("memberof", &Value::new_refer_s(&UUID_C).unwrap());
+        ea.add_ava("memberof", &Value::new_refer_s(&UUID_D).unwrap());
 
-        eb.add_ava("member", UUID_C);
-        eb.add_ava("memberof", UUID_A);
-        eb.add_ava("memberof", UUID_B);
-        eb.add_ava("memberof", UUID_C);
-        eb.add_ava("memberof", UUID_D);
+        eb.add_ava("member", &Value::new_refer_s(&UUID_C).unwrap());
+        eb.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
+        eb.add_ava("memberof", &Value::new_refer_s(&UUID_B).unwrap());
+        eb.add_ava("memberof", &Value::new_refer_s(&UUID_C).unwrap());
+        eb.add_ava("memberof", &Value::new_refer_s(&UUID_D).unwrap());
 
-        ec.add_ava("member", UUID_A);
-        ec.add_ava("member", UUID_D);
-        ec.add_ava("memberof", UUID_A);
-        ec.add_ava("memberof", UUID_B);
-        ec.add_ava("memberof", UUID_C);
-        ec.add_ava("memberof", UUID_D);
+        ec.add_ava("member", &Value::new_refer_s(&UUID_A).unwrap());
+        ec.add_ava("member", &Value::new_refer_s(&UUID_D).unwrap());
+        ec.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
+        ec.add_ava("memberof", &Value::new_refer_s(&UUID_B).unwrap());
+        ec.add_ava("memberof", &Value::new_refer_s(&UUID_C).unwrap());
+        ec.add_ava("memberof", &Value::new_refer_s(&UUID_D).unwrap());
 
-        ed.add_ava("member", UUID_A);
-        ed.add_ava("memberof", UUID_A);
-        ed.add_ava("memberof", UUID_B);
-        ed.add_ava("memberof", UUID_C);
-        ed.add_ava("memberof", UUID_D);
+        ed.add_ava("member", &Value::new_refer_s(&UUID_A).unwrap());
+        ed.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
+        ed.add_ava("memberof", &Value::new_refer_s(&UUID_B).unwrap());
+        ed.add_ava("memberof", &Value::new_refer_s(&UUID_C).unwrap());
+        ed.add_ava("memberof", &Value::new_refer_s(&UUID_D).unwrap());
 
         let preload = vec![ea, eb, ec, ed];
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq("uuid", UUID_B)),
+            filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_B).unwrap())),
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is

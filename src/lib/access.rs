@@ -17,16 +17,26 @@
 
 use concread::cowcell::{CowCell, CowCellReadTxn, CowCellWriteTxn};
 use std::collections::{BTreeMap, BTreeSet};
+use uuid::Uuid;
 
 use crate::audit::AuditScope;
-use crate::entry::{Entry, EntryCommitted, EntryNew, EntryNormalised, EntryReduced, EntryValid};
+use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryReduced, EntryValid};
 use crate::error::OperationError;
 use crate::filter::{Filter, FilterValid};
 use crate::modify::Modify;
 use crate::proto::v1::Filter as ProtoFilter;
 use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
+use crate::value::PartialValue;
 
 use crate::event::{CreateEvent, DeleteEvent, EventOrigin, ModifyEvent, SearchEvent};
+
+lazy_static! {
+    static ref CLASS_ACS: PartialValue = PartialValue::new_class("access_control_search");
+    static ref CLASS_ACC: PartialValue = PartialValue::new_class("access_control_create");
+    static ref CLASS_ACD: PartialValue = PartialValue::new_class("access_control_delete");
+    static ref CLASS_ACM: PartialValue = PartialValue::new_class("access_control_modify");
+    static ref CLASS_ACP: PartialValue = PartialValue::new_class("access_control_profile");
+}
 
 // =========================================================================
 // PARSE ENTRY TO ACP, AND ACP MANAGEMENT
@@ -35,6 +45,7 @@ use crate::event::{CreateEvent, DeleteEvent, EventOrigin, ModifyEvent, SearchEve
 #[derive(Debug, Clone)]
 pub struct AccessControlSearch {
     acp: AccessControlProfile,
+    // TODO: Should this change to Value? May help to reduce transformations during processing.
     attrs: Vec<String>,
 }
 
@@ -44,7 +55,7 @@ impl AccessControlSearch {
         qs: &QueryServerWriteTransaction,
         value: &Entry<EntryValid, EntryCommitted>,
     ) -> Result<Self, OperationError> {
-        if !value.attribute_value_pres("class", "access_control_search") {
+        if !value.attribute_value_pres("class", &CLASS_ACS) {
             audit_log!(audit, "class access_control_search not present.");
             return Err(OperationError::InvalidACPState(
                 "Missing access_control_search",
@@ -54,9 +65,8 @@ impl AccessControlSearch {
         let attrs = try_audit!(
             audit,
             value
-                .get_ava("acp_search_attr")
+                .get_ava_string("acp_search_attr")
                 .ok_or(OperationError::InvalidACPState("Missing acp_search_attr"))
-                .map(|vs: &Vec<String>| vs.clone())
         );
 
         let acp = AccessControlProfile::try_from(audit, qs, value)?;
@@ -78,7 +88,7 @@ impl AccessControlSearch {
         AccessControlSearch {
             acp: AccessControlProfile {
                 name: name.to_string(),
-                uuid: uuid.to_string(),
+                uuid: Uuid::parse_str(uuid).unwrap(),
                 receiver: receiver,
                 targetscope: targetscope,
             },
@@ -98,7 +108,7 @@ impl AccessControlDelete {
         qs: &QueryServerWriteTransaction,
         value: &Entry<EntryValid, EntryCommitted>,
     ) -> Result<Self, OperationError> {
-        if !value.attribute_value_pres("class", "access_control_delete") {
+        if !value.attribute_value_pres("class", &CLASS_ACD) {
             audit_log!(audit, "class access_control_delete not present.");
             return Err(OperationError::InvalidACPState(
                 "Missing access_control_delete",
@@ -120,7 +130,7 @@ impl AccessControlDelete {
         AccessControlDelete {
             acp: AccessControlProfile {
                 name: name.to_string(),
-                uuid: uuid.to_string(),
+                uuid: Uuid::parse_str(uuid).unwrap(),
                 receiver: receiver,
                 targetscope: targetscope,
             },
@@ -141,7 +151,7 @@ impl AccessControlCreate {
         qs: &QueryServerWriteTransaction,
         value: &Entry<EntryValid, EntryCommitted>,
     ) -> Result<Self, OperationError> {
-        if !value.attribute_value_pres("class", "access_control_create") {
+        if !value.attribute_value_pres("class", &CLASS_ACC) {
             audit_log!(audit, "class access_control_create not present.");
             return Err(OperationError::InvalidACPState(
                 "Missing access_control_create",
@@ -149,13 +159,11 @@ impl AccessControlCreate {
         }
 
         let attrs = value
-            .get_ava("acp_create_attr")
-            .map(|vs: &Vec<String>| vs.clone())
+            .get_ava_opt_string("acp_create_attr")
             .unwrap_or_else(|| Vec::new());
 
         let classes = value
-            .get_ava("acp_create_class")
-            .map(|vs: &Vec<String>| vs.clone())
+            .get_ava_opt_string("acp_create_class")
             .unwrap_or_else(|| Vec::new());
 
         Ok(AccessControlCreate {
@@ -177,7 +185,7 @@ impl AccessControlCreate {
         AccessControlCreate {
             acp: AccessControlProfile {
                 name: name.to_string(),
-                uuid: uuid.to_string(),
+                uuid: Uuid::parse_str(uuid).unwrap(),
                 receiver: receiver,
                 targetscope: targetscope,
             },
@@ -201,7 +209,7 @@ impl AccessControlModify {
         qs: &QueryServerWriteTransaction,
         value: &Entry<EntryValid, EntryCommitted>,
     ) -> Result<Self, OperationError> {
-        if !value.attribute_value_pres("class", "access_control_modify") {
+        if !value.attribute_value_pres("class", &CLASS_ACM) {
             audit_log!(audit, "class access_control_modify not present.");
             return Err(OperationError::InvalidACPState(
                 "Missing access_control_modify",
@@ -209,18 +217,15 @@ impl AccessControlModify {
         }
 
         let presattrs = value
-            .get_ava("acp_modify_presentattr")
-            .map(|vs: &Vec<String>| vs.clone())
+            .get_ava_opt_string("acp_modify_presentattr")
             .unwrap_or_else(|| Vec::new());
 
         let remattrs = value
-            .get_ava("acp_modify_removedattr")
-            .map(|vs: &Vec<String>| vs.clone())
+            .get_ava_opt_string("acp_modify_removedattr")
             .unwrap_or_else(|| Vec::new());
 
         let classes = value
-            .get_ava("acp_modify_class")
-            .map(|vs: &Vec<String>| vs.clone())
+            .get_ava_opt_string("acp_modify_class")
             .unwrap_or_else(|| Vec::new());
 
         Ok(AccessControlModify {
@@ -244,7 +249,7 @@ impl AccessControlModify {
         AccessControlModify {
             acp: AccessControlProfile {
                 name: name.to_string(),
-                uuid: uuid.to_string(),
+                uuid: Uuid::parse_str(uuid).unwrap(),
                 receiver: receiver,
                 targetscope: targetscope,
             },
@@ -261,7 +266,7 @@ impl AccessControlModify {
 #[derive(Debug, Clone)]
 struct AccessControlProfile {
     name: String,
-    uuid: String,
+    uuid: Uuid,
     receiver: Filter<FilterValid>,
     targetscope: Filter<FilterValid>,
 }
@@ -273,7 +278,7 @@ impl AccessControlProfile {
         value: &Entry<EntryValid, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         // Assert we have class access_control_profile
-        if !value.attribute_value_pres("class", "access_control_profile") {
+        if !value.attribute_value_pres("class", &CLASS_ACP) {
             audit_log!(audit, "class access_control_profile not present.");
             return Err(OperationError::InvalidACPState(
                 "Missing access_control_profile",
@@ -284,32 +289,27 @@ impl AccessControlProfile {
         let name = try_audit!(
             audit,
             value
-                .get_ava_single("name")
+                .get_ava_single_str("name")
                 .ok_or(OperationError::InvalidACPState("Missing name"))
-        );
+        )
+        .to_string();
         // copy uuid
-        let uuid = value.get_uuid();
+        let uuid = value.get_uuid().clone();
         // receiver, and turn to real filter
-        let receiver_raw = try_audit!(
+        let receiver_f: ProtoFilter = try_audit!(
             audit,
             value
-                .get_ava_single("acp_receiver")
+                .get_ava_single_protofilter("acp_receiver")
                 .ok_or(OperationError::InvalidACPState("Missing acp_receiver"))
         );
         // targetscope, and turn to real filter
-        let targetscope_raw = try_audit!(
+        let targetscope_f: ProtoFilter = try_audit!(
             audit,
             value
-                .get_ava_single("acp_targetscope")
+                .get_ava_single_protofilter("acp_targetscope")
                 .ok_or(OperationError::InvalidACPState("Missing acp_targetscope"))
         );
 
-        audit_log!(audit, "RAW receiver {:?}", receiver_raw);
-        let receiver_f: ProtoFilter = try_audit!(
-            audit,
-            serde_json::from_str(receiver_raw.as_str())
-                .map_err(|_| OperationError::InvalidACPState("Invalid acp_receiver"))
-        );
         let receiver_i = try_audit!(audit, Filter::from_rw(audit, &receiver_f, qs));
         let receiver = try_audit!(
             audit,
@@ -318,14 +318,6 @@ impl AccessControlProfile {
                 .map_err(|e| OperationError::SchemaViolation(e))
         );
 
-        audit_log!(audit, "RAW tscope {:?}", targetscope_raw);
-        let targetscope_f: ProtoFilter = try_audit!(
-            audit,
-            serde_json::from_str(targetscope_raw.as_str()).map_err(|e| {
-                audit_log!(audit, "JSON error {:?}", e);
-                OperationError::InvalidACPState("Invalid acp_targetscope")
-            })
-        );
         let targetscope_i = try_audit!(audit, Filter::from_rw(audit, &targetscope_f, qs));
         let targetscope = try_audit!(
             audit,
@@ -335,8 +327,8 @@ impl AccessControlProfile {
         );
 
         Ok(AccessControlProfile {
-            name: name.clone(),
-            uuid: uuid.clone(),
+            name: name,
+            uuid: uuid,
             receiver: receiver,
             targetscope: targetscope,
         })
@@ -350,10 +342,10 @@ impl AccessControlProfile {
 #[derive(Debug, Clone)]
 pub struct AccessControlsInner {
     // What is the correct key here?
-    acps_search: BTreeMap<String, AccessControlSearch>,
-    acps_create: BTreeMap<String, AccessControlCreate>,
-    acps_modify: BTreeMap<String, AccessControlModify>,
-    acps_delete: BTreeMap<String, AccessControlDelete>,
+    acps_search: BTreeMap<Uuid, AccessControlSearch>,
+    acps_create: BTreeMap<Uuid, AccessControlCreate>,
+    acps_modify: BTreeMap<Uuid, AccessControlModify>,
+    acps_delete: BTreeMap<Uuid, AccessControlDelete>,
 }
 
 impl AccessControlsInner {
@@ -719,14 +711,20 @@ pub trait AccessControlsTransaction {
             .filter_map(|m| match m {
                 Modify::Present(a, v) => {
                     if a.as_str() == "class" {
-                        Some(v.as_str())
+                        // Here we have an option<&str> which could mean there is a risk of
+                        // a malicious entity attempting to trick us by masking class mods
+                        // in non-iutf8 types. However, the server first won't respect their
+                        // existance, and second, we would have failed the mod at schema checking
+                        // earlier in the process as these were not correctly type. As a result
+                        // we can trust these to be correct here and not to be "None".
+                        Some(v.to_str_unwrap())
                     } else {
                         None
                     }
                 }
                 Modify::Removed(a, v) => {
                     if a.as_str() == "class" {
-                        Some(v.as_str())
+                        Some(v.to_str_unwrap())
                     } else {
                         None
                     }
@@ -817,7 +815,7 @@ pub trait AccessControlsTransaction {
         &self,
         audit: &mut AuditScope,
         ce: &CreateEvent,
-        entries: &Vec<Entry<EntryNormalised, EntryNew>>,
+        entries: &Vec<Entry<EntryInvalid, EntryNew>>,
     ) -> Result<bool, OperationError> {
         audit_log!(audit, "Access check for event: {:?}", ce);
 
@@ -882,9 +880,12 @@ pub trait AccessControlsTransaction {
                 // I still think if this is None, we should just fail here ...
                 // because it shouldn't be possible to match.
 
-                let create_classes: BTreeSet<&str> = match e.get_ava_set("class") {
+                let create_classes: BTreeSet<&str> = match e.get_ava_set_str("class") {
                     Some(s) => s,
-                    None => return false,
+                    None => {
+                        audit_log!(audit, "Class set failed to build - corrupted entry?");
+                        return false;
+                    }
                 };
 
                 related_acp.iter().fold(false, |r_acc, accr| {
@@ -1188,6 +1189,7 @@ mod tests {
     // use crate::filter::Filter;
     // use crate::proto_v1::Filter as ProtoFilter;
     use crate::constants::{JSON_ADMIN_V1, JSON_ANONYMOUS_V1, JSON_TESTPERSON1, JSON_TESTPERSON2};
+    use crate::value::{PartialValue, Value};
 
     macro_rules! acp_from_entry_err {
         (
@@ -1196,7 +1198,7 @@ mod tests {
             $e:expr,
             $type:ty
         ) => {{
-            let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str($e).expect("json failure");
+            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str($e);
             let ev1 = unsafe { e1.to_valid_committed() };
 
             let r1 = <$type>::try_from($audit, $qs, &ev1);
@@ -1211,7 +1213,7 @@ mod tests {
             $e:expr,
             $type:ty
         ) => {{
-            let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str($e).expect("json failure");
+            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str($e);
             let ev1 = unsafe { e1.to_valid_committed() };
 
             let r1 = <$type>::try_from($audit, $qs, &ev1);
@@ -1677,7 +1679,7 @@ mod tests {
         // Test that an internal search bypasses ACS
         let se = unsafe { SearchEvent::new_internal_invalid(filter!(f_pres("class"))) };
 
-        let e1: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
                 "valid": null,
                 "state": null,
@@ -1687,8 +1689,7 @@ mod tests {
                     "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"]
                 }
                 }"#,
-        )
-        .expect("json failure");
+        );
         let ev1 = unsafe { e1.to_valid_committed() };
 
         let expect = vec![ev1.clone()];
@@ -1714,12 +1715,10 @@ mod tests {
     #[test]
     fn test_access_enforce_search() {
         // Test that entries from a search are reduced by acps
-        let e1: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(JSON_TESTPERSON1).expect("json failure");
+        let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
         let ev1 = unsafe { e1.to_valid_committed() };
 
-        let e2: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(JSON_TESTPERSON2).expect("json failure");
+        let e2: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON2);
         let ev2 = unsafe { e2.to_valid_committed() };
 
         let r_set = vec![ev1.clone(), ev2.clone()];
@@ -1739,9 +1738,9 @@ mod tests {
                 "test_acp",
                 "d38640c4-0254-49f9-99b7-8ba7d0233f3d",
                 // apply to admin only
-                filter_valid!(f_eq("name", "admin")),
+                filter_valid!(f_eq("name", PartialValue::new_iutf8s("admin"))),
                 // Allow admin to read only testperson1
-                filter_valid!(f_eq("name", "testperson1")),
+                filter_valid!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
                 // In that read, admin may only view the "name" attribute, or query on
                 // the name attribute. Any other query (should be) rejected.
                 "name",
@@ -1801,20 +1800,19 @@ mod tests {
         // Test that attributes are correctly limited.
         // In this case, we test that a user can only see "name" despite the
         // class and uuid being present.
-        let e1: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(JSON_TESTPERSON1).expect("json failure");
+        let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
         let ev1 = unsafe { e1.to_valid_committed() };
         let r_set = vec![ev1.clone()];
 
         let ex1: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(JSON_TESTPERSON1_REDUCED).expect("json failure");
+            Entry::unsafe_from_entry_str(JSON_TESTPERSON1_REDUCED);
         let exv1 = unsafe { ex1.to_valid_committed() };
         let ex_anon = vec![exv1.clone()];
 
         let se_anon = unsafe {
             SearchEvent::new_impersonate_entry_ser(
                 JSON_ANONYMOUS_V1,
-                filter_all!(f_eq("name", "testperson1")),
+                filter_all!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
             )
         };
 
@@ -1823,9 +1821,9 @@ mod tests {
                 "test_acp",
                 "d38640c4-0254-49f9-99b7-8ba7d0233f3d",
                 // apply to anonymous only
-                filter_valid!(f_eq("name", "anonymous")),
+                filter_valid!(f_eq("name", PartialValue::new_iutf8s("anonymous"))),
                 // Allow anonymous to read only testperson1
-                filter_valid!(f_eq("name", "testperson1")),
+                filter_valid!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
                 // In that read, admin may only view the "name" attribute, or query on
                 // the name attribute. Any other query (should be) rejected.
                 "name",
@@ -1861,8 +1859,7 @@ mod tests {
 
     #[test]
     fn test_access_enforce_modify() {
-        let e1: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(JSON_TESTPERSON1).expect("json failure");
+        let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
         let ev1 = unsafe { e1.to_valid_committed() };
         let r_set = vec![ev1.clone()];
 
@@ -1870,23 +1867,23 @@ mod tests {
         let me_pres = unsafe {
             ModifyEvent::new_impersonate_entry_ser(
                 JSON_ADMIN_V1,
-                filter_all!(f_eq("name", "testperson1")),
-                modlist!([m_pres("name", "value")]),
+                filter_all!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
+                modlist!([m_pres("name", &Value::new_iutf8s("value"))]),
             )
         };
         // Name rem
         let me_rem = unsafe {
             ModifyEvent::new_impersonate_entry_ser(
                 JSON_ADMIN_V1,
-                filter_all!(f_eq("name", "testperson1")),
-                modlist!([m_remove("name", "value")]),
+                filter_all!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
+                modlist!([m_remove("name", &PartialValue::new_iutf8s("value"))]),
             )
         };
         // Name purge
         let me_purge = unsafe {
             ModifyEvent::new_impersonate_entry_ser(
                 JSON_ADMIN_V1,
-                filter_all!(f_eq("name", "testperson1")),
+                filter_all!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
                 modlist!([m_purge("name")]),
             )
         };
@@ -1895,23 +1892,23 @@ mod tests {
         let me_pres_class = unsafe {
             ModifyEvent::new_impersonate_entry_ser(
                 JSON_ADMIN_V1,
-                filter_all!(f_eq("name", "testperson1")),
-                modlist!([m_pres("class", "account")]),
+                filter_all!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
+                modlist!([m_pres("class", &Value::new_class("account"))]),
             )
         };
         // Class account rem
         let me_rem_class = unsafe {
             ModifyEvent::new_impersonate_entry_ser(
                 JSON_ADMIN_V1,
-                filter_all!(f_eq("name", "testperson1")),
-                modlist!([m_remove("class", "account")]),
+                filter_all!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
+                modlist!([m_remove("class", &PartialValue::new_class("account"))]),
             )
         };
         // Class purge
         let me_purge_class = unsafe {
             ModifyEvent::new_impersonate_entry_ser(
                 JSON_ADMIN_V1,
-                filter_all!(f_eq("name", "testperson1")),
+                filter_all!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
                 modlist!([m_purge("class")]),
             )
         };
@@ -1922,9 +1919,9 @@ mod tests {
                 "test_modify_allow",
                 "87bfe9b8-7600-431e-a492-1dde64bbc455",
                 // Apply to admin
-                filter_valid!(f_eq("name", "admin")),
+                filter_valid!(f_eq("name", PartialValue::new_iutf8s("admin"))),
                 // To modify testperson
-                filter_valid!(f_eq("name", "testperson1")),
+                filter_valid!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
                 // Allow pres name and class
                 "name class",
                 // Allow rem name and class
@@ -1939,9 +1936,9 @@ mod tests {
                 "test_modify_deny",
                 "87bfe9b8-7600-431e-a492-1dde64bbc456",
                 // Apply to admin
-                filter_valid!(f_eq("name", "admin")),
+                filter_valid!(f_eq("name", PartialValue::new_iutf8s("admin"))),
                 // To modify testperson
-                filter_valid!(f_eq("name", "testperson1")),
+                filter_valid!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
                 // Allow pres name and class
                 "member class",
                 // Allow rem name and class
@@ -1956,9 +1953,9 @@ mod tests {
                 "test_modify_no_class",
                 "87bfe9b8-7600-431e-a492-1dde64bbc457",
                 // Apply to admin
-                filter_valid!(f_eq("name", "admin")),
+                filter_valid!(f_eq("name", PartialValue::new_iutf8s("admin"))),
                 // To modify testperson
-                filter_valid!(f_eq("name", "testperson1")),
+                filter_valid!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
                 // Allow pres name and class
                 "name class",
                 // Allow rem name and class
@@ -2065,24 +2062,16 @@ mod tests {
 
     #[test]
     fn test_access_enforce_create() {
-        let e1: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(JSON_TEST_CREATE_AC1).expect("json failure");
-        let ev1 = unsafe { e1.to_valid_normal() };
+        let ev1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_TEST_CREATE_AC1);
         let r1_set = vec![ev1.clone()];
 
-        let e2: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(JSON_TEST_CREATE_AC2).expect("json failure");
-        let ev2 = unsafe { e2.to_valid_normal() };
+        let ev2: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_TEST_CREATE_AC2);
         let r2_set = vec![ev2.clone()];
 
-        let e3: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(JSON_TEST_CREATE_AC3).expect("json failure");
-        let ev3 = unsafe { e3.to_valid_normal() };
+        let ev3: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_TEST_CREATE_AC3);
         let r3_set = vec![ev3.clone()];
 
-        let e4: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(JSON_TEST_CREATE_AC4).expect("json failure");
-        let ev4 = unsafe { e4.to_valid_normal() };
+        let ev4: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_TEST_CREATE_AC4);
         let r4_set = vec![ev4.clone()];
 
         // In this case, we can make the create event with an empty entry
@@ -2097,10 +2086,10 @@ mod tests {
                 "test_create",
                 "87bfe9b8-7600-431e-a492-1dde64bbc453",
                 // Apply to admin
-                filter_valid!(f_eq("name", "admin")),
+                filter_valid!(f_eq("name", PartialValue::new_iutf8s("admin"))),
                 // To create matching filter testperson
                 // Can this be empty?
-                filter_valid!(f_eq("name", "testperson1")),
+                filter_valid!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
                 // classes
                 "account",
                 // attrs
@@ -2113,9 +2102,9 @@ mod tests {
                 "test_create_2",
                 "87bfe9b8-7600-431e-a492-1dde64bbc454",
                 // Apply to admin
-                filter_valid!(f_eq("name", "admin")),
+                filter_valid!(f_eq("name", PartialValue::new_iutf8s("admin"))),
                 // To create matching filter testperson
-                filter_valid!(f_eq("name", "testperson1")),
+                filter_valid!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
                 // classes
                 "group",
                 // attrs
@@ -2158,22 +2147,21 @@ mod tests {
 
     #[test]
     fn test_access_enforce_delete() {
-        let e1: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(JSON_TESTPERSON1).expect("json failure");
+        let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
         let ev1 = unsafe { e1.to_valid_committed() };
         let r_set = vec![ev1.clone()];
 
         let de_admin = unsafe {
             DeleteEvent::new_impersonate_entry_ser(
                 JSON_ADMIN_V1,
-                filter_all!(f_eq("name", "testperson1")),
+                filter_all!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
             )
         };
 
         let de_anon = unsafe {
             DeleteEvent::new_impersonate_entry_ser(
                 JSON_ANONYMOUS_V1,
-                filter_all!(f_eq("name", "testperson1")),
+                filter_all!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
             )
         };
 
@@ -2182,9 +2170,9 @@ mod tests {
                 "test_delete",
                 "87bfe9b8-7600-431e-a492-1dde64bbc453",
                 // Apply to admin
-                filter_valid!(f_eq("name", "admin")),
+                filter_valid!(f_eq("name", PartialValue::new_iutf8s("admin"))),
                 // To delete testperson
-                filter_valid!(f_eq("name", "testperson1")),
+                filter_valid!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
             )
         };
 

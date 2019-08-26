@@ -30,7 +30,9 @@ macro_rules! run_test {
         $test_fn(&test_server, &mut audit);
         // Any needed teardown?
         // Make sure there are no errors.
-        assert!(test_server.verify(&mut audit).len() == 0);
+        let verifications = test_server.verify(&mut audit);
+        audit_log!(audit, "Verification result: {:?}", verifications);
+        assert!(verifications.len() == 0);
     }};
 }
 
@@ -147,4 +149,55 @@ macro_rules! filter_resolved {
         // Create a resolved filter, via the most unsafe means possible!
         f.to_valid_resolved()
     }};
+}
+
+#[cfg(test)]
+#[allow(unused_macros)]
+#[macro_export]
+macro_rules! pvalue_utf8 {
+    (
+        $v:expr
+    ) => {{
+        use crate::value::PartialValue;
+        PartialValue::new_utf8(v.to_string())
+    }};
+}
+
+#[cfg(test)]
+#[allow(unused_macros)]
+#[macro_export]
+macro_rules! pvalue_iutf8 {
+    (
+        $v:expr
+    ) => {{
+        use crate::value::PartialValue;
+        PartialValue::new_iutf8(v.to_string())
+    }};
+}
+
+#[allow(unused_macros)]
+#[macro_export]
+macro_rules! btreeset {
+    () => (
+        compile_error!("BTreeSet needs at least 1 element")
+    );
+    ($e:expr) => ({
+        use std::collections::BTreeSet;
+        let mut x: BTreeSet<_> = BTreeSet::new();
+        assert!(x.insert($e));
+        x
+    });
+    ($e:expr,) => ({
+        use std::collections::BTreeSet;
+        let mut x: BTreeSet<_> = BTreeSet::new();
+        assert!(x.insert($e));
+        x
+    });
+    ($e:expr, $($item:expr),*) => ({
+        use std::collections::BTreeSet;
+        let mut x: BTreeSet<_> = BTreeSet::new();
+        assert!(x.insert($e));
+        $(assert!(x.insert($item));)*
+        x
+    });
 }

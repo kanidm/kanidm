@@ -8,6 +8,7 @@ use crate::error::OperationError;
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::modify::Modify;
 use crate::server::QueryServerWriteTransaction;
+use crate::value::{PartialValue, Value};
 use std::collections::HashSet;
 
 pub struct Protected {}
@@ -23,6 +24,8 @@ lazy_static! {
         m.insert("may");
         m
     };
+    static ref PVCLASS_SYSTEM: PartialValue = PartialValue::new_class("system");
+    static ref VCLASS_SYSTEM: Value = Value::new_class("system");
 }
 
 impl Plugin for Protected {
@@ -48,7 +51,7 @@ impl Plugin for Protected {
         cand.iter().fold(Ok(()), |acc, cand| match acc {
             Err(_) => acc,
             Ok(_) => {
-                if cand.attribute_value_pres("class", "system") {
+                if cand.attribute_value_pres("class", &PVCLASS_SYSTEM) {
                     Err(OperationError::SystemProtectedObject)
                 } else {
                     acc
@@ -78,7 +81,8 @@ impl Plugin for Protected {
             } else {
                 match m {
                     Modify::Present(a, v) => {
-                        if a == "class" && v == "system" {
+                        // TODO: Can we avoid this clone?
+                        if a == "class" && v == &(VCLASS_SYSTEM.clone()) {
                             Err(OperationError::SystemProtectedObject)
                         } else {
                             Ok(())
@@ -94,7 +98,7 @@ impl Plugin for Protected {
             if acc {
                 acc
             } else {
-                c.attribute_value_pres("class", "system")
+                c.attribute_value_pres("class", &PVCLASS_SYSTEM)
             }
         });
 
@@ -141,7 +145,7 @@ impl Plugin for Protected {
         cand.iter().fold(Ok(()), |acc, cand| match acc {
             Err(_) => acc,
             Ok(_) => {
-                if cand.attribute_value_pres("class", "system") {
+                if cand.attribute_value_pres("class", &PVCLASS_SYSTEM) {
                     Err(OperationError::SystemProtectedObject)
                 } else {
                     acc
@@ -156,6 +160,7 @@ mod tests {
     use crate::constants::JSON_ADMIN_V1;
     use crate::entry::{Entry, EntryInvalid, EntryNew};
     use crate::error::OperationError;
+    use crate::value::{PartialValue, Value};
 
     static JSON_ADMIN_ALLOW_ALL: &'static str = r#"{
         "valid": null,
@@ -191,12 +196,11 @@ mod tests {
     #[test]
     fn test_pre_create_deny() {
         // Test creating with class: system is rejected.
-        let acp: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(JSON_ADMIN_ALLOW_ALL).expect("json parse failure");
+        let acp: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
 
         let preload = vec![acp];
 
-        let e: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -207,8 +211,7 @@ mod tests {
                 "displayname": ["testperson"]
             }
         }"#,
-        )
-        .expect("json parse failure");
+        );
 
         let create = vec![e.clone()];
 
@@ -223,10 +226,9 @@ mod tests {
 
     #[test]
     fn test_pre_modify_system_deny() {
-        let acp: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(JSON_ADMIN_ALLOW_ALL).expect("json parse failure");
+        let acp: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
         // Test modify of class to a system is denied
-        let e: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -237,16 +239,18 @@ mod tests {
                 "displayname": ["testperson"]
             }
         }"#,
-        )
-        .expect("json parse failure");
+        );
 
         let preload = vec![acp, e.clone()];
 
         run_modify_test!(
             Err(OperationError::SystemProtectedObject),
             preload,
-            filter!(f_eq("name", "testperson")),
-            modlist!([m_purge("displayname"), m_pres("displayname", "system test"),]),
+            filter!(f_eq("name", PartialValue::new_iutf8s("testperson"))),
+            modlist!([
+                m_purge("displayname"),
+                m_pres("displayname", &Value::new_utf8s("system test")),
+            ]),
             Some(JSON_ADMIN_V1),
             |_, _| {}
         );
@@ -254,10 +258,9 @@ mod tests {
 
     #[test]
     fn test_pre_modify_class_add_deny() {
-        let acp: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(JSON_ADMIN_ALLOW_ALL).expect("json parse failure");
+        let acp: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
         // Show that adding a system class is denied
-        let e: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -268,16 +271,15 @@ mod tests {
                 "displayname": ["testperson"]
             }
         }"#,
-        )
-        .expect("json parse failure");
+        );
 
         let preload = vec![acp, e.clone()];
 
         run_modify_test!(
             Err(OperationError::SystemProtectedObject),
             preload,
-            filter!(f_eq("name", "testperson")),
-            modlist!([m_pres("class", "system"),]),
+            filter!(f_eq("name", PartialValue::new_iutf8s("testperson"))),
+            modlist!([m_pres("class", &Value::new_class("system")),]),
             Some(JSON_ADMIN_V1),
             |_, _| {}
         );
@@ -285,10 +287,9 @@ mod tests {
 
     #[test]
     fn test_pre_modify_attr_must_may_allow() {
-        let acp: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(JSON_ADMIN_ALLOW_ALL).expect("json parse failure");
+        let acp: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
         // Show that adding a system class is denied
-        let e: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -299,16 +300,18 @@ mod tests {
                 "description": ["Test Class"]
             }
         }"#,
-        )
-        .expect("json parse failure");
+        );
 
         let preload = vec![acp, e.clone()];
 
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", "testclass")),
-            modlist!([m_pres("may", "name"), m_pres("must", "name"),]),
+            filter!(f_eq("name", PartialValue::new_iutf8s("testclass"))),
+            modlist!([
+                m_pres("may", &Value::new_iutf8s("name")),
+                m_pres("must", &Value::new_iutf8s("name")),
+            ]),
             Some(JSON_ADMIN_V1),
             |_, _| {}
         );
@@ -316,10 +319,9 @@ mod tests {
 
     #[test]
     fn test_pre_delete_deny() {
-        let acp: Entry<EntryInvalid, EntryNew> =
-            serde_json::from_str(JSON_ADMIN_ALLOW_ALL).expect("json parse failure");
+        let acp: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
         // Test deleting with class: system is rejected.
-        let e: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -330,15 +332,14 @@ mod tests {
                 "displayname": ["testperson"]
             }
         }"#,
-        )
-        .expect("json parse failure");
+        );
 
         let preload = vec![acp, e.clone()];
 
         run_delete_test!(
             Err(OperationError::SystemProtectedObject),
             preload,
-            filter!(f_eq("name", "testperson")),
+            filter!(f_eq("name", PartialValue::new_iutf8s("testperson"))),
             Some(JSON_ADMIN_V1),
             |_, _| {}
         );

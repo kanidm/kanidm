@@ -49,6 +49,7 @@ mod event;
 mod filter;
 mod interval;
 mod modify;
+mod value;
 #[macro_use]
 mod plugins;
 mod access;

@@ -113,6 +113,7 @@ macro_rules! run_modify_test {
                 let mut qs_write = qs.write();
                 let r = qs_write.modify(&mut au_test, &me);
                 $check(&mut au_test, &qs_write);
+                debug!("{:?}", r);
                 assert!(r == $expect);
                 match r {
                     Ok(_) => {

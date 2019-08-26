@@ -9,7 +9,7 @@
 // when that is written, as they *both* manipulate and alter entry reference
 // data, so we should be careful not to step on each other.
 
-use std::collections::HashMap;
+use std::collections::BTreeSet;
 
 use crate::audit::AuditScope;
 use crate::entry::{Entry, EntryCommitted, EntryNew, EntryValid};
@@ -20,6 +20,8 @@ use crate::plugins::Plugin;
 use crate::schema::SchemaTransaction;
 use crate::server::QueryServerTransaction;
 use crate::server::{QueryServerReadTransaction, QueryServerWriteTransaction};
+use crate::value::{PartialValue, Value};
+use uuid::Uuid;
 
 // NOTE: This *must* be after base.rs!!!
 
@@ -30,15 +32,18 @@ impl ReferentialIntegrity {
         au: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
         rtype: &String,
-        uuid: &String,
+        uuid_value: &Value,
     ) -> Result<(), OperationError> {
+        debug!("{:?}", uuid_value);
+        let uuid = try_audit!(au, uuid_value.to_ref_uuid().ok_or(OperationError::Plugin));
         let mut au_qs = AuditScope::new("qs_exist");
-        let filt_in = filter!(f_eq("uuid", uuid));
+        // NOTE: This only checks LIVE entries (not using filter_all)
+        let filt_in = filter!(f_eq("uuid", PartialValue::new_uuid(uuid.clone())));
         let r = qs.internal_exists(&mut au_qs, filt_in);
         au.append_scope(au_qs);
 
         let b = try_audit!(au, r);
-        // Is the reference in the qs?
+        // Is the reference in the result set?
         if b {
             Ok(())
         } else {
@@ -143,17 +148,18 @@ impl Plugin for ReferentialIntegrity {
         let schema = qs.get_schema();
         let ref_types = schema.get_reference_types();
         // Get the UUID of all entries we are deleting
-        let uuids: Vec<&String> = cand.iter().map(|e| e.get_uuid()).collect();
+        let uuids: Vec<&Uuid> = cand.iter().map(|e| e.get_uuid()).collect();
 
         // Generate a filter which is the set of all schema reference types
         // as EQ to all uuid of all entries in delete. - this INCLUDES recycled
         // types too!
-        let filt = filter!(FC::Or(
+        let filt = filter_all!(FC::Or(
             uuids
                 .iter()
-                .map(|u| ref_types
-                    .values()
-                    .map(move |r_type| f_eq(r_type.name.as_str(), u)))
+                .map(|u| ref_types.values().map(move |r_type| {
+                    // For everything that references the uuid's in the deleted set.
+                    f_eq(r_type.name.as_str(), PartialValue::new_refer(*u.clone()))
+                }))
                 .flatten()
                 .collect(),
         ));
@@ -166,9 +172,9 @@ impl Plugin for ReferentialIntegrity {
             uuids
                 .iter()
                 .map(|u| {
-                    ref_types
-                        .values()
-                        .map(move |r_type| Modify::Removed(r_type.name.clone(), u.to_string()))
+                    ref_types.values().map(move |r_type| {
+                        Modify::Removed(r_type.name.clone(), PartialValue::new_refer(*u.clone()))
+                    })
                 })
                 .flatten()
                 .collect(),
@@ -197,9 +203,7 @@ impl Plugin for ReferentialIntegrity {
             Err(e) => return vec![e],
         };
 
-        let acu: Vec<&String> = all_cand.iter().map(|e| e.get_uuid()).collect();
-
-        let acu_map: HashMap<&String, ()> = acu.into_iter().map(|v| (v, ())).collect();
+        let acu_map: BTreeSet<&Uuid> = all_cand.iter().map(|e| e.get_uuid()).collect();
 
         let schema = qs.get_schema();
         let ref_types = schema.get_reference_types();
@@ -214,8 +218,15 @@ impl Plugin for ReferentialIntegrity {
                     Some(vs) => {
                         // For each value in the set.
                         for v in vs {
-                            if acu_map.get(v).is_none() {
-                                res.push(Err(ConsistencyError::RefintNotUpheld(c.get_id())))
+                            match v.to_ref_uuid() {
+                                Some(vu) => {
+                                    if acu_map.get(vu).is_none() {
+                                        res.push(Err(ConsistencyError::RefintNotUpheld(c.get_id())))
+                                    }
+                                }
+                                None => res.push(Err(ConsistencyError::InvalidAttributeType(
+                                    "A non-value-ref type was found.",
+                                ))),
                             }
                         }
                     }
@@ -236,11 +247,12 @@ mod tests {
     use crate::error::OperationError;
     use crate::modify::{Modify, ModifyList};
     use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
+    use crate::value::{PartialValue, Value};
 
     // The create references a uuid that doesn't exist - reject
     #[test]
     fn test_create_uuid_reference_not_exist() {
-        let e: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -251,8 +263,7 @@ mod tests {
                 "member": ["ca85168c-91b7-49a8-b7bb-a3d5bb40e97e"]
             }
         }"#,
-        )
-        .expect("Json parse failure");
+        );
 
         let create = vec![e.clone()];
         let preload = Vec::new();
@@ -268,7 +279,7 @@ mod tests {
     // The create references a uuid that does exist - validate
     #[test]
     fn test_create_uuid_reference_exist() {
-        let ea: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -279,10 +290,9 @@ mod tests {
                 "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
             }
         }"#,
-        )
-        .expect("Json parse failure");
+        );
 
-        let eb: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -293,8 +303,7 @@ mod tests {
                 "member": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
             }
         }"#,
-        )
-        .expect("Json parse failure");
+        );
 
         let preload = vec![ea];
         let create = vec![eb];
@@ -306,7 +315,10 @@ mod tests {
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 let cands = qs
-                    .internal_search(au, filter!(f_eq("name", "testgroup_b")))
+                    .internal_search(
+                        au,
+                        filter!(f_eq("name", PartialValue::new_iutf8s("testgroup_b"))),
+                    )
                     .expect("Internal search failure");
                 let _ue = cands.first().expect("No cand");
             }
@@ -318,7 +330,7 @@ mod tests {
     fn test_create_uuid_reference_self() {
         let preload: Vec<Entry<EntryInvalid, EntryNew>> = Vec::new();
 
-        let e: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -330,8 +342,7 @@ mod tests {
                 "member": ["8cef42bc-2cac-43e4-96b3-8f54561885ca"]
             }
         }"#,
-        )
-        .expect("Json parse failure");
+        );
 
         let create = vec![e];
 
@@ -342,7 +353,10 @@ mod tests {
             None,
             |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 let cands = qs
-                    .internal_search(au, filter!(f_eq("name", "testgroup")))
+                    .internal_search(
+                        au,
+                        filter!(f_eq("name", PartialValue::new_iutf8s("testgroup"))),
+                    )
                     .expect("Internal search failure");
                 let _ue = cands.first().expect("No cand");
             }
@@ -352,7 +366,7 @@ mod tests {
     // Modify references a different object - allow
     #[test]
     fn test_modify_uuid_reference_exist() {
-        let ea: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -363,10 +377,9 @@ mod tests {
                 "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
             }
         }"#,
-        )
-        .expect("Json parse failure");
+        );
 
-        let eb: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -376,18 +389,17 @@ mod tests {
                 "description": ["testgroup"]
             }
         }"#,
-        )
-        .expect("Json parse failure");
+        );
 
         let preload = vec![ea, eb];
 
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", "testgroup_b")),
+            filter!(f_eq("name", PartialValue::new_iutf8s("testgroup_b"))),
             ModifyList::new_list(vec![Modify::Present(
                 "member".to_string(),
-                "d2b496bd-8493-47b7-8142-f568b5cf47ee".to_string()
+                Value::new_refer_s("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
             )]),
             None,
             |_, _| {}
@@ -397,7 +409,7 @@ mod tests {
     // Modify reference something that doesn't exist - must be rejected
     #[test]
     fn test_modify_uuid_reference_not_exist() {
-        let eb: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -407,18 +419,17 @@ mod tests {
                 "description": ["testgroup"]
             }
         }"#,
-        )
-        .expect("Json parse failure");
+        );
 
         let preload = vec![eb];
 
         run_modify_test!(
             Err(OperationError::Plugin),
             preload,
-            filter!(f_eq("name", "testgroup_b")),
+            filter!(f_eq("name", PartialValue::new_iutf8s("testgroup_b"))),
             ModifyList::new_list(vec![Modify::Present(
                 "member".to_string(),
-                "d2b496bd-8493-47b7-8142-f568b5cf47ee".to_string()
+                Value::new_refer_s("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
             )]),
             None,
             |_, _| {}
@@ -428,7 +439,7 @@ mod tests {
     // Modify removes the reference to an entry
     #[test]
     fn test_modify_remove_referee() {
-        let ea: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -439,10 +450,9 @@ mod tests {
                 "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
             }
         }"#,
-        )
-        .expect("Json parse failure");
+        );
 
-        let eb: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -453,15 +463,14 @@ mod tests {
                 "member": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
             }
         }"#,
-        )
-        .expect("Json parse failure");
+        );
 
         let preload = vec![ea, eb];
 
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", "testgroup_b")),
+            filter!(f_eq("name", PartialValue::new_iutf8s("testgroup_b"))),
             ModifyList::new_list(vec![Modify::Purged("member".to_string())]),
             None,
             |_, _| {}
@@ -471,7 +480,7 @@ mod tests {
     // Modify adds reference to self - allow
     #[test]
     fn test_modify_uuid_reference_self() {
-        let ea: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -482,18 +491,17 @@ mod tests {
                 "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
             }
         }"#,
-        )
-        .expect("Json parse failure");
+        );
 
         let preload = vec![ea];
 
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", "testgroup_a")),
+            filter!(f_eq("name", PartialValue::new_iutf8s("testgroup_a"))),
             ModifyList::new_list(vec![Modify::Present(
                 "member".to_string(),
-                "d2b496bd-8493-47b7-8142-f568b5cf47ee".to_string()
+                Value::new_refer_s("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
             )]),
             None,
             |_, _| {}
@@ -503,7 +511,7 @@ mod tests {
     // Test that deleted entries can not be referenced
     #[test]
     fn test_modify_reference_deleted() {
-        let ea: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -514,10 +522,9 @@ mod tests {
                 "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
             }
         }"#,
-        )
-        .expect("Json parse failure");
+        );
 
-        let eb: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -527,18 +534,17 @@ mod tests {
                 "description": ["testgroup"]
             }
         }"#,
-        )
-        .expect("Json parse failure");
+        );
 
         let preload = vec![ea, eb];
 
         run_modify_test!(
             Err(OperationError::Plugin),
             preload,
-            filter!(f_eq("name", "testgroup_b")),
+            filter!(f_eq("name", PartialValue::new_iutf8s("testgroup_b"))),
             ModifyList::new_list(vec![Modify::Present(
                 "member".to_string(),
-                "d2b496bd-8493-47b7-8142-f568b5cf47ee".to_string()
+                Value::new_refer_s("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
             )]),
             None,
             |_, _| {}
@@ -550,7 +556,7 @@ mod tests {
     // This is the valid case, where the reference is MAY.
     #[test]
     fn test_delete_remove_referent_valid() {
-        let ea: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -561,10 +567,9 @@ mod tests {
                 "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
             }
         }"#,
-        )
-        .expect("Json parse failure");
+        );
 
-        let eb: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -575,15 +580,14 @@ mod tests {
                 "member": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
             }
         }"#,
-        )
-        .expect("Json parse failure");
+        );
 
         let preload = vec![ea, eb];
 
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", "testgroup_a")),
+            filter!(f_eq("name", PartialValue::new_iutf8s("testgroup_a"))),
             None,
             |_au: &mut AuditScope, _qs: &QueryServerWriteTransaction| {}
         );
@@ -598,7 +602,7 @@ mod tests {
     // Delete of something that holds references.
     #[test]
     fn test_delete_remove_referee() {
-        let ea: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -609,10 +613,9 @@ mod tests {
                 "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
             }
         }"#,
-        )
-        .expect("Json parse failure");
+        );
 
-        let eb: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -623,15 +626,14 @@ mod tests {
                 "member": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
             }
         }"#,
-        )
-        .expect("Json parse failure");
+        );
 
         let preload = vec![ea, eb];
 
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", "testgroup_b")),
+            filter!(f_eq("name", PartialValue::new_iutf8s("testgroup_b"))),
             None,
             |_au: &mut AuditScope, _qs: &QueryServerWriteTransaction| {}
         );
@@ -640,7 +642,7 @@ mod tests {
     // Delete something that has a self reference.
     #[test]
     fn test_delete_remove_reference_self() {
-        let eb: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -652,15 +654,14 @@ mod tests {
                 "member": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
             }
         }"#,
-        )
-        .expect("Json parse failure");
+        );
 
         let preload = vec![eb];
 
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", "testgroup_b")),
+            filter!(f_eq("name", PartialValue::new_iutf8s("testgroup_b"))),
             None,
             |_au: &mut AuditScope, _qs: &QueryServerWriteTransaction| {}
         );

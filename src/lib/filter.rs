@@ -10,18 +10,21 @@ use crate::schema::SchemaTransaction;
 use crate::server::{
     QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
 };
+use crate::value::PartialValue;
 use std::cmp::{Ordering, PartialOrd};
 use std::collections::BTreeSet;
 
 // Default filter is safe, ignores all hidden types!
 
+// This is &Value so we can lazy static then clone, but perhaps we can reconsider
+// later if this should just take Value.
 #[allow(dead_code)]
-pub fn f_eq<'a>(a: &'a str, v: &'a str) -> FC<'a> {
+pub fn f_eq<'a>(a: &'a str, v: PartialValue) -> FC<'a> {
     FC::Eq(a, v)
 }
 
 #[allow(dead_code)]
-pub fn f_sub<'a>(a: &'a str, v: &'a str) -> FC<'a> {
+pub fn f_sub<'a>(a: &'a str, v: PartialValue) -> FC<'a> {
     FC::Sub(a, v)
 }
 
@@ -54,8 +57,8 @@ pub fn f_self<'a>() -> FC<'a> {
 // be transformed into a filter for the server to use.
 #[derive(Debug, Deserialize)]
 pub enum FC<'a> {
-    Eq(&'a str, &'a str),
-    Sub(&'a str, &'a str),
+    Eq(&'a str, PartialValue),
+    Sub(&'a str, PartialValue),
     Pres(&'a str),
     Or(Vec<FC<'a>>),
     And(Vec<FC<'a>>),
@@ -68,8 +71,8 @@ pub enum FC<'a> {
 #[derive(Debug, Clone, PartialEq)]
 enum FilterComp {
     // This is attr - value
-    Eq(String, String),
-    Sub(String, String),
+    Eq(String, PartialValue),
+    Sub(String, PartialValue),
     Pres(String),
     Or(Vec<FilterComp>),
     And(Vec<FilterComp>),
@@ -86,8 +89,8 @@ enum FilterComp {
 #[derive(Debug, Clone)]
 pub enum FilterResolved {
     // This is attr - value
-    Eq(String, String),
-    Sub(String, String),
+    Eq(String, PartialValue),
+    Sub(String, PartialValue),
     Pres(String),
     Or(Vec<FilterResolved>),
     And(Vec<FilterResolved>),
@@ -304,8 +307,8 @@ impl Filter<FilterInvalid> {
 impl FilterComp {
     fn new(fc: FC) -> Self {
         match fc {
-            FC::Eq(a, v) => FilterComp::Eq(a.to_string(), v.to_string()),
-            FC::Sub(a, v) => FilterComp::Sub(a.to_string(), v.to_string()),
+            FC::Eq(a, v) => FilterComp::Eq(a.to_string(), v),
+            FC::Sub(a, v) => FilterComp::Sub(a.to_string(), v),
             FC::Pres(a) => FilterComp::Pres(a.to_string()),
             FC::Or(v) => FilterComp::Or(v.into_iter().map(|c| FilterComp::new(c)).collect()),
             FC::And(v) => FilterComp::And(v.into_iter().map(|c| FilterComp::new(c)).collect()),
@@ -317,8 +320,8 @@ impl FilterComp {
     fn new_ignore_hidden(fc: FilterComp) -> Self {
         FilterComp::And(vec![
             FilterComp::AndNot(Box::new(FilterComp::Or(vec![
-                FilterComp::Eq("class".to_string(), "tombstone".to_string()),
-                FilterComp::Eq("class".to_string(), "recycled".to_string()),
+                FilterComp::Eq("class".to_string(), PartialValue::new_iutf8s("tombstone")),
+                FilterComp::Eq("class".to_string(), PartialValue::new_iutf8s("recycled")),
             ]))),
             fc,
         ])
@@ -326,7 +329,7 @@ impl FilterComp {
 
     fn new_recycled(fc: FilterComp) -> Self {
         FilterComp::And(vec![
-            FilterComp::Eq("class".to_string(), "recycled".to_string()),
+            FilterComp::Eq("class".to_string(), PartialValue::new_iutf8s("recycled")),
             fc,
         ])
     }
@@ -359,22 +362,21 @@ impl FilterComp {
         // Getting this each recursion could be slow. Maybe
         // we need an inner functon that passes the reference?
         let schema_attributes = schema.get_attributes();
-        let schema_name = schema_attributes
-            .get("name")
-            .expect("Critical: Core schema corrupt or missing.");
+        // We used to check the attr_name by normalising it (lowercasing)
+        // but should we? I think we actually should just call a special
+        // handler on schema to fix it up.
 
         match self {
             FilterComp::Eq(attr, value) => {
                 // Validate/normalise the attr name.
-                let attr_norm = schema_name.normalise_value(attr);
+                let attr_norm = schema.normalise_attr_name(attr);
                 // Now check it exists
                 match schema_attributes.get(&attr_norm) {
                     Some(schema_a) => {
-                        let value_norm = schema_a.normalise_value(value);
                         schema_a
-                            .validate_value(&value_norm)
+                            .validate_partialvalue(&value)
                             // Okay, it worked, transform to a filter component
-                            .map(|_| FilterComp::Eq(attr_norm, value_norm))
+                            .map(|_| FilterComp::Eq(attr_norm, value.clone()))
                         // On error, pass the error back out.
                     }
                     None => Err(SchemaError::InvalidAttribute),
@@ -382,22 +384,21 @@ impl FilterComp {
             }
             FilterComp::Sub(attr, value) => {
                 // Validate/normalise the attr name.
-                let attr_norm = schema_name.normalise_value(attr);
+                let attr_norm = schema.normalise_attr_name(attr);
                 // Now check it exists
                 match schema_attributes.get(&attr_norm) {
                     Some(schema_a) => {
-                        let value_norm = schema_a.normalise_value(value);
                         schema_a
-                            .validate_value(&value_norm)
+                            .validate_partialvalue(&value)
                             // Okay, it worked, transform to a filter component
-                            .map(|_| FilterComp::Sub(attr_norm, value_norm))
+                            .map(|_| FilterComp::Sub(attr_norm, value.clone()))
                         // On error, pass the error back out.
                     }
                     None => Err(SchemaError::InvalidAttribute),
                 }
             }
             FilterComp::Pres(attr) => {
-                let attr_norm = schema_name.normalise_value(attr);
+                let attr_norm = schema.normalise_attr_name(attr);
                 // Now check it exists
                 match schema_attributes.get(&attr_norm) {
                     Some(_attr_name) => {
@@ -454,8 +455,10 @@ impl FilterComp {
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         Ok(match f {
-            ProtoFilter::Eq(a, v) => FilterComp::Eq(a.clone(), qs.clone_value(audit, a, v)?),
-            ProtoFilter::Sub(a, v) => FilterComp::Sub(a.clone(), qs.clone_value(audit, a, v)?),
+            ProtoFilter::Eq(a, v) => FilterComp::Eq(a.clone(), qs.clone_partialvalue(audit, a, v)?),
+            ProtoFilter::Sub(a, v) => {
+                FilterComp::Sub(a.clone(), qs.clone_partialvalue(audit, a, v)?)
+            }
             ProtoFilter::Pres(a) => FilterComp::Pres(a.clone()),
             ProtoFilter::Or(l) => FilterComp::Or(
                 l.iter()
@@ -478,8 +481,10 @@ impl FilterComp {
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         Ok(match f {
-            ProtoFilter::Eq(a, v) => FilterComp::Eq(a.clone(), qs.clone_value(audit, a, v)?),
-            ProtoFilter::Sub(a, v) => FilterComp::Sub(a.clone(), qs.clone_value(audit, a, v)?),
+            ProtoFilter::Eq(a, v) => FilterComp::Eq(a.clone(), qs.clone_partialvalue(audit, a, v)?),
+            ProtoFilter::Sub(a, v) => {
+                FilterComp::Sub(a.clone(), qs.clone_partialvalue(audit, a, v)?)
+            }
             ProtoFilter::Pres(a) => FilterComp::Pres(a.clone()),
             ProtoFilter::Or(l) => FilterComp::Or(
                 l.iter()
@@ -644,7 +649,7 @@ impl FilterResolved {
             FilterComp::SelfUUID => match &ev.origin {
                 EventOrigin::User(e) => Some(FilterResolved::Eq(
                     "uuid".to_string(),
-                    e.get_uuid().to_string(),
+                    PartialValue::new_uuid(e.get_uuid().clone()),
                 )),
                 _ => None,
             },
@@ -716,19 +721,22 @@ impl FilterResolved {
 mod tests {
     use crate::entry::{Entry, EntryNew, EntryValid};
     use crate::filter::{Filter, FilterInvalid};
-    use serde_json;
+    use crate::value::PartialValue;
     use std::cmp::{Ordering, PartialOrd};
     use std::collections::BTreeSet;
 
     #[test]
     fn test_filter_simple() {
         // Test construction.
-        let _filt: Filter<FilterInvalid> = filter!(f_eq("class", "user"));
+        let _filt: Filter<FilterInvalid> = filter!(f_eq("class", PartialValue::new_class("user")));
 
         // AFTER
         let _complex_filt: Filter<FilterInvalid> = filter!(f_and!([
-            f_or!([f_eq("userid", "test_a"), f_eq("userid", "test_b"),]),
-            f_sub("class", "user"),
+            f_or!([
+                f_eq("userid", PartialValue::new_iutf8s("test_a")),
+                f_eq("userid", PartialValue::new_iutf8s("test_b")),
+            ]),
+            f_sub("class", PartialValue::new_class("user")),
         ]));
     }
 
@@ -758,32 +766,44 @@ mod tests {
     fn test_filter_optimise() {
         // Given sets of "optimisable" filters, optimise them.
         filter_optimise_assert!(
-            f_and(vec![f_and(vec![f_eq("class", "test")])]),
-            f_and(vec![f_eq("class", "test")])
+            f_and(vec![f_and(vec![f_eq(
+                "class",
+                PartialValue::new_class("test")
+            )])]),
+            f_and(vec![f_eq("class", PartialValue::new_class("test"))])
         );
 
         filter_optimise_assert!(
-            f_or(vec![f_or(vec![f_eq("class", "test")])]),
-            f_or(vec![f_eq("class", "test")])
+            f_or(vec![f_or(vec![f_eq(
+                "class",
+                PartialValue::new_class("test")
+            )])]),
+            f_or(vec![f_eq("class", PartialValue::new_class("test"))])
         );
 
         filter_optimise_assert!(
-            f_and(vec![f_or(vec![f_and(vec![f_eq("class", "test")])])]),
-            f_and(vec![f_or(vec![f_and(vec![f_eq("class", "test")])])])
+            f_and(vec![f_or(vec![f_and(vec![f_eq(
+                "class",
+                PartialValue::new_class("test")
+            )])])]),
+            f_and(vec![f_or(vec![f_and(vec![f_eq(
+                "class",
+                PartialValue::new_class("test")
+            )])])])
         );
 
         // Later this can test duplicate filter detection.
         filter_optimise_assert!(
             f_and(vec![
-                f_and(vec![f_eq("class", "test")]),
-                f_sub("class", "te"),
+                f_and(vec![f_eq("class", PartialValue::new_class("test"))]),
+                f_sub("class", PartialValue::new_class("te")),
                 f_pres("class"),
-                f_eq("class", "test")
+                f_eq("class", PartialValue::new_class("test"))
             ]),
             f_and(vec![
-                f_eq("class", "test"),
+                f_eq("class", PartialValue::new_class("test")),
                 f_pres("class"),
-                f_sub("class", "te"),
+                f_sub("class", PartialValue::new_class("te")),
             ])
         );
 
@@ -791,54 +811,54 @@ mod tests {
         filter_optimise_assert!(
             f_and(vec![
                 f_and(vec![
-                    f_eq("class", "foo"),
-                    f_eq("class", "test"),
-                    f_eq("uid", "bar"),
+                    f_eq("class", PartialValue::new_class("foo")),
+                    f_eq("class", PartialValue::new_class("test")),
+                    f_eq("uid", PartialValue::new_class("bar")),
                 ]),
-                f_sub("class", "te"),
+                f_sub("class", PartialValue::new_class("te")),
                 f_pres("class"),
-                f_eq("class", "test")
+                f_eq("class", PartialValue::new_class("test"))
             ]),
             f_and(vec![
-                f_eq("class", "foo"),
-                f_eq("class", "test"),
-                f_eq("uid", "bar"),
+                f_eq("class", PartialValue::new_class("foo")),
+                f_eq("class", PartialValue::new_class("test")),
+                f_eq("uid", PartialValue::new_class("bar")),
                 f_pres("class"),
-                f_sub("class", "te"),
+                f_sub("class", PartialValue::new_class("te")),
             ])
         );
 
         filter_optimise_assert!(
             f_or(vec![
-                f_eq("class", "test"),
+                f_eq("class", PartialValue::new_class("test")),
                 f_pres("class"),
-                f_sub("class", "te"),
-                f_or(vec![f_eq("class", "test")]),
+                f_sub("class", PartialValue::new_class("te")),
+                f_or(vec![f_eq("class", PartialValue::new_class("test"))]),
             ]),
             f_or(vec![
-                f_sub("class", "te"),
+                f_sub("class", PartialValue::new_class("te")),
                 f_pres("class"),
-                f_eq("class", "test")
+                f_eq("class", PartialValue::new_class("test"))
             ])
         );
 
         // Test dedup doesn't affect nested items incorrectly.
         filter_optimise_assert!(
             f_or(vec![
-                f_eq("class", "test"),
+                f_eq("class", PartialValue::new_class("test")),
                 f_and(vec![
-                    f_eq("class", "test"),
-                    f_eq("term", "test"),
-                    f_or(vec![f_eq("class", "test")])
+                    f_eq("class", PartialValue::new_class("test")),
+                    f_eq("term", PartialValue::new_class("test")),
+                    f_or(vec![f_eq("class", PartialValue::new_class("test"))])
                 ]),
             ]),
             f_or(vec![
                 f_and(vec![
-                    f_eq("class", "test"),
-                    f_eq("term", "test"),
-                    f_or(vec![f_eq("class", "test")])
+                    f_eq("class", PartialValue::new_class("test")),
+                    f_eq("term", PartialValue::new_class("test")),
+                    f_or(vec![f_eq("class", PartialValue::new_class("test"))])
                 ]),
-                f_eq("class", "test"),
+                f_eq("class", PartialValue::new_class("test")),
             ])
         );
     }
@@ -881,12 +901,12 @@ mod tests {
         assert_eq!(f_t2b.partial_cmp(&f_t2a), Some(Ordering::Equal));
 
         // antisymmetry: if a < b then !(a > b), as well as a > b implying !(a < b); and
-        let f_t3b = unsafe { filter_resolved!(f_eq("userid", "")) };
+        let f_t3b = unsafe { filter_resolved!(f_eq("userid", PartialValue::new_iutf8s(""))) };
         assert_eq!(f_t1a.partial_cmp(&f_t3b), Some(Ordering::Greater));
         assert_eq!(f_t3b.partial_cmp(&f_t1a), Some(Ordering::Less));
 
         // transitivity: a < b and b < c implies a < c. The same must hold for both == and >.
-        let f_t4b = unsafe { filter_resolved!(f_sub("userid", "")) };
+        let f_t4b = unsafe { filter_resolved!(f_sub("userid", PartialValue::new_iutf8s(""))) };
         assert_eq!(f_t1a.partial_cmp(&f_t4b), Some(Ordering::Less));
         assert_eq!(f_t3b.partial_cmp(&f_t4b), Some(Ordering::Less));
 
@@ -915,8 +935,9 @@ mod tests {
 
     #[test]
     fn test_or_entry_filter() {
-        let e: Entry<EntryValid, EntryNew> = serde_json::from_str(
-            r#"{
+        let e: Entry<EntryValid, EntryNew> = unsafe {
+            Entry::unsafe_from_entry_str(
+                r#"{
             "valid": {
                 "uuid": "db237e8a-0079-4b8c-8a56-593b22aa44d1"
             },
@@ -927,40 +948,48 @@ mod tests {
                 "uidnumber": ["1000"]
             }
         }"#,
-        )
-        .expect("Json parse failure");
+            )
+            .to_valid_new()
+        };
 
         let f_t1a = unsafe {
             filter_resolved!(f_or!([
-                f_eq("userid", "william"),
-                f_eq("uidnumber", "1000"),
+                f_eq("userid", PartialValue::new_iutf8s("william")),
+                f_eq("uidnumber", PartialValue::new_iutf8s("1000")),
             ]))
         };
         assert!(e.entry_match_no_index(&f_t1a));
 
         let f_t2a = unsafe {
             filter_resolved!(f_or!([
-                f_eq("userid", "william"),
-                f_eq("uidnumber", "1001"),
+                f_eq("userid", PartialValue::new_iutf8s("william")),
+                f_eq("uidnumber", PartialValue::new_iutf8s("1001")),
             ]))
         };
         assert!(e.entry_match_no_index(&f_t2a));
 
         let f_t3a = unsafe {
-            filter_resolved!(f_or!([f_eq("userid", "alice"), f_eq("uidnumber", "1000"),]))
+            filter_resolved!(f_or!([
+                f_eq("userid", PartialValue::new_iutf8s("alice")),
+                f_eq("uidnumber", PartialValue::new_iutf8s("1000")),
+            ]))
         };
         assert!(e.entry_match_no_index(&f_t3a));
 
         let f_t4a = unsafe {
-            filter_resolved!(f_or!([f_eq("userid", "alice"), f_eq("uidnumber", "1001"),]))
+            filter_resolved!(f_or!([
+                f_eq("userid", PartialValue::new_iutf8s("alice")),
+                f_eq("uidnumber", PartialValue::new_iutf8s("1001")),
+            ]))
         };
         assert!(!e.entry_match_no_index(&f_t4a));
     }
 
     #[test]
     fn test_and_entry_filter() {
-        let e: Entry<EntryValid, EntryNew> = serde_json::from_str(
-            r#"{
+        let e: Entry<EntryValid, EntryNew> = unsafe {
+            Entry::unsafe_from_entry_str(
+                r#"{
             "valid": {
                 "uuid": "db237e8a-0079-4b8c-8a56-593b22aa44d1"
             },
@@ -971,44 +1000,48 @@ mod tests {
                 "uidnumber": ["1000"]
             }
         }"#,
-        )
-        .expect("Json parse failure");
+            )
+            .to_valid_new()
+        };
 
         let f_t1a = unsafe {
             filter_resolved!(f_and!([
-                f_eq("userid", "william"),
-                f_eq("uidnumber", "1000"),
+                f_eq("userid", PartialValue::new_iutf8s("william")),
+                f_eq("uidnumber", PartialValue::new_iutf8s("1000")),
             ]))
         };
         assert!(e.entry_match_no_index(&f_t1a));
 
         let f_t2a = unsafe {
             filter_resolved!(f_and!([
-                f_eq("userid", "william"),
-                f_eq("uidnumber", "1001"),
+                f_eq("userid", PartialValue::new_iutf8s("william")),
+                f_eq("uidnumber", PartialValue::new_iutf8s("1001")),
             ]))
         };
         assert!(!e.entry_match_no_index(&f_t2a));
 
         let f_t3a = unsafe {
-            filter_resolved!(f_and!(
-                [f_eq("userid", "alice"), f_eq("uidnumber", "1000"),]
-            ))
+            filter_resolved!(f_and!([
+                f_eq("userid", PartialValue::new_iutf8s("alice")),
+                f_eq("uidnumber", PartialValue::new_iutf8s("1000")),
+            ]))
         };
         assert!(!e.entry_match_no_index(&f_t3a));
 
         let f_t4a = unsafe {
-            filter_resolved!(f_and!(
-                [f_eq("userid", "alice"), f_eq("uidnumber", "1001"),]
-            ))
+            filter_resolved!(f_and!([
+                f_eq("userid", PartialValue::new_iutf8s("alice")),
+                f_eq("uidnumber", PartialValue::new_iutf8s("1001")),
+            ]))
         };
         assert!(!e.entry_match_no_index(&f_t4a));
     }
 
     #[test]
     fn test_not_entry_filter() {
-        let e1: Entry<EntryValid, EntryNew> = serde_json::from_str(
-            r#"{
+        let e1: Entry<EntryValid, EntryNew> = unsafe {
+            Entry::unsafe_from_entry_str(
+                r#"{
             "valid": {
                 "uuid": "db237e8a-0079-4b8c-8a56-593b22aa44d1"
             },
@@ -1019,20 +1052,29 @@ mod tests {
                 "uidnumber": ["1000"]
             }
         }"#,
-        )
-        .expect("Json parse failure");
+            )
+            .to_valid_new()
+        };
 
-        let f_t1a = unsafe { filter_resolved!(f_andnot(f_eq("userid", "alice"))) };
+        let f_t1a = unsafe {
+            filter_resolved!(f_andnot(f_eq("userid", PartialValue::new_iutf8s("alice"))))
+        };
         assert!(e1.entry_match_no_index(&f_t1a));
 
-        let f_t2a = unsafe { filter_resolved!(f_andnot(f_eq("userid", "william"))) };
+        let f_t2a = unsafe {
+            filter_resolved!(f_andnot(f_eq(
+                "userid",
+                PartialValue::new_iutf8s("william")
+            )))
+        };
         assert!(!e1.entry_match_no_index(&f_t2a));
     }
 
     #[test]
     fn test_nested_entry_filter() {
-        let e1: Entry<EntryValid, EntryNew> = serde_json::from_str(
-            r#"{
+        let e1: Entry<EntryValid, EntryNew> = unsafe {
+            Entry::unsafe_from_entry_str(
+                r#"{
             "valid": {
                 "uuid": "db237e8a-0079-4b8c-8a56-593b22aa44d1"
             },
@@ -1043,11 +1085,13 @@ mod tests {
                 "uidnumber": ["1000"]
             }
         }"#,
-        )
-        .expect("Json parse failure");
+            )
+            .to_valid_new()
+        };
 
-        let e2: Entry<EntryValid, EntryNew> = serde_json::from_str(
-            r#"{
+        let e2: Entry<EntryValid, EntryNew> = unsafe {
+            Entry::unsafe_from_entry_str(
+                r#"{
             "valid": {
                 "uuid": "4b6228ab-1dbe-42a4-a9f5-f6368222438e"
             },
@@ -1058,11 +1102,13 @@ mod tests {
                 "uidnumber": ["1001"]
             }
         }"#,
-        )
-        .expect("Json parse failure");
+            )
+            .to_valid_new()
+        };
 
-        let e3: Entry<EntryValid, EntryNew> = serde_json::from_str(
-            r#"{
+        let e3: Entry<EntryValid, EntryNew> = unsafe {
+            Entry::unsafe_from_entry_str(
+                r#"{
             "valid": {
                 "uuid": "7b23c99d-c06b-4a9a-a958-3afa56383e1d"
             },
@@ -1073,11 +1119,13 @@ mod tests {
                 "uidnumber": ["1002"]
             }
         }"#,
-        )
-        .expect("Json parse failure");
+            )
+            .to_valid_new()
+        };
 
-        let e4: Entry<EntryValid, EntryNew> = serde_json::from_str(
-            r#"{
+        let e4: Entry<EntryValid, EntryNew> = unsafe {
+            Entry::unsafe_from_entry_str(
+                r#"{
             "valid": {
                 "uuid": "21d816b5-1f6a-4696-b7c1-6ed06d22ed81"
             },
@@ -1088,13 +1136,17 @@ mod tests {
                 "uidnumber": ["1000"]
             }
         }"#,
-        )
-        .expect("Json parse failure");
+            )
+            .to_valid_new()
+        };
 
         let f_t1a = unsafe {
             filter_resolved!(f_and!([
-                f_eq("class", "person"),
-                f_or!([f_eq("uidnumber", "1001"), f_eq("uidnumber", "1000")])
+                f_eq("class", PartialValue::new_class("person")),
+                f_or!([
+                    f_eq("uidnumber", PartialValue::new_iutf8s("1001")),
+                    f_eq("uidnumber", PartialValue::new_iutf8s("1000"))
+                ])
             ]))
         };
 
@@ -1109,17 +1161,22 @@ mod tests {
         let mut f_expect = BTreeSet::new();
         f_expect.insert("userid");
         f_expect.insert("class");
-        // Given filters, get their expected attribute sets.
-        let f_t1a =
-            unsafe { filter_valid!(f_and!([f_eq("userid", "alice"), f_eq("class", "1001"),])) };
+        // Given filters, get their expected attribute sets - this is used by access control profiles
+        // to determine what attrs we are requesting regardless of the partialvalue.
+        let f_t1a = unsafe {
+            filter_valid!(f_and!([
+                f_eq("userid", PartialValue::new_iutf8s("alice")),
+                f_eq("class", PartialValue::new_iutf8s("1001")),
+            ]))
+        };
 
         assert!(f_t1a.get_attr_set() == f_expect);
 
         let f_t2a = unsafe {
             filter_valid!(f_and!([
-                f_eq("userid", "alice"),
-                f_eq("class", "1001"),
-                f_eq("userid", "claire"),
+                f_eq("userid", PartialValue::new_iutf8s("alice")),
+                f_eq("class", PartialValue::new_iutf8s("1001")),
+                f_eq("userid", PartialValue::new_iutf8s("claire")),
             ]))
         };
 
