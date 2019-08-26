@@ -635,7 +635,19 @@ impl Value {
 
     /// Convert to a proto/public value that can be read and consumed.
     pub(crate) fn to_proto_string_clone(&self) -> String {
-        unimplemented!();
+        match &self.pv {
+            PartialValue::Utf8(s) => s.clone(),
+            PartialValue::Iutf8(s) => s.clone(),
+            PartialValue::Uuid(u) => u.to_hyphenated_ref().to_string(),
+            PartialValue::Bool(b) => b.to_string(),
+            PartialValue::Syntax(syn) => syn.to_string(),
+            PartialValue::Index(it) => it.to_string(),
+            // TODO: These should be uuid_to_name in server
+            PartialValue::Refer(u) => u.to_hyphenated_ref().to_string(),
+            PartialValue::JsonFilt(s) => {
+                serde_json::to_string(s).expect("A json filter value was corrupted during run-time")
+            }
+        }
     }
 
     pub fn to_str(&self) -> Option<&str> {
