@@ -1,10 +1,13 @@
 use crate::be::dbvalue::DbValueV1;
+use crate::credential::Credential;
 use crate::proto::v1::Filter as ProtoFilter;
 
 use std::borrow::Borrow;
 use std::convert::TryFrom;
 use std::str::FromStr;
 use uuid::Uuid;
+
+use std::cmp::Ordering;
 
 #[allow(non_camel_case_types)]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
@@ -139,6 +142,13 @@ impl SyntaxType {
     }
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub enum DataValue {
+    Cred(Credential),
+    // SshKey(String),
+    // RadiusCred(String),
+}
+
 #[derive(Debug, Clone, Eq, Ord, PartialOrd, PartialEq, Deserialize, Serialize)]
 pub enum PartialValue {
     Utf8(String),
@@ -151,6 +161,10 @@ pub enum PartialValue {
     // Does this make sense?
     // TODO: We'll probably add tagging to this type for the partial matching
     JsonFilt(ProtoFilter),
+    // Tag, matches to a DataValue.
+    Cred(String),
+    // SshKey(String),
+    // RadiusCred(String),
 }
 
 impl PartialValue {
@@ -320,14 +334,35 @@ impl PartialValue {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct Value {
     pv: PartialValue,
     // Later we'll add extra data fields for different v types. They'll have to switch on
     // pv somehow, so probably need optional or union?
+    data: Option<DataValue>,
 }
 
 // TODO: Impl display
+
+impl PartialEq for Value {
+    fn eq(&self, other: &Self) -> bool {
+        self.pv.eq(&other.pv)
+    }
+}
+
+impl Eq for Value {}
+
+impl PartialOrd for Value {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.pv.cmp(&other.pv))
+    }
+}
+
+impl Ord for Value {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.pv.cmp(&other.pv)
+    }
+}
 
 // Need new_<type> -> Result<_, _>
 // Need from_db_value
@@ -338,6 +373,7 @@ impl From<bool> for Value {
     fn from(b: bool) -> Self {
         Value {
             pv: PartialValue::Bool(b),
+            data: None,
         }
     }
 }
@@ -346,6 +382,7 @@ impl From<&bool> for Value {
     fn from(b: &bool) -> Self {
         Value {
             pv: PartialValue::Bool(*b),
+            data: None,
         }
     }
 }
@@ -354,6 +391,7 @@ impl From<SyntaxType> for Value {
     fn from(s: SyntaxType) -> Self {
         Value {
             pv: PartialValue::Syntax(s),
+            data: None,
         }
     }
 }
@@ -362,6 +400,7 @@ impl From<IndexType> for Value {
     fn from(i: IndexType) -> Self {
         Value {
             pv: PartialValue::Index(i),
+            data: None,
         }
     }
 }
@@ -376,9 +415,11 @@ impl From<&str> for Value {
         match Uuid::parse_str(s) {
             Ok(u) => Value {
                 pv: PartialValue::Uuid(u),
+                data: None,
             },
             Err(_) => Value {
                 pv: PartialValue::Utf8(s.to_string()),
+                data: None,
             },
         }
     }
@@ -389,6 +430,7 @@ impl From<&Uuid> for Value {
     fn from(u: &Uuid) -> Self {
         Value {
             pv: PartialValue::Uuid(u.clone()),
+            data: None,
         }
     }
 }
@@ -398,6 +440,7 @@ impl From<Uuid> for Value {
     fn from(u: Uuid) -> Self {
         Value {
             pv: PartialValue::Uuid(u),
+            data: None,
         }
     }
 }
@@ -407,12 +450,14 @@ impl Value {
     pub fn new_utf8(s: String) -> Self {
         Value {
             pv: PartialValue::new_utf8(s),
+            data: None,
         }
     }
 
     pub fn new_utf8s(s: &str) -> Self {
         Value {
             pv: PartialValue::new_utf8s(s),
+            data: None,
         }
     }
 
@@ -426,12 +471,14 @@ impl Value {
     pub fn new_iutf8(s: String) -> Self {
         Value {
             pv: PartialValue::new_iutf8s(s.as_str()),
+            data: None,
         }
     }
 
     pub fn new_iutf8s(s: &str) -> Self {
         Value {
             pv: PartialValue::new_iutf8s(s),
+            data: None,
         }
     }
 
@@ -445,18 +492,21 @@ impl Value {
     pub fn new_uuid(u: Uuid) -> Self {
         Value {
             pv: PartialValue::new_uuid(u),
+            data: None,
         }
     }
 
     pub fn new_uuids(s: &str) -> Option<Self> {
         Some(Value {
             pv: PartialValue::new_uuids(s)?,
+            data: None,
         })
     }
 
     pub fn new_uuidr(u: &Uuid) -> Self {
         Value {
             pv: PartialValue::new_uuidr(u),
+            data: None,
         }
     }
 
@@ -471,24 +521,28 @@ impl Value {
     pub fn new_class(s: &str) -> Self {
         Value {
             pv: PartialValue::new_iutf8s(s),
+            data: None,
         }
     }
 
     pub fn new_attr(s: &str) -> Self {
         Value {
             pv: PartialValue::new_iutf8s(s),
+            data: None,
         }
     }
 
     pub fn new_bool(b: bool) -> Self {
         Value {
             pv: PartialValue::new_bool(b),
+            data: None,
         }
     }
 
     pub fn new_bools(s: &str) -> Option<Self> {
         Some(Value {
             pv: PartialValue::new_bools(s)?,
+            data: None,
         })
     }
 
@@ -503,6 +557,7 @@ impl Value {
     pub fn new_syntaxs(s: &str) -> Option<Self> {
         Some(Value {
             pv: PartialValue::new_syntaxs(s)?,
+            data: None,
         })
     }
 
@@ -516,6 +571,7 @@ impl Value {
     pub fn new_indexs(s: &str) -> Option<Self> {
         Some(Value {
             pv: PartialValue::new_indexs(s)?,
+            data: None,
         })
     }
 
@@ -529,18 +585,21 @@ impl Value {
     pub fn new_refer(u: Uuid) -> Self {
         Value {
             pv: PartialValue::new_refer(u),
+            data: None,
         }
     }
 
     pub fn new_refer_r(u: &Uuid) -> Self {
         Value {
             pv: PartialValue::new_refer_r(u),
+            data: None,
         }
     }
 
     pub fn new_refer_s(us: &str) -> Option<Self> {
         Some(Value {
             pv: PartialValue::new_refer_s(us)?,
+            data: None,
         })
     }
 
@@ -554,6 +613,7 @@ impl Value {
     pub fn new_json_filter(s: &str) -> Option<Self> {
         Some(Value {
             pv: PartialValue::new_json_filter(s)?,
+            data: None,
         })
     }
 
@@ -584,35 +644,47 @@ impl Value {
         match v {
             DbValueV1::U8(s) => Ok(Value {
                 pv: PartialValue::Utf8(s),
+                data: None,
             }),
             DbValueV1::I8(s) => {
                 Ok(Value {
                     // TODO: Should we be lowercasing here? The dbv should be normalised
                     // already, but is there a risk of corruption/tampering if we don't touch this?
                     pv: PartialValue::Iutf8(s.to_lowercase()),
+                    data: None,
                 })
             }
             DbValueV1::UU(u) => Ok(Value {
                 pv: PartialValue::Uuid(u),
+                data: None,
             }),
             DbValueV1::BO(b) => Ok(Value {
                 pv: PartialValue::Bool(b),
+                data: None,
             }),
             DbValueV1::SY(us) => Ok(Value {
                 pv: PartialValue::Syntax(SyntaxType::try_from(us)?),
+                data: None,
             }),
             DbValueV1::IN(us) => Ok(Value {
                 pv: PartialValue::Index(IndexType::try_from(us)?),
+                data: None,
             }),
             DbValueV1::RF(u) => Ok(Value {
                 pv: PartialValue::Refer(u),
+                data: None,
             }),
             DbValueV1::JF(s) => Ok(Value {
                 pv: match PartialValue::new_json_filter(s.as_str()) {
                     Some(pv) => pv,
                     None => return Err(()),
                 },
+                data: None,
             }),
+            DbValueV1::CR(_dvc) => {
+                // Deserialise the db cred here.
+                unimplemented!();
+            }
         }
     }
 
@@ -630,6 +702,10 @@ impl Value {
                 serde_json::to_string(s)
                     .expect("A json filter value was corrupted during run-time"),
             ),
+            PartialValue::Cred(_tag) => {
+                // Save the tag AND the dataValue here!
+                unimplemented!();
+            }
         }
     }
 
@@ -646,6 +722,11 @@ impl Value {
             PartialValue::Refer(u) => u.to_hyphenated_ref().to_string(),
             PartialValue::JsonFilt(s) => {
                 serde_json::to_string(s).expect("A json filter value was corrupted during run-time")
+            }
+            PartialValue::Cred(tag) => {
+                // You can't actually read the credential values because we only display the
+                // tag to the proto side. The credentials private data is stored seperately.
+                tag.to_string()
             }
         }
     }

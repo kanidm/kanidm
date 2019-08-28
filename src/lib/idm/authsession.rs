@@ -85,6 +85,8 @@ pub(crate) struct AuthSession {
     handler: CredHandler,
     // Store any related appid we are processing for.
     appid: Option<String>,
+    // Store claims related to the handler
+    // need to store state somehow?
     finished: bool,
 }
 
