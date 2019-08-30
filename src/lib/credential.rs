@@ -119,13 +119,13 @@ impl Password {
 pub struct Credential {
     // Source (machine, user, ....). Strength?
     // policy: Policy,
-    password: Option<Password>,
+    pub(crate) password: Option<Password>,
     // webauthn: Option<NonEmptyVec<Webauthn>>
     // totp: Option<NonEmptyVec<TOTP>>
-    claims: Vec<String>,
+    pub(crate) claims: Vec<String>,
     // Uuid of Credential, used by auth session to lock this specific credential
     // if required.
-    uuid: Uuid,
+    pub(crate) uuid: Uuid,
     // TODO: Add auth policy IE validUntil, lock state ...
     // locked: bool
 }

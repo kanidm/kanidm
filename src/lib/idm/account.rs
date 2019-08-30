@@ -26,7 +26,7 @@ pub(crate) struct Account {
     pub displayname: String,
     pub uuid: Uuid,
     pub groups: Vec<Group>,
-    primary: Option<Credential>,
+    pub primary: Option<Credential>,
     // primary: Credential
     // app_creds: Vec<Credential>
     // account expiry? (as opposed to cred expiry)
@@ -56,6 +56,9 @@ impl Account {
             OperationError::InvalidAccountState("Missing attribute: displayname"),
         )?;
 
+        let primary = value.get_ava_single_credential("primary_credential")
+            .map(|v| v.clone());
+
         // TODO #71: Resolve groups!!!!
         let groups = Vec::new();
 
@@ -66,7 +69,7 @@ impl Account {
             name: name,
             displayname: displayname,
             groups: groups,
-            primary: None,
+            primary: primary,
         })
     }
 

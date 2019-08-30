@@ -5,7 +5,9 @@ use crate::idm::account::Account;
 use crate::idm::claim::Claim;
 use crate::proto::v1::{AuthAllowed, AuthCredential, AuthState};
 
-use crate::credential::Password;
+use crate::credential::{Password, Credential};
+
+use std::convert::TryFrom;
 
 // Each CredHandler takes one or more credentials and determines if the
 // handlers requirements can be 100% fufilled. This is where MFA or other
@@ -33,6 +35,18 @@ enum CredHandler {
                         // } <<-- could all these be "AccountPrimary" and pass to Account?
                         // Selection at this level could be premature ...
                         // Verification Link?
+}
+
+impl TryFrom<&Credential> for CredHandler {
+    type Error = ();
+    // Is there a nicer implementation of this?
+    fn try_from(c: &Credential) -> Result<Self, Self::Error> {
+        if c.password.is_some() {
+            Ok(CredHandler::Password(c.password.clone().unwrap()))
+        } else {
+            Err(())
+        }
+    }
 }
 
 impl CredHandler {
@@ -124,10 +138,19 @@ impl AuthSession {
                 if account.uuid == UUID_ANONYMOUS.clone() {
                     CredHandler::Anonymous
                 } else {
-                    // get account.primary
-                    // does it exist?
-                    // no, then handler deny
-                    CredHandler::Denied
+                    // Now we see if they have one ...
+                    match &account.primary {
+                        Some(cred) => {
+                            // TODO: Log this corruption better ... :(
+                            // Probably means new authsession has to be failable
+                            CredHandler::try_from(cred)
+                                .unwrap_or_else(|_| CredHandler::Denied)
+
+                        }
+                        None => {
+                            CredHandler::Denied
+                        }
+                    }
                 }
             }
         };
@@ -210,7 +233,7 @@ mod tests {
     use crate::proto::v1::AuthAllowed;
 
     #[test]
-    fn test_idm_account_anonymous_auth_mech() {
+    fn test_idm_authsession_anonymous_auth_mech() {
         let anon_account = entry_str_to_account!(JSON_ANONYMOUS_V1);
 
         let session = AuthSession::new(anon_account, None);
@@ -226,7 +249,7 @@ mod tests {
     }
 
     #[test]
-    fn test_idm_account_missing_appid() {
+    fn test_idm_authsession_missing_appid() {
         let anon_account = entry_str_to_account!(JSON_ANONYMOUS_V1);
 
         let session = AuthSession::new(anon_account, Some("NonExistanteAppID".to_string()));
@@ -235,5 +258,10 @@ mod tests {
 
         // Will always move to denied.
         assert!(auth_mechs == Vec::new());
+    }
+
+    #[test]
+    fn test_idm_authsession_simple_password_mech() {
+        unimplemented!();
     }
 }
