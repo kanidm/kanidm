@@ -15,7 +15,7 @@ use crate::access::{
 use crate::constants::{
     JSON_ADMIN_V1, JSON_ANONYMOUS_V1, JSON_IDM_ADMINS_ACP_REVIVE_V1, JSON_IDM_ADMINS_ACP_SEARCH_V1,
     JSON_IDM_ADMINS_V1, JSON_IDM_SELF_ACP_READ_V1, JSON_SCHEMA_ATTR_DISPLAYNAME,
-    JSON_SCHEMA_ATTR_MAIL, JSON_SCHEMA_ATTR_PASSWORD, JSON_SCHEMA_ATTR_SSH_PUBLICKEY,
+    JSON_SCHEMA_ATTR_MAIL, JSON_SCHEMA_ATTR_PRIMARY_CREDENTIAL, JSON_SCHEMA_ATTR_SSH_PUBLICKEY,
     JSON_SCHEMA_CLASS_ACCOUNT, JSON_SCHEMA_CLASS_GROUP, JSON_SCHEMA_CLASS_PERSON,
     JSON_SYSTEM_INFO_V1, UUID_DOES_NOT_EXIST,
 };
@@ -393,6 +393,7 @@ pub trait QueryServerTransaction {
                     }
                     SyntaxType::JSON_FILTER => Value::new_json_filter(value)
                         .ok_or(OperationError::InvalidAttribute("Invalid Filter syntax")),
+                    SyntaxType::CREDENTIAL => Err(OperationError::InvalidAttribute("Credentials can not be supplied through modification - please use the IDM api")),
                 }
             }
             None => {
@@ -456,6 +457,7 @@ pub trait QueryServerTransaction {
                     }
                     SyntaxType::JSON_FILTER => PartialValue::new_json_filter(value)
                         .ok_or(OperationError::InvalidAttribute("Invalid Filter syntax")),
+                    SyntaxType::CREDENTIAL => Ok(PartialValue::new_credential_tag(value.as_str())),
                 }
             }
             None => {
@@ -1453,7 +1455,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_SCHEMA_ATTR_DISPLAYNAME,
             JSON_SCHEMA_ATTR_MAIL,
             JSON_SCHEMA_ATTR_SSH_PUBLICKEY,
-            JSON_SCHEMA_ATTR_PASSWORD,
+            JSON_SCHEMA_ATTR_PRIMARY_CREDENTIAL,
             JSON_SCHEMA_CLASS_PERSON,
             JSON_SCHEMA_CLASS_GROUP,
             JSON_SCHEMA_CLASS_ACCOUNT,
@@ -1693,6 +1695,7 @@ mod tests {
     use crate::proto::v1::{DeleteRequest, ModifyRequest, ReviveRecycledRequest};
     use crate::server::QueryServerTransaction;
     use crate::value::{PartialValue, Value};
+    use crate::credential::Credential;
     use uuid::Uuid;
 
     #[test]
@@ -2634,6 +2637,53 @@ mod tests {
 
             server_txn.commit(audit).expect("should not fail");
             // Commit.
+        })
+    }
+
+    #[test]
+    fn test_qs_modify_password_only() {
+        run_test!(|server: &QueryServer, audit: &mut AuditScope| {
+            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+                r#"{
+                "valid": null,
+                "state": null,
+                "attrs": {
+                    "class": ["object", "person", "account"],
+                    "name": ["testperson1"],
+                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
+                    "description": ["testperson"],
+                    "displayname": ["testperson1"]
+                }
+            }"#,
+            );
+            let mut server_txn = server.write();
+            // Add the entry. Today we have no syntax to take simple str to a credential
+            // but honestly, that's probably okay :)
+            let ce = CreateEvent::new_internal(vec![e1]);
+            let cr = server_txn.create(audit, &ce);
+            assert!(cr.is_ok());
+
+            // Build the credential.
+            let cred = Credential::new_password_only("test_password");
+            let v_cred = Value::new_credential("primary", cred);
+            assert!(v_cred.validate());
+
+            // now modify and provide a primary credential.
+            let me_inv_m = unsafe {
+                ModifyEvent::new_internal_invalid(
+                    filter!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
+                    ModifyList::new_list(vec![Modify::Present(
+                        "primary_credential".to_string(),
+                        v_cred,
+                    )]),
+                )
+            };
+            // go!
+            assert!(server_txn.modify(audit, &me_inv_m).is_ok());
+
+            // assert it exists and the password checks out
+            // get the primary ava
+            // do a pw check.
         })
     }
 }

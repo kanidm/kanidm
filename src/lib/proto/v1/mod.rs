@@ -253,7 +253,6 @@ pub struct AuthRequest {
 pub enum AuthAllowed {
     Anonymous,
     Password,
-    // TOTP,
     // Webauthn(String),
 }
 

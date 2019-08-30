@@ -293,8 +293,8 @@ pub static JSON_SCHEMA_ATTR_SSH_PUBLICKEY: &'static str = r#"
     }
   }
 "#;
-pub static UUID_SCHEMA_ATTR_PASSWORD: &'static str = "00000000-0000-0000-0000-ffff00000043";
-pub static JSON_SCHEMA_ATTR_PASSWORD: &'static str = r#"
+pub static UUID_SCHEMA_ATTR_PRIMARY_CREDENTIAL: &'static str = "00000000-0000-0000-0000-ffff00000043";
+pub static JSON_SCHEMA_ATTR_PRIMARY_CREDENTIAL: &'static str = r#"
   {
     "valid": {
       "uuid": "00000000-0000-0000-0000-ffff00000043"
@@ -307,17 +307,17 @@ pub static JSON_SCHEMA_ATTR_PASSWORD: &'static str = r#"
         "attributetype"
       ],
       "description": [
-        "password hash material of the object for authentication"
+        "Primary credential material of the account for authentication interactively."
       ],
       "index": [],
       "multivalue": [
-        "true"
+        "false"
       ],
       "name": [
-        "password"
+        "primary_credential"
       ],
       "syntax": [
-        "UTF8STRING"
+        "CREDENTIAL"
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000043"
@@ -411,7 +411,7 @@ pub static JSON_SCHEMA_CLASS_ACCOUNT: &'static str = r#"
         "account"
       ],
       "systemmay": [
-        "password",
+        "primary_credential",
         "ssh_publickey"
       ],
       "systemmust": [

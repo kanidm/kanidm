@@ -15,7 +15,7 @@ pub struct ModifyValid;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ModifyInvalid;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug)]
 pub enum Modify {
     // This value *should* exist.
     Present(String, Value),
@@ -56,7 +56,7 @@ impl Modify {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug)]
 pub struct ModifyList<VALID> {
     valid: VALID,
     // The order of this list matters. Each change must be done in order.

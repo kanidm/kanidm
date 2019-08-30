@@ -5,6 +5,8 @@ use crate::idm::account::Account;
 use crate::idm::claim::Claim;
 use crate::proto::v1::{AuthAllowed, AuthCredential, AuthState};
 
+use crate::credential::Password;
+
 // Each CredHandler takes one or more credentials and determines if the
 // handlers requirements can be 100% fufilled. This is where MFA or other
 // auth policies would exist, but each credHandler has to be a whole
@@ -18,10 +20,13 @@ enum CredState {
 
 #[derive(Clone, Debug)]
 enum CredHandler {
+    Denied,
+    // The bool is a flag if the cred has been authed against.
     Anonymous,
     // AppPassword
     // {
     // Password
+    Password(Password)
     // Webauthn
     // Webauthn + Password
     // TOTP
@@ -34,6 +39,10 @@ enum CredHandler {
 impl CredHandler {
     pub fn validate(&mut self, creds: &Vec<AuthCredential>) -> CredState {
         match self {
+            CredHandler::Denied => {
+                // Sad trombone.
+                CredState::Denied("authentication denied")
+            }
             CredHandler::Anonymous => {
                 creds.iter().fold(
                     CredState::Continue(vec![AuthAllowed::Anonymous]),
@@ -62,12 +71,26 @@ impl CredHandler {
                     },
                 )
             } // end credhandler::anonymous
+            CredHandler::Password(_pw) => {
+                CredState::Denied("pw authentication denied")
+            }
         }
     }
 
     pub fn valid_auth_mechs(&self) -> Vec<AuthAllowed> {
         match &self {
+            CredHandler::Denied => Vec::new(),
             CredHandler::Anonymous => vec![AuthAllowed::Anonymous],
+            CredHandler::Password(_) => vec![AuthAllowed::Password],
+            // webauth
+            // mfa
+        }
+    }
+
+    pub(crate) fn is_denied(&self) -> bool {
+        match &self {
+            CredHandler::Denied => true,
+            _ => false,
         }
     }
 }
@@ -97,7 +120,7 @@ impl AuthSession {
         // id.
         let handler = match appid {
             Some(_) => {
-                unimplemented!();
+                CredHandler::Denied
             }
             None => {
                 // We want the primary handler - this is where we make a decision
@@ -106,7 +129,10 @@ impl AuthSession {
                 if account.uuid == UUID_ANONYMOUS.clone() {
                     CredHandler::Anonymous
                 } else {
-                    unimplemented!();
+                    // get account.primary
+                    // does it exist?
+                    // no, then handler deny
+                    CredHandler::Denied
                 }
             }
         };
@@ -117,11 +143,14 @@ impl AuthSession {
         // we store in the account somehow?
         // TODO #59: Implement handler locking!
 
+        // if credhandler == deny, finish = true.
+        let finished: bool = handler.is_denied();
+
         AuthSession {
             account: account,
             handler: handler,
             appid: appid,
-            finished: false,
+            finished: finished,
         }
     }
 
@@ -199,5 +228,17 @@ mod tests {
                 _ => acc,
             })
         );
+    }
+
+    #[test]
+    fn test_idm_account_missing_appid() {
+        let anon_account = entry_str_to_account!(JSON_ANONYMOUS_V1);
+
+        let session = AuthSession::new(anon_account, Some("NonExistanteAppID".to_string()));
+
+        let auth_mechs = session.valid_auth_mechs();
+
+        // Will always move to denied.
+        assert!(auth_mechs == Vec::new());
     }
 }

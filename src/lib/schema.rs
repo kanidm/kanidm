@@ -171,6 +171,14 @@ impl SchemaAttribute {
         }
     }
 
+    fn validate_credential(&self, v: &Value) -> Result<(), SchemaError> {
+        if v.is_credential() {
+            Ok(())
+        } else {
+            Err(SchemaError::InvalidAttributeSyntax)
+        }
+    }
+
     fn validate_utf8string_insensitive(&self, v: &Value) -> Result<(), SchemaError> {
         if v.is_insensitive_utf8() {
             Ok(())
@@ -200,6 +208,7 @@ impl SchemaAttribute {
             SyntaxType::UTF8STRING_INSENSITIVE => v.is_iutf8(),
             SyntaxType::UTF8STRING => v.is_utf8(),
             SyntaxType::JSON_FILTER => v.is_json_filter(),
+            SyntaxType::CREDENTIAL => v.is_credential(),
         };
         if r {
             Ok(())
@@ -283,6 +292,13 @@ impl SchemaAttribute {
             SyntaxType::JSON_FILTER => ava.iter().fold(Ok(()), |acc, v| {
                 if acc.is_ok() {
                     self.validate_json_filter(v)
+                } else {
+                    acc
+                }
+            }),
+            SyntaxType::CREDENTIAL => ava.iter().fold(Ok(()), |acc, v| {
+                if acc.is_ok() {
+                    self.validate_credential(v)
                 } else {
                     acc
                 }

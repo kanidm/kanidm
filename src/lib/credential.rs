@@ -5,9 +5,10 @@ use openssl::pkcs5::pbkdf2_hmac;
 #[cfg(test)]
 use rand::prelude::*;
 use uuid::Uuid;
+use crate::be::dbvalue::{DbCredV1, DbPasswordV1};
 
 // These are in order of "relative" strength.
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug)]
 pub enum Policy {
     PasswordOnly,
     WebauthnOnly,
@@ -29,13 +30,13 @@ const PBKDF2_KEY_LEN: usize = 64;
 // Why PBKDF2? Rust's bcrypt has a number of hardcodings like max pw len of 72
 // I don't really feel like adding in so many restrictions, so I'll use
 // pbkdf2 in openssl because it doesn't have the same limits.
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug)]
 enum KDF {
     //     cost, salt,   hash
     PBKDF2(usize, Vec<u8>, Vec<u8>),
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug)]
 pub struct Password {
     material: KDF,
 }
@@ -87,7 +88,7 @@ impl Password {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug)]
 /// This is how we store credentials in the server. An account can have many credentials, and
 /// a credential can have many factors. Only successful auth to a credential as a whole unit
 /// will succeed. For example:
@@ -130,6 +131,24 @@ impl Credential {
         match &self.password {
             Some(pw) => pw.verify(cleartext),
             None => unimplemented!(),
+        }
+    }
+
+    pub fn to_db_valuev1(&self) -> DbCredV1 {
+        DbCredV1 {
+            password: match &self.password {
+                Some(pw) => {
+                    match &pw.material {
+                        KDF::PBKDF2(cost, salt, hash) => {
+                            Some(DbPasswordV1::PBKDF2(*cost, salt.clone(), hash.clone()))
+                        }
+                    }
+                }
+                None => None,
+            },
+            claims: self.claims.clone(),
+            uuid: self.uuid.clone(),
+
         }
     }
 

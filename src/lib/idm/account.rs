@@ -6,6 +6,7 @@ use crate::proto::v1::UserAuthToken;
 use crate::idm::claim::Claim;
 use crate::idm::group::Group;
 use crate::value::PartialValue;
+use crate::credential::Credential;
 
 use uuid::Uuid;
 
@@ -25,10 +26,10 @@ pub(crate) struct Account {
     pub displayname: String,
     pub uuid: Uuid,
     pub groups: Vec<Group>,
-    // creds (various types)
-    // groups?
-    // claims?
-    // account expiry?
+    primary: Option<Credential>,
+    // primary: Credential
+    // app_creds: Vec<Credential>
+    // account expiry? (as opposed to cred expiry)
 }
 
 impl Account {
@@ -65,6 +66,7 @@ impl Account {
             name: name,
             displayname: displayname,
             groups: groups,
+            primary: None,
         })
     }
 
@@ -112,5 +114,11 @@ mod tests {
     fn test_idm_account_from_real() {
         // For now, nothing, but later, we'll test different types of cred
         // passing.
+    }
+
+    #[test]
+    fn test_idm_account_set_credential() {
+        // Using a real entry, set a credential back to it's entry.
+        // In the end, this boils down to a modify operation on the Value
     }
 }

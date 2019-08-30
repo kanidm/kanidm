@@ -1,4 +1,4 @@
-use crate::be::dbvalue::DbValueV1;
+use crate::be::dbvalue::{DbValueV1, DbValueCredV1};
 use crate::credential::Credential;
 use crate::proto::v1::Filter as ProtoFilter;
 
@@ -75,6 +75,7 @@ pub enum SyntaxType {
     INDEX_ID,
     REFERENCE_UUID,
     JSON_FILTER,
+    CREDENTIAL,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -91,6 +92,7 @@ impl TryFrom<&str> for SyntaxType {
             "INDEX_ID" => Ok(SyntaxType::INDEX_ID),
             "REFERENCE_UUID" => Ok(SyntaxType::REFERENCE_UUID),
             "JSON_FILTER" => Ok(SyntaxType::JSON_FILTER),
+            "CREDENTIAL" => Ok(SyntaxType::CREDENTIAL),
             _ => Err(()),
         }
     }
@@ -109,6 +111,7 @@ impl TryFrom<usize> for SyntaxType {
             5 => Ok(SyntaxType::INDEX_ID),
             6 => Ok(SyntaxType::REFERENCE_UUID),
             7 => Ok(SyntaxType::JSON_FILTER),
+            8 => Ok(SyntaxType::CREDENTIAL),
             _ => Err(()),
         }
     }
@@ -125,6 +128,7 @@ impl SyntaxType {
             SyntaxType::INDEX_ID => "INDEX_ID",
             SyntaxType::REFERENCE_UUID => "REFERENCE_UUID",
             SyntaxType::JSON_FILTER => "JSON_FILTER",
+            SyntaxType::CREDENTIAL => "CREDENTIAL",
         })
     }
 
@@ -138,11 +142,12 @@ impl SyntaxType {
             SyntaxType::INDEX_ID => 5,
             SyntaxType::REFERENCE_UUID => 6,
             SyntaxType::JSON_FILTER => 7,
+            SyntaxType::CREDENTIAL => 8,
         }
     }
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone)]
 pub enum DataValue {
     Cred(Credential),
     // SshKey(String),
@@ -313,6 +318,17 @@ impl PartialValue {
         }
     }
 
+    pub fn new_credential_tag(s: &str) -> Self {
+        PartialValue::Cred(s.to_lowercase())
+    }
+
+    pub fn is_credential(&self) -> bool {
+        match self {
+            PartialValue::Cred(_) => true,
+            _ => false,
+        }
+    }
+
     pub fn to_str(&self) -> Option<&str> {
         match self {
             PartialValue::Utf8(s) => Some(s.as_str()),
@@ -334,7 +350,7 @@ impl PartialValue {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug)]
 pub struct Value {
     pv: PartialValue,
     // Later we'll add extra data fields for different v types. They'll have to switch on
@@ -631,6 +647,20 @@ impl Value {
         }
     }
 
+    pub fn new_credential(tag: &str, cred: Credential) -> Self {
+        Value {
+            pv: PartialValue::new_credential_tag(tag),
+            data: Some(DataValue::Cred(cred))
+        }
+    }
+
+    pub fn is_credential(&self) -> bool {
+        match &self.pv {
+            PartialValue::Cred(_) => true,
+            _ => false,
+        }
+    }
+
     pub fn contains(&self, s: &PartialValue) -> bool {
         self.pv.contains(s)
     }
@@ -702,9 +732,25 @@ impl Value {
                 serde_json::to_string(s)
                     .expect("A json filter value was corrupted during run-time"),
             ),
-            PartialValue::Cred(_tag) => {
+            PartialValue::Cred(tag) => {
+                // Get the credential out and make sure it matches the type we expect.
+                let c = match &self.data {
+                    Some(v) => {
+                        match &v {
+                            DataValue::Cred(c) => c,
+                            // _ => panic!(),
+                        }
+                    }
+                    None => panic!(),
+                };
+
                 // Save the tag AND the dataValue here!
-                unimplemented!();
+                DbValueV1::CR(
+                    DbValueCredV1 {
+                        t: tag.clone(),
+                        d: c.to_db_valuev1(),
+                    }
+                )
             }
         }
     }
@@ -798,7 +844,18 @@ impl Value {
         // Validate that extra-data constraints on the type exist and are
         // valid. IE json filter is really a filter, or cred types have supplemental
         // data.
-        true
+        match &self.pv {
+            PartialValue::Cred(_) => match &self.data {
+                Some(v) => {
+                    match &v {
+                        DataValue::Cred(_) => true,
+                        // _ => false,
+                    }
+                }
+                None => false,
+            }
+            _ => true,
+        }
     }
 }
 
