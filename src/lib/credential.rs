@@ -1,13 +1,15 @@
+use crate::be::dbvalue::{DbCredV1, DbPasswordV1};
 #[cfg(test)]
 use openssl::hash::MessageDigest;
 #[cfg(test)]
 use openssl::pkcs5::pbkdf2_hmac;
 #[cfg(test)]
 use rand::prelude::*;
+use std::convert::TryFrom;
 use uuid::Uuid;
-use crate::be::dbvalue::{DbCredV1, DbPasswordV1};
 
 // These are in order of "relative" strength.
+/*
 #[derive(Clone, Debug)]
 pub enum Policy {
     PasswordOnly,
@@ -15,6 +17,7 @@ pub enum Policy {
     GeneratedPassword,
     PasswordAndWebauthn,
 }
+*/
 
 // TODO: Determine this at startup based on a time factor
 #[cfg(test)]
@@ -39,6 +42,18 @@ enum KDF {
 #[derive(Clone, Debug)]
 pub struct Password {
     material: KDF,
+}
+
+impl TryFrom<DbPasswordV1> for Password {
+    type Error = ();
+
+    fn try_from(value: DbPasswordV1) -> Result<Self, Self::Error> {
+        match value {
+            DbPasswordV1::PBKDF2(c, s, h) => Ok(Password {
+                material: KDF::PBKDF2(c, s, h),
+            }),
+        }
+    }
 }
 
 impl Password {
@@ -103,7 +118,7 @@ impl Password {
 /// to be resolved ...
 pub struct Credential {
     // Source (machine, user, ....). Strength?
-    policy: Policy,
+    // policy: Policy,
     password: Option<Password>,
     // webauthn: Option<NonEmptyVec<Webauthn>>
     // totp: Option<NonEmptyVec<TOTP>>
@@ -115,11 +130,35 @@ pub struct Credential {
     // locked: bool
 }
 
+impl TryFrom<DbCredV1> for Credential {
+    type Error = ();
+
+    fn try_from(value: DbCredV1) -> Result<Self, Self::Error> {
+        // Work out what the policy is?
+        let DbCredV1 {
+            password,
+            claims,
+            uuid,
+        } = value;
+
+        let v_password = match password {
+            Some(dbp) => Some(Password::try_from(dbp)?),
+            None => None,
+        };
+
+        Ok(Credential {
+            password: v_password,
+            claims: claims,
+            uuid: uuid,
+        })
+    }
+}
+
 impl Credential {
     #[cfg(test)]
     pub fn new_password_only(cleartext: &str) -> Self {
         Credential {
-            policy: Policy::PasswordOnly,
+            // policy: Policy::PasswordOnly,
             password: Some(Password::new(cleartext)),
             claims: Vec::new(),
             uuid: Uuid::new_v4(),
@@ -137,18 +176,15 @@ impl Credential {
     pub fn to_db_valuev1(&self) -> DbCredV1 {
         DbCredV1 {
             password: match &self.password {
-                Some(pw) => {
-                    match &pw.material {
-                        KDF::PBKDF2(cost, salt, hash) => {
-                            Some(DbPasswordV1::PBKDF2(*cost, salt.clone(), hash.clone()))
-                        }
+                Some(pw) => match &pw.material {
+                    KDF::PBKDF2(cost, salt, hash) => {
+                        Some(DbPasswordV1::PBKDF2(*cost, salt.clone(), hash.clone()))
                     }
-                }
+                },
                 None => None,
             },
             claims: self.claims.clone(),
             uuid: self.uuid.clone(),
-
         }
     }
 

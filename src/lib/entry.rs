@@ -1,5 +1,6 @@
 // use serde_json::{Error, Value};
 use crate::audit::AuditScope;
+use crate::credential::Credential;
 use crate::error::{OperationError, SchemaError};
 use crate::filter::{Filter, FilterInvalid, FilterResolved, FilterValidResolved};
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
@@ -827,6 +828,13 @@ impl Entry<EntryValid, EntryCommitted> {
     pub fn get_ava_single_syntax(&self, attr: &str) -> Option<&SyntaxType> {
         match self.get_ava_single(attr) {
             Some(a) => a.to_syntaxtype(),
+            None => None,
+        }
+    }
+
+    pub fn get_ava_single_credential(&self, attr: &str) -> Option<&Credential> {
+        match self.get_ava_single(attr) {
+            Some(a) => a.to_credential(),
             None => None,
         }
     }

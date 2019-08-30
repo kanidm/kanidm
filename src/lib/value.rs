@@ -1,4 +1,4 @@
-use crate::be::dbvalue::{DbValueV1, DbValueCredV1};
+use crate::be::dbvalue::{DbValueCredV1, DbValueV1};
 use crate::credential::Credential;
 use crate::proto::v1::Filter as ProtoFilter;
 
@@ -650,7 +650,7 @@ impl Value {
     pub fn new_credential(tag: &str, cred: Credential) -> Self {
         Value {
             pv: PartialValue::new_credential_tag(tag),
-            data: Some(DataValue::Cred(cred))
+            data: Some(DataValue::Cred(cred)),
         }
     }
 
@@ -658,6 +658,18 @@ impl Value {
         match &self.pv {
             PartialValue::Cred(_) => true,
             _ => false,
+        }
+    }
+
+    pub fn to_credential(&self) -> Option<&Credential> {
+        match &self.pv {
+            PartialValue::Cred(_) => match &self.data {
+                Some(dv) => match dv {
+                    DataValue::Cred(c) => Some(&c),
+                },
+                None => None,
+            },
+            _ => None,
         }
     }
 
@@ -711,9 +723,12 @@ impl Value {
                 },
                 data: None,
             }),
-            DbValueV1::CR(_dvc) => {
+            DbValueV1::CR(dvc) => {
                 // Deserialise the db cred here.
-                unimplemented!();
+                Ok(Value {
+                    pv: PartialValue::Cred(dvc.t.to_lowercase()),
+                    data: Some(DataValue::Cred(Credential::try_from(dvc.d)?)),
+                })
             }
         }
     }
@@ -745,12 +760,10 @@ impl Value {
                 };
 
                 // Save the tag AND the dataValue here!
-                DbValueV1::CR(
-                    DbValueCredV1 {
-                        t: tag.clone(),
-                        d: c.to_db_valuev1(),
-                    }
-                )
+                DbValueV1::CR(DbValueCredV1 {
+                    t: tag.clone(),
+                    d: c.to_db_valuev1(),
+                })
             }
         }
     }
@@ -853,7 +866,7 @@ impl Value {
                     }
                 }
                 None => false,
-            }
+            },
             _ => true,
         }
     }

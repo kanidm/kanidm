@@ -3,10 +3,10 @@ use crate::error::OperationError;
 
 use crate::proto::v1::UserAuthToken;
 
+use crate::credential::Credential;
 use crate::idm::claim::Claim;
 use crate::idm::group::Group;
 use crate::value::PartialValue;
-use crate::credential::Credential;
 
 use uuid::Uuid;
 

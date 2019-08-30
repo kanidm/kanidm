@@ -1685,6 +1685,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 #[cfg(test)]
 mod tests {
     use crate::constants::{JSON_ADMIN_V1, STR_UUID_ADMIN, UUID_ADMIN};
+    use crate::credential::Credential;
     use crate::entry::{Entry, EntryInvalid, EntryNew};
     use crate::error::{OperationError, SchemaError};
     use crate::event::{CreateEvent, DeleteEvent, ModifyEvent, ReviveRecycledEvent, SearchEvent};
@@ -1695,7 +1696,6 @@ mod tests {
     use crate::proto::v1::{DeleteRequest, ModifyRequest, ReviveRecycledRequest};
     use crate::server::QueryServerTransaction;
     use crate::value::{PartialValue, Value};
-    use crate::credential::Credential;
     use uuid::Uuid;
 
     #[test]
@@ -2682,8 +2682,18 @@ mod tests {
             assert!(server_txn.modify(audit, &me_inv_m).is_ok());
 
             // assert it exists and the password checks out
+            let test_ent = server_txn
+                .internal_search_uuid(
+                    audit,
+                    &Uuid::parse_str("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap(),
+                )
+                .expect("failed");
             // get the primary ava
+            let cred_ref = test_ent
+                .get_ava_single_credential("primary_credential")
+                .expect("Failed");
             // do a pw check.
+            assert!(cred_ref.verify_password("test_password"));
         })
     }
 }

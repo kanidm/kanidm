@@ -293,7 +293,8 @@ pub static JSON_SCHEMA_ATTR_SSH_PUBLICKEY: &'static str = r#"
     }
   }
 "#;
-pub static UUID_SCHEMA_ATTR_PRIMARY_CREDENTIAL: &'static str = "00000000-0000-0000-0000-ffff00000043";
+pub static UUID_SCHEMA_ATTR_PRIMARY_CREDENTIAL: &'static str =
+    "00000000-0000-0000-0000-ffff00000043";
 pub static JSON_SCHEMA_ATTR_PRIMARY_CREDENTIAL: &'static str = r#"
   {
     "valid": {

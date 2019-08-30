@@ -26,14 +26,13 @@ enum CredHandler {
     // AppPassword
     // {
     // Password
-    Password(Password)
-    // Webauthn
-    // Webauthn + Password
-    // TOTP
-    // TOTP + Password
-    // } <<-- could all these be "AccountPrimary" and pass to Account?
-    // Selection at this level could be premature ...
-    // Verification Link?
+    Password(Password), // Webauthn
+                        // Webauthn + Password
+                        // TOTP
+                        // TOTP + Password
+                        // } <<-- could all these be "AccountPrimary" and pass to Account?
+                        // Selection at this level could be premature ...
+                        // Verification Link?
 }
 
 impl CredHandler {
@@ -71,9 +70,7 @@ impl CredHandler {
                     },
                 )
             } // end credhandler::anonymous
-            CredHandler::Password(_pw) => {
-                CredState::Denied("pw authentication denied")
-            }
+            CredHandler::Password(_pw) => CredState::Denied("pw authentication denied"),
         }
     }
 
@@ -119,9 +116,7 @@ impl AuthSession {
         // for this session. This is currently based on presentation of an application
         // id.
         let handler = match appid {
-            Some(_) => {
-                CredHandler::Denied
-            }
+            Some(_) => CredHandler::Denied,
             None => {
                 // We want the primary handler - this is where we make a decision
                 // based on the anonymous ... in theory this could be cleaner
