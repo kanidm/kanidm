@@ -2,8 +2,10 @@ use crate::audit::AuditScope;
 use crate::event::{AuthEvent, AuthEventStep, AuthResult};
 use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
-use crate::server::{QueryServer, QueryServerTransaction};
+use crate::server::{QueryServer, QueryServerTransaction, QueryServerWriteTransaction};
 use crate::value::PartialValue;
+use crate::idm::event::PasswordChangeEvent;
+
 use rsidm_proto::v1::AuthState;
 use rsidm_proto::v1::OperationError;
 
@@ -41,6 +43,12 @@ pub struct IdmServerReadTransaction<'a> {
 }
 */
 
+pub struct IdmServerProxyWriteTransaction<'a> {
+    // This does NOT take any read to the memory content, allowing safe
+    // qs operations to occur through this interface.
+    qs_write: QueryServerWriteTransaction<'a>
+}
+
 impl IdmServer {
     // TODO #59: Make number of authsessions configurable!!!
     pub fn new(qs: QueryServer) -> IdmServer {
@@ -62,6 +70,10 @@ impl IdmServer {
         IdmServerReadTransaction { qs: &self.qs }
     }
     */
+
+    pub fn proxy_write(&self) -> IdmServerProxyWriteTransaction {
+        IdmServerProxyWriteTransaction { qs_write: self.qs.write() }
+    }
 }
 
 impl<'a> IdmServerWriteTransaction<'a> {
@@ -181,6 +193,26 @@ impl<'a> IdmServerReadTransaction<'a> {
     pub fn whoami() -> () {}
 }
 */
+
+impl<'a> IdmServerProxyWriteTransaction<'a> {
+    pub fn set_account_password(
+        &mut self,
+        au: &mut AuditScope,
+        ae: &PasswordChangeEvent,
+    ) -> Result<(), OperationError> {
+        // Parse the cred event
+        // generate the needed credential change.
+
+        // given the new credential generate a modify
+
+        // Return the modify result.
+        unimplemented!();
+    }
+
+    pub fn commit(self, au: &mut AuditScope) -> Result<(), OperationError> {
+        self.qs_write.commit(au)
+    }
+}
 
 // Need tests of the sessions and the auth ...
 

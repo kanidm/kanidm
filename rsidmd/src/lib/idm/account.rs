@@ -92,8 +92,19 @@ impl Account {
         })
     }
 
-    pub(crate) fn set_credential() -> Result<(), ()> {
-        
+    pub(crate) fn set_password(&self, cleartext: &str, appid: Option<&str>) -> Result<Credential, OperationError> {
+        // What should this look like? Probablf an appid + stuff -> modify?
+        // then the caller has to apply the modify under the requests event
+        // for proper auth checks.
+        match appid {
+            Some(_) => Err(OperationError::InvalidState),
+            None => {
+                match self.primary {
+                    Some(primary) => Ok(primary.set_password(cleartext)),
+                    None => Err(OperationError::InvalidState),
+                }
+            }
+        }
     }
 }
 

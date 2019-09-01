@@ -1,5 +1,6 @@
 #[macro_use]
 mod macros;
+mod event;
 
 pub(crate) mod account;
 pub(crate) mod authsession;

@@ -69,7 +69,6 @@ impl Password {
         KDF::PBKDF2(PBKDF2_COST, salt, key)
     }
 
-    #[cfg(test)]
     pub fn new(cleartext: &str) -> Self {
         Password {
             material: Self::new_pbkdf2(cleartext),
@@ -147,13 +146,19 @@ impl TryFrom<DbCredV1> for Credential {
 }
 
 impl Credential {
-    #[cfg(test)]
     pub fn new_password_only(cleartext: &str) -> Self {
         Credential {
-            // policy: Policy::PasswordOnly,
             password: Some(Password::new(cleartext)),
             claims: Vec::new(),
             uuid: Uuid::new_v4(),
+        }
+    }
+
+    pub fn set_password(&self, cleartext: &str) -> Self {
+        Credential {
+            password: Some(Password::new(cleartext)),
+            claims: self.claims.clone(),
+            uuid: self.uuid.clone(),
         }
     }
 
