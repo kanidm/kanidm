@@ -1,0 +1,13 @@
+[package]
+name = "rsidm_tools"
+version = "0.1.0"
+authors = ["William Brown <william@blackhats.net.au>"]
+edition = "2018"
+
+[[bin]]
+name = "kanidm"
+path = "src/main.rs"
+
+[dependencies]
+rsidm_client = { path = "../rsidm_client" }
+
