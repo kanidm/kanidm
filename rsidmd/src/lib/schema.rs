@@ -1,8 +1,8 @@
 use crate::audit::AuditScope;
 use crate::constants::*;
 use crate::entry::{Entry, EntryCommitted, EntryNew, EntryValid};
-use rsidm_proto::v1::{ConsistencyError, OperationError, SchemaError};
 use crate::value::{IndexType, PartialValue, SyntaxType, Value};
+use rsidm_proto::v1::{ConsistencyError, OperationError, SchemaError};
 
 use std::borrow::Borrow;
 use std::collections::BTreeSet;

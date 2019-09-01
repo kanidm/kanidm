@@ -7,13 +7,13 @@ use crate::audit::AuditScope;
 // use crate::constants::{STR_UUID_ADMIN, STR_UUID_ANONYMOUS, STR_UUID_DOES_NOT_EXIST};
 use crate::constants::{UUID_ADMIN, UUID_ANONYMOUS, UUID_DOES_NOT_EXIST};
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew};
-use rsidm_proto::v1::{OperationError, ConsistencyError};
 use crate::event::{CreateEvent, ModifyEvent};
 use crate::modify::Modify;
 use crate::server::{
     QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
 };
 use crate::value::{PartialValue, Value};
+use rsidm_proto::v1::{ConsistencyError, OperationError};
 
 lazy_static! {
     static ref CLASS_OBJECT: Value = Value::new_class("object");
@@ -273,11 +273,11 @@ mod tests {
     // use crate::plugins::Plugin;
     use crate::constants::JSON_ADMIN_V1;
     use crate::entry::{Entry, EntryInvalid, EntryNew};
-    use rsidm_proto::v1::OperationError;
     use crate::modify::{Modify, ModifyList};
     use crate::server::QueryServerTransaction;
     use crate::server::QueryServerWriteTransaction;
     use crate::value::{PartialValue, Value};
+    use rsidm_proto::v1::OperationError;
 
     static JSON_ADMIN_ALLOW_ALL: &'static str = r#"{
         "valid": null,

@@ -4,11 +4,11 @@ use crate::plugins::Plugin;
 
 use crate::audit::AuditScope;
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
-use rsidm_proto::v1::{OperationError};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::modify::Modify;
 use crate::server::QueryServerWriteTransaction;
 use crate::value::{PartialValue, Value};
+use rsidm_proto::v1::OperationError;
 use std::collections::HashSet;
 
 pub struct Protected {}
@@ -159,8 +159,8 @@ impl Plugin for Protected {
 mod tests {
     use crate::constants::JSON_ADMIN_V1;
     use crate::entry::{Entry, EntryInvalid, EntryNew};
-    use rsidm_proto::v1::OperationError;
     use crate::value::{PartialValue, Value};
+    use rsidm_proto::v1::OperationError;
 
     static JSON_ADMIN_ALLOW_ALL: &'static str = r#"{
         "valid": null,

@@ -7,11 +7,11 @@ use rsidm_proto::v1::{
     ReviveRecycledRequest, SearchRequest, SearchResponse, UserAuthToken, WhoamiResponse,
 };
 // use error::OperationError;
-use rsidm_proto::v1::OperationError;
 use crate::modify::{ModifyList, ModifyValid};
 use crate::server::{
     QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
 };
+use rsidm_proto::v1::OperationError;
 
 use crate::actors::v1::AuthMessage;
 // Bring in schematransaction trait for validate

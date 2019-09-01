@@ -5,6 +5,5 @@ members = [
 	"rsidmd",
 	"rsidm_client",
 	"rsidm_tools",
-
 ]
 

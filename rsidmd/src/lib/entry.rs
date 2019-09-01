@@ -1,15 +1,15 @@
 // use serde_json::{Error, Value};
 use crate::audit::AuditScope;
 use crate::credential::Credential;
-use rsidm_proto::v1::{OperationError, SchemaError};
 use crate::filter::{Filter, FilterInvalid, FilterResolved, FilterValidResolved};
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
-use rsidm_proto::v1::Entry as ProtoEntry;
-use rsidm_proto::v1::Filter as ProtoFilter;
 use crate::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
 use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
 use crate::value::{IndexType, SyntaxType};
 use crate::value::{PartialValue, Value};
+use rsidm_proto::v1::Entry as ProtoEntry;
+use rsidm_proto::v1::Filter as ProtoFilter;
+use rsidm_proto::v1::{OperationError, SchemaError};
 
 use crate::be::dbentry::{DbEntry, DbEntryV1, DbEntryVers};
 

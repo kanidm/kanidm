@@ -3,14 +3,14 @@
 // entry to assert it matches.
 
 use crate::audit::AuditScope;
-use rsidm_proto::v1::{OperationError, SchemaError};
 use crate::event::{Event, EventOrigin};
-use rsidm_proto::v1::Filter as ProtoFilter;
 use crate::schema::SchemaTransaction;
 use crate::server::{
     QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
 };
 use crate::value::PartialValue;
+use rsidm_proto::v1::Filter as ProtoFilter;
+use rsidm_proto::v1::{OperationError, SchemaError};
 use std::cmp::{Ordering, PartialOrd};
 use std::collections::BTreeSet;
 

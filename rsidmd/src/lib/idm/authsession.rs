@@ -1,8 +1,8 @@
 use crate::audit::AuditScope;
 use crate::constants::UUID_ANONYMOUS;
-use rsidm_proto::v1::OperationError;
 use crate::idm::account::Account;
 use crate::idm::claim::Claim;
+use rsidm_proto::v1::OperationError;
 use rsidm_proto::v1::{AuthAllowed, AuthCredential, AuthState};
 
 use crate::credential::{Credential, Password};

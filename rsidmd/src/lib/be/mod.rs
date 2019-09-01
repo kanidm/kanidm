@@ -12,8 +12,8 @@ use std::fs;
 use crate::audit::AuditScope;
 use crate::be::dbentry::DbEntry;
 use crate::entry::{Entry, EntryCommitted, EntryNew, EntryValid};
-use rsidm_proto::v1::{ConsistencyError, OperationError};
 use crate::filter::{Filter, FilterValidResolved};
+use rsidm_proto::v1::{ConsistencyError, OperationError};
 
 pub mod dbentry;
 pub mod dbvalue;

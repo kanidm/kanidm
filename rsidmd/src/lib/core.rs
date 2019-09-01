@@ -12,19 +12,19 @@ use time::Duration;
 use crate::config::Configuration;
 
 // SearchResult
+use crate::actors::v1::QueryServerV1;
+use crate::actors::v1::{AuthMessage, WhoamiMessage};
 use crate::async_log;
 use crate::audit::AuditScope;
 use crate::be::{Backend, BackendTransaction};
-use rsidm_proto::v1::OperationError;
 use crate::interval::IntervalActor;
-use crate::actors::v1::QueryServerV1;
-use crate::actors::v1::{AuthMessage, WhoamiMessage};
+use crate::schema::Schema;
+use crate::server::QueryServer;
+use rsidm_proto::v1::OperationError;
 use rsidm_proto::v1::{
     AuthRequest, AuthState, CreateRequest, DeleteRequest, ModifyRequest, SearchRequest,
     UserAuthToken,
 };
-use crate::schema::Schema;
-use crate::server::QueryServer;
 
 use uuid::Uuid;
 

@@ -2,10 +2,10 @@ use crate::audit::AuditScope;
 use rsidm_proto::v1::Modify as ProtoModify;
 use rsidm_proto::v1::ModifyList as ProtoModifyList;
 
-use rsidm_proto::v1::{OperationError, SchemaError};
 use crate::schema::SchemaTransaction;
 use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
 use crate::value::{PartialValue, Value};
+use rsidm_proto::v1::{OperationError, SchemaError};
 
 // Should this be std?
 use std::slice;

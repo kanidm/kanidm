@@ -1,8 +1,8 @@
 use crate::audit::AuditScope;
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
-use rsidm_proto::v1::{ConsistencyError, OperationError};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::server::{QueryServerReadTransaction, QueryServerWriteTransaction};
+use rsidm_proto::v1::{ConsistencyError, OperationError};
 
 #[macro_use]
 mod macros;

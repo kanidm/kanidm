@@ -13,7 +13,6 @@ use std::collections::BTreeSet;
 
 use crate::audit::AuditScope;
 use crate::entry::{Entry, EntryCommitted, EntryNew, EntryValid};
-use rsidm_proto::v1::{ConsistencyError, OperationError};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::modify::{Modify, ModifyInvalid, ModifyList};
 use crate::plugins::Plugin;
@@ -21,6 +20,7 @@ use crate::schema::SchemaTransaction;
 use crate::server::QueryServerTransaction;
 use crate::server::{QueryServerReadTransaction, QueryServerWriteTransaction};
 use crate::value::{PartialValue, Value};
+use rsidm_proto::v1::{ConsistencyError, OperationError};
 use uuid::Uuid;
 
 // NOTE: This *must* be after base.rs!!!
@@ -244,10 +244,10 @@ mod tests {
     // #[macro_use]
     // use crate::plugins::Plugin;
     use crate::entry::{Entry, EntryInvalid, EntryNew};
-    use rsidm_proto::v1::OperationError;
     use crate::modify::{Modify, ModifyList};
     use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
     use crate::value::{PartialValue, Value};
+    use rsidm_proto::v1::OperationError;
 
     // The create references a uuid that doesn't exist - reject
     #[test]

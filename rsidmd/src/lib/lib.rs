@@ -58,10 +58,10 @@ mod value;
 #[macro_use]
 mod plugins;
 mod access;
+mod actors;
 mod idm;
 mod schema;
 mod server;
-mod actors;
 
 pub mod config;
 pub mod core;

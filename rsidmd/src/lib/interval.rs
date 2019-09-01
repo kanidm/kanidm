@@ -1,9 +1,9 @@
 use actix::prelude::*;
 use std::time::Duration;
 
+use crate::actors::v1::QueryServerV1;
 use crate::constants::PURGE_TIMEOUT;
 use crate::event::{PurgeRecycledEvent, PurgeTombstoneEvent};
-use crate::actors::v1::QueryServerV1;
 
 pub struct IntervalActor {
     // Store any addresses we require

@@ -4,24 +4,23 @@ use crate::audit::AuditScope;
 use crate::be::Backend;
 
 use crate::async_log::EventLog;
-use rsidm_proto::v1::OperationError;
 use crate::event::{
     AuthEvent, CreateEvent, DeleteEvent, ModifyEvent, PurgeRecycledEvent, PurgeTombstoneEvent,
     SearchEvent, SearchResult, WhoamiResult,
 };
 use crate::schema::Schema;
+use rsidm_proto::v1::OperationError;
 
 use crate::idm::server::IdmServer;
 use crate::server::{QueryServer, QueryServerTransaction};
 
 use rsidm_proto::v1::{
-    AuthResponse, CreateRequest, DeleteRequest, ModifyRequest, OperationResponse, SearchRequest,
-    SearchResponse, WhoamiResponse, AuthRequest, UserAuthToken
+    AuthRequest, AuthResponse, CreateRequest, DeleteRequest, ModifyRequest, OperationResponse,
+    SearchRequest, SearchResponse, UserAuthToken, WhoamiResponse,
 };
 
 use actix::prelude::*;
 use uuid::Uuid;
-
 
 // These are used when the request (IE Get) has no intrising request
 // type. Additionally, they are used in some requests where we need

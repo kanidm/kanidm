@@ -16,10 +16,10 @@
 //
 
 use concread::cowcell::{CowCell, CowCellReadTxn, CowCellWriteTxn};
+use rsidm_proto::v1::Filter as ProtoFilter;
+use rsidm_proto::v1::OperationError;
 use std::collections::{BTreeMap, BTreeSet};
 use uuid::Uuid;
-use rsidm_proto::v1::OperationError;
-use rsidm_proto::v1::Filter as ProtoFilter;
 
 use crate::audit::AuditScope;
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryReduced, EntryValid};

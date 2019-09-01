@@ -20,7 +20,6 @@ use crate::constants::{
     JSON_SYSTEM_INFO_V1, UUID_DOES_NOT_EXIST,
 };
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryReduced, EntryValid};
-use rsidm_proto::v1::{ConsistencyError, OperationError, SchemaError};
 use crate::event::{
     CreateEvent, DeleteEvent, Event, EventOrigin, ExistsEvent, ModifyEvent, ReviveRecycledEvent,
     SearchEvent,
@@ -33,6 +32,7 @@ use crate::schema::{
     SchemaWriteTransaction,
 };
 use crate::value::{PartialValue, SyntaxType, Value};
+use rsidm_proto::v1::{ConsistencyError, OperationError, SchemaError};
 
 lazy_static! {
     static ref PVCLASS_ATTRIBUTETYPE: PartialValue = PartialValue::new_class("attributetype");
@@ -1354,9 +1354,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                             audit_log!(audit, "Generated modlist -> {:?}", modlist);
                             self.internal_modify(audit, filt, modlist)
                         }
-                        Err(e) => {
-                            Err(OperationError::SchemaViolation(e))
-                        }
+                        Err(e) => Err(OperationError::SchemaViolation(e)),
                     }
                 } else {
                     Err(OperationError::InvalidDBState)
@@ -1686,15 +1684,15 @@ mod tests {
     use crate::constants::{JSON_ADMIN_V1, STR_UUID_ADMIN, UUID_ADMIN};
     use crate::credential::Credential;
     use crate::entry::{Entry, EntryInvalid, EntryNew};
-    use rsidm_proto::v1::{OperationError, SchemaError};
     use crate::event::{CreateEvent, DeleteEvent, ModifyEvent, ReviveRecycledEvent, SearchEvent};
     use crate::modify::{Modify, ModifyList};
+    use crate::server::QueryServerTransaction;
+    use crate::value::{PartialValue, Value};
     use rsidm_proto::v1::Filter as ProtoFilter;
     use rsidm_proto::v1::Modify as ProtoModify;
     use rsidm_proto::v1::ModifyList as ProtoModifyList;
     use rsidm_proto::v1::{DeleteRequest, ModifyRequest, ReviveRecycledRequest};
-    use crate::server::QueryServerTransaction;
-    use crate::value::{PartialValue, Value};
+    use rsidm_proto::v1::{OperationError, SchemaError};
     use uuid::Uuid;
 
     #[test]

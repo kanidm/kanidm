@@ -12,13 +12,13 @@
 
 use crate::audit::AuditScope;
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
-use rsidm_proto::v1::{ConsistencyError, OperationError};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::modify::{Modify, ModifyList};
 use crate::plugins::Plugin;
 use crate::server::QueryServerTransaction;
 use crate::server::{QueryServerReadTransaction, QueryServerWriteTransaction};
 use crate::value::{PartialValue, Value};
+use rsidm_proto::v1::{ConsistencyError, OperationError};
 
 use std::collections::BTreeSet;
 use uuid::Uuid;

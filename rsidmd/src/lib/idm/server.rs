@@ -1,11 +1,11 @@
 use crate::audit::AuditScope;
-use rsidm_proto::v1::OperationError;
 use crate::event::{AuthEvent, AuthEventStep, AuthResult};
 use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
-use rsidm_proto::v1::AuthState;
 use crate::server::{QueryServer, QueryServerTransaction};
 use crate::value::PartialValue;
+use rsidm_proto::v1::AuthState;
+use rsidm_proto::v1::OperationError;
 
 use concread::cowcell::{CowCell, CowCellWriteTxn};
 use std::collections::BTreeMap;
@@ -187,11 +187,11 @@ impl<'a> IdmServerReadTransaction<'a> {
 #[cfg(test)]
 mod tests {
     use crate::credential::Credential;
-    use rsidm_proto::v1::OperationError;
     use crate::event::{AuthEvent, AuthResult, ModifyEvent};
     use crate::modify::{Modify, ModifyList};
-    use rsidm_proto::v1::{AuthAllowed, AuthState};
     use crate::value::{PartialValue, Value};
+    use rsidm_proto::v1::OperationError;
+    use rsidm_proto::v1::{AuthAllowed, AuthState};
 
     use crate::audit::AuditScope;
     use crate::idm::server::IdmServer;
