@@ -469,9 +469,9 @@ pub trait QueryServerTransaction {
     }
 
     // In the opposite direction, we can resolve values for presentation
-    fn resolve_value(&self, _attr: &String, _value: &Value) -> Result<String, OperationError> {
+    fn resolve_value(&self, value: &Value) -> Result<String, OperationError> {
+        // Ok(value.to_proto_string_clone())
         unimplemented!();
-        // Ok(value.clone())
     }
 }
 
@@ -1354,9 +1354,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
                             audit_log!(audit, "Generated modlist -> {:?}", modlist);
                             self.internal_modify(audit, filt, modlist)
                         }
-                        Err(_e) => {
-                            unimplemented!()
-                            // No action required.
+                        Err(e) => {
+                            Err(OperationError::SchemaViolation(e))
                         }
                     }
                 } else {

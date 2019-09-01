@@ -1078,13 +1078,6 @@ impl SchemaInner {
         res
     }
 
-    // Normalise *does not* validate.
-    // Normalise just fixes some possible common issues, but it
-    // can't fix *everything* possibly wrong ...
-    pub fn normalise_filter(&mut self) {
-        unimplemented!()
-    }
-
     fn is_multivalue(&self, attr_name: &str) -> Result<bool, SchemaError> {
         match self.attributes.get(attr_name) {
             Some(a_schema) => Ok(a_schema.multivalue),

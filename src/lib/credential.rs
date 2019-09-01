@@ -161,7 +161,7 @@ impl Credential {
     pub fn verify_password(&self, cleartext: &str) -> bool {
         match &self.password {
             Some(pw) => pw.verify(cleartext),
-            None => unimplemented!(),
+            None => panic!(),
         }
     }
 
