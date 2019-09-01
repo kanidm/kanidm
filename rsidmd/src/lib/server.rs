@@ -469,7 +469,7 @@ pub trait QueryServerTransaction {
     }
 
     // In the opposite direction, we can resolve values for presentation
-    fn resolve_value(&self, value: &Value) -> Result<String, OperationError> {
+    fn resolve_value(&self, _value: &Value) -> Result<String, OperationError> {
         // Ok(value.to_proto_string_clone())
         unimplemented!();
     }

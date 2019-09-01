@@ -91,6 +91,10 @@ impl Account {
             claims: claims.iter().map(|c| c.into_proto()).collect(),
         })
     }
+
+    pub(crate) fn set_credential() -> Result<(), ()> {
+        
+    }
 }
 
 // Need to also add a "to UserAuthToken" ...

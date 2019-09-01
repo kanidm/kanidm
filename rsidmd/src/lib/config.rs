@@ -24,7 +24,11 @@ impl Configuration {
             // log type
             // log path
             // TODO #63: default true in prd
-            secure_cookies: false,
+            secure_cookies: if cfg!(test) {
+                false
+            } else {
+                true
+            },
             cookie_key: [0; 32],
         };
         let mut rng = StdRng::from_entropy();
