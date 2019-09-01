@@ -613,10 +613,26 @@ impl AuthEventStep {
     }
 
     #[cfg(test)]
-    pub fn anonymous_cred_step(sid: Uuid) -> Self {
+    pub fn named_init(name: &str) -> Self {
+        AuthEventStep::Init(AuthEventStepInit {
+            name: name.to_string(),
+            appid: None,
+        })
+    }
+
+    #[cfg(test)]
+    pub fn cred_step_anonymous(sid: Uuid) -> Self {
         AuthEventStep::Creds(AuthEventStepCreds {
             sessionid: sid,
             creds: vec![AuthCredential::Anonymous],
+        })
+    }
+
+    #[cfg(test)]
+    pub fn cred_step_password(sid: Uuid, pw: &str) -> Self {
+        AuthEventStep::Creds(AuthEventStepCreds {
+            sessionid: sid,
+            creds: vec![AuthCredential::Password(pw.to_string())],
         })
     }
 }
@@ -645,10 +661,26 @@ impl AuthEvent {
     }
 
     #[cfg(test)]
-    pub fn anonymous_cred_step(sid: Uuid) -> Self {
+    pub fn named_init(name: &str) -> Self {
         AuthEvent {
             event: None,
-            step: AuthEventStep::anonymous_cred_step(sid),
+            step: AuthEventStep::named_init(name),
+        }
+    }
+
+    #[cfg(test)]
+    pub fn cred_step_anonymous(sid: Uuid) -> Self {
+        AuthEvent {
+            event: None,
+            step: AuthEventStep::cred_step_anonymous(sid),
+        }
+    }
+
+    #[cfg(test)]
+    pub fn cred_step_password(sid: Uuid, pw: &str) -> Self {
+        AuthEvent {
+            event: None,
+            step: AuthEventStep::cred_step_password(sid, pw),
         }
     }
 }

@@ -5,7 +5,7 @@ use crate::idm::account::Account;
 use crate::idm::claim::Claim;
 use crate::proto::v1::{AuthAllowed, AuthCredential, AuthState};
 
-use crate::credential::{Password, Credential};
+use crate::credential::{Credential, Password};
 
 use std::convert::TryFrom;
 
@@ -84,7 +84,31 @@ impl CredHandler {
                     },
                 )
             } // end credhandler::anonymous
-            CredHandler::Password(_pw) => CredState::Denied("pw authentication denied"),
+            CredHandler::Password(pw) => {
+                creds.iter().fold(
+                    // If no creds, remind that we want pw ...
+                    CredState::Continue(vec![AuthAllowed::Password]),
+                    |acc, cred| {
+                        match acc {
+                            // If failed, continue to fail.
+                            CredState::Denied(_) => acc,
+                            _ => {
+                                match cred {
+                                    AuthCredential::Password(cleartext) => {
+                                        if pw.verify(cleartext.as_str()) {
+                                            CredState::Success(Vec::new())
+                                        } else {
+                                            CredState::Denied("incorrect password")
+                                        }
+                                    }
+                                    // All other cases fail.
+                                    _ => CredState::Denied("pw authentication denied"),
+                                }
+                            }
+                        } // end match acc
+                    },
+                )
+            } // end credhandler::password
         }
     }
 
@@ -143,13 +167,9 @@ impl AuthSession {
                         Some(cred) => {
                             // TODO: Log this corruption better ... :(
                             // Probably means new authsession has to be failable
-                            CredHandler::try_from(cred)
-                                .unwrap_or_else(|_| CredHandler::Denied)
-
+                            CredHandler::try_from(cred).unwrap_or_else(|_| CredHandler::Denied)
                         }
-                        None => {
-                            CredHandler::Denied
-                        }
+                        None => CredHandler::Denied,
                     }
                 }
             }
@@ -228,7 +248,8 @@ impl AuthSession {
 
 #[cfg(test)]
 mod tests {
-    use crate::constants::JSON_ANONYMOUS_V1;
+    use crate::constants::{JSON_ADMIN_V1, JSON_ANONYMOUS_V1};
+    use crate::credential::Credential;
     use crate::idm::authsession::AuthSession;
     use crate::proto::v1::AuthAllowed;
 
@@ -252,7 +273,7 @@ mod tests {
     fn test_idm_authsession_missing_appid() {
         let anon_account = entry_str_to_account!(JSON_ANONYMOUS_V1);
 
-        let session = AuthSession::new(anon_account, Some("NonExistanteAppID".to_string()));
+        let session = AuthSession::new(anon_account, Some("NonExistantAppID".to_string()));
 
         let auth_mechs = session.valid_auth_mechs();
 
@@ -262,6 +283,21 @@ mod tests {
 
     #[test]
     fn test_idm_authsession_simple_password_mech() {
-        unimplemented!();
+        // create the ent
+        let mut account = entry_str_to_account!(JSON_ADMIN_V1);
+        // manually load in a cred
+        let cred = Credential::new_password_only("test_password");
+        account.primary = Some(cred);
+
+        // now check
+        let session = AuthSession::new(account, None);
+        let auth_mechs = session.valid_auth_mechs();
+
+        assert!(
+            true == auth_mechs.iter().fold(false, |acc, x| match x {
+                AuthAllowed::Password => true,
+                _ => acc,
+            })
+        );
     }
 }

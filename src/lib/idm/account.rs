@@ -56,7 +56,8 @@ impl Account {
             OperationError::InvalidAccountState("Missing attribute: displayname"),
         )?;
 
-        let primary = value.get_ava_single_credential("primary_credential")
+        let primary = value
+            .get_ava_single_credential("primary_credential")
             .map(|v| v.clone());
 
         // TODO #71: Resolve groups!!!!

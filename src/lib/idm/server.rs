@@ -19,6 +19,7 @@ pub struct IdmServer {
     // in memory caches related to locking.
     //
     // TODO #60: This needs a mark-and-sweep gc to be added.
+    // use split_off()
     sessions: CowCell<BTreeMap<Uuid, AuthSession>>,
     // Need a reference to the query server.
     qs: QueryServer,
@@ -76,6 +77,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
         match &ae.step {
             AuthEventStep::Init(init) => {
                 // Allocate a session id.
+                // TODO: #60 - make this new_v1 and use the tstamp.
                 let sessionid = Uuid::new_v4();
 
                 // Begin the auth procedure!
@@ -184,8 +186,20 @@ impl<'a> IdmServerReadTransaction<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::event::{AuthEvent, AuthResult};
+    use crate::credential::Credential;
+    use crate::error::OperationError;
+    use crate::event::{AuthEvent, AuthResult, ModifyEvent};
+    use crate::modify::{Modify, ModifyList};
     use crate::proto::v1::{AuthAllowed, AuthState};
+    use crate::value::{PartialValue, Value};
+
+    use crate::audit::AuditScope;
+    use crate::idm::server::IdmServer;
+    use crate::server::QueryServer;
+    use uuid::Uuid;
+
+    static TEST_PASSWORD: &'static str = "ntaoeuntnaoeuhraohuercahu😍";
+    static TEST_PASSWORD_INC: &'static str = "ntaoentu nkrcgaeunhibwmwmqj;k wqjbkx ";
 
     #[test]
     fn test_idm_anonymous_auth() {
@@ -237,7 +251,7 @@ mod tests {
             {
                 let mut idms_write = idms.write();
                 // Now send the anonymous request, given the session id.
-                let anon_step = AuthEvent::anonymous_cred_step(sid);
+                let anon_step = AuthEvent::cred_step_anonymous(sid);
 
                 // Expect success
                 let r2 = idms_write.auth(au, &anon_step);
@@ -274,4 +288,154 @@ mod tests {
     }
 
     // Test sending anonymous but with no session init.
+    #[test]
+    fn test_idm_anonymous_auth_invalid_states() {
+        run_idm_test!(|_qs: &QueryServer, idms: &IdmServer, au: &mut AuditScope| {
+            {
+                let mut idms_write = idms.write();
+                let sid = Uuid::new_v4();
+                let anon_step = AuthEvent::cred_step_anonymous(sid);
+
+                // Expect failure
+                let r2 = idms_write.auth(au, &anon_step);
+                println!("r2 ==> {:?}", r2);
+
+                match r2 {
+                    Ok(_) => {
+                        error!("Auth state machine not correctly enforced!");
+                        panic!();
+                    }
+                    Err(e) => match e {
+                        OperationError::InvalidSessionState => {}
+                        _ => panic!(),
+                    },
+                };
+            }
+        })
+    }
+
+    fn init_admin_w_password(
+        au: &mut AuditScope,
+        qs: &QueryServer,
+        pw: &str,
+    ) -> Result<(), OperationError> {
+        let cred = Credential::new_password_only(pw);
+        let v_cred = Value::new_credential("primary", cred);
+        let mut qs_write = qs.write();
+
+        // now modify and provide a primary credential.
+        let me_inv_m = unsafe {
+            ModifyEvent::new_internal_invalid(
+                filter!(f_eq("name", PartialValue::new_iutf8s("admin"))),
+                ModifyList::new_list(vec![Modify::Present(
+                    "primary_credential".to_string(),
+                    v_cred,
+                )]),
+            )
+        };
+        // go!
+        assert!(qs_write.modify(au, &me_inv_m).is_ok());
+
+        qs_write.commit(au)
+    }
+
+    fn init_admin_authsession_sid(idms: &IdmServer, au: &mut AuditScope) -> Uuid {
+        let mut idms_write = idms.write();
+        let admin_init = AuthEvent::named_init("admin");
+
+        let r1 = idms_write.auth(au, &admin_init);
+        let ar = r1.unwrap();
+        let AuthResult { sessionid, state } = ar;
+
+        match state {
+            AuthState::Continue(_) => {}
+            _ => {
+                error!("Sessions was not initialised");
+                panic!();
+            }
+        };
+
+        idms_write.commit().expect("Must not fail");
+
+        sessionid
+    }
+
+    #[test]
+    fn test_idm_simple_password_auth() {
+        run_idm_test!(|qs: &QueryServer, idms: &IdmServer, au: &mut AuditScope| {
+            init_admin_w_password(au, qs, TEST_PASSWORD).expect("Failed to setup admin account");
+            let sid = init_admin_authsession_sid(idms, au);
+
+            let mut idms_write = idms.write();
+            let anon_step = AuthEvent::cred_step_password(sid, TEST_PASSWORD);
+
+            // Expect success
+            let r2 = idms_write.auth(au, &anon_step);
+            println!("r2 ==> {:?}", r2);
+
+            match r2 {
+                Ok(ar) => {
+                    let AuthResult {
+                        sessionid: _,
+                        state,
+                    } = ar;
+                    match state {
+                        AuthState::Success(_uat) => {
+                            // Check the uat.
+                        }
+                        _ => {
+                            error!("A critical error has occured! We have a non-succcess result!");
+                            panic!();
+                        }
+                    }
+                }
+                Err(e) => {
+                    error!("A critical error has occured! {:?}", e);
+                    // Should not occur!
+                    panic!();
+                }
+            };
+
+            idms_write.commit().expect("Must not fail");
+        })
+    }
+
+    #[test]
+    fn test_idm_simple_password_invalid() {
+        run_idm_test!(|qs: &QueryServer, idms: &IdmServer, au: &mut AuditScope| {
+            init_admin_w_password(au, qs, TEST_PASSWORD).expect("Failed to setup admin account");
+            let sid = init_admin_authsession_sid(idms, au);
+            let mut idms_write = idms.write();
+            let anon_step = AuthEvent::cred_step_password(sid, TEST_PASSWORD_INC);
+
+            // Expect success
+            let r2 = idms_write.auth(au, &anon_step);
+            println!("r2 ==> {:?}", r2);
+
+            match r2 {
+                Ok(ar) => {
+                    let AuthResult {
+                        sessionid: _,
+                        state,
+                    } = ar;
+                    match state {
+                        AuthState::Denied(_reason) => {
+                            // Check the uat.
+                        }
+                        _ => {
+                            error!("A critical error has occured! We have a non-denied result!");
+                            panic!();
+                        }
+                    }
+                }
+                Err(e) => {
+                    error!("A critical error has occured! {:?}", e);
+                    // Should not occur!
+                    panic!();
+                }
+            };
+
+            idms_write.commit().expect("Must not fail");
+        })
+    }
 }

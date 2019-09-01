@@ -1,9 +1,6 @@
 use crate::be::dbvalue::{DbCredV1, DbPasswordV1};
-#[cfg(test)]
 use openssl::hash::MessageDigest;
-#[cfg(test)]
 use openssl::pkcs5::pbkdf2_hmac;
-#[cfg(test)]
 use rand::prelude::*;
 use std::convert::TryFrom;
 use uuid::Uuid;
@@ -20,14 +17,11 @@ pub enum Policy {
 */
 
 // TODO: Determine this at startup based on a time factor
-#[cfg(test)]
 const PBKDF2_COST: usize = 10000;
 // NIST 800-63.b salt should be 112 bits -> 14  8u8.
 // I choose tinfoil hat though ...
-#[cfg(test)]
 const PBKDF2_SALT_LEN: usize = 24;
 // 64 * u8 -> 512 bits of out.
-#[cfg(test)]
 const PBKDF2_KEY_LEN: usize = 64;
 
 // Why PBKDF2? Rust's bcrypt has a number of hardcodings like max pw len of 72
@@ -57,7 +51,6 @@ impl TryFrom<DbPasswordV1> for Password {
 }
 
 impl Password {
-    #[cfg(test)]
     fn new_pbkdf2(cleartext: &str) -> KDF {
         let mut rng = rand::thread_rng();
         let salt: Vec<u8> = (0..PBKDF2_SALT_LEN).map(|_| rng.gen()).collect();
@@ -83,7 +76,6 @@ impl Password {
         }
     }
 
-    #[cfg(test)]
     pub fn verify(&self, cleartext: &str) -> bool {
         match &self.material {
             KDF::PBKDF2(cost, salt, key) => {
