@@ -407,10 +407,15 @@ pub fn recover_account_core(config: Configuration, name: String, password: Strin
 pub fn create_server_core(config: Configuration) {
     // Until this point, we probably want to write to the log macro fns.
 
+    if config.integration_test_config.is_some() {
+        warn!("RUNNING IN INTEGRATION TEST MODE.");
+        warn!("IF YOU SEE THIS IN PRODUCTION YOU MUST CONTACT SUPPORT IMMEDIATELY.");
+    }
+
+    info!("Starting rsidm with configuration: {:?}", config);
     // The log server is started on it's own thread, and is contacted
     // asynchronously.
     let log_addr = async_log::start();
-    log_event!(log_addr, "Starting rsidm with configuration: {:?}", config);
 
     // Similar, create a stats thread which aggregates statistics from the
     // server as they come in.
@@ -424,11 +429,14 @@ pub fn create_server_core(config: Configuration) {
         }
     };
 
+    // Start the IDM server.
+    // Pass it to the actor for threading.
+
     // Start the query server with the given be path: future config
     let server_addr = match QueryServerV1::start(log_addr.clone(), be, config.threads) {
         Ok(addr) => addr,
         Err(e) => {
-            println!(
+            error!(
                 "An unknown failure in startup has occured - exiting -> {:?}",
                 e
             );

@@ -7,10 +7,6 @@ authors = ["William Brown <william@blackhats.net.au>"]
 # default-run = "rsidm_core"
 edition = "2018"
 
-
-# We need three major binaries. The server itself, the unix client, and a cli
-# mgmt tool.
-
 [lib]
 name = "rsidm"
 path = "src/lib/lib.rs"

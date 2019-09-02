@@ -10,7 +10,7 @@ extern crate rsidm;
 extern crate rsidm_proto;
 extern crate serde_json;
 
-use rsidm::config::Configuration;
+use rsidm::config::{Configuration, IntegrationTestConfig};
 use rsidm::constants::UUID_ADMIN;
 use rsidm::core::create_server_core;
 use rsidm_proto::v1::{
@@ -39,8 +39,14 @@ fn run_test(test_fn: fn(reqwest::Client, &str) -> ()) {
     let _ = env_logger::builder().is_test(true).try_init();
     let (tx, rx) = mpsc::channel();
     let port = PORT_ALLOC.fetch_add(1, Ordering::SeqCst);
+
+    let int_config = Box::new(IntegrationTestConfig {
+        admin_password: "integration test admin password".to_string(),
+    });
+
     let mut config = Configuration::new();
     config.address = format!("127.0.0.1:{}", port);
+    config.integration_test_config = Some(int_config);
     // Setup the config ...
 
     thread::spawn(move || {

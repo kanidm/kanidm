@@ -2,6 +2,12 @@ use rand::prelude::*;
 use std::path::PathBuf;
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct IntegrationTestConfig {
+    pub admin_password: String,
+}
+
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Configuration {
     pub address: String,
     pub domain: String,
@@ -11,6 +17,7 @@ pub struct Configuration {
     pub maximum_request: usize,
     pub secure_cookies: bool,
     pub cookie_key: [u8; 32],
+    pub integration_test_config: Option<Box<IntegrationTestConfig>>,
 }
 
 impl Configuration {
@@ -26,6 +33,7 @@ impl Configuration {
             // TODO #63: default true in prd
             secure_cookies: if cfg!(test) { false } else { true },
             cookie_key: [0; 32],
+            integration_test_config: None,
         };
         let mut rng = StdRng::from_entropy();
         rng.fill(&mut c.cookie_key);

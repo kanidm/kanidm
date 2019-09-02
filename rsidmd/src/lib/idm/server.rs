@@ -515,7 +515,7 @@ mod tests {
 
     #[test]
     fn test_idm_simple_password_reset() {
-        run_idm_test!(|qs: &QueryServer, idms: &IdmServer, au: &mut AuditScope| {
+        run_idm_test!(|_qs: &QueryServer, idms: &IdmServer, au: &mut AuditScope| {
             let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD, None);
 
             let mut idms_prox_write = idms.proxy_write();
