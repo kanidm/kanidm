@@ -10,14 +10,13 @@ pub struct RsidmClient {
 
 impl RsidmClient {
     pub fn new(addr: &str) -> Self {
-
         let client = reqwest::Client::builder()
             .cookie_store(true)
             .build()
             .expect("Unexpected reqwest builder failure!");
         RsidmClient {
             client: client,
-            addr: addr.to_string()
+            addr: addr.to_string(),
         }
     }
 
@@ -26,5 +25,5 @@ impl RsidmClient {
     // search
     // create
     // modify
-    // 
+    //
 }

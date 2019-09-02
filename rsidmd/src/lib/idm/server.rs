@@ -2,9 +2,9 @@ use crate::audit::AuditScope;
 use crate::event::{AuthEvent, AuthEventStep, AuthResult};
 use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
+use crate::idm::event::PasswordChangeEvent;
 use crate::server::{QueryServer, QueryServerTransaction, QueryServerWriteTransaction};
 use crate::value::PartialValue;
-use crate::idm::event::PasswordChangeEvent;
 
 use rsidm_proto::v1::AuthState;
 use rsidm_proto::v1::OperationError;
@@ -46,7 +46,7 @@ pub struct IdmServerReadTransaction<'a> {
 pub struct IdmServerProxyWriteTransaction<'a> {
     // This does NOT take any read to the memory content, allowing safe
     // qs operations to occur through this interface.
-    qs_write: QueryServerWriteTransaction<'a>
+    qs_write: QueryServerWriteTransaction<'a>,
 }
 
 impl IdmServer {
@@ -72,7 +72,9 @@ impl IdmServer {
     */
 
     pub fn proxy_write(&self) -> IdmServerProxyWriteTransaction {
-        IdmServerProxyWriteTransaction { qs_write: self.qs.write() }
+        IdmServerProxyWriteTransaction {
+            qs_write: self.qs.write(),
+        }
     }
 }
 
@@ -198,15 +200,53 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     pub fn set_account_password(
         &mut self,
         au: &mut AuditScope,
-        ae: &PasswordChangeEvent,
+        pce: &PasswordChangeEvent,
     ) -> Result<(), OperationError> {
-        // Parse the cred event
-        // generate the needed credential change.
+        // TODO: Is it a security issue to reveal pw policy checks BEFORE permission is
+        // determined over the credential modification?
+        //
+        // I don't think so - because we should only be showing how STRONG the pw is ...
 
+        // Get the account
+        let account_entry = try_audit!(au, self.qs_write.internal_search_uuid(au, &pce.target));
+        let account = try_audit!(au, Account::try_from_entry(account_entry));
+        // Ask if tis all good - this step checks pwpolicy and such
+        // it returns a modify
+        let modlist = try_audit!(
+            au,
+            account.gen_password_mod(pce.cleartext.as_str(), &pce.appid)
+        );
+        audit_log!(au, "processing change {:?}", modlist);
         // given the new credential generate a modify
+        // We use impersonate here to get the event from ae
+        try_audit!(
+            au,
+            self.qs_write.impersonate_modify(
+                au,
+                // Filter as executed
+                filter!(f_eq("uuid", PartialValue::new_uuidr(&pce.target))),
+                // Filter as intended (acp)
+                filter_all!(f_eq("uuid", PartialValue::new_uuidr(&pce.target))),
+                modlist,
+                &pce.event,
+            )
+        );
 
-        // Return the modify result.
-        unimplemented!();
+        Ok(())
+    }
+
+    pub fn recover_account(
+        &mut self,
+        au: &mut AuditScope,
+        name: String,
+        cleartext: String,
+    ) -> Result<(), OperationError> {
+        // name to uuid
+        let target = try_audit!(au, self.qs_write.name_to_uuid(au, name.as_str()));
+        // internal pce.
+        let pce = PasswordChangeEvent::new_internal(&target, cleartext.as_str(), None);
+        // now set_account_password.
+        self.set_account_password(au, &pce)
     }
 
     pub fn commit(self, au: &mut AuditScope) -> Result<(), OperationError> {
@@ -218,8 +258,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
 #[cfg(test)]
 mod tests {
+    use crate::constants::UUID_ADMIN;
     use crate::credential::Credential;
     use crate::event::{AuthEvent, AuthResult, ModifyEvent};
+    use crate::idm::event::PasswordChangeEvent;
     use crate::modify::{Modify, ModifyList};
     use crate::value::{PartialValue, Value};
     use rsidm_proto::v1::OperationError;
@@ -468,6 +510,18 @@ mod tests {
             };
 
             idms_write.commit().expect("Must not fail");
+        })
+    }
+
+    #[test]
+    fn test_idm_simple_password_reset() {
+        run_idm_test!(|qs: &QueryServer, idms: &IdmServer, au: &mut AuditScope| {
+            let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD, None);
+
+            let mut idms_prox_write = idms.proxy_write();
+            assert!(idms_prox_write.set_account_password(au, &pce).is_ok());
+            assert!(idms_prox_write.set_account_password(au, &pce).is_ok());
+            assert!(idms_prox_write.commit(au).is_ok());
         })
     }
 }

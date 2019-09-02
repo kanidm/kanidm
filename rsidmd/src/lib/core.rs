@@ -17,6 +17,7 @@ use crate::actors::v1::{AuthMessage, WhoamiMessage};
 use crate::async_log;
 use crate::audit::AuditScope;
 use crate::be::{Backend, BackendTransaction};
+use crate::idm::server::IdmServer;
 use crate::interval::IntervalActor;
 use crate::schema::Schema;
 use crate::server::QueryServer;
@@ -349,6 +350,58 @@ pub fn verify_server_core(config: Configuration) {
     }
 
     // Now add IDM server verifications?
+}
+
+pub fn recover_account_core(config: Configuration, name: String, password: String) {
+    let mut audit = AuditScope::new("recover_account");
+
+    // Start the backend.
+    let be = match setup_backend(&config) {
+        Ok(be) => be,
+        Err(e) => {
+            error!("Failed to setup BE: {:?}", e);
+            return;
+        }
+    };
+    // setup the qs - *with* init of the migrations and schema.
+    let schema_mem = match Schema::new(&mut audit) {
+        Ok(sc) => sc,
+        Err(e) => {
+            error!("Failed to setup in memory schema: {:?}", e);
+            return;
+        }
+    };
+    let server = QueryServer::new(be, schema_mem);
+    match server.initialise_helper(&mut audit) {
+        Ok(_) => {}
+        Err(e) => {
+            error!("Error during server start up -> {:?}", e);
+            debug!("{}", audit);
+            std::process::exit(1);
+        }
+    }
+
+    // Start the idms
+    let idms = IdmServer::new(server);
+
+    // Run the password change.
+    let mut idms_prox_write = idms.proxy_write();
+    match idms_prox_write.recover_account(&mut audit, name, password) {
+        Ok(_) => {
+            idms_prox_write
+                .commit(&mut audit)
+                .expect("A critical error during commit occured.");
+            debug!("{}", audit);
+            info!("Password reset!");
+        }
+        Err(e) => {
+            error!("Error during password reset -> {:?}", e);
+            debug!("{}", audit);
+            // abort the txn
+            std::mem::drop(idms_prox_write);
+            std::process::exit(1);
+        }
+    };
 }
 
 pub fn create_server_core(config: Configuration) {

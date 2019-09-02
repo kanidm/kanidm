@@ -55,4 +55,5 @@ concread = "0.1"
 
 openssl = "0.10"
 
+rpassword = "0.4"
 

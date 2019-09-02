@@ -2,6 +2,7 @@
 
 extern crate actix;
 extern crate env_logger;
+extern crate rpassword;
 
 extern crate rsidm;
 extern crate structopt;
@@ -10,7 +11,8 @@ extern crate log;
 
 use rsidm::config::Configuration;
 use rsidm::core::{
-    backup_server_core, create_server_core, restore_server_core, verify_server_core,
+    backup_server_core, create_server_core, recover_account_core, restore_server_core,
+    verify_server_core,
 };
 
 use std::path::PathBuf;
@@ -41,6 +43,14 @@ struct RestoreOpt {
 }
 
 #[derive(Debug, StructOpt)]
+struct RecoverAccountOpt {
+    #[structopt(short)]
+    name: String,
+    #[structopt(flatten)]
+    serveropts: ServerOpt,
+}
+
+#[derive(Debug, StructOpt)]
 enum Opt {
     #[structopt(name = "server")]
     Server(ServerOpt),
@@ -50,6 +60,8 @@ enum Opt {
     Restore(RestoreOpt),
     #[structopt(name = "verify")]
     Verify(ServerOpt),
+    #[structopt(name = "recover_account")]
+    RecoverAccount(RecoverAccountOpt),
 }
 
 fn main() {
@@ -62,7 +74,7 @@ fn main() {
 
     // Configure the server logger. This could be adjusted based on what config
     // says.
-    ::std::env::set_var("RUST_LOG", "actix_web=info,rsidm=info");
+    // ::std::env::set_var("RUST_LOG", "actix_web=info,rsidm=info");
     env_logger::init();
 
     match opt {
@@ -108,6 +120,14 @@ fn main() {
 
             config.update_db_path(&vopt.db_path);
             verify_server_core(config);
+        }
+        Opt::RecoverAccount(raopt) => {
+            info!("Running account recovery ...");
+
+            let password = rpassword::prompt_password_stderr("new password: ").unwrap();
+            config.update_db_path(&raopt.serveropts.db_path);
+
+            recover_account_core(config, raopt.name, password);
         }
     }
 }

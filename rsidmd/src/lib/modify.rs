@@ -87,6 +87,10 @@ impl ModifyList<ModifyInvalid> {
         }
     }
 
+    pub fn new_purge_and_set(attr: &str, v: Value) -> Self {
+        Self::new_list(vec![m_purge(attr), Modify::Present(attr.to_string(), v)])
+    }
+
     pub fn push_mod(&mut self, modify: Modify) {
         self.mods.push(modify)
     }

@@ -1276,15 +1276,24 @@ impl<'a> QueryServerWriteTransaction<'a> {
         modlist: ModifyList<ModifyInvalid>,
         event: &Event,
     ) -> Result<(), OperationError> {
-        let f_valid = filter
-            .validate(self.get_schema())
-            .map_err(|e| OperationError::SchemaViolation(e))?;
-        let f_intent_valid = filter_intent
-            .validate(self.get_schema())
-            .map_err(|e| OperationError::SchemaViolation(e))?;
-        let m_valid = modlist
-            .validate(self.get_schema())
-            .map_err(|e| OperationError::SchemaViolation(e))?;
+        let f_valid = try_audit!(
+            audit,
+            filter
+                .validate(self.get_schema())
+                .map_err(|e| OperationError::SchemaViolation(e))
+        );
+        let f_intent_valid = try_audit!(
+            audit,
+            filter_intent
+                .validate(self.get_schema())
+                .map_err(|e| OperationError::SchemaViolation(e))
+        );
+        let m_valid = try_audit!(
+            audit,
+            modlist
+                .validate(self.get_schema())
+                .map_err(|e| OperationError::SchemaViolation(e))
+        );
         self.impersonate_modify_valid(audit, f_valid, f_intent_valid, m_valid, event)
     }
 

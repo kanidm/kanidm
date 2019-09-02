@@ -6,7 +6,8 @@ use rsidm_proto::v1::UserAuthToken;
 use crate::credential::Credential;
 use crate::idm::claim::Claim;
 use crate::idm::group::Group;
-use crate::value::PartialValue;
+use crate::modify::{ModifyInvalid, ModifyList};
+use crate::value::{PartialValue, Value};
 
 use uuid::Uuid;
 
@@ -92,18 +93,33 @@ impl Account {
         })
     }
 
-    pub(crate) fn set_password(&self, cleartext: &str, appid: Option<&str>) -> Result<Credential, OperationError> {
+    pub(crate) fn gen_password_mod(
+        &self,
+        cleartext: &str,
+        appid: &Option<String>,
+    ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
         // What should this look like? Probablf an appid + stuff -> modify?
         // then the caller has to apply the modify under the requests event
         // for proper auth checks.
         match appid {
             Some(_) => Err(OperationError::InvalidState),
             None => {
-                match self.primary {
-                    Some(primary) => Ok(primary.set_password(cleartext)),
-                    None => Err(OperationError::InvalidState),
+                // TODO: Enforce PW policy. Can we allow this change?
+                match &self.primary {
+                    // Change the cred
+                    Some(primary) => {
+                        let ncred = primary.set_password(cleartext);
+                        let vcred = Value::new_credential("primary", ncred);
+                        Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
+                    }
+                    // Make a new credential instead
+                    None => {
+                        let ncred = Credential::new_password_only(cleartext);
+                        let vcred = Value::new_credential("primary", ncred);
+                        Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
+                    }
                 }
-            }
+            } // no appid
         }
     }
 }
