@@ -12,7 +12,6 @@ use rsidm_proto::v1::OperationError;
 use concread::cowcell::{CowCell, CowCellWriteTxn};
 use std::collections::BTreeMap;
 use uuid::Uuid;
-// use lru::LruCache;
 
 pub struct IdmServer {
     // There is a good reason to keep this single thread - it

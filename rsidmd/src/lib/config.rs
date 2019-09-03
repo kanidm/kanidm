@@ -6,7 +6,6 @@ pub struct IntegrationTestConfig {
     pub admin_password: String,
 }
 
-
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Configuration {
     pub address: String,

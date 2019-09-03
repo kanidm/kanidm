@@ -32,6 +32,7 @@ extern crate env_logger;
 extern crate tokio;
 
 static PORT_ALLOC: AtomicUsize = AtomicUsize::new(8080);
+static ADMIN_TEST_PASSWORD: &'static str = "integration test admin password";
 
 // Test external behaviorus of the service.
 
@@ -41,11 +42,12 @@ fn run_test(test_fn: fn(reqwest::Client, &str) -> ()) {
     let port = PORT_ALLOC.fetch_add(1, Ordering::SeqCst);
 
     let int_config = Box::new(IntegrationTestConfig {
-        admin_password: "integration test admin password".to_string(),
+        admin_password: ADMIN_TEST_PASSWORD.to_string(),
     });
 
     let mut config = Configuration::new();
     config.address = format!("127.0.0.1:{}", port);
+    config.secure_cookies = false;
     config.integration_test_config = Some(int_config);
     // Setup the config ...
 
@@ -168,6 +170,73 @@ fn test_server_whoami_anonymous() {
         let mut response = client
             .post(auth_dest.as_str())
             .body(serde_json::to_string(&auth_anon).unwrap())
+            .send()
+            .unwrap();
+        debug!("{}", response.status());
+        assert!(response.status() == reqwest::StatusCode::OK);
+        // Check that we got the next step
+        let r: AuthResponse = serde_json::from_str(response.text().unwrap().as_str()).unwrap();
+        println!("==> AUTHRESPONSE ==> {:?}", r);
+
+        assert!(match &r.state {
+            AuthState::Success(uat) => {
+                println!("==> Authed as uat; {:?}", uat);
+                true
+            }
+            _ => false,
+        });
+
+        // Now do a whoami.
+        let mut response = client.get(whoami_dest.as_str()).send().unwrap();
+        println!("WHOAMI -> {}", response.text().unwrap().as_str());
+        println!("WHOAMI STATUS -> {}", response.status());
+        assert!(response.status() == reqwest::StatusCode::OK);
+
+        // Check the json now ... response.json()
+    });
+}
+
+#[test]
+fn test_server_whoami_admin_simple_password() {
+    run_test(|client: reqwest::Client, addr: &str| {
+        // First show we are un-authenticated.
+        let whoami_dest = format!("{}/v1/whoami", addr);
+        let auth_dest = format!("{}/v1/auth", addr);
+        // Now login as admin
+
+        // Setup the auth initialisation
+        let auth_init = AuthRequest {
+            step: AuthStep::Init("admin".to_string(), None),
+        };
+
+        let mut response = client
+            .post(auth_dest.as_str())
+            .body(serde_json::to_string(&auth_init).unwrap())
+            .send()
+            .unwrap();
+        assert!(response.status() == reqwest::StatusCode::OK);
+        // Check that we got the next step
+        let r: AuthResponse = serde_json::from_str(response.text().unwrap().as_str()).unwrap();
+        println!("==> AUTHRESPONSE ==> {:?}", r);
+
+        assert!(match &r.state {
+            AuthState::Continue(_all_list) => {
+                // Check anonymous is present? It will fail on next step if not ...
+                true
+            }
+            _ => false,
+        });
+
+        // Send the credentials required now
+        let auth_admin = AuthRequest {
+            step: AuthStep::Creds(vec![AuthCredential::Password(
+                ADMIN_TEST_PASSWORD.to_string(),
+            )]),
+        };
+
+        let mut response = client
+            .post(auth_dest.as_str())
+            .body(serde_json::to_string(&auth_admin).unwrap())
             .send()
             .unwrap();
         debug!("{}", response.status());

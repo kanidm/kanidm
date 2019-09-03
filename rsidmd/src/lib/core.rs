@@ -267,6 +267,45 @@ fn setup_backend(config: &Configuration) -> Result<Backend, OperationError> {
     be
 }
 
+// TODO #54: We could move most of the be/schema/qs setup and startup
+// outside of this call, then pass in "what we need" in a cloneable
+// form, this way we could have seperate Idm vs Qs threads, and dedicated
+// threads for write vs read
+fn setup_qs_idms(
+    audit: &mut AuditScope,
+    be: Backend,
+) -> Result<(QueryServer, IdmServer), OperationError> {
+    // Create "just enough" schema for us to be able to load from
+    // disk ... Schema loading is one time where we validate the
+    // entries as we read them, so we need this here.
+    let schema = match Schema::new(audit) {
+        Ok(s) => s,
+        Err(e) => {
+            error!("Failed to setup in memory schema: {:?}", e);
+            return Err(e);
+        }
+    };
+
+    // Create a query_server implementation
+    let query_server = QueryServer::new(be, schema);
+
+    // TODO #62: Should the IDM parts be broken out to the IdmServer?
+    // What's important about this initial setup here is that it also triggers
+    // the schema and acp reload, so they are now configured correctly!
+    // Initialise the schema core.
+    //
+    // Now search for the schema itself, and validate that the system
+    // in memory matches the BE on disk, and that it's syntactically correct.
+    // Write it out if changes are needed.
+    query_server.initialise_helper(audit)?;
+
+    // We generate a SINGLE idms only!
+
+    let idms = IdmServer::new(query_server.clone());
+
+    Ok((query_server, idms))
+}
+
 pub fn backup_server_core(config: Configuration, dst_path: &str) {
     let be = match setup_backend(&config) {
         Ok(be) => be,
@@ -364,25 +403,14 @@ pub fn recover_account_core(config: Configuration, name: String, password: Strin
         }
     };
     // setup the qs - *with* init of the migrations and schema.
-    let schema_mem = match Schema::new(&mut audit) {
-        Ok(sc) => sc,
+    let (_qs, idms) = match setup_qs_idms(&mut audit, be) {
+        Ok(t) => t,
         Err(e) => {
-            error!("Failed to setup in memory schema: {:?}", e);
+            debug!("{}", audit);
+            error!("Unable to setup query server or idm server -> {:?}", e);
             return;
         }
     };
-    let server = QueryServer::new(be, schema_mem);
-    match server.initialise_helper(&mut audit) {
-        Ok(_) => {}
-        Err(e) => {
-            error!("Error during server start up -> {:?}", e);
-            debug!("{}", audit);
-            std::process::exit(1);
-        }
-    }
-
-    // Start the idms
-    let idms = IdmServer::new(server);
 
     // Run the password change.
     let mut idms_prox_write = idms.proxy_write();
@@ -424,25 +452,56 @@ pub fn create_server_core(config: Configuration) {
     let be = match setup_backend(&config) {
         Ok(be) => be,
         Err(e) => {
-            error!("Failed to setup BE: {:?}", e);
+            error!("Failed to setup BE -> {:?}", e);
             return;
         }
     };
 
+    let mut audit = AuditScope::new("setup_qs_idms");
     // Start the IDM server.
-    // Pass it to the actor for threading.
-
-    // Start the query server with the given be path: future config
-    let server_addr = match QueryServerV1::start(log_addr.clone(), be, config.threads) {
-        Ok(addr) => addr,
+    let (qs, idms) = match setup_qs_idms(&mut audit, be) {
+        Ok(t) => t,
         Err(e) => {
-            error!(
-                "An unknown failure in startup has occured - exiting -> {:?}",
-                e
-            );
+            debug!("{}", audit);
+            error!("Unable to setup query server or idm server -> {:?}", e);
             return;
         }
     };
+    // Any pre-start tasks here.
+    match &config.integration_test_config {
+        Some(itc) => {
+            let mut idms_prox_write = idms.proxy_write();
+            match idms_prox_write.recover_account(
+                &mut audit,
+                "admin".to_string(),
+                itc.admin_password.clone(),
+            ) {
+                Ok(_) => {}
+                Err(e) => {
+                    debug!("{}", audit);
+                    error!(
+                        "Unable to configure INTERGATION TEST admin account -> {:?}",
+                        e
+                    );
+                    return;
+                }
+            };
+            match idms_prox_write.commit(&mut audit) {
+                Ok(_) => {}
+                Err(e) => {
+                    debug!("{}", audit);
+                    error!("Unable to commit INTERGATION TEST setup -> {:?}", e);
+                    return;
+                }
+            }
+        }
+        None => {}
+    }
+    log_addr.do_send(audit);
+
+    // Pass it to the actor for threading.
+    // Start the query server with the given be path: future config
+    let server_addr = QueryServerV1::start(log_addr.clone(), qs, idms, config.threads);
 
     // Setup timed events
     let _int_addr = IntervalActor::new(server_addr.clone()).start();

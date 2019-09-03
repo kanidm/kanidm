@@ -1,14 +1,12 @@
 use std::sync::Arc;
 
 use crate::audit::AuditScope;
-use crate::be::Backend;
 
 use crate::async_log::EventLog;
 use crate::event::{
     AuthEvent, CreateEvent, DeleteEvent, ModifyEvent, PurgeRecycledEvent, PurgeTombstoneEvent,
     SearchEvent, SearchResult, WhoamiResult,
 };
-use crate::schema::Schema;
 use rsidm_proto::v1::OperationError;
 
 use crate::idm::server::IdmServer;
@@ -86,54 +84,16 @@ impl QueryServerV1 {
         }
     }
 
-    // TODO #54: We could move most of the be/schema/qs setup and startup
-    // outside of this call, then pass in "what we need" in a cloneable
-    // form, this way we could have seperate Idm vs Qs threads, and dedicated
-    // threads for write vs read
     pub fn start(
         log: actix::Addr<EventLog>,
-        be: Backend,
+        query_server: QueryServer,
+        idms: IdmServer,
         threads: usize,
-    ) -> Result<actix::Addr<QueryServerV1>, OperationError> {
-        let mut audit = AuditScope::new("server_start");
-        let log_inner = log.clone();
-
-        let qs_addr: Result<actix::Addr<QueryServerV1>, _> = audit_segment!(audit, || {
-            // Create "just enough" schema for us to be able to load from
-            // disk ... Schema loading is one time where we validate the
-            // entries as we read them, so we need this here.
-            let schema = match Schema::new(&mut audit) {
-                Ok(s) => s,
-                Err(e) => return Err(e),
-            };
-
-            // Create a query_server implementation
-            let query_server = QueryServer::new(be, schema);
-
-            let mut audit_qsc = AuditScope::new("query_server_init");
-            // TODO #62: Should the IDM parts be broken out to the IdmServer?
-            // What's important about this initial setup here is that it also triggers
-            // the schema and acp reload, so they are now configured correctly!
-            // Initialise the schema core.
-            //
-            // Now search for the schema itself, and validate that the system
-            // in memory matches the BE on disk, and that it's syntactically correct.
-            // Write it out if changes are needed.
-            query_server.initialise_helper(&mut audit_qsc)?;
-
-            // We generate a SINGLE idms only!
-
-            let idms = Arc::new(IdmServer::new(query_server.clone()));
-
-            audit.append_scope(audit_qsc);
-
-            let x = SyncArbiter::start(threads, move || {
-                QueryServerV1::new(log_inner.clone(), query_server.clone(), idms.clone())
-            });
-            Ok(x)
-        });
-        log.do_send(audit);
-        qs_addr
+    ) -> actix::Addr<QueryServerV1> {
+        let idms_arc = Arc::new(idms);
+        SyncArbiter::start(threads, move || {
+            QueryServerV1::new(log.clone(), query_server.clone(), idms_arc.clone())
+        })
     }
 }
 
