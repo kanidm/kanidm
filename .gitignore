@@ -1,4 +1,6 @@
 
+.DS_Store
+.backup_test.db
 /target
 **/*.rs.bk
 test.db
