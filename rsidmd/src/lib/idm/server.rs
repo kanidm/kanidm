@@ -12,6 +12,7 @@ use rsidm_proto::v1::OperationError;
 use concread::cowcell::{CowCell, CowCellWriteTxn};
 use std::collections::BTreeMap;
 use uuid::Uuid;
+use uuid::v1::Context;
 
 pub struct IdmServer {
     // There is a good reason to keep this single thread - it
@@ -24,6 +25,10 @@ pub struct IdmServer {
     sessions: CowCell<BTreeMap<Uuid, AuthSession>>,
     // Need a reference to the query server.
     qs: QueryServer,
+    // thread/server id
+    sid: [u8; 6],
+    // context
+    uctx: Context,
 }
 
 pub struct IdmServerWriteTransaction<'a> {
@@ -50,10 +55,12 @@ pub struct IdmServerProxyWriteTransaction<'a> {
 
 impl IdmServer {
     // TODO #59: Make number of authsessions configurable!!!
-    pub fn new(qs: QueryServer) -> IdmServer {
+    pub fn new(qs: QueryServer, sid: [u8; 6]) -> IdmServer {
         IdmServer {
             sessions: CowCell::new(BTreeMap::new()),
             qs: qs,
+            sid: sid,
+            uctx: Context::new(1),
         }
     }
 

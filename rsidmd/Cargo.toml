@@ -34,7 +34,7 @@ lru = "0.1"
 
 tokio = "0.1"
 futures = "0.1"
-uuid = { version = "0.7", features = ["serde", "v4"] }
+uuid = { version = "0.7", features = ["serde", "v4", "v1"] }
 serde = "1.0"
 serde_cbor = "0.10"
 serde_json = "1.0"
