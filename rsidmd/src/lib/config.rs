@@ -1,6 +1,6 @@
+use crate::utils::SID;
 use rand::prelude::*;
 use std::path::PathBuf;
-use crate::utils::SID;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct IntegrationTestConfig {

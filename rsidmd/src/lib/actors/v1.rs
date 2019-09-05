@@ -18,8 +18,8 @@ use rsidm_proto::v1::{
 };
 
 use actix::prelude::*;
-use uuid::Uuid;
 use std::time::SystemTime;
+use uuid::Uuid;
 
 // These are used when the request (IE Get) has no intrising request
 // type. Additionally, they are used in some requests where we need
@@ -243,7 +243,14 @@ impl Handler<AuthMessage> for QueryServerV1 {
 
             let ae = try_audit!(audit, AuthEvent::from_message(msg));
 
-            let ct = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).expect("Clock failure!");
+            let ct = SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .expect("Clock failure!");
+
+            // Trigger a session clean *before* we take any auth steps.
+            // It's important to do this before to ensure that timeouts on
+            // the session are enforced.
+            idm_write.expire_auth_sessions(ct);
 
             // Generally things like auth denied are in Ok() msgs
             // so true errors should always trigger a rollback.

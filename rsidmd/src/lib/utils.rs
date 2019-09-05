@@ -1,5 +1,5 @@
+use std::time::Duration;
 use uuid::{Builder, Uuid};
-use std::time::{Duration};
 
 pub type SID = [u8; 4];
 
@@ -17,21 +17,23 @@ pub fn uuid_from_duration(d: Duration, sid: &SID) -> Uuid {
     uuid_from_u64_u32(d.as_secs(), d.subsec_nanos(), sid)
 }
 
-
 #[cfg(test)]
 mod tests {
-    use std::time::Duration;
     use crate::utils::uuid_from_duration;
+    use std::time::Duration;
 
     #[test]
     fn test_utils_uuid_from_duration() {
         let u1 = uuid_from_duration(Duration::from_secs(1), &[0xff; 4]);
-        assert_eq!("00000000-0000-0001-0000-0000ffffffff", u1.to_hyphenated().to_string());
+        assert_eq!(
+            "00000000-0000-0001-0000-0000ffffffff",
+            u1.to_hyphenated().to_string()
+        );
 
         let u2 = uuid_from_duration(Duration::from_secs(1000), &[0xff; 4]);
-        assert_eq!("00000000-0000-03e8-0000-0000ffffffff", u2.to_hyphenated().to_string());
+        assert_eq!(
+            "00000000-0000-03e8-0000-0000ffffffff",
+            u2.to_hyphenated().to_string()
+        );
     }
 }
-
-
-
