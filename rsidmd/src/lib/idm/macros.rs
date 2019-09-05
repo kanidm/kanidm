@@ -35,7 +35,7 @@ macro_rules! run_idm_test {
             .initialise_helper(&mut audit)
             .expect("init failed");
 
-        let test_idm_server = IdmServer::new(test_server.clone(), [0; 6]);
+        let test_idm_server = IdmServer::new(test_server.clone(), [0; 4]);
 
         $test_fn(&test_server, &test_idm_server, &mut audit);
         // Any needed teardown?

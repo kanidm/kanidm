@@ -5,14 +5,15 @@ use crate::idm::authsession::AuthSession;
 use crate::idm::event::PasswordChangeEvent;
 use crate::server::{QueryServer, QueryServerTransaction, QueryServerWriteTransaction};
 use crate::value::PartialValue;
+use crate::utils::{uuid_from_duration, SID};
 
 use rsidm_proto::v1::AuthState;
 use rsidm_proto::v1::OperationError;
 
 use concread::cowcell::{CowCell, CowCellWriteTxn};
 use std::collections::BTreeMap;
+use std::time::Duration;
 use uuid::Uuid;
-use uuid::v1::Context;
 
 pub struct IdmServer {
     // There is a good reason to keep this single thread - it
@@ -26,9 +27,7 @@ pub struct IdmServer {
     // Need a reference to the query server.
     qs: QueryServer,
     // thread/server id
-    sid: [u8; 6],
-    // context
-    uctx: Context,
+    sid: SID,
 }
 
 pub struct IdmServerWriteTransaction<'a> {
@@ -37,6 +36,7 @@ pub struct IdmServerWriteTransaction<'a> {
     // things like authentication
     sessions: CowCellWriteTxn<'a, BTreeMap<Uuid, AuthSession>>,
     qs: &'a QueryServer,
+    sid: &'a SID,
 }
 
 /*
@@ -55,12 +55,11 @@ pub struct IdmServerProxyWriteTransaction<'a> {
 
 impl IdmServer {
     // TODO #59: Make number of authsessions configurable!!!
-    pub fn new(qs: QueryServer, sid: [u8; 6]) -> IdmServer {
+    pub fn new(qs: QueryServer, sid: SID) -> IdmServer {
         IdmServer {
             sessions: CowCell::new(BTreeMap::new()),
             qs: qs,
             sid: sid,
-            uctx: Context::new(1),
         }
     }
 
@@ -68,6 +67,7 @@ impl IdmServer {
         IdmServerWriteTransaction {
             sessions: self.sessions.write(),
             qs: &self.qs,
+            sid: &self.sid,
         }
     }
 
@@ -89,6 +89,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
         &mut self,
         au: &mut AuditScope,
         ae: &AuthEvent,
+        ct: Duration,
     ) -> Result<AuthResult, OperationError> {
         audit_log!(au, "Received AuthEvent -> {:?}", ae);
 
@@ -98,7 +99,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
             AuthEventStep::Init(init) => {
                 // Allocate a session id.
                 // TODO: #60 - make this new_v1 and use the tstamp.
-                let sessionid = Uuid::new_v4();
+                let sessionid = uuid_from_duration(ct, self.sid);
 
                 // Begin the auth procedure!
                 // Start a read
@@ -277,6 +278,7 @@ mod tests {
     use crate::idm::server::IdmServer;
     use crate::server::QueryServer;
     use uuid::Uuid;
+    use std::time::Duration;
 
     static TEST_PASSWORD: &'static str = "ntaoeuntnaoeuhraohuercahu😍";
     static TEST_PASSWORD_INC: &'static str = "ntaoentu nkrcgaeunhibwmwmqj;k wqjbkx ";
@@ -290,7 +292,7 @@ mod tests {
                 // Send the initial auth event for initialising the session
                 let anon_init = AuthEvent::anonymous_init();
                 // Expect success
-                let r1 = idms_write.auth(au, &anon_init);
+                let r1 = idms_write.auth(au, &anon_init, Duration::from_secs(6000));
                 /* Some weird lifetime shit happens here ... */
                 // audit_log!(au, "r1 ==> {:?}", r1);
 
@@ -334,7 +336,7 @@ mod tests {
                 let anon_step = AuthEvent::cred_step_anonymous(sid);
 
                 // Expect success
-                let r2 = idms_write.auth(au, &anon_step);
+                let r2 = idms_write.auth(au, &anon_step, Duration::from_secs(6000));
                 println!("r2 ==> {:?}", r2);
 
                 match r2 {
@@ -377,7 +379,7 @@ mod tests {
                 let anon_step = AuthEvent::cred_step_anonymous(sid);
 
                 // Expect failure
-                let r2 = idms_write.auth(au, &anon_step);
+                let r2 = idms_write.auth(au, &anon_step, Duration::from_secs(6000));
                 println!("r2 ==> {:?}", r2);
 
                 match r2 {
@@ -423,7 +425,7 @@ mod tests {
         let mut idms_write = idms.write();
         let admin_init = AuthEvent::named_init("admin");
 
-        let r1 = idms_write.auth(au, &admin_init);
+        let r1 = idms_write.auth(au, &admin_init, Duration::from_secs(6000));
         let ar = r1.unwrap();
         let AuthResult { sessionid, state } = ar;
 
@@ -450,7 +452,7 @@ mod tests {
             let anon_step = AuthEvent::cred_step_password(sid, TEST_PASSWORD);
 
             // Expect success
-            let r2 = idms_write.auth(au, &anon_step);
+            let r2 = idms_write.auth(au, &anon_step, Duration::from_secs(6000));
             println!("r2 ==> {:?}", r2);
 
             match r2 {
@@ -489,7 +491,7 @@ mod tests {
             let anon_step = AuthEvent::cred_step_password(sid, TEST_PASSWORD_INC);
 
             // Expect success
-            let r2 = idms_write.auth(au, &anon_step);
+            let r2 = idms_write.auth(au, &anon_step, Duration::from_secs(6000));
             println!("r2 ==> {:?}", r2);
 
             match r2 {

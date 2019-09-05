@@ -1,7 +1,9 @@
 use uuid::{Builder, Uuid};
 use std::time::{Duration};
 
-fn uuid_from_u64_u32(a: u64, b: u32, sid: &[u8; 4]) -> Uuid {
+pub type SID = [u8; 4];
+
+fn uuid_from_u64_u32(a: u64, b: u32, sid: &SID) -> Uuid {
     let mut v: Vec<u8> = Vec::with_capacity(16);
     v.extend_from_slice(&a.to_be_bytes());
     v.extend_from_slice(&b.to_be_bytes());
@@ -11,7 +13,7 @@ fn uuid_from_u64_u32(a: u64, b: u32, sid: &[u8; 4]) -> Uuid {
 }
 
 // SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
-fn uuid_from_duration(d: Duration, sid: &[u8; 4]) -> Uuid {
+pub fn uuid_from_duration(d: Duration, sid: &SID) -> Uuid {
     uuid_from_u64_u32(d.as_secs(), d.subsec_nanos(), sid)
 }
 

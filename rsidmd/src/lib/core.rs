@@ -21,6 +21,7 @@ use crate::idm::server::IdmServer;
 use crate::interval::IntervalActor;
 use crate::schema::Schema;
 use crate::server::QueryServer;
+use crate::utils::SID;
 use rsidm_proto::v1::OperationError;
 use rsidm_proto::v1::{
     AuthRequest, AuthState, CreateRequest, DeleteRequest, ModifyRequest, SearchRequest,
@@ -274,7 +275,7 @@ fn setup_backend(config: &Configuration) -> Result<Backend, OperationError> {
 fn setup_qs_idms(
     audit: &mut AuditScope,
     be: Backend,
-    sid: [u8; 6],
+    sid: SID,
 ) -> Result<(QueryServer, IdmServer), OperationError> {
     // Create "just enough" schema for us to be able to load from
     // disk ... Schema loading is one time where we validate the
