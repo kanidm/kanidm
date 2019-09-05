@@ -117,7 +117,7 @@ impl ModifyList<ModifyInvalid> {
 
     pub fn validate(
         &self,
-        schema: &SchemaTransaction,
+        schema: &dyn SchemaTransaction,
     ) -> Result<ModifyList<ModifyValid>, SchemaError> {
         let schema_attributes = schema.get_attributes();
         /*
@@ -138,7 +138,6 @@ impl ModifyList<ModifyInvalid> {
                         None => Err(SchemaError::InvalidAttribute),
                     }
                 }
-                // TODO: Should this be a partial value type?
                 Modify::Removed(attr, value) => {
                     let attr_norm = schema.normalise_attr_name(attr);
                     match schema_attributes.get(&attr_norm) {

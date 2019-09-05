@@ -345,7 +345,7 @@ With regard to forwarding tokens (no consideration is made to security of this
 system yet), method two probably is the best, but you need token constraint
 to make sure you can't replay to another host.
 
-
+https://techcommunity.microsoft.com/t5/Azure-Active-Directory-Identity/Your-Pa-word-doesn-t-matter/ba-p/731984
 
 Brain Dump Internal Details
 ===========================

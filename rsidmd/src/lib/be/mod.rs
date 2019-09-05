@@ -360,8 +360,8 @@ impl BackendWriteTransaction {
                 try_audit!(
                     au,
                     stmt.execute_named(&[
-                        (":id", &ser_entry.id as &ToSql),
-                        (":data", &ser_entry.data as &ToSql)
+                        (":id", &ser_entry.id as &dyn ToSql),
+                        (":data", &ser_entry.data as &dyn ToSql)
                     ]),
                     "rusqlite error {:?}",
                     OperationError::SQLiteError

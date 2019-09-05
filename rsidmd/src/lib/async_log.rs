@@ -66,7 +66,7 @@ impl Handler<AuditScope> for EventLog {
     type Result = ();
 
     fn handle(&mut self, event: AuditScope, _: &mut SyncContext<Self>) -> Self::Result {
-        info!("audit: {}", event);
+        debug!("audit: {}", event);
     }
 }
 
