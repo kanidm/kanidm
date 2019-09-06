@@ -18,6 +18,7 @@ use rsidm_proto::v1::{
 };
 
 use actix::prelude::*;
+use std::time::SystemTime;
 use uuid::Uuid;
 
 // These are used when the request (IE Get) has no intrising request
@@ -242,10 +243,19 @@ impl Handler<AuthMessage> for QueryServerV1 {
 
             let ae = try_audit!(audit, AuthEvent::from_message(msg));
 
+            let ct = SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .expect("Clock failure!");
+
+            // Trigger a session clean *before* we take any auth steps.
+            // It's important to do this before to ensure that timeouts on
+            // the session are enforced.
+            idm_write.expire_auth_sessions(ct);
+
             // Generally things like auth denied are in Ok() msgs
             // so true errors should always trigger a rollback.
             let r = idm_write
-                .auth(&mut audit, &ae)
+                .auth(&mut audit, &ae, ct)
                 .and_then(|r| idm_write.commit().map(|_| r));
 
             audit_log!(audit, "Sending result -> {:?}", r);

@@ -1,3 +1,4 @@
+use crate::utils::SID;
 use rand::prelude::*;
 use std::path::PathBuf;
 
@@ -16,6 +17,7 @@ pub struct Configuration {
     pub maximum_request: usize,
     pub secure_cookies: bool,
     pub cookie_key: [u8; 32],
+    pub server_id: SID,
     pub integration_test_config: Option<Box<IntegrationTestConfig>>,
 }
 
@@ -32,10 +34,12 @@ impl Configuration {
             // TODO #63: default true in prd
             secure_cookies: if cfg!(test) { false } else { true },
             cookie_key: [0; 32],
+            server_id: [0; 4],
             integration_test_config: None,
         };
         let mut rng = StdRng::from_entropy();
         rng.fill(&mut c.cookie_key);
+        rng.fill(&mut c.server_id);
         c
     }
 

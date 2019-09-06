@@ -21,6 +21,7 @@ use crate::idm::server::IdmServer;
 use crate::interval::IntervalActor;
 use crate::schema::Schema;
 use crate::server::QueryServer;
+use crate::utils::SID;
 use rsidm_proto::v1::OperationError;
 use rsidm_proto::v1::{
     AuthRequest, AuthState, CreateRequest, DeleteRequest, ModifyRequest, SearchRequest,
@@ -274,6 +275,7 @@ fn setup_backend(config: &Configuration) -> Result<Backend, OperationError> {
 fn setup_qs_idms(
     audit: &mut AuditScope,
     be: Backend,
+    sid: SID,
 ) -> Result<(QueryServer, IdmServer), OperationError> {
     // Create "just enough" schema for us to be able to load from
     // disk ... Schema loading is one time where we validate the
@@ -301,7 +303,7 @@ fn setup_qs_idms(
 
     // We generate a SINGLE idms only!
 
-    let idms = IdmServer::new(query_server.clone());
+    let idms = IdmServer::new(query_server.clone(), sid);
 
     Ok((query_server, idms))
 }
@@ -403,7 +405,7 @@ pub fn recover_account_core(config: Configuration, name: String, password: Strin
         }
     };
     // setup the qs - *with* init of the migrations and schema.
-    let (_qs, idms) = match setup_qs_idms(&mut audit, be) {
+    let (_qs, idms) = match setup_qs_idms(&mut audit, be, config.server_id.clone()) {
         Ok(t) => t,
         Err(e) => {
             debug!("{}", audit);
@@ -459,7 +461,7 @@ pub fn create_server_core(config: Configuration) {
 
     let mut audit = AuditScope::new("setup_qs_idms");
     // Start the IDM server.
-    let (qs, idms) = match setup_qs_idms(&mut audit, be) {
+    let (qs, idms) = match setup_qs_idms(&mut audit, be, config.server_id.clone()) {
         Ok(t) => t,
         Err(e) => {
             debug!("{}", audit);

@@ -1,9 +1,11 @@
 use crate::audit::AuditScope;
+use crate::constants::AUTH_SESSION_TIMEOUT;
 use crate::event::{AuthEvent, AuthEventStep, AuthResult};
 use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
 use crate::idm::event::PasswordChangeEvent;
 use crate::server::{QueryServer, QueryServerTransaction, QueryServerWriteTransaction};
+use crate::utils::{uuid_from_duration, SID};
 use crate::value::PartialValue;
 
 use rsidm_proto::v1::AuthState;
@@ -11,6 +13,7 @@ use rsidm_proto::v1::OperationError;
 
 use concread::cowcell::{CowCell, CowCellWriteTxn};
 use std::collections::BTreeMap;
+use std::time::Duration;
 use uuid::Uuid;
 
 pub struct IdmServer {
@@ -24,6 +27,8 @@ pub struct IdmServer {
     sessions: CowCell<BTreeMap<Uuid, AuthSession>>,
     // Need a reference to the query server.
     qs: QueryServer,
+    // thread/server id
+    sid: SID,
 }
 
 pub struct IdmServerWriteTransaction<'a> {
@@ -32,6 +37,7 @@ pub struct IdmServerWriteTransaction<'a> {
     // things like authentication
     sessions: CowCellWriteTxn<'a, BTreeMap<Uuid, AuthSession>>,
     qs: &'a QueryServer,
+    sid: &'a SID,
 }
 
 /*
@@ -50,10 +56,11 @@ pub struct IdmServerProxyWriteTransaction<'a> {
 
 impl IdmServer {
     // TODO #59: Make number of authsessions configurable!!!
-    pub fn new(qs: QueryServer) -> IdmServer {
+    pub fn new(qs: QueryServer, sid: SID) -> IdmServer {
         IdmServer {
             sessions: CowCell::new(BTreeMap::new()),
             qs: qs,
+            sid: sid,
         }
     }
 
@@ -61,6 +68,7 @@ impl IdmServer {
         IdmServerWriteTransaction {
             sessions: self.sessions.write(),
             qs: &self.qs,
+            sid: &self.sid,
         }
     }
 
@@ -78,10 +86,26 @@ impl IdmServer {
 }
 
 impl<'a> IdmServerWriteTransaction<'a> {
+    #[cfg(test)]
+    pub fn is_sessionid_present(&self, sessionid: &Uuid) -> bool {
+        self.sessions.contains_key(sessionid)
+    }
+
+    pub fn expire_auth_sessions(&mut self, ct: Duration) {
+        // ct is current time - sub the timeout. and then split.
+        let expire = ct - Duration::from_secs(AUTH_SESSION_TIMEOUT);
+        let split_at = uuid_from_duration(expire, self.sid);
+        let valid = self.sessions.split_off(&split_at);
+        // swap them?
+        *self.sessions = valid;
+        // expired will now be dropped, and can't be used by future sessions.
+    }
+
     pub fn auth(
         &mut self,
         au: &mut AuditScope,
         ae: &AuthEvent,
+        ct: Duration,
     ) -> Result<AuthResult, OperationError> {
         audit_log!(au, "Received AuthEvent -> {:?}", ae);
 
@@ -91,7 +115,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
             AuthEventStep::Init(init) => {
                 // Allocate a session id.
                 // TODO: #60 - make this new_v1 and use the tstamp.
-                let sessionid = Uuid::new_v4();
+                let sessionid = uuid_from_duration(ct, self.sid);
 
                 // Begin the auth procedure!
                 // Start a read
@@ -257,7 +281,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::constants::UUID_ADMIN;
+    use crate::constants::{AUTH_SESSION_TIMEOUT, UUID_ADMIN};
     use crate::credential::Credential;
     use crate::event::{AuthEvent, AuthResult, ModifyEvent};
     use crate::idm::event::PasswordChangeEvent;
@@ -269,10 +293,13 @@ mod tests {
     use crate::audit::AuditScope;
     use crate::idm::server::IdmServer;
     use crate::server::QueryServer;
+    use std::time::Duration;
     use uuid::Uuid;
 
     static TEST_PASSWORD: &'static str = "ntaoeuntnaoeuhraohuercahu😍";
     static TEST_PASSWORD_INC: &'static str = "ntaoentu nkrcgaeunhibwmwmqj;k wqjbkx ";
+    static TEST_CURRENT_TIME: u64 = 6000;
+    static TEST_CURRENT_EXPIRE: u64 = TEST_CURRENT_TIME + AUTH_SESSION_TIMEOUT + 1;
 
     #[test]
     fn test_idm_anonymous_auth() {
@@ -283,7 +310,7 @@ mod tests {
                 // Send the initial auth event for initialising the session
                 let anon_init = AuthEvent::anonymous_init();
                 // Expect success
-                let r1 = idms_write.auth(au, &anon_init);
+                let r1 = idms_write.auth(au, &anon_init, Duration::from_secs(TEST_CURRENT_TIME));
                 /* Some weird lifetime shit happens here ... */
                 // audit_log!(au, "r1 ==> {:?}", r1);
 
@@ -327,7 +354,7 @@ mod tests {
                 let anon_step = AuthEvent::cred_step_anonymous(sid);
 
                 // Expect success
-                let r2 = idms_write.auth(au, &anon_step);
+                let r2 = idms_write.auth(au, &anon_step, Duration::from_secs(TEST_CURRENT_TIME));
                 println!("r2 ==> {:?}", r2);
 
                 match r2 {
@@ -370,7 +397,7 @@ mod tests {
                 let anon_step = AuthEvent::cred_step_anonymous(sid);
 
                 // Expect failure
-                let r2 = idms_write.auth(au, &anon_step);
+                let r2 = idms_write.auth(au, &anon_step, Duration::from_secs(TEST_CURRENT_TIME));
                 println!("r2 ==> {:?}", r2);
 
                 match r2 {
@@ -416,7 +443,7 @@ mod tests {
         let mut idms_write = idms.write();
         let admin_init = AuthEvent::named_init("admin");
 
-        let r1 = idms_write.auth(au, &admin_init);
+        let r1 = idms_write.auth(au, &admin_init, Duration::from_secs(TEST_CURRENT_TIME));
         let ar = r1.unwrap();
         let AuthResult { sessionid, state } = ar;
 
@@ -443,7 +470,7 @@ mod tests {
             let anon_step = AuthEvent::cred_step_password(sid, TEST_PASSWORD);
 
             // Expect success
-            let r2 = idms_write.auth(au, &anon_step);
+            let r2 = idms_write.auth(au, &anon_step, Duration::from_secs(TEST_CURRENT_TIME));
             println!("r2 ==> {:?}", r2);
 
             match r2 {
@@ -482,7 +509,7 @@ mod tests {
             let anon_step = AuthEvent::cred_step_password(sid, TEST_PASSWORD_INC);
 
             // Expect success
-            let r2 = idms_write.auth(au, &anon_step);
+            let r2 = idms_write.auth(au, &anon_step, Duration::from_secs(TEST_CURRENT_TIME));
             println!("r2 ==> {:?}", r2);
 
             match r2 {
@@ -521,6 +548,25 @@ mod tests {
             assert!(idms_prox_write.set_account_password(au, &pce).is_ok());
             assert!(idms_prox_write.set_account_password(au, &pce).is_ok());
             assert!(idms_prox_write.commit(au).is_ok());
+        })
+    }
+
+    #[test]
+    fn test_idm_session_expire() {
+        run_idm_test!(|qs: &QueryServer, idms: &IdmServer, au: &mut AuditScope| {
+            init_admin_w_password(au, qs, TEST_PASSWORD).expect("Failed to setup admin account");
+            let sid = init_admin_authsession_sid(idms, au);
+            let mut idms_write = idms.write();
+            assert!(idms_write.is_sessionid_present(&sid));
+            // Expire like we are currently "now". Should not affect our session.
+            idms_write.expire_auth_sessions(Duration::from_secs(TEST_CURRENT_TIME));
+            assert!(idms_write.is_sessionid_present(&sid));
+            // Expire as though we are in the future.
+            idms_write.expire_auth_sessions(Duration::from_secs(TEST_CURRENT_EXPIRE));
+            assert!(!idms_write.is_sessionid_present(&sid));
+            assert!(idms_write.commit().is_ok());
+            let idms_write = idms.write();
+            assert!(!idms_write.is_sessionid_present(&sid));
         })
     }
 }
