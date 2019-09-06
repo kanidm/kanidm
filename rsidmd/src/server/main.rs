@@ -64,6 +64,17 @@ enum Opt {
     RecoverAccount(RecoverAccountOpt),
 }
 
+impl Opt {
+    fn debug(&self) -> bool {
+        match self {
+            Opt::Server(sopt) | Opt::Verify(sopt) => sopt.debug,
+            Opt::Backup(bopt) => bopt.serveropts.debug,
+            Opt::Restore(ropt) => ropt.serveropts.debug,
+            Opt::RecoverAccount(ropt) => ropt.serveropts.debug,
+        }
+    }
+}
+
 fn main() {
     // Read cli args, determine if we should backup/restore
     let opt = Opt::from_args();
@@ -74,7 +85,11 @@ fn main() {
 
     // Configure the server logger. This could be adjusted based on what config
     // says.
-    // ::std::env::set_var("RUST_LOG", "actix_web=info,rsidm=info");
+    if opt.debug() {
+        ::std::env::set_var("RUST_LOG", "actix_web=info,rsidm=debug");
+    } else {
+        ::std::env::set_var("RUST_LOG", "actix_web=info,rsidm=info");
+    }
     env_logger::init();
 
     match opt {

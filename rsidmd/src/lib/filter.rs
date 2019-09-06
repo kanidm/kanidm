@@ -268,7 +268,10 @@ impl Filter<FilterInvalid> {
         }
     }
 
-    pub fn validate(&self, schema: &SchemaTransaction) -> Result<Filter<FilterValid>, SchemaError> {
+    pub fn validate(
+        &self,
+        schema: &dyn SchemaTransaction,
+    ) -> Result<Filter<FilterValid>, SchemaError> {
         Ok(Filter {
             state: FilterValid {
                 inner: self.state.inner.validate(schema)?,
@@ -354,7 +357,7 @@ impl FilterComp {
         }
     }
 
-    pub fn validate(&self, schema: &SchemaTransaction) -> Result<FilterComp, SchemaError> {
+    pub fn validate(&self, schema: &dyn SchemaTransaction) -> Result<FilterComp, SchemaError> {
         // Optimisation is done at another stage.
 
         // This probably needs some rework

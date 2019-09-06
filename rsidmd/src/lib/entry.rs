@@ -415,7 +415,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
 
     pub fn validate(
         self,
-        schema: &SchemaTransaction,
+        schema: &dyn SchemaTransaction,
     ) -> Result<Entry<EntryValid, STATE>, SchemaError> {
         let schema_classes = schema.get_classes();
         let schema_attributes = schema.get_attributes();
@@ -998,7 +998,7 @@ impl<STATE> Entry<EntryValid, STATE> {
 
     pub fn gen_modlist_assert(
         &self,
-        schema: &SchemaTransaction,
+        schema: &dyn SchemaTransaction,
     ) -> Result<ModifyList<ModifyInvalid>, SchemaError> {
         // Create a modlist from this entry. We make this assuming we want the entry
         // to have this one as a subset of values. This means if we have single

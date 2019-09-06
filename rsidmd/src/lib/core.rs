@@ -71,7 +71,7 @@ macro_rules! json_event_post {
             // `Future::and_then` can be used to merge an asynchronous workflow with a
             // synchronous workflow
             .and_then(
-                move |body| -> Box<Future<Item = HttpResponse, Error = Error>> {
+                move |body| -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
                     // body is loaded, now we can deserialize serde-json
                     // let r_obj = serde_json::from_slice::<SearchRequest>(&body);
                     let r_obj = serde_json::from_slice::<$message_type>(&body);
@@ -180,7 +180,7 @@ fn auth(
             }
         })
         .and_then(
-            move |body| -> Box<Future<Item = HttpResponse, Error = Error>> {
+            move |body| -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
                 let r_obj = serde_json::from_slice::<AuthRequest>(&body);
 
                 // Send to the db for action
