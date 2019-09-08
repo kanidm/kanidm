@@ -251,7 +251,7 @@ impl Entry<EntryInvalid, EntryNew> {
             .map(|(k, vs)| {
                 let attr = k.to_lowercase();
                 let vv: BTreeSet<Value> = match attr.as_str() {
-                    "name" | "version" | "domain" => {
+                    "name" | "attributename" | "classname" | "version" | "domain" => {
                         vs.into_iter().map(|v| Value::new_iutf8(v)).collect()
                     }
                     "userid" | "uidnumber" => {
@@ -277,7 +277,7 @@ impl Entry<EntryInvalid, EntryNew> {
                     "member" | "memberof" | "directmemberof" => {
                         vs.into_iter().map(|v| Value::new_refer_s(v.as_str()).unwrap() ).collect()
                     }
-                    "acp_enable" | "multivalue" => {
+                    "acp_enable" | "multivalue" | "unique" => {
                         vs.into_iter().map(|v| Value::new_bools(v.as_str())
                             .unwrap_or_else(|| {
                                 warn!("WARNING: Allowing syntax incorrect attribute to be presented UTF8 string");
@@ -1298,6 +1298,7 @@ impl From<&SchemaAttribute> for Entry<EntryValid, EntryNew> {
         let desc_v = btreeset![Value::new_utf8(s.description.clone())];
 
         let multivalue_v = btreeset![Value::from(s.multivalue)];
+        let unique_v = btreeset![Value::from(s.unique)];
 
         let index_v: BTreeSet<_> = s.index.iter().map(|i| Value::from(i.clone())).collect();
 
@@ -1305,10 +1306,11 @@ impl From<&SchemaAttribute> for Entry<EntryValid, EntryNew> {
 
         // Build the BTreeMap of the attributes relevant
         let mut attrs: BTreeMap<String, BTreeSet<Value>> = BTreeMap::new();
-        attrs.insert("name".to_string(), name_v);
+        attrs.insert("attributename".to_string(), name_v);
         attrs.insert("description".to_string(), desc_v);
         attrs.insert("uuid".to_string(), uuid_v);
         attrs.insert("multivalue".to_string(), multivalue_v);
+        attrs.insert("unique".to_string(), unique_v);
         attrs.insert("index".to_string(), index_v);
         attrs.insert("syntax".to_string(), syntax_v);
         attrs.insert(
@@ -1339,7 +1341,7 @@ impl From<&SchemaClass> for Entry<EntryValid, EntryNew> {
         let desc_v = btreeset![Value::new_utf8(s.description.clone())];
 
         let mut attrs: BTreeMap<String, BTreeSet<Value>> = BTreeMap::new();
-        attrs.insert("name".to_string(), name_v);
+        attrs.insert("classname".to_string(), name_v);
         attrs.insert("description".to_string(), desc_v);
         attrs.insert("uuid".to_string(), uuid_v);
         attrs.insert(

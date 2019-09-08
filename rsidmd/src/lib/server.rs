@@ -1101,12 +1101,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .iter_mut()
             .for_each(|er| er.apply_modlist(&me.modlist));
 
-        // let mut candidates = try_audit!(au, candidates);
-
         audit_log!(au, "modify: candidates -> {:?}", candidates);
 
         // Pre mod plugins
         let mut audit_plugin_pre = AuditScope::new("plugin_pre_modify");
+        // We should probably supply the pre-post cands here.
         let plug_pre_res =
             Plugins::run_pre_modify(&mut audit_plugin_pre, self, &mut candidates, me);
         au.append_scope(audit_plugin_pre);
@@ -1122,9 +1121,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // optimisations, this could be premature - so we for now, just
         // do the CORRECT thing and recommit as we may find later we always
         // want to add CSN's or other.
-        //
-        // memberOf actually wants the pre cand list and the norm_cand list to see what
-        // changed. Could be optimised, but this is correct still ...
 
         let res: Result<Vec<Entry<EntryValid, EntryCommitted>>, SchemaError> = candidates
             .into_iter()
@@ -1149,6 +1145,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
         }
 
         // Post Plugins
+        //
+        // memberOf actually wants the pre cand list and the norm_cand list to see what
+        // changed. Could be optimised, but this is correct still ...
         let mut audit_plugin_post = AuditScope::new("plugin_post_modify");
         let plug_post_res = Plugins::run_post_modify(
             &mut audit_plugin_post,
@@ -2496,7 +2495,7 @@ mod tests {
                 "state": null,
                 "attrs": {
                     "class": ["object", "classtype"],
-                    "name": ["testclass"],
+                    "classname": ["testclass"],
                     "uuid": ["cfcae205-31c3-484b-8ced-667d1709c5e3"],
                     "description": ["Test Class"]
                 }
@@ -2529,7 +2528,7 @@ mod tests {
             // delete the class
             let de_class = unsafe {
                 DeleteEvent::new_internal_invalid(filter!(f_eq(
-                    "name",
+                    "classname",
                     PartialValue::new_iutf8s("testclass")
                 )))
             };
@@ -2580,10 +2579,11 @@ mod tests {
                 "state": null,
                 "attrs": {
                     "class": ["object", "attributetype"],
-                    "name": ["testattr"],
+                    "attributename": ["testattr"],
                     "uuid": ["cfcae205-31c3-484b-8ced-667d1709c5e3"],
                     "description": ["Test Attribute"],
                     "multivalue": ["false"],
+                    "unique": ["false"],
                     "syntax": ["UTF8STRING"]
                 }
             }"#,
@@ -2615,7 +2615,7 @@ mod tests {
             // delete the attr
             let de_attr = unsafe {
                 DeleteEvent::new_internal_invalid(filter!(f_eq(
-                    "name",
+                    "attributename",
                     PartialValue::new_iutf8s("testattr")
                 )))
             };
