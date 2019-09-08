@@ -193,7 +193,7 @@ impl Plugin for ReferentialIntegrity {
     ) -> Vec<Result<(), ConsistencyError>> {
         // Get all entries as cand
         //      build a cand-uuid set
-        let filt_in = filter!(f_pres("class"));
+        let filt_in = filter_all!(f_pres("class"));
 
         let all_cand = match qs
             .internal_search(au, filt_in)

@@ -489,7 +489,9 @@ pub trait AccessControlsTransaction {
                 // true -> entry is allowed in result set
                 // false -> the entry is not allowed to be searched by this entity, so is
                 //          excluded.
-                requested_attrs.is_subset(&allowed_attrs)
+                let decision = requested_attrs.is_subset(&allowed_attrs);
+                audit_log!(audit, "search attr decision --> {:?}", decision);
+                decision
             })
             .collect();
 

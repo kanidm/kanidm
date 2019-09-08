@@ -148,9 +148,12 @@ pub static JSON_ANONYMOUS_V1: &'static str = r#"{
 pub static UUID_SCHEMA_ATTR_CLASS: &'static str = "00000000-0000-0000-0000-ffff00000000";
 pub static UUID_SCHEMA_ATTR_UUID: &'static str = "00000000-0000-0000-0000-ffff00000001";
 pub static UUID_SCHEMA_ATTR_NAME: &'static str = "00000000-0000-0000-0000-ffff00000002";
+pub static UUID_SCHEMA_ATTR_ATTRIBUTENAME: &'static str = "00000000-0000-0000-0000-ffff00000048";
+pub static UUID_SCHEMA_ATTR_CLASSNAME: &'static str = "00000000-0000-0000-0000-ffff00000049";
 pub static UUID_SCHEMA_ATTR_PRINCIPAL_NAME: &'static str = "00000000-0000-0000-0000-ffff00000003";
 pub static UUID_SCHEMA_ATTR_DESCRIPTION: &'static str = "00000000-0000-0000-0000-ffff00000004";
 pub static UUID_SCHEMA_ATTR_MULTIVALUE: &'static str = "00000000-0000-0000-0000-ffff00000005";
+pub static UUID_SCHEMA_ATTR_UNIQUE: &'static str = "00000000-0000-0000-0000-ffff00000047";
 pub static UUID_SCHEMA_ATTR_INDEX: &'static str = "00000000-0000-0000-0000-ffff00000006";
 pub static UUID_SCHEMA_ATTR_SYNTAX: &'static str = "00000000-0000-0000-0000-ffff00000007";
 pub static UUID_SCHEMA_ATTR_SYSTEMMAY: &'static str = "00000000-0000-0000-0000-ffff00000008";
@@ -215,10 +218,13 @@ pub static JSON_SCHEMA_ATTR_DISPLAYNAME: &'static str = r#"{
       "index": [
         "EQUALITY"
       ],
+      "unique": [
+        "false"
+      ],
       "multivalue": [
         "false"
       ],
-      "name": [
+      "attributename": [
         "displayname"
       ],
       "syntax": [
@@ -248,10 +254,13 @@ pub static JSON_SCHEMA_ATTR_MAIL: &'static str = r#"
       "index": [
         "EQUALITY"
       ],
+      "unique": [
+        "true"
+      ],
       "multivalue": [
         "true"
       ],
-      "name": [
+      "attributename": [
         "mail"
       ],
       "syntax": [
@@ -280,10 +289,13 @@ pub static JSON_SCHEMA_ATTR_SSH_PUBLICKEY: &'static str = r#"
         "SSH public keys of the object"
       ],
       "index": [],
+      "unique": [
+        "false"
+      ],
       "multivalue": [
         "true"
       ],
-      "name": [
+      "attributename": [
         "ssh_publickey"
       ],
       "syntax": [
@@ -313,10 +325,13 @@ pub static JSON_SCHEMA_ATTR_PRIMARY_CREDENTIAL: &'static str = r#"
         "Primary credential material of the account for authentication interactively."
       ],
       "index": [],
+      "unique": [
+        "false"
+      ],
       "multivalue": [
         "false"
       ],
-      "name": [
+      "attributename": [
         "primary_credential"
       ],
       "syntax": [
@@ -345,7 +360,7 @@ pub static JSON_SCHEMA_CLASS_PERSON: &'static str = r#"
       "description": [
         "Object representation of a person"
       ],
-      "name": [
+      "classname": [
         "person"
       ],
       "systemmay": [
@@ -379,7 +394,7 @@ pub static JSON_SCHEMA_CLASS_GROUP: &'static str = r#"
       "description": [
         "Object representation of a group"
       ],
-      "name": [
+      "classname": [
         "group"
       ],
       "systemmay": [
@@ -410,7 +425,7 @@ pub static JSON_SCHEMA_CLASS_ACCOUNT: &'static str = r#"
       "description": [
         "Object representation of a person"
       ],
-      "name": [
+      "classname": [
         "account"
       ],
       "systemmay": [

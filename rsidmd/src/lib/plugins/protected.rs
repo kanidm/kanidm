@@ -184,7 +184,7 @@ mod tests {
             "acp_targetscope": [
                 "{\"Pres\":\"class\"}"
             ],
-            "acp_search_attr": ["name", "class", "uuid"],
+            "acp_search_attr": ["name", "class", "uuid", "classname", "attributename"],
             "acp_modify_class": ["system"],
             "acp_modify_removedattr": ["class", "displayname", "may", "must"],
             "acp_modify_presentattr": ["class", "displayname", "may", "must"],
@@ -295,7 +295,7 @@ mod tests {
             "state": null,
             "attrs": {
                 "class": ["object", "classtype"],
-                "name": ["testclass"],
+                "classname": ["testclass"],
                 "uuid": ["cfcae205-31c3-484b-8ced-667d1709c5e3"],
                 "description": ["Test Class"]
             }
@@ -307,7 +307,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iutf8s("testclass"))),
+            filter!(f_eq("classname", PartialValue::new_iutf8s("testclass"))),
             modlist!([
                 m_pres("may", &Value::new_iutf8s("name")),
                 m_pres("must", &Value::new_iutf8s("name")),

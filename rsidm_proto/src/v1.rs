@@ -65,6 +65,7 @@ pub enum ConsistencyError {
     RefintNotUpheld(u64),
     MemberOfInvalid(u64),
     InvalidAttributeType(&'static str),
+    DuplicateUniqueAttribute(String),
 }
 
 /* ===== higher level types ===== */

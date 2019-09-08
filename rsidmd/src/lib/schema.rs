@@ -32,6 +32,7 @@ pub struct SchemaAttribute {
     // Perhaps later add aliases?
     pub description: String,
     pub multivalue: bool,
+    pub unique: bool,
     pub index: Vec<IndexType>,
     pub syntax: SyntaxType,
 }
@@ -55,8 +56,8 @@ impl SchemaAttribute {
         let name = try_audit!(
             audit,
             value
-                .get_ava_single_string("name")
-                .ok_or(OperationError::InvalidSchemaState("missing name"))
+                .get_ava_single_string("attributename")
+                .ok_or(OperationError::InvalidSchemaState("missing attributename"))
         );
         // description
         let description = try_audit!(
@@ -72,6 +73,12 @@ impl SchemaAttribute {
             value
                 .get_ava_single_bool("multivalue")
                 .ok_or(OperationError::InvalidSchemaState("missing multivalue"))
+        );
+        let unique = try_audit!(
+            audit,
+            value
+                .get_ava_single_bool("unique")
+                .ok_or(OperationError::InvalidSchemaState("missing unique"))
         );
         // index vec
         // even if empty, it SHOULD be present ... (is that value to put an empty set?)
@@ -100,6 +107,7 @@ impl SchemaAttribute {
             uuid: uuid,
             description: description,
             multivalue: multivalue,
+            unique: unique,
             index: index,
             syntax: syntax,
         })
@@ -340,8 +348,8 @@ impl SchemaClass {
         let name = try_audit!(
             audit,
             value
-                .get_ava_single_string("name")
-                .ok_or(OperationError::InvalidSchemaState("missing name"))
+                .get_ava_single_string("classname")
+                .ok_or(OperationError::InvalidSchemaState("missing classname"))
         );
         // description
         let description = try_audit!(
@@ -408,6 +416,14 @@ pub trait SchemaTransaction {
         an.to_lowercase()
     }
 
+    fn get_attributes_unique(&self) -> Vec<String> {
+        // This could be improved by caching this set on schema reload!
+        self.get_attributes()
+            .iter()
+            .filter_map(|(k, v)| if v.unique { Some(k.clone()) } else { None })
+            .collect()
+    }
+
     // Probably need something like get_classes or similar
     // so that externals can call and use this data.
 
@@ -449,6 +465,7 @@ impl SchemaInner {
                         .expect("unable to parse static uuid"),
                     description: String::from("The set of classes defining an object"),
                     multivalue: true,
+                    unique: false,
                     index: vec![IndexType::EQUALITY],
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
@@ -461,6 +478,9 @@ impl SchemaInner {
                         .expect("unable to parse static uuid"),
                     description: String::from("The universal unique id of the object"),
                     multivalue: false,
+                    // Uniqueness is handled by base.rs, not attrunique here due to
+                    // needing to check recycled objects too.
+                    unique: false,
                     index: vec![IndexType::EQUALITY],
                     syntax: SyntaxType::UUID,
                 },
@@ -473,6 +493,33 @@ impl SchemaInner {
                         .expect("unable to parse static uuid"),
                     description: String::from("The shortform name of an object"),
                     multivalue: false,
+                    unique: true,
+                    index: vec![IndexType::EQUALITY],
+                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                },
+            );
+            s.attributes.insert(
+                String::from("attributename"),
+                SchemaAttribute {
+                    name: String::from("attributename"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ATTRIBUTENAME)
+                        .expect("unable to parse static uuid"),
+                    description: String::from("The name of a schema attribute"),
+                    multivalue: false,
+                    unique: true,
+                    index: vec![IndexType::EQUALITY],
+                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                },
+            );
+            s.attributes.insert(
+                String::from("classname"),
+                SchemaAttribute {
+                    name: String::from("classname"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_CLASSNAME)
+                        .expect("unable to parse static uuid"),
+                    description: String::from("The name of a schema class"),
+                    multivalue: false,
+                    unique: true,
                     index: vec![IndexType::EQUALITY],
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
@@ -485,6 +532,7 @@ impl SchemaInner {
                         .expect("unable to parse static uuid"),
                     description: String::from("A description of an attribute, object or class"),
                     multivalue: true,
+                    unique: false,
                     index: vec![],
                     syntax: SyntaxType::UTF8STRING,
                 },
@@ -494,6 +542,16 @@ impl SchemaInner {
                 uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_MULTIVALUE).expect("unable to parse static uuid"),
                 description: String::from("If true, this attribute is able to store multiple values rather than just a single value."),
                 multivalue: false,
+                unique: false,
+                index: vec![],
+                syntax: SyntaxType::BOOLEAN,
+            });
+            s.attributes.insert(String::from("unique"), SchemaAttribute {
+                name: String::from("unique"),
+                uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_UNIQUE).expect("unable to parse static uuid"),
+                description: String::from("If true, this attribute must store a unique value through out the database."),
+                multivalue: false,
+                unique: false,
                 index: vec![],
                 syntax: SyntaxType::BOOLEAN,
             });
@@ -507,6 +565,7 @@ impl SchemaInner {
                         "Describe the indexes to apply to instances of this attribute.",
                     ),
                     multivalue: true,
+                    unique: false,
                     index: vec![],
                     syntax: SyntaxType::INDEX_ID,
                 },
@@ -521,6 +580,7 @@ impl SchemaInner {
                         "Describe the syntax of this attribute. This affects indexing and sorting.",
                     ),
                     multivalue: false,
+                    unique: false,
                     index: vec![IndexType::EQUALITY],
                     syntax: SyntaxType::SYNTAX_ID,
                 },
@@ -535,6 +595,7 @@ impl SchemaInner {
                         "A list of system provided optional attributes this class can store.",
                     ),
                     multivalue: true,
+                    unique: false,
                     index: vec![],
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
@@ -549,6 +610,7 @@ impl SchemaInner {
                         "A user modifiable list of optional attributes this class can store.",
                     ),
                     multivalue: true,
+                    unique: false,
                     index: vec![],
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
@@ -563,6 +625,7 @@ impl SchemaInner {
                         "A list of system provided required attributes this class must store.",
                     ),
                     multivalue: true,
+                    unique: false,
                     index: vec![],
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
@@ -577,6 +640,7 @@ impl SchemaInner {
                         "A user modifiable list of required attributes this class must store.",
                     ),
                     multivalue: true,
+                    unique: false,
                     index: vec![],
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
@@ -591,6 +655,7 @@ impl SchemaInner {
                         .expect("unable to parse static uuid"),
                     description: String::from("A flag to determine if this ACP is active for application. True is enabled, and enforce. False is checked but not enforced."),
                     multivalue: false,
+                unique: false,
                     index: vec![IndexType::EQUALITY],
                     syntax: SyntaxType::BOOLEAN,
                 },
@@ -606,6 +671,7 @@ impl SchemaInner {
                         "Who the ACP applies to, constraining or allowing operations.",
                     ),
                     multivalue: false,
+                    unique: false,
                     index: vec![IndexType::EQUALITY, IndexType::SUBSTRING],
                     syntax: SyntaxType::JSON_FILTER,
                 },
@@ -620,6 +686,7 @@ impl SchemaInner {
                         "The effective targets of the ACP, IE what will be acted upon.",
                     ),
                     multivalue: false,
+                    unique: false,
                     index: vec![IndexType::EQUALITY, IndexType::SUBSTRING],
                     syntax: SyntaxType::JSON_FILTER,
                 },
@@ -632,6 +699,7 @@ impl SchemaInner {
                         .expect("unable to parse static uuid"),
                     description: String::from("The attributes that may be viewed or searched by the reciever on targetscope."),
                     multivalue: true,
+                unique: false,
                     index: vec![IndexType::EQUALITY],
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
@@ -646,6 +714,7 @@ impl SchemaInner {
                         "The set of classes that can be created on a new entry.",
                     ),
                     multivalue: true,
+                    unique: false,
                     index: vec![IndexType::EQUALITY],
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
@@ -660,6 +729,7 @@ impl SchemaInner {
                         "The set of attribute types that can be created on an entry.",
                     ),
                     multivalue: true,
+                    unique: false,
                     index: vec![IndexType::EQUALITY],
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
@@ -673,6 +743,7 @@ impl SchemaInner {
                         .expect("unable to parse static uuid"),
                     description: String::from("The set of attribute types that could be removed or purged in a modification."),
                     multivalue: true,
+                unique: false,
                     index: vec![IndexType::EQUALITY],
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
@@ -685,6 +756,7 @@ impl SchemaInner {
                         .expect("unable to parse static uuid"),
                     description: String::from("The set of attribute types that could be added or asserted in a modification."),
                     multivalue: true,
+                unique: false,
                     index: vec![IndexType::EQUALITY],
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
@@ -697,6 +769,7 @@ impl SchemaInner {
                         .expect("unable to parse static uuid"),
                     description: String::from("The set of class values that could be asserted or added to an entry. Only applies to modify::present operations on class."),
                     multivalue: true,
+                unique: false,
                     index: vec![IndexType::EQUALITY],
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
@@ -710,6 +783,7 @@ impl SchemaInner {
                         .expect("unable to parse static uuid"),
                     description: String::from("reverse group membership of the object"),
                     multivalue: true,
+                    unique: false,
                     index: vec![IndexType::EQUALITY],
                     syntax: SyntaxType::REFERENCE_UUID,
                 },
@@ -722,6 +796,7 @@ impl SchemaInner {
                         .expect("unable to parse static uuid"),
                     description: String::from("reverse direct group membership of the object"),
                     multivalue: true,
+                    unique: false,
                     index: vec![IndexType::EQUALITY],
                     syntax: SyntaxType::REFERENCE_UUID,
                 },
@@ -734,6 +809,7 @@ impl SchemaInner {
                         .expect("unable to parse static uuid"),
                     description: String::from("List of members of the group"),
                     multivalue: true,
+                    unique: false,
                     index: vec![IndexType::EQUALITY],
                     syntax: SyntaxType::REFERENCE_UUID,
                 },
@@ -749,6 +825,7 @@ impl SchemaInner {
                         "The systems internal migration version for provided objects",
                     ),
                     multivalue: false,
+                    unique: false,
                     index: vec![IndexType::EQUALITY],
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
@@ -762,6 +839,7 @@ impl SchemaInner {
                         .expect("unable to parse static uuid"),
                     description: String::from("A DNS Domain name entry."),
                     multivalue: true,
+                    unique: false,
                     index: vec![IndexType::EQUALITY],
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
@@ -778,8 +856,9 @@ impl SchemaInner {
                     may: vec![],
                     systemmust: vec![
                         String::from("class"),
-                        String::from("name"),
+                        String::from("attributename"),
                         String::from("multivalue"),
+                        String::from("unique"),
                         String::from("syntax"),
                         String::from("description"),
                     ],
@@ -802,7 +881,7 @@ impl SchemaInner {
                     may: vec![],
                     systemmust: vec![
                         String::from("class"),
-                        String::from("name"),
+                        String::from("classname"),
                         String::from("description"),
                     ],
                     must: vec![],
@@ -819,11 +898,7 @@ impl SchemaInner {
                     ),
                     systemmay: vec![String::from("description"), String::from("name")],
                     may: vec![],
-                    systemmust: vec![
-                        String::from("class"),
-                        // String::from("name"),
-                        String::from("uuid"),
-                    ],
+                    systemmust: vec![String::from("class"), String::from("uuid")],
                     must: vec![],
                 },
             );
@@ -1253,7 +1328,8 @@ mod tests {
                     "state": null,
                     "attrs": {
                         "class": ["object", "attributetype"],
-                        "name": ["schema_attr_test"],
+                        "attributename": ["schema_attr_test"],
+                        "unique": ["false"],
                         "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"]
                     }
                 }"#,
@@ -1267,9 +1343,10 @@ mod tests {
                     "state": null,
                     "attrs": {
                         "class": ["object", "attributetype"],
-                        "name": ["schema_attr_test"],
+                        "attributename": ["schema_attr_test"],
                         "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"],
                         "multivalue": ["false"],
+                        "unique": ["false"],
                         "index": ["EQUALITY"],
                         "syntax": ["UTF8STRING"]
                     }
@@ -1284,10 +1361,11 @@ mod tests {
                     "state": null,
                     "attrs": {
                         "class": ["object", "attributetype"],
-                        "name": ["schema_attr_test"],
+                        "attributename": ["schema_attr_test"],
                         "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"],
                         "description": ["Test attr parsing"],
                         "multivalue": ["htouaoeu"],
+                        "unique": ["false"],
                         "index": ["EQUALITY"],
                         "syntax": ["UTF8STRING"]
                     }
@@ -1302,10 +1380,11 @@ mod tests {
                     "state": null,
                     "attrs": {
                         "class": ["object", "attributetype"],
-                        "name": ["schema_attr_test"],
+                        "attributename": ["schema_attr_test"],
                         "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"],
                         "description": ["Test attr parsing"],
                         "multivalue": ["false"],
+                        "unique": ["false"],
                         "index": ["NTEHNOU"],
                         "syntax": ["UTF8STRING"]
                     }
@@ -1320,10 +1399,11 @@ mod tests {
                     "state": null,
                     "attrs": {
                         "class": ["object", "attributetype"],
-                        "name": ["schema_attr_test"],
+                        "attributename": ["schema_attr_test"],
                         "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"],
                         "description": ["Test attr parsing"],
                         "multivalue": ["false"],
+                        "unique": ["false"],
                         "index": ["EQUALITY"],
                         "syntax": ["TNEOUNTUH"]
                     }
@@ -1339,10 +1419,11 @@ mod tests {
                     "state": null,
                     "attrs": {
                         "class": ["object", "attributetype"],
-                        "name": ["schema_attr_test"],
+                        "attributename": ["schema_attr_test"],
                         "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"],
                         "description": ["Test attr parsing"],
                         "multivalue": ["false"],
+                        "unique": ["false"],
                         "syntax": ["UTF8STRING"]
                     }
                 }"#,
@@ -1357,10 +1438,11 @@ mod tests {
                     "state": null,
                     "attrs": {
                         "class": ["object", "attributetype"],
-                        "name": ["schema_attr_test"],
+                        "attributename": ["schema_attr_test"],
                         "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"],
                         "description": ["Test attr parsing"],
                         "multivalue": ["false"],
+                        "unique": ["false"],
                         "index": ["EQUALITY"],
                         "syntax": ["UTF8STRING"]
                     }
@@ -1380,7 +1462,7 @@ mod tests {
                     "state": null,
                     "attrs": {
                         "class": ["object", "classtype"],
-                        "name": ["schema_class_test"],
+                        "classname": ["schema_class_test"],
                         "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"]
                     }
                 }"#,
@@ -1394,7 +1476,7 @@ mod tests {
                     "state": null,
                     "attrs": {
                         "class": ["object"],
-                        "name": ["schema_class_test"],
+                        "classname": ["schema_class_test"],
                         "description": ["class test"],
                         "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"]
                     }
@@ -1410,7 +1492,7 @@ mod tests {
                     "state": null,
                     "attrs": {
                         "class": ["object", "classtype"],
-                        "name": ["schema_class_test"],
+                        "classname": ["schema_class_test"],
                         "description": ["class test"],
                         "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"]
                     }
@@ -1426,7 +1508,7 @@ mod tests {
                     "state": null,
                     "attrs": {
                         "class": ["object", "classtype"],
-                        "name": ["schema_class_test"],
+                        "classname": ["schema_class_test"],
                         "description": ["class test"],
                         "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"],
                         "systemmust": ["d"]
@@ -1442,7 +1524,7 @@ mod tests {
                     "state": null,
                     "attrs": {
                         "class": ["object", "classtype"],
-                        "name": ["schema_class_test"],
+                        "classname": ["schema_class_test"],
                         "description": ["class test"],
                         "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"],
                         "systemmay": ["c"]
@@ -1458,7 +1540,7 @@ mod tests {
                     "state": null,
                     "attrs": {
                         "class": ["object", "classtype"],
-                        "name": ["schema_class_test"],
+                        "classname": ["schema_class_test"],
                         "description": ["class test"],
                         "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"],
                         "may": ["a"],
@@ -1475,7 +1557,7 @@ mod tests {
                     "state": null,
                     "attrs": {
                         "class": ["object", "classtype"],
-                        "name": ["schema_class_test"],
+                        "classname": ["schema_class_test"],
                         "description": ["class test"],
                         "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"],
                         "may": ["a"],
@@ -1500,6 +1582,7 @@ mod tests {
             uuid: Uuid::new_v4(),
             description: String::from(""),
             multivalue: false,
+            unique: false,
             index: vec![IndexType::EQUALITY],
             syntax: SyntaxType::UTF8STRING_INSENSITIVE,
         };
@@ -1521,6 +1604,7 @@ mod tests {
             uuid: Uuid::new_v4(),
             description: String::from(""),
             multivalue: true,
+            unique: false,
             index: vec![IndexType::EQUALITY],
             syntax: SyntaxType::UTF8STRING,
         };
@@ -1537,6 +1621,7 @@ mod tests {
             uuid: Uuid::new_v4(),
             description: String::from(""),
             multivalue: true,
+            unique: false,
             index: vec![IndexType::EQUALITY],
             syntax: SyntaxType::BOOLEAN,
         };
@@ -1559,6 +1644,7 @@ mod tests {
             uuid: Uuid::new_v4(),
             description: String::from(""),
             multivalue: false,
+            unique: false,
             index: vec![IndexType::EQUALITY],
             syntax: SyntaxType::SYNTAX_ID,
         };
@@ -1576,6 +1662,7 @@ mod tests {
             uuid: Uuid::new_v4(),
             description: String::from(""),
             multivalue: false,
+            unique: false,
             index: vec![IndexType::EQUALITY],
             syntax: SyntaxType::INDEX_ID,
         };
@@ -1667,9 +1754,10 @@ mod tests {
             "state": null,
             "attrs": {
                 "class": ["object", "attributetype"],
-                "name": ["testattr"],
+                "attributename": ["testattr"],
                 "description": ["testattr"],
                 "multivalue": ["false"],
+                "unique": ["false"],
                 "syntax": ["UTF8STRING"],
                 "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
                 "zzzzz": ["zzzz"]
@@ -1688,9 +1776,10 @@ mod tests {
             "state": null,
             "attrs": {
                 "class": ["object", "attributetype"],
-                "name": ["testattr"],
+                "attributename": ["testattr"],
                 "description": ["testattr"],
                 "multivalue": ["zzzzz"],
+                "unique": ["false"],
                 "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
                 "syntax": ["UTF8STRING"]
             }
@@ -1708,9 +1797,10 @@ mod tests {
             "state": null,
             "attrs": {
                 "class": ["object", "attributetype"],
-                "name": ["testattr"],
+                "attributename": ["testattr"],
                 "description": ["testattr"],
                 "multivalue": ["true"],
+                "unique": ["false"],
                 "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
                 "syntax": ["UTF8STRING"]
             }

@@ -7,6 +7,7 @@ use rsidm_proto::v1::{ConsistencyError, OperationError};
 #[macro_use]
 mod macros;
 
+mod attrunique;
 mod base;
 mod failure;
 mod memberof;
@@ -277,7 +278,10 @@ impl Plugins {
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         audit_segment!(au, || {
-            let res = run_pre_create_transform_plugin!(au, qs, cand, ce, base::Base);
+            let res =
+                run_pre_create_transform_plugin!(au, qs, cand, ce, base::Base).and_then(|_| {
+                    run_pre_create_transform_plugin!(au, qs, cand, ce, attrunique::AttrUnique)
+                });
 
             res
         })
@@ -318,7 +322,8 @@ impl Plugins {
     ) -> Result<(), OperationError> {
         audit_segment!(au, || {
             let res = run_pre_modify_plugin!(au, qs, cand, me, protected::Protected)
-                .and_then(|_| run_pre_modify_plugin!(au, qs, cand, me, base::Base));
+                .and_then(|_| run_pre_modify_plugin!(au, qs, cand, me, base::Base))
+                .and_then(|_| run_pre_modify_plugin!(au, qs, cand, me, attrunique::AttrUnique));
 
             res
         })
@@ -374,6 +379,7 @@ impl Plugins {
     ) -> Vec<Result<(), ConsistencyError>> {
         let mut results = Vec::new();
         run_verify_plugin!(au, qs, &mut results, base::Base);
+        run_verify_plugin!(au, qs, &mut results, attrunique::AttrUnique);
         run_verify_plugin!(au, qs, &mut results, refint::ReferentialIntegrity);
         run_verify_plugin!(au, qs, &mut results, memberof::MemberOf);
         results
