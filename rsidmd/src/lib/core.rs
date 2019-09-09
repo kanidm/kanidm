@@ -13,7 +13,9 @@ use crate::config::Configuration;
 
 // SearchResult
 use crate::actors::v1::QueryServerV1;
-use crate::actors::v1::{AuthMessage, WhoamiMessage};
+use crate::actors::v1::{
+    AuthMessage, CreateMessage, DeleteMessage, ModifyMessage, SearchMessage, WhoamiMessage,
+};
 use crate::async_log;
 use crate::audit::AuditScope;
 use crate::be::{Backend, BackendTransaction};
@@ -46,11 +48,14 @@ fn get_current_user(req: &HttpRequest<AppState>) -> Option<UserAuthToken> {
 }
 
 macro_rules! json_event_post {
-    ($req:expr, $state:expr, $event_type:ty, $message_type:ty) => {{
+    ($req:expr, $state:expr, $message_type:ty, $request_type:ty) => {{
         // This is copied every request. Is there a better way?
         // The issue is the fold move takes ownership of state if
         // we don't copy this here
         let max_size = $state.max_size;
+
+        // Get auth if any?
+        let uat = get_current_user(&$req);
 
         // HttpRequest::payload() is stream of Bytes objects
         $req.payload()
@@ -73,20 +78,17 @@ macro_rules! json_event_post {
             .and_then(
                 move |body| -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
                     // body is loaded, now we can deserialize serde-json
-                    // let r_obj = serde_json::from_slice::<SearchRequest>(&body);
-                    let r_obj = serde_json::from_slice::<$message_type>(&body);
+                    let r_obj = serde_json::from_slice::<$request_type>(&body);
 
                     // Send to the db for handling
                     match r_obj {
                         Ok(obj) => {
+                            // combine request + uat -> message.
+                            let m_obj = <($message_type)>::new(uat, obj);
                             let res = $state
                                 .qe
-                                .send(
-                                    // Could make this a .into_inner() and move?
-                                    // event::SearchEvent::new(obj.filter),
-                                    // <($event_type)>::from_request(obj),
-                                    obj,
-                                )
+                                .send(m_obj)
+                                // What is from_err?
                                 .from_err()
                                 .and_then(|res| match res {
                                     Ok(event_result) => Ok(HttpResponse::Ok().json(event_result)),
@@ -106,7 +108,7 @@ macro_rules! json_event_post {
 }
 
 macro_rules! json_event_get {
-    ($req:expr, $state:expr, $event_type:ty, $message_type:ty) => {{
+    ($req:expr, $state:expr, $message_type:ty) => {{
         // Get current auth data - remember, the QS checks if the
         // none/some is okay, because it's too hard to make it work here
         // with all the async parts.
@@ -132,32 +134,31 @@ macro_rules! json_event_get {
 fn create(
     (req, state): (HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    json_event_post!(req, state, CreateEvent, CreateRequest)
+    json_event_post!(req, state, CreateMessage, CreateRequest)
 }
 
 fn modify(
     (req, state): (HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    json_event_post!(req, state, ModifyEvent, ModifyRequest)
+    json_event_post!(req, state, ModifyMessage, ModifyRequest)
 }
 
 fn delete(
     (req, state): (HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    json_event_post!(req, state, DeleteEvent, DeleteRequest)
+    json_event_post!(req, state, DeleteMessage, DeleteRequest)
 }
 
 fn search(
     (req, state): (HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    json_event_post!(req, state, SearchEvent, SearchRequest)
+    json_event_post!(req, state, SearchMessage, SearchRequest)
 }
 
 fn whoami(
     (req, state): (HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    // Actually this may not work as it assumes post not get.
-    json_event_get!(req, state, WhoamiEvent, WhoamiMessage)
+    json_event_get!(req, state, WhoamiMessage)
 }
 
 // We probably need an extract auth or similar to handle the different

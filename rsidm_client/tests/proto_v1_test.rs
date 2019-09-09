@@ -7,16 +7,15 @@ extern crate actix;
 use actix::prelude::*;
 
 extern crate rsidm;
+extern crate rsidm_client;
 extern crate rsidm_proto;
 extern crate serde_json;
 
+use rsidm_client::RsidmClient;
+
 use rsidm::config::{Configuration, IntegrationTestConfig};
-use rsidm::constants::UUID_ADMIN;
 use rsidm::core::create_server_core;
-use rsidm_proto::v1::{
-    AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep, CreateRequest, Entry,
-    OperationResponse,
-};
+use rsidm_proto::v1::Entry;
 
 extern crate reqwest;
 
@@ -36,7 +35,8 @@ static ADMIN_TEST_PASSWORD: &'static str = "integration test admin password";
 
 // Test external behaviorus of the service.
 
-fn run_test(test_fn: fn(reqwest::Client, &str) -> ()) {
+fn run_test(test_fn: fn(RsidmClient) -> ()) {
+    // ::std::env::set_var("RUST_LOG", "actix_web=debug,rsidm=debug");
     let _ = env_logger::builder().is_test(true).try_init();
     let (tx, rx) = mpsc::channel();
     let port = PORT_ALLOC.fetch_add(1, Ordering::SeqCst);
@@ -70,13 +70,10 @@ fn run_test(test_fn: fn(reqwest::Client, &str) -> ()) {
     // later we could accept fixture as it's own future for re-use
 
     // Setup the client, and the address we selected.
-    let client = reqwest::Client::builder()
-        .cookie_store(true)
-        .build()
-        .expect("Unexpected reqwest builder failure!");
     let addr = format!("http://127.0.0.1:{}", port);
+    let rsclient = RsidmClient::new(addr.as_str());
 
-    test_fn(client, addr.as_str());
+    test_fn(rsclient);
 
     // We DO NOT need teardown, as sqlite is in mem
     // let the tables hit the floor
@@ -84,8 +81,8 @@ fn run_test(test_fn: fn(reqwest::Client, &str) -> ()) {
 }
 
 #[test]
-fn test_server_proto() {
-    run_test(|client: reqwest::Client, addr: &str| {
+fn test_server_create() {
+    run_test(|rsclient: RsidmClient| {
         let e: Entry = serde_json::from_str(
             r#"{
             "attrs": {
@@ -98,168 +95,54 @@ fn test_server_proto() {
         )
         .unwrap();
 
-        let c = CreateRequest {
-            entries: vec![e],
-            user_uuid: UUID_ADMIN.to_string(),
-        };
+        // Not logged in - should fail!
+        let res = rsclient.create(vec![e.clone()]);
+        assert!(res.is_err());
 
-        let dest = format!("{}/v1/create", addr);
+        let a_res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
+        assert!(a_res.is_ok());
 
-        let mut response = client
-            .post(dest.as_str())
-            .body(serde_json::to_string(&c).unwrap())
-            .send()
-            .unwrap();
-
-        println!("{:?}", response);
-        let r: OperationResponse = serde_json::from_str(response.text().unwrap().as_str()).unwrap();
-
-        println!("{:?}", r);
-
-        // deserialise the response here
-        // check it's valid.
-
-        ()
+        let res = rsclient.create(vec![e]);
+        assert!(res.is_ok());
     });
 }
 
 #[test]
 fn test_server_whoami_anonymous() {
-    run_test(|client: reqwest::Client, addr: &str| {
+    run_test(|rsclient: RsidmClient| {
         // First show we are un-authenticated.
-        let whoami_dest = format!("{}/v1/whoami", addr);
-        let auth_dest = format!("{}/v1/auth", addr);
-
-        let response = client.get(whoami_dest.as_str()).send().unwrap();
-
-        // https://docs.rs/reqwest/0.9.15/reqwest/struct.Response.html
-        println!("{:?}", response);
-
-        assert!(response.status() == reqwest::StatusCode::UNAUTHORIZED);
+        let pre_res = rsclient.whoami();
+        // This means it was okay whoami, but no uat attached.
+        assert!(pre_res.unwrap().is_none());
 
         // Now login as anonymous
-
-        // Setup the auth initialisation
-        let auth_init = AuthRequest {
-            step: AuthStep::Init("anonymous".to_string(), None),
-        };
-
-        let mut response = client
-            .post(auth_dest.as_str())
-            .body(serde_json::to_string(&auth_init).unwrap())
-            .send()
-            .unwrap();
-        assert!(response.status() == reqwest::StatusCode::OK);
-        // Check that we got the next step
-        let r: AuthResponse = serde_json::from_str(response.text().unwrap().as_str()).unwrap();
-        println!("==> AUTHRESPONSE ==> {:?}", r);
-
-        assert!(match &r.state {
-            AuthState::Continue(_all_list) => {
-                // Check anonymous is present? It will fail on next step if not ...
-                true
-            }
-            _ => false,
-        });
-
-        // Send the credentials required now
-        let auth_anon = AuthRequest {
-            step: AuthStep::Creds(vec![AuthCredential::Anonymous]),
-        };
-
-        let mut response = client
-            .post(auth_dest.as_str())
-            .body(serde_json::to_string(&auth_anon).unwrap())
-            .send()
-            .unwrap();
-        debug!("{}", response.status());
-        assert!(response.status() == reqwest::StatusCode::OK);
-        // Check that we got the next step
-        let r: AuthResponse = serde_json::from_str(response.text().unwrap().as_str()).unwrap();
-        println!("==> AUTHRESPONSE ==> {:?}", r);
-
-        assert!(match &r.state {
-            AuthState::Success(uat) => {
-                println!("==> Authed as uat; {:?}", uat);
-                true
-            }
-            _ => false,
-        });
+        let res = rsclient.auth_anonymous();
+        assert!(res.is_ok());
 
         // Now do a whoami.
-        let mut response = client.get(whoami_dest.as_str()).send().unwrap();
-        println!("WHOAMI -> {}", response.text().unwrap().as_str());
-        println!("WHOAMI STATUS -> {}", response.status());
-        assert!(response.status() == reqwest::StatusCode::OK);
-
-        // Check the json now ... response.json()
+        let post_res = rsclient.whoami().unwrap();
+        assert!(post_res.is_some());
+        // TODO: Now unwrap and ensure anony
+        println!("{:?}", post_res);
     });
 }
 
 #[test]
 fn test_server_whoami_admin_simple_password() {
-    run_test(|client: reqwest::Client, addr: &str| {
+    run_test(|rsclient: RsidmClient| {
         // First show we are un-authenticated.
-        let whoami_dest = format!("{}/v1/whoami", addr);
-        let auth_dest = format!("{}/v1/auth", addr);
-        // Now login as admin
+        let pre_res = rsclient.whoami();
+        // This means it was okay whoami, but no uat attached.
+        assert!(pre_res.unwrap().is_none());
 
-        // Setup the auth initialisation
-        let auth_init = AuthRequest {
-            step: AuthStep::Init("admin".to_string(), None),
-        };
-
-        let mut response = client
-            .post(auth_dest.as_str())
-            .body(serde_json::to_string(&auth_init).unwrap())
-            .send()
-            .unwrap();
-        assert!(response.status() == reqwest::StatusCode::OK);
-        // Check that we got the next step
-        let r: AuthResponse = serde_json::from_str(response.text().unwrap().as_str()).unwrap();
-        println!("==> AUTHRESPONSE ==> {:?}", r);
-
-        assert!(match &r.state {
-            AuthState::Continue(_all_list) => {
-                // Check anonymous is present? It will fail on next step if not ...
-                true
-            }
-            _ => false,
-        });
-
-        // Send the credentials required now
-        let auth_admin = AuthRequest {
-            step: AuthStep::Creds(vec![AuthCredential::Password(
-                ADMIN_TEST_PASSWORD.to_string(),
-            )]),
-        };
-
-        let mut response = client
-            .post(auth_dest.as_str())
-            .body(serde_json::to_string(&auth_admin).unwrap())
-            .send()
-            .unwrap();
-        debug!("{}", response.status());
-        assert!(response.status() == reqwest::StatusCode::OK);
-        // Check that we got the next step
-        let r: AuthResponse = serde_json::from_str(response.text().unwrap().as_str()).unwrap();
-        println!("==> AUTHRESPONSE ==> {:?}", r);
-
-        assert!(match &r.state {
-            AuthState::Success(uat) => {
-                println!("==> Authed as uat; {:?}", uat);
-                true
-            }
-            _ => false,
-        });
+        let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
+        assert!(res.is_ok());
 
         // Now do a whoami.
-        let mut response = client.get(whoami_dest.as_str()).send().unwrap();
-        println!("WHOAMI -> {}", response.text().unwrap().as_str());
-        println!("WHOAMI STATUS -> {}", response.status());
-        assert!(response.status() == reqwest::StatusCode::OK);
-
-        // Check the json now ... response.json()
+        let post_res = rsclient.whoami().unwrap();
+        assert!(post_res.is_some());
+        // TODO: Now unwrap and ensure anony
+        debug!("{:?}", post_res);
     });
 }
 

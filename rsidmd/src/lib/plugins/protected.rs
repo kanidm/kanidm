@@ -25,7 +25,11 @@ lazy_static! {
         m
     };
     static ref PVCLASS_SYSTEM: PartialValue = PartialValue::new_class("system");
+    static ref PVCLASS_TOMBSTONE: PartialValue = PartialValue::new_class("tombstone");
+    static ref PVCLASS_RECYCLED: PartialValue = PartialValue::new_class("recycled");
     static ref VCLASS_SYSTEM: Value = Value::new_class("system");
+    static ref VCLASS_TOMBSTONE: Value = Value::new_class("tombstone");
+    static ref VCLASS_RECYCLED: Value = Value::new_class("recycled");
 }
 
 impl Plugin for Protected {
@@ -51,7 +55,10 @@ impl Plugin for Protected {
         cand.iter().fold(Ok(()), |acc, cand| match acc {
             Err(_) => acc,
             Ok(_) => {
-                if cand.attribute_value_pres("class", &PVCLASS_SYSTEM) {
+                if cand.attribute_value_pres("class", &PVCLASS_SYSTEM)
+                    || cand.attribute_value_pres("class", &PVCLASS_TOMBSTONE)
+                    || cand.attribute_value_pres("class", &PVCLASS_RECYCLED)
+                {
                     Err(OperationError::SystemProtectedObject)
                 } else {
                     acc
@@ -74,7 +81,7 @@ impl Plugin for Protected {
             );
             return Ok(());
         }
-        // Prevent adding class: system
+        // Prevent adding class: system, tombstone, or recycled.
         me.modlist.iter().fold(Ok(()), |acc, m| {
             if acc.is_err() {
                 acc
@@ -82,7 +89,11 @@ impl Plugin for Protected {
                 match m {
                     Modify::Present(a, v) => {
                         // TODO: Can we avoid this clone?
-                        if a == "class" && v == &(VCLASS_SYSTEM.clone()) {
+                        if a == "class"
+                            && (v == &(VCLASS_SYSTEM.clone())
+                                || v == &(VCLASS_TOMBSTONE.clone())
+                                || v == &(VCLASS_RECYCLED.clone()))
+                        {
                             Err(OperationError::SystemProtectedObject)
                         } else {
                             Ok(())
@@ -92,8 +103,22 @@ impl Plugin for Protected {
                 }
             }
         })?;
-        // if class: system, check the mods are "allowed"
 
+        // HARD block mods on tombstone or recycle.
+        cand.iter().fold(Ok(()), |acc, cand| match acc {
+            Err(_) => acc,
+            Ok(_) => {
+                if cand.attribute_value_pres("class", &PVCLASS_TOMBSTONE)
+                    || cand.attribute_value_pres("class", &PVCLASS_RECYCLED)
+                {
+                    Err(OperationError::SystemProtectedObject)
+                } else {
+                    acc
+                }
+            }
+        })?;
+
+        // if class: system, check the mods are "allowed"
         let system_pres = cand.iter().fold(false, |acc, c| {
             if acc {
                 acc
@@ -145,7 +170,10 @@ impl Plugin for Protected {
         cand.iter().fold(Ok(()), |acc, cand| match acc {
             Err(_) => acc,
             Ok(_) => {
-                if cand.attribute_value_pres("class", &PVCLASS_SYSTEM) {
+                if cand.attribute_value_pres("class", &PVCLASS_SYSTEM)
+                    || cand.attribute_value_pres("class", &PVCLASS_TOMBSTONE)
+                    || cand.attribute_value_pres("class", &PVCLASS_RECYCLED)
+                {
                     Err(OperationError::SystemProtectedObject)
                 } else {
                     acc

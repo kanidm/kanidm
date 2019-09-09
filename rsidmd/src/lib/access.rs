@@ -858,7 +858,7 @@ pub trait AccessControlsTransaction {
             })
             .collect();
 
-        audit_log!(audit, "Related acs -> {:?}", related_acp);
+        audit_log!(audit, "Related acc -> {:?}", related_acp);
 
         // For each entry
         let r = entries.iter().fold(true, |acc, e| {

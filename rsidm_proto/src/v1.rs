@@ -1,8 +1,6 @@
 use std::collections::BTreeMap;
+use std::fmt;
 use uuid::Uuid;
-
-#[cfg(feature = "rsidm_internal")]
-use actix::prelude::*;
 
 // These proto implementations are here because they have public definitions
 
@@ -120,6 +118,16 @@ pub struct UserAuthToken {
     // Should we allow supplemental ava's to be added on request?
 }
 
+impl fmt::Display for UserAuthToken {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "name: {}", self.name)?;
+        writeln!(f, "display: {}", self.displayname)?;
+        writeln!(f, "uuid: {}", self.uuid)?;
+        writeln!(f, "groups: {:?}", self.groups)?;
+        writeln!(f, "claims: {:?}", self.claims)
+    }
+}
+
 // UAT will need a downcast to Entry, which adds in the claims to the entry
 // for the purpose of filtering.
 
@@ -178,21 +186,12 @@ impl OperationResponse {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SearchRequest {
     pub filter: Filter,
-    pub user_uuid: String,
 }
 
 impl SearchRequest {
-    pub fn new(filter: Filter, user_uuid: &str) -> Self {
-        SearchRequest {
-            filter: filter,
-            user_uuid: user_uuid.to_string(),
-        }
+    pub fn new(filter: Filter) -> Self {
+        SearchRequest { filter: filter }
     }
-}
-
-#[cfg(feature = "rsidm_internal")]
-impl Message for SearchRequest {
-    type Result = Result<SearchResponse, OperationError>;
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -209,41 +208,23 @@ impl SearchResponse {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateRequest {
     pub entries: Vec<Entry>,
-    pub user_uuid: String,
 }
 
 impl CreateRequest {
-    pub fn new(entries: Vec<Entry>, user_uuid: &str) -> Self {
-        CreateRequest {
-            entries: entries,
-            user_uuid: user_uuid.to_string(),
-        }
+    pub fn new(entries: Vec<Entry>) -> Self {
+        CreateRequest { entries: entries }
     }
-}
-
-#[cfg(feature = "rsidm_internal")]
-impl Message for CreateRequest {
-    type Result = Result<OperationResponse, OperationError>;
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DeleteRequest {
     pub filter: Filter,
-    pub user_uuid: String,
 }
 
 impl DeleteRequest {
-    pub fn new(filter: Filter, user_uuid: &str) -> Self {
-        DeleteRequest {
-            filter: filter,
-            user_uuid: user_uuid.to_string(),
-        }
+    pub fn new(filter: Filter) -> Self {
+        DeleteRequest { filter: filter }
     }
-}
-
-#[cfg(feature = "rsidm_internal")]
-impl Message for DeleteRequest {
-    type Result = Result<OperationResponse, OperationError>;
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -251,22 +232,15 @@ pub struct ModifyRequest {
     // Probably needs a modlist?
     pub filter: Filter,
     pub modlist: ModifyList,
-    pub user_uuid: String,
 }
 
 impl ModifyRequest {
-    pub fn new(filter: Filter, modlist: ModifyList, user_uuid: &str) -> Self {
+    pub fn new(filter: Filter, modlist: ModifyList) -> Self {
         ModifyRequest {
             filter: filter,
             modlist: modlist,
-            user_uuid: user_uuid.to_string(),
         }
     }
-}
-
-#[cfg(feature = "rsidm_internal")]
-impl Message for ModifyRequest {
-    type Result = Result<OperationResponse, OperationError>;
 }
 
 // Login is a multi-step process potentially. First the client says who they
@@ -340,15 +314,11 @@ pub struct AuthResponse {
 
 pub struct SearchRecycledRequest {
     pub filter: Filter,
-    pub user_uuid: String,
 }
 
 impl SearchRecycledRequest {
-    pub fn new(filter: Filter, user_uuid: &str) -> Self {
-        SearchRecycledRequest {
-            filter: filter,
-            user_uuid: user_uuid.to_string(),
-        }
+    pub fn new(filter: Filter) -> Self {
+        SearchRecycledRequest { filter: filter }
     }
 }
 
@@ -356,15 +326,11 @@ impl SearchRecycledRequest {
 
 pub struct ReviveRecycledRequest {
     pub filter: Filter,
-    pub user_uuid: String,
 }
 
 impl ReviveRecycledRequest {
-    pub fn new(filter: Filter, user_uuid: &str) -> Self {
-        ReviveRecycledRequest {
-            filter: filter,
-            user_uuid: user_uuid.to_string(),
-        }
+    pub fn new(filter: Filter) -> Self {
+        ReviveRecycledRequest { filter: filter }
     }
 }
 
@@ -382,11 +348,15 @@ impl WhoamiRequest {
 pub struct WhoamiResponse {
     // Should we just embed the entry? Or destructure it?
     pub youare: Entry,
+    pub uat: UserAuthToken,
 }
 
 impl WhoamiResponse {
-    pub fn new(e: Entry) -> Self {
-        WhoamiResponse { youare: e }
+    pub fn new(e: Entry, uat: UserAuthToken) -> Self {
+        WhoamiResponse {
+            youare: e,
+            uat: uat,
+        }
     }
 }
 

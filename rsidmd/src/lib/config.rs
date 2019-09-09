@@ -32,7 +32,8 @@ impl Configuration {
             // log type
             // log path
             // TODO #63: default true in prd
-            secure_cookies: if cfg!(test) { false } else { true },
+            // secure_cookies: if cfg!(test) { false } else { true },
+            secure_cookies: false,
             cookie_key: [0; 32],
             server_id: [0; 4],
             integration_test_config: None,

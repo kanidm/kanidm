@@ -24,7 +24,7 @@ pub static JSON_ADMIN_V1: &'static str = r#"{
     },
     "state": null,
     "attrs": {
-        "class": ["account", "object"],
+        "class": ["account", "memberof", "object"],
         "name": ["admin"],
         "uuid": ["00000000-0000-0000-0000-000000000000"],
         "description": ["Builtin Admin account."],
@@ -80,7 +80,7 @@ pub static JSON_IDM_ADMINS_ACP_SEARCH_V1: &'static str = r#"{
         "acp_targetscope": [
             "{\"Pres\":\"class\"}"
         ],
-        "acp_search_attr": ["name", "class", "uuid"]
+        "acp_search_attr": ["name", "class", "uuid", "description", "displayname"]
     }
 }"#;
 
@@ -126,6 +126,40 @@ pub static JSON_IDM_SELF_ACP_READ_V1: &'static str = r#"{
             "\"Self\""
         ],
         "acp_search_attr": ["name", "uuid"]
+    }
+}"#;
+
+pub static _UUID_IDM_ADMINS_ACP_MANAGE_V1: &'static str = "00000000-0000-0000-0000-ffffff000005";
+pub static JSON_IDM_ADMINS_ACP_MANAGE_V1: &'static str = r#"{
+    "valid": {
+        "uuid": "00000000-0000-0000-0000-ffffff000005"
+    },
+    "state": null,
+    "attrs": {
+        "class": [
+            "object",
+            "access_control_profile",
+            "access_control_modify",
+            "access_control_create",
+            "access_control_delete",
+            "access_control_search"
+        ],
+        "name": ["idm_admins_acp_manage"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000005"],
+        "description": ["Builtin IDM Administrators Access Controls to manage the install."],
+        "acp_enable": ["true"],
+        "acp_receiver": [
+            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000001\"]}"
+        ],
+        "acp_targetscope": [
+            "{\"Pres\":\"class\"}"
+        ],
+        "acp_search_attr": ["name", "class", "uuid", "classname", "attributename"],
+        "acp_modify_class": ["person"],
+        "acp_modify_removedattr": ["class", "displayname", "name", "description"],
+        "acp_modify_presentattr": ["class", "displayname", "name", "description"],
+        "acp_create_class": ["object", "person", "account"],
+        "acp_create_attr": ["name", "class", "description", "displayname"]
     }
 }"#;
 

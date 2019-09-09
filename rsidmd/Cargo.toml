@@ -17,7 +17,7 @@ path = "src/server/main.rs"
 
 
 [dependencies]
-rsidm_proto = { path = "../rsidm_proto", features = ["rsidm_internal"] }
+rsidm_proto = { path = "../rsidm_proto" }
 
 actix = "0.7"
 actix-web = "0.7"

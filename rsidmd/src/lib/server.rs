@@ -13,11 +13,11 @@ use crate::access::{
     AccessControlsWriteTransaction,
 };
 use crate::constants::{
-    JSON_ADMIN_V1, JSON_ANONYMOUS_V1, JSON_IDM_ADMINS_ACP_REVIVE_V1, JSON_IDM_ADMINS_ACP_SEARCH_V1,
-    JSON_IDM_ADMINS_V1, JSON_IDM_SELF_ACP_READ_V1, JSON_SCHEMA_ATTR_DISPLAYNAME,
-    JSON_SCHEMA_ATTR_MAIL, JSON_SCHEMA_ATTR_PRIMARY_CREDENTIAL, JSON_SCHEMA_ATTR_SSH_PUBLICKEY,
-    JSON_SCHEMA_CLASS_ACCOUNT, JSON_SCHEMA_CLASS_GROUP, JSON_SCHEMA_CLASS_PERSON,
-    JSON_SYSTEM_INFO_V1, UUID_DOES_NOT_EXIST,
+    JSON_ADMIN_V1, JSON_ANONYMOUS_V1, JSON_IDM_ADMINS_ACP_MANAGE_V1, JSON_IDM_ADMINS_ACP_REVIVE_V1,
+    JSON_IDM_ADMINS_ACP_SEARCH_V1, JSON_IDM_ADMINS_V1, JSON_IDM_SELF_ACP_READ_V1,
+    JSON_SCHEMA_ATTR_DISPLAYNAME, JSON_SCHEMA_ATTR_MAIL, JSON_SCHEMA_ATTR_PRIMARY_CREDENTIAL,
+    JSON_SCHEMA_ATTR_SSH_PUBLICKEY, JSON_SCHEMA_CLASS_ACCOUNT, JSON_SCHEMA_CLASS_GROUP,
+    JSON_SCHEMA_CLASS_PERSON, JSON_SYSTEM_INFO_V1, UUID_DOES_NOT_EXIST,
 };
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryReduced, EntryValid};
 use crate::event::{
@@ -944,6 +944,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 Err(e) => return Err(e),
             };
 
+        if ts.len() == 0 {
+            audit_log!(au, "No Tombstones present - purge operation success");
+            return Ok(());
+        }
+
         // TODO #68: Has an appropriate amount of time/condition past (ie replication events?)
 
         // Delete them
@@ -974,6 +979,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 Ok(r) => r,
                 Err(e) => return Err(e),
             };
+
+        if rc.len() == 0 {
+            audit_log!(au, "No recycled present - purge operation success");
+            return Ok(());
+        }
 
         // Modify them to strip all avas except uuid
         let tombstone_cand = rc.iter().map(|e| e.to_tombstone()).collect();
@@ -1515,6 +1525,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 self.internal_migrate_or_create_str(&mut audit_an, JSON_IDM_ADMINS_ACP_REVIVE_V1)
             })
             .and_then(|_| {
+                self.internal_migrate_or_create_str(&mut audit_an, JSON_IDM_ADMINS_ACP_MANAGE_V1)
+            })
+            .and_then(|_| {
                 self.internal_migrate_or_create_str(&mut audit_an, JSON_IDM_SELF_ACP_READ_V1)
             });
         audit.append_scope(audit_an);
@@ -1689,17 +1702,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::constants::{JSON_ADMIN_V1, STR_UUID_ADMIN, UUID_ADMIN};
+    use crate::constants::{JSON_ADMIN_V1, UUID_ADMIN};
     use crate::credential::Credential;
     use crate::entry::{Entry, EntryInvalid, EntryNew};
     use crate::event::{CreateEvent, DeleteEvent, ModifyEvent, ReviveRecycledEvent, SearchEvent};
     use crate::modify::{Modify, ModifyList};
     use crate::server::QueryServerTransaction;
     use crate::value::{PartialValue, Value};
-    use rsidm_proto::v1::Filter as ProtoFilter;
-    use rsidm_proto::v1::Modify as ProtoModify;
-    use rsidm_proto::v1::ModifyList as ProtoModifyList;
-    use rsidm_proto::v1::{DeleteRequest, ModifyRequest, ReviveRecycledRequest};
     use rsidm_proto::v1::{OperationError, SchemaError};
     use uuid::Uuid;
 
@@ -2079,31 +2088,23 @@ mod tests {
                 .internal_search_uuid(audit, &UUID_ADMIN)
                 .expect("failed");
 
-            let filt_ts = ProtoFilter::Eq("class".to_string(), "tombstone".to_string());
-
             let filt_i_ts = filter_all!(f_eq("class", PartialValue::new_class("tombstone")));
 
             // Create fake external requests. Probably from admin later
             // Should we do this with impersonate instead of using the external
-            let me_ts = ModifyEvent::from_request(
-                audit,
-                ModifyRequest::new(
-                    filt_ts.clone(),
-                    ProtoModifyList::new_list(vec![ProtoModify::Present(
+            let me_ts = unsafe {
+                ModifyEvent::new_impersonate_entry(
+                    admin.clone(),
+                    filt_i_ts.clone(),
+                    ModifyList::new_list(vec![Modify::Present(
                         "class".to_string(),
-                        "tombstone".to_string(),
+                        Value::new_class("tombstone"),
                     )]),
-                    STR_UUID_ADMIN,
-                ),
-                &server_txn,
-            )
-            .expect("modify event create failed");
-            let de_ts = DeleteEvent::from_request(
-                audit,
-                DeleteRequest::new(filt_ts.clone(), STR_UUID_ADMIN),
-                &server_txn,
-            )
-            .expect("delete event create failed");
+                )
+            };
+
+            let de_ts =
+                unsafe { DeleteEvent::new_impersonate_entry(admin.clone(), filt_i_ts.clone()) };
             let se_ts = unsafe { SearchEvent::new_ext_impersonate_entry(admin, filt_i_ts.clone()) };
 
             // First, create a tombstone
@@ -2163,8 +2164,6 @@ mod tests {
                 .internal_search_uuid(audit, &UUID_ADMIN)
                 .expect("failed");
 
-            let filt_rc = ProtoFilter::Eq("class".to_string(), "recycled".to_string());
-
             let filt_i_rc = filter_all!(f_eq("class", PartialValue::new_class("recycled")));
 
             let filt_i_ts = filter_all!(f_eq("class", PartialValue::new_class("tombstone")));
@@ -2172,40 +2171,32 @@ mod tests {
             let filt_i_per = filter_all!(f_eq("class", PartialValue::new_class("person")));
 
             // Create fake external requests. Probably from admin later
-            let me_rc = ModifyEvent::from_request(
-                audit,
-                ModifyRequest::new(
-                    filt_rc.clone(),
-                    ProtoModifyList::new_list(vec![ProtoModify::Present(
+            let me_rc = unsafe {
+                ModifyEvent::new_impersonate_entry(
+                    admin.clone(),
+                    filt_i_rc.clone(),
+                    ModifyList::new_list(vec![Modify::Present(
                         "class".to_string(),
-                        "recycled".to_string(),
+                        Value::new_class("recycled"),
                     )]),
-                    STR_UUID_ADMIN,
-                ),
-                &server_txn,
-            )
-            .expect("modify event create failed");
-            let de_rc = DeleteEvent::from_request(
-                audit,
-                DeleteRequest::new(filt_rc.clone(), STR_UUID_ADMIN),
-                &server_txn,
-            )
-            .expect("delete event create failed");
+                )
+            };
+
+            let de_rc =
+                unsafe { DeleteEvent::new_impersonate_entry(admin.clone(), filt_i_rc.clone()) };
+
             let se_rc =
                 unsafe { SearchEvent::new_ext_impersonate_entry(admin.clone(), filt_i_rc.clone()) };
 
             let sre_rc =
-                unsafe { SearchEvent::new_rec_impersonate_entry(admin, filt_i_rc.clone()) };
+                unsafe { SearchEvent::new_rec_impersonate_entry(admin.clone(), filt_i_rc.clone()) };
 
-            let rre_rc = ReviveRecycledEvent::from_request(
-                audit,
-                ReviveRecycledRequest::new(
-                    ProtoFilter::Eq("name".to_string(), "testperson1".to_string()),
-                    STR_UUID_ADMIN,
-                ),
-                &server_txn,
-            )
-            .expect("revive recycled create failed");
+            let rre_rc = unsafe {
+                ReviveRecycledEvent::new_impersonate_entry(
+                    admin,
+                    filter_all!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
+                )
+            };
 
             // Create some recycled objects
             let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(

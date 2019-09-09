@@ -3,8 +3,8 @@ use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryReduced, 
 use crate::filter::{Filter, FilterValid};
 use rsidm_proto::v1::Entry as ProtoEntry;
 use rsidm_proto::v1::{
-    AuthCredential, AuthResponse, AuthState, AuthStep, CreateRequest, DeleteRequest, ModifyRequest,
-    ReviveRecycledRequest, SearchRequest, SearchResponse, UserAuthToken, WhoamiResponse,
+    AuthCredential, AuthResponse, AuthState, AuthStep, SearchResponse, UserAuthToken,
+    WhoamiResponse,
 };
 // use error::OperationError;
 use crate::modify::{ModifyList, ModifyValid};
@@ -13,7 +13,7 @@ use crate::server::{
 };
 use rsidm_proto::v1::OperationError;
 
-use crate::actors::v1::AuthMessage;
+use crate::actors::v1::{AuthMessage, CreateMessage, DeleteMessage, ModifyMessage, SearchMessage};
 // Bring in schematransaction trait for validate
 // use crate::schema::SchemaTransaction;
 
@@ -22,8 +22,6 @@ use crate::actors::v1::AuthMessage;
 use crate::filter::FilterInvalid;
 #[cfg(test)]
 use crate::modify::ModifyInvalid;
-#[cfg(test)]
-use rsidm_proto::v1::SearchRecycledRequest;
 
 use actix::prelude::*;
 use uuid::Uuid;
@@ -120,6 +118,27 @@ impl Event {
         })
     }
 
+    pub fn from_rw_uat(
+        audit: &mut AuditScope,
+        qs: &QueryServerWriteTransaction,
+        uat: Option<UserAuthToken>,
+    ) -> Result<Self, OperationError> {
+        audit_log!(audit, "from_rw_uat -> {:?}", uat);
+        let uat = uat.ok_or(OperationError::NotAuthenticated)?;
+        let u = try_audit!(
+            audit,
+            Uuid::parse_str(uat.uuid.as_str()).map_err(|_| OperationError::InvalidUuid)
+        );
+
+        let e = try_audit!(audit, qs.internal_search_uuid(audit, &u));
+        // TODO #64: Now apply claims from the uat into the Entry
+        // to allow filtering.
+
+        Ok(Event {
+            origin: EventOrigin::User(e),
+        })
+    }
+
     pub fn from_rw_request(
         audit: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
@@ -186,14 +205,14 @@ pub struct SearchEvent {
 }
 
 impl SearchEvent {
-    pub fn from_request(
+    pub fn from_message(
         audit: &mut AuditScope,
-        request: SearchRequest,
+        msg: SearchMessage,
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        match Filter::from_ro(audit, &request.filter, qs) {
+        match Filter::from_ro(audit, &msg.req.filter, qs) {
             Ok(f) => Ok(SearchEvent {
-                event: Event::from_ro_request(audit, qs, request.user_uuid.as_str())?,
+                event: Event::from_ro_uat(audit, qs, msg.uat)?,
                 // We do need to do this twice to account for the ignore_hidden
                 // changes.
                 filter: f
@@ -259,6 +278,7 @@ impl SearchEvent {
         }
     }
 
+    /*
     #[cfg(test)]
     #[allow(dead_code)]
     pub fn from_rec_request(
@@ -268,7 +288,7 @@ impl SearchEvent {
     ) -> Result<Self, OperationError> {
         match Filter::from_ro(audit, &request.filter, qs) {
             Ok(f) => Ok(SearchEvent {
-                event: Event::from_ro_request(audit, qs, request.user_uuid.as_str())?,
+                event: Event::from_ro_uat(audit, qs, msg.uat)?,
                 filter: f
                     .clone()
                     .to_recycled()
@@ -281,6 +301,7 @@ impl SearchEvent {
             Err(e) => Err(e),
         }
     }
+    */
 
     #[cfg(test)]
     /* Impersonate a request for recycled objects */
@@ -340,12 +361,13 @@ pub struct CreateEvent {
 }
 
 impl CreateEvent {
-    pub fn from_request(
+    pub fn from_message(
         audit: &mut AuditScope,
-        request: CreateRequest,
+        msg: CreateMessage,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        let rentries: Result<Vec<_>, _> = request
+        let rentries: Result<Vec<_>, _> = msg
+            .req
             .entries
             .iter()
             .map(|e| Entry::from_proto_entry(audit, e, qs))
@@ -355,7 +377,7 @@ impl CreateEvent {
                 // From ProtoEntry -> Entry
                 // What is the correct consuming iterator here? Can we
                 // even do that?
-                event: Event::from_rw_request(audit, qs, request.user_uuid.as_str())?,
+                event: Event::from_rw_uat(audit, qs, msg.uat)?,
                 entries: entries,
             }),
             Err(e) => Err(e),
@@ -421,14 +443,14 @@ pub struct DeleteEvent {
 }
 
 impl DeleteEvent {
-    pub fn from_request(
+    pub fn from_message(
         audit: &mut AuditScope,
-        request: DeleteRequest,
+        msg: DeleteMessage,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        match Filter::from_rw(audit, &request.filter, qs) {
+        match Filter::from_rw(audit, &msg.req.filter, qs) {
             Ok(f) => Ok(DeleteEvent {
-                event: Event::from_rw_request(audit, qs, request.user_uuid.as_str())?,
+                event: Event::from_rw_uat(audit, qs, msg.uat)?,
                 filter: f
                     .clone()
                     .to_ignore_hidden()
@@ -439,6 +461,18 @@ impl DeleteEvent {
                     .map_err(|e| OperationError::SchemaViolation(e))?,
             }),
             Err(e) => Err(e),
+        }
+    }
+
+    #[cfg(test)]
+    pub unsafe fn new_impersonate_entry(
+        e: Entry<EntryValid, EntryCommitted>,
+        filter: Filter<FilterInvalid>,
+    ) -> Self {
+        DeleteEvent {
+            event: Event::from_impersonate_entry(e),
+            filter: filter.clone().to_valid(),
+            filter_orig: filter.to_valid(),
         }
     }
 
@@ -480,15 +514,15 @@ pub struct ModifyEvent {
 }
 
 impl ModifyEvent {
-    pub fn from_request(
+    pub fn from_message(
         audit: &mut AuditScope,
-        request: ModifyRequest,
+        msg: ModifyMessage,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        match Filter::from_rw(audit, &request.filter, qs) {
-            Ok(f) => match ModifyList::from(audit, &request.modlist, qs) {
+        match Filter::from_rw(audit, &msg.req.filter, qs) {
+            Ok(f) => match ModifyList::from(audit, &msg.req.modlist, qs) {
                 Ok(m) => Ok(ModifyEvent {
-                    event: Event::from_rw_request(audit, qs, request.user_uuid.as_str())?,
+                    event: Event::from_rw_uat(audit, qs, msg.uat)?,
                     filter: f
                         .clone()
                         .to_ignore_hidden()
@@ -538,6 +572,20 @@ impl ModifyEvent {
     ) -> Self {
         ModifyEvent {
             event: Event::from_impersonate_entry_ser(e),
+            filter: filter.clone().to_valid(),
+            filter_orig: filter.to_valid(),
+            modlist: modlist.to_valid(),
+        }
+    }
+
+    #[cfg(test)]
+    pub unsafe fn new_impersonate_entry(
+        e: Entry<EntryValid, EntryCommitted>,
+        filter: Filter<FilterInvalid>,
+        modlist: ModifyList<ModifyInvalid>,
+    ) -> Self {
+        ModifyEvent {
+            event: Event::from_impersonate_entry(e),
             filter: filter.clone().to_valid(),
             filter_orig: filter.to_valid(),
             modlist: modlist.to_valid(),
@@ -703,18 +751,21 @@ impl AuthResult {
 
 pub struct WhoamiResult {
     youare: ProtoEntry,
+    uat: UserAuthToken,
 }
 
 impl WhoamiResult {
-    pub fn new(e: Entry<EntryReduced, EntryCommitted>) -> Self {
+    pub fn new(e: Entry<EntryReduced, EntryCommitted>, uat: UserAuthToken) -> Self {
         WhoamiResult {
             youare: e.into_pe(),
+            uat: uat,
         }
     }
 
     pub fn response(self) -> WhoamiResponse {
         WhoamiResponse {
             youare: self.youare,
+            uat: self.uat,
         }
     }
 }
@@ -769,20 +820,33 @@ impl Message for ReviveRecycledEvent {
 }
 
 impl ReviveRecycledEvent {
-    pub fn from_request(
+    /*
+    pub fn from_message(
         audit: &mut AuditScope,
-        request: ReviveRecycledRequest,
+        msg: ReviveRecycledMessage,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        match Filter::from_rw(audit, &request.filter, qs) {
+        match Filter::from_rw(audit, &msg.req.filter, qs) {
             Ok(f) => Ok(ReviveRecycledEvent {
-                event: Event::from_rw_request(audit, qs, request.user_uuid.as_str())?,
+                event: Event::from_rw_uat(audit, qs, msg.uat)?,
                 filter: f
                     .to_recycled()
                     .validate(qs.get_schema())
                     .map_err(|e| OperationError::SchemaViolation(e))?,
             }),
             Err(e) => Err(e),
+        }
+    }
+    */
+
+    #[cfg(test)]
+    pub unsafe fn new_impersonate_entry(
+        e: Entry<EntryValid, EntryCommitted>,
+        filter: Filter<FilterInvalid>,
+    ) -> Self {
+        ReviveRecycledEvent {
+            event: Event::from_impersonate_entry(e),
+            filter: filter.to_valid(),
         }
     }
 }

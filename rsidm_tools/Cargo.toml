@@ -10,4 +10,6 @@ path = "src/main.rs"
 
 [dependencies]
 rsidm_client = { path = "../rsidm_client" }
+rpassword = "0.4"
+structopt = { version = "0.2", default-features = false }
 

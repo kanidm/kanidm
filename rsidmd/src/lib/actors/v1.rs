@@ -61,6 +61,66 @@ impl Message for AuthMessage {
     type Result = Result<AuthResponse, OperationError>;
 }
 
+pub struct CreateMessage {
+    pub uat: Option<UserAuthToken>,
+    pub req: CreateRequest,
+}
+
+impl CreateMessage {
+    pub fn new(uat: Option<UserAuthToken>, req: CreateRequest) -> Self {
+        CreateMessage { uat: uat, req: req }
+    }
+}
+
+impl Message for CreateMessage {
+    type Result = Result<OperationResponse, OperationError>;
+}
+
+pub struct DeleteMessage {
+    pub uat: Option<UserAuthToken>,
+    pub req: DeleteRequest,
+}
+
+impl DeleteMessage {
+    pub fn new(uat: Option<UserAuthToken>, req: DeleteRequest) -> Self {
+        DeleteMessage { uat: uat, req: req }
+    }
+}
+
+impl Message for DeleteMessage {
+    type Result = Result<OperationResponse, OperationError>;
+}
+
+pub struct ModifyMessage {
+    pub uat: Option<UserAuthToken>,
+    pub req: ModifyRequest,
+}
+
+impl ModifyMessage {
+    pub fn new(uat: Option<UserAuthToken>, req: ModifyRequest) -> Self {
+        ModifyMessage { uat: uat, req: req }
+    }
+}
+
+impl Message for ModifyMessage {
+    type Result = Result<OperationResponse, OperationError>;
+}
+
+pub struct SearchMessage {
+    pub uat: Option<UserAuthToken>,
+    pub req: SearchRequest,
+}
+
+impl SearchMessage {
+    pub fn new(uat: Option<UserAuthToken>, req: SearchRequest) -> Self {
+        SearchMessage { uat: uat, req: req }
+    }
+}
+
+impl Message for SearchMessage {
+    type Result = Result<SearchResponse, OperationError>;
+}
+
 pub struct QueryServerV1 {
     log: actix::Addr<EventLog>,
     qs: QueryServer,
@@ -98,22 +158,22 @@ impl QueryServerV1 {
     }
 }
 
-// The server only recieves "Event" structures, which
+// The server only recieves "Message" structures, which
 // are whole self contained DB operations with all parsing
 // required complete. We still need to do certain validation steps, but
 // at this point our just is just to route to do_<action>
 
-impl Handler<SearchRequest> for QueryServerV1 {
+impl Handler<SearchMessage> for QueryServerV1 {
     type Result = Result<SearchResponse, OperationError>;
 
-    fn handle(&mut self, msg: SearchRequest, _: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, msg: SearchMessage, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("search");
         let res = audit_segment!(&mut audit, || {
             // Begin a read
             let qs_read = self.qs.read();
 
             // Make an event from the request
-            let srch = match SearchEvent::from_request(&mut audit, msg, &qs_read) {
+            let srch = match SearchEvent::from_message(&mut audit, msg, &qs_read) {
                 Ok(s) => s,
                 Err(e) => {
                     audit_log!(audit, "Failed to begin search: {:?}", e);
@@ -138,15 +198,15 @@ impl Handler<SearchRequest> for QueryServerV1 {
     }
 }
 
-impl Handler<CreateRequest> for QueryServerV1 {
+impl Handler<CreateMessage> for QueryServerV1 {
     type Result = Result<OperationResponse, OperationError>;
 
-    fn handle(&mut self, msg: CreateRequest, _: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, msg: CreateMessage, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("create");
         let res = audit_segment!(&mut audit, || {
             let mut qs_write = self.qs.write();
 
-            let crt = match CreateEvent::from_request(&mut audit, msg, &qs_write) {
+            let crt = match CreateEvent::from_message(&mut audit, msg, &qs_write) {
                 Ok(c) => c,
                 Err(e) => {
                     audit_log!(audit, "Failed to begin create: {:?}", e);
@@ -166,14 +226,14 @@ impl Handler<CreateRequest> for QueryServerV1 {
     }
 }
 
-impl Handler<ModifyRequest> for QueryServerV1 {
+impl Handler<ModifyMessage> for QueryServerV1 {
     type Result = Result<OperationResponse, OperationError>;
 
-    fn handle(&mut self, msg: ModifyRequest, _: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, msg: ModifyMessage, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("modify");
         let res = audit_segment!(&mut audit, || {
             let mut qs_write = self.qs.write();
-            let mdf = match ModifyEvent::from_request(&mut audit, msg, &qs_write) {
+            let mdf = match ModifyEvent::from_message(&mut audit, msg, &qs_write) {
                 Ok(m) => m,
                 Err(e) => {
                     audit_log!(audit, "Failed to begin modify: {:?}", e);
@@ -192,15 +252,15 @@ impl Handler<ModifyRequest> for QueryServerV1 {
     }
 }
 
-impl Handler<DeleteRequest> for QueryServerV1 {
+impl Handler<DeleteMessage> for QueryServerV1 {
     type Result = Result<OperationResponse, OperationError>;
 
-    fn handle(&mut self, msg: DeleteRequest, _: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, msg: DeleteMessage, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("delete");
         let res = audit_segment!(&mut audit, || {
             let mut qs_write = self.qs.write();
 
-            let del = match DeleteEvent::from_request(&mut audit, msg, &qs_write) {
+            let del = match DeleteEvent::from_message(&mut audit, msg, &qs_write) {
                 Ok(d) => d,
                 Err(e) => {
                     audit_log!(audit, "Failed to begin delete: {:?}", e);
@@ -285,6 +345,8 @@ impl Handler<WhoamiMessage> for QueryServerV1 {
             // trigger the failure, but if we can manage to work out async
             // then move this to core.rs, and don't allow Option<UAT> to get
             // this far.
+            let uat = msg.uat.clone().ok_or(OperationError::NotAuthenticated)?;
+
             let srch = match SearchEvent::from_whoami_request(&mut audit, msg.uat, &qs_read) {
                 Ok(s) => s,
                 Err(e) => {
@@ -303,7 +365,7 @@ impl Handler<WhoamiMessage> for QueryServerV1 {
                         1 => {
                             let e = entries.pop().expect("Entry length mismatch!!!");
                             // Now convert to a response, and return
-                            let wr = WhoamiResult::new(e);
+                            let wr = WhoamiResult::new(e, uat);
                             Ok(wr.response())
                         }
                         // Somehow we matched multiple, which should be impossible.
