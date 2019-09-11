@@ -120,10 +120,12 @@ fn test_server_whoami_anonymous() {
         assert!(res.is_ok());
 
         // Now do a whoami.
-        let post_res = rsclient.whoami().unwrap();
-        assert!(post_res.is_some());
-        // TODO: Now unwrap and ensure anony
-        println!("{:?}", post_res);
+        let (_e, uat) = match rsclient.whoami().unwrap() {
+            Some((e, uat)) => (e, uat),
+            None => panic!(),
+        };
+        debug!("{}", uat);
+        assert!(uat.name == "anonymous");
     });
 }
 
@@ -139,10 +141,12 @@ fn test_server_whoami_admin_simple_password() {
         assert!(res.is_ok());
 
         // Now do a whoami.
-        let post_res = rsclient.whoami().unwrap();
-        assert!(post_res.is_some());
-        // TODO: Now unwrap and ensure anony
-        debug!("{:?}", post_res);
+        let (_e, uat) = match rsclient.whoami().unwrap() {
+            Some((e, uat)) => (e, uat),
+            None => panic!(),
+        };
+        debug!("{}", uat);
+        assert!(uat.name == "admin");
     });
 }
 
