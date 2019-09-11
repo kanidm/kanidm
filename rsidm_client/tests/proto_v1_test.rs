@@ -71,7 +71,7 @@ fn run_test(test_fn: fn(RsidmClient) -> ()) {
 
     // Setup the client, and the address we selected.
     let addr = format!("http://127.0.0.1:{}", port);
-    let rsclient = RsidmClient::new(addr.as_str());
+    let rsclient = RsidmClient::new(addr.as_str(), None);
 
     test_fn(rsclient);
 

@@ -11,8 +11,8 @@ extern crate log;
 
 use rsidm::config::Configuration;
 use rsidm::core::{
-    backup_server_core, create_server_core, recover_account_core, restore_server_core,
-    verify_server_core, reset_sid_core
+    backup_server_core, create_server_core, recover_account_core, reset_sid_core,
+    restore_server_core, verify_server_core,
 };
 
 use std::path::PathBuf;
@@ -34,6 +34,10 @@ struct ServerOpt {
     cert_path: Option<PathBuf>,
     #[structopt(parse(from_os_str), short = "k", long = "key")]
     key_path: Option<PathBuf>,
+    #[structopt(short = "r", long = "domain")]
+    domain: String,
+    #[structopt(short = "b", long = "bindaddr")]
+    bind: Option<String>,
     #[structopt(flatten)]
     commonopts: CommonOpt,
 }
@@ -113,6 +117,8 @@ fn main() {
 
             config.update_db_path(&sopt.commonopts.db_path);
             config.update_tls(&sopt.ca_path, &sopt.cert_path, &sopt.key_path);
+            config.update_bind(&sopt.bind);
+            config.domain = sopt.domain.clone();
 
             let sys = actix::System::new("rsidm-server");
             create_server_core(config);

@@ -49,7 +49,7 @@ let's encrypt, but if this is not possible, please use our insecure cert tool:
 You can now build and run the server with:
 
     cd rsidmd
-    cargo run -- server -D /tmp/kanidm.db -C ../insecure/ca.pem -c ../insecure/cert.pem -k ../insecure/key.pem
+    cargo run -- server -D /tmp/kanidm.db -C ../insecure/ca.pem -c ../insecure/cert.pem -k ../insecure/key.pem --domain localhost --bindaddr 127.0.0.1:8080
 
 In a new terminal, you can now build and run the client tools with:
 

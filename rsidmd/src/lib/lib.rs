@@ -12,8 +12,8 @@ extern crate lazy_static;
 // This has to be before be so the import order works
 #[macro_use]
 mod macros;
-mod utils;
 mod crypto;
+mod utils;
 #[macro_use]
 mod async_log;
 #[macro_use]

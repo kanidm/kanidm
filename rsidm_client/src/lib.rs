@@ -40,13 +40,10 @@ impl RsidmClient {
             reqwest::Certificate::from_pem(&buf).expect("Failed to parse ca")
         });
 
-        let client_builder = reqwest::Client::builder()
-            .cookie_store(true);
+        let client_builder = reqwest::Client::builder().cookie_store(true);
 
         let client_builder = match ca {
-            Some(cert) => {
-                client_builder.add_root_certificate(cert)
-            }
+            Some(cert) => client_builder.add_root_certificate(cert),
             None => client_builder,
         };
 

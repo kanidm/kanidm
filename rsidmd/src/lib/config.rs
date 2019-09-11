@@ -1,7 +1,7 @@
-use rand::prelude::*;
-use std::path::PathBuf;
-use std::fmt;
 use num_cpus;
+use rand::prelude::*;
+use std::fmt;
+use std::path::PathBuf;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct IntegrationTestConfig {
@@ -38,7 +38,13 @@ impl fmt::Display for Configuration {
             .and_then(|_| write!(f, "max request size: {}b, ", self.maximum_request))
             .and_then(|_| write!(f, "secure cookies: {}, ", self.secure_cookies))
             .and_then(|_| write!(f, "with TLS: {}, ", self.tls_config.is_some()))
-            .and_then(|_| write!(f, "integration mode: {}", self.integration_test_config.is_some()))
+            .and_then(|_| {
+                write!(
+                    f,
+                    "integration mode: {}",
+                    self.integration_test_config.is_some()
+                )
+            })
     }
 }
 
@@ -73,7 +79,19 @@ impl Configuration {
         }
     }
 
-    pub fn update_tls(&mut self, ca: &Option<PathBuf>, cert: &Option<PathBuf>, key: &Option<PathBuf>) {
+    pub fn update_bind(&mut self, b: &Option<String>) {
+        self.address = b
+            .as_ref()
+            .map(|s| s.clone())
+            .unwrap_or_else(|| String::from("127.0.0.1:8080"));
+    }
+
+    pub fn update_tls(
+        &mut self,
+        ca: &Option<PathBuf>,
+        cert: &Option<PathBuf>,
+        key: &Option<PathBuf>,
+    ) {
         match (ca, cert, key) {
             (None, None, None) => {}
             (Some(cap), Some(certp), Some(keyp)) => {
@@ -98,13 +116,11 @@ impl Configuration {
                         std::process::exit(1);
                     }
                 };
-                self.tls_config = Some(
-                    TlsConfiguration {
-                        ca: cas,
-                        cert: certs,
-                        key: keys,
-                    }
-                )
+                self.tls_config = Some(TlsConfiguration {
+                    ca: cas,
+                    cert: certs,
+                    key: keys,
+                })
             }
             _ => {
                 error!("Invalid TLS configuration - must provide ca, cert and key!");
@@ -112,6 +128,4 @@ impl Configuration {
             }
         }
     }
-
-
 }

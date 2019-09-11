@@ -19,12 +19,12 @@ use crate::actors::v1::{
 use crate::async_log;
 use crate::audit::AuditScope;
 use crate::be::{Backend, BackendTransaction};
+use crate::crypto::setup_tls;
 use crate::idm::server::IdmServer;
 use crate::interval::IntervalActor;
 use crate::schema::Schema;
 use crate::server::QueryServer;
 use crate::utils::SID;
-use crate::crypto::setup_tls;
 use rsidm_proto::v1::OperationError;
 use rsidm_proto::v1::{
     AuthRequest, AuthState, CreateRequest, DeleteRequest, ModifyRequest, SearchRequest,
@@ -606,9 +606,7 @@ pub fn create_server_core(config: Configuration) {
     });
 
     let tls_aws_builder = match opt_tls_params {
-        Some(tls_params) => {
-            aws_builder.bind_ssl(config.address, tls_params)
-        }
+        Some(tls_params) => aws_builder.bind_ssl(config.address, tls_params),
         None => {
             warn!("Starting WITHOUT TLS parameters. This may cause authentication to fail!");
             aws_builder.bind(config.address)

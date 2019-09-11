@@ -2,13 +2,13 @@
 
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
+use rand::prelude::*;
 use rusqlite::types::ToSql;
 use rusqlite::NO_PARAMS;
 use serde_cbor;
 use serde_json;
 use std::convert::TryFrom;
 use std::fs;
-use rand::prelude::*;
 
 use crate::audit::AuditScope;
 use crate::be::dbentry::DbEntry;
@@ -618,11 +618,11 @@ impl BackendWriteTransaction {
 
     fn get_db_sid(&self) -> SID {
         // Try to get a value.
-        match self.conn.query_row_named(
-            "SELECT data FROM db_sid WHERE id = 1",
-            &[],
-            |row| row.get(0),
-        ) {
+        match self
+            .conn
+            .query_row_named("SELECT data FROM db_sid WHERE id = 1", &[], |row| {
+                row.get(0)
+            }) {
             Ok(e) => {
                 let y: Vec<u8> = e;
                 assert!(y.len() == 4);
@@ -633,9 +633,7 @@ impl BackendWriteTransaction {
 
                 sid
             }
-            Err(_) => {
-                self.generate_db_sid()
-            }
+            Err(_) => self.generate_db_sid(),
         }
     }
 
@@ -648,10 +646,12 @@ impl BackendWriteTransaction {
         let mut data = Vec::new();
         data.extend_from_slice(&nsid);
 
-        self.conn.execute_named(
-            "INSERT OR REPLACE INTO db_sid (id, data) VALUES(:id, :sid)",
-            &[(":id", &1), (":sid", &data)],
-        ).expect("Failed to allocate sid!");
+        self.conn
+            .execute_named(
+                "INSERT OR REPLACE INTO db_sid (id, data) VALUES(:id, :sid)",
+                &[(":id", &1), (":sid", &data)],
+            )
+            .expect("Failed to allocate sid!");
 
         nsid
     }
