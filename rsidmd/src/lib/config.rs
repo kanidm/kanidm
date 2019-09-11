@@ -1,4 +1,3 @@
-use crate::utils::SID;
 use rand::prelude::*;
 use std::path::PathBuf;
 use std::fmt;
@@ -27,7 +26,6 @@ pub struct Configuration {
     pub secure_cookies: bool,
     pub tls_config: Option<TlsConfiguration>,
     pub cookie_key: [u8; 32],
-    pub server_id: SID,
     pub integration_test_config: Option<Box<IntegrationTestConfig>>,
 }
 
@@ -40,8 +38,7 @@ impl fmt::Display for Configuration {
             .and_then(|_| write!(f, "max request size: {}b, ", self.maximum_request))
             .and_then(|_| write!(f, "secure cookies: {}, ", self.secure_cookies))
             .and_then(|_| write!(f, "with TLS: {}, ", self.tls_config.is_some()))
-            .and_then(|_| write!(f, "server_id: {:?}, ", self.server_id))
-        .and_then(|_| write!(f, "integration mode: {}", self.integration_test_config.is_some()))
+            .and_then(|_| write!(f, "integration mode: {}", self.integration_test_config.is_some()))
     }
 }
 
@@ -59,17 +56,10 @@ impl Configuration {
             secure_cookies: if cfg!(test) { false } else { true },
             tls_config: None,
             cookie_key: [0; 32],
-            server_id: [0; 4],
             integration_test_config: None,
         };
         let mut rng = StdRng::from_entropy();
-
-        // Does the sid file exist?
-        // yes? Read from it
-        // no? write it after we gen the sid.
-
         rng.fill(&mut c.cookie_key);
-        rng.fill(&mut c.server_id);
         c
     }
 

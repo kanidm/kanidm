@@ -12,7 +12,7 @@ extern crate log;
 use rsidm::config::Configuration;
 use rsidm::core::{
     backup_server_core, create_server_core, recover_account_core, restore_server_core,
-    verify_server_core,
+    verify_server_core, reset_sid_core
 };
 
 use std::path::PathBuf;
@@ -74,13 +74,15 @@ enum Opt {
     Verify(CommonOpt),
     #[structopt(name = "recover_account")]
     RecoverAccount(RecoverAccountOpt),
+    #[structopt(name = "reset_server_id")]
+    ResetServerId(CommonOpt),
 }
 
 impl Opt {
     fn debug(&self) -> bool {
         match self {
             Opt::Server(sopt) => sopt.commonopts.debug,
-            Opt::Verify(sopt) => sopt.debug,
+            Opt::Verify(sopt) | Opt::ResetServerId(sopt) => sopt.debug,
             Opt::Backup(bopt) => bopt.commonopts.debug,
             Opt::Restore(ropt) => ropt.commonopts.debug,
             Opt::RecoverAccount(ropt) => ropt.commonopts.debug,
@@ -157,6 +159,12 @@ fn main() {
             config.update_db_path(&raopt.commonopts.db_path);
 
             recover_account_core(config, raopt.name, password);
+        }
+        Opt::ResetServerId(vopt) => {
+            info!("Resetting server id. THIS MAY BREAK REPLICATION");
+
+            config.update_db_path(&vopt.db_path);
+            reset_sid_core(config);
         }
     }
 }

@@ -31,7 +31,39 @@ See [CODE_OF_CONDUCT.md]
 
 ## Quick start
 
-Details to come ...
+Today the server is still in a state of heavy development, and hasn't been packaged or setup for
+production usage.
+
+However, we are able to run test or demo servers that are suitable for previews and testing.
+
+After getting the code, you will need a rust environment. Please investigate rustup for your platform
+to establish this.
+
+Once you have the source code, you need certificates to use with the server. I recommend using
+let's encrypt, but if this is not possible, please use our insecure cert tool:
+
+    mkdir insecure
+    cd insecure
+    ../insecure_generate_tls.sh
+
+You can now build and run the server with:
+
+    cd rsidmd
+    cargo run -- server -D /tmp/kanidm.db -C ../insecure/ca.pem -c ../insecure/cert.pem -k ../insecure/key.pem
+
+In a new terminal, you can now build and run the client tools with:
+
+    cd rsidm_tools
+    cargo run -- --help
+    cargo run -- whoami -H https://localhost:8080 -D anonymous -C ../insecure/ca.pem
+
+## Development and Testing
+
+There are tests of various components through the various components of the project. When developing
+it't best if you test in the component you are working on, followed by the full server tests.
+
+There are *no* prerequisites to running these tests or special configurations. cargo test should
+just work!
 
 ## Implemented/Planned features
 

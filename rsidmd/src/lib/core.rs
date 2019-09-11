@@ -358,6 +358,19 @@ pub fn restore_server_core(config: Configuration, dst_path: &str) {
     };
 }
 
+pub fn reset_sid_core(config: Configuration) {
+    // Setup the be
+    let be = match setup_backend(&config) {
+        Ok(be) => be,
+        Err(e) => {
+            error!("Failed to setup BE: {:?}", e);
+            return;
+        }
+    };
+    let nsid = be.reset_db_sid();
+    info!("New Server ID: {:?}", nsid);
+}
+
 pub fn verify_server_core(config: Configuration) {
     let mut audit = AuditScope::new("server_verify");
     // Setup the be
@@ -406,8 +419,9 @@ pub fn recover_account_core(config: Configuration, name: String, password: Strin
             return;
         }
     };
+    let server_id = be.get_db_sid();
     // setup the qs - *with* init of the migrations and schema.
-    let (_qs, idms) = match setup_qs_idms(&mut audit, be, config.server_id.clone()) {
+    let (_qs, idms) = match setup_qs_idms(&mut audit, be, server_id) {
         Ok(t) => t,
         Err(e) => {
             debug!("{}", audit);
@@ -470,9 +484,12 @@ pub fn create_server_core(config: Configuration) {
         }
     };
 
+    let server_id = be.get_db_sid();
+    info!("Server ID -> {:?}", server_id);
+
     let mut audit = AuditScope::new("setup_qs_idms");
     // Start the IDM server.
-    let (qs, idms) = match setup_qs_idms(&mut audit, be, config.server_id.clone()) {
+    let (qs, idms) = match setup_qs_idms(&mut audit, be, server_id) {
         Ok(t) => t,
         Err(e) => {
             debug!("{}", audit);

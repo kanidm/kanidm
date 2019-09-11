@@ -8,11 +8,13 @@ use serde_cbor;
 use serde_json;
 use std::convert::TryFrom;
 use std::fs;
+use rand::prelude::*;
 
 use crate::audit::AuditScope;
 use crate::be::dbentry::DbEntry;
 use crate::entry::{Entry, EntryCommitted, EntryNew, EntryValid};
 use crate::filter::{Filter, FilterValidResolved};
+use crate::utils::SID;
 use rsidm_proto::v1::{ConsistencyError, OperationError};
 
 pub mod dbentry;
@@ -614,6 +616,46 @@ impl BackendWriteTransaction {
         }
     }
 
+    fn get_db_sid(&self) -> SID {
+        // Try to get a value.
+        match self.conn.query_row_named(
+            "SELECT data FROM db_sid WHERE id = 1",
+            &[],
+            |row| row.get(0),
+        ) {
+            Ok(e) => {
+                let y: Vec<u8> = e;
+                assert!(y.len() == 4);
+                let mut sid: [u8; 4] = [0; 4];
+                for i in 0..4 {
+                    sid[i] = y[i];
+                }
+
+                sid
+            }
+            Err(_) => {
+                self.generate_db_sid()
+            }
+        }
+    }
+
+    fn generate_db_sid(&self) -> SID {
+        // The value is missing. Generate a new one and store it.
+        let mut nsid = [0; 4];
+        let mut rng = StdRng::from_entropy();
+        rng.fill(&mut nsid);
+
+        let mut data = Vec::new();
+        data.extend_from_slice(&nsid);
+
+        self.conn.execute_named(
+            "INSERT OR REPLACE INTO db_sid (id, data) VALUES(:id, :sid)",
+            &[(":id", &1), (":sid", &data)],
+        ).expect("Failed to allocate sid!");
+
+        nsid
+    }
+
     pub fn setup(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
         {
             // Enable WAL mode, which is just faster and better.
@@ -670,6 +712,19 @@ impl BackendWriteTransaction {
                     audit,
                     self.conn.execute(
                         "CREATE TABLE IF NOT EXISTS id2entry (
+                            id INTEGER PRIMARY KEY ASC,
+                            data BLOB NOT NULL
+                        )
+                        ",
+                        NO_PARAMS,
+                    ),
+                    "sqlite error {:?}",
+                    OperationError::SQLiteError
+                );
+                try_audit!(
+                    audit,
+                    self.conn.execute(
+                        "CREATE TABLE IF NOT EXISTS db_sid (
                             id INTEGER PRIMARY KEY ASC,
                             data BLOB NOT NULL
                         )
@@ -750,6 +805,20 @@ impl Backend {
             .get()
             .expect("Unable to get connection from pool!!!");
         BackendWriteTransaction::new(conn)
+    }
+
+    pub fn get_db_sid(&self) -> SID {
+        let bwt = self.write();
+        let s = bwt.get_db_sid();
+        bwt.commit().expect("Failed to commit SID");
+        s
+    }
+
+    pub fn reset_db_sid(&self) -> SID {
+        let bwt = self.write();
+        let s = bwt.generate_db_sid();
+        bwt.commit().expect("Failed to commit SID");
+        s
     }
 }
 
@@ -1048,6 +1117,19 @@ mod tests {
                 .expect("Backup failed!");
             be.restore(audit, DB_BACKUP_FILE_NAME)
                 .expect("Restore failed!");
+        });
+    }
+
+    #[test]
+    fn test_sid_generation_and_reset() {
+        run_test!(|_audit: &mut AuditScope, be: &BackendWriteTransaction| {
+            let sid1 = be.get_db_sid();
+            let sid2 = be.get_db_sid();
+            assert!(sid1 == sid2);
+            let sid3 = be.generate_db_sid();
+            assert!(sid1 != sid3);
+            let sid4 = be.get_db_sid();
+            assert!(sid3 == sid4);
         });
     }
 }
