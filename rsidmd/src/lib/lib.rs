@@ -13,6 +13,7 @@ extern crate lazy_static;
 #[macro_use]
 mod macros;
 mod utils;
+mod crypto;
 #[macro_use]
 mod async_log;
 #[macro_use]

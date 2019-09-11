@@ -7,6 +7,8 @@ extern crate log;
 use serde_json;
 
 use reqwest;
+use std::fs::File;
+use std::io::Read;
 
 use rsidm_proto::v1::{
     AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep, CreateRequest, Entry,
@@ -28,9 +30,27 @@ pub struct RsidmClient {
 }
 
 impl RsidmClient {
-    pub fn new(addr: &str) -> Self {
-        let client = reqwest::Client::builder()
-            .cookie_store(true)
+    pub fn new(addr: &str, ca: Option<&str>) -> Self {
+        let ca = ca.map(|ca_path| {
+            //Okay we have a ca to add. Let's read it in and setup.
+            let mut buf = Vec::new();
+            // TODO: Better than expect?
+            let mut f = File::open(ca_path).expect("Failed to open ca");
+            f.read_to_end(&mut buf).expect("Failed to read ca");
+            reqwest::Certificate::from_pem(&buf).expect("Failed to parse ca")
+        });
+
+        let client_builder = reqwest::Client::builder()
+            .cookie_store(true);
+
+        let client_builder = match ca {
+            Some(cert) => {
+                client_builder.add_root_certificate(cert)
+            }
+            None => client_builder,
+        };
+
+        let client = client_builder
             .build()
             .expect("Unexpected reqwest builder failure!");
         RsidmClient {

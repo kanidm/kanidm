@@ -1,5 +1,6 @@
 extern crate structopt;
 use rsidm_client::RsidmClient;
+use std::path::PathBuf;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -8,11 +9,14 @@ struct CommonOpt {
     addr: String,
     #[structopt(short = "D", long = "name")]
     username: String,
+    #[structopt(parse(from_os_str), short = "C", long = "ca")]
+    ca_path: Option<PathBuf>,
 }
 
 impl CommonOpt {
     fn to_client(&self) -> RsidmClient {
-        RsidmClient::new(self.addr.as_str())
+        let ca_path: Option<&str> = self.ca_path.as_ref().map(|p| p.to_str().unwrap());
+        RsidmClient::new(self.addr.as_str(), ca_path)
     }
 }
 

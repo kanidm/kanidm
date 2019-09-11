@@ -24,6 +24,7 @@ use crate::interval::IntervalActor;
 use crate::schema::Schema;
 use crate::server::QueryServer;
 use crate::utils::SID;
+use crate::crypto::setup_tls;
 use rsidm_proto::v1::OperationError;
 use rsidm_proto::v1::{
     AuthRequest, AuthState, CreateRequest, DeleteRequest, ModifyRequest, SearchRequest,
@@ -443,10 +444,19 @@ pub fn create_server_core(config: Configuration) {
         warn!("IF YOU SEE THIS IN PRODUCTION YOU MUST CONTACT SUPPORT IMMEDIATELY.");
     }
 
-    info!("Starting rsidm with configuration: {:?}", config);
+    info!("Starting rsidm with configuration: {}", config);
     // The log server is started on it's own thread, and is contacted
     // asynchronously.
     let log_addr = async_log::start();
+
+    // Setup TLS (if any)
+    let opt_tls_params = match setup_tls(&config) {
+        Ok(opt_tls_params) => opt_tls_params,
+        Err(e) => {
+            error!("Failed to configure TLS parameters -> {:?}", e);
+            return;
+        }
+    };
 
     // Similar, create a stats thread which aggregates statistics from the
     // server as they come in.
@@ -516,7 +526,7 @@ pub fn create_server_core(config: Configuration) {
     let cookie_key: [u8; 32] = config.cookie_key.clone();
 
     // start the web server
-    actix_web::server::new(move || {
+    let aws_builder = actix_web::server::new(move || {
         App::with_state(AppState {
             qe: server_addr.clone(),
             max_size: max_size,
@@ -545,7 +555,6 @@ pub fn create_server_core(config: Configuration) {
                 .secure(secure_cookies),
         ))
         // .resource("/", |r| r.f(index))
-        // curl --header ...?
         .resource("/v1/whoami", |r| {
             r.method(http::Method::GET).with_async(whoami)
         })
@@ -559,19 +568,15 @@ pub fn create_server_core(config: Configuration) {
         .resource("/v1/create", |r| {
             r.method(http::Method::POST).with_async(create)
         })
-        // Should these actually be different method types?
         .resource("/v1/modify", |r| {
             r.method(http::Method::POST).with_async(modify)
         })
         .resource("/v1/delete", |r| {
             r.method(http::Method::POST).with_async(delete)
         })
-        // curl --header "Content-Type: application/json" --request POST --data '{ "filter" : { "Eq": ["class", "user"] }}'  http://127.0.0.1:8080/v1/search
         .resource("/v1/search", |r| {
             r.method(http::Method::POST).with_async(search)
         })
-        // This is one of the times we need cookies :)
-        // curl -b /tmp/cookie.jar -c /tmp/cookie.jar --header "Content-Type: application/json" --request POST --data '{ "state" : { "Init": ["Anonymous", []] }}'  http://127.0.0.1:8080/v1/auth
         .resource("/v1/auth", |r| {
             r.method(http::Method::POST).with_async(auth)
         })
@@ -581,8 +586,19 @@ pub fn create_server_core(config: Configuration) {
             r.method(http::Method::GET).with(class_list)
         })
         */
-    })
-    .bind(config.address)
-    .expect("Failed to initialise server!")
-    .start();
+    });
+
+    let tls_aws_builder = match opt_tls_params {
+        Some(tls_params) => {
+            aws_builder.bind_ssl(config.address, tls_params)
+        }
+        None => {
+            warn!("Starting WITHOUT TLS parameters. This may cause authentication to fail!");
+            aws_builder.bind(config.address)
+        }
+    };
+
+    tls_aws_builder
+        .expect("Failed to initialise server!")
+        .start();
 }
