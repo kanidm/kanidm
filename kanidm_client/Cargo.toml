@@ -1,0 +1,18 @@
+[package]
+name = "kanidm_client"
+version = "0.1.0"
+authors = ["William Brown <william@blackhats.net.au>"]
+edition = "2018"
+
+[dependencies]
+log = "0.4"
+env_logger = "0.6"
+reqwest = "0.9"
+kanidm_proto = { path = "../kanidm_proto" }
+serde_json = "1.0"
+
+[dev-dependencies]
+tokio = "0.1"
+actix = "0.7"
+kanidm = { path = "../kanidmd" }
+futures = "0.1"

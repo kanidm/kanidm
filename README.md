@@ -54,12 +54,12 @@ let's encrypt, but if this is not possible, please use our insecure cert tool:
 
 You can now build and run the server with:
 
-    cd rsidmd
+    cd kanidm
     cargo run -- server -D /tmp/kanidm.db -C ../insecure/ca.pem -c ../insecure/cert.pem -k ../insecure/key.pem --domain localhost --bindaddr 127.0.0.1:8080
 
 In a new terminal, you can now build and run the client tools with:
 
-    cd rsidm_tools
+    cd kanidm_tools
     cargo run -- --help
     cargo run -- whoami -H https://localhost:8080 -D anonymous -C ../insecure/ca.pem
 
@@ -165,8 +165,9 @@ git rebase --abort
 ## Why do I see rsidm references?
 
 The original project name was rsidm while it was a thought experiment. Now that it's growing
-and developing, we gave it a better project name. Kani is Japanese for "crab". Rust's mascot
-is a crab. It all works out in the end.
+and developing, we gave it a better project name. Kani is Japanese for "crab". Rust's mascot is a crab.
+Idm is the common industry term for identity management services.
+It all works out in the end.
 
 
 

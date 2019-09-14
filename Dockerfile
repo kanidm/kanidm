@@ -3,9 +3,9 @@ MAINTAINER william@blackhats.net.au
 
 EXPOSE 8080
 
-COPY . /home/rsidm/
+COPY . /home/kanidm/
 
-WORKDIR /home/rsidm/
+WORKDIR /home/kanidm/
 
 RUN zypper install -y timezone cargo rust gcc sqlite3-devel libopenssl-devel && \
     RUSTC_BOOTSTRAP=1 cargo build --release && \
@@ -18,5 +18,5 @@ RUN cd /etc && \
 VOLUME /data
 
 ENV RUST_BACKTRACE 1
-CMD ["/home/rsidm/target/release/rsidmd", "server", "-D", "/data/kanidm.db"]
+CMD ["/home/kanidm/target/release/kanidmd", "server", "-D", "/data/kanidm.db"]
 

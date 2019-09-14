@@ -1,9 +1,9 @@
 
 [workspace]
 members = [
-	"rsidm_proto",
-	"rsidmd",
-	"rsidm_client",
-	"rsidm_tools",
+	"kanidm_proto",
+	"kanidmd",
+	"kanidm_client",
+	"kanidm_tools",
 ]
 

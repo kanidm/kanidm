@@ -1,0 +1,17 @@
+[package]
+name = "kanidm_tools"
+version = "0.1.0"
+authors = ["William Brown <william@blackhats.net.au>"]
+edition = "2018"
+
+[[bin]]
+name = "kanidm"
+path = "src/main.rs"
+
+[dependencies]
+kanidm_client = { path = "../kanidm_client" }
+rpassword = "0.4"
+structopt = { version = "0.2", default-features = false }
+log = "0.4"
+env_logger = "0.6"
+
