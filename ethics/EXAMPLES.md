@@ -32,7 +32,8 @@ because names can take many forms such as.
 * firstname
 * lastname firstname
 
-And many many more that are not listed here.
+And many many more that are not listed here. This is why our names are displayName as a freetext
+UTF8 field, with case sensitivitiy and no limits.
 
 ## Informed consent and Privacy of their data
 

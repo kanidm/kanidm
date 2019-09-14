@@ -9,11 +9,10 @@ many who interact indirectly or do not have a choice in this platform.
 
 All people using this software should expect to have the right to:
 
-* Ability to be forgotten
-* Self determination and autonomy
+* Self control over their data, including the ability to alter or delete at any time.
 * Free from harmful discrimination of any kind
-* Informed consent and Privacy of their data
-* To use and access this software regardless of ability
+* Informed consent over control and privacy of their data, including access and understand data held and shared on their behalf
+* To be able to use and access this software regardless of ability, culture or language.
 
 ## More?
 
