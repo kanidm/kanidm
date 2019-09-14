@@ -20,7 +20,8 @@ path = "src/server/main.rs"
 rsidm_proto = { path = "../rsidm_proto" }
 
 actix = "0.7"
-actix-web = "0.7"
+actix-web = { version = "0.7", features = ["ssl"] }
+
 bytes = "0.4"
 log = "0.4"
 env_logger = "0.6"
@@ -52,4 +53,5 @@ concread = "0.1"
 openssl = "0.10"
 
 rpassword = "0.4"
+num_cpus = "1.10"
 
