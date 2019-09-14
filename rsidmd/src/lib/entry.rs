@@ -4,7 +4,9 @@ use crate::credential::Credential;
 use crate::filter::{Filter, FilterInvalid, FilterResolved, FilterValidResolved};
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use crate::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
-use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
+use crate::server::{
+    QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
+};
 use crate::value::{IndexType, SyntaxType};
 use crate::value::{PartialValue, Value};
 use rsidm_proto::v1::Entry as ProtoEntry;
@@ -1046,18 +1048,23 @@ impl<STATE> Entry<EntryValid, STATE> {
 }
 
 impl Entry<EntryReduced, EntryCommitted> {
-    pub fn into_pe(&self) -> ProtoEntry {
+    pub fn into_pe(
+        &self,
+        audit: &mut AuditScope,
+        qs: &QueryServerReadTransaction,
+    ) -> Result<ProtoEntry, OperationError> {
         // Turn values -> Strings.
-        ProtoEntry {
-            attrs: self
-                .attrs
-                .iter()
-                .map(|(k, vs)| {
-                    let pvs: Vec<_> = vs.iter().map(|v| v.to_proto_string_clone()).collect();
-                    (k.clone(), pvs)
-                })
-                .collect(),
-        }
+        let attrs: Result<_, _> = self
+            .attrs
+            .iter()
+            .map(|(k, vs)| {
+                let pvs: Result<Vec<String>, _> =
+                    vs.iter().map(|v| qs.resolve_value(audit, v)).collect();
+                let pvs = pvs?;
+                Ok((k.clone(), pvs))
+            })
+            .collect();
+        Ok(ProtoEntry { attrs: attrs? })
     }
 }
 

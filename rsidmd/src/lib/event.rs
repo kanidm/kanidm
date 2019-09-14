@@ -32,18 +32,21 @@ pub struct SearchResult {
 }
 
 impl SearchResult {
-    pub fn new(entries: Vec<Entry<EntryReduced, EntryCommitted>>) -> Self {
-        SearchResult {
-            entries: entries
-                .iter()
-                .map(|e| {
-                    // All the needed transforms for this result are done
-                    // in search_ext. This is just an entry -> protoentry
-                    // step.
-                    e.into_pe()
-                })
-                .collect(),
-        }
+    pub fn new(
+        audit: &mut AuditScope,
+        qs: &QueryServerReadTransaction,
+        entries: Vec<Entry<EntryReduced, EntryCommitted>>,
+    ) -> Result<Self, OperationError> {
+        let entries: Result<_, _> = entries
+            .iter()
+            .map(|e| {
+                // All the needed transforms for this result are done
+                // in search_ext. This is just an entry -> protoentry
+                // step.
+                e.into_pe(audit, qs)
+            })
+            .collect();
+        Ok(SearchResult { entries: entries? })
     }
 
     // Consume self into a search response
@@ -755,11 +758,16 @@ pub struct WhoamiResult {
 }
 
 impl WhoamiResult {
-    pub fn new(e: Entry<EntryReduced, EntryCommitted>, uat: UserAuthToken) -> Self {
-        WhoamiResult {
-            youare: e.into_pe(),
+    pub fn new(
+        audit: &mut AuditScope,
+        qs: &QueryServerReadTransaction,
+        e: Entry<EntryReduced, EntryCommitted>,
+        uat: UserAuthToken,
+    ) -> Result<Self, OperationError> {
+        Ok(WhoamiResult {
+            youare: e.into_pe(audit, qs)?,
             uat: uat,
-        }
+        })
     }
 
     pub fn response(self) -> WhoamiResponse {

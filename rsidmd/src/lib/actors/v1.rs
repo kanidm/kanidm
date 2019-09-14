@@ -185,9 +185,7 @@ impl Handler<SearchMessage> for QueryServerV1 {
 
             match qs_read.search_ext(&mut audit, &srch) {
                 Ok(entries) => {
-                    let sr = SearchResult::new(entries);
-                    // Now convert to a response, and return
-                    Ok(sr.response())
+                    SearchResult::new(&mut audit, &qs_read, entries).map(|ok_sr| ok_sr.response())
                 }
                 Err(e) => Err(e),
             }
@@ -365,8 +363,8 @@ impl Handler<WhoamiMessage> for QueryServerV1 {
                         1 => {
                             let e = entries.pop().expect("Entry length mismatch!!!");
                             // Now convert to a response, and return
-                            let wr = WhoamiResult::new(e, uat);
-                            Ok(wr.response())
+                            WhoamiResult::new(&mut audit, &qs_read, e, uat)
+                                .map(|ok_wr| ok_wr.response())
                         }
                         // Somehow we matched multiple, which should be impossible.
                         _ => Err(OperationError::InvalidState),
