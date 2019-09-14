@@ -197,7 +197,11 @@ pub trait QueryServerTransaction {
         Ok(uuid_res)
     }
 
-    fn uuid_to_name(&self, audit: &mut AuditScope, uuid: &Uuid) -> Result<Value, OperationError> {
+    fn uuid_to_name(
+        &self,
+        audit: &mut AuditScope,
+        uuid: &Uuid,
+    ) -> Result<Option<Value>, OperationError> {
         // construct the filter
         let filt = filter!(f_eq("uuid", PartialValue::new_uuidr(uuid)));
         audit_log!(audit, "uuid_to_name: uuid -> {:?}", uuid);
@@ -212,7 +216,8 @@ pub trait QueryServerTransaction {
 
         if res.len() == 0 {
             // If result len == 0, error no such result
-            return Err(OperationError::NoMatchingEntries);
+            audit_log!(audit, "uuid_to_name: name, no such entry <- Ok(None)");
+            return Ok(None);
         } else if res.len() >= 2 {
             // if result len >= 2, error, invaid entry state.
             return Err(OperationError::InvalidDBState);
@@ -224,17 +229,22 @@ pub trait QueryServerTransaction {
         let name_res = match e.get_ava(&String::from("name")) {
             Some(vas) => match vas.first() {
                 Some(u) => (*u).clone(),
+                // Name is in an invalid state in the db
                 None => return Err(OperationError::InvalidEntryState),
             },
-            None => return Err(OperationError::InvalidEntryState),
+            None => {
+                // No attr name, some types this is valid, IE schema.
+                // return Err(OperationError::InvalidEntryState),
+                return Ok(None);
+            }
         };
 
         audit_log!(audit, "uuid_to_name: name <- {:?}", name_res);
 
-        // Make sure it's the right type ...
-        assert!(name_res.is_insensitive_utf8());
+        // Make sure it's the right type ... (debug only)
+        debug_assert!(name_res.is_insensitive_utf8());
 
-        Ok(name_res)
+        Ok(Some(name_res))
     }
 
     // From internal, generate an exists event and dispatch
@@ -469,9 +479,26 @@ pub trait QueryServerTransaction {
     }
 
     // In the opposite direction, we can resolve values for presentation
-    fn resolve_value(&self, _value: &Value) -> Result<String, OperationError> {
-        // Ok(value.to_proto_string_clone())
-        unimplemented!();
+    fn resolve_value(
+        &self,
+        audit: &mut AuditScope,
+        value: &Value,
+    ) -> Result<String, OperationError> {
+        // Are we a reference type? Try and resolve.
+        match value.to_ref_uuid() {
+            Some(ur) => {
+                let nv = self.uuid_to_name(audit, ur)?;
+                return match nv {
+                    Some(v) => Ok(v.to_proto_string_clone()),
+                    None => Ok(value.to_proto_string_clone()),
+                };
+            }
+            // Fall through
+            None => {}
+        };
+
+        // Not? Okay, do the to string.
+        Ok(value.to_proto_string_clone())
     }
 }
 
@@ -2397,7 +2424,8 @@ mod tests {
                 audit,
                 &Uuid::parse_str("bae3f507-e6c3-44ba-ad01-f8ff1083534a").unwrap(),
             );
-            assert!(r1.is_err());
+            // There is nothing.
+            assert!(r1 == Ok(None));
             // Name does exist
             let r3 = server_txn.uuid_to_name(
                 audit,
@@ -2461,6 +2489,62 @@ mod tests {
 
             println!("{:?}", r4);
             assert!(r4 == Ok(Value::new_refer_s("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap()));
+        })
+    }
+
+    #[test]
+    fn test_qs_resolve_value() {
+        run_test!(|server: &QueryServer, audit: &mut AuditScope| {
+            let mut server_txn = server.write();
+            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+                r#"{
+                "valid": null,
+                "state": null,
+                "attrs": {
+                    "class": ["object", "person"],
+                    "name": ["testperson1"],
+                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
+                    "description": ["testperson"],
+                    "displayname": ["testperson1"]
+                }
+            }"#,
+            );
+            let e_ts: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+                r#"{
+                "valid": null,
+                "state": null,
+                "attrs": {
+                    "class": ["tombstone", "object"],
+                    "uuid": ["9557f49c-97a5-4277-a9a5-097d17eb8317"]
+                }
+            }"#,
+            );
+            let ce = CreateEvent::new_internal(vec![e1, e_ts]);
+            let cr = server_txn.create(audit, &ce);
+            assert!(cr.is_ok());
+
+            // Resolving most times should yield expected results
+            let t1 = Value::new_utf8s("teststring");
+            let r1 = server_txn.resolve_value(audit, &t1);
+            assert!(r1 == Ok("teststring".to_string()));
+
+            // Resolve UUID with matching name
+            let t_uuid = Value::new_refer_s("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap();
+            let r_uuid = server_txn.resolve_value(audit, &t_uuid);
+            debug!("{:?}", r_uuid);
+            assert!(r_uuid == Ok("testperson1".to_string()));
+
+            // Resolve UUID non-exist
+            let t_uuid_non = Value::new_refer_s("b83e98f0-3d2e-41d2-9796-d8d993289c86").unwrap();
+            let r_uuid_non = server_txn.resolve_value(audit, &t_uuid_non);
+            debug!("{:?}", r_uuid_non);
+            assert!(r_uuid_non == Ok("b83e98f0-3d2e-41d2-9796-d8d993289c86".to_string()));
+
+            // Resolve UUID to tombstone/recycled (same an non-exst)
+            let t_uuid_ts = Value::new_refer_s("9557f49c-97a5-4277-a9a5-097d17eb8317").unwrap();
+            let r_uuid_ts = server_txn.resolve_value(audit, &t_uuid_ts);
+            debug!("{:?}", r_uuid_ts);
+            assert!(r_uuid_ts == Ok("9557f49c-97a5-4277-a9a5-097d17eb8317".to_string()));
         })
     }
 

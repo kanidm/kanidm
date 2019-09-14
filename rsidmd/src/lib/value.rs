@@ -768,28 +768,6 @@ impl Value {
         }
     }
 
-    /// Convert to a proto/public value that can be read and consumed.
-    pub(crate) fn to_proto_string_clone(&self) -> String {
-        match &self.pv {
-            PartialValue::Utf8(s) => s.clone(),
-            PartialValue::Iutf8(s) => s.clone(),
-            PartialValue::Uuid(u) => u.to_hyphenated_ref().to_string(),
-            PartialValue::Bool(b) => b.to_string(),
-            PartialValue::Syntax(syn) => syn.to_string(),
-            PartialValue::Index(it) => it.to_string(),
-            // TODO: These should be uuid_to_name in server
-            PartialValue::Refer(u) => u.to_hyphenated_ref().to_string(),
-            PartialValue::JsonFilt(s) => {
-                serde_json::to_string(s).expect("A json filter value was corrupted during run-time")
-            }
-            PartialValue::Cred(tag) => {
-                // You can't actually read the credential values because we only display the
-                // tag to the proto side. The credentials private data is stored seperately.
-                tag.to_string()
-            }
-        }
-    }
-
     pub fn to_str(&self) -> Option<&str> {
         match &self.pv {
             PartialValue::Utf8(s) => Some(s.as_str()),
@@ -851,6 +829,28 @@ impl Value {
     pub fn to_partialvalue(&self) -> PartialValue {
         // Match on self to become a partialvalue.
         self.pv.clone()
+    }
+
+    pub(crate) fn to_proto_string_clone(&self) -> String {
+        match &self.pv {
+            PartialValue::Utf8(s) => s.clone(),
+            PartialValue::Iutf8(s) => s.clone(),
+            PartialValue::Uuid(u) => u.to_hyphenated_ref().to_string(),
+            PartialValue::Bool(b) => b.to_string(),
+            PartialValue::Syntax(syn) => syn.to_string(),
+            PartialValue::Index(it) => it.to_string(),
+            // In resolve value, we bypass this, but we keep it here for complete
+            // impl sake.
+            PartialValue::Refer(u) => u.to_hyphenated_ref().to_string(),
+            PartialValue::JsonFilt(s) => {
+                serde_json::to_string(s).expect("A json filter value was corrupted during run-time")
+            }
+            PartialValue::Cred(tag) => {
+                // You can't actually read the credential values because we only display the
+                // tag to the proto side. The credentials private data is stored seperately.
+                tag.to_string()
+            }
+        }
     }
 
     pub fn validate(&self) -> bool {
