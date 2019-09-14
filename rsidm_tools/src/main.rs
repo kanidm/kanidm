@@ -2,9 +2,14 @@ extern crate structopt;
 use rsidm_client::RsidmClient;
 use std::path::PathBuf;
 use structopt::StructOpt;
+extern crate env_logger;
+#[macro_use]
+extern crate log;
 
 #[derive(Debug, StructOpt)]
 struct CommonOpt {
+    #[structopt(short = "d", long = "debug")]
+    debug: bool,
     #[structopt(short = "H", long = "url")]
     addr: String,
     #[structopt(short = "D", long = "name")]
@@ -26,8 +31,23 @@ enum ClientOpt {
     Whoami(CommonOpt),
 }
 
+impl ClientOpt {
+    fn debug(&self) -> bool {
+        match self {
+            ClientOpt::Whoami(copt) => copt.debug,
+        }
+    }
+}
+
 fn main() {
     let opt = ClientOpt::from_args();
+
+    if opt.debug() {
+        ::std::env::set_var("RUST_LOG", "kanidm=debug,rsidm_client=debug");
+    } else {
+        ::std::env::set_var("RUST_LOG", "kanidm=info,rsidm_client=info");
+    }
+    env_logger::init();
 
     match opt {
         ClientOpt::Whoami(copt) => {
@@ -46,7 +66,8 @@ fn main() {
 
             match client.whoami() {
                 Ok(o_ent) => match o_ent {
-                    Some((_ent, uat)) => {
+                    Some((ent, uat)) => {
+                        debug!("{:?}", ent);
                         println!("{}", uat);
                     }
                     None => println!("Unauthenticated"),

@@ -154,7 +154,7 @@ pub static JSON_IDM_ADMINS_ACP_MANAGE_V1: &'static str = r#"{
         "acp_targetscope": [
             "{\"Pres\":\"class\"}"
         ],
-        "acp_search_attr": ["name", "class", "uuid", "classname", "attributename"],
+        "acp_search_attr": ["name", "class", "uuid", "classname", "attributename", "memberof"],
         "acp_modify_class": ["person"],
         "acp_modify_removedattr": ["class", "displayname", "name", "description"],
         "acp_modify_presentattr": ["class", "displayname", "name", "description"],
