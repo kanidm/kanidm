@@ -18,9 +18,15 @@ of the system have been completed yet!
 
 ## Code of Conduct
 
-See [CODE_OF_CONDUCT.md]
+See our [code of conduct]
 
-[CODE_OF_CONDUCT.md]: https://github.com/Firstyear/kanidm/blob/master/CODE_OF_CONDUCT.md
+[code of conduct]: https://github.com/Firstyear/kanidm/blob/master/CODE_OF_CONDUCT.md
+
+## Ethics / Rights
+
+See our documentation on [rights and ethics]
+
+[rights and ethics]: https://github.com/Firstyear/kanidm/blob/master/ethics/README.md
 
 ## Some key ideas
 
