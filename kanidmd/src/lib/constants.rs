@@ -789,64 +789,6 @@ pub static JSON_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1: &'static str = r#"{
     }
 }"#;
 
-pub static _UUID_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1: &'static str =
-    "00000000-0000-0000-0000-ffffff000019";
-pub static JSON_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1: &'static str = r#"{
-    "attrs": {
-        "class": [
-            "object",
-            "access_control_profile",
-            "access_control_search",
-            "access_control_modify",
-            "access_control_create"
-        ],
-        "name": ["idm_acp_schema_write_classes_priv"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000019"],
-        "description": ["Builtin IDM Control for management of schema classes."],
-        "acp_enable": ["true"],
-        "acp_receiver": [
-            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000010\"]}"
-        ],
-        "acp_targetscope": [
-            "{\"And\": [{\"Eq\": [\"class\",\"classtype\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
-        ],
-        "acp_search_attr": [
-            "class",
-            "description",
-            "classname",
-            "systemmay",
-            "may",
-            "systemmust",
-            "must",
-            "uuid"
-        ],
-        "acp_modify_removedattr": [
-            "class",
-            "description",
-            "may",
-            "must"
-        ],
-        "acp_modify_presentattr": [
-            "class",
-            "description",
-            "may",
-            "must"
-        ],
-        "acp_modify_class":  [],
-        "acp_create_attr": [
-            "class",
-            "description",
-            "classname",
-            "may",
-            "must",
-            "uuid"
-        ],
-        "acp_create_class": [
-            "object", "classtype"
-        ]
-    }
-}"#;
-
 // 19 acp read/write
 pub static _UUID_IDM_ACP_ACP_MANAGER_PRIV_V1: &'static str = "00000000-0000-0000-0000-ffffff000019";
 pub static JSON_IDM_ACP_ACP_MANAGER_PRIV_V1: &'static str = r#"{
@@ -942,7 +884,65 @@ pub static JSON_IDM_ACP_ACP_MANAGER_PRIV_V1: &'static str = r#"{
     }
 }"#;
 
-// 20 - anonymous / everyone schema read.
+pub static _UUID_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1: &'static str =
+    "00000000-0000-0000-0000-ffffff000020";
+pub static JSON_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1: &'static str = r#"{
+    "attrs": {
+        "class": [
+            "object",
+            "access_control_profile",
+            "access_control_search",
+            "access_control_modify",
+            "access_control_create"
+        ],
+        "name": ["idm_acp_schema_write_classes_priv"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000020"],
+        "description": ["Builtin IDM Control for management of schema classes."],
+        "acp_enable": ["true"],
+        "acp_receiver": [
+            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000010\"]}"
+        ],
+        "acp_targetscope": [
+            "{\"And\": [{\"Eq\": [\"class\",\"classtype\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+        ],
+        "acp_search_attr": [
+            "class",
+            "description",
+            "classname",
+            "systemmay",
+            "may",
+            "systemmust",
+            "must",
+            "uuid"
+        ],
+        "acp_modify_removedattr": [
+            "class",
+            "description",
+            "may",
+            "must"
+        ],
+        "acp_modify_presentattr": [
+            "class",
+            "description",
+            "may",
+            "must"
+        ],
+        "acp_modify_class":  [],
+        "acp_create_attr": [
+            "class",
+            "description",
+            "classname",
+            "may",
+            "must",
+            "uuid"
+        ],
+        "acp_create_class": [
+            "object", "classtype"
+        ]
+    }
+}"#;
+
+// 21 - anonymous / everyone schema read.
 
 // Anonymous should be the last opbject in the range here.
 pub static JSON_ANONYMOUS_V1: &'static str = r#"{
