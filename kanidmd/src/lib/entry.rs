@@ -234,10 +234,14 @@ impl Entry<EntryInvalid, EntryNew> {
         es: &str,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
+        audit_log!(audit, "Parsing -> {}", es);
         // str -> Proto entry
         let pe: ProtoEntry = try_audit!(
             audit,
-            serde_json::from_str(es).map_err(|_| OperationError::SerdeJsonError)
+            serde_json::from_str(es).map_err(|e| {
+                audit_log!(audit, "SerdeJson Failure -> {:?}", e);
+                OperationError::SerdeJsonError
+            })
         );
         // now call from_proto_entry
         Self::from_proto_entry(audit, &pe, qs)

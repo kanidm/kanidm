@@ -11,8 +11,8 @@ use std::fs::File;
 use std::io::Read;
 
 use kanidm_proto::v1::{
-    AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep, CreateRequest, Entry,
-    OperationResponse, UserAuthToken, WhoamiResponse,
+    AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep, CreateRequest, Entry, Filter,
+    OperationResponse, SearchRequest, SearchResponse, UserAuthToken, WhoamiResponse,
 };
 
 #[derive(Debug)]
@@ -21,6 +21,7 @@ pub enum ClientError {
     Http(reqwest::StatusCode),
     Transport(reqwest::Error),
     AuthenticationFailed,
+    JsonParse,
 }
 
 #[derive(Debug)]
@@ -181,6 +182,35 @@ impl KanidmClient {
     }
 
     // search
+    pub fn search_str(&self, query: &str) -> Result<Vec<Entry>, ClientError> {
+        let filter: Filter = serde_json::from_str(query).map_err(|e| {
+            error!("JSON Parse Failure -> {:?}", e);
+            ClientError::JsonParse
+        })?;
+        self.search(filter)
+    }
+
+    pub fn search(&self, filter: Filter) -> Result<Vec<Entry>, ClientError> {
+        let sr = SearchRequest { filter: filter };
+        let dest = format!("{}/v1/search", self.addr);
+
+        let mut response = self
+            .client
+            .post(dest.as_str())
+            .body(serde_json::to_string(&sr).unwrap())
+            .send()
+            .map_err(|e| ClientError::Transport(e))?;
+
+        match response.status() {
+            reqwest::StatusCode::OK => {}
+            unexpect => return Err(ClientError::Http(unexpect)),
+        }
+
+        // TODO: What about errors
+        let sr: SearchResponse = serde_json::from_str(response.text().unwrap().as_str()).unwrap();
+        Ok(sr.entries)
+    }
+
     // create
     pub fn create(&self, entries: Vec<Entry>) -> Result<(), ClientError> {
         let c = CreateRequest { entries: entries };

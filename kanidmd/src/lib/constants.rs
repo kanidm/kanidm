@@ -47,12 +47,190 @@ pub static JSON_IDM_ADMINS_V1: &'static str = r#"{
     }
 }"#;
 
+// groups
+// * People read managers
+pub static _UUID_IDM_PEOPLE_READ_PRIV: &'static str = "00000000-0000-0000-0000-000000000002";
+pub static JSON_IDM_PEOPLE_READ_PRIV_V1: &'static str = r#"{
+    "attrs": {
+        "class": ["group", "object"],
+        "name": ["idm_people_read_priv"],
+        "uuid": ["00000000-0000-0000-0000-000000000002"],
+        "description": ["Builtin IDM Group for granting elevated people (personal data) read permissions."],
+        "member": ["00000000-0000-0000-0000-000000000003"]
+    }
+}"#;
+// * People write managers
+pub static _UUID_IDM_PEOPLE_WRITE_PRIV: &'static str = "00000000-0000-0000-0000-000000000003";
+pub static JSON_IDM_PEOPLE_WRITE_PRIV_V1: &'static str = r#"{
+    "attrs": {
+        "class": ["group", "object"],
+        "name": ["idm_people_write_priv"],
+        "uuid": ["00000000-0000-0000-0000-000000000003"],
+        "description": ["Builtin IDM Group for granting elevated people (personal data) write permissions."]
+    }
+}"#;
+// * group write manager (no read, everyone has read via the anon, etc)
+pub static _UUID_IDM_GROUP_WRITE_PRIV: &'static str = "00000000-0000-0000-0000-000000000004";
+pub static JSON_IDM_GROUP_WRITE_PRIV_V1: &'static str = r#"{
+    "attrs": {
+        "class": ["group", "object"],
+        "name": ["idm_group_write_priv"],
+        "uuid": ["00000000-0000-0000-0000-000000000004"],
+        "description": ["Builtin IDM Group for granting elevated group write permissions."],
+        "member": ["00000000-0000-0000-0000-000000000001"]
+    }
+}"#;
+// * account read manager
+pub static _UUID_IDM_ACCOUNT_READ_PRIV: &'static str = "00000000-0000-0000-0000-000000000005";
+pub static JSON_IDM_ACCOUNT_READ_PRIV_V1: &'static str = r#"{
+    "attrs": {
+        "class": ["group", "object"],
+        "name": ["idm_account_read_priv"],
+        "uuid": ["00000000-0000-0000-0000-000000000005"],
+        "description": ["Builtin IDM Group for granting elevated account read permissions."],
+        "member": [
+            "00000000-0000-0000-0000-000000000006",
+            "00000000-0000-0000-0000-000000000001"
+        ]
+    }
+}"#;
+// * account write manager
+pub static _UUID_IDM_ACCOUNT_WRITE_PRIV: &'static str = "00000000-0000-0000-0000-000000000006";
+pub static JSON_IDM_ACCOUNT_WRITE_PRIV_V1: &'static str = r#"{
+    "attrs": {
+        "class": ["group", "object"],
+        "name": ["idm_account_write_priv"],
+        "uuid": ["00000000-0000-0000-0000-000000000006"],
+        "description": ["Builtin IDM Group for granting elevated account write permissions."]
+    }
+}"#;
+// * RADIUS servers
+pub static _UUID_IDM_RADIUS_SERVERS: &'static str = "00000000-0000-0000-0000-000000000007";
+pub static JSON_IDM_RADIUS_SERVERS_V1: &'static str = r#"{
+    "attrs": {
+        "class": ["group", "object"],
+        "name": ["idm_radius_servers"],
+        "uuid": ["00000000-0000-0000-0000-000000000007"],
+        "description": ["Builtin IDM Group for RADIUS server access delegation."]
+    }
+}"#;
+// * high priv account read manager
+pub static _UUID_IDM_HP_ACCOUNT_READ_PRIV: &'static str = "00000000-0000-0000-0000-000000000008";
+pub static JSON_IDM_HP_ACCOUNT_READ_PRIV_V1: &'static str = r#"{
+    "attrs": {
+        "class": ["group", "object"],
+        "name": ["idm_hp_account_read_priv"],
+        "uuid": ["00000000-0000-0000-0000-000000000008"],
+        "description": ["Builtin IDM Group for granting elevated account read permissions over high privilege accounts."],
+        "member": [
+            "00000000-0000-0000-0000-000000000001",
+            "00000000-0000-0000-0000-000000000009"
+        ]
+    }
+}"#;
+// * high priv account write manager
+pub static _UUID_IDM_HP_ACCOUNT_WRITE_PRIV: &'static str = "00000000-0000-0000-0000-000000000009";
+pub static JSON_IDM_HP_ACCOUNT_WRITE_PRIV_V1: &'static str = r#"{
+    "attrs": {
+        "class": ["group", "object"],
+        "name": ["idm_hp_account_write_priv"],
+        "uuid": ["00000000-0000-0000-0000-000000000009"],
+        "description": ["Builtin IDM Group for granting elevated account write permissions over high privilege accounts."],
+        "member": [
+            "00000000-0000-0000-0000-000000000001"
+        ]
+    }
+}"#;
+// * Schema write manager
+pub static _UUID_IDM_SCHEMA_WRITE_PRIV: &'static str = "00000000-0000-0000-0000-000000000010";
+pub static JSON_IDM_SCHEMA_WRITE_PRIV_V1: &'static str = r#"{
+    "attrs": {
+        "class": ["group", "object"],
+        "name": ["idm_schema_write_priv"],
+        "uuid": ["00000000-0000-0000-0000-000000000010"],
+        "description": ["Builtin IDM Group for granting elevated schema write permissions."],
+        "member": [
+            "00000000-0000-0000-0000-000000000001"
+        ]
+    }
+}"#;
+// * ACP read/write manager
+pub static _UUID_IDM_ACP_MANAGER_PRIV: &'static str = "00000000-0000-0000-0000-000000000011";
+pub static JSON_IDM_ACP_MANAGER_PRIV_V1: &'static str = r#"{
+    "attrs": {
+        "class": ["group", "object"],
+        "name": ["idm_acp_manager_priv"],
+        "uuid": ["00000000-0000-0000-0000-000000000011"],
+        "description": ["Builtin IDM Group for granting control over all access control profile modifications."],
+        "member": ["00000000-0000-0000-0000-000000000001"]
+    }
+}"#;
+
+pub static _UUID_IDM_HP_GROUP_WRITE_PRIV: &'static str = "00000000-0000-0000-0000-000000000009";
+pub static JSON_IDM_HP_GROUP_WRITE_PRIV_V1: &'static str = r#"{
+    "attrs": {
+        "class": ["group", "object"],
+        "name": ["idm_hp_group_write_priv"],
+        "uuid": ["00000000-0000-0000-0000-000000000012"],
+        "description": ["Builtin IDM Group for granting elevated group write privileges for high privilege groups."],
+        "member": ["00000000-0000-0000-0000-000000000001"]
+    }
+}"#;
+
+pub static _UUID_IDM_SERVICE_ACCOUNT_CREATE_PRIV: &'static str =
+    "00000000-0000-0000-0000-000000000013";
+pub static JSON_IDM_SERVICE_ACCOUNT_CREATE_PRIV_V1: &'static str = r#"{
+    "attrs": {
+        "class": ["group", "object"],
+        "name": ["idm_service_account_create_priv"],
+        "uuid": ["00000000-0000-0000-0000-000000000013"],
+        "description": ["Builtin IDM Group for granting service account creation rights"],
+        "member": ["00000000-0000-0000-0000-000000000001"]
+    }
+}"#;
+
+pub static _UUID_IDM_PERSON_ACCOUNT_CREATE_PRIV: &'static str =
+    "00000000-0000-0000-0000-000000000014";
+pub static JSON_IDM_PERSON_ACCOUNT_CREATE_PRIV_V1: &'static str = r#"{
+    "attrs": {
+        "class": ["group", "object"],
+        "name": ["idm_person_account_create_priv"],
+        "uuid": ["00000000-0000-0000-0000-000000000014"],
+        "description": ["Builtin IDM Group for granting person/account creation rights"],
+        "member": ["00000000-0000-0000-0000-000000000001"]
+    }
+}"#;
+
+// This must be the last group to init to include the UUID of the other high priv groups.
+pub static _UUID_IDM_HIGH_PRIVILEGE: &'static str = "00000000-0000-0000-0000-000000001000";
+pub static JSON_IDM_HIGH_PRIVILEGE_V1: &'static str = r#"{
+    "attrs": {
+        "class": ["group", "object"],
+        "name": ["idm_high_privilege"],
+        "uuid": ["00000000-0000-0000-0000-000000001000"],
+        "description": ["Builtin IDM provided groups with high levels of access that should be audited and limited in modification."],
+        "member": [
+            "00000000-0000-0000-0000-000000000001",
+            "00000000-0000-0000-0000-000000000002",
+            "00000000-0000-0000-0000-000000000003",
+            "00000000-0000-0000-0000-000000000004",
+            "00000000-0000-0000-0000-000000000005",
+            "00000000-0000-0000-0000-000000000006",
+            "00000000-0000-0000-0000-000000000007",
+            "00000000-0000-0000-0000-000000000008",
+            "00000000-0000-0000-0000-000000000009",
+            "00000000-0000-0000-0000-000000000010",
+            "00000000-0000-0000-0000-000000000011",
+            "00000000-0000-0000-0000-000000000012",
+            "00000000-0000-0000-0000-000000000013",
+            "00000000-0000-0000-0000-000000000014",
+            "00000000-0000-0000-0000-000000001000"
+        ]
+    }
+}"#;
+
 pub static _UUID_SYSTEM_INFO: &'static str = "00000000-0000-0000-0000-ffffff000001";
 pub static JSON_SYSTEM_INFO_V1: &'static str = r#"{
-    "valid": {
-        "uuid": "00000000-0000-0000-0000-ffffff000001"
-    },
-    "state": null,
     "attrs": {
         "class": ["object", "system_info"],
         "uuid": ["00000000-0000-0000-0000-ffffff000001"],
@@ -62,34 +240,72 @@ pub static JSON_SYSTEM_INFO_V1: &'static str = r#"{
     }
 }"#;
 
-pub static _UUID_IDM_ADMINS_ACP_SEARCH_V1: &'static str = "00000000-0000-0000-0000-ffffff000002";
-pub static JSON_IDM_ADMINS_ACP_SEARCH_V1: &'static str = r#"{
-    "valid": {
-        "uuid": "00000000-0000-0000-0000-ffffff000002"
-    },
-    "state": null,
+/*
+// Template acp
+pub static _UUID_IDM_ACP_XX_V1: &'static str = "00000000-0000-0000-0000-ffffff0000XX";
+pub static JSON_IDM_ACP_XX_V1: &'static str = r#"{
+    "attrs": {
+        "class": [
+            "object",
+            "access_control_profile",
+            "access_control_search",
+            "access_control_modify",
+            "access_control_create",
+            "access_control_delete"
+        ],
+        "name": ["idm_acp_xx"],
+        "uuid": ["00000000-0000-0000-0000-ffffff0000XX"],
+        "description": ["Builtin IDM Control for xx"],
+        "acp_enable": ["true"],
+        "acp_receiver": [
+            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-0000000000XX\"]}"
+        ],
+        "acp_targetscope": [
+            "{\"And\": [{\"Eq\": [\"attr\",\"value\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+        ],
+        "acp_search_attr": [
+
+        ],
+        "acp_modify_removedattr": [
+
+        ],
+        "acp_modify_presentattr": [
+
+        ],
+        "acp_modify_class":  [
+
+        ],
+        "acp_create_attr": [
+
+        ],
+        "acp_create_class": [
+
+        ]
+    }
+}"#;
+*/
+
+pub static _UUID_IDM_ADMINS_ACP_RECYCLE_SEARCH_V1: &'static str =
+    "00000000-0000-0000-0000-ffffff000002";
+pub static JSON_IDM_ADMINS_ACP_RECYCLE_SEARCH_V1: &'static str = r#"{
     "attrs": {
         "class": ["object", "access_control_profile", "access_control_search"],
-        "name": ["idm_admins_acp_search"],
+        "name": ["idm_admins_acp_recycle_search"],
         "uuid": ["00000000-0000-0000-0000-ffffff000002"],
-        "description": ["Builtin IDM Administrators Access Controls."],
+        "description": ["Builtin IDM admin recycle bin search permission."],
         "acp_enable": ["true"],
         "acp_receiver": [
             "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000001\"]}"
         ],
         "acp_targetscope": [
-            "{\"Pres\":\"class\"}"
+            "{\"Eq\": [\"class\", \"recycled\"]}"
         ],
-        "acp_search_attr": ["name", "class", "uuid", "description", "displayname"]
+        "acp_search_attr": ["name", "class", "uuid"]
     }
 }"#;
 
 pub static _UUID_IDM_ADMINS_ACP_REVIVE_V1: &'static str = "00000000-0000-0000-0000-ffffff000003";
 pub static JSON_IDM_ADMINS_ACP_REVIVE_V1: &'static str = r#"{
-    "valid": {
-        "uuid": "00000000-0000-0000-0000-ffffff000003"
-    },
-    "state": null,
     "attrs": {
         "class": ["object", "access_control_profile", "access_control_modify"],
         "name": ["idm_admins_acp_revive"],
@@ -109,15 +325,11 @@ pub static JSON_IDM_ADMINS_ACP_REVIVE_V1: &'static str = r#"{
 
 pub static _UUID_IDM_SELF_ACP_READ_V1: &'static str = "00000000-0000-0000-0000-ffffff000004";
 pub static JSON_IDM_SELF_ACP_READ_V1: &'static str = r#"{
-    "valid": {
-        "uuid": "00000000-0000-0000-0000-ffffff000004"
-    },
-    "state": null,
     "attrs": {
         "class": ["object", "access_control_profile", "access_control_search"],
         "name": ["idm_self_acp_read"],
         "uuid": ["00000000-0000-0000-0000-ffffff000004"],
-        "description": ["Builtin IDM Control for self read - required for whoami."],
+        "description": ["Builtin IDM Control for self read - required for whoami and many other functions."],
         "acp_enable": ["true"],
         "acp_receiver": [
             "\"Self\""
@@ -125,16 +337,21 @@ pub static JSON_IDM_SELF_ACP_READ_V1: &'static str = r#"{
         "acp_targetscope": [
             "\"Self\""
         ],
-        "acp_search_attr": ["name", "uuid"]
+        "acp_search_attr": [
+            "name",
+            "displayname",
+            "legalname",
+            "class",
+            "memberof",
+            "member",
+            "uuid"
+        ]
     }
 }"#;
 
+/*
 pub static _UUID_IDM_ADMINS_ACP_MANAGE_V1: &'static str = "00000000-0000-0000-0000-ffffff000005";
 pub static JSON_IDM_ADMINS_ACP_MANAGE_V1: &'static str = r#"{
-    "valid": {
-        "uuid": "00000000-0000-0000-0000-ffffff000005"
-    },
-    "state": null,
     "attrs": {
         "class": [
             "object",
@@ -152,7 +369,7 @@ pub static JSON_IDM_ADMINS_ACP_MANAGE_V1: &'static str = r#"{
             "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000001\"]}"
         ],
         "acp_targetscope": [
-            "{\"Pres\":\"class\"}"
+            "{\"And\": [{\"Pres\": \"class\"}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_search_attr": ["name", "class", "uuid", "classname", "attributename", "memberof"],
         "acp_modify_class": ["person"],
@@ -162,12 +379,573 @@ pub static JSON_IDM_ADMINS_ACP_MANAGE_V1: &'static str = r#"{
         "acp_create_attr": ["name", "class", "description", "displayname"]
     }
 }"#;
+*/
 
-pub static JSON_ANONYMOUS_V1: &'static str = r#"{
-    "valid": {
-        "uuid": "00000000-0000-0000-0000-ffffffffffff"
-    },
+pub static _UUID_IDM_ALL_ACP_READ_V1: &'static str = "00000000-0000-0000-0000-ffffff000006";
+pub static JSON_IDM_ALL_ACP_READ_V1: &'static str = r#"{
     "state": null,
+    "attrs": {
+        "class": ["object", "access_control_profile", "access_control_search"],
+        "name": ["idm_all_acp_read"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000006"],
+        "description": ["Builtin IDM Control for all read - IE anonymous and all authenticated accounts."],
+        "acp_enable": ["true"],
+        "acp_receiver": [
+            "{\"Pres\":\"class\"}"
+        ],
+        "acp_targetscope": [
+            "{\"And\": [{\"Pres\": \"class\"}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+        ],
+        "acp_search_attr": [
+            "name",
+            "displayname",
+            "class",
+            "memberof",
+            "member"
+        ]
+    }
+}"#;
+
+// 7 people read acp JSON_IDM_PEOPLE_READ_PRIV_V1
+pub static _UUID_IDM_ACP_PEOPLE_READ_PRIV_V1: &'static str = "00000000-0000-0000-0000-ffffff000007";
+pub static JSON_IDM_ACP_PEOPLE_READ_PRIV_V1: &'static str = r#"{
+    "attrs": {
+        "class": [
+            "object",
+            "access_control_profile",
+            "access_control_search"
+        ],
+        "name": ["idm_acp_people_read_priv"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000007"],
+        "description": ["Builtin IDM Control for reading personal sensitive data."],
+        "acp_enable": ["true"],
+        "acp_receiver": [
+            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000002\"]}"
+        ],
+        "acp_targetscope": [
+            "{\"And\": [{\"Eq\": [\"class\",\"account\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+        ],
+        "acp_search_attr": [
+            "name", "displayname", "legalname", "mail"
+        ]
+    }
+}"#;
+// 8 people write acp JSON_IDM_PEOPLE_WRITE_PRIV_V1
+pub static _UUID_IDM_ACP_PEOPLE_WRITE_PRIV_V1: &'static str =
+    "00000000-0000-0000-0000-ffffff000008";
+pub static JSON_IDM_ACP_PEOPLE_WRITE_PRIV_V1: &'static str = r#"{
+    "attrs": {
+        "class": [
+            "object",
+            "access_control_profile",
+            "access_control_modify"
+        ],
+        "name": ["idm_acp_people_write_priv"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000008"],
+        "description": ["Builtin IDM Control for managing personal and sensitive data."],
+        "acp_enable": ["true"],
+        "acp_receiver": [
+            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000003\"]}"
+        ],
+        "acp_targetscope": [
+            "{\"And\": [{\"Eq\": [\"class\",\"person\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+        ],
+        "acp_modify_removedattr": [
+            "name", "displayname", "legalname", "mail"
+        ],
+        "acp_modify_presentattr": [
+            "name", "displayname", "legalname", "mail"
+        ]
+    }
+}"#;
+// 9 group write acp JSON_IDM_GROUP_WRITE_PRIV_V1
+pub static _UUID_IDM_ACP_GROUP_WRITE_PRIV_V1: &'static str = "00000000-0000-0000-0000-ffffff000009";
+pub static JSON_IDM_ACP_GROUP_WRITE_PRIV_V1: &'static str = r#"{
+    "attrs": {
+        "class": [
+            "object",
+            "access_control_profile",
+            "access_control_search",
+            "access_control_modify",
+            "access_control_delete"
+        ],
+        "name": ["idm_acp_group_write_priv"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000009"],
+        "description": ["Builtin IDM Control for managing groups"],
+        "acp_enable": ["true"],
+        "acp_receiver": [
+            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000004\"]}"
+        ],
+        "acp_targetscope": [
+            "{\"And\": [{\"Eq\": [\"class\",\"group\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+        ],
+        "acp_search_attr": [
+            "class", "name", "uuid", "description", "member"
+        ],
+        "acp_modify_removedattr": [
+            "name", "description", "member"
+        ],
+        "acp_modify_presentattr": [
+            "name", "description", "member"
+        ]
+    }
+}"#;
+// 10 account read acp JSON_IDM_ACCOUNT_READ_PRIV_V1
+pub static _UUID_IDM_ACP_ACCOUNT_READ_PRIV_V1: &'static str =
+    "00000000-0000-0000-0000-ffffff000010";
+pub static JSON_IDM_ACP_ACCOUNT_READ_PRIV_V1: &'static str = r#"{
+    "attrs": {
+        "class": [
+            "object",
+            "access_control_profile",
+            "access_control_search"
+        ],
+        "name": ["idm_acp_account_read_priv"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000010"],
+        "description": ["Builtin IDM Control for accounts."],
+        "acp_enable": ["true"],
+        "acp_receiver": [
+            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000005\"]}"
+        ],
+        "acp_targetscope": [
+            "{\"And\": [{\"Eq\": [\"class\",\"account\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+        ],
+        "acp_search_attr": [
+            "class", "name", "uuid", "displayname", "ssh_publickey", "primary_credential", "memberof", "mail"
+        ]
+    }
+}"#;
+// 11 account write acp JSON_IDM_ACCOUNT_WRITE_PRIV_V1
+pub static _UUID_IDM_ACP_ACCOUNT_WRITE_PRIV_V1: &'static str =
+    "00000000-0000-0000-0000-ffffff000011";
+pub static JSON_IDM_ACP_ACCOUNT_WRITE_PRIV_V1: &'static str = r#"{
+    "attrs": {
+        "class": [
+            "object",
+            "access_control_profile",
+            "access_control_modify"
+        ],
+        "name": ["idm_acp_account_write_priv"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000011"],
+        "description": ["Builtin IDM Control for managing accounts."],
+        "acp_enable": ["true"],
+        "acp_receiver": [
+            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000006\"]}"
+        ],
+        "acp_targetscope": [
+            "{\"And\": [{\"Eq\": [\"class\",\"account\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+        ],
+        "acp_modify_removedattr": [
+            "name", "displayname", "ssh_publickey", "primary_credential", "mail"
+        ],
+        "acp_modify_presentattr": [
+            "name", "displayname", "ssh_publickey", "primary_credential", "mail"
+        ]
+    }
+}"#;
+// 12 service account create acp (only admins?)  JSON_IDM_SERVICE_ACCOUNT_CREATE_PRIV_V1
+pub static _UUID_IDM_ACP_SERVICE_ACCOUNT_CREATE_V1: &'static str =
+    "00000000-0000-0000-0000-ffffff000012";
+pub static JSON_IDM_ACP_SERVICE_ACCOUNT_CREATE_V1: &'static str = r#"{
+    "attrs": {
+        "class": [
+            "object",
+            "access_control_profile",
+            "access_control_create"
+        ],
+        "name": ["idm_acp_service_account_create"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000012"],
+        "description": ["Builtin IDM Control for creating person (user) accounts"],
+        "acp_enable": ["true"],
+        "acp_receiver": [
+            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000013\"]}"
+        ],
+        "acp_targetscope": [
+            "{\"And\": [{\"Eq\": [\"class\",\"account\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+        ],
+        "acp_create_attr": [
+            "class",
+            "name",
+            "displayname",
+            "primary_credential",
+            "ssh_publickey"
+        ],
+        "acp_create_class": [
+            "object", "account"
+        ]
+    }
+}"#;
+// 13 user (person) account create acp  JSON_IDM_PERSON_ACCOUNT_CREATE_PRIV_V1
+pub static _UUID_IDM_ACP_PERSON_ACCOUNT_CREATE_V1: &'static str =
+    "00000000-0000-0000-0000-ffffff000013";
+pub static JSON_IDM_ACP_PERSON_ACCOUNT_CREATE_V1: &'static str = r#"{
+    "attrs": {
+        "class": [
+            "object",
+            "access_control_profile",
+            "access_control_create"
+        ],
+        "name": ["idm_acp_person_account_create"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000013"],
+        "description": ["Builtin IDM Control for creating person (user) accounts"],
+        "acp_enable": ["true"],
+        "acp_receiver": [
+            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000014\"]}"
+        ],
+        "acp_targetscope": [
+            "{\"And\": [{\"Eq\": [\"class\",\"account\"]}, {\"Eq\": [\"class\",\"person\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+        ],
+        "acp_create_attr": [
+            "class",
+            "name",
+            "displayname",
+            "legalname",
+            "primary_credential",
+            "ssh_publickey",
+            "mail"
+        ],
+        "acp_create_class": [
+            "object", "person", "account"
+        ]
+    }
+}"#;
+
+// 14 radius read acp JSON_IDM_RADIUS_SERVERS_V1
+pub static _UUID_IDM_ACP_RADIUS_SERVERS_V1: &'static str = "00000000-0000-0000-0000-ffffff000014";
+// The targetscope of this could change later to a "radius access" group or similar so we can add/remove
+//  users from having radius access easier.
+// TODO #17: Add the radius credential type that we need to read here.
+pub static JSON_IDM_ACP_RADIUS_SERVERS_V1: &'static str = r#"{
+    "attrs": {
+        "class": [
+            "object",
+            "access_control_profile",
+            "access_control_search"
+        ],
+        "name": ["idm_acp_radius_servers"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000014"],
+        "description": ["Builtin IDM Control for RADIUS servers to read credentials and other needed details."],
+        "acp_enable": ["true"],
+        "acp_receiver": [
+            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000007\"]}"
+        ],
+        "acp_targetscope": [
+            "{\"And\": [{\"Pres\": \"class\"}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+        ],
+        "acp_search_attr": [
+            "name", "uuid"
+        ]
+    }
+}"#;
+// 15 high priv account read JSON_IDM_HP_ACCOUNT_READ_PRIV_V1
+pub static _UUID_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1: &'static str =
+    "00000000-0000-0000-0000-ffffff000015";
+pub static JSON_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1: &'static str = r#"{
+    "attrs": {
+        "class": [
+            "object",
+            "access_control_profile",
+            "access_control_search"
+        ],
+        "name": ["idm_acp_hp_account_read_priv"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000015"],
+        "description": ["Builtin IDM Control for reading high privilege accounts."],
+        "acp_enable": ["true"],
+        "acp_receiver": [
+            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000009\"]}"
+        ],
+        "acp_targetscope": [
+            "{\"And\": [{\"Eq\": [\"class\",\"account\"]}, {\"Eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+        ],
+        "acp_search_attr": [
+            "class", "name", "uuid", "displayname", "ssh_publickey", "primary_credential", "memberof"
+        ]
+    }
+}"#;
+// 16 high priv account write JSON_IDM_HP_ACCOUNT_WRITE_PRIV_V1
+pub static _UUID_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1: &'static str =
+    "00000000-0000-0000-0000-ffffff000016";
+pub static JSON_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1: &'static str = r#"{
+    "attrs": {
+        "class": [
+            "object",
+            "access_control_profile",
+            "access_control_modify",
+            "access_control_delete"
+        ],
+        "name": ["idm_acp_hp_account_write_priv"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000016"],
+        "description": ["Builtin IDM Control for managing high privilege accounts."],
+        "acp_enable": ["true"],
+        "acp_receiver": [
+            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000009\"]}"
+        ],
+        "acp_targetscope": [
+            "{\"And\": [{\"Eq\": [\"class\",\"account\"]}, {\"Eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+        ],
+        "acp_modify_removedattr": [
+            "name", "displayname", "ssh_publickey", "primary_credential"
+        ],
+        "acp_modify_presentattr": [
+            "name", "displayname", "ssh_publickey", "primary_credential"
+        ]
+    }
+}"#;
+
+// 17 high priv group write --> JSON_IDM_HP_GROUP_WRITE_PRIV_V1 (12)
+pub static _UUID_IDM_ACP_HP_GROUP_WRITE_PRIV_V1: &'static str =
+    "00000000-0000-0000-0000-ffffff000017";
+pub static JSON_IDM_ACP_HP_GROUP_WRITE_PRIV_V1: &'static str = r#"{
+    "attrs": {
+        "class": [
+            "object",
+            "access_control_profile",
+            "access_control_search",
+            "access_control_modify",
+            "access_control_delete"
+        ],
+        "name": ["idm_acp_hp_group_write_priv"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000017"],
+        "description": ["Builtin IDM Control for managing high privilege groups"],
+        "acp_enable": ["true"],
+        "acp_receiver": [
+            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000012\"]}"
+        ],
+        "acp_targetscope": [
+            "{\"And\": [{\"Eq\": [\"class\",\"group\"]}, {\"Eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+        ],
+        "acp_search_attr": [
+            "class", "name", "uuid", "description", "member"
+        ],
+        "acp_modify_removedattr": [
+            "name", "description", "member"
+        ],
+        "acp_modify_presentattr": [
+            "name", "description", "member"
+        ]
+    }
+}"#;
+
+// 18 schema write JSON_IDM_SCHEMA_WRITE_PRIV_V1
+pub static _UUID_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1: &'static str =
+    "00000000-0000-0000-0000-ffffff000018";
+pub static JSON_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1: &'static str = r#"{
+    "attrs": {
+        "class": [
+            "object",
+            "access_control_profile",
+            "access_control_search",
+            "access_control_modify",
+            "access_control_create"
+        ],
+        "name": ["idm_acp_schema_write_attrs_priv"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000018"],
+        "description": ["Builtin IDM Control for management of schema attributes."],
+        "acp_enable": ["true"],
+        "acp_receiver": [
+            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000010\"]}"
+        ],
+        "acp_targetscope": [
+            "{\"And\": [{\"Eq\": [\"class\",\"attributetype\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+        ],
+        "acp_search_attr": [
+            "class",
+            "description",
+            "index",
+            "unique",
+            "multivalue",
+            "attributename",
+            "syntax",
+            "uuid"
+        ],
+        "acp_modify_removedattr": [
+            "description",
+            "index",
+            "unique",
+            "multivalue",
+            "syntax"
+        ],
+        "acp_modify_presentattr": [
+            "description",
+            "index",
+            "unique",
+            "multivalue",
+            "syntax"
+        ],
+        "acp_modify_class":  [],
+        "acp_create_attr": [
+            "class",
+            "description",
+            "index",
+            "unique",
+            "multivalue",
+            "attributename",
+            "syntax",
+            "uuid"
+        ],
+        "acp_create_class": [
+            "object", "attributetype"
+        ]
+    }
+}"#;
+
+// 19 acp read/write
+pub static _UUID_IDM_ACP_ACP_MANAGER_PRIV_V1: &'static str = "00000000-0000-0000-0000-ffffff000019";
+pub static JSON_IDM_ACP_ACP_MANAGER_PRIV_V1: &'static str = r#"{
+    "attrs": {
+        "class": [
+            "object",
+            "access_control_profile",
+            "access_control_search",
+            "access_control_modify",
+            "access_control_create",
+            "access_control_delete"
+        ],
+        "name": ["idm_acp_acp_manager_priv"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000019"],
+        "description": ["Builtin IDM Control for access profiles management."],
+        "acp_enable": ["true"],
+        "acp_receiver": [
+            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000011\"]}"
+        ],
+        "acp_targetscope": [
+            "{\"And\": [{\"Eq\": [\"class\",\"access_control_profile\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+        ],
+        "acp_search_attr": [
+            "name",
+            "class",
+            "description",
+            "acp_enable",
+            "acp_receiver",
+            "acp_targetscope",
+            "acp_search_attr",
+            "acp_modify_removedattr",
+            "acp_modify_presentattr",
+            "acp_modify_class",
+            "acp_create_class",
+            "acp_create_attr"
+        ],
+        "acp_modify_removedattr": [
+            "name",
+            "class",
+            "description",
+            "acp_enable",
+            "acp_receiver",
+            "acp_targetscope",
+            "acp_search_attr",
+            "acp_modify_removedattr",
+            "acp_modify_presentattr",
+            "acp_modify_class",
+            "acp_create_class",
+            "acp_create_attr"
+        ],
+        "acp_modify_presentattr": [
+            "name",
+            "class",
+            "description",
+            "acp_enable",
+            "acp_receiver",
+            "acp_targetscope",
+            "acp_search_attr",
+            "acp_modify_removedattr",
+            "acp_modify_presentattr",
+            "acp_modify_class",
+            "acp_create_class",
+            "acp_create_attr"
+        ],
+        "acp_modify_class":  [
+            "access_control_profile",
+            "access_control_search",
+            "access_control_modify",
+            "access_control_create",
+            "access_control_delete"
+        ],
+        "acp_create_attr": [
+            "name",
+            "class",
+            "description",
+            "acp_enable",
+            "acp_receiver",
+            "acp_targetscope",
+            "acp_search_attr",
+            "acp_modify_removedattr",
+            "acp_modify_presentattr",
+            "acp_modify_class",
+            "acp_create_class",
+            "acp_create_attr"
+        ],
+        "acp_create_class": [
+            "access_control_profile",
+            "access_control_search",
+            "access_control_modify",
+            "access_control_create",
+            "access_control_delete"
+        ]
+    }
+}"#;
+
+pub static _UUID_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1: &'static str =
+    "00000000-0000-0000-0000-ffffff000020";
+pub static JSON_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1: &'static str = r#"{
+    "attrs": {
+        "class": [
+            "object",
+            "access_control_profile",
+            "access_control_search",
+            "access_control_modify",
+            "access_control_create"
+        ],
+        "name": ["idm_acp_schema_write_classes_priv"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000020"],
+        "description": ["Builtin IDM Control for management of schema classes."],
+        "acp_enable": ["true"],
+        "acp_receiver": [
+            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000010\"]}"
+        ],
+        "acp_targetscope": [
+            "{\"And\": [{\"Eq\": [\"class\",\"classtype\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+        ],
+        "acp_search_attr": [
+            "class",
+            "description",
+            "classname",
+            "systemmay",
+            "may",
+            "systemmust",
+            "must",
+            "uuid"
+        ],
+        "acp_modify_removedattr": [
+            "class",
+            "description",
+            "may",
+            "must"
+        ],
+        "acp_modify_presentattr": [
+            "class",
+            "description",
+            "may",
+            "must"
+        ],
+        "acp_modify_class":  [],
+        "acp_create_attr": [
+            "class",
+            "description",
+            "classname",
+            "may",
+            "must",
+            "uuid"
+        ],
+        "acp_create_class": [
+            "object", "classtype"
+        ]
+    }
+}"#;
+
+// 21 - anonymous / everyone schema read.
+
+// Anonymous should be the last opbject in the range here.
+pub static JSON_ANONYMOUS_V1: &'static str = r#"{
     "attrs": {
         "class": ["account", "object"],
         "name": ["anonymous"],
@@ -377,6 +1155,37 @@ pub static JSON_SCHEMA_ATTR_PRIMARY_CREDENTIAL: &'static str = r#"
     }
   }
 "#;
+pub static UUID_SCHEMA_ATTR_LEGALNAME: &'static str = "00000000-0000-0000-0000-ffff00000050";
+pub static JSON_SCHEMA_ATTR_LEGALNAME: &'static str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "The private and sensitive legal name of this person"
+      ],
+      "index": [
+        "EQUALITY"
+      ],
+      "unique": [
+        "false"
+      ],
+      "multivalue": [
+        "false"
+      ],
+      "attributename": [
+        "legalname"
+      ],
+      "syntax": [
+        "UTF8STRING"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000050"
+      ]
+    }
+}"#;
 
 pub static UUID_SCHEMA_CLASS_PERSON: &'static str = "00000000-0000-0000-0000-ffff00000044";
 pub static JSON_SCHEMA_CLASS_PERSON: &'static str = r#"
@@ -399,7 +1208,7 @@ pub static JSON_SCHEMA_CLASS_PERSON: &'static str = r#"
       ],
       "systemmay": [
         "mail",
-        "memberof"
+        "legalname"
       ],
       "systemmust": [
         "displayname",
@@ -446,10 +1255,6 @@ pub static JSON_SCHEMA_CLASS_GROUP: &'static str = r#"
 pub static UUID_SCHEMA_CLASS_ACCOUNT: &'static str = "00000000-0000-0000-0000-ffff00000046";
 pub static JSON_SCHEMA_CLASS_ACCOUNT: &'static str = r#"
   {
-    "valid": {
-      "uuid": "00000000-0000-0000-0000-ffff00000046"
-    },
-    "state": null,
     "attrs": {
       "class": [
         "object",
@@ -457,7 +1262,7 @@ pub static JSON_SCHEMA_CLASS_ACCOUNT: &'static str = r#"
         "classtype"
       ],
       "description": [
-        "Object representation of a person"
+        "Object representation of a account"
       ],
       "classname": [
         "account"

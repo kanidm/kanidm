@@ -86,9 +86,8 @@ fn test_server_create() {
         let e: Entry = serde_json::from_str(
             r#"{
             "attrs": {
-                "class": ["person"],
+                "class": ["person", "account"],
                 "name": ["testperson"],
-                "description": ["testperson"],
                 "displayname": ["testperson"]
             }
         }"#,
@@ -150,22 +149,27 @@ fn test_server_whoami_admin_simple_password() {
     });
 }
 
-// Test hitting all auth-required endpoints and assert they give unauthorized.
-
-/*
 #[test]
-fn test_be_create_user() {
-    run_test!(|log, server: actix::Addr<QueryServer>| {
-        let r1 = server.search();
-        assert!(r1.len() == 0);
+fn test_server_search() {
+    run_test(|rsclient: KanidmClient| {
+        // First show we are un-authenticated.
+        let pre_res = rsclient.whoami();
+        // This means it was okay whoami, but no uat attached.
+        assert!(pre_res.unwrap().is_none());
 
-        let cr = server.create();
-        assert!(cr.is_ok());
+        let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
+        assert!(res.is_ok());
 
-        let r2 = server.search();
-        assert!(r2.len() == 1);
-
-        future::ok(())
+        let rset = rsclient
+            .search_str("{\"Eq\":[\"name\", \"admin\"]}")
+            .unwrap();
+        println!("{:?}", rset);
+        let e = rset.first().unwrap();
+        // Check it's admin.
+        println!("{:?}", e);
+        let name = e.attrs.get("name").unwrap();
+        assert!(name == &vec!["admin".to_string()]);
     });
 }
-*/
+
+// Test hitting all auth-required endpoints and assert they give unauthorized.
