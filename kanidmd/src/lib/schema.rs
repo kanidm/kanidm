@@ -43,6 +43,7 @@ impl SchemaAttribute {
         value: &Entry<EntryValid, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         // Convert entry to a schema attribute.
+        audit_log!(audit, "Converting -> {:?}", value);
         // class
         if !value.attribute_value_pres("class", &PVCLASS_ATTRIBUTETYPE) {
             audit_log!(audit, "class attribute type not present");

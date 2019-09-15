@@ -12,13 +12,8 @@ use crate::access::{
     AccessControls, AccessControlsReadTransaction, AccessControlsTransaction,
     AccessControlsWriteTransaction,
 };
-use crate::constants::{
-    JSON_ADMIN_V1, JSON_ANONYMOUS_V1, JSON_IDM_ADMINS_ACP_MANAGE_V1, JSON_IDM_ADMINS_ACP_REVIVE_V1,
-    JSON_IDM_ADMINS_ACP_SEARCH_V1, JSON_IDM_ADMINS_V1, JSON_IDM_SELF_ACP_READ_V1,
-    JSON_SCHEMA_ATTR_DISPLAYNAME, JSON_SCHEMA_ATTR_MAIL, JSON_SCHEMA_ATTR_PRIMARY_CREDENTIAL,
-    JSON_SCHEMA_ATTR_SSH_PUBLICKEY, JSON_SCHEMA_CLASS_ACCOUNT, JSON_SCHEMA_CLASS_GROUP,
-    JSON_SCHEMA_CLASS_PERSON, JSON_SYSTEM_INFO_V1, UUID_DOES_NOT_EXIST,
-};
+// We use so many, we just import them all ...
+use crate::constants::*;
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryReduced, EntryValid};
 use crate::event::{
     CreateEvent, DeleteEvent, Event, EventOrigin, ExistsEvent, ModifyEvent, ReviveRecycledEvent,
@@ -1495,6 +1490,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // List of IDM schemas to init.
         let idm_schema: Vec<&str> = vec![
             JSON_SCHEMA_ATTR_DISPLAYNAME,
+            JSON_SCHEMA_ATTR_LEGALNAME,
             JSON_SCHEMA_ATTR_MAIL,
             JSON_SCHEMA_ATTR_SSH_PUBLICKEY,
             JSON_SCHEMA_ATTR_PRIMARY_CREDENTIAL,
@@ -1546,17 +1542,50 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Create any system default access profile entries.
         let mut audit_an = AuditScope::new("start_idm_migrations_internal");
-        let res = self
-            .internal_migrate_or_create_str(&mut audit_an, JSON_IDM_ADMINS_ACP_SEARCH_V1)
-            .and_then(|_| {
-                self.internal_migrate_or_create_str(&mut audit_an, JSON_IDM_ADMINS_ACP_REVIVE_V1)
-            })
-            .and_then(|_| {
-                self.internal_migrate_or_create_str(&mut audit_an, JSON_IDM_ADMINS_ACP_MANAGE_V1)
-            })
-            .and_then(|_| {
-                self.internal_migrate_or_create_str(&mut audit_an, JSON_IDM_SELF_ACP_READ_V1)
-            });
+        let idm_entries = [
+            // Builtin groups
+            JSON_IDM_PEOPLE_WRITE_PRIV_V1,
+            JSON_IDM_PEOPLE_READ_PRIV_V1,
+            JSON_IDM_GROUP_WRITE_PRIV_V1,
+            JSON_IDM_ACCOUNT_WRITE_PRIV_V1,
+            JSON_IDM_ACCOUNT_READ_PRIV_V1,
+            JSON_IDM_RADIUS_SERVERS_V1,
+            // Write deps on read, so write must be added first.
+            JSON_IDM_HP_ACCOUNT_WRITE_PRIV_V1,
+            JSON_IDM_HP_ACCOUNT_READ_PRIV_V1,
+            JSON_IDM_SCHEMA_WRITE_PRIV_V1,
+            JSON_IDM_HP_GROUP_WRITE_PRIV_V1,
+            JSON_IDM_ACP_MANAGER_PRIV_V1,
+            JSON_IDM_SERVICE_ACCOUNT_CREATE_PRIV_V1,
+            JSON_IDM_PERSON_ACCOUNT_CREATE_PRIV_V1,
+            JSON_IDM_HIGH_PRIVILEGE_V1,
+            // Built in access controls.
+            JSON_IDM_ADMINS_ACP_RECYCLE_SEARCH_V1,
+            JSON_IDM_ADMINS_ACP_REVIVE_V1,
+            // JSON_IDM_ADMINS_ACP_MANAGE_V1,
+            JSON_IDM_ALL_ACP_READ_V1,
+            JSON_IDM_SELF_ACP_READ_V1,
+            JSON_IDM_ACP_PEOPLE_READ_PRIV_V1,
+            JSON_IDM_ACP_PEOPLE_WRITE_PRIV_V1,
+            JSON_IDM_ACP_GROUP_WRITE_PRIV_V1,
+            JSON_IDM_ACP_ACCOUNT_READ_PRIV_V1,
+            JSON_IDM_ACP_ACCOUNT_WRITE_PRIV_V1,
+            JSON_IDM_ACP_SERVICE_ACCOUNT_CREATE_V1,
+            JSON_IDM_ACP_PERSON_ACCOUNT_CREATE_V1,
+            JSON_IDM_ACP_RADIUS_SERVERS_V1,
+            JSON_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1,
+            JSON_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1,
+            JSON_IDM_ACP_HP_GROUP_WRITE_PRIV_V1,
+            JSON_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1,
+            JSON_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1,
+            JSON_IDM_ACP_ACP_MANAGER_PRIV_V1,
+        ];
+
+        let res: Result<(), _> = idm_entries
+            .iter()
+            // Each item individually logs it's result
+            .map(|e_str| self.internal_migrate_or_create_str(&mut audit_an, e_str))
+            .collect();
         audit.append_scope(audit_an);
         assert!(res.is_ok());
         if res.is_err() {
@@ -2777,4 +2806,24 @@ mod tests {
             assert!(cred_ref.verify_password("test_password"));
         })
     }
+
+    /*
+    #[test]
+    fn test_qs_schema_dump_attrs() {
+        run_test!(|server: &QueryServer, _audit: &mut AuditScope| {
+            use crate::schema::SchemaTransaction;
+            let server_txn = server.write();
+            let schema = server_txn.get_schema();
+
+            for k in schema.get_attributes().keys() {
+                println!("{}", k);
+            }
+            println!("====");
+            for k in schema.get_classes().keys() {
+                println!("{}", k);
+            }
+
+        })
+    }
+    */
 }
