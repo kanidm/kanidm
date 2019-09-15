@@ -177,7 +177,8 @@ pub static JSON_IDM_HP_GROUP_WRITE_PRIV_V1: &'static str = r#"{
     }
 }"#;
 
-pub static _UUID_IDM_SERVICE_ACCOUNT_CREATE_PRIV: &'static str = "00000000-0000-0000-0000-000000000013";
+pub static _UUID_IDM_SERVICE_ACCOUNT_CREATE_PRIV: &'static str =
+    "00000000-0000-0000-0000-000000000013";
 pub static JSON_IDM_SERVICE_ACCOUNT_CREATE_PRIV_V1: &'static str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -188,7 +189,8 @@ pub static JSON_IDM_SERVICE_ACCOUNT_CREATE_PRIV_V1: &'static str = r#"{
     }
 }"#;
 
-pub static _UUID_IDM_PERSON_ACCOUNT_CREATE_PRIV: &'static str = "00000000-0000-0000-0000-000000000014";
+pub static _UUID_IDM_PERSON_ACCOUNT_CREATE_PRIV: &'static str =
+    "00000000-0000-0000-0000-000000000014";
 pub static JSON_IDM_PERSON_ACCOUNT_CREATE_PRIV_V1: &'static str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -283,7 +285,8 @@ pub static JSON_IDM_ACP_XX_V1: &'static str = r#"{
 }"#;
 */
 
-pub static _UUID_IDM_ADMINS_ACP_RECYCLE_SEARCH_V1: &'static str = "00000000-0000-0000-0000-ffffff000002";
+pub static _UUID_IDM_ADMINS_ACP_RECYCLE_SEARCH_V1: &'static str =
+    "00000000-0000-0000-0000-ffffff000002";
 pub static JSON_IDM_ADMINS_ACP_RECYCLE_SEARCH_V1: &'static str = r#"{
     "attrs": {
         "class": ["object", "access_control_profile", "access_control_search"],
@@ -403,7 +406,6 @@ pub static JSON_IDM_ALL_ACP_READ_V1: &'static str = r#"{
     }
 }"#;
 
-
 // 7 people read acp JSON_IDM_PEOPLE_READ_PRIV_V1
 pub static _UUID_IDM_ACP_PEOPLE_READ_PRIV_V1: &'static str = "00000000-0000-0000-0000-ffffff000007";
 pub static JSON_IDM_ACP_PEOPLE_READ_PRIV_V1: &'static str = r#"{
@@ -429,7 +431,8 @@ pub static JSON_IDM_ACP_PEOPLE_READ_PRIV_V1: &'static str = r#"{
     }
 }"#;
 // 8 people write acp JSON_IDM_PEOPLE_WRITE_PRIV_V1
-pub static _UUID_IDM_ACP_PEOPLE_WRITE_PRIV_V1: &'static str = "00000000-0000-0000-0000-ffffff000008";
+pub static _UUID_IDM_ACP_PEOPLE_WRITE_PRIV_V1: &'static str =
+    "00000000-0000-0000-0000-ffffff000008";
 pub static JSON_IDM_ACP_PEOPLE_WRITE_PRIV_V1: &'static str = r#"{
     "attrs": {
         "class": [
@@ -488,7 +491,8 @@ pub static JSON_IDM_ACP_GROUP_WRITE_PRIV_V1: &'static str = r#"{
     }
 }"#;
 // 10 account read acp JSON_IDM_ACCOUNT_READ_PRIV_V1
-pub static _UUID_IDM_ACP_ACCOUNT_READ_PRIV_V1: &'static str = "00000000-0000-0000-0000-ffffff000010";
+pub static _UUID_IDM_ACP_ACCOUNT_READ_PRIV_V1: &'static str =
+    "00000000-0000-0000-0000-ffffff000010";
 pub static JSON_IDM_ACP_ACCOUNT_READ_PRIV_V1: &'static str = r#"{
     "attrs": {
         "class": [
@@ -512,7 +516,8 @@ pub static JSON_IDM_ACP_ACCOUNT_READ_PRIV_V1: &'static str = r#"{
     }
 }"#;
 // 11 account write acp JSON_IDM_ACCOUNT_WRITE_PRIV_V1
-pub static _UUID_IDM_ACP_ACCOUNT_WRITE_PRIV_V1: &'static str = "00000000-0000-0000-0000-ffffff000011";
+pub static _UUID_IDM_ACP_ACCOUNT_WRITE_PRIV_V1: &'static str =
+    "00000000-0000-0000-0000-ffffff000011";
 pub static JSON_IDM_ACP_ACCOUNT_WRITE_PRIV_V1: &'static str = r#"{
     "attrs": {
         "class": [
@@ -539,7 +544,8 @@ pub static JSON_IDM_ACP_ACCOUNT_WRITE_PRIV_V1: &'static str = r#"{
     }
 }"#;
 // 12 service account create acp (only admins?)  JSON_IDM_SERVICE_ACCOUNT_CREATE_PRIV_V1
-pub static _UUID_IDM_ACP_SERVICE_ACCOUNT_CREATE_V1: &'static str = "00000000-0000-0000-0000-ffffff000012";
+pub static _UUID_IDM_ACP_SERVICE_ACCOUNT_CREATE_V1: &'static str =
+    "00000000-0000-0000-0000-ffffff000012";
 pub static JSON_IDM_ACP_SERVICE_ACCOUNT_CREATE_V1: &'static str = r#"{
     "attrs": {
         "class": [
@@ -569,7 +575,8 @@ pub static JSON_IDM_ACP_SERVICE_ACCOUNT_CREATE_V1: &'static str = r#"{
     }
 }"#;
 // 13 user (person) account create acp  JSON_IDM_PERSON_ACCOUNT_CREATE_PRIV_V1
-pub static _UUID_IDM_ACP_PERSON_ACCOUNT_CREATE_V1: &'static str = "00000000-0000-0000-0000-ffffff000013";
+pub static _UUID_IDM_ACP_PERSON_ACCOUNT_CREATE_V1: &'static str =
+    "00000000-0000-0000-0000-ffffff000013";
 pub static JSON_IDM_ACP_PERSON_ACCOUNT_CREATE_V1: &'static str = r#"{
     "attrs": {
         "class": [
@@ -629,7 +636,8 @@ pub static JSON_IDM_ACP_RADIUS_SERVERS_V1: &'static str = r#"{
     }
 }"#;
 // 15 high priv account read JSON_IDM_HP_ACCOUNT_READ_PRIV_V1
-pub static _UUID_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1: &'static str = "00000000-0000-0000-0000-ffffff000015";
+pub static _UUID_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1: &'static str =
+    "00000000-0000-0000-0000-ffffff000015";
 pub static JSON_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1: &'static str = r#"{
     "attrs": {
         "class": [
@@ -653,7 +661,8 @@ pub static JSON_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1: &'static str = r#"{
     }
 }"#;
 // 16 high priv account write JSON_IDM_HP_ACCOUNT_WRITE_PRIV_V1
-pub static _UUID_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1: &'static str = "00000000-0000-0000-0000-ffffff000016";
+pub static _UUID_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1: &'static str =
+    "00000000-0000-0000-0000-ffffff000016";
 pub static JSON_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1: &'static str = r#"{
     "attrs": {
         "class": [
@@ -682,7 +691,8 @@ pub static JSON_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1: &'static str = r#"{
 }"#;
 
 // 17 high priv group write --> JSON_IDM_HP_GROUP_WRITE_PRIV_V1 (12)
-pub static _UUID_IDM_ACP_HP_GROUP_WRITE_PRIV_V1: &'static str = "00000000-0000-0000-0000-ffffff000017";
+pub static _UUID_IDM_ACP_HP_GROUP_WRITE_PRIV_V1: &'static str =
+    "00000000-0000-0000-0000-ffffff000017";
 pub static JSON_IDM_ACP_HP_GROUP_WRITE_PRIV_V1: &'static str = r#"{
     "attrs": {
         "class": [
@@ -715,7 +725,8 @@ pub static JSON_IDM_ACP_HP_GROUP_WRITE_PRIV_V1: &'static str = r#"{
 }"#;
 
 // 18 schema write JSON_IDM_SCHEMA_WRITE_PRIV_V1
-pub static _UUID_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1: &'static str = "00000000-0000-0000-0000-ffffff000018";
+pub static _UUID_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1: &'static str =
+    "00000000-0000-0000-0000-ffffff000018";
 pub static JSON_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1: &'static str = r#"{
     "attrs": {
         "class": [
@@ -776,7 +787,8 @@ pub static JSON_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1: &'static str = r#"{
     }
 }"#;
 
-pub static _UUID_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1: &'static str = "00000000-0000-0000-0000-ffffff000019";
+pub static _UUID_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1: &'static str =
+    "00000000-0000-0000-0000-ffffff000019";
 pub static JSON_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1: &'static str = r#"{
     "attrs": {
         "class": [
@@ -929,7 +941,6 @@ pub static JSON_IDM_ACP_ACP_MANAGER_PRIV_V1: &'static str = r#"{
 }"#;
 
 // 20 - anonymous / everyone schema read.
-
 
 // Anonymous should be the last opbject in the range here.
 pub static JSON_ANONYMOUS_V1: &'static str = r#"{
