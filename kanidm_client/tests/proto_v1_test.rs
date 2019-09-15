@@ -86,9 +86,8 @@ fn test_server_create() {
         let e: Entry = serde_json::from_str(
             r#"{
             "attrs": {
-                "class": ["person"],
+                "class": ["person", "account"],
                 "name": ["testperson"],
-                "description": ["testperson"],
                 "displayname": ["testperson"]
             }
         }"#,

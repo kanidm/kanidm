@@ -564,6 +564,7 @@ pub static JSON_IDM_ACP_SERVICE_ACCOUNT_CREATE_V1: &'static str = r#"{
             "{\"And\": [{\"Eq\": [\"class\",\"account\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_create_attr": [
+            "class",
             "name",
             "displayname",
             "primary_credential",
@@ -592,9 +593,10 @@ pub static JSON_IDM_ACP_PERSON_ACCOUNT_CREATE_V1: &'static str = r#"{
             "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000014\"]}"
         ],
         "acp_targetscope": [
-            "{\"And\": [{\"Eq\": [\"class\",\"account\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+            "{\"And\": [{\"Eq\": [\"class\",\"account\"]}, {\"Eq\": [\"class\",\"person\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_create_attr": [
+            "class",
             "name",
             "displayname",
             "legalname",
