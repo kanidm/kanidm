@@ -606,7 +606,7 @@ pub fn create_server_core(config: Configuration) {
     });
 
     let tls_aws_builder = match opt_tls_params {
-        Some(tls_params) => aws_builder.bind_ssl(config.address, tls_params),
+        Some(tls_params) => aws_builder.bind_rustls(config.address, tls_params),
         None => {
             warn!("Starting WITHOUT TLS parameters. This may cause authentication to fail!");
             aws_builder.bind(config.address)

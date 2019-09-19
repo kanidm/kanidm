@@ -20,7 +20,7 @@ path = "src/server/main.rs"
 kanidm_proto = { path = "../kanidm_proto" }
 
 actix = "0.7"
-actix-web = { version = "0.7", features = ["ssl"] }
+actix-web = { version = "0.7", features = ["rust-tls"] }
 
 bytes = "0.4"
 log = "0.4"
@@ -51,6 +51,7 @@ time = "0.1"
 concread = "0.1"
 
 openssl = "0.10"
+rustls = "0.14.0"
 
 rpassword = "0.4"
 num_cpus = "1.10"
