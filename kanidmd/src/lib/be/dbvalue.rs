@@ -2,7 +2,7 @@ use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum DbPasswordV1 {
-    PBKDF2(usize, Vec<u8>, Vec<u8>),
+    PBKDF2(u32, Vec<u8>, Vec<u8>),
 }
 
 #[derive(Serialize, Deserialize, Debug)]

@@ -52,6 +52,7 @@ concread = "0.1"
 
 openssl = "0.10"
 rustls = "0.14.0"
+ring = "0.13.5"
 
 rpassword = "0.4"
 num_cpus = "1.10"

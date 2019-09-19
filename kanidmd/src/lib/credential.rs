@@ -1,7 +1,6 @@
 use crate::be::dbvalue::{DbCredV1, DbPasswordV1};
-use openssl::hash::MessageDigest;
-use openssl::pkcs5::pbkdf2_hmac;
 use rand::prelude::*;
+use ring::{digest, pbkdf2};
 use std::convert::TryFrom;
 use uuid::Uuid;
 
@@ -17,20 +16,22 @@ pub enum Policy {
 */
 
 // TODO: Determine this at startup based on a time factor
-const PBKDF2_COST: usize = 10000;
+const PBKDF2_COST: u32 = 10000;
 // NIST 800-63.b salt should be 112 bits -> 14  8u8.
 // I choose tinfoil hat though ...
 const PBKDF2_SALT_LEN: usize = 24;
 // 64 * u8 -> 512 bits of out.
 const PBKDF2_KEY_LEN: usize = 64;
 
+static PBKDF2_DIGEST: &'static digest::Algorithm = &digest::SHA256;
+
 // Why PBKDF2? Rust's bcrypt has a number of hardcodings like max pw len of 72
 // I don't really feel like adding in so many restrictions, so I'll use
-// pbkdf2 in openssl because it doesn't have the same limits.
+// pbkdf2 in rustls because it doesn't have the same limits.
 #[derive(Clone, Debug)]
 enum KDF {
-    //     cost, salt,   hash
-    PBKDF2(usize, Vec<u8>, Vec<u8>),
+    //     cost,salt,    hash
+    PBKDF2(u32, Vec<u8>, Vec<u8>),
 }
 
 #[derive(Clone, Debug)]
@@ -55,18 +56,17 @@ impl Password {
         let mut rng = rand::thread_rng();
         let salt: Vec<u8> = (0..PBKDF2_SALT_LEN).map(|_| rng.gen()).collect();
         // This is 512 bits of output
-        let mut key: Vec<u8> = (0..PBKDF2_KEY_LEN).map(|_| 0).collect();
+        let mut hash: Vec<u8> = (0..PBKDF2_KEY_LEN).map(|_| 0).collect();
 
-        pbkdf2_hmac(
-            cleartext.as_bytes(),
-            salt.as_slice(),
+        pbkdf2::derive(
+            PBKDF2_DIGEST,
             PBKDF2_COST,
-            MessageDigest::sha256(),
-            key.as_mut_slice(),
-        )
-        .expect("PBKDF2 failure");
-        // Turn key to a vec.
-        KDF::PBKDF2(PBKDF2_COST, salt, key)
+            &salt,
+            cleartext.as_bytes(),
+            &mut hash,
+        );
+        // Turn hash to a vec.
+        KDF::PBKDF2(PBKDF2_COST, salt, hash)
     }
 
     pub fn new(cleartext: &str) -> Self {
@@ -77,18 +77,8 @@ impl Password {
 
     pub fn verify(&self, cleartext: &str) -> bool {
         match &self.material {
-            KDF::PBKDF2(cost, salt, key) => {
-                let mut chal_key: Vec<u8> = (0..PBKDF2_KEY_LEN).map(|_| 0).collect();
-                pbkdf2_hmac(
-                    cleartext.as_bytes(),
-                    salt.as_slice(),
-                    *cost,
-                    MessageDigest::sha256(),
-                    chal_key.as_mut_slice(),
-                )
-                .expect("PBKDF2 failure");
-                // Actually compare the outputs.
-                &chal_key == key
+            KDF::PBKDF2(cost, salt, hash) => {
+                pbkdf2::verify(PBKDF2_DIGEST, *cost, salt, cleartext.as_bytes(), hash).is_ok()
             }
         }
     }
