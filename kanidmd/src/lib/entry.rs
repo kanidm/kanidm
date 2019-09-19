@@ -690,6 +690,14 @@ impl Entry<EntryValid, EntryNew> {
         }
     }
 
+    pub fn to_valid_committed_id(self, id: u64) -> Entry<EntryValid, EntryCommitted> {
+        Entry {
+            valid: self.valid,
+            state: EntryCommitted { id: id },
+            attrs: self.attrs,
+        }
+    }
+
     pub fn compare(&self, rhs: &Entry<EntryValid, EntryCommitted>) -> bool {
         self.attrs == rhs.attrs
     }
@@ -702,8 +710,215 @@ impl Entry<EntryValid, EntryCommitted> {
         self
     }
 
+    pub fn into_dbentry(&self) -> DbEntry {
+        // In the future this will do extra work to process uuid
+        // into "attributes" suitable for dbentry storage.
+
+        // How will this work with replication?
+        //
+        // Alternately, we may have higher-level types that translate entry
+        // into proper structures, and they themself emit/modify entries?
+
+        DbEntry {
+            ent: DbEntryVers::V1(DbEntryV1 {
+                attrs: self
+                    .attrs
+                    .iter()
+                    .map(|(k, vs)| {
+                        let dbvs: Vec<_> = vs.iter().map(|v| v.to_db_valuev1()).collect();
+                        (k.clone(), dbvs)
+                    })
+                    .collect(),
+            }),
+        }
+    }
+
     pub fn compare(&self, rhs: &Entry<EntryValid, EntryNew>) -> bool {
         self.attrs == rhs.attrs
+    }
+
+    // This is an associated method, not on & self so we can take options on
+    // both sides.
+    pub(crate) fn idx_diff<'a>(
+        idxmeta: &'a BTreeSet<(String, IndexType)>,
+        pre: Option<&Self>,
+        post: Option<&Self>,
+    ) -> Vec<Result<(&'a String, &'a IndexType, String), (&'a String, &'a IndexType, String)>> {
+        // We yield a list of Result, where Ok() means "add",
+        // and Err() means "remove".
+        // the value inside the result, is a tuple of attr, itype, idx_key
+
+        match (pre, post) {
+            (None, None) => {
+                // if both are none, yield empty list.
+                Vec::new()
+            }
+            (Some(pre_e), None) => {
+                // If we are none (?), yield our pre-state as removals.
+                idxmeta
+                    .iter()
+                    .flat_map(|(attr, itype)| {
+                        match pre_e.get_ava(attr.as_str()) {
+                            None => Vec::new(),
+                            Some(vs) => {
+                                let changes: Vec<Result<_, _>> = match itype {
+                                    IndexType::EQUALITY => {
+                                        vs.iter()
+                                            .flat_map(|v| {
+                                                // Turn each idx_key to the tuple of
+                                                // changes.
+                                                v.generate_idx_eq_keys()
+                                                    .into_iter()
+                                                    .map(|idx_key| Err((attr, itype, idx_key)))
+                                            })
+                                            .collect()
+                                    }
+                                    IndexType::PRESENCE => {
+                                        vec![Err((attr, itype, "_".to_string()))]
+                                    }
+                                    IndexType::SUBSTRING => Vec::new(),
+                                };
+                                changes
+                            }
+                        }
+                    })
+                    .collect()
+            }
+            (None, Some(post_e)) => {
+                // If the pre-state is none, yield our additions.
+                idxmeta
+                    .iter()
+                    .flat_map(|(attr, itype)| {
+                        match post_e.get_ava(attr.as_str()) {
+                            None => Vec::new(),
+                            Some(vs) => {
+                                let changes: Vec<Result<_, _>> = match itype {
+                                    IndexType::EQUALITY => {
+                                        vs.iter()
+                                            .flat_map(|v| {
+                                                // Turn each idx_key to the tuple of
+                                                // changes.
+                                                v.generate_idx_eq_keys()
+                                                    .into_iter()
+                                                    .map(|idx_key| Ok((attr, itype, idx_key)))
+                                            })
+                                            .collect()
+                                    }
+                                    IndexType::PRESENCE => vec![Ok((attr, itype, "_".to_string()))],
+                                    IndexType::SUBSTRING => Vec::new(),
+                                };
+                                // For each value
+                                //
+                                changes
+                            }
+                        }
+                    })
+                    .collect()
+            }
+            (Some(pre_e), Some(post_e)) => {
+                assert!(pre_e.state.id == post_e.state.id);
+                idxmeta
+                    .iter()
+                    .flat_map(|(attr, itype)| {
+                        match (
+                            pre_e.get_ava_set(attr.as_str()),
+                            post_e.get_ava_set(attr.as_str()),
+                        ) {
+                            (None, None) => {
+                                // Neither have it, do nothing.
+                                Vec::new()
+                            }
+                            (Some(pre_vs), None) => {
+                                // It existed before, but not anymore
+                                let changes: Vec<Result<_, _>> = match itype {
+                                    IndexType::EQUALITY => {
+                                        pre_vs
+                                            .iter()
+                                            .flat_map(|v| {
+                                                // Turn each idx_key to the tuple of
+                                                // changes.
+                                                v.generate_idx_eq_keys()
+                                                    .into_iter()
+                                                    .map(|idx_key| Err((attr, itype, idx_key)))
+                                            })
+                                            .collect()
+                                    }
+                                    IndexType::PRESENCE => {
+                                        vec![Err((attr, itype, "_".to_string()))]
+                                    }
+                                    IndexType::SUBSTRING => Vec::new(),
+                                };
+                                changes
+                            }
+                            (None, Some(post_vs)) => {
+                                // It was added now.
+                                let changes: Vec<Result<_, _>> = match itype {
+                                    IndexType::EQUALITY => {
+                                        post_vs
+                                            .iter()
+                                            .flat_map(|v| {
+                                                // Turn each idx_key to the tuple of
+                                                // changes.
+                                                v.generate_idx_eq_keys()
+                                                    .into_iter()
+                                                    .map(|idx_key| Ok((attr, itype, idx_key)))
+                                            })
+                                            .collect()
+                                    }
+                                    IndexType::PRESENCE => vec![Ok((attr, itype, "_".to_string()))],
+                                    IndexType::SUBSTRING => Vec::new(),
+                                };
+                                changes
+                            }
+                            (Some(pre_vs), Some(post_vs)) => {
+                                // it exists in both, we need to work out the differents within the attr.
+                                pre_vs
+                                    .difference(&post_vs)
+                                    .map(|pre_v| {
+                                        // Was in pre, now not in post
+                                        match itype {
+                                            IndexType::EQUALITY => {
+                                                // Remove the v
+                                                pre_v
+                                                    .generate_idx_eq_keys()
+                                                    .into_iter()
+                                                    .map(|idx_key| Err((attr, itype, idx_key)))
+                                                    .collect()
+                                            }
+                                            IndexType::PRESENCE => {
+                                                // No action - we still are "present", so nothing to do!
+                                                Vec::new()
+                                            }
+                                            IndexType::SUBSTRING => Vec::new(),
+                                        }
+                                    })
+                                    .chain(post_vs.difference(&pre_vs).map(|post_v| {
+                                        // is in post, but not in pre (add)
+                                        match itype {
+                                            IndexType::EQUALITY => {
+                                                // Remove the v
+                                                post_v
+                                                    .generate_idx_eq_keys()
+                                                    .into_iter()
+                                                    .map(|idx_key| Ok((attr, itype, idx_key)))
+                                                    .collect()
+                                            }
+                                            IndexType::PRESENCE => {
+                                                // No action - we still are "present", so nothing to do!
+                                                Vec::new()
+                                            }
+                                            IndexType::SUBSTRING => Vec::new(),
+                                        }
+                                    }))
+                                    .flatten() // flatten all the inner vecs
+                                    .collect() // now collect to an array of changes.
+                            }
+                        }
+                    })
+                    .collect()
+                // End diff of the entries
+            }
+        }
     }
 
     pub fn to_tombstone(&self) -> Self {
@@ -931,29 +1146,6 @@ impl Entry<EntryValid, EntryCommitted> {
 
 impl<STATE> Entry<EntryValid, STATE> {
     // Returns the entry in the latest DbEntry format we are aware of.
-    pub fn into_dbentry(&self) -> DbEntry {
-        // In the future this will do extra work to process uuid
-        // into "attributes" suitable for dbentry storage.
-
-        // How will this work with replication?
-        //
-        // Alternately, we may have higher-level types that translate entry
-        // into proper structures, and they themself emit/modify entries?
-
-        DbEntry {
-            ent: DbEntryVers::V1(DbEntryV1 {
-                attrs: self
-                    .attrs
-                    .iter()
-                    .map(|(k, vs)| {
-                        let dbvs: Vec<_> = vs.iter().map(|v| v.to_db_valuev1()).collect();
-                        (k.clone(), dbvs)
-                    })
-                    .collect(),
-            }),
-        }
-    }
-
     pub fn invalidate(self) -> Entry<EntryInvalid, STATE> {
         Entry {
             valid: EntryInvalid,
@@ -1187,11 +1379,11 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         // Go through the filter components and check them in the entry.
         // This is recursive!!!!
         match filter {
-            FilterResolved::Eq(attr, value) => self.attribute_equality(attr.as_str(), value),
-            FilterResolved::Sub(attr, subvalue) => {
+            FilterResolved::Eq(attr, value, _) => self.attribute_equality(attr.as_str(), value),
+            FilterResolved::Sub(attr, subvalue, _) => {
                 self.attribute_substring(attr.as_str(), subvalue)
             }
-            FilterResolved::Pres(attr) => {
+            FilterResolved::Pres(attr, _) => {
                 // Given attr, is is present in the entry?
                 self.attribute_pres(attr.as_str())
             }
@@ -1396,7 +1588,8 @@ impl From<&SchemaClass> for Entry<EntryValid, EntryNew> {
 mod tests {
     use crate::entry::{Entry, EntryInvalid, EntryNew};
     use crate::modify::{Modify, ModifyList};
-    use crate::value::{PartialValue, Value};
+    use crate::value::{IndexType, PartialValue, Value};
+    use std::collections::BTreeSet;
 
     #[test]
     fn test_entry_basic() {
@@ -1480,5 +1673,105 @@ mod tests {
         // Assert present for multivalue
         // Assert purge on single/multi/empty value
         // Assert removed on value that exists and doesn't exist
+    }
+
+    #[test]
+    fn test_entry_idx_diff() {
+        let mut e1: Entry<EntryInvalid, EntryNew> = Entry::new();
+        e1.add_ava("userid", &Value::from("william"));
+        let mut e1_mod = e1.clone();
+        e1_mod.add_ava("extra", &Value::from("test"));
+
+        let e1 = unsafe { e1.to_valid_committed() };
+        let e1_mod = unsafe { e1_mod.to_valid_committed() };
+
+        let mut e2: Entry<EntryInvalid, EntryNew> = Entry::new();
+        e2.add_ava("userid", &Value::from("claire"));
+        let e2 = unsafe { e2.to_valid_committed() };
+
+        let mut idxmeta = BTreeSet::new();
+        idxmeta.insert(("userid".to_string(), IndexType::EQUALITY));
+        idxmeta.insert(("userid".to_string(), IndexType::PRESENCE));
+        idxmeta.insert(("extra".to_string(), IndexType::EQUALITY));
+
+        // When we do None, None, we get nothing back.
+        let r1 = Entry::idx_diff(&idxmeta, None, None);
+        println!("{:?}", r1);
+        assert!(r1 == Vec::new());
+
+        // Check generating a delete diff
+        let del_r = Entry::idx_diff(&idxmeta, Some(&e1), None);
+        println!("{:?}", del_r);
+        assert!(
+            del_r[0]
+                == Err((
+                    &"userid".to_string(),
+                    &IndexType::EQUALITY,
+                    "william".to_string()
+                ))
+        );
+        assert!(del_r[1] == Err((&"userid".to_string(), &IndexType::PRESENCE, "_".to_string())));
+
+        // Check generating an add diff
+        let add_r = Entry::idx_diff(&idxmeta, None, Some(&e1));
+        println!("{:?}", add_r);
+        assert!(
+            add_r[0]
+                == Ok((
+                    &"userid".to_string(),
+                    &IndexType::EQUALITY,
+                    "william".to_string()
+                ))
+        );
+        assert!(add_r[1] == Ok((&"userid".to_string(), &IndexType::PRESENCE, "_".to_string())));
+
+        // Check the mod cases now
+
+        // Check no changes
+        let no_r = Entry::idx_diff(&idxmeta, Some(&e1), Some(&e1));
+        assert!(no_r.len() == 0);
+
+        // Check "adding" an attribute.
+        let add_a_r = Entry::idx_diff(&idxmeta, Some(&e1), Some(&e1_mod));
+        assert!(
+            add_a_r[0]
+                == Ok((
+                    &"extra".to_string(),
+                    &IndexType::EQUALITY,
+                    "test".to_string()
+                ))
+        );
+
+        // Check "removing" an attribute.
+        let del_a_r = Entry::idx_diff(&idxmeta, Some(&e1_mod), Some(&e1));
+        assert!(
+            del_a_r[0]
+                == Err((
+                    &"extra".to_string(),
+                    &IndexType::EQUALITY,
+                    "test".to_string()
+                ))
+        );
+
+        // Change an attribute.
+        let chg_r = Entry::idx_diff(&idxmeta, Some(&e1), Some(&e2));
+        assert!(
+            chg_r[0]
+                == Err((
+                    &"userid".to_string(),
+                    &IndexType::EQUALITY,
+                    "william".to_string()
+                ))
+        );
+
+        assert!(
+            chg_r[1]
+                == Ok((
+                    &"userid".to_string(),
+                    &IndexType::EQUALITY,
+                    "claire".to_string()
+                ))
+        );
+        println!("{:?}", chg_r);
     }
 }

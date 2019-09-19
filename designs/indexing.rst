@@ -148,5 +148,117 @@ is highly likely to be less targetted than the other Eq types. Another example w
 of Eq filters to the front of an And over a Sub term, wherh Sub indexes tend to be larger and have
 longer IDLs.
 
+Implementation Details and Notes
+--------------------------------
 
+Before we discuss the details of the states and update processes, we need to consider the index
+types we require.
 
+Index types
+===========
+
+The standard index is a key-value, where the key is the lookup, and the value is the idl set
+of the candidates. The examples follow the above.
+
+For us, we will format the table names as:
+
+* idx_eq_<attrname>
+* idx_sub_<attrname>
+* idx_pres_<attrname>
+
+These will be string, blob for SQL. The string is the pkey.
+
+We will have the Value's "to_index_str" emit the set of values. It's important
+to remember this is a *set* of possible index emissions, where we could have multiple values
+returned. This will be important with claims for credentials so that the claims can be indexed
+correctly.
+
+We also require a special name to uuid, and uuid to name index. These are to accelerate the name2uuid
+and uuid2name functions which are common in resolving on search. These will be named in the tables
+as:
+
+* idx_name2uuid
+* idx_uuid2name
+
+They will be structured as string, string for both - where the uuid and name column matchs the correct
+direction, and is the primary key. We could use a single table, but if we change to sled we need
+to split this, so we pre-empt this change and duplicate the data here.
+
+Indexing States
+===============
+
+* Reindex
+
+A reindex is the only time when we create the tables needed for indexing. In all other phases
+if we do not have the table for the insertion, we log the error, and move on, instructing in
+the logs to reindex asap.
+
+Reindexing should be performed after we join a replication group, or when we "setup" the instance
+for the first time. This means we need an "initial indexed" flag or similar.
+
+For all intents, a reindex is likely the same as "create" but just without replacing the entry. We
+would just remove all the index tables before hand.
+
+* Write operation index metadata
+
+At the start of a write transaction, the schema passes us a map of the current attribute index states
+so that on filter application or modification we are aware of what attrs are indexed. It is assumed
+that name2uuid and uuid2name are always indexed.
+
+* Search Index Metadata
+
+When filters are resolved they are tagged by their indexed state to allow optimisation to occur. We
+then process each filter element and their tag to determine the indexes needed to built a candidate
+set. Once we reach threshold we return the partial candidate set, and begin the id2entry process and
+the entry_match_no_index routine.
+
+And and Or terms have flags if they are partial or fully indexed, meaning we could have a
+shortcut where if the outermost term is a full indexed term, then we can avoid the entry_match_no_index
+call.
+
+* Create
+
+This is one of the simplest steps. On create we iterate over the entries ava's and referencing the
+index metadata of the txn, we create the indexes as needed from the values (before dbv conversion).
+
+* Delete
+
+Given the Entry to delete, we remove the ava's and id's from each set as needed. Generally this
+will only be for tombstones, but we still should check the process works. Important to check will
+be entries with and without names, ensuring the name2uuid/uuid2name is correctly changed, and
+removal of all the other attributes.
+
+* Modify
+
+This is the truly scary and difficult situation. The simple method would be to "delete" all indexes
+based on the pre-entry state, and then to create again. However the current design of Entry
+and modification doesn't work like this as we only get the Entry to add.
+
+Most likely we will need to change modify to take the set of (pre, post) candidates as a pair
+*OR* we have the entry store it's own pre-post internally. Given we already need to store the pre
+/post entries in the txn, it's likely better to have a pairing of these, and that allows us to
+then index replication metadata later as the entry will contain it's own changelog internally.
+
+Given the pair, we then assert they are infact, the same entry (id), and we can then use the
+index metadata to generate an indexing diff between them, containing a set of index items
+to remove (due to removal of the attr or value) and what to add (due to addition).
+
+The major transformation cases for testing are:
+
+* Add a multivalue (one)
+* Add a multivalue (many)
+* On a mulitvalue, add another value
+* On multivalue, remove a value, but leave others
+* Delete a multivalue
+* Add a new single value
+* Replace a single value
+* Delete a single value
+
+We also need to check that modification of name correctly changes name2uuid and uuid2name.
+
+* Recycle to Tombstone (removal of name)
+* Change of UUID (may happen in repl conflict scenario)
+* Change of name
+* Change of name and uuid
+
+Of course, these should work as above too.
