@@ -16,7 +16,7 @@ All people using this software should expect to have the right to:
 
 ## More?
 
-For more detailed examples, please see [EXAMPLES.md]
+For more detailed examples, please see [EXAMPLES.md](EXAMPLES.md)
 
 ## Questions?
 
