@@ -1,0 +1,46 @@
+version: 2.1
+orbs:
+  rust: glotrade/rust@0.1.3
+
+
+commands:
+  cargo-install:
+    description: "Install a binary from crates.io, caching the built binary"
+    parameters:
+      crate:
+        description: "The crate to install"
+        type: string
+    steps:
+      # The cache is immutable (saves past the first are quickly skipped), and
+      # kept for 30 days. This seems to provide a pretty good balance of
+      # updating the binary regularly while not rebuilding it every time.
+      - restore_cache:
+          keys: "cargo-installed-binary-v1-<<parameters.crate>>"
+      - run:
+          name: "Install <<parameters.crate>> from crates.io"
+          command: 'command -v "<<parameters.crate>>" >/dev/null || cargo install "<<parameters.crate>>"'
+      - save_cache:
+          key: "cargo-installed-binary-v1-<<parameters.crate>>"
+          paths:
+            - /usr/local/cargo/bin/cargo2junit
+
+jobs:
+  test:
+    executor: rust/default
+    steps:
+      - rust/checkout_with_submodules
+      - rust/update_toolchain
+      - cargo-install:
+          crate: cargo2junit
+      - rust/build:
+          release: true
+      - run: mkdir results
+      - run: cargo test --release -- -Z unstable-options --format json | cargo2junit > results/test.xml
+      - store_test_results:
+          path: results
+
+workflows:
+  build:
+    jobs:
+      - rust/format
+      - test
