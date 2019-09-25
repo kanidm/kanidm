@@ -94,8 +94,10 @@ pub trait QueryServerTransaction {
         //
         // NOTE: Filters are validated in event conversion.
 
-        // Now resolve all references.
-        let vfr = try_audit!(au, se.filter.resolve(&se.event));
+        let schema = self.get_schema();
+        let idxmeta = schema.get_idxmeta();
+        // Now resolve all references and indexes.
+        let vfr = try_audit!(au, se.filter.resolve(&se.event, Some(&idxmeta)));
 
         // NOTE: We currently can't build search plugins due to the inability to hand
         // the QS wr/ro to the plugin trait. However, there shouldn't be a need for search
@@ -129,7 +131,9 @@ pub trait QueryServerTransaction {
     fn exists(&self, au: &mut AuditScope, ee: &ExistsEvent) -> Result<bool, OperationError> {
         let mut audit_be = AuditScope::new("backend_exists");
 
-        let vfr = try_audit!(au, ee.filter.resolve(&ee.event));
+        let schema = self.get_schema();
+        let idxmeta = schema.get_idxmeta();
+        let vfr = try_audit!(au, ee.filter.resolve(&ee.event, Some(&idxmeta)));
 
         let res = self
             .get_be_txn()
@@ -636,6 +640,10 @@ impl QueryServer {
     }
 
     pub fn write(&self) -> QueryServerWriteTransaction {
+        // Feed the current schema index metadata to the be write transaction.
+        let schema_write = self.schema.write();
+        let idxmeta = schema_write.get_idxmeta();
+
         QueryServerWriteTransaction {
             // I think this is *not* needed, because commit is mut self which should
             // take ownership of the value, and cause the commit to "only be run
@@ -644,8 +652,8 @@ impl QueryServer {
             // The commited flag is however used for abort-specific code in drop
             // which today I don't think we have ... yet.
             committed: false,
-            be_txn: self.be.write(),
-            schema: self.schema.write(),
+            be_txn: self.be.write(idxmeta),
+            schema: schema_write,
             accesscontrols: self.accesscontrols.write(),
             changed_schema: false,
             changed_acp: false,
@@ -653,6 +661,31 @@ impl QueryServer {
     }
 
     pub(crate) fn initialise_helper(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
+        // First, check our database version - attempt to do an initial indexing
+        // based on the in memory configuration
+        //
+        // If we ever change the core in memory schema, or the schema that we ship
+        // in fixtures, we have to bump these values. This is how we manage the
+        // first-run and upgrade reindexings.
+        //
+        // A major reason here to split to multiple transactions is to allow schema
+        // reloading to occur, which causes the idxmeta to update, and allows validation
+        // of the schema in the subsequent steps as we proceed.
+
+        let reindex_write_1 = self.write();
+        reindex_write_1
+            .upgrade_reindex(audit, 1)
+            .and_then(|_| reindex_write_1.commit(audit))?;
+
+        // Because we init the schema here, and commit, this reloads meaning
+        // that the on-disk index meta has been loaded, so our subsequent
+        // migrations will be correctly indexed.
+        //
+        // Remember, that this would normally mean that it's possible for schema
+        // to be mis-indexed (IE we index the new schemas here before we read
+        // the schema to tell us what's indexed), but because we have the in
+        // mem schema that defines how schema is structuded, and this is all
+        // marked "system", then we won't have an issue here.
         let mut ts_write_1 = self.write();
         ts_write_1
             .initialise_schema_core(audit)
@@ -662,6 +695,12 @@ impl QueryServer {
         ts_write_2
             .initialise_schema_idm(audit)
             .and_then(|_| ts_write_2.commit(audit))?;
+
+        // reindex and set to version 2
+        let reindex_write_2 = self.write();
+        reindex_write_2
+            .upgrade_reindex(audit, 2)
+            .and_then(|_| reindex_write_2.commit(audit))?;
 
         let mut ts_write_3 = self.write();
         ts_write_3
@@ -768,23 +807,16 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         let mut audit_be = AuditScope::new("backend_create");
         // We may change from ce.entries later to something else?
-        let res = self
-            .be_txn
-            .create(&mut audit_be, &norm_cand)
-            .map(|_| ())
-            .map_err(|e| e);
+        let res = self.be_txn.create(&mut audit_be, norm_cand).map_err(|e| e);
 
         au.append_scope(audit_be);
 
-        if res.is_err() {
-            // be_txn is dropped, ie aborted here.
-            audit_log!(au, "Create operation failed (backend), {:?}", res);
-            return res;
-        }
+        let commit_cand = try_audit!(au, res);
         // Run any post plugins
 
         let mut audit_plugin_post = AuditScope::new("plugin_post_create");
-        let plug_post_res = Plugins::run_post_create(&mut audit_plugin_post, self, &norm_cand, ce);
+        let plug_post_res =
+            Plugins::run_post_create(&mut audit_plugin_post, self, &commit_cand, ce);
         au.append_scope(audit_plugin_post);
 
         if plug_post_res.is_err() {
@@ -798,7 +830,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // We have finished all plugs and now have a successful operation - flag if
         // schema or acp requires reload.
-        self.changed_schema = norm_cand.iter().fold(false, |acc, e| {
+        self.changed_schema = commit_cand.iter().fold(false, |acc, e| {
             if acc {
                 acc
             } else {
@@ -806,7 +838,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                     || e.attribute_value_pres("class", &PVCLASS_ATTRIBUTETYPE)
             }
         });
-        self.changed_acp = norm_cand.iter().fold(false, |acc, e| {
+        self.changed_acp = commit_cand.iter().fold(false, |acc, e| {
             if acc {
                 acc
             } else {
@@ -823,7 +855,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // We are complete, finalise logging and return
 
         audit_log!(au, "Create operation success");
-        res
+        Ok(())
     }
 
     pub fn delete(&mut self, au: &mut AuditScope, de: &DeleteEvent) -> Result<(), OperationError> {
@@ -908,7 +940,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         let mut audit_be = AuditScope::new("backend_modify");
 
-        let res = self.be_txn.modify(&mut audit_be, &del_cand);
+        let res = self
+            .be_txn
+            .modify(&mut audit_be, &pre_candidates, &del_cand);
         au.append_scope(audit_be);
 
         if res.is_err() {
@@ -1013,7 +1047,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Backend Modify
         let mut audit_be = AuditScope::new("backend_modify");
 
-        let res = self.be_txn.modify(&mut audit_be, &tombstone_cand);
+        let res = self.be_txn.modify(&mut audit_be, &rc, &tombstone_cand);
         au.append_scope(audit_be);
 
         if res.is_err() {
@@ -1167,7 +1201,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Backend Modify
         let mut audit_be = AuditScope::new("backend_modify");
 
-        let res = self.be_txn.modify(&mut audit_be, &norm_cand);
+        let res = self
+            .be_txn
+            .modify(&mut audit_be, &pre_candidates, &norm_cand);
         au.append_scope(audit_be);
 
         if res.is_err() {
@@ -1711,6 +1747,21 @@ impl<'a> QueryServerWriteTransaction<'a> {
         Ok(())
     }
 
+    pub fn reindex(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
+        // initiate a be reindex here. This could have been from first run checking
+        // the versions, or it could just be from the cli where an admin needs to do an
+        // indexing.
+        self.be_txn.reindex(audit)
+    }
+
+    pub(crate) fn upgrade_reindex(
+        &self,
+        audit: &mut AuditScope,
+        v: i64,
+    ) -> Result<(), OperationError> {
+        self.be_txn.upgrade_reindex(audit, v)
+    }
+
     pub fn commit(mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
         // This could be faster if we cache the set of classes changed
         // in an operation so we can check if we need to do the reload or not
@@ -1746,7 +1797,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // because both are consistent.
             schema
                 .commit()
-                .and_then(|_| accesscontrols.commit().and_then(|_| be_txn.commit()))
+                .and_then(|_| accesscontrols.commit().and_then(|_| be_txn.commit(audit)))
         } else {
             Err(OperationError::ConsistencyError(r))
         }

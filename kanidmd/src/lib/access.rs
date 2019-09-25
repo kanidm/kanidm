@@ -409,7 +409,7 @@ pub trait AccessControlsTransaction {
                 // such that it takes an entry, rather than an event, but that
                 // would create issues in search.
                 let f_val = acs.acp.receiver.clone();
-                match f_val.resolve(&se.event) {
+                match f_val.resolve(&se.event, None) {
                     Ok(f_res) => {
                         if rec_entry.entry_match_no_index(&f_res) {
                             Some(acs)
@@ -444,7 +444,7 @@ pub trait AccessControlsTransaction {
                     .iter()
                     .filter_map(|acs| {
                         let f_val = acs.acp.targetscope.clone();
-                        match f_val.resolve(&se.event) {
+                        match f_val.resolve(&se.event, None) {
                             Ok(f_res) => {
                                 // if it applies
                                 if e.entry_match_no_index(&f_res) {
@@ -533,7 +533,7 @@ pub trait AccessControlsTransaction {
             .iter()
             .filter_map(|(_, acs)| {
                 let f_val = acs.acp.receiver.clone();
-                match f_val.resolve(&se.event) {
+                match f_val.resolve(&se.event, None) {
                     Ok(f_res) => {
                         if rec_entry.entry_match_no_index(&f_res) {
                             Some(acs)
@@ -569,7 +569,7 @@ pub trait AccessControlsTransaction {
                     .iter()
                     .filter_map(|acs| {
                         let f_val = acs.acp.targetscope.clone();
-                        match f_val.resolve(&se.event) {
+                        match f_val.resolve(&se.event, None) {
                             Ok(f_res) => {
                                 // if it applies
                                 if e.entry_match_no_index(&f_res) {
@@ -662,7 +662,7 @@ pub trait AccessControlsTransaction {
             .iter()
             .filter_map(|(_, acs)| {
                 let f_val = acs.acp.receiver.clone();
-                match f_val.resolve(&me.event) {
+                match f_val.resolve(&me.event, None) {
                     Ok(f_res) => {
                         if rec_entry.entry_match_no_index(&f_res) {
                             Some(acs)
@@ -753,7 +753,7 @@ pub trait AccessControlsTransaction {
                         // to cache or handle these filters better - filter compiler
                         // cache maybe?
                         let f_val = acm.acp.targetscope.clone();
-                        match f_val.resolve(&me.event) {
+                        match f_val.resolve(&me.event, None) {
                             Ok(f_res) => {
                                 if e.entry_match_no_index(&f_res) {
                                     Some(*acm)
@@ -838,7 +838,7 @@ pub trait AccessControlsTransaction {
             .iter()
             .filter_map(|(_, acs)| {
                 let f_val = acs.acp.receiver.clone();
-                match f_val.resolve(&ce.event) {
+                match f_val.resolve(&ce.event, None) {
                     Ok(f_res) => {
                         if rec_entry.entry_match_no_index(&f_res) {
                             Some(acs)
@@ -897,7 +897,7 @@ pub trait AccessControlsTransaction {
                     } else {
                         // Check to see if allowed.
                         let f_val = accr.acp.targetscope.clone();
-                        match f_val.resolve(&ce.event) {
+                        match f_val.resolve(&ce.event, None) {
                             Ok(f_res) => {
                                 if e.entry_match_no_index(&f_res) {
                                     audit_log!(audit, "entry {:?} matches acs {:?}", e, accr);
@@ -998,7 +998,7 @@ pub trait AccessControlsTransaction {
             .iter()
             .filter_map(|(_, acs)| {
                 let f_val = acs.acp.receiver.clone();
-                match f_val.resolve(&de.event) {
+                match f_val.resolve(&de.event, None) {
                     Ok(f_res) => {
                         if rec_entry.entry_match_no_index(&f_res) {
                             Some(acs)
@@ -1032,7 +1032,7 @@ pub trait AccessControlsTransaction {
                         r_acc
                     } else {
                         let f_val = acd.acp.targetscope.clone();
-                        match f_val.resolve(&de.event) {
+                        match f_val.resolve(&de.event, None) {
                             Ok(f_res) => {
                                 if e.entry_match_no_index(&f_res) {
                                     audit_log!(

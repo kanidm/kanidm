@@ -46,7 +46,7 @@ trait Plugin {
         _au: &mut AuditScope,
         _qs: &mut QueryServerWriteTransaction,
         // List of what we commited that was valid?
-        _cand: &Vec<Entry<EntryValid, EntryNew>>,
+        _cand: &Vec<Entry<EntryValid, EntryCommitted>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         debug!("plugin {} has an unimplemented post_create!", Self::id());
@@ -303,7 +303,7 @@ impl Plugins {
     pub fn run_post_create(
         au: &mut AuditScope,
         qs: &mut QueryServerWriteTransaction,
-        cand: &Vec<Entry<EntryValid, EntryNew>>,
+        cand: &Vec<Entry<EntryValid, EntryCommitted>>,
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         audit_segment!(au, || {

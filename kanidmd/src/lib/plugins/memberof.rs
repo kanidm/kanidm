@@ -11,7 +11,7 @@
 // fixes the graph of memberships
 
 use crate::audit::AuditScope;
-use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
+use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryValid};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::modify::{Modify, ModifyList};
 use crate::plugins::Plugin;
@@ -198,7 +198,7 @@ impl Plugin for MemberOf {
     fn post_create(
         au: &mut AuditScope,
         qs: &mut QueryServerWriteTransaction,
-        cand: &Vec<Entry<EntryValid, EntryNew>>,
+        cand: &Vec<Entry<EntryValid, EntryCommitted>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         //
@@ -312,10 +312,10 @@ impl Plugin for MemberOf {
             // create new map
             // let mo_set: BTreeMap<String, ()> = BTreeMap::new();
             // searcch direct memberships of live groups.
-            let filt_in = filter!(f_eq(
-                "member",
-                PartialValue::new_refer(e.get_uuid().clone())
-            ));
+            let filt_in = filter!(f_and!([
+                f_eq("class", PartialValue::new_class("group")),
+                f_eq("member", PartialValue::new_refer(e.get_uuid().clone()))
+            ]));
 
             let direct_memberof = match qs
                 .internal_search(au, filt_in)
@@ -329,7 +329,12 @@ impl Plugin for MemberOf {
             let d_groups_set: BTreeSet<&Uuid> =
                 direct_memberof.iter().map(|e| e.get_uuid()).collect();
 
-            audit_log!(au, "Direct groups {:?} -> {:?}", e.get_uuid(), d_groups_set);
+            audit_log!(
+                au,
+                "DMO search groups {:?} -> {:?}",
+                e.get_uuid(),
+                d_groups_set
+            );
 
             let dmos: Vec<&Uuid> = match e.get_ava_reference_uuid("directmemberof") {
                 // Avoid a reference issue to return empty set
@@ -338,15 +343,16 @@ impl Plugin for MemberOf {
                 None => Vec::new(),
             };
 
-            audit_log!(au, "DMO groups {:?} -> {:?}", e.get_uuid(), dmos);
+            audit_log!(au, "Direct Member Of Set {:?} -> {:?}", e.get_uuid(), dmos);
 
             if dmos.len() != direct_memberof.len() {
                 audit_log!(
                     au,
-                    "direct set and mo set differ in size: {:?}",
+                    "directmemberof set and DMO search set differ in size: {:?}",
                     e.get_uuid()
                 );
                 r.push(Err(ConsistencyError::MemberOfInvalid(e.get_id())));
+                debug_assert!(false);
                 // Next entry
                 continue;
             };
@@ -1304,6 +1310,7 @@ mod tests {
 
     #[test]
     fn test_delete_mo_simple() {
+        debug!("TEST START");
         // X -> B
         let mut ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EA);
 

@@ -45,6 +45,14 @@ impl TryFrom<usize> for IndexType {
 }
 
 impl IndexType {
+    pub fn as_idx_str(&self) -> &str {
+        match self {
+            IndexType::EQUALITY => "eq",
+            IndexType::PRESENCE => "pres",
+            IndexType::SUBSTRING => "sub",
+        }
+    }
+
     pub fn to_string(&self) -> String {
         String::from(match self {
             IndexType::EQUALITY => "EQUALITY",
@@ -347,6 +355,24 @@ impl PartialValue {
             (PartialValue::Iutf8(s1), PartialValue::Iutf8(s2)) => s1.contains(s2),
             _ => false,
         }
+    }
+
+    pub fn get_idx_eq_key(&self) -> String {
+        match &self {
+            PartialValue::Utf8(s) | PartialValue::Iutf8(s) => s.clone(),
+            PartialValue::Refer(u) | PartialValue::Uuid(u) => u.to_hyphenated_ref().to_string(),
+            PartialValue::Bool(b) => b.to_string(),
+            PartialValue::Syntax(syn) => syn.to_string(),
+            PartialValue::Index(it) => it.to_string(),
+            PartialValue::JsonFilt(s) => {
+                serde_json::to_string(s).expect("A json filter value was corrupted during run-time")
+            }
+            PartialValue::Cred(tag) => tag.to_string(),
+        }
+    }
+
+    pub fn get_idx_sub_key(&self) -> String {
+        unimplemented!();
     }
 }
 
@@ -868,6 +894,21 @@ impl Value {
                 None => false,
             },
             _ => true,
+        }
+    }
+
+    pub fn generate_idx_eq_keys(&self) -> Vec<String> {
+        match &self.pv {
+            PartialValue::Utf8(s) | PartialValue::Iutf8(s) => vec![s.clone()],
+            PartialValue::Refer(u) | PartialValue::Uuid(u) => {
+                vec![u.to_hyphenated_ref().to_string()]
+            }
+            PartialValue::Bool(b) => vec![b.to_string()],
+            PartialValue::Syntax(syn) => vec![syn.to_string()],
+            PartialValue::Index(it) => vec![it.to_string()],
+            PartialValue::JsonFilt(s) => vec![serde_json::to_string(s)
+                .expect("A json filter value was corrupted during run-time")],
+            PartialValue::Cred(tag) => vec![tag.to_string()],
         }
     }
 }

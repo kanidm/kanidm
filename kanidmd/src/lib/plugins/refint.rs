@@ -12,7 +12,7 @@
 use std::collections::BTreeSet;
 
 use crate::audit::AuditScope;
-use crate::entry::{Entry, EntryCommitted, EntryNew, EntryValid};
+use crate::entry::{Entry, EntryCommitted, EntryValid};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::modify::{Modify, ModifyInvalid, ModifyList};
 use crate::plugins::Plugin;
@@ -80,7 +80,7 @@ impl Plugin for ReferentialIntegrity {
     fn post_create(
         au: &mut AuditScope,
         qs: &mut QueryServerWriteTransaction,
-        cand: &Vec<Entry<EntryValid, EntryNew>>,
+        cand: &Vec<Entry<EntryValid, EntryCommitted>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         let schema = qs.get_schema();

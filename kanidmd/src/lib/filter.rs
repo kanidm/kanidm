@@ -8,7 +8,7 @@ use crate::schema::SchemaTransaction;
 use crate::server::{
     QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
 };
-use crate::value::PartialValue;
+use crate::value::{IndexType, PartialValue};
 use kanidm_proto::v1::Filter as ProtoFilter;
 use kanidm_proto::v1::{OperationError, SchemaError};
 use std::cmp::{Ordering, PartialOrd};
@@ -88,10 +88,10 @@ enum FilterComp {
 // properly.
 #[derive(Debug, Clone)]
 pub enum FilterResolved {
-    // This is attr - value
-    Eq(String, PartialValue),
-    Sub(String, PartialValue),
-    Pres(String),
+    // This is attr - value - indexed
+    Eq(String, PartialValue, bool),
+    Sub(String, PartialValue, bool),
+    Pres(String, bool),
     Or(Vec<FilterResolved>),
     And(Vec<FilterResolved>),
     AndNot(Box<FilterResolved>),
@@ -165,12 +165,24 @@ impl Filter<FilterValid> {
         }
     }
 
-    pub fn resolve(&self, ev: &Event) -> Result<Filter<FilterValidResolved>, OperationError> {
+    pub fn resolve(
+        &self,
+        ev: &Event,
+        idxmeta: Option<&BTreeSet<(String, IndexType)>>,
+    ) -> Result<Filter<FilterValidResolved>, OperationError> {
         // Given a filter, resolve Not and SelfUUID to real terms.
         Ok(Filter {
             state: FilterValidResolved {
-                inner: FilterResolved::resolve(self.state.inner.clone(), ev)
-                    .ok_or(OperationError::FilterUUIDResolution)?,
+                inner: match idxmeta {
+                    Some(idx) => {
+                        // Convert it to a reference set.
+                        let idx_ref: BTreeSet<(&String, &IndexType)> =
+                            idx.iter().map(|(attr, itype)| (attr, itype)).collect();
+                        FilterResolved::resolve_idx(self.state.inner.clone(), ev, &idx_ref)
+                    }
+                    None => FilterResolved::resolve_no_idx(self.state.inner.clone(), ev),
+                }
+                .ok_or(OperationError::FilterUUIDResolution)?,
             },
         })
     }
@@ -236,9 +248,31 @@ impl Filter<FilterInvalid> {
         // tl;dr - panic if there is a Self term because we don't have the QS
         // to resolve the uuid. Perhaps in the future we can provide a uuid
         // to this for the resolving to make it safer and test case usable.
+
+        // First we make a fake idx meta, which is meant to be "just enough" to make
+        // some core test idxs faster. This is never used in production, it's JUST for
+        // test case speedups.
+        let idxmeta = vec![
+            ("uuid".to_string(), IndexType::EQUALITY),
+            ("uuid".to_string(), IndexType::PRESENCE),
+            ("name".to_string(), IndexType::EQUALITY),
+            ("name".to_string(), IndexType::SUBSTRING),
+            ("name".to_string(), IndexType::PRESENCE),
+            ("class".to_string(), IndexType::EQUALITY),
+            ("class".to_string(), IndexType::PRESENCE),
+            ("member".to_string(), IndexType::EQUALITY),
+            ("member".to_string(), IndexType::PRESENCE),
+            ("memberof".to_string(), IndexType::EQUALITY),
+            ("memberof".to_string(), IndexType::PRESENCE),
+            ("directmemberof".to_string(), IndexType::EQUALITY),
+            ("directmemberof".to_string(), IndexType::PRESENCE),
+        ];
+
+        let idxmeta_ref = idxmeta.iter().map(|(attr, itype)| (attr, itype)).collect();
+
         Filter {
             state: FilterValidResolved {
-                inner: FilterResolved::from_invalid(self.state.inner),
+                inner: FilterResolved::from_invalid(self.state.inner, &idxmeta_ref),
             },
         }
     }
@@ -529,9 +563,13 @@ impl PartialEq for Filter<FilterValidResolved> {
 impl PartialEq for FilterResolved {
     fn eq(&self, rhs: &FilterResolved) -> bool {
         match (self, rhs) {
-            (FilterResolved::Eq(a1, v1), FilterResolved::Eq(a2, v2)) => a1 == a2 && v1 == v2,
-            (FilterResolved::Sub(a1, v1), FilterResolved::Sub(a2, v2)) => a1 == a2 && v1 == v2,
-            (FilterResolved::Pres(a1), FilterResolved::Pres(a2)) => a1 == a2,
+            (FilterResolved::Eq(a1, v1, i1), FilterResolved::Eq(a2, v2, i2)) => {
+                a1 == a2 && v1 == v2 && i1 == i2
+            }
+            (FilterResolved::Sub(a1, v1, i1), FilterResolved::Sub(a2, v2, i2)) => {
+                a1 == a2 && v1 == v2 && i1 == i2
+            }
+            (FilterResolved::Pres(a1, i1), FilterResolved::Pres(a2, i2)) => a1 == a2 && i1 == i2,
             (FilterResolved::And(vs1), FilterResolved::And(vs2)) => vs1 == vs2,
             (FilterResolved::Or(vs1), FilterResolved::Or(vs2)) => vs1 == vs2,
             (FilterResolved::AndNot(f1), FilterResolved::AndNot(f2)) => f1 == f2,
@@ -564,29 +602,38 @@ impl PartialOrd for FilterResolved {
 impl Ord for FilterResolved {
     fn cmp(&self, rhs: &FilterResolved) -> Ordering {
         match (self, rhs) {
-            (FilterResolved::Eq(a1, v1), FilterResolved::Eq(a2, v2)) => {
-                // Later this is how we will promote or demote values. We may
-                // need to make this schema aware ...
+            (FilterResolved::Eq(a1, v1, true), FilterResolved::Eq(a2, v2, true)) => {
                 match a1.cmp(a2) {
                     Ordering::Equal => v1.cmp(v2),
                     o => o,
                 }
             }
-            (FilterResolved::Sub(a1, v1), FilterResolved::Sub(a2, v2)) => match a1.cmp(a2) {
-                Ordering::Equal => v1.cmp(v2),
-                o => o,
-            },
-            (FilterResolved::Pres(a1), FilterResolved::Pres(a2)) => a1.cmp(a2),
-            (FilterResolved::Eq(_, _), _) => {
-                // Always higher prefer Eq over all else, as these will have
-                // the best indexes and return smallest candidates.
-                Ordering::Less
+            (FilterResolved::Sub(a1, v1, true), FilterResolved::Sub(a2, v2, true)) => {
+                match a1.cmp(a2) {
+                    Ordering::Equal => v1.cmp(v2),
+                    o => o,
+                }
             }
-            (_, FilterResolved::Eq(_, _)) => Ordering::Greater,
-            (FilterResolved::Pres(_), _) => Ordering::Less,
-            (_, FilterResolved::Pres(_)) => Ordering::Greater,
-            (FilterResolved::Sub(_, _), _) => Ordering::Greater,
-            (_, FilterResolved::Sub(_, _)) => Ordering::Less,
+            (FilterResolved::Pres(a1, true), FilterResolved::Pres(a2, true)) => a1.cmp(a2),
+            // Always higher prefer indexed Eq over all else, as these will have
+            // the best indexes and return smallest candidates.
+            (FilterResolved::Eq(_, _, true), _) => Ordering::Less,
+            (_, FilterResolved::Eq(_, _, true)) => Ordering::Greater,
+            (FilterResolved::Pres(_, true), _) => Ordering::Less,
+            (_, FilterResolved::Pres(_, true)) => Ordering::Greater,
+            (FilterResolved::Sub(_, _, true), _) => Ordering::Greater,
+            (_, FilterResolved::Sub(_, _, true)) => Ordering::Less,
+            // Now prefer the unindexed types by performance order.
+            (FilterResolved::Pres(_, false), FilterResolved::Pres(_, false)) => Ordering::Equal,
+            (FilterResolved::Pres(_, false), _) => Ordering::Less,
+            (_, FilterResolved::Pres(_, false)) => Ordering::Greater,
+            (FilterResolved::Eq(_, _, false), FilterResolved::Eq(_, _, false)) => Ordering::Equal,
+            (FilterResolved::Eq(_, _, false), _) => Ordering::Less,
+            (_, FilterResolved::Eq(_, _, false)) => Ordering::Greater,
+            (FilterResolved::Sub(_, _, false), FilterResolved::Sub(_, _, false)) => Ordering::Equal,
+            (FilterResolved::Sub(_, _, false), _) => Ordering::Greater,
+            (_, FilterResolved::Sub(_, _, false)) => Ordering::Less,
+            // They can't be compared, they don't move!
             (_, _) => Ordering::Equal,
         }
     }
@@ -594,19 +641,30 @@ impl Ord for FilterResolved {
 
 impl FilterResolved {
     #[cfg(test)]
-    unsafe fn from_invalid(fc: FilterComp) -> Self {
+    unsafe fn from_invalid(fc: FilterComp, idxmeta: &BTreeSet<(&String, &IndexType)>) -> Self {
         match fc {
-            FilterComp::Eq(a, v) => FilterResolved::Eq(a, v),
-            FilterComp::Sub(a, v) => FilterResolved::Sub(a, v),
-            FilterComp::Pres(a) => FilterResolved::Pres(a),
+            FilterComp::Eq(a, v) => {
+                let idx = idxmeta.contains(&(&a, &IndexType::EQUALITY));
+                FilterResolved::Eq(a, v, idx)
+            }
+            FilterComp::Sub(a, v) => {
+                // let idx = idxmeta.contains(&(&a, &IndexType::SUBSTRING));
+                // TODO: For now, don't emit substring indexes.
+                let idx = false;
+                FilterResolved::Sub(a, v, idx)
+            }
+            FilterComp::Pres(a) => {
+                let idx = idxmeta.contains(&(&a, &IndexType::PRESENCE));
+                FilterResolved::Pres(a, idx)
+            }
             FilterComp::Or(vs) => FilterResolved::Or(
                 vs.into_iter()
-                    .map(|v| FilterResolved::from_invalid(v))
+                    .map(|v| FilterResolved::from_invalid(v, idxmeta))
                     .collect(),
             ),
             FilterComp::And(vs) => FilterResolved::And(
                 vs.into_iter()
-                    .map(|v| FilterResolved::from_invalid(v))
+                    .map(|v| FilterResolved::from_invalid(v, idxmeta))
                     .collect(),
             ),
             FilterComp::AndNot(f) => {
@@ -615,28 +673,44 @@ impl FilterResolved {
                 // not today remove the box, and we need f in our ownership. Since
                 // AndNot currently is a rare request, cloning is not the worst thing
                 // here ...
-                FilterResolved::AndNot(Box::new(FilterResolved::from_invalid((*f).clone())))
+                FilterResolved::AndNot(Box::new(FilterResolved::from_invalid(
+                    (*f).clone(),
+                    idxmeta,
+                )))
             }
             FilterComp::SelfUUID => panic!("Not possible to resolve SelfUUID in from_invalid!"),
         }
     }
 
-    fn resolve(fc: FilterComp, ev: &Event) -> Option<Self> {
+    fn resolve_idx(
+        fc: FilterComp,
+        ev: &Event,
+        idxmeta: &BTreeSet<(&String, &IndexType)>,
+    ) -> Option<Self> {
         match fc {
-            FilterComp::Eq(a, v) => Some(FilterResolved::Eq(a, v)),
-            FilterComp::Sub(a, v) => Some(FilterResolved::Sub(a, v)),
-            FilterComp::Pres(a) => Some(FilterResolved::Pres(a)),
+            FilterComp::Eq(a, v) => {
+                let idx = idxmeta.contains(&(&a, &IndexType::EQUALITY));
+                Some(FilterResolved::Eq(a, v, idx))
+            }
+            FilterComp::Sub(a, v) => {
+                let idx = idxmeta.contains(&(&a, &IndexType::SUBSTRING));
+                Some(FilterResolved::Sub(a, v, idx))
+            }
+            FilterComp::Pres(a) => {
+                let idx = idxmeta.contains(&(&a, &IndexType::PRESENCE));
+                Some(FilterResolved::Pres(a, idx))
+            }
             FilterComp::Or(vs) => {
                 let fi: Option<Vec<_>> = vs
                     .into_iter()
-                    .map(|f| FilterResolved::resolve(f, ev))
+                    .map(|f| FilterResolved::resolve_idx(f, ev, idxmeta))
                     .collect();
                 fi.map(|fv| FilterResolved::Or(fv))
             }
             FilterComp::And(vs) => {
                 let fi: Option<Vec<_>> = vs
                     .into_iter()
-                    .map(|f| FilterResolved::resolve(f, ev))
+                    .map(|f| FilterResolved::resolve_idx(f, ev, idxmeta))
                     .collect();
                 fi.map(|fv| FilterResolved::And(fv))
             }
@@ -646,13 +720,57 @@ impl FilterResolved {
                 // not today remove the box, and we need f in our ownership. Since
                 // AndNot currently is a rare request, cloning is not the worst thing
                 // here ...
-                FilterResolved::resolve((*f).clone(), ev)
+                FilterResolved::resolve_idx((*f).clone(), ev, idxmeta)
+                    .map(|fi| FilterResolved::AndNot(Box::new(fi)))
+            }
+            FilterComp::SelfUUID => match &ev.origin {
+                EventOrigin::User(e) => {
+                    let uuid_s = "uuid".to_string();
+                    let idx = idxmeta.contains(&(&uuid_s, &IndexType::EQUALITY));
+                    Some(FilterResolved::Eq(
+                        uuid_s,
+                        PartialValue::new_uuid(e.get_uuid().clone()),
+                        idx,
+                    ))
+                }
+                _ => None,
+            },
+        }
+    }
+
+    fn resolve_no_idx(fc: FilterComp, ev: &Event) -> Option<Self> {
+        match fc {
+            FilterComp::Eq(a, v) => Some(FilterResolved::Eq(a, v, false)),
+            FilterComp::Sub(a, v) => Some(FilterResolved::Sub(a, v, false)),
+            FilterComp::Pres(a) => Some(FilterResolved::Pres(a, false)),
+            FilterComp::Or(vs) => {
+                let fi: Option<Vec<_>> = vs
+                    .into_iter()
+                    .map(|f| FilterResolved::resolve_no_idx(f, ev))
+                    .collect();
+                fi.map(|fv| FilterResolved::Or(fv))
+            }
+            FilterComp::And(vs) => {
+                let fi: Option<Vec<_>> = vs
+                    .into_iter()
+                    .map(|f| FilterResolved::resolve_no_idx(f, ev))
+                    .collect();
+                fi.map(|fv| FilterResolved::And(fv))
+            }
+            FilterComp::AndNot(f) => {
+                // TODO: pattern match box here. (AndNot(box f)).
+                // We have to clone f into our space here because pattern matching can
+                // not today remove the box, and we need f in our ownership. Since
+                // AndNot currently is a rare request, cloning is not the worst thing
+                // here ...
+                FilterResolved::resolve_no_idx((*f).clone(), ev)
                     .map(|fi| FilterResolved::AndNot(Box::new(fi)))
             }
             FilterComp::SelfUUID => match &ev.origin {
                 EventOrigin::User(e) => Some(FilterResolved::Eq(
                     "uuid".to_string(),
                     PartialValue::new_uuid(e.get_uuid().clone()),
+                    false,
                 )),
                 _ => None,
             },
@@ -716,6 +834,13 @@ impl FilterResolved {
                 FilterResolved::Or(f_list_new)
             }
             f => f.clone(),
+        }
+    }
+
+    pub fn is_andnot(&self) -> bool {
+        match self {
+            FilterResolved::AndNot(_) => true,
+            _ => false,
         }
     }
 }
@@ -825,8 +950,8 @@ mod tests {
             f_and(vec![
                 f_eq("class", PartialValue::new_class("foo")),
                 f_eq("class", PartialValue::new_class("test")),
-                f_eq("uid", PartialValue::new_class("bar")),
                 f_pres("class"),
+                f_eq("uid", PartialValue::new_class("bar")),
                 f_sub("class", PartialValue::new_class("te")),
             ])
         );
@@ -904,9 +1029,10 @@ mod tests {
         assert_eq!(f_t2b.partial_cmp(&f_t2a), Some(Ordering::Equal));
 
         // antisymmetry: if a < b then !(a > b), as well as a > b implying !(a < b); and
+        // These are unindexed so we have to check them this way.
         let f_t3b = unsafe { filter_resolved!(f_eq("userid", PartialValue::new_iutf8s(""))) };
-        assert_eq!(f_t1a.partial_cmp(&f_t3b), Some(Ordering::Greater));
-        assert_eq!(f_t3b.partial_cmp(&f_t1a), Some(Ordering::Less));
+        assert_eq!(f_t1a.partial_cmp(&f_t3b), Some(Ordering::Less));
+        assert_eq!(f_t3b.partial_cmp(&f_t1a), Some(Ordering::Greater));
 
         // transitivity: a < b and b < c implies a < c. The same must hold for both == and >.
         let f_t4b = unsafe { filter_resolved!(f_sub("userid", PartialValue::new_iutf8s(""))) };

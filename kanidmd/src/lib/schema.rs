@@ -399,6 +399,7 @@ pub struct SchemaInner {
     // We contain sets of classes and attributes.
     classes: HashMap<String, SchemaClass>,
     attributes: HashMap<String, SchemaAttribute>,
+    idxmeta: BTreeSet<(String, IndexType)>,
 }
 
 pub trait SchemaTransaction {
@@ -445,6 +446,13 @@ pub trait SchemaTransaction {
             })
             .collect()
     }
+
+    fn get_idxmeta(&self) -> BTreeSet<(String, IndexType)> {
+        // TODO: We could cache this in the schema and recalc on reload instead to avoid
+        // so much cloning?
+        // for each attribute, if indexed, yield and flatten the attr + type.
+        self.get_inner().idxmeta.clone()
+    }
 }
 
 impl SchemaInner {
@@ -455,6 +463,7 @@ impl SchemaInner {
             let mut s = SchemaInner {
                 classes: HashMap::new(),
                 attributes: HashMap::new(),
+                idxmeta: BTreeSet::new(),
             };
             // Bootstrap in definitions of our own schema types
             // First, add all the needed core attributes for schema parsing
@@ -1074,6 +1083,7 @@ impl SchemaInner {
 
             let r = s.validate(&mut au);
             if r.len() == 0 {
+                s.reload_idxmeta();
                 Ok(s)
             } else {
                 Err(OperationError::ConsistencyError(r))
@@ -1082,6 +1092,20 @@ impl SchemaInner {
 
         audit.append_scope(au);
         r
+    }
+
+    fn reload_idxmeta(&mut self) {
+        let mut idxmeta_new: BTreeSet<_> = self
+            .attributes
+            .values()
+            .flat_map(|a| {
+                a.index
+                    .iter()
+                    .map(move |itype: &IndexType| (a.name.clone(), (*itype).clone()))
+            })
+            .collect();
+
+        std::mem::swap(&mut self.idxmeta, &mut idxmeta_new);
     }
 
     pub fn validate(&self, _audit: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
@@ -1196,6 +1220,9 @@ impl<'a> SchemaWriteTransaction<'a> {
         attributetypes.into_iter().for_each(|a| {
             self.inner.attributes.insert(a.name.clone(), a);
         });
+        // Now update the idxmeta
+        self.inner.reload_idxmeta();
+
         Ok(())
     }
 

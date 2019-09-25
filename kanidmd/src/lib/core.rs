@@ -23,6 +23,7 @@ use crate::crypto::setup_tls;
 use crate::idm::server::IdmServer;
 use crate::interval::IntervalActor;
 use crate::schema::Schema;
+use crate::schema::SchemaTransaction;
 use crate::server::QueryServer;
 use crate::utils::SID;
 use kanidm_proto::v1::OperationError;
@@ -343,14 +344,52 @@ pub fn restore_server_core(config: Configuration, dst_path: &str) {
     };
     let mut audit = AuditScope::new("backend_restore");
 
-    let be_wr_txn = be.write();
+    // First, we provide the in-memory schema so that core attrs are indexed correctly.
+    let schema = match Schema::new(&mut audit) {
+        Ok(s) => s,
+        Err(e) => {
+            error!("Failed to setup in memory schema: {:?}", e);
+            std::process::exit(1);
+        }
+    };
+
+    // Limit the scope of the schema txn.
+    let idxmeta = { schema.write().get_idxmeta() };
+
+    let mut be_wr_txn = be.write(idxmeta);
     let r = be_wr_txn
         .restore(&mut audit, dst_path)
-        .and_then(|_| be_wr_txn.commit());
-    debug!("{}", audit);
+        .and_then(|_| be_wr_txn.commit(&mut audit));
+
+    if r.is_err() {
+        debug!("{}", audit);
+        error!("Failed to restore database: {:?}", r);
+        std::process::exit(1);
+    }
+    info!("Restore Success!");
+
+    info!("Attempting to init query server ...");
+    let server_id = be.get_db_sid();
+
+    let (qs, _idms) = match setup_qs_idms(&mut audit, be, server_id) {
+        Ok(t) => t,
+        Err(e) => {
+            debug!("{}", audit);
+            error!("Unable to setup query server or idm server -> {:?}", e);
+            return;
+        }
+    };
+    info!("Success!");
+
+    info!("Start reindex phase ...");
+
+    let qs_write = qs.write();
+    let r = qs_write
+        .reindex(&mut audit)
+        .and_then(|_| qs_write.commit(&mut audit));
 
     match r {
-        Ok(_) => info!("Restore success!"),
+        Ok(_) => info!("Reindex Success!"),
         Err(e) => {
             error!("Restore failed: {:?}", e);
             std::process::exit(1);
@@ -359,6 +398,7 @@ pub fn restore_server_core(config: Configuration, dst_path: &str) {
 }
 
 pub fn reset_sid_core(config: Configuration) {
+    let mut audit = AuditScope::new("reset_sid_core");
     // Setup the be
     let be = match setup_backend(&config) {
         Ok(be) => be,
@@ -367,7 +407,8 @@ pub fn reset_sid_core(config: Configuration) {
             return;
         }
     };
-    let nsid = be.reset_db_sid();
+    let nsid = be.reset_db_sid(&mut audit);
+    debug!("{}", audit);
     info!("New Server ID: {:?}", nsid);
 }
 

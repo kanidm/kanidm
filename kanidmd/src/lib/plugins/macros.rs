@@ -71,7 +71,10 @@ macro_rules! run_create_test {
                 }
             }
             // Make sure there are no errors.
-            assert!(qs.verify(&mut au_test).len() == 0);
+            debug!("starting verification");
+            let ver = qs.verify(&mut au_test);
+            debug!("verification -> {:?}", ver);
+            assert!(ver.len() == 0);
 
             au.append_scope(au_test);
         });
@@ -125,7 +128,10 @@ macro_rules! run_modify_test {
                 }
             }
             // Make sure there are no errors.
-            assert!(qs.verify(&mut au_test).len() == 0);
+            debug!("starting verification");
+            let ver = qs.verify(&mut au_test);
+            debug!("verification -> {:?}", ver);
+            assert!(ver.len() == 0);
 
             au.append_scope(au_test);
         });
@@ -177,7 +183,10 @@ macro_rules! run_delete_test {
                 }
             }
             // Make sure there are no errors.
-            assert!(qs.verify(&mut au_test).len() == 0);
+            debug!("starting verification");
+            let ver = qs.verify(&mut au_test);
+            debug!("verification -> {:?}", ver);
+            assert!(ver.len() == 0);
 
             au.append_scope(au_test);
         });
