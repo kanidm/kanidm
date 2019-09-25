@@ -349,6 +349,29 @@ pub static JSON_IDM_SELF_ACP_READ_V1: &'static str = r#"{
     }
 }"#;
 
+pub static _UUID_IDM_SELF_ACP_WRITE_V1: &'static str = "00000000-0000-0000-0000-ffffff000021";
+pub static JSON_IDM_SELF_ACP_WRITE_V1: &'static str = r#"{
+    "attrs": {
+        "class": ["object", "access_control_profile", "access_control_modify"],
+        "name": ["idm_self_acp_write"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000021"],
+        "description": ["Builtin IDM Control for self write - required for people to update their own identities in line with best practices."],
+        "acp_enable": ["true"],
+        "acp_receiver": [
+            "\"Self\""
+        ],
+        "acp_targetscope": [
+            "\"Self\""
+        ],
+        "acp_modify_removedattr": [
+            "name", "displayname", "legalname"
+        ],
+        "acp_modify_presentattr": [
+            "name", "displayname", "legalname"
+        ]
+    }
+}"#;
+
 /*
 pub static _UUID_IDM_ADMINS_ACP_MANAGE_V1: &'static str = "00000000-0000-0000-0000-ffffff000005";
 pub static JSON_IDM_ADMINS_ACP_MANAGE_V1: &'static str = r#"{
