@@ -2,5 +2,6 @@
 .DS_Store
 .backup_test.db
 /target
+/insecure
 **/*.rs.bk
 test.db
