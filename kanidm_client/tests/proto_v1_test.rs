@@ -32,6 +32,7 @@ extern crate tokio;
 
 static PORT_ALLOC: AtomicUsize = AtomicUsize::new(8080);
 static ADMIN_TEST_PASSWORD: &'static str = "integration test admin password";
+static ADMIN_TEST_PASSWORD_CHANGE: &'static str = "integration test admin new🎉";
 
 // Test external behaviorus of the service.
 
@@ -169,6 +170,33 @@ fn test_server_search() {
         println!("{:?}", e);
         let name = e.attrs.get("name").unwrap();
         assert!(name == &vec!["admin".to_string()]);
+    });
+}
+
+#[test]
+fn test_server_admin_change_simple_password() {
+    run_test(|mut rsclient: KanidmClient| {
+        // First show we are un-authenticated.
+        let pre_res = rsclient.whoami();
+        // This means it was okay whoami, but no uat attached.
+        assert!(pre_res.unwrap().is_none());
+
+        let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
+        assert!(res.is_ok());
+
+        // Now change the password.
+        let _ = rsclient
+            .idm_account_set_password(ADMIN_TEST_PASSWORD_CHANGE.to_string())
+            .unwrap();
+
+        // Now "reset" the client.
+        let _ = rsclient.logout();
+        // Old password fails
+        let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
+        assert!(res.is_err());
+        // New password works!
+        let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD_CHANGE);
+        assert!(res.is_ok());
     });
 }
 

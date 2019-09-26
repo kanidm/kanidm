@@ -3,6 +3,7 @@ use kanidm_proto::v1::OperationError;
 
 use kanidm_proto::v1::UserAuthToken;
 
+use crate::constants::UUID_ANONYMOUS;
 use crate::credential::Credential;
 use crate::idm::claim::Claim;
 use crate::idm::group::Group;
@@ -91,6 +92,10 @@ impl Account {
             groups: self.groups.iter().map(|g| g.into_proto()).collect(),
             claims: claims.iter().map(|c| c.into_proto()).collect(),
         })
+    }
+
+    pub fn is_anonymous(&self) -> bool {
+        self.uuid == *UUID_ANONYMOUS
     }
 
     pub(crate) fn gen_password_mod(

@@ -51,7 +51,7 @@ pub struct IdmServerReadTransaction<'a> {
 pub struct IdmServerProxyWriteTransaction<'a> {
     // This does NOT take any read to the memory content, allowing safe
     // qs operations to occur through this interface.
-    qs_write: QueryServerWriteTransaction<'a>,
+    pub qs_write: QueryServerWriteTransaction<'a>,
 }
 
 impl IdmServer {
@@ -225,15 +225,25 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         au: &mut AuditScope,
         pce: &PasswordChangeEvent,
     ) -> Result<(), OperationError> {
+        // Get the account
+        let account_entry = try_audit!(au, self.qs_write.internal_search_uuid(au, &pce.target));
+        let account = try_audit!(au, Account::try_from_entry(account_entry));
+        // Ask if tis all good - this step checks pwpolicy and such
+
+        // Deny the change if the account is anonymous!
+        if account.is_anonymous() {
+            return Err(OperationError::SystemProtectedObject);
+        }
+
         // TODO: Is it a security issue to reveal pw policy checks BEFORE permission is
         // determined over the credential modification?
         //
         // I don't think so - because we should only be showing how STRONG the pw is ...
 
-        // Get the account
-        let account_entry = try_audit!(au, self.qs_write.internal_search_uuid(au, &pce.target));
-        let account = try_audit!(au, Account::try_from_entry(account_entry));
-        // Ask if tis all good - this step checks pwpolicy and such
+        // is the password long enough?
+
+        // check a password badlist
+
         // it returns a modify
         let modlist = try_audit!(
             au,
@@ -281,7 +291,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::constants::{AUTH_SESSION_TIMEOUT, UUID_ADMIN};
+    use crate::constants::{AUTH_SESSION_TIMEOUT, UUID_ADMIN, UUID_ANONYMOUS};
     use crate::credential::Credential;
     use crate::event::{AuthEvent, AuthResult, ModifyEvent};
     use crate::idm::event::PasswordChangeEvent;
@@ -547,6 +557,17 @@ mod tests {
             let mut idms_prox_write = idms.proxy_write();
             assert!(idms_prox_write.set_account_password(au, &pce).is_ok());
             assert!(idms_prox_write.set_account_password(au, &pce).is_ok());
+            assert!(idms_prox_write.commit(au).is_ok());
+        })
+    }
+
+    #[test]
+    fn test_idm_anonymous_set_password_denied() {
+        run_idm_test!(|_qs: &QueryServer, idms: &IdmServer, au: &mut AuditScope| {
+            let pce = PasswordChangeEvent::new_internal(&UUID_ANONYMOUS, TEST_PASSWORD, None);
+
+            let mut idms_prox_write = idms.proxy_write();
+            assert!(idms_prox_write.set_account_password(au, &pce).is_err());
             assert!(idms_prox_write.commit(au).is_ok());
         })
     }

@@ -360,6 +360,19 @@ impl WhoamiResponse {
     }
 }
 
+// Simple string value provision.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SingleStringRequest {
+    pub value: String,
+}
+
+impl SingleStringRequest {
+    pub fn new(s: String) -> Self {
+        SingleStringRequest { value: s }
+    }
+}
+// Use OperationResponse here ...
+
 #[cfg(test)]
 mod tests {
     use crate::v1::Filter as ProtoFilter;

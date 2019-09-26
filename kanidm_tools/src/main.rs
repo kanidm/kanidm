@@ -48,11 +48,19 @@ struct SearchOpt {
 }
 
 #[derive(Debug, StructOpt)]
+enum AccountOpt {
+    #[structopt(name = "set_password")]
+    SetPassword(CommonOpt),
+}
+
+#[derive(Debug, StructOpt)]
 enum ClientOpt {
     #[structopt(name = "search")]
     Search(SearchOpt),
     #[structopt(name = "whoami")]
     Whoami(CommonOpt),
+    #[structopt(name = "account")]
+    Account(AccountOpt),
 }
 
 impl ClientOpt {
@@ -60,6 +68,9 @@ impl ClientOpt {
         match self {
             ClientOpt::Whoami(copt) => copt.debug,
             ClientOpt::Search(sopt) => sopt.commonopts.debug,
+            ClientOpt::Account(aopt) => match aopt {
+                AccountOpt::SetPassword(copt) => copt.debug,
+            },
         }
     }
 }
@@ -98,5 +109,14 @@ fn main() {
                 println!("{:?}", e);
             }
         }
+        ClientOpt::Account(aopt) => match aopt {
+            AccountOpt::SetPassword(copt) => {
+                let client = copt.to_client();
+
+                let password = rpassword::prompt_password_stderr("Enter new password: ").unwrap();
+
+                client.idm_account_set_password(password).unwrap();
+            }
+        },
     }
 }

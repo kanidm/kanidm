@@ -195,6 +195,13 @@ impl Event {
             _ => false,
         }
     }
+
+    pub fn get_uuid(&self) -> Option<&Uuid> {
+        match &self.origin {
+            EventOrigin::Internal => None,
+            EventOrigin::User(e) => Some(e.get_uuid()),
+        }
+    }
 }
 
 #[derive(Debug)]
