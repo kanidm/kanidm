@@ -332,7 +332,7 @@ pub static JSON_IDM_SELF_ACP_READ_V1: &'static str = r#"{
         "description": ["Builtin IDM Control for self read - required for whoami and many other functions."],
         "acp_enable": ["true"],
         "acp_receiver": [
-            "\"Self\""
+            "{\"And\": [\"Self\", {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_targetscope": [
             "\"Self\""
@@ -358,7 +358,7 @@ pub static JSON_IDM_SELF_ACP_WRITE_V1: &'static str = r#"{
         "description": ["Builtin IDM Control for self write - required for people to update their own identities in line with best practices."],
         "acp_enable": ["true"],
         "acp_receiver": [
-            "\"Self\""
+            "{\"And\": [\"Self\", {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}, {\"Eq\": [\"uuid\", \"00000000-0000-0000-0000-ffffffffffff\"]}]}}]}"
         ],
         "acp_targetscope": [
             "\"Self\""
