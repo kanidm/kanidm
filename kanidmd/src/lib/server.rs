@@ -1601,6 +1601,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // JSON_IDM_ADMINS_ACP_MANAGE_V1,
             JSON_IDM_ALL_ACP_READ_V1,
             JSON_IDM_SELF_ACP_READ_V1,
+            JSON_IDM_SELF_ACP_WRITE_V1,
             JSON_IDM_ACP_PEOPLE_READ_PRIV_V1,
             JSON_IDM_ACP_PEOPLE_WRITE_PRIV_V1,
             JSON_IDM_ACP_GROUP_WRITE_PRIV_V1,
