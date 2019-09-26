@@ -1,5 +1,4 @@
 use crate::audit::AuditScope;
-use crate::constants::UUID_ANONYMOUS;
 use crate::idm::account::Account;
 use crate::idm::claim::Claim;
 use kanidm_proto::v1::OperationError;
@@ -159,7 +158,7 @@ impl AuthSession {
                 // We want the primary handler - this is where we make a decision
                 // based on the anonymous ... in theory this could be cleaner
                 // and interact with the account more?
-                if account.uuid == UUID_ANONYMOUS.clone() {
+                if account.is_anonymous() {
                     CredHandler::Anonymous
                 } else {
                     // Now we see if they have one ...

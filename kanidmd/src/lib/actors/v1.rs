@@ -7,6 +7,7 @@ use crate::event::{
     AuthEvent, CreateEvent, DeleteEvent, ModifyEvent, PurgeRecycledEvent, PurgeTombstoneEvent,
     SearchEvent, SearchResult, WhoamiResult,
 };
+use crate::idm::event::PasswordChangeEvent;
 use kanidm_proto::v1::OperationError;
 
 use crate::idm::server::IdmServer;
@@ -14,7 +15,7 @@ use crate::server::{QueryServer, QueryServerTransaction};
 
 use kanidm_proto::v1::{
     AuthRequest, AuthResponse, CreateRequest, DeleteRequest, ModifyRequest, OperationResponse,
-    SearchRequest, SearchResponse, UserAuthToken, WhoamiResponse,
+    SearchRequest, SearchResponse, SingleStringRequest, UserAuthToken, WhoamiResponse,
 };
 
 use actix::prelude::*;
@@ -120,6 +121,26 @@ impl SearchMessage {
 impl Message for SearchMessage {
     type Result = Result<SearchResponse, OperationError>;
 }
+
+pub struct IdmAccountSetPasswordMessage {
+    pub uat: Option<UserAuthToken>,
+    pub cleartext: String,
+}
+
+impl IdmAccountSetPasswordMessage {
+    pub fn new(uat: Option<UserAuthToken>, req: SingleStringRequest) -> Self {
+        IdmAccountSetPasswordMessage {
+            uat: uat,
+            cleartext: req.value,
+        }
+    }
+}
+
+impl Message for IdmAccountSetPasswordMessage {
+    type Result = Result<OperationResponse, OperationError>;
+}
+
+// ===========================================================
 
 pub struct QueryServerV1 {
     log: actix::Addr<EventLog>,
@@ -376,6 +397,34 @@ impl Handler<WhoamiMessage> for QueryServerV1 {
         });
         // Should we log the final result?
         // At the end of the event we send it for logging.
+        self.log.do_send(audit);
+        res
+    }
+}
+
+impl Handler<IdmAccountSetPasswordMessage> for QueryServerV1 {
+    type Result = Result<OperationResponse, OperationError>;
+
+    fn handle(&mut self, msg: IdmAccountSetPasswordMessage, _: &mut Self::Context) -> Self::Result {
+        let mut audit = AuditScope::new("idm_account_set_password");
+        let res = audit_segment!(&mut audit, || {
+            let mut idms_prox_write = self.idms.proxy_write();
+
+            let pce = PasswordChangeEvent::from_idm_account_set_password(
+                &mut audit,
+                &idms_prox_write.qs_write,
+                msg,
+            )
+            .map_err(|e| {
+                audit_log!(audit, "Failed to begin idm_account_set_password: {:?}", e);
+                e
+            })?;
+
+            idms_prox_write
+                .set_account_password(&mut audit, &pce)
+                .and_then(|_| idms_prox_write.commit(&mut audit))
+                .map(|_| OperationResponse::new(()))
+        });
         self.log.do_send(audit);
         res
     }

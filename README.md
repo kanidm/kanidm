@@ -55,6 +55,7 @@ let's encrypt, but if this is not possible, please use our insecure cert tool:
 You can now build and run the server with:
 
     cd kanidm
+    cargo run -- recover_account -D /tmp/kanidm.db -n admin
     cargo run -- server -D /tmp/kanidm.db -C ../insecure/ca.pem -c ../insecure/cert.pem -k ../insecure/key.pem --domain localhost --bindaddr 127.0.0.1:8080
 
 In a new terminal, you can now build and run the client tools with:
@@ -62,6 +63,7 @@ In a new terminal, you can now build and run the client tools with:
     cd kanidm_tools
     cargo run -- --help
     cargo run -- whoami -H https://localhost:8080 -D anonymous -C ../insecure/ca.pem
+    cargo run -- whoami -H https://localhost:8080 -D admin -C ../insecure/ca.pem
 
 ## Development and Testing
 

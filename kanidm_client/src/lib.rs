@@ -12,7 +12,8 @@ use std::io::Read;
 
 use kanidm_proto::v1::{
     AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep, CreateRequest, Entry, Filter,
-    OperationResponse, SearchRequest, SearchResponse, UserAuthToken, WhoamiResponse,
+    OperationResponse, SearchRequest, SearchResponse, SingleStringRequest, UserAuthToken,
+    WhoamiResponse,
 };
 
 #[derive(Debug)]
@@ -28,6 +29,7 @@ pub enum ClientError {
 pub struct KanidmClient {
     client: reqwest::Client,
     addr: String,
+    ca: Option<reqwest::Certificate>,
 }
 
 impl KanidmClient {
@@ -41,20 +43,30 @@ impl KanidmClient {
             reqwest::Certificate::from_pem(&buf).expect("Failed to parse ca")
         });
 
-        let client_builder = reqwest::Client::builder().cookie_store(true);
+        let client = Self::build_reqwest(&ca).expect("Unexpected reqwest builder failure!");
 
-        let client_builder = match ca {
-            Some(cert) => client_builder.add_root_certificate(cert),
-            None => client_builder,
-        };
-
-        let client = client_builder
-            .build()
-            .expect("Unexpected reqwest builder failure!");
         KanidmClient {
             client: client,
             addr: addr.to_string(),
+            ca: ca,
         }
+    }
+
+    pub fn logout(&mut self) -> Result<(), reqwest::Error> {
+        let mut r_client = Self::build_reqwest(&self.ca)?;
+        std::mem::swap(&mut self.client, &mut r_client);
+        Ok(())
+    }
+
+    fn build_reqwest(ca: &Option<reqwest::Certificate>) -> Result<reqwest::Client, reqwest::Error> {
+        let client_builder = reqwest::Client::builder().cookie_store(true);
+
+        let client_builder = match ca {
+            Some(cert) => client_builder.add_root_certificate(cert.clone()),
+            None => client_builder,
+        };
+
+        client_builder.build()
     }
 
     fn auth_step_init(&self, ident: &str, appid: Option<&str>) -> Result<AuthState, ClientError> {
@@ -238,4 +250,28 @@ impl KanidmClient {
 
     // modify
     //
+
+    // === idm actions here ==
+    pub fn idm_account_set_password(&self, cleartext: String) -> Result<(), ClientError> {
+        let s = SingleStringRequest { value: cleartext };
+
+        let dest = format!("{}/v1/idm/account/set_password", self.addr);
+
+        let mut response = self
+            .client
+            .post(dest.as_str())
+            .body(serde_json::to_string(&s).unwrap())
+            .send()
+            .map_err(|e| ClientError::Transport(e))?;
+
+        match response.status() {
+            reqwest::StatusCode::OK => {}
+            unexpect => return Err(ClientError::Http(unexpect)),
+        }
+
+        // TODO: What about errors
+        let _r: OperationResponse =
+            serde_json::from_str(response.text().unwrap().as_str()).unwrap();
+        Ok(())
+    }
 }

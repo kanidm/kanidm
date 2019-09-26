@@ -14,7 +14,8 @@ use crate::config::Configuration;
 // SearchResult
 use crate::actors::v1::QueryServerV1;
 use crate::actors::v1::{
-    AuthMessage, CreateMessage, DeleteMessage, ModifyMessage, SearchMessage, WhoamiMessage,
+    AuthMessage, CreateMessage, DeleteMessage, IdmAccountSetPasswordMessage, ModifyMessage,
+    SearchMessage, WhoamiMessage,
 };
 use crate::async_log;
 use crate::audit::AuditScope;
@@ -29,7 +30,7 @@ use crate::utils::SID;
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::{
     AuthRequest, AuthState, CreateRequest, DeleteRequest, ModifyRequest, SearchRequest,
-    UserAuthToken,
+    SingleStringRequest, UserAuthToken,
 };
 
 use uuid::Uuid;
@@ -260,6 +261,17 @@ fn auth(
                 }
             },
         )
+}
+
+fn idm_account_set_password(
+    (req, state): (HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    json_event_post!(
+        req,
+        state,
+        IdmAccountSetPasswordMessage,
+        SingleStringRequest
+    )
 }
 
 fn setup_backend(config: &Configuration) -> Result<Backend, OperationError> {
@@ -638,6 +650,12 @@ pub fn create_server_core(config: Configuration) {
         .resource("/v1/auth", |r| {
             r.method(http::Method::POST).with_async(auth)
         })
+        // Start IDM resources. We'll probably add more restful types later.
+        .resource("/v1/idm/account/set_password", |r| {
+            r.method(http::Method::POST)
+                .with_async(idm_account_set_password)
+        })
+
         // Add an ldap compat search function type?
         /*
         .resource("/v1/list/{class_list}", |r| {
