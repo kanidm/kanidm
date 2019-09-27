@@ -97,13 +97,13 @@ the CUD/CMD ops for a real batching system ...
 ::
 
     /v1/raw/search
-        -> POST (search request)
+        POST -> search request
     /v1/raw/create
-        -> POST (create request)
+        POST -> create request
     /v1/raw/modify
-        -> POST (modify request)
+        POST -> modify request
     /v1/raw/delete
-        -> POST (modify request)
+        POST -> modify request
 
 account
 =======
@@ -176,18 +176,18 @@ group
 ::
 
     /v1/group/
-        -> GET
-        -> POST (create new group)
+        GET -> list all group ids
+        POST -> create new group
     /v1/group/{id}
-        -> GET
-        -> PUT (overwrite group content)
-        -> PATCH (update via diff)
-        -> DELETE (whole entry)
+        GET -> get this group id
+        PUT -> overwrite group content
+        PATCH -> update via diff
+        DELETE -> whole entry
     /v1/group/{id}/$attr/{attr}
-        -> GET
-        -> PUT (overwrite)
-        -> POST (append, create new value)
-        -> DELETE (purge)
+        GET -> get this groups attr
+        PUT -> overwrite this group attr value list
+        POST -> append this list to group attr
+        DELETE -> purge this attr
 
 schema
 ======
