@@ -87,85 +87,190 @@ The cli layout will be (roughly, not actual final product):
 To support this, I think we need to break the api resources down in a similar pattern. We'd need
 to think about how this looks with rest ...
 
+raw
+===
+
+This is the server's internal CRUD (well, CSMD) protocol exposed at a low level
+for batch operations if required. We could simply have /raw take a list of
+the CUD/CMD ops for a real batching system ...
+
 ::
 
-    /v1
-        /raw
-            /search
-                -> POST -> request request
-            /create
-                -> POST -> create request
-            /modify
-                -> POST -> modify request
-            /delete
-                -> POST -> delete request
-        /recycle_bin
-            -> GET -> list
-            -> GET?id -> display
-            -> GET?filter -> search
-            -> POST { id } -> revive
-        /self
-            -> GET -> whoami?
-            -> POST -> modify?
-            -> GET?attr -> get specific attr
-            /credential
-                -> GET -> list
-                -> GET?id -> display credential
-                -> POST? { credentialupdate } -> new or update?
-                -> DELETE?id -> delete a credential
-            /radius
-                -> GET -> display the cred id/cred
-                -> POST -> modify radius cred
-                /<secret key>/ <-- this has to be stored privately on the entry w_ timeout?
-                    /apple
-                        -> GET -> configuration profile (no uat check)
-                    /android
-                        -> GET -> configuration profile (no uat check)
-                    /
-                        -> GET -> config json
-        /account
-            -> GET -> list
-            -> POST -> create
-            /id
-                -> GET -> display
-                -> GET?attr -> display attr
-                -> POST -> modify
-                -> DELETE -> delete id
-                -> global account lock?
-                /credential
-                    -> GET?id -> show credentials for id?
-                    -> POST?id
-                    -> what about lock/unlock?
-        /group
-            -> GET -> list
-            -> POST -> create
-            /id
-                -> GET -> display
-                -> GET?attr -> display attr
-                -> POST -> modify
-                -> DELETE -> delete this group
-        /access_profile
-            -> GET -> list
-            -> POST -> create
-            /id
-                -> GET -> display
-                -> DELETE -> delete
-                -> POST -> modify
+    /v1/raw/search
+        -> POST (search request)
+    /v1/raw/create
+        -> POST (create request)
+    /v1/raw/modify
+        -> POST (modify request)
+    /v1/raw/delete
+        -> POST (modify request)
 
-        /schema
-            -> GET -> list
-            -> POST -> create
-            /id
-                -> GET -> display
-                -> MODIFY -> modify
-            /what
-                /may
-                    -> GET?attr
-            /what
-                /must
-                    -> GET?attr
-        /claims
-        /radius
+account
+=======
+
+::
+
+    /v1/account/
+        GET -> list all account ids
+        POST -> create new account
+    /v1/account/{id}
+        GET -> display account
+        PUT -> overwrite account attrs
+        PATCH -> update via diff
+        DELETE -> delete this account
+    /v1/account/{id}/$attr/{attr}
+        GET -> display this attr
+        PUT -> overwrite this attr value list
+        PATCH -> append this list to attr
+        DELETE -> purge this attr
+    /v1/account/{id}/$lock
+        POST -> lock this account until time (or null for permanent)
+        DELETE -> unlock this account
+    /v1/account/{id}/$credential/
+        GET -> list the credentials
+        DELETE ->
+    /v1/account/{id}/$credential/{id}/$lock
+        POST -> lock this credential until time (or null for permament)
+        DELETE -> unlock this account
+    /v1/account/{id}/$radius
+        GET -> get the accounts radius credentials
+        (note: more methods to come to update/reset this credential
+    /v1/account/{id}/$radius/$token
+        GET -> let's the radius server get all required details for radius to work
+
+
+self
+====
+
+Modify and perform actions on self - generally this is an extension of capability
+from account and person, but combined to one.
+
+::
+
+    /v1/self/
+        GET -> view self (aka whoami)
+        PUT -> overwrite self content
+        PATCH -> update self via diff
+    /v1/self/$attr/{attr}
+        GET -> view self attribute.
+        PUT -> overwrite attr
+        POST -> append list of attr
+        DELETE -> purge attr
+    /v1/self/$credential
+        (note: more to come re setting/updating credentials, see account)
+    /v1/self/$radius/
+        GET -> list radius cred
+        (note: more to come re setting/updating this credential)
+    /v1/self/$radius/$config
+        POST -> create new config link w_ secret key?
+    /v1/self/$radius/$config/{secret_key}/
+        GET -> get radius config json (no auth needed)
+    /v1/self/$radius/$config/{secret_key}/apple
+        GET -> get radius config profile for apple
+    /v1/self/$radius/$config/{secret_key}/android
+        GET -> get radius config profile for android
+
+group
+=====
+
+::
+
+    /v1/group/
+        -> GET
+        -> POST (create new group)
+    /v1/group/{id}
+        -> GET
+        -> PUT (overwrite group content)
+        -> PATCH (update via diff)
+        -> DELETE (whole entry)
+    /v1/group/{id}/$attr/{attr}
+        -> GET
+        -> PUT (overwrite)
+        -> POST (append, create new value)
+        -> DELETE (purge)
+
+schema
+======
+
+Schema defines how we structure and store attributes, so we need a way to query
+this and see what it contains.
+
+::
+
+    /v1/schema/
+        GET -> list all class and attr types
+
+::
+
+    /v1/schema/classtype/
+        GET -> list schema class names
+        POST -> create new class
+    /v1/schema/classtype/{id}
+        GET -> list schema class
+        PUT -> overwrite schema content
+        PATCH -> update via diff
+    /v1/schema/classtype/{id}/$attr/{attr}
+        GET -> list value of attr
+        PUT -> overwrite attr value
+        POST -> append list of values to attr
+        DELETE -> purge attr
+
+::
+
+    /v1/schema/attributetype/
+        GET -> list schema class names
+        POST -> create new class
+    /v1/schema/attributetype/{id}
+        GET -> list schema class
+        PUT -> overwrite schema content
+        PATCH -> update via diff
+    /v1/schema/attributetype/{id}/$attr/{attr}
+        GET -> list value of attr
+        PUT -> overwrite attr value
+        POST -> append list of values to attr
+        DELETE -> purge attr
+
+claims
+======
+
+TBD
+
+recycle_bin
+===========
+
+List and restore from the recycle bin if possible.
+
+::
+
+    /v1/recycle_bin/
+        GET -> list
+    /v1/recycle_bin/{id}
+        GET -> view recycled type
+    /v1/recycle_bin/{id}/$restore
+        POST -> restore this id.
+
+access_profile
+==============
+
+::
+
+    /v1/access_profiles
+        GET -> list
+        POST -> create new acp
+    /v1/access_profiles/{id}
+        GET -> display acp
+        PUT -> overwrite acp
+        PATCH -> update via diff
+        DELETE -> delete this acp
+    /v1/access_profiles/{id}/$attr
+        GET -> list value of attr
+        PUT -> overwrite attr value
+        POST -> append list of values to attr
+        DELETE -> purge attr
+
+
+References
+==========
 
 
 https://docs.microsoft.com/en-au/previous-versions/azure/ad/graph/api/functions-and-actions#changePassword
@@ -173,6 +278,11 @@ https://docs.microsoft.com/en-au/previous-versions/azure/ad/graph/api/functions-
 https://docs.microsoft.com/en-au/previous-versions/azure/ad/graph/api/users-operations
 
 https://docs.microsoft.com/en-au/previous-versions/azure/ad/graph/api/groups-operations
+
+https://github.com/mozilla-services/fernet-rs/blob/master/src/lib.rs
+
+Other Notes
+===========
 
 What about a sudo/temporal claim assignment for pw change instead?
 -- temporal claim that requires re-auth to add?
@@ -190,8 +300,6 @@ claims:
   - url should be a bearer signed containing expiry
 
   - similar for radius profile view, should have a limited time scope on url.
-
-
 
 
 
