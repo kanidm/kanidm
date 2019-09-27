@@ -15,24 +15,24 @@ The cli layout will be (roughly, not actual final product):
     | - delete
     - recycle_bin
     | - list
-    | - display
+    | - display (view, get)
     | - search
-    | - revive
+    | - revive (is restore better)
     - self
     | - display
     | - set_credential (--appid/primary, --password, --totp, --webauthn, or combinations?)
-    | - set_radius_password
+    | - reset_radius_password
     | - add_credential_claim
     | - remove_credential_claim
-    | - change_name
-    | - change_displayname
-    | - change_legalname
-    | - enroll_sshpublickey
+    | - set_name
+    | - set_displayname
+    | - set_legalname
+    | - add_sshpublickey
     | - remove_sshpublickey
-    | - modify
-    | - show_radius_android
-    | - show_radius_ios_macos
-    | - show_radius_config
+    | - modify (with --arg, could we get this from schema)
+    | - get_radius_android
+    | - get_radius_ios_macos
+    | - get_radius_config
     - account
     | - list
     | - display
@@ -42,9 +42,9 @@ The cli layout will be (roughly, not actual final product):
     | - reset_credential
     | - add_credential_claim
     | - remove_credential_claim
-    | - change_name
-    | - change_displayname
-    | - change_legalname
+    | - set_name
+    | - set_displayname
+    | - set_legalname
     | - enroll_sshpublickey
     | - remove_sshpublickey
     | - lock
@@ -74,13 +74,17 @@ The cli layout will be (roughly, not actual final product):
     | - enable
     | - disable
     - schema
-    | - list
-    | - display
-    | - create
-    | - add_may_attribute
-    | - add_must_attribute
-    | - what_may
-    | - what_must
+    | - class
+    |   - list
+    |   - get
+    |   - create
+    |   - add_may_attribute
+    |   - add_must_attribute
+    | - attribute
+    |   - list
+    |   - get
+    |   - create
+    |   - query_class (--may, --must)
     - radius
     | - TBD
 
@@ -118,24 +122,24 @@ account
         PUT -> overwrite account attrs
         PATCH -> update via diff
         DELETE -> delete this account
-    /v1/account/{id}/$attr/{attr}
+    /v1/account/{id}/_attr/{attr}
         GET -> display this attr
         PUT -> overwrite this attr value list
-        PATCH -> append this list to attr
+        POST -> append this list to attr
         DELETE -> purge this attr
-    /v1/account/{id}/$lock
+    /v1/account/{id}/_lock
         POST -> lock this account until time (or null for permanent)
         DELETE -> unlock this account
-    /v1/account/{id}/$credential/
+    /v1/account/{id}/_credential
         GET -> list the credentials
         DELETE ->
-    /v1/account/{id}/$credential/{id}/$lock
+    /v1/account/{id}/_credential/{id}/_lock
         POST -> lock this credential until time (or null for permament)
         DELETE -> unlock this account
-    /v1/account/{id}/$radius
+    /v1/account/{id}/_radius
         GET -> get the accounts radius credentials
         (note: more methods to come to update/reset this credential
-    /v1/account/{id}/$radius/$token
+    /v1/account/{id}/_radius/_token
         GET -> let's the radius server get all required details for radius to work
 
 
@@ -151,23 +155,23 @@ from account and person, but combined to one.
         GET -> view self (aka whoami)
         PUT -> overwrite self content
         PATCH -> update self via diff
-    /v1/self/$attr/{attr}
+    /v1/self/_attr/{attr}
         GET -> view self attribute.
         PUT -> overwrite attr
         POST -> append list of attr
         DELETE -> purge attr
-    /v1/self/$credential
+    /v1/self/_credential
         (note: more to come re setting/updating credentials, see account)
-    /v1/self/$radius/
+    /v1/self/_radius/
         GET -> list radius cred
         (note: more to come re setting/updating this credential)
-    /v1/self/$radius/$config
+    /v1/self/_radius/_config
         POST -> create new config link w_ secret key?
-    /v1/self/$radius/$config/{secret_key}/
+    /v1/self/_radius/_config/{secret_key}/
         GET -> get radius config json (no auth needed)
-    /v1/self/$radius/$config/{secret_key}/apple
+    /v1/self/_radius/_config/{secret_key}/apple
         GET -> get radius config profile for apple
-    /v1/self/$radius/$config/{secret_key}/android
+    /v1/self/_radius/_config/{secret_key}/android
         GET -> get radius config profile for android
 
 group
@@ -183,7 +187,7 @@ group
         PUT -> overwrite group content
         PATCH -> update via diff
         DELETE -> whole entry
-    /v1/group/{id}/$attr/{attr}
+    /v1/group/{id}/_attr/{attr}
         GET -> get this groups attr
         PUT -> overwrite this group attr value list
         POST -> append this list to group attr
@@ -209,7 +213,7 @@ this and see what it contains.
         GET -> list schema class
         PUT -> overwrite schema content
         PATCH -> update via diff
-    /v1/schema/classtype/{id}/$attr/{attr}
+    /v1/schema/classtype/{id}/_attr/{attr}
         GET -> list value of attr
         PUT -> overwrite attr value
         POST -> append list of values to attr
@@ -224,7 +228,7 @@ this and see what it contains.
         GET -> list schema class
         PUT -> overwrite schema content
         PATCH -> update via diff
-    /v1/schema/attributetype/{id}/$attr/{attr}
+    /v1/schema/attributetype/{id}/_attr/{attr}
         GET -> list value of attr
         PUT -> overwrite attr value
         POST -> append list of values to attr
@@ -246,7 +250,7 @@ List and restore from the recycle bin if possible.
         GET -> list
     /v1/recycle_bin/{id}
         GET -> view recycled type
-    /v1/recycle_bin/{id}/$restore
+    /v1/recycle_bin/{id}/_restore
         POST -> restore this id.
 
 access_profile
@@ -262,7 +266,7 @@ access_profile
         PUT -> overwrite acp
         PATCH -> update via diff
         DELETE -> delete this acp
-    /v1/access_profiles/{id}/$attr
+    /v1/access_profiles/{id}/_attr
         GET -> list value of attr
         PUT -> overwrite attr value
         POST -> append list of values to attr
@@ -272,7 +276,14 @@ access_profile
 References
 ==========
 
+Great resource on api design
+https://docs.microsoft.com/en-us/azure/architecture/best-practices/api-design
 
+Has a great section on filtering strings that we should implement
+https://github.com/Microsoft/api-guidelines/blob/master/Guidelines.md
+
+
+Azure AD api as inspiration.
 https://docs.microsoft.com/en-au/previous-versions/azure/ad/graph/api/functions-and-actions#changePassword
 
 https://docs.microsoft.com/en-au/previous-versions/azure/ad/graph/api/users-operations

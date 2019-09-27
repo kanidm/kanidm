@@ -105,7 +105,7 @@ fn main() {
     // Configure the server logger. This could be adjusted based on what config
     // says.
     if opt.debug() {
-        ::std::env::set_var("RUST_LOG", "actix_web=info,kanidm=debug");
+        ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
     } else {
         ::std::env::set_var("RUST_LOG", "actix_web=info,kanidm=info");
     }

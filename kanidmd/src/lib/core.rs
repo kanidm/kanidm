@@ -4,6 +4,7 @@ use actix_web::middleware::session::{self, RequestSession};
 use actix_web::{
     error, http, middleware, App, Error, HttpMessage, HttpRequest, HttpResponse, Result, State,
 };
+// use actix_web::Path;
 
 use bytes::BytesMut;
 use futures::{future, Future, Stream};
@@ -273,6 +274,29 @@ fn idm_account_set_password(
         SingleStringRequest
     )
 }
+
+/*
+fn test_resource(
+    (class, _req, _state): (Path<String>, HttpRequest<AppState> ,State<AppState>),
+) -> String {
+    format!("Hello {:?}!", class)
+}
+
+// https://actix.rs/docs/extractors/
+#[derive(Deserialize)]
+struct RestResource {
+    class: String,
+    id: String,
+}
+fn test_resource_id(
+    (r, _req, _state): (Path<RestResource>, HttpRequest<AppState> ,State<AppState>),
+) -> String {
+    format!("Hello {:?}/{:?}!", r.class, r.id)
+}
+*/
+
+
+// === internal setup helpers
 
 fn setup_backend(config: &Configuration) -> Result<Backend, OperationError> {
     let mut audit_be = AuditScope::new("backend_setup");
@@ -624,17 +648,9 @@ pub fn create_server_core(config: Configuration) {
                 // This forces https only if true
                 .secure(secure_cookies),
         ))
-        // .resource("/", |r| r.f(index))
         .resource("/v1/whoami", |r| {
             r.method(http::Method::GET).with_async(whoami)
         })
-        // .resource("/v1/login", ...)
-        // .resource("/v1/logout", ...)
-        // .resource("/v1/token", ...) generate a token for id servers to use
-        //    on clients, IE linux machines. Workflow being login -> token
-        //    containing group uuids and information needed, as well as a
-        //    set of data for user stuff
-        // curl --header "Content-Type: application/json" --request POST --data '{ "entries": [ {"attrs": {"class": ["group"], "name": ["testgroup"], "description": ["testperson"]}}]}'  http://127.0.0.1:8080/v1/create
         .resource("/v1/create", |r| {
             r.method(http::Method::POST).with_async(create)
         })
@@ -655,6 +671,15 @@ pub fn create_server_core(config: Configuration) {
             r.method(http::Method::POST)
                 .with_async(idm_account_set_password)
         })
+        // Test resources
+        /*
+        .resource("/v1/account", |r| r.f(|_| "Hello Account"))
+        .resource("/v1/{class}/{id}",
+            |r| r.method(http::Method::GET).with(test_resource_id))
+        .resource("/v1/{class}",
+            |r| r.method(http::Method::GET).with(test_resource))
+        */
+
 
         // Add an ldap compat search function type?
         /*
