@@ -168,11 +168,11 @@ from account and person, but combined to one.
     /v1/self/_radius/_config
         POST -> create new config link w_ secret key?
     /v1/self/_radius/_config/{secret_key}/
-        GET -> get radius config json (no auth needed)
+        GET -> get radius config json (no auth needed, secret_key is OTP)
     /v1/self/_radius/_config/{secret_key}/apple
-        GET -> get radius config profile for apple
+        GET -> get radius config profile for apple (secret_key is OTP)
     /v1/self/_radius/_config/{secret_key}/android
-        GET -> get radius config profile for android
+        GET -> get radius config profile for android (secret_key is OTP)
 
 group
 =====
