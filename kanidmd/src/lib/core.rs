@@ -235,6 +235,13 @@ fn schema_attributetype_get(
     json_rest_event_get(req, state, filter)
 }
 
+fn schema_attributetype_get_id(
+    (path, req, state): (Path<String>, HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("attributetype")));
+    json_rest_event_get_id(path, req, state, filter)
+}
+
 fn schema_classtype_get(
     (req, state): (HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
@@ -242,11 +249,25 @@ fn schema_classtype_get(
     json_rest_event_get(req, state, filter)
 }
 
+fn schema_classtype_get_id(
+    (path, req, state): (Path<String>, HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("classtype")));
+    json_rest_event_get_id(path, req, state, filter)
+}
+
 fn account_get(
     (req, state): (HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
     json_rest_event_get(req, state, filter)
+}
+
+fn account_get_id(
+    (path, req, state): (Path<String>, HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
+    json_rest_event_get_id(path, req, state, filter)
 }
 
 fn group_get(
@@ -780,7 +801,7 @@ pub fn create_server_core(config: Configuration) {
         })
         //   attributetype/{id}
         .resource("/v1/schema/attributetype/{id}", |r| {
-            r.method(http::Method::GET).with(do_nothing)
+            r.method(http::Method::GET).with_async(schema_attributetype_get_id)
         })
         .resource("/v1/schema/attributetype/{id}", |r| {
             r.method(http::Method::PUT).with(do_nothing)
@@ -797,7 +818,7 @@ pub fn create_server_core(config: Configuration) {
         })
         //    classtype/{id}
         .resource("/v1/schema/classtype/{id}", |r| {
-            r.method(http::Method::GET).with(do_nothing)
+            r.method(http::Method::GET).with_async(schema_classtype_get_id)
         })
         .resource("/v1/schema/classtype/{id}", |r| {
             r.method(http::Method::PUT).with(do_nothing)
@@ -852,7 +873,7 @@ pub fn create_server_core(config: Configuration) {
             // Add post
         })
         .resource("/v1/account/{id}", |r| {
-            r.method(http::Method::GET).with(do_nothing)
+            r.method(http::Method::GET).with_async(account_get_id)
             // add put, patch, delete
         })
         .resource("/v1/account/{id}/_attr/{attr}", |r| {
