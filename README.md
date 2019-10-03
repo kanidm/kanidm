@@ -73,6 +73,11 @@ it't best if you test in the component you are working on, followed by the full 
 There are *no* prerequisites to running these tests or special configurations. cargo test should
 just work!
 
+### Using curl with anonymous:
+
+    curl -b /tmp/cookie.jar -c /tmp/cookie.jar --cacert ../insecure/ca.pem  -X POST -d "{\"step\":{\"Init\":[\"anonymous\",null]}}"  https://localhost:8080/v1/auth
+    curl -b /tmp/cookie.jar  -c /tmp/cookie.jar --cacert ../insecure/ca.pem  -X POST -d "{\"step\":{\"Creds\":[\"Anonymous\"]}}"  https://localhost:8080/v1/auth
+
 ## Implemented/Planned features
 
 * RBAC design

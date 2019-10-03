@@ -12,7 +12,9 @@ use kanidm_proto::v1::OperationError;
 
 use crate::idm::server::IdmServer;
 use crate::server::{QueryServer, QueryServerTransaction};
+use crate::filter::{Filter, FilterInvalid};
 
+use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::{
     AuthRequest, AuthResponse, CreateRequest, DeleteRequest, ModifyRequest, OperationResponse,
     SearchRequest, SearchResponse, SingleStringRequest, UserAuthToken, WhoamiResponse,
@@ -120,6 +122,21 @@ impl SearchMessage {
 
 impl Message for SearchMessage {
     type Result = Result<SearchResponse, OperationError>;
+}
+
+pub struct InternalSearchMessage {
+    pub uat: Option<UserAuthToken>,
+    pub filter: Filter<FilterInvalid>,
+}
+
+impl InternalSearchMessage {
+    pub fn new(uat: Option<UserAuthToken>, filter: Filter<FilterInvalid>) -> Self {
+        InternalSearchMessage { uat: uat, filter: filter }
+    }
+}
+
+impl Message for InternalSearchMessage {
+    type Result = Result<Vec<ProtoEntry>, OperationError>;
 }
 
 pub struct IdmAccountSetPasswordMessage {
@@ -424,6 +441,38 @@ impl Handler<IdmAccountSetPasswordMessage> for QueryServerV1 {
                 .set_account_password(&mut audit, &pce)
                 .and_then(|_| idms_prox_write.commit(&mut audit))
                 .map(|_| OperationResponse::new(()))
+        });
+        self.log.do_send(audit);
+        res
+    }
+}
+
+impl Handler<InternalSearchMessage> for QueryServerV1 {
+    type Result = Result<Vec<ProtoEntry>, OperationError>;
+
+    fn handle(&mut self, msg: InternalSearchMessage, _: &mut Self::Context) -> Self::Result {
+        let mut audit = AuditScope::new("internal_search_message");
+        let res = audit_segment!(&mut audit, || {
+            let qs_read = self.qs.read();
+
+            // Make an event from the request
+            let srch = match SearchEvent::from_internal_message(&mut audit, msg, &qs_read) {
+                Ok(s) => s,
+                Err(e) => {
+                    audit_log!(audit, "Failed to begin search: {:?}", e);
+                    return Err(e);
+                }
+            };
+
+            audit_log!(audit, "Begin event {:?}", srch);
+
+            match qs_read.search_ext(&mut audit, &srch) {
+                Ok(entries) => {
+                    SearchResult::new(&mut audit, &qs_read, entries)
+                        .map(|ok_sr| ok_sr.to_proto_array())
+                }
+                Err(e) => Err(e),
+            }
         });
         self.log.do_send(audit);
         res

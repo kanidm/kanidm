@@ -4,16 +4,18 @@
 #[macro_use]
 extern crate log;
 
-use serde_json;
-
 use reqwest;
 use std::fs::File;
 use std::io::Read;
 
+
+use serde_json;
 use kanidm_proto::v1::{
-    AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep, CreateRequest, Entry, Filter,
-    OperationResponse, SearchRequest, SearchResponse, SingleStringRequest, UserAuthToken,
-    WhoamiResponse,
+    Entry, UserAuthToken, WhoamiResponse, SingleStringRequest, OperationResponse,
+    AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep,
+    CreateRequest, Filter,
+    SearchRequest, SearchResponse,
+
 };
 
 #[derive(Debug)]
@@ -52,12 +54,6 @@ impl KanidmClient {
         }
     }
 
-    pub fn logout(&mut self) -> Result<(), reqwest::Error> {
-        let mut r_client = Self::build_reqwest(&self.ca)?;
-        std::mem::swap(&mut self.client, &mut r_client);
-        Ok(())
-    }
-
     fn build_reqwest(ca: &Option<reqwest::Certificate>) -> Result<reqwest::Client, reqwest::Error> {
         let client_builder = reqwest::Client::builder().cookie_store(true);
 
@@ -69,7 +65,56 @@ impl KanidmClient {
         client_builder.build()
     }
 
-    fn auth_step_init(&self, ident: &str, appid: Option<&str>) -> Result<AuthState, ClientError> {
+    pub fn logout(&mut self) -> Result<(), reqwest::Error> {
+        let mut r_client = Self::build_reqwest(&self.ca)?;
+        std::mem::swap(&mut self.client, &mut r_client);
+        Ok(())
+    }
+
+    // whoami
+    pub fn whoami(&self) -> Result<Option<(Entry, UserAuthToken)>, ClientError> {
+        let whoami_dest = format!("{}/v1/self", self.addr);
+        let mut response = self.client.get(whoami_dest.as_str()).send().unwrap();
+        // https://docs.rs/reqwest/0.9.15/reqwest/struct.Response.html
+
+        match response.status() {
+            // Continue to process.
+            reqwest::StatusCode::OK => {}
+            reqwest::StatusCode::UNAUTHORIZED => return Ok(None),
+            unexpect => return Err(ClientError::Http(unexpect)),
+        }
+
+        let r: WhoamiResponse = serde_json::from_str(response.text().unwrap().as_str()).unwrap();
+
+        Ok(Some((r.youare, r.uat)))
+    }
+
+
+    // === idm actions here ==
+    pub fn idm_account_set_password(&self, cleartext: String) -> Result<(), ClientError> {
+        let s = SingleStringRequest { value: cleartext };
+
+        let dest = format!("{}/v1/self/_credential/primary/set_password", self.addr);
+
+        let mut response = self
+            .client
+            .post(dest.as_str())
+            .body(serde_json::to_string(&s).unwrap())
+            .send()
+            .map_err(|e| ClientError::Transport(e))?;
+
+        match response.status() {
+            reqwest::StatusCode::OK => {}
+            unexpect => return Err(ClientError::Http(unexpect)),
+        }
+
+        // TODO: What about errors
+        let _r: OperationResponse =
+            serde_json::from_str(response.text().unwrap().as_str()).unwrap();
+        Ok(())
+    }
+
+    pub fn auth_step_init(&self, ident: &str, appid: Option<&str>) -> Result<AuthState, ClientError> {
         // TODO: Way to avoid formatting so much?
         let auth_dest = format!("{}/v1/auth", self.addr);
 
@@ -77,11 +122,14 @@ impl KanidmClient {
             step: AuthStep::Init(ident.to_string(), appid.map(|s| s.to_string())),
         };
 
+        let req_string =
+                serde_json::to_string(&auth_init).expect("Generated invalid initstep?!");
+
         // Handle this!
         let mut response = self
             .client
             .post(auth_dest.as_str())
-            .body(serde_json::to_string(&auth_init).expect("Generated invalid initstep?!"))
+            .body(req_string)
             .send()
             .map_err(|e| ClientError::Transport(e))?;
 
@@ -111,10 +159,13 @@ impl KanidmClient {
             step: AuthStep::Creds(vec![AuthCredential::Anonymous]),
         };
 
+        let req_string =
+                serde_json::to_string(&auth_anon).unwrap();
+
         let mut response = self
             .client
             .post(auth_dest.as_str())
-            .body(serde_json::to_string(&auth_anon).unwrap())
+            .body(req_string)
             .send()
             .map_err(|e| ClientError::Transport(e))?;
 
@@ -175,24 +226,6 @@ impl KanidmClient {
         }
     }
 
-    // whoami
-    pub fn whoami(&self) -> Result<Option<(Entry, UserAuthToken)>, ClientError> {
-        let whoami_dest = format!("{}/v1/whoami", self.addr);
-        let mut response = self.client.get(whoami_dest.as_str()).send().unwrap();
-        // https://docs.rs/reqwest/0.9.15/reqwest/struct.Response.html
-
-        match response.status() {
-            // Continue to process.
-            reqwest::StatusCode::OK => {}
-            reqwest::StatusCode::UNAUTHORIZED => return Ok(None),
-            unexpect => return Err(ClientError::Http(unexpect)),
-        }
-
-        let r: WhoamiResponse = serde_json::from_str(response.text().unwrap().as_str()).unwrap();
-
-        Ok(Some((r.youare, r.uat)))
-    }
-
     // search
     pub fn search_str(&self, query: &str) -> Result<Vec<Entry>, ClientError> {
         let filter: Filter = serde_json::from_str(query).map_err(|e| {
@@ -204,7 +237,7 @@ impl KanidmClient {
 
     pub fn search(&self, filter: Filter) -> Result<Vec<Entry>, ClientError> {
         let sr = SearchRequest { filter: filter };
-        let dest = format!("{}/v1/search", self.addr);
+        let dest = format!("{}/v1/raw/search", self.addr);
 
         let mut response = self
             .client
@@ -228,7 +261,7 @@ impl KanidmClient {
         let c = CreateRequest { entries: entries };
 
         // TODO: Avoid formatting this so much!
-        let dest = format!("{}/v1/create", self.addr);
+        let dest = format!("{}/v1/raw/create", self.addr);
 
         let mut response = self
             .client
@@ -251,27 +284,5 @@ impl KanidmClient {
     // modify
     //
 
-    // === idm actions here ==
-    pub fn idm_account_set_password(&self, cleartext: String) -> Result<(), ClientError> {
-        let s = SingleStringRequest { value: cleartext };
-
-        let dest = format!("{}/v1/idm/account/set_password", self.addr);
-
-        let mut response = self
-            .client
-            .post(dest.as_str())
-            .body(serde_json::to_string(&s).unwrap())
-            .send()
-            .map_err(|e| ClientError::Transport(e))?;
-
-        match response.status() {
-            reqwest::StatusCode::OK => {}
-            unexpect => return Err(ClientError::Http(unexpect)),
-        }
-
-        // TODO: What about errors
-        let _r: OperationResponse =
-            serde_json::from_str(response.text().unwrap().as_str()).unwrap();
-        Ok(())
-    }
 }
+
