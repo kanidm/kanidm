@@ -10,9 +10,9 @@ use crate::event::{
 use crate::idm::event::PasswordChangeEvent;
 use kanidm_proto::v1::OperationError;
 
+use crate::filter::{Filter, FilterInvalid};
 use crate::idm::server::IdmServer;
 use crate::server::{QueryServer, QueryServerTransaction};
-use crate::filter::{Filter, FilterInvalid};
 
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::{
@@ -131,7 +131,10 @@ pub struct InternalSearchMessage {
 
 impl InternalSearchMessage {
     pub fn new(uat: Option<UserAuthToken>, filter: Filter<FilterInvalid>) -> Self {
-        InternalSearchMessage { uat: uat, filter: filter }
+        InternalSearchMessage {
+            uat: uat,
+            filter: filter,
+        }
     }
 }
 
@@ -467,10 +470,8 @@ impl Handler<InternalSearchMessage> for QueryServerV1 {
             audit_log!(audit, "Begin event {:?}", srch);
 
             match qs_read.search_ext(&mut audit, &srch) {
-                Ok(entries) => {
-                    SearchResult::new(&mut audit, &qs_read, entries)
-                        .map(|ok_sr| ok_sr.to_proto_array())
-                }
+                Ok(entries) => SearchResult::new(&mut audit, &qs_read, entries)
+                    .map(|ok_sr| ok_sr.to_proto_array()),
                 Err(e) => Err(e),
             }
         });

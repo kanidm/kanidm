@@ -13,8 +13,8 @@ use crate::server::{
 };
 use kanidm_proto::v1::OperationError;
 
-use crate::actors::v1::{AuthMessage, CreateMessage, DeleteMessage, ModifyMessage, SearchMessage,
-    InternalSearchMessage,
+use crate::actors::v1::{
+    AuthMessage, CreateMessage, DeleteMessage, InternalSearchMessage, ModifyMessage, SearchMessage,
 };
 // Bring in schematransaction trait for validate
 // use crate::schema::SchemaTransaction;
@@ -254,12 +254,14 @@ impl SearchEvent {
             event: Event::from_ro_uat(audit, qs, msg.uat)?,
             // We do need to do this twice to account for the ignore_hidden
             // changes.
-            filter: msg.filter
+            filter: msg
+                .filter
                 .clone()
                 .to_ignore_hidden()
                 .validate(qs.get_schema())
                 .map_err(|e| OperationError::SchemaViolation(e))?,
-            filter_orig: msg.filter
+            filter_orig: msg
+                .filter
                 .validate(qs.get_schema())
                 .map_err(|e| OperationError::SchemaViolation(e))?,
         })

@@ -57,15 +57,11 @@ pub fn f_self<'a>() -> FC<'a> {
 
 pub fn f_id(id: &str) -> FC<'static> {
     match Uuid::parse_str(id) {
-        Ok(u) => {
-            FC::Or(vec![
-                FC::Eq("name", PartialValue::new_iutf8s(id)),
-                FC::Eq("uuid", PartialValue::new_uuid(u))
-            ])
-        }
-        Err(_) => {
-            FC::Eq("name", PartialValue::new_iutf8s(id))
-        }
+        Ok(u) => FC::Or(vec![
+            FC::Eq("name", PartialValue::new_iutf8s(id)),
+            FC::Eq("uuid", PartialValue::new_uuid(u)),
+        ]),
+        Err(_) => FC::Eq("name", PartialValue::new_iutf8s(id)),
     }
 }
 
@@ -260,9 +256,7 @@ impl Filter<FilterInvalid> {
         // I regret this function so much, but then again ...
         Filter {
             state: FilterInvalid {
-                inner: FilterComp::And(vec![
-                    a.state.inner, b.state.inner
-                ])
+                inner: FilterComp::And(vec![a.state.inner, b.state.inner]),
             },
         }
     }

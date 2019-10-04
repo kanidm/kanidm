@@ -1,10 +1,10 @@
 // use actix::SystemRunner;
 use actix::Actor;
 use actix_web::middleware::session::{self, RequestSession};
+use actix_web::Path;
 use actix_web::{
     error, http, middleware, App, Error, HttpMessage, HttpRequest, HttpResponse, Result, State,
 };
-use actix_web::Path;
 
 use bytes::BytesMut;
 use futures::{future, Future, Stream};
@@ -15,20 +15,20 @@ use crate::config::Configuration;
 // SearchResult
 use crate::actors::v1::QueryServerV1;
 use crate::actors::v1::{
-    AuthMessage, CreateMessage, DeleteMessage, IdmAccountSetPasswordMessage, ModifyMessage,
-    SearchMessage, WhoamiMessage, InternalSearchMessage
+    AuthMessage, CreateMessage, DeleteMessage, IdmAccountSetPasswordMessage, InternalSearchMessage,
+    ModifyMessage, SearchMessage, WhoamiMessage,
 };
 use crate::async_log;
 use crate::audit::AuditScope;
 use crate::be::{Backend, BackendTransaction};
 use crate::crypto::setup_tls;
+use crate::filter::{Filter, FilterInvalid};
 use crate::idm::server::IdmServer;
 use crate::interval::IntervalActor;
 use crate::schema::Schema;
 use crate::schema::SchemaTransaction;
 use crate::server::QueryServer;
 use crate::utils::SID;
-use crate::filter::{Filter, FilterInvalid};
 use crate::value::PartialValue;
 
 use kanidm_proto::v1::OperationError;
@@ -168,11 +168,12 @@ fn whoami(
     json_event_get!(req, state, WhoamiMessage)
 }
 
-
 // =============== REST generics ========================
 
 fn json_rest_event_get(
-    req: HttpRequest<AppState>, state: State<AppState>, filter: Filter<FilterInvalid>
+    req: HttpRequest<AppState>,
+    state: State<AppState>,
+    filter: Filter<FilterInvalid>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let uat = get_current_user(&req);
 
@@ -192,7 +193,10 @@ fn json_rest_event_get(
 }
 
 fn json_rest_event_get_id(
-    path: Path<String>, req: HttpRequest<AppState>, state: State<AppState>, filter: Filter<FilterInvalid>
+    path: Path<String>,
+    req: HttpRequest<AppState>,
+    state: State<AppState>,
+    filter: Filter<FilterInvalid>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let uat = get_current_user(&req);
 
@@ -324,9 +328,7 @@ fn group_id_get(
     json_rest_event_get_id(path, req, state, filter)
 }
 
-fn do_nothing(
-    (_req, _state): (HttpRequest<AppState>, State<AppState>),
-) -> String {
+fn do_nothing((_req, _state): (HttpRequest<AppState>, State<AppState>)) -> String {
     "did nothing".to_string()
 }
 
@@ -459,7 +461,6 @@ fn test_resource_id(
     format!("Hello {:?}/{:?}!", r.class, r.id)
 }
 */
-
 
 // === internal setup helpers
 
@@ -834,14 +835,16 @@ pub fn create_server_core(config: Configuration) {
         })
         //   attributetype
         .resource("/v1/schema/attributetype", |r| {
-            r.method(http::Method::GET).with_async(schema_attributetype_get)
+            r.method(http::Method::GET)
+                .with_async(schema_attributetype_get)
         })
         .resource("/v1/schema/attributetype", |r| {
             r.method(http::Method::POST).with(do_nothing)
         })
         //   attributetype/{id}
         .resource("/v1/schema/attributetype/{id}", |r| {
-            r.method(http::Method::GET).with_async(schema_attributetype_get_id)
+            r.method(http::Method::GET)
+                .with_async(schema_attributetype_get_id)
         })
         .resource("/v1/schema/attributetype/{id}", |r| {
             r.method(http::Method::PUT).with(do_nothing)
@@ -858,7 +861,8 @@ pub fn create_server_core(config: Configuration) {
         })
         //    classtype/{id}
         .resource("/v1/schema/classtype/{id}", |r| {
-            r.method(http::Method::GET).with_async(schema_classtype_get_id)
+            r.method(http::Method::GET)
+                .with_async(schema_classtype_get_id)
         })
         .resource("/v1/schema/classtype/{id}", |r| {
             r.method(http::Method::PUT).with(do_nothing)
@@ -866,9 +870,7 @@ pub fn create_server_core(config: Configuration) {
         .resource("/v1/schema/classtype/{id}", |r| {
             r.method(http::Method::PATCH).with(do_nothing)
         })
-
         // Start IDM resources. We'll probably add more restful types later.
-
         // Self (specialisation of account I guess)
         .resource("/v1/self", |r| {
             r.method(http::Method::GET).with_async(whoami)
@@ -905,8 +907,6 @@ pub fn create_server_core(config: Configuration) {
             // Get an ios/macos configuration profile
             r.method(http::Method::GET).with(do_nothing)
         })
-
-
         // Accounts
         .resource("/v1/account", |r| {
             r.method(http::Method::GET).with_async(account_get)
@@ -939,7 +939,6 @@ pub fn create_server_core(config: Configuration) {
         .resource("/v1/account/{id}/_radius/_token", |r| {
             r.method(http::Method::GET).with(do_nothing)
         })
-
         // Groups
         .resource("/v1/group", |r| {
             r.method(http::Method::GET).with_async(group_get)
@@ -953,10 +952,8 @@ pub fn create_server_core(config: Configuration) {
             r.method(http::Method::GET).with(do_nothing)
             // add put post delete
         })
-
         // Claims
         // TBD
-        
         // Recycle Bin
         .resource("/v1/recycle_bin", |r| {
             r.method(http::Method::GET).with(do_nothing)
@@ -967,7 +964,6 @@ pub fn create_server_core(config: Configuration) {
         .resource("/v1/recycle_bin/{id}/_restore", |r| {
             r.method(http::Method::POST).with(do_nothing)
         })
-
         // ACPs
         .resource("/v1/access_profile", |r| {
             r.method(http::Method::GET).with(do_nothing)
@@ -981,7 +977,6 @@ pub fn create_server_core(config: Configuration) {
             r.method(http::Method::GET).with(do_nothing)
             // add put post delete
         })
-
     });
 
     let tls_aws_builder = match opt_tls_params {
