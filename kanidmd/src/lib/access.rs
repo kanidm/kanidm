@@ -429,7 +429,9 @@ pub trait AccessControlsTransaction {
             })
             .collect();
 
-        audit_log!(audit, "Related acs -> {:?}", related_acp);
+        related_acp.iter().for_each(|racp| {
+            audit_log!(audit, "Related acs -> {:?}", racp.acp.name);
+        });
 
         // Get the set of attributes requested by this se filter. This is what we are
         // going to access check.

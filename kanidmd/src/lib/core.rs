@@ -238,6 +238,8 @@ fn schema_attributetype_get(
 fn schema_attributetype_get_id(
     (path, req, state): (Path<String>, HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
+    // These can't use get_id because they attribute name and class name aren't ... well
+    // name.
     let filter = filter_all!(f_eq("class", PartialValue::new_class("attributetype")));
     json_rest_event_get_id(path, req, state, filter)
 }
@@ -252,6 +254,8 @@ fn schema_classtype_get(
 fn schema_classtype_get_id(
     (path, req, state): (Path<String>, HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
+    // These can't use get_id because they attribute name and class name aren't ... well
+    // name.
     let filter = filter_all!(f_eq("class", PartialValue::new_class("classtype")));
     json_rest_event_get_id(path, req, state, filter)
 }

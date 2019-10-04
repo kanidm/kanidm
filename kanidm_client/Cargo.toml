@@ -9,6 +9,7 @@ log = "0.4"
 env_logger = "0.6"
 reqwest = "0.9"
 kanidm_proto = { path = "../kanidm_proto" }
+serde = "1.0"
 serde_json = "1.0"
 
 [dev-dependencies]
