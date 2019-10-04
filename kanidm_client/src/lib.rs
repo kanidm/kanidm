@@ -5,21 +5,17 @@
 extern crate log;
 
 use reqwest;
+use serde::de::DeserializeOwned;
+use serde::Serialize;
 use std::fs::File;
 use std::io::Read;
-use serde::Serialize;
-use serde::de::DeserializeOwned;
 
-
-use serde_json;
 use kanidm_proto::v1::{
-    Entry, UserAuthToken, WhoamiResponse, SingleStringRequest, OperationResponse,
-    AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep,
-    CreateRequest, Filter,
-    SearchRequest, SearchResponse,
-    ModifyRequest, ModifyList
-
+    AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep, CreateRequest, Entry, Filter,
+    ModifyList, ModifyRequest, OperationResponse, SearchRequest, SearchResponse,
+    SingleStringRequest, UserAuthToken, WhoamiResponse,
 };
+use serde_json;
 
 #[derive(Debug)]
 pub enum ClientError {
@@ -74,14 +70,17 @@ impl KanidmClient {
         Ok(())
     }
 
-    fn perform_post_request<R: Serialize, T:DeserializeOwned>(&self, dest: &str, request: R)
-        -> Result<T, ClientError> {
+    fn perform_post_request<R: Serialize, T: DeserializeOwned>(
+        &self,
+        dest: &str,
+        request: R,
+    ) -> Result<T, ClientError> {
         let dest = format!("{}{}", self.addr, dest);
 
-        let req_string =
-                serde_json::to_string(&request).unwrap();
+        let req_string = serde_json::to_string(&request).unwrap();
 
-        let mut response = self.client
+        let mut response = self
+            .client
             .post(dest.as_str())
             .body(req_string)
             .send()
@@ -98,9 +97,10 @@ impl KanidmClient {
         Ok(r)
     }
 
-    fn perform_get_request<T:DeserializeOwned>(&self, dest: &str) -> Result<T, ClientError> {
+    fn perform_get_request<T: DeserializeOwned>(&self, dest: &str) -> Result<T, ClientError> {
         let dest = format!("{}{}", self.addr, dest);
-        let mut response = self.client
+        let mut response = self
+            .client
             .get(dest.as_str())
             .send()
             .map_err(|e| ClientError::Transport(e))?;
@@ -133,7 +133,6 @@ impl KanidmClient {
 
         Ok(Some((r.youare, r.uat)))
     }
-
 
     // auth
     pub fn auth_anonymous(&self) -> Result<UserAuthToken, ClientError> {
@@ -209,7 +208,10 @@ impl KanidmClient {
 
     // modify
     pub fn modify(&self, filter: Filter, modlist: ModifyList) -> Result<(), ClientError> {
-        let mr = ModifyRequest { filter: filter, modlist: modlist };
+        let mr = ModifyRequest {
+            filter: filter,
+            modlist: modlist,
+        };
         let r: Result<OperationResponse, _> = self.perform_post_request("/v1/raw/modify", mr);
         r.map(|_| ())
     }
@@ -218,11 +220,16 @@ impl KanidmClient {
     pub fn idm_account_set_password(&self, cleartext: String) -> Result<(), ClientError> {
         let s = SingleStringRequest { value: cleartext };
 
-        let r: Result<OperationResponse, _> = self.perform_post_request("/v1/self/_credential/primary/set_password", s);
+        let r: Result<OperationResponse, _> =
+            self.perform_post_request("/v1/self/_credential/primary/set_password", s);
         r.map(|_| ())
     }
 
-    pub fn auth_step_init(&self, ident: &str, appid: Option<&str>) -> Result<AuthState, ClientError> {
+    pub fn auth_step_init(
+        &self,
+        ident: &str,
+        appid: Option<&str>,
+    ) -> Result<AuthState, ClientError> {
         let auth_init = AuthRequest {
             step: AuthStep::Init(ident.to_string(), appid.map(|s| s.to_string())),
         };
@@ -269,6 +276,4 @@ impl KanidmClient {
     pub fn idm_schema_classtype_get(&self, id: &str) -> Result<Option<Entry>, ClientError> {
         self.perform_get_request(format!("/v1/schema/classtype/{}", id).as_str())
     }
-
 }
-

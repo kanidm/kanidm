@@ -15,7 +15,7 @@ use kanidm_client::KanidmClient;
 
 use kanidm::config::{Configuration, IntegrationTestConfig};
 use kanidm::core::create_server_core;
-use kanidm_proto::v1::{ Entry, Filter, ModifyList, Modify };
+use kanidm_proto::v1::{Entry, Filter, Modify, ModifyList};
 
 extern crate reqwest;
 
@@ -37,7 +37,7 @@ static ADMIN_TEST_PASSWORD_CHANGE: &'static str = "integration test admin newðŸŽ
 // Test external behaviorus of the service.
 
 fn run_test(test_fn: fn(KanidmClient) -> ()) {
-    ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
+    // ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
     let _ = env_logger::builder().is_test(true).try_init();
     let (tx, rx) = mpsc::channel();
     let port = PORT_ALLOC.fetch_add(1, Ordering::SeqCst);
@@ -115,7 +115,7 @@ fn test_server_modify() {
         let f = Filter::SelfUUID;
         let m = ModifyList::new_list(vec![
             Modify::Purged("displayname".to_string()),
-            Modify::Present("displayname".to_string(), "test".to_string())
+            Modify::Present("displayname".to_string(), "test".to_string()),
         ]);
 
         // Not logged in - should fail!
@@ -281,7 +281,6 @@ fn test_server_rest_schema_read() {
         let c = rsclient.idm_schema_classtype_get("account").unwrap();
         assert!(c.is_some());
         println!("{:?}", c);
-
     });
 }
 

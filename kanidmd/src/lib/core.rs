@@ -238,10 +238,28 @@ fn schema_attributetype_get(
 fn schema_attributetype_get_id(
     (path, req, state): (Path<String>, HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    // These can't use get_id because they attribute name and class name aren't ... well
-    // name.
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("attributetype")));
-    json_rest_event_get_id(path, req, state, filter)
+    // These can't use get_id because they attribute name and class name aren't ... well name.
+    let uat = get_current_user(&req);
+
+    let filter = filter_all!(f_and!([
+        f_eq("class", PartialValue::new_class("attributetype")),
+        f_eq("attributename", PartialValue::new_iutf8s(path.as_str()))
+    ]));
+
+    let obj = InternalSearchMessage::new(uat, filter);
+
+    let res = state.qe.send(obj).from_err().and_then(|res| match res {
+        Ok(mut event_result) => {
+            // Only send back the first result, or None
+            Ok(HttpResponse::Ok().json(event_result.pop()))
+        }
+        Err(e) => match e {
+            OperationError::NotAuthenticated => Ok(HttpResponse::Unauthorized().json(e)),
+            _ => Ok(HttpResponse::InternalServerError().json(e)),
+        },
+    });
+
+    Box::new(res)
 }
 
 fn schema_classtype_get(
@@ -254,10 +272,28 @@ fn schema_classtype_get(
 fn schema_classtype_get_id(
     (path, req, state): (Path<String>, HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    // These can't use get_id because they attribute name and class name aren't ... well
-    // name.
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("classtype")));
-    json_rest_event_get_id(path, req, state, filter)
+    // These can't use get_id because they attribute name and class name aren't ... well name.
+    let uat = get_current_user(&req);
+
+    let filter = filter_all!(f_and!([
+        f_eq("class", PartialValue::new_class("classtype")),
+        f_eq("classname", PartialValue::new_iutf8s(path.as_str()))
+    ]));
+
+    let obj = InternalSearchMessage::new(uat, filter);
+
+    let res = state.qe.send(obj).from_err().and_then(|res| match res {
+        Ok(mut event_result) => {
+            // Only send back the first result, or None
+            Ok(HttpResponse::Ok().json(event_result.pop()))
+        }
+        Err(e) => match e {
+            OperationError::NotAuthenticated => Ok(HttpResponse::Unauthorized().json(e)),
+            _ => Ok(HttpResponse::InternalServerError().json(e)),
+        },
+    });
+
+    Box::new(res)
 }
 
 fn account_get(
