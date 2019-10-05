@@ -108,6 +108,8 @@ the CUD/CMD ops for a real batching system ...
         POST -> modify request
     /v1/raw/delete
         POST -> modify request
+    /v1/auth
+        POST -> Auth requests
 
 account
 =======
@@ -151,7 +153,7 @@ from account and person, but combined to one.
 
 ::
 
-    /v1/self/
+    /v1/self
         GET -> view self (aka whoami)
         PUT -> overwrite self content
         PATCH -> update self via diff
@@ -162,12 +164,12 @@ from account and person, but combined to one.
         DELETE -> purge attr
     /v1/self/_credential
         (note: more to come re setting/updating credentials, see account)
-    /v1/self/_radius/
+    /v1/self/_radius
         GET -> list radius cred
         (note: more to come re setting/updating this credential)
     /v1/self/_radius/_config
         POST -> create new config link w_ secret key?
-    /v1/self/_radius/_config/{secret_key}/
+    /v1/self/_radius/_config/{secret_key}
         GET -> get radius config json (no auth needed, secret_key is OTP)
     /v1/self/_radius/_config/{secret_key}/apple
         GET -> get radius config profile for apple (secret_key is OTP)
@@ -179,7 +181,7 @@ group
 
 ::
 
-    /v1/group/
+    /v1/group
         GET -> list all group ids
         POST -> create new group
     /v1/group/{id}
@@ -201,12 +203,12 @@ this and see what it contains.
 
 ::
 
-    /v1/schema/
+    /v1/schema
         GET -> list all class and attr types
 
 ::
 
-    /v1/schema/classtype/
+    /v1/schema/classtype
         GET -> list schema class names
         POST -> create new class
     /v1/schema/classtype/{id}
@@ -221,7 +223,7 @@ this and see what it contains.
 
 ::
 
-    /v1/schema/attributetype/
+    /v1/schema/attributetype
         GET -> list schema class names
         POST -> create new class
     /v1/schema/attributetype/{id}

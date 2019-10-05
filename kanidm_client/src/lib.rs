@@ -4,17 +4,18 @@
 #[macro_use]
 extern crate log;
 
-use serde_json;
-
 use reqwest;
+use serde::de::DeserializeOwned;
+use serde::Serialize;
 use std::fs::File;
 use std::io::Read;
 
 use kanidm_proto::v1::{
     AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep, CreateRequest, Entry, Filter,
-    OperationResponse, SearchRequest, SearchResponse, SingleStringRequest, UserAuthToken,
-    WhoamiResponse,
+    ModifyList, ModifyRequest, OperationResponse, SearchRequest, SearchResponse,
+    SingleStringRequest, UserAuthToken, WhoamiResponse,
 };
+use serde_json;
 
 #[derive(Debug)]
 pub enum ClientError {
@@ -52,12 +53,6 @@ impl KanidmClient {
         }
     }
 
-    pub fn logout(&mut self) -> Result<(), reqwest::Error> {
-        let mut r_client = Self::build_reqwest(&self.ca)?;
-        std::mem::swap(&mut self.client, &mut r_client);
-        Ok(())
-    }
-
     fn build_reqwest(ca: &Option<reqwest::Certificate>) -> Result<reqwest::Client, reqwest::Error> {
         let client_builder = reqwest::Client::builder().cookie_store(true);
 
@@ -69,19 +64,25 @@ impl KanidmClient {
         client_builder.build()
     }
 
-    fn auth_step_init(&self, ident: &str, appid: Option<&str>) -> Result<AuthState, ClientError> {
-        // TODO: Way to avoid formatting so much?
-        let auth_dest = format!("{}/v1/auth", self.addr);
+    pub fn logout(&mut self) -> Result<(), reqwest::Error> {
+        let mut r_client = Self::build_reqwest(&self.ca)?;
+        std::mem::swap(&mut self.client, &mut r_client);
+        Ok(())
+    }
 
-        let auth_init = AuthRequest {
-            step: AuthStep::Init(ident.to_string(), appid.map(|s| s.to_string())),
-        };
+    fn perform_post_request<R: Serialize, T: DeserializeOwned>(
+        &self,
+        dest: &str,
+        request: R,
+    ) -> Result<T, ClientError> {
+        let dest = format!("{}{}", self.addr, dest);
 
-        // Handle this!
+        let req_string = serde_json::to_string(&request).unwrap();
+
         let mut response = self
             .client
-            .post(auth_dest.as_str())
-            .body(serde_json::to_string(&auth_init).expect("Generated invalid initstep?!"))
+            .post(dest.as_str())
+            .body(req_string)
             .send()
             .map_err(|e| ClientError::Transport(e))?;
 
@@ -89,41 +90,64 @@ impl KanidmClient {
             reqwest::StatusCode::OK => {}
             unexpect => return Err(ClientError::Http(unexpect)),
         }
-        // Check that we got the next step
-        let r: AuthResponse = serde_json::from_str(response.text().unwrap().as_str()).unwrap();
 
-        Ok(r.state)
+        // TODO: What about errors
+        let r: T = response.json().unwrap();
+
+        Ok(r)
+    }
+
+    fn perform_get_request<T: DeserializeOwned>(&self, dest: &str) -> Result<T, ClientError> {
+        let dest = format!("{}{}", self.addr, dest);
+        let mut response = self
+            .client
+            .get(dest.as_str())
+            .send()
+            .map_err(|e| ClientError::Transport(e))?;
+
+        match response.status() {
+            reqwest::StatusCode::OK => {}
+            unexpect => return Err(ClientError::Http(unexpect)),
+        }
+
+        // TODO: What about errors
+        let r: T = response.json().unwrap();
+
+        Ok(r)
+    }
+
+    // whoami
+    // Can't use generic get due to possible un-auth case.
+    pub fn whoami(&self) -> Result<Option<(Entry, UserAuthToken)>, ClientError> {
+        let whoami_dest = format!("{}/v1/self", self.addr);
+        let mut response = self.client.get(whoami_dest.as_str()).send().unwrap();
+
+        match response.status() {
+            // Continue to process.
+            reqwest::StatusCode::OK => {}
+            reqwest::StatusCode::UNAUTHORIZED => return Ok(None),
+            unexpect => return Err(ClientError::Http(unexpect)),
+        }
+
+        let r: WhoamiResponse = serde_json::from_str(response.text().unwrap().as_str()).unwrap();
+
+        Ok(Some((r.youare, r.uat)))
     }
 
     // auth
     pub fn auth_anonymous(&self) -> Result<UserAuthToken, ClientError> {
+        // TODO: Check state for auth continue contains anonymous.
         let _state = match self.auth_step_init("anonymous", None) {
             Ok(s) => s,
             Err(e) => return Err(e),
         };
 
-        // TODO: Avoid creating this so much?
-        let auth_dest = format!("{}/v1/auth", self.addr);
-
-        // Check state for auth continue contains anonymous.
-
         let auth_anon = AuthRequest {
             step: AuthStep::Creds(vec![AuthCredential::Anonymous]),
         };
+        let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_anon);
 
-        let mut response = self
-            .client
-            .post(auth_dest.as_str())
-            .body(serde_json::to_string(&auth_anon).unwrap())
-            .send()
-            .map_err(|e| ClientError::Transport(e))?;
-
-        match response.status() {
-            reqwest::StatusCode::OK => {}
-            unexpect => return Err(ClientError::Http(unexpect)),
-        }
-        // Check that we got the next step
-        let r: AuthResponse = serde_json::from_str(response.text().unwrap().as_str()).unwrap();
+        let r = r?;
 
         match r.state {
             AuthState::Success(uat) => {
@@ -139,32 +163,17 @@ impl KanidmClient {
         ident: &str,
         password: &str,
     ) -> Result<UserAuthToken, ClientError> {
-        // TODO: Way to avoid formatting so much?
-        let auth_dest = format!("{}/v1/auth", self.addr);
-
         let _state = match self.auth_step_init(ident, None) {
             Ok(s) => s,
             Err(e) => return Err(e),
         };
 
-        // Send the credentials required now
         let auth_req = AuthRequest {
             step: AuthStep::Creds(vec![AuthCredential::Password(password.to_string())]),
         };
+        let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_req);
 
-        let mut response = self
-            .client
-            .post(auth_dest.as_str())
-            .body(serde_json::to_string(&auth_req).unwrap())
-            .send()
-            .map_err(|e| ClientError::Transport(e))?;
-
-        match response.status() {
-            reqwest::StatusCode::OK => {}
-            unexpect => return Err(ClientError::Http(unexpect)),
-        }
-
-        let r: AuthResponse = serde_json::from_str(response.text().unwrap().as_str()).unwrap();
+        let r = r?;
 
         match r.state {
             AuthState::Success(uat) => {
@@ -173,24 +182,6 @@ impl KanidmClient {
             }
             _ => Err(ClientError::AuthenticationFailed),
         }
-    }
-
-    // whoami
-    pub fn whoami(&self) -> Result<Option<(Entry, UserAuthToken)>, ClientError> {
-        let whoami_dest = format!("{}/v1/whoami", self.addr);
-        let mut response = self.client.get(whoami_dest.as_str()).send().unwrap();
-        // https://docs.rs/reqwest/0.9.15/reqwest/struct.Response.html
-
-        match response.status() {
-            // Continue to process.
-            reqwest::StatusCode::OK => {}
-            reqwest::StatusCode::UNAUTHORIZED => return Ok(None),
-            unexpect => return Err(ClientError::Http(unexpect)),
-        }
-
-        let r: WhoamiResponse = serde_json::from_str(response.text().unwrap().as_str()).unwrap();
-
-        Ok(Some((r.youare, r.uat)))
     }
 
     // search
@@ -204,74 +195,85 @@ impl KanidmClient {
 
     pub fn search(&self, filter: Filter) -> Result<Vec<Entry>, ClientError> {
         let sr = SearchRequest { filter: filter };
-        let dest = format!("{}/v1/search", self.addr);
-
-        let mut response = self
-            .client
-            .post(dest.as_str())
-            .body(serde_json::to_string(&sr).unwrap())
-            .send()
-            .map_err(|e| ClientError::Transport(e))?;
-
-        match response.status() {
-            reqwest::StatusCode::OK => {}
-            unexpect => return Err(ClientError::Http(unexpect)),
-        }
-
-        // TODO: What about errors
-        let sr: SearchResponse = serde_json::from_str(response.text().unwrap().as_str()).unwrap();
-        Ok(sr.entries)
+        let r: Result<SearchResponse, _> = self.perform_post_request("/v1/raw/search", sr);
+        r.map(|v| v.entries)
     }
 
     // create
     pub fn create(&self, entries: Vec<Entry>) -> Result<(), ClientError> {
         let c = CreateRequest { entries: entries };
-
-        // TODO: Avoid formatting this so much!
-        let dest = format!("{}/v1/create", self.addr);
-
-        let mut response = self
-            .client
-            .post(dest.as_str())
-            .body(serde_json::to_string(&c).unwrap())
-            .send()
-            .map_err(|e| ClientError::Transport(e))?;
-
-        match response.status() {
-            reqwest::StatusCode::OK => {}
-            unexpect => return Err(ClientError::Http(unexpect)),
-        }
-
-        // TODO: What about errors
-        let _r: OperationResponse =
-            serde_json::from_str(response.text().unwrap().as_str()).unwrap();
-        Ok(())
+        let r: Result<OperationResponse, _> = self.perform_post_request("/v1/raw/create", c);
+        r.map(|_| ())
     }
 
     // modify
-    //
+    pub fn modify(&self, filter: Filter, modlist: ModifyList) -> Result<(), ClientError> {
+        let mr = ModifyRequest {
+            filter: filter,
+            modlist: modlist,
+        };
+        let r: Result<OperationResponse, _> = self.perform_post_request("/v1/raw/modify", mr);
+        r.map(|_| ())
+    }
 
     // === idm actions here ==
     pub fn idm_account_set_password(&self, cleartext: String) -> Result<(), ClientError> {
         let s = SingleStringRequest { value: cleartext };
 
-        let dest = format!("{}/v1/idm/account/set_password", self.addr);
+        let r: Result<OperationResponse, _> =
+            self.perform_post_request("/v1/self/_credential/primary/set_password", s);
+        r.map(|_| ())
+    }
 
-        let mut response = self
-            .client
-            .post(dest.as_str())
-            .body(serde_json::to_string(&s).unwrap())
-            .send()
-            .map_err(|e| ClientError::Transport(e))?;
+    pub fn auth_step_init(
+        &self,
+        ident: &str,
+        appid: Option<&str>,
+    ) -> Result<AuthState, ClientError> {
+        let auth_init = AuthRequest {
+            step: AuthStep::Init(ident.to_string(), appid.map(|s| s.to_string())),
+        };
 
-        match response.status() {
-            reqwest::StatusCode::OK => {}
-            unexpect => return Err(ClientError::Http(unexpect)),
-        }
+        let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_init);
+        r.map(|v| v.state)
+    }
 
-        // TODO: What about errors
-        let _r: OperationResponse =
-            serde_json::from_str(response.text().unwrap().as_str()).unwrap();
-        Ok(())
+    // ===== GROUPS
+    pub fn idm_group_list(&self) -> Result<Vec<Entry>, ClientError> {
+        self.perform_get_request("/v1/group")
+    }
+
+    pub fn idm_group_get(&self, id: &str) -> Result<Option<Entry>, ClientError> {
+        self.perform_get_request(format!("/v1/group/{}", id).as_str())
+    }
+
+    // ==== accounts
+    pub fn idm_account_list(&self) -> Result<Vec<Entry>, ClientError> {
+        self.perform_get_request("/v1/account")
+    }
+
+    pub fn idm_account_get(&self, id: &str) -> Result<Option<Entry>, ClientError> {
+        self.perform_get_request(format!("/v1/account/{}", id).as_str())
+    }
+
+    // ==== schema
+    pub fn idm_schema_list(&self) -> Result<Vec<Entry>, ClientError> {
+        self.perform_get_request("/v1/schema")
+    }
+
+    pub fn idm_schema_attributetype_list(&self) -> Result<Vec<Entry>, ClientError> {
+        self.perform_get_request("/v1/schema/attributetype")
+    }
+
+    pub fn idm_schema_attributetype_get(&self, id: &str) -> Result<Option<Entry>, ClientError> {
+        self.perform_get_request(format!("/v1/schema/attributetype/{}", id).as_str())
+    }
+
+    pub fn idm_schema_classtype_list(&self) -> Result<Vec<Entry>, ClientError> {
+        self.perform_get_request("/v1/schema/classtype")
+    }
+
+    pub fn idm_schema_classtype_get(&self, id: &str) -> Result<Option<Entry>, ClientError> {
+        self.perform_get_request(format!("/v1/schema/classtype/{}", id).as_str())
     }
 }

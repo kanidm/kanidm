@@ -13,7 +13,9 @@ use crate::server::{
 };
 use kanidm_proto::v1::OperationError;
 
-use crate::actors::v1::{AuthMessage, CreateMessage, DeleteMessage, ModifyMessage, SearchMessage};
+use crate::actors::v1::{
+    AuthMessage, CreateMessage, DeleteMessage, InternalSearchMessage, ModifyMessage, SearchMessage,
+};
 // Bring in schematransaction trait for validate
 // use crate::schema::SchemaTransaction;
 
@@ -54,6 +56,11 @@ impl SearchResult {
         SearchResponse {
             entries: self.entries,
         }
+    }
+
+    // Consume into the array of entries, used in the json proto
+    pub fn to_proto_array(self) -> Vec<ProtoEntry> {
+        self.entries
     }
 }
 
@@ -236,6 +243,28 @@ impl SearchEvent {
             }),
             Err(e) => Err(e),
         }
+    }
+
+    pub fn from_internal_message(
+        audit: &mut AuditScope,
+        msg: InternalSearchMessage,
+        qs: &QueryServerReadTransaction,
+    ) -> Result<Self, OperationError> {
+        Ok(SearchEvent {
+            event: Event::from_ro_uat(audit, qs, msg.uat)?,
+            // We do need to do this twice to account for the ignore_hidden
+            // changes.
+            filter: msg
+                .filter
+                .clone()
+                .to_ignore_hidden()
+                .validate(qs.get_schema())
+                .map_err(|e| OperationError::SchemaViolation(e))?,
+            filter_orig: msg
+                .filter
+                .validate(qs.get_schema())
+                .map_err(|e| OperationError::SchemaViolation(e))?,
+        })
     }
 
     pub fn from_whoami_request(

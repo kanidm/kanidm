@@ -1,10 +1,10 @@
 // use actix::SystemRunner;
 use actix::Actor;
 use actix_web::middleware::session::{self, RequestSession};
+use actix_web::Path;
 use actix_web::{
     error, http, middleware, App, Error, HttpMessage, HttpRequest, HttpResponse, Result, State,
 };
-// use actix_web::Path;
 
 use bytes::BytesMut;
 use futures::{future, Future, Stream};
@@ -15,19 +15,22 @@ use crate::config::Configuration;
 // SearchResult
 use crate::actors::v1::QueryServerV1;
 use crate::actors::v1::{
-    AuthMessage, CreateMessage, DeleteMessage, IdmAccountSetPasswordMessage, ModifyMessage,
-    SearchMessage, WhoamiMessage,
+    AuthMessage, CreateMessage, DeleteMessage, IdmAccountSetPasswordMessage, InternalSearchMessage,
+    ModifyMessage, SearchMessage, WhoamiMessage,
 };
 use crate::async_log;
 use crate::audit::AuditScope;
 use crate::be::{Backend, BackendTransaction};
 use crate::crypto::setup_tls;
+use crate::filter::{Filter, FilterInvalid};
 use crate::idm::server::IdmServer;
 use crate::interval::IntervalActor;
 use crate::schema::Schema;
 use crate::schema::SchemaTransaction;
 use crate::server::QueryServer;
 use crate::utils::SID;
+use crate::value::PartialValue;
+
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::{
     AuthRequest, AuthState, CreateRequest, DeleteRequest, ModifyRequest, SearchRequest,
@@ -165,6 +168,170 @@ fn whoami(
     json_event_get!(req, state, WhoamiMessage)
 }
 
+// =============== REST generics ========================
+
+fn json_rest_event_get(
+    req: HttpRequest<AppState>,
+    state: State<AppState>,
+    filter: Filter<FilterInvalid>,
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let uat = get_current_user(&req);
+
+    // TODO: I think we'll need to change this to take an internal filter
+    // type that we send to the qs.
+    let obj = InternalSearchMessage::new(uat, filter);
+
+    let res = state.qe.send(obj).from_err().and_then(|res| match res {
+        Ok(event_result) => Ok(HttpResponse::Ok().json(event_result)),
+        Err(e) => match e {
+            OperationError::NotAuthenticated => Ok(HttpResponse::Unauthorized().json(e)),
+            _ => Ok(HttpResponse::InternalServerError().json(e)),
+        },
+    });
+
+    Box::new(res)
+}
+
+fn json_rest_event_get_id(
+    path: Path<String>,
+    req: HttpRequest<AppState>,
+    state: State<AppState>,
+    filter: Filter<FilterInvalid>,
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let uat = get_current_user(&req);
+
+    let filter = Filter::join_parts_and(filter, filter_all!(f_id(path.as_str())));
+
+    let obj = InternalSearchMessage::new(uat, filter);
+
+    let res = state.qe.send(obj).from_err().and_then(|res| match res {
+        Ok(mut event_result) => {
+            // Only send back the first result, or None
+            Ok(HttpResponse::Ok().json(event_result.pop()))
+        }
+        Err(e) => match e {
+            OperationError::NotAuthenticated => Ok(HttpResponse::Unauthorized().json(e)),
+            _ => Ok(HttpResponse::InternalServerError().json(e)),
+        },
+    });
+
+    Box::new(res)
+}
+
+fn schema_get(
+    (req, state): (HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    // NOTE: This is filter_all, because from_internal_message will still do the alterations
+    // needed to make it safe. This is needed because there may be aci's that block access
+    // to the recycle/ts types in the filter, and we need the aci to only eval on this
+    // part of the filter!
+    let filter = filter_all!(f_or!([
+        f_eq("class", PartialValue::new_class("attributetype")),
+        f_eq("class", PartialValue::new_class("classtype"))
+    ]));
+    json_rest_event_get(req, state, filter)
+}
+
+fn schema_attributetype_get(
+    (req, state): (HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("attributetype")));
+    json_rest_event_get(req, state, filter)
+}
+
+fn schema_attributetype_get_id(
+    (path, req, state): (Path<String>, HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    // These can't use get_id because they attribute name and class name aren't ... well name.
+    let uat = get_current_user(&req);
+
+    let filter = filter_all!(f_and!([
+        f_eq("class", PartialValue::new_class("attributetype")),
+        f_eq("attributename", PartialValue::new_iutf8s(path.as_str()))
+    ]));
+
+    let obj = InternalSearchMessage::new(uat, filter);
+
+    let res = state.qe.send(obj).from_err().and_then(|res| match res {
+        Ok(mut event_result) => {
+            // Only send back the first result, or None
+            Ok(HttpResponse::Ok().json(event_result.pop()))
+        }
+        Err(e) => match e {
+            OperationError::NotAuthenticated => Ok(HttpResponse::Unauthorized().json(e)),
+            _ => Ok(HttpResponse::InternalServerError().json(e)),
+        },
+    });
+
+    Box::new(res)
+}
+
+fn schema_classtype_get(
+    (req, state): (HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("classtype")));
+    json_rest_event_get(req, state, filter)
+}
+
+fn schema_classtype_get_id(
+    (path, req, state): (Path<String>, HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    // These can't use get_id because they attribute name and class name aren't ... well name.
+    let uat = get_current_user(&req);
+
+    let filter = filter_all!(f_and!([
+        f_eq("class", PartialValue::new_class("classtype")),
+        f_eq("classname", PartialValue::new_iutf8s(path.as_str()))
+    ]));
+
+    let obj = InternalSearchMessage::new(uat, filter);
+
+    let res = state.qe.send(obj).from_err().and_then(|res| match res {
+        Ok(mut event_result) => {
+            // Only send back the first result, or None
+            Ok(HttpResponse::Ok().json(event_result.pop()))
+        }
+        Err(e) => match e {
+            OperationError::NotAuthenticated => Ok(HttpResponse::Unauthorized().json(e)),
+            _ => Ok(HttpResponse::InternalServerError().json(e)),
+        },
+    });
+
+    Box::new(res)
+}
+
+fn account_get(
+    (req, state): (HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
+    json_rest_event_get(req, state, filter)
+}
+
+fn account_get_id(
+    (path, req, state): (Path<String>, HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
+    json_rest_event_get_id(path, req, state, filter)
+}
+
+fn group_get(
+    (req, state): (HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
+    json_rest_event_get(req, state, filter)
+}
+
+fn group_id_get(
+    (path, req, state): (Path<String>, HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
+    json_rest_event_get_id(path, req, state, filter)
+}
+
+fn do_nothing((_req, _state): (HttpRequest<AppState>, State<AppState>)) -> String {
+    "did nothing".to_string()
+}
+
 // We probably need an extract auth or similar to handle the different
 // types (cookie, bearer), and to generic this over get/post.
 
@@ -294,7 +461,6 @@ fn test_resource_id(
     format!("Hello {:?}/{:?}!", r.class, r.id)
 }
 */
-
 
 // === internal setup helpers
 
@@ -641,52 +807,176 @@ pub fn create_server_core(config: Configuration) {
                 // TODO #63: make this configurable!
                 .max_age(Duration::hours(1))
                 // .domain(domain.as_str())
-                // .same_site(cookie::SameSite::Strict) // constrain to the domain
+                .same_site(cookie::SameSite::Strict) // constrain to the domain
                 // Disallow from js and ...?
                 .http_only(false)
                 .name("kanidm-session")
                 // This forces https only if true
                 .secure(secure_cookies),
         ))
-        .resource("/v1/whoami", |r| {
-            r.method(http::Method::GET).with_async(whoami)
-        })
-        .resource("/v1/create", |r| {
+        .resource("/v1/raw/create", |r| {
             r.method(http::Method::POST).with_async(create)
         })
-        .resource("/v1/modify", |r| {
+        .resource("/v1/raw/modify", |r| {
             r.method(http::Method::POST).with_async(modify)
         })
-        .resource("/v1/delete", |r| {
+        .resource("/v1/raw/delete", |r| {
             r.method(http::Method::POST).with_async(delete)
         })
-        .resource("/v1/search", |r| {
+        .resource("/v1/raw/search", |r| {
             r.method(http::Method::POST).with_async(search)
         })
         .resource("/v1/auth", |r| {
             r.method(http::Method::POST).with_async(auth)
         })
+        // QS rest resources
+        .resource("/v1/schema", |r| {
+            r.method(http::Method::GET).with_async(schema_get)
+        })
+        //   attributetype
+        .resource("/v1/schema/attributetype", |r| {
+            r.method(http::Method::GET)
+                .with_async(schema_attributetype_get)
+        })
+        .resource("/v1/schema/attributetype", |r| {
+            r.method(http::Method::POST).with(do_nothing)
+        })
+        //   attributetype/{id}
+        .resource("/v1/schema/attributetype/{id}", |r| {
+            r.method(http::Method::GET)
+                .with_async(schema_attributetype_get_id)
+        })
+        .resource("/v1/schema/attributetype/{id}", |r| {
+            r.method(http::Method::PUT).with(do_nothing)
+        })
+        .resource("/v1/schema/attributetype/{id}", |r| {
+            r.method(http::Method::PATCH).with(do_nothing)
+        })
+        //   classtype
+        .resource("/v1/schema/classtype", |r| {
+            r.method(http::Method::GET).with_async(schema_classtype_get)
+        })
+        .resource("/v1/schema/classtype", |r| {
+            r.method(http::Method::POST).with(do_nothing)
+        })
+        //    classtype/{id}
+        .resource("/v1/schema/classtype/{id}", |r| {
+            r.method(http::Method::GET)
+                .with_async(schema_classtype_get_id)
+        })
+        .resource("/v1/schema/classtype/{id}", |r| {
+            r.method(http::Method::PUT).with(do_nothing)
+        })
+        .resource("/v1/schema/classtype/{id}", |r| {
+            r.method(http::Method::PATCH).with(do_nothing)
+        })
         // Start IDM resources. We'll probably add more restful types later.
-        .resource("/v1/idm/account/set_password", |r| {
+        // Self (specialisation of account I guess)
+        .resource("/v1/self", |r| {
+            r.method(http::Method::GET).with_async(whoami)
+        })
+        .resource("/v1/self/_attr/{attr}", |r| {
+            r.method(http::Method::GET).with(do_nothing)
+            // add put post delete
+        })
+        .resource("/v1/self/_credential", |r| {
+            r.method(http::Method::GET).with(do_nothing)
+        })
+        .resource("/v1/self/_credential/primary/set_password", |r| {
             r.method(http::Method::POST)
                 .with_async(idm_account_set_password)
         })
-        // Test resources
-        /*
-        .resource("/v1/account", |r| r.f(|_| "Hello Account"))
-        .resource("/v1/{class}/{id}",
-            |r| r.method(http::Method::GET).with(test_resource_id))
-        .resource("/v1/{class}",
-            |r| r.method(http::Method::GET).with(test_resource))
-        */
-
-
-        // Add an ldap compat search function type?
-        /*
-        .resource("/v1/list/{class_list}", |r| {
-            r.method(http::Method::GET).with(class_list)
+        .resource("/v1/self/_credential/{cid}/_lock", |r| {
+            r.method(http::Method::GET).with(do_nothing)
+            // Check if a cred is locked.
+            // Can we self lock?
         })
-        */
+        .resource("/v1/self/_radius", |r| {
+            r.method(http::Method::GET).with(do_nothing)
+            // more to be added
+        })
+        .resource("/v1/self/_radius/_config", |r| {
+            // Create new secret_otp?
+            r.method(http::Method::POST).with(do_nothing)
+        })
+        .resource("/v1/self/_radius/_config/{secret_otp}", |r| {
+            // Get the params
+            r.method(http::Method::GET).with(do_nothing)
+        })
+        .resource("/v1/self/_radius/_config/{secret_otp}/apple", |r| {
+            // Get an ios/macos configuration profile
+            r.method(http::Method::GET).with(do_nothing)
+        })
+        // Accounts
+        .resource("/v1/account", |r| {
+            r.method(http::Method::GET).with_async(account_get)
+            // Add post
+        })
+        .resource("/v1/account/{id}", |r| {
+            r.method(http::Method::GET).with_async(account_get_id)
+            // add put, patch, delete
+        })
+        .resource("/v1/account/{id}/_attr/{attr}", |r| {
+            r.method(http::Method::GET).with(do_nothing)
+            // add put post delete
+        })
+        .resource("/v1/account/{id}/_lock", |r| {
+            r.method(http::Method::GET).with(do_nothing)
+            // add post, delete
+        })
+        .resource("/v1/account/{id}/_credential", |r| {
+            r.method(http::Method::GET).with(do_nothing)
+            // add delete
+        })
+        .resource("/v1/account/{id}/_credential/{cid}/_lock", |r| {
+            r.method(http::Method::GET).with(do_nothing)
+            // add post, delete
+        })
+        .resource("/v1/account/{id}/_radius", |r| {
+            r.method(http::Method::GET).with(do_nothing)
+            // more to be added
+        })
+        .resource("/v1/account/{id}/_radius/_token", |r| {
+            r.method(http::Method::GET).with(do_nothing)
+        })
+        // Groups
+        .resource("/v1/group", |r| {
+            r.method(http::Method::GET).with_async(group_get)
+            // Add post
+        })
+        .resource("/v1/group/{id}", |r| {
+            r.method(http::Method::GET).with_async(group_id_get)
+            // add put, patch, delete
+        })
+        .resource("/v1/group/{id}/_attr/{attr}", |r| {
+            r.method(http::Method::GET).with(do_nothing)
+            // add put post delete
+        })
+        // Claims
+        // TBD
+        // Recycle Bin
+        .resource("/v1/recycle_bin", |r| {
+            r.method(http::Method::GET).with(do_nothing)
+        })
+        .resource("/v1/recycle_bin/{id}", |r| {
+            r.method(http::Method::GET).with(do_nothing)
+        })
+        .resource("/v1/recycle_bin/{id}/_restore", |r| {
+            r.method(http::Method::POST).with(do_nothing)
+        })
+        // ACPs
+        .resource("/v1/access_profile", |r| {
+            r.method(http::Method::GET).with(do_nothing)
+            // Add post
+        })
+        .resource("/v1/access_profile/{id}", |r| {
+            r.method(http::Method::GET).with(do_nothing)
+            // add put, patch, delete
+        })
+        .resource("/v1/access_profile/{id}/_attr/{attr}", |r| {
+            r.method(http::Method::GET).with(do_nothing)
+            // add put post delete
+        })
     });
 
     let tls_aws_builder = match opt_tls_params {

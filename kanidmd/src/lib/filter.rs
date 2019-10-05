@@ -14,6 +14,8 @@ use kanidm_proto::v1::{OperationError, SchemaError};
 use std::cmp::{Ordering, PartialOrd};
 use std::collections::BTreeSet;
 
+use uuid::Uuid;
+
 // Default filter is safe, ignores all hidden types!
 
 // This is &Value so we can lazy static then clone, but perhaps we can reconsider
@@ -51,6 +53,16 @@ pub fn f_andnot<'a>(fc: FC<'a>) -> FC<'a> {
 #[allow(dead_code)]
 pub fn f_self<'a>() -> FC<'a> {
     FC::SelfUUID
+}
+
+pub fn f_id(id: &str) -> FC<'static> {
+    match Uuid::parse_str(id) {
+        Ok(u) => FC::Or(vec![
+            FC::Eq("name", PartialValue::new_iutf8s(id)),
+            FC::Eq("uuid", PartialValue::new_uuid(u)),
+        ]),
+        Err(_) => FC::Eq("name", PartialValue::new_iutf8s(id)),
+    }
 }
 
 // This is the short-form for tests and internal filters that can then
@@ -236,6 +248,15 @@ impl Filter<FilterInvalid> {
         Filter {
             state: FilterInvalid {
                 inner: FilterComp::new_recycled(self.state.inner),
+            },
+        }
+    }
+
+    pub fn join_parts_and(a: Self, b: Self) -> Self {
+        // I regret this function so much, but then again ...
+        Filter {
+            state: FilterInvalid {
+                inner: FilterComp::And(vec![a.state.inner, b.state.inner]),
             },
         }
     }

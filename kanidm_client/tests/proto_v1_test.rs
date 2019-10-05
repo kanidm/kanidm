@@ -15,7 +15,7 @@ use kanidm_client::KanidmClient;
 
 use kanidm::config::{Configuration, IntegrationTestConfig};
 use kanidm::core::create_server_core;
-use kanidm_proto::v1::Entry;
+use kanidm_proto::v1::{Entry, Filter, Modify, ModifyList};
 
 extern crate reqwest;
 
@@ -103,6 +103,30 @@ fn test_server_create() {
         assert!(a_res.is_ok());
 
         let res = rsclient.create(vec![e]);
+        assert!(res.is_ok());
+    });
+}
+
+#[test]
+fn test_server_modify() {
+    run_test(|rsclient: KanidmClient| {
+        // Build a self mod.
+
+        let f = Filter::SelfUUID;
+        let m = ModifyList::new_list(vec![
+            Modify::Purged("displayname".to_string()),
+            Modify::Present("displayname".to_string(), "test".to_string()),
+        ]);
+
+        // Not logged in - should fail!
+        let res = rsclient.modify(f.clone(), m.clone());
+        assert!(res.is_err());
+
+        let a_res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
+        assert!(a_res.is_ok());
+
+        let res = rsclient.modify(f.clone(), m.clone());
+        println!("{:?}", res);
         assert!(res.is_ok());
     });
 }
@@ -197,6 +221,66 @@ fn test_server_admin_change_simple_password() {
         // New password works!
         let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD_CHANGE);
         assert!(res.is_ok());
+    });
+}
+
+// test the rest group endpoint.
+#[test]
+fn test_server_rest_group_read() {
+    run_test(|rsclient: KanidmClient| {
+        let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
+        assert!(res.is_ok());
+
+        // List the groups
+        let g_list = rsclient.idm_group_list().unwrap();
+        assert!(g_list.len() > 0);
+
+        let g = rsclient.idm_group_get("idm_admins").unwrap();
+        assert!(g.is_some());
+        println!("{:?}", g);
+    });
+}
+
+#[test]
+fn test_server_rest_account_read() {
+    run_test(|rsclient: KanidmClient| {
+        let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
+        assert!(res.is_ok());
+
+        // List the accounts
+        let a_list = rsclient.idm_account_list().unwrap();
+        assert!(a_list.len() > 0);
+
+        let a = rsclient.idm_account_get("admin").unwrap();
+        assert!(a.is_some());
+        println!("{:?}", a);
+    });
+}
+
+#[test]
+fn test_server_rest_schema_read() {
+    run_test(|rsclient: KanidmClient| {
+        let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
+        assert!(res.is_ok());
+
+        // List the schema
+        let s_list = rsclient.idm_schema_list().unwrap();
+        assert!(s_list.len() > 0);
+
+        let a_list = rsclient.idm_schema_attributetype_list().unwrap();
+        assert!(a_list.len() > 0);
+
+        let c_list = rsclient.idm_schema_classtype_list().unwrap();
+        assert!(c_list.len() > 0);
+
+        // Get an attr/class
+        let a = rsclient.idm_schema_attributetype_get("name").unwrap();
+        assert!(a.is_some());
+        println!("{:?}", a);
+
+        let c = rsclient.idm_schema_classtype_get("account").unwrap();
+        assert!(c.is_some());
+        println!("{:?}", c);
     });
 }
 
