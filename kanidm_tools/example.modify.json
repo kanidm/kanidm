@@ -1,0 +1,4 @@
+[
+    { "Purged": "name" },
+    { "Present": ["name", "demo_group"] }
+]

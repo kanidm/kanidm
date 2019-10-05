@@ -11,8 +11,8 @@ use std::fs::File;
 use std::io::Read;
 
 use kanidm_proto::v1::{
-    AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep, CreateRequest, Entry, Filter,
-    ModifyList, ModifyRequest, OperationResponse, SearchRequest, SearchResponse,
+    AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep, CreateRequest, DeleteRequest,
+    Entry, Filter, ModifyList, ModifyRequest, OperationResponse, SearchRequest, SearchResponse,
     SingleStringRequest, UserAuthToken, WhoamiResponse,
 };
 use serde_json;
@@ -185,14 +185,6 @@ impl KanidmClient {
     }
 
     // search
-    pub fn search_str(&self, query: &str) -> Result<Vec<Entry>, ClientError> {
-        let filter: Filter = serde_json::from_str(query).map_err(|e| {
-            error!("JSON Parse Failure -> {:?}", e);
-            ClientError::JsonParse
-        })?;
-        self.search(filter)
-    }
-
     pub fn search(&self, filter: Filter) -> Result<Vec<Entry>, ClientError> {
         let sr = SearchRequest { filter: filter };
         let r: Result<SearchResponse, _> = self.perform_post_request("/v1/raw/search", sr);
@@ -213,6 +205,13 @@ impl KanidmClient {
             modlist: modlist,
         };
         let r: Result<OperationResponse, _> = self.perform_post_request("/v1/raw/modify", mr);
+        r.map(|_| ())
+    }
+
+    // delete
+    pub fn delete(&self, filter: Filter) -> Result<(), ClientError> {
+        let dr = DeleteRequest { filter: filter };
+        let r: Result<OperationResponse, _> = self.perform_post_request("/v1/raw/delete", dr);
         r.map(|_| ())
     }
 
