@@ -5,7 +5,7 @@ use crate::server::QueryServerWriteTransaction;
 
 use uuid::Uuid;
 
-use kanidm_proto::v1::OperationError;
+use kanidm_proto::v1::{OperationError, UserAuthToken};
 
 #[derive(Debug)]
 pub struct PasswordChangeEvent {
@@ -38,6 +38,49 @@ impl PasswordChangeEvent {
             target: u,
             cleartext: msg.cleartext,
             appid: None,
+        })
+    }
+
+    pub fn from_parts(
+        audit: &mut AuditScope,
+        qs: &QueryServerWriteTransaction,
+        uat: Option<UserAuthToken>,
+        target: Uuid,
+        cleartext: String,
+        appid: Option<String>,
+    ) -> Result<Self, OperationError> {
+        let e = Event::from_rw_uat(audit, qs, uat)?;
+
+        Ok(PasswordChangeEvent {
+            event: e,
+            target: target,
+            cleartext: cleartext,
+            appid: appid,
+        })
+    }
+}
+
+#[derive(Debug)]
+pub struct GeneratePasswordEvent {
+    pub event: Event,
+    pub target: Uuid,
+    pub appid: Option<String>,
+}
+
+impl GeneratePasswordEvent {
+    pub fn from_parts(
+        audit: &mut AuditScope,
+        qs: &QueryServerWriteTransaction,
+        uat: Option<UserAuthToken>,
+        target: Uuid,
+        appid: Option<String>,
+    ) -> Result<Self, OperationError> {
+        let e = Event::from_rw_uat(audit, qs, uat)?;
+
+        Ok(GeneratePasswordEvent {
+            event: e,
+            target: target,
+            appid: appid,
         })
     }
 }

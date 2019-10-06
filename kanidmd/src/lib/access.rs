@@ -555,7 +555,9 @@ pub trait AccessControlsTransaction {
             })
             .collect();
 
-        audit_log!(audit, "Related acs -> {:?}", related_acp);
+        related_acp.iter().for_each(|racp| {
+            audit_log!(audit, "Related acs -> {:?}", racp.acp.name);
+        });
 
         // Get the set of attributes requested by the caller
         // TODO #69: This currently
@@ -684,7 +686,9 @@ pub trait AccessControlsTransaction {
             })
             .collect();
 
-        audit_log!(audit, "Related acs -> {:?}", related_acp);
+        related_acp.iter().for_each(|racp| {
+            audit_log!(audit, "Related acs -> {:?}", racp.acp.name);
+        });
 
         // build two sets of "requested pres" and "requested rem"
         let requested_pres: BTreeSet<&str> = me
@@ -1020,7 +1024,9 @@ pub trait AccessControlsTransaction {
             })
             .collect();
 
-        audit_log!(audit, "Related acs -> {:?}", related_acp);
+        related_acp.iter().for_each(|racp| {
+            audit_log!(audit, "Related acs -> {:?}", racp.acp.name);
+        });
 
         // For each entry
         let r = entries.iter().fold(true, |acc, e| {

@@ -87,8 +87,33 @@ enum RawOpt {
 }
 
 #[derive(Debug, StructOpt)]
+struct AccountCommonOpt {
+    #[structopt()]
+    account_id: String,
+}
+
+#[derive(Debug, StructOpt)]
+struct AccountCredentialSet {
+    #[structopt(flatten)]
+    aopts: AccountCommonOpt,
+    #[structopt()]
+    application_id: Option<String>,
+    #[structopt(flatten)]
+    copt: CommonOpt,
+}
+
+#[derive(Debug, StructOpt)]
+enum AccountCredential {
+    #[structopt(name = "set_password")]
+    SetPassword(AccountCredentialSet),
+    #[structopt(name = "generate_password")]
+    GeneratePassword(AccountCredentialSet),
+}
+
+#[derive(Debug, StructOpt)]
 enum AccountOpt {
-    DoNothing,
+    #[structopt(name = "credential")]
+    Credential(AccountCredential),
 }
 
 #[derive(Debug, StructOpt)]
@@ -209,6 +234,7 @@ fn main() {
                     Err(e) => println!("Error: {:?}", e),
                 }
             }
+
             SelfOpt::SetPassword(copt) => {
                 let client = copt.to_client();
 
@@ -218,7 +244,36 @@ fn main() {
             }
         },
         ClientOpt::Account(aopt) => match aopt {
-            _ => {}
+            // id/cred/primary/set
+            AccountOpt::Credential(acopt) => match acopt {
+                AccountCredential::SetPassword(acsopt) => {
+                    let client = acsopt.copt.to_client();
+                    let password = rpassword::prompt_password_stderr(
+                        format!("Enter new password for {}: ", acsopt.aopts.account_id).as_str(),
+                    )
+                    .unwrap();
+
+                    client
+                        .idm_account_primary_credential_set_password(
+                            acsopt.aopts.account_id.as_str(),
+                            password.as_str(),
+                        )
+                        .unwrap();
+                }
+                AccountCredential::GeneratePassword(acsopt) => {
+                    let client = acsopt.copt.to_client();
+
+                    let npw = client
+                        .idm_account_primary_credential_set_generated(
+                            acsopt.aopts.account_id.as_str(),
+                        )
+                        .unwrap();
+                    println!(
+                        "Generated password for {}: {}",
+                        acsopt.aopts.account_id, npw
+                    );
+                }
+            }, // end AccountOpt::Credential
         },
     }
 }
