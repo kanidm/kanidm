@@ -15,8 +15,9 @@ use crate::config::Configuration;
 // SearchResult
 use crate::actors::v1::QueryServerV1;
 use crate::actors::v1::{
-    AuthMessage, CreateMessage, DeleteMessage, IdmAccountSetPasswordMessage, InternalSearchMessage,
-    ModifyMessage, SearchMessage, WhoamiMessage,
+    AuthMessage, CreateMessage, DeleteMessage, IdmAccountSetPasswordMessage,
+    InternalCredentialSetMessage, InternalSearchMessage, ModifyMessage, SearchMessage,
+    WhoamiMessage,
 };
 use crate::async_log;
 use crate::audit::AuditScope;
@@ -34,7 +35,7 @@ use crate::value::PartialValue;
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::{
     AuthRequest, AuthState, CreateRequest, DeleteRequest, ModifyRequest, SearchRequest,
-    SingleStringRequest, UserAuthToken,
+    SetAuthCredential, SingleStringRequest, UserAuthToken,
 };
 
 use uuid::Uuid;
@@ -108,9 +109,9 @@ macro_rules! json_event_post {
                             "Json Decode Failed: {:?}",
                             e
                         )))),
-                    }
-                },
-            )
+                    } // end match
+                }, // end closure
+            ) // end and_then
     }};
 }
 
@@ -218,6 +219,69 @@ fn json_rest_event_get_id(
     Box::new(res)
 }
 
+fn json_rest_event_credential_put(
+    id: String,
+    cred_id: Option<String>,
+    req: HttpRequest<AppState>,
+    state: State<AppState>,
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    // what do we need here?
+    //  * a filter of the id to match + class
+    //  * the id of the credential
+    //  * The SetAuthCredential
+    //    * turn into a modlist
+
+    // Copy the max size since we move it.
+    let max_size = state.max_size;
+    let uat = get_current_user(&req);
+
+    req.payload()
+        .from_err()
+        .fold(BytesMut::new(), move |mut body, chunk| {
+            // limit max size of in-memory payload
+            if (body.len() + chunk.len()) > max_size {
+                Err(error::ErrorBadRequest("overflow"))
+            } else {
+                body.extend_from_slice(&chunk);
+                Ok(body)
+            }
+        })
+        // `Future::and_then` can be used to merge an asynchronous workflow with a
+        // synchronous workflow
+        .and_then(
+            move |body| -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
+                let r_obj = serde_json::from_slice::<SetAuthCredential>(&body);
+
+                match r_obj {
+                    Ok(obj) => {
+                        let m_obj = InternalCredentialSetMessage::new(uat, id, cred_id, obj);
+                        let res = state.qe.send(m_obj).from_err().and_then(|res| match res {
+                            Ok(event_result) => Ok(HttpResponse::Ok().json(event_result)),
+                            Err(e) => Ok(HttpResponse::InternalServerError().json(e)),
+                        });
+
+                        Box::new(res)
+                    }
+                    Err(e) => Box::new(future::err(error::ErrorBadRequest(format!(
+                        "Json Decode Failed: {:?}",
+                        e
+                    )))),
+                } // end match
+            },
+        ) // end and_then
+}
+
+// Okay, so a put normally needs
+//  * filter of what we are working on (id + class)
+//  * a BTreeMap<String, Vec<String>> that we turn into a modlist.
+//
+// OR
+//  * filter of what we are working on (id + class)
+//  * a Vec<String> that we are changing
+//  * the attr name  (as a param to this in path)
+//
+// json_rest_event_put_id(path, req, state
+
 fn schema_get(
     (req, state): (HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
@@ -312,6 +376,13 @@ fn account_get_id(
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
     json_rest_event_get_id(path, req, state, filter)
+}
+
+fn account_put_id_credential_primary(
+    (path, req, state): (Path<String>, HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let id = path.into_inner();
+    json_rest_event_credential_put(id, None, req, state)
 }
 
 fn group_get(
@@ -927,6 +998,12 @@ pub fn create_server_core(config: Configuration) {
         .resource("/v1/account/{id}/_credential", |r| {
             r.method(http::Method::GET).with(do_nothing)
             // add delete
+        })
+        .resource("/v1/account/{id}/_credential/primary", |r| {
+            // Set a new primary credential value.
+            // in future this will tie in to claims.
+            r.method(http::Method::PUT)
+                .with_async(account_put_id_credential_primary)
         })
         .resource("/v1/account/{id}/_credential/{cid}/_lock", |r| {
             r.method(http::Method::GET).with(do_nothing)

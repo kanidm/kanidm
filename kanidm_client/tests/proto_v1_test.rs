@@ -186,7 +186,7 @@ fn test_server_search() {
         assert!(res.is_ok());
 
         let rset = rsclient
-            .search_str("{\"Eq\":[\"name\", \"admin\"]}")
+            .search(Filter::Eq("name".to_string(), "admin".to_string()))
             .unwrap();
         println!("{:?}", rset);
         let e = rset.first().unwrap();
@@ -221,6 +221,57 @@ fn test_server_admin_change_simple_password() {
         // New password works!
         let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD_CHANGE);
         assert!(res.is_ok());
+    });
+}
+
+// Add a test for reseting another accounts pws via the rest api
+#[test]
+fn test_server_admin_reset_simple_password() {
+    run_test(|rsclient: KanidmClient| {
+        let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
+        assert!(res.is_ok());
+        // Create a diff account
+        let e: Entry = serde_json::from_str(
+            r#"{
+            "attrs": {
+                "class": ["person", "account"],
+                "name": ["testperson"],
+                "displayname": ["testperson"]
+            }
+        }"#,
+        )
+        .unwrap();
+
+        // Not logged in - should fail!
+        let res = rsclient.create(vec![e.clone()]);
+        assert!(res.is_ok());
+        // By default, admin's can't actually administer accounts, so mod them into
+        // the account admin group.
+        let f = Filter::Eq("name".to_string(), "idm_account_write_priv".to_string());
+        let m = ModifyList::new_list(vec![Modify::Present(
+            "member".to_string(),
+            "idm_admins".to_string(),
+        )]);
+        let res = rsclient.modify(f.clone(), m.clone());
+        assert!(res.is_ok());
+
+        // Now set it's password.
+        let res = rsclient.idm_account_primary_credential_set_password("testperson", "password");
+        assert!(res.is_ok());
+        // Check it stuck.
+        let tclient = rsclient.new_session();
+        assert!(tclient
+            .auth_simple_password("testperson", "password")
+            .is_ok());
+
+        // Generate a pw instead
+        let res = rsclient.idm_account_primary_credential_set_generated("testperson");
+        assert!(res.is_ok());
+        let gpw = res.unwrap();
+        let tclient = rsclient.new_session();
+        assert!(tclient
+            .auth_simple_password("testperson", gpw.as_str())
+            .is_ok());
     });
 }
 

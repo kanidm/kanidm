@@ -1583,6 +1583,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_IDM_PEOPLE_WRITE_PRIV_V1,
             JSON_IDM_PEOPLE_READ_PRIV_V1,
             JSON_IDM_GROUP_WRITE_PRIV_V1,
+            JSON_IDM_GROUP_CREATE_PRIV_V1,
             JSON_IDM_ACCOUNT_WRITE_PRIV_V1,
             JSON_IDM_ACCOUNT_READ_PRIV_V1,
             JSON_IDM_RADIUS_SERVERS_V1,
@@ -1616,6 +1617,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1,
             JSON_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1,
             JSON_IDM_ACP_ACP_MANAGER_PRIV_V1,
+            JSON_IDM_ACP_GROUP_CREATE_V1,
         ];
 
         let res: Result<(), _> = idm_entries

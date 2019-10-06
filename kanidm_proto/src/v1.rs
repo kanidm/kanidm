@@ -308,6 +308,15 @@ pub struct AuthResponse {
     pub state: AuthState,
 }
 
+// Types needed for setting credentials
+#[derive(Debug, Serialize, Deserialize)]
+pub enum SetAuthCredential {
+    Password(String),
+    GeneratePassword,
+    // TOTP()
+    // Webauthn(response)
+}
+
 /* Recycle Requests area */
 
 // Only two actions on recycled is possible. Search and Revive.

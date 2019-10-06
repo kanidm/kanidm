@@ -201,6 +201,18 @@ pub static JSON_IDM_PERSON_ACCOUNT_CREATE_PRIV_V1: &'static str = r#"{
     }
 }"#;
 
+// IDM_GROUP_CREATE_PRIV
+pub static _UUID_IDM_GROUP_CREATE_PRIV: &'static str = "00000000-0000-0000-0000-000000000015";
+pub static JSON_IDM_GROUP_CREATE_PRIV_V1: &'static str = r#"{
+    "attrs": {
+        "class": ["group", "object"],
+        "name": ["idm_group_create_priv"],
+        "uuid": ["00000000-0000-0000-0000-000000000015"],
+        "description": ["Builtin IDM Group for granting elevated group creation permissions."],
+        "member": ["00000000-0000-0000-0000-000000000001"]
+    }
+}"#;
+
 // This must be the last group to init to include the UUID of the other high priv groups.
 pub static _UUID_IDM_HIGH_PRIVILEGE: &'static str = "00000000-0000-0000-0000-000000001000";
 pub static JSON_IDM_HIGH_PRIVILEGE_V1: &'static str = r#"{
@@ -590,6 +602,7 @@ pub static JSON_IDM_ACP_SERVICE_ACCOUNT_CREATE_V1: &'static str = r#"{
             "class",
             "name",
             "displayname",
+            "description",
             "primary_credential",
             "ssh_publickey"
         ],
@@ -966,6 +979,37 @@ pub static JSON_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1: &'static str = r#"{
 }"#;
 
 // 21 - anonymous / everyone schema read.
+
+// 22 - group create right
+pub static _UUID_IDM_ACP_GROUP_CREATE_V1: &'static str = "00000000-0000-0000-0000-ffffff000022";
+pub static JSON_IDM_ACP_GROUP_CREATE_V1: &'static str = r#"{
+    "attrs": {
+        "class": [
+            "object",
+            "access_control_profile",
+            "access_control_create"
+        ],
+        "name": ["idm_acp_group_create"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000022"],
+        "description": ["Builtin IDM Control for creating groups in the directory"],
+        "acp_enable": ["true"],
+        "acp_receiver": [
+            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000015\"]}"
+        ],
+        "acp_targetscope": [
+            "{\"And\": [{\"Eq\": [\"class\",\"group\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+        ],
+        "acp_create_attr": [
+            "class",
+            "name",
+            "description",
+            "member"
+        ],
+        "acp_create_class": [
+            "object", "group"
+        ]
+    }
+}"#;
 
 // Anonymous should be the last opbject in the range here.
 pub static JSON_ANONYMOUS_V1: &'static str = r#"{

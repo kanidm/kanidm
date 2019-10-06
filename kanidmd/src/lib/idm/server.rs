@@ -3,9 +3,9 @@ use crate::constants::AUTH_SESSION_TIMEOUT;
 use crate::event::{AuthEvent, AuthEventStep, AuthResult};
 use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
-use crate::idm::event::PasswordChangeEvent;
+use crate::idm::event::{GeneratePasswordEvent, PasswordChangeEvent};
 use crate::server::{QueryServer, QueryServerTransaction, QueryServerWriteTransaction};
-use crate::utils::{uuid_from_duration, SID};
+use crate::utils::{password_from_random, uuid_from_duration, SID};
 use crate::value::PartialValue;
 
 use kanidm_proto::v1::AuthState;
@@ -280,6 +280,49 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let pce = PasswordChangeEvent::new_internal(&target, cleartext.as_str(), None);
         // now set_account_password.
         self.set_account_password(au, &pce)
+    }
+
+    pub fn generate_account_password(
+        &mut self,
+        au: &mut AuditScope,
+        gpe: &GeneratePasswordEvent,
+    ) -> Result<String, OperationError> {
+        // Get the account
+        let account_entry = try_audit!(au, self.qs_write.internal_search_uuid(au, &gpe.target));
+        let account = try_audit!(au, Account::try_from_entry(account_entry));
+        // Ask if tis all good - this step checks pwpolicy and such
+
+        // Deny the change if the target account is anonymous!
+        if account.is_anonymous() {
+            return Err(OperationError::SystemProtectedObject);
+        }
+
+        // Generate a new random, long pw.
+        // Because this is generated, we can bypass policy checks!
+        let cleartext = password_from_random();
+
+        // check a password badlist - even if generated, we still don't want to
+        // reuse something that has been disclosed.
+
+        // it returns a modify
+        let modlist = try_audit!(au, account.gen_password_mod(cleartext.as_str(), &gpe.appid));
+        audit_log!(au, "processing change {:?}", modlist);
+        // given the new credential generate a modify
+        // We use impersonate here to get the event from ae
+        try_audit!(
+            au,
+            self.qs_write.impersonate_modify(
+                au,
+                // Filter as executed
+                filter!(f_eq("uuid", PartialValue::new_uuidr(&gpe.target))),
+                // Filter as intended (acp)
+                filter_all!(f_eq("uuid", PartialValue::new_uuidr(&gpe.target))),
+                modlist,
+                &gpe.event,
+            )
+        );
+
+        Ok(cleartext)
     }
 
     pub fn commit(self, au: &mut AuditScope) -> Result<(), OperationError> {

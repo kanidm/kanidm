@@ -1,6 +1,9 @@
 use std::time::Duration;
 use uuid::{Builder, Uuid};
 
+use rand::distributions::Alphanumeric;
+use rand::{thread_rng, Rng};
+
 pub type SID = [u8; 4];
 
 fn uuid_from_u64_u32(a: u64, b: u32, sid: &SID) -> Uuid {
@@ -15,6 +18,11 @@ fn uuid_from_u64_u32(a: u64, b: u32, sid: &SID) -> Uuid {
 // SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
 pub fn uuid_from_duration(d: Duration, sid: &SID) -> Uuid {
     uuid_from_u64_u32(d.as_secs(), d.subsec_nanos(), sid)
+}
+
+pub fn password_from_random() -> String {
+    let rand_string: String = thread_rng().sample_iter(&Alphanumeric).take(48).collect();
+    rand_string
 }
 
 #[cfg(test)]

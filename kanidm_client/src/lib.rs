@@ -11,9 +11,9 @@ use std::fs::File;
 use std::io::Read;
 
 use kanidm_proto::v1::{
-    AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep, CreateRequest, Entry, Filter,
-    ModifyList, ModifyRequest, OperationResponse, SearchRequest, SearchResponse,
-    SingleStringRequest, UserAuthToken, WhoamiResponse,
+    AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep, CreateRequest, DeleteRequest,
+    Entry, Filter, ModifyList, ModifyRequest, OperationResponse, SearchRequest, SearchResponse,
+    SetAuthCredential, SingleStringRequest, UserAuthToken, WhoamiResponse,
 };
 use serde_json;
 
@@ -24,6 +24,7 @@ pub enum ClientError {
     Transport(reqwest::Error),
     AuthenticationFailed,
     JsonParse,
+    EmptyResponse,
 }
 
 #[derive(Debug)]
@@ -50,6 +51,17 @@ impl KanidmClient {
             client: client,
             addr: addr.to_string(),
             ca: ca,
+        }
+    }
+
+    pub fn new_session(&self) -> Self {
+        let new_client =
+            Self::build_reqwest(&self.ca).expect("Unexpected reqwest builder failure!");
+
+        KanidmClient {
+            client: new_client,
+            addr: self.addr.clone(),
+            ca: self.ca.clone(),
         }
     }
 
@@ -82,6 +94,33 @@ impl KanidmClient {
         let mut response = self
             .client
             .post(dest.as_str())
+            .body(req_string)
+            .send()
+            .map_err(|e| ClientError::Transport(e))?;
+
+        match response.status() {
+            reqwest::StatusCode::OK => {}
+            unexpect => return Err(ClientError::Http(unexpect)),
+        }
+
+        // TODO: What about errors
+        let r: T = response.json().unwrap();
+
+        Ok(r)
+    }
+
+    fn perform_put_request<R: Serialize, T: DeserializeOwned>(
+        &self,
+        dest: &str,
+        request: R,
+    ) -> Result<T, ClientError> {
+        let dest = format!("{}{}", self.addr, dest);
+
+        let req_string = serde_json::to_string(&request).unwrap();
+
+        let mut response = self
+            .client
+            .put(dest.as_str())
             .body(req_string)
             .send()
             .map_err(|e| ClientError::Transport(e))?;
@@ -185,14 +224,6 @@ impl KanidmClient {
     }
 
     // search
-    pub fn search_str(&self, query: &str) -> Result<Vec<Entry>, ClientError> {
-        let filter: Filter = serde_json::from_str(query).map_err(|e| {
-            error!("JSON Parse Failure -> {:?}", e);
-            ClientError::JsonParse
-        })?;
-        self.search(filter)
-    }
-
     pub fn search(&self, filter: Filter) -> Result<Vec<Entry>, ClientError> {
         let sr = SearchRequest { filter: filter };
         let r: Result<SearchResponse, _> = self.perform_post_request("/v1/raw/search", sr);
@@ -213,6 +244,13 @@ impl KanidmClient {
             modlist: modlist,
         };
         let r: Result<OperationResponse, _> = self.perform_post_request("/v1/raw/modify", mr);
+        r.map(|_| ())
+    }
+
+    // delete
+    pub fn delete(&self, filter: Filter) -> Result<(), ClientError> {
+        let dr = DeleteRequest { filter: filter };
+        let r: Result<OperationResponse, _> = self.perform_post_request("/v1/raw/delete", dr);
         r.map(|_| ())
     }
 
@@ -254,6 +292,36 @@ impl KanidmClient {
 
     pub fn idm_account_get(&self, id: &str) -> Result<Option<Entry>, ClientError> {
         self.perform_get_request(format!("/v1/account/{}", id).as_str())
+    }
+
+    // different ways to set the primary credential?
+    // not sure how to best expose this.
+    pub fn idm_account_primary_credential_set_password(
+        &self,
+        id: &str,
+        pw: &str,
+    ) -> Result<(), ClientError> {
+        let r = SetAuthCredential::Password(pw.to_string());
+        let res: Result<Option<String>, _> = self.perform_put_request(
+            format!("/v1/account/{}/_credential/primary", id).as_str(),
+            r,
+        );
+        res.map(|_| ())
+    }
+
+    pub fn idm_account_primary_credential_set_generated(
+        &self,
+        id: &str,
+    ) -> Result<String, ClientError> {
+        let r = SetAuthCredential::GeneratePassword;
+        self.perform_put_request(
+            format!("/v1/account/{}/_credential/primary", id).as_str(),
+            r,
+        )
+        .and_then(|v| match v {
+            Some(p) => Ok(p),
+            None => Err(ClientError::EmptyResponse),
+        })
     }
 
     // ==== schema

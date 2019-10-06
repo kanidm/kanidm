@@ -7,7 +7,7 @@ use crate::event::{
     AuthEvent, CreateEvent, DeleteEvent, ModifyEvent, PurgeRecycledEvent, PurgeTombstoneEvent,
     SearchEvent, SearchResult, WhoamiResult,
 };
-use crate::idm::event::PasswordChangeEvent;
+use crate::idm::event::{GeneratePasswordEvent, PasswordChangeEvent};
 use kanidm_proto::v1::OperationError;
 
 use crate::filter::{Filter, FilterInvalid};
@@ -17,7 +17,8 @@ use crate::server::{QueryServer, QueryServerTransaction};
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::{
     AuthRequest, AuthResponse, CreateRequest, DeleteRequest, ModifyRequest, OperationResponse,
-    SearchRequest, SearchResponse, SingleStringRequest, UserAuthToken, WhoamiResponse,
+    SearchRequest, SearchResponse, SetAuthCredential, SingleStringRequest, UserAuthToken,
+    WhoamiResponse,
 };
 
 use actix::prelude::*;
@@ -158,6 +159,33 @@ impl IdmAccountSetPasswordMessage {
 
 impl Message for IdmAccountSetPasswordMessage {
     type Result = Result<OperationResponse, OperationError>;
+}
+
+pub struct InternalCredentialSetMessage {
+    pub uat: Option<UserAuthToken>,
+    pub uuid_or_name: String,
+    pub appid: Option<String>,
+    pub sac: SetAuthCredential,
+}
+
+impl InternalCredentialSetMessage {
+    pub fn new(
+        uat: Option<UserAuthToken>,
+        uuid_or_name: String,
+        appid: Option<String>,
+        sac: SetAuthCredential,
+    ) -> Self {
+        InternalCredentialSetMessage {
+            uat: uat,
+            uuid_or_name: uuid_or_name,
+            appid: appid,
+            sac: sac,
+        }
+    }
+}
+
+impl Message for InternalCredentialSetMessage {
+    type Result = Result<Option<String>, OperationError>;
 }
 
 // ===========================================================
@@ -473,6 +501,81 @@ impl Handler<InternalSearchMessage> for QueryServerV1 {
                 Ok(entries) => SearchResult::new(&mut audit, &qs_read, entries)
                     .map(|ok_sr| ok_sr.to_proto_array()),
                 Err(e) => Err(e),
+            }
+        });
+        self.log.do_send(audit);
+        res
+    }
+}
+
+impl Handler<InternalCredentialSetMessage> for QueryServerV1 {
+    type Result = Result<Option<String>, OperationError>;
+
+    fn handle(&mut self, msg: InternalCredentialSetMessage, _: &mut Self::Context) -> Self::Result {
+        let mut audit = AuditScope::new("internal_credential_set_message");
+        let res = audit_segment!(&mut audit, || {
+            let mut idms_prox_write = self.idms.proxy_write();
+
+            // given the uuid_or_name, determine the target uuid.
+            // We can either do this by trying to parse the name or by creating a filter
+            // to find the entry - there are risks to both TBH ... especially when the uuid
+            // is also an entries name, but that they aren't the same entry.
+            let target_uuid = match Uuid::parse_str(msg.uuid_or_name.as_str()) {
+                Ok(u) => u,
+                Err(_) => idms_prox_write
+                    .qs_write
+                    .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                    .map_err(|e| {
+                        audit_log!(&mut audit, "Error resolving id to target");
+                        e
+                    })?,
+            };
+
+            // What type of auth set did we recieve?
+            match msg.sac {
+                SetAuthCredential::Password(cleartext) => {
+                    let pce = PasswordChangeEvent::from_parts(
+                        &mut audit,
+                        &idms_prox_write.qs_write,
+                        msg.uat,
+                        target_uuid,
+                        cleartext,
+                        msg.appid,
+                    )
+                    .map_err(|e| {
+                        audit_log!(
+                            audit,
+                            "Failed to begin internal_credential_set_message: {:?}",
+                            e
+                        );
+                        e
+                    })?;
+                    idms_prox_write
+                        .set_account_password(&mut audit, &pce)
+                        .and_then(|_| idms_prox_write.commit(&mut audit))
+                        .map(|_| None)
+                }
+                SetAuthCredential::GeneratePassword => {
+                    let gpe = GeneratePasswordEvent::from_parts(
+                        &mut audit,
+                        &idms_prox_write.qs_write,
+                        msg.uat,
+                        target_uuid,
+                        msg.appid,
+                    )
+                    .map_err(|e| {
+                        audit_log!(
+                            audit,
+                            "Failed to begin internal_credential_set_message: {:?}",
+                            e
+                        );
+                        e
+                    })?;
+                    idms_prox_write
+                        .generate_account_password(&mut audit, &gpe)
+                        .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
+                        .map(|v| Some(v))
+                }
             }
         });
         self.log.do_send(audit);
