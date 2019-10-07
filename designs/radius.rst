@@ -120,6 +120,11 @@ Given that the user would have to login to the trusted side to get the network c
 anyway, at this step the radius credential could be created. However, this raises a question of
 how valuable that "trust" is beyond simply being a credential and administration silo.
 
+I honestly think this is the better idea, it makes more sense because we trust the user to login
+and then generate per-site details. It also means even in the trust, we aren't distributing credentials
+and the point of a trust IS the credential siloing.
+
+
 Future
 ------
 
