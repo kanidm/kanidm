@@ -670,7 +670,7 @@ impl AuthEventStep {
             AuthStep::Init(name, appid) => {
                 if sid.is_some() {
                     Err(OperationError::InvalidAuthState(
-                        "session id present in init",
+                        "session id present in init".to_string(),
                     ))
                 } else {
                     Ok(AuthEventStep::Init(AuthEventStepInit {
@@ -685,7 +685,7 @@ impl AuthEventStep {
                     creds: creds,
                 })),
                 None => Err(OperationError::InvalidAuthState(
-                    "session id not present in cred",
+                    "session id not present in cred".to_string(),
                 )),
             },
         }

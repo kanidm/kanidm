@@ -18,6 +18,13 @@ pub enum SchemaError {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
+pub enum PluginError {
+    AttrUnique(String),
+    Base(String),
+    ReferentialIntegrity(String),
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum OperationError {
     EmptyRequest,
     Backend,
@@ -25,20 +32,20 @@ pub enum OperationError {
     CorruptedEntry(u64),
     ConsistencyError(Vec<Result<(), ConsistencyError>>),
     SchemaViolation(SchemaError),
-    Plugin,
+    Plugin(PluginError),
     FilterGeneration,
     FilterUUIDResolution,
     InvalidAttributeName(String),
-    InvalidAttribute(&'static str),
+    InvalidAttribute(String),
     InvalidDBState,
     InvalidEntryID,
     InvalidRequestState,
     InvalidState,
     InvalidEntryState,
     InvalidUuid,
-    InvalidACPState(&'static str),
-    InvalidSchemaState(&'static str),
-    InvalidAccountState(&'static str),
+    InvalidACPState(String),
+    InvalidSchemaState(String),
+    InvalidAccountState(String),
     BackendEngine,
     SQLiteError, //(RusqliteError)
     FsError,
@@ -46,9 +53,10 @@ pub enum OperationError {
     SerdeCborError,
     AccessDenied,
     NotAuthenticated,
-    InvalidAuthState(&'static str),
+    InvalidAuthState(String),
     InvalidSessionState,
     SystemProtectedObject,
+    SystemProtectedAttribute,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -62,7 +70,7 @@ pub enum ConsistencyError {
     UuidNotUnique(String),
     RefintNotUpheld(u64),
     MemberOfInvalid(u64),
-    InvalidAttributeType(&'static str),
+    InvalidAttributeType(String),
     DuplicateUniqueAttribute(String),
 }
 

@@ -12,15 +12,15 @@ use std::io::Read;
 
 use kanidm_proto::v1::{
     AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep, CreateRequest, DeleteRequest,
-    Entry, Filter, ModifyList, ModifyRequest, OperationResponse, SearchRequest, SearchResponse,
-    SetAuthCredential, SingleStringRequest, UserAuthToken, WhoamiResponse,
+    Entry, Filter, ModifyList, ModifyRequest, OperationError, OperationResponse, SearchRequest,
+    SearchResponse, SetAuthCredential, SingleStringRequest, UserAuthToken, WhoamiResponse,
 };
 use serde_json;
 
 #[derive(Debug)]
 pub enum ClientError {
     Unauthorized,
-    Http(reqwest::StatusCode),
+    Http(reqwest::StatusCode, Option<OperationError>),
     Transport(reqwest::Error),
     AuthenticationFailed,
     JsonParse,
@@ -100,7 +100,7 @@ impl KanidmClient {
 
         match response.status() {
             reqwest::StatusCode::OK => {}
-            unexpect => return Err(ClientError::Http(unexpect)),
+            unexpect => return Err(ClientError::Http(unexpect, response.json().ok())),
         }
 
         // TODO: What about errors
@@ -127,7 +127,7 @@ impl KanidmClient {
 
         match response.status() {
             reqwest::StatusCode::OK => {}
-            unexpect => return Err(ClientError::Http(unexpect)),
+            unexpect => return Err(ClientError::Http(unexpect, response.json().ok())),
         }
 
         // TODO: What about errors
@@ -146,7 +146,7 @@ impl KanidmClient {
 
         match response.status() {
             reqwest::StatusCode::OK => {}
-            unexpect => return Err(ClientError::Http(unexpect)),
+            unexpect => return Err(ClientError::Http(unexpect, response.json().ok())),
         }
 
         // TODO: What about errors
@@ -165,7 +165,7 @@ impl KanidmClient {
             // Continue to process.
             reqwest::StatusCode::OK => {}
             reqwest::StatusCode::UNAUTHORIZED => return Ok(None),
-            unexpect => return Err(ClientError::Http(unexpect)),
+            unexpect => return Err(ClientError::Http(unexpect, response.json().ok())),
         }
 
         let r: WhoamiResponse = serde_json::from_str(response.text().unwrap().as_str()).unwrap();

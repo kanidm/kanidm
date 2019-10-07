@@ -47,39 +47,47 @@ impl SchemaAttribute {
         // class
         if !value.attribute_value_pres("class", &PVCLASS_ATTRIBUTETYPE) {
             audit_log!(audit, "class attribute type not present");
-            return Err(OperationError::InvalidSchemaState("missing attributetype"));
+            return Err(OperationError::InvalidSchemaState(
+                "missing attributetype".to_string(),
+            ));
         }
 
         // uuid
         let uuid = value.get_uuid().clone();
 
         // name
-        let name = try_audit!(
-            audit,
-            value
-                .get_ava_single_string("attributename")
-                .ok_or(OperationError::InvalidSchemaState("missing attributename"))
-        );
+        let name =
+            try_audit!(
+                audit,
+                value.get_ava_single_string("attributename").ok_or(
+                    OperationError::InvalidSchemaState("missing attributename".to_string())
+                )
+            );
         // description
-        let description = try_audit!(
-            audit,
-            value
-                .get_ava_single_string("description")
-                .ok_or(OperationError::InvalidSchemaState("missing description"))
-        );
+        let description =
+            try_audit!(
+                audit,
+                value.get_ava_single_string("description").ok_or(
+                    OperationError::InvalidSchemaState("missing description".to_string())
+                )
+            );
 
         // multivalue
         let multivalue = try_audit!(
             audit,
             value
                 .get_ava_single_bool("multivalue")
-                .ok_or(OperationError::InvalidSchemaState("missing multivalue"))
+                .ok_or(OperationError::InvalidSchemaState(
+                    "missing multivalue".to_string()
+                ))
         );
         let unique = try_audit!(
             audit,
             value
                 .get_ava_single_bool("unique")
-                .ok_or(OperationError::InvalidSchemaState("missing unique"))
+                .ok_or(OperationError::InvalidSchemaState(
+                    "missing unique".to_string()
+                ))
         );
         // index vec
         // even if empty, it SHOULD be present ... (is that value to put an empty set?)
@@ -92,7 +100,7 @@ impl SchemaAttribute {
                     .into_iter()
                     .map(|v: &IndexType| v.clone())
                     .collect()))
-                .map_err(|_| OperationError::InvalidSchemaState("Invalid index"))
+                .map_err(|_| OperationError::InvalidSchemaState("Invalid index".to_string()))
         );
         // syntax type
         let syntax = try_audit!(
@@ -100,7 +108,9 @@ impl SchemaAttribute {
             value
                 .get_ava_single_syntax("syntax")
                 .and_then(|s: &SyntaxType| Some(s.clone()))
-                .ok_or(OperationError::InvalidSchemaState("missing syntax"))
+                .ok_or(OperationError::InvalidSchemaState(
+                    "missing syntax".to_string()
+                ))
         );
 
         Ok(SchemaAttribute {
@@ -339,7 +349,9 @@ impl SchemaClass {
         // Convert entry to a schema class.
         if !value.attribute_value_pres("class", &PVCLASS_CLASSTYPE) {
             audit_log!(audit, "class classtype not present");
-            return Err(OperationError::InvalidSchemaState("missing classtype"));
+            return Err(OperationError::InvalidSchemaState(
+                "missing classtype".to_string(),
+            ));
         }
 
         // uuid
@@ -350,36 +362,41 @@ impl SchemaClass {
             audit,
             value
                 .get_ava_single_string("classname")
-                .ok_or(OperationError::InvalidSchemaState("missing classname"))
+                .ok_or(OperationError::InvalidSchemaState(
+                    "missing classname".to_string()
+                ))
         );
         // description
-        let description = try_audit!(
-            audit,
-            value
-                .get_ava_single_string("description")
-                .ok_or(OperationError::InvalidSchemaState("missing description"))
-        );
+        let description =
+            try_audit!(
+                audit,
+                value.get_ava_single_string("description").ok_or(
+                    OperationError::InvalidSchemaState("missing description".to_string())
+                )
+            );
 
         // These are all "optional" lists of strings.
         let systemmay =
             value
                 .get_ava_opt_string("systemmay")
                 .ok_or(OperationError::InvalidSchemaState(
-                    "Missing or invalid systemmay",
+                    "Missing or invalid systemmay".to_string(),
                 ))?;
         let systemmust =
             value
                 .get_ava_opt_string("systemmust")
                 .ok_or(OperationError::InvalidSchemaState(
-                    "Missing or invalid systemmust",
+                    "Missing or invalid systemmust".to_string(),
                 ))?;
         let may = value
             .get_ava_opt_string("may")
-            .ok_or(OperationError::InvalidSchemaState("Missing or invalid may"))?;
+            .ok_or(OperationError::InvalidSchemaState(
+                "Missing or invalid may".to_string(),
+            ))?;
         let must = value
             .get_ava_opt_string("must")
             .ok_or(OperationError::InvalidSchemaState(
-                "Missing or invalid must",
+                "Missing or invalid must".to_string(),
             ))?;
 
         Ok(SchemaClass {

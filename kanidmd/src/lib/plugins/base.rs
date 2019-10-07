@@ -13,7 +13,7 @@ use crate::server::{
     QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
 };
 use crate::value::{PartialValue, Value};
-use kanidm_proto::v1::{ConsistencyError, OperationError};
+use kanidm_proto::v1::{ConsistencyError, OperationError, PluginError};
 
 lazy_static! {
     static ref CLASS_OBJECT: Value = Value::new_class("object");
@@ -66,7 +66,9 @@ impl Plugin for Base {
                     // Actually check we have a value, could be empty array ...
                     if u.len() > 1 {
                         audit_log!(au, "Entry defines uuid attr, but multiple values.");
-                        return Err(OperationError::Plugin);
+                        return Err(OperationError::Plugin(PluginError::Base(
+                            "Uuid has multiple values".to_string(),
+                        )));
                     };
 
                     // Schema of the value v, is checked in the filter generation. Neat!
@@ -78,7 +80,9 @@ impl Plugin for Base {
                     let v: Value = try_audit!(
                         au,
                         u.first()
-                            .ok_or(OperationError::Plugin)
+                            .ok_or(OperationError::Plugin(PluginError::Base(
+                                "Uuid format invalid".to_string()
+                            )))
                             .map(|v| (*v).clone())
                     );
                     v
@@ -104,14 +108,16 @@ impl Plugin for Base {
         for entry in cand.iter() {
             let uuid_ref: &Uuid = entry
                 .get_ava_single("uuid")
-                .ok_or(OperationError::Plugin)?
+                .ok_or(OperationError::InvalidEntryState)?
                 .to_uuid()
-                .ok_or(OperationError::Plugin)?;
+                .ok_or(OperationError::InvalidAttribute("uuid".to_string()))?;
             audit_log!(au, "Entry valid UUID: {:?}", entry);
             match cand_uuid.insert(uuid_ref) {
                 false => {
                     audit_log!(au, "uuid duplicate found in create set! {:?}", uuid_ref);
-                    return Err(OperationError::Plugin);
+                    return Err(OperationError::Plugin(PluginError::Base(
+                        "Uuid duplicate detected in request".to_string(),
+                    )));
                 }
                 true => {}
             }
@@ -137,7 +143,9 @@ impl Plugin for Base {
                     "uuid from protected system UUID range found in create set! {:?}",
                     overlap
                 );
-                return Err(OperationError::Plugin);
+                return Err(OperationError::Plugin(PluginError::Base(
+                    "Uuid must not be in protected range".to_string(),
+                )));
             }
         }
 
@@ -147,7 +155,9 @@ impl Plugin for Base {
                 "uuid \"does not exist\" found in create set! {:?}",
                 uuid_does_not_exist
             );
-            return Err(OperationError::Plugin);
+            return Err(OperationError::Plugin(PluginError::Base(
+                "UUID_DOES_NOT_EXIST may not exist!".to_string(),
+            )));
         }
 
         // Now from each element, generate a filter to search for all of them
@@ -175,12 +185,14 @@ impl Plugin for Base {
             Ok(b) => {
                 if b == true {
                     audit_log!(au, "A UUID already exists, rejecting.");
-                    return Err(OperationError::Plugin);
+                    return Err(OperationError::Plugin(PluginError::Base(
+                        "Uuid duplicate found in database".to_string(),
+                    )));
                 }
             }
             Err(e) => {
                 audit_log!(au, "Error occured checking UUID existance. {:?}", e);
-                return Err(OperationError::Plugin);
+                return Err(e);
             }
         }
 
@@ -201,7 +213,7 @@ impl Plugin for Base {
             };
             if attr == "uuid" {
                 audit_log!(au, "Modifications to UUID's are NOT ALLOWED");
-                return Err(OperationError::Plugin);
+                return Err(OperationError::SystemProtectedAttribute);
             }
         }
         Ok(())

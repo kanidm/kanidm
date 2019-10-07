@@ -13,7 +13,7 @@ use crate::server::{
     QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
 };
 use crate::value::PartialValue;
-use kanidm_proto::v1::{ConsistencyError, OperationError};
+use kanidm_proto::v1::{ConsistencyError, OperationError, PluginError};
 
 use std::collections::BTreeMap;
 
@@ -59,7 +59,9 @@ fn get_cand_attr_set<VALID, STATE>(
                         vr,
                         uuid
                     );
-                    return Err(OperationError::Plugin);
+                    return Err(OperationError::Plugin(PluginError::AttrUnique(
+                        "ava already exists".to_string(),
+                    )));
                 }
             }
         }
@@ -109,7 +111,9 @@ fn enforce_unique<STATE>(
 
     // If all okay, okay!
     if conflict_cand.len() > 0 {
-        return Err(OperationError::Plugin);
+        return Err(OperationError::Plugin(PluginError::AttrUnique(
+            "duplicate value detected".to_string(),
+        )));
     }
 
     Ok(())
