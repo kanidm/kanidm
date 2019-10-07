@@ -31,6 +31,10 @@ storage.
 Note that most other radius methods are not much better wrt to password storage security. In terms
 of a positive user experience, having MSCHAPv2 is essential.
 
+FreeRADIUS only allows 1:1 pw to account, and that's also limited by mschapv2 and how it works. If
+there was a way to offer multiple passwords that would be better because then you could have per
+device radius creds, but I'm not sure it's actually possible at all.
+
 Nice To Have
 ------------
 
