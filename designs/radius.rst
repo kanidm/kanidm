@@ -89,6 +89,11 @@ to avoid default all accounts can radius auth).
 The radius client will be rlm_python. It will search for accounts based on name + memberof radius_access, and this will use the
 radius token in rest to generate a radius data package inc the vlanid, plain pw, groups for the radius server to use.
 
+How to make the PW easy to copy or write out for clients that don't have deployment profiles? (android apparently doesn't have these
+but if they support them, someone please tell me. Similar for windows)
+
+RADIUS wouldn't allow auth if the radius cred is locked OR the account global lock is in place.
+
 
 One of my key notes here is to keep the RADIUS configuration simple but broadly applicable, while
 also using existing mechanics (memberof + filtering) to determine vlans etc.
@@ -115,5 +120,11 @@ Given that the user would have to login to the trusted side to get the network c
 anyway, at this step the radius credential could be created. However, this raises a question of
 how valuable that "trust" is beyond simply being a credential and administration silo.
 
+Future
+------
 
+If it was possible that we could have deployment profiles for android, ios/macos and windows, then
+we could switch to full CA generation and automation for auth instead of pw. This would make the
+auth stronger, and certainly would fix the per-device credential issue. Care needs to be taken in
+how we revoke certs of course to be sure this process is robust.
 
