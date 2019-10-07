@@ -89,5 +89,27 @@ radius token in rest to generate a radius data package inc the vlanid, plain pw,
 One of my key notes here is to keep the RADIUS configuration simple but broadly applicable, while
 also using existing mechanics (memberof + filtering) to determine vlans etc.
 
+Notes on Trusts
+---------------
+
+There are two possibilities here:
+
+* One account - one radius pw - two sites
+
+We replicate the radius credential to the trusted domain, so the user has the same radius password
+in both locations. A question is how the user would auto-add their profile to their devices here
+on the remote site, because they would need to be able to access the configuration. This would
+necesitate the user logging into the "trust" site to get the configuration profile anyway.
+
+* One account - two sites - two passwords
+
+We do not replicate the radius credential to the trusted domain, and we expect the user to login
+to the trust site, generate a radius credential and deploy any site specific configuration via
+that login. This would limit damage if a domain was compromised.
+
+Given that the user would have to login to the trusted side to get the network configuration details
+anyway, at this step the radius credential could be created. However, this raises a question of
+how valuable that "trust" is beyond simply being a credential and administration silo.
+
 
 
