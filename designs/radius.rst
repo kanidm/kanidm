@@ -26,14 +26,15 @@ group associations.
 
 Due to the lack of configuration on windows and ios/macos, there is only a single universally supported
 authentication type on radius, which is MSCHAPv2. This requires NTLM hash (md4) or plaintext password
-storage.
+storage. It's hard to overstate this - MSCHAPv2 is the only auth type that works on all devices,
+out of box, with no messing around. It has to be offered.
+
+This means whatever we do is limited now by it's requirements. For example, you can't have multiple
+passwords per account (ie per-device radius pw) because of how the MSCHAPv2 chal-resp works. This
+means 1 to 1 of pw to account for RADIUS.
 
 Note that most other radius methods are not much better wrt to password storage security. In terms
 of a positive user experience, having MSCHAPv2 is essential.
-
-FreeRADIUS only allows 1:1 pw to account, and that's also limited by mschapv2 and how it works. If
-there was a way to offer multiple passwords that would be better because then you could have per
-device radius creds, but I'm not sure it's actually possible at all.
 
 Nice To Have
 ------------
