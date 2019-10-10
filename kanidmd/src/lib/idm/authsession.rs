@@ -199,7 +199,7 @@ impl AuthSession {
     ) -> Result<AuthState, OperationError> {
         if self.finished {
             return Err(OperationError::InvalidAuthState(
-                "session already finalised!",
+                "session already finalised!".to_string(),
             ));
         }
 

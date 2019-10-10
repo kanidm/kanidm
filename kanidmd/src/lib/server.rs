@@ -364,11 +364,11 @@ pub trait QueryServerTransaction {
                     SyntaxType::UTF8STRING => Ok(Value::new_utf8(value.clone())),
                     SyntaxType::UTF8STRING_INSENSITIVE => Ok(Value::new_iutf8s(value.as_str())),
                     SyntaxType::BOOLEAN => Value::new_bools(value.as_str())
-                        .ok_or(OperationError::InvalidAttribute("Invalid boolean syntax")),
+                        .ok_or(OperationError::InvalidAttribute("Invalid boolean syntax".to_string())),
                     SyntaxType::SYNTAX_ID => Value::new_syntaxs(value.as_str())
-                        .ok_or(OperationError::InvalidAttribute("Invalid Syntax syntax")),
+                        .ok_or(OperationError::InvalidAttribute("Invalid Syntax syntax".to_string())),
                     SyntaxType::INDEX_ID => Value::new_indexs(value.as_str())
-                        .ok_or(OperationError::InvalidAttribute("Invalid Index syntax")),
+                        .ok_or(OperationError::InvalidAttribute("Invalid Index syntax".to_string())),
                     SyntaxType::UUID => {
                         // It's a uuid - we do NOT check for existance, because that
                         // could be revealing or disclosing - it is up to acp to assert
@@ -386,7 +386,7 @@ pub trait QueryServerTransaction {
                                 Some(Value::new_uuid(un))
                             })
                             // I think this is unreachable due to how the .or_else works.
-                            .ok_or(OperationError::InvalidAttribute("Invalid UUID syntax"))
+                            .ok_or(OperationError::InvalidAttribute("Invalid UUID syntax".to_string()))
                     }
                     SyntaxType::REFERENCE_UUID => {
                         // See comments above.
@@ -398,11 +398,11 @@ pub trait QueryServerTransaction {
                                 Some(Value::new_refer(un))
                             })
                             // I think this is unreachable due to how the .or_else works.
-                            .ok_or(OperationError::InvalidAttribute("Invalid Reference syntax"))
+                            .ok_or(OperationError::InvalidAttribute("Invalid Reference syntax".to_string()))
                     }
                     SyntaxType::JSON_FILTER => Value::new_json_filter(value)
-                        .ok_or(OperationError::InvalidAttribute("Invalid Filter syntax")),
-                    SyntaxType::CREDENTIAL => Err(OperationError::InvalidAttribute("Credentials can not be supplied through modification - please use the IDM api")),
+                        .ok_or(OperationError::InvalidAttribute("Invalid Filter syntax".to_string())),
+                    SyntaxType::CREDENTIAL => Err(OperationError::InvalidAttribute("Credentials can not be supplied through modification - please use the IDM api".to_string())),
                 }
             }
             None => {
@@ -431,12 +431,15 @@ pub trait QueryServerTransaction {
                     SyntaxType::UTF8STRING_INSENSITIVE => {
                         Ok(PartialValue::new_iutf8s(value.as_str()))
                     }
-                    SyntaxType::BOOLEAN => PartialValue::new_bools(value.as_str())
-                        .ok_or(OperationError::InvalidAttribute("Invalid boolean syntax")),
-                    SyntaxType::SYNTAX_ID => PartialValue::new_syntaxs(value.as_str())
-                        .ok_or(OperationError::InvalidAttribute("Invalid Syntax syntax")),
-                    SyntaxType::INDEX_ID => PartialValue::new_indexs(value.as_str())
-                        .ok_or(OperationError::InvalidAttribute("Invalid Index syntax")),
+                    SyntaxType::BOOLEAN => PartialValue::new_bools(value.as_str()).ok_or(
+                        OperationError::InvalidAttribute("Invalid boolean syntax".to_string()),
+                    ),
+                    SyntaxType::SYNTAX_ID => PartialValue::new_syntaxs(value.as_str()).ok_or(
+                        OperationError::InvalidAttribute("Invalid Syntax syntax".to_string()),
+                    ),
+                    SyntaxType::INDEX_ID => PartialValue::new_indexs(value.as_str()).ok_or(
+                        OperationError::InvalidAttribute("Invalid Index syntax".to_string()),
+                    ),
                     SyntaxType::UUID => {
                         PartialValue::new_uuids(value.as_str())
                             .or_else(|| {
@@ -450,7 +453,9 @@ pub trait QueryServerTransaction {
                                 Some(PartialValue::new_uuid(un))
                             })
                             // I think this is unreachable due to how the .or_else works.
-                            .ok_or(OperationError::InvalidAttribute("Invalid UUID syntax"))
+                            .ok_or(OperationError::InvalidAttribute(
+                                "Invalid UUID syntax".to_string(),
+                            ))
                     }
                     SyntaxType::REFERENCE_UUID => {
                         // See comments above.
@@ -462,10 +467,13 @@ pub trait QueryServerTransaction {
                                 Some(PartialValue::new_refer(un))
                             })
                             // I think this is unreachable due to how the .or_else works.
-                            .ok_or(OperationError::InvalidAttribute("Invalid Reference syntax"))
+                            .ok_or(OperationError::InvalidAttribute(
+                                "Invalid Reference syntax".to_string(),
+                            ))
                     }
-                    SyntaxType::JSON_FILTER => PartialValue::new_json_filter(value)
-                        .ok_or(OperationError::InvalidAttribute("Invalid Filter syntax")),
+                    SyntaxType::JSON_FILTER => PartialValue::new_json_filter(value).ok_or(
+                        OperationError::InvalidAttribute("Invalid Filter syntax".to_string()),
+                    ),
                     SyntaxType::CREDENTIAL => Ok(PartialValue::new_credential_tag(value.as_str())),
                 }
             }

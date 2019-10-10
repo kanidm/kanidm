@@ -20,7 +20,7 @@ use crate::schema::SchemaTransaction;
 use crate::server::QueryServerTransaction;
 use crate::server::{QueryServerReadTransaction, QueryServerWriteTransaction};
 use crate::value::{PartialValue, Value};
-use kanidm_proto::v1::{ConsistencyError, OperationError};
+use kanidm_proto::v1::{ConsistencyError, OperationError, PluginError};
 use uuid::Uuid;
 
 // NOTE: This *must* be after base.rs!!!
@@ -35,7 +35,14 @@ impl ReferentialIntegrity {
         uuid_value: &Value,
     ) -> Result<(), OperationError> {
         debug!("{:?}", uuid_value);
-        let uuid = try_audit!(au, uuid_value.to_ref_uuid().ok_or(OperationError::Plugin));
+        let uuid = try_audit!(
+            au,
+            uuid_value
+                .to_ref_uuid()
+                .ok_or(OperationError::InvalidAttribute(
+                    "uuid could not become reference value".to_string()
+                ))
+        );
         let mut au_qs = AuditScope::new("qs_exist");
         // NOTE: This only checks LIVE entries (not using filter_all)
         let filt_in = filter!(f_eq("uuid", PartialValue::new_uuid(uuid.clone())));
@@ -53,7 +60,9 @@ impl ReferentialIntegrity {
                 rtype,
                 uuid
             );
-            Err(OperationError::Plugin)
+            Err(OperationError::Plugin(PluginError::ReferentialIntegrity(
+                "Uuid referenced not found in database".to_string(),
+            )))
         }
     }
 }
@@ -225,7 +234,7 @@ impl Plugin for ReferentialIntegrity {
                                     }
                                 }
                                 None => res.push(Err(ConsistencyError::InvalidAttributeType(
-                                    "A non-value-ref type was found.",
+                                    "A non-value-ref type was found.".to_string(),
                                 ))),
                             }
                         }

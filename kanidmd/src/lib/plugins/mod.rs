@@ -28,7 +28,7 @@ trait Plugin {
             "plugin {} has an unimplemented pre_create_transform!",
             Self::id()
         );
-        Err(OperationError::Plugin)
+        Err(OperationError::InvalidState)
     }
 
     fn pre_create(
@@ -39,7 +39,7 @@ trait Plugin {
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         debug!("plugin {} has an unimplemented pre_create!", Self::id());
-        Err(OperationError::Plugin)
+        Err(OperationError::InvalidState)
     }
 
     fn post_create(
@@ -50,7 +50,7 @@ trait Plugin {
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         debug!("plugin {} has an unimplemented post_create!", Self::id());
-        Err(OperationError::Plugin)
+        Err(OperationError::InvalidState)
     }
 
     fn pre_modify(
@@ -60,7 +60,7 @@ trait Plugin {
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
         debug!("plugin {} has an unimplemented pre_modify!", Self::id());
-        Err(OperationError::Plugin)
+        Err(OperationError::InvalidState)
     }
 
     fn post_modify(
@@ -72,7 +72,7 @@ trait Plugin {
         _ce: &ModifyEvent,
     ) -> Result<(), OperationError> {
         debug!("plugin {} has an unimplemented post_modify!", Self::id());
-        Err(OperationError::Plugin)
+        Err(OperationError::InvalidState)
     }
 
     fn pre_delete(
@@ -82,7 +82,7 @@ trait Plugin {
         _de: &DeleteEvent,
     ) -> Result<(), OperationError> {
         debug!("plugin {} has an unimplemented pre_delete!", Self::id());
-        Err(OperationError::Plugin)
+        Err(OperationError::InvalidState)
     }
 
     fn post_delete(
@@ -93,7 +93,7 @@ trait Plugin {
         _ce: &DeleteEvent,
     ) -> Result<(), OperationError> {
         debug!("plugin {} has an unimplemented post_delete!", Self::id());
-        Err(OperationError::Plugin)
+        Err(OperationError::InvalidState)
     }
 
     fn verify(

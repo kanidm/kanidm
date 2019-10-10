@@ -55,6 +55,19 @@ fn get_current_user(req: &HttpRequest<AppState>) -> Option<UserAuthToken> {
     }
 }
 
+fn operation_error_to_response(e: OperationError) -> HttpResponse {
+    match e {
+        OperationError::NotAuthenticated => HttpResponse::Unauthorized().json(e),
+        OperationError::AccessDenied | OperationError::SystemProtectedObject => {
+            HttpResponse::Forbidden().json(e)
+        }
+        OperationError::EmptyRequest
+        | OperationError::NoMatchingEntries
+        | OperationError::SchemaViolation(_) => HttpResponse::BadRequest().json(e),
+        _ => HttpResponse::InternalServerError().json(e),
+    }
+}
+
 macro_rules! json_event_post {
     ($req:expr, $state:expr, $message_type:ty, $request_type:ty) => {{
         // This is copied every request. Is there a better way?
@@ -100,7 +113,7 @@ macro_rules! json_event_post {
                                 .from_err()
                                 .and_then(|res| match res {
                                     Ok(event_result) => Ok(HttpResponse::Ok().json(event_result)),
-                                    Err(e) => Ok(HttpResponse::InternalServerError().json(e)),
+                                    Err(e) => Ok(operation_error_to_response(e)),
                                 });
 
                             Box::new(res)
@@ -127,10 +140,7 @@ macro_rules! json_event_get {
 
         let res = $state.qe.send(obj).from_err().and_then(|res| match res {
             Ok(event_result) => Ok(HttpResponse::Ok().json(event_result)),
-            Err(e) => match e {
-                OperationError::NotAuthenticated => Ok(HttpResponse::Unauthorized().json(e)),
-                _ => Ok(HttpResponse::InternalServerError().json(e)),
-            },
+            Err(e) => Ok(operation_error_to_response(e)),
         });
 
         Box::new(res)
@@ -184,10 +194,7 @@ fn json_rest_event_get(
 
     let res = state.qe.send(obj).from_err().and_then(|res| match res {
         Ok(event_result) => Ok(HttpResponse::Ok().json(event_result)),
-        Err(e) => match e {
-            OperationError::NotAuthenticated => Ok(HttpResponse::Unauthorized().json(e)),
-            _ => Ok(HttpResponse::InternalServerError().json(e)),
-        },
+        Err(e) => Ok(operation_error_to_response(e)),
     });
 
     Box::new(res)
@@ -210,10 +217,7 @@ fn json_rest_event_get_id(
             // Only send back the first result, or None
             Ok(HttpResponse::Ok().json(event_result.pop()))
         }
-        Err(e) => match e {
-            OperationError::NotAuthenticated => Ok(HttpResponse::Unauthorized().json(e)),
-            _ => Ok(HttpResponse::InternalServerError().json(e)),
-        },
+        Err(e) => Ok(operation_error_to_response(e)),
     });
 
     Box::new(res)
@@ -257,7 +261,7 @@ fn json_rest_event_credential_put(
                         let m_obj = InternalCredentialSetMessage::new(uat, id, cred_id, obj);
                         let res = state.qe.send(m_obj).from_err().and_then(|res| match res {
                             Ok(event_result) => Ok(HttpResponse::Ok().json(event_result)),
-                            Err(e) => Ok(HttpResponse::InternalServerError().json(e)),
+                            Err(e) => Ok(operation_error_to_response(e)),
                         });
 
                         Box::new(res)
@@ -321,10 +325,7 @@ fn schema_attributetype_get_id(
             // Only send back the first result, or None
             Ok(HttpResponse::Ok().json(event_result.pop()))
         }
-        Err(e) => match e {
-            OperationError::NotAuthenticated => Ok(HttpResponse::Unauthorized().json(e)),
-            _ => Ok(HttpResponse::InternalServerError().json(e)),
-        },
+        Err(e) => Ok(operation_error_to_response(e)),
     });
 
     Box::new(res)
@@ -355,10 +356,7 @@ fn schema_classtype_get_id(
             // Only send back the first result, or None
             Ok(HttpResponse::Ok().json(event_result.pop()))
         }
-        Err(e) => match e {
-            OperationError::NotAuthenticated => Ok(HttpResponse::Unauthorized().json(e)),
-            _ => Ok(HttpResponse::InternalServerError().json(e)),
-        },
+        Err(e) => Ok(operation_error_to_response(e)),
     });
 
     Box::new(res)
@@ -472,7 +470,7 @@ fn auth(
                                             AuthState::Denied(_) => {
                                                 // Remove the auth-session-id
                                                 req.session().remove("auth-session-id");
-                                                Ok(HttpResponse::Ok().json(ar))
+                                                Ok(HttpResponse::Unauthorized().json(ar))
                                             }
                                             AuthState::Continue(_) => {
                                                 // Ensure the auth-session-id is set
@@ -489,7 +487,7 @@ fn auth(
                                             }
                                         }
                                     }
-                                    Err(e) => Ok(HttpResponse::InternalServerError().json(e)),
+                                    Err(e) => Ok(operation_error_to_response(e)),
                                 });
                         Box::new(res)
                     }

@@ -42,7 +42,7 @@ impl Account {
         // Check the classes
         if !value.attribute_value_pres("class", &PVCLASS_ACCOUNT) {
             return Err(OperationError::InvalidAccountState(
-                "Missing class: account",
+                "Missing class: account".to_string(),
             ));
         }
 
@@ -51,11 +51,11 @@ impl Account {
             value
                 .get_ava_single_string("name")
                 .ok_or(OperationError::InvalidAccountState(
-                    "Missing attribute: name",
+                    "Missing attribute: name".to_string(),
                 ))?;
 
         let displayname = value.get_ava_single_string("displayname").ok_or(
-            OperationError::InvalidAccountState("Missing attribute: displayname"),
+            OperationError::InvalidAccountState("Missing attribute: displayname".to_string()),
         )?;
 
         let primary = value

@@ -5,3 +5,4 @@
 /insecure
 **/*.rs.bk
 test.db
+/vendor

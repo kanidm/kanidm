@@ -58,7 +58,7 @@ impl AccessControlSearch {
         if !value.attribute_value_pres("class", &CLASS_ACS) {
             audit_log!(audit, "class access_control_search not present.");
             return Err(OperationError::InvalidACPState(
-                "Missing access_control_search",
+                "Missing access_control_search".to_string(),
             ));
         }
 
@@ -66,7 +66,9 @@ impl AccessControlSearch {
             audit,
             value
                 .get_ava_string("acp_search_attr")
-                .ok_or(OperationError::InvalidACPState("Missing acp_search_attr"))
+                .ok_or(OperationError::InvalidACPState(
+                    "Missing acp_search_attr".to_string()
+                ))
         );
 
         let acp = AccessControlProfile::try_from(audit, qs, value)?;
@@ -111,7 +113,7 @@ impl AccessControlDelete {
         if !value.attribute_value_pres("class", &CLASS_ACD) {
             audit_log!(audit, "class access_control_delete not present.");
             return Err(OperationError::InvalidACPState(
-                "Missing access_control_delete",
+                "Missing access_control_delete".to_string(),
             ));
         }
 
@@ -154,7 +156,7 @@ impl AccessControlCreate {
         if !value.attribute_value_pres("class", &CLASS_ACC) {
             audit_log!(audit, "class access_control_create not present.");
             return Err(OperationError::InvalidACPState(
-                "Missing access_control_create",
+                "Missing access_control_create".to_string(),
             ));
         }
 
@@ -212,7 +214,7 @@ impl AccessControlModify {
         if !value.attribute_value_pres("class", &CLASS_ACM) {
             audit_log!(audit, "class access_control_modify not present.");
             return Err(OperationError::InvalidACPState(
-                "Missing access_control_modify",
+                "Missing access_control_modify".to_string(),
             ));
         }
 
@@ -281,7 +283,7 @@ impl AccessControlProfile {
         if !value.attribute_value_pres("class", &CLASS_ACP) {
             audit_log!(audit, "class access_control_profile not present.");
             return Err(OperationError::InvalidACPState(
-                "Missing access_control_profile",
+                "Missing access_control_profile".to_string(),
             ));
         }
 
@@ -290,7 +292,7 @@ impl AccessControlProfile {
             audit,
             value
                 .get_ava_single_str("name")
-                .ok_or(OperationError::InvalidACPState("Missing name"))
+                .ok_or(OperationError::InvalidACPState("Missing name".to_string()))
         )
         .to_string();
         // copy uuid
@@ -298,16 +300,16 @@ impl AccessControlProfile {
         // receiver, and turn to real filter
         let receiver_f: ProtoFilter = try_audit!(
             audit,
-            value
-                .get_ava_single_protofilter("acp_receiver")
-                .ok_or(OperationError::InvalidACPState("Missing acp_receiver"))
+            value.get_ava_single_protofilter("acp_receiver").ok_or(
+                OperationError::InvalidACPState("Missing acp_receiver".to_string())
+            )
         );
         // targetscope, and turn to real filter
         let targetscope_f: ProtoFilter = try_audit!(
             audit,
-            value
-                .get_ava_single_protofilter("acp_targetscope")
-                .ok_or(OperationError::InvalidACPState("Missing acp_targetscope"))
+            value.get_ava_single_protofilter("acp_targetscope").ok_or(
+                OperationError::InvalidACPState("Missing acp_targetscope".to_string())
+            )
         );
 
         let receiver_i = try_audit!(audit, Filter::from_rw(audit, &receiver_f, qs));
