@@ -204,7 +204,7 @@ mod tests {
     use crate::entry::{Entry, EntryInvalid, EntryNew};
     use crate::modify::{Modify, ModifyList};
     use crate::value::{PartialValue, Value};
-    use kanidm_proto::v1::OperationError;
+    use kanidm_proto::v1::{OperationError, PluginError};
     // Test entry in db, and same name, reject.
     #[test]
     fn test_pre_create_name_unique() {
@@ -225,7 +225,7 @@ mod tests {
         let preload = vec![e];
 
         run_create_test!(
-            Err(OperationError::Plugin),
+            Err(OperationError::Plugin(PluginError::AttrUnique("duplicate value detected".to_string()))),
             preload,
             create,
             None,
@@ -253,7 +253,7 @@ mod tests {
         let preload = Vec::new();
 
         run_create_test!(
-            Err(OperationError::Plugin),
+            Err(OperationError::Plugin(PluginError::AttrUnique("ava already exists".to_string()))),
             preload,
             create,
             None,
@@ -294,7 +294,7 @@ mod tests {
         let preload = vec![ea, eb];
 
         run_modify_test!(
-            Err(OperationError::Plugin),
+            Err(OperationError::Plugin(PluginError::AttrUnique("duplicate value detected".to_string()))),
             preload,
             filter!(f_or!([f_eq(
                 "name",
@@ -339,7 +339,7 @@ mod tests {
         let preload = vec![ea, eb];
 
         run_modify_test!(
-            Err(OperationError::Plugin),
+            Err(OperationError::Plugin(PluginError::AttrUnique("ava already exists".to_string()))),
             preload,
             filter!(f_or!([
                 f_eq("name", PartialValue::new_iutf8s("testgroup_a")),

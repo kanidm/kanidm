@@ -14,6 +14,7 @@ use crate::server::{
 };
 use crate::value::{PartialValue, Value};
 use kanidm_proto::v1::{ConsistencyError, OperationError, PluginError};
+// use utils::uuid_from_now;
 
 lazy_static! {
     static ref CLASS_OBJECT: Value = Value::new_class("object");
@@ -88,6 +89,7 @@ impl Plugin for Base {
                     v
                 }
                 None => Value::new_uuid(Uuid::new_v4()),
+                // None => Value::new_uuid(uuid_from_now()),
             };
 
             audit_log!(au, "Setting temporary UUID {:?} to entry", c_uuid);
@@ -289,7 +291,7 @@ mod tests {
     use crate::server::QueryServerTransaction;
     use crate::server::QueryServerWriteTransaction;
     use crate::value::{PartialValue, Value};
-    use kanidm_proto::v1::OperationError;
+    use kanidm_proto::v1::{OperationError, PluginError};
 
     static JSON_ADMIN_ALLOW_ALL: &'static str = r#"{
         "valid": null,
@@ -382,7 +384,7 @@ mod tests {
         let create = vec![e.clone()];
 
         run_create_test!(
-            Err(OperationError::Plugin),
+            Err(OperationError::InvalidAttribute("uuid".to_string())),
             preload,
             create,
             None,
@@ -412,7 +414,7 @@ mod tests {
         let create = vec![e.clone()];
 
         run_create_test!(
-            Err(OperationError::Plugin),
+            Err(OperationError::Plugin(PluginError::Base("Uuid format invalid".to_string()))),
             preload,
             create,
             None,
@@ -484,7 +486,7 @@ mod tests {
         let create = vec![e.clone()];
 
         run_create_test!(
-            Err(OperationError::Plugin),
+            Err(OperationError::Plugin(PluginError::Base("Uuid has multiple values".to_string()))),
             preload,
             create,
             None,
@@ -520,7 +522,7 @@ mod tests {
         let preload = vec![e];
 
         run_create_test!(
-            Err(OperationError::Plugin),
+            Err(OperationError::Plugin(PluginError::Base("Uuid duplicate found in database".to_string()))),
             preload,
             create,
             None,
@@ -564,7 +566,7 @@ mod tests {
         let create = vec![ea, eb];
 
         run_create_test!(
-            Err(OperationError::Plugin),
+            Err(OperationError::Plugin(PluginError::Base("Uuid duplicate detected in request".to_string()))),
             preload,
             create,
             None,
@@ -592,7 +594,7 @@ mod tests {
         let preload = vec![ea];
 
         run_modify_test!(
-            Err(OperationError::Plugin),
+            Err(OperationError::SystemProtectedAttribute),
             preload,
             filter!(f_eq("name", PartialValue::new_iutf8s("testgroup_a"))),
             ModifyList::new_list(vec![Modify::Present(
@@ -623,7 +625,7 @@ mod tests {
         let preload = vec![ea];
 
         run_modify_test!(
-            Err(OperationError::Plugin),
+            Err(OperationError::SystemProtectedAttribute),
             preload,
             filter!(f_eq("name", PartialValue::new_iutf8s("testgroup_a"))),
             ModifyList::new_list(vec![Modify::Removed(
@@ -654,7 +656,7 @@ mod tests {
         let preload = vec![ea];
 
         run_modify_test!(
-            Err(OperationError::Plugin),
+            Err(OperationError::SystemProtectedAttribute),
             preload,
             filter!(f_eq("name", PartialValue::new_iutf8s("testgroup_a"))),
             ModifyList::new_list(vec![Modify::Purged("uuid".to_string())]),
@@ -689,7 +691,7 @@ mod tests {
         let create = vec![e.clone()];
 
         run_create_test!(
-            Err(OperationError::Plugin),
+            Err(OperationError::Plugin(PluginError::Base("Uuid must not be in protected range".to_string()))),
             preload,
             create,
             Some(JSON_ADMIN_V1),
@@ -719,7 +721,7 @@ mod tests {
         let create = vec![e.clone()];
 
         run_create_test!(
-            Err(OperationError::Plugin),
+            Err(OperationError::Plugin(PluginError::Base("UUID_DOES_NOT_EXIST may not exist!".to_string()))),
             preload,
             create,
             None,
