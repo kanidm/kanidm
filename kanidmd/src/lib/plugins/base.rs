@@ -414,7 +414,9 @@ mod tests {
         let create = vec![e.clone()];
 
         run_create_test!(
-            Err(OperationError::Plugin(PluginError::Base("Uuid format invalid".to_string()))),
+            Err(OperationError::Plugin(PluginError::Base(
+                "Uuid format invalid".to_string()
+            ))),
             preload,
             create,
             None,
@@ -486,7 +488,9 @@ mod tests {
         let create = vec![e.clone()];
 
         run_create_test!(
-            Err(OperationError::Plugin(PluginError::Base("Uuid has multiple values".to_string()))),
+            Err(OperationError::Plugin(PluginError::Base(
+                "Uuid has multiple values".to_string()
+            ))),
             preload,
             create,
             None,
@@ -522,7 +526,9 @@ mod tests {
         let preload = vec![e];
 
         run_create_test!(
-            Err(OperationError::Plugin(PluginError::Base("Uuid duplicate found in database".to_string()))),
+            Err(OperationError::Plugin(PluginError::Base(
+                "Uuid duplicate found in database".to_string()
+            ))),
             preload,
             create,
             None,
@@ -566,7 +572,9 @@ mod tests {
         let create = vec![ea, eb];
 
         run_create_test!(
-            Err(OperationError::Plugin(PluginError::Base("Uuid duplicate detected in request".to_string()))),
+            Err(OperationError::Plugin(PluginError::Base(
+                "Uuid duplicate detected in request".to_string()
+            ))),
             preload,
             create,
             None,
@@ -691,7 +699,9 @@ mod tests {
         let create = vec![e.clone()];
 
         run_create_test!(
-            Err(OperationError::Plugin(PluginError::Base("Uuid must not be in protected range".to_string()))),
+            Err(OperationError::Plugin(PluginError::Base(
+                "Uuid must not be in protected range".to_string()
+            ))),
             preload,
             create,
             Some(JSON_ADMIN_V1),
@@ -721,7 +731,9 @@ mod tests {
         let create = vec![e.clone()];
 
         run_create_test!(
-            Err(OperationError::Plugin(PluginError::Base("UUID_DOES_NOT_EXIST may not exist!".to_string()))),
+            Err(OperationError::Plugin(PluginError::Base(
+                "UUID_DOES_NOT_EXIST may not exist!".to_string()
+            ))),
             preload,
             create,
             None,

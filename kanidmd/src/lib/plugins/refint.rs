@@ -277,7 +277,9 @@ mod tests {
         let create = vec![e.clone()];
         let preload = Vec::new();
         run_create_test!(
-            Err(OperationError::Plugin(PluginError::ReferentialIntegrity("Uuid referenced not found in database".to_string()))),
+            Err(OperationError::Plugin(PluginError::ReferentialIntegrity(
+                "Uuid referenced not found in database".to_string()
+            ))),
             preload,
             create,
             None,
@@ -433,7 +435,9 @@ mod tests {
         let preload = vec![eb];
 
         run_modify_test!(
-            Err(OperationError::Plugin(PluginError::ReferentialIntegrity("Uuid referenced not found in database".to_string()))),
+            Err(OperationError::Plugin(PluginError::ReferentialIntegrity(
+                "Uuid referenced not found in database".to_string()
+            ))),
             preload,
             filter!(f_eq("name", PartialValue::new_iutf8s("testgroup_b"))),
             ModifyList::new_list(vec![Modify::Present(
@@ -548,7 +552,9 @@ mod tests {
         let preload = vec![ea, eb];
 
         run_modify_test!(
-            Err(OperationError::Plugin(PluginError::ReferentialIntegrity("Uuid referenced not found in database".to_string()))),
+            Err(OperationError::Plugin(PluginError::ReferentialIntegrity(
+                "Uuid referenced not found in database".to_string()
+            ))),
             preload,
             filter!(f_eq("name", PartialValue::new_iutf8s("testgroup_b"))),
             ModifyList::new_list(vec![Modify::Present(

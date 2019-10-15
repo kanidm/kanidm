@@ -1,6 +1,6 @@
 use std::time::Duration;
-use uuid::{Builder, Uuid};
 use std::time::SystemTime;
+use uuid::{Builder, Uuid};
 
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
@@ -27,7 +27,9 @@ pub fn password_from_random() -> String {
 
 #[allow(dead_code)]
 pub fn uuid_from_now(sid: &SID) -> Uuid {
-    let d = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).unwrap();
+    let d = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap();
     uuid_from_duration(d, sid)
 }
 

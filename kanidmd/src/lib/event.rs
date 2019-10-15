@@ -13,9 +13,8 @@ use crate::server::{
 };
 use kanidm_proto::v1::OperationError;
 
-use crate::actors::v1::{
-    AuthMessage, CreateMessage, DeleteMessage, InternalSearchMessage, ModifyMessage, SearchMessage,
-};
+use crate::actors::v1_read::{AuthMessage, InternalSearchMessage, SearchMessage};
+use crate::actors::v1_write::{CreateMessage, DeleteMessage, ModifyMessage};
 // Bring in schematransaction trait for validate
 // use crate::schema::SchemaTransaction;
 

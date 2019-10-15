@@ -8,16 +8,18 @@ use actix_web::{
 
 use bytes::BytesMut;
 use futures::{future, Future, Stream};
+use std::sync::Arc;
 use time::Duration;
 
 use crate::config::Configuration;
 
 // SearchResult
-use crate::actors::v1::QueryServerV1;
-use crate::actors::v1::{
-    AuthMessage, CreateMessage, DeleteMessage, IdmAccountSetPasswordMessage,
-    InternalCredentialSetMessage, InternalSearchMessage, ModifyMessage, SearchMessage,
-    WhoamiMessage,
+use crate::actors::v1_read::QueryServerReadV1;
+use crate::actors::v1_read::{AuthMessage, InternalSearchMessage, SearchMessage, WhoamiMessage};
+use crate::actors::v1_write::QueryServerWriteV1;
+use crate::actors::v1_write::{
+    CreateMessage, DeleteMessage, IdmAccountSetPasswordMessage, InternalCredentialSetMessage,
+    ModifyMessage,
 };
 use crate::async_log;
 use crate::audit::AuditScope;
@@ -41,7 +43,8 @@ use kanidm_proto::v1::{
 use uuid::Uuid;
 
 struct AppState {
-    qe: actix::Addr<QueryServerV1>,
+    qe_r: actix::Addr<QueryServerReadV1>,
+    qe_w: actix::Addr<QueryServerWriteV1>,
     max_size: usize,
 }
 
@@ -69,7 +72,7 @@ fn operation_error_to_response(e: OperationError) -> HttpResponse {
 }
 
 macro_rules! json_event_post {
-    ($req:expr, $state:expr, $message_type:ty, $request_type:ty) => {{
+    ($req:expr, $state:expr, $message_type:ty, $request_type:ty, $dest:expr) => {{
         // This is copied every request. Is there a better way?
         // The issue is the fold move takes ownership of state if
         // we don't copy this here
@@ -106,8 +109,7 @@ macro_rules! json_event_post {
                         Ok(obj) => {
                             // combine request + uat -> message.
                             let m_obj = <($message_type)>::new(uat, obj);
-                            let res = $state
-                                .qe
+                            let res = $dest
                                 .send(m_obj)
                                 // What is from_err?
                                 .from_err()
@@ -138,7 +140,7 @@ macro_rules! json_event_get {
         // New event, feed current auth data from the token to it.
         let obj = <($message_type)>::new(uat);
 
-        let res = $state.qe.send(obj).from_err().and_then(|res| match res {
+        let res = $state.qe_r.send(obj).from_err().and_then(|res| match res {
             Ok(event_result) => Ok(HttpResponse::Ok().json(event_result)),
             Err(e) => Ok(operation_error_to_response(e)),
         });
@@ -152,25 +154,25 @@ macro_rules! json_event_get {
 fn create(
     (req, state): (HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    json_event_post!(req, state, CreateMessage, CreateRequest)
+    json_event_post!(req, state, CreateMessage, CreateRequest, state.qe_w)
 }
 
 fn modify(
     (req, state): (HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    json_event_post!(req, state, ModifyMessage, ModifyRequest)
+    json_event_post!(req, state, ModifyMessage, ModifyRequest, state.qe_w)
 }
 
 fn delete(
     (req, state): (HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    json_event_post!(req, state, DeleteMessage, DeleteRequest)
+    json_event_post!(req, state, DeleteMessage, DeleteRequest, state.qe_w)
 }
 
 fn search(
     (req, state): (HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    json_event_post!(req, state, SearchMessage, SearchRequest)
+    json_event_post!(req, state, SearchMessage, SearchRequest, state.qe_r)
 }
 
 fn whoami(
@@ -192,7 +194,7 @@ fn json_rest_event_get(
     // type that we send to the qs.
     let obj = InternalSearchMessage::new(uat, filter);
 
-    let res = state.qe.send(obj).from_err().and_then(|res| match res {
+    let res = state.qe_r.send(obj).from_err().and_then(|res| match res {
         Ok(event_result) => Ok(HttpResponse::Ok().json(event_result)),
         Err(e) => Ok(operation_error_to_response(e)),
     });
@@ -212,7 +214,7 @@ fn json_rest_event_get_id(
 
     let obj = InternalSearchMessage::new(uat, filter);
 
-    let res = state.qe.send(obj).from_err().and_then(|res| match res {
+    let res = state.qe_r.send(obj).from_err().and_then(|res| match res {
         Ok(mut event_result) => {
             // Only send back the first result, or None
             Ok(HttpResponse::Ok().json(event_result.pop()))
@@ -259,7 +261,7 @@ fn json_rest_event_credential_put(
                 match r_obj {
                     Ok(obj) => {
                         let m_obj = InternalCredentialSetMessage::new(uat, id, cred_id, obj);
-                        let res = state.qe.send(m_obj).from_err().and_then(|res| match res {
+                        let res = state.qe_w.send(m_obj).from_err().and_then(|res| match res {
                             Ok(event_result) => Ok(HttpResponse::Ok().json(event_result)),
                             Err(e) => Ok(operation_error_to_response(e)),
                         });
@@ -320,7 +322,7 @@ fn schema_attributetype_get_id(
 
     let obj = InternalSearchMessage::new(uat, filter);
 
-    let res = state.qe.send(obj).from_err().and_then(|res| match res {
+    let res = state.qe_r.send(obj).from_err().and_then(|res| match res {
         Ok(mut event_result) => {
             // Only send back the first result, or None
             Ok(HttpResponse::Ok().json(event_result.pop()))
@@ -351,7 +353,7 @@ fn schema_classtype_get_id(
 
     let obj = InternalSearchMessage::new(uat, filter);
 
-    let res = state.qe.send(obj).from_err().and_then(|res| match res {
+    let res = state.qe_r.send(obj).from_err().and_then(|res| match res {
         Ok(mut event_result) => {
             // Only send back the first result, or None
             Ok(HttpResponse::Ok().json(event_result.pop()))
@@ -447,48 +449,44 @@ fn auth(
                         // We probably need to know if we allocate the cookie, that this is a
                         // new session, and in that case, anything *except* authrequest init is
                         // invalid.
-                        let res =
-                            state
-                                .qe
-                                .send(auth_msg)
-                                .from_err()
-                                .and_then(move |res| match res {
-                                    Ok(ar) => {
-                                        match &ar.state {
-                                            AuthState::Success(uat) => {
-                                                // Remove the auth-session-id
-                                                req.session().remove("auth-session-id");
-                                                // Set the uat into the cookie
-                                                match req.session().set("uat", uat) {
-                                                    Ok(_) => Ok(HttpResponse::Ok().json(ar)),
-                                                    Err(_) => {
-                                                        Ok(HttpResponse::InternalServerError()
-                                                            .json(()))
-                                                    }
+                        let res = state
+                            // This may change in the future ...
+                            .qe_r
+                            .send(auth_msg)
+                            .from_err()
+                            .and_then(move |res| match res {
+                                Ok(ar) => {
+                                    match &ar.state {
+                                        AuthState::Success(uat) => {
+                                            // Remove the auth-session-id
+                                            req.session().remove("auth-session-id");
+                                            // Set the uat into the cookie
+                                            match req.session().set("uat", uat) {
+                                                Ok(_) => Ok(HttpResponse::Ok().json(ar)),
+                                                Err(_) => {
+                                                    Ok(HttpResponse::InternalServerError().json(()))
                                                 }
                                             }
-                                            AuthState::Denied(_) => {
-                                                // Remove the auth-session-id
-                                                req.session().remove("auth-session-id");
-                                                Ok(HttpResponse::Unauthorized().json(ar))
-                                            }
-                                            AuthState::Continue(_) => {
-                                                // Ensure the auth-session-id is set
-                                                match req
-                                                    .session()
-                                                    .set("auth-session-id", ar.sessionid)
-                                                {
-                                                    Ok(_) => Ok(HttpResponse::Ok().json(ar)),
-                                                    Err(_) => {
-                                                        Ok(HttpResponse::InternalServerError()
-                                                            .json(()))
-                                                    }
+                                        }
+                                        AuthState::Denied(_) => {
+                                            // Remove the auth-session-id
+                                            req.session().remove("auth-session-id");
+                                            Ok(HttpResponse::Unauthorized().json(ar))
+                                        }
+                                        AuthState::Continue(_) => {
+                                            // Ensure the auth-session-id is set
+                                            match req.session().set("auth-session-id", ar.sessionid)
+                                            {
+                                                Ok(_) => Ok(HttpResponse::Ok().json(ar)),
+                                                Err(_) => {
+                                                    Ok(HttpResponse::InternalServerError().json(()))
                                                 }
                                             }
                                         }
                                     }
-                                    Err(e) => Ok(operation_error_to_response(e)),
-                                });
+                                }
+                                Err(e) => Ok(operation_error_to_response(e)),
+                            });
                         Box::new(res)
                     }
                     Err(e) => Box::new(future::err(error::ErrorBadRequest(format!(
@@ -507,7 +505,8 @@ fn idm_account_set_password(
         req,
         state,
         IdmAccountSetPasswordMessage,
-        SingleStringRequest
+        SingleStringRequest,
+        state.qe_w
     )
 }
 
@@ -841,12 +840,23 @@ pub fn create_server_core(config: Configuration) {
     }
     log_addr.do_send(audit);
 
-    // Pass it to the actor for threading.
-    // Start the query server with the given be path: future config
-    let server_addr = QueryServerV1::start(log_addr.clone(), qs, idms, config.threads);
+    // Arc the idms.
+    let idms_arc = Arc::new(idms);
 
-    // Setup timed events
-    let _int_addr = IntervalActor::new(server_addr.clone()).start();
+    // Pass it to the actor for threading.
+    // Start the read query server with the given be path: future config
+    let server_read_addr = QueryServerReadV1::start(
+        log_addr.clone(),
+        qs.clone(),
+        idms_arc.clone(),
+        config.threads,
+    );
+    // Start the write thread
+    let server_write_addr =
+        QueryServerWriteV1::start(log_addr.clone(), qs.clone(), idms_arc.clone());
+
+    // Setup timed events associated to the write thread
+    let _int_addr = IntervalActor::new(server_write_addr.clone()).start();
 
     // Copy the max size
     let max_size = config.maximum_request;
@@ -857,7 +867,8 @@ pub fn create_server_core(config: Configuration) {
     // start the web server
     let aws_builder = actix_web::server::new(move || {
         App::with_state(AppState {
-            qe: server_addr.clone(),
+            qe_r: server_read_addr.clone(),
+            qe_w: server_write_addr.clone(),
             max_size: max_size,
         })
         // Connect all our end points here.

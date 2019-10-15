@@ -1,4 +1,4 @@
-use crate::actors::v1::IdmAccountSetPasswordMessage;
+use crate::actors::v1_write::IdmAccountSetPasswordMessage;
 use crate::audit::AuditScope;
 use crate::event::Event;
 use crate::server::QueryServerWriteTransaction;

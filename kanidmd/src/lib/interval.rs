@@ -1,17 +1,17 @@
 use actix::prelude::*;
 use std::time::Duration;
 
-use crate::actors::v1::QueryServerV1;
+use crate::actors::v1_write::QueryServerWriteV1;
 use crate::constants::PURGE_TIMEOUT;
 use crate::event::{PurgeRecycledEvent, PurgeTombstoneEvent};
 
 pub struct IntervalActor {
     // Store any addresses we require
-    server: actix::Addr<QueryServerV1>,
+    server: actix::Addr<QueryServerWriteV1>,
 }
 
 impl IntervalActor {
-    pub fn new(server: actix::Addr<QueryServerV1>) -> Self {
+    pub fn new(server: actix::Addr<QueryServerWriteV1>) -> Self {
         IntervalActor { server: server }
     }
 
