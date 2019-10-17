@@ -403,6 +403,8 @@ pub trait QueryServerTransaction {
                     SyntaxType::JSON_FILTER => Value::new_json_filter(value)
                         .ok_or(OperationError::InvalidAttribute("Invalid Filter syntax".to_string())),
                     SyntaxType::CREDENTIAL => Err(OperationError::InvalidAttribute("Credentials can not be supplied through modification - please use the IDM api".to_string())),
+                    SyntaxType::RADIUS_UTF8STRING => Err(OperationError::InvalidAttribute("Radius secrets can not be supplied through modification - please use the IDM api".to_string())),
+                    SyntaxType::SSHKEY => Err(OperationError::InvalidAttribute("SSH public keys can not be supplied through modification - please use the IDM api".to_string())),
                 }
             }
             None => {
@@ -475,6 +477,8 @@ pub trait QueryServerTransaction {
                         OperationError::InvalidAttribute("Invalid Filter syntax".to_string()),
                     ),
                     SyntaxType::CREDENTIAL => Ok(PartialValue::new_credential_tag(value.as_str())),
+                    SyntaxType::RADIUS_UTF8STRING => Ok(PartialValue::new_radius_string()),
+                    SyntaxType::SSHKEY => Ok(PartialValue::new_sshkey_tag_s(value.as_str())),
                 }
             }
             None => {
@@ -1538,6 +1542,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_SCHEMA_ATTR_MAIL,
             JSON_SCHEMA_ATTR_SSH_PUBLICKEY,
             JSON_SCHEMA_ATTR_PRIMARY_CREDENTIAL,
+            JSON_SCHEMA_ATTR_RADIUS_SECRET,
             JSON_SCHEMA_CLASS_PERSON,
             JSON_SCHEMA_CLASS_GROUP,
             JSON_SCHEMA_CLASS_ACCOUNT,

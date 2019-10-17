@@ -19,6 +19,12 @@ pub struct DbValueCredV1 {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct DbValueTaggedStringV1 {
+    pub t: String,
+    pub d: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub enum DbValueV1 {
     U8(String),
     I8(String),
@@ -29,4 +35,6 @@ pub enum DbValueV1 {
     RF(Uuid),
     JF(String),
     CR(DbValueCredV1),
+    RU(String),
+    SK(DbValueTaggedStringV1),
 }

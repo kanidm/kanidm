@@ -972,11 +972,19 @@ pub fn create_server_core(config: Configuration) {
             // Can we self lock?
         })
         .resource("/v1/self/_radius", |r| {
+            // Get our radius secret for manual configuration
             r.method(http::Method::GET).with(do_nothing)
-            // more to be added
+        })
+        .resource("/v1/self/_radius", |r| {
+            // delete our radius secret
+            r.method(http::Method::DELETE).with(do_nothing)
+        })
+        .resource("/v1/self/_radius", |r| {
+            // regenerate our radius secret
+            r.method(http::Method::POST).with(do_nothing)
         })
         .resource("/v1/self/_radius/_config", |r| {
-            // Create new secret_otp?
+            // Create new secret_otp for client configuration
             r.method(http::Method::POST).with(do_nothing)
         })
         .resource("/v1/self/_radius/_config/{secret_otp}", |r| {

@@ -3,9 +3,9 @@ use crate::constants::AUTH_SESSION_TIMEOUT;
 use crate::event::{AuthEvent, AuthEventStep, AuthResult};
 use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
-use crate::idm::event::{GeneratePasswordEvent, PasswordChangeEvent};
+use crate::idm::event::{GeneratePasswordEvent, PasswordChangeEvent, RegenerateRadiusSecretEvent};
 use crate::server::{QueryServer, QueryServerTransaction, QueryServerWriteTransaction};
-use crate::utils::{password_from_random, uuid_from_duration, SID};
+use crate::utils::{password_from_random, uuid_from_duration, SID, readable_password_from_random};
 use crate::value::PartialValue;
 
 use kanidm_proto::v1::AuthState;
@@ -318,7 +318,47 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 // Filter as intended (acp)
                 filter_all!(f_eq("uuid", PartialValue::new_uuidr(&gpe.target))),
                 modlist,
+                // Provide the event to impersonate
                 &gpe.event,
+            )
+        );
+
+        Ok(cleartext)
+    }
+
+    pub fn regenerate_radius_secret(
+        &mut self,
+        au: &mut AuditScope,
+        rrse: &RegenerateRadiusSecretEvent,
+    ) -> Result<String, OperationError> {
+        // regenerates and returns the radius secret
+        let account_entry = try_audit!(au, self.qs_write.internal_search_uuid(au, &rrse.target));
+        let account = try_audit!(au, Account::try_from_entry(account_entry));
+        // Deny the change if the target account is anonymous!
+        if account.is_anonymous() {
+            return Err(OperationError::SystemProtectedObject);
+        }
+
+        // Difference to the password above, this is intended to be read/copied
+        // by a human wiath a keyboard in some cases.
+        let cleartext = readable_password_from_random();
+
+        // Create a modlist from the change.
+        let modlist = try_audit!(au, account.regenerate_radius_secret_mod(cleartext.as_str()));
+        audit_log!(au, "processing change {:?}", modlist);
+
+        // Apply it.
+        try_audit!(
+            au,
+            self.qs_write.impersonate_modify(
+                au,
+                // Filter as executed
+                filter!(f_eq("uuid", PartialValue::new_uuidr(&rrse.target))),
+                // Filter as intended (acp)
+                filter_all!(f_eq("uuid", PartialValue::new_uuidr(&rrse.target))),
+                modlist,
+                // Provide the event to impersonate
+                &rrse.event,
             )
         );
 
@@ -337,7 +377,7 @@ mod tests {
     use crate::constants::{AUTH_SESSION_TIMEOUT, UUID_ADMIN, UUID_ANONYMOUS};
     use crate::credential::Credential;
     use crate::event::{AuthEvent, AuthResult, ModifyEvent};
-    use crate::idm::event::PasswordChangeEvent;
+    use crate::idm::event::{PasswordChangeEvent, RegenerateRadiusSecretEvent};
     use crate::modify::{Modify, ModifyList};
     use crate::value::{PartialValue, Value};
     use kanidm_proto::v1::OperationError;
@@ -631,6 +671,20 @@ mod tests {
             assert!(idms_write.commit().is_ok());
             let idms_write = idms.write();
             assert!(!idms_write.is_sessionid_present(&sid));
+        })
+    }
+
+    #[test]
+    fn test_idm_regenerate_radius_secret() {
+        run_idm_test!(|_qs: &QueryServer, idms: &IdmServer, au: &mut AuditScope| {
+            let mut idms_prox_write = idms.proxy_write();
+            let rrse = RegenerateRadiusSecretEvent::new_internal(UUID_ADMIN.clone());
+
+            // Generates a new credential when none exists
+            let r1 = idms_prox_write.regenerate_radius_secret(au, &rrse).expect("Failed to reset radius credential 1");
+            // Regenerates and overwrites the radius credential
+            let r2 = idms_prox_write.regenerate_radius_secret(au, &rrse).expect("Failed to reset radius credential 2");
+            assert!(r1 != r2);
         })
     }
 }

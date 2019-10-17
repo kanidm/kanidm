@@ -214,6 +214,22 @@ impl SchemaAttribute {
         }
     }
 
+    fn validate_radius_utf8string(&self, v: &Value) -> Result<(), SchemaError> {
+        if v.is_radius_string() {
+            Ok(())
+        } else {
+            Err(SchemaError::InvalidAttributeSyntax)
+        }
+    }
+
+    fn validate_sshkey(&self, v: &Value) -> Result<(), SchemaError> {
+        if v.is_sshkey() {
+            Ok(())
+        } else {
+            Err(SchemaError::InvalidAttributeSyntax)
+        }
+    }
+
     // TODO: There may be a difference between a value and a filter value on complex
     // types - IE a complex type may have multiple parts that are secret, but a filter
     // on that may only use a single tagged attribute for example.
@@ -228,6 +244,8 @@ impl SchemaAttribute {
             SyntaxType::UTF8STRING => v.is_utf8(),
             SyntaxType::JSON_FILTER => v.is_json_filter(),
             SyntaxType::CREDENTIAL => v.is_credential(),
+            SyntaxType::RADIUS_UTF8STRING => v.is_radius_string(),
+            SyntaxType::SSHKEY => v.is_sshkey(),
         };
         if r {
             Ok(())
@@ -315,9 +333,26 @@ impl SchemaAttribute {
                     acc
                 }
             }),
-            SyntaxType::CREDENTIAL => ava.iter().fold(Ok(()), |acc, v| {
+            SyntaxType::CREDENTIAL =>
+            ava.iter().fold(Ok(()), |acc, v| {
                 if acc.is_ok() {
                     self.validate_credential(v)
+                } else {
+                    acc
+                }
+            }),
+            SyntaxType::RADIUS_UTF8STRING => 
+            ava.iter().fold(Ok(()), |acc, v| {
+                if acc.is_ok() {
+                    self.validate_radius_utf8string(v)
+                } else {
+                    acc
+                }
+            }),
+            SyntaxType::SSHKEY  => 
+            ava.iter().fold(Ok(()), |acc, v| {
+                if acc.is_ok() {
+                    self.validate_sshkey(v)
                 } else {
                     acc
                 }

@@ -25,6 +25,24 @@ pub fn password_from_random() -> String {
     rand_string
 }
 
+pub fn readable_password_from_random() -> String {
+    let mut trng = thread_rng();
+    format!("{}-{}-{}-{}",
+        trng
+        .sample_iter(&Alphanumeric)
+        .take(4).collect::<String>(),
+        trng
+        .sample_iter(&Alphanumeric)
+        .take(4).collect::<String>(),
+        trng
+        .sample_iter(&Alphanumeric)
+        .take(4).collect::<String>(),
+        trng
+        .sample_iter(&Alphanumeric)
+        .take(4).collect::<String>(),
+    )
+}
+
 #[allow(dead_code)]
 pub fn uuid_from_now(sid: &SID) -> Uuid {
     let d = SystemTime::now()

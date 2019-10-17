@@ -127,6 +127,14 @@ impl Account {
             } // no appid
         }
     }
+
+    pub(crate) fn regenerate_radius_secret_mod(
+        &self,
+        cleartext: &str
+    ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
+        let vcred = Value::new_radius_str(cleartext);
+        Ok(ModifyList::new_purge_and_set("radius_secret", vcred))
+    }
 }
 
 // Need to also add a "to UserAuthToken" ...

@@ -84,3 +84,36 @@ impl GeneratePasswordEvent {
         })
     }
 }
+
+#[derive(Debug)]
+pub struct RegenerateRadiusSecretEvent {
+    pub event: Event,
+    pub target: Uuid,
+}
+
+impl RegenerateRadiusSecretEvent {
+    pub fn from_parts(
+        audit: &mut AuditScope,
+        qs: &QueryServerWriteTransaction,
+        uat: Option<UserAuthToken>,
+        target: Uuid,
+    ) -> Result<Self, OperationError> {
+        let e = Event::from_rw_uat(audit, qs, uat)?;
+
+        Ok(RegenerateRadiusSecretEvent {
+            event: e,
+            target: target,
+        })
+    }
+
+    #[cfg(test)]
+    pub fn new_internal(target: Uuid) -> Self {
+        let e = Event::from_internal();
+
+        RegenerateRadiusSecretEvent {
+            event: e,
+            target: target,
+        }
+    }
+}
+
