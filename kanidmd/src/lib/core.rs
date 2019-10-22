@@ -15,11 +15,13 @@ use crate::config::Configuration;
 
 // SearchResult
 use crate::actors::v1_read::QueryServerReadV1;
-use crate::actors::v1_read::{AuthMessage, InternalSearchMessage, SearchMessage, WhoamiMessage};
+use crate::actors::v1_read::{AuthMessage, InternalSearchMessage, SearchMessage, WhoamiMessage,
+    GetAttributeMessage
+};
 use crate::actors::v1_write::QueryServerWriteV1;
 use crate::actors::v1_write::{
     CreateMessage, DeleteMessage, IdmAccountSetPasswordMessage, InternalCredentialSetMessage,
-    ModifyMessage,
+    ModifyMessage, InternalRegenerateRadiusMessage, PurgeAttributeMessage
 };
 use crate::async_log;
 use crate::audit::AuditScope;
@@ -383,6 +385,73 @@ fn account_put_id_credential_primary(
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let id = path.into_inner();
     json_rest_event_credential_put(id, None, req, state)
+}
+
+// Get and return a single str
+fn account_get_id_radius(
+    (path, req, state): (Path<String>, HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let uat = get_current_user(&req);
+    let id = path.into_inner();
+
+    let obj = GetAttributeMessage {
+        uat: uat,
+        uuid_or_name: id,
+        attr: "radius_secret".to_string(),
+    };
+
+    let res = state.qe_r.send(obj).from_err().and_then(|res| match res {
+        Ok(event_result) => {
+            // Only send back the first result, or None
+            Ok(HttpResponse::Ok().json(event_result))
+        }
+        Err(e) => Ok(operation_error_to_response(e)),
+    });
+
+    Box::new(res)
+}
+
+fn account_post_id_radius_regenerate(
+    (path, req, state): (Path<String>, HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    // Need to to send the regen msg
+    let uat = get_current_user(&req);
+    let id = path.into_inner();
+
+    let obj = InternalRegenerateRadiusMessage::new(uat, id);
+
+    let res = state.qe_w.send(obj).from_err().and_then(|res| match res {
+        Ok(event_result) => {
+            // Only send back the first result, or None
+            Ok(HttpResponse::Ok().json(event_result))
+        }
+        Err(e) => Ok(operation_error_to_response(e)),
+    });
+
+    Box::new(res)
+}
+
+fn account_delete_id_radius(
+    (path, req, state): (Path<String>, HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let uat = get_current_user(&req);
+    let id = path.into_inner();
+
+    let obj = PurgeAttributeMessage {
+        uat: uat,
+        uuid_or_name: id,
+        attr: "radius_secret".to_string(),
+    };
+
+    let res = state.qe_w.send(obj).from_err().and_then(|res| match res {
+        Ok(event_result) => {
+            // Only send back the first result, or None
+            Ok(HttpResponse::Ok().json(event_result))
+        }
+        Err(e) => Ok(operation_error_to_response(e)),
+    });
+
+    Box::new(res)
 }
 
 fn group_get(
@@ -1027,9 +1096,18 @@ pub fn create_server_core(config: Configuration) {
             // add post, delete
         })
         .resource("/v1/account/{id}/_radius", |r| {
-            r.method(http::Method::GET).with(do_nothing)
+            r.method(http::Method::GET).with_async(account_get_id_radius)
             // more to be added
         })
+        .resource("/v1/account/{id}/_radius", |r| {
+            r.method(http::Method::POST).with_async(account_post_id_radius_regenerate)
+            // more to be added
+        })
+        .resource("/v1/account/{id}/_radius", |r| {
+            r.method(http::Method::DELETE).with_async(account_delete_id_radius)
+            // more to be added
+        })
+        // This is how the radius server views a json blob about the ID and radius creds.
         .resource("/v1/account/{id}/_radius/_token", |r| {
             r.method(http::Method::GET).with(do_nothing)
         })

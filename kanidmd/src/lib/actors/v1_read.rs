@@ -92,6 +92,18 @@ impl Message for InternalSearchMessage {
     type Result = Result<Vec<ProtoEntry>, OperationError>;
 }
 
+pub struct GetAttributeMessage {
+    pub uat: Option<UserAuthToken>,
+    pub uuid_or_name: String,
+    pub attr: String,
+}
+
+impl Message for GetAttributeMessage {
+    type Result = Result<Vec<String>, OperationError>;
+}
+
+
+
 // ===========================================================
 
 pub struct QueryServerReadV1 {
@@ -295,5 +307,13 @@ impl Handler<InternalSearchMessage> for QueryServerReadV1 {
         });
         self.log.do_send(audit);
         res
+    }
+}
+
+impl Handler<GetAttributeMessage> for QueryServerReadV1 {
+    type Result = Result<Vec<String>, OperationError>;
+
+    fn handle(&mut self, msg: GetAttributeMessage, _: &mut Self::Context) -> Self::Result {
+        unimplemented!();
     }
 }
