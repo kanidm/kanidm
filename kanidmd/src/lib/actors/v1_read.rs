@@ -77,31 +77,12 @@ impl Message for SearchMessage {
 pub struct InternalSearchMessage {
     pub uat: Option<UserAuthToken>,
     pub filter: Filter<FilterInvalid>,
-}
-
-impl InternalSearchMessage {
-    pub fn new(uat: Option<UserAuthToken>, filter: Filter<FilterInvalid>) -> Self {
-        InternalSearchMessage {
-            uat: uat,
-            filter: filter,
-        }
-    }
+    pub attrs: Option<Vec<String>>,
 }
 
 impl Message for InternalSearchMessage {
     type Result = Result<Vec<ProtoEntry>, OperationError>;
 }
-
-pub struct GetAttributeMessage {
-    pub uat: Option<UserAuthToken>,
-    pub uuid_or_name: String,
-    pub attr: String,
-}
-
-impl Message for GetAttributeMessage {
-    type Result = Result<Vec<String>, OperationError>;
-}
-
 
 
 // ===========================================================
@@ -307,13 +288,5 @@ impl Handler<InternalSearchMessage> for QueryServerReadV1 {
         });
         self.log.do_send(audit);
         res
-    }
-}
-
-impl Handler<GetAttributeMessage> for QueryServerReadV1 {
-    type Result = Result<Vec<String>, OperationError>;
-
-    fn handle(&mut self, msg: GetAttributeMessage, _: &mut Self::Context) -> Self::Result {
-        unimplemented!();
     }
 }

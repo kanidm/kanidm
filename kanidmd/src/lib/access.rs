@@ -46,7 +46,7 @@ lazy_static! {
 pub struct AccessControlSearch {
     acp: AccessControlProfile,
     // TODO: Should this change to Value? May help to reduce transformations during processing.
-    attrs: Vec<String>,
+    attrs: BTreeSet<String>,
 }
 
 impl AccessControlSearch {
@@ -65,7 +65,7 @@ impl AccessControlSearch {
         let attrs = try_audit!(
             audit,
             value
-                .get_ava_string("acp_search_attr")
+                .get_ava_set_string("acp_search_attr")
                 .ok_or(OperationError::InvalidACPState(
                     "Missing acp_search_attr".to_string()
                 ))
@@ -536,11 +536,34 @@ pub trait AccessControlsTransaction {
             .acps_search
             .iter()
             .filter_map(|(_, acs)| {
+
                 let f_val = acs.acp.receiver.clone();
                 match f_val.resolve(&se.event, None) {
                     Ok(f_res) => {
+                        // Is our user covered by this acs?
                         if rec_entry.entry_match_no_index(&f_res) {
-                            Some(acs)
+                            // If so, let's check if the attr request is relevant.
+
+                            // If we have a requested attr set, are any of them
+                            // in the attrs this acs covers?
+                            let acs_target_attrs = match &se.attrs {
+                                Some(r_attrs) => {
+                                    acs.attrs.intersection(r_attrs).count()
+                                }
+                                // All attrs requested, do nothing.
+                                None => {
+                                    acs.attrs.len()
+                                }
+                            };
+
+                            // There is nothing in the ACS (not possible) or
+                            // no overlap between the requested set and this acs, so it's
+                            // not worth evaling.
+                            if acs_target_attrs == 0 {
+                                None
+                            } else {
+                                Some(acs)
+                            }
                         } else {
                             None
                         }
@@ -561,10 +584,8 @@ pub trait AccessControlsTransaction {
             audit_log!(audit, "Related acs -> {:?}", racp.acp.name);
         });
 
-        // Get the set of attributes requested by the caller
-        // TODO #69: This currently
-        // is ALL ATTRIBUTES, so we actually work here to just remove things we
-        // CAN'T see instead.
+            // Build a reference set from the req_attrs
+        let req_attrs: Option<BTreeSet<_>> = se.attrs.as_ref().map(|vs| vs.iter().map(|s| s.as_str()).collect());
 
         //  For each entry
         let allowed_entries: Vec<Entry<EntryReduced, EntryCommitted>> = entries
@@ -611,12 +632,21 @@ pub trait AccessControlsTransaction {
                     })
                     .flatten()
                     .collect();
+
                 // Remove all others that are present on the entry.
                 audit_log!(audit, "-- for entry         --> {:?}", e.get_uuid());
+                audit_log!(audit, "requested attributes --> {:?}", req_attrs);
                 audit_log!(audit, "allowed attributes   --> {:?}", allowed_attrs);
 
+                // Remove anything that wasn't requested.
+                let f_allowed_attrs: BTreeSet<&str> = match &req_attrs {
+                    Some(v) =>
+                        allowed_attrs.intersection(&v).map(|s| *s).collect(),
+                    None => allowed_attrs,
+                };
+
                 // Now purge the attrs that are NOT in this.
-                e.reduce_attributes(allowed_attrs)
+                e.reduce_attributes(f_allowed_attrs)
             })
             .collect();
         Ok(allowed_entries)

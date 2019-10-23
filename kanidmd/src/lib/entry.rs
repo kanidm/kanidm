@@ -1124,6 +1124,24 @@ impl Entry<EntryValid, EntryCommitted> {
         }
     }
 
+    pub(crate) fn get_ava_set_string(&self, attr: &str) -> Option<BTreeSet<String>> {
+        match self.attrs.get(attr) {
+            Some(a) => {
+                let r: BTreeSet<String> = a
+                    .iter()
+                    .filter_map(|v| v.as_string().map(|s| s.clone()))
+                    .collect();
+                if r.len() == 0 {
+                    // Corrupt?
+                    None
+                } else {
+                    Some(r)
+                }
+            }
+            None => None,
+        }
+    }
+
     pub fn get_ava_single_str(&self, attr: &str) -> Option<&str> {
         self.get_ava_single(attr).and_then(|v| v.to_str())
     }

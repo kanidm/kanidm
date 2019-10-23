@@ -15,9 +15,7 @@ use crate::config::Configuration;
 
 // SearchResult
 use crate::actors::v1_read::QueryServerReadV1;
-use crate::actors::v1_read::{AuthMessage, InternalSearchMessage, SearchMessage, WhoamiMessage,
-    GetAttributeMessage
-};
+use crate::actors::v1_read::{AuthMessage, InternalSearchMessage, SearchMessage, WhoamiMessage};
 use crate::actors::v1_write::QueryServerWriteV1;
 use crate::actors::v1_write::{
     CreateMessage, DeleteMessage, IdmAccountSetPasswordMessage, InternalCredentialSetMessage,
@@ -189,12 +187,17 @@ fn json_rest_event_get(
     req: HttpRequest<AppState>,
     state: State<AppState>,
     filter: Filter<FilterInvalid>,
+    attrs: Option<Vec<String>>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let uat = get_current_user(&req);
 
     // TODO: I think we'll need to change this to take an internal filter
     // type that we send to the qs.
-    let obj = InternalSearchMessage::new(uat, filter);
+    let obj = InternalSearchMessage {
+        uat: uat,
+        filter: filter,
+        attrs: attrs,
+    };
 
     let res = state.qe_r.send(obj).from_err().and_then(|res| match res {
         Ok(event_result) => Ok(HttpResponse::Ok().json(event_result)),
@@ -209,12 +212,17 @@ fn json_rest_event_get_id(
     req: HttpRequest<AppState>,
     state: State<AppState>,
     filter: Filter<FilterInvalid>,
+    attrs: Option<Vec<String>>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let uat = get_current_user(&req);
 
     let filter = Filter::join_parts_and(filter, filter_all!(f_id(path.as_str())));
 
-    let obj = InternalSearchMessage::new(uat, filter);
+    let obj = InternalSearchMessage {
+        uat: uat,
+        filter: filter,
+        attrs: attrs,
+    };
 
     let res = state.qe_r.send(obj).from_err().and_then(|res| match res {
         Ok(mut event_result) => {
@@ -301,14 +309,14 @@ fn schema_get(
         f_eq("class", PartialValue::new_class("attributetype")),
         f_eq("class", PartialValue::new_class("classtype"))
     ]));
-    json_rest_event_get(req, state, filter)
+    json_rest_event_get(req, state, filter, None)
 }
 
 fn schema_attributetype_get(
     (req, state): (HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("attributetype")));
-    json_rest_event_get(req, state, filter)
+    json_rest_event_get(req, state, filter, None)
 }
 
 fn schema_attributetype_get_id(
@@ -322,7 +330,11 @@ fn schema_attributetype_get_id(
         f_eq("attributename", PartialValue::new_iutf8s(path.as_str()))
     ]));
 
-    let obj = InternalSearchMessage::new(uat, filter);
+    let obj = InternalSearchMessage {
+        uat: uat,
+        filter: filter,
+        attrs: None,
+    };
 
     let res = state.qe_r.send(obj).from_err().and_then(|res| match res {
         Ok(mut event_result) => {
@@ -339,7 +351,7 @@ fn schema_classtype_get(
     (req, state): (HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("classtype")));
-    json_rest_event_get(req, state, filter)
+    json_rest_event_get(req, state, filter, None)
 }
 
 fn schema_classtype_get_id(
@@ -353,7 +365,11 @@ fn schema_classtype_get_id(
         f_eq("classname", PartialValue::new_iutf8s(path.as_str()))
     ]));
 
-    let obj = InternalSearchMessage::new(uat, filter);
+    let obj = InternalSearchMessage {
+        uat: uat,
+        filter: filter,
+        attrs: None,
+    };
 
     let res = state.qe_r.send(obj).from_err().and_then(|res| match res {
         Ok(mut event_result) => {
@@ -370,14 +386,14 @@ fn account_get(
     (req, state): (HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
-    json_rest_event_get(req, state, filter)
+    json_rest_event_get(req, state, filter, None)
 }
 
 fn account_get_id(
     (path, req, state): (Path<String>, HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
-    json_rest_event_get_id(path, req, state, filter)
+    json_rest_event_get_id(path, req, state, filter, None)
 }
 
 fn account_put_id_credential_primary(
@@ -391,24 +407,8 @@ fn account_put_id_credential_primary(
 fn account_get_id_radius(
     (path, req, state): (Path<String>, HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    let uat = get_current_user(&req);
-    let id = path.into_inner();
-
-    let obj = GetAttributeMessage {
-        uat: uat,
-        uuid_or_name: id,
-        attr: "radius_secret".to_string(),
-    };
-
-    let res = state.qe_r.send(obj).from_err().and_then(|res| match res {
-        Ok(event_result) => {
-            // Only send back the first result, or None
-            Ok(HttpResponse::Ok().json(event_result))
-        }
-        Err(e) => Ok(operation_error_to_response(e)),
-    });
-
-    Box::new(res)
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
+    json_rest_event_get_id(path, req, state, filter, None)
 }
 
 fn account_post_id_radius_regenerate(
@@ -458,14 +458,14 @@ fn group_get(
     (req, state): (HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
-    json_rest_event_get(req, state, filter)
+    json_rest_event_get(req, state, filter, None)
 }
 
 fn group_id_get(
     (path, req, state): (Path<String>, HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
-    json_rest_event_get_id(path, req, state, filter)
+    json_rest_event_get_id(path, req, state, filter, None)
 }
 
 fn do_nothing((_req, _state): (HttpRequest<AppState>, State<AppState>)) -> String {

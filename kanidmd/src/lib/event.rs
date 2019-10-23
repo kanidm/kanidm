@@ -26,6 +26,7 @@ use crate::modify::ModifyInvalid;
 
 use actix::prelude::*;
 use uuid::Uuid;
+use std::collections::BTreeSet;
 
 #[derive(Debug)]
 pub struct SearchResult {
@@ -217,7 +218,7 @@ pub struct SearchEvent {
     pub filter: Filter<FilterValid>,
     // This is the original filter, for the purpose of ACI checking.
     pub filter_orig: Filter<FilterValid>,
-    // TODO #83: Add list of attributes to request
+    pub attrs: Option<BTreeSet<String>>,
 }
 
 impl SearchEvent {
@@ -239,6 +240,9 @@ impl SearchEvent {
                 filter_orig: f
                     .validate(qs.get_schema())
                     .map_err(|e| OperationError::SchemaViolation(e))?,
+                // We can't get this from the SearchMessage because it's annoying with the
+                // current macro design.
+                attrs: None
             }),
             Err(e) => Err(e),
         }
@@ -263,6 +267,8 @@ impl SearchEvent {
                 .filter
                 .validate(qs.get_schema())
                 .map_err(|e| OperationError::SchemaViolation(e))?,
+            // How do we validate these are all legit? Does it matter?
+            attrs: msg.attrs.map(|vs| vs.into_iter().collect())
         })
     }
 
@@ -279,6 +285,8 @@ impl SearchEvent {
             filter_orig: filter_all!(f_self())
                 .validate(qs.get_schema())
                 .map_err(|e| OperationError::SchemaViolation(e))?,
+            // TODO: Should we limit this?
+            attrs: None
         })
     }
 
@@ -289,6 +297,7 @@ impl SearchEvent {
             event: Event::from_impersonate_entry_ser(e),
             filter: filter.clone().to_valid(),
             filter_orig: filter.to_valid(),
+            attrs: None,
         }
     }
 
@@ -301,6 +310,7 @@ impl SearchEvent {
             event: Event::from_impersonate_entry(e),
             filter: filter.clone().to_valid(),
             filter_orig: filter.to_valid(),
+            attrs: None,
         }
     }
 
@@ -313,6 +323,7 @@ impl SearchEvent {
             event: Event::from_impersonate(event),
             filter: filter,
             filter_orig: filter_orig,
+            attrs: None,
         }
     }
 
@@ -351,6 +362,7 @@ impl SearchEvent {
             event: Event::from_impersonate_entry(e),
             filter: filter.clone().to_recycled().to_valid(),
             filter_orig: filter.to_valid(),
+            attrs: None,
         }
     }
 
@@ -364,6 +376,7 @@ impl SearchEvent {
             event: Event::from_impersonate_entry(e),
             filter: filter.clone().to_ignore_hidden().to_valid(),
             filter_orig: filter.to_valid(),
+            attrs: None,
         }
     }
 
@@ -373,6 +386,7 @@ impl SearchEvent {
             event: Event::from_internal(),
             filter: filter.clone().to_valid(),
             filter_orig: filter.to_valid(),
+            attrs: None,
         }
     }
 
@@ -381,6 +395,7 @@ impl SearchEvent {
             event: Event::from_internal(),
             filter: filter.clone(),
             filter_orig: filter,
+            attrs: None,
         }
     }
 }
