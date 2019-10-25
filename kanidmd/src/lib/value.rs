@@ -1,4 +1,4 @@
-use crate::be::dbvalue::{DbValueCredV1, DbValueV1, DbValueTaggedStringV1};
+use crate::be::dbvalue::{DbValueCredV1, DbValueTaggedStringV1, DbValueV1};
 use crate::credential::Credential;
 use kanidm_proto::v1::Filter as ProtoFilter;
 
@@ -738,7 +738,7 @@ impl Value {
     pub fn new_radius_str(cleartext: &str) -> Self {
         Value {
             pv: PartialValue::new_radius_string(),
-            data: Some(DataValue::RadiusCred(cleartext.to_string()))
+            data: Some(DataValue::RadiusCred(cleartext.to_string())),
         }
     }
 
@@ -746,6 +746,19 @@ impl Value {
         match &self.pv {
             PartialValue::RadiusCred => true,
             _ => false,
+        }
+    }
+
+    pub fn get_radius_secret(&self) -> Option<&str> {
+        match &self.pv {
+            PartialValue::RadiusCred => match &self.data {
+                Some(dv) => match dv {
+                    DataValue::RadiusCred(c) => Some(c.as_str()),
+                    _ => None,
+                },
+                _ => None,
+            },
+            _ => None,
         }
     }
 
@@ -813,18 +826,14 @@ impl Value {
                     data: Some(DataValue::Cred(Credential::try_from(dvc.d)?)),
                 })
             }
-            DbValueV1::RU(d) => {
-                Ok(Value {
-                    pv: PartialValue::RadiusCred,
-                    data: Some(DataValue::RadiusCred(d))
-                })
-            }
-            DbValueV1::SK(ts) => {
-                Ok(Value {
-                    pv: PartialValue::SshKey(ts.t),
-                    data: Some(DataValue::SshKey(ts.d)),
-                })
-            }
+            DbValueV1::RU(d) => Ok(Value {
+                pv: PartialValue::RadiusCred,
+                data: Some(DataValue::RadiusCred(d)),
+            }),
+            DbValueV1::SK(ts) => Ok(Value {
+                pv: PartialValue::SshKey(ts.t),
+                data: Some(DataValue::SshKey(ts.d)),
+            }),
         }
     }
 
@@ -845,12 +854,10 @@ impl Value {
             PartialValue::Cred(tag) => {
                 // Get the credential out and make sure it matches the type we expect.
                 let c = match &self.data {
-                    Some(v) => {
-                        match &v {
-                            DataValue::Cred(c) => c,
-                            _ => panic!(),
-                        }
-                    }
+                    Some(v) => match &v {
+                        DataValue::Cred(c) => c,
+                        _ => panic!(),
+                    },
                     None => panic!(),
                 };
 
@@ -865,17 +872,17 @@ impl Value {
                     Some(v) => match &v {
                         DataValue::RadiusCred(rc) => rc.clone(),
                         _ => panic!(),
-                    }
+                    },
                     None => panic!(),
                 };
                 DbValueV1::RU(ru)
             }
             PartialValue::SshKey(t) => {
-                let sk =  match &self.data {
+                let sk = match &self.data {
                     Some(v) => match &v {
                         DataValue::SshKey(sc) => sc.clone(),
                         _ => panic!(),
-                    }
+                    },
                     None => panic!(),
                 };
                 DbValueV1::SK(DbValueTaggedStringV1 {
@@ -968,12 +975,8 @@ impl Value {
                 // tag to the proto side. The credentials private data is stored seperately.
                 tag.to_string()
             }
-            PartialValue::SshKey(tag) => {
-                tag.to_string()
-            }
-            PartialValue::RadiusCred => {
-                "radius".to_string()
-            }
+            PartialValue::SshKey(tag) => tag.to_string(),
+            PartialValue::RadiusCred => "radius".to_string(),
         }
     }
 
@@ -983,32 +986,26 @@ impl Value {
         // data.
         match &self.pv {
             PartialValue::Cred(_) => match &self.data {
-                Some(v) => {
-                    match &v {
-                        DataValue::Cred(_) => true,
-                        _ => false,
-                    }
-                }
+                Some(v) => match &v {
+                    DataValue::Cred(_) => true,
+                    _ => false,
+                },
                 None => false,
             },
             PartialValue::SshKey(_) => match &self.data {
-                Some(v) => {
-                    match &v {
-                        DataValue::SshKey(_) => true,
-                        _ => false,
-                    }
-                }
+                Some(v) => match &v {
+                    DataValue::SshKey(_) => true,
+                    _ => false,
+                },
                 None => false,
-            }
+            },
             PartialValue::RadiusCred => match &self.data {
-                Some(v) => {
-                    match &v {
-                        DataValue::RadiusCred(_) => true,
-                        _ => false,
-                    }
-                }
+                Some(v) => match &v {
+                    DataValue::RadiusCred(_) => true,
+                    _ => false,
+                },
                 None => false,
-            }
+            },
             _ => true,
         }
     }

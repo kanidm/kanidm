@@ -536,7 +536,6 @@ pub trait AccessControlsTransaction {
             .acps_search
             .iter()
             .filter_map(|(_, acs)| {
-
                 let f_val = acs.acp.receiver.clone();
                 match f_val.resolve(&se.event, None) {
                     Ok(f_res) => {
@@ -547,13 +546,9 @@ pub trait AccessControlsTransaction {
                             // If we have a requested attr set, are any of them
                             // in the attrs this acs covers?
                             let acs_target_attrs = match &se.attrs {
-                                Some(r_attrs) => {
-                                    acs.attrs.intersection(r_attrs).count()
-                                }
+                                Some(r_attrs) => acs.attrs.intersection(r_attrs).count(),
                                 // All attrs requested, do nothing.
-                                None => {
-                                    acs.attrs.len()
-                                }
+                                None => acs.attrs.len(),
                             };
 
                             // There is nothing in the ACS (not possible) or
@@ -584,8 +579,11 @@ pub trait AccessControlsTransaction {
             audit_log!(audit, "Related acs -> {:?}", racp.acp.name);
         });
 
-            // Build a reference set from the req_attrs
-        let req_attrs: Option<BTreeSet<_>> = se.attrs.as_ref().map(|vs| vs.iter().map(|s| s.as_str()).collect());
+        // Build a reference set from the req_attrs
+        let req_attrs: Option<BTreeSet<_>> = se
+            .attrs
+            .as_ref()
+            .map(|vs| vs.iter().map(|s| s.as_str()).collect());
 
         //  For each entry
         let allowed_entries: Vec<Entry<EntryReduced, EntryCommitted>> = entries
@@ -640,8 +638,7 @@ pub trait AccessControlsTransaction {
 
                 // Remove anything that wasn't requested.
                 let f_allowed_attrs: BTreeSet<&str> = match &req_attrs {
-                    Some(v) =>
-                        allowed_attrs.intersection(&v).map(|s| *s).collect(),
+                    Some(v) => allowed_attrs.intersection(&v).map(|s| *s).collect(),
                     None => allowed_attrs,
                 };
 
@@ -1869,6 +1866,47 @@ mod tests {
                 // In that read, admin may only view the "name" attribute, or query on
                 // the name attribute. Any other query (should be) rejected.
                 "name",
+            )
+        };
+
+        // Finally test it!
+        test_acp_search_reduce!(&se_anon, vec![acp], r_set, ex_anon);
+    }
+
+    #[test]
+    fn test_access_enforce_search_attrs_req() {
+        // Test that attributes are correctly limited by the request.
+        // In this case, we test that a user can only see "name" despite the
+        // class and uuid being present.
+        let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
+        let ev1 = unsafe { e1.to_valid_committed() };
+        let r_set = vec![ev1.clone()];
+
+        let ex1: Entry<EntryInvalid, EntryNew> =
+            Entry::unsafe_from_entry_str(JSON_TESTPERSON1_REDUCED);
+        let exv1 = unsafe { ex1.to_valid_committed() };
+        let ex_anon = vec![exv1.clone()];
+
+        let mut se_anon = unsafe {
+            SearchEvent::new_impersonate_entry_ser(
+                JSON_ANONYMOUS_V1,
+                filter_all!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
+            )
+        };
+        // the requested attrs here.
+        se_anon.attrs = Some(btreeset!["name".to_string()]);
+
+        let acp = unsafe {
+            AccessControlSearch::from_raw(
+                "test_acp",
+                "d38640c4-0254-49f9-99b7-8ba7d0233f3d",
+                // apply to anonymous only
+                filter_valid!(f_eq("name", PartialValue::new_iutf8s("anonymous"))),
+                // Allow anonymous to read only testperson1
+                filter_valid!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
+                // In that read, admin may only view the "name" attribute, or query on
+                // the name attribute. Any other query (should be) rejected.
+                "name uuid",
             )
         };
 

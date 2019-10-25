@@ -115,10 +115,7 @@ pub struct InternalRegenerateRadiusMessage {
 }
 
 impl InternalRegenerateRadiusMessage {
-    pub fn new (
-        uat: Option<UserAuthToken>,
-        uuid_or_name: String,
-    ) -> Self {
+    pub fn new(uat: Option<UserAuthToken>, uuid_or_name: String) -> Self {
         InternalRegenerateRadiusMessage {
             uat: uat,
             uuid_or_name: uuid_or_name,
@@ -129,7 +126,6 @@ impl InternalRegenerateRadiusMessage {
 impl Message for InternalRegenerateRadiusMessage {
     type Result = Result<String, OperationError>;
 }
-
 
 /// Indicate that we want to purge an attribute from the entry - this is generally
 /// in response to a DELETE http method.
@@ -142,7 +138,6 @@ pub struct PurgeAttributeMessage {
 impl Message for PurgeAttributeMessage {
     type Result = Result<(), OperationError>;
 }
-
 
 pub struct QueryServerWriteV1 {
     log: actix::Addr<EventLog>,
@@ -369,7 +364,11 @@ impl Handler<IdmAccountSetPasswordMessage> for QueryServerWriteV1 {
 impl Handler<InternalRegenerateRadiusMessage> for QueryServerWriteV1 {
     type Result = Result<String, OperationError>;
 
-    fn handle(&mut self, msg: InternalRegenerateRadiusMessage, _: &mut Self::Context) -> Self::Result {
+    fn handle(
+        &mut self,
+        msg: InternalRegenerateRadiusMessage,
+        _: &mut Self::Context,
+    ) -> Self::Result {
         let mut audit = AuditScope::new("idm_account_regenerate_radius");
         let res = audit_segment!(&mut audit, || {
             let mut idms_prox_write = self.idms.proxy_write();
@@ -392,7 +391,11 @@ impl Handler<InternalRegenerateRadiusMessage> for QueryServerWriteV1 {
                 target_uuid,
             )
             .map_err(|e| {
-                audit_log!(audit, "Failed to begin idm_account_regenerate_radius: {:?}", e);
+                audit_log!(
+                    audit,
+                    "Failed to begin idm_account_regenerate_radius: {:?}",
+                    e
+                );
                 e
             })?;
 
@@ -409,7 +412,41 @@ impl Handler<PurgeAttributeMessage> for QueryServerWriteV1 {
     type Result = Result<(), OperationError>;
 
     fn handle(&mut self, msg: PurgeAttributeMessage, _: &mut Self::Context) -> Self::Result {
-        unimplemented!();
+        let mut audit = AuditScope::new("modify");
+        let res = audit_segment!(&mut audit, || {
+            let mut qs_write = self.qs.write();
+            let target_uuid = match Uuid::parse_str(msg.uuid_or_name.as_str()) {
+                Ok(u) => u,
+                Err(_) => qs_write
+                    .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                    .map_err(|e| {
+                        audit_log!(&mut audit, "Error resolving id to target");
+                        e
+                    })?,
+            };
+
+            let mdf = match ModifyEvent::from_target_uuid_attr_purge(
+                &mut audit,
+                msg.uat,
+                target_uuid,
+                msg.attr,
+                &qs_write,
+            ) {
+                Ok(m) => m,
+                Err(e) => {
+                    audit_log!(audit, "Failed to begin modify: {:?}", e);
+                    return Err(e);
+                }
+            };
+
+            audit_log!(audit, "Begin modify event {:?}", mdf);
+
+            qs_write
+                .modify(&mut audit, &mdf)
+                .and_then(|_| qs_write.commit(&mut audit).map(|_| ()))
+        });
+        self.log.do_send(audit);
+        res
     }
 }
 

@@ -5,7 +5,7 @@ use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
 use crate::idm::event::{GeneratePasswordEvent, PasswordChangeEvent, RegenerateRadiusSecretEvent};
 use crate::server::{QueryServer, QueryServerTransaction, QueryServerWriteTransaction};
-use crate::utils::{password_from_random, uuid_from_duration, SID, readable_password_from_random};
+use crate::utils::{password_from_random, readable_password_from_random, uuid_from_duration, SID};
 use crate::value::PartialValue;
 
 use kanidm_proto::v1::AuthState;
@@ -681,9 +681,13 @@ mod tests {
             let rrse = RegenerateRadiusSecretEvent::new_internal(UUID_ADMIN.clone());
 
             // Generates a new credential when none exists
-            let r1 = idms_prox_write.regenerate_radius_secret(au, &rrse).expect("Failed to reset radius credential 1");
+            let r1 = idms_prox_write
+                .regenerate_radius_secret(au, &rrse)
+                .expect("Failed to reset radius credential 1");
             // Regenerates and overwrites the radius credential
-            let r2 = idms_prox_write.regenerate_radius_secret(au, &rrse).expect("Failed to reset radius credential 2");
+            let r2 = idms_prox_write
+                .regenerate_radius_secret(au, &rrse)
+                .expect("Failed to reset radius credential 2");
             assert!(r1 != r2);
         })
     }

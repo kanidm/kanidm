@@ -347,16 +347,21 @@ fn test_server_radius_credential_lifecycle() {
         assert!(n_sec.is_none());
 
         // Set one
-        let sec1 = rsclient.idm_account_radius_credential_regenerate("admin").unwrap();
+        let sec1 = rsclient
+            .idm_account_radius_credential_regenerate("admin")
+            .unwrap();
 
         // Should be able to get it.
         let r_sec = rsclient.idm_account_radius_credential_get("admin").unwrap();
         assert!(sec1 == r_sec.unwrap());
 
         // Reset it
-        let sec2 = rsclient.idm_account_radius_credential_regenerate("admin").unwrap();
+        let sec2 = rsclient
+            .idm_account_radius_credential_regenerate("admin")
+            .unwrap();
 
         // Should be different
+        println!("s1 {} != s2 {}", sec1, sec2);
         assert!(sec1 != sec2);
 
         // Delete it

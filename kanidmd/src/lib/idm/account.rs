@@ -130,7 +130,7 @@ impl Account {
 
     pub(crate) fn regenerate_radius_secret_mod(
         &self,
-        cleartext: &str
+        cleartext: &str,
     ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
         let vcred = Value::new_radius_str(cleartext);
         Ok(ModifyList::new_purge_and_set("radius_secret", vcred))

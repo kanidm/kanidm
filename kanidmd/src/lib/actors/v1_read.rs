@@ -84,6 +84,14 @@ impl Message for InternalSearchMessage {
     type Result = Result<Vec<ProtoEntry>, OperationError>;
 }
 
+pub struct InternalRadiusReadMessage {
+    pub uat: Option<UserAuthToken>,
+    pub uuid_or_name: String,
+}
+
+impl Message for InternalRadiusReadMessage {
+    type Result = Result<Option<String>, OperationError>;
+}
 
 // ===========================================================
 
@@ -283,6 +291,60 @@ impl Handler<InternalSearchMessage> for QueryServerReadV1 {
             match qs_read.search_ext(&mut audit, &srch) {
                 Ok(entries) => SearchResult::new(&mut audit, &qs_read, entries)
                     .map(|ok_sr| ok_sr.to_proto_array()),
+                Err(e) => Err(e),
+            }
+        });
+        self.log.do_send(audit);
+        res
+    }
+}
+
+impl Handler<InternalRadiusReadMessage> for QueryServerReadV1 {
+    type Result = Result<Option<String>, OperationError>;
+
+    fn handle(&mut self, msg: InternalRadiusReadMessage, _: &mut Self::Context) -> Self::Result {
+        let mut audit = AuditScope::new("internal_radius_read_message");
+        let res = audit_segment!(&mut audit, || {
+            let qs_read = self.qs.read();
+
+            let target_uuid = match Uuid::parse_str(msg.uuid_or_name.as_str()) {
+                Ok(u) => u,
+                Err(_) => qs_read
+                    .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                    .map_err(|e| {
+                        audit_log!(&mut audit, "Error resolving id to target");
+                        e
+                    })?,
+            };
+
+            // Make an event from the request
+            let srch = match SearchEvent::from_target_uuid_request(
+                &mut audit,
+                msg.uat,
+                target_uuid,
+                &qs_read,
+            ) {
+                Ok(s) => s,
+                Err(e) => {
+                    audit_log!(audit, "Failed to begin search: {:?}", e);
+                    return Err(e);
+                }
+            };
+
+            audit_log!(audit, "Begin event {:?}", srch);
+
+            // We have to use search_ext to guarantee acs was applied.
+            match qs_read.search_ext(&mut audit, &srch) {
+                Ok(mut entries) => {
+                    let r = entries
+                        .pop()
+                        // From the entry, turn it into the value
+                        .and_then(|e| {
+                            e.get_ava_single("radius_secret")
+                                .and_then(|v| v.get_radius_secret().map(|s| s.to_string()))
+                        });
+                    Ok(r)
+                }
                 Err(e) => Err(e),
             }
         });

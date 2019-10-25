@@ -333,24 +333,21 @@ impl SchemaAttribute {
                     acc
                 }
             }),
-            SyntaxType::CREDENTIAL =>
-            ava.iter().fold(Ok(()), |acc, v| {
+            SyntaxType::CREDENTIAL => ava.iter().fold(Ok(()), |acc, v| {
                 if acc.is_ok() {
                     self.validate_credential(v)
                 } else {
                     acc
                 }
             }),
-            SyntaxType::RADIUS_UTF8STRING => 
-            ava.iter().fold(Ok(()), |acc, v| {
+            SyntaxType::RADIUS_UTF8STRING => ava.iter().fold(Ok(()), |acc, v| {
                 if acc.is_ok() {
                     self.validate_radius_utf8string(v)
                 } else {
                     acc
                 }
             }),
-            SyntaxType::SSHKEY  => 
-            ava.iter().fold(Ok(()), |acc, v| {
+            SyntaxType::SSHKEY => ava.iter().fold(Ok(()), |acc, v| {
                 if acc.is_ok() {
                     self.validate_sshkey(v)
                 } else {
@@ -468,6 +465,14 @@ pub trait SchemaTransaction {
     fn normalise_attr_name(&self, an: &str) -> String {
         // Will duplicate.
         an.to_lowercase()
+    }
+
+    fn normalise_attr_if_exists(&self, an: &str) -> Option<String> {
+        if self.get_attributes().contains_key(an) {
+            Some(self.normalise_attr_name(an))
+        } else {
+            None
+        }
     }
 
     fn get_attributes_unique(&self) -> Vec<String> {
