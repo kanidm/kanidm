@@ -14,7 +14,7 @@ else:
 print(os.getcwd())
 
 CONFIG = configparser.ConfigParser()
-CONFIG.read('config.ini')
+CONFIG.read('/data/config.ini')
 
 GROUPS = [
     {
@@ -25,12 +25,15 @@ GROUPS = [
     if x.startswith('group.')
 ]
 
-REQ_GROUP = CONFIG.get("DEFAULT", "required_group")
-CA = CONFIG.get("DEFAULT", "ca")
-USER = CONFIG.get("DEFAULT", "user")
-SECRET = CONFIG.get("DEFAULT", "secret")
+REQ_GROUP = CONFIG.get("radiusd", "required_group")
+if CONFIG.getboolean("kanidm_client", "strict"):
+    CA = CONFIG.get("kanidm_client", "ca")
+else:
+    CA = False
+USER = CONFIG.get("kanidm_client", "user")
+SECRET = CONFIG.get("kanidm_client", "secret")
 
-URL = CONFIG.get('DEFAULT', 'url')
+URL = CONFIG.get('kanidm_client', 'url')
 AUTH_URL = "%s/v1/auth" % URL
 
 def _authenticate(s, acct, pw):

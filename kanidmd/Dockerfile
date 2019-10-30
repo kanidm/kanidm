@@ -18,5 +18,5 @@ RUN cd /etc && \
 VOLUME /data
 
 ENV RUST_BACKTRACE 1
-CMD ["/home/kanidm/target/release/kanidmd", "server", "-D", "/data/kanidm.db"]
+CMD ["/home/kanidm/target/release/kanidmd", "server", "-D", "/data/kanidm.db",  "-C", "/data/ca.pem", "-c", "/data/cert.pem", "-k", "/data/key.pem", "--bindaddr", "0.0.0.0:8080"]
 

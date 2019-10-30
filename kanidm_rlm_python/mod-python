@@ -13,7 +13,7 @@ python {
 	#  item is GLOBAL TO THE SERVER.  That is, you cannot have two
 	#  instances of the python module, each with a different path.
 	#
-        python_path="/usr/lib64/python2.7:/usr/lib/python2.7:/usr/lib/python2.7/site-packages:/usr/lib64/python2.7/site-packages:/usr/lib64/python2.7/lib-dynload:/home/william/development/rsidm/kanidm_rlm_python"
+        python_path="/usr/lib64/python2.7:/usr/lib/python2.7:/usr/lib/python2.7/site-packages:/usr/lib64/python2.7/site-packages:/usr/lib64/python2.7/lib-dynload:/etc/raddb"
 
 	module = kanidmradius
 
