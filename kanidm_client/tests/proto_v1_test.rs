@@ -355,6 +355,11 @@ fn test_server_radius_credential_lifecycle() {
         let r_sec = rsclient.idm_account_radius_credential_get("admin").unwrap();
         assert!(sec1 == r_sec.unwrap());
 
+        // test getting the token - we can do this as self or the radius server
+        let r_tok = rsclient.idm_account_radius_token_get("admin").unwrap();
+        assert!(sec1 == r_tok.secret);
+        assert!(r_tok.name == "admin".to_string());
+
         // Reset it
         let sec2 = rsclient
             .idm_account_radius_credential_regenerate("admin")

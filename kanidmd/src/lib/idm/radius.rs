@@ -4,7 +4,7 @@ use uuid::Uuid;
 use crate::audit::AuditScope;
 use crate::entry::{Entry, EntryCommitted, EntryReduced};
 use crate::server::QueryServerReadTransaction;
-use crate::value::{PartialValue, Value};
+use crate::value::{PartialValue};
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::RadiusAuthToken;
 
@@ -27,8 +27,6 @@ impl RadiusAccount {
         value: Entry<EntryReduced, EntryCommitted>,
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        audit_log!(au, "{:?}", value);
-
         if !value.attribute_value_pres("class", &PVCLASS_ACCOUNT) {
             return Err(OperationError::InvalidAccountState(
                 "Missing class: account".to_string(),

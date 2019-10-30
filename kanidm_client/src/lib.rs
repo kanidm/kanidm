@@ -14,6 +14,7 @@ use kanidm_proto::v1::{
     AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep, CreateRequest, DeleteRequest,
     Entry, Filter, ModifyList, ModifyRequest, OperationError, OperationResponse, SearchRequest,
     SearchResponse, SetAuthCredential, SingleStringRequest, UserAuthToken, WhoamiResponse,
+    RadiusAuthToken
 };
 use serde_json;
 
@@ -356,6 +357,13 @@ impl KanidmClient {
 
     pub fn idm_account_radius_credential_delete(&self, id: &str) -> Result<(), ClientError> {
         self.perform_delete_request(format!("/v1/account/{}/_radius", id).as_str())
+    }
+
+    pub fn idm_account_radius_token_get(
+        &self,
+        id: &str,
+    ) -> Result<RadiusAuthToken, ClientError> {
+        self.perform_get_request(format!("/v1/account/{}/_radius/_token", id).as_str())
     }
 
     // ==== schema
