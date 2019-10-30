@@ -4,7 +4,7 @@ use uuid::Uuid;
 use crate::audit::AuditScope;
 use crate::entry::{Entry, EntryCommitted, EntryReduced};
 use crate::server::QueryServerReadTransaction;
-use crate::value::{PartialValue};
+use crate::value::PartialValue;
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::RadiusAuthToken;
 

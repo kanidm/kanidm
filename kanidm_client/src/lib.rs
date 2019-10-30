@@ -12,9 +12,9 @@ use std::io::Read;
 
 use kanidm_proto::v1::{
     AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep, CreateRequest, DeleteRequest,
-    Entry, Filter, ModifyList, ModifyRequest, OperationError, OperationResponse, SearchRequest,
-    SearchResponse, SetAuthCredential, SingleStringRequest, UserAuthToken, WhoamiResponse,
-    RadiusAuthToken
+    Entry, Filter, ModifyList, ModifyRequest, OperationError, OperationResponse, RadiusAuthToken,
+    SearchRequest, SearchResponse, SetAuthCredential, SingleStringRequest, UserAuthToken,
+    WhoamiResponse,
 };
 use serde_json;
 
@@ -359,10 +359,7 @@ impl KanidmClient {
         self.perform_delete_request(format!("/v1/account/{}/_radius", id).as_str())
     }
 
-    pub fn idm_account_radius_token_get(
-        &self,
-        id: &str,
-    ) -> Result<RadiusAuthToken, ClientError> {
+    pub fn idm_account_radius_token_get(&self, id: &str) -> Result<RadiusAuthToken, ClientError> {
         self.perform_get_request(format!("/v1/account/{}/_radius/_token", id).as_str())
     }
 
