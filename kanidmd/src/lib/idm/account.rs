@@ -1,7 +1,7 @@
 use crate::entry::{Entry, EntryCommitted, EntryValid};
 use kanidm_proto::v1::OperationError;
 
-use kanidm_proto::v1::{UserAuthToken};
+use kanidm_proto::v1::UserAuthToken;
 
 use crate::audit::AuditScope;
 use crate::constants::UUID_ANONYMOUS;
@@ -9,8 +9,8 @@ use crate::credential::Credential;
 use crate::idm::claim::Claim;
 use crate::idm::group::Group;
 use crate::modify::{ModifyInvalid, ModifyList};
+use crate::server::{QueryServerReadTransaction, QueryServerWriteTransaction};
 use crate::value::{PartialValue, Value};
-use crate::server::{QueryServerWriteTransaction, QueryServerReadTransaction};
 
 use uuid::Uuid;
 
@@ -55,7 +55,7 @@ macro_rules! try_from_entry {
             groups: groups,
             primary: primary,
         })
-    }}
+    }};
 }
 
 #[derive(Debug, Clone)]
@@ -101,7 +101,6 @@ impl Account {
     ) -> Result<Self, OperationError> {
         try_from_entry!(value, vec![])
     }
-
 
     // Could this actually take a claims list and application instead?
     pub(crate) fn to_userauthtoken(&self, claims: Vec<Claim>) -> Option<UserAuthToken> {

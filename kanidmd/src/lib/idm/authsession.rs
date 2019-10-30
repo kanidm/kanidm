@@ -1,5 +1,5 @@
 use crate::audit::AuditScope;
-use crate::idm::account::{Account};
+use crate::idm::account::Account;
 use crate::idm::claim::Claim;
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthState};

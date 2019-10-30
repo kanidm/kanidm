@@ -4,7 +4,7 @@ use crate::audit::AuditScope;
 
 use crate::async_log::EventLog;
 use crate::event::{AuthEvent, SearchEvent, SearchResult, WhoamiResult};
-use crate::idm::event::{RadiusAuthTokenEvent};
+use crate::idm::event::RadiusAuthTokenEvent;
 use kanidm_proto::v1::{OperationError, RadiusAuthToken};
 
 use crate::filter::{Filter, FilterInvalid};
@@ -363,11 +363,14 @@ impl Handler<InternalRadiusReadMessage> for QueryServerReadV1 {
     }
 }
 
-
 impl Handler<InternalRadiusTokenReadMessage> for QueryServerReadV1 {
     type Result = Result<RadiusAuthToken, OperationError>;
 
-    fn handle(&mut self, msg: InternalRadiusTokenReadMessage, _: &mut Self::Context) -> Self::Result {
+    fn handle(
+        &mut self,
+        msg: InternalRadiusTokenReadMessage,
+        _: &mut Self::Context,
+    ) -> Self::Result {
         let mut audit = AuditScope::new("internal_radius_token_read_message");
         let res = audit_segment!(&mut audit, || {
             let idm_read = self.idms.proxy_read();
@@ -388,7 +391,7 @@ impl Handler<InternalRadiusTokenReadMessage> for QueryServerReadV1 {
                 &mut audit,
                 &idm_read.qs_read,
                 msg.uat,
-                target_uuid
+                target_uuid,
             ) {
                 Ok(s) => s,
                 Err(e) => {
@@ -405,4 +408,3 @@ impl Handler<InternalRadiusTokenReadMessage> for QueryServerReadV1 {
         res
     }
 }
-

@@ -2,11 +2,13 @@ use crate::audit::AuditScope;
 use crate::constants::AUTH_SESSION_TIMEOUT;
 use crate::event::{AuthEvent, AuthEventStep, AuthResult};
 use crate::idm::account::Account;
-use crate::idm::radius::RadiusAccount;
 use crate::idm::authsession::AuthSession;
-use crate::idm::event::{GeneratePasswordEvent, PasswordChangeEvent, RegenerateRadiusSecretEvent, RadiusAuthTokenEvent};
-use crate::server::{QueryServer, QueryServerTransaction, QueryServerWriteTransaction};
+use crate::idm::event::{
+    GeneratePasswordEvent, PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
+};
+use crate::idm::radius::RadiusAccount;
 use crate::server::QueryServerReadTransaction;
+use crate::server::{QueryServer, QueryServerTransaction, QueryServerWriteTransaction};
 use crate::utils::{password_from_random, readable_password_from_random, uuid_from_duration, SID};
 use crate::value::PartialValue;
 
@@ -71,7 +73,9 @@ impl IdmServer {
     }
 
     pub fn proxy_read(&self) -> IdmServerProxyReadTransaction {
-        IdmServerProxyReadTransaction { qs_read: self.qs.read() }
+        IdmServerProxyReadTransaction {
+            qs_read: self.qs.read(),
+        }
     }
 
     pub fn proxy_write(&self) -> IdmServerProxyWriteTransaction {
@@ -215,8 +219,15 @@ impl IdmServerProxyReadTransaction {
         rate: &RadiusAuthTokenEvent,
     ) -> Result<RadiusAuthToken, OperationError> {
         // TODO: This needs to be an impersonate search!
-        let account_entry = try_audit!(au, self.qs_read.impersonate_search_ext_uuid(au, &rate.target, &rate.event));
-        let account = try_audit!(au, RadiusAccount::try_from_entry_reduced(au, account_entry, &self.qs_read));
+        let account_entry = try_audit!(
+            au,
+            self.qs_read
+                .impersonate_search_ext_uuid(au, &rate.target, &rate.event)
+        );
+        let account = try_audit!(
+            au,
+            RadiusAccount::try_from_entry_reduced(au, account_entry, &self.qs_read)
+        );
 
         account.to_radiusauthtoken()
     }
@@ -230,7 +241,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     ) -> Result<(), OperationError> {
         // Get the account
         let account_entry = try_audit!(au, self.qs_write.internal_search_uuid(au, &pce.target));
-        let account = try_audit!(au, Account::try_from_entry_rw(au, account_entry, &self.qs_write));
+        let account = try_audit!(
+            au,
+            Account::try_from_entry_rw(au, account_entry, &self.qs_write)
+        );
         // Ask if tis all good - this step checks pwpolicy and such
 
         // Deny the change if the account is anonymous!
@@ -292,7 +306,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     ) -> Result<String, OperationError> {
         // Get the account
         let account_entry = try_audit!(au, self.qs_write.internal_search_uuid(au, &gpe.target));
-        let account = try_audit!(au, Account::try_from_entry_rw(au, account_entry, &self.qs_write));
+        let account = try_audit!(
+            au,
+            Account::try_from_entry_rw(au, account_entry, &self.qs_write)
+        );
         // Ask if tis all good - this step checks pwpolicy and such
 
         // Deny the change if the target account is anonymous!
@@ -336,7 +353,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     ) -> Result<String, OperationError> {
         // regenerates and returns the radius secret
         let account_entry = try_audit!(au, self.qs_write.internal_search_uuid(au, &rrse.target));
-        let account = try_audit!(au, Account::try_from_entry_rw(au, account_entry, &self.qs_write));
+        let account = try_audit!(
+            au,
+            Account::try_from_entry_rw(au, account_entry, &self.qs_write)
+        );
         // Deny the change if the target account is anonymous!
         if account.is_anonymous() {
             return Err(OperationError::SystemProtectedObject);
@@ -380,7 +400,9 @@ mod tests {
     use crate::constants::{AUTH_SESSION_TIMEOUT, UUID_ADMIN, UUID_ANONYMOUS};
     use crate::credential::Credential;
     use crate::event::{AuthEvent, AuthResult, ModifyEvent};
-    use crate::idm::event::{PasswordChangeEvent, RegenerateRadiusSecretEvent, RadiusAuthTokenEvent};
+    use crate::idm::event::{
+        PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
+    };
     use crate::modify::{Modify, ModifyList};
     use crate::value::{PartialValue, Value};
     use kanidm_proto::v1::OperationError;
@@ -700,7 +722,7 @@ mod tests {
         run_idm_test!(|_qs: &QueryServer, idms: &IdmServer, au: &mut AuditScope| {
             let mut idms_prox_write = idms.proxy_write();
             let rrse = RegenerateRadiusSecretEvent::new_internal(UUID_ADMIN.clone());
-            let _r1 = idms_prox_write
+            let r1 = idms_prox_write
                 .regenerate_radius_secret(au, &rrse)
                 .expect("Failed to reset radius credential 1");
             idms_prox_write.commit(au).expect("failed to commit");
@@ -712,7 +734,7 @@ mod tests {
                 .expect("Failed to generate radius auth token");
 
             // view the token?
+            assert!(r1 == tok_r.secret);
         })
-
     }
 }

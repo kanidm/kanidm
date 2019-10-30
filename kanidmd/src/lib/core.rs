@@ -16,8 +16,8 @@ use crate::config::Configuration;
 // SearchResult
 use crate::actors::v1_read::QueryServerReadV1;
 use crate::actors::v1_read::{
-    AuthMessage, InternalRadiusReadMessage, InternalSearchMessage, SearchMessage, WhoamiMessage,
-    InternalRadiusTokenReadMessage,
+    AuthMessage, InternalRadiusReadMessage, InternalRadiusTokenReadMessage, InternalSearchMessage,
+    SearchMessage, WhoamiMessage,
 };
 use crate::actors::v1_write::QueryServerWriteV1;
 use crate::actors::v1_write::{

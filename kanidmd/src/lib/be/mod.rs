@@ -1900,9 +1900,7 @@ mod tests {
             }
 
             //   empty or
-            let f_e_or = unsafe {
-                filter_resolved!(f_or!([]))
-            };
+            let f_e_or = unsafe { filter_resolved!(f_or!([])) };
 
             let r = be.filter2idl(audit, f_e_or.to_inner(), 0).unwrap();
             match r {
@@ -1914,9 +1912,7 @@ mod tests {
                 }
             }
 
-            let f_e_and = unsafe {
-                filter_resolved!(f_and!([]))
-            };
+            let f_e_and = unsafe { filter_resolved!(f_and!([])) };
 
             let r = be.filter2idl(audit, f_e_and.to_inner(), 0).unwrap();
             match r {

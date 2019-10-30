@@ -1,7 +1,7 @@
 use crate::actors::v1_write::IdmAccountSetPasswordMessage;
 use crate::audit::AuditScope;
 use crate::event::Event;
-use crate::server::{QueryServerWriteTransaction, QueryServerReadTransaction};
+use crate::server::{QueryServerReadTransaction, QueryServerWriteTransaction};
 
 use uuid::Uuid;
 
@@ -148,4 +148,3 @@ impl RadiusAuthTokenEvent {
         }
     }
 }
-

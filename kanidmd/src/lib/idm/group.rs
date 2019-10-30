@@ -1,9 +1,11 @@
-use crate::entry::{Entry, EntryCommitted, EntryValid, EntryReduced};
-use kanidm_proto::v1::OperationError;
-use kanidm_proto::v1::Group as ProtoGroup;
-use crate::value::PartialValue;
 use crate::audit::AuditScope;
-use crate::server::{QueryServerTransaction, QueryServerWriteTransaction, QueryServerReadTransaction};
+use crate::entry::{Entry, EntryCommitted, EntryReduced, EntryValid};
+use crate::server::{
+    QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
+};
+use crate::value::PartialValue;
+use kanidm_proto::v1::Group as ProtoGroup;
+use kanidm_proto::v1::OperationError;
 
 use uuid::Uuid;
 
@@ -26,20 +28,16 @@ macro_rules! try_from_account_e {
                 // just give and empty result set.
                 let f = filter!(f_or(
                     l.into_iter()
-                        .map(|u| {
-                            f_eq("uuid", PartialValue::new_uuidr(u))
-                        })
+                        .map(|u| f_eq("uuid", PartialValue::new_uuidr(u)))
                         .collect()
                 ));
-                let ges: Vec<_> = $qs.internal_search($au, f)
-                    .map_err(|e| {
-                        // log
-                        e
-                    })?;
+                let ges: Vec<_> = $qs.internal_search($au, f).map_err(|e| {
+                    // log
+                    e
+                })?;
                 // Now convert the group entries to groups.
-                let groups: Result<Vec<_>, _> = ges.into_iter().map(|e| {
-                    Group::try_from_entry(e)
-                }).collect();
+                let groups: Result<Vec<_>, _> =
+                    ges.into_iter().map(|e| Group::try_from_entry(e)).collect();
                 groups.map_err(|e| {
                     // log
                     e
@@ -51,7 +49,7 @@ macro_rules! try_from_account_e {
             }
         };
         Ok(groups)
-    }}
+    }};
 }
 
 impl Group {
@@ -100,7 +98,7 @@ impl Group {
 
         let uuid = value.get_uuid().clone();
 
-        Ok(Group{
+        Ok(Group {
             name: name,
             uuid: uuid,
         })

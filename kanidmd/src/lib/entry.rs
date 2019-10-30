@@ -162,7 +162,9 @@ pub struct EntryInvalid;
 // pub struct EntryNormalised;
 
 #[derive(Clone, Copy, Debug)]
-pub struct EntryReduced;
+pub struct EntryReduced {
+    uuid: Uuid,
+}
 
 #[derive(Debug)]
 pub struct Entry<VALID, STATE> {
@@ -980,10 +982,11 @@ impl Entry<EntryValid, EntryCommitted> {
         })
     }
 
-    #[cfg(test)]
-    pub fn to_reduced(self) -> Entry<EntryReduced, EntryCommitted> {
+    pub unsafe fn to_reduced(self) -> Entry<EntryReduced, EntryCommitted> {
         Entry {
-            valid: EntryReduced,
+            valid: EntryReduced {
+                uuid: self.valid.uuid,
+            },
             state: self.state,
             attrs: self.attrs,
         }
@@ -996,7 +999,7 @@ impl Entry<EntryValid, EntryCommitted> {
         // Remove all attrs from our tree that are NOT in the allowed set.
 
         let Entry {
-            valid: _s_valid,
+            valid: s_valid,
             state: s_state,
             attrs: s_attrs,
         } = self;
@@ -1013,141 +1016,10 @@ impl Entry<EntryValid, EntryCommitted> {
             .collect();
 
         Entry {
-            valid: EntryReduced,
+            valid: EntryReduced { uuid: s_valid.uuid },
             state: s_state,
             attrs: f_attrs,
         }
-    }
-
-    // These are special types to allow returning typed values from
-    // an entry, if we "know" what we expect to receive.
-
-    /// This returns an array of IndexTypes, when the type is an Optional
-    /// multivalue in schema - IE this will *not* fail if the attribute is
-    /// empty, yielding and empty array instead.
-    ///
-    /// However, the converstion to IndexType is fallaible, so in case of a failure
-    /// to convert, an Err is returned.
-    pub(crate) fn get_ava_opt_index(&self, attr: &str) -> Result<Vec<&IndexType>, ()> {
-        match self.attrs.get(attr) {
-            Some(av) => {
-                let r: Result<Vec<_>, _> = av.iter().map(|v| v.to_indextype().ok_or(())).collect();
-                r
-            }
-            None => Ok(Vec::new()),
-        }
-    }
-
-    /// Get a bool from an ava
-    pub fn get_ava_single_bool(&self, attr: &str) -> Option<bool> {
-        match self.get_ava_single(attr) {
-            Some(a) => a.to_bool(),
-            None => None,
-        }
-    }
-
-    pub fn get_ava_single_syntax(&self, attr: &str) -> Option<&SyntaxType> {
-        match self.get_ava_single(attr) {
-            Some(a) => a.to_syntaxtype(),
-            None => None,
-        }
-    }
-
-    pub fn get_ava_single_credential(&self, attr: &str) -> Option<&Credential> {
-        match self.get_ava_single(attr) {
-            Some(a) => a.to_credential(),
-            None => None,
-        }
-    }
-
-    /*
-    /// This interface will get &str (if possible).
-    pub(crate) fn get_ava_opt_str(&self, attr: &str) -> Option<Vec<&str>> {
-        match self.attrs.get(attr) {
-            Some(a) => {
-                let r: Vec<_> = a.iter().filter_map(|v| v.to_str()).collect();
-                if r.len() == 0 {
-                    None
-                } else {
-                    Some(r)
-                }
-            }
-            None => Some(Vec::new()),
-        }
-    }
-    */
-
-    pub(crate) fn get_ava_opt_string(&self, attr: &str) -> Option<Vec<String>> {
-        match self.attrs.get(attr) {
-            Some(a) => {
-                let r: Vec<String> = a
-                    .iter()
-                    .filter_map(|v| v.as_string().map(|s| s.clone()))
-                    .collect();
-                if r.len() == 0 {
-                    // Corrupt?
-                    None
-                } else {
-                    Some(r)
-                }
-            }
-            None => Some(Vec::new()),
-        }
-    }
-
-    pub(crate) fn get_ava_string(&self, attr: &str) -> Option<Vec<String>> {
-        match self.attrs.get(attr) {
-            Some(a) => {
-                let r: Vec<String> = a
-                    .iter()
-                    .filter_map(|v| v.as_string().map(|s| s.clone()))
-                    .collect();
-                if r.len() == 0 {
-                    // Corrupt?
-                    None
-                } else {
-                    Some(r)
-                }
-            }
-            None => None,
-        }
-    }
-
-    pub(crate) fn get_ava_set_string(&self, attr: &str) -> Option<BTreeSet<String>> {
-        match self.attrs.get(attr) {
-            Some(a) => {
-                let r: BTreeSet<String> = a
-                    .iter()
-                    .filter_map(|v| v.as_string().map(|s| s.clone()))
-                    .collect();
-                if r.len() == 0 {
-                    // Corrupt?
-                    None
-                } else {
-                    Some(r)
-                }
-            }
-            None => None,
-        }
-    }
-
-    pub fn get_ava_single_str(&self, attr: &str) -> Option<&str> {
-        self.get_ava_single(attr).and_then(|v| v.to_str())
-    }
-
-    pub fn get_ava_single_string(&self, attr: &str) -> Option<String> {
-        self.get_ava_single(attr)
-            .and_then(|v: &Value| v.as_string())
-            .and_then(|s: &String| Some((*s).clone()))
-    }
-
-    pub fn get_ava_single_protofilter(&self, attr: &str) -> Option<ProtoFilter> {
-        self.get_ava_single(attr)
-            .and_then(|v: &Value| {
-                debug!("get_ava_single_protofilter -> {:?}", v);
-                v.as_json_filter()
-            })
-            .and_then(|f: &ProtoFilter| Some((*f).clone()))
     }
 }
 
@@ -1251,6 +1123,10 @@ impl<STATE> Entry<EntryValid, STATE> {
 }
 
 impl Entry<EntryReduced, EntryCommitted> {
+    pub fn get_uuid(&self) -> &Uuid {
+        &self.valid.uuid
+    }
+
     pub fn into_pe(
         &self,
         audit: &mut AuditScope,
@@ -1332,6 +1208,139 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             }
             None => None,
         }
+    }
+
+    // These are special types to allow returning typed values from
+    // an entry, if we "know" what we expect to receive.
+
+    /// This returns an array of IndexTypes, when the type is an Optional
+    /// multivalue in schema - IE this will *not* fail if the attribute is
+    /// empty, yielding and empty array instead.
+    ///
+    /// However, the converstion to IndexType is fallaible, so in case of a failure
+    /// to convert, an Err is returned.
+    pub(crate) fn get_ava_opt_index(&self, attr: &str) -> Result<Vec<&IndexType>, ()> {
+        match self.attrs.get(attr) {
+            Some(av) => {
+                let r: Result<Vec<_>, _> = av.iter().map(|v| v.to_indextype().ok_or(())).collect();
+                r
+            }
+            None => Ok(Vec::new()),
+        }
+    }
+
+    /// Get a bool from an ava
+    pub fn get_ava_single_bool(&self, attr: &str) -> Option<bool> {
+        match self.get_ava_single(attr) {
+            Some(a) => a.to_bool(),
+            None => None,
+        }
+    }
+
+    pub fn get_ava_single_syntax(&self, attr: &str) -> Option<&SyntaxType> {
+        match self.get_ava_single(attr) {
+            Some(a) => a.to_syntaxtype(),
+            None => None,
+        }
+    }
+
+    pub fn get_ava_single_credential(&self, attr: &str) -> Option<&Credential> {
+        self.get_ava_single(attr).and_then(|a| a.to_credential())
+    }
+
+    pub fn get_ava_single_radiuscred(&self, attr: &str) -> Option<&str> {
+        self.get_ava_single(attr)
+            .and_then(|a| a.get_radius_secret())
+    }
+
+    /*
+    /// This interface will get &str (if possible).
+    pub(crate) fn get_ava_opt_str(&self, attr: &str) -> Option<Vec<&str>> {
+        match self.attrs.get(attr) {
+            Some(a) => {
+                let r: Vec<_> = a.iter().filter_map(|v| v.to_str()).collect();
+                if r.len() == 0 {
+                    None
+                } else {
+                    Some(r)
+                }
+            }
+            None => Some(Vec::new()),
+        }
+    }
+    */
+
+    pub(crate) fn get_ava_opt_string(&self, attr: &str) -> Option<Vec<String>> {
+        match self.attrs.get(attr) {
+            Some(a) => {
+                let r: Vec<String> = a
+                    .iter()
+                    .filter_map(|v| v.as_string().map(|s| s.clone()))
+                    .collect();
+                if r.len() == 0 {
+                    // Corrupt?
+                    None
+                } else {
+                    Some(r)
+                }
+            }
+            None => Some(Vec::new()),
+        }
+    }
+
+    pub(crate) fn get_ava_string(&self, attr: &str) -> Option<Vec<String>> {
+        match self.attrs.get(attr) {
+            Some(a) => {
+                let r: Vec<String> = a
+                    .iter()
+                    .filter_map(|v| v.as_string().map(|s| s.clone()))
+                    .collect();
+                if r.len() == 0 {
+                    // Corrupt?
+                    None
+                } else {
+                    Some(r)
+                }
+            }
+            None => None,
+        }
+    }
+
+    pub(crate) fn get_ava_set_string(&self, attr: &str) -> Option<BTreeSet<String>> {
+        match self.attrs.get(attr) {
+            Some(a) => {
+                let r: BTreeSet<String> = a
+                    .iter()
+                    .filter_map(|v| v.as_string().map(|s| s.clone()))
+                    .collect();
+                if r.len() == 0 {
+                    // Corrupt?
+                    None
+                } else {
+                    Some(r)
+                }
+            }
+            None => None,
+        }
+    }
+
+    pub fn get_ava_single_str(&self, attr: &str) -> Option<&str> {
+        self.get_ava_single(attr).and_then(|v| v.to_str())
+    }
+
+    pub fn get_ava_single_string(&self, attr: &str) -> Option<String> {
+        self.get_ava_single(attr)
+            .and_then(|v: &Value| v.as_string())
+            .and_then(|s: &String| Some((*s).clone()))
+    }
+
+    pub fn get_ava_single_protofilter(&self, attr: &str) -> Option<ProtoFilter> {
+        self.get_ava_single(attr)
+            .and_then(|v: &Value| {
+                debug!("get_ava_single_protofilter -> {:?}", v);
+                v.as_json_filter()
+            })
+            .and_then(|f: &ProtoFilter| Some((*f).clone()))
     }
 
     pub fn attribute_pres(&self, attr: &str) -> bool {
