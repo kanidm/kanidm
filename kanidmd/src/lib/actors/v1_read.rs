@@ -4,7 +4,8 @@ use crate::audit::AuditScope;
 
 use crate::async_log::EventLog;
 use crate::event::{AuthEvent, SearchEvent, SearchResult, WhoamiResult};
-use kanidm_proto::v1::OperationError;
+use crate::idm::event::{RadiusAuthTokenEvent};
+use kanidm_proto::v1::{OperationError, RadiusAuthToken};
 
 use crate::filter::{Filter, FilterInvalid};
 use crate::idm::server::IdmServer;
@@ -91,6 +92,15 @@ pub struct InternalRadiusReadMessage {
 
 impl Message for InternalRadiusReadMessage {
     type Result = Result<Option<String>, OperationError>;
+}
+
+pub struct InternalRadiusTokenReadMessage {
+    pub uat: Option<UserAuthToken>,
+    pub uuid_or_name: String,
+}
+
+impl Message for InternalRadiusTokenReadMessage {
+    type Result = Result<RadiusAuthToken, OperationError>;
 }
 
 // ===========================================================
@@ -352,3 +362,47 @@ impl Handler<InternalRadiusReadMessage> for QueryServerReadV1 {
         res
     }
 }
+
+
+impl Handler<InternalRadiusTokenReadMessage> for QueryServerReadV1 {
+    type Result = Result<RadiusAuthToken, OperationError>;
+
+    fn handle(&mut self, msg: InternalRadiusTokenReadMessage, _: &mut Self::Context) -> Self::Result {
+        let mut audit = AuditScope::new("internal_radius_token_read_message");
+        let res = audit_segment!(&mut audit, || {
+            let idm_read = self.idms.proxy_read();
+
+            let target_uuid = match Uuid::parse_str(msg.uuid_or_name.as_str()) {
+                Ok(u) => u,
+                Err(_) => idm_read
+                    .qs_read
+                    .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                    .map_err(|e| {
+                        audit_log!(&mut audit, "Error resolving id to target");
+                        e
+                    })?,
+            };
+
+            // Make an event from the request
+            let rate = match RadiusAuthTokenEvent::from_parts(
+                &mut audit,
+                &idm_read.qs_read,
+                msg.uat,
+                target_uuid
+            ) {
+                Ok(s) => s,
+                Err(e) => {
+                    audit_log!(audit, "Failed to begin search: {:?}", e);
+                    return Err(e);
+                }
+            };
+
+            audit_log!(audit, "Begin event {:?}", rate);
+
+            idm_read.get_radiusauthtoken(&mut audit, &rate)
+        });
+        self.log.do_send(audit);
+        res
+    }
+}
+

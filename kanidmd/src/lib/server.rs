@@ -295,6 +295,20 @@ pub trait QueryServerTransaction {
         res
     }
 
+    fn impersonate_search_ext_valid(
+        &self,
+        audit: &mut AuditScope,
+        f_valid: Filter<FilterValid>,
+        f_intent_valid: Filter<FilterValid>,
+        event: &Event,
+    ) -> Result<Vec<Entry<EntryReduced, EntryCommitted>>, OperationError> {
+        let se = SearchEvent::new_impersonate(event, f_valid, f_intent_valid);
+        let mut audit_int = AuditScope::new("impersonate_search_ext");
+        let res = self.search_ext(&mut audit_int, &se);
+        audit.append_scope(audit_int);
+        res
+    }
+
     // Who they are will go here
     fn impersonate_search(
         &self,
@@ -312,6 +326,22 @@ pub trait QueryServerTransaction {
         self.impersonate_search_valid(audit, f_valid, f_intent_valid, event)
     }
 
+    fn impersonate_search_ext(
+        &self,
+        audit: &mut AuditScope,
+        filter: Filter<FilterInvalid>,
+        filter_intent: Filter<FilterInvalid>,
+        event: &Event,
+    ) -> Result<Vec<Entry<EntryReduced, EntryCommitted>>, OperationError> {
+        let f_valid = filter
+            .validate(self.get_schema())
+            .map_err(|e| OperationError::SchemaViolation(e))?;
+        let f_intent_valid = filter_intent
+            .validate(self.get_schema())
+            .map_err(|e| OperationError::SchemaViolation(e))?;
+        self.impersonate_search_ext_valid(audit, f_valid, f_intent_valid, event)
+    }
+
     // Get a single entry by it's UUID. This is heavily relied on for internal
     // server operations, especially in login and acp checks for acp.
     fn internal_search_uuid(
@@ -327,6 +357,28 @@ pub trait QueryServerTransaction {
         let mut audit_int = AuditScope::new("internal_search_uuid");
         let res = self.search(&mut audit_int, &se);
         audit.append_scope(audit_int);
+        match res {
+            Ok(vs) => {
+                if vs.len() > 1 {
+                    return Err(OperationError::NoMatchingEntries);
+                }
+                vs.into_iter()
+                    .next()
+                    .ok_or(OperationError::NoMatchingEntries)
+            }
+            Err(e) => Err(e),
+        }
+    }
+
+    fn impersonate_search_ext_uuid(
+        &self,
+        audit: &mut AuditScope,
+        uuid: &Uuid,
+        event: &Event,
+    ) -> Result<Entry<EntryReduced, EntryCommitted>, OperationError> {
+        let filter_intent = filter_all!(f_eq("uuid", PartialValue::new_uuid(uuid.clone())));
+        let filter = filter!(f_eq("uuid", PartialValue::new_uuid(uuid.clone())));
+        let res = self.impersonate_search_ext(audit, filter, filter_intent, event);
         match res {
             Ok(vs) => {
                 if vs.len() > 1 {

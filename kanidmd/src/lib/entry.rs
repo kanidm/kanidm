@@ -1060,17 +1060,6 @@ impl Entry<EntryValid, EntryCommitted> {
         }
     }
 
-    pub fn get_ava_reference_uuid(&self, attr: &str) -> Option<Vec<&Uuid>> {
-        // If any value is NOT a reference, return none!
-        match self.attrs.get(attr) {
-            Some(av) => {
-                let v: Option<Vec<&Uuid>> = av.iter().map(|e| e.to_ref_uuid()).collect();
-                v
-            }
-            None => None,
-        }
-    }
-
     /*
     /// This interface will get &str (if possible).
     pub(crate) fn get_ava_opt_str(&self, attr: &str) -> Option<Vec<&str>> {
@@ -1332,6 +1321,17 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         // Get the set of all attribute names in the entry
         let r: BTreeSet<&str> = self.attrs.keys().map(|a| a.as_str()).collect();
         r
+    }
+
+    pub fn get_ava_reference_uuid(&self, attr: &str) -> Option<Vec<&Uuid>> {
+        // If any value is NOT a reference, return none!
+        match self.attrs.get(attr) {
+            Some(av) => {
+                let v: Option<Vec<&Uuid>> = av.iter().map(|e| e.to_ref_uuid()).collect();
+                v
+            }
+            None => None,
+        }
     }
 
     pub fn attribute_pres(&self, attr: &str) -> bool {

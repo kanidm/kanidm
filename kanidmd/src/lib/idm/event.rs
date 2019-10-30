@@ -1,7 +1,7 @@
 use crate::actors::v1_write::IdmAccountSetPasswordMessage;
 use crate::audit::AuditScope;
 use crate::event::Event;
-use crate::server::QueryServerWriteTransaction;
+use crate::server::{QueryServerWriteTransaction, QueryServerReadTransaction};
 
 use uuid::Uuid;
 
@@ -116,3 +116,36 @@ impl RegenerateRadiusSecretEvent {
         }
     }
 }
+
+#[derive(Debug)]
+pub struct RadiusAuthTokenEvent {
+    pub event: Event,
+    pub target: Uuid,
+}
+
+impl RadiusAuthTokenEvent {
+    pub fn from_parts(
+        audit: &mut AuditScope,
+        qs: &QueryServerReadTransaction,
+        uat: Option<UserAuthToken>,
+        target: Uuid,
+    ) -> Result<Self, OperationError> {
+        let e = Event::from_ro_uat(audit, qs, uat)?;
+
+        Ok(RadiusAuthTokenEvent {
+            event: e,
+            target: target,
+        })
+    }
+
+    #[cfg(test)]
+    pub fn new_internal(target: Uuid) -> Self {
+        let e = Event::from_internal();
+
+        RadiusAuthTokenEvent {
+            event: e,
+            target: target,
+        }
+    }
+}
+
