@@ -1,4 +1,4 @@
-#![deny(warnings)]
+// #![deny(warnings)]
 #![warn(unused_extern_crates)]
 
 #[macro_use]
@@ -7,6 +7,7 @@ extern crate log;
 use reqwest;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::Read;
 
@@ -300,6 +301,50 @@ impl KanidmClient {
 
     pub fn idm_group_get(&self, id: &str) -> Result<Option<Entry>, ClientError> {
         self.perform_get_request(format!("/v1/group/{}", id).as_str())
+    }
+
+    pub fn idm_group_get_members(&self, id: &str) -> Result<Vec<String>, ClientError> {
+        self.perform_get_request(format!("/v1/group/{}/_attr/member", id).as_str())
+    }
+
+    pub fn idm_group_set_members(&self, id: &str, members: Vec<&str>) -> Result<(), ClientError> {
+        let m: Vec<_> =
+            members.iter().map(|v| v.to_string()).collect();
+        self.perform_put_request(format!("/v1/group/{}/_attr/member", id).as_str(),
+            m
+        )
+    }
+
+    pub fn idm_group_add_members(&self, id: &str, members: Vec<&str>) -> Result<(), ClientError> {
+        let m: Vec<_> =
+            members.iter().map(|v| v.to_string()).collect();
+        self.perform_post_request(format!("/v1/group/{}/_attr/member", id).as_str(),
+            m
+        )
+    }
+
+    /*
+    pub fn idm_group_remove_member(&self, id: &str, member: &str) -> Result<(), ClientError> {
+        unimplemented!();
+    }
+    */
+
+    pub fn idm_group_purge_members(&self, id: &str) -> Result<(), ClientError> {
+        self.perform_delete_request(format!("/v1/group/{}/_attr/member", id).as_str())
+    }
+
+    pub fn idm_group_delete(&self, id: &str) -> Result<(), ClientError> {
+        self.perform_delete_request(format!("/v1/group/{}", id).as_str())
+    }
+
+    pub fn idm_group_create(&self, name: &str) -> Result<(), ClientError> {
+        let mut new_group = Entry {
+            attrs: BTreeMap::new(),
+        };
+        new_group
+            .attrs
+            .insert("name".to_string(), vec![name.to_string()]);
+        self.perform_post_request(format!("/v1/group").as_str(), new_group)
     }
 
     // ==== accounts

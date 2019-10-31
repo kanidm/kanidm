@@ -1,6 +1,6 @@
 use crate::audit::AuditScope;
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryReduced, EntryValid};
-use crate::filter::{Filter, FilterValid};
+use crate::filter::{Filter, FilterInvalid, FilterValid};
 use crate::schema::SchemaTransaction;
 use crate::value::PartialValue;
 use kanidm_proto::v1::Entry as ProtoEntry;
@@ -21,8 +21,6 @@ use crate::actors::v1_write::{CreateMessage, DeleteMessage, ModifyMessage};
 // use crate::schema::SchemaTransaction;
 
 // Only used for internal tests
-#[cfg(test)]
-use crate::filter::FilterInvalid;
 #[cfg(test)]
 use crate::modify::ModifyInvalid;
 
@@ -549,6 +547,25 @@ impl DeleteEvent {
             }),
             Err(e) => Err(e),
         }
+    }
+
+    pub fn from_parts(
+        audit: &mut AuditScope,
+        uat: Option<UserAuthToken>,
+        filter: Filter<FilterInvalid>,
+        qs: &QueryServerWriteTransaction,
+    ) -> Result<Self, OperationError> {
+        Ok(DeleteEvent {
+            event: Event::from_rw_uat(audit, qs, uat)?,
+            filter: filter
+                .clone()
+                .to_ignore_hidden()
+                .validate(qs.get_schema())
+                .map_err(|e| OperationError::SchemaViolation(e))?,
+            filter_orig: filter
+                .validate(qs.get_schema())
+                .map_err(|e| OperationError::SchemaViolation(e))?,
+        })
     }
 
     #[cfg(test)]

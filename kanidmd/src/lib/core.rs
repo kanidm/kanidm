@@ -21,8 +21,9 @@ use crate::actors::v1_read::{
 };
 use crate::actors::v1_write::QueryServerWriteV1;
 use crate::actors::v1_write::{
-    CreateMessage, DeleteMessage, IdmAccountSetPasswordMessage, InternalCredentialSetMessage,
-    InternalRegenerateRadiusMessage, ModifyMessage, PurgeAttributeMessage,
+    AppendAttributeMessage, CreateMessage, DeleteMessage, IdmAccountSetPasswordMessage,
+    InternalCredentialSetMessage, InternalDeleteMessage, InternalRegenerateRadiusMessage,
+    ModifyMessage, PurgeAttributeMessage, SetAttributeMessage,
 };
 use crate::async_log;
 use crate::audit::AuditScope;
@@ -37,6 +38,7 @@ use crate::server::QueryServer;
 use crate::utils::SID;
 use crate::value::PartialValue;
 
+use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::{
     AuthRequest, AuthState, CreateRequest, DeleteRequest, ModifyRequest, SearchRequest,
@@ -238,16 +240,42 @@ fn json_rest_event_get_id(
     Box::new(res)
 }
 
-fn json_rest_event_get_id_attr(
+fn json_rest_event_delete_id(
     path: Path<String>,
     req: HttpRequest<AppState>,
     state: State<AppState>,
     filter: Filter<FilterInvalid>,
-    attr: String,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let uat = get_current_user(&req);
 
     let filter = Filter::join_parts_and(filter, filter_all!(f_id(path.as_str())));
+
+    let obj = InternalDeleteMessage {
+        uat: uat,
+        filter: filter,
+    };
+
+    let res = state.qe_w.send(obj).from_err().and_then(|res| match res {
+        Ok(_) => {
+            // Only send back the first result, or None
+            Ok(HttpResponse::Ok().json(()))
+        }
+        Err(e) => Ok(operation_error_to_response(e)),
+    });
+
+    Box::new(res)
+}
+
+fn json_rest_event_get_id_attr(
+    path: Path<(String, String)>,
+    req: HttpRequest<AppState>,
+    state: State<AppState>,
+    filter: Filter<FilterInvalid>,
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let (id, attr) = path.into_inner();
+    let uat = get_current_user(&req);
+
+    let filter = Filter::join_parts_and(filter, filter_all!(f_id(id.as_str())));
 
     let obj = InternalSearchMessage {
         uat: uat,
@@ -277,14 +305,161 @@ fn json_rest_event_get_id_attr(
     Box::new(res)
 }
 
-fn json_rest_event_delete_id_attr(
-    path: Path<String>,
+fn json_rest_event_post(
     req: HttpRequest<AppState>,
     state: State<AppState>,
-    attr: String,
+    classes: Vec<String>,
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    // Read the json from the wire.
+    let max_size = state.max_size;
+    let uat = get_current_user(&req);
+
+    req.payload()
+        .from_err()
+        .fold(BytesMut::new(), move |mut body, chunk| {
+            // limit max size of in-memory payload
+            if (body.len() + chunk.len()) > max_size {
+                Err(error::ErrorBadRequest("overflow"))
+            } else {
+                body.extend_from_slice(&chunk);
+                Ok(body)
+            }
+        })
+        // `Future::and_then` can be used to merge an asynchronous workflow with a
+        // synchronous workflow
+        .and_then(
+            move |body| -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
+                let r_obj = serde_json::from_slice::<ProtoEntry>(&body);
+                // Send a create message if deserialised.
+                match r_obj {
+                    Ok(mut obj) => {
+                        obj.attrs.insert("class".to_string(), classes);
+                        let m_obj = CreateMessage::new_entry(uat, obj);
+                        let res = state.qe_w.send(m_obj).from_err().and_then(|res| match res {
+                            Ok(_) => Ok(HttpResponse::Ok().json(())),
+                            Err(e) => Ok(operation_error_to_response(e)),
+                        });
+
+                        Box::new(res)
+                    }
+                    Err(e) => Box::new(future::err(error::ErrorBadRequest(format!(
+                        "Json Decode Failed: {:?}",
+                        e
+                    )))),
+                } // end match
+            },
+        ) // end and_then
+}
+
+fn json_rest_event_post_id_attr(
+    path: Path<(String, String)>,
+    req: HttpRequest<AppState>,
+    state: State<AppState>,
+    filter: Filter<FilterInvalid>,
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let max_size = state.max_size;
+    let uat = get_current_user(&req);
+    let (id, attr) = path.into_inner();
+
+    req.payload()
+        .from_err()
+        .fold(BytesMut::new(), move |mut body, chunk| {
+            // limit max size of in-memory payload
+            if (body.len() + chunk.len()) > max_size {
+                Err(error::ErrorBadRequest("overflow"))
+            } else {
+                body.extend_from_slice(&chunk);
+                Ok(body)
+            }
+        })
+        .and_then(
+            move |body| -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
+                let r_obj = serde_json::from_slice::<Vec<String>>(&body);
+                match r_obj {
+                    Ok(obj) => {
+                        let m_obj = AppendAttributeMessage {
+                            uat: uat,
+                            uuid_or_name: id,
+                            attr: attr,
+                            values: obj,
+                        };
+                        // Add a msg here
+                        let res = state.qe_w.send(m_obj).from_err().and_then(|res| match res {
+                            Ok(_) => Ok(HttpResponse::Ok().json(())),
+                            Err(e) => Ok(operation_error_to_response(e)),
+                        });
+
+                        Box::new(res)
+                    }
+                    Err(e) => {
+                        Box::new(future::err(error::ErrorBadRequest(format!(
+                            "Json Decode Failed: {:?}",
+                            e
+                        ))))
+                    }
+                } // end match
+            },
+        ) // end and_then
+}
+
+fn json_rest_event_put_id_attr(
+    path: Path<(String, String)>,
+    req: HttpRequest<AppState>,
+    state: State<AppState>,
+    filter: Filter<FilterInvalid>,
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let max_size = state.max_size;
+    let uat = get_current_user(&req);
+    let (id, attr) = path.into_inner();
+
+    req.payload()
+        .from_err()
+        .fold(BytesMut::new(), move |mut body, chunk| {
+            // limit max size of in-memory payload
+            if (body.len() + chunk.len()) > max_size {
+                Err(error::ErrorBadRequest("overflow"))
+            } else {
+                body.extend_from_slice(&chunk);
+                Ok(body)
+            }
+        })
+        .and_then(
+            move |body| -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
+                let r_obj = serde_json::from_slice::<Vec<String>>(&body);
+                match r_obj {
+                    Ok(obj) => {
+                        let m_obj = SetAttributeMessage {
+                            uat: uat,
+                            uuid_or_name: id,
+                            attr: attr,
+                            values: obj,
+                        };
+                        let res = state.qe_w.send(m_obj).from_err().and_then(|res| match res {
+                            Ok(_) => Ok(HttpResponse::Ok().json(())),
+                            Err(e) => Ok(operation_error_to_response(e)),
+                        });
+
+                        Box::new(res)
+                    }
+                    Err(e) => Box::new(future::err(error::ErrorBadRequest(format!(
+                        "Json Decode Failed: {:?}",
+                        e
+                    )))),
+                } // end match
+            },
+        ) // end and_then
+}
+
+fn json_rest_event_delete_id_attr(
+    path: Path<(String, String)>,
+    req: HttpRequest<AppState>,
+    state: State<AppState>,
+    filter: Filter<FilterInvalid>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let uat = get_current_user(&req);
-    let id = path.into_inner();
+    let (id, attr) = path.into_inner();
+
+    // TODO: Attempt to get an option Vec<String> here?
 
     let obj = PurgeAttributeMessage {
         uat: uat,
@@ -457,6 +632,13 @@ fn account_get(
     json_rest_event_get(req, state, filter, None)
 }
 
+fn account_post(
+    (req, state): (HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let classes = vec!["account".to_string(), "object".to_string()];
+    json_rest_event_post(req, state, classes)
+}
+
 fn account_get_id(
     (path, req, state): (Path<String>, HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
@@ -517,7 +699,10 @@ fn account_post_id_radius_regenerate(
 fn account_delete_id_radius(
     (path, req, state): (Path<String>, HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
-    json_rest_event_delete_id_attr(path, req, state, "radius_secret".to_string())
+    // We reconstruct path here to keep json_rest_event_delete_id_attr generic.
+    let p = Path::from((path.into_inner(), "radius_secret".to_string()));
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
+    json_rest_event_delete_id_attr(p, req, state, filter)
 }
 
 fn account_get_id_radius_token(
@@ -549,11 +734,69 @@ fn group_get(
     json_rest_event_get(req, state, filter, None)
 }
 
+fn group_post(
+    (req, state): (HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let classes = vec!["group".to_string(), "object".to_string()];
+    json_rest_event_post(req, state, classes)
+}
+
 fn group_id_get(
     (path, req, state): (Path<String>, HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
     json_rest_event_get_id(path, req, state, filter, None)
+}
+
+fn group_id_get_attr(
+    (path, req, state): (
+        Path<(String, String)>,
+        HttpRequest<AppState>,
+        State<AppState>,
+    ),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
+    json_rest_event_get_id_attr(path, req, state, filter)
+}
+
+fn group_id_post_attr(
+    (path, req, state): (
+        Path<(String, String)>,
+        HttpRequest<AppState>,
+        State<AppState>,
+    ),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
+    json_rest_event_post_id_attr(path, req, state, filter)
+}
+
+fn group_id_delete_attr(
+    (path, req, state): (
+        Path<(String, String)>,
+        HttpRequest<AppState>,
+        State<AppState>,
+    ),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
+    json_rest_event_delete_id_attr(path, req, state, filter)
+}
+
+fn group_id_put_attr(
+    (path, req, state): (
+        Path<(String, String)>,
+        HttpRequest<AppState>,
+        State<AppState>,
+    ),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
+    json_rest_event_put_id_attr(path, req, state, filter)
+}
+
+fn group_id_delete(
+    (path, req, state): (Path<String>, HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
+    json_rest_event_delete_id(path, req, state, filter)
 }
 
 fn do_nothing((_req, _state): (HttpRequest<AppState>, State<AppState>)) -> String {
@@ -1154,8 +1397,8 @@ pub fn create_server_core(config: Configuration) {
         })
         // Accounts
         .resource("/v1/account", |r| {
-            r.method(http::Method::GET).with_async(account_get)
-            // Add post
+            r.method(http::Method::GET).with_async(account_get);
+            r.method(http::Method::GET).with_async(account_post);
         })
         .resource("/v1/account/{id}", |r| {
             r.method(http::Method::GET).with_async(account_get_id)
@@ -1196,18 +1439,22 @@ pub fn create_server_core(config: Configuration) {
             r.method(http::Method::GET)
                 .with_async(account_get_id_radius_token)
         })
+        // People
         // Groups
         .resource("/v1/group", |r| {
-            r.method(http::Method::GET).with_async(group_get)
-            // Add post
+            r.method(http::Method::GET).with_async(group_get);
+            r.method(http::Method::POST).with_async(group_post);
         })
         .resource("/v1/group/{id}", |r| {
-            r.method(http::Method::GET).with_async(group_id_get)
-            // add put, patch, delete
+            r.method(http::Method::GET).with_async(group_id_get);
+            r.method(http::Method::DELETE).with_async(group_id_delete);
+            // add put, patch
         })
         .resource("/v1/group/{id}/_attr/{attr}", |r| {
-            r.method(http::Method::GET).with(do_nothing)
-            // add put post delete
+            r.method(http::Method::GET).with_async(group_id_get_attr);
+            r.method(http::Method::POST).with_async(group_id_post_attr);
+            r.method(http::Method::PUT).with_async(group_id_put_attr);
+            r.method(http::Method::DELETE).with_async(group_id_delete_attr);
         })
         // Claims
         // TBD

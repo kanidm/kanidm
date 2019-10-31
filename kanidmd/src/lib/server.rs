@@ -975,10 +975,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .map(|er| er.clone().invalidate())
             .collect();
 
-        candidates
-            .iter_mut()
-            .for_each(|er| er.apply_modlist(&modlist));
-
         audit_log!(au, "delete: candidates -> {:?}", candidates);
 
         // Pre delete plugs
@@ -991,6 +987,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
             audit_log!(au, "Delete operation failed (plugin), {:?}", plug_pre_res);
             return plug_pre_res;
         }
+
+        audit_log!(
+            au,
+            "delete: now marking candidates as recycled -> {:?}",
+            candidates
+        );
+        candidates
+            .iter_mut()
+            .for_each(|er| er.apply_modlist(&modlist));
 
         let res: Result<Vec<Entry<EntryValid, EntryCommitted>>, SchemaError> = candidates
             .into_iter()

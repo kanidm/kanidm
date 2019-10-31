@@ -37,7 +37,7 @@ static ADMIN_TEST_PASSWORD_CHANGE: &'static str = "integration test admin newðŸŽ
 // Test external behaviorus of the service.
 
 fn run_test(test_fn: fn(KanidmClient) -> ()) {
-    // ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
+    ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
     let _ = env_logger::builder().is_test(true).try_init();
     let (tx, rx) = mpsc::channel();
     let port = PORT_ALLOC.fetch_add(1, Ordering::SeqCst);
@@ -289,6 +289,70 @@ fn test_server_rest_group_read() {
         let g = rsclient.idm_group_get("idm_admins").unwrap();
         assert!(g.is_some());
         println!("{:?}", g);
+    });
+}
+
+#[test]
+fn test_server_rest_group_lifecycle() {
+    run_test(|rsclient: KanidmClient| {
+        let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
+        assert!(res.is_ok());
+
+        // List the groups
+        let g_list = rsclient.idm_group_list().unwrap();
+        assert!(g_list.len() > 0);
+
+        // Create a new group
+        rsclient.idm_group_create("demo_group").unwrap();
+
+        // List again, ensure one more.
+        let g_list_2 = rsclient.idm_group_list().unwrap();
+        assert!(g_list_2.len() > g_list.len());
+
+        // Test modifications to the group
+
+        // Add a member.
+        rsclient
+            .idm_group_add_members("demo_group", vec!["admin"])
+            .unwrap();
+        let members = rsclient.idm_group_get_members("demo_group").unwrap();
+        assert!(members == vec!["admin".to_string()]);
+
+        // Set the list of members
+        rsclient
+            .idm_group_set_members("demo_group", vec!["admin", "demo_group"])
+            .unwrap();
+        let members = rsclient.idm_group_get_members("demo_group").unwrap();
+        assert!(members == vec!["admin".to_string(), "demo_group".to_string()]);
+
+        // Remove a member from the group
+        /*
+        rsclient
+            .idm_group_remove_member("demo_group", "demo_group")
+            .unwrap();
+        let members = rsclient.idm_group_get_members("demo_group").unwrap();
+        assert!(members == vec!["admin".to_string()]);
+        */
+
+        // purge members
+        rsclient.idm_group_purge_members("demo_group").unwrap();
+        let members = rsclient.idm_group_get_members("demo_group").unwrap();
+        assert!(members.len() == 0);
+
+        // Delete the group
+        rsclient.idm_group_delete("demo_group").unwrap();
+        let g_list_3 = rsclient.idm_group_list().unwrap();
+        assert!(g_list_3.len() == g_list.len());
+
+        // Check we can get an exact group
+        let g = rsclient.idm_group_get("idm_admins").unwrap();
+        assert!(g.is_some());
+        println!("{:?}", g);
+
+        // They should have members
+        let members = rsclient.idm_group_get_members("idm_admins").unwrap();
+        println!("{:?}", members);
+        assert!(members == vec!["admin".to_string()]);
     });
 }
 
