@@ -5,7 +5,7 @@ use crate::async_log::EventLog;
 use crate::event::{
     CreateEvent, DeleteEvent, ModifyEvent, PurgeRecycledEvent, PurgeTombstoneEvent,
 };
-use crate::idm::event::{GeneratePasswordEvent, PasswordChangeEvent};
+use crate::idm::event::{GeneratePasswordEvent, PasswordChangeEvent, RegenerateRadiusSecretEvent};
 use kanidm_proto::v1::OperationError;
 
 use crate::idm::server::IdmServer;
@@ -107,6 +107,36 @@ impl InternalCredentialSetMessage {
 
 impl Message for InternalCredentialSetMessage {
     type Result = Result<Option<String>, OperationError>;
+}
+
+pub struct InternalRegenerateRadiusMessage {
+    pub uat: Option<UserAuthToken>,
+    pub uuid_or_name: String,
+}
+
+impl InternalRegenerateRadiusMessage {
+    pub fn new(uat: Option<UserAuthToken>, uuid_or_name: String) -> Self {
+        InternalRegenerateRadiusMessage {
+            uat: uat,
+            uuid_or_name: uuid_or_name,
+        }
+    }
+}
+
+impl Message for InternalRegenerateRadiusMessage {
+    type Result = Result<String, OperationError>;
+}
+
+/// Indicate that we want to purge an attribute from the entry - this is generally
+/// in response to a DELETE http method.
+pub struct PurgeAttributeMessage {
+    pub uat: Option<UserAuthToken>,
+    pub uuid_or_name: String,
+    pub attr: String,
+}
+
+impl Message for PurgeAttributeMessage {
+    type Result = Result<(), OperationError>;
 }
 
 pub struct QueryServerWriteV1 {
@@ -325,6 +355,95 @@ impl Handler<IdmAccountSetPasswordMessage> for QueryServerWriteV1 {
                 .set_account_password(&mut audit, &pce)
                 .and_then(|_| idms_prox_write.commit(&mut audit))
                 .map(|_| OperationResponse::new(()))
+        });
+        self.log.do_send(audit);
+        res
+    }
+}
+
+impl Handler<InternalRegenerateRadiusMessage> for QueryServerWriteV1 {
+    type Result = Result<String, OperationError>;
+
+    fn handle(
+        &mut self,
+        msg: InternalRegenerateRadiusMessage,
+        _: &mut Self::Context,
+    ) -> Self::Result {
+        let mut audit = AuditScope::new("idm_account_regenerate_radius");
+        let res = audit_segment!(&mut audit, || {
+            let mut idms_prox_write = self.idms.proxy_write();
+
+            let target_uuid = match Uuid::parse_str(msg.uuid_or_name.as_str()) {
+                Ok(u) => u,
+                Err(_) => idms_prox_write
+                    .qs_write
+                    .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                    .map_err(|e| {
+                        audit_log!(&mut audit, "Error resolving id to target");
+                        e
+                    })?,
+            };
+
+            let rrse = RegenerateRadiusSecretEvent::from_parts(
+                &mut audit,
+                &idms_prox_write.qs_write,
+                msg.uat,
+                target_uuid,
+            )
+            .map_err(|e| {
+                audit_log!(
+                    audit,
+                    "Failed to begin idm_account_regenerate_radius: {:?}",
+                    e
+                );
+                e
+            })?;
+
+            idms_prox_write
+                .regenerate_radius_secret(&mut audit, &rrse)
+                .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
+        });
+        self.log.do_send(audit);
+        res
+    }
+}
+
+impl Handler<PurgeAttributeMessage> for QueryServerWriteV1 {
+    type Result = Result<(), OperationError>;
+
+    fn handle(&mut self, msg: PurgeAttributeMessage, _: &mut Self::Context) -> Self::Result {
+        let mut audit = AuditScope::new("modify");
+        let res = audit_segment!(&mut audit, || {
+            let mut qs_write = self.qs.write();
+            let target_uuid = match Uuid::parse_str(msg.uuid_or_name.as_str()) {
+                Ok(u) => u,
+                Err(_) => qs_write
+                    .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                    .map_err(|e| {
+                        audit_log!(&mut audit, "Error resolving id to target");
+                        e
+                    })?,
+            };
+
+            let mdf = match ModifyEvent::from_target_uuid_attr_purge(
+                &mut audit,
+                msg.uat,
+                target_uuid,
+                msg.attr,
+                &qs_write,
+            ) {
+                Ok(m) => m,
+                Err(e) => {
+                    audit_log!(audit, "Failed to begin modify: {:?}", e);
+                    return Err(e);
+                }
+            };
+
+            audit_log!(audit, "Begin modify event {:?}", mdf);
+
+            qs_write
+                .modify(&mut audit, &mdf)
+                .and_then(|_| qs_write.commit(&mut audit).map(|_| ()))
         });
         self.log.do_send(audit);
         res

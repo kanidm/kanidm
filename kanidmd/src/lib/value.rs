@@ -1,4 +1,4 @@
-use crate::be::dbvalue::{DbValueCredV1, DbValueV1};
+use crate::be::dbvalue::{DbValueCredV1, DbValueTaggedStringV1, DbValueV1};
 use crate::credential::Credential;
 use kanidm_proto::v1::Filter as ProtoFilter;
 
@@ -84,6 +84,8 @@ pub enum SyntaxType {
     REFERENCE_UUID,
     JSON_FILTER,
     CREDENTIAL,
+    RADIUS_UTF8STRING,
+    SSHKEY,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -101,6 +103,8 @@ impl TryFrom<&str> for SyntaxType {
             "REFERENCE_UUID" => Ok(SyntaxType::REFERENCE_UUID),
             "JSON_FILTER" => Ok(SyntaxType::JSON_FILTER),
             "CREDENTIAL" => Ok(SyntaxType::CREDENTIAL),
+            "RADIUS_UTF8STRING" => Ok(SyntaxType::RADIUS_UTF8STRING),
+            "SSHKEY" => Ok(SyntaxType::SSHKEY),
             _ => Err(()),
         }
     }
@@ -120,6 +124,8 @@ impl TryFrom<usize> for SyntaxType {
             6 => Ok(SyntaxType::REFERENCE_UUID),
             7 => Ok(SyntaxType::JSON_FILTER),
             8 => Ok(SyntaxType::CREDENTIAL),
+            9 => Ok(SyntaxType::RADIUS_UTF8STRING),
+            10 => Ok(SyntaxType::SSHKEY),
             _ => Err(()),
         }
     }
@@ -137,6 +143,8 @@ impl SyntaxType {
             SyntaxType::REFERENCE_UUID => "REFERENCE_UUID",
             SyntaxType::JSON_FILTER => "JSON_FILTER",
             SyntaxType::CREDENTIAL => "CREDENTIAL",
+            SyntaxType::RADIUS_UTF8STRING => "RADIUS_UTF8STRING",
+            SyntaxType::SSHKEY => "SSHKEY",
         })
     }
 
@@ -151,6 +159,8 @@ impl SyntaxType {
             SyntaxType::REFERENCE_UUID => 6,
             SyntaxType::JSON_FILTER => 7,
             SyntaxType::CREDENTIAL => 8,
+            SyntaxType::RADIUS_UTF8STRING => 9,
+            SyntaxType::SSHKEY => 10,
         }
     }
 }
@@ -158,8 +168,8 @@ impl SyntaxType {
 #[derive(Debug, Clone)]
 pub enum DataValue {
     Cred(Credential),
-    // SshKey(String),
-    // RadiusCred(String),
+    SshKey(String),
+    RadiusCred(String),
 }
 
 #[derive(Debug, Clone, Eq, Ord, PartialOrd, PartialEq, Deserialize, Serialize)]
@@ -176,8 +186,8 @@ pub enum PartialValue {
     JsonFilt(ProtoFilter),
     // Tag, matches to a DataValue.
     Cred(String),
-    // SshKey(String),
-    // RadiusCred(String),
+    SshKey(String),
+    RadiusCred,
 }
 
 impl PartialValue {
@@ -337,6 +347,28 @@ impl PartialValue {
         }
     }
 
+    pub fn new_radius_string() -> Self {
+        PartialValue::RadiusCred
+    }
+
+    pub fn is_radius_string(&self) -> bool {
+        match self {
+            PartialValue::RadiusCred => true,
+            _ => false,
+        }
+    }
+
+    pub fn new_sshkey_tag_s(s: &str) -> Self {
+        PartialValue::SshKey(s.to_string())
+    }
+
+    pub fn is_sshkey(&self) -> bool {
+        match self {
+            PartialValue::SshKey(_) => true,
+            _ => false,
+        }
+    }
+
     pub fn to_str(&self) -> Option<&str> {
         match self {
             PartialValue::Utf8(s) => Some(s.as_str()),
@@ -368,6 +400,9 @@ impl PartialValue {
                 serde_json::to_string(s).expect("A json filter value was corrupted during run-time")
             }
             PartialValue::Cred(tag) => tag.to_string(),
+            // This will never match as we never index radius creds! See generate_idx_eq_keys
+            PartialValue::RadiusCred => "_".to_string(),
+            PartialValue::SshKey(tag) => tag.to_string(),
         }
     }
 
@@ -692,10 +727,45 @@ impl Value {
             PartialValue::Cred(_) => match &self.data {
                 Some(dv) => match dv {
                     DataValue::Cred(c) => Some(&c),
+                    _ => None,
                 },
                 None => None,
             },
             _ => None,
+        }
+    }
+
+    pub fn new_radius_str(cleartext: &str) -> Self {
+        Value {
+            pv: PartialValue::new_radius_string(),
+            data: Some(DataValue::RadiusCred(cleartext.to_string())),
+        }
+    }
+
+    pub fn is_radius_string(&self) -> bool {
+        match &self.pv {
+            PartialValue::RadiusCred => true,
+            _ => false,
+        }
+    }
+
+    pub fn get_radius_secret(&self) -> Option<&str> {
+        match &self.pv {
+            PartialValue::RadiusCred => match &self.data {
+                Some(dv) => match dv {
+                    DataValue::RadiusCred(c) => Some(c.as_str()),
+                    _ => None,
+                },
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    pub fn is_sshkey(&self) -> bool {
+        match &self.pv {
+            PartialValue::SshKey(_) => true,
+            _ => false,
         }
     }
 
@@ -756,6 +826,14 @@ impl Value {
                     data: Some(DataValue::Cred(Credential::try_from(dvc.d)?)),
                 })
             }
+            DbValueV1::RU(d) => Ok(Value {
+                pv: PartialValue::RadiusCred,
+                data: Some(DataValue::RadiusCred(d)),
+            }),
+            DbValueV1::SK(ts) => Ok(Value {
+                pv: PartialValue::SshKey(ts.t),
+                data: Some(DataValue::SshKey(ts.d)),
+            }),
         }
     }
 
@@ -776,12 +854,10 @@ impl Value {
             PartialValue::Cred(tag) => {
                 // Get the credential out and make sure it matches the type we expect.
                 let c = match &self.data {
-                    Some(v) => {
-                        match &v {
-                            DataValue::Cred(c) => c,
-                            // _ => panic!(),
-                        }
-                    }
+                    Some(v) => match &v {
+                        DataValue::Cred(c) => c,
+                        _ => panic!(),
+                    },
                     None => panic!(),
                 };
 
@@ -789,6 +865,29 @@ impl Value {
                 DbValueV1::CR(DbValueCredV1 {
                     t: tag.clone(),
                     d: c.to_db_valuev1(),
+                })
+            }
+            PartialValue::RadiusCred => {
+                let ru = match &self.data {
+                    Some(v) => match &v {
+                        DataValue::RadiusCred(rc) => rc.clone(),
+                        _ => panic!(),
+                    },
+                    None => panic!(),
+                };
+                DbValueV1::RU(ru)
+            }
+            PartialValue::SshKey(t) => {
+                let sk = match &self.data {
+                    Some(v) => match &v {
+                        DataValue::SshKey(sc) => sc.clone(),
+                        _ => panic!(),
+                    },
+                    None => panic!(),
+                };
+                DbValueV1::SK(DbValueTaggedStringV1 {
+                    t: t.clone(),
+                    d: sk,
                 })
             }
         }
@@ -876,6 +975,8 @@ impl Value {
                 // tag to the proto side. The credentials private data is stored seperately.
                 tag.to_string()
             }
+            PartialValue::SshKey(tag) => tag.to_string(),
+            PartialValue::RadiusCred => "radius".to_string(),
         }
     }
 
@@ -885,12 +986,24 @@ impl Value {
         // data.
         match &self.pv {
             PartialValue::Cred(_) => match &self.data {
-                Some(v) => {
-                    match &v {
-                        DataValue::Cred(_) => true,
-                        // _ => false,
-                    }
-                }
+                Some(v) => match &v {
+                    DataValue::Cred(_) => true,
+                    _ => false,
+                },
+                None => false,
+            },
+            PartialValue::SshKey(_) => match &self.data {
+                Some(v) => match &v {
+                    DataValue::SshKey(_) => true,
+                    _ => false,
+                },
+                None => false,
+            },
+            PartialValue::RadiusCred => match &self.data {
+                Some(v) => match &v {
+                    DataValue::RadiusCred(_) => true,
+                    _ => false,
+                },
                 None => false,
             },
             _ => true,
@@ -909,6 +1022,8 @@ impl Value {
             PartialValue::JsonFilt(s) => vec![serde_json::to_string(s)
                 .expect("A json filter value was corrupted during run-time")],
             PartialValue::Cred(tag) => vec![tag.to_string()],
+            PartialValue::SshKey(tag) => vec![tag.to_string()],
+            PartialValue::RadiusCred => vec![],
         }
     }
 }

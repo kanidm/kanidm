@@ -335,4 +335,50 @@ fn test_server_rest_schema_read() {
     });
 }
 
+// Test resetting a radius cred, and then checking/viewing it.
+#[test]
+fn test_server_radius_credential_lifecycle() {
+    run_test(|rsclient: KanidmClient| {
+        let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
+        assert!(res.is_ok());
+
+        // Should have no radius secret
+        let n_sec = rsclient.idm_account_radius_credential_get("admin").unwrap();
+        assert!(n_sec.is_none());
+
+        // Set one
+        let sec1 = rsclient
+            .idm_account_radius_credential_regenerate("admin")
+            .unwrap();
+
+        // Should be able to get it.
+        let r_sec = rsclient.idm_account_radius_credential_get("admin").unwrap();
+        assert!(sec1 == r_sec.unwrap());
+
+        // test getting the token - we can do this as self or the radius server
+        let r_tok = rsclient.idm_account_radius_token_get("admin").unwrap();
+        assert!(sec1 == r_tok.secret);
+        assert!(r_tok.name == "admin".to_string());
+
+        // Reset it
+        let sec2 = rsclient
+            .idm_account_radius_credential_regenerate("admin")
+            .unwrap();
+
+        // Should be different
+        println!("s1 {} != s2 {}", sec1, sec2);
+        assert!(sec1 != sec2);
+
+        // Delete it
+        let res = rsclient.idm_account_radius_credential_delete("admin");
+        assert!(res.is_ok());
+
+        // No secret
+        let n_sec = rsclient.idm_account_radius_credential_get("admin").unwrap();
+        assert!(n_sec.is_none());
+    });
+}
+
+// Test the self version of the radius path.
+
 // Test hitting all auth-required endpoints and assert they give unauthorized.

@@ -139,6 +139,27 @@ impl fmt::Display for UserAuthToken {
 // UAT will need a downcast to Entry, which adds in the claims to the entry
 // for the purpose of filtering.
 
+// This is similar to uat, but omits claims (they have no role in radius), and adds
+// the radius secret field.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct RadiusAuthToken {
+    pub name: String,
+    pub displayname: String,
+    pub uuid: String,
+    pub secret: String,
+    pub groups: Vec<Group>,
+}
+
+impl fmt::Display for RadiusAuthToken {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "name: {}", self.name)?;
+        writeln!(f, "display: {}", self.displayname)?;
+        writeln!(f, "uuid: {}", self.uuid)?;
+        writeln!(f, "secret: {}", self.secret)?;
+        writeln!(f, "groups: {:?}", self.groups)
+    }
+}
+
 /* ===== low level proto types ===== */
 
 // ProtoEntry vs Entry

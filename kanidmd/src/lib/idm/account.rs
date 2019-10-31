@@ -3,17 +3,59 @@ use kanidm_proto::v1::OperationError;
 
 use kanidm_proto::v1::UserAuthToken;
 
+use crate::audit::AuditScope;
 use crate::constants::UUID_ANONYMOUS;
 use crate::credential::Credential;
 use crate::idm::claim::Claim;
 use crate::idm::group::Group;
 use crate::modify::{ModifyInvalid, ModifyList};
+use crate::server::{QueryServerReadTransaction, QueryServerWriteTransaction};
 use crate::value::{PartialValue, Value};
 
 use uuid::Uuid;
 
 lazy_static! {
     static ref PVCLASS_ACCOUNT: PartialValue = PartialValue::new_class("account");
+}
+
+macro_rules! try_from_entry {
+    ($value:expr, $groups:expr) => {{
+        // Check the classes
+        if !$value.attribute_value_pres("class", &PVCLASS_ACCOUNT) {
+            return Err(OperationError::InvalidAccountState(
+                "Missing class: account".to_string(),
+            ));
+        }
+
+        // Now extract our needed attributes
+        let name =
+            $value
+                .get_ava_single_string("name")
+                .ok_or(OperationError::InvalidAccountState(
+                    "Missing attribute: name".to_string(),
+                ))?;
+
+        let displayname = $value.get_ava_single_string("displayname").ok_or(
+            OperationError::InvalidAccountState("Missing attribute: displayname".to_string()),
+        )?;
+
+        let primary = $value
+            .get_ava_single_credential("primary_credential")
+            .map(|v| v.clone());
+
+        // Resolved by the caller
+        let groups = $groups;
+
+        let uuid = $value.get_uuid().clone();
+
+        Ok(Account {
+            uuid: uuid,
+            name: name,
+            displayname: displayname,
+            groups: groups,
+            primary: primary,
+        })
+    }};
 }
 
 #[derive(Debug, Clone)]
@@ -35,45 +77,29 @@ pub(crate) struct Account {
 }
 
 impl Account {
-    // TODO #71: We need a second try_from that doesn't do group resolve for test cases I think.
-    pub(crate) fn try_from_entry(
+    pub(crate) fn try_from_entry_ro(
+        au: &mut AuditScope,
+        value: Entry<EntryValid, EntryCommitted>,
+        qs: &QueryServerReadTransaction,
+    ) -> Result<Self, OperationError> {
+        let groups = Group::try_from_account_entry_ro(au, &value, qs)?;
+        try_from_entry!(value, groups)
+    }
+
+    pub(crate) fn try_from_entry_rw(
+        au: &mut AuditScope,
+        value: Entry<EntryValid, EntryCommitted>,
+        qs: &QueryServerWriteTransaction,
+    ) -> Result<Self, OperationError> {
+        let groups = Group::try_from_account_entry_rw(au, &value, qs)?;
+        try_from_entry!(value, groups)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn try_from_entry_no_groups(
         value: Entry<EntryValid, EntryCommitted>,
     ) -> Result<Self, OperationError> {
-        // Check the classes
-        if !value.attribute_value_pres("class", &PVCLASS_ACCOUNT) {
-            return Err(OperationError::InvalidAccountState(
-                "Missing class: account".to_string(),
-            ));
-        }
-
-        // Now extract our needed attributes
-        let name =
-            value
-                .get_ava_single_string("name")
-                .ok_or(OperationError::InvalidAccountState(
-                    "Missing attribute: name".to_string(),
-                ))?;
-
-        let displayname = value.get_ava_single_string("displayname").ok_or(
-            OperationError::InvalidAccountState("Missing attribute: displayname".to_string()),
-        )?;
-
-        let primary = value
-            .get_ava_single_credential("primary_credential")
-            .map(|v| v.clone());
-
-        // TODO #71: Resolve groups!!!!
-        let groups = Vec::new();
-
-        let uuid = value.get_uuid().clone();
-
-        Ok(Account {
-            uuid: uuid,
-            name: name,
-            displayname: displayname,
-            groups: groups,
-            primary: primary,
-        })
+        try_from_entry!(value, vec![])
     }
 
     // Could this actually take a claims list and application instead?
@@ -127,6 +153,14 @@ impl Account {
             } // no appid
         }
     }
+
+    pub(crate) fn regenerate_radius_secret_mod(
+        &self,
+        cleartext: &str,
+    ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
+        let vcred = Value::new_radius_str(cleartext);
+        Ok(ModifyList::new_purge_and_set("radius_secret", vcred))
+    }
 }
 
 // Need to also add a "to UserAuthToken" ...
@@ -145,7 +179,7 @@ mod tests {
             unsafe { Entry::unsafe_from_entry_str(JSON_ANONYMOUS_V1).to_valid_new() };
         let anon_e = unsafe { anon_e.to_valid_committed() };
 
-        let anon_account = Account::try_from_entry(anon_e).expect("Must not fail");
+        let anon_account = Account::try_from_entry_no_groups(anon_e).expect("Must not fail");
         println!("{:?}", anon_account);
         // I think that's it? we may want to check anonymous mech ...
     }

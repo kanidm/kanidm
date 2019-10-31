@@ -103,6 +103,14 @@ struct AccountCredentialSet {
 }
 
 #[derive(Debug, StructOpt)]
+struct AccountRadiusOpt {
+    #[structopt(flatten)]
+    aopts: AccountCommonOpt,
+    #[structopt(flatten)]
+    copt: CommonOpt,
+}
+
+#[derive(Debug, StructOpt)]
 enum AccountCredential {
     #[structopt(name = "set_password")]
     SetPassword(AccountCredentialSet),
@@ -111,9 +119,21 @@ enum AccountCredential {
 }
 
 #[derive(Debug, StructOpt)]
+enum AccountRadius {
+    #[structopt(name = "show_secret")]
+    Show(AccountRadiusOpt),
+    #[structopt(name = "generate_secret")]
+    Generate(AccountRadiusOpt),
+    #[structopt(name = "delete_secret")]
+    Delete(AccountRadiusOpt),
+}
+
+#[derive(Debug, StructOpt)]
 enum AccountOpt {
     #[structopt(name = "credential")]
     Credential(AccountCredential),
+    #[structopt(name = "radius")]
+    Radius(AccountRadius),
 }
 
 #[derive(Debug, StructOpt)]
@@ -274,6 +294,32 @@ fn main() {
                     );
                 }
             }, // end AccountOpt::Credential
+            AccountOpt::Radius(aropt) => match aropt {
+                AccountRadius::Show(aopt) => {
+                    let client = aopt.copt.to_client();
+
+                    let rcred = client
+                        .idm_account_radius_credential_get(aopt.aopts.account_id.as_str())
+                        .unwrap();
+
+                    match rcred {
+                        Some(s) => println!("Radius secret: {}", s),
+                        None => println!("NO Radius secret"),
+                    }
+                }
+                AccountRadius::Generate(aopt) => {
+                    let client = aopt.copt.to_client();
+                    client
+                        .idm_account_radius_credential_regenerate(aopt.aopts.account_id.as_str())
+                        .unwrap();
+                }
+                AccountRadius::Delete(aopt) => {
+                    let client = aopt.copt.to_client();
+                    client
+                        .idm_account_radius_credential_delete(aopt.aopts.account_id.as_str())
+                        .unwrap();
+                }
+            }, // end AccountOpt::Radius
         },
     }
 }

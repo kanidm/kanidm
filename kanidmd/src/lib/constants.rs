@@ -356,6 +356,7 @@ pub static JSON_IDM_SELF_ACP_READ_V1: &'static str = r#"{
             "class",
             "memberof",
             "member",
+            "radius_secret",
             "uuid"
         ]
     }
@@ -367,7 +368,7 @@ pub static JSON_IDM_SELF_ACP_WRITE_V1: &'static str = r#"{
         "class": ["object", "access_control_profile", "access_control_modify"],
         "name": ["idm_self_acp_write"],
         "uuid": ["00000000-0000-0000-0000-ffffff000021"],
-        "description": ["Builtin IDM Control for self write - required for people to update their own identities in line with best practices."],
+        "description": ["Builtin IDM Control for self write - required for people to update their own identities and credentials in line with best practices."],
         "acp_enable": ["true"],
         "acp_receiver": [
             "{\"And\": [\"Self\", {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}, {\"Eq\": [\"uuid\", \"00000000-0000-0000-0000-ffffffffffff\"]}]}}]}"
@@ -376,10 +377,10 @@ pub static JSON_IDM_SELF_ACP_WRITE_V1: &'static str = r#"{
             "\"Self\""
         ],
         "acp_modify_removedattr": [
-            "name", "displayname", "legalname"
+            "name", "displayname", "legalname", "radius_secret", "primary_credential"
         ],
         "acp_modify_presentattr": [
-            "name", "displayname", "legalname"
+            "name", "displayname", "legalname", "radius_secret", "primary_credential"
         ]
     }
 }"#;
@@ -650,7 +651,6 @@ pub static JSON_IDM_ACP_PERSON_ACCOUNT_CREATE_V1: &'static str = r#"{
 pub static _UUID_IDM_ACP_RADIUS_SERVERS_V1: &'static str = "00000000-0000-0000-0000-ffffff000014";
 // The targetscope of this could change later to a "radius access" group or similar so we can add/remove
 //  users from having radius access easier.
-// TODO #17: Add the radius credential type that we need to read here.
 pub static JSON_IDM_ACP_RADIUS_SERVERS_V1: &'static str = r#"{
     "attrs": {
         "class": [
@@ -669,7 +669,7 @@ pub static JSON_IDM_ACP_RADIUS_SERVERS_V1: &'static str = r#"{
             "{\"And\": [{\"Pres\": \"class\"}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_search_attr": [
-            "name", "uuid"
+            "name", "uuid", "radius_secret"
         ]
     }
 }"#;
@@ -1178,7 +1178,7 @@ pub static JSON_SCHEMA_ATTR_SSH_PUBLICKEY: &'static str = r#"
         "ssh_publickey"
       ],
       "syntax": [
-        "UTF8STRING"
+        "SSHKEY"
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000042"
@@ -1250,6 +1250,35 @@ pub static JSON_SCHEMA_ATTR_LEGALNAME: &'static str = r#"{
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000050"
+      ]
+    }
+}"#;
+pub static UUID_SCHEMA_ATTR_RADIUS_SECRET: &'static str = "00000000-0000-0000-0000-ffff00000051";
+pub static JSON_SCHEMA_ATTR_RADIUS_SECRET: &'static str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "The accounts generated radius secret for device network authentication"
+      ],
+      "index": [],
+      "unique": [
+        "false"
+      ],
+      "multivalue": [
+        "false"
+      ],
+      "attributename": [
+        "radius_secret"
+      ],
+      "syntax": [
+        "RADIUS_UTF8STRING"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000051"
       ]
     }
 }"#;
@@ -1336,7 +1365,8 @@ pub static JSON_SCHEMA_CLASS_ACCOUNT: &'static str = r#"
       ],
       "systemmay": [
         "primary_credential",
-        "ssh_publickey"
+        "ssh_publickey",
+        "radius_secret"
       ],
       "systemmust": [
         "displayname",

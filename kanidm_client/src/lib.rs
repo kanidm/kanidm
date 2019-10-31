@@ -12,8 +12,9 @@ use std::io::Read;
 
 use kanidm_proto::v1::{
     AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep, CreateRequest, DeleteRequest,
-    Entry, Filter, ModifyList, ModifyRequest, OperationError, OperationResponse, SearchRequest,
-    SearchResponse, SetAuthCredential, SingleStringRequest, UserAuthToken, WhoamiResponse,
+    Entry, Filter, ModifyList, ModifyRequest, OperationError, OperationResponse, RadiusAuthToken,
+    SearchRequest, SearchResponse, SetAuthCredential, SingleStringRequest, UserAuthToken,
+    WhoamiResponse,
 };
 use serde_json;
 
@@ -153,6 +154,22 @@ impl KanidmClient {
         let r: T = response.json().unwrap();
 
         Ok(r)
+    }
+
+    fn perform_delete_request(&self, dest: &str) -> Result<(), ClientError> {
+        let dest = format!("{}{}", self.addr, dest);
+        let mut response = self
+            .client
+            .delete(dest.as_str())
+            .send()
+            .map_err(|e| ClientError::Transport(e))?;
+
+        match response.status() {
+            reqwest::StatusCode::OK => {}
+            unexpect => return Err(ClientError::Http(unexpect, response.json().ok())),
+        }
+
+        Ok(())
     }
 
     // whoami
@@ -322,6 +339,28 @@ impl KanidmClient {
             Some(p) => Ok(p),
             None => Err(ClientError::EmptyResponse),
         })
+    }
+
+    pub fn idm_account_radius_credential_get(
+        &self,
+        id: &str,
+    ) -> Result<Option<String>, ClientError> {
+        self.perform_get_request(format!("/v1/account/{}/_radius", id).as_str())
+    }
+
+    pub fn idm_account_radius_credential_regenerate(
+        &self,
+        id: &str,
+    ) -> Result<String, ClientError> {
+        self.perform_post_request(format!("/v1/account/{}/_radius", id).as_str(), ())
+    }
+
+    pub fn idm_account_radius_credential_delete(&self, id: &str) -> Result<(), ClientError> {
+        self.perform_delete_request(format!("/v1/account/{}/_radius", id).as_str())
+    }
+
+    pub fn idm_account_radius_token_get(&self, id: &str) -> Result<RadiusAuthToken, ClientError> {
+        self.perform_get_request(format!("/v1/account/{}/_radius/_token", id).as_str())
     }
 
     // ==== schema

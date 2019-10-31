@@ -3,13 +3,18 @@ use crate::constants::AUTH_SESSION_TIMEOUT;
 use crate::event::{AuthEvent, AuthEventStep, AuthResult};
 use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
-use crate::idm::event::{GeneratePasswordEvent, PasswordChangeEvent};
+use crate::idm::event::{
+    GeneratePasswordEvent, PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
+};
+use crate::idm::radius::RadiusAccount;
+use crate::server::QueryServerReadTransaction;
 use crate::server::{QueryServer, QueryServerTransaction, QueryServerWriteTransaction};
-use crate::utils::{password_from_random, uuid_from_duration, SID};
+use crate::utils::{password_from_random, readable_password_from_random, uuid_from_duration, SID};
 use crate::value::PartialValue;
 
 use kanidm_proto::v1::AuthState;
 use kanidm_proto::v1::OperationError;
+use kanidm_proto::v1::RadiusAuthToken;
 
 use concread::cowcell::{CowCell, CowCellWriteTxn};
 use std::collections::BTreeMap;
@@ -21,9 +26,6 @@ pub struct IdmServer {
     // means that limits to sessions can be easily applied and checked to
     // variaous accounts, and we have a good idea of how to structure the
     // in memory caches related to locking.
-    //
-    // TODO #60: This needs a mark-and-sweep gc to be added.
-    // use split_off()
     sessions: CowCell<BTreeMap<Uuid, AuthSession>>,
     // Need a reference to the query server.
     qs: QueryServer,
@@ -40,13 +42,11 @@ pub struct IdmServerWriteTransaction<'a> {
     sid: &'a SID,
 }
 
-/*
-pub struct IdmServerReadTransaction<'a> {
+pub struct IdmServerProxyReadTransaction {
     // This contains read-only methods, like getting users, groups
     // and other structured content.
-    qs: &'a QueryServer,
+    pub qs_read: QueryServerReadTransaction,
 }
-*/
 
 pub struct IdmServerProxyWriteTransaction<'a> {
     // This does NOT take any read to the memory content, allowing safe
@@ -72,11 +72,11 @@ impl IdmServer {
         }
     }
 
-    /*
-    pub fn read(&self) -> IdmServerReadTransaction {
-        IdmServerReadTransaction { qs: &self.qs }
+    pub fn proxy_read(&self) -> IdmServerProxyReadTransaction {
+        IdmServerProxyReadTransaction {
+            qs_read: self.qs.read(),
+        }
     }
-    */
 
     pub fn proxy_write(&self) -> IdmServerProxyWriteTransaction {
         IdmServerProxyWriteTransaction {
@@ -113,8 +113,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
 
         match &ae.step {
             AuthEventStep::Init(init) => {
-                // Allocate a session id.
-                // TODO: #60 - make this new_v1 and use the tstamp.
+                // Allocate a session id, based on current time.
                 let sessionid = uuid_from_duration(ct, self.sid);
 
                 // Begin the auth procedure!
@@ -161,7 +160,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
                 // typing and functionality so we can assess what auth types can
                 // continue, and helps to keep non-needed entry specific data
                 // out of the LRU.
-                let account = Account::try_from_entry(entry)?;
+                let account = Account::try_from_entry_ro(au, entry, &qs_read)?;
                 let auth_session = AuthSession::new(account, init.appid.clone());
 
                 // Get the set of mechanisms that can proceed. This is tied
@@ -213,11 +212,26 @@ impl<'a> IdmServerWriteTransaction<'a> {
     }
 }
 
-/*
-impl<'a> IdmServerReadTransaction<'a> {
-    pub fn whoami() -> () {}
+impl IdmServerProxyReadTransaction {
+    pub fn get_radiusauthtoken(
+        &self,
+        au: &mut AuditScope,
+        rate: &RadiusAuthTokenEvent,
+    ) -> Result<RadiusAuthToken, OperationError> {
+        // TODO: This needs to be an impersonate search!
+        let account_entry = try_audit!(
+            au,
+            self.qs_read
+                .impersonate_search_ext_uuid(au, &rate.target, &rate.event)
+        );
+        let account = try_audit!(
+            au,
+            RadiusAccount::try_from_entry_reduced(au, account_entry, &self.qs_read)
+        );
+
+        account.to_radiusauthtoken()
+    }
 }
-*/
 
 impl<'a> IdmServerProxyWriteTransaction<'a> {
     pub fn set_account_password(
@@ -227,7 +241,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     ) -> Result<(), OperationError> {
         // Get the account
         let account_entry = try_audit!(au, self.qs_write.internal_search_uuid(au, &pce.target));
-        let account = try_audit!(au, Account::try_from_entry(account_entry));
+        let account = try_audit!(
+            au,
+            Account::try_from_entry_rw(au, account_entry, &self.qs_write)
+        );
         // Ask if tis all good - this step checks pwpolicy and such
 
         // Deny the change if the account is anonymous!
@@ -289,7 +306,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     ) -> Result<String, OperationError> {
         // Get the account
         let account_entry = try_audit!(au, self.qs_write.internal_search_uuid(au, &gpe.target));
-        let account = try_audit!(au, Account::try_from_entry(account_entry));
+        let account = try_audit!(
+            au,
+            Account::try_from_entry_rw(au, account_entry, &self.qs_write)
+        );
         // Ask if tis all good - this step checks pwpolicy and such
 
         // Deny the change if the target account is anonymous!
@@ -318,7 +338,50 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 // Filter as intended (acp)
                 filter_all!(f_eq("uuid", PartialValue::new_uuidr(&gpe.target))),
                 modlist,
+                // Provide the event to impersonate
                 &gpe.event,
+            )
+        );
+
+        Ok(cleartext)
+    }
+
+    pub fn regenerate_radius_secret(
+        &mut self,
+        au: &mut AuditScope,
+        rrse: &RegenerateRadiusSecretEvent,
+    ) -> Result<String, OperationError> {
+        // regenerates and returns the radius secret
+        let account_entry = try_audit!(au, self.qs_write.internal_search_uuid(au, &rrse.target));
+        let account = try_audit!(
+            au,
+            Account::try_from_entry_rw(au, account_entry, &self.qs_write)
+        );
+        // Deny the change if the target account is anonymous!
+        if account.is_anonymous() {
+            return Err(OperationError::SystemProtectedObject);
+        }
+
+        // Difference to the password above, this is intended to be read/copied
+        // by a human wiath a keyboard in some cases.
+        let cleartext = readable_password_from_random();
+
+        // Create a modlist from the change.
+        let modlist = try_audit!(au, account.regenerate_radius_secret_mod(cleartext.as_str()));
+        audit_log!(au, "processing change {:?}", modlist);
+
+        // Apply it.
+        try_audit!(
+            au,
+            self.qs_write.impersonate_modify(
+                au,
+                // Filter as executed
+                filter!(f_eq("uuid", PartialValue::new_uuidr(&rrse.target))),
+                // Filter as intended (acp)
+                filter_all!(f_eq("uuid", PartialValue::new_uuidr(&rrse.target))),
+                modlist,
+                // Provide the event to impersonate
+                &rrse.event,
             )
         );
 
@@ -337,7 +400,9 @@ mod tests {
     use crate::constants::{AUTH_SESSION_TIMEOUT, UUID_ADMIN, UUID_ANONYMOUS};
     use crate::credential::Credential;
     use crate::event::{AuthEvent, AuthResult, ModifyEvent};
-    use crate::idm::event::PasswordChangeEvent;
+    use crate::idm::event::{
+        PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
+    };
     use crate::modify::{Modify, ModifyList};
     use crate::value::{PartialValue, Value};
     use kanidm_proto::v1::OperationError;
@@ -631,6 +696,45 @@ mod tests {
             assert!(idms_write.commit().is_ok());
             let idms_write = idms.write();
             assert!(!idms_write.is_sessionid_present(&sid));
+        })
+    }
+
+    #[test]
+    fn test_idm_regenerate_radius_secret() {
+        run_idm_test!(|_qs: &QueryServer, idms: &IdmServer, au: &mut AuditScope| {
+            let mut idms_prox_write = idms.proxy_write();
+            let rrse = RegenerateRadiusSecretEvent::new_internal(UUID_ADMIN.clone());
+
+            // Generates a new credential when none exists
+            let r1 = idms_prox_write
+                .regenerate_radius_secret(au, &rrse)
+                .expect("Failed to reset radius credential 1");
+            // Regenerates and overwrites the radius credential
+            let r2 = idms_prox_write
+                .regenerate_radius_secret(au, &rrse)
+                .expect("Failed to reset radius credential 2");
+            assert!(r1 != r2);
+        })
+    }
+
+    #[test]
+    fn test_idm_radiusauthtoken() {
+        run_idm_test!(|_qs: &QueryServer, idms: &IdmServer, au: &mut AuditScope| {
+            let mut idms_prox_write = idms.proxy_write();
+            let rrse = RegenerateRadiusSecretEvent::new_internal(UUID_ADMIN.clone());
+            let r1 = idms_prox_write
+                .regenerate_radius_secret(au, &rrse)
+                .expect("Failed to reset radius credential 1");
+            idms_prox_write.commit(au).expect("failed to commit");
+
+            let idms_prox_read = idms.proxy_read();
+            let rate = RadiusAuthTokenEvent::new_internal(UUID_ADMIN.clone());
+            let tok_r = idms_prox_read
+                .get_radiusauthtoken(au, &rate)
+                .expect("Failed to generate radius auth token");
+
+            // view the token?
+            assert!(r1 == tok_r.secret);
         })
     }
 }

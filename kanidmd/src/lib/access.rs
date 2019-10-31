@@ -46,7 +46,7 @@ lazy_static! {
 pub struct AccessControlSearch {
     acp: AccessControlProfile,
     // TODO: Should this change to Value? May help to reduce transformations during processing.
-    attrs: Vec<String>,
+    attrs: BTreeSet<String>,
 }
 
 impl AccessControlSearch {
@@ -65,7 +65,7 @@ impl AccessControlSearch {
         let attrs = try_audit!(
             audit,
             value
-                .get_ava_string("acp_search_attr")
+                .get_ava_set_string("acp_search_attr")
                 .ok_or(OperationError::InvalidACPState(
                     "Missing acp_search_attr".to_string()
                 ))
@@ -521,9 +521,20 @@ pub trait AccessControlsTransaction {
         // interface is beyond me ....
         let rec_entry: &Entry<EntryValid, EntryCommitted> = match &se.event.origin {
             EventOrigin::Internal => {
-                audit_log!(audit, "IMPOSSIBLE STATE: Internal search in external interface?! Returning empty for safety.");
-                // No need to check ACS
-                return Ok(Vec::new());
+                if cfg!(test) {
+                    audit_log!(audit, "TEST: Internal search in external interface - allowing due to cfg test ...");
+                    // In tests we just push everything back.
+                    return Ok(entries
+                        .into_iter()
+                        .map(|e| unsafe { e.to_reduced() })
+                        .collect());
+                } else {
+                    // In production we can't risk leaking data here, so we return
+                    // empty sets.
+                    audit_log!(audit, "IMPOSSIBLE STATE: Internal search in external interface?! Returning empty for safety.");
+                    // No need to check ACS
+                    return Ok(Vec::new());
+                }
             }
             EventOrigin::User(e) => &e,
         };
@@ -539,8 +550,26 @@ pub trait AccessControlsTransaction {
                 let f_val = acs.acp.receiver.clone();
                 match f_val.resolve(&se.event, None) {
                     Ok(f_res) => {
+                        // Is our user covered by this acs?
                         if rec_entry.entry_match_no_index(&f_res) {
-                            Some(acs)
+                            // If so, let's check if the attr request is relevant.
+
+                            // If we have a requested attr set, are any of them
+                            // in the attrs this acs covers?
+                            let acs_target_attrs = match &se.attrs {
+                                Some(r_attrs) => acs.attrs.intersection(r_attrs).count(),
+                                // All attrs requested, do nothing.
+                                None => acs.attrs.len(),
+                            };
+
+                            // There is nothing in the ACS (not possible) or
+                            // no overlap between the requested set and this acs, so it's
+                            // not worth evaling.
+                            if acs_target_attrs == 0 {
+                                None
+                            } else {
+                                Some(acs)
+                            }
                         } else {
                             None
                         }
@@ -561,10 +590,11 @@ pub trait AccessControlsTransaction {
             audit_log!(audit, "Related acs -> {:?}", racp.acp.name);
         });
 
-        // Get the set of attributes requested by the caller
-        // TODO #69: This currently
-        // is ALL ATTRIBUTES, so we actually work here to just remove things we
-        // CAN'T see instead.
+        // Build a reference set from the req_attrs
+        let req_attrs: Option<BTreeSet<_>> = se
+            .attrs
+            .as_ref()
+            .map(|vs| vs.iter().map(|s| s.as_str()).collect());
 
         //  For each entry
         let allowed_entries: Vec<Entry<EntryReduced, EntryCommitted>> = entries
@@ -611,12 +641,20 @@ pub trait AccessControlsTransaction {
                     })
                     .flatten()
                     .collect();
+
                 // Remove all others that are present on the entry.
                 audit_log!(audit, "-- for entry         --> {:?}", e.get_uuid());
+                audit_log!(audit, "requested attributes --> {:?}", req_attrs);
                 audit_log!(audit, "allowed attributes   --> {:?}", allowed_attrs);
 
+                // Remove anything that wasn't requested.
+                let f_allowed_attrs: BTreeSet<&str> = match &req_attrs {
+                    Some(v) => allowed_attrs.intersection(&v).map(|s| *s).collect(),
+                    None => allowed_attrs,
+                };
+
                 // Now purge the attrs that are NOT in this.
-                e.reduce_attributes(allowed_attrs)
+                e.reduce_attributes(f_allowed_attrs)
             })
             .collect();
         Ok(allowed_entries)
@@ -1789,8 +1827,10 @@ mod tests {
                 .expect("operation failed");
 
             // Help the type checker for the expect set.
-            let expect_set: Vec<Entry<EntryReduced, EntryCommitted>> =
-                $expect.into_iter().map(|e| e.to_reduced()).collect();
+            let expect_set: Vec<Entry<EntryReduced, EntryCommitted>> = $expect
+                .into_iter()
+                .map(|e| unsafe { e.to_reduced() })
+                .collect();
 
             println!("expect --> {:?}", expect_set);
             println!("result --> {:?}", reduced);
@@ -1839,6 +1879,47 @@ mod tests {
                 // In that read, admin may only view the "name" attribute, or query on
                 // the name attribute. Any other query (should be) rejected.
                 "name",
+            )
+        };
+
+        // Finally test it!
+        test_acp_search_reduce!(&se_anon, vec![acp], r_set, ex_anon);
+    }
+
+    #[test]
+    fn test_access_enforce_search_attrs_req() {
+        // Test that attributes are correctly limited by the request.
+        // In this case, we test that a user can only see "name" despite the
+        // class and uuid being present.
+        let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
+        let ev1 = unsafe { e1.to_valid_committed() };
+        let r_set = vec![ev1.clone()];
+
+        let ex1: Entry<EntryInvalid, EntryNew> =
+            Entry::unsafe_from_entry_str(JSON_TESTPERSON1_REDUCED);
+        let exv1 = unsafe { ex1.to_valid_committed() };
+        let ex_anon = vec![exv1.clone()];
+
+        let mut se_anon = unsafe {
+            SearchEvent::new_impersonate_entry_ser(
+                JSON_ANONYMOUS_V1,
+                filter_all!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
+            )
+        };
+        // the requested attrs here.
+        se_anon.attrs = Some(btreeset!["name".to_string()]);
+
+        let acp = unsafe {
+            AccessControlSearch::from_raw(
+                "test_acp",
+                "d38640c4-0254-49f9-99b7-8ba7d0233f3d",
+                // apply to anonymous only
+                filter_valid!(f_eq("name", PartialValue::new_iutf8s("anonymous"))),
+                // Allow anonymous to read only testperson1
+                filter_valid!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
+                // In that read, admin may only view the "name" attribute, or query on
+                // the name attribute. Any other query (should be) rejected.
+                "name uuid",
             )
         };
 

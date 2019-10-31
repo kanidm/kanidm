@@ -15,11 +15,14 @@ use crate::config::Configuration;
 
 // SearchResult
 use crate::actors::v1_read::QueryServerReadV1;
-use crate::actors::v1_read::{AuthMessage, InternalSearchMessage, SearchMessage, WhoamiMessage};
+use crate::actors::v1_read::{
+    AuthMessage, InternalRadiusReadMessage, InternalRadiusTokenReadMessage, InternalSearchMessage,
+    SearchMessage, WhoamiMessage,
+};
 use crate::actors::v1_write::QueryServerWriteV1;
 use crate::actors::v1_write::{
     CreateMessage, DeleteMessage, IdmAccountSetPasswordMessage, InternalCredentialSetMessage,
-    ModifyMessage,
+    InternalRegenerateRadiusMessage, ModifyMessage, PurgeAttributeMessage,
 };
 use crate::async_log;
 use crate::audit::AuditScope;
@@ -187,12 +190,17 @@ fn json_rest_event_get(
     req: HttpRequest<AppState>,
     state: State<AppState>,
     filter: Filter<FilterInvalid>,
+    attrs: Option<Vec<String>>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let uat = get_current_user(&req);
 
     // TODO: I think we'll need to change this to take an internal filter
     // type that we send to the qs.
-    let obj = InternalSearchMessage::new(uat, filter);
+    let obj = InternalSearchMessage {
+        uat: uat,
+        filter: filter,
+        attrs: attrs,
+    };
 
     let res = state.qe_r.send(obj).from_err().and_then(|res| match res {
         Ok(event_result) => Ok(HttpResponse::Ok().json(event_result)),
@@ -207,17 +215,87 @@ fn json_rest_event_get_id(
     req: HttpRequest<AppState>,
     state: State<AppState>,
     filter: Filter<FilterInvalid>,
+    attrs: Option<Vec<String>>,
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let uat = get_current_user(&req);
 
     let filter = Filter::join_parts_and(filter, filter_all!(f_id(path.as_str())));
 
-    let obj = InternalSearchMessage::new(uat, filter);
+    let obj = InternalSearchMessage {
+        uat: uat,
+        filter: filter,
+        attrs: attrs,
+    };
 
     let res = state.qe_r.send(obj).from_err().and_then(|res| match res {
         Ok(mut event_result) => {
             // Only send back the first result, or None
             Ok(HttpResponse::Ok().json(event_result.pop()))
+        }
+        Err(e) => Ok(operation_error_to_response(e)),
+    });
+
+    Box::new(res)
+}
+
+fn json_rest_event_get_id_attr(
+    path: Path<String>,
+    req: HttpRequest<AppState>,
+    state: State<AppState>,
+    filter: Filter<FilterInvalid>,
+    attr: String,
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let uat = get_current_user(&req);
+
+    let filter = Filter::join_parts_and(filter, filter_all!(f_id(path.as_str())));
+
+    let obj = InternalSearchMessage {
+        uat: uat,
+        filter: filter,
+        attrs: Some(vec![attr.clone()]),
+    };
+
+    let res = state
+        .qe_r
+        .send(obj)
+        .from_err()
+        .and_then(move |res| match res {
+            Ok(mut event_result) => {
+                // TODO: Check this only has len 1, even though that satte should be impossible.
+                // Only get one result
+                let r = event_result.pop().and_then(|mut e| {
+                    // Only get the attribute as requested.
+                    e.attrs.remove(&attr)
+                });
+                debug!("final json result {:?}", r);
+                // Only send back the first result, or None
+                Ok(HttpResponse::Ok().json(r))
+            }
+            Err(e) => Ok(operation_error_to_response(e)),
+        });
+
+    Box::new(res)
+}
+
+fn json_rest_event_delete_id_attr(
+    path: Path<String>,
+    req: HttpRequest<AppState>,
+    state: State<AppState>,
+    attr: String,
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let uat = get_current_user(&req);
+    let id = path.into_inner();
+
+    let obj = PurgeAttributeMessage {
+        uat: uat,
+        uuid_or_name: id,
+        attr: attr,
+    };
+
+    let res = state.qe_w.send(obj).from_err().and_then(|res| match res {
+        Ok(event_result) => {
+            // Only send back the first result, or None
+            Ok(HttpResponse::Ok().json(event_result))
         }
         Err(e) => Ok(operation_error_to_response(e)),
     });
@@ -299,14 +377,14 @@ fn schema_get(
         f_eq("class", PartialValue::new_class("attributetype")),
         f_eq("class", PartialValue::new_class("classtype"))
     ]));
-    json_rest_event_get(req, state, filter)
+    json_rest_event_get(req, state, filter, None)
 }
 
 fn schema_attributetype_get(
     (req, state): (HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("attributetype")));
-    json_rest_event_get(req, state, filter)
+    json_rest_event_get(req, state, filter, None)
 }
 
 fn schema_attributetype_get_id(
@@ -320,7 +398,11 @@ fn schema_attributetype_get_id(
         f_eq("attributename", PartialValue::new_iutf8s(path.as_str()))
     ]));
 
-    let obj = InternalSearchMessage::new(uat, filter);
+    let obj = InternalSearchMessage {
+        uat: uat,
+        filter: filter,
+        attrs: None,
+    };
 
     let res = state.qe_r.send(obj).from_err().and_then(|res| match res {
         Ok(mut event_result) => {
@@ -337,7 +419,7 @@ fn schema_classtype_get(
     (req, state): (HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("classtype")));
-    json_rest_event_get(req, state, filter)
+    json_rest_event_get(req, state, filter, None)
 }
 
 fn schema_classtype_get_id(
@@ -351,7 +433,11 @@ fn schema_classtype_get_id(
         f_eq("classname", PartialValue::new_iutf8s(path.as_str()))
     ]));
 
-    let obj = InternalSearchMessage::new(uat, filter);
+    let obj = InternalSearchMessage {
+        uat: uat,
+        filter: filter,
+        attrs: None,
+    };
 
     let res = state.qe_r.send(obj).from_err().and_then(|res| match res {
         Ok(mut event_result) => {
@@ -368,14 +454,14 @@ fn account_get(
     (req, state): (HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
-    json_rest_event_get(req, state, filter)
+    json_rest_event_get(req, state, filter, None)
 }
 
 fn account_get_id(
     (path, req, state): (Path<String>, HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
-    json_rest_event_get_id(path, req, state, filter)
+    json_rest_event_get_id(path, req, state, filter, None)
 }
 
 fn account_put_id_credential_primary(
@@ -385,18 +471,89 @@ fn account_put_id_credential_primary(
     json_rest_event_credential_put(id, None, req, state)
 }
 
+// Get and return a single str
+fn account_get_id_radius(
+    (path, req, state): (Path<String>, HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let uat = get_current_user(&req);
+    let id = path.into_inner();
+
+    let obj = InternalRadiusReadMessage {
+        uat: uat,
+        uuid_or_name: id,
+    };
+
+    let res = state.qe_r.send(obj).from_err().and_then(|res| match res {
+        Ok(event_result) => {
+            // Only send back the first result, or None
+            Ok(HttpResponse::Ok().json(event_result))
+        }
+        Err(e) => Ok(operation_error_to_response(e)),
+    });
+
+    Box::new(res)
+}
+
+fn account_post_id_radius_regenerate(
+    (path, req, state): (Path<String>, HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    // Need to to send the regen msg
+    let uat = get_current_user(&req);
+    let id = path.into_inner();
+
+    let obj = InternalRegenerateRadiusMessage::new(uat, id);
+
+    let res = state.qe_w.send(obj).from_err().and_then(|res| match res {
+        Ok(event_result) => {
+            // Only send back the first result, or None
+            Ok(HttpResponse::Ok().json(event_result))
+        }
+        Err(e) => Ok(operation_error_to_response(e)),
+    });
+
+    Box::new(res)
+}
+
+fn account_delete_id_radius(
+    (path, req, state): (Path<String>, HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    json_rest_event_delete_id_attr(path, req, state, "radius_secret".to_string())
+}
+
+fn account_get_id_radius_token(
+    (path, req, state): (Path<String>, HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let uat = get_current_user(&req);
+    let id = path.into_inner();
+
+    let obj = InternalRadiusTokenReadMessage {
+        uat: uat,
+        uuid_or_name: id,
+    };
+
+    let res = state.qe_r.send(obj).from_err().and_then(|res| match res {
+        Ok(event_result) => {
+            // Only send back the first result, or None
+            Ok(HttpResponse::Ok().json(event_result))
+        }
+        Err(e) => Ok(operation_error_to_response(e)),
+    });
+
+    Box::new(res)
+}
+
 fn group_get(
     (req, state): (HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
-    json_rest_event_get(req, state, filter)
+    json_rest_event_get(req, state, filter, None)
 }
 
 fn group_id_get(
     (path, req, state): (Path<String>, HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
-    json_rest_event_get_id(path, req, state, filter)
+    json_rest_event_get_id(path, req, state, filter, None)
 }
 
 fn do_nothing((_req, _state): (HttpRequest<AppState>, State<AppState>)) -> String {
@@ -972,11 +1129,19 @@ pub fn create_server_core(config: Configuration) {
             // Can we self lock?
         })
         .resource("/v1/self/_radius", |r| {
+            // Get our radius secret for manual configuration
             r.method(http::Method::GET).with(do_nothing)
-            // more to be added
+        })
+        .resource("/v1/self/_radius", |r| {
+            // delete our radius secret
+            r.method(http::Method::DELETE).with(do_nothing)
+        })
+        .resource("/v1/self/_radius", |r| {
+            // regenerate our radius secret
+            r.method(http::Method::POST).with(do_nothing)
         })
         .resource("/v1/self/_radius/_config", |r| {
-            // Create new secret_otp?
+            // Create new secret_otp for client configuration
             r.method(http::Method::POST).with(do_nothing)
         })
         .resource("/v1/self/_radius/_config/{secret_otp}", |r| {
@@ -1019,11 +1184,17 @@ pub fn create_server_core(config: Configuration) {
             // add post, delete
         })
         .resource("/v1/account/{id}/_radius", |r| {
-            r.method(http::Method::GET).with(do_nothing)
-            // more to be added
+            r.method(http::Method::GET)
+                .with_async(account_get_id_radius);
+            r.method(http::Method::POST)
+                .with_async(account_post_id_radius_regenerate);
+            r.method(http::Method::DELETE)
+                .with_async(account_delete_id_radius);
         })
+        // This is how the radius server views a json blob about the ID and radius creds.
         .resource("/v1/account/{id}/_radius/_token", |r| {
-            r.method(http::Method::GET).with(do_nothing)
+            r.method(http::Method::GET)
+                .with_async(account_get_id_radius_token)
         })
         // Groups
         .resource("/v1/group", |r| {

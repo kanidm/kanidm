@@ -6,3 +6,4 @@
 **/*.rs.bk
 test.db
 /vendor
+kanidm_rlm_python/test_data/certs/

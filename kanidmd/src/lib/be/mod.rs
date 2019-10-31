@@ -129,6 +129,8 @@ pub trait BackendTransaction {
                 }
             }
             FilterResolved::Or(l) => {
+                // Importantly if this has no inner elements, this returns
+                // an empty list.
                 let mut result = IDLBitRange::new();
                 let mut partial = false;
                 // For each filter in l
@@ -1892,6 +1894,31 @@ mod tests {
             let r = be.filter2idl(audit, f_and_andnot.to_inner(), 0).unwrap();
             match r {
                 IDL::ALLIDS => {}
+                _ => {
+                    panic!("");
+                }
+            }
+
+            //   empty or
+            let f_e_or = unsafe { filter_resolved!(f_or!([])) };
+
+            let r = be.filter2idl(audit, f_e_or.to_inner(), 0).unwrap();
+            match r {
+                IDL::Indexed(idl) => {
+                    assert!(idl == IDLBitRange::from_iter(vec![]));
+                }
+                _ => {
+                    panic!("");
+                }
+            }
+
+            let f_e_and = unsafe { filter_resolved!(f_and!([])) };
+
+            let r = be.filter2idl(audit, f_e_and.to_inner(), 0).unwrap();
+            match r {
+                IDL::Indexed(idl) => {
+                    assert!(idl == IDLBitRange::from_iter(vec![]));
+                }
                 _ => {
                     panic!("");
                 }

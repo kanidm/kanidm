@@ -8,7 +8,7 @@ macro_rules! entry_str_to_account {
             unsafe { Entry::unsafe_from_entry_str($entry_str).to_valid_new() };
         let e = unsafe { e.to_valid_committed() };
 
-        Account::try_from_entry(e).expect("Account conversion failure")
+        Account::try_from_entry_no_groups(e).expect("Account conversion failure")
     }};
 }
 

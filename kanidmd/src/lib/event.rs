@@ -1,6 +1,8 @@
 use crate::audit::AuditScope;
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryReduced, EntryValid};
 use crate::filter::{Filter, FilterValid};
+use crate::schema::SchemaTransaction;
+use crate::value::PartialValue;
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::{
     AuthCredential, AuthResponse, AuthState, AuthStep, SearchResponse, UserAuthToken,
@@ -25,6 +27,7 @@ use crate::filter::FilterInvalid;
 use crate::modify::ModifyInvalid;
 
 use actix::prelude::*;
+use std::collections::BTreeSet;
 use uuid::Uuid;
 
 #[derive(Debug)]
@@ -217,7 +220,7 @@ pub struct SearchEvent {
     pub filter: Filter<FilterValid>,
     // This is the original filter, for the purpose of ACI checking.
     pub filter_orig: Filter<FilterValid>,
-    // TODO #83: Add list of attributes to request
+    pub attrs: Option<BTreeSet<String>>,
 }
 
 impl SearchEvent {
@@ -239,6 +242,9 @@ impl SearchEvent {
                 filter_orig: f
                     .validate(qs.get_schema())
                     .map_err(|e| OperationError::SchemaViolation(e))?,
+                // We can't get this from the SearchMessage because it's annoying with the
+                // current macro design.
+                attrs: None,
             }),
             Err(e) => Err(e),
         }
@@ -249,6 +255,21 @@ impl SearchEvent {
         msg: InternalSearchMessage,
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
+        let r_attrs: Option<BTreeSet<String>> = msg.attrs.map(|vs| {
+            vs.into_iter()
+                .filter_map(|a| qs.get_schema().normalise_attr_if_exists(a.as_str()))
+                .collect()
+        });
+
+        match &r_attrs {
+            Some(s) => {
+                if s.len() == 0 {
+                    return Err(OperationError::EmptyRequest);
+                }
+            }
+            _ => {}
+        }
+
         Ok(SearchEvent {
             event: Event::from_ro_uat(audit, qs, msg.uat)?,
             // We do need to do this twice to account for the ignore_hidden
@@ -263,6 +284,7 @@ impl SearchEvent {
                 .filter
                 .validate(qs.get_schema())
                 .map_err(|e| OperationError::SchemaViolation(e))?,
+            attrs: r_attrs,
         })
     }
 
@@ -279,6 +301,26 @@ impl SearchEvent {
             filter_orig: filter_all!(f_self())
                 .validate(qs.get_schema())
                 .map_err(|e| OperationError::SchemaViolation(e))?,
+            // TODO: Should we limit this?
+            attrs: None,
+        })
+    }
+
+    pub fn from_target_uuid_request(
+        audit: &mut AuditScope,
+        uat: Option<UserAuthToken>,
+        target_uuid: Uuid,
+        qs: &QueryServerReadTransaction,
+    ) -> Result<Self, OperationError> {
+        Ok(SearchEvent {
+            event: Event::from_ro_uat(audit, qs, uat)?,
+            filter: filter!(f_eq("uuid", PartialValue::new_uuid(target_uuid.clone())))
+                .validate(qs.get_schema())
+                .map_err(|e| OperationError::SchemaViolation(e))?,
+            filter_orig: filter_all!(f_eq("uuid", PartialValue::new_uuid(target_uuid)))
+                .validate(qs.get_schema())
+                .map_err(|e| OperationError::SchemaViolation(e))?,
+            attrs: None,
         })
     }
 
@@ -289,6 +331,7 @@ impl SearchEvent {
             event: Event::from_impersonate_entry_ser(e),
             filter: filter.clone().to_valid(),
             filter_orig: filter.to_valid(),
+            attrs: None,
         }
     }
 
@@ -301,6 +344,7 @@ impl SearchEvent {
             event: Event::from_impersonate_entry(e),
             filter: filter.clone().to_valid(),
             filter_orig: filter.to_valid(),
+            attrs: None,
         }
     }
 
@@ -313,6 +357,7 @@ impl SearchEvent {
             event: Event::from_impersonate(event),
             filter: filter,
             filter_orig: filter_orig,
+            attrs: None,
         }
     }
 
@@ -351,6 +396,7 @@ impl SearchEvent {
             event: Event::from_impersonate_entry(e),
             filter: filter.clone().to_recycled().to_valid(),
             filter_orig: filter.to_valid(),
+            attrs: None,
         }
     }
 
@@ -364,6 +410,7 @@ impl SearchEvent {
             event: Event::from_impersonate_entry(e),
             filter: filter.clone().to_ignore_hidden().to_valid(),
             filter_orig: filter.to_valid(),
+            attrs: None,
         }
     }
 
@@ -373,6 +420,7 @@ impl SearchEvent {
             event: Event::from_internal(),
             filter: filter.clone().to_valid(),
             filter_orig: filter.to_valid(),
+            attrs: None,
         }
     }
 
@@ -381,6 +429,7 @@ impl SearchEvent {
             event: Event::from_internal(),
             filter: filter.clone(),
             filter_orig: filter,
+            attrs: None,
         }
     }
 }
@@ -578,6 +627,31 @@ impl ModifyEvent {
 
             Err(e) => Err(e),
         }
+    }
+
+    pub fn from_target_uuid_attr_purge(
+        audit: &mut AuditScope,
+        uat: Option<UserAuthToken>,
+        target_uuid: Uuid,
+        attr: String,
+        qs: &QueryServerWriteTransaction,
+    ) -> Result<Self, OperationError> {
+        let ml = ModifyList::new_purge(attr.as_str());
+        let f = filter_all!(f_eq("uuid", PartialValue::new_uuid(target_uuid)));
+        Ok(ModifyEvent {
+            event: Event::from_rw_uat(audit, qs, uat)?,
+            filter: f
+                .clone()
+                .to_ignore_hidden()
+                .validate(qs.get_schema())
+                .map_err(|e| OperationError::SchemaViolation(e))?,
+            filter_orig: f
+                .validate(qs.get_schema())
+                .map_err(|e| OperationError::SchemaViolation(e))?,
+            modlist: ml
+                .validate(qs.get_schema())
+                .map_err(|e| OperationError::SchemaViolation(e))?,
+        })
     }
 
     pub fn new_internal(filter: Filter<FilterValid>, modlist: ModifyList<ModifyValid>) -> Self {
