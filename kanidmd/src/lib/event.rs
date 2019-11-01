@@ -652,9 +652,13 @@ impl ModifyEvent {
         uat: Option<UserAuthToken>,
         target_uuid: Uuid,
         proto_ml: ProtoModifyList,
+        filter: Filter<FilterInvalid>,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        let f = filter_all!(f_eq("uuid", PartialValue::new_uuid(target_uuid)));
+        let f_uuid = filter_all!(f_eq("uuid", PartialValue::new_uuid(target_uuid)));
+        // Add any supplemental conditions we have.
+        let f = Filter::join_parts_and(f_uuid, filter);
+
         match ModifyList::from(audit, &proto_ml, qs) {
             Ok(m) => Ok(ModifyEvent {
                 event: Event::from_rw_uat(audit, qs, uat)?,
