@@ -137,6 +137,27 @@ enum AccountOpt {
 }
 
 #[derive(Debug, StructOpt)]
+struct GroupCreate {
+    #[structopt()]
+    name: String,
+    #[structopt(flatten)]
+    copt: CommonOpt,
+}
+
+#[derive(Debug, StructOpt)]
+enum GroupOpt {
+    #[structopt(name = "list")]
+    List(CommonOpt),
+    #[structopt(name = "create")]
+    Create(GroupCreate),
+    // #[structopt(name = "delete")]
+    // #[structopt(name = "list_members")]
+    // #[structopt(name = "set_members")]
+    // #[structopt(name = "purge_members")]
+    // #[structopt(name = "add_members")]
+}
+
+#[derive(Debug, StructOpt)]
 enum SelfOpt {
     #[structopt(name = "whoami")]
     Whoami(CommonOpt),
@@ -152,6 +173,8 @@ enum ClientOpt {
     CSelf(SelfOpt),
     #[structopt(name = "account")]
     Account(AccountOpt),
+    #[structopt(name = "group")]
+    Group(GroupOpt),
 }
 
 impl ClientOpt {
@@ -168,7 +191,19 @@ impl ClientOpt {
                 SelfOpt::SetPassword(copt) => copt.debug,
             },
             ClientOpt::Account(aopt) => match aopt {
-                _ => false,
+                AccountOpt::Credential(acopt) => match acopt {
+                    AccountCredential::SetPassword(acs) => acs.copt.debug,
+                    AccountCredential::GeneratePassword(acs) => acs.copt.debug,
+                },
+                AccountOpt::Radius(acopt) => match acopt {
+                    AccountRadius::Show(aro) => aro.copt.debug,
+                    AccountRadius::Generate(aro) => aro.copt.debug,
+                    AccountRadius::Delete(aro) => aro.copt.debug,
+                },
+            },
+            ClientOpt::Group(gopt) => match gopt {
+                GroupOpt::List(copt) => copt.debug,
+                GroupOpt::Create(gcopt) => gcopt.copt.debug,
             },
         }
     }
@@ -320,6 +355,19 @@ fn main() {
                         .unwrap();
                 }
             }, // end AccountOpt::Radius
-        },
+        }, // end Account
+        ClientOpt::Group(gopt) => match gopt {
+            GroupOpt::List(copt) => {
+                let client = copt.to_client();
+                let r = client.idm_group_list().unwrap();
+                for e in r {
+                    println!("{:?}", e);
+                }
+            }
+            GroupOpt::Create(gcopt) => {
+                let client = gcopt.copt.to_client();
+                client.idm_group_create(gcopt.name.as_str()).unwrap();
+            }
+        }, // end Group
     }
 }
