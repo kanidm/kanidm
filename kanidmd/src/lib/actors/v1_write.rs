@@ -153,6 +153,7 @@ pub struct PurgeAttributeMessage {
     pub uat: Option<UserAuthToken>,
     pub uuid_or_name: String,
     pub attr: String,
+    pub filter: Filter<FilterInvalid>,
 }
 
 impl Message for PurgeAttributeMessage {
@@ -164,6 +165,7 @@ pub struct AppendAttributeMessage {
     pub uuid_or_name: String,
     pub attr: String,
     pub values: Vec<String>,
+    pub filter: Filter<FilterInvalid>,
 }
 
 impl Message for AppendAttributeMessage {
@@ -175,6 +177,7 @@ pub struct SetAttributeMessage {
     pub uuid_or_name: String,
     pub attr: String,
     pub values: Vec<String>,
+    pub filter: Filter<FilterInvalid>,
 }
 
 impl Message for SetAttributeMessage {
@@ -216,12 +219,14 @@ impl QueryServerWriteV1 {
             QueryServerWriteV1::new(log.clone(), query_server.clone(), idms.clone())
         })
     }
+
     fn modify_from_parts(
         &mut self,
         audit: &mut AuditScope,
         uat: Option<UserAuthToken>,
         uuid_or_name: String,
         proto_ml: ProtoModifyList,
+        filter: Filter<FilterInvalid>,
     ) -> Result<(), OperationError> {
         let mut qs_write = self.qs.write();
 
@@ -235,13 +240,14 @@ impl QueryServerWriteV1 {
                 })?,
         };
 
-        let mdf = match ModifyEvent::from_parts(audit, uat, target_uuid, proto_ml, &qs_write) {
-            Ok(m) => m,
-            Err(e) => {
-                audit_log!(audit, "Failed to begin modify: {:?}", e);
-                return Err(e);
-            }
-        };
+        let mdf =
+            match ModifyEvent::from_parts(audit, uat, target_uuid, proto_ml, filter, &qs_write) {
+                Ok(m) => m,
+                Err(e) => {
+                    audit_log!(audit, "Failed to begin modify: {:?}", e);
+                    return Err(e);
+                }
+            };
 
         audit_log!(audit, "Begin modify event {:?}", mdf);
 
@@ -532,6 +538,7 @@ impl Handler<PurgeAttributeMessage> for QueryServerWriteV1 {
                 msg.uat,
                 target_uuid,
                 msg.attr,
+                msg.filter,
                 &qs_write,
             ) {
                 Ok(m) => m,
@@ -559,10 +566,11 @@ impl Handler<AppendAttributeMessage> for QueryServerWriteV1 {
         let mut audit = AuditScope::new("append_attribute");
         let res = audit_segment!(&mut audit, || {
             let AppendAttributeMessage {
-                uat: uat,
-                uuid_or_name: uuid_or_name,
-                attr: attr,
-                values: values,
+                uat,
+                uuid_or_name,
+                attr,
+                values,
+                filter,
             } = msg;
             // We need to turn these into proto modlists so they can be converted
             // and validated.
@@ -572,7 +580,7 @@ impl Handler<AppendAttributeMessage> for QueryServerWriteV1 {
                     .map(|v| ProtoModify::Present(attr.clone(), v))
                     .collect(),
             );
-            self.modify_from_parts(&mut audit, uat, uuid_or_name, proto_ml)
+            self.modify_from_parts(&mut audit, uat, uuid_or_name, proto_ml, filter)
         });
         self.log.do_send(audit);
         res
@@ -586,10 +594,11 @@ impl Handler<SetAttributeMessage> for QueryServerWriteV1 {
         let mut audit = AuditScope::new("set_attribute");
         let res = audit_segment!(&mut audit, || {
             let SetAttributeMessage {
-                uat: uat,
-                uuid_or_name: uuid_or_name,
-                attr: attr,
-                values: values,
+                uat,
+                uuid_or_name,
+                attr,
+                values,
+                filter,
             } = msg;
             // We need to turn these into proto modlists so they can be converted
             // and validated.
@@ -602,7 +611,7 @@ impl Handler<SetAttributeMessage> for QueryServerWriteV1 {
                     )
                     .collect(),
             );
-            self.modify_from_parts(&mut audit, uat, uuid_or_name, proto_ml)
+            self.modify_from_parts(&mut audit, uat, uuid_or_name, proto_ml, filter)
         });
         self.log.do_send(audit);
         res

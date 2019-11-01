@@ -382,6 +382,7 @@ fn json_rest_event_post_id_attr(
                             uuid_or_name: id,
                             attr: attr,
                             values: obj,
+                            filter: filter,
                         };
                         // Add a msg here
                         let res = state.qe_w.send(m_obj).from_err().and_then(|res| match res {
@@ -431,6 +432,7 @@ fn json_rest_event_put_id_attr(
                             uuid_or_name: id,
                             attr: attr,
                             values: obj,
+                            filter: filter,
                         };
                         let res = state.qe_w.send(m_obj).from_err().and_then(|res| match res {
                             Ok(_) => Ok(HttpResponse::Ok().json(())),
@@ -463,6 +465,7 @@ fn json_rest_event_delete_id_attr(
         uat: uat,
         uuid_or_name: id,
         attr: attr,
+        filter: filter,
     };
 
     let res = state.qe_w.send(obj).from_err().and_then(|res| match res {
