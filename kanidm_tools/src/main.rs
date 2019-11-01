@@ -137,9 +137,19 @@ enum AccountOpt {
 }
 
 #[derive(Debug, StructOpt)]
-struct GroupCreate {
+struct GroupNamed {
     #[structopt()]
     name: String,
+    #[structopt(flatten)]
+    copt: CommonOpt,
+}
+
+#[derive(Debug, StructOpt)]
+struct GroupNamedMembers {
+    #[structopt()]
+    name: String,
+    #[structopt()]
+    members: Vec<String>,
     #[structopt(flatten)]
     copt: CommonOpt,
 }
@@ -149,12 +159,17 @@ enum GroupOpt {
     #[structopt(name = "list")]
     List(CommonOpt),
     #[structopt(name = "create")]
-    Create(GroupCreate),
-    // #[structopt(name = "delete")]
-    // #[structopt(name = "list_members")]
-    // #[structopt(name = "set_members")]
-    // #[structopt(name = "purge_members")]
-    // #[structopt(name = "add_members")]
+    Create(GroupNamed),
+    #[structopt(name = "delete")]
+    Delete(GroupNamed),
+    #[structopt(name = "list_members")]
+    ListMembers(GroupNamed),
+    #[structopt(name = "set_members")]
+    SetMembers(GroupNamedMembers),
+    #[structopt(name = "purge_members")]
+    PurgeMembers(GroupNamed),
+    #[structopt(name = "add_members")]
+    AddMembers(GroupNamedMembers),
 }
 
 #[derive(Debug, StructOpt)]
@@ -204,6 +219,11 @@ impl ClientOpt {
             ClientOpt::Group(gopt) => match gopt {
                 GroupOpt::List(copt) => copt.debug,
                 GroupOpt::Create(gcopt) => gcopt.copt.debug,
+                GroupOpt::Delete(gcopt) => gcopt.copt.debug,
+                GroupOpt::ListMembers(gcopt) => gcopt.copt.debug,
+                GroupOpt::AddMembers(gcopt) => gcopt.copt.debug,
+                GroupOpt::SetMembers(gcopt) => gcopt.copt.debug,
+                GroupOpt::PurgeMembers(gcopt) => gcopt.copt.debug,
             },
         }
     }
@@ -367,6 +387,42 @@ fn main() {
             GroupOpt::Create(gcopt) => {
                 let client = gcopt.copt.to_client();
                 client.idm_group_create(gcopt.name.as_str()).unwrap();
+            }
+            GroupOpt::Delete(gcopt) => {
+                let client = gcopt.copt.to_client();
+                client.idm_group_delete(gcopt.name.as_str()).unwrap();
+            }
+            GroupOpt::PurgeMembers(gcopt) => {
+                let client = gcopt.copt.to_client();
+                client.idm_group_purge_members(gcopt.name.as_str()).unwrap();
+            }
+            GroupOpt::ListMembers(gcopt) => {
+                let client = gcopt.copt.to_client();
+                let members = client.idm_group_get_members(gcopt.name.as_str()).unwrap();
+                match members {
+                    Some(groups) => {
+                        for m in groups {
+                            println!("{:?}", m);
+                        }
+                    }
+                    None => {}
+                }
+            }
+            GroupOpt::AddMembers(gcopt) => {
+                let client = gcopt.copt.to_client();
+                let new_members: Vec<&str> = gcopt.members.iter().map(|s| s.as_str()).collect();
+
+                client
+                    .idm_group_add_members(gcopt.name.as_str(), new_members)
+                    .unwrap();
+            }
+            GroupOpt::SetMembers(gcopt) => {
+                let client = gcopt.copt.to_client();
+                let new_members: Vec<&str> = gcopt.members.iter().map(|s| s.as_str()).collect();
+
+                client
+                    .idm_group_set_members(gcopt.name.as_str(), new_members)
+                    .unwrap();
             }
         }, // end Group
     }
