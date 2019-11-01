@@ -13,6 +13,8 @@ use crate::idm::server::IdmServer;
 use crate::server::{QueryServer, QueryServerTransaction};
 
 use kanidm_proto::v1::Entry as ProtoEntry;
+use kanidm_proto::v1::Modify as ProtoModify;
+use kanidm_proto::v1::ModifyList as ProtoModifyList;
 use kanidm_proto::v1::{
     CreateRequest, DeleteRequest, ModifyRequest, OperationResponse, SetAuthCredential,
     SingleStringRequest, UserAuthToken,
@@ -213,6 +215,39 @@ impl QueryServerWriteV1 {
         SyncArbiter::start(1, move || {
             QueryServerWriteV1::new(log.clone(), query_server.clone(), idms.clone())
         })
+    }
+    fn modify_from_parts(
+        &mut self,
+        audit: &mut AuditScope,
+        uat: Option<UserAuthToken>,
+        uuid_or_name: String,
+        proto_ml: ProtoModifyList,
+    ) -> Result<(), OperationError> {
+        let mut qs_write = self.qs.write();
+
+        let target_uuid = match Uuid::parse_str(uuid_or_name.as_str()) {
+            Ok(u) => u,
+            Err(_) => qs_write
+                .name_to_uuid(audit, uuid_or_name.as_str())
+                .map_err(|e| {
+                    audit_log!(audit, "Error resolving id to target");
+                    e
+                })?,
+        };
+
+        let mdf = match ModifyEvent::from_parts(audit, uat, target_uuid, proto_ml, &qs_write) {
+            Ok(m) => m,
+            Err(e) => {
+                audit_log!(audit, "Failed to begin modify: {:?}", e);
+                return Err(e);
+            }
+        };
+
+        audit_log!(audit, "Begin modify event {:?}", mdf);
+
+        qs_write
+            .modify(audit, &mdf)
+            .and_then(|_| qs_write.commit(audit).map(|_| ()))
     }
 }
 
@@ -522,9 +557,25 @@ impl Handler<AppendAttributeMessage> for QueryServerWriteV1 {
 
     fn handle(&mut self, msg: AppendAttributeMessage, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("append_attribute");
-        // We need to turn these into proto modlists, then do a from_parts
-        // on ModifyEvent.
-        unimplemented!();
+        let res = audit_segment!(&mut audit, || {
+            let AppendAttributeMessage {
+                uat: uat,
+                uuid_or_name: uuid_or_name,
+                attr: attr,
+                values: values,
+            } = msg;
+            // We need to turn these into proto modlists so they can be converted
+            // and validated.
+            let proto_ml = ProtoModifyList::new_list(
+                values
+                    .into_iter()
+                    .map(|v| ProtoModify::Present(attr.clone(), v))
+                    .collect(),
+            );
+            self.modify_from_parts(&mut audit, uat, uuid_or_name, proto_ml)
+        });
+        self.log.do_send(audit);
+        res
     }
 }
 
@@ -533,7 +584,28 @@ impl Handler<SetAttributeMessage> for QueryServerWriteV1 {
 
     fn handle(&mut self, msg: SetAttributeMessage, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("set_attribute");
-        unimplemented!();
+        let res = audit_segment!(&mut audit, || {
+            let SetAttributeMessage {
+                uat: uat,
+                uuid_or_name: uuid_or_name,
+                attr: attr,
+                values: values,
+            } = msg;
+            // We need to turn these into proto modlists so they can be converted
+            // and validated.
+            let proto_ml = ProtoModifyList::new_list(
+                std::iter::once(ProtoModify::Purged(attr.clone()))
+                    .chain(
+                        values
+                            .into_iter()
+                            .map(|v| ProtoModify::Present(attr.clone(), v)),
+                    )
+                    .collect(),
+            );
+            self.modify_from_parts(&mut audit, uat, uuid_or_name, proto_ml)
+        });
+        self.log.do_send(audit);
+        res
     }
 }
 

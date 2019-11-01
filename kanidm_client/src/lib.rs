@@ -303,24 +303,18 @@ impl KanidmClient {
         self.perform_get_request(format!("/v1/group/{}", id).as_str())
     }
 
-    pub fn idm_group_get_members(&self, id: &str) -> Result<Vec<String>, ClientError> {
+    pub fn idm_group_get_members(&self, id: &str) -> Result<Option<Vec<String>>, ClientError> {
         self.perform_get_request(format!("/v1/group/{}/_attr/member", id).as_str())
     }
 
     pub fn idm_group_set_members(&self, id: &str, members: Vec<&str>) -> Result<(), ClientError> {
-        let m: Vec<_> =
-            members.iter().map(|v| v.to_string()).collect();
-        self.perform_put_request(format!("/v1/group/{}/_attr/member", id).as_str(),
-            m
-        )
+        let m: Vec<_> = members.iter().map(|v| v.to_string()).collect();
+        self.perform_put_request(format!("/v1/group/{}/_attr/member", id).as_str(), m)
     }
 
     pub fn idm_group_add_members(&self, id: &str, members: Vec<&str>) -> Result<(), ClientError> {
-        let m: Vec<_> =
-            members.iter().map(|v| v.to_string()).collect();
-        self.perform_post_request(format!("/v1/group/{}/_attr/member", id).as_str(),
-            m
-        )
+        let m: Vec<_> = members.iter().map(|v| v.to_string()).collect();
+        self.perform_post_request(format!("/v1/group/{}/_attr/member", id).as_str(), m)
     }
 
     /*

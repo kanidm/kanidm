@@ -4,6 +4,8 @@ use crate::filter::{Filter, FilterInvalid, FilterValid};
 use crate::schema::SchemaTransaction;
 use crate::value::PartialValue;
 use kanidm_proto::v1::Entry as ProtoEntry;
+use kanidm_proto::v1::Modify as ProtoModify;
+use kanidm_proto::v1::ModifyList as ProtoModifyList;
 use kanidm_proto::v1::{
     AuthCredential, AuthResponse, AuthState, AuthStep, SearchResponse, UserAuthToken,
     WhoamiResponse,
@@ -642,6 +644,33 @@ impl ModifyEvent {
                 Err(e) => Err(e),
             },
 
+            Err(e) => Err(e),
+        }
+    }
+
+    pub fn from_parts(
+        audit: &mut AuditScope,
+        uat: Option<UserAuthToken>,
+        target_uuid: Uuid,
+        proto_ml: ProtoModifyList,
+        qs: &QueryServerWriteTransaction,
+    ) -> Result<Self, OperationError> {
+        let f = filter_all!(f_eq("uuid", PartialValue::new_uuid(target_uuid)));
+        match ModifyList::from(audit, &proto_ml, qs) {
+            Ok(m) => Ok(ModifyEvent {
+                event: Event::from_rw_uat(audit, qs, uat)?,
+                filter: f
+                    .clone()
+                    .to_ignore_hidden()
+                    .validate(qs.get_schema())
+                    .map_err(|e| OperationError::SchemaViolation(e))?,
+                filter_orig: f
+                    .validate(qs.get_schema())
+                    .map_err(|e| OperationError::SchemaViolation(e))?,
+                modlist: m
+                    .validate(qs.get_schema())
+                    .map_err(|e| OperationError::SchemaViolation(e))?,
+            }),
             Err(e) => Err(e),
         }
     }

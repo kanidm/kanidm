@@ -391,12 +391,10 @@ fn json_rest_event_post_id_attr(
 
                         Box::new(res)
                     }
-                    Err(e) => {
-                        Box::new(future::err(error::ErrorBadRequest(format!(
-                            "Json Decode Failed: {:?}",
-                            e
-                        ))))
-                    }
+                    Err(e) => Box::new(future::err(error::ErrorBadRequest(format!(
+                        "Json Decode Failed: {:?}",
+                        e
+                    )))),
                 } // end match
             },
         ) // end and_then
@@ -1454,7 +1452,8 @@ pub fn create_server_core(config: Configuration) {
             r.method(http::Method::GET).with_async(group_id_get_attr);
             r.method(http::Method::POST).with_async(group_id_post_attr);
             r.method(http::Method::PUT).with_async(group_id_put_attr);
-            r.method(http::Method::DELETE).with_async(group_id_delete_attr);
+            r.method(http::Method::DELETE)
+                .with_async(group_id_delete_attr);
         })
         // Claims
         // TBD
