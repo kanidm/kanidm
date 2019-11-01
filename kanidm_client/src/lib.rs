@@ -1,4 +1,4 @@
-// #![deny(warnings)]
+#![deny(warnings)]
 #![warn(unused_extern_crates)]
 
 #[macro_use]
@@ -344,6 +344,30 @@ impl KanidmClient {
     // ==== accounts
     pub fn idm_account_list(&self) -> Result<Vec<Entry>, ClientError> {
         self.perform_get_request("/v1/account")
+    }
+
+    pub fn idm_account_create(&self, name: &str, dn: &str) -> Result<(), ClientError> {
+        let mut new_acct = Entry {
+            attrs: BTreeMap::new(),
+        };
+        new_acct
+            .attrs
+            .insert("name".to_string(), vec![name.to_string()]);
+        new_acct
+            .attrs
+            .insert("displayname".to_string(), vec![dn.to_string()]);
+        self.perform_post_request(format!("/v1/account").as_str(), new_acct)
+    }
+
+    pub fn idm_account_set_displayname(&self, id: &str, dn: &str) -> Result<(), ClientError> {
+        self.perform_put_request(
+            format!("/v1/account/{}/_attr/displayname", id).as_str(),
+            vec![dn.to_string()],
+        )
+    }
+
+    pub fn idm_account_delete(&self, id: &str) -> Result<(), ClientError> {
+        self.perform_delete_request(format!("/v1/account/{}", id).as_str())
     }
 
     pub fn idm_account_get(&self, id: &str) -> Result<Option<Entry>, ClientError> {

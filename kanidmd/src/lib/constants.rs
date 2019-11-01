@@ -474,7 +474,8 @@ pub static JSON_IDM_ACP_PEOPLE_WRITE_PRIV_V1: &'static str = r#"{
         "class": [
             "object",
             "access_control_profile",
-            "access_control_modify"
+            "access_control_modify",
+            "access_control_delete"
         ],
         "name": ["idm_acp_people_write_priv"],
         "uuid": ["00000000-0000-0000-0000-ffffff000008"],
@@ -559,7 +560,8 @@ pub static JSON_IDM_ACP_ACCOUNT_WRITE_PRIV_V1: &'static str = r#"{
         "class": [
             "object",
             "access_control_profile",
-            "access_control_modify"
+            "access_control_modify",
+            "access_control_delete"
         ],
         "name": ["idm_acp_account_write_priv"],
         "uuid": ["00000000-0000-0000-0000-ffffff000011"],

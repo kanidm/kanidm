@@ -37,7 +37,7 @@ static ADMIN_TEST_PASSWORD_CHANGE: &'static str = "integration test admin newðŸŽ
 // Test external behaviorus of the service.
 
 fn run_test(test_fn: fn(KanidmClient) -> ()) {
-    ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
+    // ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
     let _ = env_logger::builder().is_test(true).try_init();
     let (tx, rx) = mpsc::channel();
     let port = PORT_ALLOC.fetch_add(1, Ordering::SeqCst);
@@ -440,6 +440,35 @@ fn test_server_radius_credential_lifecycle() {
         // No secret
         let n_sec = rsclient.idm_account_radius_credential_get("admin").unwrap();
         assert!(n_sec.is_none());
+    });
+}
+
+#[test]
+fn test_server_rest_account_lifecycle() {
+    run_test(|rsclient: KanidmClient| {
+        let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
+        assert!(res.is_ok());
+        // To enable the admin to actually make some of these changes, we have
+        // to make them a people admin. NOT recommended in production!
+        rsclient
+            .idm_group_add_members("idm_account_write_priv", vec!["admin"])
+            .unwrap();
+
+        // Create a new account
+        rsclient
+            .idm_account_create("demo_account", "Deeeeemo")
+            .unwrap();
+
+        // View the account
+        rsclient.idm_account_get("demo_account").unwrap();
+
+        // change the name?
+        rsclient
+            .idm_account_set_displayname("demo_account", "Demo Account")
+            .unwrap();
+
+        // Delete the account
+        rsclient.idm_account_delete("demo_account").unwrap();
     });
 }
 

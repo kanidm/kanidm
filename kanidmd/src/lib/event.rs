@@ -4,7 +4,6 @@ use crate::filter::{Filter, FilterInvalid, FilterValid};
 use crate::schema::SchemaTransaction;
 use crate::value::PartialValue;
 use kanidm_proto::v1::Entry as ProtoEntry;
-use kanidm_proto::v1::Modify as ProtoModify;
 use kanidm_proto::v1::ModifyList as ProtoModifyList;
 use kanidm_proto::v1::{
     AuthCredential, AuthResponse, AuthState, AuthStep, SearchResponse, UserAuthToken,

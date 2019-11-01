@@ -637,11 +637,62 @@ fn account_post(
     json_rest_event_post(req, state, classes)
 }
 
-fn account_get_id(
+fn account_id_get(
     (path, req, state): (Path<String>, HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
     json_rest_event_get_id(path, req, state, filter, None)
+}
+
+fn account_id_get_attr(
+    (path, req, state): (
+        Path<(String, String)>,
+        HttpRequest<AppState>,
+        State<AppState>,
+    ),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
+    json_rest_event_get_id_attr(path, req, state, filter)
+}
+
+fn account_id_post_attr(
+    (path, req, state): (
+        Path<(String, String)>,
+        HttpRequest<AppState>,
+        State<AppState>,
+    ),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
+    json_rest_event_post_id_attr(path, req, state, filter)
+}
+
+fn account_id_delete_attr(
+    (path, req, state): (
+        Path<(String, String)>,
+        HttpRequest<AppState>,
+        State<AppState>,
+    ),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
+    json_rest_event_delete_id_attr(path, req, state, filter)
+}
+
+fn account_id_put_attr(
+    (path, req, state): (
+        Path<(String, String)>,
+        HttpRequest<AppState>,
+        State<AppState>,
+    ),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
+    json_rest_event_put_id_attr(path, req, state, filter)
+}
+
+fn account_id_delete(
+    (path, req, state): (Path<String>, HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
+    json_rest_event_delete_id(path, req, state, filter)
 }
 
 fn account_put_id_credential_primary(
@@ -1396,14 +1447,20 @@ pub fn create_server_core(config: Configuration) {
         // Accounts
         .resource("/v1/account", |r| {
             r.method(http::Method::GET).with_async(account_get);
-            r.method(http::Method::GET).with_async(account_post);
+            r.method(http::Method::POST).with_async(account_post);
         })
         .resource("/v1/account/{id}", |r| {
-            r.method(http::Method::GET).with_async(account_get_id)
+            r.method(http::Method::GET).with_async(account_id_get);
+            r.method(http::Method::DELETE).with_async(account_id_delete);
             // add put, patch, delete
         })
         .resource("/v1/account/{id}/_attr/{attr}", |r| {
-            r.method(http::Method::GET).with(do_nothing)
+            r.method(http::Method::GET).with_async(account_id_get_attr);
+            r.method(http::Method::POST)
+                .with_async(account_id_post_attr);
+            r.method(http::Method::PUT).with_async(account_id_put_attr);
+            r.method(http::Method::DELETE)
+                .with_async(account_id_delete_attr);
             // add put post delete
         })
         .resource("/v1/account/{id}/_lock", |r| {
