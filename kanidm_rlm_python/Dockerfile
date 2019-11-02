@@ -14,6 +14,7 @@ COPY entrypoint.py /entrypoint.py
 
 # Copy in the python changes, as well as the default/inner-tunnel changes
 COPY mod-python /etc/raddb/mods-available/python
+COPY eap /etc/raddb/mods-available/eap
 COPY default /etc/raddb/sites-available/default
 COPY inner-tunnel /etc/raddb/sites-available/inner-tunnel
 
