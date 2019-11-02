@@ -87,7 +87,7 @@ fn test_server_create() {
         let e: Entry = serde_json::from_str(
             r#"{
             "attrs": {
-                "class": ["person", "account"],
+                "class": ["account"],
                 "name": ["testperson"],
                 "displayname": ["testperson"]
             }
@@ -234,7 +234,7 @@ fn test_server_admin_reset_simple_password() {
         let e: Entry = serde_json::from_str(
             r#"{
             "attrs": {
-                "class": ["person", "account"],
+                "class": ["account"],
                 "name": ["testperson"],
                 "displayname": ["testperson"]
             }
@@ -247,10 +247,10 @@ fn test_server_admin_reset_simple_password() {
         assert!(res.is_ok());
         // By default, admin's can't actually administer accounts, so mod them into
         // the account admin group.
-        let f = Filter::Eq("name".to_string(), "idm_account_write_priv".to_string());
+        let f = Filter::Eq("name".to_string(), "idm_admins".to_string());
         let m = ModifyList::new_list(vec![Modify::Present(
             "member".to_string(),
-            "idm_admins".to_string(),
+            "system_admins".to_string(),
         )]);
         let res = rsclient.modify(f.clone(), m.clone());
         assert!(res.is_ok());
@@ -352,7 +352,7 @@ fn test_server_rest_group_lifecycle() {
         // They should have members
         let members = rsclient.idm_group_get_members("idm_admins").unwrap();
         println!("{:?}", members);
-        assert!(members == Some(vec!["admin".to_string()]));
+        assert!(members == Some(vec!["idm_admin".to_string()]));
     });
 }
 
