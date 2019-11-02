@@ -7,6 +7,7 @@ extern crate log;
 use reqwest;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::Read;
 
@@ -302,9 +303,71 @@ impl KanidmClient {
         self.perform_get_request(format!("/v1/group/{}", id).as_str())
     }
 
+    pub fn idm_group_get_members(&self, id: &str) -> Result<Option<Vec<String>>, ClientError> {
+        self.perform_get_request(format!("/v1/group/{}/_attr/member", id).as_str())
+    }
+
+    pub fn idm_group_set_members(&self, id: &str, members: Vec<&str>) -> Result<(), ClientError> {
+        let m: Vec<_> = members.iter().map(|v| v.to_string()).collect();
+        self.perform_put_request(format!("/v1/group/{}/_attr/member", id).as_str(), m)
+    }
+
+    pub fn idm_group_add_members(&self, id: &str, members: Vec<&str>) -> Result<(), ClientError> {
+        let m: Vec<_> = members.iter().map(|v| v.to_string()).collect();
+        self.perform_post_request(format!("/v1/group/{}/_attr/member", id).as_str(), m)
+    }
+
+    /*
+    pub fn idm_group_remove_member(&self, id: &str, member: &str) -> Result<(), ClientError> {
+        unimplemented!();
+    }
+    */
+
+    pub fn idm_group_purge_members(&self, id: &str) -> Result<(), ClientError> {
+        self.perform_delete_request(format!("/v1/group/{}/_attr/member", id).as_str())
+    }
+
+    pub fn idm_group_delete(&self, id: &str) -> Result<(), ClientError> {
+        self.perform_delete_request(format!("/v1/group/{}", id).as_str())
+    }
+
+    pub fn idm_group_create(&self, name: &str) -> Result<(), ClientError> {
+        let mut new_group = Entry {
+            attrs: BTreeMap::new(),
+        };
+        new_group
+            .attrs
+            .insert("name".to_string(), vec![name.to_string()]);
+        self.perform_post_request(format!("/v1/group").as_str(), new_group)
+    }
+
     // ==== accounts
     pub fn idm_account_list(&self) -> Result<Vec<Entry>, ClientError> {
         self.perform_get_request("/v1/account")
+    }
+
+    pub fn idm_account_create(&self, name: &str, dn: &str) -> Result<(), ClientError> {
+        let mut new_acct = Entry {
+            attrs: BTreeMap::new(),
+        };
+        new_acct
+            .attrs
+            .insert("name".to_string(), vec![name.to_string()]);
+        new_acct
+            .attrs
+            .insert("displayname".to_string(), vec![dn.to_string()]);
+        self.perform_post_request(format!("/v1/account").as_str(), new_acct)
+    }
+
+    pub fn idm_account_set_displayname(&self, id: &str, dn: &str) -> Result<(), ClientError> {
+        self.perform_put_request(
+            format!("/v1/account/{}/_attr/displayname", id).as_str(),
+            vec![dn.to_string()],
+        )
+    }
+
+    pub fn idm_account_delete(&self, id: &str) -> Result<(), ClientError> {
+        self.perform_delete_request(format!("/v1/account/{}", id).as_str())
     }
 
     pub fn idm_account_get(&self, id: &str) -> Result<Option<Entry>, ClientError> {

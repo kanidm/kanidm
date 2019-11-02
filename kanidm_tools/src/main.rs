@@ -103,9 +103,19 @@ struct AccountCredentialSet {
 }
 
 #[derive(Debug, StructOpt)]
-struct AccountRadiusOpt {
+struct AccountNamedOpt {
     #[structopt(flatten)]
     aopts: AccountCommonOpt,
+    #[structopt(flatten)]
+    copt: CommonOpt,
+}
+
+#[derive(Debug, StructOpt)]
+struct AccountCreateOpt {
+    #[structopt(flatten)]
+    aopts: AccountCommonOpt,
+    #[structopt(name = "display_name")]
+    display_name: String,
     #[structopt(flatten)]
     copt: CommonOpt,
 }
@@ -121,11 +131,11 @@ enum AccountCredential {
 #[derive(Debug, StructOpt)]
 enum AccountRadius {
     #[structopt(name = "show_secret")]
-    Show(AccountRadiusOpt),
+    Show(AccountNamedOpt),
     #[structopt(name = "generate_secret")]
-    Generate(AccountRadiusOpt),
+    Generate(AccountNamedOpt),
     #[structopt(name = "delete_secret")]
-    Delete(AccountRadiusOpt),
+    Delete(AccountNamedOpt),
 }
 
 #[derive(Debug, StructOpt)]
@@ -134,6 +144,50 @@ enum AccountOpt {
     Credential(AccountCredential),
     #[structopt(name = "radius")]
     Radius(AccountRadius),
+    #[structopt(name = "list")]
+    List(CommonOpt),
+    #[structopt(name = "get")]
+    Get(AccountNamedOpt),
+    #[structopt(name = "create")]
+    Create(AccountCreateOpt),
+    #[structopt(name = "delete")]
+    Delete(AccountNamedOpt),
+}
+
+#[derive(Debug, StructOpt)]
+struct GroupNamed {
+    #[structopt()]
+    name: String,
+    #[structopt(flatten)]
+    copt: CommonOpt,
+}
+
+#[derive(Debug, StructOpt)]
+struct GroupNamedMembers {
+    #[structopt()]
+    name: String,
+    #[structopt()]
+    members: Vec<String>,
+    #[structopt(flatten)]
+    copt: CommonOpt,
+}
+
+#[derive(Debug, StructOpt)]
+enum GroupOpt {
+    #[structopt(name = "list")]
+    List(CommonOpt),
+    #[structopt(name = "create")]
+    Create(GroupNamed),
+    #[structopt(name = "delete")]
+    Delete(GroupNamed),
+    #[structopt(name = "list_members")]
+    ListMembers(GroupNamed),
+    #[structopt(name = "set_members")]
+    SetMembers(GroupNamedMembers),
+    #[structopt(name = "purge_members")]
+    PurgeMembers(GroupNamed),
+    #[structopt(name = "add_members")]
+    AddMembers(GroupNamedMembers),
 }
 
 #[derive(Debug, StructOpt)]
@@ -152,6 +206,8 @@ enum ClientOpt {
     CSelf(SelfOpt),
     #[structopt(name = "account")]
     Account(AccountOpt),
+    #[structopt(name = "group")]
+    Group(GroupOpt),
 }
 
 impl ClientOpt {
@@ -168,7 +224,28 @@ impl ClientOpt {
                 SelfOpt::SetPassword(copt) => copt.debug,
             },
             ClientOpt::Account(aopt) => match aopt {
-                _ => false,
+                AccountOpt::Credential(acopt) => match acopt {
+                    AccountCredential::SetPassword(acs) => acs.copt.debug,
+                    AccountCredential::GeneratePassword(acs) => acs.copt.debug,
+                },
+                AccountOpt::Radius(acopt) => match acopt {
+                    AccountRadius::Show(aro) => aro.copt.debug,
+                    AccountRadius::Generate(aro) => aro.copt.debug,
+                    AccountRadius::Delete(aro) => aro.copt.debug,
+                },
+                AccountOpt::List(copt) => copt.debug,
+                AccountOpt::Get(aopt) => aopt.copt.debug,
+                AccountOpt::Delete(aopt) => aopt.copt.debug,
+                AccountOpt::Create(aopt) => aopt.copt.debug,
+            },
+            ClientOpt::Group(gopt) => match gopt {
+                GroupOpt::List(copt) => copt.debug,
+                GroupOpt::Create(gcopt) => gcopt.copt.debug,
+                GroupOpt::Delete(gcopt) => gcopt.copt.debug,
+                GroupOpt::ListMembers(gcopt) => gcopt.copt.debug,
+                GroupOpt::AddMembers(gcopt) => gcopt.copt.debug,
+                GroupOpt::SetMembers(gcopt) => gcopt.copt.debug,
+                GroupOpt::PurgeMembers(gcopt) => gcopt.copt.debug,
             },
         }
     }
@@ -320,6 +397,84 @@ fn main() {
                         .unwrap();
                 }
             }, // end AccountOpt::Radius
-        },
+            AccountOpt::List(copt) => {
+                let client = copt.to_client();
+                let r = client.idm_account_list().unwrap();
+                for e in r {
+                    println!("{:?}", e);
+                }
+            }
+            AccountOpt::Get(aopt) => {
+                let client = aopt.copt.to_client();
+                let e = client
+                    .idm_account_get(aopt.aopts.account_id.as_str())
+                    .unwrap();
+                println!("{:?}", e);
+            }
+            AccountOpt::Delete(aopt) => {
+                let client = aopt.copt.to_client();
+                client
+                    .idm_account_delete(aopt.aopts.account_id.as_str())
+                    .unwrap();
+            }
+            AccountOpt::Create(acopt) => {
+                let client = acopt.copt.to_client();
+                client
+                    .idm_account_create(
+                        acopt.aopts.account_id.as_str(),
+                        acopt.display_name.as_str(),
+                    )
+                    .unwrap();
+            }
+        }, // end Account
+        ClientOpt::Group(gopt) => match gopt {
+            GroupOpt::List(copt) => {
+                let client = copt.to_client();
+                let r = client.idm_group_list().unwrap();
+                for e in r {
+                    println!("{:?}", e);
+                }
+            }
+            GroupOpt::Create(gcopt) => {
+                let client = gcopt.copt.to_client();
+                client.idm_group_create(gcopt.name.as_str()).unwrap();
+            }
+            GroupOpt::Delete(gcopt) => {
+                let client = gcopt.copt.to_client();
+                client.idm_group_delete(gcopt.name.as_str()).unwrap();
+            }
+            GroupOpt::PurgeMembers(gcopt) => {
+                let client = gcopt.copt.to_client();
+                client.idm_group_purge_members(gcopt.name.as_str()).unwrap();
+            }
+            GroupOpt::ListMembers(gcopt) => {
+                let client = gcopt.copt.to_client();
+                let members = client.idm_group_get_members(gcopt.name.as_str()).unwrap();
+                match members {
+                    Some(groups) => {
+                        for m in groups {
+                            println!("{:?}", m);
+                        }
+                    }
+                    None => {}
+                }
+            }
+            GroupOpt::AddMembers(gcopt) => {
+                let client = gcopt.copt.to_client();
+                let new_members: Vec<&str> = gcopt.members.iter().map(|s| s.as_str()).collect();
+
+                client
+                    .idm_group_add_members(gcopt.name.as_str(), new_members)
+                    .unwrap();
+            }
+            GroupOpt::SetMembers(gcopt) => {
+                let client = gcopt.copt.to_client();
+                let new_members: Vec<&str> = gcopt.members.iter().map(|s| s.as_str()).collect();
+
+                client
+                    .idm_group_set_members(gcopt.name.as_str(), new_members)
+                    .unwrap();
+            }
+        }, // end Group
     }
 }

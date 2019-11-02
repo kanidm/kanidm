@@ -1288,6 +1288,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         }
     }
 
+    /*
     pub(crate) fn get_ava_string(&self, attr: &str) -> Option<Vec<String>> {
         match self.attrs.get(attr) {
             Some(a) => {
@@ -1305,6 +1306,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             None => None,
         }
     }
+    */
 
     pub(crate) fn get_ava_set_string(&self, attr: &str) -> Option<BTreeSet<String>> {
         match self.attrs.get(attr) {

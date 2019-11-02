@@ -975,10 +975,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .map(|er| er.clone().invalidate())
             .collect();
 
-        candidates
-            .iter_mut()
-            .for_each(|er| er.apply_modlist(&modlist));
-
         audit_log!(au, "delete: candidates -> {:?}", candidates);
 
         // Pre delete plugs
@@ -991,6 +987,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
             audit_log!(au, "Delete operation failed (plugin), {:?}", plug_pre_res);
             return plug_pre_res;
         }
+
+        audit_log!(
+            au,
+            "delete: now marking candidates as recycled -> {:?}",
+            candidates
+        );
+        candidates
+            .iter_mut()
+            .for_each(|er| er.apply_modlist(&modlist));
 
         let res: Result<Vec<Entry<EntryValid, EntryCommitted>>, SchemaError> = candidates
             .into_iter()
@@ -1629,10 +1634,18 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Check the admin object exists (migrations).
         // Create the default idm_admin group.
+        let admin_entries = [
+            JSON_ADMIN_V1,
+            JSON_IDM_ADMIN_V1,
+            JSON_IDM_ADMINS_V1,
+            JSON_SYSTEM_ADMINS_V1,
+        ];
         let mut audit_an = AuditScope::new("start_idm_admin_migrations");
-        let res = self
-            .internal_migrate_or_create_str(&mut audit_an, JSON_ADMIN_V1)
-            .and_then(|_| self.internal_migrate_or_create_str(&mut audit_an, JSON_IDM_ADMINS_V1));
+        let res: Result<(), _> = admin_entries
+            .iter()
+            // Each item individually logs it's result
+            .map(|e_str| self.internal_migrate_or_create_str(&mut audit_an, e_str))
+            .collect();
         audit.append_scope(audit_an);
         assert!(res.is_ok());
         if res.is_err() {
@@ -1645,21 +1658,23 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let mut audit_an = AuditScope::new("start_idm_migrations_internal");
         let idm_entries = [
             // Builtin groups
+            JSON_IDM_PEOPLE_MANAGE_PRIV_V1,
             JSON_IDM_PEOPLE_WRITE_PRIV_V1,
             JSON_IDM_PEOPLE_READ_PRIV_V1,
+            JSON_IDM_GROUP_MANAGE_PRIV_V1,
             JSON_IDM_GROUP_WRITE_PRIV_V1,
-            JSON_IDM_GROUP_CREATE_PRIV_V1,
+            JSON_IDM_ACCOUNT_MANAGE_PRIV_V1,
             JSON_IDM_ACCOUNT_WRITE_PRIV_V1,
             JSON_IDM_ACCOUNT_READ_PRIV_V1,
             JSON_IDM_RADIUS_SERVERS_V1,
             // Write deps on read, so write must be added first.
+            JSON_IDM_HP_ACCOUNT_MANAGE_PRIV_V1,
             JSON_IDM_HP_ACCOUNT_WRITE_PRIV_V1,
             JSON_IDM_HP_ACCOUNT_READ_PRIV_V1,
-            JSON_IDM_SCHEMA_WRITE_PRIV_V1,
+            JSON_IDM_SCHEMA_MANAGE_PRIV_V1,
+            JSON_IDM_HP_GROUP_MANAGE_PRIV_V1,
             JSON_IDM_HP_GROUP_WRITE_PRIV_V1,
-            JSON_IDM_ACP_MANAGER_PRIV_V1,
-            JSON_IDM_SERVICE_ACCOUNT_CREATE_PRIV_V1,
-            JSON_IDM_PERSON_ACCOUNT_CREATE_PRIV_V1,
+            JSON_IDM_ACP_MANAGE_PRIV_V1,
             JSON_IDM_HIGH_PRIVILEGE_V1,
             // Built in access controls.
             JSON_IDM_ADMINS_ACP_RECYCLE_SEARCH_V1,
@@ -1670,19 +1685,21 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_IDM_SELF_ACP_WRITE_V1,
             JSON_IDM_ACP_PEOPLE_READ_PRIV_V1,
             JSON_IDM_ACP_PEOPLE_WRITE_PRIV_V1,
+            JSON_IDM_ACP_PEOPLE_MANAGE_PRIV_V1,
             JSON_IDM_ACP_GROUP_WRITE_PRIV_V1,
+            JSON_IDM_ACP_GROUP_MANAGE_PRIV_V1,
             JSON_IDM_ACP_ACCOUNT_READ_PRIV_V1,
             JSON_IDM_ACP_ACCOUNT_WRITE_PRIV_V1,
-            JSON_IDM_ACP_SERVICE_ACCOUNT_CREATE_V1,
-            JSON_IDM_ACP_PERSON_ACCOUNT_CREATE_V1,
+            JSON_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1,
             JSON_IDM_ACP_RADIUS_SERVERS_V1,
             JSON_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1,
             JSON_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1,
+            JSON_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1,
             JSON_IDM_ACP_HP_GROUP_WRITE_PRIV_V1,
+            JSON_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1,
             JSON_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1,
             JSON_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1,
-            JSON_IDM_ACP_ACP_MANAGER_PRIV_V1,
-            JSON_IDM_ACP_GROUP_CREATE_V1,
+            JSON_IDM_ACP_ACP_MANAGE_PRIV_V1,
         ];
 
         let res: Result<(), _> = idm_entries

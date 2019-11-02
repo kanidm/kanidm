@@ -8,9 +8,13 @@ use crate::event::{
 use crate::idm::event::{GeneratePasswordEvent, PasswordChangeEvent, RegenerateRadiusSecretEvent};
 use kanidm_proto::v1::OperationError;
 
+use crate::filter::{Filter, FilterInvalid};
 use crate::idm::server::IdmServer;
 use crate::server::{QueryServer, QueryServerTransaction};
 
+use kanidm_proto::v1::Entry as ProtoEntry;
+use kanidm_proto::v1::Modify as ProtoModify;
+use kanidm_proto::v1::ModifyList as ProtoModifyList;
 use kanidm_proto::v1::{
     CreateRequest, DeleteRequest, ModifyRequest, OperationResponse, SetAuthCredential,
     SingleStringRequest, UserAuthToken,
@@ -27,6 +31,13 @@ pub struct CreateMessage {
 impl CreateMessage {
     pub fn new(uat: Option<UserAuthToken>, req: CreateRequest) -> Self {
         CreateMessage { uat: uat, req: req }
+    }
+
+    pub fn new_entry(uat: Option<UserAuthToken>, req: ProtoEntry) -> Self {
+        CreateMessage {
+            uat: uat,
+            req: CreateRequest { entries: vec![req] },
+        }
     }
 }
 
@@ -47,6 +58,15 @@ impl DeleteMessage {
 
 impl Message for DeleteMessage {
     type Result = Result<OperationResponse, OperationError>;
+}
+
+pub struct InternalDeleteMessage {
+    pub uat: Option<UserAuthToken>,
+    pub filter: Filter<FilterInvalid>,
+}
+
+impl Message for InternalDeleteMessage {
+    type Result = Result<(), OperationError>;
 }
 
 pub struct ModifyMessage {
@@ -133,9 +153,34 @@ pub struct PurgeAttributeMessage {
     pub uat: Option<UserAuthToken>,
     pub uuid_or_name: String,
     pub attr: String,
+    pub filter: Filter<FilterInvalid>,
 }
 
 impl Message for PurgeAttributeMessage {
+    type Result = Result<(), OperationError>;
+}
+
+pub struct AppendAttributeMessage {
+    pub uat: Option<UserAuthToken>,
+    pub uuid_or_name: String,
+    pub attr: String,
+    pub values: Vec<String>,
+    pub filter: Filter<FilterInvalid>,
+}
+
+impl Message for AppendAttributeMessage {
+    type Result = Result<(), OperationError>;
+}
+
+pub struct SetAttributeMessage {
+    pub uat: Option<UserAuthToken>,
+    pub uuid_or_name: String,
+    pub attr: String,
+    pub values: Vec<String>,
+    pub filter: Filter<FilterInvalid>,
+}
+
+impl Message for SetAttributeMessage {
     type Result = Result<(), OperationError>;
 }
 
@@ -173,6 +218,42 @@ impl QueryServerWriteV1 {
         SyncArbiter::start(1, move || {
             QueryServerWriteV1::new(log.clone(), query_server.clone(), idms.clone())
         })
+    }
+
+    fn modify_from_parts(
+        &mut self,
+        audit: &mut AuditScope,
+        uat: Option<UserAuthToken>,
+        uuid_or_name: String,
+        proto_ml: ProtoModifyList,
+        filter: Filter<FilterInvalid>,
+    ) -> Result<(), OperationError> {
+        let mut qs_write = self.qs.write();
+
+        let target_uuid = match Uuid::parse_str(uuid_or_name.as_str()) {
+            Ok(u) => u,
+            Err(_) => qs_write
+                .name_to_uuid(audit, uuid_or_name.as_str())
+                .map_err(|e| {
+                    audit_log!(audit, "Error resolving id to target");
+                    e
+                })?,
+        };
+
+        let mdf =
+            match ModifyEvent::from_parts(audit, uat, target_uuid, proto_ml, filter, &qs_write) {
+                Ok(m) => m,
+                Err(e) => {
+                    audit_log!(audit, "Failed to begin modify: {:?}", e);
+                    return Err(e);
+                }
+            };
+
+        audit_log!(audit, "Begin modify event {:?}", mdf);
+
+        qs_write
+            .modify(audit, &mdf)
+            .and_then(|_| qs_write.commit(audit).map(|_| ()))
     }
 }
 
@@ -251,6 +332,33 @@ impl Handler<DeleteMessage> for QueryServerWriteV1 {
             qs_write
                 .delete(&mut audit, &del)
                 .and_then(|_| qs_write.commit(&mut audit).map(|_| OperationResponse {}))
+        });
+        self.log.do_send(audit);
+        res
+    }
+}
+
+impl Handler<InternalDeleteMessage> for QueryServerWriteV1 {
+    type Result = Result<(), OperationError>;
+
+    fn handle(&mut self, msg: InternalDeleteMessage, _: &mut Self::Context) -> Self::Result {
+        let mut audit = AuditScope::new("delete");
+        let res = audit_segment!(&mut audit, || {
+            let mut qs_write = self.qs.write();
+
+            let del = match DeleteEvent::from_parts(&mut audit, msg.uat, msg.filter, &qs_write) {
+                Ok(d) => d,
+                Err(e) => {
+                    audit_log!(audit, "Failed to begin delete: {:?}", e);
+                    return Err(e);
+                }
+            };
+
+            audit_log!(audit, "Begin delete event {:?}", del);
+
+            qs_write
+                .delete(&mut audit, &del)
+                .and_then(|_| qs_write.commit(&mut audit).map(|_| ()))
         });
         self.log.do_send(audit);
         res
@@ -412,7 +520,7 @@ impl Handler<PurgeAttributeMessage> for QueryServerWriteV1 {
     type Result = Result<(), OperationError>;
 
     fn handle(&mut self, msg: PurgeAttributeMessage, _: &mut Self::Context) -> Self::Result {
-        let mut audit = AuditScope::new("modify");
+        let mut audit = AuditScope::new("purge_attribute");
         let res = audit_segment!(&mut audit, || {
             let mut qs_write = self.qs.write();
             let target_uuid = match Uuid::parse_str(msg.uuid_or_name.as_str()) {
@@ -430,6 +538,7 @@ impl Handler<PurgeAttributeMessage> for QueryServerWriteV1 {
                 msg.uat,
                 target_uuid,
                 msg.attr,
+                msg.filter,
                 &qs_write,
             ) {
                 Ok(m) => m,
@@ -444,6 +553,65 @@ impl Handler<PurgeAttributeMessage> for QueryServerWriteV1 {
             qs_write
                 .modify(&mut audit, &mdf)
                 .and_then(|_| qs_write.commit(&mut audit).map(|_| ()))
+        });
+        self.log.do_send(audit);
+        res
+    }
+}
+
+impl Handler<AppendAttributeMessage> for QueryServerWriteV1 {
+    type Result = Result<(), OperationError>;
+
+    fn handle(&mut self, msg: AppendAttributeMessage, _: &mut Self::Context) -> Self::Result {
+        let mut audit = AuditScope::new("append_attribute");
+        let res = audit_segment!(&mut audit, || {
+            let AppendAttributeMessage {
+                uat,
+                uuid_or_name,
+                attr,
+                values,
+                filter,
+            } = msg;
+            // We need to turn these into proto modlists so they can be converted
+            // and validated.
+            let proto_ml = ProtoModifyList::new_list(
+                values
+                    .into_iter()
+                    .map(|v| ProtoModify::Present(attr.clone(), v))
+                    .collect(),
+            );
+            self.modify_from_parts(&mut audit, uat, uuid_or_name, proto_ml, filter)
+        });
+        self.log.do_send(audit);
+        res
+    }
+}
+
+impl Handler<SetAttributeMessage> for QueryServerWriteV1 {
+    type Result = Result<(), OperationError>;
+
+    fn handle(&mut self, msg: SetAttributeMessage, _: &mut Self::Context) -> Self::Result {
+        let mut audit = AuditScope::new("set_attribute");
+        let res = audit_segment!(&mut audit, || {
+            let SetAttributeMessage {
+                uat,
+                uuid_or_name,
+                attr,
+                values,
+                filter,
+            } = msg;
+            // We need to turn these into proto modlists so they can be converted
+            // and validated.
+            let proto_ml = ProtoModifyList::new_list(
+                std::iter::once(ProtoModify::Purged(attr.clone()))
+                    .chain(
+                        values
+                            .into_iter()
+                            .map(|v| ProtoModify::Present(attr.clone(), v)),
+                    )
+                    .collect(),
+            );
+            self.modify_from_parts(&mut audit, uat, uuid_or_name, proto_ml, filter)
         });
         self.log.do_send(audit);
         res

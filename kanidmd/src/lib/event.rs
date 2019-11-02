@@ -1,9 +1,10 @@
 use crate::audit::AuditScope;
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryReduced, EntryValid};
-use crate::filter::{Filter, FilterValid};
+use crate::filter::{Filter, FilterInvalid, FilterValid};
 use crate::schema::SchemaTransaction;
 use crate::value::PartialValue;
 use kanidm_proto::v1::Entry as ProtoEntry;
+use kanidm_proto::v1::ModifyList as ProtoModifyList;
 use kanidm_proto::v1::{
     AuthCredential, AuthResponse, AuthState, AuthStep, SearchResponse, UserAuthToken,
     WhoamiResponse,
@@ -21,8 +22,6 @@ use crate::actors::v1_write::{CreateMessage, DeleteMessage, ModifyMessage};
 // use crate::schema::SchemaTransaction;
 
 // Only used for internal tests
-#[cfg(test)]
-use crate::filter::FilterInvalid;
 #[cfg(test)]
 use crate::modify::ModifyInvalid;
 
@@ -551,6 +550,25 @@ impl DeleteEvent {
         }
     }
 
+    pub fn from_parts(
+        audit: &mut AuditScope,
+        uat: Option<UserAuthToken>,
+        filter: Filter<FilterInvalid>,
+        qs: &QueryServerWriteTransaction,
+    ) -> Result<Self, OperationError> {
+        Ok(DeleteEvent {
+            event: Event::from_rw_uat(audit, qs, uat)?,
+            filter: filter
+                .clone()
+                .to_ignore_hidden()
+                .validate(qs.get_schema())
+                .map_err(|e| OperationError::SchemaViolation(e))?,
+            filter_orig: filter
+                .validate(qs.get_schema())
+                .map_err(|e| OperationError::SchemaViolation(e))?,
+        })
+    }
+
     #[cfg(test)]
     pub unsafe fn new_impersonate_entry(
         e: Entry<EntryValid, EntryCommitted>,
@@ -629,15 +647,49 @@ impl ModifyEvent {
         }
     }
 
+    pub fn from_parts(
+        audit: &mut AuditScope,
+        uat: Option<UserAuthToken>,
+        target_uuid: Uuid,
+        proto_ml: ProtoModifyList,
+        filter: Filter<FilterInvalid>,
+        qs: &QueryServerWriteTransaction,
+    ) -> Result<Self, OperationError> {
+        let f_uuid = filter_all!(f_eq("uuid", PartialValue::new_uuid(target_uuid)));
+        // Add any supplemental conditions we have.
+        let f = Filter::join_parts_and(f_uuid, filter);
+
+        match ModifyList::from(audit, &proto_ml, qs) {
+            Ok(m) => Ok(ModifyEvent {
+                event: Event::from_rw_uat(audit, qs, uat)?,
+                filter: f
+                    .clone()
+                    .to_ignore_hidden()
+                    .validate(qs.get_schema())
+                    .map_err(|e| OperationError::SchemaViolation(e))?,
+                filter_orig: f
+                    .validate(qs.get_schema())
+                    .map_err(|e| OperationError::SchemaViolation(e))?,
+                modlist: m
+                    .validate(qs.get_schema())
+                    .map_err(|e| OperationError::SchemaViolation(e))?,
+            }),
+            Err(e) => Err(e),
+        }
+    }
+
     pub fn from_target_uuid_attr_purge(
         audit: &mut AuditScope,
         uat: Option<UserAuthToken>,
         target_uuid: Uuid,
         attr: String,
+        filter: Filter<FilterInvalid>,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         let ml = ModifyList::new_purge(attr.as_str());
-        let f = filter_all!(f_eq("uuid", PartialValue::new_uuid(target_uuid)));
+        let f_uuid = filter_all!(f_eq("uuid", PartialValue::new_uuid(target_uuid)));
+        // Add any supplemental conditions we have.
+        let f = Filter::join_parts_and(f_uuid, filter);
         Ok(ModifyEvent {
             event: Event::from_rw_uat(audit, qs, uat)?,
             filter: f

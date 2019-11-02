@@ -87,7 +87,7 @@ fn test_server_create() {
         let e: Entry = serde_json::from_str(
             r#"{
             "attrs": {
-                "class": ["person", "account"],
+                "class": ["account"],
                 "name": ["testperson"],
                 "displayname": ["testperson"]
             }
@@ -234,7 +234,7 @@ fn test_server_admin_reset_simple_password() {
         let e: Entry = serde_json::from_str(
             r#"{
             "attrs": {
-                "class": ["person", "account"],
+                "class": ["account"],
                 "name": ["testperson"],
                 "displayname": ["testperson"]
             }
@@ -247,10 +247,10 @@ fn test_server_admin_reset_simple_password() {
         assert!(res.is_ok());
         // By default, admin's can't actually administer accounts, so mod them into
         // the account admin group.
-        let f = Filter::Eq("name".to_string(), "idm_account_write_priv".to_string());
+        let f = Filter::Eq("name".to_string(), "idm_admins".to_string());
         let m = ModifyList::new_list(vec![Modify::Present(
             "member".to_string(),
-            "idm_admins".to_string(),
+            "system_admins".to_string(),
         )]);
         let res = rsclient.modify(f.clone(), m.clone());
         assert!(res.is_ok());
@@ -289,6 +289,70 @@ fn test_server_rest_group_read() {
         let g = rsclient.idm_group_get("idm_admins").unwrap();
         assert!(g.is_some());
         println!("{:?}", g);
+    });
+}
+
+#[test]
+fn test_server_rest_group_lifecycle() {
+    run_test(|rsclient: KanidmClient| {
+        let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
+        assert!(res.is_ok());
+
+        // List the groups
+        let g_list = rsclient.idm_group_list().unwrap();
+        assert!(g_list.len() > 0);
+
+        // Create a new group
+        rsclient.idm_group_create("demo_group").unwrap();
+
+        // List again, ensure one more.
+        let g_list_2 = rsclient.idm_group_list().unwrap();
+        assert!(g_list_2.len() > g_list.len());
+
+        // Test modifications to the group
+
+        // Add a member.
+        rsclient
+            .idm_group_add_members("demo_group", vec!["admin"])
+            .unwrap();
+        let members = rsclient.idm_group_get_members("demo_group").unwrap();
+        assert!(members == Some(vec!["admin".to_string()]));
+
+        // Set the list of members
+        rsclient
+            .idm_group_set_members("demo_group", vec!["admin", "demo_group"])
+            .unwrap();
+        let members = rsclient.idm_group_get_members("demo_group").unwrap();
+        assert!(members == Some(vec!["admin".to_string(), "demo_group".to_string()]));
+
+        // Remove a member from the group
+        /*
+        rsclient
+            .idm_group_remove_member("demo_group", "demo_group")
+            .unwrap();
+        let members = rsclient.idm_group_get_members("demo_group").unwrap();
+        assert!(members == vec!["admin".to_string()]);
+        */
+
+        // purge members
+        rsclient.idm_group_purge_members("demo_group").unwrap();
+        let members = rsclient.idm_group_get_members("demo_group").unwrap();
+        assert!(members == None);
+
+        // Delete the group
+        rsclient.idm_group_delete("demo_group").unwrap();
+        let g_list_3 = rsclient.idm_group_list().unwrap();
+        assert!(g_list_3.len() == g_list.len());
+
+        // Check we can get an exact group
+        let g = rsclient.idm_group_get("idm_admins").unwrap();
+        assert!(g.is_some());
+        println!("{:?}", g);
+
+        // They should have members
+        let members = rsclient.idm_group_get_members("idm_admins").unwrap();
+        println!("{:?}", members);
+        assert!(members == Some(vec!["idm_admin".to_string()]));
     });
 }
 
@@ -376,6 +440,35 @@ fn test_server_radius_credential_lifecycle() {
         // No secret
         let n_sec = rsclient.idm_account_radius_credential_get("admin").unwrap();
         assert!(n_sec.is_none());
+    });
+}
+
+#[test]
+fn test_server_rest_account_lifecycle() {
+    run_test(|rsclient: KanidmClient| {
+        let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
+        assert!(res.is_ok());
+        // To enable the admin to actually make some of these changes, we have
+        // to make them a people admin. NOT recommended in production!
+        rsclient
+            .idm_group_add_members("idm_account_write_priv", vec!["admin"])
+            .unwrap();
+
+        // Create a new account
+        rsclient
+            .idm_account_create("demo_account", "Deeeeemo")
+            .unwrap();
+
+        // View the account
+        rsclient.idm_account_get("demo_account").unwrap();
+
+        // change the name?
+        rsclient
+            .idm_account_set_displayname("demo_account", "Demo Account")
+            .unwrap();
+
+        // Delete the account
+        rsclient.idm_account_delete("demo_account").unwrap();
     });
 }
 
