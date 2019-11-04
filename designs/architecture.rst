@@ -44,9 +44,8 @@ Search
 Search is the "hard worker" of the server, intended to be a fast path with minimal overhead
 so that clients can acquire data as quickly as possible. The server follows the below pattern.
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/Firstyear/kanidm/master/designs/diagrams/search-flow.png" width="80%" height="auto" />
-</p>
+.. image:: diagrams/search-flow.png
+    :width: 800
 
 1. All incoming requests are from a client on the left. These are either REST requests, or a structured
 protocol request via the raw interface. It's interesting to note the raw request is almost identical
@@ -103,9 +102,8 @@ Write
 The write path is similar to the search path, but has some subtle differences that are
 worth paying attention to.
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/Firstyear/kanidm/master/designs/diagrams/write-flow.png" width="80%" height="auto" />
-</p>
+.. image:: diagrams/write-flow.png
+    :width: 800
 
 1., 2. Like search, all client operations come from the REST or raw apis, and are transformed or
 generated into messages. These messages are sent to a single write worker. There is only a single
