@@ -420,7 +420,7 @@ Let's imagine now we have two read-onlies, R1, R2.
 So, at this point, A would contact both
 
 
-
+SEE ALSO: Downgrades
 
 
 Attribute Level Replication
