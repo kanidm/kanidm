@@ -19,8 +19,15 @@ the database:
 
     docker volume create kanidmd
 
-You should have a ca.pem, cert.pem and key.pem in your kanidmd volume. It's up to you to put them
-in there some how.
+You should have a ca.pem, cert.pem and key.pem in your kanidmd volume. The reason for requiring
+TLS is explained in [why tls]. To put the certificates in place you can use a shell container
+that mounts the volume such as:
+
+[why tls]: https://github.com/Firstyear/kanidm/blob/master/designs/why_tls.rst
+
+    docker run --rm -i -t -v kanidmd:/data -v /my/host/path/work:/work opensuse/leap:latest cp /work/* /data/
+    OR for a shell into the volume:
+    docker run --rm -i -t -v kanidmd:/data opensuse/leap:latest /bin/sh
 
 Then you can setup the initial admin account and initialise the database into your volume.
 
@@ -29,7 +36,7 @@ Then you can setup the initial admin account and initialise the database into yo
 You can now run the server - note that we provide all the options on the cli, but this pattern
 may change in the future.
 
-    docker run -p 443:8443 -v /Users/william/development/rsidm/insecure:/data firstyear/kanidmd:latest /home/kanidm/target/release/kanidmd server -D /data/kanidm.db -C /data/ca.pem -c /data/cert.pem -k /data/key.pem --bindaddr 0.0.0.0:8443 --domain localhost
+    docker run -p 8443:8443 -v /Users/william/development/rsidm/insecure:/data firstyear/kanidmd:latest /home/kanidm/target/release/kanidmd server -D /data/kanidm.db -C /data/ca.pem -c /data/cert.pem -k /data/key.pem --bindaddr 0.0.0.0:8443 --domain localhost
 
 # Using the cli
 
@@ -43,8 +50,8 @@ After you check out the source, navigate to:
 Now you can check your instance is working. You may need to provide a CA certificate for verification
 with the -C parameter:
 
-    cargo run -- self whoami -C ../path/to/ca.pem -H https://localhost --name anonymous
-    cargo run -- self whoami -H https://localhost --name anonymous
+    cargo run -- self whoami -C ../path/to/ca.pem -H https://localhost:8443 --name anonymous
+    cargo run -- self whoami -H https://localhost:8443 --name anonymous
 
 Now you can take some time to look at what commands are available - things may still be rough so
 please ask for help at anytime.
@@ -221,16 +228,16 @@ of entries at once. Some examples are below, but generally we advise you to use 
 above.
 
     # Create from json (group or account)
-    cargo run -- raw create -H https://localhost:8080 -C ../insecure/ca.pem -D admin example.create.account.json
-    cargo run -- raw create  -H https://localhost:8080 -C ../insecure/ca.pem -D idm_admin example.create.group.json
+    cargo run -- raw create -H https://localhost:8443 -C ../insecure/ca.pem -D admin example.create.account.json
+    cargo run -- raw create  -H https://localhost:8443 -C ../insecure/ca.pem -D idm_admin example.create.group.json
 
     # Apply a json stateful modification to all entries matching a filter
-    cargo run -- raw modify -H https://localhost:8080 -C ../insecure/ca.pem -D admin '{"Or": [ {"Eq": ["name", "idm_person_account_create_priv"]}, {"Eq": ["name", "idm_service_account_create_priv"]}, {"Eq": ["name", "idm_account_write_priv"]}, {"Eq": ["name", "idm_group_write_priv"]}, {"Eq": ["name", "idm_people_write_priv"]}, {"Eq": ["name", "idm_group_create_priv"]} ]}' example.modify.idm_admin.json
-    cargo run -- raw modify -H https://localhost:8080 -C ../insecure/ca.pem -D idm_admin '{"Eq": ["name", "idm_admins"]}' example.modify.idm_admin.json
+    cargo run -- raw modify -H https://localhost:8443 -C ../insecure/ca.pem -D admin '{"Or": [ {"Eq": ["name", "idm_person_account_create_priv"]}, {"Eq": ["name", "idm_service_account_create_priv"]}, {"Eq": ["name", "idm_account_write_priv"]}, {"Eq": ["name", "idm_group_write_priv"]}, {"Eq": ["name", "idm_people_write_priv"]}, {"Eq": ["name", "idm_group_create_priv"]} ]}' example.modify.idm_admin.json
+    cargo run -- raw modify -H https://localhost:8443 -C ../insecure/ca.pem -D idm_admin '{"Eq": ["name", "idm_admins"]}' example.modify.idm_admin.json
 
     # Search and show the database representations
-    cargo run -- raw search -H https://localhost:8080 -C ../insecure/ca.pem -D admin '{"Eq": ["name", "idm_admin"]}'
+    cargo run -- raw search -H https://localhost:8443 -C ../insecure/ca.pem -D admin '{"Eq": ["name", "idm_admin"]}'
     > Entry { attrs: {"class": ["account", "memberof", "object"], "displayname": ["IDM Admin"], "memberof": ["idm_people_read_priv", "idm_people_write_priv", "idm_group_write_priv", "idm_account_read_priv", "idm_account_write_priv", "idm_service_account_create_priv", "idm_person_account_create_priv", "idm_high_privilege"], "name": ["idm_admin"], "uuid": ["bb852c38-8920-4932-a551-678253cae6ff"]} }
 
     # Delete all entries matching a filter
-    cargo run -- raw delete -H https://localhost:8080 -C ../insecure/ca.pem -D idm_admin '{"Eq": ["name", "test_account_delete_me"]}'
+    cargo run -- raw delete -H https://localhost:8443 -C ../insecure/ca.pem -D idm_admin '{"Eq": ["name", "test_account_delete_me"]}'
