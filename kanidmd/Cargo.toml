@@ -51,6 +51,7 @@ time = "0.1"
 concread = "0.1"
 
 openssl = "0.10"
+sshkeys = "0.1"
 
 rpassword = "0.4"
 num_cpus = "1.10"

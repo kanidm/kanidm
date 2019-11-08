@@ -1,4 +1,4 @@
-FROM opensuse/tumbleweed:latest
+FROM opensuse/tumbleweed:latest AS builder
 MAINTAINER william@blackhats.net.au
 
 COPY . /home/kanidm/
@@ -12,7 +12,8 @@ FROM opensuse/tumbleweed:latest
 
 EXPOSE 8080
 WORKDIR /
-COPY --from=0 /home/kanidm/target/release/kanidmd /sbin/
+COPY --from=builder /home/kanidm/target/release/kanidmd /sbin/
+RUN zypper install -y sqlite3 openssl
 
 VOLUME /data
 
