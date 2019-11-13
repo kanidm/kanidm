@@ -67,7 +67,7 @@ impl<'a> Iterator for EntryClasses<'a> {
     type Item = &'a Value;
 
     #[inline]
-    fn next(&mut self) -> Option<(&'a Value)> {
+    fn next(&mut self) -> Option<&'a Value> {
         match self.inner.iter_mut().next() {
             Some(i) => i.next(),
             None => None,

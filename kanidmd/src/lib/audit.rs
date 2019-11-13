@@ -174,5 +174,4 @@ mod tests {
         let d = serde_json::to_string_pretty(&au).expect("Json serialise failure");
         println!("{}", d);
     }
-
 }

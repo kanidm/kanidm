@@ -113,7 +113,7 @@ macro_rules! json_event_post {
                     match r_obj {
                         Ok(obj) => {
                             // combine request + uat -> message.
-                            let m_obj = <($message_type)>::new(uat, obj);
+                            let m_obj = <$message_type>::new(uat, obj);
                             let res = $dest
                                 .send(m_obj)
                                 // What is from_err?
@@ -143,7 +143,7 @@ macro_rules! json_event_get {
         let uat = get_current_user(&$req);
 
         // New event, feed current auth data from the token to it.
-        let obj = <($message_type)>::new(uat);
+        let obj = <$message_type>::new(uat);
 
         let res = $state.qe_r.send(obj).from_err().and_then(|res| match res {
             Ok(event_result) => Ok(HttpResponse::Ok().json(event_result)),
