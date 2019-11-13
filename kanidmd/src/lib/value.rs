@@ -777,6 +777,21 @@ impl Value {
         }
     }
 
+    pub fn get_sshkey(&self) -> Option<String> {
+        match &self.pv {
+            PartialValue::SshKey(_) => {
+                match &self.data {
+                    Some(v) => match &v {
+                        DataValue::SshKey(sc) => Some(sc.clone()),
+                        _ => None,
+                    },
+                    None => None,
+                }
+            }
+            _ => None,
+        }
+    }
+
     pub fn contains(&self, s: &PartialValue) -> bool {
         self.pv.contains(s)
     }

@@ -426,6 +426,28 @@ impl KanidmClient {
         self.perform_get_request(format!("/v1/account/{}/_radius/_token", id).as_str())
     }
 
+    pub fn idm_account_get_ssh_pubkeys(&self, id: &str) -> Result<Vec<String>, ClientError> {
+        self.perform_get_request(format!("/v1/account/{}/_ssh_pubkeys", id).as_str())
+    }
+
+    pub fn idm_account_post_ssh_pubkey(&self, id: &str, tag: &str, pubkey: &str) -> Result<(), ClientError> {
+        let sk = (tag.to_string(), pubkey.to_string());
+        self.perform_post_request(format!("/v1/account/{}/_ssh_pubkeys", id).as_str(), sk)
+    }
+
+    pub fn idm_account_rename_ssh_pubkey(&self, id: &str, oldtag: &str, newtag: &str) -> Result<(), ClientError> {
+        self.perform_put_request(format!("/v1/account/{}/_ssh_pubkeys/{}", id, oldtag).as_str(), newtag.to_string())
+    }
+
+    pub fn idm_account_get_ssh_pubkey(&self, id: &str, tag: &str) -> Result<String, ClientError> {
+        self.perform_get_request(format!("/v1/account/{}/_ssh_pubkeys/{}", id, tag).as_str())
+    }
+
+    pub fn idm_account_delete_ssh_pubkey(&self, id: &str, tag: &str) -> Result<(), ClientError> {
+        self.perform_delete_request(format!("/v1/account/{}/_ssh_pubkeys/{}", id, tag).as_str())
+    }
+
+
     // ==== schema
     pub fn idm_schema_list(&self) -> Result<Vec<Entry>, ClientError> {
         self.perform_get_request("/v1/schema")

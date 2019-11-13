@@ -472,6 +472,45 @@ fn test_server_rest_account_lifecycle() {
     });
 }
 
+#[test]
+fn test_server_rest_sshkey_lifecycle() {
+    run_test(|rsclient: KanidmClient| {
+        let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
+        assert!(res.is_ok());
+
+        // Get the keys, should be empty vec.
+        let sk1 = rsclient
+            .idm_account_get_ssh_pubkeys("admin").unwrap();
+        assert!(sk1.len() == 0);
+
+        // idm_account_get_ssh_pubkeys
+        // idm_account_post_ssh_pubkey
+        // idm_account_rename_ssh_pubkey
+        // idm_account_get_ssh_pubkey
+        // idm_account_delete_ssh_pubkey
+
+        // Post an invalid key (should error)
+
+        // Post a valid key
+
+        // Get, should have the key
+        // Post a valid key
+
+        // Get, should have both keys.
+
+        // Delete a key (by tag)
+
+        // Get, should have remaining key.
+
+        // Put and rename
+
+        // get based on the old tag (empty)
+
+        // get new tag
+
+    });
+}
+
 // Test the self version of the radius path.
 
 // Test hitting all auth-required endpoints and assert they give unauthorized.

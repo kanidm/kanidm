@@ -1253,6 +1253,19 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             .and_then(|a| a.get_radius_secret())
     }
 
+    pub fn get_ava_ssh_pubkeys(&self, attr: &str) -> Vec<String> {
+        match self.attrs.get(attr) {
+            Some(ava) => {
+                ava.iter()
+                    .filter_map(|v| {
+                        v.get_sshkey()
+                    })
+                    .collect()
+            }
+            None => Vec::new(),
+        }
+    }
+
     /*
     /// This interface will get &str (if possible).
     pub(crate) fn get_ava_opt_str(&self, attr: &str) -> Option<Vec<&str>> {

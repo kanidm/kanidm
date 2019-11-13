@@ -103,6 +103,15 @@ impl Message for InternalRadiusTokenReadMessage {
     type Result = Result<RadiusAuthToken, OperationError>;
 }
 
+pub struct InternalSshKeyReadMessage {
+    pub uat: Option<UserAuthToken>,
+    pub uuid_or_name: String,
+}
+
+impl Message for InternalSshKeyReadMessage {
+    type Result = Result<Vec<String>, OperationError>;
+}
+
 // ===========================================================
 
 pub struct QueryServerReadV1 {
@@ -403,6 +412,67 @@ impl Handler<InternalRadiusTokenReadMessage> for QueryServerReadV1 {
             audit_log!(audit, "Begin event {:?}", rate);
 
             idm_read.get_radiusauthtoken(&mut audit, &rate)
+        });
+        self.log.do_send(audit);
+        res
+    }
+}
+
+impl Handler<InternalSshKeyReadMessage> for QueryServerReadV1 {
+    type Result = Result<Vec<String>, OperationError>;
+
+    fn handle(
+        &mut self,
+        msg: InternalSshKeyReadMessage,
+        _: &mut Self::Context,
+    ) -> Self::Result {
+        let mut audit = AuditScope::new("internal_sshkey_read_message");
+        let res = audit_segment!(&mut audit, || {
+            let qs_read = self.qs.read();
+
+            let target_uuid = match Uuid::parse_str(msg.uuid_or_name.as_str()) {
+                Ok(u) => u,
+                Err(_) => qs_read
+                    .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                    .map_err(|e| {
+                        audit_log!(&mut audit, "Error resolving id to target");
+                        e
+                    })?,
+            };
+
+            // Make an event from the request
+            let srch = match SearchEvent::from_target_uuid_request(
+                &mut audit,
+                msg.uat,
+                target_uuid,
+                &qs_read,
+            ) {
+                Ok(s) => s,
+                Err(e) => {
+                    audit_log!(audit, "Failed to begin search: {:?}", e);
+                    return Err(e);
+                }
+            };
+
+            audit_log!(audit, "Begin event {:?}", srch);
+
+            match qs_read.search_ext(&mut audit, &srch) {
+                Ok(mut entries) => {
+                    let r = entries
+                        .pop()
+                        // get the first entry
+                        .map(|e| {
+                            // From the entry, turn it into the value
+                            e.get_ava_ssh_pubkeys("ssh_publickey")
+                        })
+                        .unwrap_or_else(|| {
+                            // No matching entry? Return none.
+                            Vec::new()
+                        });
+                    Ok(r)
+                }
+                Err(e) => Err(e),
+            }
         });
         self.log.do_send(audit);
         res
