@@ -119,8 +119,8 @@ macro_rules! run_pre_create_transform_plugin {
         $ce:ident,
         $target_plugin:ty
     ) => {{
-        let mut audit_scope = AuditScope::new(<($target_plugin)>::id());
-        let r = audit_segment!(audit_scope, || <($target_plugin)>::pre_create_transform(
+        let mut audit_scope = AuditScope::new(<$target_plugin>::id());
+        let r = audit_segment!(audit_scope, || <$target_plugin>::pre_create_transform(
             &mut audit_scope,
             $qs,
             $cand,
@@ -139,8 +139,8 @@ macro_rules! run_pre_create_plugin {
         $ce:ident,
         $target_plugin:ty
     ) => {{
-        let mut audit_scope = AuditScope::new(<($target_plugin)>::id());
-        let r = audit_segment!(audit_scope, || <($target_plugin)>::pre_create(
+        let mut audit_scope = AuditScope::new(<$target_plugin>::id());
+        let r = audit_segment!(audit_scope, || <$target_plugin>::pre_create(
             &mut audit_scope,
             $qs,
             $cand,
@@ -159,8 +159,8 @@ macro_rules! run_post_create_plugin {
         $ce:ident,
         $target_plugin:ty
     ) => {{
-        let mut audit_scope = AuditScope::new(<($target_plugin)>::id());
-        let r = audit_segment!(audit_scope, || <($target_plugin)>::post_create(
+        let mut audit_scope = AuditScope::new(<$target_plugin>::id());
+        let r = audit_segment!(audit_scope, || <$target_plugin>::post_create(
             &mut audit_scope,
             $qs,
             $cand,
@@ -179,8 +179,8 @@ macro_rules! run_pre_modify_plugin {
         $ce:ident,
         $target_plugin:ty
     ) => {{
-        let mut audit_scope = AuditScope::new(<($target_plugin)>::id());
-        let r = audit_segment!(audit_scope, || <($target_plugin)>::pre_modify(
+        let mut audit_scope = AuditScope::new(<$target_plugin>::id());
+        let r = audit_segment!(audit_scope, || <$target_plugin>::pre_modify(
             &mut audit_scope,
             $qs,
             $cand,
@@ -200,8 +200,8 @@ macro_rules! run_post_modify_plugin {
         $ce:ident,
         $target_plugin:ty
     ) => {{
-        let mut audit_scope = AuditScope::new(<($target_plugin)>::id());
-        let r = audit_segment!(audit_scope, || <($target_plugin)>::post_modify(
+        let mut audit_scope = AuditScope::new(<$target_plugin>::id());
+        let r = audit_segment!(audit_scope, || <$target_plugin>::post_modify(
             &mut audit_scope,
             $qs,
             $pre_cand,
@@ -221,8 +221,8 @@ macro_rules! run_pre_delete_plugin {
         $ce:ident,
         $target_plugin:ty
     ) => {{
-        let mut audit_scope = AuditScope::new(<($target_plugin)>::id());
-        let r = audit_segment!(audit_scope, || <($target_plugin)>::pre_delete(
+        let mut audit_scope = AuditScope::new(<$target_plugin>::id());
+        let r = audit_segment!(audit_scope, || <$target_plugin>::pre_delete(
             &mut audit_scope,
             $qs,
             $cand,
@@ -241,8 +241,8 @@ macro_rules! run_post_delete_plugin {
         $ce:ident,
         $target_plugin:ty
     ) => {{
-        let mut audit_scope = AuditScope::new(<($target_plugin)>::id());
-        let r = audit_segment!(audit_scope, || <($target_plugin)>::post_delete(
+        let mut audit_scope = AuditScope::new(<$target_plugin>::id());
+        let r = audit_segment!(audit_scope, || <$target_plugin>::post_delete(
             &mut audit_scope,
             $qs,
             $cand,
@@ -260,8 +260,8 @@ macro_rules! run_verify_plugin {
         $results:expr,
         $target_plugin:ty
     ) => {{
-        let mut audit_scope = AuditScope::new(<($target_plugin)>::id());
-        let mut r = audit_segment!(audit_scope, || <($target_plugin)>::verify(
+        let mut audit_scope = AuditScope::new(<$target_plugin>::id());
+        let mut r = audit_segment!(audit_scope, || <$target_plugin>::verify(
             &mut audit_scope,
             $qs,
         ));
