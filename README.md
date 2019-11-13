@@ -54,7 +54,7 @@ let's encrypt, but if this is not possible, please use our insecure cert tool:
 
 You can now build and run the server with:
 
-    cd kanidm
+    cd kanidmd
     cargo run -- recover_account -D /tmp/kanidm.db -n admin
     cargo run -- server -D /tmp/kanidm.db -C ../insecure/ca.pem -c ../insecure/cert.pem -k ../insecure/key.pem --domain localhost --bindaddr 127.0.0.1:8080
 
