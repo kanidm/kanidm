@@ -22,6 +22,9 @@ struct ClientOpt {
 }
 
 // For now we lift a few things from the main.rs to use.
+//
+// usage: AuthorizedKeysCommand /usr/sbin/kanidm_ssh_authorizedkeys %u -H URL -D anonymous -C /etc/kanidm/ca.pem
+//
 fn main() {
     let opt = ClientOpt::from_args();
     if opt.debug {
