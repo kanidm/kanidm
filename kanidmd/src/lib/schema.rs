@@ -258,9 +258,15 @@ impl SchemaAttribute {
         let r = v.validate();
         // TODO: Fix this validation - I think due to the design of Value it may not
         // be possible for this to fail due to how we parse.
-        assert!(r);
-        let pv: &PartialValue = v.borrow();
-        self.validate_partialvalue(pv)
+        if cfg!(test) {
+            assert!(r);
+        }
+        if r {
+            let pv: &PartialValue = v.borrow();
+            self.validate_partialvalue(pv)
+        } else {
+            Err(SchemaError::InvalidAttributeSyntax)
+        }
     }
 
     pub fn validate_ava(&self, ava: &BTreeSet<Value>) -> Result<(), SchemaError> {

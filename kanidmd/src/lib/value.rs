@@ -359,6 +359,10 @@ impl PartialValue {
         }
     }
 
+    pub fn new_sshkey_tag(s: String) -> Self {
+        PartialValue::SshKey(s)
+    }
+
     pub fn new_sshkey_tag_s(s: &str) -> Self {
         PartialValue::SshKey(s.to_string())
     }
@@ -770,6 +774,13 @@ impl Value {
         }
     }
 
+    pub fn new_sshkey(tag: String, key: String) -> Self {
+        Value {
+            pv: PartialValue::new_sshkey_tag(tag),
+            data: Some(DataValue::SshKey(key)),
+        }
+    }
+
     pub fn is_sshkey(&self) -> bool {
         match &self.pv {
             PartialValue::SshKey(_) => true,
@@ -1081,6 +1092,13 @@ impl Value {
 }
 
 impl Borrow<PartialValue> for Value {
+    fn borrow(&self) -> &PartialValue {
+        &self.pv
+    }
+}
+
+// Allows sets of value refs to be compared to PV's
+impl Borrow<PartialValue> for &Value {
     fn borrow(&self) -> &PartialValue {
         &self.pv
     }

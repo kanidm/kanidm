@@ -10,7 +10,7 @@ use kanidm_proto::v1::{
     WhoamiResponse,
 };
 // use error::OperationError;
-use crate::modify::{ModifyList, ModifyValid};
+use crate::modify::{ModifyList, ModifyValid, ModifyInvalid};
 use crate::server::{
     QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
 };
@@ -20,10 +20,6 @@ use crate::actors::v1_read::{AuthMessage, InternalSearchMessage, SearchMessage};
 use crate::actors::v1_write::{CreateMessage, DeleteMessage, ModifyMessage};
 // Bring in schematransaction trait for validate
 // use crate::schema::SchemaTransaction;
-
-// Only used for internal tests
-#[cfg(test)]
-use crate::modify::ModifyInvalid;
 
 use actix::prelude::*;
 use std::collections::BTreeSet;
@@ -676,6 +672,34 @@ impl ModifyEvent {
             }),
             Err(e) => Err(e),
         }
+    }
+
+    pub fn from_internal_parts(
+        audit: &mut AuditScope,
+        uat: Option<UserAuthToken>,
+        target_uuid: Uuid,
+        ml: ModifyList<ModifyInvalid>,
+        filter: Filter<FilterInvalid>,
+        qs: &QueryServerWriteTransaction,
+    ) -> Result<Self, OperationError> {
+        let f_uuid = filter_all!(f_eq("uuid", PartialValue::new_uuid(target_uuid)));
+        // Add any supplemental conditions we have.
+        let f = Filter::join_parts_and(f_uuid, filter);
+
+        Ok(ModifyEvent {
+            event: Event::from_rw_uat(audit, qs, uat)?,
+            filter: f
+                .clone()
+                .to_ignore_hidden()
+                .validate(qs.get_schema())
+                .map_err(|e| OperationError::SchemaViolation(e))?,
+            filter_orig: f
+                .validate(qs.get_schema())
+                .map_err(|e| OperationError::SchemaViolation(e))?,
+            modlist: ml
+                .validate(qs.get_schema())
+                .map_err(|e| OperationError::SchemaViolation(e))?,
+        })
     }
 
     pub fn from_target_uuid_attr_purge(

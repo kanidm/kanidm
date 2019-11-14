@@ -435,11 +435,13 @@ impl KanidmClient {
         self.perform_post_request(format!("/v1/account/{}/_ssh_pubkeys", id).as_str(), sk)
     }
 
+    /*
     pub fn idm_account_rename_ssh_pubkey(&self, id: &str, oldtag: &str, newtag: &str) -> Result<(), ClientError> {
         self.perform_put_request(format!("/v1/account/{}/_ssh_pubkeys/{}", id, oldtag).as_str(), newtag.to_string())
     }
+    */
 
-    pub fn idm_account_get_ssh_pubkey(&self, id: &str, tag: &str) -> Result<String, ClientError> {
+    pub fn idm_account_get_ssh_pubkey(&self, id: &str, tag: &str) -> Result<Option<String>, ClientError> {
         self.perform_get_request(format!("/v1/account/{}/_ssh_pubkeys/{}", id, tag).as_str())
     }
 
