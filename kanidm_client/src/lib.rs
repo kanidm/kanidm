@@ -69,9 +69,9 @@ impl KanidmClient {
 
     fn build_reqwest(ca: &Option<reqwest::Certificate>) -> Result<reqwest::Client, reqwest::Error> {
         let client_builder = reqwest::Client::builder()
-            .cookie_store(true)
+            .cookie_store(true);
             // .danger_accept_invalid_hostnames(true)
-            .danger_accept_invalid_certs(true);
+            // .danger_accept_invalid_certs(true);
 
         let client_builder = match ca {
             Some(cert) => client_builder.add_root_certificate(cert.clone()),
