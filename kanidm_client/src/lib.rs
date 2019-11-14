@@ -68,7 +68,10 @@ impl KanidmClient {
     }
 
     fn build_reqwest(ca: &Option<reqwest::Certificate>) -> Result<reqwest::Client, reqwest::Error> {
-        let client_builder = reqwest::Client::builder().cookie_store(true);
+        let client_builder = reqwest::Client::builder()
+            .cookie_store(true)
+            // .danger_accept_invalid_hostnames(true)
+            .danger_accept_invalid_certs(true);
 
         let client_builder = match ca {
             Some(cert) => client_builder.add_root_certificate(cert.clone()),
@@ -430,7 +433,12 @@ impl KanidmClient {
         self.perform_get_request(format!("/v1/account/{}/_ssh_pubkeys", id).as_str())
     }
 
-    pub fn idm_account_post_ssh_pubkey(&self, id: &str, tag: &str, pubkey: &str) -> Result<(), ClientError> {
+    pub fn idm_account_post_ssh_pubkey(
+        &self,
+        id: &str,
+        tag: &str,
+        pubkey: &str,
+    ) -> Result<(), ClientError> {
         let sk = (tag.to_string(), pubkey.to_string());
         self.perform_post_request(format!("/v1/account/{}/_ssh_pubkeys", id).as_str(), sk)
     }
@@ -441,14 +449,17 @@ impl KanidmClient {
     }
     */
 
-    pub fn idm_account_get_ssh_pubkey(&self, id: &str, tag: &str) -> Result<Option<String>, ClientError> {
+    pub fn idm_account_get_ssh_pubkey(
+        &self,
+        id: &str,
+        tag: &str,
+    ) -> Result<Option<String>, ClientError> {
         self.perform_get_request(format!("/v1/account/{}/_ssh_pubkeys/{}", id, tag).as_str())
     }
 
     pub fn idm_account_delete_ssh_pubkey(&self, id: &str, tag: &str) -> Result<(), ClientError> {
         self.perform_delete_request(format!("/v1/account/{}/_ssh_pubkeys/{}", id, tag).as_str())
     }
-
 
     // ==== schema
     pub fn idm_schema_list(&self) -> Result<Vec<Entry>, ClientError> {

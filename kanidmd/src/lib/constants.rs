@@ -498,7 +498,9 @@ pub static JSON_IDM_ALL_ACP_READ_V1: &'static str = r#"{
             "displayname",
             "class",
             "memberof",
-            "member"
+            "member",
+            "uuid",
+            "ssh_publickey"
         ]
     }
 }"#;

@@ -1255,13 +1255,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
 
     pub fn get_ava_ssh_pubkeys(&self, attr: &str) -> Vec<String> {
         match self.attrs.get(attr) {
-            Some(ava) => {
-                ava.iter()
-                    .filter_map(|v| {
-                        v.get_sshkey()
-                    })
-                    .collect()
-            }
+            Some(ava) => ava.iter().filter_map(|v| v.get_sshkey()).collect(),
             None => Vec::new(),
         }
     }

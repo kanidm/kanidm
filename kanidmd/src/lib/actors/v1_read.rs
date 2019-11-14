@@ -123,7 +123,6 @@ impl Message for InternalSshKeyTagReadMessage {
     type Result = Result<Option<String>, OperationError>;
 }
 
-
 // ===========================================================
 
 pub struct QueryServerReadV1 {
@@ -433,11 +432,7 @@ impl Handler<InternalRadiusTokenReadMessage> for QueryServerReadV1 {
 impl Handler<InternalSshKeyReadMessage> for QueryServerReadV1 {
     type Result = Result<Vec<String>, OperationError>;
 
-    fn handle(
-        &mut self,
-        msg: InternalSshKeyReadMessage,
-        _: &mut Self::Context,
-    ) -> Self::Result {
+    fn handle(&mut self, msg: InternalSshKeyReadMessage, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("internal_sshkey_read_message");
         let res = audit_segment!(&mut audit, || {
             let qs_read = self.qs.read();
@@ -494,11 +489,7 @@ impl Handler<InternalSshKeyReadMessage> for QueryServerReadV1 {
 impl Handler<InternalSshKeyTagReadMessage> for QueryServerReadV1 {
     type Result = Result<Option<String>, OperationError>;
 
-    fn handle(
-        &mut self,
-        msg: InternalSshKeyTagReadMessage,
-        _: &mut Self::Context,
-    ) -> Self::Result {
+    fn handle(&mut self, msg: InternalSshKeyTagReadMessage, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("internal_sshkey_tag_read_message");
         let res = audit_segment!(&mut audit, || {
             let qs_read = self.qs.read();
@@ -506,7 +497,7 @@ impl Handler<InternalSshKeyTagReadMessage> for QueryServerReadV1 {
             let InternalSshKeyTagReadMessage {
                 uat,
                 uuid_or_name,
-                tag
+                tag,
             } = msg;
 
             let target_uuid = match Uuid::parse_str(uuid_or_name.as_str()) {
@@ -520,18 +511,15 @@ impl Handler<InternalSshKeyTagReadMessage> for QueryServerReadV1 {
             };
 
             // Make an event from the request
-            let srch = match SearchEvent::from_target_uuid_request(
-                &mut audit,
-                uat,
-                target_uuid,
-                &qs_read,
-            ) {
-                Ok(s) => s,
-                Err(e) => {
-                    audit_log!(audit, "Failed to begin search: {:?}", e);
-                    return Err(e);
-                }
-            };
+            let srch =
+                match SearchEvent::from_target_uuid_request(&mut audit, uat, target_uuid, &qs_read)
+                {
+                    Ok(s) => s,
+                    Err(e) => {
+                        audit_log!(audit, "Failed to begin search: {:?}", e);
+                        return Err(e);
+                    }
+                };
 
             audit_log!(audit, "Begin event {:?}", srch);
 
@@ -542,16 +530,13 @@ impl Handler<InternalSshKeyTagReadMessage> for QueryServerReadV1 {
                         // get the first entry
                         .map(|e| {
                             // From the entry, turn it into the value
-                            e.get_ava_set("ssh_publickey")
-                                .and_then(|vs| {
-                                    // Get the one tagged value
-                                    let pv = PartialValue::new_sshkey_tag(tag);
-                                    vs.get(&pv)
-                                        // Now turn that value to a pub key.
-                                        .and_then(|v| {
-                                            v.get_sshkey()
-                                        })
-                                })
+                            e.get_ava_set("ssh_publickey").and_then(|vs| {
+                                // Get the one tagged value
+                                let pv = PartialValue::new_sshkey_tag(tag);
+                                vs.get(&pv)
+                                    // Now turn that value to a pub key.
+                                    .and_then(|v| v.get_sshkey())
+                            })
                         })
                         .unwrap_or_else(|| {
                             // No matching entry? Return none.

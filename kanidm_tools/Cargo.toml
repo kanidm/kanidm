@@ -3,10 +3,15 @@ name = "kanidm_tools"
 version = "0.1.0"
 authors = ["William Brown <william@blackhats.net.au>"]
 edition = "2018"
+default-run = "kanidm"
 
 [[bin]]
 name = "kanidm"
 path = "src/main.rs"
+
+[[bin]]
+name = "kanidm_ssh_authorizedkeys"
+path = "src/ssh_authorizedkeys.rs"
 
 [dependencies]
 kanidm_client = { path = "../kanidm_client" }

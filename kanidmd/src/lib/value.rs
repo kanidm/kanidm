@@ -7,8 +7,8 @@ use std::convert::TryFrom;
 use std::str::FromStr;
 use uuid::Uuid;
 
-use std::cmp::Ordering;
 use sshkeys::PublicKey as SshPublicKey;
+use std::cmp::Ordering;
 
 #[allow(non_camel_case_types)]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
@@ -790,15 +790,13 @@ impl Value {
 
     pub fn get_sshkey(&self) -> Option<String> {
         match &self.pv {
-            PartialValue::SshKey(_) => {
-                match &self.data {
-                    Some(v) => match &v {
-                        DataValue::SshKey(sc) => Some(sc.clone()),
-                        _ => None,
-                    },
-                    None => None,
-                }
-            }
+            PartialValue::SshKey(_) => match &self.data {
+                Some(v) => match &v {
+                    DataValue::SshKey(sc) => Some(sc.clone()),
+                    _ => None,
+                },
+                None => None,
+            },
             _ => None,
         }
     }
@@ -1150,8 +1148,10 @@ mod tests {
         "tOzRiJ9vvjj96bRImwmyy5GvFSIUPlK00HitiAWGhiO1jGZKmK7220Oe4rqU3uAwA00a0758UODs+0OQHLMDRtl81l",
         "zPrVSdrYEDldxH9+a86dBZhdm0e15+ODDts2LHUknsJCRRldO4o9R9VrohlF7cbyBlnhJQrR4S+Oag== william@a",
         "methyst");
-        let ed25519 = concat!("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAeGW1P6Pc2rPq0XqbRaDKBcXZUPRklo0L1EyR30CwoP",
-        " william@amethyst");
+        let ed25519 = concat!(
+            "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAeGW1P6Pc2rPq0XqbRaDKBcXZUPRklo0L1EyR30CwoP",
+            " william@amethyst"
+        );
         let rsa = concat!("ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDTcXpclurQpyOHZBM/cDY9EvInSYkYSGe51by/wJP0Njgi",
         "GZUJ3HTaPqoGWux0PKd7KJki+onLYt4IwDV1RhV/GtMML2U9v94+pA8RIK4khCxvpUxlM7Kt/svjOzzzqiZfKdV37/",
         "OUXmM7bwVGOvm3EerDOwmO/QdzNGfkca12aWLoz97YrleXnCoAzr3IN7j3rwmfJGDyuUtGTdmyS/QWhK9FPr8Ic3eM",
@@ -1177,7 +1177,10 @@ mod tests {
         let sk4 = Value::new_sshkey_str("tag", "ntaouhtnhtnuehtnuhotnuhtneouhtneouh");
         assert!(!sk4.validate());
 
-        let sk5 = Value::new_sshkey_str("tag", "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAeGW1P6Pc2rPq0XqbRaDKBcXZUPRklo");
+        let sk5 = Value::new_sshkey_str(
+            "tag",
+            "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAeGW1P6Pc2rPq0XqbRaDKBcXZUPRklo",
+        );
         assert!(!sk5.validate());
     }
 

@@ -479,8 +479,7 @@ fn test_server_rest_sshkey_lifecycle() {
         assert!(res.is_ok());
 
         // Get the keys, should be empty vec.
-        let sk1 = rsclient
-            .idm_account_get_ssh_pubkeys("admin").unwrap();
+        let sk1 = rsclient.idm_account_get_ssh_pubkeys("admin").unwrap();
         assert!(sk1.len() == 0);
 
         // idm_account_get_ssh_pubkeys
@@ -489,8 +488,7 @@ fn test_server_rest_sshkey_lifecycle() {
         // idm_account_delete_ssh_pubkey
 
         // Post an invalid key (should error)
-        let r1 = rsclient
-            .idm_account_post_ssh_pubkey("admin", "inv", "invalid key");
+        let r1 = rsclient.idm_account_post_ssh_pubkey("admin", "inv", "invalid key");
         assert!(r1.is_err());
 
         // Post a valid key
@@ -500,8 +498,7 @@ fn test_server_rest_sshkey_lifecycle() {
         assert!(r2.is_ok());
 
         // Get, should have the key
-        let sk2 = rsclient
-            .idm_account_get_ssh_pubkeys("admin").unwrap();
+        let sk2 = rsclient.idm_account_get_ssh_pubkeys("admin").unwrap();
         assert!(sk2.len() == 1);
 
         // Post a valid key
@@ -510,23 +507,19 @@ fn test_server_rest_sshkey_lifecycle() {
         assert!(r3.is_ok());
 
         // Get, should have both keys.
-        let sk3 = rsclient
-            .idm_account_get_ssh_pubkeys("admin").unwrap();
+        let sk3 = rsclient.idm_account_get_ssh_pubkeys("admin").unwrap();
         assert!(sk3.len() == 2);
 
         // Delete a key (by tag)
-        let r4 = rsclient
-            .idm_account_delete_ssh_pubkey("admin", "k1");
+        let r4 = rsclient.idm_account_delete_ssh_pubkey("admin", "k1");
         assert!(r4.is_ok());
 
         // Get, should have remaining key.
-        let sk4 = rsclient
-            .idm_account_get_ssh_pubkeys("admin").unwrap();
+        let sk4 = rsclient.idm_account_get_ssh_pubkeys("admin").unwrap();
         assert!(sk4.len() == 1);
 
         // get by tag
-        let skn = rsclient
-            .idm_account_get_ssh_pubkey("admin", "k2");
+        let skn = rsclient.idm_account_get_ssh_pubkey("admin", "k2");
         assert!(skn.is_ok());
         assert!(skn.unwrap() == Some("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBx4TpJYQjd0YI5lQIHqblIsCIK5NKVFURYS/eM3o6/Z william@amethyst".to_string()));
     });

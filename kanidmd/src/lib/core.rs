@@ -17,14 +17,14 @@ use crate::config::Configuration;
 use crate::actors::v1_read::QueryServerReadV1;
 use crate::actors::v1_read::{
     AuthMessage, InternalRadiusReadMessage, InternalRadiusTokenReadMessage, InternalSearchMessage,
-    SearchMessage, WhoamiMessage, InternalSshKeyReadMessage, InternalSshKeyTagReadMessage
+    InternalSshKeyReadMessage, InternalSshKeyTagReadMessage, SearchMessage, WhoamiMessage,
 };
 use crate::actors::v1_write::QueryServerWriteV1;
 use crate::actors::v1_write::{
     AppendAttributeMessage, CreateMessage, DeleteMessage, IdmAccountSetPasswordMessage,
     InternalCredentialSetMessage, InternalDeleteMessage, InternalRegenerateRadiusMessage,
-    ModifyMessage, PurgeAttributeMessage, SetAttributeMessage, RemoveAttributeValueMessage,
-    InternalSshKeyCreateMessage
+    InternalSshKeyCreateMessage, ModifyMessage, PurgeAttributeMessage, RemoveAttributeValueMessage,
+    SetAttributeMessage,
 };
 use crate::async_log;
 use crate::audit::AuditScope;
@@ -777,7 +777,11 @@ fn account_post_id_ssh_pubkey(
 }
 
 fn account_get_id_ssh_pubkey_tag(
-    (path, req, state): (Path<(String, String)>, HttpRequest<AppState>, State<AppState>),
+    (path, req, state): (
+        Path<(String, String)>,
+        HttpRequest<AppState>,
+        State<AppState>,
+    ),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let uat = get_current_user(&req);
     let (id, tag) = path.into_inner();
@@ -800,7 +804,11 @@ fn account_get_id_ssh_pubkey_tag(
 }
 
 fn account_delete_id_ssh_pubkey_tag(
-    (path, req, state): (Path<(String, String)>, HttpRequest<AppState>, State<AppState>),
+    (path, req, state): (
+        Path<(String, String)>,
+        HttpRequest<AppState>,
+        State<AppState>,
+    ),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let uat = get_current_user(&req);
     let (id, tag) = path.into_inner();
@@ -814,9 +822,7 @@ fn account_delete_id_ssh_pubkey_tag(
     };
 
     let res = state.qe_w.send(obj).from_err().and_then(|res| match res {
-        Ok(event_result) => {
-            Ok(HttpResponse::Ok().json(event_result))
-        }
+        Ok(event_result) => Ok(HttpResponse::Ok().json(event_result)),
         Err(e) => Ok(operation_error_to_response(e)),
     });
 

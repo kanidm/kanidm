@@ -10,7 +10,7 @@ use kanidm_proto::v1::{
     WhoamiResponse,
 };
 // use error::OperationError;
-use crate::modify::{ModifyList, ModifyValid, ModifyInvalid};
+use crate::modify::{ModifyInvalid, ModifyList, ModifyValid};
 use crate::server::{
     QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
 };

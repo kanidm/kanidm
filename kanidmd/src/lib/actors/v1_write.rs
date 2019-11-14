@@ -6,7 +6,7 @@ use crate::event::{
     CreateEvent, DeleteEvent, ModifyEvent, PurgeRecycledEvent, PurgeTombstoneEvent,
 };
 use crate::idm::event::{GeneratePasswordEvent, PasswordChangeEvent, RegenerateRadiusSecretEvent};
-use crate::modify::{ModifyList, ModifyInvalid};
+use crate::modify::{ModifyInvalid, ModifyList};
 use crate::value::Value;
 use kanidm_proto::v1::OperationError;
 
@@ -303,14 +303,20 @@ impl QueryServerWriteV1 {
                 })?,
         };
 
-        let mdf =
-            match ModifyEvent::from_internal_parts(audit, uat, target_uuid, ml, filter, &qs_write) {
-                Ok(m) => m,
-                Err(e) => {
-                    audit_log!(audit, "Failed to begin modify: {:?}", e);
-                    return Err(e);
-                }
-            };
+        let mdf = match ModifyEvent::from_internal_parts(
+            audit,
+            uat,
+            target_uuid,
+            ml,
+            filter,
+            &qs_write,
+        ) {
+            Ok(m) => m,
+            Err(e) => {
+                audit_log!(audit, "Failed to begin modify: {:?}", e);
+                return Err(e);
+            }
+        };
 
         audit_log!(audit, "Begin modify event {:?}", mdf);
 
@@ -639,9 +645,8 @@ impl Handler<RemoveAttributeValueMessage> for QueryServerWriteV1 {
                     })?,
             };
 
-            let proto_ml = ProtoModifyList::new_list(vec![
-                ProtoModify::Removed(msg.attr, msg.value)
-            ]);
+            let proto_ml =
+                ProtoModifyList::new_list(vec![ProtoModify::Removed(msg.attr, msg.value)]);
 
             let mdf = match ModifyEvent::from_parts(
                 &mut audit,
@@ -737,13 +742,14 @@ impl Handler<InternalSshKeyCreateMessage> for QueryServerWriteV1 {
             let InternalSshKeyCreateMessage {
                 uat,
                 uuid_or_name,
-                tag, key, filter
+                tag,
+                key,
+                filter,
             } = msg;
 
             // Because this is from internal, we can generate a real modlist, rather
             // than relying on the proto ones.
-            let ml = ModifyList::new_append("ssh_publickey",
-                Value::new_sshkey(tag, key));
+            let ml = ModifyList::new_append("ssh_publickey", Value::new_sshkey(tag, key));
 
             self.modify_from_internal_parts(&mut audit, uat, uuid_or_name, ml, filter)
         });
