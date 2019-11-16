@@ -392,6 +392,7 @@ pub trait BackendTransaction {
     }
 
     fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
+        // TODO: Implement this!!!
         Vec::new()
     }
 

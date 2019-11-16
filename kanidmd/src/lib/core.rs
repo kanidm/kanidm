@@ -1086,26 +1086,6 @@ fn idm_account_set_password(
     )
 }
 
-/*
-fn test_resource(
-    (class, _req, _state): (Path<String>, HttpRequest<AppState> ,State<AppState>),
-) -> String {
-    format!("Hello {:?}!", class)
-}
-
-// https://actix.rs/docs/extractors/
-#[derive(Deserialize)]
-struct RestResource {
-    class: String,
-    id: String,
-}
-fn test_resource_id(
-    (r, _req, _state): (Path<RestResource>, HttpRequest<AppState> ,State<AppState>),
-) -> String {
-    format!("Hello {:?}/{:?}!", r.class, r.id)
-}
-*/
-
 // === internal setup helpers
 
 fn setup_backend(config: &Configuration) -> Result<Backend, OperationError> {
@@ -1243,6 +1223,72 @@ pub fn restore_server_core(config: Configuration, dst_path: &str) {
     };
 }
 
+pub fn reindex_server_core(config: Configuration) {
+    let be = match setup_backend(&config) {
+        Ok(be) => be,
+        Err(e) => {
+            error!("Failed to setup BE: {:?}", e);
+            return;
+        }
+    };
+    let mut audit = AuditScope::new("server_reindex");
+
+    // First, we provide the in-memory schema so that core attrs are indexed correctly.
+    let schema = match Schema::new(&mut audit) {
+        Ok(s) => s,
+        Err(e) => {
+            error!("Failed to setup in memory schema: {:?}", e);
+            std::process::exit(1);
+        }
+    };
+
+    info!("Start Index Phase 1 ...");
+    // Limit the scope of the schema txn.
+    let idxmeta = { schema.write().get_idxmeta() };
+
+    // Reindex only the core schema attributes to bootstrap the process.
+    let be_wr_txn = be.write(idxmeta);
+    let r = be_wr_txn
+        .reindex(&mut audit)
+        .and_then(|_| be_wr_txn.commit(&mut audit));
+
+    // Now that's done, setup a minimal qs and reindex from that.
+    if r.is_err() {
+        debug!("{}", audit);
+        error!("Failed to reindex database: {:?}", r);
+        std::process::exit(1);
+    }
+    info!("Index Phase 1 Success!");
+
+    info!("Attempting to init query server ...");
+    let server_id = be.get_db_sid();
+
+    let (qs, _idms) = match setup_qs_idms(&mut audit, be, server_id) {
+        Ok(t) => t,
+        Err(e) => {
+            debug!("{}", audit);
+            error!("Unable to setup query server or idm server -> {:?}", e);
+            return;
+        }
+    };
+    info!("Init Query Server Success!");
+
+    info!("Start Index Phase 2 ...");
+
+    let qs_write = qs.write();
+    let r = qs_write
+        .reindex(&mut audit)
+        .and_then(|_| qs_write.commit(&mut audit));
+
+    match r {
+        Ok(_) => info!("Index Phase 2 Success!"),
+        Err(e) => {
+            error!("Reindex failed: {:?}", e);
+            std::process::exit(1);
+        }
+    };
+}
+
 pub fn reset_sid_core(config: Configuration) {
     let mut audit = AuditScope::new("reset_sid_core");
     // Setup the be
@@ -1284,6 +1330,7 @@ pub fn verify_server_core(config: Configuration) {
     debug!("{}", audit);
 
     if r.len() == 0 {
+        info!("Verification passed!");
         std::process::exit(0);
     } else {
         for er in r {
