@@ -11,7 +11,7 @@ extern crate kanidm_client;
 extern crate kanidm_proto;
 extern crate serde_json;
 
-use kanidm_client::KanidmClient;
+use kanidm_client::{KanidmClient, KanidmClientBuilder};
 
 use kanidm::config::{Configuration, IntegrationTestConfig};
 use kanidm::core::create_server_core;
@@ -72,7 +72,9 @@ fn run_test(test_fn: fn(KanidmClient) -> ()) {
 
     // Setup the client, and the address we selected.
     let addr = format!("http://127.0.0.1:{}", port);
-    let rsclient = KanidmClient::new(addr.as_str(), None);
+    let rsclient = KanidmClientBuilder::new(addr)
+        .build()
+        .expect("Failed to build client");
 
     test_fn(rsclient);
 
@@ -259,7 +261,7 @@ fn test_server_admin_reset_simple_password() {
         let res = rsclient.idm_account_primary_credential_set_password("testperson", "password");
         assert!(res.is_ok());
         // Check it stuck.
-        let tclient = rsclient.new_session();
+        let tclient = rsclient.new_session().expect("failed to build new session");
         assert!(tclient
             .auth_simple_password("testperson", "password")
             .is_ok());
@@ -268,7 +270,7 @@ fn test_server_admin_reset_simple_password() {
         let res = rsclient.idm_account_primary_credential_set_generated("testperson");
         assert!(res.is_ok());
         let gpw = res.unwrap();
-        let tclient = rsclient.new_session();
+        let tclient = rsclient.new_session().expect("failed to build new session");
         assert!(tclient
             .auth_simple_password("testperson", gpw.as_str())
             .is_ok());
