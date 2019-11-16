@@ -6,8 +6,8 @@ extern crate log;
 
 use reqwest;
 use serde::de::DeserializeOwned;
-use serde_derive::Deserialize;
 use serde::Serialize;
+use serde_derive::Deserialize;
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::Read;
@@ -63,12 +63,9 @@ impl KanidmClientBuilder {
     fn parse_certificate(ca_path: &str) -> Result<reqwest::Certificate, ()> {
         let mut buf = Vec::new();
         // TODO: Handle these errors better, or at least provide diagnostics?
-        let mut f = File::open(ca_path)
-            .map_err(|_| ())?;
-        f.read_to_end(&mut buf)
-            .map_err(|_| ())?;
-        reqwest::Certificate::from_pem(&buf)
-            .map_err(|_| ())
+        let mut f = File::open(ca_path).map_err(|_| ())?;
+        f.read_to_end(&mut buf).map_err(|_| ())?;
+        reqwest::Certificate::from_pem(&buf).map_err(|_| ())
     }
 
     fn apply_config_options(self, kcc: KanidmClientConfig) -> Result<Self, ()> {
@@ -76,21 +73,17 @@ impl KanidmClientBuilder {
             address,
             verify_ca,
             verify_hostnames,
-            ca
+            ca,
         } = self;
         // Process and apply all our options if they exist.
         let address = match kcc.uri {
             Some(uri) => Some(uri),
             None => address,
         };
-        let verify_ca = kcc.verify_ca
-            .unwrap_or_else(|| verify_ca);
-        let verify_hostnames = kcc.verify_hostnames
-            .unwrap_or_else(|| verify_hostnames);
+        let verify_ca = kcc.verify_ca.unwrap_or_else(|| verify_ca);
+        let verify_hostnames = kcc.verify_hostnames.unwrap_or_else(|| verify_hostnames);
         let ca = match kcc.ca_path {
-            Some(ca_path) => {
-                Some(Self::parse_certificate(ca_path.as_str())?)
-            }
+            Some(ca_path) => Some(Self::parse_certificate(ca_path.as_str())?),
             None => ca,
         };
 
@@ -102,28 +95,29 @@ impl KanidmClientBuilder {
         })
     }
 
-    pub fn read_options_from_optional_config<P: AsRef<Path>>(self, config_path: P) -> Result<Self, ()> {
+    pub fn read_options_from_optional_config<P: AsRef<Path>>(
+        self,
+        config_path: P,
+    ) -> Result<Self, ()> {
         // If the file does not exist, we skip this function.
         let mut f = match File::open(config_path) {
             Ok(f) => f,
             Err(e) => {
                 debug!("Unabled to open config file [{:?}], skipping ...", e);
-                return Ok(self)
+                return Ok(self);
             }
         };
 
         let mut contents = String::new();
-        f.read_to_string(&mut contents)
-            .map_err(|e| {
-                eprintln!("{:?}", e);
-                ()
-            })?;
+        f.read_to_string(&mut contents).map_err(|e| {
+            eprintln!("{:?}", e);
+            ()
+        })?;
 
-        let config: KanidmClientConfig = toml::from_str(contents.as_str())
-            .map_err(|e| {
-                eprintln!("{:?}", e);
-                ()
-            })?;
+        let config: KanidmClientConfig = toml::from_str(contents.as_str()).map_err(|e| {
+            eprintln!("{:?}", e);
+            ()
+        })?;
 
         self.apply_config_options(config)
     }
@@ -195,7 +189,7 @@ impl KanidmClientBuilder {
         Ok(KanidmClient {
             client: client,
             addr: address,
-            builder: self
+            builder: self,
         })
     }
 }
@@ -204,7 +198,7 @@ impl KanidmClientBuilder {
 pub struct KanidmClient {
     client: reqwest::Client,
     addr: String,
-    builder: KanidmClientBuilder
+    builder: KanidmClientBuilder,
 }
 
 impl KanidmClient {

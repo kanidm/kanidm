@@ -72,7 +72,8 @@ fn run_test(test_fn: fn(KanidmClient) -> ()) {
 
     // Setup the client, and the address we selected.
     let addr = format!("http://127.0.0.1:{}", port);
-    let rsclient = KanidmClientBuilder::new(addr)
+    let rsclient = KanidmClientBuilder::new()
+        .address(addr)
         .build()
         .expect("Failed to build client");
 
