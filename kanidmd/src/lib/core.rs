@@ -17,13 +17,14 @@ use crate::config::Configuration;
 use crate::actors::v1_read::QueryServerReadV1;
 use crate::actors::v1_read::{
     AuthMessage, InternalRadiusReadMessage, InternalRadiusTokenReadMessage, InternalSearchMessage,
-    SearchMessage, WhoamiMessage,
+    InternalSshKeyReadMessage, InternalSshKeyTagReadMessage, SearchMessage, WhoamiMessage,
 };
 use crate::actors::v1_write::QueryServerWriteV1;
 use crate::actors::v1_write::{
     AppendAttributeMessage, CreateMessage, DeleteMessage, IdmAccountSetPasswordMessage,
     InternalCredentialSetMessage, InternalDeleteMessage, InternalRegenerateRadiusMessage,
-    ModifyMessage, PurgeAttributeMessage, SetAttributeMessage,
+    InternalSshKeyCreateMessage, ModifyMessage, PurgeAttributeMessage, RemoveAttributeValueMessage,
+    SetAttributeMessage,
 };
 use crate::async_log;
 use crate::audit::AuditScope;
@@ -703,6 +704,129 @@ fn account_put_id_credential_primary(
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let id = path.into_inner();
     json_rest_event_credential_put(id, None, req, state)
+}
+
+// Return a vec of str
+fn account_get_id_ssh_pubkeys(
+    (path, req, state): (Path<String>, HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let uat = get_current_user(&req);
+    let id = path.into_inner();
+
+    let obj = InternalSshKeyReadMessage {
+        uat: uat,
+        uuid_or_name: id,
+    };
+
+    let res = state.qe_r.send(obj).from_err().and_then(|res| match res {
+        Ok(event_result) => {
+            // Only send back the first result, or None
+            Ok(HttpResponse::Ok().json(event_result))
+        }
+        Err(e) => Ok(operation_error_to_response(e)),
+    });
+
+    Box::new(res)
+}
+
+fn account_post_id_ssh_pubkey(
+    (path, req, state): (Path<String>, HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let max_size = state.max_size;
+    let uat = get_current_user(&req);
+    let id = path.into_inner();
+
+    req.payload()
+        .from_err()
+        .fold(BytesMut::new(), move |mut body, chunk| {
+            // limit max size of in-memory payload
+            if (body.len() + chunk.len()) > max_size {
+                Err(error::ErrorBadRequest("overflow"))
+            } else {
+                body.extend_from_slice(&chunk);
+                Ok(body)
+            }
+        })
+        .and_then(
+            move |body| -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
+                let r_obj = serde_json::from_slice::<(String, String)>(&body);
+                match r_obj {
+                    Ok((tag, key)) => {
+                        let m_obj = InternalSshKeyCreateMessage {
+                            uat: uat,
+                            uuid_or_name: id,
+                            tag: tag,
+                            key: key,
+                            filter: filter_all!(f_eq("class", PartialValue::new_class("account"))),
+                        };
+                        // Add a msg here
+                        let res = state.qe_w.send(m_obj).from_err().and_then(|res| match res {
+                            Ok(_) => Ok(HttpResponse::Ok().json(())),
+                            Err(e) => Ok(operation_error_to_response(e)),
+                        });
+
+                        Box::new(res)
+                    }
+                    Err(e) => Box::new(future::err(error::ErrorBadRequest(format!(
+                        "Json Decode Failed: {:?}",
+                        e
+                    )))),
+                } // end match
+            },
+        ) // end and_then
+}
+
+fn account_get_id_ssh_pubkey_tag(
+    (path, req, state): (
+        Path<(String, String)>,
+        HttpRequest<AppState>,
+        State<AppState>,
+    ),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let uat = get_current_user(&req);
+    let (id, tag) = path.into_inner();
+
+    let obj = InternalSshKeyTagReadMessage {
+        uat: uat,
+        uuid_or_name: id,
+        tag: tag,
+    };
+
+    let res = state.qe_r.send(obj).from_err().and_then(|res| match res {
+        Ok(event_result) => {
+            // Only send back the first result, or None
+            Ok(HttpResponse::Ok().json(event_result))
+        }
+        Err(e) => Ok(operation_error_to_response(e)),
+    });
+
+    Box::new(res)
+}
+
+fn account_delete_id_ssh_pubkey_tag(
+    (path, req, state): (
+        Path<(String, String)>,
+        HttpRequest<AppState>,
+        State<AppState>,
+    ),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let uat = get_current_user(&req);
+    let (id, tag) = path.into_inner();
+
+    let obj = RemoveAttributeValueMessage {
+        uat: uat,
+        uuid_or_name: id,
+        attr: "ssh_publickey".to_string(),
+        value: tag,
+        filter: filter_all!(f_eq("class", PartialValue::new_class("account"))),
+    };
+
+    let res = state.qe_w.send(obj).from_err().and_then(|res| match res {
+        Ok(event_result) => Ok(HttpResponse::Ok().json(event_result)),
+        Err(e) => Ok(operation_error_to_response(e)),
+    });
+
+    Box::new(res)
 }
 
 // Get and return a single str
@@ -1483,6 +1607,18 @@ pub fn create_server_core(config: Configuration) {
         .resource("/v1/account/{id}/_credential/{cid}/_lock", |r| {
             r.method(http::Method::GET).with(do_nothing)
             // add post, delete
+        })
+        .resource("/v1/account/{id}/_ssh_pubkeys", |r| {
+            r.method(http::Method::GET)
+                .with_async(account_get_id_ssh_pubkeys);
+            r.method(http::Method::POST)
+                .with_async(account_post_id_ssh_pubkey);
+        })
+        .resource("/v1/account/{id}/_ssh_pubkeys/{tag}", |r| {
+            r.method(http::Method::GET)
+                .with_async(account_get_id_ssh_pubkey_tag);
+            r.method(http::Method::DELETE)
+                .with_async(account_delete_id_ssh_pubkey_tag);
         })
         .resource("/v1/account/{id}/_radius", |r| {
             r.method(http::Method::GET)

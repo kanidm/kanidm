@@ -2,9 +2,9 @@
 
 cat > ./altnames.cnf << DEVEOF
 [req]
-req_extensions = v3_req
 nsComment = "Certificate"
 distinguished_name  = req_distinguished_name
+req_extensions = v3_req
 
 [ req_distinguished_name ]
 
@@ -38,15 +38,16 @@ keyUsage = nonRepudiation, digitalSignature, keyEncipherment
 subjectAltName = @alt_names
 
 [alt_names]
-DNS.1 = 127.0.0.1
+DNS.1 = localhost
+IP.1 = 127.0.0.1
 
 DEVEOF
 
 # Make the ca
 openssl req -x509 -new -newkey rsa:2048 -keyout cakey.pem -out ca.pem -days 31 -subj "/C=AU/ST=Queensland/L=Brisbane/O=INSECURE/CN=insecure.ca.localhost" -nodes
 openssl genrsa -out key.pem 2048
-openssl req -key key.pem -out cert.csr -days 31 -config altnames.cnf -new
-openssl x509 -req -days 31 -in cert.csr -CA ca.pem -CAkey cakey.pem -CAcreateserial -out cert.pem
+openssl req -key key.pem -out cert.csr -days 31 -config altnames.cnf -new -extensions v3_req
+openssl x509 -req -days 31 -in cert.csr -CA ca.pem -CAkey cakey.pem -CAcreateserial -out cert.pem -extfile altnames.cnf -extensions v3_req
 
 echo use ca.pem, cert.pem, and key.pem
 

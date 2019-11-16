@@ -3,10 +3,15 @@ name = "kanidm_tools"
 version = "0.1.0"
 authors = ["William Brown <william@blackhats.net.au>"]
 edition = "2018"
+default-run = "kanidm"
 
 [[bin]]
 name = "kanidm"
 path = "src/main.rs"
+
+[[bin]]
+name = "kanidm_ssh_authorizedkeys"
+path = "src/ssh_authorizedkeys.rs"
 
 [dependencies]
 kanidm_client = { path = "../kanidm_client" }
@@ -15,6 +20,7 @@ rpassword = "0.4"
 structopt = { version = "0.2", default-features = false }
 log = "0.4"
 env_logger = "0.6"
+toml = "0.5"
 serde = "1.0"
 serde_json = "1.0"
 

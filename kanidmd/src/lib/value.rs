@@ -7,6 +7,7 @@ use std::convert::TryFrom;
 use std::str::FromStr;
 use uuid::Uuid;
 
+use sshkeys::PublicKey as SshPublicKey;
 use std::cmp::Ordering;
 
 #[allow(non_camel_case_types)]
@@ -356,6 +357,10 @@ impl PartialValue {
             PartialValue::RadiusCred => true,
             _ => false,
         }
+    }
+
+    pub fn new_sshkey_tag(s: String) -> Self {
+        PartialValue::SshKey(s)
     }
 
     pub fn new_sshkey_tag_s(s: &str) -> Self {
@@ -762,10 +767,37 @@ impl Value {
         }
     }
 
+    pub fn new_sshkey_str(tag: &str, key: &str) -> Self {
+        Value {
+            pv: PartialValue::new_sshkey_tag_s(tag),
+            data: Some(DataValue::SshKey(key.to_string())),
+        }
+    }
+
+    pub fn new_sshkey(tag: String, key: String) -> Self {
+        Value {
+            pv: PartialValue::new_sshkey_tag(tag),
+            data: Some(DataValue::SshKey(key)),
+        }
+    }
+
     pub fn is_sshkey(&self) -> bool {
         match &self.pv {
             PartialValue::SshKey(_) => true,
             _ => false,
+        }
+    }
+
+    pub fn get_sshkey(&self) -> Option<String> {
+        match &self.pv {
+            PartialValue::SshKey(_) => match &self.data {
+                Some(v) => match &v {
+                    DataValue::SshKey(sc) => Some(sc.clone()),
+                    _ => None,
+                },
+                None => None,
+            },
+            _ => None,
         }
     }
 
@@ -975,7 +1007,26 @@ impl Value {
                 // tag to the proto side. The credentials private data is stored seperately.
                 tag.to_string()
             }
-            PartialValue::SshKey(tag) => tag.to_string(),
+            // We display the tag and fingerprint.
+            PartialValue::SshKey(tag) => match &self.data {
+                Some(v) => match &v {
+                    DataValue::SshKey(sk) => {
+                        // Check it's really an sshkey in the
+                        // supplemental data.
+                        match SshPublicKey::from_string(sk) {
+                            Ok(spk) => {
+                                let fp = spk.fingerprint();
+                                format!("{}: {}", tag, fp.hash)
+                            }
+                            Err(_) => format!("{}: corrupted ssh public key", tag),
+                        }
+                    }
+                    _ => format!("{}: corrupted value tag", tag),
+                },
+                None => format!("{}: corrupted value", tag),
+            },
+            // We don't disclose the radius credential unless by special
+            // interfaces.
             PartialValue::RadiusCred => "radius".to_string(),
         }
     }
@@ -994,7 +1045,14 @@ impl Value {
             },
             PartialValue::SshKey(_) => match &self.data {
                 Some(v) => match &v {
-                    DataValue::SshKey(_) => true,
+                    DataValue::SshKey(sk) => {
+                        // Check it's really an sshkey in the
+                        // supplemental data.
+                        match SshPublicKey::from_string(sk) {
+                            Ok(_) => true,
+                            Err(_) => false,
+                        }
+                    }
                     _ => false,
                 },
                 None => false,
@@ -1022,13 +1080,23 @@ impl Value {
             PartialValue::JsonFilt(s) => vec![serde_json::to_string(s)
                 .expect("A json filter value was corrupted during run-time")],
             PartialValue::Cred(tag) => vec![tag.to_string()],
-            PartialValue::SshKey(tag) => vec![tag.to_string()],
+            PartialValue::SshKey(tag) => {
+                // Should this also extract the key data?
+                vec![tag.to_string()]
+            }
             PartialValue::RadiusCred => vec![],
         }
     }
 }
 
 impl Borrow<PartialValue> for Value {
+    fn borrow(&self) -> &PartialValue {
+        &self.pv
+    }
+}
+
+// Allows sets of value refs to be compared to PV's
+impl Borrow<PartialValue> for &Value {
     fn borrow(&self) -> &PartialValue {
         &self.pv
     }
@@ -1072,6 +1140,48 @@ mod tests {
 
         let r6 = SyntaxType::try_from("zzzzantheou");
         assert_eq!(r6, Err(()));
+    }
+
+    #[test]
+    fn test_value_sshkey_validation_display() {
+        let ecdsa = concat!("ecdsa-sha2-nistp521 AAAAE2VjZHNhLXNoYTItbmlzdHA1MjEAAAAIbmlzdHA1MjEAAACFBAGyIY7o3B",
+        "tOzRiJ9vvjj96bRImwmyy5GvFSIUPlK00HitiAWGhiO1jGZKmK7220Oe4rqU3uAwA00a0758UODs+0OQHLMDRtl81l",
+        "zPrVSdrYEDldxH9+a86dBZhdm0e15+ODDts2LHUknsJCRRldO4o9R9VrohlF7cbyBlnhJQrR4S+Oag== william@a",
+        "methyst");
+        let ed25519 = concat!(
+            "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAeGW1P6Pc2rPq0XqbRaDKBcXZUPRklo0L1EyR30CwoP",
+            " william@amethyst"
+        );
+        let rsa = concat!("ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDTcXpclurQpyOHZBM/cDY9EvInSYkYSGe51by/wJP0Njgi",
+        "GZUJ3HTaPqoGWux0PKd7KJki+onLYt4IwDV1RhV/GtMML2U9v94+pA8RIK4khCxvpUxlM7Kt/svjOzzzqiZfKdV37/",
+        "OUXmM7bwVGOvm3EerDOwmO/QdzNGfkca12aWLoz97YrleXnCoAzr3IN7j3rwmfJGDyuUtGTdmyS/QWhK9FPr8Ic3eM",
+        "QK1JSAQqVfGhA8lLbJHmnQ/b/KMl2lzzp7SXej0wPUfvI/IP3NGb8irLzq8+JssAzXGJ+HMql+mNHiSuPaktbFzZ6y",
+        "ikMR6Rx/psU07nAkxKZDEYpNVv william@amethyst");
+
+        let sk1 = Value::new_sshkey_str("tag", ecdsa);
+        assert!(sk1.validate());
+        // to proto them
+        let psk1 = sk1.to_proto_string_clone();
+        assert_eq!(psk1, "tag: oMh0SibdRGV2APapEdVojzSySx9PuhcklWny5LP0Mg4");
+
+        let sk2 = Value::new_sshkey_str("tag", ed25519);
+        assert!(sk2.validate());
+        let psk2 = sk2.to_proto_string_clone();
+        assert_eq!(psk2, "tag: UR7mRCLLXmZNsun+F2lWO3hG3PORk/0JyjxPQxDUcdc");
+
+        let sk3 = Value::new_sshkey_str("tag", rsa);
+        assert!(sk3.validate());
+        let psk3 = sk3.to_proto_string_clone();
+        assert_eq!(psk3, "tag: sWugDdWeE4LkmKer8hz7ERf+6VttYPIqD0ULXR3EUcU");
+
+        let sk4 = Value::new_sshkey_str("tag", "ntaouhtnhtnuehtnuhotnuhtneouhtneouh");
+        assert!(!sk4.validate());
+
+        let sk5 = Value::new_sshkey_str(
+            "tag",
+            "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAeGW1P6Pc2rPq0XqbRaDKBcXZUPRklo",
+        );
+        assert!(!sk5.validate());
     }
 
     /*

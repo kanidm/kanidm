@@ -91,6 +91,10 @@ impl ModifyList<ModifyInvalid> {
         Self::new_list(vec![m_purge(attr), Modify::Present(attr.to_string(), v)])
     }
 
+    pub fn new_append(attr: &str, v: Value) -> Self {
+        Self::new_list(vec![Modify::Present(attr.to_string(), v)])
+    }
+
     pub fn new_purge(attr: &str) -> Self {
         Self::new_list(vec![m_purge(attr)])
     }

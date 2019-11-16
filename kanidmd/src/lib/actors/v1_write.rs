@@ -6,6 +6,8 @@ use crate::event::{
     CreateEvent, DeleteEvent, ModifyEvent, PurgeRecycledEvent, PurgeTombstoneEvent,
 };
 use crate::idm::event::{GeneratePasswordEvent, PasswordChangeEvent, RegenerateRadiusSecretEvent};
+use crate::modify::{ModifyInvalid, ModifyList};
+use crate::value::Value;
 use kanidm_proto::v1::OperationError;
 
 use crate::filter::{Filter, FilterInvalid};
@@ -147,6 +149,18 @@ impl Message for InternalRegenerateRadiusMessage {
     type Result = Result<String, OperationError>;
 }
 
+pub struct InternalSshKeyCreateMessage {
+    pub uat: Option<UserAuthToken>,
+    pub uuid_or_name: String,
+    pub tag: String,
+    pub key: String,
+    pub filter: Filter<FilterInvalid>,
+}
+
+impl Message for InternalSshKeyCreateMessage {
+    type Result = Result<(), OperationError>;
+}
+
 /// Indicate that we want to purge an attribute from the entry - this is generally
 /// in response to a DELETE http method.
 pub struct PurgeAttributeMessage {
@@ -157,6 +171,19 @@ pub struct PurgeAttributeMessage {
 }
 
 impl Message for PurgeAttributeMessage {
+    type Result = Result<(), OperationError>;
+}
+
+/// Delete a single attribute-value pair from the entry.
+pub struct RemoveAttributeValueMessage {
+    pub uat: Option<UserAuthToken>,
+    pub uuid_or_name: String,
+    pub attr: String,
+    pub value: String,
+    pub filter: Filter<FilterInvalid>,
+}
+
+impl Message for RemoveAttributeValueMessage {
     type Result = Result<(), OperationError>;
 }
 
@@ -248,6 +275,48 @@ impl QueryServerWriteV1 {
                     return Err(e);
                 }
             };
+
+        audit_log!(audit, "Begin modify event {:?}", mdf);
+
+        qs_write
+            .modify(audit, &mdf)
+            .and_then(|_| qs_write.commit(audit).map(|_| ()))
+    }
+
+    fn modify_from_internal_parts(
+        &mut self,
+        audit: &mut AuditScope,
+        uat: Option<UserAuthToken>,
+        uuid_or_name: String,
+        ml: ModifyList<ModifyInvalid>,
+        filter: Filter<FilterInvalid>,
+    ) -> Result<(), OperationError> {
+        let mut qs_write = self.qs.write();
+
+        let target_uuid = match Uuid::parse_str(uuid_or_name.as_str()) {
+            Ok(u) => u,
+            Err(_) => qs_write
+                .name_to_uuid(audit, uuid_or_name.as_str())
+                .map_err(|e| {
+                    audit_log!(audit, "Error resolving id to target");
+                    e
+                })?,
+        };
+
+        let mdf = match ModifyEvent::from_internal_parts(
+            audit,
+            uat,
+            target_uuid,
+            ml,
+            filter,
+            &qs_write,
+        ) {
+            Ok(m) => m,
+            Err(e) => {
+                audit_log!(audit, "Failed to begin modify: {:?}", e);
+                return Err(e);
+            }
+        };
 
         audit_log!(audit, "Begin modify event {:?}", mdf);
 
@@ -559,6 +628,52 @@ impl Handler<PurgeAttributeMessage> for QueryServerWriteV1 {
     }
 }
 
+impl Handler<RemoveAttributeValueMessage> for QueryServerWriteV1 {
+    type Result = Result<(), OperationError>;
+
+    fn handle(&mut self, msg: RemoveAttributeValueMessage, _: &mut Self::Context) -> Self::Result {
+        let mut audit = AuditScope::new("remove_attribute_value");
+        let res = audit_segment!(&mut audit, || {
+            let mut qs_write = self.qs.write();
+            let target_uuid = match Uuid::parse_str(msg.uuid_or_name.as_str()) {
+                Ok(u) => u,
+                Err(_) => qs_write
+                    .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                    .map_err(|e| {
+                        audit_log!(&mut audit, "Error resolving id to target");
+                        e
+                    })?,
+            };
+
+            let proto_ml =
+                ProtoModifyList::new_list(vec![ProtoModify::Removed(msg.attr, msg.value)]);
+
+            let mdf = match ModifyEvent::from_parts(
+                &mut audit,
+                msg.uat,
+                target_uuid,
+                proto_ml,
+                msg.filter,
+                &qs_write,
+            ) {
+                Ok(m) => m,
+                Err(e) => {
+                    audit_log!(audit, "Failed to begin modify: {:?}", e);
+                    return Err(e);
+                }
+            };
+
+            audit_log!(audit, "Begin modify event {:?}", mdf);
+
+            qs_write
+                .modify(&mut audit, &mdf)
+                .and_then(|_| qs_write.commit(&mut audit).map(|_| ()))
+        });
+        self.log.do_send(audit);
+        res
+    }
+}
+
 impl Handler<AppendAttributeMessage> for QueryServerWriteV1 {
     type Result = Result<(), OperationError>;
 
@@ -612,6 +727,31 @@ impl Handler<SetAttributeMessage> for QueryServerWriteV1 {
                     .collect(),
             );
             self.modify_from_parts(&mut audit, uat, uuid_or_name, proto_ml, filter)
+        });
+        self.log.do_send(audit);
+        res
+    }
+}
+
+impl Handler<InternalSshKeyCreateMessage> for QueryServerWriteV1 {
+    type Result = Result<(), OperationError>;
+
+    fn handle(&mut self, msg: InternalSshKeyCreateMessage, _: &mut Self::Context) -> Self::Result {
+        let mut audit = AuditScope::new("internal_sshkey_create");
+        let res = audit_segment!(&mut audit, || {
+            let InternalSshKeyCreateMessage {
+                uat,
+                uuid_or_name,
+                tag,
+                key,
+                filter,
+            } = msg;
+
+            // Because this is from internal, we can generate a real modlist, rather
+            // than relying on the proto ones.
+            let ml = ModifyList::new_append("ssh_publickey", Value::new_sshkey(tag, key));
+
+            self.modify_from_internal_parts(&mut audit, uat, uuid_or_name, ml, filter)
         });
         self.log.do_send(audit);
         res

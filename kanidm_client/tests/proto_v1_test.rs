@@ -472,6 +472,59 @@ fn test_server_rest_account_lifecycle() {
     });
 }
 
+#[test]
+fn test_server_rest_sshkey_lifecycle() {
+    run_test(|rsclient: KanidmClient| {
+        let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
+        assert!(res.is_ok());
+
+        // Get the keys, should be empty vec.
+        let sk1 = rsclient.idm_account_get_ssh_pubkeys("admin").unwrap();
+        assert!(sk1.len() == 0);
+
+        // idm_account_get_ssh_pubkeys
+        // idm_account_post_ssh_pubkey
+        // idm_account_get_ssh_pubkey
+        // idm_account_delete_ssh_pubkey
+
+        // Post an invalid key (should error)
+        let r1 = rsclient.idm_account_post_ssh_pubkey("admin", "inv", "invalid key");
+        assert!(r1.is_err());
+
+        // Post a valid key
+        let r2 = rsclient
+            .idm_account_post_ssh_pubkey("admin", "k1", "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAeGW1P6Pc2rPq0XqbRaDKBcXZUPRklo0L1EyR30CwoP william@amethyst");
+        println!("{:?}", r2);
+        assert!(r2.is_ok());
+
+        // Get, should have the key
+        let sk2 = rsclient.idm_account_get_ssh_pubkeys("admin").unwrap();
+        assert!(sk2.len() == 1);
+
+        // Post a valid key
+        let r3 = rsclient
+            .idm_account_post_ssh_pubkey("admin", "k2", "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBx4TpJYQjd0YI5lQIHqblIsCIK5NKVFURYS/eM3o6/Z william@amethyst");
+        assert!(r3.is_ok());
+
+        // Get, should have both keys.
+        let sk3 = rsclient.idm_account_get_ssh_pubkeys("admin").unwrap();
+        assert!(sk3.len() == 2);
+
+        // Delete a key (by tag)
+        let r4 = rsclient.idm_account_delete_ssh_pubkey("admin", "k1");
+        assert!(r4.is_ok());
+
+        // Get, should have remaining key.
+        let sk4 = rsclient.idm_account_get_ssh_pubkeys("admin").unwrap();
+        assert!(sk4.len() == 1);
+
+        // get by tag
+        let skn = rsclient.idm_account_get_ssh_pubkey("admin", "k2");
+        assert!(skn.is_ok());
+        assert!(skn.unwrap() == Some("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBx4TpJYQjd0YI5lQIHqblIsCIK5NKVFURYS/eM3o6/Z william@amethyst".to_string()));
+    });
+}
+
 // Test the self version of the radius path.
 
 // Test hitting all auth-required endpoints and assert they give unauthorized.

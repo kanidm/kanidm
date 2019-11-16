@@ -111,6 +111,28 @@ struct AccountNamedOpt {
 }
 
 #[derive(Debug, StructOpt)]
+struct AccountNamedTagOpt {
+    #[structopt(flatten)]
+    aopts: AccountCommonOpt,
+    #[structopt(flatten)]
+    copt: CommonOpt,
+    #[structopt(name = "tag")]
+    tag: String,
+}
+
+#[derive(Debug, StructOpt)]
+struct AccountNamedTagPKOpt {
+    #[structopt(flatten)]
+    aopts: AccountCommonOpt,
+    #[structopt(flatten)]
+    copt: CommonOpt,
+    #[structopt(name = "tag")]
+    tag: String,
+    #[structopt(name = "pubkey")]
+    pubkey: String,
+}
+
+#[derive(Debug, StructOpt)]
 struct AccountCreateOpt {
     #[structopt(flatten)]
     aopts: AccountCommonOpt,
@@ -139,11 +161,23 @@ enum AccountRadius {
 }
 
 #[derive(Debug, StructOpt)]
+enum AccountSsh {
+    #[structopt(name = "list_publickeys")]
+    List(AccountNamedOpt),
+    #[structopt(name = "add_publickey")]
+    Add(AccountNamedTagPKOpt),
+    #[structopt(name = "delete_publickey")]
+    Delete(AccountNamedTagOpt),
+}
+
+#[derive(Debug, StructOpt)]
 enum AccountOpt {
     #[structopt(name = "credential")]
     Credential(AccountCredential),
     #[structopt(name = "radius")]
     Radius(AccountRadius),
+    #[structopt(name = "ssh")]
+    Ssh(AccountSsh),
     #[structopt(name = "list")]
     List(CommonOpt),
     #[structopt(name = "get")]
@@ -232,6 +266,11 @@ impl ClientOpt {
                     AccountRadius::Show(aro) => aro.copt.debug,
                     AccountRadius::Generate(aro) => aro.copt.debug,
                     AccountRadius::Delete(aro) => aro.copt.debug,
+                },
+                AccountOpt::Ssh(asopt) => match asopt {
+                    AccountSsh::List(ano) => ano.copt.debug,
+                    AccountSsh::Add(ano) => ano.copt.debug,
+                    AccountSsh::Delete(ano) => ano.copt.debug,
                 },
                 AccountOpt::List(copt) => copt.debug,
                 AccountOpt::Get(aopt) => aopt.copt.debug,
@@ -397,6 +436,38 @@ fn main() {
                         .unwrap();
                 }
             }, // end AccountOpt::Radius
+            AccountOpt::Ssh(asopt) => match asopt {
+                AccountSsh::List(aopt) => {
+                    let client = aopt.copt.to_client();
+
+                    let pkeys = client
+                        .idm_account_get_ssh_pubkeys(aopt.aopts.account_id.as_str())
+                        .unwrap();
+
+                    for pkey in pkeys {
+                        println!("{}", pkey)
+                    }
+                }
+                AccountSsh::Add(aopt) => {
+                    let client = aopt.copt.to_client();
+                    client
+                        .idm_account_post_ssh_pubkey(
+                            aopt.aopts.account_id.as_str(),
+                            aopt.tag.as_str(),
+                            aopt.pubkey.as_str(),
+                        )
+                        .unwrap();
+                }
+                AccountSsh::Delete(aopt) => {
+                    let client = aopt.copt.to_client();
+                    client
+                        .idm_account_delete_ssh_pubkey(
+                            aopt.aopts.account_id.as_str(),
+                            aopt.tag.as_str(),
+                        )
+                        .unwrap();
+                }
+            }, // end AccountOpt::Ssh
             AccountOpt::List(copt) => {
                 let client = copt.to_client();
                 let r = client.idm_account_list().unwrap();

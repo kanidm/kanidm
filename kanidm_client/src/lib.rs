@@ -68,7 +68,10 @@ impl KanidmClient {
     }
 
     fn build_reqwest(ca: &Option<reqwest::Certificate>) -> Result<reqwest::Client, reqwest::Error> {
-        let client_builder = reqwest::Client::builder().cookie_store(true);
+        let client_builder = reqwest::Client::builder()
+            .cookie_store(true);
+            // .danger_accept_invalid_hostnames(true)
+            // .danger_accept_invalid_certs(true);
 
         let client_builder = match ca {
             Some(cert) => client_builder.add_root_certificate(cert.clone()),
@@ -424,6 +427,38 @@ impl KanidmClient {
 
     pub fn idm_account_radius_token_get(&self, id: &str) -> Result<RadiusAuthToken, ClientError> {
         self.perform_get_request(format!("/v1/account/{}/_radius/_token", id).as_str())
+    }
+
+    pub fn idm_account_get_ssh_pubkeys(&self, id: &str) -> Result<Vec<String>, ClientError> {
+        self.perform_get_request(format!("/v1/account/{}/_ssh_pubkeys", id).as_str())
+    }
+
+    pub fn idm_account_post_ssh_pubkey(
+        &self,
+        id: &str,
+        tag: &str,
+        pubkey: &str,
+    ) -> Result<(), ClientError> {
+        let sk = (tag.to_string(), pubkey.to_string());
+        self.perform_post_request(format!("/v1/account/{}/_ssh_pubkeys", id).as_str(), sk)
+    }
+
+    /*
+    pub fn idm_account_rename_ssh_pubkey(&self, id: &str, oldtag: &str, newtag: &str) -> Result<(), ClientError> {
+        self.perform_put_request(format!("/v1/account/{}/_ssh_pubkeys/{}", id, oldtag).as_str(), newtag.to_string())
+    }
+    */
+
+    pub fn idm_account_get_ssh_pubkey(
+        &self,
+        id: &str,
+        tag: &str,
+    ) -> Result<Option<String>, ClientError> {
+        self.perform_get_request(format!("/v1/account/{}/_ssh_pubkeys/{}", id, tag).as_str())
+    }
+
+    pub fn idm_account_delete_ssh_pubkey(&self, id: &str, tag: &str) -> Result<(), ClientError> {
+        self.perform_delete_request(format!("/v1/account/{}/_ssh_pubkeys/{}", id, tag).as_str())
     }
 
     // ==== schema
