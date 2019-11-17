@@ -221,6 +221,92 @@ of the problem.
 Note the radius container *is* configured to provide Tunnel-Private-Group-ID so if you wish to use
 wifi assigned vlans on your infrastructure, you can assign these by groups in the config.ini.
 
+# Backup and Restore
+
+With any idm software, it's important you have the capability to restore in case of a disaster - be
+that physical damage or mistake. Kanidm supports backup and restore of the database with two methods.
+
+## Method 1
+
+Method 1 involves taking a backup of the database entry content, which is then re-indexed on restore.
+This is the "prefered" method.
+
+To take the backup (assuming our docker environment) you first need to stop the instance:
+
+    docker stop <container name>
+    docker run --rm -i -t -v kanidmd:/data -v kanidmd_backups:/backup \
+        firstyear/kanidmd:latest /home/kanidm/target/release/kanidmd backup \
+        /backup/kanidm.backup.json -D /data/kanidm.db
+    docker start <container name>
+
+You can then restart your instance. It's advised you DO NOT modify the backup.json as it may introduce
+data errors into your instance.
+
+To restore from the backup:
+
+    docker stop <container name>
+    docker run --rm -i -t -v kanidmd:/data -v kanidmd_backups:/backup \
+        firstyear/kanidmd:latest /home/kanidm/target/release/kanidmd restore \
+        /backup/kanidm.backup.json -D /data/kanidm.db
+    docker start <container name>
+
+That's it!
+
+## Method 2
+
+This is a simple backup of the data volume.
+
+    docker stop <container name>
+    # Backup your docker's volume folder
+    docker start <container name>
+
+# Reindexing after schema extension
+
+In some (rare) cases you may need to reindex.
+Please note the server will sometimes reindex on startup as a result of the project
+changing it's internal schema definitions. This is normal and expected - you may never need
+to start a reindex yourself as a result!
+
+You'll likely notice a need to reindex if you add indexes to schema and you see a message in your logs such as:
+
+    Index EQUALITY name not found
+    Index {type} {attribute} not found
+
+This indicates that an index of type equality has been added for name, but the indexing process
+has not been run - the server will continue to operate and the query execution code will correctly
+process the query however it will not be the optimal method of delivering the results as we need to
+disregard this part of the query and act as though it's un-indexed.
+
+Reindexing will resolve this by forcing all indexes to be recreated based on their schema
+definitions (this works even though the schema is in the same database!)
+
+    docker stop <container name>
+    docker run --rm -i -t -v kanidmd:/data \
+        firstyear/kanidmd:latest /home/kanidm/target/release/kanidmd reindex \
+        -D /data/kanidm.db
+    docker start <container name>
+
+Generally reindexing is a rare action and should not normally be required.
+
+# Verification
+
+The server ships with a number of verification utilities to ensure that data is consistent such
+as referential integrity or memberof.
+
+Note that verification really is a last resort - the server does *a lot* to prevent and self-heal
+from errors at run time, so you should rarely if ever require this utility. This utility was
+developed to guarantee consistency during development!
+
+You can run a verification with:
+
+    docker stop <container name>
+    docker run --rm -i -t -v kanidmd:/data \
+        firstyear/kanidmd:latest /home/kanidm/target/release/kanidmd verify \
+        -D /data/kanidm.db
+    docker start <container name>
+
+If you have errors, please contact the project to help support you to resolve these.
+
 # Raw actions
 
 The server has a low-level stateful API you can use for more complex or advanced tasks on large numbers

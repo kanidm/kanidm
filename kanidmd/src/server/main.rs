@@ -11,8 +11,8 @@ extern crate log;
 
 use kanidm::config::Configuration;
 use kanidm::core::{
-    backup_server_core, create_server_core, recover_account_core, reset_sid_core,
-    restore_server_core, verify_server_core,
+    backup_server_core, create_server_core, recover_account_core, reindex_server_core,
+    reset_sid_core, restore_server_core, verify_server_core,
 };
 
 use std::path::PathBuf;
@@ -80,13 +80,15 @@ enum Opt {
     RecoverAccount(RecoverAccountOpt),
     #[structopt(name = "reset_server_id")]
     ResetServerId(CommonOpt),
+    #[structopt(name = "reindex")]
+    Reindex(CommonOpt),
 }
 
 impl Opt {
     fn debug(&self) -> bool {
         match self {
             Opt::Server(sopt) => sopt.commonopts.debug,
-            Opt::Verify(sopt) | Opt::ResetServerId(sopt) => sopt.debug,
+            Opt::Verify(sopt) | Opt::ResetServerId(sopt) | Opt::Reindex(sopt) => sopt.debug,
             Opt::Backup(bopt) => bopt.commonopts.debug,
             Opt::Restore(ropt) => ropt.commonopts.debug,
             Opt::RecoverAccount(ropt) => ropt.commonopts.debug,
@@ -153,7 +155,7 @@ fn main() {
             restore_server_core(config, p);
         }
         Opt::Verify(vopt) => {
-            info!("Running in restore mode ...");
+            info!("Running in db verification mode ...");
 
             config.update_db_path(&vopt.db_path);
             verify_server_core(config);
@@ -171,6 +173,12 @@ fn main() {
 
             config.update_db_path(&vopt.db_path);
             reset_sid_core(config);
+        }
+        Opt::Reindex(copt) => {
+            info!("Running in reindex mode ...");
+
+            config.update_db_path(&copt.db_path);
+            reindex_server_core(config);
         }
     }
 }
