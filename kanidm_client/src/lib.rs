@@ -7,9 +7,12 @@ extern crate log;
 use reqwest;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use serde_derive::Deserialize;
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::Read;
+use std::path::Path;
+use toml;
 
 use kanidm_proto::v1::{
     AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep, CreateRequest, DeleteRequest,
@@ -29,61 +32,195 @@ pub enum ClientError {
     EmptyResponse,
 }
 
-#[derive(Debug)]
-pub struct KanidmClient {
-    client: reqwest::Client,
-    addr: String,
+#[derive(Debug, Deserialize)]
+struct KanidmClientConfig {
+    uri: Option<String>,
+    verify_ca: Option<bool>,
+    verify_hostnames: Option<bool>,
+    ca_path: Option<String>,
+    // Should we add username/pw later? They could be part of the builder
+    // process ...
+}
+
+#[derive(Debug, Clone)]
+pub struct KanidmClientBuilder {
+    address: Option<String>,
+    verify_ca: bool,
+    verify_hostnames: bool,
     ca: Option<reqwest::Certificate>,
 }
 
-impl KanidmClient {
-    pub fn new(addr: &str, ca: Option<&str>) -> Self {
-        let ca = ca.map(|ca_path| {
-            //Okay we have a ca to add. Let's read it in and setup.
-            let mut buf = Vec::new();
-            // TODO: Better than expect?
-            let mut f = File::open(ca_path).expect("Failed to open ca");
-            f.read_to_end(&mut buf).expect("Failed to read ca");
-            reqwest::Certificate::from_pem(&buf).expect("Failed to parse ca")
-        });
+impl KanidmClientBuilder {
+    pub fn new() -> Self {
+        KanidmClientBuilder {
+            address: None,
+            verify_ca: true,
+            verify_hostnames: true,
+            ca: None,
+        }
+    }
 
-        let client = Self::build_reqwest(&ca).expect("Unexpected reqwest builder failure!");
+    fn parse_certificate(ca_path: &str) -> Result<reqwest::Certificate, ()> {
+        let mut buf = Vec::new();
+        // TODO: Handle these errors better, or at least provide diagnostics?
+        let mut f = File::open(ca_path).map_err(|_| ())?;
+        f.read_to_end(&mut buf).map_err(|_| ())?;
+        reqwest::Certificate::from_pem(&buf).map_err(|_| ())
+    }
 
-        KanidmClient {
-            client: client,
-            addr: addr.to_string(),
+    fn apply_config_options(self, kcc: KanidmClientConfig) -> Result<Self, ()> {
+        let KanidmClientBuilder {
+            address,
+            verify_ca,
+            verify_hostnames,
+            ca,
+        } = self;
+        // Process and apply all our options if they exist.
+        let address = match kcc.uri {
+            Some(uri) => Some(uri),
+            None => address,
+        };
+        let verify_ca = kcc.verify_ca.unwrap_or_else(|| verify_ca);
+        let verify_hostnames = kcc.verify_hostnames.unwrap_or_else(|| verify_hostnames);
+        let ca = match kcc.ca_path {
+            Some(ca_path) => Some(Self::parse_certificate(ca_path.as_str())?),
+            None => ca,
+        };
+
+        Ok(KanidmClientBuilder {
+            address: address,
+            verify_ca: verify_ca,
+            verify_hostnames: verify_hostnames,
             ca: ca,
+        })
+    }
+
+    pub fn read_options_from_optional_config<P: AsRef<Path>>(
+        self,
+        config_path: P,
+    ) -> Result<Self, ()> {
+        // If the file does not exist, we skip this function.
+        let mut f = match File::open(config_path) {
+            Ok(f) => f,
+            Err(e) => {
+                debug!("Unabled to open config file [{:?}], skipping ...", e);
+                return Ok(self);
+            }
+        };
+
+        let mut contents = String::new();
+        f.read_to_string(&mut contents).map_err(|e| {
+            eprintln!("{:?}", e);
+            ()
+        })?;
+
+        let config: KanidmClientConfig = toml::from_str(contents.as_str()).map_err(|e| {
+            eprintln!("{:?}", e);
+            ()
+        })?;
+
+        self.apply_config_options(config)
+    }
+
+    pub fn address(self, address: String) -> Self {
+        KanidmClientBuilder {
+            address: Some(address),
+            verify_ca: self.verify_ca,
+            verify_hostnames: self.verify_hostnames,
+            ca: self.ca,
         }
     }
 
-    pub fn new_session(&self) -> Self {
-        let new_client =
-            Self::build_reqwest(&self.ca).expect("Unexpected reqwest builder failure!");
-
-        KanidmClient {
-            client: new_client,
-            addr: self.addr.clone(),
-            ca: self.ca.clone(),
+    pub fn danger_accept_invalid_hostnames(self, accept_invalid_hostnames: bool) -> Self {
+        KanidmClientBuilder {
+            address: self.address,
+            verify_ca: self.verify_ca,
+            // We have to flip the bool state here due to english language.
+            verify_hostnames: !accept_invalid_hostnames,
+            ca: self.ca,
         }
     }
 
-    fn build_reqwest(ca: &Option<reqwest::Certificate>) -> Result<reqwest::Client, reqwest::Error> {
+    pub fn danger_accept_invalid_certs(self, accept_invalid_certs: bool) -> Self {
+        KanidmClientBuilder {
+            address: self.address,
+            // We have to flip the bool state here due to english language.
+            verify_ca: !accept_invalid_certs,
+            verify_hostnames: self.verify_hostnames,
+            ca: self.ca,
+        }
+    }
+
+    pub fn add_root_certificate_filepath(self, ca_path: &str) -> Result<Self, ()> {
+        //Okay we have a ca to add. Let's read it in and setup.
+        let ca = Self::parse_certificate(ca_path)?;
+
+        Ok(KanidmClientBuilder {
+            address: self.address,
+            verify_ca: self.verify_ca,
+            verify_hostnames: self.verify_hostnames,
+            ca: Some(ca),
+        })
+    }
+
+    // Consume self and return a client.
+    pub fn build(self) -> Result<KanidmClient, reqwest::Error> {
+        // Errghh, how to handle this cleaner.
+        let address = match &self.address {
+            Some(a) => a.clone(),
+            None => {
+                eprintln!("uri (-H) missing, can not proceed");
+                unimplemented!();
+            }
+        };
+
         let client_builder = reqwest::Client::builder()
-            .cookie_store(true);
-            // .danger_accept_invalid_hostnames(true)
-            // .danger_accept_invalid_certs(true);
+            .cookie_store(true)
+            .danger_accept_invalid_hostnames(!self.verify_hostnames)
+            .danger_accept_invalid_certs(!self.verify_ca);
 
-        let client_builder = match ca {
+        let client_builder = match &self.ca {
             Some(cert) => client_builder.add_root_certificate(cert.clone()),
             None => client_builder,
         };
 
-        client_builder.build()
+        let client = client_builder.build()?;
+
+        Ok(KanidmClient {
+            client: client,
+            addr: address,
+            builder: self,
+        })
+    }
+}
+
+#[derive(Debug)]
+pub struct KanidmClient {
+    client: reqwest::Client,
+    addr: String,
+    builder: KanidmClientBuilder,
+}
+
+impl KanidmClient {
+    pub fn new_session(&self) -> Result<Self, reqwest::Error> {
+        // Copy our builder, and then just process it.
+        let builder = self.builder.clone();
+        builder.build()
     }
 
     pub fn logout(&mut self) -> Result<(), reqwest::Error> {
-        let mut r_client = Self::build_reqwest(&self.ca)?;
-        std::mem::swap(&mut self.client, &mut r_client);
+        // hack - we have to replace our reqwest client because that's the only way
+        // to currently flush the cookie store. To achieve this we need to rebuild
+        // and then destructure.
+
+        let builder = self.builder.clone();
+        let KanidmClient {
+            mut client,
+            addr: _,
+            builder: _,
+        } = builder.build()?;
+
+        std::mem::swap(&mut self.client, &mut client);
         Ok(())
     }
 

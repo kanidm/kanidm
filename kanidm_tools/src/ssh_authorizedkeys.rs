@@ -1,5 +1,6 @@
 extern crate structopt;
-use kanidm_client::KanidmClient;
+use kanidm_client::KanidmClientBuilder;
+use shellexpand;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -12,7 +13,7 @@ struct ClientOpt {
     #[structopt(short = "d", long = "debug")]
     debug: bool,
     #[structopt(short = "H", long = "url")]
-    addr: String,
+    addr: Option<String>,
     #[structopt(short = "D", long = "name")]
     username: String,
     #[structopt(parse(from_os_str), short = "C", long = "ca")]
@@ -34,8 +35,32 @@ fn main() {
     }
     env_logger::init();
 
+    let config_path: String = shellexpand::tilde("~/.config/kanidm").into_owned();
+    debug!("Attempting to use config {}", "/etc/kanidm/config");
+    let client_builder = KanidmClientBuilder::new()
+        .read_options_from_optional_config("/etc/kanidm/config")
+        .and_then(|cb| {
+            debug!("Attempting to use config {}", config_path);
+            cb.read_options_from_optional_config(config_path)
+        })
+        .expect("Failed to parse config (if present)");
+
+    let client_builder = match &opt.addr {
+        Some(a) => client_builder.address(a.to_string()),
+        None => client_builder,
+    };
+
     let ca_path: Option<&str> = opt.ca_path.as_ref().map(|p| p.to_str().unwrap());
-    let client = KanidmClient::new(opt.addr.as_str(), ca_path);
+    let client_builder = match ca_path {
+        Some(p) => client_builder
+            .add_root_certificate_filepath(p)
+            .expect("Failed to access CA file"),
+        None => client_builder,
+    };
+
+    let client = client_builder
+        .build()
+        .expect("Failed to build client instance");
 
     let r = if opt.username == "anonymous" {
         client.auth_anonymous()
