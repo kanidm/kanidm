@@ -1,5 +1,7 @@
 use uuid::Uuid;
 
+// Increment this as we add new schema types and values!!!
+pub static SYSTEM_INDEX_VERSION: i64 = 3;
 // On test builds, define to 60 seconds
 #[cfg(test)]
 pub static PURGE_TIMEOUT: u64 = 60;
@@ -305,11 +307,21 @@ pub static JSON_IDM_HIGH_PRIVILEGE_V1: &'static str = r#"{
 pub static _UUID_SYSTEM_INFO: &'static str = "00000000-0000-0000-0000-ffffff000001";
 pub static JSON_SYSTEM_INFO_V1: &'static str = r#"{
     "attrs": {
-        "class": ["object", "system_info"],
+        "class": ["object", "system_info", "system"],
         "uuid": ["00000000-0000-0000-0000-ffffff000001"],
         "description": ["System info and metadata object."],
-        "version": ["1"],
-        "domain": ["example.com"]
+        "version": ["2"]
+    }
+}"#;
+
+pub static _UUID_DOMAIN_INFO: &'static str = "00000000-0000-0000-0000-ffffff000025";
+pub static JSON_DOMAIN_INFO_V1: &'static str = r#"{
+    "attrs": {
+        "class": ["object", "domain_info", "system"],
+        "name": ["domain_local"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000025"],
+        "description": ["This local domain's info and metadata object."],
+        "domain_name": ["example.com"]
     }
 }"#;
 
@@ -1415,6 +1427,98 @@ pub static JSON_SCHEMA_ATTR_RADIUS_SECRET: &'static str = r#"{
     }
 }"#;
 
+pub static UUID_SCHEMA_ATTR_DOMAIN_NAME: &'static str = "00000000-0000-0000-0000-ffff00000053";
+pub static JSON_SCHEMA_ATTR_DOMAIN_NAME: &'static str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "The domain's DNS name for webauthn and SPN generation purposes."
+      ],
+      "index": [
+        "EQUALITY"
+      ],
+      "unique": [
+        "true"
+      ],
+      "multivalue": [
+        "false"
+      ],
+      "attributename": [
+        "domain_name"
+      ],
+      "syntax": [
+        "UTF8STRING_INSENSITIVE"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000053"
+      ]
+    }
+}"#;
+pub static UUID_SCHEMA_ATTR_DOMAIN_UUID: &'static str = "00000000-0000-0000-0000-ffff00000054";
+pub static JSON_SCHEMA_ATTR_DOMAIN_UUID: &'static str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "The domain's uuid, used in CSN and trust relationships."
+      ],
+      "index": [
+        "EQUALITY"
+      ],
+      "unique": [
+        "true"
+      ],
+      "multivalue": [
+        "false"
+      ],
+      "attributename": [
+        "domain_uuid"
+      ],
+      "syntax": [
+        "UUID"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000054"
+      ]
+    }
+}"#;
+pub static UUID_SCHEMA_ATTR_DOMAIN_SSID: &'static str = "00000000-0000-0000-0000-ffff00000055";
+pub static JSON_SCHEMA_ATTR_DOMAIN_SSID: &'static str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "The domains site-wide SSID for device autoconfiguration of wireless"
+      ],
+      "index": [],
+      "unique": [
+        "true"
+      ],
+      "multivalue": [
+        "false"
+      ],
+      "attributename": [
+        "domain_ssid"
+      ],
+      "syntax": [
+        "UTF8STRING"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000055"
+      ]
+    }
+}"#;
+
 pub static UUID_SCHEMA_CLASS_PERSON: &'static str = "00000000-0000-0000-0000-ffff00000044";
 pub static JSON_SCHEMA_CLASS_PERSON: &'static str = r#"
   {
@@ -1510,6 +1614,52 @@ pub static JSON_SCHEMA_CLASS_ACCOUNT: &'static str = r#"
     }
   }
 "#;
+
+// domain_info type
+//  domain_uuid
+//  domain_name <- should be the dns name?
+//  domain_ssid <- for radius
+//
+pub static UUID_SCHEMA_CLASS_DOMAIN_INFO: &'static str = "00000000-0000-0000-0000-ffff00000052";
+// Why is domain_uuid may? During str -> entry we do a schema check in the migration
+// and the domain_uuid doesn't exist yet. It's generated. As a result this would
+// fail. There are good reasons to keep the schema check there early in the
+// migration, to keep things sane. Moving this to may is in a way, wrong. Domain
+// uuid is required. But the create will always put it there, and it's system
+// protected so it can't be removed. Finally, if removed, we'll just error
+// and say it's corrupted, so there are multiple defences here, and someone
+// really needs to be malicious to do this.
+pub static JSON_SCHEMA_CLASS_DOMAIN_INFO: &'static str = r#"
+  {
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "classtype"
+      ],
+      "description": [
+        "Local domain information and partial configuration."
+      ],
+      "classname": [
+        "domain_info"
+      ],
+      "systemmay": [
+        "domain_uuid",
+        "domain_ssid"
+      ],
+      "systemmust": [
+        "name",
+        "domain_name"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000052"
+      ]
+    }
+  }
+"#;
+
+// need a domain_trust_info as well.
+// TODO
 
 // ============ TEST DATA ============
 #[cfg(test)]

@@ -1047,7 +1047,7 @@ impl SchemaInner {
                     systemmust: vec![
                         String::from("version"),
                         // Needed when we implement principalnames?
-                        String::from("domain"),
+                        // String::from("domain"),
                         // String::from("hostname"),
                     ],
                     must: vec![],

@@ -20,8 +20,13 @@ pub struct Protected {}
 lazy_static! {
     static ref ALLOWED_ATTRS: HashSet<&'static str> = {
         let mut m = HashSet::new();
+        // Allow modification of some schema class types to allow local extension
+        // of schema types.
         m.insert("must");
         m.insert("may");
+        // Allow modification of some domain info types for local configuration.
+        m.insert("domain_name");
+        m.insert("domain_ssid");
         m
     };
     static ref PVCLASS_SYSTEM: PartialValue = PartialValue::new_class("system");
@@ -371,5 +376,23 @@ mod tests {
             Some(JSON_ADMIN_V1),
             |_, _| {}
         );
+    }
+
+    #[test]
+    fn test_modify_domain() {
+        // Can edit *my* domain_ssid and domain_name
+        // can not delete any domain_info type
+        unimplemented!();
+    }
+
+    #[test]
+    fn test_ext_create_domain() {
+        // can not add a domain_info type
+        unimplemented!();
+    }
+
+    #[test]
+    fn test_delete_domain() {
+        unimplemented!();
     }
 }

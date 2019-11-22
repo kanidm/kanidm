@@ -259,7 +259,7 @@ impl Entry<EntryInvalid, EntryNew> {
             .map(|(k, vs)| {
                 let attr = k.to_lowercase();
                 let vv: BTreeSet<Value> = match attr.as_str() {
-                    "name" | "attributename" | "classname" | "version" | "domain" => {
+                    "name" | "attributename" | "classname" | "version" | "domain" | "domain_name" => {
                         vs.into_iter().map(|v| Value::new_iutf8(v)).collect()
                     }
                     "userid" | "uidnumber" => {
@@ -274,7 +274,7 @@ impl Entry<EntryInvalid, EntryNew> {
                     => {
                         vs.into_iter().map(|v| Value::new_attr(v.as_str())).collect()
                     }
-                    "uuid" => {
+                    "uuid" | "domain_uuid" => {
                         vs.into_iter().map(|v| Value::new_uuids(v.as_str())
                             .unwrap_or_else(|| {
                                 warn!("WARNING: Allowing syntax incorrect attribute to be presented UTF8 string");

@@ -9,11 +9,13 @@ mod macros;
 
 mod attrunique;
 mod base;
+mod domain;
 mod failure;
 mod memberof;
 mod protected;
 mod recycle;
 mod refint;
+mod spn;
 
 trait Plugin {
     fn id() -> &'static str;
@@ -278,11 +280,11 @@ impl Plugins {
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         audit_segment!(au, || {
-            let res =
-                run_pre_create_transform_plugin!(au, qs, cand, ce, base::Base).and_then(|_| {
+            let res = run_pre_create_transform_plugin!(au, qs, cand, ce, base::Base)
+                .and_then(|_| run_pre_create_transform_plugin!(au, qs, cand, ce, domain::Domain))
+                .and_then(|_| {
                     run_pre_create_transform_plugin!(au, qs, cand, ce, attrunique::AttrUnique)
                 });
-
             res
         })
     }

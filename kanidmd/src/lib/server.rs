@@ -738,7 +738,7 @@ impl QueryServer {
 
         let reindex_write_1 = self.write();
         reindex_write_1
-            .upgrade_reindex(audit, 1)
+            .upgrade_reindex(audit, SYSTEM_INDEX_VERSION)
             .and_then(|_| reindex_write_1.commit(audit))?;
 
         // Because we init the schema here, and commit, this reloads meaning
@@ -760,10 +760,11 @@ impl QueryServer {
             .initialise_schema_idm(audit)
             .and_then(|_| ts_write_2.commit(audit))?;
 
-        // reindex and set to version 2
+        // reindex and set to version + 1, this way when we bump the version
+        // we are essetially pushing this version id back up to step write_1
         let reindex_write_2 = self.write();
         reindex_write_2
-            .upgrade_reindex(audit, 2)
+            .upgrade_reindex(audit, SYSTEM_INDEX_VERSION + 1)
             .and_then(|_| reindex_write_2.commit(audit))?;
 
         let mut ts_write_3 = self.write();
@@ -1600,9 +1601,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_SCHEMA_ATTR_SSH_PUBLICKEY,
             JSON_SCHEMA_ATTR_PRIMARY_CREDENTIAL,
             JSON_SCHEMA_ATTR_RADIUS_SECRET,
+            JSON_SCHEMA_ATTR_DOMAIN_NAME,
+            JSON_SCHEMA_ATTR_DOMAIN_UUID,
+            JSON_SCHEMA_ATTR_DOMAIN_SSID,
             JSON_SCHEMA_CLASS_PERSON,
             JSON_SCHEMA_CLASS_GROUP,
             JSON_SCHEMA_CLASS_ACCOUNT,
+            JSON_SCHEMA_CLASS_DOMAIN_INFO,
         ];
 
         let mut audit_si = AuditScope::new("start_initialise_schema_idm");
@@ -1625,16 +1630,20 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let mut audit_an = AuditScope::new("start_system_core_items");
         let res = self
             .internal_assert_or_create_str(&mut audit_an, JSON_SYSTEM_INFO_V1)
-            .and_then(|_| self.internal_migrate_or_create_str(&mut audit_an, JSON_ANONYMOUS_V1));
+            .and_then(|_| self.internal_migrate_or_create_str(&mut audit_an, JSON_DOMAIN_INFO_V1));
         audit.append_scope(audit_an);
         assert!(res.is_ok());
         if res.is_err() {
             return res;
         }
 
+        // The domain info now exists, we should be able to do these migrations as they will
+        // cause SPN regenerations to occur
+
         // Check the admin object exists (migrations).
         // Create the default idm_admin group.
         let admin_entries = [
+            JSON_ANONYMOUS_V1,
             JSON_ADMIN_V1,
             JSON_IDM_ADMIN_V1,
             JSON_IDM_ADMINS_V1,
