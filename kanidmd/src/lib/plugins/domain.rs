@@ -89,4 +89,9 @@ mod tests {
             }
         );
     }
+
+    #[test]
+    fn test_domain_name_change_spn_regen() {
+        unimplemented!();
+    }
 }
