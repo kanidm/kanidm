@@ -1455,13 +1455,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
         e_str: &str,
     ) -> Result<(), OperationError> {
         let res = audit_segment!(audit, || Entry::from_proto_entry_str(audit, e_str, self)
+            /*
             .and_then(|e: Entry<EntryInvalid, EntryNew>| {
                 let schema = self.get_schema();
                 e.validate(schema)
                     .map_err(|e| OperationError::SchemaViolation(e))
             })
+            */
             .and_then(
-                |e: Entry<EntryValid, EntryNew>| self.internal_migrate_or_create(audit, e)
+                |e: Entry<EntryInvalid, EntryNew>| self.internal_migrate_or_create(audit, e)
             ));
         audit_log!(audit, "internal_migrate_or_create_str -> result {:?}", res);
         assert!(res.is_ok());
@@ -1471,7 +1473,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub fn internal_migrate_or_create(
         &mut self,
         audit: &mut AuditScope,
-        e: Entry<EntryValid, EntryNew>,
+        e: Entry<EntryInvalid, EntryNew>,
     ) -> Result<(), OperationError> {
         // if the thing exists, ensure the set of attributes on
         // Entry A match and are present (but don't delete multivalue, or extended
@@ -1491,7 +1493,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             Ok(results) => {
                 if results.len() == 0 {
                     // It does not exist. Create it.
-                    self.internal_create(audit, vec![e.invalidate()])
+                    self.internal_create(audit, vec![e])
                 } else if results.len() == 1 {
                     // If the thing is subset, pass
                     match e.gen_modlist_assert(&self.schema) {
@@ -1585,7 +1587,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .into_iter()
             .map(|e| {
                 audit_log!(audit, "init schema -> {}", e);
-                self.internal_migrate_or_create(audit, e)
+                self.internal_migrate_or_create(audit, e.invalidate())
             })
             .collect();
         assert!(r.is_ok());
@@ -2171,7 +2173,7 @@ mod tests {
                     filter!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
                     ModifyList::new_list(vec![
                         Modify::Present("class".to_string(), Value::new_class("system_info")),
-                        Modify::Present("domain".to_string(), Value::new_iutf8s("domain.name")),
+                        // Modify::Present("domain".to_string(), Value::new_iutf8s("domain.name")),
                         Modify::Present("version".to_string(), Value::new_iutf8s("1")),
                     ]),
                 )

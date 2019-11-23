@@ -25,7 +25,6 @@ lazy_static! {
         m.insert("must");
         m.insert("may");
         // Allow modification of some domain info types for local configuration.
-        m.insert("domain_name");
         m.insert("domain_ssid");
         m
     };
@@ -414,9 +413,7 @@ mod tests {
                 PartialValue::new_iutf8s("domain_example.net.au")
             )),
             modlist!([
-                m_purge("domain_name"),
                 m_purge("domain_ssid"),
-                m_pres("domain_name", &Value::new_iutf8s("example.org.au")),
                 m_pres("domain_ssid", &Value::new_utf8s("NewExampleWifi")),
             ]),
             Some(JSON_ADMIN_V1),

@@ -91,7 +91,22 @@ mod tests {
     }
 
     #[test]
+    fn test_domain_ssid_change() {
+        // Test we can change domain_ssid as admin. This is mainly an ACP check.
+        unimplemented!();
+    }
+
+    #[test]
     fn test_domain_name_change_spn_regen() {
+        // get the current domain name
+
+        // check the spn on admin is admin@<initial domain>
+
+        // trigger the domain_name change (this will be a cli option to the server
+        // in the final version), but it will still call the same qs function to perform the
+        // change.
+
+        // check the spn on admin is admin@<new domain>
         unimplemented!();
     }
 }
