@@ -975,6 +975,42 @@ fn group_id_delete(
     json_rest_event_delete_id(path, req, state, filter)
 }
 
+fn domain_get(
+    (req, state): (HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("domain_info")));
+    json_rest_event_get(req, state, filter, None)
+}
+
+fn domain_id_get(
+    (path, req, state): (Path<String>, HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("domain_info")));
+    json_rest_event_get_id(path, req, state, filter, None)
+}
+
+fn domain_id_get_attr(
+    (path, req, state): (
+        Path<(String, String)>,
+        HttpRequest<AppState>,
+        State<AppState>,
+    ),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("domain_info")));
+    json_rest_event_get_id_attr(path, req, state, filter)
+}
+
+fn domain_id_put_attr(
+    (path, req, state): (
+        Path<(String, String)>,
+        HttpRequest<AppState>,
+        State<AppState>,
+    ),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("domain_info")));
+    json_rest_event_put_id_attr(path, req, state, filter)
+}
+
 fn do_nothing((_req, _state): (HttpRequest<AppState>, State<AppState>)) -> String {
     "did nothing".to_string()
 }
@@ -1700,6 +1736,17 @@ pub fn create_server_core(config: Configuration) {
         })
         // Claims
         // TBD
+        // Domain
+        .resource("/v1/domain", |r| {
+            r.method(http::Method::GET).with_async(domain_get);
+        })
+        .resource("/v1/domain/{id}", |r| {
+            r.method(http::Method::GET).with_async(domain_id_get);
+        })
+        .resource("/v1/domain/{id}/_attr/{attr}", |r| {
+            r.method(http::Method::GET).with_async(domain_id_get_attr);
+            r.method(http::Method::PUT).with_async(domain_id_put_attr);
+        })
         // Recycle Bin
         .resource("/v1/recycle_bin", |r| {
             r.method(http::Method::GET).with(do_nothing)

@@ -1686,6 +1686,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_IDM_HP_GROUP_MANAGE_PRIV_V1,
             JSON_IDM_HP_GROUP_WRITE_PRIV_V1,
             JSON_IDM_ACP_MANAGE_PRIV_V1,
+            JSON_DOMAIN_ADMINS,
             JSON_IDM_HIGH_PRIVILEGE_V1,
             // Built in access controls.
             JSON_IDM_ADMINS_ACP_RECYCLE_SEARCH_V1,
@@ -1711,6 +1712,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1,
             JSON_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1,
             JSON_IDM_ACP_ACP_MANAGE_PRIV_V1,
+            JSON_IDM_ACP_DOMAIN_ADMIN_PRIV_V1,
         ];
 
         let res: Result<(), _> = idm_entries
@@ -1841,6 +1843,19 @@ impl<'a> QueryServerWriteTransaction<'a> {
         try_audit!(audit, self.accesscontrols.update_delete(delete_acps));
         // Alternately, we just get ACP class, and just let acctrl work it out ...
         Ok(())
+    }
+
+    /// Initiate a domain rename process. This is generally an internal function but it's
+    /// exposed to the cli for admins to be able to initiate the process.
+    pub fn domain_rename(&mut self, audit: &mut AuditScope, new_domain_name: &str) -> Result<(), OperationError> {
+        let modl = ModifyList::new_purge_and_set(
+            "domain_name",
+            Value::new_iutf8s(new_domain_name)
+        );
+        let udi = PartialValue::new_uuids(UUID_DOMAIN_INFO)
+            .ok_or(OperationError::InvalidUuid)?;
+        let filt = filter_all!(f_eq("uuid", udi));
+        self.internal_modify(audit, filt, modl)
     }
 
     pub fn reindex(&self, audit: &mut AuditScope) -> Result<(), OperationError> {

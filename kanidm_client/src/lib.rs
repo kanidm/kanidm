@@ -598,6 +598,32 @@ impl KanidmClient {
         self.perform_delete_request(format!("/v1/account/{}/_ssh_pubkeys/{}", id, tag).as_str())
     }
 
+
+    // ==== domain_info (aka domain)
+    pub fn idm_domain_list(&self) -> Result<Vec<Entry>, ClientError> {
+        self.perform_get_request("/v1/domain")
+    }
+
+    pub fn idm_domain_get(&self, id: &str) -> Result<Entry, ClientError> {
+        self.perform_get_request(format!("/v1/domain/{}", id).as_str())
+    }
+
+    // pub fn idm_domain_get_attr
+    pub fn idm_domain_get_ssid(&self, id: &str) -> Result<String, ClientError> {
+        self.perform_get_request(format!("/v1/domain/{}/_attr/domain_ssid", id).as_str())
+            .and_then(|mut r: Vec<String>| {
+                Ok(r.pop().unwrap())
+            })
+    }
+
+    // pub fn idm_domain_put_attr
+    pub fn idm_domain_set_ssid(&self, id: &str, ssid: &str) -> Result<(), ClientError> {
+        self.perform_put_request(
+            format!("/v1/domain/{}/_attr/domain_ssid", id).as_str(),
+            vec![ssid.to_string()],
+        )
+    }
+
     // ==== schema
     pub fn idm_schema_list(&self) -> Result<Vec<Entry>, ClientError> {
         self.perform_get_request("/v1/schema")

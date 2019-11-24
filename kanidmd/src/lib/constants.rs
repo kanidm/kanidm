@@ -32,6 +32,8 @@ pub static _UUID_IDM_HP_ACCOUNT_MANAGE_PRIV: &'static str = "00000000-0000-0000-
 pub static _UUID_IDM_HP_GROUP_MANAGE_PRIV: &'static str = "00000000-0000-0000-0000-000000000017";
 pub static _UUID_IDM_ADMIN_V1: &'static str = "00000000-0000-0000-0000-000000000018";
 pub static _UUID_SYSTEM_ADMINS: &'static str = "00000000-0000-0000-0000-000000000019";
+// TODO
+pub static UUID_DOMAIN_ADMINS: &'static str = "00000000-0000-0000-0000-000000000020";
 //
 pub static _UUID_IDM_HIGH_PRIVILEGE: &'static str = "00000000-0000-0000-0000-000000001000";
 
@@ -106,7 +108,7 @@ pub static UUID_SCHEMA_ATTR_DOMAIN_SSID: &'static str = "00000000-0000-0000-0000
 // System and domain infos
 // I'd like to strongly criticise william of the past for fucking up these allocations.
 pub static _UUID_SYSTEM_INFO: &'static str = "00000000-0000-0000-0000-ffffff000001";
-pub static _UUID_DOMAIN_INFO: &'static str = "00000000-0000-0000-0000-ffffff000025";
+pub static UUID_DOMAIN_INFO: &'static str = "00000000-0000-0000-0000-ffffff000025";
 
 // Access controls
 // skip 00 / 01 - see system info
@@ -147,6 +149,8 @@ pub static _UUID_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1: &'static str =
 pub static _UUID_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1: &'static str =
     "00000000-0000-0000-0000-ffffff000024";
 // Skip 25 - see domain info.
+pub static UUID_IDM_ACP_DOMAIN_ADMIN_PRIV_V1: &'static str =
+    "00000000-0000-0000-0000-ffffff000026";
 
 // End of system ranges
 pub static STR_UUID_DOES_NOT_EXIST: &'static str = "00000000-0000-0000-0000-fffffffffffe";
@@ -391,6 +395,17 @@ pub static JSON_IDM_HP_GROUP_WRITE_PRIV_V1: &'static str = r#"{
         ]
     }
 }"#;
+pub static JSON_DOMAIN_ADMINS: &'static str = r#"{
+    "attrs": {
+        "class": ["group", "object"],
+        "name": ["domain_admins"],
+        "uuid": ["00000000-0000-0000-0000-000000000020"],
+        "description": ["Builtin IDM Group for granting local domain administration rights and trust administration rights."],
+        "member": [
+            "00000000-0000-0000-0000-000000000000"
+        ]
+    }
+}"#;
 
 // This must be the last group to init to include the UUID of the other high priv groups.
 pub static JSON_IDM_HIGH_PRIVILEGE_V1: &'static str = r#"{
@@ -418,6 +433,7 @@ pub static JSON_IDM_HIGH_PRIVILEGE_V1: &'static str = r#"{
             "00000000-0000-0000-0000-000000000016",
             "00000000-0000-0000-0000-000000000017",
             "00000000-0000-0000-0000-000000000019",
+            "00000000-0000-0000-0000-000000000020",
             "00000000-0000-0000-0000-000000001000"
         ]
     }
@@ -1203,6 +1219,42 @@ pub static JSON_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1: &'static str = r#"{
         ]
     }
 }"#;
+
+// 25 - domain admins acp
+pub static JSON_IDM_ACP_DOMAIN_ADMIN_PRIV_V1: &'static str = r#"{
+    "attrs": {
+        "class": [
+            "object",
+            "access_control_profile",
+            "access_control_search",
+            "access_control_modify"
+        ],
+        "name": ["idm_acp_domain_admin_priv"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000026"],
+        "description": ["Builtin IDM Control for granting domain info administration locally"],
+        "acp_enable": ["true"],
+        "acp_receiver": [
+            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000020\"]}"
+        ],
+        "acp_targetscope": [
+            "{\"And\": [{\"Eq\": [\"uuid\",\"00000000-0000-0000-0000-ffffff000025\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+        ],
+        "acp_search_attr": [
+            "name",
+            "uuid",
+            "domain_name",
+            "domain_ssid",
+            "domain_uuid"
+        ],
+        "acp_modify_removedattr": [
+            "domain_ssid"
+        ],
+        "acp_modify_presentattr": [
+            "domain_ssid"
+        ]
+    }
+}"#;
+
 
 // Anonymous should be the last opbject in the range here.
 pub static JSON_ANONYMOUS_V1: &'static str = r#"{

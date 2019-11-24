@@ -87,6 +87,7 @@ pub enum SyntaxType {
     CREDENTIAL,
     RADIUS_UTF8STRING,
     SSHKEY,
+    SERVICE_PRINCIPLE_NAME,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -106,6 +107,7 @@ impl TryFrom<&str> for SyntaxType {
             "CREDENTIAL" => Ok(SyntaxType::CREDENTIAL),
             "RADIUS_UTF8STRING" => Ok(SyntaxType::RADIUS_UTF8STRING),
             "SSHKEY" => Ok(SyntaxType::SSHKEY),
+            "SERVICE_PRINCIPLE_NAME" => Ok(SyntaxType::SERVICE_PRINCIPLE_NAME),
             _ => Err(()),
         }
     }
@@ -127,6 +129,7 @@ impl TryFrom<usize> for SyntaxType {
             8 => Ok(SyntaxType::CREDENTIAL),
             9 => Ok(SyntaxType::RADIUS_UTF8STRING),
             10 => Ok(SyntaxType::SSHKEY),
+            11 => Ok(SyntaxType::SERVICE_PRINCIPLE_NAME),
             _ => Err(()),
         }
     }
@@ -146,6 +149,7 @@ impl SyntaxType {
             SyntaxType::CREDENTIAL => "CREDENTIAL",
             SyntaxType::RADIUS_UTF8STRING => "RADIUS_UTF8STRING",
             SyntaxType::SSHKEY => "SSHKEY",
+            SyntaxType::SERVICE_PRINCIPLE_NAME => "SERVICE_PRINCIPLE_NAME",
         })
     }
 
@@ -162,6 +166,7 @@ impl SyntaxType {
             SyntaxType::CREDENTIAL => 8,
             SyntaxType::RADIUS_UTF8STRING => 9,
             SyntaxType::SSHKEY => 10,
+            SyntaxType::SERVICE_PRINCIPLE_NAME => 11,
         }
     }
 }
@@ -189,6 +194,7 @@ pub enum PartialValue {
     Cred(String),
     SshKey(String),
     RadiusCred,
+    Spn(String, String),
 }
 
 impl PartialValue {
@@ -1182,6 +1188,16 @@ mod tests {
             "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAeGW1P6Pc2rPq0XqbRaDKBcXZUPRklo",
         );
         assert!(!sk5.validate());
+    }
+
+    #[test]
+    fn test_value_spn() {
+        // Create an spn vale
+        // create an spn pv
+        // check it's indexing output
+        // check it can parse from name@realm
+        // check it can produce name@realm as str from the pv.
+        // check it validates the syntax
     }
 
     /*
