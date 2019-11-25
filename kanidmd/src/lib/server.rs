@@ -457,6 +457,7 @@ pub trait QueryServerTransaction {
                     SyntaxType::CREDENTIAL => Err(OperationError::InvalidAttribute("Credentials can not be supplied through modification - please use the IDM api".to_string())),
                     SyntaxType::RADIUS_UTF8STRING => Err(OperationError::InvalidAttribute("Radius secrets can not be supplied through modification - please use the IDM api".to_string())),
                     SyntaxType::SSHKEY => Err(OperationError::InvalidAttribute("SSH public keys can not be supplied through modification - please use the IDM api".to_string())),
+                    SyntaxType::SERVICE_PRINCIPLE_NAME => Err(OperationError::InvalidAttribute("SPNs are generated and not able to be set".to_string())),
                 }
             }
             None => {
@@ -531,6 +532,10 @@ pub trait QueryServerTransaction {
                     SyntaxType::CREDENTIAL => Ok(PartialValue::new_credential_tag(value.as_str())),
                     SyntaxType::RADIUS_UTF8STRING => Ok(PartialValue::new_radius_string()),
                     SyntaxType::SSHKEY => Ok(PartialValue::new_sshkey_tag_s(value.as_str())),
+                    SyntaxType::SERVICE_PRINCIPLE_NAME => PartialValue::new_spn_s(value.as_str())
+                        .ok_or(OperationError::InvalidAttribute(
+                            "Invalid SPN syntax".to_string(),
+                        )),
                 }
             }
             None => {
@@ -1847,13 +1852,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
     /// Initiate a domain rename process. This is generally an internal function but it's
     /// exposed to the cli for admins to be able to initiate the process.
-    pub fn domain_rename(&mut self, audit: &mut AuditScope, new_domain_name: &str) -> Result<(), OperationError> {
-        let modl = ModifyList::new_purge_and_set(
-            "domain_name",
-            Value::new_iutf8s(new_domain_name)
-        );
-        let udi = PartialValue::new_uuids(UUID_DOMAIN_INFO)
-            .ok_or(OperationError::InvalidUuid)?;
+    pub fn domain_rename(
+        &mut self,
+        audit: &mut AuditScope,
+        new_domain_name: &str,
+    ) -> Result<(), OperationError> {
+        let modl = ModifyList::new_purge_and_set("domain_name", Value::new_iutf8s(new_domain_name));
+        let udi = PartialValue::new_uuids(UUID_DOMAIN_INFO).ok_or(OperationError::InvalidUuid)?;
         let filt = filter_all!(f_eq("uuid", udi));
         self.internal_modify(audit, filt, modl)
     }

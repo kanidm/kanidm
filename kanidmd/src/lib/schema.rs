@@ -230,6 +230,14 @@ impl SchemaAttribute {
         }
     }
 
+    fn validate_spn(&self, v: &Value) -> Result<(), SchemaError> {
+        if v.is_spn() {
+            Ok(())
+        } else {
+            Err(SchemaError::InvalidAttributeSyntax)
+        }
+    }
+
     // TODO: There may be a difference between a value and a filter value on complex
     // types - IE a complex type may have multiple parts that are secret, but a filter
     // on that may only use a single tagged attribute for example.
@@ -246,6 +254,7 @@ impl SchemaAttribute {
             SyntaxType::CREDENTIAL => v.is_credential(),
             SyntaxType::RADIUS_UTF8STRING => v.is_radius_string(),
             SyntaxType::SSHKEY => v.is_sshkey(),
+            SyntaxType::SERVICE_PRINCIPLE_NAME => v.is_spn(),
         };
         if r {
             Ok(())
@@ -356,6 +365,13 @@ impl SchemaAttribute {
             SyntaxType::SSHKEY => ava.iter().fold(Ok(()), |acc, v| {
                 if acc.is_ok() {
                     self.validate_sshkey(v)
+                } else {
+                    acc
+                }
+            }),
+            SyntaxType::SERVICE_PRINCIPLE_NAME => ava.iter().fold(Ok(()), |acc, v| {
+                if acc.is_ok() {
+                    self.validate_spn(v)
                 } else {
                     acc
                 }

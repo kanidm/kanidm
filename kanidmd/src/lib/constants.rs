@@ -149,8 +149,7 @@ pub static _UUID_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1: &'static str =
 pub static _UUID_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1: &'static str =
     "00000000-0000-0000-0000-ffffff000024";
 // Skip 25 - see domain info.
-pub static UUID_IDM_ACP_DOMAIN_ADMIN_PRIV_V1: &'static str =
-    "00000000-0000-0000-0000-ffffff000026";
+pub static UUID_IDM_ACP_DOMAIN_ADMIN_PRIV_V1: &'static str = "00000000-0000-0000-0000-ffffff000026";
 
 // End of system ranges
 pub static STR_UUID_DOES_NOT_EXIST: &'static str = "00000000-0000-0000-0000-fffffffffffe";
@@ -1254,7 +1253,6 @@ pub static JSON_IDM_ACP_DOMAIN_ADMIN_PRIV_V1: &'static str = r#"{
         ]
     }
 }"#;
-
 
 // Anonymous should be the last opbject in the range here.
 pub static JSON_ANONYMOUS_V1: &'static str = r#"{

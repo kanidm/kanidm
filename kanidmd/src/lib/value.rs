@@ -10,6 +10,13 @@ use uuid::Uuid;
 use sshkeys::PublicKey as SshPublicKey;
 use std::cmp::Ordering;
 
+use regex::Regex;
+
+lazy_static! {
+    static ref SPN_RE: Regex =
+        Regex::new("(?P<name>[^@]+)@(?P<realm>[^@]+)").expect("Invalid SPN regex found");
+}
+
 #[allow(non_camel_case_types)]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
 pub enum IndexType {
@@ -380,6 +387,33 @@ impl PartialValue {
         }
     }
 
+    pub fn new_spn_s(s: &str) -> Option<Self> {
+        SPN_RE.captures(s).map(|caps| {
+            let name = caps
+                .name("name")
+                .expect("Failed to access name group")
+                .as_str()
+                .to_string();
+            let realm = caps
+                .name("realm")
+                .expect("Failed to access realm group")
+                .as_str()
+                .to_string();
+            PartialValue::Spn(name, realm)
+        })
+    }
+
+    pub fn new_spn_nrs(n: &str, r: &str) -> Self {
+        PartialValue::Spn(n.to_string(), r.to_string())
+    }
+
+    pub fn is_spn(&self) -> bool {
+        match self {
+            PartialValue::Spn(_, _) => true,
+            _ => false,
+        }
+    }
+
     pub fn to_str(&self) -> Option<&str> {
         match self {
             PartialValue::Utf8(s) => Some(s.as_str()),
@@ -414,6 +448,7 @@ impl PartialValue {
             // This will never match as we never index radius creds! See generate_idx_eq_keys
             PartialValue::RadiusCred => "_".to_string(),
             PartialValue::SshKey(tag) => tag.to_string(),
+            PartialValue::Spn(name, realm) => format!("{}@{}", name, realm),
         }
     }
 
@@ -807,6 +842,20 @@ impl Value {
         }
     }
 
+    pub fn new_spn_str(n: &str, r: &str) -> Self {
+        Value {
+            pv: PartialValue::new_spn_nrs(n, r),
+            data: None,
+        }
+    }
+
+    pub fn is_spn(&self) -> bool {
+        match &self.pv {
+            PartialValue::Spn(_, _) => true,
+            _ => false,
+        }
+    }
+
     pub fn contains(&self, s: &PartialValue) -> bool {
         self.pv.contains(s)
     }
@@ -872,6 +921,10 @@ impl Value {
                 pv: PartialValue::SshKey(ts.t),
                 data: Some(DataValue::SshKey(ts.d)),
             }),
+            DbValueV1::SP(n, r) => Ok(Value {
+                pv: PartialValue::Spn(n, r),
+                data: None,
+            }),
         }
     }
 
@@ -928,6 +981,7 @@ impl Value {
                     d: sk,
                 })
             }
+            PartialValue::Spn(n, r) => DbValueV1::SP(n.clone(), r.clone()),
         }
     }
 
@@ -1034,6 +1088,7 @@ impl Value {
             // We don't disclose the radius credential unless by special
             // interfaces.
             PartialValue::RadiusCred => "radius".to_string(),
+            PartialValue::Spn(n, r) => format!("{}@{}", n, r),
         }
     }
 
@@ -1091,6 +1146,7 @@ impl Value {
                 vec![tag.to_string()]
             }
             PartialValue::RadiusCred => vec![],
+            PartialValue::Spn(n, r) => vec![format!("{}@{}", n, r)],
         }
     }
 }
@@ -1193,11 +1249,18 @@ mod tests {
     #[test]
     fn test_value_spn() {
         // Create an spn vale
+        let spnv = Value::new_spn_str("claire", "example.net.au");
         // create an spn pv
+        let spnp = PartialValue::new_spn_nrs("claire", "example.net.au");
         // check it's indexing output
+        let vidx_key = spnv.generate_idx_eq_keys().pop().unwrap();
+        let idx_key = spnp.get_idx_eq_key();
+        assert!(idx_key == vidx_key);
         // check it can parse from name@realm
+        let spn_parse = PartialValue::new_spn_s("claire@example.net.au").unwrap();
+        assert!(spn_parse == spnp);
         // check it can produce name@realm as str from the pv.
-        // check it validates the syntax
+        assert!("claire@example.net.au" == spnv.to_proto_string_clone());
     }
 
     /*

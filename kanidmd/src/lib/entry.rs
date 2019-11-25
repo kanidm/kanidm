@@ -1036,7 +1036,6 @@ impl<STATE> Entry<EntryValid, STATE> {
     pub fn get_uuid(&self) -> &Uuid {
         &self.valid.uuid
     }
-
 }
 
 impl Entry<EntryReduced, EntryCommitted> {

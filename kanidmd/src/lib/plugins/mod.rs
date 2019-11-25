@@ -343,7 +343,9 @@ impl Plugins {
         audit_segment!(au, || {
             let res =
                 run_post_modify_plugin!(au, qs, pre_cand, cand, me, refint::ReferentialIntegrity)
-                    .and_then(|_| run_post_modify_plugin!(au, qs, pre_cand, cand, me, memberof::MemberOf))
+                    .and_then(|_| {
+                        run_post_modify_plugin!(au, qs, pre_cand, cand, me, memberof::MemberOf)
+                    })
                     .and_then(|_| run_post_modify_plugin!(au, qs, pre_cand, cand, me, spn::Spn));
             res
         })

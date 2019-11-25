@@ -2,7 +2,7 @@ use crate::audit::AuditScope;
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryReduced, EntryValid};
 use crate::filter::{Filter, FilterInvalid, FilterValid};
 use crate::schema::SchemaTransaction;
-use crate::value::{PartialValue};
+use crate::value::PartialValue;
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::ModifyList as ProtoModifyList;
 use kanidm_proto::v1::{

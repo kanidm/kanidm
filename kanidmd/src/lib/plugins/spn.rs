@@ -3,11 +3,11 @@
 use crate::plugins::Plugin;
 
 use crate::audit::AuditScope;
-use crate::entry::{Entry, EntryInvalid, EntryValid, EntryNew, EntryCommitted};
+use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
 use crate::event::{CreateEvent, ModifyEvent};
-use crate::server::{QueryServerWriteTransaction, QueryServerReadTransaction};
+use crate::server::{QueryServerReadTransaction, QueryServerWriteTransaction};
 // use crate::value::{PartialValue, Value};
-use kanidm_proto::v1::{OperationError, ConsistencyError};
+use kanidm_proto::v1::{ConsistencyError, OperationError};
 
 pub struct Spn {}
 

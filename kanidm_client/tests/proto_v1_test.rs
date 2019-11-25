@@ -534,8 +534,7 @@ fn test_server_rest_domain_lifecycle() {
         let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
         assert!(res.is_ok());
 
-        let mut dlist = rsclient.idm_domain_list()
-            .unwrap();
+        let mut dlist = rsclient.idm_domain_list().unwrap();
         assert!(dlist.len() == 1);
 
         let dlocal = rsclient.idm_domain_get("domain_local").unwrap();
@@ -543,13 +542,14 @@ fn test_server_rest_domain_lifecycle() {
         assert!(dlist.pop().unwrap().attrs == dlocal.attrs);
 
         // Change the ssid
-        rsclient.idm_domain_set_ssid("domain_local", "new_ssid").unwrap();
+        rsclient
+            .idm_domain_set_ssid("domain_local", "new_ssid")
+            .unwrap();
         // check get and get the ssid and domain info
         let nssid = rsclient.idm_domain_get_ssid("domain_local").unwrap();
         assert!(nssid == "new_ssid");
     });
 }
-
 
 // Test the self version of the radius path.
 
