@@ -41,7 +41,7 @@ pub static _UUID_IDM_HIGH_PRIVILEGE: &'static str = "00000000-0000-0000-0000-000
 pub static UUID_SCHEMA_ATTR_CLASS: &'static str = "00000000-0000-0000-0000-ffff00000000";
 pub static UUID_SCHEMA_ATTR_UUID: &'static str = "00000000-0000-0000-0000-ffff00000001";
 pub static UUID_SCHEMA_ATTR_NAME: &'static str = "00000000-0000-0000-0000-ffff00000002";
-pub static UUID_SCHEMA_ATTR_PRINCIPAL_NAME: &'static str = "00000000-0000-0000-0000-ffff00000003";
+pub static UUID_SCHEMA_ATTR_SPN: &'static str = "00000000-0000-0000-0000-ffff00000003";
 pub static UUID_SCHEMA_ATTR_DESCRIPTION: &'static str = "00000000-0000-0000-0000-ffff00000004";
 pub static UUID_SCHEMA_ATTR_MULTIVALUE: &'static str = "00000000-0000-0000-0000-ffff00000005";
 pub static UUID_SCHEMA_ATTR_UNIQUE: &'static str = "00000000-0000-0000-0000-ffff00000047";
@@ -552,6 +552,7 @@ pub static JSON_IDM_SELF_ACP_READ_V1: &'static str = r#"{
         ],
         "acp_search_attr": [
             "name",
+            "spn",
             "displayname",
             "legalname",
             "class",
@@ -601,6 +602,7 @@ pub static JSON_IDM_ALL_ACP_READ_V1: &'static str = r#"{
         ],
         "acp_search_attr": [
             "name",
+            "spn",
             "displayname",
             "class",
             "memberof",
@@ -680,7 +682,7 @@ pub static JSON_IDM_ACP_GROUP_WRITE_PRIV_V1: &'static str = r#"{
             "{\"And\": [{\"Eq\": [\"class\",\"group\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_search_attr": [
-            "class", "name", "uuid", "description", "member"
+            "class", "name", "spn", "uuid", "description", "member"
         ],
         "acp_modify_removedattr": [
             "name", "description", "member"
@@ -709,7 +711,7 @@ pub static JSON_IDM_ACP_ACCOUNT_READ_PRIV_V1: &'static str = r#"{
             "{\"And\": [{\"Eq\": [\"class\",\"account\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_search_attr": [
-            "class", "name", "uuid", "displayname", "ssh_publickey", "primary_credential", "memberof", "mail"
+            "class", "name", "spn", "uuid", "displayname", "ssh_publickey", "primary_credential", "memberof", "mail"
         ]
     }
 }"#;
@@ -826,7 +828,7 @@ pub static JSON_IDM_ACP_RADIUS_SERVERS_V1: &'static str = r#"{
             "{\"And\": [{\"Pres\": \"class\"}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_search_attr": [
-            "name", "uuid", "radius_secret"
+            "name", "spn", "uuid", "radius_secret"
         ]
     }
 }"#;
@@ -849,7 +851,7 @@ pub static JSON_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1: &'static str = r#"{
             "{\"And\": [{\"Eq\": [\"class\",\"account\"]}, {\"Eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_search_attr": [
-            "class", "name", "uuid", "displayname", "ssh_publickey", "primary_credential", "memberof"
+            "class", "name", "spn", "uuid", "displayname", "ssh_publickey", "primary_credential", "memberof"
         ]
     }
 }"#;
@@ -1610,7 +1612,8 @@ pub static JSON_SCHEMA_CLASS_GROUP: &'static str = r#"
         "member"
       ],
       "systemmust": [
-        "name"
+        "name",
+        "spn"
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000045"
@@ -1639,7 +1642,8 @@ pub static JSON_SCHEMA_CLASS_ACCOUNT: &'static str = r#"
       ],
       "systemmust": [
         "displayname",
-        "name"
+        "name",
+        "spn"
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000046"

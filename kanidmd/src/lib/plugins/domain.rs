@@ -34,15 +34,14 @@ impl Plugin for Domain {
     ) -> Result<(), OperationError> {
         audit_log!(au, "Entering base pre_create_transform");
         cand.iter_mut().for_each(|e| {
-            audit_log!(au, "{:?}", e);
             if e.attribute_value_pres("class", &PVCLASS_DOMAIN_INFO)
                 && !e.attribute_pres("domain_uuid")
             {
                 let u = Value::new_uuid(Uuid::new_v4());
                 e.set_avas("domain_uuid", vec![u]);
-                audit_log!(au, "Applying uuid transform");
+                audit_log!(au, "plugin_domain: Applying uuid transform");
+                audit_log!(au, "{:?}", e);
             }
-            audit_log!(au, "{:?}", e);
         });
         audit_log!(au, "Ending base pre_create_transform");
         Ok(())

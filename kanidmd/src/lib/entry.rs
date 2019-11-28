@@ -320,6 +320,15 @@ impl Entry<EntryInvalid, EntryNew> {
                     "displayname" | "description" => {
                         vs.into_iter().map(|v| Value::new_utf8(v)).collect()
                     }
+                    "spn" => {
+                        vs.into_iter().map(|v| {
+                            Value::new_spn_parse(v.as_str())
+                            .unwrap_or_else(|| {
+                                warn!("WARNING: Allowing syntax incorrect SPN attribute to be presented UTF8 string");
+                                Value::new_utf8(v)
+                            })
+                        }).collect()
+                    }
                     ia => {
                         warn!("WARNING: Allowing invalid attribute {} to be interpretted as UTF8 string. YOU MAY ENCOUNTER ODD BEHAVIOUR!!!", ia);
                         vs.into_iter().map(|v| Value::new_utf8(v)).collect()
@@ -1266,6 +1275,13 @@ impl<VALID, STATE> Entry<VALID, STATE> {
                 v.as_json_filter()
             })
             .and_then(|f: &ProtoFilter| Some((*f).clone()))
+    }
+
+    pub(crate) fn generate_spn(&self, domain_name: &str) -> Option<Value> {
+        self.get_ava_single_str("name")
+            .and_then(|name| {
+                Some(Value::new_spn_str(name, domain_name))
+            })
     }
 
     pub fn attribute_pres(&self, attr: &str) -> bool {
