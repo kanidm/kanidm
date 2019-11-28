@@ -1325,6 +1325,42 @@ pub fn reindex_server_core(config: Configuration) {
     };
 }
 
+pub fn domain_rename_core(config: Configuration, new_domain_name: String) {
+    let mut audit = AuditScope::new("domain_rename");
+
+    // Start the backend.
+    let be = match setup_backend(&config) {
+        Ok(be) => be,
+        Err(e) => {
+            error!("Failed to setup BE: {:?}", e);
+            return;
+        }
+    };
+    let server_id = be.get_db_sid();
+    // setup the qs - *with* init of the migrations and schema.
+    let (qs, _idms) = match setup_qs_idms(&mut audit, be, server_id) {
+        Ok(t) => t,
+        Err(e) => {
+            debug!("{}", audit);
+            error!("Unable to setup query server or idm server -> {:?}", e);
+            return;
+        }
+    };
+
+    let mut qs_write = qs.write();
+    let r = qs_write
+        .domain_rename(&mut audit, new_domain_name.as_str())
+        .and_then(|_| qs_write.commit(&mut audit));
+
+    match r {
+        Ok(_) => info!("Domain Rename Success!"),
+        Err(e) => {
+            error!("Domain Rename Failed - Rollback has occured: {:?}", e);
+            std::process::exit(1);
+        }
+    };
+}
+
 pub fn reset_sid_core(config: Configuration) {
     let mut audit = AuditScope::new("reset_sid_core");
     // Setup the be
@@ -1520,7 +1556,7 @@ pub fn create_server_core(config: Configuration) {
     // Copy the max size
     let max_size = config.maximum_request;
     let secure_cookies = config.secure_cookies;
-    // let domain = config.domain.clone();
+    // domain will come from the qs now!
     let cookie_key: [u8; 32] = config.cookie_key.clone();
 
     // start the web server
