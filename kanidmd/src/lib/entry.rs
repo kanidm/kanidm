@@ -1279,9 +1279,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
 
     pub(crate) fn generate_spn(&self, domain_name: &str) -> Option<Value> {
         self.get_ava_single_str("name")
-            .and_then(|name| {
-                Some(Value::new_spn_str(name, domain_name))
-            })
+            .and_then(|name| Some(Value::new_spn_str(name, domain_name)))
     }
 
     pub fn attribute_pres(&self, attr: &str) -> bool {

@@ -3,11 +3,13 @@
 use crate::plugins::Plugin;
 
 use crate::audit::AuditScope;
+use crate::constants::UUID_DOMAIN_INFO;
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
 use crate::event::{CreateEvent, ModifyEvent};
-use crate::server::{QueryServerReadTransaction, QueryServerWriteTransaction, QueryServerTransaction};
-use crate::constants::UUID_DOMAIN_INFO;
-use crate::value::{PartialValue};
+use crate::server::{
+    QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
+};
+use crate::value::PartialValue;
 // use crate::value::{PartialValue, Value};
 use kanidm_proto::v1::{ConsistencyError, OperationError};
 use uuid::Uuid;
@@ -15,7 +17,8 @@ use uuid::Uuid;
 pub struct Spn {}
 
 lazy_static! {
-    static ref UUID_DOMAIN_INFO_T: Uuid = Uuid::parse_str(UUID_DOMAIN_INFO).expect("Unable to parse constant UUID_DOMAIN_INFO");
+    static ref UUID_DOMAIN_INFO_T: Uuid =
+        Uuid::parse_str(UUID_DOMAIN_INFO).expect("Unable to parse constant UUID_DOMAIN_INFO");
     static ref CLASS_GROUP: PartialValue = PartialValue::new_iutf8s("group");
     static ref CLASS_ACCOUNT: PartialValue = PartialValue::new_iutf8s("account");
 }
@@ -25,11 +28,7 @@ impl Spn {
         au: &mut AuditScope,
         qs: &mut QueryServerWriteTransaction,
     ) -> Result<String, OperationError> {
-        qs
-            .internal_search_uuid(
-                au,
-                &UUID_DOMAIN_INFO_T
-            )
+        qs.internal_search_uuid(au, &UUID_DOMAIN_INFO_T)
             .and_then(|e| {
                 e.get_ava_single_string("domain_name")
                     .ok_or(OperationError::InvalidEntryState)
@@ -44,11 +43,7 @@ impl Spn {
         au: &mut AuditScope,
         qs: &QueryServerReadTransaction,
     ) -> Result<String, OperationError> {
-        qs
-            .internal_search_uuid(
-                au,
-                &UUID_DOMAIN_INFO_T
-            )
+        qs.internal_search_uuid(au, &UUID_DOMAIN_INFO_T)
             .and_then(|e| {
                 e.get_ava_single_string("domain_name")
                     .ok_or(OperationError::InvalidEntryState)
@@ -81,19 +76,26 @@ impl Plugin for Spn {
 
         for e in cand.iter_mut() {
             if e.attribute_value_pres("class", &CLASS_GROUP)
-                || e.attribute_value_pres("class", &CLASS_ACCOUNT) {
-
+                || e.attribute_value_pres("class", &CLASS_ACCOUNT)
+            {
                 if domain_name.is_none() {
                     domain_name = Some(Self::get_domain_name(au, qs)?);
                 }
 
                 // It should be impossible to hit this expect as the is_none case should cause it to be replaced above.
-                let some_domain_name = domain_name.as_ref().expect("Domain name option memory corruption has occured.");
+                let some_domain_name = domain_name
+                    .as_ref()
+                    .expect("Domain name option memory corruption has occured.");
 
-                let spn = e.generate_spn(some_domain_name.as_str())
+                let spn = e
+                    .generate_spn(some_domain_name.as_str())
                     .ok_or(OperationError::InvalidEntryState)
                     .map_err(|e| {
-                        audit_log!(au, "Account or group missing name, unable to generate spn!? {:?}", e);
+                        audit_log!(
+                            au,
+                            "Account or group missing name, unable to generate spn!? {:?}",
+                            e
+                        );
                         e
                     })?;
                 audit_log!(au, "plugin_spn: set spn to {:?}", spn);
@@ -115,19 +117,26 @@ impl Plugin for Spn {
 
         for e in cand.iter_mut() {
             if e.attribute_value_pres("class", &CLASS_GROUP)
-                || e.attribute_value_pres("class", &CLASS_ACCOUNT) {
-
+                || e.attribute_value_pres("class", &CLASS_ACCOUNT)
+            {
                 if domain_name.is_none() {
                     domain_name = Some(Self::get_domain_name(au, qs)?);
                 }
 
                 // It should be impossible to hit this expect as the is_none case should cause it to be replaced above.
-                let some_domain_name = domain_name.as_ref().expect("Domain name option memory corruption has occured.");
+                let some_domain_name = domain_name
+                    .as_ref()
+                    .expect("Domain name option memory corruption has occured.");
 
-                let spn = e.generate_spn(some_domain_name.as_str())
+                let spn = e
+                    .generate_spn(some_domain_name.as_str())
                     .ok_or(OperationError::InvalidEntryState)
                     .map_err(|e| {
-                        audit_log!(au, "Account or group missing name, unable to generate spn!? {:?}", e);
+                        audit_log!(
+                            au,
+                            "Account or group missing name, unable to generate spn!? {:?}",
+                            e
+                        );
                         e
                     })?;
                 audit_log!(au, "plugin_spn: set spn to {:?}", spn);
@@ -186,14 +195,14 @@ impl Plugin for Spn {
             let g_spn = match e.generate_spn(domain_name.as_str()) {
                 Some(s) => s,
                 None => {
-                        audit_log!(
-                            au,
-                            "Entry {:?} SPN could not be generated (missing name!?)",
-                            e.get_uuid()
-                        );
-                        debug_assert!(false);
-                        r.push(Err(ConsistencyError::InvalidSPN(e.get_id())));
-                        continue;
+                    audit_log!(
+                        au,
+                        "Entry {:?} SPN could not be generated (missing name!?)",
+                        e.get_uuid()
+                    );
+                    debug_assert!(false);
+                    r.push(Err(ConsistencyError::InvalidSPN(e.get_id())));
+                    continue;
                 }
             };
             match e.get_ava_single("spn") {
@@ -203,18 +212,16 @@ impl Plugin for Spn {
                         audit_log!(
                             au,
                             "Entry {:?} SPN does not match expected s {:?} != ex {:?}",
-                            e.get_uuid(), r_spn, g_spn,
+                            e.get_uuid(),
+                            r_spn,
+                            g_spn,
                         );
                         debug_assert!(false);
                         r.push(Err(ConsistencyError::InvalidSPN(e.get_id())))
                     }
                 }
                 None => {
-                    audit_log!(
-                        au,
-                        "Entry {:?} does not contain an SPN",
-                        e.get_uuid(),
-                    );
+                    audit_log!(au, "Entry {:?} does not contain an SPN", e.get_uuid(),);
                     r.push(Err(ConsistencyError::InvalidSPN(e.get_id())))
                 }
             }
@@ -226,7 +233,7 @@ impl Plugin for Spn {
 #[cfg(test)]
 mod tests {
     use crate::entry::{Entry, EntryInvalid, EntryNew};
-    use crate::server::{QueryServerWriteTransaction};
+    use crate::server::QueryServerWriteTransaction;
     use crate::value::{PartialValue, Value};
 
     #[test]
@@ -280,9 +287,7 @@ mod tests {
             Ok(()),
             preload,
             filter!(f_eq("name", PartialValue::new_iutf8s("testperson"))),
-            modlist!([
-                m_purge("spn")
-            ]),
+            modlist!([m_purge("spn")]),
             None,
             |_, _| {}
         );

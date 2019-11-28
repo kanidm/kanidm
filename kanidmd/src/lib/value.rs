@@ -843,13 +843,10 @@ impl Value {
     }
 
     pub fn new_spn_parse(v: &str) -> Option<Self> {
-        PartialValue::new_spn_s(v)
-            .map(|spn| {
-                Value {
-                    pv: spn,
-                    data: None,
-                }
-            })
+        PartialValue::new_spn_s(v).map(|spn| Value {
+            pv: spn,
+            data: None,
+        })
     }
 
     pub fn new_spn_str(n: &str, r: &str) -> Self {

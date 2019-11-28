@@ -593,7 +593,9 @@ impl SchemaInner {
                     name: String::from("spn"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_SPN)
                         .expect("unable to parse static uuid"),
-                    description: String::from("The service principle name of an object, unique across all domain trusts"),
+                    description: String::from(
+                        "The service principle name of an object, unique across all domain trusts",
+                    ),
                     multivalue: false,
                     unique: true,
                     index: vec![IndexType::EQUALITY],
