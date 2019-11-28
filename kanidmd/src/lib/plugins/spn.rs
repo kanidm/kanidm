@@ -21,6 +21,8 @@ lazy_static! {
         Uuid::parse_str(UUID_DOMAIN_INFO).expect("Unable to parse constant UUID_DOMAIN_INFO");
     static ref CLASS_GROUP: PartialValue = PartialValue::new_iutf8s("group");
     static ref CLASS_ACCOUNT: PartialValue = PartialValue::new_iutf8s("account");
+    static ref PV_UUID_DOMAIN_INFO: PartialValue = PartialValue::new_uuids(UUID_DOMAIN_INFO)
+        .expect("Unable to parse constant UUID_DOMAIN_INFO");
 }
 
 impl Spn {
@@ -147,17 +149,56 @@ impl Plugin for Spn {
     }
 
     fn post_modify(
-        _au: &mut AuditScope,
-        _qs: &mut QueryServerWriteTransaction,
+        au: &mut AuditScope,
+        qs: &mut QueryServerWriteTransaction,
         // List of what we modified that was valid?
-        _pre_cand: &Vec<Entry<EntryValid, EntryCommitted>>,
-        _cand: &Vec<Entry<EntryValid, EntryCommitted>>,
+        pre_cand: &Vec<Entry<EntryValid, EntryCommitted>>,
+        cand: &Vec<Entry<EntryValid, EntryCommitted>>,
         _ce: &ModifyEvent,
     ) -> Result<(), OperationError> {
         // On modify, if changing domain_name on UUID_DOMAIN_INFO
         //    trigger the spn regen ... which is expensive. Future
-        // todo will be a way to batch this I guess ...
-        Ok(())
+        // todo will be improvements to modify on large txns.
+
+        let domain_name_changed =
+            cand.iter()
+                .zip(pre_cand.iter())
+                .fold(None, |acc, (post, pre)| {
+                    if acc.is_some() {
+                        acc
+                    } else {
+                        if post.attribute_value_pres("uuid", &PV_UUID_DOMAIN_INFO)
+                            && post.get_ava_single("domain_name")
+                                != pre.get_ava_single("domain_name")
+                        {
+                            post.get_ava_single("domain_name")
+                        } else {
+                            acc
+                        }
+                    }
+                });
+
+        let domain_name = match domain_name_changed {
+            Some(s) => s,
+            None => return Ok(()),
+        };
+
+        audit_log!(
+            au,
+            "IMPORTANT!!! Changing domain name to \"{:?}\". THIS MAY TAKE A LONG TIME ...",
+            domain_name
+        );
+
+        // All we do is purge spn, and allow the plugin to recreate. Neat! It's also all still
+        // within the transaction, just incase!
+        qs.internal_modify(
+            au,
+            filter!(f_or!([
+                f_eq("class", PartialValue::new_class("group")),
+                f_eq("class", PartialValue::new_class("account"))
+            ])),
+            modlist!([m_purge("spn")]),
+        )
     }
 
     fn verify(
@@ -176,7 +217,7 @@ impl Plugin for Spn {
             Err(e) => return vec![e],
         };
 
-        let filt_in = filter!(f_and!([
+        let filt_in = filter!(f_or!([
             f_eq("class", PartialValue::new_class("group")),
             f_eq("class", PartialValue::new_class("account"))
         ]));
@@ -218,6 +259,8 @@ impl Plugin for Spn {
                         );
                         debug_assert!(false);
                         r.push(Err(ConsistencyError::InvalidSPN(e.get_id())))
+                    } else {
+                        audit_log!(au, "spn is ok! 👍");
                     }
                 }
                 None => {
@@ -232,8 +275,9 @@ impl Plugin for Spn {
 
 #[cfg(test)]
 mod tests {
+    use crate::constants::UUID_ADMIN;
     use crate::entry::{Entry, EntryInvalid, EntryNew};
-    use crate::server::QueryServerWriteTransaction;
+    use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
     use crate::value::{PartialValue, Value};
 
     #[test]
@@ -355,15 +399,38 @@ mod tests {
 
     #[test]
     fn test_spn_regen_domain_rename() {
-        // get the current domain name
+        run_test!(|server: &QueryServer, au: &mut AuditScope| {
+            let mut server_txn = server.write();
 
-        // check the spn on admin is admin@<initial domain>
+            let ex1 = Value::new_spn_str("admin", "example.com");
+            let ex2 = Value::new_spn_str("admin", "new.example.com");
+            // get the current domain name
+            // check the spn on admin is admin@<initial domain>
+            let e_pre = server_txn
+                .internal_search_uuid(au, &UUID_ADMIN)
+                .expect("must not fail");
 
-        // trigger the domain_name change (this will be a cli option to the server
-        // in the final version), but it will still call the same qs function to perform the
-        // change.
+            let e_pre_spn = e_pre.get_ava_single("spn").expect("must not fail");
+            assert!(*e_pre_spn == ex1);
 
-        // check the spn on admin is admin@<new domain>
-        unimplemented!();
+            // trigger the domain_name change (this will be a cli option to the server
+            // in the final version), but it will still call the same qs function to perform the
+            // change.
+            server_txn
+                .domain_rename(au, "new.example.com")
+                .expect("should not fail!");
+
+            // check the spn on admin is admin@<new domain>
+            let e_post = server_txn
+                .internal_search_uuid(au, &UUID_ADMIN)
+                .expect("must not fail");
+
+            let e_post_spn = e_post.get_ava_single("spn").expect("must not fail");
+            debug!("{:?}", e_post_spn);
+            debug!("{:?}", ex2);
+            assert!(*e_post_spn == ex2);
+
+            server_txn.commit(au).expect("Must not fail");
+        });
     }
 }
