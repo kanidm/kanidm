@@ -420,6 +420,10 @@ impl PartialValue {
         }
     }
 
+    pub fn new_uint32(u: u32) -> Self {
+        PartialValue::Uint32(u)
+    }
+
     pub fn new_uint32_str(u: &str) -> Option<Self> {
         u32::from_str_radix(u, 10)
             .ok()
@@ -880,6 +884,13 @@ impl Value {
         match &self.pv {
             PartialValue::Spn(_, _) => true,
             _ => false,
+        }
+    }
+
+    pub fn new_uint32(u: u32) -> Self {
+        Value {
+            pv: PartialValue::new_uint32(u),
+            data: None,
         }
     }
 

@@ -7,6 +7,13 @@ use rand::{thread_rng, Rng};
 
 pub type SID = [u8; 4];
 
+pub fn uuid_to_gid_u32(u: &Uuid) -> u32 {
+    let b_ref = u.as_bytes();
+    let mut x: [u8; 4] = [0; 4];
+    x.clone_from_slice(&b_ref[12..16]);
+    u32::from_be_bytes(x)
+}
+
 fn uuid_from_u64_u32(a: u64, b: u32, sid: &SID) -> Uuid {
     let mut v: Vec<u8> = Vec::with_capacity(16);
     v.extend_from_slice(&a.to_be_bytes());
@@ -46,8 +53,9 @@ pub fn uuid_from_now(sid: &SID) -> Uuid {
 
 #[cfg(test)]
 mod tests {
-    use crate::utils::uuid_from_duration;
+    use crate::utils::{uuid_from_duration, uuid_to_gid_u32};
     use std::time::Duration;
+    use uuid::Uuid;
 
     #[test]
     fn test_utils_uuid_from_duration() {
@@ -62,5 +70,20 @@ mod tests {
             "00000000-0000-03e8-0000-0000ffffffff",
             u2.to_hyphenated().to_string()
         );
+    }
+
+    #[test]
+    fn test_utils_uuid_to_gid_u32() {
+        let u1 = Uuid::parse_str("00000000-0000-0001-0000-000000000000").unwrap();
+        let r1 = uuid_to_gid_u32(&u1);
+        assert!(r1 == 0);
+
+        let u2 = Uuid::parse_str("00000000-0000-0001-0000-0000ffffffff").unwrap();
+        let r2 = uuid_to_gid_u32(&u2);
+        assert!(r2 == 0xffffffff);
+
+        let u3 = Uuid::parse_str("00000000-0000-0001-0000-ffff12345678").unwrap();
+        let r3 = uuid_to_gid_u32(&u3);
+        assert!(r3 == 0x12345678);
     }
 }

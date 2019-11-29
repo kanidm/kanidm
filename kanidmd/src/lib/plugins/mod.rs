@@ -11,6 +11,7 @@ mod attrunique;
 mod base;
 mod domain;
 mod failure;
+mod gidnumber;
 mod memberof;
 mod protected;
 mod recycle;
@@ -281,9 +282,13 @@ impl Plugins {
     ) -> Result<(), OperationError> {
         audit_segment!(au, || {
             let res = run_pre_create_transform_plugin!(au, qs, cand, ce, base::Base)
+                .and_then(|_| {
+                    run_pre_create_transform_plugin!(au, qs, cand, ce, gidnumber::GidNumber)
+                })
                 .and_then(|_| run_pre_create_transform_plugin!(au, qs, cand, ce, domain::Domain))
                 .and_then(|_| run_pre_create_transform_plugin!(au, qs, cand, ce, spn::Spn))
                 .and_then(|_| {
+                    // Should always be last
                     run_pre_create_transform_plugin!(au, qs, cand, ce, attrunique::AttrUnique)
                 });
             res
@@ -326,7 +331,9 @@ impl Plugins {
         audit_segment!(au, || {
             let res = run_pre_modify_plugin!(au, qs, cand, me, protected::Protected)
                 .and_then(|_| run_pre_modify_plugin!(au, qs, cand, me, base::Base))
+                .and_then(|_| run_pre_modify_plugin!(au, qs, cand, me, gidnumber::GidNumber))
                 .and_then(|_| run_pre_modify_plugin!(au, qs, cand, me, spn::Spn))
+                // attr unique should always be last
                 .and_then(|_| run_pre_modify_plugin!(au, qs, cand, me, attrunique::AttrUnique));
 
             res

@@ -1617,10 +1617,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_SCHEMA_ATTR_DOMAIN_NAME,
             JSON_SCHEMA_ATTR_DOMAIN_UUID,
             JSON_SCHEMA_ATTR_DOMAIN_SSID,
+            JSON_SCHEMA_ATTR_GIDNUMBER,
             JSON_SCHEMA_CLASS_PERSON,
             JSON_SCHEMA_CLASS_GROUP,
             JSON_SCHEMA_CLASS_ACCOUNT,
             JSON_SCHEMA_CLASS_DOMAIN_INFO,
+            JSON_SCHEMA_CLASS_POSIXACCOUNT,
+            JSON_SCHEMA_CLASS_POSIXGROUP,
         ];
 
         let mut audit_si = AuditScope::new("start_initialise_schema_idm");
