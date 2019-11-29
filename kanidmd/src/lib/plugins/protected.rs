@@ -20,16 +20,22 @@ pub struct Protected {}
 lazy_static! {
     static ref ALLOWED_ATTRS: HashSet<&'static str> = {
         let mut m = HashSet::new();
+        // Allow modification of some schema class types to allow local extension
+        // of schema types.
         m.insert("must");
         m.insert("may");
+        // Allow modification of some domain info types for local configuration.
+        m.insert("domain_ssid");
         m
     };
     static ref PVCLASS_SYSTEM: PartialValue = PartialValue::new_class("system");
     static ref PVCLASS_TOMBSTONE: PartialValue = PartialValue::new_class("tombstone");
     static ref PVCLASS_RECYCLED: PartialValue = PartialValue::new_class("recycled");
+    static ref PVCLASS_DOMAIN_INFO: PartialValue = PartialValue::new_class("domain_info");
     static ref VCLASS_SYSTEM: Value = Value::new_class("system");
     static ref VCLASS_TOMBSTONE: Value = Value::new_class("tombstone");
     static ref VCLASS_RECYCLED: Value = Value::new_class("recycled");
+    static ref VCLASS_DOMAIN_INFO: Value = Value::new_class("domain_info");
 }
 
 impl Plugin for Protected {
@@ -56,6 +62,7 @@ impl Plugin for Protected {
             Err(_) => acc,
             Ok(_) => {
                 if cand.attribute_value_pres("class", &PVCLASS_SYSTEM)
+                    || cand.attribute_value_pres("class", &PVCLASS_DOMAIN_INFO)
                     || cand.attribute_value_pres("class", &PVCLASS_TOMBSTONE)
                     || cand.attribute_value_pres("class", &PVCLASS_RECYCLED)
                 {
@@ -81,7 +88,7 @@ impl Plugin for Protected {
             );
             return Ok(());
         }
-        // Prevent adding class: system, tombstone, or recycled.
+        // Prevent adding class: system, domain_info, tombstone, or recycled.
         me.modlist.iter().fold(Ok(()), |acc, m| {
             if acc.is_err() {
                 acc
@@ -91,6 +98,7 @@ impl Plugin for Protected {
                         // TODO: Can we avoid this clone?
                         if a == "class"
                             && (v == &(VCLASS_SYSTEM.clone())
+                                || v == &(VCLASS_DOMAIN_INFO.clone())
                                 || v == &(VCLASS_TOMBSTONE.clone())
                                 || v == &(VCLASS_RECYCLED.clone()))
                         {
@@ -104,7 +112,8 @@ impl Plugin for Protected {
             }
         })?;
 
-        // HARD block mods on tombstone or recycle.
+        // HARD block mods on tombstone or recycle. We soft block on the rest as they may
+        // have some allowed attrs.
         cand.iter().fold(Ok(()), |acc, cand| match acc {
             Err(_) => acc,
             Ok(_) => {
@@ -123,6 +132,8 @@ impl Plugin for Protected {
             if acc {
                 acc
             } else {
+                // We don't need to check for domain info here because domain_info has a class
+                // system also. We just need to block it from being created.
                 c.attribute_value_pres("class", &PVCLASS_SYSTEM)
             }
         });
@@ -171,6 +182,7 @@ impl Plugin for Protected {
             Err(_) => acc,
             Ok(_) => {
                 if cand.attribute_value_pres("class", &PVCLASS_SYSTEM)
+                    || cand.attribute_value_pres("class", &PVCLASS_DOMAIN_INFO)
                     || cand.attribute_value_pres("class", &PVCLASS_TOMBSTONE)
                     || cand.attribute_value_pres("class", &PVCLASS_RECYCLED)
                 {
@@ -204,7 +216,7 @@ mod tests {
             ],
             "name": ["idm_admins_acp_allow_all_test"],
             "uuid": ["bb18f746-a409-497d-928c-5455d4aef4f7"],
-            "description": ["Builtin IDM Administrators Access Controls."],
+            "description": ["Builtin IDM Administrators Access Controls for TESTING."],
             "acp_enable": ["true"],
             "acp_receiver": [
                 "{\"Eq\":[\"uuid\",\"00000000-0000-0000-0000-000000000000\"]}"
@@ -213,11 +225,11 @@ mod tests {
                 "{\"Pres\":\"class\"}"
             ],
             "acp_search_attr": ["name", "class", "uuid", "classname", "attributename"],
-            "acp_modify_class": ["system"],
-            "acp_modify_removedattr": ["class", "displayname", "may", "must"],
-            "acp_modify_presentattr": ["class", "displayname", "may", "must"],
-            "acp_create_class": ["object", "person", "system"],
-            "acp_create_attr": ["name", "class", "description", "displayname"]
+            "acp_modify_class": ["system", "domain_info"],
+            "acp_modify_removedattr": ["class", "displayname", "may", "must", "domain_name", "domain_ssid"],
+            "acp_modify_presentattr": ["class", "displayname", "may", "must", "domain_name", "domain_ssid"],
+            "acp_create_class": ["object", "person", "system", "domain_info"],
+            "acp_create_attr": ["name", "class", "description", "displayname", "domain_name", "domain_ssid", "uuid"]
         }
     }"#;
 
@@ -368,6 +380,101 @@ mod tests {
             Err(OperationError::SystemProtectedObject),
             preload,
             filter!(f_eq("name", PartialValue::new_iutf8s("testperson"))),
+            Some(JSON_ADMIN_V1),
+            |_, _| {}
+        );
+    }
+
+    #[test]
+    fn test_modify_domain() {
+        // Can edit *my* domain_ssid and domain_name
+        let acp: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
+        // Show that adding a system class is denied
+        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+            r#"{
+            "attrs": {
+                "class": ["domain_info"],
+                "name": ["domain_example.net.au"],
+                "uuid": ["96fd1112-28bc-48ae-9dda-5acb4719aaba"],
+                "description": ["Demonstration of a remote domain's info being created for uuid generaiton"],
+                "domain_name": ["example.net.au"],
+                "domain_ssid": ["Example_Wifi"]
+            }
+        }"#,
+        );
+
+        let preload = vec![acp, e.clone()];
+
+        run_modify_test!(
+            Ok(()),
+            preload,
+            filter!(f_eq(
+                "name",
+                PartialValue::new_iutf8s("domain_example.net.au")
+            )),
+            modlist!([
+                m_purge("domain_ssid"),
+                m_pres("domain_ssid", &Value::new_utf8s("NewExampleWifi")),
+            ]),
+            Some(JSON_ADMIN_V1),
+            |_, _| {}
+        );
+    }
+
+    #[test]
+    fn test_ext_create_domain() {
+        // can not add a domain_info type - note the lack of class: system
+        let acp: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
+        let preload = vec![acp];
+        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+            r#"{
+            "attrs": {
+                "class": ["domain_info"],
+                "name": ["domain_example.net.au"],
+                "uuid": ["96fd1112-28bc-48ae-9dda-5acb4719aaba"],
+                "description": ["Demonstration of a remote domain's info being created for uuid generaiton"],
+                "domain_name": ["example.net.au"],
+                "domain_ssid": ["Example_Wifi"]
+            }
+        }"#,
+        );
+        let create = vec![e];
+
+        run_create_test!(
+            Err(OperationError::SystemProtectedObject),
+            preload,
+            create,
+            Some(JSON_ADMIN_V1),
+            |_, _| {}
+        );
+    }
+
+    #[test]
+    fn test_delete_domain() {
+        let acp: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
+        // On the real thing we have a class: system, but to prove the point ...
+        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+            r#"{
+            "attrs": {
+                "class": ["domain_info"],
+                "name": ["domain_example.net.au"],
+                "uuid": ["96fd1112-28bc-48ae-9dda-5acb4719aaba"],
+                "description": ["Demonstration of a remote domain's info being created for uuid generaiton"],
+                "domain_name": ["example.net.au"],
+                "domain_ssid": ["Example_Wifi"]
+            }
+        }"#,
+        );
+
+        let preload = vec![acp, e.clone()];
+
+        run_delete_test!(
+            Err(OperationError::SystemProtectedObject),
+            preload,
+            filter!(f_eq(
+                "name",
+                PartialValue::new_iutf8s("domain_example.net.au")
+            )),
             Some(JSON_ADMIN_V1),
             |_, _| {}
         );

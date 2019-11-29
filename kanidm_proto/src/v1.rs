@@ -72,6 +72,7 @@ pub enum ConsistencyError {
     MemberOfInvalid(u64),
     InvalidAttributeType(String),
     DuplicateUniqueAttribute(String),
+    InvalidSPN(u64),
 }
 
 /* ===== higher level types ===== */

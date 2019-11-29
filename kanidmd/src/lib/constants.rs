@@ -1,5 +1,7 @@
 use uuid::Uuid;
 
+// Increment this as we add new schema types and values!!!
+pub static SYSTEM_INDEX_VERSION: i64 = 3;
 // On test builds, define to 60 seconds
 #[cfg(test)]
 pub static PURGE_TIMEOUT: u64 = 60;
@@ -9,9 +11,150 @@ pub static PURGE_TIMEOUT: u64 = 3600;
 // 5 minute auth session window.
 pub static AUTH_SESSION_TIMEOUT: u64 = 300;
 
+// Built in group and account ranges.
 pub static STR_UUID_ADMIN: &'static str = "00000000-0000-0000-0000-000000000000";
-pub static STR_UUID_ANONYMOUS: &'static str = "00000000-0000-0000-0000-ffffffffffff";
+pub static _UUID_IDM_ADMINS: &'static str = "00000000-0000-0000-0000-000000000001";
+pub static _UUID_IDM_PEOPLE_READ_PRIV: &'static str = "00000000-0000-0000-0000-000000000002";
+pub static _UUID_IDM_PEOPLE_WRITE_PRIV: &'static str = "00000000-0000-0000-0000-000000000003";
+pub static _UUID_IDM_GROUP_WRITE_PRIV: &'static str = "00000000-0000-0000-0000-000000000004";
+pub static _UUID_IDM_ACCOUNT_READ_PRIV: &'static str = "00000000-0000-0000-0000-000000000005";
+pub static _UUID_IDM_ACCOUNT_WRITE_PRIV: &'static str = "00000000-0000-0000-0000-000000000006";
+pub static _UUID_IDM_RADIUS_SERVERS: &'static str = "00000000-0000-0000-0000-000000000007";
+pub static _UUID_IDM_HP_ACCOUNT_READ_PRIV: &'static str = "00000000-0000-0000-0000-000000000008";
+pub static _UUID_IDM_HP_ACCOUNT_WRITE_PRIV: &'static str = "00000000-0000-0000-0000-000000000009";
+pub static _UUID_IDM_SCHEMA_MANAGE_PRIV: &'static str = "00000000-0000-0000-0000-000000000010";
+pub static _UUID_IDM_ACP_MANAGE_PRIV: &'static str = "00000000-0000-0000-0000-000000000011";
+pub static _UUID_IDM_HP_GROUP_WRITE_PRIV: &'static str = "00000000-0000-0000-0000-000000000012";
+pub static _UUID_IDM_PEOPLE_MANAGE_PRIV: &'static str = "00000000-0000-0000-0000-000000000013";
+pub static _UUID_IDM_ACCOUNT_MANAGE_PRIV: &'static str = "00000000-0000-0000-0000-000000000014";
+pub static _UUID_IDM_GROUP_MANAGE_PRIV: &'static str = "00000000-0000-0000-0000-000000000015";
+pub static _UUID_IDM_HP_ACCOUNT_MANAGE_PRIV: &'static str = "00000000-0000-0000-0000-000000000016";
+pub static _UUID_IDM_HP_GROUP_MANAGE_PRIV: &'static str = "00000000-0000-0000-0000-000000000017";
+pub static _UUID_IDM_ADMIN_V1: &'static str = "00000000-0000-0000-0000-000000000018";
+pub static _UUID_SYSTEM_ADMINS: &'static str = "00000000-0000-0000-0000-000000000019";
+// TODO
+pub static UUID_DOMAIN_ADMINS: &'static str = "00000000-0000-0000-0000-000000000020";
+//
+pub static _UUID_IDM_HIGH_PRIVILEGE: &'static str = "00000000-0000-0000-0000-000000001000";
+
+// Builtin schema
+pub static UUID_SCHEMA_ATTR_CLASS: &'static str = "00000000-0000-0000-0000-ffff00000000";
+pub static UUID_SCHEMA_ATTR_UUID: &'static str = "00000000-0000-0000-0000-ffff00000001";
+pub static UUID_SCHEMA_ATTR_NAME: &'static str = "00000000-0000-0000-0000-ffff00000002";
+pub static UUID_SCHEMA_ATTR_SPN: &'static str = "00000000-0000-0000-0000-ffff00000003";
+pub static UUID_SCHEMA_ATTR_DESCRIPTION: &'static str = "00000000-0000-0000-0000-ffff00000004";
+pub static UUID_SCHEMA_ATTR_MULTIVALUE: &'static str = "00000000-0000-0000-0000-ffff00000005";
+pub static UUID_SCHEMA_ATTR_UNIQUE: &'static str = "00000000-0000-0000-0000-ffff00000047";
+pub static UUID_SCHEMA_ATTR_INDEX: &'static str = "00000000-0000-0000-0000-ffff00000006";
+pub static UUID_SCHEMA_ATTR_SYNTAX: &'static str = "00000000-0000-0000-0000-ffff00000007";
+pub static UUID_SCHEMA_ATTR_SYSTEMMAY: &'static str = "00000000-0000-0000-0000-ffff00000008";
+pub static UUID_SCHEMA_ATTR_MAY: &'static str = "00000000-0000-0000-0000-ffff00000009";
+pub static UUID_SCHEMA_ATTR_SYSTEMMUST: &'static str = "00000000-0000-0000-0000-ffff00000010";
+pub static UUID_SCHEMA_ATTR_MUST: &'static str = "00000000-0000-0000-0000-ffff00000011";
+pub static UUID_SCHEMA_ATTR_MEMBEROF: &'static str = "00000000-0000-0000-0000-ffff00000012";
+pub static UUID_SCHEMA_ATTR_MEMBER: &'static str = "00000000-0000-0000-0000-ffff00000013";
+pub static UUID_SCHEMA_ATTR_DIRECTMEMBEROF: &'static str = "00000000-0000-0000-0000-ffff00000014";
+pub static UUID_SCHEMA_ATTR_VERSION: &'static str = "00000000-0000-0000-0000-ffff00000015";
+pub static UUID_SCHEMA_ATTR_DOMAIN: &'static str = "00000000-0000-0000-0000-ffff00000016";
+pub static UUID_SCHEMA_ATTR_ACP_ENABLE: &'static str = "00000000-0000-0000-0000-ffff00000017";
+pub static UUID_SCHEMA_ATTR_ACP_RECEIVER: &'static str = "00000000-0000-0000-0000-ffff00000018";
+pub static UUID_SCHEMA_ATTR_ACP_TARGETSCOPE: &'static str = "00000000-0000-0000-0000-ffff00000019";
+pub static UUID_SCHEMA_ATTR_ACP_SEARCH_ATTR: &'static str = "00000000-0000-0000-0000-ffff00000020";
+pub static UUID_SCHEMA_ATTR_ACP_CREATE_CLASS: &'static str = "00000000-0000-0000-0000-ffff00000021";
+pub static UUID_SCHEMA_ATTR_ACP_CREATE_ATTR: &'static str = "00000000-0000-0000-0000-ffff00000022";
+pub static UUID_SCHEMA_ATTR_ACP_MODIFY_REMOVEDATTR: &'static str =
+    "00000000-0000-0000-0000-ffff00000023";
+pub static UUID_SCHEMA_ATTR_ACP_MODIFY_PRESENTATTR: &'static str =
+    "00000000-0000-0000-0000-ffff00000024";
+pub static UUID_SCHEMA_ATTR_ACP_MODIFY_CLASS: &'static str = "00000000-0000-0000-0000-ffff00000025";
+pub static UUID_SCHEMA_CLASS_ATTRIBUTETYPE: &'static str = "00000000-0000-0000-0000-ffff00000026";
+pub static UUID_SCHEMA_CLASS_CLASSTYPE: &'static str = "00000000-0000-0000-0000-ffff00000027";
+pub static UUID_SCHEMA_CLASS_OBJECT: &'static str = "00000000-0000-0000-0000-ffff00000028";
+pub static UUID_SCHEMA_CLASS_EXTENSIBLEOBJECT: &'static str =
+    "00000000-0000-0000-0000-ffff00000029";
+pub static UUID_SCHEMA_CLASS_MEMBEROF: &'static str = "00000000-0000-0000-0000-ffff00000030";
+pub static UUID_SCHEMA_CLASS_RECYCLED: &'static str = "00000000-0000-0000-0000-ffff00000031";
+pub static UUID_SCHEMA_CLASS_TOMBSTONE: &'static str = "00000000-0000-0000-0000-ffff00000032";
+pub static UUID_SCHEMA_CLASS_SYSTEM_INFO: &'static str = "00000000-0000-0000-0000-ffff00000033";
+pub static UUID_SCHEMA_CLASS_ACCESS_CONTROL_PROFILE: &'static str =
+    "00000000-0000-0000-0000-ffff00000034";
+pub static UUID_SCHEMA_CLASS_ACCESS_CONTROL_SEARCH: &'static str =
+    "00000000-0000-0000-0000-ffff00000035";
+pub static UUID_SCHEMA_CLASS_ACCESS_CONTROL_DELETE: &'static str =
+    "00000000-0000-0000-0000-ffff00000036";
+pub static UUID_SCHEMA_CLASS_ACCESS_CONTROL_MODIFY: &'static str =
+    "00000000-0000-0000-0000-ffff00000037";
+pub static UUID_SCHEMA_CLASS_ACCESS_CONTROL_CREATE: &'static str =
+    "00000000-0000-0000-0000-ffff00000038";
+pub static UUID_SCHEMA_CLASS_SYSTEM: &'static str = "00000000-0000-0000-0000-ffff00000039";
+pub static UUID_SCHEMA_ATTR_DISPLAYNAME: &'static str = "00000000-0000-0000-0000-ffff00000040";
+pub static UUID_SCHEMA_ATTR_MAIL: &'static str = "00000000-0000-0000-0000-ffff00000041";
+pub static UUID_SCHEMA_ATTR_SSH_PUBLICKEY: &'static str = "00000000-0000-0000-0000-ffff00000042";
+pub static UUID_SCHEMA_ATTR_PRIMARY_CREDENTIAL: &'static str =
+    "00000000-0000-0000-0000-ffff00000043";
+pub static UUID_SCHEMA_CLASS_PERSON: &'static str = "00000000-0000-0000-0000-ffff00000044";
+pub static UUID_SCHEMA_CLASS_GROUP: &'static str = "00000000-0000-0000-0000-ffff00000045";
+pub static UUID_SCHEMA_CLASS_ACCOUNT: &'static str = "00000000-0000-0000-0000-ffff00000046";
+// GAP - 47
+pub static UUID_SCHEMA_ATTR_ATTRIBUTENAME: &'static str = "00000000-0000-0000-0000-ffff00000048";
+pub static UUID_SCHEMA_ATTR_CLASSNAME: &'static str = "00000000-0000-0000-0000-ffff00000049";
+pub static UUID_SCHEMA_ATTR_LEGALNAME: &'static str = "00000000-0000-0000-0000-ffff00000050";
+pub static UUID_SCHEMA_ATTR_RADIUS_SECRET: &'static str = "00000000-0000-0000-0000-ffff00000051";
+pub static UUID_SCHEMA_CLASS_DOMAIN_INFO: &'static str = "00000000-0000-0000-0000-ffff00000052";
+pub static UUID_SCHEMA_ATTR_DOMAIN_NAME: &'static str = "00000000-0000-0000-0000-ffff00000053";
+pub static UUID_SCHEMA_ATTR_DOMAIN_UUID: &'static str = "00000000-0000-0000-0000-ffff00000054";
+pub static UUID_SCHEMA_ATTR_DOMAIN_SSID: &'static str = "00000000-0000-0000-0000-ffff00000055";
+
+// System and domain infos
+// I'd like to strongly criticise william of the past for fucking up these allocations.
+pub static _UUID_SYSTEM_INFO: &'static str = "00000000-0000-0000-0000-ffffff000001";
+pub static UUID_DOMAIN_INFO: &'static str = "00000000-0000-0000-0000-ffffff000025";
+
+// Access controls
+// skip 00 / 01 - see system info
+pub static _UUID_IDM_ADMINS_ACP_RECYCLE_SEARCH_V1: &'static str =
+    "00000000-0000-0000-0000-ffffff000002";
+pub static _UUID_IDM_ADMINS_ACP_REVIVE_V1: &'static str = "00000000-0000-0000-0000-ffffff000003";
+pub static _UUID_IDM_SELF_ACP_READ_V1: &'static str = "00000000-0000-0000-0000-ffffff000004";
+pub static _UUID_IDM_ALL_ACP_READ_V1: &'static str = "00000000-0000-0000-0000-ffffff000006";
+pub static _UUID_IDM_ACP_PEOPLE_READ_PRIV_V1: &'static str = "00000000-0000-0000-0000-ffffff000007";
+pub static _UUID_IDM_ACP_PEOPLE_WRITE_PRIV_V1: &'static str =
+    "00000000-0000-0000-0000-ffffff000008";
+pub static _UUID_IDM_ACP_GROUP_WRITE_PRIV_V1: &'static str = "00000000-0000-0000-0000-ffffff000009";
+pub static _UUID_IDM_ACP_ACCOUNT_READ_PRIV_V1: &'static str =
+    "00000000-0000-0000-0000-ffffff000010";
+pub static _UUID_IDM_ACP_ACCOUNT_WRITE_PRIV_V1: &'static str =
+    "00000000-0000-0000-0000-ffffff000011";
+pub static _UUID_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1: &'static str =
+    "00000000-0000-0000-0000-ffffff000012";
+pub static _UUID_IDM_ACP_PEOPLE_MANAGE_PRIV_V1: &'static str =
+    "00000000-0000-0000-0000-ffffff000013";
+pub static _UUID_IDM_ACP_RADIUS_SERVERS_V1: &'static str = "00000000-0000-0000-0000-ffffff000014";
+pub static _UUID_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1: &'static str =
+    "00000000-0000-0000-0000-ffffff000015";
+pub static _UUID_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1: &'static str =
+    "00000000-0000-0000-0000-ffffff000016";
+pub static _UUID_IDM_ACP_HP_GROUP_WRITE_PRIV_V1: &'static str =
+    "00000000-0000-0000-0000-ffffff000017";
+pub static _UUID_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1: &'static str =
+    "00000000-0000-0000-0000-ffffff000018";
+pub static _UUID_IDM_ACP_ACP_MANAGE_PRIV_V1: &'static str = "00000000-0000-0000-0000-ffffff000019";
+pub static _UUID_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1: &'static str =
+    "00000000-0000-0000-0000-ffffff000020";
+pub static _UUID_IDM_SELF_ACP_WRITE_V1: &'static str = "00000000-0000-0000-0000-ffffff000021";
+pub static _UUID_IDM_ACP_GROUP_MANAGE_PRIV_V1: &'static str =
+    "00000000-0000-0000-0000-ffffff000022";
+pub static _UUID_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1: &'static str =
+    "00000000-0000-0000-0000-ffffff000023";
+pub static _UUID_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1: &'static str =
+    "00000000-0000-0000-0000-ffffff000024";
+// Skip 25 - see domain info.
+pub static UUID_IDM_ACP_DOMAIN_ADMIN_PRIV_V1: &'static str = "00000000-0000-0000-0000-ffffff000026";
+
+// End of system ranges
 pub static STR_UUID_DOES_NOT_EXIST: &'static str = "00000000-0000-0000-0000-fffffffffffe";
+pub static STR_UUID_ANONYMOUS: &'static str = "00000000-0000-0000-0000-ffffffffffff";
+
 lazy_static! {
     pub static ref UUID_ADMIN: Uuid = Uuid::parse_str(STR_UUID_ADMIN).unwrap();
     pub static ref UUID_DOES_NOT_EXIST: Uuid = Uuid::parse_str(STR_UUID_DOES_NOT_EXIST).unwrap();
@@ -46,7 +189,6 @@ pub static JSON_IDM_ADMIN_V1: &'static str = r#"{
     }
 }"#;
 
-pub static _UUID_IDM_ADMINS: &'static str = "00000000-0000-0000-0000-000000000001";
 pub static JSON_IDM_ADMINS_V1: &'static str = r#"{
     "valid": {
         "uuid": "00000000-0000-0000-0000-000000000001"
@@ -61,7 +203,6 @@ pub static JSON_IDM_ADMINS_V1: &'static str = r#"{
     }
 }"#;
 
-pub static _UUID_SYSTEM_ADMINS: &'static str = "00000000-0000-0000-0000-000000000019";
 pub static JSON_SYSTEM_ADMINS_V1: &'static str = r#"{
     "valid": {
         "uuid": "00000000-0000-0000-0000-000000000019"
@@ -78,7 +219,6 @@ pub static JSON_SYSTEM_ADMINS_V1: &'static str = r#"{
 
 // groups
 // * People read managers
-pub static _UUID_IDM_PEOPLE_READ_PRIV: &'static str = "00000000-0000-0000-0000-000000000002";
 pub static JSON_IDM_PEOPLE_READ_PRIV_V1: &'static str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -89,7 +229,6 @@ pub static JSON_IDM_PEOPLE_READ_PRIV_V1: &'static str = r#"{
     }
 }"#;
 // * People write managers
-pub static _UUID_IDM_PEOPLE_MANAGE_PRIV: &'static str = "00000000-0000-0000-0000-000000000013";
 pub static JSON_IDM_PEOPLE_MANAGE_PRIV_V1: &'static str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -101,7 +240,6 @@ pub static JSON_IDM_PEOPLE_MANAGE_PRIV_V1: &'static str = r#"{
         ]
     }
 }"#;
-pub static _UUID_IDM_PEOPLE_WRITE_PRIV: &'static str = "00000000-0000-0000-0000-000000000003";
 pub static JSON_IDM_PEOPLE_WRITE_PRIV_V1: &'static str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -113,7 +251,6 @@ pub static JSON_IDM_PEOPLE_WRITE_PRIV_V1: &'static str = r#"{
 }"#;
 // * group write manager (no read, everyone has read via the anon, etc)
 // IDM_GROUP_CREATE_PRIV
-pub static _UUID_IDM_GROUP_MANAGE_PRIV: &'static str = "00000000-0000-0000-0000-000000000015";
 pub static JSON_IDM_GROUP_MANAGE_PRIV_V1: &'static str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -126,7 +263,6 @@ pub static JSON_IDM_GROUP_MANAGE_PRIV_V1: &'static str = r#"{
         ]
     }
 }"#;
-pub static _UUID_IDM_GROUP_WRITE_PRIV: &'static str = "00000000-0000-0000-0000-000000000004";
 pub static JSON_IDM_GROUP_WRITE_PRIV_V1: &'static str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -139,7 +275,6 @@ pub static JSON_IDM_GROUP_WRITE_PRIV_V1: &'static str = r#"{
     }
 }"#;
 // * account read manager
-pub static _UUID_IDM_ACCOUNT_READ_PRIV: &'static str = "00000000-0000-0000-0000-000000000005";
 pub static JSON_IDM_ACCOUNT_READ_PRIV_V1: &'static str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -152,7 +287,6 @@ pub static JSON_IDM_ACCOUNT_READ_PRIV_V1: &'static str = r#"{
     }
 }"#;
 // * account write manager
-pub static _UUID_IDM_ACCOUNT_MANAGE_PRIV: &'static str = "00000000-0000-0000-0000-000000000014";
 pub static JSON_IDM_ACCOUNT_MANAGE_PRIV_V1: &'static str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -164,7 +298,6 @@ pub static JSON_IDM_ACCOUNT_MANAGE_PRIV_V1: &'static str = r#"{
         ]
     }
 }"#;
-pub static _UUID_IDM_ACCOUNT_WRITE_PRIV: &'static str = "00000000-0000-0000-0000-000000000006";
 pub static JSON_IDM_ACCOUNT_WRITE_PRIV_V1: &'static str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -175,7 +308,6 @@ pub static JSON_IDM_ACCOUNT_WRITE_PRIV_V1: &'static str = r#"{
     }
 }"#;
 // * RADIUS servers
-pub static _UUID_IDM_RADIUS_SERVERS: &'static str = "00000000-0000-0000-0000-000000000007";
 pub static JSON_IDM_RADIUS_SERVERS_V1: &'static str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -185,7 +317,6 @@ pub static JSON_IDM_RADIUS_SERVERS_V1: &'static str = r#"{
     }
 }"#;
 // * high priv account read manager
-pub static _UUID_IDM_HP_ACCOUNT_READ_PRIV: &'static str = "00000000-0000-0000-0000-000000000008";
 pub static JSON_IDM_HP_ACCOUNT_READ_PRIV_V1: &'static str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -198,7 +329,6 @@ pub static JSON_IDM_HP_ACCOUNT_READ_PRIV_V1: &'static str = r#"{
     }
 }"#;
 // * high priv account write manager
-pub static _UUID_IDM_HP_ACCOUNT_MANAGE_PRIV: &'static str = "00000000-0000-0000-0000-000000000016";
 pub static JSON_IDM_HP_ACCOUNT_MANAGE_PRIV_V1: &'static str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -210,7 +340,6 @@ pub static JSON_IDM_HP_ACCOUNT_MANAGE_PRIV_V1: &'static str = r#"{
         ]
     }
 }"#;
-pub static _UUID_IDM_HP_ACCOUNT_WRITE_PRIV: &'static str = "00000000-0000-0000-0000-000000000009";
 pub static JSON_IDM_HP_ACCOUNT_WRITE_PRIV_V1: &'static str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -223,7 +352,6 @@ pub static JSON_IDM_HP_ACCOUNT_WRITE_PRIV_V1: &'static str = r#"{
     }
 }"#;
 // * Schema write manager
-pub static _UUID_IDM_SCHEMA_MANAGE_PRIV: &'static str = "00000000-0000-0000-0000-000000000010";
 pub static JSON_IDM_SCHEMA_MANAGE_PRIV_V1: &'static str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -236,7 +364,6 @@ pub static JSON_IDM_SCHEMA_MANAGE_PRIV_V1: &'static str = r#"{
     }
 }"#;
 // * ACP read/write manager
-pub static _UUID_IDM_ACP_MANAGE_PRIV: &'static str = "00000000-0000-0000-0000-000000000011";
 pub static JSON_IDM_ACP_MANAGE_PRIV_V1: &'static str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -247,7 +374,6 @@ pub static JSON_IDM_ACP_MANAGE_PRIV_V1: &'static str = r#"{
     }
 }"#;
 
-pub static _UUID_IDM_HP_GROUP_MANAGE_PRIV: &'static str = "00000000-0000-0000-0000-000000000017";
 pub static JSON_IDM_HP_GROUP_MANAGE_PRIV_V1: &'static str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -257,7 +383,6 @@ pub static JSON_IDM_HP_GROUP_MANAGE_PRIV_V1: &'static str = r#"{
         "member": ["00000000-0000-0000-0000-000000000019"]
     }
 }"#;
-pub static _UUID_IDM_HP_GROUP_WRITE_PRIV: &'static str = "00000000-0000-0000-0000-000000000009";
 pub static JSON_IDM_HP_GROUP_WRITE_PRIV_V1: &'static str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -269,9 +394,19 @@ pub static JSON_IDM_HP_GROUP_WRITE_PRIV_V1: &'static str = r#"{
         ]
     }
 }"#;
+pub static JSON_DOMAIN_ADMINS: &'static str = r#"{
+    "attrs": {
+        "class": ["group", "object"],
+        "name": ["domain_admins"],
+        "uuid": ["00000000-0000-0000-0000-000000000020"],
+        "description": ["Builtin IDM Group for granting local domain administration rights and trust administration rights."],
+        "member": [
+            "00000000-0000-0000-0000-000000000000"
+        ]
+    }
+}"#;
 
 // This must be the last group to init to include the UUID of the other high priv groups.
-pub static _UUID_IDM_HIGH_PRIVILEGE: &'static str = "00000000-0000-0000-0000-000000001000";
 pub static JSON_IDM_HIGH_PRIVILEGE_V1: &'static str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -297,19 +432,28 @@ pub static JSON_IDM_HIGH_PRIVILEGE_V1: &'static str = r#"{
             "00000000-0000-0000-0000-000000000016",
             "00000000-0000-0000-0000-000000000017",
             "00000000-0000-0000-0000-000000000019",
+            "00000000-0000-0000-0000-000000000020",
             "00000000-0000-0000-0000-000000001000"
         ]
     }
 }"#;
 
-pub static _UUID_SYSTEM_INFO: &'static str = "00000000-0000-0000-0000-ffffff000001";
 pub static JSON_SYSTEM_INFO_V1: &'static str = r#"{
     "attrs": {
-        "class": ["object", "system_info"],
+        "class": ["object", "system_info", "system"],
         "uuid": ["00000000-0000-0000-0000-ffffff000001"],
         "description": ["System info and metadata object."],
-        "version": ["1"],
-        "domain": ["example.com"]
+        "version": ["2"]
+    }
+}"#;
+
+pub static JSON_DOMAIN_INFO_V1: &'static str = r#"{
+    "attrs": {
+        "class": ["object", "domain_info", "system"],
+        "name": ["domain_local"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000025"],
+        "description": ["This local domain's info and metadata object."],
+        "domain_name": ["example.com"]
     }
 }"#;
 
@@ -358,8 +502,6 @@ pub static JSON_IDM_ACP_XX_V1: &'static str = r#"{
 }"#;
 */
 
-pub static _UUID_IDM_ADMINS_ACP_RECYCLE_SEARCH_V1: &'static str =
-    "00000000-0000-0000-0000-ffffff000002";
 pub static JSON_IDM_ADMINS_ACP_RECYCLE_SEARCH_V1: &'static str = r#"{
     "attrs": {
         "class": ["object", "access_control_profile", "access_control_search"],
@@ -377,7 +519,6 @@ pub static JSON_IDM_ADMINS_ACP_RECYCLE_SEARCH_V1: &'static str = r#"{
     }
 }"#;
 
-pub static _UUID_IDM_ADMINS_ACP_REVIVE_V1: &'static str = "00000000-0000-0000-0000-ffffff000003";
 pub static JSON_IDM_ADMINS_ACP_REVIVE_V1: &'static str = r#"{
     "attrs": {
         "class": ["object", "access_control_profile", "access_control_modify"],
@@ -396,7 +537,6 @@ pub static JSON_IDM_ADMINS_ACP_REVIVE_V1: &'static str = r#"{
     }
 }"#;
 
-pub static _UUID_IDM_SELF_ACP_READ_V1: &'static str = "00000000-0000-0000-0000-ffffff000004";
 pub static JSON_IDM_SELF_ACP_READ_V1: &'static str = r#"{
     "attrs": {
         "class": ["object", "access_control_profile", "access_control_search"],
@@ -412,6 +552,7 @@ pub static JSON_IDM_SELF_ACP_READ_V1: &'static str = r#"{
         ],
         "acp_search_attr": [
             "name",
+            "spn",
             "displayname",
             "legalname",
             "class",
@@ -423,7 +564,6 @@ pub static JSON_IDM_SELF_ACP_READ_V1: &'static str = r#"{
     }
 }"#;
 
-pub static _UUID_IDM_SELF_ACP_WRITE_V1: &'static str = "00000000-0000-0000-0000-ffffff000021";
 pub static JSON_IDM_SELF_ACP_WRITE_V1: &'static str = r#"{
     "attrs": {
         "class": ["object", "access_control_profile", "access_control_modify"],
@@ -446,39 +586,6 @@ pub static JSON_IDM_SELF_ACP_WRITE_V1: &'static str = r#"{
     }
 }"#;
 
-/*
-pub static _UUID_IDM_ADMINS_ACP_MANAGE_V1: &'static str = "00000000-0000-0000-0000-ffffff000005";
-pub static JSON_IDM_ADMINS_ACP_MANAGE_V1: &'static str = r#"{
-    "attrs": {
-        "class": [
-            "object",
-            "access_control_profile",
-            "access_control_modify",
-            "access_control_create",
-            "access_control_delete",
-            "access_control_search"
-        ],
-        "name": ["idm_admins_acp_manage"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000005"],
-        "description": ["Builtin IDM Administrators Access Controls to manage the install."],
-        "acp_enable": ["true"],
-        "acp_receiver": [
-            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000001\"]}"
-        ],
-        "acp_targetscope": [
-            "{\"And\": [{\"Pres\": \"class\"}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
-        ],
-        "acp_search_attr": ["name", "class", "uuid", "classname", "attributename", "memberof"],
-        "acp_modify_class": ["person"],
-        "acp_modify_removedattr": ["class", "displayname", "name", "description"],
-        "acp_modify_presentattr": ["class", "displayname", "name", "description"],
-        "acp_create_class": ["object", "person", "account"],
-        "acp_create_attr": ["name", "class", "description", "displayname"]
-    }
-}"#;
-*/
-
-pub static _UUID_IDM_ALL_ACP_READ_V1: &'static str = "00000000-0000-0000-0000-ffffff000006";
 pub static JSON_IDM_ALL_ACP_READ_V1: &'static str = r#"{
     "state": null,
     "attrs": {
@@ -495,6 +602,7 @@ pub static JSON_IDM_ALL_ACP_READ_V1: &'static str = r#"{
         ],
         "acp_search_attr": [
             "name",
+            "spn",
             "displayname",
             "class",
             "memberof",
@@ -506,7 +614,6 @@ pub static JSON_IDM_ALL_ACP_READ_V1: &'static str = r#"{
 }"#;
 
 // 7 people read acp JSON_IDM_PEOPLE_READ_PRIV_V1
-pub static _UUID_IDM_ACP_PEOPLE_READ_PRIV_V1: &'static str = "00000000-0000-0000-0000-ffffff000007";
 pub static JSON_IDM_ACP_PEOPLE_READ_PRIV_V1: &'static str = r#"{
     "attrs": {
         "class": [
@@ -530,8 +637,6 @@ pub static JSON_IDM_ACP_PEOPLE_READ_PRIV_V1: &'static str = r#"{
     }
 }"#;
 // 8 people write acp JSON_IDM_PEOPLE_WRITE_PRIV_V1
-pub static _UUID_IDM_ACP_PEOPLE_WRITE_PRIV_V1: &'static str =
-    "00000000-0000-0000-0000-ffffff000008";
 pub static JSON_IDM_ACP_PEOPLE_WRITE_PRIV_V1: &'static str = r#"{
     "attrs": {
         "class": [
@@ -558,7 +663,6 @@ pub static JSON_IDM_ACP_PEOPLE_WRITE_PRIV_V1: &'static str = r#"{
     }
 }"#;
 // 9 group write acp JSON_IDM_GROUP_WRITE_PRIV_V1
-pub static _UUID_IDM_ACP_GROUP_WRITE_PRIV_V1: &'static str = "00000000-0000-0000-0000-ffffff000009";
 pub static JSON_IDM_ACP_GROUP_WRITE_PRIV_V1: &'static str = r#"{
     "attrs": {
         "class": [
@@ -578,7 +682,7 @@ pub static JSON_IDM_ACP_GROUP_WRITE_PRIV_V1: &'static str = r#"{
             "{\"And\": [{\"Eq\": [\"class\",\"group\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_search_attr": [
-            "class", "name", "uuid", "description", "member"
+            "class", "name", "spn", "uuid", "description", "member"
         ],
         "acp_modify_removedattr": [
             "name", "description", "member"
@@ -589,8 +693,6 @@ pub static JSON_IDM_ACP_GROUP_WRITE_PRIV_V1: &'static str = r#"{
     }
 }"#;
 // 10 account read acp JSON_IDM_ACCOUNT_READ_PRIV_V1
-pub static _UUID_IDM_ACP_ACCOUNT_READ_PRIV_V1: &'static str =
-    "00000000-0000-0000-0000-ffffff000010";
 pub static JSON_IDM_ACP_ACCOUNT_READ_PRIV_V1: &'static str = r#"{
     "attrs": {
         "class": [
@@ -609,13 +711,11 @@ pub static JSON_IDM_ACP_ACCOUNT_READ_PRIV_V1: &'static str = r#"{
             "{\"And\": [{\"Eq\": [\"class\",\"account\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_search_attr": [
-            "class", "name", "uuid", "displayname", "ssh_publickey", "primary_credential", "memberof", "mail"
+            "class", "name", "spn", "uuid", "displayname", "ssh_publickey", "primary_credential", "memberof", "mail"
         ]
     }
 }"#;
 // 11 account write acp JSON_IDM_ACCOUNT_WRITE_PRIV_V1
-pub static _UUID_IDM_ACP_ACCOUNT_WRITE_PRIV_V1: &'static str =
-    "00000000-0000-0000-0000-ffffff000011";
 pub static JSON_IDM_ACP_ACCOUNT_WRITE_PRIV_V1: &'static str = r#"{
     "attrs": {
         "class": [
@@ -642,8 +742,6 @@ pub static JSON_IDM_ACP_ACCOUNT_WRITE_PRIV_V1: &'static str = r#"{
     }
 }"#;
 // 12 service account create acp (only admins?)  JSON_IDM_SERVICE_ACCOUNT_CREATE_PRIV_V1
-pub static _UUID_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1: &'static str =
-    "00000000-0000-0000-0000-ffffff000012";
 pub static JSON_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1: &'static str = r#"{
     "attrs": {
         "class": [
@@ -676,8 +774,6 @@ pub static JSON_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1: &'static str = r#"{
     }
 }"#;
 // 13 user (person) account create acp  JSON_IDM_PERSON_ACCOUNT_CREATE_PRIV_V1
-pub static _UUID_IDM_ACP_PEOPLE_MANAGE_PRIV_V1: &'static str =
-    "00000000-0000-0000-0000-ffffff000013";
 pub static JSON_IDM_ACP_PEOPLE_MANAGE_PRIV_V1: &'static str = r#"{
     "attrs": {
         "class": [
@@ -712,7 +808,6 @@ pub static JSON_IDM_ACP_PEOPLE_MANAGE_PRIV_V1: &'static str = r#"{
 }"#;
 
 // 14 radius read acp JSON_IDM_RADIUS_SERVERS_V1
-pub static _UUID_IDM_ACP_RADIUS_SERVERS_V1: &'static str = "00000000-0000-0000-0000-ffffff000014";
 // The targetscope of this could change later to a "radius access" group or similar so we can add/remove
 //  users from having radius access easier.
 pub static JSON_IDM_ACP_RADIUS_SERVERS_V1: &'static str = r#"{
@@ -733,13 +828,11 @@ pub static JSON_IDM_ACP_RADIUS_SERVERS_V1: &'static str = r#"{
             "{\"And\": [{\"Pres\": \"class\"}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_search_attr": [
-            "name", "uuid", "radius_secret"
+            "name", "spn", "uuid", "radius_secret"
         ]
     }
 }"#;
 // 15 high priv account read JSON_IDM_HP_ACCOUNT_READ_PRIV_V1
-pub static _UUID_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1: &'static str =
-    "00000000-0000-0000-0000-ffffff000015";
 pub static JSON_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1: &'static str = r#"{
     "attrs": {
         "class": [
@@ -758,13 +851,11 @@ pub static JSON_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1: &'static str = r#"{
             "{\"And\": [{\"Eq\": [\"class\",\"account\"]}, {\"Eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_search_attr": [
-            "class", "name", "uuid", "displayname", "ssh_publickey", "primary_credential", "memberof"
+            "class", "name", "spn", "uuid", "displayname", "ssh_publickey", "primary_credential", "memberof"
         ]
     }
 }"#;
 // 16 high priv account write JSON_IDM_HP_ACCOUNT_WRITE_PRIV_V1
-pub static _UUID_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1: &'static str =
-    "00000000-0000-0000-0000-ffffff000016";
 pub static JSON_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1: &'static str = r#"{
     "attrs": {
         "class": [
@@ -792,8 +883,6 @@ pub static JSON_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1: &'static str = r#"{
 }"#;
 
 // 17 high priv group write --> JSON_IDM_HP_GROUP_WRITE_PRIV_V1 (12)
-pub static _UUID_IDM_ACP_HP_GROUP_WRITE_PRIV_V1: &'static str =
-    "00000000-0000-0000-0000-ffffff000017";
 pub static JSON_IDM_ACP_HP_GROUP_WRITE_PRIV_V1: &'static str = r#"{
     "attrs": {
         "class": [
@@ -825,8 +914,6 @@ pub static JSON_IDM_ACP_HP_GROUP_WRITE_PRIV_V1: &'static str = r#"{
 }"#;
 
 // 18 schema write JSON_IDM_SCHEMA_WRITE_PRIV_V1
-pub static _UUID_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1: &'static str =
-    "00000000-0000-0000-0000-ffffff000018";
 pub static JSON_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1: &'static str = r#"{
     "attrs": {
         "class": [
@@ -888,7 +975,6 @@ pub static JSON_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1: &'static str = r#"{
 }"#;
 
 // 19 acp read/write
-pub static _UUID_IDM_ACP_ACP_MANAGE_PRIV_V1: &'static str = "00000000-0000-0000-0000-ffffff000019";
 pub static JSON_IDM_ACP_ACP_MANAGE_PRIV_V1: &'static str = r#"{
     "attrs": {
         "class": [
@@ -982,8 +1068,6 @@ pub static JSON_IDM_ACP_ACP_MANAGE_PRIV_V1: &'static str = r#"{
     }
 }"#;
 
-pub static _UUID_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1: &'static str =
-    "00000000-0000-0000-0000-ffffff000020";
 pub static JSON_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1: &'static str = r#"{
     "attrs": {
         "class": [
@@ -1043,8 +1127,6 @@ pub static JSON_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1: &'static str = r#"{
 // 21 - anonymous / everyone schema read.
 
 // 22 - group create right
-pub static _UUID_IDM_ACP_GROUP_MANAGE_PRIV_V1: &'static str =
-    "00000000-0000-0000-0000-ffffff000022";
 pub static JSON_IDM_ACP_GROUP_MANAGE_PRIV_V1: &'static str = r#"{
     "attrs": {
         "class": [
@@ -1076,8 +1158,6 @@ pub static JSON_IDM_ACP_GROUP_MANAGE_PRIV_V1: &'static str = r#"{
 }"#;
 
 // 23 - HP account manage
-pub static _UUID_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1: &'static str =
-    "00000000-0000-0000-0000-ffffff000023";
 pub static JSON_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1: &'static str = r#"{
     "attrs": {
         "class": [
@@ -1111,8 +1191,6 @@ pub static JSON_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1: &'static str = r#"{
 }"#;
 
 // 24 - hp group manage
-pub static _UUID_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1: &'static str =
-    "00000000-0000-0000-0000-ffffff000024";
 pub static JSON_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1: &'static str = r#"{
     "attrs": {
         "class": [
@@ -1143,6 +1221,41 @@ pub static JSON_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1: &'static str = r#"{
     }
 }"#;
 
+// 25 - domain admins acp
+pub static JSON_IDM_ACP_DOMAIN_ADMIN_PRIV_V1: &'static str = r#"{
+    "attrs": {
+        "class": [
+            "object",
+            "access_control_profile",
+            "access_control_search",
+            "access_control_modify"
+        ],
+        "name": ["idm_acp_domain_admin_priv"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000026"],
+        "description": ["Builtin IDM Control for granting domain info administration locally"],
+        "acp_enable": ["true"],
+        "acp_receiver": [
+            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000020\"]}"
+        ],
+        "acp_targetscope": [
+            "{\"And\": [{\"Eq\": [\"uuid\",\"00000000-0000-0000-0000-ffffff000025\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+        ],
+        "acp_search_attr": [
+            "name",
+            "uuid",
+            "domain_name",
+            "domain_ssid",
+            "domain_uuid"
+        ],
+        "acp_modify_removedattr": [
+            "domain_ssid"
+        ],
+        "acp_modify_presentattr": [
+            "domain_ssid"
+        ]
+    }
+}"#;
+
 // Anonymous should be the last opbject in the range here.
 pub static JSON_ANONYMOUS_V1: &'static str = r#"{
     "attrs": {
@@ -1156,62 +1269,8 @@ pub static JSON_ANONYMOUS_V1: &'static str = r#"{
 
 // Core
 // Schema uuids start at 00000000-0000-0000-0000-ffff00000000
-pub static UUID_SCHEMA_ATTR_CLASS: &'static str = "00000000-0000-0000-0000-ffff00000000";
-pub static UUID_SCHEMA_ATTR_UUID: &'static str = "00000000-0000-0000-0000-ffff00000001";
-pub static UUID_SCHEMA_ATTR_NAME: &'static str = "00000000-0000-0000-0000-ffff00000002";
-pub static UUID_SCHEMA_ATTR_ATTRIBUTENAME: &'static str = "00000000-0000-0000-0000-ffff00000048";
-pub static UUID_SCHEMA_ATTR_CLASSNAME: &'static str = "00000000-0000-0000-0000-ffff00000049";
-pub static UUID_SCHEMA_ATTR_PRINCIPAL_NAME: &'static str = "00000000-0000-0000-0000-ffff00000003";
-pub static UUID_SCHEMA_ATTR_DESCRIPTION: &'static str = "00000000-0000-0000-0000-ffff00000004";
-pub static UUID_SCHEMA_ATTR_MULTIVALUE: &'static str = "00000000-0000-0000-0000-ffff00000005";
-pub static UUID_SCHEMA_ATTR_UNIQUE: &'static str = "00000000-0000-0000-0000-ffff00000047";
-pub static UUID_SCHEMA_ATTR_INDEX: &'static str = "00000000-0000-0000-0000-ffff00000006";
-pub static UUID_SCHEMA_ATTR_SYNTAX: &'static str = "00000000-0000-0000-0000-ffff00000007";
-pub static UUID_SCHEMA_ATTR_SYSTEMMAY: &'static str = "00000000-0000-0000-0000-ffff00000008";
-pub static UUID_SCHEMA_ATTR_MAY: &'static str = "00000000-0000-0000-0000-ffff00000009";
-pub static UUID_SCHEMA_ATTR_SYSTEMMUST: &'static str = "00000000-0000-0000-0000-ffff00000010";
-pub static UUID_SCHEMA_ATTR_MUST: &'static str = "00000000-0000-0000-0000-ffff00000011";
-pub static UUID_SCHEMA_ATTR_MEMBEROF: &'static str = "00000000-0000-0000-0000-ffff00000012";
-pub static UUID_SCHEMA_ATTR_MEMBER: &'static str = "00000000-0000-0000-0000-ffff00000013";
-pub static UUID_SCHEMA_ATTR_DIRECTMEMBEROF: &'static str = "00000000-0000-0000-0000-ffff00000014";
-pub static UUID_SCHEMA_ATTR_VERSION: &'static str = "00000000-0000-0000-0000-ffff00000015";
-pub static UUID_SCHEMA_ATTR_DOMAIN: &'static str = "00000000-0000-0000-0000-ffff00000016";
-pub static UUID_SCHEMA_ATTR_ACP_ENABLE: &'static str = "00000000-0000-0000-0000-ffff00000017";
-pub static UUID_SCHEMA_ATTR_ACP_RECEIVER: &'static str = "00000000-0000-0000-0000-ffff00000018";
-pub static UUID_SCHEMA_ATTR_ACP_TARGETSCOPE: &'static str = "00000000-0000-0000-0000-ffff00000019";
-pub static UUID_SCHEMA_ATTR_ACP_SEARCH_ATTR: &'static str = "00000000-0000-0000-0000-ffff00000020";
-pub static UUID_SCHEMA_ATTR_ACP_CREATE_CLASS: &'static str = "00000000-0000-0000-0000-ffff00000021";
-pub static UUID_SCHEMA_ATTR_ACP_CREATE_ATTR: &'static str = "00000000-0000-0000-0000-ffff00000022";
-pub static UUID_SCHEMA_ATTR_ACP_MODIFY_REMOVEDATTR: &'static str =
-    "00000000-0000-0000-0000-ffff00000023";
-pub static UUID_SCHEMA_ATTR_ACP_MODIFY_PRESENTATTR: &'static str =
-    "00000000-0000-0000-0000-ffff00000024";
-pub static UUID_SCHEMA_ATTR_ACP_MODIFY_CLASS: &'static str = "00000000-0000-0000-0000-ffff00000025";
-
-pub static UUID_SCHEMA_CLASS_ATTRIBUTETYPE: &'static str = "00000000-0000-0000-0000-ffff00000026";
-pub static UUID_SCHEMA_CLASS_CLASSTYPE: &'static str = "00000000-0000-0000-0000-ffff00000027";
-pub static UUID_SCHEMA_CLASS_OBJECT: &'static str = "00000000-0000-0000-0000-ffff00000028";
-pub static UUID_SCHEMA_CLASS_EXTENSIBLEOBJECT: &'static str =
-    "00000000-0000-0000-0000-ffff00000029";
-pub static UUID_SCHEMA_CLASS_MEMBEROF: &'static str = "00000000-0000-0000-0000-ffff00000030";
-
-pub static UUID_SCHEMA_CLASS_RECYCLED: &'static str = "00000000-0000-0000-0000-ffff00000031";
-pub static UUID_SCHEMA_CLASS_TOMBSTONE: &'static str = "00000000-0000-0000-0000-ffff00000032";
-pub static UUID_SCHEMA_CLASS_SYSTEM_INFO: &'static str = "00000000-0000-0000-0000-ffff00000033";
-pub static UUID_SCHEMA_CLASS_ACCESS_CONTROL_PROFILE: &'static str =
-    "00000000-0000-0000-0000-ffff00000034";
-pub static UUID_SCHEMA_CLASS_ACCESS_CONTROL_SEARCH: &'static str =
-    "00000000-0000-0000-0000-ffff00000035";
-pub static UUID_SCHEMA_CLASS_ACCESS_CONTROL_DELETE: &'static str =
-    "00000000-0000-0000-0000-ffff00000036";
-pub static UUID_SCHEMA_CLASS_ACCESS_CONTROL_MODIFY: &'static str =
-    "00000000-0000-0000-0000-ffff00000037";
-pub static UUID_SCHEMA_CLASS_ACCESS_CONTROL_CREATE: &'static str =
-    "00000000-0000-0000-0000-ffff00000038";
-pub static UUID_SCHEMA_CLASS_SYSTEM: &'static str = "00000000-0000-0000-0000-ffff00000039";
 
 // system supplementary
-pub static UUID_SCHEMA_ATTR_DISPLAYNAME: &'static str = "00000000-0000-0000-0000-ffff00000040";
 pub static JSON_SCHEMA_ATTR_DISPLAYNAME: &'static str = r#"{
     "valid": {
       "uuid": "00000000-0000-0000-0000-ffff00000040"
@@ -1246,7 +1305,6 @@ pub static JSON_SCHEMA_ATTR_DISPLAYNAME: &'static str = r#"{
       ]
     }
 }"#;
-pub static UUID_SCHEMA_ATTR_MAIL: &'static str = "00000000-0000-0000-0000-ffff00000041";
 pub static JSON_SCHEMA_ATTR_MAIL: &'static str = r#"
   {
     "valid": {
@@ -1283,7 +1341,6 @@ pub static JSON_SCHEMA_ATTR_MAIL: &'static str = r#"
     }
   }
 "#;
-pub static UUID_SCHEMA_ATTR_SSH_PUBLICKEY: &'static str = "00000000-0000-0000-0000-ffff00000042";
 pub static JSON_SCHEMA_ATTR_SSH_PUBLICKEY: &'static str = r#"
   {
     "valid": {
@@ -1318,8 +1375,6 @@ pub static JSON_SCHEMA_ATTR_SSH_PUBLICKEY: &'static str = r#"
     }
   }
 "#;
-pub static UUID_SCHEMA_ATTR_PRIMARY_CREDENTIAL: &'static str =
-    "00000000-0000-0000-0000-ffff00000043";
 pub static JSON_SCHEMA_ATTR_PRIMARY_CREDENTIAL: &'static str = r#"
   {
     "valid": {
@@ -1354,7 +1409,6 @@ pub static JSON_SCHEMA_ATTR_PRIMARY_CREDENTIAL: &'static str = r#"
     }
   }
 "#;
-pub static UUID_SCHEMA_ATTR_LEGALNAME: &'static str = "00000000-0000-0000-0000-ffff00000050";
 pub static JSON_SCHEMA_ATTR_LEGALNAME: &'static str = r#"{
     "attrs": {
       "class": [
@@ -1385,7 +1439,6 @@ pub static JSON_SCHEMA_ATTR_LEGALNAME: &'static str = r#"{
       ]
     }
 }"#;
-pub static UUID_SCHEMA_ATTR_RADIUS_SECRET: &'static str = "00000000-0000-0000-0000-ffff00000051";
 pub static JSON_SCHEMA_ATTR_RADIUS_SECRET: &'static str = r#"{
     "attrs": {
       "class": [
@@ -1415,7 +1468,95 @@ pub static JSON_SCHEMA_ATTR_RADIUS_SECRET: &'static str = r#"{
     }
 }"#;
 
-pub static UUID_SCHEMA_CLASS_PERSON: &'static str = "00000000-0000-0000-0000-ffff00000044";
+pub static JSON_SCHEMA_ATTR_DOMAIN_NAME: &'static str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "The domain's DNS name for webauthn and SPN generation purposes."
+      ],
+      "index": [
+        "EQUALITY"
+      ],
+      "unique": [
+        "true"
+      ],
+      "multivalue": [
+        "false"
+      ],
+      "attributename": [
+        "domain_name"
+      ],
+      "syntax": [
+        "UTF8STRING_INSENSITIVE"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000053"
+      ]
+    }
+}"#;
+pub static JSON_SCHEMA_ATTR_DOMAIN_UUID: &'static str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "The domain's uuid, used in CSN and trust relationships."
+      ],
+      "index": [
+        "EQUALITY"
+      ],
+      "unique": [
+        "true"
+      ],
+      "multivalue": [
+        "false"
+      ],
+      "attributename": [
+        "domain_uuid"
+      ],
+      "syntax": [
+        "UUID"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000054"
+      ]
+    }
+}"#;
+pub static JSON_SCHEMA_ATTR_DOMAIN_SSID: &'static str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "The domains site-wide SSID for device autoconfiguration of wireless"
+      ],
+      "index": [],
+      "unique": [
+        "true"
+      ],
+      "multivalue": [
+        "false"
+      ],
+      "attributename": [
+        "domain_ssid"
+      ],
+      "syntax": [
+        "UTF8STRING"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000055"
+      ]
+    }
+}"#;
+
 pub static JSON_SCHEMA_CLASS_PERSON: &'static str = r#"
   {
     "valid": {
@@ -1449,7 +1590,6 @@ pub static JSON_SCHEMA_CLASS_PERSON: &'static str = r#"
   }
 "#;
 
-pub static UUID_SCHEMA_CLASS_GROUP: &'static str = "00000000-0000-0000-0000-ffff00000045";
 pub static JSON_SCHEMA_CLASS_GROUP: &'static str = r#"
   {
     "valid": {
@@ -1472,7 +1612,8 @@ pub static JSON_SCHEMA_CLASS_GROUP: &'static str = r#"
         "member"
       ],
       "systemmust": [
-        "name"
+        "name",
+        "spn"
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000045"
@@ -1480,7 +1621,6 @@ pub static JSON_SCHEMA_CLASS_GROUP: &'static str = r#"
     }
   }
 "#;
-pub static UUID_SCHEMA_CLASS_ACCOUNT: &'static str = "00000000-0000-0000-0000-ffff00000046";
 pub static JSON_SCHEMA_CLASS_ACCOUNT: &'static str = r#"
   {
     "attrs": {
@@ -1502,7 +1642,8 @@ pub static JSON_SCHEMA_CLASS_ACCOUNT: &'static str = r#"
       ],
       "systemmust": [
         "displayname",
-        "name"
+        "name",
+        "spn"
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000046"
@@ -1510,6 +1651,43 @@ pub static JSON_SCHEMA_CLASS_ACCOUNT: &'static str = r#"
     }
   }
 "#;
+
+// domain_info type
+//  domain_uuid
+//  domain_name <- should be the dns name?
+//  domain_ssid <- for radius
+//
+pub static JSON_SCHEMA_CLASS_DOMAIN_INFO: &'static str = r#"
+  {
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "classtype"
+      ],
+      "description": [
+        "Local domain information and partial configuration."
+      ],
+      "classname": [
+        "domain_info"
+      ],
+      "systemmay": [
+        "domain_ssid"
+      ],
+      "systemmust": [
+        "name",
+        "domain_uuid",
+        "domain_name"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000052"
+      ]
+    }
+  }
+"#;
+
+// need a domain_trust_info as well.
+// TODO
 
 // ============ TEST DATA ============
 #[cfg(test)]

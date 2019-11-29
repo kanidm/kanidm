@@ -9,11 +9,13 @@ mod macros;
 
 mod attrunique;
 mod base;
+mod domain;
 mod failure;
 mod memberof;
 mod protected;
 mod recycle;
 mod refint;
+mod spn;
 
 trait Plugin {
     fn id() -> &'static str;
@@ -278,11 +280,12 @@ impl Plugins {
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         audit_segment!(au, || {
-            let res =
-                run_pre_create_transform_plugin!(au, qs, cand, ce, base::Base).and_then(|_| {
+            let res = run_pre_create_transform_plugin!(au, qs, cand, ce, base::Base)
+                .and_then(|_| run_pre_create_transform_plugin!(au, qs, cand, ce, domain::Domain))
+                .and_then(|_| run_pre_create_transform_plugin!(au, qs, cand, ce, spn::Spn))
+                .and_then(|_| {
                     run_pre_create_transform_plugin!(au, qs, cand, ce, attrunique::AttrUnique)
                 });
-
             res
         })
     }
@@ -323,6 +326,7 @@ impl Plugins {
         audit_segment!(au, || {
             let res = run_pre_modify_plugin!(au, qs, cand, me, protected::Protected)
                 .and_then(|_| run_pre_modify_plugin!(au, qs, cand, me, base::Base))
+                .and_then(|_| run_pre_modify_plugin!(au, qs, cand, me, spn::Spn))
                 .and_then(|_| run_pre_modify_plugin!(au, qs, cand, me, attrunique::AttrUnique));
 
             res
@@ -341,8 +345,8 @@ impl Plugins {
                 run_post_modify_plugin!(au, qs, pre_cand, cand, me, refint::ReferentialIntegrity)
                     .and_then(|_| {
                         run_post_modify_plugin!(au, qs, pre_cand, cand, me, memberof::MemberOf)
-                    });
-
+                    })
+                    .and_then(|_| run_post_modify_plugin!(au, qs, pre_cand, cand, me, spn::Spn));
             res
         })
     }
@@ -382,6 +386,7 @@ impl Plugins {
         run_verify_plugin!(au, qs, &mut results, attrunique::AttrUnique);
         run_verify_plugin!(au, qs, &mut results, refint::ReferentialIntegrity);
         run_verify_plugin!(au, qs, &mut results, memberof::MemberOf);
+        run_verify_plugin!(au, qs, &mut results, spn::Spn);
         results
     }
 }

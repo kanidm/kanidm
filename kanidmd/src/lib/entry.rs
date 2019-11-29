@@ -259,7 +259,7 @@ impl Entry<EntryInvalid, EntryNew> {
             .map(|(k, vs)| {
                 let attr = k.to_lowercase();
                 let vv: BTreeSet<Value> = match attr.as_str() {
-                    "name" | "attributename" | "classname" | "version" | "domain" => {
+                    "name" | "attributename" | "classname" | "version" | "domain" | "domain_name" => {
                         vs.into_iter().map(|v| Value::new_iutf8(v)).collect()
                     }
                     "userid" | "uidnumber" => {
@@ -274,7 +274,7 @@ impl Entry<EntryInvalid, EntryNew> {
                     => {
                         vs.into_iter().map(|v| Value::new_attr(v.as_str())).collect()
                     }
-                    "uuid" => {
+                    "uuid" | "domain_uuid" => {
                         vs.into_iter().map(|v| Value::new_uuids(v.as_str())
                             .unwrap_or_else(|| {
                                 warn!("WARNING: Allowing syntax incorrect attribute to be presented UTF8 string");
@@ -319,6 +319,15 @@ impl Entry<EntryInvalid, EntryNew> {
                     }
                     "displayname" | "description" => {
                         vs.into_iter().map(|v| Value::new_utf8(v)).collect()
+                    }
+                    "spn" => {
+                        vs.into_iter().map(|v| {
+                            Value::new_spn_parse(v.as_str())
+                            .unwrap_or_else(|| {
+                                warn!("WARNING: Allowing syntax incorrect SPN attribute to be presented UTF8 string");
+                                Value::new_utf8(v)
+                            })
+                        }).collect()
                     }
                     ia => {
                         warn!("WARNING: Allowing invalid attribute {} to be interpretted as UTF8 string. YOU MAY ENCOUNTER ODD BEHAVIOUR!!!", ia);
@@ -1036,90 +1045,6 @@ impl<STATE> Entry<EntryValid, STATE> {
     pub fn get_uuid(&self) -> &Uuid {
         &self.valid.uuid
     }
-
-    pub fn filter_from_attrs(&self, attrs: &Vec<String>) -> Option<Filter<FilterInvalid>> {
-        // Because we are a valid entry, a filter we create still may not
-        // be valid because the internal server entry templates are still
-        // created by humans! Plus double checking something already valid
-        // is not bad ...
-        //
-        // Generate a filter from the attributes requested and defined.
-        // Basically, this is a series of nested and's (which will be
-        // optimised down later: but if someone wants to solve flatten() ...)
-
-        // Take name: (a, b), name: (c, d) -> (name, a), (name, b), (name, c), (name, d)
-
-        let mut pairs: Vec<(&str, &Value)> = Vec::new();
-
-        for attr in attrs {
-            match self.attrs.get(attr) {
-                Some(values) => {
-                    for v in values {
-                        pairs.push((attr, v))
-                    }
-                }
-                None => return None,
-            }
-        }
-
-        Some(filter_all!(f_and(
-            pairs
-                .into_iter()
-                .map(|(attr, value)| {
-                    // We use FC directly here instead of f_eq to avoid an excess clone.
-                    FC::Eq(attr, value.to_partialvalue())
-                })
-                .collect()
-        )))
-    }
-
-    pub fn gen_modlist_assert(
-        &self,
-        schema: &dyn SchemaTransaction,
-    ) -> Result<ModifyList<ModifyInvalid>, SchemaError> {
-        // Create a modlist from this entry. We make this assuming we want the entry
-        // to have this one as a subset of values. This means if we have single
-        // values, we'll replace, if they are multivalue, we present them.
-        let mut mods = ModifyList::new();
-
-        for (k, vs) in self.attrs.iter() {
-            // WHY?! We skip uuid here because it is INVALID for a UUID
-            // to be in a modlist, and the base.rs plugin will fail if it
-            // is there. This actually doesn't matter, because to apply the
-            // modlist in these situations we already know the entry MUST
-            // exist with that UUID, we only need to conform it's other
-            // attributes into the same state.
-            //
-            // In the future, if we make uuid a real entry type, then this
-            // check can "go away" because uuid will never exist as an ava.
-            //
-            // NOTE: Remove this check when uuid becomes a real attribute.
-            // UUID is now a real attribute, but it also has an ava for db_entry
-            // conversion - so what do? If we remove it here, we could have CSN issue with
-            // repl on uuid conflict, but it probably shouldn't be an ava either ...
-            // as a result, I think we need to keep this continue line to not cause issues.
-            if k == "uuid" {
-                continue;
-            }
-            // Get the schema attribute type out.
-            match schema.is_multivalue(k) {
-                Ok(r) => {
-                    if !r {
-                        // As this is single value, purge then present to maintain this
-                        // invariant
-                        mods.push_mod(Modify::Purged(k.clone()));
-                    }
-                }
-                // A schema error happened, fail the whole operation.
-                Err(e) => return Err(e),
-            }
-            for v in vs {
-                mods.push_mod(Modify::Present(k.clone(), v.clone()));
-            }
-        }
-
-        Ok(mods)
-    }
 }
 
 impl Entry<EntryReduced, EntryCommitted> {
@@ -1352,6 +1277,11 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             .and_then(|f: &ProtoFilter| Some((*f).clone()))
     }
 
+    pub(crate) fn generate_spn(&self, domain_name: &str) -> Option<Value> {
+        self.get_ava_single_str("name")
+            .and_then(|name| Some(Value::new_spn_str(name, domain_name)))
+    }
+
     pub fn attribute_pres(&self, attr: &str) -> bool {
         // Note, we don't normalise attr name, but I think that's not
         // something we should over-optimise on.
@@ -1441,6 +1371,90 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             }),
             FilterResolved::AndNot(f) => !self.entry_match_no_index_inner(f),
         }
+    }
+
+    pub fn filter_from_attrs(&self, attrs: &Vec<String>) -> Option<Filter<FilterInvalid>> {
+        // Because we are a valid entry, a filter we create still may not
+        // be valid because the internal server entry templates are still
+        // created by humans! Plus double checking something already valid
+        // is not bad ...
+        //
+        // Generate a filter from the attributes requested and defined.
+        // Basically, this is a series of nested and's (which will be
+        // optimised down later: but if someone wants to solve flatten() ...)
+
+        // Take name: (a, b), name: (c, d) -> (name, a), (name, b), (name, c), (name, d)
+
+        let mut pairs: Vec<(&str, &Value)> = Vec::new();
+
+        for attr in attrs {
+            match self.attrs.get(attr) {
+                Some(values) => {
+                    for v in values {
+                        pairs.push((attr, v))
+                    }
+                }
+                None => return None,
+            }
+        }
+
+        Some(filter_all!(f_and(
+            pairs
+                .into_iter()
+                .map(|(attr, value)| {
+                    // We use FC directly here instead of f_eq to avoid an excess clone.
+                    FC::Eq(attr, value.to_partialvalue())
+                })
+                .collect()
+        )))
+    }
+
+    pub fn gen_modlist_assert(
+        &self,
+        schema: &dyn SchemaTransaction,
+    ) -> Result<ModifyList<ModifyInvalid>, SchemaError> {
+        // Create a modlist from this entry. We make this assuming we want the entry
+        // to have this one as a subset of values. This means if we have single
+        // values, we'll replace, if they are multivalue, we present them.
+        let mut mods = ModifyList::new();
+
+        for (k, vs) in self.attrs.iter() {
+            // WHY?! We skip uuid here because it is INVALID for a UUID
+            // to be in a modlist, and the base.rs plugin will fail if it
+            // is there. This actually doesn't matter, because to apply the
+            // modlist in these situations we already know the entry MUST
+            // exist with that UUID, we only need to conform it's other
+            // attributes into the same state.
+            //
+            // In the future, if we make uuid a real entry type, then this
+            // check can "go away" because uuid will never exist as an ava.
+            //
+            // NOTE: Remove this check when uuid becomes a real attribute.
+            // UUID is now a real attribute, but it also has an ava for db_entry
+            // conversion - so what do? If we remove it here, we could have CSN issue with
+            // repl on uuid conflict, but it probably shouldn't be an ava either ...
+            // as a result, I think we need to keep this continue line to not cause issues.
+            if k == "uuid" {
+                continue;
+            }
+            // Get the schema attribute type out.
+            match schema.is_multivalue(k) {
+                Ok(r) => {
+                    if !r {
+                        // As this is single value, purge then present to maintain this
+                        // invariant
+                        mods.push_mod(Modify::Purged(k.clone()));
+                    }
+                }
+                // A schema error happened, fail the whole operation.
+                Err(e) => return Err(e),
+            }
+            for v in vs {
+                mods.push_mod(Modify::Present(k.clone(), v.clone()));
+            }
+        }
+
+        Ok(mods)
     }
 }
 

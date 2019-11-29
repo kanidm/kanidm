@@ -56,7 +56,7 @@ You can now build and run the server with:
 
     cd kanidmd
     cargo run -- recover_account -D /tmp/kanidm.db -n admin
-    cargo run -- server -D /tmp/kanidm.db -C ../insecure/ca.pem -c ../insecure/cert.pem -k ../insecure/key.pem --domain localhost --bindaddr 127.0.0.1:8080
+    cargo run -- server -D /tmp/kanidm.db -C ../insecure/ca.pem -c ../insecure/cert.pem -k ../insecure/key.pem --bindaddr 127.0.0.1:8080
 
 In a new terminal, you can now build and run the client tools with:
 

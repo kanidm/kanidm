@@ -457,6 +457,7 @@ pub trait QueryServerTransaction {
                     SyntaxType::CREDENTIAL => Err(OperationError::InvalidAttribute("Credentials can not be supplied through modification - please use the IDM api".to_string())),
                     SyntaxType::RADIUS_UTF8STRING => Err(OperationError::InvalidAttribute("Radius secrets can not be supplied through modification - please use the IDM api".to_string())),
                     SyntaxType::SSHKEY => Err(OperationError::InvalidAttribute("SSH public keys can not be supplied through modification - please use the IDM api".to_string())),
+                    SyntaxType::SERVICE_PRINCIPLE_NAME => Err(OperationError::InvalidAttribute("SPNs are generated and not able to be set".to_string())),
                 }
             }
             None => {
@@ -531,6 +532,10 @@ pub trait QueryServerTransaction {
                     SyntaxType::CREDENTIAL => Ok(PartialValue::new_credential_tag(value.as_str())),
                     SyntaxType::RADIUS_UTF8STRING => Ok(PartialValue::new_radius_string()),
                     SyntaxType::SSHKEY => Ok(PartialValue::new_sshkey_tag_s(value.as_str())),
+                    SyntaxType::SERVICE_PRINCIPLE_NAME => PartialValue::new_spn_s(value.as_str())
+                        .ok_or(OperationError::InvalidAttribute(
+                            "Invalid SPN syntax".to_string(),
+                        )),
                 }
             }
             None => {
@@ -738,7 +743,7 @@ impl QueryServer {
 
         let reindex_write_1 = self.write();
         reindex_write_1
-            .upgrade_reindex(audit, 1)
+            .upgrade_reindex(audit, SYSTEM_INDEX_VERSION)
             .and_then(|_| reindex_write_1.commit(audit))?;
 
         // Because we init the schema here, and commit, this reloads meaning
@@ -760,10 +765,11 @@ impl QueryServer {
             .initialise_schema_idm(audit)
             .and_then(|_| ts_write_2.commit(audit))?;
 
-        // reindex and set to version 2
+        // reindex and set to version + 1, this way when we bump the version
+        // we are essetially pushing this version id back up to step write_1
         let reindex_write_2 = self.write();
         reindex_write_2
-            .upgrade_reindex(audit, 2)
+            .upgrade_reindex(audit, SYSTEM_INDEX_VERSION + 1)
             .and_then(|_| reindex_write_2.commit(audit))?;
 
         let mut ts_write_3 = self.write();
@@ -1454,13 +1460,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
         e_str: &str,
     ) -> Result<(), OperationError> {
         let res = audit_segment!(audit, || Entry::from_proto_entry_str(audit, e_str, self)
+            /*
             .and_then(|e: Entry<EntryInvalid, EntryNew>| {
                 let schema = self.get_schema();
                 e.validate(schema)
                     .map_err(|e| OperationError::SchemaViolation(e))
             })
+            */
             .and_then(
-                |e: Entry<EntryValid, EntryNew>| self.internal_migrate_or_create(audit, e)
+                |e: Entry<EntryInvalid, EntryNew>| self.internal_migrate_or_create(audit, e)
             ));
         audit_log!(audit, "internal_migrate_or_create_str -> result {:?}", res);
         assert!(res.is_ok());
@@ -1470,7 +1478,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub fn internal_migrate_or_create(
         &mut self,
         audit: &mut AuditScope,
-        e: Entry<EntryValid, EntryNew>,
+        e: Entry<EntryInvalid, EntryNew>,
     ) -> Result<(), OperationError> {
         // if the thing exists, ensure the set of attributes on
         // Entry A match and are present (but don't delete multivalue, or extended
@@ -1490,7 +1498,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             Ok(results) => {
                 if results.len() == 0 {
                     // It does not exist. Create it.
-                    self.internal_create(audit, vec![e.invalidate()])
+                    self.internal_create(audit, vec![e])
                 } else if results.len() == 1 {
                     // If the thing is subset, pass
                     match e.gen_modlist_assert(&self.schema) {
@@ -1584,7 +1592,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .into_iter()
             .map(|e| {
                 audit_log!(audit, "init schema -> {}", e);
-                self.internal_migrate_or_create(audit, e)
+                self.internal_migrate_or_create(audit, e.invalidate())
             })
             .collect();
         assert!(r.is_ok());
@@ -1600,9 +1608,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_SCHEMA_ATTR_SSH_PUBLICKEY,
             JSON_SCHEMA_ATTR_PRIMARY_CREDENTIAL,
             JSON_SCHEMA_ATTR_RADIUS_SECRET,
+            JSON_SCHEMA_ATTR_DOMAIN_NAME,
+            JSON_SCHEMA_ATTR_DOMAIN_UUID,
+            JSON_SCHEMA_ATTR_DOMAIN_SSID,
             JSON_SCHEMA_CLASS_PERSON,
             JSON_SCHEMA_CLASS_GROUP,
             JSON_SCHEMA_CLASS_ACCOUNT,
+            JSON_SCHEMA_CLASS_DOMAIN_INFO,
         ];
 
         let mut audit_si = AuditScope::new("start_initialise_schema_idm");
@@ -1625,16 +1637,20 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let mut audit_an = AuditScope::new("start_system_core_items");
         let res = self
             .internal_assert_or_create_str(&mut audit_an, JSON_SYSTEM_INFO_V1)
-            .and_then(|_| self.internal_migrate_or_create_str(&mut audit_an, JSON_ANONYMOUS_V1));
+            .and_then(|_| self.internal_migrate_or_create_str(&mut audit_an, JSON_DOMAIN_INFO_V1));
         audit.append_scope(audit_an);
         assert!(res.is_ok());
         if res.is_err() {
             return res;
         }
 
+        // The domain info now exists, we should be able to do these migrations as they will
+        // cause SPN regenerations to occur
+
         // Check the admin object exists (migrations).
         // Create the default idm_admin group.
         let admin_entries = [
+            JSON_ANONYMOUS_V1,
             JSON_ADMIN_V1,
             JSON_IDM_ADMIN_V1,
             JSON_IDM_ADMINS_V1,
@@ -1675,6 +1691,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_IDM_HP_GROUP_MANAGE_PRIV_V1,
             JSON_IDM_HP_GROUP_WRITE_PRIV_V1,
             JSON_IDM_ACP_MANAGE_PRIV_V1,
+            JSON_DOMAIN_ADMINS,
             JSON_IDM_HIGH_PRIVILEGE_V1,
             // Built in access controls.
             JSON_IDM_ADMINS_ACP_RECYCLE_SEARCH_V1,
@@ -1700,6 +1717,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1,
             JSON_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1,
             JSON_IDM_ACP_ACP_MANAGE_PRIV_V1,
+            JSON_IDM_ACP_DOMAIN_ADMIN_PRIV_V1,
         ];
 
         let res: Result<(), _> = idm_entries
@@ -1830,6 +1848,19 @@ impl<'a> QueryServerWriteTransaction<'a> {
         try_audit!(audit, self.accesscontrols.update_delete(delete_acps));
         // Alternately, we just get ACP class, and just let acctrl work it out ...
         Ok(())
+    }
+
+    /// Initiate a domain rename process. This is generally an internal function but it's
+    /// exposed to the cli for admins to be able to initiate the process.
+    pub fn domain_rename(
+        &mut self,
+        audit: &mut AuditScope,
+        new_domain_name: &str,
+    ) -> Result<(), OperationError> {
+        let modl = ModifyList::new_purge_and_set("domain_name", Value::new_iutf8s(new_domain_name));
+        let udi = PartialValue::new_uuids(UUID_DOMAIN_INFO).ok_or(OperationError::InvalidUuid)?;
+        let filt = filter_all!(f_eq("uuid", udi));
+        self.internal_modify(audit, filt, modl)
     }
 
     pub fn reindex(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
@@ -2162,7 +2193,7 @@ mod tests {
                     filter!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
                     ModifyList::new_list(vec![
                         Modify::Present("class".to_string(), Value::new_class("system_info")),
-                        Modify::Present("domain".to_string(), Value::new_iutf8s("domain.name")),
+                        // Modify::Present("domain".to_string(), Value::new_iutf8s("domain.name")),
                         Modify::Present("version".to_string(), Value::new_iutf8s("1")),
                     ]),
                 )

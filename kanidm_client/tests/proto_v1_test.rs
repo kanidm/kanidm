@@ -528,6 +528,29 @@ fn test_server_rest_sshkey_lifecycle() {
     });
 }
 
+#[test]
+fn test_server_rest_domain_lifecycle() {
+    run_test(|rsclient: KanidmClient| {
+        let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
+        assert!(res.is_ok());
+
+        let mut dlist = rsclient.idm_domain_list().unwrap();
+        assert!(dlist.len() == 1);
+
+        let dlocal = rsclient.idm_domain_get("domain_local").unwrap();
+        // There should be one, and it's the domain_local
+        assert!(dlist.pop().unwrap().attrs == dlocal.attrs);
+
+        // Change the ssid
+        rsclient
+            .idm_domain_set_ssid("domain_local", "new_ssid")
+            .unwrap();
+        // check get and get the ssid and domain info
+        let nssid = rsclient.idm_domain_get_ssid("domain_local").unwrap();
+        assert!(nssid == "new_ssid");
+    });
+}
+
 // Test the self version of the radius path.
 
 // Test hitting all auth-required endpoints and assert they give unauthorized.

@@ -18,7 +18,6 @@ pub struct TlsConfiguration {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Configuration {
     pub address: String,
-    pub domain: String,
     pub threads: usize,
     // db type later
     pub db_path: String,
@@ -32,7 +31,6 @@ pub struct Configuration {
 impl fmt::Display for Configuration {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "address: {}, ", self.address)
-            .and_then(|_| write!(f, "domain: {}, ", self.domain))
             .and_then(|_| write!(f, "thread count: {}, ", self.threads))
             .and_then(|_| write!(f, "dbpath: {}, ", self.db_path))
             .and_then(|_| write!(f, "max request size: {}b, ", self.maximum_request))
@@ -52,7 +50,6 @@ impl Configuration {
     pub fn new() -> Self {
         let mut c = Configuration {
             address: String::from("127.0.0.1:8080"),
-            domain: String::from("localhost"),
             threads: num_cpus::get(),
             db_path: String::from(""),
             maximum_request: 262144, // 256k

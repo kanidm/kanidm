@@ -37,4 +37,5 @@ pub enum DbValueV1 {
     CR(DbValueCredV1),
     RU(String),
     SK(DbValueTaggedStringV1),
+    SP(String, String),
 }

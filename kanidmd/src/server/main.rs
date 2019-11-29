@@ -11,8 +11,8 @@ extern crate log;
 
 use kanidm::config::Configuration;
 use kanidm::core::{
-    backup_server_core, create_server_core, recover_account_core, reindex_server_core,
-    reset_sid_core, restore_server_core, verify_server_core,
+    backup_server_core, create_server_core, domain_rename_core, recover_account_core,
+    reindex_server_core, reset_sid_core, restore_server_core, verify_server_core,
 };
 
 use std::path::PathBuf;
@@ -34,8 +34,6 @@ struct ServerOpt {
     cert_path: Option<PathBuf>,
     #[structopt(parse(from_os_str), short = "k", long = "key")]
     key_path: Option<PathBuf>,
-    #[structopt(short = "r", long = "domain")]
-    domain: String,
     #[structopt(short = "b", long = "bindaddr")]
     bind: Option<String>,
     #[structopt(flatten)]
@@ -67,6 +65,14 @@ struct RecoverAccountOpt {
 }
 
 #[derive(Debug, StructOpt)]
+struct DomainOpt {
+    #[structopt(short)]
+    new_domain_name: String,
+    #[structopt(flatten)]
+    commonopts: CommonOpt,
+}
+
+#[derive(Debug, StructOpt)]
 enum Opt {
     #[structopt(name = "server")]
     Server(ServerOpt),
@@ -82,6 +88,8 @@ enum Opt {
     ResetServerId(CommonOpt),
     #[structopt(name = "reindex")]
     Reindex(CommonOpt),
+    #[structopt(name = "domain_name_change")]
+    DomainChange(DomainOpt),
 }
 
 impl Opt {
@@ -92,6 +100,7 @@ impl Opt {
             Opt::Backup(bopt) => bopt.commonopts.debug,
             Opt::Restore(ropt) => ropt.commonopts.debug,
             Opt::RecoverAccount(ropt) => ropt.commonopts.debug,
+            Opt::DomainChange(dopt) => dopt.commonopts.debug,
         }
     }
 }
@@ -120,7 +129,6 @@ fn main() {
             config.update_db_path(&sopt.commonopts.db_path);
             config.update_tls(&sopt.ca_path, &sopt.cert_path, &sopt.key_path);
             config.update_bind(&sopt.bind);
-            config.domain = sopt.domain.clone();
 
             let sys = actix::System::new("kanidm-server");
             create_server_core(config);
@@ -179,6 +187,12 @@ fn main() {
 
             config.update_db_path(&copt.db_path);
             reindex_server_core(config);
+        }
+        Opt::DomainChange(dopt) => {
+            info!("Running in domain name change mode ... this may take a long time ...");
+
+            config.update_db_path(&dopt.commonopts.db_path);
+            domain_rename_core(config, dopt.new_domain_name);
         }
     }
 }

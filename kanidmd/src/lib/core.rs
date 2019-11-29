@@ -975,6 +975,42 @@ fn group_id_delete(
     json_rest_event_delete_id(path, req, state, filter)
 }
 
+fn domain_get(
+    (req, state): (HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("domain_info")));
+    json_rest_event_get(req, state, filter, None)
+}
+
+fn domain_id_get(
+    (path, req, state): (Path<String>, HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("domain_info")));
+    json_rest_event_get_id(path, req, state, filter, None)
+}
+
+fn domain_id_get_attr(
+    (path, req, state): (
+        Path<(String, String)>,
+        HttpRequest<AppState>,
+        State<AppState>,
+    ),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("domain_info")));
+    json_rest_event_get_id_attr(path, req, state, filter)
+}
+
+fn domain_id_put_attr(
+    (path, req, state): (
+        Path<(String, String)>,
+        HttpRequest<AppState>,
+        State<AppState>,
+    ),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("domain_info")));
+    json_rest_event_put_id_attr(path, req, state, filter)
+}
+
 fn do_nothing((_req, _state): (HttpRequest<AppState>, State<AppState>)) -> String {
     "did nothing".to_string()
 }
@@ -1289,6 +1325,42 @@ pub fn reindex_server_core(config: Configuration) {
     };
 }
 
+pub fn domain_rename_core(config: Configuration, new_domain_name: String) {
+    let mut audit = AuditScope::new("domain_rename");
+
+    // Start the backend.
+    let be = match setup_backend(&config) {
+        Ok(be) => be,
+        Err(e) => {
+            error!("Failed to setup BE: {:?}", e);
+            return;
+        }
+    };
+    let server_id = be.get_db_sid();
+    // setup the qs - *with* init of the migrations and schema.
+    let (qs, _idms) = match setup_qs_idms(&mut audit, be, server_id) {
+        Ok(t) => t,
+        Err(e) => {
+            debug!("{}", audit);
+            error!("Unable to setup query server or idm server -> {:?}", e);
+            return;
+        }
+    };
+
+    let mut qs_write = qs.write();
+    let r = qs_write
+        .domain_rename(&mut audit, new_domain_name.as_str())
+        .and_then(|_| qs_write.commit(&mut audit));
+
+    match r {
+        Ok(_) => info!("Domain Rename Success!"),
+        Err(e) => {
+            error!("Domain Rename Failed - Rollback has occured: {:?}", e);
+            std::process::exit(1);
+        }
+    };
+}
+
 pub fn reset_sid_core(config: Configuration) {
     let mut audit = AuditScope::new("reset_sid_core");
     // Setup the be
@@ -1484,7 +1556,7 @@ pub fn create_server_core(config: Configuration) {
     // Copy the max size
     let max_size = config.maximum_request;
     let secure_cookies = config.secure_cookies;
-    // let domain = config.domain.clone();
+    // domain will come from the qs now!
     let cookie_key: [u8; 32] = config.cookie_key.clone();
 
     // start the web server
@@ -1700,6 +1772,17 @@ pub fn create_server_core(config: Configuration) {
         })
         // Claims
         // TBD
+        // Domain
+        .resource("/v1/domain", |r| {
+            r.method(http::Method::GET).with_async(domain_get);
+        })
+        .resource("/v1/domain/{id}", |r| {
+            r.method(http::Method::GET).with_async(domain_id_get);
+        })
+        .resource("/v1/domain/{id}/_attr/{attr}", |r| {
+            r.method(http::Method::GET).with_async(domain_id_get_attr);
+            r.method(http::Method::PUT).with_async(domain_id_put_attr);
+        })
         // Recycle Bin
         .resource("/v1/recycle_bin", |r| {
             r.method(http::Method::GET).with(do_nothing)

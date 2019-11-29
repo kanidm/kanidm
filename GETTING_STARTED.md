@@ -33,10 +33,14 @@ Then you can setup the initial admin account and initialise the database into yo
 
     docker run --rm -i -t -v kanidmd:/data firstyear/kanidmd:latest /home/kanidm/target/release/kanidmd recover_account -D /data/kanidm.db -n admin
 
-You can now run the server - note that we provide all the options on the cli, but this pattern
-may change in the future.
+You then want to set your domain name:
 
-    docker run -p 8443:8443 -v /Users/william/development/rsidm/insecure:/data firstyear/kanidmd:latest /home/kanidm/target/release/kanidmd server -D /data/kanidm.db -C /data/ca.pem -c /data/cert.pem -k /data/key.pem --bindaddr 0.0.0.0:8443 --domain localhost
+    docker run --rm -i -t -v kanidmd:/data firstyear/kanidmd:latest /home/kanidm/target/release/kanidmd domain_name_change -D /data/kanidm.db -n idm.example.com
+
+Now we can run the server. Previously we had to specify all options, but now domain_name is part of
+the database.
+
+    docker run -p 8443:8443 -v /Users/william/development/rsidm/insecure:/data firstyear/kanidmd:latest
 
 # Using the cli
 
