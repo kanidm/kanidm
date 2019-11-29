@@ -105,6 +105,10 @@ pub static UUID_SCHEMA_ATTR_DOMAIN_NAME: &'static str = "00000000-0000-0000-0000
 pub static UUID_SCHEMA_ATTR_DOMAIN_UUID: &'static str = "00000000-0000-0000-0000-ffff00000054";
 pub static UUID_SCHEMA_ATTR_DOMAIN_SSID: &'static str = "00000000-0000-0000-0000-ffff00000055";
 
+pub static UUID_SCHEMA_ATTR_GIDNUMBER: &'static str = "00000000-0000-0000-0000-ffff00000056";
+pub static UUID_SCHEMA_CLASS_POSIXACCOUNT: &'static str = "00000000-0000-0000-0000-ffff00000057";
+pub static UUID_SCHEMA_CLASS_POSIXGROUP: &'static str = "00000000-0000-0000-0000-ffff00000058";
+
 // System and domain infos
 // I'd like to strongly criticise william of the past for fucking up these allocations.
 pub static _UUID_SYSTEM_INFO: &'static str = "00000000-0000-0000-0000-ffffff000001";
@@ -602,6 +606,7 @@ pub static JSON_IDM_ALL_ACP_READ_V1: &'static str = r#"{
             "memberof",
             "member",
             "uuid",
+            "gidnumber",
             "ssh_publickey"
         ]
     }
@@ -701,7 +706,7 @@ pub static JSON_IDM_ACP_ACCOUNT_READ_PRIV_V1: &'static str = r#"{
             "{\"And\": [{\"Eq\": [\"class\",\"account\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_search_attr": [
-            "class", "name", "spn", "uuid", "displayname", "ssh_publickey", "primary_credential", "memberof", "mail"
+            "class", "name", "spn", "uuid", "displayname", "ssh_publickey", "primary_credential", "memberof", "mail", "gidnumber"
         ]
     }
 }"#;
@@ -754,10 +759,11 @@ pub static JSON_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1: &'static str = r#"{
             "displayname",
             "description",
             "primary_credential",
-            "ssh_publickey"
+            "ssh_publickey",
+            "gidnumber"
         ],
         "acp_create_class": [
-            "object", "account"
+            "object", "account", "posixaccount"
         ]
     }
 }"#;
@@ -1128,10 +1134,11 @@ pub static JSON_IDM_ACP_GROUP_MANAGE_PRIV_V1: &'static str = r#"{
             "class",
             "name",
             "description",
+            "gidnumber",
             "member"
         ],
         "acp_create_class": [
-            "object", "group"
+            "object", "group", "posixgroup"
         ]
     }
 }"#;
@@ -1532,6 +1539,34 @@ pub static JSON_SCHEMA_ATTR_DOMAIN_SSID: &'static str = r#"{
       ]
     }
 }"#;
+pub static JSON_SCHEMA_ATTR_GIDNUMBER: &'static str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "The groupid (uid) number of a group or account. This is the same value as the UID number on posix accounts for security reasons."
+      ],
+      "index": [],
+      "unique": [
+        "true"
+      ],
+      "multivalue": [
+        "false"
+      ],
+      "attributename": [
+        "gidnumber"
+      ],
+      "syntax": [
+        "UINT32"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000056"
+      ]
+    }
+}"#;
 
 pub static JSON_SCHEMA_CLASS_PERSON: &'static str = r#"
   {
@@ -1657,6 +1692,53 @@ pub static JSON_SCHEMA_CLASS_DOMAIN_INFO: &'static str = r#"
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000052"
+      ]
+    }
+  }
+"#;
+
+pub static JSON_SCHEMA_CLASS_POSIXGROUP: &'static str = r#"
+  {
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "classtype"
+      ],
+      "description": [
+        "Object representation of a posix group, requires group"
+      ],
+      "classname": [
+        "posixgroup"
+      ],
+      "systemmust": [
+        "gidnumber"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000058"
+      ]
+    }
+  }
+"#;
+pub static JSON_SCHEMA_CLASS_POSIXACCOUNT: &'static str = r#"
+  {
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "classtype"
+      ],
+      "description": [
+        "Object representation of a posix account, requires account"
+      ],
+      "classname": [
+        "posixaccount"
+      ],
+      "systemmust": [
+        "gidnumber"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000057"
       ]
     }
   }

@@ -458,6 +458,9 @@ pub trait QueryServerTransaction {
                     SyntaxType::RADIUS_UTF8STRING => Err(OperationError::InvalidAttribute("Radius secrets can not be supplied through modification - please use the IDM api".to_string())),
                     SyntaxType::SSHKEY => Err(OperationError::InvalidAttribute("SSH public keys can not be supplied through modification - please use the IDM api".to_string())),
                     SyntaxType::SERVICE_PRINCIPLE_NAME => Err(OperationError::InvalidAttribute("SPNs are generated and not able to be set".to_string())),
+                    SyntaxType::UINT32 => Value::new_uint32_str(value.as_str())
+                        .ok_or(OperationError::InvalidAttribute("Invalid uint32 syntax".to_string())),
+
                 }
             }
             None => {
@@ -536,6 +539,9 @@ pub trait QueryServerTransaction {
                         .ok_or(OperationError::InvalidAttribute(
                             "Invalid SPN syntax".to_string(),
                         )),
+                    SyntaxType::UINT32 => PartialValue::new_uint32_str(value.as_str()).ok_or(
+                        OperationError::InvalidAttribute("Invalid Uint32 syntax".to_string()),
+                    ),
                 }
             }
             None => {
@@ -1611,10 +1617,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_SCHEMA_ATTR_DOMAIN_NAME,
             JSON_SCHEMA_ATTR_DOMAIN_UUID,
             JSON_SCHEMA_ATTR_DOMAIN_SSID,
+            JSON_SCHEMA_ATTR_GIDNUMBER,
             JSON_SCHEMA_CLASS_PERSON,
             JSON_SCHEMA_CLASS_GROUP,
             JSON_SCHEMA_CLASS_ACCOUNT,
             JSON_SCHEMA_CLASS_DOMAIN_INFO,
+            JSON_SCHEMA_CLASS_POSIXACCOUNT,
+            JSON_SCHEMA_CLASS_POSIXGROUP,
         ];
 
         let mut audit_si = AuditScope::new("start_initialise_schema_idm");

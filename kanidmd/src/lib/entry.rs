@@ -329,6 +329,15 @@ impl Entry<EntryInvalid, EntryNew> {
                             })
                         }).collect()
                     }
+                    "gidnumber" => {
+                        vs.into_iter().map(|v| {
+                            Value::new_uint32_str(v.as_str())
+                            .unwrap_or_else(|| {
+                                warn!("WARNING: Allowing syntax incorrect UINT32 attribute to be presented UTF8 string");
+                                Value::new_utf8(v)
+                            })
+                        }).collect()
+                    }
                     ia => {
                         warn!("WARNING: Allowing invalid attribute {} to be interpretted as UTF8 string. YOU MAY ENCOUNTER ODD BEHAVIOUR!!!", ia);
                         vs.into_iter().map(|v| Value::new_utf8(v)).collect()
@@ -349,8 +358,7 @@ impl Entry<EntryInvalid, EntryNew> {
 
 impl<STATE> Entry<EntryInvalid, STATE> {
     // This is only used in tests today, but I don't want to cfg test it.
-    #[allow(dead_code)]
-    fn get_uuid(&self) -> Option<&Uuid> {
+    pub(crate) fn get_uuid(&self) -> Option<&Uuid> {
         match self.attrs.get("uuid") {
             Some(vs) => match vs.iter().take(1).next() {
                 // Uv is a value that might contain uuid - we hope it does!
