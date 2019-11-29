@@ -1092,10 +1092,12 @@ impl SchemaInner {
                     uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_ACCESS_CONTROL_PROFILE)
                         .expect("unable to parse static uuid"),
                     description: String::from("System Access Control Profile Class"),
-                    systemmay: vec!["description".to_string()],
+                    systemmay: vec![
+                        "acp_enable".to_string(),
+                        "description".to_string()
+                    ],
                     may: vec![],
                     systemmust: vec![
-                        "acp_enable".to_string(),
                         "acp_receiver".to_string(),
                         "acp_targetscope".to_string(),
                     ],

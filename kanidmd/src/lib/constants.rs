@@ -473,7 +473,6 @@ pub static JSON_IDM_ACP_XX_V1: &'static str = r#"{
         "name": ["idm_acp_xx"],
         "uuid": ["00000000-0000-0000-0000-ffffff0000XX"],
         "description": ["Builtin IDM Control for xx"],
-        "acp_enable": ["true"],
         "acp_receiver": [
             "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-0000000000XX\"]}"
         ],
@@ -508,7 +507,6 @@ pub static JSON_IDM_ADMINS_ACP_RECYCLE_SEARCH_V1: &'static str = r#"{
         "name": ["idm_admins_acp_recycle_search"],
         "uuid": ["00000000-0000-0000-0000-ffffff000002"],
         "description": ["Builtin IDM admin recycle bin search permission."],
-        "acp_enable": ["true"],
         "acp_receiver": [
             "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000019\"]}"
         ],
@@ -525,7 +523,6 @@ pub static JSON_IDM_ADMINS_ACP_REVIVE_V1: &'static str = r#"{
         "name": ["idm_admins_acp_revive"],
         "uuid": ["00000000-0000-0000-0000-ffffff000003"],
         "description": ["Builtin IDM Administrators Access Controls."],
-        "acp_enable": ["true"],
         "acp_receiver": [
             "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000019\"]}"
         ],
@@ -543,7 +540,6 @@ pub static JSON_IDM_SELF_ACP_READ_V1: &'static str = r#"{
         "name": ["idm_self_acp_read"],
         "uuid": ["00000000-0000-0000-0000-ffffff000004"],
         "description": ["Builtin IDM Control for self read - required for whoami and many other functions."],
-        "acp_enable": ["true"],
         "acp_receiver": [
             "{\"And\": [\"Self\", {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
@@ -570,7 +566,6 @@ pub static JSON_IDM_SELF_ACP_WRITE_V1: &'static str = r#"{
         "name": ["idm_self_acp_write"],
         "uuid": ["00000000-0000-0000-0000-ffffff000021"],
         "description": ["Builtin IDM Control for self write - required for people to update their own identities and credentials in line with best practices."],
-        "acp_enable": ["true"],
         "acp_receiver": [
             "{\"And\": [\"Self\", {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}, {\"Eq\": [\"uuid\", \"00000000-0000-0000-0000-ffffffffffff\"]}]}}]}"
         ],
@@ -593,7 +588,6 @@ pub static JSON_IDM_ALL_ACP_READ_V1: &'static str = r#"{
         "name": ["idm_all_acp_read"],
         "uuid": ["00000000-0000-0000-0000-ffffff000006"],
         "description": ["Builtin IDM Control for all read - IE anonymous and all authenticated accounts."],
-        "acp_enable": ["true"],
         "acp_receiver": [
             "{\"Pres\":\"class\"}"
         ],
@@ -624,7 +618,6 @@ pub static JSON_IDM_ACP_PEOPLE_READ_PRIV_V1: &'static str = r#"{
         "name": ["idm_acp_people_read_priv"],
         "uuid": ["00000000-0000-0000-0000-ffffff000007"],
         "description": ["Builtin IDM Control for reading personal sensitive data."],
-        "acp_enable": ["true"],
         "acp_receiver": [
             "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000002\"]}"
         ],
@@ -647,7 +640,6 @@ pub static JSON_IDM_ACP_PEOPLE_WRITE_PRIV_V1: &'static str = r#"{
         "name": ["idm_acp_people_write_priv"],
         "uuid": ["00000000-0000-0000-0000-ffffff000008"],
         "description": ["Builtin IDM Control for managing personal and sensitive data."],
-        "acp_enable": ["true"],
         "acp_receiver": [
             "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000003\"]}"
         ],
@@ -674,7 +666,6 @@ pub static JSON_IDM_ACP_GROUP_WRITE_PRIV_V1: &'static str = r#"{
         "name": ["idm_acp_group_write_priv"],
         "uuid": ["00000000-0000-0000-0000-ffffff000009"],
         "description": ["Builtin IDM Control for managing groups"],
-        "acp_enable": ["true"],
         "acp_receiver": [
             "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000004\"]}"
         ],
@@ -703,7 +694,6 @@ pub static JSON_IDM_ACP_ACCOUNT_READ_PRIV_V1: &'static str = r#"{
         "name": ["idm_acp_account_read_priv"],
         "uuid": ["00000000-0000-0000-0000-ffffff000010"],
         "description": ["Builtin IDM Control for accounts."],
-        "acp_enable": ["true"],
         "acp_receiver": [
             "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000005\"]}"
         ],
@@ -726,7 +716,6 @@ pub static JSON_IDM_ACP_ACCOUNT_WRITE_PRIV_V1: &'static str = r#"{
         "name": ["idm_acp_account_write_priv"],
         "uuid": ["00000000-0000-0000-0000-ffffff000011"],
         "description": ["Builtin IDM Control for managing accounts."],
-        "acp_enable": ["true"],
         "acp_receiver": [
             "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000006\"]}"
         ],
@@ -753,7 +742,6 @@ pub static JSON_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1: &'static str = r#"{
         "name": ["idm_acp_account_manage"],
         "uuid": ["00000000-0000-0000-0000-ffffff000012"],
         "description": ["Builtin IDM Control for creating and deleting (service) accounts"],
-        "acp_enable": ["true"],
         "acp_receiver": [
             "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000014\"]}"
         ],
@@ -785,7 +773,6 @@ pub static JSON_IDM_ACP_PEOPLE_MANAGE_PRIV_V1: &'static str = r#"{
         "name": ["idm_acp_people_manage"],
         "uuid": ["00000000-0000-0000-0000-ffffff000013"],
         "description": ["Builtin IDM Control for creating person (user) accounts"],
-        "acp_enable": ["true"],
         "acp_receiver": [
             "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000013\"]}"
         ],
@@ -820,7 +807,6 @@ pub static JSON_IDM_ACP_RADIUS_SERVERS_V1: &'static str = r#"{
         "name": ["idm_acp_radius_servers"],
         "uuid": ["00000000-0000-0000-0000-ffffff000014"],
         "description": ["Builtin IDM Control for RADIUS servers to read credentials and other needed details."],
-        "acp_enable": ["true"],
         "acp_receiver": [
             "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000007\"]}"
         ],
@@ -843,7 +829,6 @@ pub static JSON_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1: &'static str = r#"{
         "name": ["idm_acp_hp_account_read_priv"],
         "uuid": ["00000000-0000-0000-0000-ffffff000015"],
         "description": ["Builtin IDM Control for reading high privilege accounts."],
-        "acp_enable": ["true"],
         "acp_receiver": [
             "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000009\"]}"
         ],
@@ -866,7 +851,6 @@ pub static JSON_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1: &'static str = r#"{
         "name": ["idm_acp_hp_account_write_priv"],
         "uuid": ["00000000-0000-0000-0000-ffffff000016"],
         "description": ["Builtin IDM Control for managing high privilege accounts."],
-        "acp_enable": ["true"],
         "acp_receiver": [
             "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000009\"]}"
         ],
@@ -894,7 +878,6 @@ pub static JSON_IDM_ACP_HP_GROUP_WRITE_PRIV_V1: &'static str = r#"{
         "name": ["idm_acp_hp_group_write_priv"],
         "uuid": ["00000000-0000-0000-0000-ffffff000017"],
         "description": ["Builtin IDM Control for managing high privilege groups"],
-        "acp_enable": ["true"],
         "acp_receiver": [
             "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000012\"]}"
         ],
@@ -926,7 +909,6 @@ pub static JSON_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1: &'static str = r#"{
         "name": ["idm_acp_schema_write_attrs_priv"],
         "uuid": ["00000000-0000-0000-0000-ffffff000018"],
         "description": ["Builtin IDM Control for management of schema attributes."],
-        "acp_enable": ["true"],
         "acp_receiver": [
             "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000010\"]}"
         ],
@@ -988,7 +970,6 @@ pub static JSON_IDM_ACP_ACP_MANAGE_PRIV_V1: &'static str = r#"{
         "name": ["idm_acp_acp_manage_priv"],
         "uuid": ["00000000-0000-0000-0000-ffffff000019"],
         "description": ["Builtin IDM Control for access profiles management."],
-        "acp_enable": ["true"],
         "acp_receiver": [
             "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000011\"]}"
         ],
@@ -1080,7 +1061,6 @@ pub static JSON_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1: &'static str = r#"{
         "name": ["idm_acp_schema_write_classes_priv"],
         "uuid": ["00000000-0000-0000-0000-ffffff000020"],
         "description": ["Builtin IDM Control for management of schema classes."],
-        "acp_enable": ["true"],
         "acp_receiver": [
             "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000010\"]}"
         ],
@@ -1138,7 +1118,6 @@ pub static JSON_IDM_ACP_GROUP_MANAGE_PRIV_V1: &'static str = r#"{
         "name": ["idm_acp_group_manage"],
         "uuid": ["00000000-0000-0000-0000-ffffff000022"],
         "description": ["Builtin IDM Control for creating and deleting groups in the directory"],
-        "acp_enable": ["true"],
         "acp_receiver": [
             "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000015\"]}"
         ],
@@ -1169,7 +1148,6 @@ pub static JSON_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1: &'static str = r#"{
         "name": ["idm_acp_hp_account_manage"],
         "uuid": ["00000000-0000-0000-0000-ffffff000023"],
         "description": ["Builtin IDM Control for creating and deleting hp and regular (service) accounts"],
-        "acp_enable": ["true"],
         "acp_receiver": [
             "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000016\"]}"
         ],
@@ -1202,7 +1180,6 @@ pub static JSON_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1: &'static str = r#"{
         "name": ["idm_acp_hp_group_manage"],
         "uuid": ["00000000-0000-0000-0000-ffffff000024"],
         "description": ["Builtin IDM Control for creating and deleting hp and regular groups in the directory"],
-        "acp_enable": ["true"],
         "acp_receiver": [
             "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000017\"]}"
         ],
@@ -1233,7 +1210,6 @@ pub static JSON_IDM_ACP_DOMAIN_ADMIN_PRIV_V1: &'static str = r#"{
         "name": ["idm_acp_domain_admin_priv"],
         "uuid": ["00000000-0000-0000-0000-ffffff000026"],
         "description": ["Builtin IDM Control for granting domain info administration locally"],
-        "acp_enable": ["true"],
         "acp_receiver": [
             "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000020\"]}"
         ],
