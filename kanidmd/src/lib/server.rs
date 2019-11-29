@@ -39,7 +39,7 @@ lazy_static! {
     static ref PVCLASS_ACM: PartialValue = PartialValue::new_class("access_control_modify");
     static ref PVCLASS_ACC: PartialValue = PartialValue::new_class("access_control_create");
     static ref PVCLASS_ACP: PartialValue = PartialValue::new_class("access_control_profile");
-    static ref PVACP_ENABLE_TRUE: PartialValue = PartialValue::new_bool(true);
+    static ref PVACP_ENABLE_FALSE: PartialValue = PartialValue::new_bool(false);
 }
 
 // This is the core of the server. It implements all
@@ -1786,7 +1786,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let filt = filter!(f_and!([
             f_eq("class", PVCLASS_ACP.clone()),
             f_eq("class", PVCLASS_ACS.clone()),
-            f_eq("acp_enable", PVACP_ENABLE_TRUE.clone()),
+            f_andnot(f_eq("acp_enable", PVACP_ENABLE_FALSE.clone())),
         ]));
 
         let res = try_audit!(audit, self.internal_search(audit, filt));
@@ -1802,7 +1802,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let filt = filter!(f_and!([
             f_eq("class", PVCLASS_ACP.clone()),
             f_eq("class", PVCLASS_ACC.clone()),
-            f_eq("acp_enable", PVACP_ENABLE_TRUE.clone()),
+            f_andnot(f_eq("acp_enable", PVACP_ENABLE_FALSE.clone())),
         ]));
 
         let res = try_audit!(audit, self.internal_search(audit, filt));
@@ -1818,7 +1818,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let filt = filter!(f_and!([
             f_eq("class", PVCLASS_ACP.clone()),
             f_eq("class", PVCLASS_ACM.clone()),
-            f_eq("acp_enable", PVACP_ENABLE_TRUE.clone()),
+            f_andnot(f_eq("acp_enable", PVACP_ENABLE_FALSE.clone())),
         ]));
 
         let res = try_audit!(audit, self.internal_search(audit, filt));
@@ -1834,7 +1834,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let filt = filter!(f_and!([
             f_eq("class", PVCLASS_ACP.clone()),
             f_eq("class", PVCLASS_ACD.clone()),
-            f_eq("acp_enable", PVACP_ENABLE_TRUE.clone()),
+            f_andnot(f_eq("acp_enable", PVACP_ENABLE_FALSE.clone())),
         ]));
 
         let res = try_audit!(audit, self.internal_search(audit, filt));
