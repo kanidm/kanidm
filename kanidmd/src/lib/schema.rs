@@ -238,6 +238,14 @@ impl SchemaAttribute {
         }
     }
 
+    fn validate_uint32(&self, v: &Value) -> Result<(), SchemaError> {
+        if v.is_uint32() {
+            Ok(())
+        } else {
+            Err(SchemaError::InvalidAttributeSyntax)
+        }
+    }
+
     // TODO: There may be a difference between a value and a filter value on complex
     // types - IE a complex type may have multiple parts that are secret, but a filter
     // on that may only use a single tagged attribute for example.
@@ -255,6 +263,7 @@ impl SchemaAttribute {
             SyntaxType::RADIUS_UTF8STRING => v.is_radius_string(),
             SyntaxType::SSHKEY => v.is_sshkey(),
             SyntaxType::SERVICE_PRINCIPLE_NAME => v.is_spn(),
+            SyntaxType::UINT32 => v.is_uint32(),
         };
         if r {
             Ok(())
@@ -372,6 +381,13 @@ impl SchemaAttribute {
             SyntaxType::SERVICE_PRINCIPLE_NAME => ava.iter().fold(Ok(()), |acc, v| {
                 if acc.is_ok() {
                     self.validate_spn(v)
+                } else {
+                    acc
+                }
+            }),
+            SyntaxType::UINT32 => ava.iter().fold(Ok(()), |acc, v| {
+                if acc.is_ok() {
+                    self.validate_uint32(v)
                 } else {
                     acc
                 }

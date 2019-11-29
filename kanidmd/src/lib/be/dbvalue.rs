@@ -38,4 +38,5 @@ pub enum DbValueV1 {
     RU(String),
     SK(DbValueTaggedStringV1),
     SP(String, String),
+    UI(u32),
 }

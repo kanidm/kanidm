@@ -95,6 +95,7 @@ pub enum SyntaxType {
     RADIUS_UTF8STRING,
     SSHKEY,
     SERVICE_PRINCIPLE_NAME,
+    UINT32,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -115,6 +116,7 @@ impl TryFrom<&str> for SyntaxType {
             "RADIUS_UTF8STRING" => Ok(SyntaxType::RADIUS_UTF8STRING),
             "SSHKEY" => Ok(SyntaxType::SSHKEY),
             "SERVICE_PRINCIPLE_NAME" => Ok(SyntaxType::SERVICE_PRINCIPLE_NAME),
+            "UINT32" => Ok(SyntaxType::UINT32),
             _ => Err(()),
         }
     }
@@ -137,6 +139,7 @@ impl TryFrom<usize> for SyntaxType {
             9 => Ok(SyntaxType::RADIUS_UTF8STRING),
             10 => Ok(SyntaxType::SSHKEY),
             11 => Ok(SyntaxType::SERVICE_PRINCIPLE_NAME),
+            12 => Ok(SyntaxType::UINT32),
             _ => Err(()),
         }
     }
@@ -157,6 +160,7 @@ impl SyntaxType {
             SyntaxType::RADIUS_UTF8STRING => "RADIUS_UTF8STRING",
             SyntaxType::SSHKEY => "SSHKEY",
             SyntaxType::SERVICE_PRINCIPLE_NAME => "SERVICE_PRINCIPLE_NAME",
+            SyntaxType::UINT32 => "UINT32",
         })
     }
 
@@ -174,6 +178,7 @@ impl SyntaxType {
             SyntaxType::RADIUS_UTF8STRING => 9,
             SyntaxType::SSHKEY => 10,
             SyntaxType::SERVICE_PRINCIPLE_NAME => 11,
+            SyntaxType::UINT32 => 12,
         }
     }
 }
@@ -202,6 +207,7 @@ pub enum PartialValue {
     SshKey(String),
     RadiusCred,
     Spn(String, String),
+    Uint32(u32),
 }
 
 impl PartialValue {
@@ -414,6 +420,19 @@ impl PartialValue {
         }
     }
 
+    pub fn new_uint32_str(u: &str) -> Option<Self> {
+        u32::from_str_radix(u, 10)
+            .ok()
+            .map(|uv| PartialValue::Uint32(uv))
+    }
+
+    pub fn is_uint32(&self) -> bool {
+        match self {
+            PartialValue::Uint32(_) => true,
+            _ => false,
+        }
+    }
+
     pub fn to_str(&self) -> Option<&str> {
         match self {
             PartialValue::Utf8(s) => Some(s.as_str()),
@@ -449,6 +468,7 @@ impl PartialValue {
             PartialValue::RadiusCred => "_".to_string(),
             PartialValue::SshKey(tag) => tag.to_string(),
             PartialValue::Spn(name, realm) => format!("{}@{}", name, realm),
+            PartialValue::Uint32(u) => u.to_string(),
         }
     }
 
@@ -863,6 +883,17 @@ impl Value {
         }
     }
 
+    pub fn new_uint32_str(u: &str) -> Option<Self> {
+        PartialValue::new_uint32_str(u).map(|ui| Value { pv: ui, data: None })
+    }
+
+    pub fn is_uint32(&self) -> bool {
+        match &self.pv {
+            PartialValue::Uint32(_) => true,
+            _ => false,
+        }
+    }
+
     pub fn contains(&self, s: &PartialValue) -> bool {
         self.pv.contains(s)
     }
@@ -932,6 +963,10 @@ impl Value {
                 pv: PartialValue::Spn(n, r),
                 data: None,
             }),
+            DbValueV1::UI(u) => Ok(Value {
+                pv: PartialValue::Uint32(u),
+                data: None,
+            }),
         }
     }
 
@@ -989,6 +1024,7 @@ impl Value {
                 })
             }
             PartialValue::Spn(n, r) => DbValueV1::SP(n.clone(), r.clone()),
+            PartialValue::Uint32(u) => DbValueV1::UI(u.clone()),
         }
     }
 
@@ -1096,6 +1132,7 @@ impl Value {
             // interfaces.
             PartialValue::RadiusCred => "radius".to_string(),
             PartialValue::Spn(n, r) => format!("{}@{}", n, r),
+            PartialValue::Uint32(u) => u.to_string(),
         }
     }
 
@@ -1154,6 +1191,7 @@ impl Value {
             }
             PartialValue::RadiusCred => vec![],
             PartialValue::Spn(n, r) => vec![format!("{}@{}", n, r)],
+            PartialValue::Uint32(u) => vec![u.to_string()],
         }
     }
 }
@@ -1268,6 +1306,20 @@ mod tests {
         assert!(spn_parse == spnp);
         // check it can produce name@realm as str from the pv.
         assert!("claire@example.net.au" == spnv.to_proto_string_clone());
+    }
+
+    #[test]
+    fn test_value_uint32() {
+        assert!(Value::new_uint32_str("test").is_none());
+        assert!(Value::new_uint32_str("18446744073709551615").is_none());
+
+        let u32v = Value::new_uint32_str("4000").unwrap();
+        let u32pv = PartialValue::new_uint32_str("4000").unwrap();
+
+        let idx_key = u32pv.get_idx_eq_key();
+        let vidx_key = u32v.generate_idx_eq_keys().pop().unwrap();
+
+        assert!(idx_key == vidx_key);
     }
 
     /*
