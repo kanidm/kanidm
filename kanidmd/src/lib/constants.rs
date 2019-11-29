@@ -612,6 +612,7 @@ pub static JSON_IDM_ALL_ACP_READ_V1: &'static str = r#"{
             "memberof",
             "member",
             "uuid",
+            "gidnumber",
             "ssh_publickey"
         ]
     }
@@ -715,7 +716,7 @@ pub static JSON_IDM_ACP_ACCOUNT_READ_PRIV_V1: &'static str = r#"{
             "{\"And\": [{\"Eq\": [\"class\",\"account\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_search_attr": [
-            "class", "name", "spn", "uuid", "displayname", "ssh_publickey", "primary_credential", "memberof", "mail"
+            "class", "name", "spn", "uuid", "displayname", "ssh_publickey", "primary_credential", "memberof", "mail", "gidnumber"
         ]
     }
 }"#;
@@ -770,10 +771,11 @@ pub static JSON_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1: &'static str = r#"{
             "displayname",
             "description",
             "primary_credential",
-            "ssh_publickey"
+            "ssh_publickey",
+            "gidnumber"
         ],
         "acp_create_class": [
-            "object", "account"
+            "object", "account", "posixaccount"
         ]
     }
 }"#;
@@ -1153,10 +1155,11 @@ pub static JSON_IDM_ACP_GROUP_MANAGE_PRIV_V1: &'static str = r#"{
             "class",
             "name",
             "description",
+            "gidnumber",
             "member"
         ],
         "acp_create_class": [
-            "object", "group"
+            "object", "group", "posixgroup"
         ]
     }
 }"#;
