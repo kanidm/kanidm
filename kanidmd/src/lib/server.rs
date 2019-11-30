@@ -1477,7 +1477,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 |e: Entry<EntryInvalid, EntryNew>| self.internal_migrate_or_create(audit, e)
             ));
         audit_log!(audit, "internal_migrate_or_create_str -> result {:?}", res);
-        assert!(res.is_ok());
+        debug_assert!(res.is_ok());
         res
     }
 
@@ -1495,6 +1495,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
         //
         // NOTE: gen modlist IS schema aware and will handle multivalue
         // correctly!
+        audit_log!(
+            audit,
+            "internal_migrate_or_create operating on {:?}",
+            e.get_uuid()
+        );
+
         let filt = match e.filter_from_attrs(&vec![String::from("uuid")]) {
             Some(f) => f,
             None => return Err(OperationError::FilterGeneration),
@@ -1541,7 +1547,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 |e: Entry<EntryValid, EntryNew>| self.internal_assert_or_create(audit, e)
             ));
         audit_log!(audit, "internal_assert_or_create_str -> result {:?}", res);
-        assert!(res.is_ok());
+        debug_assert!(res.is_ok());
         res
     }
 
@@ -1554,6 +1560,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // If exists, ensure the object is exactly as provided
         // else, if not exists, create it. IE no extra or excess
         // attributes and classes.
+
+        audit_log!(
+            audit,
+            "internal_assert_or_create operating on {:?}",
+            e.get_uuid()
+        );
 
         // Create a filter from the entry for assertion.
         let filt = match e.filter_from_attrs(&vec![String::from("uuid")]) {
@@ -1601,7 +1613,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 self.internal_migrate_or_create(audit, e.invalidate())
             })
             .collect();
-        assert!(r.is_ok());
+        audit_log!(audit, "initialise_schema_core -> result {:?}", r);
+        debug_assert!(r.is_ok());
         r
     }
 
@@ -1633,7 +1646,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .map(|e_str| self.internal_migrate_or_create_str(&mut audit_si, e_str))
             .collect();
         audit.append_scope(audit_si);
-        assert!(r.is_ok());
+        audit_log!(audit, "initialise_schema_idm -> result {:?}", r);
+        debug_assert!(r.is_ok());
 
         r.map(|_| ())
     }
@@ -1648,7 +1662,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .internal_assert_or_create_str(&mut audit_an, JSON_SYSTEM_INFO_V1)
             .and_then(|_| self.internal_migrate_or_create_str(&mut audit_an, JSON_DOMAIN_INFO_V1));
         audit.append_scope(audit_an);
-        assert!(res.is_ok());
+        audit_log!(audit, "initialise_idm p1 -> result {:?}", res);
+        debug_assert!(res.is_ok());
         if res.is_err() {
             return res;
         }
@@ -1672,7 +1687,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .map(|e_str| self.internal_migrate_or_create_str(&mut audit_an, e_str))
             .collect();
         audit.append_scope(audit_an);
-        assert!(res.is_ok());
+        audit_log!(audit, "initialise_idm p2 -> result {:?}", res);
+        debug_assert!(res.is_ok());
         if res.is_err() {
             return res;
         }
@@ -1735,7 +1751,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .map(|e_str| self.internal_migrate_or_create_str(&mut audit_an, e_str))
             .collect();
         audit.append_scope(audit_an);
-        assert!(res.is_ok());
+        audit_log!(audit, "initialise_idm p3 -> result {:?}", res);
+        debug_assert!(res.is_ok());
         if res.is_err() {
             return res;
         }
@@ -1912,7 +1929,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             changed_schema: _,
             changed_acp: _,
         } = self;
-        assert!(!committed);
+        debug_assert!(!committed);
         // Begin an audit.
         // Validate the schema as we just loaded it.
         let r = schema.validate(audit);

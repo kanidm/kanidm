@@ -174,6 +174,13 @@ pub trait IdlSqliteTransaction {
             // have a corrupted index .....
             None => IDLBitRange::new(),
         };
+        audit_log!(
+            audit,
+            "Got idl for index {:?} {:?} -> {:?}",
+            itype,
+            attr,
+            idl
+        );
 
         Ok(Some(idl))
     }
@@ -497,7 +504,7 @@ impl IdlSqliteWriteTransaction {
             audit_log!(audit, "removing idx_table -> {:?}", idx_table);
             self.conn
                 .prepare(format!("DROP TABLE {}", idx_table).as_str())
-                .and_then(|mut stmt| stmt.query(NO_PARAMS).map(|_| ()))
+                .and_then(|mut stmt| stmt.execute(NO_PARAMS).map(|_| ()))
                 .map_err(|e| {
                     audit_log!(audit, "sqlite error {:?}", e);
                     OperationError::SQLiteError
@@ -512,6 +519,7 @@ impl IdlSqliteWriteTransaction {
             "rustqlite error {:?}",
             OperationError::SQLiteError
         );
+        audit_log!(audit, "purge id2entry ...");
         Ok(())
     }
 

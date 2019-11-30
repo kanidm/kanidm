@@ -474,7 +474,9 @@ impl BackendWriteTransaction {
                 .into_iter()
                 .map(|e| {
                     id_max = id_max + 1;
-                    e.to_valid_committed_id(id_max)
+                    let ev = e.to_valid_committed_id(id_max);
+                    // audit_log!(au, "assigned {} to {}", id_max, ev.get_uuid());
+                    ev
                 })
                 .collect();
 
@@ -809,6 +811,35 @@ impl BackendWriteTransaction {
             OperationError::SerdeJsonError
         );
 
+        // Filter all elements that have a UUID in the system range.
+        /*
+        use crate::constants::UUID_ANONYMOUS;
+        use crate::be::dbentry::DbEntryVers;
+        use crate::be::dbvalue::DbValueV1;
+        let uuid_anonymous = UUID_ANONYMOUS.clone();
+        let dbentries: Vec<DbEntry> = dbentries.into_iter()
+            .filter(|e| {
+                let e_uuid = match &e.ent {
+                    DbEntryVers::V1(dbe) => dbe.attrs.get("uuid")
+                        .and_then(|dbvs| dbvs.first())
+                        .and_then(|dbv| {
+                            match dbv {
+                                DbValueV1::UU(u) => Some(u),
+                                _ => panic!(),
+                            }
+                        })
+                        .unwrap()
+                };
+
+                e_uuid > &uuid_anonymous
+            })
+            .collect();
+
+        dbentries.iter().for_each(|e| {
+            audit_log!(audit, "importing -> {:?}", e);
+        });
+        */
+
         // Now, we setup all the entries with new ids.
         let mut id_max = 0;
         let identries: Result<Vec<IdEntry>, _> = dbentries
@@ -826,6 +857,16 @@ impl BackendWriteTransaction {
             .collect();
 
         self.idlayer.write_identries(audit, identries?)?;
+
+        // for debug
+        /*
+        self.idlayer.get_identry(audit, &IDL::ALLIDS)
+            .unwrap()
+            .iter()
+            .for_each(|dbe| {
+                audit_log!(audit, "dbe -> {:?}", dbe.id);
+            });
+        */
 
         // Reindex now we are loaded.
         self.reindex(audit)?;
