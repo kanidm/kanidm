@@ -456,8 +456,7 @@ pub static JSON_DOMAIN_INFO_V1: &'static str = r#"{
         "class": ["object", "domain_info", "system"],
         "name": ["domain_local"],
         "uuid": ["00000000-0000-0000-0000-ffffff000025"],
-        "description": ["This local domain's info and metadata object."],
-        "domain_name": ["example.com"]
+        "description": ["This local domain's info and metadata object."]
     }
 }"#;
 
