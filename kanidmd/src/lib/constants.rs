@@ -577,10 +577,10 @@ pub static JSON_IDM_SELF_ACP_WRITE_V1: &'static str = r#"{
             "\"Self\""
         ],
         "acp_modify_removedattr": [
-            "name", "displayname", "legalname", "radius_secret", "primary_credential"
+            "name", "displayname", "legalname", "radius_secret", "primary_credential", "ssh_publickey"
         ],
         "acp_modify_presentattr": [
-            "name", "displayname", "legalname", "radius_secret", "primary_credential"
+            "name", "displayname", "legalname", "radius_secret", "primary_credential", "ssh_publickey"
         ]
     }
 }"#;
