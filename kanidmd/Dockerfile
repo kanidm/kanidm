@@ -1,12 +1,10 @@
 FROM opensuse/tumbleweed:latest AS builder
 MAINTAINER william@blackhats.net.au
 
+RUN zypper install -y timezone cargo rust gcc sqlite3-devel libopenssl-devel
 COPY . /home/kanidm/
-
 WORKDIR /home/kanidm/
-
-RUN zypper install -y timezone cargo rust gcc sqlite3-devel libopenssl-devel && \
-    RUSTC_BOOTSTRAP=1 cargo build --release
+RUN cargo build --release
 
 FROM opensuse/tumbleweed:latest
 
