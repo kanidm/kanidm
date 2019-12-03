@@ -1,73 +1,132 @@
-
 # RADIUS
 
-Let's make it so that demo_user can authenticate to our RADIUS. It's an important concept in kanidm
-that accounts can have *multiple* credentials, each with unique functions and claims (permissions)
-to limit their scope of access. An example of this is that an account has a distinction between
-the interactive (primary) credential and the RADIUS credentials.
+RADIUS is a network-protocol that is commonly used to allow wifi devices or
+vpn's to authenticate users to a network boundary. While it should not be a
+sole point of trust/authentication to an identity, it's still an important
+control for improving barriers to attackers access to network resources.
 
-When you ran set_password above, you were resetting the primary credential of the account. The
-account can now *self manage* it's own RADIUS credential which is isolated from the primary
-credential. To demonstrate we can have the account self-generate a new RADIUS credential and
-then retrieve that when required.
+Kanidm has a philosophy that each account can have multiple credentials which
+are related to their devices and limited to specific resources. RADIUS is
+no exception, and has a seperate credential for each account to use for
+RADIUS access.
 
-    cargo run -- account radius generate_secret demo_user -H ... --name demo_user
-    cargo run -- account radius show_secret demo_user -H ... --name demo_user
-    # Radius secret: lyjr-d8...
+## Disclaimer
 
-To read these secrets, the radius server requires a service account. We can create this and
-assign it the appropriate privilege group (note we do this as admin not idm due to modifying a high priviliege group,
-which idm_admin is *not* allowed to do):
+It's worth noting some disclaimers about Kanidm's RADIUS integration here
 
-    cargo run -- account create radius_service_account "Radius Service Account" -H ... --name admin
-    cargo run -- group add_members idm_radius_servers radius_service_account -H ... --name admin
-    cargo run -- account get radius_service_account -H ... --name admin
-    cargo run -- account credential generate_password radius_service_account -H ... --name admin
+### One Credential - One Account
 
-Now that we have a user configured with RADIUS secrets, we can setup a radius container to authenticate
-with it. You will need a volume that contains:
+Kanidm normally attempts to have credentials for each *device* and *application*
+rather than the legacy model of one to one.
+
+RADIUS as a protocol is only able to attest a *single* credential in an authentication
+attempt, which limits us to storing a single RADIUS credential per account. However
+despite this limitation, it still greatly improves the situation by isolating the
+RADIUS credential from the primary or application credentials of the account. This
+solves many common security concerns around credential loss or disclosure
+and prevents rogue devices from locking out accounts as they attempt to
+authenticate to wifi with expired credentials.
+
+### Cleartext Credential Storage
+
+RADIUS offers many different types of tunnels and authentication mechanisms.
+However, most client devices "out of the box" when you select a WPA2-Enterprise
+network only attempt a single type: MSCHAPv2 with PEAP. This is a challenge
+response protocol which requires cleartext or ntlm credentials.
+
+As MSCHAPv2 with PEAP is the only practical, universal RADIUS type supported
+on all devices with "minimal" configuration, we consider it imperitive
+that it MUST be supported as the default. Esoteric RADIUS types can be used
+as well, but this is up to administrators to test and configure.
+
+Due to this requirement, we must store the RADIUS material as cleartext or
+ntlm hashes. It would be silly to think that ntlm is "secure" as it's md4
+which is only an illusion of security.
+
+This means, Kanidm stores RADIUS credentials in the database is cleartext.
+
+We believe this is a reasonable decision and is a low risk to security as:
+
+* The access controls around radius secret by default are "strong", limited to only self-account read and radius-server read.
+* As RADIUS credentials are seperate to the primary account credentials, and have no other rights, their disclosure is not going to lead to a fully compromise account.
+* Having the credentials in cleartext allows a better user experience as clients can view the credentials at anytime to enroll further devices.
+
+## Account Credential Configuration
+
+For an account to use RADIUS they must first generate a RADIUS secret unique to
+that account. By default all accounts can self-create this secret.
+
+    kanidm account radius generate_secret --name william william
+    kanidm account radius show_secret --name william william
+
+## Account group configuration
+
+Kanidm enforces that accounts which can authenticate to RADIUS must be a member
+of an allowed group. This allows you to define which users or groups may use
+wifi or VPN infrastructure, and gives a path for "revoking" access to the resources
+through group management. The key point of this, is that service accounts should
+not be part of this group.
+
+    kanidm group create --name idm_admin radius_access_allowed
+    kanidm group add_members --name idm_admin radius_access_allowed william
+
+## RADIUS Server Service Account
+
+To read these secrets, the radius server requires an account with the
+correct privileges. This can be created and assigned through the group
+"idm_radius_servers" which is provided by default.
+
+    kanidm account create --name admin radius_service_account "Radius Service Account"
+    kanidm group add_members --name admin idm_radius_servers radius_service_account
+    kanidm account credential generate_password --name admin radius_service_account
+
+## Deploying a RADIUS Container
+
+We provide a RADIUS container that has all the needed integrations. This container
+requires some cryptographic material, laid out in a volume like so:
 
     data
     data/ca.pem  # This is the kanidm ca.pem
-    data/config.ini
+    data/config.ini # This is the kanidm-radius configuration.
     data/certs
     data/certs/dh  # openssl dhparam -out ./dh 2048
-    data/certs/key.pem  # These are the radius ca/cert
+    data/certs/key.pem  # These are the radius ca/cert/key
     data/certs/cert.pem
     data/certs/ca.pem
 
-It's up to you to get a key/cert/ca for this purpose. The example config.ini looks like this:
+The config.ini has the following template:
 
     [kanidm_client]
-    url =
-    strict = false
-    ca = /data/ca.crt
-    user =
-    secret =
+    url = # URL to the kanidm server
+    strict = false # Strict CA verification
+    ca = /data/ca.pem # Path to the kanidm ca
+    user = # Username of the RADIUS service account
+    secret = # Generated secret for the service account
 
     ; default vlans for groups that don't specify one.
     [DEFAULT]
     vlan = 1
 
-    ; [group.test]
+    ; [group.test] # group.<name> will have these options applied
     ; vlan =
 
     [radiusd]
-    ca =
-    key =
-    cert =
-    dh =
-    required_group =
+    ca = # Path to the radius server's CA
+    key = # Path to the radius servers key
+    cert = # Path to the radius servers cert
+    dh = # Path to the radius servers dh params
+    required_group = # name of a kanidm group which you must be a member of to
+        # use radius.
 
-    ; [client.localhost]
-    ; ipaddr =
-    ; secret =
+    ; [client.localhost] # client.<nas name> configures wifi/vpn consumers
+    ; ipaddr = # ipv4 or ipv6 address of the NAS
+    ; secret = # shared secret
 
 A fully configured example is:
 
     [kanidm_client]
     ; be sure to check the listening port is correct, it's the docker internal port
-    ; not the external one!
+    ; not the external one if these containers are on the same host.
     url = https://<kanidmd container name or ip>:8443
     strict = true # adjust this if you have ca validation issues
     ca = /data/ca.crt
@@ -78,8 +137,8 @@ A fully configured example is:
     [DEFAULT]
     vlan = 1
 
-    ; [group.test]
-    ; vlan =
+    [group.network_admins]
+    vlan = 10
 
     [radiusd]
     ca = /data/certs/ca.pem
@@ -96,25 +155,14 @@ A fully configured example is:
     ipaddr = 172.17.0.0/16
     secret = testing123
 
-Now we can launch the radius instance:
+You can then run the container with:
 
     docker run --name radiusd -i -t -v ...:/data firstyear/kanidm_radius:latest
-    ...
-    Listening on auth address 127.0.0.1 port 18120 bound to server inner-tunnel
-    Listening on auth address * port 1812 bound to server default
-    Listening on acct address * port 1813 bound to server default
-    Listening on auth address :: port 1812 bound to server default
-    Listening on acct address :: port 1813 bound to server default
-    Listening on proxy address * port 53978
-    Listening on proxy address :: port 60435
-    Ready to process requests
 
-You can now test an authentication with:
+Authentication can be tested through the client.localhost nas configuration with:
 
-    docker exec -i -t radiusd radtest demo_user badpassword 127.0.0.1 10 testing123
-    docker exec -i -t radiusd radtest demo_user <radius show_secret value here> 127.0.0.1 10 testing123
-
-You should see Access-Accept or Access-Reject based on your calls.
+    docker exec -i -t radiusd radtest <username> badpassword 127.0.0.1 10 testing123
+    docker exec -i -t radiusd radtest <username> <radius show_secret value here> 127.0.0.1 10 testing123
 
 Finally, to expose this to a wifi infrastructure, add your NAS in config.ini:
 
@@ -128,4 +176,5 @@ If you have any issues, check the logs from the radius output they tend to indic
 of the problem.
 
 Note the radius container *is* configured to provide Tunnel-Private-Group-ID so if you wish to use
-wifi assigned vlans on your infrastructure, you can assign these by groups in the config.ini.
+wifi assigned vlans on your infrastructure, you can assign these by groups in the config.ini as
+shown in the above examples.
