@@ -1,13 +1,12 @@
-Why TLS is required?
---------------------
+
+# Why TLS?
 
 In the getting started you may notice that we require TLS to be configure in
 your container - or that you provide something *with* TLS in front like haproxy.
 
 This is due to a single setting on the server - secure_cookies
 
-What are secure cookies?
-------------------------
+## What are secure cookies?
 
 Secure Cookies is a flag set in cookies that "asks" a client only to transmit them
 back to the origin site if and only if https is present in the URL.
@@ -16,8 +15,7 @@ CA verification is *not* checked - you can use invalid, out of date certificates
 or even certificates where the subjectAltName does not match. But the client
 must see https:// as the destination else it *will not* send the cookies.
 
-How does that affect kanidm?
-----------------------------
+## How does that affect kanidm?
 
 Kanidm's authentication system is a stepped challenge response design, where you
 initially request an "intent" to authenticated. Once you establish this intent

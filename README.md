@@ -35,67 +35,25 @@ See our documentation on [rights and ethics]
 * Human error occurs - we should be designed to minimise human mistakes and empower people.
 * The system should be easy to understand and reason about for users and admins.
 
-## Quick start
+## Documentation
 
-Today the server is still in a state of heavy development, and hasn't been packaged or setup for
-production usage.
+For more see the [kanidm book]
 
-However, we are able to run test or demo servers that are suitable for previews and testing.
-
-After getting the code, you will need a rust environment. Please investigate rustup for your platform
-to establish this.
-
-Once you have the source code, you need certificates to use with the server. I recommend using
-let's encrypt, but if this is not possible, please use our insecure cert tool:
-
-    mkdir insecure
-    cd insecure
-    ../insecure_generate_tls.sh
-
-You can now build and run the server with:
-
-    cd kanidmd
-    cargo run -- recover_account -D /tmp/kanidm.db -n admin
-    cargo run -- server -D /tmp/kanidm.db -C ../insecure/ca.pem -c ../insecure/cert.pem -k ../insecure/key.pem --bindaddr 127.0.0.1:8080
-
-In a new terminal, you can now build and run the client tools with:
-
-    cd kanidm_tools
-    cargo run -- --help
-    cargo run -- self whoami -H https://localhost:8080 -D anonymous -C ../insecure/ca.pem
-    cargo run -- self whoami -H https://localhost:8080 -D admin -C ../insecure/ca.pem
-
-For more see [getting started]
-
-[getting started]: https://github.com/Firstyear/kanidm/blob/master/GETTING_STARTED.md
-
-## Development and Testing
-
-There are tests of various components through the various components of the project. When developing
-it't best if you test in the component you are working on, followed by the full server tests.
-
-There are *no* prerequisites to running these tests or special configurations. cargo test should
-just work!
-
-### Using curl with anonymous:
-
-    curl -b /tmp/cookie.jar -c /tmp/cookie.jar --cacert ../insecure/ca.pem  -X POST -d "{\"step\":{\"Init\":[\"anonymous\",null]}}"  https://localhost:8080/v1/auth
-    curl -b /tmp/cookie.jar  -c /tmp/cookie.jar --cacert ../insecure/ca.pem  -X POST -d "{\"step\":{\"Creds\":[\"Anonymous\"]}}"  https://localhost:8080/v1/auth
+[kanidm book]: https://github.com/Firstyear/kanidm/blob/master/kanidm_book/src/SUMMARY.md
 
 ## Implemented/Planned features
 
-* RBAC design
-* SSH key distribution for servers
+* SSH key distribution for servers (done)
 * Pam/nsswitch clients (with limited offline auth)
 * Sudo rule distribution via nsswitch
 * CLI and WebUI for administration
 * OIDC/Oauth
-* Claims (limited by time and credential scope)
+* RBAC/Claims (limited by time and credential scope)
 * MFA (Webauthn, TOTP)
-* Highly concurrent desgin (MVCC, COW)
+* Highly concurrent desgin (MVCC, COW) (done)
 * Replication (async multiple active write servers, read only servers)
 * Account impersonation
-* RADIUS integration
+* RADIUS integration (done)
 * Self service UI with wifi enrollment, claim management and more.
 * Synchronisation to other IDM services
 
@@ -106,13 +64,15 @@ just work!
 * Generic database: We don't want to be another NoSQL database, we want to be an IDM solution.
 * Being LDAP/GSSAPI/Kerberos: These are all legacy protocols that are hard to use and confine our thinking - we should avoid "being like them".
 
-## Designs
+## Development and Testing
+
+### Designs
 
 See the [designs] folder
 
 [designs]: https://github.com/Firstyear/kanidm/tree/master/designs
 
-## Get involved
+### Get involved
 
 To get started, you'll need to fork or branch, and we'll merge based on PR's.
 
@@ -136,11 +96,13 @@ start working:
 ```
 git branch <feature-branch-name>
 git checkout <feature-branche-name>
+cargo test
 ```
 
 When you are ready for review (even if the feature isn't complete and you just want some advice)
 
 ```
+cargo test
 git commit -m 'Commit message' change_file.rs ...
 git push <myfork/origin> <feature-branch-name>
 ```
@@ -172,13 +134,51 @@ always stop and reset with:
 git rebase --abort
 ```
 
+### Development Server Quickstart for Interactive Testing
+
+Today the server is still in a state of heavy development, and hasn't been packaged or setup for
+production usage.
+
+However, we are able to run test or demo servers that are suitable for previews and testing.
+
+After getting the code, you will need a rust environment. Please investigate rustup for your platform
+to establish this.
+
+Once you have the source code, you need certificates to use with the server. I recommend using
+let's encrypt, but if this is not possible, please use our insecure cert tool:
+
+    mkdir insecure
+    cd insecure
+    ../insecure_generate_tls.sh
+
+You can now build and run the server with:
+
+    cd kanidmd
+    cargo run -- recover_account -D /tmp/kanidm.db -n admin
+    cargo run -- server -D /tmp/kanidm.db -C ../insecure/ca.pem -c ../insecure/cert.pem -k ../insecure/key.pem --bindaddr 127.0.0.1:8080
+
+In a new terminal, you can now build and run the client tools with:
+
+    cd kanidm_tools
+    cargo run -- --help
+    cargo run -- self whoami -H https://localhost:8080 -D anonymous -C ../insecure/ca.pem
+    cargo run -- self whoami -H https://localhost:8080 -D admin -C ../insecure/ca.pem
+
+
+### Using curl with anonymous:
+
+Sometimes you may want to check the json of an endpoint. Before you can do this, you need
+a valid session and cookie jar established. To do this with curl and anonymous:
+
+    curl -b /tmp/cookie.jar -c /tmp/cookie.jar --cacert ../insecure/ca.pem  -X POST -d "{\"step\":{\"Init\":[\"anonymous\",null]}}"  https://localhost:8080/v1/auth
+    curl -b /tmp/cookie.jar  -c /tmp/cookie.jar --cacert ../insecure/ca.pem  -X POST -d "{\"step\":{\"Creds\":[\"Anonymous\"]}}"  https://localhost:8080/v1/auth
+
 
 ## Why do I see rsidm references?
 
 The original project name was rsidm while it was a thought experiment. Now that it's growing
 and developing, we gave it a better project name. Kani is Japanese for "crab". Rust's mascot is a crab.
 Idm is the common industry term for identity management services.
-It all works out in the end.
 
 
 
