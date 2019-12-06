@@ -74,6 +74,7 @@ pub(crate) struct Account {
     // primary: Credential
     // app_creds: Vec<Credential>
     // account expiry? (as opposed to cred expiry)
+    // spn?
 }
 
 impl Account {

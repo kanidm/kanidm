@@ -20,6 +20,7 @@ use concread::cowcell::{CowCell, CowCellWriteTxn};
 use std::collections::BTreeMap;
 use std::time::Duration;
 use uuid::Uuid;
+use zxcvbn;
 
 pub struct IdmServer {
     // There is a good reason to keep this single thread - it
@@ -257,9 +258,46 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         //
         // I don't think so - because we should only be showing how STRONG the pw is ...
 
-        // is the password long enough?
+        // password strength and badlisting is always global, rather than per-pw-policy.
+        // pw-policy as check on the account is about requirements for mfa for example.
+        //
+        // does the password pass zxcvbn?
 
-        // check a password badlist
+        // Get related inputs, such as account name, email, etc.
+        // TODO: Add spn, spn_domain, and email here.
+        let related: Vec<&str> = vec![
+            account.name.as_str(),
+            account.displayname.as_str(),
+        ];
+
+        let entropy = try_audit!(au, zxcvbn::zxcvbn(
+            pce.cleartext.as_str(),
+            related.as_slice()
+        )
+            .map_err(|_| {
+                OperationError::InvalidEmptyPassword
+            }));
+
+        if entropy.score() < 3 {
+            // The password is too week as per:
+            // https://docs.rs/zxcvbn/2.0.0/zxcvbn/struct.Entropy.html
+            let feedback: zxcvbn::feedback::Feedback = entropy.feedback()
+                .as_ref()
+                .ok_or(OperationError::InvalidState)
+                .map(|v| v.clone())
+                .map_err(|e| {
+                    audit_log!(au, "zxcvbn returned no feedback when score < 3");
+                    e
+                })?;
+
+            audit_log!(au, "pw feedback -> {:?}", feedback);
+
+            // return Err(OperationError::InvalidPassword(feedback))
+            return Err(OperationError::InvalidPassword)
+        }
+
+        // check account pwpolicy (for 3 or 4)?
+        // check a password badlist to eliminate more content
 
         // it returns a modify
         let modlist = try_audit!(
@@ -735,6 +773,24 @@ mod tests {
 
             // view the token?
             assert!(r1 == tok_r.secret);
+        })
+    }
+
+    #[test]
+    fn test_idm_simple_password_reject_weak() {
+        run_idm_test!(|_qs: &QueryServer, idms: &IdmServer, au: &mut AuditScope| {
+            let mut idms_prox_write = idms.proxy_write();
+
+            let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, "password", None);
+            let e = idms_prox_write.set_account_password(au, &pce);
+            assert!(e.is_err());
+
+            // Check the "name" checking works too (I think admin may hit a common pw rule first)
+            let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, "admin_nta", None);
+            let e = idms_prox_write.set_account_password(au, &pce);
+            assert!(e.is_err());
+
+            assert!(idms_prox_write.commit(au).is_ok());
         })
     }
 }
