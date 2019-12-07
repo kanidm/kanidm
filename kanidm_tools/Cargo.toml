@@ -13,6 +13,10 @@ path = "src/main.rs"
 name = "kanidm_ssh_authorizedkeys"
 path = "src/ssh_authorizedkeys.rs"
 
+[[bin]]
+name = "kanidm_badlist_preprocess"
+path = "src/badlist_preprocess.rs"
+
 [dependencies]
 kanidm_client = { path = "../kanidm_client" }
 kanidm_proto = { path = "../kanidm_proto" }
@@ -23,4 +27,6 @@ env_logger = "0.6"
 serde = "1.0"
 serde_json = "1.0"
 shellexpand = "1.0"
+rayon = "1.2"
 
+zxcvbn = "2.0"

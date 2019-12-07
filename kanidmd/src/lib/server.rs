@@ -1631,12 +1631,14 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_SCHEMA_ATTR_DOMAIN_UUID,
             JSON_SCHEMA_ATTR_DOMAIN_SSID,
             JSON_SCHEMA_ATTR_GIDNUMBER,
+            JSON_SCHEMA_ATTR_BADLIST_PASSWORD,
             JSON_SCHEMA_CLASS_PERSON,
             JSON_SCHEMA_CLASS_GROUP,
             JSON_SCHEMA_CLASS_ACCOUNT,
             JSON_SCHEMA_CLASS_DOMAIN_INFO,
             JSON_SCHEMA_CLASS_POSIXACCOUNT,
             JSON_SCHEMA_CLASS_POSIXGROUP,
+            JSON_SCHEMA_CLASS_SYSTEM_CONFIG,
         ];
 
         let mut audit_si = AuditScope::new("start_initialise_schema_idm");
@@ -1660,7 +1662,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let mut audit_an = AuditScope::new("start_system_core_items");
         let res = self
             .internal_assert_or_create_str(&mut audit_an, JSON_SYSTEM_INFO_V1)
-            .and_then(|_| self.internal_migrate_or_create_str(&mut audit_an, JSON_DOMAIN_INFO_V1));
+            .and_then(|_| self.internal_migrate_or_create_str(&mut audit_an, JSON_DOMAIN_INFO_V1))
+            .and_then(|_| self.internal_migrate_or_create_str(&mut audit_an, JSON_SYSTEM_CONFIG_V1));
         audit.append_scope(audit_an);
         audit_log!(audit, "initialise_idm p1 -> result {:?}", res);
         debug_assert!(res.is_ok());
@@ -1743,6 +1746,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1,
             JSON_IDM_ACP_ACP_MANAGE_PRIV_V1,
             JSON_IDM_ACP_DOMAIN_ADMIN_PRIV_V1,
+            JSON_IDM_ACP_SYSTEM_CONFIG_PRIV_V1,
         ];
 
         let res: Result<(), _> = idm_entries

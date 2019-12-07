@@ -36,12 +36,21 @@ macro_rules! try_from_entry {
                 ))?;
 
         let displayname = $value.get_ava_single_string("displayname").ok_or(
-            OperationError::InvalidAccountState("Missing attribute: displayname".to_string()),
+            OperationError::InvalidAccountState("Missing attribute: displayname".to_string())
         )?;
 
         let primary = $value
             .get_ava_single_credential("primary_credential")
             .map(|v| v.clone());
+
+        let spn = $value.get_ava_single("spn")
+            .map(|s| {
+                debug_assert!(s.is_spn());
+                s.to_proto_string_clone()
+            })
+            .ok_or(
+                OperationError::InvalidAccountState("Missing attribute: spn".to_string())
+            )?;
 
         // Resolved by the caller
         let groups = $groups;
@@ -54,6 +63,7 @@ macro_rules! try_from_entry {
             displayname: displayname,
             groups: groups,
             primary: primary,
+            spn: spn,
         })
     }};
 }
@@ -74,7 +84,10 @@ pub(crate) struct Account {
     // primary: Credential
     // app_creds: Vec<Credential>
     // account expiry? (as opposed to cred expiry)
-    // spn?
+    pub spn: String,
+    // TODO: When you add mail, you should update the check to zxcvbn
+    // to include these.
+    // pub mail: Vec<String>
 }
 
 impl Account {

@@ -11,6 +11,7 @@ use crate::server::QueryServerReadTransaction;
 use crate::server::{QueryServer, QueryServerTransaction, QueryServerWriteTransaction};
 use crate::utils::{password_from_random, readable_password_from_random, uuid_from_duration, SID};
 use crate::value::PartialValue;
+use crate::constants::UUID_SYSTEM_CONFIG;
 
 use kanidm_proto::v1::AuthState;
 use kanidm_proto::v1::OperationError;
@@ -253,7 +254,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             return Err(OperationError::SystemProtectedObject);
         }
 
-        // TODO: Is it a security issue to reveal pw policy checks BEFORE permission is
+        // Question: Is it a security issue to reveal pw policy checks BEFORE permission is
         // determined over the credential modification?
         //
         // I don't think so - because we should only be showing how STRONG the pw is ...
@@ -264,24 +265,25 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // does the password pass zxcvbn?
 
         // Get related inputs, such as account name, email, etc.
-        // TODO: Add spn, spn_domain, and email here.
         let related: Vec<&str> = vec![
             account.name.as_str(),
             account.displayname.as_str(),
+            account.spn.as_str()
         ];
 
-        let entropy = try_audit!(au, zxcvbn::zxcvbn(
-            pce.cleartext.as_str(),
-            related.as_slice()
-        )
-            .map_err(|_| {
-                OperationError::InvalidEmptyPassword
-            }));
+        let entropy = try_audit!(
+            au,
+            zxcvbn::zxcvbn(pce.cleartext.as_str(), related.as_slice())
+                .map_err(|_| OperationError::PasswordEmpty)
+        );
 
+        // check account pwpolicy (for 3 or 4)? Do we need pw strength beyond this
+        // or should we be enforcing mfa instead
         if entropy.score() < 3 {
             // The password is too week as per:
             // https://docs.rs/zxcvbn/2.0.0/zxcvbn/struct.Entropy.html
-            let feedback: zxcvbn::feedback::Feedback = entropy.feedback()
+            let feedback: zxcvbn::feedback::Feedback = entropy
+                .feedback()
                 .as_ref()
                 .ok_or(OperationError::InvalidState)
                 .map(|v| v.clone())
@@ -292,12 +294,18 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
             audit_log!(au, "pw feedback -> {:?}", feedback);
 
-            // return Err(OperationError::InvalidPassword(feedback))
-            return Err(OperationError::InvalidPassword)
+            // return Err(OperationError::PasswordTooWeak(feedback))
+            return Err(OperationError::PasswordTooWeak);
         }
 
-        // check account pwpolicy (for 3 or 4)?
         // check a password badlist to eliminate more content
+        // we check the password as "lower case" to help eliminate possibilities
+        let lc_password = PartialValue::new_iutf8s(pce.cleartext.as_str());
+        let badlist_entry = try_audit!(au, self.qs_write.internal_search_uuid(au, &UUID_SYSTEM_CONFIG));
+        if badlist_entry.attribute_value_pres("badlist_password", &lc_password) {
+            audit_log!(au, "Password found in badlist, rejecting");
+            return Err(OperationError::PasswordBadListed)
+        }
 
         // it returns a modify
         let modlist = try_audit!(
@@ -787,6 +795,11 @@ mod tests {
 
             // Check the "name" checking works too (I think admin may hit a common pw rule first)
             let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, "admin_nta", None);
+            let e = idms_prox_write.set_account_password(au, &pce);
+            assert!(e.is_err());
+
+            // Check that the demo badlist password is rejected.
+            let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, "demo_badlist_shohfie3aeci2oobur0aru9uushah6EiPi2woh4hohngoighaiRuepieN3ongoo1", None);
             let e = idms_prox_write.set_account_password(au, &pce);
             assert!(e.is_err());
 

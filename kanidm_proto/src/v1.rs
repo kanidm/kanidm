@@ -74,8 +74,9 @@ pub enum OperationError {
     InvalidSessionState,
     SystemProtectedObject,
     SystemProtectedAttribute,
-    InvalidPassword,
-    InvalidEmptyPassword
+    PasswordTooWeak,
+    PasswordEmpty,
+    PasswordBadListed,
 }
 
 impl PartialEq for OperationError {
