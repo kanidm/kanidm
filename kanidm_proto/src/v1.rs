@@ -75,6 +75,7 @@ pub enum OperationError {
     SystemProtectedObject,
     SystemProtectedAttribute,
     PasswordTooWeak,
+    PasswordTooShort(usize),
     PasswordEmpty,
     PasswordBadListed,
 }

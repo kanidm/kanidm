@@ -14,6 +14,7 @@ pub static PURGE_TIMEOUT: u64 = 60;
 pub static PURGE_TIMEOUT: u64 = 3600;
 // 5 minute auth session window.
 pub static AUTH_SESSION_TIMEOUT: u64 = 300;
+pub static PW_MIN_LENGTH: usize = 10;
 
 // Built in group and account ranges.
 pub static STR_UUID_ADMIN: &'static str = "00000000-0000-0000-0000-000000000000";
@@ -162,7 +163,8 @@ pub static _UUID_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1: &'static str =
 // Skip 25 - see domain info.
 pub static UUID_IDM_ACP_DOMAIN_ADMIN_PRIV_V1: &'static str = "00000000-0000-0000-0000-ffffff000026";
 pub static STR_UUID_SYSTEM_CONFIG: &'static str = "00000000-0000-0000-0000-ffffff000027";
-pub static UUID_IDM_ACP_SYSTEM_CONFIG_PRIV_V1: &'static str = "00000000-0000-0000-0000-ffffff000028";
+pub static UUID_IDM_ACP_SYSTEM_CONFIG_PRIV_V1: &'static str =
+    "00000000-0000-0000-0000-ffffff000028";
 
 // End of system ranges
 pub static STR_UUID_DOES_NOT_EXIST: &'static str = "00000000-0000-0000-0000-fffffffffffe";
@@ -469,7 +471,6 @@ pub static JSON_DOMAIN_INFO_V1: &'static str = r#"{
         "description": ["This local domain's info and metadata object."]
     }
 }"#;
-
 
 /*
 // Template acp
@@ -1278,7 +1279,6 @@ pub static JSON_IDM_ACP_SYSTEM_CONFIG_PRIV_V1: &'static str = r#"{
         ]
     }
 }"#;
-
 
 // Anonymous should be the last opbject in the range here.
 pub static JSON_ANONYMOUS_V1: &'static str = r#"{

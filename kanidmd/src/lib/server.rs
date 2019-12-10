@@ -1663,7 +1663,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let res = self
             .internal_assert_or_create_str(&mut audit_an, JSON_SYSTEM_INFO_V1)
             .and_then(|_| self.internal_migrate_or_create_str(&mut audit_an, JSON_DOMAIN_INFO_V1))
-            .and_then(|_| self.internal_migrate_or_create_str(&mut audit_an, JSON_SYSTEM_CONFIG_V1));
+            .and_then(|_| {
+                self.internal_migrate_or_create_str(&mut audit_an, JSON_SYSTEM_CONFIG_V1)
+            });
         audit.append_scope(audit_an);
         audit_log!(audit, "initialise_idm p1 -> result {:?}", res);
         debug_assert!(res.is_ok());

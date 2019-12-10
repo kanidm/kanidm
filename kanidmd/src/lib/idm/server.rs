@@ -1,5 +1,6 @@
 use crate::audit::AuditScope;
-use crate::constants::AUTH_SESSION_TIMEOUT;
+use crate::constants::UUID_SYSTEM_CONFIG;
+use crate::constants::{AUTH_SESSION_TIMEOUT, PW_MIN_LENGTH};
 use crate::event::{AuthEvent, AuthEventStep, AuthResult};
 use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
@@ -11,7 +12,6 @@ use crate::server::QueryServerReadTransaction;
 use crate::server::{QueryServer, QueryServerTransaction, QueryServerWriteTransaction};
 use crate::utils::{password_from_random, readable_password_from_random, uuid_from_duration, SID};
 use crate::value::PartialValue;
-use crate::constants::UUID_SYSTEM_CONFIG;
 
 use kanidm_proto::v1::AuthState;
 use kanidm_proto::v1::OperationError;
@@ -262,13 +262,19 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // password strength and badlisting is always global, rather than per-pw-policy.
         // pw-policy as check on the account is about requirements for mfa for example.
         //
+
+        // is the password at least 10 char?
+        if pce.cleartext.len() < PW_MIN_LENGTH {
+            return Err(OperationError::PasswordTooShort(PW_MIN_LENGTH));
+        }
+
         // does the password pass zxcvbn?
 
         // Get related inputs, such as account name, email, etc.
         let related: Vec<&str> = vec![
             account.name.as_str(),
             account.displayname.as_str(),
-            account.spn.as_str()
+            account.spn.as_str(),
         ];
 
         let entropy = try_audit!(
@@ -301,10 +307,13 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // check a password badlist to eliminate more content
         // we check the password as "lower case" to help eliminate possibilities
         let lc_password = PartialValue::new_iutf8s(pce.cleartext.as_str());
-        let badlist_entry = try_audit!(au, self.qs_write.internal_search_uuid(au, &UUID_SYSTEM_CONFIG));
+        let badlist_entry = try_audit!(
+            au,
+            self.qs_write.internal_search_uuid(au, &UUID_SYSTEM_CONFIG)
+        );
         if badlist_entry.attribute_value_pres("badlist_password", &lc_password) {
             audit_log!(au, "Password found in badlist, rejecting");
-            return Err(OperationError::PasswordBadListed)
+            return Err(OperationError::PasswordBadListed);
         }
 
         // it returns a modify
@@ -787,9 +796,15 @@ mod tests {
     #[test]
     fn test_idm_simple_password_reject_weak() {
         run_idm_test!(|_qs: &QueryServer, idms: &IdmServer, au: &mut AuditScope| {
+            // len check
             let mut idms_prox_write = idms.proxy_write();
 
             let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, "password", None);
+            let e = idms_prox_write.set_account_password(au, &pce);
+            assert!(e.is_err());
+
+            // zxcvbn check
+            let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, "password1234", None);
             let e = idms_prox_write.set_account_password(au, &pce);
             assert!(e.is_err());
 
@@ -799,7 +814,11 @@ mod tests {
             assert!(e.is_err());
 
             // Check that the demo badlist password is rejected.
-            let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, "demo_badlist_shohfie3aeci2oobur0aru9uushah6EiPi2woh4hohngoighaiRuepieN3ongoo1", None);
+            let pce = PasswordChangeEvent::new_internal(
+                &UUID_ADMIN,
+                "demo_badlist_shohfie3aeci2oobur0aru9uushah6EiPi2woh4hohngoighaiRuepieN3ongoo1",
+                None,
+            );
             let e = idms_prox_write.set_account_password(au, &pce);
             assert!(e.is_err());
 

@@ -1,14 +1,15 @@
 extern crate structopt;
 
 // use shellexpand;
-use std::path::PathBuf;
-use structopt::StructOpt;
-use zxcvbn;
+use rayon::prelude::*;
+use serde_json;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufWriter;
-use rayon::prelude::*;
-use serde_json;
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use structopt::StructOpt;
+use zxcvbn;
 
 use kanidm_proto::v1::Modify;
 
@@ -42,7 +43,7 @@ fn main() {
     } else {
         debug!("Running in list filtering mode");
     }
-    println!("Kanidm badlist preprocessor - this may take a long time ...");
+    info!("Kanidm badlist preprocessor - this may take a long time ...");
 
     // Build a temp struct for all the pws.
     // TODO: Shellexpand all of these.
@@ -55,10 +56,7 @@ fn main() {
     debug!("Using paths -> {:?}", expanded_paths);
     */
 
-    // Used to remove dups.
     let mut pwset: Vec<String> = Vec::new();
-    pwset.push("password".to_string());
-    pwset.push("ntaoehtunanheunauhrurc".to_string());
 
     // Read them all in, remove blank lines.
     for f in opt.password_list.iter() {
@@ -66,7 +64,7 @@ fn main() {
             Ok(v) => v,
             Err(_) => {
                 info!("Skipping file -> {:?}", f);
-                continue
+                continue;
             }
         };
         let mut contents = String::new();
@@ -74,21 +72,36 @@ fn main() {
             Ok(_) => {}
             Err(e) => {
                 error!("{:?} -> {:?}", f, e);
-                continue
+                continue;
             }
         }
         let mut inner_pw: Vec<_> = contents.as_str().lines().map(|s| s.to_string()).collect();
         pwset.append(&mut inner_pw);
     }
 
-    debug!("Have {} pws to process", pwset.len());
+    debug!("Deduplicating pre-set ...");
+    pwset.sort_unstable();
+    pwset.dedup();
+
+    info!("Have {} pws to process", pwset.len());
+    let count: AtomicUsize = AtomicUsize::new(0);
     // Create an empty slice for empty site options, not needed in this context.
     let site_opts: Vec<&str> = Vec::new();
     // Run zxcbvn over them with filter, use btreeset to remove dups if any
-    let mut filt_pwset: Vec<_> = pwset.into_par_iter()
+    let mut filt_pwset: Vec<_> = pwset
+        .into_par_iter()
+        .inspect(|_| {
+            let tc = count.fetch_add(1, Ordering::AcqRel);
+            if tc % 1000 == 0 {
+                info!("{} ...", tc)
+            }
+        })
         .filter(|v| {
             if v.len() == 0 {
-                return false
+                return false;
+            }
+            if v.len() < 10 {
+                return false;
             }
             let r = zxcvbn::zxcvbn(v.as_str(), site_opts.as_slice()).expect("Empty Password?");
             // score of 2 or less is too weak and we'd already reject it.
@@ -110,17 +123,14 @@ fn main() {
     //  All remaining are either
     if opt.modlist {
         // - written to a file ready for modify, with a modify command printed.
-        let modlist: Vec<Modify> = filt_pwset.into_iter()
-            .map(|p| {
-                Modify::Present("badlist_password".to_string(), p)
-            })
+        let modlist: Vec<Modify> = filt_pwset
+            .into_iter()
+            .map(|p| Modify::Present("badlist_password".to_string(), p))
             .collect();
-        serde_json::to_writer_pretty(bwrite, &modlist)
-            .expect("Failed to serialise modlist");
-        println!("next step: kanidm raw modify -D admin '{{\"Eq\": [\"uuid\", \"00000000-0000-0000-0000-ffffff000026\"]}}' <your outfile>");
-    }  else  {
+        serde_json::to_writer_pretty(bwrite, &modlist).expect("Failed to serialise modlist");
+    // println!("next step: kanidm raw modify -D admin '{{\"Eq\": [\"uuid\", \"00000000-0000-0000-0000-ffffff000026\"]}}' <your outfile>");
+    } else {
         // - printed in json format
-        serde_json::to_writer_pretty(bwrite, &filt_pwset)
-            .expect("Failed to serialise modlist");
+        serde_json::to_writer_pretty(bwrite, &filt_pwset).expect("Failed to serialise modlist");
     }
 }
