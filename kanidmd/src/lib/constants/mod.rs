@@ -1,5 +1,9 @@
 use uuid::Uuid;
 
+// Re-export as needed
+pub mod system_config;
+pub use crate::constants::system_config::JSON_SYSTEM_CONFIG_V1;
+
 // Increment this as we add new schema types and values!!!
 pub static SYSTEM_INDEX_VERSION: i64 = 3;
 // On test builds, define to 60 seconds
@@ -10,6 +14,7 @@ pub static PURGE_TIMEOUT: u64 = 60;
 pub static PURGE_TIMEOUT: u64 = 3600;
 // 5 minute auth session window.
 pub static AUTH_SESSION_TIMEOUT: u64 = 300;
+pub static PW_MIN_LENGTH: usize = 10;
 
 // Built in group and account ranges.
 pub static STR_UUID_ADMIN: &'static str = "00000000-0000-0000-0000-000000000000";
@@ -108,11 +113,14 @@ pub static UUID_SCHEMA_ATTR_DOMAIN_SSID: &'static str = "00000000-0000-0000-0000
 pub static UUID_SCHEMA_ATTR_GIDNUMBER: &'static str = "00000000-0000-0000-0000-ffff00000056";
 pub static UUID_SCHEMA_CLASS_POSIXACCOUNT: &'static str = "00000000-0000-0000-0000-ffff00000057";
 pub static UUID_SCHEMA_CLASS_POSIXGROUP: &'static str = "00000000-0000-0000-0000-ffff00000058";
+pub static UUID_SCHEMA_ATTR_BADLIST_PASSWORD: &'static str = "00000000-0000-0000-0000-ffff00000059";
+pub static UUID_SCHEMA_CLASS_SYSTEM_CONFIG: &'static str = "00000000-0000-0000-0000-ffff00000060";
 
 // System and domain infos
 // I'd like to strongly criticise william of the past for fucking up these allocations.
 pub static _UUID_SYSTEM_INFO: &'static str = "00000000-0000-0000-0000-ffffff000001";
 pub static UUID_DOMAIN_INFO: &'static str = "00000000-0000-0000-0000-ffffff000025";
+// DO NOT allocate here, allocate below.
 
 // Access controls
 // skip 00 / 01 - see system info
@@ -154,6 +162,9 @@ pub static _UUID_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1: &'static str =
     "00000000-0000-0000-0000-ffffff000024";
 // Skip 25 - see domain info.
 pub static UUID_IDM_ACP_DOMAIN_ADMIN_PRIV_V1: &'static str = "00000000-0000-0000-0000-ffffff000026";
+pub static STR_UUID_SYSTEM_CONFIG: &'static str = "00000000-0000-0000-0000-ffffff000027";
+pub static UUID_IDM_ACP_SYSTEM_CONFIG_PRIV_V1: &'static str =
+    "00000000-0000-0000-0000-ffffff000028";
 
 // End of system ranges
 pub static STR_UUID_DOES_NOT_EXIST: &'static str = "00000000-0000-0000-0000-fffffffffffe";
@@ -163,6 +174,7 @@ lazy_static! {
     pub static ref UUID_ADMIN: Uuid = Uuid::parse_str(STR_UUID_ADMIN).unwrap();
     pub static ref UUID_DOES_NOT_EXIST: Uuid = Uuid::parse_str(STR_UUID_DOES_NOT_EXIST).unwrap();
     pub static ref UUID_ANONYMOUS: Uuid = Uuid::parse_str(STR_UUID_ANONYMOUS).unwrap();
+    pub static ref UUID_SYSTEM_CONFIG: Uuid = Uuid::parse_str(STR_UUID_SYSTEM_CONFIG).unwrap();
 }
 
 pub static JSON_ADMIN_V1: &'static str = r#"{
@@ -1204,7 +1216,7 @@ pub static JSON_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1: &'static str = r#"{
     }
 }"#;
 
-// 25 - domain admins acp
+// 28 - domain admins acp
 pub static JSON_IDM_ACP_DOMAIN_ADMIN_PRIV_V1: &'static str = r#"{
     "attrs": {
         "class": [
@@ -1234,6 +1246,36 @@ pub static JSON_IDM_ACP_DOMAIN_ADMIN_PRIV_V1: &'static str = r#"{
         ],
         "acp_modify_presentattr": [
             "domain_ssid"
+        ]
+    }
+}"#;
+
+// 28 - system config
+pub static JSON_IDM_ACP_SYSTEM_CONFIG_PRIV_V1: &'static str = r#"{
+    "attrs": {
+        "class": [
+            "object",
+            "access_control_profile",
+            "access_control_search",
+            "access_control_modify"
+        ],
+        "name": ["idm_acp_system_config_priv"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000028"],
+        "description": ["Builtin IDM Control for granting system configuration rights"],
+        "acp_receiver": [
+            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000019\"]}"
+        ],
+        "acp_targetscope": [
+            "{\"And\": [{\"Eq\": [\"uuid\",\"00000000-0000-0000-0000-ffffff000027\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+        ],
+        "acp_search_attr": [
+            "name",
+            "uuid",
+            "description",
+            "badlist_password"
+        ],
+        "acp_modify_presentattr": [
+            "badlist_password"
         ]
     }
 }"#;
@@ -1538,6 +1580,7 @@ pub static JSON_SCHEMA_ATTR_DOMAIN_SSID: &'static str = r#"{
       ]
     }
 }"#;
+
 pub static JSON_SCHEMA_ATTR_GIDNUMBER: &'static str = r#"{
     "attrs": {
       "class": [
@@ -1563,6 +1606,35 @@ pub static JSON_SCHEMA_ATTR_GIDNUMBER: &'static str = r#"{
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000056"
+      ]
+    }
+}"#;
+
+pub static JSON_SCHEMA_ATTR_BADLIST_PASSWORD: &'static str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "A password that is badlisted meaning that it can not be set as a valid password by any user account."
+      ],
+      "index": [],
+      "unique": [
+        "true"
+      ],
+      "multivalue": [
+        "true"
+      ],
+      "attributename": [
+        "badlist_password"
+      ],
+      "syntax": [
+        "UTF8STRING_INSENSITIVE"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000059"
       ]
     }
 }"#;
@@ -1719,6 +1791,7 @@ pub static JSON_SCHEMA_CLASS_POSIXGROUP: &'static str = r#"
     }
   }
 "#;
+
 pub static JSON_SCHEMA_CLASS_POSIXACCOUNT: &'static str = r#"
   {
     "attrs": {
@@ -1738,6 +1811,31 @@ pub static JSON_SCHEMA_CLASS_POSIXACCOUNT: &'static str = r#"
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000057"
+      ]
+    }
+  }
+"#;
+
+pub static JSON_SCHEMA_CLASS_SYSTEM_CONFIG: &'static str = r#"
+  {
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "classtype"
+      ],
+      "description": [
+        "The class representing a system (topologies) configuration options."
+      ],
+      "classname": [
+        "system_config"
+      ],
+      "systemmay": [
+        "description",
+        "badlist_password"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000060"
       ]
     }
   }

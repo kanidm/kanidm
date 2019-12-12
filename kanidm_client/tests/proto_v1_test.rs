@@ -258,13 +258,19 @@ fn test_server_admin_reset_simple_password() {
         let res = rsclient.modify(f.clone(), m.clone());
         assert!(res.is_ok());
 
-        // Now set it's password.
+        // Now set it's password - should be rejected based on low quality
         let res = rsclient.idm_account_primary_credential_set_password("testperson", "password");
+        assert!(res.is_err());
+        // Set the password to ensure it's good
+        let res = rsclient.idm_account_primary_credential_set_password(
+            "testperson",
+            "tai4eCohtae9aegheo3Uw0oobahVighaig6heeli",
+        );
         assert!(res.is_ok());
         // Check it stuck.
         let tclient = rsclient.new_session().expect("failed to build new session");
         assert!(tclient
-            .auth_simple_password("testperson", "password")
+            .auth_simple_password("testperson", "tai4eCohtae9aegheo3Uw0oobahVighaig6heeli")
             .is_ok());
 
         // Generate a pw instead

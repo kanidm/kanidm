@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 use std::fmt;
 use uuid::Uuid;
+// use zxcvbn::feedback;
 
 // These proto implementations are here because they have public definitions
 
@@ -25,6 +26,22 @@ pub enum PluginError {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
+pub enum ConsistencyError {
+    Unknown,
+    // Class, Attribute
+    SchemaClassMissingAttribute(String, String),
+    QueryServerSearchFailure,
+    EntryUuidCorrupt(u64),
+    UuidIndexCorrupt(String),
+    UuidNotUnique(String),
+    RefintNotUpheld(u64),
+    MemberOfInvalid(u64),
+    InvalidAttributeType(String),
+    DuplicateUniqueAttribute(String),
+    InvalidSPN(u64),
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub enum OperationError {
     EmptyRequest,
     Backend,
@@ -57,22 +74,19 @@ pub enum OperationError {
     InvalidSessionState,
     SystemProtectedObject,
     SystemProtectedAttribute,
+    PasswordTooWeak,
+    PasswordTooShort(usize),
+    PasswordEmpty,
+    PasswordBadListed,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub enum ConsistencyError {
-    Unknown,
-    // Class, Attribute
-    SchemaClassMissingAttribute(String, String),
-    QueryServerSearchFailure,
-    EntryUuidCorrupt(u64),
-    UuidIndexCorrupt(String),
-    UuidNotUnique(String),
-    RefintNotUpheld(u64),
-    MemberOfInvalid(u64),
-    InvalidAttributeType(String),
-    DuplicateUniqueAttribute(String),
-    InvalidSPN(u64),
+impl PartialEq for OperationError {
+    fn eq(&self, other: &Self) -> bool {
+        // We do this to avoid InvalidPassword being checked as it's not
+        // derive PartialEq. Generally we only use the PartialEq for TESTING
+        // anyway.
+        std::mem::discriminant(self) == std::mem::discriminant(other)
+    }
 }
 
 /* ===== higher level types ===== */

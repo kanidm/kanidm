@@ -43,6 +43,16 @@ macro_rules! try_from_entry {
             .get_ava_single_credential("primary_credential")
             .map(|v| v.clone());
 
+        let spn = $value
+            .get_ava_single("spn")
+            .map(|s| {
+                debug_assert!(s.is_spn());
+                s.to_proto_string_clone()
+            })
+            .ok_or(OperationError::InvalidAccountState(
+                "Missing attribute: spn".to_string(),
+            ))?;
+
         // Resolved by the caller
         let groups = $groups;
 
@@ -54,6 +64,7 @@ macro_rules! try_from_entry {
             displayname: displayname,
             groups: groups,
             primary: primary,
+            spn: spn,
         })
     }};
 }
@@ -74,6 +85,10 @@ pub(crate) struct Account {
     // primary: Credential
     // app_creds: Vec<Credential>
     // account expiry? (as opposed to cred expiry)
+    pub spn: String,
+    // TODO: When you add mail, you should update the check to zxcvbn
+    // to include these.
+    // pub mail: Vec<String>
 }
 
 impl Account {
@@ -170,17 +185,13 @@ impl Account {
 #[cfg(test)]
 mod tests {
     use crate::constants::JSON_ANONYMOUS_V1;
-    use crate::entry::{Entry, EntryNew, EntryValid};
-    use crate::idm::account::Account;
+    // use crate::entry::{Entry, EntryNew, EntryValid};
+    // use crate::idm::account::Account;
 
     #[test]
     fn test_idm_account_from_anonymous() {
-        let anon_e: Entry<EntryValid, EntryNew> =
-            unsafe { Entry::unsafe_from_entry_str(JSON_ANONYMOUS_V1).to_valid_new() };
-        let anon_e = unsafe { anon_e.to_valid_committed() };
-
-        let anon_account = Account::try_from_entry_no_groups(anon_e).expect("Must not fail");
-        println!("{:?}", anon_account);
+        let anon_e = entry_str_to_account!(JSON_ANONYMOUS_V1);
+        println!("{:?}", anon_e);
         // I think that's it? we may want to check anonymous mech ...
     }
 
