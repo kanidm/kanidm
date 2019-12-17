@@ -6,6 +6,11 @@ version = "0.1.0"
 authors = ["William Brown <william@blackhats.net.au>"]
 # default-run = "kanidm_core"
 edition = "2018"
+license = "MPL-2.0"
+description = "Kanidm Server Library and Binary"
+documentation = "https://docs.rs/kanidm/latest/kanidm/"
+homepage = "https://github.com/Firstyear/kanidm/"
+repostiory = "https://github.com/Firstyear/kanidm/"
 
 [lib]
 name = "kanidm"
@@ -17,7 +22,7 @@ path = "src/server/main.rs"
 
 
 [dependencies]
-kanidm_proto = { path = "../kanidm_proto" }
+kanidm_proto = { path = "../kanidm_proto", version = "0.1" }
 
 actix = "0.7"
 actix-web = { version = "0.7", features = ["ssl"] }
