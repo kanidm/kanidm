@@ -4,6 +4,11 @@ version = "0.1.0"
 authors = ["William Brown <william@blackhats.net.au>"]
 edition = "2018"
 default-run = "kanidm"
+license = "MPL-2.0"
+description = "Kanidm Client Tools"
+documentation = "https://docs.rs/kanidm_tools/latest/kanidm_tools/"
+homepage = "https://github.com/Firstyear/kanidm/"
+repostiory = "https://github.com/Firstyear/kanidm/"
 
 [[bin]]
 name = "kanidm"
@@ -18,8 +23,8 @@ name = "kanidm_badlist_preprocess"
 path = "src/badlist_preprocess.rs"
 
 [dependencies]
-kanidm_client = { path = "../kanidm_client" }
-kanidm_proto = { path = "../kanidm_proto" }
+kanidm_client = { path = "../kanidm_client", version = "0.1" }
+kanidm_proto = { path = "../kanidm_proto", version = "0.1" }
 rpassword = "0.4"
 structopt = { version = "0.2", default-features = false }
 log = "0.4"

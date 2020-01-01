@@ -3,6 +3,11 @@ name = "kanidm_proto"
 version = "0.1.0"
 authors = ["William Brown <william@blackhats.net.au>"]
 edition = "2018"
+license = "MPL-2.0"
+description = "Kanidm Protocol Bindings for serde"
+documentation = "https://docs.rs/kanidm_proto/latest/kanidm_proto/"
+homepage = "https://github.com/Firstyear/kanidm/"
+repostiory = "https://github.com/Firstyear/kanidm/"
 
 [dependencies]
 serde = "1.0"
