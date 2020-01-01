@@ -12,6 +12,8 @@ As a result, most of the important parts of this system become the auditing and 
 admins on high security events and changes, rather than limiting time of credentials. An important
 part of this also is limitation of scope of the credential rather than time as well.
 
+https://pages.nist.gov/800-63-3/sp800-63b.html
+
 
 Kanidm account system
 =====================
