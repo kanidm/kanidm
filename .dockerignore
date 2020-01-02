@@ -2,5 +2,4 @@ target
 .git
 .gitignore
 test.db
-vendor
 

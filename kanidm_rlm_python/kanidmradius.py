@@ -79,7 +79,7 @@ def authorize(args):
     radiusd.radlog(radiusd.L_INFO, 'kanidm python module called')
 
     dargs = dict(args)
-    print(dargs)
+    # print(dargs)
 
     username = dargs['User-Name']
 
@@ -89,7 +89,7 @@ def authorize(args):
         print(e)
         return radiusd.RLM_MODULE_NOTFOUND
 
-    print("got token %s" % tok)
+    # print("got token %s" % tok)
 
     # Are they in the required group?
 
@@ -97,13 +97,13 @@ def authorize(args):
     for group in tok["groups"]:
         if group['name'] == REQ_GROUP:
             req_sat = True
-    print("required group satisfied -> %s" % req_sat)
+    print("required group satisfied -> %s:%s" % (username, req_sat))
     if req_sat is not True:
         return radiusd.RLM_MODULE_NOTFOUND
 
     # look up them in config for group vlan if possible.
     uservlan = reduce(check_vlan, tok["groups"], 0)
-    print("selected vlan %s" % uservlan)
+    print("selected vlan %s:%s" % (username, uservlan))
     # Convert the tok groups to groups.
     name = tok["name"]
     secret = tok["secret"]
@@ -119,7 +119,7 @@ def authorize(args):
         ('Cleartext-Password', str(secret)),
     )
 
-    print("OK! Returning details to radius ...")
+    print("OK! Returning details to radius for %s ..." % username)
     return (radiusd.RLM_MODULE_OK, reply, config)
 
 

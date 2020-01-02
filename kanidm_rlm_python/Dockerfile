@@ -15,11 +15,13 @@ COPY entrypoint.py /entrypoint.py
 # Copy in the python changes, as well as the default/inner-tunnel changes
 COPY mod-python /etc/raddb/mods-available/python
 COPY eap /etc/raddb/mods-available/eap
+COPY cache /etc/raddb/mods-available/cache
 COPY default /etc/raddb/sites-available/default
 COPY inner-tunnel /etc/raddb/sites-available/inner-tunnel
 
-# Enable the python module.
+# Enable the python and cache module.
 RUN ln -s ../mods-available/python /etc/raddb/mods-enabled/python
+# RUN ln -s ../mods-available/cache /etc/raddb/mods-enabled/cache
 
 # Allows radiusd (?) to write to the directory
 RUN chown -R radiusd: /etc/raddb && \

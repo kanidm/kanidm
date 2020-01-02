@@ -157,7 +157,7 @@ A fully configured example is:
 
 You can then run the container with:
 
-    docker run --name radiusd -i -t -v ...:/data firstyear/kanidm_radius:latest
+    docker run --name radiusd -v ...:/data firstyear/kanidm_radius:latest
 
 Authentication can be tested through the client.localhost nas configuration with:
 
@@ -173,7 +173,10 @@ Finally, to expose this to a wifi infrastructure, add your NAS in config.ini:
 And re-create/run your docker instance with `-p 1812:1812 -p 1812:1812/udp` ...
 
 If you have any issues, check the logs from the radius output they tend to indicate the cause
-of the problem.
+of the problem. To increase the logging you can re-run your environment with debug enabled:
+
+    docker rm radiusd
+    docker run --name radiusd -e DEBUG=True -i -t -v ...:/data firstyear/kanidm_radius:latest
 
 Note the radius container *is* configured to provide Tunnel-Private-Group-ID so if you wish to use
 wifi assigned vlans on your infrastructure, you can assign these by groups in the config.ini as
