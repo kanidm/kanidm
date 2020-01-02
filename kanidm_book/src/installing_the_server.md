@@ -27,5 +27,5 @@ You then want to set your domain name so that spn's are generated correctly.
 
 Now we can run the server so that it can accept connections.
 
-    docker run -p 8443:8443 -v /Users/william/development/rsidm/insecure:/data firstyear/kanidmd:latest
+    docker run -p 8443:8443 -v kanidmd:/data firstyear/kanidmd:latest
 

@@ -13,7 +13,9 @@ if MAJOR >= 3:
 else:
     import ConfigParser as configparser
 
-DEBUG = True
+DEBUG = False
+if os.environ.get('DEBUG', False):
+    DEBUG = True
 
 CONFIG = configparser.ConfigParser()
 CONFIG.read('/data/config.ini')
