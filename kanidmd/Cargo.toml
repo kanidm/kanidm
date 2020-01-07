@@ -10,7 +10,7 @@ license = "MPL-2.0"
 description = "Kanidm Server Library and Binary"
 documentation = "https://docs.rs/kanidm/latest/kanidm/"
 homepage = "https://github.com/Firstyear/kanidm/"
-repostiory = "https://github.com/Firstyear/kanidm/"
+repository = "https://github.com/Firstyear/kanidm/"
 
 [lib]
 name = "kanidm"

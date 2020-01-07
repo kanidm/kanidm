@@ -7,7 +7,7 @@ license = "MPL-2.0"
 description = "Kanidm Client Library"
 documentation = "https://docs.rs/kanidm_client/latest/kanidm_client/"
 homepage = "https://github.com/Firstyear/kanidm/"
-repostiory = "https://github.com/Firstyear/kanidm/"
+repository = "https://github.com/Firstyear/kanidm/"
 
 [dependencies]
 log = "0.4"
