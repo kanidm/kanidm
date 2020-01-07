@@ -8,7 +8,7 @@ license = "MPL-2.0"
 description = "Kanidm Client Tools"
 documentation = "https://docs.rs/kanidm_tools/latest/kanidm_tools/"
 homepage = "https://github.com/Firstyear/kanidm/"
-repostiory = "https://github.com/Firstyear/kanidm/"
+repository = "https://github.com/Firstyear/kanidm/"
 
 [[bin]]
 name = "kanidm"
