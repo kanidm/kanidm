@@ -1,13 +1,6 @@
 #![deny(warnings)]
 
-extern crate actix;
-extern crate env_logger;
-extern crate rpassword;
-
-extern crate kanidm;
-extern crate structopt;
-#[macro_use]
-extern crate log;
+use std::path::PathBuf;
 
 use kanidm::config::Configuration;
 use kanidm::core::{
@@ -15,7 +8,7 @@ use kanidm::core::{
     reindex_server_core, reset_sid_core, restore_server_core, verify_server_core,
 };
 
-use std::path::PathBuf;
+use log::{error, info};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]

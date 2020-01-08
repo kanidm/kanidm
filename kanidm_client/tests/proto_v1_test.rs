@@ -1,34 +1,16 @@
 #![deny(warnings)]
 
-#[macro_use]
-extern crate log;
-
-extern crate actix;
-use actix::prelude::*;
-
-extern crate kanidm;
-extern crate kanidm_client;
-extern crate kanidm_proto;
-extern crate serde_json;
-
-use kanidm_client::{KanidmClient, KanidmClientBuilder};
-
-use kanidm::config::{Configuration, IntegrationTestConfig};
-use kanidm::core::create_server_core;
-use kanidm_proto::v1::{Entry, Filter, Modify, ModifyList};
-
-extern crate reqwest;
-
-extern crate futures;
-// use futures::future;
-// use futures::future::Future;
-
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc;
 use std::thread;
 
-extern crate env_logger;
-extern crate tokio;
+use kanidm::config::{Configuration, IntegrationTestConfig};
+use kanidm::core::create_server_core;
+use kanidm_client::{KanidmClient, KanidmClientBuilder};
+use kanidm_proto::v1::{Entry, Filter, Modify, ModifyList};
+
+use actix::prelude::*;
+use log::debug;
 
 static PORT_ALLOC: AtomicUsize = AtomicUsize::new(8080);
 static ADMIN_TEST_PASSWORD: &'static str = "integration test admin password";

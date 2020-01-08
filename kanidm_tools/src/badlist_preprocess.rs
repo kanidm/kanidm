@@ -1,21 +1,16 @@
-extern crate structopt;
-
-// use shellexpand;
-use rayon::prelude::*;
-use serde_json;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufWriter;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use structopt::StructOpt;
-use zxcvbn;
 
 use kanidm_proto::v1::Modify;
 
-extern crate env_logger;
-#[macro_use]
-extern crate log;
+use log::{debug, error, info};
+use rayon::prelude::*;
+use serde_json;
+use structopt::StructOpt;
+use zxcvbn;
 
 #[derive(Debug, StructOpt)]
 struct ClientOpt {
