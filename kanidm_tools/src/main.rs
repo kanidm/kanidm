@@ -1,20 +1,17 @@
-extern crate structopt;
-use kanidm_client::{KanidmClient, KanidmClientBuilder};
-use kanidm_proto::v1::{Entry, Filter, Modify, ModifyList};
-use serde::de::DeserializeOwned;
-use std::path::PathBuf;
-use structopt::StructOpt;
-
-use shellexpand;
 use std::collections::BTreeMap;
 use std::error::Error;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
+use std::path::PathBuf;
 
-extern crate env_logger;
-#[macro_use]
-extern crate log;
+use kanidm_client::{KanidmClient, KanidmClientBuilder};
+use kanidm_proto::v1::{Entry, Filter, Modify, ModifyList};
+
+use log::debug;
+use serde::de::DeserializeOwned;
+use shellexpand;
+use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 struct CommonOpt {

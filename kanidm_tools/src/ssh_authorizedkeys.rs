@@ -1,12 +1,10 @@
-extern crate structopt;
-use kanidm_client::KanidmClientBuilder;
-use shellexpand;
 use std::path::PathBuf;
-use structopt::StructOpt;
 
-extern crate env_logger;
-#[macro_use]
-extern crate log;
+use kanidm_client::KanidmClientBuilder;
+
+use log::debug;
+use shellexpand;
+use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 struct ClientOpt {
