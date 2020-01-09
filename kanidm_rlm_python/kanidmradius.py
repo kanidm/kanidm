@@ -32,6 +32,7 @@ else:
     CA = False
 USER = CONFIG.get("kanidm_client", "user")
 SECRET = CONFIG.get("kanidm_client", "secret")
+DEFAULT_VLAN = CONFIG.get("radiusd", "vlan")
 
 URL = CONFIG.get('kanidm_client', 'url')
 AUTH_URL = "%s/v1/auth" % URL
@@ -102,7 +103,9 @@ def authorize(args):
         return radiusd.RLM_MODULE_NOTFOUND
 
     # look up them in config for group vlan if possible.
-    uservlan = reduce(check_vlan, tok["groups"], 0)
+    uservlan = reduce(check_vlan, tok["groups"], DEFAULT_VLAN)
+    if uservlan == 0:
+        print("mistake!")
     print("selected vlan %s:%s" % (username, uservlan))
     # Convert the tok groups to groups.
     name = tok["name"]
