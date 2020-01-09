@@ -37,7 +37,7 @@ macro_rules! try_from_account_e {
                 })?;
                 // Now convert the group entries to groups.
                 let groups: Result<Vec<_>, _> =
-                    ges.into_iter().map(|e| Group::try_from_entry(e)).collect();
+                    ges.into_iter().map(Group::try_from_entry).collect();
                 groups.map_err(|e| {
                     // log
                     e
@@ -87,22 +87,16 @@ impl Group {
         }
 
         // Now extract our needed attributes
-        let name =
-            value
-                .get_ava_single_string("name")
-                .ok_or(OperationError::InvalidAccountState(
-                    "Missing attribute: name".to_string(),
-                ))?;
+        let name = value.get_ava_single_string("name").ok_or_else(|| {
+            OperationError::InvalidAccountState("Missing attribute: name".to_string())
+        })?;
 
-        let uuid = value.get_uuid().clone();
+        let uuid = *value.get_uuid();
 
-        Ok(Group {
-            name: name,
-            uuid: uuid,
-        })
+        Ok(Group { name, uuid })
     }
 
-    pub fn into_proto(&self) -> ProtoGroup {
+    pub fn to_proto(&self) -> ProtoGroup {
         ProtoGroup {
             name: self.name.clone(),
             uuid: self.uuid.to_hyphenated_ref().to_string(),

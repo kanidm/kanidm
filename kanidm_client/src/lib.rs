@@ -42,7 +42,7 @@ struct KanidmClientConfig {
     // process ...
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct KanidmClientBuilder {
     address: Option<String>,
     verify_ca: bool,
@@ -88,10 +88,10 @@ impl KanidmClientBuilder {
         };
 
         Ok(KanidmClientBuilder {
-            address: address,
-            verify_ca: verify_ca,
-            verify_hostnames: verify_hostnames,
-            ca: ca,
+            address,
+            verify_ca,
+            verify_hostnames,
+            ca,
         })
     }
 
@@ -109,15 +109,11 @@ impl KanidmClientBuilder {
         };
 
         let mut contents = String::new();
-        f.read_to_string(&mut contents).map_err(|e| {
-            eprintln!("{:?}", e);
-            ()
-        })?;
+        f.read_to_string(&mut contents)
+            .map_err(|e| eprintln!("{:?}", e))?;
 
-        let config: KanidmClientConfig = toml::from_str(contents.as_str()).map_err(|e| {
-            eprintln!("{:?}", e);
-            ()
-        })?;
+        let config: KanidmClientConfig =
+            toml::from_str(contents.as_str()).map_err(|e| eprintln!("{:?}", e))?;
 
         self.apply_config_options(config)
     }
@@ -187,7 +183,7 @@ impl KanidmClientBuilder {
         let client = client_builder.build()?;
 
         Ok(KanidmClient {
-            client: client,
+            client,
             addr: address,
             builder: self,
         })
@@ -214,11 +210,7 @@ impl KanidmClient {
         // and then destructure.
 
         let builder = self.builder.clone();
-        let KanidmClient {
-            mut client,
-            addr: _,
-            builder: _,
-        } = builder.build()?;
+        let KanidmClient { mut client, .. } = builder.build()?;
 
         std::mem::swap(&mut self.client, &mut client);
         Ok(())
@@ -238,7 +230,7 @@ impl KanidmClient {
             .post(dest.as_str())
             .body(req_string)
             .send()
-            .map_err(|e| ClientError::Transport(e))?;
+            .map_err(ClientError::Transport)?;
 
         match response.status() {
             reqwest::StatusCode::OK => {}
@@ -265,7 +257,7 @@ impl KanidmClient {
             .put(dest.as_str())
             .body(req_string)
             .send()
-            .map_err(|e| ClientError::Transport(e))?;
+            .map_err(ClientError::Transport)?;
 
         match response.status() {
             reqwest::StatusCode::OK => {}
@@ -284,7 +276,7 @@ impl KanidmClient {
             .client
             .get(dest.as_str())
             .send()
-            .map_err(|e| ClientError::Transport(e))?;
+            .map_err(ClientError::Transport)?;
 
         match response.status() {
             reqwest::StatusCode::OK => {}
@@ -303,7 +295,7 @@ impl KanidmClient {
             .client
             .delete(dest.as_str())
             .send()
-            .map_err(|e| ClientError::Transport(e))?;
+            .map_err(ClientError::Transport)?;
 
         match response.status() {
             reqwest::StatusCode::OK => {}
@@ -383,31 +375,28 @@ impl KanidmClient {
 
     // search
     pub fn search(&self, filter: Filter) -> Result<Vec<Entry>, ClientError> {
-        let sr = SearchRequest { filter: filter };
+        let sr = SearchRequest { filter };
         let r: Result<SearchResponse, _> = self.perform_post_request("/v1/raw/search", sr);
         r.map(|v| v.entries)
     }
 
     // create
     pub fn create(&self, entries: Vec<Entry>) -> Result<(), ClientError> {
-        let c = CreateRequest { entries: entries };
+        let c = CreateRequest { entries };
         let r: Result<OperationResponse, _> = self.perform_post_request("/v1/raw/create", c);
         r.map(|_| ())
     }
 
     // modify
     pub fn modify(&self, filter: Filter, modlist: ModifyList) -> Result<(), ClientError> {
-        let mr = ModifyRequest {
-            filter: filter,
-            modlist: modlist,
-        };
+        let mr = ModifyRequest { filter, modlist };
         let r: Result<OperationResponse, _> = self.perform_post_request("/v1/raw/modify", mr);
         r.map(|_| ())
     }
 
     // delete
     pub fn delete(&self, filter: Filter) -> Result<(), ClientError> {
-        let dr = DeleteRequest { filter: filter };
+        let dr = DeleteRequest { filter };
         let r: Result<OperationResponse, _> = self.perform_post_request("/v1/raw/delete", dr);
         r.map(|_| ())
     }
@@ -448,12 +437,12 @@ impl KanidmClient {
     }
 
     pub fn idm_group_set_members(&self, id: &str, members: Vec<&str>) -> Result<(), ClientError> {
-        let m: Vec<_> = members.iter().map(|v| v.to_string()).collect();
+        let m: Vec<_> = members.iter().map(|v| (*v).to_string()).collect();
         self.perform_put_request(format!("/v1/group/{}/_attr/member", id).as_str(), m)
     }
 
     pub fn idm_group_add_members(&self, id: &str, members: Vec<&str>) -> Result<(), ClientError> {
-        let m: Vec<_> = members.iter().map(|v| v.to_string()).collect();
+        let m: Vec<_> = members.iter().map(|v| (*v).to_string()).collect();
         self.perform_post_request(format!("/v1/group/{}/_attr/member", id).as_str(), m)
     }
 
@@ -478,7 +467,7 @@ impl KanidmClient {
         new_group
             .attrs
             .insert("name".to_string(), vec![name.to_string()]);
-        self.perform_post_request(format!("/v1/group").as_str(), new_group)
+        self.perform_post_request("/v1/group", new_group)
     }
 
     // ==== accounts
@@ -496,7 +485,7 @@ impl KanidmClient {
         new_acct
             .attrs
             .insert("displayname".to_string(), vec![dn.to_string()]);
-        self.perform_post_request(format!("/v1/account").as_str(), new_acct)
+        self.perform_post_request("/v1/account", new_acct)
     }
 
     pub fn idm_account_set_displayname(&self, id: &str, dn: &str) -> Result<(), ClientError> {

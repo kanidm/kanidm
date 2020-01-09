@@ -131,7 +131,7 @@ macro_rules! filter_valid {
         use crate::filter::{Filter, FilterInvalid};
         let f: Filter<FilterInvalid> = Filter::new($fc);
         // Create a resolved filter, via the most unsafe means possible!
-        f.to_valid()
+        f.into_valid()
     }};
 }
 
@@ -147,7 +147,7 @@ macro_rules! filter_resolved {
         use crate::filter::{Filter, FilterInvalid};
         let f: Filter<FilterInvalid> = Filter::new($fc);
         // Create a resolved filter, via the most unsafe means possible!
-        f.to_valid_resolved()
+        f.into_valid_resolved()
     }};
 }
 

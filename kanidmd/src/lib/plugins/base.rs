@@ -81,7 +81,7 @@ impl Plugin for Base {
                     let v: Value = try_audit!(
                         au,
                         u.first()
-                            .ok_or(OperationError::Plugin(PluginError::Base(
+                            .ok_or_else(|| OperationError::Plugin(PluginError::Base(
                                 "Uuid format invalid".to_string()
                             )))
                             .map(|v| (*v).clone())
@@ -112,23 +112,20 @@ impl Plugin for Base {
                 .get_ava_single("uuid")
                 .ok_or(OperationError::InvalidEntryState)?
                 .to_uuid()
-                .ok_or(OperationError::InvalidAttribute("uuid".to_string()))?;
+                .ok_or_else(|| OperationError::InvalidAttribute("uuid".to_string()))?;
             audit_log!(au, "Entry valid UUID: {:?}", entry);
-            match cand_uuid.insert(uuid_ref) {
-                false => {
-                    audit_log!(au, "uuid duplicate found in create set! {:?}", uuid_ref);
-                    return Err(OperationError::Plugin(PluginError::Base(
-                        "Uuid duplicate detected in request".to_string(),
-                    )));
-                }
-                true => {}
+            if !cand_uuid.insert(uuid_ref) {
+                audit_log!(au, "uuid duplicate found in create set! {:?}", uuid_ref);
+                return Err(OperationError::Plugin(PluginError::Base(
+                    "Uuid duplicate detected in request".to_string(),
+                )));
             }
         }
 
         // Setup UUIDS because lazy_static can't create a type valid for range.
-        let uuid_admin = UUID_ADMIN.clone();
-        let uuid_anonymous = UUID_ANONYMOUS.clone();
-        let uuid_does_not_exist = UUID_DOES_NOT_EXIST.clone();
+        let uuid_admin = *UUID_ADMIN;
+        let uuid_anonymous = *UUID_ANONYMOUS;
+        let uuid_does_not_exist = *UUID_DOES_NOT_EXIST;
 
         // Check that the system-protected range is not in the cand_uuid, unless we are
         // an internal operation.
@@ -168,7 +165,7 @@ impl Plugin for Base {
         let filt_in = filter_all!(FC::Or(
             cand_uuid
                 .iter()
-                .map(|u| FC::Eq("uuid", PartialValue::new_uuid(*u.clone())))
+                .map(|u| FC::Eq("uuid", PartialValue::new_uuid(**u)))
                 .collect(),
         ));
 
@@ -185,7 +182,7 @@ impl Plugin for Base {
 
         match r {
             Ok(b) => {
-                if b == true {
+                if b {
                     audit_log!(au, "A UUID already exists, rejecting.");
                     return Err(OperationError::Plugin(PluginError::Base(
                         "Uuid duplicate found in database".to_string(),
@@ -237,7 +234,7 @@ impl Plugin for Base {
             }
         };
 
-        let r_uniq = entries
+        entries
             .iter()
             // do an exists checks on the uuid
             .map(|e| {
@@ -247,10 +244,10 @@ impl Plugin for Base {
                 // uniqueness!
                 let uuid: &Uuid = e.get_uuid();
 
-                let filt = filter!(FC::Eq("uuid", PartialValue::new_uuid(uuid.clone())));
+                let filt = filter!(FC::Eq("uuid", PartialValue::new_uuid(*uuid)));
                 match qs.internal_search(au, filt) {
                     Ok(r) => {
-                        if r.len() == 0 {
+                        if r.is_empty() {
                             Err(ConsistencyError::UuidIndexCorrupt(uuid.to_string()))
                         } else if r.len() == 1 {
                             Ok(())
@@ -262,22 +259,7 @@ impl Plugin for Base {
                 }
             })
             .filter(|v| v.is_err())
-            .collect();
-
-        /*
-        let mut r_name = entries.iter()
-            // do an eq internal search and validate == 1 (ignore ts + rc)
-            .map(|e| {
-            })
-            .filter(|v| {
-                v.is_err()
-            })
-            .collect();
-
-        r_uniq.append(r_name);
-        */
-
-        r_uniq
+            .collect()
     }
 }
 

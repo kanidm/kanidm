@@ -19,7 +19,7 @@ impl PasswordChangeEvent {
     pub fn new_internal(target: &Uuid, cleartext: &str, appid: Option<&str>) -> Self {
         PasswordChangeEvent {
             event: Event::from_internal(),
-            target: target.clone(),
+            target: *target,
             cleartext: cleartext.to_string(),
             appid: appid.map(|v| v.to_string()),
         }
@@ -31,7 +31,7 @@ impl PasswordChangeEvent {
         msg: IdmAccountSetPasswordMessage,
     ) -> Result<Self, OperationError> {
         let e = Event::from_rw_uat(audit, qs, msg.uat)?;
-        let u = e.get_uuid().ok_or(OperationError::InvalidState)?.clone();
+        let u = *e.get_uuid().ok_or(OperationError::InvalidState)?;
 
         Ok(PasswordChangeEvent {
             event: e,
@@ -53,9 +53,9 @@ impl PasswordChangeEvent {
 
         Ok(PasswordChangeEvent {
             event: e,
-            target: target,
-            cleartext: cleartext,
-            appid: appid,
+            target,
+            cleartext,
+            appid,
         })
     }
 }
@@ -79,8 +79,8 @@ impl GeneratePasswordEvent {
 
         Ok(GeneratePasswordEvent {
             event: e,
-            target: target,
-            appid: appid,
+            target,
+            appid,
         })
     }
 }
@@ -100,20 +100,14 @@ impl RegenerateRadiusSecretEvent {
     ) -> Result<Self, OperationError> {
         let e = Event::from_rw_uat(audit, qs, uat)?;
 
-        Ok(RegenerateRadiusSecretEvent {
-            event: e,
-            target: target,
-        })
+        Ok(RegenerateRadiusSecretEvent { event: e, target })
     }
 
     #[cfg(test)]
     pub fn new_internal(target: Uuid) -> Self {
         let e = Event::from_internal();
 
-        RegenerateRadiusSecretEvent {
-            event: e,
-            target: target,
-        }
+        RegenerateRadiusSecretEvent { event: e, target }
     }
 }
 
@@ -132,19 +126,13 @@ impl RadiusAuthTokenEvent {
     ) -> Result<Self, OperationError> {
         let e = Event::from_ro_uat(audit, qs, uat)?;
 
-        Ok(RadiusAuthTokenEvent {
-            event: e,
-            target: target,
-        })
+        Ok(RadiusAuthTokenEvent { event: e, target })
     }
 
     #[cfg(test)]
     pub fn new_internal(target: Uuid) -> Self {
         let e = Event::from_internal();
 
-        RadiusAuthTokenEvent {
-            event: e,
-            target: target,
-        }
+        RadiusAuthTokenEvent { event: e, target }
     }
 }

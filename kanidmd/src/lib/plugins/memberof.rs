@@ -111,7 +111,7 @@ fn apply_memberof(
             .iter()
             .map(|g| {
                 // These are turned into reference values.
-                Value::new_refer(g.get_uuid().clone())
+                Value::new_refer(*g.get_uuid())
             })
             .collect();
 
@@ -124,15 +124,12 @@ fn apply_memberof(
             .iter()
             .map(|g| {
                 // TODO #61: This could be more effecient
-                let mut v = vec![Value::new_refer(g.get_uuid().clone())];
-                match g.get_ava("memberof") {
-                    Some(mos) => {
-                        for mo in mos {
-                            // This is cloning the existing reference values
-                            v.push(mo.clone())
-                        }
+                let mut v = vec![Value::new_refer(*g.get_uuid())];
+                if let Some(mos) = g.get_ava("memberof") {
+                    for mo in mos {
+                        // This is cloning the existing reference values
+                        v.push(mo.clone())
                     }
-                    None => {}
                 }
                 v
             })
@@ -178,7 +175,7 @@ fn apply_memberof(
             au,
             qs.internal_modify(
                 au,
-                filter!(f_eq("uuid", PartialValue::new_uuid(a_uuid.clone()))),
+                filter!(f_eq("uuid", PartialValue::new_uuid(*a_uuid))),
                 modlist,
             )
         );
@@ -198,7 +195,7 @@ impl Plugin for MemberOf {
     fn post_create(
         au: &mut AuditScope,
         qs: &mut QueryServerWriteTransaction,
-        cand: &Vec<Entry<EntryValid, EntryCommitted>>,
+        cand: &[Entry<EntryValid, EntryCommitted>],
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         //
@@ -211,8 +208,8 @@ impl Plugin for MemberOf {
     fn post_modify(
         au: &mut AuditScope,
         qs: &mut QueryServerWriteTransaction,
-        pre_cand: &Vec<Entry<EntryValid, EntryCommitted>>,
-        cand: &Vec<Entry<EntryValid, EntryCommitted>>,
+        pre_cand: &[Entry<EntryValid, EntryCommitted>],
+        cand: &[Entry<EntryValid, EntryCommitted>],
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
         // The condition here is critical - ONLY trigger on entries where changes occur!
@@ -281,7 +278,7 @@ impl Plugin for MemberOf {
     fn post_delete(
         au: &mut AuditScope,
         qs: &mut QueryServerWriteTransaction,
-        cand: &Vec<Entry<EntryValid, EntryCommitted>>,
+        cand: &[Entry<EntryValid, EntryCommitted>],
         _ce: &DeleteEvent,
     ) -> Result<(), OperationError> {
         //
@@ -314,7 +311,7 @@ impl Plugin for MemberOf {
             // searcch direct memberships of live groups.
             let filt_in = filter!(f_and!([
                 f_eq("class", PartialValue::new_class("group")),
-                f_eq("member", PartialValue::new_refer(e.get_uuid().clone()))
+                f_eq("member", PartialValue::new_refer(*e.get_uuid()))
             ]));
 
             let direct_memberof = match qs

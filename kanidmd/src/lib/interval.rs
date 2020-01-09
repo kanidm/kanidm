@@ -12,7 +12,7 @@ pub struct IntervalActor {
 
 impl IntervalActor {
     pub fn new(server: actix::Addr<QueryServerWriteV1>) -> Self {
-        IntervalActor { server: server }
+        IntervalActor { server }
     }
 
     // Define new events here

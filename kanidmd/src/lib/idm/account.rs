@@ -130,8 +130,8 @@ impl Account {
             displayname: self.name.clone(),
             uuid: self.uuid.to_hyphenated_ref().to_string(),
             application: None,
-            groups: self.groups.iter().map(|g| g.into_proto()).collect(),
-            claims: claims.iter().map(|c| c.into_proto()).collect(),
+            groups: self.groups.iter().map(|g| g.to_proto()).collect(),
+            claims: claims.iter().map(|c| c.to_proto()).collect(),
         })
     }
 

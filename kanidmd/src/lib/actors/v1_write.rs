@@ -32,12 +32,12 @@ pub struct CreateMessage {
 
 impl CreateMessage {
     pub fn new(uat: Option<UserAuthToken>, req: CreateRequest) -> Self {
-        CreateMessage { uat: uat, req: req }
+        CreateMessage { uat, req }
     }
 
     pub fn new_entry(uat: Option<UserAuthToken>, req: ProtoEntry) -> Self {
         CreateMessage {
-            uat: uat,
+            uat,
             req: CreateRequest { entries: vec![req] },
         }
     }
@@ -54,7 +54,7 @@ pub struct DeleteMessage {
 
 impl DeleteMessage {
     pub fn new(uat: Option<UserAuthToken>, req: DeleteRequest) -> Self {
-        DeleteMessage { uat: uat, req: req }
+        DeleteMessage { uat, req }
     }
 }
 
@@ -78,7 +78,7 @@ pub struct ModifyMessage {
 
 impl ModifyMessage {
     pub fn new(uat: Option<UserAuthToken>, req: ModifyRequest) -> Self {
-        ModifyMessage { uat: uat, req: req }
+        ModifyMessage { uat, req }
     }
 }
 
@@ -94,7 +94,7 @@ pub struct IdmAccountSetPasswordMessage {
 impl IdmAccountSetPasswordMessage {
     pub fn new(uat: Option<UserAuthToken>, req: SingleStringRequest) -> Self {
         IdmAccountSetPasswordMessage {
-            uat: uat,
+            uat,
             cleartext: req.value,
         }
     }
@@ -119,10 +119,10 @@ impl InternalCredentialSetMessage {
         sac: SetAuthCredential,
     ) -> Self {
         InternalCredentialSetMessage {
-            uat: uat,
-            uuid_or_name: uuid_or_name,
-            appid: appid,
-            sac: sac,
+            uat,
+            uuid_or_name,
+            appid,
+            sac,
         }
     }
 }
@@ -138,10 +138,7 @@ pub struct InternalRegenerateRadiusMessage {
 
 impl InternalRegenerateRadiusMessage {
     pub fn new(uat: Option<UserAuthToken>, uuid_or_name: String) -> Self {
-        InternalRegenerateRadiusMessage {
-            uat: uat,
-            uuid_or_name: uuid_or_name,
-        }
+        InternalRegenerateRadiusMessage { uat, uuid_or_name }
     }
 }
 
@@ -230,11 +227,7 @@ impl Actor for QueryServerWriteV1 {
 impl QueryServerWriteV1 {
     pub fn new(log: actix::Addr<EventLog>, qs: QueryServer, idms: Arc<IdmServer>) -> Self {
         log_event!(log, "Starting query server v1 worker ...");
-        QueryServerWriteV1 {
-            log: log,
-            qs: qs,
-            idms: idms,
-        }
+        QueryServerWriteV1 { log, qs, idms }
     }
 
     pub fn start(
@@ -501,7 +494,7 @@ impl Handler<InternalCredentialSetMessage> for QueryServerWriteV1 {
                     idms_prox_write
                         .generate_account_password(&mut audit, &gpe)
                         .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
-                        .map(|v| Some(v))
+                        .map(Some)
                 }
             }
         });
@@ -765,7 +758,7 @@ impl Handler<PurgeTombstoneEvent> for QueryServerWriteV1 {
 
     fn handle(&mut self, msg: PurgeTombstoneEvent, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("purge tombstones");
-        let res = audit_segment!(&mut audit, || {
+        audit_segment!(&mut audit, || {
             audit_log!(audit, "Begin purge tombstone event {:?}", msg);
             let qs_write = self.qs.write();
 
@@ -777,7 +770,6 @@ impl Handler<PurgeTombstoneEvent> for QueryServerWriteV1 {
         });
         // At the end of the event we send it for logging.
         self.log.do_send(audit);
-        res
     }
 }
 
@@ -786,7 +778,7 @@ impl Handler<PurgeRecycledEvent> for QueryServerWriteV1 {
 
     fn handle(&mut self, msg: PurgeRecycledEvent, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("purge recycled");
-        let res = audit_segment!(&mut audit, || {
+        audit_segment!(&mut audit, || {
             audit_log!(audit, "Begin purge recycled event {:?}", msg);
             let qs_write = self.qs.write();
 
@@ -798,6 +790,5 @@ impl Handler<PurgeRecycledEvent> for QueryServerWriteV1 {
         });
         // At the end of the event we send it for logging.
         self.log.do_send(audit);
-        res
     }
 }

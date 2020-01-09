@@ -13,8 +13,8 @@ use actix::prelude::*;
 use log::debug;
 
 static PORT_ALLOC: AtomicUsize = AtomicUsize::new(8080);
-static ADMIN_TEST_PASSWORD: &'static str = "integration test admin password";
-static ADMIN_TEST_PASSWORD_CHANGE: &'static str = "integration test admin new🎉";
+static ADMIN_TEST_PASSWORD: &str = "integration test admin password";
+static ADMIN_TEST_PASSWORD_CHANGE: &str = "integration test admin new🎉";
 
 // Test external behaviorus of the service.
 
@@ -63,7 +63,7 @@ fn run_test(test_fn: fn(KanidmClient) -> ()) {
 
     // We DO NOT need teardown, as sqlite is in mem
     // let the tables hit the floor
-    let _ = sys.stop();
+    sys.stop();
 }
 
 #[test]
@@ -110,7 +110,7 @@ fn test_server_modify() {
         let a_res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
         assert!(a_res.is_ok());
 
-        let res = rsclient.modify(f.clone(), m.clone());
+        let res = rsclient.modify(f, m);
         println!("{:?}", res);
         assert!(res.is_ok());
     });
@@ -194,7 +194,7 @@ fn test_server_admin_change_simple_password() {
         assert!(res.is_ok());
 
         // Now change the password.
-        let _ = rsclient
+        rsclient
             .idm_account_set_password(ADMIN_TEST_PASSWORD_CHANGE.to_string())
             .unwrap();
 
@@ -228,7 +228,7 @@ fn test_server_admin_reset_simple_password() {
         .unwrap();
 
         // Not logged in - should fail!
-        let res = rsclient.create(vec![e.clone()]);
+        let res = rsclient.create(vec![e]);
         assert!(res.is_ok());
         // By default, admin's can't actually administer accounts, so mod them into
         // the account admin group.
@@ -237,7 +237,7 @@ fn test_server_admin_reset_simple_password() {
             "member".to_string(),
             "system_admins".to_string(),
         )]);
-        let res = rsclient.modify(f.clone(), m.clone());
+        let res = rsclient.modify(f, m);
         assert!(res.is_ok());
 
         // Now set it's password - should be rejected based on low quality
@@ -275,7 +275,7 @@ fn test_server_rest_group_read() {
 
         // List the groups
         let g_list = rsclient.idm_group_list().unwrap();
-        assert!(g_list.len() > 0);
+        assert!(!g_list.is_empty());
 
         let g = rsclient.idm_group_get("idm_admins").unwrap();
         assert!(g.is_some());
@@ -291,7 +291,7 @@ fn test_server_rest_group_lifecycle() {
 
         // List the groups
         let g_list = rsclient.idm_group_list().unwrap();
-        assert!(g_list.len() > 0);
+        assert!(!g_list.is_empty());
 
         // Create a new group
         rsclient.idm_group_create("demo_group").unwrap();
@@ -355,7 +355,7 @@ fn test_server_rest_account_read() {
 
         // List the accounts
         let a_list = rsclient.idm_account_list().unwrap();
-        assert!(a_list.len() > 0);
+        assert!(!a_list.is_empty());
 
         let a = rsclient.idm_account_get("admin").unwrap();
         assert!(a.is_some());
@@ -371,13 +371,13 @@ fn test_server_rest_schema_read() {
 
         // List the schema
         let s_list = rsclient.idm_schema_list().unwrap();
-        assert!(s_list.len() > 0);
+        assert!(!s_list.is_empty());
 
         let a_list = rsclient.idm_schema_attributetype_list().unwrap();
-        assert!(a_list.len() > 0);
+        assert!(!a_list.is_empty());
 
         let c_list = rsclient.idm_schema_classtype_list().unwrap();
-        assert!(c_list.len() > 0);
+        assert!(!c_list.is_empty());
 
         // Get an attr/class
         let a = rsclient.idm_schema_attributetype_get("name").unwrap();
@@ -413,7 +413,7 @@ fn test_server_radius_credential_lifecycle() {
         // test getting the token - we can do this as self or the radius server
         let r_tok = rsclient.idm_account_radius_token_get("admin").unwrap();
         assert!(sec1 == r_tok.secret);
-        assert!(r_tok.name == "admin".to_string());
+        assert!(r_tok.name == "admin");
 
         // Reset it
         let sec2 = rsclient
@@ -471,7 +471,7 @@ fn test_server_rest_sshkey_lifecycle() {
 
         // Get the keys, should be empty vec.
         let sk1 = rsclient.idm_account_get_ssh_pubkeys("admin").unwrap();
-        assert!(sk1.len() == 0);
+        assert!(sk1.is_empty());
 
         // idm_account_get_ssh_pubkeys
         // idm_account_post_ssh_pubkey

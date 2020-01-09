@@ -4,6 +4,7 @@ use kanidm_proto::v1::Filter as ProtoFilter;
 
 use std::borrow::Borrow;
 use std::convert::TryFrom;
+use std::fmt;
 use std::str::FromStr;
 use uuid::Uuid;
 
@@ -61,20 +62,26 @@ impl IndexType {
         }
     }
 
-    pub fn to_string(&self) -> String {
-        String::from(match self {
-            IndexType::EQUALITY => "EQUALITY",
-            IndexType::PRESENCE => "PRESENCE",
-            IndexType::SUBSTRING => "SUBSTRING",
-        })
-    }
-
     pub fn to_usize(&self) -> usize {
         match self {
             IndexType::EQUALITY => 0,
             IndexType::PRESENCE => 1,
             IndexType::SUBSTRING => 2,
         }
+    }
+}
+
+impl fmt::Display for IndexType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                IndexType::EQUALITY => "EQUALITY",
+                IndexType::PRESENCE => "PRESENCE",
+                IndexType::SUBSTRING => "SUBSTRING",
+            }
+        )
     }
 }
 
@@ -146,24 +153,6 @@ impl TryFrom<usize> for SyntaxType {
 }
 
 impl SyntaxType {
-    pub fn to_string(&self) -> String {
-        String::from(match self {
-            SyntaxType::UTF8STRING => "UTF8STRING",
-            SyntaxType::UTF8STRING_INSENSITIVE => "UTF8STRING_INSENSITIVE",
-            SyntaxType::UUID => "UUID",
-            SyntaxType::BOOLEAN => "BOOLEAN",
-            SyntaxType::SYNTAX_ID => "SYNTAX_ID",
-            SyntaxType::INDEX_ID => "INDEX_ID",
-            SyntaxType::REFERENCE_UUID => "REFERENCE_UUID",
-            SyntaxType::JSON_FILTER => "JSON_FILTER",
-            SyntaxType::CREDENTIAL => "CREDENTIAL",
-            SyntaxType::RADIUS_UTF8STRING => "RADIUS_UTF8STRING",
-            SyntaxType::SSHKEY => "SSHKEY",
-            SyntaxType::SERVICE_PRINCIPLE_NAME => "SERVICE_PRINCIPLE_NAME",
-            SyntaxType::UINT32 => "UINT32",
-        })
-    }
-
     pub fn to_usize(&self) -> usize {
         match self {
             SyntaxType::UTF8STRING => 0,
@@ -180,6 +169,30 @@ impl SyntaxType {
             SyntaxType::SERVICE_PRINCIPLE_NAME => 11,
             SyntaxType::UINT32 => 12,
         }
+    }
+}
+
+impl fmt::Display for SyntaxType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                SyntaxType::UTF8STRING => "UTF8STRING",
+                SyntaxType::UTF8STRING_INSENSITIVE => "UTF8STRING_INSENSITIVE",
+                SyntaxType::UUID => "UUID",
+                SyntaxType::BOOLEAN => "BOOLEAN",
+                SyntaxType::SYNTAX_ID => "SYNTAX_ID",
+                SyntaxType::INDEX_ID => "INDEX_ID",
+                SyntaxType::REFERENCE_UUID => "REFERENCE_UUID",
+                SyntaxType::JSON_FILTER => "JSON_FILTER",
+                SyntaxType::CREDENTIAL => "CREDENTIAL",
+                SyntaxType::RADIUS_UTF8STRING => "RADIUS_UTF8STRING",
+                SyntaxType::SSHKEY => "SSHKEY",
+                SyntaxType::SERVICE_PRINCIPLE_NAME => "SERVICE_PRINCIPLE_NAME",
+                SyntaxType::UINT32 => "UINT32",
+            }
+        )
     }
 }
 
@@ -272,7 +285,7 @@ impl PartialValue {
     }
 
     pub fn new_uuidr(u: &Uuid) -> Self {
-        PartialValue::Uuid(u.clone())
+        PartialValue::Uuid(*u)
     }
 
     pub fn new_uuids(us: &str) -> Option<Self> {
@@ -294,7 +307,7 @@ impl PartialValue {
     }
 
     pub fn new_refer_r(u: &Uuid) -> Self {
-        PartialValue::Refer(u.clone())
+        PartialValue::Refer(*u)
     }
 
     pub fn new_refer_s(us: &str) -> Option<Self> {
@@ -425,9 +438,7 @@ impl PartialValue {
     }
 
     pub fn new_uint32_str(u: &str) -> Option<Self> {
-        u32::from_str_radix(u, 10)
-            .ok()
-            .map(|uv| PartialValue::Uint32(uv))
+        u32::from_str_radix(u, 10).ok().map(PartialValue::Uint32)
     }
 
     pub fn is_uint32(&self) -> bool {
@@ -986,11 +997,11 @@ impl Value {
         match &self.pv {
             PartialValue::Utf8(s) => DbValueV1::U8(s.clone()),
             PartialValue::Iutf8(s) => DbValueV1::I8(s.clone()),
-            PartialValue::Uuid(u) => DbValueV1::UU(u.clone()),
-            PartialValue::Bool(b) => DbValueV1::BO(b.clone()),
+            PartialValue::Uuid(u) => DbValueV1::UU(*u),
+            PartialValue::Bool(b) => DbValueV1::BO(*b),
             PartialValue::Syntax(syn) => DbValueV1::SY(syn.to_usize()),
             PartialValue::Index(it) => DbValueV1::IN(it.to_usize()),
-            PartialValue::Refer(u) => DbValueV1::RF(u.clone()),
+            PartialValue::Refer(u) => DbValueV1::RF(*u),
             PartialValue::JsonFilt(s) => DbValueV1::JF(
                 serde_json::to_string(s)
                     .expect("A json filter value was corrupted during run-time"),
@@ -1035,7 +1046,7 @@ impl Value {
                 })
             }
             PartialValue::Spn(n, r) => DbValueV1::SP(n.clone(), r.clone()),
-            PartialValue::Uint32(u) => DbValueV1::UI(u.clone()),
+            PartialValue::Uint32(u) => DbValueV1::UI(*u),
         }
     }
 
@@ -1161,14 +1172,9 @@ impl Value {
             },
             PartialValue::SshKey(_) => match &self.data {
                 Some(v) => match &v {
-                    DataValue::SshKey(sk) => {
-                        // Check it's really an sshkey in the
-                        // supplemental data.
-                        match SshPublicKey::from_string(sk) {
-                            Ok(_) => true,
-                            Err(_) => false,
-                        }
-                    }
+                    // Check it's really an sshkey in the supplemental
+                    // data.
+                    DataValue::SshKey(sk) => SshPublicKey::from_string(sk).is_ok(),
                     _ => false,
                 },
                 None => false,

@@ -178,7 +178,7 @@ pub trait QueryServerTransaction {
 
         audit_log!(audit, "name_to_uuid: results -- {:?}", res);
 
-        if res.len() == 0 {
+        if res.is_empty() {
             // If result len == 0, error no such result
             return Err(OperationError::NoMatchingEntries);
         } else if res.len() >= 2 {
@@ -189,7 +189,7 @@ pub trait QueryServerTransaction {
         // error should never be triggered due to the len checks above.
         let e = res.first().ok_or(OperationError::NoMatchingEntries)?;
         // Get the uuid from the entry. Again, check it exists, and only one.
-        let uuid_res: Uuid = e.get_uuid().clone();
+        let uuid_res: Uuid = *e.get_uuid();
 
         audit_log!(audit, "name_to_uuid: uuid <- {:?}", uuid_res);
 
@@ -213,7 +213,7 @@ pub trait QueryServerTransaction {
 
         audit_log!(audit, "uuid_to_name: results -- {:?}", res);
 
-        if res.len() == 0 {
+        if res.is_empty() {
             // If result len == 0, error no such result
             audit_log!(audit, "uuid_to_name: name, no such entry <- Ok(None)");
             return Ok(None);
@@ -255,7 +255,7 @@ pub trait QueryServerTransaction {
         // Check the filter
         let f_valid = filter
             .validate(self.get_schema())
-            .map_err(|e| OperationError::SchemaViolation(e))?;
+            .map_err(OperationError::SchemaViolation)?;
         // Build an exists event
         let ee = ExistsEvent::new_internal(f_valid);
         // Submit it
@@ -273,7 +273,7 @@ pub trait QueryServerTransaction {
     ) -> Result<Vec<Entry<EntryValid, EntryCommitted>>, OperationError> {
         let f_valid = filter
             .validate(self.get_schema())
-            .map_err(|e| OperationError::SchemaViolation(e))?;
+            .map_err(OperationError::SchemaViolation)?;
         let se = SearchEvent::new_internal(f_valid);
         let mut audit_int = AuditScope::new("internal_search");
         let res = self.search(&mut audit_int, &se);
@@ -319,10 +319,10 @@ pub trait QueryServerTransaction {
     ) -> Result<Vec<Entry<EntryValid, EntryCommitted>>, OperationError> {
         let f_valid = filter
             .validate(self.get_schema())
-            .map_err(|e| OperationError::SchemaViolation(e))?;
+            .map_err(OperationError::SchemaViolation)?;
         let f_intent_valid = filter_intent
             .validate(self.get_schema())
-            .map_err(|e| OperationError::SchemaViolation(e))?;
+            .map_err(OperationError::SchemaViolation)?;
         self.impersonate_search_valid(audit, f_valid, f_intent_valid, event)
     }
 
@@ -335,10 +335,10 @@ pub trait QueryServerTransaction {
     ) -> Result<Vec<Entry<EntryReduced, EntryCommitted>>, OperationError> {
         let f_valid = filter
             .validate(self.get_schema())
-            .map_err(|e| OperationError::SchemaViolation(e))?;
+            .map_err(OperationError::SchemaViolation)?;
         let f_intent_valid = filter_intent
             .validate(self.get_schema())
-            .map_err(|e| OperationError::SchemaViolation(e))?;
+            .map_err(OperationError::SchemaViolation)?;
         self.impersonate_search_ext_valid(audit, f_valid, f_intent_valid, event)
     }
 
@@ -349,10 +349,10 @@ pub trait QueryServerTransaction {
         audit: &mut AuditScope,
         uuid: &Uuid,
     ) -> Result<Entry<EntryValid, EntryCommitted>, OperationError> {
-        let filter = filter!(f_eq("uuid", PartialValue::new_uuid(uuid.clone())));
+        let filter = filter!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
         let f_valid = filter
             .validate(self.get_schema())
-            .map_err(|e| OperationError::SchemaViolation(e))?;
+            .map_err(OperationError::SchemaViolation)?;
         let se = SearchEvent::new_internal(f_valid);
         let mut audit_int = AuditScope::new("internal_search_uuid");
         let res = self.search(&mut audit_int, &se);
@@ -376,8 +376,8 @@ pub trait QueryServerTransaction {
         uuid: &Uuid,
         event: &Event,
     ) -> Result<Entry<EntryReduced, EntryCommitted>, OperationError> {
-        let filter_intent = filter_all!(f_eq("uuid", PartialValue::new_uuid(uuid.clone())));
-        let filter = filter!(f_eq("uuid", PartialValue::new_uuid(uuid.clone())));
+        let filter_intent = filter_all!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
+        let filter = filter!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
         let res = self.impersonate_search_ext(audit, filter, filter_intent, event);
         match res {
             Ok(vs) => {
@@ -397,8 +397,8 @@ pub trait QueryServerTransaction {
     fn clone_value(
         &self,
         audit: &mut AuditScope,
-        attr: &String,
-        value: &String,
+        attr: &str,
+        value: &str,
     ) -> Result<Value, OperationError> {
         let schema = self.get_schema();
 
@@ -413,20 +413,20 @@ pub trait QueryServerTransaction {
         match schema.get_attributes().get(&temp_a) {
             Some(schema_a) => {
                 match schema_a.syntax {
-                    SyntaxType::UTF8STRING => Ok(Value::new_utf8(value.clone())),
-                    SyntaxType::UTF8STRING_INSENSITIVE => Ok(Value::new_iutf8s(value.as_str())),
-                    SyntaxType::BOOLEAN => Value::new_bools(value.as_str())
-                        .ok_or(OperationError::InvalidAttribute("Invalid boolean syntax".to_string())),
-                    SyntaxType::SYNTAX_ID => Value::new_syntaxs(value.as_str())
-                        .ok_or(OperationError::InvalidAttribute("Invalid Syntax syntax".to_string())),
-                    SyntaxType::INDEX_ID => Value::new_indexs(value.as_str())
-                        .ok_or(OperationError::InvalidAttribute("Invalid Index syntax".to_string())),
+                    SyntaxType::UTF8STRING => Ok(Value::new_utf8(value.to_string())),
+                    SyntaxType::UTF8STRING_INSENSITIVE => Ok(Value::new_iutf8s(value)),
+                    SyntaxType::BOOLEAN => Value::new_bools(value)
+                        .ok_or_else(|| OperationError::InvalidAttribute("Invalid boolean syntax".to_string())),
+                    SyntaxType::SYNTAX_ID => Value::new_syntaxs(value)
+                        .ok_or_else(|| OperationError::InvalidAttribute("Invalid Syntax syntax".to_string())),
+                    SyntaxType::INDEX_ID => Value::new_indexs(value)
+                        .ok_or_else(|| OperationError::InvalidAttribute("Invalid Index syntax".to_string())),
                     SyntaxType::UUID => {
                         // It's a uuid - we do NOT check for existance, because that
                         // could be revealing or disclosing - it is up to acp to assert
                         // if we can see the value or not, and it's not up to us to
                         // assert the filter value exists.
-                        Value::new_uuids(value.as_str())
+                        Value::new_uuids(value)
                             .or_else(|| {
                                 // it's not a uuid, try to resolve it.
                                 // if the value is NOT found, we map to "does not exist" to allow
@@ -434,32 +434,32 @@ pub trait QueryServerTransaction {
                                 // all subsequent filter tests because it ... well, doesn't exist.
                                 let un = self
                                     .name_to_uuid(audit, value)
-                                    .unwrap_or_else(|_| UUID_DOES_NOT_EXIST.clone());
+                                    .unwrap_or_else(|_| *UUID_DOES_NOT_EXIST);
                                 Some(Value::new_uuid(un))
                             })
                             // I think this is unreachable due to how the .or_else works.
-                            .ok_or(OperationError::InvalidAttribute("Invalid UUID syntax".to_string()))
+                            .ok_or_else(|| OperationError::InvalidAttribute("Invalid UUID syntax".to_string()))
                     }
                     SyntaxType::REFERENCE_UUID => {
                         // See comments above.
-                        Value::new_refer_s(value.as_str())
+                        Value::new_refer_s(value)
                             .or_else(|| {
                                 let un = self
                                     .name_to_uuid(audit, value)
-                                    .unwrap_or_else(|_| UUID_DOES_NOT_EXIST.clone());
+                                    .unwrap_or_else(|_| *UUID_DOES_NOT_EXIST);
                                 Some(Value::new_refer(un))
                             })
                             // I think this is unreachable due to how the .or_else works.
-                            .ok_or(OperationError::InvalidAttribute("Invalid Reference syntax".to_string()))
+                            .ok_or_else(|| OperationError::InvalidAttribute("Invalid Reference syntax".to_string()))
                     }
                     SyntaxType::JSON_FILTER => Value::new_json_filter(value)
-                        .ok_or(OperationError::InvalidAttribute("Invalid Filter syntax".to_string())),
+                        .ok_or_else(|| OperationError::InvalidAttribute("Invalid Filter syntax".to_string())),
                     SyntaxType::CREDENTIAL => Err(OperationError::InvalidAttribute("Credentials can not be supplied through modification - please use the IDM api".to_string())),
                     SyntaxType::RADIUS_UTF8STRING => Err(OperationError::InvalidAttribute("Radius secrets can not be supplied through modification - please use the IDM api".to_string())),
                     SyntaxType::SSHKEY => Err(OperationError::InvalidAttribute("SSH public keys can not be supplied through modification - please use the IDM api".to_string())),
                     SyntaxType::SERVICE_PRINCIPLE_NAME => Err(OperationError::InvalidAttribute("SPNs are generated and not able to be set".to_string())),
-                    SyntaxType::UINT32 => Value::new_uint32_str(value.as_str())
-                        .ok_or(OperationError::InvalidAttribute("Invalid uint32 syntax".to_string())),
+                    SyntaxType::UINT32 => Value::new_uint32_str(value)
+                        .ok_or_else(|| OperationError::InvalidAttribute("Invalid uint32 syntax".to_string())),
 
                 }
             }
@@ -474,8 +474,8 @@ pub trait QueryServerTransaction {
     fn clone_partialvalue(
         &self,
         audit: &mut AuditScope,
-        attr: &String,
-        value: &String,
+        attr: &str,
+        value: &str,
     ) -> Result<PartialValue, OperationError> {
         let schema = self.get_schema();
         // TODO: Should we return this?
@@ -485,21 +485,19 @@ pub trait QueryServerTransaction {
         match schema.get_attributes().get(&temp_a) {
             Some(schema_a) => {
                 match schema_a.syntax {
-                    SyntaxType::UTF8STRING => Ok(PartialValue::new_utf8(value.clone())),
-                    SyntaxType::UTF8STRING_INSENSITIVE => {
-                        Ok(PartialValue::new_iutf8s(value.as_str()))
-                    }
-                    SyntaxType::BOOLEAN => PartialValue::new_bools(value.as_str()).ok_or(
-                        OperationError::InvalidAttribute("Invalid boolean syntax".to_string()),
-                    ),
-                    SyntaxType::SYNTAX_ID => PartialValue::new_syntaxs(value.as_str()).ok_or(
-                        OperationError::InvalidAttribute("Invalid Syntax syntax".to_string()),
-                    ),
-                    SyntaxType::INDEX_ID => PartialValue::new_indexs(value.as_str()).ok_or(
-                        OperationError::InvalidAttribute("Invalid Index syntax".to_string()),
-                    ),
+                    SyntaxType::UTF8STRING => Ok(PartialValue::new_utf8(value.to_string())),
+                    SyntaxType::UTF8STRING_INSENSITIVE => Ok(PartialValue::new_iutf8s(value)),
+                    SyntaxType::BOOLEAN => PartialValue::new_bools(value).ok_or_else(|| {
+                        OperationError::InvalidAttribute("Invalid boolean syntax".to_string())
+                    }),
+                    SyntaxType::SYNTAX_ID => PartialValue::new_syntaxs(value).ok_or_else(|| {
+                        OperationError::InvalidAttribute("Invalid Syntax syntax".to_string())
+                    }),
+                    SyntaxType::INDEX_ID => PartialValue::new_indexs(value).ok_or_else(|| {
+                        OperationError::InvalidAttribute("Invalid Index syntax".to_string())
+                    }),
                     SyntaxType::UUID => {
-                        PartialValue::new_uuids(value.as_str())
+                        PartialValue::new_uuids(value)
                             .or_else(|| {
                                 // it's not a uuid, try to resolve it.
                                 // if the value is NOT found, we map to "does not exist" to allow
@@ -507,41 +505,45 @@ pub trait QueryServerTransaction {
                                 // all subsequent filter tests because it ... well, doesn't exist.
                                 let un = self
                                     .name_to_uuid(audit, value)
-                                    .unwrap_or_else(|_| UUID_DOES_NOT_EXIST.clone());
+                                    .unwrap_or_else(|_| *UUID_DOES_NOT_EXIST);
                                 Some(PartialValue::new_uuid(un))
                             })
                             // I think this is unreachable due to how the .or_else works.
-                            .ok_or(OperationError::InvalidAttribute(
-                                "Invalid UUID syntax".to_string(),
-                            ))
+                            .ok_or_else(|| {
+                                OperationError::InvalidAttribute("Invalid UUID syntax".to_string())
+                            })
                     }
                     SyntaxType::REFERENCE_UUID => {
                         // See comments above.
-                        PartialValue::new_refer_s(value.as_str())
+                        PartialValue::new_refer_s(value)
                             .or_else(|| {
                                 let un = self
                                     .name_to_uuid(audit, value)
-                                    .unwrap_or_else(|_| UUID_DOES_NOT_EXIST.clone());
+                                    .unwrap_or_else(|_| *UUID_DOES_NOT_EXIST);
                                 Some(PartialValue::new_refer(un))
                             })
                             // I think this is unreachable due to how the .or_else works.
-                            .ok_or(OperationError::InvalidAttribute(
-                                "Invalid Reference syntax".to_string(),
-                            ))
+                            .ok_or_else(|| {
+                                OperationError::InvalidAttribute(
+                                    "Invalid Reference syntax".to_string(),
+                                )
+                            })
                     }
-                    SyntaxType::JSON_FILTER => PartialValue::new_json_filter(value).ok_or(
-                        OperationError::InvalidAttribute("Invalid Filter syntax".to_string()),
-                    ),
-                    SyntaxType::CREDENTIAL => Ok(PartialValue::new_credential_tag(value.as_str())),
+                    SyntaxType::JSON_FILTER => {
+                        PartialValue::new_json_filter(value).ok_or_else(|| {
+                            OperationError::InvalidAttribute("Invalid Filter syntax".to_string())
+                        })
+                    }
+                    SyntaxType::CREDENTIAL => Ok(PartialValue::new_credential_tag(value)),
                     SyntaxType::RADIUS_UTF8STRING => Ok(PartialValue::new_radius_string()),
-                    SyntaxType::SSHKEY => Ok(PartialValue::new_sshkey_tag_s(value.as_str())),
-                    SyntaxType::SERVICE_PRINCIPLE_NAME => PartialValue::new_spn_s(value.as_str())
-                        .ok_or(OperationError::InvalidAttribute(
-                            "Invalid SPN syntax".to_string(),
-                        )),
-                    SyntaxType::UINT32 => PartialValue::new_uint32_str(value.as_str()).ok_or(
-                        OperationError::InvalidAttribute("Invalid Uint32 syntax".to_string()),
-                    ),
+                    SyntaxType::SSHKEY => Ok(PartialValue::new_sshkey_tag_s(value)),
+                    SyntaxType::SERVICE_PRINCIPLE_NAME => PartialValue::new_spn_s(value)
+                        .ok_or_else(|| {
+                            OperationError::InvalidAttribute("Invalid SPN syntax".to_string())
+                        }),
+                    SyntaxType::UINT32 => PartialValue::new_uint32_str(value).ok_or_else(|| {
+                        OperationError::InvalidAttribute("Invalid Uint32 syntax".to_string())
+                    }),
                 }
             }
             None => {
@@ -559,17 +561,13 @@ pub trait QueryServerTransaction {
         value: &Value,
     ) -> Result<String, OperationError> {
         // Are we a reference type? Try and resolve.
-        match value.to_ref_uuid() {
-            Some(ur) => {
-                let nv = self.uuid_to_name(audit, ur)?;
-                return match nv {
-                    Some(v) => Ok(v.to_proto_string_clone()),
-                    None => Ok(value.to_proto_string_clone()),
-                };
-            }
-            // Fall through
-            None => {}
-        };
+        if let Some(ur) = value.to_ref_uuid() {
+            let nv = self.uuid_to_name(audit, ur)?;
+            return match nv {
+                Some(v) => Ok(v.to_proto_string_clone()),
+                None => Ok(value.to_proto_string_clone()),
+            };
+        }
 
         // Not? Okay, do the to string.
         Ok(value.to_proto_string_clone())
@@ -619,7 +617,7 @@ impl QueryServerReadTransaction {
         //  * backend
         let be_errs = self.get_be_txn().verify();
 
-        if be_errs.len() != 0 {
+        if !be_errs.is_empty() {
             au.append_scope(audit);
             return be_errs;
         }
@@ -627,7 +625,7 @@ impl QueryServerReadTransaction {
         //  * in memory schema consistency.
         let sc_errs = self.get_schema().validate(&mut audit);
 
-        if sc_errs.len() != 0 {
+        if !sc_errs.is_empty() {
             au.append_scope(audit);
             return sc_errs;
         }
@@ -637,7 +635,7 @@ impl QueryServerReadTransaction {
         idx_errs = self.get_be_txn()
             .verify_indexes();
 
-        if idx_errs.len() != 0 {
+        if !idx_errs.is_empty() {
             au.append_scope(audit);
             return idx_errs;
         }
@@ -700,7 +698,7 @@ impl QueryServer {
     pub fn new(be: Backend, schema: Schema) -> Self {
         // log_event!(log, "Starting query worker ...");
         QueryServer {
-            be: be,
+            be,
             schema: Arc::new(schema),
             accesscontrols: Arc::new(AccessControls::new()),
         }
@@ -802,8 +800,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // based on request size in the frontend?
 
         // Copy the entries to a writeable form.
-        let mut candidates: Vec<Entry<EntryInvalid, EntryNew>> =
-            ce.entries.iter().map(|er| er.clone()).collect();
+        let mut candidates: Vec<Entry<EntryInvalid, EntryNew>> = ce.entries.to_vec();
 
         // This is no longer needed due to how we transform to Value as a strong type on
         // entries.
@@ -828,7 +825,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let access = self.get_accesscontrols();
         let acp_res = access.create_allow_operation(&mut audit_acp, ce, &candidates);
         au.append_scope(audit_acp);
-        if try_audit!(au, acp_res) != true {
+        if !try_audit!(au, acp_res) {
             return Err(OperationError::AccessDenied);
         }
 
@@ -851,7 +848,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         );
         au.append_scope(audit_plugin_pre_transform);
 
-        let _ = try_audit!(
+        try_audit!(
             au,
             plug_pre_transform_res,
             "Create operation failed (pre_transform plugin), {:?}"
@@ -866,7 +863,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .into_iter()
             .map(|e| {
                 e.validate(&self.schema)
-                    .map_err(|er| OperationError::SchemaViolation(er))
+                    .map_err(OperationError::SchemaViolation)
             })
             .collect();
 
@@ -879,7 +876,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let plug_pre_res = Plugins::run_pre_create(&mut audit_plugin_pre, self, &norm_cand, ce);
         au.append_scope(audit_plugin_pre);
 
-        let _ = try_audit!(au, plug_pre_res, "Create operation failed (plugin), {:?}");
+        try_audit!(au, plug_pre_res, "Create operation failed (plugin), {:?}");
 
         let mut audit_be = AuditScope::new("backend_create");
         // We may change from ce.entries later to something else?
@@ -962,12 +959,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let access = self.get_accesscontrols();
         let acp_res = access.delete_allow_operation(&mut audit_acp, de, &pre_candidates);
         au.append_scope(audit_acp);
-        if try_audit!(au, acp_res) != true {
+        if !try_audit!(au, acp_res) {
             return Err(OperationError::AccessDenied);
         }
 
         // Is the candidate set empty?
-        if pre_candidates.len() == 0 {
+        if pre_candidates.is_empty() {
             audit_log!(au, "delete: no candidates match filter {:?}", de.filter);
             return Err(OperationError::NoMatchingEntries);
         };
@@ -1081,7 +1078,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 Err(e) => return Err(e),
             };
 
-        if ts.len() == 0 {
+        if ts.is_empty() {
             audit_log!(au, "No Tombstones present - purge operation success");
             return Ok(());
         }
@@ -1117,13 +1114,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 Err(e) => return Err(e),
             };
 
-        if rc.len() == 0 {
+        if rc.is_empty() {
             audit_log!(au, "No recycled present - purge operation success");
             return Ok(());
         }
 
         // Modify them to strip all avas except uuid
-        let tombstone_cand = rc.iter().map(|e| e.to_tombstone()).collect();
+        let tombstone_cand = rc.iter().map(|e| e.to_tombstone()).collect::<Vec<_>>();
 
         // Backend Modify
         let mut audit_be = AuditScope::new("backend_modify");
@@ -1165,7 +1162,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             au,
             modlist
                 .validate(self.get_schema())
-                .map_err(|e| OperationError::SchemaViolation(e))
+                .map_err(OperationError::SchemaViolation)
         );
 
         // Now impersonate the modify
@@ -1205,7 +1202,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             }
         };
 
-        if pre_candidates.len() == 0 {
+        if pre_candidates.is_empty() {
             match me.event.origin {
                 EventOrigin::Internal => {
                     audit_log!(
@@ -1232,7 +1229,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let access = self.get_accesscontrols();
         let acp_res = access.modify_allow_operation(&mut audit_acp, me, &pre_candidates);
         au.append_scope(audit_acp);
-        if try_audit!(au, acp_res) != true {
+        if !try_audit!(au, acp_res) {
             return Err(OperationError::AccessDenied);
         }
 
@@ -1374,7 +1371,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     ) -> Result<(), OperationError> {
         let f_valid = filter
             .validate(self.get_schema())
-            .map_err(|e| OperationError::SchemaViolation(e))?;
+            .map_err(OperationError::SchemaViolation)?;
         let mut audit_int = AuditScope::new("internal_delete");
         let de = DeleteEvent::new_internal(f_valid);
         let res = self.delete(&mut audit_int, &de);
@@ -1390,10 +1387,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
     ) -> Result<(), OperationError> {
         let f_valid = filter
             .validate(self.get_schema())
-            .map_err(|e| OperationError::SchemaViolation(e))?;
+            .map_err(OperationError::SchemaViolation)?;
         let m_valid = modlist
             .validate(self.get_schema())
-            .map_err(|e| OperationError::SchemaViolation(e))?;
+            .map_err(OperationError::SchemaViolation)?;
         let mut audit_int = AuditScope::new("internal_modify");
         let me = ModifyEvent::new_internal(f_valid, m_valid);
         let res = self.modify(&mut audit_int, &me);
@@ -1428,19 +1425,19 @@ impl<'a> QueryServerWriteTransaction<'a> {
             audit,
             filter
                 .validate(self.get_schema())
-                .map_err(|e| OperationError::SchemaViolation(e))
+                .map_err(OperationError::SchemaViolation)
         );
         let f_intent_valid = try_audit!(
             audit,
             filter_intent
                 .validate(self.get_schema())
-                .map_err(|e| OperationError::SchemaViolation(e))
+                .map_err(OperationError::SchemaViolation)
         );
         let m_valid = try_audit!(
             audit,
             modlist
                 .validate(self.get_schema())
-                .map_err(|e| OperationError::SchemaViolation(e))
+                .map_err(OperationError::SchemaViolation)
         );
         self.impersonate_modify_valid(audit, f_valid, f_intent_valid, m_valid, event)
     }
@@ -1469,8 +1466,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             /*
             .and_then(|e: Entry<EntryInvalid, EntryNew>| {
                 let schema = self.get_schema();
-                e.validate(schema)
-                    .map_err(|e| OperationError::SchemaViolation(e))
+                e.validate(schema).map_err(OperationError::SchemaViolation)
             })
             */
             .and_then(
@@ -1501,14 +1497,14 @@ impl<'a> QueryServerWriteTransaction<'a> {
             e.get_uuid()
         );
 
-        let filt = match e.filter_from_attrs(&vec![String::from("uuid")]) {
+        let filt = match e.filter_from_attrs(&[String::from("uuid")]) {
             Some(f) => f,
             None => return Err(OperationError::FilterGeneration),
         };
 
         match self.internal_search(audit, filt.clone()) {
             Ok(results) => {
-                if results.len() == 0 {
+                if results.is_empty() {
                     // It does not exist. Create it.
                     self.internal_create(audit, vec![e])
                 } else if results.len() == 1 {
@@ -1540,8 +1536,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let res = audit_segment!(audit, || Entry::from_proto_entry_str(audit, e_str, self)
             .and_then(|e: Entry<EntryInvalid, EntryNew>| {
                 let schema = self.get_schema();
-                e.validate(schema)
-                    .map_err(|e| OperationError::SchemaViolation(e))
+                e.validate(schema).map_err(OperationError::SchemaViolation)
             })
             .and_then(
                 |e: Entry<EntryValid, EntryNew>| self.internal_assert_or_create(audit, e)
@@ -1568,7 +1563,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         );
 
         // Create a filter from the entry for assertion.
-        let filt = match e.filter_from_attrs(&vec![String::from("uuid")]) {
+        let filt = match e.filter_from_attrs(&[String::from("uuid")]) {
             Some(f) => f,
             None => return Err(OperationError::FilterGeneration),
         };
@@ -1578,7 +1573,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // trigger csn/repl each time we start up.
         match self.internal_search(audit, filt.clone()) {
             Ok(results) => {
-                if results.len() == 0 {
+                if results.is_empty() {
                     // It does not exist. Create it.
                     self.internal_create(audit, vec![e.invalidate()])
                 } else if results.len() == 1 {
@@ -1796,12 +1791,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let valid_r = self.schema.validate(audit);
 
         // Translate the result.
-        if valid_r.len() == 0 {
+        if valid_r.is_empty() {
             Ok(())
         } else {
             // Log the failures?
             audit_log!(audit, "Schema reload failed -> {:?}", valid_r);
-            return Err(OperationError::ConsistencyError(valid_r));
+            Err(OperationError::ConsistencyError(valid_r))
         }
     }
 
@@ -1932,15 +1927,14 @@ impl<'a> QueryServerWriteTransaction<'a> {
             be_txn,
             schema,
             accesscontrols,
-            changed_schema: _,
-            changed_acp: _,
+            ..
         } = self;
         debug_assert!(!committed);
         // Begin an audit.
         // Validate the schema as we just loaded it.
         let r = schema.validate(audit);
 
-        if r.len() == 0 {
+        if r.is_empty() {
             // Schema has been validated, so we can go ahead and commit it with the be
             // because both are consistent.
             schema
@@ -1996,7 +1990,7 @@ mod tests {
             let ce = CreateEvent::new_internal(vec![e.clone()]);
 
             let r1 = server_txn.search(audit, &se1).expect("search failure");
-            assert!(r1.len() == 0);
+            assert!(r1.is_empty());
 
             let cr = server_txn.create(audit, &ce);
             assert!(cr.is_ok());
@@ -2005,7 +1999,7 @@ mod tests {
             println!("--> {:?}", r2);
             assert!(r2.len() == 1);
 
-            let expected = unsafe { vec![e.to_valid_committed()] };
+            let expected = unsafe { vec![e.into_valid_committed()] };
 
             assert_eq!(r2, expected);
 
@@ -2380,7 +2374,7 @@ mod tests {
 
             // Can it be seen (external search)
             let r1 = server_txn.search(audit, &se_ts).expect("search failed");
-            assert!(r1.len() == 0);
+            assert!(r1.is_empty());
 
             // Can it be deleted (external delete)
             // Should be err-no candidates.
@@ -2405,7 +2399,7 @@ mod tests {
             let r3 = server_txn
                 .internal_search(audit, filt_i_ts)
                 .expect("internal search failed");
-            assert!(r3.len() == 0);
+            assert!(r3.is_empty());
 
             assert!(server_txn.commit(audit).is_ok());
         })
@@ -2488,7 +2482,7 @@ mod tests {
 
             // Can it be seen (external search)
             let r1 = server_txn.search(audit, &se_rc).expect("search failed");
-            assert!(r1.len() == 0);
+            assert!(r1.is_empty());
 
             // Can it be deleted (external delete)
             // Should be err-no candidates.
@@ -2520,7 +2514,7 @@ mod tests {
             let r3 = server_txn
                 .internal_search(audit, filt_i_rc.clone())
                 .expect("internal search failed");
-            assert!(r3.len() == 0);
+            assert!(r3.is_empty());
 
             // There should be one tombstone
             let r4 = server_txn

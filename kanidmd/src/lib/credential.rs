@@ -139,8 +139,8 @@ impl TryFrom<DbCredV1> for Credential {
 
         Ok(Credential {
             password: v_password,
-            claims: claims,
-            uuid: uuid,
+            claims,
+            uuid,
         })
     }
 }
@@ -158,7 +158,7 @@ impl Credential {
         Credential {
             password: Some(Password::new(cleartext)),
             claims: self.claims.clone(),
-            uuid: self.uuid.clone(),
+            uuid: self.uuid,
         }
     }
 
@@ -181,7 +181,7 @@ impl Credential {
                 None => None,
             },
             claims: self.claims.clone(),
-            uuid: self.uuid.clone(),
+            uuid: self.uuid,
         }
     }
 

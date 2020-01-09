@@ -92,7 +92,7 @@ fn main() {
             }
         })
         .filter(|v| {
-            if v.len() == 0 {
+            if v.is_empty() {
                 return false;
             }
             if v.len() < 10 {

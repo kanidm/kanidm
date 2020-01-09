@@ -544,13 +544,10 @@ fn main() {
             GroupOpt::ListMembers(gcopt) => {
                 let client = gcopt.copt.to_client();
                 let members = client.idm_group_get_members(gcopt.name.as_str()).unwrap();
-                match members {
-                    Some(groups) => {
-                        for m in groups {
-                            println!("{:?}", m);
-                        }
+                if let Some(groups) = members {
+                    for m in groups {
+                        println!("{:?}", m);
                     }
-                    None => {}
                 }
             }
             GroupOpt::AddMembers(gcopt) => {
