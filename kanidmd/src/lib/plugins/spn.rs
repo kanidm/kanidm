@@ -152,8 +152,8 @@ impl Plugin for Spn {
         au: &mut AuditScope,
         qs: &mut QueryServerWriteTransaction,
         // List of what we modified that was valid?
-        pre_cand: &Vec<Entry<EntryValid, EntryCommitted>>,
-        cand: &Vec<Entry<EntryValid, EntryCommitted>>,
+        pre_cand: &[Entry<EntryValid, EntryCommitted>],
+        cand: &[Entry<EntryValid, EntryCommitted>],
         _ce: &ModifyEvent,
     ) -> Result<(), OperationError> {
         // On modify, if changing domain_name on UUID_DOMAIN_INFO
@@ -166,15 +166,12 @@ impl Plugin for Spn {
                 .fold(None, |acc, (post, pre)| {
                     if acc.is_some() {
                         acc
+                    } else if post.attribute_value_pres("uuid", &PV_UUID_DOMAIN_INFO)
+                        && post.get_ava_single("domain_name") != pre.get_ava_single("domain_name")
+                    {
+                        post.get_ava_single("domain_name")
                     } else {
-                        if post.attribute_value_pres("uuid", &PV_UUID_DOMAIN_INFO)
-                            && post.get_ava_single("domain_name")
-                                != pre.get_ava_single("domain_name")
-                        {
-                            post.get_ava_single("domain_name")
-                        } else {
-                            acc
-                        }
+                        acc
                     }
                 });
 

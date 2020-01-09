@@ -61,8 +61,8 @@ impl IdmServer {
     pub fn new(qs: QueryServer, sid: SID) -> IdmServer {
         IdmServer {
             sessions: CowCell::new(BTreeMap::new()),
-            qs: qs,
-            sid: sid,
+            qs,
+            sid,
         }
     }
 
@@ -96,7 +96,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
     pub fn expire_auth_sessions(&mut self, ct: Duration) {
         // ct is current time - sub the timeout. and then split.
         let expire = ct - Duration::from_secs(AUTH_SESSION_TIMEOUT);
-        let split_at = uuid_from_duration(expire, self.sid);
+        let split_at = uuid_from_duration(expire, *self.sid);
         let valid = self.sessions.split_off(&split_at);
         // swap them?
         *self.sessions = valid;
@@ -116,7 +116,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
         match &ae.step {
             AuthEventStep::Init(init) => {
                 // Allocate a session id, based on current time.
-                let sessionid = uuid_from_duration(ct, self.sid);
+                let sessionid = uuid_from_duration(ct, *self.sid);
 
                 // Begin the auth procedure!
                 // Start a read
@@ -181,7 +181,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
                 assert!(self.sessions.get(&sessionid).is_some());
 
                 Ok(AuthResult {
-                    sessionid: sessionid,
+                    sessionid,
                     state: AuthState::Continue(next_mech),
                 })
             }

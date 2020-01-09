@@ -42,7 +42,7 @@ impl SearchResult {
                 // All the needed transforms for this result are done
                 // in search_ext. This is just an entry -> protoentry
                 // step.
-                e.into_pe(audit, qs)
+                e.to_pe(audit, qs)
             })
             .collect();
         Ok(SearchResult { entries: entries? })
@@ -56,7 +56,7 @@ impl SearchResult {
     }
 
     // Consume into the array of entries, used in the json proto
-    pub fn to_proto_array(self) -> Vec<ProtoEntry> {
+    pub fn into_proto_array(self) -> Vec<ProtoEntry> {
         self.entries
     }
 }
@@ -182,7 +182,7 @@ impl Event {
     #[cfg(test)]
     pub unsafe fn from_impersonate_entry_ser(e: &str) -> Self {
         let ei: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(e);
-        Self::from_impersonate_entry(ei.to_valid_committed())
+        Self::from_impersonate_entry(ei.into_valid_committed())
     }
 
     pub fn from_impersonate(event: &Self) -> Self {
@@ -231,12 +231,12 @@ impl SearchEvent {
                 // changes.
                 filter: f
                     .clone()
-                    .to_ignore_hidden()
+                    .into_ignore_hidden()
                     .validate(qs.get_schema())
-                    .map_err(|e| OperationError::SchemaViolation(e))?,
+                    .map_err(OperationError::SchemaViolation)?,
                 filter_orig: f
                     .validate(qs.get_schema())
-                    .map_err(|e| OperationError::SchemaViolation(e))?,
+                    .map_err(OperationError::SchemaViolation)?,
                 // We can't get this from the SearchMessage because it's annoying with the
                 // current macro design.
                 attrs: None,
@@ -256,13 +256,10 @@ impl SearchEvent {
                 .collect()
         });
 
-        match &r_attrs {
-            Some(s) => {
-                if s.len() == 0 {
-                    return Err(OperationError::EmptyRequest);
-                }
+        if let Some(s) = &r_attrs {
+            if s.is_empty() {
+                return Err(OperationError::EmptyRequest);
             }
-            _ => {}
         }
 
         Ok(SearchEvent {
@@ -272,13 +269,13 @@ impl SearchEvent {
             filter: msg
                 .filter
                 .clone()
-                .to_ignore_hidden()
+                .into_ignore_hidden()
                 .validate(qs.get_schema())
-                .map_err(|e| OperationError::SchemaViolation(e))?,
+                .map_err(OperationError::SchemaViolation)?,
             filter_orig: msg
                 .filter
                 .validate(qs.get_schema())
-                .map_err(|e| OperationError::SchemaViolation(e))?,
+                .map_err(OperationError::SchemaViolation)?,
             attrs: r_attrs,
         })
     }
@@ -292,10 +289,10 @@ impl SearchEvent {
             event: Event::from_ro_uat(audit, qs, uat)?,
             filter: filter!(f_self())
                 .validate(qs.get_schema())
-                .map_err(|e| OperationError::SchemaViolation(e))?,
+                .map_err(OperationError::SchemaViolation)?,
             filter_orig: filter_all!(f_self())
                 .validate(qs.get_schema())
-                .map_err(|e| OperationError::SchemaViolation(e))?,
+                .map_err(OperationError::SchemaViolation)?,
             // TODO: Should we limit this?
             attrs: None,
         })
@@ -309,12 +306,12 @@ impl SearchEvent {
     ) -> Result<Self, OperationError> {
         Ok(SearchEvent {
             event: Event::from_ro_uat(audit, qs, uat)?,
-            filter: filter!(f_eq("uuid", PartialValue::new_uuid(target_uuid.clone())))
+            filter: filter!(f_eq("uuid", PartialValue::new_uuid(target_uuid)))
                 .validate(qs.get_schema())
-                .map_err(|e| OperationError::SchemaViolation(e))?,
+                .map_err(OperationError::SchemaViolation)?,
             filter_orig: filter_all!(f_eq("uuid", PartialValue::new_uuid(target_uuid)))
                 .validate(qs.get_schema())
-                .map_err(|e| OperationError::SchemaViolation(e))?,
+                .map_err(OperationError::SchemaViolation)?,
             attrs: None,
         })
     }
@@ -324,8 +321,8 @@ impl SearchEvent {
     pub unsafe fn new_impersonate_entry_ser(e: &str, filter: Filter<FilterInvalid>) -> Self {
         SearchEvent {
             event: Event::from_impersonate_entry_ser(e),
-            filter: filter.clone().to_valid(),
-            filter_orig: filter.to_valid(),
+            filter: filter.clone().into_valid(),
+            filter_orig: filter.into_valid(),
             attrs: None,
         }
     }
@@ -337,8 +334,8 @@ impl SearchEvent {
     ) -> Self {
         SearchEvent {
             event: Event::from_impersonate_entry(e),
-            filter: filter.clone().to_valid(),
-            filter_orig: filter.to_valid(),
+            filter: filter.clone().into_valid(),
+            filter_orig: filter.into_valid(),
             attrs: None,
         }
     }
@@ -350,8 +347,8 @@ impl SearchEvent {
     ) -> Self {
         SearchEvent {
             event: Event::from_impersonate(event),
-            filter: filter,
-            filter_orig: filter_orig,
+            filter,
+            filter_orig,
             attrs: None,
         }
     }
@@ -369,7 +366,7 @@ impl SearchEvent {
                 event: Event::from_ro_uat(audit, qs, msg.uat)?,
                 filter: f
                     .clone()
-                    .to_recycled()
+                    .into_recycled()
                     .validate(qs.get_schema())
                     .map_err(|e| OperationError::SchemaViolation(e))?,
                 filter_orig: f
@@ -389,8 +386,8 @@ impl SearchEvent {
     ) -> Self {
         SearchEvent {
             event: Event::from_impersonate_entry(e),
-            filter: filter.clone().to_recycled().to_valid(),
-            filter_orig: filter.to_valid(),
+            filter: filter.clone().into_recycled().into_valid(),
+            filter_orig: filter.into_valid(),
             attrs: None,
         }
     }
@@ -403,8 +400,8 @@ impl SearchEvent {
     ) -> Self {
         SearchEvent {
             event: Event::from_impersonate_entry(e),
-            filter: filter.clone().to_ignore_hidden().to_valid(),
-            filter_orig: filter.to_valid(),
+            filter: filter.clone().into_ignore_hidden().into_valid(),
+            filter_orig: filter.into_valid(),
             attrs: None,
         }
     }
@@ -413,8 +410,8 @@ impl SearchEvent {
     pub unsafe fn new_internal_invalid(filter: Filter<FilterInvalid>) -> Self {
         SearchEvent {
             event: Event::from_internal(),
-            filter: filter.clone().to_valid(),
-            filter_orig: filter.to_valid(),
+            filter: filter.clone().into_valid(),
+            filter_orig: filter.into_valid(),
             attrs: None,
         }
     }
@@ -460,7 +457,7 @@ impl CreateEvent {
                 // What is the correct consuming iterator here? Can we
                 // even do that?
                 event: Event::from_rw_uat(audit, qs, msg.uat)?,
-                entries: entries,
+                entries,
             }),
             Err(e) => Err(e),
         }
@@ -474,14 +471,14 @@ impl CreateEvent {
     ) -> Self {
         CreateEvent {
             event: Event::from_impersonate_entry_ser(e),
-            entries: entries,
+            entries,
         }
     }
 
     pub fn new_internal(entries: Vec<Entry<EntryInvalid, EntryNew>>) -> Self {
         CreateEvent {
             event: Event::from_internal(),
-            entries: entries,
+            entries,
         }
     }
 }
@@ -509,8 +506,8 @@ impl ExistsEvent {
     pub unsafe fn new_internal_invalid(filter: Filter<FilterInvalid>) -> Self {
         ExistsEvent {
             event: Event::from_internal(),
-            filter: filter.clone().to_valid(),
-            filter_orig: filter.to_valid(),
+            filter: filter.clone().into_valid(),
+            filter_orig: filter.into_valid(),
         }
     }
 }
@@ -535,12 +532,12 @@ impl DeleteEvent {
                 event: Event::from_rw_uat(audit, qs, msg.uat)?,
                 filter: f
                     .clone()
-                    .to_ignore_hidden()
+                    .into_ignore_hidden()
                     .validate(qs.get_schema())
-                    .map_err(|e| OperationError::SchemaViolation(e))?,
+                    .map_err(OperationError::SchemaViolation)?,
                 filter_orig: f
                     .validate(qs.get_schema())
-                    .map_err(|e| OperationError::SchemaViolation(e))?,
+                    .map_err(OperationError::SchemaViolation)?,
             }),
             Err(e) => Err(e),
         }
@@ -556,12 +553,12 @@ impl DeleteEvent {
             event: Event::from_rw_uat(audit, qs, uat)?,
             filter: filter
                 .clone()
-                .to_ignore_hidden()
+                .into_ignore_hidden()
                 .validate(qs.get_schema())
-                .map_err(|e| OperationError::SchemaViolation(e))?,
+                .map_err(OperationError::SchemaViolation)?,
             filter_orig: filter
                 .validate(qs.get_schema())
-                .map_err(|e| OperationError::SchemaViolation(e))?,
+                .map_err(OperationError::SchemaViolation)?,
         })
     }
 
@@ -572,8 +569,8 @@ impl DeleteEvent {
     ) -> Self {
         DeleteEvent {
             event: Event::from_impersonate_entry(e),
-            filter: filter.clone().to_valid(),
-            filter_orig: filter.to_valid(),
+            filter: filter.clone().into_valid(),
+            filter_orig: filter.into_valid(),
         }
     }
 
@@ -581,8 +578,8 @@ impl DeleteEvent {
     pub unsafe fn new_impersonate_entry_ser(e: &str, filter: Filter<FilterInvalid>) -> Self {
         DeleteEvent {
             event: Event::from_impersonate_entry_ser(e),
-            filter: filter.clone().to_valid(),
-            filter_orig: filter.to_valid(),
+            filter: filter.clone().into_valid(),
+            filter_orig: filter.into_valid(),
         }
     }
 
@@ -590,8 +587,8 @@ impl DeleteEvent {
     pub unsafe fn new_internal_invalid(filter: Filter<FilterInvalid>) -> Self {
         DeleteEvent {
             event: Event::from_internal(),
-            filter: filter.clone().to_valid(),
-            filter_orig: filter.to_valid(),
+            filter: filter.clone().into_valid(),
+            filter_orig: filter.into_valid(),
         }
     }
 
@@ -626,15 +623,15 @@ impl ModifyEvent {
                     event: Event::from_rw_uat(audit, qs, msg.uat)?,
                     filter: f
                         .clone()
-                        .to_ignore_hidden()
+                        .into_ignore_hidden()
                         .validate(qs.get_schema())
-                        .map_err(|e| OperationError::SchemaViolation(e))?,
+                        .map_err(OperationError::SchemaViolation)?,
                     filter_orig: f
                         .validate(qs.get_schema())
-                        .map_err(|e| OperationError::SchemaViolation(e))?,
+                        .map_err(OperationError::SchemaViolation)?,
                     modlist: m
                         .validate(qs.get_schema())
-                        .map_err(|e| OperationError::SchemaViolation(e))?,
+                        .map_err(OperationError::SchemaViolation)?,
                 }),
                 Err(e) => Err(e),
             },
@@ -660,15 +657,15 @@ impl ModifyEvent {
                 event: Event::from_rw_uat(audit, qs, uat)?,
                 filter: f
                     .clone()
-                    .to_ignore_hidden()
+                    .into_ignore_hidden()
                     .validate(qs.get_schema())
-                    .map_err(|e| OperationError::SchemaViolation(e))?,
+                    .map_err(OperationError::SchemaViolation)?,
                 filter_orig: f
                     .validate(qs.get_schema())
-                    .map_err(|e| OperationError::SchemaViolation(e))?,
+                    .map_err(OperationError::SchemaViolation)?,
                 modlist: m
                     .validate(qs.get_schema())
-                    .map_err(|e| OperationError::SchemaViolation(e))?,
+                    .map_err(OperationError::SchemaViolation)?,
             }),
             Err(e) => Err(e),
         }
@@ -690,15 +687,15 @@ impl ModifyEvent {
             event: Event::from_rw_uat(audit, qs, uat)?,
             filter: f
                 .clone()
-                .to_ignore_hidden()
+                .into_ignore_hidden()
                 .validate(qs.get_schema())
-                .map_err(|e| OperationError::SchemaViolation(e))?,
+                .map_err(OperationError::SchemaViolation)?,
             filter_orig: f
                 .validate(qs.get_schema())
-                .map_err(|e| OperationError::SchemaViolation(e))?,
+                .map_err(OperationError::SchemaViolation)?,
             modlist: ml
                 .validate(qs.get_schema())
-                .map_err(|e| OperationError::SchemaViolation(e))?,
+                .map_err(OperationError::SchemaViolation)?,
         })
     }
 
@@ -718,15 +715,15 @@ impl ModifyEvent {
             event: Event::from_rw_uat(audit, qs, uat)?,
             filter: f
                 .clone()
-                .to_ignore_hidden()
+                .into_ignore_hidden()
                 .validate(qs.get_schema())
-                .map_err(|e| OperationError::SchemaViolation(e))?,
+                .map_err(OperationError::SchemaViolation)?,
             filter_orig: f
                 .validate(qs.get_schema())
-                .map_err(|e| OperationError::SchemaViolation(e))?,
+                .map_err(OperationError::SchemaViolation)?,
             modlist: ml
                 .validate(qs.get_schema())
-                .map_err(|e| OperationError::SchemaViolation(e))?,
+                .map_err(OperationError::SchemaViolation)?,
         })
     }
 
@@ -735,7 +732,7 @@ impl ModifyEvent {
             event: Event::from_internal(),
             filter: filter.clone(),
             filter_orig: filter,
-            modlist: modlist,
+            modlist,
         }
     }
 
@@ -746,9 +743,9 @@ impl ModifyEvent {
     ) -> Self {
         ModifyEvent {
             event: Event::from_internal(),
-            filter: filter.clone().to_valid(),
-            filter_orig: filter.to_valid(),
-            modlist: modlist.to_valid(),
+            filter: filter.clone().into_valid(),
+            filter_orig: filter.into_valid(),
+            modlist: modlist.into_valid(),
         }
     }
 
@@ -760,9 +757,9 @@ impl ModifyEvent {
     ) -> Self {
         ModifyEvent {
             event: Event::from_impersonate_entry_ser(e),
-            filter: filter.clone().to_valid(),
-            filter_orig: filter.to_valid(),
-            modlist: modlist.to_valid(),
+            filter: filter.clone().into_valid(),
+            filter_orig: filter.into_valid(),
+            modlist: modlist.into_valid(),
         }
     }
 
@@ -774,9 +771,9 @@ impl ModifyEvent {
     ) -> Self {
         ModifyEvent {
             event: Event::from_impersonate_entry(e),
-            filter: filter.clone().to_valid(),
-            filter_orig: filter.to_valid(),
-            modlist: modlist.to_valid(),
+            filter: filter.clone().into_valid(),
+            filter_orig: filter.into_valid(),
+            modlist: modlist.into_valid(),
         }
     }
 
@@ -788,9 +785,9 @@ impl ModifyEvent {
     ) -> Self {
         ModifyEvent {
             event: Event::from_impersonate(event),
-            filter: filter,
-            filter_orig: filter_orig,
-            modlist: modlist,
+            filter,
+            filter_orig,
+            modlist,
         }
     }
 }
@@ -822,16 +819,13 @@ impl AuthEventStep {
                         "session id present in init".to_string(),
                     ))
                 } else {
-                    Ok(AuthEventStep::Init(AuthEventStepInit {
-                        name: name,
-                        appid: appid,
-                    }))
+                    Ok(AuthEventStep::Init(AuthEventStepInit { name, appid }))
                 }
             }
             AuthStep::Creds(creds) => match sid {
                 Some(ssid) => Ok(AuthEventStep::Creds(AuthEventStepCreds {
                     sessionid: ssid,
-                    creds: creds,
+                    creds,
                 })),
                 None => Err(OperationError::InvalidAuthState(
                     "session id not present in cred".to_string(),
@@ -950,8 +944,8 @@ impl WhoamiResult {
         uat: UserAuthToken,
     ) -> Result<Self, OperationError> {
         Ok(WhoamiResult {
-            youare: e.into_pe(audit, qs)?,
-            uat: uat,
+            youare: e.to_pe(audit, qs)?,
+            uat,
         })
     }
 
@@ -1023,7 +1017,7 @@ impl ReviveRecycledEvent {
             Ok(f) => Ok(ReviveRecycledEvent {
                 event: Event::from_rw_uat(audit, qs, msg.uat)?,
                 filter: f
-                    .to_recycled()
+                    .into_recycled()
                     .validate(qs.get_schema())
                     .map_err(|e| OperationError::SchemaViolation(e))?,
             }),
@@ -1039,7 +1033,7 @@ impl ReviveRecycledEvent {
     ) -> Self {
         ReviveRecycledEvent {
             event: Event::from_impersonate_entry(e),
-            filter: filter.to_valid(),
+            filter: filter.into_valid(),
         }
     }
 }

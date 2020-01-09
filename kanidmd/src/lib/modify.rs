@@ -56,7 +56,7 @@ impl Modify {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct ModifyList<VALID> {
     valid: VALID,
     // The order of this list matters. Each change must be done in order.
@@ -83,7 +83,7 @@ impl ModifyList<ModifyInvalid> {
     pub fn new_list(mods: Vec<Modify>) -> Self {
         ModifyList {
             valid: ModifyInvalid,
-            mods: mods,
+            mods,
         }
     }
 
@@ -135,7 +135,7 @@ impl ModifyList<ModifyInvalid> {
         */
 
         let res: Result<Vec<Modify>, _> = (&self.mods)
-            .into_iter()
+            .iter()
             .map(|m| match m {
                 Modify::Present(attr, value) => {
                     let attr_norm = schema.normalise_attr_name(attr);
@@ -178,7 +178,7 @@ impl ModifyList<ModifyInvalid> {
     }
 
     #[cfg(test)]
-    pub unsafe fn to_valid(self) -> ModifyList<ModifyValid> {
+    pub unsafe fn into_valid(self) -> ModifyList<ModifyValid> {
         ModifyList {
             valid: ModifyValid,
             mods: self.mods,
@@ -191,7 +191,7 @@ impl ModifyList<ModifyValid> {
     pub unsafe fn new_valid_list(mods: Vec<Modify>) -> Self {
         ModifyList {
             valid: ModifyValid,
-            mods: mods,
+            mods,
         }
     }
 

@@ -21,7 +21,7 @@ pub struct AttrUnique;
 
 fn get_cand_attr_set<VALID, STATE>(
     au: &mut AuditScope,
-    cand: &Vec<Entry<VALID, STATE>>,
+    cand: &[Entry<VALID, STATE>],
     attr: &str,
 ) -> Result<BTreeMap<PartialValue, PartialValue>, OperationError> {
     let mut cand_attr: BTreeMap<PartialValue, PartialValue> = BTreeMap::new();
@@ -73,7 +73,7 @@ fn get_cand_attr_set<VALID, STATE>(
 fn enforce_unique<STATE>(
     au: &mut AuditScope,
     qs: &mut QueryServerWriteTransaction,
-    cand: &Vec<Entry<EntryInvalid, STATE>>,
+    cand: &[Entry<EntryInvalid, STATE>],
     attr: &str,
 ) -> Result<(), OperationError> {
     debug!("{:?}", attr);
@@ -85,7 +85,7 @@ fn enforce_unique<STATE>(
     debug!("{:?}", cand_attr);
 
     // No candidates to check!
-    if cand_attr.len() == 0 {
+    if cand_attr.is_empty() {
         return Ok(());
     }
 
@@ -110,7 +110,7 @@ fn enforce_unique<STATE>(
     let conflict_cand = try_audit!(au, qs.internal_search(au, filt_in));
 
     // If all okay, okay!
-    if conflict_cand.len() > 0 {
+    if !conflict_cand.is_empty() {
         return Err(OperationError::Plugin(PluginError::AttrUnique(
             "duplicate value detected".to_string(),
         )));

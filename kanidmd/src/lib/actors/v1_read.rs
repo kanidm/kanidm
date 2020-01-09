@@ -34,7 +34,7 @@ pub struct WhoamiMessage {
 
 impl WhoamiMessage {
     pub fn new(uat: Option<UserAuthToken>) -> Self {
-        WhoamiMessage { uat: uat }
+        WhoamiMessage { uat }
     }
 }
 
@@ -50,10 +50,7 @@ pub struct AuthMessage {
 
 impl AuthMessage {
     pub fn new(req: AuthRequest, sessionid: Option<Uuid>) -> Self {
-        AuthMessage {
-            sessionid: sessionid,
-            req: req,
-        }
+        AuthMessage { sessionid, req }
     }
 }
 
@@ -68,7 +65,7 @@ pub struct SearchMessage {
 
 impl SearchMessage {
     pub fn new(uat: Option<UserAuthToken>, req: SearchRequest) -> Self {
-        SearchMessage { uat: uat, req: req }
+        SearchMessage { uat, req }
     }
 }
 
@@ -142,11 +139,7 @@ impl Actor for QueryServerReadV1 {
 impl QueryServerReadV1 {
     pub fn new(log: actix::Addr<EventLog>, qs: QueryServer, idms: Arc<IdmServer>) -> Self {
         log_event!(log, "Starting query server v1 worker ...");
-        QueryServerReadV1 {
-            log: log,
-            qs: qs,
-            idms: idms,
-        }
+        QueryServerReadV1 { log, qs, idms }
     }
 
     pub fn start(
@@ -320,7 +313,7 @@ impl Handler<InternalSearchMessage> for QueryServerReadV1 {
 
             match qs_read.search_ext(&mut audit, &srch) {
                 Ok(entries) => SearchResult::new(&mut audit, &qs_read, entries)
-                    .map(|ok_sr| ok_sr.to_proto_array()),
+                    .map(|ok_sr| ok_sr.into_proto_array()),
                 Err(e) => Err(e),
             }
         });

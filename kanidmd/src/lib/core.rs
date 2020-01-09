@@ -199,11 +199,7 @@ fn json_rest_event_get(
 
     // TODO: I think we'll need to change this to take an internal filter
     // type that we send to the qs.
-    let obj = InternalSearchMessage {
-        uat: uat,
-        filter: filter,
-        attrs: attrs,
-    };
+    let obj = InternalSearchMessage { uat, filter, attrs };
 
     let res = state.qe_r.send(obj).from_err().and_then(|res| match res {
         Ok(event_result) => Ok(HttpResponse::Ok().json(event_result)),
@@ -224,11 +220,7 @@ fn json_rest_event_get_id(
 
     let filter = Filter::join_parts_and(filter, filter_all!(f_id(path.as_str())));
 
-    let obj = InternalSearchMessage {
-        uat: uat,
-        filter: filter,
-        attrs: attrs,
-    };
+    let obj = InternalSearchMessage { uat, filter, attrs };
 
     let res = state.qe_r.send(obj).from_err().and_then(|res| match res {
         Ok(mut event_result) => {
@@ -251,10 +243,7 @@ fn json_rest_event_delete_id(
 
     let filter = Filter::join_parts_and(filter, filter_all!(f_id(path.as_str())));
 
-    let obj = InternalDeleteMessage {
-        uat: uat,
-        filter: filter,
-    };
+    let obj = InternalDeleteMessage { uat, filter };
 
     let res = state.qe_w.send(obj).from_err().and_then(|res| match res {
         Ok(_) => {
@@ -279,8 +268,8 @@ fn json_rest_event_get_id_attr(
     let filter = Filter::join_parts_and(filter, filter_all!(f_id(id.as_str())));
 
     let obj = InternalSearchMessage {
-        uat: uat,
-        filter: filter,
+        uat,
+        filter,
         attrs: Some(vec![attr.clone()]),
     };
 
@@ -379,11 +368,11 @@ fn json_rest_event_post_id_attr(
                 match r_obj {
                     Ok(obj) => {
                         let m_obj = AppendAttributeMessage {
-                            uat: uat,
+                            uat,
                             uuid_or_name: id,
-                            attr: attr,
+                            attr,
                             values: obj,
-                            filter: filter,
+                            filter,
                         };
                         // Add a msg here
                         let res = state.qe_w.send(m_obj).from_err().and_then(|res| match res {
@@ -429,11 +418,11 @@ fn json_rest_event_put_id_attr(
                 match r_obj {
                     Ok(obj) => {
                         let m_obj = SetAttributeMessage {
-                            uat: uat,
+                            uat,
                             uuid_or_name: id,
-                            attr: attr,
+                            attr,
                             values: obj,
-                            filter: filter,
+                            filter,
                         };
                         let res = state.qe_w.send(m_obj).from_err().and_then(|res| match res {
                             Ok(_) => Ok(HttpResponse::Ok().json(())),
@@ -463,17 +452,14 @@ fn json_rest_event_delete_id_attr(
     // TODO: Attempt to get an option Vec<String> here?
 
     let obj = PurgeAttributeMessage {
-        uat: uat,
+        uat,
         uuid_or_name: id,
-        attr: attr,
-        filter: filter,
+        attr,
+        filter,
     };
 
     let res = state.qe_w.send(obj).from_err().and_then(|res| match res {
-        Ok(event_result) => {
-            // Only send back the first result, or None
-            Ok(HttpResponse::Ok().json(event_result))
-        }
+        Ok(()) => Ok(HttpResponse::Ok().json(())),
         Err(e) => Ok(operation_error_to_response(e)),
     });
 
@@ -576,8 +562,8 @@ fn schema_attributetype_get_id(
     ]));
 
     let obj = InternalSearchMessage {
-        uat: uat,
-        filter: filter,
+        uat,
+        filter,
         attrs: None,
     };
 
@@ -611,8 +597,8 @@ fn schema_classtype_get_id(
     ]));
 
     let obj = InternalSearchMessage {
-        uat: uat,
-        filter: filter,
+        uat,
+        filter,
         attrs: None,
     };
 
@@ -714,7 +700,7 @@ fn account_get_id_ssh_pubkeys(
     let id = path.into_inner();
 
     let obj = InternalSshKeyReadMessage {
-        uat: uat,
+        uat,
         uuid_or_name: id,
     };
 
@@ -753,10 +739,10 @@ fn account_post_id_ssh_pubkey(
                 match r_obj {
                     Ok((tag, key)) => {
                         let m_obj = InternalSshKeyCreateMessage {
-                            uat: uat,
+                            uat,
                             uuid_or_name: id,
-                            tag: tag,
-                            key: key,
+                            tag,
+                            key,
                             filter: filter_all!(f_eq("class", PartialValue::new_class("account"))),
                         };
                         // Add a msg here
@@ -787,9 +773,9 @@ fn account_get_id_ssh_pubkey_tag(
     let (id, tag) = path.into_inner();
 
     let obj = InternalSshKeyTagReadMessage {
-        uat: uat,
+        uat,
         uuid_or_name: id,
-        tag: tag,
+        tag,
     };
 
     let res = state.qe_r.send(obj).from_err().and_then(|res| match res {
@@ -814,7 +800,7 @@ fn account_delete_id_ssh_pubkey_tag(
     let (id, tag) = path.into_inner();
 
     let obj = RemoveAttributeValueMessage {
-        uat: uat,
+        uat,
         uuid_or_name: id,
         attr: "ssh_publickey".to_string(),
         value: tag,
@@ -822,7 +808,7 @@ fn account_delete_id_ssh_pubkey_tag(
     };
 
     let res = state.qe_w.send(obj).from_err().and_then(|res| match res {
-        Ok(event_result) => Ok(HttpResponse::Ok().json(event_result)),
+        Ok(()) => Ok(HttpResponse::Ok().json(())),
         Err(e) => Ok(operation_error_to_response(e)),
     });
 
@@ -837,7 +823,7 @@ fn account_get_id_radius(
     let id = path.into_inner();
 
     let obj = InternalRadiusReadMessage {
-        uat: uat,
+        uat,
         uuid_or_name: id,
     };
 
@@ -888,7 +874,7 @@ fn account_get_id_radius_token(
     let id = path.into_inner();
 
     let obj = InternalRadiusTokenReadMessage {
-        uat: uat,
+        uat,
         uuid_or_name: id,
     };
 
@@ -1401,7 +1387,7 @@ pub fn verify_server_core(config: Configuration) {
 
     debug!("{}", audit);
 
-    if r.len() == 0 {
+    if r.is_empty() {
         info!("Verification passed!");
         std::process::exit(0);
     } else {
@@ -1547,8 +1533,7 @@ pub fn create_server_core(config: Configuration) {
         config.threads,
     );
     // Start the write thread
-    let server_write_addr =
-        QueryServerWriteV1::start(log_addr.clone(), qs.clone(), idms_arc.clone());
+    let server_write_addr = QueryServerWriteV1::start(log_addr, qs, idms_arc);
 
     // Setup timed events associated to the write thread
     let _int_addr = IntervalActor::new(server_write_addr.clone()).start();
@@ -1557,14 +1542,14 @@ pub fn create_server_core(config: Configuration) {
     let max_size = config.maximum_request;
     let secure_cookies = config.secure_cookies;
     // domain will come from the qs now!
-    let cookie_key: [u8; 32] = config.cookie_key.clone();
+    let cookie_key: [u8; 32] = config.cookie_key;
 
     // start the web server
     let aws_builder = actix_web::server::new(move || {
         App::with_state(AppState {
             qe_r: server_read_addr.clone(),
             qe_w: server_write_addr.clone(),
-            max_size: max_size,
+            max_size,
         })
         // Connect all our end points here.
         .middleware(middleware::Logger::default())

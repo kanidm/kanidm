@@ -629,7 +629,7 @@ where
  */
 impl Entry<EntryInvalid, EntryCommitted> {
     #[cfg(test)]
-    pub unsafe fn to_valid_new(self) -> Entry<EntryValid, EntryNew> {
+    pub unsafe fn into_valid_new(self) -> Entry<EntryValid, EntryNew> {
         Entry {
             valid: EntryValid {
                 uuid: self.get_uuid().expect("Invalid uuid").clone(),
@@ -643,7 +643,7 @@ impl Entry<EntryInvalid, EntryCommitted> {
 
 impl Entry<EntryInvalid, EntryNew> {
     #[cfg(test)]
-    pub unsafe fn to_valid_new(self) -> Entry<EntryValid, EntryNew> {
+    pub unsafe fn into_valid_new(self) -> Entry<EntryValid, EntryNew> {
         Entry {
             valid: EntryValid {
                 uuid: self.get_uuid().expect("Invalid uuid").clone(),
@@ -655,7 +655,7 @@ impl Entry<EntryInvalid, EntryNew> {
 
     /*
     #[cfg(test)]
-    pub unsafe fn to_valid_normal(self) -> Entry<EntryNormalised, EntryNew> {
+    pub unsafe fn into_valid_normal(self) -> Entry<EntryNormalised, EntryNew> {
         Entry {
             valid: EntryNormalised,
             state: EntryNew,
@@ -672,7 +672,7 @@ impl Entry<EntryInvalid, EntryNew> {
     */
 
     #[cfg(test)]
-    pub unsafe fn to_valid_committed(self) -> Entry<EntryValid, EntryCommitted> {
+    pub unsafe fn into_valid_committed(self) -> Entry<EntryValid, EntryCommitted> {
         Entry {
             valid: EntryValid {
                 uuid: self
@@ -688,7 +688,7 @@ impl Entry<EntryInvalid, EntryNew> {
 
 impl Entry<EntryInvalid, EntryCommitted> {
     #[cfg(test)]
-    pub unsafe fn to_valid_committed(self) -> Entry<EntryValid, EntryCommitted> {
+    pub unsafe fn into_valid_committed(self) -> Entry<EntryValid, EntryCommitted> {
         Entry {
             valid: EntryValid {
                 uuid: self.get_uuid().expect("Missing UUID!").clone(),
@@ -701,7 +701,7 @@ impl Entry<EntryInvalid, EntryCommitted> {
 
 impl Entry<EntryValid, EntryNew> {
     #[cfg(test)]
-    pub unsafe fn to_valid_committed(self) -> Entry<EntryValid, EntryCommitted> {
+    pub unsafe fn into_valid_committed(self) -> Entry<EntryValid, EntryCommitted> {
         Entry {
             valid: self.valid,
             state: EntryCommitted { id: 0 },
@@ -709,10 +709,10 @@ impl Entry<EntryValid, EntryNew> {
         }
     }
 
-    pub fn to_valid_committed_id(self, id: u64) -> Entry<EntryValid, EntryCommitted> {
+    pub fn into_valid_committed_id(self, id: u64) -> Entry<EntryValid, EntryCommitted> {
         Entry {
             valid: self.valid,
-            state: EntryCommitted { id: id },
+            state: EntryCommitted { id },
             attrs: self.attrs,
         }
     }
@@ -722,14 +722,17 @@ impl Entry<EntryValid, EntryNew> {
     }
 }
 
+type IdxDiff<'a> =
+    Vec<Result<(&'a String, &'a IndexType, String), (&'a String, &'a IndexType, String)>>;
+
 impl Entry<EntryValid, EntryCommitted> {
     #[cfg(test)]
-    pub unsafe fn to_valid_committed(self) -> Entry<EntryValid, EntryCommitted> {
+    pub unsafe fn into_valid_committed(self) -> Entry<EntryValid, EntryCommitted> {
         // NO-OP to satisfy macros.
         self
     }
 
-    pub fn into_dbentry(&self) -> DbEntry {
+    pub fn to_dbentry(&self) -> DbEntry {
         // In the future this will do extra work to process uuid
         // into "attributes" suitable for dbentry storage.
 
@@ -762,7 +765,7 @@ impl Entry<EntryValid, EntryCommitted> {
         idxmeta: &'a BTreeSet<(String, IndexType)>,
         pre: Option<&Self>,
         post: Option<&Self>,
-    ) -> Vec<Result<(&'a String, &'a IndexType, String), (&'a String, &'a IndexType, String)>> {
+    ) -> IdxDiff<'a> {
         // We yield a list of Result, where Ok() means "add",
         // and Err() means "remove".
         // the value inside the result, is a tuple of attr, itype, idx_key
@@ -971,10 +974,10 @@ impl Entry<EntryValid, EntryCommitted> {
                 .into_iter()
                 .map(|(k, vs)| {
                     let vv: Result<BTreeSet<Value>, ()> =
-                        vs.into_iter().map(|v| Value::from_db_valuev1(v)).collect();
+                        vs.into_iter().map(Value::from_db_valuev1).collect();
                     match vv {
                         Ok(vv) => Ok((k, vv)),
-                        Err(e) => Err(e),
+                        Err(()) => Err(()),
                     }
                 })
                 .collect(),
@@ -982,24 +985,23 @@ impl Entry<EntryValid, EntryCommitted> {
 
         let attrs = r_attrs?;
 
-        let uuid: Uuid = match attrs.get("uuid") {
+        let uuid: Uuid = *match attrs.get("uuid") {
             Some(vs) => vs.iter().take(1).next(),
             None => None,
         }
         .ok_or(())?
         // Now map value -> uuid
         .to_uuid()
-        .ok_or(())?
-        .clone();
+        .ok_or(())?;
 
         Ok(Entry {
-            valid: EntryValid { uuid: uuid },
+            valid: EntryValid { uuid },
             state: EntryCommitted { id },
-            attrs: attrs,
+            attrs,
         })
     }
 
-    pub unsafe fn to_reduced(self) -> Entry<EntryReduced, EntryCommitted> {
+    pub unsafe fn into_reduced(self) -> Entry<EntryReduced, EntryCommitted> {
         Entry {
             valid: EntryReduced {
                 uuid: self.valid.uuid,
@@ -1060,7 +1062,7 @@ impl Entry<EntryReduced, EntryCommitted> {
         &self.valid.uuid
     }
 
-    pub fn into_pe(
+    pub fn to_pe(
         &self,
         audit: &mut AuditScope,
         qs: &QueryServerReadTransaction,
@@ -1100,9 +1102,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     }
 
     pub fn get_ava_set(&self, attr: &str) -> Option<BTreeSet<&Value>> {
-        self.attrs
-            .get(attr)
-            .and_then(|vs| Some(vs.iter().collect()))
+        self.attrs.get(attr).map(|vs| vs.iter().collect())
     }
 
     pub fn get_ava_set_str(&self, attr: &str) -> Option<BTreeSet<&str>> {
@@ -1213,11 +1213,8 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     pub(crate) fn get_ava_opt_string(&self, attr: &str) -> Option<Vec<String>> {
         match self.attrs.get(attr) {
             Some(a) => {
-                let r: Vec<String> = a
-                    .iter()
-                    .filter_map(|v| v.as_string().map(|s| s.clone()))
-                    .collect();
-                if r.len() == 0 {
+                let r: Vec<String> = a.iter().filter_map(|v| v.as_string().cloned()).collect();
+                if r.is_empty() {
                     // Corrupt?
                     None
                 } else {
@@ -1251,11 +1248,8 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     pub(crate) fn get_ava_set_string(&self, attr: &str) -> Option<BTreeSet<String>> {
         match self.attrs.get(attr) {
             Some(a) => {
-                let r: BTreeSet<String> = a
-                    .iter()
-                    .filter_map(|v| v.as_string().map(|s| s.clone()))
-                    .collect();
-                if r.len() == 0 {
+                let r: BTreeSet<String> = a.iter().filter_map(|v| v.as_string().cloned()).collect();
+                if r.is_empty() {
                     // Corrupt?
                     None
                 } else {
@@ -1273,7 +1267,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     pub fn get_ava_single_string(&self, attr: &str) -> Option<String> {
         self.get_ava_single(attr)
             .and_then(|v: &Value| v.as_string())
-            .and_then(|s: &String| Some((*s).clone()))
+            .map(|s: &String| (*s).clone())
     }
 
     pub fn get_ava_single_protofilter(&self, attr: &str) -> Option<ProtoFilter> {
@@ -1282,12 +1276,12 @@ impl<VALID, STATE> Entry<VALID, STATE> {
                 debug!("get_ava_single_protofilter -> {:?}", v);
                 v.as_json_filter()
             })
-            .and_then(|f: &ProtoFilter| Some((*f).clone()))
+            .map(|f: &ProtoFilter| (*f).clone())
     }
 
     pub(crate) fn generate_spn(&self, domain_name: &str) -> Option<Value> {
         self.get_ava_single_str("name")
-            .and_then(|name| Some(Value::new_spn_str(name, domain_name)))
+            .map(|name| Value::new_spn_str(name, domain_name))
     }
 
     pub fn attribute_pres(&self, attr: &str) -> bool {
@@ -1381,7 +1375,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         }
     }
 
-    pub fn filter_from_attrs(&self, attrs: &Vec<String>) -> Option<Filter<FilterInvalid>> {
+    pub fn filter_from_attrs(&self, attrs: &[String]) -> Option<Filter<FilterInvalid>> {
         // Because we are a valid entry, a filter we create still may not
         // be valid because the internal server entry templates are still
         // created by humans! Plus double checking something already valid
@@ -1552,7 +1546,7 @@ impl<VALID, STATE> PartialEq for Entry<VALID, STATE> {
 impl From<&SchemaAttribute> for Entry<EntryValid, EntryNew> {
     fn from(s: &SchemaAttribute) -> Self {
         // Convert an Attribute to an entry ... make it good!
-        let uuid = s.uuid.clone();
+        let uuid = s.uuid;
         let uuid_v = btreeset![Value::new_uuidr(&uuid)];
 
         let name_v = btreeset![Value::new_iutf8(s.name.clone())];
@@ -1586,16 +1580,16 @@ impl From<&SchemaAttribute> for Entry<EntryValid, EntryNew> {
         // Insert stuff.
 
         Entry {
-            valid: EntryValid { uuid: uuid },
+            valid: EntryValid { uuid },
             state: EntryNew,
-            attrs: attrs,
+            attrs,
         }
     }
 }
 
 impl From<&SchemaClass> for Entry<EntryValid, EntryNew> {
     fn from(s: &SchemaClass) -> Self {
-        let uuid = s.uuid.clone();
+        let uuid = s.uuid;
         let uuid_v = btreeset![Value::new_uuidr(&uuid)];
 
         let name_v = btreeset![Value::new_iutf8(s.name.clone())];
@@ -1614,7 +1608,7 @@ impl From<&SchemaClass> for Entry<EntryValid, EntryNew> {
             ],
         );
 
-        if s.systemmay.len() > 0 {
+        if !s.systemmay.is_empty() {
             attrs.insert(
                 "systemmay".to_string(),
                 s.systemmay
@@ -1624,7 +1618,7 @@ impl From<&SchemaClass> for Entry<EntryValid, EntryNew> {
             );
         }
 
-        if s.systemmust.len() > 0 {
+        if !s.systemmust.is_empty() {
             attrs.insert(
                 "systemmust".to_string(),
                 s.systemmust
@@ -1635,9 +1629,9 @@ impl From<&SchemaClass> for Entry<EntryValid, EntryNew> {
         }
 
         Entry {
-            valid: EntryValid { uuid: uuid },
+            valid: EntryValid { uuid },
             state: EntryNew,
-            attrs: attrs,
+            attrs,
         }
     }
 }
@@ -1740,12 +1734,12 @@ mod tests {
         let mut e1_mod = e1.clone();
         e1_mod.add_ava("extra", &Value::from("test"));
 
-        let e1 = unsafe { e1.to_valid_committed() };
-        let e1_mod = unsafe { e1_mod.to_valid_committed() };
+        let e1 = unsafe { e1.into_valid_committed() };
+        let e1_mod = unsafe { e1_mod.into_valid_committed() };
 
         let mut e2: Entry<EntryInvalid, EntryNew> = Entry::new();
         e2.add_ava("userid", &Value::from("claire"));
-        let e2 = unsafe { e2.to_valid_committed() };
+        let e2 = unsafe { e2.into_valid_committed() };
 
         let mut idxmeta = BTreeSet::new();
         idxmeta.insert(("userid".to_string(), IndexType::EQUALITY));

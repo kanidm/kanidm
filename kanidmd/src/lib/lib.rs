@@ -9,7 +9,7 @@ extern crate serde_derive;
 #[macro_use]
 extern crate lazy_static;
 
-// This has to be before be so the import order works
+// This has to be before 'be' so the import order works
 #[macro_use]
 mod macros;
 mod crypto;

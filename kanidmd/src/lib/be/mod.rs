@@ -56,7 +56,7 @@ pub struct BackendWriteTransaction {
 }
 
 impl IdEntry {
-    fn to_entry(self) -> Result<Entry<EntryValid, EntryCommitted>, OperationError> {
+    fn into_entry(self) -> Result<Entry<EntryValid, EntryCommitted>, OperationError> {
         let db_e = serde_cbor::from_slice(self.data.as_slice())
             .map_err(|_| OperationError::SerdeCborError)?;
         let id = u64::try_from(self.id).map_err(|_| OperationError::InvalidEntryID)?;
@@ -310,8 +310,10 @@ pub trait BackendTransaction {
             let idl = self.filter2idl(au, filt.to_inner(), FILTER_TEST_THRESHOLD)?;
 
             let raw_entries = try_audit!(au, self.get_idlayer().get_identry(au, &idl));
-            let entries: Result<Vec<_>, _> =
-                raw_entries.into_iter().map(|ide| ide.to_entry()).collect();
+            let entries: Result<Vec<_>, _> = raw_entries
+                .into_iter()
+                .map(|ide| ide.into_entry())
+                .collect();
             let entries = try_audit!(au, entries);
             // Do other things
             // Now, de-serialise the raw_entries back to entries, and populate their ID's
@@ -332,7 +334,7 @@ pub trait BackendTransaction {
             if cfg!(test) {
                 let check_raw_entries = try_audit!(au, self.get_idlayer().get_identry(au, &IDL::ALLIDS));
                 let check_entries: Result<Vec<_>, _> =
-                    check_raw_entries.into_iter().map(|ide| ide.to_entry()).collect();
+                    check_raw_entries.into_iter().map(|ide| ide.into_entry()).collect();
                 let check_entries = try_audit!(au, check_entries);
                 let f_check_entries: Vec<_> =
                     check_entries
@@ -370,13 +372,13 @@ pub trait BackendTransaction {
             // Now, check the idl -- if it's fully resolved, we can skip this because the query
             // was fully indexed.
             match &idl {
-                IDL::Indexed(idl) => {
-                    return Ok(idl.len() > 0);
-                }
+                IDL::Indexed(idl) => Ok(idl.len() > 0),
                 _ => {
                     let raw_entries = try_audit!(au, self.get_idlayer().get_identry(au, &idl));
-                    let entries: Result<Vec<_>, _> =
-                        raw_entries.into_iter().map(|ide| ide.to_entry()).collect();
+                    let entries: Result<Vec<_>, _> = raw_entries
+                        .into_iter()
+                        .map(|ide| ide.into_entry())
+                        .collect();
                     let entries = try_audit!(au, entries);
 
                     // if not 100% resolved query, apply the filter test.
@@ -385,7 +387,7 @@ pub trait BackendTransaction {
                         .filter(|e| e.entry_match_no_index(&filt))
                         .collect();
 
-                    Ok(entries_filtered.len() > 0)
+                    Ok(!entries_filtered.is_empty())
                 }
             } // end match idl
         }) // end audit segment
@@ -473,17 +475,15 @@ impl BackendWriteTransaction {
             let c_entries: Vec<_> = entries
                 .into_iter()
                 .map(|e| {
-                    id_max = id_max + 1;
-                    let ev = e.to_valid_committed_id(id_max);
-                    // audit_log!(au, "assigned {} to {}", id_max, ev.get_uuid());
-                    ev
+                    id_max += 1;
+                    e.into_valid_committed_id(id_max)
                 })
                 .collect();
 
             let identries: Result<Vec<_>, _> = c_entries
                 .iter()
                 .map(|e| {
-                    let dbe = e.into_dbentry();
+                    let dbe = e.to_dbentry();
                     let data =
                         serde_cbor::to_vec(&dbe).map_err(|_| OperationError::SerdeCborError)?;
 
@@ -509,8 +509,8 @@ impl BackendWriteTransaction {
     pub fn modify(
         &self,
         au: &mut AuditScope,
-        pre_entries: &Vec<Entry<EntryValid, EntryCommitted>>,
-        post_entries: &Vec<Entry<EntryValid, EntryCommitted>>,
+        pre_entries: &[Entry<EntryValid, EntryCommitted>],
+        post_entries: &[Entry<EntryValid, EntryCommitted>],
     ) -> Result<(), OperationError> {
         if post_entries.is_empty() || pre_entries.is_empty() {
             audit_log!(
@@ -527,7 +527,7 @@ impl BackendWriteTransaction {
         let ser_entries: Result<Vec<IdEntry>, _> = post_entries
             .iter()
             .map(|e| {
-                let db_e = e.into_dbentry();
+                let db_e = e.to_dbentry();
 
                 let id = i64::try_from(e.get_id())
                     .map_err(|_| OperationError::InvalidEntryID)
@@ -541,7 +541,7 @@ impl BackendWriteTransaction {
 
                 let data = serde_cbor::to_vec(&db_e).map_err(|_| OperationError::SerdeCborError)?;
 
-                Ok(IdEntry { id: id, data: data })
+                Ok(IdEntry { id, data })
             })
             .collect();
 
@@ -569,7 +569,7 @@ impl BackendWriteTransaction {
     pub fn delete(
         &self,
         au: &mut AuditScope,
-        entries: &Vec<Entry<EntryValid, EntryCommitted>>,
+        entries: &[Entry<EntryValid, EntryCommitted>],
     ) -> Result<(), OperationError> {
         // Perform a search for the entries --> This is a problem for the caller
         audit_segment!(au, || {
@@ -752,8 +752,10 @@ impl BackendWriteTransaction {
         // consumption.
         let idl = IDL::ALLIDS;
         let raw_entries = try_audit!(audit, self.idlayer.get_identry(audit, &idl));
-        let entries: Result<Vec<_>, _> =
-            raw_entries.into_iter().map(|ide| ide.to_entry()).collect();
+        let entries: Result<Vec<_>, _> = raw_entries
+            .into_iter()
+            .map(|ide| ide.into_entry())
+            .collect();
         let entries = try_audit!(audit, entries);
 
         // WHEN do we update name2uuid and uuid2name?
@@ -845,14 +847,11 @@ impl BackendWriteTransaction {
         let identries: Result<Vec<IdEntry>, _> = dbentries
             .iter()
             .map(|ser_db_e| {
-                id_max = id_max + 1;
+                id_max += 1;
                 let data =
                     serde_cbor::to_vec(&ser_db_e).map_err(|_| OperationError::SerdeCborError)?;
 
-                Ok(IdEntry {
-                    id: id_max,
-                    data: data,
-                })
+                Ok(IdEntry { id: id_max, data })
             })
             .collect();
 
@@ -872,7 +871,7 @@ impl BackendWriteTransaction {
         self.reindex(audit)?;
 
         let vr = self.verify();
-        if vr.len() == 0 {
+        if vr.is_empty() {
             Ok(())
         } else {
             Err(OperationError::ConsistencyError(vr))
@@ -889,7 +888,7 @@ impl BackendWriteTransaction {
         let mut rng = StdRng::from_entropy();
         rng.fill(&mut nsid);
 
-        self.idlayer.write_db_sid(&nsid)?;
+        self.idlayer.write_db_sid(nsid)?;
 
         Ok(nsid)
     }
@@ -947,7 +946,7 @@ impl Backend {
     pub fn write(&self, idxmeta: BTreeSet<(String, IndexType)>) -> BackendWriteTransaction {
         BackendWriteTransaction {
             idlayer: self.idlayer.write(),
-            idxmeta: idxmeta,
+            idxmeta,
         }
     }
 
@@ -1012,11 +1011,11 @@ mod tests {
 
     macro_rules! entry_exists {
         ($audit:expr, $be:expr, $ent:expr) => {{
-            let ei = unsafe { $ent.clone().to_valid_committed() };
+            let ei = unsafe { $ent.clone().into_valid_committed() };
             let filt = unsafe {
                 ei.filter_from_attrs(&vec![String::from("userid")])
                     .expect("failed to generate filter")
-                    .to_valid_resolved()
+                    .into_valid_resolved()
             };
             let entries = $be.search($audit, &filt).expect("failed to search");
             entries.first().is_some()
@@ -1025,11 +1024,11 @@ mod tests {
 
     macro_rules! entry_attr_pres {
         ($audit:expr, $be:expr, $ent:expr, $attr:expr) => {{
-            let ei = unsafe { $ent.clone().to_valid_committed() };
+            let ei = unsafe { $ent.clone().into_valid_committed() };
             let filt = unsafe {
                 ei.filter_from_attrs(&vec![String::from("userid")])
                     .expect("failed to generate filter")
-                    .to_valid_resolved()
+                    .into_valid_resolved()
             };
             let entries = $be.search($audit, &filt).expect("failed to search");
             match entries.first() {
@@ -1061,7 +1060,7 @@ mod tests {
             let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
             e.add_ava("userid", &Value::from("william"));
             e.add_ava("uuid", &Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
-            let e = unsafe { e.to_valid_new() };
+            let e = unsafe { e.into_valid_new() };
 
             let single_result = be.create(audit, vec![e.clone()]);
 
@@ -1080,7 +1079,7 @@ mod tests {
             let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
             e.add_ava("userid", &Value::from("claire"));
             e.add_ava("uuid", &Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
-            let e = unsafe { e.to_valid_new() };
+            let e = unsafe { e.into_valid_new() };
 
             let single_result = be.create(audit, vec![e.clone()]);
             assert!(single_result.is_ok());
@@ -1113,8 +1112,8 @@ mod tests {
             e2.add_ava("userid", &Value::from("alice"));
             e2.add_ava("uuid", &Value::from("4b6228ab-1dbe-42a4-a9f5-f6368222438e"));
 
-            let ve1 = unsafe { e1.clone().to_valid_new() };
-            let ve2 = unsafe { e2.clone().to_valid_new() };
+            let ve1 = unsafe { e1.clone().into_valid_new() };
+            let ve2 = unsafe { e2.clone().into_valid_new() };
 
             assert!(be.create(audit, vec![ve1, ve2]).is_ok());
             assert!(entry_exists!(audit, be, e1));
@@ -1135,21 +1134,21 @@ mod tests {
             // Modify no id (err)
             // This is now impossible due to the state machine design.
             // However, with some unsafe ....
-            let ue1 = unsafe { e1.clone().to_valid_committed() };
+            let ue1 = unsafe { e1.clone().into_valid_committed() };
             assert!(be.modify(audit, &vec![ue1.clone()], &vec![ue1]).is_err());
             // Modify none
             assert!(be.modify(audit, &vec![], &vec![]).is_err());
 
             // Make some changes to r1, r2.
-            let pre1 = unsafe { r1.clone().to_valid_committed() };
-            let pre2 = unsafe { r2.clone().to_valid_committed() };
+            let pre1 = unsafe { r1.clone().into_valid_committed() };
+            let pre2 = unsafe { r2.clone().into_valid_committed() };
             r1.add_ava("desc", &Value::from("modified"));
             r2.add_ava("desc", &Value::from("modified"));
 
             // Now ... cheat.
 
-            let vr1 = unsafe { r1.to_valid_committed() };
-            let vr2 = unsafe { r2.to_valid_committed() };
+            let vr1 = unsafe { r1.into_valid_committed() };
+            let vr2 = unsafe { r2.into_valid_committed() };
 
             // Modify single
             assert!(be
@@ -1191,9 +1190,9 @@ mod tests {
             e3.add_ava("userid", &Value::from("lucy"));
             e3.add_ava("uuid", &Value::from("7b23c99d-c06b-4a9a-a958-3afa56383e1d"));
 
-            let ve1 = unsafe { e1.clone().to_valid_new() };
-            let ve2 = unsafe { e2.clone().to_valid_new() };
-            let ve3 = unsafe { e3.clone().to_valid_new() };
+            let ve1 = unsafe { e1.clone().into_valid_new() };
+            let ve2 = unsafe { e2.clone().into_valid_new() };
+            let ve3 = unsafe { e3.clone().into_valid_new() };
 
             assert!(be.create(audit, vec![ve1, ve2, ve3]).is_ok());
             assert!(entry_exists!(audit, be, e1));
@@ -1224,7 +1223,7 @@ mod tests {
             e4.add_ava("userid", &Value::from("amy"));
             e4.add_ava("uuid", &Value::from("21d816b5-1f6a-4696-b7c1-6ed06d22ed81"));
 
-            let ve4 = unsafe { e4.clone().to_valid_committed() };
+            let ve4 = unsafe { e4.clone().into_valid_committed() };
 
             assert!(be.delete(audit, &vec![ve4]).is_err());
 
@@ -1261,9 +1260,9 @@ mod tests {
             e3.add_ava("userid", &Value::from("lucy"));
             e3.add_ava("uuid", &Value::from("7b23c99d-c06b-4a9a-a958-3afa56383e1d"));
 
-            let ve1 = unsafe { e1.clone().to_valid_new() };
-            let ve2 = unsafe { e2.clone().to_valid_new() };
-            let ve3 = unsafe { e3.clone().to_valid_new() };
+            let ve1 = unsafe { e1.clone().into_valid_new() };
+            let ve2 = unsafe { e2.clone().into_valid_new() };
+            let ve3 = unsafe { e3.clone().into_valid_new() };
 
             assert!(be.create(audit, vec![ve1, ve2, ve3]).is_ok());
             assert!(entry_exists!(audit, be, e1));
@@ -1315,7 +1314,7 @@ mod tests {
             assert!(be.reindex(audit).is_ok());
             let missing = be.missing_idxs(audit).unwrap();
             println!("{:?}", missing);
-            assert!(missing.len() == 0);
+            assert!(missing.is_empty());
         });
     }
 
@@ -1327,12 +1326,12 @@ mod tests {
             let mut e1: Entry<EntryInvalid, EntryNew> = Entry::new();
             e1.add_ava("name", &Value::from("william"));
             e1.add_ava("uuid", &Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
-            let e1 = unsafe { e1.to_valid_new() };
+            let e1 = unsafe { e1.into_valid_new() };
 
             let mut e2: Entry<EntryInvalid, EntryNew> = Entry::new();
             e2.add_ava("name", &Value::from("claire"));
             e2.add_ava("uuid", &Value::from("bd651620-00dd-426b-aaa0-4494f7b7906f"));
-            let e2 = unsafe { e2.to_valid_new() };
+            let e2 = unsafe { e2.into_valid_new() };
 
             be.create(audit, vec![e1.clone(), e2.clone()]).unwrap();
 
@@ -1344,7 +1343,7 @@ mod tests {
             assert!(be.reindex(audit).is_ok());
             let missing = be.missing_idxs(audit).unwrap();
             println!("{:?}", missing);
-            assert!(missing.len() == 0);
+            assert!(missing.is_empty());
             // check name and uuid ids on eq, sub, pres
 
             idl_state!(
@@ -1446,7 +1445,7 @@ mod tests {
             let mut e1: Entry<EntryInvalid, EntryNew> = Entry::new();
             e1.add_ava("name", &Value::from("william"));
             e1.add_ava("uuid", &Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
-            let e1 = unsafe { e1.to_valid_new() };
+            let e1 = unsafe { e1.into_valid_new() };
 
             let rset = be.create(audit, vec![e1.clone()]).unwrap();
 
@@ -1524,17 +1523,17 @@ mod tests {
             let mut e1: Entry<EntryInvalid, EntryNew> = Entry::new();
             e1.add_ava("name", &Value::from("william"));
             e1.add_ava("uuid", &Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
-            let e1 = unsafe { e1.to_valid_new() };
+            let e1 = unsafe { e1.into_valid_new() };
 
             let mut e2: Entry<EntryInvalid, EntryNew> = Entry::new();
             e2.add_ava("name", &Value::from("claire"));
             e2.add_ava("uuid", &Value::from("bd651620-00dd-426b-aaa0-4494f7b7906f"));
-            let e2 = unsafe { e2.to_valid_new() };
+            let e2 = unsafe { e2.into_valid_new() };
 
             let mut e3: Entry<EntryInvalid, EntryNew> = Entry::new();
             e3.add_ava("userid", &Value::from("lucy"));
             e3.add_ava("uuid", &Value::from("7b23c99d-c06b-4a9a-a958-3afa56383e1d"));
-            let e3 = unsafe { e3.to_valid_new() };
+            let e3 = unsafe { e3.into_valid_new() };
 
             let mut rset = be
                 .create(audit, vec![e1.clone(), e2.clone(), e3.clone()])
@@ -1579,7 +1578,7 @@ mod tests {
             e1.add_ava("name", &Value::from("william"));
             e1.add_ava("uuid", &Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
             e1.add_ava("ta", &Value::from("test"));
-            let e1 = unsafe { e1.to_valid_new() };
+            let e1 = unsafe { e1.into_valid_new() };
 
             let rset = be.create(audit, vec![e1.clone()]).unwrap();
             // Now, alter the new entry.
@@ -1592,7 +1591,7 @@ mod tests {
             ce1.purge_ava("name");
             ce1.add_ava("name", &Value::from("claire"));
 
-            let ce1 = unsafe { ce1.to_valid_committed() };
+            let ce1 = unsafe { ce1.into_valid_committed() };
 
             be.modify(audit, &rset, &vec![ce1]).unwrap();
 
@@ -1624,7 +1623,7 @@ mod tests {
             let mut e1: Entry<EntryInvalid, EntryNew> = Entry::new();
             e1.add_ava("name", &Value::from("william"));
             e1.add_ava("uuid", &Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
-            let e1 = unsafe { e1.to_valid_new() };
+            let e1 = unsafe { e1.into_valid_new() };
 
             let rset = be.create(audit, vec![e1.clone()]).unwrap();
             // Now, alter the new entry.
@@ -1633,7 +1632,7 @@ mod tests {
             ce1.purge_ava("uuid");
             ce1.add_ava("name", &Value::from("claire"));
             ce1.add_ava("uuid", &Value::from("04091a7a-6ce4-42d2-abf5-c2ce244ac9e8"));
-            let ce1 = unsafe { ce1.to_valid_committed() };
+            let ce1 = unsafe { ce1.into_valid_committed() };
 
             be.modify(audit, &rset, &vec![ce1]).unwrap();
 
@@ -1688,12 +1687,12 @@ mod tests {
             e1.add_ava("uuid", &Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
             e1.add_ava("no-index", &Value::from("william"));
             e1.add_ava("other-no-index", &Value::from("william"));
-            let e1 = unsafe { e1.to_valid_new() };
+            let e1 = unsafe { e1.into_valid_new() };
 
             let mut e2: Entry<EntryInvalid, EntryNew> = Entry::new();
             e2.add_ava("name", &Value::from("claire"));
             e2.add_ava("uuid", &Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d2"));
-            let e2 = unsafe { e2.to_valid_new() };
+            let e2 = unsafe { e2.into_valid_new() };
 
             let _rset = be.create(audit, vec![e1.clone(), e2.clone()]).unwrap();
             // Test fully unindexed

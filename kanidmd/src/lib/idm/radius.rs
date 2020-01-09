@@ -35,32 +35,29 @@ impl RadiusAccount {
 
         let radius_secret = value
             .get_ava_single_radiuscred("radius_secret")
-            .ok_or(OperationError::InvalidAccountState(
-                "Missing attribute: radius_secret".to_string(),
-            ))?
+            .ok_or_else(|| {
+                OperationError::InvalidAccountState("Missing attribute: radius_secret".to_string())
+            })?
             .to_string();
 
-        let name =
-            value
-                .get_ava_single_string("name")
-                .ok_or(OperationError::InvalidAccountState(
-                    "Missing attribute: name".to_string(),
-                ))?;
+        let name = value.get_ava_single_string("name").ok_or_else(|| {
+            OperationError::InvalidAccountState("Missing attribute: name".to_string())
+        })?;
 
-        let uuid = value.get_uuid().clone();
+        let uuid = *value.get_uuid();
 
-        let displayname = value.get_ava_single_string("displayname").ok_or(
-            OperationError::InvalidAccountState("Missing attribute: displayname".to_string()),
-        )?;
+        let displayname = value.get_ava_single_string("displayname").ok_or_else(|| {
+            OperationError::InvalidAccountState("Missing attribute: displayname".to_string())
+        })?;
 
         let groups = Group::try_from_account_entry_red_ro(au, &value, qs)?;
 
         Ok(RadiusAccount {
-            name: name,
-            uuid: uuid,
-            displayname: displayname,
-            groups: groups,
-            radius_secret: radius_secret,
+            name,
+            uuid,
+            displayname,
+            groups,
+            radius_secret,
         })
     }
 
@@ -72,7 +69,7 @@ impl RadiusAccount {
             displayname: self.displayname.clone(),
             uuid: self.uuid.to_hyphenated_ref().to_string(),
             secret: self.radius_secret.clone(),
-            groups: self.groups.iter().map(|g| g.into_proto()).collect(),
+            groups: self.groups.iter().map(|g| g.to_proto()).collect(),
         })
     }
 }

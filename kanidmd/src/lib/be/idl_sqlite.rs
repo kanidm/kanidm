@@ -13,8 +13,8 @@ use std::convert::TryFrom;
 
 // use uuid::Uuid;
 
-static DBV_ID2ENTRY: &'static str = "id2entry";
-static DBV_INDEXV: &'static str = "indexv";
+static DBV_ID2ENTRY: &str = "id2entry";
+static DBV_INDEXV: &str = "indexv";
 
 #[derive(Clone)]
 pub struct IdlSqlite {
@@ -108,7 +108,7 @@ pub trait IdlSqliteTransaction {
     fn exists_idx(
         &self,
         audit: &mut AuditScope,
-        attr: &String,
+        attr: &str,
         itype: &IndexType,
     ) -> Result<bool, OperationError> {
         let tname = format!("idx_{}_{}", itype.as_idx_str(), attr);
@@ -136,11 +136,11 @@ pub trait IdlSqliteTransaction {
     fn get_idl(
         &self,
         audit: &mut AuditScope,
-        attr: &String,
+        attr: &str,
         itype: &IndexType,
-        idx_key: &String,
+        idx_key: &str,
     ) -> Result<Option<IDLBitRange>, OperationError> {
-        if self.exists_idx(audit, attr, itype)? == false {
+        if !(self.exists_idx(audit, attr, itype)?) {
             audit_log!(audit, "Index {:?} {:?} not found", itype, attr);
             return Ok(None);
         }
@@ -159,7 +159,7 @@ pub trait IdlSqliteTransaction {
         );
         let idl_raw: Option<Vec<u8>> = try_audit!(
             audit,
-            stmt.query_row_named(&[(":idx_key", idx_key)], |row| row.get(0))
+            stmt.query_row_named(&[(":idx_key", &idx_key)], |row| row.get(0))
                 // We don't mind if it doesn't exist
                 .optional(),
             "SQLite Error {:?}",
@@ -208,9 +208,7 @@ pub trait IdlSqliteTransaction {
                     let y: Vec<u8> = e;
                     assert!(y.len() == 4);
                     let mut sid: [u8; 4] = [0; 4];
-                    for i in 0..4 {
-                        sid[i] = y[i];
-                    }
+                    sid[..4].clone_from_slice(&y[..4]);
                     sid
                 })
                 // If no sid, we return none.
@@ -253,7 +251,7 @@ impl IdlSqliteReadTransaction {
             .expect("Unable to begin transaction!");
         IdlSqliteReadTransaction {
             committed: false,
-            conn: conn,
+            conn,
         }
     }
 }
@@ -284,7 +282,7 @@ impl IdlSqliteWriteTransaction {
             .expect("Unable to begin transaction!");
         IdlSqliteWriteTransaction {
             committed: false,
-            conn: conn,
+            conn,
         }
     }
 
@@ -369,9 +367,9 @@ impl IdlSqliteWriteTransaction {
     pub fn write_idl(
         &self,
         audit: &mut AuditScope,
-        attr: &String,
+        attr: &str,
         itype: &IndexType,
-        idx_key: &String,
+        idx_key: &str,
         idl: &IDLBitRange,
     ) -> Result<(), OperationError> {
         if idl.len() == 0 {
@@ -447,7 +445,7 @@ impl IdlSqliteWriteTransaction {
     pub fn create_idx(
         &self,
         audit: &mut AuditScope,
-        attr: &String,
+        attr: &str,
         itype: &IndexType,
     ) -> Result<(), OperationError> {
         // Is there a better way than formatting this? I can't seem
@@ -523,9 +521,9 @@ impl IdlSqliteWriteTransaction {
         Ok(())
     }
 
-    pub fn write_db_sid(&self, nsid: &SID) -> Result<(), OperationError> {
+    pub fn write_db_sid(&self, nsid: SID) -> Result<(), OperationError> {
         let mut data = Vec::new();
-        data.extend_from_slice(nsid);
+        data.extend_from_slice(&nsid);
 
         self.conn
             .execute_named(
@@ -690,7 +688,7 @@ impl IdlSqlite {
             OperationError::SQLiteError
         })?;
 
-        Ok(IdlSqlite { pool: pool })
+        Ok(IdlSqlite { pool })
     }
 
     pub fn read(&self) -> IdlSqliteReadTransaction {

@@ -14,7 +14,7 @@ impl Claim {
     }
     */
 
-    pub fn into_proto(&self) -> ProtoClaim {
+    pub fn to_proto(&self) -> ProtoClaim {
         unimplemented!();
     }
 }

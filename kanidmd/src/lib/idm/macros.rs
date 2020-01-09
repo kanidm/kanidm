@@ -13,7 +13,7 @@ macro_rules! entry_str_to_account {
             .expect("Failed to munge spn from name!");
         e.set_avas("spn", vec![spn]);
 
-        let e = unsafe { e.to_valid_new().to_valid_committed() };
+        let e = unsafe { e.into_valid_new().into_valid_committed() };
 
         Account::try_from_entry_no_groups(e).expect("Account conversion failure")
     }};

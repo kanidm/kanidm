@@ -38,7 +38,7 @@ trait Plugin {
         _au: &mut AuditScope,
         _qs: &mut QueryServerWriteTransaction,
         // List of what we will commit that is valid?
-        _cand: &Vec<Entry<EntryValid, EntryNew>>,
+        _cand: &[Entry<EntryValid, EntryNew>],
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         debug!("plugin {} has an unimplemented pre_create!", Self::id());
@@ -49,7 +49,7 @@ trait Plugin {
         _au: &mut AuditScope,
         _qs: &mut QueryServerWriteTransaction,
         // List of what we commited that was valid?
-        _cand: &Vec<Entry<EntryValid, EntryCommitted>>,
+        _cand: &[Entry<EntryValid, EntryCommitted>],
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         debug!("plugin {} has an unimplemented post_create!", Self::id());
@@ -70,8 +70,8 @@ trait Plugin {
         _au: &mut AuditScope,
         _qs: &mut QueryServerWriteTransaction,
         // List of what we modified that was valid?
-        _pre_cand: &Vec<Entry<EntryValid, EntryCommitted>>,
-        _cand: &Vec<Entry<EntryValid, EntryCommitted>>,
+        _pre_cand: &[Entry<EntryValid, EntryCommitted>],
+        _cand: &[Entry<EntryValid, EntryCommitted>],
         _ce: &ModifyEvent,
     ) -> Result<(), OperationError> {
         debug!("plugin {} has an unimplemented post_modify!", Self::id());
@@ -92,7 +92,7 @@ trait Plugin {
         _au: &mut AuditScope,
         _qs: &mut QueryServerWriteTransaction,
         // List of what we delete that was valid?
-        _cand: &Vec<Entry<EntryValid, EntryCommitted>>,
+        _cand: &[Entry<EntryValid, EntryCommitted>],
         _ce: &DeleteEvent,
     ) -> Result<(), OperationError> {
         debug!("plugin {} has an unimplemented post_delete!", Self::id());
@@ -281,7 +281,7 @@ impl Plugins {
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         audit_segment!(au, || {
-            let res = run_pre_create_transform_plugin!(au, qs, cand, ce, base::Base)
+            run_pre_create_transform_plugin!(au, qs, cand, ce, base::Base)
                 .and_then(|_| {
                     run_pre_create_transform_plugin!(au, qs, cand, ce, gidnumber::GidNumber)
                 })
@@ -290,35 +290,30 @@ impl Plugins {
                 .and_then(|_| {
                     // Should always be last
                     run_pre_create_transform_plugin!(au, qs, cand, ce, attrunique::AttrUnique)
-                });
-            res
+                })
         })
     }
 
     pub fn run_pre_create(
         au: &mut AuditScope,
         qs: &mut QueryServerWriteTransaction,
-        cand: &Vec<Entry<EntryValid, EntryNew>>,
+        cand: &[Entry<EntryValid, EntryNew>],
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         audit_segment!(au, || {
-            let res = run_pre_create_plugin!(au, qs, cand, ce, protected::Protected);
-
-            res
+            run_pre_create_plugin!(au, qs, cand, ce, protected::Protected)
         })
     }
 
     pub fn run_post_create(
         au: &mut AuditScope,
         qs: &mut QueryServerWriteTransaction,
-        cand: &Vec<Entry<EntryValid, EntryCommitted>>,
+        cand: &[Entry<EntryValid, EntryCommitted>],
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         audit_segment!(au, || {
-            let res = run_post_create_plugin!(au, qs, cand, ce, refint::ReferentialIntegrity)
-                .and_then(|_| run_post_create_plugin!(au, qs, cand, ce, memberof::MemberOf));
-
-            res
+            run_post_create_plugin!(au, qs, cand, ce, refint::ReferentialIntegrity)
+                .and_then(|_| run_post_create_plugin!(au, qs, cand, ce, memberof::MemberOf))
         })
     }
 
@@ -329,32 +324,28 @@ impl Plugins {
         me: &ModifyEvent,
     ) -> Result<(), OperationError> {
         audit_segment!(au, || {
-            let res = run_pre_modify_plugin!(au, qs, cand, me, protected::Protected)
+            run_pre_modify_plugin!(au, qs, cand, me, protected::Protected)
                 .and_then(|_| run_pre_modify_plugin!(au, qs, cand, me, base::Base))
                 .and_then(|_| run_pre_modify_plugin!(au, qs, cand, me, gidnumber::GidNumber))
                 .and_then(|_| run_pre_modify_plugin!(au, qs, cand, me, spn::Spn))
                 // attr unique should always be last
-                .and_then(|_| run_pre_modify_plugin!(au, qs, cand, me, attrunique::AttrUnique));
-
-            res
+                .and_then(|_| run_pre_modify_plugin!(au, qs, cand, me, attrunique::AttrUnique))
         })
     }
 
     pub fn run_post_modify(
         au: &mut AuditScope,
         qs: &mut QueryServerWriteTransaction,
-        pre_cand: &Vec<Entry<EntryValid, EntryCommitted>>,
-        cand: &Vec<Entry<EntryValid, EntryCommitted>>,
+        pre_cand: &[Entry<EntryValid, EntryCommitted>],
+        cand: &[Entry<EntryValid, EntryCommitted>],
         me: &ModifyEvent,
     ) -> Result<(), OperationError> {
         audit_segment!(au, || {
-            let res =
-                run_post_modify_plugin!(au, qs, pre_cand, cand, me, refint::ReferentialIntegrity)
-                    .and_then(|_| {
-                        run_post_modify_plugin!(au, qs, pre_cand, cand, me, memberof::MemberOf)
-                    })
-                    .and_then(|_| run_post_modify_plugin!(au, qs, pre_cand, cand, me, spn::Spn));
-            res
+            run_post_modify_plugin!(au, qs, pre_cand, cand, me, refint::ReferentialIntegrity)
+                .and_then(|_| {
+                    run_post_modify_plugin!(au, qs, pre_cand, cand, me, memberof::MemberOf)
+                })
+                .and_then(|_| run_post_modify_plugin!(au, qs, pre_cand, cand, me, spn::Spn))
         })
     }
 
@@ -365,22 +356,19 @@ impl Plugins {
         de: &DeleteEvent,
     ) -> Result<(), OperationError> {
         audit_segment!(au, || {
-            let res = run_pre_delete_plugin!(au, qs, cand, de, protected::Protected);
-            res
+            run_pre_delete_plugin!(au, qs, cand, de, protected::Protected)
         })
     }
 
     pub fn run_post_delete(
         au: &mut AuditScope,
         qs: &mut QueryServerWriteTransaction,
-        cand: &Vec<Entry<EntryValid, EntryCommitted>>,
+        cand: &[Entry<EntryValid, EntryCommitted>],
         de: &DeleteEvent,
     ) -> Result<(), OperationError> {
         audit_segment!(au, || {
-            let res = run_post_delete_plugin!(au, qs, cand, de, refint::ReferentialIntegrity)
-                .and_then(|_| run_post_delete_plugin!(au, qs, cand, de, memberof::MemberOf));
-
-            res
+            run_post_delete_plugin!(au, qs, cand, de, refint::ReferentialIntegrity)
+                .and_then(|_| run_post_delete_plugin!(au, qs, cand, de, memberof::MemberOf))
         })
     }
 

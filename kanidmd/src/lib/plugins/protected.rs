@@ -52,7 +52,7 @@ impl Plugin for Protected {
         au: &mut AuditScope,
         _qs: &mut QueryServerWriteTransaction,
         // List of what we will commit that is valid?
-        cand: &Vec<Entry<EntryValid, EntryNew>>,
+        cand: &[Entry<EntryValid, EntryNew>],
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         if ce.event.is_internal() {
@@ -149,7 +149,7 @@ impl Plugin for Protected {
 
         audit_log!(au, "class: system -> {}", system_pres);
         // No system types being altered, return.
-        if system_pres == false {
+        if !system_pres {
             return Ok(());
         }
 

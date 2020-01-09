@@ -31,7 +31,7 @@ impl ReferentialIntegrity {
     fn check_uuid_exists(
         au: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
-        rtype: &String,
+        rtype: &str,
         uuid_value: &Value,
     ) -> Result<(), OperationError> {
         debug!("{:?}", uuid_value);
@@ -39,13 +39,13 @@ impl ReferentialIntegrity {
             au,
             uuid_value
                 .to_ref_uuid()
-                .ok_or(OperationError::InvalidAttribute(
+                .ok_or_else(|| OperationError::InvalidAttribute(
                     "uuid could not become reference value".to_string()
                 ))
         );
         let mut au_qs = AuditScope::new("qs_exist");
         // NOTE: This only checks LIVE entries (not using filter_all)
-        let filt_in = filter!(f_eq("uuid", PartialValue::new_uuid(uuid.clone())));
+        let filt_in = filter!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
         let r = qs.internal_exists(&mut au_qs, filt_in);
         au.append_scope(au_qs);
 
@@ -89,7 +89,7 @@ impl Plugin for ReferentialIntegrity {
     fn post_create(
         au: &mut AuditScope,
         qs: &mut QueryServerWriteTransaction,
-        cand: &Vec<Entry<EntryValid, EntryCommitted>>,
+        cand: &[Entry<EntryValid, EntryCommitted>],
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         let schema = qs.get_schema();
@@ -99,15 +99,12 @@ impl Plugin for ReferentialIntegrity {
         for c in cand {
             // For all reference in each cand.
             for rtype in ref_types.values() {
-                match c.get_ava(&rtype.name) {
-                    // If the attribute is present
-                    Some(vs) => {
-                        // For each value in the set.
-                        for v in vs {
-                            Self::check_uuid_exists(au, qs, &rtype.name, v)?
-                        }
+                // If the attribute is present
+                if let Some(vs) = c.get_ava(&rtype.name) {
+                    // For each value in the set.
+                    for v in vs {
+                        Self::check_uuid_exists(au, qs, &rtype.name, v)?
                     }
-                    None => {}
                 }
             }
         }
@@ -117,8 +114,8 @@ impl Plugin for ReferentialIntegrity {
     fn post_modify(
         au: &mut AuditScope,
         qs: &mut QueryServerWriteTransaction,
-        _pre_cand: &Vec<Entry<EntryValid, EntryCommitted>>,
-        _cand: &Vec<Entry<EntryValid, EntryCommitted>>,
+        _pre_cand: &[Entry<EntryValid, EntryCommitted>],
+        _cand: &[Entry<EntryValid, EntryCommitted>],
         me: &ModifyEvent,
     ) -> Result<(), OperationError> {
         let schema = qs.get_schema();
@@ -126,18 +123,12 @@ impl Plugin for ReferentialIntegrity {
 
         // For all mods
         for modify in me.modlist.into_iter() {
-            match &modify {
-                // If the mod affects a reference type and being ADDED.
-                Modify::Present(a, v) => {
-                    match ref_types.get(a) {
-                        Some(a_type) => {
-                            // So it is a reference type, now check it.
-                            Self::check_uuid_exists(au, qs, &a_type.name, v)?
-                        }
-                        None => {}
-                    }
+            // If the mod affects a reference type and being ADDED.
+            if let Modify::Present(a, v) = &modify {
+                if let Some(a_type) = ref_types.get(a) {
+                    // So it is a reference type, now check it.
+                    Self::check_uuid_exists(au, qs, &a_type.name, v)?
                 }
-                _ => {}
             }
         }
         Ok(())
@@ -146,7 +137,7 @@ impl Plugin for ReferentialIntegrity {
     fn post_delete(
         au: &mut AuditScope,
         qs: &mut QueryServerWriteTransaction,
-        cand: &Vec<Entry<EntryValid, EntryCommitted>>,
+        cand: &[Entry<EntryValid, EntryCommitted>],
         _ce: &DeleteEvent,
     ) -> Result<(), OperationError> {
         // Delete is pretty different to the other pre checks. This is
@@ -167,7 +158,7 @@ impl Plugin for ReferentialIntegrity {
                 .iter()
                 .map(|u| ref_types.values().map(move |r_type| {
                     // For everything that references the uuid's in the deleted set.
-                    f_eq(r_type.name.as_str(), PartialValue::new_refer(*u.clone()))
+                    f_eq(r_type.name.as_str(), PartialValue::new_refer(**u))
                 }))
                 .flatten()
                 .collect(),
@@ -182,7 +173,7 @@ impl Plugin for ReferentialIntegrity {
                 .iter()
                 .map(|u| {
                     ref_types.values().map(move |r_type| {
-                        Modify::Removed(r_type.name.clone(), PartialValue::new_refer(*u.clone()))
+                        Modify::Removed(r_type.name.clone(), PartialValue::new_refer(**u))
                     })
                 })
                 .flatten()
@@ -222,24 +213,21 @@ impl Plugin for ReferentialIntegrity {
         for c in &all_cand {
             // For all reference in each cand.
             for rtype in ref_types.values() {
-                match c.get_ava(&rtype.name) {
-                    // If the attribute is present
-                    Some(vs) => {
-                        // For each value in the set.
-                        for v in vs {
-                            match v.to_ref_uuid() {
-                                Some(vu) => {
-                                    if acu_map.get(vu).is_none() {
-                                        res.push(Err(ConsistencyError::RefintNotUpheld(c.get_id())))
-                                    }
+                // If the attribute is present
+                if let Some(vs) = c.get_ava(&rtype.name) {
+                    // For each value in the set.
+                    for v in vs {
+                        match v.to_ref_uuid() {
+                            Some(vu) => {
+                                if acu_map.get(vu).is_none() {
+                                    res.push(Err(ConsistencyError::RefintNotUpheld(c.get_id())))
                                 }
-                                None => res.push(Err(ConsistencyError::InvalidAttributeType(
-                                    "A non-value-ref type was found.".to_string(),
-                                ))),
                             }
+                            None => res.push(Err(ConsistencyError::InvalidAttributeType(
+                                "A non-value-ref type was found.".to_string(),
+                            ))),
                         }
                     }
-                    _ => {}
                 }
             }
         }

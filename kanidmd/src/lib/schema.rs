@@ -53,41 +53,35 @@ impl SchemaAttribute {
         }
 
         // uuid
-        let uuid = value.get_uuid().clone();
+        let uuid = *value.get_uuid();
 
         // name
-        let name =
-            try_audit!(
-                audit,
-                value.get_ava_single_string("attributename").ok_or(
-                    OperationError::InvalidSchemaState("missing attributename".to_string())
-                )
-            );
+        let name = try_audit!(
+            audit,
+            value.get_ava_single_string("attributename").ok_or_else(|| {
+                OperationError::InvalidSchemaState("missing attributename".to_string())
+            })
+        );
         // description
-        let description =
-            try_audit!(
-                audit,
-                value.get_ava_single_string("description").ok_or(
-                    OperationError::InvalidSchemaState("missing description".to_string())
-                )
-            );
+        let description = try_audit!(
+            audit,
+            value.get_ava_single_string("description").ok_or_else(|| {
+                OperationError::InvalidSchemaState("missing description".to_string())
+            })
+        );
 
         // multivalue
         let multivalue = try_audit!(
             audit,
-            value
-                .get_ava_single_bool("multivalue")
-                .ok_or(OperationError::InvalidSchemaState(
-                    "missing multivalue".to_string()
-                ))
+            value.get_ava_single_bool("multivalue").ok_or_else(|| {
+                OperationError::InvalidSchemaState("missing multivalue".to_string())
+            })
         );
         let unique = try_audit!(
             audit,
             value
                 .get_ava_single_bool("unique")
-                .ok_or(OperationError::InvalidSchemaState(
-                    "missing unique".to_string()
-                ))
+                .ok_or_else(|| OperationError::InvalidSchemaState("missing unique".to_string()))
         );
         // index vec
         // even if empty, it SHOULD be present ... (is that value to put an empty set?)
@@ -96,10 +90,7 @@ impl SchemaAttribute {
             audit,
             value
                 .get_ava_opt_index("index")
-                .and_then(|vv: Vec<&IndexType>| Ok(vv
-                    .into_iter()
-                    .map(|v: &IndexType| v.clone())
-                    .collect()))
+                .and_then(|vv: Vec<&IndexType>| Ok(vv.into_iter().cloned().collect()))
                 .map_err(|_| OperationError::InvalidSchemaState("Invalid index".to_string()))
         );
         // syntax type
@@ -107,20 +98,18 @@ impl SchemaAttribute {
             audit,
             value
                 .get_ava_single_syntax("syntax")
-                .and_then(|s: &SyntaxType| Some(s.clone()))
-                .ok_or(OperationError::InvalidSchemaState(
-                    "missing syntax".to_string()
-                ))
+                .cloned()
+                .ok_or_else(|| OperationError::InvalidSchemaState("missing syntax".to_string()))
         );
 
         Ok(SchemaAttribute {
-            name: name,
-            uuid: uuid,
-            description: description,
-            multivalue: multivalue,
-            unique: unique,
-            index: index,
-            syntax: syntax,
+            name,
+            uuid,
+            description,
+            multivalue,
+            unique,
+            index,
+            syntax,
         })
     }
 
@@ -290,7 +279,7 @@ impl SchemaAttribute {
     pub fn validate_ava(&self, ava: &BTreeSet<Value>) -> Result<(), SchemaError> {
         debug!("Checking for valid {:?} -> {:?}", self.name, ava);
         // Check multivalue
-        if self.multivalue == false && ava.len() > 1 {
+        if !self.multivalue && ava.len() > 1 {
             debug!("Ava len > 1 on single value attribute!");
             return Err(SchemaError::InvalidAttributeSyntax);
         };
@@ -425,58 +414,45 @@ impl SchemaClass {
         }
 
         // uuid
-        let uuid = value.get_uuid().clone();
+        let uuid = *value.get_uuid();
 
         // name
         let name = try_audit!(
             audit,
             value
                 .get_ava_single_string("classname")
-                .ok_or(OperationError::InvalidSchemaState(
-                    "missing classname".to_string()
-                ))
+                .ok_or_else(|| OperationError::InvalidSchemaState("missing classname".to_string()))
         );
         // description
-        let description =
-            try_audit!(
-                audit,
-                value.get_ava_single_string("description").ok_or(
-                    OperationError::InvalidSchemaState("missing description".to_string())
-                )
-            );
+        let description = try_audit!(
+            audit,
+            value.get_ava_single_string("description").ok_or_else(|| {
+                OperationError::InvalidSchemaState("missing description".to_string())
+            })
+        );
 
         // These are all "optional" lists of strings.
-        let systemmay =
-            value
-                .get_ava_opt_string("systemmay")
-                .ok_or(OperationError::InvalidSchemaState(
-                    "Missing or invalid systemmay".to_string(),
-                ))?;
-        let systemmust =
-            value
-                .get_ava_opt_string("systemmust")
-                .ok_or(OperationError::InvalidSchemaState(
-                    "Missing or invalid systemmust".to_string(),
-                ))?;
-        let may = value
-            .get_ava_opt_string("may")
-            .ok_or(OperationError::InvalidSchemaState(
-                "Missing or invalid may".to_string(),
-            ))?;
-        let must = value
-            .get_ava_opt_string("must")
-            .ok_or(OperationError::InvalidSchemaState(
-                "Missing or invalid must".to_string(),
-            ))?;
+        let systemmay = value.get_ava_opt_string("systemmay").ok_or_else(|| {
+            OperationError::InvalidSchemaState("Missing or invalid systemmay".to_string())
+        })?;
+        let systemmust = value.get_ava_opt_string("systemmust").ok_or_else(|| {
+            OperationError::InvalidSchemaState("Missing or invalid systemmust".to_string())
+        })?;
+        let may = value.get_ava_opt_string("may").ok_or_else(|| {
+            OperationError::InvalidSchemaState("Missing or invalid may".to_string())
+        })?;
+        let must = value.get_ava_opt_string("must").ok_or_else(|| {
+            OperationError::InvalidSchemaState("Missing or invalid must".to_string())
+        })?;
 
         Ok(SchemaClass {
-            name: name,
-            uuid: uuid,
-            description: description,
-            systemmay: systemmay,
-            systemmust: systemmust,
-            may: may,
-            must: must,
+            name,
+            uuid,
+            description,
+            systemmay,
+            systemmust,
+            may,
+            must,
         })
     }
 }
@@ -1188,7 +1164,7 @@ impl SchemaInner {
             );
 
             let r = s.validate(&mut au);
-            if r.len() == 0 {
+            if r.is_empty() {
                 s.reload_idxmeta();
                 Ok(s)
             } else {
@@ -1289,7 +1265,7 @@ impl SchemaInner {
             Some(a_schema) => Ok(a_schema.multivalue),
             None => {
                 debug!("Attribute does not exist?!");
-                return Err(SchemaError::InvalidAttribute);
+                Err(SchemaError::InvalidAttribute)
             }
         }
     }
@@ -1352,12 +1328,12 @@ impl<'a> SchemaWriteTransaction<'a> {
             .inner
             .attributes
             .values()
-            .map(|a| Entry::<EntryValid, EntryNew>::from(a))
+            .map(Entry::<EntryValid, EntryNew>::from)
             .chain(
                 self.inner
                     .classes
                     .values()
-                    .map(|c| Entry::<EntryValid, EntryNew>::from(c)),
+                    .map(Entry::<EntryValid, EntryNew>::from),
             )
             .collect();
         r
@@ -1431,7 +1407,7 @@ mod tests {
             $type:ty
         ) => {{
             let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str($e);
-            let ev1 = unsafe { e1.to_valid_committed() };
+            let ev1 = unsafe { e1.into_valid_committed() };
 
             let r1 = <$type>::try_from($audit, &ev1);
             assert!(r1.is_ok());
@@ -1445,7 +1421,7 @@ mod tests {
             $type:ty
         ) => {{
             let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str($e);
-            let ev1 = unsafe { e1.to_valid_committed() };
+            let ev1 = unsafe { e1.into_valid_committed() };
 
             let r1 = <$type>::try_from($audit, &ev1);
             assert!(r1.is_err());
@@ -1985,7 +1961,7 @@ mod tests {
             }
         }"#,
             )
-            .to_valid_new()
+            .into_valid_new()
         };
 
         let e_valid = e_test.validate(&schema).expect("validation failure");

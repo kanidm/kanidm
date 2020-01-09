@@ -15,7 +15,7 @@ pub struct TlsConfiguration {
     pub key: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct Configuration {
     pub address: String,
     pub threads: usize,
@@ -52,11 +52,11 @@ impl Configuration {
             address: String::from("127.0.0.1:8080"),
             threads: num_cpus::get(),
             db_path: String::from(""),
-            maximum_request: 262144, // 256k
+            maximum_request: 262_144, // 256k
             // log type
             // log path
             // TODO #63: default true in prd
-            secure_cookies: if cfg!(test) { false } else { true },
+            secure_cookies: !cfg!(test),
             tls_config: None,
             cookie_key: [0; 32],
             integration_test_config: None,
@@ -79,7 +79,7 @@ impl Configuration {
     pub fn update_bind(&mut self, b: &Option<String>) {
         self.address = b
             .as_ref()
-            .map(|s| s.clone())
+            .cloned()
             .unwrap_or_else(|| String::from("127.0.0.1:8080"));
     }
 

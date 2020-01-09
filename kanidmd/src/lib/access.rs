@@ -64,19 +64,14 @@ impl AccessControlSearch {
 
         let attrs = try_audit!(
             audit,
-            value
-                .get_ava_set_string("acp_search_attr")
-                .ok_or(OperationError::InvalidACPState(
-                    "Missing acp_search_attr".to_string()
-                ))
+            value.get_ava_set_string("acp_search_attr").ok_or_else(|| {
+                OperationError::InvalidACPState("Missing acp_search_attr".to_string())
+            })
         );
 
         let acp = AccessControlProfile::try_from(audit, qs, value)?;
 
-        Ok(AccessControlSearch {
-            acp: acp,
-            attrs: attrs,
-        })
+        Ok(AccessControlSearch { acp, attrs })
     }
 
     #[cfg(test)]
@@ -91,8 +86,8 @@ impl AccessControlSearch {
             acp: AccessControlProfile {
                 name: name.to_string(),
                 uuid: Uuid::parse_str(uuid).unwrap(),
-                receiver: receiver,
-                targetscope: targetscope,
+                receiver,
+                targetscope,
             },
             attrs: attrs.split_whitespace().map(|s| s.to_string()).collect(),
         }
@@ -133,8 +128,8 @@ impl AccessControlDelete {
             acp: AccessControlProfile {
                 name: name.to_string(),
                 uuid: Uuid::parse_str(uuid).unwrap(),
-                receiver: receiver,
-                targetscope: targetscope,
+                receiver,
+                targetscope,
             },
         }
     }
@@ -162,16 +157,16 @@ impl AccessControlCreate {
 
         let attrs = value
             .get_ava_opt_string("acp_create_attr")
-            .unwrap_or_else(|| Vec::new());
+            .unwrap_or_else(Vec::new);
 
         let classes = value
             .get_ava_opt_string("acp_create_class")
-            .unwrap_or_else(|| Vec::new());
+            .unwrap_or_else(Vec::new);
 
         Ok(AccessControlCreate {
             acp: AccessControlProfile::try_from(audit, qs, value)?,
-            classes: classes,
-            attrs: attrs,
+            classes,
+            attrs,
         })
     }
 
@@ -188,8 +183,8 @@ impl AccessControlCreate {
             acp: AccessControlProfile {
                 name: name.to_string(),
                 uuid: Uuid::parse_str(uuid).unwrap(),
-                receiver: receiver,
-                targetscope: targetscope,
+                receiver,
+                targetscope,
             },
             classes: classes.split_whitespace().map(|s| s.to_string()).collect(),
             attrs: attrs.split_whitespace().map(|s| s.to_string()).collect(),
@@ -220,21 +215,21 @@ impl AccessControlModify {
 
         let presattrs = value
             .get_ava_opt_string("acp_modify_presentattr")
-            .unwrap_or_else(|| Vec::new());
+            .unwrap_or_else(Vec::new);
 
         let remattrs = value
             .get_ava_opt_string("acp_modify_removedattr")
-            .unwrap_or_else(|| Vec::new());
+            .unwrap_or_else(Vec::new);
 
         let classes = value
             .get_ava_opt_string("acp_modify_class")
-            .unwrap_or_else(|| Vec::new());
+            .unwrap_or_else(Vec::new);
 
         Ok(AccessControlModify {
             acp: AccessControlProfile::try_from(audit, qs, value)?,
-            classes: classes,
-            presattrs: presattrs,
-            remattrs: remattrs,
+            classes,
+            presattrs,
+            remattrs,
         })
     }
 
@@ -252,8 +247,8 @@ impl AccessControlModify {
             acp: AccessControlProfile {
                 name: name.to_string(),
                 uuid: Uuid::parse_str(uuid).unwrap(),
-                receiver: receiver,
-                targetscope: targetscope,
+                receiver,
+                targetscope,
             },
             classes: classes.split_whitespace().map(|s| s.to_string()).collect(),
             presattrs: presattrs
@@ -292,24 +287,26 @@ impl AccessControlProfile {
             audit,
             value
                 .get_ava_single_str("name")
-                .ok_or(OperationError::InvalidACPState("Missing name".to_string()))
+                .ok_or_else(|| OperationError::InvalidACPState("Missing name".to_string()))
         )
         .to_string();
         // copy uuid
-        let uuid = value.get_uuid().clone();
+        let uuid = *value.get_uuid();
         // receiver, and turn to real filter
         let receiver_f: ProtoFilter = try_audit!(
             audit,
-            value.get_ava_single_protofilter("acp_receiver").ok_or(
-                OperationError::InvalidACPState("Missing acp_receiver".to_string())
-            )
+            value
+                .get_ava_single_protofilter("acp_receiver")
+                .ok_or_else(|| OperationError::InvalidACPState("Missing acp_receiver".to_string()))
         );
         // targetscope, and turn to real filter
         let targetscope_f: ProtoFilter = try_audit!(
             audit,
-            value.get_ava_single_protofilter("acp_targetscope").ok_or(
-                OperationError::InvalidACPState("Missing acp_targetscope".to_string())
-            )
+            value
+                .get_ava_single_protofilter("acp_targetscope")
+                .ok_or_else(|| OperationError::InvalidACPState(
+                    "Missing acp_targetscope".to_string()
+                ))
         );
 
         let receiver_i = try_audit!(audit, Filter::from_rw(audit, &receiver_f, qs));
@@ -317,7 +314,7 @@ impl AccessControlProfile {
             audit,
             receiver_i
                 .validate(qs.get_schema())
-                .map_err(|e| OperationError::SchemaViolation(e))
+                .map_err(OperationError::SchemaViolation)
         );
 
         let targetscope_i = try_audit!(audit, Filter::from_rw(audit, &targetscope_f, qs));
@@ -325,14 +322,14 @@ impl AccessControlProfile {
             audit,
             targetscope_i
                 .validate(qs.get_schema())
-                .map_err(|e| OperationError::SchemaViolation(e))
+                .map_err(OperationError::SchemaViolation)
         );
 
         Ok(AccessControlProfile {
-            name: name,
-            uuid: uuid,
-            receiver: receiver,
-            targetscope: targetscope,
+            name,
+            uuid,
+            receiver,
+            targetscope,
         })
     }
 }
@@ -526,7 +523,7 @@ pub trait AccessControlsTransaction {
                     // In tests we just push everything back.
                     return Ok(entries
                         .into_iter()
-                        .map(|e| unsafe { e.to_reduced() })
+                        .map(|e| unsafe { e.into_reduced() })
                         .collect());
                 } else {
                     // In production we can't risk leaking data here, so we return
@@ -649,7 +646,7 @@ pub trait AccessControlsTransaction {
 
                 // Remove anything that wasn't requested.
                 let f_allowed_attrs: BTreeSet<&str> = match &req_attrs {
-                    Some(v) => allowed_attrs.intersection(&v).map(|s| *s).collect(),
+                    Some(v) => allowed_attrs.intersection(&v).copied().collect(),
                     None => allowed_attrs,
                 };
 
@@ -664,7 +661,7 @@ pub trait AccessControlsTransaction {
         &self,
         audit: &mut AuditScope,
         me: &ModifyEvent,
-        entries: &Vec<Entry<EntryValid, EntryCommitted>>,
+        entries: &[Entry<EntryValid, EntryCommitted>],
     ) -> Result<bool, OperationError> {
         audit_log!(audit, "Access check for event: {:?}", me);
 
@@ -680,22 +677,17 @@ pub trait AccessControlsTransaction {
         let state = self.get_inner();
 
         // Pre-check if the no-no purge class is present
-        if me.modlist.iter().fold(false, |acc, m| {
+        let disallow = me.modlist.iter().fold(false, |acc, m| {
             if acc {
-                return acc;
+                acc
             } else {
                 match m {
-                    Modify::Purged(a) => {
-                        if a == "class" {
-                            true
-                        } else {
-                            false
-                        }
-                    }
+                    Modify::Purged(a) => a == "class",
                     _ => false,
                 }
             }
-        }) {
+        });
+        if disallow {
             audit_log!(audit, "Disallowing purge class in modification");
             return Ok(false);
         }
@@ -786,7 +778,7 @@ pub trait AccessControlsTransaction {
         audit_log!(audit, "Requested class set: {:?}", requested_classes);
 
         let r = entries.iter().fold(true, |acc, e| {
-            if acc == false {
+            if !acc {
                 false
             } else {
                 // For this entry, find the acp's that apply to it from the
@@ -863,7 +855,7 @@ pub trait AccessControlsTransaction {
         &self,
         audit: &mut AuditScope,
         ce: &CreateEvent,
-        entries: &Vec<Entry<EntryInvalid, EntryNew>>,
+        entries: &[Entry<EntryInvalid, EntryNew>],
     ) -> Result<bool, OperationError> {
         audit_log!(audit, "Access check for event: {:?}", ce);
 
@@ -908,7 +900,7 @@ pub trait AccessControlsTransaction {
 
         // For each entry
         let r = entries.iter().fold(true, |acc, e| {
-            if acc == false {
+            if !acc {
                 // We have already failed, move on.
                 false
             } else {
@@ -937,7 +929,7 @@ pub trait AccessControlsTransaction {
                 };
 
                 related_acp.iter().fold(false, |r_acc, accr| {
-                    if r_acc == true {
+                    if r_acc {
                         // Already allowed, continue.
                         r_acc
                     } else {
@@ -1023,7 +1015,7 @@ pub trait AccessControlsTransaction {
         &self,
         audit: &mut AuditScope,
         de: &DeleteEvent,
-        entries: &Vec<Entry<EntryValid, EntryCommitted>>,
+        entries: &[Entry<EntryValid, EntryCommitted>],
     ) -> Result<bool, OperationError> {
         audit_log!(audit, "Access check for event: {:?}", de);
 
@@ -1070,12 +1062,12 @@ pub trait AccessControlsTransaction {
 
         // For each entry
         let r = entries.iter().fold(true, |acc, e| {
-            if acc == false {
+            if !acc {
                 // Any false, denies the whole operation.
                 false
             } else {
                 related_acp.iter().fold(false, |r_acc, acd| {
-                    if r_acc == true {
+                    if r_acc {
                         // If something allowed us to delete, skip doing silly work.
                         r_acc
                     } else {
@@ -1139,7 +1131,7 @@ impl<'a> AccessControlsWriteTransaction<'a> {
         let inner = self.get_inner_mut();
         inner.acps_search.clear();
         for acp in acps {
-            let uuid = acp.acp.uuid.clone();
+            let uuid = acp.acp.uuid;
             inner.acps_search.insert(uuid, acp);
         }
         Ok(())
@@ -1149,7 +1141,7 @@ impl<'a> AccessControlsWriteTransaction<'a> {
         let inner = self.get_inner_mut();
         inner.acps_create.clear();
         for acp in acps {
-            let uuid = acp.acp.uuid.clone();
+            let uuid = acp.acp.uuid;
             inner.acps_create.insert(uuid, acp);
         }
         Ok(())
@@ -1159,7 +1151,7 @@ impl<'a> AccessControlsWriteTransaction<'a> {
         let inner = self.get_inner_mut();
         inner.acps_modify.clear();
         for acp in acps {
-            let uuid = acp.acp.uuid.clone();
+            let uuid = acp.acp.uuid;
             inner.acps_modify.insert(uuid, acp);
         }
         Ok(())
@@ -1169,7 +1161,7 @@ impl<'a> AccessControlsWriteTransaction<'a> {
         let inner = self.get_inner_mut();
         inner.acps_delete.clear();
         for acp in acps {
-            let uuid = acp.acp.uuid.clone();
+            let uuid = acp.acp.uuid;
             inner.acps_delete.insert(uuid, acp);
         }
         Ok(())
@@ -1249,7 +1241,7 @@ mod tests {
             $type:ty
         ) => {{
             let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str($e);
-            let ev1 = unsafe { e1.to_valid_committed() };
+            let ev1 = unsafe { e1.into_valid_committed() };
 
             let r1 = <$type>::try_from($audit, $qs, &ev1);
             assert!(r1.is_err());
@@ -1264,7 +1256,7 @@ mod tests {
             $type:ty
         ) => {{
             let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str($e);
-            let ev1 = unsafe { e1.to_valid_committed() };
+            let ev1 = unsafe { e1.into_valid_committed() };
 
             let r1 = <$type>::try_from($audit, $qs, &ev1);
             assert!(r1.is_ok());
@@ -1740,7 +1732,7 @@ mod tests {
                 }
                 }"#,
         );
-        let ev1 = unsafe { e1.to_valid_committed() };
+        let ev1 = unsafe { e1.into_valid_committed() };
 
         let expect = vec![ev1.clone()];
         let entries = vec![ev1];
@@ -1766,10 +1758,10 @@ mod tests {
     fn test_access_enforce_search() {
         // Test that entries from a search are reduced by acps
         let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
-        let ev1 = unsafe { e1.to_valid_committed() };
+        let ev1 = unsafe { e1.into_valid_committed() };
 
         let e2: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON2);
-        let ev2 = unsafe { e2.to_valid_committed() };
+        let ev2 = unsafe { e2.into_valid_committed() };
 
         let r_set = vec![ev1.clone(), ev2.clone()];
 
@@ -1829,7 +1821,7 @@ mod tests {
             // Help the type checker for the expect set.
             let expect_set: Vec<Entry<EntryReduced, EntryCommitted>> = $expect
                 .into_iter()
-                .map(|e| unsafe { e.to_reduced() })
+                .map(|e| unsafe { e.into_reduced() })
                 .collect();
 
             println!("expect --> {:?}", expect_set);
@@ -1853,12 +1845,12 @@ mod tests {
         // In this case, we test that a user can only see "name" despite the
         // class and uuid being present.
         let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
-        let ev1 = unsafe { e1.to_valid_committed() };
+        let ev1 = unsafe { e1.into_valid_committed() };
         let r_set = vec![ev1.clone()];
 
         let ex1: Entry<EntryInvalid, EntryNew> =
             Entry::unsafe_from_entry_str(JSON_TESTPERSON1_REDUCED);
-        let exv1 = unsafe { ex1.to_valid_committed() };
+        let exv1 = unsafe { ex1.into_valid_committed() };
         let ex_anon = vec![exv1.clone()];
 
         let se_anon = unsafe {
@@ -1892,12 +1884,12 @@ mod tests {
         // In this case, we test that a user can only see "name" despite the
         // class and uuid being present.
         let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
-        let ev1 = unsafe { e1.to_valid_committed() };
+        let ev1 = unsafe { e1.into_valid_committed() };
         let r_set = vec![ev1.clone()];
 
         let ex1: Entry<EntryInvalid, EntryNew> =
             Entry::unsafe_from_entry_str(JSON_TESTPERSON1_REDUCED);
-        let exv1 = unsafe { ex1.to_valid_committed() };
+        let exv1 = unsafe { ex1.into_valid_committed() };
         let ex_anon = vec![exv1.clone()];
 
         let mut se_anon = unsafe {
@@ -1953,7 +1945,7 @@ mod tests {
     #[test]
     fn test_access_enforce_modify() {
         let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
-        let ev1 = unsafe { e1.to_valid_committed() };
+        let ev1 = unsafe { e1.into_valid_committed() };
         let r_set = vec![ev1.clone()];
 
         // Name present
@@ -2241,7 +2233,7 @@ mod tests {
     #[test]
     fn test_access_enforce_delete() {
         let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
-        let ev1 = unsafe { e1.to_valid_committed() };
+        let ev1 = unsafe { e1.into_valid_committed() };
         let r_set = vec![ev1.clone()];
 
         let de_admin = unsafe {

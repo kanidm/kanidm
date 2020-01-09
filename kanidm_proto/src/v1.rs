@@ -214,7 +214,7 @@ pub struct ModifyList {
 
 impl ModifyList {
     pub fn new_list(mods: Vec<Modify>) -> Self {
-        ModifyList { mods: mods }
+        ModifyList { mods }
     }
 }
 
@@ -234,7 +234,7 @@ pub struct SearchRequest {
 
 impl SearchRequest {
     pub fn new(filter: Filter) -> Self {
-        SearchRequest { filter: filter }
+        SearchRequest { filter }
     }
 }
 
@@ -245,7 +245,7 @@ pub struct SearchResponse {
 
 impl SearchResponse {
     pub fn new(entries: Vec<Entry>) -> Self {
-        SearchResponse { entries: entries }
+        SearchResponse { entries }
     }
 }
 
@@ -256,7 +256,7 @@ pub struct CreateRequest {
 
 impl CreateRequest {
     pub fn new(entries: Vec<Entry>) -> Self {
-        CreateRequest { entries: entries }
+        CreateRequest { entries }
     }
 }
 
@@ -267,7 +267,7 @@ pub struct DeleteRequest {
 
 impl DeleteRequest {
     pub fn new(filter: Filter) -> Self {
-        DeleteRequest { filter: filter }
+        DeleteRequest { filter }
     }
 }
 
@@ -280,10 +280,7 @@ pub struct ModifyRequest {
 
 impl ModifyRequest {
     pub fn new(filter: Filter, modlist: ModifyList) -> Self {
-        ModifyRequest {
-            filter: filter,
-            modlist: modlist,
-        }
+        ModifyRequest { filter, modlist }
     }
 }
 
@@ -371,7 +368,7 @@ pub struct SearchRecycledRequest {
 
 impl SearchRecycledRequest {
     pub fn new(filter: Filter) -> Self {
-        SearchRecycledRequest { filter: filter }
+        SearchRecycledRequest { filter }
     }
 }
 
@@ -383,17 +380,17 @@ pub struct ReviveRecycledRequest {
 
 impl ReviveRecycledRequest {
     pub fn new(filter: Filter) -> Self {
-        ReviveRecycledRequest { filter: filter }
+        ReviveRecycledRequest { filter }
     }
 }
 
 // This doesn't need seralise because it's only accessed via a "get".
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct WhoamiRequest {}
 
 impl WhoamiRequest {
     pub fn new() -> Self {
-        WhoamiRequest {}
+        Default::default()
     }
 }
 
@@ -406,10 +403,7 @@ pub struct WhoamiResponse {
 
 impl WhoamiResponse {
     pub fn new(e: Entry, uat: UserAuthToken) -> Self {
-        WhoamiResponse {
-            youare: e,
-            uat: uat,
-        }
+        WhoamiResponse { youare: e, uat }
     }
 }
 

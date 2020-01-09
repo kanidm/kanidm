@@ -49,7 +49,7 @@ impl TryFrom<&Credential> for CredHandler {
 }
 
 impl CredHandler {
-    pub fn validate(&mut self, creds: &Vec<AuthCredential>) -> CredState {
+    pub fn validate(&mut self, creds: &[AuthCredential]) -> CredState {
         match self {
             CredHandler::Denied => {
                 // Sad trombone.
@@ -184,10 +184,10 @@ impl AuthSession {
         let finished: bool = handler.is_denied();
 
         AuthSession {
-            account: account,
-            handler: handler,
-            appid: appid,
-            finished: finished,
+            account,
+            handler,
+            appid,
+            finished,
         }
     }
 
@@ -195,7 +195,7 @@ impl AuthSession {
     pub fn validate_creds(
         &mut self,
         au: &mut AuditScope,
-        creds: &Vec<AuthCredential>,
+        creds: &[AuthCredential],
     ) -> Result<AuthState, OperationError> {
         if self.finished {
             return Err(OperationError::InvalidAuthState(

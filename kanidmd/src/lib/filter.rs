@@ -21,32 +21,32 @@ use uuid::Uuid;
 // This is &Value so we can lazy static then clone, but perhaps we can reconsider
 // later if this should just take Value.
 #[allow(dead_code)]
-pub fn f_eq<'a>(a: &'a str, v: PartialValue) -> FC<'a> {
+pub fn f_eq(a: &str, v: PartialValue) -> FC {
     FC::Eq(a, v)
 }
 
 #[allow(dead_code)]
-pub fn f_sub<'a>(a: &'a str, v: PartialValue) -> FC<'a> {
+pub fn f_sub(a: &str, v: PartialValue) -> FC {
     FC::Sub(a, v)
 }
 
 #[allow(dead_code)]
-pub fn f_pres<'a>(a: &'a str) -> FC<'a> {
+pub fn f_pres(a: &str) -> FC {
     FC::Pres(a)
 }
 
 #[allow(dead_code)]
-pub fn f_or<'a>(vs: Vec<FC<'a>>) -> FC<'a> {
+pub fn f_or(vs: Vec<FC>) -> FC {
     FC::Or(vs)
 }
 
 #[allow(dead_code)]
-pub fn f_and<'a>(vs: Vec<FC<'a>>) -> FC<'a> {
+pub fn f_and(vs: Vec<FC>) -> FC {
     FC::And(vs)
 }
 
 #[allow(dead_code)]
-pub fn f_andnot<'a>(fc: FC<'a>) -> FC<'a> {
+pub fn f_andnot(fc: FC) -> FC {
     FC::AndNot(Box::new(fc))
 }
 
@@ -224,7 +224,7 @@ impl Filter<FilterInvalid> {
         }
     }
 
-    pub fn to_ignore_hidden(self) -> Self {
+    pub fn into_ignore_hidden(self) -> Self {
         // Destructure the former filter, and surround it with an ignore_hidden.
         Filter {
             state: FilterInvalid {
@@ -243,7 +243,7 @@ impl Filter<FilterInvalid> {
         }
     }
 
-    pub fn to_recycled(self) -> Self {
+    pub fn into_recycled(self) -> Self {
         // Destructure the former filter and surround it with a recycled only query
         Filter {
             state: FilterInvalid {
@@ -262,7 +262,7 @@ impl Filter<FilterInvalid> {
     }
 
     #[cfg(test)]
-    pub unsafe fn to_valid_resolved(self) -> Filter<FilterValidResolved> {
+    pub unsafe fn into_valid_resolved(self) -> Filter<FilterValidResolved> {
         // There is a good reason this function only exists in tests ...
         //
         // YOLO.
@@ -299,7 +299,7 @@ impl Filter<FilterInvalid> {
     }
 
     #[cfg(test)]
-    pub unsafe fn to_valid(self) -> Filter<FilterValid> {
+    pub unsafe fn into_valid(self) -> Filter<FilterValid> {
         // There is a good reason this function only exists in tests ...
         //
         // YOLO.
@@ -368,8 +368,8 @@ impl FilterComp {
             FC::Eq(a, v) => FilterComp::Eq(a.to_string(), v),
             FC::Sub(a, v) => FilterComp::Sub(a.to_string(), v),
             FC::Pres(a) => FilterComp::Pres(a.to_string()),
-            FC::Or(v) => FilterComp::Or(v.into_iter().map(|c| FilterComp::new(c)).collect()),
-            FC::And(v) => FilterComp::And(v.into_iter().map(|c| FilterComp::new(c)).collect()),
+            FC::Or(v) => FilterComp::Or(v.into_iter().map(FilterComp::new).collect()),
+            FC::And(v) => FilterComp::And(v.into_iter().map(FilterComp::new).collect()),
             FC::AndNot(b) => FilterComp::AndNot(Box::new(FilterComp::new(*b))),
             FC::SelfUUID => FilterComp::SelfUUID,
         }
@@ -471,7 +471,7 @@ impl FilterComp {
                 // If any is invalid, return the error.
                 // TODO: ftweedal says an empty or is a valid filter
                 // in mathematical terms.
-                if filters.len() == 0 {
+                if filters.is_empty() {
                     return Err(SchemaError::EmptyFilter);
                 };
                 let x: Result<Vec<_>, _> = filters
@@ -479,12 +479,12 @@ impl FilterComp {
                     .map(|filter| filter.validate(schema))
                     .collect();
                 // Now put the valid filters into the Filter
-                x.map(|valid_filters| FilterComp::Or(valid_filters))
+                x.map(FilterComp::Or)
             }
             FilterComp::And(filters) => {
                 // TODO: ftweedal says an empty or is a valid filter
                 // in mathematical terms.
-                if filters.len() == 0 {
+                if filters.is_empty() {
                     return Err(SchemaError::EmptyFilter);
                 };
                 let x: Result<Vec<_>, _> = filters
@@ -492,7 +492,7 @@ impl FilterComp {
                     .map(|filter| filter.validate(schema))
                     .collect();
                 // Now put the valid filters into the Filter
-                x.map(|valid_filters| FilterComp::And(valid_filters))
+                x.map(FilterComp::And)
             }
             FilterComp::AndNot(filter) => {
                 // Just validate the inner
@@ -726,14 +726,14 @@ impl FilterResolved {
                     .into_iter()
                     .map(|f| FilterResolved::resolve_idx(f, ev, idxmeta))
                     .collect();
-                fi.map(|fv| FilterResolved::Or(fv))
+                fi.map(FilterResolved::Or)
             }
             FilterComp::And(vs) => {
                 let fi: Option<Vec<_>> = vs
                     .into_iter()
                     .map(|f| FilterResolved::resolve_idx(f, ev, idxmeta))
                     .collect();
-                fi.map(|fv| FilterResolved::And(fv))
+                fi.map(FilterResolved::And)
             }
             FilterComp::AndNot(f) => {
                 // TODO: pattern match box here. (AndNot(box f)).
@@ -750,7 +750,7 @@ impl FilterResolved {
                     let idx = idxmeta.contains(&(&uuid_s, &IndexType::EQUALITY));
                     Some(FilterResolved::Eq(
                         uuid_s,
-                        PartialValue::new_uuid(e.get_uuid().clone()),
+                        PartialValue::new_uuid(*e.get_uuid()),
                         idx,
                     ))
                 }
@@ -769,14 +769,14 @@ impl FilterResolved {
                     .into_iter()
                     .map(|f| FilterResolved::resolve_no_idx(f, ev))
                     .collect();
-                fi.map(|fv| FilterResolved::Or(fv))
+                fi.map(FilterResolved::Or)
             }
             FilterComp::And(vs) => {
                 let fi: Option<Vec<_>> = vs
                     .into_iter()
                     .map(|f| FilterResolved::resolve_no_idx(f, ev))
                     .collect();
-                fi.map(|fv| FilterResolved::And(fv))
+                fi.map(FilterResolved::And)
             }
             FilterComp::AndNot(f) => {
                 // TODO: pattern match box here. (AndNot(box f)).
@@ -790,7 +790,7 @@ impl FilterResolved {
             FilterComp::SelfUUID => match &ev.origin {
                 EventOrigin::User(e) => Some(FilterResolved::Eq(
                     "uuid".to_string(),
-                    PartialValue::new_uuid(e.get_uuid().clone()),
+                    PartialValue::new_uuid(*e.get_uuid()),
                     false,
                 )),
                 _ => None,
@@ -822,9 +822,11 @@ impl FilterResolved {
                 // (&(uid=foo)(class=*))
                 // Which will be faster when indexed as the uid=foo will trigger
                 // shortcutting
-                f_list_and.into_iter().for_each(|fc| match fc {
-                    FilterResolved::And(mut l) => f_list_new.append(&mut l),
-                    _ => {}
+
+                f_list_and.into_iter().for_each(|fc| {
+                    if let FilterResolved::And(mut l) = fc {
+                        f_list_new.append(&mut l)
+                    }
                 });
 
                 // finally, optimise this list by sorting.
@@ -843,9 +845,10 @@ impl FilterResolved {
                         _ => false,
                     });
 
-                f_list_or.into_iter().for_each(|fc| match fc {
-                    FilterResolved::Or(mut l) => f_list_new.append(&mut l),
-                    _ => {}
+                f_list_or.into_iter().for_each(|fc| {
+                    if let FilterResolved::Or(mut l) = fc {
+                        f_list_new.append(&mut l)
+                    }
                 });
 
                 // sort, but reverse so that sub-optimal elements are later!
@@ -900,9 +903,9 @@ mod tests {
             let f_init: Filter<FilterInvalid> = Filter::new($init);
             let f_expect: Filter<FilterInvalid> = Filter::new($expect);
             // Create a resolved filter, via the most unsafe means possible!
-            let f_init_r = unsafe { f_init.to_valid_resolved() };
+            let f_init_r = unsafe { f_init.into_valid_resolved() };
             let f_init_o = f_init_r.optimise();
-            let f_init_e = unsafe { f_expect.to_valid_resolved() };
+            let f_init_e = unsafe { f_expect.into_valid_resolved() };
             println!("--");
             println!("init   --> {:?}", f_init_r);
             println!("opt    --> {:?}", f_init_o);
@@ -1099,7 +1102,7 @@ mod tests {
             }
         }"#,
             )
-            .to_valid_new()
+            .into_valid_new()
         };
 
         let f_t1a = unsafe {
@@ -1151,7 +1154,7 @@ mod tests {
             }
         }"#,
             )
-            .to_valid_new()
+            .into_valid_new()
         };
 
         let f_t1a = unsafe {
@@ -1203,7 +1206,7 @@ mod tests {
             }
         }"#,
             )
-            .to_valid_new()
+            .into_valid_new()
         };
 
         let f_t1a = unsafe {
@@ -1236,7 +1239,7 @@ mod tests {
             }
         }"#,
             )
-            .to_valid_new()
+            .into_valid_new()
         };
 
         let e2: Entry<EntryValid, EntryNew> = unsafe {
@@ -1253,7 +1256,7 @@ mod tests {
             }
         }"#,
             )
-            .to_valid_new()
+            .into_valid_new()
         };
 
         let e3: Entry<EntryValid, EntryNew> = unsafe {
@@ -1270,7 +1273,7 @@ mod tests {
             }
         }"#,
             )
-            .to_valid_new()
+            .into_valid_new()
         };
 
         let e4: Entry<EntryValid, EntryNew> = unsafe {
@@ -1287,7 +1290,7 @@ mod tests {
             }
         }"#,
             )
-            .to_valid_new()
+            .into_valid_new()
         };
 
         let f_t1a = unsafe {
