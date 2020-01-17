@@ -2,8 +2,8 @@
 
 Currently we have a pre-release docker image based on git master. They can be found at:
 
-    https://hub.docker.com/r/firstyear/kanidmd
-    https://hub.docker.com/r/firstyear/kanidm_radius
+    https://hub.docker.com/r/kanidm/server
+    https://hub.docker.com/r/kanidm/radius
 
 You'll need a volume where you can put certificates and the database:
 
@@ -19,13 +19,13 @@ that mounts the volume such as:
 
 Then you can setup the initial admin account and initialise the database into your volume.
 
-    docker run --rm -i -t -v kanidmd:/data firstyear/kanidmd:latest /sbin/kanidmd recover_account -D /data/kanidm.db -n admin
+    docker run --rm -i -t -v kanidmd:/data kanidm/server:latest /sbin/kanidmd recover_account -D /data/kanidm.db -n admin
 
 You then want to set your domain name so that spn's are generated correctly.
 
-    docker run --rm -i -t -v kanidmd:/data firstyear/kanidmd:latest /sbin/kanidmd domain_name_change -D /data/kanidm.db -n idm.example.com
+    docker run --rm -i -t -v kanidmd:/data kanidm/server:latest /sbin/kanidmd domain_name_change -D /data/kanidm.db -n idm.example.com
 
 Now we can run the server so that it can accept connections.
 
-    docker run -p 8443:8443 -v kanidmd:/data firstyear/kanidmd:latest
+    docker run -p 8443:8443 -v kanidmd:/data kanidm/server:latest
 

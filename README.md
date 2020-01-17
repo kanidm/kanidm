@@ -1,6 +1,6 @@
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Firstyear/kanidm/master/artwork/logo-small.png" width="20%" height="auto" />
+  <img src="https://raw.githubusercontent.com/kanidm/kanidm/master/artwork/logo-small.png" width="20%" height="auto" />
 </p>
 
 # Kanidm
@@ -20,13 +20,13 @@ of the system have been completed yet!
 
 See our [code of conduct]
 
-[code of conduct]: https://github.com/Firstyear/kanidm/blob/master/CODE_OF_CONDUCT.md
+[code of conduct]: https://github.com/kanidm/kanidm/blob/master/CODE_OF_CONDUCT.md
 
 ## Ethics / Rights
 
 See our documentation on [rights and ethics]
 
-[rights and ethics]: https://github.com/Firstyear/kanidm/blob/master/ethics/README.md
+[rights and ethics]: https://github.com/kanidm/kanidm/blob/master/ethics/README.md
 
 ## Some key ideas
 
@@ -39,7 +39,7 @@ See our documentation on [rights and ethics]
 
 For more see the [kanidm book]
 
-[kanidm book]: https://github.com/Firstyear/kanidm/blob/master/kanidm_book/src/SUMMARY.md
+[kanidm book]: https://github.com/kanidm/kanidm/blob/master/kanidm_book/src/SUMMARY.md
 
 ## Implemented/Planned features
 
@@ -70,7 +70,7 @@ For more see the [kanidm book]
 
 See the [designs] folder
 
-[designs]: https://github.com/Firstyear/kanidm/tree/master/designs
+[designs]: https://github.com/kanidm/kanidm/tree/master/designs
 
 ### Get involved
 
@@ -79,13 +79,13 @@ To get started, you'll need to fork or branch, and we'll merge based on PR's.
 If you are a contributor to the project, simply clone:
 
 ```
-git clone git@github.com:Firstyear/kanidm.git
+git clone git@github.com:kanidm/kanidm.git
 ```
 
 If you are forking, then Fork in github and clone with:
 
 ```
-git clone https://github.com/Firstyear/kanidm.git
+git clone https://github.com/kanidm/kanidm.git
 cd kanidm
 git remote add myfork git@github.com:<YOUR USERNAME>/kanidm.git
 ```
