@@ -16,7 +16,7 @@ To take the backup (assuming our docker environment) you first need to stop the 
 
     docker stop <container name>
     docker run --rm -i -t -v kanidmd:/data -v kanidmd_backups:/backup \
-        firstyear/kanidmd:latest /sbin/kanidmd backup \
+        kanidm/server:latest /sbin/kanidmd backup \
         /backup/kanidm.backup.json -D /data/kanidm.db
     docker start <container name>
 
@@ -27,7 +27,7 @@ To restore from the backup:
 
     docker stop <container name>
     docker run --rm -i -t -v kanidmd:/data -v kanidmd_backups:/backup \
-        firstyear/kanidmd:latest /sbin/kanidmd restore \
+        kanidm/server:latest /sbin/kanidmd restore \
         /backup/kanidm.backup.json -D /data/kanidm.db
     docker start <container name>
 
@@ -62,7 +62,7 @@ you can then rename the domain with the commands as follows:
 
     docker stop <container name>
     docker run --rm -i -t -v kandimd:/data \
-        firstyear/kanidm:latest /sbin/kanidmd domain_name_change \
+        kanidm/server:latest /sbin/kanidmd domain_name_change \
         -D /data/kanidm.db -n idm.new.domain.name
     docker start <container name>
 
@@ -89,7 +89,7 @@ definitions (this works even though the schema is in the same database!)
 
     docker stop <container name>
     docker run --rm -i -t -v kanidmd:/data \
-        firstyear/kanidmd:latest /sbin/kanidmd reindex \
+        kanidm/server:latest /sbin/kanidmd reindex \
         -D /data/kanidm.db
     docker start <container name>
 
@@ -108,7 +108,7 @@ You can run a verification with:
 
     docker stop <container name>
     docker run --rm -i -t -v kanidmd:/data \
-        firstyear/kanidmd:latest /sbin/kanidmd verify \
+        kanidm/server:latest /sbin/kanidmd verify \
         -D /data/kanidm.db
     docker start <container name>
 
