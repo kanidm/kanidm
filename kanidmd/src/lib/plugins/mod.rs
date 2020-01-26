@@ -300,9 +300,13 @@ impl Plugins {
         cand: &[Entry<EntryValid, EntryNew>],
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        audit_segment!(au, || {
-            run_pre_create_plugin!(au, qs, cand, ce, protected::Protected)
-        })
+        audit_segment!(au, || run_pre_create_plugin!(
+            au,
+            qs,
+            cand,
+            ce,
+            protected::Protected
+        ))
     }
 
     pub fn run_post_create(
@@ -311,10 +315,20 @@ impl Plugins {
         cand: &[Entry<EntryValid, EntryCommitted>],
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        audit_segment!(au, || {
-            run_post_create_plugin!(au, qs, cand, ce, refint::ReferentialIntegrity)
-                .and_then(|_| run_post_create_plugin!(au, qs, cand, ce, memberof::MemberOf))
-        })
+        audit_segment!(au, || run_post_create_plugin!(
+            au,
+            qs,
+            cand,
+            ce,
+            refint::ReferentialIntegrity
+        )
+        .and_then(|_| run_post_create_plugin!(
+            au,
+            qs,
+            cand,
+            ce,
+            memberof::MemberOf
+        )))
     }
 
     pub fn run_pre_modify(
@@ -340,13 +354,23 @@ impl Plugins {
         cand: &[Entry<EntryValid, EntryCommitted>],
         me: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        audit_segment!(au, || {
-            run_post_modify_plugin!(au, qs, pre_cand, cand, me, refint::ReferentialIntegrity)
-                .and_then(|_| {
-                    run_post_modify_plugin!(au, qs, pre_cand, cand, me, memberof::MemberOf)
-                })
-                .and_then(|_| run_post_modify_plugin!(au, qs, pre_cand, cand, me, spn::Spn))
-        })
+        audit_segment!(au, || run_post_modify_plugin!(
+            au,
+            qs,
+            pre_cand,
+            cand,
+            me,
+            refint::ReferentialIntegrity
+        )
+        .and_then(|_| run_post_modify_plugin!(au, qs, pre_cand, cand, me, memberof::MemberOf))
+        .and_then(|_| run_post_modify_plugin!(
+            au,
+            qs,
+            pre_cand,
+            cand,
+            me,
+            spn::Spn
+        )))
     }
 
     pub fn run_pre_delete(
@@ -355,9 +379,13 @@ impl Plugins {
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         de: &DeleteEvent,
     ) -> Result<(), OperationError> {
-        audit_segment!(au, || {
-            run_pre_delete_plugin!(au, qs, cand, de, protected::Protected)
-        })
+        audit_segment!(au, || run_pre_delete_plugin!(
+            au,
+            qs,
+            cand,
+            de,
+            protected::Protected
+        ))
     }
 
     pub fn run_post_delete(
@@ -366,10 +394,20 @@ impl Plugins {
         cand: &[Entry<EntryValid, EntryCommitted>],
         de: &DeleteEvent,
     ) -> Result<(), OperationError> {
-        audit_segment!(au, || {
-            run_post_delete_plugin!(au, qs, cand, de, refint::ReferentialIntegrity)
-                .and_then(|_| run_post_delete_plugin!(au, qs, cand, de, memberof::MemberOf))
-        })
+        audit_segment!(au, || run_post_delete_plugin!(
+            au,
+            qs,
+            cand,
+            de,
+            refint::ReferentialIntegrity
+        )
+        .and_then(|_| run_post_delete_plugin!(
+            au,
+            qs,
+            cand,
+            de,
+            memberof::MemberOf
+        )))
     }
 
     pub fn run_verify(
