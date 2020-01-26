@@ -17,8 +17,7 @@ use kanidm_proto::v1::AuthState;
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::RadiusAuthToken;
 
-use concread::cowcell::{CowCell, CowCellWriteTxn};
-use std::collections::BTreeMap;
+use concread::collections::bptree::*;
 use std::time::Duration;
 use uuid::Uuid;
 use zxcvbn;
@@ -28,7 +27,7 @@ pub struct IdmServer {
     // means that limits to sessions can be easily applied and checked to
     // variaous accounts, and we have a good idea of how to structure the
     // in memory caches related to locking.
-    sessions: CowCell<BTreeMap<Uuid, AuthSession>>,
+    sessions: BptreeMap<Uuid, AuthSession>,
     // Need a reference to the query server.
     qs: QueryServer,
     // thread/server id
@@ -39,7 +38,7 @@ pub struct IdmServerWriteTransaction<'a> {
     // Contains methods that require writes, but in the context of writing to
     // the idm in memory structures (maybe the query server too). This is
     // things like authentication
-    sessions: CowCellWriteTxn<'a, BTreeMap<Uuid, AuthSession>>,
+    sessions: BptreeMapWriteTxn<'a, Uuid, AuthSession>,
     qs: &'a QueryServer,
     sid: &'a SID,
 }
@@ -60,7 +59,7 @@ impl IdmServer {
     // TODO #59: Make number of authsessions configurable!!!
     pub fn new(qs: QueryServer, sid: SID) -> IdmServer {
         IdmServer {
-            sessions: CowCell::new(BTreeMap::new()),
+            sessions: BptreeMap::new(),
             qs,
             sid,
         }
@@ -97,9 +96,8 @@ impl<'a> IdmServerWriteTransaction<'a> {
         // ct is current time - sub the timeout. and then split.
         let expire = ct - Duration::from_secs(AUTH_SESSION_TIMEOUT);
         let split_at = uuid_from_duration(expire, *self.sid);
-        let valid = self.sessions.split_off(&split_at);
-        // swap them?
-        *self.sessions = valid;
+        // Removes older sessions in place.
+        self.sessions.split_off_lt(&split_at);
         // expired will now be dropped, and can't be used by future sessions.
     }
 
@@ -189,7 +187,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
                 // Do we have a session?
                 let auth_session = try_audit!(
                     au,
-                    (*self.sessions)
+                    self.sessions
                         // Why is the session missing?
                         .get_mut(&creds.sessionid)
                         .ok_or(OperationError::InvalidSessionState)

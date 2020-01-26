@@ -95,7 +95,7 @@ pub trait QueryServerTransaction {
         // NOTE: Filters are validated in event conversion.
 
         let schema = self.get_schema();
-        let idxmeta = schema.get_idxmeta();
+        let idxmeta = schema.get_idxmeta_set();
         // Now resolve all references and indexes.
         let vfr = try_audit!(au, se.filter.resolve(&se.event, Some(&idxmeta)));
 
@@ -132,7 +132,7 @@ pub trait QueryServerTransaction {
         let mut audit_be = AuditScope::new("backend_exists");
 
         let schema = self.get_schema();
-        let idxmeta = schema.get_idxmeta();
+        let idxmeta = schema.get_idxmeta_set();
         let vfr = try_audit!(au, ee.filter.resolve(&ee.event, Some(&idxmeta)));
 
         let res = self
@@ -715,7 +715,7 @@ impl QueryServer {
     pub fn write(&self) -> QueryServerWriteTransaction {
         // Feed the current schema index metadata to the be write transaction.
         let schema_write = self.schema.write();
-        let idxmeta = schema_write.get_idxmeta();
+        let idxmeta = schema_write.get_idxmeta_set();
 
         QueryServerWriteTransaction {
             // I think this is *not* needed, because commit is mut self which should

@@ -5,11 +5,11 @@ use crate::value::{IndexType, PartialValue, SyntaxType, Value};
 use kanidm_proto::v1::{ConsistencyError, OperationError, SchemaError};
 
 use std::borrow::Borrow;
-use std::collections::BTreeSet;
 use std::collections::HashMap;
+use std::collections::{BTreeMap, BTreeSet};
 use uuid::Uuid;
 
-use concread::cowcell::{CowCell, CowCellReadTxn, CowCellWriteTxn};
+use concread::collections::bptree::*;
 
 // representations of schema that confines object types, classes
 // and attributes. This ties in deeply with "Entry".
@@ -21,6 +21,24 @@ use concread::cowcell::{CowCell, CowCellReadTxn, CowCellWriteTxn};
 lazy_static! {
     static ref PVCLASS_ATTRIBUTETYPE: PartialValue = PartialValue::new_class("attributetype");
     static ref PVCLASS_CLASSTYPE: PartialValue = PartialValue::new_class("classtype");
+}
+
+pub struct Schema {
+    classes: BptreeMap<String, SchemaClass>,
+    attributes: BptreeMap<String, SchemaAttribute>,
+    idxmeta: BptreeMap<String, IndexType>,
+}
+
+pub struct SchemaWriteTransaction<'a> {
+    classes: BptreeMapWriteTxn<'a, String, SchemaClass>,
+    attributes: BptreeMapWriteTxn<'a, String, SchemaAttribute>,
+    idxmeta: BptreeMapWriteTxn<'a, String, IndexType>,
+}
+
+pub struct SchemaReadTransaction {
+    classes: BptreeMapReadTxn<String, SchemaClass>,
+    attributes: BptreeMapReadTxn<String, SchemaAttribute>,
+    idxmeta: BptreeMapReadTxn<String, IndexType>,
 }
 
 #[derive(Debug, Clone)]
@@ -466,14 +484,91 @@ pub struct SchemaInner {
 }
 
 pub trait SchemaTransaction {
-    fn get_inner(&self) -> &SchemaInner;
+    fn get_classes(&self) -> BptreeMapReadSnapshot<String, SchemaClass>;
+    fn get_attributes(&self) -> BptreeMapReadSnapshot<String, SchemaAttribute>;
+    fn get_idxmeta(&self) -> BptreeMapReadSnapshot<String, IndexType>;
 
-    fn validate(&self, audit: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
-        self.get_inner().validate(audit)
+    fn validate(&self, _audit: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
+        let mut res = Vec::new();
+
+        let class_snapshot = self.get_classes();
+        let attribute_snapshot = self.get_attributes();
+        // Does this need to validate anything further at all? The UUID
+        // will be checked as part of the schema migration on startup, so I think
+        // just that all the content is sane is fine.
+        for class in class_snapshot.values() {
+            // report the class we are checking
+            for a in &class.systemmay {
+                // report the attribute.
+                /*
+                audit_log!(
+                    audit,
+                    "validate systemmay class:attr -> {}:{}",
+                    class.name,
+                    a
+                );
+                */
+                if !attribute_snapshot.contains_key(a) {
+                    res.push(Err(ConsistencyError::SchemaClassMissingAttribute(
+                        class.name.clone(),
+                        a.clone(),
+                    )))
+                }
+            }
+            for a in &class.may {
+                // report the attribute.
+                /*
+                audit_log!(audit, "validate may class:attr -> {}:{}", class.name, a);
+                */
+                if !attribute_snapshot.contains_key(a) {
+                    res.push(Err(ConsistencyError::SchemaClassMissingAttribute(
+                        class.name.clone(),
+                        a.clone(),
+                    )))
+                }
+            }
+            for a in &class.systemmust {
+                // report the attribute.
+                /*
+                audit_log!(
+                    audit,
+                    "validate systemmust class:attr -> {}:{}",
+                    class.name,
+                    a
+                );
+                */
+                if !attribute_snapshot.contains_key(a) {
+                    res.push(Err(ConsistencyError::SchemaClassMissingAttribute(
+                        class.name.clone(),
+                        a.clone(),
+                    )))
+                }
+            }
+            for a in &class.must {
+                // report the attribute.
+                /*
+                audit_log!(audit, "validate must class:attr -> {}:{}", class.name, a);
+                */
+                if !attribute_snapshot.contains_key(a) {
+                    res.push(Err(ConsistencyError::SchemaClassMissingAttribute(
+                        class.name.clone(),
+                        a.clone(),
+                    )))
+                }
+            }
+        }
+
+        res
     }
 
     fn is_multivalue(&self, attr: &str) -> Result<bool, SchemaError> {
-        self.get_inner().is_multivalue(attr)
+        match self.get_attributes().get(attr) {
+            Some(a_schema) => Ok(a_schema.multivalue),
+            None => {
+                debug!("Attribute does not exist?!");
+                Err(SchemaError::InvalidAttribute)
+            }
+        }
     }
 
     fn normalise_attr_name(&self, an: &str) -> String {
@@ -500,45 +595,113 @@ pub trait SchemaTransaction {
     // Probably need something like get_classes or similar
     // so that externals can call and use this data.
 
-    fn get_classes(&self) -> &HashMap<String, SchemaClass> {
-        &self.get_inner().classes
-    }
-
-    fn get_attributes(&self) -> &HashMap<String, SchemaAttribute> {
-        &self.get_inner().attributes
-    }
-
-    fn get_reference_types(&self) -> HashMap<&String, &SchemaAttribute> {
-        self.get_attributes()
+    fn get_reference_types(&self) -> BTreeMap<String, SchemaAttribute> {
+        let snapshot = self.get_attributes();
+        snapshot
             .iter()
             .filter(|(_, sa)| match &sa.syntax {
                 SyntaxType::REFERENCE_UUID => true,
                 _ => false,
             })
+            .map(|(k, v)| (k.clone(), v.clone()))
             .collect()
     }
 
-    fn get_idxmeta(&self) -> BTreeSet<(String, IndexType)> {
-        // TODO: We could cache this in the schema and recalc on reload instead to avoid
-        // so much cloning?
-        // for each attribute, if indexed, yield and flatten the attr + type.
-        self.get_inner().idxmeta.clone()
+    fn get_idxmeta_set(&self) -> BTreeSet<(String, IndexType)> {
+        self.get_idxmeta()
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect()
     }
 }
 
-impl SchemaInner {
-    pub fn new(audit: &mut AuditScope) -> Result<Self, OperationError> {
-        let mut au = AuditScope::new("schema_new");
+impl SchemaInner {}
+
+impl<'a> SchemaWriteTransaction<'a> {
+    // Schema probably needs to be part of the backend, so that commits are wholly atomic
+    // but in the current design, we need to open be first, then schema, but we have to commit be
+    // first, then schema to ensure that the be content matches our schema. Saying this, if your
+    // schema commit fails we need to roll back still .... How great are transactions.
+    // At the least, this is what validation is for!
+    pub fn commit(self) -> Result<(), OperationError> {
+        let SchemaWriteTransaction {
+            classes,
+            attributes,
+            idxmeta,
+        } = self;
+
+        classes.commit();
+        attributes.commit();
+        idxmeta.commit();
+        Ok(())
+    }
+
+    pub fn update_attributes(
+        &mut self,
+        attributetypes: Vec<SchemaAttribute>,
+    ) -> Result<(), OperationError> {
+        // purge all old attributes.
+        self.attributes.clear();
+        // Update with new ones.
+        // Do we need to check for dups?
+        // No, they'll over-write each other ... but we do need name uniqueness.
+        attributetypes.into_iter().for_each(|a| {
+            self.attributes.insert(a.name.clone(), a);
+        });
+        // Now update the idxmeta
+        self.reload_idxmeta();
+
+        Ok(())
+    }
+
+    pub fn update_classes(
+        &mut self,
+        attributetypes: Vec<SchemaClass>,
+    ) -> Result<(), OperationError> {
+        // purge all old attributes.
+        self.classes.clear();
+        // Update with new ones.
+        // Do we need to check for dups?
+        // No, they'll over-write each other ... but we do need name uniqueness.
+        attributetypes.into_iter().for_each(|a| {
+            self.classes.insert(a.name.clone(), a);
+        });
+        Ok(())
+    }
+
+    fn reload_idxmeta(&mut self) {
+        self.idxmeta.clear();
+        self.idxmeta.extend(self.attributes.values().flat_map(|a| {
+            a.index
+                .iter()
+                .map(move |itype: &IndexType| (a.name.clone(), (*itype).clone()))
+        }));
+    }
+
+    pub fn to_entries(&self) -> Vec<Entry<EntryValid, EntryNew>> {
+        let r: Vec<_> = self
+            .attributes
+            .values()
+            .map(Entry::<EntryValid, EntryNew>::from)
+            .chain(
+                self.classes
+                    .values()
+                    .map(Entry::<EntryValid, EntryNew>::from),
+            )
+            .collect();
+        r
+    }
+
+    pub fn generate_in_memory(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
+        let mut au = AuditScope::new("generate_in_memory");
         let r = audit_segment!(au, || {
             //
-            let mut s = SchemaInner {
-                classes: HashMap::new(),
-                attributes: HashMap::new(),
-                idxmeta: BTreeSet::new(),
-            };
+            self.classes.clear();
+            self.attributes.clear();
+            self.idxmeta.clear();
             // Bootstrap in definitions of our own schema types
             // First, add all the needed core attributes for schema parsing
-            s.attributes.insert(
+            self.attributes.insert(
                 String::from("class"),
                 SchemaAttribute {
                     name: String::from("class"),
@@ -551,7 +714,7 @@ impl SchemaInner {
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
             );
-            s.attributes.insert(
+            self.attributes.insert(
                 String::from("uuid"),
                 SchemaAttribute {
                     name: String::from("uuid"),
@@ -566,7 +729,7 @@ impl SchemaInner {
                     syntax: SyntaxType::UUID,
                 },
             );
-            s.attributes.insert(
+            self.attributes.insert(
                 String::from("name"),
                 SchemaAttribute {
                     name: String::from("name"),
@@ -579,7 +742,7 @@ impl SchemaInner {
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
             );
-            s.attributes.insert(
+            self.attributes.insert(
                 String::from("spn"),
                 SchemaAttribute {
                     name: String::from("spn"),
@@ -594,7 +757,7 @@ impl SchemaInner {
                     syntax: SyntaxType::SERVICE_PRINCIPLE_NAME,
                 },
             );
-            s.attributes.insert(
+            self.attributes.insert(
                 String::from("attributename"),
                 SchemaAttribute {
                     name: String::from("attributename"),
@@ -607,7 +770,7 @@ impl SchemaInner {
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
             );
-            s.attributes.insert(
+            self.attributes.insert(
                 String::from("classname"),
                 SchemaAttribute {
                     name: String::from("classname"),
@@ -620,7 +783,7 @@ impl SchemaInner {
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
             );
-            s.attributes.insert(
+            self.attributes.insert(
                 String::from("description"),
                 SchemaAttribute {
                     name: String::from("description"),
@@ -633,7 +796,7 @@ impl SchemaInner {
                     syntax: SyntaxType::UTF8STRING,
                 },
             );
-            s.attributes.insert(String::from("multivalue"), SchemaAttribute {
+            self.attributes.insert(String::from("multivalue"), SchemaAttribute {
                 name: String::from("multivalue"),
                 uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_MULTIVALUE).expect("unable to parse static uuid"),
                 description: String::from("If true, this attribute is able to store multiple values rather than just a single value."),
@@ -642,7 +805,7 @@ impl SchemaInner {
                 index: vec![],
                 syntax: SyntaxType::BOOLEAN,
             });
-            s.attributes.insert(String::from("unique"), SchemaAttribute {
+            self.attributes.insert(String::from("unique"), SchemaAttribute {
                 name: String::from("unique"),
                 uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_UNIQUE).expect("unable to parse static uuid"),
                 description: String::from("If true, this attribute must store a unique value through out the database."),
@@ -651,7 +814,7 @@ impl SchemaInner {
                 index: vec![],
                 syntax: SyntaxType::BOOLEAN,
             });
-            s.attributes.insert(
+            self.attributes.insert(
                 String::from("index"),
                 SchemaAttribute {
                     name: String::from("index"),
@@ -666,7 +829,7 @@ impl SchemaInner {
                     syntax: SyntaxType::INDEX_ID,
                 },
             );
-            s.attributes.insert(
+            self.attributes.insert(
                 String::from("syntax"),
                 SchemaAttribute {
                     name: String::from("syntax"),
@@ -681,7 +844,7 @@ impl SchemaInner {
                     syntax: SyntaxType::SYNTAX_ID,
                 },
             );
-            s.attributes.insert(
+            self.attributes.insert(
                 String::from("systemmay"),
                 SchemaAttribute {
                     name: String::from("systemmay"),
@@ -696,7 +859,7 @@ impl SchemaInner {
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
             );
-            s.attributes.insert(
+            self.attributes.insert(
                 String::from("may"),
                 SchemaAttribute {
                     name: String::from("may"),
@@ -711,7 +874,7 @@ impl SchemaInner {
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
             );
-            s.attributes.insert(
+            self.attributes.insert(
                 String::from("systemmust"),
                 SchemaAttribute {
                     name: String::from("systemmust"),
@@ -726,7 +889,7 @@ impl SchemaInner {
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
             );
-            s.attributes.insert(
+            self.attributes.insert(
                 String::from("must"),
                 SchemaAttribute {
                     name: String::from("must"),
@@ -743,7 +906,7 @@ impl SchemaInner {
             );
             // SYSINFO attrs
             // ACP attributes.
-            s.attributes.insert(
+            self.attributes.insert(
                 String::from("acp_enable"),
                 SchemaAttribute {
                     name: String::from("acp_enable"),
@@ -757,7 +920,7 @@ impl SchemaInner {
                 },
             );
 
-            s.attributes.insert(
+            self.attributes.insert(
                 String::from("acp_receiver"),
                 SchemaAttribute {
                     name: String::from("acp_receiver"),
@@ -772,7 +935,7 @@ impl SchemaInner {
                     syntax: SyntaxType::JSON_FILTER,
                 },
             );
-            s.attributes.insert(
+            self.attributes.insert(
                 String::from("acp_targetscope"),
                 SchemaAttribute {
                     name: String::from("acp_targetscope"),
@@ -787,7 +950,7 @@ impl SchemaInner {
                     syntax: SyntaxType::JSON_FILTER,
                 },
             );
-            s.attributes.insert(
+            self.attributes.insert(
                 String::from("acp_search_attr"),
                 SchemaAttribute {
                     name: String::from("acp_search_attr"),
@@ -800,7 +963,7 @@ impl SchemaInner {
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
             );
-            s.attributes.insert(
+            self.attributes.insert(
                 String::from("acp_create_class"),
                 SchemaAttribute {
                     name: String::from("acp_create_class"),
@@ -815,7 +978,7 @@ impl SchemaInner {
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
             );
-            s.attributes.insert(
+            self.attributes.insert(
                 String::from("acp_create_attr"),
                 SchemaAttribute {
                     name: String::from("acp_create_attr"),
@@ -831,7 +994,7 @@ impl SchemaInner {
                 },
             );
 
-            s.attributes.insert(
+            self.attributes.insert(
                 String::from("acp_modify_removedattr"),
                 SchemaAttribute {
                     name: String::from("acp_modify_removedattr"),
@@ -844,7 +1007,7 @@ impl SchemaInner {
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
             );
-            s.attributes.insert(
+            self.attributes.insert(
                 String::from("acp_modify_presentattr"),
                 SchemaAttribute {
                     name: String::from("acp_modify_presentattr"),
@@ -857,7 +1020,7 @@ impl SchemaInner {
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
             );
-            s.attributes.insert(
+            self.attributes.insert(
                 String::from("acp_modify_class"),
                 SchemaAttribute {
                     name: String::from("acp_modify_class"),
@@ -871,7 +1034,7 @@ impl SchemaInner {
                 },
             );
             // MO/Member
-            s.attributes.insert(
+            self.attributes.insert(
                 String::from("memberof"),
                 SchemaAttribute {
                     name: String::from("memberof"),
@@ -884,7 +1047,7 @@ impl SchemaInner {
                     syntax: SyntaxType::REFERENCE_UUID,
                 },
             );
-            s.attributes.insert(
+            self.attributes.insert(
                 String::from("directmemberof"),
                 SchemaAttribute {
                     name: String::from("directmemberof"),
@@ -897,7 +1060,7 @@ impl SchemaInner {
                     syntax: SyntaxType::REFERENCE_UUID,
                 },
             );
-            s.attributes.insert(
+            self.attributes.insert(
                 String::from("member"),
                 SchemaAttribute {
                     name: String::from("member"),
@@ -911,7 +1074,7 @@ impl SchemaInner {
                 },
             );
             // Migration related
-            s.attributes.insert(
+            self.attributes.insert(
                 String::from("version"),
                 SchemaAttribute {
                     name: String::from("version"),
@@ -927,7 +1090,7 @@ impl SchemaInner {
                 },
             );
             // Domain for sysinfo
-            s.attributes.insert(
+            self.attributes.insert(
                 String::from("domain"),
                 SchemaAttribute {
                     name: String::from("domain"),
@@ -941,7 +1104,7 @@ impl SchemaInner {
                 },
             );
 
-            s.classes.insert(
+            self.classes.insert(
                 String::from("attributetype"),
                 SchemaClass {
                     name: String::from("attributetype"),
@@ -961,7 +1124,7 @@ impl SchemaInner {
                     must: vec![],
                 },
             );
-            s.classes.insert(
+            self.classes.insert(
                 String::from("classtype"),
                 SchemaClass {
                     name: String::from("classtype"),
@@ -983,7 +1146,7 @@ impl SchemaInner {
                     must: vec![],
                 },
             );
-            s.classes.insert(
+            self.classes.insert(
                 String::from("object"),
                 SchemaClass {
                     name: String::from("object"),
@@ -998,7 +1161,7 @@ impl SchemaInner {
                     must: vec![],
                 },
             );
-            s.classes.insert(
+            self.classes.insert(
                 String::from("memberof"),
                 SchemaClass {
                     name: String::from("memberof"),
@@ -1014,7 +1177,7 @@ impl SchemaInner {
                     must: vec![],
                 },
             );
-            s.classes.insert(
+            self.classes.insert(
                 String::from("extensibleobject"),
                 SchemaClass {
                     name: String::from("extensibleobject"),
@@ -1030,7 +1193,7 @@ impl SchemaInner {
                 },
             );
             /* These two classes are core to the entry lifecycle for recycling and tombstoning */
-            s.classes.insert(
+            self.classes.insert(
                 String::from("recycled"),
                 SchemaClass {
                     name: String::from("recycled"),
@@ -1042,7 +1205,7 @@ impl SchemaInner {
                     must: vec![],
                 },
             );
-            s.classes.insert(
+            self.classes.insert(
                 String::from("tombstone"),
                 SchemaClass {
                     name: String::from("tombstone"),
@@ -1058,7 +1221,7 @@ impl SchemaInner {
                 },
             );
             // sysinfo
-            s.classes.insert(
+            self.classes.insert(
                 String::from("system_info"),
                 SchemaClass {
                     name: String::from("system_info"),
@@ -1077,7 +1240,7 @@ impl SchemaInner {
                 },
             );
             // ACP
-            s.classes.insert(
+            self.classes.insert(
                 String::from("access_control_profile"),
                 SchemaClass {
                     name: String::from("access_control_profile"),
@@ -1090,7 +1253,7 @@ impl SchemaInner {
                     must: vec![],
                 },
             );
-            s.classes.insert(
+            self.classes.insert(
                 String::from("access_control_search"),
                 SchemaClass {
                     name: String::from("access_control_search"),
@@ -1103,7 +1266,7 @@ impl SchemaInner {
                     must: vec![],
                 },
             );
-            s.classes.insert(
+            self.classes.insert(
                 String::from("access_control_delete"),
                 SchemaClass {
                     name: String::from("access_control_delete"),
@@ -1116,7 +1279,7 @@ impl SchemaInner {
                     must: vec![],
                 },
             );
-            s.classes.insert(
+            self.classes.insert(
                 String::from("access_control_modify"),
                 SchemaClass {
                     name: String::from("access_control_modify"),
@@ -1133,7 +1296,7 @@ impl SchemaInner {
                     must: vec![],
                 },
             );
-            s.classes.insert(
+            self.classes.insert(
                 String::from("access_control_create"),
                 SchemaClass {
                     name: String::from("access_control_create"),
@@ -1149,7 +1312,7 @@ impl SchemaInner {
                     must: vec![],
                 },
             );
-            s.classes.insert(
+            self.classes.insert(
                 String::from("system"),
                 SchemaClass {
                     name: String::from("system"),
@@ -1163,10 +1326,10 @@ impl SchemaInner {
                 },
             );
 
-            let r = s.validate(&mut au);
+            let r = self.validate(&mut au);
             if r.is_empty() {
-                s.reload_idxmeta();
-                Ok(s)
+                self.reload_idxmeta();
+                Ok(())
             } else {
                 Err(OperationError::ConsistencyError(r))
             }
@@ -1175,205 +1338,65 @@ impl SchemaInner {
         audit.append_scope(au);
         r
     }
-
-    fn reload_idxmeta(&mut self) {
-        let mut idxmeta_new: BTreeSet<_> = self
-            .attributes
-            .values()
-            .flat_map(|a| {
-                a.index
-                    .iter()
-                    .map(move |itype: &IndexType| (a.name.clone(), (*itype).clone()))
-            })
-            .collect();
-
-        std::mem::swap(&mut self.idxmeta, &mut idxmeta_new);
-    }
-
-    pub fn validate(&self, _audit: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
-        let mut res = Vec::new();
-        // Does this need to validate anything further at all? The UUID
-        // will be checked as part of the schema migration on startup, so I think
-        // just that all the content is sane is fine.
-        for class in self.classes.values() {
-            // report the class we are checking
-            for a in &class.systemmay {
-                // report the attribute.
-                /*
-                audit_log!(
-                    audit,
-                    "validate systemmay class:attr -> {}:{}",
-                    class.name,
-                    a
-                );
-                */
-                if !self.attributes.contains_key(a) {
-                    res.push(Err(ConsistencyError::SchemaClassMissingAttribute(
-                        class.name.clone(),
-                        a.clone(),
-                    )))
-                }
-            }
-            for a in &class.may {
-                // report the attribute.
-                /*
-                audit_log!(audit, "validate may class:attr -> {}:{}", class.name, a);
-                */
-                if !self.attributes.contains_key(a) {
-                    res.push(Err(ConsistencyError::SchemaClassMissingAttribute(
-                        class.name.clone(),
-                        a.clone(),
-                    )))
-                }
-            }
-            for a in &class.systemmust {
-                // report the attribute.
-                /*
-                audit_log!(
-                    audit,
-                    "validate systemmust class:attr -> {}:{}",
-                    class.name,
-                    a
-                );
-                */
-                if !self.attributes.contains_key(a) {
-                    res.push(Err(ConsistencyError::SchemaClassMissingAttribute(
-                        class.name.clone(),
-                        a.clone(),
-                    )))
-                }
-            }
-            for a in &class.must {
-                // report the attribute.
-                /*
-                audit_log!(audit, "validate must class:attr -> {}:{}", class.name, a);
-                */
-                if !self.attributes.contains_key(a) {
-                    res.push(Err(ConsistencyError::SchemaClassMissingAttribute(
-                        class.name.clone(),
-                        a.clone(),
-                    )))
-                }
-            }
-        }
-
-        res
-    }
-
-    fn is_multivalue(&self, attr_name: &str) -> Result<bool, SchemaError> {
-        match self.attributes.get(attr_name) {
-            Some(a_schema) => Ok(a_schema.multivalue),
-            None => {
-                debug!("Attribute does not exist?!");
-                Err(SchemaError::InvalidAttribute)
-            }
-        }
-    }
-}
-
-pub struct Schema {
-    inner: CowCell<SchemaInner>,
-}
-
-pub struct SchemaWriteTransaction<'a> {
-    inner: CowCellWriteTxn<'a, SchemaInner>,
-}
-
-impl<'a> SchemaWriteTransaction<'a> {
-    // Schema probably needs to be part of the backend, so that commits are wholly atomic
-    // but in the current design, we need to open be first, then schema, but we have to commit be
-    // first, then schema to ensure that the be content matches our schema. Saying this, if your
-    // schema commit fails we need to roll back still .... How great are transactions.
-    // At the least, this is what validation is for!
-    pub fn commit(self) -> Result<(), OperationError> {
-        self.inner.commit();
-        Ok(())
-    }
-
-    pub fn update_attributes(
-        &mut self,
-        attributetypes: Vec<SchemaAttribute>,
-    ) -> Result<(), OperationError> {
-        // purge all old attributes.
-        self.inner.attributes.clear();
-        // Update with new ones.
-        // Do we need to check for dups?
-        // No, they'll over-write each other ... but we do need name uniqueness.
-        attributetypes.into_iter().for_each(|a| {
-            self.inner.attributes.insert(a.name.clone(), a);
-        });
-        // Now update the idxmeta
-        self.inner.reload_idxmeta();
-
-        Ok(())
-    }
-
-    pub fn update_classes(
-        &mut self,
-        attributetypes: Vec<SchemaClass>,
-    ) -> Result<(), OperationError> {
-        // purge all old attributes.
-        self.inner.classes.clear();
-        // Update with new ones.
-        // Do we need to check for dups?
-        // No, they'll over-write each other ... but we do need name uniqueness.
-        attributetypes.into_iter().for_each(|a| {
-            self.inner.classes.insert(a.name.clone(), a);
-        });
-        Ok(())
-    }
-
-    pub fn to_entries(&self) -> Vec<Entry<EntryValid, EntryNew>> {
-        let r: Vec<_> = self
-            .inner
-            .attributes
-            .values()
-            .map(Entry::<EntryValid, EntryNew>::from)
-            .chain(
-                self.inner
-                    .classes
-                    .values()
-                    .map(Entry::<EntryValid, EntryNew>::from),
-            )
-            .collect();
-        r
-    }
 }
 
 impl<'a> SchemaTransaction for SchemaWriteTransaction<'a> {
-    fn get_inner(&self) -> &SchemaInner {
-        // Does this deref the CowCell for us?
-        &self.inner
+    fn get_classes(&self) -> BptreeMapReadSnapshot<String, SchemaClass> {
+        self.classes.to_snapshot()
+    }
+
+    fn get_attributes(&self) -> BptreeMapReadSnapshot<String, SchemaAttribute> {
+        self.attributes.to_snapshot()
+    }
+
+    fn get_idxmeta(&self) -> BptreeMapReadSnapshot<String, IndexType> {
+        self.idxmeta.to_snapshot()
     }
 }
 
-pub struct SchemaReadTransaction {
-    inner: CowCellReadTxn<SchemaInner>,
-}
-
 impl SchemaTransaction for SchemaReadTransaction {
-    fn get_inner(&self) -> &SchemaInner {
-        // Does this deref the CowCell for us?
-        &self.inner
+    fn get_classes(&self) -> BptreeMapReadSnapshot<String, SchemaClass> {
+        self.classes.to_snapshot()
+    }
+
+    fn get_attributes(&self) -> BptreeMapReadSnapshot<String, SchemaAttribute> {
+        self.attributes.to_snapshot()
+    }
+
+    fn get_idxmeta(&self) -> BptreeMapReadSnapshot<String, IndexType> {
+        self.idxmeta.to_snapshot()
     }
 }
 
 impl Schema {
     pub fn new(audit: &mut AuditScope) -> Result<Self, OperationError> {
-        SchemaInner::new(audit).map(|si| Schema {
-            inner: CowCell::new(si),
-        })
+        let s = Schema {
+            classes: BptreeMap::new(),
+            attributes: BptreeMap::new(),
+            idxmeta: BptreeMap::new(),
+        };
+        let mut sw = s.write();
+        let r1 = sw.generate_in_memory(audit);
+        debug_assert!(r1.is_ok());
+        r1?;
+        let r2 = sw.commit().map(|_| s);
+        debug_assert!(r2.is_ok());
+        r2
     }
 
     pub fn read(&self) -> SchemaReadTransaction {
         SchemaReadTransaction {
-            inner: self.inner.read(),
+            classes: self.classes.read(),
+            attributes: self.attributes.read(),
+            idxmeta: self.idxmeta.read(),
         }
     }
 
     pub fn write(&self) -> SchemaWriteTransaction {
         SchemaWriteTransaction {
-            inner: self.inner.write(),
+            classes: self.classes.write(),
+            attributes: self.attributes.write(),
+            idxmeta: self.idxmeta.write(),
         }
     }
 }

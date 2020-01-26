@@ -20,6 +20,10 @@ path = "src/lib/lib.rs"
 name = "kanidmd"
 path = "src/server/main.rs"
 
+# [[bench]]
+# name = "kanidm_benchmark"
+# harness = false
+
 
 [dependencies]
 kanidm_proto = { path = "../kanidm_proto", version = "0.1" }
@@ -63,4 +67,7 @@ num_cpus = "1.10"
 
 idlset = "0.1"
 zxcvbn = "2.0"
+
+[dev-dependencies]
+criterion = "0.3"
 
