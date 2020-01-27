@@ -1,6 +1,6 @@
 # Summary
 
-[Kanidm Administration](./intro.md)
+[Introduction to Kanidm](./intro.md)
 - [Installing the Server](./installing_the_server.md)
 - [Administrative Tasks](./administrivia.md)
 - [Interacting with the Server](./client_tools.md)

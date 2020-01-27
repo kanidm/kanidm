@@ -4,7 +4,10 @@ To interact with Kanidm as an administration, you'll need to use our command lin
 
 ## From (experimental) packages
 
-Today we support Fedora 30/31 and OpenSUSE leap 15.1 and Tumbleweed.
+Kanidm currently supports:
+ * Fedora 30/31
+ * OpenSUSE leap 15.1
+ * Tumbleweed
 
 ### SUSE
 
@@ -39,7 +42,7 @@ After you check out the source (see github), navigate to:
     cargo build
     cargo install --path ./
 
-## Check the tools work.
+## Check the tools work
 
 Now you can check your instance is working. You may need to provide a CA certificate for verification
 with the -C parameter:
