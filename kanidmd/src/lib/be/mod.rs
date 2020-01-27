@@ -394,8 +394,8 @@ pub trait BackendTransaction {
     }
 
     fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
-        // TODO: Implement this!!!
-        Vec::new()
+        // Vec::new()
+        self.get_idlayer().verify()
     }
 
     fn backup(&self, audit: &mut AuditScope, dst_path: &str) -> Result<(), OperationError> {

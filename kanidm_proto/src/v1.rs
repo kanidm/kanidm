@@ -39,6 +39,7 @@ pub enum ConsistencyError {
     InvalidAttributeType(String),
     DuplicateUniqueAttribute(String),
     InvalidSPN(u64),
+    SqliteIntegrityFailure,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
