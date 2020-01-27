@@ -1115,7 +1115,7 @@ impl<'a> AccessControlsWriteTransaction<'a> {
             let uuid = acp.acp.uuid;
             self.acps_search.insert(uuid, acp);
         }
-        self.acps_search.compact();
+        // self.acps_search.compact();
         Ok(())
     }
 
@@ -1125,7 +1125,7 @@ impl<'a> AccessControlsWriteTransaction<'a> {
             let uuid = acp.acp.uuid;
             self.acps_create.insert(uuid, acp);
         }
-        self.acps_create.compact();
+        // self.acps_create.compact();
         Ok(())
     }
 
@@ -1135,7 +1135,7 @@ impl<'a> AccessControlsWriteTransaction<'a> {
             let uuid = acp.acp.uuid;
             self.acps_modify.insert(uuid, acp);
         }
-        self.acps_modify.compact();
+        // self.acps_modify.compact();
         Ok(())
     }
 
@@ -1146,7 +1146,7 @@ impl<'a> AccessControlsWriteTransaction<'a> {
             self.acps_delete.insert(uuid, acp);
         }
         // We could consider compact here ...
-        self.acps_delete.compact();
+        // self.acps_delete.compact();
         Ok(())
     }
 
