@@ -3,7 +3,7 @@ use crate::be::{IdEntry, IDL};
 use crate::utils::SID;
 use crate::value::IndexType;
 use idlset::IDLBitRange;
-use kanidm_proto::v1::OperationError;
+use kanidm_proto::v1::{ConsistencyError, OperationError};
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::types::ToSql;
@@ -214,6 +214,37 @@ pub trait IdlSqliteTransaction {
                 // If no sid, we return none.
             })
             .map_err(|_| OperationError::SQLiteError)
+    }
+
+    fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
+        let mut stmt = match self.get_conn().prepare("PRAGMA integrity_check;") {
+            Ok(r) => r,
+            Err(_) => return vec![Err(ConsistencyError::SqliteIntegrityFailure)],
+        };
+
+        let r = match stmt.query(NO_PARAMS) {
+            Ok(mut rows) => {
+                match rows.next() {
+                    Ok(Some(v)) => {
+                        // println!("{:?}", v.column_names());
+                        let r: Result<String, _> = v.get(0);
+                        match r {
+                            Ok(t) => {
+                                if t == "ok" {
+                                    Vec::new()
+                                } else {
+                                    vec![Err(ConsistencyError::SqliteIntegrityFailure)]
+                                }
+                            }
+                            Err(_) => vec![Err(ConsistencyError::SqliteIntegrityFailure)],
+                        }
+                    }
+                    _ => vec![Err(ConsistencyError::SqliteIntegrityFailure)],
+                }
+            }
+            Err(_) => vec![Err(ConsistencyError::SqliteIntegrityFailure)],
+        };
+        r
     }
 }
 
@@ -709,4 +740,16 @@ impl IdlSqlite {
 }
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use crate::audit::AuditScope;
+    use crate::be::idl_sqlite::{IdlSqlite, IdlSqliteTransaction};
+
+    #[test]
+    fn test_idl_sqlite_verify() {
+        let mut audit = AuditScope::new("run_test");
+        let be = IdlSqlite::new(&mut audit, "", 1).unwrap();
+        let be_w = be.write();
+        let r = be_w.verify();
+        assert!(r.len() == 0);
+    }
+}
