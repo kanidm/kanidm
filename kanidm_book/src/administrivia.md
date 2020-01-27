@@ -1,6 +1,6 @@
 # Administration Tasks
 
-There are a number of tasks that you may wish to perform as an administrator of a service like kanidm.
+There are a number of tasks that you may wish to perform as an administrator of a service like Kanidm.
 
 # Backup and Restore
 
@@ -10,7 +10,7 @@ that physical damage or mistake. Kanidm supports backup and restore of the datab
 ## Method 1
 
 Method 1 involves taking a backup of the database entry content, which is then re-indexed on restore.
-This is the "prefered" method.
+This is the preferred method.
 
 To take the backup (assuming our docker environment) you first need to stop the instance:
 
@@ -20,7 +20,7 @@ To take the backup (assuming our docker environment) you first need to stop the 
         /backup/kanidm.backup.json -D /data/kanidm.db
     docker start <container name>
 
-You can then restart your instance. It's advised you DO NOT modify the backup.json as it may introduce
+You can then restart your instance. DO NOT modify the backup.json as it may introduce
 data errors into your instance.
 
 To restore from the backup:
@@ -47,13 +47,13 @@ There are some cases where you may need to rename the domain. You should have co
 this initially in the setup, however you may have a situation where a business is changing
 name, merging, or other needs which may prompt this needing to be changed.
 
-WARNING: This WILL break ALL u2f/webauthn tokens that have been enrolled, which MAY cause
-accounts to be locked out and unrecoverable until further action is taken. DO NOT CHANGE
-the domain_name unless REQUIRED and have a plan on how to manage these issues.
+> **WARNING:** This WILL break ALL u2f/webauthn tokens that have been enrolled, which MAY cause
+> accounts to be locked out and unrecoverable until further action is taken. DO NOT CHANGE
+> the `domain_name` unless REQUIRED and have a plan on how to manage these issues.
 
-WARNING: This operation can take an extensive amount of time as ALL accounts and groups
-in the domain MUST have their SPN's regenerated. This will also cause a large delay in
-replication once the system is restarted.
+> **WARNING:** This operation can take an extensive amount of time as ALL accounts and groups
+> in the domain MUST have their SPN's regenerated. This will also cause a large delay in
+> replication once the system is restarted.
 
 You should take a backup before proceeding with this operation.
 
@@ -93,7 +93,7 @@ definitions (this works even though the schema is in the same database!)
         -D /data/kanidm.db
     docker start <container name>
 
-Generally reindexing is a rare action and should not normally be required.
+Generally, reindexing is a rare action and should not normally be required.
 
 # Verification
 
