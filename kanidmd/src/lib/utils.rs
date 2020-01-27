@@ -2,8 +2,11 @@ use std::time::Duration;
 use std::time::SystemTime;
 use uuid::{Builder, Uuid};
 
-use rand::distributions::Alphanumeric;
+use rand::distributions::Distribution;
 use rand::{thread_rng, Rng};
+
+#[derive(Debug)]
+pub struct DistinctAlpha;
 
 pub type SID = [u8; 4];
 
@@ -28,7 +31,7 @@ pub fn uuid_from_duration(d: Duration, sid: SID) -> Uuid {
 }
 
 pub fn password_from_random() -> String {
-    let rand_string: String = thread_rng().sample_iter(&Alphanumeric).take(48).collect();
+    let rand_string: String = thread_rng().sample_iter(&DistinctAlpha).take(48).collect();
     rand_string
 }
 
@@ -36,10 +39,10 @@ pub fn readable_password_from_random() -> String {
     let mut trng = thread_rng();
     format!(
         "{}-{}-{}-{}",
-        trng.sample_iter(&Alphanumeric).take(4).collect::<String>(),
-        trng.sample_iter(&Alphanumeric).take(4).collect::<String>(),
-        trng.sample_iter(&Alphanumeric).take(4).collect::<String>(),
-        trng.sample_iter(&Alphanumeric).take(4).collect::<String>(),
+        trng.sample_iter(&DistinctAlpha).take(4).collect::<String>(),
+        trng.sample_iter(&DistinctAlpha).take(4).collect::<String>(),
+        trng.sample_iter(&DistinctAlpha).take(4).collect::<String>(),
+        trng.sample_iter(&DistinctAlpha).take(4).collect::<String>(),
     )
 }
 
@@ -49,6 +52,22 @@ pub fn uuid_from_now(sid: SID) -> Uuid {
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap();
     uuid_from_duration(d, sid)
+}
+
+impl Distribution<char> for DistinctAlpha {
+    fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> char {
+        const RANGE: u32 = 55;
+        const GEN_ASCII_STR_CHARSET: &[u8] = b"ABCDEFGHJKLMNPQRSTUVWXYZ\
+                abcdefghjkpqrstuvwxyz\
+                0123456789";
+        // This probably needs to be checked for entropy/quality
+        loop {
+            let var = rng.next_u32() >> (32 - 6);
+            if var < RANGE {
+                return GEN_ASCII_STR_CHARSET[var as usize] as char;
+            }
+        }
+    }
 }
 
 #[cfg(test)]
