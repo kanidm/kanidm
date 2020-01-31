@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate log;
+
 use actix::prelude::*;
 use tokio::io::WriteHalf;
 use tokio::net::{UnixListener, UnixStream};
@@ -20,7 +23,16 @@ impl Decoder for ClientCodec {
     type Error = io::Error;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        unimplemented!();
+        match serde_cbor::from_slice::<ClientRequest>(&src) {
+            Ok(msg) => {
+                // Clear the buffer for the next message.
+                src.clear();
+                Ok(Some(msg))
+            }
+            _ => {
+                Ok(None)
+            }
+        }
     }
 }
 
@@ -33,7 +45,14 @@ impl Encoder for ClientCodec {
         msg: ClientResponse,
         dst: &mut BytesMut,
     ) -> Result<(), Self::Error> {
-        unimplemented!();
+        let data = serde_cbor::to_vec(&msg)
+            .map_err(|e| {
+                error!("socket encoding error -> {:?}", e);
+                io::Error::new(io::ErrorKind::Other, "CBOR encode error")
+            })?;
+        debug!("Attempting to send response -> {:?} ...", data);
+        dst.put(data.as_slice());
+        Ok(())
     }
 }
 
@@ -51,9 +70,17 @@ impl Actor for ClientSession {
 impl actix::io::WriteHandler<io::Error> for ClientSession {}
 
 impl StreamHandler<Result<ClientRequest, io::Error>> for ClientSession {
-     fn handle(&mut self, msg: Result<ClientRequest, io::Error>, ctx: &mut Self::Context) {
-        unimplemented!();
-     }
+    fn handle(&mut self, msg: Result<ClientRequest, io::Error>, ctx: &mut Self::Context) {
+        debug!("Processing -> {:?}", msg);
+        match msg {
+            Ok(ClientRequest::SshKey(account_id)) => {
+                self.framed.write(ClientResponse::SshKeys(vec![]));
+            }
+            Err(e) => {
+                error!("Encountered an IO error -> {:?}", e);
+            }
+        }
+    }
 }
 
 impl ClientSession {
@@ -80,6 +107,7 @@ impl Handler<UdsConnect> for AcceptServer {
     type Result = ();
 
     fn handle(&mut self, msg: UdsConnect, _: &mut Context<Self>) {
+        debug!("Accepting new client ...");
 
         // TODO: Clone the DB actor handle here.
         ClientSession::create(move |ctx| {
@@ -90,8 +118,17 @@ impl Handler<UdsConnect> for AcceptServer {
     }
 }
 
+fn rm_if_exist(p: &str) {
+    std::fs::remove_file(p);
+}
+
 #[actix_rt::main]
 async fn main() {
+    // Setup logging
+    ::std::env::set_var("RUST_LOG", "kanidm=debug,kanidm_client=debug");
+    env_logger::init();
+
+    rm_if_exist(DEFAULT_SOCK_PATH);
     let listener = Box::new(UnixListener::bind(DEFAULT_SOCK_PATH).expect("Failed to bind"));
     AcceptServer::create(|ctx| {
         ctx.add_message_stream(

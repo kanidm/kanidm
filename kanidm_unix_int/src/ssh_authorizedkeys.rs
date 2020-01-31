@@ -62,6 +62,9 @@ fn main() {
     socket.set_write_timeout(Some(Duration::new(5, 0)))
         .expect("Couldn't set write timeout");
 
+    socket.set_nonblocking(false)
+        .expect("Unable to configure socket to block");
+
     match socket.write_all(req_bytes.as_slice()) {
         Ok(_) => {
             debug!("Wrote request  ...");
@@ -74,7 +77,7 @@ fn main() {
 
     debug!("Begin read ...");
 
-    // Block on response? 
+    // Block on response?
     let mut buffer = Vec::new();
     match socket.read_to_end(&mut buffer) {
         Ok(count) =>
