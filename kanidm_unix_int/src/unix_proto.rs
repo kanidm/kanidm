@@ -1,12 +1,9 @@
-
-
 #[derive(Serialize, Deserialize, Debug)]
 pub enum ClientRequest {
-    SshKey(String)
+    SshKey(String),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum ClientResponse {
-    SshKeys(Vec<String>)
+    SshKeys(Vec<String>),
 }
-

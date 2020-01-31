@@ -4,14 +4,13 @@ extern crate log;
 use log::debug;
 use structopt::StructOpt;
 
-use std::os::unix::net::UnixStream;
-use std::io::Write;
 use std::io::Read;
+use std::io::Write;
+use std::os::unix::net::UnixStream;
 use std::time::Duration;
 
-use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
 use kanidm_unix_common::constants::DEFAULT_SOCK_PATH;
-
+use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
 
 #[derive(Debug, StructOpt)]
 struct ClientOpt {
@@ -37,14 +36,12 @@ fn main() {
         Ok(sock) => sock,
         Err(e) => {
             error!("Unable to open socket -> {:?}", e);
-            return
+            return;
         }
     };
 
     // Send the request
-    let req = ClientRequest::SshKey(
-        opt.account_id.clone()
-    );
+    let req = ClientRequest::SshKey(opt.account_id.clone());
 
     let req_bytes = match serde_cbor::to_vec(&req) {
         Ok(bytes) => {
@@ -53,16 +50,18 @@ fn main() {
         }
         Err(e) => {
             error!("Unable to serialise request -> {:?}", e);
-            return
+            return;
         }
     };
 
     debug!("Request bytes -> {:?}", req_bytes);
 
-    socket.set_write_timeout(Some(Duration::new(5, 0)))
+    socket
+        .set_write_timeout(Some(Duration::new(5, 0)))
         .expect("Couldn't set write timeout");
 
-    socket.set_nonblocking(false)
+    socket
+        .set_nonblocking(false)
         .expect("Unable to configure socket to block");
 
     match socket.write_all(req_bytes.as_slice()) {
@@ -71,7 +70,7 @@ fn main() {
         }
         Err(e) => {
             error!("Unable to write request -> {:?}", e);
-            return
+            return;
         }
     };
 
@@ -80,14 +79,12 @@ fn main() {
     // Block on response?
     let mut buffer = Vec::new();
     match socket.read_to_end(&mut buffer) {
-        Ok(count) =>
-            debug!("Read {:?} bytes", count),
+        Ok(count) => debug!("Read {:?} bytes", count),
         Err(e) => {
             error!("Unable to read response -> {:?}", e);
-            return
+            return;
         }
     }
 
     println!("{:?}", buffer);
 }
-
