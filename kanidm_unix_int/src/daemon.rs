@@ -69,7 +69,8 @@ impl StreamHandler<Result<ClientRequest, io::Error>> for ClientSession {
                 self.framed.write(ClientResponse::SshKeys(vec![]));
             }
             Err(e) => {
-                error!("Encountered an IO error -> {:?}", e);
+                println!("Encountered an IO error, disconnecting session -> {:?}", e);
+                ctx.stop();
             }
         }
     }
