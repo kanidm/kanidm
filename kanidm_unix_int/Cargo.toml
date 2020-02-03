@@ -26,8 +26,8 @@ path = "src/ssh_authorizedkeys.rs"
 [dependencies]
 kanidm_proto = { path = "../kanidm_proto", version = "0.1" }
 # actix = { path = "../../actix", version = "0.9" }
-actix = "0.9"
-actix-rt = "1.0"
+actix = "0.7"
+# actix-rt = "1.0"
 tokio = { version = "0.2", features=["full"] }
 tokio-util = { version = "0.2", features = ["codec"] }
 futures = "0.3"
@@ -40,3 +40,6 @@ serde = "1.0"
 serde_derive = "1.0"
 serde_cbor = "0.10"
 structopt = { version = "0.2", default-features = false }
+
+[dev-dependencies]
+kanidm = { path = "../kanidmd", version = "0.1" }

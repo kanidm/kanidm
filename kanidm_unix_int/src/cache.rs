@@ -1,11 +1,25 @@
 
-
-struct CacheLayer;
+pub struct CacheLayer;
 
 impl CacheLayer {
-    fn new() -> Self {
+    pub fn new(
+        // need db path
+        // need url
+        // ca
+        // username/pass
+        // timeout
+        // cache timeout
+    ) -> Self {
+        CacheLayer
+    }
+    // Need a way to mark online/offline.
+    // What time do we re-check for online?
 
-        unimplemented!();
+    // Invalidate the whole cache
+
+    // Get ssh keys for an account id
+    pub async fn test_async(&self) -> bool {
+        true
     }
 }
 
