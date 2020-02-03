@@ -25,6 +25,7 @@ path = "src/ssh_authorizedkeys.rs"
 
 [dependencies]
 kanidm_proto = { path = "../kanidm_proto", version = "0.1" }
+# actix = { path = "../../actix", version = "0.9" }
 actix = "0.9"
 actix-rt = "1.0"
 tokio = { version = "0.2", features=["full"] }

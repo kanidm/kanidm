@@ -3,13 +3,15 @@ extern crate log;
 
 use actix::prelude::*;
 use bytes::{Buf, BufMut, BytesMut};
+use futures::SinkExt;
 use futures::StreamExt;
+use std::error::Error;
 use std::io;
 use std::os::unix::net::SocketAddr;
 use tokio::io::WriteHalf;
 use tokio::net::{UnixListener, UnixStream};
-use tokio_util::codec::FramedRead;
 use tokio_util::codec::{Decoder, Encoder};
+use tokio_util::codec::{Framed, FramedRead};
 
 use kanidm_unix_common::constants::DEFAULT_SOCK_PATH;
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
@@ -49,7 +51,73 @@ impl Encoder for ClientCodec {
     }
 }
 
+impl ClientCodec {
+    fn new() -> Self {
+        ClientCodec
+    }
+}
+
+fn rm_if_exist(p: &str) {
+    std::fs::remove_file(p);
+}
+
+async fn handle_client(sock: UnixStream) -> Result<(), Box<dyn Error>> {
+    debug!("Accepted connection");
+
+    let mut reqs = Framed::new(sock, ClientCodec::new());
+
+    while let Some(Ok(req)) = reqs.next().await {
+        match req {
+            ClientRequest::SshKey(account_id) => {
+                reqs.send(ClientResponse::SshKeys(vec!["test".to_string()]))
+                    .await?;
+                reqs.flush().await?;
+                debug!("Called flush!");
+            }
+        }
+    }
+
+    // Disconnect them
+    debug!("Disconnecting client ...");
+    Ok(())
+}
+
+#[tokio::main]
+async fn main() {
+    ::std::env::set_var("RUST_LOG", "kanidm=debug,kanidm_client=debug");
+    env_logger::init();
+    rm_if_exist(DEFAULT_SOCK_PATH);
+    let mut listener = UnixListener::bind(DEFAULT_SOCK_PATH).unwrap();
+
+    let server = async move {
+        let mut incoming = listener.incoming();
+        while let Some(socket_res) = incoming.next().await {
+            match socket_res {
+                Ok(mut socket) => {
+                    tokio::spawn(
+                        async move {
+                            if let Err(e) = handle_client(socket).await {
+                                error!("an error occured; error = {:?}", e);
+                            }
+                        },
+                    );
+                }
+                Err(err) => {
+                    error!("Accept error -> {:?}", err);
+                }
+            }
+        }
+    };
+
+    info!("Server started ...");
+
+    server.await;
+}
+
+// This is the actix version, but on MacOS there is an issue where it can't flush the socket properly :(
+
 //=== A connected client session
+/*
 
 struct ClientSession {
     framed: actix::io::FramedWrite<WriteHalf<UnixStream>, ClientCodec>,
@@ -109,10 +177,6 @@ impl Handler<UdsConnect> for AcceptServer {
     }
 }
 
-fn rm_if_exist(p: &str) {
-    std::fs::remove_file(p);
-}
-
 #[actix_rt::main]
 async fn main() {
     // Setup logging
@@ -134,3 +198,4 @@ async fn main() {
     println!("Ctrl-C received, shutting down");
     System::current().stop();
 }
+*/

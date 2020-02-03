@@ -4,13 +4,59 @@ extern crate log;
 use log::debug;
 use structopt::StructOpt;
 
-use std::io::Read;
-use std::io::Write;
-use std::os::unix::net::UnixStream;
-use std::time::Duration;
+use bytes::{Buf, BufMut, BytesMut};
+use futures::executor::block_on;
+use futures::SinkExt;
+use futures::StreamExt;
+use std::error::Error;
+use std::io::Error as IoError;
+use std::io::ErrorKind;
+use tokio::io::AsyncWriteExt;
+use tokio::net::UnixStream;
+use tokio_util::codec::{Decoder, Encoder};
+use tokio_util::codec::{Framed, FramedRead};
 
 use kanidm_unix_common::constants::DEFAULT_SOCK_PATH;
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
+
+struct ClientCodec;
+
+impl Decoder for ClientCodec {
+    type Item = ClientResponse;
+    type Error = IoError;
+
+    fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
+        match serde_cbor::from_slice::<ClientResponse>(&src) {
+            Ok(msg) => {
+                // Clear the buffer for the next message.
+                src.clear();
+                Ok(Some(msg))
+            }
+            _ => Ok(None),
+        }
+    }
+}
+
+impl Encoder for ClientCodec {
+    type Item = ClientRequest;
+    type Error = IoError;
+
+    fn encode(&mut self, msg: ClientRequest, dst: &mut BytesMut) -> Result<(), Self::Error> {
+        let data = serde_cbor::to_vec(&msg).map_err(|e| {
+            error!("socket encoding error -> {:?}", e);
+            IoError::new(ErrorKind::Other, "CBOR encode error")
+        })?;
+        debug!("Attempting to send request -> {:?} ...", data);
+        dst.put(data.as_slice());
+        Ok(())
+    }
+}
+
+impl ClientCodec {
+    fn new() -> Self {
+        ClientCodec
+    }
+}
 
 #[derive(Debug, StructOpt)]
 struct ClientOpt {
@@ -20,7 +66,28 @@ struct ClientOpt {
     account_id: String,
 }
 
-fn main() {
+async fn call_daemon(path: &str, req: ClientRequest) -> Result<ClientResponse, Box<dyn Error>> {
+    let mut stream = UnixStream::connect(DEFAULT_SOCK_PATH).await?;
+
+    let mut reqs = Framed::new(stream, ClientCodec::new());
+
+    reqs.send(req).await?;
+    reqs.flush().await?;
+
+    match reqs.next().await {
+        Some(Ok(res)) => {
+            debug!("Response -> {:?}", res);
+            Ok(res)
+        }
+        _ => {
+            error!("Error");
+            Err(Box::new(IoError::new(ErrorKind::Other, "oh no!")))
+        }
+    }
+}
+
+#[tokio::main]
+async fn main() {
     let opt = ClientOpt::from_args();
     if opt.debug {
         ::std::env::set_var("RUST_LOG", "kanidm=debug,kanidm_client=debug");
@@ -30,61 +97,10 @@ fn main() {
     env_logger::init();
 
     debug!("Starting authorized keys tool ...");
-
-    // Connect to the uds
-    let mut socket = match UnixStream::connect(DEFAULT_SOCK_PATH) {
-        Ok(sock) => sock,
-        Err(e) => {
-            error!("Unable to open socket -> {:?}", e);
-            return;
-        }
-    };
-
-    // Send the request
     let req = ClientRequest::SshKey(opt.account_id.clone());
 
-    let req_bytes = match serde_cbor::to_vec(&req) {
-        Ok(bytes) => {
-            debug!("Prepared request ...");
-            bytes
-        }
-        Err(e) => {
-            error!("Unable to serialise request -> {:?}", e);
-            return;
-        }
-    };
-
-    debug!("Request bytes -> {:?}", req_bytes);
-
-    socket
-        .set_write_timeout(Some(Duration::new(5, 0)))
-        .expect("Couldn't set write timeout");
-
-    socket
-        .set_nonblocking(false)
-        .expect("Unable to configure socket to block");
-
-    match socket.write_all(req_bytes.as_slice()) {
-        Ok(_) => {
-            debug!("Wrote request  ...");
-        }
-        Err(e) => {
-            error!("Unable to write request -> {:?}", e);
-            return;
-        }
-    };
-
-    debug!("Begin read ...");
-
-    // Block on response?
-    let mut buffer = Vec::new();
-    match socket.read_to_end(&mut buffer) {
-        Ok(count) => debug!("Read {:?} bytes", count),
-        Err(e) => {
-            error!("Unable to read response -> {:?}", e);
-            return;
-        }
+    match block_on(call_daemon(DEFAULT_SOCK_PATH, req)) {
+        Ok(r) => {}
+        Err(e) => {}
     }
-
-    println!("{:?}", buffer);
 }
