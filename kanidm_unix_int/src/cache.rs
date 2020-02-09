@@ -1,7 +1,7 @@
+use kanidm_client::asynchronous::KanidmAsyncClient;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use std::time::{Duration, SystemTime};
-use kanidm_client::asynchronous::KanidmAsyncClient;
 
 #[derive(Debug)]
 enum CacheState {

@@ -56,8 +56,7 @@ fn run_test(test_fn: fn(CacheLayer) -> ()) {
 
     let cachelayer = CacheLayer::new(
         "", // The sqlite db path, this is in memory.
-        300,
-        rsclient
+        300, rsclient,
     )
     .expect("Failed to build cache layer.");
 

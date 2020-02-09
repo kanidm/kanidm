@@ -1,8 +1,7 @@
-
+use crate::{ClientError, KanidmClientBuilder};
+use reqwest;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use reqwest;
-use crate::{KanidmClientBuilder, ClientError};
 
 use kanidm_proto::v1::*;
 
@@ -80,10 +79,7 @@ impl KanidmAsyncClient {
 
     pub async fn whoami(&self) -> Result<Option<(Entry, UserAuthToken)>, ClientError> {
         let whoami_dest = format!("{}/v1/self", self.addr);
-        let response = self.client.get(whoami_dest.as_str())
-            .send()
-            .await
-            .unwrap();
+        let response = self.client.get(whoami_dest.as_str()).send().await.unwrap();
 
         match response.status() {
             // Continue to process.
@@ -92,7 +88,8 @@ impl KanidmAsyncClient {
             unexpect => return Err(ClientError::Http(unexpect, response.json().await.ok())),
         }
 
-        let r: WhoamiResponse = serde_json::from_str(response.text().await.unwrap().as_str()).unwrap();
+        let r: WhoamiResponse =
+            serde_json::from_str(response.text().await.unwrap().as_str()).unwrap();
 
         Ok(Some((r.youare, r.uat)))
     }
