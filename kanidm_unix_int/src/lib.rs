@@ -3,7 +3,9 @@
 
 #[macro_use]
 extern crate serde_derive;
+#[macro_use]
+extern crate log;
 
+pub mod cache;
 pub mod constants;
 pub mod unix_proto;
-pub mod cache;

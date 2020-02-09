@@ -2,15 +2,15 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc;
 use std::thread;
 
+use actix::prelude::*;
 use kanidm::config::{Configuration, IntegrationTestConfig};
 use kanidm::core::create_server_core;
-use actix::prelude::*;
 use log::debug;
 
 use kanidm_unix_common::cache::CacheLayer;
 use tokio::runtime::Runtime;
 
-static PORT_ALLOC: AtomicUsize = AtomicUsize::new(8080);
+static PORT_ALLOC: AtomicUsize = AtomicUsize::new(18080);
 static ADMIN_TEST_PASSWORD: &str = "integration test admin password";
 static ADMIN_TEST_PASSWORD_CHANGE: &str = "integration test admin new🎉";
 
@@ -46,7 +46,7 @@ fn run_test(test_fn: fn(CacheLayer) -> ()) {
     // later we could accept fixture as it's own future for re-use
 
     // Setup the client, and the address we selected.
-    let _addr = format!("http://127.0.0.1:{}", port);
+    let addr = format!("http://127.0.0.1:{}", port);
 
     /*
     let rsclient = KanidmClientBuilder::new()
@@ -54,7 +54,11 @@ fn run_test(test_fn: fn(CacheLayer) -> ()) {
         .build()
         .expect("Failed to build client");
     */
-    let cachelayer = CacheLayer::new();
+    let cachelayer = CacheLayer::new(
+        "", // The sqlite db path, this is in memory.
+        addr.as_str(),
+    )
+    .expect("Failed to build cache layer.");
 
     test_fn(cachelayer);
 
@@ -62,7 +66,6 @@ fn run_test(test_fn: fn(CacheLayer) -> ()) {
     // let the tables hit the floor
     sys.stop();
 }
-
 
 #[test]
 fn test_cache_sshkey() {

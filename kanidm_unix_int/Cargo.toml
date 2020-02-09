@@ -24,6 +24,7 @@ name = "kanidm_ssh_authorizedkeys"
 path = "src/ssh_authorizedkeys.rs"
 
 [dependencies]
+kanidm_client = { path = "../kanidm_client", version = "0.1" }
 kanidm_proto = { path = "../kanidm_proto", version = "0.1" }
 # actix = { path = "../../actix", version = "0.9" }
 actix = "0.7"
@@ -33,13 +34,16 @@ tokio-util = { version = "0.2", features = ["codec"] }
 futures = "0.3"
 bytes = "0.5"
 
-
 log = "0.4"
 env_logger = "0.6"
 serde = "1.0"
 serde_derive = "1.0"
 serde_cbor = "0.10"
 structopt = { version = "0.2", default-features = false }
+
+rusqlite = { version = "0.20", features = ["backup"] }
+r2d2 = "0.8"
+r2d2_sqlite = "0.12"
 
 [dev-dependencies]
 kanidm = { path = "../kanidmd", version = "0.1" }

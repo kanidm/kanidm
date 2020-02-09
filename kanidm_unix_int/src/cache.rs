@@ -1,3 +1,5 @@
+use r2d2::Pool;
+use r2d2_sqlite::SqliteConnectionManager;
 use std::time::{Duration, SystemTime};
 
 #[derive(Debug)]
@@ -9,23 +11,36 @@ enum CacheState {
 
 #[derive(Debug)]
 pub struct CacheLayer {
-    state: CacheState
+    pool: Pool<SqliteConnectionManager>,
+    state: CacheState,
 }
 
 impl CacheLayer {
     pub fn new(
         // need db path
+        path: &str,
         // need url
+        addr: &str,
         // ca
         // username/pass
         // timeout
         // cache timeout
-    ) -> Self {
+    ) -> Result<Self, ()> {
+        let manager = SqliteConnectionManager::file(path);
+        // We only build a single thread. If we need more than one, we'll
+        // need to re-do this to account for path = "" for debug.
+        let builder1 = Pool::builder().max_size(1);
+        let pool = builder1.build(manager).map_err(|e| {
+            error!("r2d2 error {:?}", e);
+            ()
+        })?;
+
         // We assume we are online at start up, which may change as we
         // proceed.
-        CacheLayer {
-            state: CacheState::Online
-        }
+        Ok(CacheLayer {
+            pool: pool,
+            state: CacheState::Online,
+        })
     }
 
     // Need a way to mark online/offline.
@@ -52,5 +67,3 @@ impl CacheLayer {
         true
     }
 }
-
-

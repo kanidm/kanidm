@@ -170,7 +170,7 @@ impl KanidmClientBuilder {
             }
         };
 
-        let client_builder = reqwest::Client::builder()
+        let client_builder = reqwest::blocking::Client::builder()
             .cookie_store(true)
             .danger_accept_invalid_hostnames(!self.verify_hostnames)
             .danger_accept_invalid_certs(!self.verify_ca);
@@ -192,7 +192,7 @@ impl KanidmClientBuilder {
 
 #[derive(Debug)]
 pub struct KanidmClient {
-    client: reqwest::Client,
+    client: reqwest::blocking::Client,
     addr: String,
     builder: KanidmClientBuilder,
 }
@@ -225,7 +225,7 @@ impl KanidmClient {
 
         let req_string = serde_json::to_string(&request).unwrap();
 
-        let mut response = self
+        let response = self
             .client
             .post(dest.as_str())
             .body(req_string)
@@ -252,7 +252,7 @@ impl KanidmClient {
 
         let req_string = serde_json::to_string(&request).unwrap();
 
-        let mut response = self
+        let response = self
             .client
             .put(dest.as_str())
             .body(req_string)
@@ -272,7 +272,7 @@ impl KanidmClient {
 
     fn perform_get_request<T: DeserializeOwned>(&self, dest: &str) -> Result<T, ClientError> {
         let dest = format!("{}{}", self.addr, dest);
-        let mut response = self
+        let response = self
             .client
             .get(dest.as_str())
             .send()
@@ -291,7 +291,7 @@ impl KanidmClient {
 
     fn perform_delete_request(&self, dest: &str) -> Result<(), ClientError> {
         let dest = format!("{}{}", self.addr, dest);
-        let mut response = self
+        let response = self
             .client
             .delete(dest.as_str())
             .send()
@@ -309,7 +309,7 @@ impl KanidmClient {
     // Can't use generic get due to possible un-auth case.
     pub fn whoami(&self) -> Result<Option<(Entry, UserAuthToken)>, ClientError> {
         let whoami_dest = format!("{}/v1/self", self.addr);
-        let mut response = self.client.get(whoami_dest.as_str()).send().unwrap();
+        let response = self.client.get(whoami_dest.as_str()).send().unwrap();
 
         match response.status() {
             // Continue to process.
