@@ -10,6 +10,8 @@ use log::debug;
 use kanidm_unix_common::cache::CacheLayer;
 use tokio::runtime::Runtime;
 
+use kanidm_client::KanidmClientBuilder;
+
 static PORT_ALLOC: AtomicUsize = AtomicUsize::new(18080);
 static ADMIN_TEST_PASSWORD: &str = "integration test admin password";
 static ADMIN_TEST_PASSWORD_CHANGE: &str = "integration test admin new🎉";
@@ -47,16 +49,15 @@ fn run_test(test_fn: fn(CacheLayer) -> ()) {
 
     // Setup the client, and the address we selected.
     let addr = format!("http://127.0.0.1:{}", port);
-
-    /*
     let rsclient = KanidmClientBuilder::new()
         .address(addr)
-        .build()
+        .build_async()
         .expect("Failed to build client");
-    */
+
     let cachelayer = CacheLayer::new(
         "", // The sqlite db path, this is in memory.
-        addr.as_str(),
+        300,
+        rsclient
     )
     .expect("Failed to build cache layer.");
 
@@ -72,7 +73,7 @@ fn test_cache_sshkey() {
     run_test(|cachelayer| {
         let mut rt = Runtime::new().expect("Failed to start tokio");
         let fut = async move {
-            assert!(cachelayer.test_async().await);
+            assert!(cachelayer.test_connection().await);
         };
         rt.block_on(fut);
     })

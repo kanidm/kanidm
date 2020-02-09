@@ -22,6 +22,10 @@ use kanidm_proto::v1::{
 };
 use serde_json;
 
+pub mod asynchronous;
+
+use crate::asynchronous::KanidmAsyncClient;
+
 #[derive(Debug)]
 pub enum ClientError {
     Unauthorized,
@@ -183,6 +187,35 @@ impl KanidmClientBuilder {
         let client = client_builder.build()?;
 
         Ok(KanidmClient {
+            client,
+            addr: address,
+            builder: self,
+        })
+    }
+
+    pub fn build_async(self) -> Result<KanidmAsyncClient, reqwest::Error> {
+        // Errghh, how to handle this cleaner.
+        let address = match &self.address {
+            Some(a) => a.clone(),
+            None => {
+                eprintln!("uri (-H) missing, can not proceed");
+                unimplemented!();
+            }
+        };
+
+        let client_builder = reqwest::Client::builder()
+            .cookie_store(true)
+            .danger_accept_invalid_hostnames(!self.verify_hostnames)
+            .danger_accept_invalid_certs(!self.verify_ca);
+
+        let client_builder = match &self.ca {
+            Some(cert) => client_builder.add_root_certificate(cert.clone()),
+            None => client_builder,
+        };
+
+        let client = client_builder.build()?;
+
+        Ok(KanidmAsyncClient {
             client,
             addr: address,
             builder: self,

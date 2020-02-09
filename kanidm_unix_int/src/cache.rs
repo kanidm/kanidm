@@ -1,6 +1,7 @@
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use std::time::{Duration, SystemTime};
+use kanidm_client::asynchronous::KanidmAsyncClient;
 
 #[derive(Debug)]
 enum CacheState {
@@ -12,6 +13,7 @@ enum CacheState {
 #[derive(Debug)]
 pub struct CacheLayer {
     pool: Pool<SqliteConnectionManager>,
+    client: KanidmAsyncClient,
     state: CacheState,
 }
 
@@ -19,12 +21,10 @@ impl CacheLayer {
     pub fn new(
         // need db path
         path: &str,
-        // need url
-        addr: &str,
-        // ca
-        // username/pass
-        // timeout
         // cache timeout
+        timeout_seconds: usize,
+        //
+        client: KanidmAsyncClient,
     ) -> Result<Self, ()> {
         let manager = SqliteConnectionManager::file(path);
         // We only build a single thread. If we need more than one, we'll
@@ -39,6 +39,7 @@ impl CacheLayer {
         // proceed.
         Ok(CacheLayer {
             pool: pool,
+            client: client,
             state: CacheState::Online,
         })
     }
@@ -63,7 +64,16 @@ impl CacheLayer {
         unimplemented!();
     }
 
-    pub async fn test_async(&self) -> bool {
-        true
+    pub async fn test_connection(&self) -> bool {
+        match self.client.auth_anonymous().await {
+            Ok(uat) => {
+                debug!("{:?}", uat);
+                true
+            }
+            Err(e) => {
+                error!("{:?}", e);
+                false
+            }
+        }
     }
 }
