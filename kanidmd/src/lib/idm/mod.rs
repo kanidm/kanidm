@@ -8,4 +8,5 @@ pub(crate) mod event;
 pub(crate) mod group;
 pub(crate) mod radius;
 pub(crate) mod server;
+pub(crate) mod unix;
 // mod identity;

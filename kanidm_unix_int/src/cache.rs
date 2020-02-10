@@ -35,18 +35,18 @@ impl CacheLayer {
             ()
         })?;
 
-        // We assume we are online at start up, which may change as we
-        // proceed.
+        // We assume we are offline at start up, and we mark the next "online check" as
+        // being valid from "now".
         Ok(CacheLayer {
             pool: pool,
             client: client,
-            state: CacheState::Online,
+            state: CacheState::OfflineNextCheck(SystemTime::now()),
         })
     }
 
     // Need a way to mark online/offline.
-    pub fn mark_online(&mut self) {
-        self.state = CacheState::Online;
+    pub fn attempt_online(&mut self) {
+        self.state = CacheState::OfflineNextCheck(SystemTime::now());
     }
 
     pub fn mark_offline(&mut self) {
@@ -59,8 +59,41 @@ impl CacheLayer {
         unimplemented!();
     }
 
+    fn get_cached_usertoken(&self) -> Result<Option<()>, ()> {
+        unimplemented!();
+    }
+
+    fn set_cache_usertoken(&mut self, token: ()) -> Result<(), ()> {
+        unimplemented!();
+    }
+
+    async fn get_usertoken(&mut self) -> Result<(), ()> {
+        debug!("get_usertoken");
+        // get the item from the cache
+        let mut item = self.get_cached_usertoken().map_err(|e| {
+            debug!("get_usertoken error -> {:?}", e);
+            ()
+        })?;
+        // does it need refresh?
+
+        // what state are we in?
+        match self.state {
+            CacheState::Offline => {
+                unimplemented!();
+            }
+            CacheState::OfflineNextCheck(time) => {
+                //
+                unimplemented!();
+            }
+            CacheState::Online => {
+                unimplemented!();
+            }
+        }
+    }
+
     // Get ssh keys for an account id
     pub async fn get_sshkeys(&mut self, account_id: &str) -> Result<Vec<String>, ()> {
+        let token = self.get_usertoken().await?;
         unimplemented!();
     }
 

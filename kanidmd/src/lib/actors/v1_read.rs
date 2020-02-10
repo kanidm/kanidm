@@ -4,7 +4,7 @@ use crate::audit::AuditScope;
 
 use crate::async_log::EventLog;
 use crate::event::{AuthEvent, SearchEvent, SearchResult, WhoamiResult};
-use crate::idm::event::RadiusAuthTokenEvent;
+use crate::idm::event::{RadiusAuthTokenEvent, UnixUserTokenEvent};
 use crate::value::PartialValue;
 use kanidm_proto::v1::{OperationError, RadiusAuthToken};
 
@@ -14,7 +14,8 @@ use crate::server::{QueryServer, QueryServerTransaction};
 
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::{
-    AuthRequest, AuthResponse, SearchRequest, SearchResponse, UserAuthToken, WhoamiResponse,
+    AuthRequest, AuthResponse, SearchRequest, SearchResponse, UnixUserToken, UserAuthToken,
+    WhoamiResponse,
 };
 
 use actix::prelude::*;
@@ -99,6 +100,15 @@ pub struct InternalRadiusTokenReadMessage {
 
 impl Message for InternalRadiusTokenReadMessage {
     type Result = Result<RadiusAuthToken, OperationError>;
+}
+
+pub struct InternalUnixUserTokenReadMessage {
+    pub uat: Option<UserAuthToken>,
+    pub uuid_or_name: String,
+}
+
+impl Message for InternalUnixUserTokenReadMessage {
+    type Result = Result<UnixUserToken, OperationError>;
 }
 
 pub struct InternalSshKeyReadMessage {
@@ -416,6 +426,52 @@ impl Handler<InternalRadiusTokenReadMessage> for QueryServerReadV1 {
             audit_log!(audit, "Begin event {:?}", rate);
 
             idm_read.get_radiusauthtoken(&mut audit, &rate)
+        });
+        self.log.do_send(audit);
+        res
+    }
+}
+
+impl Handler<InternalUnixUserTokenReadMessage> for QueryServerReadV1 {
+    type Result = Result<UnixUserToken, OperationError>;
+
+    fn handle(
+        &mut self,
+        msg: InternalUnixUserTokenReadMessage,
+        _: &mut Self::Context,
+    ) -> Self::Result {
+        let mut audit = AuditScope::new("internal_unix_token_read_message");
+        let res = audit_segment!(&mut audit, || {
+            let idm_read = self.idms.proxy_read();
+
+            let target_uuid = match Uuid::parse_str(msg.uuid_or_name.as_str()) {
+                Ok(u) => u,
+                Err(_) => idm_read
+                    .qs_read
+                    .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                    .map_err(|e| {
+                        audit_log!(&mut audit, "Error resolving id to target");
+                        e
+                    })?,
+            };
+
+            // Make an event from the request
+            let rate = match UnixUserTokenEvent::from_parts(
+                &mut audit,
+                &idm_read.qs_read,
+                msg.uat,
+                target_uuid,
+            ) {
+                Ok(s) => s,
+                Err(e) => {
+                    audit_log!(audit, "Failed to begin search: {:?}", e);
+                    return Err(e);
+                }
+            };
+
+            audit_log!(audit, "Begin event {:?}", rate);
+
+            idm_read.get_unixusertoken(&mut audit, &rate)
         });
         self.log.do_send(audit);
         res

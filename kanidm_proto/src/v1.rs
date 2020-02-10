@@ -176,6 +176,24 @@ impl fmt::Display for RadiusAuthToken {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct UnixGroupToken {
+    pub name: String,
+    pub uuid: String,
+    pub gidnumber: u32,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct UnixUserToken {
+    pub name: String,
+    pub displayname: String,
+    pub gidnumber: u32,
+    pub uuid: String,
+    pub shell: String,
+    pub groups: Vec<UnixGroupToken>,
+    pub sshkeys: Vec<String>,
+}
+
 /* ===== low level proto types ===== */
 
 // ProtoEntry vs Entry

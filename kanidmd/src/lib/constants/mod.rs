@@ -106,6 +106,7 @@ pub static UUID_SCHEMA_CLASS_POSIXACCOUNT: &str = "00000000-0000-0000-0000-ffff0
 pub static UUID_SCHEMA_CLASS_POSIXGROUP: &str = "00000000-0000-0000-0000-ffff00000058";
 pub static UUID_SCHEMA_ATTR_BADLIST_PASSWORD: &str = "00000000-0000-0000-0000-ffff00000059";
 pub static UUID_SCHEMA_CLASS_SYSTEM_CONFIG: &str = "00000000-0000-0000-0000-ffff00000060";
+pub static UUID_SCHEMA_ATTR_LOGINSHELL: &str = "00000000-0000-0000-0000-ffff00000061";
 
 // System and domain infos
 // I'd like to strongly criticise william of the past for fucking up these allocations.
@@ -1568,7 +1569,9 @@ pub static JSON_SCHEMA_ATTR_GIDNUMBER: &str = r#"{
       "description": [
         "The groupid (uid) number of a group or account. This is the same value as the UID number on posix accounts for security reasons."
       ],
-      "index": [],
+      "index": [
+        "EQUALITY"
+      ],
       "unique": [
         "true"
       ],
@@ -1612,6 +1615,35 @@ pub static JSON_SCHEMA_ATTR_BADLIST_PASSWORD: &str = r#"{
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000059"
+      ]
+    }
+}"#;
+
+pub static JSON_SCHEMA_ATTR_LOGINSHELL: &str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "A posix users unix login shell"
+      ],
+      "index": [],
+      "unique": [
+        "false"
+      ],
+      "multivalue": [
+        "false"
+      ],
+      "attributename": [
+        "loginshell"
+      ],
+      "syntax": [
+        "UTF8STRING_INSENSITIVE"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000061"
       ]
     }
 }"#;
@@ -1782,6 +1814,9 @@ pub static JSON_SCHEMA_CLASS_POSIXACCOUNT: &str = r#"
       ],
       "classname": [
         "posixaccount"
+      ],
+      "systemmay": [
+        "loginshell"
       ],
       "systemmust": [
         "gidnumber"

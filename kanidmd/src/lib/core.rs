@@ -17,7 +17,8 @@ use crate::config::Configuration;
 use crate::actors::v1_read::QueryServerReadV1;
 use crate::actors::v1_read::{
     AuthMessage, InternalRadiusReadMessage, InternalRadiusTokenReadMessage, InternalSearchMessage,
-    InternalSshKeyReadMessage, InternalSshKeyTagReadMessage, SearchMessage, WhoamiMessage,
+    InternalSshKeyReadMessage, InternalSshKeyTagReadMessage, InternalUnixUserTokenReadMessage,
+    SearchMessage, WhoamiMessage,
 };
 use crate::actors::v1_write::QueryServerWriteV1;
 use crate::actors::v1_write::{
@@ -889,6 +890,28 @@ fn account_get_id_radius_token(
     Box::new(res)
 }
 
+fn account_get_id_unix_token(
+    (path, req, state): (Path<String>, HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let uat = get_current_user(&req);
+    let id = path.into_inner();
+
+    let obj = InternalUnixUserTokenReadMessage {
+        uat,
+        uuid_or_name: id,
+    };
+
+    let res = state.qe_r.send(obj).from_err().and_then(|res| match res {
+        Ok(event_result) => {
+            // Only send back the first result, or None
+            Ok(HttpResponse::Ok().json(event_result))
+        }
+        Err(e) => Ok(operation_error_to_response(e)),
+    });
+
+    Box::new(res)
+}
+
 fn group_get(
     (req, state): (HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
@@ -1736,6 +1759,11 @@ pub fn create_server_core(config: Configuration) {
         .resource("/v1/account/{id}/_radius/_token", |r| {
             r.method(http::Method::GET)
                 .with_async(account_get_id_radius_token)
+        })
+        // Get the accounts unix info token.
+        .resource("/v1/account/{id}/_unix/_token", |r| {
+            r.method(http::Method::GET)
+                .with_async(account_get_id_unix_token)
         })
         // People
         // Groups
