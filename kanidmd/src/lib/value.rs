@@ -1108,6 +1108,13 @@ impl Value {
         }
     }
 
+    pub fn to_uint32(&self) -> Option<u32> {
+        match &self.pv {
+            PartialValue::Uint32(v) => Some(*v),
+            _ => None,
+        }
+    }
+
     pub fn to_partialvalue(&self) -> PartialValue {
         // Match on self to become a partialvalue.
         self.pv.clone()

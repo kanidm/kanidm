@@ -473,7 +473,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 mod tests {
     use crate::constants::{AUTH_SESSION_TIMEOUT, UUID_ADMIN, UUID_ANONYMOUS};
     use crate::credential::Credential;
-    use crate::event::{AuthEvent, AuthResult, ModifyEvent};
+    use crate::entry::{Entry, EntryInvalid, EntryNew};
+    use crate::event::{AuthEvent, AuthResult, CreateEvent, ModifyEvent};
     use crate::idm::event::{
         PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent, UnixUserTokenEvent,
     };
@@ -860,6 +861,23 @@ mod tests {
                 )
             };
             assert!(idms_prox_write.qs_write.modify(au, &me_posix).is_ok());
+            // Add a posix group that has the admin as a member.
+            let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+                r#"{
+                "attrs": {
+                    "class": ["object", "group", "posixgroup"],
+                    "name": ["testgroup"],
+                    "uuid": ["01609135-a1c4-43d5-966b-a28227644445"],
+                    "description": ["testgroup"],
+                    "member": ["00000000-0000-0000-0000-000000000000"]
+                }
+            }"#,
+            );
+
+            let ce = CreateEvent::new_internal(vec![e.clone()]);
+
+            assert!(idms_prox_write.qs_write.create(au, &ce).is_ok());
+
             idms_prox_write.commit(au).expect("failed to commit");
 
             let idms_prox_read = idms.proxy_read();
@@ -868,11 +886,10 @@ mod tests {
                 .get_unixusertoken(au, &uute)
                 .expect("Failed to generate radius auth token");
 
-            println!("{:?}", tok_r);
-
-            // view the token?
-            // assert!(r1 == tok_r.secret);
-            assert!(false);
+            assert!(tok_r.name == "admin");
+            assert!(tok_r.spn == "admin@example.com");
+            assert!(tok_r.groups.len() == 1);
+            assert!(tok_r.groups[0].name == "testgroup");
         })
     }
 }

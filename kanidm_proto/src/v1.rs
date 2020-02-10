@@ -179,6 +179,7 @@ impl fmt::Display for RadiusAuthToken {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UnixGroupToken {
     pub name: String,
+    pub spn: String,
     pub uuid: String,
     pub gidnumber: u32,
 }
@@ -186,10 +187,11 @@ pub struct UnixGroupToken {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UnixUserToken {
     pub name: String,
+    pub spn: String,
     pub displayname: String,
     pub gidnumber: u32,
     pub uuid: String,
-    pub shell: String,
+    pub shell: Option<String>,
     pub groups: Vec<UnixGroupToken>,
     pub sshkeys: Vec<String>,
 }
