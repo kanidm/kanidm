@@ -539,6 +539,55 @@ fn test_server_rest_domain_lifecycle() {
     });
 }
 
+#[test]
+fn test_server_rest_posix_lifecycle() {
+    run_test(|rsclient: KanidmClient| {
+        let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
+        assert!(res.is_ok());
+        // Not recommended in production!
+        rsclient
+            .idm_group_add_members("idm_account_write_priv", vec!["admin"])
+            .unwrap();
+
+        // Create a new account
+        rsclient
+            .idm_account_create("posix_account", "Posix Demo Account")
+            .unwrap();
+
+        // Extend the account with posix attrs.
+
+
+        // Create a group
+
+        // Extend the group with posix attrs
+        rsclient.idm_group_create("posix_group").unwrap();
+        rsclient.idm_group_add_members("posix_group", vec!["posix_account"]).unwrap();
+
+
+
+        // Open a new connection as anonymous
+        let res = rsclient.auth_anonymous();
+        assert!(res.is_ok());
+
+        // Get the account by gidnumber
+        // Get the account by name
+        let r = rsclient.idm_account_unix_token("posix_account")
+            .unwrap();
+        // get the account by spn
+        // get the account by uuid
+
+        // Get the group by gidnumber
+        // get the group by nam
+        let r = rsclient.idm_group_unix_token("posix_account")
+            .unwrap();
+        // get the group spn
+        // get the group by uuid
+
+        unimplemented!();
+    });
+}
+
+
 // Test the self version of the radius path.
 
 // Test hitting all auth-required endpoints and assert they give unauthorized.

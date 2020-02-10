@@ -444,16 +444,16 @@ impl Handler<InternalUnixUserTokenReadMessage> for QueryServerReadV1 {
         let res = audit_segment!(&mut audit, || {
             let idm_read = self.idms.proxy_read();
 
-            let target_uuid = match Uuid::parse_str(msg.uuid_or_name.as_str()) {
-                Ok(u) => u,
-                Err(_) => idm_read
-                    .qs_read
-                    .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
-                    .map_err(|e| {
-                        audit_log!(&mut audit, "Error resolving id to target");
-                        e
-                    })?,
-            };
+            let target_uuid = Uuid::parse_str(msg.uuid_or_name.as_str())
+                .or_else(|_| {
+                    idm_read
+                        .qs_read
+                        .posixid_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                        .map_err(|e| {
+                            audit_log!(&mut audit, "Error resolving as gidnumber continuing ...");
+                            e
+                        })
+                })?;
 
             // Make an event from the request
             let rate = match UnixUserTokenEvent::from_parts(

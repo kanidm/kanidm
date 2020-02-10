@@ -984,6 +984,28 @@ fn group_id_delete(
     json_rest_event_delete_id(path, req, state, filter)
 }
 
+fn group_get_id_unix_token(
+    (path, req, state): (Path<String>, HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let uat = get_current_user(&req);
+    let id = path.into_inner();
+
+    let obj = InternalUnixGroupTokenReadMessage {
+        uat,
+        uuid_or_name: id,
+    };
+
+    let res = state.qe_r.send(obj).from_err().and_then(|res| match res {
+        Ok(event_result) => {
+            // Only send back the first result, or None
+            Ok(HttpResponse::Ok().json(event_result))
+        }
+        Err(e) => Ok(operation_error_to_response(e)),
+    });
+
+    Box::new(res)
+}
+
 fn domain_get(
     (req, state): (HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
@@ -1782,6 +1804,10 @@ pub fn create_server_core(config: Configuration) {
             r.method(http::Method::PUT).with_async(group_id_put_attr);
             r.method(http::Method::DELETE)
                 .with_async(group_id_delete_attr);
+        })
+        .resource("/v1/group/{id}/_unix/_token", |r| {
+            r.method(http::Method::GET)
+                .with_async(group_get_id_unix_token)
         })
         // Claims
         // TBD

@@ -20,7 +20,7 @@ use crate::event::{
     CreateEvent, DeleteEvent, Event, EventOrigin, ExistsEvent, ModifyEvent, ReviveRecycledEvent,
     SearchEvent,
 };
-use crate::filter::{Filter, FilterInvalid, FilterValid};
+use crate::filter::{Filter, FilterInvalid, FilterValid, f_eq};
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use crate::plugins::Plugins;
 use crate::schema::{
@@ -167,11 +167,10 @@ pub trait QueryServerTransaction {
         // index searches, completely bypassing id2entry.
 
         // construct the filter
+        // Internal search - DO NOT SEARCH TOMBSTONES AND RECYCLE
         let filt = filter!(f_eq("name", PartialValue::new_iutf8s(name)));
         audit_log!(audit, "name_to_uuid: name -> {:?}", name);
 
-        // Internal search - DO NOT SEARCH TOMBSTONES AND RECYCLE
-        // TODO: Should we just search everything? It's a uuid to name ...
         let res = match self.internal_search(audit, filt) {
             Ok(e) => e,
             Err(e) => return Err(e),
@@ -245,6 +244,49 @@ pub trait QueryServerTransaction {
         debug_assert!(name_res.is_insensitive_utf8());
 
         Ok(Some(name_res))
+    }
+
+    fn posixid_to_uuid(&self, audit: &mut AuditScope, name: &str) -> Result<Uuid, OperationError> {
+        let f_name = Some(f_eq("name", PartialValue::new_iutf8s(name)));
+
+        let f_spn = PartialValue::new_spn_s(name)
+            .map(|v| f_eq("spn", v));
+
+        let f_gidnumber = PartialValue::new_uint32_str(name)
+            .map(|v| f_eq("gidnumber", v));
+
+        let x = vec![f_name, f_spn, f_gidnumber];
+
+        let filt = filter!(f_or(
+            x.into_iter()
+                .filter_map(|v| v)
+                .collect()
+        ));
+        audit_log!(audit, "posixid_to_uuid: name -> {:?}", name);
+
+        let res = match self.internal_search(audit, filt) {
+            Ok(e) => e,
+            Err(e) => return Err(e),
+        };
+
+        audit_log!(audit, "posixid_to_uuid: results -- {:?}", res);
+
+        if res.is_empty() {
+            // If result len == 0, error no such result
+            return Err(OperationError::NoMatchingEntries);
+        } else if res.len() >= 2 {
+            // if result len >= 2, error, invaid entry state.
+            return Err(OperationError::InvalidDBState);
+        }
+
+        // error should never be triggered due to the len checks above.
+        let e = res.first().ok_or(OperationError::NoMatchingEntries)?;
+        // Get the uuid from the entry. Again, check it exists, and only one.
+        let uuid_res: Uuid = *e.get_uuid();
+
+        audit_log!(audit, "posixid_to_uuid: uuid <- {:?}", uuid_res);
+
+        Ok(uuid_res)
     }
 
     // From internal, generate an exists event and dispatch
