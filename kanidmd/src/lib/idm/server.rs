@@ -6,10 +6,10 @@ use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
 use crate::idm::event::{
     GeneratePasswordEvent, PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
-    UnixUserTokenEvent,
+    UnixGroupTokenEvent, UnixUserTokenEvent,
 };
 use crate::idm::radius::RadiusAccount;
-use crate::idm::unix::UnixUserAccount;
+use crate::idm::unix::{UnixGroup, UnixUserAccount};
 use crate::server::QueryServerReadTransaction;
 use crate::server::{QueryServer, QueryServerTransaction, QueryServerWriteTransaction};
 use crate::utils::{password_from_random, readable_password_from_random, uuid_from_duration, SID};
@@ -18,6 +18,7 @@ use crate::value::PartialValue;
 use kanidm_proto::v1::AuthState;
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::RadiusAuthToken;
+use kanidm_proto::v1::UnixGroupToken;
 use kanidm_proto::v1::UnixUserToken;
 
 use concread::collections::bptree::*;
@@ -252,6 +253,21 @@ impl IdmServerProxyReadTransaction {
         );
         account.to_unixusertoken()
     }
+
+    pub fn get_unixgrouptoken(
+        &self,
+        au: &mut AuditScope,
+        uute: &UnixGroupTokenEvent,
+    ) -> Result<UnixGroupToken, OperationError> {
+        let account_entry = try_audit!(
+            au,
+            self.qs_read
+                .impersonate_search_ext_uuid(au, &uute.target, &uute.event)
+        );
+
+        let account = try_audit!(au, UnixGroup::try_from_entry_reduced(account_entry));
+        account.to_unixgrouptoken()
+    }
 }
 
 impl<'a> IdmServerProxyWriteTransaction<'a> {
@@ -476,7 +492,8 @@ mod tests {
     use crate::entry::{Entry, EntryInvalid, EntryNew};
     use crate::event::{AuthEvent, AuthResult, CreateEvent, ModifyEvent};
     use crate::idm::event::{
-        PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent, UnixUserTokenEvent,
+        PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
+        UnixGroupTokenEvent, UnixUserTokenEvent,
     };
     use crate::modify::{Modify, ModifyList};
     use crate::value::{PartialValue, Value};
@@ -881,10 +898,22 @@ mod tests {
             idms_prox_write.commit(au).expect("failed to commit");
 
             let idms_prox_read = idms.proxy_read();
+
+            let ugte = UnixGroupTokenEvent::new_internal(
+                Uuid::parse_str("01609135-a1c4-43d5-966b-a28227644445")
+                    .expect("failed to parse uuid"),
+            );
+            let tok_g = idms_prox_read
+                .get_unixgrouptoken(au, &ugte)
+                .expect("Failed to generate unix group token");
+
+            assert!(tok_g.name == "testgroup");
+            assert!(tok_g.spn == "testgroup@example.com");
+
             let uute = UnixUserTokenEvent::new_internal(UUID_ADMIN.clone());
             let tok_r = idms_prox_read
                 .get_unixusertoken(au, &uute)
-                .expect("Failed to generate radius auth token");
+                .expect("Failed to generate unix user token");
 
             assert!(tok_r.name == "admin");
             assert!(tok_r.spn == "admin@example.com");

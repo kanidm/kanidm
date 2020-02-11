@@ -17,15 +17,15 @@ use crate::config::Configuration;
 use crate::actors::v1_read::QueryServerReadV1;
 use crate::actors::v1_read::{
     AuthMessage, InternalRadiusReadMessage, InternalRadiusTokenReadMessage, InternalSearchMessage,
-    InternalSshKeyReadMessage, InternalSshKeyTagReadMessage, InternalUnixUserTokenReadMessage,
-    SearchMessage, WhoamiMessage,
+    InternalSshKeyReadMessage, InternalSshKeyTagReadMessage, InternalUnixGroupTokenReadMessage,
+    InternalUnixUserTokenReadMessage, SearchMessage, WhoamiMessage,
 };
 use crate::actors::v1_write::QueryServerWriteV1;
 use crate::actors::v1_write::{
     AppendAttributeMessage, CreateMessage, DeleteMessage, IdmAccountSetPasswordMessage,
-    InternalCredentialSetMessage, InternalDeleteMessage, InternalRegenerateRadiusMessage,
-    InternalSshKeyCreateMessage, ModifyMessage, PurgeAttributeMessage, RemoveAttributeValueMessage,
-    SetAttributeMessage,
+    IdmAccountUnixExtendMessage, IdmGroupUnixExtendMessage, InternalCredentialSetMessage,
+    InternalDeleteMessage, InternalRegenerateRadiusMessage, InternalSshKeyCreateMessage,
+    ModifyMessage, PurgeAttributeMessage, RemoveAttributeValueMessage, SetAttributeMessage,
 };
 use crate::async_log;
 use crate::audit::AuditScope;
@@ -43,8 +43,8 @@ use crate::value::PartialValue;
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::{
-    AuthRequest, AuthState, CreateRequest, DeleteRequest, ModifyRequest, SearchRequest,
-    SetAuthCredential, SingleStringRequest, UserAuthToken,
+    AccountUnixExtend, AuthRequest, AuthState, CreateRequest, DeleteRequest, GroupUnixExtend,
+    ModifyRequest, SearchRequest, SetAuthCredential, SingleStringRequest, UserAuthToken,
 };
 
 use uuid::Uuid;
@@ -890,6 +890,48 @@ fn account_get_id_radius_token(
     Box::new(res)
 }
 
+fn account_post_id_unix(
+    (path, req, state): (Path<String>, HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let max_size = state.max_size;
+    let uat = get_current_user(&req);
+    let id = path.into_inner();
+    req.payload()
+        .from_err()
+        .fold(BytesMut::new(), move |mut body, chunk| {
+            // limit max size of in-memory payload
+            if (body.len() + chunk.len()) > max_size {
+                Err(error::ErrorBadRequest("overflow"))
+            } else {
+                body.extend_from_slice(&chunk);
+                Ok(body)
+            }
+        })
+        // `Future::and_then` can be used to merge an asynchronous workflow with a
+        // synchronous workflow
+        .and_then(
+            move |body| -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
+                let r_obj = serde_json::from_slice::<AccountUnixExtend>(&body);
+
+                match r_obj {
+                    Ok(obj) => {
+                        let m_obj = IdmAccountUnixExtendMessage::new(uat, id, obj);
+                        let res = state.qe_w.send(m_obj).from_err().and_then(|res| match res {
+                            Ok(event_result) => Ok(HttpResponse::Ok().json(event_result)),
+                            Err(e) => Ok(operation_error_to_response(e)),
+                        });
+
+                        Box::new(res)
+                    }
+                    Err(e) => Box::new(future::err(error::ErrorBadRequest(format!(
+                        "Json Decode Failed: {:?}",
+                        e
+                    )))),
+                } // end match
+            },
+        ) // end and_then
+}
+
 fn account_get_id_unix_token(
     (path, req, state): (Path<String>, HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
@@ -982,6 +1024,48 @@ fn group_id_delete(
 ) -> impl Future<Item = HttpResponse, Error = Error> {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
     json_rest_event_delete_id(path, req, state, filter)
+}
+
+fn group_post_id_unix(
+    (path, req, state): (Path<String>, HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let max_size = state.max_size;
+    let uat = get_current_user(&req);
+    let id = path.into_inner();
+    req.payload()
+        .from_err()
+        .fold(BytesMut::new(), move |mut body, chunk| {
+            // limit max size of in-memory payload
+            if (body.len() + chunk.len()) > max_size {
+                Err(error::ErrorBadRequest("overflow"))
+            } else {
+                body.extend_from_slice(&chunk);
+                Ok(body)
+            }
+        })
+        // `Future::and_then` can be used to merge an asynchronous workflow with a
+        // synchronous workflow
+        .and_then(
+            move |body| -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
+                let r_obj = serde_json::from_slice::<GroupUnixExtend>(&body);
+
+                match r_obj {
+                    Ok(obj) => {
+                        let m_obj = IdmGroupUnixExtendMessage::new(uat, id, obj);
+                        let res = state.qe_w.send(m_obj).from_err().and_then(|res| match res {
+                            Ok(event_result) => Ok(HttpResponse::Ok().json(event_result)),
+                            Err(e) => Ok(operation_error_to_response(e)),
+                        });
+
+                        Box::new(res)
+                    }
+                    Err(e) => Box::new(future::err(error::ErrorBadRequest(format!(
+                        "Json Decode Failed: {:?}",
+                        e
+                    )))),
+                } // end match
+            },
+        ) // end and_then
 }
 
 fn group_get_id_unix_token(
@@ -1783,6 +1867,10 @@ pub fn create_server_core(config: Configuration) {
                 .with_async(account_get_id_radius_token)
         })
         // Get the accounts unix info token.
+        .resource("/v1/account/{id}/_unix", |r| {
+            r.method(http::Method::POST)
+                .with_async(account_post_id_unix);
+        })
         .resource("/v1/account/{id}/_unix/_token", |r| {
             r.method(http::Method::GET)
                 .with_async(account_get_id_unix_token)
@@ -1804,6 +1892,9 @@ pub fn create_server_core(config: Configuration) {
             r.method(http::Method::PUT).with_async(group_id_put_attr);
             r.method(http::Method::DELETE)
                 .with_async(group_id_delete_attr);
+        })
+        .resource("/v1/group/{id}/_unix", |r| {
+            r.method(http::Method::POST).with_async(group_post_id_unix);
         })
         .resource("/v1/group/{id}/_unix/_token", |r| {
             r.method(http::Method::GET)

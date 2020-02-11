@@ -555,15 +555,18 @@ fn test_server_rest_posix_lifecycle() {
             .unwrap();
 
         // Extend the account with posix attrs.
-
+        rsclient
+            .idm_account_unix_extend("posix_account", None, None)
+            .unwrap();
 
         // Create a group
 
         // Extend the group with posix attrs
         rsclient.idm_group_create("posix_group").unwrap();
-        rsclient.idm_group_add_members("posix_group", vec!["posix_account"]).unwrap();
-
-
+        rsclient
+            .idm_group_add_members("posix_group", vec!["posix_account"])
+            .unwrap();
+        rsclient.idm_group_unix_extend("posix_group", None).unwrap();
 
         // Open a new connection as anonymous
         let res = rsclient.auth_anonymous();
@@ -571,22 +574,23 @@ fn test_server_rest_posix_lifecycle() {
 
         // Get the account by gidnumber
         // Get the account by name
-        let r = rsclient.idm_account_unix_token("posix_account")
+        let r = rsclient
+            .idm_account_unix_token_get("posix_account")
             .unwrap();
+        println!("{:?}", r);
         // get the account by spn
         // get the account by uuid
 
         // Get the group by gidnumber
         // get the group by nam
-        let r = rsclient.idm_group_unix_token("posix_account")
-            .unwrap();
+        let r = rsclient.idm_group_unix_token_get("posix_account").unwrap();
+        println!("{:?}", r);
         // get the group spn
         // get the group by uuid
 
         unimplemented!();
     });
 }
-
 
 // Test the self version of the radius path.
 

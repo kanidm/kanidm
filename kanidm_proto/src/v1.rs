@@ -185,6 +185,11 @@ pub struct UnixGroupToken {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GroupUnixExtend {
+    pub gidnumber: Option<u32>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UnixUserToken {
     pub name: String,
     pub spn: String,
@@ -194,6 +199,12 @@ pub struct UnixUserToken {
     pub shell: Option<String>,
     pub groups: Vec<UnixGroupToken>,
     pub sshkeys: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AccountUnixExtend {
+    pub gidnumber: Option<u32>,
+    pub shell: Option<String>,
 }
 
 /* ===== low level proto types ===== */

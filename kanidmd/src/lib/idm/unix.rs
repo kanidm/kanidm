@@ -108,6 +108,46 @@ pub(crate) struct UnixGroup {
     pub uuid: Uuid,
 }
 
+macro_rules! try_from_group_e {
+    ($value:expr) => {{
+        if !$value.attribute_value_pres("class", &PVCLASS_GROUP) {
+            return Err(OperationError::InvalidAccountState(
+                "Missing class: account".to_string(),
+            ));
+        }
+
+        if !$value.attribute_value_pres("class", &PVCLASS_POSIXGROUP) {
+            return Err(OperationError::InvalidAccountState(
+                "Missing class: posixaccount".to_string(),
+            ));
+        }
+
+        let name = $value.get_ava_single_string("name").ok_or_else(|| {
+            OperationError::InvalidAccountState("Missing attribute: name".to_string())
+        })?;
+
+        let spn = $value
+            .get_ava_single("spn")
+            .map(|v| v.to_proto_string_clone())
+            .ok_or_else(|| {
+                OperationError::InvalidAccountState("Missing attribute: spn".to_string())
+            })?;
+
+        let uuid = *$value.get_uuid();
+
+        let gidnumber = $value.get_ava_single_uint32("gidnumber").ok_or_else(|| {
+            OperationError::InvalidAccountState("Missing attribute: gidnumber".to_string())
+        })?;
+
+        Ok(UnixGroup {
+            name,
+            spn,
+            gidnumber,
+            uuid,
+        })
+    }};
+}
+
 impl UnixGroup {
     pub fn try_from_account_entry_red_ro(
         au: &mut AuditScope,
@@ -137,44 +177,16 @@ impl UnixGroup {
         }
     }
 
+    pub fn try_from_entry_reduced(
+        value: Entry<EntryReduced, EntryCommitted>,
+    ) -> Result<Self, OperationError> {
+        try_from_group_e!(value)
+    }
+
     pub fn try_from_entry(
         value: Entry<EntryValid, EntryCommitted>,
     ) -> Result<Self, OperationError> {
-        if !value.attribute_value_pres("class", &PVCLASS_GROUP) {
-            return Err(OperationError::InvalidAccountState(
-                "Missing class: account".to_string(),
-            ));
-        }
-
-        if !value.attribute_value_pres("class", &PVCLASS_POSIXGROUP) {
-            return Err(OperationError::InvalidAccountState(
-                "Missing class: posixaccount".to_string(),
-            ));
-        }
-
-        let name = value.get_ava_single_string("name").ok_or_else(|| {
-            OperationError::InvalidAccountState("Missing attribute: name".to_string())
-        })?;
-
-        let spn = value
-            .get_ava_single("spn")
-            .map(|v| v.to_proto_string_clone())
-            .ok_or_else(|| {
-                OperationError::InvalidAccountState("Missing attribute: spn".to_string())
-            })?;
-
-        let uuid = *value.get_uuid();
-
-        let gidnumber = value.get_ava_single_uint32("gidnumber").ok_or_else(|| {
-            OperationError::InvalidAccountState("Missing attribute: gidnumber".to_string())
-        })?;
-
-        Ok(UnixGroup {
-            name,
-            spn,
-            gidnumber,
-            uuid,
-        })
+        try_from_group_e!(value)
     }
 
     pub(crate) fn to_unixgrouptoken(&self) -> Result<UnixGroupToken, OperationError> {

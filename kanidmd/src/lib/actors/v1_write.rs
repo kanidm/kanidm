@@ -18,8 +18,8 @@ use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::Modify as ProtoModify;
 use kanidm_proto::v1::ModifyList as ProtoModifyList;
 use kanidm_proto::v1::{
-    CreateRequest, DeleteRequest, ModifyRequest, OperationResponse, SetAuthCredential,
-    SingleStringRequest, UserAuthToken,
+    AccountUnixExtend, CreateRequest, DeleteRequest, GroupUnixExtend, ModifyRequest,
+    OperationResponse, SetAuthCredential, SingleStringRequest, UserAuthToken,
 };
 
 use actix::prelude::*;
@@ -102,6 +102,46 @@ impl IdmAccountSetPasswordMessage {
 
 impl Message for IdmAccountSetPasswordMessage {
     type Result = Result<OperationResponse, OperationError>;
+}
+
+pub struct IdmAccountUnixExtendMessage {
+    pub uat: Option<UserAuthToken>,
+    pub uuid_or_name: String,
+    pub ux: AccountUnixExtend,
+}
+
+impl IdmAccountUnixExtendMessage {
+    pub fn new(uat: Option<UserAuthToken>, uuid_or_name: String, ux: AccountUnixExtend) -> Self {
+        IdmAccountUnixExtendMessage {
+            uat,
+            uuid_or_name,
+            ux,
+        }
+    }
+}
+
+impl Message for IdmAccountUnixExtendMessage {
+    type Result = Result<(), OperationError>;
+}
+
+pub struct IdmGroupUnixExtendMessage {
+    pub uat: Option<UserAuthToken>,
+    pub uuid_or_name: String,
+    pub gx: GroupUnixExtend,
+}
+
+impl IdmGroupUnixExtendMessage {
+    pub fn new(uat: Option<UserAuthToken>, uuid_or_name: String, gx: GroupUnixExtend) -> Self {
+        IdmGroupUnixExtendMessage {
+            uat,
+            uuid_or_name,
+            gx,
+        }
+    }
+}
+
+impl Message for IdmGroupUnixExtendMessage {
+    type Result = Result<(), OperationError>;
 }
 
 pub struct InternalCredentialSetMessage {
@@ -745,6 +785,32 @@ impl Handler<InternalSshKeyCreateMessage> for QueryServerWriteV1 {
             let ml = ModifyList::new_append("ssh_publickey", Value::new_sshkey(tag, key));
 
             self.modify_from_internal_parts(&mut audit, uat, uuid_or_name, ml, filter)
+        });
+        self.log.do_send(audit);
+        res
+    }
+}
+
+impl Handler<IdmAccountUnixExtendMessage> for QueryServerWriteV1 {
+    type Result = Result<(), OperationError>;
+
+    fn handle(&mut self, _msg: IdmAccountUnixExtendMessage, _: &mut Self::Context) -> Self::Result {
+        let mut audit = AuditScope::new("idm_account_unix_extend");
+        let res = audit_segment!(&mut audit, || {
+            unimplemented!();
+        });
+        self.log.do_send(audit);
+        res
+    }
+}
+
+impl Handler<IdmGroupUnixExtendMessage> for QueryServerWriteV1 {
+    type Result = Result<(), OperationError>;
+
+    fn handle(&mut self, _msg: IdmGroupUnixExtendMessage, _: &mut Self::Context) -> Self::Result {
+        let mut audit = AuditScope::new("idm_group_unix_extend");
+        let res = audit_segment!(&mut audit, || {
+            unimplemented!();
         });
         self.log.do_send(audit);
         res

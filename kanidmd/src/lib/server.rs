@@ -20,7 +20,7 @@ use crate::event::{
     CreateEvent, DeleteEvent, Event, EventOrigin, ExistsEvent, ModifyEvent, ReviveRecycledEvent,
     SearchEvent,
 };
-use crate::filter::{Filter, FilterInvalid, FilterValid, f_eq};
+use crate::filter::{f_eq, Filter, FilterInvalid, FilterValid};
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use crate::plugins::Plugins;
 use crate::schema::{
@@ -249,19 +249,13 @@ pub trait QueryServerTransaction {
     fn posixid_to_uuid(&self, audit: &mut AuditScope, name: &str) -> Result<Uuid, OperationError> {
         let f_name = Some(f_eq("name", PartialValue::new_iutf8s(name)));
 
-        let f_spn = PartialValue::new_spn_s(name)
-            .map(|v| f_eq("spn", v));
+        let f_spn = PartialValue::new_spn_s(name).map(|v| f_eq("spn", v));
 
-        let f_gidnumber = PartialValue::new_uint32_str(name)
-            .map(|v| f_eq("gidnumber", v));
+        let f_gidnumber = PartialValue::new_uint32_str(name).map(|v| f_eq("gidnumber", v));
 
         let x = vec![f_name, f_spn, f_gidnumber];
 
-        let filt = filter!(f_or(
-            x.into_iter()
-                .filter_map(|v| v)
-                .collect()
-        ));
+        let filt = filter!(f_or(x.into_iter().filter_map(|v| v).collect()));
         audit_log!(audit, "posixid_to_uuid: name -> {:?}", name);
 
         let res = match self.internal_search(audit, filt) {

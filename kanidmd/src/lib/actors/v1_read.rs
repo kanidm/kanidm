@@ -4,7 +4,7 @@ use crate::audit::AuditScope;
 
 use crate::async_log::EventLog;
 use crate::event::{AuthEvent, SearchEvent, SearchResult, WhoamiResult};
-use crate::idm::event::{RadiusAuthTokenEvent, UnixUserTokenEvent};
+use crate::idm::event::{RadiusAuthTokenEvent, UnixGroupTokenEvent, UnixUserTokenEvent};
 use crate::value::PartialValue;
 use kanidm_proto::v1::{OperationError, RadiusAuthToken};
 
@@ -14,8 +14,8 @@ use crate::server::{QueryServer, QueryServerTransaction};
 
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::{
-    AuthRequest, AuthResponse, SearchRequest, SearchResponse, UnixUserToken, UserAuthToken,
-    WhoamiResponse,
+    AuthRequest, AuthResponse, SearchRequest, SearchResponse, UnixGroupToken, UnixUserToken,
+    UserAuthToken, WhoamiResponse,
 };
 
 use actix::prelude::*;
@@ -109,6 +109,15 @@ pub struct InternalUnixUserTokenReadMessage {
 
 impl Message for InternalUnixUserTokenReadMessage {
     type Result = Result<UnixUserToken, OperationError>;
+}
+
+pub struct InternalUnixGroupTokenReadMessage {
+    pub uat: Option<UserAuthToken>,
+    pub uuid_or_name: String,
+}
+
+impl Message for InternalUnixGroupTokenReadMessage {
+    type Result = Result<UnixGroupToken, OperationError>;
 }
 
 pub struct InternalSshKeyReadMessage {
@@ -444,16 +453,15 @@ impl Handler<InternalUnixUserTokenReadMessage> for QueryServerReadV1 {
         let res = audit_segment!(&mut audit, || {
             let idm_read = self.idms.proxy_read();
 
-            let target_uuid = Uuid::parse_str(msg.uuid_or_name.as_str())
-                .or_else(|_| {
-                    idm_read
-                        .qs_read
-                        .posixid_to_uuid(&mut audit, msg.uuid_or_name.as_str())
-                        .map_err(|e| {
-                            audit_log!(&mut audit, "Error resolving as gidnumber continuing ...");
-                            e
-                        })
-                })?;
+            let target_uuid = Uuid::parse_str(msg.uuid_or_name.as_str()).or_else(|_| {
+                idm_read
+                    .qs_read
+                    .posixid_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                    .map_err(|e| {
+                        audit_log!(&mut audit, "Error resolving as gidnumber continuing ...");
+                        e
+                    })
+            })?;
 
             // Make an event from the request
             let rate = match UnixUserTokenEvent::from_parts(
@@ -472,6 +480,51 @@ impl Handler<InternalUnixUserTokenReadMessage> for QueryServerReadV1 {
             audit_log!(audit, "Begin event {:?}", rate);
 
             idm_read.get_unixusertoken(&mut audit, &rate)
+        });
+        self.log.do_send(audit);
+        res
+    }
+}
+
+impl Handler<InternalUnixGroupTokenReadMessage> for QueryServerReadV1 {
+    type Result = Result<UnixGroupToken, OperationError>;
+
+    fn handle(
+        &mut self,
+        msg: InternalUnixGroupTokenReadMessage,
+        _: &mut Self::Context,
+    ) -> Self::Result {
+        let mut audit = AuditScope::new("internal_unixgroup_token_read_message");
+        let res = audit_segment!(&mut audit, || {
+            let idm_read = self.idms.proxy_read();
+
+            let target_uuid = Uuid::parse_str(msg.uuid_or_name.as_str()).or_else(|_| {
+                idm_read
+                    .qs_read
+                    .posixid_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                    .map_err(|e| {
+                        audit_log!(&mut audit, "Error resolving as gidnumber continuing ...");
+                        e
+                    })
+            })?;
+
+            // Make an event from the request
+            let rate = match UnixGroupTokenEvent::from_parts(
+                &mut audit,
+                &idm_read.qs_read,
+                msg.uat,
+                target_uuid,
+            ) {
+                Ok(s) => s,
+                Err(e) => {
+                    audit_log!(audit, "Failed to begin search: {:?}", e);
+                    return Err(e);
+                }
+            };
+
+            audit_log!(audit, "Begin event {:?}", rate);
+
+            idm_read.get_unixgrouptoken(&mut audit, &rate)
         });
         self.log.do_send(audit);
         res

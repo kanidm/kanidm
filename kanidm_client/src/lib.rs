@@ -15,9 +15,10 @@ use std::path::Path;
 use toml;
 
 use kanidm_proto::v1::{
-    AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep, CreateRequest, DeleteRequest,
-    Entry, Filter, ModifyList, ModifyRequest, OperationError, OperationResponse, RadiusAuthToken,
-    SearchRequest, SearchResponse, SetAuthCredential, SingleStringRequest, UserAuthToken,
+    AccountUnixExtend, AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep,
+    CreateRequest, DeleteRequest, Entry, Filter, GroupUnixExtend, ModifyList, ModifyRequest,
+    OperationError, OperationResponse, RadiusAuthToken, SearchRequest, SearchResponse,
+    SetAuthCredential, SingleStringRequest, UnixGroupToken, UnixUserToken, UserAuthToken,
     WhoamiResponse,
 };
 use serde_json;
@@ -489,6 +490,21 @@ impl KanidmClient {
         self.perform_delete_request(format!("/v1/group/{}/_attr/member", id).as_str())
     }
 
+    pub fn idm_group_unix_token_get(&self, id: &str) -> Result<UnixGroupToken, ClientError> {
+        self.perform_get_request(format!("/v1/group/{}/_unix/_token", id).as_str())
+    }
+
+    pub fn idm_group_unix_extend(
+        &self,
+        id: &str,
+        gidnumber: Option<u32>,
+    ) -> Result<(), ClientError> {
+        let gx = GroupUnixExtend {
+            gidnumber: gidnumber,
+        };
+        self.perform_post_request(format!("/v1/group/{}/_unix", id).as_str(), gx)
+    }
+
     pub fn idm_group_delete(&self, id: &str) -> Result<(), ClientError> {
         self.perform_delete_request(format!("/v1/group/{}", id).as_str())
     }
@@ -586,6 +602,23 @@ impl KanidmClient {
 
     pub fn idm_account_radius_token_get(&self, id: &str) -> Result<RadiusAuthToken, ClientError> {
         self.perform_get_request(format!("/v1/account/{}/_radius/_token", id).as_str())
+    }
+
+    pub fn idm_account_unix_extend(
+        &self,
+        id: &str,
+        gidnumber: Option<u32>,
+        shell: Option<&str>,
+    ) -> Result<(), ClientError> {
+        let ux = AccountUnixExtend {
+            shell: shell.map(|s| s.to_string()),
+            gidnumber: gidnumber,
+        };
+        self.perform_post_request(format!("/v1/account/{}/_unix", id).as_str(), ux)
+    }
+
+    pub fn idm_account_unix_token_get(&self, id: &str) -> Result<UnixUserToken, ClientError> {
+        self.perform_get_request(format!("/v1/account/{}/_unix/_token", id).as_str())
     }
 
     pub fn idm_account_get_ssh_pubkeys(&self, id: &str) -> Result<Vec<String>, ClientError> {
