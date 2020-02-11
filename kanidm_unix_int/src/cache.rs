@@ -1,6 +1,7 @@
 use kanidm_client::asynchronous::KanidmAsyncClient;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
+use std::ops::Add;
 use std::time::{Duration, SystemTime};
 
 #[derive(Debug)]
@@ -97,15 +98,27 @@ impl CacheLayer {
         unimplemented!();
     }
 
-    pub async fn test_connection(&self) -> bool {
-        match self.client.auth_anonymous().await {
-            Ok(uat) => {
-                debug!("{:?}", uat);
-                true
-            }
-            Err(e) => {
-                error!("{:?}", e);
+    pub async fn test_connection(&mut self) -> bool {
+        match &self.state {
+            CacheState::Offline => {
+                debug!("Offline -> no change");
                 false
+            }
+            CacheState::OfflineNextCheck(_time) => match self.client.auth_anonymous().await {
+                Ok(uat) => {
+                    debug!("OfflineNextCheck -> authenticated");
+                    self.state = CacheState::Online;
+                    true
+                }
+                Err(e) => {
+                    debug!("OfflineNextCheck -> disconnected, staying offline.");
+                    let time = SystemTime::now().add(Duration::from_secs(15));
+                    self.state = CacheState::OfflineNextCheck(time);
+                    false
+                }
+            },
+            CacheState::Online => {
+                unimplemented!();
             }
         }
     }

@@ -581,9 +581,7 @@ fn test_server_rest_posix_lifecycle() {
             .idm_account_unix_token_get(r.gidnumber.to_string().as_str())
             .unwrap();
         // get the account by spn
-        let r2 = rsclient
-            .idm_account_unix_token_get(r.spn.as_str())
-            .unwrap();
+        let r2 = rsclient.idm_account_unix_token_get(r.spn.as_str()).unwrap();
         // get the account by uuid
         let r3 = rsclient
             .idm_account_unix_token_get(r.uuid.as_str())
@@ -602,13 +600,9 @@ fn test_server_rest_posix_lifecycle() {
             .idm_group_unix_token_get(r.gidnumber.to_string().as_str())
             .unwrap();
         // get the group spn
-        let r2 = rsclient
-            .idm_group_unix_token_get(r.spn.as_str())
-            .unwrap();
+        let r2 = rsclient.idm_group_unix_token_get(r.spn.as_str()).unwrap();
         // get the group by uuid
-        let r3 = rsclient
-            .idm_group_unix_token_get(r.uuid.as_str())
-            .unwrap();
+        let r3 = rsclient.idm_group_unix_token_get(r.uuid.as_str()).unwrap();
 
         println!("{:?}", r);
         assert!(r.name == "posix_group");

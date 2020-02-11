@@ -10,13 +10,13 @@ use log::debug;
 use kanidm_unix_common::cache::CacheLayer;
 use tokio::runtime::Runtime;
 
-use kanidm_client::KanidmClientBuilder;
+use kanidm_client::{KanidmClient, KanidmClientBuilder};
 
 static PORT_ALLOC: AtomicUsize = AtomicUsize::new(18080);
 static ADMIN_TEST_PASSWORD: &str = "integration test admin password";
 static ADMIN_TEST_PASSWORD_CHANGE: &str = "integration test admin new🎉";
 
-fn run_test(test_fn: fn(CacheLayer) -> ()) {
+fn run_test(fix_fn: fn(KanidmClient) -> (), test_fn: fn(CacheLayer) -> ()) {
     // ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
     let _ = env_logger::builder().is_test(true).try_init();
     let (tx, rx) = mpsc::channel();
@@ -43,18 +43,22 @@ fn run_test(test_fn: fn(CacheLayer) -> ()) {
     let sys = rx.recv().unwrap();
     System::set_current(sys.clone());
 
-    // Do we need any fixtures?
-    // Yes probably, but they'll need to be futures as well ...
-    // later we could accept fixture as it's own future for re-use
-
     // Setup the client, and the address we selected.
     let addr = format!("http://127.0.0.1:{}", port);
+
+    // Run fixtures
+    let rsclient = KanidmClientBuilder::new()
+        .address(addr.clone())
+        .build()
+        .expect("Failed to build sync client");
+    fix_fn(rsclient);
+
     let rsclient = KanidmClientBuilder::new()
         .address(addr)
         .build_async()
         .expect("Failed to build client");
 
-    let cachelayer = CacheLayer::new(
+    let mut cachelayer = CacheLayer::new(
         "", // The sqlite db path, this is in memory.
         300, rsclient,
     )
@@ -67,12 +71,70 @@ fn run_test(test_fn: fn(CacheLayer) -> ()) {
     sys.stop();
 }
 
+fn test_fixture(rsclient: KanidmClient) -> () {
+    let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
+    assert!(res.is_ok());
+    // Not recommended in production!
+    rsclient
+        .idm_group_add_members("idm_admins", vec!["admin"])
+        .unwrap();
+
+    // Create a new account
+    rsclient
+        .idm_account_create("testaccount1", "Posix Demo Account")
+        .unwrap();
+
+    // Extend the account with posix attrs.
+    rsclient
+        .idm_account_unix_extend("testaccount1", Some(20000), None)
+        .unwrap();
+    // Assign an ssh public key.
+    rsclient
+        .idm_account_post_ssh_pubkey("testaccount1", "tk",
+        "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAeGW1P6Pc2rPq0XqbRaDKBcXZUPRklo0L1EyR30CwoP william@amethyst")
+        .unwrap();
+
+    // Setup a group
+    rsclient.idm_group_create("testgroup1").unwrap();
+    rsclient
+        .idm_group_add_members("testgroup1", vec!["testaccount1"])
+        .unwrap();
+    rsclient
+        .idm_group_unix_extend("testgroup1", Some(20001))
+        .unwrap();
+}
+
 #[test]
 fn test_cache_sshkey() {
-    run_test(|cachelayer| {
+    run_test(test_fixture, |mut cachelayer| {
         let mut rt = Runtime::new().expect("Failed to start tokio");
         let fut = async move {
+            // Force offline. Show we have no keys.
+            cachelayer.mark_offline();
+
+            let sk = cachelayer
+                .get_sshkeys("testaccount1")
+                .await
+                .expect("Failed to get from cache.");
+            assert!(sk.len() == 0);
+
+            // Bring ourselves online.
+            cachelayer.attempt_online();
             assert!(cachelayer.test_connection().await);
+
+            let sk = cachelayer
+                .get_sshkeys("testaccount1")
+                .await
+                .expect("Failed to get from cache.");
+            assert!(sk.len() == 1);
+
+            // Go offline, and get from cache.
+            cachelayer.mark_offline();
+            let sk = cachelayer
+                .get_sshkeys("testaccount1")
+                .await
+                .expect("Failed to get from cache.");
+            assert!(sk.len() == 1);
         };
         rt.block_on(fut);
     })
