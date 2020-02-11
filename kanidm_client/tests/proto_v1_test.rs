@@ -546,7 +546,7 @@ fn test_server_rest_posix_lifecycle() {
         assert!(res.is_ok());
         // Not recommended in production!
         rsclient
-            .idm_group_add_members("idm_account_write_priv", vec!["admin"])
+            .idm_group_add_members("idm_admins", vec!["admin"])
             .unwrap();
 
         // Create a new account
@@ -572,23 +572,49 @@ fn test_server_rest_posix_lifecycle() {
         let res = rsclient.auth_anonymous();
         assert!(res.is_ok());
 
-        // Get the account by gidnumber
         // Get the account by name
         let r = rsclient
             .idm_account_unix_token_get("posix_account")
             .unwrap();
-        println!("{:?}", r);
+        // Get the account by gidnumber
+        let r1 = rsclient
+            .idm_account_unix_token_get(r.gidnumber.to_string().as_str())
+            .unwrap();
         // get the account by spn
+        let r2 = rsclient
+            .idm_account_unix_token_get(r.spn.as_str())
+            .unwrap();
         // get the account by uuid
+        let r3 = rsclient
+            .idm_account_unix_token_get(r.uuid.as_str())
+            .unwrap();
 
-        // Get the group by gidnumber
-        // get the group by nam
-        let r = rsclient.idm_group_unix_token_get("posix_account").unwrap();
         println!("{:?}", r);
-        // get the group spn
-        // get the group by uuid
+        assert!(r.name == "posix_account");
+        assert!(r1.name == "posix_account");
+        assert!(r2.name == "posix_account");
+        assert!(r3.name == "posix_account");
 
-        unimplemented!();
+        // get the group by nam
+        let r = rsclient.idm_group_unix_token_get("posix_group").unwrap();
+        // Get the group by gidnumber
+        let r1 = rsclient
+            .idm_group_unix_token_get(r.gidnumber.to_string().as_str())
+            .unwrap();
+        // get the group spn
+        let r2 = rsclient
+            .idm_group_unix_token_get(r.spn.as_str())
+            .unwrap();
+        // get the group by uuid
+        let r3 = rsclient
+            .idm_group_unix_token_get(r.uuid.as_str())
+            .unwrap();
+
+        println!("{:?}", r);
+        assert!(r.name == "posix_group");
+        assert!(r1.name == "posix_group");
+        assert!(r2.name == "posix_group");
+        assert!(r3.name == "posix_group");
     });
 }
 

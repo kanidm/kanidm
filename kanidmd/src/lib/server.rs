@@ -1789,8 +1789,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_IDM_PEOPLE_READ_PRIV_V1,
             JSON_IDM_GROUP_MANAGE_PRIV_V1,
             JSON_IDM_GROUP_WRITE_PRIV_V1,
+            JSON_IDM_GROUP_UNIX_EXTEND_PRIV_V1,
             JSON_IDM_ACCOUNT_MANAGE_PRIV_V1,
             JSON_IDM_ACCOUNT_WRITE_PRIV_V1,
+            JSON_IDM_ACCOUNT_UNIX_EXTEND_PRIV_V1,
             JSON_IDM_ACCOUNT_READ_PRIV_V1,
             JSON_IDM_RADIUS_SERVERS_V1,
             // Write deps on read, so write must be added first.
@@ -1829,6 +1831,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_IDM_ACP_ACP_MANAGE_PRIV_V1,
             JSON_IDM_ACP_DOMAIN_ADMIN_PRIV_V1,
             JSON_IDM_ACP_SYSTEM_CONFIG_PRIV_V1,
+            JSON_IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1,
+            JSON_IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1,
         ];
 
         let res: Result<(), _> = idm_entries

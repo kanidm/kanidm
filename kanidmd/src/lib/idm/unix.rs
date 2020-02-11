@@ -112,13 +112,13 @@ macro_rules! try_from_group_e {
     ($value:expr) => {{
         if !$value.attribute_value_pres("class", &PVCLASS_GROUP) {
             return Err(OperationError::InvalidAccountState(
-                "Missing class: account".to_string(),
+                "Missing class: group".to_string(),
             ));
         }
 
         if !$value.attribute_value_pres("class", &PVCLASS_POSIXGROUP) {
             return Err(OperationError::InvalidAccountState(
-                "Missing class: posixaccount".to_string(),
+                "Missing class: posixgroup".to_string(),
             ));
         }
 

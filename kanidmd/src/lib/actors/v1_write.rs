@@ -836,7 +836,7 @@ impl Handler<IdmAccountUnixExtendMessage> for QueryServerWriteV1 {
 impl Handler<IdmGroupUnixExtendMessage> for QueryServerWriteV1 {
     type Result = Result<(), OperationError>;
 
-    fn handle(&mut self, _msg: IdmGroupUnixExtendMessage, _: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, msg: IdmGroupUnixExtendMessage, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("idm_group_unix_extend");
         let res = audit_segment!(&mut audit, || {
             let IdmGroupUnixExtendMessage {
