@@ -1,6 +1,6 @@
 use kanidm_client::asynchronous::KanidmAsyncClient;
-use r2d2::Pool;
-use r2d2_sqlite::SqliteConnectionManager;
+use kanidm_proto::v1::{UnixUserToken, UnixGroupToken};
+use crate::db::Db;
 use std::ops::Add;
 use std::time::{Duration, SystemTime};
 
@@ -13,7 +13,7 @@ enum CacheState {
 
 #[derive(Debug)]
 pub struct CacheLayer {
-    pool: Pool<SqliteConnectionManager>,
+    db: Db,
     client: KanidmAsyncClient,
     state: CacheState,
 }
@@ -27,19 +27,19 @@ impl CacheLayer {
         //
         client: KanidmAsyncClient,
     ) -> Result<Self, ()> {
-        let manager = SqliteConnectionManager::file(path);
-        // We only build a single thread. If we need more than one, we'll
-        // need to re-do this to account for path = "" for debug.
-        let builder1 = Pool::builder().max_size(1);
-        let pool = builder1.build(manager).map_err(|e| {
-            error!("r2d2 error {:?}", e);
-            ()
-        })?;
+        let db = Db::new(path)?;
+
+        // setup and do a migrate.
+        {
+            let mut dbtxn = db.write();
+            dbtxn.migrate()?;
+            dbtxn.commit();
+        }
 
         // We assume we are offline at start up, and we mark the next "online check" as
         // being valid from "now".
         Ok(CacheLayer {
-            pool: pool,
+            db: db,
             client: client,
             state: CacheState::OfflineNextCheck(SystemTime::now()),
         })
@@ -60,7 +60,13 @@ impl CacheLayer {
         unimplemented!();
     }
 
-    fn get_cached_usertoken(&self) -> Result<Option<()>, ()> {
+    fn get_cached_usertoken(&self, account_id: &str) -> Result<(bool, Option<UnixUserToken>), ()> {
+        // Account_id could be:
+        //  * gidnumber
+        //  * name
+        //  * spn
+        //  * uuid
+        //  Attempt to search these in the db.
         unimplemented!();
     }
 
@@ -68,25 +74,32 @@ impl CacheLayer {
         unimplemented!();
     }
 
-    async fn get_usertoken(&mut self) -> Result<(), ()> {
+    async fn get_usertoken(&mut self, account_id: &str) -> Result<Option<UnixUserToken>, ()> {
         debug!("get_usertoken");
         // get the item from the cache
-        let mut item = self.get_cached_usertoken().map_err(|e| {
+        let (expired, item) = self.get_cached_usertoken(account_id).map_err(|e| {
             debug!("get_usertoken error -> {:?}", e);
             ()
         })?;
-        // does it need refresh?
 
-        // what state are we in?
-        match self.state {
-            CacheState::Offline => {
+        match (expired, &self.state) {
+            (_, CacheState::Offline) => Ok(item),
+            (false, CacheState::OfflineNextCheck(_time)) => {
+                // Still valid within lifetime, return.
+                Ok(item)
+            }
+            (false, CacheState::Online) => {
+                // Still valid within lifetime, return.
+                Ok(item)
+            }
+            (true, CacheState::OfflineNextCheck(time)) => {
+                // Attempt to refresh the item
+                // Return it.
                 unimplemented!();
             }
-            CacheState::OfflineNextCheck(time) => {
-                //
-                unimplemented!();
-            }
-            CacheState::Online => {
+            (true, CacheState::Online) => {
+                // Attempt to refresh the item
+                // Return it.
                 unimplemented!();
             }
         }
@@ -94,8 +107,10 @@ impl CacheLayer {
 
     // Get ssh keys for an account id
     pub async fn get_sshkeys(&mut self, account_id: &str) -> Result<Vec<String>, ()> {
-        let token = self.get_usertoken().await?;
-        unimplemented!();
+        let token = self.get_usertoken(account_id).await?;
+        Ok(token
+            .map(|t| t.sshkeys)
+            .unwrap_or_else(|| Vec::new()))
     }
 
     pub async fn test_connection(&mut self) -> bool {
