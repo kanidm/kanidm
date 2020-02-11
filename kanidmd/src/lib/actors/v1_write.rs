@@ -6,8 +6,8 @@ use crate::event::{
     CreateEvent, DeleteEvent, ModifyEvent, PurgeRecycledEvent, PurgeTombstoneEvent,
 };
 use crate::idm::event::{GeneratePasswordEvent, PasswordChangeEvent, RegenerateRadiusSecretEvent};
-use crate::modify::{ModifyInvalid, ModifyList};
-use crate::value::Value;
+use crate::modify::{Modify, ModifyInvalid, ModifyList};
+use crate::value::{PartialValue, Value};
 use kanidm_proto::v1::OperationError;
 
 use crate::filter::{Filter, FilterInvalid};
@@ -107,15 +107,18 @@ impl Message for IdmAccountSetPasswordMessage {
 pub struct IdmAccountUnixExtendMessage {
     pub uat: Option<UserAuthToken>,
     pub uuid_or_name: String,
-    pub ux: AccountUnixExtend,
+    pub gidnumber: Option<u32>,
+    pub shell: Option<String>,
 }
 
 impl IdmAccountUnixExtendMessage {
     pub fn new(uat: Option<UserAuthToken>, uuid_or_name: String, ux: AccountUnixExtend) -> Self {
+        let AccountUnixExtend { gidnumber, shell } = ux;
         IdmAccountUnixExtendMessage {
             uat,
             uuid_or_name,
-            ux,
+            gidnumber,
+            shell,
         }
     }
 }
@@ -127,15 +130,16 @@ impl Message for IdmAccountUnixExtendMessage {
 pub struct IdmGroupUnixExtendMessage {
     pub uat: Option<UserAuthToken>,
     pub uuid_or_name: String,
-    pub gx: GroupUnixExtend,
+    pub gidnumber: Option<u32>,
 }
 
 impl IdmGroupUnixExtendMessage {
     pub fn new(uat: Option<UserAuthToken>, uuid_or_name: String, gx: GroupUnixExtend) -> Self {
+        let GroupUnixExtend { gidnumber } = gx;
         IdmGroupUnixExtendMessage {
             uat,
             uuid_or_name,
-            gx,
+            gidnumber,
         }
     }
 }
@@ -794,10 +798,35 @@ impl Handler<InternalSshKeyCreateMessage> for QueryServerWriteV1 {
 impl Handler<IdmAccountUnixExtendMessage> for QueryServerWriteV1 {
     type Result = Result<(), OperationError>;
 
-    fn handle(&mut self, _msg: IdmAccountUnixExtendMessage, _: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, msg: IdmAccountUnixExtendMessage, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("idm_account_unix_extend");
         let res = audit_segment!(&mut audit, || {
-            unimplemented!();
+            let IdmAccountUnixExtendMessage {
+                uat,
+                uuid_or_name,
+                gidnumber,
+                shell,
+            } = msg;
+
+            // The filter_map here means we only create the mods if the gidnumber or shell are set
+            // in the actual request.
+            let mods: Vec<_> = vec![
+                Some(Modify::Present(
+                    "class".to_string(),
+                    Value::new_class("posixaccount"),
+                )),
+                gidnumber.map(|n| Modify::Present("gidnumber".to_string(), Value::new_uint32(n))),
+                shell.map(|s| Modify::Present("loginshell".to_string(), Value::new_iutf8(s))),
+            ]
+            .into_iter()
+            .filter_map(|v| v)
+            .collect();
+
+            let ml = ModifyList::new_list(mods);
+
+            let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
+
+            self.modify_from_internal_parts(&mut audit, uat, uuid_or_name, ml, filter)
         });
         self.log.do_send(audit);
         res
@@ -810,7 +839,30 @@ impl Handler<IdmGroupUnixExtendMessage> for QueryServerWriteV1 {
     fn handle(&mut self, _msg: IdmGroupUnixExtendMessage, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("idm_group_unix_extend");
         let res = audit_segment!(&mut audit, || {
-            unimplemented!();
+            let IdmGroupUnixExtendMessage {
+                uat,
+                uuid_or_name,
+                gidnumber,
+            } = msg;
+
+            // The filter_map here means we only create the mods if the gidnumber or shell are set
+            // in the actual request.
+            let mods: Vec<_> = vec![
+                Some(Modify::Present(
+                    "class".to_string(),
+                    Value::new_class("posixgroup"),
+                )),
+                gidnumber.map(|n| Modify::Present("gidnumber".to_string(), Value::new_uint32(n))),
+            ]
+            .into_iter()
+            .filter_map(|v| v)
+            .collect();
+
+            let ml = ModifyList::new_list(mods);
+
+            let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
+
+            self.modify_from_internal_parts(&mut audit, uat, uuid_or_name, ml, filter)
         });
         self.log.do_send(audit);
         res
