@@ -67,7 +67,26 @@ impl CacheLayer {
         //  * spn
         //  * uuid
         //  Attempt to search these in the db.
-        unimplemented!();
+        let dbtxn = self.db.write();
+        let r = dbtxn.get_account(account_id)?;
+
+        match r {
+            Some((ut, ex)) => {
+                // Are we expired?
+                let offset = Duration::from_secs(ex);
+                let ex_time = SystemTime::UNIX_EPOCH + offset;
+                let now = SystemTime::now();
+
+                if now >= ex_time  {
+                    Ok((true, Some(ut)))
+                } else {
+                    Ok((false, Some(ut)))
+                }
+            }
+            None => {
+                Ok((true, None))
+            }
+        }
     }
 
     fn set_cache_usertoken(&mut self, token: ()) -> Result<(), ()> {
