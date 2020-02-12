@@ -12,6 +12,7 @@ use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
+use std::time::Duration;
 use toml;
 
 use kanidm_proto::v1::{
@@ -53,6 +54,7 @@ pub struct KanidmClientBuilder {
     verify_ca: bool,
     verify_hostnames: bool,
     ca: Option<reqwest::Certificate>,
+    connect_timeout: Option<u64>,
 }
 
 impl KanidmClientBuilder {
@@ -62,6 +64,7 @@ impl KanidmClientBuilder {
             verify_ca: true,
             verify_hostnames: true,
             ca: None,
+            connect_timeout: None,
         }
     }
 
@@ -79,6 +82,7 @@ impl KanidmClientBuilder {
             verify_ca,
             verify_hostnames,
             ca,
+            connect_timeout,
         } = self;
         // Process and apply all our options if they exist.
         let address = match kcc.uri {
@@ -97,6 +101,7 @@ impl KanidmClientBuilder {
             verify_ca,
             verify_hostnames,
             ca,
+            connect_timeout,
         })
     }
 
@@ -129,6 +134,7 @@ impl KanidmClientBuilder {
             verify_ca: self.verify_ca,
             verify_hostnames: self.verify_hostnames,
             ca: self.ca,
+            connect_timeout: self.connect_timeout,
         }
     }
 
@@ -139,6 +145,7 @@ impl KanidmClientBuilder {
             // We have to flip the bool state here due to english language.
             verify_hostnames: !accept_invalid_hostnames,
             ca: self.ca,
+            connect_timeout: self.connect_timeout,
         }
     }
 
@@ -149,6 +156,17 @@ impl KanidmClientBuilder {
             verify_ca: !accept_invalid_certs,
             verify_hostnames: self.verify_hostnames,
             ca: self.ca,
+            connect_timeout: self.connect_timeout,
+        }
+    }
+
+    pub fn connect_timeout(self, secs: u64) -> Self {
+        KanidmClientBuilder {
+            address: self.address,
+            verify_ca: self.verify_ca,
+            verify_hostnames: self.verify_hostnames,
+            ca: self.ca,
+            connect_timeout: Some(secs),
         }
     }
 
@@ -161,6 +179,7 @@ impl KanidmClientBuilder {
             verify_ca: self.verify_ca,
             verify_hostnames: self.verify_hostnames,
             ca: Some(ca),
+            connect_timeout: self.connect_timeout,
         })
     }
 
@@ -182,6 +201,11 @@ impl KanidmClientBuilder {
 
         let client_builder = match &self.ca {
             Some(cert) => client_builder.add_root_certificate(cert.clone()),
+            None => client_builder,
+        };
+
+        let client_builder = match &self.connect_timeout {
+            Some(secs) => client_builder.connect_timeout(Duration::from_secs(*secs)),
             None => client_builder,
         };
 
@@ -211,6 +235,11 @@ impl KanidmClientBuilder {
 
         let client_builder = match &self.ca {
             Some(cert) => client_builder.add_root_certificate(cert.clone()),
+            None => client_builder,
+        };
+
+        let client_builder = match &self.connect_timeout {
+            Some(secs) => client_builder.connect_timeout(Duration::from_secs(*secs)),
             None => client_builder,
         };
 

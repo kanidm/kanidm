@@ -99,9 +99,14 @@ async fn main() {
     let req = ClientRequest::SshKey(opt.account_id.clone());
 
     match block_on(call_daemon(DEFAULT_SOCK_PATH, req)) {
-        Ok(r) => {
-            debug!("Ok -> {:?}", r);
-        }
+        Ok(r) => match r {
+            ClientResponse::SshKeys(sk) => sk.iter().for_each(|k| {
+                println!("{}", k);
+            }),
+            _ => {
+                error!("Error: unexpected response -> {:?}", r);
+            }
+        },
         Err(e) => {
             error!("Error -> {:?}", e);
         }

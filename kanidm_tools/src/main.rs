@@ -184,6 +184,26 @@ enum AccountRadius {
 }
 
 #[derive(Debug, StructOpt)]
+struct AccountPosixOpt {
+    #[structopt(flatten)]
+    aopts: AccountCommonOpt,
+    #[structopt(long = "gidnumber")]
+    gidnumber: Option<u32>,
+    #[structopt(long = "shell")]
+    shell: Option<String>,
+    #[structopt(flatten)]
+    copt: CommonOpt,
+}
+
+#[derive(Debug, StructOpt)]
+enum AccountPosix {
+    #[structopt(name = "show")]
+    Show(AccountNamedOpt),
+    #[structopt(name = "set")]
+    Set(AccountPosixOpt),
+}
+
+#[derive(Debug, StructOpt)]
 enum AccountSsh {
     #[structopt(name = "list_publickeys")]
     List(AccountNamedOpt),
@@ -199,6 +219,8 @@ enum AccountOpt {
     Credential(AccountCredential),
     #[structopt(name = "radius")]
     Radius(AccountRadius),
+    #[structopt(name = "posix")]
+    Posix(AccountPosix),
     #[structopt(name = "ssh")]
     Ssh(AccountSsh),
     #[structopt(name = "list")]
@@ -289,6 +311,10 @@ impl ClientOpt {
                     AccountRadius::Show(aro) => aro.copt.debug,
                     AccountRadius::Generate(aro) => aro.copt.debug,
                     AccountRadius::Delete(aro) => aro.copt.debug,
+                },
+                AccountOpt::Posix(apopt) => match apopt {
+                    AccountPosix::Show(apo) => apo.copt.debug,
+                    AccountPosix::Set(apo) => apo.copt.debug,
                 },
                 AccountOpt::Ssh(asopt) => match asopt {
                     AccountSsh::List(ano) => ano.copt.debug,
@@ -459,6 +485,25 @@ fn main() {
                         .unwrap();
                 }
             }, // end AccountOpt::Radius
+            AccountOpt::Posix(apopt) => match apopt {
+                AccountPosix::Show(aopt) => {
+                    let client = aopt.copt.to_client();
+                    let token = client
+                        .idm_account_unix_token_get(aopt.aopts.account_id.as_str())
+                        .unwrap();
+                    println!("{:?}", token);
+                }
+                AccountPosix::Set(aopt) => {
+                    let client = aopt.copt.to_client();
+                    client
+                        .idm_account_unix_extend(
+                            aopt.aopts.account_id.as_str(),
+                            aopt.gidnumber,
+                            aopt.shell.as_deref(),
+                        )
+                        .unwrap();
+                }
+            }, // end AccountOpt::Posix
             AccountOpt::Ssh(asopt) => match asopt {
                 AccountSsh::List(aopt) => {
                     let client = aopt.copt.to_client();

@@ -138,12 +138,12 @@ impl CacheLayer {
                         let time = SystemTime::now().add(Duration::from_secs(15));
                         self.set_cachestate(CacheState::OfflineNextCheck(time))
                             .await;
-                        Err(())
+                        Ok(token)
                     }
                     er => {
                         error!("client error -> {:?}", er);
                         // Some other transient error, continue with the token.
-                        Ok(token)
+                        Err(())
                     }
                 }
             }

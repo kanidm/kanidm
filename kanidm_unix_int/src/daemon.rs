@@ -14,7 +14,9 @@ use tokio_util::codec::{Decoder, Encoder};
 use kanidm_client::KanidmClientBuilder;
 
 use kanidm_unix_common::cache::CacheLayer;
-use kanidm_unix_common::constants::{DEFAULT_DB_PATH, DEFAULT_SOCK_PATH};
+use kanidm_unix_common::constants::{
+    DEFAULT_CACHE_TIMEOUT, DEFAULT_CONN_TIMEOUT, DEFAULT_DB_PATH, DEFAULT_SOCK_PATH,
+};
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
 
 //=== the codec
@@ -107,12 +109,14 @@ async fn main() {
         .read_options_from_optional_config("/etc/kanidm/config")
         .expect("Failed to parse /etc/kanidm/config");
 
+    let cb = cb.connect_timeout(DEFAULT_CONN_TIMEOUT);
+
     let rsclient = cb.build_async().expect("Failed to build async client");
 
     let cachelayer = Arc::new(
         CacheLayer::new(
             DEFAULT_DB_PATH, // The sqlite db path
-            300,
+            DEFAULT_CACHE_TIMEOUT,
             rsclient,
         )
         .expect("Failed to build cache layer."),
