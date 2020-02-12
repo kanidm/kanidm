@@ -115,6 +115,7 @@ impl KanidmAsyncClient {
     }
 
     pub async fn idm_account_unix_token_get(&self, id: &str) -> Result<UnixUserToken, ClientError> {
-        self.perform_get_request(format!("/v1/account/{}/_unix/_token", id).as_str()).await
+        self.perform_get_request(format!("/v1/account/{}/_unix/_token", id).as_str())
+            .await
     }
 }

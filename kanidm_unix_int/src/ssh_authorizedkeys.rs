@@ -4,17 +4,16 @@ extern crate log;
 use log::debug;
 use structopt::StructOpt;
 
-use bytes::{Buf, BufMut, BytesMut};
+use bytes::{BufMut, BytesMut};
 use futures::executor::block_on;
 use futures::SinkExt;
 use futures::StreamExt;
 use std::error::Error;
 use std::io::Error as IoError;
 use std::io::ErrorKind;
-use tokio::io::AsyncWriteExt;
 use tokio::net::UnixStream;
+use tokio_util::codec::Framed;
 use tokio_util::codec::{Decoder, Encoder};
-use tokio_util::codec::{Framed, FramedRead};
 
 use kanidm_unix_common::constants::DEFAULT_SOCK_PATH;
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
@@ -67,7 +66,7 @@ struct ClientOpt {
 }
 
 async fn call_daemon(path: &str, req: ClientRequest) -> Result<ClientResponse, Box<dyn Error>> {
-    let mut stream = UnixStream::connect(DEFAULT_SOCK_PATH).await?;
+    let stream = UnixStream::connect(path).await?;
 
     let mut reqs = Framed::new(stream, ClientCodec::new());
 
@@ -100,7 +99,11 @@ async fn main() {
     let req = ClientRequest::SshKey(opt.account_id.clone());
 
     match block_on(call_daemon(DEFAULT_SOCK_PATH, req)) {
-        Ok(r) => {}
-        Err(e) => {}
+        Ok(r) => {
+            debug!("Ok -> {:?}", r);
+        }
+        Err(e) => {
+            error!("Error -> {:?}", e);
+        }
     }
 }

@@ -1,7 +1,7 @@
+use crate::db::Db;
 use kanidm_client::asynchronous::KanidmAsyncClient;
 use kanidm_client::ClientError;
-use kanidm_proto::v1::{UnixUserToken, UnixGroupToken};
-use crate::db::Db;
+use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
 use std::ops::Add;
 use std::time::{Duration, SystemTime};
 
@@ -17,7 +17,7 @@ pub struct CacheLayer {
     db: Db,
     client: KanidmAsyncClient,
     state: CacheState,
-    timeout_seconds: u64
+    timeout_seconds: u64,
 }
 
 impl CacheLayer {
@@ -33,9 +33,9 @@ impl CacheLayer {
 
         // setup and do a migrate.
         {
-            let mut dbtxn = db.write();
+            let dbtxn = db.write();
             dbtxn.migrate()?;
-            dbtxn.commit();
+            dbtxn.commit()?;
         }
 
         // We assume we are offline at start up, and we mark the next "online check" as
@@ -44,7 +44,7 @@ impl CacheLayer {
             db: db,
             client: client,
             state: CacheState::OfflineNextCheck(SystemTime::now()),
-            timeout_seconds: timeout_seconds
+            timeout_seconds: timeout_seconds,
         })
     }
 
@@ -59,8 +59,9 @@ impl CacheLayer {
 
     // Invalidate the whole cache. We do this by just deleting the content
     // of the sqlite db.
-    pub fn invalidate(&self) {
-        unimplemented!();
+    pub fn invalidate(&self) -> Result<(), ()> {
+        let dbtxn = self.db.write();
+        dbtxn.clear_cache().and_then(|_| dbtxn.commit())
     }
 
     fn get_cached_usertoken(&self, account_id: &str) -> Result<(bool, Option<UnixUserToken>), ()> {
@@ -80,37 +81,41 @@ impl CacheLayer {
                 let ex_time = SystemTime::UNIX_EPOCH + offset;
                 let now = SystemTime::now();
 
-                if now >= ex_time  {
+                if now >= ex_time {
                     Ok((true, Some(ut)))
                 } else {
                     Ok((false, Some(ut)))
                 }
             }
-            None => {
-                Ok((true, None))
-            }
+            None => Ok((true, None)),
         }
     }
 
     fn set_cache_usertoken(&mut self, token: &UnixUserToken) -> Result<(), ()> {
         // Set an expiry
         let ex_time = SystemTime::now() + Duration::from_secs(self.timeout_seconds);
-        let offset  = ex_time.duration_since(SystemTime::UNIX_EPOCH)
+        let offset = ex_time
+            .duration_since(SystemTime::UNIX_EPOCH)
             .map_err(|e| {
                 error!("time conversion error - ex_time less than epoch? {:?}", e);
                 ()
             })?;
 
         let dbtxn = self.db.write();
-        dbtxn.update_account(token, offset.as_secs())
+        dbtxn
+            .update_account(token, offset.as_secs())
             .and_then(|_| dbtxn.commit())
     }
 
-    async fn refresh_usertoken(&mut self, account_id: &str, token: Option<UnixUserToken>) -> Result<Option<UnixUserToken>, ()> {
+    async fn refresh_usertoken(
+        &mut self,
+        account_id: &str,
+        token: Option<UnixUserToken>,
+    ) -> Result<Option<UnixUserToken>, ()> {
         match self.client.idm_account_unix_token_get(account_id).await {
             Ok(n_tok) => {
                 // We have the token!
-                self.set_cache_usertoken(&n_tok);
+                self.set_cache_usertoken(&n_tok)?;
                 Ok(Some(n_tok))
             }
             Err(e) => {
@@ -122,7 +127,7 @@ impl CacheLayer {
                         self.state = CacheState::OfflineNextCheck(time);
                         Err(())
                     }
-                    er =>  {
+                    er => {
                         error!("client error -> {:?}", er);
                         // Some other transient error, continue with the token.
                         Ok(token)
@@ -153,7 +158,7 @@ impl CacheLayer {
             (true, CacheState::OfflineNextCheck(time)) => {
                 // Attempt to refresh the item
                 // Return it.
-                if self.test_connection().await {
+                if time > &SystemTime::now() && self.test_connection().await {
                     // We brought ourselves online, lets go
                     self.refresh_usertoken(account_id, item).await
                 } else {
@@ -172,9 +177,7 @@ impl CacheLayer {
     // Get ssh keys for an account id
     pub async fn get_sshkeys(&mut self, account_id: &str) -> Result<Vec<String>, ()> {
         let token = self.get_usertoken(account_id).await?;
-        Ok(token
-            .map(|t| t.sshkeys)
-            .unwrap_or_else(|| Vec::new()))
+        Ok(token.map(|t| t.sshkeys).unwrap_or_else(|| Vec::new()))
     }
 
     pub async fn test_connection(&mut self) -> bool {
@@ -184,13 +187,13 @@ impl CacheLayer {
                 false
             }
             CacheState::OfflineNextCheck(_time) => match self.client.auth_anonymous().await {
-                Ok(uat) => {
+                Ok(_uat) => {
                     debug!("OfflineNextCheck -> authenticated");
                     self.state = CacheState::Online;
                     true
                 }
                 Err(e) => {
-                    debug!("OfflineNextCheck -> disconnected, staying offline.");
+                    debug!("OfflineNextCheck -> disconnected, staying offline. {:?}", e);
                     let time = SystemTime::now().add(Duration::from_secs(15));
                     self.state = CacheState::OfflineNextCheck(time);
                     false

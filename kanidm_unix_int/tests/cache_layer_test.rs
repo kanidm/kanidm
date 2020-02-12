@@ -5,7 +5,6 @@ use std::thread;
 use actix::prelude::*;
 use kanidm::config::{Configuration, IntegrationTestConfig};
 use kanidm::core::create_server_core;
-use log::debug;
 
 use kanidm_unix_common::cache::CacheLayer;
 use tokio::runtime::Runtime;
@@ -14,7 +13,6 @@ use kanidm_client::{KanidmClient, KanidmClientBuilder};
 
 static PORT_ALLOC: AtomicUsize = AtomicUsize::new(18080);
 static ADMIN_TEST_PASSWORD: &str = "integration test admin password";
-static ADMIN_TEST_PASSWORD_CHANGE: &str = "integration test admin new🎉";
 
 fn run_test(fix_fn: fn(KanidmClient) -> (), test_fn: fn(CacheLayer) -> ()) {
     // ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
@@ -58,7 +56,7 @@ fn run_test(fix_fn: fn(KanidmClient) -> (), test_fn: fn(CacheLayer) -> ()) {
         .build_async()
         .expect("Failed to build client");
 
-    let mut cachelayer = CacheLayer::new(
+    let cachelayer = CacheLayer::new(
         "", // The sqlite db path, this is in memory.
         300, rsclient,
     )

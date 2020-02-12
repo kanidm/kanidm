@@ -1,9 +1,9 @@
-use kanidm_proto::v1::{UnixUserToken, UnixGroupToken};
+use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::NO_PARAMS;
-use std::fmt;
 use std::convert::TryFrom;
+use std::fmt;
 
 use std::sync::{Mutex, MutexGuard};
 
@@ -13,7 +13,7 @@ pub struct Db {
 }
 
 pub struct DbTxn<'a> {
-    guard: MutexGuard<'a, ()>,
+    _guard: MutexGuard<'a, ()>,
     committed: bool,
     conn: r2d2::PooledConnection<SqliteConnectionManager>,
 }
@@ -52,7 +52,10 @@ impl fmt::Debug for Db {
 }
 
 impl<'a> DbTxn<'a> {
-    pub fn new(conn: r2d2::PooledConnection<SqliteConnectionManager>, guard: MutexGuard<'a, ()>) -> Self {
+    pub fn new(
+        conn: r2d2::PooledConnection<SqliteConnectionManager>,
+        guard: MutexGuard<'a, ()>,
+    ) -> Self {
         // Start the transaction
         debug!("Starting db WR txn ...");
         conn.execute("BEGIN TRANSACTION", NO_PARAMS)
@@ -60,7 +63,7 @@ impl<'a> DbTxn<'a> {
         DbTxn {
             committed: false,
             conn,
-            guard
+            _guard: guard,
         }
     }
 
@@ -68,8 +71,9 @@ impl<'a> DbTxn<'a> {
         // Setup two tables - one for accounts, one for groups.
         // correctly index the columns.
         // Optional pw hash field
-        self.conn.execute(
-            "CREATE TABLE IF NOT EXISTS account_t (
+        self.conn
+            .execute(
+                "CREATE TABLE IF NOT EXISTS account_t (
                 uuid TEXT PRIMARY KEY,
                 name TEXT NOT NULL UNIQUE,
                 spn TEXT NOT NULL UNIQUE,
@@ -79,14 +83,16 @@ impl<'a> DbTxn<'a> {
                 expiry NUMERIC NOT NULL
             )
             ",
-            NO_PARAMS,
-        ).map_err(|e| {
-            error!("sqlite account_t create error -> {:?}", e);
-            ()
-        })?;
+                NO_PARAMS,
+            )
+            .map_err(|e| {
+                error!("sqlite account_t create error -> {:?}", e);
+                ()
+            })?;
 
-        self.conn.execute(
-            "CREATE TABLE IF NOT EXISTS group_t (
+        self.conn
+            .execute(
+                "CREATE TABLE IF NOT EXISTS group_t (
                 uuid TEXT PRIMARY KEY,
                 name TEXT NOT NULL UNIQUE,
                 spn TEXT NOT NULL UNIQUE,
@@ -95,11 +101,12 @@ impl<'a> DbTxn<'a> {
                 expiry NUMERIC NOT NULL
             )
             ",
-            NO_PARAMS,
-        ).map_err(|e| {
-            error!("sqlite group_t create error -> {:?}", e);
-            ()
-        })?;
+                NO_PARAMS,
+            )
+            .map_err(|e| {
+                error!("sqlite group_t create error -> {:?}", e);
+                ()
+            })?;
 
         Ok(())
     }
@@ -119,13 +126,15 @@ impl<'a> DbTxn<'a> {
     }
 
     pub fn clear_cache(&self) -> Result<(), ()> {
-        self.conn.execute("DELETE FROM group_t", NO_PARAMS)
+        self.conn
+            .execute("DELETE FROM group_t", NO_PARAMS)
             .map_err(|e| {
                 debug!("sqlite delete group_t failure -> {:?}", e);
                 ()
             })?;
 
-        self.conn.execute("DELETE FROM account_t", NO_PARAMS)
+        self.conn
+            .execute("DELETE FROM account_t", NO_PARAMS)
             .map_err(|e| {
                 debug!("sqlite delete group_t failure -> {:?}", e);
                 ()
@@ -145,16 +154,14 @@ impl<'a> DbTxn<'a> {
             })?;
 
         // Makes tuple (token, expiry)
-        let data_iter = stmt.query_map(&[account_id],
-            |row| Ok((
-                row.get(0)?,
-                row.get(1)?,
-            )))
+        let data_iter = stmt
+            .query_map(&[account_id], |row| Ok((row.get(0)?, row.get(1)?)))
             .map_err(|e| {
                 error!("sqlite query_map failure -> {:?}", e);
                 ()
             })?;
-        let data: Result<Vec<(Vec<u8>, i64)>, _> = data_iter.map(|v| {
+        let data: Result<Vec<(Vec<u8>, i64)>, _> = data_iter
+            .map(|v| {
                 v.map_err(|e| {
                     error!("sqlite map failure -> {:?}", e);
                     ()
@@ -170,19 +177,18 @@ impl<'a> DbTxn<'a> {
             return Err(());
         }
 
-        let r: Result<Option<(_, _)>, ()> = data.first()
+        let r: Result<Option<(_, _)>, ()> = data
+            .first()
             .map(|(token, expiry)| {
                 // token convert with cbor.
-                let t = serde_cbor::from_slice(token.as_slice())
-                    .map_err(|e| {
-                        error!("cbor error -> {:?}", e);
-                        ()
-                    })?;
-                let e = u64::try_from(*expiry)
-                    .map_err(|e| {
-                        error!("u64 convert error -> {:?}", e);
-                        ()
-                    })?;
+                let t = serde_cbor::from_slice(token.as_slice()).map_err(|e| {
+                    error!("cbor error -> {:?}", e);
+                    ()
+                })?;
+                let e = u64::try_from(*expiry).map_err(|e| {
+                    error!("u64 convert error -> {:?}", e);
+                    ()
+                })?;
                 Ok((t, e))
             })
             .transpose();
@@ -247,13 +253,13 @@ impl<'a> Drop for DbTxn<'a> {
 #[cfg(test)]
 mod tests {
     use super::Db;
-    use kanidm_proto::v1::{UnixUserToken, UnixGroupToken};
+    use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
 
     #[test]
     fn test_cache_db_account_basic() {
         let _ = env_logger::builder().is_test(true).try_init();
         let db = Db::new("").expect("failed to create.");
-        let mut dbtxn = db.write();
+        let dbtxn = db.write();
         assert!(dbtxn.migrate().is_ok());
 
         let mut ut1 = UnixUserToken {
@@ -272,7 +278,9 @@ mod tests {
         assert!(r1.is_none());
         let r2 = dbtxn.get_account("testuser@example.com").unwrap();
         assert!(r2.is_none());
-        let r3 = dbtxn.get_account("0302b99c-f0f6-41ab-9492-852692b0fd16").unwrap();
+        let r3 = dbtxn
+            .get_account("0302b99c-f0f6-41ab-9492-852692b0fd16")
+            .unwrap();
         assert!(r3.is_none());
         /*
         let r4 = dbtxn.get_account("2000").unwrap();
@@ -287,7 +295,9 @@ mod tests {
         assert!(r1.is_some());
         let r2 = dbtxn.get_account("testuser@example.com").unwrap();
         assert!(r2.is_some());
-        let r3 = dbtxn.get_account("0302b99c-f0f6-41ab-9492-852692b0fd16").unwrap();
+        let r3 = dbtxn
+            .get_account("0302b99c-f0f6-41ab-9492-852692b0fd16")
+            .unwrap();
         assert!(r3.is_some());
 
         // test adding an account that was renamed
@@ -304,18 +314,22 @@ mod tests {
         assert!(r1.is_some());
         let r2 = dbtxn.get_account("testuser2@example.com").unwrap();
         assert!(r2.is_some());
-        let r3 = dbtxn.get_account("0302b99c-f0f6-41ab-9492-852692b0fd16").unwrap();
+        let r3 = dbtxn
+            .get_account("0302b99c-f0f6-41ab-9492-852692b0fd16")
+            .unwrap();
         assert!(r3.is_some());
 
         // Clear cache
-        dbtxn.clear_cache();
+        assert!(dbtxn.clear_cache().is_ok());
 
         // should be nothing
         let r1 = dbtxn.get_account("testuser").unwrap();
         assert!(r1.is_none());
         let r2 = dbtxn.get_account("testuser@example.com").unwrap();
         assert!(r2.is_none());
-        let r3 = dbtxn.get_account("0302b99c-f0f6-41ab-9492-852692b0fd16").unwrap();
+        let r3 = dbtxn
+            .get_account("0302b99c-f0f6-41ab-9492-852692b0fd16")
+            .unwrap();
         assert!(r3.is_none());
 
         assert!(dbtxn.commit().is_ok());
@@ -325,12 +339,12 @@ mod tests {
     fn test_cache_db_group_basic() {
         let _ = env_logger::builder().is_test(true).try_init();
         let db = Db::new("").expect("failed to create.");
-        let mut dbtxn = db.write();
+        let dbtxn = db.write();
         assert!(dbtxn.migrate().is_ok());
 
         // test finding no account
-        unimplemented!();
 
         assert!(dbtxn.commit().is_ok());
+        unimplemented!();
     }
 }
