@@ -6,11 +6,15 @@ use futures::SinkExt;
 use futures::StreamExt;
 use std::error::Error;
 use std::io;
+use std::sync::Arc;
 use tokio::net::{UnixListener, UnixStream};
 use tokio_util::codec::Framed;
 use tokio_util::codec::{Decoder, Encoder};
 
-use kanidm_unix_common::constants::DEFAULT_SOCK_PATH;
+use kanidm_client::KanidmClientBuilder;
+
+use kanidm_unix_common::cache::CacheLayer;
+use kanidm_unix_common::constants::{DEFAULT_DB_PATH, DEFAULT_SOCK_PATH};
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
 
 //=== the codec
@@ -61,7 +65,10 @@ fn rm_if_exist(p: &str) {
     });
 }
 
-async fn handle_client(sock: UnixStream) -> Result<(), Box<dyn Error>> {
+async fn handle_client(
+    sock: UnixStream,
+    cachelayer: Arc<CacheLayer>,
+) -> Result<(), Box<dyn Error>> {
     debug!("Accepted connection");
 
     let mut reqs = Framed::new(sock, ClientCodec::new());
@@ -69,10 +76,17 @@ async fn handle_client(sock: UnixStream) -> Result<(), Box<dyn Error>> {
     while let Some(Ok(req)) = reqs.next().await {
         match req {
             ClientRequest::SshKey(account_id) => {
-                reqs.send(ClientResponse::SshKeys(vec!["test".to_string()]))
-                    .await?;
+                let resp = match cachelayer.get_sshkeys(account_id.as_str()).await {
+                    Ok(r) => ClientResponse::SshKeys(r),
+                    Err(_) => {
+                        error!("unable to load keys, returning empty set.");
+                        ClientResponse::SshKeys(vec![])
+                    }
+                };
+
+                reqs.send(resp).await?;
                 reqs.flush().await?;
-                debug!("Called flush!");
+                debug!("flushed response!");
             }
         }
     }
@@ -87,6 +101,23 @@ async fn main() {
     ::std::env::set_var("RUST_LOG", "kanidm=debug,kanidm_client=debug");
     env_logger::init();
     rm_if_exist(DEFAULT_SOCK_PATH);
+
+    // setup
+    let cb = KanidmClientBuilder::new()
+        .read_options_from_optional_config("/etc/kanidm/config")
+        .expect("Failed to parse /etc/kanidm/config");
+
+    let rsclient = cb.build_async().expect("Failed to build async client");
+
+    let cachelayer = Arc::new(
+        CacheLayer::new(
+            DEFAULT_DB_PATH, // The sqlite db path
+            300,
+            rsclient,
+        )
+        .expect("Failed to build cache layer."),
+    );
+
     let mut listener = UnixListener::bind(DEFAULT_SOCK_PATH).unwrap();
 
     let server = async move {
@@ -94,9 +125,10 @@ async fn main() {
         while let Some(socket_res) = incoming.next().await {
             match socket_res {
                 Ok(socket) => {
+                    let cachelayer_ref = cachelayer.clone();
                     tokio::spawn(
                         async move {
-                            if let Err(e) = handle_client(socket).await {
+                            if let Err(e) = handle_client(socket, cachelayer_ref.clone()).await {
                                 error!("an error occured; error = {:?}", e);
                             }
                         },

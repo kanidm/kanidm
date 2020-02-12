@@ -18,7 +18,10 @@ impl KanidmAsyncClient {
         dest: &str,
         request: R,
     ) -> Result<T, ClientError> {
-        let dest = format!("{}{}", self.addr, dest);
+        let dest = [self.addr.as_str(), dest].concat();
+        debug!("{:?}", dest);
+        // format doesn't work in async ?!
+        // let dest = format!("{}{}", self.addr, dest);
 
         let req_string = serde_json::to_string(&request).unwrap();
 
@@ -42,7 +45,9 @@ impl KanidmAsyncClient {
     }
 
     async fn perform_get_request<T: DeserializeOwned>(&self, dest: &str) -> Result<T, ClientError> {
-        let dest = format!("{}{}", self.addr, dest);
+        let dest = [self.addr.as_str(), dest].concat();
+        debug!("{:?}", dest);
+        // let dest = format!("{}{}", self.addr, dest);
         let response = self
             .client
             .get(dest.as_str())
@@ -98,7 +103,9 @@ impl KanidmAsyncClient {
     }
 
     pub async fn whoami(&self) -> Result<Option<(Entry, UserAuthToken)>, ClientError> {
-        let whoami_dest = format!("{}/v1/self", self.addr);
+        let whoami_dest = [self.addr.as_str(), "/v1/self"].concat();
+        // format!("{}/v1/self", self.addr);
+        debug!("{:?}", whoami_dest);
         let response = self.client.get(whoami_dest.as_str()).send().await.unwrap();
 
         match response.status() {
@@ -115,7 +122,9 @@ impl KanidmAsyncClient {
     }
 
     pub async fn idm_account_unix_token_get(&self, id: &str) -> Result<UnixUserToken, ClientError> {
-        self.perform_get_request(format!("/v1/account/{}/_unix/_token", id).as_str())
+        // Format doesn't work in async
+        // format!("/v1/account/{}/_unix/_token", id).as_str()
+        self.perform_get_request(["/v1/account/", id, "/_unix/_token"].concat().as_str())
             .await
     }
 }

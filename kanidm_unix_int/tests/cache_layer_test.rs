@@ -104,11 +104,11 @@ fn test_fixture(rsclient: KanidmClient) -> () {
 
 #[test]
 fn test_cache_sshkey() {
-    run_test(test_fixture, |mut cachelayer| {
+    run_test(test_fixture, |cachelayer| {
         let mut rt = Runtime::new().expect("Failed to start tokio");
         let fut = async move {
             // Force offline. Show we have no keys.
-            cachelayer.mark_offline();
+            cachelayer.mark_offline().await;
 
             let sk = cachelayer
                 .get_sshkeys("testaccount1")
@@ -117,7 +117,7 @@ fn test_cache_sshkey() {
             assert!(sk.len() == 0);
 
             // Bring ourselves online.
-            cachelayer.attempt_online();
+            cachelayer.attempt_online().await;
             assert!(cachelayer.test_connection().await);
 
             let sk = cachelayer
@@ -127,7 +127,7 @@ fn test_cache_sshkey() {
             assert!(sk.len() == 1);
 
             // Go offline, and get from cache.
-            cachelayer.mark_offline();
+            cachelayer.mark_offline().await;
             let sk = cachelayer
                 .get_sshkeys("testaccount1")
                 .await

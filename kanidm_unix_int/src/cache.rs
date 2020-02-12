@@ -4,8 +4,9 @@ use kanidm_client::ClientError;
 use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
 use std::ops::Add;
 use std::time::{Duration, SystemTime};
+use tokio::sync::Mutex;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum CacheState {
     Online,
     Offline,
@@ -16,7 +17,7 @@ enum CacheState {
 pub struct CacheLayer {
     db: Db,
     client: KanidmAsyncClient,
-    state: CacheState,
+    state: Mutex<CacheState>,
     timeout_seconds: u64,
 }
 
@@ -43,18 +44,29 @@ impl CacheLayer {
         Ok(CacheLayer {
             db: db,
             client: client,
-            state: CacheState::OfflineNextCheck(SystemTime::now()),
+            state: Mutex::new(CacheState::OfflineNextCheck(SystemTime::now())),
             timeout_seconds: timeout_seconds,
         })
     }
 
-    // Need a way to mark online/offline.
-    pub fn attempt_online(&mut self) {
-        self.state = CacheState::OfflineNextCheck(SystemTime::now());
+    async fn get_cachestate(&self) -> CacheState {
+        let g = self.state.lock().await;
+        (*g).clone()
     }
 
-    pub fn mark_offline(&mut self) {
-        self.state = CacheState::Offline;
+    async fn set_cachestate(&self, state: CacheState) {
+        let mut g = self.state.lock().await;
+        *g = state;
+    }
+
+    // Need a way to mark online/offline.
+    pub async fn attempt_online(&self) {
+        self.set_cachestate(CacheState::OfflineNextCheck(SystemTime::now()))
+            .await;
+    }
+
+    pub async fn mark_offline(&self) {
+        self.set_cachestate(CacheState::Offline).await;
     }
 
     // Invalidate the whole cache. We do this by just deleting the content
@@ -91,7 +103,7 @@ impl CacheLayer {
         }
     }
 
-    fn set_cache_usertoken(&mut self, token: &UnixUserToken) -> Result<(), ()> {
+    fn set_cache_usertoken(&self, token: &UnixUserToken) -> Result<(), ()> {
         // Set an expiry
         let ex_time = SystemTime::now() + Duration::from_secs(self.timeout_seconds);
         let offset = ex_time
@@ -108,7 +120,7 @@ impl CacheLayer {
     }
 
     async fn refresh_usertoken(
-        &mut self,
+        &self,
         account_id: &str,
         token: Option<UnixUserToken>,
     ) -> Result<Option<UnixUserToken>, ()> {
@@ -124,7 +136,8 @@ impl CacheLayer {
                         error!("transport error, moving to offline -> {:?}", er);
                         // Something went wrong, mark offline.
                         let time = SystemTime::now().add(Duration::from_secs(15));
-                        self.state = CacheState::OfflineNextCheck(time);
+                        self.set_cachestate(CacheState::OfflineNextCheck(time))
+                            .await;
                         Err(())
                     }
                     er => {
@@ -137,7 +150,7 @@ impl CacheLayer {
         }
     }
 
-    async fn get_usertoken(&mut self, account_id: &str) -> Result<Option<UnixUserToken>, ()> {
+    async fn get_usertoken(&self, account_id: &str) -> Result<Option<UnixUserToken>, ()> {
         debug!("get_usertoken");
         // get the item from the cache
         let (expired, item) = self.get_cached_usertoken(account_id).map_err(|e| {
@@ -145,20 +158,31 @@ impl CacheLayer {
             ()
         })?;
 
-        match (expired, &self.state) {
-            (_, CacheState::Offline) => Ok(item),
-            (false, CacheState::OfflineNextCheck(_time)) => {
+        let state = self.get_cachestate().await;
+
+        match (expired, state) {
+            (_, CacheState::Offline) => {
+                debug!("offline, returning cached item");
+                Ok(item)
+            }
+            (false, CacheState::OfflineNextCheck(time)) => {
+                debug!(
+                    "offline valid, next check {:?}, returning cached item",
+                    time
+                );
                 // Still valid within lifetime, return.
                 Ok(item)
             }
             (false, CacheState::Online) => {
+                debug!("online valid, returning cached item");
                 // Still valid within lifetime, return.
                 Ok(item)
             }
             (true, CacheState::OfflineNextCheck(time)) => {
+                debug!("offline expired, next check {:?}, refresh cache", time);
                 // Attempt to refresh the item
                 // Return it.
-                if time > &SystemTime::now() && self.test_connection().await {
+                if SystemTime::now() >= time && self.test_connection().await {
                     // We brought ourselves online, lets go
                     self.refresh_usertoken(account_id, item).await
                 } else {
@@ -167,6 +191,7 @@ impl CacheLayer {
                 }
             }
             (true, CacheState::Online) => {
+                debug!("online expired, refresh cache");
                 // Attempt to refresh the item
                 // Return it.
                 self.refresh_usertoken(account_id, item).await
@@ -175,13 +200,14 @@ impl CacheLayer {
     }
 
     // Get ssh keys for an account id
-    pub async fn get_sshkeys(&mut self, account_id: &str) -> Result<Vec<String>, ()> {
+    pub async fn get_sshkeys(&self, account_id: &str) -> Result<Vec<String>, ()> {
         let token = self.get_usertoken(account_id).await?;
         Ok(token.map(|t| t.sshkeys).unwrap_or_else(|| Vec::new()))
     }
 
-    pub async fn test_connection(&mut self) -> bool {
-        match &self.state {
+    pub async fn test_connection(&self) -> bool {
+        let state = self.get_cachestate().await;
+        match state {
             CacheState::Offline => {
                 debug!("Offline -> no change");
                 false
@@ -189,18 +215,20 @@ impl CacheLayer {
             CacheState::OfflineNextCheck(_time) => match self.client.auth_anonymous().await {
                 Ok(_uat) => {
                     debug!("OfflineNextCheck -> authenticated");
-                    self.state = CacheState::Online;
+                    self.set_cachestate(CacheState::Online).await;
                     true
                 }
                 Err(e) => {
                     debug!("OfflineNextCheck -> disconnected, staying offline. {:?}", e);
                     let time = SystemTime::now().add(Duration::from_secs(15));
-                    self.state = CacheState::OfflineNextCheck(time);
+                    self.set_cachestate(CacheState::OfflineNextCheck(time))
+                        .await;
                     false
                 }
             },
             CacheState::Online => {
-                unimplemented!();
+                debug!("Online, no change");
+                true
             }
         }
     }
