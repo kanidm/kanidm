@@ -41,6 +41,26 @@ impl KanidmAsyncClient {
         Ok(r)
     }
 
+    async fn perform_get_request<T: DeserializeOwned>(&self, dest: &str) -> Result<T, ClientError> {
+        let dest = format!("{}{}", self.addr, dest);
+        let response = self
+            .client
+            .get(dest.as_str())
+            .send()
+            .await
+            .map_err(ClientError::Transport)?;
+
+        match response.status() {
+            reqwest::StatusCode::OK => {}
+            unexpect => return Err(ClientError::Http(unexpect, response.json().await.ok())),
+        }
+
+        // TODO: What about errors
+        let r: T = response.json().await.unwrap();
+
+        Ok(r)
+    }
+
     pub async fn auth_step_init(
         &self,
         ident: &str,
@@ -92,5 +112,9 @@ impl KanidmAsyncClient {
             serde_json::from_str(response.text().await.unwrap().as_str()).unwrap();
 
         Ok(Some((r.youare, r.uat)))
+    }
+
+    pub async fn idm_account_unix_token_get(&self, id: &str) -> Result<UnixUserToken, ClientError> {
+        self.perform_get_request(format!("/v1/account/{}/_unix/_token", id).as_str()).await
     }
 }
