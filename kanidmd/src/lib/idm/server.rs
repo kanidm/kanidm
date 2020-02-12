@@ -6,8 +6,10 @@ use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
 use crate::idm::event::{
     GeneratePasswordEvent, PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
+    UnixGroupTokenEvent, UnixUserTokenEvent,
 };
 use crate::idm::radius::RadiusAccount;
+use crate::idm::unix::{UnixGroup, UnixUserAccount};
 use crate::server::QueryServerReadTransaction;
 use crate::server::{QueryServer, QueryServerTransaction, QueryServerWriteTransaction};
 use crate::utils::{password_from_random, readable_password_from_random, uuid_from_duration, SID};
@@ -16,6 +18,8 @@ use crate::value::PartialValue;
 use kanidm_proto::v1::AuthState;
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::RadiusAuthToken;
+use kanidm_proto::v1::UnixGroupToken;
+use kanidm_proto::v1::UnixUserToken;
 
 use concread::collections::bptree::*;
 use std::time::Duration;
@@ -230,6 +234,39 @@ impl IdmServerProxyReadTransaction {
         );
 
         account.to_radiusauthtoken()
+    }
+
+    pub fn get_unixusertoken(
+        &self,
+        au: &mut AuditScope,
+        uute: &UnixUserTokenEvent,
+    ) -> Result<UnixUserToken, OperationError> {
+        let account_entry = try_audit!(
+            au,
+            self.qs_read
+                .impersonate_search_ext_uuid(au, &uute.target, &uute.event)
+        );
+
+        let account = try_audit!(
+            au,
+            UnixUserAccount::try_from_entry_reduced(au, account_entry, &self.qs_read)
+        );
+        account.to_unixusertoken()
+    }
+
+    pub fn get_unixgrouptoken(
+        &self,
+        au: &mut AuditScope,
+        uute: &UnixGroupTokenEvent,
+    ) -> Result<UnixGroupToken, OperationError> {
+        let account_entry = try_audit!(
+            au,
+            self.qs_read
+                .impersonate_search_ext_uuid(au, &uute.target, &uute.event)
+        );
+
+        let account = try_audit!(au, UnixGroup::try_from_entry_reduced(account_entry));
+        account.to_unixgrouptoken()
     }
 }
 
@@ -452,9 +489,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 mod tests {
     use crate::constants::{AUTH_SESSION_TIMEOUT, UUID_ADMIN, UUID_ANONYMOUS};
     use crate::credential::Credential;
-    use crate::event::{AuthEvent, AuthResult, ModifyEvent};
+    use crate::entry::{Entry, EntryInvalid, EntryNew};
+    use crate::event::{AuthEvent, AuthResult, CreateEvent, ModifyEvent};
     use crate::idm::event::{
         PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
+        UnixGroupTokenEvent, UnixUserTokenEvent,
     };
     use crate::modify::{Modify, ModifyList};
     use crate::value::{PartialValue, Value};
@@ -821,6 +860,65 @@ mod tests {
             assert!(e.is_err());
 
             assert!(idms_prox_write.commit(au).is_ok());
+        })
+    }
+
+    #[test]
+    fn test_idm_unixusertoken() {
+        run_idm_test!(|_qs: &QueryServer, idms: &IdmServer, au: &mut AuditScope| {
+            let mut idms_prox_write = idms.proxy_write();
+            // Modify admin to have posixaccount
+            let me_posix = unsafe {
+                ModifyEvent::new_internal_invalid(
+                    filter!(f_eq("name", PartialValue::new_iutf8s("admin"))),
+                    ModifyList::new_list(vec![
+                        Modify::Present("class".to_string(), Value::new_class("posixaccount")),
+                        Modify::Present("gidnumber".to_string(), Value::new_uint32(2001)),
+                    ]),
+                )
+            };
+            assert!(idms_prox_write.qs_write.modify(au, &me_posix).is_ok());
+            // Add a posix group that has the admin as a member.
+            let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+                r#"{
+                "attrs": {
+                    "class": ["object", "group", "posixgroup"],
+                    "name": ["testgroup"],
+                    "uuid": ["01609135-a1c4-43d5-966b-a28227644445"],
+                    "description": ["testgroup"],
+                    "member": ["00000000-0000-0000-0000-000000000000"]
+                }
+            }"#,
+            );
+
+            let ce = CreateEvent::new_internal(vec![e.clone()]);
+
+            assert!(idms_prox_write.qs_write.create(au, &ce).is_ok());
+
+            idms_prox_write.commit(au).expect("failed to commit");
+
+            let idms_prox_read = idms.proxy_read();
+
+            let ugte = UnixGroupTokenEvent::new_internal(
+                Uuid::parse_str("01609135-a1c4-43d5-966b-a28227644445")
+                    .expect("failed to parse uuid"),
+            );
+            let tok_g = idms_prox_read
+                .get_unixgrouptoken(au, &ugte)
+                .expect("Failed to generate unix group token");
+
+            assert!(tok_g.name == "testgroup");
+            assert!(tok_g.spn == "testgroup@example.com");
+
+            let uute = UnixUserTokenEvent::new_internal(UUID_ADMIN.clone());
+            let tok_r = idms_prox_read
+                .get_unixusertoken(au, &uute)
+                .expect("Failed to generate unix user token");
+
+            assert!(tok_r.name == "admin");
+            assert!(tok_r.spn == "admin@example.com");
+            assert!(tok_r.groups.len() == 1);
+            assert!(tok_r.groups[0].name == "testgroup");
         })
     }
 }

@@ -539,6 +539,79 @@ fn test_server_rest_domain_lifecycle() {
     });
 }
 
+#[test]
+fn test_server_rest_posix_lifecycle() {
+    run_test(|rsclient: KanidmClient| {
+        let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
+        assert!(res.is_ok());
+        // Not recommended in production!
+        rsclient
+            .idm_group_add_members("idm_admins", vec!["admin"])
+            .unwrap();
+
+        // Create a new account
+        rsclient
+            .idm_account_create("posix_account", "Posix Demo Account")
+            .unwrap();
+
+        // Extend the account with posix attrs.
+        rsclient
+            .idm_account_unix_extend("posix_account", None, None)
+            .unwrap();
+
+        // Create a group
+
+        // Extend the group with posix attrs
+        rsclient.idm_group_create("posix_group").unwrap();
+        rsclient
+            .idm_group_add_members("posix_group", vec!["posix_account"])
+            .unwrap();
+        rsclient.idm_group_unix_extend("posix_group", None).unwrap();
+
+        // Open a new connection as anonymous
+        let res = rsclient.auth_anonymous();
+        assert!(res.is_ok());
+
+        // Get the account by name
+        let r = rsclient
+            .idm_account_unix_token_get("posix_account")
+            .unwrap();
+        // Get the account by gidnumber
+        let r1 = rsclient
+            .idm_account_unix_token_get(r.gidnumber.to_string().as_str())
+            .unwrap();
+        // get the account by spn
+        let r2 = rsclient.idm_account_unix_token_get(r.spn.as_str()).unwrap();
+        // get the account by uuid
+        let r3 = rsclient
+            .idm_account_unix_token_get(r.uuid.as_str())
+            .unwrap();
+
+        println!("{:?}", r);
+        assert!(r.name == "posix_account");
+        assert!(r1.name == "posix_account");
+        assert!(r2.name == "posix_account");
+        assert!(r3.name == "posix_account");
+
+        // get the group by nam
+        let r = rsclient.idm_group_unix_token_get("posix_group").unwrap();
+        // Get the group by gidnumber
+        let r1 = rsclient
+            .idm_group_unix_token_get(r.gidnumber.to_string().as_str())
+            .unwrap();
+        // get the group spn
+        let r2 = rsclient.idm_group_unix_token_get(r.spn.as_str()).unwrap();
+        // get the group by uuid
+        let r3 = rsclient.idm_group_unix_token_get(r.uuid.as_str()).unwrap();
+
+        println!("{:?}", r);
+        assert!(r.name == "posix_group");
+        assert!(r1.name == "posix_group");
+        assert!(r2.name == "posix_group");
+        assert!(r3.name == "posix_group");
+    });
+}
+
 // Test the self version of the radius path.
 
 // Test hitting all auth-required endpoints and assert they give unauthorized.

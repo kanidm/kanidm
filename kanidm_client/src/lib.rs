@@ -12,15 +12,21 @@ use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
+use std::time::Duration;
 use toml;
 
 use kanidm_proto::v1::{
-    AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep, CreateRequest, DeleteRequest,
-    Entry, Filter, ModifyList, ModifyRequest, OperationError, OperationResponse, RadiusAuthToken,
-    SearchRequest, SearchResponse, SetAuthCredential, SingleStringRequest, UserAuthToken,
+    AccountUnixExtend, AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep,
+    CreateRequest, DeleteRequest, Entry, Filter, GroupUnixExtend, ModifyList, ModifyRequest,
+    OperationError, OperationResponse, RadiusAuthToken, SearchRequest, SearchResponse,
+    SetAuthCredential, SingleStringRequest, UnixGroupToken, UnixUserToken, UserAuthToken,
     WhoamiResponse,
 };
 use serde_json;
+
+pub mod asynchronous;
+
+use crate::asynchronous::KanidmAsyncClient;
 
 #[derive(Debug)]
 pub enum ClientError {
@@ -48,6 +54,7 @@ pub struct KanidmClientBuilder {
     verify_ca: bool,
     verify_hostnames: bool,
     ca: Option<reqwest::Certificate>,
+    connect_timeout: Option<u64>,
 }
 
 impl KanidmClientBuilder {
@@ -57,6 +64,7 @@ impl KanidmClientBuilder {
             verify_ca: true,
             verify_hostnames: true,
             ca: None,
+            connect_timeout: None,
         }
     }
 
@@ -74,6 +82,7 @@ impl KanidmClientBuilder {
             verify_ca,
             verify_hostnames,
             ca,
+            connect_timeout,
         } = self;
         // Process and apply all our options if they exist.
         let address = match kcc.uri {
@@ -92,6 +101,7 @@ impl KanidmClientBuilder {
             verify_ca,
             verify_hostnames,
             ca,
+            connect_timeout,
         })
     }
 
@@ -124,6 +134,7 @@ impl KanidmClientBuilder {
             verify_ca: self.verify_ca,
             verify_hostnames: self.verify_hostnames,
             ca: self.ca,
+            connect_timeout: self.connect_timeout,
         }
     }
 
@@ -134,6 +145,7 @@ impl KanidmClientBuilder {
             // We have to flip the bool state here due to english language.
             verify_hostnames: !accept_invalid_hostnames,
             ca: self.ca,
+            connect_timeout: self.connect_timeout,
         }
     }
 
@@ -144,6 +156,17 @@ impl KanidmClientBuilder {
             verify_ca: !accept_invalid_certs,
             verify_hostnames: self.verify_hostnames,
             ca: self.ca,
+            connect_timeout: self.connect_timeout,
+        }
+    }
+
+    pub fn connect_timeout(self, secs: u64) -> Self {
+        KanidmClientBuilder {
+            address: self.address,
+            verify_ca: self.verify_ca,
+            verify_hostnames: self.verify_hostnames,
+            ca: self.ca,
+            connect_timeout: Some(secs),
         }
     }
 
@@ -156,11 +179,46 @@ impl KanidmClientBuilder {
             verify_ca: self.verify_ca,
             verify_hostnames: self.verify_hostnames,
             ca: Some(ca),
+            connect_timeout: self.connect_timeout,
         })
     }
 
     // Consume self and return a client.
     pub fn build(self) -> Result<KanidmClient, reqwest::Error> {
+        // Errghh, how to handle this cleaner.
+        let address = match &self.address {
+            Some(a) => a.clone(),
+            None => {
+                eprintln!("uri (-H) missing, can not proceed");
+                unimplemented!();
+            }
+        };
+
+        let client_builder = reqwest::blocking::Client::builder()
+            .cookie_store(true)
+            .danger_accept_invalid_hostnames(!self.verify_hostnames)
+            .danger_accept_invalid_certs(!self.verify_ca);
+
+        let client_builder = match &self.ca {
+            Some(cert) => client_builder.add_root_certificate(cert.clone()),
+            None => client_builder,
+        };
+
+        let client_builder = match &self.connect_timeout {
+            Some(secs) => client_builder.connect_timeout(Duration::from_secs(*secs)),
+            None => client_builder,
+        };
+
+        let client = client_builder.build()?;
+
+        Ok(KanidmClient {
+            client,
+            addr: address,
+            builder: self,
+        })
+    }
+
+    pub fn build_async(self) -> Result<KanidmAsyncClient, reqwest::Error> {
         // Errghh, how to handle this cleaner.
         let address = match &self.address {
             Some(a) => a.clone(),
@@ -180,9 +238,14 @@ impl KanidmClientBuilder {
             None => client_builder,
         };
 
+        let client_builder = match &self.connect_timeout {
+            Some(secs) => client_builder.connect_timeout(Duration::from_secs(*secs)),
+            None => client_builder,
+        };
+
         let client = client_builder.build()?;
 
-        Ok(KanidmClient {
+        Ok(KanidmAsyncClient {
             client,
             addr: address,
             builder: self,
@@ -192,7 +255,7 @@ impl KanidmClientBuilder {
 
 #[derive(Debug)]
 pub struct KanidmClient {
-    client: reqwest::Client,
+    client: reqwest::blocking::Client,
     addr: String,
     builder: KanidmClientBuilder,
 }
@@ -225,7 +288,7 @@ impl KanidmClient {
 
         let req_string = serde_json::to_string(&request).unwrap();
 
-        let mut response = self
+        let response = self
             .client
             .post(dest.as_str())
             .body(req_string)
@@ -252,7 +315,7 @@ impl KanidmClient {
 
         let req_string = serde_json::to_string(&request).unwrap();
 
-        let mut response = self
+        let response = self
             .client
             .put(dest.as_str())
             .body(req_string)
@@ -272,7 +335,7 @@ impl KanidmClient {
 
     fn perform_get_request<T: DeserializeOwned>(&self, dest: &str) -> Result<T, ClientError> {
         let dest = format!("{}{}", self.addr, dest);
-        let mut response = self
+        let response = self
             .client
             .get(dest.as_str())
             .send()
@@ -291,7 +354,7 @@ impl KanidmClient {
 
     fn perform_delete_request(&self, dest: &str) -> Result<(), ClientError> {
         let dest = format!("{}{}", self.addr, dest);
-        let mut response = self
+        let response = self
             .client
             .delete(dest.as_str())
             .send()
@@ -309,7 +372,7 @@ impl KanidmClient {
     // Can't use generic get due to possible un-auth case.
     pub fn whoami(&self) -> Result<Option<(Entry, UserAuthToken)>, ClientError> {
         let whoami_dest = format!("{}/v1/self", self.addr);
-        let mut response = self.client.get(whoami_dest.as_str()).send().unwrap();
+        let response = self.client.get(whoami_dest.as_str()).send().unwrap();
 
         match response.status() {
             // Continue to process.
@@ -456,6 +519,21 @@ impl KanidmClient {
         self.perform_delete_request(format!("/v1/group/{}/_attr/member", id).as_str())
     }
 
+    pub fn idm_group_unix_token_get(&self, id: &str) -> Result<UnixGroupToken, ClientError> {
+        self.perform_get_request(format!("/v1/group/{}/_unix/_token", id).as_str())
+    }
+
+    pub fn idm_group_unix_extend(
+        &self,
+        id: &str,
+        gidnumber: Option<u32>,
+    ) -> Result<(), ClientError> {
+        let gx = GroupUnixExtend {
+            gidnumber: gidnumber,
+        };
+        self.perform_post_request(format!("/v1/group/{}/_unix", id).as_str(), gx)
+    }
+
     pub fn idm_group_delete(&self, id: &str) -> Result<(), ClientError> {
         self.perform_delete_request(format!("/v1/group/{}", id).as_str())
     }
@@ -553,6 +631,23 @@ impl KanidmClient {
 
     pub fn idm_account_radius_token_get(&self, id: &str) -> Result<RadiusAuthToken, ClientError> {
         self.perform_get_request(format!("/v1/account/{}/_radius/_token", id).as_str())
+    }
+
+    pub fn idm_account_unix_extend(
+        &self,
+        id: &str,
+        gidnumber: Option<u32>,
+        shell: Option<&str>,
+    ) -> Result<(), ClientError> {
+        let ux = AccountUnixExtend {
+            shell: shell.map(|s| s.to_string()),
+            gidnumber: gidnumber,
+        };
+        self.perform_post_request(format!("/v1/account/{}/_unix", id).as_str(), ux)
+    }
+
+    pub fn idm_account_unix_token_get(&self, id: &str) -> Result<UnixUserToken, ClientError> {
+        self.perform_get_request(format!("/v1/account/{}/_unix/_token", id).as_str())
     }
 
     pub fn idm_account_get_ssh_pubkeys(&self, id: &str) -> Result<Vec<String>, ClientError> {

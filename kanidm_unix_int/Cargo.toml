@@ -1,0 +1,49 @@
+[package]
+name = "kanidm_unix_int"
+version = "0.1.0"
+authors = ["William Brown <william@blackhats.net.au>"]
+edition = "2018"
+license = "MPL-2.0"
+description = "Kanidm Unix Integration Clients"
+documentation = "https://docs.rs/kanidm/latest/kanidm/"
+homepage = "https://github.com/kanidm/kanidm/"
+repository = "https://github.com/kanidm/kanidm/"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "kanidm_unix_common"
+path = "src/lib.rs"
+
+[[bin]]
+name = "kanidm_unixd"
+path = "src/daemon.rs"
+
+[[bin]]
+name = "kanidm_ssh_authorizedkeys"
+path = "src/ssh_authorizedkeys.rs"
+
+[dependencies]
+kanidm_client = { path = "../kanidm_client", version = "0.1" }
+kanidm_proto = { path = "../kanidm_proto", version = "0.1" }
+# actix = { path = "../../actix", version = "0.9" }
+actix = "0.7"
+# actix-rt = "1.0"
+tokio = { version = "0.2", features=["full"] }
+tokio-util = { version = "0.2", features = ["codec"] }
+futures = "0.3"
+bytes = "0.5"
+
+log = "0.4"
+env_logger = "0.6"
+serde = "1.0"
+serde_derive = "1.0"
+serde_cbor = "0.10"
+structopt = { version = "0.2", default-features = false }
+
+rusqlite = { version = "0.20", features = ["backup"] }
+r2d2 = "0.8"
+r2d2_sqlite = "0.12"
+
+[dev-dependencies]
+kanidm = { path = "../kanidmd", version = "0.1" }

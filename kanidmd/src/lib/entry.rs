@@ -1170,6 +1170,13 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         }
     }
 
+    pub fn get_ava_single_uint32(&self, attr: &str) -> Option<u32> {
+        match self.get_ava_single(attr) {
+            Some(a) => a.to_uint32(),
+            None => None,
+        }
+    }
+
     pub fn get_ava_single_syntax(&self, attr: &str) -> Option<&SyntaxType> {
         match self.get_ava_single(attr) {
             Some(a) => a.to_syntaxtype(),

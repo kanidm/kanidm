@@ -136,3 +136,55 @@ impl RadiusAuthTokenEvent {
         RadiusAuthTokenEvent { event: e, target }
     }
 }
+
+#[derive(Debug)]
+pub struct UnixUserTokenEvent {
+    pub event: Event,
+    pub target: Uuid,
+}
+
+impl UnixUserTokenEvent {
+    pub fn from_parts(
+        audit: &mut AuditScope,
+        qs: &QueryServerReadTransaction,
+        uat: Option<UserAuthToken>,
+        target: Uuid,
+    ) -> Result<Self, OperationError> {
+        let e = Event::from_ro_uat(audit, qs, uat)?;
+
+        Ok(UnixUserTokenEvent { event: e, target })
+    }
+
+    #[cfg(test)]
+    pub fn new_internal(target: Uuid) -> Self {
+        let e = Event::from_internal();
+
+        UnixUserTokenEvent { event: e, target }
+    }
+}
+
+#[derive(Debug)]
+pub struct UnixGroupTokenEvent {
+    pub event: Event,
+    pub target: Uuid,
+}
+
+impl UnixGroupTokenEvent {
+    pub fn from_parts(
+        audit: &mut AuditScope,
+        qs: &QueryServerReadTransaction,
+        uat: Option<UserAuthToken>,
+        target: Uuid,
+    ) -> Result<Self, OperationError> {
+        let e = Event::from_ro_uat(audit, qs, uat)?;
+
+        Ok(UnixGroupTokenEvent { event: e, target })
+    }
+
+    #[cfg(test)]
+    pub fn new_internal(target: Uuid) -> Self {
+        let e = Event::from_internal();
+
+        UnixGroupTokenEvent { event: e, target }
+    }
+}

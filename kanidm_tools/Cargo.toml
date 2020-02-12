@@ -15,7 +15,7 @@ name = "kanidm"
 path = "src/main.rs"
 
 [[bin]]
-name = "kanidm_ssh_authorizedkeys"
+name = "kanidm_ssh_authorizedkeys_direct"
 path = "src/ssh_authorizedkeys.rs"
 
 [[bin]]

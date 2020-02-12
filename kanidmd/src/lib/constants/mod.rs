@@ -39,6 +39,8 @@ pub static _UUID_IDM_ADMIN_V1: &str = "00000000-0000-0000-0000-000000000018";
 pub static _UUID_SYSTEM_ADMINS: &str = "00000000-0000-0000-0000-000000000019";
 // TODO
 pub static UUID_DOMAIN_ADMINS: &str = "00000000-0000-0000-0000-000000000020";
+pub static _UUID_IDM_ACCOUNT_UNIX_EXTEND_PRIV: &str = "00000000-0000-0000-0000-000000000021";
+pub static _UUID_IDM_GROUP_UNIX_EXTEND_PRIV: &str = "00000000-0000-0000-0000-000000000022";
 //
 pub static _UUID_IDM_HIGH_PRIVILEGE: &str = "00000000-0000-0000-0000-000000001000";
 
@@ -106,6 +108,7 @@ pub static UUID_SCHEMA_CLASS_POSIXACCOUNT: &str = "00000000-0000-0000-0000-ffff0
 pub static UUID_SCHEMA_CLASS_POSIXGROUP: &str = "00000000-0000-0000-0000-ffff00000058";
 pub static UUID_SCHEMA_ATTR_BADLIST_PASSWORD: &str = "00000000-0000-0000-0000-ffff00000059";
 pub static UUID_SCHEMA_CLASS_SYSTEM_CONFIG: &str = "00000000-0000-0000-0000-ffff00000060";
+pub static UUID_SCHEMA_ATTR_LOGINSHELL: &str = "00000000-0000-0000-0000-ffff00000061";
 
 // System and domain infos
 // I'd like to strongly criticise william of the past for fucking up these allocations.
@@ -142,6 +145,8 @@ pub static _UUID_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1: &str = "00000000-0000-0000-000
 pub static UUID_IDM_ACP_DOMAIN_ADMIN_PRIV_V1: &str = "00000000-0000-0000-0000-ffffff000026";
 pub static STR_UUID_SYSTEM_CONFIG: &str = "00000000-0000-0000-0000-ffffff000027";
 pub static UUID_IDM_ACP_SYSTEM_CONFIG_PRIV_V1: &str = "00000000-0000-0000-0000-ffffff000028";
+pub static _UUID_IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1: &str = "00000000-0000-0000-0000-ffffff000029";
+pub static _UUID_IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1: &str = "00000000-0000-0000-0000-ffffff000030";
 
 // End of system ranges
 pub static STR_UUID_DOES_NOT_EXIST: &str = "00000000-0000-0000-0000-fffffffffffe";
@@ -267,6 +272,17 @@ pub static JSON_IDM_GROUP_WRITE_PRIV_V1: &str = r#"{
         ]
     }
 }"#;
+pub static JSON_IDM_GROUP_UNIX_EXTEND_PRIV_V1: &str = r#"{
+    "attrs": {
+        "class": ["group", "object"],
+        "name": ["idm_group_unix_extend_priv"],
+        "uuid": ["00000000-0000-0000-0000-000000000022"],
+        "description": ["Builtin IDM Group for granting unix group extension permissions."],
+        "member": [
+            "00000000-0000-0000-0000-000000000001"
+        ]
+    }
+}"#;
 // * account read manager
 pub static JSON_IDM_ACCOUNT_READ_PRIV_V1: &str = r#"{
     "attrs": {
@@ -298,6 +314,15 @@ pub static JSON_IDM_ACCOUNT_WRITE_PRIV_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-000000000006"],
         "description": ["Builtin IDM Group for granting elevated account write permissions."],
         "member": ["00000000-0000-0000-0000-000000000014"]
+    }
+}"#;
+pub static JSON_IDM_ACCOUNT_UNIX_EXTEND_PRIV_V1: &str = r#"{
+    "attrs": {
+        "class": ["group", "object"],
+        "name": ["idm_account_unix_extend_priv"],
+        "uuid": ["00000000-0000-0000-0000-000000000021"],
+        "description": ["Builtin IDM Group for granting account unix extend permissions."],
+        "member": ["00000000-0000-0000-0000-000000000001"]
     }
 }"#;
 // * RADIUS servers
@@ -545,8 +570,9 @@ pub static JSON_IDM_SELF_ACP_READ_V1: &str = r#"{
             "legalname",
             "class",
             "memberof",
-            "member",
             "radius_secret",
+            "gidnumber",
+            "loginshell",
             "uuid"
         ]
     }
@@ -595,6 +621,7 @@ pub static JSON_IDM_ALL_ACP_READ_V1: &str = r#"{
             "member",
             "uuid",
             "gidnumber",
+            "loginshell",
             "ssh_publickey"
         ]
     }
@@ -747,11 +774,10 @@ pub static JSON_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1: &str = r#"{
             "displayname",
             "description",
             "primary_credential",
-            "ssh_publickey",
-            "gidnumber"
+            "ssh_publickey"
         ],
         "acp_create_class": [
-            "object", "account", "posixaccount"
+            "object", "account"
         ]
     }
 }"#;
@@ -1122,11 +1148,10 @@ pub static JSON_IDM_ACP_GROUP_MANAGE_PRIV_V1: &str = r#"{
             "class",
             "name",
             "description",
-            "gidnumber",
             "member"
         ],
         "acp_create_class": [
-            "object", "group", "posixgroup"
+            "object", "group"
         ]
     }
 }"#;
@@ -1254,6 +1279,67 @@ pub static JSON_IDM_ACP_SYSTEM_CONFIG_PRIV_V1: &str = r#"{
         "acp_modify_presentattr": [
             "badlist_password"
         ]
+    }
+}"#;
+
+// 29 account unix extend
+pub static JSON_IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1: &str = r#"{
+    "attrs": {
+        "class": [
+            "object",
+            "access_control_search",
+            "access_control_profile",
+            "access_control_modify"
+        ],
+        "name": ["idm_acp_account_unix_extend_priv"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000029"],
+        "description": ["Builtin IDM Control for managing accounts."],
+        "acp_receiver": [
+            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000021\"]}"
+        ],
+        "acp_targetscope": [
+            "{\"And\": [{\"Eq\": [\"class\",\"account\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+        ],
+        "acp_search_attr": [
+            "class", "name", "spn", "uuid", "description", "gidnumber", "loginshell"
+        ],
+        "acp_modify_removedattr": [
+            "class", "loginshell", "gidnumber"
+        ],
+        "acp_modify_presentattr": [
+            "class", "loginshell", "gidnumber"
+        ],
+        "acp_modify_class": ["posixaccount"]
+    }
+}"#;
+// 30 group unix extend
+pub static JSON_IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1: &str = r#"{
+    "attrs": {
+        "class": [
+            "object",
+            "access_control_profile",
+            "access_control_search",
+            "access_control_modify"
+        ],
+        "name": ["idm_acp_group_unix_extend_priv"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000030"],
+        "description": ["Builtin IDM Control for managing and extending unix groups"],
+        "acp_receiver": [
+            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000022\"]}"
+        ],
+        "acp_targetscope": [
+            "{\"And\": [{\"Eq\": [\"class\",\"group\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+        ],
+        "acp_search_attr": [
+            "class", "name", "spn", "uuid", "description", "member", "gidnumber"
+        ],
+        "acp_modify_removedattr": [
+            "class", "gidnumber"
+        ],
+        "acp_modify_presentattr": [
+            "class", "gidnumber"
+        ],
+        "acp_modify_class": ["posixgroup"]
     }
 }"#;
 
@@ -1568,7 +1654,9 @@ pub static JSON_SCHEMA_ATTR_GIDNUMBER: &str = r#"{
       "description": [
         "The groupid (uid) number of a group or account. This is the same value as the UID number on posix accounts for security reasons."
       ],
-      "index": [],
+      "index": [
+        "EQUALITY"
+      ],
       "unique": [
         "true"
       ],
@@ -1612,6 +1700,35 @@ pub static JSON_SCHEMA_ATTR_BADLIST_PASSWORD: &str = r#"{
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000059"
+      ]
+    }
+}"#;
+
+pub static JSON_SCHEMA_ATTR_LOGINSHELL: &str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "A posix users unix login shell"
+      ],
+      "index": [],
+      "unique": [
+        "false"
+      ],
+      "multivalue": [
+        "false"
+      ],
+      "attributename": [
+        "loginshell"
+      ],
+      "syntax": [
+        "UTF8STRING_INSENSITIVE"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000061"
       ]
     }
 }"#;
@@ -1782,6 +1899,9 @@ pub static JSON_SCHEMA_CLASS_POSIXACCOUNT: &str = r#"
       ],
       "classname": [
         "posixaccount"
+      ],
+      "systemmay": [
+        "loginshell"
       ],
       "systemmust": [
         "gidnumber"
