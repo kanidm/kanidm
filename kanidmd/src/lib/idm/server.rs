@@ -917,8 +917,9 @@ mod tests {
 
             assert!(tok_r.name == "admin");
             assert!(tok_r.spn == "admin@example.com");
-            assert!(tok_r.groups.len() == 1);
-            assert!(tok_r.groups[0].name == "testgroup");
+            assert!(tok_r.groups.len() == 2);
+            assert!(tok_r.groups[0].name == "admin");
+            assert!(tok_r.groups[1].name == "testgroup");
         })
     }
 }
