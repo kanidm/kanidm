@@ -192,7 +192,6 @@ impl<'a> DbTxn<'a> {
                 Ok((t, e))
             })
             .transpose();
-
         r
     }
 
@@ -232,11 +231,90 @@ impl<'a> DbTxn<'a> {
     }
 
     pub fn get_group(&self, grp_id: &str) -> Result<Option<(UnixGroupToken, u64)>, ()> {
-        unimplemented!();
+        let mut stmt = self.conn
+            .prepare(
+        "SELECT token, expiry FROM group_t WHERE uuid = :grp_id OR name = :grp_id OR spn = :grp_id"
+            )
+            .map_err(|e| {
+                error!("sqlite select prepare failure -> {:?}", e);
+                ()
+            })?;
+
+        // Makes tuple (token, expiry)
+        let data_iter = stmt
+            .query_map(&[grp_id], |row| Ok((row.get(0)?, row.get(1)?)))
+            .map_err(|e| {
+                error!("sqlite query_map failure -> {:?}", e);
+                ()
+            })?;
+        let data: Result<Vec<(Vec<u8>, i64)>, _> = data_iter
+            .map(|v| {
+                v.map_err(|e| {
+                    error!("sqlite map failure -> {:?}", e);
+                    ()
+                })
+            })
+            .collect();
+
+        let data = data?;
+
+        // Assert only one result?
+        if data.len() >= 2 {
+            error!("invalid db state, multiple entries matched query?");
+            return Err(());
+        }
+
+        let r: Result<Option<(_, _)>, ()> = data
+            .first()
+            .map(|(token, expiry)| {
+                // token convert with cbor.
+                let t = serde_cbor::from_slice(token.as_slice()).map_err(|e| {
+                    error!("cbor error -> {:?}", e);
+                    ()
+                })?;
+                let e = u64::try_from(*expiry).map_err(|e| {
+                    error!("u64 convert error -> {:?}", e);
+                    ()
+                })?;
+                Ok((t, e))
+            })
+            .transpose();
+        r
     }
 
-    pub fn update_group(&self, grp_id: &UnixGroupToken, expire: u64) -> Result<(), ()> {
-        unimplemented!();
+    pub fn update_group(&self, grp: &UnixGroupToken, expire: u64) -> Result<(), ()> {
+        let data = serde_cbor::to_vec(grp).map_err(|e| {
+            error!("cbor error -> {:?}", e);
+            ()
+        })?;
+        let expire = i64::try_from(expire).map_err(|e| {
+            error!("i64 convert error -> {:?}", e);
+            ()
+        })?;
+
+        let mut stmt = self.conn
+            .prepare("INSERT OR REPLACE INTO group_t (uuid, name, spn, gidnumber, token, expiry) VALUES (:uuid, :name, :spn, :gidnumber, :token, :expiry)")
+            .map_err(|e| {
+                error!("sqlite prepare error -> {:?}", e);
+                ()
+            })?;
+
+        stmt.execute_named(&[
+            (":uuid", &grp.uuid),
+            (":name", &grp.name),
+            (":spn", &grp.spn),
+            (":gidnumber", &grp.gidnumber),
+            (":token", &data),
+            (":expiry", &expire),
+        ])
+        .map(|r| {
+            debug!("insert -> {:?}", r);
+            ()
+        })
+        .map_err(|e| {
+            error!("sqlite execute_named error -> {:?}", e);
+            ()
+        })
     }
 }
 
@@ -331,9 +409,9 @@ mod tests {
         assert!(dbtxn.clear_cache().is_ok());
 
         // should be nothing
-        let r1 = dbtxn.get_account("testuser").unwrap();
+        let r1 = dbtxn.get_account("testuser2").unwrap();
         assert!(r1.is_none());
-        let r2 = dbtxn.get_account("testuser@example.com").unwrap();
+        let r2 = dbtxn.get_account("testuser2@example.com").unwrap();
         assert!(r2.is_none());
         let r3 = dbtxn
             .get_account("0302b99c-f0f6-41ab-9492-852692b0fd16")
@@ -350,9 +428,64 @@ mod tests {
         let dbtxn = db.write();
         assert!(dbtxn.migrate().is_ok());
 
-        // test finding no account
+        let mut gt1 = UnixGroupToken {
+            name: "testgroup".to_string(),
+            spn: "testgroup@example.com".to_string(),
+            gidnumber: 2000,
+            uuid: "0302b99c-f0f6-41ab-9492-852692b0fd16".to_string(),
+        };
+
+        // test finding no group
+        let r1 = dbtxn.get_group("testgroup").unwrap();
+        assert!(r1.is_none());
+        let r2 = dbtxn.get_group("testgroup@example.com").unwrap();
+        assert!(r2.is_none());
+        let r3 = dbtxn
+            .get_group("0302b99c-f0f6-41ab-9492-852692b0fd16")
+            .unwrap();
+        assert!(r3.is_none());
+
+        // test adding a group
+        dbtxn.update_group(&gt1, 0).unwrap();
+        let r1 = dbtxn.get_group("testgroup").unwrap();
+        assert!(r1.is_some());
+        let r2 = dbtxn.get_group("testgroup@example.com").unwrap();
+        assert!(r2.is_some());
+        let r3 = dbtxn
+            .get_group("0302b99c-f0f6-41ab-9492-852692b0fd16")
+            .unwrap();
+        assert!(r3.is_some());
+
+        // add a group via update
+        gt1.name = "testgroup2".to_string();
+        gt1.spn = "testgroup2@example.com".to_string();
+        dbtxn.update_group(&gt1, 0).unwrap();
+        let r1 = dbtxn.get_group("testgroup").unwrap();
+        assert!(r1.is_none());
+        let r2 = dbtxn.get_group("testgroup@example.com").unwrap();
+        assert!(r2.is_none());
+        let r1 = dbtxn.get_group("testgroup2").unwrap();
+        assert!(r1.is_some());
+        let r2 = dbtxn.get_group("testgroup2@example.com").unwrap();
+        assert!(r2.is_some());
+        let r3 = dbtxn
+            .get_group("0302b99c-f0f6-41ab-9492-852692b0fd16")
+            .unwrap();
+        assert!(r3.is_some());
+
+        // clear cache
+        assert!(dbtxn.clear_cache().is_ok());
+
+        // should be nothing.
+        let r1 = dbtxn.get_group("testgroup2").unwrap();
+        assert!(r1.is_none());
+        let r2 = dbtxn.get_group("testgroup2@example.com").unwrap();
+        assert!(r2.is_none());
+        let r3 = dbtxn
+            .get_group("0302b99c-f0f6-41ab-9492-852692b0fd16")
+            .unwrap();
+        assert!(r3.is_none());
 
         assert!(dbtxn.commit().is_ok());
-        // unimplemented!();
     }
 }

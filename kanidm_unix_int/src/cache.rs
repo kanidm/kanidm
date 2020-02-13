@@ -141,8 +141,15 @@ impl CacheLayer {
             })?;
 
         let dbtxn = self.db.write();
-        dbtxn
-            .update_account(token, offset.as_secs())
+        // We need to add the groups first
+        token
+            .groups
+            .iter()
+            .try_for_each(|g| dbtxn.update_group(g, offset.as_secs()))
+            .and_then(|_|
+                // So that when we add the account it can make the relationships.
+                dbtxn
+                    .update_account(token, offset.as_secs()))
             .and_then(|_| dbtxn.commit())
     }
 
