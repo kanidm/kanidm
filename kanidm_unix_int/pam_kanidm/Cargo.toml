@@ -1,0 +1,13 @@
+[package]
+name = "pam_kanidm"
+version = "0.1.0"
+authors = ["William Brown <william@blackhats.net.au>"]
+edition = "2018"
+
+[lib]
+name = "pam_kanidm"
+crate-type = [ "cdylib" ]
+path =  "src/lib.rs"
+
+[dependencies]
+kanidm_unix_int = { path = "../", version = "0.1" }
