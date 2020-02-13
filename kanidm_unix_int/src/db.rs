@@ -230,6 +230,14 @@ impl<'a> DbTxn<'a> {
             ()
         })
     }
+
+    pub fn get_group(&self, grp_id: &str) -> Result<Option<(UnixGroupToken, u64)>, ()> {
+        unimplemented!();
+    }
+
+    pub fn update_group(&self, grp_id: &UnixGroupToken, expire: u64) -> Result<(), ()> {
+        unimplemented!();
+    }
 }
 
 impl<'a> fmt::Debug for DbTxn<'a> {

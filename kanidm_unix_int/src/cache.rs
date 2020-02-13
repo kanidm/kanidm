@@ -103,6 +103,33 @@ impl CacheLayer {
         }
     }
 
+    fn get_cached_grouptoken(&self, grp_id: &str) -> Result<(bool, Option<UnixGroupToken>), ()> {
+        // grp_id could be:
+        //  * gidnumber
+        //  * name
+        //  * spn
+        //  * uuid
+        //  Attempt to search these in the db.
+        let dbtxn = self.db.write();
+        let r = dbtxn.get_group(grp_id)?;
+
+        match r {
+            Some((ut, ex)) => {
+                // Are we expired?
+                let offset = Duration::from_secs(ex);
+                let ex_time = SystemTime::UNIX_EPOCH + offset;
+                let now = SystemTime::now();
+
+                if now >= ex_time {
+                    Ok((true, Some(ut)))
+                } else {
+                    Ok((false, Some(ut)))
+                }
+            }
+            None => Ok((true, None)),
+        }
+    }
+
     fn set_cache_usertoken(&self, token: &UnixUserToken) -> Result<(), ()> {
         // Set an expiry
         let ex_time = SystemTime::now() + Duration::from_secs(self.timeout_seconds);
@@ -116,6 +143,22 @@ impl CacheLayer {
         let dbtxn = self.db.write();
         dbtxn
             .update_account(token, offset.as_secs())
+            .and_then(|_| dbtxn.commit())
+    }
+
+    fn set_cache_grouptoken(&self, token: &UnixGroupToken) -> Result<(), ()> {
+        // Set an expiry
+        let ex_time = SystemTime::now() + Duration::from_secs(self.timeout_seconds);
+        let offset = ex_time
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .map_err(|e| {
+                error!("time conversion error - ex_time less than epoch? {:?}", e);
+                ()
+            })?;
+
+        let dbtxn = self.db.write();
+        dbtxn
+            .update_group(token, offset.as_secs())
             .and_then(|_| dbtxn.commit())
     }
 
@@ -150,7 +193,38 @@ impl CacheLayer {
         }
     }
 
-    async fn get_usertoken(&self, account_id: &str) -> Result<Option<UnixUserToken>, ()> {
+    async fn refresh_grouptoken(
+        &self,
+        grp_id: &str,
+        token: Option<UnixGroupToken>,
+    ) -> Result<Option<UnixGroupToken>, ()> {
+        match self.client.idm_group_unix_token_get(grp_id).await {
+            Ok(n_tok) => {
+                // We have the token!
+                self.set_cache_grouptoken(&n_tok)?;
+                Ok(Some(n_tok))
+            }
+            Err(e) => {
+                match e {
+                    ClientError::Transport(er) => {
+                        error!("transport error, moving to offline -> {:?}", er);
+                        // Something went wrong, mark offline.
+                        let time = SystemTime::now().add(Duration::from_secs(15));
+                        self.set_cachestate(CacheState::OfflineNextCheck(time))
+                            .await;
+                        Ok(token)
+                    }
+                    er => {
+                        error!("client error -> {:?}", er);
+                        // Some other transient error, continue with the token.
+                        Err(())
+                    }
+                }
+            }
+        }
+    }
+
+    pub async fn get_usertoken(&self, account_id: &str) -> Result<Option<UnixUserToken>, ()> {
         debug!("get_usertoken");
         // get the item from the cache
         let (expired, item) = self.get_cached_usertoken(account_id).map_err(|e| {
@@ -195,6 +269,54 @@ impl CacheLayer {
                 // Attempt to refresh the item
                 // Return it.
                 self.refresh_usertoken(account_id, item).await
+            }
+        }
+    }
+
+    pub async fn get_grouptoken(&self, grp_id: &str) -> Result<Option<UnixGroupToken>, ()> {
+        debug!("get_grouptoken");
+        let (expired, item) = self.get_cached_grouptoken(grp_id).map_err(|e| {
+            debug!("get_usertoken error -> {:?}", e);
+            ()
+        })?;
+
+        let state = self.get_cachestate().await;
+
+        match (expired, state) {
+            (_, CacheState::Offline) => {
+                debug!("offline, returning cached item");
+                Ok(item)
+            }
+            (false, CacheState::OfflineNextCheck(time)) => {
+                debug!(
+                    "offline valid, next check {:?}, returning cached item",
+                    time
+                );
+                // Still valid within lifetime, return.
+                Ok(item)
+            }
+            (false, CacheState::Online) => {
+                debug!("online valid, returning cached item");
+                // Still valid within lifetime, return.
+                Ok(item)
+            }
+            (true, CacheState::OfflineNextCheck(time)) => {
+                debug!("offline expired, next check {:?}, refresh cache", time);
+                // Attempt to refresh the item
+                // Return it.
+                if SystemTime::now() >= time && self.test_connection().await {
+                    // We brought ourselves online, lets go
+                    self.refresh_grouptoken(grp_id, item).await
+                } else {
+                    // Unable to bring up connection, return cache.
+                    Ok(item)
+                }
+            }
+            (true, CacheState::Online) => {
+                debug!("online expired, refresh cache");
+                // Attempt to refresh the item
+                // Return it.
+                self.refresh_grouptoken(grp_id, item).await
             }
         }
     }

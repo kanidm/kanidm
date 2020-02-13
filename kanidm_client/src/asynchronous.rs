@@ -127,4 +127,11 @@ impl KanidmAsyncClient {
         self.perform_get_request(["/v1/account/", id, "/_unix/_token"].concat().as_str())
             .await
     }
+
+    pub async fn idm_group_unix_token_get(&self, id: &str) -> Result<UnixGroupToken, ClientError> {
+        // Format doesn't work in async
+        // format!("/v1/account/{}/_unix/_token", id).as_str()
+        self.perform_get_request(["/v1/group/", id, "/_unix/_token"].concat().as_str())
+            .await
+    }
 }
