@@ -76,21 +76,26 @@ async fn handle_client(
     let mut reqs = Framed::new(sock, ClientCodec::new());
 
     while let Some(Ok(req)) = reqs.next().await {
-        match req {
+        let resp = match req {
             ClientRequest::SshKey(account_id) => {
-                let resp = match cachelayer.get_sshkeys(account_id.as_str()).await {
+                match cachelayer.get_sshkeys(account_id.as_str()).await {
                     Ok(r) => ClientResponse::SshKeys(r),
                     Err(_) => {
                         error!("unable to load keys, returning empty set.");
                         ClientResponse::SshKeys(vec![])
                     }
-                };
-
-                reqs.send(resp).await?;
-                reqs.flush().await?;
-                debug!("flushed response!");
+                }
             }
-        }
+            ClientRequest::NssAccounts => ClientResponse::NssAccounts(Vec::new()),
+            ClientRequest::NssAccountByUid(gid) => ClientResponse::NssAccount(None),
+            ClientRequest::NssAccountByName(account_id) => ClientResponse::NssAccount(None),
+            ClientRequest::NssGroups => ClientResponse::NssGroups(Vec::new()),
+            ClientRequest::NssGroupByGid(gid) => ClientResponse::NssGroup(None),
+            ClientRequest::NssGroupByName(account_id) => ClientResponse::NssGroup(None),
+        };
+        reqs.send(resp).await?;
+        reqs.flush().await?;
+        debug!("flushed response!");
     }
 
     // Disconnect them
