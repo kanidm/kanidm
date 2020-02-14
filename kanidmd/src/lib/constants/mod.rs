@@ -5,7 +5,7 @@ pub mod system_config;
 pub use crate::constants::system_config::JSON_SYSTEM_CONFIG_V1;
 
 // Increment this as we add new schema types and values!!!
-pub static SYSTEM_INDEX_VERSION: i64 = 3;
+pub static SYSTEM_INDEX_VERSION: i64 = 4;
 // On test builds, define to 60 seconds
 #[cfg(test)]
 pub static PURGE_TIMEOUT: u64 = 60;

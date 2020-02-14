@@ -1,5 +1,7 @@
 
 * bump all cargo.toml versions
+    find kani* -name Cargo.toml -exec cat '{}' \; | grep -e '^version ='
+
 * bump index version in constants
 * check for breaking db entry changes.
 
