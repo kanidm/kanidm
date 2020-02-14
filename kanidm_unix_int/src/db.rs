@@ -109,6 +109,22 @@ impl<'a> DbTxn<'a> {
                 ()
             })?;
 
+        self.conn
+            .execute(
+                "CREATE TABLE IF NOT EXISTS memberof_t (
+                g_uuid TEXT,
+                a_uuid TEXT,
+                FOREIGN KEY(g_uuid) REFERENCES group_t(uuid),
+                FOREIGN KEY(a_uuid) REFERENCES account_t(uuid)
+            )
+            ",
+                NO_PARAMS,
+            )
+            .map_err(|e| {
+                error!("sqlite memberof_t create error -> {:?}", e);
+                ()
+            })?;
+
         Ok(())
     }
 
@@ -261,6 +277,46 @@ impl<'a> DbTxn<'a> {
         .map_err(|e| {
             error!("sqlite execute_named error -> {:?}", e);
             ()
+        })?;
+
+        // Now, we have to update the group memberships.
+
+        // First remove everything that already exists:
+        let mut stmt = self
+            .conn
+            .prepare("DELETE FROM memberof_t WHERE a_uuid = :a_uuid")
+            .map_err(|e| {
+                error!("sqlite prepare error -> {:?}", e);
+                ()
+            })?;
+        stmt.execute(&[&account.uuid])
+            .map(|r| {
+                debug!("delete memberships -> {:?}", r);
+                ()
+            })
+            .map_err(|e| {
+                error!("sqlite execute error -> {:?}", e);
+                ()
+            })?;
+
+        let mut stmt = self
+            .conn
+            .prepare("INSERT INTO memberof_t (a_uuid, g_uuid) VALUES (:a_uuid, :g_uuid)")
+            .map_err(|e| {
+                error!("sqlite prepare error -> {:?}", e);
+                ()
+            })?;
+        // Now for each group, add the relation.
+        account.groups.iter().try_for_each(|g| {
+            stmt.execute_named(&[(":a_uuid", &account.uuid), (":g_uuid", &g.uuid)])
+                .map(|r| {
+                    debug!("insert membership -> {:?}", r);
+                    ()
+                })
+                .map_err(|e| {
+                    error!("sqlite execute_named error -> {:?}", e);
+                    ()
+                })
         })
     }
 
@@ -347,6 +403,44 @@ impl<'a> DbTxn<'a> {
             })
             .transpose();
         r
+    }
+
+    pub fn get_group_members(&self, g_uuid: &str) -> Result<Vec<UnixUserToken>, ()> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT account_t.token FROM (account_t, memberof_t) WHERE account_t.uuid = memberof_t.a_uuid AND memberof_t.g_uuid = :g_uuid")
+            .map_err(|e| {
+                error!("sqlite select prepare failure -> {:?}", e);
+                ()
+            })?;
+
+        let data_iter = stmt
+            .query_map(&[g_uuid], |row| Ok(row.get(0)?))
+            .map_err(|e| {
+                error!("sqlite query_map failure -> {:?}", e);
+                ()
+            })?;
+        let data: Result<Vec<Vec<u8>>, _> = data_iter
+            .map(|v| {
+                v.map_err(|e| {
+                    error!("sqlite map failure -> {:?}", e);
+                    ()
+                })
+            })
+            .collect();
+
+        let data = data?;
+
+        data.iter()
+            .map(|token| {
+                // token convert with cbor.
+                debug!("{:?}", token);
+                serde_cbor::from_slice(token.as_slice()).map_err(|e| {
+                    error!("cbor error -> {:?}", e);
+                    ()
+                })
+            })
+            .collect()
     }
 
     pub fn update_group(&self, grp: &UnixGroupToken, expire: u64) -> Result<(), ()> {
@@ -563,6 +657,73 @@ mod tests {
         assert!(r3.is_none());
         let r4 = dbtxn.get_group(&id_gid).unwrap();
         assert!(r4.is_none());
+
+        assert!(dbtxn.commit().is_ok());
+    }
+
+    #[test]
+    fn test_cache_db_account_group_update() {
+        let _ = env_logger::builder().is_test(true).try_init();
+        let db = Db::new("").expect("failed to create.");
+        let dbtxn = db.write();
+        assert!(dbtxn.migrate().is_ok());
+
+        let gt1 = UnixGroupToken {
+            name: "testuser".to_string(),
+            spn: "testuser@example.com".to_string(),
+            gidnumber: 2000,
+            uuid: "0302b99c-f0f6-41ab-9492-852692b0fd16".to_string(),
+        };
+
+        let gt2 = UnixGroupToken {
+            name: "testgroup".to_string(),
+            spn: "testgroup@example.com".to_string(),
+            gidnumber: 2001,
+            uuid: "b500be97-8552-42a5-aca0-668bc5625705".to_string(),
+        };
+
+        let mut ut1 = UnixUserToken {
+            name: "testuser".to_string(),
+            spn: "testuser@example.com".to_string(),
+            displayname: "Test User".to_string(),
+            gidnumber: 2000,
+            uuid: "0302b99c-f0f6-41ab-9492-852692b0fd16".to_string(),
+            shell: None,
+            groups: vec![gt1.clone(), gt2],
+            sshkeys: vec!["key-a".to_string()],
+        };
+
+        // First, add the groups.
+        ut1.groups.iter().for_each(|g| {
+            dbtxn.update_group(&g, 0).unwrap();
+        });
+
+        // The add the account
+        dbtxn.update_account(&ut1, 0).unwrap();
+
+        // Now, get the memberships of the two groups.
+        let m1 = dbtxn
+            .get_group_members("0302b99c-f0f6-41ab-9492-852692b0fd16")
+            .unwrap();
+        let m2 = dbtxn
+            .get_group_members("b500be97-8552-42a5-aca0-668bc5625705")
+            .unwrap();
+        assert!(m1[0].name == "testuser");
+        assert!(m2[0].name == "testuser");
+
+        // Now alter testuser, remove gt2, update.
+        ut1.groups = vec![gt1];
+        dbtxn.update_account(&ut1, 0).unwrap();
+
+        // Check that the memberships have updated correctly.
+        let m1 = dbtxn
+            .get_group_members("0302b99c-f0f6-41ab-9492-852692b0fd16")
+            .unwrap();
+        let m2 = dbtxn
+            .get_group_members("b500be97-8552-42a5-aca0-668bc5625705")
+            .unwrap();
+        assert!(m1[0].name == "testuser");
+        assert!(m2.len() == 0);
 
         assert!(dbtxn.commit().is_ok());
     }

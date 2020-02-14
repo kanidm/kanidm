@@ -352,6 +352,21 @@ impl CacheLayer {
         }
     }
 
+    fn get_groupmembers(&self, uuid: &str) -> Vec<String> {
+        let dbtxn = self.db.write();
+
+        dbtxn
+            .get_group_members(uuid)
+            .unwrap_or_else(|_| Vec::new())
+            .into_iter()
+            .map(|ut| {
+                // TODO: We'll have a switch to convert this to spn in some configs
+                // in the future.
+                ut.name
+            })
+            .collect()
+    }
+
     // Get ssh keys for an account id
     pub async fn get_sshkeys(&self, account_id: &str) -> Result<Vec<String>, ()> {
         let token = self.get_usertoken(Id::Name(account_id.to_string())).await?;
@@ -383,10 +398,13 @@ impl CacheLayer {
     async fn get_nssgroup(&self, grp_id: Id) -> Result<Option<NssGroup>, ()> {
         let token = self.get_grouptoken(grp_id).await?;
         // Get members set.
-        Ok(token.map(|tok| NssGroup {
-            name: tok.name,
-            gid: tok.gidnumber,
-            members: Vec::new(),
+        Ok(token.map(|tok| {
+            let members = self.get_groupmembers(&tok.uuid);
+            NssGroup {
+                name: tok.name,
+                gid: tok.gidnumber,
+                members: members,
+            }
         }))
     }
 

@@ -206,6 +206,9 @@ fn test_cache_group() {
                 .await
                 .expect("Failed to get from cache");
             assert!(gt.is_some());
+            // And check we have no members in the group. Members are an artifact of
+            // user lookups!
+            assert!(gt.unwrap().members.len() == 0);
 
             // clear cache, go online
             assert!(cachelayer.invalidate().is_ok());
@@ -229,6 +232,8 @@ fn test_cache_group() {
                 .await
                 .expect("Failed to get from cache");
             assert!(gt.is_some());
+            // And check we have members in the group, since we came from a userlook up
+            assert!(gt.unwrap().members.len() == 1);
         };
         rt.block_on(fut);
     })
