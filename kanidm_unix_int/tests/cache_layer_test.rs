@@ -147,7 +147,7 @@ fn test_cache_account() {
             cachelayer.mark_offline().await;
 
             let ut = cachelayer
-                .get_usertoken("testaccount1")
+                .get_nssaccount_name("testaccount1")
                 .await
                 .expect("Failed to get from cache");
             assert!(ut.is_none());
@@ -158,7 +158,7 @@ fn test_cache_account() {
 
             // get the account
             let ut = cachelayer
-                .get_usertoken("testaccount1")
+                .get_nssaccount_name("testaccount1")
                 .await
                 .expect("Failed to get from cache");
             assert!(ut.is_some());
@@ -168,7 +168,7 @@ fn test_cache_account() {
 
             // can still get account
             let ut = cachelayer
-                .get_usertoken("testaccount1")
+                .get_nssaccount_name("testaccount1")
                 .await
                 .expect("Failed to get from cache");
             assert!(ut.is_some());
@@ -185,7 +185,7 @@ fn test_cache_group() {
             // Force offline. Show we have no groups.
             cachelayer.mark_offline().await;
             let gt = cachelayer
-                .get_grouptoken("testgroup1")
+                .get_nssgroup_name("testgroup1")
                 .await
                 .expect("Failed to get from cache");
             assert!(gt.is_none());
@@ -194,7 +194,7 @@ fn test_cache_group() {
             cachelayer.attempt_online().await;
             assert!(cachelayer.test_connection().await);
             let gt = cachelayer
-                .get_grouptoken("testgroup1")
+                .get_nssgroup_name("testgroup1")
                 .await
                 .expect("Failed to get from cache");
             assert!(gt.is_some());
@@ -202,7 +202,7 @@ fn test_cache_group() {
             // go offline. still works
             cachelayer.mark_offline().await;
             let gt = cachelayer
-                .get_grouptoken("testgroup1")
+                .get_nssgroup_name("testgroup1")
                 .await
                 .expect("Failed to get from cache");
             assert!(gt.is_some());
@@ -215,7 +215,7 @@ fn test_cache_group() {
             // get an account with the group
             // DO NOT get the group yet.
             let ut = cachelayer
-                .get_usertoken("testaccount1")
+                .get_nssaccount_name("testaccount1")
                 .await
                 .expect("Failed to get from cache");
             assert!(ut.is_some());
@@ -225,7 +225,7 @@ fn test_cache_group() {
 
             // show we have the group despite no direct calls
             let gt = cachelayer
-                .get_grouptoken("testgroup1")
+                .get_nssgroup_name("testgroup1")
                 .await
                 .expect("Failed to get from cache");
             assert!(gt.is_some());

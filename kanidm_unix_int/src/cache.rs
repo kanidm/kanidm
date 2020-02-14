@@ -1,10 +1,17 @@
 use crate::db::Db;
+use crate::unix_proto::{NssGroup, NssUser};
 use kanidm_client::asynchronous::KanidmAsyncClient;
 use kanidm_client::ClientError;
 use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
 use std::ops::Add;
+use std::string::ToString;
 use std::time::{Duration, SystemTime};
 use tokio::sync::Mutex;
+
+pub enum Id {
+    Name(String),
+    Gid(u32),
+}
 
 #[derive(Debug, Clone)]
 enum CacheState {
@@ -19,6 +26,15 @@ pub struct CacheLayer {
     client: KanidmAsyncClient,
     state: Mutex<CacheState>,
     timeout_seconds: u64,
+}
+
+impl ToString for Id {
+    fn to_string(&self) -> String {
+        match self {
+            Id::Name(s) => s.clone(),
+            Id::Gid(g) => g.to_string(),
+        }
+    }
 }
 
 impl CacheLayer {
@@ -76,7 +92,7 @@ impl CacheLayer {
         dbtxn.clear_cache().and_then(|_| dbtxn.commit())
     }
 
-    fn get_cached_usertoken(&self, account_id: &str) -> Result<(bool, Option<UnixUserToken>), ()> {
+    fn get_cached_usertoken(&self, account_id: &Id) -> Result<(bool, Option<UnixUserToken>), ()> {
         // Account_id could be:
         //  * gidnumber
         //  * name
@@ -84,7 +100,7 @@ impl CacheLayer {
         //  * uuid
         //  Attempt to search these in the db.
         let dbtxn = self.db.write();
-        let r = dbtxn.get_account(account_id)?;
+        let r = dbtxn.get_account(&account_id)?;
 
         match r {
             Some((ut, ex)) => {
@@ -103,7 +119,7 @@ impl CacheLayer {
         }
     }
 
-    fn get_cached_grouptoken(&self, grp_id: &str) -> Result<(bool, Option<UnixGroupToken>), ()> {
+    fn get_cached_grouptoken(&self, grp_id: &Id) -> Result<(bool, Option<UnixGroupToken>), ()> {
         // grp_id could be:
         //  * gidnumber
         //  * name
@@ -111,7 +127,7 @@ impl CacheLayer {
         //  * uuid
         //  Attempt to search these in the db.
         let dbtxn = self.db.write();
-        let r = dbtxn.get_group(grp_id)?;
+        let r = dbtxn.get_group(&grp_id)?;
 
         match r {
             Some((ut, ex)) => {
@@ -171,10 +187,14 @@ impl CacheLayer {
 
     async fn refresh_usertoken(
         &self,
-        account_id: &str,
+        account_id: &Id,
         token: Option<UnixUserToken>,
     ) -> Result<Option<UnixUserToken>, ()> {
-        match self.client.idm_account_unix_token_get(account_id).await {
+        match self
+            .client
+            .idm_account_unix_token_get(account_id.to_string().as_str())
+            .await
+        {
             Ok(n_tok) => {
                 // We have the token!
                 self.set_cache_usertoken(&n_tok)?;
@@ -202,10 +222,14 @@ impl CacheLayer {
 
     async fn refresh_grouptoken(
         &self,
-        grp_id: &str,
+        grp_id: &Id,
         token: Option<UnixGroupToken>,
     ) -> Result<Option<UnixGroupToken>, ()> {
-        match self.client.idm_group_unix_token_get(grp_id).await {
+        match self
+            .client
+            .idm_group_unix_token_get(grp_id.to_string().as_str())
+            .await
+        {
             Ok(n_tok) => {
                 // We have the token!
                 self.set_cache_grouptoken(&n_tok)?;
@@ -231,10 +255,10 @@ impl CacheLayer {
         }
     }
 
-    pub async fn get_usertoken(&self, account_id: &str) -> Result<Option<UnixUserToken>, ()> {
+    async fn get_usertoken(&self, account_id: Id) -> Result<Option<UnixUserToken>, ()> {
         debug!("get_usertoken");
         // get the item from the cache
-        let (expired, item) = self.get_cached_usertoken(account_id).map_err(|e| {
+        let (expired, item) = self.get_cached_usertoken(&account_id).map_err(|e| {
             debug!("get_usertoken error -> {:?}", e);
             ()
         })?;
@@ -265,7 +289,7 @@ impl CacheLayer {
                 // Return it.
                 if SystemTime::now() >= time && self.test_connection().await {
                     // We brought ourselves online, lets go
-                    self.refresh_usertoken(account_id, item).await
+                    self.refresh_usertoken(&account_id, item).await
                 } else {
                     // Unable to bring up connection, return cache.
                     Ok(item)
@@ -275,15 +299,15 @@ impl CacheLayer {
                 debug!("online expired, refresh cache");
                 // Attempt to refresh the item
                 // Return it.
-                self.refresh_usertoken(account_id, item).await
+                self.refresh_usertoken(&account_id, item).await
             }
         }
     }
 
-    pub async fn get_grouptoken(&self, grp_id: &str) -> Result<Option<UnixGroupToken>, ()> {
+    async fn get_grouptoken(&self, grp_id: Id) -> Result<Option<UnixGroupToken>, ()> {
         debug!("get_grouptoken");
-        let (expired, item) = self.get_cached_grouptoken(grp_id).map_err(|e| {
-            debug!("get_usertoken error -> {:?}", e);
+        let (expired, item) = self.get_cached_grouptoken(&grp_id).map_err(|e| {
+            debug!("get_grouptoken error -> {:?}", e);
             ()
         })?;
 
@@ -313,7 +337,7 @@ impl CacheLayer {
                 // Return it.
                 if SystemTime::now() >= time && self.test_connection().await {
                     // We brought ourselves online, lets go
-                    self.refresh_grouptoken(grp_id, item).await
+                    self.refresh_grouptoken(&grp_id, item).await
                 } else {
                     // Unable to bring up connection, return cache.
                     Ok(item)
@@ -323,15 +347,55 @@ impl CacheLayer {
                 debug!("online expired, refresh cache");
                 // Attempt to refresh the item
                 // Return it.
-                self.refresh_grouptoken(grp_id, item).await
+                self.refresh_grouptoken(&grp_id, item).await
             }
         }
     }
 
     // Get ssh keys for an account id
     pub async fn get_sshkeys(&self, account_id: &str) -> Result<Vec<String>, ()> {
-        let token = self.get_usertoken(account_id).await?;
+        let token = self.get_usertoken(Id::Name(account_id.to_string())).await?;
         Ok(token.map(|t| t.sshkeys).unwrap_or_else(|| Vec::new()))
+    }
+
+    async fn get_nssaccount(&self, account_id: Id) -> Result<Option<NssUser>, ()> {
+        let token = self.get_usertoken(account_id).await?;
+        Ok(token.map(|tok| {
+            NssUser {
+                homedir: format!("/home/{}", tok.name),
+                name: tok.name,
+                gid: tok.gidnumber,
+                gecos: tok.displayname,
+                // TODO: default shell override.
+                shell: tok.shell.unwrap_or_else(|| "/bin/bash".to_string()),
+            }
+        }))
+    }
+
+    pub async fn get_nssaccount_name(&self, account_id: &str) -> Result<Option<NssUser>, ()> {
+        self.get_nssaccount(Id::Name(account_id.to_string())).await
+    }
+
+    pub async fn get_nssaccount_gid(&self, gid: u32) -> Result<Option<NssUser>, ()> {
+        self.get_nssaccount(Id::Gid(gid)).await
+    }
+
+    async fn get_nssgroup(&self, grp_id: Id) -> Result<Option<NssGroup>, ()> {
+        let token = self.get_grouptoken(grp_id).await?;
+        // Get members set.
+        Ok(token.map(|tok| NssGroup {
+            name: tok.name,
+            gid: tok.gidnumber,
+            members: Vec::new(),
+        }))
+    }
+
+    pub async fn get_nssgroup_name(&self, grp_id: &str) -> Result<Option<NssGroup>, ()> {
+        self.get_nssgroup(Id::Name(grp_id.to_string())).await
+    }
+
+    pub async fn get_nssgroup_gid(&self, gid: u32) -> Result<Option<NssGroup>, ()> {
+        self.get_nssgroup(Id::Gid(gid)).await
     }
 
     pub async fn test_connection(&self) -> bool {

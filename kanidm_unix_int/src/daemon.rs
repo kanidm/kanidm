@@ -78,20 +78,68 @@ async fn handle_client(
     while let Some(Ok(req)) = reqs.next().await {
         let resp = match req {
             ClientRequest::SshKey(account_id) => {
-                match cachelayer.get_sshkeys(account_id.as_str()).await {
-                    Ok(r) => ClientResponse::SshKeys(r),
-                    Err(_) => {
+                debug!("sshkey req");
+                cachelayer
+                    .get_sshkeys(account_id.as_str())
+                    .await
+                    .map(|r| ClientResponse::SshKeys(r))
+                    .unwrap_or_else(|_| {
                         error!("unable to load keys, returning empty set.");
                         ClientResponse::SshKeys(vec![])
-                    }
-                }
+                    })
             }
-            ClientRequest::NssAccounts => ClientResponse::NssAccounts(Vec::new()),
-            ClientRequest::NssAccountByUid(gid) => ClientResponse::NssAccount(None),
-            ClientRequest::NssAccountByName(account_id) => ClientResponse::NssAccount(None),
-            ClientRequest::NssGroups => ClientResponse::NssGroups(Vec::new()),
-            ClientRequest::NssGroupByGid(gid) => ClientResponse::NssGroup(None),
-            ClientRequest::NssGroupByName(account_id) => ClientResponse::NssGroup(None),
+            ClientRequest::NssAccounts => {
+                debug!("nssaccounts req");
+                ClientResponse::NssAccounts(Vec::new())
+            }
+            ClientRequest::NssAccountByUid(gid) => {
+                debug!("nssaccountbyuid req");
+                cachelayer
+                    .get_nssaccount_gid(gid)
+                    .await
+                    .map(|acc| ClientResponse::NssAccount(acc))
+                    .unwrap_or_else(|_| {
+                        error!("unable to load account, returning empty.");
+                        ClientResponse::NssAccount(None)
+                    })
+            }
+            ClientRequest::NssAccountByName(account_id) => {
+                debug!("nssaccountbyname req");
+                cachelayer
+                    .get_nssaccount_name(account_id.as_str())
+                    .await
+                    .map(|acc| ClientResponse::NssAccount(acc))
+                    .unwrap_or_else(|_| {
+                        error!("unable to load account, returning empty.");
+                        ClientResponse::NssAccount(None)
+                    })
+            }
+            ClientRequest::NssGroups => {
+                debug!("nssgroups req");
+                ClientResponse::NssGroups(Vec::new())
+            }
+            ClientRequest::NssGroupByGid(gid) => {
+                debug!("nssgroupbygid req");
+                cachelayer
+                    .get_nssgroup_gid(gid)
+                    .await
+                    .map(|grp| ClientResponse::NssGroup(grp))
+                    .unwrap_or_else(|_| {
+                        error!("unable to load group, returning empty.");
+                        ClientResponse::NssGroup(None)
+                    })
+            }
+            ClientRequest::NssGroupByName(grp_id) => {
+                debug!("nssgroupbyname req");
+                cachelayer
+                    .get_nssgroup_name(grp_id.as_str())
+                    .await
+                    .map(|grp| ClientResponse::NssGroup(grp))
+                    .unwrap_or_else(|_| {
+                        error!("unable to load group, returning empty.");
+                        ClientResponse::NssGroup(None)
+                    })
+            }
         };
         reqs.send(resp).await?;
         reqs.flush().await?;

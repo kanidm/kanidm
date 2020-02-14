@@ -5,6 +5,7 @@ use rusqlite::NO_PARAMS;
 use std::convert::TryFrom;
 use std::fmt;
 
+use crate::cache::Id;
 use std::sync::{Mutex, MutexGuard};
 
 pub struct Db {
@@ -143,7 +144,7 @@ impl<'a> DbTxn<'a> {
         Ok(())
     }
 
-    pub fn get_account(&self, account_id: &str) -> Result<Option<(UnixUserToken, u64)>, ()> {
+    fn get_account_data_name(&self, account_id: &str) -> Result<Vec<(Vec<u8>, i64)>, ()> {
         let mut stmt = self.conn
             .prepare(
         "SELECT token, expiry FROM account_t WHERE uuid = :account_id OR name = :account_id OR spn = :account_id"
@@ -168,8 +169,41 @@ impl<'a> DbTxn<'a> {
                 })
             })
             .collect();
+        data
+    }
 
-        let data = data?;
+    fn get_account_data_gid(&self, gid: &u32) -> Result<Vec<(Vec<u8>, i64)>, ()> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT token, expiry FROM account_t WHERE gidnumber = :gid")
+            .map_err(|e| {
+                error!("sqlite select prepare failure -> {:?}", e);
+                ()
+            })?;
+
+        // Makes tuple (token, expiry)
+        let data_iter = stmt
+            .query_map(&[gid], |row| Ok((row.get(0)?, row.get(1)?)))
+            .map_err(|e| {
+                error!("sqlite query_map failure -> {:?}", e);
+                ()
+            })?;
+        let data: Result<Vec<(Vec<u8>, i64)>, _> = data_iter
+            .map(|v| {
+                v.map_err(|e| {
+                    error!("sqlite map failure -> {:?}", e);
+                    ()
+                })
+            })
+            .collect();
+        data
+    }
+
+    pub fn get_account(&self, account_id: &Id) -> Result<Option<(UnixUserToken, u64)>, ()> {
+        let data = match account_id {
+            Id::Name(n) => self.get_account_data_name(n.as_str()),
+            Id::Gid(g) => self.get_account_data_gid(g),
+        }?;
 
         // Assert only one result?
         if data.len() >= 2 {
@@ -230,7 +264,7 @@ impl<'a> DbTxn<'a> {
         })
     }
 
-    pub fn get_group(&self, grp_id: &str) -> Result<Option<(UnixGroupToken, u64)>, ()> {
+    fn get_group_data_name(&self, grp_id: &str) -> Result<Vec<(Vec<u8>, i64)>, ()> {
         let mut stmt = self.conn
             .prepare(
         "SELECT token, expiry FROM group_t WHERE uuid = :grp_id OR name = :grp_id OR spn = :grp_id"
@@ -255,8 +289,41 @@ impl<'a> DbTxn<'a> {
                 })
             })
             .collect();
+        data
+    }
 
-        let data = data?;
+    fn get_group_data_gid(&self, gid: &u32) -> Result<Vec<(Vec<u8>, i64)>, ()> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT token, expiry FROM group_t WHERE gidnumber = :gid")
+            .map_err(|e| {
+                error!("sqlite select prepare failure -> {:?}", e);
+                ()
+            })?;
+
+        // Makes tuple (token, expiry)
+        let data_iter = stmt
+            .query_map(&[gid], |row| Ok((row.get(0)?, row.get(1)?)))
+            .map_err(|e| {
+                error!("sqlite query_map failure -> {:?}", e);
+                ()
+            })?;
+        let data: Result<Vec<(Vec<u8>, i64)>, _> = data_iter
+            .map(|v| {
+                v.map_err(|e| {
+                    error!("sqlite map failure -> {:?}", e);
+                    ()
+                })
+            })
+            .collect();
+        data
+    }
+
+    pub fn get_group(&self, grp_id: &Id) -> Result<Option<(UnixGroupToken, u64)>, ()> {
+        let data = match grp_id {
+            Id::Name(n) => self.get_group_data_name(n.as_str()),
+            Id::Gid(g) => self.get_group_data_gid(g),
+        }?;
 
         // Assert only one result?
         if data.len() >= 2 {
@@ -339,6 +406,7 @@ impl<'a> Drop for DbTxn<'a> {
 #[cfg(test)]
 mod tests {
     use super::Db;
+    use crate::cache::Id;
     use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
 
     #[test]
@@ -359,32 +427,35 @@ mod tests {
             sshkeys: vec!["key-a".to_string()],
         };
 
+        let id_name = Id::Name("testuser".to_string());
+        let id_name2 = Id::Name("testuser2".to_string());
+        let id_spn = Id::Name("testuser@example.com".to_string());
+        let id_spn2 = Id::Name("testuser2@example.com".to_string());
+        let id_uuid = Id::Name("0302b99c-f0f6-41ab-9492-852692b0fd16".to_string());
+        let id_gid = Id::Gid(2000);
+
         // test finding no account
-        let r1 = dbtxn.get_account("testuser").unwrap();
+        let r1 = dbtxn.get_account(&id_name).unwrap();
         assert!(r1.is_none());
-        let r2 = dbtxn.get_account("testuser@example.com").unwrap();
+        let r2 = dbtxn.get_account(&id_spn).unwrap();
         assert!(r2.is_none());
-        let r3 = dbtxn
-            .get_account("0302b99c-f0f6-41ab-9492-852692b0fd16")
-            .unwrap();
+        let r3 = dbtxn.get_account(&id_uuid).unwrap();
         assert!(r3.is_none());
-        /*
-        let r4 = dbtxn.get_account("2000").unwrap();
+        let r4 = dbtxn.get_account(&id_gid).unwrap();
         assert!(r4.is_none());
-        */
 
         // test adding an account
         dbtxn.update_account(&ut1, 0).unwrap();
 
         // test we can get it.
-        let r1 = dbtxn.get_account("testuser").unwrap();
+        let r1 = dbtxn.get_account(&id_name).unwrap();
         assert!(r1.is_some());
-        let r2 = dbtxn.get_account("testuser@example.com").unwrap();
+        let r2 = dbtxn.get_account(&id_spn).unwrap();
         assert!(r2.is_some());
-        let r3 = dbtxn
-            .get_account("0302b99c-f0f6-41ab-9492-852692b0fd16")
-            .unwrap();
+        let r3 = dbtxn.get_account(&id_uuid).unwrap();
         assert!(r3.is_some());
+        let r4 = dbtxn.get_account(&id_gid).unwrap();
+        assert!(r4.is_some());
 
         // test adding an account that was renamed
         ut1.name = "testuser2".to_string();
@@ -392,31 +463,31 @@ mod tests {
         dbtxn.update_account(&ut1, 0).unwrap();
 
         // get the account
-        let r1 = dbtxn.get_account("testuser").unwrap();
+        let r1 = dbtxn.get_account(&id_name).unwrap();
         assert!(r1.is_none());
-        let r2 = dbtxn.get_account("testuser@example.com").unwrap();
+        let r2 = dbtxn.get_account(&id_spn).unwrap();
         assert!(r2.is_none());
-        let r1 = dbtxn.get_account("testuser2").unwrap();
+        let r1 = dbtxn.get_account(&id_name2).unwrap();
         assert!(r1.is_some());
-        let r2 = dbtxn.get_account("testuser2@example.com").unwrap();
+        let r2 = dbtxn.get_account(&id_spn2).unwrap();
         assert!(r2.is_some());
-        let r3 = dbtxn
-            .get_account("0302b99c-f0f6-41ab-9492-852692b0fd16")
-            .unwrap();
+        let r3 = dbtxn.get_account(&id_uuid).unwrap();
         assert!(r3.is_some());
+        let r4 = dbtxn.get_account(&id_gid).unwrap();
+        assert!(r4.is_some());
 
         // Clear cache
         assert!(dbtxn.clear_cache().is_ok());
 
         // should be nothing
-        let r1 = dbtxn.get_account("testuser2").unwrap();
+        let r1 = dbtxn.get_account(&id_name2).unwrap();
         assert!(r1.is_none());
-        let r2 = dbtxn.get_account("testuser2@example.com").unwrap();
+        let r2 = dbtxn.get_account(&id_spn2).unwrap();
         assert!(r2.is_none());
-        let r3 = dbtxn
-            .get_account("0302b99c-f0f6-41ab-9492-852692b0fd16")
-            .unwrap();
+        let r3 = dbtxn.get_account(&id_uuid).unwrap();
         assert!(r3.is_none());
+        let r4 = dbtxn.get_account(&id_gid).unwrap();
+        assert!(r4.is_none());
 
         assert!(dbtxn.commit().is_ok());
     }
@@ -435,56 +506,63 @@ mod tests {
             uuid: "0302b99c-f0f6-41ab-9492-852692b0fd16".to_string(),
         };
 
+        let id_name = Id::Name("testgroup".to_string());
+        let id_name2 = Id::Name("testgroup2".to_string());
+        let id_spn = Id::Name("testgroup@example.com".to_string());
+        let id_spn2 = Id::Name("testgroup2@example.com".to_string());
+        let id_uuid = Id::Name("0302b99c-f0f6-41ab-9492-852692b0fd16".to_string());
+        let id_gid = Id::Gid(2000);
+
         // test finding no group
-        let r1 = dbtxn.get_group("testgroup").unwrap();
+        let r1 = dbtxn.get_group(&id_name).unwrap();
         assert!(r1.is_none());
-        let r2 = dbtxn.get_group("testgroup@example.com").unwrap();
+        let r2 = dbtxn.get_group(&id_spn).unwrap();
         assert!(r2.is_none());
-        let r3 = dbtxn
-            .get_group("0302b99c-f0f6-41ab-9492-852692b0fd16")
-            .unwrap();
+        let r3 = dbtxn.get_group(&id_uuid).unwrap();
         assert!(r3.is_none());
+        let r4 = dbtxn.get_group(&id_gid).unwrap();
+        assert!(r4.is_none());
 
         // test adding a group
         dbtxn.update_group(&gt1, 0).unwrap();
-        let r1 = dbtxn.get_group("testgroup").unwrap();
+        let r1 = dbtxn.get_group(&id_name).unwrap();
         assert!(r1.is_some());
-        let r2 = dbtxn.get_group("testgroup@example.com").unwrap();
+        let r2 = dbtxn.get_group(&id_spn).unwrap();
         assert!(r2.is_some());
-        let r3 = dbtxn
-            .get_group("0302b99c-f0f6-41ab-9492-852692b0fd16")
-            .unwrap();
+        let r3 = dbtxn.get_group(&id_uuid).unwrap();
         assert!(r3.is_some());
+        let r4 = dbtxn.get_group(&id_gid).unwrap();
+        assert!(r4.is_some());
 
         // add a group via update
         gt1.name = "testgroup2".to_string();
         gt1.spn = "testgroup2@example.com".to_string();
         dbtxn.update_group(&gt1, 0).unwrap();
-        let r1 = dbtxn.get_group("testgroup").unwrap();
+        let r1 = dbtxn.get_group(&id_name).unwrap();
         assert!(r1.is_none());
-        let r2 = dbtxn.get_group("testgroup@example.com").unwrap();
+        let r2 = dbtxn.get_group(&id_spn).unwrap();
         assert!(r2.is_none());
-        let r1 = dbtxn.get_group("testgroup2").unwrap();
+        let r1 = dbtxn.get_group(&id_name2).unwrap();
         assert!(r1.is_some());
-        let r2 = dbtxn.get_group("testgroup2@example.com").unwrap();
+        let r2 = dbtxn.get_group(&id_spn2).unwrap();
         assert!(r2.is_some());
-        let r3 = dbtxn
-            .get_group("0302b99c-f0f6-41ab-9492-852692b0fd16")
-            .unwrap();
+        let r3 = dbtxn.get_group(&id_uuid).unwrap();
         assert!(r3.is_some());
+        let r4 = dbtxn.get_group(&id_gid).unwrap();
+        assert!(r4.is_some());
 
         // clear cache
         assert!(dbtxn.clear_cache().is_ok());
 
         // should be nothing.
-        let r1 = dbtxn.get_group("testgroup2").unwrap();
+        let r1 = dbtxn.get_group(&id_name2).unwrap();
         assert!(r1.is_none());
-        let r2 = dbtxn.get_group("testgroup2@example.com").unwrap();
+        let r2 = dbtxn.get_group(&id_spn2).unwrap();
         assert!(r2.is_none());
-        let r3 = dbtxn
-            .get_group("0302b99c-f0f6-41ab-9492-852692b0fd16")
-            .unwrap();
+        let r3 = dbtxn.get_group(&id_uuid).unwrap();
         assert!(r3.is_none());
+        let r4 = dbtxn.get_group(&id_gid).unwrap();
+        assert!(r4.is_none());
 
         assert!(dbtxn.commit().is_ok());
     }
