@@ -35,5 +35,5 @@ pub enum ClientResponse {
     NssGroups(Vec<NssGroup>),
     NssGroup(Option<NssGroup>),
     Ok,
-    Error
+    Error,
 }

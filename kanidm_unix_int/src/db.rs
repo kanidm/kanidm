@@ -272,10 +272,12 @@ impl<'a> DbTxn<'a> {
                 ()
             })?;
 
-        let data_iter = stmt.query_map(NO_PARAMS, |row| Ok(row.get(0)?)).map_err(|e| {
-            error!("sqlite query_map failure -> {:?}", e);
-            ()
-        })?;
+        let data_iter = stmt
+            .query_map(NO_PARAMS, |row| Ok(row.get(0)?))
+            .map_err(|e| {
+                error!("sqlite query_map failure -> {:?}", e);
+                ()
+            })?;
         let data: Result<Vec<Vec<u8>>, _> = data_iter
             .map(|v| {
                 v.map_err(|e| {
@@ -506,10 +508,12 @@ impl<'a> DbTxn<'a> {
                 ()
             })?;
 
-        let data_iter = stmt.query_map(NO_PARAMS, |row| Ok(row.get(0)?)).map_err(|e| {
-            error!("sqlite query_map failure -> {:?}", e);
-            ()
-        })?;
+        let data_iter = stmt
+            .query_map(NO_PARAMS, |row| Ok(row.get(0)?))
+            .map_err(|e| {
+                error!("sqlite query_map failure -> {:?}", e);
+                ()
+            })?;
         let data: Result<Vec<Vec<u8>>, _> = data_iter
             .map(|v| {
                 v.map_err(|e| {

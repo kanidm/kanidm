@@ -112,15 +112,15 @@ pub(crate) struct UnixGroup {
 
 macro_rules! try_from_group_e {
     ($value:expr) => {{
-        if !$value.attribute_value_pres("class", &PVCLASS_GROUP) {
-            return Err(OperationError::InvalidAccountState(
-                "Missing class: group".to_string(),
-            ));
-        }
+        // We could be looking at a user for their UPG, OR a true group.
 
-        if !$value.attribute_value_pres("class", &PVCLASS_POSIXGROUP) {
+        if !(($value.attribute_value_pres("class", &PVCLASS_ACCOUNT)
+            && $value.attribute_value_pres("class", &PVCLASS_POSIXACCOUNT))
+            || ($value.attribute_value_pres("class", &PVCLASS_GROUP)
+                && $value.attribute_value_pres("class", &PVCLASS_POSIXGROUP)))
+        {
             return Err(OperationError::InvalidAccountState(
-                "Missing class: posixgroup".to_string(),
+                "Missing class: account && posixaccount OR group && posixgroup".to_string(),
             ));
         }
 

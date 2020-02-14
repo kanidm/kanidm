@@ -154,23 +154,17 @@ async fn handle_client(
             }
             ClientRequest::InvalidateCache => {
                 debug!("invalidate cache");
-                cachelayer.invalidate()
-                    .map(|_|
-                        ClientResponse::Ok
-                    )
-                    .unwrap_or(
-                        ClientResponse::Error
-                    )
+                cachelayer
+                    .invalidate()
+                    .map(|_| ClientResponse::Ok)
+                    .unwrap_or(ClientResponse::Error)
             }
             ClientRequest::ClearCache => {
                 debug!("clear cache");
-                cachelayer.clear_cache()
-                    .map(|_|
-                        ClientResponse::Ok
-                    )
-                    .unwrap_or(
-                        ClientResponse::Error
-                    )
+                cachelayer
+                    .clear_cache()
+                    .map(|_| ClientResponse::Ok)
+                    .unwrap_or(ClientResponse::Error)
             }
         };
         reqs.send(resp).await?;
