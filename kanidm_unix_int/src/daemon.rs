@@ -167,6 +167,14 @@ async fn handle_client(
                     .map(|_| ClientResponse::Ok)
                     .unwrap_or(ClientResponse::Error)
             }
+            ClientRequest::Status => {
+                debug!("status check");
+                if cachelayer.test_connection().await {
+                    ClientResponse::Ok
+                } else {
+                    ClientResponse::Error
+                }
+            }
         };
         reqs.send(resp).await?;
         reqs.flush().await?;

@@ -25,6 +25,7 @@ pub enum ClientRequest {
     NssGroupByName(String),
     InvalidateCache,
     ClearCache,
+    Status,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

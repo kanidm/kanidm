@@ -31,6 +31,10 @@ path = "src/cache_invalidate.rs"
 name = "kanidm_cache_clear"
 path = "src/cache_clear.rs"
 
+[[bin]]
+name = "kanidm_unixd_status"
+path =  "src/daemon_status.rs"
+
 [dependencies]
 kanidm_client = { path = "../kanidm_client", version = "0.1" }
 kanidm_proto = { path = "../kanidm_proto", version = "0.1" }
