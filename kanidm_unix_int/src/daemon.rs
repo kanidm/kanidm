@@ -4,6 +4,7 @@ extern crate log;
 use bytes::{BufMut, BytesMut};
 use futures::SinkExt;
 use futures::StreamExt;
+use libc::umask;
 use std::error::Error;
 use std::io;
 use std::sync::Arc;
@@ -201,7 +202,11 @@ async fn main() {
         .expect("Failed to build cache layer."),
     );
 
+    // Set the umask while we open the path
+    let before = unsafe { umask(0) };
     let mut listener = UnixListener::bind(DEFAULT_SOCK_PATH).unwrap();
+    // Undo it.
+    let _ = unsafe { umask(before) };
 
     let server = async move {
         let mut incoming = listener.incoming();
