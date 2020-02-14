@@ -14,7 +14,7 @@ use kanidm_client::{KanidmClient, KanidmClientBuilder};
 static PORT_ALLOC: AtomicUsize = AtomicUsize::new(18080);
 static ADMIN_TEST_PASSWORD: &str = "integration test admin password";
 
-fn run_test(fix_fn: fn(KanidmClient) -> (), test_fn: fn(CacheLayer) -> ()) {
+fn run_test(fix_fn: fn(&KanidmClient) -> (), test_fn: fn(CacheLayer, KanidmClient) -> ()) {
     // ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
     let _ = env_logger::builder().is_test(true).try_init();
     let (tx, rx) = mpsc::channel();
@@ -45,11 +45,11 @@ fn run_test(fix_fn: fn(KanidmClient) -> (), test_fn: fn(CacheLayer) -> ()) {
     let addr = format!("http://127.0.0.1:{}", port);
 
     // Run fixtures
-    let rsclient = KanidmClientBuilder::new()
+    let adminclient = KanidmClientBuilder::new()
         .address(addr.clone())
         .build()
         .expect("Failed to build sync client");
-    fix_fn(rsclient);
+    fix_fn(&adminclient);
 
     let rsclient = KanidmClientBuilder::new()
         .address(addr)
@@ -62,14 +62,14 @@ fn run_test(fix_fn: fn(KanidmClient) -> (), test_fn: fn(CacheLayer) -> ()) {
     )
     .expect("Failed to build cache layer.");
 
-    test_fn(cachelayer);
+    test_fn(cachelayer, adminclient);
 
     // We DO NOT need teardown, as sqlite is in mem
     // let the tables hit the floor
     sys.stop();
 }
 
-fn test_fixture(rsclient: KanidmClient) -> () {
+fn test_fixture(rsclient: &KanidmClient) -> () {
     let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
     assert!(res.is_ok());
     // Not recommended in production!
@@ -104,7 +104,7 @@ fn test_fixture(rsclient: KanidmClient) -> () {
 
 #[test]
 fn test_cache_sshkey() {
-    run_test(test_fixture, |cachelayer| {
+    run_test(test_fixture, |cachelayer, _adminclient| {
         let mut rt = Runtime::new().expect("Failed to start tokio");
         let fut = async move {
             // Force offline. Show we have no keys.
@@ -140,7 +140,7 @@ fn test_cache_sshkey() {
 
 #[test]
 fn test_cache_account() {
-    run_test(test_fixture, |cachelayer| {
+    run_test(test_fixture, |cachelayer, _adminclient| {
         let mut rt = Runtime::new().expect("Failed to start tokio");
         let fut = async move {
             // Force offline. Show we have no account
@@ -185,7 +185,7 @@ fn test_cache_account() {
 
 #[test]
 fn test_cache_group() {
-    run_test(test_fixture, |cachelayer| {
+    run_test(test_fixture, |cachelayer, _adminclient| {
         let mut rt = Runtime::new().expect("Failed to start tokio");
         let fut = async move {
             // Force offline. Show we have no groups.
@@ -246,6 +246,48 @@ fn test_cache_group() {
                 .get_nssgroups()
                 .expect("failed to list all groups");
             assert!(gs.len() == 2);
+        };
+        rt.block_on(fut);
+    })
+}
+
+#[test]
+fn test_cache_group_delete() {
+    run_test(test_fixture, |cachelayer, adminclient| {
+        let mut rt = Runtime::new().expect("Failed to start tokio");
+        let fut = async move {
+            // get the group
+
+            // delete it.
+
+            // invalidate cache
+
+            // "get it"
+
+            // should be empty.
+
+            unimplemented!();
+        };
+        rt.block_on(fut);
+    })
+}
+
+#[test]
+fn test_cache_account_delete() {
+    run_test(test_fixture, |cachelayer, adminclient| {
+        let mut rt = Runtime::new().expect("Failed to start tokio");
+        let fut = async move {
+            // get the group
+
+            // delete it.
+
+            // invalidate cache
+
+            // "get it"
+
+            // should be empty.
+
+            unimplemented!();
         };
         rt.block_on(fut);
     })
