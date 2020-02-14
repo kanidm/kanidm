@@ -90,7 +90,13 @@ async fn handle_client(
             }
             ClientRequest::NssAccounts => {
                 debug!("nssaccounts req");
-                ClientResponse::NssAccounts(Vec::new())
+                cachelayer
+                    .get_nssaccounts()
+                    .map(|r| ClientResponse::NssAccounts(r))
+                    .unwrap_or_else(|_| {
+                        error!("unable to enum accounts");
+                        ClientResponse::NssAccounts(Vec::new())
+                    })
             }
             ClientRequest::NssAccountByUid(gid) => {
                 debug!("nssaccountbyuid req");
@@ -116,7 +122,13 @@ async fn handle_client(
             }
             ClientRequest::NssGroups => {
                 debug!("nssgroups req");
-                ClientResponse::NssGroups(Vec::new())
+                cachelayer
+                    .get_nssgroups()
+                    .map(|r| ClientResponse::NssGroups(r))
+                    .unwrap_or_else(|_| {
+                        error!("unable to enum groups");
+                        ClientResponse::NssGroups(Vec::new())
+                    })
             }
             ClientRequest::NssGroupByGid(gid) => {
                 debug!("nssgroupbygid req");
@@ -139,6 +151,26 @@ async fn handle_client(
                         error!("unable to load group, returning empty.");
                         ClientResponse::NssGroup(None)
                     })
+            }
+            ClientRequest::InvalidateCache => {
+                debug!("invalidate cache");
+                cachelayer.invalidate()
+                    .map(|_|
+                        ClientResponse::Ok
+                    )
+                    .unwrap_or(
+                        ClientResponse::Error
+                    )
+            }
+            ClientRequest::ClearCache => {
+                debug!("clear cache");
+                cachelayer.clear_cache()
+                    .map(|_|
+                        ClientResponse::Ok
+                    )
+                    .unwrap_or(
+                        ClientResponse::Error
+                    )
             }
         };
         reqs.send(resp).await?;

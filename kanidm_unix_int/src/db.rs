@@ -142,6 +142,24 @@ impl<'a> DbTxn<'a> {
             })
     }
 
+    pub fn invalidate(&self) -> Result<(), ()> {
+        self.conn
+            .execute("UPDATE group_t SET expiry = 0", NO_PARAMS)
+            .map_err(|e| {
+                debug!("sqlite update group_t failure -> {:?}", e);
+                ()
+            })?;
+
+        self.conn
+            .execute("UPDATE account_t SET expiry = 0", NO_PARAMS)
+            .map_err(|e| {
+                debug!("sqlite update account_t failure -> {:?}", e);
+                ()
+            })?;
+
+        Ok(())
+    }
+
     pub fn clear_cache(&self) -> Result<(), ()> {
         self.conn
             .execute("DELETE FROM group_t", NO_PARAMS)
@@ -243,6 +261,42 @@ impl<'a> DbTxn<'a> {
             })
             .transpose();
         r
+    }
+
+    pub fn get_accounts(&self) -> Result<Vec<UnixUserToken>, ()> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT token FROM account_t")
+            .map_err(|e| {
+                error!("sqlite select prepare failure -> {:?}", e);
+                ()
+            })?;
+
+        let data_iter = stmt.query_map(NO_PARAMS, |row| Ok(row.get(0)?)).map_err(|e| {
+            error!("sqlite query_map failure -> {:?}", e);
+            ()
+        })?;
+        let data: Result<Vec<Vec<u8>>, _> = data_iter
+            .map(|v| {
+                v.map_err(|e| {
+                    error!("sqlite map failure -> {:?}", e);
+                    ()
+                })
+            })
+            .collect();
+
+        let data = data?;
+
+        data.iter()
+            .map(|token| {
+                // token convert with cbor.
+                debug!("{:?}", token);
+                serde_cbor::from_slice(token.as_slice()).map_err(|e| {
+                    error!("cbor error -> {:?}", e);
+                    ()
+                })
+            })
+            .collect()
     }
 
     pub fn update_account(&self, account: &UnixUserToken, expire: u64) -> Result<(), ()> {
@@ -420,6 +474,42 @@ impl<'a> DbTxn<'a> {
                 error!("sqlite query_map failure -> {:?}", e);
                 ()
             })?;
+        let data: Result<Vec<Vec<u8>>, _> = data_iter
+            .map(|v| {
+                v.map_err(|e| {
+                    error!("sqlite map failure -> {:?}", e);
+                    ()
+                })
+            })
+            .collect();
+
+        let data = data?;
+
+        data.iter()
+            .map(|token| {
+                // token convert with cbor.
+                debug!("{:?}", token);
+                serde_cbor::from_slice(token.as_slice()).map_err(|e| {
+                    error!("cbor error -> {:?}", e);
+                    ()
+                })
+            })
+            .collect()
+    }
+
+    pub fn get_groups(&self) -> Result<Vec<UnixGroupToken>, ()> {
+        let mut stmt = self
+            .conn
+            .prepare("SELECT token FROM group_t")
+            .map_err(|e| {
+                error!("sqlite select prepare failure -> {:?}", e);
+                ()
+            })?;
+
+        let data_iter = stmt.query_map(NO_PARAMS, |row| Ok(row.get(0)?)).map_err(|e| {
+            error!("sqlite query_map failure -> {:?}", e);
+            ()
+        })?;
         let data: Result<Vec<Vec<u8>>, _> = data_iter
             .map(|v| {
                 v.map_err(|e| {

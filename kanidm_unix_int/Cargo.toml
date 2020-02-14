@@ -23,6 +23,14 @@ path = "src/daemon.rs"
 name = "kanidm_ssh_authorizedkeys"
 path = "src/ssh_authorizedkeys.rs"
 
+[[bin]]
+name = "kanidm_cache_invalidate"
+path = "src/cache_invalidate.rs"
+
+[[bin]]
+name = "kanidm_cache_clear"
+path = "src/cache_clear.rs"
+
 [dependencies]
 kanidm_client = { path = "../kanidm_client", version = "0.1" }
 kanidm_proto = { path = "../kanidm_proto", version = "0.1" }

@@ -172,6 +172,12 @@ fn test_cache_account() {
                 .await
                 .expect("Failed to get from cache");
             assert!(ut.is_some());
+
+            // Finally, check we have "all accounts" in the list.
+            let us = cachelayer
+                .get_nssaccounts()
+                .expect("failed to list all accounts");
+            assert!(us.len() == 1);
         };
         rt.block_on(fut);
     })
@@ -234,6 +240,12 @@ fn test_cache_group() {
             assert!(gt.is_some());
             // And check we have members in the group, since we came from a userlook up
             assert!(gt.unwrap().members.len() == 1);
+
+            // Finally, check we have "all groups" in the list.
+            let gs = cachelayer
+                .get_nssgroups()
+                .expect("failed to list all groups");
+            assert!(gs.len() == 2);
         };
         rt.block_on(fut);
     })

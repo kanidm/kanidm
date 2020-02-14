@@ -23,6 +23,8 @@ pub enum ClientRequest {
     NssGroups,
     NssGroupByGid(u32),
     NssGroupByName(String),
+    InvalidateCache,
+    ClearCache,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -32,4 +34,6 @@ pub enum ClientResponse {
     NssAccount(Option<NssUser>),
     NssGroups(Vec<NssGroup>),
     NssGroup(Option<NssGroup>),
+    Ok,
+    Error
 }

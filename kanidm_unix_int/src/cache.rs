@@ -85,11 +85,24 @@ impl CacheLayer {
         self.set_cachestate(CacheState::Offline).await;
     }
 
-    // Invalidate the whole cache. We do this by just deleting the content
-    // of the sqlite db.
-    pub fn invalidate(&self) -> Result<(), ()> {
+    pub fn clear_cache(&self) -> Result<(), ()> {
         let dbtxn = self.db.write();
         dbtxn.clear_cache().and_then(|_| dbtxn.commit())
+    }
+
+    pub fn invalidate(&self) -> Result<(), ()> {
+        let dbtxn = self.db.write();
+        dbtxn.invalidate().and_then(|_| dbtxn.commit())
+    }
+
+    fn get_cached_usertokens(&self) -> Result<Vec<UnixUserToken>, ()> {
+        let dbtxn = self.db.write();
+        dbtxn.get_accounts()
+    }
+
+    fn get_cached_grouptokens(&self) -> Result<Vec<UnixGroupToken>, ()> {
+        let dbtxn = self.db.write();
+        dbtxn.get_groups()
     }
 
     fn get_cached_usertoken(&self, account_id: &Id) -> Result<(bool, Option<UnixUserToken>), ()> {
@@ -373,6 +386,23 @@ impl CacheLayer {
         Ok(token.map(|t| t.sshkeys).unwrap_or_else(|| Vec::new()))
     }
 
+    pub fn get_nssaccounts(&self) -> Result<Vec<NssUser>, ()> {
+        self.get_cached_usertokens().map(|l| {
+            l.into_iter()
+                .map(|tok| {
+                    NssUser {
+                        homedir: format!("/home/{}", tok.name),
+                        name: tok.name,
+                        gid: tok.gidnumber,
+                        gecos: tok.displayname,
+                        // TODO: default shell override.
+                        shell: tok.shell.unwrap_or_else(|| "/bin/bash".to_string()),
+                    }
+                })
+                .collect()
+        })
+    }
+
     async fn get_nssaccount(&self, account_id: Id) -> Result<Option<NssUser>, ()> {
         let token = self.get_usertoken(account_id).await?;
         Ok(token.map(|tok| {
@@ -393,6 +423,21 @@ impl CacheLayer {
 
     pub async fn get_nssaccount_gid(&self, gid: u32) -> Result<Option<NssUser>, ()> {
         self.get_nssaccount(Id::Gid(gid)).await
+    }
+
+    pub fn get_nssgroups(&self) -> Result<Vec<NssGroup>, ()> {
+        self.get_cached_grouptokens().map(|l| {
+            l.into_iter()
+                .map(|tok| {
+                    let members = self.get_groupmembers(&tok.uuid);
+                    NssGroup {
+                        name: tok.name,
+                        gid: tok.gidnumber,
+                        members: members,
+                    }
+                })
+                .collect()
+        })
     }
 
     async fn get_nssgroup(&self, grp_id: Id) -> Result<Option<NssGroup>, ()> {
