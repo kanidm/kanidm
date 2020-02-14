@@ -9,12 +9,13 @@ use kanidm::core::create_server_core;
 use kanidm_unix_common::cache::CacheLayer;
 use tokio::runtime::Runtime;
 
+use kanidm_client::asynchronous::KanidmAsyncClient;
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
 
 static PORT_ALLOC: AtomicUsize = AtomicUsize::new(18080);
 static ADMIN_TEST_PASSWORD: &str = "integration test admin password";
 
-fn run_test(fix_fn: fn(&KanidmClient) -> (), test_fn: fn(CacheLayer, KanidmClient) -> ()) {
+fn run_test(fix_fn: fn(&KanidmClient) -> (), test_fn: fn(CacheLayer, KanidmAsyncClient) -> ()) {
     // ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
     let _ = env_logger::builder().is_test(true).try_init();
     let (tx, rx) = mpsc::channel();
@@ -51,6 +52,11 @@ fn run_test(fix_fn: fn(&KanidmClient) -> (), test_fn: fn(CacheLayer, KanidmClien
         .expect("Failed to build sync client");
     fix_fn(&adminclient);
 
+    let client = KanidmClientBuilder::new()
+        .address(addr.clone())
+        .build_async()
+        .expect("Failed to build async admin client");
+
     let rsclient = KanidmClientBuilder::new()
         .address(addr)
         .build_async()
@@ -62,7 +68,7 @@ fn run_test(fix_fn: fn(&KanidmClient) -> (), test_fn: fn(CacheLayer, KanidmClien
     )
     .expect("Failed to build cache layer.");
 
-    test_fn(cachelayer, adminclient);
+    test_fn(cachelayer, client);
 
     // We DO NOT need teardown, as sqlite is in mem
     // let the tables hit the floor
@@ -257,16 +263,34 @@ fn test_cache_group_delete() {
         let mut rt = Runtime::new().expect("Failed to start tokio");
         let fut = async move {
             // get the group
+            cachelayer.attempt_online().await;
+            assert!(cachelayer.test_connection().await);
+            let gt = cachelayer
+                .get_nssgroup_name("testgroup1")
+                .await
+                .expect("Failed to get from cache");
+            assert!(gt.is_some());
 
             // delete it.
+            adminclient
+                .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+                .await
+                .expect("failed to auth as admin");
+            adminclient
+                .idm_group_delete("testgroup1")
+                .await
+                .expect("failed to delete");
 
             // invalidate cache
+            assert!(cachelayer.invalidate().is_ok());
 
             // "get it"
-
             // should be empty.
-
-            unimplemented!();
+            let gt = cachelayer
+                .get_nssgroup_name("testgroup1")
+                .await
+                .expect("Failed to get from cache");
+            assert!(gt.is_none());
         };
         rt.block_on(fut);
     })
@@ -277,17 +301,42 @@ fn test_cache_account_delete() {
     run_test(test_fixture, |cachelayer, adminclient| {
         let mut rt = Runtime::new().expect("Failed to start tokio");
         let fut = async move {
-            // get the group
+            // get the account
+            cachelayer.attempt_online().await;
+            assert!(cachelayer.test_connection().await);
+            let ut = cachelayer
+                .get_nssaccount_name("testaccount1")
+                .await
+                .expect("Failed to get from cache");
+            assert!(ut.is_some());
 
             // delete it.
+            adminclient
+                .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+                .await
+                .expect("failed to auth as admin");
+            adminclient
+                .idm_account_delete("testaccount1")
+                .await
+                .expect("failed to delete");
 
             // invalidate cache
+            assert!(cachelayer.invalidate().is_ok());
 
             // "get it"
-
+            let ut = cachelayer
+                .get_nssaccount_name("testaccount1")
+                .await
+                .expect("Failed to get from cache");
             // should be empty.
+            assert!(ut.is_none());
 
-            unimplemented!();
+            // The group should be removed too.
+            let gt = cachelayer
+                .get_nssgroup_name("testaccount1")
+                .await
+                .expect("Failed to get from cache");
+            assert!(gt.is_none());
         };
         rt.block_on(fut);
     })

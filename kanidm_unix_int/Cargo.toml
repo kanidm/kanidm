@@ -53,5 +53,7 @@ rusqlite = { version = "0.20", features = ["backup"] }
 r2d2 = "0.8"
 r2d2_sqlite = "0.12"
 
+reqwest = { version = "0.10" }
+
 [dev-dependencies]
 kanidm = { path = "../kanidmd", version = "0.1" }

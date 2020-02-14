@@ -66,6 +66,23 @@ impl KanidmAsyncClient {
         Ok(r)
     }
 
+    async fn perform_delete_request(&self, dest: &str) -> Result<(), ClientError> {
+        let dest = format!("{}{}", self.addr, dest);
+        let response = self
+            .client
+            .delete(dest.as_str())
+            .send()
+            .await
+            .map_err(ClientError::Transport)?;
+
+        match response.status() {
+            reqwest::StatusCode::OK => {}
+            unexpect => return Err(ClientError::Http(unexpect, response.json().await.ok())),
+        }
+
+        Ok(())
+    }
+
     pub async fn auth_step_init(
         &self,
         ident: &str,
@@ -77,6 +94,32 @@ impl KanidmAsyncClient {
 
         let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_init).await;
         r.map(|v| v.state)
+    }
+
+    pub async fn auth_simple_password(
+        &self,
+        ident: &str,
+        password: &str,
+    ) -> Result<UserAuthToken, ClientError> {
+        let _state = match self.auth_step_init(ident, None).await {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+
+        let auth_req = AuthRequest {
+            step: AuthStep::Creds(vec![AuthCredential::Password(password.to_string())]),
+        };
+        let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_req).await;
+
+        let r = r?;
+
+        match r.state {
+            AuthState::Success(uat) => {
+                debug!("==> Authed as uat; {:?}", uat);
+                Ok(uat)
+            }
+            _ => Err(ClientError::AuthenticationFailed),
+        }
     }
 
     pub async fn auth_anonymous(&self) -> Result<UserAuthToken, ClientError> {
@@ -132,6 +175,16 @@ impl KanidmAsyncClient {
         // Format doesn't work in async
         // format!("/v1/account/{}/_unix/_token", id).as_str()
         self.perform_get_request(["/v1/group/", id, "/_unix/_token"].concat().as_str())
+            .await
+    }
+
+    pub async fn idm_account_delete(&self, id: &str) -> Result<(), ClientError> {
+        self.perform_delete_request(["/v1/account/", id].concat().as_str())
+            .await
+    }
+
+    pub async fn idm_group_delete(&self, id: &str) -> Result<(), ClientError> {
+        self.perform_delete_request(["/v1/group/", id].concat().as_str())
             .await
     }
 }

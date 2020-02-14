@@ -114,8 +114,8 @@ impl<'a> DbTxn<'a> {
                 "CREATE TABLE IF NOT EXISTS memberof_t (
                 g_uuid TEXT,
                 a_uuid TEXT,
-                FOREIGN KEY(g_uuid) REFERENCES group_t(uuid),
-                FOREIGN KEY(a_uuid) REFERENCES account_t(uuid)
+                FOREIGN KEY(g_uuid) REFERENCES group_t(uuid) ON DELETE CASCADE,
+                FOREIGN KEY(a_uuid) REFERENCES account_t(uuid) ON DELETE CASCADE
             )
             ",
                 NO_PARAMS,
@@ -376,6 +376,16 @@ impl<'a> DbTxn<'a> {
         })
     }
 
+    pub fn delete_account(&self, a_uuid: &str) -> Result<(), ()> {
+        self.conn
+            .execute("DELETE FROM account_t WHERE uuid = :a_uuid", &[a_uuid])
+            .map(|_| ())
+            .map_err(|e| {
+                error!("sqlite memberof_t create error -> {:?}", e);
+                ()
+            })
+    }
+
     fn get_group_data_name(&self, grp_id: &str) -> Result<Vec<(Vec<u8>, i64)>, ()> {
         let mut stmt = self.conn
             .prepare(
@@ -570,6 +580,16 @@ impl<'a> DbTxn<'a> {
             error!("sqlite execute_named error -> {:?}", e);
             ()
         })
+    }
+
+    pub fn delete_group(&self, g_uuid: &str) -> Result<(), ()> {
+        self.conn
+            .execute("DELETE FROM group_t WHERE uuid = :g_uuid", &[g_uuid])
+            .map(|_| ())
+            .map_err(|e| {
+                error!("sqlite memberof_t create error -> {:?}", e);
+                ()
+            })
     }
 }
 

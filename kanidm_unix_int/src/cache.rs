@@ -2,7 +2,8 @@ use crate::db::Db;
 use crate::unix_proto::{NssGroup, NssUser};
 use kanidm_client::asynchronous::KanidmAsyncClient;
 use kanidm_client::ClientError;
-use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
+use kanidm_proto::v1::{OperationError, UnixGroupToken, UnixUserToken};
+use reqwest::StatusCode;
 use std::ops::Add;
 use std::string::ToString;
 use std::time::{Duration, SystemTime};
@@ -198,6 +199,16 @@ impl CacheLayer {
             .and_then(|_| dbtxn.commit())
     }
 
+    fn delete_cache_usertoken(&self, a_uuid: &str) -> Result<(), ()> {
+        let dbtxn = self.db.write();
+        dbtxn.delete_account(a_uuid).and_then(|_| dbtxn.commit())
+    }
+
+    fn delete_cache_grouptoken(&self, g_uuid: &str) -> Result<(), ()> {
+        let dbtxn = self.db.write();
+        dbtxn.delete_group(g_uuid).and_then(|_| dbtxn.commit())
+    }
+
     async fn refresh_usertoken(
         &self,
         account_id: &Id,
@@ -222,6 +233,19 @@ impl CacheLayer {
                         self.set_cachestate(CacheState::OfflineNextCheck(time))
                             .await;
                         Ok(token)
+                    }
+                    ClientError::Http(
+                        StatusCode::BAD_REQUEST,
+                        Some(OperationError::NoMatchingEntries),
+                    ) => {
+                        // We wele able to contact the server but the entry has been removed.
+                        debug!("entry has been removed, clearing from cache ...");
+                        token
+                            .map(|tok| self.delete_cache_usertoken(&tok.uuid))
+                            // Now an option<result<t, _>>
+                            .transpose()
+                            // now result<option<t>, _>
+                            .map(|_| None)
                     }
                     er => {
                         error!("client error -> {:?}", er);
@@ -257,6 +281,18 @@ impl CacheLayer {
                         self.set_cachestate(CacheState::OfflineNextCheck(time))
                             .await;
                         Ok(token)
+                    }
+                    ClientError::Http(
+                        StatusCode::BAD_REQUEST,
+                        Some(OperationError::NoMatchingEntries),
+                    ) => {
+                        debug!("entry has been removed, clearing from cache ...");
+                        token
+                            .map(|tok| self.delete_cache_grouptoken(&tok.uuid))
+                            // Now an option<result<t, _>>
+                            .transpose()
+                            // now result<option<t>, _>
+                            .map(|_| None)
                     }
                     er => {
                         error!("client error -> {:?}", er);
