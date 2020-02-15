@@ -1,5 +1,7 @@
 
 * bump all cargo.toml versions
+    find kani* -name Cargo.toml -exec cat '{}' \; | grep -e '^version ='
+
 * bump index version in constants
 * check for breaking db entry changes.
 
@@ -12,5 +14,8 @@
 * build kanidm_radisud docker
 
 * vendor and release to build.opensuse.org
+
+    make vendor-prep
+    git archive --format=tar --prefix=kanidm-1.0.0rc4/ HEAD | gzip >kanidm-1.0.0rc4.tar.gz
 
 

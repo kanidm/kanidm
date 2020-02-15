@@ -14,8 +14,6 @@ use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
 struct ClientOpt {
     #[structopt(short = "d", long = "debug")]
     debug: bool,
-    #[structopt()]
-    account_id: String,
 }
 
 #[tokio::main]
@@ -28,14 +26,12 @@ async fn main() {
     }
     env_logger::init();
 
-    debug!("Starting authorized keys tool ...");
-    let req = ClientRequest::SshKey(opt.account_id.clone());
+    debug!("Starting cache invalidate tool ...");
+    let req = ClientRequest::InvalidateCache;
 
     match block_on(call_daemon(DEFAULT_SOCK_PATH, req)) {
         Ok(r) => match r {
-            ClientResponse::SshKeys(sk) => sk.iter().for_each(|k| {
-                println!("{}", k);
-            }),
+            ClientResponse::Ok => info!("success"),
             _ => {
                 error!("Error: unexpected response -> {:?}", r);
             }

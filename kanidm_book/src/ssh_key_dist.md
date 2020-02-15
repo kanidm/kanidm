@@ -37,10 +37,13 @@ Uploading a private key or other data will be rejected. For example:
 
 ## Server Configuration
 
-The kanidm_ssh_authorizedkeys command is part of the kanidm-clients package, so should be installed
-on the servers.
+### Public key caching configuration
 
-To configure the tool, you should edit /etc/kanidm/config, as documented in [clients](./client_tools.md)
+If you have kanidm_unixd running, you can use it to locally cache ssh public keys.
+
+The kanidm_ssh_authorizedkeys command is part of the kanidm-unix-clients package, so should be installed
+on the servers. It communicates to kanidm_unixd, so you should have a configured pam/nsswitch
+setup as well.
 
 You can test this is configured correctly by running:
 
@@ -52,6 +55,30 @@ To configure servers to accept these keys, you must change their /etc/ssh/sshd_c
 contain the lines:
 
     AuthorizedKeysCommand /usr/bin/kanidm_ssh_authorizedkeys -D anonymous %u
+    AuthorizedKeysCommandUser nobody
+
+Restart sshd, and then attempt to authenticate with the keys.
+
+It's highly recommended you keep your client configuration and sshd_configuration in a configuration
+management tool such as salt or ansible.
+
+### Direct configuration
+
+The kanidm_ssh_authorizedkeys_direct command is part of the kanidm-clients package, so should be installed
+on the servers.
+
+To configure the tool, you should edit /etc/kanidm/config, as documented in [clients](./client_tools.md)
+
+You can test this is configured correctly by running:
+
+    kanidm_ssh_authorizedkeys_direct -D anonymous <account name>
+
+If the account has ssh public keys you should see them listed, one per line.
+
+To configure servers to accept these keys, you must change their /etc/ssh/sshd_config to
+contain the lines:
+
+    AuthorizedKeysCommand /usr/bin/kanidm_ssh_authorizedkeys_direct -D anonymous %u
     AuthorizedKeysCommandUser nobody
 
 Restart sshd, and then attempt to authenticate with the keys.

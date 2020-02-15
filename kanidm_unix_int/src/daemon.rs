@@ -4,6 +4,7 @@ extern crate log;
 use bytes::{BufMut, BytesMut};
 use futures::SinkExt;
 use futures::StreamExt;
+use libc::umask;
 use std::error::Error;
 use std::io;
 use std::sync::Arc;
@@ -76,21 +77,108 @@ async fn handle_client(
     let mut reqs = Framed::new(sock, ClientCodec::new());
 
     while let Some(Ok(req)) = reqs.next().await {
-        match req {
+        let resp = match req {
             ClientRequest::SshKey(account_id) => {
-                let resp = match cachelayer.get_sshkeys(account_id.as_str()).await {
-                    Ok(r) => ClientResponse::SshKeys(r),
-                    Err(_) => {
+                debug!("sshkey req");
+                cachelayer
+                    .get_sshkeys(account_id.as_str())
+                    .await
+                    .map(|r| ClientResponse::SshKeys(r))
+                    .unwrap_or_else(|_| {
                         error!("unable to load keys, returning empty set.");
                         ClientResponse::SshKeys(vec![])
-                    }
-                };
-
-                reqs.send(resp).await?;
-                reqs.flush().await?;
-                debug!("flushed response!");
+                    })
             }
-        }
+            ClientRequest::NssAccounts => {
+                debug!("nssaccounts req");
+                cachelayer
+                    .get_nssaccounts()
+                    .map(|r| ClientResponse::NssAccounts(r))
+                    .unwrap_or_else(|_| {
+                        error!("unable to enum accounts");
+                        ClientResponse::NssAccounts(Vec::new())
+                    })
+            }
+            ClientRequest::NssAccountByUid(gid) => {
+                debug!("nssaccountbyuid req");
+                cachelayer
+                    .get_nssaccount_gid(gid)
+                    .await
+                    .map(|acc| ClientResponse::NssAccount(acc))
+                    .unwrap_or_else(|_| {
+                        error!("unable to load account, returning empty.");
+                        ClientResponse::NssAccount(None)
+                    })
+            }
+            ClientRequest::NssAccountByName(account_id) => {
+                debug!("nssaccountbyname req");
+                cachelayer
+                    .get_nssaccount_name(account_id.as_str())
+                    .await
+                    .map(|acc| ClientResponse::NssAccount(acc))
+                    .unwrap_or_else(|_| {
+                        error!("unable to load account, returning empty.");
+                        ClientResponse::NssAccount(None)
+                    })
+            }
+            ClientRequest::NssGroups => {
+                debug!("nssgroups req");
+                cachelayer
+                    .get_nssgroups()
+                    .map(|r| ClientResponse::NssGroups(r))
+                    .unwrap_or_else(|_| {
+                        error!("unable to enum groups");
+                        ClientResponse::NssGroups(Vec::new())
+                    })
+            }
+            ClientRequest::NssGroupByGid(gid) => {
+                debug!("nssgroupbygid req");
+                cachelayer
+                    .get_nssgroup_gid(gid)
+                    .await
+                    .map(|grp| ClientResponse::NssGroup(grp))
+                    .unwrap_or_else(|_| {
+                        error!("unable to load group, returning empty.");
+                        ClientResponse::NssGroup(None)
+                    })
+            }
+            ClientRequest::NssGroupByName(grp_id) => {
+                debug!("nssgroupbyname req");
+                cachelayer
+                    .get_nssgroup_name(grp_id.as_str())
+                    .await
+                    .map(|grp| ClientResponse::NssGroup(grp))
+                    .unwrap_or_else(|_| {
+                        error!("unable to load group, returning empty.");
+                        ClientResponse::NssGroup(None)
+                    })
+            }
+            ClientRequest::InvalidateCache => {
+                debug!("invalidate cache");
+                cachelayer
+                    .invalidate()
+                    .map(|_| ClientResponse::Ok)
+                    .unwrap_or(ClientResponse::Error)
+            }
+            ClientRequest::ClearCache => {
+                debug!("clear cache");
+                cachelayer
+                    .clear_cache()
+                    .map(|_| ClientResponse::Ok)
+                    .unwrap_or(ClientResponse::Error)
+            }
+            ClientRequest::Status => {
+                debug!("status check");
+                if cachelayer.test_connection().await {
+                    ClientResponse::Ok
+                } else {
+                    ClientResponse::Error
+                }
+            }
+        };
+        reqs.send(resp).await?;
+        reqs.flush().await?;
+        debug!("flushed response!");
     }
 
     // Disconnect them
@@ -122,7 +210,11 @@ async fn main() {
         .expect("Failed to build cache layer."),
     );
 
+    // Set the umask while we open the path
+    let before = unsafe { umask(0) };
     let mut listener = UnixListener::bind(DEFAULT_SOCK_PATH).unwrap();
+    // Undo it.
+    let _ = unsafe { umask(before) };
 
     let server = async move {
         let mut incoming = listener.incoming();

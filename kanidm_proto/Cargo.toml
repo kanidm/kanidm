@@ -1,6 +1,6 @@
 [package]
 name = "kanidm_proto"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["William Brown <william@blackhats.net.au>"]
 edition = "2018"
 license = "MPL-2.0"

@@ -7,6 +7,8 @@ use crate::value::PartialValue;
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
 
+use std::iter;
+
 #[derive(Debug, Clone)]
 pub(crate) struct UnixUserAccount {
     pub name: String,
@@ -110,15 +112,15 @@ pub(crate) struct UnixGroup {
 
 macro_rules! try_from_group_e {
     ($value:expr) => {{
-        if !$value.attribute_value_pres("class", &PVCLASS_GROUP) {
-            return Err(OperationError::InvalidAccountState(
-                "Missing class: group".to_string(),
-            ));
-        }
+        // We could be looking at a user for their UPG, OR a true group.
 
-        if !$value.attribute_value_pres("class", &PVCLASS_POSIXGROUP) {
+        if !(($value.attribute_value_pres("class", &PVCLASS_ACCOUNT)
+            && $value.attribute_value_pres("class", &PVCLASS_POSIXACCOUNT))
+            || ($value.attribute_value_pres("class", &PVCLASS_GROUP)
+                && $value.attribute_value_pres("class", &PVCLASS_POSIXGROUP)))
+        {
             return Err(OperationError::InvalidAccountState(
-                "Missing class: posixgroup".to_string(),
+                "Missing class: account && posixaccount OR group && posixgroup".to_string(),
             ));
         }
 
@@ -154,6 +156,46 @@ impl UnixGroup {
         value: &Entry<EntryReduced, EntryCommitted>,
         qs: &QueryServerReadTransaction,
     ) -> Result<Vec<Self>, OperationError> {
+        // First synthesise the self-group from the account.
+        // We have already checked these, but paranoia is better than
+        // complacency.
+        if !value.attribute_value_pres("class", &PVCLASS_ACCOUNT) {
+            return Err(OperationError::InvalidAccountState(
+                "Missing class: account".to_string(),
+            ));
+        }
+
+        if !value.attribute_value_pres("class", &PVCLASS_POSIXACCOUNT) {
+            return Err(OperationError::InvalidAccountState(
+                "Missing class: posixaccount".to_string(),
+            ));
+        }
+
+        let name = value.get_ava_single_string("name").ok_or_else(|| {
+            OperationError::InvalidAccountState("Missing attribute: name".to_string())
+        })?;
+
+        let spn = value
+            .get_ava_single("spn")
+            .map(|v| v.to_proto_string_clone())
+            .ok_or_else(|| {
+                OperationError::InvalidAccountState("Missing attribute: spn".to_string())
+            })?;
+
+        let uuid = *value.get_uuid();
+
+        let gidnumber = value.get_ava_single_uint32("gidnumber").ok_or_else(|| {
+            OperationError::InvalidAccountState("Missing attribute: gidnumber".to_string())
+        })?;
+
+        // This is the user private group.
+        let upg = UnixGroup {
+            name,
+            spn,
+            gidnumber,
+            uuid,
+        };
+
         match value.get_ava_reference_uuid("memberof") {
             Some(l) => {
                 let f = filter!(f_and!([
@@ -166,13 +208,14 @@ impl UnixGroup {
                     )
                 ]));
                 let ges: Vec<_> = try_audit!(au, qs.internal_search(au, f));
-                let groups: Result<Vec<_>, _> =
-                    ges.into_iter().map(UnixGroup::try_from_entry).collect();
+                let groups: Result<Vec<_>, _> = iter::once(Ok(upg))
+                    .chain(ges.into_iter().map(UnixGroup::try_from_entry))
+                    .collect();
                 groups
             }
             None => {
                 // No memberof, no groups!
-                Ok(Vec::new())
+                Ok(vec![upg])
             }
         }
     }

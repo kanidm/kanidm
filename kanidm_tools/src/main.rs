@@ -252,6 +252,24 @@ struct GroupNamedMembers {
 }
 
 #[derive(Debug, StructOpt)]
+struct GroupPosixOpt {
+    #[structopt()]
+    name: String,
+    #[structopt(long = "gidnumber")]
+    gidnumber: Option<u32>,
+    #[structopt(flatten)]
+    copt: CommonOpt,
+}
+
+#[derive(Debug, StructOpt)]
+enum GroupPosix {
+    #[structopt(name = "show")]
+    Show(GroupNamed),
+    #[structopt(name = "set")]
+    Set(GroupPosixOpt),
+}
+
+#[derive(Debug, StructOpt)]
 enum GroupOpt {
     #[structopt(name = "list")]
     List(CommonOpt),
@@ -267,6 +285,8 @@ enum GroupOpt {
     PurgeMembers(GroupNamed),
     #[structopt(name = "add_members")]
     AddMembers(GroupNamedMembers),
+    #[structopt(name = "posix")]
+    Posix(GroupPosix),
 }
 
 #[derive(Debug, StructOpt)]
@@ -334,6 +354,10 @@ impl ClientOpt {
                 GroupOpt::AddMembers(gcopt) => gcopt.copt.debug,
                 GroupOpt::SetMembers(gcopt) => gcopt.copt.debug,
                 GroupOpt::PurgeMembers(gcopt) => gcopt.copt.debug,
+                GroupOpt::Posix(gpopt) => match gpopt {
+                    GroupPosix::Show(gcopt) => gcopt.copt.debug,
+                    GroupPosix::Set(gcopt) => gcopt.copt.debug,
+                },
             },
         }
     }
@@ -611,6 +635,21 @@ fn main() {
                     .idm_group_set_members(gcopt.name.as_str(), new_members)
                     .unwrap();
             }
+            GroupOpt::Posix(gpopt) => match gpopt {
+                GroupPosix::Show(gcopt) => {
+                    let client = gcopt.copt.to_client();
+                    let token = client
+                        .idm_group_unix_token_get(gcopt.name.as_str())
+                        .unwrap();
+                    println!("{:?}", token);
+                }
+                GroupPosix::Set(gcopt) => {
+                    let client = gcopt.copt.to_client();
+                    client
+                        .idm_group_unix_extend(gcopt.name.as_str(), gcopt.gidnumber)
+                        .unwrap();
+                }
+            },
         }, // end Group
     }
 }

@@ -2,7 +2,7 @@
 
 [package]
 name = "kanidm"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["William Brown <william@blackhats.net.au>"]
 # default-run = "kanidm_core"
 edition = "2018"

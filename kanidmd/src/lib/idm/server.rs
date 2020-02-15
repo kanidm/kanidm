@@ -265,8 +265,8 @@ impl IdmServerProxyReadTransaction {
                 .impersonate_search_ext_uuid(au, &uute.target, &uute.event)
         );
 
-        let account = try_audit!(au, UnixGroup::try_from_entry_reduced(account_entry));
-        account.to_unixgrouptoken()
+        let group = try_audit!(au, UnixGroup::try_from_entry_reduced(account_entry));
+        group.to_unixgrouptoken()
     }
 }
 
@@ -917,8 +917,21 @@ mod tests {
 
             assert!(tok_r.name == "admin");
             assert!(tok_r.spn == "admin@example.com");
-            assert!(tok_r.groups.len() == 1);
-            assert!(tok_r.groups[0].name == "testgroup");
+            assert!(tok_r.groups.len() == 2);
+            assert!(tok_r.groups[0].name == "admin");
+            assert!(tok_r.groups[1].name == "testgroup");
+
+            // Show we can get the admin as a unix group token too
+            let ugte = UnixGroupTokenEvent::new_internal(
+                Uuid::parse_str("00000000-0000-0000-0000-000000000000")
+                    .expect("failed to parse uuid"),
+            );
+            let tok_g = idms_prox_read
+                .get_unixgrouptoken(au, &ugte)
+                .expect("Failed to generate unix group token");
+
+            assert!(tok_g.name == "admin");
+            assert!(tok_g.spn == "admin@example.com");
         })
     }
 }

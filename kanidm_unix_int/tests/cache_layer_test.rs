@@ -9,12 +9,13 @@ use kanidm::core::create_server_core;
 use kanidm_unix_common::cache::CacheLayer;
 use tokio::runtime::Runtime;
 
+use kanidm_client::asynchronous::KanidmAsyncClient;
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
 
 static PORT_ALLOC: AtomicUsize = AtomicUsize::new(18080);
 static ADMIN_TEST_PASSWORD: &str = "integration test admin password";
 
-fn run_test(fix_fn: fn(KanidmClient) -> (), test_fn: fn(CacheLayer) -> ()) {
+fn run_test(fix_fn: fn(&KanidmClient) -> (), test_fn: fn(CacheLayer, KanidmAsyncClient) -> ()) {
     // ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
     let _ = env_logger::builder().is_test(true).try_init();
     let (tx, rx) = mpsc::channel();
@@ -45,11 +46,16 @@ fn run_test(fix_fn: fn(KanidmClient) -> (), test_fn: fn(CacheLayer) -> ()) {
     let addr = format!("http://127.0.0.1:{}", port);
 
     // Run fixtures
-    let rsclient = KanidmClientBuilder::new()
+    let adminclient = KanidmClientBuilder::new()
         .address(addr.clone())
         .build()
         .expect("Failed to build sync client");
-    fix_fn(rsclient);
+    fix_fn(&adminclient);
+
+    let client = KanidmClientBuilder::new()
+        .address(addr.clone())
+        .build_async()
+        .expect("Failed to build async admin client");
 
     let rsclient = KanidmClientBuilder::new()
         .address(addr)
@@ -62,14 +68,14 @@ fn run_test(fix_fn: fn(KanidmClient) -> (), test_fn: fn(CacheLayer) -> ()) {
     )
     .expect("Failed to build cache layer.");
 
-    test_fn(cachelayer);
+    test_fn(cachelayer, client);
 
     // We DO NOT need teardown, as sqlite is in mem
     // let the tables hit the floor
     sys.stop();
 }
 
-fn test_fixture(rsclient: KanidmClient) -> () {
+fn test_fixture(rsclient: &KanidmClient) -> () {
     let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
     assert!(res.is_ok());
     // Not recommended in production!
@@ -104,7 +110,7 @@ fn test_fixture(rsclient: KanidmClient) -> () {
 
 #[test]
 fn test_cache_sshkey() {
-    run_test(test_fixture, |cachelayer| {
+    run_test(test_fixture, |cachelayer, _adminclient| {
         let mut rt = Runtime::new().expect("Failed to start tokio");
         let fut = async move {
             // Force offline. Show we have no keys.
@@ -133,6 +139,204 @@ fn test_cache_sshkey() {
                 .await
                 .expect("Failed to get from cache.");
             assert!(sk.len() == 1);
+        };
+        rt.block_on(fut);
+    })
+}
+
+#[test]
+fn test_cache_account() {
+    run_test(test_fixture, |cachelayer, _adminclient| {
+        let mut rt = Runtime::new().expect("Failed to start tokio");
+        let fut = async move {
+            // Force offline. Show we have no account
+            cachelayer.mark_offline().await;
+
+            let ut = cachelayer
+                .get_nssaccount_name("testaccount1")
+                .await
+                .expect("Failed to get from cache");
+            assert!(ut.is_none());
+
+            // go online
+            cachelayer.attempt_online().await;
+            assert!(cachelayer.test_connection().await);
+
+            // get the account
+            let ut = cachelayer
+                .get_nssaccount_name("testaccount1")
+                .await
+                .expect("Failed to get from cache");
+            assert!(ut.is_some());
+
+            // go offline
+            cachelayer.mark_offline().await;
+
+            // can still get account
+            let ut = cachelayer
+                .get_nssaccount_name("testaccount1")
+                .await
+                .expect("Failed to get from cache");
+            assert!(ut.is_some());
+
+            // Finally, check we have "all accounts" in the list.
+            let us = cachelayer
+                .get_nssaccounts()
+                .expect("failed to list all accounts");
+            assert!(us.len() == 1);
+        };
+        rt.block_on(fut);
+    })
+}
+
+#[test]
+fn test_cache_group() {
+    run_test(test_fixture, |cachelayer, _adminclient| {
+        let mut rt = Runtime::new().expect("Failed to start tokio");
+        let fut = async move {
+            // Force offline. Show we have no groups.
+            cachelayer.mark_offline().await;
+            let gt = cachelayer
+                .get_nssgroup_name("testgroup1")
+                .await
+                .expect("Failed to get from cache");
+            assert!(gt.is_none());
+
+            // go online. Get the group
+            cachelayer.attempt_online().await;
+            assert!(cachelayer.test_connection().await);
+            let gt = cachelayer
+                .get_nssgroup_name("testgroup1")
+                .await
+                .expect("Failed to get from cache");
+            assert!(gt.is_some());
+
+            // go offline. still works
+            cachelayer.mark_offline().await;
+            let gt = cachelayer
+                .get_nssgroup_name("testgroup1")
+                .await
+                .expect("Failed to get from cache");
+            assert!(gt.is_some());
+            // And check we have no members in the group. Members are an artifact of
+            // user lookups!
+            assert!(gt.unwrap().members.len() == 0);
+
+            // clear cache, go online
+            assert!(cachelayer.invalidate().is_ok());
+            cachelayer.attempt_online().await;
+            assert!(cachelayer.test_connection().await);
+
+            // get an account with the group
+            // DO NOT get the group yet.
+            let ut = cachelayer
+                .get_nssaccount_name("testaccount1")
+                .await
+                .expect("Failed to get from cache");
+            assert!(ut.is_some());
+
+            // go offline.
+            cachelayer.mark_offline().await;
+
+            // show we have the group despite no direct calls
+            let gt = cachelayer
+                .get_nssgroup_name("testgroup1")
+                .await
+                .expect("Failed to get from cache");
+            assert!(gt.is_some());
+            // And check we have members in the group, since we came from a userlook up
+            assert!(gt.unwrap().members.len() == 1);
+
+            // Finally, check we have "all groups" in the list.
+            let gs = cachelayer
+                .get_nssgroups()
+                .expect("failed to list all groups");
+            assert!(gs.len() == 2);
+        };
+        rt.block_on(fut);
+    })
+}
+
+#[test]
+fn test_cache_group_delete() {
+    run_test(test_fixture, |cachelayer, adminclient| {
+        let mut rt = Runtime::new().expect("Failed to start tokio");
+        let fut = async move {
+            // get the group
+            cachelayer.attempt_online().await;
+            assert!(cachelayer.test_connection().await);
+            let gt = cachelayer
+                .get_nssgroup_name("testgroup1")
+                .await
+                .expect("Failed to get from cache");
+            assert!(gt.is_some());
+
+            // delete it.
+            adminclient
+                .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+                .await
+                .expect("failed to auth as admin");
+            adminclient
+                .idm_group_delete("testgroup1")
+                .await
+                .expect("failed to delete");
+
+            // invalidate cache
+            assert!(cachelayer.invalidate().is_ok());
+
+            // "get it"
+            // should be empty.
+            let gt = cachelayer
+                .get_nssgroup_name("testgroup1")
+                .await
+                .expect("Failed to get from cache");
+            assert!(gt.is_none());
+        };
+        rt.block_on(fut);
+    })
+}
+
+#[test]
+fn test_cache_account_delete() {
+    run_test(test_fixture, |cachelayer, adminclient| {
+        let mut rt = Runtime::new().expect("Failed to start tokio");
+        let fut = async move {
+            // get the account
+            cachelayer.attempt_online().await;
+            assert!(cachelayer.test_connection().await);
+            let ut = cachelayer
+                .get_nssaccount_name("testaccount1")
+                .await
+                .expect("Failed to get from cache");
+            assert!(ut.is_some());
+
+            // delete it.
+            adminclient
+                .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+                .await
+                .expect("failed to auth as admin");
+            adminclient
+                .idm_account_delete("testaccount1")
+                .await
+                .expect("failed to delete");
+
+            // invalidate cache
+            assert!(cachelayer.invalidate().is_ok());
+
+            // "get it"
+            let ut = cachelayer
+                .get_nssaccount_name("testaccount1")
+                .await
+                .expect("Failed to get from cache");
+            // should be empty.
+            assert!(ut.is_none());
+
+            // The group should be removed too.
+            let gt = cachelayer
+                .get_nssgroup_name("testaccount1")
+                .await
+                .expect("Failed to get from cache");
+            assert!(gt.is_none());
         };
         rt.block_on(fut);
     })
