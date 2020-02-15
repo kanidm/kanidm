@@ -188,7 +188,7 @@ async fn handle_client(
 
 #[tokio::main]
 async fn main() {
-    ::std::env::set_var("RUST_LOG", "kanidm=debug,kanidm_client=debug");
+    // ::std::env::set_var("RUST_LOG", "kanidm=debug,kanidm_client=debug");
     env_logger::init();
     rm_if_exist(DEFAULT_SOCK_PATH);
 
