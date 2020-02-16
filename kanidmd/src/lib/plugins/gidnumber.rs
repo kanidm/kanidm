@@ -13,7 +13,13 @@ use crate::value::{PartialValue, Value};
 
 use kanidm_proto::v1::OperationError;
 
-static GIDNUMBER_MIN: u32 = 2000;
+/// Systemd dynamic units allocate between 61184–65519, most distros allocate
+/// system uids from 0 - 1000, and many others give user ids between 1000 to
+/// 2000. This whole numberspace is cursed, lets assume it's not ours. :(
+static GID_SYSTEM_NUMBER_MIN: u32 = 65536;
+
+/// This is the normal system range, we MUST NOT allow it to be allocated.
+static GID_SAFETY_NUMBER_MIN: u32 = 1000;
 
 lazy_static! {
     static ref CLASS_POSIXGROUP: PartialValue = PartialValue::new_iutf8s("posixgroup");
@@ -32,11 +38,11 @@ fn apply_gidnumber<T: Copy>(
     {
         let u_ref = try_audit!(au, e.get_uuid().ok_or(OperationError::InvalidEntryState));
         let gid = uuid_to_gid_u32(u_ref);
-        // assert the value is greater than 2000
-        if gid < GIDNUMBER_MIN {
+        // assert the value is greater than the system range.
+        if gid < GID_SYSTEM_NUMBER_MIN {
             return Err(OperationError::InvalidAttribute(format!(
                 "gidnumber {} may overlap with system range {}",
-                gid, GIDNUMBER_MIN
+                gid, GID_SYSTEM_NUMBER_MIN
             )));
         }
 
@@ -44,6 +50,16 @@ fn apply_gidnumber<T: Copy>(
         audit_log!(au, "Generated {} for {:?}", gid, u_ref);
         e.set_avas("gidnumber", vec![gid_v]);
         Ok(())
+    } else if let Some(gid) = e.get_ava_single_uint32("gidnumber") {
+        // If they provided us with a gid number, ensure it's in a safe range.
+        if gid <= GID_SAFETY_NUMBER_MIN {
+            Err(OperationError::InvalidAttribute(format!(
+                "gidnumber {} overlaps into system secure range {}",
+                gid, GID_SAFETY_NUMBER_MIN
+            )))
+        } else {
+            Ok(())
+        }
     } else {
         Ok(())
     }
@@ -87,6 +103,7 @@ mod tests {
     use crate::entry::{Entry, EntryInvalid, EntryNew};
     use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
     use crate::value::{PartialValue, Value};
+    use kanidm_proto::v1::OperationError;
     use uuid::Uuid;
 
     fn check_gid(
@@ -146,7 +163,7 @@ mod tests {
                 "class": ["account", "posixaccount"],
                 "name": ["testperson"],
                 "uuid": ["83a0927f-3de1-45ec-bea0-2f7b997ef244"],
-                "gidnumber": ["1000"],
+                "gidnumber": ["10001"],
                 "description": ["testperson"],
                 "displayname": ["testperson"]
             }
@@ -165,7 +182,7 @@ mod tests {
                 au,
                 qs_write,
                 "83a0927f-3de1-45ec-bea0-2f7b997ef244",
-                1000
+                10001
             )
         );
     }
@@ -237,9 +254,9 @@ mod tests {
         );
     }
 
-    // Test NOT altered if given on mod
+    // Test NOT regenerated if given on mod
     #[test]
-    fn test_gidnumber_modify_noaction() {
+    fn test_gidnumber_modify_noregen() {
         let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
@@ -272,6 +289,90 @@ mod tests {
                 "83a0927f-3de1-45ec-bea0-2f7b997ef244",
                 2000
             )
+        );
+    }
+
+    #[test]
+    fn test_gidnumber_create_system_reject() {
+        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+            r#"{
+            "attrs": {
+                "class": ["account", "posixaccount"],
+                "name": ["testperson"],
+                "uuid": ["83a0927f-3de1-45ec-bea0-2f7b00000244"],
+                "description": ["testperson"],
+                "displayname": ["testperson"]
+            }
+        }"#,
+        );
+
+        let create = vec![e.clone()];
+        let preload = Vec::new();
+
+        run_create_test!(
+            Err(OperationError::InvalidAttribute(
+                "gidnumber 580 may overlap with system range 65536".to_string()
+            )),
+            preload,
+            create,
+            None,
+            |_, _| {}
+        );
+    }
+
+    #[test]
+    fn test_gidnumber_create_secure_reject() {
+        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+            r#"{
+            "attrs": {
+                "class": ["account", "posixaccount"],
+                "name": ["testperson"],
+                "gidnumber": ["500"],
+                "description": ["testperson"],
+                "displayname": ["testperson"]
+            }
+        }"#,
+        );
+
+        let create = vec![e.clone()];
+        let preload = Vec::new();
+
+        run_create_test!(
+            Err(OperationError::InvalidAttribute(
+                "gidnumber 500 overlaps into system secure range 1000".to_string()
+            )),
+            preload,
+            create,
+            None,
+            |_, _| {}
+        );
+    }
+
+    #[test]
+    fn test_gidnumber_create_secure_root_reject() {
+        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+            r#"{
+            "attrs": {
+                "class": ["account", "posixaccount"],
+                "name": ["testperson"],
+                "gidnumber": ["0"],
+                "description": ["testperson"],
+                "displayname": ["testperson"]
+            }
+        }"#,
+        );
+
+        let create = vec![e.clone()];
+        let preload = Vec::new();
+
+        run_create_test!(
+            Err(OperationError::InvalidAttribute(
+                "gidnumber 0 overlaps into system secure range 1000".to_string()
+            )),
+            preload,
+            create,
+            None,
+            |_, _| {}
         );
     }
 }
