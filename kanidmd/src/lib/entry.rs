@@ -1,3 +1,29 @@
+//! Entries are the base unit of object storage in the server. This is one of the three foundational
+//! concepts along with [`filter`]s and [`schema`] that everything else builds upon.
+//!
+//! An [`Entry`] is a collection of attribute-value sets. There are sometimes called attribute value
+//! assertions, or avas. The attribute is a "key" and it holds 1 to infinitite associtade values
+//! with no ordering. An entry has many avas. A pseudo example, minus schema and typing:
+//!
+//! ```
+//! Entry {
+//!   "name": ["william"],
+//!   "uuid": ["..."],
+//!   "mail": ["maila@example.com", "mailb@example.com"],
+//! }
+//! ```
+//!
+//! There are three rules for entries:
+//! * Must have an ava for UUID containing a single value.
+//! * Any ava with zero values will be removed.
+//! * Avas are stored with no sorting.
+//!
+//! For more, see the [`Entry`] type.
+//!
+//! [`Entry`]: struct.Entry.html
+//! [`filter`]: ../filter/index.html
+//! [`schema`]: ../schema/index.html
+
 // use serde_json::{Error, Value};
 use crate::audit::AuditScope;
 use crate::credential::Credential;
@@ -166,6 +192,33 @@ pub struct EntryReduced {
     uuid: Uuid,
 }
 
+/// Entry is the core data storage type of the server. Almost every aspect of the server is
+/// designed to read, handle and manipulate entries.
+///
+/// Entries store attribute value assertions, or ava. These are sets of key-values.
+///
+/// Entries have a lifecycle within a single operation, and as part of replication.
+/// The lifecycle for operations is defined through state and valid types. Each entry has a pair
+/// Of these types at anytime. The first is the ava [`schema`] and [`access`] control assertion
+/// state. This is represented by the type `VALID` as one of `EntryValid`, `EntryInvalid` or
+/// `EntryReduced`. Every entry starts as `EntryInvalid`, and when checked by the schema for
+/// correctness, transitions to `EntryValid`. While an entry is `EntryValid` it can not be
+/// altered - you must invalidate it to `EntryInvalid`, then modify, then check again.
+/// An entry that has had access controls applied moves from `EntryValid` to `EntryReduced`,
+/// to show that the avas have reduced to the valid read set of the current [`event`] user.
+///
+/// The second type of `STATE` reperesents the database commit state and internal db ID's. A
+/// new entry that has never been committed is `EntryNew`, but an entry that has been retrieved
+/// from the database is `EntryCommitted`. This affects the operations you can apply IE modify
+/// or delete.
+///
+/// These types exist to prevent at compile time, mishandling of Entries, to ensure they are always
+/// handled with the correct lifecycles and processes.
+///
+/// [`schema`]: ../schema/index.html
+/// [`access`]: ../access/index.html
+/// [`event`]: ../event/index.html
+///
 #[derive(Debug)]
 pub struct Entry<VALID, STATE> {
     valid: VALID,

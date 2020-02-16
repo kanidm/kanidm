@@ -68,7 +68,11 @@ For more see the [kanidm book]
 
 ### Designs
 
-See the [designs] folder
+See the [designs] folder, and compile the private documentation locally:
+
+```
+cargo doc --document-private-items --open --no-deps
+```
 
 [designs]: https://github.com/kanidm/kanidm/tree/master/designs
 
