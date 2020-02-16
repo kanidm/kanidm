@@ -1,3 +1,6 @@
+//! `server` contains the query server, which is the main high level construction
+//! to coordinate queries and operations in the server.
+
 // This is really only used for long lived, high level types that need clone
 // that otherwise can't be cloned. Think Mutex.
 // use actix::prelude::*;
@@ -46,6 +49,15 @@ lazy_static! {
 // This is the core of the server. It implements all
 // the search and modify actions, applies access controls
 // and get's everything ready to push back to the fe code
+/// The `QueryServerTransaction` trait provides a set of common read only operations to be
+/// shared between [`QueryServerReadTransaction`] and [`QueryServerWriteTransaction`]s.
+///
+/// These operations tend to be high level constructions, generally different types of searches
+/// that are capable of taking different types of parameters and applying access controls or not,
+/// impersonating accounts, or bypassing these via internal searches.
+///
+/// [`QueryServerReadTransaction`]: struct.QueryServerReadTransaction.html
+/// [`QueryServerWriteTransaction`]: struct.QueryServerWriteTransaction.html
 pub trait QueryServerTransaction {
     type BackendTransactionType: BackendTransaction;
     fn get_be_txn(&self) -> &Self::BackendTransactionType;
@@ -56,6 +68,15 @@ pub trait QueryServerTransaction {
     type AccessControlsTransactionType: AccessControlsTransaction;
     fn get_accesscontrols(&self) -> &Self::AccessControlsTransactionType;
 
+    /// Conduct a search and apply access controls to yield a set of entries that
+    /// have been reduced to the set of user visible avas. Note that if you provide
+    /// a `SearchEvent` for the internal user, this query will fail. It is invalid for
+    /// the [`access`] module to attempt to reduce avas for internal searches, and you
+    /// should use [`fn search`] instead.
+    ///
+    /// [`SearchEvent`]: ../event/struct.SearchEvent.html
+    /// [`access`]: ../access/index.html
+    /// [`fn search`]: trait.QueryServerTransaction.html#method.search
     fn search_ext(
         &self,
         au: &mut AuditScope,
@@ -78,6 +99,7 @@ pub trait QueryServerTransaction {
         // This is the final entry set that was reduced.
         Ok(entries_filtered)
     }
+
 
     fn search(
         &self,

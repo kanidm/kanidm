@@ -1,6 +1,12 @@
-// This represents a filtering query. This can be done
-// in parallel map/reduce style, or directly on a single
-// entry to assert it matches.
+//! [`Filter`]s are one of the three foundational concepts of the design in kanidm.
+//! They are used in nearly every aspect ofthe server to provide searching of
+//! datasets, and assertion of entry properties.
+//!
+//! A filter is a logical statement of properties that an [`Entry`] and it's
+//! avas must uphold to be considered true.
+//!
+//! [`Filter`]: struct.Filter.html
+//! [`Entry`]: ../entry/struct.Entry.html
 
 use crate::audit::AuditScope;
 use crate::event::{Event, EventOrigin};
@@ -124,6 +130,27 @@ pub struct FilterValidResolved {
     inner: FilterResolved,
 }
 
+/// A `Filter` is a logical set of assertions about the state of an [`Entry`] and
+/// it's avas. `Filter`s are built from a set of possible assertions.
+///
+/// * `Pres`ence. An ava of that attribute's name exists, with any value on the [`Entry`].
+/// * `Eq`uality. An ava of the attribute exists and contains this matching value.
+/// * `Sub`string. An ava of the attribute exists and has a substring containing the requested value.
+/// * `Or`. Contains multiple filters and asserts at least one is true.
+/// * `And`. Contains multiple filters and asserts all of them are true.
+/// * `AndNot`. This is different to a "logical not" operation. This asserts that a condition is not
+/// true in the current candidate set. A search of `AndNot` alone will yield not results, but an
+/// `AndNot` in an `And` query will assert that a condition can not hold.
+///
+/// `Filter`s for security reasons are validated by the schema to assert all requested attributes
+/// are valid and exist in the schema so that they can have their indexes correctly used. This avoids
+/// a denial of service attack that may lead to full-table scans.
+///
+/// This `Filter` validation state is in the `STATE` attribute and will be either `FilterInvalid`
+/// or `FilterValid`. The `Filter` must be checked by the schema to move to `FilterValid`. This
+/// helps to prevent errors at compile time to assert `Filters` are secuerly. checked
+///
+/// [`Entry`]: ../entry/struct.Entry.html
 #[derive(Debug, Clone)]
 pub struct Filter<STATE> {
     state: STATE,

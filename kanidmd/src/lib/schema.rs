@@ -1,3 +1,21 @@
+//! [`Schema`] is one of the foundational concepts of the server. It provides a
+//! set of rules to enforce that [`Entries`] ava's must be compliant to, to be
+//! considered valid for commit to the database. This allows us to provide
+//! requirements and structure as to what an [`Entry`] must have and may contain
+//! which enables many other parts to function.
+//!
+//! To define this structure we define [`Attributes`] that provide rules for how
+//! and ava should be structured. We also define [`Classes`] that define
+//! the rules of which [`Attributes`] may or must exist on an [`Entry`] for it
+//! to be considered valid. An [`Entry`] must have at least 1 to infinite
+//! [`Classes`]. [`Classes'] are additive.
+//!
+//! [`Schema`]: struct.Schema.html
+//! [`Entries`]: ../entry/index.html
+//! [`Entry`]: ../entry/index.html
+//! [`Attributes`]: struct.SchemaAttribute.html
+//! [`Classes`]: struct.SchemaClass.html
+
 use crate::audit::AuditScope;
 use crate::constants::*;
 use crate::entry::{Entry, EntryCommitted, EntryNew, EntryValid};
@@ -23,24 +41,45 @@ lazy_static! {
     static ref PVCLASS_CLASSTYPE: PartialValue = PartialValue::new_class("classtype");
 }
 
+/// Schema stores the set of [`Classes`] and [`Attributes`] that the server will
+/// use to validate [`Entries`], [`Filters`] and [`Modifications`]. Additionally the
+/// schema stores an extracted copy of the current attribute indexing metadata that
+/// is used by the backend during queries.
+///
+/// [`Filters`]: ../filter/index.html
+/// [`Modifications`]: ../modify/index.html
+/// [`Entries`]: ../entry/index.html
+/// [`Attributes`]: struct.SchemaAttribute.html
+/// [`Classes`]: struct.SchemaClass.html
 pub struct Schema {
     classes: BptreeMap<String, SchemaClass>,
     attributes: BptreeMap<String, SchemaAttribute>,
     idxmeta: BptreeMap<String, IndexType>,
 }
 
+/// A writable transaction of the working schema set. You should not change this directly,
+/// the writability is for the server internally to allow reloading of the schema. Changes
+/// you make will be lost when the server re-reads the schema from disk.
 pub struct SchemaWriteTransaction<'a> {
     classes: BptreeMapWriteTxn<'a, String, SchemaClass>,
     attributes: BptreeMapWriteTxn<'a, String, SchemaAttribute>,
     idxmeta: BptreeMapWriteTxn<'a, String, IndexType>,
 }
 
+/// A readonly transaction of the working schema set.
 pub struct SchemaReadTransaction {
     classes: BptreeMapReadTxn<String, SchemaClass>,
     attributes: BptreeMapReadTxn<String, SchemaAttribute>,
     idxmeta: BptreeMapReadTxn<String, IndexType>,
 }
 
+/// An item reperesenting an attribute and the rules that enforce it. These rules enforce if an
+/// attribute on an [`Entry`] may be single or multi value, must be unique amongst all other types
+/// of this attribute, if the attribute should be [`indexed`], and what type of data [`syntax`] it may hold.
+///
+/// [`Entry`]: ../entry/index.html
+/// [`indexed`]: ../value/enum.IndexType.html
+/// [`syntax`]: ../value/enum.SyntaxType.html
 #[derive(Debug, Clone)]
 pub struct SchemaAttribute {
     // Is this ... used?
@@ -403,6 +442,23 @@ impl SchemaAttribute {
     }
 }
 
+/// An item reperesenting a class and the rules for that class. These rules enforce that an
+/// [`Entry`]'s avas conform to a set of requirements, giving structure to an entry about
+/// what avas must or may exist. The kanidm project provides attributes in `systemmust` and
+/// `systemmay`, which can not be altered. An administrator may extend these in the `must`
+/// and `may` attributes.
+///
+/// Classes are additive, meaning that if there are two classes, the `may` rules of both union,
+/// and that if an attribute is `must` on one class, and `may` in another, the `must` rule
+/// takes precedence. It is not possible to combine classes in an incompatible way due to these
+/// rules.
+///
+/// That in mind, and entry that has one of every possible class would probably be nonsensical,
+/// but the addition rules make it easy to construct and understand with concepts like [`access`]
+/// controls or accounts and posix extensions.
+///
+/// [`Entry`]: ../entry/index.html
+/// [`access`]: ../access/index.html
 #[derive(Debug, Clone)]
 pub struct SchemaClass {
     // Is this used?
