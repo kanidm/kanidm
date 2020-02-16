@@ -310,7 +310,9 @@ mod tests {
         let preload = Vec::new();
 
         run_create_test!(
-            Err(OperationError::InvalidAttribute("gidnumber 580 may overlap with system range 65536".to_string())),
+            Err(OperationError::InvalidAttribute(
+                "gidnumber 580 may overlap with system range 65536".to_string()
+            )),
             preload,
             create,
             None,
@@ -336,7 +338,9 @@ mod tests {
         let preload = Vec::new();
 
         run_create_test!(
-            Err(OperationError::InvalidAttribute("gidnumber 500 overlaps into system secure range 1000".to_string())),
+            Err(OperationError::InvalidAttribute(
+                "gidnumber 500 overlaps into system secure range 1000".to_string()
+            )),
             preload,
             create,
             None,
@@ -362,7 +366,9 @@ mod tests {
         let preload = Vec::new();
 
         run_create_test!(
-            Err(OperationError::InvalidAttribute("gidnumber 0 overlaps into system secure range 1000".to_string())),
+            Err(OperationError::InvalidAttribute(
+                "gidnumber 0 overlaps into system secure range 1000".to_string()
+            )),
             preload,
             create,
             None,
