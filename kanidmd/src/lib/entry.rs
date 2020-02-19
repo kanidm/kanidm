@@ -6,11 +6,13 @@
 //! with no ordering. An entry has many avas. A pseudo example, minus schema and typing:
 //!
 //! ```
+//! /*
 //! Entry {
 //!   "name": ["william"],
 //!   "uuid": ["..."],
 //!   "mail": ["maila@example.com", "mailb@example.com"],
 //! }
+//! */
 //! ```
 //!
 //! There are three rules for entries:
