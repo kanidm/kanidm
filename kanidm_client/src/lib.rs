@@ -650,6 +650,26 @@ impl KanidmClient {
         self.perform_get_request(format!("/v1/account/{}/_unix/_token", id).as_str())
     }
 
+    pub fn idm_account_unix_cred_put(&self, id: &str, cred: &str) -> Result<(), ClientError> {
+        let req = SingleStringRequest { value: cred.to_string() };
+        self.perform_put_request(
+            format!("/v1/account/{}/_unix/_credential", id).as_str(),
+            req
+        )
+    }
+
+    pub fn idm_account_unix_cred_delete(&self, id: &str) -> Result<(), ClientError> {
+        self.perform_delete_request(format!("/v1/account/{}/_unix/_credential", id).as_str())
+    }
+
+    pub fn idm_account_unix_cred_verify(&self, id: &str, cred: &str) -> Result<bool, ClientError> {
+        let req = SingleStringRequest { value: cred.to_string() };
+        self.perform_post_request(
+            format!("/v1/account/{}/_unix/_auth", id).as_str(),
+            req
+        )
+    }
+
     pub fn idm_account_get_ssh_pubkeys(&self, id: &str) -> Result<Vec<String>, ClientError> {
         self.perform_get_request(format!("/v1/account/{}/_ssh_pubkeys", id).as_str())
     }

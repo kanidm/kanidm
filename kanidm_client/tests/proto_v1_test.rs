@@ -612,6 +612,30 @@ fn test_server_rest_posix_lifecycle() {
     });
 }
 
+#[test]
+fn test_server_rest_posix_lifecycle() {
+    run_test(|rsclient: KanidmClient| {
+        let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
+        assert!(res.is_ok());
+        // Get an anon connection
+
+        // Setup a unix user
+
+        // self-add their password (unix self)
+
+        // attempt to verify (good, anon-conn)
+
+        // attempt to verify (bad, anon-conn)
+
+        // lock? (admin-conn)
+        // attempt to verify (good pw, should fail, anon-conn)
+        // status? (self-conn)
+        // clear password? (unix self)
+
+        // attempt to verify (good pw, should fail, anon-conn)
+    });
+}
+
 // Test the self version of the radius path.
 
 // Test hitting all auth-required endpoints and assert they give unauthorized.

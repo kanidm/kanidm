@@ -1875,6 +1875,16 @@ pub fn create_server_core(config: Configuration) {
             r.method(http::Method::GET)
                 .with_async(account_get_id_unix_token)
         })
+        .resource("/v1/account/{id}/_unix/_auth", |r| {
+            r.method(http::Method::POST)
+                .with_async(account_post_id_unix_auth)
+        })
+        .resource("/v1/account/{id}/_unix/_credential", |r| {
+            r.method(http::Method::PUT)
+                .with_async(account_put_id_unix_credential);
+            r.method(http::Method::DELETE)
+                .with_async(account_delete_id_unix_credential);
+        })
         // People
         // Groups
         .resource("/v1/group", |r| {
