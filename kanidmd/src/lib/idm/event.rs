@@ -61,6 +61,40 @@ impl PasswordChangeEvent {
 }
 
 #[derive(Debug)]
+pub struct UnixPasswordChangeEvent {
+    pub event: Event,
+    pub target: Uuid,
+    pub cleartext: String,
+}
+
+impl UnixPasswordChangeEvent {
+    #[cfg(test)]
+    pub fn new_internal(target: &Uuid, cleartext: &str) -> Self {
+        UnixPasswordChangeEvent {
+            event: Event::from_internal(),
+            target: *target,
+            cleartext: cleartext.to_string(),
+        }
+    }
+
+    pub fn from_parts(
+        audit: &mut AuditScope,
+        qs: &QueryServerWriteTransaction,
+        uat: Option<UserAuthToken>,
+        target: Uuid,
+        cleartext: String,
+    ) -> Result<Self, OperationError> {
+        let e = Event::from_rw_uat(audit, qs, uat)?;
+
+        Ok(UnixPasswordChangeEvent {
+            event: e,
+            target,
+            cleartext,
+        })
+    }
+}
+
+#[derive(Debug)]
 pub struct GeneratePasswordEvent {
     pub event: Event,
     pub target: Uuid,

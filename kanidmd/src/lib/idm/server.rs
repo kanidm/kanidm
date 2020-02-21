@@ -6,7 +6,7 @@ use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
 use crate::idm::event::{
     GeneratePasswordEvent, PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
-    UnixGroupTokenEvent, UnixUserTokenEvent,
+    UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserTokenEvent,
 };
 use crate::idm::radius::RadiusAccount;
 use crate::idm::unix::{UnixGroup, UnixUserAccount};
@@ -375,6 +375,28 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         Ok(())
     }
 
+    pub fn set_unix_account_password(
+        &mut self,
+        au: &mut AuditScope,
+        pce: &UnixPasswordChangeEvent,
+    ) -> Result<(), OperationError> {
+        // Get the account
+        let account_entry = try_audit!(au, self.qs_write.internal_search_uuid(au, &pce.target));
+        let account = try_audit!(
+            au,
+            Account::try_from_entry_rw(au, account_entry, &self.qs_write)
+        );
+        // Ask if tis all good - this step checks pwpolicy and such
+
+        // Deny the change if the account is anonymous!
+        if account.is_anonymous() {
+            return Err(OperationError::SystemProtectedObject);
+        }
+        // Assert the account is unix?
+
+        unimplemented!();
+    }
+
     pub fn recover_account(
         &mut self,
         au: &mut AuditScope,
@@ -493,7 +515,7 @@ mod tests {
     use crate::event::{AuthEvent, AuthResult, CreateEvent, ModifyEvent};
     use crate::idm::event::{
         PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
-        UnixGroupTokenEvent, UnixUserTokenEvent,
+        UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserTokenEvent,
     };
     use crate::modify::{Modify, ModifyList};
     use crate::value::{PartialValue, Value};
@@ -932,6 +954,34 @@ mod tests {
 
             assert!(tok_g.name == "admin");
             assert!(tok_g.spn == "admin@example.com");
+        })
+    }
+
+    #[test]
+    fn test_idm_simple_unix_password_reset() {
+        run_idm_test!(|_qs: &QueryServer, idms: &IdmServer, au: &mut AuditScope| {
+            let mut idms_prox_write = idms.proxy_write();
+            // make the admin a valid posix account
+            let me_posix = unsafe {
+                ModifyEvent::new_internal_invalid(
+                    filter!(f_eq("name", PartialValue::new_iutf8s("admin"))),
+                    ModifyList::new_list(vec![
+                        Modify::Present("class".to_string(), Value::new_class("posixaccount")),
+                        Modify::Present("gidnumber".to_string(), Value::new_uint32(2001)),
+                    ]),
+                )
+            };
+            assert!(idms_prox_write.qs_write.modify(au, &me_posix).is_ok());
+
+            let pce = UnixPasswordChangeEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD);
+
+            assert!(idms_prox_write.set_unix_account_password(au, &pce).is_ok());
+            assert!(idms_prox_write.set_unix_account_password(au, &pce).is_ok());
+
+            // Check auth verification of the password
+
+            // Check deleting the password
+            assert!(idms_prox_write.commit(au).is_ok());
         })
     }
 }

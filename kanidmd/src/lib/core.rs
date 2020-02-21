@@ -24,9 +24,10 @@ use crate::actors::v1_read::{
 use crate::actors::v1_write::QueryServerWriteV1;
 use crate::actors::v1_write::{
     AppendAttributeMessage, CreateMessage, DeleteMessage, IdmAccountSetPasswordMessage,
-    IdmAccountUnixExtendMessage, IdmGroupUnixExtendMessage, InternalCredentialSetMessage,
-    InternalDeleteMessage, InternalRegenerateRadiusMessage, InternalSshKeyCreateMessage,
-    ModifyMessage, PurgeAttributeMessage, RemoveAttributeValueMessage, SetAttributeMessage,
+    IdmAccountUnixExtendMessage, IdmAccountUnixSetCredMessage, IdmGroupUnixExtendMessage,
+    InternalCredentialSetMessage, InternalDeleteMessage, InternalRegenerateRadiusMessage,
+    InternalSshKeyCreateMessage, ModifyMessage, PurgeAttributeMessage, RemoveAttributeValueMessage,
+    SetAttributeMessage,
 };
 use crate::async_log;
 use crate::audit::AuditScope;
@@ -1026,15 +1027,10 @@ fn account_put_id_unix_credential(
                 let r_obj = serde_json::from_slice::<SingleStringRequest>(&body);
                 match r_obj {
                     Ok(obj) => {
-                        let m_obj = SetAttributeMessage {
+                        let m_obj = IdmAccountUnixSetCredMessage {
                             uat,
                             uuid_or_name: id,
-                            attr: "unixpassword".to_string(),
-                            values: vec![obj.value],
-                            filter: filter_all!(f_eq(
-                                "class",
-                                PartialValue::new_class("posixaccount")
-                            )),
+                            cred: obj.value,
                         };
                         let res = state.qe_w.send(m_obj).from_err().and_then(|res| match res {
                             Ok(_) => Ok(HttpResponse::Ok().json(())),
