@@ -100,7 +100,6 @@ pub trait QueryServerTransaction {
         Ok(entries_filtered)
     }
 
-
     fn search(
         &self,
         au: &mut AuditScope,

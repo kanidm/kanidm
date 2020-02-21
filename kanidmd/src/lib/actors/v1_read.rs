@@ -139,6 +139,16 @@ impl Message for InternalSshKeyTagReadMessage {
     type Result = Result<Option<String>, OperationError>;
 }
 
+pub struct IdmAccountUnixAuthMessage {
+    pub uat: Option<UserAuthToken>,
+    pub uuid_or_name: String,
+    pub cred: String,
+}
+
+impl Message for IdmAccountUnixAuthMessage {
+    type Result = Result<bool, OperationError>;
+}
+
 // ===========================================================
 
 pub struct QueryServerReadV1 {
@@ -648,6 +658,51 @@ impl Handler<InternalSshKeyTagReadMessage> for QueryServerReadV1 {
                 }
                 Err(e) => Err(e),
             }
+        });
+        self.log.do_send(audit);
+        res
+    }
+}
+
+impl Handler<IdmAccountUnixAuthMessage> for QueryServerReadV1 {
+    type Result = Result<bool, OperationError>;
+
+    fn handle(&mut self, msg: IdmAccountUnixAuthMessage, _: &mut Self::Context) -> Self::Result {
+        let mut audit = AuditScope::new("idm_account_unix_auth");
+        let res = audit_segment!(&mut audit, || {
+            let idm_read = self.idms.proxy_read();
+
+            let _target_uuid = Uuid::parse_str(msg.uuid_or_name.as_str()).or_else(|_| {
+                idm_read
+                    .qs_read
+                    .posixid_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                    .map_err(|e| {
+                        audit_log!(&mut audit, "Error resolving as gidnumber continuing ...");
+                        e
+                    })
+            })?;
+
+            /*
+            // Make an event from the request
+            let uuae = match UnixUserAuthEvent::from_parts(
+                &mut audit,
+                &idm_read.qs_read,
+                msg.uat,
+                target_uuid,
+            ) {
+                Ok(s) => s,
+                Err(e) => {
+                    audit_log!(audit, "Failed to begin unix auth: {:?}", e);
+                    return Err(e);
+                }
+            };
+
+            audit_log!(audit, "Begin event {:?}", uuae);
+
+            idm_read.get_unixusertoken(&mut audit, &uuae)
+            */
+
+            unimplemented!();
         });
         self.log.do_send(audit);
         res

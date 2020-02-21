@@ -613,7 +613,7 @@ fn test_server_rest_posix_lifecycle() {
 }
 
 #[test]
-fn test_server_rest_posix_lifecycle() {
+fn test_server_rest_posix_auth_lifecycle() {
     run_test(|rsclient: KanidmClient| {
         let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
         assert!(res.is_ok());
@@ -633,6 +633,7 @@ fn test_server_rest_posix_lifecycle() {
         // clear password? (unix self)
 
         // attempt to verify (good pw, should fail, anon-conn)
+        unimplemented!();
     });
 }
 
