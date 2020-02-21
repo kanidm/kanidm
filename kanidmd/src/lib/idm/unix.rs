@@ -1,9 +1,14 @@
 use uuid::Uuid;
 
 use crate::audit::AuditScope;
+use crate::constants::UUID_ANONYMOUS;
+use crate::credential::Credential;
 use crate::entry::{Entry, EntryCommitted, EntryReduced, EntryValid};
-use crate::server::{QueryServerReadTransaction, QueryServerTransaction};
-use crate::value::PartialValue;
+use crate::modify::{ModifyInvalid, ModifyList};
+use crate::server::{
+    QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
+};
+use crate::value::{PartialValue, Value};
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
 
@@ -28,50 +33,44 @@ lazy_static! {
     static ref PVCLASS_POSIXGROUP: PartialValue = PartialValue::new_class("posixgroup");
 }
 
-impl UnixUserAccount {
-    pub(crate) fn try_from_entry_reduced(
-        au: &mut AuditScope,
-        value: Entry<EntryReduced, EntryCommitted>,
-        qs: &QueryServerReadTransaction,
-    ) -> Result<Self, OperationError> {
-        if !value.attribute_value_pres("class", &PVCLASS_ACCOUNT) {
+macro_rules! try_from_entry {
+    ($value:expr, $groups:expr) => {{
+        if !$value.attribute_value_pres("class", &PVCLASS_ACCOUNT) {
             return Err(OperationError::InvalidAccountState(
                 "Missing class: account".to_string(),
             ));
         }
 
-        if !value.attribute_value_pres("class", &PVCLASS_POSIXACCOUNT) {
+        if !$value.attribute_value_pres("class", &PVCLASS_POSIXACCOUNT) {
             return Err(OperationError::InvalidAccountState(
                 "Missing class: posixaccount".to_string(),
             ));
         }
 
-        let name = value.get_ava_single_string("name").ok_or_else(|| {
+        let name = $value.get_ava_single_string("name").ok_or_else(|| {
             OperationError::InvalidAccountState("Missing attribute: name".to_string())
         })?;
 
-        let spn = value
+        let spn = $value
             .get_ava_single("spn")
             .map(|v| v.to_proto_string_clone())
             .ok_or_else(|| {
                 OperationError::InvalidAccountState("Missing attribute: spn".to_string())
             })?;
 
-        let uuid = *value.get_uuid();
+        let uuid = *$value.get_uuid();
 
-        let displayname = value.get_ava_single_string("displayname").ok_or_else(|| {
+        let displayname = $value.get_ava_single_string("displayname").ok_or_else(|| {
             OperationError::InvalidAccountState("Missing attribute: displayname".to_string())
         })?;
 
-        let gidnumber = value.get_ava_single_uint32("gidnumber").ok_or_else(|| {
+        let gidnumber = $value.get_ava_single_uint32("gidnumber").ok_or_else(|| {
             OperationError::InvalidAccountState("Missing attribute: gidnumber".to_string())
         })?;
 
-        let shell = value.get_ava_single_string("loginshell");
+        let shell = $value.get_ava_single_string("loginshell");
 
-        let sshkeys = value.get_ava_ssh_pubkeys("ssh_publickey");
-
-        let groups = UnixGroup::try_from_account_entry_red_ro(au, &value, qs)?;
+        let sshkeys = $value.get_ava_ssh_pubkeys("ssh_publickey");
 
         Ok(UnixUserAccount {
             name,
@@ -81,8 +80,28 @@ impl UnixUserAccount {
             gidnumber,
             shell,
             sshkeys,
-            groups,
+            groups: $groups,
         })
+    }};
+}
+
+impl UnixUserAccount {
+    pub(crate) fn try_from_entry_rw(
+        au: &mut AuditScope,
+        value: Entry<EntryValid, EntryCommitted>,
+        qs: &QueryServerWriteTransaction,
+    ) -> Result<Self, OperationError> {
+        let groups = UnixGroup::try_from_account_entry_rw(au, &value, qs)?;
+        try_from_entry!(value, groups)
+    }
+
+    pub(crate) fn try_from_entry_reduced(
+        au: &mut AuditScope,
+        value: Entry<EntryReduced, EntryCommitted>,
+        qs: &QueryServerReadTransaction,
+    ) -> Result<Self, OperationError> {
+        let groups = UnixGroup::try_from_account_entry_red_ro(au, &value, qs)?;
+        try_from_entry!(value, groups)
     }
 
     pub(crate) fn to_unixusertoken(&self) -> Result<UnixUserToken, OperationError> {
@@ -99,6 +118,19 @@ impl UnixUserAccount {
             groups: groups,
             sshkeys: self.sshkeys.clone(),
         })
+    }
+
+    pub fn is_anonymous(&self) -> bool {
+        self.uuid == *UUID_ANONYMOUS
+    }
+
+    pub(crate) fn gen_password_mod(
+        &self,
+        cleartext: &str,
+    ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
+        let ncred = Credential::new_password_only(cleartext);
+        let vcred = Value::new_credential("unix", ncred);
+        Ok(ModifyList::new_purge_and_set("unix_password", vcred))
     }
 }
 
@@ -150,41 +182,37 @@ macro_rules! try_from_group_e {
     }};
 }
 
-impl UnixGroup {
-    pub fn try_from_account_entry_red_ro(
-        au: &mut AuditScope,
-        value: &Entry<EntryReduced, EntryCommitted>,
-        qs: &QueryServerReadTransaction,
-    ) -> Result<Vec<Self>, OperationError> {
+macro_rules! try_from_account_group_e {
+    ($au:expr, $value:expr, $qs:expr) => {{
         // First synthesise the self-group from the account.
         // We have already checked these, but paranoia is better than
         // complacency.
-        if !value.attribute_value_pres("class", &PVCLASS_ACCOUNT) {
+        if !$value.attribute_value_pres("class", &PVCLASS_ACCOUNT) {
             return Err(OperationError::InvalidAccountState(
                 "Missing class: account".to_string(),
             ));
         }
 
-        if !value.attribute_value_pres("class", &PVCLASS_POSIXACCOUNT) {
+        if !$value.attribute_value_pres("class", &PVCLASS_POSIXACCOUNT) {
             return Err(OperationError::InvalidAccountState(
                 "Missing class: posixaccount".to_string(),
             ));
         }
 
-        let name = value.get_ava_single_string("name").ok_or_else(|| {
+        let name = $value.get_ava_single_string("name").ok_or_else(|| {
             OperationError::InvalidAccountState("Missing attribute: name".to_string())
         })?;
 
-        let spn = value
+        let spn = $value
             .get_ava_single("spn")
             .map(|v| v.to_proto_string_clone())
             .ok_or_else(|| {
                 OperationError::InvalidAccountState("Missing attribute: spn".to_string())
             })?;
 
-        let uuid = *value.get_uuid();
+        let uuid = *$value.get_uuid();
 
-        let gidnumber = value.get_ava_single_uint32("gidnumber").ok_or_else(|| {
+        let gidnumber = $value.get_ava_single_uint32("gidnumber").ok_or_else(|| {
             OperationError::InvalidAccountState("Missing attribute: gidnumber".to_string())
         })?;
 
@@ -196,7 +224,7 @@ impl UnixGroup {
             uuid,
         };
 
-        match value.get_ava_reference_uuid("memberof") {
+        match $value.get_ava_reference_uuid("memberof") {
             Some(l) => {
                 let f = filter!(f_and!([
                     f_eq("class", PartialValue::new_class("posixgroup")),
@@ -207,7 +235,7 @@ impl UnixGroup {
                             .collect()
                     )
                 ]));
-                let ges: Vec<_> = try_audit!(au, qs.internal_search(au, f));
+                let ges: Vec<_> = $qs.internal_search($au, f)?;
                 let groups: Result<Vec<_>, _> = iter::once(Ok(upg))
                     .chain(ges.into_iter().map(UnixGroup::try_from_entry))
                     .collect();
@@ -218,6 +246,24 @@ impl UnixGroup {
                 Ok(vec![upg])
             }
         }
+    }};
+}
+
+impl UnixGroup {
+    pub fn try_from_account_entry_rw(
+        au: &mut AuditScope,
+        value: &Entry<EntryValid, EntryCommitted>,
+        qs: &QueryServerWriteTransaction,
+    ) -> Result<Vec<Self>, OperationError> {
+        try_from_account_group_e!(au, value, qs)
+    }
+
+    pub fn try_from_account_entry_red_ro(
+        au: &mut AuditScope,
+        value: &Entry<EntryReduced, EntryCommitted>,
+        qs: &QueryServerReadTransaction,
+    ) -> Result<Vec<Self>, OperationError> {
+        try_from_account_group_e!(au, value, qs)
     }
 
     pub fn try_from_entry_reduced(

@@ -271,51 +271,26 @@ impl IdmServerProxyReadTransaction {
 }
 
 impl<'a> IdmServerProxyWriteTransaction<'a> {
-    pub fn set_account_password(
-        &mut self,
+    fn check_password_policy(
+        &self,
         au: &mut AuditScope,
-        pce: &PasswordChangeEvent,
+        cleartext: &str,
+        related_inputs: &[&str],
     ) -> Result<(), OperationError> {
-        // Get the account
-        let account_entry = try_audit!(au, self.qs_write.internal_search_uuid(au, &pce.target));
-        let account = try_audit!(
-            au,
-            Account::try_from_entry_rw(au, account_entry, &self.qs_write)
-        );
-        // Ask if tis all good - this step checks pwpolicy and such
-
-        // Deny the change if the account is anonymous!
-        if account.is_anonymous() {
-            return Err(OperationError::SystemProtectedObject);
-        }
-
-        // Question: Is it a security issue to reveal pw policy checks BEFORE permission is
-        // determined over the credential modification?
-        //
-        // I don't think so - because we should only be showing how STRONG the pw is ...
-
         // password strength and badlisting is always global, rather than per-pw-policy.
         // pw-policy as check on the account is about requirements for mfa for example.
         //
 
         // is the password at least 10 char?
-        if pce.cleartext.len() < PW_MIN_LENGTH {
+        if cleartext.len() < PW_MIN_LENGTH {
             return Err(OperationError::PasswordTooShort(PW_MIN_LENGTH));
         }
 
         // does the password pass zxcvbn?
 
-        // Get related inputs, such as account name, email, etc.
-        let related: Vec<&str> = vec![
-            account.name.as_str(),
-            account.displayname.as_str(),
-            account.spn.as_str(),
-        ];
-
         let entropy = try_audit!(
             au,
-            zxcvbn::zxcvbn(pce.cleartext.as_str(), related.as_slice())
-                .map_err(|_| OperationError::PasswordEmpty)
+            zxcvbn::zxcvbn(cleartext, related_inputs).map_err(|_| OperationError::PasswordEmpty)
         );
 
         // check account pwpolicy (for 3 or 4)? Do we need pw strength beyond this
@@ -341,7 +316,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // check a password badlist to eliminate more content
         // we check the password as "lower case" to help eliminate possibilities
-        let lc_password = PartialValue::new_iutf8s(pce.cleartext.as_str());
+        let lc_password = PartialValue::new_iutf8s(cleartext);
         let badlist_entry = try_audit!(
             au,
             self.qs_write.internal_search_uuid(au, &UUID_SYSTEM_CONFIG)
@@ -350,6 +325,44 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             audit_log!(au, "Password found in badlist, rejecting");
             return Err(OperationError::PasswordBadListed);
         }
+
+        Ok(())
+    }
+
+    pub fn set_account_password(
+        &mut self,
+        au: &mut AuditScope,
+        pce: &PasswordChangeEvent,
+    ) -> Result<(), OperationError> {
+        // Get the account
+        let account_entry = try_audit!(au, self.qs_write.internal_search_uuid(au, &pce.target));
+        let account = try_audit!(
+            au,
+            Account::try_from_entry_rw(au, account_entry, &self.qs_write)
+        );
+        // Ask if tis all good - this step checks pwpolicy and such
+
+        // Deny the change if the account is anonymous!
+        if account.is_anonymous() {
+            return Err(OperationError::SystemProtectedObject);
+        }
+
+        // Question: Is it a security issue to reveal pw policy checks BEFORE permission is
+        // determined over the credential modification?
+        //
+        // I don't think so - because we should only be showing how STRONG the pw is ...
+
+        // Get related inputs, such as account name, email, etc.
+        let related_inputs: Vec<&str> = vec![
+            account.name.as_str(),
+            account.displayname.as_str(),
+            account.spn.as_str(),
+        ];
+
+        try_audit!(
+            au,
+            self.check_password_policy(au, pce.cleartext.as_str(), related_inputs.as_slice())
+        );
 
         // it returns a modify
         let modlist = try_audit!(
@@ -382,9 +395,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     ) -> Result<(), OperationError> {
         // Get the account
         let account_entry = try_audit!(au, self.qs_write.internal_search_uuid(au, &pce.target));
+        // Assert the account is unix and valid.
         let account = try_audit!(
             au,
-            Account::try_from_entry_rw(au, account_entry, &self.qs_write)
+            UnixUserAccount::try_from_entry_rw(au, account_entry, &self.qs_write)
         );
         // Ask if tis all good - this step checks pwpolicy and such
 
@@ -392,9 +406,38 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         if account.is_anonymous() {
             return Err(OperationError::SystemProtectedObject);
         }
-        // Assert the account is unix?
 
-        unimplemented!();
+        // Get related inputs, such as account name, email, etc.
+        let related_inputs: Vec<&str> = vec![
+            account.name.as_str(),
+            account.displayname.as_str(),
+            account.spn.as_str(),
+        ];
+
+        try_audit!(
+            au,
+            self.check_password_policy(au, pce.cleartext.as_str(), related_inputs.as_slice())
+        );
+
+        // it returns a modify
+        let modlist = try_audit!(au, account.gen_password_mod(pce.cleartext.as_str()));
+        audit_log!(au, "processing change {:?}", modlist);
+        // given the new credential generate a modify
+        // We use impersonate here to get the event from ae
+        try_audit!(
+            au,
+            self.qs_write.impersonate_modify(
+                au,
+                // Filter as executed
+                filter!(f_eq("uuid", PartialValue::new_uuidr(&pce.target))),
+                // Filter as intended (acp)
+                filter_all!(f_eq("uuid", PartialValue::new_uuidr(&pce.target))),
+                modlist,
+                &pce.event,
+            )
+        );
+
+        Ok(())
     }
 
     pub fn recover_account(
