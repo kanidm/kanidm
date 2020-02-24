@@ -222,3 +222,37 @@ impl UnixGroupTokenEvent {
         UnixGroupTokenEvent { event: e, target }
     }
 }
+
+#[derive(Debug)]
+pub struct UnixUserAuthEvent {
+    pub event: Event,
+    pub target: Uuid,
+    pub cleartext: String,
+}
+
+impl UnixUserAuthEvent {
+    #[cfg(test)]
+    pub fn new_internal(target: &Uuid, cleartext: &str) -> Self {
+        UnixUserAuthEvent {
+            event: Event::from_internal(),
+            target: *target,
+            cleartext: cleartext.to_string(),
+        }
+    }
+
+    pub fn from_parts(
+        audit: &mut AuditScope,
+        qs: &QueryServerReadTransaction,
+        uat: Option<UserAuthToken>,
+        target: Uuid,
+        cleartext: String,
+    ) -> Result<Self, OperationError> {
+        let e = Event::from_ro_uat(audit, qs, uat)?;
+
+        Ok(UnixUserAuthEvent {
+            event: e,
+            target,
+            cleartext,
+        })
+    }
+}

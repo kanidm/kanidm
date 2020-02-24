@@ -15,6 +15,7 @@ use log::debug;
 static PORT_ALLOC: AtomicUsize = AtomicUsize::new(8080);
 static ADMIN_TEST_PASSWORD: &str = "integration test admin password";
 static ADMIN_TEST_PASSWORD_CHANGE: &str = "integration test admin new🎉";
+static UNIX_TEST_PASSWORD: &str = "unix test user password";
 
 // Test external behaviorus of the service.
 
@@ -618,22 +619,49 @@ fn test_server_rest_posix_auth_lifecycle() {
         let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
         assert!(res.is_ok());
         // Get an anon connection
+        let anon_rsclient = rsclient.new_session().unwrap();
+        assert!(anon_rsclient.auth_anonymous().is_ok());
+
+        // Not recommended in production!
+        rsclient
+            .idm_group_add_members("idm_admins", vec!["admin"])
+            .unwrap();
 
         // Setup a unix user
+        rsclient
+            .idm_account_create("posix_account", "Posix Demo Account")
+            .unwrap();
 
-        // self-add their password (unix self)
+        // Extend the account with posix attrs.
+        rsclient
+            .idm_account_unix_extend("posix_account", None, None)
+            .unwrap();
+
+        // add their password (unix self)
+        rsclient
+            .idm_account_unix_cred_put("posix_account", UNIX_TEST_PASSWORD)
+            .unwrap();
 
         // attempt to verify (good, anon-conn)
+        let r1 = anon_rsclient.idm_account_unix_cred_verify("posix_account", UNIX_TEST_PASSWORD);
+        assert!(r1.is_ok());
 
         // attempt to verify (bad, anon-conn)
+        let r2 = anon_rsclient.idm_account_unix_cred_verify("posix_account", "ntaotnhuohtsuoehtsu");
+        assert!(r2.is_err());
 
         // lock? (admin-conn)
         // attempt to verify (good pw, should fail, anon-conn)
         // status? (self-conn)
+
         // clear password? (unix self)
+        rsclient
+            .idm_account_unix_cred_delete("posix_account")
+            .unwrap();
 
         // attempt to verify (good pw, should fail, anon-conn)
-        unimplemented!();
+        let r3 = anon_rsclient.idm_account_unix_cred_verify("posix_account", UNIX_TEST_PASSWORD);
+        assert!(r3.is_err());
     });
 }
 

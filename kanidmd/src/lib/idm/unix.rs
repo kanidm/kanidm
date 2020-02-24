@@ -24,6 +24,7 @@ pub(crate) struct UnixUserAccount {
     pub shell: Option<String>,
     pub sshkeys: Vec<String>,
     pub groups: Vec<UnixGroup>,
+    cred: Option<Credential>,
 }
 
 lazy_static! {
@@ -72,6 +73,10 @@ macro_rules! try_from_entry {
 
         let sshkeys = $value.get_ava_ssh_pubkeys("ssh_publickey");
 
+        let cred = $value
+            .get_ava_single_credential("unix_password")
+            .map(|v| v.clone());
+
         Ok(UnixUserAccount {
             name,
             spn,
@@ -81,6 +86,7 @@ macro_rules! try_from_entry {
             shell,
             sshkeys,
             groups: $groups,
+            cred,
         })
     }};
 }
@@ -92,6 +98,15 @@ impl UnixUserAccount {
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         let groups = UnixGroup::try_from_account_entry_rw(au, &value, qs)?;
+        try_from_entry!(value, groups)
+    }
+
+    pub(crate) fn try_from_entry_ro(
+        au: &mut AuditScope,
+        value: Entry<EntryValid, EntryCommitted>,
+        qs: &QueryServerReadTransaction,
+    ) -> Result<Self, OperationError> {
+        let groups = UnixGroup::try_from_account_entry_ro(au, &value, qs)?;
         try_from_entry!(value, groups)
     }
 
@@ -131,6 +146,28 @@ impl UnixUserAccount {
         let ncred = Credential::new_password_only(cleartext);
         let vcred = Value::new_credential("unix", ncred);
         Ok(ModifyList::new_purge_and_set("unix_password", vcred))
+    }
+
+    pub(crate) fn verify_unix_credential(
+        &self,
+        _au: &mut AuditScope,
+        cleartext: &str,
+    ) -> Result<UnixUserToken, OperationError> {
+        // TODO #59: Is the cred locked?
+        // is the cred some or none?
+        match &self.cred {
+            Some(cred) => match &cred.password {
+                Some(pw) => {
+                    if pw.verify(cleartext) {
+                        self.to_unixusertoken()
+                    } else {
+                        Err(OperationError::NotAuthenticated)
+                    }
+                }
+                None => Err(OperationError::NotAuthenticated),
+            },
+            None => Err(OperationError::NotAuthenticated),
+        }
     }
 }
 
@@ -254,6 +291,14 @@ impl UnixGroup {
         au: &mut AuditScope,
         value: &Entry<EntryValid, EntryCommitted>,
         qs: &QueryServerWriteTransaction,
+    ) -> Result<Vec<Self>, OperationError> {
+        try_from_account_group_e!(au, value, qs)
+    }
+
+    pub fn try_from_account_entry_ro(
+        au: &mut AuditScope,
+        value: &Entry<EntryValid, EntryCommitted>,
+        qs: &QueryServerReadTransaction,
     ) -> Result<Vec<Self>, OperationError> {
         try_from_account_group_e!(au, value, qs)
     }

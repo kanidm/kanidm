@@ -1057,7 +1057,7 @@ fn account_delete_id_unix_credential(
     let obj = PurgeAttributeMessage {
         uat,
         uuid_or_name: id,
-        attr: "unixpassword".to_string(),
+        attr: "unix_password".to_string(),
         filter: filter_all!(f_eq("class", PartialValue::new_class("posixaccount"))),
     };
 

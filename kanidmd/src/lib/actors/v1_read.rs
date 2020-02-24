@@ -4,7 +4,9 @@ use crate::audit::AuditScope;
 
 use crate::async_log::EventLog;
 use crate::event::{AuthEvent, SearchEvent, SearchResult, WhoamiResult};
-use crate::idm::event::{RadiusAuthTokenEvent, UnixGroupTokenEvent, UnixUserTokenEvent};
+use crate::idm::event::{
+    RadiusAuthTokenEvent, UnixGroupTokenEvent, UnixUserAuthEvent, UnixUserTokenEvent,
+};
 use crate::value::PartialValue;
 use kanidm_proto::v1::{OperationError, RadiusAuthToken};
 
@@ -146,7 +148,7 @@ pub struct IdmAccountUnixAuthMessage {
 }
 
 impl Message for IdmAccountUnixAuthMessage {
-    type Result = Result<bool, OperationError>;
+    type Result = Result<UnixUserToken, OperationError>;
 }
 
 // ===========================================================
@@ -665,15 +667,16 @@ impl Handler<InternalSshKeyTagReadMessage> for QueryServerReadV1 {
 }
 
 impl Handler<IdmAccountUnixAuthMessage> for QueryServerReadV1 {
-    type Result = Result<bool, OperationError>;
+    type Result = Result<UnixUserToken, OperationError>;
 
     fn handle(&mut self, msg: IdmAccountUnixAuthMessage, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("idm_account_unix_auth");
         let res = audit_segment!(&mut audit, || {
-            let idm_read = self.idms.proxy_read();
+            let mut idm_write = self.idms.write();
 
-            let _target_uuid = Uuid::parse_str(msg.uuid_or_name.as_str()).or_else(|_| {
-                idm_read
+            // resolve the id
+            let target_uuid = Uuid::parse_str(msg.uuid_or_name.as_str()).or_else(|_| {
+                idm_write
                     .qs_read
                     .posixid_to_uuid(&mut audit, msg.uuid_or_name.as_str())
                     .map_err(|e| {
@@ -681,14 +684,13 @@ impl Handler<IdmAccountUnixAuthMessage> for QueryServerReadV1 {
                         e
                     })
             })?;
-
-            /*
             // Make an event from the request
             let uuae = match UnixUserAuthEvent::from_parts(
                 &mut audit,
-                &idm_read.qs_read,
+                &idm_write.qs_read,
                 msg.uat,
                 target_uuid,
+                msg.cred,
             ) {
                 Ok(s) => s,
                 Err(e) => {
@@ -699,10 +701,16 @@ impl Handler<IdmAccountUnixAuthMessage> for QueryServerReadV1 {
 
             audit_log!(audit, "Begin event {:?}", uuae);
 
-            idm_read.get_unixusertoken(&mut audit, &uuae)
-            */
+            let ct = SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .expect("Clock failure!");
 
-            unimplemented!();
+            let r = idm_write
+                .auth_unix(&mut audit, &uuae, ct)
+                .and_then(|r| idm_write.commit().map(|_| r));
+
+            audit_log!(audit, "Sending result -> {:?}", r);
+            r
         });
         self.log.do_send(audit);
         res

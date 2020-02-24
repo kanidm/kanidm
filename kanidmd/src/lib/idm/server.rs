@@ -6,7 +6,7 @@ use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
 use crate::idm::event::{
     GeneratePasswordEvent, PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
-    UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserTokenEvent,
+    UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent,
 };
 use crate::idm::radius::RadiusAccount;
 use crate::idm::unix::{UnixGroup, UnixUserAccount};
@@ -43,7 +43,8 @@ pub struct IdmServerWriteTransaction<'a> {
     // the idm in memory structures (maybe the query server too). This is
     // things like authentication
     sessions: BptreeMapWriteTxn<'a, Uuid, AuthSession>,
-    qs: &'a QueryServer,
+    pub qs_read: QueryServerReadTransaction,
+    // qs: &'a QueryServer,
     sid: &'a SID,
 }
 
@@ -72,7 +73,8 @@ impl IdmServer {
     pub fn write(&self) -> IdmServerWriteTransaction {
         IdmServerWriteTransaction {
             sessions: self.sessions.write(),
-            qs: &self.qs,
+            // qs: &self.qs,
+            qs_read: self.qs.read(),
             sid: &self.sid,
         }
     }
@@ -132,7 +134,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
                 //
                 // We *DO NOT* need a write though, because I think that lock outs
                 // and rate limits are *per server* and *in memory* only.
-                let qs_read = self.qs.read();
+                //
                 // Check anything needed? Get the current auth-session-id from request
                 // because it associates to the nonce's etc which were all cached.
 
@@ -144,7 +146,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
                 ]));
 
                 // Get the first / single entry we expect here ....
-                let entry = match qs_read.internal_search(au, filter_entry) {
+                let entry = match self.qs_read.internal_search(au, filter_entry) {
                     Ok(mut entries) => {
                         // Get only one entry out ...
                         if entries.len() >= 2 {
@@ -164,7 +166,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
                 // typing and functionality so we can assess what auth types can
                 // continue, and helps to keep non-needed entry specific data
                 // out of the LRU.
-                let account = Account::try_from_entry_ro(au, entry, &qs_read)?;
+                let account = Account::try_from_entry_ro(au, entry, &self.qs_read)?;
                 let auth_session = AuthSession::new(account, init.appid.clone());
 
                 // Get the set of mechanisms that can proceed. This is tied
@@ -180,7 +182,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
                 self.sessions.insert(sessionid, auth_session);
 
                 // Debugging: ensure we really inserted ...
-                assert!(self.sessions.get(&sessionid).is_some());
+                debug_assert!(self.sessions.get(&sessionid).is_some());
 
                 Ok(AuthResult {
                     sessionid,
@@ -208,6 +210,27 @@ impl<'a> IdmServerWriteTransaction<'a> {
                 })
             }
         }
+    }
+
+    pub fn auth_unix(
+        &mut self,
+        au: &mut AuditScope,
+        uae: &UnixUserAuthEvent,
+        _ct: Duration,
+    ) -> Result<UnixUserToken, OperationError> {
+        // TODO #59: Implement soft lock checking for unix creds here!
+
+        // Get the entry/target we are working on.
+        let account_entry = try_audit!(au, self.qs_read.internal_search_uuid(au, &uae.target));
+
+        // Get their account
+        let account = try_audit!(
+            au,
+            UnixUserAccount::try_from_entry_ro(au, account_entry, &self.qs_read)
+        );
+
+        // Validate the unix_pw - this checks the account/cred lock states.
+        account.verify_unix_credential(au, uae.cleartext.as_str())
     }
 
     pub fn commit(self) -> Result<(), OperationError> {
@@ -271,7 +294,7 @@ impl IdmServerProxyReadTransaction {
 }
 
 impl<'a> IdmServerProxyWriteTransaction<'a> {
-    fn check_password_policy(
+    fn check_password_quality(
         &self,
         au: &mut AuditScope,
         cleartext: &str,
@@ -361,7 +384,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         try_audit!(
             au,
-            self.check_password_policy(au, pce.cleartext.as_str(), related_inputs.as_slice())
+            self.check_password_quality(au, pce.cleartext.as_str(), related_inputs.as_slice())
         );
 
         // it returns a modify
@@ -416,7 +439,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         try_audit!(
             au,
-            self.check_password_policy(au, pce.cleartext.as_str(), related_inputs.as_slice())
+            self.check_password_quality(au, pce.cleartext.as_str(), related_inputs.as_slice())
         );
 
         // it returns a modify
@@ -558,7 +581,7 @@ mod tests {
     use crate::event::{AuthEvent, AuthResult, CreateEvent, ModifyEvent};
     use crate::idm::event::{
         PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
-        UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserTokenEvent,
+        UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent,
     };
     use crate::modify::{Modify, ModifyList};
     use crate::value::{PartialValue, Value};
@@ -1020,11 +1043,39 @@ mod tests {
 
             assert!(idms_prox_write.set_unix_account_password(au, &pce).is_ok());
             assert!(idms_prox_write.set_unix_account_password(au, &pce).is_ok());
+            assert!(idms_prox_write.commit(au).is_ok());
 
+            let mut idms_write = idms.write();
             // Check auth verification of the password
 
+            let uuae_good = UnixUserAuthEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD);
+            assert!(idms_write
+                .auth_unix(au, &uuae_good, Duration::from_secs(TEST_CURRENT_TIME))
+                .is_ok());
+            // Check bad password
+            let uuae_bad = UnixUserAuthEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD_INC);
+            assert!(idms_write
+                .auth_unix(au, &uuae_bad, Duration::from_secs(TEST_CURRENT_TIME))
+                .is_err());
+            assert!(idms_write.commit().is_ok());
+
             // Check deleting the password
+            let mut idms_prox_write = idms.proxy_write();
+            let me_purge_up = unsafe {
+                ModifyEvent::new_internal_invalid(
+                    filter!(f_eq("name", PartialValue::new_iutf8s("admin"))),
+                    ModifyList::new_list(vec![Modify::Purged("unix_password".to_string())]),
+                )
+            };
+            assert!(idms_prox_write.qs_write.modify(au, &me_purge_up).is_ok());
             assert!(idms_prox_write.commit(au).is_ok());
+
+            // And auth should now fail due to the lack of PW material
+            let mut idms_write = idms.write();
+            assert!(idms_write
+                .auth_unix(au, &uuae_good, Duration::from_secs(TEST_CURRENT_TIME))
+                .is_err());
+            assert!(idms_write.commit().is_ok());
         })
     }
 }

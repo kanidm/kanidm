@@ -664,7 +664,11 @@ impl KanidmClient {
         self.perform_delete_request(format!("/v1/account/{}/_unix/_credential", id).as_str())
     }
 
-    pub fn idm_account_unix_cred_verify(&self, id: &str, cred: &str) -> Result<bool, ClientError> {
+    pub fn idm_account_unix_cred_verify(
+        &self,
+        id: &str,
+        cred: &str,
+    ) -> Result<UnixUserToken, ClientError> {
         let req = SingleStringRequest {
             value: cred.to_string(),
         };
