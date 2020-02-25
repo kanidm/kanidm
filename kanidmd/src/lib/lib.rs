@@ -18,9 +18,9 @@ mod utils;
 mod async_log;
 #[macro_use]
 mod audit;
-mod be;
+pub mod be;
 pub mod constants;
-mod credential;
+pub mod credential;
 mod entry;
 mod event;
 mod filter;

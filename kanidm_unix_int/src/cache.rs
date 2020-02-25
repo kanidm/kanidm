@@ -209,6 +209,20 @@ impl CacheLayer {
         dbtxn.delete_group(g_uuid).and_then(|_| dbtxn.commit())
     }
 
+    fn set_cache_userpassword(&self, a_uuid: &str, cred: &str) -> Result<(), ()> {
+        let dbtxn = self.db.write();
+        dbtxn
+            .update_account_password(a_uuid, cred)
+            .and_then(|x| dbtxn.commit().map(|_| x))
+    }
+
+    fn check_cache_userpassword(&self, a_uuid: &str, cred: &str) -> Result<bool, ()> {
+        let dbtxn = self.db.write();
+        dbtxn
+            .check_account_password(a_uuid, cred)
+            .and_then(|x| dbtxn.commit().map(|_| x))
+    }
+
     async fn refresh_usertoken(
         &self,
         account_id: &Id,
@@ -495,6 +509,93 @@ impl CacheLayer {
 
     pub async fn get_nssgroup_gid(&self, gid: u32) -> Result<Option<NssGroup>, ()> {
         self.get_nssgroup(Id::Gid(gid)).await
+    }
+
+    async fn online_account_authenticate(
+        &self,
+        token: &Option<UnixUserToken>,
+        account_id: &str,
+        cred: &str,
+    ) -> Result<bool, ()> {
+        debug!("Attempt online password check");
+        // We are online, attempt the pw to the server.
+        match self
+            .client
+            .idm_account_unix_cred_verify(account_id, cred)
+            .await
+        {
+            Ok(n_tok) => {
+                debug!("online password check success.");
+                self.set_cache_usertoken(&n_tok)?;
+                self.set_cache_userpassword(&n_tok.uuid, cred)?;
+                Ok(true)
+            }
+            Err(e) => match e {
+                ClientError::Transport(er) => {
+                    error!("transport error, moving to offline -> {:?}", er);
+                    // Something went wrong, mark offline.
+                    let time = SystemTime::now().add(Duration::from_secs(15));
+                    self.set_cachestate(CacheState::OfflineNextCheck(time))
+                        .await;
+                    token
+                        .as_ref()
+                        .map(|t| self.check_cache_userpassword(&t.uuid, cred))
+                        .unwrap_or(Ok(false))
+                }
+                ClientError::Http(
+                    StatusCode::UNAUTHORIZED,
+                    Some(OperationError::NotAuthenticated),
+                ) => {
+                    error!("incorrect password");
+                    // PW failed the check.
+                    Ok(false)
+                }
+                er => {
+                    error!("client error -> {:?}", er);
+                    // Some other unknown processing error?
+                    Err(())
+                }
+            },
+        }
+    }
+
+    fn offline_account_authenticate(
+        &self,
+        token: &Option<UnixUserToken>,
+        cred: &str,
+    ) -> Result<bool, ()> {
+        debug!("Attempt offline password check");
+        token
+            .as_ref()
+            .map(|t| self.check_cache_userpassword(&t.uuid, cred))
+            .unwrap_or(Ok(false))
+    }
+
+    pub async fn pam_account_authenticate(&self, account_id: &str, cred: &str) -> Result<bool, ()> {
+        let state = self.get_cachestate().await;
+        let (_expired, token) = self.get_cached_usertoken(&Id::Name(account_id.to_string()))?;
+
+        match state {
+            CacheState::Online => {
+                self.online_account_authenticate(&token, account_id, cred)
+                    .await
+            }
+            CacheState::OfflineNextCheck(time) => {
+                // Should this always attempt to go online?
+                if SystemTime::now() >= time && self.test_connection().await {
+                    // Brought ourselves online, lets check.
+                    self.online_account_authenticate(&token, account_id, cred)
+                        .await
+                } else {
+                    // We are offline, check from the cache if possible.
+                    self.offline_account_authenticate(&token, cred)
+                }
+            }
+            _ => {
+                // We are offline, check from the cache if possible.
+                self.offline_account_authenticate(&token, cred)
+            }
+        }
     }
 
     pub async fn test_connection(&self) -> bool {

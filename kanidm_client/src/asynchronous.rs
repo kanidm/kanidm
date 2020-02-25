@@ -44,6 +44,37 @@ impl KanidmAsyncClient {
         Ok(r)
     }
 
+    async fn perform_put_request<R: Serialize, T: DeserializeOwned>(
+        &self,
+        dest: &str,
+        request: R,
+    ) -> Result<T, ClientError> {
+        let dest = [self.addr.as_str(), dest].concat();
+        debug!("{:?}", dest);
+        // format doesn't work in async ?!
+        // let dest = format!("{}{}", self.addr, dest);
+
+        let req_string = serde_json::to_string(&request).unwrap();
+
+        let response = self
+            .client
+            .put(dest.as_str())
+            .body(req_string)
+            .send()
+            .await
+            .map_err(ClientError::Transport)?;
+
+        match response.status() {
+            reqwest::StatusCode::OK => {}
+            unexpect => return Err(ClientError::Http(unexpect, response.json().await.ok())),
+        }
+
+        // TODO: What about errors
+        let r: T = response.json().await.unwrap();
+
+        Ok(r)
+    }
+
     async fn perform_get_request<T: DeserializeOwned>(&self, dest: &str) -> Result<T, ClientError> {
         let dest = [self.addr.as_str(), dest].concat();
         debug!("{:?}", dest);
@@ -185,6 +216,34 @@ impl KanidmAsyncClient {
 
     pub async fn idm_group_delete(&self, id: &str) -> Result<(), ClientError> {
         self.perform_delete_request(["/v1/group/", id].concat().as_str())
+            .await
+    }
+
+    pub async fn idm_account_unix_cred_put(&self, id: &str, cred: &str) -> Result<(), ClientError> {
+        let req = SingleStringRequest {
+            value: cred.to_string(),
+        };
+        self.perform_put_request(
+            ["/v1/account/", id, "/_unix/_credential"].concat().as_str(),
+            req,
+        )
+        .await
+    }
+
+    pub async fn idm_account_unix_cred_delete(&self, id: &str) -> Result<(), ClientError> {
+        self.perform_delete_request(["/v1/account/", id, "/_unix/_credential"].concat().as_str())
+            .await
+    }
+
+    pub async fn idm_account_unix_cred_verify(
+        &self,
+        id: &str,
+        cred: &str,
+    ) -> Result<UnixUserToken, ClientError> {
+        let req = SingleStringRequest {
+            value: cred.to_string(),
+        };
+        self.perform_post_request(["/v1/account/", id, "/_unix/_auth"].concat().as_str(), req)
             .await
     }
 }

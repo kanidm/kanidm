@@ -92,6 +92,14 @@ impl Password {
             }
         }
     }
+
+    pub fn to_dbpasswordv1(&self) -> DbPasswordV1 {
+        match &self.material {
+            KDF::PBKDF2(cost, salt, hash) => {
+                DbPasswordV1::PBKDF2(*cost, salt.clone(), hash.clone())
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -173,11 +181,7 @@ impl Credential {
     pub fn to_db_valuev1(&self) -> DbCredV1 {
         DbCredV1 {
             password: match &self.password {
-                Some(pw) => match &pw.material {
-                    KDF::PBKDF2(cost, salt, hash) => {
-                        Some(DbPasswordV1::PBKDF2(*cost, salt.clone(), hash.clone()))
-                    }
-                },
+                Some(pw) => Some(pw.to_dbpasswordv1()),
                 None => None,
             },
             claims: self.claims.clone(),
