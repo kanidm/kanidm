@@ -23,6 +23,7 @@ pub enum ClientRequest {
     NssGroups,
     NssGroupByGid(u32),
     NssGroupByName(String),
+    Authenticate(String, String),
     InvalidateCache,
     ClearCache,
     Status,
@@ -36,5 +37,6 @@ pub enum ClientResponse {
     NssGroups(Vec<NssGroup>),
     NssGroup(Option<NssGroup>),
     Ok,
+    Failed,
     Error,
 }

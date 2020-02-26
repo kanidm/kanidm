@@ -8,6 +8,7 @@ extern crate log;
 
 pub mod cache;
 pub mod client;
-pub mod constants;
+mod constants;
 pub(crate) mod db;
 pub mod unix_proto;
+pub mod unix_config;

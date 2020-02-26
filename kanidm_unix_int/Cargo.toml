@@ -42,6 +42,7 @@ kanidm = { path = "../kanidmd" }
 # actix = { path = "../../actix", version = "0.9" }
 actix = "0.7"
 # actix-rt = "1.0"
+toml = "0.5"
 tokio = { version = "0.2", features=["full"] }
 tokio-util = { version = "0.2", features = ["codec"] }
 futures = "0.3"
