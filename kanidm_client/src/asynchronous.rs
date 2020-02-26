@@ -246,4 +246,14 @@ impl KanidmAsyncClient {
         self.perform_post_request(["/v1/account/", id, "/_unix/_auth"].concat().as_str(), req)
             .await
     }
+
+    pub async fn idm_group_add_members(
+        &self,
+        id: &str,
+        members: Vec<&str>,
+    ) -> Result<(), ClientError> {
+        let m: Vec<_> = members.iter().map(|v| (*v).to_string()).collect();
+        self.perform_post_request(["/v1/group/", id, "/_attr/member"].concat().as_str(), m)
+            .await
+    }
 }

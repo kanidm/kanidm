@@ -151,10 +151,24 @@ async fn handle_client(
                         ClientResponse::NssGroup(None)
                     })
             }
-            ClientRequest::Authenticate(account_id, cred) => {
-                debug!("authenticate");
+            ClientRequest::PamAuthenticate(account_id, cred) => {
+                debug!("pam authenticate");
                 cachelayer
                     .pam_account_authenticate(account_id.as_str(), cred.as_str())
+                    .await
+                    .map(|b| {
+                        if b {
+                            ClientResponse::Ok
+                        } else {
+                            ClientResponse::Failed
+                        }
+                    })
+                    .unwrap_or(ClientResponse::Error)
+            }
+            ClientRequest::PamAccountAllowed(account_id) => {
+                debug!("pam account allowed");
+                cachelayer
+                    .pam_account_allowed(account_id.as_str())
                     .await
                     .map(|b| {
                         if b {
@@ -223,6 +237,7 @@ async fn main() {
             cfg.db_path.as_str(), // The sqlite db path
             cfg.cache_timeout,
             rsclient,
+            cfg.pam_allowed_login_groups.clone(),
         )
         .expect("Failed to build cache layer."),
     );

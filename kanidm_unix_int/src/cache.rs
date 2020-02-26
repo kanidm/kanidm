@@ -4,6 +4,7 @@ use kanidm_client::asynchronous::KanidmAsyncClient;
 use kanidm_client::ClientError;
 use kanidm_proto::v1::{OperationError, UnixGroupToken, UnixUserToken};
 use reqwest::StatusCode;
+use std::collections::BTreeSet;
 use std::ops::Add;
 use std::string::ToString;
 use std::time::{Duration, SystemTime};
@@ -26,6 +27,7 @@ pub struct CacheLayer {
     db: Db,
     client: KanidmAsyncClient,
     state: Mutex<CacheState>,
+    pam_allow_groups: BTreeSet<String>,
     timeout_seconds: u64,
 }
 
@@ -46,6 +48,7 @@ impl CacheLayer {
         timeout_seconds: u64,
         //
         client: KanidmAsyncClient,
+        pam_allow_groups: Vec<String>,
     ) -> Result<Self, ()> {
         let db = Db::new(path)?;
 
@@ -63,6 +66,7 @@ impl CacheLayer {
             client: client,
             state: Mutex::new(CacheState::OfflineNextCheck(SystemTime::now())),
             timeout_seconds: timeout_seconds,
+            pam_allow_groups: pam_allow_groups.into_iter().collect(),
         })
     }
 
@@ -569,6 +573,24 @@ impl CacheLayer {
             .as_ref()
             .map(|t| self.check_cache_userpassword(&t.uuid, cred))
             .unwrap_or(Ok(false))
+    }
+
+    pub async fn pam_account_allowed(&self, account_id: &str) -> Result<bool, ()> {
+        let token = self.get_usertoken(Id::Name(account_id.to_string())).await?;
+
+        match token {
+            Some(tok) => {
+                let user_set: BTreeSet<_> = tok.groups.iter().map(|g| g.name.clone()).collect();
+
+                debug!(
+                    "Checking if -> {:?} & {:?}",
+                    user_set, self.pam_allow_groups
+                );
+
+                Ok(user_set.intersection(&self.pam_allow_groups).count() > 0)
+            }
+            None => Ok(false),
+        }
     }
 
     pub async fn pam_account_authenticate(&self, account_id: &str, cred: &str) -> Result<bool, ()> {

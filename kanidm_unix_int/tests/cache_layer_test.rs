@@ -67,7 +67,9 @@ fn run_test(fix_fn: fn(&KanidmClient) -> (), test_fn: fn(CacheLayer, KanidmAsync
 
     let cachelayer = CacheLayer::new(
         "", // The sqlite db path, this is in memory.
-        300, rsclient,
+        300,
+        rsclient,
+        vec!["allowed_group".to_string()],
     )
     .expect("Failed to build cache layer.");
 
@@ -112,6 +114,12 @@ fn test_fixture(rsclient: &KanidmClient) -> () {
         .unwrap();
     rsclient
         .idm_group_unix_extend("testgroup1", Some(20001))
+        .unwrap();
+
+    // Setup the allowed group
+    rsclient.idm_group_create("allowed_group").unwrap();
+    rsclient
+        .idm_group_unix_extend("allowed_group", Some(20002))
         .unwrap();
 }
 
@@ -430,6 +438,43 @@ fn test_cache_account_password() {
                 .await
                 .expect("failed to authenticate");
             assert!(a8 == true);
+        };
+        rt.block_on(fut);
+    })
+}
+
+#[test]
+fn test_cache_account_pam_allowed() {
+    run_test(test_fixture, |cachelayer, adminclient| {
+        let mut rt = Runtime::new().expect("Failed to start tokio");
+        let fut = async move {
+            cachelayer.attempt_online().await;
+
+            // Should fail
+            let a1 = cachelayer
+                .pam_account_allowed("testaccount1")
+                .await
+                .expect("failed to authenticate");
+            assert!(a1 == false);
+
+            adminclient
+                .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+                .await
+                .expect("failed to auth as admin");
+            adminclient
+                .idm_group_add_members("allowed_group", vec!["testaccount1"])
+                .await
+                .unwrap();
+
+            // Invalidate cache to force a refresh
+            assert!(cachelayer.invalidate().is_ok());
+
+            // Should pass
+            let a2 = cachelayer
+                .pam_account_allowed("testaccount1")
+                .await
+                .expect("failed to authenticate");
+            assert!(a2 == true);
         };
         rt.block_on(fut);
     })

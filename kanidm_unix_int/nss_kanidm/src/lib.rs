@@ -4,7 +4,7 @@ extern crate libnss;
 extern crate lazy_static;
 
 use kanidm_unix_common::client::call_daemon_blocking;
-use kanidm_unix_common::constants::DEFAULT_SOCK_PATH;
+use kanidm_unix_common::unix_config::KanidmUnixdConfig;
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse, NssGroup, NssUser};
 
 use libnss::group::{Group, GroupHooks};
@@ -18,8 +18,11 @@ libnss_passwd_hooks!(kanidm, KanidmPasswd);
 
 impl PasswdHooks for KanidmPasswd {
     fn get_all_entries() -> Response<Vec<Passwd>> {
+        let cfg = KanidmUnixdConfig::new()
+            .read_options_from_optional_config("/etc/kanidm/unixd")
+            .expect("Failed to parse /etc/kanidm/unixd");
         let req = ClientRequest::NssAccounts;
-        call_daemon_blocking(DEFAULT_SOCK_PATH, req)
+        call_daemon_blocking(cfg.sock_path.as_str(), req)
             .map(|r| match r {
                 ClientResponse::NssAccounts(l) => l.into_iter().map(passwd_from_nssuser).collect(),
                 _ => Vec::new(),
@@ -29,8 +32,11 @@ impl PasswdHooks for KanidmPasswd {
     }
 
     fn get_entry_by_uid(uid: libc::uid_t) -> Response<Passwd> {
+        let cfg = KanidmUnixdConfig::new()
+            .read_options_from_optional_config("/etc/kanidm/unixd")
+            .expect("Failed to parse /etc/kanidm/unixd");
         let req = ClientRequest::NssAccountByUid(uid);
-        call_daemon_blocking(DEFAULT_SOCK_PATH, req)
+        call_daemon_blocking(cfg.sock_path.as_str(), req)
             .map(|r| match r {
                 ClientResponse::NssAccount(opt) => opt
                     .map(passwd_from_nssuser)
@@ -42,8 +48,11 @@ impl PasswdHooks for KanidmPasswd {
     }
 
     fn get_entry_by_name(name: String) -> Response<Passwd> {
+        let cfg = KanidmUnixdConfig::new()
+            .read_options_from_optional_config("/etc/kanidm/unixd")
+            .expect("Failed to parse /etc/kanidm/unixd");
         let req = ClientRequest::NssAccountByName(name);
-        call_daemon_blocking(DEFAULT_SOCK_PATH, req)
+        call_daemon_blocking(cfg.sock_path.as_str(), req)
             .map(|r| match r {
                 ClientResponse::NssAccount(opt) => opt
                     .map(passwd_from_nssuser)
@@ -60,8 +69,11 @@ libnss_group_hooks!(kanidm, KanidmGroup);
 
 impl GroupHooks for KanidmGroup {
     fn get_all_entries() -> Response<Vec<Group>> {
+        let cfg = KanidmUnixdConfig::new()
+            .read_options_from_optional_config("/etc/kanidm/unixd")
+            .expect("Failed to parse /etc/kanidm/unixd");
         let req = ClientRequest::NssGroups;
-        call_daemon_blocking(DEFAULT_SOCK_PATH, req)
+        call_daemon_blocking(cfg.sock_path.as_str(), req)
             .map(|r| match r {
                 ClientResponse::NssGroups(l) => l.into_iter().map(group_from_nssgroup).collect(),
                 _ => Vec::new(),
@@ -71,8 +83,11 @@ impl GroupHooks for KanidmGroup {
     }
 
     fn get_entry_by_gid(gid: libc::gid_t) -> Response<Group> {
+        let cfg = KanidmUnixdConfig::new()
+            .read_options_from_optional_config("/etc/kanidm/unixd")
+            .expect("Failed to parse /etc/kanidm/unixd");
         let req = ClientRequest::NssGroupByGid(gid);
-        call_daemon_blocking(DEFAULT_SOCK_PATH, req)
+        call_daemon_blocking(cfg.sock_path.as_str(), req)
             .map(|r| match r {
                 ClientResponse::NssGroup(opt) => opt
                     .map(group_from_nssgroup)
@@ -84,8 +99,11 @@ impl GroupHooks for KanidmGroup {
     }
 
     fn get_entry_by_name(name: String) -> Response<Group> {
+        let cfg = KanidmUnixdConfig::new()
+            .read_options_from_optional_config("/etc/kanidm/unixd")
+            .expect("Failed to parse /etc/kanidm/unixd");
         let req = ClientRequest::NssGroupByName(name);
-        call_daemon_blocking(DEFAULT_SOCK_PATH, req)
+        call_daemon_blocking(cfg.sock_path.as_str(), req)
             .map(|r| match r {
                 ClientResponse::NssGroup(opt) => opt
                     .map(group_from_nssgroup)

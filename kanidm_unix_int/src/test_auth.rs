@@ -36,11 +36,28 @@ async fn main() {
 
     let password = rpassword::prompt_password_stderr("Enter unix password: ").unwrap();
 
-    let req = ClientRequest::Authenticate(opt.account_id.clone(), password);
+    let req = ClientRequest::PamAuthenticate(opt.account_id.clone(), password);
+    let sereq = ClientRequest::PamAccountAllowed(opt.account_id.clone());
 
     match block_on(call_daemon(cfg.sock_path.as_str(), req)) {
         Ok(r) => match r {
-            ClientResponse::Ok => info!("auth success!"),
+            ClientResponse::Ok => {
+                info!("auth success!");
+                match block_on(call_daemon(cfg.sock_path.as_str(), sereq)) {
+                    Ok(r) => match r {
+                        ClientResponse::Ok => {
+                            info!("session allowed");
+                        }
+                        ClientResponse::Failed => info!("session failed"),
+                        _ => {
+                            error!("Error: unexpected response -> {:?}", r);
+                        }
+                    },
+                    Err(e) => {
+                        error!("Error -> {:?}", e);
+                    }
+                }
+            }
             ClientResponse::Failed => info!("auth failed"),
             _ => {
                 error!("Error: unexpected response -> {:?}", r);
