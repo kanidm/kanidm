@@ -14,7 +14,7 @@ use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
 struct ClientOpt {
     #[structopt(short = "d", long = "debug")]
     debug: bool,
-    #[structopt()]
+    #[structopt(short = "D", long = "name")]
     account_id: String,
 }
 
@@ -28,19 +28,20 @@ async fn main() {
     }
     env_logger::init();
 
-    debug!("Starting authorized keys tool ...");
+    debug!("Starting cache invalidate tool ...");
 
     let cfg = KanidmUnixdConfig::new()
         .read_options_from_optional_config("/etc/kanidm/unixd")
         .expect("Failed to parse /etc/kanidm/unixd");
 
-    let req = ClientRequest::SshKey(opt.account_id.clone());
+    let password = rpassword::prompt_password_stderr("Enter unix password: ").unwrap();
+
+    let req = ClientRequest::Authenticate(opt.account_id.clone(), password);
 
     match block_on(call_daemon(cfg.sock_path.as_str(), req)) {
         Ok(r) => match r {
-            ClientResponse::SshKeys(sk) => sk.iter().for_each(|k| {
-                println!("{}", k);
-            }),
+            ClientResponse::Ok => info!("auth success!"),
+            ClientResponse::Failed => info!("auth failed"),
             _ => {
                 error!("Error: unexpected response -> {:?}", r);
             }

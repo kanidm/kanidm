@@ -1,10 +1,10 @@
+use crate::constants::{
+    DEFAULT_CACHE_TIMEOUT, DEFAULT_CONN_TIMEOUT, DEFAULT_DB_PATH, DEFAULT_SOCK_PATH,
+};
 use serde_derive::Deserialize;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
-use crate::constants::{
-    DEFAULT_CACHE_TIMEOUT, DEFAULT_CONN_TIMEOUT, DEFAULT_DB_PATH, DEFAULT_SOCK_PATH,
-};
 
 #[derive(Debug, Deserialize)]
 struct ConfigInt {
@@ -12,7 +12,7 @@ struct ConfigInt {
     sock_path: Option<String>,
     conn_timeout: Option<u64>,
     cache_timeout: Option<u64>,
-    pam_allowed_login_groups: Option<Vec<String>>
+    pam_allowed_login_groups: Option<Vec<String>>,
 }
 
 #[derive(Debug)]
@@ -21,7 +21,7 @@ pub struct KanidmUnixdConfig {
     pub sock_path: String,
     pub conn_timeout: u64,
     pub cache_timeout: u64,
-    pub pam_allowed_login_groups: Vec<String>
+    pub pam_allowed_login_groups: Vec<String>,
 }
 
 impl KanidmUnixdConfig {
@@ -60,7 +60,9 @@ impl KanidmUnixdConfig {
             sock_path: config.sock_path.unwrap_or(self.sock_path),
             conn_timeout: config.conn_timeout.unwrap_or(self.conn_timeout),
             cache_timeout: config.cache_timeout.unwrap_or(self.cache_timeout),
-            pam_allowed_login_groups: config.pam_allowed_login_groups.unwrap_or(self.pam_allowed_login_groups),
+            pam_allowed_login_groups: config
+                .pam_allowed_login_groups
+                .unwrap_or(self.pam_allowed_login_groups),
         })
     }
 }

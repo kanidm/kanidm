@@ -7,8 +7,8 @@ use structopt::StructOpt;
 use futures::executor::block_on;
 
 use kanidm_unix_common::client::call_daemon;
-use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
+use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
 
 #[derive(Debug, StructOpt)]
 struct ClientOpt {

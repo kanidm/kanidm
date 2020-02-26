@@ -532,11 +532,13 @@ fn main() {
                 }
                 AccountPosix::SetPassword(aopt) => {
                     let client = aopt.copt.to_client();
-                    let password = rpassword::prompt_password_stderr("Enter new unix (sudo) password: ").unwrap();
+                    let password =
+                        rpassword::prompt_password_stderr("Enter new unix (sudo) password: ")
+                            .unwrap();
                     client
                         .idm_account_unix_cred_put(
                             aopt.aopts.account_id.as_str(),
-                            password.as_str()
+                            password.as_str(),
                         )
                         .unwrap();
                 }
