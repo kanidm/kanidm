@@ -39,7 +39,7 @@ async fn main() {
         return;
     }
 
-    let req = ClientRequest::InvalidateCache;
+    let req = ClientRequest::ClearCache;
 
     match block_on(call_daemon(cfg.sock_path.as_str(), req)) {
         Ok(r) => match r {
