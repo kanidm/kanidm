@@ -63,13 +63,13 @@ impl PamHooks for PamKanidm {
                 }
                 _ => {
                     // unexpected response.
-                    println!("PAM_SERVICE_ERR -> {:?}", r);
-                    PamResultCode::PAM_SERVICE_ERR
+                    println!("PAM_IGNORE -> {:?}", r);
+                    PamResultCode::PAM_IGNORE
                 }
             },
             Err(e) => {
-                println!("PAM_SERVICE_ERR  -> {:?}", e);
-                PamResultCode::PAM_SERVICE_ERR
+                println!("PAM_IGNORE  -> {:?}", e);
+                PamResultCode::PAM_IGNORE
             }
         }
     }
@@ -145,13 +145,13 @@ impl PamHooks for PamKanidm {
                 }
                 _ => {
                     // unexpected response.
-                    println!("PAM_SERVICE_ERR -> {:?}", r);
-                    PamResultCode::PAM_SERVICE_ERR
+                    println!("PAM_IGNORE -> {:?}", r);
+                    PamResultCode::PAM_IGNORE
                 }
             },
             Err(e) => {
-                println!("PAM_SERVICE_ERR -> {:?}", e);
-                PamResultCode::PAM_SERVICE_ERR
+                println!("PAM_IGNORE -> {:?}", e);
+                PamResultCode::PAM_IGNORE
             }
         }
     }
