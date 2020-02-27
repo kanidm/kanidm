@@ -5,10 +5,10 @@ use crate::pam::constants::*;
 use crate::pam::conv::PamConv;
 use crate::pam::module::{PamHandle, PamHooks};
 
+use std::collections::BTreeSet;
+use std::convert::TryFrom;
 use std::ffi::CStr;
 use std::os::raw::c_char;
-use std::convert::TryFrom;
-use std::collections::BTreeSet;
 
 // use futures::executor::block_on;
 use tokio::runtime::Runtime;
@@ -33,7 +33,7 @@ impl TryFrom<&Vec<&CStr>> for Options {
             Ok(o) => o,
             Err(e) => {
                 println!("Error in module args -> {:?}", e);
-                return Err(())
+                return Err(());
             }
         };
 
@@ -56,7 +56,6 @@ pam_hooks!(PamKanidm);
 
 impl PamHooks for PamKanidm {
     fn acct_mgmt(pamh: &PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
-
         let opts = match Options::try_from(&args) {
             Ok(o) => o,
             Err(_) => return PamResultCode::PAM_SERVICE_ERR,
@@ -125,7 +124,6 @@ impl PamHooks for PamKanidm {
     }
 
     fn sm_authenticate(pamh: &PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
-
         let opts = match Options::try_from(&args) {
             Ok(o) => o,
             Err(_) => return PamResultCode::PAM_SERVICE_ERR,
