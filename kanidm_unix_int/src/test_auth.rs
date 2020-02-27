@@ -41,25 +41,38 @@ async fn main() {
 
     match block_on(call_daemon(cfg.sock_path.as_str(), req)) {
         Ok(r) => match r {
-            ClientResponse::Ok => {
+            ClientResponse::PamStatus(Some(true)) => {
                 info!("auth success!");
-                match block_on(call_daemon(cfg.sock_path.as_str(), sereq)) {
-                    Ok(r) => match r {
-                        ClientResponse::Ok => {
-                            info!("session allowed");
-                        }
-                        ClientResponse::Failed => info!("session failed"),
-                        _ => {
-                            error!("Error: unexpected response -> {:?}", r);
-                        }
-                    },
-                    Err(e) => {
-                        error!("Error -> {:?}", e);
-                    }
-                }
             }
-            ClientResponse::Failed => info!("auth failed"),
+            ClientResponse::PamStatus(Some(false)) => {
+                info!("auth failed!");
+            }
+            ClientResponse::PamStatus(None) => {
+                info!("user unknown");
+            }
             _ => {
+                // unexpected response.
+                error!("Error: unexpected response -> {:?}", r);
+            }
+        },
+        Err(e) => {
+            error!("Error -> {:?}", e);
+        }
+    }
+
+    match block_on(call_daemon(cfg.sock_path.as_str(), sereq)) {
+        Ok(r) => match r {
+            ClientResponse::PamStatus(Some(true)) => {
+                info!("auth success!");
+            }
+            ClientResponse::PamStatus(Some(false)) => {
+                info!("auth failed!");
+            }
+            ClientResponse::PamStatus(None) => {
+                info!("user unknown");
+            }
+            _ => {
+                // unexpected response.
                 error!("Error: unexpected response -> {:?}", r);
             }
         },

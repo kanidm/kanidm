@@ -11,3 +11,6 @@ path =  "src/lib.rs"
 
 [dependencies]
 kanidm_unix_int = { path = "../", version = "0.1" }
+futures = "0.3"
+tokio = { version = "0.2", features=["full"] }
+libc = "0.2"

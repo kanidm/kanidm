@@ -520,7 +520,7 @@ impl CacheLayer {
         token: &Option<UnixUserToken>,
         account_id: &str,
         cred: &str,
-    ) -> Result<bool, ()> {
+    ) -> Result<Option<bool>, ()> {
         debug!("Attempt online password check");
         // We are online, attempt the pw to the server.
         match self
@@ -532,7 +532,7 @@ impl CacheLayer {
                 debug!("online password check success.");
                 self.set_cache_usertoken(&n_tok)?;
                 self.set_cache_userpassword(&n_tok.uuid, cred)?;
-                Ok(true)
+                Ok(Some(true))
             }
             Err(e) => match e {
                 ClientError::Transport(er) => {
@@ -544,7 +544,7 @@ impl CacheLayer {
                     token
                         .as_ref()
                         .map(|t| self.check_cache_userpassword(&t.uuid, cred))
-                        .unwrap_or(Ok(false))
+                        .transpose()
                 }
                 ClientError::Http(
                     StatusCode::UNAUTHORIZED,
@@ -552,7 +552,14 @@ impl CacheLayer {
                 ) => {
                     error!("incorrect password");
                     // PW failed the check.
-                    Ok(false)
+                    Ok(Some(false))
+                }
+                ClientError::Http(
+                    StatusCode::BAD_REQUEST,
+                    Some(OperationError::NoMatchingEntries),
+                ) => {
+                    error!("unknown account");
+                    Ok(None)
                 }
                 er => {
                     error!("client error -> {:?}", er);
@@ -567,19 +574,18 @@ impl CacheLayer {
         &self,
         token: &Option<UnixUserToken>,
         cred: &str,
-    ) -> Result<bool, ()> {
+    ) -> Result<Option<bool>, ()> {
         debug!("Attempt offline password check");
         token
             .as_ref()
             .map(|t| self.check_cache_userpassword(&t.uuid, cred))
-            .unwrap_or(Ok(false))
+            .transpose()
     }
 
-    pub async fn pam_account_allowed(&self, account_id: &str) -> Result<bool, ()> {
+    pub async fn pam_account_allowed(&self, account_id: &str) -> Result<Option<bool>, ()> {
         let token = self.get_usertoken(Id::Name(account_id.to_string())).await?;
 
-        match token {
-            Some(tok) => {
+        Ok(token.map(|tok| {
                 let user_set: BTreeSet<_> = tok.groups.iter().map(|g| g.name.clone()).collect();
 
                 debug!(
@@ -587,13 +593,12 @@ impl CacheLayer {
                     user_set, self.pam_allow_groups
                 );
 
-                Ok(user_set.intersection(&self.pam_allow_groups).count() > 0)
-            }
-            None => Ok(false),
-        }
+                let b = user_set.intersection(&self.pam_allow_groups).count() > 0;
+                b
+        }))
     }
 
-    pub async fn pam_account_authenticate(&self, account_id: &str, cred: &str) -> Result<bool, ()> {
+    pub async fn pam_account_authenticate(&self, account_id: &str, cred: &str) -> Result<Option<bool>, ()> {
         let state = self.get_cachestate().await;
         let (_expired, token) = self.get_cached_usertoken(&Id::Name(account_id.to_string()))?;
 

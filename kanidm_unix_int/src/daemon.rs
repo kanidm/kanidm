@@ -156,12 +156,8 @@ async fn handle_client(
                 cachelayer
                     .pam_account_authenticate(account_id.as_str(), cred.as_str())
                     .await
-                    .map(|b| {
-                        if b {
-                            ClientResponse::Ok
-                        } else {
-                            ClientResponse::Failed
-                        }
+                    .map(|r| {
+                        ClientResponse::PamStatus(r)
                     })
                     .unwrap_or(ClientResponse::Error)
             }
@@ -170,12 +166,8 @@ async fn handle_client(
                 cachelayer
                     .pam_account_allowed(account_id.as_str())
                     .await
-                    .map(|b| {
-                        if b {
-                            ClientResponse::Ok
-                        } else {
-                            ClientResponse::Failed
-                        }
+                    .map(|r| {
+                        ClientResponse::PamStatus(r)
                     })
                     .unwrap_or(ClientResponse::Error)
             }

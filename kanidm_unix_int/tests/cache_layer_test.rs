@@ -455,7 +455,7 @@ fn test_cache_account_pam_allowed() {
                 .pam_account_allowed("testaccount1")
                 .await
                 .expect("failed to authenticate");
-            assert!(a1 == false);
+            assert!(a1 == Some(false));
 
             adminclient
                 .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
@@ -474,8 +474,46 @@ fn test_cache_account_pam_allowed() {
                 .pam_account_allowed("testaccount1")
                 .await
                 .expect("failed to authenticate");
-            assert!(a2 == true);
+            assert!(a2 == Some(true));
         };
         rt.block_on(fut);
     })
 }
+
+#[test]
+fn test_cache_account_pam_nonexist() {
+    run_test(test_fixture, |cachelayer, adminclient| {
+        let mut rt = Runtime::new().expect("Failed to start tokio");
+        let fut = async move {
+            cachelayer.attempt_online().await;
+
+            let a1 = cachelayer
+                .pam_account_allowed("NO_SUCH_ACCOUNT")
+                .await
+                .expect("failed to authenticate");
+            assert!(a1 == None);
+
+            let a2 = cachelayer
+                .pam_account_authenticate("NO_SUCH_ACCOUNT", TESTACCOUNT1_PASSWORD_B)
+                .await
+                .expect("failed to authenticate");
+            assert!(a2 == None);
+
+            cachelayer.mark_offline().await;
+
+            let a1 = cachelayer
+                .pam_account_allowed("NO_SUCH_ACCOUNT")
+                .await
+                .expect("failed to authenticate");
+            assert!(a1 == None);
+
+            let a2 = cachelayer
+                .pam_account_authenticate("NO_SUCH_ACCOUNT", TESTACCOUNT1_PASSWORD_B)
+                .await
+                .expect("failed to authenticate");
+            assert!(a2 == None);
+        };
+        rt.block_on(fut);
+    })
+}
+

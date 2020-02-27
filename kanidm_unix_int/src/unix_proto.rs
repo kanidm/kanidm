@@ -37,7 +37,7 @@ pub enum ClientResponse {
     NssAccount(Option<NssUser>),
     NssGroups(Vec<NssGroup>),
     NssGroup(Option<NssGroup>),
+    PamStatus(Option<bool>),
     Ok,
-    Failed,
     Error,
 }
