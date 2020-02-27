@@ -7,6 +7,8 @@ use crate::pam::module::{PamHandle, PamHooks};
 
 use std::ffi::CStr;
 use std::os::raw::c_char;
+use std::convert::TryFrom;
+use std::collections::BTreeSet;
 
 // use futures::executor::block_on;
 use tokio::runtime::Runtime;
@@ -14,6 +16,34 @@ use tokio::runtime::Runtime;
 use kanidm_unix_common::client::call_daemon;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
+
+#[derive(Debug)]
+struct Options {
+    debug: bool,
+    use_first_pass: bool,
+    ignore_unknown_user: bool,
+}
+
+impl TryFrom<&Vec<&CStr>> for Options {
+    type Error = ();
+
+    fn try_from(args: &Vec<&CStr>) -> Result<Self, Self::Error> {
+        let opts: Result<BTreeSet<&str>, _> = args.iter().map(|cs| cs.to_str()).collect();
+        let gopts = match opts {
+            Ok(o) => o,
+            Err(e) => {
+                println!("Error in module args -> {:?}", e);
+                return Err(())
+            }
+        };
+
+        Ok(Options {
+            debug: gopts.contains("debug"),
+            use_first_pass: gopts.contains("use_first_pass"),
+            ignore_unknown_user: gopts.contains("ignore_unknown_user"),
+        })
+    }
+}
 
 fn get_cfg() -> Result<KanidmUnixdConfig, PamResultCode> {
     KanidmUnixdConfig::new()
@@ -26,7 +56,18 @@ pam_hooks!(PamKanidm);
 
 impl PamHooks for PamKanidm {
     fn acct_mgmt(pamh: &PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
-        // println!("acct_mgmt");
+
+        let opts = match Options::try_from(&args) {
+            Ok(o) => o,
+            Err(_) => return PamResultCode::PAM_SERVICE_ERR,
+        };
+
+        if opts.debug {
+            println!("acct_mgmt");
+            println!("args -> {:?}", args);
+            println!("opts -> {:?}", opts);
+        }
+
         let account_id = match pamh.get_user(None) {
             Ok(aid) => aid,
             Err(e) => {
@@ -58,8 +99,11 @@ impl PamHooks for PamKanidm {
                     PamResultCode::PAM_AUTH_ERR
                 }
                 ClientResponse::PamStatus(None) => {
-                    // println!("PAM_USER_UNKNOWN");
-                    PamResultCode::PAM_USER_UNKNOWN
+                    if opts.ignore_unknown_user {
+                        PamResultCode::PAM_IGNORE
+                    } else {
+                        PamResultCode::PAM_USER_UNKNOWN
+                    }
                 }
                 _ => {
                     // unexpected response.
@@ -75,7 +119,18 @@ impl PamHooks for PamKanidm {
     }
 
     fn sm_authenticate(pamh: &PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
-        // println!("sm_authenticate");
+
+        let opts = match Options::try_from(&args) {
+            Ok(o) => o,
+            Err(_) => return PamResultCode::PAM_SERVICE_ERR,
+        };
+
+        if opts.debug {
+            println!("sm_authenticate");
+            println!("args -> {:?}", args);
+            println!("opts -> {:?}", opts);
+        }
+
         let account_id = match pamh.get_user(None) {
             Ok(aid) => aid,
             Err(e) => {
@@ -95,26 +150,33 @@ impl PamHooks for PamKanidm {
         let authtok = match authtok {
             Some(v) => v,
             None => {
-                let conv = match pamh.get_item::<PamConv>() {
-                    Ok(conv) => conv,
-                    Err(err) => {
-                        println!("Couldn't get pam_conv");
-                        return err;
+                if opts.use_first_pass {
+                    if opts.debug {
+                        println!("Don't have an authtok, returning PAM_AUTH_ERR");
                     }
-                };
-                match conv.send(PAM_PROMPT_ECHO_OFF, "Password: ") {
-                    Ok(password) => match password {
-                        Some(pw) => pw,
-                        None => {
-                            println!("No password");
-                            return PamResultCode::PAM_CRED_INSUFFICIENT;
+                    return PamResultCode::PAM_AUTH_ERR;
+                } else {
+                    let conv = match pamh.get_item::<PamConv>() {
+                        Ok(conv) => conv,
+                        Err(err) => {
+                            println!("Couldn't get pam_conv");
+                            return err;
                         }
-                    },
-                    Err(err) => {
-                        println!("Couldn't get password");
-                        return err;
+                    };
+                    match conv.send(PAM_PROMPT_ECHO_OFF, "Password: ") {
+                        Ok(password) => match password {
+                            Some(pw) => pw,
+                            None => {
+                                println!("No password");
+                                return PamResultCode::PAM_CRED_INSUFFICIENT;
+                            }
+                        },
+                        Err(err) => {
+                            println!("Couldn't get password");
+                            return err;
+                        }
                     }
-                }
+                } // end opts.use_first_pass
             }
         };
 
@@ -141,7 +203,11 @@ impl PamHooks for PamKanidm {
                 }
                 ClientResponse::PamStatus(None) => {
                     // println!("PAM_USER_UNKNOWN");
-                    PamResultCode::PAM_USER_UNKNOWN
+                    if opts.ignore_unknown_user {
+                        PamResultCode::PAM_IGNORE
+                    } else {
+                        PamResultCode::PAM_USER_UNKNOWN
+                    }
                 }
                 _ => {
                     // unexpected response.

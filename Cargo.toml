@@ -10,3 +10,7 @@ members = [
 	"kanidm_unix_int/pam_kanidm",
 ]
 
+exclude = [
+	"kanidm_unix_int/pam_tester"
+]
+

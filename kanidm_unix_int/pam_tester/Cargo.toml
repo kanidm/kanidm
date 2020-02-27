@@ -8,3 +8,5 @@ edition = "2018"
 
 [dependencies]
 pam = "0.7.0"
+
+[workspace]

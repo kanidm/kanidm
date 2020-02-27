@@ -1,6 +1,6 @@
 extern crate pam;
 pub fn main() {
-    let service = "pam_test_full";
+    let service = "pam_test";
     let user = "testuser";
     let password = "eti8aoshaigeeboh1ohF7rieba0quaThesoivae0";
 
