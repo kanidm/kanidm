@@ -279,7 +279,7 @@ impl CacheLayer {
                     er => {
                         error!("client error -> {:?}", er);
                         // Some other transient error, continue with the token.
-                        Err(())
+                        Ok(token)
                     }
                 }
             }
@@ -337,7 +337,7 @@ impl CacheLayer {
                     er => {
                         error!("client error -> {:?}", er);
                         // Some other transient error, continue with the token.
-                        Err(())
+                        Ok(token)
                     }
                 }
             }
