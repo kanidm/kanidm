@@ -71,7 +71,9 @@ impl PamHooks for PamKanidm {
         let account_id = match pamh.get_user(None) {
             Ok(aid) => aid,
             Err(e) => {
-                println!("Error get_user -> {:?}", e);
+                if opts.debug {
+                    println!("Error get_user -> {:?}", e);
+                }
                 return e;
             }
         };
@@ -107,12 +109,16 @@ impl PamHooks for PamKanidm {
                 }
                 _ => {
                     // unexpected response.
-                    println!("PAM_IGNORE -> {:?}", r);
+                    if opts.debug {
+                        println!("PAM_IGNORE -> {:?}", r);
+                    }
                     PamResultCode::PAM_IGNORE
                 }
             },
             Err(e) => {
-                println!("PAM_IGNORE  -> {:?}", e);
+                if opts.debug {
+                    println!("PAM_IGNORE  -> {:?}", e);
+                }
                 PamResultCode::PAM_IGNORE
             }
         }
@@ -142,7 +148,9 @@ impl PamHooks for PamKanidm {
         let authtok = match pamh.get_authtok() {
             Ok(atok) => atok,
             Err(e) => {
-                println!("Error get_authtok -> {:?}", e);
+                if opts.debug {
+                    println!("Error get_authtok -> {:?}", e);
+                }
                 return e;
             }
         };
@@ -159,7 +167,9 @@ impl PamHooks for PamKanidm {
                     let conv = match pamh.get_item::<PamConv>() {
                         Ok(conv) => conv,
                         Err(err) => {
-                            println!("Couldn't get pam_conv");
+                            if opts.debug {
+                                println!("Couldn't get pam_conv");
+                            }
                             return err;
                         }
                     };
@@ -167,12 +177,16 @@ impl PamHooks for PamKanidm {
                         Ok(password) => match password {
                             Some(pw) => pw,
                             None => {
-                                println!("No password");
+                                if opts.debug {
+                                    println!("No password");
+                                }
                                 return PamResultCode::PAM_CRED_INSUFFICIENT;
                             }
                         },
                         Err(err) => {
-                            println!("Couldn't get password");
+                            if opts.debug {
+                                println!("Couldn't get password");
+                            }
                             return err;
                         }
                     }
@@ -211,12 +225,16 @@ impl PamHooks for PamKanidm {
                 }
                 _ => {
                     // unexpected response.
-                    println!("PAM_IGNORE -> {:?}", r);
+                    if opts.debug {
+                        println!("PAM_IGNORE -> {:?}", r);
+                    }
                     PamResultCode::PAM_IGNORE
                 }
             },
             Err(e) => {
-                println!("PAM_IGNORE -> {:?}", e);
+                if opts.debug {
+                    println!("PAM_IGNORE -> {:?}", e);
+                }
                 PamResultCode::PAM_IGNORE
             }
         }
