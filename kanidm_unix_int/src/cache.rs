@@ -253,6 +253,17 @@ impl CacheLayer {
                         Ok(token)
                     }
                     ClientError::Http(
+                        StatusCode::UNAUTHORIZED,
+                        Some(OperationError::NotAuthenticated),
+                    ) => {
+                        error!("transport unauthenticated, moving to offline");
+                        // Something went wrong, mark offline.
+                        let time = SystemTime::now().add(Duration::from_secs(15));
+                        self.set_cachestate(CacheState::OfflineNextCheck(time))
+                            .await;
+                        Ok(token)
+                    }
+                    ClientError::Http(
                         StatusCode::BAD_REQUEST,
                         Some(OperationError::NoMatchingEntries),
                     ) => {
@@ -294,6 +305,17 @@ impl CacheLayer {
                 match e {
                     ClientError::Transport(er) => {
                         error!("transport error, moving to offline -> {:?}", er);
+                        // Something went wrong, mark offline.
+                        let time = SystemTime::now().add(Duration::from_secs(15));
+                        self.set_cachestate(CacheState::OfflineNextCheck(time))
+                            .await;
+                        Ok(token)
+                    }
+                    ClientError::Http(
+                        StatusCode::UNAUTHORIZED,
+                        Some(OperationError::NotAuthenticated),
+                    ) => {
+                        error!("transport unauthenticated, moving to offline");
                         // Something went wrong, mark offline.
                         let time = SystemTime::now().add(Duration::from_secs(15));
                         self.set_cachestate(CacheState::OfflineNextCheck(time))
@@ -528,11 +550,16 @@ impl CacheLayer {
             .idm_account_unix_cred_verify(account_id, cred)
             .await
         {
-            Ok(n_tok) => {
+            Ok(Some(n_tok)) => {
                 debug!("online password check success.");
                 self.set_cache_usertoken(&n_tok)?;
                 self.set_cache_userpassword(&n_tok.uuid, cred)?;
                 Ok(Some(true))
+            }
+            Ok(None) => {
+                error!("incorrect password");
+                // PW failed the check.
+                Ok(Some(false))
             }
             Err(e) => match e {
                 ClientError::Transport(er) => {
@@ -550,9 +577,15 @@ impl CacheLayer {
                     StatusCode::UNAUTHORIZED,
                     Some(OperationError::NotAuthenticated),
                 ) => {
-                    error!("incorrect password");
-                    // PW failed the check.
-                    Ok(Some(false))
+                    error!("transport unauthenticated, moving to offline");
+                    // Something went wrong, mark offline.
+                    let time = SystemTime::now().add(Duration::from_secs(15));
+                    self.set_cachestate(CacheState::OfflineNextCheck(time))
+                        .await;
+                    token
+                        .as_ref()
+                        .map(|t| self.check_cache_userpassword(&t.uuid, cred))
+                        .transpose()
                 }
                 ClientError::Http(
                     StatusCode::BAD_REQUEST,
@@ -586,19 +619,23 @@ impl CacheLayer {
         let token = self.get_usertoken(Id::Name(account_id.to_string())).await?;
 
         Ok(token.map(|tok| {
-                let user_set: BTreeSet<_> = tok.groups.iter().map(|g| g.name.clone()).collect();
+            let user_set: BTreeSet<_> = tok.groups.iter().map(|g| g.name.clone()).collect();
 
-                debug!(
-                    "Checking if -> {:?} & {:?}",
-                    user_set, self.pam_allow_groups
-                );
+            debug!(
+                "Checking if -> {:?} & {:?}",
+                user_set, self.pam_allow_groups
+            );
 
-                let b = user_set.intersection(&self.pam_allow_groups).count() > 0;
-                b
+            let b = user_set.intersection(&self.pam_allow_groups).count() > 0;
+            b
         }))
     }
 
-    pub async fn pam_account_authenticate(&self, account_id: &str, cred: &str) -> Result<Option<bool>, ()> {
+    pub async fn pam_account_authenticate(
+        &self,
+        account_id: &str,
+        cred: &str,
+    ) -> Result<Option<bool>, ()> {
         let state = self.get_cachestate().await;
         let (_expired, token) = self.get_cached_usertoken(&Id::Name(account_id.to_string()))?;
 

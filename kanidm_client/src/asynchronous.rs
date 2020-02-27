@@ -239,7 +239,7 @@ impl KanidmAsyncClient {
         &self,
         id: &str,
         cred: &str,
-    ) -> Result<UnixUserToken, ClientError> {
+    ) -> Result<Option<UnixUserToken>, ClientError> {
         let req = SingleStringRequest {
             value: cred.to_string(),
         };

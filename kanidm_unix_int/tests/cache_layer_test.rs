@@ -368,14 +368,14 @@ fn test_cache_account_password() {
                 .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_INC)
                 .await
                 .expect("failed to authenticate");
-            assert!(a1 == false);
+            assert!(a1 == Some(false));
 
             // Test authentication success.
             let a2 = cachelayer
                 .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_A)
                 .await
                 .expect("failed to authenticate");
-            assert!(a2 == true);
+            assert!(a2 == Some(true));
 
             // change pw
             adminclient
@@ -392,14 +392,14 @@ fn test_cache_account_password() {
                 .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_A)
                 .await
                 .expect("failed to authenticate");
-            assert!(a3 == false);
+            assert!(a3 == Some(false));
 
             // test auth (new pw) success
             let a4 = cachelayer
                 .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_B)
                 .await
                 .expect("failed to authenticate");
-            assert!(a4 == true);
+            assert!(a4 == Some(true));
 
             // Go offline.
             cachelayer.mark_offline().await;
@@ -409,14 +409,14 @@ fn test_cache_account_password() {
                 .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_B)
                 .await
                 .expect("failed to authenticate");
-            assert!(a5 == true);
+            assert!(a5 == Some(true));
 
             // Test auth failure.
             let a6 = cachelayer
                 .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_INC)
                 .await
                 .expect("failed to authenticate");
-            assert!(a6 == false);
+            assert!(a6 == Some(false));
 
             // clear cache
             cachelayer.clear_cache().expect("failed to clear cache");
@@ -426,7 +426,7 @@ fn test_cache_account_password() {
                 .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_B)
                 .await
                 .expect("failed to authenticate");
-            assert!(a7 == false);
+            assert!(a7 == None);
 
             // go online
             cachelayer.attempt_online().await;
@@ -437,7 +437,7 @@ fn test_cache_account_password() {
                 .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_B)
                 .await
                 .expect("failed to authenticate");
-            assert!(a8 == true);
+            assert!(a8 == Some(true));
         };
         rt.block_on(fut);
     })
@@ -516,4 +516,3 @@ fn test_cache_account_pam_nonexist() {
         rt.block_on(fut);
     })
 }
-

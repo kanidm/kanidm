@@ -1,8 +1,9 @@
-use crate::pam::constants::{PamItemType, PAM_SERVICE, PAM_USER, PAM_USER_PROMPT, PAM_TTY, PAM_RUSER, PAM_RHOST,
-                PAM_AUTHTOK, PAM_OLDAUTHTOK};
-use crate::pam::module::PamItem;
+use crate::pam::constants::{
+    PamItemType, PAM_AUTHTOK, PAM_OLDAUTHTOK, PAM_RHOST, PAM_RUSER, PAM_SERVICE, PAM_TTY, PAM_USER,
+    PAM_USER_PROMPT,
+};
 pub use crate::pam::conv::PamConv;
-
+use crate::pam::module::PamItem;
 
 pub struct PamService {}
 

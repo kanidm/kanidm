@@ -148,7 +148,7 @@ pub struct IdmAccountUnixAuthMessage {
 }
 
 impl Message for IdmAccountUnixAuthMessage {
-    type Result = Result<UnixUserToken, OperationError>;
+    type Result = Result<Option<UnixUserToken>, OperationError>;
 }
 
 // ===========================================================
@@ -667,7 +667,7 @@ impl Handler<InternalSshKeyTagReadMessage> for QueryServerReadV1 {
 }
 
 impl Handler<IdmAccountUnixAuthMessage> for QueryServerReadV1 {
-    type Result = Result<UnixUserToken, OperationError>;
+    type Result = Result<Option<UnixUserToken>, OperationError>;
 
     fn handle(&mut self, msg: IdmAccountUnixAuthMessage, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("idm_account_unix_auth");

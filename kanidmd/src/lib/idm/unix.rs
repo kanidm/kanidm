@@ -152,21 +152,26 @@ impl UnixUserAccount {
         &self,
         _au: &mut AuditScope,
         cleartext: &str,
-    ) -> Result<UnixUserToken, OperationError> {
+    ) -> Result<Option<UnixUserToken>, OperationError> {
         // TODO #59: Is the cred locked?
         // is the cred some or none?
         match &self.cred {
             Some(cred) => match &cred.password {
                 Some(pw) => {
                     if pw.verify(cleartext) {
-                        self.to_unixusertoken()
+                        Some(self.to_unixusertoken()).transpose()
                     } else {
-                        Err(OperationError::NotAuthenticated)
+                        // Failed to auth
+                        Ok(None)
                     }
                 }
-                None => Err(OperationError::NotAuthenticated),
+                // We have a cred but it's not a password, that's weird
+                None => Err(OperationError::InvalidAccountState(
+                    "non-password cred type?".to_string(),
+                )),
             },
-            None => Err(OperationError::NotAuthenticated),
+            // They don't have a unix cred, fail the auth.
+            None => Ok(None),
         }
     }
 }

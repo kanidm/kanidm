@@ -24,9 +24,9 @@
 //! a Linux system.  That means that it might take some work to get this library
 //! to work on other platforms.
 
+pub mod constants;
+pub mod conv;
+pub mod items;
 #[doc(hidden)]
 pub mod macros;
-pub mod conv;
-pub mod constants;
-pub mod items;
 pub mod module;

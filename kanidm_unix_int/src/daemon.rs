@@ -156,9 +156,7 @@ async fn handle_client(
                 cachelayer
                     .pam_account_authenticate(account_id.as_str(), cred.as_str())
                     .await
-                    .map(|r| {
-                        ClientResponse::PamStatus(r)
-                    })
+                    .map(|r| ClientResponse::PamStatus(r))
                     .unwrap_or(ClientResponse::Error)
             }
             ClientRequest::PamAccountAllowed(account_id) => {
@@ -166,9 +164,7 @@ async fn handle_client(
                 cachelayer
                     .pam_account_allowed(account_id.as_str())
                     .await
-                    .map(|r| {
-                        ClientResponse::PamStatus(r)
-                    })
+                    .map(|r| ClientResponse::PamStatus(r))
                     .unwrap_or(ClientResponse::Error)
             }
             ClientRequest::InvalidateCache => {

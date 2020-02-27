@@ -1,10 +1,10 @@
 //! Functions for use in pam modules.
 
 use libc::c_char;
-use std::{mem, ptr};
 use std::ffi::{CStr, CString};
+use std::{mem, ptr};
 
-use crate::pam::constants::{PamResultCode, PamItemType, PamFlag, PAM_AUTHTOK};
+use crate::pam::constants::{PamFlag, PamItemType, PamResultCode, PAM_AUTHTOK};
 
 /// Opaque type, used as a pointer when making pam API calls.
 ///
@@ -22,33 +22,37 @@ pub enum PamDataT {}
 
 #[link(name = "pam")]
 extern "C" {
-    fn pam_get_data(pamh: *const PamHandle,
-                    module_data_name: *const c_char,
-                    data: &mut *const PamDataT)
-                    -> PamResultCode;
+    fn pam_get_data(
+        pamh: *const PamHandle,
+        module_data_name: *const c_char,
+        data: &mut *const PamDataT,
+    ) -> PamResultCode;
 
-    fn pam_set_data(pamh: *const PamHandle,
-                    module_data_name: *const c_char,
-                    data: Box<PamDataT>,
-                    cleanup: extern "C" fn(pamh: *const PamHandle,
-                                           data: Box<PamDataT>,
-                                           error_status: PamResultCode))
-                    -> PamResultCode;
+    fn pam_set_data(
+        pamh: *const PamHandle,
+        module_data_name: *const c_char,
+        data: Box<PamDataT>,
+        cleanup: extern "C" fn(
+            pamh: *const PamHandle,
+            data: Box<PamDataT>,
+            error_status: PamResultCode,
+        ),
+    ) -> PamResultCode;
 
-    fn pam_get_item(pamh: *const PamHandle,
-                    item_type: PamItemType,
-                    item: &mut *const PamItemT)
-                    -> PamResultCode;
+    fn pam_get_item(
+        pamh: *const PamHandle,
+        item_type: PamItemType,
+        item: &mut *const PamItemT,
+    ) -> PamResultCode;
 
-    fn pam_set_item(pamh: *mut PamHandle,
-                    item_type: PamItemType,
-                    item: &PamItemT)
-                    -> PamResultCode;
+    fn pam_set_item(pamh: *mut PamHandle, item_type: PamItemType, item: &PamItemT)
+        -> PamResultCode;
 
-    fn pam_get_user(pamh: *const PamHandle,
-                    user: &*mut c_char,
-                    prompt: *const c_char)
-                    -> PamResultCode;
+    fn pam_get_user(
+        pamh: *const PamHandle,
+        user: &*mut c_char,
+        prompt: *const c_char,
+    ) -> PamResultCode;
 }
 
 #[no_mangle]
@@ -74,7 +78,6 @@ pub trait PamItem {
     /// `PamConv`.
     fn item_type() -> PamItemType;
 }
-
 
 impl PamHandle {
     /// Gets some value, identified by `key`, that has been set by the module
@@ -113,8 +116,6 @@ impl PamHandle {
         }
     }
 
-
-
     /// Retrieves a value that has been set, possibly by the pam client.  This is
     /// particularly useful for getting a `PamConv` reference.
     ///
@@ -146,12 +147,13 @@ impl PamHandle {
         let c_item = CString::new(item).unwrap().as_ptr();
 
         let res = unsafe {
-            pam_set_item(self,
-                        T::item_type(),
-
-                        // unwrapping is okay here, as c_item will not be a NULL
-                        // pointer
-                        (c_item as *const PamItemT).as_ref().unwrap())
+            pam_set_item(
+                self,
+                T::item_type(),
+                // unwrapping is okay here, as c_item will not be a NULL
+                // pointer
+                (c_item as *const PamItemT).as_ref().unwrap(),
+            )
         };
         if PamResultCode::PAM_SUCCESS == res {
             Ok(())
@@ -188,9 +190,7 @@ impl PamHandle {
             let r = pam_get_item(self, PAM_AUTHTOK, &mut ptr);
             let t = if PamResultCode::PAM_SUCCESS == r && !ptr.is_null() {
                 let typed_ptr: *const c_char = mem::transmute(ptr);
-                Some(CStr::from_ptr(typed_ptr)
-                    .to_string_lossy()
-                    .into_owned())
+                Some(CStr::from_ptr(typed_ptr).to_string_lossy().into_owned())
             } else {
                 None
             };
@@ -216,41 +216,41 @@ pub trait PamHooks {
     /// authentication module. This function checks for other things. Such things might be: the time of
     /// day or the date, the terminal line, remote hostname, etc. This function may also determine
     /// things like the expiration on passwords, and respond that the user change it before continuing.
-	fn acct_mgmt(pamh: &PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
-		PamResultCode::PAM_IGNORE
-	}
+    fn acct_mgmt(pamh: &PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
+        PamResultCode::PAM_IGNORE
+    }
 
     /// This function performs the task of authenticating the user.
-	fn sm_authenticate(pamh: &PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
-		PamResultCode::PAM_IGNORE
-	}
+    fn sm_authenticate(pamh: &PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
+        PamResultCode::PAM_IGNORE
+    }
 
-	/// This function is used to (re-)set the authentication token of the user.
-	///
-	/// The PAM library calls this function twice in succession. The first time with
-	/// PAM_PRELIM_CHECK and then, if the module does not return PAM_TRY_AGAIN, subsequently with
-	/// PAM_UPDATE_AUTHTOK. It is only on the second call that the authorization token is
-	/// (possibly) changed.
-	fn sm_chauthtok(pamh: &PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
-		PamResultCode::PAM_IGNORE
-	}
+    /// This function is used to (re-)set the authentication token of the user.
+    ///
+    /// The PAM library calls this function twice in succession. The first time with
+    /// PAM_PRELIM_CHECK and then, if the module does not return PAM_TRY_AGAIN, subsequently with
+    /// PAM_UPDATE_AUTHTOK. It is only on the second call that the authorization token is
+    /// (possibly) changed.
+    fn sm_chauthtok(pamh: &PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
+        PamResultCode::PAM_IGNORE
+    }
 
-	/// This function is called to terminate a session.
-	fn sm_close_session(pamh: &PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
-		PamResultCode::PAM_IGNORE
-	}
+    /// This function is called to terminate a session.
+    fn sm_close_session(pamh: &PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
+        PamResultCode::PAM_IGNORE
+    }
 
-	/// This function is called to commence a session.
-	fn sm_open_session(pamh: &PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
-		PamResultCode::PAM_IGNORE
-	}
+    /// This function is called to commence a session.
+    fn sm_open_session(pamh: &PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
+        PamResultCode::PAM_IGNORE
+    }
 
     /// This function performs the task of altering the credentials of the user with respect to the
     /// corresponding authorization scheme. Generally, an authentication module may have access to more
     /// information about a user than their authentication token. This function is used to make such
     /// information available to the application. It should only be called after the user has been
     /// authenticated but before a session has been established.
-	fn sm_setcred(pamh: &PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
-		PamResultCode::PAM_IGNORE
-	}
+    fn sm_setcred(pamh: &PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
+        PamResultCode::PAM_IGNORE
+    }
 }

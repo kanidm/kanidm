@@ -217,7 +217,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
         au: &mut AuditScope,
         uae: &UnixUserAuthEvent,
         _ct: Duration,
-    ) -> Result<UnixUserToken, OperationError> {
+    ) -> Result<Option<UnixUserToken>, OperationError> {
         // TODO #59: Implement soft lock checking for unix creds here!
 
         // Get the entry/target we are working on.
@@ -1049,14 +1049,18 @@ mod tests {
             // Check auth verification of the password
 
             let uuae_good = UnixUserAuthEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD);
-            assert!(idms_write
-                .auth_unix(au, &uuae_good, Duration::from_secs(TEST_CURRENT_TIME))
-                .is_ok());
+            let a1 = idms_write.auth_unix(au, &uuae_good, Duration::from_secs(TEST_CURRENT_TIME));
+            match a1 {
+                Ok(Some(_tok)) => {}
+                _ => assert!(false),
+            };
             // Check bad password
             let uuae_bad = UnixUserAuthEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD_INC);
-            assert!(idms_write
-                .auth_unix(au, &uuae_bad, Duration::from_secs(TEST_CURRENT_TIME))
-                .is_err());
+            let a2 = idms_write.auth_unix(au, &uuae_bad, Duration::from_secs(TEST_CURRENT_TIME));
+            match a2 {
+                Ok(None) => {}
+                _ => assert!(false),
+            };
             assert!(idms_write.commit().is_ok());
 
             // Check deleting the password
@@ -1072,9 +1076,11 @@ mod tests {
 
             // And auth should now fail due to the lack of PW material
             let mut idms_write = idms.write();
-            assert!(idms_write
-                .auth_unix(au, &uuae_good, Duration::from_secs(TEST_CURRENT_TIME))
-                .is_err());
+            let a3 = idms_write.auth_unix(au, &uuae_good, Duration::from_secs(TEST_CURRENT_TIME));
+            match a3 {
+                Ok(None) => {}
+                _ => assert!(false),
+            };
             assert!(idms_write.commit().is_ok());
         })
     }

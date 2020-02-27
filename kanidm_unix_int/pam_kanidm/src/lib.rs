@@ -2,8 +2,8 @@ extern crate libc;
 
 mod pam;
 use crate::pam::constants::*;
-use crate::pam::module::{PamHooks, PamHandle};
 use crate::pam::conv::PamConv;
+use crate::pam::module::{PamHandle, PamHooks};
 
 use std::ffi::CStr;
 use std::os::raw::c_char;
@@ -15,10 +15,10 @@ use kanidm_unix_common::client::call_daemon;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
 
-fn get_cfg() -> KanidmUnixdConfig {
+fn get_cfg() -> Result<KanidmUnixdConfig, PamResultCode> {
     KanidmUnixdConfig::new()
         .read_options_from_optional_config("/etc/kanidm/unixd")
-        .expect("Failed to parse /etc/kanidm/unixd")
+        .map_err(|_| PamResultCode::PAM_SERVICE_ERR)
 }
 
 struct PamKanidm;
@@ -35,11 +35,17 @@ impl PamHooks for PamKanidm {
             }
         };
 
-        let cfg = get_cfg();
+        let cfg = match get_cfg() {
+            Ok(cfg) => cfg,
+            Err(e) => return e,
+        };
         let req = ClientRequest::PamAccountAllowed(account_id);
         // PamResultCode::PAM_IGNORE
 
-        let mut rt = Runtime::new().expect("Failed to start tokio");
+        let mut rt = match Runtime::new() {
+            Ok(rt) => rt,
+            Err(_) => return PamResultCode::PAM_SERVICE_ERR,
+        };
 
         match rt.block_on(call_daemon(cfg.sock_path.as_str(), req)) {
             Ok(r) => match r {
@@ -103,7 +109,7 @@ impl PamHooks for PamKanidm {
                             println!("No password");
                             return PamResultCode::PAM_CRED_INSUFFICIENT;
                         }
-                    }
+                    },
                     Err(err) => {
                         println!("Couldn't get password");
                         return err;
@@ -112,11 +118,16 @@ impl PamHooks for PamKanidm {
             }
         };
 
-
-        let cfg = get_cfg();
+        let cfg = match get_cfg() {
+            Ok(cfg) => cfg,
+            Err(e) => return e,
+        };
         let req = ClientRequest::PamAuthenticate(account_id, authtok);
 
-        let mut rt = Runtime::new().expect("Failed to start tokio");
+        let mut rt = match Runtime::new() {
+            Ok(rt) => rt,
+            Err(_) => return PamResultCode::PAM_SERVICE_ERR,
+        };
 
         match rt.block_on(call_daemon(cfg.sock_path.as_str(), req)) {
             Ok(r) => match r {
@@ -165,5 +176,3 @@ impl PamHooks for PamKanidm {
         PamResultCode::PAM_SUCCESS
     }
 }
-
-

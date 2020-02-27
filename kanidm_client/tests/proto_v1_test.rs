@@ -644,11 +644,17 @@ fn test_server_rest_posix_auth_lifecycle() {
 
         // attempt to verify (good, anon-conn)
         let r1 = anon_rsclient.idm_account_unix_cred_verify("posix_account", UNIX_TEST_PASSWORD);
-        assert!(r1.is_ok());
+        match r1 {
+            Ok(Some(_tok)) => {}
+            _ => assert!(false),
+        };
 
         // attempt to verify (bad, anon-conn)
         let r2 = anon_rsclient.idm_account_unix_cred_verify("posix_account", "ntaotnhuohtsuoehtsu");
-        assert!(r2.is_err());
+        match r2 {
+            Ok(None) => {}
+            _ => assert!(false),
+        };
 
         // lock? (admin-conn)
         // attempt to verify (good pw, should fail, anon-conn)
@@ -661,7 +667,10 @@ fn test_server_rest_posix_auth_lifecycle() {
 
         // attempt to verify (good pw, should fail, anon-conn)
         let r3 = anon_rsclient.idm_account_unix_cred_verify("posix_account", UNIX_TEST_PASSWORD);
-        assert!(r3.is_err());
+        match r3 {
+            Ok(None) => {}
+            _ => assert!(false),
+        };
     });
 }
 
