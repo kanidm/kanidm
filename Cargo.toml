@@ -8,6 +8,5 @@ members = [
 	"kanidm_unix_int",
 	"kanidm_unix_int/nss_kanidm",
 	"kanidm_unix_int/pam_kanidm",
-	"kanidm_unix_int/pam_tester"
 ]
 
