@@ -140,7 +140,7 @@ impl<'a> DbTxn<'a> {
             .execute("COMMIT TRANSACTION", NO_PARAMS)
             .map(|_| ())
             .map_err(|e| {
-                debug!("sqlite commit failure -> {:?}", e);
+                error!("sqlite commit failure -> {:?}", e);
                 ()
             })
     }
@@ -149,14 +149,14 @@ impl<'a> DbTxn<'a> {
         self.conn
             .execute("UPDATE group_t SET expiry = 0", NO_PARAMS)
             .map_err(|e| {
-                debug!("sqlite update group_t failure -> {:?}", e);
+                error!("sqlite update group_t failure -> {:?}", e);
                 ()
             })?;
 
         self.conn
             .execute("UPDATE account_t SET expiry = 0", NO_PARAMS)
             .map_err(|e| {
-                debug!("sqlite update account_t failure -> {:?}", e);
+                error!("sqlite update account_t failure -> {:?}", e);
                 ()
             })?;
 
@@ -167,14 +167,14 @@ impl<'a> DbTxn<'a> {
         self.conn
             .execute("DELETE FROM group_t", NO_PARAMS)
             .map_err(|e| {
-                debug!("sqlite delete group_t failure -> {:?}", e);
+                error!("sqlite delete group_t failure -> {:?}", e);
                 ()
             })?;
 
         self.conn
             .execute("DELETE FROM account_t", NO_PARAMS)
             .map_err(|e| {
-                debug!("sqlite delete group_t failure -> {:?}", e);
+                error!("sqlite delete group_t failure -> {:?}", e);
                 ()
             })?;
 
@@ -295,7 +295,6 @@ impl<'a> DbTxn<'a> {
         data.iter()
             .map(|token| {
                 // token convert with cbor.
-                debug!("{:?}", token);
                 serde_cbor::from_slice(token.as_slice()).map_err(|e| {
                     error!("cbor error -> {:?}", e);
                     ()
@@ -420,7 +419,7 @@ impl<'a> DbTxn<'a> {
                 &[(":a_uuid", &a_uuid), (":data", &data)],
             )
             .map_err(|e| {
-                debug!("sqlite update account_t password failure -> {:?}", e);
+                error!("sqlite update account_t password failure -> {:?}", e);
                 ()
             })
             .map(|_| ())
@@ -454,7 +453,7 @@ impl<'a> DbTxn<'a> {
         let data = data?;
 
         if data.len() == 0 {
-            debug!("No cached password, failing authentication");
+            info!("No cached password, failing authentication");
             return Ok(false);
         }
 
@@ -592,7 +591,7 @@ impl<'a> DbTxn<'a> {
         data.iter()
             .map(|token| {
                 // token convert with cbor.
-                debug!("{:?}", token);
+                // debug!("{:?}", token);
                 serde_cbor::from_slice(token.as_slice()).map_err(|e| {
                     error!("cbor error -> {:?}", e);
                     ()
@@ -630,7 +629,7 @@ impl<'a> DbTxn<'a> {
         data.iter()
             .map(|token| {
                 // token convert with cbor.
-                debug!("{:?}", token);
+                // debug!("{:?}", token);
                 serde_cbor::from_slice(token.as_slice()).map_err(|e| {
                     error!("cbor error -> {:?}", e);
                     ()

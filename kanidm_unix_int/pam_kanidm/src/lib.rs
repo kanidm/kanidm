@@ -8,7 +8,7 @@ use crate::pam::module::{PamHandle, PamHooks};
 use std::collections::BTreeSet;
 use std::convert::TryFrom;
 use std::ffi::CStr;
-use std::os::raw::c_char;
+// use std::os::raw::c_char;
 
 // use futures::executor::block_on;
 use tokio::runtime::Runtime;
@@ -55,7 +55,7 @@ struct PamKanidm;
 pam_hooks!(PamKanidm);
 
 impl PamHooks for PamKanidm {
-    fn acct_mgmt(pamh: &PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
+    fn acct_mgmt(pamh: &PamHandle, args: Vec<&CStr>, _flags: PamFlag) -> PamResultCode {
         let opts = match Options::try_from(&args) {
             Ok(o) => o,
             Err(_) => return PamResultCode::PAM_SERVICE_ERR,
@@ -123,7 +123,7 @@ impl PamHooks for PamKanidm {
         }
     }
 
-    fn sm_authenticate(pamh: &PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
+    fn sm_authenticate(pamh: &PamHandle, args: Vec<&CStr>, _flags: PamFlag) -> PamResultCode {
         let opts = match Options::try_from(&args) {
             Ok(o) => o,
             Err(_) => return PamResultCode::PAM_SERVICE_ERR,
@@ -238,23 +238,59 @@ impl PamHooks for PamKanidm {
         }
     }
 
-    fn sm_chauthtok(pamh: &PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
-        // println!("sm_chauthtok");
+    fn sm_chauthtok(_pamh: &PamHandle, args: Vec<&CStr>, _flags: PamFlag) -> PamResultCode {
+        let opts = match Options::try_from(&args) {
+            Ok(o) => o,
+            Err(_) => return PamResultCode::PAM_SERVICE_ERR,
+        };
+
+        if opts.debug {
+            println!("sm_chauthtok");
+            println!("args -> {:?}", args);
+            println!("opts -> {:?}", opts);
+        }
         PamResultCode::PAM_IGNORE
     }
 
-    fn sm_close_session(pamh: &PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
-        // println!("sm_close_session");
+    fn sm_close_session(_pamh: &PamHandle, args: Vec<&CStr>, _flags: PamFlag) -> PamResultCode {
+        let opts = match Options::try_from(&args) {
+            Ok(o) => o,
+            Err(_) => return PamResultCode::PAM_SERVICE_ERR,
+        };
+
+        if opts.debug {
+            println!("sm_close_session");
+            println!("args -> {:?}", args);
+            println!("opts -> {:?}", opts);
+        }
         PamResultCode::PAM_SUCCESS
     }
 
-    fn sm_open_session(pamh: &PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
-        // println!("sm_open_session");
+    fn sm_open_session(_pamh: &PamHandle, args: Vec<&CStr>, _flags: PamFlag) -> PamResultCode {
+        let opts = match Options::try_from(&args) {
+            Ok(o) => o,
+            Err(_) => return PamResultCode::PAM_SERVICE_ERR,
+        };
+
+        if opts.debug {
+            println!("sm_open_session");
+            println!("args -> {:?}", args);
+            println!("opts -> {:?}", opts);
+        }
         PamResultCode::PAM_SUCCESS
     }
 
-    fn sm_setcred(pamh: &PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
-        // println!("sm_setcred");
+    fn sm_setcred(_pamh: &PamHandle, args: Vec<&CStr>, _flags: PamFlag) -> PamResultCode {
+        let opts = match Options::try_from(&args) {
+            Ok(o) => o,
+            Err(_) => return PamResultCode::PAM_SERVICE_ERR,
+        };
+
+        if opts.debug {
+            println!("sm_setcred");
+            println!("args -> {:?}", args);
+            println!("opts -> {:?}", opts);
+        }
         PamResultCode::PAM_SUCCESS
     }
 }

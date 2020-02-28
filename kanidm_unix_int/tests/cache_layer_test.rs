@@ -482,7 +482,7 @@ fn test_cache_account_pam_allowed() {
 
 #[test]
 fn test_cache_account_pam_nonexist() {
-    run_test(test_fixture, |cachelayer, adminclient| {
+    run_test(test_fixture, |cachelayer, _adminclient| {
         let mut rt = Runtime::new().expect("Failed to start tokio");
         let fut = async move {
             cachelayer.attempt_online().await;

@@ -9,13 +9,13 @@ pub type AlwaysZero = c_int;
 
 // The Linux-PAM flags
 // see /usr/include/security/_pam_types.h
-pub const PAM_SILENT: PamFlag = 0x8000;
-pub const PAM_DISALLOW_NULL_AUTHTOK: PamFlag = 0x0001;
-pub const PAM_ESTABLISH_CRED: PamFlag = 0x0002;
-pub const PAM_DELETE_CRED: PamFlag = 0x0004;
-pub const PAM_REINITIALIZE_CRED: PamFlag = 0x0008;
-pub const PAM_REFRESH_CRED: PamFlag = 0x0010;
-pub const PAM_CHANGE_EXPIRED_AUTHTOK: PamFlag = 0x0020;
+pub const _PAM_SILENT: PamFlag = 0x8000;
+pub const _PAM_DISALLOW_NULL_AUTHTOK: PamFlag = 0x0001;
+pub const _PAM_ESTABLISH_CRED: PamFlag = 0x0002;
+pub const _PAM_DELETE_CRED: PamFlag = 0x0004;
+pub const _PAM_REINITIALIZE_CRED: PamFlag = 0x0008;
+pub const _PAM_REFRESH_CRED: PamFlag = 0x0010;
+pub const _PAM_CHANGE_EXPIRED_AUTHTOK: PamFlag = 0x0020;
 
 // The Linux-PAM item types
 // see /usr/include/security/_pam_types.h
@@ -39,22 +39,22 @@ pub const PAM_RUSER: PamItemType = 8;
 pub const PAM_USER_PROMPT: PamItemType = 9;
 /* Linux-PAM :extensionsPamItemType = */
 /// app supplied function to override failure delays
-pub const PAM_FAIL_DELAY: PamItemType = 10;
+pub const _PAM_FAIL_DELAY: PamItemType = 10;
 /// X :display name
-pub const PAM_XDISPLAY: PamItemType = 11;
+pub const _PAM_XDISPLAY: PamItemType = 11;
 /// X :server authentication data
-pub const PAM_XAUTHDATA: PamItemType = 12;
+pub const _PAM_XAUTHDATA: PamItemType = 12;
 /// The type for pam_get_authtok
-pub const PAM_AUTHTOK_TYPE: PamItemType = 13;
+pub const _PAM_AUTHTOK_TYPE: PamItemType = 13;
 
 // Message styles
 pub const PAM_PROMPT_ECHO_OFF: PamMessageStyle = 1;
-pub const PAM_PROMPT_ECHO_ON: PamMessageStyle = 2;
-pub const PAM_ERROR_MSG: PamMessageStyle = 3;
-pub const PAM_TEXT_INFO: PamMessageStyle = 4;
+pub const _PAM_PROMPT_ECHO_ON: PamMessageStyle = 2;
+pub const _PAM_ERROR_MSG: PamMessageStyle = 3;
+pub const _PAM_TEXT_INFO: PamMessageStyle = 4;
 /// yes/no/maybe conditionals
-pub const PAM_RADIO_TYPE: PamMessageStyle = 5;
-pub const PAM_BINARY_PROMPT: PamMessageStyle = 7;
+pub const _PAM_RADIO_TYPE: PamMessageStyle = 5;
+pub const _PAM_BINARY_PROMPT: PamMessageStyle = 7;
 
 // The Linux-PAM return values
 // see /usr/include/security/_pam_types.h

@@ -31,10 +31,10 @@ extern "C" {
     fn pam_set_data(
         pamh: *const PamHandle,
         module_data_name: *const c_char,
-        data: Box<PamDataT>,
+        data: *mut PamDataT,
         cleanup: extern "C" fn(
             pamh: *const PamHandle,
-            data: Box<PamDataT>,
+            data: *mut PamDataT,
             error_status: PamResultCode,
         ),
     ) -> PamResultCode;
@@ -55,9 +55,9 @@ extern "C" {
     ) -> PamResultCode;
 }
 
-#[no_mangle]
-pub extern "C" fn cleanup<T>(_: *const PamHandle, c_data: Box<PamDataT>, _: PamResultCode) {
+pub extern "C" fn cleanup<T>(_: *const PamHandle, c_data: *mut PamDataT, _: PamResultCode) {
     unsafe {
+        let c_data = Box::from_raw(c_data);
         let data: Box<T> = mem::transmute(c_data);
         mem::drop(data);
     }
@@ -107,6 +107,7 @@ impl PamHandle {
         let c_key = CString::new(key).unwrap().as_ptr();
         let res = unsafe {
             let c_data: Box<PamDataT> = mem::transmute(data);
+            let c_data = Box::into_raw(c_data);
             pam_set_data(self, c_key, c_data, cleanup::<T>)
         };
         if PamResultCode::PAM_SUCCESS == res {

@@ -266,9 +266,14 @@ impl CacheLayer {
                     ClientError::Http(
                         StatusCode::BAD_REQUEST,
                         Some(OperationError::NoMatchingEntries),
+                    )
+                    | ClientError::Http(
+                        StatusCode::BAD_REQUEST,
+                        Some(OperationError::InvalidAccountState(_)),
                     ) => {
-                        // We wele able to contact the server but the entry has been removed.
-                        debug!("entry has been removed, clearing from cache ...");
+                        // We wele able to contact the server but the entry has been removed, or
+                        // is not longer a valid posix account.
+                        debug!("entry has been removed or is no longer a valid posix account, clearing from cache ...");
                         token
                             .map(|tok| self.delete_cache_usertoken(&tok.uuid))
                             // Now an option<result<t, _>>
@@ -325,8 +330,12 @@ impl CacheLayer {
                     ClientError::Http(
                         StatusCode::BAD_REQUEST,
                         Some(OperationError::NoMatchingEntries),
+                    )
+                    | ClientError::Http(
+                        StatusCode::BAD_REQUEST,
+                        Some(OperationError::InvalidAccountState(_)),
                     ) => {
-                        debug!("entry has been removed, clearing from cache ...");
+                        debug!("entry has been removed or is no longer a valid posix group, clearing from cache ...");
                         token
                             .map(|tok| self.delete_cache_grouptoken(&tok.uuid))
                             // Now an option<result<t, _>>
@@ -590,8 +599,12 @@ impl CacheLayer {
                 ClientError::Http(
                     StatusCode::BAD_REQUEST,
                     Some(OperationError::NoMatchingEntries),
+                )
+                | ClientError::Http(
+                    StatusCode::BAD_REQUEST,
+                    Some(OperationError::InvalidAccountState(_)),
                 ) => {
-                    error!("unknown account");
+                    error!("unknown account or is not a valid posix account");
                     Ok(None)
                 }
                 er => {

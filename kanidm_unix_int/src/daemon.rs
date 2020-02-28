@@ -43,11 +43,11 @@ impl Encoder for ClientCodec {
     type Error = io::Error;
 
     fn encode(&mut self, msg: ClientResponse, dst: &mut BytesMut) -> Result<(), Self::Error> {
+        debug!("Attempting to send response -> {:?} ...", msg);
         let data = serde_cbor::to_vec(&msg).map_err(|e| {
             error!("socket encoding error -> {:?}", e);
             io::Error::new(io::ErrorKind::Other, "CBOR encode error")
         })?;
-        debug!("Attempting to send response -> {:?} ...", data);
         dst.put(data.as_slice());
         Ok(())
     }

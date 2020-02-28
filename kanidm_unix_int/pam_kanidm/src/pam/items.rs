@@ -5,6 +5,7 @@ use crate::pam::constants::{
 pub use crate::pam::conv::PamConv;
 use crate::pam::module::PamItem;
 
+#[allow(dead_code)]
 pub struct PamService {}
 
 impl PamItem for PamService {
@@ -13,6 +14,7 @@ impl PamItem for PamService {
     }
 }
 
+#[allow(dead_code)]
 pub struct PamUser {}
 
 impl PamItem for PamUser {
@@ -21,6 +23,7 @@ impl PamItem for PamUser {
     }
 }
 
+#[allow(dead_code)]
 pub struct PamUserPrompt {}
 
 impl PamItem for PamUserPrompt {
@@ -29,6 +32,7 @@ impl PamItem for PamUserPrompt {
     }
 }
 
+#[allow(dead_code)]
 pub struct PamTty {}
 
 impl PamItem for PamTty {
@@ -37,6 +41,7 @@ impl PamItem for PamTty {
     }
 }
 
+#[allow(dead_code)]
 pub struct PamRUser {}
 
 impl PamItem for PamRUser {
@@ -45,6 +50,7 @@ impl PamItem for PamRUser {
     }
 }
 
+#[allow(dead_code)]
 pub struct PamRHost {}
 
 impl PamItem for PamRHost {
@@ -53,6 +59,7 @@ impl PamItem for PamRHost {
     }
 }
 
+#[allow(dead_code)]
 pub struct PamAuthTok {}
 
 impl PamItem for PamAuthTok {
@@ -61,6 +68,7 @@ impl PamItem for PamAuthTok {
     }
 }
 
+#[allow(dead_code)]
 pub struct PamOldAuthTok {}
 
 impl PamItem for PamOldAuthTok {
