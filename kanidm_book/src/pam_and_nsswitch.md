@@ -45,8 +45,8 @@ For more, see troubleshooting.
 
 When the daemon is running you can add the nsswitch libraries to /etc/nsswitch.conf
 
-    passwd: kanidm compat
-    group: kanidm compat
+    passwd: compat kanidm
+    group: compat kanidm
 
 You can then test that a posix extended user is able to be resolved with:
 
