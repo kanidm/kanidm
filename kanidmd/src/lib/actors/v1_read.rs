@@ -4,7 +4,9 @@ use crate::audit::AuditScope;
 
 use crate::async_log::EventLog;
 use crate::event::{AuthEvent, SearchEvent, SearchResult, WhoamiResult};
-use crate::idm::event::{RadiusAuthTokenEvent, UnixGroupTokenEvent, UnixUserTokenEvent};
+use crate::idm::event::{
+    RadiusAuthTokenEvent, UnixGroupTokenEvent, UnixUserAuthEvent, UnixUserTokenEvent,
+};
 use crate::value::PartialValue;
 use kanidm_proto::v1::{OperationError, RadiusAuthToken};
 
@@ -137,6 +139,16 @@ pub struct InternalSshKeyTagReadMessage {
 
 impl Message for InternalSshKeyTagReadMessage {
     type Result = Result<Option<String>, OperationError>;
+}
+
+pub struct IdmAccountUnixAuthMessage {
+    pub uat: Option<UserAuthToken>,
+    pub uuid_or_name: String,
+    pub cred: String,
+}
+
+impl Message for IdmAccountUnixAuthMessage {
+    type Result = Result<Option<UnixUserToken>, OperationError>;
 }
 
 // ===========================================================
@@ -648,6 +660,57 @@ impl Handler<InternalSshKeyTagReadMessage> for QueryServerReadV1 {
                 }
                 Err(e) => Err(e),
             }
+        });
+        self.log.do_send(audit);
+        res
+    }
+}
+
+impl Handler<IdmAccountUnixAuthMessage> for QueryServerReadV1 {
+    type Result = Result<Option<UnixUserToken>, OperationError>;
+
+    fn handle(&mut self, msg: IdmAccountUnixAuthMessage, _: &mut Self::Context) -> Self::Result {
+        let mut audit = AuditScope::new("idm_account_unix_auth");
+        let res = audit_segment!(&mut audit, || {
+            let mut idm_write = self.idms.write();
+
+            // resolve the id
+            let target_uuid = Uuid::parse_str(msg.uuid_or_name.as_str()).or_else(|_| {
+                idm_write
+                    .qs_read
+                    .posixid_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                    .map_err(|e| {
+                        audit_log!(&mut audit, "Error resolving as gidnumber continuing ...");
+                        e
+                    })
+            })?;
+            // Make an event from the request
+            let uuae = match UnixUserAuthEvent::from_parts(
+                &mut audit,
+                &idm_write.qs_read,
+                msg.uat,
+                target_uuid,
+                msg.cred,
+            ) {
+                Ok(s) => s,
+                Err(e) => {
+                    audit_log!(audit, "Failed to begin unix auth: {:?}", e);
+                    return Err(e);
+                }
+            };
+
+            audit_log!(audit, "Begin event {:?}", uuae);
+
+            let ct = SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .expect("Clock failure!");
+
+            let r = idm_write
+                .auth_unix(&mut audit, &uuae, ct)
+                .and_then(|r| idm_write.commit().map(|_| r));
+
+            audit_log!(audit, "Sending result -> {:?}", r);
+            r
         });
         self.log.do_send(audit);
         res

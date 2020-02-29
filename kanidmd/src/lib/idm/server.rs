@@ -6,7 +6,7 @@ use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
 use crate::idm::event::{
     GeneratePasswordEvent, PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
-    UnixGroupTokenEvent, UnixUserTokenEvent,
+    UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent,
 };
 use crate::idm::radius::RadiusAccount;
 use crate::idm::unix::{UnixGroup, UnixUserAccount};
@@ -43,7 +43,8 @@ pub struct IdmServerWriteTransaction<'a> {
     // the idm in memory structures (maybe the query server too). This is
     // things like authentication
     sessions: BptreeMapWriteTxn<'a, Uuid, AuthSession>,
-    qs: &'a QueryServer,
+    pub qs_read: QueryServerReadTransaction,
+    // qs: &'a QueryServer,
     sid: &'a SID,
 }
 
@@ -72,7 +73,8 @@ impl IdmServer {
     pub fn write(&self) -> IdmServerWriteTransaction {
         IdmServerWriteTransaction {
             sessions: self.sessions.write(),
-            qs: &self.qs,
+            // qs: &self.qs,
+            qs_read: self.qs.read(),
             sid: &self.sid,
         }
     }
@@ -132,7 +134,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
                 //
                 // We *DO NOT* need a write though, because I think that lock outs
                 // and rate limits are *per server* and *in memory* only.
-                let qs_read = self.qs.read();
+                //
                 // Check anything needed? Get the current auth-session-id from request
                 // because it associates to the nonce's etc which were all cached.
 
@@ -144,7 +146,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
                 ]));
 
                 // Get the first / single entry we expect here ....
-                let entry = match qs_read.internal_search(au, filter_entry) {
+                let entry = match self.qs_read.internal_search(au, filter_entry) {
                     Ok(mut entries) => {
                         // Get only one entry out ...
                         if entries.len() >= 2 {
@@ -164,7 +166,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
                 // typing and functionality so we can assess what auth types can
                 // continue, and helps to keep non-needed entry specific data
                 // out of the LRU.
-                let account = Account::try_from_entry_ro(au, entry, &qs_read)?;
+                let account = Account::try_from_entry_ro(au, entry, &self.qs_read)?;
                 let auth_session = AuthSession::new(account, init.appid.clone());
 
                 // Get the set of mechanisms that can proceed. This is tied
@@ -180,7 +182,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
                 self.sessions.insert(sessionid, auth_session);
 
                 // Debugging: ensure we really inserted ...
-                assert!(self.sessions.get(&sessionid).is_some());
+                debug_assert!(self.sessions.get(&sessionid).is_some());
 
                 Ok(AuthResult {
                     sessionid,
@@ -208,6 +210,27 @@ impl<'a> IdmServerWriteTransaction<'a> {
                 })
             }
         }
+    }
+
+    pub fn auth_unix(
+        &mut self,
+        au: &mut AuditScope,
+        uae: &UnixUserAuthEvent,
+        _ct: Duration,
+    ) -> Result<Option<UnixUserToken>, OperationError> {
+        // TODO #59: Implement soft lock checking for unix creds here!
+
+        // Get the entry/target we are working on.
+        let account_entry = try_audit!(au, self.qs_read.internal_search_uuid(au, &uae.target));
+
+        // Get their account
+        let account = try_audit!(
+            au,
+            UnixUserAccount::try_from_entry_ro(au, account_entry, &self.qs_read)
+        );
+
+        // Validate the unix_pw - this checks the account/cred lock states.
+        account.verify_unix_credential(au, uae.cleartext.as_str())
     }
 
     pub fn commit(self) -> Result<(), OperationError> {
@@ -271,51 +294,26 @@ impl IdmServerProxyReadTransaction {
 }
 
 impl<'a> IdmServerProxyWriteTransaction<'a> {
-    pub fn set_account_password(
-        &mut self,
+    fn check_password_quality(
+        &self,
         au: &mut AuditScope,
-        pce: &PasswordChangeEvent,
+        cleartext: &str,
+        related_inputs: &[&str],
     ) -> Result<(), OperationError> {
-        // Get the account
-        let account_entry = try_audit!(au, self.qs_write.internal_search_uuid(au, &pce.target));
-        let account = try_audit!(
-            au,
-            Account::try_from_entry_rw(au, account_entry, &self.qs_write)
-        );
-        // Ask if tis all good - this step checks pwpolicy and such
-
-        // Deny the change if the account is anonymous!
-        if account.is_anonymous() {
-            return Err(OperationError::SystemProtectedObject);
-        }
-
-        // Question: Is it a security issue to reveal pw policy checks BEFORE permission is
-        // determined over the credential modification?
-        //
-        // I don't think so - because we should only be showing how STRONG the pw is ...
-
         // password strength and badlisting is always global, rather than per-pw-policy.
         // pw-policy as check on the account is about requirements for mfa for example.
         //
 
         // is the password at least 10 char?
-        if pce.cleartext.len() < PW_MIN_LENGTH {
+        if cleartext.len() < PW_MIN_LENGTH {
             return Err(OperationError::PasswordTooShort(PW_MIN_LENGTH));
         }
 
         // does the password pass zxcvbn?
 
-        // Get related inputs, such as account name, email, etc.
-        let related: Vec<&str> = vec![
-            account.name.as_str(),
-            account.displayname.as_str(),
-            account.spn.as_str(),
-        ];
-
         let entropy = try_audit!(
             au,
-            zxcvbn::zxcvbn(pce.cleartext.as_str(), related.as_slice())
-                .map_err(|_| OperationError::PasswordEmpty)
+            zxcvbn::zxcvbn(cleartext, related_inputs).map_err(|_| OperationError::PasswordEmpty)
         );
 
         // check account pwpolicy (for 3 or 4)? Do we need pw strength beyond this
@@ -341,7 +339,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // check a password badlist to eliminate more content
         // we check the password as "lower case" to help eliminate possibilities
-        let lc_password = PartialValue::new_iutf8s(pce.cleartext.as_str());
+        let lc_password = PartialValue::new_iutf8s(cleartext);
         let badlist_entry = try_audit!(
             au,
             self.qs_write.internal_search_uuid(au, &UUID_SYSTEM_CONFIG)
@@ -351,11 +349,101 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             return Err(OperationError::PasswordBadListed);
         }
 
+        Ok(())
+    }
+
+    pub fn set_account_password(
+        &mut self,
+        au: &mut AuditScope,
+        pce: &PasswordChangeEvent,
+    ) -> Result<(), OperationError> {
+        // Get the account
+        let account_entry = try_audit!(au, self.qs_write.internal_search_uuid(au, &pce.target));
+        let account = try_audit!(
+            au,
+            Account::try_from_entry_rw(au, account_entry, &self.qs_write)
+        );
+        // Ask if tis all good - this step checks pwpolicy and such
+
+        // Deny the change if the account is anonymous!
+        if account.is_anonymous() {
+            return Err(OperationError::SystemProtectedObject);
+        }
+
+        // Question: Is it a security issue to reveal pw policy checks BEFORE permission is
+        // determined over the credential modification?
+        //
+        // I don't think so - because we should only be showing how STRONG the pw is ...
+
+        // Get related inputs, such as account name, email, etc.
+        let related_inputs: Vec<&str> = vec![
+            account.name.as_str(),
+            account.displayname.as_str(),
+            account.spn.as_str(),
+        ];
+
+        try_audit!(
+            au,
+            self.check_password_quality(au, pce.cleartext.as_str(), related_inputs.as_slice())
+        );
+
         // it returns a modify
         let modlist = try_audit!(
             au,
             account.gen_password_mod(pce.cleartext.as_str(), &pce.appid)
         );
+        audit_log!(au, "processing change {:?}", modlist);
+        // given the new credential generate a modify
+        // We use impersonate here to get the event from ae
+        try_audit!(
+            au,
+            self.qs_write.impersonate_modify(
+                au,
+                // Filter as executed
+                filter!(f_eq("uuid", PartialValue::new_uuidr(&pce.target))),
+                // Filter as intended (acp)
+                filter_all!(f_eq("uuid", PartialValue::new_uuidr(&pce.target))),
+                modlist,
+                &pce.event,
+            )
+        );
+
+        Ok(())
+    }
+
+    pub fn set_unix_account_password(
+        &mut self,
+        au: &mut AuditScope,
+        pce: &UnixPasswordChangeEvent,
+    ) -> Result<(), OperationError> {
+        // Get the account
+        let account_entry = try_audit!(au, self.qs_write.internal_search_uuid(au, &pce.target));
+        // Assert the account is unix and valid.
+        let account = try_audit!(
+            au,
+            UnixUserAccount::try_from_entry_rw(au, account_entry, &self.qs_write)
+        );
+        // Ask if tis all good - this step checks pwpolicy and such
+
+        // Deny the change if the account is anonymous!
+        if account.is_anonymous() {
+            return Err(OperationError::SystemProtectedObject);
+        }
+
+        // Get related inputs, such as account name, email, etc.
+        let related_inputs: Vec<&str> = vec![
+            account.name.as_str(),
+            account.displayname.as_str(),
+            account.spn.as_str(),
+        ];
+
+        try_audit!(
+            au,
+            self.check_password_quality(au, pce.cleartext.as_str(), related_inputs.as_slice())
+        );
+
+        // it returns a modify
+        let modlist = try_audit!(au, account.gen_password_mod(pce.cleartext.as_str()));
         audit_log!(au, "processing change {:?}", modlist);
         // given the new credential generate a modify
         // We use impersonate here to get the event from ae
@@ -493,7 +581,7 @@ mod tests {
     use crate::event::{AuthEvent, AuthResult, CreateEvent, ModifyEvent};
     use crate::idm::event::{
         PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
-        UnixGroupTokenEvent, UnixUserTokenEvent,
+        UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent,
     };
     use crate::modify::{Modify, ModifyList};
     use crate::value::{PartialValue, Value};
@@ -932,6 +1020,68 @@ mod tests {
 
             assert!(tok_g.name == "admin");
             assert!(tok_g.spn == "admin@example.com");
+        })
+    }
+
+    #[test]
+    fn test_idm_simple_unix_password_reset() {
+        run_idm_test!(|_qs: &QueryServer, idms: &IdmServer, au: &mut AuditScope| {
+            let mut idms_prox_write = idms.proxy_write();
+            // make the admin a valid posix account
+            let me_posix = unsafe {
+                ModifyEvent::new_internal_invalid(
+                    filter!(f_eq("name", PartialValue::new_iutf8s("admin"))),
+                    ModifyList::new_list(vec![
+                        Modify::Present("class".to_string(), Value::new_class("posixaccount")),
+                        Modify::Present("gidnumber".to_string(), Value::new_uint32(2001)),
+                    ]),
+                )
+            };
+            assert!(idms_prox_write.qs_write.modify(au, &me_posix).is_ok());
+
+            let pce = UnixPasswordChangeEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD);
+
+            assert!(idms_prox_write.set_unix_account_password(au, &pce).is_ok());
+            assert!(idms_prox_write.set_unix_account_password(au, &pce).is_ok());
+            assert!(idms_prox_write.commit(au).is_ok());
+
+            let mut idms_write = idms.write();
+            // Check auth verification of the password
+
+            let uuae_good = UnixUserAuthEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD);
+            let a1 = idms_write.auth_unix(au, &uuae_good, Duration::from_secs(TEST_CURRENT_TIME));
+            match a1 {
+                Ok(Some(_tok)) => {}
+                _ => assert!(false),
+            };
+            // Check bad password
+            let uuae_bad = UnixUserAuthEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD_INC);
+            let a2 = idms_write.auth_unix(au, &uuae_bad, Duration::from_secs(TEST_CURRENT_TIME));
+            match a2 {
+                Ok(None) => {}
+                _ => assert!(false),
+            };
+            assert!(idms_write.commit().is_ok());
+
+            // Check deleting the password
+            let mut idms_prox_write = idms.proxy_write();
+            let me_purge_up = unsafe {
+                ModifyEvent::new_internal_invalid(
+                    filter!(f_eq("name", PartialValue::new_iutf8s("admin"))),
+                    ModifyList::new_list(vec![Modify::Purged("unix_password".to_string())]),
+                )
+            };
+            assert!(idms_prox_write.qs_write.modify(au, &me_purge_up).is_ok());
+            assert!(idms_prox_write.commit(au).is_ok());
+
+            // And auth should now fail due to the lack of PW material
+            let mut idms_write = idms.write();
+            let a3 = idms_write.auth_unix(au, &uuae_good, Duration::from_secs(TEST_CURRENT_TIME));
+            match a3 {
+                Ok(None) => {}
+                _ => assert!(false),
+            };
+            assert!(idms_write.commit().is_ok());
         })
     }
 }

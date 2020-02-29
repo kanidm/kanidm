@@ -5,7 +5,7 @@ pub mod system_config;
 pub use crate::constants::system_config::JSON_SYSTEM_CONFIG_V1;
 
 // Increment this as we add new schema types and values!!!
-pub static SYSTEM_INDEX_VERSION: i64 = 4;
+pub static SYSTEM_INDEX_VERSION: i64 = 5;
 // On test builds, define to 60 seconds
 #[cfg(test)]
 pub static PURGE_TIMEOUT: u64 = 60;
@@ -109,6 +109,7 @@ pub static UUID_SCHEMA_CLASS_POSIXGROUP: &str = "00000000-0000-0000-0000-ffff000
 pub static UUID_SCHEMA_ATTR_BADLIST_PASSWORD: &str = "00000000-0000-0000-0000-ffff00000059";
 pub static UUID_SCHEMA_CLASS_SYSTEM_CONFIG: &str = "00000000-0000-0000-0000-ffff00000060";
 pub static UUID_SCHEMA_ATTR_LOGINSHELL: &str = "00000000-0000-0000-0000-ffff00000061";
+pub static UUID_SCHEMA_ATTR_UNIX_PASSWORD: &str = "00000000-0000-0000-0000-ffff00000062";
 
 // System and domain infos
 // I'd like to strongly criticise william of the past for fucking up these allocations.
@@ -591,10 +592,10 @@ pub static JSON_IDM_SELF_ACP_WRITE_V1: &str = r#"{
             "\"Self\""
         ],
         "acp_modify_removedattr": [
-            "name", "displayname", "legalname", "radius_secret", "primary_credential", "ssh_publickey"
+            "name", "displayname", "legalname", "radius_secret", "primary_credential", "ssh_publickey", "unix_password"
         ],
         "acp_modify_presentattr": [
-            "name", "displayname", "legalname", "radius_secret", "primary_credential", "ssh_publickey"
+            "name", "displayname", "legalname", "radius_secret", "primary_credential", "ssh_publickey", "unix_password"
         ]
     }
 }"#;
@@ -1301,13 +1302,13 @@ pub static JSON_IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1: &str = r#"{
             "{\"And\": [{\"Eq\": [\"class\",\"account\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_search_attr": [
-            "class", "name", "spn", "uuid", "description", "gidnumber", "loginshell"
+            "class", "name", "spn", "uuid", "description", "gidnumber", "loginshell", "unix_password"
         ],
         "acp_modify_removedattr": [
-            "class", "loginshell", "gidnumber"
+            "class", "loginshell", "gidnumber", "unix_password"
         ],
         "acp_modify_presentattr": [
-            "class", "loginshell", "gidnumber"
+            "class", "loginshell", "gidnumber", "unix_password"
         ],
         "acp_modify_class": ["posixaccount"]
     }
@@ -1733,6 +1734,35 @@ pub static JSON_SCHEMA_ATTR_LOGINSHELL: &str = r#"{
     }
 }"#;
 
+pub static JSON_SCHEMA_ATTR_UNIX_PASSWORD: &str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "A posix users unix login password."
+      ],
+      "index": [],
+      "unique": [
+        "false"
+      ],
+      "multivalue": [
+        "false"
+      ],
+      "attributename": [
+        "unix_password"
+      ],
+      "syntax": [
+        "CREDENTIAL"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000062"
+      ]
+    }
+}"#;
+
 pub static JSON_SCHEMA_CLASS_PERSON: &str = r#"
   {
     "valid": {
@@ -1901,7 +1931,8 @@ pub static JSON_SCHEMA_CLASS_POSIXACCOUNT: &str = r#"
         "posixaccount"
       ],
       "systemmay": [
-        "loginshell"
+        "loginshell",
+        "unix_password"
       ],
       "systemmust": [
         "gidnumber"

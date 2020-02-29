@@ -18,8 +18,14 @@ You can check the daemon is running on your Linux system with
 
     # systemctl status kanidm_unixd
 
-This daemon uses configuration from /etc/kanidm/config. This is the covered in
-client_tools.
+This daemon uses connection configuration from /etc/kanidm/config. This is the covered in
+client_tools. You can also configure some details of the unixd daemon in /etc/kanidm/unixd.
+
+    pam_allowed_login_groups = ["posix_group"]
+
+The `pam_allowed_login_groups` defines a set of posix groups where membership of any of these
+groups will be allowed to login via pam. All posix users and groups can be resolved by nss
+regardless of pam login status.
 
 You can then check the communication status of the daemon as any user account.
 
@@ -39,8 +45,8 @@ For more, see troubleshooting.
 
 When the daemon is running you can add the nsswitch libraries to /etc/nsswitch.conf
 
-    passwd: kanidm compat
-    group: kanidm compat
+    passwd: compat kanidm
+    group: compat kanidm
 
 You can then test that a posix extended user is able to be resolved with:
 
@@ -61,9 +67,76 @@ You can also do the same for groups.
 > shell open while making changes (ie root), or have access to single-user mode
 > at the machines console.
 
-TBD
+PAM (Pluggable Authentication Modules) is how a unix like system allows users to authenticate
+and be authorised to start interactive sessions. This is configured through a stack of modules
+that are executed in order to evaluate the request. This is done through a series of steps
+where each module may request or reused authentication token information.
+
+### Before you start
+
+You *should* backup your /etc/pam.d directory from it's original state as you *may* change the
+pam config in a way that will cause you to be unable to authenticate to your machine.
+
+    cp -a /etc/pam.d /root/pam.d.backup
+
+### SUSE
+
+To configure PAM on suse you must module four files:
+
+    /etc/pam.d/common-account-pc
+    /etc/pam.d/common-auth-pc
+    /etc/pam.d/common-password-pc
+    /etc/pam.d/common-session-pc
+
+Each of these controls one of the four stages of pam. The content should look like:
+
+    # /etc/pam.d/common-account-pc
+    account    [default=1 ignore=ignore success=ok] pam_localuser.so
+    account    required    pam_unix.so
+    account    required    pam_kanidm.so ignore_unknown_user
+
+    # /etc/pam.d/common-auth-pc
+    auth        required      pam_env.so
+    auth        [default=1 ignore=ignore success=ok] pam_localuser.so
+    auth        sufficient    pam_unix.so nullok try_first_pass
+    auth        requisite     pam_succeed_if.so uid >= 1000 quiet_success
+    auth        sufficient    pam_kanidm.so debug ignore_unknown_user
+    auth        required      pam_deny.so
+
+    # /etc/pam.d/common-password-pc
+    password    requisite   pam_cracklib.so
+    password    [default=1 ignore=ignore success=ok] pam_localuser.so
+    password    required    pam_unix.so use_authtok nullok shadow try_first_pass
+    password    required  pam_kanidm.so
+
+    # /etc/pam.d/common-session-pc
+    session optional    pam_systemd.so
+    session required    pam_limits.so
+    session required    pam_mkhomedir.so skel=/etc/skel/ umask=0022
+    session optional    pam_unix.so try_first_pass
+    session optional    pam_kanidm.so
+    session optional    pam_umask.so
+    session optional    pam_env.so
+
 
 ## Troubleshooting
+
+### Increase logging
+
+For the unixd daemon, you can increase the logging with:
+
+    systemctl edit kanidm-unixd.service
+
+And add the lines:
+
+    [Service]
+    Environment="RUST_LOG=kanidm=debug"
+
+Then restart the kanidm-unixd.service.
+
+To debug the pam module interactions add `debug` to the module arguments such as:
+
+    auth sufficient pam_kanidm.so debug
 
 ### Check the socket permissions
 

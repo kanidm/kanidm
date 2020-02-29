@@ -5,7 +5,10 @@ use crate::async_log::EventLog;
 use crate::event::{
     CreateEvent, DeleteEvent, ModifyEvent, PurgeRecycledEvent, PurgeTombstoneEvent,
 };
-use crate::idm::event::{GeneratePasswordEvent, PasswordChangeEvent, RegenerateRadiusSecretEvent};
+use crate::idm::event::{
+    GeneratePasswordEvent, PasswordChangeEvent, RegenerateRadiusSecretEvent,
+    UnixPasswordChangeEvent,
+};
 use crate::modify::{Modify, ModifyInvalid, ModifyList};
 use crate::value::{PartialValue, Value};
 use kanidm_proto::v1::OperationError;
@@ -145,6 +148,16 @@ impl IdmGroupUnixExtendMessage {
 }
 
 impl Message for IdmGroupUnixExtendMessage {
+    type Result = Result<(), OperationError>;
+}
+
+pub struct IdmAccountUnixSetCredMessage {
+    pub uat: Option<UserAuthToken>,
+    pub uuid_or_name: String,
+    pub cred: String,
+}
+
+impl Message for IdmAccountUnixSetCredMessage {
     type Result = Result<(), OperationError>;
 }
 
@@ -863,6 +876,45 @@ impl Handler<IdmGroupUnixExtendMessage> for QueryServerWriteV1 {
             let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
 
             self.modify_from_internal_parts(&mut audit, uat, uuid_or_name, ml, filter)
+        });
+        self.log.do_send(audit);
+        res
+    }
+}
+
+impl Handler<IdmAccountUnixSetCredMessage> for QueryServerWriteV1 {
+    type Result = Result<(), OperationError>;
+
+    fn handle(&mut self, msg: IdmAccountUnixSetCredMessage, _: &mut Self::Context) -> Self::Result {
+        let mut audit = AuditScope::new("idm_account_unix_set_cred");
+        let res = audit_segment!(&mut audit, || {
+            let mut idms_prox_write = self.idms.proxy_write();
+
+            let target_uuid = Uuid::parse_str(msg.uuid_or_name.as_str()).or_else(|_| {
+                idms_prox_write
+                    .qs_write
+                    .posixid_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                    .map_err(|e| {
+                        audit_log!(&mut audit, "Error resolving as gidnumber continuing ...");
+                        e
+                    })
+            })?;
+
+            let upce = UnixPasswordChangeEvent::from_parts(
+                &mut audit,
+                &idms_prox_write.qs_write,
+                msg.uat,
+                target_uuid,
+                msg.cred,
+            )
+            .map_err(|e| {
+                audit_log!(audit, "Failed to begin UnixPasswordChangeEvent: {:?}", e);
+                e
+            })?;
+            idms_prox_write
+                .set_unix_account_password(&mut audit, &upce)
+                .and_then(|_| idms_prox_write.commit(&mut audit))
+                .map(|_| ())
         });
         self.log.do_send(audit);
         res

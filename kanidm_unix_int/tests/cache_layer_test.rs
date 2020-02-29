@@ -14,6 +14,9 @@ use kanidm_client::{KanidmClient, KanidmClientBuilder};
 
 static PORT_ALLOC: AtomicUsize = AtomicUsize::new(18080);
 static ADMIN_TEST_PASSWORD: &str = "integration test admin password";
+static TESTACCOUNT1_PASSWORD_A: &str = "password a for account1 test";
+static TESTACCOUNT1_PASSWORD_B: &str = "password b for account1 test";
+static TESTACCOUNT1_PASSWORD_INC: &str = "never going to work";
 
 fn run_test(fix_fn: fn(&KanidmClient) -> (), test_fn: fn(CacheLayer, KanidmAsyncClient) -> ()) {
     // ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
@@ -64,7 +67,9 @@ fn run_test(fix_fn: fn(&KanidmClient) -> (), test_fn: fn(CacheLayer, KanidmAsync
 
     let cachelayer = CacheLayer::new(
         "", // The sqlite db path, this is in memory.
-        300, rsclient,
+        300,
+        rsclient,
+        vec!["allowed_group".to_string()],
     )
     .expect("Failed to build cache layer.");
 
@@ -97,6 +102,10 @@ fn test_fixture(rsclient: &KanidmClient) -> () {
         .idm_account_post_ssh_pubkey("testaccount1", "tk",
         "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAeGW1P6Pc2rPq0XqbRaDKBcXZUPRklo0L1EyR30CwoP william@amethyst")
         .unwrap();
+    // Set a posix password
+    rsclient
+        .idm_account_unix_cred_put("testaccount1", TESTACCOUNT1_PASSWORD_A)
+        .unwrap();
 
     // Setup a group
     rsclient.idm_group_create("testgroup1").unwrap();
@@ -105,6 +114,12 @@ fn test_fixture(rsclient: &KanidmClient) -> () {
         .unwrap();
     rsclient
         .idm_group_unix_extend("testgroup1", Some(20001))
+        .unwrap();
+
+    // Setup the allowed group
+    rsclient.idm_group_create("allowed_group").unwrap();
+    rsclient
+        .idm_group_unix_extend("allowed_group", Some(20002))
         .unwrap();
 }
 
@@ -337,6 +352,166 @@ fn test_cache_account_delete() {
                 .await
                 .expect("Failed to get from cache");
             assert!(gt.is_none());
+        };
+        rt.block_on(fut);
+    })
+}
+
+#[test]
+fn test_cache_account_password() {
+    run_test(test_fixture, |cachelayer, adminclient| {
+        let mut rt = Runtime::new().expect("Failed to start tokio");
+        let fut = async move {
+            cachelayer.attempt_online().await;
+            // Test authentication failure.
+            let a1 = cachelayer
+                .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_INC)
+                .await
+                .expect("failed to authenticate");
+            assert!(a1 == Some(false));
+
+            // Test authentication success.
+            let a2 = cachelayer
+                .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_A)
+                .await
+                .expect("failed to authenticate");
+            assert!(a2 == Some(true));
+
+            // change pw
+            adminclient
+                .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+                .await
+                .expect("failed to auth as admin");
+            adminclient
+                .idm_account_unix_cred_put("testaccount1", TESTACCOUNT1_PASSWORD_B)
+                .await
+                .expect("Failed to change password");
+
+            // test auth (old pw) fail
+            let a3 = cachelayer
+                .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_A)
+                .await
+                .expect("failed to authenticate");
+            assert!(a3 == Some(false));
+
+            // test auth (new pw) success
+            let a4 = cachelayer
+                .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_B)
+                .await
+                .expect("failed to authenticate");
+            assert!(a4 == Some(true));
+
+            // Go offline.
+            cachelayer.mark_offline().await;
+
+            // Test auth success
+            let a5 = cachelayer
+                .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_B)
+                .await
+                .expect("failed to authenticate");
+            assert!(a5 == Some(true));
+
+            // Test auth failure.
+            let a6 = cachelayer
+                .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_INC)
+                .await
+                .expect("failed to authenticate");
+            assert!(a6 == Some(false));
+
+            // clear cache
+            cachelayer.clear_cache().expect("failed to clear cache");
+
+            // test auth good (fail)
+            let a7 = cachelayer
+                .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_B)
+                .await
+                .expect("failed to authenticate");
+            assert!(a7 == None);
+
+            // go online
+            cachelayer.attempt_online().await;
+            assert!(cachelayer.test_connection().await);
+
+            // test auth success
+            let a8 = cachelayer
+                .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_B)
+                .await
+                .expect("failed to authenticate");
+            assert!(a8 == Some(true));
+        };
+        rt.block_on(fut);
+    })
+}
+
+#[test]
+fn test_cache_account_pam_allowed() {
+    run_test(test_fixture, |cachelayer, adminclient| {
+        let mut rt = Runtime::new().expect("Failed to start tokio");
+        let fut = async move {
+            cachelayer.attempt_online().await;
+
+            // Should fail
+            let a1 = cachelayer
+                .pam_account_allowed("testaccount1")
+                .await
+                .expect("failed to authenticate");
+            assert!(a1 == Some(false));
+
+            adminclient
+                .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+                .await
+                .expect("failed to auth as admin");
+            adminclient
+                .idm_group_add_members("allowed_group", vec!["testaccount1"])
+                .await
+                .unwrap();
+
+            // Invalidate cache to force a refresh
+            assert!(cachelayer.invalidate().is_ok());
+
+            // Should pass
+            let a2 = cachelayer
+                .pam_account_allowed("testaccount1")
+                .await
+                .expect("failed to authenticate");
+            assert!(a2 == Some(true));
+        };
+        rt.block_on(fut);
+    })
+}
+
+#[test]
+fn test_cache_account_pam_nonexist() {
+    run_test(test_fixture, |cachelayer, _adminclient| {
+        let mut rt = Runtime::new().expect("Failed to start tokio");
+        let fut = async move {
+            cachelayer.attempt_online().await;
+
+            let a1 = cachelayer
+                .pam_account_allowed("NO_SUCH_ACCOUNT")
+                .await
+                .expect("failed to authenticate");
+            assert!(a1 == None);
+
+            let a2 = cachelayer
+                .pam_account_authenticate("NO_SUCH_ACCOUNT", TESTACCOUNT1_PASSWORD_B)
+                .await
+                .expect("failed to authenticate");
+            assert!(a2 == None);
+
+            cachelayer.mark_offline().await;
+
+            let a1 = cachelayer
+                .pam_account_allowed("NO_SUCH_ACCOUNT")
+                .await
+                .expect("failed to authenticate");
+            assert!(a1 == None);
+
+            let a2 = cachelayer
+                .pam_account_authenticate("NO_SUCH_ACCOUNT", TESTACCOUNT1_PASSWORD_B)
+                .await
+                .expect("failed to authenticate");
+            assert!(a2 == None);
         };
         rt.block_on(fut);
     })

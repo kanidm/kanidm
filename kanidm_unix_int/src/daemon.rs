@@ -15,9 +15,7 @@ use tokio_util::codec::{Decoder, Encoder};
 use kanidm_client::KanidmClientBuilder;
 
 use kanidm_unix_common::cache::CacheLayer;
-use kanidm_unix_common::constants::{
-    DEFAULT_CACHE_TIMEOUT, DEFAULT_CONN_TIMEOUT, DEFAULT_DB_PATH, DEFAULT_SOCK_PATH,
-};
+use kanidm_unix_common::unix_config::KanidmUnixdConfig;
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
 
 //=== the codec
@@ -45,11 +43,11 @@ impl Encoder for ClientCodec {
     type Error = io::Error;
 
     fn encode(&mut self, msg: ClientResponse, dst: &mut BytesMut) -> Result<(), Self::Error> {
+        debug!("Attempting to send response -> {:?} ...", msg);
         let data = serde_cbor::to_vec(&msg).map_err(|e| {
             error!("socket encoding error -> {:?}", e);
             io::Error::new(io::ErrorKind::Other, "CBOR encode error")
         })?;
-        debug!("Attempting to send response -> {:?} ...", data);
         dst.put(data.as_slice());
         Ok(())
     }
@@ -153,6 +151,22 @@ async fn handle_client(
                         ClientResponse::NssGroup(None)
                     })
             }
+            ClientRequest::PamAuthenticate(account_id, cred) => {
+                debug!("pam authenticate");
+                cachelayer
+                    .pam_account_authenticate(account_id.as_str(), cred.as_str())
+                    .await
+                    .map(|r| ClientResponse::PamStatus(r))
+                    .unwrap_or(ClientResponse::Error)
+            }
+            ClientRequest::PamAccountAllowed(account_id) => {
+                debug!("pam account allowed");
+                cachelayer
+                    .pam_account_allowed(account_id.as_str())
+                    .await
+                    .map(|r| ClientResponse::PamStatus(r))
+                    .unwrap_or(ClientResponse::Error)
+            }
             ClientRequest::InvalidateCache => {
                 debug!("invalidate cache");
                 cachelayer
@@ -190,29 +204,35 @@ async fn handle_client(
 async fn main() {
     // ::std::env::set_var("RUST_LOG", "kanidm=debug,kanidm_client=debug");
     env_logger::init();
-    rm_if_exist(DEFAULT_SOCK_PATH);
 
     // setup
     let cb = KanidmClientBuilder::new()
         .read_options_from_optional_config("/etc/kanidm/config")
         .expect("Failed to parse /etc/kanidm/config");
 
-    let cb = cb.connect_timeout(DEFAULT_CONN_TIMEOUT);
+    let cfg = KanidmUnixdConfig::new()
+        .read_options_from_optional_config("/etc/kanidm/unixd")
+        .expect("Failed to parse /etc/kanidm/unixd");
+
+    rm_if_exist(cfg.sock_path.as_str());
+
+    let cb = cb.connect_timeout(cfg.conn_timeout);
 
     let rsclient = cb.build_async().expect("Failed to build async client");
 
     let cachelayer = Arc::new(
         CacheLayer::new(
-            DEFAULT_DB_PATH, // The sqlite db path
-            DEFAULT_CACHE_TIMEOUT,
+            cfg.db_path.as_str(), // The sqlite db path
+            cfg.cache_timeout,
             rsclient,
+            cfg.pam_allowed_login_groups.clone(),
         )
         .expect("Failed to build cache layer."),
     );
 
     // Set the umask while we open the path
     let before = unsafe { umask(0) };
-    let mut listener = UnixListener::bind(DEFAULT_SOCK_PATH).unwrap();
+    let mut listener = UnixListener::bind(cfg.sock_path.as_str()).unwrap();
     // Undo it.
     let _ = unsafe { umask(before) };
 

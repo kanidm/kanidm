@@ -100,7 +100,6 @@ pub trait QueryServerTransaction {
         Ok(entries_filtered)
     }
 
-
     fn search(
         &self,
         au: &mut AuditScope,
@@ -1734,6 +1733,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_SCHEMA_ATTR_GIDNUMBER,
             JSON_SCHEMA_ATTR_BADLIST_PASSWORD,
             JSON_SCHEMA_ATTR_LOGINSHELL,
+            JSON_SCHEMA_ATTR_UNIX_PASSWORD,
             JSON_SCHEMA_CLASS_PERSON,
             JSON_SCHEMA_CLASS_GROUP,
             JSON_SCHEMA_CLASS_ACCOUNT,

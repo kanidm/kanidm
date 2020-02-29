@@ -16,16 +16,18 @@ use crate::config::Configuration;
 // SearchResult
 use crate::actors::v1_read::QueryServerReadV1;
 use crate::actors::v1_read::{
-    AuthMessage, InternalRadiusReadMessage, InternalRadiusTokenReadMessage, InternalSearchMessage,
-    InternalSshKeyReadMessage, InternalSshKeyTagReadMessage, InternalUnixGroupTokenReadMessage,
+    AuthMessage, IdmAccountUnixAuthMessage, InternalRadiusReadMessage,
+    InternalRadiusTokenReadMessage, InternalSearchMessage, InternalSshKeyReadMessage,
+    InternalSshKeyTagReadMessage, InternalUnixGroupTokenReadMessage,
     InternalUnixUserTokenReadMessage, SearchMessage, WhoamiMessage,
 };
 use crate::actors::v1_write::QueryServerWriteV1;
 use crate::actors::v1_write::{
     AppendAttributeMessage, CreateMessage, DeleteMessage, IdmAccountSetPasswordMessage,
-    IdmAccountUnixExtendMessage, IdmGroupUnixExtendMessage, InternalCredentialSetMessage,
-    InternalDeleteMessage, InternalRegenerateRadiusMessage, InternalSshKeyCreateMessage,
-    ModifyMessage, PurgeAttributeMessage, RemoveAttributeValueMessage, SetAttributeMessage,
+    IdmAccountUnixExtendMessage, IdmAccountUnixSetCredMessage, IdmGroupUnixExtendMessage,
+    InternalCredentialSetMessage, InternalDeleteMessage, InternalRegenerateRadiusMessage,
+    InternalSshKeyCreateMessage, ModifyMessage, PurgeAttributeMessage, RemoveAttributeValueMessage,
+    SetAttributeMessage,
 };
 use crate::async_log;
 use crate::audit::AuditScope;
@@ -954,6 +956,119 @@ fn account_get_id_unix_token(
     Box::new(res)
 }
 
+fn account_post_id_unix_auth(
+    (path, req, state): (Path<String>, HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let max_size = state.max_size;
+    let uat = get_current_user(&req);
+    let id = path.into_inner();
+    req.payload()
+        .from_err()
+        .fold(BytesMut::new(), move |mut body, chunk| {
+            // limit max size of in-memory payload
+            if (body.len() + chunk.len()) > max_size {
+                Err(error::ErrorBadRequest("overflow"))
+            } else {
+                body.extend_from_slice(&chunk);
+                Ok(body)
+            }
+        })
+        // `Future::and_then` can be used to merge an asynchronous workflow with a
+        // synchronous workflow
+        .and_then(
+            move |body| -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
+                let r_obj = serde_json::from_slice::<SingleStringRequest>(&body);
+
+                match r_obj {
+                    Ok(obj) => {
+                        let m_obj = IdmAccountUnixAuthMessage {
+                            uat: uat,
+                            uuid_or_name: id,
+                            cred: obj.value,
+                        };
+                        let res = state.qe_r.send(m_obj).from_err().and_then(|res| match res {
+                            Ok(event_result) => Ok(HttpResponse::Ok().json(event_result)),
+                            Err(e) => Ok(operation_error_to_response(e)),
+                        });
+
+                        Box::new(res)
+                    }
+                    Err(e) => Box::new(future::err(error::ErrorBadRequest(format!(
+                        "Json Decode Failed: {:?}",
+                        e
+                    )))),
+                } // end match
+            },
+        ) // end and_then
+}
+
+fn account_put_id_unix_credential(
+    path: Path<String>,
+    req: HttpRequest<AppState>,
+    state: State<AppState>,
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let max_size = state.max_size;
+    let uat = get_current_user(&req);
+    let id = path.into_inner();
+
+    req.payload()
+        .from_err()
+        .fold(BytesMut::new(), move |mut body, chunk| {
+            // limit max size of in-memory payload
+            if (body.len() + chunk.len()) > max_size {
+                Err(error::ErrorBadRequest("overflow"))
+            } else {
+                body.extend_from_slice(&chunk);
+                Ok(body)
+            }
+        })
+        .and_then(
+            move |body| -> Box<dyn Future<Item = HttpResponse, Error = Error>> {
+                let r_obj = serde_json::from_slice::<SingleStringRequest>(&body);
+                match r_obj {
+                    Ok(obj) => {
+                        let m_obj = IdmAccountUnixSetCredMessage {
+                            uat,
+                            uuid_or_name: id,
+                            cred: obj.value,
+                        };
+                        let res = state.qe_w.send(m_obj).from_err().and_then(|res| match res {
+                            Ok(_) => Ok(HttpResponse::Ok().json(())),
+                            Err(e) => Ok(operation_error_to_response(e)),
+                        });
+
+                        Box::new(res)
+                    }
+                    Err(e) => Box::new(future::err(error::ErrorBadRequest(format!(
+                        "Json Decode Failed: {:?}",
+                        e
+                    )))),
+                } // end match
+            },
+        ) // end and_then
+}
+
+fn account_delete_id_unix_credential(
+    (path, req, state): (Path<String>, HttpRequest<AppState>, State<AppState>),
+) -> impl Future<Item = HttpResponse, Error = Error> {
+    let uat = get_current_user(&req);
+    let id = path.into_inner();
+
+    let obj = PurgeAttributeMessage {
+        uat,
+        uuid_or_name: id,
+        attr: "unix_password".to_string(),
+        filter: filter_all!(f_eq("class", PartialValue::new_class("posixaccount"))),
+    };
+
+    let res = state.qe_w.send(obj).from_err().and_then(|res| match res {
+        Ok(()) => Ok(HttpResponse::Ok().json(())),
+        Err(e) => Ok(operation_error_to_response(e)),
+    });
+
+    Box::new(res)
+}
+
 fn group_get(
     (req, state): (HttpRequest<AppState>, State<AppState>),
 ) -> impl Future<Item = HttpResponse, Error = Error> {
@@ -1874,6 +1989,16 @@ pub fn create_server_core(config: Configuration) {
         .resource("/v1/account/{id}/_unix/_token", |r| {
             r.method(http::Method::GET)
                 .with_async(account_get_id_unix_token)
+        })
+        .resource("/v1/account/{id}/_unix/_auth", |r| {
+            r.method(http::Method::POST)
+                .with_async(account_post_id_unix_auth)
+        })
+        .resource("/v1/account/{id}/_unix/_credential", |r| {
+            r.method(http::Method::PUT)
+                .with_async(account_put_id_unix_credential);
+            r.method(http::Method::DELETE)
+                .with_async(account_delete_id_unix_credential);
         })
         // People
         // Groups

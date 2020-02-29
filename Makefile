@@ -9,3 +9,5 @@ vendor-prep:
 	cargo vendor
 	tar -czf vendor.tar.gz vendor
 
+doc-local:
+	cargo doc --document-private-items

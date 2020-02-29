@@ -7,7 +7,7 @@ RUN zypper mr -d repo-non-oss && \
     zypper ar https://download.opensuse.org/update/tumbleweed/ repo-update-https && \
     zypper ar https://download.opensuse.org/tumbleweed/repo/oss/ repo-oss-https && \
     zypper ar https://download.opensuse.org/tumbleweed/repo/non-oss/ repo-non-oss-https && \
-    zypper install -y timezone cargo rust gcc sqlite3-devel libopenssl-devel
+    zypper install -y timezone cargo rust gcc sqlite3-devel libopenssl-devel pam-devel
 COPY . /home/kanidm/
 WORKDIR /home/kanidm/
 RUN cargo build --release

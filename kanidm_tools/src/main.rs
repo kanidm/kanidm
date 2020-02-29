@@ -201,6 +201,8 @@ enum AccountPosix {
     Show(AccountNamedOpt),
     #[structopt(name = "set")]
     Set(AccountPosixOpt),
+    #[structopt(name = "set_password")]
+    SetPassword(AccountNamedOpt),
 }
 
 #[derive(Debug, StructOpt)]
@@ -335,6 +337,7 @@ impl ClientOpt {
                 AccountOpt::Posix(apopt) => match apopt {
                     AccountPosix::Show(apo) => apo.copt.debug,
                     AccountPosix::Set(apo) => apo.copt.debug,
+                    AccountPosix::SetPassword(apo) => apo.copt.debug,
                 },
                 AccountOpt::Ssh(asopt) => match asopt {
                     AccountSsh::List(ano) => ano.copt.debug,
@@ -524,6 +527,18 @@ fn main() {
                             aopt.aopts.account_id.as_str(),
                             aopt.gidnumber,
                             aopt.shell.as_deref(),
+                        )
+                        .unwrap();
+                }
+                AccountPosix::SetPassword(aopt) => {
+                    let client = aopt.copt.to_client();
+                    let password =
+                        rpassword::prompt_password_stderr("Enter new unix (sudo) password: ")
+                            .unwrap();
+                    client
+                        .idm_account_unix_cred_put(
+                            aopt.aopts.account_id.as_str(),
+                            password.as_str(),
                         )
                         .unwrap();
                 }

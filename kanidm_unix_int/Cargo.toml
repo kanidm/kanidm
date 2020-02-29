@@ -35,12 +35,19 @@ path = "src/cache_clear.rs"
 name = "kanidm_unixd_status"
 path =  "src/daemon_status.rs"
 
+[[bin]]
+name = "kanidm_test_auth"
+path =  "src/test_auth.rs"
+
 [dependencies]
 kanidm_client = { path = "../kanidm_client", version = "0.1" }
 kanidm_proto = { path = "../kanidm_proto", version = "0.1" }
+kanidm = { path = "../kanidmd" }
 # actix = { path = "../../actix", version = "0.9" }
 actix = "0.7"
 # actix-rt = "1.0"
+toml = "0.5"
+rpassword = "0.4"
 tokio = { version = "0.2", features=["full"] }
 tokio-util = { version = "0.2", features = ["codec"] }
 futures = "0.3"
