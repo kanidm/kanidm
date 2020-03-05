@@ -40,7 +40,8 @@ fn run_test(fix_fn: fn(&KanidmClient) -> (), test_fn: fn(CacheLayer, KanidmAsync
         System::run(move || {
             create_server_core(config);
             let _ = tx.send(System::current());
-        });
+        })
+        .expect("Failed to start system");
     });
     let sys = rx.recv().unwrap();
     System::set_current(sys.clone());

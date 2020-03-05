@@ -5,6 +5,7 @@
 extern crate log;
 
 use reqwest;
+use reqwest::header::CONTENT_TYPE;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_derive::Deserialize;
@@ -27,6 +28,8 @@ use serde_json;
 pub mod asynchronous;
 
 use crate::asynchronous::KanidmAsyncClient;
+
+pub static APPLICATION_JSON: &'static str = "application/json";
 
 #[derive(Debug)]
 pub enum ClientError {
@@ -295,6 +298,7 @@ impl KanidmClient {
         let response = self
             .client
             .post(dest.as_str())
+            .header(CONTENT_TYPE, APPLICATION_JSON)
             .body(req_string)
             .send()
             .map_err(ClientError::Transport)?;
@@ -322,6 +326,7 @@ impl KanidmClient {
         let response = self
             .client
             .put(dest.as_str())
+            .header(CONTENT_TYPE, APPLICATION_JSON)
             .body(req_string)
             .send()
             .map_err(ClientError::Transport)?;
@@ -550,6 +555,7 @@ impl KanidmClient {
             .attrs
             .insert("name".to_string(), vec![name.to_string()]);
         self.perform_post_request("/v1/group", new_group)
+            .map(|_: OperationResponse| ())
     }
 
     // ==== accounts
@@ -568,6 +574,7 @@ impl KanidmClient {
             .attrs
             .insert("displayname".to_string(), vec![dn.to_string()]);
         self.perform_post_request("/v1/account", new_acct)
+            .map(|_: OperationResponse| ())
     }
 
     pub fn idm_account_set_displayname(&self, id: &str, dn: &str) -> Result<(), ClientError> {

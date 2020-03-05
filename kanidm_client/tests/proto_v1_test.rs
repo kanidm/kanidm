@@ -44,7 +44,8 @@ fn run_test(test_fn: fn(KanidmClient) -> ()) {
             // This appears to be bind random ...
             // let srv = srv.bind("127.0.0.1:0").unwrap();
             let _ = tx.send(System::current());
-        });
+        })
+        .expect("unable to start system");
     });
     let sys = rx.recv().unwrap();
     System::set_current(sys.clone());
