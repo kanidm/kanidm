@@ -1,5 +1,6 @@
-use crate::{ClientError, KanidmClientBuilder};
+use crate::{ClientError, KanidmClientBuilder, APPLICATION_JSON};
 use reqwest;
+use reqwest::header::CONTENT_TYPE;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
@@ -29,6 +30,7 @@ impl KanidmAsyncClient {
             .client
             .post(dest.as_str())
             .body(req_string)
+            .header(CONTENT_TYPE, APPLICATION_JSON)
             .send()
             .await
             .map_err(ClientError::Transport)?;
@@ -59,6 +61,7 @@ impl KanidmAsyncClient {
         let response = self
             .client
             .put(dest.as_str())
+            .header(CONTENT_TYPE, APPLICATION_JSON)
             .body(req_string)
             .send()
             .await

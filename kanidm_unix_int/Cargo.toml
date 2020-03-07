@@ -43,9 +43,6 @@ path =  "src/test_auth.rs"
 kanidm_client = { path = "../kanidm_client", version = "0.1" }
 kanidm_proto = { path = "../kanidm_proto", version = "0.1" }
 kanidm = { path = "../kanidmd" }
-# actix = { path = "../../actix", version = "0.9" }
-actix = "0.7"
-# actix-rt = "1.0"
 toml = "0.5"
 rpassword = "0.4"
 tokio = { version = "0.2", features=["full"] }
@@ -69,3 +66,4 @@ reqwest = { version = "0.10" }
 
 [dev-dependencies]
 kanidm = { path = "../kanidmd", version = "0.1" }
+actix = "0.9"
