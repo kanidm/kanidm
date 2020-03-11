@@ -748,6 +748,7 @@ impl<'a> QueryServerTransaction for QueryServerWriteTransaction<'a> {
 #[derive(Clone)]
 pub struct QueryServer {
     // log: actix::Addr<EventLog>,
+    s_uuid: Uuid,
     be: Backend,
     schema: Arc<Schema>,
     accesscontrols: Arc<AccessControls>,
@@ -755,8 +756,10 @@ pub struct QueryServer {
 
 impl QueryServer {
     pub fn new(be: Backend, schema: Schema) -> Self {
+        let s_uuid = be.get_db_s_uuid();
         // log_event!(log, "Starting query worker ...");
         QueryServer {
+            s_uuid,
             be,
             schema: Arc::new(schema),
             accesscontrols: Arc::new(AccessControls::new()),

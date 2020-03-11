@@ -1,4 +1,3 @@
-use rand::prelude::*;
 use serde_cbor;
 use serde_json;
 use std::convert::TryFrom;
@@ -11,10 +10,10 @@ use crate::audit::AuditScope;
 use crate::be::dbentry::DbEntry;
 use crate::entry::{Entry, EntryCommitted, EntryNew, EntryValid};
 use crate::filter::{Filter, FilterResolved, FilterValidResolved};
-use crate::utils::SID;
 use idlset::AndNot;
 use idlset::IDLBitRange;
 use kanidm_proto::v1::{ConsistencyError, OperationError};
+use uuid::Uuid;
 
 pub mod dbentry;
 pub mod dbvalue;
@@ -882,22 +881,24 @@ impl BackendWriteTransaction {
         self.idlayer.commit(audit)
     }
 
-    fn reset_db_sid(&self) -> Result<SID, OperationError> {
+    fn reset_db_s_uuid(&self) -> Result<Uuid, OperationError> {
         // The value is missing. Generate a new one and store it.
-        let mut nsid = [0; 4];
-        let mut rng = StdRng::from_entropy();
-        rng.fill(&mut nsid);
+        let nsid = Uuid::new_v4();
 
-        self.idlayer.write_db_sid(nsid)?;
+        self.idlayer.write_db_s_uuid(nsid)?;
 
         Ok(nsid)
     }
 
     #[allow(dead_code)]
-    fn get_db_sid(&self) -> SID {
-        match self.get_idlayer().get_db_sid().expect("DBLayer Error!!!") {
-            Some(sid) => sid,
-            None => self.reset_db_sid().expect("Failed to regenerate SID"),
+    fn get_db_s_uuid(&self) -> Uuid {
+        match self
+            .get_idlayer()
+            .get_db_s_uuid()
+            .expect("DBLayer Error!!!")
+        {
+            Some(s_uuid) => s_uuid,
+            None => self.reset_db_s_uuid().expect("Failed to regenerate S_UUID"),
         }
     }
 
@@ -951,16 +952,16 @@ impl Backend {
     }
 
     // Should this actually call the idlayer directly?
-    pub fn reset_db_sid(&self, audit: &mut AuditScope) -> SID {
+    pub fn reset_db_s_uuid(&self, audit: &mut AuditScope) -> Uuid {
         let wr = self.write(BTreeSet::new());
-        let sid = wr.reset_db_sid().unwrap();
+        let sid = wr.reset_db_s_uuid().unwrap();
         wr.commit(audit).unwrap();
         sid
     }
 
-    pub fn get_db_sid(&self) -> SID {
+    pub fn get_db_s_uuid(&self) -> Uuid {
         let wr = self.write(BTreeSet::new());
-        wr.reset_db_sid().unwrap()
+        wr.reset_db_s_uuid().unwrap()
     }
 }
 
@@ -1294,12 +1295,12 @@ mod tests {
     fn test_be_sid_generation_and_reset() {
         run_test!(
             |_audit: &mut AuditScope, be: &mut BackendWriteTransaction| {
-                let sid1 = be.get_db_sid();
-                let sid2 = be.get_db_sid();
+                let sid1 = be.get_db_s_uuid();
+                let sid2 = be.get_db_s_uuid();
                 assert!(sid1 == sid2);
-                let sid3 = be.reset_db_sid().unwrap();
+                let sid3 = be.reset_db_s_uuid().unwrap();
                 assert!(sid1 != sid3);
-                let sid4 = be.get_db_sid();
+                let sid4 = be.get_db_s_uuid();
                 assert!(sid3 == sid4);
             }
         );

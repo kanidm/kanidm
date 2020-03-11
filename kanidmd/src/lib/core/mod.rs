@@ -35,7 +35,6 @@ use crate::interval::IntervalActor;
 use crate::schema::Schema;
 use crate::schema::SchemaTransaction;
 use crate::server::QueryServer;
-use crate::utils::SID;
 use crate::value::PartialValue;
 
 use kanidm_proto::v1::Entry as ProtoEntry;
@@ -957,7 +956,6 @@ fn setup_backend(config: &Configuration) -> Result<Backend, OperationError> {
 fn setup_qs_idms(
     audit: &mut AuditScope,
     be: Backend,
-    sid: SID,
 ) -> Result<(QueryServer, IdmServer), OperationError> {
     // Create "just enough" schema for us to be able to load from
     // disk ... Schema loading is one time where we validate the
@@ -985,7 +983,7 @@ fn setup_qs_idms(
 
     // We generate a SINGLE idms only!
 
-    let idms = IdmServer::new(query_server.clone(), sid);
+    let idms = IdmServer::new(query_server.clone());
 
     Ok((query_server, idms))
 }
@@ -1048,9 +1046,8 @@ pub fn restore_server_core(config: Configuration, dst_path: &str) {
     info!("Restore Success!");
 
     info!("Attempting to init query server ...");
-    let server_id = be.get_db_sid();
 
-    let (qs, _idms) = match setup_qs_idms(&mut audit, be, server_id) {
+    let (qs, _idms) = match setup_qs_idms(&mut audit, be) {
         Ok(t) => t,
         Err(e) => {
             debug!("{}", audit);
@@ -1114,9 +1111,8 @@ pub fn reindex_server_core(config: Configuration) {
     info!("Index Phase 1 Success!");
 
     info!("Attempting to init query server ...");
-    let server_id = be.get_db_sid();
 
-    let (qs, _idms) = match setup_qs_idms(&mut audit, be, server_id) {
+    let (qs, _idms) = match setup_qs_idms(&mut audit, be) {
         Ok(t) => t,
         Err(e) => {
             debug!("{}", audit);
@@ -1153,9 +1149,8 @@ pub fn domain_rename_core(config: Configuration, new_domain_name: String) {
             return;
         }
     };
-    let server_id = be.get_db_sid();
     // setup the qs - *with* init of the migrations and schema.
-    let (qs, _idms) = match setup_qs_idms(&mut audit, be, server_id) {
+    let (qs, _idms) = match setup_qs_idms(&mut audit, be) {
         Ok(t) => t,
         Err(e) => {
             debug!("{}", audit);
@@ -1188,7 +1183,7 @@ pub fn reset_sid_core(config: Configuration) {
             return;
         }
     };
-    let nsid = be.reset_db_sid(&mut audit);
+    let nsid = be.reset_db_s_uuid(&mut audit);
     debug!("{}", audit);
     info!("New Server ID: {:?}", nsid);
 }
@@ -1242,9 +1237,8 @@ pub fn recover_account_core(config: Configuration, name: String, password: Strin
             return;
         }
     };
-    let server_id = be.get_db_sid();
     // setup the qs - *with* init of the migrations and schema.
-    let (_qs, idms) = match setup_qs_idms(&mut audit, be, server_id) {
+    let (_qs, idms) = match setup_qs_idms(&mut audit, be) {
         Ok(t) => t,
         Err(e) => {
             debug!("{}", audit);
@@ -1307,12 +1301,12 @@ pub fn create_server_core(config: Configuration) {
         }
     };
 
-    let server_id = be.get_db_sid();
+    let server_id = be.get_db_s_uuid();
     info!("Server ID -> {:?}", server_id);
 
     let mut audit = AuditScope::new("setup_qs_idms");
     // Start the IDM server.
-    let (qs, idms) = match setup_qs_idms(&mut audit, be, server_id) {
+    let (qs, idms) = match setup_qs_idms(&mut audit, be) {
         Ok(t) => t,
         Err(e) => {
             debug!("{}", audit);

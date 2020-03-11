@@ -22,6 +22,7 @@ use kanidm_proto::v1::UnixGroupToken;
 use kanidm_proto::v1::UnixUserToken;
 
 use concread::collections::bptree::*;
+use rand::prelude::*;
 use std::time::Duration;
 use uuid::Uuid;
 use zxcvbn;
@@ -62,7 +63,11 @@ pub struct IdmServerProxyWriteTransaction<'a> {
 
 impl IdmServer {
     // TODO #59: Make number of authsessions configurable!!!
-    pub fn new(qs: QueryServer, sid: SID) -> IdmServer {
+    pub fn new(qs: QueryServer) -> IdmServer {
+        let mut sid = [0; 4];
+        let mut rng = StdRng::from_entropy();
+        rng.fill(&mut sid);
+
         IdmServer {
             sessions: BptreeMap::new(),
             qs,

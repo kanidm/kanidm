@@ -47,14 +47,14 @@ setup as well.
 
 You can test this is configured correctly by running:
 
-    kanidm_ssh_authorizedkeys -D anonymous <account name>
+    kanidm_ssh_authorizedkeys <account name>
 
 If the account has ssh public keys you should see them listed, one per line.
 
 To configure servers to accept these keys, you must change their /etc/ssh/sshd_config to
 contain the lines:
 
-    AuthorizedKeysCommand /usr/bin/kanidm_ssh_authorizedkeys -D anonymous %u
+    AuthorizedKeysCommand /usr/bin/kanidm_ssh_authorizedkeys %u
     AuthorizedKeysCommandUser nobody
 
 Restart sshd, and then attempt to authenticate with the keys.

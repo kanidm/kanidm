@@ -1,6 +1,5 @@
 use crate::audit::AuditScope;
 use crate::be::{IdEntry, IDL};
-use crate::utils::SID;
 use crate::value::IndexType;
 use idlset::IDLBitRange;
 use kanidm_proto::v1::{ConsistencyError, OperationError};
@@ -10,6 +9,7 @@ use rusqlite::types::ToSql;
 use rusqlite::OptionalExtension;
 use rusqlite::NO_PARAMS;
 use std::convert::TryFrom;
+use uuid::Uuid;
 
 // use uuid::Uuid;
 
@@ -195,10 +195,11 @@ pub trait IdlSqliteTransaction {
     }
     */
 
-    fn get_db_sid(&self) -> Result<Option<SID>, OperationError> {
+    fn get_db_s_uuid(&self) -> Result<Option<Uuid>, OperationError> {
         // Try to get a value.
-        self.get_conn()
-            .query_row_named("SELECT data FROM db_sid WHERE id = 1", &[], |row| {
+        let data: Option<Vec<u8>> = self
+            .get_conn()
+            .query_row_named("SELECT data FROM db_sid WHERE id = 2", &[], |row| {
                 row.get(0)
             })
             .optional()
@@ -206,14 +207,18 @@ pub trait IdlSqliteTransaction {
                 // If we have a row, we try to make it a sid
                 e_opt.map(|e| {
                     let y: Vec<u8> = e;
-                    assert!(y.len() == 4);
-                    let mut sid: [u8; 4] = [0; 4];
-                    sid[..4].clone_from_slice(&y[..4]);
-                    sid
+                    y
                 })
                 // If no sid, we return none.
             })
-            .map_err(|_| OperationError::SQLiteError)
+            .map_err(|_| OperationError::SQLiteError)?;
+
+        Ok(match data {
+            Some(d) => Some(
+                serde_cbor::from_slice(d.as_slice()).map_err(|_| OperationError::SerdeCborError)?,
+            ),
+            None => None,
+        })
     }
 
     fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
@@ -552,14 +557,13 @@ impl IdlSqliteWriteTransaction {
         Ok(())
     }
 
-    pub fn write_db_sid(&self, nsid: SID) -> Result<(), OperationError> {
-        let mut data = Vec::new();
-        data.extend_from_slice(&nsid);
+    pub fn write_db_s_uuid(&self, nsid: Uuid) -> Result<(), OperationError> {
+        let data = serde_cbor::to_vec(&nsid).map_err(|_e| OperationError::SerdeCborError)?;
 
         self.conn
             .execute_named(
                 "INSERT OR REPLACE INTO db_sid (id, data) VALUES(:id, :sid)",
-                &[(":id", &1), (":sid", &data)],
+                &[(":id", &2), (":sid", &data)],
             )
             .map(|_| ())
             .map_err(|e| {
