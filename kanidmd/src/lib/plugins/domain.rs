@@ -40,11 +40,11 @@ impl Plugin for Domain {
             if e.attribute_value_pres("class", &PVCLASS_DOMAIN_INFO)
                 && e.attribute_value_pres("uuid", &PVUUID_DOMAIN_INFO)
             {
-                if !e.attribute_pres("domain_uuid") {
-                    let u = Value::new_uuid(qs.get_domain_uuid());
-                    e.set_avas("domain_uuid", vec![u]);
-                    audit_log!(au, "plugin_domain: Applying uuid transform");
-                }
+                // We always set this, because the DB uuid is authorative.
+                let u = Value::new_uuid(qs.get_domain_uuid());
+                e.set_avas("domain_uuid", vec![u]);
+                audit_log!(au, "plugin_domain: Applying uuid transform");
+                // We only apply this if one isn't provided.
                 if !e.attribute_pres("domain_name") {
                     let n = Value::new_iutf8s("example.com");
                     e.set_avas("domain_name", vec![n]);
