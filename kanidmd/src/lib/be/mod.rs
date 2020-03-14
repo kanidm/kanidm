@@ -127,6 +127,10 @@ pub trait BackendTransaction {
                     IDL::ALLIDS
                 }
             }
+            FilterResolved::LessThan(_attr, _subvalue, _idx) => {
+                // We have no process for indexing this right now.
+                IDL::ALLIDS
+            }
             FilterResolved::Or(l) => {
                 // Importantly if this has no inner elements, this returns
                 // an empty list.

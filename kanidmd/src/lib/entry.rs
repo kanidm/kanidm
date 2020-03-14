@@ -1380,6 +1380,16 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         }
     }
 
+    /// Confirm if at least one value in the ava is less than subvalue.
+    pub fn attribute_lessthan(&self, attr: &str, subvalue: &PartialValue) -> bool {
+        match self.attrs.get(attr) {
+            Some(v_list) => v_list
+                .iter()
+                .fold(false, |acc, v| if acc { acc } else { v.lessthan(subvalue) }),
+            None => false,
+        }
+    }
+
     pub fn classes(&self) -> Option<EntryClasses> {
         // Get the class vec, if any?
         // How do we indicate "empty?"
@@ -1416,6 +1426,9 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             FilterResolved::Pres(attr, _) => {
                 // Given attr, is is present in the entry?
                 self.attribute_pres(attr.as_str())
+            }
+            FilterResolved::LessThan(attr, subvalue, _) => {
+                self.attribute_lessthan(attr.as_str(), subvalue)
             }
             FilterResolved::Or(l) => l.iter().fold(false, |acc, f| {
                 // Check with ftweedal about or filter zero len correctness.
@@ -1764,6 +1777,14 @@ mod tests {
         assert!(!e.attribute_substring("userid", &PartialValue::new_utf8s("llim")));
         assert!(!e.attribute_substring("userid", &PartialValue::new_utf8s("bob")));
         assert!(!e.attribute_substring("userid", &PartialValue::new_utf8s("wl")));
+    }
+
+    #[test]
+    fn test_entry_lessthan() {
+        // let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
+
+        // e.add_ava("userid", &Value::from("william"));
+        unimplemented!();
     }
 
     #[test]

@@ -42,6 +42,11 @@ pub fn f_pres(a: &str) -> FC {
 }
 
 #[allow(dead_code)]
+pub fn f_lt(a: &str, v: PartialValue) -> FC {
+    FC::LessThan(a, v)
+}
+
+#[allow(dead_code)]
 pub fn f_or(vs: Vec<FC>) -> FC {
     FC::Or(vs)
 }
@@ -78,6 +83,7 @@ pub enum FC<'a> {
     Eq(&'a str, PartialValue),
     Sub(&'a str, PartialValue),
     Pres(&'a str),
+    LessThan(&'a str, PartialValue),
     Or(Vec<FC<'a>>),
     And(Vec<FC<'a>>),
     AndNot(Box<FC<'a>>),
@@ -92,6 +98,7 @@ enum FilterComp {
     Eq(String, PartialValue),
     Sub(String, PartialValue),
     Pres(String),
+    LessThan(String, PartialValue),
     Or(Vec<FilterComp>),
     And(Vec<FilterComp>),
     AndNot(Box<FilterComp>),
@@ -110,6 +117,7 @@ pub enum FilterResolved {
     Eq(String, PartialValue, bool),
     Sub(String, PartialValue, bool),
     Pres(String, bool),
+    LessThan(String, PartialValue, bool),
     Or(Vec<FilterResolved>),
     And(Vec<FilterResolved>),
     AndNot(Box<FilterResolved>),
@@ -395,6 +403,7 @@ impl FilterComp {
             FC::Eq(a, v) => FilterComp::Eq(a.to_string(), v),
             FC::Sub(a, v) => FilterComp::Sub(a.to_string(), v),
             FC::Pres(a) => FilterComp::Pres(a.to_string()),
+            FC::LessThan(a, v) => FilterComp::LessThan(a.to_string(), v),
             FC::Or(v) => FilterComp::Or(v.into_iter().map(FilterComp::new).collect()),
             FC::And(v) => FilterComp::And(v.into_iter().map(FilterComp::new).collect()),
             FC::AndNot(b) => FilterComp::AndNot(Box::new(FilterComp::new(*b))),
@@ -428,6 +437,9 @@ impl FilterComp {
                 r_set.insert(attr.as_str());
             }
             FilterComp::Pres(attr) => {
+                r_set.insert(attr.as_str());
+            }
+            FilterComp::LessThan(attr, _) => {
                 r_set.insert(attr.as_str());
             }
             FilterComp::Or(vs) => vs.iter().for_each(|f| f.get_attr_set(r_set)),
@@ -489,6 +501,21 @@ impl FilterComp {
                     Some(_attr_name) => {
                         // Return our valid data
                         Ok(FilterComp::Pres(attr_norm))
+                    }
+                    None => Err(SchemaError::InvalidAttribute),
+                }
+            }
+            FilterComp::LessThan(attr, value) => {
+                // Validate/normalise the attr name.
+                let attr_norm = schema.normalise_attr_name(attr);
+                // Now check it exists
+                match schema_attributes.get(&attr_norm) {
+                    Some(schema_a) => {
+                        schema_a
+                            .validate_partialvalue(&value)
+                            // Okay, it worked, transform to a filter component
+                            .map(|_| FilterComp::LessThan(attr_norm, value.clone()))
+                        // On error, pass the error back out.
                     }
                     None => Err(SchemaError::InvalidAttribute),
                 }
@@ -705,6 +732,12 @@ impl FilterResolved {
                 let idx = idxmeta.contains(&(&a, &IndexType::PRESENCE));
                 FilterResolved::Pres(a, idx)
             }
+            FilterComp::LessThan(a, v) => {
+                // let idx = idxmeta.contains(&(&a, &IndexType::ORDERING));
+                // TODO: For now, don't emit ordering indexes.
+                let idx = false;
+                FilterResolved::LessThan(a, v, idx)
+            }
             FilterComp::Or(vs) => FilterResolved::Or(
                 vs.into_iter()
                     .map(|v| FilterResolved::from_invalid(v, idxmeta))
@@ -747,6 +780,11 @@ impl FilterResolved {
             FilterComp::Pres(a) => {
                 let idx = idxmeta.contains(&(&a, &IndexType::PRESENCE));
                 Some(FilterResolved::Pres(a, idx))
+            }
+            FilterComp::LessThan(a, v) => {
+                // let idx = idxmeta.contains(&(&a, &IndexType::SUBSTRING));
+                let idx = false;
+                Some(FilterResolved::LessThan(a, v, idx))
             }
             FilterComp::Or(vs) => {
                 let fi: Option<Vec<_>> = vs
@@ -791,6 +829,7 @@ impl FilterResolved {
             FilterComp::Eq(a, v) => Some(FilterResolved::Eq(a, v, false)),
             FilterComp::Sub(a, v) => Some(FilterResolved::Sub(a, v, false)),
             FilterComp::Pres(a) => Some(FilterResolved::Pres(a, false)),
+            FilterComp::LessThan(a, v) => Some(FilterResolved::LessThan(a, v, false)),
             FilterComp::Or(vs) => {
                 let fi: Option<Vec<_>> = vs
                     .into_iter()
@@ -1111,6 +1150,11 @@ mod tests {
 
         assert_eq!(f_t2a == f_t2b, true);
         assert_eq!(f_t2a == f_t2c, false);
+    }
+
+    #[test]
+    fn test_lessthan_entry_filter() {
+        unimplemented!();
     }
 
     #[test]

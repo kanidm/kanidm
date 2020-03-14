@@ -490,6 +490,10 @@ impl PartialValue {
         }
     }
 
+    pub fn lessthan(&self, _s: &PartialValue) -> bool {
+        unimplemented!();
+    }
+
     pub fn get_idx_eq_key(&self) -> String {
         match &self {
             PartialValue::Utf8(s) | PartialValue::Iutf8(s) => s.clone(),
@@ -956,6 +960,10 @@ impl Value {
 
     pub fn contains(&self, s: &PartialValue) -> bool {
         self.pv.contains(s)
+    }
+
+    pub fn lessthan(&self, s: &PartialValue) -> bool {
+        self.pv.lessthan(s)
     }
 
     // Converters between DBRepr -> MemRepr. It's likely many of these
