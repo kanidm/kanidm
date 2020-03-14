@@ -27,6 +27,7 @@ macro_rules! run_idm_test {
         use crate::idm::server::IdmServer;
         use crate::schema::Schema;
         use crate::server::QueryServer;
+        use crate::utils::duration_from_epoch_now;
 
         use env_logger;
         ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
@@ -39,7 +40,7 @@ macro_rules! run_idm_test {
 
         let test_server = QueryServer::new(be, schema_outer);
         test_server
-            .initialise_helper(&mut audit)
+            .initialise_helper(&mut audit, duration_from_epoch_now())
             .expect("init failed");
 
         let test_idm_server = IdmServer::new(test_server.clone());

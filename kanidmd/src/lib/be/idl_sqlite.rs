@@ -221,6 +221,32 @@ pub trait IdlSqliteTransaction {
         })
     }
 
+    fn get_db_d_uuid(&self) -> Result<Option<Uuid>, OperationError> {
+        // Try to get a value.
+        let data: Option<Vec<u8>> = self
+            .get_conn()
+            .query_row_named("SELECT data FROM db_did WHERE id = 2", &[], |row| {
+                row.get(0)
+            })
+            .optional()
+            .map(|e_opt| {
+                // If we have a row, we try to make it a sid
+                e_opt.map(|e| {
+                    let y: Vec<u8> = e;
+                    y
+                })
+                // If no sid, we return none.
+            })
+            .map_err(|_| OperationError::SQLiteError)?;
+
+        Ok(match data {
+            Some(d) => Some(
+                serde_cbor::from_slice(d.as_slice()).map_err(|_| OperationError::SerdeCborError)?,
+            ),
+            None => None,
+        })
+    }
+
     fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
         let mut stmt = match self.get_conn().prepare("PRAGMA integrity_check;") {
             Ok(r) => r,
@@ -573,6 +599,22 @@ impl IdlSqliteWriteTransaction {
             })
     }
 
+    pub fn write_db_d_uuid(&self, nsid: Uuid) -> Result<(), OperationError> {
+        let data = serde_cbor::to_vec(&nsid).map_err(|_e| OperationError::SerdeCborError)?;
+
+        self.conn
+            .execute_named(
+                "INSERT OR REPLACE INTO db_did (id, data) VALUES(:id, :did)",
+                &[(":id", &2), (":did", &data)],
+            )
+            .map(|_| ())
+            .map_err(|e| {
+                debug!("rusqlite error {:?}", e);
+
+                OperationError::SQLiteError
+            })
+    }
+
     // ===== inner helpers =====
     // Some of these are not self due to use in new()
     fn get_db_version_key(&self, key: &str) -> i64 {
@@ -689,7 +731,25 @@ impl IdlSqliteWriteTransaction {
             dbv_id2entry = 1;
             audit_log!(audit, "dbv_id2entry migrated -> {}", dbv_id2entry);
         }
-        //   * if v1 -> complete.
+        //   * if v1 -> add the domain uuid table
+        if dbv_id2entry == 1 {
+            try_audit!(
+                audit,
+                self.conn.execute(
+                    "CREATE TABLE IF NOT EXISTS db_did (
+                        id INTEGER PRIMARY KEY ASC,
+                        data BLOB NOT NULL
+                    )
+                    ",
+                    NO_PARAMS,
+                ),
+                "sqlite error {:?}",
+                OperationError::SQLiteError
+            );
+            dbv_id2entry = 2;
+            audit_log!(audit, "dbv_id2entry migrated -> {}", dbv_id2entry);
+        }
+        //   * if v2 -> complete.
 
         try_audit!(
             audit,

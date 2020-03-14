@@ -1,4 +1,12 @@
+use std::time::Duration;
 use uuid::Uuid;
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct DbCidV1 {
+    d_uuid: Uuid,
+    s_uuid: Uuid,
+    ts: Duration,
+}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum DbPasswordV1 {

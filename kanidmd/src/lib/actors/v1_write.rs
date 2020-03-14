@@ -16,6 +16,7 @@ use kanidm_proto::v1::OperationError;
 use crate::filter::{Filter, FilterInvalid};
 use crate::idm::server::IdmServer;
 use crate::server::{QueryServer, QueryServerTransaction};
+use crate::utils::duration_from_epoch_now;
 
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::Modify as ProtoModify;
@@ -305,7 +306,7 @@ impl QueryServerWriteV1 {
         proto_ml: ProtoModifyList,
         filter: Filter<FilterInvalid>,
     ) -> Result<(), OperationError> {
-        let mut qs_write = self.qs.write();
+        let mut qs_write = self.qs.write(duration_from_epoch_now());
 
         let target_uuid = match Uuid::parse_str(uuid_or_name.as_str()) {
             Ok(u) => u,
@@ -341,7 +342,7 @@ impl QueryServerWriteV1 {
         ml: ModifyList<ModifyInvalid>,
         filter: Filter<FilterInvalid>,
     ) -> Result<(), OperationError> {
-        let mut qs_write = self.qs.write();
+        let mut qs_write = self.qs.write(duration_from_epoch_now());
 
         let target_uuid = match Uuid::parse_str(uuid_or_name.as_str()) {
             Ok(u) => u,
@@ -382,7 +383,7 @@ impl Handler<CreateMessage> for QueryServerWriteV1 {
     fn handle(&mut self, msg: CreateMessage, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("create");
         let res = audit_segment!(&mut audit, || {
-            let mut qs_write = self.qs.write();
+            let mut qs_write = self.qs.write(duration_from_epoch_now());
 
             let crt = match CreateEvent::from_message(&mut audit, msg, &qs_write) {
                 Ok(c) => c,
@@ -410,7 +411,7 @@ impl Handler<ModifyMessage> for QueryServerWriteV1 {
     fn handle(&mut self, msg: ModifyMessage, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("modify");
         let res = audit_segment!(&mut audit, || {
-            let mut qs_write = self.qs.write();
+            let mut qs_write = self.qs.write(duration_from_epoch_now());
             let mdf = match ModifyEvent::from_message(&mut audit, msg, &qs_write) {
                 Ok(m) => m,
                 Err(e) => {
@@ -436,7 +437,7 @@ impl Handler<DeleteMessage> for QueryServerWriteV1 {
     fn handle(&mut self, msg: DeleteMessage, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("delete");
         let res = audit_segment!(&mut audit, || {
-            let mut qs_write = self.qs.write();
+            let mut qs_write = self.qs.write(duration_from_epoch_now());
 
             let del = match DeleteEvent::from_message(&mut audit, msg, &qs_write) {
                 Ok(d) => d,
@@ -463,7 +464,7 @@ impl Handler<InternalDeleteMessage> for QueryServerWriteV1 {
     fn handle(&mut self, msg: InternalDeleteMessage, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("delete");
         let res = audit_segment!(&mut audit, || {
-            let mut qs_write = self.qs.write();
+            let mut qs_write = self.qs.write(duration_from_epoch_now());
 
             let del = match DeleteEvent::from_parts(&mut audit, msg.uat, msg.filter, &qs_write) {
                 Ok(d) => d,
@@ -491,7 +492,7 @@ impl Handler<InternalCredentialSetMessage> for QueryServerWriteV1 {
     fn handle(&mut self, msg: InternalCredentialSetMessage, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("internal_credential_set_message");
         let res = audit_segment!(&mut audit, || {
-            let mut idms_prox_write = self.idms.proxy_write();
+            let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now());
 
             // given the uuid_or_name, determine the target uuid.
             // We can either do this by trying to parse the name or by creating a filter
@@ -566,7 +567,7 @@ impl Handler<IdmAccountSetPasswordMessage> for QueryServerWriteV1 {
     fn handle(&mut self, msg: IdmAccountSetPasswordMessage, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("idm_account_set_password");
         let res = audit_segment!(&mut audit, || {
-            let mut idms_prox_write = self.idms.proxy_write();
+            let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now());
 
             let pce = PasswordChangeEvent::from_idm_account_set_password(
                 &mut audit,
@@ -598,7 +599,7 @@ impl Handler<InternalRegenerateRadiusMessage> for QueryServerWriteV1 {
     ) -> Self::Result {
         let mut audit = AuditScope::new("idm_account_regenerate_radius");
         let res = audit_segment!(&mut audit, || {
-            let mut idms_prox_write = self.idms.proxy_write();
+            let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now());
 
             let target_uuid = match Uuid::parse_str(msg.uuid_or_name.as_str()) {
                 Ok(u) => u,
@@ -641,7 +642,7 @@ impl Handler<PurgeAttributeMessage> for QueryServerWriteV1 {
     fn handle(&mut self, msg: PurgeAttributeMessage, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("purge_attribute");
         let res = audit_segment!(&mut audit, || {
-            let mut qs_write = self.qs.write();
+            let mut qs_write = self.qs.write(duration_from_epoch_now());
             let target_uuid = match Uuid::parse_str(msg.uuid_or_name.as_str()) {
                 Ok(u) => u,
                 Err(_) => qs_write
@@ -684,7 +685,7 @@ impl Handler<RemoveAttributeValueMessage> for QueryServerWriteV1 {
     fn handle(&mut self, msg: RemoveAttributeValueMessage, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("remove_attribute_value");
         let res = audit_segment!(&mut audit, || {
-            let mut qs_write = self.qs.write();
+            let mut qs_write = self.qs.write(duration_from_epoch_now());
             let target_uuid = match Uuid::parse_str(msg.uuid_or_name.as_str()) {
                 Ok(u) => u,
                 Err(_) => qs_write
@@ -888,7 +889,7 @@ impl Handler<IdmAccountUnixSetCredMessage> for QueryServerWriteV1 {
     fn handle(&mut self, msg: IdmAccountUnixSetCredMessage, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("idm_account_unix_set_cred");
         let res = audit_segment!(&mut audit, || {
-            let mut idms_prox_write = self.idms.proxy_write();
+            let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now());
 
             let target_uuid = Uuid::parse_str(msg.uuid_or_name.as_str()).or_else(|_| {
                 idms_prox_write
@@ -930,7 +931,7 @@ impl Handler<PurgeTombstoneEvent> for QueryServerWriteV1 {
         let mut audit = AuditScope::new("purge tombstones");
         audit_segment!(&mut audit, || {
             audit_log!(audit, "Begin purge tombstone event {:?}", msg);
-            let qs_write = self.qs.write();
+            let qs_write = self.qs.write(duration_from_epoch_now());
 
             let res = qs_write
                 .purge_tombstones(&mut audit)
@@ -950,7 +951,7 @@ impl Handler<PurgeRecycledEvent> for QueryServerWriteV1 {
         let mut audit = AuditScope::new("purge recycled");
         audit_segment!(&mut audit, || {
             audit_log!(audit, "Begin purge recycled event {:?}", msg);
-            let qs_write = self.qs.write();
+            let qs_write = self.qs.write(duration_from_epoch_now());
 
             let res = qs_write
                 .purge_recycled(&mut audit)

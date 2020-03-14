@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 use uuid::{Builder, Uuid};
 
 use rand::distributions::Distribution;
@@ -43,6 +43,12 @@ pub fn readable_password_from_random() -> String {
         trng.sample_iter(&DistinctAlpha).take(4).collect::<String>(),
         trng.sample_iter(&DistinctAlpha).take(4).collect::<String>(),
     )
+}
+
+pub fn duration_from_epoch_now() -> Duration {
+    SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
 }
 
 /*

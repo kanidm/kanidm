@@ -90,9 +90,9 @@ impl IdmServer {
         }
     }
 
-    pub fn proxy_write(&self) -> IdmServerProxyWriteTransaction {
+    pub fn proxy_write(&self, ts: Duration) -> IdmServerProxyWriteTransaction {
         IdmServerProxyWriteTransaction {
-            qs_write: self.qs.write(),
+            qs_write: self.qs.write(ts),
         }
     }
 }
@@ -596,6 +596,7 @@ mod tests {
     use crate::audit::AuditScope;
     use crate::idm::server::IdmServer;
     use crate::server::QueryServer;
+    use crate::utils::duration_from_epoch_now;
     use std::time::Duration;
     use uuid::Uuid;
 
@@ -724,7 +725,7 @@ mod tests {
     ) -> Result<(), OperationError> {
         let cred = Credential::new_password_only(pw);
         let v_cred = Value::new_credential("primary", cred);
-        let mut qs_write = qs.write();
+        let mut qs_write = qs.write(duration_from_epoch_now());
 
         // now modify and provide a primary credential.
         let me_inv_m = unsafe {
@@ -847,7 +848,7 @@ mod tests {
         run_idm_test!(|_qs: &QueryServer, idms: &IdmServer, au: &mut AuditScope| {
             let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD, None);
 
-            let mut idms_prox_write = idms.proxy_write();
+            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
             assert!(idms_prox_write.set_account_password(au, &pce).is_ok());
             assert!(idms_prox_write.set_account_password(au, &pce).is_ok());
             assert!(idms_prox_write.commit(au).is_ok());
@@ -859,7 +860,7 @@ mod tests {
         run_idm_test!(|_qs: &QueryServer, idms: &IdmServer, au: &mut AuditScope| {
             let pce = PasswordChangeEvent::new_internal(&UUID_ANONYMOUS, TEST_PASSWORD, None);
 
-            let mut idms_prox_write = idms.proxy_write();
+            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
             assert!(idms_prox_write.set_account_password(au, &pce).is_err());
             assert!(idms_prox_write.commit(au).is_ok());
         })
@@ -887,7 +888,7 @@ mod tests {
     #[test]
     fn test_idm_regenerate_radius_secret() {
         run_idm_test!(|_qs: &QueryServer, idms: &IdmServer, au: &mut AuditScope| {
-            let mut idms_prox_write = idms.proxy_write();
+            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
             let rrse = RegenerateRadiusSecretEvent::new_internal(UUID_ADMIN.clone());
 
             // Generates a new credential when none exists
@@ -905,7 +906,7 @@ mod tests {
     #[test]
     fn test_idm_radiusauthtoken() {
         run_idm_test!(|_qs: &QueryServer, idms: &IdmServer, au: &mut AuditScope| {
-            let mut idms_prox_write = idms.proxy_write();
+            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
             let rrse = RegenerateRadiusSecretEvent::new_internal(UUID_ADMIN.clone());
             let r1 = idms_prox_write
                 .regenerate_radius_secret(au, &rrse)
@@ -927,7 +928,7 @@ mod tests {
     fn test_idm_simple_password_reject_weak() {
         run_idm_test!(|_qs: &QueryServer, idms: &IdmServer, au: &mut AuditScope| {
             // len check
-            let mut idms_prox_write = idms.proxy_write();
+            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
 
             let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, "password", None);
             let e = idms_prox_write.set_account_password(au, &pce);
@@ -959,7 +960,7 @@ mod tests {
     #[test]
     fn test_idm_unixusertoken() {
         run_idm_test!(|_qs: &QueryServer, idms: &IdmServer, au: &mut AuditScope| {
-            let mut idms_prox_write = idms.proxy_write();
+            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
             // Modify admin to have posixaccount
             let me_posix = unsafe {
                 ModifyEvent::new_internal_invalid(
@@ -1031,7 +1032,7 @@ mod tests {
     #[test]
     fn test_idm_simple_unix_password_reset() {
         run_idm_test!(|_qs: &QueryServer, idms: &IdmServer, au: &mut AuditScope| {
-            let mut idms_prox_write = idms.proxy_write();
+            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
             // make the admin a valid posix account
             let me_posix = unsafe {
                 ModifyEvent::new_internal_invalid(
@@ -1069,7 +1070,7 @@ mod tests {
             assert!(idms_write.commit().is_ok());
 
             // Check deleting the password
-            let mut idms_prox_write = idms.proxy_write();
+            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
             let me_purge_up = unsafe {
                 ModifyEvent::new_internal_invalid(
                     filter!(f_eq("name", PartialValue::new_iutf8s("admin"))),

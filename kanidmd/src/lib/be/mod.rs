@@ -884,14 +884,11 @@ impl BackendWriteTransaction {
     fn reset_db_s_uuid(&self) -> Result<Uuid, OperationError> {
         // The value is missing. Generate a new one and store it.
         let nsid = Uuid::new_v4();
-
         self.idlayer.write_db_s_uuid(nsid)?;
-
         Ok(nsid)
     }
 
-    #[allow(dead_code)]
-    fn get_db_s_uuid(&self) -> Uuid {
+    pub fn get_db_s_uuid(&self) -> Uuid {
         match self
             .get_idlayer()
             .get_db_s_uuid()
@@ -899,6 +896,23 @@ impl BackendWriteTransaction {
         {
             Some(s_uuid) => s_uuid,
             None => self.reset_db_s_uuid().expect("Failed to regenerate S_UUID"),
+        }
+    }
+
+    fn reset_db_d_uuid(&self) -> Result<Uuid, OperationError> {
+        let nsid = Uuid::new_v4();
+        self.idlayer.write_db_d_uuid(nsid)?;
+        Ok(nsid)
+    }
+
+    pub fn get_db_d_uuid(&self) -> Uuid {
+        match self
+            .get_idlayer()
+            .get_db_d_uuid()
+            .expect("DBLayer Error!!!")
+        {
+            Some(d_uuid) => d_uuid,
+            None => self.reset_db_d_uuid().expect("Failed to regenerate D_UUID"),
         }
     }
 
@@ -959,10 +973,12 @@ impl Backend {
         sid
     }
 
+    /*
     pub fn get_db_s_uuid(&self) -> Uuid {
         let wr = self.write(BTreeSet::new());
         wr.reset_db_s_uuid().unwrap()
     }
+    */
 }
 
 // What are the possible actions we'll recieve here?

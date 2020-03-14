@@ -4,8 +4,9 @@
 // This is really only used for long lived, high level types that need clone
 // that otherwise can't be cloned. Think Mutex.
 // use actix::prelude::*;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
+use std::time::Duration;
 use uuid::Uuid;
 
 use crate::audit::AuditScope;
@@ -26,6 +27,7 @@ use crate::event::{
 use crate::filter::{f_eq, Filter, FilterInvalid, FilterValid};
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use crate::plugins::Plugins;
+use crate::repl::cid::Cid;
 use crate::schema::{
     Schema, SchemaAttribute, SchemaClass, SchemaReadTransaction, SchemaTransaction,
     SchemaWriteTransaction,
@@ -715,6 +717,7 @@ impl QueryServerReadTransaction {
 
 pub struct QueryServerWriteTransaction<'a> {
     committed: bool,
+    cid: Cid,
     be_txn: BackendWriteTransaction,
     schema: SchemaWriteTransaction<'a>,
     accesscontrols: AccessControlsWriteTransaction<'a>,
@@ -749,6 +752,7 @@ impl<'a> QueryServerTransaction for QueryServerWriteTransaction<'a> {
 pub struct QueryServer {
     // log: actix::Addr<EventLog>,
     s_uuid: Uuid,
+    d_uuid: Uuid,
     be: Backend,
     schema: Arc<Schema>,
     accesscontrols: Arc<AccessControls>,
@@ -756,10 +760,16 @@ pub struct QueryServer {
 
 impl QueryServer {
     pub fn new(be: Backend, schema: Schema) -> Self {
-        let s_uuid = be.get_db_s_uuid();
+        let (s_uuid, d_uuid) = {
+            let wr = be.write(BTreeSet::new());
+            (wr.get_db_s_uuid(), wr.get_db_d_uuid())
+        };
+        info!("Server ID -> {:?}", s_uuid);
+        info!("Domain ID -> {:?}", d_uuid);
         // log_event!(log, "Starting query worker ...");
         QueryServer {
             s_uuid,
+            d_uuid,
             be,
             schema: Arc::new(schema),
             accesscontrols: Arc::new(AccessControls::new()),
@@ -774,10 +784,12 @@ impl QueryServer {
         }
     }
 
-    pub fn write(&self) -> QueryServerWriteTransaction {
+    pub fn write(&self, ts: Duration) -> QueryServerWriteTransaction {
         // Feed the current schema index metadata to the be write transaction.
         let schema_write = self.schema.write();
         let idxmeta = schema_write.get_idxmeta_set();
+
+        let cid = Cid::new(self.s_uuid, self.d_uuid, ts);
 
         QueryServerWriteTransaction {
             // I think this is *not* needed, because commit is mut self which should
@@ -787,6 +799,7 @@ impl QueryServer {
             // The commited flag is however used for abort-specific code in drop
             // which today I don't think we have ... yet.
             committed: false,
+            cid: cid,
             be_txn: self.be.write(idxmeta),
             schema: schema_write,
             accesscontrols: self.accesscontrols.write(),
@@ -795,7 +808,11 @@ impl QueryServer {
         }
     }
 
-    pub(crate) fn initialise_helper(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
+    pub(crate) fn initialise_helper(
+        &self,
+        audit: &mut AuditScope,
+        ts: Duration,
+    ) -> Result<(), OperationError> {
         // First, check our database version - attempt to do an initial indexing
         // based on the in memory configuration
         //
@@ -807,7 +824,7 @@ impl QueryServer {
         // reloading to occur, which causes the idxmeta to update, and allows validation
         // of the schema in the subsequent steps as we proceed.
 
-        let reindex_write_1 = self.write();
+        let reindex_write_1 = self.write(ts);
         reindex_write_1
             .upgrade_reindex(audit, SYSTEM_INDEX_VERSION)
             .and_then(|_| reindex_write_1.commit(audit))?;
@@ -821,24 +838,24 @@ impl QueryServer {
         // the schema to tell us what's indexed), but because we have the in
         // mem schema that defines how schema is structuded, and this is all
         // marked "system", then we won't have an issue here.
-        let mut ts_write_1 = self.write();
+        let mut ts_write_1 = self.write(ts);
         ts_write_1
             .initialise_schema_core(audit)
             .and_then(|_| ts_write_1.commit(audit))?;
 
-        let mut ts_write_2 = self.write();
+        let mut ts_write_2 = self.write(ts);
         ts_write_2
             .initialise_schema_idm(audit)
             .and_then(|_| ts_write_2.commit(audit))?;
 
         // reindex and set to version + 1, this way when we bump the version
         // we are essetially pushing this version id back up to step write_1
-        let reindex_write_2 = self.write();
+        let reindex_write_2 = self.write(ts);
         reindex_write_2
             .upgrade_reindex(audit, SYSTEM_INDEX_VERSION + 1)
             .and_then(|_| reindex_write_2.commit(audit))?;
 
-        let mut ts_write_3 = self.write();
+        let mut ts_write_3 = self.write(ts);
         ts_write_3
             .initialise_idm(audit)
             .and_then(|_| ts_write_3.commit(audit))
@@ -2079,7 +2096,7 @@ mod tests {
     #[test]
     fn test_qs_create_user() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
-            let mut server_txn = server.write();
+            let mut server_txn = server.write(duration_from_epoch_now());
             let filt = filter!(f_eq("name", PartialValue::new_iutf8s("testperson")));
             let admin = server_txn
                 .internal_search_uuid(audit, &UUID_ADMIN)
@@ -2127,23 +2144,23 @@ mod tests {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             {
                 // Setup and abort.
-                let mut server_txn = server.write();
+                let mut server_txn = server.write(duration_from_epoch_now());
                 assert!(server_txn.initialise_schema_core(audit).is_ok());
             }
             {
-                let mut server_txn = server.write();
+                let mut server_txn = server.write(duration_from_epoch_now());
                 assert!(server_txn.initialise_schema_core(audit).is_ok());
                 assert!(server_txn.initialise_schema_core(audit).is_ok());
                 assert!(server_txn.commit(audit).is_ok());
             }
             {
                 // Now do it again in a new txn, but abort
-                let mut server_txn = server.write();
+                let mut server_txn = server.write(duration_from_epoch_now());
                 assert!(server_txn.initialise_schema_core(audit).is_ok());
             }
             {
                 // Now do it again in a new txn.
-                let mut server_txn = server.write();
+                let mut server_txn = server.write(duration_from_epoch_now());
                 assert!(server_txn.initialise_schema_core(audit).is_ok());
                 assert!(server_txn.commit(audit).is_ok());
             }
@@ -2154,7 +2171,7 @@ mod tests {
     fn test_qs_modify() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             // Create an object
-            let mut server_txn = server.write();
+            let mut server_txn = server.write(duration_from_epoch_now());
 
             let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
@@ -2283,7 +2300,7 @@ mod tests {
         // Test modifying an entry and adding an extra class, that would cause the entry
         // to no longer conform to schema.
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
-            let mut server_txn = server.write();
+            let mut server_txn = server.write(duration_from_epoch_now());
 
             let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
@@ -2359,7 +2376,7 @@ mod tests {
     fn test_qs_delete() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             // Create
-            let mut server_txn = server.write();
+            let mut server_txn = server.write(duration_from_epoch_now());
 
             let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
@@ -2447,7 +2464,7 @@ mod tests {
     #[test]
     fn test_qs_tombstone() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
-            let mut server_txn = server.write();
+            let mut server_txn = server.write(duration_from_epoch_now());
             let admin = server_txn
                 .internal_search_uuid(audit, &UUID_ADMIN)
                 .expect("failed");
@@ -2523,7 +2540,7 @@ mod tests {
     #[test]
     fn test_qs_recycle_simple() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
-            let mut server_txn = server.write();
+            let mut server_txn = server.write(duration_from_epoch_now());
             let admin = server_txn
                 .internal_search_uuid(audit, &UUID_ADMIN)
                 .expect("failed");
@@ -2652,7 +2669,7 @@ mod tests {
     fn test_qs_recycle_advanced() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             // Create items
-            let mut server_txn = server.write();
+            let mut server_txn = server.write(duration_from_epoch_now());
             let admin = server_txn
                 .internal_search_uuid(audit, &UUID_ADMIN)
                 .expect("failed");
@@ -2700,7 +2717,7 @@ mod tests {
     #[test]
     fn test_qs_name_to_uuid() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
-            let mut server_txn = server.write();
+            let mut server_txn = server.write(duration_from_epoch_now());
 
             let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
@@ -2737,7 +2754,7 @@ mod tests {
     #[test]
     fn test_qs_uuid_to_name() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
-            let mut server_txn = server.write();
+            let mut server_txn = server.write(duration_from_epoch_now());
 
             let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
@@ -2781,7 +2798,7 @@ mod tests {
     #[test]
     fn test_qs_clone_value() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
-            let mut server_txn = server.write();
+            let mut server_txn = server.write(duration_from_epoch_now());
             let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
@@ -2832,7 +2849,7 @@ mod tests {
     #[test]
     fn test_qs_resolve_value() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
-            let mut server_txn = server.write();
+            let mut server_txn = server.write(duration_from_epoch_now());
             let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
@@ -2914,7 +2931,7 @@ mod tests {
             }"#,
             );
 
-            let mut server_txn = server.write();
+            let mut server_txn = server.write(duration_from_epoch_now());
             // Add a new class.
             let ce_class = CreateEvent::new_internal(vec![e_cd.clone()]);
             assert!(server_txn.create(audit, &ce_class).is_ok());
@@ -2926,7 +2943,7 @@ mod tests {
             server_txn.commit(audit).expect("should not fail");
 
             // Start a new write
-            let mut server_txn = server.write();
+            let mut server_txn = server.write(duration_from_epoch_now());
             // Add the class to an object
             // should work
             let ce_work = CreateEvent::new_internal(vec![e1.clone()]);
@@ -2936,7 +2953,7 @@ mod tests {
             server_txn.commit(audit).expect("should not fail");
 
             // Start a new write
-            let mut server_txn = server.write();
+            let mut server_txn = server.write(duration_from_epoch_now());
             // delete the class
             let de_class = unsafe {
                 DeleteEvent::new_internal_invalid(filter!(f_eq(
@@ -2949,7 +2966,7 @@ mod tests {
             server_txn.commit(audit).expect("should not fail");
 
             // Start a new write
-            let mut server_txn = server.write();
+            let mut server_txn = server.write(duration_from_epoch_now());
             // Trying to add now should fail
             let ce_fail = CreateEvent::new_internal(vec![e1.clone()]);
             assert!(server_txn.create(audit, &ce_fail).is_err());
@@ -3001,7 +3018,7 @@ mod tests {
             }"#,
             );
 
-            let mut server_txn = server.write();
+            let mut server_txn = server.write(duration_from_epoch_now());
             // Add a new attribute.
             let ce_attr = CreateEvent::new_internal(vec![e_ad.clone()]);
             assert!(server_txn.create(audit, &ce_attr).is_ok());
@@ -3013,7 +3030,7 @@ mod tests {
             server_txn.commit(audit).expect("should not fail");
 
             // Start a new write
-            let mut server_txn = server.write();
+            let mut server_txn = server.write(duration_from_epoch_now());
             // Add the attr to an object
             // should work
             let ce_work = CreateEvent::new_internal(vec![e1.clone()]);
@@ -3023,7 +3040,7 @@ mod tests {
             server_txn.commit(audit).expect("should not fail");
 
             // Start a new write
-            let mut server_txn = server.write();
+            let mut server_txn = server.write(duration_from_epoch_now());
             // delete the attr
             let de_attr = unsafe {
                 DeleteEvent::new_internal_invalid(filter!(f_eq(
@@ -3036,7 +3053,7 @@ mod tests {
             server_txn.commit(audit).expect("should not fail");
 
             // Start a new write
-            let mut server_txn = server.write();
+            let mut server_txn = server.write(duration_from_epoch_now());
             // Trying to add now should fail
             let ce_fail = CreateEvent::new_internal(vec![e1.clone()]);
             assert!(server_txn.create(audit, &ce_fail).is_err());
@@ -3074,7 +3091,7 @@ mod tests {
                 }
             }"#,
             );
-            let mut server_txn = server.write();
+            let mut server_txn = server.write(duration_from_epoch_now());
             // Add the entry. Today we have no syntax to take simple str to a credential
             // but honestly, that's probably okay :)
             let ce = CreateEvent::new_internal(vec![e1]);
@@ -3166,7 +3183,7 @@ mod tests {
     fn test_qs_revive_advanced_directmemberships() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             // Create items
-            let mut server_txn = server.write();
+            let mut server_txn = server.write(duration_from_epoch_now());
             let admin = server_txn
                 .internal_search_uuid(audit, &UUID_ADMIN)
                 .expect("failed");

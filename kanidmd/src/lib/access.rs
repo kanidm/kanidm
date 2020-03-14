@@ -1308,7 +1308,7 @@ mod tests {
             // really protects us *a lot* here, but it's nice to have defence and
             // layers of validation.
 
-            let qs_write = qs.write();
+            let qs_write = qs.write(duration_from_epoch_now());
 
             acp_from_entry_err!(
                 audit,
@@ -1384,7 +1384,7 @@ mod tests {
     #[test]
     fn test_access_acp_delete_parser() {
         run_test!(|qs: &QueryServer, audit: &mut AuditScope| {
-            let qs_write = qs.write();
+            let qs_write = qs.write(duration_from_epoch_now());
 
             acp_from_entry_err!(
                 audit,
@@ -1434,7 +1434,7 @@ mod tests {
     fn test_access_acp_search_parser() {
         run_test!(|qs: &QueryServer, audit: &mut AuditScope| {
             // Test that parsing search access controls works.
-            let qs_write = qs.write();
+            let qs_write = qs.write(duration_from_epoch_now());
 
             // Missing class acp
             acp_from_entry_err!(
@@ -1533,7 +1533,7 @@ mod tests {
     fn test_access_acp_modify_parser() {
         run_test!(|qs: &QueryServer, audit: &mut AuditScope| {
             // Test that parsing modify access controls works.
-            let qs_write = qs.write();
+            let qs_write = qs.write(duration_from_epoch_now());
 
             acp_from_entry_err!(
                 audit,
@@ -1610,7 +1610,7 @@ mod tests {
     fn test_access_acp_create_parser() {
         run_test!(|qs: &QueryServer, audit: &mut AuditScope| {
             // Test that parsing create access controls works.
-            let qs_write = qs.write();
+            let qs_write = qs.write(duration_from_epoch_now());
 
             acp_from_entry_err!(
                 audit,
@@ -1688,7 +1688,7 @@ mod tests {
             // given a single &str, we can evaluate all types from a single record.
             // This is valid, and could exist, IE a rule to allow create, search and modify
             // over a single scope.
-            let qs_write = qs.write();
+            let qs_write = qs.write(duration_from_epoch_now());
 
             let e: &str = r#"{
                     "valid": null,

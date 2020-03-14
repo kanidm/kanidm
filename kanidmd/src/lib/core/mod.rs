@@ -35,6 +35,7 @@ use crate::interval::IntervalActor;
 use crate::schema::Schema;
 use crate::schema::SchemaTransaction;
 use crate::server::QueryServer;
+use crate::utils::duration_from_epoch_now;
 use crate::value::PartialValue;
 
 use kanidm_proto::v1::Entry as ProtoEntry;
@@ -979,7 +980,7 @@ fn setup_qs_idms(
     // Now search for the schema itself, and validate that the system
     // in memory matches the BE on disk, and that it's syntactically correct.
     // Write it out if changes are needed.
-    query_server.initialise_helper(audit)?;
+    query_server.initialise_helper(audit, duration_from_epoch_now())?;
 
     // We generate a SINGLE idms only!
 
@@ -1059,7 +1060,7 @@ pub fn restore_server_core(config: Configuration, dst_path: &str) {
 
     info!("Start reindex phase ...");
 
-    let qs_write = qs.write();
+    let qs_write = qs.write(duration_from_epoch_now());
     let r = qs_write
         .reindex(&mut audit)
         .and_then(|_| qs_write.commit(&mut audit));
@@ -1124,7 +1125,7 @@ pub fn reindex_server_core(config: Configuration) {
 
     info!("Start Index Phase 2 ...");
 
-    let qs_write = qs.write();
+    let qs_write = qs.write(duration_from_epoch_now());
     let r = qs_write
         .reindex(&mut audit)
         .and_then(|_| qs_write.commit(&mut audit));
@@ -1159,7 +1160,7 @@ pub fn domain_rename_core(config: Configuration, new_domain_name: String) {
         }
     };
 
-    let mut qs_write = qs.write();
+    let mut qs_write = qs.write(duration_from_epoch_now());
     let r = qs_write
         .domain_rename(&mut audit, new_domain_name.as_str())
         .and_then(|_| qs_write.commit(&mut audit));
@@ -1248,7 +1249,7 @@ pub fn recover_account_core(config: Configuration, name: String, password: Strin
     };
 
     // Run the password change.
-    let mut idms_prox_write = idms.proxy_write();
+    let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
     match idms_prox_write.recover_account(&mut audit, name, password) {
         Ok(_) => {
             idms_prox_write
@@ -1301,9 +1302,6 @@ pub fn create_server_core(config: Configuration) {
         }
     };
 
-    let server_id = be.get_db_s_uuid();
-    info!("Server ID -> {:?}", server_id);
-
     let mut audit = AuditScope::new("setup_qs_idms");
     // Start the IDM server.
     let (qs, idms) = match setup_qs_idms(&mut audit, be) {
@@ -1317,7 +1315,7 @@ pub fn create_server_core(config: Configuration) {
     // Any pre-start tasks here.
     match &config.integration_test_config {
         Some(itc) => {
-            let mut idms_prox_write = idms.proxy_write();
+            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
             match idms_prox_write.recover_account(
                 &mut audit,
                 "admin".to_string(),

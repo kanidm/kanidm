@@ -1,13 +1,15 @@
-/*
 use std::time::Duration;
 use uuid::Uuid;
 
-struct Cid {
+#[derive(Debug)]
+pub struct Cid {
     d_uuid: Uuid,
     s_uuid: Uuid,
     ts: Duration,
 }
 
-struct CidGenerator {
+impl Cid {
+    pub fn new(d_uuid: Uuid, s_uuid: Uuid, ts: Duration) -> Self {
+        Cid { d_uuid, s_uuid, ts }
+    }
 }
-*/

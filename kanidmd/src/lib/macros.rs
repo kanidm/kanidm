@@ -5,6 +5,7 @@ macro_rules! run_test {
         use crate::be::Backend;
         use crate::schema::Schema;
         use crate::server::QueryServer;
+        use crate::utils::duration_from_epoch_now;
 
         use env_logger;
         ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
@@ -24,7 +25,7 @@ macro_rules! run_test {
         let test_server = QueryServer::new(be, schema_outer);
 
         test_server
-            .initialise_helper(&mut audit)
+            .initialise_helper(&mut audit, duration_from_epoch_now())
             .expect("init failed!");
 
         $test_fn(&test_server, &mut audit);

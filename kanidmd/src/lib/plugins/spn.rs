@@ -397,7 +397,7 @@ mod tests {
     #[test]
     fn test_spn_regen_domain_rename() {
         run_test!(|server: &QueryServer, au: &mut AuditScope| {
-            let mut server_txn = server.write();
+            let mut server_txn = server.write(duration_from_epoch_now());
 
             let ex1 = Value::new_spn_str("admin", "example.com");
             let ex2 = Value::new_spn_str("admin", "new.example.com");

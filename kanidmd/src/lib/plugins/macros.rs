@@ -4,6 +4,7 @@ macro_rules! setup_test {
         $au:expr,
         $preload_entries:ident
     ) => {{
+        use crate::utils::duration_from_epoch_now;
         use env_logger;
         ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
         let _ = env_logger::builder().is_test(true).try_init();
@@ -13,10 +14,11 @@ macro_rules! setup_test {
 
         let schema_outer = Schema::new($au).expect("Failed to init schema");
         let qs = QueryServer::new(be, schema_outer);
-        qs.initialise_helper($au).expect("init failed!");
+        qs.initialise_helper($au, duration_from_epoch_now())
+            .expect("init failed!");
 
         if !$preload_entries.is_empty() {
-            let mut qs_write = qs.write();
+            let mut qs_write = qs.write(duration_from_epoch_now());
             qs_write
                 .internal_create($au, $preload_entries)
                 .expect("Failed to preload entries");
@@ -42,6 +44,7 @@ macro_rules! run_create_test {
         use crate::event::CreateEvent;
         use crate::schema::Schema;
         use crate::server::QueryServer;
+        use crate::utils::duration_from_epoch_now;
 
         let mut au = AuditScope::new("run_create_test");
         audit_segment!(au, || {
@@ -56,7 +59,7 @@ macro_rules! run_create_test {
 
             let mut au_test = AuditScope::new("create_test");
             {
-                let mut qs_write = qs.write();
+                let mut qs_write = qs.write(duration_from_epoch_now());
                 let r = qs_write.create(&mut au_test, &ce);
                 debug!("r: {:?}", r);
                 assert!(r == $expect);
@@ -99,6 +102,7 @@ macro_rules! run_modify_test {
         use crate::event::ModifyEvent;
         use crate::schema::Schema;
         use crate::server::QueryServer;
+        use crate::utils::duration_from_epoch_now;
 
         let mut au = AuditScope::new("run_modify_test");
         audit_segment!(au, || {
@@ -113,7 +117,7 @@ macro_rules! run_modify_test {
 
             let mut au_test = AuditScope::new("modify_test");
             {
-                let mut qs_write = qs.write();
+                let mut qs_write = qs.write(duration_from_epoch_now());
                 let r = qs_write.modify(&mut au_test, &me);
                 $check(&mut au_test, &qs_write);
                 debug!("{:?}", r);
@@ -155,6 +159,7 @@ macro_rules! run_delete_test {
         use crate::event::DeleteEvent;
         use crate::schema::Schema;
         use crate::server::QueryServer;
+        use crate::utils::duration_from_epoch_now;
 
         let mut au = AuditScope::new("run_delete_test");
         audit_segment!(au, || {
@@ -169,7 +174,7 @@ macro_rules! run_delete_test {
 
             let mut au_test = AuditScope::new("delete_test");
             {
-                let mut qs_write = qs.write();
+                let mut qs_write = qs.write(duration_from_epoch_now());
                 let r = qs_write.delete(&mut au_test, &de);
                 $check(&mut au_test, &qs_write);
                 assert!(r == $expect);
