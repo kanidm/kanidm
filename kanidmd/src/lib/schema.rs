@@ -1211,7 +1211,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     description: String::from(
                         "A system created class that all objects must contain",
                     ),
-                    systemmay: vec![String::from("description"), String::from("name")],
+                    systemmay: vec![String::from("description")],
                     may: vec![],
                     systemmust: vec![String::from("class"), String::from("uuid")],
                     must: vec![],
@@ -1305,7 +1305,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     description: String::from("System Access Control Profile Class"),
                     systemmay: vec!["acp_enable".to_string(), "description".to_string()],
                     may: vec![],
-                    systemmust: vec!["acp_receiver".to_string(), "acp_targetscope".to_string()],
+                    systemmust: vec!["acp_receiver".to_string(), "acp_targetscope".to_string(), "name".to_string()],
                     must: vec![],
                 },
             );

@@ -2932,7 +2932,8 @@ mod tests {
                     "class": ["object", "classtype"],
                     "classname": ["testclass"],
                     "uuid": ["cfcae205-31c3-484b-8ced-667d1709c5e3"],
-                    "description": ["Test Class"]
+                    "description": ["Test Class"],
+                    "may": ["name"]
                 }
             }"#,
             );
