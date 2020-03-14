@@ -3,9 +3,9 @@ use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DbCidV1 {
-    d_uuid: Uuid,
-    s_uuid: Uuid,
-    ts: Duration,
+    pub d: Uuid,
+    pub s: Uuid,
+    pub t: Duration,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -47,4 +47,5 @@ pub enum DbValueV1 {
     SK(DbValueTaggedStringV1),
     SP(String, String),
     UI(u32),
+    CI(DbCidV1),
 }

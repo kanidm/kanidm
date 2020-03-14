@@ -1,5 +1,6 @@
-use crate::be::dbvalue::{DbValueCredV1, DbValueTaggedStringV1, DbValueV1};
+use crate::be::dbvalue::{DbCidV1, DbValueCredV1, DbValueTaggedStringV1, DbValueV1};
 use crate::credential::Credential;
+use crate::repl::cid::Cid;
 use kanidm_proto::v1::Filter as ProtoFilter;
 
 use std::borrow::Borrow;
@@ -103,6 +104,7 @@ pub enum SyntaxType {
     SSHKEY,
     SERVICE_PRINCIPLE_NAME,
     UINT32,
+    CID,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -124,6 +126,7 @@ impl TryFrom<&str> for SyntaxType {
             "SSHKEY" => Ok(SyntaxType::SSHKEY),
             "SERVICE_PRINCIPLE_NAME" => Ok(SyntaxType::SERVICE_PRINCIPLE_NAME),
             "UINT32" => Ok(SyntaxType::UINT32),
+            "CID" => Ok(SyntaxType::CID),
             _ => Err(()),
         }
     }
@@ -147,6 +150,7 @@ impl TryFrom<usize> for SyntaxType {
             10 => Ok(SyntaxType::SSHKEY),
             11 => Ok(SyntaxType::SERVICE_PRINCIPLE_NAME),
             12 => Ok(SyntaxType::UINT32),
+            13 => Ok(SyntaxType::CID),
             _ => Err(()),
         }
     }
@@ -168,6 +172,7 @@ impl SyntaxType {
             SyntaxType::SSHKEY => 10,
             SyntaxType::SERVICE_PRINCIPLE_NAME => 11,
             SyntaxType::UINT32 => 12,
+            SyntaxType::CID => 13,
         }
     }
 }
@@ -191,6 +196,7 @@ impl fmt::Display for SyntaxType {
                 SyntaxType::SSHKEY => "SSHKEY",
                 SyntaxType::SERVICE_PRINCIPLE_NAME => "SERVICE_PRINCIPLE_NAME",
                 SyntaxType::UINT32 => "UINT32",
+                SyntaxType::CID => "CID",
             }
         )
     }
@@ -221,6 +227,7 @@ pub enum PartialValue {
     RadiusCred,
     Spn(String, String),
     Uint32(u32),
+    Cid(Cid),
 }
 
 impl PartialValue {
@@ -448,6 +455,21 @@ impl PartialValue {
         }
     }
 
+    pub fn new_cid(c: Cid) -> Self {
+        PartialValue::Cid(c)
+    }
+
+    pub fn new_cid_s(_c: &str) -> Option<Self> {
+        None
+    }
+
+    pub fn is_cid(&self) -> bool {
+        match self {
+            PartialValue::Cid(_) => true,
+            _ => false,
+        }
+    }
+
     pub fn to_str(&self) -> Option<&str> {
         match self {
             PartialValue::Utf8(s) => Some(s.as_str()),
@@ -484,6 +506,8 @@ impl PartialValue {
             PartialValue::SshKey(tag) => tag.to_string(),
             PartialValue::Spn(name, realm) => format!("{}@{}", name, realm),
             PartialValue::Uint32(u) => u.to_string(),
+            // This will never work, we don't allow equality searching on Cid's
+            PartialValue::Cid(_) => "_".to_string(),
         }
     }
 
@@ -916,6 +940,20 @@ impl Value {
         }
     }
 
+    pub fn new_cid(c: Cid) -> Self {
+        Value {
+            pv: PartialValue::new_cid(c),
+            data: None,
+        }
+    }
+
+    pub fn is_cid(&self) -> bool {
+        match &self.pv {
+            PartialValue::Cid(_) => true,
+            _ => false,
+        }
+    }
+
     pub fn contains(&self, s: &PartialValue) -> bool {
         self.pv.contains(s)
     }
@@ -989,6 +1027,14 @@ impl Value {
                 pv: PartialValue::Uint32(u),
                 data: None,
             }),
+            DbValueV1::CI(dc) => Ok(Value {
+                pv: PartialValue::Cid(Cid {
+                    ts: dc.t,
+                    d_uuid: dc.d,
+                    s_uuid: dc.s,
+                }),
+                data: None,
+            }),
         }
     }
 
@@ -1047,6 +1093,11 @@ impl Value {
             }
             PartialValue::Spn(n, r) => DbValueV1::SP(n.clone(), r.clone()),
             PartialValue::Uint32(u) => DbValueV1::UI(*u),
+            PartialValue::Cid(c) => DbValueV1::CI(DbCidV1 {
+                d: c.d_uuid,
+                s: c.s_uuid,
+                t: c.ts,
+            }),
         }
     }
 
@@ -1162,6 +1213,7 @@ impl Value {
             PartialValue::RadiusCred => "radius".to_string(),
             PartialValue::Spn(n, r) => format!("{}@{}", n, r),
             PartialValue::Uint32(u) => u.to_string(),
+            PartialValue::Cid(c) => format!("{:?}_{}_{}", c.ts, c.d_uuid, c.s_uuid),
         }
     }
 
@@ -1216,6 +1268,7 @@ impl Value {
             PartialValue::RadiusCred => vec![],
             PartialValue::Spn(n, r) => vec![format!("{}@{}", n, r)],
             PartialValue::Uint32(u) => vec![u.to_string()],
+            PartialValue::Cid(_) => vec![],
         }
     }
 }
@@ -1344,6 +1397,11 @@ mod tests {
         let vidx_key = u32v.generate_idx_eq_keys().pop().unwrap();
 
         assert!(idx_key == vidx_key);
+    }
+
+    #[test]
+    fn test_value_cid() {
+        assert!(PartialValue::new_cid_s("_").is_none());
     }
 
     /*

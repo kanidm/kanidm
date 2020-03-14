@@ -170,128 +170,6 @@ impl SchemaAttribute {
         })
     }
 
-    // Implement Equality, PartialOrd, Normalisation,
-    // Validation.
-    fn validate_bool(&self, v: &Value) -> Result<(), SchemaError> {
-        if v.is_bool() {
-            Ok(())
-        } else {
-            Err(SchemaError::InvalidAttributeSyntax)
-        }
-    }
-
-    fn validate_syntax(&self, v: &Value) -> Result<(), SchemaError> {
-        if v.is_syntax() {
-            Ok(())
-        } else {
-            Err(SchemaError::InvalidAttributeSyntax)
-        }
-    }
-
-    fn validate_index(&self, v: &Value) -> Result<(), SchemaError> {
-        if v.is_index() {
-            Ok(())
-        } else {
-            Err(SchemaError::InvalidAttributeSyntax)
-        }
-    }
-
-    fn validate_uuid(&self, v: &Value) -> Result<(), SchemaError> {
-        if v.is_uuid() {
-            Ok(())
-        } else {
-            Err(SchemaError::InvalidAttributeSyntax)
-        }
-    }
-
-    fn validate_refer(&self, v: &Value) -> Result<(), SchemaError> {
-        if v.is_refer() {
-            Ok(())
-        } else {
-            Err(SchemaError::InvalidAttributeSyntax)
-        }
-    }
-
-    fn validate_json_filter(&self, v: &Value) -> Result<(), SchemaError> {
-        // I *think* we just check if this can become a ProtoFilter v1
-        // rather than anything more complex.
-
-        // Can it be deserialised? I think that's all we can do because
-        // it's only when we go to apply that we can do the actual filter
-        // conversion, resolution of Self, and validation etc.
-
-        // In my mind there are some risks here, like the fact that we defer evaluation
-        // and checking until we go to use the value, but we ccould make a plugin similar
-        // to refint that verifies all of these filters still compile and schema check
-        // after any kind of modification.
-
-        // Storing these as protofilter has value in terms of the fact we don't need
-        // filter to be seralisable when we go to add state type data to it, and we can
-        // then do conversions inside operations to resolve Self -> Bound UUID as required.
-
-        if v.is_json_filter() {
-            Ok(())
-        } else {
-            Err(SchemaError::InvalidAttributeSyntax)
-        }
-    }
-
-    fn validate_credential(&self, v: &Value) -> Result<(), SchemaError> {
-        if v.is_credential() {
-            Ok(())
-        } else {
-            Err(SchemaError::InvalidAttributeSyntax)
-        }
-    }
-
-    fn validate_utf8string_insensitive(&self, v: &Value) -> Result<(), SchemaError> {
-        if v.is_insensitive_utf8() {
-            Ok(())
-        } else {
-            Err(SchemaError::InvalidAttributeSyntax)
-        }
-    }
-
-    fn validate_utf8string(&self, v: &Value) -> Result<(), SchemaError> {
-        if v.is_utf8() {
-            Ok(())
-        } else {
-            Err(SchemaError::InvalidAttributeSyntax)
-        }
-    }
-
-    fn validate_radius_utf8string(&self, v: &Value) -> Result<(), SchemaError> {
-        if v.is_radius_string() {
-            Ok(())
-        } else {
-            Err(SchemaError::InvalidAttributeSyntax)
-        }
-    }
-
-    fn validate_sshkey(&self, v: &Value) -> Result<(), SchemaError> {
-        if v.is_sshkey() {
-            Ok(())
-        } else {
-            Err(SchemaError::InvalidAttributeSyntax)
-        }
-    }
-
-    fn validate_spn(&self, v: &Value) -> Result<(), SchemaError> {
-        if v.is_spn() {
-            Ok(())
-        } else {
-            Err(SchemaError::InvalidAttributeSyntax)
-        }
-    }
-
-    fn validate_uint32(&self, v: &Value) -> Result<(), SchemaError> {
-        if v.is_uint32() {
-            Ok(())
-        } else {
-            Err(SchemaError::InvalidAttributeSyntax)
-        }
-    }
-
     // TODO: There may be a difference between a value and a filter value on complex
     // types - IE a complex type may have multiple parts that are secret, but a filter
     // on that may only use a single tagged attribute for example.
@@ -310,6 +188,7 @@ impl SchemaAttribute {
             SyntaxType::SSHKEY => v.is_sshkey(),
             SyntaxType::SERVICE_PRINCIPLE_NAME => v.is_spn(),
             SyntaxType::UINT32 => v.is_uint32(),
+            SyntaxType::CID => v.is_cid(),
         };
         if r {
             Ok(())
@@ -342,101 +221,132 @@ impl SchemaAttribute {
         };
         // If syntax, check the type is correct
         match self.syntax {
-            SyntaxType::BOOLEAN => {
-                ava.iter().fold(Ok(()), |acc, v| {
-                    // If acc is err, fold will skip it.
-                    if acc.is_ok() {
-                        self.validate_bool(v)
+            SyntaxType::BOOLEAN => ava.iter().fold(Ok(()), |acc, v| {
+                acc.and_then(|_| {
+                    if v.is_bool() {
+                        Ok(())
                     } else {
-                        acc
+                        Err(SchemaError::InvalidAttributeSyntax)
                     }
                 })
-            }
+            }),
             SyntaxType::SYNTAX_ID => ava.iter().fold(Ok(()), |acc, v| {
-                if acc.is_ok() {
-                    self.validate_syntax(v)
-                } else {
-                    acc
-                }
+                acc.and_then(|_| {
+                    if v.is_syntax() {
+                        Ok(())
+                    } else {
+                        Err(SchemaError::InvalidAttributeSyntax)
+                    }
+                })
             }),
             SyntaxType::UUID => ava.iter().fold(Ok(()), |acc, v| {
-                if acc.is_ok() {
-                    self.validate_uuid(v)
-                } else {
-                    acc
-                }
+                acc.and_then(|_| {
+                    if v.is_uuid() {
+                        Ok(())
+                    } else {
+                        Err(SchemaError::InvalidAttributeSyntax)
+                    }
+                })
             }),
             // This is the same as a UUID, refint is a plugin
             SyntaxType::REFERENCE_UUID => ava.iter().fold(Ok(()), |acc, v| {
-                if acc.is_ok() {
-                    self.validate_refer(v)
-                } else {
-                    acc
-                }
+                acc.and_then(|_| {
+                    if v.is_refer() {
+                        Ok(())
+                    } else {
+                        Err(SchemaError::InvalidAttributeSyntax)
+                    }
+                })
             }),
             SyntaxType::INDEX_ID => ava.iter().fold(Ok(()), |acc, v| {
-                if acc.is_ok() {
-                    debug!("Checking index ... {:?}", v);
-                    self.validate_index(v)
-                } else {
-                    acc
-                }
+                acc.and_then(|_| {
+                    if v.is_index() {
+                        Ok(())
+                    } else {
+                        Err(SchemaError::InvalidAttributeSyntax)
+                    }
+                })
             }),
             SyntaxType::UTF8STRING_INSENSITIVE => ava.iter().fold(Ok(()), |acc, v| {
-                if acc.is_ok() {
-                    self.validate_utf8string_insensitive(v)
-                } else {
-                    acc
-                }
+                acc.and_then(|_| {
+                    if v.is_insensitive_utf8() {
+                        Ok(())
+                    } else {
+                        Err(SchemaError::InvalidAttributeSyntax)
+                    }
+                })
             }),
             SyntaxType::UTF8STRING => ava.iter().fold(Ok(()), |acc, v| {
-                if acc.is_ok() {
-                    self.validate_utf8string(v)
-                } else {
-                    acc
-                }
+                acc.and_then(|_| {
+                    if v.is_utf8() {
+                        Ok(())
+                    } else {
+                        Err(SchemaError::InvalidAttributeSyntax)
+                    }
+                })
             }),
             SyntaxType::JSON_FILTER => ava.iter().fold(Ok(()), |acc, v| {
-                if acc.is_ok() {
-                    self.validate_json_filter(v)
-                } else {
-                    acc
-                }
+                acc.and_then(|_| {
+                    if v.is_json_filter() {
+                        Ok(())
+                    } else {
+                        Err(SchemaError::InvalidAttributeSyntax)
+                    }
+                })
             }),
             SyntaxType::CREDENTIAL => ava.iter().fold(Ok(()), |acc, v| {
-                if acc.is_ok() {
-                    self.validate_credential(v)
-                } else {
-                    acc
-                }
+                acc.and_then(|_| {
+                    if v.is_credential() {
+                        Ok(())
+                    } else {
+                        Err(SchemaError::InvalidAttributeSyntax)
+                    }
+                })
             }),
             SyntaxType::RADIUS_UTF8STRING => ava.iter().fold(Ok(()), |acc, v| {
-                if acc.is_ok() {
-                    self.validate_radius_utf8string(v)
-                } else {
-                    acc
-                }
+                acc.and_then(|_| {
+                    if v.is_radius_string() {
+                        Ok(())
+                    } else {
+                        Err(SchemaError::InvalidAttributeSyntax)
+                    }
+                })
             }),
             SyntaxType::SSHKEY => ava.iter().fold(Ok(()), |acc, v| {
-                if acc.is_ok() {
-                    self.validate_sshkey(v)
-                } else {
-                    acc
-                }
+                acc.and_then(|_| {
+                    if v.is_sshkey() {
+                        Ok(())
+                    } else {
+                        Err(SchemaError::InvalidAttributeSyntax)
+                    }
+                })
             }),
             SyntaxType::SERVICE_PRINCIPLE_NAME => ava.iter().fold(Ok(()), |acc, v| {
-                if acc.is_ok() {
-                    self.validate_spn(v)
-                } else {
-                    acc
-                }
+                acc.and_then(|_| {
+                    if v.is_spn() {
+                        Ok(())
+                    } else {
+                        Err(SchemaError::InvalidAttributeSyntax)
+                    }
+                })
             }),
             SyntaxType::UINT32 => ava.iter().fold(Ok(()), |acc, v| {
-                if acc.is_ok() {
-                    self.validate_uint32(v)
-                } else {
-                    acc
-                }
+                acc.and_then(|_| {
+                    if v.is_uint32() {
+                        Ok(())
+                    } else {
+                        Err(SchemaError::InvalidAttributeSyntax)
+                    }
+                })
+            }),
+            SyntaxType::CID => ava.iter().fold(Ok(()), |acc, v| {
+                acc.and_then(|_| {
+                    if v.is_cid() {
+                        Ok(())
+                    } else {
+                        Err(SchemaError::InvalidAttributeSyntax)
+                    }
+                })
             }),
         }
     }
@@ -1305,7 +1215,11 @@ impl<'a> SchemaWriteTransaction<'a> {
                     description: String::from("System Access Control Profile Class"),
                     systemmay: vec!["acp_enable".to_string(), "description".to_string()],
                     may: vec![],
-                    systemmust: vec!["acp_receiver".to_string(), "acp_targetscope".to_string(), "name".to_string()],
+                    systemmust: vec![
+                        "acp_receiver".to_string(),
+                        "acp_targetscope".to_string(),
+                        "name".to_string(),
+                    ],
                     must: vec![],
                 },
             );

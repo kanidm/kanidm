@@ -518,10 +518,10 @@ pub trait QueryServerTransaction {
                     SyntaxType::CREDENTIAL => Err(OperationError::InvalidAttribute("Credentials can not be supplied through modification - please use the IDM api".to_string())),
                     SyntaxType::RADIUS_UTF8STRING => Err(OperationError::InvalidAttribute("Radius secrets can not be supplied through modification - please use the IDM api".to_string())),
                     SyntaxType::SSHKEY => Err(OperationError::InvalidAttribute("SSH public keys can not be supplied through modification - please use the IDM api".to_string())),
-                    SyntaxType::SERVICE_PRINCIPLE_NAME => Err(OperationError::InvalidAttribute("SPNs are generated and not able to be set".to_string())),
+                    SyntaxType::SERVICE_PRINCIPLE_NAME => Err(OperationError::InvalidAttribute("SPNs are generated and not able to be set.".to_string())),
                     SyntaxType::UINT32 => Value::new_uint32_str(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid uint32 syntax".to_string())),
-
+                    SyntaxType::CID => Err(OperationError::InvalidAttribute("CIDs are generated and not able to be set.".to_string())),
                 }
             }
             None => {
@@ -604,6 +604,9 @@ pub trait QueryServerTransaction {
                         }),
                     SyntaxType::UINT32 => PartialValue::new_uint32_str(value).ok_or_else(|| {
                         OperationError::InvalidAttribute("Invalid Uint32 syntax".to_string())
+                    }),
+                    SyntaxType::CID => PartialValue::new_cid_s(value).ok_or_else(|| {
+                        OperationError::InvalidAttribute("Invalid Cid syntax".to_string())
                     }),
                 }
             }
