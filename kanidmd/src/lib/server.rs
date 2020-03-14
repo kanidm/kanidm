@@ -717,7 +717,8 @@ impl QueryServerReadTransaction {
 
 pub struct QueryServerWriteTransaction<'a> {
     committed: bool,
-    cid: Cid,
+    d_uuid: Uuid,
+    _cid: Cid,
     be_txn: BackendWriteTransaction,
     schema: SchemaWriteTransaction<'a>,
     accesscontrols: AccessControlsWriteTransaction<'a>,
@@ -799,7 +800,8 @@ impl QueryServer {
             // The commited flag is however used for abort-specific code in drop
             // which today I don't think we have ... yet.
             committed: false,
-            cid: cid,
+            d_uuid: self.d_uuid,
+            _cid: cid,
             be_txn: self.be.write(idxmeta),
             schema: schema_write,
             accesscontrols: self.accesscontrols.write(),
@@ -2006,6 +2008,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
         try_audit!(audit, self.accesscontrols.update_delete(delete_acps));
         // Alternately, we just get ACP class, and just let acctrl work it out ...
         Ok(())
+    }
+
+    pub(crate) fn get_domain_uuid(&self) -> Uuid {
+        self.d_uuid
     }
 
     /// Initiate a domain rename process. This is generally an internal function but it's
