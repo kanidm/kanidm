@@ -1154,7 +1154,27 @@ mod tests {
 
     #[test]
     fn test_lessthan_entry_filter() {
-        unimplemented!();
+        let e: Entry<EntryValid, EntryNew> = unsafe {
+            Entry::unsafe_from_entry_str(
+                r#"{
+            "attrs": {
+                "userid": ["william"],
+                "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
+                "gidnumber": ["1000"]
+            }
+        }"#,
+            )
+            .into_valid_new()
+        };
+
+        let f_t1a = unsafe { filter_resolved!(f_lt("gidnumber", PartialValue::new_uint32(500))) };
+        assert!(e.entry_match_no_index(&f_t1a) == false);
+
+        let f_t1b = unsafe { filter_resolved!(f_lt("gidnumber", PartialValue::new_uint32(1000))) };
+        assert!(e.entry_match_no_index(&f_t1b) == false);
+
+        let f_t1c = unsafe { filter_resolved!(f_lt("gidnumber", PartialValue::new_uint32(1001))) };
+        assert!(e.entry_match_no_index(&f_t1c) == true);
     }
 
     #[test]

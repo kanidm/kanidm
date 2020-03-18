@@ -490,8 +490,12 @@ impl PartialValue {
         }
     }
 
-    pub fn lessthan(&self, _s: &PartialValue) -> bool {
-        unimplemented!();
+    pub fn lessthan(&self, s: &PartialValue) -> bool {
+        match (self, s) {
+            (PartialValue::Cid(c1), PartialValue::Cid(c2)) => c1 < c2,
+            (PartialValue::Uint32(u1), PartialValue::Uint32(u2)) => u1 < u2,
+            _ => false,
+        }
     }
 
     pub fn get_idx_eq_key(&self) -> String {

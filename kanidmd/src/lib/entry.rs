@@ -1781,10 +1781,26 @@ mod tests {
 
     #[test]
     fn test_entry_lessthan() {
-        // let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
+        let mut e1: Entry<EntryInvalid, EntryNew> = Entry::new();
 
-        // e.add_ava("userid", &Value::from("william"));
-        unimplemented!();
+        let pv2 = PartialValue::new_uint32(2);
+        let pv8 = PartialValue::new_uint32(8);
+        let pv10 = PartialValue::new_uint32(10);
+        let pv15 = PartialValue::new_uint32(15);
+
+        e1.add_ava("a", &Value::new_uint32(10));
+
+        assert!(e1.attribute_lessthan("a", &pv2) == false);
+        assert!(e1.attribute_lessthan("a", &pv8) == false);
+        assert!(e1.attribute_lessthan("a", &pv10) == false);
+        assert!(e1.attribute_lessthan("a", &pv15) == true);
+
+        e1.add_ava("a", &Value::new_uint32(8));
+
+        assert!(e1.attribute_lessthan("a", &pv2) == false);
+        assert!(e1.attribute_lessthan("a", &pv8) == false);
+        assert!(e1.attribute_lessthan("a", &pv10) == true);
+        assert!(e1.attribute_lessthan("a", &pv15) == true);
     }
 
     #[test]

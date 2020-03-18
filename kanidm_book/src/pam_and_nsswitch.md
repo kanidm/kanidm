@@ -155,6 +155,22 @@ You should have:
 
     /usr/lib64/libnss_kanidm.so.2
 
+### Increase connection timeout
+
+In some high latency environments, you may need to increase the connection timeout. We set
+this low to improve response on LANs, but over the internet this may need to be increased.
+By increasing the conn timeout, you will be able to operate on higher latency links, but
+some operations may take longer to complete causing a degree of latency. By increasing the
+cache_timeout, you will need to refresh "less" but it may mean on an account lockout or
+group change, that you need up to cache_timeout to see the effect (this has security
+implications)
+
+    # /etc/kanidm/unixd
+    # Seconds
+    conn_timeout = 8
+    # Cache timeout
+    cache_timeout = 60
+
 ### Invalidate the cache
 
 You can invalidate the kanidm_unixd cache with:
