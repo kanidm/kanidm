@@ -13,6 +13,15 @@ impl Cid {
     pub fn new(d_uuid: Uuid, s_uuid: Uuid, ts: Duration) -> Self {
         Cid { d_uuid, s_uuid, ts }
     }
+
+    #[cfg(test)]
+    pub unsafe fn new_zero() -> Self {
+        Cid {
+            d_uuid: Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap(),
+            s_uuid: Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap(),
+            ts: Duration::new(0, 0),
+        }
+    }
 }
 
 #[cfg(test)]

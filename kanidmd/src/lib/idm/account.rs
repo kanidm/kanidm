@@ -1,4 +1,4 @@
-use crate::entry::{Entry, EntryCommitted, EntryValid};
+use crate::entry::{Entry, EntryCommitted, EntrySealed};
 use kanidm_proto::v1::OperationError;
 
 use kanidm_proto::v1::UserAuthToken;
@@ -94,7 +94,7 @@ pub(crate) struct Account {
 impl Account {
     pub(crate) fn try_from_entry_ro(
         au: &mut AuditScope,
-        value: Entry<EntryValid, EntryCommitted>,
+        value: Entry<EntrySealed, EntryCommitted>,
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         let groups = Group::try_from_account_entry_ro(au, &value, qs)?;
@@ -103,7 +103,7 @@ impl Account {
 
     pub(crate) fn try_from_entry_rw(
         au: &mut AuditScope,
-        value: Entry<EntryValid, EntryCommitted>,
+        value: Entry<EntrySealed, EntryCommitted>,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         let groups = Group::try_from_account_entry_rw(au, &value, qs)?;
@@ -112,7 +112,7 @@ impl Account {
 
     #[cfg(test)]
     pub(crate) fn try_from_entry_no_groups(
-        value: Entry<EntryValid, EntryCommitted>,
+        value: Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         try_from_entry!(value, vec![])
     }
@@ -185,7 +185,7 @@ impl Account {
 #[cfg(test)]
 mod tests {
     use crate::constants::JSON_ANONYMOUS_V1;
-    // use crate::entry::{Entry, EntryNew, EntryValid};
+    // use crate::entry::{Entry, EntryNew, EntrySealed};
     // use crate::idm::account::Account;
 
     #[test]

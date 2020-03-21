@@ -582,7 +582,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 mod tests {
     use crate::constants::{AUTH_SESSION_TIMEOUT, UUID_ADMIN, UUID_ANONYMOUS};
     use crate::credential::Credential;
-    use crate::entry::{Entry, EntryInvalid, EntryNew};
+    use crate::entry::{Entry, EntryInit, EntryNew};
     use crate::event::{AuthEvent, AuthResult, CreateEvent, ModifyEvent};
     use crate::idm::event::{
         PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
@@ -973,7 +973,7 @@ mod tests {
             };
             assert!(idms_prox_write.qs_write.modify(au, &me_posix).is_ok());
             // Add a posix group that has the admin as a member.
-            let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+            let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "attrs": {
                     "class": ["object", "group", "posixgroup"],

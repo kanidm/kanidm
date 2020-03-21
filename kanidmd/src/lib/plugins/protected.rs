@@ -3,7 +3,7 @@
 use crate::plugins::Plugin;
 
 use crate::audit::AuditScope;
-use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
+use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntrySealed};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::modify::Modify;
 use crate::server::QueryServerWriteTransaction;
@@ -52,7 +52,7 @@ impl Plugin for Protected {
         au: &mut AuditScope,
         _qs: &mut QueryServerWriteTransaction,
         // List of what we will commit that is valid?
-        cand: &[Entry<EntryValid, EntryNew>],
+        cand: &[Entry<EntrySealed, EntryNew>],
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         if ce.event.is_internal() {
@@ -84,7 +84,7 @@ impl Plugin for Protected {
     fn pre_modify(
         au: &mut AuditScope,
         _qs: &mut QueryServerWriteTransaction,
-        // Should these be EntryValid?
+        // Should these be EntrySealed?
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         me: &ModifyEvent,
     ) -> Result<(), OperationError> {
@@ -175,7 +175,7 @@ impl Plugin for Protected {
     fn pre_delete(
         au: &mut AuditScope,
         _qs: &mut QueryServerWriteTransaction,
-        // Should these be EntryValid
+        // Should these be EntrySealed
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         de: &DeleteEvent,
     ) -> Result<(), OperationError> {
@@ -209,7 +209,7 @@ impl Plugin for Protected {
 #[cfg(test)]
 mod tests {
     use crate::constants::JSON_ADMIN_V1;
-    use crate::entry::{Entry, EntryInvalid, EntryNew};
+    use crate::entry::{Entry, EntryInit, EntryNew};
     use crate::value::{PartialValue, Value};
     use kanidm_proto::v1::OperationError;
 
@@ -247,11 +247,11 @@ mod tests {
     #[test]
     fn test_pre_create_deny() {
         // Test creating with class: system is rejected.
-        let acp: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
+        let acp: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
 
         let preload = vec![acp];
 
-        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -277,9 +277,9 @@ mod tests {
 
     #[test]
     fn test_pre_modify_system_deny() {
-        let acp: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
+        let acp: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
         // Test modify of class to a system is denied
-        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -309,9 +309,9 @@ mod tests {
 
     #[test]
     fn test_pre_modify_class_add_deny() {
-        let acp: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
+        let acp: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
         // Show that adding a system class is denied
-        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -338,9 +338,9 @@ mod tests {
 
     #[test]
     fn test_pre_modify_attr_must_may_allow() {
-        let acp: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
+        let acp: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
         // Show that adding a system class is denied
-        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -370,9 +370,9 @@ mod tests {
 
     #[test]
     fn test_pre_delete_deny() {
-        let acp: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
+        let acp: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
         // Test deleting with class: system is rejected.
-        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -399,9 +399,9 @@ mod tests {
     #[test]
     fn test_modify_domain() {
         // Can edit *my* domain_ssid and domain_name
-        let acp: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
+        let acp: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
         // Show that adding a system class is denied
-        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "attrs": {
                 "class": ["domain_info"],
@@ -436,9 +436,9 @@ mod tests {
     #[test]
     fn test_ext_create_domain() {
         // can not add a domain_info type - note the lack of class: system
-        let acp: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
+        let acp: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
         let preload = vec![acp];
-        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "attrs": {
                 "class": ["domain_info"],
@@ -464,9 +464,9 @@ mod tests {
 
     #[test]
     fn test_delete_domain() {
-        let acp: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
+        let acp: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
         // On the real thing we have a class: system, but to prove the point ...
-        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "attrs": {
                 "class": ["domain_info"],

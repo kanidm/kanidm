@@ -19,7 +19,9 @@ use crate::access::{
 };
 // We use so many, we just import them all ...
 use crate::constants::*;
-use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryReduced, EntryValid};
+use crate::entry::{
+    Entry, EntryCommitted, EntryInit, EntryInvalid, EntryNew, EntryReduced, EntrySealed, EntryValid,
+};
 use crate::event::{
     CreateEvent, DeleteEvent, Event, EventOrigin, ExistsEvent, ModifyEvent, ReviveRecycledEvent,
     SearchEvent,
@@ -106,7 +108,7 @@ pub trait QueryServerTransaction {
         &self,
         au: &mut AuditScope,
         se: &SearchEvent,
-    ) -> Result<Vec<Entry<EntryValid, EntryCommitted>>, OperationError> {
+    ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
         audit_log!(au, "search: filter -> {:?}", se.filter);
 
         // This is an important security step because it prevents us from
@@ -330,7 +332,7 @@ pub trait QueryServerTransaction {
         &self,
         audit: &mut AuditScope,
         filter: Filter<FilterInvalid>,
-    ) -> Result<Vec<Entry<EntryValid, EntryCommitted>>, OperationError> {
+    ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
         let f_valid = filter
             .validate(self.get_schema())
             .map_err(OperationError::SchemaViolation)?;
@@ -347,7 +349,7 @@ pub trait QueryServerTransaction {
         f_valid: Filter<FilterValid>,
         f_intent_valid: Filter<FilterValid>,
         event: &Event,
-    ) -> Result<Vec<Entry<EntryValid, EntryCommitted>>, OperationError> {
+    ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
         let se = SearchEvent::new_impersonate(event, f_valid, f_intent_valid);
         let mut audit_int = AuditScope::new("impersonate_search");
         let res = self.search(&mut audit_int, &se);
@@ -377,7 +379,7 @@ pub trait QueryServerTransaction {
         filter: Filter<FilterInvalid>,
         filter_intent: Filter<FilterInvalid>,
         event: &Event,
-    ) -> Result<Vec<Entry<EntryValid, EntryCommitted>>, OperationError> {
+    ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
         let f_valid = filter
             .validate(self.get_schema())
             .map_err(OperationError::SchemaViolation)?;
@@ -409,7 +411,7 @@ pub trait QueryServerTransaction {
         &self,
         audit: &mut AuditScope,
         uuid: &Uuid,
-    ) -> Result<Entry<EntryValid, EntryCommitted>, OperationError> {
+    ) -> Result<Entry<EntrySealed, EntryCommitted>, OperationError> {
         let filter = filter!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
         let f_valid = filter
             .validate(self.get_schema())
@@ -721,7 +723,7 @@ impl QueryServerReadTransaction {
 pub struct QueryServerWriteTransaction<'a> {
     committed: bool,
     d_uuid: Uuid,
-    _cid: Cid,
+    cid: Cid,
     be_txn: BackendWriteTransaction,
     schema: SchemaWriteTransaction<'a>,
     accesscontrols: AccessControlsWriteTransaction<'a>,
@@ -804,7 +806,7 @@ impl QueryServer {
             // which today I don't think we have ... yet.
             committed: false,
             d_uuid: self.d_uuid,
-            _cid: cid,
+            cid: cid,
             be_txn: self.be.write(idxmeta),
             schema: schema_write,
             accesscontrols: self.accesscontrols.write(),
@@ -883,25 +885,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // TODO #67: Do we need limits on number of creates, or do we constraint
         // based on request size in the frontend?
 
-        // Copy the entries to a writeable form.
-        let mut candidates: Vec<Entry<EntryInvalid, EntryNew>> = ce.entries.to_vec();
-
-        // This is no longer needed due to how we transform to Value as a strong type on
-        // entries.
-        /*
-        // Normalise but DO NOT validate the entries.
-        let norm_cand: Result<Vec<Entry<EntryNormalised, EntryNew>>, _> = candidates
-            .into_iter()
-            .map(|e| {
-                e.normalise(&self.schema)
-                    .map_err(|er| OperationError::SchemaViolation(er))
-            })
-            .collect();
-
-        let norm_cand = try_audit!(au, norm_cand);
-        */
-
-        // Handle the error.
+        // Copy the entries to a writeable form, this involves assigning a
+        // change id so we can track what's happening.
+        let candidates: Vec<Entry<EntryInit, EntryNew>> =
+            ce.entries.iter().map(|e| e.clone()).collect();
 
         // Do we have rights to perform these creates?
         // create_allow_operation
@@ -913,11 +900,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
             return Err(OperationError::AccessDenied);
         }
 
-        // Invalidate them all again ...
-        /*
-        let mut candidates: Vec<Entry<EntryInvalid, EntryNew>> =
-            norm_cand.into_iter().map(|e| e.invalidate()).collect();
-        */
+        // Assign our replication metadata now, since we can proceed with this operation.
+        let mut candidates: Vec<Entry<EntryInvalid, EntryNew>> = candidates
+            .into_iter()
+            .map(|e| e.clone().assign_cid(self.cid.clone()))
+            .collect();
 
         // run any pre plugins, giving them the list of mutable candidates.
         // pre-plugins are defined here in their correct order of calling!
@@ -943,11 +930,14 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Now, normalise AND validate!
 
-        let res: Result<Vec<Entry<EntryValid, EntryNew>>, OperationError> = candidates
+        let res: Result<Vec<Entry<EntrySealed, EntryNew>>, OperationError> = candidates
             .into_iter()
             .map(|e| {
                 e.validate(&self.schema)
                     .map_err(OperationError::SchemaViolation)
+                    .map(|e|
+                    // Then seal the changes?
+                    e.seal())
             })
             .collect();
 
@@ -1053,19 +1043,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
             return Err(OperationError::NoMatchingEntries);
         };
 
-        let modlist_inv = ModifyList::new_list(vec![Modify::Present(
-            String::from("class"),
-            Value::new_class("recycled"),
-        )]);
-
-        let modlist = match modlist_inv.validate(&self.schema) {
-            Ok(ml) => ml,
-            Err(e) => return Err(OperationError::SchemaViolation(e)),
-        };
-
         let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
             .iter()
-            .map(|er| er.clone().invalidate())
+            // Invalidate and assign change id's
+            .map(|er| er.clone().invalidate(self.cid.clone()))
             .collect();
 
         audit_log!(au, "delete: candidates -> {:?}", candidates);
@@ -1086,13 +1067,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
             "delete: now marking candidates as recycled -> {:?}",
             candidates
         );
-        candidates
-            .iter_mut()
-            .for_each(|er| er.apply_modlist(&modlist));
 
-        let res: Result<Vec<Entry<EntryValid, EntryCommitted>>, SchemaError> = candidates
+        let res: Result<Vec<Entry<EntrySealed, EntryCommitted>>, SchemaError> = candidates
             .into_iter()
-            .map(|e| e.validate(&self.schema))
+            .map(|e| {
+                e.to_recycled()
+                    .validate(&self.schema)
+                    // seal if it worked.
+                    .map(|r| r.seal())
+            })
             .collect();
 
         let del_cand: Vec<Entry<_, _>> = match res {
@@ -1204,7 +1187,18 @@ impl<'a> QueryServerWriteTransaction<'a> {
         }
 
         // Modify them to strip all avas except uuid
-        let tombstone_cand = rc.iter().map(|e| e.to_tombstone()).collect::<Vec<_>>();
+        let tombstone_cand: Result<Vec<_>, _> = rc
+            .iter()
+            .map(|e| {
+                e.to_tombstone(self.cid.clone())
+                    .validate(&self.schema)
+                    .map_err(OperationError::SchemaViolation)
+                    // seal if it worked.
+                    .map(|r| r.seal())
+            })
+            .collect();
+
+        let tombstone_cand = try_audit!(au, tombstone_cand);
 
         // Backend Modify
         let mut audit_be = AuditScope::new("backend_modify");
@@ -1368,7 +1362,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // and the new modified ents.
         let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
             .iter()
-            .map(|er| er.clone().invalidate())
+            .map(|er| er.clone().invalidate(self.cid.clone()))
             .collect();
 
         candidates
@@ -1396,9 +1390,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // do the CORRECT thing and recommit as we may find later we always
         // want to add CSN's or other.
 
-        let res: Result<Vec<Entry<EntryValid, EntryCommitted>>, SchemaError> = candidates
+        let res: Result<Vec<Entry<EntrySealed, EntryCommitted>>, SchemaError> = candidates
             .into_iter()
-            .map(|e| e.validate(&self.schema))
+            .map(|e| e.validate(&self.schema).map(|e| e.seal()))
             .collect();
 
         let norm_cand: Vec<Entry<_, _>> = match res {
@@ -1483,7 +1477,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub fn internal_create(
         &mut self,
         audit: &mut AuditScope,
-        entries: Vec<Entry<EntryInvalid, EntryNew>>,
+        entries: Vec<Entry<EntryInit, EntryNew>>,
     ) -> Result<(), OperationError> {
         // Start the audit scope
         let mut audit_int = AuditScope::new("internal_create");
@@ -1600,7 +1594,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             })
             */
             .and_then(
-                |e: Entry<EntryInvalid, EntryNew>| self.internal_migrate_or_create(audit, e)
+                |e: Entry<EntryInit, EntryNew>| self.internal_migrate_or_create(audit, e)
             ));
         audit_log!(audit, "internal_migrate_or_create_str -> result {:?}", res);
         debug_assert!(res.is_ok());
@@ -1610,7 +1604,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub fn internal_migrate_or_create(
         &mut self,
         audit: &mut AuditScope,
-        e: Entry<EntryInvalid, EntryNew>,
+        e: Entry<EntryInit, EntryNew>,
     ) -> Result<(), OperationError> {
         // if the thing exists, ensure the set of attributes on
         // Entry A match and are present (but don't delete multivalue, or extended
@@ -1658,18 +1652,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
         }
     }
 
+    /*
     pub fn internal_assert_or_create_str(
         &mut self,
         audit: &mut AuditScope,
         e_str: &str,
     ) -> Result<(), OperationError> {
         let res = audit_segment!(audit, || Entry::from_proto_entry_str(audit, e_str, self)
-            .and_then(|e: Entry<EntryInvalid, EntryNew>| {
-                let schema = self.get_schema();
-                e.validate(schema).map_err(OperationError::SchemaViolation)
-            })
             .and_then(
-                |e: Entry<EntryValid, EntryNew>| self.internal_assert_or_create(audit, e)
+                |e: Entry<EntryInit, EntryNew>| self.internal_assert_or_create(audit, e)
             ));
         audit_log!(audit, "internal_assert_or_create_str -> result {:?}", res);
         debug_assert!(res.is_ok());
@@ -1680,7 +1671,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub fn internal_assert_or_create(
         &mut self,
         audit: &mut AuditScope,
-        e: Entry<EntryValid, EntryNew>,
+        e: Entry<EntryInit, EntryNew>,
     ) -> Result<(), OperationError> {
         // If exists, ensure the object is exactly as provided
         // else, if not exists, create it. IE no extra or excess
@@ -1705,12 +1696,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
             Ok(results) => {
                 if results.is_empty() {
                     // It does not exist. Create it.
-                    self.internal_create(audit, vec![e.invalidate()])
+                    self.internal_create(audit, vec![e])
                 } else if results.len() == 1 {
                     // it exists. To guarantee content exactly as is, we compare if it's identical.
                     if !e.compare(&results[0]) {
                         self.internal_delete(audit, filt)
-                            .and_then(|_| self.internal_create(audit, vec![e.invalidate()]))
+                            .and_then(|_| self.internal_create(audit, vec![e]))
                     } else {
                         // No action required
                         Ok(())
@@ -1725,6 +1716,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             }
         }
     }
+    */
 
     pub fn initialise_schema_core(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
         // Load in all the "core" schema, that we already have in "memory".
@@ -1735,7 +1727,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .into_iter()
             .map(|e| {
                 audit_log!(audit, "init schema -> {}", e);
-                self.internal_migrate_or_create(audit, e.invalidate())
+                self.internal_migrate_or_create(audit, e)
             })
             .collect();
         audit_log!(audit, "initialise_schema_core -> result {:?}", r);
@@ -1788,7 +1780,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // concepts.
         let mut audit_an = AuditScope::new("start_system_core_items");
         let res = self
-            .internal_assert_or_create_str(&mut audit_an, JSON_SYSTEM_INFO_V1)
+            .internal_migrate_or_create_str(&mut audit_an, JSON_SYSTEM_INFO_V1)
             .and_then(|_| self.internal_migrate_or_create_str(&mut audit_an, JSON_DOMAIN_INFO_V1))
             .and_then(|_| {
                 self.internal_migrate_or_create_str(&mut audit_an, JSON_SYSTEM_CONFIG_V1)
@@ -2094,7 +2086,7 @@ mod tests {
     use crate::audit::AuditScope;
     use crate::constants::{JSON_ADMIN_V1, UUID_ADMIN};
     use crate::credential::Credential;
-    use crate::entry::{Entry, EntryInvalid, EntryNew};
+    use crate::entry::{Entry, EntryInit, EntryNew};
     use crate::event::{CreateEvent, DeleteEvent, ModifyEvent, ReviveRecycledEvent, SearchEvent};
     use crate::modify::{Modify, ModifyList};
     use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
@@ -2114,7 +2106,7 @@ mod tests {
             let se1 = unsafe { SearchEvent::new_impersonate_entry(admin.clone(), filt.clone()) };
             let se2 = unsafe { SearchEvent::new_impersonate_entry(admin, filt) };
 
-            let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+            let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -2140,7 +2132,7 @@ mod tests {
             println!("--> {:?}", r2);
             assert!(r2.len() == 1);
 
-            let expected = unsafe { vec![e.into_valid_committed()] };
+            let expected = unsafe { vec![e.into_sealed_committed()] };
 
             assert_eq!(r2, expected);
 
@@ -2182,7 +2174,7 @@ mod tests {
             // Create an object
             let mut server_txn = server.write(duration_from_epoch_now());
 
-            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+            let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -2196,7 +2188,7 @@ mod tests {
             }"#,
             );
 
-            let e2: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+            let e2: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -2311,7 +2303,7 @@ mod tests {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             let mut server_txn = server.write(duration_from_epoch_now());
 
-            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+            let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -2387,10 +2379,8 @@ mod tests {
             // Create
             let mut server_txn = server.write(duration_from_epoch_now());
 
-            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+            let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
-                "valid": null,
-                "state": null,
                 "attrs": {
                     "class": ["object", "person"],
                     "name": ["testperson1"],
@@ -2401,10 +2391,8 @@ mod tests {
             }"#,
             );
 
-            let e2: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+            let e2: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
-                "valid": null,
-                "state": null,
                 "attrs": {
                     "class": ["object", "person"],
                     "name": ["testperson2"],
@@ -2415,10 +2403,8 @@ mod tests {
             }"#,
             );
 
-            let e3: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+            let e3: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
-                "valid": null,
-                "state": null,
                 "attrs": {
                     "class": ["object", "person"],
                     "name": ["testperson3"],
@@ -2498,7 +2484,7 @@ mod tests {
             let se_ts = unsafe { SearchEvent::new_ext_impersonate_entry(admin, filt_i_ts.clone()) };
 
             // First, create a tombstone
-            let e_ts: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+            let e_ts: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -2589,10 +2575,8 @@ mod tests {
             };
 
             // Create some recycled objects
-            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+            let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
-                "valid": null,
-                "state": null,
                 "attrs": {
                     "class": ["object", "person", "recycled"],
                     "name": ["testperson1"],
@@ -2603,10 +2587,8 @@ mod tests {
             }"#,
             );
 
-            let e2: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+            let e2: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
-                "valid": null,
-                "state": null,
                 "attrs": {
                     "class": ["object", "person", "recycled"],
                     "name": ["testperson2"],
@@ -2683,10 +2665,8 @@ mod tests {
                 .internal_search_uuid(audit, &UUID_ADMIN)
                 .expect("failed");
 
-            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+            let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
-                "valid": null,
-                "state": null,
                 "attrs": {
                     "class": ["object", "person"],
                     "name": ["testperson1"],
@@ -2728,7 +2708,7 @@ mod tests {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             let mut server_txn = server.write(duration_from_epoch_now());
 
-            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+            let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -2765,7 +2745,7 @@ mod tests {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             let mut server_txn = server.write(duration_from_epoch_now());
 
-            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+            let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -2808,7 +2788,7 @@ mod tests {
     fn test_qs_clone_value() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             let mut server_txn = server.write(duration_from_epoch_now());
-            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+            let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -2859,7 +2839,7 @@ mod tests {
     fn test_qs_resolve_value() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             let mut server_txn = server.write(duration_from_epoch_now());
-            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+            let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -2872,7 +2852,7 @@ mod tests {
                 }
             }"#,
             );
-            let e_ts: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+            let e_ts: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -2914,7 +2894,7 @@ mod tests {
     #[test]
     fn test_qs_dynamic_schema_class() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
-            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+            let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -2927,7 +2907,7 @@ mod tests {
             );
 
             // Class definition
-            let e_cd: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+            let e_cd: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "valid": null,
                 "state": null,
@@ -2998,10 +2978,8 @@ mod tests {
     #[test]
     fn test_qs_dynamic_schema_attr() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
-            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+            let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
-                "valid": null,
-                "state": null,
                 "attrs": {
                     "class": ["object", "extensibleobject"],
                     "name": ["testobj1"],
@@ -3012,10 +2990,8 @@ mod tests {
             );
 
             // Attribute definition
-            let e_ad: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+            let e_ad: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
-                "valid": null,
-                "state": null,
                 "attrs": {
                     "class": ["object", "attributetype"],
                     "attributename": ["testattr"],
@@ -3088,10 +3064,8 @@ mod tests {
     #[test]
     fn test_qs_modify_password_only() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
-            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+            let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
-                "valid": null,
-                "state": null,
                 "attrs": {
                     "class": ["object", "person", "account"],
                     "name": ["testperson1"],
@@ -3142,8 +3116,8 @@ mod tests {
         })
     }
 
-    fn create_user(name: &str, uuid: &str) -> Entry<EntryInvalid, EntryNew> {
-        let mut e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+    fn create_user(name: &str, uuid: &str) -> Entry<EntryInit, EntryNew> {
+        let mut e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "attrs": {
                 "class": ["object", "person"],
@@ -3157,8 +3131,8 @@ mod tests {
         e1
     }
 
-    fn create_group(name: &str, uuid: &str, members: &[&str]) -> Entry<EntryInvalid, EntryNew> {
-        let mut e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+    fn create_group(name: &str, uuid: &str, members: &[&str]) -> Entry<EntryInit, EntryNew> {
+        let mut e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "attrs": {
                 "class": ["object", "group"],

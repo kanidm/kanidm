@@ -937,7 +937,7 @@ impl FilterResolved {
 
 #[cfg(test)]
 mod tests {
-    use crate::entry::{Entry, EntryNew, EntryValid};
+    use crate::entry::{Entry, EntryNew, EntrySealed};
     use crate::filter::{Filter, FilterInvalid};
     use crate::value::PartialValue;
     use std::cmp::{Ordering, PartialOrd};
@@ -1154,7 +1154,7 @@ mod tests {
 
     #[test]
     fn test_lessthan_entry_filter() {
-        let e: Entry<EntryValid, EntryNew> = unsafe {
+        let e: Entry<EntrySealed, EntryNew> = unsafe {
             Entry::unsafe_from_entry_str(
                 r#"{
             "attrs": {
@@ -1164,7 +1164,7 @@ mod tests {
             }
         }"#,
             )
-            .into_valid_new()
+            .into_sealed_new()
         };
 
         let f_t1a = unsafe { filter_resolved!(f_lt("gidnumber", PartialValue::new_uint32(500))) };
@@ -1179,7 +1179,7 @@ mod tests {
 
     #[test]
     fn test_or_entry_filter() {
-        let e: Entry<EntryValid, EntryNew> = unsafe {
+        let e: Entry<EntrySealed, EntryNew> = unsafe {
             Entry::unsafe_from_entry_str(
                 r#"{
             "valid": {
@@ -1193,7 +1193,7 @@ mod tests {
             }
         }"#,
             )
-            .into_valid_new()
+            .into_sealed_new()
         };
 
         let f_t1a = unsafe {
@@ -1231,7 +1231,7 @@ mod tests {
 
     #[test]
     fn test_and_entry_filter() {
-        let e: Entry<EntryValid, EntryNew> = unsafe {
+        let e: Entry<EntrySealed, EntryNew> = unsafe {
             Entry::unsafe_from_entry_str(
                 r#"{
             "valid": {
@@ -1245,7 +1245,7 @@ mod tests {
             }
         }"#,
             )
-            .into_valid_new()
+            .into_sealed_new()
         };
 
         let f_t1a = unsafe {
@@ -1283,7 +1283,7 @@ mod tests {
 
     #[test]
     fn test_not_entry_filter() {
-        let e1: Entry<EntryValid, EntryNew> = unsafe {
+        let e1: Entry<EntrySealed, EntryNew> = unsafe {
             Entry::unsafe_from_entry_str(
                 r#"{
             "valid": {
@@ -1297,7 +1297,7 @@ mod tests {
             }
         }"#,
             )
-            .into_valid_new()
+            .into_sealed_new()
         };
 
         let f_t1a = unsafe {
@@ -1316,7 +1316,7 @@ mod tests {
 
     #[test]
     fn test_nested_entry_filter() {
-        let e1: Entry<EntryValid, EntryNew> = unsafe {
+        let e1: Entry<EntrySealed, EntryNew> = unsafe {
             Entry::unsafe_from_entry_str(
                 r#"{
             "valid": {
@@ -1330,10 +1330,10 @@ mod tests {
             }
         }"#,
             )
-            .into_valid_new()
+            .into_sealed_new()
         };
 
-        let e2: Entry<EntryValid, EntryNew> = unsafe {
+        let e2: Entry<EntrySealed, EntryNew> = unsafe {
             Entry::unsafe_from_entry_str(
                 r#"{
             "valid": {
@@ -1347,10 +1347,10 @@ mod tests {
             }
         }"#,
             )
-            .into_valid_new()
+            .into_sealed_new()
         };
 
-        let e3: Entry<EntryValid, EntryNew> = unsafe {
+        let e3: Entry<EntrySealed, EntryNew> = unsafe {
             Entry::unsafe_from_entry_str(
                 r#"{
             "valid": {
@@ -1364,10 +1364,10 @@ mod tests {
             }
         }"#,
             )
-            .into_valid_new()
+            .into_sealed_new()
         };
 
-        let e4: Entry<EntryValid, EntryNew> = unsafe {
+        let e4: Entry<EntrySealed, EntryNew> = unsafe {
             Entry::unsafe_from_entry_str(
                 r#"{
             "valid": {
@@ -1381,7 +1381,7 @@ mod tests {
             }
         }"#,
             )
-            .into_valid_new()
+            .into_sealed_new()
         };
 
         let f_t1a = unsafe {

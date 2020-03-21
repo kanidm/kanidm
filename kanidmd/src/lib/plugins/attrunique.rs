@@ -201,14 +201,14 @@ impl Plugin for AttrUnique {
 
 #[cfg(test)]
 mod tests {
-    use crate::entry::{Entry, EntryInvalid, EntryNew};
+    use crate::entry::{Entry, EntryInit, EntryNew};
     use crate::modify::{Modify, ModifyList};
     use crate::value::{PartialValue, Value};
     use kanidm_proto::v1::{OperationError, PluginError};
     // Test entry in db, and same name, reject.
     #[test]
     fn test_pre_create_name_unique() {
-        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -238,7 +238,7 @@ mod tests {
     // Test two entries in create that would have same name, reject.
     #[test]
     fn test_pre_create_name_unique_2() {
-        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -271,7 +271,7 @@ mod tests {
     // A mod to something that exists, reject.
     #[test]
     fn test_pre_modify_name_unique() {
-        let ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -283,7 +283,7 @@ mod tests {
         }"#,
         );
 
-        let eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -318,7 +318,7 @@ mod tests {
     // Two items modded to have the same value, reject.
     #[test]
     fn test_pre_modify_name_unique_2() {
-        let ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -330,7 +330,7 @@ mod tests {
         }"#,
         );
 
-        let eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,

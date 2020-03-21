@@ -1,5 +1,5 @@
 use crate::audit::AuditScope;
-use crate::entry::{Entry, EntryCommitted, EntryReduced, EntryValid};
+use crate::entry::{Entry, EntryCommitted, EntryReduced, EntrySealed};
 use crate::server::{
     QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
 };
@@ -63,7 +63,7 @@ impl Group {
 
     pub fn try_from_account_entry_ro(
         au: &mut AuditScope,
-        value: &Entry<EntryValid, EntryCommitted>,
+        value: &Entry<EntrySealed, EntryCommitted>,
         qs: &QueryServerReadTransaction,
     ) -> Result<Vec<Self>, OperationError> {
         try_from_account_e!(au, value, qs)
@@ -71,14 +71,14 @@ impl Group {
 
     pub fn try_from_account_entry_rw(
         au: &mut AuditScope,
-        value: &Entry<EntryValid, EntryCommitted>,
+        value: &Entry<EntrySealed, EntryCommitted>,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Vec<Self>, OperationError> {
         try_from_account_e!(au, value, qs)
     }
 
     pub fn try_from_entry(
-        value: Entry<EntryValid, EntryCommitted>,
+        value: Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         if !value.attribute_value_pres("class", &PVCLASS_GROUP) {
             return Err(OperationError::InvalidAccountState(

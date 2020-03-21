@@ -18,7 +18,7 @@
 
 use crate::audit::AuditScope;
 use crate::constants::*;
-use crate::entry::{Entry, EntryCommitted, EntryNew, EntryValid};
+use crate::entry::{Entry, EntryCommitted, EntryInit, EntryNew, EntrySealed};
 use crate::value::{IndexType, PartialValue, SyntaxType, Value};
 use kanidm_proto::v1::{ConsistencyError, OperationError, SchemaError};
 
@@ -97,7 +97,7 @@ pub struct SchemaAttribute {
 impl SchemaAttribute {
     pub fn try_from(
         audit: &mut AuditScope,
-        value: &Entry<EntryValid, EntryCommitted>,
+        value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         // Convert entry to a schema attribute.
         audit_log!(audit, "Converting -> {:?}", value);
@@ -386,7 +386,7 @@ pub struct SchemaClass {
 impl SchemaClass {
     pub fn try_from(
         audit: &mut AuditScope,
-        value: &Entry<EntryValid, EntryCommitted>,
+        value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         audit_log!(audit, "{:?}", value);
         // Convert entry to a schema class.
@@ -644,15 +644,15 @@ impl<'a> SchemaWriteTransaction<'a> {
         }));
     }
 
-    pub fn to_entries(&self) -> Vec<Entry<EntryValid, EntryNew>> {
+    pub fn to_entries(&self) -> Vec<Entry<EntryInit, EntryNew>> {
         let r: Vec<_> = self
             .attributes
             .values()
-            .map(Entry::<EntryValid, EntryNew>::from)
+            .map(Entry::<EntryInit, EntryNew>::from)
             .chain(
                 self.classes
                     .values()
-                    .map(Entry::<EntryValid, EntryNew>::from),
+                    .map(Entry::<EntryInit, EntryNew>::from),
             )
             .collect();
         r
@@ -693,6 +693,21 @@ impl<'a> SchemaWriteTransaction<'a> {
                     unique: false,
                     index: vec![IndexType::EQUALITY],
                     syntax: SyntaxType::UUID,
+                },
+            );
+            self.attributes.insert(
+                String::from("last_modified_cid"),
+                SchemaAttribute {
+                    name: String::from("last_modified_cid"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_LAST_MOD_CID)
+                        .expect("unable to parse static uuid"),
+                    description: String::from("The cid of the last change to this object"),
+                    multivalue: false,
+                    // Uniqueness is handled by base.rs, not attrunique here due to
+                    // needing to check recycled objects too.
+                    unique: false,
+                    index: vec![],
+                    syntax: SyntaxType::CID,
                 },
             );
             self.attributes.insert(
@@ -1123,7 +1138,11 @@ impl<'a> SchemaWriteTransaction<'a> {
                     ),
                     systemmay: vec![String::from("description")],
                     may: vec![],
-                    systemmust: vec![String::from("class"), String::from("uuid")],
+                    systemmust: vec![
+                        String::from("class"),
+                        String::from("uuid"),
+                        String::from("last_modified_cid"),
+                    ],
                     must: vec![],
                 },
             );
@@ -1375,7 +1394,7 @@ impl Schema {
 mod tests {
     use crate::audit::AuditScope;
     // use crate::constants::*;
-    use crate::entry::{Entry, EntryInvalid, EntryNew, EntryValid};
+    use crate::entry::{Entry, EntryInit, EntryInvalid, EntryNew, EntryValid};
     use kanidm_proto::v1::{ConsistencyError, SchemaError};
     // use crate::filter::{Filter, FilterValid};
     use crate::schema::SchemaTransaction;
@@ -1399,8 +1418,8 @@ mod tests {
             $e:expr,
             $type:ty
         ) => {{
-            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str($e);
-            let ev1 = unsafe { e1.into_valid_committed() };
+            let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str($e);
+            let ev1 = unsafe { e1.into_sealed_committed() };
 
             let r1 = <$type>::try_from($audit, &ev1);
             assert!(r1.is_ok());
@@ -1413,8 +1432,8 @@ mod tests {
             $e:expr,
             $type:ty
         ) => {{
-            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str($e);
-            let ev1 = unsafe { e1.into_valid_committed() };
+            let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str($e);
+            let ev1 = unsafe { e1.into_sealed_committed() };
 
             let r1 = <$type>::try_from($audit, &ev1);
             assert!(r1.is_err());
@@ -1794,56 +1813,60 @@ mod tests {
         let mut audit = AuditScope::new("test_schema_entries");
         let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
         let schema = schema_outer.read();
-        let e_no_uuid: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "valid": null,
-            "state": null,
+        let e_no_uuid: Entry<EntryInvalid, EntryNew> = unsafe {
+            Entry::unsafe_from_entry_str(
+                r#"{
             "attrs": {}
         }"#,
-        );
+            )
+            .into_invalid_new()
+        };
 
         assert_eq!(
             e_no_uuid.validate(&schema),
             Err(SchemaError::MissingMustAttribute("uuid".to_string()))
         );
 
-        let e_no_class: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "valid": null,
-            "state": null,
+        let e_no_class: Entry<EntryInvalid, EntryNew> = unsafe {
+            Entry::unsafe_from_entry_str(
+                r#"{
             "attrs": {
                 "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"]
             }
         }"#,
-        );
+            )
+            .into_invalid_new()
+        };
 
         assert_eq!(e_no_class.validate(&schema), Err(SchemaError::InvalidClass));
 
-        let e_bad_class: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "valid": null,
-            "state": null,
+        let e_bad_class: Entry<EntryInvalid, EntryNew> = unsafe {
+            Entry::unsafe_from_entry_str(
+                r#"{
             "attrs": {
                 "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
                 "class": ["zzzzzz"]
             }
         }"#,
-        );
+            )
+            .into_invalid_new()
+        };
         assert_eq!(
             e_bad_class.validate(&schema),
             Err(SchemaError::InvalidClass)
         );
 
-        let e_attr_invalid: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "valid": null,
-            "state": null,
+        let e_attr_invalid: Entry<EntryInvalid, EntryNew> = unsafe {
+            Entry::unsafe_from_entry_str(
+                r#"{
             "attrs": {
                 "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
                 "class": ["object", "attributetype"]
             }
         }"#,
-        );
+            )
+            .into_invalid_new()
+        };
 
         let res = e_attr_invalid.validate(&schema);
         assert!(match res {
@@ -1851,10 +1874,9 @@ mod tests {
             _ => false,
         });
 
-        let e_attr_invalid_may: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "valid": null,
-            "state": null,
+        let e_attr_invalid_may: Entry<EntryInvalid, EntryNew> = unsafe {
+            Entry::unsafe_from_entry_str(
+                r#"{
             "attrs": {
                 "class": ["object", "attributetype"],
                 "attributename": ["testattr"],
@@ -1866,17 +1888,18 @@ mod tests {
                 "zzzzz": ["zzzz"]
             }
         }"#,
-        );
+            )
+            .into_invalid_new()
+        };
 
         assert_eq!(
             e_attr_invalid_may.validate(&schema),
             Err(SchemaError::InvalidAttribute)
         );
 
-        let e_attr_invalid_syn: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "valid": null,
-            "state": null,
+        let e_attr_invalid_syn: Entry<EntryInvalid, EntryNew> = unsafe {
+            Entry::unsafe_from_entry_str(
+                r#"{
             "attrs": {
                 "class": ["object", "attributetype"],
                 "attributename": ["testattr"],
@@ -1887,17 +1910,18 @@ mod tests {
                 "syntax": ["UTF8STRING"]
             }
         }"#,
-        );
+            )
+            .into_invalid_new()
+        };
 
         assert_eq!(
             e_attr_invalid_syn.validate(&schema),
             Err(SchemaError::InvalidAttributeSyntax)
         );
 
-        let e_ok: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "valid": null,
-            "state": null,
+        let e_ok: Entry<EntryInvalid, EntryNew> = unsafe {
+            Entry::unsafe_from_entry_str(
+                r#"{
             "attrs": {
                 "class": ["object", "attributetype"],
                 "attributename": ["testattr"],
@@ -1908,7 +1932,9 @@ mod tests {
                 "syntax": ["UTF8STRING"]
             }
         }"#,
-        );
+            )
+            .into_invalid_new()
+        };
         assert!(e_ok.validate(&schema).is_ok());
         println!("{}", audit);
     }
@@ -1924,10 +1950,9 @@ mod tests {
         // check index to upper
         // insense to lower
         // attr name to lower
-        let e_test: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "valid": null,
-            "state": null,
+        let e_test: Entry<EntryInvalid, EntryNew> = unsafe {
+            Entry::unsafe_from_entry_str(
+                r#"{
             "attrs": {
                 "class": ["extensibleobject"],
                 "name": ["TestPerson"],
@@ -1936,23 +1961,21 @@ mod tests {
                 "InDeX": ["equality"]
             }
         }"#,
-        );
+            )
+            .into_invalid_new()
+        };
 
         let e_expect: Entry<EntryValid, EntryNew> = unsafe {
             Entry::unsafe_from_entry_str(
                 r#"{
-            "valid": {
-                "uuid": "db237e8a-0079-4b8c-8a56-593b22aa44d1"
-            },
-            "state": null,
-            "attrs": {
-                "class": ["extensibleobject"],
-                "name": ["testperson"],
-                "syntax": ["UTF8STRING"],
-                "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
-                "index": ["EQUALITY"]
-            }
-        }"#,
+                "attrs": {
+                    "class": ["extensibleobject"],
+                    "name": ["testperson"],
+                    "syntax": ["UTF8STRING"],
+                    "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
+                    "index": ["EQUALITY"]
+                }
+            }"#,
             )
             .into_valid_new()
         };
@@ -1973,7 +1996,7 @@ mod tests {
 
         // Check that an entry normalises, despite being inconsistent to
         // schema.
-        let e_test: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let e_test: Entry<EntryInit, EntryNew> = serde_json::from_str(
             r#"{
             "valid": null,
             "state": null,
@@ -2019,34 +2042,36 @@ mod tests {
         let schema = schema_outer.read();
         // Just because you are extensible, doesn't mean you can be lazy
 
-        let e_extensible_bad: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "valid": null,
-            "state": null,
+        let e_extensible_bad: Entry<EntryInvalid, EntryNew> = unsafe {
+            Entry::unsafe_from_entry_str(
+                r#"{
             "attrs": {
                 "class": ["extensibleobject"],
                 "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
                 "multivalue": ["zzzz"]
             }
         }"#,
-        );
+            )
+            .into_invalid_new()
+        };
 
         assert_eq!(
             e_extensible_bad.validate(&schema),
             Err(SchemaError::InvalidAttributeSyntax)
         );
 
-        let e_extensible: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "valid": null,
-            "state": null,
+        let e_extensible: Entry<EntryInvalid, EntryNew> = unsafe {
+            Entry::unsafe_from_entry_str(
+                r#"{
             "attrs": {
                 "class": ["extensibleobject"],
                 "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
                 "multivalue": ["true"]
             }
         }"#,
-        );
+            )
+            .into_invalid_new()
+        };
 
         /* Is okay because extensible! */
         assert!(e_extensible.validate(&schema).is_ok());

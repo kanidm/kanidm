@@ -1,5 +1,5 @@
 use crate::audit::AuditScope;
-use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
+use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntrySealed};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::server::{QueryServerReadTransaction, QueryServerWriteTransaction};
 use kanidm_proto::v1::{ConsistencyError, OperationError};
@@ -38,7 +38,7 @@ trait Plugin {
         _au: &mut AuditScope,
         _qs: &mut QueryServerWriteTransaction,
         // List of what we will commit that is valid?
-        _cand: &[Entry<EntryValid, EntryNew>],
+        _cand: &[Entry<EntrySealed, EntryNew>],
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         debug!("plugin {} has an unimplemented pre_create!", Self::id());
@@ -49,7 +49,7 @@ trait Plugin {
         _au: &mut AuditScope,
         _qs: &mut QueryServerWriteTransaction,
         // List of what we commited that was valid?
-        _cand: &[Entry<EntryValid, EntryCommitted>],
+        _cand: &[Entry<EntrySealed, EntryCommitted>],
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         debug!("plugin {} has an unimplemented post_create!", Self::id());
@@ -70,8 +70,8 @@ trait Plugin {
         _au: &mut AuditScope,
         _qs: &mut QueryServerWriteTransaction,
         // List of what we modified that was valid?
-        _pre_cand: &[Entry<EntryValid, EntryCommitted>],
-        _cand: &[Entry<EntryValid, EntryCommitted>],
+        _pre_cand: &[Entry<EntrySealed, EntryCommitted>],
+        _cand: &[Entry<EntrySealed, EntryCommitted>],
         _ce: &ModifyEvent,
     ) -> Result<(), OperationError> {
         debug!("plugin {} has an unimplemented post_modify!", Self::id());
@@ -92,7 +92,7 @@ trait Plugin {
         _au: &mut AuditScope,
         _qs: &mut QueryServerWriteTransaction,
         // List of what we delete that was valid?
-        _cand: &[Entry<EntryValid, EntryCommitted>],
+        _cand: &[Entry<EntrySealed, EntryCommitted>],
         _ce: &DeleteEvent,
     ) -> Result<(), OperationError> {
         debug!("plugin {} has an unimplemented post_delete!", Self::id());
@@ -297,7 +297,7 @@ impl Plugins {
     pub fn run_pre_create(
         au: &mut AuditScope,
         qs: &mut QueryServerWriteTransaction,
-        cand: &[Entry<EntryValid, EntryNew>],
+        cand: &[Entry<EntrySealed, EntryNew>],
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         audit_segment!(au, || run_pre_create_plugin!(
@@ -312,7 +312,7 @@ impl Plugins {
     pub fn run_post_create(
         au: &mut AuditScope,
         qs: &mut QueryServerWriteTransaction,
-        cand: &[Entry<EntryValid, EntryCommitted>],
+        cand: &[Entry<EntrySealed, EntryCommitted>],
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         audit_segment!(au, || run_post_create_plugin!(
@@ -350,8 +350,8 @@ impl Plugins {
     pub fn run_post_modify(
         au: &mut AuditScope,
         qs: &mut QueryServerWriteTransaction,
-        pre_cand: &[Entry<EntryValid, EntryCommitted>],
-        cand: &[Entry<EntryValid, EntryCommitted>],
+        pre_cand: &[Entry<EntrySealed, EntryCommitted>],
+        cand: &[Entry<EntrySealed, EntryCommitted>],
         me: &ModifyEvent,
     ) -> Result<(), OperationError> {
         audit_segment!(au, || run_post_modify_plugin!(
@@ -391,7 +391,7 @@ impl Plugins {
     pub fn run_post_delete(
         au: &mut AuditScope,
         qs: &mut QueryServerWriteTransaction,
-        cand: &[Entry<EntryValid, EntryCommitted>],
+        cand: &[Entry<EntrySealed, EntryCommitted>],
         de: &DeleteEvent,
     ) -> Result<(), OperationError> {
         audit_segment!(au, || run_post_delete_plugin!(

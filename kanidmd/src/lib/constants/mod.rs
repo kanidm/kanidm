@@ -110,6 +110,7 @@ pub static UUID_SCHEMA_ATTR_BADLIST_PASSWORD: &str = "00000000-0000-0000-0000-ff
 pub static UUID_SCHEMA_CLASS_SYSTEM_CONFIG: &str = "00000000-0000-0000-0000-ffff00000060";
 pub static UUID_SCHEMA_ATTR_LOGINSHELL: &str = "00000000-0000-0000-0000-ffff00000061";
 pub static UUID_SCHEMA_ATTR_UNIX_PASSWORD: &str = "00000000-0000-0000-0000-ffff00000062";
+pub static UUID_SCHEMA_ATTR_LAST_MOD_CID: &str = "00000000-0000-0000-0000-ffff00000063";
 
 // System and domain infos
 // I'd like to strongly criticise william of the past for fucking up these allocations.

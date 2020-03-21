@@ -11,7 +11,7 @@
 // fixes the graph of memberships
 
 use crate::audit::AuditScope;
-use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryValid};
+use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntrySealed};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::modify::{Modify, ModifyList};
 use crate::plugins::Plugin;
@@ -31,7 +31,7 @@ pub struct MemberOf;
 
 fn affected_uuids<'a, STATE>(
     au: &mut AuditScope,
-    changed: Vec<&'a Entry<EntryValid, STATE>>,
+    changed: Vec<&'a Entry<EntrySealed, STATE>>,
 ) -> Vec<&'a Uuid>
 where
     STATE: std::fmt::Debug,
@@ -195,7 +195,7 @@ impl Plugin for MemberOf {
     fn post_create(
         au: &mut AuditScope,
         qs: &mut QueryServerWriteTransaction,
-        cand: &[Entry<EntryValid, EntryCommitted>],
+        cand: &[Entry<EntrySealed, EntryCommitted>],
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         //
@@ -208,8 +208,8 @@ impl Plugin for MemberOf {
     fn post_modify(
         au: &mut AuditScope,
         qs: &mut QueryServerWriteTransaction,
-        pre_cand: &[Entry<EntryValid, EntryCommitted>],
-        cand: &[Entry<EntryValid, EntryCommitted>],
+        pre_cand: &[Entry<EntrySealed, EntryCommitted>],
+        cand: &[Entry<EntrySealed, EntryCommitted>],
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
         // The condition here is critical - ONLY trigger on entries where changes occur!
@@ -278,7 +278,7 @@ impl Plugin for MemberOf {
     fn post_delete(
         au: &mut AuditScope,
         qs: &mut QueryServerWriteTransaction,
-        cand: &[Entry<EntryValid, EntryCommitted>],
+        cand: &[Entry<EntrySealed, EntryCommitted>],
         _ce: &DeleteEvent,
     ) -> Result<(), OperationError> {
         //
@@ -390,7 +390,7 @@ impl Plugin for MemberOf {
 mod tests {
     // #[macro_use]
     // use crate::plugins::Plugin;
-    use crate::entry::{Entry, EntryInvalid, EntryNew};
+    use crate::entry::{Entry, EntryInit, EntryNew};
     // use crate::error::OperationError;
     use crate::modify::{Modify, ModifyList};
     use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
@@ -509,9 +509,9 @@ mod tests {
     #[test]
     fn test_create_mo_single() {
         // A -> B
-        let mut ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EA);
+        let mut ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EA);
 
-        let eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EB);
+        let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
         ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
 
@@ -537,11 +537,11 @@ mod tests {
     #[test]
     fn test_create_mo_nested() {
         // A -> B -> C
-        let mut ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EA);
+        let mut ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EA);
 
-        let mut eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EB);
+        let mut eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
-        let ec: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EC);
+        let ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
         ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
         eb.add_ava("member", &Value::new_refer_s(&UUID_C).unwrap());
@@ -588,11 +588,11 @@ mod tests {
     fn test_create_mo_cycle() {
         // A -> B -> C -
         // ^-----------/
-        let mut ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EA);
+        let mut ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EA);
 
-        let mut eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EB);
+        let mut eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
-        let mut ec: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EC);
+        let mut ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
         ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
         eb.add_ava("member", &Value::new_refer_s(&UUID_C).unwrap());
@@ -640,13 +640,13 @@ mod tests {
         // A -> B -> C --> D -
         // ^-----------/    /
         // |---------------/
-        let mut ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EA);
+        let mut ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EA);
 
-        let mut eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EB);
+        let mut eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
-        let mut ec: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EC);
+        let mut ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
-        let mut ed: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(ED);
+        let mut ed: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(ED);
 
         ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
         eb.add_ava("member", &Value::new_refer_s(&UUID_C).unwrap());
@@ -714,9 +714,9 @@ mod tests {
         // A    B
         // Add member
         // A -> B
-        let ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EA);
+        let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EA);
 
-        let eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EB);
+        let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
         let preload = vec![ea, eb];
         run_modify_test!(
@@ -745,11 +745,11 @@ mod tests {
         // A    B -> C
         // Add member A -> B
         // A -> B -> C
-        let ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EA);
+        let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EA);
 
-        let mut eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EB);
+        let mut eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
-        let ec: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EC);
+        let ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
         eb.add_ava("member", &Value::new_refer_s(&UUID_C).unwrap());
 
@@ -798,11 +798,11 @@ mod tests {
         // A -> B    C
         // Add member B -> C
         // A -> B -> C
-        let mut ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EA);
+        let mut ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EA);
 
-        let eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EB);
+        let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
-        let ec: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EC);
+        let ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
         ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
 
@@ -853,11 +853,11 @@ mod tests {
         // Add member C -> A
         // A -> B -> C -
         // ^-----------/
-        let mut ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EA);
+        let mut ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EA);
 
-        let mut eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EB);
+        let mut eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
-        let ec: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EC);
+        let ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
         ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
         eb.add_ava("member", &Value::new_refer_s(&UUID_C).unwrap());
@@ -913,13 +913,13 @@ mod tests {
         // A -> B -> C --> D -
         // ^-----------/    /
         // |---------------/
-        let mut ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EA);
+        let mut ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EA);
 
-        let mut eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EB);
+        let mut eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
-        let mut ec: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EC);
+        let mut ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
-        let ed: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(ED);
+        let ed: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(ED);
 
         ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
         eb.add_ava("member", &Value::new_refer_s(&UUID_C).unwrap());
@@ -989,9 +989,9 @@ mod tests {
         // A -> B
         // remove member A -> B
         // A    B
-        let mut ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EA);
+        let mut ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EA);
 
-        let mut eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EB);
+        let mut eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
         ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
         eb.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
@@ -1023,11 +1023,11 @@ mod tests {
         // A -> B -> C
         // Remove A -> B
         // A    B -> C
-        let mut ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EA);
+        let mut ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EA);
 
-        let mut eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EB);
+        let mut eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
-        let mut ec: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EC);
+        let mut ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
         ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
         eb.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
@@ -1079,11 +1079,11 @@ mod tests {
         // A -> B -> C
         // Remove B -> C
         // A -> B    C
-        let mut ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EA);
+        let mut ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EA);
 
-        let mut eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EB);
+        let mut eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
-        let mut ec: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EC);
+        let mut ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
         ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
         eb.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
@@ -1137,11 +1137,11 @@ mod tests {
         // ^-----------/
         // Remove C -> A
         // A -> B -> C
-        let mut ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EA);
+        let mut ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EA);
 
-        let mut eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EB);
+        let mut eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
-        let mut ec: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EC);
+        let mut ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
         ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
         ea.add_ava("memberof", &Value::new_refer_s(&UUID_C).unwrap());
@@ -1210,13 +1210,13 @@ mod tests {
         // A -> B -> C    D -
         // ^                /
         // |---------------/
-        let mut ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EA);
+        let mut ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EA);
 
-        let mut eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EB);
+        let mut eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
-        let mut ec: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EC);
+        let mut ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
-        let mut ed: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(ED);
+        let mut ed: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(ED);
 
         ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
         ea.add_ava("memberof", &Value::new_refer_s(&UUID_D).unwrap());
@@ -1309,9 +1309,9 @@ mod tests {
     fn test_delete_mo_simple() {
         debug!("TEST START");
         // X -> B
-        let mut ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EA);
+        let mut ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EA);
 
-        let mut eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EB);
+        let mut eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
         ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
         eb.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
@@ -1337,11 +1337,11 @@ mod tests {
     #[test]
     fn test_delete_mo_nested_head() {
         // X -> B -> C
-        let mut ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EA);
+        let mut ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EA);
 
-        let mut eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EB);
+        let mut eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
-        let mut ec: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EC);
+        let mut ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
         ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
         eb.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
@@ -1381,11 +1381,11 @@ mod tests {
     #[test]
     fn test_delete_mo_nested_branch() {
         // A -> X -> C
-        let mut ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EA);
+        let mut ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EA);
 
-        let mut eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EB);
+        let mut eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
-        let mut ec: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EC);
+        let mut ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
         ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
         eb.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
@@ -1426,11 +1426,11 @@ mod tests {
     fn test_delete_mo_cycle() {
         // X -> B -> C -
         // ^-----------/
-        let mut ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EA);
+        let mut ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EA);
 
-        let mut eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EB);
+        let mut eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
-        let mut ec: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EC);
+        let mut ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
         ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
         ea.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
@@ -1480,13 +1480,13 @@ mod tests {
         // A -> X -> C --> D -
         // ^-----------/    /
         // |---------------/
-        let mut ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EA);
+        let mut ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EA);
 
-        let mut eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EB);
+        let mut eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
-        let mut ec: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(EC);
+        let mut ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
-        let mut ed: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(ED);
+        let mut ed: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(ED);
 
         ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
         ea.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());

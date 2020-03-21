@@ -22,7 +22,7 @@ use std::collections::BTreeSet;
 use uuid::Uuid;
 
 use crate::audit::AuditScope;
-use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryReduced, EntryValid};
+use crate::entry::{Entry, EntryCommitted, EntryInit, EntryNew, EntryReduced, EntrySealed};
 use crate::filter::{Filter, FilterValid};
 use crate::modify::Modify;
 use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
@@ -53,7 +53,7 @@ impl AccessControlSearch {
     pub fn try_from(
         audit: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
-        value: &Entry<EntryValid, EntryCommitted>,
+        value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         if !value.attribute_value_pres("class", &CLASS_ACS) {
             audit_log!(audit, "class access_control_search not present.");
@@ -103,7 +103,7 @@ impl AccessControlDelete {
     pub fn try_from(
         audit: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
-        value: &Entry<EntryValid, EntryCommitted>,
+        value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         if !value.attribute_value_pres("class", &CLASS_ACD) {
             audit_log!(audit, "class access_control_delete not present.");
@@ -146,7 +146,7 @@ impl AccessControlCreate {
     pub fn try_from(
         audit: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
-        value: &Entry<EntryValid, EntryCommitted>,
+        value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         if !value.attribute_value_pres("class", &CLASS_ACC) {
             audit_log!(audit, "class access_control_create not present.");
@@ -204,7 +204,7 @@ impl AccessControlModify {
     pub fn try_from(
         audit: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
-        value: &Entry<EntryValid, EntryCommitted>,
+        value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         if !value.attribute_value_pres("class", &CLASS_ACM) {
             audit_log!(audit, "class access_control_modify not present.");
@@ -272,7 +272,7 @@ impl AccessControlProfile {
     fn try_from(
         audit: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
-        value: &Entry<EntryValid, EntryCommitted>,
+        value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         // Assert we have class access_control_profile
         if !value.attribute_value_pres("class", &CLASS_ACP) {
@@ -357,12 +357,12 @@ pub trait AccessControlsTransaction {
         &self,
         audit: &mut AuditScope,
         se: &SearchEvent,
-        entries: Vec<Entry<EntryValid, EntryCommitted>>,
-    ) -> Result<Vec<Entry<EntryValid, EntryCommitted>>, OperationError> {
+        entries: Vec<Entry<EntrySealed, EntryCommitted>>,
+    ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
         audit_log!(audit, "Access check for event: {:?}", se);
 
         // If this is an internal search, return our working set.
-        let rec_entry: &Entry<EntryValid, EntryCommitted> = match &se.event.origin {
+        let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &se.event.origin {
             EventOrigin::Internal => {
                 audit_log!(audit, "Internal operation, bypassing access check");
                 // No need to check ACS
@@ -423,7 +423,7 @@ pub trait AccessControlsTransaction {
         let requested_attrs: BTreeSet<&str> = se.filter_orig.get_attr_set();
 
         // For each entry
-        let allowed_entries: Vec<Entry<EntryValid, EntryCommitted>> = entries
+        let allowed_entries: Vec<Entry<EntrySealed, EntryCommitted>> = entries
             .into_iter()
             .filter(|e| {
                 // For each acp
@@ -489,7 +489,7 @@ pub trait AccessControlsTransaction {
         &self,
         audit: &mut AuditScope,
         se: &SearchEvent,
-        entries: Vec<Entry<EntryValid, EntryCommitted>>,
+        entries: Vec<Entry<EntrySealed, EntryCommitted>>,
     ) -> Result<Vec<Entry<EntryReduced, EntryCommitted>>, OperationError> {
         /*
          * Super similar to above (could even re-use some parts). Given a set of entries,
@@ -502,7 +502,7 @@ pub trait AccessControlsTransaction {
 
         // If this is an internal search, do nothing. How this occurs in this
         // interface is beyond me ....
-        let rec_entry: &Entry<EntryValid, EntryCommitted> = match &se.event.origin {
+        let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &se.event.origin {
             EventOrigin::Internal => {
                 if cfg!(test) {
                     audit_log!(audit, "TEST: Internal search in external interface - allowing due to cfg test ...");
@@ -646,11 +646,11 @@ pub trait AccessControlsTransaction {
         &self,
         audit: &mut AuditScope,
         me: &ModifyEvent,
-        entries: &[Entry<EntryValid, EntryCommitted>],
+        entries: &[Entry<EntrySealed, EntryCommitted>],
     ) -> Result<bool, OperationError> {
         audit_log!(audit, "Access check for event: {:?}", me);
 
-        let rec_entry: &Entry<EntryValid, EntryCommitted> = match &me.event.origin {
+        let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &me.event.origin {
             EventOrigin::Internal => {
                 // No need to check ACS
                 return Ok(true);
@@ -839,11 +839,11 @@ pub trait AccessControlsTransaction {
         &self,
         audit: &mut AuditScope,
         ce: &CreateEvent,
-        entries: &[Entry<EntryInvalid, EntryNew>],
+        entries: &[Entry<EntryInit, EntryNew>],
     ) -> Result<bool, OperationError> {
         audit_log!(audit, "Access check for event: {:?}", ce);
 
-        let rec_entry: &Entry<EntryValid, EntryCommitted> = match &ce.event.origin {
+        let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &ce.event.origin {
             EventOrigin::Internal => {
                 // No need to check ACS
                 return Ok(true);
@@ -998,11 +998,11 @@ pub trait AccessControlsTransaction {
         &self,
         audit: &mut AuditScope,
         de: &DeleteEvent,
-        entries: &[Entry<EntryValid, EntryCommitted>],
+        entries: &[Entry<EntrySealed, EntryCommitted>],
     ) -> Result<bool, OperationError> {
         audit_log!(audit, "Access check for event: {:?}", de);
 
-        let rec_entry: &Entry<EntryValid, EntryCommitted> = match &de.event.origin {
+        let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &de.event.origin {
             EventOrigin::Internal => {
                 // No need to check ACS
                 return Ok(true);
@@ -1257,7 +1257,7 @@ mod tests {
         AccessControlSearch, AccessControls, AccessControlsTransaction,
     };
     use crate::audit::AuditScope;
-    use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryReduced};
+    use crate::entry::{Entry, EntryCommitted, EntryInit, EntryNew, EntryReduced};
     // use crate::server::QueryServerWriteTransaction;
 
     use crate::event::{CreateEvent, DeleteEvent, ModifyEvent, SearchEvent};
@@ -1273,8 +1273,8 @@ mod tests {
             $e:expr,
             $type:ty
         ) => {{
-            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str($e);
-            let ev1 = unsafe { e1.into_valid_committed() };
+            let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str($e);
+            let ev1 = unsafe { e1.into_sealed_committed() };
 
             let r1 = <$type>::try_from($audit, $qs, &ev1);
             assert!(r1.is_err());
@@ -1288,8 +1288,8 @@ mod tests {
             $e:expr,
             $type:ty
         ) => {{
-            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str($e);
-            let ev1 = unsafe { e1.into_valid_committed() };
+            let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str($e);
+            let ev1 = unsafe { e1.into_sealed_committed() };
 
             let r1 = <$type>::try_from($audit, $qs, &ev1);
             assert!(r1.is_ok());
@@ -1754,7 +1754,7 @@ mod tests {
         // Test that an internal search bypasses ACS
         let se = unsafe { SearchEvent::new_internal_invalid(filter!(f_pres("class"))) };
 
-        let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
                 "valid": null,
                 "state": null,
@@ -1765,7 +1765,7 @@ mod tests {
                 }
                 }"#,
         );
-        let ev1 = unsafe { e1.into_valid_committed() };
+        let ev1 = unsafe { e1.into_sealed_committed() };
 
         let expect = vec![ev1.clone()];
         let entries = vec![ev1];
@@ -1790,11 +1790,11 @@ mod tests {
     #[test]
     fn test_access_enforce_search() {
         // Test that entries from a search are reduced by acps
-        let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
-        let ev1 = unsafe { e1.into_valid_committed() };
+        let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
+        let ev1 = unsafe { e1.into_sealed_committed() };
 
-        let e2: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON2);
-        let ev2 = unsafe { e2.into_valid_committed() };
+        let e2: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON2);
+        let ev2 = unsafe { e2.into_sealed_committed() };
 
         let r_set = vec![ev1.clone(), ev2.clone()];
 
@@ -1877,13 +1877,13 @@ mod tests {
         // Test that attributes are correctly limited.
         // In this case, we test that a user can only see "name" despite the
         // class and uuid being present.
-        let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
-        let ev1 = unsafe { e1.into_valid_committed() };
+        let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
+        let ev1 = unsafe { e1.into_sealed_committed() };
         let r_set = vec![ev1.clone()];
 
-        let ex1: Entry<EntryInvalid, EntryNew> =
+        let ex1: Entry<EntryInit, EntryNew> =
             Entry::unsafe_from_entry_str(JSON_TESTPERSON1_REDUCED);
-        let exv1 = unsafe { ex1.into_valid_committed() };
+        let exv1 = unsafe { ex1.into_sealed_committed() };
         let ex_anon = vec![exv1.clone()];
 
         let se_anon = unsafe {
@@ -1916,13 +1916,13 @@ mod tests {
         // Test that attributes are correctly limited by the request.
         // In this case, we test that a user can only see "name" despite the
         // class and uuid being present.
-        let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
-        let ev1 = unsafe { e1.into_valid_committed() };
+        let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
+        let ev1 = unsafe { e1.into_sealed_committed() };
         let r_set = vec![ev1.clone()];
 
-        let ex1: Entry<EntryInvalid, EntryNew> =
+        let ex1: Entry<EntryInit, EntryNew> =
             Entry::unsafe_from_entry_str(JSON_TESTPERSON1_REDUCED);
-        let exv1 = unsafe { ex1.into_valid_committed() };
+        let exv1 = unsafe { ex1.into_sealed_committed() };
         let ex_anon = vec![exv1.clone()];
 
         let mut se_anon = unsafe {
@@ -1977,8 +1977,8 @@ mod tests {
 
     #[test]
     fn test_access_enforce_modify() {
-        let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
-        let ev1 = unsafe { e1.into_valid_committed() };
+        let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
+        let ev1 = unsafe { e1.into_sealed_committed() };
         let r_set = vec![ev1.clone()];
 
         // Name present
@@ -2180,16 +2180,16 @@ mod tests {
 
     #[test]
     fn test_access_enforce_create() {
-        let ev1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_TEST_CREATE_AC1);
+        let ev1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_TEST_CREATE_AC1);
         let r1_set = vec![ev1.clone()];
 
-        let ev2: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_TEST_CREATE_AC2);
+        let ev2: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_TEST_CREATE_AC2);
         let r2_set = vec![ev2.clone()];
 
-        let ev3: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_TEST_CREATE_AC3);
+        let ev3: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_TEST_CREATE_AC3);
         let r3_set = vec![ev3.clone()];
 
-        let ev4: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_TEST_CREATE_AC4);
+        let ev4: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_TEST_CREATE_AC4);
         let r4_set = vec![ev4.clone()];
 
         // In this case, we can make the create event with an empty entry
@@ -2265,8 +2265,8 @@ mod tests {
 
     #[test]
     fn test_access_enforce_delete() {
-        let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
-        let ev1 = unsafe { e1.into_valid_committed() };
+        let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
+        let ev1 = unsafe { e1.into_sealed_committed() };
         let r_set = vec![ev1.clone()];
 
         let de_admin = unsafe {

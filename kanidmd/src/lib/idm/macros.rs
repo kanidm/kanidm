@@ -5,7 +5,8 @@ macro_rules! entry_str_to_account {
         use crate::idm::account::Account;
         use crate::value::Value;
 
-        let mut e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str($entry_str);
+        let mut e: Entry<EntryInvalid, EntryNew> =
+            unsafe { Entry::unsafe_from_entry_str($entry_str).into_invalid_new() };
         // Add spn, because normally this is generated but in tests we can't.
         let spn = e
             .get_ava_single_str("name")
@@ -13,7 +14,7 @@ macro_rules! entry_str_to_account {
             .expect("Failed to munge spn from name!");
         e.set_avas("spn", vec![spn]);
 
-        let e = unsafe { e.into_valid_new().into_valid_committed() };
+        let e = unsafe { e.into_sealed_committed() };
 
         Account::try_from_entry_no_groups(e).expect("Account conversion failure")
     }};

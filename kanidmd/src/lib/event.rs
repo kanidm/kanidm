@@ -1,5 +1,5 @@
 use crate::audit::AuditScope;
-use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryReduced, EntryValid};
+use crate::entry::{Entry, EntryCommitted, EntryInit, EntryNew, EntryReduced, EntrySealed};
 use crate::filter::{Filter, FilterInvalid, FilterValid};
 use crate::schema::SchemaTransaction;
 use crate::value::PartialValue;
@@ -67,7 +67,7 @@ impl SearchResult {
 #[derive(Debug, Clone)]
 pub enum EventOrigin {
     // External event, needs a UUID associated! Perhaps even an Entry/User to improve ACP checks?
-    User(Entry<EntryValid, EntryCommitted>),
+    User(Entry<EntrySealed, EntryCommitted>),
     // Probably will bypass access profiles in many cases ...
     Internal,
     // Not used yet, but indicates that this change or event was triggered by a replication
@@ -173,7 +173,7 @@ impl Event {
     }
 
     #[cfg(test)]
-    pub fn from_impersonate_entry(e: Entry<EntryValid, EntryCommitted>) -> Self {
+    pub fn from_impersonate_entry(e: Entry<EntrySealed, EntryCommitted>) -> Self {
         Event {
             origin: EventOrigin::User(e),
         }
@@ -181,8 +181,8 @@ impl Event {
 
     #[cfg(test)]
     pub unsafe fn from_impersonate_entry_ser(e: &str) -> Self {
-        let ei: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(e);
-        Self::from_impersonate_entry(ei.into_valid_committed())
+        let ei: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(e);
+        Self::from_impersonate_entry(ei.into_sealed_committed())
     }
 
     pub fn from_impersonate(event: &Self) -> Self {
@@ -329,7 +329,7 @@ impl SearchEvent {
 
     #[cfg(test)]
     pub unsafe fn new_impersonate_entry(
-        e: Entry<EntryValid, EntryCommitted>,
+        e: Entry<EntrySealed, EntryCommitted>,
         filter: Filter<FilterInvalid>,
     ) -> Self {
         SearchEvent {
@@ -381,7 +381,7 @@ impl SearchEvent {
     #[cfg(test)]
     /* Impersonate a request for recycled objects */
     pub unsafe fn new_rec_impersonate_entry(
-        e: Entry<EntryValid, EntryCommitted>,
+        e: Entry<EntrySealed, EntryCommitted>,
         filter: Filter<FilterInvalid>,
     ) -> Self {
         SearchEvent {
@@ -395,7 +395,7 @@ impl SearchEvent {
     #[cfg(test)]
     /* Impersonate an external request AKA filter ts + recycle */
     pub unsafe fn new_ext_impersonate_entry(
-        e: Entry<EntryValid, EntryCommitted>,
+        e: Entry<EntrySealed, EntryCommitted>,
         filter: Filter<FilterInvalid>,
     ) -> Self {
         SearchEvent {
@@ -434,7 +434,7 @@ pub struct CreateEvent {
     pub event: Event,
     // This may still actually change to handle the *raw* nature of the
     // input that we plan to parse.
-    pub entries: Vec<Entry<EntryInvalid, EntryNew>>,
+    pub entries: Vec<Entry<EntryInit, EntryNew>>,
     // Is the CreateEvent from an internal or external source?
     // This may affect which plugins are run ...
 }
@@ -467,7 +467,7 @@ impl CreateEvent {
     #[cfg(test)]
     pub unsafe fn new_impersonate_entry_ser(
         e: &str,
-        entries: Vec<Entry<EntryInvalid, EntryNew>>,
+        entries: Vec<Entry<EntryInit, EntryNew>>,
     ) -> Self {
         CreateEvent {
             event: Event::from_impersonate_entry_ser(e),
@@ -475,7 +475,7 @@ impl CreateEvent {
         }
     }
 
-    pub fn new_internal(entries: Vec<Entry<EntryInvalid, EntryNew>>) -> Self {
+    pub fn new_internal(entries: Vec<Entry<EntryInit, EntryNew>>) -> Self {
         CreateEvent {
             event: Event::from_internal(),
             entries,
@@ -564,7 +564,7 @@ impl DeleteEvent {
 
     #[cfg(test)]
     pub unsafe fn new_impersonate_entry(
-        e: Entry<EntryValid, EntryCommitted>,
+        e: Entry<EntrySealed, EntryCommitted>,
         filter: Filter<FilterInvalid>,
     ) -> Self {
         DeleteEvent {
@@ -765,7 +765,7 @@ impl ModifyEvent {
 
     #[cfg(test)]
     pub unsafe fn new_impersonate_entry(
-        e: Entry<EntryValid, EntryCommitted>,
+        e: Entry<EntrySealed, EntryCommitted>,
         filter: Filter<FilterInvalid>,
         modlist: ModifyList<ModifyInvalid>,
     ) -> Self {
@@ -1028,7 +1028,7 @@ impl ReviveRecycledEvent {
 
     #[cfg(test)]
     pub unsafe fn new_impersonate_entry(
-        e: Entry<EntryValid, EntryCommitted>,
+        e: Entry<EntrySealed, EntryCommitted>,
         filter: Filter<FilterInvalid>,
     ) -> Self {
         ReviveRecycledEvent {
