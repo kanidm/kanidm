@@ -12,7 +12,7 @@
 use std::collections::BTreeSet;
 
 use crate::audit::AuditScope;
-use crate::entry::{Entry, EntryCommitted, EntryValid};
+use crate::entry::{Entry, EntryCommitted, EntrySealed};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::modify::{Modify, ModifyInvalid, ModifyList};
 use crate::plugins::Plugin;
@@ -89,7 +89,7 @@ impl Plugin for ReferentialIntegrity {
     fn post_create(
         au: &mut AuditScope,
         qs: &mut QueryServerWriteTransaction,
-        cand: &[Entry<EntryValid, EntryCommitted>],
+        cand: &[Entry<EntrySealed, EntryCommitted>],
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         let schema = qs.get_schema();
@@ -114,8 +114,8 @@ impl Plugin for ReferentialIntegrity {
     fn post_modify(
         au: &mut AuditScope,
         qs: &mut QueryServerWriteTransaction,
-        _pre_cand: &[Entry<EntryValid, EntryCommitted>],
-        _cand: &[Entry<EntryValid, EntryCommitted>],
+        _pre_cand: &[Entry<EntrySealed, EntryCommitted>],
+        _cand: &[Entry<EntrySealed, EntryCommitted>],
         me: &ModifyEvent,
     ) -> Result<(), OperationError> {
         let schema = qs.get_schema();
@@ -137,7 +137,7 @@ impl Plugin for ReferentialIntegrity {
     fn post_delete(
         au: &mut AuditScope,
         qs: &mut QueryServerWriteTransaction,
-        cand: &[Entry<EntryValid, EntryCommitted>],
+        cand: &[Entry<EntrySealed, EntryCommitted>],
         _ce: &DeleteEvent,
     ) -> Result<(), OperationError> {
         // Delete is pretty different to the other pre checks. This is
@@ -240,7 +240,7 @@ impl Plugin for ReferentialIntegrity {
 mod tests {
     // #[macro_use]
     // use crate::plugins::Plugin;
-    use crate::entry::{Entry, EntryInvalid, EntryNew};
+    use crate::entry::{Entry, EntryInit, EntryNew};
     use crate::modify::{Modify, ModifyList};
     use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
     use crate::value::{PartialValue, Value};
@@ -249,7 +249,7 @@ mod tests {
     // The create references a uuid that doesn't exist - reject
     #[test]
     fn test_create_uuid_reference_not_exist() {
-        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -278,7 +278,7 @@ mod tests {
     // The create references a uuid that does exist - validate
     #[test]
     fn test_create_uuid_reference_exist() {
-        let ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -291,7 +291,7 @@ mod tests {
         }"#,
         );
 
-        let eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -327,9 +327,9 @@ mod tests {
     // The create references itself - allow
     #[test]
     fn test_create_uuid_reference_self() {
-        let preload: Vec<Entry<EntryInvalid, EntryNew>> = Vec::new();
+        let preload: Vec<Entry<EntryInit, EntryNew>> = Vec::new();
 
-        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -365,7 +365,7 @@ mod tests {
     // Modify references a different object - allow
     #[test]
     fn test_modify_uuid_reference_exist() {
-        let ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -378,7 +378,7 @@ mod tests {
         }"#,
         );
 
-        let eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -408,7 +408,7 @@ mod tests {
     // Modify reference something that doesn't exist - must be rejected
     #[test]
     fn test_modify_uuid_reference_not_exist() {
-        let eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -440,7 +440,7 @@ mod tests {
     // Modify removes the reference to an entry
     #[test]
     fn test_modify_remove_referee() {
-        let ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -453,7 +453,7 @@ mod tests {
         }"#,
         );
 
-        let eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -481,7 +481,7 @@ mod tests {
     // Modify adds reference to self - allow
     #[test]
     fn test_modify_uuid_reference_self() {
-        let ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -512,7 +512,7 @@ mod tests {
     // Test that deleted entries can not be referenced
     #[test]
     fn test_modify_reference_deleted() {
-        let ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -525,7 +525,7 @@ mod tests {
         }"#,
         );
 
-        let eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -559,7 +559,7 @@ mod tests {
     // This is the valid case, where the reference is MAY.
     #[test]
     fn test_delete_remove_referent_valid() {
-        let ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -572,7 +572,7 @@ mod tests {
         }"#,
         );
 
-        let eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -605,7 +605,7 @@ mod tests {
     // Delete of something that holds references.
     #[test]
     fn test_delete_remove_referee() {
-        let ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -618,7 +618,7 @@ mod tests {
         }"#,
         );
 
-        let eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -645,7 +645,7 @@ mod tests {
     // Delete something that has a self reference.
     #[test]
     fn test_delete_remove_reference_self() {
-        let eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,

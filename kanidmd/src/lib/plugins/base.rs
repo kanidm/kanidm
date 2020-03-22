@@ -268,7 +268,7 @@ mod tests {
     // #[macro_use]
     // use crate::plugins::Plugin;
     use crate::constants::JSON_ADMIN_V1;
-    use crate::entry::{Entry, EntryInvalid, EntryNew};
+    use crate::entry::{Entry, EntryInit, EntryNew};
     use crate::modify::{Modify, ModifyList};
     use crate::server::QueryServerTransaction;
     use crate::server::QueryServerWriteTransaction;
@@ -309,9 +309,9 @@ mod tests {
     // check create where no uuid
     #[test]
     fn test_pre_create_no_uuid() {
-        let preload: Vec<Entry<EntryInvalid, EntryNew>> = Vec::new();
+        let preload: Vec<Entry<EntryInit, EntryNew>> = Vec::new();
 
-        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -347,9 +347,9 @@ mod tests {
     // check unparseable uuid
     #[test]
     fn test_pre_create_uuid_invalid() {
-        let preload: Vec<Entry<EntryInvalid, EntryNew>> = Vec::new();
+        let preload: Vec<Entry<EntryInit, EntryNew>> = Vec::new();
 
-        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -377,9 +377,9 @@ mod tests {
     // check entry where uuid is empty list
     #[test]
     fn test_pre_create_uuid_empty() {
-        let preload: Vec<Entry<EntryInvalid, EntryNew>> = Vec::new();
+        let preload: Vec<Entry<EntryInit, EntryNew>> = Vec::new();
 
-        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -409,9 +409,9 @@ mod tests {
     // check create where provided uuid is valid. It should be unchanged.
     #[test]
     fn test_pre_create_uuid_valid() {
-        let preload: Vec<Entry<EntryInvalid, EntryNew>> = Vec::new();
+        let preload: Vec<Entry<EntryInit, EntryNew>> = Vec::new();
 
-        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -450,9 +450,9 @@ mod tests {
 
     #[test]
     fn test_pre_create_uuid_valid_multi() {
-        let preload: Vec<Entry<EntryInvalid, EntryNew>> = Vec::new();
+        let preload: Vec<Entry<EntryInit, EntryNew>> = Vec::new();
 
-        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -489,7 +489,7 @@ mod tests {
     // to ensure we always have a name space to draw from?
     #[test]
     fn test_pre_create_uuid_exist() {
-        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -520,9 +520,9 @@ mod tests {
     #[test]
     fn test_pre_create_double_uuid() {
         // Test adding two entries with the same uuid
-        let preload: Vec<Entry<EntryInvalid, EntryNew>> = Vec::new();
+        let preload: Vec<Entry<EntryInit, EntryNew>> = Vec::new();
 
-        let ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -536,7 +536,7 @@ mod tests {
         }"#,
         );
 
-        let eb: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -567,7 +567,7 @@ mod tests {
     #[test]
     fn test_modify_uuid_present() {
         // Add another uuid to a type
-        let ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -598,7 +598,7 @@ mod tests {
     #[test]
     fn test_modify_uuid_removed() {
         // Test attempting to remove a uuid
-        let ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -629,7 +629,7 @@ mod tests {
     #[test]
     fn test_modify_uuid_purged() {
         // Test attempting to purge uuid
-        let ea: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -659,14 +659,12 @@ mod tests {
         // Test an external create, it should fail.
         // Testing internal create is not super needed, due to migrations at start
         // up testing this every time we run :P
-        let acp: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
+        let acp: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
 
         let preload = vec![acp];
 
-        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["person", "system"],
                 "name": ["testperson"],
@@ -695,10 +693,8 @@ mod tests {
         // Test that internal create of "does not exist" will fail.
         let preload = Vec::new();
 
-        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["person", "system"],
                 "name": ["testperson"],

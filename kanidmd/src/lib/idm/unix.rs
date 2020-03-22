@@ -3,7 +3,7 @@ use uuid::Uuid;
 use crate::audit::AuditScope;
 use crate::constants::UUID_ANONYMOUS;
 use crate::credential::Credential;
-use crate::entry::{Entry, EntryCommitted, EntryReduced, EntryValid};
+use crate::entry::{Entry, EntryCommitted, EntryReduced, EntrySealed};
 use crate::modify::{ModifyInvalid, ModifyList};
 use crate::server::{
     QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
@@ -94,7 +94,7 @@ macro_rules! try_from_entry {
 impl UnixUserAccount {
     pub(crate) fn try_from_entry_rw(
         au: &mut AuditScope,
-        value: Entry<EntryValid, EntryCommitted>,
+        value: Entry<EntrySealed, EntryCommitted>,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         let groups = UnixGroup::try_from_account_entry_rw(au, &value, qs)?;
@@ -103,7 +103,7 @@ impl UnixUserAccount {
 
     pub(crate) fn try_from_entry_ro(
         au: &mut AuditScope,
-        value: Entry<EntryValid, EntryCommitted>,
+        value: Entry<EntrySealed, EntryCommitted>,
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         let groups = UnixGroup::try_from_account_entry_ro(au, &value, qs)?;
@@ -294,7 +294,7 @@ macro_rules! try_from_account_group_e {
 impl UnixGroup {
     pub fn try_from_account_entry_rw(
         au: &mut AuditScope,
-        value: &Entry<EntryValid, EntryCommitted>,
+        value: &Entry<EntrySealed, EntryCommitted>,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Vec<Self>, OperationError> {
         try_from_account_group_e!(au, value, qs)
@@ -302,7 +302,7 @@ impl UnixGroup {
 
     pub fn try_from_account_entry_ro(
         au: &mut AuditScope,
-        value: &Entry<EntryValid, EntryCommitted>,
+        value: &Entry<EntrySealed, EntryCommitted>,
         qs: &QueryServerReadTransaction,
     ) -> Result<Vec<Self>, OperationError> {
         try_from_account_group_e!(au, value, qs)
@@ -323,7 +323,7 @@ impl UnixGroup {
     }
 
     pub fn try_from_entry(
-        value: Entry<EntryValid, EntryCommitted>,
+        value: Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         try_from_group_e!(value)
     }

@@ -31,6 +31,7 @@ use crate::audit::AuditScope;
 use crate::credential::Credential;
 use crate::filter::{Filter, FilterInvalid, FilterResolved, FilterValidResolved};
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
+use crate::repl::cid::Cid;
 use crate::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
 use crate::server::{
     QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
@@ -153,8 +154,6 @@ impl<'a> Iterator for EntryAvasMut<'a> {
     }
 }
 
-// This is a BE concept, so move it there!
-
 // Entry should have a lifecycle of types. THis is Raw (modifiable) and Entry (verified).
 // This way, we can move between them, but only certain actions are possible on either
 // This means modifications happen on Raw, but to move to Entry, you schema normalise.
@@ -166,32 +165,64 @@ impl<'a> Iterator for EntryAvasMut<'a> {
 // This is specifically important for the commit to the backend, as we only want to
 // commit validated types.
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct EntryNew; // new
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct EntryCommitted {
     id: u64,
 } // It's been in the DB, so it has an id
   // pub struct EntryPurged;
 
 #[derive(Clone, Debug)]
+pub struct EntryInit;
+
+/*  |
+ *  | Init comes from a proto entry, it's new.
+ *  | We add the current Cid before we allow mods.
+ *  V
+ */
+
+#[derive(Clone, Debug)]
+pub struct EntryInvalid {
+    cid: Cid,
+}
+
+/*  |
+ *  | The changes made within this entry are validated by the schema.
+ *  V
+ */
+
+#[derive(Clone, Debug)]
 pub struct EntryValid {
     // Asserted with schema, so we know it has a UUID now ...
     uuid: Uuid,
+    cid: Cid,
 }
 
-// Modified, can't be sure of it's content! We therefore disregard the UUID
-// and on validate, we check it again.
-#[derive(Clone, Copy, Debug)]
-pub struct EntryInvalid;
+/*  |
+ *  | The changes are extracted into the changelog as needed, creating a
+ *  | stable database entry.
+ *  V
+ */
 
-// This state can't exist because everything is normalised now with Value types
-// #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
-// pub struct EntryNormalised;
+#[derive(Clone, Debug)]
+pub struct EntrySealed {
+    uuid: Uuid,
+}
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct EntryReduced {
     uuid: Uuid,
+}
+
+fn compare_attrs(
+    left: &BTreeMap<String, BTreeSet<Value>>,
+    right: &BTreeMap<String, BTreeSet<Value>>,
+) -> bool {
+    left.iter()
+        .filter(|(k, _v)| k != &"last_modified_cid")
+        .zip(right.iter().filter(|(k, _v)| k != &"last_modified_cid"))
+        .all(|((ka, va), (kb, vb))| ka == kb && va == vb)
 }
 
 /// Entry is the core data storage type of the server. Almost every aspect of the server is
@@ -229,18 +260,37 @@ pub struct Entry<VALID, STATE> {
     attrs: BTreeMap<String, BTreeSet<Value>>,
 }
 
-impl<STATE> std::fmt::Display for Entry<EntryValid, STATE> {
+impl<STATE> std::fmt::Display for Entry<EntrySealed, STATE> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.get_uuid())
     }
 }
 
-impl Entry<EntryInvalid, EntryNew> {
+impl<STATE> std::fmt::Display for Entry<EntryInit, STATE> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Entry in initial state")
+    }
+}
+
+impl<STATE> Entry<EntryInit, STATE> {
+    pub(crate) fn get_uuid(&self) -> Option<&Uuid> {
+        match self.attrs.get("uuid") {
+            Some(vs) => match vs.iter().take(1).next() {
+                // Uv is a value that might contain uuid - we hope it does!
+                Some(uv) => uv.to_uuid(),
+                _ => None,
+            },
+            None => None,
+        }
+    }
+}
+
+impl Entry<EntryInit, EntryNew> {
     #[cfg(test)]
     pub fn new() -> Self {
         Entry {
             // This means NEVER COMMITED
-            valid: EntryInvalid,
+            valid: EntryInit,
             state: EntryNew,
             attrs: BTreeMap::new(),
         }
@@ -281,7 +331,7 @@ impl Entry<EntryInvalid, EntryNew> {
             // For now, we do a straight move, and we sort the incoming data
             // sets so that BST works.
             state: EntryNew,
-            valid: EntryInvalid,
+            valid: EntryInit,
             attrs: x,
         })
     }
@@ -404,10 +454,78 @@ impl Entry<EntryInvalid, EntryNew> {
 
         // return the entry!
         Entry {
+            valid: EntryInit,
             state: EntryNew,
-            valid: EntryInvalid,
             attrs: x,
         }
+    }
+
+    pub fn assign_cid(mut self, cid: Cid) -> Entry<EntryInvalid, EntryNew> {
+        /* setup our last changed time */
+        self.set_last_changed(cid.clone());
+
+        Entry {
+            valid: EntryInvalid { cid },
+            state: EntryNew,
+            attrs: self.attrs,
+        }
+    }
+
+    pub fn compare(&self, rhs: &Entry<EntrySealed, EntryCommitted>) -> bool {
+        compare_attrs(&self.attrs, &rhs.attrs)
+    }
+
+    #[cfg(test)]
+    pub unsafe fn into_invalid_new(mut self) -> Entry<EntryInvalid, EntryNew> {
+        self.set_last_changed(Cid::new_zero());
+        Entry {
+            valid: EntryInvalid {
+                cid: Cid::new_zero(),
+            },
+            state: EntryNew,
+            attrs: self.attrs,
+        }
+    }
+
+    #[cfg(test)]
+    pub unsafe fn into_valid_new(self) -> Entry<EntryValid, EntryNew> {
+        Entry {
+            valid: EntryValid {
+                cid: Cid::new_zero(),
+                uuid: self.get_uuid().expect("Invalid uuid").clone(),
+            },
+            state: EntryNew,
+            attrs: self.attrs,
+        }
+    }
+
+    #[cfg(test)]
+    pub unsafe fn into_sealed_committed(self) -> Entry<EntrySealed, EntryCommitted> {
+        let uuid = self
+            .get_uuid()
+            .and_then(|u| Some(u.clone()))
+            .unwrap_or_else(|| Uuid::new_v4());
+        Entry {
+            valid: EntrySealed { uuid },
+            state: EntryCommitted { id: 0 },
+            attrs: self.attrs,
+        }
+    }
+
+    #[cfg(test)]
+    pub unsafe fn into_sealed_new(self) -> Entry<EntrySealed, EntryNew> {
+        Entry {
+            valid: EntrySealed {
+                uuid: self.get_uuid().expect("Invalid uuid").clone(),
+            },
+            state: EntryNew,
+            attrs: self.attrs,
+        }
+    }
+
+    #[cfg(test)]
+    pub fn add_ava(&mut self, attr: &str, value: &Value) {
+        self.add_ava_int(attr, value)
     }
 }
 
@@ -423,75 +541,6 @@ impl<STATE> Entry<EntryInvalid, STATE> {
             None => None,
         }
     }
-
-    /*
-    pub fn normalise(
-        self,
-        schema: &SchemaTransaction,
-    ) -> Result<Entry<EntryNormalised, STATE>, SchemaError> {
-        let Entry {
-            valid: _,
-            state,
-            attrs,
-        } = self;
-
-        let schema_attributes = schema.get_attributes();
-
-        // This should never fail!
-        let schema_attr_name = match schema_attributes.get("name") {
-            Some(v) => v,
-            None => {
-                return Err(SchemaError::Corrupted);
-            }
-        };
-
-        let mut new_attrs = BTreeMap::new();
-
-        // First normalise - this checks and fixes our UUID format
-        // but should not remove multiple values.
-        for (attr_name, avas) in attrs.iter() {
-            let attr_name_normal: String = schema_attr_name.normalise_value(attr_name);
-            // Get the needed schema type
-            let schema_a_r = schema_attributes.get(&attr_name_normal);
-
-            let mut avas_normal: Vec<String> = match schema_a_r {
-                Some(schema_a) => {
-                    avas.iter()
-                        .map(|av| {
-                            // normalise those based on schema?
-                            schema_a.normalise_value(av)
-                        })
-                        .collect()
-                }
-                None => avas.clone(),
-            };
-
-            // Ensure they are ordered property, with no dupes.
-            avas_normal.sort_unstable();
-            avas_normal.dedup();
-
-            // Should never fail!
-            let _ = new_attrs.insert(attr_name_normal, avas_normal);
-        }
-
-        Ok(Entry {
-            valid: EntryNormalised,
-            state: state,
-            attrs: new_attrs,
-        })
-    }
-
-    pub fn validate(
-        self,
-        schema: &SchemaTransaction,
-    ) -> Result<Entry<EntryValid, STATE>, SchemaError> {
-        // We need to clone before we start, as well be mutating content.
-        // We destructure:
-
-        // self.normalise(schema).and_then(|e| e.validate(schema))
-        e.validate(schema)
-    }
-    */
 
     pub fn validate(
         self,
@@ -513,7 +562,10 @@ impl<STATE> Entry<EntryInvalid, STATE> {
 
         // Build the new valid entry ...
         let ne = Entry {
-            valid: EntryValid { uuid },
+            valid: EntryValid {
+                uuid,
+                cid: self.valid.cid,
+            },
             state: self.state,
             attrs: self.attrs,
         };
@@ -666,13 +718,13 @@ impl<STATE> Entry<EntryInvalid, STATE> {
 impl<VALID, STATE> Clone for Entry<VALID, STATE>
 where
     VALID: Clone,
-    STATE: Copy,
+    STATE: Clone,
 {
     // Dirty modifiable state. Works on any other state to dirty them.
     fn clone(&self) -> Entry<VALID, STATE> {
         Entry {
             valid: self.valid.clone(),
-            state: self.state,
+            state: self.state.clone(),
             attrs: self.attrs.clone(),
         }
     }
@@ -685,11 +737,23 @@ where
 impl Entry<EntryInvalid, EntryCommitted> {
     #[cfg(test)]
     pub unsafe fn into_valid_new(self) -> Entry<EntryValid, EntryNew> {
+        let uuid = self.get_uuid().expect("Invalid uuid").clone();
         Entry {
             valid: EntryValid {
-                uuid: self.get_uuid().expect("Invalid uuid").clone(),
+                cid: self.valid.cid,
+                uuid,
             },
             state: EntryNew,
+            attrs: self.attrs,
+        }
+    }
+
+    pub fn to_recycled(mut self) -> Self {
+        self.add_ava("class", &Value::new_class("recycled"));
+
+        Entry {
+            valid: self.valid.clone(),
+            state: self.state,
             attrs: self.attrs,
         }
     }
@@ -699,11 +763,26 @@ impl Entry<EntryInvalid, EntryCommitted> {
 impl Entry<EntryInvalid, EntryNew> {
     #[cfg(test)]
     pub unsafe fn into_valid_new(self) -> Entry<EntryValid, EntryNew> {
+        let uuid = self.get_uuid().expect("Invalid uuid").clone();
         Entry {
             valid: EntryValid {
-                uuid: self.get_uuid().expect("Invalid uuid").clone(),
+                cid: self.valid.cid,
+                uuid,
             },
             state: EntryNew,
+            attrs: self.attrs,
+        }
+    }
+
+    #[cfg(test)]
+    pub unsafe fn into_sealed_committed(self) -> Entry<EntrySealed, EntryCommitted> {
+        let uuid = self
+            .get_uuid()
+            .and_then(|u| Some(u.clone()))
+            .unwrap_or_else(|| Uuid::new_v4());
+        Entry {
+            valid: EntrySealed { uuid },
+            state: EntryCommitted { id: 0 },
             attrs: self.attrs,
         }
     }
@@ -728,12 +807,14 @@ impl Entry<EntryInvalid, EntryNew> {
 
     #[cfg(test)]
     pub unsafe fn into_valid_committed(self) -> Entry<EntryValid, EntryCommitted> {
+        let uuid = self
+            .get_uuid()
+            .and_then(|u| Some(u.clone()))
+            .unwrap_or_else(|| Uuid::new_v4());
         Entry {
             valid: EntryValid {
-                uuid: self
-                    .get_uuid()
-                    .and_then(|u| Some(u.clone()))
-                    .unwrap_or_else(|| Uuid::new_v4()),
+                cid: self.valid.cid,
+                uuid,
             },
             state: EntryCommitted { id: 0 },
             attrs: self.attrs,
@@ -743,20 +824,22 @@ impl Entry<EntryInvalid, EntryNew> {
 
 impl Entry<EntryInvalid, EntryCommitted> {
     #[cfg(test)]
-    pub unsafe fn into_valid_committed(self) -> Entry<EntryValid, EntryCommitted> {
+    pub unsafe fn into_sealed_committed(self) -> Entry<EntrySealed, EntryCommitted> {
+        let uuid = self
+            .get_uuid()
+            .and_then(|u| Some(u.clone()))
+            .unwrap_or_else(|| Uuid::new_v4());
         Entry {
-            valid: EntryValid {
-                uuid: self.get_uuid().expect("Missing UUID!").clone(),
-            },
+            valid: EntrySealed { uuid },
             state: self.state,
             attrs: self.attrs,
         }
     }
 }
 
-impl Entry<EntryValid, EntryNew> {
+impl Entry<EntrySealed, EntryNew> {
     #[cfg(test)]
-    pub unsafe fn into_valid_committed(self) -> Entry<EntryValid, EntryCommitted> {
+    pub unsafe fn into_sealed_committed(self) -> Entry<EntrySealed, EntryCommitted> {
         Entry {
             valid: self.valid,
             state: EntryCommitted { id: 0 },
@@ -764,7 +847,7 @@ impl Entry<EntryValid, EntryNew> {
         }
     }
 
-    pub fn into_valid_committed_id(self, id: u64) -> Entry<EntryValid, EntryCommitted> {
+    pub fn into_sealed_committed_id(self, id: u64) -> Entry<EntrySealed, EntryCommitted> {
         Entry {
             valid: self.valid,
             state: EntryCommitted { id },
@@ -772,19 +855,39 @@ impl Entry<EntryValid, EntryNew> {
         }
     }
 
-    pub fn compare(&self, rhs: &Entry<EntryValid, EntryCommitted>) -> bool {
-        self.attrs == rhs.attrs
+    pub fn compare(&self, rhs: &Entry<EntrySealed, EntryNew>) -> bool {
+        compare_attrs(&self.attrs, &rhs.attrs)
     }
 }
 
 type IdxDiff<'a> =
     Vec<Result<(&'a String, &'a IndexType, String), (&'a String, &'a IndexType, String)>>;
 
-impl Entry<EntryValid, EntryCommitted> {
+impl<VALID> Entry<VALID, EntryCommitted> {
+    pub fn get_id(&self) -> u64 {
+        self.state.id
+    }
+}
+
+impl<STATE> Entry<EntrySealed, STATE> {
+    pub fn to_init(self) -> Entry<EntryInit, STATE> {
+        Entry {
+            valid: EntryInit,
+            state: self.state,
+            attrs: self.attrs,
+        }
+    }
+}
+
+impl Entry<EntrySealed, EntryCommitted> {
     #[cfg(test)]
-    pub unsafe fn into_valid_committed(self) -> Entry<EntryValid, EntryCommitted> {
+    pub unsafe fn into_sealed_committed(self) -> Entry<EntrySealed, EntryCommitted> {
         // NO-OP to satisfy macros.
         self
+    }
+
+    pub fn compare(&self, rhs: &Entry<EntrySealed, EntryCommitted>) -> bool {
+        compare_attrs(&self.attrs, &rhs.attrs)
     }
 
     pub fn to_dbentry(&self) -> DbEntry {
@@ -808,10 +911,6 @@ impl Entry<EntryValid, EntryCommitted> {
                     .collect(),
             }),
         }
-    }
-
-    pub fn compare(&self, rhs: &Entry<EntryValid, EntryNew>) -> bool {
-        self.attrs == rhs.attrs
     }
 
     // This is an associated method, not on & self so we can take options on
@@ -998,29 +1097,6 @@ impl Entry<EntryValid, EntryCommitted> {
         }
     }
 
-    pub fn to_tombstone(&self) -> Self {
-        // Duplicate this to a tombstone entry
-        let class_ava = btreeset![Value::new_class("object"), Value::new_class("tombstone")];
-
-        let mut attrs_new: BTreeMap<String, BTreeSet<Value>> = BTreeMap::new();
-
-        attrs_new.insert(
-            "uuid".to_string(),
-            btreeset![Value::new_uuidr(&self.valid.uuid)],
-        );
-        attrs_new.insert("class".to_string(), class_ava);
-
-        Entry {
-            valid: self.valid.clone(),
-            state: self.state,
-            attrs: attrs_new,
-        }
-    }
-
-    pub fn get_id(&self) -> u64 {
-        self.state.id
-    }
-
     pub fn from_dbentry(db_e: DbEntry, id: u64) -> Result<Self, ()> {
         // Convert attrs from db format to value
         let r_attrs: Result<BTreeMap<String, BTreeSet<Value>>, ()> = match db_e.ent {
@@ -1050,7 +1126,7 @@ impl Entry<EntryValid, EntryCommitted> {
         .ok_or(())?;
 
         Ok(Entry {
-            valid: EntryValid { uuid },
+            valid: EntrySealed { uuid },
             state: EntryCommitted { id },
             attrs,
         })
@@ -1095,13 +1171,57 @@ impl Entry<EntryValid, EntryCommitted> {
             attrs: f_attrs,
         }
     }
+
+    pub fn to_tombstone(&self, cid: Cid) -> Entry<EntryInvalid, EntryCommitted> {
+        // Duplicate this to a tombstone entry
+        let class_ava = btreeset![Value::new_class("object"), Value::new_class("tombstone")];
+        let last_mod_ava = btreeset![Value::new_cid(cid.clone())];
+
+        let mut attrs_new: BTreeMap<String, BTreeSet<Value>> = BTreeMap::new();
+
+        attrs_new.insert(
+            "uuid".to_string(),
+            btreeset![Value::new_uuidr(&self.get_uuid())],
+        );
+        attrs_new.insert("class".to_string(), class_ava);
+        attrs_new.insert("last_modified_cid".to_string(), last_mod_ava);
+
+        Entry {
+            valid: EntryInvalid { cid },
+            state: self.state.clone(),
+            attrs: attrs_new,
+        }
+    }
+
+    pub fn to_valid(self, cid: Cid) -> Entry<EntryValid, EntryCommitted> {
+        Entry {
+            valid: EntryValid {
+                uuid: self.valid.uuid,
+                cid,
+            },
+            state: self.state,
+            attrs: self.attrs,
+        }
+    }
 }
 
 impl<STATE> Entry<EntryValid, STATE> {
     // Returns the entry in the latest DbEntry format we are aware of.
     pub fn invalidate(self) -> Entry<EntryInvalid, STATE> {
         Entry {
-            valid: EntryInvalid,
+            valid: EntryInvalid {
+                cid: self.valid.cid,
+            },
+            state: self.state,
+            attrs: self.attrs,
+        }
+    }
+
+    pub fn seal(self) -> Entry<EntrySealed, STATE> {
+        Entry {
+            valid: EntrySealed {
+                uuid: self.valid.uuid,
+            },
             state: self.state,
             attrs: self.attrs,
         }
@@ -1109,6 +1229,36 @@ impl<STATE> Entry<EntryValid, STATE> {
 
     pub fn get_uuid(&self) -> &Uuid {
         &self.valid.uuid
+    }
+}
+
+impl<STATE> Entry<EntrySealed, STATE> {
+    // Returns the entry in the latest DbEntry format we are aware of.
+    pub fn invalidate(mut self, cid: Cid) -> Entry<EntryInvalid, STATE> {
+        /* Setup our last changed time. */
+        self.set_last_changed(cid.clone());
+
+        Entry {
+            valid: EntryInvalid { cid },
+            state: self.state,
+            attrs: self.attrs,
+        }
+    }
+
+    pub fn get_uuid(&self) -> &Uuid {
+        &self.valid.uuid
+    }
+
+    #[cfg(test)]
+    pub unsafe fn into_invalid(mut self) -> Entry<EntryInvalid, STATE> {
+        self.set_last_changed(Cid::new_zero());
+        Entry {
+            valid: EntryInvalid {
+                cid: Cid::new_zero(),
+            },
+            state: self.state,
+            attrs: self.attrs,
+        }
     }
 }
 
@@ -1139,6 +1289,26 @@ impl Entry<EntryReduced, EntryCommitted> {
 
 // impl<STATE> Entry<EntryValid, STATE> {
 impl<VALID, STATE> Entry<VALID, STATE> {
+    fn add_ava_int(&mut self, attr: &str, value: &Value) {
+        // How do we make this turn into an ok / err?
+        self.attrs
+            .entry(attr.to_string())
+            .and_modify(|v| {
+                // Here we need to actually do a check/binary search ...
+                if v.contains(value) {
+                    // It already exists, done!
+                } else {
+                    v.insert(value.clone());
+                }
+            })
+            .or_insert(btreeset![value.clone()]);
+    }
+
+    fn set_last_changed(&mut self, cid: Cid) {
+        let cv = btreeset![Value::new_cid(cid)];
+        let _ = self.attrs.insert("last_modified_cid".to_string(), cv);
+    }
+
     /*
      * WARNING: Should these TODO move to EntryValid only?
      * I've tried to do this once, but the issue is that there
@@ -1380,6 +1550,16 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         }
     }
 
+    /// Confirm if at least one value in the ava is less than subvalue.
+    pub fn attribute_lessthan(&self, attr: &str, subvalue: &PartialValue) -> bool {
+        match self.attrs.get(attr) {
+            Some(v_list) => v_list
+                .iter()
+                .fold(false, |acc, v| if acc { acc } else { v.lessthan(subvalue) }),
+            None => false,
+        }
+    }
+
     pub fn classes(&self) -> Option<EntryClasses> {
         // Get the class vec, if any?
         // How do we indicate "empty?"
@@ -1416,6 +1596,9 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             FilterResolved::Pres(attr, _) => {
                 // Given attr, is is present in the entry?
                 self.attribute_pres(attr.as_str())
+            }
+            FilterResolved::LessThan(attr, subvalue, _) => {
+                self.attribute_lessthan(attr.as_str(), subvalue)
             }
             FilterResolved::Or(l) => l.iter().fold(false, |acc, f| {
                 // Check with ftweedal about or filter zero len correctness.
@@ -1524,25 +1707,14 @@ impl<VALID, STATE> Entry<VALID, STATE> {
 
 impl<STATE> Entry<EntryInvalid, STATE>
 where
-    STATE: Copy,
+    STATE: Clone,
 {
     // This should always work? It's only on validate that we'll build
     // a list of syntax violations ...
     // If this already exists, we silently drop the event? Is that an
     // acceptable interface?
     pub fn add_ava(&mut self, attr: &str, value: &Value) {
-        // How do we make this turn into an ok / err?
-        self.attrs
-            .entry(attr.to_string())
-            .and_modify(|v| {
-                // Here we need to actually do a check/binary search ...
-                if v.contains(value) {
-                    // It already exists, done!
-                } else {
-                    v.insert(value.clone());
-                }
-            })
-            .or_insert(btreeset![value.clone()]);
+        self.add_ava_int(attr, value)
     }
 
     fn remove_ava(&mut self, attr: &str, value: &PartialValue) {
@@ -1601,15 +1773,14 @@ impl<VALID, STATE> PartialEq for Entry<VALID, STATE> {
         // are not guaranteed to support this ... but more likely that will
         // just end in eager false-results. We'll never say something is true
         // that should NOT be.
-        self.attrs == rhs.attrs
+        compare_attrs(&self.attrs, &rhs.attrs)
     }
 }
 
-impl From<&SchemaAttribute> for Entry<EntryValid, EntryNew> {
+impl From<&SchemaAttribute> for Entry<EntryInit, EntryNew> {
     fn from(s: &SchemaAttribute) -> Self {
         // Convert an Attribute to an entry ... make it good!
-        let uuid = s.uuid;
-        let uuid_v = btreeset![Value::new_uuidr(&uuid)];
+        let uuid_v = btreeset![Value::new_uuidr(&s.uuid)];
 
         let name_v = btreeset![Value::new_iutf8(s.name.clone())];
         let desc_v = btreeset![Value::new_utf8(s.description.clone())];
@@ -1642,17 +1813,16 @@ impl From<&SchemaAttribute> for Entry<EntryValid, EntryNew> {
         // Insert stuff.
 
         Entry {
-            valid: EntryValid { uuid },
+            valid: EntryInit,
             state: EntryNew,
             attrs,
         }
     }
 }
 
-impl From<&SchemaClass> for Entry<EntryValid, EntryNew> {
+impl From<&SchemaClass> for Entry<EntryInit, EntryNew> {
     fn from(s: &SchemaClass) -> Self {
-        let uuid = s.uuid;
-        let uuid_v = btreeset![Value::new_uuidr(&uuid)];
+        let uuid_v = btreeset![Value::new_uuidr(&s.uuid)];
 
         let name_v = btreeset![Value::new_iutf8(s.name.clone())];
         let desc_v = btreeset![Value::new_utf8(s.description.clone())];
@@ -1691,7 +1861,7 @@ impl From<&SchemaClass> for Entry<EntryValid, EntryNew> {
         }
 
         Entry {
-            valid: EntryValid { uuid },
+            valid: EntryInit,
             state: EntryNew,
             attrs,
         }
@@ -1700,14 +1870,14 @@ impl From<&SchemaClass> for Entry<EntryValid, EntryNew> {
 
 #[cfg(test)]
 mod tests {
-    use crate::entry::{Entry, EntryInvalid, EntryNew};
+    use crate::entry::{Entry, EntryInit, EntryInvalid, EntryNew};
     use crate::modify::{Modify, ModifyList};
     use crate::value::{IndexType, PartialValue, Value};
     use std::collections::BTreeSet;
 
     #[test]
     fn test_entry_basic() {
-        let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
+        let mut e: Entry<EntryInit, EntryNew> = Entry::new();
 
         e.add_ava("userid", &Value::from("william"));
     }
@@ -1720,7 +1890,7 @@ mod tests {
         // We still probably need schema here anyway to validate what we
         // are adding ... Or do we validate after the changes are made in
         // total?
-        let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
+        let mut e: Entry<EntryInit, EntryNew> = Entry::new();
         e.add_ava("userid", &Value::from("william"));
         e.add_ava("userid", &Value::from("william"));
 
@@ -1731,7 +1901,7 @@ mod tests {
 
     #[test]
     fn test_entry_pres() {
-        let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
+        let mut e: Entry<EntryInit, EntryNew> = Entry::new();
         e.add_ava("userid", &Value::from("william"));
 
         assert!(e.attribute_pres("userid"));
@@ -1740,7 +1910,7 @@ mod tests {
 
     #[test]
     fn test_entry_equality() {
-        let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
+        let mut e: Entry<EntryInit, EntryNew> = Entry::new();
 
         e.add_ava("userid", &Value::from("william"));
 
@@ -1753,7 +1923,7 @@ mod tests {
 
     #[test]
     fn test_entry_substring() {
-        let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
+        let mut e: Entry<EntryInit, EntryNew> = Entry::new();
 
         e.add_ava("userid", &Value::from("william"));
 
@@ -1767,9 +1937,34 @@ mod tests {
     }
 
     #[test]
+    fn test_entry_lessthan() {
+        let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
+
+        let pv2 = PartialValue::new_uint32(2);
+        let pv8 = PartialValue::new_uint32(8);
+        let pv10 = PartialValue::new_uint32(10);
+        let pv15 = PartialValue::new_uint32(15);
+
+        e1.add_ava("a", &Value::new_uint32(10));
+
+        assert!(e1.attribute_lessthan("a", &pv2) == false);
+        assert!(e1.attribute_lessthan("a", &pv8) == false);
+        assert!(e1.attribute_lessthan("a", &pv10) == false);
+        assert!(e1.attribute_lessthan("a", &pv15) == true);
+
+        e1.add_ava("a", &Value::new_uint32(8));
+
+        assert!(e1.attribute_lessthan("a", &pv2) == false);
+        assert!(e1.attribute_lessthan("a", &pv8) == false);
+        assert!(e1.attribute_lessthan("a", &pv10) == true);
+        assert!(e1.attribute_lessthan("a", &pv15) == true);
+    }
+
+    #[test]
     fn test_entry_apply_modlist() {
         // Test application of changes to an entry.
-        let mut e: Entry<EntryInvalid, EntryNew> = Entry::new();
+        let mut e: Entry<EntryInvalid, EntryNew> = unsafe { Entry::new().into_invalid_new() };
+
         e.add_ava("userid", &Value::from("william"));
 
         let mods = unsafe {
@@ -1791,17 +1986,17 @@ mod tests {
 
     #[test]
     fn test_entry_idx_diff() {
-        let mut e1: Entry<EntryInvalid, EntryNew> = Entry::new();
+        let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
         e1.add_ava("userid", &Value::from("william"));
         let mut e1_mod = e1.clone();
         e1_mod.add_ava("extra", &Value::from("test"));
 
-        let e1 = unsafe { e1.into_valid_committed() };
-        let e1_mod = unsafe { e1_mod.into_valid_committed() };
+        let e1 = unsafe { e1.into_sealed_committed() };
+        let e1_mod = unsafe { e1_mod.into_sealed_committed() };
 
-        let mut e2: Entry<EntryInvalid, EntryNew> = Entry::new();
+        let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
         e2.add_ava("userid", &Value::from("claire"));
-        let e2 = unsafe { e2.into_valid_committed() };
+        let e2 = unsafe { e2.into_sealed_committed() };
 
         let mut idxmeta = BTreeSet::new();
         idxmeta.insert(("userid".to_string(), IndexType::EQUALITY));

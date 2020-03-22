@@ -28,7 +28,7 @@ lazy_static! {
 
 pub struct GidNumber {}
 
-fn apply_gidnumber<T: Copy>(
+fn apply_gidnumber<T: Clone>(
     au: &mut AuditScope,
     e: &mut Entry<EntryInvalid, T>,
 ) -> Result<(), OperationError> {
@@ -100,7 +100,7 @@ impl Plugin for GidNumber {
 #[cfg(test)]
 mod tests {
     use crate::audit::AuditScope;
-    use crate::entry::{Entry, EntryInvalid, EntryNew};
+    use crate::entry::{Entry, EntryInit, EntryNew};
     use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
     use crate::value::{PartialValue, Value};
     use kanidm_proto::v1::OperationError;
@@ -121,7 +121,7 @@ mod tests {
 
     #[test]
     fn test_gidnumber_create_generate() {
-        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -155,7 +155,7 @@ mod tests {
     // test that gid is not altered if provided on create.
     #[test]
     fn test_gidnumber_create_noaction() {
-        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -190,7 +190,7 @@ mod tests {
     // Test generated if not on mod (ie adding posixaccount to something)
     #[test]
     fn test_gidnumber_modify_generate() {
-        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -224,7 +224,7 @@ mod tests {
     // test generated if DELETED on mod
     #[test]
     fn test_gidnumber_modify_regenerate() {
-        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "attrs": {
                 "class": ["account", "posixaccount"],
@@ -257,7 +257,7 @@ mod tests {
     // Test NOT regenerated if given on mod
     #[test]
     fn test_gidnumber_modify_noregen() {
-        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -294,7 +294,7 @@ mod tests {
 
     #[test]
     fn test_gidnumber_create_system_reject() {
-        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "attrs": {
                 "class": ["account", "posixaccount"],
@@ -322,7 +322,7 @@ mod tests {
 
     #[test]
     fn test_gidnumber_create_secure_reject() {
-        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "attrs": {
                 "class": ["account", "posixaccount"],
@@ -350,7 +350,7 @@ mod tests {
 
     #[test]
     fn test_gidnumber_create_secure_root_reject() {
-        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "attrs": {
                 "class": ["account", "posixaccount"],

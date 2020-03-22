@@ -18,7 +18,7 @@
 
 use crate::audit::AuditScope;
 use crate::constants::*;
-use crate::entry::{Entry, EntryCommitted, EntryNew, EntryValid};
+use crate::entry::{Entry, EntryCommitted, EntryInit, EntryNew, EntrySealed};
 use crate::value::{IndexType, PartialValue, SyntaxType, Value};
 use kanidm_proto::v1::{ConsistencyError, OperationError, SchemaError};
 
@@ -97,7 +97,7 @@ pub struct SchemaAttribute {
 impl SchemaAttribute {
     pub fn try_from(
         audit: &mut AuditScope,
-        value: &Entry<EntryValid, EntryCommitted>,
+        value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         // Convert entry to a schema attribute.
         audit_log!(audit, "Converting -> {:?}", value);
@@ -170,128 +170,6 @@ impl SchemaAttribute {
         })
     }
 
-    // Implement Equality, PartialOrd, Normalisation,
-    // Validation.
-    fn validate_bool(&self, v: &Value) -> Result<(), SchemaError> {
-        if v.is_bool() {
-            Ok(())
-        } else {
-            Err(SchemaError::InvalidAttributeSyntax)
-        }
-    }
-
-    fn validate_syntax(&self, v: &Value) -> Result<(), SchemaError> {
-        if v.is_syntax() {
-            Ok(())
-        } else {
-            Err(SchemaError::InvalidAttributeSyntax)
-        }
-    }
-
-    fn validate_index(&self, v: &Value) -> Result<(), SchemaError> {
-        if v.is_index() {
-            Ok(())
-        } else {
-            Err(SchemaError::InvalidAttributeSyntax)
-        }
-    }
-
-    fn validate_uuid(&self, v: &Value) -> Result<(), SchemaError> {
-        if v.is_uuid() {
-            Ok(())
-        } else {
-            Err(SchemaError::InvalidAttributeSyntax)
-        }
-    }
-
-    fn validate_refer(&self, v: &Value) -> Result<(), SchemaError> {
-        if v.is_refer() {
-            Ok(())
-        } else {
-            Err(SchemaError::InvalidAttributeSyntax)
-        }
-    }
-
-    fn validate_json_filter(&self, v: &Value) -> Result<(), SchemaError> {
-        // I *think* we just check if this can become a ProtoFilter v1
-        // rather than anything more complex.
-
-        // Can it be deserialised? I think that's all we can do because
-        // it's only when we go to apply that we can do the actual filter
-        // conversion, resolution of Self, and validation etc.
-
-        // In my mind there are some risks here, like the fact that we defer evaluation
-        // and checking until we go to use the value, but we ccould make a plugin similar
-        // to refint that verifies all of these filters still compile and schema check
-        // after any kind of modification.
-
-        // Storing these as protofilter has value in terms of the fact we don't need
-        // filter to be seralisable when we go to add state type data to it, and we can
-        // then do conversions inside operations to resolve Self -> Bound UUID as required.
-
-        if v.is_json_filter() {
-            Ok(())
-        } else {
-            Err(SchemaError::InvalidAttributeSyntax)
-        }
-    }
-
-    fn validate_credential(&self, v: &Value) -> Result<(), SchemaError> {
-        if v.is_credential() {
-            Ok(())
-        } else {
-            Err(SchemaError::InvalidAttributeSyntax)
-        }
-    }
-
-    fn validate_utf8string_insensitive(&self, v: &Value) -> Result<(), SchemaError> {
-        if v.is_insensitive_utf8() {
-            Ok(())
-        } else {
-            Err(SchemaError::InvalidAttributeSyntax)
-        }
-    }
-
-    fn validate_utf8string(&self, v: &Value) -> Result<(), SchemaError> {
-        if v.is_utf8() {
-            Ok(())
-        } else {
-            Err(SchemaError::InvalidAttributeSyntax)
-        }
-    }
-
-    fn validate_radius_utf8string(&self, v: &Value) -> Result<(), SchemaError> {
-        if v.is_radius_string() {
-            Ok(())
-        } else {
-            Err(SchemaError::InvalidAttributeSyntax)
-        }
-    }
-
-    fn validate_sshkey(&self, v: &Value) -> Result<(), SchemaError> {
-        if v.is_sshkey() {
-            Ok(())
-        } else {
-            Err(SchemaError::InvalidAttributeSyntax)
-        }
-    }
-
-    fn validate_spn(&self, v: &Value) -> Result<(), SchemaError> {
-        if v.is_spn() {
-            Ok(())
-        } else {
-            Err(SchemaError::InvalidAttributeSyntax)
-        }
-    }
-
-    fn validate_uint32(&self, v: &Value) -> Result<(), SchemaError> {
-        if v.is_uint32() {
-            Ok(())
-        } else {
-            Err(SchemaError::InvalidAttributeSyntax)
-        }
-    }
-
     // TODO: There may be a difference between a value and a filter value on complex
     // types - IE a complex type may have multiple parts that are secret, but a filter
     // on that may only use a single tagged attribute for example.
@@ -310,6 +188,7 @@ impl SchemaAttribute {
             SyntaxType::SSHKEY => v.is_sshkey(),
             SyntaxType::SERVICE_PRINCIPLE_NAME => v.is_spn(),
             SyntaxType::UINT32 => v.is_uint32(),
+            SyntaxType::CID => v.is_cid(),
         };
         if r {
             Ok(())
@@ -342,101 +221,132 @@ impl SchemaAttribute {
         };
         // If syntax, check the type is correct
         match self.syntax {
-            SyntaxType::BOOLEAN => {
-                ava.iter().fold(Ok(()), |acc, v| {
-                    // If acc is err, fold will skip it.
-                    if acc.is_ok() {
-                        self.validate_bool(v)
+            SyntaxType::BOOLEAN => ava.iter().fold(Ok(()), |acc, v| {
+                acc.and_then(|_| {
+                    if v.is_bool() {
+                        Ok(())
                     } else {
-                        acc
+                        Err(SchemaError::InvalidAttributeSyntax)
                     }
                 })
-            }
+            }),
             SyntaxType::SYNTAX_ID => ava.iter().fold(Ok(()), |acc, v| {
-                if acc.is_ok() {
-                    self.validate_syntax(v)
-                } else {
-                    acc
-                }
+                acc.and_then(|_| {
+                    if v.is_syntax() {
+                        Ok(())
+                    } else {
+                        Err(SchemaError::InvalidAttributeSyntax)
+                    }
+                })
             }),
             SyntaxType::UUID => ava.iter().fold(Ok(()), |acc, v| {
-                if acc.is_ok() {
-                    self.validate_uuid(v)
-                } else {
-                    acc
-                }
+                acc.and_then(|_| {
+                    if v.is_uuid() {
+                        Ok(())
+                    } else {
+                        Err(SchemaError::InvalidAttributeSyntax)
+                    }
+                })
             }),
             // This is the same as a UUID, refint is a plugin
             SyntaxType::REFERENCE_UUID => ava.iter().fold(Ok(()), |acc, v| {
-                if acc.is_ok() {
-                    self.validate_refer(v)
-                } else {
-                    acc
-                }
+                acc.and_then(|_| {
+                    if v.is_refer() {
+                        Ok(())
+                    } else {
+                        Err(SchemaError::InvalidAttributeSyntax)
+                    }
+                })
             }),
             SyntaxType::INDEX_ID => ava.iter().fold(Ok(()), |acc, v| {
-                if acc.is_ok() {
-                    debug!("Checking index ... {:?}", v);
-                    self.validate_index(v)
-                } else {
-                    acc
-                }
+                acc.and_then(|_| {
+                    if v.is_index() {
+                        Ok(())
+                    } else {
+                        Err(SchemaError::InvalidAttributeSyntax)
+                    }
+                })
             }),
             SyntaxType::UTF8STRING_INSENSITIVE => ava.iter().fold(Ok(()), |acc, v| {
-                if acc.is_ok() {
-                    self.validate_utf8string_insensitive(v)
-                } else {
-                    acc
-                }
+                acc.and_then(|_| {
+                    if v.is_insensitive_utf8() {
+                        Ok(())
+                    } else {
+                        Err(SchemaError::InvalidAttributeSyntax)
+                    }
+                })
             }),
             SyntaxType::UTF8STRING => ava.iter().fold(Ok(()), |acc, v| {
-                if acc.is_ok() {
-                    self.validate_utf8string(v)
-                } else {
-                    acc
-                }
+                acc.and_then(|_| {
+                    if v.is_utf8() {
+                        Ok(())
+                    } else {
+                        Err(SchemaError::InvalidAttributeSyntax)
+                    }
+                })
             }),
             SyntaxType::JSON_FILTER => ava.iter().fold(Ok(()), |acc, v| {
-                if acc.is_ok() {
-                    self.validate_json_filter(v)
-                } else {
-                    acc
-                }
+                acc.and_then(|_| {
+                    if v.is_json_filter() {
+                        Ok(())
+                    } else {
+                        Err(SchemaError::InvalidAttributeSyntax)
+                    }
+                })
             }),
             SyntaxType::CREDENTIAL => ava.iter().fold(Ok(()), |acc, v| {
-                if acc.is_ok() {
-                    self.validate_credential(v)
-                } else {
-                    acc
-                }
+                acc.and_then(|_| {
+                    if v.is_credential() {
+                        Ok(())
+                    } else {
+                        Err(SchemaError::InvalidAttributeSyntax)
+                    }
+                })
             }),
             SyntaxType::RADIUS_UTF8STRING => ava.iter().fold(Ok(()), |acc, v| {
-                if acc.is_ok() {
-                    self.validate_radius_utf8string(v)
-                } else {
-                    acc
-                }
+                acc.and_then(|_| {
+                    if v.is_radius_string() {
+                        Ok(())
+                    } else {
+                        Err(SchemaError::InvalidAttributeSyntax)
+                    }
+                })
             }),
             SyntaxType::SSHKEY => ava.iter().fold(Ok(()), |acc, v| {
-                if acc.is_ok() {
-                    self.validate_sshkey(v)
-                } else {
-                    acc
-                }
+                acc.and_then(|_| {
+                    if v.is_sshkey() {
+                        Ok(())
+                    } else {
+                        Err(SchemaError::InvalidAttributeSyntax)
+                    }
+                })
             }),
             SyntaxType::SERVICE_PRINCIPLE_NAME => ava.iter().fold(Ok(()), |acc, v| {
-                if acc.is_ok() {
-                    self.validate_spn(v)
-                } else {
-                    acc
-                }
+                acc.and_then(|_| {
+                    if v.is_spn() {
+                        Ok(())
+                    } else {
+                        Err(SchemaError::InvalidAttributeSyntax)
+                    }
+                })
             }),
             SyntaxType::UINT32 => ava.iter().fold(Ok(()), |acc, v| {
-                if acc.is_ok() {
-                    self.validate_uint32(v)
-                } else {
-                    acc
-                }
+                acc.and_then(|_| {
+                    if v.is_uint32() {
+                        Ok(())
+                    } else {
+                        Err(SchemaError::InvalidAttributeSyntax)
+                    }
+                })
+            }),
+            SyntaxType::CID => ava.iter().fold(Ok(()), |acc, v| {
+                acc.and_then(|_| {
+                    if v.is_cid() {
+                        Ok(())
+                    } else {
+                        Err(SchemaError::InvalidAttributeSyntax)
+                    }
+                })
             }),
         }
     }
@@ -476,7 +386,7 @@ pub struct SchemaClass {
 impl SchemaClass {
     pub fn try_from(
         audit: &mut AuditScope,
-        value: &Entry<EntryValid, EntryCommitted>,
+        value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         audit_log!(audit, "{:?}", value);
         // Convert entry to a schema class.
@@ -734,15 +644,15 @@ impl<'a> SchemaWriteTransaction<'a> {
         }));
     }
 
-    pub fn to_entries(&self) -> Vec<Entry<EntryValid, EntryNew>> {
+    pub fn to_entries(&self) -> Vec<Entry<EntryInit, EntryNew>> {
         let r: Vec<_> = self
             .attributes
             .values()
-            .map(Entry::<EntryValid, EntryNew>::from)
+            .map(Entry::<EntryInit, EntryNew>::from)
             .chain(
                 self.classes
                     .values()
-                    .map(Entry::<EntryValid, EntryNew>::from),
+                    .map(Entry::<EntryInit, EntryNew>::from),
             )
             .collect();
         r
@@ -783,6 +693,21 @@ impl<'a> SchemaWriteTransaction<'a> {
                     unique: false,
                     index: vec![IndexType::EQUALITY],
                     syntax: SyntaxType::UUID,
+                },
+            );
+            self.attributes.insert(
+                String::from("last_modified_cid"),
+                SchemaAttribute {
+                    name: String::from("last_modified_cid"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_LAST_MOD_CID)
+                        .expect("unable to parse static uuid"),
+                    description: String::from("The cid of the last change to this object"),
+                    multivalue: false,
+                    // Uniqueness is handled by base.rs, not attrunique here due to
+                    // needing to check recycled objects too.
+                    unique: false,
+                    index: vec![],
+                    syntax: SyntaxType::CID,
                 },
             );
             self.attributes.insert(
@@ -1211,9 +1136,13 @@ impl<'a> SchemaWriteTransaction<'a> {
                     description: String::from(
                         "A system created class that all objects must contain",
                     ),
-                    systemmay: vec![String::from("description"), String::from("name")],
+                    systemmay: vec![String::from("description")],
                     may: vec![],
-                    systemmust: vec![String::from("class"), String::from("uuid")],
+                    systemmust: vec![
+                        String::from("class"),
+                        String::from("uuid"),
+                        String::from("last_modified_cid"),
+                    ],
                     must: vec![],
                 },
             );
@@ -1305,7 +1234,11 @@ impl<'a> SchemaWriteTransaction<'a> {
                     description: String::from("System Access Control Profile Class"),
                     systemmay: vec!["acp_enable".to_string(), "description".to_string()],
                     may: vec![],
-                    systemmust: vec!["acp_receiver".to_string(), "acp_targetscope".to_string()],
+                    systemmust: vec![
+                        "acp_receiver".to_string(),
+                        "acp_targetscope".to_string(),
+                        "name".to_string(),
+                    ],
                     must: vec![],
                 },
             );
@@ -1461,7 +1394,7 @@ impl Schema {
 mod tests {
     use crate::audit::AuditScope;
     // use crate::constants::*;
-    use crate::entry::{Entry, EntryInvalid, EntryNew, EntryValid};
+    use crate::entry::{Entry, EntryInit, EntryInvalid, EntryNew, EntryValid};
     use kanidm_proto::v1::{ConsistencyError, SchemaError};
     // use crate::filter::{Filter, FilterValid};
     use crate::schema::SchemaTransaction;
@@ -1485,8 +1418,8 @@ mod tests {
             $e:expr,
             $type:ty
         ) => {{
-            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str($e);
-            let ev1 = unsafe { e1.into_valid_committed() };
+            let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str($e);
+            let ev1 = unsafe { e1.into_sealed_committed() };
 
             let r1 = <$type>::try_from($audit, &ev1);
             assert!(r1.is_ok());
@@ -1499,8 +1432,8 @@ mod tests {
             $e:expr,
             $type:ty
         ) => {{
-            let e1: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str($e);
-            let ev1 = unsafe { e1.into_valid_committed() };
+            let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str($e);
+            let ev1 = unsafe { e1.into_sealed_committed() };
 
             let r1 = <$type>::try_from($audit, &ev1);
             assert!(r1.is_err());
@@ -1880,56 +1813,60 @@ mod tests {
         let mut audit = AuditScope::new("test_schema_entries");
         let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
         let schema = schema_outer.read();
-        let e_no_uuid: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "valid": null,
-            "state": null,
+        let e_no_uuid: Entry<EntryInvalid, EntryNew> = unsafe {
+            Entry::unsafe_from_entry_str(
+                r#"{
             "attrs": {}
         }"#,
-        );
+            )
+            .into_invalid_new()
+        };
 
         assert_eq!(
             e_no_uuid.validate(&schema),
             Err(SchemaError::MissingMustAttribute("uuid".to_string()))
         );
 
-        let e_no_class: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "valid": null,
-            "state": null,
+        let e_no_class: Entry<EntryInvalid, EntryNew> = unsafe {
+            Entry::unsafe_from_entry_str(
+                r#"{
             "attrs": {
                 "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"]
             }
         }"#,
-        );
+            )
+            .into_invalid_new()
+        };
 
         assert_eq!(e_no_class.validate(&schema), Err(SchemaError::InvalidClass));
 
-        let e_bad_class: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "valid": null,
-            "state": null,
+        let e_bad_class: Entry<EntryInvalid, EntryNew> = unsafe {
+            Entry::unsafe_from_entry_str(
+                r#"{
             "attrs": {
                 "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
                 "class": ["zzzzzz"]
             }
         }"#,
-        );
+            )
+            .into_invalid_new()
+        };
         assert_eq!(
             e_bad_class.validate(&schema),
             Err(SchemaError::InvalidClass)
         );
 
-        let e_attr_invalid: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "valid": null,
-            "state": null,
+        let e_attr_invalid: Entry<EntryInvalid, EntryNew> = unsafe {
+            Entry::unsafe_from_entry_str(
+                r#"{
             "attrs": {
                 "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
                 "class": ["object", "attributetype"]
             }
         }"#,
-        );
+            )
+            .into_invalid_new()
+        };
 
         let res = e_attr_invalid.validate(&schema);
         assert!(match res {
@@ -1937,10 +1874,9 @@ mod tests {
             _ => false,
         });
 
-        let e_attr_invalid_may: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "valid": null,
-            "state": null,
+        let e_attr_invalid_may: Entry<EntryInvalid, EntryNew> = unsafe {
+            Entry::unsafe_from_entry_str(
+                r#"{
             "attrs": {
                 "class": ["object", "attributetype"],
                 "attributename": ["testattr"],
@@ -1952,17 +1888,18 @@ mod tests {
                 "zzzzz": ["zzzz"]
             }
         }"#,
-        );
+            )
+            .into_invalid_new()
+        };
 
         assert_eq!(
             e_attr_invalid_may.validate(&schema),
             Err(SchemaError::InvalidAttribute)
         );
 
-        let e_attr_invalid_syn: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "valid": null,
-            "state": null,
+        let e_attr_invalid_syn: Entry<EntryInvalid, EntryNew> = unsafe {
+            Entry::unsafe_from_entry_str(
+                r#"{
             "attrs": {
                 "class": ["object", "attributetype"],
                 "attributename": ["testattr"],
@@ -1973,17 +1910,18 @@ mod tests {
                 "syntax": ["UTF8STRING"]
             }
         }"#,
-        );
+            )
+            .into_invalid_new()
+        };
 
         assert_eq!(
             e_attr_invalid_syn.validate(&schema),
             Err(SchemaError::InvalidAttributeSyntax)
         );
 
-        let e_ok: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "valid": null,
-            "state": null,
+        let e_ok: Entry<EntryInvalid, EntryNew> = unsafe {
+            Entry::unsafe_from_entry_str(
+                r#"{
             "attrs": {
                 "class": ["object", "attributetype"],
                 "attributename": ["testattr"],
@@ -1994,7 +1932,9 @@ mod tests {
                 "syntax": ["UTF8STRING"]
             }
         }"#,
-        );
+            )
+            .into_invalid_new()
+        };
         assert!(e_ok.validate(&schema).is_ok());
         println!("{}", audit);
     }
@@ -2010,10 +1950,9 @@ mod tests {
         // check index to upper
         // insense to lower
         // attr name to lower
-        let e_test: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "valid": null,
-            "state": null,
+        let e_test: Entry<EntryInvalid, EntryNew> = unsafe {
+            Entry::unsafe_from_entry_str(
+                r#"{
             "attrs": {
                 "class": ["extensibleobject"],
                 "name": ["TestPerson"],
@@ -2022,23 +1961,21 @@ mod tests {
                 "InDeX": ["equality"]
             }
         }"#,
-        );
+            )
+            .into_invalid_new()
+        };
 
         let e_expect: Entry<EntryValid, EntryNew> = unsafe {
             Entry::unsafe_from_entry_str(
                 r#"{
-            "valid": {
-                "uuid": "db237e8a-0079-4b8c-8a56-593b22aa44d1"
-            },
-            "state": null,
-            "attrs": {
-                "class": ["extensibleobject"],
-                "name": ["testperson"],
-                "syntax": ["UTF8STRING"],
-                "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
-                "index": ["EQUALITY"]
-            }
-        }"#,
+                "attrs": {
+                    "class": ["extensibleobject"],
+                    "name": ["testperson"],
+                    "syntax": ["UTF8STRING"],
+                    "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
+                    "index": ["EQUALITY"]
+                }
+            }"#,
             )
             .into_valid_new()
         };
@@ -2059,7 +1996,7 @@ mod tests {
 
         // Check that an entry normalises, despite being inconsistent to
         // schema.
-        let e_test: Entry<EntryInvalid, EntryNew> = serde_json::from_str(
+        let e_test: Entry<EntryInit, EntryNew> = serde_json::from_str(
             r#"{
             "valid": null,
             "state": null,
@@ -2105,34 +2042,36 @@ mod tests {
         let schema = schema_outer.read();
         // Just because you are extensible, doesn't mean you can be lazy
 
-        let e_extensible_bad: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "valid": null,
-            "state": null,
+        let e_extensible_bad: Entry<EntryInvalid, EntryNew> = unsafe {
+            Entry::unsafe_from_entry_str(
+                r#"{
             "attrs": {
                 "class": ["extensibleobject"],
                 "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
                 "multivalue": ["zzzz"]
             }
         }"#,
-        );
+            )
+            .into_invalid_new()
+        };
 
         assert_eq!(
             e_extensible_bad.validate(&schema),
             Err(SchemaError::InvalidAttributeSyntax)
         );
 
-        let e_extensible: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "valid": null,
-            "state": null,
+        let e_extensible: Entry<EntryInvalid, EntryNew> = unsafe {
+            Entry::unsafe_from_entry_str(
+                r#"{
             "attrs": {
                 "class": ["extensibleobject"],
                 "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
                 "multivalue": ["true"]
             }
         }"#,
-        );
+            )
+            .into_invalid_new()
+        };
 
         /* Is okay because extensible! */
         assert!(e_extensible.validate(&schema).is_ok());

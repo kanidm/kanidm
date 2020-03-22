@@ -1,4 +1,12 @@
+use std::time::Duration;
 use uuid::Uuid;
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct DbCidV1 {
+    pub d: Uuid,
+    pub s: Uuid,
+    pub t: Duration,
+}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum DbPasswordV1 {
@@ -39,4 +47,5 @@ pub enum DbValueV1 {
     SK(DbValueTaggedStringV1),
     SP(String, String),
     UI(u32),
+    CI(DbCidV1),
 }

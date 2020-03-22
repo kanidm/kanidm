@@ -4,7 +4,7 @@ use crate::plugins::Plugin;
 
 use crate::audit::AuditScope;
 use crate::constants::UUID_DOMAIN_INFO;
-use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntryValid};
+use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntrySealed};
 use crate::event::{CreateEvent, ModifyEvent};
 use crate::server::{
     QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
@@ -152,8 +152,8 @@ impl Plugin for Spn {
         au: &mut AuditScope,
         qs: &mut QueryServerWriteTransaction,
         // List of what we modified that was valid?
-        pre_cand: &[Entry<EntryValid, EntryCommitted>],
-        cand: &[Entry<EntryValid, EntryCommitted>],
+        pre_cand: &[Entry<EntrySealed, EntryCommitted>],
+        cand: &[Entry<EntrySealed, EntryCommitted>],
         _ce: &ModifyEvent,
     ) -> Result<(), OperationError> {
         // On modify, if changing domain_name on UUID_DOMAIN_INFO
@@ -273,14 +273,14 @@ impl Plugin for Spn {
 #[cfg(test)]
 mod tests {
     use crate::constants::UUID_ADMIN;
-    use crate::entry::{Entry, EntryInvalid, EntryNew};
+    use crate::entry::{Entry, EntryInit, EntryNew};
     use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
     use crate::value::{PartialValue, Value};
 
     #[test]
     fn test_spn_generate_create() {
         // on create don't provide
-        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -309,7 +309,7 @@ mod tests {
     #[test]
     fn test_spn_generate_modify() {
         // on a purge of the spen, generate it.
-        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -337,7 +337,7 @@ mod tests {
     #[test]
     fn test_spn_validate_create() {
         // on create providing invalid spn, we over-write it.
-        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -366,7 +366,7 @@ mod tests {
     #[test]
     fn test_spn_validate_modify() {
         // On modify (removed/present) of the spn, just regenerate it.
-        let e: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
+        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "valid": null,
             "state": null,
@@ -397,7 +397,7 @@ mod tests {
     #[test]
     fn test_spn_regen_domain_rename() {
         run_test!(|server: &QueryServer, au: &mut AuditScope| {
-            let mut server_txn = server.write();
+            let mut server_txn = server.write(duration_from_epoch_now());
 
             let ex1 = Value::new_spn_str("admin", "example.com");
             let ex2 = Value::new_spn_str("admin", "new.example.com");

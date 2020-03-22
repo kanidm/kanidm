@@ -32,6 +32,7 @@ mod plugins;
 mod access;
 mod actors;
 mod idm;
+mod repl;
 mod schema;
 mod server;
 

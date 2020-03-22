@@ -1,5 +1,4 @@
-use std::time::Duration;
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 use uuid::{Builder, Uuid};
 
 use rand::distributions::Distribution;
@@ -46,6 +45,13 @@ pub fn readable_password_from_random() -> String {
     )
 }
 
+pub fn duration_from_epoch_now() -> Duration {
+    SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+}
+
+/*
 #[allow(dead_code)]
 pub fn uuid_from_now(sid: SID) -> Uuid {
     let d = SystemTime::now()
@@ -53,6 +59,7 @@ pub fn uuid_from_now(sid: SID) -> Uuid {
         .unwrap();
     uuid_from_duration(d, sid)
 }
+*/
 
 impl Distribution<char> for DistinctAlpha {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> char {
