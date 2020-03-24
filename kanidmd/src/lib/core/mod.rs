@@ -13,8 +13,8 @@ use crate::config::Configuration;
 use crate::actors::v1_read::QueryServerReadV1;
 use crate::actors::v1_read::{
     AuthMessage, IdmAccountUnixAuthMessage, InternalRadiusReadMessage,
-    InternalRadiusTokenReadMessage, InternalSearchMessage, InternalSshKeyReadMessage,
-    InternalSshKeyTagReadMessage, InternalUnixGroupTokenReadMessage,
+    InternalRadiusTokenReadMessage, InternalSearchMessage, InternalSearchRecycledMessage,
+    InternalSshKeyReadMessage, InternalSshKeyTagReadMessage, InternalUnixGroupTokenReadMessage,
     InternalUnixUserTokenReadMessage, SearchMessage, WhoamiMessage,
 };
 use crate::actors::v1_write::QueryServerWriteV1;
@@ -23,7 +23,7 @@ use crate::actors::v1_write::{
     IdmAccountUnixExtendMessage, IdmAccountUnixSetCredMessage, IdmGroupUnixExtendMessage,
     InternalCredentialSetMessage, InternalDeleteMessage, InternalRegenerateRadiusMessage,
     InternalSshKeyCreateMessage, ModifyMessage, PurgeAttributeMessage, RemoveAttributeValueMessage,
-    SetAttributeMessage,
+    ReviveRecycledMessage, SetAttributeMessage,
 };
 use crate::async_log;
 use crate::audit::AuditScope;
@@ -866,6 +866,50 @@ async fn domain_id_put_attr(
     json_rest_event_put_id_attr(path, session, state, filter, values.into_inner()).await
 }
 
+async fn recycle_bin_get((session, state): (Session, Data<AppState>)) -> HttpResponse {
+    let filter = filter_all!(f_pres("class"));
+    let uat = get_current_user(&session);
+    let attrs = None;
+
+    let obj = InternalSearchRecycledMessage { uat, filter, attrs };
+
+    match state.qe_r.send(obj).await {
+        Ok(Ok(r)) => HttpResponse::Ok().json(r),
+        Ok(Err(e)) => operation_error_to_response(e),
+        Err(_) => HttpResponse::InternalServerError().json("mailbox failure"),
+    }
+}
+
+async fn recycle_bin_id_get(
+    (path, session, state): (Path<String>, Session, Data<AppState>),
+) -> HttpResponse {
+    let uat = get_current_user(&session);
+    let filter = filter_all!(f_id(path.as_str()));
+    let attrs = None;
+
+    let obj = InternalSearchRecycledMessage { uat, filter, attrs };
+
+    match state.qe_r.send(obj).await {
+        Ok(Ok(mut r)) => HttpResponse::Ok().json(r.pop()),
+        Ok(Err(e)) => operation_error_to_response(e),
+        Err(_) => HttpResponse::InternalServerError().json("mailbox failure"),
+    }
+}
+
+async fn recycle_bin_revive_id_post(
+    (path, session, state): (Path<String>, Session, Data<AppState>),
+) -> HttpResponse {
+    let uat = get_current_user(&session);
+    let filter = filter_all!(f_id(path.as_str()));
+
+    let m_obj = ReviveRecycledMessage { uat, filter };
+    match state.qe_w.send(m_obj).await {
+        Ok(Ok(r)) => HttpResponse::Ok().json(r),
+        Ok(Err(e)) => operation_error_to_response(e),
+        Err(_) => HttpResponse::InternalServerError().json("mailbox failure"),
+    }
+}
+
 async fn do_nothing(_session: Session) -> String {
     "did nothing".to_string()
 }
@@ -1535,9 +1579,9 @@ pub fn create_server_core(config: Configuration) {
             )
             .service(
                 web::scope("/v1/recycle_bin")
-                    .route("", web::get().to(do_nothing))
-                    .route("/{id}", web::get().to(do_nothing))
-                    .route("/{id}/_restore", web::get().to(do_nothing)),
+                    .route("", web::get().to(recycle_bin_get))
+                    .route("/{id}", web::get().to(recycle_bin_id_get))
+                    .route("/{id}/_revive", web::post().to(recycle_bin_revive_id_post)),
             )
             .service(
                 web::scope("/v1/access_profile")

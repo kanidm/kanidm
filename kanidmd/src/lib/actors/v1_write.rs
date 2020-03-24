@@ -4,6 +4,7 @@ use std::sync::Arc;
 use crate::async_log::EventLog;
 use crate::event::{
     CreateEvent, DeleteEvent, ModifyEvent, PurgeRecycledEvent, PurgeTombstoneEvent,
+    ReviveRecycledEvent,
 };
 use crate::idm::event::{
     GeneratePasswordEvent, PasswordChangeEvent, RegenerateRadiusSecretEvent,
@@ -88,6 +89,15 @@ impl ModifyMessage {
 
 impl Message for ModifyMessage {
     type Result = Result<OperationResponse, OperationError>;
+}
+
+pub struct ReviveRecycledMessage {
+    pub uat: Option<UserAuthToken>,
+    pub filter: Filter<FilterInvalid>,
+}
+
+impl Message for ReviveRecycledMessage {
+    type Result = Result<(), OperationError>;
 }
 
 pub struct IdmAccountSetPasswordMessage {
@@ -478,6 +488,34 @@ impl Handler<InternalDeleteMessage> for QueryServerWriteV1 {
 
             qs_write
                 .delete(&mut audit, &del)
+                .and_then(|_| qs_write.commit(&mut audit).map(|_| ()))
+        });
+        self.log.do_send(audit);
+        res
+    }
+}
+
+impl Handler<ReviveRecycledMessage> for QueryServerWriteV1 {
+    type Result = Result<(), OperationError>;
+
+    fn handle(&mut self, msg: ReviveRecycledMessage, _: &mut Self::Context) -> Self::Result {
+        let mut audit = AuditScope::new("revive");
+        let res = audit_segment!(&mut audit, || {
+            let mut qs_write = self.qs.write(duration_from_epoch_now());
+
+            let rev =
+                match ReviveRecycledEvent::from_parts(&mut audit, msg.uat, msg.filter, &qs_write) {
+                    Ok(r) => r,
+                    Err(e) => {
+                        audit_log!(audit, "Failed to begin revive: {:?}", e);
+                        return Err(e);
+                    }
+                };
+
+            audit_log!(audit, "Begin revive event {:?}", rev);
+
+            qs_write
+                .revive_recycled(&mut audit, &rev)
                 .and_then(|_| qs_write.commit(&mut audit).map(|_| ()))
         });
         self.log.do_send(audit);
