@@ -86,6 +86,16 @@ impl Message for InternalSearchMessage {
     type Result = Result<Vec<ProtoEntry>, OperationError>;
 }
 
+pub struct InternalSearchRecycledMessage {
+    pub uat: Option<UserAuthToken>,
+    pub filter: Filter<FilterInvalid>,
+    pub attrs: Option<Vec<String>>,
+}
+
+impl Message for InternalSearchRecycledMessage {
+    type Result = Result<Vec<ProtoEntry>, OperationError>;
+}
+
 pub struct InternalRadiusReadMessage {
     pub uat: Option<UserAuthToken>,
     pub uuid_or_name: String,
@@ -336,6 +346,40 @@ impl Handler<InternalSearchMessage> for QueryServerReadV1 {
                 Ok(s) => s,
                 Err(e) => {
                     audit_log!(audit, "Failed to begin search: {:?}", e);
+                    return Err(e);
+                }
+            };
+
+            audit_log!(audit, "Begin event {:?}", srch);
+
+            match qs_read.search_ext(&mut audit, &srch) {
+                Ok(entries) => SearchResult::new(&mut audit, &qs_read, entries)
+                    .map(|ok_sr| ok_sr.into_proto_array()),
+                Err(e) => Err(e),
+            }
+        });
+        self.log.do_send(audit);
+        res
+    }
+}
+
+impl Handler<InternalSearchRecycledMessage> for QueryServerReadV1 {
+    type Result = Result<Vec<ProtoEntry>, OperationError>;
+
+    fn handle(
+        &mut self,
+        msg: InternalSearchRecycledMessage,
+        _: &mut Self::Context,
+    ) -> Self::Result {
+        let mut audit = AuditScope::new("internal_search_recycle_message");
+        let res = audit_segment!(&mut audit, || {
+            let qs_read = self.qs.read();
+
+            // Make an event from the request
+            let srch = match SearchEvent::from_internal_recycle_message(&mut audit, msg, &qs_read) {
+                Ok(s) => s,
+                Err(e) => {
+                    audit_log!(audit, "Failed to begin recycled search: {:?}", e);
                     return Err(e);
                 }
             };

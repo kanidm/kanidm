@@ -20,7 +20,7 @@ static UNIX_TEST_PASSWORD: &str = "unix test user password";
 // Test external behaviorus of the service.
 
 fn run_test(test_fn: fn(KanidmClient) -> ()) {
-    // ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
+    ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
     let _ = env_logger::builder().is_test(true).try_init();
     let (tx, rx) = mpsc::channel();
     let port = PORT_ALLOC.fetch_add(1, Ordering::SeqCst);
@@ -672,6 +672,46 @@ fn test_server_rest_posix_auth_lifecycle() {
             Ok(None) => {}
             _ => assert!(false),
         };
+    });
+}
+
+#[test]
+fn test_server_rest_recycle_lifecycle() {
+    run_test(|rsclient: KanidmClient| {
+        let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
+        assert!(res.is_ok());
+
+        // Not recommended in production!
+        rsclient
+            .idm_group_add_members("idm_admins", vec!["admin"])
+            .unwrap();
+
+        // Setup a unix user
+        rsclient
+            .idm_account_create("recycle_account", "Recycle Demo Account")
+            .unwrap();
+
+        // delete them
+        rsclient.idm_account_delete("recycle_account").unwrap();
+
+        // not there
+        let acc = rsclient.idm_account_get("recycle_account").unwrap();
+        assert!(acc.is_none());
+
+        // list the recycle bin
+        let r_list = rsclient.recycle_bin_list().unwrap();
+
+        assert!(r_list.len() == 1);
+        // get the user in recycle bin
+        let r_user = rsclient.recycle_bin_get("recycle_account").unwrap();
+        assert!(r_user.is_some());
+
+        // revive
+        rsclient.recycle_bin_revive("recycle_account").unwrap();
+
+        // they are there!
+        let acc = rsclient.idm_account_get("recycle_account").unwrap();
+        assert!(acc.is_some());
     });
 }
 

@@ -2,7 +2,7 @@ use actix::prelude::*;
 use std::time::Duration;
 
 use crate::actors::v1_write::QueryServerWriteV1;
-use crate::constants::PURGE_TIMEOUT;
+use crate::constants::PURGE_FREQUENCY;
 use crate::event::{PurgeRecycledEvent, PurgeTombstoneEvent};
 
 pub struct IntervalActor {
@@ -33,10 +33,10 @@ impl Actor for IntervalActor {
 
     fn started(&mut self, ctx: &mut Self::Context) {
         // TODO #65: This timeout could be configurable from config?
-        ctx.run_interval(Duration::from_secs(PURGE_TIMEOUT), move |act, _ctx| {
+        ctx.run_interval(Duration::from_secs(PURGE_FREQUENCY), move |act, _ctx| {
             act.purge_recycled();
         });
-        ctx.run_interval(Duration::from_secs(PURGE_TIMEOUT), move |act, _ctx| {
+        ctx.run_interval(Duration::from_secs(PURGE_FREQUENCY), move |act, _ctx| {
             act.purge_tombstones();
         });
     }

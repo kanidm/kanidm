@@ -761,4 +761,17 @@ impl KanidmClient {
     pub fn idm_schema_classtype_get(&self, id: &str) -> Result<Option<Entry>, ClientError> {
         self.perform_get_request(format!("/v1/schema/classtype/{}", id).as_str())
     }
+
+    // ==== recycle bin
+    pub fn recycle_bin_list(&self) -> Result<Vec<Entry>, ClientError> {
+        self.perform_get_request("/v1/recycle_bin")
+    }
+
+    pub fn recycle_bin_get(&self, id: &str) -> Result<Option<Entry>, ClientError> {
+        self.perform_get_request(format!("/v1/recycle_bin/{}", id).as_str())
+    }
+
+    pub fn recycle_bin_revive(&self, id: &str) -> Result<(), ClientError> {
+        self.perform_post_request(format!("/v1/recycle_bin/{}/_revive", id).as_str(), ())
+    }
 }

@@ -1,3 +1,4 @@
+use kanidm_proto::v1::OperationError;
 use std::time::Duration;
 use uuid::Uuid;
 
@@ -21,6 +22,17 @@ impl Cid {
             s_uuid: Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap(),
             ts: Duration::new(0, 0),
         }
+    }
+
+    pub fn sub_secs(&self, secs: u64) -> Result<Self, OperationError> {
+        self.ts
+            .checked_sub(Duration::from_secs(secs))
+            .map(|r| Cid {
+                d_uuid: Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap(),
+                s_uuid: Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap(),
+                ts: r,
+            })
+            .ok_or(OperationError::InvalidReplCID)
     }
 }
 

@@ -10,9 +10,13 @@ documentation = "https://docs.rs/kanidm_tools/latest/kanidm_tools/"
 homepage = "https://github.com/kanidm/kanidm/"
 repository = "https://github.com/kanidm/kanidm/"
 
+[lib]
+name = "kanidm_cli"
+path = "src/cli/lib.rs"
+
 [[bin]]
 name = "kanidm"
-path = "src/main.rs"
+path = "src/cli/main.rs"
 
 [[bin]]
 name = "kanidm_ssh_authorizedkeys_direct"

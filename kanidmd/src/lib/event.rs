@@ -16,7 +16,9 @@ use crate::server::{
 };
 use kanidm_proto::v1::OperationError;
 
-use crate::actors::v1_read::{AuthMessage, InternalSearchMessage, SearchMessage};
+use crate::actors::v1_read::{
+    AuthMessage, InternalSearchMessage, InternalSearchRecycledMessage, SearchMessage,
+};
 use crate::actors::v1_write::{CreateMessage, DeleteMessage, ModifyMessage};
 // Bring in schematransaction trait for validate
 // use crate::schema::SchemaTransaction;
@@ -280,6 +282,40 @@ impl SearchEvent {
         })
     }
 
+    pub fn from_internal_recycle_message(
+        audit: &mut AuditScope,
+        msg: InternalSearchRecycledMessage,
+        qs: &QueryServerReadTransaction,
+    ) -> Result<Self, OperationError> {
+        let r_attrs: Option<BTreeSet<String>> = msg.attrs.map(|vs| {
+            vs.into_iter()
+                .filter_map(|a| qs.get_schema().normalise_attr_if_exists(a.as_str()))
+                .collect()
+        });
+
+        if let Some(s) = &r_attrs {
+            if s.is_empty() {
+                return Err(OperationError::EmptyRequest);
+            }
+        }
+
+        Ok(SearchEvent {
+            event: Event::from_ro_uat(audit, qs, msg.uat)?,
+            filter: msg
+                .filter
+                .clone()
+                .into_recycled()
+                .validate(qs.get_schema())
+                .map_err(OperationError::SchemaViolation)?,
+            filter_orig: msg
+                .filter
+                .into_recycled()
+                .validate(qs.get_schema())
+                .map_err(OperationError::SchemaViolation)?,
+            attrs: r_attrs,
+        })
+    }
+
     pub fn from_whoami_request(
         audit: &mut AuditScope,
         uat: Option<UserAuthToken>,
@@ -352,31 +388,6 @@ impl SearchEvent {
             attrs: None,
         }
     }
-
-    /*
-    #[cfg(test)]
-    #[allow(dead_code)]
-    pub fn from_rec_request(
-        audit: &mut AuditScope,
-        request: SearchRecycledRequest,
-        qs: &QueryServerReadTransaction,
-    ) -> Result<Self, OperationError> {
-        match Filter::from_ro(audit, &request.filter, qs) {
-            Ok(f) => Ok(SearchEvent {
-                event: Event::from_ro_uat(audit, qs, msg.uat)?,
-                filter: f
-                    .clone()
-                    .into_recycled()
-                    .validate(qs.get_schema())
-                    .map_err(|e| OperationError::SchemaViolation(e))?,
-                filter_orig: f
-                    .validate(qs.get_schema())
-                    .map_err(|e| OperationError::SchemaViolation(e))?,
-            }),
-            Err(e) => Err(e),
-        }
-    }
-    */
 
     #[cfg(test)]
     /* Impersonate a request for recycled objects */
@@ -1007,24 +1018,20 @@ impl Message for ReviveRecycledEvent {
 }
 
 impl ReviveRecycledEvent {
-    /*
-    pub fn from_message(
+    pub fn from_parts(
         audit: &mut AuditScope,
-        msg: ReviveRecycledMessage,
+        uat: Option<UserAuthToken>,
+        filter: Filter<FilterInvalid>,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        match Filter::from_rw(audit, &msg.req.filter, qs) {
-            Ok(f) => Ok(ReviveRecycledEvent {
-                event: Event::from_rw_uat(audit, qs, msg.uat)?,
-                filter: f
-                    .into_recycled()
-                    .validate(qs.get_schema())
-                    .map_err(|e| OperationError::SchemaViolation(e))?,
-            }),
-            Err(e) => Err(e),
-        }
+        Ok(ReviveRecycledEvent {
+            event: Event::from_rw_uat(audit, qs, uat)?,
+            filter: filter
+                .into_recycled()
+                .validate(qs.get_schema())
+                .map_err(|e| OperationError::SchemaViolation(e))?,
+        })
     }
-    */
 
     #[cfg(test)]
     pub unsafe fn new_impersonate_entry(
