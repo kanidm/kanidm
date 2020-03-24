@@ -1,6 +1,6 @@
 
 #[derive(Debug, StructOpt)]
-struct CommonOpt {
+pub struct CommonOpt {
     #[structopt(short = "d", long = "debug")]
     debug: bool,
     #[structopt(short = "H", long = "url")]
