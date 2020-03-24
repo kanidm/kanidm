@@ -1,18 +1,29 @@
+use kanidm_client::{KanidmClient, KanidmClientBuilder};
+use std::path::PathBuf;
+use structopt::StructOpt;
+
+#[derive(Debug, StructOpt)]
+pub struct Named {
+    #[structopt()]
+    pub name: String,
+    #[structopt(flatten)]
+    pub copt: CommonOpt,
+}
 
 #[derive(Debug, StructOpt)]
 pub struct CommonOpt {
     #[structopt(short = "d", long = "debug")]
-    debug: bool,
+    pub debug: bool,
     #[structopt(short = "H", long = "url")]
-    addr: Option<String>,
+    pub addr: Option<String>,
     #[structopt(short = "D", long = "name")]
-    username: String,
+    pub username: String,
     #[structopt(parse(from_os_str), short = "C", long = "ca")]
-    ca_path: Option<PathBuf>,
+    pub ca_path: Option<PathBuf>,
 }
 
 impl CommonOpt {
-    fn to_client(&self) -> KanidmClient {
+    pub fn to_client(&self) -> KanidmClient {
         let config_path: String = shellexpand::tilde("~/.config/kanidm").into_owned();
 
         debug!("Attempting to use config {}", "/etc/kanidm/config");

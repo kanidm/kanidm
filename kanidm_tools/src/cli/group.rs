@@ -1,11 +1,5 @@
-
-#[derive(Debug, StructOpt)]
-pub struct GroupNamed {
-    #[structopt()]
-    name: String,
-    #[structopt(flatten)]
-    copt: CommonOpt,
-}
+use crate::common::{CommonOpt, Named};
+use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 pub struct GroupNamedMembers {
@@ -30,7 +24,7 @@ pub struct GroupPosixOpt {
 #[derive(Debug, StructOpt)]
 pub enum GroupPosix {
     #[structopt(name = "show")]
-    Show(GroupNamed),
+    Show(Named),
     #[structopt(name = "set")]
     Set(GroupPosixOpt),
 }
@@ -40,15 +34,15 @@ pub enum GroupOpt {
     #[structopt(name = "list")]
     List(CommonOpt),
     #[structopt(name = "create")]
-    Create(GroupNamed),
+    Create(Named),
     #[structopt(name = "delete")]
-    Delete(GroupNamed),
+    Delete(Named),
     #[structopt(name = "list_members")]
-    ListMembers(GroupNamed),
+    ListMembers(Named),
     #[structopt(name = "set_members")]
     SetMembers(GroupNamedMembers),
     #[structopt(name = "purge_members")]
-    PurgeMembers(GroupNamed),
+    PurgeMembers(Named),
     #[structopt(name = "add_members")]
     AddMembers(GroupNamedMembers),
     #[structopt(name = "posix")]
@@ -56,6 +50,22 @@ pub enum GroupOpt {
 }
 
 impl GroupOpt {
+    pub fn debug(&self) -> bool {
+        match self {
+            GroupOpt::List(copt) => copt.debug,
+            GroupOpt::Create(gcopt) => gcopt.copt.debug,
+            GroupOpt::Delete(gcopt) => gcopt.copt.debug,
+            GroupOpt::ListMembers(gcopt) => gcopt.copt.debug,
+            GroupOpt::AddMembers(gcopt) => gcopt.copt.debug,
+            GroupOpt::SetMembers(gcopt) => gcopt.copt.debug,
+            GroupOpt::PurgeMembers(gcopt) => gcopt.copt.debug,
+            GroupOpt::Posix(gpopt) => match gpopt {
+                GroupPosix::Show(gcopt) => gcopt.copt.debug,
+                GroupPosix::Set(gcopt) => gcopt.copt.debug,
+            },
+        }
+    }
+
     pub fn exec(&self) -> () {
         match self {
             GroupOpt::List(copt) => {

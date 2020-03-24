@@ -1,3 +1,5 @@
+use crate::common::CommonOpt;
+use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 pub struct AccountCommonOpt {
@@ -126,6 +128,34 @@ pub enum AccountOpt {
 }
 
 impl AccountOpt {
+    pub fn debug(&self) -> bool {
+        match self {
+            AccountOpt::Credential(acopt) => match acopt {
+                AccountCredential::SetPassword(acs) => acs.copt.debug,
+                AccountCredential::GeneratePassword(acs) => acs.copt.debug,
+            },
+            AccountOpt::Radius(acopt) => match acopt {
+                AccountRadius::Show(aro) => aro.copt.debug,
+                AccountRadius::Generate(aro) => aro.copt.debug,
+                AccountRadius::Delete(aro) => aro.copt.debug,
+            },
+            AccountOpt::Posix(apopt) => match apopt {
+                AccountPosix::Show(apo) => apo.copt.debug,
+                AccountPosix::Set(apo) => apo.copt.debug,
+                AccountPosix::SetPassword(apo) => apo.copt.debug,
+            },
+            AccountOpt::Ssh(asopt) => match asopt {
+                AccountSsh::List(ano) => ano.copt.debug,
+                AccountSsh::Add(ano) => ano.copt.debug,
+                AccountSsh::Delete(ano) => ano.copt.debug,
+            },
+            AccountOpt::List(copt) => copt.debug,
+            AccountOpt::Get(aopt) => aopt.copt.debug,
+            AccountOpt::Delete(aopt) => aopt.copt.debug,
+            AccountOpt::Create(aopt) => aopt.copt.debug,
+        }
+    }
+
     pub fn exec(&self) -> () {
         match self {
             // id/cred/primary/set
