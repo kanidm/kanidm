@@ -17,8 +17,10 @@ use crate::recycle::RecycleOpt;
 #[derive(Debug, StructOpt)]
 pub enum SelfOpt {
     #[structopt(name = "whoami")]
+    /// Show the current authenticated user's identity
     Whoami(CommonOpt),
     #[structopt(name = "set_password")]
+    /// Set the current user's password
     SetPassword(CommonOpt),
 }
 
@@ -59,17 +61,23 @@ impl SelfOpt {
 }
 
 #[derive(Debug, StructOpt)]
+#[structopt(about = "I am a program and I work, just pass `-h`")]
 pub enum ClientOpt {
-    #[structopt(name = "raw")]
-    Raw(RawOpt),
     #[structopt(name = "self")]
+    /// Actions for the current authenticated account
     CSelf(SelfOpt),
     #[structopt(name = "account")]
+    /// Account operations
     Account(AccountOpt),
     #[structopt(name = "group")]
+    /// Group operations
     Group(GroupOpt),
     #[structopt(name = "recycle_bin")]
+    /// Recycle Bin operations
     Recycle(RecycleOpt),
+    #[structopt(name = "raw")]
+    /// Unsafe - low level, raw database operations.
+    Raw(RawOpt),
 }
 
 impl ClientOpt {

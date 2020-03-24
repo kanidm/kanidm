@@ -10,6 +10,7 @@
 - [SSH Key Distribution](./ssh_key_dist.md)
 - [RADIUS](./radius.md)
 - [Password Quality and Badlisting](./password_quality.md)
+- [Recycle Bin](./recycle_bin.md)
 -----------
 [Why TLS?](./why_tls.md)
 

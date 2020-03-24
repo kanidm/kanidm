@@ -1,7 +1,5 @@
-use shellexpand;
-use structopt::StructOpt;
-
 use kanidm_cli::ClientOpt;
+use structopt::StructOpt;
 
 fn main() {
     let opt = ClientOpt::from_args();
