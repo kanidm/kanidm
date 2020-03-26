@@ -94,6 +94,7 @@ pub struct SchemaAttribute {
     pub description: String,
     pub multivalue: bool,
     pub unique: bool,
+    pub phantom: bool,
     pub index: Vec<IndexType>,
     pub syntax: SyntaxType,
 }
@@ -144,6 +145,7 @@ impl SchemaAttribute {
                 .get_ava_single_bool("unique")
                 .ok_or_else(|| OperationError::InvalidSchemaState("missing unique".to_string()))
         );
+        let phantom = value.get_ava_single_bool("phantom").unwrap_or(false);
         // index vec
         // even if empty, it SHOULD be present ... (is that value to put an empty set?)
         // The get_ava_opt_index handles the optional case for us :)
@@ -169,6 +171,7 @@ impl SchemaAttribute {
             description,
             multivalue,
             unique,
+            phantom,
             index,
             syntax,
         })
@@ -466,68 +469,35 @@ pub trait SchemaTransaction {
         // Does this need to validate anything further at all? The UUID
         // will be checked as part of the schema migration on startup, so I think
         // just that all the content is sane is fine.
-        for class in class_snapshot.values() {
+        class_snapshot.values().for_each(|class| {
             // report the class we are checking
-            for a in &class.systemmay {
-                // report the attribute.
-                /*
-                audit_log!(
-                    audit,
-                    "validate systemmay class:attr -> {}:{}",
-                    class.name,
-                    a
-                );
-                */
-                if !attribute_snapshot.contains_key(a) {
-                    res.push(Err(ConsistencyError::SchemaClassMissingAttribute(
-                        class.name.clone(),
-                        a.clone(),
-                    )))
-                }
-            }
-            for a in &class.may {
-                // report the attribute.
-                /*
-                audit_log!(audit, "validate may class:attr -> {}:{}", class.name, a);
-                */
-                if !attribute_snapshot.contains_key(a) {
-                    res.push(Err(ConsistencyError::SchemaClassMissingAttribute(
-                        class.name.clone(),
-                        a.clone(),
-                    )))
-                }
-            }
-            for a in &class.systemmust {
-                // report the attribute.
-                /*
-                audit_log!(
-                    audit,
-                    "validate systemmust class:attr -> {}:{}",
-                    class.name,
-                    a
-                );
-                */
-                if !attribute_snapshot.contains_key(a) {
-                    res.push(Err(ConsistencyError::SchemaClassMissingAttribute(
-                        class.name.clone(),
-                        a.clone(),
-                    )))
-                }
-            }
-            for a in &class.must {
-                // report the attribute.
-                /*
-                audit_log!(audit, "validate must class:attr -> {}:{}", class.name, a);
-                */
-                if !attribute_snapshot.contains_key(a) {
-                    res.push(Err(ConsistencyError::SchemaClassMissingAttribute(
-                        class.name.clone(),
-                        a.clone(),
-                    )))
-                }
-            }
-        }
-
+            class
+                .systemmay
+                .iter()
+                .chain(class.may.iter())
+                .chain(class.systemmust.iter())
+                .chain(class.must.iter())
+                .for_each(|a| {
+                    match attribute_snapshot.get(a) {
+                        Some(attr) => {
+                            // We have the attribute, ensure it's not a phantom.
+                            if attr.phantom {
+                                res.push(Err(ConsistencyError::SchemaClassPhantomAttribute(
+                                    class.name.clone(),
+                                    a.clone(),
+                                )))
+                            }
+                        }
+                        None => {
+                            // No such attr, something is missing!
+                            res.push(Err(ConsistencyError::SchemaClassMissingAttribute(
+                                class.name.clone(),
+                                a.clone(),
+                            )))
+                        }
+                    }
+                })
+        }); // end for
         res
     }
 
@@ -677,6 +647,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     description: String::from("The set of classes defining an object"),
                     multivalue: true,
                     unique: false,
+                    phantom: false,
                     index: vec![IndexType::EQUALITY],
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
@@ -692,6 +663,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     // Uniqueness is handled by base.rs, not attrunique here due to
                     // needing to check recycled objects too.
                     unique: false,
+                    phantom: false,
                     index: vec![IndexType::EQUALITY],
                     syntax: SyntaxType::UUID,
                 },
@@ -707,6 +679,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     // Uniqueness is handled by base.rs, not attrunique here due to
                     // needing to check recycled objects too.
                     unique: false,
+                    phantom: false,
                     index: vec![],
                     syntax: SyntaxType::CID,
                 },
@@ -720,6 +693,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     description: String::from("The shortform name of an object"),
                     multivalue: false,
                     unique: true,
+                    phantom: false,
                     index: vec![IndexType::EQUALITY],
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
@@ -735,6 +709,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     ),
                     multivalue: false,
                     unique: true,
+                    phantom: false,
                     index: vec![IndexType::EQUALITY],
                     syntax: SyntaxType::SERVICE_PRINCIPLE_NAME,
                 },
@@ -748,6 +723,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     description: String::from("The name of a schema attribute"),
                     multivalue: false,
                     unique: true,
+                    phantom: false,
                     index: vec![IndexType::EQUALITY],
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
@@ -761,6 +737,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     description: String::from("The name of a schema class"),
                     multivalue: false,
                     unique: true,
+                    phantom: false,
                     index: vec![IndexType::EQUALITY],
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
@@ -774,6 +751,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     description: String::from("A description of an attribute, object or class"),
                     multivalue: true,
                     unique: false,
+                    phantom: false,
                     index: vec![],
                     syntax: SyntaxType::UTF8STRING,
                 },
@@ -784,6 +762,17 @@ impl<'a> SchemaWriteTransaction<'a> {
                 description: String::from("If true, this attribute is able to store multiple values rather than just a single value."),
                 multivalue: false,
                 unique: false,
+                phantom: false,
+                index: vec![],
+                syntax: SyntaxType::BOOLEAN,
+            });
+            self.attributes.insert(String::from("phantom"), SchemaAttribute {
+                name: String::from("phantom"),
+                uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_PHANTOM).expect("unable to parse static uuid"),
+                description: String::from("If true, this attribute must NOT be present in any may/must sets of a class as. This represents generated attributes."),
+                multivalue: false,
+                unique: false,
+                phantom: false,
                 index: vec![],
                 syntax: SyntaxType::BOOLEAN,
             });
@@ -793,6 +782,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 description: String::from("If true, this attribute must store a unique value through out the database."),
                 multivalue: false,
                 unique: false,
+                phantom: false,
                 index: vec![],
                 syntax: SyntaxType::BOOLEAN,
             });
@@ -807,6 +797,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     ),
                     multivalue: true,
                     unique: false,
+                    phantom: false,
                     index: vec![],
                     syntax: SyntaxType::INDEX_ID,
                 },
@@ -822,6 +813,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     ),
                     multivalue: false,
                     unique: false,
+                    phantom: false,
                     index: vec![IndexType::EQUALITY],
                     syntax: SyntaxType::SYNTAX_ID,
                 },
@@ -837,6 +829,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     ),
                     multivalue: true,
                     unique: false,
+                    phantom: false,
                     index: vec![],
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
@@ -852,6 +845,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     ),
                     multivalue: true,
                     unique: false,
+                    phantom: false,
                     index: vec![],
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
@@ -867,6 +861,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     ),
                     multivalue: true,
                     unique: false,
+                    phantom: false,
                     index: vec![],
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
@@ -882,6 +877,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     ),
                     multivalue: true,
                     unique: false,
+                    phantom: false,
                     index: vec![],
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
@@ -896,7 +892,8 @@ impl<'a> SchemaWriteTransaction<'a> {
                         .expect("unable to parse static uuid"),
                     description: String::from("A flag to determine if this ACP is active for application. True is enabled, and enforce. False is checked but not enforced."),
                     multivalue: false,
-                unique: false,
+                    unique: false,
+                    phantom: false,
                     index: vec![IndexType::EQUALITY],
                     syntax: SyntaxType::BOOLEAN,
                 },
@@ -913,6 +910,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     ),
                     multivalue: false,
                     unique: false,
+                    phantom: false,
                     index: vec![IndexType::EQUALITY, IndexType::SUBSTRING],
                     syntax: SyntaxType::JSON_FILTER,
                 },
@@ -928,6 +926,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     ),
                     multivalue: false,
                     unique: false,
+                    phantom: false,
                     index: vec![IndexType::EQUALITY, IndexType::SUBSTRING],
                     syntax: SyntaxType::JSON_FILTER,
                 },
@@ -940,7 +939,8 @@ impl<'a> SchemaWriteTransaction<'a> {
                         .expect("unable to parse static uuid"),
                     description: String::from("The attributes that may be viewed or searched by the reciever on targetscope."),
                     multivalue: true,
-                unique: false,
+                    unique: false,
+                    phantom: false,
                     index: vec![IndexType::EQUALITY],
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
@@ -956,6 +956,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     ),
                     multivalue: true,
                     unique: false,
+                    phantom: false,
                     index: vec![IndexType::EQUALITY],
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
@@ -971,6 +972,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     ),
                     multivalue: true,
                     unique: false,
+                    phantom: false,
                     index: vec![IndexType::EQUALITY],
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
@@ -984,7 +986,8 @@ impl<'a> SchemaWriteTransaction<'a> {
                         .expect("unable to parse static uuid"),
                     description: String::from("The set of attribute types that could be removed or purged in a modification."),
                     multivalue: true,
-                unique: false,
+                    unique: false,
+                    phantom: false,
                     index: vec![IndexType::EQUALITY],
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
@@ -997,7 +1000,8 @@ impl<'a> SchemaWriteTransaction<'a> {
                         .expect("unable to parse static uuid"),
                     description: String::from("The set of attribute types that could be added or asserted in a modification."),
                     multivalue: true,
-                unique: false,
+                    unique: false,
+                    phantom: false,
                     index: vec![IndexType::EQUALITY],
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
@@ -1010,7 +1014,8 @@ impl<'a> SchemaWriteTransaction<'a> {
                         .expect("unable to parse static uuid"),
                     description: String::from("The set of class values that could be asserted or added to an entry. Only applies to modify::present operations on class."),
                     multivalue: true,
-                unique: false,
+                    unique: false,
+                    phantom: false,
                     index: vec![IndexType::EQUALITY],
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
@@ -1025,6 +1030,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     description: String::from("reverse group membership of the object"),
                     multivalue: true,
                     unique: false,
+                    phantom: false,
                     index: vec![IndexType::EQUALITY],
                     syntax: SyntaxType::REFERENCE_UUID,
                 },
@@ -1038,6 +1044,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     description: String::from("reverse direct group membership of the object"),
                     multivalue: true,
                     unique: false,
+                    phantom: false,
                     index: vec![IndexType::EQUALITY],
                     syntax: SyntaxType::REFERENCE_UUID,
                 },
@@ -1051,6 +1058,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     description: String::from("List of members of the group"),
                     multivalue: true,
                     unique: false,
+                    phantom: false,
                     index: vec![IndexType::EQUALITY],
                     syntax: SyntaxType::REFERENCE_UUID,
                 },
@@ -1067,6 +1075,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     ),
                     multivalue: false,
                     unique: false,
+                    phantom: false,
                     index: vec![IndexType::EQUALITY],
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
@@ -1081,8 +1090,37 @@ impl<'a> SchemaWriteTransaction<'a> {
                     description: String::from("A DNS Domain name entry."),
                     multivalue: true,
                     unique: false,
+                    phantom: false,
                     index: vec![IndexType::EQUALITY],
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                },
+            );
+            self.attributes.insert(
+                String::from("claim"),
+                SchemaAttribute {
+                    name: String::from("claim"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_CLAIM)
+                        .expect("unable to parse static uuid"),
+                    description: String::from("The spn of a claim this entry holds"),
+                    multivalue: true,
+                    unique: false,
+                    phantom: true,
+                    index: vec![],
+                    syntax: SyntaxType::SERVICE_PRINCIPLE_NAME,
+                },
+            );
+            self.attributes.insert(
+                String::from("password_import"),
+                SchemaAttribute {
+                    name: String::from("password_import"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_PASSWORD_IMPORT)
+                        .expect("unable to parse static uuid"),
+                    description: String::from("An imported password hash from an external system."),
+                    multivalue: true,
+                    unique: false,
+                    phantom: true,
+                    index: vec![],
+                    syntax: SyntaxType::UTF8STRING,
                 },
             );
 
@@ -1093,7 +1131,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_ATTRIBUTETYPE)
                         .expect("unable to parse static uuid"),
                     description: String::from("Definition of a schema attribute"),
-                    systemmay: vec![String::from("index")],
+                    systemmay: vec![String::from("phantom"), String::from("index")],
                     may: vec![],
                     systemmust: vec![
                         String::from("class"),
@@ -1317,6 +1355,7 @@ impl<'a> SchemaWriteTransaction<'a> {
             );
 
             let r = self.validate(&mut au);
+            audit_log!(au, "{:?}", r);
             if r.is_empty() {
                 self.reload_idxmeta();
                 Ok(())
@@ -1706,6 +1745,7 @@ mod tests {
             description: String::from(""),
             multivalue: false,
             unique: false,
+            phantom: false,
             index: vec![IndexType::EQUALITY],
             syntax: SyntaxType::UTF8STRING_INSENSITIVE,
         };
@@ -1728,6 +1768,7 @@ mod tests {
             description: String::from(""),
             multivalue: true,
             unique: false,
+            phantom: false,
             index: vec![IndexType::EQUALITY],
             syntax: SyntaxType::UTF8STRING,
         };
@@ -1745,6 +1786,7 @@ mod tests {
             description: String::from(""),
             multivalue: true,
             unique: false,
+            phantom: false,
             index: vec![IndexType::EQUALITY],
             syntax: SyntaxType::BOOLEAN,
         };
@@ -1768,6 +1810,7 @@ mod tests {
             description: String::from(""),
             multivalue: false,
             unique: false,
+            phantom: false,
             index: vec![IndexType::EQUALITY],
             syntax: SyntaxType::SYNTAX_ID,
         };
@@ -1786,6 +1829,7 @@ mod tests {
             description: String::from(""),
             multivalue: false,
             unique: false,
+            phantom: false,
             index: vec![IndexType::EQUALITY],
             syntax: SyntaxType::INDEX_ID,
         };
@@ -1987,55 +2031,6 @@ mod tests {
         println!("{}", audit);
     }
 
-    /*
-    #[test]
-    fn test_schema_entry_normalise() {
-        // Check that entries can be normalised sanely
-        let mut audit = AuditScope::new("test_schema_entry_normalise");
-        let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
-        let schema = schema_outer.write();
-
-        // Check that an entry normalises, despite being inconsistent to
-        // schema.
-        let e_test: Entry<EntryInit, EntryNew> = serde_json::from_str(
-            r#"{
-            "valid": null,
-            "state": null,
-            "attrs": {
-                "class": ["extensibleobject"],
-                "name": ["TestPerson"],
-                "syntax": ["utf8string"],
-                "NotAllowed": ["Some Value"],
-                "UUID": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
-                "index": ["equality"]
-            }
-        }"#,
-        )
-        ;
-
-        let e_expect: Entry<EntryNormalised, EntryNew> = serde_json::from_str(
-            r#"{
-            "valid": null,
-            "state": null,
-            "attrs": {
-                "class": ["extensibleobject"],
-                "name": ["testperson"],
-                "syntax": ["UTF8STRING"],
-                "notallowed": ["Some Value"],
-                "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
-                "index": ["EQUALITY"]
-            }
-        }"#,
-        )
-        ;
-
-        let e_normal = e_test.normalise(&schema).expect("validation failure");
-
-        assert_eq!(e_expect, e_normal);
-        println!("{}", audit);
-    }
-    */
-
     #[test]
     fn test_schema_extensible() {
         let mut audit = AuditScope::new("test_schema_extensible");
@@ -2139,12 +2134,5 @@ mod tests {
             })
         );
         println!("{}", audit);
-    }
-
-    #[test]
-    fn test_schema_filter_normalisation() {
-        // Test mixed case attr name
-        // test syntax of bool
-        // test normalise of insensitive strings
     }
 }

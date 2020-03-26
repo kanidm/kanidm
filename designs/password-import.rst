@@ -20,6 +20,9 @@ Scenarioes
 * Once off account import - this is where we are migrating from an existing system to kanidm
 * Long term password sync - this is where an external system will sync and provide password hashes into kanidm.
 
+In the situation where the external system has access to the cleartext of the password, the
+standard password set mechanisms and apis can be used instead.
+
 Possible Account Configurations
 -------------------------------
 
