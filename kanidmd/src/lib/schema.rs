@@ -591,16 +591,13 @@ impl<'a> SchemaWriteTransaction<'a> {
         Ok(())
     }
 
-    pub fn update_classes(
-        &mut self,
-        attributetypes: Vec<SchemaClass>,
-    ) -> Result<(), OperationError> {
+    pub fn update_classes(&mut self, classtypes: Vec<SchemaClass>) -> Result<(), OperationError> {
         // purge all old attributes.
         self.classes.clear();
         // Update with new ones.
         // Do we need to check for dups?
         // No, they'll over-write each other ... but we do need name uniqueness.
-        attributetypes.into_iter().for_each(|a| {
+        classtypes.into_iter().for_each(|a| {
             self.classes.insert(a.name.clone(), a);
         });
         Ok(())
@@ -1964,6 +1961,26 @@ mod tests {
             Err(SchemaError::InvalidAttributeSyntax)
         );
 
+        // You may not have the phantom.
+        let e_phantom: Entry<EntryInvalid, EntryNew> = unsafe {
+            Entry::unsafe_from_entry_str(
+                r#"{
+            "attrs": {
+                "class": ["object", "attributetype"],
+                "attributename": ["testattr"],
+                "description": ["testattr"],
+                "multivalue": ["true"],
+                "unique": ["false"],
+                "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
+                "syntax": ["UTF8STRING"],
+                "password_import": ["password"]
+            }
+        }"#,
+            )
+            .into_invalid_new()
+        };
+        assert!(e_phantom.validate(&schema).is_err());
+
         let e_ok: Entry<EntryInvalid, EntryNew> = unsafe {
             Entry::unsafe_from_entry_str(
                 r#"{
@@ -2056,6 +2073,25 @@ mod tests {
             Err(SchemaError::InvalidAttributeSyntax)
         );
 
+        // Extensible doesn't mean you can have the phantoms
+        let e_extensible_phantom: Entry<EntryInvalid, EntryNew> = unsafe {
+            Entry::unsafe_from_entry_str(
+                r#"{
+            "attrs": {
+                "class": ["extensibleobject"],
+                "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
+                "password_import": ["zzzz"]
+            }
+        }"#,
+            )
+            .into_invalid_new()
+        };
+
+        assert_eq!(
+            e_extensible_phantom.validate(&schema),
+            Err(SchemaError::PhantomAttribute)
+        );
+
         let e_extensible: Entry<EntryInvalid, EntryNew> = unsafe {
             Entry::unsafe_from_entry_str(
                 r#"{
@@ -2133,6 +2169,33 @@ mod tests {
                 ])))
             })
         );
+        println!("{}", audit);
+    }
+
+    #[test]
+    fn test_schema_class_phantom_reject() {
+        // Check that entries can be normalised and validated sanely
+        let mut audit = AuditScope::new("test_schema_class_phantom_reject");
+        let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
+        let mut schema = schema_outer.write();
+
+        assert!(schema.validate(&mut audit).len() == 0);
+
+        // Attempt to create a class with a phantom attribute, should be refused.
+        let class = SchemaClass {
+            name: String::from("testobject"),
+            uuid: Uuid::new_v4(),
+            description: String::from("test object"),
+            systemmay: vec!["claim".to_string()],
+            may: vec![],
+            systemmust: vec![],
+            must: vec![],
+        };
+
+        assert!(schema.update_classes(vec![class]).is_ok());
+
+        assert!(schema.validate(&mut audit).len() == 1);
+
         println!("{}", audit);
     }
 }
