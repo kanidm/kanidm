@@ -13,11 +13,11 @@ mod domain;
 mod failure;
 mod gidnumber;
 mod memberof;
+mod password_import;
 mod protected;
 mod recycle;
 mod refint;
 mod spn;
-mod password_import;
 
 trait Plugin {
     fn id() -> &'static str;
@@ -283,7 +283,15 @@ impl Plugins {
     ) -> Result<(), OperationError> {
         audit_segment!(au, || {
             run_pre_create_transform_plugin!(au, qs, cand, ce, base::Base)
-                .and_then(|_| { run_pre_create_transform_plugin!(au, qs, cand, ce, password_import::PasswordImport) })
+                .and_then(|_| {
+                    run_pre_create_transform_plugin!(
+                        au,
+                        qs,
+                        cand,
+                        ce,
+                        password_import::PasswordImport
+                    )
+                })
                 .and_then(|_| {
                     run_pre_create_transform_plugin!(au, qs, cand, ce, gidnumber::GidNumber)
                 })
@@ -342,7 +350,9 @@ impl Plugins {
         audit_segment!(au, || {
             run_pre_modify_plugin!(au, qs, cand, me, protected::Protected)
                 .and_then(|_| run_pre_modify_plugin!(au, qs, cand, me, base::Base))
-                .and_then(|_| run_pre_modify_plugin!(au, qs, cand, me, password_import::PasswordImport))
+                .and_then(|_| {
+                    run_pre_modify_plugin!(au, qs, cand, me, password_import::PasswordImport)
+                })
                 .and_then(|_| run_pre_modify_plugin!(au, qs, cand, me, gidnumber::GidNumber))
                 .and_then(|_| run_pre_modify_plugin!(au, qs, cand, me, spn::Spn))
                 // attr unique should always be last

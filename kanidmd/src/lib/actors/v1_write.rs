@@ -859,22 +859,21 @@ impl Handler<InternalSshKeyCreateMessage> for QueryServerWriteV1 {
 impl Handler<IdmAccountPersonExtendMessage> for QueryServerWriteV1 {
     type Result = Result<(), OperationError>;
 
-    fn handle(&mut self, msg: IdmAccountPersonExtendMessage, _: &mut Self::Context) -> Self::Result {
+    fn handle(
+        &mut self,
+        msg: IdmAccountPersonExtendMessage,
+        _: &mut Self::Context,
+    ) -> Self::Result {
         let mut audit = AuditScope::new("idm_account_person_extend");
         let res = audit_segment!(&mut audit, || {
-            let IdmAccountPersonExtendMessage {
-                uat,
-                uuid_or_name
-            } = msg;
+            let IdmAccountPersonExtendMessage { uat, uuid_or_name } = msg;
 
             // The filter_map here means we only create the mods if the gidnumber or shell are set
             // in the actual request.
-            let mods: Vec<_> = vec![
-                Some(Modify::Present(
-                    "class".to_string(),
-                    Value::new_class("person"),
-                )),
-            ]
+            let mods: Vec<_> = vec![Some(Modify::Present(
+                "class".to_string(),
+                Value::new_class("person"),
+            ))]
             .into_iter()
             .filter_map(|v| v)
             .collect();

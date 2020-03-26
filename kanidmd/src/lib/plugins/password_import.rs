@@ -1,12 +1,10 @@
 // Transform password import requests into proper kanidm credentials.
-use crate::plugins::Plugin;
 use crate::audit::AuditScope;
-use crate::server::{
-    QueryServerWriteTransaction,
-};
-use crate::event::{CreateEvent, ModifyEvent};
-use kanidm_proto::v1::{OperationError}; //  PluginError};
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew};
+use crate::event::{CreateEvent, ModifyEvent};
+use crate::plugins::Plugin;
+use crate::server::QueryServerWriteTransaction;
+use kanidm_proto::v1::OperationError; //  PluginError};
 
 pub struct PasswordImport {}
 
@@ -31,7 +29,7 @@ impl Plugin for PasswordImport {
         // Given and cand that contains "password_import"
         // remove that attr
         // does that cand have a cred?
-        // 
+        //
 
         // If there are multiple, fail.
 
@@ -53,10 +51,11 @@ impl Plugin for PasswordImport {
 #[cfg(test)]
 mod tests {
     use crate::entry::{Entry, EntryInit, EntryNew};
-    use crate::value::{PartialValue, Value};
     use crate::modify::{Modify, ModifyList};
+    use crate::value::{PartialValue, Value};
 
-    static IMPORT_HASH: &'static str = "pbkdf2_sha256$36000$xIEozuZVAoYm$uW1b35DUKyhvQAf1mBqMvoBDcqSD06juzyO/nmyV0+w=";
+    static IMPORT_HASH: &'static str =
+        "pbkdf2_sha256$36000$xIEozuZVAoYm$uW1b35DUKyhvQAf1mBqMvoBDcqSD06juzyO/nmyV0+w=";
     // static IMPORT_PASSWORD: &'static str = "eicieY7ahchaoCh0eeTa";
 
     #[test]
@@ -78,13 +77,7 @@ mod tests {
 
         let create = vec![e.clone()];
 
-        run_create_test!(
-            Ok(()),
-            preload,
-            create,
-            None,
-            |_, _| {}
-        );
+        run_create_test!(Ok(()), preload, create, None, |_, _| {});
     }
 
     #[test]
@@ -119,4 +112,3 @@ mod tests {
         );
     }
 }
-

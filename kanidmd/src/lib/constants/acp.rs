@@ -920,4 +920,3 @@ pub static JSON_IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1: &str = r#"{
         "acp_modify_class": ["posixgroup"]
     }
 }"#;
-

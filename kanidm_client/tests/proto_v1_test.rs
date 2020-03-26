@@ -735,20 +735,20 @@ fn test_server_rest_account_import_password() {
             .unwrap();
 
         // Make them a person, so we can import the password
-        rsclient
-            .idm_account_person_extend("demo_account")
-            .unwrap();
+        rsclient.idm_account_person_extend("demo_account").unwrap();
 
         // Attempt to import a bad password
-        let r = rsclient
-            .idm_account_primary_credential_import_password("demo_account", "password");
+        let r = rsclient.idm_account_primary_credential_import_password("demo_account", "password");
         assert!(r.is_err());
 
         // Import a good password
         // eicieY7ahchaoCh0eeTa
         // pbkdf2_sha256$36000$xIEozuZVAoYm$uW1b35DUKyhvQAf1mBqMvoBDcqSD06juzyO/nmyV0+w=
         rsclient
-            .idm_account_primary_credential_import_password("demo_account", "pbkdf2_sha256$36000$xIEozuZVAoYm$uW1b35DUKyhvQAf1mBqMvoBDcqSD06juzyO/nmyV0+w=")
+            .idm_account_primary_credential_import_password(
+                "demo_account",
+                "pbkdf2_sha256$36000$xIEozuZVAoYm$uW1b35DUKyhvQAf1mBqMvoBDcqSD06juzyO/nmyV0+w=",
+            )
             .unwrap();
 
         // Now show we can auth with it
@@ -758,7 +758,6 @@ fn test_server_rest_account_import_password() {
         assert!(res.is_ok());
     });
 }
-
 
 // Test the self version of the radius path.
 

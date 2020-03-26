@@ -711,10 +711,7 @@ impl KanidmClient {
         self.perform_post_request(format!("/v1/account/{}/_ssh_pubkeys", id).as_str(), sk)
     }
 
-    pub fn idm_account_person_extend(
-        &self,
-        id: &str,
-    ) -> Result<(), ClientError> {
+    pub fn idm_account_person_extend(&self, id: &str) -> Result<(), ClientError> {
         self.perform_post_request(format!("/v1/account/{}/_person/_extend", id).as_str(), ())
     }
 

@@ -143,7 +143,6 @@ pub static _UUID_IDM_ACP_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1: &str =
     "00000000-0000-0000-0000-ffffff000031";
 pub static _UUID_IDM_ACP_PEOPLE_EXTEND_PRIV_V1: &str = "00000000-0000-0000-0000-ffffff000032";
 
-
 // End of system ranges
 pub static STR_UUID_DOES_NOT_EXIST: &str = "00000000-0000-0000-0000-fffffffffffe";
 pub static STR_UUID_ANONYMOUS: &str = "00000000-0000-0000-0000-ffffffffffff";
