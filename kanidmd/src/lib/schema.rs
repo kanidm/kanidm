@@ -28,6 +28,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use uuid::Uuid;
 
 use concread::collections::bptree::*;
+use concread::cowcell::*;
 
 // representations of schema that confines object types, classes
 // and attributes. This ties in deeply with "Entry".
@@ -54,7 +55,10 @@ lazy_static! {
 pub struct Schema {
     classes: BptreeMap<String, SchemaClass>,
     attributes: BptreeMap<String, SchemaAttribute>,
-    idxmeta: BptreeMap<String, IndexType>,
+    /// This is a copy-on-write cache of the index metadata that has been
+    /// extracted from attributes set, in the correct format for the backend
+    /// to consume.
+    idxmeta: CowCell<BTreeSet<(String, IndexType)>>,
 }
 
 /// A writable transaction of the working schema set. You should not change this directly,
@@ -63,14 +67,14 @@ pub struct Schema {
 pub struct SchemaWriteTransaction<'a> {
     classes: BptreeMapWriteTxn<'a, String, SchemaClass>,
     attributes: BptreeMapWriteTxn<'a, String, SchemaAttribute>,
-    idxmeta: BptreeMapWriteTxn<'a, String, IndexType>,
+    idxmeta: CowCellWriteTxn<'a, BTreeSet<(String, IndexType)>>,
 }
 
 /// A readonly transaction of the working schema set.
 pub struct SchemaReadTransaction {
     classes: BptreeMapReadTxn<String, SchemaClass>,
     attributes: BptreeMapReadTxn<String, SchemaAttribute>,
-    idxmeta: BptreeMapReadTxn<String, IndexType>,
+    idxmeta: CowCellReadTxn<BTreeSet<(String, IndexType)>>,
 }
 
 /// An item reperesenting an attribute and the rules that enforce it. These rules enforce if an
@@ -452,7 +456,7 @@ pub struct SchemaInner {
 pub trait SchemaTransaction {
     fn get_classes(&self) -> BptreeMapReadSnapshot<String, SchemaClass>;
     fn get_attributes(&self) -> BptreeMapReadSnapshot<String, SchemaAttribute>;
-    fn get_idxmeta(&self) -> BptreeMapReadSnapshot<String, IndexType>;
+    fn get_idxmeta(&self) -> BTreeSet<(String, IndexType)>;
 
     fn validate(&self, _audit: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
         let mut res = Vec::new();
@@ -575,9 +579,6 @@ pub trait SchemaTransaction {
 
     fn get_idxmeta_set(&self) -> BTreeSet<(String, IndexType)> {
         self.get_idxmeta()
-            .iter()
-            .map(|(k, v)| (k.clone(), v.clone()))
-            .collect()
     }
 }
 
@@ -1338,8 +1339,8 @@ impl<'a> SchemaTransaction for SchemaWriteTransaction<'a> {
         self.attributes.to_snapshot()
     }
 
-    fn get_idxmeta(&self) -> BptreeMapReadSnapshot<String, IndexType> {
-        self.idxmeta.to_snapshot()
+    fn get_idxmeta(&self) -> BTreeSet<(String, IndexType)> {
+        self.idxmeta.clone()
     }
 }
 
@@ -1352,8 +1353,8 @@ impl SchemaTransaction for SchemaReadTransaction {
         self.attributes.to_snapshot()
     }
 
-    fn get_idxmeta(&self) -> BptreeMapReadSnapshot<String, IndexType> {
-        self.idxmeta.to_snapshot()
+    fn get_idxmeta(&self) -> BTreeSet<(String, IndexType)> {
+        (*self.idxmeta).clone()
     }
 }
 
@@ -1362,7 +1363,7 @@ impl Schema {
         let s = Schema {
             classes: BptreeMap::new(),
             attributes: BptreeMap::new(),
-            idxmeta: BptreeMap::new(),
+            idxmeta: CowCell::new(BTreeSet::new()),
         };
         let mut sw = s.write();
         let r1 = sw.generate_in_memory(audit);
