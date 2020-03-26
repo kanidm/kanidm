@@ -19,11 +19,11 @@ use crate::actors::v1_read::{
 };
 use crate::actors::v1_write::QueryServerWriteV1;
 use crate::actors::v1_write::{
-    AppendAttributeMessage, CreateMessage, DeleteMessage, IdmAccountSetPasswordMessage,
-    IdmAccountUnixExtendMessage, IdmAccountUnixSetCredMessage, IdmGroupUnixExtendMessage,
-    InternalCredentialSetMessage, InternalDeleteMessage, InternalRegenerateRadiusMessage,
-    InternalSshKeyCreateMessage, ModifyMessage, PurgeAttributeMessage, RemoveAttributeValueMessage,
-    ReviveRecycledMessage, SetAttributeMessage,
+    AppendAttributeMessage, CreateMessage, DeleteMessage, IdmAccountPersonExtendMessage,
+    IdmAccountSetPasswordMessage, IdmAccountUnixExtendMessage, IdmAccountUnixSetCredMessage,
+    IdmGroupUnixExtendMessage, InternalCredentialSetMessage, InternalDeleteMessage,
+    InternalRegenerateRadiusMessage, InternalSshKeyCreateMessage, ModifyMessage,
+    PurgeAttributeMessage, RemoveAttributeValueMessage, ReviveRecycledMessage, SetAttributeMessage,
 };
 use crate::async_log;
 use crate::audit::AuditScope;
@@ -416,6 +416,29 @@ async fn schema_classtype_get_id(
     }
 }
 
+// == person ==
+
+async fn person_get((session, state): (Session, Data<AppState>)) -> HttpResponse {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("person")));
+    json_rest_event_get(session, state, filter, None).await
+}
+
+async fn person_post(
+    (obj, session, state): (Json<ProtoEntry>, Session, Data<AppState>),
+) -> HttpResponse {
+    let classes = vec!["account".to_string(), "object".to_string()];
+    json_rest_event_post(obj.into_inner(), session, state, classes).await
+}
+
+async fn person_id_get(
+    (path, session, state): (Path<String>, Session, Data<AppState>),
+) -> HttpResponse {
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("person")));
+    json_rest_event_get_id(path, session, state, filter, None).await
+}
+
+// == account ==
+
 async fn account_get((session, state): (Session, Data<AppState>)) -> HttpResponse {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
     json_rest_event_get(session, state, filter, None).await
@@ -634,6 +657,19 @@ async fn account_get_id_radius_token(
     };
 
     match state.qe_r.send(obj).await {
+        Ok(Ok(r)) => HttpResponse::Ok().json(r),
+        Ok(Err(e)) => operation_error_to_response(e),
+        Err(_) => HttpResponse::InternalServerError().json("mailbox failure"),
+    }
+}
+
+async fn account_post_id_person_extend(
+    (path, session, state): (Path<String>, Session, Data<AppState>),
+) -> HttpResponse {
+    let uat = get_current_user(&session);
+    let uuid_or_name = path.into_inner();
+    let m_obj = IdmAccountPersonExtendMessage { uat, uuid_or_name };
+    match state.qe_w.send(m_obj).await {
         Ok(Ok(r)) => HttpResponse::Ok().json(r),
         Ok(Err(e)) => operation_error_to_response(e),
         Err(_) => HttpResponse::InternalServerError().json("mailbox failure"),
@@ -1494,6 +1530,21 @@ pub fn create_server_core(config: Configuration) {
                     ),
             )
             .service(
+                web::scope("/v1/person")
+                    .route("", web::get().to(person_get))
+                    .route("", web::post().to(person_post))
+                    .route("/{id}", web::get().to(person_id_get)), /*
+                                                                   .route("/{id}", web::delete().to(account_id_delete))
+                                                                   .route("/{id}/_attr/{attr}", web::get().to(account_id_get_attr))
+                                                                   .route("/{id}/_attr/{attr}", web::post().to(account_id_post_attr))
+                                                                   .route("/{id}/_attr/{attr}", web::put().to(account_id_put_attr))
+                                                                   .route(
+                                                                       "/{id}/_attr/{attr}",
+                                                                       web::delete().to(account_id_delete_attr),
+                                                                   )
+                                                                   */
+            )
+            .service(
                 web::scope("/v1/account")
                     .route("", web::get().to(account_get))
                     .route("", web::post().to(account_post))
@@ -1505,6 +1556,10 @@ pub fn create_server_core(config: Configuration) {
                     .route(
                         "/{id}/_attr/{attr}",
                         web::delete().to(account_id_delete_attr),
+                    )
+                    .route(
+                        "/{id}/_person/_extend",
+                        web::post().to(account_post_id_person_extend),
                     )
                     .route("/{id}/_lock", web::get().to(do_nothing))
                     .route("/{id}/_credential", web::get().to(do_nothing))

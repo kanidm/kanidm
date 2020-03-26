@@ -70,6 +70,7 @@ idlset = { version = "0.1" , features = ["use_smallvec"] }
 # idlset = { version = "0.1" }
 
 zxcvbn = "2.0"
+base64 = "0.12"
 
 [dev-dependencies]
 criterion = "0.3"

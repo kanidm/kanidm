@@ -16,6 +16,7 @@ pub enum SchemaError {
     InvalidAttributeSyntax,
     EmptyFilter,
     Corrupted,
+    PhantomAttribute,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -23,6 +24,7 @@ pub enum PluginError {
     AttrUnique(String),
     Base(String),
     ReferentialIntegrity(String),
+    PasswordImport(String),
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -30,6 +32,7 @@ pub enum ConsistencyError {
     Unknown,
     // Class, Attribute
     SchemaClassMissingAttribute(String, String),
+    SchemaClassPhantomAttribute(String, String),
     QueryServerSearchFailure,
     EntryUuidCorrupt(u64),
     UuidIndexCorrupt(String),

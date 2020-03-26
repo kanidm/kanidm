@@ -118,6 +118,15 @@ impl Message for IdmAccountSetPasswordMessage {
     type Result = Result<OperationResponse, OperationError>;
 }
 
+pub struct IdmAccountPersonExtendMessage {
+    pub uat: Option<UserAuthToken>,
+    pub uuid_or_name: String,
+}
+
+impl Message for IdmAccountPersonExtendMessage {
+    type Result = Result<(), OperationError>;
+}
+
 pub struct IdmAccountUnixExtendMessage {
     pub uat: Option<UserAuthToken>,
     pub uuid_or_name: String,
@@ -839,6 +848,39 @@ impl Handler<InternalSshKeyCreateMessage> for QueryServerWriteV1 {
             // Because this is from internal, we can generate a real modlist, rather
             // than relying on the proto ones.
             let ml = ModifyList::new_append("ssh_publickey", Value::new_sshkey(tag, key));
+
+            self.modify_from_internal_parts(&mut audit, uat, uuid_or_name, ml, filter)
+        });
+        self.log.do_send(audit);
+        res
+    }
+}
+
+impl Handler<IdmAccountPersonExtendMessage> for QueryServerWriteV1 {
+    type Result = Result<(), OperationError>;
+
+    fn handle(
+        &mut self,
+        msg: IdmAccountPersonExtendMessage,
+        _: &mut Self::Context,
+    ) -> Self::Result {
+        let mut audit = AuditScope::new("idm_account_person_extend");
+        let res = audit_segment!(&mut audit, || {
+            let IdmAccountPersonExtendMessage { uat, uuid_or_name } = msg;
+
+            // The filter_map here means we only create the mods if the gidnumber or shell are set
+            // in the actual request.
+            let mods: Vec<_> = vec![Some(Modify::Present(
+                "class".to_string(),
+                Value::new_class("person"),
+            ))]
+            .into_iter()
+            .filter_map(|v| v)
+            .collect();
+
+            let ml = ModifyList::new_list(mods);
+
+            let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
 
             self.modify_from_internal_parts(&mut audit, uat, uuid_or_name, ml, filter)
         });

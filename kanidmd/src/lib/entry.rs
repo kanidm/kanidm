@@ -641,6 +641,14 @@ impl<STATE> Entry<EntryInvalid, STATE> {
                         Some(a_schema) => {
                             // Now, for each type we do a *full* check of the syntax
                             // and validity of the ava.
+                            if a_schema.phantom {
+                                debug!(
+                                    "Attempt to add phantom attribute to extensible: {}",
+                                    attr_name
+                                );
+                                return Err(SchemaError::PhantomAttribute);
+                            }
+
                             let r = a_schema.validate_ava(avas);
                             match r {
                                 Ok(_) => {}
@@ -657,6 +665,10 @@ impl<STATE> Entry<EntryInvalid, STATE> {
                     }
                 }
             } else {
+                // Note - we do NOT need to check phantom attributes here because they are
+                // not allowed to exist in the class, which means a phantom attribute can't
+                // be in the may/must set, and would FAIL our normal checks anyway.
+
                 // We clone string here, but it's so we can check all
                 // the values in "may" ar here - so we can't avoid this look up. What we
                 // could do though, is have &String based on the schemaattribute though?;
@@ -1728,6 +1740,10 @@ where
 
     pub fn purge_ava(&mut self, attr: &str) {
         self.attrs.remove(attr);
+    }
+
+    pub fn pop_ava(&mut self, attr: &str) -> Option<BTreeSet<Value>> {
+        self.attrs.remove(attr)
     }
 
     /// Overwrite the existing avas.
