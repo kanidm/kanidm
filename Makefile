@@ -11,3 +11,6 @@ vendor-prep:
 
 doc-local:
 	cargo doc --document-private-items
+
+install-tools-local:
+	cd kanidm_tools && cargo install --path . --force

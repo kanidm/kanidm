@@ -66,7 +66,9 @@ sshkeys = "0.1"
 rpassword = "0.4"
 num_cpus = "1.10"
 
-idlset = "0.1"
+idlset = { version = "0.1" , features = ["use_smallvec"] }
+# idlset = { version = "0.1" }
+
 zxcvbn = "2.0"
 
 [dev-dependencies]

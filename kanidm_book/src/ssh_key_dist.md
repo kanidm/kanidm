@@ -3,13 +3,6 @@
 To support SSH authentication securely to a large set of hosts running SSH, we support distribution
 of SSH public keys via the kanidm server.
 
-## pre-release warning
-
-Currently the tools involved on the client machines do *not* cache the SSH public keys. This means
-that if your primary kanidm server is offline you will *not* be able to SSH to these machines. You
-should adapt and maintain a disaster recovery plan that allows you to access machines if or when
-this situation occurs.
-
 ## Configuring accounts
 
 To view the current ssh public keys on accounts, you can use:
@@ -39,7 +32,9 @@ Uploading a private key or other data will be rejected. For example:
 
 ### Public key caching configuration
 
-If you have kanidm_unixd running, you can use it to locally cache ssh public keys.
+If you have kanidm_unixd running, you can use it to locally cache ssh public keys. This means you
+can still ssh into your machines, even if your network is down, you move away from kanidm, or
+some other interruption occurs.
 
 The kanidm_ssh_authorizedkeys command is part of the kanidm-unix-clients package, so should be installed
 on the servers. It communicates to kanidm_unixd, so you should have a configured pam/nsswitch
