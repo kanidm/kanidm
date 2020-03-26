@@ -39,17 +39,20 @@ As a result of these scenarios this leads to the following required observations
 
 This leads to a pseudo design such as:
 
+    class: claim
     name: claim_email
     claim_name: email
     member: account_1
 
+    class: claim
     name: claim_unused
     claim_name: unused
 
+    class: system, claim
     name: claim_interactive
     claim_name: interactive
-    member: account_1
 
+    class: claim, claim_ephemeral
     name: claim_alter_self
     claim_name: alter_self
     claim_lifetime: 300 # seconds
@@ -59,7 +62,7 @@ This leads to a pseudo design such as:
     ...
     primary_credential: {
         type: password|webauthn|password+webauthn
-        claims: [ claim_alter_self, claim_interactive ]
+        claims: [ claim_alter_self ] //note that interactive is implied
     }
     application_credentialn: {
         name: iphone imap password
@@ -75,7 +78,8 @@ claim:
         claims: [ email ]
     }
 
-If we authenticate with the primary credential, the static claims are initially issued:
+If we authenticate with the primary credential, the static claims are initially issued, and because
+it's the primary token, we get the implied system interactive claim.
 
     UserAuthToken {
         name; account_1
@@ -113,6 +117,10 @@ UAT to Entry as part of the event conversion we will perform
 ACP's can then have filters such as:
 
     Eq('claim', 'alter_self')
+
+
+This implies that claim's are in schema to allow filter construction and validation, and in
+the protected module to prevent their creation.
 
 
 Questions
