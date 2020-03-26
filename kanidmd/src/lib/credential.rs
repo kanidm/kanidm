@@ -1,4 +1,5 @@
 use crate::be::dbvalue::{DbCredV1, DbPasswordV1};
+use base64;
 use openssl::hash::MessageDigest;
 use openssl::pkcs5::pbkdf2_hmac;
 use rand::prelude::*;
@@ -23,6 +24,8 @@ const PBKDF2_COST: usize = 10000;
 const PBKDF2_SALT_LEN: usize = 24;
 // 64 * u8 -> 512 bits of out.
 const PBKDF2_KEY_LEN: usize = 64;
+
+const PBKDF2_IMPORT_MIN_LEN: usize = 32;
 
 // Why PBKDF2? Rust's bcrypt has a number of hardcodings like max pw len of 72
 // I don't really feel like adding in so many restrictions, so I'll use
@@ -53,8 +56,34 @@ impl TryFrom<DbPasswordV1> for Password {
 impl TryFrom<&str> for Password {
     type Error = ();
 
-    fn try_from(_value: &str) -> Result<Self, Self::Error> {
-        unimplemented!();
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        // There is probably a more efficent way to try this given different types?
+
+        // test django - algo$salt$hash
+        let django_pbkdf: Vec<&str> = value.split('$').collect();
+        if django_pbkdf.len() == 4 {
+            let algo = django_pbkdf[0];
+            let cost = django_pbkdf[1];
+            let salt = django_pbkdf[2];
+            let hash = django_pbkdf[3];
+            match algo {
+                "pbkdf2_sha256" => {
+                    let c = usize::from_str_radix(cost, 10).map_err(|_| ())?;
+                    let s: Vec<_> = salt.as_bytes().iter().map(|b| *b).collect();
+                    let h = base64::decode(hash).map_err(|_| ())?;
+                    if h.len() < PBKDF2_IMPORT_MIN_LEN {
+                        return Err(());
+                    }
+                    return Ok(Password {
+                        material: KDF::PBKDF2(c, s, h),
+                    });
+                }
+                _ => {}
+            }
+        }
+
+        // Nothing matched to this point.
+        Err(())
     }
 }
 
@@ -86,7 +115,11 @@ impl Password {
     pub fn verify(&self, cleartext: &str) -> bool {
         match &self.material {
             KDF::PBKDF2(cost, salt, key) => {
-                let mut chal_key: Vec<u8> = (0..PBKDF2_KEY_LEN).map(|_| 0).collect();
+                // We have to get the number of bits to derive from our stored hash
+                // as some imported hash types may have variable lengths
+                let key_len = key.len();
+                debug_assert!(key_len >= PBKDF2_IMPORT_MIN_LEN);
+                let mut chal_key: Vec<u8> = (0..key_len).map(|_| 0).collect();
                 pbkdf2_hmac(
                     cleartext.as_bytes(),
                     salt.as_slice(),
@@ -197,6 +230,22 @@ impl Credential {
         }
     }
 
+    pub(crate) fn update_password(&self, pw: Password) -> Self {
+        Credential {
+            password: Some(pw),
+            claims: self.claims.clone(),
+            uuid: self.uuid.clone(),
+        }
+    }
+
+    pub(crate) fn new_from_password(pw: Password) -> Self {
+        Credential {
+            password: Some(pw),
+            claims: Vec::new(),
+            uuid: Uuid::new_v4(),
+        }
+    }
+
     /*
     pub fn add_claim(&mut self) {
     }
@@ -221,6 +270,7 @@ impl Credential {
 #[cfg(test)]
 mod tests {
     use crate::credential::*;
+    use std::convert::TryFrom;
 
     #[test]
     fn test_credential_simple() {
@@ -230,5 +280,18 @@ mod tests {
         assert!(!c.verify_password("Password1"));
         assert!(!c.verify_password("It Works!"));
         assert!(!c.verify_password("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
+    }
+
+    #[test]
+    fn test_password_from_invalid() {
+        assert!(Password::try_from("password").is_err())
+    }
+
+    #[test]
+    fn test_password_from_django_pbkdf2_sha256() {
+        let im_pw = "pbkdf2_sha256$36000$xIEozuZVAoYm$uW1b35DUKyhvQAf1mBqMvoBDcqSD06juzyO/nmyV0+w=";
+        let password = "eicieY7ahchaoCh0eeTa";
+        let r = Password::try_from(im_pw).expect("Failed to parse");
+        assert!(r.verify(password));
     }
 }

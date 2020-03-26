@@ -20,7 +20,7 @@ static UNIX_TEST_PASSWORD: &str = "unix test user password";
 // Test external behaviorus of the service.
 
 fn run_test(test_fn: fn(KanidmClient) -> ()) {
-    ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
+    // ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
     let _ = env_logger::builder().is_test(true).try_init();
     let (tx, rx) = mpsc::channel();
     let port = PORT_ALLOC.fetch_add(1, Ordering::SeqCst);

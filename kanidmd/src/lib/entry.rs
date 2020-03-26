@@ -1742,6 +1742,10 @@ where
         self.attrs.remove(attr);
     }
 
+    pub fn pop_ava(&mut self, attr: &str) -> Option<BTreeSet<Value>> {
+        self.attrs.remove(attr)
+    }
+
     /// Overwrite the existing avas.
     pub fn set_avas(&mut self, attr: &str, values: Vec<Value>) {
         // Overwrite the existing value, build a tree from the list.
