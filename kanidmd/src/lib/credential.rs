@@ -50,6 +50,14 @@ impl TryFrom<DbPasswordV1> for Password {
     }
 }
 
+impl TryFrom<&str> for Password {
+    type Error = ();
+
+    fn try_from(_value: &str) -> Result<Self, Self::Error> {
+        unimplemented!();
+    }
+}
+
 impl Password {
     fn new_pbkdf2(cleartext: &str) -> KDF {
         let mut rng = rand::thread_rng();

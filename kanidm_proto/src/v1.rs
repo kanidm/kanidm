@@ -24,6 +24,7 @@ pub enum PluginError {
     AttrUnique(String),
     Base(String),
     ReferentialIntegrity(String),
+    PasswordImport(String),
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]

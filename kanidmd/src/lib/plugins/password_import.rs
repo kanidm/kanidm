@@ -4,7 +4,9 @@ use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew};
 use crate::event::{CreateEvent, ModifyEvent};
 use crate::plugins::Plugin;
 use crate::server::QueryServerWriteTransaction;
-use kanidm_proto::v1::OperationError; //  PluginError};
+use crate::credential::Password;
+use std::convert::TryFrom;
+use kanidm_proto::v1::{OperationError, PluginError};
 
 pub struct PasswordImport {}
 
@@ -20,31 +22,49 @@ impl Plugin for PasswordImport {
         "plugin_password_import"
     }
 
+
     fn pre_create_transform(
         _au: &mut AuditScope,
         _qs: &mut QueryServerWriteTransaction,
-        _cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
+        cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        // Given and cand that contains "password_import"
-        // remove that attr
-        // does that cand have a cred?
-        //
+        cand.iter_mut()
+            .try_for_each(|e| {
+                // is there an import_password?
+                let vs = match e.get_ava("password_import") {
+                    Some(vs) => vs,
+                    None => return Ok(()),
+                };
+                // if there are multiple, fail.
+                if vs.len() > 1 {
+                    return Err(OperationError::Plugin(PluginError::PasswordImport("multiple password_imports specified".to_string())))
+                }
+                debug_assert!(vs.len() >= 1);
+                let im_pw = vs.first()
+                    .unwrap()
+                    .to_str()
+                    .ok_or(OperationError::Plugin(PluginError::PasswordImport("password_import has incorrect value type".to_string())))?;
 
-        // If there are multiple, fail.
+                // convert the import_password to a cred
+                let _pw = Password::try_from(im_pw);
 
-        Ok(())
+                // does the entry have a primary cred?
+                // map it in as needed.
+                Ok(())
+            })
     }
 
     fn pre_modify(
         _au: &mut AuditScope,
         _qs: &mut QueryServerWriteTransaction,
-        _cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
+        cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        // As above
-
-        Ok(())
+        cand.iter_mut()
+            .try_for_each(|_e| {
+                Ok(())
+            })
     }
 }
 
@@ -70,7 +90,7 @@ mod tests {
                 "description": ["testperson"],
                 "displayname": ["testperson"],
                 "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"],
-                "password_import": ["pbkdf2_sha256$36000$xIEozuZVAoYm$uW1b35DUKyhvQAf1mBqMvoBDcqSD06juzyO/nmyV0+w="],
+                "password_import": ["pbkdf2_sha256$36000$xIEozuZVAoYm$uW1b35DUKyhvQAf1mBqMvoBDcqSD06juzyO/nmyV0+w="]
             }
         }"#,
         );
