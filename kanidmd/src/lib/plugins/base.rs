@@ -313,8 +313,6 @@ mod tests {
 
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["person"],
                 "name": ["testperson"],
@@ -351,8 +349,6 @@ mod tests {
 
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["person"],
                 "name": ["testperson"],
@@ -381,8 +377,6 @@ mod tests {
 
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["person"],
                 "name": ["testperson"],
@@ -413,8 +407,6 @@ mod tests {
 
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["person"],
                 "name": ["testperson"],

@@ -198,7 +198,38 @@ pub static JSON_IDM_ACP_PEOPLE_WRITE_PRIV_V1: &str = r#"{
         ]
     }
 }"#;
-
+// 13 user (person) account create acp  JSON_IDM_PERSON_ACCOUNT_CREATE_PRIV_V1
+pub static JSON_IDM_ACP_PEOPLE_MANAGE_PRIV_V1: &str = r#"{
+    "attrs": {
+        "class": [
+            "object",
+            "access_control_profile",
+            "access_control_delete",
+            "access_control_create"
+        ],
+        "name": ["idm_acp_people_manage"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000013"],
+        "description": ["Builtin IDM Control for creating person (user) accounts"],
+        "acp_receiver": [
+            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000013\"]}"
+        ],
+        "acp_targetscope": [
+            "{\"And\": [{\"Eq\": [\"class\",\"account\"]}, {\"Eq\": [\"class\",\"person\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+        ],
+        "acp_create_attr": [
+            "class",
+            "name",
+            "displayname",
+            "legalname",
+            "primary_credential",
+            "ssh_publickey",
+            "mail"
+        ],
+        "acp_create_class": [
+            "object", "person", "account"
+        ]
+    }
+}"#;
 // 31 - password import modification priv
 // right now, create requires you to have access to every attribute in a single snapshot,
 // so people will need to two step (create then import pw). Later we could add another
@@ -219,11 +250,41 @@ pub static JSON_IDM_ACP_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1: &str = r#"{
         "acp_targetscope": [
             "{\"And\": [{\"Eq\": [\"class\",\"person\"]}, {\"Eq\": [\"class\",\"account\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
+        "acp_modify_removedattr": [
+            "password_import"
+        ],
         "acp_modify_presentattr": [
             "password_import"
         ]
     }
 }"#;
+
+//
+pub static JSON_IDM_ACP_PEOPLE_EXTEND_PRIV_V1: &str = r#"{
+    "attrs": {
+        "class": [
+            "object",
+            "access_control_profile",
+            "access_control_modify"
+        ],
+        "name": ["idm_acp_people_extend_priv"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000032"],
+        "description": ["Builtin IDM Control for allowing person class extension"],
+        "acp_receiver": [
+            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000024\"]}"
+        ],
+        "acp_targetscope": [
+            "{\"And\": [{\"Eq\": [\"class\",\"account\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+        ],
+        "acp_modify_presentattr": [
+            "class"
+        ],
+        "acp_modify_class": ["person"]
+    }
+}"#;
+
+// -- end people
+
 // 9 group write acp JSON_IDM_GROUP_WRITE_PRIV_V1
 pub static JSON_IDM_ACP_GROUP_WRITE_PRIV_V1: &str = r#"{
     "attrs": {
@@ -331,39 +392,6 @@ pub static JSON_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1: &str = r#"{
         ]
     }
 }"#;
-// 13 user (person) account create acp  JSON_IDM_PERSON_ACCOUNT_CREATE_PRIV_V1
-pub static JSON_IDM_ACP_PEOPLE_MANAGE_PRIV_V1: &str = r#"{
-    "attrs": {
-        "class": [
-            "object",
-            "access_control_profile",
-            "access_control_delete",
-            "access_control_create"
-        ],
-        "name": ["idm_acp_people_manage"],
-        "uuid": ["00000000-0000-0000-0000-ffffff000013"],
-        "description": ["Builtin IDM Control for creating person (user) accounts"],
-        "acp_receiver": [
-            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000013\"]}"
-        ],
-        "acp_targetscope": [
-            "{\"And\": [{\"Eq\": [\"class\",\"account\"]}, {\"Eq\": [\"class\",\"person\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
-        ],
-        "acp_create_attr": [
-            "class",
-            "name",
-            "displayname",
-            "legalname",
-            "primary_credential",
-            "ssh_publickey",
-            "mail"
-        ],
-        "acp_create_class": [
-            "object", "person", "account"
-        ]
-    }
-}"#;
-
 // 14 radius read acp JSON_IDM_RADIUS_SERVERS_V1
 // The targetscope of this could change later to a "radius access" group or similar so we can add/remove
 //  users from having radius access easier.
@@ -892,3 +920,4 @@ pub static JSON_IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1: &str = r#"{
         "acp_modify_class": ["posixgroup"]
     }
 }"#;
+

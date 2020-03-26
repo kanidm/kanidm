@@ -1836,9 +1836,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let idm_entries = [
             // Builtin groups
             JSON_IDM_PEOPLE_MANAGE_PRIV_V1,
+            JSON_IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1,
+            JSON_IDM_PEOPLE_EXTEND_PRIV_V1,
             JSON_IDM_PEOPLE_WRITE_PRIV_V1,
             JSON_IDM_PEOPLE_READ_PRIV_V1,
-            JSON_IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1,
             JSON_IDM_GROUP_MANAGE_PRIV_V1,
             JSON_IDM_GROUP_WRITE_PRIV_V1,
             JSON_IDM_GROUP_UNIX_EXTEND_PRIV_V1,
@@ -1886,6 +1887,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1,
             JSON_IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1,
             JSON_IDM_ACP_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1,
+            JSON_IDM_ACP_PEOPLE_EXTEND_PRIV_V1,
         ];
 
         let res: Result<(), _> = idm_entries

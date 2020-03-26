@@ -813,23 +813,23 @@ pub trait AccessControlsTransaction {
 
                 // Now check all the subsets are true. Remember, purge class
                 // is already checked above.
-
+                let mut result = true;
                 if !requested_pres.is_subset(&allowed_pres) {
                     audit_log!(audit, "requested_pres is not a subset of allowed");
                     audit_log!(audit, "{:?} !⊆ {:?}", requested_pres, allowed_pres);
-                    return false;
+                    result = false;
                 }
                 if !requested_rem.is_subset(&allowed_rem) {
                     audit_log!(audit, "requested_rem is not a subset of allowed");
                     audit_log!(audit, "{:?} !⊆ {:?}", requested_rem, allowed_rem);
-                    return false;
+                    result = false;
                 }
                 if !requested_classes.is_subset(&allowed_classes) {
                     audit_log!(audit, "requested_classes is not a subset of allowed");
                     audit_log!(audit, "{:?} !⊆ {:?}", requested_classes, allowed_classes);
-                    return false;
+                    result = false;
                 }
-                true
+                result
             } // if acc == false
         });
         Ok(r)

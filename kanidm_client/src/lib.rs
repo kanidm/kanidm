@@ -607,6 +607,17 @@ impl KanidmClient {
         res.map(|_| ())
     }
 
+    pub fn idm_account_primary_credential_import_password(
+        &self,
+        id: &str,
+        pw: &str,
+    ) -> Result<(), ClientError> {
+        self.perform_put_request(
+            format!("/v1/account/{}/_attr/password_import", id).as_str(),
+            vec![pw.to_string()],
+        )
+    }
+
     pub fn idm_account_primary_credential_set_generated(
         &self,
         id: &str,
@@ -698,6 +709,13 @@ impl KanidmClient {
     ) -> Result<(), ClientError> {
         let sk = (tag.to_string(), pubkey.to_string());
         self.perform_post_request(format!("/v1/account/{}/_ssh_pubkeys", id).as_str(), sk)
+    }
+
+    pub fn idm_account_person_extend(
+        &self,
+        id: &str,
+    ) -> Result<(), ClientError> {
+        self.perform_post_request(format!("/v1/account/{}/_person/_extend", id).as_str(), ())
     }
 
     /*

@@ -20,7 +20,7 @@ static UNIX_TEST_PASSWORD: &str = "unix test user password";
 // Test external behaviorus of the service.
 
 fn run_test(test_fn: fn(KanidmClient) -> ()) {
-    // ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
+    ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
     let _ = env_logger::builder().is_test(true).try_init();
     let (tx, rx) = mpsc::channel();
     let port = PORT_ALLOC.fetch_add(1, Ordering::SeqCst);
@@ -714,6 +714,51 @@ fn test_server_rest_recycle_lifecycle() {
         assert!(acc.is_some());
     });
 }
+
+#[test]
+fn test_server_rest_account_import_password() {
+    run_test(|mut rsclient: KanidmClient| {
+        let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
+        assert!(res.is_ok());
+        // To enable the admin to actually make some of these changes, we have
+        // to make them a password import admin. NOT recommended in production!
+        rsclient
+            .idm_group_add_members("idm_people_account_password_import_priv", vec!["admin"])
+            .unwrap();
+        rsclient
+            .idm_group_add_members("idm_people_extend_priv", vec!["admin"])
+            .unwrap();
+
+        // Create a new account
+        rsclient
+            .idm_account_create("demo_account", "Deeeeemo")
+            .unwrap();
+
+        // Make them a person, so we can import the password
+        rsclient
+            .idm_account_person_extend("demo_account")
+            .unwrap();
+
+        // Attempt to import a bad password
+        let r = rsclient
+            .idm_account_primary_credential_import_password("demo_account", "password");
+        assert!(r.is_err());
+
+        // Import a good password
+        // eicieY7ahchaoCh0eeTa
+        // pbkdf2_sha256$36000$xIEozuZVAoYm$uW1b35DUKyhvQAf1mBqMvoBDcqSD06juzyO/nmyV0+w=
+        rsclient
+            .idm_account_primary_credential_import_password("demo_account", "pbkdf2_sha256$36000$xIEozuZVAoYm$uW1b35DUKyhvQAf1mBqMvoBDcqSD06juzyO/nmyV0+w=")
+            .unwrap();
+
+        // Now show we can auth with it
+        // "reset" the client.
+        let _ = rsclient.logout();
+        let res = rsclient.auth_simple_password("demo_account", "eicieY7ahchaoCh0eeTa");
+        assert!(res.is_ok());
+    });
+}
+
 
 // Test the self version of the radius path.
 

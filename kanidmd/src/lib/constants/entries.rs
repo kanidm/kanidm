@@ -83,7 +83,10 @@ pub static JSON_IDM_PEOPLE_WRITE_PRIV_V1: &str = r#"{
         "name": ["idm_people_write_priv"],
         "uuid": ["00000000-0000-0000-0000-000000000003"],
         "description": ["Builtin IDM Group for granting elevated people (personal data) write permissions."],
-        "member": ["00000000-0000-0000-0000-000000000013"]
+        "member": [
+            "00000000-0000-0000-0000-000000000013",
+            "00000000-0000-0000-0000-000000000024"
+        ]
     }
 }"#;
 
@@ -93,6 +96,18 @@ pub static JSON_IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1: &str = r#"{
         "name": ["idm_people_account_password_import_priv"],
         "uuid": ["00000000-0000-0000-0000-000000000023"],
         "description": ["Builtin IDM Group for importing passwords to person accounts - intended for service account membership only."]
+    }
+}"#;
+
+pub static JSON_IDM_PEOPLE_EXTEND_PRIV_V1: &str = r#"{
+    "attrs": {
+        "class": ["group", "object"],
+        "name": ["idm_people_extend_priv"],
+        "uuid": ["00000000-0000-0000-0000-000000000024"],
+        "description": ["Builtin IDM Group for extending accounts to be people."],
+        "member": [
+            "00000000-0000-0000-0000-000000000001"
+        ]
     }
 }"#;
 
@@ -301,6 +316,7 @@ pub static JSON_IDM_HIGH_PRIVILEGE_V1: &str = r#"{
             "00000000-0000-0000-0000-000000000019",
             "00000000-0000-0000-0000-000000000020",
             "00000000-0000-0000-0000-000000000023",
+            "00000000-0000-0000-0000-000000000024",
             "00000000-0000-0000-0000-000000001000"
         ]
     }
