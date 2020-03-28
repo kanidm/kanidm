@@ -336,7 +336,7 @@ impl ModifyRequest {
 pub enum AuthCredential {
     Anonymous,
     Password(String),
-    // TOTP(String),
+    TOTP(u32),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -365,6 +365,7 @@ pub struct AuthRequest {
 pub enum AuthAllowed {
     Anonymous,
     Password,
+    TOTP,
     // Webauthn(String),
 }
 

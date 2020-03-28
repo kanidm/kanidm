@@ -6,6 +6,10 @@ use rand::prelude::*;
 use std::convert::TryFrom;
 use uuid::Uuid;
 
+pub mod totp;
+
+use crate::credential::totp::TOTP;
+
 // These are in order of "relative" strength.
 /*
 #[derive(Clone, Debug)]
@@ -162,6 +166,7 @@ pub struct Credential {
     pub(crate) password: Option<Password>,
     // webauthn: Option<NonEmptyVec<Webauthn>>
     // totp: Option<NonEmptyVec<TOTP>>
+    pub(crate) totp: Option<TOTP>,
     pub(crate) claims: Vec<String>,
     // Uuid of Credential, used by auth session to lock this specific credential
     // if required.
@@ -177,6 +182,7 @@ impl TryFrom<DbCredV1> for Credential {
         // Work out what the policy is?
         let DbCredV1 {
             password,
+            totp,
             claims,
             uuid,
         } = value;
@@ -186,8 +192,16 @@ impl TryFrom<DbCredV1> for Credential {
             None => None,
         };
 
+        let v_totp = match totp {
+            Some(dbt) => {
+                Some(TOTP::try_from(dbt)?)
+            }
+            None => None,
+        };
+
         Ok(Credential {
             password: v_password,
+            totp: v_totp,
             claims,
             uuid,
         })
@@ -198,6 +212,7 @@ impl Credential {
     pub fn new_password_only(cleartext: &str) -> Self {
         Credential {
             password: Some(Password::new(cleartext)),
+            totp: None,
             claims: Vec::new(),
             uuid: Uuid::new_v4(),
         }
@@ -206,6 +221,7 @@ impl Credential {
     pub fn set_password(&self, cleartext: &str) -> Self {
         Credential {
             password: Some(Password::new(cleartext)),
+            totp: self.totp.clone(),
             claims: self.claims.clone(),
             uuid: self.uuid,
         }
@@ -221,10 +237,12 @@ impl Credential {
 
     pub fn to_db_valuev1(&self) -> DbCredV1 {
         DbCredV1 {
-            password: match &self.password {
-                Some(pw) => Some(pw.to_dbpasswordv1()),
-                None => None,
-            },
+            password: self.password.as_ref().map(|pw| {
+                pw.to_dbpasswordv1()
+            }),
+            totp: self.totp.as_ref().map(|t| {
+                t.to_dbtotpv1()
+            }),
             claims: self.claims.clone(),
             uuid: self.uuid,
         }
@@ -233,6 +251,7 @@ impl Credential {
     pub(crate) fn update_password(&self, pw: Password) -> Self {
         Credential {
             password: Some(pw),
+            totp: self.totp.clone(),
             claims: self.claims.clone(),
             uuid: self.uuid.clone(),
         }
@@ -241,6 +260,7 @@ impl Credential {
     pub(crate) fn new_from_password(pw: Password) -> Self {
         Credential {
             password: Some(pw),
+            totp: None,
             claims: Vec::new(),
             uuid: Uuid::new_v4(),
         }

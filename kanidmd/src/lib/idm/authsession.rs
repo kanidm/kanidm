@@ -4,8 +4,9 @@ use crate::idm::claim::Claim;
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthState};
 
-use crate::credential::{Credential, Password};
+use crate::credential::{Credential, Password, totp::TOTP};
 
+use std::time::Duration;
 use std::convert::TryFrom;
 
 // Each CredHandler takes one or more credentials and determines if the
@@ -20,6 +21,21 @@ enum CredState {
 }
 
 #[derive(Clone, Debug)]
+enum CredVerifyState {
+    Init,
+    Success,
+    Fail,
+}
+
+#[derive(Clone, Debug)]
+struct CredTotpPw {
+    pw: Password,
+    pw_state: CredVerifyState,
+    totp: TOTP,
+    totp_state: CredVerifyState,
+}
+
+#[derive(Clone, Debug)]
 enum CredHandler {
     Denied,
     // The bool is a flag if the cred has been authed against.
@@ -27,29 +43,36 @@ enum CredHandler {
     // AppPassword
     // {
     // Password
-    Password(Password), // Webauthn
-                        // Webauthn + Password
-                        // TOTP
-                        // TOTP + Password
-                        // } <<-- could all these be "AccountPrimary" and pass to Account?
-                        // Selection at this level could be premature ...
-                        // Verification Link?
+    Password(Password),
+    // Webauthn
+    // Webauthn + Password
+    TOTPPassword(CredTotpPw),
 }
 
 impl TryFrom<&Credential> for CredHandler {
     type Error = ();
     // Is there a nicer implementation of this?
     fn try_from(c: &Credential) -> Result<Self, Self::Error> {
-        if c.password.is_some() {
-            Ok(CredHandler::Password(c.password.clone().unwrap()))
-        } else {
-            Err(())
+        match (c.password.as_ref(), c.totp.as_ref()) {
+            (Some(pw), None) => {
+                Ok(CredHandler::Password(pw.clone()))
+            }
+            (Some(pw), Some(totp)) => {
+                Ok(CredHandler::TOTPPassword(CredTotpPw {
+                    pw: pw.clone(),
+                    pw_state: CredVerifyState::Init,
+                    totp: totp.clone(),
+                    totp_state: CredVerifyState::Init,
+                }))
+            }
+            // Must be an invalid set of credentials. WTF?
+            _ => Err(()),
         }
     }
 }
 
 impl CredHandler {
-    pub fn validate(&mut self, creds: &[AuthCredential]) -> CredState {
+    pub fn validate(&mut self, creds: &[AuthCredential], _time: u64) -> CredState {
         match self {
             CredHandler::Denied => {
                 // Sad trombone.
@@ -108,6 +131,9 @@ impl CredHandler {
                     },
                 )
             } // end credhandler::password
+            CredHandler::TOTPPassword(_pw_totp) => {
+                unimplemented!();
+            } // end CredHandler::TOTPPassword
         }
     }
 
@@ -118,6 +144,10 @@ impl CredHandler {
             CredHandler::Password(_) => vec![AuthAllowed::Password],
             // webauth
             // mfa
+            CredHandler::TOTPPassword(_) => vec![
+                AuthAllowed::Password,
+                AuthAllowed::TOTP,
+            ],
         }
     }
 
@@ -196,6 +226,7 @@ impl AuthSession {
         &mut self,
         au: &mut AuditScope,
         creds: &[AuthCredential],
+        time: &Duration,
     ) -> Result<AuthState, OperationError> {
         if self.finished {
             return Err(OperationError::InvalidAuthState(
@@ -203,7 +234,7 @@ impl AuthSession {
             ));
         }
 
-        match self.handler.validate(creds) {
+        match self.handler.validate(creds, time.as_secs()) {
             CredState::Success(claims) => {
                 audit_log!(au, "Successful cred handling");
                 self.finished = true;
@@ -250,7 +281,9 @@ mod tests {
     use crate::constants::{JSON_ADMIN_V1, JSON_ANONYMOUS_V1};
     use crate::credential::Credential;
     use crate::idm::authsession::AuthSession;
-    use kanidm_proto::v1::AuthAllowed;
+    use crate::audit::AuditScope;
+    use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthState};
+    use std::time::Duration;
 
     #[test]
     fn test_idm_authsession_anonymous_auth_mech() {
@@ -282,6 +315,7 @@ mod tests {
 
     #[test]
     fn test_idm_authsession_simple_password_mech() {
+        let mut audit = AuditScope::new("test_idm_authsession_simple_password_mech");
         // create the ent
         let mut account = entry_str_to_account!(JSON_ADMIN_V1);
         // manually load in a cred
@@ -289,7 +323,7 @@ mod tests {
         account.primary = Some(cred);
 
         // now check
-        let session = AuthSession::new(account, None);
+        let mut session = AuthSession::new(account.clone(), None);
         let auth_mechs = session.valid_auth_mechs();
 
         assert!(
@@ -298,5 +332,48 @@ mod tests {
                 _ => acc,
             })
         );
+
+        let attempt = vec![AuthCredential::Password("bad_password".to_string())];
+        match session.validate_creds(&mut audit, &attempt, &Duration::from_secs(0)) {
+            Ok(AuthState::Denied(_)) => {},
+            _ => panic!(),
+        };
+
+        let mut session = AuthSession::new(account, None);
+        let attempt = vec![AuthCredential::Password("test_password".to_string())];
+        match session.validate_creds(&mut audit, &attempt, &Duration::from_secs(0)) {
+            Ok(AuthState::Success(_)) => {},
+            _ => panic!(),
+        };
+
+        println!("{}", audit);
+    }
+
+    #[test]
+    fn test_idm_authsession_totp_password_mech() {
+        let mut audit = AuditScope::new("test_idm_authsession_totp_password_mech");
+        // create the ent
+        let mut account = entry_str_to_account!(JSON_ADMIN_V1);
+        // manually load in a cred
+        let cred = Credential::new_password_only("test_password");
+        // add totp also
+        account.primary = Some(cred);
+
+        // now check
+        let mut session = AuthSession::new(account.clone(), None);
+        let auth_mechs = session.valid_auth_mechs();
+        assert!(
+            auth_mechs.iter().fold(true, |acc, x| match x {
+                AuthAllowed::Password => acc,
+                AuthAllowed::TOTP => acc,
+                _ => false,
+            })
+        );
+
+        // Rest of test go here
+
+        println!("{}", audit);
+
+        unimplemented!();
     }
 }

@@ -1,11 +1,12 @@
-extern crate base32;
-extern crate openssl;
 
+use base32;
 use openssl::hash::MessageDigest;
 use openssl::pkey::PKey;
 use openssl::sign::Signer;
 use std::convert::TryInto;
 use std::time::{Duration, SystemTime};
+use crate::be::dbvalue::DbTotpV1;
+use std::convert::TryFrom;
 
 #[derive(Debug, PartialEq)]
 pub enum TOTPError {
@@ -60,15 +61,29 @@ impl TOTPAlgo {
 }
 
 /// https://tools.ietf.org/html/rfc6238 which relies on https://tools.ietf.org/html/rfc4226
+#[derive(Debug, Clone)]
 pub struct TOTP {
+    label: String,
     secret: Vec<u8>,
     step: u64,
     algo: TOTPAlgo,
 }
 
+impl TryFrom<DbTotpV1> for TOTP {
+    type Error = ();
+
+    fn try_from(_value: DbTotpV1) -> Result<Self, Self::Error> {
+        unimplemented!();
+    }
+}
+
 impl TOTP {
-    pub fn new(secret: Vec<u8>, step: u64, algo: TOTPAlgo) -> Self {
-        TOTP { secret, step, algo }
+    pub fn new(label: String, secret: Vec<u8>, step: u64, algo: TOTPAlgo) -> Self {
+        TOTP { label, secret, step, algo }
+    }
+
+    pub(crate) fn to_dbtotpv1(&self) -> DbTotpV1 {
+        unimplemented!();
     }
 
     fn digest(&self, counter: u64) -> Result<u32, TOTPError> {
@@ -125,21 +140,21 @@ impl TOTP {
 
 #[cfg(test)]
 mod tests {
-    use crate::{TOTPAlgo, TOTPError, TOTP};
+    use crate::credential::totp::{TOTPAlgo, TOTPError, TOTP};
     use std::time::Duration;
 
     #[test]
     fn hotp_basic() {
-        let otp_sha1 = TOTP::new(vec![0], 30, TOTPAlgo::Sha1);
+        let otp_sha1 = TOTP::new("".to_string(), vec![0], 30, TOTPAlgo::Sha1);
         assert!(otp_sha1.digest(0) == Ok(328482));
-        let otp_sha256 = TOTP::new(vec![0], 30, TOTPAlgo::Sha256);
+        let otp_sha256 = TOTP::new("".to_string(), vec![0], 30, TOTPAlgo::Sha256);
         assert!(otp_sha256.digest(0) == Ok(356306));
-        let otp_sha512 = TOTP::new(vec![0], 30, TOTPAlgo::Sha512);
+        let otp_sha512 = TOTP::new("".to_string(), vec![0], 30, TOTPAlgo::Sha512);
         assert!(otp_sha512.digest(0) == Ok(674061));
     }
 
     fn do_test(key: Vec<u8>, algo: TOTPAlgo, secs: u64, step: u64, expect: Result<u32, TOTPError>) {
-        let otp = TOTP::new(key.clone(), step, algo.clone());
+        let otp = TOTP::new("".to_string(), key.clone(), step, algo.clone());
         let d = Duration::from_secs(secs);
         let r = otp.do_totp_duration_from_epoch(&d);
         println!(
@@ -205,13 +220,14 @@ mod tests {
 
     #[test]
     fn totp_to_string() {
-        let totp = TOTP::new(vec![0xaa, 0xbb, 0xcc, 0xdd], 30, TOTPAlgo::Sha256);
+        let totp = TOTP::new("".to_string(), vec![0xaa, 0xbb, 0xcc, 0xdd], 30, TOTPAlgo::Sha256);
         let s = totp.to_string("william", "blackhats");
         assert!(s == "otpauth://totp/blackhats:william?secret=VK54ZXI&issuer=blackhats&algorithm=SHA256&digits=6&period=30");
 
         // check that invalid issuer/accounts are cleaned up.
-        let totp = TOTP::new(vec![0xaa, 0xbb, 0xcc, 0xdd], 30, TOTPAlgo::Sha256);
+        let totp = TOTP::new("".to_string(), vec![0xaa, 0xbb, 0xcc, 0xdd], 30, TOTPAlgo::Sha256);
         let s = totp.to_string("william:%3A", "blackhats australia");
         assert!(s == "otpauth://totp/blackhats%20australia:william?secret=VK54ZXI&issuer=blackhats%20australia&algorithm=SHA256&digits=6&period=30");
     }
 }
+
