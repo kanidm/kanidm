@@ -1,0 +1,18 @@
+[package]
+name = "totp"
+version = "0.1.0"
+authors = ["William Brown <william@blackhats.net.au>"]
+edition = "2018"
+license = "MPL-2.0"
+description = "Kanidm TOTP Library"
+documentation = "https://docs.rs/kanidm/latest/kanidm/"
+homepage = "https://github.com/kanidm/kanidm/"
+repository = "https://github.com/kanidm/kanidm/"
+
+[lib]
+name = "totp"
+path = "src/lib.rs"
+
+[dependencies]
+openssl = "0.10"
+base32 = "0.4"

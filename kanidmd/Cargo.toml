@@ -27,6 +27,7 @@ path = "src/server/main.rs"
 
 [dependencies]
 kanidm_proto = { path = "../kanidm_proto", version = "0.1" }
+totp = { path = "../totp", version = "0.1" }
 
 actix = "0.9"
 actix-web = { version = "2.0", features = ["openssl"] }
