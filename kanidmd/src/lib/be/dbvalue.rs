@@ -15,9 +15,9 @@ pub enum DbPasswordV1 {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum DbTotpAlgoV1 {
-    Sha1,
-    Sha256,
-    Sha512,
+    S1,
+    S256,
+    S512,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

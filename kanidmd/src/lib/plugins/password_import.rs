@@ -125,10 +125,13 @@ impl Plugin for PasswordImport {
 
 #[cfg(test)]
 mod tests {
+    use crate::credential::totp::{TOTP, TOTP_DEFAULT_STEP};
     use crate::credential::Credential;
     use crate::entry::{Entry, EntryInit, EntryNew};
     use crate::modify::{Modify, ModifyList};
+    use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
     use crate::value::{PartialValue, Value};
+    use uuid::Uuid;
 
     static IMPORT_HASH: &'static str =
         "pbkdf2_sha256$36000$xIEozuZVAoYm$uW1b35DUKyhvQAf1mBqMvoBDcqSD06juzyO/nmyV0+w=";
@@ -220,6 +223,54 @@ mod tests {
             )]),
             None,
             |_, _| {}
+        );
+    }
+
+    #[test]
+    fn test_modify_password_import_3_totp() {
+        // Add another uuid to a type
+        let mut ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
+            r#"{
+            "valid": null,
+            "state": null,
+            "attrs": {
+                "class": ["account", "person"],
+                "name": ["testperson"],
+                "description": ["testperson"],
+                "displayname": ["testperson"],
+                "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
+            }
+        }"#,
+        );
+
+        let totp = TOTP::generate_secure("test_totp".to_string(), TOTP_DEFAULT_STEP);
+        let c = Credential::new_password_only("password").update_totp(totp);
+        ea.add_ava("primary_credential", &Value::new_credential("primary", c));
+
+        let preload = vec![ea];
+
+        run_modify_test!(
+            Ok(()),
+            preload,
+            filter!(f_eq("name", PartialValue::new_iutf8s("testperson"))),
+            ModifyList::new_list(vec![Modify::Present(
+                "password_import".to_string(),
+                Value::from(IMPORT_HASH)
+            )]),
+            None,
+            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
+                let e = qs
+                    .internal_search_uuid(
+                        au,
+                        &Uuid::parse_str("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap(),
+                    )
+                    .expect("failed to get entry");
+                let c = e
+                    .get_ava_single_credential("primary_credential")
+                    .expect("failed to get primary cred.");
+                assert!(c.totp.is_some());
+                assert!(c.password.is_some());
+            }
         );
     }
 }

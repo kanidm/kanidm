@@ -1,4 +1,4 @@
-use crate::be::dbvalue::DbTotpV1;
+use crate::be::dbvalue::{DbTotpAlgoV1, DbTotpV1};
 use base32;
 use openssl::hash::MessageDigest;
 use openssl::pkey::PKey;
@@ -76,8 +76,18 @@ pub struct TOTP {
 impl TryFrom<DbTotpV1> for TOTP {
     type Error = ();
 
-    fn try_from(_value: DbTotpV1) -> Result<Self, Self::Error> {
-        unimplemented!();
+    fn try_from(value: DbTotpV1) -> Result<Self, Self::Error> {
+        let algo = match value.a {
+            DbTotpAlgoV1::S1 => TOTPAlgo::Sha1,
+            DbTotpAlgoV1::S256 => TOTPAlgo::Sha256,
+            DbTotpAlgoV1::S512 => TOTPAlgo::Sha512,
+        };
+        Ok(TOTP {
+            label: value.l,
+            secret: value.k,
+            step: value.s,
+            algo,
+        })
     }
 }
 
@@ -105,7 +115,16 @@ impl TOTP {
     }
 
     pub(crate) fn to_dbtotpv1(&self) -> DbTotpV1 {
-        unimplemented!();
+        DbTotpV1 {
+            l: self.label.clone(),
+            k: self.secret.clone(),
+            s: self.step.clone(),
+            a: match self.algo {
+                TOTPAlgo::Sha1 => DbTotpAlgoV1::S1,
+                TOTPAlgo::Sha256 => DbTotpAlgoV1::S256,
+                TOTPAlgo::Sha512 => DbTotpAlgoV1::S512,
+            },
+        }
     }
 
     fn digest(&self, counter: u64) -> Result<u32, TOTPError> {
