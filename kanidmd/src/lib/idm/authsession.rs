@@ -4,15 +4,19 @@ use crate::idm::claim::Claim;
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthState};
 
-use crate::credential::{Credential, Password, totp::TOTP};
+use crate::credential::{totp::TOTP, Credential, Password};
 
-use std::time::Duration;
 use std::convert::TryFrom;
+use std::time::Duration;
 
 // Each CredHandler takes one or more credentials and determines if the
 // handlers requirements can be 100% fufilled. This is where MFA or other
 // auth policies would exist, but each credHandler has to be a whole
 // encapsulated unit of function.
+
+const BAD_PASSWORD_MSG: &'static str = "incorrect password";
+const BAD_TOTP_MSG: &'static str = "incorrect totp";
+const BAD_AUTH_TYPE_MSG: &'static str = "invalid authentication method in this context";
 
 enum CredState {
     Success(Vec<Claim>),
@@ -54,17 +58,13 @@ impl TryFrom<&Credential> for CredHandler {
     // Is there a nicer implementation of this?
     fn try_from(c: &Credential) -> Result<Self, Self::Error> {
         match (c.password.as_ref(), c.totp.as_ref()) {
-            (Some(pw), None) => {
-                Ok(CredHandler::Password(pw.clone()))
-            }
-            (Some(pw), Some(totp)) => {
-                Ok(CredHandler::TOTPPassword(CredTotpPw {
-                    pw: pw.clone(),
-                    pw_state: CredVerifyState::Init,
-                    totp: totp.clone(),
-                    totp_state: CredVerifyState::Init,
-                }))
-            }
+            (Some(pw), None) => Ok(CredHandler::Password(pw.clone())),
+            (Some(pw), Some(totp)) => Ok(CredHandler::TOTPPassword(CredTotpPw {
+                pw: pw.clone(),
+                pw_state: CredVerifyState::Init,
+                totp: totp.clone(),
+                totp_state: CredVerifyState::Init,
+            })),
             // Must be an invalid set of credentials. WTF?
             _ => Err(()),
         }
@@ -72,7 +72,7 @@ impl TryFrom<&Credential> for CredHandler {
 }
 
 impl CredHandler {
-    pub fn validate(&mut self, creds: &[AuthCredential], _time: u64) -> CredState {
+    pub fn validate(&mut self, creds: &[AuthCredential], ts: &Duration) -> CredState {
         match self {
             CredHandler::Denied => {
                 // Sad trombone.
@@ -99,7 +99,7 @@ impl CredHandler {
                                         // For anonymous, no claims will ever be issued.
                                         CredState::Success(Vec::new())
                                     }
-                                    _ => CredState::Denied("non-anonymous credential provided"),
+                                    _ => CredState::Denied(BAD_AUTH_TYPE_MSG),
                                 }
                             }
                         } // end match acc
@@ -120,19 +120,94 @@ impl CredHandler {
                                         if pw.verify(cleartext.as_str()) {
                                             CredState::Success(Vec::new())
                                         } else {
-                                            CredState::Denied("incorrect password")
+                                            CredState::Denied(BAD_PASSWORD_MSG)
                                         }
                                     }
                                     // All other cases fail.
-                                    _ => CredState::Denied("pw authentication denied"),
+                                    _ => CredState::Denied(BAD_AUTH_TYPE_MSG),
                                 }
                             }
                         } // end match acc
                     },
                 )
             } // end credhandler::password
-            CredHandler::TOTPPassword(_pw_totp) => {
-                unimplemented!();
+            CredHandler::TOTPPassword(pw_totp) => {
+                // Set the default reminder to both pw + totp
+                creds.iter().fold(
+                    // If no creds, remind that we want pw ...
+                    CredState::Continue(vec![AuthAllowed::TOTP, AuthAllowed::Password]),
+                    |acc, cred| {
+                        match acc {
+                            CredState::Denied(_) => acc,
+                            _ => {
+                                match cred {
+                                    AuthCredential::Password(cleartext) => {
+                                        // if pw -> check
+                                        if pw_totp.pw.verify(cleartext.as_str()) {
+                                            pw_totp.pw_state = CredVerifyState::Success;
+                                            match pw_totp.totp_state {
+                                                CredVerifyState::Init => {
+                                                    // TOTP hasn't been run yet, we need it before
+                                                    // we indicate the pw status.
+                                                    CredState::Continue(vec![AuthAllowed::TOTP])
+                                                }
+                                                CredVerifyState::Success => {
+                                                    // The totp is success, and password good, let's go!
+                                                    CredState::Success(Vec::new())
+                                                }
+                                                CredVerifyState::Fail => {
+                                                    // The totp already failed, send that message now.
+                                                    // Should be impossible state.
+                                                    CredState::Denied(BAD_TOTP_MSG)
+                                                }
+                                            }
+                                        } else {
+                                            pw_totp.pw_state = CredVerifyState::Fail;
+                                            match pw_totp.totp_state {
+                                                CredVerifyState::Init => {
+                                                    // TOTP hasn't been run yet, we need it before
+                                                    // we indicate the pw status.
+                                                    CredState::Continue(vec![AuthAllowed::TOTP])
+                                                }
+                                                CredVerifyState::Success => {
+                                                    // The totp is success, but password bad.
+                                                    CredState::Denied(BAD_PASSWORD_MSG)
+                                                }
+                                                CredVerifyState::Fail => {
+                                                    // The totp already failed, remind.
+                                                    // this should be an impossible state.
+                                                    CredState::Denied(BAD_TOTP_MSG)
+                                                }
+                                            }
+                                        }
+                                    }
+                                    AuthCredential::TOTP(totp_chal) => {
+                                        // if totp -> check
+                                        if pw_totp.totp.verify(*totp_chal, ts) {
+                                            pw_totp.totp_state = CredVerifyState::Success;
+                                            match pw_totp.pw_state {
+                                                CredVerifyState::Init => {
+                                                    CredState::Continue(vec![AuthAllowed::Password])
+                                                }
+                                                CredVerifyState::Success => {
+                                                    CredState::Success(Vec::new())
+                                                }
+                                                CredVerifyState::Fail => {
+                                                    CredState::Denied(BAD_PASSWORD_MSG)
+                                                }
+                                            }
+                                        } else {
+                                            pw_totp.totp_state = CredVerifyState::Fail;
+                                            CredState::Denied(BAD_TOTP_MSG)
+                                        }
+                                    }
+                                    // All other cases fail.
+                                    _ => CredState::Denied(BAD_AUTH_TYPE_MSG),
+                                } // end match cred
+                            }
+                        } // end match acc
+                    },
+                ) // end fold
             } // end CredHandler::TOTPPassword
         }
     }
@@ -144,10 +219,7 @@ impl CredHandler {
             CredHandler::Password(_) => vec![AuthAllowed::Password],
             // webauth
             // mfa
-            CredHandler::TOTPPassword(_) => vec![
-                AuthAllowed::Password,
-                AuthAllowed::TOTP,
-            ],
+            CredHandler::TOTPPassword(_) => vec![AuthAllowed::Password, AuthAllowed::TOTP],
         }
     }
 
@@ -234,7 +306,7 @@ impl AuthSession {
             ));
         }
 
-        match self.handler.validate(creds, time.as_secs()) {
+        match self.handler.validate(creds, time) {
             CredState::Success(claims) => {
                 audit_log!(au, "Successful cred handling");
                 self.finished = true;
@@ -278,10 +350,11 @@ impl AuthSession {
 
 #[cfg(test)]
 mod tests {
-    use crate::constants::{JSON_ADMIN_V1, JSON_ANONYMOUS_V1};
-    use crate::credential::Credential;
-    use crate::idm::authsession::AuthSession;
     use crate::audit::AuditScope;
+    use crate::constants::{JSON_ADMIN_V1, JSON_ANONYMOUS_V1};
+    use crate::credential::totp::{TOTP, TOTP_DEFAULT_STEP};
+    use crate::credential::Credential;
+    use crate::idm::authsession::{AuthSession, BAD_AUTH_TYPE_MSG, BAD_PASSWORD_MSG, BAD_TOTP_MSG};
     use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthState};
     use std::time::Duration;
 
@@ -335,14 +408,14 @@ mod tests {
 
         let attempt = vec![AuthCredential::Password("bad_password".to_string())];
         match session.validate_creds(&mut audit, &attempt, &Duration::from_secs(0)) {
-            Ok(AuthState::Denied(_)) => {},
+            Ok(AuthState::Denied(_)) => {}
             _ => panic!(),
         };
 
         let mut session = AuthSession::new(account, None);
         let attempt = vec![AuthCredential::Password("test_password".to_string())];
         match session.validate_creds(&mut audit, &attempt, &Duration::from_secs(0)) {
-            Ok(AuthState::Success(_)) => {},
+            Ok(AuthState::Success(_)) => {}
             _ => panic!(),
         };
 
@@ -354,26 +427,229 @@ mod tests {
         let mut audit = AuditScope::new("test_idm_authsession_totp_password_mech");
         // create the ent
         let mut account = entry_str_to_account!(JSON_ADMIN_V1);
+
+        // Setup a fake time stamp for consistency.
+        let ts = Duration::from_secs(12345);
+
         // manually load in a cred
-        let cred = Credential::new_password_only("test_password");
+        let totp = TOTP::generate_secure("test_totp".to_string(), TOTP_DEFAULT_STEP);
+
+        let totp_good = totp
+            .do_totp_duration_from_epoch(&ts)
+            .expect("failed to perform totp.");
+        let totp_bad = totp
+            .do_totp_duration_from_epoch(&Duration::from_secs(1234567))
+            .expect("failed to perform totp.");
+        assert!(totp_bad != totp_good);
+
+        let pw_good = "test_password";
+        let pw_bad = "bad_password";
+
+        let cred = Credential::new_password_only(pw_good).update_totp(totp);
         // add totp also
         account.primary = Some(cred);
 
         // now check
-        let mut session = AuthSession::new(account.clone(), None);
+        let session = AuthSession::new(account.clone(), None);
         let auth_mechs = session.valid_auth_mechs();
-        assert!(
-            auth_mechs.iter().fold(true, |acc, x| match x {
-                AuthAllowed::Password => acc,
-                AuthAllowed::TOTP => acc,
-                _ => false,
-            })
-        );
+        assert!(auth_mechs.iter().fold(true, |acc, x| match x {
+            AuthAllowed::Password => acc,
+            AuthAllowed::TOTP => acc,
+            _ => false,
+        }));
 
         // Rest of test go here
 
-        println!("{}", audit);
+        // check send anon (fail)
+        {
+            let mut session = AuthSession::new(account.clone(), None);
+            match session.validate_creds(&mut audit, &vec![AuthCredential::Anonymous], &ts) {
+                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
+                _ => panic!(),
+            };
+        }
 
-        unimplemented!();
+        // == two step checks
+
+        // check send bad pw, should get continue (even though denied set)
+        //      then send good totp, should fail.
+        {
+            let mut session = AuthSession::new(account.clone(), None);
+            match session.validate_creds(
+                &mut audit,
+                &vec![AuthCredential::Password(pw_bad.to_string())],
+                &ts,
+            ) {
+                Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::TOTP]),
+                _ => panic!(),
+            };
+            match session.validate_creds(&mut audit, &vec![AuthCredential::TOTP(totp_good)], &ts) {
+                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
+                _ => panic!(),
+            };
+        }
+        // check send bad pw, should get continue (even though denied set)
+        //      then send bad totp, should fail TOTP
+        {
+            let mut session = AuthSession::new(account.clone(), None);
+            match session.validate_creds(
+                &mut audit,
+                &vec![AuthCredential::Password(pw_bad.to_string())],
+                &ts,
+            ) {
+                Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::TOTP]),
+                _ => panic!(),
+            };
+            match session.validate_creds(&mut audit, &vec![AuthCredential::TOTP(totp_bad)], &ts) {
+                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_TOTP_MSG),
+                _ => panic!(),
+            };
+        }
+
+        // check send good pw, should get continue
+        //      then send good totp, success
+        {
+            let mut session = AuthSession::new(account.clone(), None);
+            match session.validate_creds(
+                &mut audit,
+                &vec![AuthCredential::Password(pw_good.to_string())],
+                &ts,
+            ) {
+                Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::TOTP]),
+                _ => panic!(),
+            };
+            match session.validate_creds(&mut audit, &vec![AuthCredential::TOTP(totp_good)], &ts) {
+                Ok(AuthState::Success(_)) => {}
+                _ => panic!(),
+            };
+        }
+
+        // check send good pw, should get continue
+        //      then send bad totp, fail otp
+        {
+            let mut session = AuthSession::new(account.clone(), None);
+            match session.validate_creds(
+                &mut audit,
+                &vec![AuthCredential::Password(pw_good.to_string())],
+                &ts,
+            ) {
+                Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::TOTP]),
+                _ => panic!(),
+            };
+            match session.validate_creds(&mut audit, &vec![AuthCredential::TOTP(totp_bad)], &ts) {
+                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_TOTP_MSG),
+                _ => panic!(),
+            };
+        }
+
+        // check send bad totp, should fail immediate
+        {
+            let mut session = AuthSession::new(account.clone(), None);
+            match session.validate_creds(&mut audit, &vec![AuthCredential::TOTP(totp_bad)], &ts) {
+                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_TOTP_MSG),
+                _ => panic!(),
+            };
+        }
+
+        // check send good totp, should continue
+        //      then bad pw, fail pw
+        {
+            let mut session = AuthSession::new(account.clone(), None);
+            match session.validate_creds(&mut audit, &vec![AuthCredential::TOTP(totp_good)], &ts) {
+                Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
+                _ => panic!(),
+            };
+            match session.validate_creds(
+                &mut audit,
+                &vec![AuthCredential::Password(pw_bad.to_string())],
+                &ts,
+            ) {
+                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
+                _ => panic!(),
+            };
+        }
+
+        // check send good totp, should continue
+        //      then good pw, success
+        {
+            let mut session = AuthSession::new(account.clone(), None);
+            match session.validate_creds(&mut audit, &vec![AuthCredential::TOTP(totp_good)], &ts) {
+                Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
+                _ => panic!(),
+            };
+            match session.validate_creds(
+                &mut audit,
+                &vec![AuthCredential::Password(pw_good.to_string())],
+                &ts,
+            ) {
+                Ok(AuthState::Success(_)) => {}
+                _ => panic!(),
+            };
+        }
+
+        // == one step checks
+
+        // check bad totp, bad pw, fail totp.
+        {
+            let mut session = AuthSession::new(account.clone(), None);
+            match session.validate_creds(
+                &mut audit,
+                &vec![
+                    AuthCredential::Password(pw_bad.to_string()),
+                    AuthCredential::TOTP(totp_bad),
+                ],
+                &ts,
+            ) {
+                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_TOTP_MSG),
+                _ => panic!(),
+            };
+        }
+        // check send bad pw, good totp fail password
+        {
+            let mut session = AuthSession::new(account.clone(), None);
+            match session.validate_creds(
+                &mut audit,
+                &vec![
+                    AuthCredential::TOTP(totp_good),
+                    AuthCredential::Password(pw_bad.to_string()),
+                ],
+                &ts,
+            ) {
+                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
+                _ => panic!(),
+            };
+        }
+        // check send good pw, bad totp fail totp.
+        {
+            let mut session = AuthSession::new(account.clone(), None);
+            match session.validate_creds(
+                &mut audit,
+                &vec![
+                    AuthCredential::TOTP(totp_bad),
+                    AuthCredential::Password(pw_good.to_string()),
+                ],
+                &ts,
+            ) {
+                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_TOTP_MSG),
+                _ => panic!(),
+            };
+        }
+        // check good pw, good totp, success
+        {
+            let mut session = AuthSession::new(account.clone(), None);
+            match session.validate_creds(
+                &mut audit,
+                &vec![
+                    AuthCredential::TOTP(totp_good),
+                    AuthCredential::Password(pw_good.to_string()),
+                ],
+                &ts,
+            ) {
+                Ok(AuthState::Success(_)) => {}
+                _ => panic!(),
+            };
+        }
+
+        println!("{}", audit);
     }
 }

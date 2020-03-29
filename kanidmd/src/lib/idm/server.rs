@@ -206,13 +206,15 @@ impl<'a> IdmServerWriteTransaction<'a> {
                 // Process the credentials here as required.
                 // Basically throw them at the auth_session and see what
                 // falls out.
-                auth_session.validate_creds(au, &creds.creds, &ct).map(|aus| {
-                    AuthResult {
-                        // Is this right?
-                        sessionid: creds.sessionid,
-                        state: aus,
-                    }
-                })
+                auth_session
+                    .validate_creds(au, &creds.creds, &ct)
+                    .map(|aus| {
+                        AuthResult {
+                            // Is this right?
+                            sessionid: creds.sessionid,
+                            state: aus,
+                        }
+                    })
             }
         }
     }

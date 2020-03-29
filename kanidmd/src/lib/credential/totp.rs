@@ -1,12 +1,16 @@
-
+use crate::be::dbvalue::DbTotpV1;
 use base32;
 use openssl::hash::MessageDigest;
 use openssl::pkey::PKey;
 use openssl::sign::Signer;
+use rand::prelude::*;
+use std::convert::TryFrom;
 use std::convert::TryInto;
 use std::time::{Duration, SystemTime};
-use crate::be::dbvalue::DbTotpV1;
-use std::convert::TryFrom;
+
+// This is 64 bits of entropy, as the examples in https://tools.ietf.org/html/rfc6238 show.
+const SECRET_SIZE_BYTES: usize = 8;
+pub const TOTP_DEFAULT_STEP: u64 = 60;
 
 #[derive(Debug, PartialEq)]
 pub enum TOTPError {
@@ -79,7 +83,25 @@ impl TryFrom<DbTotpV1> for TOTP {
 
 impl TOTP {
     pub fn new(label: String, secret: Vec<u8>, step: u64, algo: TOTPAlgo) -> Self {
-        TOTP { label, secret, step, algo }
+        TOTP {
+            label,
+            secret,
+            step,
+            algo,
+        }
+    }
+
+    // Create a new token with secure key and algo.
+    pub fn generate_secure(label: String, step: u64) -> Self {
+        let mut rng = rand::thread_rng();
+        let secret: Vec<u8> = (0..SECRET_SIZE_BYTES).map(|_| rng.gen()).collect();
+        let algo = TOTPAlgo::Sha512;
+        TOTP {
+            label,
+            secret,
+            step,
+            algo,
+        }
     }
 
     pub(crate) fn to_dbtotpv1(&self) -> DbTotpV1 {
@@ -114,6 +136,14 @@ impl TOTP {
             .duration_since(SystemTime::UNIX_EPOCH)
             .map_err(|_| TOTPError::TimeError)?;
         self.do_totp_duration_from_epoch(&dur)
+    }
+
+    pub fn verify(&self, chal: u32, time: &Duration) -> bool {
+        // Any error becomes a failure.
+        match self.do_totp_duration_from_epoch(time) {
+            Ok(v) => v == chal,
+            Err(_) => false,
+        }
     }
 
     /// https://github.com/google/google-authenticator/wiki/Key-Uri-Format
@@ -220,14 +250,23 @@ mod tests {
 
     #[test]
     fn totp_to_string() {
-        let totp = TOTP::new("".to_string(), vec![0xaa, 0xbb, 0xcc, 0xdd], 30, TOTPAlgo::Sha256);
+        let totp = TOTP::new(
+            "".to_string(),
+            vec![0xaa, 0xbb, 0xcc, 0xdd],
+            30,
+            TOTPAlgo::Sha256,
+        );
         let s = totp.to_string("william", "blackhats");
         assert!(s == "otpauth://totp/blackhats:william?secret=VK54ZXI&issuer=blackhats&algorithm=SHA256&digits=6&period=30");
 
         // check that invalid issuer/accounts are cleaned up.
-        let totp = TOTP::new("".to_string(), vec![0xaa, 0xbb, 0xcc, 0xdd], 30, TOTPAlgo::Sha256);
+        let totp = TOTP::new(
+            "".to_string(),
+            vec![0xaa, 0xbb, 0xcc, 0xdd],
+            30,
+            TOTPAlgo::Sha256,
+        );
         let s = totp.to_string("william:%3A", "blackhats australia");
         assert!(s == "otpauth://totp/blackhats%20australia:william?secret=VK54ZXI&issuer=blackhats%20australia&algorithm=SHA256&digits=6&period=30");
     }
 }
-

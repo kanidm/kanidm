@@ -193,9 +193,7 @@ impl TryFrom<DbCredV1> for Credential {
         };
 
         let v_totp = match totp {
-            Some(dbt) => {
-                Some(TOTP::try_from(dbt)?)
-            }
+            Some(dbt) => Some(TOTP::try_from(dbt)?),
             None => None,
         };
 
@@ -237,12 +235,8 @@ impl Credential {
 
     pub fn to_db_valuev1(&self) -> DbCredV1 {
         DbCredV1 {
-            password: self.password.as_ref().map(|pw| {
-                pw.to_dbpasswordv1()
-            }),
-            totp: self.totp.as_ref().map(|t| {
-                t.to_dbtotpv1()
-            }),
+            password: self.password.as_ref().map(|pw| pw.to_dbpasswordv1()),
+            totp: self.totp.as_ref().map(|t| t.to_dbtotpv1()),
             claims: self.claims.clone(),
             uuid: self.uuid,
         }
@@ -252,6 +246,16 @@ impl Credential {
         Credential {
             password: Some(pw),
             totp: self.totp.clone(),
+            claims: self.claims.clone(),
+            uuid: self.uuid.clone(),
+        }
+    }
+
+    // We don't make totp accessible from outside the crate for now.
+    pub(crate) fn update_totp(&self, totp: TOTP) -> Self {
+        Credential {
+            password: self.password.clone(),
+            totp: Some(totp),
             claims: self.claims.clone(),
             uuid: self.uuid.clone(),
         }
