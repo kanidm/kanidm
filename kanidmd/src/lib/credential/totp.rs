@@ -1,5 +1,4 @@
 use crate::be::dbvalue::{DbTotpAlgoV1, DbTotpV1};
-use base32;
 use openssl::hash::MessageDigest;
 use openssl::pkey::PKey;
 use openssl::sign::Signer;
@@ -7,6 +6,9 @@ use rand::prelude::*;
 use std::convert::TryFrom;
 use std::convert::TryInto;
 use std::time::{Duration, SystemTime};
+
+use kanidm_proto::v1::TOTPAlgo as ProtoTOTPAlgo;
+use kanidm_proto::v1::TOTPSecret as ProtoTOTP;
 
 // This is 64 bits of entropy, as the examples in https://tools.ietf.org/html/rfc6238 show.
 const SECRET_SIZE_BYTES: usize = 8;
@@ -52,15 +54,6 @@ impl TOTPAlgo {
             return Err(TOTPError::HmacError);
         }
         Ok(hmac)
-    }
-
-    pub(crate) fn to_string(&self) -> String {
-        match self {
-            TOTPAlgo::Sha1 => "SHA1",
-            TOTPAlgo::Sha256 => "SHA256",
-            TOTPAlgo::Sha512 => "SHA512",
-        }
-        .to_string()
     }
 }
 
@@ -165,25 +158,24 @@ impl TOTP {
         }
     }
 
-    /// https://github.com/google/google-authenticator/wiki/Key-Uri-Format
-    pub fn to_string(&self, accountname: &str, issuer: &str) -> String {
-        // label = accountname / issuer (“:” / “%3A”) *”%20” accountname
-        let accountname = accountname
-            .replace(":", "")
-            .replace("%3A", "")
-            .replace(" ", "%20");
-        let issuer = issuer
-            .replace(":", "")
-            .replace("%3A", "")
-            .replace(" ", "%20");
-        let label = format!("{}:{}", issuer, accountname);
-        let secret = base32::encode(base32::Alphabet::RFC4648 { padding: false }, &self.secret);
-        let algo = self.algo.to_string();
-        let period = self.step;
-        format!(
-            "otpauth://totp/{}?secret={}&issuer={}&algorithm={}&digits=6&period={}",
-            label, secret, issuer, algo, period
-        )
+    pub fn to_proto(&self, accountname: &str, issuer: &str) -> ProtoTOTP {
+        ProtoTOTP {
+            accountname: accountname
+                .replace(":", "")
+                .replace("%3A", "")
+                .replace(" ", "%20"),
+            issuer: issuer
+                .replace(":", "")
+                .replace("%3A", "")
+                .replace(" ", "%20"),
+            secret: self.secret.clone(),
+            step: self.step.clone(),
+            algo: match self.algo {
+                TOTPAlgo::Sha1 => ProtoTOTPAlgo::Sha1,
+                TOTPAlgo::Sha256 => ProtoTOTPAlgo::Sha256,
+                TOTPAlgo::Sha512 => ProtoTOTPAlgo::Sha512,
+            },
+        }
     }
 }
 
@@ -265,27 +257,5 @@ mod tests {
             30,
             Ok(952181),
         );
-    }
-
-    #[test]
-    fn totp_to_string() {
-        let totp = TOTP::new(
-            "".to_string(),
-            vec![0xaa, 0xbb, 0xcc, 0xdd],
-            30,
-            TOTPAlgo::Sha256,
-        );
-        let s = totp.to_string("william", "blackhats");
-        assert!(s == "otpauth://totp/blackhats:william?secret=VK54ZXI&issuer=blackhats&algorithm=SHA256&digits=6&period=30");
-
-        // check that invalid issuer/accounts are cleaned up.
-        let totp = TOTP::new(
-            "".to_string(),
-            vec![0xaa, 0xbb, 0xcc, 0xdd],
-            30,
-            TOTPAlgo::Sha256,
-        );
-        let s = totp.to_string("william:%3A", "blackhats australia");
-        assert!(s == "otpauth://totp/blackhats%20australia:william?secret=VK54ZXI&issuer=blackhats%20australia&algorithm=SHA256&digits=6&period=30");
     }
 }

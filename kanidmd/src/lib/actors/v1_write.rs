@@ -7,8 +7,8 @@ use crate::event::{
     ReviveRecycledEvent,
 };
 use crate::idm::event::{
-    GeneratePasswordEvent, PasswordChangeEvent, RegenerateRadiusSecretEvent,
-    UnixPasswordChangeEvent,
+    GeneratePasswordEvent, GenerateTOTPEvent, PasswordChangeEvent, RegenerateRadiusSecretEvent,
+    UnixPasswordChangeEvent, VerifyTOTPEvent,
 };
 use crate::modify::{Modify, ModifyInvalid, ModifyList};
 use crate::value::{PartialValue, Value};
@@ -24,7 +24,8 @@ use kanidm_proto::v1::Modify as ProtoModify;
 use kanidm_proto::v1::ModifyList as ProtoModifyList;
 use kanidm_proto::v1::{
     AccountUnixExtend, CreateRequest, DeleteRequest, GroupUnixExtend, ModifyRequest,
-    OperationResponse, SetAuthCredential, SingleStringRequest, UserAuthToken,
+    OperationResponse, SetCredentialRequest, SetCredentialResponse, SingleStringRequest,
+    UserAuthToken,
 };
 
 use actix::prelude::*;
@@ -185,27 +186,11 @@ pub struct InternalCredentialSetMessage {
     pub uat: Option<UserAuthToken>,
     pub uuid_or_name: String,
     pub appid: Option<String>,
-    pub sac: SetAuthCredential,
-}
-
-impl InternalCredentialSetMessage {
-    pub fn new(
-        uat: Option<UserAuthToken>,
-        uuid_or_name: String,
-        appid: Option<String>,
-        sac: SetAuthCredential,
-    ) -> Self {
-        InternalCredentialSetMessage {
-            uat,
-            uuid_or_name,
-            appid,
-            sac,
-        }
-    }
+    pub sac: SetCredentialRequest,
 }
 
 impl Message for InternalCredentialSetMessage {
-    type Result = Result<Option<String>, OperationError>;
+    type Result = Result<SetCredentialResponse, OperationError>;
 }
 
 pub struct InternalRegenerateRadiusMessage {
@@ -534,12 +519,18 @@ impl Handler<ReviveRecycledMessage> for QueryServerWriteV1 {
 
 // IDM native types for modifications
 impl Handler<InternalCredentialSetMessage> for QueryServerWriteV1 {
-    type Result = Result<Option<String>, OperationError>;
+    type Result = Result<SetCredentialResponse, OperationError>;
 
     fn handle(&mut self, msg: InternalCredentialSetMessage, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("internal_credential_set_message");
         let res = audit_segment!(&mut audit, || {
-            let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now());
+            let ct = duration_from_epoch_now();
+            let mut idms_prox_write = self.idms.proxy_write(ct.clone());
+
+            // Trigger a session clean *before* we take any auth steps.
+            // It's important to do this before to ensure that timeouts on
+            // the session are enforced.
+            idms_prox_write.expire_mfareg_sessions(ct);
 
             // given the uuid_or_name, determine the target uuid.
             // We can either do this by trying to parse the name or by creating a filter
@@ -558,7 +549,7 @@ impl Handler<InternalCredentialSetMessage> for QueryServerWriteV1 {
 
             // What type of auth set did we recieve?
             match msg.sac {
-                SetAuthCredential::Password(cleartext) => {
+                SetCredentialRequest::Password(cleartext) => {
                     let pce = PasswordChangeEvent::from_parts(
                         &mut audit,
                         &idms_prox_write.qs_write,
@@ -578,9 +569,9 @@ impl Handler<InternalCredentialSetMessage> for QueryServerWriteV1 {
                     idms_prox_write
                         .set_account_password(&mut audit, &pce)
                         .and_then(|_| idms_prox_write.commit(&mut audit))
-                        .map(|_| None)
+                        .map(|_| SetCredentialResponse::Success)
                 }
-                SetAuthCredential::GeneratePassword => {
+                SetCredentialRequest::GeneratePassword => {
                     let gpe = GeneratePasswordEvent::from_parts(
                         &mut audit,
                         &idms_prox_write.qs_write,
@@ -599,7 +590,49 @@ impl Handler<InternalCredentialSetMessage> for QueryServerWriteV1 {
                     idms_prox_write
                         .generate_account_password(&mut audit, &gpe)
                         .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
-                        .map(Some)
+                        .map(|s| SetCredentialResponse::Token(s))
+                }
+                SetCredentialRequest::TOTPGenerate => {
+                    let gte = GenerateTOTPEvent::from_parts(
+                        &mut audit,
+                        &idms_prox_write.qs_write,
+                        msg.uat,
+                        target_uuid,
+                    )
+                    .map_err(|e| {
+                        audit_log!(
+                            audit,
+                            "Failed to begin internal_credential_set_message: {:?}",
+                            e
+                        );
+                        e
+                    })?;
+                    idms_prox_write
+                        .generate_account_totp(&mut audit, &gte)
+                        .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
+                        .map(|(u, t)| SetCredentialResponse::TOTPCheck(u, t))
+                }
+                SetCredentialRequest::TOTPVerify(uuid, chal) => {
+                    let vte = VerifyTOTPEvent::from_parts(
+                        &mut audit,
+                        &idms_prox_write.qs_write,
+                        msg.uat,
+                        target_uuid,
+                        uuid,
+                        chal,
+                    )
+                    .map_err(|e| {
+                        audit_log!(
+                            audit,
+                            "Failed to begin internal_credential_set_message: {:?}",
+                            e
+                        );
+                        e
+                    })?;
+                    idms_prox_write
+                        .verify_account_totp(&mut audit, &vte)
+                        .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
+                        .map(|_| SetCredentialResponse::Success)
                 }
             }
         });
@@ -614,7 +647,9 @@ impl Handler<IdmAccountSetPasswordMessage> for QueryServerWriteV1 {
     fn handle(&mut self, msg: IdmAccountSetPasswordMessage, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("idm_account_set_password");
         let res = audit_segment!(&mut audit, || {
-            let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now());
+            let ct = duration_from_epoch_now();
+            let mut idms_prox_write = self.idms.proxy_write(ct.clone());
+            idms_prox_write.expire_mfareg_sessions(ct);
 
             let pce = PasswordChangeEvent::from_idm_account_set_password(
                 &mut audit,
@@ -646,7 +681,9 @@ impl Handler<InternalRegenerateRadiusMessage> for QueryServerWriteV1 {
     ) -> Self::Result {
         let mut audit = AuditScope::new("idm_account_regenerate_radius");
         let res = audit_segment!(&mut audit, || {
-            let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now());
+            let ct = duration_from_epoch_now();
+            let mut idms_prox_write = self.idms.proxy_write(ct.clone());
+            idms_prox_write.expire_mfareg_sessions(ct);
 
             let target_uuid = match Uuid::parse_str(msg.uuid_or_name.as_str()) {
                 Ok(u) => u,
@@ -969,7 +1006,9 @@ impl Handler<IdmAccountUnixSetCredMessage> for QueryServerWriteV1 {
     fn handle(&mut self, msg: IdmAccountUnixSetCredMessage, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("idm_account_unix_set_cred");
         let res = audit_segment!(&mut audit, || {
-            let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now());
+            let ct = duration_from_epoch_now();
+            let mut idms_prox_write = self.idms.proxy_write(ct.clone());
+            idms_prox_write.expire_mfareg_sessions(ct);
 
             let target_uuid = Uuid::parse_str(msg.uuid_or_name.as_str()).or_else(|_| {
                 idms_prox_write

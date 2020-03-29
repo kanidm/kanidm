@@ -1,13 +1,15 @@
 use crate::audit::AuditScope;
 use crate::constants::UUID_SYSTEM_CONFIG;
-use crate::constants::{AUTH_SESSION_TIMEOUT, PW_MIN_LENGTH};
+use crate::constants::{AUTH_SESSION_TIMEOUT, MFAREG_SESSION_TIMEOUT, PW_MIN_LENGTH};
 use crate::event::{AuthEvent, AuthEventStep, AuthResult};
 use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
 use crate::idm::event::{
-    GeneratePasswordEvent, PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
-    UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent,
+    GeneratePasswordEvent, GenerateTOTPEvent, PasswordChangeEvent, RadiusAuthTokenEvent,
+    RegenerateRadiusSecretEvent, UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent,
+    UnixUserTokenEvent, VerifyTOTPEvent,
 };
+use crate::idm::mfareg::MfaRegSession;
 use crate::idm::radius::RadiusAccount;
 use crate::idm::unix::{UnixGroup, UnixUserAccount};
 use crate::server::QueryServerReadTransaction;
@@ -18,6 +20,7 @@ use crate::value::PartialValue;
 use kanidm_proto::v1::AuthState;
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::RadiusAuthToken;
+use kanidm_proto::v1::TOTPSecret as ProtoTOTPSecret;
 use kanidm_proto::v1::UnixGroupToken;
 use kanidm_proto::v1::UnixUserToken;
 
@@ -33,6 +36,8 @@ pub struct IdmServer {
     // variaous accounts, and we have a good idea of how to structure the
     // in memory caches related to locking.
     sessions: BptreeMap<Uuid, AuthSession>,
+    // Keep a set of inprogress mfa registrations
+    mfareg_sessions: BptreeMap<Uuid, MfaRegSession>,
     // Need a reference to the query server.
     qs: QueryServer,
     // thread/server id
@@ -59,6 +64,8 @@ pub struct IdmServerProxyWriteTransaction<'a> {
     // This does NOT take any read to the memory content, allowing safe
     // qs operations to occur through this interface.
     pub qs_write: QueryServerWriteTransaction<'a>,
+    mfareg_sessions: BptreeMapWriteTxn<'a, Uuid, MfaRegSession>,
+    sid: &'a SID,
 }
 
 impl IdmServer {
@@ -70,6 +77,7 @@ impl IdmServer {
 
         IdmServer {
             sessions: BptreeMap::new(),
+            mfareg_sessions: BptreeMap::new(),
             qs,
             sid,
         }
@@ -92,7 +100,9 @@ impl IdmServer {
 
     pub fn proxy_write(&self, ts: Duration) -> IdmServerProxyWriteTransaction {
         IdmServerProxyWriteTransaction {
+            mfareg_sessions: self.mfareg_sessions.write(),
             qs_write: self.qs.write(ts),
+            sid: &self.sid,
         }
     }
 }
@@ -301,6 +311,15 @@ impl IdmServerProxyReadTransaction {
 }
 
 impl<'a> IdmServerProxyWriteTransaction<'a> {
+    pub fn expire_mfareg_sessions(&mut self, ct: Duration) {
+        // ct is current time - sub the timeout. and then split.
+        let expire = ct - Duration::from_secs(MFAREG_SESSION_TIMEOUT);
+        let split_at = uuid_from_duration(expire, *self.sid);
+        // Removes older sessions in place.
+        self.mfareg_sessions.split_off_lt(&split_at);
+        // expired will now be dropped, and can't be used by future sessions.
+    }
+
     fn check_password_quality(
         &self,
         au: &mut AuditScope,
@@ -571,6 +590,22 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         );
 
         Ok(cleartext)
+    }
+
+    pub fn generate_account_totp(
+        &mut self,
+        au: &mut AuditScope,
+        gte: &GenerateTOTPEvent,
+    ) -> Result<(Uuid, ProtoTOTPSecret), OperationError> {
+        unimplemented!();
+    }
+
+    pub fn verify_account_totp(
+        &mut self,
+        au: &mut AuditScope,
+        vte: &VerifyTOTPEvent,
+    ) -> Result<(), OperationError> {
+        unimplemented!();
     }
 
     pub fn commit(self, au: &mut AuditScope) -> Result<(), OperationError> {

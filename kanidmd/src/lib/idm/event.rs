@@ -256,3 +256,50 @@ impl UnixUserAuthEvent {
         })
     }
 }
+
+#[derive(Debug)]
+pub struct GenerateTOTPEvent {
+    pub event: Event,
+    pub target: Uuid,
+}
+
+impl GenerateTOTPEvent {
+    pub fn from_parts(
+        audit: &mut AuditScope,
+        qs: &QueryServerWriteTransaction,
+        uat: Option<UserAuthToken>,
+        target: Uuid,
+    ) -> Result<Self, OperationError> {
+        let e = Event::from_rw_uat(audit, qs, uat)?;
+
+        Ok(GenerateTOTPEvent { event: e, target })
+    }
+}
+
+#[derive(Debug)]
+pub struct VerifyTOTPEvent {
+    pub event: Event,
+    pub target: Uuid,
+    pub session: Uuid,
+    pub chal: u32,
+}
+
+impl VerifyTOTPEvent {
+    pub fn from_parts(
+        audit: &mut AuditScope,
+        qs: &QueryServerWriteTransaction,
+        uat: Option<UserAuthToken>,
+        target: Uuid,
+        session: Uuid,
+        chal: u32,
+    ) -> Result<Self, OperationError> {
+        let e = Event::from_rw_uat(audit, qs, uat)?;
+
+        Ok(VerifyTOTPEvent {
+            event: e,
+            target,
+            session,
+            chal,
+        })
+    }
+}

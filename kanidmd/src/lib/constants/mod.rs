@@ -37,4 +37,6 @@ pub static RECYCLEBIN_MAX_AGE: u64 = 604800;
 
 // 5 minute auth session window.
 pub static AUTH_SESSION_TIMEOUT: u64 = 300;
+// 5 minute mfa reg window
+pub static MFAREG_SESSION_TIMEOUT: u64 = 300;
 pub static PW_MIN_LENGTH: usize = 10;

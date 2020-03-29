@@ -20,8 +20,8 @@ use kanidm_proto::v1::{
     AccountUnixExtend, AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep,
     CreateRequest, DeleteRequest, Entry, Filter, GroupUnixExtend, ModifyList, ModifyRequest,
     OperationError, OperationResponse, RadiusAuthToken, SearchRequest, SearchResponse,
-    SetAuthCredential, SingleStringRequest, UnixGroupToken, UnixUserToken, UserAuthToken,
-    WhoamiResponse,
+    SetCredentialRequest, SetCredentialResponse, SingleStringRequest, UnixGroupToken,
+    UnixUserToken, UserAuthToken, WhoamiResponse,
 };
 use serde_json;
 
@@ -598,13 +598,12 @@ impl KanidmClient {
         &self,
         id: &str,
         pw: &str,
-    ) -> Result<(), ClientError> {
-        let r = SetAuthCredential::Password(pw.to_string());
-        let res: Result<Option<String>, _> = self.perform_put_request(
+    ) -> Result<SetCredentialResponse, ClientError> {
+        let r = SetCredentialRequest::Password(pw.to_string());
+        self.perform_put_request(
             format!("/v1/account/{}/_credential/primary", id).as_str(),
             r,
-        );
-        res.map(|_| ())
+        )
     }
 
     pub fn idm_account_primary_credential_import_password(
@@ -622,15 +621,16 @@ impl KanidmClient {
         &self,
         id: &str,
     ) -> Result<String, ClientError> {
-        let r = SetAuthCredential::GeneratePassword;
-        self.perform_put_request(
+        let r = SetCredentialRequest::GeneratePassword;
+        let res: Result<SetCredentialResponse, ClientError> = self.perform_put_request(
             format!("/v1/account/{}/_credential/primary", id).as_str(),
             r,
-        )
-        .and_then(|v| match v {
-            Some(p) => Ok(p),
-            None => Err(ClientError::EmptyResponse),
-        })
+        );
+        match res {
+            Ok(SetCredentialResponse::Token(p)) => Ok(p),
+            Ok(_) => Err(ClientError::EmptyResponse),
+            Err(e) => Err(e),
+        }
     }
 
     pub fn idm_account_radius_credential_get(
