@@ -261,6 +261,7 @@ impl UnixUserAuthEvent {
 pub struct GenerateTOTPEvent {
     pub event: Event,
     pub target: Uuid,
+    pub label: String,
 }
 
 impl GenerateTOTPEvent {
@@ -269,10 +270,22 @@ impl GenerateTOTPEvent {
         qs: &QueryServerWriteTransaction,
         uat: Option<UserAuthToken>,
         target: Uuid,
+        label: String,
     ) -> Result<Self, OperationError> {
         let e = Event::from_rw_uat(audit, qs, uat)?;
 
-        Ok(GenerateTOTPEvent { event: e, target })
+        Ok(GenerateTOTPEvent { event: e, target, label })
+    }
+
+    #[cfg(test)]
+    pub fn new_internal(target: Uuid) -> Self {
+        let e = Event::from_internal();
+
+        GenerateTOTPEvent {
+            event: e,
+            target,
+            label: "internal_token".to_string(),
+        }
     }
 }
 
@@ -301,5 +314,17 @@ impl VerifyTOTPEvent {
             session,
             chal,
         })
+    }
+
+    #[cfg(test)]
+    pub fn new_internal(target: Uuid, session: Uuid, chal: u32) -> Self {
+        let e = Event::from_internal();
+
+        VerifyTOTPEvent {
+            event: e,
+            target,
+            session,
+            chal,
+        }
     }
 }

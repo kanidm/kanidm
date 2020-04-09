@@ -592,12 +592,13 @@ impl Handler<InternalCredentialSetMessage> for QueryServerWriteV1 {
                         .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
                         .map(|s| SetCredentialResponse::Token(s))
                 }
-                SetCredentialRequest::TOTPGenerate => {
+                SetCredentialRequest::TOTPGenerate(label) => {
                     let gte = GenerateTOTPEvent::from_parts(
                         &mut audit,
                         &idms_prox_write.qs_write,
                         msg.uat,
                         target_uuid,
+                        label,
                     )
                     .map_err(|e| {
                         audit_log!(
@@ -608,9 +609,8 @@ impl Handler<InternalCredentialSetMessage> for QueryServerWriteV1 {
                         e
                     })?;
                     idms_prox_write
-                        .generate_account_totp(&mut audit, &gte)
+                        .generate_account_totp(&mut audit, &gte, ct)
                         .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
-                        .map(|(u, t)| SetCredentialResponse::TOTPCheck(u, t))
                 }
                 SetCredentialRequest::TOTPVerify(uuid, chal) => {
                     let vte = VerifyTOTPEvent::from_parts(
@@ -630,9 +630,8 @@ impl Handler<InternalCredentialSetMessage> for QueryServerWriteV1 {
                         e
                     })?;
                     idms_prox_write
-                        .verify_account_totp(&mut audit, &vte)
+                        .verify_account_totp(&mut audit, &vte, ct)
                         .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
-                        .map(|_| SetCredentialResponse::Success)
                 }
             }
         });

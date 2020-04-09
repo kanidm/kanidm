@@ -12,7 +12,7 @@ use kanidm_proto::v1::TOTPSecret as ProtoTOTP;
 
 // This is 64 bits of entropy, as the examples in https://tools.ietf.org/html/rfc6238 show.
 const SECRET_SIZE_BYTES: usize = 8;
-pub const TOTP_DEFAULT_STEP: u64 = 60;
+pub const TOTP_DEFAULT_STEP: u64 = 30;
 
 #[derive(Debug, PartialEq)]
 pub enum TOTPError {
@@ -81,6 +81,22 @@ impl TryFrom<DbTotpV1> for TOTP {
             step: value.s,
             algo,
         })
+    }
+}
+
+#[cfg(test)]
+impl From<ProtoTOTP> for TOTP {
+    fn from(value: ProtoTOTP) -> Self {
+        TOTP {
+            label: "test_token".to_string(),
+            secret: value.secret,
+            algo: match value.algo {
+                ProtoTOTPAlgo::Sha1 => TOTPAlgo::Sha1,
+                ProtoTOTPAlgo::Sha256 => TOTPAlgo::Sha256,
+                ProtoTOTPAlgo::Sha512 => TOTPAlgo::Sha512,
+            },
+            step: value.step
+        }
     }
 }
 

@@ -392,13 +392,13 @@ pub struct AuthResponse {
 pub enum SetCredentialRequest {
     Password(String),
     GeneratePassword,
-    TOTPGenerate,
+    TOTPGenerate(String),
     TOTPVerify(Uuid, u32),
     //
     // Webauthn(response)
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TOTPAlgo {
     Sha1,
     Sha256,
@@ -416,7 +416,7 @@ impl TOTPAlgo {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TOTPSecret {
     pub accountname: String,
     pub issuer: String,

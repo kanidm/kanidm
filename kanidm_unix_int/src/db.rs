@@ -61,7 +61,7 @@ impl<'a> DbTxn<'a> {
         guard: MutexGuard<'a, ()>,
     ) -> Self {
         // Start the transaction
-        debug!("Starting db WR txn ...");
+        // debug!("Starting db WR txn ...");
         conn.execute("BEGIN TRANSACTION", NO_PARAMS)
             .expect("Unable to begin transaction!");
         DbTxn {
@@ -132,7 +132,7 @@ impl<'a> DbTxn<'a> {
     }
 
     pub fn commit(mut self) -> Result<(), ()> {
-        debug!("Commiting BE txn");
+        // debug!("Commiting BE txn");
         assert!(!self.committed);
         self.committed = true;
 
@@ -694,7 +694,7 @@ impl<'a> Drop for DbTxn<'a> {
     // Abort
     fn drop(self: &mut Self) {
         if !self.committed {
-            debug!("Aborting BE WR txn");
+            // debug!("Aborting BE WR txn");
             self.conn
                 .execute("ROLLBACK TRANSACTION", NO_PARAMS)
                 .expect("Unable to rollback transaction! Can not proceed!!!");

@@ -657,9 +657,9 @@ impl CacheLayer {
                 self.online_account_authenticate(&token, account_id, cred)
                     .await
             }
-            CacheState::OfflineNextCheck(time) => {
-                // Should this always attempt to go online?
-                if SystemTime::now() >= time && self.test_connection().await {
+            CacheState::OfflineNextCheck(_time) => {
+                // Always attempt to go online to attempt the authentication.
+                if self.test_connection().await {
                     // Brought ourselves online, lets check.
                     self.online_account_authenticate(&token, account_id, cred)
                         .await
