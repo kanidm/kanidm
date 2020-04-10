@@ -3,9 +3,11 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc;
 use std::thread;
+use std::time::SystemTime;
 
 use kanidm::config::{Configuration, IntegrationTestConfig};
 use kanidm::core::create_server_core;
+use kanidm::credential::totp::TOTP;
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
 use kanidm_proto::v1::{Entry, Filter, Modify, ModifyList};
 
@@ -756,6 +758,65 @@ fn test_server_rest_account_import_password() {
         let _ = rsclient.logout();
         let res = rsclient.auth_simple_password("demo_account", "eicieY7ahchaoCh0eeTa");
         assert!(res.is_ok());
+    });
+}
+
+#[test]
+fn test_server_rest_totp_auth_lifecycle() {
+    run_test(|rsclient: KanidmClient| {
+        let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
+        assert!(res.is_ok());
+
+        // Not recommended in production!
+        rsclient
+            .idm_group_add_members("idm_admins", vec!["admin"])
+            .unwrap();
+
+        // Create a new account
+        rsclient
+            .idm_account_create("demo_account", "Deeeeemo")
+            .unwrap();
+
+        // Enroll a totp to the account
+        assert!(rsclient
+            .idm_account_primary_credential_set_password("demo_account", "sohdi3iuHo6mai7noh0a")
+            .is_ok());
+        let (sessionid, tok) = rsclient
+            .idm_account_primary_credential_generate_totp("demo_account", "demo")
+            .unwrap();
+
+        let r_tok: TOTP = tok.into();
+        let totp = r_tok
+            .do_totp_duration_from_epoch(
+                &SystemTime::now()
+                    .duration_since(SystemTime::UNIX_EPOCH)
+                    .unwrap(),
+            )
+            .expect("Failed to do totp?");
+
+        rsclient
+            .idm_account_primary_credential_verify_totp("demo_account", totp, sessionid)
+            .unwrap(); // the result
+
+        // Check a bad auth
+        // Get a new connection
+        let rsclient_bad = rsclient.new_session().unwrap();
+        assert!(rsclient_bad
+            .auth_password_totp("demo_account", "sohdi3iuHo6mai7noh0a", 0)
+            .is_err());
+
+        // Check a good auth
+        let rsclient_good = rsclient.new_session().unwrap();
+        let totp = r_tok
+            .do_totp_duration_from_epoch(
+                &SystemTime::now()
+                    .duration_since(SystemTime::UNIX_EPOCH)
+                    .unwrap(),
+            )
+            .expect("Failed to do totp?");
+        assert!(rsclient_good
+            .auth_password_totp("demo_account", "sohdi3iuHo6mai7noh0a", totp)
+            .is_ok());
     });
 }
 

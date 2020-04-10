@@ -15,13 +15,14 @@ use std::io::Read;
 use std::path::Path;
 use std::time::Duration;
 use toml;
+use uuid::Uuid;
 
 use kanidm_proto::v1::{
     AccountUnixExtend, AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep,
     CreateRequest, DeleteRequest, Entry, Filter, GroupUnixExtend, ModifyList, ModifyRequest,
     OperationError, OperationResponse, RadiusAuthToken, SearchRequest, SearchResponse,
-    SetAuthCredential, SingleStringRequest, UnixGroupToken, UnixUserToken, UserAuthToken,
-    WhoamiResponse,
+    SetCredentialRequest, SetCredentialResponse, SingleStringRequest, TOTPSecret, UnixGroupToken,
+    UnixUserToken, UserAuthToken, WhoamiResponse,
 };
 use serde_json;
 
@@ -39,6 +40,7 @@ pub enum ClientError {
     AuthenticationFailed,
     JsonParse,
     EmptyResponse,
+    TOTPVerifyFailed(Uuid, TOTPSecret),
 }
 
 #[derive(Debug, Deserialize)]
@@ -445,6 +447,36 @@ impl KanidmClient {
         }
     }
 
+    pub fn auth_password_totp(
+        &self,
+        ident: &str,
+        password: &str,
+        totp: u32,
+    ) -> Result<UserAuthToken, ClientError> {
+        let _state = match self.auth_step_init(ident, None) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+
+        let auth_req = AuthRequest {
+            step: AuthStep::Creds(vec![
+                AuthCredential::TOTP(totp),
+                AuthCredential::Password(password.to_string()),
+            ]),
+        };
+        let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_req);
+
+        let r = r?;
+
+        match r.state {
+            AuthState::Success(uat) => {
+                debug!("==> Authed as uat; {:?}", uat);
+                Ok(uat)
+            }
+            _ => Err(ClientError::AuthenticationFailed),
+        }
+    }
+
     // search
     pub fn search(&self, filter: Filter) -> Result<Vec<Entry>, ClientError> {
         let sr = SearchRequest { filter };
@@ -598,13 +630,12 @@ impl KanidmClient {
         &self,
         id: &str,
         pw: &str,
-    ) -> Result<(), ClientError> {
-        let r = SetAuthCredential::Password(pw.to_string());
-        let res: Result<Option<String>, _> = self.perform_put_request(
+    ) -> Result<SetCredentialResponse, ClientError> {
+        let r = SetCredentialRequest::Password(pw.to_string());
+        self.perform_put_request(
             format!("/v1/account/{}/_credential/primary", id).as_str(),
             r,
-        );
-        res.map(|_| ())
+        )
     }
 
     pub fn idm_account_primary_credential_import_password(
@@ -622,15 +653,54 @@ impl KanidmClient {
         &self,
         id: &str,
     ) -> Result<String, ClientError> {
-        let r = SetAuthCredential::GeneratePassword;
-        self.perform_put_request(
+        let r = SetCredentialRequest::GeneratePassword;
+        let res: Result<SetCredentialResponse, ClientError> = self.perform_put_request(
             format!("/v1/account/{}/_credential/primary", id).as_str(),
             r,
-        )
-        .and_then(|v| match v {
-            Some(p) => Ok(p),
-            None => Err(ClientError::EmptyResponse),
-        })
+        );
+        match res {
+            Ok(SetCredentialResponse::Token(p)) => Ok(p),
+            Ok(_) => Err(ClientError::EmptyResponse),
+            Err(e) => Err(e),
+        }
+    }
+
+    // Reg intent for totp
+    pub fn idm_account_primary_credential_generate_totp(
+        &self,
+        id: &str,
+        label: &str,
+    ) -> Result<(Uuid, TOTPSecret), ClientError> {
+        let r = SetCredentialRequest::TOTPGenerate(label.to_string());
+        let res: Result<SetCredentialResponse, ClientError> = self.perform_put_request(
+            format!("/v1/account/{}/_credential/primary", id).as_str(),
+            r,
+        );
+        match res {
+            Ok(SetCredentialResponse::TOTPCheck(u, s)) => Ok((u, s)),
+            Ok(_) => Err(ClientError::EmptyResponse),
+            Err(e) => Err(e),
+        }
+    }
+
+    // Verify the totp
+    pub fn idm_account_primary_credential_verify_totp(
+        &self,
+        id: &str,
+        otp: u32,
+        session: Uuid,
+    ) -> Result<(), ClientError> {
+        let r = SetCredentialRequest::TOTPVerify(session, otp);
+        let res: Result<SetCredentialResponse, ClientError> = self.perform_put_request(
+            format!("/v1/account/{}/_credential/primary", id).as_str(),
+            r,
+        );
+        match res {
+            Ok(SetCredentialResponse::Success) => Ok(()),
+            Ok(SetCredentialResponse::TOTPCheck(u, s)) => Err(ClientError::TOTPVerifyFailed(u, s)),
+            Ok(_) => Err(ClientError::EmptyResponse),
+            Err(e) => Err(e),
+        }
     }
 
     pub fn idm_account_radius_credential_get(

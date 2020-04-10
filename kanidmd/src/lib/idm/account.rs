@@ -5,6 +5,7 @@ use kanidm_proto::v1::UserAuthToken;
 
 use crate::audit::AuditScope;
 use crate::constants::UUID_ANONYMOUS;
+use crate::credential::totp::TOTP;
 use crate::credential::Credential;
 use crate::idm::claim::Claim;
 use crate::idm::group::Group;
@@ -166,6 +167,24 @@ impl Account {
                     }
                 }
             } // no appid
+        }
+    }
+
+    pub(crate) fn gen_totp_mod(
+        &self,
+        token: TOTP,
+    ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
+        match &self.primary {
+            // Change the cred
+            Some(primary) => {
+                let ncred = primary.update_totp(token);
+                let vcred = Value::new_credential("primary", ncred);
+                Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
+            }
+            None => {
+                // No credential exists, we can't supplementy it.
+                Err(OperationError::InvalidState)
+            }
         }
     }
 

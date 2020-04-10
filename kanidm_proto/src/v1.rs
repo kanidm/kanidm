@@ -1,3 +1,4 @@
+use base32;
 use std::collections::BTreeMap;
 use std::fmt;
 use uuid::Uuid;
@@ -336,7 +337,7 @@ impl ModifyRequest {
 pub enum AuthCredential {
     Anonymous,
     Password(String),
-    // TOTP(String),
+    TOTP(u32),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -365,6 +366,7 @@ pub struct AuthRequest {
 pub enum AuthAllowed {
     Anonymous,
     Password,
+    TOTP,
     // Webauthn(String),
 }
 
@@ -387,11 +389,73 @@ pub struct AuthResponse {
 
 // Types needed for setting credentials
 #[derive(Debug, Serialize, Deserialize)]
-pub enum SetAuthCredential {
+pub enum SetCredentialRequest {
     Password(String),
     GeneratePassword,
-    // TOTP()
+    TOTPGenerate(String),
+    TOTPVerify(Uuid, u32),
+    //
     // Webauthn(response)
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum TOTPAlgo {
+    Sha1,
+    Sha256,
+    Sha512,
+}
+
+impl TOTPAlgo {
+    pub fn to_string(&self) -> String {
+        match self {
+            TOTPAlgo::Sha1 => "SHA1",
+            TOTPAlgo::Sha256 => "SHA256",
+            TOTPAlgo::Sha512 => "SHA512",
+        }
+        .to_string()
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TOTPSecret {
+    pub accountname: String,
+    pub issuer: String,
+    pub secret: Vec<u8>,
+    pub algo: TOTPAlgo,
+    pub step: u64,
+}
+
+impl TOTPSecret {
+    /// https://github.com/google/google-authenticator/wiki/Key-Uri-Format
+    pub fn to_uri(&self) -> String {
+        // label = accountname / issuer (“:” / “%3A”) *”%20” accountname
+        // This is already done server side but paranoia is good!
+        let accountname = self
+            .accountname
+            .replace(":", "")
+            .replace("%3A", "")
+            .replace(" ", "%20");
+        let issuer = self
+            .issuer
+            .replace(":", "")
+            .replace("%3A", "")
+            .replace(" ", "%20");
+        let label = format!("{}:{}", issuer, accountname);
+        let secret = base32::encode(base32::Alphabet::RFC4648 { padding: false }, &self.secret);
+        let algo = self.algo.to_string();
+        let period = self.step;
+        format!(
+            "otpauth://totp/{}?secret={}&issuer={}&algorithm={}&digits=6&period={}",
+            label, secret, issuer, algo, period
+        )
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum SetCredentialResponse {
+    Success,
+    Token(String),
+    TOTPCheck(Uuid, TOTPSecret),
 }
 
 /* Recycle Requests area */
@@ -459,10 +523,36 @@ impl SingleStringRequest {
 #[cfg(test)]
 mod tests {
     use crate::v1::Filter as ProtoFilter;
+    use crate::v1::{TOTPAlgo, TOTPSecret};
+
     #[test]
     fn test_protofilter_simple() {
         let pf: ProtoFilter = ProtoFilter::Pres("class".to_string());
 
         println!("{:?}", serde_json::to_string(&pf).expect("JSON failure"));
+    }
+
+    #[test]
+    fn totp_to_string() {
+        let totp = TOTPSecret {
+            accountname: "william".to_string(),
+            issuer: "blackhats".to_string(),
+            secret: vec![0xaa, 0xbb, 0xcc, 0xdd],
+            step: 30,
+            algo: TOTPAlgo::Sha256,
+        };
+        let s = totp.to_uri();
+        assert!(s == "otpauth://totp/blackhats:william?secret=VK54ZXI&issuer=blackhats&algorithm=SHA256&digits=6&period=30");
+
+        // check that invalid issuer/accounts are cleaned up.
+        let totp = TOTPSecret {
+            accountname: "william:%3A".to_string(),
+            issuer: "blackhats australia".to_string(),
+            secret: vec![0xaa, 0xbb, 0xcc, 0xdd],
+            step: 30,
+            algo: TOTPAlgo::Sha256,
+        };
+        let s = totp.to_uri();
+        assert!(s == "otpauth://totp/blackhats%20australia:william?secret=VK54ZXI&issuer=blackhats%20australia&algorithm=SHA256&digits=6&period=30");
     }
 }

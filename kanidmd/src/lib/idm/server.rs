@@ -1,13 +1,15 @@
 use crate::audit::AuditScope;
 use crate::constants::UUID_SYSTEM_CONFIG;
-use crate::constants::{AUTH_SESSION_TIMEOUT, PW_MIN_LENGTH};
+use crate::constants::{AUTH_SESSION_TIMEOUT, MFAREG_SESSION_TIMEOUT, PW_MIN_LENGTH};
 use crate::event::{AuthEvent, AuthEventStep, AuthResult};
 use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
 use crate::idm::event::{
-    GeneratePasswordEvent, PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
-    UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent,
+    GeneratePasswordEvent, GenerateTOTPEvent, PasswordChangeEvent, RadiusAuthTokenEvent,
+    RegenerateRadiusSecretEvent, UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent,
+    UnixUserTokenEvent, VerifyTOTPEvent,
 };
+use crate::idm::mfareg::{MfaRegCred, MfaRegNext, MfaRegSession, MfaReqInit, MfaReqStep};
 use crate::idm::radius::RadiusAccount;
 use crate::idm::unix::{UnixGroup, UnixUserAccount};
 use crate::server::QueryServerReadTransaction;
@@ -18,6 +20,8 @@ use crate::value::PartialValue;
 use kanidm_proto::v1::AuthState;
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::RadiusAuthToken;
+// use kanidm_proto::v1::TOTPSecret as ProtoTOTPSecret;
+use kanidm_proto::v1::SetCredentialResponse;
 use kanidm_proto::v1::UnixGroupToken;
 use kanidm_proto::v1::UnixUserToken;
 
@@ -33,10 +37,10 @@ pub struct IdmServer {
     // variaous accounts, and we have a good idea of how to structure the
     // in memory caches related to locking.
     sessions: BptreeMap<Uuid, AuthSession>,
+    // Keep a set of inprogress mfa registrations
+    mfareg_sessions: BptreeMap<Uuid, MfaRegSession>,
     // Need a reference to the query server.
     qs: QueryServer,
-    // thread/server id
-    sid: SID,
 }
 
 pub struct IdmServerWriteTransaction<'a> {
@@ -45,8 +49,8 @@ pub struct IdmServerWriteTransaction<'a> {
     // things like authentication
     sessions: BptreeMapWriteTxn<'a, Uuid, AuthSession>,
     pub qs_read: QueryServerReadTransaction,
-    // qs: &'a QueryServer,
-    sid: &'a SID,
+    // thread/server id
+    sid: SID,
 }
 
 pub struct IdmServerProxyReadTransaction {
@@ -59,28 +63,31 @@ pub struct IdmServerProxyWriteTransaction<'a> {
     // This does NOT take any read to the memory content, allowing safe
     // qs operations to occur through this interface.
     pub qs_write: QueryServerWriteTransaction<'a>,
+    // Associate to an event origin ID, which has a TS and a UUID instead
+    mfareg_sessions: BptreeMapWriteTxn<'a, Uuid, MfaRegSession>,
+    sid: SID,
 }
 
 impl IdmServer {
     // TODO #59: Make number of authsessions configurable!!!
     pub fn new(qs: QueryServer) -> IdmServer {
-        let mut sid = [0; 4];
-        let mut rng = StdRng::from_entropy();
-        rng.fill(&mut sid);
-
         IdmServer {
             sessions: BptreeMap::new(),
+            mfareg_sessions: BptreeMap::new(),
             qs,
-            sid,
         }
     }
 
     pub fn write(&self) -> IdmServerWriteTransaction {
+        let mut sid = [0; 4];
+        let mut rng = StdRng::from_entropy();
+        rng.fill(&mut sid);
+
         IdmServerWriteTransaction {
             sessions: self.sessions.write(),
             // qs: &self.qs,
             qs_read: self.qs.read(),
-            sid: &self.sid,
+            sid: sid,
         }
     }
 
@@ -91,8 +98,14 @@ impl IdmServer {
     }
 
     pub fn proxy_write(&self, ts: Duration) -> IdmServerProxyWriteTransaction {
+        let mut sid = [0; 4];
+        let mut rng = StdRng::from_entropy();
+        rng.fill(&mut sid);
+
         IdmServerProxyWriteTransaction {
+            mfareg_sessions: self.mfareg_sessions.write(),
             qs_write: self.qs.write(ts),
+            sid: sid,
         }
     }
 }
@@ -106,7 +119,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
     pub fn expire_auth_sessions(&mut self, ct: Duration) {
         // ct is current time - sub the timeout. and then split.
         let expire = ct - Duration::from_secs(AUTH_SESSION_TIMEOUT);
-        let split_at = uuid_from_duration(expire, *self.sid);
+        let split_at = uuid_from_duration(expire, self.sid);
         // Removes older sessions in place.
         self.sessions.split_off_lt(&split_at);
         // expired will now be dropped, and can't be used by future sessions.
@@ -125,7 +138,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
         match &ae.step {
             AuthEventStep::Init(init) => {
                 // Allocate a session id, based on current time.
-                let sessionid = uuid_from_duration(ct, *self.sid);
+                let sessionid = uuid_from_duration(ct, self.sid);
 
                 // Begin the auth procedure!
                 // Start a read
@@ -206,13 +219,15 @@ impl<'a> IdmServerWriteTransaction<'a> {
                 // Process the credentials here as required.
                 // Basically throw them at the auth_session and see what
                 // falls out.
-                auth_session.validate_creds(au, &creds.creds).map(|aus| {
-                    AuthResult {
-                        // Is this right?
-                        sessionid: creds.sessionid,
-                        state: aus,
-                    }
-                })
+                auth_session
+                    .validate_creds(au, &creds.creds, &ct)
+                    .map(|aus| {
+                        AuthResult {
+                            // Is this right?
+                            sessionid: creds.sessionid,
+                            state: aus,
+                        }
+                    })
             }
         }
     }
@@ -299,6 +314,15 @@ impl IdmServerProxyReadTransaction {
 }
 
 impl<'a> IdmServerProxyWriteTransaction<'a> {
+    pub fn expire_mfareg_sessions(&mut self, ct: Duration) {
+        // ct is current time - sub the timeout. and then split.
+        let expire = ct - Duration::from_secs(MFAREG_SESSION_TIMEOUT);
+        let split_at = uuid_from_duration(expire, self.sid);
+        // Removes older sessions in place.
+        self.mfareg_sessions.split_off_lt(&split_at);
+        // expired will now be dropped, and can't be used by future sessions.
+    }
+
     fn check_password_quality(
         &self,
         au: &mut AuditScope,
@@ -357,13 +381,13 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         Ok(())
     }
 
-    pub fn set_account_password(
-        &mut self,
+    fn target_to_account(
+        &self,
         au: &mut AuditScope,
-        pce: &PasswordChangeEvent,
-    ) -> Result<(), OperationError> {
+        target: &Uuid,
+    ) -> Result<Account, OperationError> {
         // Get the account
-        let account_entry = try_audit!(au, self.qs_write.internal_search_uuid(au, &pce.target));
+        let account_entry = try_audit!(au, self.qs_write.internal_search_uuid(au, target));
         let account = try_audit!(
             au,
             Account::try_from_entry_rw(au, account_entry, &self.qs_write)
@@ -372,8 +396,19 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // Deny the change if the account is anonymous!
         if account.is_anonymous() {
-            return Err(OperationError::SystemProtectedObject);
+            Err(OperationError::SystemProtectedObject)
+        } else {
+            Ok(account)
         }
+    }
+
+    pub fn set_account_password(
+        &mut self,
+        au: &mut AuditScope,
+        pce: &PasswordChangeEvent,
+    ) -> Result<(), OperationError> {
+        let account = self.target_to_account(au, &pce.target)?;
+        // Ask if tis all good - this step checks pwpolicy and such
 
         // Question: Is it a security issue to reveal pw policy checks BEFORE permission is
         // determined over the credential modification?
@@ -487,18 +522,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         au: &mut AuditScope,
         gpe: &GeneratePasswordEvent,
     ) -> Result<String, OperationError> {
-        // Get the account
-        let account_entry = try_audit!(au, self.qs_write.internal_search_uuid(au, &gpe.target));
-        let account = try_audit!(
-            au,
-            Account::try_from_entry_rw(au, account_entry, &self.qs_write)
-        );
+        let account = self.target_to_account(au, &gpe.target)?;
         // Ask if tis all good - this step checks pwpolicy and such
-
-        // Deny the change if the target account is anonymous!
-        if account.is_anonymous() {
-            return Err(OperationError::SystemProtectedObject);
-        }
 
         // Generate a new random, long pw.
         // Because this is generated, we can bypass policy checks!
@@ -534,16 +559,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         au: &mut AuditScope,
         rrse: &RegenerateRadiusSecretEvent,
     ) -> Result<String, OperationError> {
-        // regenerates and returns the radius secret
-        let account_entry = try_audit!(au, self.qs_write.internal_search_uuid(au, &rrse.target));
-        let account = try_audit!(
-            au,
-            Account::try_from_entry_rw(au, account_entry, &self.qs_write)
-        );
-        // Deny the change if the target account is anonymous!
-        if account.is_anonymous() {
-            return Err(OperationError::SystemProtectedObject);
-        }
+        let account = self.target_to_account(au, &rrse.target)?;
 
         // Difference to the password above, this is intended to be read/copied
         // by a human wiath a keyboard in some cases.
@@ -571,7 +587,88 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         Ok(cleartext)
     }
 
+    pub fn generate_account_totp(
+        &mut self,
+        au: &mut AuditScope,
+        gte: &GenerateTOTPEvent,
+        ct: Duration,
+    ) -> Result<SetCredentialResponse, OperationError> {
+        let account = self.target_to_account(au, &gte.target)?;
+        let sessionid = uuid_from_duration(ct, self.sid);
+
+        let origin = (&gte.event.origin).into();
+        let label = gte.label.clone();
+        let (session, next) = try_audit!(
+            au,
+            MfaRegSession::new(origin, account, MfaReqInit::TOTP(label))
+        );
+
+        let next = next.to_proto(&sessionid);
+
+        // Add session to tree
+        self.mfareg_sessions.insert(sessionid, session);
+        audit_log!(au, "Start mfa reg session -> {:?}", sessionid);
+        Ok(next)
+    }
+
+    pub fn verify_account_totp(
+        &mut self,
+        au: &mut AuditScope,
+        vte: &VerifyTOTPEvent,
+        ct: Duration,
+    ) -> Result<SetCredentialResponse, OperationError> {
+        let sessionid = vte.session;
+        let origin = (&vte.event.origin).into();
+        let chal = vte.chal;
+
+        audit_log!(au, "Attempting to find mfareg_session -> {:?}", sessionid);
+
+        let (next, opt_cred) = {
+            // bound the life time of the session get_mut
+            let session = try_audit!(
+                au,
+                self.mfareg_sessions
+                    .get_mut(&sessionid)
+                    .ok_or(OperationError::InvalidRequestState)
+            );
+            try_audit!(
+                au,
+                session.step(&origin, &vte.target, MfaReqStep::TOTPVerify(chal), &ct)
+            )
+        };
+
+        match (&next, opt_cred) {
+            (MfaRegNext::Success, Some(MfaRegCred::TOTP(token))) => {
+                // Purge the session.
+                let session = self
+                    .mfareg_sessions
+                    .remove(&sessionid)
+                    .expect("Session within transaction vanished!");
+                // reg the token
+                let modlist = try_audit!(au, session.account.gen_totp_mod(token));
+                // Perform the mod
+                try_audit!(
+                    au,
+                    self.qs_write.impersonate_modify(
+                        au,
+                        // Filter as executed
+                        filter!(f_eq("uuid", PartialValue::new_uuidr(&session.account.uuid))),
+                        // Filter as intended (acp)
+                        filter_all!(f_eq("uuid", PartialValue::new_uuidr(&session.account.uuid))),
+                        modlist,
+                        &vte.event,
+                    )
+                );
+            }
+            _ => {}
+        };
+
+        let next = next.to_proto(&sessionid);
+        Ok(next)
+    }
+
     pub fn commit(self, au: &mut AuditScope) -> Result<(), OperationError> {
+        self.mfareg_sessions.commit();
         self.qs_write.commit(au)
     }
 }
@@ -580,17 +677,22 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::constants::{AUTH_SESSION_TIMEOUT, UUID_ADMIN, UUID_ANONYMOUS};
+    use crate::constants::{
+        AUTH_SESSION_TIMEOUT, MFAREG_SESSION_TIMEOUT, UUID_ADMIN, UUID_ANONYMOUS,
+    };
+    use crate::credential::totp::TOTP;
     use crate::credential::Credential;
     use crate::entry::{Entry, EntryInit, EntryNew};
     use crate::event::{AuthEvent, AuthResult, CreateEvent, ModifyEvent};
     use crate::idm::event::{
-        PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
+        GenerateTOTPEvent, PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
         UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent,
+        VerifyTOTPEvent,
     };
     use crate::modify::{Modify, ModifyList};
     use crate::value::{PartialValue, Value};
     use kanidm_proto::v1::OperationError;
+    use kanidm_proto::v1::SetCredentialResponse;
     use kanidm_proto::v1::{AuthAllowed, AuthState};
 
     use crate::audit::AuditScope;
@@ -1088,6 +1190,137 @@ mod tests {
                 _ => assert!(false),
             };
             assert!(idms_write.commit().is_ok());
+        })
+    }
+
+    #[test]
+    fn test_idm_totp_registration() {
+        run_idm_test!(|_qs: &QueryServer, idms: &IdmServer, au: &mut AuditScope| {
+            let ct = duration_from_epoch_now();
+            let expire = Duration::from_secs(ct.as_secs() + MFAREG_SESSION_TIMEOUT + 2);
+            let mut idms_prox_write = idms.proxy_write(ct.clone());
+
+            // verify with no session (fail)
+            let vte1 = VerifyTOTPEvent::new_internal(UUID_ADMIN.clone(), Uuid::new_v4(), 0);
+
+            match idms_prox_write.verify_account_totp(au, &vte1, ct.clone()) {
+                Err(e) => {
+                    assert!(e == OperationError::InvalidRequestState);
+                }
+                _ => panic!(),
+            };
+
+            // reg, expire session, attempt verify (fail)
+            let gte1 = GenerateTOTPEvent::new_internal(UUID_ADMIN.clone());
+
+            let res = idms_prox_write
+                .generate_account_totp(au, &gte1, ct.clone())
+                .unwrap();
+            let sesid = match res {
+                SetCredentialResponse::TOTPCheck(id, _) => id,
+                _ => panic!("invalid state!"),
+            };
+            idms_prox_write.expire_mfareg_sessions(expire.clone());
+
+            let vte2 = VerifyTOTPEvent::new_internal(UUID_ADMIN.clone(), sesid, 0);
+
+            match idms_prox_write.verify_account_totp(au, &vte1, ct.clone()) {
+                Err(e) => {
+                    assert!(e == OperationError::InvalidRequestState);
+                }
+                _ => panic!(),
+            };
+
+            // == Test TOTP on account with no password (fail)
+            let res = idms_prox_write
+                .generate_account_totp(au, &gte1, ct.clone())
+                .unwrap();
+            let (sesid, tok) = match res {
+                SetCredentialResponse::TOTPCheck(id, tok) => (id, tok),
+                _ => panic!("invalid state!"),
+            };
+            // get the correct otp
+            let r_tok: TOTP = tok.into();
+            let chal = r_tok
+                .do_totp_duration_from_epoch(&ct)
+                .expect("Failed to do totp?");
+            // attempt the verify
+            let vte3 = VerifyTOTPEvent::new_internal(UUID_ADMIN.clone(), sesid, chal);
+
+            match idms_prox_write.verify_account_totp(au, &vte3, ct.clone()) {
+                Err(e) => assert!(e == OperationError::InvalidState),
+                _ => panic!(),
+            };
+
+            // Expire the session to allow it to reset.
+            idms_prox_write.expire_mfareg_sessions(expire.clone());
+
+            // Set a password.
+            let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD, None);
+            assert!(idms_prox_write.set_account_password(au, &pce).is_ok());
+
+            // == reg, but change the event source part way in the process (failure)
+            let res = idms_prox_write
+                .generate_account_totp(au, &gte1, ct.clone())
+                .unwrap();
+            let (sesid, tok) = match res {
+                SetCredentialResponse::TOTPCheck(id, tok) => (id, tok),
+                _ => panic!("invalid state!"),
+            };
+            // get the correct otp
+            let r_tok: TOTP = tok.into();
+            let chal = r_tok
+                .do_totp_duration_from_epoch(&ct)
+                .expect("Failed to do totp?");
+            // attempt the verify
+            let vte3 = VerifyTOTPEvent::new_internal(UUID_ANONYMOUS.clone(), sesid, chal);
+
+            match idms_prox_write.verify_account_totp(au, &vte3, ct.clone()) {
+                Err(e) => assert!(e == OperationError::InvalidRequestState),
+                _ => panic!(),
+            };
+
+            // == reg, verify w_ incorrect totp (fail)
+            let res = idms_prox_write
+                .generate_account_totp(au, &gte1, ct.clone())
+                .unwrap();
+            let (_sesid, _tok) = match res {
+                SetCredentialResponse::TOTPCheck(id, tok) => (id, tok),
+                _ => panic!("invalid state!"),
+            };
+
+            // We can reuse the OTP/Vte2 from before, since we want the invalid otp.
+            match idms_prox_write.verify_account_totp(au, &vte2, ct.clone()) {
+                // On failure we get back another attempt to setup the token.
+                Ok(SetCredentialResponse::TOTPCheck(_id, _tok)) => {}
+                _ => panic!(),
+            };
+            idms_prox_write.expire_mfareg_sessions(expire.clone());
+
+            // Turn the pts into an otp
+            // == reg, verify w_ correct totp (success)
+            let res = idms_prox_write
+                .generate_account_totp(au, &gte1, ct.clone())
+                .unwrap();
+            let (sesid, tok) = match res {
+                SetCredentialResponse::TOTPCheck(id, tok) => (id, tok),
+                _ => panic!("invalid state!"),
+            };
+            // We can't reuse the OTP/Vte from before, since the token seed changes
+            let r_tok: TOTP = tok.into();
+            let chal = r_tok
+                .do_totp_duration_from_epoch(&ct)
+                .expect("Failed to do totp?");
+            // attempt the verify
+            let vte3 = VerifyTOTPEvent::new_internal(UUID_ADMIN.clone(), sesid, chal);
+
+            match idms_prox_write.verify_account_totp(au, &vte3, ct.clone()) {
+                Ok(SetCredentialResponse::Success) => {}
+                _ => panic!(),
+            };
+            idms_prox_write.expire_mfareg_sessions(expire.clone());
+
+            assert!(idms_prox_write.commit(au).is_ok());
         })
     }
 }

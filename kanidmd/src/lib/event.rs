@@ -66,6 +66,23 @@ impl SearchResult {
 // At the top we get "event types" and they contain the needed
 // actions, and a generic event component.
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum EventOriginId {
+    // Time stamp of the originating event.
+    // The uuid of the originiating user
+    User(Uuid),
+    Internal,
+}
+
+impl From<&EventOrigin> for EventOriginId {
+    fn from(event: &EventOrigin) -> Self {
+        match event {
+            EventOrigin::Internal => EventOriginId::Internal,
+            EventOrigin::User(e) => EventOriginId::User(e.get_uuid().clone()),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum EventOrigin {
     // External event, needs a UUID associated! Perhaps even an Entry/User to improve ACP checks?

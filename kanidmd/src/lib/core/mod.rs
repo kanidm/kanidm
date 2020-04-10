@@ -42,7 +42,7 @@ use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::{
     AccountUnixExtend, AuthRequest, AuthState, CreateRequest, DeleteRequest, GroupUnixExtend,
-    ModifyRequest, SearchRequest, SetAuthCredential, SingleStringRequest, UserAuthToken,
+    ModifyRequest, SearchRequest, SetCredentialRequest, SingleStringRequest, UserAuthToken,
 };
 
 use uuid::Uuid;
@@ -323,11 +323,16 @@ async fn json_rest_event_credential_put(
     cred_id: Option<String>,
     session: Session,
     state: Data<AppState>,
-    obj: SetAuthCredential,
+    obj: SetCredentialRequest,
 ) -> HttpResponse {
     let uat = get_current_user(&session);
 
-    let m_obj = InternalCredentialSetMessage::new(uat, id, cred_id, obj);
+    let m_obj = InternalCredentialSetMessage {
+        uat,
+        uuid_or_name: id,
+        appid: cred_id,
+        sac: obj,
+    };
     match state.qe_w.send(m_obj).await {
         Ok(Ok(r)) => HttpResponse::Ok().json(r),
         Ok(Err(e)) => operation_error_to_response(e),
@@ -505,7 +510,7 @@ async fn account_id_delete(
 
 async fn account_put_id_credential_primary(
     (obj, path, session, state): (
-        Json<SetAuthCredential>,
+        Json<SetCredentialRequest>,
         Path<String>,
         Session,
         Data<AppState>,
