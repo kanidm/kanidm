@@ -13,7 +13,7 @@ pub use crate::constants::system_config::*;
 pub use crate::constants::uuids::*;
 
 // Increment this as we add new schema types and values!!!
-pub static SYSTEM_INDEX_VERSION: i64 = 5;
+pub static SYSTEM_INDEX_VERSION: i64 = 6;
 // On test builds, define to 60 seconds
 #[cfg(test)]
 pub static PURGE_FREQUENCY: u64 = 60;

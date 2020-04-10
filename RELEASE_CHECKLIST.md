@@ -16,6 +16,7 @@
 * vendor and release to build.opensuse.org
 
     make vendor-prep
-    git archive --format=tar --prefix=kanidm-1.0.0rc4/ HEAD | gzip >kanidm-1.0.0rc4.tar.gz
+    git tag v1.0.0rc7
+    // git archive --format=tar --prefix=kanidm-1.0.0rc7/ HEAD | gzip >kanidm-1.0.0rc7.tar.gz
 
 
