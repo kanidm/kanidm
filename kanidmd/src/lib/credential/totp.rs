@@ -84,7 +84,6 @@ impl TryFrom<DbTotpV1> for TOTP {
     }
 }
 
-#[cfg(test)]
 impl From<ProtoTOTP> for TOTP {
     fn from(value: ProtoTOTP) -> Self {
         TOTP {

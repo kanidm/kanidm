@@ -621,6 +621,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let origin = (&vte.event.origin).into();
         let chal = vte.chal;
 
+        audit_log!(au, "Attempting to find mfareg_session -> {:?}", sessionid);
+
         let (next, opt_cred) = {
             // bound the life time of the session get_mut
             let session = try_audit!(
@@ -666,6 +668,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     }
 
     pub fn commit(self, au: &mut AuditScope) -> Result<(), OperationError> {
+        self.mfareg_sessions.commit();
         self.qs_write.commit(au)
     }
 }
