@@ -78,9 +78,7 @@ impl From<&EventOrigin> for EventOriginId {
     fn from(event: &EventOrigin) -> Self {
         match event {
             EventOrigin::Internal => EventOriginId::Internal,
-            EventOrigin::User(e) => {
-                EventOriginId::User(e.get_uuid().clone())
-            }
+            EventOrigin::User(e) => EventOriginId::User(e.get_uuid().clone()),
         }
     }
 }

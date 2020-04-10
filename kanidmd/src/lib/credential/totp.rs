@@ -95,7 +95,7 @@ impl From<ProtoTOTP> for TOTP {
                 ProtoTOTPAlgo::Sha256 => TOTPAlgo::Sha256,
                 ProtoTOTPAlgo::Sha512 => TOTPAlgo::Sha512,
             },
-            step: value.step
+            step: value.step,
         }
     }
 }

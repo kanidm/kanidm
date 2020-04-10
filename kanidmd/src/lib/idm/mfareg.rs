@@ -2,10 +2,10 @@ use crate::credential::totp::{TOTP, TOTP_DEFAULT_STEP};
 use crate::event::EventOriginId;
 use crate::idm::account::Account;
 use kanidm_proto::v1::TOTPSecret;
-use std::time::Duration;
 use kanidm_proto::v1::{OperationError, SetCredentialResponse};
-use uuid::Uuid;
 use std::mem;
+use std::time::Duration;
+use uuid::Uuid;
 
 // Client requests they want to reg a TOTP to account.
 pub(crate) enum MfaReqInit {
@@ -31,7 +31,9 @@ impl MfaRegNext {
     pub fn to_proto(&self, u: &Uuid) -> SetCredentialResponse {
         match self {
             MfaRegNext::Success => SetCredentialResponse::Success,
-            MfaRegNext::TOTPCheck(secret) => SetCredentialResponse::TOTPCheck(u.clone(), (*secret).clone()),
+            MfaRegNext::TOTPCheck(secret) => {
+                SetCredentialResponse::TOTPCheck(u.clone(), (*secret).clone())
+            }
         }
     }
 }
@@ -55,7 +57,11 @@ pub(crate) struct MfaRegSession {
 }
 
 impl MfaRegSession {
-    pub fn new(origin: EventOriginId, account: Account, req: MfaReqInit) -> Result<(Self, MfaRegNext), OperationError> {
+    pub fn new(
+        origin: EventOriginId,
+        account: Account,
+        req: MfaReqInit,
+    ) -> Result<(Self, MfaRegNext), OperationError> {
         // Based on the req, init our session, and the return the next step.
         // Store the ID of the event that start's the attempt
         let state = match req {
@@ -66,13 +72,19 @@ impl MfaRegSession {
         let s = MfaRegSession {
             origin,
             account,
-            state
+            state,
         };
         let next = s.next();
         Ok((s, next))
     }
 
-    pub fn step(&mut self, origin: &EventOriginId, target: &Uuid, req: MfaReqStep, ct: &Duration) -> Result<(MfaRegNext, Option<MfaRegCred>), OperationError> {
+    pub fn step(
+        &mut self,
+        origin: &EventOriginId,
+        target: &Uuid,
+        req: MfaReqStep,
+        ct: &Duration,
+    ) -> Result<(MfaRegNext, Option<MfaRegCred>), OperationError> {
         if &self.origin != origin || target != &self.account.uuid {
             // Verify that the same event source is the one continuing this attempt
             return Err(OperationError::InvalidRequestState);
@@ -84,25 +96,29 @@ impl MfaRegSession {
                     let mut nstate = MfaRegState::TOTPDone;
                     mem::swap(&mut self.state, &mut nstate);
                     match nstate {
-                        MfaRegState::TOTPInit(token) =>
-                            Ok((MfaRegNext::Success, Some(MfaRegCred::TOTP(token)))),
+                        MfaRegState::TOTPInit(token) => {
+                            Ok((MfaRegNext::Success, Some(MfaRegCred::TOTP(token))))
+                        }
                         _ => Err(OperationError::InvalidState),
                     }
                 } else {
                     // Let them try again?
                     let accountname = self.account.name.as_str();
                     let issuer = self.account.spn.as_str();
-                    Ok((MfaRegNext::TOTPCheck(token.to_proto(accountname, issuer)), None))
+                    Ok((
+                        MfaRegNext::TOTPCheck(token.to_proto(accountname, issuer)),
+                        None,
+                    ))
                 }
             }
-            _ => Err(OperationError::InvalidRequestState)
+            _ => Err(OperationError::InvalidRequestState),
         }
     }
 }
 
 impl MfaRegSession {
     pub fn next(&self) -> MfaRegNext {
-        // Given our current state, what is the next step we need to process or offer? 
+        // Given our current state, what is the next step we need to process or offer?
         match &self.state {
             MfaRegState::TOTPDone => MfaRegNext::Success,
             MfaRegState::TOTPInit(token) => {

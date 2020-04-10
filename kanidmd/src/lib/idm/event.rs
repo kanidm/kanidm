@@ -274,7 +274,11 @@ impl GenerateTOTPEvent {
     ) -> Result<Self, OperationError> {
         let e = Event::from_rw_uat(audit, qs, uat)?;
 
-        Ok(GenerateTOTPEvent { event: e, target, label })
+        Ok(GenerateTOTPEvent {
+            event: e,
+            target,
+            label,
+        })
     }
 
     #[cfg(test)]

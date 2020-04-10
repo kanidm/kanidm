@@ -5,8 +5,8 @@ use kanidm_proto::v1::UserAuthToken;
 
 use crate::audit::AuditScope;
 use crate::constants::UUID_ANONYMOUS;
-use crate::credential::Credential;
 use crate::credential::totp::TOTP;
+use crate::credential::Credential;
 use crate::idm::claim::Claim;
 use crate::idm::group::Group;
 use crate::modify::{ModifyInvalid, ModifyList};
