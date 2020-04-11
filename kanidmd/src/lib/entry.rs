@@ -156,7 +156,7 @@ impl<'a> Iterator for EntryAvasMut<'a> {
 
 // Entry should have a lifecycle of types. This is Raw (modifiable) and Entry (verified).
 // This way, we can move between them, but only certain actions are possible on either
-// This means modifications happen on Raw, but to move to Entry, you schema normalize.
+// This means modifications happen on Raw, but to move to Entry, you schema normalise.
 // Vice versa, you can for free, move to Raw, but you lose the validation.
 
 // Because this is type system it's "free" in the end, and means we force validation
