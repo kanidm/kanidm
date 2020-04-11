@@ -23,7 +23,6 @@ use crate::value::{IndexType, PartialValue, SyntaxType, Value};
 use kanidm_proto::v1::{ConsistencyError, OperationError, SchemaError};
 
 use std::borrow::Borrow;
-use std::collections::HashMap;
 use std::collections::{BTreeMap, BTreeSet};
 use uuid::Uuid;
 
@@ -448,14 +447,6 @@ impl SchemaClass {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct SchemaInner {
-    // We contain sets of classes and attributes.
-    classes: HashMap<String, SchemaClass>,
-    attributes: HashMap<String, SchemaAttribute>,
-    idxmeta: BTreeSet<(String, IndexType)>,
-}
-
 pub trait SchemaTransaction {
     fn get_classes(&self) -> BptreeMapReadSnapshot<String, SchemaClass>;
     fn get_attributes(&self) -> BptreeMapReadSnapshot<String, SchemaAttribute>;
@@ -551,8 +542,6 @@ pub trait SchemaTransaction {
         self.get_idxmeta()
     }
 }
-
-impl SchemaInner {}
 
 impl<'a> SchemaWriteTransaction<'a> {
     // Schema probably needs to be part of the backend, so that commits are wholly atomic
