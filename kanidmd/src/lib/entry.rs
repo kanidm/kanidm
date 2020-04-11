@@ -1998,17 +1998,10 @@ mod tests {
 
         // Assert present for multivalue
         let present_multivalue_mods = unsafe {
-            ModifyList::new_valid_list(
-                vec![Modify::Present(
-                     String::from("class"),
-                     Value::new_iutf8s("test"),
-                    ),
-                    Modify::Present(
-                        String::from("class"),
-                        Value::new_iutf8s("multi_test"),
-                    ),
-                ]
-            )
+            ModifyList::new_valid_list(vec![
+                Modify::Present(String::from("class"), Value::new_iutf8s("test")),
+                Modify::Present(String::from("class"), Value::new_iutf8s("multi_test")),
+            ])
         };
 
         e.apply_modlist(&present_multivalue_mods);
@@ -2017,17 +2010,15 @@ mod tests {
         assert!(e.attribute_equality("class", &PartialValue::new_iutf8s("multi_test")));
 
         // Assert purge on single/multi/empty value
-        let purge_single_mods = unsafe {
-            ModifyList::new_valid_list(vec![Modify::Purged(String::from("attr"))])
-        };
+        let purge_single_mods =
+            unsafe { ModifyList::new_valid_list(vec![Modify::Purged(String::from("attr"))]) };
 
         e.apply_modlist(&purge_single_mods);
 
         assert!(!e.attribute_pres("attr"));
 
-        let purge_multi_mods = unsafe {
-            ModifyList::new_valid_list(vec![Modify::Purged(String::from("class"))])
-        };
+        let purge_multi_mods =
+            unsafe { ModifyList::new_valid_list(vec![Modify::Purged(String::from("class"))]) };
 
         e.apply_modlist(&purge_multi_mods);
 
@@ -2055,7 +2046,6 @@ mod tests {
         e.apply_modlist(&remove_empty_mods);
 
         assert!(e.attrs.get("attr").unwrap().is_empty());
-
     }
 
     #[test]
