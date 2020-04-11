@@ -34,28 +34,28 @@ actix-session = "0.3"
 actix-files = "0.2"
 
 log = "0.4"
-env_logger = "0.6"
-rand = "0.6"
+env_logger = "0.7"
+rand = "0.7"
 
 chrono = "0.4"
-cookie = "0.11"
+cookie = "0.13"
 regex = "1"
 lazy_static = "1.2.0"
-lru = "0.1"
+# lru = "0.1"
 
 tokio = "0.2"
 futures = "0.3"
-uuid = { version = "0.7", features = ["serde", "v4" ] }
+uuid = { version = "0.8", features = ["serde", "v4" ] }
 serde = "1.0"
-serde_cbor = "0.10"
+serde_cbor = "0.11"
 serde_json = "1.0"
 serde_derive = "1.0"
 
-rusqlite = { version = "0.20", features = ["backup"] }
+rusqlite = { version = "0.21", features = ["backup"] }
 r2d2 = "0.8"
-r2d2_sqlite = "0.12"
+r2d2_sqlite = "0.14"
 
-structopt = { version = "0.2", default-features = false }
+structopt = { version = "0.3", default-features = false }
 time = "0.1"
 
 concread = "0.1"
@@ -63,7 +63,7 @@ concread = "0.1"
 openssl = "0.10"
 sshkeys = "0.1"
 
-rpassword = "0.4"
+rpassword = "4.0"
 num_cpus = "1.10"
 
 idlset = { version = "0.1" , features = ["use_smallvec"] }

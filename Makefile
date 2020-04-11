@@ -14,3 +14,7 @@ doc-local:
 
 install-tools-local:
 	cd kanidm_tools && cargo install --path . --force
+
+prep:
+	cargo outdated -R
+	cargo audit

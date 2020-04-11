@@ -12,7 +12,7 @@ repository = "https://github.com/kanidm/kanidm/"
 [dependencies]
 serde = "1.0"
 serde_derive = "1.0"
-uuid = { version = "0.7", features = ["serde", "v4"] }
+uuid = { version = "0.8", features = ["serde", "v4"] }
 # actix = { version = "0.9", optional = true }
 zxcvbn = { version = "2.0", features = ["ser"] }
 base32 = "0.4"

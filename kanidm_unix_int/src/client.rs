@@ -29,8 +29,7 @@ impl Decoder for ClientCodec {
     }
 }
 
-impl Encoder for ClientCodec {
-    type Item = ClientRequest;
+impl Encoder<ClientRequest> for ClientCodec {
     type Error = IoError;
 
     fn encode(&mut self, msg: ClientRequest, dst: &mut BytesMut) -> Result<(), Self::Error> {

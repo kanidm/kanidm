@@ -35,7 +35,7 @@ pub fn password_from_random() -> String {
 }
 
 pub fn readable_password_from_random() -> String {
-    let mut trng = thread_rng();
+    let trng = thread_rng();
     format!(
         "{}-{}-{}-{}",
         trng.sample_iter(&DistinctAlpha).take(4).collect::<String>(),

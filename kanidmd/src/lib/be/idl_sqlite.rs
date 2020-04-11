@@ -5,7 +5,6 @@ use idlset::IDLBitRange;
 use kanidm_proto::v1::{ConsistencyError, OperationError};
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
-use rusqlite::types::ToSql;
 use rusqlite::OptionalExtension;
 use rusqlite::NO_PARAMS;
 use std::convert::TryFrom;
@@ -121,7 +120,7 @@ pub trait IdlSqliteTransaction {
         );
         let i: Option<i64> = try_audit!(
             audit,
-            stmt.query_row_named(&[(":tname", &tname as &dyn ToSql)], |row| row.get(0)),
+            stmt.query_row_named(&[(":tname", &tname)], |row| row.get(0)),
             "SQLite Error {:?}",
             OperationError::SQLiteError
         );
