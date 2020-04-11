@@ -154,9 +154,9 @@ impl<'a> Iterator for EntryAvasMut<'a> {
     }
 }
 
-// Entry should have a lifecycle of types. THis is Raw (modifiable) and Entry (verified).
+// Entry should have a lifecycle of types. This is Raw (modifiable) and Entry (verified).
 // This way, we can move between them, but only certain actions are possible on either
-// This means modifications happen on Raw, but to move to Entry, you schema normalise.
+// This means modifications happen on Raw, but to move to Entry, you schema normalize.
 // Vice versa, you can for free, move to Raw, but you lose the validation.
 
 // Because this is type system it's "free" in the end, and means we force validation
@@ -240,7 +240,7 @@ fn compare_attrs(
 /// An entry that has had access controls applied moves from `EntryValid` to `EntryReduced`,
 /// to show that the avas have reduced to the valid read set of the current [`event`] user.
 ///
-/// The second type of `STATE` reperesents the database commit state and internal db ID's. A
+/// The second type of `STATE` represents the database commit state and internal db ID's. A
 /// new entry that has never been committed is `EntryNew`, but an entry that has been retrieved
 /// from the database is `EntryCommitted`. This affects the operations you can apply IE modify
 /// or delete.
@@ -375,7 +375,7 @@ impl Entry<EntryInit, EntryNew> {
                         vs.into_iter().map(|v| Value::new_class(v.as_str())).collect()
                     }
                     "acp_create_attr" | "acp_search_attr" | "acp_modify_removedattr" | "acp_modify_presentattr" |
-                    "systemmay" | "may" | "systemmust" | "must" 
+                    "systemmay" | "may" | "systemmust" | "must"
                     => {
                         vs.into_iter().map(|v| Value::new_attr(v.as_str())).collect()
                     }
