@@ -1983,21 +1983,79 @@ mod tests {
 
         e.add_ava("userid", &Value::from("william"));
 
-        let mods = unsafe {
+        let present_single_mods = unsafe {
             ModifyList::new_valid_list(vec![Modify::Present(
                 String::from("attr"),
                 Value::new_iutf8s("value"),
             )])
         };
 
-        e.apply_modlist(&mods);
+        e.apply_modlist(&present_single_mods);
 
         // Assert the changes are there
+        assert!(e.attribute_equality("userid", &PartialValue::new_utf8s("william")));
         assert!(e.attribute_equality("attr", &PartialValue::new_iutf8s("value")));
 
         // Assert present for multivalue
+        let present_multivalue_mods = unsafe {
+            ModifyList::new_valid_list(
+                vec![Modify::Present(
+                     String::from("class"),
+                     Value::new_iutf8s("test"),
+                    ),
+                    Modify::Present(
+                        String::from("class"),
+                        Value::new_iutf8s("multi_test"),
+                    ),
+                ]
+            )
+        };
+
+        e.apply_modlist(&present_multivalue_mods);
+
+        assert!(e.attribute_equality("class", &PartialValue::new_iutf8s("test")));
+        assert!(e.attribute_equality("class", &PartialValue::new_iutf8s("multi_test")));
+
         // Assert purge on single/multi/empty value
+        let purge_single_mods = unsafe {
+            ModifyList::new_valid_list(vec![Modify::Purged(String::from("attr"))])
+        };
+
+        e.apply_modlist(&purge_single_mods);
+
+        assert!(!e.attribute_pres("attr"));
+
+        let purge_multi_mods = unsafe {
+            ModifyList::new_valid_list(vec![Modify::Purged(String::from("class"))])
+        };
+
+        e.apply_modlist(&purge_multi_mods);
+
+        assert!(!e.attribute_pres("class"));
+
+        let purge_empty_mods = purge_single_mods;
+
+        e.apply_modlist(&purge_empty_mods);
+
         // Assert removed on value that exists and doesn't exist
+        let remove_mods = unsafe {
+            ModifyList::new_valid_list(vec![Modify::Removed(
+                String::from("attr"),
+                PartialValue::new_iutf8s("value"),
+            )])
+        };
+
+        e.apply_modlist(&present_single_mods);
+        assert!(e.attribute_equality("attr", &PartialValue::new_iutf8s("value")));
+        e.apply_modlist(&remove_mods);
+        assert!(e.attrs.get("attr").unwrap().is_empty());
+
+        let remove_empty_mods = remove_mods;
+
+        e.apply_modlist(&remove_empty_mods);
+
+        assert!(e.attrs.get("attr").unwrap().is_empty());
+
     }
 
     #[test]
