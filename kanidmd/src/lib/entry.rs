@@ -154,7 +154,7 @@ impl<'a> Iterator for EntryAvasMut<'a> {
     }
 }
 
-// Entry should have a lifecycle of types. THis is Raw (modifiable) and Entry (verified).
+// Entry should have a lifecycle of types. This is Raw (modifiable) and Entry (verified).
 // This way, we can move between them, but only certain actions are possible on either
 // This means modifications happen on Raw, but to move to Entry, you schema normalise.
 // Vice versa, you can for free, move to Raw, but you lose the validation.
@@ -240,7 +240,7 @@ fn compare_attrs(
 /// An entry that has had access controls applied moves from `EntryValid` to `EntryReduced`,
 /// to show that the avas have reduced to the valid read set of the current [`event`] user.
 ///
-/// The second type of `STATE` reperesents the database commit state and internal db ID's. A
+/// The second type of `STATE` represents the database commit state and internal db ID's. A
 /// new entry that has never been committed is `EntryNew`, but an entry that has been retrieved
 /// from the database is `EntryCommitted`. This affects the operations you can apply IE modify
 /// or delete.
@@ -375,7 +375,7 @@ impl Entry<EntryInit, EntryNew> {
                         vs.into_iter().map(|v| Value::new_class(v.as_str())).collect()
                     }
                     "acp_create_attr" | "acp_search_attr" | "acp_modify_removedattr" | "acp_modify_presentattr" |
-                    "systemmay" | "may" | "systemmust" | "must" 
+                    "systemmay" | "may" | "systemmust" | "must"
                     => {
                         vs.into_iter().map(|v| Value::new_attr(v.as_str())).collect()
                     }
@@ -1983,21 +1983,69 @@ mod tests {
 
         e.add_ava("userid", &Value::from("william"));
 
-        let mods = unsafe {
+        let present_single_mods = unsafe {
             ModifyList::new_valid_list(vec![Modify::Present(
                 String::from("attr"),
                 Value::new_iutf8s("value"),
             )])
         };
 
-        e.apply_modlist(&mods);
+        e.apply_modlist(&present_single_mods);
 
         // Assert the changes are there
+        assert!(e.attribute_equality("userid", &PartialValue::new_utf8s("william")));
         assert!(e.attribute_equality("attr", &PartialValue::new_iutf8s("value")));
 
         // Assert present for multivalue
+        let present_multivalue_mods = unsafe {
+            ModifyList::new_valid_list(vec![
+                Modify::Present(String::from("class"), Value::new_iutf8s("test")),
+                Modify::Present(String::from("class"), Value::new_iutf8s("multi_test")),
+            ])
+        };
+
+        e.apply_modlist(&present_multivalue_mods);
+
+        assert!(e.attribute_equality("class", &PartialValue::new_iutf8s("test")));
+        assert!(e.attribute_equality("class", &PartialValue::new_iutf8s("multi_test")));
+
         // Assert purge on single/multi/empty value
+        let purge_single_mods =
+            unsafe { ModifyList::new_valid_list(vec![Modify::Purged(String::from("attr"))]) };
+
+        e.apply_modlist(&purge_single_mods);
+
+        assert!(!e.attribute_pres("attr"));
+
+        let purge_multi_mods =
+            unsafe { ModifyList::new_valid_list(vec![Modify::Purged(String::from("class"))]) };
+
+        e.apply_modlist(&purge_multi_mods);
+
+        assert!(!e.attribute_pres("class"));
+
+        let purge_empty_mods = purge_single_mods;
+
+        e.apply_modlist(&purge_empty_mods);
+
         // Assert removed on value that exists and doesn't exist
+        let remove_mods = unsafe {
+            ModifyList::new_valid_list(vec![Modify::Removed(
+                String::from("attr"),
+                PartialValue::new_iutf8s("value"),
+            )])
+        };
+
+        e.apply_modlist(&present_single_mods);
+        assert!(e.attribute_equality("attr", &PartialValue::new_iutf8s("value")));
+        e.apply_modlist(&remove_mods);
+        assert!(e.attrs.get("attr").unwrap().is_empty());
+
+        let remove_empty_mods = remove_mods;
+
+        e.apply_modlist(&remove_empty_mods);
+
+        assert!(e.attrs.get("attr").unwrap().is_empty());
     }
 
     #[test]
