@@ -44,12 +44,12 @@ If you want to deploy kanidm, or to see what it can do, you should read the [kan
 ## Implemented/Planned features
 
 * SSH key distribution for servers (done)
-* Pam/nsswitch clients (with limited offline auth)
+* Pam/nsswitch clients (with limited offline auth) (done)
 * Sudo rule distribution via nsswitch
 * CLI and WebUI for administration
 * OIDC/Oauth
 * RBAC/Claims (limited by time and credential scope)
-* MFA (Webauthn, TOTP)
+* MFA (Webauthn, TOTP) (TOTP done)
 * Highly concurrent desgin (MVCC, COW) (done)
 * Replication (async multiple active write servers, read only servers)
 * Account impersonation
