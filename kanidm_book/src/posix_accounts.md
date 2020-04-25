@@ -25,7 +25,7 @@ group id to the gid number of the UPG.
 As there is now an equivalence between the uid and gid number of the user and the UPG,
 there is no benefit to seperating these values. As a result kanidm accounts *only*
 have a gidnumber, which is also considered to be it's uidnumber as well. This has a benefit
-of preventing accidental creation of a seperate group that has an overlapping gidnumber
+of preventing accidental creation of a separate group that has an overlapping gidnumber
 (the uniqueness attribute of the schema will block the creation).
 
 ### UPG generation

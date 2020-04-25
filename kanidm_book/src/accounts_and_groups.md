@@ -81,7 +81,7 @@ An example can be easily shown with:
 
 ## Why Can't I Change admin With idm_admin?
 
-As a security mechanism there is a distiction between "accounts" and "high permission
+As a security mechanism there is a distinction between "accounts" and "high permission
 accounts". This is to help prevent elevation attacks, where say a member of a
 service desk could attempt to reset the password of idm_admin or admin, or even a member of
 HR or System Admin teams to move laterally.
@@ -102,7 +102,7 @@ Further, groups that are considered "idm_high_privilege" can NOT be managed
 by the standard "idm_group_manage_priv" group.
 
 Management of high privilege accounts and groups is granted through the
-the "hp" variants of all privilieges. For example:
+the "hp" variants of all privileges. For example:
 
 * idm_hp_account_read_priv
 * idm_hp_account_manage_priv
