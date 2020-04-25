@@ -340,7 +340,7 @@ pub static JSON_DOMAIN_INFO_V1: &str = r#"{
     }
 }"#;
 
-// Anonymous should be the last opbject in the range here.
+// Anonymous should be the last object in the range here.
 pub static JSON_ANONYMOUS_V1: &str = r#"{
     "attrs": {
         "class": ["account", "object"],
