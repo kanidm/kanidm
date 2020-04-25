@@ -241,13 +241,11 @@ async fn main() {
             match socket_res {
                 Ok(socket) => {
                     let cachelayer_ref = cachelayer.clone();
-                    tokio::spawn(
-                        async move {
-                            if let Err(e) = handle_client(socket, cachelayer_ref.clone()).await {
-                                error!("an error occured; error = {:?}", e);
-                            }
-                        },
-                    );
+                    tokio::spawn(async move {
+                        if let Err(e) = handle_client(socket, cachelayer_ref.clone()).await {
+                            error!("an error occured; error = {:?}", e);
+                        }
+                    });
                 }
                 Err(err) => {
                     error!("Accept error -> {:?}", err);
