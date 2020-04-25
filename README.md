@@ -41,6 +41,12 @@ If you want to deploy kanidm, or to see what it can do, you should read the [kan
 
 [kanidm book]: https://github.com/kanidm/kanidm/blob/master/kanidm_book/src/SUMMARY.md
 
+## Getting in Contact
+
+We have a [gitter community channel] where we can talk. Firstyear is also happy to answer questions via email, which can be found on their github profile.
+
+[gitter community channel]: https://gitter.im/kanidm/community
+
 ## Implemented/Planned features
 
 * SSH key distribution for servers (done)
