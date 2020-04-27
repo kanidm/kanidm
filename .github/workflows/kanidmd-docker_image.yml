@@ -14,7 +14,7 @@ on:
   pull_request:
 
 env:
-  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/server
+  IMAGE_NAME: kanidm/server
   DOCKERFILE_DIR: kanidmd
 
 jobs:

@@ -14,7 +14,7 @@ on:
   pull_request:
 
 env:
-  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/radius
+  IMAGE_NAME: kanidm/radius
   DOCKERFILE_DIR: kanidm_rlm_python
 
 jobs:
