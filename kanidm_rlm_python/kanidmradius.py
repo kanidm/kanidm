@@ -2,6 +2,7 @@ import sys
 import requests
 import logging
 import os
+import json
 
 MAJOR, MINOR, _, _, _ = sys.version_info
 
@@ -33,6 +34,8 @@ else:
 USER = CONFIG.get("kanidm_client", "user")
 SECRET = CONFIG.get("kanidm_client", "secret")
 DEFAULT_VLAN = CONFIG.get("radiusd", "vlan")
+CACHE_PATH = CONFIG.get("radiusd", "cache_path")
+TIMEOUT = 8
 
 URL = CONFIG.get('kanidm_client', 'url')
 AUTH_URL = "%s/v1/auth" % URL
@@ -40,13 +43,13 @@ AUTH_URL = "%s/v1/auth" % URL
 def _authenticate(s, acct, pw):
     init_auth = {"step": { "Init": [acct, None]}}
 
-    r = s.post(AUTH_URL, json=init_auth, verify=CA)
+    r = s.post(AUTH_URL, json=init_auth, verify=CA, timeout=TIMEOUT)
     if r.status_code != 200:
         print(r.json())
         raise Exception("AuthInitFailed")
 
     cred_auth = {"step": { "Creds": [{"Password": pw}]}}
-    r = s.post(AUTH_URL, json=cred_auth, verify=CA)
+    r = s.post(AUTH_URL, json=cred_auth, verify=CA, timeout=TIMEOUT)
     if r.status_code != 200:
         print(r.json())
         raise Exception("AuthCredFailed")
@@ -58,11 +61,39 @@ def _get_radius_token(username):
     _authenticate(s, USER, SECRET)
     # Now get the radius token
     rtok_url = "%s/v1/account/%s/_radius/_token" % (URL, username)
-    r = s.get(rtok_url)
+    r = s.get(rtok_url, verify=CA, timeout=TIMEOUT)
     if r.status_code != 200:
         raise Exception("Failed to get RadiusAuthToken")
     tok = r.json()
     return(tok)
+
+def _update_cache(token):
+    # Ensure the dir exists
+    try:
+        os.makedirs(CACHE_PATH, mode=0o700)
+    except:
+        # Already exists
+        pass
+    # User Item
+    item = os.path.join(CACHE_PATH, token["uuid"])
+    uitem = os.path.join(CACHE_PATH, token["name"])
+    # Token to json.
+    with open(item, 'w') as f:
+        json.dump(token, f)
+    # Symlink username -> uuid
+    try:
+        os.symlink(item, uitem)
+    except Exception as e:
+        print(e)
+
+def _get_cache(username):
+    print("Getting cached token ...")
+    uitem = os.path.join(CACHE_PATH, username)
+    try:
+        with open(uitem, 'r') as f: 
+            return json.load(f)
+    except:
+        None
 
 def check_vlan(acc, group):
     if CONFIG.has_section("group.%s" % group['name']):
@@ -84,10 +115,18 @@ def authorize(args):
 
     username = dargs['User-Name']
 
+    tok = None
+
     try:
         tok = _get_radius_token(username)
+        # Update the cache?
+        _update_cache(tok)
     except Exception as e:
         print(e)
+        # Attempt the cache.
+        tok = _get_cache(username)
+
+    if tok == None:
         return radiusd.RLM_MODULE_NOTFOUND
 
     # print("got token %s" % tok)
