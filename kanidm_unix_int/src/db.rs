@@ -313,8 +313,11 @@ impl<'a> DbTxn<'a> {
             ()
         })?;
 
-        // This isn't needed because insert or replace into seems to clean up dups!
-        /*
+        // This is needed because sqlites 'insert or replace into', will null the password field
+        // if present, and upsert MUST match the exact conflicting column, so that means we have
+        // to manually manage the update or insert :( :(
+
+        // Find anything conflicting and purge it.
         self.conn.execute_named("DELETE FROM account_t WHERE NOT uuid = :uuid AND (name = :name OR spn = :spn OR gidnumber = :gidnumber)",
             &[
                 (":uuid", &account.uuid),
@@ -327,32 +330,50 @@ impl<'a> DbTxn<'a> {
                 debug!("sqlite delete account_t duplicate failure -> {:?}", e);
                 ()
             })
-            .map(|_| ())
-        */
+            .map(|_| ())?;
 
-        let mut stmt = self.conn
-            .prepare("INSERT OR REPLACE INTO account_t (uuid, name, spn, gidnumber, token, expiry) VALUES (:uuid, :name, :spn, :gidnumber, :token, :expiry)")
+        let updated = self.conn.execute_named(
+                "UPDATE account_t SET name=:name, spn=:spn, gidnumber=:gidnumber, token=:token, expiry=:expiry WHERE uuid = :uuid",
+            &[
+                (":uuid", &account.uuid),
+                (":name", &account.name),
+                (":spn", &account.spn),
+                (":gidnumber", &account.gidnumber),
+                (":token", &data),
+                (":expiry", &expire),
+            ]
+            )
             .map_err(|e| {
-                error!("sqlite prepare error -> {:?}", e);
+                debug!("sqlite delete account_t duplicate failure -> {:?}", e);
+                ()
+            })
+            .map(|c| c)?;
+
+        if updated == 0 {
+            let mut stmt = self.conn
+                .prepare("INSERT INTO account_t (uuid, name, spn, gidnumber, token, expiry) VALUES (:uuid, :name, :spn, :gidnumber, :token, :expiry) ON CONFLICT(uuid) DO UPDATE SET name=excluded.name, spn=excluded.name, gidnumber=excluded.gidnumber, token=excluded.token, expiry=excluded.expiry")
+                .map_err(|e| {
+                    error!("sqlite prepare error -> {:?}", e);
+                    ()
+                })?;
+
+            stmt.execute_named(&[
+                (":uuid", &account.uuid),
+                (":name", &account.name),
+                (":spn", &account.spn),
+                (":gidnumber", &account.gidnumber),
+                (":token", &data),
+                (":expiry", &expire),
+            ])
+            .map(|r| {
+                debug!("insert -> {:?}", r);
+                ()
+            })
+            .map_err(|e| {
+                error!("sqlite execute_named error -> {:?}", e);
                 ()
             })?;
-
-        stmt.execute_named(&[
-            (":uuid", &account.uuid),
-            (":name", &account.name),
-            (":spn", &account.spn),
-            (":gidnumber", &account.gidnumber),
-            (":token", &data),
-            (":expiry", &expire),
-        ])
-        .map(|r| {
-            debug!("insert -> {:?}", r);
-            ()
-        })
-        .map_err(|e| {
-            error!("sqlite execute_named error -> {:?}", e);
-            ()
-        })?;
+        }
 
         // Now, we have to update the group memberships.
 
@@ -944,7 +965,7 @@ mod tests {
         assert!(dbtxn.migrate().is_ok());
 
         let uuid1 = "0302b99c-f0f6-41ab-9492-852692b0fd16";
-        let ut1 = UnixUserToken {
+        let mut ut1 = UnixUserToken {
             name: "testuser".to_string(),
             spn: "testuser@example.com".to_string(),
             displayname: "Test User".to_string(),
@@ -974,6 +995,11 @@ mod tests {
             .is_ok());
         // Check it matches.
         assert!(dbtxn.check_account_password(uuid1, TESTACCOUNT1_PASSWORD_A) == Ok(false));
+        assert!(dbtxn.check_account_password(uuid1, TESTACCOUNT1_PASSWORD_B) == Ok(true));
+
+        // Check that updating the account does not break the password.
+        ut1.displayname = "Test User Update".to_string();
+        dbtxn.update_account(&ut1, 0).unwrap();
         assert!(dbtxn.check_account_password(uuid1, TESTACCOUNT1_PASSWORD_B) == Ok(true));
 
         assert!(dbtxn.commit().is_ok());
