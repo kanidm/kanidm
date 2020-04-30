@@ -65,16 +65,16 @@ account.
 As a result, this is high access. This role importantly should NOT be able to lock or alter
 credentials of high access granted accounts. That must be performed by a higher privilege.
 
-* read and write to accounts, including credentials but NOT private data (see people manager)
+* read and write to accounts, including write credentials but NOT private data (see people manager)
 * ability to lock and unlock accounts, excluding high access members.
 
 
-Group Manager
+Group Managers
 =============
 
 This is a role who is able to manage and create groups on the system. Note this does not include
 high access groups. This is intended to be for support (ie service desk) staff to help users
-be added to the necesary security groups within reason.
+be added to the necessary security groups within reason.
 
 * read all groups
 * write group but not high access
@@ -109,7 +109,7 @@ for write.
 Due to dealing with potentially private or sensitive information, this is a "high access" account.
 
 * read private or sensitive data of persons, IE legalName
-* write privare or sensitive data of persons, IE legalName
+* write private or sensitive data of persons, IE legalName
 
 Remember, this role does NOT allow technical changes, IE password changes or normal technical changes.
 
@@ -139,7 +139,7 @@ should exist by default.
 Due to the handling of credentials, this is a "high access" group.
 
 * Read radius credentials
-* Read other needed attributes to fufil radius functions.
+* Read other needed attributes to fulfil radius functions.
 
 External Account Systems
 ========================
