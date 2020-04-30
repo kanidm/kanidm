@@ -150,7 +150,7 @@ requirements.
 An example is user Alice should only be able to create objects where the class is group, and can
 only name the group - they can not add members to the group.
 
-A content requriemnt could be something such as the value an attribute can contain must conform to a
+A content requirement could be something such as the value an attribute can contain must conform to a
 regex, IE, you can create a group of any name, except where the name contains "admin" somewhere
 in it's name. Arguable, this is partially possible with filtering.
 

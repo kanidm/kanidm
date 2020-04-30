@@ -385,7 +385,8 @@ pub const JSON_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1: &str = r#"{
             "displayname",
             "description",
             "primary_credential",
-            "ssh_publickey"
+            "ssh_publickey",
+            "mail"
         ],
         "acp_create_class": [
             "object", "account"
