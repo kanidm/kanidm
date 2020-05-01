@@ -1325,6 +1325,7 @@ dependencies = [
  "idlset 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "kanidm_proto 0.1.2",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libsqlite3-sys 0.17.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "num_cpus 1.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "openssl 0.10.29 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1406,6 +1407,7 @@ dependencies = [
  "kanidm_client 0.1.2",
  "kanidm_proto 0.1.2",
  "libc 0.2.68 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libsqlite3-sys 0.17.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "r2d2 0.8.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "r2d2_sqlite 0.14.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1460,6 +1462,7 @@ name = "libsqlite3-sys"
 version = "0.17.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
+ "cc 1.0.50 (registry+https://github.com/rust-lang/crates.io-index)",
  "pkg-config 0.3.17 (registry+https://github.com/rust-lang/crates.io-index)",
  "vcpkg 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
