@@ -51,6 +51,7 @@ serde_cbor = "0.11"
 serde_json = "1.0"
 serde_derive = "1.0"
 
+libsqlite3-sys = { version = "0.17" }
 rusqlite = { version = "0.21", features = ["backup"] }
 r2d2 = "0.8"
 r2d2_sqlite = "0.14"
@@ -71,6 +72,9 @@ idlset = { version = "0.1" , features = ["use_smallvec"] }
 
 zxcvbn = "2.0"
 base64 = "0.12"
+
+[features]
+default = [ "libsqlite3-sys/bundled" ]
 
 [dev-dependencies]
 criterion = "0.3"
