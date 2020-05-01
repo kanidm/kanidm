@@ -9,11 +9,11 @@ RUN zypper mr -d repo-non-oss && \
 
 # // setup the builder pkgs
 FROM ref_repo AS build_base
-RUN zypper install -y cargo rust gcc sqlite3-devel libopenssl-devel pam-devel
+RUN zypper install -y cargo rust gcc libopenssl-devel pam-devel
 
 # // setup the runner pkgs
 FROM ref_repo AS run_base
-RUN zypper install -y sqlite3 openssl timezone pam
+RUN zypper install -y openssl timezone pam
 
 # // build artifacts
 FROM build_base AS builder

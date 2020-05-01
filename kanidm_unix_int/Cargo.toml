@@ -58,11 +58,15 @@ serde_derive = "1.0"
 serde_cbor = "0.11"
 structopt = { version = "0.3", default-features = false }
 
+libsqlite3-sys = { version = "0.17" }
 rusqlite = { version = "0.21" }
 r2d2 = "0.8"
 r2d2_sqlite = "0.14"
 
 reqwest = { version = "0.10" }
+
+[features]
+default = [ "libsqlite3-sys/bundled" ]
 
 [dev-dependencies]
 kanidm = { path = "../kanidmd", version = "0.1" }
