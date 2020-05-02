@@ -74,7 +74,7 @@ zxcvbn = "2.0"
 base64 = "0.12"
 
 [features]
-default = [ "libsqlite3-sys/bundled" ]
+default = [ "libsqlite3-sys/bundled", "openssl/vendored" ]
 
 [dev-dependencies]
 criterion = "0.3"
