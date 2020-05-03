@@ -629,7 +629,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaAttribute {
                     name: String::from("class"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_CLASS)
-                        .expect("unable to parse static uuid"),
+                        .expect("unable to parse const uuid"),
                     description: String::from("The set of classes defining an object"),
                     multivalue: true,
                     unique: false,
@@ -643,7 +643,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaAttribute {
                     name: String::from("uuid"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_UUID)
-                        .expect("unable to parse static uuid"),
+                        .expect("unable to parse const uuid"),
                     description: String::from("The universal unique id of the object"),
                     multivalue: false,
                     // Uniqueness is handled by base.rs, not attrunique here due to
@@ -659,7 +659,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaAttribute {
                     name: String::from("last_modified_cid"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_LAST_MOD_CID)
-                        .expect("unable to parse static uuid"),
+                        .expect("unable to parse const uuid"),
                     description: String::from("The cid of the last change to this object"),
                     multivalue: false,
                     // Uniqueness is handled by base.rs, not attrunique here due to
@@ -675,7 +675,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaAttribute {
                     name: String::from("name"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_NAME)
-                        .expect("unable to parse static uuid"),
+                        .expect("unable to parse const uuid"),
                     description: String::from("The shortform name of an object"),
                     multivalue: false,
                     unique: true,
@@ -689,7 +689,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaAttribute {
                     name: String::from("spn"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_SPN)
-                        .expect("unable to parse static uuid"),
+                        .expect("unable to parse const uuid"),
                     description: String::from(
                         "The service principle name of an object, unique across all domain trusts",
                     ),
@@ -705,7 +705,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaAttribute {
                     name: String::from("attributename"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ATTRIBUTENAME)
-                        .expect("unable to parse static uuid"),
+                        .expect("unable to parse const uuid"),
                     description: String::from("The name of a schema attribute"),
                     multivalue: false,
                     unique: true,
@@ -719,7 +719,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaAttribute {
                     name: String::from("classname"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_CLASSNAME)
-                        .expect("unable to parse static uuid"),
+                        .expect("unable to parse const uuid"),
                     description: String::from("The name of a schema class"),
                     multivalue: false,
                     unique: true,
@@ -733,7 +733,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaAttribute {
                     name: String::from("description"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_DESCRIPTION)
-                        .expect("unable to parse static uuid"),
+                        .expect("unable to parse const uuid"),
                     description: String::from("A description of an attribute, object or class"),
                     multivalue: true,
                     unique: false,
@@ -744,7 +744,7 @@ impl<'a> SchemaWriteTransaction<'a> {
             );
             self.attributes.insert(String::from("multivalue"), SchemaAttribute {
                 name: String::from("multivalue"),
-                uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_MULTIVALUE).expect("unable to parse static uuid"),
+                uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_MULTIVALUE).expect("unable to parse const uuid"),
                 description: String::from("If true, this attribute is able to store multiple values rather than just a single value."),
                 multivalue: false,
                 unique: false,
@@ -754,7 +754,7 @@ impl<'a> SchemaWriteTransaction<'a> {
             });
             self.attributes.insert(String::from("phantom"), SchemaAttribute {
                 name: String::from("phantom"),
-                uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_PHANTOM).expect("unable to parse static uuid"),
+                uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_PHANTOM).expect("unable to parse const uuid"),
                 description: String::from("If true, this attribute must NOT be present in any may/must sets of a class as. This represents generated attributes."),
                 multivalue: false,
                 unique: false,
@@ -764,7 +764,7 @@ impl<'a> SchemaWriteTransaction<'a> {
             });
             self.attributes.insert(String::from("unique"), SchemaAttribute {
                 name: String::from("unique"),
-                uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_UNIQUE).expect("unable to parse static uuid"),
+                uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_UNIQUE).expect("unable to parse const uuid"),
                 description: String::from("If true, this attribute must store a unique value through out the database."),
                 multivalue: false,
                 unique: false,
@@ -777,7 +777,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaAttribute {
                     name: String::from("index"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_INDEX)
-                        .expect("unable to parse static uuid"),
+                        .expect("unable to parse const uuid"),
                     description: String::from(
                         "Describe the indexes to apply to instances of this attribute.",
                     ),
@@ -793,7 +793,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaAttribute {
                     name: String::from("syntax"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_SYNTAX)
-                        .expect("unable to parse static uuid"),
+                        .expect("unable to parse const uuid"),
                     description: String::from(
                         "Describe the syntax of this attribute. This affects indexing and sorting.",
                     ),
@@ -809,7 +809,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaAttribute {
                     name: String::from("systemmay"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_SYSTEMMAY)
-                        .expect("unable to parse static uuid"),
+                        .expect("unable to parse const uuid"),
                     description: String::from(
                         "A list of system provided optional attributes this class can store.",
                     ),
@@ -825,7 +825,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaAttribute {
                     name: String::from("may"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_MAY)
-                        .expect("unable to parse static uuid"),
+                        .expect("unable to parse const uuid"),
                     description: String::from(
                         "A user modifiable list of optional attributes this class can store.",
                     ),
@@ -841,7 +841,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaAttribute {
                     name: String::from("systemmust"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_SYSTEMMUST)
-                        .expect("unable to parse static uuid"),
+                        .expect("unable to parse const uuid"),
                     description: String::from(
                         "A list of system provided required attributes this class must store.",
                     ),
@@ -857,7 +857,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaAttribute {
                     name: String::from("must"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_MUST)
-                        .expect("unable to parse static uuid"),
+                        .expect("unable to parse const uuid"),
                     description: String::from(
                         "A user modifiable list of required attributes this class must store.",
                     ),
@@ -875,7 +875,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaAttribute {
                     name: String::from("acp_enable"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_ENABLE)
-                        .expect("unable to parse static uuid"),
+                        .expect("unable to parse const uuid"),
                     description: String::from("A flag to determine if this ACP is active for application. True is enabled, and enforce. False is checked but not enforced."),
                     multivalue: false,
                     unique: false,
@@ -890,7 +890,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaAttribute {
                     name: String::from("acp_receiver"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_RECEIVER)
-                        .expect("unable to parse static uuid"),
+                        .expect("unable to parse const uuid"),
                     description: String::from(
                         "Who the ACP applies to, constraining or allowing operations.",
                     ),
@@ -906,7 +906,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaAttribute {
                     name: String::from("acp_targetscope"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_TARGETSCOPE)
-                        .expect("unable to parse static uuid"),
+                        .expect("unable to parse const uuid"),
                     description: String::from(
                         "The effective targets of the ACP, IE what will be acted upon.",
                     ),
@@ -922,7 +922,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaAttribute {
                     name: String::from("acp_search_attr"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_SEARCH_ATTR)
-                        .expect("unable to parse static uuid"),
+                        .expect("unable to parse const uuid"),
                     description: String::from("The attributes that may be viewed or searched by the reciever on targetscope."),
                     multivalue: true,
                     unique: false,
@@ -936,7 +936,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaAttribute {
                     name: String::from("acp_create_class"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_CREATE_CLASS)
-                        .expect("unable to parse static uuid"),
+                        .expect("unable to parse const uuid"),
                     description: String::from(
                         "The set of classes that can be created on a new entry.",
                     ),
@@ -952,7 +952,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaAttribute {
                     name: String::from("acp_create_attr"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_CREATE_ATTR)
-                        .expect("unable to parse static uuid"),
+                        .expect("unable to parse const uuid"),
                     description: String::from(
                         "The set of attribute types that can be created on an entry.",
                     ),
@@ -969,7 +969,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaAttribute {
                     name: String::from("acp_modify_removedattr"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_MODIFY_REMOVEDATTR)
-                        .expect("unable to parse static uuid"),
+                        .expect("unable to parse const uuid"),
                     description: String::from("The set of attribute types that could be removed or purged in a modification."),
                     multivalue: true,
                     unique: false,
@@ -983,7 +983,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaAttribute {
                     name: String::from("acp_modify_presentattr"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_MODIFY_PRESENTATTR)
-                        .expect("unable to parse static uuid"),
+                        .expect("unable to parse const uuid"),
                     description: String::from("The set of attribute types that could be added or asserted in a modification."),
                     multivalue: true,
                     unique: false,
@@ -997,7 +997,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaAttribute {
                     name: String::from("acp_modify_class"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_MODIFY_CLASS)
-                        .expect("unable to parse static uuid"),
+                        .expect("unable to parse const uuid"),
                     description: String::from("The set of class values that could be asserted or added to an entry. Only applies to modify::present operations on class."),
                     multivalue: true,
                     unique: false,
@@ -1012,7 +1012,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaAttribute {
                     name: String::from("memberof"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_MEMBEROF)
-                        .expect("unable to parse static uuid"),
+                        .expect("unable to parse const uuid"),
                     description: String::from("reverse group membership of the object"),
                     multivalue: true,
                     unique: false,
@@ -1026,7 +1026,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaAttribute {
                     name: String::from("directmemberof"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_DIRECTMEMBEROF)
-                        .expect("unable to parse static uuid"),
+                        .expect("unable to parse const uuid"),
                     description: String::from("reverse direct group membership of the object"),
                     multivalue: true,
                     unique: false,
@@ -1040,7 +1040,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaAttribute {
                     name: String::from("member"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_MEMBER)
-                        .expect("unable to parse static uuid"),
+                        .expect("unable to parse const uuid"),
                     description: String::from("List of members of the group"),
                     multivalue: true,
                     unique: false,
@@ -1055,7 +1055,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaAttribute {
                     name: String::from("version"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_VERSION)
-                        .expect("unable to parse static uuid"),
+                        .expect("unable to parse const uuid"),
                     description: String::from(
                         "The systems internal migration version for provided objects",
                     ),
@@ -1072,7 +1072,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaAttribute {
                     name: String::from("domain"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_DOMAIN)
-                        .expect("unable to parse static uuid"),
+                        .expect("unable to parse const uuid"),
                     description: String::from("A DNS Domain name entry."),
                     multivalue: true,
                     unique: false,
@@ -1086,7 +1086,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaAttribute {
                     name: String::from("claim"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_CLAIM)
-                        .expect("unable to parse static uuid"),
+                        .expect("unable to parse const uuid"),
                     description: String::from("The spn of a claim this entry holds"),
                     multivalue: true,
                     unique: false,
@@ -1100,7 +1100,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaAttribute {
                     name: String::from("password_import"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_PASSWORD_IMPORT)
-                        .expect("unable to parse static uuid"),
+                        .expect("unable to parse const uuid"),
                     description: String::from("An imported password hash from an external system."),
                     multivalue: true,
                     unique: false,
@@ -1115,7 +1115,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaClass {
                     name: String::from("attributetype"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_ATTRIBUTETYPE)
-                        .expect("unable to parse static uuid"),
+                        .expect("unable to parse const uuid"),
                     description: String::from("Definition of a schema attribute"),
                     systemmay: vec![String::from("phantom"), String::from("index")],
                     may: vec![],
@@ -1135,7 +1135,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaClass {
                     name: String::from("classtype"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_CLASSTYPE)
-                        .expect("unable to parse static uuid"),
+                        .expect("unable to parse const uuid"),
                     description: String::from("Definition of a schema classtype"),
                     systemmay: vec![
                         String::from("systemmay"),
@@ -1157,7 +1157,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaClass {
                     name: String::from("object"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_OBJECT)
-                        .expect("unable to parse static uuid"),
+                        .expect("unable to parse const uuid"),
                     description: String::from(
                         "A system created class that all objects must contain",
                     ),
@@ -1176,7 +1176,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaClass {
                     name: String::from("memberof"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_MEMBEROF)
-                        .expect("unable to parse static uuid"),
+                        .expect("unable to parse const uuid"),
                     description: String::from("Class that is dynamically added to recepients of memberof or directmemberof"),
                     systemmay: vec![
                         "memberof".to_string(),
@@ -1192,7 +1192,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaClass {
                     name: String::from("extensibleobject"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_EXTENSIBLEOBJECT)
-                        .expect("unable to parse static uuid"),
+                        .expect("unable to parse const uuid"),
                     description: String::from(
                         "A class type that has green hair and turns off all rules ...",
                     ),
@@ -1207,7 +1207,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 String::from("recycled"),
                 SchemaClass {
                     name: String::from("recycled"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_RECYCLED).expect("unable to parse static uuid"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_RECYCLED).expect("unable to parse const uuid"),
                     description: String::from("An object that has been deleted, but still recoverable via the revive operation. Recycled objects are not modifiable, only revivable."),
                     systemmay: vec![],
                     may: vec![],
@@ -1219,7 +1219,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 String::from("tombstone"),
                 SchemaClass {
                     name: String::from("tombstone"),
-                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_TOMBSTONE).expect("unable to parse static uuid"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_TOMBSTONE).expect("unable to parse const uuid"),
                     description: String::from("An object that is purged from the recycle bin. This is a system internal state. Tombstones have no attributes beside UUID."),
                     systemmay: vec![],
                     may: vec![],
@@ -1236,7 +1236,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaClass {
                     name: String::from("system_info"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_SYSTEM_INFO)
-                        .expect("unable to parse static uuid"),
+                        .expect("unable to parse const uuid"),
                     description: String::from("System metadata object class"),
                     systemmay: vec![],
                     may: vec![],
@@ -1255,7 +1255,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaClass {
                     name: String::from("access_control_profile"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_ACCESS_CONTROL_PROFILE)
-                        .expect("unable to parse static uuid"),
+                        .expect("unable to parse const uuid"),
                     description: String::from("System Access Control Profile Class"),
                     systemmay: vec!["acp_enable".to_string(), "description".to_string()],
                     may: vec![],
@@ -1272,7 +1272,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaClass {
                     name: String::from("access_control_search"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_ACCESS_CONTROL_SEARCH)
-                        .expect("unable to parse static uuid"),
+                        .expect("unable to parse const uuid"),
                     description: String::from("System Access Control Search Class"),
                     systemmay: vec![],
                     may: vec![],
@@ -1285,7 +1285,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaClass {
                     name: String::from("access_control_delete"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_ACCESS_CONTROL_DELETE)
-                        .expect("unable to parse static uuid"),
+                        .expect("unable to parse const uuid"),
                     description: String::from("System Access Control DELETE Class"),
                     systemmay: vec![],
                     may: vec![],
@@ -1298,7 +1298,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaClass {
                     name: String::from("access_control_modify"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_ACCESS_CONTROL_MODIFY)
-                        .expect("unable to parse static uuid"),
+                        .expect("unable to parse const uuid"),
                     description: String::from("System Access Control Modify Class"),
                     systemmay: vec![
                         "acp_modify_removedattr".to_string(),
@@ -1315,7 +1315,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaClass {
                     name: String::from("access_control_create"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_ACCESS_CONTROL_CREATE)
-                        .expect("unable to parse static uuid"),
+                        .expect("unable to parse const uuid"),
                     description: String::from("System Access Control Create Class"),
                     systemmay: vec![
                         "acp_create_class".to_string(),
@@ -1331,7 +1331,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaClass {
                     name: String::from("system"),
                     uuid: Uuid::parse_str(UUID_SCHEMA_CLASS_SYSTEM)
-                        .expect("unable to parse static uuid"),
+                        .expect("unable to parse const uuid"),
                     description: String::from("A class denoting that a type is system generated and protected. It has special internal behaviour."),
                     systemmay: vec![],
                     may: vec![],

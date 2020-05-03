@@ -1864,7 +1864,7 @@ mod tests {
         }};
     }
 
-    static JSON_TESTPERSON1_REDUCED: &'static str = r#"{
+    const JSON_TESTPERSON1_REDUCED: &'static str = r#"{
         "valid": null,
         "state": null,
         "attrs": {
@@ -2137,7 +2137,7 @@ mod tests {
         }};
     }
 
-    static JSON_TEST_CREATE_AC1: &'static str = r#"{
+    const JSON_TEST_CREATE_AC1: &'static str = r#"{
         "valid": null,
         "state": null,
         "attrs": {
@@ -2147,7 +2147,7 @@ mod tests {
         }
     }"#;
 
-    static JSON_TEST_CREATE_AC2: &'static str = r#"{
+    const JSON_TEST_CREATE_AC2: &'static str = r#"{
         "valid": null,
         "state": null,
         "attrs": {
@@ -2158,7 +2158,7 @@ mod tests {
         }
     }"#;
 
-    static JSON_TEST_CREATE_AC3: &'static str = r#"{
+    const JSON_TEST_CREATE_AC3: &'static str = r#"{
         "valid": null,
         "state": null,
         "attrs": {
@@ -2168,7 +2168,7 @@ mod tests {
         }
     }"#;
 
-    static JSON_TEST_CREATE_AC4: &'static str = r#"{
+    const JSON_TEST_CREATE_AC4: &'static str = r#"{
         "valid": null,
         "state": null,
         "attrs": {

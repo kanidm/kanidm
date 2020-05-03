@@ -23,7 +23,7 @@ use crate::be::idl_sqlite::{
     IdlSqlite, IdlSqliteReadTransaction, IdlSqliteTransaction, IdlSqliteWriteTransaction,
 };
 
-static FILTER_TEST_THRESHOLD: usize = 8;
+const FILTER_TEST_THRESHOLD: usize = 8;
 
 #[derive(Debug)]
 pub enum IDL {
@@ -1263,7 +1263,7 @@ mod tests {
         });
     }
 
-    pub static DB_BACKUP_FILE_NAME: &'static str = "./.backup_test.db";
+    pub const DB_BACKUP_FILE_NAME: &'static str = "./.backup_test.db";
 
     #[test]
     fn test_be_backup_restore() {

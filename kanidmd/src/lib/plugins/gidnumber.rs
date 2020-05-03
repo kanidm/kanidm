@@ -16,10 +16,10 @@ use kanidm_proto::v1::OperationError;
 /// Systemd dynamic units allocate between 61184–65519, most distros allocate
 /// system uids from 0 - 1000, and many others give user ids between 1000 to
 /// 2000. This whole numberspace is cursed, lets assume it's not ours. :(
-static GID_SYSTEM_NUMBER_MIN: u32 = 65536;
+const GID_SYSTEM_NUMBER_MIN: u32 = 65536;
 
 /// This is the normal system range, we MUST NOT allow it to be allocated.
-static GID_SAFETY_NUMBER_MIN: u32 = 1000;
+const GID_SAFETY_NUMBER_MIN: u32 = 1000;
 
 lazy_static! {
     static ref CLASS_POSIXGROUP: PartialValue = PartialValue::new_iutf8s("posixgroup");

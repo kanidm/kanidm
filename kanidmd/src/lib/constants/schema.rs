@@ -2,7 +2,7 @@
 // Schema uuids start at 00000000-0000-0000-0000-ffff00000000
 
 // system supplementary
-pub static JSON_SCHEMA_ATTR_DISPLAYNAME: &str = r#"{
+pub const JSON_SCHEMA_ATTR_DISPLAYNAME: &str = r#"{
     "valid": {
       "uuid": "00000000-0000-0000-0000-ffff00000040"
     },
@@ -36,7 +36,7 @@ pub static JSON_SCHEMA_ATTR_DISPLAYNAME: &str = r#"{
       ]
     }
 }"#;
-pub static JSON_SCHEMA_ATTR_MAIL: &str = r#"
+pub const JSON_SCHEMA_ATTR_MAIL: &str = r#"
   {
     "valid": {
       "uuid": "00000000-0000-0000-0000-ffff00000041"
@@ -72,7 +72,7 @@ pub static JSON_SCHEMA_ATTR_MAIL: &str = r#"
     }
   }
 "#;
-pub static JSON_SCHEMA_ATTR_SSH_PUBLICKEY: &str = r#"
+pub const JSON_SCHEMA_ATTR_SSH_PUBLICKEY: &str = r#"
   {
     "valid": {
       "uuid": "00000000-0000-0000-0000-ffff00000042"
@@ -106,7 +106,7 @@ pub static JSON_SCHEMA_ATTR_SSH_PUBLICKEY: &str = r#"
     }
   }
 "#;
-pub static JSON_SCHEMA_ATTR_PRIMARY_CREDENTIAL: &str = r#"
+pub const JSON_SCHEMA_ATTR_PRIMARY_CREDENTIAL: &str = r#"
   {
     "valid": {
       "uuid": "00000000-0000-0000-0000-ffff00000043"
@@ -140,7 +140,7 @@ pub static JSON_SCHEMA_ATTR_PRIMARY_CREDENTIAL: &str = r#"
     }
   }
 "#;
-pub static JSON_SCHEMA_ATTR_LEGALNAME: &str = r#"{
+pub const JSON_SCHEMA_ATTR_LEGALNAME: &str = r#"{
     "attrs": {
       "class": [
         "object",
@@ -170,7 +170,7 @@ pub static JSON_SCHEMA_ATTR_LEGALNAME: &str = r#"{
       ]
     }
 }"#;
-pub static JSON_SCHEMA_ATTR_RADIUS_SECRET: &str = r#"{
+pub const JSON_SCHEMA_ATTR_RADIUS_SECRET: &str = r#"{
     "attrs": {
       "class": [
         "object",
@@ -199,7 +199,7 @@ pub static JSON_SCHEMA_ATTR_RADIUS_SECRET: &str = r#"{
     }
 }"#;
 
-pub static JSON_SCHEMA_ATTR_DOMAIN_NAME: &str = r#"{
+pub const JSON_SCHEMA_ATTR_DOMAIN_NAME: &str = r#"{
     "attrs": {
       "class": [
         "object",
@@ -229,7 +229,7 @@ pub static JSON_SCHEMA_ATTR_DOMAIN_NAME: &str = r#"{
       ]
     }
 }"#;
-pub static JSON_SCHEMA_ATTR_DOMAIN_UUID: &str = r#"{
+pub const JSON_SCHEMA_ATTR_DOMAIN_UUID: &str = r#"{
     "attrs": {
       "class": [
         "object",
@@ -259,7 +259,7 @@ pub static JSON_SCHEMA_ATTR_DOMAIN_UUID: &str = r#"{
       ]
     }
 }"#;
-pub static JSON_SCHEMA_ATTR_DOMAIN_SSID: &str = r#"{
+pub const JSON_SCHEMA_ATTR_DOMAIN_SSID: &str = r#"{
     "attrs": {
       "class": [
         "object",
@@ -288,7 +288,7 @@ pub static JSON_SCHEMA_ATTR_DOMAIN_SSID: &str = r#"{
     }
 }"#;
 
-pub static JSON_SCHEMA_ATTR_GIDNUMBER: &str = r#"{
+pub const JSON_SCHEMA_ATTR_GIDNUMBER: &str = r#"{
     "attrs": {
       "class": [
         "object",
@@ -319,7 +319,7 @@ pub static JSON_SCHEMA_ATTR_GIDNUMBER: &str = r#"{
     }
 }"#;
 
-pub static JSON_SCHEMA_ATTR_BADLIST_PASSWORD: &str = r#"{
+pub const JSON_SCHEMA_ATTR_BADLIST_PASSWORD: &str = r#"{
     "attrs": {
       "class": [
         "object",
@@ -348,7 +348,7 @@ pub static JSON_SCHEMA_ATTR_BADLIST_PASSWORD: &str = r#"{
     }
 }"#;
 
-pub static JSON_SCHEMA_ATTR_LOGINSHELL: &str = r#"{
+pub const JSON_SCHEMA_ATTR_LOGINSHELL: &str = r#"{
     "attrs": {
       "class": [
         "object",
@@ -377,7 +377,7 @@ pub static JSON_SCHEMA_ATTR_LOGINSHELL: &str = r#"{
     }
 }"#;
 
-pub static JSON_SCHEMA_ATTR_UNIX_PASSWORD: &str = r#"{
+pub const JSON_SCHEMA_ATTR_UNIX_PASSWORD: &str = r#"{
     "attrs": {
       "class": [
         "object",
@@ -406,7 +406,7 @@ pub static JSON_SCHEMA_ATTR_UNIX_PASSWORD: &str = r#"{
     }
 }"#;
 
-pub static JSON_SCHEMA_CLASS_PERSON: &str = r#"
+pub const JSON_SCHEMA_CLASS_PERSON: &str = r#"
   {
     "valid": {
       "uuid": "00000000-0000-0000-0000-ffff00000044"
@@ -439,7 +439,7 @@ pub static JSON_SCHEMA_CLASS_PERSON: &str = r#"
   }
 "#;
 
-pub static JSON_SCHEMA_CLASS_GROUP: &str = r#"
+pub const JSON_SCHEMA_CLASS_GROUP: &str = r#"
   {
     "valid": {
       "uuid": "00000000-0000-0000-0000-ffff00000045"
@@ -470,7 +470,7 @@ pub static JSON_SCHEMA_CLASS_GROUP: &str = r#"
     }
   }
 "#;
-pub static JSON_SCHEMA_CLASS_ACCOUNT: &str = r#"
+pub const JSON_SCHEMA_CLASS_ACCOUNT: &str = r#"
   {
     "attrs": {
       "class": [
@@ -506,7 +506,7 @@ pub static JSON_SCHEMA_CLASS_ACCOUNT: &str = r#"
 //  domain_name <- should be the dns name?
 //  domain_ssid <- for radius
 //
-pub static JSON_SCHEMA_CLASS_DOMAIN_INFO: &str = r#"
+pub const JSON_SCHEMA_CLASS_DOMAIN_INFO: &str = r#"
   {
     "attrs": {
       "class": [
@@ -535,7 +535,7 @@ pub static JSON_SCHEMA_CLASS_DOMAIN_INFO: &str = r#"
   }
 "#;
 
-pub static JSON_SCHEMA_CLASS_POSIXGROUP: &str = r#"
+pub const JSON_SCHEMA_CLASS_POSIXGROUP: &str = r#"
   {
     "attrs": {
       "class": [
@@ -559,7 +559,7 @@ pub static JSON_SCHEMA_CLASS_POSIXGROUP: &str = r#"
   }
 "#;
 
-pub static JSON_SCHEMA_CLASS_POSIXACCOUNT: &str = r#"
+pub const JSON_SCHEMA_CLASS_POSIXACCOUNT: &str = r#"
   {
     "attrs": {
       "class": [
@@ -587,7 +587,7 @@ pub static JSON_SCHEMA_CLASS_POSIXACCOUNT: &str = r#"
   }
 "#;
 
-pub static JSON_SCHEMA_CLASS_SYSTEM_CONFIG: &str = r#"
+pub const JSON_SCHEMA_CLASS_SYSTEM_CONFIG: &str = r#"
   {
     "attrs": {
       "class": [
