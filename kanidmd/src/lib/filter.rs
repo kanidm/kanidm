@@ -24,7 +24,7 @@ use uuid::Uuid;
 
 // Default filter is safe, ignores all hidden types!
 
-// This is &Value so we can lazy static then clone, but perhaps we can reconsider
+// This is &Value so we can lazy const then clone, but perhaps we can reconsider
 // later if this should just take Value.
 #[allow(dead_code)]
 pub fn f_eq(a: &str, v: PartialValue) -> FC {

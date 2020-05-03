@@ -359,7 +359,7 @@ impl Entry<EntryInit, EntryNew> {
         // Just use log directly here, it's testing
         // str -> proto entry
         let pe: ProtoEntry = serde_json::from_str(es).expect("Invalid Proto Entry");
-        // use a static map to convert str -> ava
+        // use a const map to convert str -> ava
         let x: BTreeMap<String, BTreeSet<Value>> = pe.attrs.into_iter()
             .map(|(k, vs)| {
                 let attr = k.to_lowercase();

@@ -1,7 +1,7 @@
 /*
 // Template acp
-pub static _UUID_IDM_ACP_XX_V1: &str = "00000000-0000-0000-0000-ffffff0000XX";
-pub static JSON_IDM_ACP_XX_V1: &str = r#"{
+pub const _UUID_IDM_ACP_XX_V1: &str = "00000000-0000-0000-0000-ffffff0000XX";
+pub const JSON_IDM_ACP_XX_V1: &str = r#"{
     "attrs": {
         "class": [
             "object",
@@ -42,7 +42,7 @@ pub static JSON_IDM_ACP_XX_V1: &str = r#"{
 }"#;
 */
 
-pub static JSON_IDM_ADMINS_ACP_RECYCLE_SEARCH_V1: &str = r#"{
+pub const JSON_IDM_ADMINS_ACP_RECYCLE_SEARCH_V1: &str = r#"{
     "attrs": {
         "class": ["object", "access_control_profile", "access_control_search"],
         "name": ["idm_admins_acp_recycle_search"],
@@ -58,7 +58,7 @@ pub static JSON_IDM_ADMINS_ACP_RECYCLE_SEARCH_V1: &str = r#"{
     }
 }"#;
 
-pub static JSON_IDM_ADMINS_ACP_REVIVE_V1: &str = r#"{
+pub const JSON_IDM_ADMINS_ACP_REVIVE_V1: &str = r#"{
     "attrs": {
         "class": ["object", "access_control_profile", "access_control_modify"],
         "name": ["idm_admins_acp_revive"],
@@ -75,7 +75,7 @@ pub static JSON_IDM_ADMINS_ACP_REVIVE_V1: &str = r#"{
     }
 }"#;
 
-pub static JSON_IDM_SELF_ACP_READ_V1: &str = r#"{
+pub const JSON_IDM_SELF_ACP_READ_V1: &str = r#"{
     "attrs": {
         "class": ["object", "access_control_profile", "access_control_search"],
         "name": ["idm_self_acp_read"],
@@ -102,7 +102,7 @@ pub static JSON_IDM_SELF_ACP_READ_V1: &str = r#"{
     }
 }"#;
 
-pub static JSON_IDM_SELF_ACP_WRITE_V1: &str = r#"{
+pub const JSON_IDM_SELF_ACP_WRITE_V1: &str = r#"{
     "attrs": {
         "class": ["object", "access_control_profile", "access_control_modify"],
         "name": ["idm_self_acp_write"],
@@ -123,7 +123,7 @@ pub static JSON_IDM_SELF_ACP_WRITE_V1: &str = r#"{
     }
 }"#;
 
-pub static JSON_IDM_ALL_ACP_READ_V1: &str = r#"{
+pub const JSON_IDM_ALL_ACP_READ_V1: &str = r#"{
     "state": null,
     "attrs": {
         "class": ["object", "access_control_profile", "access_control_search"],
@@ -152,7 +152,7 @@ pub static JSON_IDM_ALL_ACP_READ_V1: &str = r#"{
 }"#;
 
 // 7 people read acp JSON_IDM_PEOPLE_READ_PRIV_V1
-pub static JSON_IDM_ACP_PEOPLE_READ_PRIV_V1: &str = r#"{
+pub const JSON_IDM_ACP_PEOPLE_READ_PRIV_V1: &str = r#"{
     "attrs": {
         "class": [
             "object",
@@ -174,7 +174,7 @@ pub static JSON_IDM_ACP_PEOPLE_READ_PRIV_V1: &str = r#"{
     }
 }"#;
 // 8 people write acp JSON_IDM_PEOPLE_WRITE_PRIV_V1
-pub static JSON_IDM_ACP_PEOPLE_WRITE_PRIV_V1: &str = r#"{
+pub const JSON_IDM_ACP_PEOPLE_WRITE_PRIV_V1: &str = r#"{
     "attrs": {
         "class": [
             "object",
@@ -199,7 +199,7 @@ pub static JSON_IDM_ACP_PEOPLE_WRITE_PRIV_V1: &str = r#"{
     }
 }"#;
 // 13 user (person) account create acp  JSON_IDM_PERSON_ACCOUNT_CREATE_PRIV_V1
-pub static JSON_IDM_ACP_PEOPLE_MANAGE_PRIV_V1: &str = r#"{
+pub const JSON_IDM_ACP_PEOPLE_MANAGE_PRIV_V1: &str = r#"{
     "attrs": {
         "class": [
             "object",
@@ -234,7 +234,7 @@ pub static JSON_IDM_ACP_PEOPLE_MANAGE_PRIV_V1: &str = r#"{
 // right now, create requires you to have access to every attribute in a single snapshot,
 // so people will need to two step (create then import pw). Later we could add another
 // acp that allows the create here too? Should it be seperate?
-pub static JSON_IDM_ACP_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1: &str = r#"{
+pub const JSON_IDM_ACP_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1: &str = r#"{
     "attrs": {
         "class": [
             "object",
@@ -260,7 +260,7 @@ pub static JSON_IDM_ACP_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1: &str = r#"{
 }"#;
 
 //
-pub static JSON_IDM_ACP_PEOPLE_EXTEND_PRIV_V1: &str = r#"{
+pub const JSON_IDM_ACP_PEOPLE_EXTEND_PRIV_V1: &str = r#"{
     "attrs": {
         "class": [
             "object",
@@ -286,7 +286,7 @@ pub static JSON_IDM_ACP_PEOPLE_EXTEND_PRIV_V1: &str = r#"{
 // -- end people
 
 // 9 group write acp JSON_IDM_GROUP_WRITE_PRIV_V1
-pub static JSON_IDM_ACP_GROUP_WRITE_PRIV_V1: &str = r#"{
+pub const JSON_IDM_ACP_GROUP_WRITE_PRIV_V1: &str = r#"{
     "attrs": {
         "class": [
             "object",
@@ -315,7 +315,7 @@ pub static JSON_IDM_ACP_GROUP_WRITE_PRIV_V1: &str = r#"{
     }
 }"#;
 // 10 account read acp JSON_IDM_ACCOUNT_READ_PRIV_V1
-pub static JSON_IDM_ACP_ACCOUNT_READ_PRIV_V1: &str = r#"{
+pub const JSON_IDM_ACP_ACCOUNT_READ_PRIV_V1: &str = r#"{
     "attrs": {
         "class": [
             "object",
@@ -337,7 +337,7 @@ pub static JSON_IDM_ACP_ACCOUNT_READ_PRIV_V1: &str = r#"{
     }
 }"#;
 // 11 account write acp JSON_IDM_ACCOUNT_WRITE_PRIV_V1
-pub static JSON_IDM_ACP_ACCOUNT_WRITE_PRIV_V1: &str = r#"{
+pub const JSON_IDM_ACP_ACCOUNT_WRITE_PRIV_V1: &str = r#"{
     "attrs": {
         "class": [
             "object",
@@ -362,7 +362,7 @@ pub static JSON_IDM_ACP_ACCOUNT_WRITE_PRIV_V1: &str = r#"{
     }
 }"#;
 // 12 service account create acp (only admins?)  JSON_IDM_SERVICE_ACCOUNT_CREATE_PRIV_V1
-pub static JSON_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1: &str = r#"{
+pub const JSON_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1: &str = r#"{
     "attrs": {
         "class": [
             "object",
@@ -395,7 +395,7 @@ pub static JSON_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1: &str = r#"{
 // 14 radius read acp JSON_IDM_RADIUS_SERVERS_V1
 // The targetscope of this could change later to a "radius access" group or similar so we can add/remove
 //  users from having radius access easier.
-pub static JSON_IDM_ACP_RADIUS_SERVERS_V1: &str = r#"{
+pub const JSON_IDM_ACP_RADIUS_SERVERS_V1: &str = r#"{
     "attrs": {
         "class": [
             "object",
@@ -417,7 +417,7 @@ pub static JSON_IDM_ACP_RADIUS_SERVERS_V1: &str = r#"{
     }
 }"#;
 // 15 high priv account read JSON_IDM_HP_ACCOUNT_READ_PRIV_V1
-pub static JSON_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1: &str = r#"{
+pub const JSON_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1: &str = r#"{
     "attrs": {
         "class": [
             "object",
@@ -439,7 +439,7 @@ pub static JSON_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1: &str = r#"{
     }
 }"#;
 // 16 high priv account write JSON_IDM_HP_ACCOUNT_WRITE_PRIV_V1
-pub static JSON_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1: &str = r#"{
+pub const JSON_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1: &str = r#"{
     "attrs": {
         "class": [
             "object",
@@ -465,7 +465,7 @@ pub static JSON_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1: &str = r#"{
 }"#;
 
 // 17 high priv group write --> JSON_IDM_HP_GROUP_WRITE_PRIV_V1 (12)
-pub static JSON_IDM_ACP_HP_GROUP_WRITE_PRIV_V1: &str = r#"{
+pub const JSON_IDM_ACP_HP_GROUP_WRITE_PRIV_V1: &str = r#"{
     "attrs": {
         "class": [
             "object",
@@ -495,7 +495,7 @@ pub static JSON_IDM_ACP_HP_GROUP_WRITE_PRIV_V1: &str = r#"{
 }"#;
 
 // 18 schema write JSON_IDM_SCHEMA_WRITE_PRIV_V1
-pub static JSON_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1: &str = r#"{
+pub const JSON_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1: &str = r#"{
     "attrs": {
         "class": [
             "object",
@@ -555,7 +555,7 @@ pub static JSON_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1: &str = r#"{
 }"#;
 
 // 19 acp read/write
-pub static JSON_IDM_ACP_ACP_MANAGE_PRIV_V1: &str = r#"{
+pub const JSON_IDM_ACP_ACP_MANAGE_PRIV_V1: &str = r#"{
     "attrs": {
         "class": [
             "object",
@@ -647,7 +647,7 @@ pub static JSON_IDM_ACP_ACP_MANAGE_PRIV_V1: &str = r#"{
     }
 }"#;
 
-pub static JSON_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1: &str = r#"{
+pub const JSON_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1: &str = r#"{
     "attrs": {
         "class": [
             "object",
@@ -705,7 +705,7 @@ pub static JSON_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1: &str = r#"{
 // 21 - anonymous / everyone schema read.
 
 // 22 - group create right
-pub static JSON_IDM_ACP_GROUP_MANAGE_PRIV_V1: &str = r#"{
+pub const JSON_IDM_ACP_GROUP_MANAGE_PRIV_V1: &str = r#"{
     "attrs": {
         "class": [
             "object",
@@ -735,7 +735,7 @@ pub static JSON_IDM_ACP_GROUP_MANAGE_PRIV_V1: &str = r#"{
 }"#;
 
 // 23 - HP account manage
-pub static JSON_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1: &str = r#"{
+pub const JSON_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1: &str = r#"{
     "attrs": {
         "class": [
             "object",
@@ -767,7 +767,7 @@ pub static JSON_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1: &str = r#"{
 }"#;
 
 // 24 - hp group manage
-pub static JSON_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1: &str = r#"{
+pub const JSON_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1: &str = r#"{
     "attrs": {
         "class": [
             "object",
@@ -797,7 +797,7 @@ pub static JSON_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1: &str = r#"{
 }"#;
 
 // 28 - domain admins acp
-pub static JSON_IDM_ACP_DOMAIN_ADMIN_PRIV_V1: &str = r#"{
+pub const JSON_IDM_ACP_DOMAIN_ADMIN_PRIV_V1: &str = r#"{
     "attrs": {
         "class": [
             "object",
@@ -831,7 +831,7 @@ pub static JSON_IDM_ACP_DOMAIN_ADMIN_PRIV_V1: &str = r#"{
 }"#;
 
 // 28 - system config
-pub static JSON_IDM_ACP_SYSTEM_CONFIG_PRIV_V1: &str = r#"{
+pub const JSON_IDM_ACP_SYSTEM_CONFIG_PRIV_V1: &str = r#"{
     "attrs": {
         "class": [
             "object",
@@ -861,7 +861,7 @@ pub static JSON_IDM_ACP_SYSTEM_CONFIG_PRIV_V1: &str = r#"{
 }"#;
 
 // 29 account unix extend
-pub static JSON_IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1: &str = r#"{
+pub const JSON_IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1: &str = r#"{
     "attrs": {
         "class": [
             "object",
@@ -891,7 +891,7 @@ pub static JSON_IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1: &str = r#"{
     }
 }"#;
 // 30 group unix extend
-pub static JSON_IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1: &str = r#"{
+pub const JSON_IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1: &str = r#"{
     "attrs": {
         "class": [
             "object",

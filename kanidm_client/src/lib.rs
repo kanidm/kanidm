@@ -30,7 +30,7 @@ pub mod asynchronous;
 
 use crate::asynchronous::KanidmAsyncClient;
 
-pub static APPLICATION_JSON: &'static str = "application/json";
+pub const APPLICATION_JSON: &'static str = "application/json";
 
 #[derive(Debug)]
 pub enum ClientError {

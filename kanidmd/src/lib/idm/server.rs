@@ -702,10 +702,10 @@ mod tests {
     use std::time::Duration;
     use uuid::Uuid;
 
-    static TEST_PASSWORD: &'static str = "ntaoeuntnaoeuhraohuercahu😍";
-    static TEST_PASSWORD_INC: &'static str = "ntaoentu nkrcgaeunhibwmwmqj;k wqjbkx ";
-    static TEST_CURRENT_TIME: u64 = 6000;
-    static TEST_CURRENT_EXPIRE: u64 = TEST_CURRENT_TIME + AUTH_SESSION_TIMEOUT + 1;
+    const TEST_PASSWORD: &'static str = "ntaoeuntnaoeuhraohuercahu😍";
+    const TEST_PASSWORD_INC: &'static str = "ntaoentu nkrcgaeunhibwmwmqj;k wqjbkx ";
+    const TEST_CURRENT_TIME: u64 = 6000;
+    const TEST_CURRENT_EXPIRE: u64 = TEST_CURRENT_TIME + AUTH_SESSION_TIMEOUT + 1;
 
     #[test]
     fn test_idm_anonymous_auth() {

@@ -1422,7 +1422,7 @@ mod tests {
         let sa = SchemaAttribute {
             name: String::from("acp_receiver"),
             uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ACP_RECEIVER)
-                .expect("unable to parse static uuid"),
+                .expect("unable to parse const uuid"),
             description: String::from(
                 "Who the ACP applies to, constraining or allowing operations.",
             ),
@@ -1457,7 +1457,7 @@ mod tests {
     fn test_schema_normalise_uuid() {
         let sa = SchemaAttribute {
             name: String::from("uuid"),
-            uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_UUID).expect("unable to parse static uuid"),
+            uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_UUID).expect("unable to parse const uuid"),
             description: String::from("The universal unique id of the object"),
             multivalue: false,
             index: vec![IndexType::EQUALITY],

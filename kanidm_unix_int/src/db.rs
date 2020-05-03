@@ -729,8 +729,8 @@ mod tests {
     use crate::cache::Id;
     use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
 
-    static TESTACCOUNT1_PASSWORD_A: &str = "password a for account1 test";
-    static TESTACCOUNT1_PASSWORD_B: &str = "password b for account1 test";
+    const TESTACCOUNT1_PASSWORD_A: &str = "password a for account1 test";
+    const TESTACCOUNT1_PASSWORD_B: &str = "password b for account1 test";
 
     #[test]
     fn test_cache_db_account_basic() {

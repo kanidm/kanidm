@@ -1,4 +1,4 @@
-pub static JSON_ADMIN_V1: &str = r#"{
+pub const JSON_ADMIN_V1: &str = r#"{
     "valid": {
         "uuid": "00000000-0000-0000-0000-000000000000"
     },
@@ -12,7 +12,7 @@ pub static JSON_ADMIN_V1: &str = r#"{
     }
 }"#;
 
-pub static JSON_IDM_ADMIN_V1: &str = r#"{
+pub const JSON_IDM_ADMIN_V1: &str = r#"{
     "valid": {
         "uuid": "00000000-0000-0000-0000-000000000018"
     },
@@ -26,7 +26,7 @@ pub static JSON_IDM_ADMIN_V1: &str = r#"{
     }
 }"#;
 
-pub static JSON_IDM_ADMINS_V1: &str = r#"{
+pub const JSON_IDM_ADMINS_V1: &str = r#"{
     "valid": {
         "uuid": "00000000-0000-0000-0000-000000000001"
     },
@@ -40,7 +40,7 @@ pub static JSON_IDM_ADMINS_V1: &str = r#"{
     }
 }"#;
 
-pub static JSON_SYSTEM_ADMINS_V1: &str = r#"{
+pub const JSON_SYSTEM_ADMINS_V1: &str = r#"{
     "valid": {
         "uuid": "00000000-0000-0000-0000-000000000019"
     },
@@ -56,7 +56,7 @@ pub static JSON_SYSTEM_ADMINS_V1: &str = r#"{
 
 // groups
 // * People read managers
-pub static JSON_IDM_PEOPLE_READ_PRIV_V1: &str = r#"{
+pub const JSON_IDM_PEOPLE_READ_PRIV_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
         "name": ["idm_people_read_priv"],
@@ -66,7 +66,7 @@ pub static JSON_IDM_PEOPLE_READ_PRIV_V1: &str = r#"{
     }
 }"#;
 // * People write managers
-pub static JSON_IDM_PEOPLE_MANAGE_PRIV_V1: &str = r#"{
+pub const JSON_IDM_PEOPLE_MANAGE_PRIV_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
         "name": ["idm_people_manage_priv"],
@@ -77,7 +77,7 @@ pub static JSON_IDM_PEOPLE_MANAGE_PRIV_V1: &str = r#"{
         ]
     }
 }"#;
-pub static JSON_IDM_PEOPLE_WRITE_PRIV_V1: &str = r#"{
+pub const JSON_IDM_PEOPLE_WRITE_PRIV_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
         "name": ["idm_people_write_priv"],
@@ -90,7 +90,7 @@ pub static JSON_IDM_PEOPLE_WRITE_PRIV_V1: &str = r#"{
     }
 }"#;
 
-pub static JSON_IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1: &str = r#"{
+pub const JSON_IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
         "name": ["idm_people_account_password_import_priv"],
@@ -99,7 +99,7 @@ pub static JSON_IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1: &str = r#"{
     }
 }"#;
 
-pub static JSON_IDM_PEOPLE_EXTEND_PRIV_V1: &str = r#"{
+pub const JSON_IDM_PEOPLE_EXTEND_PRIV_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
         "name": ["idm_people_extend_priv"],
@@ -113,7 +113,7 @@ pub static JSON_IDM_PEOPLE_EXTEND_PRIV_V1: &str = r#"{
 
 // * group write manager (no read, everyone has read via the anon, etc)
 // IDM_GROUP_CREATE_PRIV
-pub static JSON_IDM_GROUP_MANAGE_PRIV_V1: &str = r#"{
+pub const JSON_IDM_GROUP_MANAGE_PRIV_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
         "name": ["idm_group_manage_priv"],
@@ -125,7 +125,7 @@ pub static JSON_IDM_GROUP_MANAGE_PRIV_V1: &str = r#"{
         ]
     }
 }"#;
-pub static JSON_IDM_GROUP_WRITE_PRIV_V1: &str = r#"{
+pub const JSON_IDM_GROUP_WRITE_PRIV_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
         "name": ["idm_group_write_priv"],
@@ -136,7 +136,7 @@ pub static JSON_IDM_GROUP_WRITE_PRIV_V1: &str = r#"{
         ]
     }
 }"#;
-pub static JSON_IDM_GROUP_UNIX_EXTEND_PRIV_V1: &str = r#"{
+pub const JSON_IDM_GROUP_UNIX_EXTEND_PRIV_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
         "name": ["idm_group_unix_extend_priv"],
@@ -148,7 +148,7 @@ pub static JSON_IDM_GROUP_UNIX_EXTEND_PRIV_V1: &str = r#"{
     }
 }"#;
 // * account read manager
-pub static JSON_IDM_ACCOUNT_READ_PRIV_V1: &str = r#"{
+pub const JSON_IDM_ACCOUNT_READ_PRIV_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
         "name": ["idm_account_read_priv"],
@@ -160,7 +160,7 @@ pub static JSON_IDM_ACCOUNT_READ_PRIV_V1: &str = r#"{
     }
 }"#;
 // * account write manager
-pub static JSON_IDM_ACCOUNT_MANAGE_PRIV_V1: &str = r#"{
+pub const JSON_IDM_ACCOUNT_MANAGE_PRIV_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
         "name": ["idm_account_manage_priv"],
@@ -171,7 +171,7 @@ pub static JSON_IDM_ACCOUNT_MANAGE_PRIV_V1: &str = r#"{
         ]
     }
 }"#;
-pub static JSON_IDM_ACCOUNT_WRITE_PRIV_V1: &str = r#"{
+pub const JSON_IDM_ACCOUNT_WRITE_PRIV_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
         "name": ["idm_account_write_priv"],
@@ -180,7 +180,7 @@ pub static JSON_IDM_ACCOUNT_WRITE_PRIV_V1: &str = r#"{
         "member": ["00000000-0000-0000-0000-000000000014"]
     }
 }"#;
-pub static JSON_IDM_ACCOUNT_UNIX_EXTEND_PRIV_V1: &str = r#"{
+pub const JSON_IDM_ACCOUNT_UNIX_EXTEND_PRIV_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
         "name": ["idm_account_unix_extend_priv"],
@@ -190,7 +190,7 @@ pub static JSON_IDM_ACCOUNT_UNIX_EXTEND_PRIV_V1: &str = r#"{
     }
 }"#;
 // * RADIUS servers
-pub static JSON_IDM_RADIUS_SERVERS_V1: &str = r#"{
+pub const JSON_IDM_RADIUS_SERVERS_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
         "name": ["idm_radius_servers"],
@@ -199,7 +199,7 @@ pub static JSON_IDM_RADIUS_SERVERS_V1: &str = r#"{
     }
 }"#;
 // * high priv account read manager
-pub static JSON_IDM_HP_ACCOUNT_READ_PRIV_V1: &str = r#"{
+pub const JSON_IDM_HP_ACCOUNT_READ_PRIV_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
         "name": ["idm_hp_account_read_priv"],
@@ -211,7 +211,7 @@ pub static JSON_IDM_HP_ACCOUNT_READ_PRIV_V1: &str = r#"{
     }
 }"#;
 // * high priv account write manager
-pub static JSON_IDM_HP_ACCOUNT_MANAGE_PRIV_V1: &str = r#"{
+pub const JSON_IDM_HP_ACCOUNT_MANAGE_PRIV_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
         "name": ["idm_hp_account_manage_priv"],
@@ -222,7 +222,7 @@ pub static JSON_IDM_HP_ACCOUNT_MANAGE_PRIV_V1: &str = r#"{
         ]
     }
 }"#;
-pub static JSON_IDM_HP_ACCOUNT_WRITE_PRIV_V1: &str = r#"{
+pub const JSON_IDM_HP_ACCOUNT_WRITE_PRIV_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
         "name": ["idm_hp_account_write_priv"],
@@ -234,7 +234,7 @@ pub static JSON_IDM_HP_ACCOUNT_WRITE_PRIV_V1: &str = r#"{
     }
 }"#;
 // * Schema write manager
-pub static JSON_IDM_SCHEMA_MANAGE_PRIV_V1: &str = r#"{
+pub const JSON_IDM_SCHEMA_MANAGE_PRIV_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
         "name": ["idm_schema_manage_priv"],
@@ -246,7 +246,7 @@ pub static JSON_IDM_SCHEMA_MANAGE_PRIV_V1: &str = r#"{
     }
 }"#;
 // * ACP read/write manager
-pub static JSON_IDM_ACP_MANAGE_PRIV_V1: &str = r#"{
+pub const JSON_IDM_ACP_MANAGE_PRIV_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
         "name": ["idm_acp_manage_priv"],
@@ -256,7 +256,7 @@ pub static JSON_IDM_ACP_MANAGE_PRIV_V1: &str = r#"{
     }
 }"#;
 
-pub static JSON_IDM_HP_GROUP_MANAGE_PRIV_V1: &str = r#"{
+pub const JSON_IDM_HP_GROUP_MANAGE_PRIV_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
         "name": ["idm_hp_group_manage_priv"],
@@ -265,7 +265,7 @@ pub static JSON_IDM_HP_GROUP_MANAGE_PRIV_V1: &str = r#"{
         "member": ["00000000-0000-0000-0000-000000000019"]
     }
 }"#;
-pub static JSON_IDM_HP_GROUP_WRITE_PRIV_V1: &str = r#"{
+pub const JSON_IDM_HP_GROUP_WRITE_PRIV_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
         "name": ["idm_hp_group_write_priv"],
@@ -276,7 +276,7 @@ pub static JSON_IDM_HP_GROUP_WRITE_PRIV_V1: &str = r#"{
         ]
     }
 }"#;
-pub static JSON_DOMAIN_ADMINS: &str = r#"{
+pub const JSON_DOMAIN_ADMINS: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
         "name": ["domain_admins"],
@@ -289,7 +289,7 @@ pub static JSON_DOMAIN_ADMINS: &str = r#"{
 }"#;
 
 // This must be the last group to init to include the UUID of the other high priv groups.
-pub static JSON_IDM_HIGH_PRIVILEGE_V1: &str = r#"{
+pub const JSON_IDM_HIGH_PRIVILEGE_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
         "name": ["idm_high_privilege"],
@@ -322,7 +322,7 @@ pub static JSON_IDM_HIGH_PRIVILEGE_V1: &str = r#"{
     }
 }"#;
 
-pub static JSON_SYSTEM_INFO_V1: &str = r#"{
+pub const JSON_SYSTEM_INFO_V1: &str = r#"{
     "attrs": {
         "class": ["object", "system_info", "system"],
         "uuid": ["00000000-0000-0000-0000-ffffff000001"],
@@ -331,7 +331,7 @@ pub static JSON_SYSTEM_INFO_V1: &str = r#"{
     }
 }"#;
 
-pub static JSON_DOMAIN_INFO_V1: &str = r#"{
+pub const JSON_DOMAIN_INFO_V1: &str = r#"{
     "attrs": {
         "class": ["object", "domain_info", "system"],
         "name": ["domain_local"],
@@ -341,7 +341,7 @@ pub static JSON_DOMAIN_INFO_V1: &str = r#"{
 }"#;
 
 // Anonymous should be the last object in the range here.
-pub static JSON_ANONYMOUS_V1: &str = r#"{
+pub const JSON_ANONYMOUS_V1: &str = r#"{
     "attrs": {
         "class": ["account", "object"],
         "name": ["anonymous"],
@@ -356,7 +356,7 @@ pub static JSON_ANONYMOUS_V1: &str = r#"{
 
 // ============ TEST DATA ============
 #[cfg(test)]
-pub static JSON_TESTPERSON1: &str = r#"{
+pub const JSON_TESTPERSON1: &str = r#"{
     "valid": null,
     "state": null,
     "attrs": {
@@ -367,7 +367,7 @@ pub static JSON_TESTPERSON1: &str = r#"{
 }"#;
 
 #[cfg(test)]
-pub static JSON_TESTPERSON2: &str = r#"{
+pub const JSON_TESTPERSON2: &str = r#"{
     "valid": null,
     "state": null,
     "attrs": {

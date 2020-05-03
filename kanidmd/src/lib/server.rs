@@ -1788,7 +1788,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     // This function is idempotent
     pub fn initialise_idm(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
         // First, check the system_info object. This stores some server information
-        // and details. It's a pretty static thing. Also check anonymous, important to many
+        // and details. It's a pretty const thing. Also check anonymous, important to many
         // concepts.
         let mut audit_an = AuditScope::new("start_system_core_items");
         let res = self

@@ -13,10 +13,10 @@ use kanidm_client::asynchronous::KanidmAsyncClient;
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
 
 static PORT_ALLOC: AtomicUsize = AtomicUsize::new(18080);
-static ADMIN_TEST_PASSWORD: &str = "integration test admin password";
-static TESTACCOUNT1_PASSWORD_A: &str = "password a for account1 test";
-static TESTACCOUNT1_PASSWORD_B: &str = "password b for account1 test";
-static TESTACCOUNT1_PASSWORD_INC: &str = "never going to work";
+const ADMIN_TEST_PASSWORD: &str = "integration test admin password";
+const TESTACCOUNT1_PASSWORD_A: &str = "password a for account1 test";
+const TESTACCOUNT1_PASSWORD_B: &str = "password b for account1 test";
+const TESTACCOUNT1_PASSWORD_INC: &str = "never going to work";
 
 fn run_test(fix_fn: fn(&KanidmClient) -> (), test_fn: fn(CacheLayer, KanidmAsyncClient) -> ()) {
     // ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");

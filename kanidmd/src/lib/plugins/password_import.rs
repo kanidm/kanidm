@@ -133,9 +133,9 @@ mod tests {
     use crate::value::{PartialValue, Value};
     use uuid::Uuid;
 
-    static IMPORT_HASH: &'static str =
+    const IMPORT_HASH: &'static str =
         "pbkdf2_sha256$36000$xIEozuZVAoYm$uW1b35DUKyhvQAf1mBqMvoBDcqSD06juzyO/nmyV0+w=";
-    // static IMPORT_PASSWORD: &'static str = "eicieY7ahchaoCh0eeTa";
+    // const IMPORT_PASSWORD: &'static str = "eicieY7ahchaoCh0eeTa";
 
     #[test]
     fn test_pre_create_password_import_1() {

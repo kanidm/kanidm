@@ -12,8 +12,8 @@ use uuid::Uuid;
 
 // use uuid::Uuid;
 
-static DBV_ID2ENTRY: &str = "id2entry";
-static DBV_INDEXV: &str = "indexv";
+const DBV_ID2ENTRY: &str = "id2entry";
+const DBV_INDEXV: &str = "indexv";
 
 #[derive(Clone)]
 pub struct IdlSqlite {

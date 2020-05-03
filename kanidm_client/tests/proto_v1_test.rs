@@ -15,9 +15,9 @@ use actix::prelude::*;
 use log::debug;
 
 static PORT_ALLOC: AtomicUsize = AtomicUsize::new(8080);
-static ADMIN_TEST_PASSWORD: &str = "integration test admin password";
-static ADMIN_TEST_PASSWORD_CHANGE: &str = "integration test admin new🎉";
-static UNIX_TEST_PASSWORD: &str = "unix test user password";
+const ADMIN_TEST_PASSWORD: &str = "integration test admin password";
+const ADMIN_TEST_PASSWORD_CHANGE: &str = "integration test admin new🎉";
+const UNIX_TEST_PASSWORD: &str = "unix test user password";
 
 // Test external behaviorus of the service.
 
