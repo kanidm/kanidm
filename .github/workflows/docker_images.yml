@@ -1,4 +1,4 @@
-name: Kanidmd release
+name: release images
 
 on:
   push:
@@ -13,24 +13,31 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-
+    strategy:
+      matrix:
+        target: [kanidmd, radiusd]
     steps:
       - uses: actions/checkout@v2
 
       - name: Run tests
-        run: make test/kanidmd
+        run: make test/${{ matrix.target }}
 
   push:
     needs: test
 
     runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        artifact: [kanidmd, radiusd]
+
     if: github.event_name == 'push'
 
     steps:
       - uses: actions/checkout@v2
 
       - name: Build image
-        run: make build/kanidm
+        run: make build/${{ matrix.target }}
 
       - name: Log into registry
         run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
@@ -46,5 +53,5 @@ jobs:
           # Use Docker `latest` tag convention
           [ "$VERSION" == "master" ] && VERSION=latest
 
-          VERSION=$VERSION make push/kanidmd
+          VERSION=$VERSION make push/${{ matrix.target }}
 

@@ -10,10 +10,6 @@ help:
 build/kanidmd:	## build kanidmd images
 build/kanidmd:
 	@docker build -f kanidmd/Dockerfile -t $(IMAGE_BASE)/server:$(IMAGE_VERSION) .
-	@docker build -f kanidmd/Dockerfile \
-		--target alpine \
-		-t $(IMAGE_BASE)/server:$(IMAGE_VERSION)-alpine \
-		.
 
 build/radiusd:	## build radiusd image
 build/radiusd:
@@ -28,10 +24,11 @@ test/kanidmd:
 		.
 	@docker run --rm $(IMAGE_BASE)/server:$(IMAGE_VERSION)-builder cargo test
 
+test/radiusd:	build/radiusd	## test radiusd
+
 push/kanidmd:	## push kanidmd images
 push/kanidmd:
 	@docker push $(IMAGE_BASE)/server:$(IMAGE_VERSION)
-	@docker push $(IMAGE_BASE)/server:$(IMAGE_VERSION)-alpine
 
 push/radiusd:	## push radiusd image
 push/radiusd:
