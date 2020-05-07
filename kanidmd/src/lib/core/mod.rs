@@ -35,6 +35,7 @@ use crate::interval::IntervalActor;
 use crate::schema::Schema;
 use crate::schema::SchemaTransaction;
 use crate::server::QueryServer;
+use crate::status::{StatusActor, StatusRequestEvent};
 use crate::utils::duration_from_epoch_now;
 use crate::value::PartialValue;
 
@@ -50,6 +51,7 @@ use uuid::Uuid;
 struct AppState {
     qe_r: Addr<QueryServerReadV1>,
     qe_w: Addr<QueryServerWriteV1>,
+    status: Addr<StatusActor>,
 }
 
 fn get_current_user(session: &Session) -> Option<UserAuthToken> {
@@ -1024,6 +1026,16 @@ async fn idm_account_set_password(
     )
 }
 
+// == Status
+
+async fn status((_session, state): (Session, Data<AppState>)) -> HttpResponse {
+    let r = state.status.send(StatusRequestEvent {}).await;
+    match r {
+        Ok(true) => HttpResponse::Ok().json(true),
+        _ => HttpResponse::InternalServerError().json(false),
+    }
+}
+
 // === internal setup helpers
 
 fn setup_backend(config: &Configuration) -> Result<Backend, OperationError> {
@@ -1366,6 +1378,9 @@ pub fn create_server_core(config: Configuration) {
     // asynchronously.
     let log_addr = async_log::start();
 
+    // Start the status tracking thread
+    let status_addr = StatusActor::start(log_addr.clone());
+
     // Setup TLS (if any)
     let opt_tls_params = match setup_tls(&config) {
         Ok(opt_tls_params) => opt_tls_params,
@@ -1457,6 +1472,7 @@ pub fn create_server_core(config: Configuration) {
             .data(AppState {
                 qe_r: server_read_addr.clone(),
                 qe_w: server_write_addr.clone(),
+                status: status_addr.clone(),
             })
             .wrap(middleware::Logger::default())
             .wrap(
@@ -1489,6 +1505,7 @@ pub fn create_server_core(config: Configuration) {
                             .into()
                     }),
             )
+            .service(web::scope("/status").route("", web::get().to(status)))
             .service(
                 web::scope("/v1/raw")
                     .route("/create", web::post().to(create))

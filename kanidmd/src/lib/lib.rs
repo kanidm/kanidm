@@ -35,6 +35,7 @@ mod idm;
 mod repl;
 mod schema;
 mod server;
+mod status;
 
 pub mod config;
 pub mod core;
