@@ -40,7 +40,7 @@ RUN zypper mr -d repo-non-oss && \
         pam && \
     zypper clean -a
 
-COPY --from=builder /home/kanidm/target/release/kanidmd /sbin/
+COPY --from=builder /usr/src/kanidm/target/release/kanidmd /sbin/
 
 EXPOSE 8443
 VOLUME /data
