@@ -41,7 +41,6 @@ chrono = "0.4"
 cookie = "0.13"
 regex = "1"
 lazy_static = "1.2.0"
-# lru = "0.1"
 
 tokio = "0.2"
 futures = "0.3"
@@ -59,7 +58,8 @@ r2d2_sqlite = "0.14"
 structopt = { version = "0.3", default-features = false }
 time = "0.1"
 
-concread = "0.1"
+# concread = "0.1"
+concread = { path = "../../concread" }
 
 openssl = "0.10"
 sshkeys = "0.1"
