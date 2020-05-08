@@ -5,6 +5,7 @@ use std::fs;
 
 use crate::value::IndexType;
 use std::collections::BTreeSet;
+use std::sync::Arc;
 
 use crate::audit::AuditScope;
 use crate::be::dbentry::DbEntry;
@@ -20,13 +21,14 @@ pub mod dbvalue;
 mod idl_arc_sqlite;
 mod idl_sqlite;
 
-use crate::be::idl_sqlite::{
-    IdlSqlite, IdlSqliteReadTransaction, IdlSqliteTransaction, IdlSqliteWriteTransaction,
+use crate::be::idl_arc_sqlite::{
+    IdlArcSqlite, IdlArcSqliteReadTransaction, IdlArcSqliteTransaction,
+    IdlArcSqliteWriteTransaction,
 };
 
 const FILTER_TEST_THRESHOLD: usize = 8;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum IDL {
     ALLIDS,
     Partial(IDLBitRange),
@@ -41,17 +43,17 @@ pub struct IdRawEntry {
 
 #[derive(Clone)]
 pub struct Backend {
-    idlayer: IdlSqlite,
+    idlayer: Arc<IdlArcSqlite>,
 }
 
 pub struct BackendReadTransaction {
-    idlayer: IdlSqliteReadTransaction,
+    idlayer: IdlArcSqliteReadTransaction,
 }
 
-pub struct BackendWriteTransaction {
+pub struct BackendWriteTransaction<'a> {
     idxmeta: BTreeSet<(String, IndexType)>,
     // idxcache: IdxCache,
-    idlayer: IdlSqliteWriteTransaction,
+    idlayer: IdlArcSqliteWriteTransaction<'a>,
 }
 
 impl IdRawEntry {
@@ -64,7 +66,7 @@ impl IdRawEntry {
 }
 
 pub trait BackendTransaction {
-    type IdlLayerType: IdlSqliteTransaction;
+    type IdlLayerType: IdlArcSqliteTransaction;
     fn get_idlayer(&self) -> &Self::IdlLayerType;
 
     /// Recursively apply a filter, transforming into IDL's on the way.
@@ -430,20 +432,21 @@ pub trait BackendTransaction {
 }
 
 impl BackendTransaction for BackendReadTransaction {
-    type IdlLayerType = IdlSqliteReadTransaction;
-    fn get_idlayer(&self) -> &IdlSqliteReadTransaction {
+    type IdlLayerType = IdlArcSqliteReadTransaction;
+    fn get_idlayer(&self) -> &IdlArcSqliteReadTransaction {
         &self.idlayer
     }
 }
 
-impl BackendTransaction for BackendWriteTransaction {
-    type IdlLayerType = IdlSqliteWriteTransaction;
-    fn get_idlayer(&self) -> &IdlSqliteWriteTransaction {
+impl<'a> BackendTransaction for BackendWriteTransaction<'a> {
+    type IdlLayerType = IdlArcSqliteWriteTransaction<'a>;
+
+    fn get_idlayer(&self) -> &IdlArcSqliteWriteTransaction<'a> {
         &self.idlayer
     }
 }
 
-impl BackendWriteTransaction {
+impl<'a> BackendWriteTransaction<'a> {
     pub fn create(
         &mut self,
         au: &mut AuditScope,
@@ -882,7 +885,7 @@ impl Backend {
         // this has a ::memory() type, but will path == "" work?
         audit_segment!(audit, || {
             let be = Backend {
-                idlayer: IdlSqlite::new(audit, path, pool_size)?,
+                idlayer: Arc::new(IdlArcSqlite::new(audit, path, pool_size)?),
             };
 
             // Now complete our setup with a txn

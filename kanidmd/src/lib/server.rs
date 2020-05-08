@@ -724,7 +724,7 @@ pub struct QueryServerWriteTransaction<'a> {
     committed: bool,
     d_uuid: Uuid,
     cid: Cid,
-    be_txn: BackendWriteTransaction,
+    be_txn: BackendWriteTransaction<'a>,
     schema: SchemaWriteTransaction<'a>,
     accesscontrols: AccessControlsWriteTransaction<'a>,
     // We store a set of flags that indicate we need a reload of
@@ -735,9 +735,9 @@ pub struct QueryServerWriteTransaction<'a> {
 }
 
 impl<'a> QueryServerTransaction for QueryServerWriteTransaction<'a> {
-    type BackendTransactionType = BackendWriteTransaction;
+    type BackendTransactionType = BackendWriteTransaction<'a>;
 
-    fn get_be_txn(&self) -> &BackendWriteTransaction {
+    fn get_be_txn(&self) -> &BackendWriteTransaction<'a> {
         &self.be_txn
     }
 
