@@ -184,7 +184,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
                 // typing and functionality so we can assess what auth types can
                 // continue, and helps to keep non-needed entry specific data
                 // out of the LRU.
-                let account = Account::try_from_entry_ro(au, entry, &self.qs_read)?;
+                let account = Account::try_from_entry_ro(au, entry, &mut self.qs_read)?;
                 let auth_session = AuthSession::new(account, init.appid.clone());
 
                 // Get the set of mechanisms that can proceed. This is tied
@@ -246,7 +246,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
         // Get their account
         let account = try_audit!(
             au,
-            UnixUserAccount::try_from_entry_ro(au, account_entry, &self.qs_read)
+            UnixUserAccount::try_from_entry_ro(au, account_entry, &mut self.qs_read)
         );
 
         // Validate the unix_pw - this checks the account/cred lock states.
@@ -261,7 +261,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
 
 impl IdmServerProxyReadTransaction {
     pub fn get_radiusauthtoken(
-        &self,
+        &mut self,
         au: &mut AuditScope,
         rate: &RadiusAuthTokenEvent,
     ) -> Result<RadiusAuthToken, OperationError> {
@@ -273,14 +273,14 @@ impl IdmServerProxyReadTransaction {
         );
         let account = try_audit!(
             au,
-            RadiusAccount::try_from_entry_reduced(au, account_entry, &self.qs_read)
+            RadiusAccount::try_from_entry_reduced(au, account_entry, &mut self.qs_read)
         );
 
         account.to_radiusauthtoken()
     }
 
     pub fn get_unixusertoken(
-        &self,
+        &mut self,
         au: &mut AuditScope,
         uute: &UnixUserTokenEvent,
     ) -> Result<UnixUserToken, OperationError> {
@@ -292,13 +292,13 @@ impl IdmServerProxyReadTransaction {
 
         let account = try_audit!(
             au,
-            UnixUserAccount::try_from_entry_reduced(au, account_entry, &self.qs_read)
+            UnixUserAccount::try_from_entry_reduced(au, account_entry, &mut self.qs_read)
         );
         account.to_unixusertoken()
     }
 
     pub fn get_unixgrouptoken(
-        &self,
+        &mut self,
         au: &mut AuditScope,
         uute: &UnixGroupTokenEvent,
     ) -> Result<UnixGroupToken, OperationError> {
@@ -324,7 +324,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     }
 
     fn check_password_quality(
-        &self,
+        &mut self,
         au: &mut AuditScope,
         cleartext: &str,
         related_inputs: &[&str],
@@ -382,7 +382,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     }
 
     fn target_to_account(
-        &self,
+        &mut self,
         au: &mut AuditScope,
         target: &Uuid,
     ) -> Result<Account, OperationError> {
@@ -390,7 +390,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let account_entry = try_audit!(au, self.qs_write.internal_search_uuid(au, target));
         let account = try_audit!(
             au,
-            Account::try_from_entry_rw(au, account_entry, &self.qs_write)
+            Account::try_from_entry_rw(au, account_entry, &mut self.qs_write)
         );
         // Ask if tis all good - this step checks pwpolicy and such
 
@@ -461,7 +461,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // Assert the account is unix and valid.
         let account = try_audit!(
             au,
-            UnixUserAccount::try_from_entry_rw(au, account_entry, &self.qs_write)
+            UnixUserAccount::try_from_entry_rw(au, account_entry, &mut self.qs_write)
         );
         // Ask if tis all good - this step checks pwpolicy and such
 
@@ -1015,7 +1015,7 @@ mod tests {
                 .expect("Failed to reset radius credential 1");
             idms_prox_write.commit(au).expect("failed to commit");
 
-            let idms_prox_read = idms.proxy_read();
+            let mut idms_prox_read = idms.proxy_read();
             let rate = RadiusAuthTokenEvent::new_internal(UUID_ADMIN.clone());
             let tok_r = idms_prox_read
                 .get_radiusauthtoken(au, &rate)
@@ -1093,7 +1093,7 @@ mod tests {
 
             idms_prox_write.commit(au).expect("failed to commit");
 
-            let idms_prox_read = idms.proxy_read();
+            let mut idms_prox_read = idms.proxy_read();
 
             let ugte = UnixGroupTokenEvent::new_internal(
                 Uuid::parse_str("01609135-a1c4-43d5-966b-a28227644445")

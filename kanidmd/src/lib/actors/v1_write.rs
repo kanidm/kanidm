@@ -323,7 +323,7 @@ impl QueryServerWriteV1 {
         };
 
         let mdf =
-            match ModifyEvent::from_parts(audit, uat, target_uuid, proto_ml, filter, &qs_write) {
+            match ModifyEvent::from_parts(audit, uat, target_uuid, proto_ml, filter, &mut qs_write) {
                 Ok(m) => m,
                 Err(e) => {
                     audit_log!(audit, "Failed to begin modify: {:?}", e);
@@ -364,7 +364,7 @@ impl QueryServerWriteV1 {
             target_uuid,
             ml,
             filter,
-            &qs_write,
+            &mut qs_write,
         ) {
             Ok(m) => m,
             Err(e) => {
@@ -389,7 +389,7 @@ impl Handler<CreateMessage> for QueryServerWriteV1 {
         let res = audit_segment!(&mut audit, || {
             let mut qs_write = self.qs.write(duration_from_epoch_now());
 
-            let crt = match CreateEvent::from_message(&mut audit, msg, &qs_write) {
+            let crt = match CreateEvent::from_message(&mut audit, msg, &mut qs_write) {
                 Ok(c) => c,
                 Err(e) => {
                     audit_log!(audit, "Failed to begin create: {:?}", e);
@@ -416,7 +416,7 @@ impl Handler<ModifyMessage> for QueryServerWriteV1 {
         let mut audit = AuditScope::new("modify");
         let res = audit_segment!(&mut audit, || {
             let mut qs_write = self.qs.write(duration_from_epoch_now());
-            let mdf = match ModifyEvent::from_message(&mut audit, msg, &qs_write) {
+            let mdf = match ModifyEvent::from_message(&mut audit, msg, &mut qs_write) {
                 Ok(m) => m,
                 Err(e) => {
                     audit_log!(audit, "Failed to begin modify: {:?}", e);
@@ -443,7 +443,7 @@ impl Handler<DeleteMessage> for QueryServerWriteV1 {
         let res = audit_segment!(&mut audit, || {
             let mut qs_write = self.qs.write(duration_from_epoch_now());
 
-            let del = match DeleteEvent::from_message(&mut audit, msg, &qs_write) {
+            let del = match DeleteEvent::from_message(&mut audit, msg, &mut qs_write) {
                 Ok(d) => d,
                 Err(e) => {
                     audit_log!(audit, "Failed to begin delete: {:?}", e);
@@ -470,7 +470,7 @@ impl Handler<InternalDeleteMessage> for QueryServerWriteV1 {
         let res = audit_segment!(&mut audit, || {
             let mut qs_write = self.qs.write(duration_from_epoch_now());
 
-            let del = match DeleteEvent::from_parts(&mut audit, msg.uat, msg.filter, &qs_write) {
+            let del = match DeleteEvent::from_parts(&mut audit, msg.uat, msg.filter, &mut qs_write) {
                 Ok(d) => d,
                 Err(e) => {
                     audit_log!(audit, "Failed to begin delete: {:?}", e);
@@ -498,7 +498,7 @@ impl Handler<ReviveRecycledMessage> for QueryServerWriteV1 {
             let mut qs_write = self.qs.write(duration_from_epoch_now());
 
             let rev =
-                match ReviveRecycledEvent::from_parts(&mut audit, msg.uat, msg.filter, &qs_write) {
+                match ReviveRecycledEvent::from_parts(&mut audit, msg.uat, msg.filter, &mut qs_write) {
                     Ok(r) => r,
                     Err(e) => {
                         audit_log!(audit, "Failed to begin revive: {:?}", e);
@@ -552,7 +552,7 @@ impl Handler<InternalCredentialSetMessage> for QueryServerWriteV1 {
                 SetCredentialRequest::Password(cleartext) => {
                     let pce = PasswordChangeEvent::from_parts(
                         &mut audit,
-                        &idms_prox_write.qs_write,
+                        &mut idms_prox_write.qs_write,
                         msg.uat,
                         target_uuid,
                         cleartext,
@@ -574,7 +574,7 @@ impl Handler<InternalCredentialSetMessage> for QueryServerWriteV1 {
                 SetCredentialRequest::GeneratePassword => {
                     let gpe = GeneratePasswordEvent::from_parts(
                         &mut audit,
-                        &idms_prox_write.qs_write,
+                        &mut idms_prox_write.qs_write,
                         msg.uat,
                         target_uuid,
                         msg.appid,
@@ -595,7 +595,7 @@ impl Handler<InternalCredentialSetMessage> for QueryServerWriteV1 {
                 SetCredentialRequest::TOTPGenerate(label) => {
                     let gte = GenerateTOTPEvent::from_parts(
                         &mut audit,
-                        &idms_prox_write.qs_write,
+                        &mut idms_prox_write.qs_write,
                         msg.uat,
                         target_uuid,
                         label,
@@ -615,7 +615,7 @@ impl Handler<InternalCredentialSetMessage> for QueryServerWriteV1 {
                 SetCredentialRequest::TOTPVerify(uuid, chal) => {
                     let vte = VerifyTOTPEvent::from_parts(
                         &mut audit,
-                        &idms_prox_write.qs_write,
+                        &mut idms_prox_write.qs_write,
                         msg.uat,
                         target_uuid,
                         uuid,
@@ -652,7 +652,7 @@ impl Handler<IdmAccountSetPasswordMessage> for QueryServerWriteV1 {
 
             let pce = PasswordChangeEvent::from_idm_account_set_password(
                 &mut audit,
-                &idms_prox_write.qs_write,
+                &mut idms_prox_write.qs_write,
                 msg,
             )
             .map_err(|e| {
@@ -697,7 +697,7 @@ impl Handler<InternalRegenerateRadiusMessage> for QueryServerWriteV1 {
 
             let rrse = RegenerateRadiusSecretEvent::from_parts(
                 &mut audit,
-                &idms_prox_write.qs_write,
+                &mut idms_prox_write.qs_write,
                 msg.uat,
                 target_uuid,
             )
@@ -742,7 +742,7 @@ impl Handler<PurgeAttributeMessage> for QueryServerWriteV1 {
                 target_uuid,
                 msg.attr,
                 msg.filter,
-                &qs_write,
+                &mut qs_write,
             ) {
                 Ok(m) => m,
                 Err(e) => {
@@ -788,7 +788,7 @@ impl Handler<RemoveAttributeValueMessage> for QueryServerWriteV1 {
                 target_uuid,
                 proto_ml,
                 msg.filter,
-                &qs_write,
+                &mut qs_write,
             ) {
                 Ok(m) => m,
                 Err(e) => {
@@ -1021,7 +1021,7 @@ impl Handler<IdmAccountUnixSetCredMessage> for QueryServerWriteV1 {
 
             let upce = UnixPasswordChangeEvent::from_parts(
                 &mut audit,
-                &idms_prox_write.qs_write,
+                &mut idms_prox_write.qs_write,
                 msg.uat,
                 target_uuid,
                 msg.cred,
@@ -1049,7 +1049,7 @@ impl Handler<PurgeTombstoneEvent> for QueryServerWriteV1 {
         let mut audit = AuditScope::new("purge tombstones");
         audit_segment!(&mut audit, || {
             audit_log!(audit, "Begin purge tombstone event {:?}", msg);
-            let qs_write = self.qs.write(duration_from_epoch_now());
+            let mut qs_write = self.qs.write(duration_from_epoch_now());
 
             let res = qs_write
                 .purge_tombstones(&mut audit)
@@ -1069,7 +1069,7 @@ impl Handler<PurgeRecycledEvent> for QueryServerWriteV1 {
         let mut audit = AuditScope::new("purge recycled");
         audit_segment!(&mut audit, || {
             audit_log!(audit, "Begin purge recycled event {:?}", msg);
-            let qs_write = self.qs.write(duration_from_epoch_now());
+            let mut qs_write = self.qs.write(duration_from_epoch_now());
 
             let res = qs_write
                 .purge_recycled(&mut audit)

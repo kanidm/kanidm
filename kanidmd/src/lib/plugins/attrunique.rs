@@ -164,7 +164,7 @@ impl Plugin for AttrUnique {
 
     fn verify(
         au: &mut AuditScope,
-        qs: &QueryServerReadTransaction,
+        qs: &mut QueryServerReadTransaction,
     ) -> Vec<Result<(), ConsistencyError>> {
         // Only check live entries, not recycled.
         let filt_in = filter!(f_pres("class"));

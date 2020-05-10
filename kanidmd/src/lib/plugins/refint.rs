@@ -30,7 +30,7 @@ pub struct ReferentialIntegrity;
 impl ReferentialIntegrity {
     fn check_uuid_exists(
         au: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         rtype: &str,
         uuid_value: &Value,
     ) -> Result<(), OperationError> {
@@ -189,7 +189,7 @@ impl Plugin for ReferentialIntegrity {
 
     fn verify(
         au: &mut AuditScope,
-        qs: &QueryServerReadTransaction,
+        qs: &mut QueryServerReadTransaction,
     ) -> Vec<Result<(), ConsistencyError>> {
         // Get all entries as cand
         //      build a cand-uuid set
@@ -312,7 +312,7 @@ mod tests {
             preload,
             create,
             None,
-            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
+            |au: &mut AuditScope, qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(
                         au,
@@ -350,7 +350,7 @@ mod tests {
             preload,
             create,
             None,
-            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
+            |au: &mut AuditScope, qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(
                         au,
@@ -592,7 +592,7 @@ mod tests {
             preload,
             filter!(f_eq("name", PartialValue::new_iutf8s("testgroup_a"))),
             None,
-            |_au: &mut AuditScope, _qs: &QueryServerWriteTransaction| {}
+            |_au: &mut AuditScope, _qs: &mut QueryServerWriteTransaction| {}
         );
     }
 
@@ -638,7 +638,7 @@ mod tests {
             preload,
             filter!(f_eq("name", PartialValue::new_iutf8s("testgroup_b"))),
             None,
-            |_au: &mut AuditScope, _qs: &QueryServerWriteTransaction| {}
+            |_au: &mut AuditScope, _qs: &mut QueryServerWriteTransaction| {}
         );
     }
 
@@ -666,7 +666,7 @@ mod tests {
             preload,
             filter!(f_eq("name", PartialValue::new_iutf8s("testgroup_b"))),
             None,
-            |_au: &mut AuditScope, _qs: &QueryServerWriteTransaction| {}
+            |_au: &mut AuditScope, _qs: &mut QueryServerWriteTransaction| {}
         );
     }
 }
