@@ -44,28 +44,22 @@ pub trait IdlArcSqliteTransaction {
         &self,
         au: &mut AuditScope,
         idl: &IDL,
-    ) -> Result<Vec<IdRawEntry>, OperationError> {
-        unimplemented!();
-    }
+    ) -> Result<Vec<IdRawEntry>, OperationError>;
 
     fn exists_idx(
-        &self,
+        &mut self,
         audit: &mut AuditScope,
         attr: &str,
         itype: &IndexType,
-    ) -> Result<bool, OperationError> {
-        unimplemented!();
-    }
+    ) -> Result<bool, OperationError>;
 
     fn get_idl(
-        &self,
+        &mut self,
         audit: &mut AuditScope,
         attr: &str,
         itype: &IndexType,
         idx_key: &str,
-    ) -> Result<Option<IDLBitRange>, OperationError> {
-        unimplemented!();
-    }
+    ) -> Result<Option<IDLBitRange>, OperationError>;
 
     fn get_db_s_uuid(&self) -> Result<Option<Uuid>, OperationError>;
 
@@ -80,6 +74,33 @@ impl IdlArcSqliteTransaction for IdlArcSqliteReadTransaction {
         au: &mut AuditScope,
         idl: &IDL,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
+        unimplemented!();
+    }
+
+    fn get_identry_raw(
+        &self,
+        au: &mut AuditScope,
+        idl: &IDL,
+    ) -> Result<Vec<IdRawEntry>, OperationError> {
+        unimplemented!();
+    }
+
+    fn exists_idx(
+        &mut self,
+        audit: &mut AuditScope,
+        attr: &str,
+        itype: &IndexType,
+    ) -> Result<bool, OperationError> {
+        unimplemented!();
+    }
+
+    fn get_idl(
+        &mut self,
+        audit: &mut AuditScope,
+        attr: &str,
+        itype: &IndexType,
+        idx_key: &str,
+    ) -> Result<Option<IDLBitRange>, OperationError> {
         unimplemented!();
     }
 
@@ -140,6 +161,33 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
                 self.db.get_identry(au, idl)
             }
         }
+    }
+
+    fn get_identry_raw(
+        &self,
+        au: &mut AuditScope,
+        idl: &IDL,
+    ) -> Result<Vec<IdRawEntry>, OperationError> {
+        unimplemented!();
+    }
+
+    fn exists_idx(
+        &mut self,
+        audit: &mut AuditScope,
+        attr: &str,
+        itype: &IndexType,
+    ) -> Result<bool, OperationError> {
+        unimplemented!();
+    }
+
+    fn get_idl(
+        &mut self,
+        audit: &mut AuditScope,
+        attr: &str,
+        itype: &IndexType,
+        idx_key: &str,
+    ) -> Result<Option<IDLBitRange>, OperationError> {
+        unimplemented!();
     }
 
     fn get_db_s_uuid(&self) -> Result<Option<Uuid>, OperationError> {

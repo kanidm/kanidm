@@ -607,7 +607,15 @@ impl<'a> BackendWriteTransaction<'a> {
             }
         };
 
-        let idx_diff = Entry::idx_diff(&self.idxmeta, pre, post);
+        // Extremely Cursed - Okay, we know that self.idxmeta will NOT be changed
+        // in this function, but we need to borrow self as mut for the caches in
+        // get_idl to work. As a result, this causes a double borrow. To work around
+        // this we discard the lifetime on idxmeta, because we know that it will
+        // remain constant for the life of the operation.
+
+        let idxmeta = unsafe { &(*(&self.idxmeta as *const _)) };
+
+        let idx_diff = Entry::idx_diff(&idxmeta, pre, post);
 
         idx_diff.iter()
             .try_for_each(|act| {
