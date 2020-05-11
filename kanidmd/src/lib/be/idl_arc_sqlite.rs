@@ -10,7 +10,7 @@ use idlset::IDLBitRange;
 use kanidm_proto::v1::{ConsistencyError, OperationError};
 use uuid::Uuid;
 
-use std::borrow::Borrow;
+// use std::borrow::Borrow;
 
 const DEFAULT_CACHE_SIZE: usize = 1024;
 const DEFAULT_IDL_CACHE_RATIO: usize = 16;
