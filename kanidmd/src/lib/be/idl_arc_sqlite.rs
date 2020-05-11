@@ -110,7 +110,8 @@ macro_rules! get_identry_raw {
         $au:expr,
         $idl:expr
     ) => {{
-        unimplemented!();
+        // As a cache we have no concept of this, so we just bypass to the db.
+        $self.db.get_identry_raw($au, $idl)
     }};
 }
 
@@ -121,7 +122,8 @@ macro_rules! exists_idx {
         $attr:expr,
         $itype:expr
     ) => {{
-        unimplemented!();
+        // As a cache we have no concept of this, so we just bypass to the db.
+        $self.db.exists_idx($audit, $attr, $itype)
     }};
 }
 
@@ -379,7 +381,14 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
             i: itype.clone(),
             k: idx_key.to_string(),
         };
-        self.idl_cache.insert(cache_key, Box::new(idl.clone()));
+        // On idl == 0 the db will remove this, and synthesise an empty IDL on a miss
+        // but we can cache this as a new empty IDL instead, so that we can avoid the
+        // db lookup on this idl.
+        if idl.len() == 0 {
+            self.idl_cache.insert(cache_key, Box::new(IDLBitRange::new()));
+        } else {
+            self.idl_cache.insert(cache_key, Box::new(idl.clone()));
+        }
         self.db.write_idl(audit, attr, itype, idx_key, idl)
     }
 
