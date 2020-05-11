@@ -10,27 +10,150 @@ use crate::be::idl_sqlite::{
 };
 use crate::be::{IdRawEntry, IDL};
 
+use std::borrow::Borrow;
+
 const DEFAULT_CACHE_SIZE: usize = 1024;
 const DEFAULT_IDL_CACHE_RATIO: usize = 16;
 
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
+struct IdlCacheKey {
+    a: String,
+    i: IndexType,
+    k: String,
+}
+
+/*
+impl Borrow<(&str, &IndexType, &str)> for IdlCacheKey {
+    #[inline]
+    fn borrow(&self) -> &(&str, &IndexType, &str) {
+        &(self.a.as_str(), &self.i, self.k.as_str())
+    }
+}
+
+impl From<(&str, &IndexType, &str)> for IdlCacheKey {
+    fn from((a, i, k): (&str, &IndexType, &str)) -> IdlCacheKey {
+        IdlCacheKey {
+            a: a.to_string(), i: (*i).clone(), k: k.to_string()
+        }
+    }
+}
+*/
 
 pub struct IdlArcSqlite {
     db: IdlSqlite,
     entry_cache: Arc<u64, Box<Entry<EntrySealed, EntryCommitted>>>,
-    //              attr  itype       idx_key
-    idl_cache: Arc<(String, IndexType, String), Box<IDL>>,
+    idl_cache: Arc<IdlCacheKey, Box<IDLBitRange>>,
 }
 
 pub struct IdlArcSqliteReadTransaction {
     db: IdlSqliteReadTransaction,
     entry_cache: ArcReadTxn<u64, Box<Entry<EntrySealed, EntryCommitted>>>,
-    idl_cache: ArcReadTxn<(String, IndexType, String), Box<IDL>>,
+    idl_cache: ArcReadTxn<IdlCacheKey, Box<IDLBitRange>>,
 }
 
 pub struct IdlArcSqliteWriteTransaction<'a> {
     db: IdlSqliteWriteTransaction,
     entry_cache: ArcWriteTxn<'a, u64, Box<Entry<EntrySealed, EntryCommitted>>>,
-    idl_cache: ArcWriteTxn<'a, (String, IndexType, String), Box<IDL>>,
+    idl_cache: ArcWriteTxn<'a, IdlCacheKey, Box<IDLBitRange>>,
+}
+
+macro_rules! get_identry {
+    (
+        $self:expr,
+        $au:expr,
+        $idl:expr
+    ) => {{
+        match $idl {
+            IDL::Partial(idli) | IDL::Indexed(idli) => {
+                let mut result: Vec<Entry<_, _>> = Vec::new();
+                let mut nidl = IDLBitRange::new();
+
+                idli.into_iter().for_each(|i| {
+                    // For all the id's in idl.
+                    // is it in the cache?
+                    match $self.entry_cache.get(&i) {
+                        Some(eref) => {
+                            result.push(eref.as_ref().clone())
+                        }
+                        None => {
+                            unsafe {
+                                nidl.push_id(i)
+                            }
+                        }
+                    }
+                });
+
+                // Now, get anything from nidl that is needed.
+                let mut db_result = $self.db.get_identry($au, &IDL::Partial(nidl))?;
+
+                // Clone everything from db_result into the cache.
+                db_result.iter().for_each(|e| {
+                    $self.entry_cache.insert(e.get_id(), Box::new(e.clone()));
+                });
+
+                // Merge the two vecs
+                result.append(&mut db_result);
+
+                // Return
+                Ok(result)
+            }
+            IDL::ALLIDS => {
+                $self.db.get_identry($au, $idl)
+            }
+        }
+    }};
+}
+
+macro_rules! get_identry_raw {
+    (
+        $self:expr,
+        $au:expr,
+        $idl:expr
+    ) => {{
+        unimplemented!();
+    }};
+}
+
+macro_rules! exists_idx {
+    (
+        $self:expr,
+        $audit:expr,
+        $attr:expr,
+        $itype:expr
+    ) => {{
+        unimplemented!();
+    }};
+}
+
+macro_rules! get_idl {
+    (
+        $self:expr,
+        $audit:expr,
+        $attr:expr,
+        $itype:expr,
+        $idx_key:expr
+    ) => {{
+        // TODO: Find a way to implement borrow for this properly
+        // First attempt to get from this cache.
+        let cache_key = IdlCacheKey {
+            a: $attr.to_string(),
+            i: $itype.clone(),
+            k: $idx_key.to_string(),
+        };
+        let cache_r = $self.idl_cache.get(
+            &cache_key
+        );
+        // If hit, continue.
+        if let Some(ref data) = cache_r {
+            return Ok(Some(data.as_ref().clone()));
+        }
+        // If miss, get from db *and* insert to the cache.
+        let db_r = $self.db.get_idl($audit, $attr, $itype, $idx_key)?;
+        if let Some(ref idl) = db_r {
+            $self.idl_cache.insert(cache_key, Box::new(idl.clone()))
+        }
+        Ok(db_r)
+    }};
 }
 
 pub trait IdlArcSqliteTransaction {
@@ -74,7 +197,7 @@ impl IdlArcSqliteTransaction for IdlArcSqliteReadTransaction {
         au: &mut AuditScope,
         idl: &IDL,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
-        unimplemented!();
+        get_identry!(self, au, idl)
     }
 
     fn get_identry_raw(
@@ -82,7 +205,7 @@ impl IdlArcSqliteTransaction for IdlArcSqliteReadTransaction {
         au: &mut AuditScope,
         idl: &IDL,
     ) -> Result<Vec<IdRawEntry>, OperationError> {
-        unimplemented!();
+        get_identry_raw!(self, au, idl)
     }
 
     fn exists_idx(
@@ -91,7 +214,7 @@ impl IdlArcSqliteTransaction for IdlArcSqliteReadTransaction {
         attr: &str,
         itype: &IndexType,
     ) -> Result<bool, OperationError> {
-        unimplemented!();
+        exists_idx!(self, audit, attr, itype)
     }
 
     fn get_idl(
@@ -101,7 +224,7 @@ impl IdlArcSqliteTransaction for IdlArcSqliteReadTransaction {
         itype: &IndexType,
         idx_key: &str,
     ) -> Result<Option<IDLBitRange>, OperationError> {
-        unimplemented!();
+        get_idl!(self, audit, attr, itype, idx_key)
     }
 
     fn get_db_s_uuid(&self) -> Result<Option<Uuid>, OperationError> {
@@ -123,44 +246,7 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
         au: &mut AuditScope,
         idl: &IDL,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
-        match idl {
-            IDL::Partial(idli) | IDL::Indexed(idli) => {
-                let mut result: Vec<Entry<_, _>> = Vec::new();
-                let mut nidl = IDLBitRange::new();
-
-                idli.into_iter().for_each(|i| {
-                    // For all the id's in idl.
-                    // is it in the cache?
-                    match self.entry_cache.get(&i) {
-                        Some(eref) => {
-                            result.push(eref.as_ref().clone())
-                        }
-                        None => {
-                            unsafe {
-                                nidl.push_id(i)
-                            }
-                        }
-                    }
-                });
-
-                // Now, get anything from nidl that is needed.
-                let mut db_result = self.db.get_identry(au, &IDL::Partial(nidl))?;
-
-                // Clone everything from db_result into the cache.
-                db_result.iter().for_each(|e| {
-                    self.entry_cache.insert(e.get_id(), Box::new(e.clone()));
-                });
-
-                // Merge the two vecs
-                result.append(&mut db_result);
-
-                // Return
-                Ok(result)
-            }
-            IDL::ALLIDS => {
-                self.db.get_identry(au, idl)
-            }
-        }
+        get_identry!(self, au, idl)
     }
 
     fn get_identry_raw(
@@ -168,7 +254,7 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
         au: &mut AuditScope,
         idl: &IDL,
     ) -> Result<Vec<IdRawEntry>, OperationError> {
-        unimplemented!();
+        get_identry_raw!(self, au, idl)
     }
 
     fn exists_idx(
@@ -177,7 +263,7 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
         attr: &str,
         itype: &IndexType,
     ) -> Result<bool, OperationError> {
-        unimplemented!();
+        exists_idx!(self, audit, attr, itype)
     }
 
     fn get_idl(
@@ -187,7 +273,7 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
         itype: &IndexType,
         idx_key: &str,
     ) -> Result<Option<IDLBitRange>, OperationError> {
-        unimplemented!();
+        get_idl!(self, audit, attr, itype, idx_key)
     }
 
     fn get_db_s_uuid(&self) -> Result<Option<Uuid>, OperationError> {
@@ -226,43 +312,75 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
     }
 
     pub fn write_identries<'b, I>(
-        &'b self,
+        &'b mut self,
         au: &mut AuditScope,
         entries: I,
     ) -> Result<(), OperationError>
     where
         I: Iterator<Item = &'b Entry<EntrySealed, EntryCommitted>>,
     {
-        unimplemented!();
+        // Danger! We know that the entry cache is valid to manipulate here
+        // but rust doesn't know that so it prevents the mut/immut borrow.
+        let e_cache = unsafe {
+            &mut *(&mut self.entry_cache as *mut ArcWriteTxn<_, _>)
+        };
+        let m_entries = entries.map(|e| {
+            e_cache.insert(
+                e.get_id(),
+                Box::new(e.clone())
+            );
+            e
+        });
+        self.db.write_identries(au, m_entries)
     }
 
     pub fn write_identries_raw<I>(
-        &self,
+        &mut self,
         au: &mut AuditScope,
-        mut entries: I,
+        entries: I,
     ) -> Result<(), OperationError>
     where
         I: Iterator<Item = IdRawEntry>,
     {
-        unimplemented!();
+        // Drop the entry cache.
+        self.entry_cache.clear();
+        // Write the raw ents
+        self.db.write_identries_raw(au, entries)
     }
 
-    pub fn delete_identry<I>(&self, au: &mut AuditScope, mut idl: I) -> Result<(), OperationError>
+    pub fn delete_identry<I>(&mut self, au: &mut AuditScope, idl: I) -> Result<(), OperationError>
     where
         I: Iterator<Item = u64>,
     {
-        unimplemented!();
+        // Danger! We know that the entry cache is valid to manipulate here
+        // but rust doesn't know that so it prevents the mut/immut borrow.
+        let e_cache = unsafe {
+            &mut *(&mut self.entry_cache as *mut ArcWriteTxn<_, _>)
+        };
+        let m_idl = idl.map(|i| {
+            e_cache.remove(
+                i
+            );
+            i
+        });
+        self.db.delete_identry(au, m_idl)
     }
 
     pub fn write_idl(
-        &self,
+        &mut self,
         audit: &mut AuditScope,
         attr: &str,
         itype: &IndexType,
         idx_key: &str,
         idl: &IDLBitRange,
     ) -> Result<(), OperationError> {
-        unimplemented!();
+        let cache_key = IdlCacheKey {
+            a: attr.to_string(),
+            i: itype.clone(),
+            k: idx_key.to_string(),
+        };
+        self.idl_cache.insert(cache_key, Box::new(idl.clone()));
+        self.db.write_idl(audit, attr, itype, idx_key, idl)
     }
 
     pub fn create_name2uuid(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
