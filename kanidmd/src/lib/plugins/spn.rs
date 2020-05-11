@@ -43,7 +43,7 @@ impl Spn {
 
     fn get_domain_name_ro(
         au: &mut AuditScope,
-        qs: &QueryServerReadTransaction,
+        qs: &mut QueryServerReadTransaction,
     ) -> Result<String, OperationError> {
         qs.internal_search_uuid(au, &UUID_DOMAIN_INFO_T)
             .and_then(|e| {
@@ -200,7 +200,7 @@ impl Plugin for Spn {
 
     fn verify(
         au: &mut AuditScope,
-        qs: &QueryServerReadTransaction,
+        qs: &mut QueryServerReadTransaction,
     ) -> Vec<Result<(), ConsistencyError>> {
         // Verify that all items with spn's have valid spns.
         //   We need to consider the case that an item has a different origin domain too,

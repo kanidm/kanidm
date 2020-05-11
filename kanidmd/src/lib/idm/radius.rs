@@ -25,7 +25,7 @@ impl RadiusAccount {
     pub(crate) fn try_from_entry_reduced(
         au: &mut AuditScope,
         value: Entry<EntryReduced, EntryCommitted>,
-        qs: &QueryServerReadTransaction,
+        qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         if !value.attribute_value_pres("class", &PVCLASS_ACCOUNT) {
             return Err(OperationError::InvalidAccountState(

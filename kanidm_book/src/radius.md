@@ -117,6 +117,8 @@ The config.ini has the following template:
     dh = # Path to the radius servers dh params
     required_group = # name of a kanidm group which you must be a member of to
         # use radius.
+    cache_path = # A path to an area where cached user records can be stored.
+    # If in doubt, use /dev/shm/kanidmradiusd
 
     ; [client.localhost] # client.<nas name> configures wifi/vpn consumers
     ; ipaddr = # ipv4 or ipv6 address of the NAS
@@ -146,6 +148,7 @@ A fully configured example is:
     cert = /data/certs/cert.pem
     dh = /data/certs/dh
     required_group = radius_access_allowed
+    cache_path = /dev/shm/kanidmradiusd
 
     [client.localhost]
     ipaddr = 127.0.0.1

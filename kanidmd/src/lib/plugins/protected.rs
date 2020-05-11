@@ -213,7 +213,7 @@ mod tests {
     use crate::value::{PartialValue, Value};
     use kanidm_proto::v1::OperationError;
 
-    static JSON_ADMIN_ALLOW_ALL: &'static str = r#"{
+    const JSON_ADMIN_ALLOW_ALL: &'static str = r#"{
         "valid": null,
         "state": null,
         "attrs": {

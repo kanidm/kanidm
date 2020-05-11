@@ -68,7 +68,7 @@ mod tests {
     #[test]
     fn test_domain_generate_uuid() {
         run_test!(|server: &QueryServer, au: &mut AuditScope| {
-            let server_txn = server.write(duration_from_epoch_now());
+            let mut server_txn = server.write(duration_from_epoch_now());
             let uuid_domain = Uuid::parse_str(UUID_DOMAIN_INFO)
                 .expect("Unable to parse constant UUID_DOMAIN_INFO");
             let e_dom = server_txn

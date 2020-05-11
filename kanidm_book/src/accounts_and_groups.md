@@ -10,12 +10,12 @@ box experience possible, as well as supplying best practice examples related to 
 systems.
 
 The system admin account (the account you recovered in the setup) has limited privileges - only to
-manage high-privilege accounts and services. This is to help seperate system administration
+manage high-privilege accounts and services. This is to help separate system administration
 from identity administration actions. An idm_admin is also provided that is only for management
 of accounts and groups.
 
 Both admin and idm_admin should *NOT* be used for daily activities - they exist for initial
-system configuration, and for disaster recovery scenarioes. You should delegate permissions
+system configuration, and for disaster recovery scenarios. You should delegate permissions
 as required to named user accounts instead.
 
 The majority of the provided content is privilege groups that provide rights over Kanidm
@@ -42,7 +42,7 @@ We can now use the idm_admin to create initial groups and accounts.
 You can also use anonymous to view users and groups - note that you won't see as many fields due
 to the different anonymous access profile limits!
 
-    kanidm account get demo_user  --name anonymous
+    kanidm account get demo_user --name anonymous
 
 ## Viewing Default Groups
 
@@ -60,8 +60,8 @@ accounts security and login aspects. This includes resetting account credentials
 We can perform a password reset on the demo_user for example as idm_admin, who is
 a default member of this group.
 
-    kanidm account credential set_password demo_user  --name idm_admin
-    kanidm self whoami  --name demo_user
+    kanidm account credential set_password demo_user --name idm_admin
+    kanidm self whoami --name demo_user
 
 ## Nested Groups
 
@@ -116,5 +116,3 @@ resources that trust Kanidm.
 
 All groups that are flagged as "idm_high_privilege" should be audited and
 monitored to ensure that they are not altered.
-
-

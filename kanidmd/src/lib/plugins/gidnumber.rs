@@ -16,10 +16,10 @@ use kanidm_proto::v1::OperationError;
 /// Systemd dynamic units allocate between 61184–65519, most distros allocate
 /// system uids from 0 - 1000, and many others give user ids between 1000 to
 /// 2000. This whole numberspace is cursed, lets assume it's not ours. :(
-static GID_SYSTEM_NUMBER_MIN: u32 = 65536;
+const GID_SYSTEM_NUMBER_MIN: u32 = 65536;
 
 /// This is the normal system range, we MUST NOT allow it to be allocated.
-static GID_SAFETY_NUMBER_MIN: u32 = 1000;
+const GID_SAFETY_NUMBER_MIN: u32 = 1000;
 
 lazy_static! {
     static ref CLASS_POSIXGROUP: PartialValue = PartialValue::new_iutf8s("posixgroup");
@@ -108,7 +108,7 @@ mod tests {
 
     fn check_gid(
         au: &mut AuditScope,
-        qs_write: &QueryServerWriteTransaction,
+        qs_write: &mut QueryServerWriteTransaction,
         uuid: &str,
         gid: u32,
     ) {
@@ -143,7 +143,7 @@ mod tests {
             preload,
             create,
             None,
-            |au, qs_write: &QueryServerWriteTransaction| check_gid(
+            |au, qs_write: &mut QueryServerWriteTransaction| check_gid(
                 au,
                 qs_write,
                 "83a0927f-3de1-45ec-bea0-2f7b997ef244",
@@ -178,7 +178,7 @@ mod tests {
             preload,
             create,
             None,
-            |au, qs_write: &QueryServerWriteTransaction| check_gid(
+            |au, qs_write: &mut QueryServerWriteTransaction| check_gid(
                 au,
                 qs_write,
                 "83a0927f-3de1-45ec-bea0-2f7b997ef244",
@@ -212,7 +212,7 @@ mod tests {
             filter!(f_eq("name", PartialValue::new_iutf8s("testperson"))),
             modlist!([m_pres("class", &Value::new_class("posixgroup"))]),
             None,
-            |au, qs_write: &QueryServerWriteTransaction| check_gid(
+            |au, qs_write: &mut QueryServerWriteTransaction| check_gid(
                 au,
                 qs_write,
                 "83a0927f-3de1-45ec-bea0-2f7b997ef244",
@@ -245,7 +245,7 @@ mod tests {
             filter!(f_eq("name", PartialValue::new_iutf8s("testperson"))),
             modlist!([m_purge("gidnumber")]),
             None,
-            |au, qs_write: &QueryServerWriteTransaction| check_gid(
+            |au, qs_write: &mut QueryServerWriteTransaction| check_gid(
                 au,
                 qs_write,
                 "83a0927f-3de1-45ec-bea0-2f7b997ef244",
@@ -283,7 +283,7 @@ mod tests {
                 m_pres("gidnumber", &Value::new_uint32(2000))
             ]),
             None,
-            |au, qs_write: &QueryServerWriteTransaction| check_gid(
+            |au, qs_write: &mut QueryServerWriteTransaction| check_gid(
                 au,
                 qs_write,
                 "83a0927f-3de1-45ec-bea0-2f7b997ef244",

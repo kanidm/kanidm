@@ -1,5 +1,7 @@
-target
 .git
+.github
 .gitignore
+*.md
+Makefile
+target
 test.db
-

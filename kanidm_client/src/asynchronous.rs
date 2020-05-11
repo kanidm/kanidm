@@ -1,5 +1,4 @@
 use crate::{ClientError, KanidmClientBuilder, APPLICATION_JSON};
-use reqwest;
 use reqwest::header::CONTENT_TYPE;
 use serde::de::DeserializeOwned;
 use serde::Serialize;

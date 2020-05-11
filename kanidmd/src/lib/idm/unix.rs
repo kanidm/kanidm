@@ -95,7 +95,7 @@ impl UnixUserAccount {
     pub(crate) fn try_from_entry_rw(
         au: &mut AuditScope,
         value: Entry<EntrySealed, EntryCommitted>,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         let groups = UnixGroup::try_from_account_entry_rw(au, &value, qs)?;
         try_from_entry!(value, groups)
@@ -104,7 +104,7 @@ impl UnixUserAccount {
     pub(crate) fn try_from_entry_ro(
         au: &mut AuditScope,
         value: Entry<EntrySealed, EntryCommitted>,
-        qs: &QueryServerReadTransaction,
+        qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         let groups = UnixGroup::try_from_account_entry_ro(au, &value, qs)?;
         try_from_entry!(value, groups)
@@ -113,7 +113,7 @@ impl UnixUserAccount {
     pub(crate) fn try_from_entry_reduced(
         au: &mut AuditScope,
         value: Entry<EntryReduced, EntryCommitted>,
-        qs: &QueryServerReadTransaction,
+        qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         let groups = UnixGroup::try_from_account_entry_red_ro(au, &value, qs)?;
         try_from_entry!(value, groups)
@@ -130,7 +130,7 @@ impl UnixUserAccount {
             gidnumber: self.gidnumber,
             uuid: self.uuid.to_hyphenated_ref().to_string(),
             shell: self.shell.clone(),
-            groups: groups,
+            groups,
             sshkeys: self.sshkeys.clone(),
         })
     }
@@ -295,7 +295,7 @@ impl UnixGroup {
     pub fn try_from_account_entry_rw(
         au: &mut AuditScope,
         value: &Entry<EntrySealed, EntryCommitted>,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
     ) -> Result<Vec<Self>, OperationError> {
         try_from_account_group_e!(au, value, qs)
     }
@@ -303,7 +303,7 @@ impl UnixGroup {
     pub fn try_from_account_entry_ro(
         au: &mut AuditScope,
         value: &Entry<EntrySealed, EntryCommitted>,
-        qs: &QueryServerReadTransaction,
+        qs: &mut QueryServerReadTransaction,
     ) -> Result<Vec<Self>, OperationError> {
         try_from_account_group_e!(au, value, qs)
     }
@@ -311,7 +311,7 @@ impl UnixGroup {
     pub fn try_from_account_entry_red_ro(
         au: &mut AuditScope,
         value: &Entry<EntryReduced, EntryCommitted>,
-        qs: &QueryServerReadTransaction,
+        qs: &mut QueryServerReadTransaction,
     ) -> Result<Vec<Self>, OperationError> {
         try_from_account_group_e!(au, value, qs)
     }

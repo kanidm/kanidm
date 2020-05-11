@@ -1,5 +1,4 @@
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
-use shellexpand;
 use std::path::PathBuf;
 use structopt::StructOpt;
 

@@ -4,7 +4,6 @@
 #[macro_use]
 extern crate log;
 
-use reqwest;
 use reqwest::header::CONTENT_TYPE;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -14,7 +13,6 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 use std::time::Duration;
-use toml;
 use uuid::Uuid;
 
 use kanidm_proto::v1::{
@@ -24,13 +22,12 @@ use kanidm_proto::v1::{
     SetCredentialRequest, SetCredentialResponse, SingleStringRequest, TOTPSecret, UnixGroupToken,
     UnixUserToken, UserAuthToken, WhoamiResponse,
 };
-use serde_json;
 
 pub mod asynchronous;
 
 use crate::asynchronous::KanidmAsyncClient;
 
-pub static APPLICATION_JSON: &'static str = "application/json";
+pub const APPLICATION_JSON: &str = "application/json";
 
 #[derive(Debug)]
 pub enum ClientError {
@@ -570,7 +567,7 @@ impl KanidmClient {
         gidnumber: Option<u32>,
     ) -> Result<(), ClientError> {
         let gx = GroupUnixExtend {
-            gidnumber: gidnumber,
+            gidnumber,
         };
         self.perform_post_request(format!("/v1/group/{}/_unix", id).as_str(), gx)
     }
@@ -733,7 +730,7 @@ impl KanidmClient {
     ) -> Result<(), ClientError> {
         let ux = AccountUnixExtend {
             shell: shell.map(|s| s.to_string()),
-            gidnumber: gidnumber,
+            gidnumber,
         };
         self.perform_post_request(format!("/v1/account/{}/_unix", id).as_str(), ux)
     }

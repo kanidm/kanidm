@@ -41,7 +41,6 @@ chrono = "0.4"
 cookie = "0.13"
 regex = "1"
 lazy_static = "1.2.0"
-# lru = "0.1"
 
 tokio = "0.2"
 futures = "0.3"
@@ -51,6 +50,7 @@ serde_cbor = "0.11"
 serde_json = "1.0"
 serde_derive = "1.0"
 
+libsqlite3-sys = { version = "0.17" }
 rusqlite = { version = "0.21", features = ["backup"] }
 r2d2 = "0.8"
 r2d2_sqlite = "0.14"
@@ -59,6 +59,7 @@ structopt = { version = "0.3", default-features = false }
 time = "0.1"
 
 concread = "0.1"
+# concread = { path = "../../concread" }
 
 openssl = "0.10"
 sshkeys = "0.1"
@@ -67,10 +68,13 @@ rpassword = "4.0"
 num_cpus = "1.10"
 
 idlset = { version = "0.1" , features = ["use_smallvec"] }
-# idlset = { version = "0.1" }
+# idlset = { path = "../../idlset", features = ["use_smallvec"] }
 
 zxcvbn = "2.0"
 base64 = "0.12"
+
+[features]
+default = [ "libsqlite3-sys/bundled", "openssl/vendored" ]
 
 [dev-dependencies]
 criterion = "0.3"

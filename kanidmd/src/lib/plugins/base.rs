@@ -130,8 +130,8 @@ impl Plugin for Base {
         // Check that the system-protected range is not in the cand_uuid, unless we are
         // an internal operation.
         if !ce.event.is_internal() {
-            // TODO: We can't lazy static this as you can't borrow the type down to what
-            // range and contains on btreeset need, but can we possibly make these staticly
+            // TODO: We can't lazy const this as you can't borrow the type down to what
+            // range and contains on btreeset need, but can we possibly make these constly
             // part of the struct somehow at init. rather than needing to parse a lot?
             // The internal set is bounded by: UUID_ADMIN -> UUID_ANONYMOUS
             // Sadly we need to allocate these to strings to make references, sigh.
@@ -220,7 +220,7 @@ impl Plugin for Base {
 
     fn verify(
         au: &mut AuditScope,
-        qs: &QueryServerReadTransaction,
+        qs: &mut QueryServerReadTransaction,
     ) -> Vec<Result<(), ConsistencyError>> {
         // Verify all uuid's are unique?
         // Probably the literally worst thing ...
@@ -275,7 +275,7 @@ mod tests {
     use crate::value::{PartialValue, Value};
     use kanidm_proto::v1::{OperationError, PluginError};
 
-    static JSON_ADMIN_ALLOW_ALL: &'static str = r#"{
+    const JSON_ADMIN_ALLOW_ALL: &'static str = r#"{
         "valid": null,
         "state": null,
         "attrs": {
@@ -329,7 +329,7 @@ mod tests {
             preload,
             create,
             None,
-            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
+            |au: &mut AuditScope, qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(
                         au,
@@ -424,7 +424,7 @@ mod tests {
             preload,
             create,
             None,
-            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
+            |au: &mut AuditScope, qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(
                         au,

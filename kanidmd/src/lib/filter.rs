@@ -24,7 +24,7 @@ use uuid::Uuid;
 
 // Default filter is safe, ignores all hidden types!
 
-// This is &Value so we can lazy static then clone, but perhaps we can reconsider
+// This is &Value so we can lazy const then clone, but perhaps we can reconsider
 // later if this should just take Value.
 #[allow(dead_code)]
 pub fn f_eq(a: &str, v: PartialValue) -> FC {
@@ -375,7 +375,7 @@ impl Filter<FilterInvalid> {
     pub fn from_ro(
         audit: &mut AuditScope,
         f: &ProtoFilter,
-        qs: &QueryServerReadTransaction,
+        qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         Ok(Filter {
             state: FilterInvalid {
@@ -387,7 +387,7 @@ impl Filter<FilterInvalid> {
     pub fn from_rw(
         audit: &mut AuditScope,
         f: &ProtoFilter,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         Ok(Filter {
             state: FilterInvalid {
@@ -564,7 +564,7 @@ impl FilterComp {
     fn from_ro(
         audit: &mut AuditScope,
         f: &ProtoFilter,
-        qs: &QueryServerReadTransaction,
+        qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         Ok(match f {
             ProtoFilter::Eq(a, v) => FilterComp::Eq(a.clone(), qs.clone_partialvalue(audit, a, v)?),
@@ -590,7 +590,7 @@ impl FilterComp {
     fn from_rw(
         audit: &mut AuditScope,
         f: &ProtoFilter,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         Ok(match f {
             ProtoFilter::Eq(a, v) => FilterComp::Eq(a.clone(), qs.clone_partialvalue(audit, a, v)?),
