@@ -87,7 +87,7 @@ fn is_attr_writable(rsclient: &KanidmClient, id: &str, attr: &str) -> Option<boo
                     id,
                     "k1",
                     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAeGW1P6Pc2rPq0XqbRaDKBcXZUPRklo0\
-                L1EyR30CwoP william@amethyst",
+                     L1EyR30CwoP william@amethyst",
                 )
                 .is_ok(),
         ),

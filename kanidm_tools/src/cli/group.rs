@@ -66,7 +66,7 @@ impl GroupOpt {
         }
     }
 
-    pub fn exec(&self) -> () {
+    pub fn exec(&self) {
         match self {
             GroupOpt::List(copt) => {
                 let client = copt.to_client();

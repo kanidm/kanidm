@@ -1,4 +1,3 @@
-use num_cpus;
 use rand::prelude::*;
 use std::fmt;
 use std::path::PathBuf;

@@ -96,7 +96,7 @@ impl Account {
     pub(crate) fn try_from_entry_ro(
         au: &mut AuditScope,
         value: Entry<EntrySealed, EntryCommitted>,
-        qs: &QueryServerReadTransaction,
+        qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         let groups = Group::try_from_account_entry_ro(au, &value, qs)?;
         try_from_entry!(value, groups)
@@ -105,7 +105,7 @@ impl Account {
     pub(crate) fn try_from_entry_rw(
         au: &mut AuditScope,
         value: Entry<EntrySealed, EntryCommitted>,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         let groups = Group::try_from_account_entry_rw(au, &value, qs)?;
         try_from_entry!(value, groups)

@@ -64,7 +64,7 @@ lazy_static! {
 /// [`QueryServerWriteTransaction`]: struct.QueryServerWriteTransaction.html
 pub trait QueryServerTransaction {
     type BackendTransactionType: BackendTransaction;
-    fn get_be_txn(&self) -> &Self::BackendTransactionType;
+    fn get_be_txn(&mut self) -> &mut Self::BackendTransactionType;
 
     type SchemaTransactionType: SchemaTransaction;
     fn get_schema(&self) -> &Self::SchemaTransactionType;
@@ -82,7 +82,7 @@ pub trait QueryServerTransaction {
     /// [`access`]: ../access/index.html
     /// [`fn search`]: trait.QueryServerTransaction.html#method.search
     fn search_ext(
-        &self,
+        &mut self,
         au: &mut AuditScope,
         se: &SearchEvent,
     ) -> Result<Vec<Entry<EntryReduced, EntryCommitted>>, OperationError> {
@@ -105,7 +105,7 @@ pub trait QueryServerTransaction {
     }
 
     fn search(
-        &self,
+        &mut self,
         au: &mut AuditScope,
         se: &SearchEvent,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
@@ -154,7 +154,7 @@ pub trait QueryServerTransaction {
         Ok(acp_res)
     }
 
-    fn exists(&self, au: &mut AuditScope, ee: &ExistsEvent) -> Result<bool, OperationError> {
+    fn exists(&mut self, au: &mut AuditScope, ee: &ExistsEvent) -> Result<bool, OperationError> {
         let mut audit_be = AuditScope::new("backend_exists");
 
         let schema = self.get_schema();
@@ -186,7 +186,7 @@ pub trait QueryServerTransaction {
     //
     // Remember, we don't care if the name is invalid, because search
     // will validate/normalise the filter we construct for us. COOL!
-    fn name_to_uuid(&self, audit: &mut AuditScope, name: &str) -> Result<Uuid, OperationError> {
+    fn name_to_uuid(&mut self, audit: &mut AuditScope, name: &str) -> Result<Uuid, OperationError> {
         // For now this just constructs a filter and searches, but later
         // we could actually improve this to contact the backend and do
         // index searches, completely bypassing id2entry.
@@ -222,7 +222,7 @@ pub trait QueryServerTransaction {
     }
 
     fn uuid_to_name(
-        &self,
+        &mut self,
         audit: &mut AuditScope,
         uuid: &Uuid,
     ) -> Result<Option<Value>, OperationError> {
@@ -271,7 +271,11 @@ pub trait QueryServerTransaction {
         Ok(Some(name_res))
     }
 
-    fn posixid_to_uuid(&self, audit: &mut AuditScope, name: &str) -> Result<Uuid, OperationError> {
+    fn posixid_to_uuid(
+        &mut self,
+        audit: &mut AuditScope,
+        name: &str,
+    ) -> Result<Uuid, OperationError> {
         let f_name = Some(f_eq("name", PartialValue::new_iutf8s(name)));
 
         let f_spn = PartialValue::new_spn_s(name).map(|v| f_eq("spn", v));
@@ -310,7 +314,7 @@ pub trait QueryServerTransaction {
 
     // From internal, generate an exists event and dispatch
     fn internal_exists(
-        &self,
+        &mut self,
         au: &mut AuditScope,
         filter: Filter<FilterInvalid>,
     ) -> Result<bool, OperationError> {
@@ -329,7 +333,7 @@ pub trait QueryServerTransaction {
     }
 
     fn internal_search(
-        &self,
+        &mut self,
         audit: &mut AuditScope,
         filter: Filter<FilterInvalid>,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
@@ -344,7 +348,7 @@ pub trait QueryServerTransaction {
     }
 
     fn impersonate_search_valid(
-        &self,
+        &mut self,
         audit: &mut AuditScope,
         f_valid: Filter<FilterValid>,
         f_intent_valid: Filter<FilterValid>,
@@ -359,7 +363,7 @@ pub trait QueryServerTransaction {
 
     // this applys ACP to filter result entries.
     fn impersonate_search_ext_valid(
-        &self,
+        &mut self,
         audit: &mut AuditScope,
         f_valid: Filter<FilterValid>,
         f_intent_valid: Filter<FilterValid>,
@@ -374,7 +378,7 @@ pub trait QueryServerTransaction {
 
     // Who they are will go here
     fn impersonate_search(
-        &self,
+        &mut self,
         audit: &mut AuditScope,
         filter: Filter<FilterInvalid>,
         filter_intent: Filter<FilterInvalid>,
@@ -390,7 +394,7 @@ pub trait QueryServerTransaction {
     }
 
     fn impersonate_search_ext(
-        &self,
+        &mut self,
         audit: &mut AuditScope,
         filter: Filter<FilterInvalid>,
         filter_intent: Filter<FilterInvalid>,
@@ -408,7 +412,7 @@ pub trait QueryServerTransaction {
     // Get a single entry by it's UUID. This is heavily relied on for internal
     // server operations, especially in login and acp checks for acp.
     fn internal_search_uuid(
-        &self,
+        &mut self,
         audit: &mut AuditScope,
         uuid: &Uuid,
     ) -> Result<Entry<EntrySealed, EntryCommitted>, OperationError> {
@@ -434,7 +438,7 @@ pub trait QueryServerTransaction {
     }
 
     fn impersonate_search_ext_uuid(
-        &self,
+        &mut self,
         audit: &mut AuditScope,
         uuid: &Uuid,
         event: &Event,
@@ -458,7 +462,7 @@ pub trait QueryServerTransaction {
     /// Do a schema aware conversion from a String:String to String:Value for modification
     /// present.
     fn clone_value(
-        &self,
+        &mut self,
         audit: &mut AuditScope,
         attr: &str,
         value: &str,
@@ -535,7 +539,7 @@ pub trait QueryServerTransaction {
     }
 
     fn clone_partialvalue(
-        &self,
+        &mut self,
         audit: &mut AuditScope,
         attr: &str,
         value: &str,
@@ -622,7 +626,7 @@ pub trait QueryServerTransaction {
 
     // In the opposite direction, we can resolve values for presentation
     fn resolve_value(
-        &self,
+        &mut self,
         audit: &mut AuditScope,
         value: &Value,
     ) -> Result<String, OperationError> {
@@ -640,8 +644,8 @@ pub trait QueryServerTransaction {
     }
 }
 
-pub struct QueryServerReadTransaction {
-    be_txn: BackendReadTransaction,
+pub struct QueryServerReadTransaction<'a> {
+    be_txn: BackendReadTransaction<'a>,
     // Anything else? In the future, we'll need to have a schema transaction
     // type, maybe others?
     schema: SchemaReadTransaction,
@@ -651,11 +655,11 @@ pub struct QueryServerReadTransaction {
 // Actually conduct a search request
 // This is the core of the server, as it processes the entire event
 // applies all parts required in order and more.
-impl QueryServerTransaction for QueryServerReadTransaction {
-    type BackendTransactionType = BackendReadTransaction;
+impl<'a> QueryServerTransaction for QueryServerReadTransaction<'a> {
+    type BackendTransactionType = BackendReadTransaction<'a>;
 
-    fn get_be_txn(&self) -> &BackendReadTransaction {
-        &self.be_txn
+    fn get_be_txn(&mut self) -> &mut BackendReadTransaction<'a> {
+        &mut self.be_txn
     }
 
     type SchemaTransactionType = SchemaReadTransaction;
@@ -671,11 +675,11 @@ impl QueryServerTransaction for QueryServerReadTransaction {
     }
 }
 
-impl QueryServerReadTransaction {
+impl<'a> QueryServerReadTransaction<'a> {
     // Verify the data content of the server is as expected. This will probably
     // call various functions for validation, including possibly plugin
     // verifications.
-    fn verify(&self, au: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
+    fn verify(&mut self, au: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
         let mut audit = AuditScope::new("verify");
 
         // If we fail after backend, we need to return NOW because we can't
@@ -724,7 +728,7 @@ pub struct QueryServerWriteTransaction<'a> {
     committed: bool,
     d_uuid: Uuid,
     cid: Cid,
-    be_txn: BackendWriteTransaction,
+    be_txn: BackendWriteTransaction<'a>,
     schema: SchemaWriteTransaction<'a>,
     accesscontrols: AccessControlsWriteTransaction<'a>,
     // We store a set of flags that indicate we need a reload of
@@ -735,10 +739,10 @@ pub struct QueryServerWriteTransaction<'a> {
 }
 
 impl<'a> QueryServerTransaction for QueryServerWriteTransaction<'a> {
-    type BackendTransactionType = BackendWriteTransaction;
+    type BackendTransactionType = BackendWriteTransaction<'a>;
 
-    fn get_be_txn(&self) -> &BackendWriteTransaction {
-        &self.be_txn
+    fn get_be_txn(&mut self) -> &mut BackendWriteTransaction<'a> {
+        &mut self.be_txn
     }
 
     type SchemaTransactionType = SchemaWriteTransaction<'a>;
@@ -767,7 +771,7 @@ pub struct QueryServer {
 impl QueryServer {
     pub fn new(be: Backend, schema: Schema) -> Self {
         let (s_uuid, d_uuid) = {
-            let wr = be.write(BTreeSet::new());
+            let mut wr = be.write(BTreeSet::new());
             (wr.get_db_s_uuid(), wr.get_db_d_uuid())
         };
         info!("Server ID -> {:?}", s_uuid);
@@ -806,7 +810,7 @@ impl QueryServer {
             // which today I don't think we have ... yet.
             committed: false,
             d_uuid: self.d_uuid,
-            cid: cid,
+            cid,
             be_txn: self.be.write(idxmeta),
             schema: schema_write,
             accesscontrols: self.accesscontrols.write(),
@@ -831,7 +835,7 @@ impl QueryServer {
         // reloading to occur, which causes the idxmeta to update, and allows validation
         // of the schema in the subsequent steps as we proceed.
 
-        let reindex_write_1 = self.write(ts);
+        let mut reindex_write_1 = self.write(ts);
         reindex_write_1
             .upgrade_reindex(audit, SYSTEM_INDEX_VERSION)
             .and_then(|_| reindex_write_1.commit(audit))?;
@@ -857,7 +861,7 @@ impl QueryServer {
 
         // reindex and set to version + 1, this way when we bump the version
         // we are essetially pushing this version id back up to step write_1
-        let reindex_write_2 = self.write(ts);
+        let mut reindex_write_2 = self.write(ts);
         reindex_write_2
             .upgrade_reindex(audit, SYSTEM_INDEX_VERSION + 1)
             .and_then(|_| reindex_write_2.commit(audit))?;
@@ -869,7 +873,7 @@ impl QueryServer {
     }
 
     pub fn verify(&self, au: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
-        let r_txn = self.read();
+        let mut r_txn = self.read();
         r_txn.verify(au)
     }
 }
@@ -1135,7 +1139,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         res
     }
 
-    pub fn purge_tombstones(&self, au: &mut AuditScope) -> Result<(), OperationError> {
+    pub fn purge_tombstones(&mut self, au: &mut AuditScope) -> Result<(), OperationError> {
         // delete everything that is a tombstone.
 
         // TODO #68: Has an appropriate amount of time/condition past (ie replication events?)
@@ -1177,7 +1181,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         res
     }
 
-    pub fn purge_recycled(&self, au: &mut AuditScope) -> Result<(), OperationError> {
+    pub fn purge_recycled(&mut self, au: &mut AuditScope) -> Result<(), OperationError> {
         // Send everything that is recycled to tombstone
         // Search all recycled
 
@@ -2038,7 +2042,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.internal_modify(audit, filt, modl)
     }
 
-    pub fn reindex(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
+    pub fn reindex(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
         // initiate a be reindex here. This could have been from first run checking
         // the versions, or it could just be from the cli where an admin needs to do an
         // indexing.
@@ -2046,7 +2050,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     pub(crate) fn upgrade_reindex(
-        &self,
+        &mut self,
         audit: &mut AuditScope,
         v: i64,
     ) -> Result<(), OperationError> {
@@ -2551,7 +2555,7 @@ mod tests {
             assert!(server_txn.commit(audit).is_ok());
 
             // New txn, push the cid forward.
-            let server_txn = server.write(time_p2);
+            let mut server_txn = server.write(time_p2);
 
             // Now purge
             assert!(server_txn.purge_tombstones(audit).is_ok());
@@ -2680,7 +2684,7 @@ mod tests {
             assert!(server_txn.commit(audit).is_ok());
 
             // Now, establish enough time for the recycled items to be purged.
-            let server_txn = server.write(time_p2);
+            let mut server_txn = server.write(time_p2);
 
             //  purge to tombstone, now that time has passed.
             assert!(server_txn.purge_recycled(audit).is_ok());
@@ -3201,7 +3205,7 @@ mod tests {
     }
 
     fn check_entry_has_mo(
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         audit: &mut AuditScope,
         name: &str,
         mo: &str,
@@ -3289,7 +3293,7 @@ mod tests {
             assert!(server_txn.revive_recycled(audit, &rev1).is_ok());
             // check u1 contains MO ->
             assert!(check_entry_has_mo(
-                &server_txn,
+                &mut server_txn,
                 audit,
                 "u1",
                 "cca2bbfc-5b43-43f3-be9e-f5b03b3defec"
@@ -3304,13 +3308,13 @@ mod tests {
             };
             assert!(server_txn.revive_recycled(audit, &rev2).is_ok());
             assert!(check_entry_has_mo(
-                &server_txn,
+                &mut server_txn,
                 audit,
                 "u2",
                 "e44cf9cd-9941-44cb-a02f-307b6e15ac54"
             ));
             assert!(check_entry_has_mo(
-                &server_txn,
+                &mut server_txn,
                 audit,
                 "u2",
                 "d3132e6e-18ce-4b87-bee1-1d25e4bfe96d"
@@ -3329,7 +3333,7 @@ mod tests {
             assert!(server_txn.revive_recycled(audit, &rev3).is_ok());
             assert!(
                 check_entry_has_mo(
-                    &server_txn,
+                    &mut server_txn,
                     audit,
                     "u3",
                     "36048117-e479-45ed-aeb5-611e8d83d5b1"
@@ -3346,7 +3350,7 @@ mod tests {
             assert!(server_txn.revive_recycled(audit, &rev4a).is_ok());
             assert!(
                 check_entry_has_mo(
-                    &server_txn,
+                    &mut server_txn,
                     audit,
                     "u4",
                     "d5c59ac6-c533-4b00-989f-d0e183f07bab"
@@ -3363,7 +3367,7 @@ mod tests {
             assert!(server_txn.revive_recycled(audit, &rev4b).is_ok());
             assert!(
                 check_entry_has_mo(
-                    &server_txn,
+                    &mut server_txn,
                     audit,
                     "u4",
                     "d5c59ac6-c533-4b00-989f-d0e183f07bab"

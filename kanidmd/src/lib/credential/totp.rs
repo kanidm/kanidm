@@ -148,7 +148,7 @@ impl TOTP {
             .map_err(|_| TOTPError::HmacError)?;
 
         let otp = u32::from_be_bytes(bytes);
-        Ok((otp & 0x7fffffff) % 1_000_000)
+        Ok((otp & 0x7fff_ffff) % 1_000_000)
     }
 
     pub fn do_totp_duration_from_epoch(&self, time: &Duration) -> Result<u32, TOTPError> {

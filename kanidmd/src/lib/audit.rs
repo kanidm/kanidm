@@ -5,7 +5,6 @@ use std::time::SystemTime;
 
 use chrono::offset::Utc;
 use chrono::DateTime;
-use serde_json;
 
 #[macro_export]
 macro_rules! audit_log {

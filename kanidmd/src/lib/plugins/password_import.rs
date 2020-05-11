@@ -258,7 +258,7 @@ mod tests {
                 Value::from(IMPORT_HASH)
             )]),
             None,
-            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
+            |au: &mut AuditScope, qs: &mut QueryServerWriteTransaction| {
                 let e = qs
                     .internal_search_uuid(
                         au,

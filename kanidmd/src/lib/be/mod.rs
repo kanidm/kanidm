@@ -1,10 +1,9 @@
-use serde_cbor;
-use serde_json;
 use std::convert::TryFrom;
 use std::fs;
 
 use crate::value::IndexType;
 use std::collections::BTreeSet;
+use std::sync::Arc;
 
 use crate::audit::AuditScope;
 use crate::be::dbentry::DbEntry;
@@ -17,15 +16,17 @@ use uuid::Uuid;
 
 pub mod dbentry;
 pub mod dbvalue;
+mod idl_arc_sqlite;
 mod idl_sqlite;
 
-use crate::be::idl_sqlite::{
-    IdlSqlite, IdlSqliteReadTransaction, IdlSqliteTransaction, IdlSqliteWriteTransaction,
+use crate::be::idl_arc_sqlite::{
+    IdlArcSqlite, IdlArcSqliteReadTransaction, IdlArcSqliteTransaction,
+    IdlArcSqliteWriteTransaction,
 };
 
 const FILTER_TEST_THRESHOLD: usize = 8;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum IDL {
     ALLIDS,
     Partial(IDLBitRange),
@@ -33,28 +34,27 @@ pub enum IDL {
 }
 
 #[derive(Debug)]
-pub struct IdEntry {
-    // TODO #20: for now this is i64 to make sqlite work, but entry is u64 for indexing reasons!
-    id: i64,
+pub struct IdRawEntry {
+    id: u64,
     data: Vec<u8>,
 }
 
 #[derive(Clone)]
 pub struct Backend {
-    idlayer: IdlSqlite,
+    idlayer: Arc<IdlArcSqlite>,
 }
 
-pub struct BackendReadTransaction {
-    idlayer: IdlSqliteReadTransaction,
+pub struct BackendReadTransaction<'a> {
+    idlayer: IdlArcSqliteReadTransaction<'a>,
 }
 
-pub struct BackendWriteTransaction {
+pub struct BackendWriteTransaction<'a> {
     idxmeta: BTreeSet<(String, IndexType)>,
     // idxcache: IdxCache,
-    idlayer: IdlSqliteWriteTransaction,
+    idlayer: IdlArcSqliteWriteTransaction<'a>,
 }
 
-impl IdEntry {
+impl IdRawEntry {
     fn into_entry(self) -> Result<Entry<EntrySealed, EntryCommitted>, OperationError> {
         let db_e = serde_cbor::from_slice(self.data.as_slice())
             .map_err(|_| OperationError::SerdeCborError)?;
@@ -64,12 +64,12 @@ impl IdEntry {
 }
 
 pub trait BackendTransaction {
-    type IdlLayerType: IdlSqliteTransaction;
-    fn get_idlayer(&self) -> &Self::IdlLayerType;
+    type IdlLayerType: IdlArcSqliteTransaction;
+    fn get_idlayer(&mut self) -> &mut Self::IdlLayerType;
 
     /// Recursively apply a filter, transforming into IDL's on the way.
     fn filter2idl(
-        &self,
+        &mut self,
         au: &mut AuditScope,
         filt: &FilterResolved,
         thres: usize,
@@ -296,7 +296,7 @@ pub trait BackendTransaction {
 
     // Take filter, and AuditScope ref?
     fn search(
-        &self,
+        &mut self,
         au: &mut AuditScope,
         filt: &Filter<FilterValidResolved>,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
@@ -312,12 +312,7 @@ pub trait BackendTransaction {
             // Also get if the filter was 100% resolved or not.
             let idl = self.filter2idl(au, filt.to_inner(), FILTER_TEST_THRESHOLD)?;
 
-            let raw_entries = try_audit!(au, self.get_idlayer().get_identry(au, &idl));
-            let entries: Result<Vec<_>, _> = raw_entries
-                .into_iter()
-                .map(|ide| ide.into_entry())
-                .collect();
-            let entries = try_audit!(au, entries);
+            let entries = try_audit!(au, self.get_idlayer().get_identry(au, &idl));
             // Do other things
             // Now, de-serialise the raw_entries back to entries, and populate their ID's
 
@@ -359,7 +354,7 @@ pub trait BackendTransaction {
     /// load any candidates if they match. This is heavily used in uuid
     /// refint and attr uniqueness.
     fn exists(
-        &self,
+        &mut self,
         au: &mut AuditScope,
         filt: &Filter<FilterValidResolved>,
     ) -> Result<bool, OperationError> {
@@ -377,12 +372,7 @@ pub trait BackendTransaction {
             match &idl {
                 IDL::Indexed(idl) => Ok(idl.len() > 0),
                 _ => {
-                    let raw_entries = try_audit!(au, self.get_idlayer().get_identry(au, &idl));
-                    let entries: Result<Vec<_>, _> = raw_entries
-                        .into_iter()
-                        .map(|ide| ide.into_entry())
-                        .collect();
-                    let entries = try_audit!(au, entries);
+                    let entries = try_audit!(au, self.get_idlayer().get_identry(au, &idl));
 
                     // if not 100% resolved query, apply the filter test.
                     let entries_filtered: Vec<_> = entries
@@ -396,16 +386,16 @@ pub trait BackendTransaction {
         }) // end audit segment
     }
 
-    fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
+    fn verify(&mut self) -> Vec<Result<(), ConsistencyError>> {
         // Vec::new()
         self.get_idlayer().verify()
     }
 
-    fn backup(&self, audit: &mut AuditScope, dst_path: &str) -> Result<(), OperationError> {
+    fn backup(&mut self, audit: &mut AuditScope, dst_path: &str) -> Result<(), OperationError> {
         // load all entries into RAM, may need to change this later
         // if the size of the database compared to RAM is an issue
         let idl = IDL::ALLIDS;
-        let raw_entries: Vec<IdEntry> = self.get_idlayer().get_identry(audit, &idl)?;
+        let raw_entries: Vec<IdRawEntry> = self.get_idlayer().get_identry_raw(audit, &idl)?;
 
         let entries: Result<Vec<DbEntry>, _> = raw_entries
             .iter()
@@ -439,21 +429,23 @@ pub trait BackendTransaction {
     }
 }
 
-impl BackendTransaction for BackendReadTransaction {
-    type IdlLayerType = IdlSqliteReadTransaction;
-    fn get_idlayer(&self) -> &IdlSqliteReadTransaction {
-        &self.idlayer
+impl<'a> BackendTransaction for BackendReadTransaction<'a> {
+    type IdlLayerType = IdlArcSqliteReadTransaction<'a>;
+
+    fn get_idlayer(&mut self) -> &mut IdlArcSqliteReadTransaction<'a> {
+        &mut self.idlayer
     }
 }
 
-impl BackendTransaction for BackendWriteTransaction {
-    type IdlLayerType = IdlSqliteWriteTransaction;
-    fn get_idlayer(&self) -> &IdlSqliteWriteTransaction {
-        &self.idlayer
+impl<'a> BackendTransaction for BackendWriteTransaction<'a> {
+    type IdlLayerType = IdlArcSqliteWriteTransaction<'a>;
+
+    fn get_idlayer(&mut self) -> &mut IdlArcSqliteWriteTransaction<'a> {
+        &mut self.idlayer
     }
 }
 
-impl BackendWriteTransaction {
+impl<'a> BackendWriteTransaction<'a> {
     pub fn create(
         &mut self,
         au: &mut AuditScope,
@@ -483,22 +475,7 @@ impl BackendWriteTransaction {
                 })
                 .collect();
 
-            let identries: Result<Vec<_>, _> = c_entries
-                .iter()
-                .map(|e| {
-                    let dbe = e.to_dbentry();
-                    let data =
-                        serde_cbor::to_vec(&dbe).map_err(|_| OperationError::SerdeCborError)?;
-
-                    Ok(IdEntry {
-                        id: i64::try_from(e.get_id())
-                            .map_err(|_| OperationError::InvalidEntryID)?,
-                        data: data,
-                    })
-                })
-                .collect();
-
-            self.idlayer.write_identries(au, identries?)?;
+            self.idlayer.write_identries(au, c_entries.iter())?;
 
             // Now update the indexes as required.
             for e in c_entries.iter() {
@@ -510,7 +487,7 @@ impl BackendWriteTransaction {
     }
 
     pub fn modify(
-        &self,
+        &mut self,
         au: &mut AuditScope,
         pre_entries: &[Entry<EntrySealed, EntryCommitted>],
         post_entries: &[Entry<EntrySealed, EntryCommitted>],
@@ -525,13 +502,12 @@ impl BackendWriteTransaction {
 
         assert!(post_entries.len() == pre_entries.len());
 
+        /*
         // Assert the Id's exist on the entry, and serialise them.
         // Now, that means the ID must be > 0!!!
         let ser_entries: Result<Vec<IdEntry>, _> = post_entries
             .iter()
             .map(|e| {
-                let db_e = e.to_dbentry();
-
                 let id = i64::try_from(e.get_id())
                     .map_err(|_| OperationError::InvalidEntryID)
                     .and_then(|id| {
@@ -542,9 +518,7 @@ impl BackendWriteTransaction {
                         }
                     })?;
 
-                let data = serde_cbor::to_vec(&db_e).map_err(|_| OperationError::SerdeCborError)?;
-
-                Ok(IdEntry { id, data })
+                Ok(IdEntry { id, data: e.clone() })
             })
             .collect();
 
@@ -557,9 +531,10 @@ impl BackendWriteTransaction {
         if post_entries.len() != ser_entries.len() {
             return Err(OperationError::InvalidEntryState);
         }
+        */
 
         // Now, given the list of id's, update them
-        self.idlayer.write_identries(au, ser_entries)?;
+        self.idlayer.write_identries(au, post_entries.iter())?;
 
         // Finally, we now reindex all the changed entries. We do this by iterating and zipping
         // over the set, because we know the list is in the same order.
@@ -570,7 +545,7 @@ impl BackendWriteTransaction {
     }
 
     pub fn delete(
-        &self,
+        &mut self,
         au: &mut AuditScope,
         entries: &[Entry<EntrySealed, EntryCommitted>],
     ) -> Result<(), OperationError> {
@@ -584,28 +559,8 @@ impl BackendWriteTransaction {
                 return Err(OperationError::EmptyRequest);
             }
 
-            // Assert the Id's exist on the entry.
-            let id_list: Result<Vec<i64>, _> = entries
-                .iter()
-                .map(|e| {
-                    i64::try_from(e.get_id())
-                        .map_err(|_| OperationError::InvalidEntryID)
-                        .and_then(|id| {
-                            if id == 0 {
-                                Err(OperationError::InvalidEntryID)
-                            } else {
-                                Ok(id)
-                            }
-                        })
-                })
-                .collect();
-
-            let id_list = try_audit!(au, id_list);
-
-            // Simple: If the list of id's is not the same as the input list, we are missing id's
-            if entries.len() != id_list.len() {
-                return Err(OperationError::InvalidEntryState);
-            }
+            // Assert the id's exist on the entry.
+            let id_list = entries.iter().map(|e| e.get_id());
 
             // Now, given the list of id's, delete them.
             self.idlayer.delete_identry(au, id_list)?;
@@ -626,7 +581,7 @@ impl BackendWriteTransaction {
     // At the end, we flush those cchange outs in a single run.
     // For create this is probably a
     fn entry_index(
-        &self,
+        &mut self,
         audit: &mut AuditScope,
         pre: Option<&Entry<EntrySealed, EntryCommitted>>,
         post: Option<&Entry<EntrySealed, EntryCommitted>>,
@@ -651,7 +606,15 @@ impl BackendWriteTransaction {
             }
         };
 
-        let idx_diff = Entry::idx_diff(&self.idxmeta, pre, post);
+        // Extremely Cursed - Okay, we know that self.idxmeta will NOT be changed
+        // in this function, but we need to borrow self as mut for the caches in
+        // get_idl to work. As a result, this causes a double borrow. To work around
+        // this we discard the lifetime on idxmeta, because we know that it will
+        // remain constant for the life of the operation.
+
+        let idxmeta = unsafe { &(*(&self.idxmeta as *const _)) };
+
+        let idx_diff = Entry::idx_diff(&idxmeta, pre, post);
 
         idx_diff.iter()
             .try_for_each(|act| {
@@ -697,7 +660,7 @@ impl BackendWriteTransaction {
 
     #[allow(dead_code)]
     fn missing_idxs(
-        &self,
+        &mut self,
         audit: &mut AuditScope,
     ) -> Result<Vec<(String, IndexType)>, OperationError> {
         let idx_table_list = self.idlayer.list_idxs(audit)?;
@@ -736,14 +699,18 @@ impl BackendWriteTransaction {
             .try_for_each(|(attr, itype)| self.idlayer.create_idx(audit, attr, itype))
     }
 
-    pub fn upgrade_reindex(&self, audit: &mut AuditScope, v: i64) -> Result<(), OperationError> {
+    pub fn upgrade_reindex(
+        &mut self,
+        audit: &mut AuditScope,
+        v: i64,
+    ) -> Result<(), OperationError> {
         if self.get_db_index_version() < v {
             self.reindex(audit)?;
         }
         self.set_db_index_version(v)
     }
 
-    pub fn reindex(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
+    pub fn reindex(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
         // Purge the idxs
         unsafe { self.idlayer.purge_idxs(audit)? };
 
@@ -754,12 +721,7 @@ impl BackendWriteTransaction {
         // Future idea: Do this in batches of X amount to limit memory
         // consumption.
         let idl = IDL::ALLIDS;
-        let raw_entries = try_audit!(audit, self.idlayer.get_identry(audit, &idl));
-        let entries: Result<Vec<_>, _> = raw_entries
-            .into_iter()
-            .map(|ide| ide.into_entry())
-            .collect();
-        let entries = try_audit!(audit, entries);
+        let entries = try_audit!(audit, self.idlayer.get_identry(audit, &idl));
 
         // WHEN do we update name2uuid and uuid2name?
         // Do they become attrs of the idx_cache? Should that be a struct?
@@ -773,13 +735,13 @@ impl BackendWriteTransaction {
     }
 
     #[cfg(test)]
-    pub fn purge_idxs(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
+    pub fn purge_idxs(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
         unsafe { self.idlayer.purge_idxs(audit) }
     }
 
     #[cfg(test)]
     pub fn load_test_idl(
-        &self,
+        &mut self,
         audit: &mut AuditScope,
         attr: &String,
         itype: &IndexType,
@@ -847,18 +809,17 @@ impl BackendWriteTransaction {
 
         // Now, we setup all the entries with new ids.
         let mut id_max = 0;
-        let identries: Result<Vec<IdEntry>, _> = dbentries
+        let identries: Result<Vec<IdRawEntry>, _> = dbentries
             .iter()
-            .map(|ser_db_e| {
+            .map(|e| {
                 id_max += 1;
-                let data =
-                    serde_cbor::to_vec(&ser_db_e).map_err(|_| OperationError::SerdeCborError)?;
-
-                Ok(IdEntry { id: id_max, data })
+                let data = serde_cbor::to_vec(&e).map_err(|_| OperationError::SerdeCborError)?;
+                Ok(IdRawEntry { id: id_max, data })
             })
             .collect();
 
-        self.idlayer.write_identries(audit, identries?)?;
+        self.idlayer
+            .write_identries_raw(audit, identries?.into_iter())?;
 
         // for debug
         /*
@@ -892,7 +853,7 @@ impl BackendWriteTransaction {
         Ok(nsid)
     }
 
-    pub fn get_db_s_uuid(&self) -> Uuid {
+    pub fn get_db_s_uuid(&mut self) -> Uuid {
         match self
             .get_idlayer()
             .get_db_s_uuid()
@@ -909,7 +870,7 @@ impl BackendWriteTransaction {
         Ok(nsid)
     }
 
-    pub fn get_db_d_uuid(&self) -> Uuid {
+    pub fn get_db_d_uuid(&mut self) -> Uuid {
         match self
             .get_idlayer()
             .get_db_d_uuid()
@@ -920,11 +881,11 @@ impl BackendWriteTransaction {
         }
     }
 
-    fn get_db_index_version(&self) -> i64 {
+    fn get_db_index_version(&mut self) -> i64 {
         self.get_idlayer().get_db_index_version()
     }
 
-    fn set_db_index_version(&self, v: i64) -> Result<(), OperationError> {
+    fn set_db_index_version(&mut self, v: i64) -> Result<(), OperationError> {
         self.get_idlayer().set_db_index_version(v)
     }
 }
@@ -935,7 +896,7 @@ impl Backend {
         // this has a ::memory() type, but will path == "" work?
         audit_segment!(audit, || {
             let be = Backend {
-                idlayer: IdlSqlite::new(audit, path, pool_size)?,
+                idlayer: Arc::new(IdlArcSqlite::new(audit, path, pool_size)?),
             };
 
             // Now complete our setup with a txn

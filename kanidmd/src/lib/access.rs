@@ -52,7 +52,7 @@ pub struct AccessControlSearch {
 impl AccessControlSearch {
     pub fn try_from(
         audit: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         if !value.attribute_value_pres("class", &CLASS_ACS) {
@@ -102,7 +102,7 @@ pub struct AccessControlDelete {
 impl AccessControlDelete {
     pub fn try_from(
         audit: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         if !value.attribute_value_pres("class", &CLASS_ACD) {
@@ -145,7 +145,7 @@ pub struct AccessControlCreate {
 impl AccessControlCreate {
     pub fn try_from(
         audit: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         if !value.attribute_value_pres("class", &CLASS_ACC) {
@@ -203,7 +203,7 @@ pub struct AccessControlModify {
 impl AccessControlModify {
     pub fn try_from(
         audit: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         if !value.attribute_value_pres("class", &CLASS_ACM) {
@@ -271,7 +271,7 @@ struct AccessControlProfile {
 impl AccessControlProfile {
     fn try_from(
         audit: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         // Assert we have class access_control_profile
@@ -1308,11 +1308,11 @@ mod tests {
             // really protects us *a lot* here, but it's nice to have defence and
             // layers of validation.
 
-            let qs_write = qs.write(duration_from_epoch_now());
+            let mut qs_write = qs.write(duration_from_epoch_now());
 
             acp_from_entry_err!(
                 audit,
-                &qs_write,
+                &mut qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -1327,7 +1327,7 @@ mod tests {
 
             acp_from_entry_err!(
                 audit,
-                &qs_write,
+                &mut qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -1342,7 +1342,7 @@ mod tests {
 
             acp_from_entry_err!(
                 audit,
-                &qs_write,
+                &mut qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -1360,7 +1360,7 @@ mod tests {
             // "\"Self\""
             acp_from_entry_ok!(
                 audit,
-                &qs_write,
+                &mut qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -1384,11 +1384,11 @@ mod tests {
     #[test]
     fn test_access_acp_delete_parser() {
         run_test!(|qs: &QueryServer, audit: &mut AuditScope| {
-            let qs_write = qs.write(duration_from_epoch_now());
+            let mut qs_write = qs.write(duration_from_epoch_now());
 
             acp_from_entry_err!(
                 audit,
-                &qs_write,
+                &mut qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -1409,7 +1409,7 @@ mod tests {
 
             acp_from_entry_ok!(
                 audit,
-                &qs_write,
+                &mut qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -1434,12 +1434,12 @@ mod tests {
     fn test_access_acp_search_parser() {
         run_test!(|qs: &QueryServer, audit: &mut AuditScope| {
             // Test that parsing search access controls works.
-            let qs_write = qs.write(duration_from_epoch_now());
+            let mut qs_write = qs.write(duration_from_epoch_now());
 
             // Missing class acp
             acp_from_entry_err!(
                 audit,
-                &qs_write,
+                &mut qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -1462,7 +1462,7 @@ mod tests {
             // Missing class acs
             acp_from_entry_err!(
                 audit,
-                &qs_write,
+                &mut qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -1485,7 +1485,7 @@ mod tests {
             // Missing attr acp_search_attr
             acp_from_entry_err!(
                 audit,
-                &qs_write,
+                &mut qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -1507,7 +1507,7 @@ mod tests {
             // All good!
             acp_from_entry_ok!(
                 audit,
-                &qs_write,
+                &mut qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -1533,11 +1533,11 @@ mod tests {
     fn test_access_acp_modify_parser() {
         run_test!(|qs: &QueryServer, audit: &mut AuditScope| {
             // Test that parsing modify access controls works.
-            let qs_write = qs.write(duration_from_epoch_now());
+            let mut qs_write = qs.write(duration_from_epoch_now());
 
             acp_from_entry_err!(
                 audit,
-                &qs_write,
+                &mut qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -1561,7 +1561,7 @@ mod tests {
 
             acp_from_entry_ok!(
                 audit,
-                &qs_write,
+                &mut qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -1582,7 +1582,7 @@ mod tests {
 
             acp_from_entry_ok!(
                 audit,
-                &qs_write,
+                &mut qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -1610,11 +1610,11 @@ mod tests {
     fn test_access_acp_create_parser() {
         run_test!(|qs: &QueryServer, audit: &mut AuditScope| {
             // Test that parsing create access controls works.
-            let qs_write = qs.write(duration_from_epoch_now());
+            let mut qs_write = qs.write(duration_from_epoch_now());
 
             acp_from_entry_err!(
                 audit,
-                &qs_write,
+                &mut qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -1637,7 +1637,7 @@ mod tests {
 
             acp_from_entry_ok!(
                 audit,
-                &qs_write,
+                &mut qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -1658,7 +1658,7 @@ mod tests {
 
             acp_from_entry_ok!(
                 audit,
-                &qs_write,
+                &mut qs_write,
                 r#"{
                     "valid": null,
                     "state": null,
@@ -1688,7 +1688,7 @@ mod tests {
             // given a single &str, we can evaluate all types from a single record.
             // This is valid, and could exist, IE a rule to allow create, search and modify
             // over a single scope.
-            let qs_write = qs.write(duration_from_epoch_now());
+            let mut qs_write = qs.write(duration_from_epoch_now());
 
             let e: &str = r#"{
                     "valid": null,
@@ -1719,10 +1719,10 @@ mod tests {
                     }
                 }"#;
 
-            acp_from_entry_ok!(audit, &qs_write, e, AccessControlCreate);
-            acp_from_entry_ok!(audit, &qs_write, e, AccessControlDelete);
-            acp_from_entry_ok!(audit, &qs_write, e, AccessControlModify);
-            acp_from_entry_ok!(audit, &qs_write, e, AccessControlSearch);
+            acp_from_entry_ok!(audit, &mut qs_write, e, AccessControlCreate);
+            acp_from_entry_ok!(audit, &mut qs_write, e, AccessControlDelete);
+            acp_from_entry_ok!(audit, &mut qs_write, e, AccessControlModify);
+            acp_from_entry_ok!(audit, &mut qs_write, e, AccessControlSearch);
         })
     }
 

@@ -14,9 +14,9 @@ use std::time::Duration;
 // auth policies would exist, but each credHandler has to be a whole
 // encapsulated unit of function.
 
-const BAD_PASSWORD_MSG: &'static str = "incorrect password";
-const BAD_TOTP_MSG: &'static str = "incorrect totp";
-const BAD_AUTH_TYPE_MSG: &'static str = "invalid authentication method in this context";
+const BAD_PASSWORD_MSG: &str = "incorrect password";
+const BAD_TOTP_MSG: &str = "incorrect totp";
+const BAD_AUTH_TYPE_MSG: &str = "invalid authentication method in this context";
 
 enum CredState {
     Success(Vec<Claim>),

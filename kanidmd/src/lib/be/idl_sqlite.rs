@@ -1,5 +1,6 @@
 use crate::audit::AuditScope;
-use crate::be::{IdEntry, IDL};
+use crate::be::{IdRawEntry, IDL};
+use crate::entry::{Entry, EntryCommitted, EntrySealed};
 use crate::value::IndexType;
 use idlset::IDLBitRange;
 use kanidm_proto::v1::{ConsistencyError, OperationError};
@@ -7,13 +8,53 @@ use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::OptionalExtension;
 use rusqlite::NO_PARAMS;
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 use uuid::Uuid;
 
 // use uuid::Uuid;
 
 const DBV_ID2ENTRY: &str = "id2entry";
 const DBV_INDEXV: &str = "indexv";
+
+#[derive(Debug)]
+pub struct IdSqliteEntry {
+    id: i64,
+    data: Vec<u8>,
+}
+
+impl TryFrom<IdSqliteEntry> for IdRawEntry {
+    type Error = OperationError;
+
+    fn try_from(value: IdSqliteEntry) -> Result<Self, Self::Error> {
+        if value.id <= 0 {
+            return Err(OperationError::InvalidEntryID);
+        }
+        Ok(IdRawEntry {
+            id: value
+                .id
+                .try_into()
+                .map_err(|_| OperationError::InvalidEntryID)?,
+            data: value.data,
+        })
+    }
+}
+
+impl TryFrom<IdRawEntry> for IdSqliteEntry {
+    type Error = OperationError;
+
+    fn try_from(value: IdRawEntry) -> Result<Self, Self::Error> {
+        if value.id <= 0 {
+            return Err(OperationError::InvalidEntryID);
+        }
+        Ok(IdSqliteEntry {
+            id: value
+                .id
+                .try_into()
+                .map_err(|_| OperationError::InvalidEntryID)?,
+            data: value.data,
+        })
+    }
+}
 
 #[derive(Clone)]
 pub struct IdlSqlite {
@@ -33,7 +74,22 @@ pub struct IdlSqliteWriteTransaction {
 pub trait IdlSqliteTransaction {
     fn get_conn(&self) -> &r2d2::PooledConnection<r2d2_sqlite::SqliteConnectionManager>;
 
-    fn get_identry(&self, au: &mut AuditScope, idl: &IDL) -> Result<Vec<IdEntry>, OperationError> {
+    fn get_identry(
+        &self,
+        au: &mut AuditScope,
+        idl: &IDL,
+    ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
+        self.get_identry_raw(au, idl)?
+            .into_iter()
+            .map(|ide| ide.into_entry())
+            .collect()
+    }
+
+    fn get_identry_raw(
+        &self,
+        au: &mut AuditScope,
+        idl: &IDL,
+    ) -> Result<Vec<IdRawEntry>, OperationError> {
         // is the idl allids?
         match idl {
             IDL::ALLIDS => {
@@ -45,7 +101,7 @@ pub trait IdlSqliteTransaction {
                 );
                 let id2entry_iter = try_audit!(
                     au,
-                    stmt.query_map(NO_PARAMS, |row| Ok(IdEntry {
+                    stmt.query_map(NO_PARAMS, |row| Ok(IdSqliteEntry {
                         id: row.get(0)?,
                         data: row.get(1)?,
                     })),
@@ -57,6 +113,10 @@ pub trait IdlSqliteTransaction {
                         v.map_err(|e| {
                             audit_log!(au, "SQLite Error {:?}", e);
                             OperationError::SQLiteError
+                        })
+                        .and_then(|ise| {
+                            // Convert the idsqlite to id raw
+                            ise.try_into()
                         })
                     })
                     .collect()
@@ -78,7 +138,7 @@ pub trait IdlSqliteTransaction {
                     let iid = i64::try_from(id).map_err(|_| OperationError::InvalidEntryID)?;
                     let id2entry_iter = stmt
                         .query_map(&[&iid], |row| {
-                            Ok(IdEntry {
+                            Ok(IdSqliteEntry {
                                 id: row.get(0)?,
                                 data: row.get(1)?,
                             })
@@ -93,6 +153,10 @@ pub trait IdlSqliteTransaction {
                             v.map_err(|e| {
                                 audit_log!(au, "SQLite Error {:?}", e);
                                 OperationError::SQLiteError
+                            })
+                            .and_then(|ise| {
+                                // Convert the idsqlite to id raw
+                                ise.try_into()
                             })
                         })
                         .collect();
@@ -246,12 +310,14 @@ pub trait IdlSqliteTransaction {
         })
     }
 
+    #[allow(clippy::let_and_return)]
     fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
         let mut stmt = match self.get_conn().prepare("PRAGMA integrity_check;") {
             Ok(r) => r,
             Err(_) => return vec![Err(ConsistencyError::SqliteIntegrityFailure)],
         };
 
+        // Allow this as it actually extends the life of stmt
         let r = match stmt.query(NO_PARAMS) {
             Ok(mut rows) => {
                 match rows.next() {
@@ -361,7 +427,7 @@ impl IdlSqliteWriteTransaction {
             })
     }
 
-    pub fn get_id2entry_max_id(&self) -> Result<i64, OperationError> {
+    pub fn get_id2entry_max_id(&self) -> Result<u64, OperationError> {
         let mut stmt = self
             .conn
             .prepare("SELECT MAX(id) as id_max FROM id2entry")
@@ -372,23 +438,50 @@ impl IdlSqliteWriteTransaction {
             .exists(NO_PARAMS)
             .map_err(|_| OperationError::SQLiteError)?;
 
-        Ok(if v {
+        if v {
             // We have some rows, let get max!
             let i: Option<i64> = stmt
                 .query_row(NO_PARAMS, |row| row.get(0))
                 .map_err(|_| OperationError::SQLiteError)?;
             i.unwrap_or(0)
+                .try_into()
+                .map_err(|_| OperationError::InvalidEntryID)
         } else {
             // No rows are present, return a 0.
-            0
-        })
+            Ok(0)
+        }
     }
 
-    pub fn write_identries(
+    pub fn write_identries<'b, I>(
+        &'b self,
+        au: &mut AuditScope,
+        entries: I,
+    ) -> Result<(), OperationError>
+    where
+        I: Iterator<Item = &'b Entry<EntrySealed, EntryCommitted>>,
+    {
+        let raw_entries: Result<Vec<_>, _> = entries
+            .map(|e| {
+                let dbe = e.to_dbentry();
+                let data = serde_cbor::to_vec(&dbe).map_err(|_| OperationError::SerdeCborError)?;
+
+                Ok(IdRawEntry {
+                    id: e.get_id(),
+                    data,
+                })
+            })
+            .collect();
+        self.write_identries_raw(au, raw_entries?.into_iter())
+    }
+
+    pub fn write_identries_raw<I>(
         &self,
         au: &mut AuditScope,
-        entries: Vec<IdEntry>,
-    ) -> Result<(), OperationError> {
+        mut entries: I,
+    ) -> Result<(), OperationError>
+    where
+        I: Iterator<Item = IdRawEntry>,
+    {
         let mut stmt = try_audit!(
             au,
             self.conn
@@ -399,18 +492,21 @@ impl IdlSqliteWriteTransaction {
 
         try_audit!(
             au,
-            entries.iter().try_for_each(|ser_ent| {
+            entries.try_for_each(|e| {
+                let ser_ent = IdSqliteEntry::try_from(e)?;
                 stmt.execute_named(&[(":id", &ser_ent.id), (":data", &ser_ent.data)])
                     // remove the updated usize
                     .map(|_| ())
-            }),
-            "RusqliteError: {:?}",
-            OperationError::SQLiteError
+                    .map_err(|_| OperationError::SQLiteError)
+            })
         );
         Ok(())
     }
 
-    pub fn delete_identry(&self, au: &mut AuditScope, idl: Vec<i64>) -> Result<(), OperationError> {
+    pub fn delete_identry<I>(&self, au: &mut AuditScope, mut idl: I) -> Result<(), OperationError>
+    where
+        I: Iterator<Item = u64>,
+    {
         let mut stmt = try_audit!(
             au,
             self.conn.prepare("DELETE FROM id2entry WHERE id = :id"),
@@ -418,8 +514,21 @@ impl IdlSqliteWriteTransaction {
             OperationError::SQLiteError
         );
 
-        idl.iter().try_for_each(|id| {
-            stmt.execute(&[&id])
+        idl.try_for_each(|id| {
+            let iid: i64 = id
+                .try_into()
+                .map_err(|_| OperationError::InvalidEntryID)
+                .and_then(|i| {
+                    if i > 0 {
+                        Ok(i)
+                    } else {
+                        Err(OperationError::InvalidEntryID)
+                    }
+                })?;
+
+            debug_assert!(iid > 0);
+
+            stmt.execute(&[&iid])
                 .map(|_| ())
                 .map_err(|_| OperationError::SQLiteError)
         })

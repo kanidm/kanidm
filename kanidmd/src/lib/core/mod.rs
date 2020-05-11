@@ -730,7 +730,7 @@ async fn account_post_id_unix_auth(
     let uat = get_current_user(&session);
     let id = path.into_inner();
     let m_obj = IdmAccountUnixAuthMessage {
-        uat: uat,
+        uat,
         uuid_or_name: id,
         cred: obj.into_inner().value,
     };
@@ -1096,7 +1096,7 @@ pub fn backup_server_core(config: Configuration, dst_path: &str) {
     };
     let mut audit = AuditScope::new("backend_backup");
 
-    let be_ro_txn = be.read();
+    let mut be_ro_txn = be.read();
     let r = be_ro_txn.backup(&mut audit, dst_path);
     debug!("{}", audit);
     match r {
@@ -1157,7 +1157,7 @@ pub fn restore_server_core(config: Configuration, dst_path: &str) {
 
     info!("Start reindex phase ...");
 
-    let qs_write = qs.write(duration_from_epoch_now());
+    let mut qs_write = qs.write(duration_from_epoch_now());
     let r = qs_write
         .reindex(&mut audit)
         .and_then(|_| qs_write.commit(&mut audit));
@@ -1195,7 +1195,7 @@ pub fn reindex_server_core(config: Configuration) {
     let idxmeta = { schema.write().get_idxmeta_set() };
 
     // Reindex only the core schema attributes to bootstrap the process.
-    let be_wr_txn = be.write(idxmeta);
+    let mut be_wr_txn = be.write(idxmeta);
     let r = be_wr_txn
         .reindex(&mut audit)
         .and_then(|_| be_wr_txn.commit(&mut audit));
@@ -1222,7 +1222,7 @@ pub fn reindex_server_core(config: Configuration) {
 
     info!("Start Index Phase 2 ...");
 
-    let qs_write = qs.write(duration_from_epoch_now());
+    let mut qs_write = qs.write(duration_from_epoch_now());
     let r = qs_write
         .reindex(&mut audit)
         .and_then(|_| qs_write.commit(&mut audit));

@@ -63,7 +63,7 @@ macro_rules! run_create_test {
                 let r = qs_write.create(&mut au_test, &ce);
                 debug!("r: {:?}", r);
                 assert!(r == $expect);
-                $check(&mut au_test, &qs_write);
+                $check(&mut au_test, &mut qs_write);
                 match r {
                     Ok(_) => {
                         qs_write.commit(&mut au_test).expect("commit failure!");
@@ -119,7 +119,7 @@ macro_rules! run_modify_test {
             {
                 let mut qs_write = qs.write(duration_from_epoch_now());
                 let r = qs_write.modify(&mut au_test, &me);
-                $check(&mut au_test, &qs_write);
+                $check(&mut au_test, &mut qs_write);
                 debug!("{:?}", r);
                 assert!(r == $expect);
                 match r {
@@ -176,7 +176,7 @@ macro_rules! run_delete_test {
             {
                 let mut qs_write = qs.write(duration_from_epoch_now());
                 let r = qs_write.delete(&mut au_test, &de);
-                $check(&mut au_test, &qs_write);
+                $check(&mut au_test, &mut qs_write);
                 assert!(r == $expect);
                 match r {
                     Ok(_) => {

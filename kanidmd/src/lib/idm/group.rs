@@ -56,7 +56,7 @@ impl Group {
     pub fn try_from_account_entry_red_ro(
         au: &mut AuditScope,
         value: &Entry<EntryReduced, EntryCommitted>,
-        qs: &QueryServerReadTransaction,
+        qs: &mut QueryServerReadTransaction,
     ) -> Result<Vec<Self>, OperationError> {
         try_from_account_e!(au, value, qs)
     }
@@ -64,7 +64,7 @@ impl Group {
     pub fn try_from_account_entry_ro(
         au: &mut AuditScope,
         value: &Entry<EntrySealed, EntryCommitted>,
-        qs: &QueryServerReadTransaction,
+        qs: &mut QueryServerReadTransaction,
     ) -> Result<Vec<Self>, OperationError> {
         try_from_account_e!(au, value, qs)
     }
@@ -72,7 +72,7 @@ impl Group {
     pub fn try_from_account_entry_rw(
         au: &mut AuditScope,
         value: &Entry<EntrySealed, EntryCommitted>,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
     ) -> Result<Vec<Self>, OperationError> {
         try_from_account_e!(au, value, qs)
     }

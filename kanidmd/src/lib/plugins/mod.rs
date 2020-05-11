@@ -102,7 +102,7 @@ trait Plugin {
 
     fn verify(
         _au: &mut AuditScope,
-        _qs: &QueryServerReadTransaction,
+        _qs: &mut QueryServerReadTransaction,
     ) -> Vec<Result<(), ConsistencyError>> {
         debug!("plugin {} has an unimplemented verify!", Self::id());
         vec![Err(ConsistencyError::Unknown)]
@@ -425,7 +425,7 @@ impl Plugins {
 
     pub fn run_verify(
         au: &mut AuditScope,
-        qs: &QueryServerReadTransaction,
+        qs: &mut QueryServerReadTransaction,
     ) -> Vec<Result<(), ConsistencyError>> {
         let mut results = Vec::new();
         run_verify_plugin!(au, qs, &mut results, base::Base);

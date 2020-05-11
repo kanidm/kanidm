@@ -304,7 +304,7 @@ impl Entry<EntryInit, EntryNew> {
     pub fn from_proto_entry(
         audit: &mut AuditScope,
         e: &ProtoEntry,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         // Why not the trait? In the future we may want to extend
         // this with server aware functions for changes of the
@@ -339,7 +339,7 @@ impl Entry<EntryInit, EntryNew> {
     pub fn from_proto_entry_str(
         audit: &mut AuditScope,
         es: &str,
-        qs: &QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         audit_log!(audit, "Parsing -> {}", es);
         // str -> Proto entry
@@ -1282,7 +1282,7 @@ impl Entry<EntryReduced, EntryCommitted> {
     pub fn to_pe(
         &self,
         audit: &mut AuditScope,
-        qs: &QueryServerReadTransaction,
+        qs: &mut QueryServerReadTransaction,
     ) -> Result<ProtoEntry, OperationError> {
         // Turn values -> Strings.
         let attrs: Result<_, _> = self

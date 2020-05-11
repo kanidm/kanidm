@@ -3,7 +3,6 @@ use std::path::PathBuf;
 use kanidm_client::KanidmClientBuilder;
 
 use log::debug;
-use shellexpand;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]

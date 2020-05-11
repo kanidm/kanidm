@@ -220,7 +220,7 @@ impl Plugin for Base {
 
     fn verify(
         au: &mut AuditScope,
-        qs: &QueryServerReadTransaction,
+        qs: &mut QueryServerReadTransaction,
     ) -> Vec<Result<(), ConsistencyError>> {
         // Verify all uuid's are unique?
         // Probably the literally worst thing ...
@@ -329,7 +329,7 @@ mod tests {
             preload,
             create,
             None,
-            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
+            |au: &mut AuditScope, qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(
                         au,
@@ -424,7 +424,7 @@ mod tests {
             preload,
             create,
             None,
-            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
+            |au: &mut AuditScope, qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(
                         au,

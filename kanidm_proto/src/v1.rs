@@ -1,4 +1,3 @@
-use base32;
 use std::collections::BTreeMap;
 use std::fmt;
 use uuid::Uuid;
@@ -405,14 +404,13 @@ pub enum TOTPAlgo {
     Sha512,
 }
 
-impl TOTPAlgo {
-    pub fn to_string(&self) -> String {
+impl fmt::Display for TOTPAlgo {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            TOTPAlgo::Sha1 => "SHA1",
-            TOTPAlgo::Sha256 => "SHA256",
-            TOTPAlgo::Sha512 => "SHA512",
+            TOTPAlgo::Sha1 => write!(f, "SHA1"),
+            TOTPAlgo::Sha256 => write!(f, "SHA256"),
+            TOTPAlgo::Sha512 => write!(f, "SHA512"),
         }
-        .to_string()
     }
 }
 
