@@ -48,15 +48,15 @@ pub struct IdmServerWriteTransaction<'a> {
     // the idm in memory structures (maybe the query server too). This is
     // things like authentication
     sessions: BptreeMapWriteTxn<'a, Uuid, AuthSession>,
-    pub qs_read: QueryServerReadTransaction,
+    pub qs_read: QueryServerReadTransaction<'a>,
     // thread/server id
     sid: SID,
 }
 
-pub struct IdmServerProxyReadTransaction {
+pub struct IdmServerProxyReadTransaction<'a> {
     // This contains read-only methods, like getting users, groups
     // and other structured content.
-    pub qs_read: QueryServerReadTransaction,
+    pub qs_read: QueryServerReadTransaction<'a>,
 }
 
 pub struct IdmServerProxyWriteTransaction<'a> {
@@ -259,7 +259,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
     }
 }
 
-impl IdmServerProxyReadTransaction {
+impl<'a> IdmServerProxyReadTransaction<'a> {
     pub fn get_radiusauthtoken(
         &mut self,
         au: &mut AuditScope,

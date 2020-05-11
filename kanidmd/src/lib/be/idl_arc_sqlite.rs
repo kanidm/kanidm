@@ -12,8 +12,10 @@ use uuid::Uuid;
 
 // use std::borrow::Borrow;
 
-const DEFAULT_CACHE_SIZE: usize = 1024;
+const DEFAULT_CACHE_TARGET: usize = 1024;
 const DEFAULT_IDL_CACHE_RATIO: usize = 16;
+const DEFAULT_CACHE_RMISS: usize = 8;
+const DEFAULT_CACHE_WMISS: usize = 8;
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 struct IdlCacheKey {
@@ -45,10 +47,10 @@ pub struct IdlArcSqlite {
     idl_cache: Arc<IdlCacheKey, Box<IDLBitRange>>,
 }
 
-pub struct IdlArcSqliteReadTransaction {
+pub struct IdlArcSqliteReadTransaction<'a> {
     db: IdlSqliteReadTransaction,
-    entry_cache: ArcReadTxn<u64, Box<Entry<EntrySealed, EntryCommitted>>>,
-    idl_cache: ArcReadTxn<IdlCacheKey, Box<IDLBitRange>>,
+    entry_cache: ArcReadTxn<'a, u64, Box<Entry<EntrySealed, EntryCommitted>>>,
+    idl_cache: ArcReadTxn<'a, IdlCacheKey, Box<IDLBitRange>>,
 }
 
 pub struct IdlArcSqliteWriteTransaction<'a> {
@@ -183,7 +185,7 @@ pub trait IdlArcSqliteTransaction {
     fn verify(&self) -> Vec<Result<(), ConsistencyError>>;
 }
 
-impl IdlArcSqliteTransaction for IdlArcSqliteReadTransaction {
+impl<'a> IdlArcSqliteTransaction for IdlArcSqliteReadTransaction<'a> {
     fn get_identry(
         &mut self,
         au: &mut AuditScope,
@@ -434,10 +436,20 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
 impl IdlArcSqlite {
     pub fn new(audit: &mut AuditScope, path: &str, pool_size: u32) -> Result<Self, OperationError> {
         let db = IdlSqlite::new(audit, path, pool_size)?;
-        let entry_cache = Arc::new(DEFAULT_CACHE_SIZE);
+        let entry_cache = Arc::new(
+            DEFAULT_CACHE_TARGET,
+            pool_size as usize,
+            DEFAULT_CACHE_RMISS,
+            DEFAULT_CACHE_WMISS,
+        );
         // The idl cache should have smaller items, and is critical for fast searches
         // so we allow it to have a higher ratio of items relative to the entries.
-        let idl_cache = Arc::new(DEFAULT_CACHE_SIZE * DEFAULT_IDL_CACHE_RATIO);
+        let idl_cache = Arc::new(
+            DEFAULT_CACHE_TARGET * DEFAULT_IDL_CACHE_RATIO,
+            pool_size as usize,
+            DEFAULT_CACHE_RMISS,
+            DEFAULT_CACHE_WMISS,
+        );
 
         Ok(IdlArcSqlite {
             db,

@@ -644,8 +644,8 @@ pub trait QueryServerTransaction {
     }
 }
 
-pub struct QueryServerReadTransaction {
-    be_txn: BackendReadTransaction,
+pub struct QueryServerReadTransaction<'a> {
+    be_txn: BackendReadTransaction<'a>,
     // Anything else? In the future, we'll need to have a schema transaction
     // type, maybe others?
     schema: SchemaReadTransaction,
@@ -655,10 +655,10 @@ pub struct QueryServerReadTransaction {
 // Actually conduct a search request
 // This is the core of the server, as it processes the entire event
 // applies all parts required in order and more.
-impl QueryServerTransaction for QueryServerReadTransaction {
-    type BackendTransactionType = BackendReadTransaction;
+impl<'a> QueryServerTransaction for QueryServerReadTransaction<'a> {
+    type BackendTransactionType = BackendReadTransaction<'a>;
 
-    fn get_be_txn(&mut self) -> &mut BackendReadTransaction {
+    fn get_be_txn(&mut self) -> &mut BackendReadTransaction<'a> {
         &mut self.be_txn
     }
 
@@ -675,7 +675,7 @@ impl QueryServerTransaction for QueryServerReadTransaction {
     }
 }
 
-impl QueryServerReadTransaction {
+impl<'a> QueryServerReadTransaction<'a> {
     // Verify the data content of the server is as expected. This will probably
     // call various functions for validation, including possibly plugin
     // verifications.

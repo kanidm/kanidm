@@ -46,8 +46,8 @@ pub struct Backend {
     idlayer: Arc<IdlArcSqlite>,
 }
 
-pub struct BackendReadTransaction {
-    idlayer: IdlArcSqliteReadTransaction,
+pub struct BackendReadTransaction<'a> {
+    idlayer: IdlArcSqliteReadTransaction<'a>,
 }
 
 pub struct BackendWriteTransaction<'a> {
@@ -431,9 +431,10 @@ pub trait BackendTransaction {
     }
 }
 
-impl BackendTransaction for BackendReadTransaction {
-    type IdlLayerType = IdlArcSqliteReadTransaction;
-    fn get_idlayer(&mut self) -> &mut IdlArcSqliteReadTransaction {
+impl<'a> BackendTransaction for BackendReadTransaction<'a> {
+    type IdlLayerType = IdlArcSqliteReadTransaction<'a>;
+
+    fn get_idlayer(&mut self) -> &mut IdlArcSqliteReadTransaction<'a> {
         &mut self.idlayer
     }
 }
