@@ -156,7 +156,7 @@ impl AccountOpt {
         }
     }
 
-    pub fn exec(&self) -> () {
+    pub fn exec(&self) {
         match self {
             // id/cred/primary/set
             AccountOpt::Credential(acopt) => match acopt {

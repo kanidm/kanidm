@@ -730,7 +730,7 @@ async fn account_post_id_unix_auth(
     let uat = get_current_user(&session);
     let id = path.into_inner();
     let m_obj = IdmAccountUnixAuthMessage {
-        uat: uat,
+        uat,
         uuid_or_name: id,
         cred: obj.into_inner().value,
     };

@@ -130,7 +130,7 @@ impl UnixUserAccount {
             gidnumber: self.gidnumber,
             uuid: self.uuid.to_hyphenated_ref().to_string(),
             shell: self.shell.clone(),
-            groups: groups,
+            groups,
             sshkeys: self.sshkeys.clone(),
         })
     }

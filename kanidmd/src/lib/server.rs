@@ -810,7 +810,7 @@ impl QueryServer {
             // which today I don't think we have ... yet.
             committed: false,
             d_uuid: self.d_uuid,
-            cid: cid,
+            cid,
             be_txn: self.be.write(idxmeta),
             schema: schema_write,
             accesscontrols: self.accesscontrols.write(),

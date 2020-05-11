@@ -8,9 +8,7 @@ use kanidm_proto::v1::Modify;
 
 use log::{debug, error, info};
 use rayon::prelude::*;
-use serde_json;
 use structopt::StructOpt;
-use zxcvbn;
 
 #[derive(Debug, StructOpt)]
 struct ClientOpt {

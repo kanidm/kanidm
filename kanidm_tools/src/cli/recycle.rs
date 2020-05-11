@@ -23,7 +23,7 @@ impl RecycleOpt {
         }
     }
 
-    pub fn exec(&self) -> () {
+    pub fn exec(&self) {
         match self {
             RecycleOpt::List(copt) => {
                 let client = copt.to_client();

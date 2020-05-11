@@ -29,7 +29,6 @@ use concread::collections::bptree::*;
 use rand::prelude::*;
 use std::time::Duration;
 use uuid::Uuid;
-use zxcvbn;
 
 pub struct IdmServer {
     // There is a good reason to keep this single thread - it
@@ -87,7 +86,7 @@ impl IdmServer {
             sessions: self.sessions.write(),
             // qs: &self.qs,
             qs_read: self.qs.read(),
-            sid: sid,
+            sid,
         }
     }
 
@@ -105,7 +104,7 @@ impl IdmServer {
         IdmServerProxyWriteTransaction {
             mfareg_sessions: self.mfareg_sessions.write(),
             qs_write: self.qs.write(ts),
-            sid: sid,
+            sid,
         }
     }
 }

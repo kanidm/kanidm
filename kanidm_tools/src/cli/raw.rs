@@ -67,7 +67,7 @@ impl RawOpt {
         }
     }
 
-    pub fn exec(&self) -> () {
+    pub fn exec(&self) {
         match self {
             RawOpt::Search(sopt) => {
                 let client = sopt.commonopts.to_client();

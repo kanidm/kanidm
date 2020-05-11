@@ -32,7 +32,7 @@ impl SelfOpt {
         }
     }
 
-    pub fn exec(&self) -> () {
+    pub fn exec(&self) {
         match self {
             SelfOpt::Whoami(copt) => {
                 let client = copt.to_client();
@@ -91,7 +91,7 @@ impl ClientOpt {
         }
     }
 
-    pub fn exec(&self) -> () {
+    pub fn exec(&self) {
         match self {
             ClientOpt::Raw(ropt) => ropt.exec(),
             ClientOpt::CSelf(csopt) => csopt.exec(),

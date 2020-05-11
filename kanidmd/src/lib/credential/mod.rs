@@ -1,5 +1,4 @@
 use crate::be::dbvalue::{DbCredV1, DbPasswordV1};
-use base64;
 use openssl::hash::MessageDigest;
 use openssl::pkcs5::pbkdf2_hmac;
 use rand::prelude::*;

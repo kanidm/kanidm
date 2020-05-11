@@ -33,7 +33,7 @@ pub const CHANGELOG_MAX_AGE: u64 = 86400;
 pub const RECYCLEBIN_MAX_AGE: u64 = 300;
 #[cfg(not(test))]
 /// In production we allow 1 week
-pub const RECYCLEBIN_MAX_AGE: u64 = 604800;
+pub const RECYCLEBIN_MAX_AGE: u64 = 604_800;
 
 // 5 minute auth session window.
 pub const AUTH_SESSION_TIMEOUT: u64 = 300;

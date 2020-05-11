@@ -310,12 +310,14 @@ pub trait IdlSqliteTransaction {
         })
     }
 
+    #[allow(clippy::let_and_return)]
     fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
         let mut stmt = match self.get_conn().prepare("PRAGMA integrity_check;") {
             Ok(r) => r,
             Err(_) => return vec![Err(ConsistencyError::SqliteIntegrityFailure)],
         };
 
+        // Allow this as it actually extends the life of stmt
         let r = match stmt.query(NO_PARAMS) {
             Ok(mut rows) => {
                 match rows.next() {
