@@ -49,3 +49,7 @@ install-tools:
 prep:
 	cargo outdated -R
 	cargo audit
+
+update-version: ## update version form VERSION file in all Cargo.toml manifests
+update-version: */Cargo.toml
+	@VERSION=`cat VERSION`; sed -i "0,/^version\ \= .*$$/{s//version = \"$$VERSION\"/}" */Cargo.toml
