@@ -566,9 +566,7 @@ impl KanidmClient {
         id: &str,
         gidnumber: Option<u32>,
     ) -> Result<(), ClientError> {
-        let gx = GroupUnixExtend {
-            gidnumber,
-        };
+        let gx = GroupUnixExtend { gidnumber };
         self.perform_post_request(format!("/v1/group/{}/_unix", id).as_str(), gx)
     }
 
