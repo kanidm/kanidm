@@ -4,22 +4,8 @@ name: Rust
 on: [push, pull_request]
 
 jobs:
-  fmt:
-    name: Rustfmt
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v2
+  # TODO clippy
 
-      - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1.0.6
-        with:
-          toolchain: stable
-          override: true
-          components: rustfmt
-
-      - name: Run cargo fmt
-        run: cargo fmt --all -- --check
 
   build:
     runs-on: ubuntu-latest
