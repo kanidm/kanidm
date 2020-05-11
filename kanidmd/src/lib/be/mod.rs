@@ -700,7 +700,11 @@ impl<'a> BackendWriteTransaction<'a> {
             .try_for_each(|(attr, itype)| self.idlayer.create_idx(audit, attr, itype))
     }
 
-    pub fn upgrade_reindex(&mut self, audit: &mut AuditScope, v: i64) -> Result<(), OperationError> {
+    pub fn upgrade_reindex(
+        &mut self,
+        audit: &mut AuditScope,
+        v: i64,
+    ) -> Result<(), OperationError> {
         if self.get_db_index_version() < v {
             self.reindex(audit)?;
         }

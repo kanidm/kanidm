@@ -323,7 +323,8 @@ impl QueryServerWriteV1 {
         };
 
         let mdf =
-            match ModifyEvent::from_parts(audit, uat, target_uuid, proto_ml, filter, &mut qs_write) {
+            match ModifyEvent::from_parts(audit, uat, target_uuid, proto_ml, filter, &mut qs_write)
+            {
                 Ok(m) => m,
                 Err(e) => {
                     audit_log!(audit, "Failed to begin modify: {:?}", e);
@@ -470,7 +471,8 @@ impl Handler<InternalDeleteMessage> for QueryServerWriteV1 {
         let res = audit_segment!(&mut audit, || {
             let mut qs_write = self.qs.write(duration_from_epoch_now());
 
-            let del = match DeleteEvent::from_parts(&mut audit, msg.uat, msg.filter, &mut qs_write) {
+            let del = match DeleteEvent::from_parts(&mut audit, msg.uat, msg.filter, &mut qs_write)
+            {
                 Ok(d) => d,
                 Err(e) => {
                     audit_log!(audit, "Failed to begin delete: {:?}", e);
@@ -497,14 +499,18 @@ impl Handler<ReviveRecycledMessage> for QueryServerWriteV1 {
         let res = audit_segment!(&mut audit, || {
             let mut qs_write = self.qs.write(duration_from_epoch_now());
 
-            let rev =
-                match ReviveRecycledEvent::from_parts(&mut audit, msg.uat, msg.filter, &mut qs_write) {
-                    Ok(r) => r,
-                    Err(e) => {
-                        audit_log!(audit, "Failed to begin revive: {:?}", e);
-                        return Err(e);
-                    }
-                };
+            let rev = match ReviveRecycledEvent::from_parts(
+                &mut audit,
+                msg.uat,
+                msg.filter,
+                &mut qs_write,
+            ) {
+                Ok(r) => r,
+                Err(e) => {
+                    audit_log!(audit, "Failed to begin revive: {:?}", e);
+                    return Err(e);
+                }
+            };
 
             audit_log!(audit, "Begin revive event {:?}", rev);
 

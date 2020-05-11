@@ -1,14 +1,14 @@
 use crate::audit::AuditScope;
+use crate::be::idl_sqlite::{
+    IdlSqlite, IdlSqliteReadTransaction, IdlSqliteTransaction, IdlSqliteWriteTransaction,
+};
+use crate::be::{IdRawEntry, IDL};
 use crate::entry::{Entry, EntryCommitted, EntrySealed};
 use crate::value::IndexType;
 use concread::cache::arc::{Arc, ArcReadTxn, ArcWriteTxn};
 use idlset::IDLBitRange;
 use kanidm_proto::v1::{ConsistencyError, OperationError};
 use uuid::Uuid;
-use crate::be::idl_sqlite::{
-    IdlSqlite, IdlSqliteReadTransaction, IdlSqliteTransaction, IdlSqliteWriteTransaction,
-};
-use crate::be::{IdRawEntry, IDL};
 
 use std::borrow::Borrow;
 
@@ -72,14 +72,8 @@ macro_rules! get_identry {
                     // For all the id's in idl.
                     // is it in the cache?
                     match $self.entry_cache.get(&i) {
-                        Some(eref) => {
-                            result.push(eref.as_ref().clone())
-                        }
-                        None => {
-                            unsafe {
-                                nidl.push_id(i)
-                            }
-                        }
+                        Some(eref) => result.push(eref.as_ref().clone()),
+                        None => unsafe { nidl.push_id(i) },
                     }
                 });
 
@@ -97,9 +91,7 @@ macro_rules! get_identry {
                 // Return
                 Ok(result)
             }
-            IDL::ALLIDS => {
-                $self.db.get_identry($au, $idl)
-            }
+            IDL::ALLIDS => $self.db.get_identry($au, $idl),
         }
     }};
 }
@@ -142,9 +134,7 @@ macro_rules! get_idl {
             i: $itype.clone(),
             k: $idx_key.to_string(),
         };
-        let cache_r = $self.idl_cache.get(
-            &cache_key
-        );
+        let cache_r = $self.idl_cache.get(&cache_key);
         // If hit, continue.
         if let Some(ref data) = cache_r {
             return Ok(Some(data.as_ref().clone()));
@@ -299,12 +289,11 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
             idl_cache,
         } = self;
         // Undo the caches in the reverse order.
-        db.commit(audit)
-            .and_then(|r| {
-                idl_cache.commit();
-                entry_cache.commit();
-                Ok(r)
-            })
+        db.commit(audit).and_then(|r| {
+            idl_cache.commit();
+            entry_cache.commit();
+            Ok(r)
+        })
     }
 
     pub fn get_id2entry_max_id(&self) -> Result<u64, OperationError> {
@@ -323,14 +312,9 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
     {
         // Danger! We know that the entry cache is valid to manipulate here
         // but rust doesn't know that so it prevents the mut/immut borrow.
-        let e_cache = unsafe {
-            &mut *(&mut self.entry_cache as *mut ArcWriteTxn<_, _>)
-        };
+        let e_cache = unsafe { &mut *(&mut self.entry_cache as *mut ArcWriteTxn<_, _>) };
         let m_entries = entries.map(|e| {
-            e_cache.insert(
-                e.get_id(),
-                Box::new(e.clone())
-            );
+            e_cache.insert(e.get_id(), Box::new(e.clone()));
             e
         });
         self.db.write_identries(au, m_entries)
@@ -356,13 +340,9 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
     {
         // Danger! We know that the entry cache is valid to manipulate here
         // but rust doesn't know that so it prevents the mut/immut borrow.
-        let e_cache = unsafe {
-            &mut *(&mut self.entry_cache as *mut ArcWriteTxn<_, _>)
-        };
+        let e_cache = unsafe { &mut *(&mut self.entry_cache as *mut ArcWriteTxn<_, _>) };
         let m_idl = idl.map(|i| {
-            e_cache.remove(
-                i
-            );
+            e_cache.remove(i);
             i
         });
         self.db.delete_identry(au, m_idl)
@@ -385,7 +365,8 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         // but we can cache this as a new empty IDL instead, so that we can avoid the
         // db lookup on this idl.
         if idl.len() == 0 {
-            self.idl_cache.insert(cache_key, Box::new(IDLBitRange::new()));
+            self.idl_cache
+                .insert(cache_key, Box::new(IDLBitRange::new()));
         } else {
             self.idl_cache.insert(cache_key, Box::new(idl.clone()));
         }
@@ -416,19 +397,17 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
     }
 
     pub unsafe fn purge_idxs(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
-        self.db.purge_idxs(audit)
-            .and_then(|r| {
-                self.idl_cache.clear();
-                Ok(r)
-            })
+        self.db.purge_idxs(audit).and_then(|r| {
+            self.idl_cache.clear();
+            Ok(r)
+        })
     }
 
     pub unsafe fn purge_id2entry(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
-        self.db.purge_id2entry(audit)
-            .and_then(|r| {
-                self.entry_cache.clear();
-                Ok(r)
-            })
+        self.db.purge_id2entry(audit).and_then(|r| {
+            self.entry_cache.clear();
+            Ok(r)
+        })
     }
 
     pub fn write_db_s_uuid(&self, nsid: Uuid) -> Result<(), OperationError> {

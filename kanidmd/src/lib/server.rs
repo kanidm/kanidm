@@ -271,7 +271,11 @@ pub trait QueryServerTransaction {
         Ok(Some(name_res))
     }
 
-    fn posixid_to_uuid(&mut self, audit: &mut AuditScope, name: &str) -> Result<Uuid, OperationError> {
+    fn posixid_to_uuid(
+        &mut self,
+        audit: &mut AuditScope,
+        name: &str,
+    ) -> Result<Uuid, OperationError> {
         let f_name = Some(f_eq("name", PartialValue::new_iutf8s(name)));
 
         let f_spn = PartialValue::new_spn_s(name).map(|v| f_eq("spn", v));

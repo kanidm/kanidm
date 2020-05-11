@@ -221,9 +221,8 @@ impl Handler<SearchMessage> for QueryServerReadV1 {
             audit_log!(audit, "Begin event {:?}", srch);
 
             match qs_read.search_ext(&mut audit, &srch) {
-                Ok(entries) => {
-                    SearchResult::new(&mut audit, &mut qs_read, entries).map(|ok_sr| ok_sr.response())
-                }
+                Ok(entries) => SearchResult::new(&mut audit, &mut qs_read, entries)
+                    .map(|ok_sr| ok_sr.response()),
                 Err(e) => Err(e),
             }
         });
@@ -376,13 +375,14 @@ impl Handler<InternalSearchRecycledMessage> for QueryServerReadV1 {
             let mut qs_read = self.qs.read();
 
             // Make an event from the request
-            let srch = match SearchEvent::from_internal_recycle_message(&mut audit, msg, &mut qs_read) {
-                Ok(s) => s,
-                Err(e) => {
-                    audit_log!(audit, "Failed to begin recycled search: {:?}", e);
-                    return Err(e);
-                }
-            };
+            let srch =
+                match SearchEvent::from_internal_recycle_message(&mut audit, msg, &mut qs_read) {
+                    Ok(s) => s,
+                    Err(e) => {
+                        audit_log!(audit, "Failed to begin recycled search: {:?}", e);
+                        return Err(e);
+                    }
+                };
 
             audit_log!(audit, "Begin event {:?}", srch);
 
@@ -669,15 +669,18 @@ impl Handler<InternalSshKeyTagReadMessage> for QueryServerReadV1 {
             };
 
             // Make an event from the request
-            let srch =
-                match SearchEvent::from_target_uuid_request(&mut audit, uat, target_uuid, &mut qs_read)
-                {
-                    Ok(s) => s,
-                    Err(e) => {
-                        audit_log!(audit, "Failed to begin search: {:?}", e);
-                        return Err(e);
-                    }
-                };
+            let srch = match SearchEvent::from_target_uuid_request(
+                &mut audit,
+                uat,
+                target_uuid,
+                &mut qs_read,
+            ) {
+                Ok(s) => s,
+                Err(e) => {
+                    audit_log!(audit, "Failed to begin search: {:?}", e);
+                    return Err(e);
+                }
+            };
 
             audit_log!(audit, "Begin event {:?}", srch);
 
