@@ -42,7 +42,7 @@ path =  "src/test_auth.rs"
 [dependencies]
 kanidm_client = { path = "../kanidm_client", version = "0.1" }
 kanidm_proto = { path = "../kanidm_proto", version = "0.1" }
-kanidm = { path = "../kanidmd" }
+kanidm = { path = "../kanidmd", version = "0.1" }
 toml = "0.5"
 rpassword = "4.0"
 tokio = { version = "0.2", features=["full"] }
@@ -69,5 +69,5 @@ reqwest = { version = "0.10" }
 default = [ "libsqlite3-sys/bundled" ]
 
 [dev-dependencies]
-kanidm = { path = "../kanidmd", version = "0.1" }
+kanidm = { path = "../kanidmd" }
 actix = "0.9"

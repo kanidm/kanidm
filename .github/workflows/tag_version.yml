@@ -1,0 +1,36 @@
+name: tag and version
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  update-version:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - name: Commit files
+      id: commit
+      run: |
+        git fetch --depth=1 origin +refs/tags/*:refs/tags/*
+        if git diff --exit-code $(git describe --tags --abbrev=0 HEAD)..HEAD -- VERSION;
+          then exit 0;
+        fi
+        make update-version
+        git add .
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        VERSION=$(cat VERSION)
+        git commit -m "v${VERSION}"
+        git tag "v${VERSION}"
+        echo ::set-output name=PUSH::true
+    - name: Push changes
+      uses: ad-m/github-push-action@master
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        tags: true
+      if: ${{ steps.commit.outputs.PUSH }}

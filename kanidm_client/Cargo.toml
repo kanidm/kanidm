@@ -23,5 +23,5 @@ uuid = { version = "0.8", features = ["serde", "v4"] }
 [dev-dependencies]
 tokio = "0.2"
 actix = "0.9"
-kanidm = { path = "../kanidmd", version = "0.1" }
+kanidm = { path = "../kanidmd" }
 futures = "0.3"
