@@ -22,7 +22,15 @@ pub struct Group {
 
 macro_rules! try_from_account_e {
     ($au:expr, $value:expr, $qs:expr) => {{
-        let groups: Vec<Group> = match $value.get_ava_reference_uuid("memberof") {
+        let name = $value.get_ava_single_string("name").ok_or_else(|| {
+            OperationError::InvalidAccountState("Missing attribute: name".to_string())
+        })?;
+
+        let uuid = *$value.get_uuid();
+
+        let upg = Group { name, uuid };
+
+        let mut groups: Vec<Group> = match $value.get_ava_reference_uuid("memberof") {
             Some(l) => {
                 // given a list of uuid, make a filter: even if this is empty, the be will
                 // just give and empty result set.
@@ -48,6 +56,7 @@ macro_rules! try_from_account_e {
                 vec![]
             }
         };
+        groups.push(upg);
         Ok(groups)
     }};
 }
