@@ -37,10 +37,10 @@ performance of any operation, and make informed decisions about tuning (such as 
 or threads), and developers should be able to identify code paths that are under pressure
 and could be targets for improvement.
 
-* Containers
+* Containers/Systemd
 
-Logs should be access via an API, and support some querying or extraction that can be
-provided to other services. It should also be sent on stdout/err for other systems to look at.
+Logs should be emitted on stdout/stderr as this is the easiest interface for existing
+log aggregation systems to collect data from.
 
 Details
 -------
