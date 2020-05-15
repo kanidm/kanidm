@@ -1910,6 +1910,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     fn reload_schema(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
+        audit_log!(audit, "Schema reload started ...");
+
         // supply entries to the writable schema to reload from.
         // find all attributes.
         let filt = filter!(f_eq("class", PVCLASS_ATTRIBUTETYPE.clone()));
@@ -1956,6 +1958,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // requirement to have the write query server reference in the parse stage - this
         // would cause a rust double-borrow if we had AccessControls to try to handle
         // the entry lists themself.
+        audit_log!(audit, "ACP reload started ...");
 
         // Update search
         let filt = filter!(f_and!([
