@@ -616,8 +616,7 @@ impl<'a> SchemaWriteTransaction<'a> {
     }
 
     pub fn generate_in_memory(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
-        let mut au = AuditScope::new("generate_in_memory");
-        let r = audit_segment!(au, || {
+        let r = lperf_segment!(audit, "schema::generate_in_memory", || {
             //
             self.classes.clear();
             self.attributes.clear();
@@ -1340,8 +1339,8 @@ impl<'a> SchemaWriteTransaction<'a> {
                 },
             );
 
-            let r = self.validate(&mut au);
-            audit_log!(au, "{:?}", r);
+            let r = self.validate(audit);
+            audit_log!(audit, "{:?}", r);
             if r.is_empty() {
                 self.reload_idxmeta();
                 Ok(())
@@ -1349,8 +1348,6 @@ impl<'a> SchemaWriteTransaction<'a> {
                 Err(OperationError::ConsistencyError(r))
             }
         });
-
-        audit.append_scope(au);
         r
     }
 }

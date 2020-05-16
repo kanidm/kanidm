@@ -93,10 +93,8 @@ pub trait QueryServerTransaction {
          */
         let entries = self.search(au, se)?;
 
-        let mut audit_acp = AuditScope::new("access_control_profiles");
         let access = self.get_accesscontrols();
-        let acp_res = access.search_filter_entry_attributes(&mut audit_acp, se, entries);
-        au.append_scope(audit_acp);
+        let acp_res = access.search_filter_entry_attributes(au, se, entries);
         // Log and fail if something went wrong.
         let entries_filtered = try_audit!(au, acp_res);
 
@@ -129,13 +127,11 @@ pub trait QueryServerTransaction {
         // the QS wr/ro to the plugin trait. However, there shouldn't be a need for search
         // plugis, because all data transforms should be in the write path.
 
-        let mut audit_be = AuditScope::new("backend_search");
         let res = self
             .get_be_txn()
-            .search(&mut audit_be, &vfr)
+            .search(au, &vfr)
             .map(|r| r)
             .map_err(|_| OperationError::Backend);
-        au.append_scope(audit_be);
 
         let res = try_audit!(au, res);
 
@@ -144,29 +140,23 @@ pub trait QueryServerTransaction {
         // ACP application. There is a second application to reduce the
         // attribute set on the entries!
         //
-        let mut audit_acp = AuditScope::new("access_control_profiles");
         let access = self.get_accesscontrols();
-        let acp_res = access.search_filter_entries(&mut audit_acp, se, res);
-
-        au.append_scope(audit_acp);
+        let acp_res = access.search_filter_entries(au, se, res);
         let acp_res = try_audit!(au, acp_res);
 
         Ok(acp_res)
     }
 
     fn exists(&mut self, au: &mut AuditScope, ee: &ExistsEvent) -> Result<bool, OperationError> {
-        let mut audit_be = AuditScope::new("backend_exists");
-
         let schema = self.get_schema();
         let idxmeta = schema.get_idxmeta_set();
         let vfr = try_audit!(au, ee.filter.resolve(&ee.event, Some(&idxmeta)));
 
         let res = self
             .get_be_txn()
-            .exists(&mut audit_be, &vfr)
+            .exists(au, &vfr)
             .map(|r| r)
             .map_err(|_| OperationError::Backend);
-        au.append_scope(audit_be);
         res
     }
 
@@ -325,9 +315,7 @@ pub trait QueryServerTransaction {
         // Build an exists event
         let ee = ExistsEvent::new_internal(f_valid);
         // Submit it
-        let mut audit_int = AuditScope::new("internal_exists");
-        let res = self.exists(&mut audit_int, &ee);
-        au.append_scope(audit_int);
+        let res = self.exists(au, &ee);
         // return result
         res
     }
@@ -341,9 +329,7 @@ pub trait QueryServerTransaction {
             .validate(self.get_schema())
             .map_err(OperationError::SchemaViolation)?;
         let se = SearchEvent::new_internal(f_valid);
-        let mut audit_int = AuditScope::new("internal_search");
-        let res = self.search(&mut audit_int, &se);
-        audit.append_scope(audit_int);
+        let res = self.search(audit, &se);
         res
     }
 
@@ -355,9 +341,7 @@ pub trait QueryServerTransaction {
         event: &Event,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
         let se = SearchEvent::new_impersonate(event, f_valid, f_intent_valid);
-        let mut audit_int = AuditScope::new("impersonate_search");
-        let res = self.search(&mut audit_int, &se);
-        audit.append_scope(audit_int);
+        let res = self.search(audit, &se);
         res
     }
 
@@ -370,9 +354,7 @@ pub trait QueryServerTransaction {
         event: &Event,
     ) -> Result<Vec<Entry<EntryReduced, EntryCommitted>>, OperationError> {
         let se = SearchEvent::new_impersonate(event, f_valid, f_intent_valid);
-        let mut audit_int = AuditScope::new("impersonate_search_ext");
-        let res = self.search_ext(&mut audit_int, &se);
-        audit.append_scope(audit_int);
+        let res = self.search_ext(audit, &se);
         res
     }
 
@@ -421,9 +403,7 @@ pub trait QueryServerTransaction {
             .validate(self.get_schema())
             .map_err(OperationError::SchemaViolation)?;
         let se = SearchEvent::new_internal(f_valid);
-        let mut audit_int = AuditScope::new("internal_search_uuid");
-        let res = self.search(&mut audit_int, &se);
-        audit.append_scope(audit_int);
+        let res = self.search(audit, &se);
         match res {
             Ok(vs) => {
                 if vs.len() > 1 {
@@ -680,23 +660,19 @@ impl<'a> QueryServerReadTransaction<'a> {
     // call various functions for validation, including possibly plugin
     // verifications.
     fn verify(&mut self, au: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
-        let mut audit = AuditScope::new("verify");
-
         // If we fail after backend, we need to return NOW because we can't
         // assert any other faith in the DB states.
         //  * backend
         let be_errs = self.get_be_txn().verify();
 
         if !be_errs.is_empty() {
-            au.append_scope(audit);
             return be_errs;
         }
 
         //  * in memory schema consistency.
-        let sc_errs = self.get_schema().validate(&mut audit);
+        let sc_errs = self.get_schema().validate(au);
 
         if !sc_errs.is_empty() {
-            au.append_scope(audit);
             return sc_errs;
         }
 
@@ -706,7 +682,6 @@ impl<'a> QueryServerReadTransaction<'a> {
             .verify_indexes();
 
         if !idx_errs.is_empty() {
-            au.append_scope(audit);
             return idx_errs;
         }
          */
@@ -716,10 +691,9 @@ impl<'a> QueryServerReadTransaction<'a> {
         // do their job.
 
         // Now, call the plugins verification system.
-        let pl_errs = Plugins::run_verify(&mut audit, self);
+        let pl_errs = Plugins::run_verify(au, self);
 
         // Finish up ...
-        au.append_scope(audit);
         pl_errs
     }
 }
@@ -896,10 +870,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Do we have rights to perform these creates?
         // create_allow_operation
-        let mut audit_acp = AuditScope::new("access_control_profiles");
         let access = self.get_accesscontrols();
-        let acp_res = access.create_allow_operation(&mut audit_acp, ce, &candidates);
-        au.append_scope(audit_acp);
+        let acp_res = access.create_allow_operation(au, ce, &candidates);
         if !try_audit!(au, acp_res) {
             return Err(OperationError::AccessDenied);
         }
@@ -914,14 +886,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // pre-plugins are defined here in their correct order of calling!
         // I have no intent to make these dynamic or configurable.
 
-        let mut audit_plugin_pre_transform = AuditScope::new("plugin_pre_create_transform");
-        let plug_pre_transform_res = Plugins::run_pre_create_transform(
-            &mut audit_plugin_pre_transform,
-            self,
-            &mut candidates,
-            ce,
-        );
-        au.append_scope(audit_plugin_pre_transform);
+        let plug_pre_transform_res =
+            Plugins::run_pre_create_transform(au, self, &mut candidates, ce);
 
         try_audit!(
             au,
@@ -950,25 +916,17 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Run any pre-create plugins now with schema validated entries.
         // This is important for normalisation of certain types IE class
         // or attributes for these checks.
-        let mut audit_plugin_pre = AuditScope::new("plugin_pre_create");
-        let plug_pre_res = Plugins::run_pre_create(&mut audit_plugin_pre, self, &norm_cand, ce);
-        au.append_scope(audit_plugin_pre);
+        let plug_pre_res = Plugins::run_pre_create(au, self, &norm_cand, ce);
 
         try_audit!(au, plug_pre_res, "Create operation failed (plugin), {:?}");
 
-        let mut audit_be = AuditScope::new("backend_create");
         // We may change from ce.entries later to something else?
-        let res = self.be_txn.create(&mut audit_be, norm_cand).map_err(|e| e);
-
-        au.append_scope(audit_be);
+        let res = self.be_txn.create(au, norm_cand).map_err(|e| e);
 
         let commit_cand = try_audit!(au, res);
         // Run any post plugins
 
-        let mut audit_plugin_post = AuditScope::new("plugin_post_create");
-        let plug_post_res =
-            Plugins::run_post_create(&mut audit_plugin_post, self, &commit_cand, ce);
-        au.append_scope(audit_plugin_post);
+        let plug_post_res = Plugins::run_post_create(au, self, &commit_cand, ce);
 
         if plug_post_res.is_err() {
             audit_log!(
@@ -1033,10 +991,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Apply access controls to reduce the set if required.
         // delete_allow_operation
-        let mut audit_acp = AuditScope::new("access_control_profiles");
         let access = self.get_accesscontrols();
-        let acp_res = access.delete_allow_operation(&mut audit_acp, de, &pre_candidates);
-        au.append_scope(audit_acp);
+        let acp_res = access.delete_allow_operation(au, de, &pre_candidates);
         if !try_audit!(au, acp_res) {
             return Err(OperationError::AccessDenied);
         }
@@ -1056,10 +1012,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         audit_log!(au, "delete: candidates -> {:?}", candidates);
 
         // Pre delete plugs
-        let mut audit_plugin_pre = AuditScope::new("plugin_pre_delete");
-        let plug_pre_res =
-            Plugins::run_pre_delete(&mut audit_plugin_pre, self, &mut candidates, de);
-        au.append_scope(audit_plugin_pre);
+        let plug_pre_res = Plugins::run_pre_delete(au, self, &mut candidates, de);
 
         if plug_pre_res.is_err() {
             audit_log!(au, "Delete operation failed (plugin), {:?}", plug_pre_res);
@@ -1087,12 +1040,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             Err(e) => return Err(OperationError::SchemaViolation(e)),
         };
 
-        let mut audit_be = AuditScope::new("backend_modify");
-
-        let res = self
-            .be_txn
-            .modify(&mut audit_be, &pre_candidates, &del_cand);
-        au.append_scope(audit_be);
+        let res = self.be_txn.modify(au, &pre_candidates, &del_cand);
 
         if res.is_err() {
             // be_txn is dropped, ie aborted here.
@@ -1101,9 +1049,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         }
 
         // Post delete plugs
-        let mut audit_plugin_post = AuditScope::new("plugin_post_delete");
-        let plug_post_res = Plugins::run_post_delete(&mut audit_plugin_post, self, &del_cand, de);
-        au.append_scope(audit_plugin_post);
+        let plug_post_res = Plugins::run_post_delete(au, self, &del_cand, de);
 
         if plug_post_res.is_err() {
             audit_log!(au, "Delete operation failed (plugin), {:?}", plug_post_res);
@@ -1162,13 +1108,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
         }
 
         // Delete them
-        let mut audit_be = AuditScope::new("backend_delete");
-
         let res = self
             .be_txn
             // Change this to an update, not delete.
-            .delete(&mut audit_be, &ts);
-        au.append_scope(audit_be);
+            .delete(au, &ts);
 
         if res.is_err() {
             // be_txn is dropped, ie aborted here.
@@ -1217,10 +1160,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let tombstone_cand = try_audit!(au, tombstone_cand);
 
         // Backend Modify
-        let mut audit_be = AuditScope::new("backend_modify");
-
-        let res = self.be_txn.modify(&mut audit_be, &rc, &tombstone_cand);
-        au.append_scope(audit_be);
+        let res = self.be_txn.modify(au, &rc, &tombstone_cand);
 
         if res.is_err() {
             // be_txn is dropped, ie aborted here.
@@ -1365,10 +1305,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Are we allowed to make the changes we want to?
         // modify_allow_operation
-        let mut audit_acp = AuditScope::new("access_control_profiles");
         let access = self.get_accesscontrols();
-        let acp_res = access.modify_allow_operation(&mut audit_acp, me, &pre_candidates);
-        au.append_scope(audit_acp);
+        let acp_res = access.modify_allow_operation(au, me, &pre_candidates);
         if !try_audit!(au, acp_res) {
             return Err(OperationError::AccessDenied);
         }
@@ -1388,11 +1326,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
         audit_log!(au, "modify: candidates -> {:?}", candidates);
 
         // Pre mod plugins
-        let mut audit_plugin_pre = AuditScope::new("plugin_pre_modify");
         // We should probably supply the pre-post cands here.
-        let plug_pre_res =
-            Plugins::run_pre_modify(&mut audit_plugin_pre, self, &mut candidates, me);
-        au.append_scope(audit_plugin_pre);
+        let plug_pre_res = Plugins::run_pre_modify(au, self, &mut candidates, me);
 
         if plug_pre_res.is_err() {
             audit_log!(au, "Modify operation failed (plugin), {:?}", plug_pre_res);
@@ -1417,12 +1352,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         };
 
         // Backend Modify
-        let mut audit_be = AuditScope::new("backend_modify");
-
-        let res = self
-            .be_txn
-            .modify(&mut audit_be, &pre_candidates, &norm_cand);
-        au.append_scope(audit_be);
+        let res = self.be_txn.modify(au, &pre_candidates, &norm_cand);
 
         if res.is_err() {
             // be_txn is dropped, ie aborted here.
@@ -1434,15 +1364,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         //
         // memberOf actually wants the pre cand list and the norm_cand list to see what
         // changed. Could be optimised, but this is correct still ...
-        let mut audit_plugin_post = AuditScope::new("plugin_post_modify");
-        let plug_post_res = Plugins::run_post_modify(
-            &mut audit_plugin_post,
-            self,
-            &pre_candidates,
-            &norm_cand,
-            me,
-        );
-        au.append_scope(audit_plugin_post);
+        let plug_post_res = Plugins::run_post_modify(au, self, &pre_candidates, &norm_cand, me);
 
         if plug_post_res.is_err() {
             audit_log!(au, "Modify operation failed (plugin), {:?}", plug_post_res);
@@ -1496,11 +1418,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
         entries: Vec<Entry<EntryInit, EntryNew>>,
     ) -> Result<(), OperationError> {
         // Start the audit scope
-        let mut audit_int = AuditScope::new("internal_create");
         // Create the CreateEvent
         let ce = CreateEvent::new_internal(entries);
-        let res = self.create(&mut audit_int, &ce);
-        audit.append_scope(audit_int);
+        let res = self.create(audit, &ce);
         res
     }
 
@@ -1512,10 +1432,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let f_valid = filter
             .validate(self.get_schema())
             .map_err(OperationError::SchemaViolation)?;
-        let mut audit_int = AuditScope::new("internal_delete");
         let de = DeleteEvent::new_internal(f_valid);
-        let res = self.delete(&mut audit_int, &de);
-        audit.append_scope(audit_int);
+        let res = self.delete(audit, &de);
         res
     }
 
@@ -1531,10 +1449,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let m_valid = modlist
             .validate(self.get_schema())
             .map_err(OperationError::SchemaViolation)?;
-        let mut audit_int = AuditScope::new("internal_modify");
         let me = ModifyEvent::new_internal(f_valid, m_valid);
-        let res = self.modify(&mut audit_int, &me);
-        audit.append_scope(audit_int);
+        let res = self.modify(audit, &me);
         res
     }
 
@@ -1546,10 +1462,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
         m_valid: ModifyList<ModifyValid>,
         event: &Event,
     ) -> Result<(), OperationError> {
-        let mut audit_int = AuditScope::new("impersonate_modify");
         let me = ModifyEvent::new_impersonate(event, f_valid, f_intent_valid, m_valid);
-        let res = self.modify(&mut audit_int, &me);
-        audit.append_scope(audit_int);
+        let res = self.modify(audit, &me);
         res
     }
 
@@ -1602,16 +1516,16 @@ impl<'a> QueryServerWriteTransaction<'a> {
         audit: &mut AuditScope,
         e_str: &str,
     ) -> Result<(), OperationError> {
-        let res = audit_segment!(audit, || Entry::from_proto_entry_str(audit, e_str, self)
-            /*
-            .and_then(|e: Entry<EntryInvalid, EntryNew>| {
-                let schema = self.get_schema();
-                e.validate(schema).map_err(OperationError::SchemaViolation)
-            })
-            */
-            .and_then(
-                |e: Entry<EntryInit, EntryNew>| self.internal_migrate_or_create(audit, e)
-            ));
+        let res = lperf_segment!(audit, "server::internal_migrate_or_create_str", || {
+            Entry::from_proto_entry_str(audit, e_str, self)
+                /*
+                .and_then(|e: Entry<EntryInvalid, EntryNew>| {
+                    let schema = self.get_schema();
+                    e.validate(schema).map_err(OperationError::SchemaViolation)
+                })
+                */
+                .and_then(|e: Entry<EntryInit, EntryNew>| self.internal_migrate_or_create(audit, e))
+        });
         audit_log!(audit, "internal_migrate_or_create_str -> result {:?}", res);
         debug_assert!(res.is_ok());
         res
@@ -1776,13 +1690,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_SCHEMA_CLASS_SYSTEM_CONFIG,
         ];
 
-        let mut audit_si = AuditScope::new("start_initialise_schema_idm");
         let r: Result<Vec<()>, _> = idm_schema
             .iter()
             // Each item individually logs it's result
-            .map(|e_str| self.internal_migrate_or_create_str(&mut audit_si, e_str))
+            .map(|e_str| self.internal_migrate_or_create_str(audit, e_str))
             .collect();
-        audit.append_scope(audit_si);
         audit_log!(audit, "initialise_schema_idm -> result {:?}", r);
         debug_assert!(r.is_ok());
 
@@ -1794,14 +1706,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // First, check the system_info object. This stores some server information
         // and details. It's a pretty const thing. Also check anonymous, important to many
         // concepts.
-        let mut audit_an = AuditScope::new("start_system_core_items");
         let res = self
-            .internal_migrate_or_create_str(&mut audit_an, JSON_SYSTEM_INFO_V1)
-            .and_then(|_| self.internal_migrate_or_create_str(&mut audit_an, JSON_DOMAIN_INFO_V1))
-            .and_then(|_| {
-                self.internal_migrate_or_create_str(&mut audit_an, JSON_SYSTEM_CONFIG_V1)
-            });
-        audit.append_scope(audit_an);
+            .internal_migrate_or_create_str(audit, JSON_SYSTEM_INFO_V1)
+            .and_then(|_| self.internal_migrate_or_create_str(audit, JSON_DOMAIN_INFO_V1))
+            .and_then(|_| self.internal_migrate_or_create_str(audit, JSON_SYSTEM_CONFIG_V1));
         audit_log!(audit, "initialise_idm p1 -> result {:?}", res);
         debug_assert!(res.is_ok());
         if res.is_err() {
@@ -1820,13 +1728,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_IDM_ADMINS_V1,
             JSON_SYSTEM_ADMINS_V1,
         ];
-        let mut audit_an = AuditScope::new("start_idm_admin_migrations");
         let res: Result<(), _> = admin_entries
             .iter()
             // Each item individually logs it's result
-            .map(|e_str| self.internal_migrate_or_create_str(&mut audit_an, e_str))
+            .map(|e_str| self.internal_migrate_or_create_str(audit, e_str))
             .collect();
-        audit.append_scope(audit_an);
         audit_log!(audit, "initialise_idm p2 -> result {:?}", res);
         debug_assert!(res.is_ok());
         if res.is_err() {
@@ -1836,7 +1742,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Create any system default schema entries.
 
         // Create any system default access profile entries.
-        let mut audit_an = AuditScope::new("start_idm_migrations_internal");
         let idm_entries = [
             // Builtin groups
             JSON_IDM_PEOPLE_MANAGE_PRIV_V1,
@@ -1897,9 +1802,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let res: Result<(), _> = idm_entries
             .iter()
             // Each item individually logs it's result
-            .map(|e_str| self.internal_migrate_or_create_str(&mut audit_an, e_str))
+            .map(|e_str| self.internal_migrate_or_create_str(audit, e_str))
             .collect();
-        audit.append_scope(audit_an);
         audit_log!(audit, "initialise_idm p3 -> result {:?}", res);
         debug_assert!(res.is_ok());
         if res.is_err() {

@@ -303,7 +303,7 @@ pub trait BackendTransaction {
         //
         // Unlike DS, even if we don't get the index back, we can just pass
         // to the in-memory filter test and be done.
-        audit_segment!(au, || {
+        lperf_segment!(au, "be::search", || {
             // Do a final optimise of the filter
             let filt = filt.optimise();
             audit_log!(au, "filter optimised to --> {:?}", filt);
@@ -358,7 +358,7 @@ pub trait BackendTransaction {
         au: &mut AuditScope,
         filt: &Filter<FilterValidResolved>,
     ) -> Result<bool, OperationError> {
-        audit_segment!(au, || {
+        lperf_segment!(au, "be::exists", || {
             // Do a final optimise of the filter
             let filt = filt.optimise();
             audit_log!(au, "filter optimised to --> {:?}", filt);
@@ -451,9 +451,7 @@ impl<'a> BackendWriteTransaction<'a> {
         au: &mut AuditScope,
         entries: Vec<Entry<EntrySealed, EntryNew>>,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
-        // figured we would want a audit_segment to wrap internal_create so when doing profiling we can
-        // tell which function is calling it. either this one or restore.
-        audit_segment!(au, || {
+        lperf_segment!(au, "be::create", || {
             if entries.is_empty() {
                 audit_log!(
                     au,
@@ -549,8 +547,7 @@ impl<'a> BackendWriteTransaction<'a> {
         au: &mut AuditScope,
         entries: &[Entry<EntrySealed, EntryCommitted>],
     ) -> Result<(), OperationError> {
-        // Perform a search for the entries --> This is a problem for the caller
-        audit_segment!(au, || {
+        lperf_segment!(au, "be::delete", || {
             if entries.is_empty() {
                 audit_log!(
                     au,
@@ -894,7 +891,7 @@ impl<'a> BackendWriteTransaction<'a> {
 impl Backend {
     pub fn new(audit: &mut AuditScope, path: &str, pool_size: u32) -> Result<Self, OperationError> {
         // this has a ::memory() type, but will path == "" work?
-        audit_segment!(audit, || {
+        lperf_segment!(audit, "be::new", || {
             let be = Backend {
                 idlayer: Arc::new(IdlArcSqlite::new(audit, path, pool_size)?),
             };

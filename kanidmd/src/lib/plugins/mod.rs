@@ -123,14 +123,9 @@ macro_rules! run_pre_create_transform_plugin {
         $ce:ident,
         $target_plugin:ty
     ) => {{
-        let mut audit_scope = AuditScope::new(<$target_plugin>::id());
-        let r = audit_segment!(audit_scope, || <$target_plugin>::pre_create_transform(
-            &mut audit_scope,
-            $qs,
-            $cand,
-            $ce,
-        ));
-        $au.append_scope(audit_scope);
+        let r = lperf_segment!($au, <$target_plugin>::id(), || {
+            <$target_plugin>::pre_create_transform($au, $qs, $cand, $ce)
+        });
         r
     }};
 }
@@ -143,14 +138,11 @@ macro_rules! run_pre_create_plugin {
         $ce:ident,
         $target_plugin:ty
     ) => {{
-        let mut audit_scope = AuditScope::new(<$target_plugin>::id());
-        let r = audit_segment!(audit_scope, || <$target_plugin>::pre_create(
-            &mut audit_scope,
-            $qs,
-            $cand,
-            $ce,
-        ));
-        $au.append_scope(audit_scope);
+        let r = lperf_segment!(
+            $au,
+            <$target_plugin>::id(),
+            || <$target_plugin>::pre_create($au, $qs, $cand, $ce,)
+        );
         r
     }};
 }
@@ -163,14 +155,9 @@ macro_rules! run_post_create_plugin {
         $ce:ident,
         $target_plugin:ty
     ) => {{
-        let mut audit_scope = AuditScope::new(<$target_plugin>::id());
-        let r = audit_segment!(audit_scope, || <$target_plugin>::post_create(
-            &mut audit_scope,
-            $qs,
-            $cand,
-            $ce,
-        ));
-        $au.append_scope(audit_scope);
+        let r = lperf_segment!($au, <$target_plugin>::id(), || {
+            <$target_plugin>::post_create($au, $qs, $cand, $ce)
+        });
         r
     }};
 }
@@ -183,14 +170,11 @@ macro_rules! run_pre_modify_plugin {
         $ce:ident,
         $target_plugin:ty
     ) => {{
-        let mut audit_scope = AuditScope::new(<$target_plugin>::id());
-        let r = audit_segment!(audit_scope, || <$target_plugin>::pre_modify(
-            &mut audit_scope,
-            $qs,
-            $cand,
-            $ce
-        ));
-        $au.append_scope(audit_scope);
+        let r = lperf_segment!(
+            $au,
+            <$target_plugin>::id(),
+            || <$target_plugin>::pre_modify($au, $qs, $cand, $ce)
+        );
         r
     }};
 }
@@ -204,15 +188,9 @@ macro_rules! run_post_modify_plugin {
         $ce:ident,
         $target_plugin:ty
     ) => {{
-        let mut audit_scope = AuditScope::new(<$target_plugin>::id());
-        let r = audit_segment!(audit_scope, || <$target_plugin>::post_modify(
-            &mut audit_scope,
-            $qs,
-            $pre_cand,
-            $cand,
-            $ce
-        ));
-        $au.append_scope(audit_scope);
+        let r = lperf_segment!($au, <$target_plugin>::id(), || {
+            <$target_plugin>::post_modify($au, $qs, $pre_cand, $cand, $ce)
+        });
         r
     }};
 }
@@ -225,14 +203,11 @@ macro_rules! run_pre_delete_plugin {
         $ce:ident,
         $target_plugin:ty
     ) => {{
-        let mut audit_scope = AuditScope::new(<$target_plugin>::id());
-        let r = audit_segment!(audit_scope, || <$target_plugin>::pre_delete(
-            &mut audit_scope,
-            $qs,
-            $cand,
-            $ce,
-        ));
-        $au.append_scope(audit_scope);
+        let r = lperf_segment!(
+            $au,
+            <$target_plugin>::id(),
+            || <$target_plugin>::pre_delete($au, $qs, $cand, $ce,)
+        );
         r
     }};
 }
@@ -245,14 +220,9 @@ macro_rules! run_post_delete_plugin {
         $ce:ident,
         $target_plugin:ty
     ) => {{
-        let mut audit_scope = AuditScope::new(<$target_plugin>::id());
-        let r = audit_segment!(audit_scope, || <$target_plugin>::post_delete(
-            &mut audit_scope,
-            $qs,
-            $cand,
-            $ce,
-        ));
-        $au.append_scope(audit_scope);
+        let r = lperf_segment!($au, <$target_plugin>::id(), || {
+            <$target_plugin>::post_delete($au, $qs, $cand, $ce)
+        });
         r
     }};
 }
@@ -264,13 +234,10 @@ macro_rules! run_verify_plugin {
         $results:expr,
         $target_plugin:ty
     ) => {{
-        let mut audit_scope = AuditScope::new(<$target_plugin>::id());
-        let mut r = audit_segment!(audit_scope, || <$target_plugin>::verify(
-            &mut audit_scope,
-            $qs,
+        let mut r = lperf_segment!($au, <$target_plugin>::id(), || <$target_plugin>::verify(
+            $au, $qs,
         ));
         $results.append(&mut r);
-        $au.append_scope(audit_scope);
     }};
 }
 
@@ -281,7 +248,7 @@ impl Plugins {
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        audit_segment!(au, || {
+        lperf_segment!(au, "plugins::run_pre_create_transform", || {
             run_pre_create_transform_plugin!(au, qs, cand, ce, base::Base)
                 .and_then(|_| {
                     run_pre_create_transform_plugin!(
@@ -310,7 +277,7 @@ impl Plugins {
         cand: &[Entry<EntrySealed, EntryNew>],
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        audit_segment!(au, || run_pre_create_plugin!(
+        lperf_segment!(au, "plugins::run_pre_create", || run_pre_create_plugin!(
             au,
             qs,
             cand,
@@ -325,7 +292,7 @@ impl Plugins {
         cand: &[Entry<EntrySealed, EntryCommitted>],
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        audit_segment!(au, || run_post_create_plugin!(
+        lperf_segment!(au, "plugins::run_post_create", || run_post_create_plugin!(
             au,
             qs,
             cand,
@@ -347,7 +314,7 @@ impl Plugins {
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         me: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        audit_segment!(au, || {
+        lperf_segment!(au, "plugins::run_pre_modify", || {
             run_pre_modify_plugin!(au, qs, cand, me, protected::Protected)
                 .and_then(|_| run_pre_modify_plugin!(au, qs, cand, me, base::Base))
                 .and_then(|_| {
@@ -367,7 +334,7 @@ impl Plugins {
         cand: &[Entry<EntrySealed, EntryCommitted>],
         me: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        audit_segment!(au, || run_post_modify_plugin!(
+        lperf_segment!(au, "plugins::run_post_modify", || run_post_modify_plugin!(
             au,
             qs,
             pre_cand,
@@ -392,7 +359,7 @@ impl Plugins {
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         de: &DeleteEvent,
     ) -> Result<(), OperationError> {
-        audit_segment!(au, || run_pre_delete_plugin!(
+        lperf_segment!(au, "plugins::run_pre_delete", || run_pre_delete_plugin!(
             au,
             qs,
             cand,
@@ -407,7 +374,7 @@ impl Plugins {
         cand: &[Entry<EntrySealed, EntryCommitted>],
         de: &DeleteEvent,
     ) -> Result<(), OperationError> {
-        audit_segment!(au, || run_post_delete_plugin!(
+        lperf_segment!(au, "plugins::run_post_delete", || run_post_delete_plugin!(
             au,
             qs,
             cand,

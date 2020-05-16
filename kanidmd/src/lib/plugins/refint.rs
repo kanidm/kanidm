@@ -43,11 +43,9 @@ impl ReferentialIntegrity {
                     "uuid could not become reference value".to_string()
                 ))
         );
-        let mut au_qs = AuditScope::new("qs_exist");
         // NOTE: This only checks LIVE entries (not using filter_all)
         let filt_in = filter!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
-        let r = qs.internal_exists(&mut au_qs, filt_in);
-        au.append_scope(au_qs);
+        let r = qs.internal_exists(au, filt_in);
 
         let b = try_audit!(au, r);
         // Is the reference in the result set?
