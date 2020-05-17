@@ -1,5 +1,7 @@
 use crate::common::CommonOpt;
 use structopt::StructOpt;
+use crate::password_prompt;
+
 
 #[derive(Debug, StructOpt)]
 pub struct AccountCommonOpt {
@@ -162,10 +164,13 @@ impl AccountOpt {
             AccountOpt::Credential(acopt) => match acopt {
                 AccountCredential::SetPassword(acsopt) => {
                     let client = acsopt.copt.to_client();
-                    let password = rpassword::prompt_password_stderr(
-                        format!("Enter new password for {}: ", acsopt.aopts.account_id).as_str(),
-                    )
-                    .unwrap();
+                    let password = match password_prompt(format!("Enter new password for {}: ", acsopt.aopts.account_id).as_str() ) {
+                        Some(v) => v,
+                        None => {
+                            println!("Passwords do not match");
+                            return
+                        }
+                    };
 
                     client
                         .idm_account_primary_credential_set_password(
@@ -234,9 +239,14 @@ impl AccountOpt {
                 }
                 AccountPosix::SetPassword(aopt) => {
                     let client = aopt.copt.to_client();
-                    let password =
-                        rpassword::prompt_password_stderr("Enter new unix (sudo) password: ")
-                            .unwrap();
+                    let password = match password_prompt("Enter new unit (sudo) password: ") {
+                        Some(v) => v,
+                        None => {
+                            println!("Passwords do not match");
+                            return
+                        }
+                    };
+
                     client
                         .idm_account_unix_cred_put(
                             aopt.aopts.account_id.as_str(),

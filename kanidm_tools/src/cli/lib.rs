@@ -101,3 +101,16 @@ impl ClientOpt {
         }
     }
 }
+
+pub(crate) fn password_prompt(prompt: &str) -> Option<String> {
+    let password = rpassword::prompt_password_stderr(prompt).unwrap();
+
+    let password_confirm = rpassword::prompt_password_stderr(
+        "Retype the new password to confirm: ").unwrap();
+
+    if password == password_confirm {
+        Some(password)
+    } else {
+        None
+    }
+}
