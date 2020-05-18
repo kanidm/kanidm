@@ -114,8 +114,16 @@ macro_rules! run_modify_test {
 
             {
                 let mut qs_write = qs.write(duration_from_epoch_now());
-                let r = qs_write.modify(&mut au, &me);
-                $check(&mut au, &mut qs_write);
+                let r = lperf_segment!(
+                    &mut au,
+                    "plugins::macros::run_modify_test -> main_test",
+                    || { qs_write.modify(&mut au, &me) }
+                );
+                lperf_segment!(
+                    &mut au,
+                    "plugins::macros::run_modify_test -> post_test check",
+                    || { $check(&mut au, &mut qs_write) }
+                );
                 debug!("{:?}", r);
                 assert!(r == $expect);
                 match r {

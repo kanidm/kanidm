@@ -1,11 +1,13 @@
 use actix::prelude::*;
 use std::fmt;
 // use std::ptr;
+use std::cmp::Ordering;
 use std::time::Duration;
 use std::time::SystemTime;
 
 use chrono::offset::Utc;
 use chrono::DateTime;
+use uuid::adapter::HyphenatedRef;
 use uuid::Uuid;
 
 #[macro_export]
@@ -106,6 +108,108 @@ pub struct PerfEvent {
     parent: Option<&'static mut PerfEvent>,
 }
 
+impl PerfEvent {
+    fn process_inner(&self, opd: &Duration) -> PerfProcessed {
+        let mut contains: Vec<_> = self
+            .contains
+            .iter()
+            .map(|pe| pe.process_inner(opd))
+            .collect();
+        contains.sort_unstable();
+        let duration = self
+            .duration
+            .as_ref()
+            .expect("corrupted perf event")
+            .clone();
+        let percent = (duration.as_secs_f64() / opd.as_secs_f64()) * 100.0;
+        PerfProcessed {
+            duration,
+            id: self.id.clone(),
+            percent,
+            contains,
+        }
+    }
+
+    fn process(&self) -> PerfProcessed {
+        let duration = self
+            .duration
+            .as_ref()
+            .expect("corrupted perf event")
+            .clone();
+        let mut contains: Vec<_> = self
+            .contains
+            .iter()
+            .map(|pe| pe.process_inner(&duration))
+            .collect();
+        contains.sort_unstable();
+        PerfProcessed {
+            duration,
+            id: self.id.clone(),
+            percent: 100.0,
+            contains,
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct PerfProcessed {
+    duration: Duration,
+    id: String,
+    percent: f64,
+    contains: Vec<PerfProcessed>,
+}
+
+impl Ord for PerfProcessed {
+    fn cmp(&self, other: &Self) -> Ordering {
+        other.duration.cmp(&self.duration)
+    }
+}
+
+impl PartialOrd for PerfProcessed {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Eq for PerfProcessed {}
+
+impl PartialEq for PerfProcessed {
+    fn eq(&self, other: &Self) -> bool {
+        self.duration == other.duration
+    }
+}
+
+/*
+ *     event
+ *     |--> another_event
+ *     |--> another_event
+ *     |    |--> another layer
+ *     |    |--> another layer
+ *     |    |    |-->  the abyss layer
+ *     |    |--> another layer
+ */
+impl PerfProcessed {
+    fn int_write_fmt(
+        &self,
+        f: &mut fmt::Formatter,
+        parents: usize,
+        uuid: &HyphenatedRef,
+    ) -> fmt::Result {
+        write!(f, "perf {}: ", uuid)?;
+        let d = &self.duration;
+        let df = d.as_secs() as f64 + d.subsec_nanos() as f64 * 1e-9;
+        if parents > 0 {
+            for _i in 0..(parents - 1) {
+                write!(f, "|   ")?;
+            }
+        };
+        writeln!(f, "|--> {} {1:.9} {2:.3}%", self.id, df, self.percent)?;
+        self.contains
+            .iter()
+            .try_for_each(|pe| pe.int_write_fmt(f, parents + 1, uuid))
+    }
+}
+
 // This structure tracks and event lifecycle, and is eventually
 // sent to the logging system where it's structured and written
 // out to the current logging BE.
@@ -129,10 +233,20 @@ impl Message for AuditScope {
 
 impl fmt::Display for AuditScope {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut _depth = 0;
-        // write!(f, "{}: begin -> {}", self.time, self.name);
-        let d = serde_json::to_string_pretty(self).map_err(|_| fmt::Error)?;
-        write!(f, "{}", d)
+        let uuid_ref = self.uuid.to_hyphenated_ref();
+        self.events
+            .iter()
+            .try_for_each(|e| writeln!(f, "{} {}: {}", e.time, uuid_ref, e.data))?;
+        // First, we pre-process all the perf events to order them
+        let mut proc_perf: Vec<_> = self.perf.iter().map(|pe| pe.process()).collect();
+
+        // We still sort them by duration.
+        proc_perf.sort_unstable();
+
+        // Now write the perf events
+        proc_perf
+            .iter()
+            .try_for_each(|pe| pe.int_write_fmt(f, 0, &uuid_ref))
     }
 }
 

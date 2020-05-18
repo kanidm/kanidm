@@ -310,7 +310,9 @@ pub trait BackendTransaction {
 
             // Using the indexes, resolve the IDL here, or ALLIDS.
             // Also get if the filter was 100% resolved or not.
-            let idl = self.filter2idl(au, filt.to_inner(), FILTER_TEST_THRESHOLD)?;
+            let idl = lperf_segment!(au, "be::search -> filter2idl", || {
+                self.filter2idl(au, filt.to_inner(), FILTER_TEST_THRESHOLD)
+            })?;
 
             let entries = try_audit!(au, self.get_idlayer().get_identry(au, &idl));
             // Do other things
@@ -365,7 +367,9 @@ pub trait BackendTransaction {
 
             // Using the indexes, resolve the IDL here, or ALLIDS.
             // Also get if the filter was 100% resolved or not.
-            let idl = self.filter2idl(au, filt.to_inner(), FILTER_TEST_THRESHOLD)?;
+            let idl = lperf_segment!(au, "be::exists -> filter2idl", || {
+                self.filter2idl(au, filt.to_inner(), FILTER_TEST_THRESHOLD)
+            })?;
 
             // Now, check the idl -- if it's fully resolved, we can skip this because the query
             // was fully indexed.
@@ -490,56 +494,58 @@ impl<'a> BackendWriteTransaction<'a> {
         pre_entries: &[Entry<EntrySealed, EntryCommitted>],
         post_entries: &[Entry<EntrySealed, EntryCommitted>],
     ) -> Result<(), OperationError> {
-        if post_entries.is_empty() || pre_entries.is_empty() {
-            audit_log!(
-                au,
-                "No entries provided to BE to modify, invalid server call!"
-            );
-            return Err(OperationError::EmptyRequest);
-        }
+        lperf_segment!(au, "be::modify", || {
+            if post_entries.is_empty() || pre_entries.is_empty() {
+                audit_log!(
+                    au,
+                    "No entries provided to BE to modify, invalid server call!"
+                );
+                return Err(OperationError::EmptyRequest);
+            }
 
-        assert!(post_entries.len() == pre_entries.len());
+            assert!(post_entries.len() == pre_entries.len());
 
-        /*
-        // Assert the Id's exist on the entry, and serialise them.
-        // Now, that means the ID must be > 0!!!
-        let ser_entries: Result<Vec<IdEntry>, _> = post_entries
-            .iter()
-            .map(|e| {
-                let id = i64::try_from(e.get_id())
-                    .map_err(|_| OperationError::InvalidEntryID)
-                    .and_then(|id| {
-                        if id == 0 {
-                            Err(OperationError::InvalidEntryID)
-                        } else {
-                            Ok(id)
-                        }
-                    })?;
+            /*
+            // Assert the Id's exist on the entry, and serialise them.
+            // Now, that means the ID must be > 0!!!
+            let ser_entries: Result<Vec<IdEntry>, _> = post_entries
+                .iter()
+                .map(|e| {
+                    let id = i64::try_from(e.get_id())
+                        .map_err(|_| OperationError::InvalidEntryID)
+                        .and_then(|id| {
+                            if id == 0 {
+                                Err(OperationError::InvalidEntryID)
+                            } else {
+                                Ok(id)
+                            }
+                        })?;
 
-                Ok(IdEntry { id, data: e.clone() })
-            })
-            .collect();
+                    Ok(IdEntry { id, data: e.clone() })
+                })
+                .collect();
 
-        let ser_entries = try_audit!(au, ser_entries);
+            let ser_entries = try_audit!(au, ser_entries);
 
-        // Simple: If the list of id's is not the same as the input list, we are missing id's
-        //
-        // The entry state checks prevent this from really ever being triggered, but we
-        // still prefer paranoia :)
-        if post_entries.len() != ser_entries.len() {
-            return Err(OperationError::InvalidEntryState);
-        }
-        */
+            // Simple: If the list of id's is not the same as the input list, we are missing id's
+            //
+            // The entry state checks prevent this from really ever being triggered, but we
+            // still prefer paranoia :)
+            if post_entries.len() != ser_entries.len() {
+                return Err(OperationError::InvalidEntryState);
+            }
+            */
 
-        // Now, given the list of id's, update them
-        self.idlayer.write_identries(au, post_entries.iter())?;
+            // Now, given the list of id's, update them
+            self.idlayer.write_identries(au, post_entries.iter())?;
 
-        // Finally, we now reindex all the changed entries. We do this by iterating and zipping
-        // over the set, because we know the list is in the same order.
-        pre_entries
-            .iter()
-            .zip(post_entries.iter())
-            .try_for_each(|(pre, post)| self.entry_index(au, Some(pre), Some(post)))
+            // Finally, we now reindex all the changed entries. We do this by iterating and zipping
+            // over the set, because we know the list is in the same order.
+            pre_entries
+                .iter()
+                .zip(post_entries.iter())
+                .try_for_each(|(pre, post)| self.entry_index(au, Some(pre), Some(post)))
+        })
     }
 
     pub fn delete(

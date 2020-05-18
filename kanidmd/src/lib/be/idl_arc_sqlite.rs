@@ -65,36 +65,38 @@ macro_rules! get_identry {
         $au:expr,
         $idl:expr
     ) => {{
-        match $idl {
-            IDL::Partial(idli) | IDL::Indexed(idli) => {
-                let mut result: Vec<Entry<_, _>> = Vec::new();
-                let mut nidl = IDLBitRange::new();
+        lperf_segment!($au, "be::idl_arc_sqlite::get_identry", || {
+            match $idl {
+                IDL::Partial(idli) | IDL::Indexed(idli) => {
+                    let mut result: Vec<Entry<_, _>> = Vec::new();
+                    let mut nidl = IDLBitRange::new();
 
-                idli.into_iter().for_each(|i| {
-                    // For all the id's in idl.
-                    // is it in the cache?
-                    match $self.entry_cache.get(&i) {
-                        Some(eref) => result.push(eref.as_ref().clone()),
-                        None => unsafe { nidl.push_id(i) },
-                    }
-                });
+                    idli.into_iter().for_each(|i| {
+                        // For all the id's in idl.
+                        // is it in the cache?
+                        match $self.entry_cache.get(&i) {
+                            Some(eref) => result.push(eref.as_ref().clone()),
+                            None => unsafe { nidl.push_id(i) },
+                        }
+                    });
 
-                // Now, get anything from nidl that is needed.
-                let mut db_result = $self.db.get_identry($au, &IDL::Partial(nidl))?;
+                    // Now, get anything from nidl that is needed.
+                    let mut db_result = $self.db.get_identry($au, &IDL::Partial(nidl))?;
 
-                // Clone everything from db_result into the cache.
-                db_result.iter().for_each(|e| {
-                    $self.entry_cache.insert(e.get_id(), Box::new(e.clone()));
-                });
+                    // Clone everything from db_result into the cache.
+                    db_result.iter().for_each(|e| {
+                        $self.entry_cache.insert(e.get_id(), Box::new(e.clone()));
+                    });
 
-                // Merge the two vecs
-                result.append(&mut db_result);
+                    // Merge the two vecs
+                    result.append(&mut db_result);
 
-                // Return
-                Ok(result)
+                    // Return
+                    Ok(result)
+                }
+                IDL::ALLIDS => $self.db.get_identry($au, $idl),
             }
-            IDL::ALLIDS => $self.db.get_identry($au, $idl),
-        }
+        })
     }};
 }
 
@@ -129,24 +131,26 @@ macro_rules! get_idl {
         $itype:expr,
         $idx_key:expr
     ) => {{
-        // TODO: Find a way to implement borrow for this properly
-        // First attempt to get from this cache.
-        let cache_key = IdlCacheKey {
-            a: $attr.to_string(),
-            i: $itype.clone(),
-            k: $idx_key.to_string(),
-        };
-        let cache_r = $self.idl_cache.get(&cache_key);
-        // If hit, continue.
-        if let Some(ref data) = cache_r {
-            return Ok(Some(data.as_ref().clone()));
-        }
-        // If miss, get from db *and* insert to the cache.
-        let db_r = $self.db.get_idl($audit, $attr, $itype, $idx_key)?;
-        if let Some(ref idl) = db_r {
-            $self.idl_cache.insert(cache_key, Box::new(idl.clone()))
-        }
-        Ok(db_r)
+        lperf_segment!($audit, "be::idl_arc_sqlite::get_idl", || {
+            // TODO: Find a way to implement borrow for this properly
+            // First attempt to get from this cache.
+            let cache_key = IdlCacheKey {
+                a: $attr.to_string(),
+                i: $itype.clone(),
+                k: $idx_key.to_string(),
+            };
+            let cache_r = $self.idl_cache.get(&cache_key);
+            // If hit, continue.
+            if let Some(ref data) = cache_r {
+                return Ok(Some(data.as_ref().clone()));
+            }
+            // If miss, get from db *and* insert to the cache.
+            let db_r = $self.db.get_idl($audit, $attr, $itype, $idx_key)?;
+            if let Some(ref idl) = db_r {
+                $self.idl_cache.insert(cache_key, Box::new(idl.clone()))
+            }
+            Ok(db_r)
+        })
     }};
 }
 
@@ -285,16 +289,18 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
 
 impl<'a> IdlArcSqliteWriteTransaction<'a> {
     pub fn commit(self, audit: &mut AuditScope) -> Result<(), OperationError> {
-        let IdlArcSqliteWriteTransaction {
-            db,
-            entry_cache,
-            idl_cache,
-        } = self;
-        // Undo the caches in the reverse order.
-        db.commit(audit).and_then(|r| {
-            idl_cache.commit();
-            entry_cache.commit();
-            Ok(r)
+        lperf_segment!(audit, "be::idl_arc_sqlite::commit", || {
+            let IdlArcSqliteWriteTransaction {
+                db,
+                entry_cache,
+                idl_cache,
+            } = self;
+            // Undo the caches in the reverse order.
+            db.commit(audit).and_then(|r| {
+                idl_cache.commit();
+                entry_cache.commit();
+                Ok(r)
+            })
         })
     }
 
@@ -312,14 +318,16 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
     where
         I: Iterator<Item = &'b Entry<EntrySealed, EntryCommitted>>,
     {
-        // Danger! We know that the entry cache is valid to manipulate here
-        // but rust doesn't know that so it prevents the mut/immut borrow.
-        let e_cache = unsafe { &mut *(&mut self.entry_cache as *mut ArcWriteTxn<_, _>) };
-        let m_entries = entries.map(|e| {
-            e_cache.insert(e.get_id(), Box::new(e.clone()));
-            e
-        });
-        self.db.write_identries(au, m_entries)
+        lperf_segment!(au, "be::idl_arc_sqlite::write_identries", || {
+            // Danger! We know that the entry cache is valid to manipulate here
+            // but rust doesn't know that so it prevents the mut/immut borrow.
+            let e_cache = unsafe { &mut *(&mut self.entry_cache as *mut ArcWriteTxn<_, _>) };
+            let m_entries = entries.map(|e| {
+                e_cache.insert(e.get_id(), Box::new(e.clone()));
+                e
+            });
+            self.db.write_identries(au, m_entries)
+        })
     }
 
     pub fn write_identries_raw<I>(
@@ -340,14 +348,16 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
     where
         I: Iterator<Item = u64>,
     {
-        // Danger! We know that the entry cache is valid to manipulate here
-        // but rust doesn't know that so it prevents the mut/immut borrow.
-        let e_cache = unsafe { &mut *(&mut self.entry_cache as *mut ArcWriteTxn<_, _>) };
-        let m_idl = idl.map(|i| {
-            e_cache.remove(i);
-            i
-        });
-        self.db.delete_identry(au, m_idl)
+        lperf_segment!(au, "be::idl_arc_sqlite::delete_identry", || {
+            // Danger! We know that the entry cache is valid to manipulate here
+            // but rust doesn't know that so it prevents the mut/immut borrow.
+            let e_cache = unsafe { &mut *(&mut self.entry_cache as *mut ArcWriteTxn<_, _>) };
+            let m_idl = idl.map(|i| {
+                e_cache.remove(i);
+                i
+            });
+            self.db.delete_identry(au, m_idl)
+        })
     }
 
     pub fn write_idl(
@@ -358,21 +368,23 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         idx_key: &str,
         idl: &IDLBitRange,
     ) -> Result<(), OperationError> {
-        let cache_key = IdlCacheKey {
-            a: attr.to_string(),
-            i: itype.clone(),
-            k: idx_key.to_string(),
-        };
-        // On idl == 0 the db will remove this, and synthesise an empty IDL on a miss
-        // but we can cache this as a new empty IDL instead, so that we can avoid the
-        // db lookup on this idl.
-        if idl.len() == 0 {
-            self.idl_cache
-                .insert(cache_key, Box::new(IDLBitRange::new()));
-        } else {
-            self.idl_cache.insert(cache_key, Box::new(idl.clone()));
-        }
-        self.db.write_idl(audit, attr, itype, idx_key, idl)
+        lperf_segment!(audit, "be::idl_arc_sqlite::write_idl", || {
+            let cache_key = IdlCacheKey {
+                a: attr.to_string(),
+                i: itype.clone(),
+                k: idx_key.to_string(),
+            };
+            // On idl == 0 the db will remove this, and synthesise an empty IDL on a miss
+            // but we can cache this as a new empty IDL instead, so that we can avoid the
+            // db lookup on this idl.
+            if idl.len() == 0 {
+                self.idl_cache
+                    .insert(cache_key, Box::new(IDLBitRange::new()));
+            } else {
+                self.idl_cache.insert(cache_key, Box::new(idl.clone()));
+            }
+            self.db.write_idl(audit, attr, itype, idx_key, idl)
+        })
     }
 
     pub fn create_name2uuid(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
