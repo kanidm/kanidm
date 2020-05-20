@@ -205,7 +205,7 @@ impl Handler<SearchMessage> for QueryServerReadV1 {
 
     fn handle(&mut self, msg: SearchMessage, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("search");
-        let res = audit_segment!(&mut audit, || {
+        let res = lperf_segment!(&mut audit, "actors::v1_read::handle<SearchMessage>", || {
             // Begin a read
             let mut qs_read = self.qs.read();
 
@@ -241,7 +241,7 @@ impl Handler<AuthMessage> for QueryServerReadV1 {
         // the credentials provided is sufficient to say if someone is
         // "authenticated" or not.
         let mut audit = AuditScope::new("auth");
-        let res = audit_segment!(&mut audit, || {
+        let res = lperf_segment!(&mut audit, "actors::v1_read::handle<AuthMessage>", || {
             audit_log!(audit, "Begin auth event {:?}", msg);
 
             // Destructure it.
@@ -282,7 +282,7 @@ impl Handler<WhoamiMessage> for QueryServerReadV1 {
 
     fn handle(&mut self, msg: WhoamiMessage, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("whoami");
-        let res = audit_segment!(&mut audit, || {
+        let res = lperf_segment!(&mut audit, "actors::v1_read::handle<WhoamiMessage>", || {
             // TODO #62: Move this to IdmServer!!!
             // Begin a read
             let mut qs_read = self.qs.read();
@@ -337,26 +337,30 @@ impl Handler<InternalSearchMessage> for QueryServerReadV1 {
 
     fn handle(&mut self, msg: InternalSearchMessage, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("internal_search_message");
-        let res = audit_segment!(&mut audit, || {
-            let mut qs_read = self.qs.read();
+        let res = lperf_segment!(
+            &mut audit,
+            "actors::v1_read::handle<InternalSearchMessage>",
+            || {
+                let mut qs_read = self.qs.read();
 
-            // Make an event from the request
-            let srch = match SearchEvent::from_internal_message(&mut audit, msg, &mut qs_read) {
-                Ok(s) => s,
-                Err(e) => {
-                    audit_log!(audit, "Failed to begin search: {:?}", e);
-                    return Err(e);
+                // Make an event from the request
+                let srch = match SearchEvent::from_internal_message(&mut audit, msg, &mut qs_read) {
+                    Ok(s) => s,
+                    Err(e) => {
+                        audit_log!(audit, "Failed to begin search: {:?}", e);
+                        return Err(e);
+                    }
+                };
+
+                audit_log!(audit, "Begin event {:?}", srch);
+
+                match qs_read.search_ext(&mut audit, &srch) {
+                    Ok(entries) => SearchResult::new(&mut audit, &mut qs_read, entries)
+                        .map(|ok_sr| ok_sr.into_proto_array()),
+                    Err(e) => Err(e),
                 }
-            };
-
-            audit_log!(audit, "Begin event {:?}", srch);
-
-            match qs_read.search_ext(&mut audit, &srch) {
-                Ok(entries) => SearchResult::new(&mut audit, &mut qs_read, entries)
-                    .map(|ok_sr| ok_sr.into_proto_array()),
-                Err(e) => Err(e),
             }
-        });
+        );
         self.log.do_send(audit);
         res
     }
@@ -371,27 +375,32 @@ impl Handler<InternalSearchRecycledMessage> for QueryServerReadV1 {
         _: &mut Self::Context,
     ) -> Self::Result {
         let mut audit = AuditScope::new("internal_search_recycle_message");
-        let res = audit_segment!(&mut audit, || {
-            let mut qs_read = self.qs.read();
+        let res = lperf_segment!(
+            &mut audit,
+            "actors::v1_read::handle<InternalSearchRecycledMessage>",
+            || {
+                let mut qs_read = self.qs.read();
 
-            // Make an event from the request
-            let srch =
-                match SearchEvent::from_internal_recycle_message(&mut audit, msg, &mut qs_read) {
-                    Ok(s) => s,
-                    Err(e) => {
-                        audit_log!(audit, "Failed to begin recycled search: {:?}", e);
-                        return Err(e);
-                    }
-                };
+                // Make an event from the request
+                let srch =
+                    match SearchEvent::from_internal_recycle_message(&mut audit, msg, &mut qs_read)
+                    {
+                        Ok(s) => s,
+                        Err(e) => {
+                            audit_log!(audit, "Failed to begin recycled search: {:?}", e);
+                            return Err(e);
+                        }
+                    };
 
-            audit_log!(audit, "Begin event {:?}", srch);
+                audit_log!(audit, "Begin event {:?}", srch);
 
-            match qs_read.search_ext(&mut audit, &srch) {
-                Ok(entries) => SearchResult::new(&mut audit, &mut qs_read, entries)
-                    .map(|ok_sr| ok_sr.into_proto_array()),
-                Err(e) => Err(e),
+                match qs_read.search_ext(&mut audit, &srch) {
+                    Ok(entries) => SearchResult::new(&mut audit, &mut qs_read, entries)
+                        .map(|ok_sr| ok_sr.into_proto_array()),
+                    Err(e) => Err(e),
+                }
             }
-        });
+        );
         self.log.do_send(audit);
         res
     }
@@ -402,50 +411,54 @@ impl Handler<InternalRadiusReadMessage> for QueryServerReadV1 {
 
     fn handle(&mut self, msg: InternalRadiusReadMessage, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("internal_radius_read_message");
-        let res = audit_segment!(&mut audit, || {
-            let mut qs_read = self.qs.read();
+        let res = lperf_segment!(
+            &mut audit,
+            "actors::v1_read::handle<InternalRadiusReadMessage>",
+            || {
+                let mut qs_read = self.qs.read();
 
-            let target_uuid = match Uuid::parse_str(msg.uuid_or_name.as_str()) {
-                Ok(u) => u,
-                Err(_) => qs_read
-                    .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
-                    .map_err(|e| {
-                        audit_log!(&mut audit, "Error resolving id to target");
-                        e
-                    })?,
-            };
+                let target_uuid = match Uuid::parse_str(msg.uuid_or_name.as_str()) {
+                    Ok(u) => u,
+                    Err(_) => qs_read
+                        .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                        .map_err(|e| {
+                            audit_log!(&mut audit, "Error resolving id to target");
+                            e
+                        })?,
+                };
 
-            // Make an event from the request
-            let srch = match SearchEvent::from_target_uuid_request(
-                &mut audit,
-                msg.uat,
-                target_uuid,
-                &mut qs_read,
-            ) {
-                Ok(s) => s,
-                Err(e) => {
-                    audit_log!(audit, "Failed to begin search: {:?}", e);
-                    return Err(e);
+                // Make an event from the request
+                let srch = match SearchEvent::from_target_uuid_request(
+                    &mut audit,
+                    msg.uat,
+                    target_uuid,
+                    &mut qs_read,
+                ) {
+                    Ok(s) => s,
+                    Err(e) => {
+                        audit_log!(audit, "Failed to begin search: {:?}", e);
+                        return Err(e);
+                    }
+                };
+
+                audit_log!(audit, "Begin event {:?}", srch);
+
+                // We have to use search_ext to guarantee acs was applied.
+                match qs_read.search_ext(&mut audit, &srch) {
+                    Ok(mut entries) => {
+                        let r = entries
+                            .pop()
+                            // From the entry, turn it into the value
+                            .and_then(|e| {
+                                e.get_ava_single("radius_secret")
+                                    .and_then(|v| v.get_radius_secret().map(|s| s.to_string()))
+                            });
+                        Ok(r)
+                    }
+                    Err(e) => Err(e),
                 }
-            };
-
-            audit_log!(audit, "Begin event {:?}", srch);
-
-            // We have to use search_ext to guarantee acs was applied.
-            match qs_read.search_ext(&mut audit, &srch) {
-                Ok(mut entries) => {
-                    let r = entries
-                        .pop()
-                        // From the entry, turn it into the value
-                        .and_then(|e| {
-                            e.get_ava_single("radius_secret")
-                                .and_then(|v| v.get_radius_secret().map(|s| s.to_string()))
-                        });
-                    Ok(r)
-                }
-                Err(e) => Err(e),
             }
-        });
+        );
         self.log.do_send(audit);
         res
     }
@@ -460,38 +473,42 @@ impl Handler<InternalRadiusTokenReadMessage> for QueryServerReadV1 {
         _: &mut Self::Context,
     ) -> Self::Result {
         let mut audit = AuditScope::new("internal_radius_token_read_message");
-        let res = audit_segment!(&mut audit, || {
-            let mut idm_read = self.idms.proxy_read();
+        let res = lperf_segment!(
+            &mut audit,
+            "actors::v1_read::handle<InternalRadiusTokenReadMessage>",
+            || {
+                let mut idm_read = self.idms.proxy_read();
 
-            let target_uuid = match Uuid::parse_str(msg.uuid_or_name.as_str()) {
-                Ok(u) => u,
-                Err(_) => idm_read
-                    .qs_read
-                    .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
-                    .map_err(|e| {
-                        audit_log!(&mut audit, "Error resolving id to target");
-                        e
-                    })?,
-            };
+                let target_uuid = match Uuid::parse_str(msg.uuid_or_name.as_str()) {
+                    Ok(u) => u,
+                    Err(_) => idm_read
+                        .qs_read
+                        .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                        .map_err(|e| {
+                            audit_log!(&mut audit, "Error resolving id to target");
+                            e
+                        })?,
+                };
 
-            // Make an event from the request
-            let rate = match RadiusAuthTokenEvent::from_parts(
-                &mut audit,
-                &mut idm_read.qs_read,
-                msg.uat,
-                target_uuid,
-            ) {
-                Ok(s) => s,
-                Err(e) => {
-                    audit_log!(audit, "Failed to begin search: {:?}", e);
-                    return Err(e);
-                }
-            };
+                // Make an event from the request
+                let rate = match RadiusAuthTokenEvent::from_parts(
+                    &mut audit,
+                    &mut idm_read.qs_read,
+                    msg.uat,
+                    target_uuid,
+                ) {
+                    Ok(s) => s,
+                    Err(e) => {
+                        audit_log!(audit, "Failed to begin search: {:?}", e);
+                        return Err(e);
+                    }
+                };
 
-            audit_log!(audit, "Begin event {:?}", rate);
+                audit_log!(audit, "Begin event {:?}", rate);
 
-            idm_read.get_radiusauthtoken(&mut audit, &rate)
-        });
+                idm_read.get_radiusauthtoken(&mut audit, &rate)
+            }
+        );
         self.log.do_send(audit);
         res
     }
@@ -506,37 +523,41 @@ impl Handler<InternalUnixUserTokenReadMessage> for QueryServerReadV1 {
         _: &mut Self::Context,
     ) -> Self::Result {
         let mut audit = AuditScope::new("internal_unix_token_read_message");
-        let res = audit_segment!(&mut audit, || {
-            let mut idm_read = self.idms.proxy_read();
+        let res = lperf_segment!(
+            &mut audit,
+            "actors::v1_read::handle<InternalUnixUserTokenReadMessage>",
+            || {
+                let mut idm_read = self.idms.proxy_read();
 
-            let target_uuid = Uuid::parse_str(msg.uuid_or_name.as_str()).or_else(|_| {
-                idm_read
-                    .qs_read
-                    .posixid_to_uuid(&mut audit, msg.uuid_or_name.as_str())
-                    .map_err(|e| {
-                        audit_log!(&mut audit, "Error resolving as gidnumber continuing ...");
-                        e
-                    })
-            })?;
+                let target_uuid = Uuid::parse_str(msg.uuid_or_name.as_str()).or_else(|_| {
+                    idm_read
+                        .qs_read
+                        .posixid_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                        .map_err(|e| {
+                            audit_log!(&mut audit, "Error resolving as gidnumber continuing ...");
+                            e
+                        })
+                })?;
 
-            // Make an event from the request
-            let rate = match UnixUserTokenEvent::from_parts(
-                &mut audit,
-                &mut idm_read.qs_read,
-                msg.uat,
-                target_uuid,
-            ) {
-                Ok(s) => s,
-                Err(e) => {
-                    audit_log!(audit, "Failed to begin search: {:?}", e);
-                    return Err(e);
-                }
-            };
+                // Make an event from the request
+                let rate = match UnixUserTokenEvent::from_parts(
+                    &mut audit,
+                    &mut idm_read.qs_read,
+                    msg.uat,
+                    target_uuid,
+                ) {
+                    Ok(s) => s,
+                    Err(e) => {
+                        audit_log!(audit, "Failed to begin search: {:?}", e);
+                        return Err(e);
+                    }
+                };
 
-            audit_log!(audit, "Begin event {:?}", rate);
+                audit_log!(audit, "Begin event {:?}", rate);
 
-            idm_read.get_unixusertoken(&mut audit, &rate)
-        });
+                idm_read.get_unixusertoken(&mut audit, &rate)
+            }
+        );
         self.log.do_send(audit);
         res
     }
@@ -551,37 +572,41 @@ impl Handler<InternalUnixGroupTokenReadMessage> for QueryServerReadV1 {
         _: &mut Self::Context,
     ) -> Self::Result {
         let mut audit = AuditScope::new("internal_unixgroup_token_read_message");
-        let res = audit_segment!(&mut audit, || {
-            let mut idm_read = self.idms.proxy_read();
+        let res = lperf_segment!(
+            &mut audit,
+            "actors::v1_read::handle<InternalUnixGroupTokenReadMessage>",
+            || {
+                let mut idm_read = self.idms.proxy_read();
 
-            let target_uuid = Uuid::parse_str(msg.uuid_or_name.as_str()).or_else(|_| {
-                idm_read
-                    .qs_read
-                    .posixid_to_uuid(&mut audit, msg.uuid_or_name.as_str())
-                    .map_err(|e| {
-                        audit_log!(&mut audit, "Error resolving as gidnumber continuing ...");
-                        e
-                    })
-            })?;
+                let target_uuid = Uuid::parse_str(msg.uuid_or_name.as_str()).or_else(|_| {
+                    idm_read
+                        .qs_read
+                        .posixid_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                        .map_err(|e| {
+                            audit_log!(&mut audit, "Error resolving as gidnumber continuing ...");
+                            e
+                        })
+                })?;
 
-            // Make an event from the request
-            let rate = match UnixGroupTokenEvent::from_parts(
-                &mut audit,
-                &mut idm_read.qs_read,
-                msg.uat,
-                target_uuid,
-            ) {
-                Ok(s) => s,
-                Err(e) => {
-                    audit_log!(audit, "Failed to begin search: {:?}", e);
-                    return Err(e);
-                }
-            };
+                // Make an event from the request
+                let rate = match UnixGroupTokenEvent::from_parts(
+                    &mut audit,
+                    &mut idm_read.qs_read,
+                    msg.uat,
+                    target_uuid,
+                ) {
+                    Ok(s) => s,
+                    Err(e) => {
+                        audit_log!(audit, "Failed to begin search: {:?}", e);
+                        return Err(e);
+                    }
+                };
 
-            audit_log!(audit, "Begin event {:?}", rate);
+                audit_log!(audit, "Begin event {:?}", rate);
 
-            idm_read.get_unixgrouptoken(&mut audit, &rate)
-        });
+                idm_read.get_unixgrouptoken(&mut audit, &rate)
+            }
+        );
         self.log.do_send(audit);
         res
     }
@@ -592,53 +617,57 @@ impl Handler<InternalSshKeyReadMessage> for QueryServerReadV1 {
 
     fn handle(&mut self, msg: InternalSshKeyReadMessage, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("internal_sshkey_read_message");
-        let res = audit_segment!(&mut audit, || {
-            let mut qs_read = self.qs.read();
+        let res = lperf_segment!(
+            &mut audit,
+            "actors::v1_read::handle<InternalSshKeyReadMessage>",
+            || {
+                let mut qs_read = self.qs.read();
 
-            let target_uuid = match Uuid::parse_str(msg.uuid_or_name.as_str()) {
-                Ok(u) => u,
-                Err(_) => qs_read
-                    .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
-                    .map_err(|e| {
-                        audit_log!(&mut audit, "Error resolving id to target");
-                        e
-                    })?,
-            };
+                let target_uuid = match Uuid::parse_str(msg.uuid_or_name.as_str()) {
+                    Ok(u) => u,
+                    Err(_) => qs_read
+                        .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                        .map_err(|e| {
+                            audit_log!(&mut audit, "Error resolving id to target");
+                            e
+                        })?,
+                };
 
-            // Make an event from the request
-            let srch = match SearchEvent::from_target_uuid_request(
-                &mut audit,
-                msg.uat,
-                target_uuid,
-                &mut qs_read,
-            ) {
-                Ok(s) => s,
-                Err(e) => {
-                    audit_log!(audit, "Failed to begin search: {:?}", e);
-                    return Err(e);
+                // Make an event from the request
+                let srch = match SearchEvent::from_target_uuid_request(
+                    &mut audit,
+                    msg.uat,
+                    target_uuid,
+                    &mut qs_read,
+                ) {
+                    Ok(s) => s,
+                    Err(e) => {
+                        audit_log!(audit, "Failed to begin search: {:?}", e);
+                        return Err(e);
+                    }
+                };
+
+                audit_log!(audit, "Begin event {:?}", srch);
+
+                match qs_read.search_ext(&mut audit, &srch) {
+                    Ok(mut entries) => {
+                        let r = entries
+                            .pop()
+                            // get the first entry
+                            .map(|e| {
+                                // From the entry, turn it into the value
+                                e.get_ava_ssh_pubkeys("ssh_publickey")
+                            })
+                            .unwrap_or_else(|| {
+                                // No matching entry? Return none.
+                                Vec::new()
+                            });
+                        Ok(r)
+                    }
+                    Err(e) => Err(e),
                 }
-            };
-
-            audit_log!(audit, "Begin event {:?}", srch);
-
-            match qs_read.search_ext(&mut audit, &srch) {
-                Ok(mut entries) => {
-                    let r = entries
-                        .pop()
-                        // get the first entry
-                        .map(|e| {
-                            // From the entry, turn it into the value
-                            e.get_ava_ssh_pubkeys("ssh_publickey")
-                        })
-                        .unwrap_or_else(|| {
-                            // No matching entry? Return none.
-                            Vec::new()
-                        });
-                    Ok(r)
-                }
-                Err(e) => Err(e),
             }
-        });
+        );
         self.log.do_send(audit);
         res
     }
@@ -649,65 +678,69 @@ impl Handler<InternalSshKeyTagReadMessage> for QueryServerReadV1 {
 
     fn handle(&mut self, msg: InternalSshKeyTagReadMessage, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("internal_sshkey_tag_read_message");
-        let res = audit_segment!(&mut audit, || {
-            let mut qs_read = self.qs.read();
+        let res = lperf_segment!(
+            &mut audit,
+            "actors::v1_read::handle<InternalSshKeyTagReadMessage>",
+            || {
+                let mut qs_read = self.qs.read();
 
-            let InternalSshKeyTagReadMessage {
-                uat,
-                uuid_or_name,
-                tag,
-            } = msg;
+                let InternalSshKeyTagReadMessage {
+                    uat,
+                    uuid_or_name,
+                    tag,
+                } = msg;
 
-            let target_uuid = match Uuid::parse_str(uuid_or_name.as_str()) {
-                Ok(u) => u,
-                Err(_) => qs_read
-                    .name_to_uuid(&mut audit, uuid_or_name.as_str())
-                    .map_err(|e| {
-                        audit_log!(&mut audit, "Error resolving id to target");
-                        e
-                    })?,
-            };
+                let target_uuid = match Uuid::parse_str(uuid_or_name.as_str()) {
+                    Ok(u) => u,
+                    Err(_) => qs_read
+                        .name_to_uuid(&mut audit, uuid_or_name.as_str())
+                        .map_err(|e| {
+                            audit_log!(&mut audit, "Error resolving id to target");
+                            e
+                        })?,
+                };
 
-            // Make an event from the request
-            let srch = match SearchEvent::from_target_uuid_request(
-                &mut audit,
-                uat,
-                target_uuid,
-                &mut qs_read,
-            ) {
-                Ok(s) => s,
-                Err(e) => {
-                    audit_log!(audit, "Failed to begin search: {:?}", e);
-                    return Err(e);
-                }
-            };
+                // Make an event from the request
+                let srch = match SearchEvent::from_target_uuid_request(
+                    &mut audit,
+                    uat,
+                    target_uuid,
+                    &mut qs_read,
+                ) {
+                    Ok(s) => s,
+                    Err(e) => {
+                        audit_log!(audit, "Failed to begin search: {:?}", e);
+                        return Err(e);
+                    }
+                };
 
-            audit_log!(audit, "Begin event {:?}", srch);
+                audit_log!(audit, "Begin event {:?}", srch);
 
-            match qs_read.search_ext(&mut audit, &srch) {
-                Ok(mut entries) => {
-                    let r = entries
-                        .pop()
-                        // get the first entry
-                        .map(|e| {
-                            // From the entry, turn it into the value
-                            e.get_ava_set("ssh_publickey").and_then(|vs| {
-                                // Get the one tagged value
-                                let pv = PartialValue::new_sshkey_tag(tag);
-                                vs.get(&pv)
-                                    // Now turn that value to a pub key.
-                                    .and_then(|v| v.get_sshkey())
+                match qs_read.search_ext(&mut audit, &srch) {
+                    Ok(mut entries) => {
+                        let r = entries
+                            .pop()
+                            // get the first entry
+                            .map(|e| {
+                                // From the entry, turn it into the value
+                                e.get_ava_set("ssh_publickey").and_then(|vs| {
+                                    // Get the one tagged value
+                                    let pv = PartialValue::new_sshkey_tag(tag);
+                                    vs.get(&pv)
+                                        // Now turn that value to a pub key.
+                                        .and_then(|v| v.get_sshkey())
+                                })
                             })
-                        })
-                        .unwrap_or_else(|| {
-                            // No matching entry? Return none.
-                            None
-                        });
-                    Ok(r)
+                            .unwrap_or_else(|| {
+                                // No matching entry? Return none.
+                                None
+                            });
+                        Ok(r)
+                    }
+                    Err(e) => Err(e),
                 }
-                Err(e) => Err(e),
             }
-        });
+        );
         self.log.do_send(audit);
         res
     }
@@ -718,47 +751,51 @@ impl Handler<IdmAccountUnixAuthMessage> for QueryServerReadV1 {
 
     fn handle(&mut self, msg: IdmAccountUnixAuthMessage, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("idm_account_unix_auth");
-        let res = audit_segment!(&mut audit, || {
-            let mut idm_write = self.idms.write();
+        let res = lperf_segment!(
+            &mut audit,
+            "actors::v1_read::handle<IdmAccountUnixAuthMessage>",
+            || {
+                let mut idm_write = self.idms.write();
 
-            // resolve the id
-            let target_uuid = Uuid::parse_str(msg.uuid_or_name.as_str()).or_else(|_| {
-                idm_write
-                    .qs_read
-                    .posixid_to_uuid(&mut audit, msg.uuid_or_name.as_str())
-                    .map_err(|e| {
-                        audit_log!(&mut audit, "Error resolving as gidnumber continuing ...");
-                        e
-                    })
-            })?;
-            // Make an event from the request
-            let uuae = match UnixUserAuthEvent::from_parts(
-                &mut audit,
-                &mut idm_write.qs_read,
-                msg.uat,
-                target_uuid,
-                msg.cred,
-            ) {
-                Ok(s) => s,
-                Err(e) => {
-                    audit_log!(audit, "Failed to begin unix auth: {:?}", e);
-                    return Err(e);
-                }
-            };
+                // resolve the id
+                let target_uuid = Uuid::parse_str(msg.uuid_or_name.as_str()).or_else(|_| {
+                    idm_write
+                        .qs_read
+                        .posixid_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                        .map_err(|e| {
+                            audit_log!(&mut audit, "Error resolving as gidnumber continuing ...");
+                            e
+                        })
+                })?;
+                // Make an event from the request
+                let uuae = match UnixUserAuthEvent::from_parts(
+                    &mut audit,
+                    &mut idm_write.qs_read,
+                    msg.uat,
+                    target_uuid,
+                    msg.cred,
+                ) {
+                    Ok(s) => s,
+                    Err(e) => {
+                        audit_log!(audit, "Failed to begin unix auth: {:?}", e);
+                        return Err(e);
+                    }
+                };
 
-            audit_log!(audit, "Begin event {:?}", uuae);
+                audit_log!(audit, "Begin event {:?}", uuae);
 
-            let ct = SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .expect("Clock failure!");
+                let ct = SystemTime::now()
+                    .duration_since(SystemTime::UNIX_EPOCH)
+                    .expect("Clock failure!");
 
-            let r = idm_write
-                .auth_unix(&mut audit, &uuae, ct)
-                .and_then(|r| idm_write.commit().map(|_| r));
+                let r = idm_write
+                    .auth_unix(&mut audit, &uuae, ct)
+                    .and_then(|r| idm_write.commit().map(|_| r));
 
-            audit_log!(audit, "Sending result -> {:?}", r);
-            r
-        });
+                audit_log!(audit, "Sending result -> {:?}", r);
+                r
+            }
+        );
         self.log.do_send(audit);
         res
     }

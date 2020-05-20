@@ -47,7 +47,7 @@ macro_rules! run_create_test {
         use crate::utils::duration_from_epoch_now;
 
         let mut au = AuditScope::new("run_create_test");
-        audit_segment!(au, || {
+        lperf_segment!(&mut au, "plugins::macros::run_create_test", || {
             let qs = setup_test!(&mut au, $preload_entries);
 
             let ce = match $internal {
@@ -57,29 +57,26 @@ macro_rules! run_create_test {
                 },
             };
 
-            let mut au_test = AuditScope::new("create_test");
             {
                 let mut qs_write = qs.write(duration_from_epoch_now());
-                let r = qs_write.create(&mut au_test, &ce);
+                let r = qs_write.create(&mut au, &ce);
                 debug!("r: {:?}", r);
                 assert!(r == $expect);
-                $check(&mut au_test, &mut qs_write);
+                $check(&mut au, &mut qs_write);
                 match r {
                     Ok(_) => {
-                        qs_write.commit(&mut au_test).expect("commit failure!");
+                        qs_write.commit(&mut au).expect("commit failure!");
                     }
                     Err(e) => {
-                        audit_log!(&mut au_test, "Rolling back => {:?}", e);
+                        audit_log!(&mut au, "Rolling back => {:?}", e);
                     }
                 }
             }
             // Make sure there are no errors.
             debug!("starting verification");
-            let ver = qs.verify(&mut au_test);
+            let ver = qs.verify(&mut au);
             debug!("verification -> {:?}", ver);
             assert!(ver.len() == 0);
-
-            au.append_scope(au_test);
         });
         // Dump the raw audit log.
         println!("{}", au);
@@ -105,7 +102,7 @@ macro_rules! run_modify_test {
         use crate::utils::duration_from_epoch_now;
 
         let mut au = AuditScope::new("run_modify_test");
-        audit_segment!(au, || {
+        lperf_segment!(&mut au, "plugins::macros::run_modify_test", || {
             let qs = setup_test!(&mut au, $preload_entries);
 
             let me = match $internal {
@@ -115,29 +112,34 @@ macro_rules! run_modify_test {
                 },
             };
 
-            let mut au_test = AuditScope::new("modify_test");
             {
                 let mut qs_write = qs.write(duration_from_epoch_now());
-                let r = qs_write.modify(&mut au_test, &me);
-                $check(&mut au_test, &mut qs_write);
+                let r = lperf_segment!(
+                    &mut au,
+                    "plugins::macros::run_modify_test -> main_test",
+                    || { qs_write.modify(&mut au, &me) }
+                );
+                lperf_segment!(
+                    &mut au,
+                    "plugins::macros::run_modify_test -> post_test check",
+                    || { $check(&mut au, &mut qs_write) }
+                );
                 debug!("{:?}", r);
                 assert!(r == $expect);
                 match r {
                     Ok(_) => {
-                        qs_write.commit(&mut au_test).expect("commit failure!");
+                        qs_write.commit(&mut au).expect("commit failure!");
                     }
                     Err(e) => {
-                        audit_log!(&mut au_test, "Rolling back => {:?}", e);
+                        audit_log!(&mut au, "Rolling back => {:?}", e);
                     }
                 }
             }
             // Make sure there are no errors.
             debug!("starting verification");
-            let ver = qs.verify(&mut au_test);
+            let ver = qs.verify(&mut au);
             debug!("verification -> {:?}", ver);
             assert!(ver.len() == 0);
-
-            au.append_scope(au_test);
         });
         // Dump the raw audit log.
         println!("{}", au);
@@ -162,7 +164,7 @@ macro_rules! run_delete_test {
         use crate::utils::duration_from_epoch_now;
 
         let mut au = AuditScope::new("run_delete_test");
-        audit_segment!(au, || {
+        lperf_segment!(&mut au, "plugins::macros::run_delete_test", || {
             let qs = setup_test!(&mut au, $preload_entries);
 
             let de = match $internal {
@@ -172,28 +174,25 @@ macro_rules! run_delete_test {
                 None => unsafe { DeleteEvent::new_internal_invalid($delete_filter.clone()) },
             };
 
-            let mut au_test = AuditScope::new("delete_test");
             {
                 let mut qs_write = qs.write(duration_from_epoch_now());
-                let r = qs_write.delete(&mut au_test, &de);
-                $check(&mut au_test, &mut qs_write);
+                let r = qs_write.delete(&mut au, &de);
+                $check(&mut au, &mut qs_write);
                 assert!(r == $expect);
                 match r {
                     Ok(_) => {
-                        qs_write.commit(&mut au_test).expect("commit failure!");
+                        qs_write.commit(&mut au).expect("commit failure!");
                     }
                     Err(e) => {
-                        audit_log!(&mut au_test, "Rolling back => {:?}", e);
+                        audit_log!(&mut au, "Rolling back => {:?}", e);
                     }
                 }
             }
             // Make sure there are no errors.
             debug!("starting verification");
-            let ver = qs.verify(&mut au_test);
+            let ver = qs.verify(&mut au);
             debug!("verification -> {:?}", ver);
             assert!(ver.len() == 0);
-
-            au.append_scope(au_test);
         });
         // Dump the raw audit log.
         println!("{}", au);
