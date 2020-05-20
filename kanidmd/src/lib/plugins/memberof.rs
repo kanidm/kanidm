@@ -41,7 +41,7 @@ where
         .into_iter()
         .filter(|e| e.attribute_value_pres("class", &CLASS_GROUP))
         .inspect(|e| {
-            audit_log!(au, "group reporting change: {:?}", e);
+            ltrace!(au, "group reporting change: {:?}", e);
         })
         .collect();
 
@@ -74,8 +74,8 @@ fn apply_memberof(
     qs: &mut QueryServerWriteTransaction,
     affected_uuids: Vec<&Uuid>,
 ) -> Result<(), OperationError> {
-    audit_log!(au, " => entering apply_memberof");
-    audit_log!(au, "affected uuids -> {:?}", affected_uuids);
+    ltrace!(au, " => entering apply_memberof");
+    ltrace!(au, "affected uuids -> {:?}", affected_uuids);
 
     // Apply member takes a list of changes. We then filter that to only the changed groups
     // and using this, we determine a list of UUID's from members that will be required to
@@ -139,8 +139,8 @@ fn apply_memberof(
         mo_set.sort();
         mo_set.dedup();
 
-        audit_log!(au, "Updating {:?} to be dir mo {:?}", a_uuid, dir_mo_set);
-        audit_log!(au, "Updating {:?} to be mo {:?}", a_uuid, mo_set);
+        ltrace!(au, "Updating {:?} to be dir mo {:?}", a_uuid, dir_mo_set);
+        ltrace!(au, "Updating {:?} to be mo {:?}", a_uuid, mo_set);
 
         // first add a purged memberof to remove all mo we no longer
         // support.
@@ -231,7 +231,7 @@ impl Plugin for MemberOf {
             // pre-post
             .flat_map(|(pre, post)| vec![pre, post])
             .inspect(|e| {
-                audit_log!(au, "group reporting change: {:?}", e);
+                ltrace!(au, "group reporting change: {:?}", e);
             })
             .filter_map(|e| {
                 // Only groups with member get collected up here.
@@ -326,7 +326,7 @@ impl Plugin for MemberOf {
             let d_groups_set: BTreeSet<&Uuid> =
                 direct_memberof.iter().map(|e| e.get_uuid()).collect();
 
-            audit_log!(
+            ltrace!(
                 au,
                 "DMO search groups {:?} -> {:?}",
                 e.get_uuid(),
@@ -340,10 +340,10 @@ impl Plugin for MemberOf {
                 None => Vec::new(),
             };
 
-            audit_log!(au, "Direct Member Of Set {:?} -> {:?}", e.get_uuid(), dmos);
+            ltrace!(au, "Direct Member Of Set {:?} -> {:?}", e.get_uuid(), dmos);
 
             if dmos.len() != direct_memberof.len() {
-                audit_log!(
+                ladmin_error!(
                     au,
                     "directmemberof set and DMO search set differ in size: {:?}",
                     e.get_uuid()
@@ -356,7 +356,7 @@ impl Plugin for MemberOf {
 
             for mo_uuid in dmos {
                 if !d_groups_set.contains(mo_uuid) {
-                    audit_log!(
+                    ladmin_error!(
                         au,
                         "Entry {:?}, MO {:?} not in direct groups",
                         e.get_uuid(),

@@ -213,12 +213,12 @@ impl Handler<SearchMessage> for QueryServerReadV1 {
             let srch = match SearchEvent::from_message(&mut audit, msg, &mut qs_read) {
                 Ok(s) => s,
                 Err(e) => {
-                    audit_log!(audit, "Failed to begin search: {:?}", e);
+                    ladmin_error!(audit, "Failed to begin search: {:?}", e);
                     return Err(e);
                 }
             };
 
-            audit_log!(audit, "Begin event {:?}", srch);
+            ltrace!(audit, "Begin event {:?}", srch);
 
             match qs_read.search_ext(&mut audit, &srch) {
                 Ok(entries) => SearchResult::new(&mut audit, &mut qs_read, entries)
@@ -242,7 +242,7 @@ impl Handler<AuthMessage> for QueryServerReadV1 {
         // "authenticated" or not.
         let mut audit = AuditScope::new("auth");
         let res = lperf_segment!(&mut audit, "actors::v1_read::handle<AuthMessage>", || {
-            audit_log!(audit, "Begin auth event {:?}", msg);
+            lsecurity!(audit, "Begin auth event {:?}", msg);
 
             // Destructure it.
             // Convert the AuthRequest to an AuthEvent that the idm server
@@ -267,7 +267,7 @@ impl Handler<AuthMessage> for QueryServerReadV1 {
                 .auth(&mut audit, &ae, ct)
                 .and_then(|r| idm_write.commit().map(|_| r));
 
-            audit_log!(audit, "Sending result -> {:?}", r);
+            lsecurity!(audit, "Sending result -> {:?}", r);
             // Build the result.
             r.map(|r| r.response())
         });
@@ -299,12 +299,12 @@ impl Handler<WhoamiMessage> for QueryServerReadV1 {
             let srch = match SearchEvent::from_whoami_request(&mut audit, msg.uat, &mut qs_read) {
                 Ok(s) => s,
                 Err(e) => {
-                    audit_log!(audit, "Failed to begin whoami: {:?}", e);
+                    ladmin_error!(audit, "Failed to begin whoami: {:?}", e);
                     return Err(e);
                 }
             };
 
-            audit_log!(audit, "Begin event {:?}", srch);
+            ltrace!(audit, "Begin event {:?}", srch);
 
             match qs_read.search_ext(&mut audit, &srch) {
                 Ok(mut entries) => {
@@ -347,12 +347,12 @@ impl Handler<InternalSearchMessage> for QueryServerReadV1 {
                 let srch = match SearchEvent::from_internal_message(&mut audit, msg, &mut qs_read) {
                     Ok(s) => s,
                     Err(e) => {
-                        audit_log!(audit, "Failed to begin search: {:?}", e);
+                        ladmin_error!(audit, "Failed to begin search: {:?}", e);
                         return Err(e);
                     }
                 };
 
-                audit_log!(audit, "Begin event {:?}", srch);
+                ltrace!(audit, "Begin event {:?}", srch);
 
                 match qs_read.search_ext(&mut audit, &srch) {
                     Ok(entries) => SearchResult::new(&mut audit, &mut qs_read, entries)
@@ -387,12 +387,12 @@ impl Handler<InternalSearchRecycledMessage> for QueryServerReadV1 {
                     {
                         Ok(s) => s,
                         Err(e) => {
-                            audit_log!(audit, "Failed to begin recycled search: {:?}", e);
+                            ladmin_error!(audit, "Failed to begin recycled search: {:?}", e);
                             return Err(e);
                         }
                     };
 
-                audit_log!(audit, "Begin event {:?}", srch);
+                ltrace!(audit, "Begin event {:?}", srch);
 
                 match qs_read.search_ext(&mut audit, &srch) {
                     Ok(entries) => SearchResult::new(&mut audit, &mut qs_read, entries)
@@ -422,7 +422,7 @@ impl Handler<InternalRadiusReadMessage> for QueryServerReadV1 {
                     Err(_) => qs_read
                         .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
                         .map_err(|e| {
-                            audit_log!(&mut audit, "Error resolving id to target");
+                            ladmin_error!(&mut audit, "Error resolving id to target");
                             e
                         })?,
                 };
@@ -436,12 +436,12 @@ impl Handler<InternalRadiusReadMessage> for QueryServerReadV1 {
                 ) {
                     Ok(s) => s,
                     Err(e) => {
-                        audit_log!(audit, "Failed to begin search: {:?}", e);
+                        ladmin_error!(audit, "Failed to begin search: {:?}", e);
                         return Err(e);
                     }
                 };
 
-                audit_log!(audit, "Begin event {:?}", srch);
+                ltrace!(audit, "Begin event {:?}", srch);
 
                 // We have to use search_ext to guarantee acs was applied.
                 match qs_read.search_ext(&mut audit, &srch) {
@@ -485,7 +485,7 @@ impl Handler<InternalRadiusTokenReadMessage> for QueryServerReadV1 {
                         .qs_read
                         .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
                         .map_err(|e| {
-                            audit_log!(&mut audit, "Error resolving id to target");
+                            ladmin_error!(&mut audit, "Error resolving id to target");
                             e
                         })?,
                 };
@@ -499,12 +499,12 @@ impl Handler<InternalRadiusTokenReadMessage> for QueryServerReadV1 {
                 ) {
                     Ok(s) => s,
                     Err(e) => {
-                        audit_log!(audit, "Failed to begin search: {:?}", e);
+                        ladmin_error!(audit, "Failed to begin search: {:?}", e);
                         return Err(e);
                     }
                 };
 
-                audit_log!(audit, "Begin event {:?}", rate);
+                ltrace!(audit, "Begin event {:?}", rate);
 
                 idm_read.get_radiusauthtoken(&mut audit, &rate)
             }
@@ -534,7 +534,7 @@ impl Handler<InternalUnixUserTokenReadMessage> for QueryServerReadV1 {
                         .qs_read
                         .posixid_to_uuid(&mut audit, msg.uuid_or_name.as_str())
                         .map_err(|e| {
-                            audit_log!(&mut audit, "Error resolving as gidnumber continuing ...");
+                            ladmin_info!(&mut audit, "Error resolving as gidnumber continuing ...");
                             e
                         })
                 })?;
@@ -548,12 +548,12 @@ impl Handler<InternalUnixUserTokenReadMessage> for QueryServerReadV1 {
                 ) {
                     Ok(s) => s,
                     Err(e) => {
-                        audit_log!(audit, "Failed to begin search: {:?}", e);
+                        ladmin_error!(audit, "Failed to begin search: {:?}", e);
                         return Err(e);
                     }
                 };
 
-                audit_log!(audit, "Begin event {:?}", rate);
+                ltrace!(audit, "Begin event {:?}", rate);
 
                 idm_read.get_unixusertoken(&mut audit, &rate)
             }
@@ -583,7 +583,7 @@ impl Handler<InternalUnixGroupTokenReadMessage> for QueryServerReadV1 {
                         .qs_read
                         .posixid_to_uuid(&mut audit, msg.uuid_or_name.as_str())
                         .map_err(|e| {
-                            audit_log!(&mut audit, "Error resolving as gidnumber continuing ...");
+                            ladmin_info!(&mut audit, "Error resolving as gidnumber continuing ...");
                             e
                         })
                 })?;
@@ -597,12 +597,12 @@ impl Handler<InternalUnixGroupTokenReadMessage> for QueryServerReadV1 {
                 ) {
                     Ok(s) => s,
                     Err(e) => {
-                        audit_log!(audit, "Failed to begin search: {:?}", e);
+                        ladmin_error!(audit, "Failed to begin search: {:?}", e);
                         return Err(e);
                     }
                 };
 
-                audit_log!(audit, "Begin event {:?}", rate);
+                ltrace!(audit, "Begin event {:?}", rate);
 
                 idm_read.get_unixgrouptoken(&mut audit, &rate)
             }
@@ -628,7 +628,7 @@ impl Handler<InternalSshKeyReadMessage> for QueryServerReadV1 {
                     Err(_) => qs_read
                         .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
                         .map_err(|e| {
-                            audit_log!(&mut audit, "Error resolving id to target");
+                            ladmin_info!(&mut audit, "Error resolving id to target");
                             e
                         })?,
                 };
@@ -642,12 +642,12 @@ impl Handler<InternalSshKeyReadMessage> for QueryServerReadV1 {
                 ) {
                     Ok(s) => s,
                     Err(e) => {
-                        audit_log!(audit, "Failed to begin search: {:?}", e);
+                        ladmin_error!(audit, "Failed to begin search: {:?}", e);
                         return Err(e);
                     }
                 };
 
-                audit_log!(audit, "Begin event {:?}", srch);
+                ltrace!(audit, "Begin event {:?}", srch);
 
                 match qs_read.search_ext(&mut audit, &srch) {
                     Ok(mut entries) => {
@@ -695,7 +695,7 @@ impl Handler<InternalSshKeyTagReadMessage> for QueryServerReadV1 {
                     Err(_) => qs_read
                         .name_to_uuid(&mut audit, uuid_or_name.as_str())
                         .map_err(|e| {
-                            audit_log!(&mut audit, "Error resolving id to target");
+                            ladmin_info!(&mut audit, "Error resolving id to target");
                             e
                         })?,
                 };
@@ -709,12 +709,12 @@ impl Handler<InternalSshKeyTagReadMessage> for QueryServerReadV1 {
                 ) {
                     Ok(s) => s,
                     Err(e) => {
-                        audit_log!(audit, "Failed to begin search: {:?}", e);
+                        ladmin_error!(audit, "Failed to begin search: {:?}", e);
                         return Err(e);
                     }
                 };
 
-                audit_log!(audit, "Begin event {:?}", srch);
+                ltrace!(audit, "Begin event {:?}", srch);
 
                 match qs_read.search_ext(&mut audit, &srch) {
                     Ok(mut entries) => {
@@ -763,7 +763,7 @@ impl Handler<IdmAccountUnixAuthMessage> for QueryServerReadV1 {
                         .qs_read
                         .posixid_to_uuid(&mut audit, msg.uuid_or_name.as_str())
                         .map_err(|e| {
-                            audit_log!(&mut audit, "Error resolving as gidnumber continuing ...");
+                            ladmin_info!(&mut audit, "Error resolving as gidnumber continuing ...");
                             e
                         })
                 })?;
@@ -777,12 +777,12 @@ impl Handler<IdmAccountUnixAuthMessage> for QueryServerReadV1 {
                 ) {
                     Ok(s) => s,
                     Err(e) => {
-                        audit_log!(audit, "Failed to begin unix auth: {:?}", e);
+                        ladmin_error!(audit, "Failed to begin unix auth: {:?}", e);
                         return Err(e);
                     }
                 };
 
-                audit_log!(audit, "Begin event {:?}", uuae);
+                lsecurity!(audit, "Begin event {:?}", uuae);
 
                 let ct = SystemTime::now()
                     .duration_since(SystemTime::UNIX_EPOCH)
@@ -792,7 +792,7 @@ impl Handler<IdmAccountUnixAuthMessage> for QueryServerReadV1 {
                     .auth_unix(&mut audit, &uuae, ct)
                     .and_then(|r| idm_write.commit().map(|_| r));
 
-                audit_log!(audit, "Sending result -> {:?}", r);
+                lsecurity!(audit, "Sending result -> {:?}", r);
                 r
             }
         );

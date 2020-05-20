@@ -104,10 +104,10 @@ impl SchemaAttribute {
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         // Convert entry to a schema attribute.
-        audit_log!(audit, "Converting -> {:?}", value);
+        ltrace!(audit, "Converting -> {:?}", value);
         // class
         if !value.attribute_value_pres("class", &PVCLASS_ATTRIBUTETYPE) {
-            audit_log!(audit, "class attribute type not present");
+            ladmin_error!(audit, "class attribute type not present");
             return Err(OperationError::InvalidSchemaState(
                 "missing attributetype".to_string(),
             ));
@@ -394,10 +394,10 @@ impl SchemaClass {
         audit: &mut AuditScope,
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
-        audit_log!(audit, "{:?}", value);
+        ltrace!(audit, "Converting {:?}", value);
         // Convert entry to a schema class.
         if !value.attribute_value_pres("class", &PVCLASS_CLASSTYPE) {
-            audit_log!(audit, "class classtype not present");
+            ladmin_error!(audit, "class classtype not present");
             return Err(OperationError::InvalidSchemaState(
                 "missing classtype".to_string(),
             ));
@@ -633,7 +633,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     multivalue: true,
                     unique: false,
                     phantom: false,
-                    index: vec![IndexType::EQUALITY],
+                    index: vec![IndexType::EQUALITY, IndexType::PRESENCE],
                     syntax: SyntaxType::UTF8STRING_INSENSITIVE,
                 },
             );
@@ -649,7 +649,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     // needing to check recycled objects too.
                     unique: false,
                     phantom: false,
-                    index: vec![IndexType::EQUALITY],
+                    index: vec![IndexType::EQUALITY, IndexType::PRESENCE],
                     syntax: SyntaxType::UUID,
                 },
             );
@@ -1340,11 +1340,12 @@ impl<'a> SchemaWriteTransaction<'a> {
             );
 
             let r = self.validate(audit);
-            audit_log!(audit, "{:?}", r);
             if r.is_empty() {
+                ladmin_info!(audit, "schema validate -> passed");
                 self.reload_idxmeta();
                 Ok(())
             } else {
+                ladmin_info!(audit, "schema validate -> errors {:?}", r);
                 Err(OperationError::ConsistencyError(r))
             }
         });

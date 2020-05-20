@@ -36,7 +36,7 @@ impl Spn {
                     .ok_or(OperationError::InvalidEntryState)
             })
             .map_err(|e| {
-                audit_log!(au, "Error getting domain name -> {:?}", e);
+                ladmin_error!(au, "Error getting domain name -> {:?}", e);
                 e
             })
     }
@@ -51,7 +51,7 @@ impl Spn {
                     .ok_or(OperationError::InvalidEntryState)
             })
             .map_err(|e| {
-                audit_log!(au, "Error getting domain name -> {:?}", e);
+                ladmin_error!(au, "Error getting domain name -> {:?}", e);
                 e
             })
     }
@@ -93,14 +93,14 @@ impl Plugin for Spn {
                     .generate_spn(some_domain_name.as_str())
                     .ok_or(OperationError::InvalidEntryState)
                     .map_err(|e| {
-                        audit_log!(
+                        ladmin_error!(
                             au,
                             "Account or group missing name, unable to generate spn!? {:?}",
                             e
                         );
                         e
                     })?;
-                audit_log!(au, "plugin_spn: set spn to {:?}", spn);
+                ltrace!(au, "plugin_spn: set spn to {:?}", spn);
                 e.set_avas("spn", vec![spn]);
             }
         }
@@ -134,14 +134,14 @@ impl Plugin for Spn {
                     .generate_spn(some_domain_name.as_str())
                     .ok_or(OperationError::InvalidEntryState)
                     .map_err(|e| {
-                        audit_log!(
+                        ladmin_error!(
                             au,
                             "Account or group missing name, unable to generate spn!? {:?}",
                             e
                         );
                         e
                     })?;
-                audit_log!(au, "plugin_spn: set spn to {:?}", spn);
+                ltrace!(au, "plugin_spn: set spn to {:?}", spn);
                 e.set_avas("spn", vec![spn]);
             }
         }
@@ -180,7 +180,7 @@ impl Plugin for Spn {
             None => return Ok(()),
         };
 
-        audit_log!(
+        ladmin_info!(
             au,
             "IMPORTANT!!! Changing domain name to \"{:?}\". THIS MAY TAKE A LONG TIME ...",
             domain_name
@@ -233,7 +233,7 @@ impl Plugin for Spn {
             let g_spn = match e.generate_spn(domain_name.as_str()) {
                 Some(s) => s,
                 None => {
-                    audit_log!(
+                    ladmin_error!(
                         au,
                         "Entry {:?} SPN could not be generated (missing name!?)",
                         e.get_uuid()
@@ -245,9 +245,9 @@ impl Plugin for Spn {
             };
             match e.get_ava_single("spn") {
                 Some(r_spn) => {
-                    audit_log!(au, "verify spn: s {:?} == ex {:?} ?", r_spn, g_spn);
+                    ltrace!(au, "verify spn: s {:?} == ex {:?} ?", r_spn, g_spn);
                     if *r_spn != g_spn {
-                        audit_log!(
+                        ladmin_error!(
                             au,
                             "Entry {:?} SPN does not match expected s {:?} != ex {:?}",
                             e.get_uuid(),
@@ -257,11 +257,11 @@ impl Plugin for Spn {
                         debug_assert!(false);
                         r.push(Err(ConsistencyError::InvalidSPN(e.get_id())))
                     } else {
-                        audit_log!(au, "spn is ok! 👍");
+                        ltrace!(au, "spn is ok! 👍");
                     }
                 }
                 None => {
-                    audit_log!(au, "Entry {:?} does not contain an SPN", e.get_uuid(),);
+                    ladmin_error!(au, "Entry {:?} does not contain an SPN", e.get_uuid(),);
                     r.push(Err(ConsistencyError::InvalidSPN(e.get_id())))
                 }
             }

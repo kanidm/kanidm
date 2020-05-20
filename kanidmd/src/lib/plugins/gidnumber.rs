@@ -47,7 +47,7 @@ fn apply_gidnumber<T: Clone>(
         }
 
         let gid_v = Value::new_uint32(gid);
-        audit_log!(au, "Generated {} for {:?}", gid, u_ref);
+        ladmin_info!(au, "Generated {} for {:?}", gid, u_ref);
         e.set_avas("gidnumber", vec![gid_v]);
         Ok(())
     } else if let Some(gid) = e.get_ava_single_uint32("gidnumber") {

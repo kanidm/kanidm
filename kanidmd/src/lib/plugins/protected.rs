@@ -56,7 +56,7 @@ impl Plugin for Protected {
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         if ce.event.is_internal() {
-            audit_log!(
+            ltrace!(
                 au,
                 "Internal operation, not enforcing system object protection"
             );
@@ -89,7 +89,7 @@ impl Plugin for Protected {
         me: &ModifyEvent,
     ) -> Result<(), OperationError> {
         if me.event.is_internal() {
-            audit_log!(
+            ltrace!(
                 au,
                 "Internal operation, not enforcing system object protection"
             );
@@ -147,7 +147,7 @@ impl Plugin for Protected {
             }
         });
 
-        audit_log!(au, "class: system -> {}", system_pres);
+        ltrace!(au, "class: system -> {}", system_pres);
         // No system types being altered, return.
         if !system_pres {
             return Ok(());
@@ -180,7 +180,7 @@ impl Plugin for Protected {
         de: &DeleteEvent,
     ) -> Result<(), OperationError> {
         if de.event.is_internal() {
-            audit_log!(
+            ltrace!(
                 au,
                 "Internal operation, not enforcing system object protection"
             );

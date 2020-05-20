@@ -52,7 +52,7 @@ fn get_cand_attr_set<VALID, STATE>(
                 None => {}
                 // The duplicate/rejected value moved out of the tree
                 Some(vr) => {
-                    audit_log!(
+                    ladmin_error!(
                         au,
                         "ava already exists -> {:?}: {:?} on {:?}",
                         attr,
@@ -107,10 +107,10 @@ fn enforce_unique<STATE>(
     debug!("{:?}", filt_in);
 
     // If any results, reject.
-    let conflict_cand = try_audit!(au, qs.internal_search(au, filt_in));
+    let conflict_cand = try_audit!(au, qs.internal_exists(au, filt_in));
 
     // If all okay, okay!
-    if !conflict_cand.is_empty() {
+    if conflict_cand {
         return Err(OperationError::Plugin(PluginError::AttrUnique(
             "duplicate value detected".to_string(),
         )));

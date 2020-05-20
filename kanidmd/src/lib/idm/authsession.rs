@@ -308,7 +308,7 @@ impl AuthSession {
 
         match self.handler.validate(creds, time) {
             CredState::Success(claims) => {
-                audit_log!(au, "Successful cred handling");
+                lsecurity!(au, "Successful cred handling");
                 self.finished = true;
                 let uat = self
                     .account
@@ -317,12 +317,12 @@ impl AuthSession {
                 Ok(AuthState::Success(uat))
             }
             CredState::Continue(allowed) => {
-                audit_log!(au, "Request credential continuation: {:?}", allowed);
+                lsecurity!(au, "Request credential continuation: {:?}", allowed);
                 Ok(AuthState::Continue(allowed))
             }
             CredState::Denied(reason) => {
                 self.finished = true;
-                audit_log!(au, "Credentials denied: {}", reason);
+                lsecurity!(au, "Credentials denied: {}", reason);
                 Ok(AuthState::Denied(reason.to_string()))
             }
         }

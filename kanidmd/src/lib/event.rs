@@ -128,7 +128,7 @@ impl Event {
         qs: &mut QueryServerReadTransaction,
         uat: Option<UserAuthToken>,
     ) -> Result<Self, OperationError> {
-        audit_log!(audit, "from_ro_uat -> {:?}", uat);
+        ltrace!(audit, "from_ro_uat -> {:?}", uat);
         let uat = uat.ok_or(OperationError::NotAuthenticated)?;
         let u = try_audit!(
             audit,
@@ -149,7 +149,7 @@ impl Event {
         qs: &mut QueryServerWriteTransaction,
         uat: Option<UserAuthToken>,
     ) -> Result<Self, OperationError> {
-        audit_log!(audit, "from_rw_uat -> {:?}", uat);
+        ltrace!(audit, "from_rw_uat -> {:?}", uat);
         let uat = uat.ok_or(OperationError::NotAuthenticated)?;
         let u = try_audit!(
             audit,

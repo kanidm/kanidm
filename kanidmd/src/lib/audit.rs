@@ -10,15 +10,46 @@ use chrono::DateTime;
 use uuid::adapter::HyphenatedRef;
 use uuid::Uuid;
 
-#[macro_export]
+#[derive(Debug, Serialize, Deserialize)]
+pub enum LogTag {
+    AdminError,
+    AdminWarning,
+    AdminInfo,
+    RequestError,
+    Security,
+    SecurityAccess,
+    Filter,
+    FilterError,
+    FilterWarning,
+    Trace,
+}
+
+impl fmt::Display for LogTag {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            LogTag::AdminError => write!(f, "admin::error 🚨"),
+            LogTag::AdminWarning => write!(f, "admin::warning 🚧"),
+            LogTag::AdminInfo => write!(f, "admin::info"),
+            LogTag::RequestError => write!(f, "request::error 🚨"),
+            LogTag::Security => write!(f, "security 🔒"),
+            LogTag::SecurityAccess => write!(f, "security::access 🔐"),
+            LogTag::Filter => write!(f, "filter"),
+            LogTag::FilterWarning => write!(f, "filter::warning 🚧"),
+            LogTag::FilterError => write!(f, "filter::error 🚨"),
+            LogTag::Trace => write!(f, "Trace"),
+        }
+    }
+}
+
 macro_rules! audit_log {
     ($audit:expr, $($arg:tt)*) => ({
         use std::fmt;
+        use crate::audit::LogTag;
         if cfg!(test) || cfg!(debug_assertions) {
             debug!($($arg)*)
-            // } else {
         }
         $audit.log_event(
+            LogTag::AdminError,
             fmt::format(
                 format_args!($($arg)*)
             )
@@ -26,15 +57,125 @@ macro_rules! audit_log {
     })
 }
 
-/*
- * This should be used as:
- * audit_segment(|au| {
- *     // au is the inner audit
- *     do your work
- *     audit_log!(au, ...?)
- *     nested_caller(&mut au, ...)
- * })
- */
+macro_rules! ltrace {
+    ($au:expr, $($arg:tt)*) => ({
+        use std::fmt;
+        use crate::audit::LogTag;
+        if cfg!(test) || cfg!(debug_assertions) {
+            debug!($($arg)*)
+        }
+        $au.log_event(
+            LogTag::Trace,
+            fmt::format(
+                format_args!($($arg)*)
+            )
+        )
+    })
+}
+
+macro_rules! lfilter {
+    ($au:expr, $($arg:tt)*) => ({
+        use std::fmt;
+        use crate::audit::LogTag;
+        $au.log_event(
+            LogTag::Filter,
+            fmt::format(
+                format_args!($($arg)*)
+            )
+        )
+    })
+}
+
+macro_rules! lfilter_warning {
+    ($au:expr, $($arg:tt)*) => ({
+        use std::fmt;
+        use crate::audit::LogTag;
+        $au.log_event(
+            LogTag::FilterWarning,
+            fmt::format(
+                format_args!($($arg)*)
+            )
+        )
+    })
+}
+
+macro_rules! lfilter_error {
+    ($au:expr, $($arg:tt)*) => ({
+        use std::fmt;
+        use crate::audit::LogTag;
+        $au.log_event(
+            LogTag::FilterError,
+            fmt::format(
+                format_args!($($arg)*)
+            )
+        )
+    })
+}
+
+macro_rules! ladmin_error {
+    ($au:expr, $($arg:tt)*) => ({
+        use std::fmt;
+        use crate::audit::LogTag;
+        $au.log_event(
+            LogTag::AdminError,
+            fmt::format(
+                format_args!($($arg)*)
+            )
+        )
+    })
+}
+
+macro_rules! ladmin_info {
+    ($au:expr, $($arg:tt)*) => ({
+        use std::fmt;
+        use crate::audit::LogTag;
+        $au.log_event(
+            LogTag::AdminInfo,
+            fmt::format(
+                format_args!($($arg)*)
+            )
+        )
+    })
+}
+
+macro_rules! lrequest_error {
+    ($au:expr, $($arg:tt)*) => ({
+        use std::fmt;
+        use crate::audit::LogTag;
+        $au.log_event(
+            LogTag::RequestError,
+            fmt::format(
+                format_args!($($arg)*)
+            )
+        )
+    })
+}
+
+macro_rules! lsecurity {
+    ($au:expr, $($arg:tt)*) => ({
+        use std::fmt;
+        use crate::audit::LogTag;
+        $au.log_event(
+            LogTag::Security,
+            fmt::format(
+                format_args!($($arg)*)
+            )
+        )
+    })
+}
+
+macro_rules! lsecurity_access {
+    ($au:expr, $($arg:tt)*) => ({
+        use std::fmt;
+        use crate::audit::LogTag;
+        $au.log_event(
+            LogTag::SecurityAccess,
+            fmt::format(
+                format_args!($($arg)*)
+            )
+        )
+    })
+}
 
 macro_rules! lperf_segment {
     ($au:expr, $id:expr, $fun:expr) => {{
@@ -96,6 +237,7 @@ macro_rules! try_audit {
 #[derive(Debug, Serialize, Deserialize)]
 struct AuditLog {
     time: String,
+    tag: LogTag,
     data: String,
 }
 
@@ -195,7 +337,7 @@ impl PerfProcessed {
         parents: usize,
         uuid: &HyphenatedRef,
     ) -> fmt::Result {
-        write!(f, "perf {}: ", uuid)?;
+        write!(f, "[- {} perf::trace] ", uuid)?;
         let d = &self.duration;
         let df = d.as_secs() as f64 + d.subsec_nanos() as f64 * 1e-9;
         if parents > 0 {
@@ -236,7 +378,7 @@ impl fmt::Display for AuditScope {
         let uuid_ref = self.uuid.to_hyphenated_ref();
         self.events
             .iter()
-            .try_for_each(|e| writeln!(f, "{} {}: {}", e.time, uuid_ref, e.data))?;
+            .try_for_each(|e| writeln!(f, "[{} {} {}] {}", e.time, uuid_ref, e.tag, e.data))?;
         // First, we pre-process all the perf events to order them
         let mut proc_perf: Vec<_> = self.perf.iter().map(|pe| pe.process()).collect();
 
@@ -259,6 +401,7 @@ impl AuditScope {
             uuid: Uuid::new_v4(),
             events: vec![AuditLog {
                 time: datetime.to_rfc3339(),
+                tag: LogTag::AdminInfo,
                 data: format!("start {}", name),
             }],
             perf: vec![],
@@ -270,12 +413,13 @@ impl AuditScope {
         &self.uuid
     }
 
-    pub fn log_event(&mut self, data: String) {
+    pub fn log_event(&mut self, tag: LogTag, data: String) {
         let t_now = SystemTime::now();
         let datetime: DateTime<Utc> = t_now.into();
 
         self.events.push(AuditLog {
             time: datetime.to_rfc3339(),
+            tag,
             data: data,
         })
     }

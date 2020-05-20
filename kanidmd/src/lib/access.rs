@@ -56,7 +56,7 @@ impl AccessControlSearch {
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         if !value.attribute_value_pres("class", &CLASS_ACS) {
-            audit_log!(audit, "class access_control_search not present.");
+            ladmin_error!(audit, "class access_control_search not present.");
             return Err(OperationError::InvalidACPState(
                 "Missing access_control_search".to_string(),
             ));
@@ -106,7 +106,7 @@ impl AccessControlDelete {
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         if !value.attribute_value_pres("class", &CLASS_ACD) {
-            audit_log!(audit, "class access_control_delete not present.");
+            ladmin_error!(audit, "class access_control_delete not present.");
             return Err(OperationError::InvalidACPState(
                 "Missing access_control_delete".to_string(),
             ));
@@ -149,7 +149,7 @@ impl AccessControlCreate {
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         if !value.attribute_value_pres("class", &CLASS_ACC) {
-            audit_log!(audit, "class access_control_create not present.");
+            ladmin_error!(audit, "class access_control_create not present.");
             return Err(OperationError::InvalidACPState(
                 "Missing access_control_create".to_string(),
             ));
@@ -207,7 +207,7 @@ impl AccessControlModify {
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         if !value.attribute_value_pres("class", &CLASS_ACM) {
-            audit_log!(audit, "class access_control_modify not present.");
+            ladmin_error!(audit, "class access_control_modify not present.");
             return Err(OperationError::InvalidACPState(
                 "Missing access_control_modify".to_string(),
             ));
@@ -276,7 +276,7 @@ impl AccessControlProfile {
     ) -> Result<Self, OperationError> {
         // Assert we have class access_control_profile
         if !value.attribute_value_pres("class", &CLASS_ACP) {
-            audit_log!(audit, "class access_control_profile not present.");
+            ladmin_error!(audit, "class access_control_profile not present.");
             return Err(OperationError::InvalidACPState(
                 "Missing access_control_profile".to_string(),
             ));
@@ -359,12 +359,12 @@ pub trait AccessControlsTransaction {
         se: &SearchEvent,
         entries: Vec<Entry<EntrySealed, EntryCommitted>>,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
-        audit_log!(audit, "Access check for event: {:?}", se);
+        lsecurity_access!(audit, "Access check for event: {:?}", se);
 
         // If this is an internal search, return our working set.
         let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &se.event.origin {
             EventOrigin::Internal => {
-                audit_log!(audit, "Internal operation, bypassing access check");
+                lsecurity_access!(audit, "Internal operation, bypassing access check");
                 // No need to check ACS
                 return Ok(entries);
             }
@@ -403,7 +403,7 @@ pub trait AccessControlsTransaction {
                         }
                     }
                     Err(e) => {
-                        audit_log!(
+                        ladmin_error!(
                             audit,
                             "A internal filter was passed for resolution!?!? {:?}",
                             e
@@ -415,7 +415,7 @@ pub trait AccessControlsTransaction {
             .collect();
 
         related_acp.iter().for_each(|racp| {
-            audit_log!(audit, "Related acs -> {:?}", racp.acp.name);
+            lsecurity_access!(audit, "Related acs -> {:?}", racp.acp.name);
         });
 
         // Get the set of attributes requested by this se filter. This is what we are
@@ -435,7 +435,7 @@ pub trait AccessControlsTransaction {
                             Ok(f_res) => {
                                 // if it applies
                                 if e.entry_match_no_index(&f_res) {
-                                    audit_log!(
+                                    lsecurity_access!(
                                         audit,
                                         "entry {:?} matches acs {:?}",
                                         e.get_uuid(),
@@ -446,7 +446,7 @@ pub trait AccessControlsTransaction {
                                         acs.attrs.iter().map(|s| s.as_str()).collect();
                                     Some(r)
                                 } else {
-                                    audit_log!(
+                                    lsecurity_access!(
                                         audit,
                                         "entry {:?} DOES NOT match acs {:?}",
                                         e.get_uuid(),
@@ -456,7 +456,7 @@ pub trait AccessControlsTransaction {
                                 }
                             }
                             Err(e) => {
-                                audit_log!(
+                                ladmin_error!(
                                     audit,
                                     "A internal filter was passed for resolution!?!? {:?}",
                                     e
@@ -468,16 +468,16 @@ pub trait AccessControlsTransaction {
                     .flatten()
                     .collect();
 
-                audit_log!(audit, "-- for entry         --> {:?}", e.get_uuid());
-                audit_log!(audit, "allowed attributes   --> {:?}", allowed_attrs);
-                audit_log!(audit, "requested attributes --> {:?}", requested_attrs);
+                lsecurity_access!(audit, "-- for entry         --> {:?}", e.get_uuid());
+                lsecurity_access!(audit, "allowed attributes   --> {:?}", allowed_attrs);
+                lsecurity_access!(audit, "requested attributes --> {:?}", requested_attrs);
 
                 // is attr set a subset of allowed set?
                 // true -> entry is allowed in result set
                 // false -> the entry is not allowed to be searched by this entity, so is
                 //          excluded.
                 let decision = requested_attrs.is_subset(&allowed_attrs);
-                audit_log!(audit, "search attr decision --> {:?}", decision);
+                lsecurity_access!(audit, "search attr decision --> {:?}", decision);
                 decision
             })
             .collect();
@@ -498,14 +498,14 @@ pub trait AccessControlsTransaction {
          * impersonate and such actually still get the whole entry back as not to break
          * modify and co.
          */
-        audit_log!(audit, "Access check and reduce for event: {:?}", se);
+        lsecurity_access!(audit, "Access check and reduce for event: {:?}", se);
 
         // If this is an internal search, do nothing. How this occurs in this
         // interface is beyond me ....
         let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &se.event.origin {
             EventOrigin::Internal => {
                 if cfg!(test) {
-                    audit_log!(audit, "TEST: Internal search in external interface - allowing due to cfg test ...");
+                    lsecurity_access!(audit, "TEST: Internal search in external interface - allowing due to cfg test ...");
                     // In tests we just push everything back.
                     return Ok(entries
                         .into_iter()
@@ -514,7 +514,7 @@ pub trait AccessControlsTransaction {
                 } else {
                     // In production we can't risk leaking data here, so we return
                     // empty sets.
-                    audit_log!(audit, "IMPOSSIBLE STATE: Internal search in external interface?! Returning empty for safety.");
+                    ladmin_error!(audit, "IMPOSSIBLE STATE: Internal search in external interface?! Returning empty for safety.");
                     // No need to check ACS
                     return Ok(Vec::new());
                 }
@@ -557,7 +557,7 @@ pub trait AccessControlsTransaction {
                         }
                     }
                     Err(e) => {
-                        audit_log!(
+                        ladmin_error!(
                             audit,
                             "A internal filter was passed for resolution!?!? {:?}",
                             e
@@ -569,7 +569,7 @@ pub trait AccessControlsTransaction {
             .collect();
 
         related_acp.iter().for_each(|racp| {
-            audit_log!(audit, "Related acs -> {:?}", racp.acp.name);
+            lsecurity_access!(audit, "Related acs -> {:?}", racp.acp.name);
         });
 
         // Build a reference set from the req_attrs
@@ -591,7 +591,7 @@ pub trait AccessControlsTransaction {
                             Ok(f_res) => {
                                 // if it applies
                                 if e.entry_match_no_index(&f_res) {
-                                    audit_log!(
+                                    lsecurity_access!(
                                         audit,
                                         "entry {:?} matches acs {:?}",
                                         e.get_uuid(),
@@ -602,7 +602,7 @@ pub trait AccessControlsTransaction {
                                         acs.attrs.iter().map(|s| s.as_str()).collect();
                                     Some(r)
                                 } else {
-                                    audit_log!(
+                                    lsecurity_access!(
                                         audit,
                                         "entry {:?} DOES NOT match acs {:?}",
                                         e.get_uuid(),
@@ -612,7 +612,7 @@ pub trait AccessControlsTransaction {
                                 }
                             }
                             Err(e) => {
-                                audit_log!(
+                                ladmin_error!(
                                     audit,
                                     "A internal filter was passed for resolution!?!? {:?}",
                                     e
@@ -625,9 +625,9 @@ pub trait AccessControlsTransaction {
                     .collect();
 
                 // Remove all others that are present on the entry.
-                audit_log!(audit, "-- for entry         --> {:?}", e.get_uuid());
-                audit_log!(audit, "requested attributes --> {:?}", req_attrs);
-                audit_log!(audit, "allowed attributes   --> {:?}", allowed_attrs);
+                lsecurity_access!(audit, "-- for entry         --> {:?}", e.get_uuid());
+                lsecurity_access!(audit, "requested attributes --> {:?}", req_attrs);
+                lsecurity_access!(audit, "allowed attributes   --> {:?}", allowed_attrs);
 
                 // Remove anything that wasn't requested.
                 let f_allowed_attrs: BTreeSet<&str> = match &req_attrs {
@@ -648,7 +648,7 @@ pub trait AccessControlsTransaction {
         me: &ModifyEvent,
         entries: &[Entry<EntrySealed, EntryCommitted>],
     ) -> Result<bool, OperationError> {
-        audit_log!(audit, "Access check for event: {:?}", me);
+        lsecurity_access!(audit, "Access check for event: {:?}", me);
 
         let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &me.event.origin {
             EventOrigin::Internal => {
@@ -673,7 +673,7 @@ pub trait AccessControlsTransaction {
             }
         });
         if disallow {
-            audit_log!(audit, "Disallowing purge class in modification");
+            lsecurity_access!(audit, "Disallowing purge class in modification");
             return Ok(false);
         }
 
@@ -691,7 +691,7 @@ pub trait AccessControlsTransaction {
                         }
                     }
                     Err(e) => {
-                        audit_log!(
+                        ladmin_error!(
                             audit,
                             "A internal filter was passed for resolution!?!? {:?}",
                             e
@@ -703,7 +703,7 @@ pub trait AccessControlsTransaction {
             .collect();
 
         related_acp.iter().for_each(|racp| {
-            audit_log!(audit, "Related acs -> {:?}", racp.acp.name);
+            lsecurity_access!(audit, "Related acs -> {:?}", racp.acp.name);
         });
 
         // build two sets of "requested pres" and "requested rem"
@@ -757,9 +757,9 @@ pub trait AccessControlsTransaction {
             })
             .collect();
 
-        audit_log!(audit, "Requested present set: {:?}", requested_pres);
-        audit_log!(audit, "Requested remove set: {:?}", requested_rem);
-        audit_log!(audit, "Requested class set: {:?}", requested_classes);
+        lsecurity_access!(audit, "Requested present set: {:?}", requested_pres);
+        lsecurity_access!(audit, "Requested remove set: {:?}", requested_rem);
+        lsecurity_access!(audit, "Requested class set: {:?}", requested_classes);
 
         let r = entries.iter().fold(true, |acc, e| {
             if !acc {
@@ -784,7 +784,7 @@ pub trait AccessControlsTransaction {
                                 }
                             }
                             Err(e) => {
-                                audit_log!(
+                                ladmin_error!(
                                     audit,
                                     "A internal filter was passed for resolution!?!? {:?}",
                                     e
@@ -815,20 +815,21 @@ pub trait AccessControlsTransaction {
                 // is already checked above.
                 let mut result = true;
                 if !requested_pres.is_subset(&allowed_pres) {
-                    audit_log!(audit, "requested_pres is not a subset of allowed");
-                    audit_log!(audit, "{:?} !⊆ {:?}", requested_pres, allowed_pres);
+                    lsecurity_access!(audit, "requested_pres is not a subset of allowed");
+                    lsecurity_access!(audit, "{:?} !⊆ {:?}", requested_pres, allowed_pres);
                     result = false;
                 }
                 if !requested_rem.is_subset(&allowed_rem) {
-                    audit_log!(audit, "requested_rem is not a subset of allowed");
-                    audit_log!(audit, "{:?} !⊆ {:?}", requested_rem, allowed_rem);
+                    lsecurity_access!(audit, "requested_rem is not a subset of allowed");
+                    lsecurity_access!(audit, "{:?} !⊆ {:?}", requested_rem, allowed_rem);
                     result = false;
                 }
                 if !requested_classes.is_subset(&allowed_classes) {
-                    audit_log!(audit, "requested_classes is not a subset of allowed");
-                    audit_log!(audit, "{:?} !⊆ {:?}", requested_classes, allowed_classes);
+                    lsecurity_access!(audit, "requested_classes is not a subset of allowed");
+                    lsecurity_access!(audit, "{:?} !⊆ {:?}", requested_classes, allowed_classes);
                     result = false;
                 }
+                lsecurity_access!(audit, "passed pres, rem, classes check.");
                 result
             } // if acc == false
         });
@@ -841,7 +842,7 @@ pub trait AccessControlsTransaction {
         ce: &CreateEvent,
         entries: &[Entry<EntryInit, EntryNew>],
     ) -> Result<bool, OperationError> {
-        audit_log!(audit, "Access check for event: {:?}", ce);
+        lsecurity_access!(audit, "Access check for event: {:?}", ce);
 
         let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &ce.event.origin {
             EventOrigin::Internal => {
@@ -868,7 +869,7 @@ pub trait AccessControlsTransaction {
                         }
                     }
                     Err(e) => {
-                        audit_log!(
+                        ladmin_error!(
                             audit,
                             "A internal filter was passed for resolution!?!? {:?}",
                             e
@@ -879,7 +880,7 @@ pub trait AccessControlsTransaction {
             })
             .collect();
 
-        audit_log!(audit, "Related acc -> {:?}", related_acp);
+        lsecurity_access!(audit, "Related acc -> {:?}", related_acp);
 
         // For each entry
         let r = entries.iter().fold(true, |acc, e| {
@@ -906,7 +907,7 @@ pub trait AccessControlsTransaction {
                 let create_classes: BTreeSet<&str> = match e.get_ava_set_str("class") {
                     Some(s) => s,
                     None => {
-                        audit_log!(audit, "Class set failed to build - corrupted entry?");
+                        ladmin_error!(audit, "Class set failed to build - corrupted entry?");
                         return false;
                     }
                 };
@@ -921,7 +922,12 @@ pub trait AccessControlsTransaction {
                         match f_val.resolve(&ce.event, None) {
                             Ok(f_res) => {
                                 if e.entry_match_no_index(&f_res) {
-                                    audit_log!(audit, "entry {:?} matches acs {:?}", e, accr);
+                                    lsecurity_access!(
+                                        audit,
+                                        "entry {:?} matches acs {:?}",
+                                        e,
+                                        accr
+                                    );
                                     // It matches, so now we have to check attrs and classes.
                                     // Remember, we have to match ALL requested attrs
                                     // and classes to pass!
@@ -931,11 +937,11 @@ pub trait AccessControlsTransaction {
                                         accr.classes.iter().map(|s| s.as_str()).collect();
 
                                     if !create_attrs.is_subset(&allowed_attrs) {
-                                        audit_log!(
+                                        lsecurity_access!(
                                             audit,
                                             "create_attrs is not a subset of allowed"
                                         );
-                                        audit_log!(
+                                        lsecurity_access!(
                                             audit,
                                             "{:?} !⊆ {:?}",
                                             create_attrs,
@@ -944,11 +950,11 @@ pub trait AccessControlsTransaction {
                                         return false;
                                     }
                                     if !create_classes.is_subset(&allowed_classes) {
-                                        audit_log!(
+                                        lsecurity_access!(
                                             audit,
                                             "create_classes is not a subset of allowed"
                                         );
-                                        audit_log!(
+                                        lsecurity_access!(
                                             audit,
                                             "{:?} !⊆ {:?}",
                                             create_classes,
@@ -956,10 +962,11 @@ pub trait AccessControlsTransaction {
                                         );
                                         return false;
                                     }
+                                    lsecurity_access!(audit, "passed");
 
                                     true
                                 } else {
-                                    audit_log!(
+                                    lsecurity_access!(
                                         audit,
                                         "entry {:?} DOES NOT match acs {:?}",
                                         e,
@@ -970,7 +977,7 @@ pub trait AccessControlsTransaction {
                                 }
                             }
                             Err(e) => {
-                                audit_log!(
+                                ladmin_error!(
                                     audit,
                                     "A internal filter was passed for resolution!?!? {:?}",
                                     e
@@ -1000,7 +1007,7 @@ pub trait AccessControlsTransaction {
         de: &DeleteEvent,
         entries: &[Entry<EntrySealed, EntryCommitted>],
     ) -> Result<bool, OperationError> {
-        audit_log!(audit, "Access check for event: {:?}", de);
+        lsecurity_access!(audit, "Access check for event: {:?}", de);
 
         let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &de.event.origin {
             EventOrigin::Internal => {
@@ -1027,7 +1034,7 @@ pub trait AccessControlsTransaction {
                         }
                     }
                     Err(e) => {
-                        audit_log!(
+                        ladmin_error!(
                             audit,
                             "A internal filter was passed for resolution!?!? {:?}",
                             e
@@ -1039,7 +1046,7 @@ pub trait AccessControlsTransaction {
             .collect();
 
         related_acp.iter().for_each(|racp| {
-            audit_log!(audit, "Related acs -> {:?}", racp.acp.name);
+            lsecurity_access!(audit, "Related acs -> {:?}", racp.acp.name);
         });
 
         // For each entry
@@ -1057,16 +1064,17 @@ pub trait AccessControlsTransaction {
                         match f_val.resolve(&de.event, None) {
                             Ok(f_res) => {
                                 if e.entry_match_no_index(&f_res) {
-                                    audit_log!(
+                                    lsecurity_access!(
                                         audit,
                                         "entry {:?} matches acs {:?}",
                                         e.get_uuid(),
                                         acd
                                     );
                                     // It matches, so we can delete this!
+                                    lsecurity_access!(audit, "passed");
                                     true
                                 } else {
-                                    audit_log!(
+                                    lsecurity_access!(
                                         audit,
                                         "entry {:?} DOES NOT match acs {:?}",
                                         e.get_uuid(),
@@ -1077,7 +1085,7 @@ pub trait AccessControlsTransaction {
                                 }
                             }
                             Err(e) => {
-                                audit_log!(
+                                ladmin_error!(
                                     audit,
                                     "A internal filter was passed for resolution!?!? {:?}",
                                     e
