@@ -32,7 +32,7 @@ macro_rules! run_test {
         // Any needed teardown?
         // Make sure there are no errors.
         let verifications = test_server.verify(&mut audit);
-        audit_log!(audit, "Verification result: {:?}", verifications);
+        ltrace!(audit, "Verification result: {:?}", verifications);
         assert!(verifications.len() == 0);
     }};
 }

@@ -68,7 +68,7 @@ macro_rules! run_create_test {
                         qs_write.commit(&mut au).expect("commit failure!");
                     }
                     Err(e) => {
-                        audit_log!(&mut au, "Rolling back => {:?}", e);
+                        ladmin_error!(&mut au, "Rolling back => {:?}", e);
                     }
                 }
             }
@@ -131,7 +131,7 @@ macro_rules! run_modify_test {
                         qs_write.commit(&mut au).expect("commit failure!");
                     }
                     Err(e) => {
-                        audit_log!(&mut au, "Rolling back => {:?}", e);
+                        ladmin_error!(&mut au, "Rolling back => {:?}", e);
                     }
                 }
             }
@@ -184,7 +184,7 @@ macro_rules! run_delete_test {
                         qs_write.commit(&mut au).expect("commit failure!");
                     }
                     Err(e) => {
-                        audit_log!(&mut au, "Rolling back => {:?}", e);
+                        ladmin_error!(&mut au, "Rolling back => {:?}", e);
                     }
                 }
             }

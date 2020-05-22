@@ -34,7 +34,6 @@ impl ReferentialIntegrity {
         rtype: &str,
         uuid_value: &Value,
     ) -> Result<(), OperationError> {
-        debug!("{:?}", uuid_value);
         let uuid = try_audit!(
             au,
             uuid_value
@@ -52,7 +51,7 @@ impl ReferentialIntegrity {
         if b {
             Ok(())
         } else {
-            audit_log!(
+            ladmin_error!(
                 au,
                 "{:?}:{:?} UUID reference not found in database",
                 rtype,
@@ -162,7 +161,7 @@ impl Plugin for ReferentialIntegrity {
                 .collect(),
         ));
 
-        audit_log!(au, "refint post_delete filter {:?}", filt);
+        ltrace!(au, "refint post_delete filter {:?}", filt);
 
         // Create a modlist:
         //    In each, create a "removed" for each attr:uuid pair
@@ -178,7 +177,7 @@ impl Plugin for ReferentialIntegrity {
                 .collect(),
         );
 
-        audit_log!(au, "refint post_delete modlist {:?}", modlist);
+        ltrace!(au, "refint post_delete modlist {:?}", modlist);
 
         // Do an internal modify to apply the modlist and filter.
 

@@ -23,12 +23,13 @@ trait Plugin {
     fn id() -> &'static str;
 
     fn pre_create_transform(
-        _au: &mut AuditScope,
+        au: &mut AuditScope,
         _qs: &mut QueryServerWriteTransaction,
         _cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        debug!(
+        ladmin_error!(
+            au,
             "plugin {} has an unimplemented pre_create_transform!",
             Self::id()
         );
@@ -36,75 +37,87 @@ trait Plugin {
     }
 
     fn pre_create(
-        _au: &mut AuditScope,
+        au: &mut AuditScope,
         _qs: &mut QueryServerWriteTransaction,
         // List of what we will commit that is valid?
         _cand: &[Entry<EntrySealed, EntryNew>],
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        debug!("plugin {} has an unimplemented pre_create!", Self::id());
+        ladmin_error!(au, "plugin {} has an unimplemented pre_create!", Self::id());
         Err(OperationError::InvalidState)
     }
 
     fn post_create(
-        _au: &mut AuditScope,
+        au: &mut AuditScope,
         _qs: &mut QueryServerWriteTransaction,
         // List of what we commited that was valid?
         _cand: &[Entry<EntrySealed, EntryCommitted>],
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        debug!("plugin {} has an unimplemented post_create!", Self::id());
+        ladmin_error!(
+            au,
+            "plugin {} has an unimplemented post_create!",
+            Self::id()
+        );
         Err(OperationError::InvalidState)
     }
 
     fn pre_modify(
-        _au: &mut AuditScope,
+        au: &mut AuditScope,
         _qs: &mut QueryServerWriteTransaction,
         _cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        debug!("plugin {} has an unimplemented pre_modify!", Self::id());
+        ladmin_error!(au, "plugin {} has an unimplemented pre_modify!", Self::id());
         Err(OperationError::InvalidState)
     }
 
     fn post_modify(
-        _au: &mut AuditScope,
+        au: &mut AuditScope,
         _qs: &mut QueryServerWriteTransaction,
         // List of what we modified that was valid?
         _pre_cand: &[Entry<EntrySealed, EntryCommitted>],
         _cand: &[Entry<EntrySealed, EntryCommitted>],
         _ce: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        debug!("plugin {} has an unimplemented post_modify!", Self::id());
+        ladmin_error!(
+            au,
+            "plugin {} has an unimplemented post_modify!",
+            Self::id()
+        );
         Err(OperationError::InvalidState)
     }
 
     fn pre_delete(
-        _au: &mut AuditScope,
+        au: &mut AuditScope,
         _qs: &mut QueryServerWriteTransaction,
         _cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _de: &DeleteEvent,
     ) -> Result<(), OperationError> {
-        debug!("plugin {} has an unimplemented pre_delete!", Self::id());
+        ladmin_error!(au, "plugin {} has an unimplemented pre_delete!", Self::id());
         Err(OperationError::InvalidState)
     }
 
     fn post_delete(
-        _au: &mut AuditScope,
+        au: &mut AuditScope,
         _qs: &mut QueryServerWriteTransaction,
         // List of what we delete that was valid?
         _cand: &[Entry<EntrySealed, EntryCommitted>],
         _ce: &DeleteEvent,
     ) -> Result<(), OperationError> {
-        debug!("plugin {} has an unimplemented post_delete!", Self::id());
+        ladmin_error!(
+            au,
+            "plugin {} has an unimplemented post_delete!",
+            Self::id()
+        );
         Err(OperationError::InvalidState)
     }
 
     fn verify(
-        _au: &mut AuditScope,
+        au: &mut AuditScope,
         _qs: &mut QueryServerReadTransaction,
     ) -> Vec<Result<(), ConsistencyError>> {
-        debug!("plugin {} has an unimplemented verify!", Self::id());
+        ladmin_error!(au, "plugin {} has an unimplemented verify!", Self::id());
         vec![Err(ConsistencyError::Unknown)]
     }
 }
@@ -394,12 +407,14 @@ impl Plugins {
         au: &mut AuditScope,
         qs: &mut QueryServerReadTransaction,
     ) -> Vec<Result<(), ConsistencyError>> {
-        let mut results = Vec::new();
-        run_verify_plugin!(au, qs, &mut results, base::Base);
-        run_verify_plugin!(au, qs, &mut results, attrunique::AttrUnique);
-        run_verify_plugin!(au, qs, &mut results, refint::ReferentialIntegrity);
-        run_verify_plugin!(au, qs, &mut results, memberof::MemberOf);
-        run_verify_plugin!(au, qs, &mut results, spn::Spn);
-        results
+        lperf_segment!(au, "plugins::run_verify", || {
+            let mut results = Vec::new();
+            run_verify_plugin!(au, qs, &mut results, base::Base);
+            run_verify_plugin!(au, qs, &mut results, attrunique::AttrUnique);
+            run_verify_plugin!(au, qs, &mut results, refint::ReferentialIntegrity);
+            run_verify_plugin!(au, qs, &mut results, memberof::MemberOf);
+            run_verify_plugin!(au, qs, &mut results, spn::Spn);
+            results
+        })
     }
 }

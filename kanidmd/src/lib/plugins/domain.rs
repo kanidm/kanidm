@@ -35,7 +35,7 @@ impl Plugin for Domain {
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        audit_log!(au, "Entering base pre_create_transform");
+        ltrace!(au, "Entering plugin_domain pre_create_transform");
         cand.iter_mut().for_each(|e| {
             if e.attribute_value_pres("class", &PVCLASS_DOMAIN_INFO)
                 && e.attribute_value_pres("uuid", &PVUUID_DOMAIN_INFO)
@@ -43,17 +43,17 @@ impl Plugin for Domain {
                 // We always set this, because the DB uuid is authorative.
                 let u = Value::new_uuid(qs.get_domain_uuid());
                 e.set_avas("domain_uuid", vec![u]);
-                audit_log!(au, "plugin_domain: Applying uuid transform");
+                ltrace!(au, "plugin_domain: Applying uuid transform");
                 // We only apply this if one isn't provided.
                 if !e.attribute_pres("domain_name") {
                     let n = Value::new_iutf8s("example.com");
                     e.set_avas("domain_name", vec![n]);
-                    audit_log!(au, "plugin_domain: Applying domain_name transform");
+                    ltrace!(au, "plugin_domain: Applying domain_name transform");
                 }
-                audit_log!(au, "{:?}", e);
+                ltrace!(au, "{:?}", e);
             }
         });
-        audit_log!(au, "Ending base pre_create_transform");
+        ltrace!(au, "Ending plugin_domain pre_create_transform");
         Ok(())
     }
 }

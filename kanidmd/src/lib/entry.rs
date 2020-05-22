@@ -341,12 +341,12 @@ impl Entry<EntryInit, EntryNew> {
         es: &str,
         qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        audit_log!(audit, "Parsing -> {}", es);
+        ltrace!(audit, "Parsing -> {}", es);
         // str -> Proto entry
         let pe: ProtoEntry = try_audit!(
             audit,
             serde_json::from_str(es).map_err(|e| {
-                audit_log!(audit, "SerdeJson Failure -> {:?}", e);
+                ladmin_error!(audit, "SerdeJson Failure -> {:?}", e);
                 OperationError::SerdeJsonError
             })
         );

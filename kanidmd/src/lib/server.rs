@@ -110,7 +110,7 @@ pub trait QueryServerTransaction {
         se: &SearchEvent,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
         lperf_segment!(au, "server::search", || {
-            audit_log!(au, "search: filter -> {:?}", se.filter);
+            ladmin_info!(au, "search: filter -> {:?}", se.filter);
 
             // This is an important security step because it prevents us from
             // performing un-indexed searches on attr's that don't exist in the
@@ -189,14 +189,14 @@ pub trait QueryServerTransaction {
             // construct the filter
             // Internal search - DO NOT SEARCH TOMBSTONES AND RECYCLE
             let filt = filter!(f_eq("name", PartialValue::new_iutf8s(name)));
-            audit_log!(audit, "name_to_uuid: name -> {:?}", name);
+            ltrace!(audit, "name_to_uuid: name -> {:?}", name);
 
             let res = match self.internal_search(audit, filt) {
                 Ok(e) => e,
                 Err(e) => return Err(e),
             };
 
-            audit_log!(audit, "name_to_uuid: results -- {:?}", res);
+            ltrace!(audit, "name_to_uuid: results -- {:?}", res);
 
             if res.is_empty() {
                 // If result len == 0, error no such result
@@ -211,7 +211,7 @@ pub trait QueryServerTransaction {
             // Get the uuid from the entry. Again, check it exists, and only one.
             let uuid_res: Uuid = *e.get_uuid();
 
-            audit_log!(audit, "name_to_uuid: uuid <- {:?}", uuid_res);
+            ltrace!(audit, "name_to_uuid: uuid <- {:?}", uuid_res);
 
             Ok(uuid_res)
         })
@@ -225,7 +225,7 @@ pub trait QueryServerTransaction {
         lperf_segment!(audit, "server::uuid_to_name", || {
             // construct the filter
             let filt = filter!(f_eq("uuid", PartialValue::new_uuidr(uuid)));
-            audit_log!(audit, "uuid_to_name: uuid -> {:?}", uuid);
+            ltrace!(audit, "uuid_to_name: uuid -> {:?}", uuid);
 
             // Internal search - DO NOT SEARCH TOMBSTONES AND RECYCLE
             let res = match self.internal_search(audit, filt) {
@@ -233,11 +233,11 @@ pub trait QueryServerTransaction {
                 Err(e) => return Err(e),
             };
 
-            audit_log!(audit, "uuid_to_name: results -- {:?}", res);
+            ltrace!(audit, "uuid_to_name: results -- {:?}", res);
 
             if res.is_empty() {
                 // If result len == 0, error no such result
-                audit_log!(audit, "uuid_to_name: name, no such entry <- Ok(None)");
+                ltrace!(audit, "uuid_to_name: name, no such entry <- Ok(None)");
                 return Ok(None);
             } else if res.len() >= 2 {
                 // if result len >= 2, error, invaid entry state.
@@ -260,7 +260,7 @@ pub trait QueryServerTransaction {
                 }
             };
 
-            audit_log!(audit, "uuid_to_name: name <- {:?}", name_res);
+            ltrace!(audit, "uuid_to_name: name <- {:?}", name_res);
 
             // Make sure it's the right type ... (debug only)
             debug_assert!(name_res.is_insensitive_utf8());
@@ -284,14 +284,14 @@ pub trait QueryServerTransaction {
             let x = vec![f_name, f_spn, f_gidnumber];
 
             let filt = filter!(f_or(x.into_iter().filter_map(|v| v).collect()));
-            audit_log!(audit, "posixid_to_uuid: name -> {:?}", name);
+            ltrace!(audit, "posixid_to_uuid: name -> {:?}", name);
 
             let res = match self.internal_search(audit, filt) {
                 Ok(e) => e,
                 Err(e) => return Err(e),
             };
 
-            audit_log!(audit, "posixid_to_uuid: results -- {:?}", res);
+            ltrace!(audit, "posixid_to_uuid: results -- {:?}", res);
 
             if res.is_empty() {
                 // If result len == 0, error no such result
@@ -306,7 +306,7 @@ pub trait QueryServerTransaction {
             // Get the uuid from the entry. Again, check it exists, and only one.
             let uuid_res: Uuid = *e.get_uuid();
 
-            audit_log!(audit, "posixid_to_uuid: uuid <- {:?}", uuid_res);
+            ltrace!(audit, "posixid_to_uuid: uuid <- {:?}", uuid_res);
 
             Ok(uuid_res)
         })
@@ -954,7 +954,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             let plug_post_res = Plugins::run_post_create(au, self, &commit_cand, ce);
 
             if plug_post_res.is_err() {
-                audit_log!(
+                ladmin_error!(
                     au,
                     "Create operation failed (post plugin), {:?}",
                     plug_post_res
@@ -979,7 +979,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                     e.attribute_value_pres("class", &PVCLASS_ACP)
                 }
             });
-            audit_log!(
+            ltrace!(
                 au,
                 "Schema reload: {:?}, ACP reload: {:?}",
                 self.changed_schema,
@@ -988,7 +988,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
             // We are complete, finalise logging and return
 
-            audit_log!(au, "Create operation success");
+            ladmin_info!(au, "Create operation success");
             Ok(())
         })
     }
@@ -1011,7 +1011,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             ) {
                 Ok(results) => results,
                 Err(e) => {
-                    audit_log!(au, "delete: error in pre-candidate selection {:?}", e);
+                    ladmin_error!(au, "delete: error in pre-candidate selection {:?}", e);
                     return Err(e);
                 }
             };
@@ -1026,7 +1026,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
             // Is the candidate set empty?
             if pre_candidates.is_empty() {
-                audit_log!(au, "delete: no candidates match filter {:?}", de.filter);
+                lrequest_error!(au, "delete: no candidates match filter {:?}", de.filter);
                 return Err(OperationError::NoMatchingEntries);
             };
 
@@ -1036,17 +1036,17 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .map(|er| er.clone().invalidate(self.cid.clone()))
                 .collect();
 
-            audit_log!(au, "delete: candidates -> {:?}", candidates);
+            ltrace!(au, "delete: candidates -> {:?}", candidates);
 
             // Pre delete plugs
             let plug_pre_res = Plugins::run_pre_delete(au, self, &mut candidates, de);
 
             if plug_pre_res.is_err() {
-                audit_log!(au, "Delete operation failed (plugin), {:?}", plug_pre_res);
+                ladmin_error!(au, "Delete operation failed (plugin), {:?}", plug_pre_res);
                 return plug_pre_res;
             }
 
-            audit_log!(
+            ltrace!(
                 au,
                 "delete: now marking candidates as recycled -> {:?}",
                 candidates
@@ -1071,7 +1071,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
             if res.is_err() {
                 // be_txn is dropped, ie aborted here.
-                audit_log!(au, "Delete operation failed (backend), {:?}", res);
+                ladmin_error!(au, "Delete operation failed (backend), {:?}", res);
                 return res;
             }
 
@@ -1079,7 +1079,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             let plug_post_res = Plugins::run_post_delete(au, self, &del_cand, de);
 
             if plug_post_res.is_err() {
-                audit_log!(au, "Delete operation failed (plugin), {:?}", plug_post_res);
+                ladmin_error!(au, "Delete operation failed (plugin), {:?}", plug_post_res);
                 return plug_post_res;
             }
 
@@ -1100,7 +1100,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                     e.attribute_value_pres("class", &PVCLASS_ACP)
                 }
             });
-            audit_log!(
+            ltrace!(
                 au,
                 "Schema reload: {:?}, ACP reload: {:?}",
                 self.changed_schema,
@@ -1108,7 +1108,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             );
 
             // Send result
-            audit_log!(au, "Delete operation success");
+            ladmin_info!(au, "Delete operation success");
             res
         })
     }
@@ -1129,7 +1129,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             };
 
             if ts.is_empty() {
-                audit_log!(au, "No Tombstones present - purge operation success");
+                ladmin_info!(au, "No Tombstones present - purge operation success");
                 return Ok(());
             }
 
@@ -1141,12 +1141,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
             if res.is_err() {
                 // be_txn is dropped, ie aborted here.
-                audit_log!(au, "Tombstone purge operation failed (backend), {:?}", res);
+                ladmin_error!(au, "Tombstone purge operation failed (backend), {:?}", res);
                 return res;
             }
 
             // Send result
-            audit_log!(au, "Tombstone purge operation success");
+            ladmin_info!(au, "Tombstone purge operation success");
             res
         })
     }
@@ -1169,7 +1169,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             };
 
             if rc.is_empty() {
-                audit_log!(au, "No recycled present - purge operation success");
+                ladmin_info!(au, "No recycled present - purge operation success");
                 return Ok(());
             }
 
@@ -1192,12 +1192,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
             if res.is_err() {
                 // be_txn is dropped, ie aborted here.
-                audit_log!(au, "Purge recycled operation failed (backend), {:?}", res);
+                ladmin_error!(au, "Purge recycled operation failed (backend), {:?}", res);
                 return res;
             }
 
             // return
-            audit_log!(au, "Purge recycled operation success");
+            ladmin_info!(au, "Purge recycled operation success");
             res
         })
     }
@@ -1292,7 +1292,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
             // Is the modlist non zero?
             if me.modlist.len() == 0 {
-                audit_log!(au, "modify: empty modify request");
+                lrequest_error!(au, "modify: empty modify request");
                 return Err(OperationError::EmptyRequest);
             }
 
@@ -1311,7 +1311,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             ) {
                 Ok(results) => results,
                 Err(e) => {
-                    audit_log!(au, "modify: error in pre-candidate selection {:?}", e);
+                    ladmin_error!(au, "modify: error in pre-candidate selection {:?}", e);
                     return Err(e);
                 }
             };
@@ -1319,7 +1319,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             if pre_candidates.is_empty() {
                 match me.event.origin {
                     EventOrigin::Internal => {
-                        audit_log!(
+                        ltrace!(
                             au,
                             "modify: no candidates match filter ... continuing {:?}",
                             me.filter
@@ -1327,7 +1327,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                         return Ok(());
                     }
                     _ => {
-                        audit_log!(
+                        lrequest_error!(
                             au,
                             "modify: no candidates match filter, failure {:?}",
                             me.filter
@@ -1357,14 +1357,14 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .iter_mut()
                 .for_each(|er| er.apply_modlist(&me.modlist));
 
-            audit_log!(au, "modify: candidates -> {:?}", candidates);
+            ltrace!(au, "modify: candidates -> {:?}", candidates);
 
             // Pre mod plugins
             // We should probably supply the pre-post cands here.
             let plug_pre_res = Plugins::run_pre_modify(au, self, &mut candidates, me);
 
             if plug_pre_res.is_err() {
-                audit_log!(au, "Modify operation failed (plugin), {:?}", plug_pre_res);
+                ladmin_error!(au, "Modify operation failed (plugin), {:?}", plug_pre_res);
                 return plug_pre_res;
             }
 
@@ -1390,7 +1390,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
             if res.is_err() {
                 // be_txn is dropped, ie aborted here.
-                audit_log!(au, "Modify operation failed (backend), {:?}", res);
+                ladmin_error!(au, "Modify operation failed (backend), {:?}", res);
                 return res;
             }
 
@@ -1401,7 +1401,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             let plug_post_res = Plugins::run_post_modify(au, self, &pre_candidates, &norm_cand, me);
 
             if plug_post_res.is_err() {
-                audit_log!(au, "Modify operation failed (plugin), {:?}", plug_post_res);
+                ladmin_error!(au, "Modify operation failed (plugin), {:?}", plug_post_res);
                 return plug_post_res;
             }
 
@@ -1431,7 +1431,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                             e.attribute_value_pres("class", &PVCLASS_ACP)
                         }
                     });
-            audit_log!(
+            ltrace!(
                 au,
                 "Schema reload: {:?}, ACP reload: {:?}",
                 self.changed_schema,
@@ -1439,7 +1439,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             );
 
             // return
-            audit_log!(au, "Modify operation success");
+            ladmin_info!(au, "Modify operation success");
             res
         })
     }
@@ -1564,7 +1564,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 */
                 .and_then(|e: Entry<EntryInit, EntryNew>| self.internal_migrate_or_create(audit, e))
         });
-        audit_log!(audit, "internal_migrate_or_create_str -> result {:?}", res);
+        ltrace!(audit, "internal_migrate_or_create_str -> result {:?}", res);
         debug_assert!(res.is_ok());
         res
     }
@@ -1583,7 +1583,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         //
         // NOTE: gen modlist IS schema aware and will handle multivalue
         // correctly!
-        audit_log!(
+        ltrace!(
             audit,
             "internal_migrate_or_create operating on {:?}",
             e.get_uuid()
@@ -1593,6 +1593,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             Some(f) => f,
             None => return Err(OperationError::FilterGeneration),
         };
+
+        ltrace!(audit, "internal_migrate_or_create search {:?}", filt);
 
         match self.internal_search(audit, filt.clone()) {
             Ok(results) => {
@@ -1604,7 +1606,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                     match e.gen_modlist_assert(&self.schema) {
                         Ok(modlist) => {
                             // Apply to &results[0]
-                            audit_log!(audit, "Generated modlist -> {:?}", modlist);
+                            ltrace!(audit, "Generated modlist -> {:?}", modlist);
                             self.internal_modify(audit, filt, modlist)
                         }
                         Err(e) => Err(OperationError::SchemaViolation(e)),
@@ -1630,7 +1632,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .and_then(
                 |e: Entry<EntryInit, EntryNew>| self.internal_assert_or_create(audit, e)
             ));
-        audit_log!(audit, "internal_assert_or_create_str -> result {:?}", res);
+        ltrace!(audit, "internal_assert_or_create_str -> result {:?}", res);
         debug_assert!(res.is_ok());
         res
     }
@@ -1645,7 +1647,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // else, if not exists, create it. IE no extra or excess
         // attributes and classes.
 
-        audit_log!(
+        ltrace!(
             audit,
             "internal_assert_or_create operating on {:?}",
             e.get_uuid()
@@ -1694,11 +1696,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let r: Result<_, _> = entries
             .into_iter()
             .map(|e| {
-                audit_log!(audit, "init schema -> {}", e);
+                ltrace!(audit, "init schema -> {}", e);
                 self.internal_migrate_or_create(audit, e)
             })
             .collect();
-        audit_log!(audit, "initialise_schema_core -> result {:?}", r);
+        ladmin_info!(audit, "initialise_schema_core -> result {:?}", r);
         debug_assert!(r.is_ok());
         r
     }
@@ -1733,7 +1735,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // Each item individually logs it's result
             .map(|e_str| self.internal_migrate_or_create_str(audit, e_str))
             .collect();
-        audit_log!(audit, "initialise_schema_idm -> result {:?}", r);
+        ladmin_info!(audit, "initialise_schema_idm -> result {:?}", r);
         debug_assert!(r.is_ok());
 
         r.map(|_| ())
@@ -1748,7 +1750,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .internal_migrate_or_create_str(audit, JSON_SYSTEM_INFO_V1)
             .and_then(|_| self.internal_migrate_or_create_str(audit, JSON_DOMAIN_INFO_V1))
             .and_then(|_| self.internal_migrate_or_create_str(audit, JSON_SYSTEM_CONFIG_V1));
-        audit_log!(audit, "initialise_idm p1 -> result {:?}", res);
+        ladmin_info!(audit, "initialise_idm p1 -> result {:?}", res);
         debug_assert!(res.is_ok());
         if res.is_err() {
             return res;
@@ -1771,7 +1773,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // Each item individually logs it's result
             .map(|e_str| self.internal_migrate_or_create_str(audit, e_str))
             .collect();
-        audit_log!(audit, "initialise_idm p2 -> result {:?}", res);
+        ladmin_info!(audit, "initialise_idm p2 -> result {:?}", res);
         debug_assert!(res.is_ok());
         if res.is_err() {
             return res;
@@ -1842,7 +1844,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // Each item individually logs it's result
             .map(|e_str| self.internal_migrate_or_create_str(audit, e_str))
             .collect();
-        audit_log!(audit, "initialise_idm p3 -> result {:?}", res);
+        ladmin_info!(audit, "initialise_idm p3 -> result {:?}", res);
         debug_assert!(res.is_ok());
         if res.is_err() {
             return res;
@@ -1853,7 +1855,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
     fn reload_schema(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
         lperf_segment!(audit, "server::reload_schema", || {
-            audit_log!(audit, "Schema reload started ...");
+            ltrace!(audit, "Schema reload started ...");
 
             // supply entries to the writable schema to reload from.
             // find all attributes.
@@ -1888,7 +1890,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 Ok(())
             } else {
                 // Log the failures?
-                audit_log!(audit, "Schema reload failed -> {:?}", valid_r);
+                ladmin_error!(audit, "Schema reload failed -> {:?}", valid_r);
                 Err(OperationError::ConsistencyError(valid_r))
             }
         })
@@ -1902,7 +1904,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // requirement to have the write query server reference in the parse stage - this
         // would cause a rust double-borrow if we had AccessControls to try to handle
         // the entry lists themself.
-        audit_log!(audit, "ACP reload started ...");
+        ltrace!(audit, "ACP reload started ...");
 
         // Update search
         let filt = filter!(f_and!([

@@ -269,7 +269,9 @@ pub const JSON_SCHEMA_ATTR_DOMAIN_SSID: &str = r#"{
       "description": [
         "The domains site-wide SSID for device autoconfiguration of wireless"
       ],
-      "index": [],
+      "index": [
+        "EQUALITY"
+      ],
       "unique": [
         "true"
       ],
@@ -329,7 +331,9 @@ pub const JSON_SCHEMA_ATTR_BADLIST_PASSWORD: &str = r#"{
       "description": [
         "A password that is badlisted meaning that it can not be set as a valid password by any user account."
       ],
-      "index": [],
+      "index": [
+        "EQUALITY"
+      ],
       "unique": [
         "true"
       ],

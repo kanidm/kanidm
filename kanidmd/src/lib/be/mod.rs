@@ -24,11 +24,13 @@ use crate::be::idl_arc_sqlite::{
     IdlArcSqliteWriteTransaction,
 };
 
-const FILTER_TEST_THRESHOLD: usize = 8;
+const FILTER_SEARCH_TEST_THRESHOLD: usize = 8;
+const FILTER_EXISTS_TEST_THRESHOLD: usize = 0;
 
 #[derive(Debug, Clone)]
 pub enum IDL {
     ALLIDS,
+    PartialThreshold(IDLBitRange),
     Partial(IDLBitRange),
     Indexed(IDLBitRange),
 }
@@ -74,7 +76,7 @@ pub trait BackendTransaction {
         filt: &FilterResolved,
         thres: usize,
     ) -> Result<IDL, OperationError> {
-        debug!("testing filter -> {:?}", filt);
+        // debug!("testing filter -> {:?}", filt);
         let fr = Ok(match filt {
             FilterResolved::Eq(attr, value, idx) => {
                 if *idx {
@@ -136,6 +138,7 @@ pub trait BackendTransaction {
                 // an empty list.
                 let mut result = IDLBitRange::new();
                 let mut partial = false;
+                let mut threshold = false;
                 // For each filter in l
                 for f in l.iter() {
                     // get their idls
@@ -149,16 +152,26 @@ pub trait BackendTransaction {
                             result = result | idl;
                             partial = true;
                         }
+                        IDL::PartialThreshold(idl) => {
+                            // now union them (if possible)
+                            result = result | idl;
+                            partial = true;
+                            threshold = true;
+                        }
                         IDL::ALLIDS => {
                             // If we find anything unindexed, the whole term is unindexed.
-                            audit_log!(au, "Term {:?} is ALLIDS, shortcut return", f);
+                            lfilter_error!(au, "Term {:?} is ALLIDS, shortcut return", f);
                             return Ok(IDL::ALLIDS);
                         }
                     }
                 } // end or.iter()
                   // If we got here, every term must have been indexed or partial indexed.
                 if partial {
-                    IDL::Partial(result)
+                    if threshold {
+                        IDL::Partial(result)
+                    } else {
+                        IDL::PartialThreshold(result)
+                    }
                 } else {
                     IDL::Indexed(result)
                 }
@@ -174,16 +187,21 @@ pub trait BackendTransaction {
                 let mut cand_idl = match f_rem.pop() {
                     Some(f) => self.filter2idl(au, f, thres)?,
                     None => {
-                        audit_log!(au, "WARNING: And filter was empty, or contains only AndNot, can not evaluate.");
+                        lfilter_error!(au, "WARNING: And filter was empty, or contains only AndNot, can not evaluate.");
                         return Ok(IDL::Indexed(IDLBitRange::new()));
                     }
                 };
                 match &cand_idl {
-                    IDL::Indexed(idl) | IDL::Partial(idl) => {
-                        if idl.len() < thres {
-                            // When belowe thres, we have to return partials to trigger the entry_no_match_filter check.
-                            audit_log!(au, "NOTICE: Cand set shorter than threshold, early return");
-                            return Ok(IDL::Partial(idl.clone()));
+                    IDL::Indexed(idl) | IDL::Partial(idl) | IDL::PartialThreshold(idl) => {
+                        // When below thres, we have to return partials to trigger the entry_no_match_filter check.
+                        // But we only do this when there are actually multiple elements in the and,
+                        // because an and with 1 element now is FULLY resolved.
+                        if idl.len() < thres && f_rem.len() > 0 {
+                            lfilter_warning!(
+                                au,
+                                "NOTICE: Cand set shorter than threshold, early return"
+                            );
+                            return Ok(IDL::PartialThreshold(idl.clone()));
                         }
                     }
                     IDL::ALLIDS => {}
@@ -196,8 +214,11 @@ pub trait BackendTransaction {
                             let r = ia & ib;
                             if r.len() < thres {
                                 // When below thres, we have to return partials to trigger the entry_no_match_filter check.
-                                debug!("shortcut cand set ==> {:?}", r);
-                                return Ok(IDL::Partial(r));
+                                lfilter_warning!(
+                                    au,
+                                    "NOTICE: Cand set shorter than threshold, early return"
+                                );
+                                return Ok(IDL::PartialThreshold(r));
                             } else {
                                 IDL::Indexed(r)
                             }
@@ -208,27 +229,49 @@ pub trait BackendTransaction {
                             let r = ia & ib;
                             if r.len() < thres {
                                 // When below thres, we have to return partials to trigger the entry_no_match_filter check.
-                                debug!("shortcut cand set ==> {:?}", r);
-                                return Ok(IDL::Partial(r));
+                                lfilter_warning!(
+                                    au,
+                                    "NOTICE: Cand set shorter than threshold, early return"
+                                );
+                                return Ok(IDL::PartialThreshold(r));
                             } else {
                                 IDL::Partial(r)
+                            }
+                        }
+                        (IDL::Indexed(ia), IDL::PartialThreshold(ib))
+                        | (IDL::PartialThreshold(ia), IDL::Indexed(ib))
+                        | (IDL::PartialThreshold(ia), IDL::PartialThreshold(ib))
+                        | (IDL::PartialThreshold(ia), IDL::Partial(ib))
+                        | (IDL::Partial(ia), IDL::PartialThreshold(ib)) => {
+                            let r = ia & ib;
+                            if r.len() < thres {
+                                // When below thres, we have to return partials to trigger the entry_no_match_filter check.
+                                lfilter_warning!(
+                                    au,
+                                    "NOTICE: Cand set shorter than threshold, early return"
+                                );
+                                return Ok(IDL::PartialThreshold(r));
+                            } else {
+                                IDL::PartialThreshold(r)
                             }
                         }
                         (IDL::Indexed(i), IDL::ALLIDS)
                         | (IDL::ALLIDS, IDL::Indexed(i))
                         | (IDL::Partial(i), IDL::ALLIDS)
                         | (IDL::ALLIDS, IDL::Partial(i)) => IDL::Partial(i),
+                        (IDL::PartialThreshold(i), IDL::ALLIDS)
+                        | (IDL::ALLIDS, IDL::PartialThreshold(i)) => IDL::PartialThreshold(i),
                         (IDL::ALLIDS, IDL::ALLIDS) => IDL::ALLIDS,
                     };
                 }
 
-                debug!("partial cand set ==> {:?}", cand_idl);
+                // debug!("partial cand set ==> {:?}", cand_idl);
 
                 for f in f_andnot.iter() {
                     let f_in = match f {
                         FilterResolved::AndNot(f_in) => f_in,
                         _ => {
-                            audit_log!(
+                            lfilter_error!(
                                 au,
                                 "Invalid server state, a cand filter leaked to andnot set!"
                             );
@@ -239,30 +282,59 @@ pub trait BackendTransaction {
                     cand_idl = match (cand_idl, inter) {
                         (IDL::Indexed(ia), IDL::Indexed(ib)) => {
                             let r = ia.andnot(ib);
+                            /*
+                            // Don't trigger threshold on and nots if fully indexed.
                             if r.len() < thres {
                                 // When below thres, we have to return partials to trigger the entry_no_match_filter check.
-                                debug!("shortcut cand set ==> {:?}", r);
-                                return Ok(IDL::Partial(r));
+                                lfilter_warning!(au, "NOTICE: Cand set shorter than threshold, early return");
+                                return Ok(IDL::PartialThreshold(r));
                             } else {
                                 IDL::Indexed(r)
                             }
+                            */
+                            IDL::Indexed(r)
                         }
                         (IDL::Indexed(ia), IDL::Partial(ib))
                         | (IDL::Partial(ia), IDL::Indexed(ib))
                         | (IDL::Partial(ia), IDL::Partial(ib)) => {
                             let r = ia.andnot(ib);
+                            // DO trigger threshold on partials, because we have to apply the filter
+                            // test anyway, so we may as well shortcut at this point.
                             if r.len() < thres {
-                                // When below thres, we have to return partials to trigger the entry_no_match_filter check.
-                                debug!("shortcut cand set ==> {:?}", r);
-                                return Ok(IDL::Partial(r));
+                                lfilter_warning!(
+                                    au,
+                                    "NOTICE: Cand set shorter than threshold, early return"
+                                );
+                                return Ok(IDL::PartialThreshold(r));
                             } else {
                                 IDL::Partial(r)
                             }
                         }
+                        (IDL::Indexed(ia), IDL::PartialThreshold(ib))
+                        | (IDL::PartialThreshold(ia), IDL::Indexed(ib))
+                        | (IDL::PartialThreshold(ia), IDL::PartialThreshold(ib))
+                        | (IDL::PartialThreshold(ia), IDL::Partial(ib))
+                        | (IDL::Partial(ia), IDL::PartialThreshold(ib)) => {
+                            let r = ia.andnot(ib);
+                            // DO trigger threshold on partials, because we have to apply the filter
+                            // test anyway, so we may as well shortcut at this point.
+                            if r.len() < thres {
+                                lfilter_warning!(
+                                    au,
+                                    "NOTICE: Cand set shorter than threshold, early return"
+                                );
+                                return Ok(IDL::PartialThreshold(r));
+                            } else {
+                                IDL::PartialThreshold(r)
+                            }
+                        }
+
                         (IDL::Indexed(_), IDL::ALLIDS)
                         | (IDL::ALLIDS, IDL::Indexed(_))
                         | (IDL::Partial(_), IDL::ALLIDS)
-                        | (IDL::ALLIDS, IDL::Partial(_)) => {
+                        | (IDL::ALLIDS, IDL::Partial(_))
+                        | (IDL::PartialThreshold(_), IDL::ALLIDS)
+                        | (IDL::ALLIDS, IDL::PartialThreshold(_)) => {
                             // We could actually generate allids here
                             // and then try to reduce the and-not set, but
                             // for now we just return all ids.
@@ -273,7 +345,7 @@ pub trait BackendTransaction {
                 }
 
                 // Finally, return the result.
-                debug!("final cand set ==> {:?}", cand_idl);
+                // debug!("final cand set ==> {:?}", cand_idl);
                 cand_idl
             } // end and
             // So why does this return empty? Normally we actually process an AndNot in the context
@@ -283,14 +355,14 @@ pub trait BackendTransaction {
             FilterResolved::AndNot(_f) => {
                 // get the idl for f
                 // now do andnot?
-                audit_log!(
+                lfilter_error!(
                     au,
                     "WARNING: Requested a top level or isolated AndNot, returning empty"
                 );
                 IDL::Indexed(IDLBitRange::new())
             }
         });
-        debug!("result of {:?} -> {:?}", filt, fr);
+        // debug!("result of {:?} -> {:?}", filt, fr);
         fr
     }
 
@@ -306,12 +378,12 @@ pub trait BackendTransaction {
         lperf_segment!(au, "be::search", || {
             // Do a final optimise of the filter
             let filt = filt.optimise();
-            audit_log!(au, "filter optimised to --> {:?}", filt);
+            lfilter!(au, "filter optimised to --> {:?}", filt);
 
             // Using the indexes, resolve the IDL here, or ALLIDS.
             // Also get if the filter was 100% resolved or not.
             let idl = lperf_segment!(au, "be::search -> filter2idl", || {
-                self.filter2idl(au, filt.to_inner(), FILTER_TEST_THRESHOLD)
+                self.filter2idl(au, filt.to_inner(), FILTER_SEARCH_TEST_THRESHOLD)
             })?;
 
             let entries = try_audit!(au, self.get_idlayer().get_identry(au, &idl));
@@ -321,12 +393,33 @@ pub trait BackendTransaction {
             // if not 100% resolved.
 
             let entries_filtered = match idl {
-                IDL::ALLIDS | IDL::Partial(_) => entries
-                    .into_iter()
-                    .filter(|e| e.entry_match_no_index(&filt))
-                    .collect(),
+                IDL::ALLIDS | IDL::Partial(_) => {
+                    lfilter_error!(
+                        au,
+                        "filter (search) was partially or fully unindexed. {:?}",
+                        filt
+                    );
+                    entries
+                        .into_iter()
+                        .filter(|e| e.entry_match_no_index(&filt))
+                        .collect()
+                }
+                IDL::PartialThreshold(_) => {
+                    lfilter_warning!(
+                        au,
+                        "filter (search) was partial unindexed due to test threshold {:?}",
+                        filt
+                    );
+                    entries
+                        .into_iter()
+                        .filter(|e| e.entry_match_no_index(&filt))
+                        .collect()
+                }
                 // Since the index fully resolved, we can shortcut the filter test step here!
-                IDL::Indexed(_) => entries,
+                IDL::Indexed(_) => {
+                    lfilter!(au, "filter (search) was fully indexed 👏");
+                    entries
+                }
             };
 
             /*
@@ -363,19 +456,43 @@ pub trait BackendTransaction {
         lperf_segment!(au, "be::exists", || {
             // Do a final optimise of the filter
             let filt = filt.optimise();
-            audit_log!(au, "filter optimised to --> {:?}", filt);
+            lfilter!(au, "filter optimised to --> {:?}", filt);
 
             // Using the indexes, resolve the IDL here, or ALLIDS.
             // Also get if the filter was 100% resolved or not.
             let idl = lperf_segment!(au, "be::exists -> filter2idl", || {
-                self.filter2idl(au, filt.to_inner(), FILTER_TEST_THRESHOLD)
+                self.filter2idl(au, filt.to_inner(), FILTER_EXISTS_TEST_THRESHOLD)
             })?;
 
             // Now, check the idl -- if it's fully resolved, we can skip this because the query
             // was fully indexed.
             match &idl {
-                IDL::Indexed(idl) => Ok(idl.len() > 0),
+                IDL::Indexed(idl) => {
+                    lfilter!(au, "filter (exists) was fully indexed 👏");
+                    Ok(idl.len() > 0)
+                }
+                IDL::PartialThreshold(_) => {
+                    lfilter_warning!(
+                        au,
+                        "filter (exists) was partial unindexed due to test threshold {:?}",
+                        filt
+                    );
+                    let entries = try_audit!(au, self.get_idlayer().get_identry(au, &idl));
+
+                    // if not 100% resolved query, apply the filter test.
+                    let entries_filtered: Vec<_> = entries
+                        .into_iter()
+                        .filter(|e| e.entry_match_no_index(&filt))
+                        .collect();
+
+                    Ok(!entries_filtered.is_empty())
+                }
                 _ => {
+                    lfilter_error!(
+                        au,
+                        "filter (exists) was partially or fully unindexed {:?}",
+                        filt
+                    );
                     let entries = try_audit!(au, self.get_idlayer().get_identry(au, &idl));
 
                     // if not 100% resolved query, apply the filter test.
@@ -457,7 +574,7 @@ impl<'a> BackendWriteTransaction<'a> {
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
         lperf_segment!(au, "be::create", || {
             if entries.is_empty() {
-                audit_log!(
+                ladmin_error!(
                     au,
                     "No entries provided to BE to create, invalid server call!"
                 );
@@ -496,7 +613,7 @@ impl<'a> BackendWriteTransaction<'a> {
     ) -> Result<(), OperationError> {
         lperf_segment!(au, "be::modify", || {
             if post_entries.is_empty() || pre_entries.is_empty() {
-                audit_log!(
+                ladmin_error!(
                     au,
                     "No entries provided to BE to modify, invalid server call!"
                 );
@@ -555,7 +672,7 @@ impl<'a> BackendWriteTransaction<'a> {
     ) -> Result<(), OperationError> {
         lperf_segment!(au, "be::delete", || {
             if entries.is_empty() {
-                audit_log!(
+                ladmin_error!(
                     au,
                     "No entries provided to BE to delete, invalid server call!"
                 );
@@ -591,19 +708,19 @@ impl<'a> BackendWriteTransaction<'a> {
     ) -> Result<(), OperationError> {
         let e_id = match (pre, post) {
             (None, None) => {
-                audit_log!(audit, "Invalid call to entry_index - no entries provided");
+                ltrace!(audit, "Invalid call to entry_index - no entries provided");
                 return Err(OperationError::InvalidState);
             }
             (Some(pre), None) => {
-                audit_log!(audit, "Attempting to remove indexes");
+                ltrace!(audit, "Attempting to remove indexes");
                 pre.get_id()
             }
             (None, Some(post)) => {
-                audit_log!(audit, "Attempting to update indexes");
+                ltrace!(audit, "Attempting to update indexes");
                 post.get_id()
             }
             (Some(pre), Some(post)) => {
-                audit_log!(audit, "Attempting to modify indexes");
+                ltrace!(audit, "Attempting to modify indexes");
                 assert!(pre.get_id() == post.get_id());
                 post.get_id()
             }
@@ -623,14 +740,14 @@ impl<'a> BackendWriteTransaction<'a> {
             .try_for_each(|act| {
                 match act {
                     Ok((attr, itype, idx_key)) => {
-                        audit_log!(audit, "Adding {:?} idx -> {:?}: {:?}", itype, attr, idx_key);
+                        ltrace!(audit, "Adding {:?} idx -> {:?}: {:?}", itype, attr, idx_key);
                         match self.idlayer.get_idl(audit, attr, itype, idx_key)? {
                             Some(mut idl) => {
                                 idl.insert_id(e_id);
                                 self.idlayer.write_idl(audit, attr, itype, idx_key, &idl)
                             }
                             None => {
-                                audit_log!(
+                                ladmin_error!(
                                     audit,
                                     "WARNING: index {:?} {:?} was not found. YOU MUST REINDEX YOUR DATABASE",
                                     attr, itype
@@ -640,14 +757,14 @@ impl<'a> BackendWriteTransaction<'a> {
                         }
                     }
                     Err((attr, itype, idx_key)) => {
-                        audit_log!(audit, "Removing {:?} idx -> {:?}: {:?}", itype, attr, idx_key);
+                        ltrace!(audit, "Removing {:?} idx -> {:?}: {:?}", itype, attr, idx_key);
                         match self.idlayer.get_idl(audit, attr, itype, idx_key)? {
                             Some(mut idl) => {
                                 idl.remove_id(e_id);
                                 self.idlayer.write_idl(audit, attr, itype, idx_key, &idl)
                             }
                             None => {
-                                audit_log!(
+                                ladmin_error!(
                                     audit,
                                     "WARNING: index {:?} {:?} was not found. YOU MUST REINDEX YOUR DATABASE",
                                     attr, itype
@@ -677,7 +794,7 @@ impl<'a> BackendWriteTransaction<'a> {
             .filter_map(|(attr, itype)| {
                 // what would the table name be?
                 let tname = format!("idx_{}_{}", itype.as_idx_str(), attr);
-                audit_log!(audit, "Checking for {}", tname);
+                ltrace!(audit, "Checking for {}", tname);
 
                 if idx_table_set.contains(&tname) {
                     None
@@ -691,10 +808,10 @@ impl<'a> BackendWriteTransaction<'a> {
 
     fn create_idxs(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
         // Create name2uuid and uuid2name
-        audit_log!(audit, "Creating index -> name2uuid");
+        ltrace!(audit, "Creating index -> name2uuid");
         self.idlayer.create_name2uuid(audit)?;
 
-        audit_log!(audit, "Creating index -> uuid2name");
+        ltrace!(audit, "Creating index -> uuid2name");
         self.idlayer.create_uuid2name(audit)?;
 
         self.idxmeta
@@ -806,7 +923,7 @@ impl<'a> BackendWriteTransaction<'a> {
             .collect();
 
         dbentries.iter().for_each(|e| {
-            audit_log!(audit, "importing -> {:?}", e);
+            ltrace!(audit, "importing -> {:?}", e);
         });
         */
 
@@ -830,7 +947,7 @@ impl<'a> BackendWriteTransaction<'a> {
             .unwrap()
             .iter()
             .for_each(|dbe| {
-                audit_log!(audit, "dbe -> {:?}", dbe.id);
+                ltrace!(audit, "dbe -> {:?}", dbe.id);
             });
         */
 
@@ -911,7 +1028,7 @@ impl Backend {
                 idl_write.setup(audit).and_then(|_| idl_write.commit(audit))
             };
 
-            audit_log!(audit, "be new setup: {:?}", r);
+            ltrace!(audit, "be new setup: {:?}", r);
 
             match r {
                 Ok(_) => Ok(be),
@@ -1036,10 +1153,10 @@ mod tests {
     #[test]
     fn test_be_simple_create() {
         run_test!(|audit: &mut AuditScope, be: &mut BackendWriteTransaction| {
-            audit_log!(audit, "Simple Create");
+            ltrace!(audit, "Simple Create");
 
             let empty_result = be.create(audit, Vec::new());
-            audit_log!(audit, "{:?}", empty_result);
+            ltrace!(audit, "{:?}", empty_result);
             assert_eq!(empty_result, Err(OperationError::EmptyRequest));
 
             let mut e: Entry<EntryInit, EntryNew> = Entry::new();
@@ -1059,7 +1176,7 @@ mod tests {
     #[test]
     fn test_be_simple_search() {
         run_test!(|audit: &mut AuditScope, be: &mut BackendWriteTransaction| {
-            audit_log!(audit, "Simple Search");
+            ltrace!(audit, "Simple Search");
 
             let mut e: Entry<EntryInit, EntryNew> = Entry::new();
             e.add_ava("userid", &Value::from("claire"));
@@ -1087,7 +1204,7 @@ mod tests {
     #[test]
     fn test_be_simple_modify() {
         run_test!(|audit: &mut AuditScope, be: &mut BackendWriteTransaction| {
-            audit_log!(audit, "Simple Modify");
+            ltrace!(audit, "Simple Modify");
             // First create some entries (3?)
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
             e1.add_ava("userid", &Value::from("william"));
@@ -1160,7 +1277,7 @@ mod tests {
     #[test]
     fn test_be_simple_delete() {
         run_test!(|audit: &mut AuditScope, be: &mut BackendWriteTransaction| {
-            audit_log!(audit, "Simple Delete");
+            ltrace!(audit, "Simple Delete");
 
             // First create some entries (3?)
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();

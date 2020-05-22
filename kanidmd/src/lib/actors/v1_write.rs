@@ -317,7 +317,7 @@ impl QueryServerWriteV1 {
             Err(_) => qs_write
                 .name_to_uuid(audit, uuid_or_name.as_str())
                 .map_err(|e| {
-                    audit_log!(audit, "Error resolving id to target");
+                    ladmin_error!(audit, "Error resolving id to target");
                     e
                 })?,
         };
@@ -327,12 +327,12 @@ impl QueryServerWriteV1 {
             {
                 Ok(m) => m,
                 Err(e) => {
-                    audit_log!(audit, "Failed to begin modify: {:?}", e);
+                    ladmin_error!(audit, "Failed to begin modify: {:?}", e);
                     return Err(e);
                 }
             };
 
-        audit_log!(audit, "Begin modify event {:?}", mdf);
+        ltrace!(audit, "Begin modify event {:?}", mdf);
 
         qs_write
             .modify(audit, &mdf)
@@ -354,7 +354,7 @@ impl QueryServerWriteV1 {
             Err(_) => qs_write
                 .name_to_uuid(audit, uuid_or_name.as_str())
                 .map_err(|e| {
-                    audit_log!(audit, "Error resolving id to target");
+                    ladmin_error!(audit, "Error resolving id to target");
                     e
                 })?,
         };
@@ -369,12 +369,12 @@ impl QueryServerWriteV1 {
         ) {
             Ok(m) => m,
             Err(e) => {
-                audit_log!(audit, "Failed to begin modify: {:?}", e);
+                ladmin_error!(audit, "Failed to begin modify: {:?}", e);
                 return Err(e);
             }
         };
 
-        audit_log!(audit, "Begin modify event {:?}", mdf);
+        ltrace!(audit, "Begin modify event {:?}", mdf);
 
         qs_write
             .modify(audit, &mdf)
@@ -396,12 +396,12 @@ impl Handler<CreateMessage> for QueryServerWriteV1 {
                 let crt = match CreateEvent::from_message(&mut audit, msg, &mut qs_write) {
                     Ok(c) => c,
                     Err(e) => {
-                        audit_log!(audit, "Failed to begin create: {:?}", e);
+                        ladmin_error!(audit, "Failed to begin create: {:?}", e);
                         return Err(e);
                     }
                 };
 
-                audit_log!(audit, "Begin create event {:?}", crt);
+                ltrace!(audit, "Begin create event {:?}", crt);
 
                 qs_write
                     .create(&mut audit, &crt)
@@ -427,12 +427,12 @@ impl Handler<ModifyMessage> for QueryServerWriteV1 {
                 let mdf = match ModifyEvent::from_message(&mut audit, msg, &mut qs_write) {
                     Ok(m) => m,
                     Err(e) => {
-                        audit_log!(audit, "Failed to begin modify: {:?}", e);
+                        ladmin_error!(audit, "Failed to begin modify: {:?}", e);
                         return Err(e);
                     }
                 };
 
-                audit_log!(audit, "Begin modify event {:?}", mdf);
+                ltrace!(audit, "Begin modify event {:?}", mdf);
 
                 qs_write
                     .modify(&mut audit, &mdf)
@@ -458,12 +458,12 @@ impl Handler<DeleteMessage> for QueryServerWriteV1 {
                 let del = match DeleteEvent::from_message(&mut audit, msg, &mut qs_write) {
                     Ok(d) => d,
                     Err(e) => {
-                        audit_log!(audit, "Failed to begin delete: {:?}", e);
+                        ladmin_error!(audit, "Failed to begin delete: {:?}", e);
                         return Err(e);
                     }
                 };
 
-                audit_log!(audit, "Begin delete event {:?}", del);
+                ltrace!(audit, "Begin delete event {:?}", del);
 
                 qs_write
                     .delete(&mut audit, &del)
@@ -490,12 +490,12 @@ impl Handler<InternalDeleteMessage> for QueryServerWriteV1 {
                     match DeleteEvent::from_parts(&mut audit, msg.uat, msg.filter, &mut qs_write) {
                         Ok(d) => d,
                         Err(e) => {
-                            audit_log!(audit, "Failed to begin delete: {:?}", e);
+                            ladmin_error!(audit, "Failed to begin delete: {:?}", e);
                             return Err(e);
                         }
                     };
 
-                audit_log!(audit, "Begin delete event {:?}", del);
+                ltrace!(audit, "Begin delete event {:?}", del);
 
                 qs_write
                     .delete(&mut audit, &del)
@@ -526,12 +526,12 @@ impl Handler<ReviveRecycledMessage> for QueryServerWriteV1 {
                 ) {
                     Ok(r) => r,
                     Err(e) => {
-                        audit_log!(audit, "Failed to begin revive: {:?}", e);
+                        ladmin_error!(audit, "Failed to begin revive: {:?}", e);
                         return Err(e);
                     }
                 };
 
-                audit_log!(audit, "Begin revive event {:?}", rev);
+                ltrace!(audit, "Begin revive event {:?}", rev);
 
                 qs_write
                     .revive_recycled(&mut audit, &rev)
@@ -571,7 +571,7 @@ impl Handler<InternalCredentialSetMessage> for QueryServerWriteV1 {
                         .qs_write
                         .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
                         .map_err(|e| {
-                            audit_log!(&mut audit, "Error resolving id to target");
+                            ladmin_error!(&mut audit, "Error resolving id to target");
                             e
                         })?,
                 };
@@ -588,7 +588,7 @@ impl Handler<InternalCredentialSetMessage> for QueryServerWriteV1 {
                             msg.appid,
                         )
                         .map_err(|e| {
-                            audit_log!(
+                            ladmin_error!(
                                 audit,
                                 "Failed to begin internal_credential_set_message: {:?}",
                                 e
@@ -609,7 +609,7 @@ impl Handler<InternalCredentialSetMessage> for QueryServerWriteV1 {
                             msg.appid,
                         )
                         .map_err(|e| {
-                            audit_log!(
+                            ladmin_error!(
                                 audit,
                                 "Failed to begin internal_credential_set_message: {:?}",
                                 e
@@ -630,7 +630,7 @@ impl Handler<InternalCredentialSetMessage> for QueryServerWriteV1 {
                             label,
                         )
                         .map_err(|e| {
-                            audit_log!(
+                            ladmin_error!(
                                 audit,
                                 "Failed to begin internal_credential_set_message: {:?}",
                                 e
@@ -651,7 +651,7 @@ impl Handler<InternalCredentialSetMessage> for QueryServerWriteV1 {
                             chal,
                         )
                         .map_err(|e| {
-                            audit_log!(
+                            ladmin_error!(
                                 audit,
                                 "Failed to begin internal_credential_set_message: {:?}",
                                 e
@@ -689,7 +689,7 @@ impl Handler<IdmAccountSetPasswordMessage> for QueryServerWriteV1 {
                     msg,
                 )
                 .map_err(|e| {
-                    audit_log!(audit, "Failed to begin idm_account_set_password: {:?}", e);
+                    ladmin_error!(audit, "Failed to begin idm_account_set_password: {:?}", e);
                     e
                 })?;
 
@@ -727,7 +727,7 @@ impl Handler<InternalRegenerateRadiusMessage> for QueryServerWriteV1 {
                         .qs_write
                         .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
                         .map_err(|e| {
-                            audit_log!(&mut audit, "Error resolving id to target");
+                            ladmin_error!(&mut audit, "Error resolving id to target");
                             e
                         })?,
                 };
@@ -739,7 +739,7 @@ impl Handler<InternalRegenerateRadiusMessage> for QueryServerWriteV1 {
                     target_uuid,
                 )
                 .map_err(|e| {
-                    audit_log!(
+                    ladmin_error!(
                         audit,
                         "Failed to begin idm_account_regenerate_radius: {:?}",
                         e
@@ -772,7 +772,7 @@ impl Handler<PurgeAttributeMessage> for QueryServerWriteV1 {
                     Err(_) => qs_write
                         .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
                         .map_err(|e| {
-                            audit_log!(&mut audit, "Error resolving id to target");
+                            ladmin_error!(&mut audit, "Error resolving id to target");
                             e
                         })?,
                 };
@@ -787,12 +787,12 @@ impl Handler<PurgeAttributeMessage> for QueryServerWriteV1 {
                 ) {
                     Ok(m) => m,
                     Err(e) => {
-                        audit_log!(audit, "Failed to begin modify: {:?}", e);
+                        ladmin_error!(audit, "Failed to begin modify: {:?}", e);
                         return Err(e);
                     }
                 };
 
-                audit_log!(audit, "Begin modify event {:?}", mdf);
+                ladmin_error!(audit, "Begin modify event {:?}", mdf);
 
                 qs_write
                     .modify(&mut audit, &mdf)
@@ -819,7 +819,7 @@ impl Handler<RemoveAttributeValueMessage> for QueryServerWriteV1 {
                     Err(_) => qs_write
                         .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
                         .map_err(|e| {
-                            audit_log!(&mut audit, "Error resolving id to target");
+                            ladmin_error!(&mut audit, "Error resolving id to target");
                             e
                         })?,
                 };
@@ -837,12 +837,12 @@ impl Handler<RemoveAttributeValueMessage> for QueryServerWriteV1 {
                 ) {
                     Ok(m) => m,
                     Err(e) => {
-                        audit_log!(audit, "Failed to begin modify: {:?}", e);
+                        ladmin_error!(audit, "Failed to begin modify: {:?}", e);
                         return Err(e);
                     }
                 };
 
-                audit_log!(audit, "Begin modify event {:?}", mdf);
+                ltrace!(audit, "Begin modify event {:?}", mdf);
 
                 qs_write
                     .modify(&mut audit, &mdf)
@@ -1089,7 +1089,7 @@ impl Handler<IdmAccountUnixSetCredMessage> for QueryServerWriteV1 {
                         .qs_write
                         .posixid_to_uuid(&mut audit, msg.uuid_or_name.as_str())
                         .map_err(|e| {
-                            audit_log!(&mut audit, "Error resolving as gidnumber continuing ...");
+                            ladmin_info!(&mut audit, "Error resolving as gidnumber continuing ...");
                             e
                         })
                 })?;
@@ -1102,7 +1102,7 @@ impl Handler<IdmAccountUnixSetCredMessage> for QueryServerWriteV1 {
                     msg.cred,
                 )
                 .map_err(|e| {
-                    audit_log!(audit, "Failed to begin UnixPasswordChangeEvent: {:?}", e);
+                    ladmin_error!(audit, "Failed to begin UnixPasswordChangeEvent: {:?}", e);
                     e
                 })?;
                 idms_prox_write
@@ -1127,13 +1127,13 @@ impl Handler<PurgeTombstoneEvent> for QueryServerWriteV1 {
             &mut audit,
             "actors::v1_write::handle<PurgeTombstoneEvent>",
             || {
-                audit_log!(audit, "Begin purge tombstone event {:?}", msg);
+                ltrace!(audit, "Begin purge tombstone event {:?}", msg);
                 let mut qs_write = self.qs.write(duration_from_epoch_now());
 
                 let res = qs_write
                     .purge_tombstones(&mut audit)
                     .and_then(|_| qs_write.commit(&mut audit));
-                audit_log!(audit, "Purge tombstones result: {:?}", res);
+                ladmin_info!(audit, "Purge tombstones result: {:?}", res);
                 res.expect("Invalid Server State");
             }
         );
@@ -1151,13 +1151,13 @@ impl Handler<PurgeRecycledEvent> for QueryServerWriteV1 {
             &mut audit,
             "actors::v1_write::handle<PurgeRecycledEvent>",
             || {
-                audit_log!(audit, "Begin purge recycled event {:?}", msg);
+                ltrace!(audit, "Begin purge recycled event {:?}", msg);
                 let mut qs_write = self.qs.write(duration_from_epoch_now());
 
                 let res = qs_write
                     .purge_recycled(&mut audit)
                     .and_then(|_| qs_write.commit(&mut audit));
-                audit_log!(audit, "Purge recycled result: {:?}", res);
+                ladmin_info!(audit, "Purge recycled result: {:?}", res);
                 res.expect("Invalid Server State");
             }
         );

@@ -67,7 +67,7 @@ macro_rules! get_identry {
     ) => {{
         lperf_segment!($au, "be::idl_arc_sqlite::get_identry", || {
             match $idl {
-                IDL::Partial(idli) | IDL::Indexed(idli) => {
+                IDL::Partial(idli) | IDL::PartialThreshold(idli) | IDL::Indexed(idli) => {
                     let mut result: Vec<Entry<_, _>> = Vec::new();
                     let mut nidl = IDLBitRange::new();
 
@@ -142,6 +142,13 @@ macro_rules! get_idl {
             let cache_r = $self.idl_cache.get(&cache_key);
             // If hit, continue.
             if let Some(ref data) = cache_r {
+                lfilter!(
+                    $audit,
+                    "Got cached idl for index {:?} {:?} -> {}",
+                    $itype,
+                    $attr,
+                    data
+                );
                 return Ok(Some(data.as_ref().clone()));
             }
             // If miss, get from db *and* insert to the cache.

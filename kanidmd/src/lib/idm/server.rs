@@ -130,7 +130,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
         ae: &AuthEvent,
         ct: Duration,
     ) -> Result<AuthResult, OperationError> {
-        audit_log!(au, "Received AuthEvent -> {:?}", ae);
+        ltrace!(au, "Received AuthEvent -> {:?}", ae);
 
         // Match on the auth event, to see what we need to do.
 
@@ -177,7 +177,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
                     }
                 };
 
-                audit_log!(au, "Initiating Authentication Session for ... {:?}", entry);
+                lsecurity!(au, "Initiating Authentication Session for ... {:?}", entry);
 
                 // Now, convert the Entry to an account - this gives us some stronger
                 // typing and functionality so we can assess what auth types can
@@ -355,11 +355,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 .ok_or(OperationError::InvalidState)
                 .map(|v| v.clone())
                 .map_err(|e| {
-                    audit_log!(au, "zxcvbn returned no feedback when score < 3");
+                    lsecurity!(au, "zxcvbn returned no feedback when score < 3");
                     e
                 })?;
 
-            audit_log!(au, "pw feedback -> {:?}", feedback);
+            lsecurity!(au, "pw feedback -> {:?}", feedback);
 
             // return Err(OperationError::PasswordTooWeak(feedback))
             return Err(OperationError::PasswordTooWeak);
@@ -373,7 +373,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             self.qs_write.internal_search_uuid(au, &UUID_SYSTEM_CONFIG)
         );
         if badlist_entry.attribute_value_pres("badlist_password", &lc_password) {
-            audit_log!(au, "Password found in badlist, rejecting");
+            lsecurity!(au, "Password found in badlist, rejecting");
             return Err(OperationError::PasswordBadListed);
         }
 
@@ -431,7 +431,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             au,
             account.gen_password_mod(pce.cleartext.as_str(), &pce.appid)
         );
-        audit_log!(au, "processing change {:?}", modlist);
+        ltrace!(au, "processing change {:?}", modlist);
         // given the new credential generate a modify
         // We use impersonate here to get the event from ae
         try_audit!(
@@ -483,7 +483,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // it returns a modify
         let modlist = try_audit!(au, account.gen_password_mod(pce.cleartext.as_str()));
-        audit_log!(au, "processing change {:?}", modlist);
+        ltrace!(au, "processing change {:?}", modlist);
         // given the new credential generate a modify
         // We use impersonate here to get the event from ae
         try_audit!(
@@ -533,7 +533,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // it returns a modify
         let modlist = try_audit!(au, account.gen_password_mod(cleartext.as_str(), &gpe.appid));
-        audit_log!(au, "processing change {:?}", modlist);
+        ltrace!(au, "processing change {:?}", modlist);
         // given the new credential generate a modify
         // We use impersonate here to get the event from ae
         try_audit!(
@@ -566,7 +566,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // Create a modlist from the change.
         let modlist = try_audit!(au, account.regenerate_radius_secret_mod(cleartext.as_str()));
-        audit_log!(au, "processing change {:?}", modlist);
+        ltrace!(au, "processing change {:?}", modlist);
 
         // Apply it.
         try_audit!(
@@ -606,7 +606,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // Add session to tree
         self.mfareg_sessions.insert(sessionid, session);
-        audit_log!(au, "Start mfa reg session -> {:?}", sessionid);
+        ltrace!(au, "Start mfa reg session -> {:?}", sessionid);
         Ok(next)
     }
 
@@ -620,7 +620,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let origin = (&vte.event.origin).into();
         let chal = vte.chal;
 
-        audit_log!(au, "Attempting to find mfareg_session -> {:?}", sessionid);
+        ltrace!(au, "Attempting to find mfareg_session -> {:?}", sessionid);
 
         let (next, opt_cred) = {
             // bound the life time of the session get_mut
@@ -717,7 +717,6 @@ mod tests {
                 // Expect success
                 let r1 = idms_write.auth(au, &anon_init, Duration::from_secs(TEST_CURRENT_TIME));
                 /* Some weird lifetime shit happens here ... */
-                // audit_log!(au, "r1 ==> {:?}", r1);
 
                 let sid = match r1 {
                     Ok(ar) => {

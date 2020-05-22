@@ -150,7 +150,7 @@ impl UnixUserAccount {
 
     pub(crate) fn verify_unix_credential(
         &self,
-        _au: &mut AuditScope,
+        au: &mut AuditScope,
         cleartext: &str,
     ) -> Result<Option<UnixUserToken>, OperationError> {
         // TODO #59: Is the cred locked?
@@ -159,19 +159,27 @@ impl UnixUserAccount {
             Some(cred) => match &cred.password {
                 Some(pw) => {
                     if pw.verify(cleartext) {
+                        lsecurity!(au, "Successful unix cred handling");
                         Some(self.to_unixusertoken()).transpose()
                     } else {
                         // Failed to auth
+                        lsecurity!(au, "Failed unix cred handling (denied)");
                         Ok(None)
                     }
                 }
                 // We have a cred but it's not a password, that's weird
-                None => Err(OperationError::InvalidAccountState(
-                    "non-password cred type?".to_string(),
-                )),
+                None => {
+                    lsecurity!(au, "Invalid unix cred request");
+                    Err(OperationError::InvalidAccountState(
+                        "non-password cred type?".to_string(),
+                    ))
+                }
             },
             // They don't have a unix cred, fail the auth.
-            None => Ok(None),
+            None => {
+                lsecurity!(au, "Failed unix cred handling (no cred present)");
+                Ok(None)
+            }
         }
     }
 }
