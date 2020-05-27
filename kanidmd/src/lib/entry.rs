@@ -252,12 +252,22 @@ fn compare_attrs(
 /// [`access`]: ../access/index.html
 /// [`event`]: ../event/index.html
 ///
-#[derive(Debug)]
 pub struct Entry<VALID, STATE> {
     valid: VALID,
     state: STATE,
     // We may need to change this to BTreeSet to allow borrow of Value -> PartialValue for lookups.
     attrs: BTreeMap<String, BTreeSet<Value>>,
+}
+
+impl<VALID, STATE> std::fmt::Debug for Entry<VALID, STATE>
+where
+    STATE: std::fmt::Debug,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.debug_struct("Entry<EntrySealed, _>")
+            .field("state", &self.state)
+            .finish()
+    }
 }
 
 impl<STATE> std::fmt::Display for Entry<EntrySealed, STATE> {
@@ -341,7 +351,14 @@ impl Entry<EntryInit, EntryNew> {
         es: &str,
         qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        ltrace!(audit, "Parsing -> {}", es);
+        if cfg!(test) {
+            if es.len() > 256 {
+                let (dsp_es, _) = es.split_at(255);
+                ltrace!(audit, "Parsing -> {}...", dsp_es);
+            } else {
+                ltrace!(audit, "Parsing -> {}", es);
+            }
+        }
         // str -> Proto entry
         let pe: ProtoEntry = try_audit!(
             audit,

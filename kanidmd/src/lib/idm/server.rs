@@ -130,7 +130,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
         ae: &AuthEvent,
         ct: Duration,
     ) -> Result<AuthResult, OperationError> {
-        ltrace!(au, "Received AuthEvent -> {:?}", ae);
+        ltrace!(au, "Received -> {:?}", ae);
 
         // Match on the auth event, to see what we need to do.
 
