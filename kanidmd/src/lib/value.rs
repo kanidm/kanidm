@@ -202,11 +202,21 @@ impl fmt::Display for SyntaxType {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum DataValue {
     Cred(Credential),
     SshKey(String),
     RadiusCred(String),
+}
+
+impl std::fmt::Debug for DataValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            DataValue::Cred(_) => write!(f, "DataValue::Cred(_)"),
+            DataValue::SshKey(_) => write!(f, "DataValue::SshKey(_)"),
+            DataValue::RadiusCred(_) => write!(f, "DataValue::RadiusCred(_)"),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Eq, Ord, PartialOrd, PartialEq, Deserialize, Serialize)]

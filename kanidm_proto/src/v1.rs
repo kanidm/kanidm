@@ -332,11 +332,21 @@ impl ModifyRequest {
 //
 // On loginSuccess, we send a cookie, and that allows the token to be
 // generated. The cookie can be shared between servers.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub enum AuthCredential {
     Anonymous,
     Password(String),
     TOTP(u32),
+}
+
+impl fmt::Debug for AuthCredential {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            AuthCredential::Anonymous => write!(fmt, "Anonymous"),
+            AuthCredential::Password(_) => write!(fmt, "Password(_)"),
+            AuthCredential::TOTP(_) => write!(fmt, "TOTP(_)"),
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
