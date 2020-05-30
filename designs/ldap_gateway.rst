@@ -2,7 +2,7 @@ LDAP Gateway
 ------------
 
 LDAP is a legacy protocol for accessing directory (user, group, other) data over a network. Despite
-it's legacy nature, it has been the staple of authentication and authorisation for many years, where
+it's complex nature, it has been the staple of authentication and authorisation for many years, where
 many enterprise or unix focused applications are guaranteed to integrate with LDAP (even contrast to
 newer systems like SAML/OAuth).
 
@@ -11,8 +11,8 @@ API we offer, so we should allow these applications to at least be able to read 
 an LDAP interface.
 
 A major use case is legacy systems that Kanidm's native unix services aren't available on, so these
-would be better served via LDAP - of course, the native kanidm unix integrations are much better
-than other choices, so we prefer those over any other pam/nss provider.
+would be better served via LDAP - of course, the native kanidm unix integrations are better
+than existing LDAP integration choices, so we prefer those over any other pam/nss provider.
 
 Limitations
 ===========
@@ -25,13 +25,13 @@ The majority of value is in a working search and bind operation set. The LDAP ga
 will be Read Only as a result. The ability to write via LDAP will not be supported.
 
 Most LDAP servers offer their schema in a readonly interface. Translating Kanidm's schema into a way
-that clients could interpret is of little value as many clients do not request this.
+that clients could interpret is of little value as many clients do not request this, or parse it.
 
 While Kanidm is entry based, and NoSQL, similar to LDAP, our datamodel is subtely different enough
 that not all attributes can be representing in LDAP. Some data transformation will need to occur as
 a result to expose data that LDAP clients expect. Not all data may be able to be presented, nor
 should it (ie radius_secret, you should use the kanidm radius integration instead of the LDAP
-interface).
+interface, as the kanidm interface is more efficient).
 
 Security Considerations
 =======================
@@ -87,6 +87,9 @@ beyond the attribute name:
 | gidnumber         | uidnumber         |
 | class             | objectClass       |
 
+We will accept (and prefer) that Kanidm attribute names are provided in the LDAP filter for applications
+that can be customised.
+
 Compatability Attributes
 ========================
 
@@ -99,31 +102,38 @@ two are:
 
 These should be provided through an ldapCompat class in kanidm, and require no other transformation. They
 may require generation from the server, as legacy applications expect their existance and kanidm created
-accounts would need the attributes to exist.
+accounts would need the attributes to exist to work with these.
 
 Entry and Attribute Transformations
 ===================================
 
 Some attributes and items will need transformatio to "make sense" to clients. This includes:
 
-member: Member in LDAP is a DN, where in Kanidm it's a reference type with SPN. We will need
+member/memberOf: Member in LDAP is a DN, where in Kanidm it's a reference type with SPN. We will need
 to transform this in filters *and* in entries that are sent back.
-
-memberof: Same as member.
 
 gecos: This needs synthesisation from displayname
 
 homeDirectory: This needs to match the rules in kanidm_unix_int, especially once trusts are added (likely to be uuid based).
 
+Kanidm is closest to rfc2307bis due to the structure of it's memberOf attributes and other
+elements, so this is what we will "look like" but may not strictly conform to.
 
-Possible Application Notes
-==========================
 
-* Samba - It's likely I won't do this.
+Kanidm Required Changes (TODO list)
+===================================
 
-Some applications may require elevent read privileges still, such as samba's ldap pass backend.
-A permission group will be added, where membership of that group allows those members to inherit
-their primary credential access controls via the posix password on the LDAP interface. This should
-be limited to service accounts.
+* The TCP gateway with options to enable/disable from CLI options
+*   domain name -> basedn at startup
+* RootDSE generator for the LDAP subsystem to indicate options/basedn/etc
+* LDAPBindEvent
+* Schema Additions -> LDAPCompatId
+* LDAPCompatId Plugin Generator
+* EntryReduced -> LDAPEntry
+*    Attribute Generation/Transformation in LDAPEntry
+* LDAPWhoamiEvent (Anonymous Event source)
+* LDAPFilter -> Filter
+* LDAPSearchEvent (Anonymous Event source)
+
 
 
