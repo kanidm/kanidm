@@ -31,12 +31,12 @@ impl fmt::Display for LogTag {
             LogTag::AdminWarning => write!(f, "admin::warning 🚧"),
             LogTag::AdminInfo => write!(f, "admin::info"),
             LogTag::RequestError => write!(f, "request::error 🚨"),
-            LogTag::Security => write!(f, "security 🔒"),
-            LogTag::SecurityAccess => write!(f, "security::access 🔐"),
+            LogTag::Security => write!(f, "security 🔐"),
+            LogTag::SecurityAccess => write!(f, "security::access 🔓"),
             LogTag::Filter => write!(f, "filter"),
             LogTag::FilterWarning => write!(f, "filter::warning 🚧"),
             LogTag::FilterError => write!(f, "filter::error 🚨"),
-            LogTag::Trace => write!(f, "Trace"),
+            LogTag::Trace => write!(f, "trace ⌦"),
         }
     }
 }
@@ -45,9 +45,11 @@ macro_rules! audit_log {
     ($audit:expr, $($arg:tt)*) => ({
         use std::fmt;
         use crate::audit::LogTag;
+        /*
         if cfg!(test) || cfg!(debug_assertions) {
-            debug!($($arg)*)
+            error!($($arg)*)
         }
+        */
         $audit.log_event(
             LogTag::AdminError,
             fmt::format(
@@ -59,17 +61,21 @@ macro_rules! audit_log {
 
 macro_rules! ltrace {
     ($au:expr, $($arg:tt)*) => ({
-        use std::fmt;
-        use crate::audit::LogTag;
-        if cfg!(test) || cfg!(debug_assertions) {
-            debug!($($arg)*)
-        }
-        $au.log_event(
-            LogTag::Trace,
-            fmt::format(
-                format_args!($($arg)*)
+        if log_enabled!(log::Level::Debug) {
+            /*
+            if cfg!(test) || cfg!(debug_assertions) {
+                error!($($arg)*)
+            }
+            */
+            use std::fmt;
+            use crate::audit::LogTag;
+            $au.log_event(
+                LogTag::Trace,
+                fmt::format(
+                    format_args!($($arg)*)
+                )
             )
-        )
+        }
     })
 }
 
@@ -118,6 +124,19 @@ macro_rules! ladmin_error {
         use crate::audit::LogTag;
         $au.log_event(
             LogTag::AdminError,
+            fmt::format(
+                format_args!($($arg)*)
+            )
+        )
+    })
+}
+
+macro_rules! ladmin_warning {
+    ($au:expr, $($arg:tt)*) => ({
+        use std::fmt;
+        use crate::audit::LogTag;
+        $au.log_event(
+            LogTag::AdminWarning,
             fmt::format(
                 format_args!($($arg)*)
             )
@@ -331,24 +350,23 @@ impl PartialEq for PerfProcessed {
  *     |    |--> another layer
  */
 impl PerfProcessed {
-    fn int_write_fmt(
-        &self,
-        f: &mut fmt::Formatter,
-        parents: usize,
-        uuid: &HyphenatedRef,
-    ) -> fmt::Result {
-        write!(f, "[- {} perf::trace] ", uuid)?;
+    fn int_write_fmt(&self, parents: usize, uuid: &HyphenatedRef) {
+        let mut prefix = String::new();
+        prefix.push_str(format!("[- {} perf::trace] ", uuid).as_str());
         let d = &self.duration;
         let df = d.as_secs() as f64 + d.subsec_nanos() as f64 * 1e-9;
         if parents > 0 {
-            for _i in 0..(parents - 1) {
-                write!(f, "|   ")?;
+            for _i in 0..parents {
+                prefix.push_str("|   ");
             }
         };
-        writeln!(f, "|--> {} {1:.9} {2:.3}%", self.id, df, self.percent)?;
+        debug!(
+            "{}|--> {} {2:.9} {3:.3}%",
+            prefix, self.id, df, self.percent
+        );
         self.contains
             .iter()
-            .try_for_each(|pe| pe.int_write_fmt(f, parents + 1, uuid))
+            .for_each(|pe| pe.int_write_fmt(parents + 1, uuid))
     }
 }
 
@@ -368,37 +386,20 @@ pub struct AuditScope {
     active_perf: Option<&'static mut PerfEvent>,
 }
 
+// unsafe impl Sync for AuditScope {}
+
 // Allow us to be sent to the log subsystem
 impl Message for AuditScope {
     type Result = ();
 }
 
-impl fmt::Display for AuditScope {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let uuid_ref = self.uuid.to_hyphenated_ref();
-        self.events
-            .iter()
-            .try_for_each(|e| writeln!(f, "[{} {} {}] {}", e.time, uuid_ref, e.tag, e.data))?;
-        // First, we pre-process all the perf events to order them
-        let mut proc_perf: Vec<_> = self.perf.iter().map(|pe| pe.process()).collect();
-
-        // We still sort them by duration.
-        proc_perf.sort_unstable();
-
-        // Now write the perf events
-        proc_perf
-            .iter()
-            .try_for_each(|pe| pe.int_write_fmt(f, 0, &uuid_ref))
-    }
-}
-
 impl AuditScope {
-    pub fn new(name: &str) -> Self {
+    pub fn new(name: &str, eventid: Uuid) -> Self {
         let t_now = SystemTime::now();
         let datetime: DateTime<Utc> = t_now.into();
 
         AuditScope {
-            uuid: Uuid::new_v4(),
+            uuid: eventid,
             events: vec![AuditLog {
                 time: datetime.to_rfc3339(),
                 tag: LogTag::AdminInfo,
@@ -409,8 +410,31 @@ impl AuditScope {
         }
     }
 
-    pub fn get_uuid(&self) -> &Uuid {
-        &self.uuid
+    pub fn write_log(self) {
+        let uuid_ref = self.uuid.to_hyphenated_ref();
+        self.events.iter().for_each(|e| match e.tag {
+            LogTag::AdminError | LogTag::RequestError | LogTag::FilterError => {
+                error!("[{} {} {}] {}", e.time, uuid_ref, e.tag, e.data)
+            }
+            LogTag::AdminWarning
+            | LogTag::Security
+            | LogTag::SecurityAccess
+            | LogTag::FilterWarning => warn!("[{} {} {}] {}", e.time, uuid_ref, e.tag, e.data),
+            LogTag::AdminInfo | LogTag::Filter => {
+                info!("[{} {} {}] {}", e.time, uuid_ref, e.tag, e.data)
+            }
+            LogTag::Trace => debug!("[{} {} {}] {}", e.time, uuid_ref, e.tag, e.data),
+        });
+        // First, we pre-process all the perf events to order them
+        let mut proc_perf: Vec<_> = self.perf.iter().map(|pe| pe.process()).collect();
+
+        // We still sort them by duration.
+        proc_perf.sort_unstable();
+
+        // Now write the perf events
+        proc_perf
+            .iter()
+            .for_each(|pe| pe.int_write_fmt(0, &uuid_ref))
     }
 
     pub fn log_event(&mut self, tag: LogTag, data: String) {
@@ -484,8 +508,8 @@ mod tests {
     // Create and remove. Perhaps add some core details?
     #[test]
     fn test_audit_simple() {
-        let au = AuditScope::new("au");
+        let au = AuditScope::new("au", uuid::Uuid::new_v4());
         let d = serde_json::to_string_pretty(&au).expect("Json serialise failure");
-        println!("{}", d);
+        debug!("{}", d);
     }
 }

@@ -28,6 +28,7 @@ pub mod asynchronous;
 use crate::asynchronous::KanidmAsyncClient;
 
 pub const APPLICATION_JSON: &str = "application/json";
+pub const KOPID: &str = "X-KANIDM-OPID";
 
 #[derive(Debug)]
 pub enum ClientError {
@@ -302,6 +303,12 @@ impl KanidmClient {
             .send()
             .map_err(ClientError::Transport)?;
 
+        let opid = response.headers().get(KOPID);
+        debug!(
+            "opid -> {:?}",
+            opid.expect("Missing opid? Refusing to proceed ...")
+        );
+
         match response.status() {
             reqwest::StatusCode::OK => {}
             unexpect => return Err(ClientError::Http(unexpect, response.json().ok())),
@@ -330,6 +337,12 @@ impl KanidmClient {
             .send()
             .map_err(ClientError::Transport)?;
 
+        let opid = response.headers().get(KOPID);
+        debug!(
+            "opid -> {:?}",
+            opid.expect("Missing opid? Refusing to proceed ...")
+        );
+
         match response.status() {
             reqwest::StatusCode::OK => {}
             unexpect => return Err(ClientError::Http(unexpect, response.json().ok())),
@@ -349,6 +362,12 @@ impl KanidmClient {
             .send()
             .map_err(ClientError::Transport)?;
 
+        let opid = response.headers().get(KOPID);
+        debug!(
+            "opid -> {:?}",
+            opid.expect("Missing opid? Refusing to proceed ...")
+        );
+
         match response.status() {
             reqwest::StatusCode::OK => {}
             unexpect => return Err(ClientError::Http(unexpect, response.json().ok())),
@@ -367,6 +386,12 @@ impl KanidmClient {
             .delete(dest.as_str())
             .send()
             .map_err(ClientError::Transport)?;
+
+        let opid = response.headers().get(KOPID);
+        debug!(
+            "opid -> {:?}",
+            opid.expect("Missing opid? Refusing to proceed ...")
+        );
 
         match response.status() {
             reqwest::StatusCode::OK => {}

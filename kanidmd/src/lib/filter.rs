@@ -138,6 +138,31 @@ pub struct FilterValidResolved {
     inner: FilterResolved,
 }
 
+#[derive(Debug)]
+pub enum FilterPlan {
+    Invalid,
+    EqIndexed(String, String),
+    EqUnindexed(String),
+    EqCorrupt(String),
+    SubIndexed(String, String),
+    SubUnindexed(String),
+    SubCorrupt(String),
+    PresIndexed(String),
+    PresUnindexed(String),
+    PresCorrupt(String),
+    LessThanUnindexed(String),
+    OrUnindexed(Vec<FilterPlan>),
+    OrIndexed(Vec<FilterPlan>),
+    OrPartial(Vec<FilterPlan>),
+    OrPartialThreshold(Vec<FilterPlan>),
+    AndEmptyCand(Vec<FilterPlan>),
+    AndIndexed(Vec<FilterPlan>),
+    AndUnindexed(Vec<FilterPlan>),
+    AndPartial(Vec<FilterPlan>),
+    AndPartialThreshold(Vec<FilterPlan>),
+    AndNot(Box<FilterPlan>),
+}
+
 /// A `Filter` is a logical set of assertions about the state of an [`Entry`] and
 /// it's avas. `Filter`s are built from a set of possible assertions.
 ///
@@ -476,7 +501,7 @@ impl FilterComp {
                             .map(|_| FilterComp::Eq(attr_norm, value.clone()))
                         // On error, pass the error back out.
                     }
-                    None => Err(SchemaError::InvalidAttribute),
+                    None => Err(SchemaError::InvalidAttribute(attr_norm)),
                 }
             }
             FilterComp::Sub(attr, value) => {
@@ -491,7 +516,7 @@ impl FilterComp {
                             .map(|_| FilterComp::Sub(attr_norm, value.clone()))
                         // On error, pass the error back out.
                     }
-                    None => Err(SchemaError::InvalidAttribute),
+                    None => Err(SchemaError::InvalidAttribute(attr_norm)),
                 }
             }
             FilterComp::Pres(attr) => {
@@ -502,7 +527,7 @@ impl FilterComp {
                         // Return our valid data
                         Ok(FilterComp::Pres(attr_norm))
                     }
-                    None => Err(SchemaError::InvalidAttribute),
+                    None => Err(SchemaError::InvalidAttribute(attr_norm)),
                 }
             }
             FilterComp::LessThan(attr, value) => {
@@ -517,7 +542,7 @@ impl FilterComp {
                             .map(|_| FilterComp::LessThan(attr_norm, value.clone()))
                         // On error, pass the error back out.
                     }
-                    None => Err(SchemaError::InvalidAttribute),
+                    None => Err(SchemaError::InvalidAttribute(attr_norm)),
                 }
             }
             FilterComp::Or(filters) => {
@@ -895,33 +920,46 @@ impl FilterResolved {
                     }
                 });
 
-                // finally, optimise this list by sorting.
-                f_list_new.sort_unstable();
-                f_list_new.dedup();
-
-                // return!
-                FilterResolved::And(f_list_new)
+                // If the f_list_or only has one element, pop it and return.
+                if f_list_new.len() == 1 {
+                    f_list_new.pop().expect("corrupt?")
+                } else {
+                    // finally, optimise this list by sorting.
+                    f_list_new.sort_unstable();
+                    f_list_new.dedup();
+                    // return!
+                    FilterResolved::And(f_list_new)
+                }
             }
             FilterResolved::Or(f_list) => {
                 let (f_list_or, mut f_list_new): (Vec<_>, Vec<_>) = f_list
                     .iter()
+                    // Optimise all inner items.
                     .map(|f_ref| f_ref.optimise())
+                    // Split out inner-or terms to fold into this term.
                     .partition(|f| match f {
                         FilterResolved::Or(_) => true,
                         _ => false,
                     });
 
+                // Append the inner terms.
                 f_list_or.into_iter().for_each(|fc| {
                     if let FilterResolved::Or(mut l) = fc {
                         f_list_new.append(&mut l)
                     }
                 });
 
-                // sort, but reverse so that sub-optimal elements are later!
-                f_list_new.sort_unstable_by(|a, b| b.cmp(a));
-                f_list_new.dedup();
+                // If the f_list_or only has one element, pop it and return.
+                if f_list_new.len() == 1 {
+                    f_list_new.pop().expect("corrupt?")
+                } else {
+                    // sort, but reverse so that sub-optimal elements are earlier
+                    // to promote fast-failure.
+                    f_list_new.sort_unstable_by(|a, b| b.cmp(a));
+                    f_list_new.dedup();
 
-                FilterResolved::Or(f_list_new)
+                    FilterResolved::Or(f_list_new)
+                }
             }
             f => f.clone(),
         }
@@ -972,23 +1010,30 @@ mod tests {
             let f_init_r = unsafe { f_init.into_valid_resolved() };
             let f_init_o = f_init_r.optimise();
             let f_init_e = unsafe { f_expect.into_valid_resolved() };
-            println!("--");
-            println!("init   --> {:?}", f_init_r);
-            println!("opt    --> {:?}", f_init_o);
-            println!("expect --> {:?}", f_init_e);
+            debug!("--");
+            debug!("init   --> {:?}", f_init_r);
+            debug!("opt    --> {:?}", f_init_o);
+            debug!("expect --> {:?}", f_init_e);
             assert!(f_init_o == f_init_e);
         }};
     }
 
     #[test]
     fn test_filter_optimise() {
+        use env_logger;
+        ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
+        let _ = env_logger::builder()
+            .format_timestamp(None)
+            .format_level(false)
+            .is_test(true)
+            .try_init();
         // Given sets of "optimisable" filters, optimise them.
         filter_optimise_assert!(
             f_and(vec![f_and(vec![f_eq(
                 "class",
                 PartialValue::new_class("test")
             )])]),
-            f_and(vec![f_eq("class", PartialValue::new_class("test"))])
+            f_eq("class", PartialValue::new_class("test"))
         );
 
         filter_optimise_assert!(
@@ -996,7 +1041,7 @@ mod tests {
                 "class",
                 PartialValue::new_class("test")
             )])]),
-            f_or(vec![f_eq("class", PartialValue::new_class("test"))])
+            f_eq("class", PartialValue::new_class("test"))
         );
 
         filter_optimise_assert!(
@@ -1004,10 +1049,7 @@ mod tests {
                 "class",
                 PartialValue::new_class("test")
             )])])]),
-            f_and(vec![f_or(vec![f_and(vec![f_eq(
-                "class",
-                PartialValue::new_class("test")
-            )])])])
+            f_eq("class", PartialValue::new_class("test"))
         );
 
         // Later this can test duplicate filter detection.
@@ -1073,8 +1115,7 @@ mod tests {
             f_or(vec![
                 f_and(vec![
                     f_eq("class", PartialValue::new_class("test")),
-                    f_eq("term", PartialValue::new_class("test")),
-                    f_or(vec![f_eq("class", PartialValue::new_class("test"))])
+                    f_eq("term", PartialValue::new_class("test"))
                 ]),
                 f_eq("class", PartialValue::new_class("test")),
             ])

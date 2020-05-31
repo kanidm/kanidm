@@ -80,16 +80,19 @@ macro_rules! get_identry {
                         }
                     });
 
-                    // Now, get anything from nidl that is needed.
-                    let mut db_result = $self.db.get_identry($au, &IDL::Partial(nidl))?;
+                    if !nidl.is_empty() {
+                        ladmin_warning!($au, "idl_arc_sqlite cache miss detected - if this occurs frequently you SHOULD adjust your cache tuning.");
+                        // Now, get anything from nidl that is needed.
+                        let mut db_result = $self.db.get_identry($au, &IDL::Partial(nidl))?;
 
-                    // Clone everything from db_result into the cache.
-                    db_result.iter().for_each(|e| {
-                        $self.entry_cache.insert(e.get_id(), Box::new(e.clone()));
-                    });
+                        // Clone everything from db_result into the cache.
+                        db_result.iter().for_each(|e| {
+                            $self.entry_cache.insert(e.get_id(), Box::new(e.clone()));
+                        });
 
-                    // Merge the two vecs
-                    result.append(&mut db_result);
+                        // Merge the two vecs
+                        result.append(&mut db_result);
+                    }
 
                     // Return
                     Ok(result)
@@ -142,7 +145,7 @@ macro_rules! get_idl {
             let cache_r = $self.idl_cache.get(&cache_key);
             // If hit, continue.
             if let Some(ref data) = cache_r {
-                lfilter!(
+                ltrace!(
                     $audit,
                     "Got cached idl for index {:?} {:?} -> {}",
                     $itype,
@@ -500,4 +503,13 @@ impl IdlArcSqlite {
             idl_cache: idl_cache_write,
         }
     }
+
+    /*
+    pub fn stats_audit(&self, audit: &mut AuditScope) {
+        let entry_stats = self.entry_cache.view_stats();
+        let idl_stats = self.idl_cache.view_stats();
+        ladmin_info!(audit, "entry_cache stats -> {:?}", *entry_stats);
+        ladmin_info!(audit, "idl_cache stats -> {:?}", *idl_stats);
+    }
+    */
 }

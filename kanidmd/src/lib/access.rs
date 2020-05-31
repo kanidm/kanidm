@@ -482,6 +482,12 @@ pub trait AccessControlsTransaction {
             })
             .collect();
 
+        if allowed_entries.len() > 0 {
+            lsecurity_access!(audit, "allowed {} entries ✅", allowed_entries.len());
+        } else {
+            lsecurity_access!(audit, "denied ❌");
+        }
+
         Ok(allowed_entries)
     }
 
@@ -639,6 +645,12 @@ pub trait AccessControlsTransaction {
                 e.reduce_attributes(f_allowed_attrs)
             })
             .collect();
+
+        lsecurity_access!(
+            audit,
+            "attribute set reduced on {} entries",
+            allowed_entries.len()
+        );
         Ok(allowed_entries)
     }
 
@@ -652,6 +664,7 @@ pub trait AccessControlsTransaction {
 
         let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &me.event.origin {
             EventOrigin::Internal => {
+                lsecurity_access!(audit, "Internal operation, bypassing access check");
                 // No need to check ACS
                 return Ok(true);
             }
@@ -833,6 +846,11 @@ pub trait AccessControlsTransaction {
                 result
             } // if acc == false
         });
+        if r {
+            lsecurity_access!(audit, "allowed ✅");
+        } else {
+            lsecurity_access!(audit, "denied ❌");
+        }
         Ok(r)
     }
 
@@ -846,6 +864,7 @@ pub trait AccessControlsTransaction {
 
         let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &ce.event.origin {
             EventOrigin::Internal => {
+                lsecurity_access!(audit, "Internal operation, bypassing access check");
                 // No need to check ACS
                 return Ok(true);
             }
@@ -998,6 +1017,12 @@ pub trait AccessControlsTransaction {
             //          if no acp allows, fail operation.
         });
 
+        if r {
+            lsecurity_access!(audit, "allowed ✅");
+        } else {
+            lsecurity_access!(audit, "denied ❌");
+        }
+
         Ok(r)
     }
 
@@ -1011,6 +1036,7 @@ pub trait AccessControlsTransaction {
 
         let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &de.event.origin {
             EventOrigin::Internal => {
+                lsecurity_access!(audit, "Internal operation, bypassing access check");
                 // No need to check ACS
                 return Ok(true);
             }
@@ -1098,6 +1124,11 @@ pub trait AccessControlsTransaction {
                 }) // fold related_acp
             } // if/else
         });
+        if r {
+            lsecurity_access!(audit, "allowed ✅");
+        } else {
+            lsecurity_access!(audit, "denied ❌");
+        }
         Ok(r)
     }
 }
@@ -1377,10 +1408,10 @@ mod tests {
                         "name": ["acp_valid"],
                         "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
                         "acp_receiver": [
-                            "{\"Eq\":[\"name\",\"a\"]}"
+                            "{\"eq\":[\"name\",\"a\"]}"
                         ],
                         "acp_targetscope": [
-                            "{\"Eq\":[\"name\",\"a\"]}"
+                            "{\"eq\":[\"name\",\"a\"]}"
                         ]
                     }
                 }"#,
@@ -1405,10 +1436,10 @@ mod tests {
                         "name": ["acp_valid"],
                         "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
                         "acp_receiver": [
-                            "{\"Eq\":[\"name\",\"a\"]}"
+                            "{\"eq\":[\"name\",\"a\"]}"
                         ],
                         "acp_targetscope": [
-                            "{\"Eq\":[\"name\",\"a\"]}"
+                            "{\"eq\":[\"name\",\"a\"]}"
                         ]
                     }
                 }"#,
@@ -1426,10 +1457,10 @@ mod tests {
                         "name": ["acp_valid"],
                         "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
                         "acp_receiver": [
-                            "{\"Eq\":[\"name\",\"a\"]}"
+                            "{\"eq\":[\"name\",\"a\"]}"
                         ],
                         "acp_targetscope": [
-                            "{\"Eq\":[\"name\",\"a\"]}"
+                            "{\"eq\":[\"name\",\"a\"]}"
                         ]
                     }
                 }"#,
@@ -1456,10 +1487,10 @@ mod tests {
                         "name": ["acp_invalid"],
                         "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
                         "acp_receiver": [
-                            "{\"Eq\":[\"name\",\"a\"]}"
+                            "{\"eq\":[\"name\",\"a\"]}"
                         ],
                         "acp_targetscope": [
-                            "{\"Eq\":[\"name\",\"a\"]}"
+                            "{\"eq\":[\"name\",\"a\"]}"
                         ],
                         "acp_search_attr": ["name", "class"]
                     }
@@ -1479,10 +1510,10 @@ mod tests {
                         "name": ["acp_invalid"],
                         "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
                         "acp_receiver": [
-                            "{\"Eq\":[\"name\",\"a\"]}"
+                            "{\"eq\":[\"name\",\"a\"]}"
                         ],
                         "acp_targetscope": [
-                            "{\"Eq\":[\"name\",\"a\"]}"
+                            "{\"eq\":[\"name\",\"a\"]}"
                         ],
                         "acp_search_attr": ["name", "class"]
                     }
@@ -1502,10 +1533,10 @@ mod tests {
                         "name": ["acp_invalid"],
                         "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
                         "acp_receiver": [
-                            "{\"Eq\":[\"name\",\"a\"]}"
+                            "{\"eq\":[\"name\",\"a\"]}"
                         ],
                         "acp_targetscope": [
-                            "{\"Eq\":[\"name\",\"a\"]}"
+                            "{\"eq\":[\"name\",\"a\"]}"
                         ]
                     }
                 }"#,
@@ -1524,10 +1555,10 @@ mod tests {
                         "name": ["acp_valid"],
                         "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
                         "acp_receiver": [
-                            "{\"Eq\":[\"name\",\"a\"]}"
+                            "{\"eq\":[\"name\",\"a\"]}"
                         ],
                         "acp_targetscope": [
-                            "{\"Eq\":[\"name\",\"a\"]}"
+                            "{\"eq\":[\"name\",\"a\"]}"
                         ],
                         "acp_search_attr": ["name", "class"]
                     }
@@ -1554,10 +1585,10 @@ mod tests {
                         "name": ["acp_valid"],
                         "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
                         "acp_receiver": [
-                            "{\"Eq\":[\"name\",\"a\"]}"
+                            "{\"eq\":[\"name\",\"a\"]}"
                         ],
                         "acp_targetscope": [
-                            "{\"Eq\":[\"name\",\"a\"]}"
+                            "{\"eq\":[\"name\",\"a\"]}"
                         ],
                         "acp_modify_removedattr": ["name"],
                         "acp_modify_presentattr": ["name"],
@@ -1578,10 +1609,10 @@ mod tests {
                         "name": ["acp_valid"],
                         "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
                         "acp_receiver": [
-                            "{\"Eq\":[\"name\",\"a\"]}"
+                            "{\"eq\":[\"name\",\"a\"]}"
                         ],
                         "acp_targetscope": [
-                            "{\"Eq\":[\"name\",\"a\"]}"
+                            "{\"eq\":[\"name\",\"a\"]}"
                         ]
                     }
                 }"#,
@@ -1599,10 +1630,10 @@ mod tests {
                         "name": ["acp_valid"],
                         "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
                         "acp_receiver": [
-                            "{\"Eq\":[\"name\",\"a\"]}"
+                            "{\"eq\":[\"name\",\"a\"]}"
                         ],
                         "acp_targetscope": [
-                            "{\"Eq\":[\"name\",\"a\"]}"
+                            "{\"eq\":[\"name\",\"a\"]}"
                         ],
                         "acp_modify_removedattr": ["name"],
                         "acp_modify_presentattr": ["name"],
@@ -1631,10 +1662,10 @@ mod tests {
                         "name": ["acp_valid"],
                         "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
                         "acp_receiver": [
-                            "{\"Eq\":[\"name\",\"a\"]}"
+                            "{\"eq\":[\"name\",\"a\"]}"
                         ],
                         "acp_targetscope": [
-                            "{\"Eq\":[\"name\",\"a\"]}"
+                            "{\"eq\":[\"name\",\"a\"]}"
                         ],
                         "acp_create_class": ["object"],
                         "acp_create_attr": ["name"]
@@ -1654,10 +1685,10 @@ mod tests {
                         "name": ["acp_valid"],
                         "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
                         "acp_receiver": [
-                            "{\"Eq\":[\"name\",\"a\"]}"
+                            "{\"eq\":[\"name\",\"a\"]}"
                         ],
                         "acp_targetscope": [
-                            "{\"Eq\":[\"name\",\"a\"]}"
+                            "{\"eq\":[\"name\",\"a\"]}"
                         ]
                     }
                 }"#,
@@ -1675,10 +1706,10 @@ mod tests {
                         "name": ["acp_valid"],
                         "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
                         "acp_receiver": [
-                            "{\"Eq\":[\"name\",\"a\"]}"
+                            "{\"eq\":[\"name\",\"a\"]}"
                         ],
                         "acp_targetscope": [
-                            "{\"Eq\":[\"name\",\"a\"]}"
+                            "{\"eq\":[\"name\",\"a\"]}"
                         ],
                         "acp_create_class": ["object"],
                         "acp_create_attr": ["name"]
@@ -1713,10 +1744,10 @@ mod tests {
                         "name": ["acp_valid"],
                         "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
                         "acp_receiver": [
-                            "{\"Eq\":[\"name\",\"a\"]}"
+                            "{\"eq\":[\"name\",\"a\"]}"
                         ],
                         "acp_targetscope": [
-                            "{\"Eq\":[\"name\",\"a\"]}"
+                            "{\"eq\":[\"name\",\"a\"]}"
                         ],
                         "acp_search_attr": ["name"],
                         "acp_create_class": ["object"],
@@ -1746,12 +1777,12 @@ mod tests {
             acw.update_search($controls).expect("Failed to update");
             let acw = acw;
 
-            let mut audit = AuditScope::new("test_acp_search");
+            let mut audit = AuditScope::new("test_acp_search", uuid::Uuid::new_v4());
             let res = acw
                 .search_filter_entries(&mut audit, $se, $entries)
                 .expect("op failed");
-            println!("result --> {:?}", res);
-            println!("expect --> {:?}", $expect);
+            debug!("result --> {:?}", res);
+            debug!("expect --> {:?}", $expect);
             // should be ok, and same as expect.
             assert!(res == $expect);
         }};
@@ -1849,7 +1880,7 @@ mod tests {
             acw.update_search($controls).expect("Failed to update");
             let acw = acw;
 
-            let mut audit = AuditScope::new("test_acp_search_reduce");
+            let mut audit = AuditScope::new("test_acp_search_reduce", uuid::Uuid::new_v4());
             // We still have to reduce the entries to be sure that we are good.
             let res = acw
                 .search_filter_entries(&mut audit, $se, $entries)
@@ -1865,8 +1896,8 @@ mod tests {
                 .map(|e| unsafe { e.into_reduced() })
                 .collect();
 
-            println!("expect --> {:?}", expect_set);
-            println!("result --> {:?}", reduced);
+            debug!("expect --> {:?}", expect_set);
+            debug!("result --> {:?}", reduced);
             // should be ok, and same as expect.
             assert!(reduced == expect_set);
         }};
@@ -1972,12 +2003,12 @@ mod tests {
             acw.update_modify($controls).expect("Failed to update");
             let acw = acw;
 
-            let mut audit = AuditScope::new("test_acp_modify");
+            let mut audit = AuditScope::new("test_acp_modify", uuid::Uuid::new_v4());
             let res = acw
                 .modify_allow_operation(&mut audit, $me, $entries)
                 .expect("op failed");
-            println!("result --> {:?}", res);
-            println!("expect --> {:?}", $expect);
+            debug!("result --> {:?}", res);
+            debug!("expect --> {:?}", $expect);
             // should be ok, and same as expect.
             assert!(res == $expect);
         }};
@@ -2134,12 +2165,12 @@ mod tests {
             acw.update_create($controls).expect("Failed to update");
             let acw = acw;
 
-            let mut audit = AuditScope::new("test_acp_create");
+            let mut audit = AuditScope::new("test_acp_create", uuid::Uuid::new_v4());
             let res = acw
                 .create_allow_operation(&mut audit, $ce, $entries)
                 .expect("op failed");
-            println!("result --> {:?}", res);
-            println!("expect --> {:?}", $expect);
+            debug!("result --> {:?}", res);
+            debug!("expect --> {:?}", $expect);
             // should be ok, and same as expect.
             assert!(res == $expect);
         }};
@@ -2260,12 +2291,12 @@ mod tests {
             acw.update_delete($controls).expect("Failed to update");
             let acw = acw;
 
-            let mut audit = AuditScope::new("test_acp_delete");
+            let mut audit = AuditScope::new("test_acp_delete", uuid::Uuid::new_v4());
             let res = acw
                 .delete_allow_operation(&mut audit, $de, $entries)
                 .expect("op failed");
-            println!("result --> {:?}", res);
-            println!("expect --> {:?}", $expect);
+            debug!("result --> {:?}", res);
+            debug!("expect --> {:?}", $expect);
             // should be ok, and same as expect.
             assert!(res == $expect);
         }};

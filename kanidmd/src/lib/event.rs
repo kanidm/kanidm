@@ -988,6 +988,7 @@ impl WhoamiResult {
 #[derive(Debug)]
 pub struct PurgeTombstoneEvent {
     pub event: Event,
+    pub eventid: Uuid,
 }
 
 impl Message for PurgeTombstoneEvent {
@@ -998,6 +999,7 @@ impl PurgeTombstoneEvent {
     pub fn new() -> Self {
         PurgeTombstoneEvent {
             event: Event::from_internal(),
+            eventid: Uuid::new_v4(),
         }
     }
 }
@@ -1005,6 +1007,7 @@ impl PurgeTombstoneEvent {
 #[derive(Debug)]
 pub struct PurgeRecycledEvent {
     pub event: Event,
+    pub eventid: Uuid,
 }
 
 impl Message for PurgeRecycledEvent {
@@ -1015,6 +1018,7 @@ impl PurgeRecycledEvent {
     pub fn new() -> Self {
         PurgeRecycledEvent {
             event: Event::from_internal(),
+            eventid: Uuid::new_v4(),
         }
     }
 }

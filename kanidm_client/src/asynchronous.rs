@@ -1,4 +1,4 @@
-use crate::{ClientError, KanidmClientBuilder, APPLICATION_JSON};
+use crate::{ClientError, KanidmClientBuilder, APPLICATION_JSON, KOPID};
 use reqwest::header::CONTENT_TYPE;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -34,6 +34,12 @@ impl KanidmAsyncClient {
             .await
             .map_err(ClientError::Transport)?;
 
+        let opid = response.headers().get(KOPID);
+        debug!(
+            "opid -> {:?}",
+            opid.expect("Missing opid? Refusing to proceed ...")
+        );
+
         match response.status() {
             reqwest::StatusCode::OK => {}
             unexpect => return Err(ClientError::Http(unexpect, response.json().await.ok())),
@@ -66,6 +72,12 @@ impl KanidmAsyncClient {
             .await
             .map_err(ClientError::Transport)?;
 
+        let opid = response.headers().get(KOPID);
+        debug!(
+            "opid -> {:?}",
+            opid.expect("Missing opid? Refusing to proceed ...")
+        );
+
         match response.status() {
             reqwest::StatusCode::OK => {}
             unexpect => return Err(ClientError::Http(unexpect, response.json().await.ok())),
@@ -88,6 +100,12 @@ impl KanidmAsyncClient {
             .await
             .map_err(ClientError::Transport)?;
 
+        let opid = response.headers().get(KOPID);
+        debug!(
+            "opid -> {:?}",
+            opid.expect("Missing opid? Refusing to proceed ...")
+        );
+
         match response.status() {
             reqwest::StatusCode::OK => {}
             unexpect => return Err(ClientError::Http(unexpect, response.json().await.ok())),
@@ -107,6 +125,12 @@ impl KanidmAsyncClient {
             .send()
             .await
             .map_err(ClientError::Transport)?;
+
+        let opid = response.headers().get(KOPID);
+        debug!(
+            "opid -> {:?}",
+            opid.expect("Missing opid? Refusing to proceed ...")
+        );
 
         match response.status() {
             reqwest::StatusCode::OK => {}

@@ -32,9 +32,13 @@ macro_rules! run_idm_test {
 
         use env_logger;
         ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
-        let _ = env_logger::builder().is_test(true).try_init();
+        let _ = env_logger::builder()
+            .format_timestamp(None)
+            .format_level(false)
+            .is_test(true)
+            .try_init();
 
-        let mut audit = AuditScope::new("run_test");
+        let mut audit = AuditScope::new("run_test", uuid::Uuid::new_v4());
 
         let be = Backend::new(&mut audit, "", 1).expect("Failed to init be");
         let schema_outer = Schema::new(&mut audit).expect("Failed to init schema");

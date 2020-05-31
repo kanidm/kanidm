@@ -290,10 +290,10 @@ mod tests {
             "description": ["Builtin IDM Administrators Access Controls."],
             "acp_enable": ["true"],
             "acp_receiver": [
-                "{\"Eq\":[\"uuid\",\"00000000-0000-0000-0000-000000000000\"]}"
+                "{\"eq\":[\"uuid\",\"00000000-0000-0000-0000-000000000000\"]}"
             ],
             "acp_targetscope": [
-                "{\"Pres\":\"class\"}"
+                "{\"pres\":\"class\"}"
             ],
             "acp_search_attr": ["name", "class", "uuid"],
             "acp_modify_class": ["system"],

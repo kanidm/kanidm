@@ -457,7 +457,7 @@ mod tests {
             let cands = $qs
                 .internal_search($au, filt)
                 .expect("Internal search failure");
-            println!("{:?}", cands);
+            debug!("assert_mo_cands {:?}", cands);
             assert!(cands.len() == $cand);
         }};
     }
@@ -1307,7 +1307,6 @@ mod tests {
 
     #[test]
     fn test_delete_mo_simple() {
-        debug!("TEST START");
         // X -> B
         let mut ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EA);
 

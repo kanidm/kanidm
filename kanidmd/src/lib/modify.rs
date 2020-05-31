@@ -143,7 +143,7 @@ impl ModifyList<ModifyInvalid> {
                         Some(schema_a) => schema_a
                             .validate_value(&value)
                             .map(|_| Modify::Present(attr_norm, value.clone())),
-                        None => Err(SchemaError::InvalidAttribute),
+                        None => Err(SchemaError::InvalidAttribute(attr_norm)),
                     }
                 }
                 Modify::Removed(attr, value) => {
@@ -152,14 +152,14 @@ impl ModifyList<ModifyInvalid> {
                         Some(schema_a) => schema_a
                             .validate_partialvalue(&value)
                             .map(|_| Modify::Removed(attr_norm, value.clone())),
-                        None => Err(SchemaError::InvalidAttribute),
+                        None => Err(SchemaError::InvalidAttribute(attr_norm)),
                     }
                 }
                 Modify::Purged(attr) => {
                     let attr_norm = schema.normalise_attr_name(attr);
                     match schema_attributes.get(&attr_norm) {
                         Some(_attr_name) => Ok(Modify::Purged(attr_norm)),
-                        None => Err(SchemaError::InvalidAttribute),
+                        None => Err(SchemaError::InvalidAttribute(attr_norm)),
                     }
                 }
             })

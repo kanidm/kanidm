@@ -570,11 +570,11 @@ impl<STATE> Entry<EntryInvalid, STATE> {
             Some(vs) => match vs.iter().take(1).next() {
                 Some(uuid_v) => match uuid_v.to_uuid() {
                     Some(uuid) => *uuid,
-                    None => return Err(SchemaError::InvalidAttribute),
+                    None => return Err(SchemaError::InvalidAttribute("uuid".to_string())),
                 },
-                None => return Err(SchemaError::MissingMustAttribute("uuid".to_string())),
+                None => return Err(SchemaError::MissingMustAttribute(vec!["uuid".to_string()])),
             },
-            None => return Err(SchemaError::MissingMustAttribute("uuid".to_string())),
+            None => return Err(SchemaError::MissingMustAttribute(vec!["uuid".to_string()])),
         };
 
         // Build the new valid entry ...
@@ -592,28 +592,32 @@ impl<STATE> Entry<EntryInvalid, STATE> {
         {
             // First, check we have class on the object ....
             if !ne.attribute_pres("class") {
-                debug!("Missing attribute class");
-                return Err(SchemaError::InvalidClass);
+                // lrequest_error!("Missing attribute class");
+                return Err(SchemaError::NoClassFound);
             }
 
             // Do we have extensible?
             let extensible = ne.attribute_value_pres("class", &CLASS_EXTENSIBLE);
 
-            let entry_classes = ne.classes().ok_or(SchemaError::InvalidClass)?;
-            let entry_classes_size = entry_classes.len();
+            let entry_classes = ne.classes().ok_or(SchemaError::NoClassFound)?;
+            let mut invalid_classes = Vec::with_capacity(0);
 
-            let classes: Vec<&SchemaClass> = entry_classes
+            let mut classes: Vec<&SchemaClass> = Vec::with_capacity(entry_classes.len());
+            entry_classes.for_each(|c: &Value| {
                 // we specify types here to help me clarify a few things in the
                 // development process :)
-                .filter_map(|c: &Value| {
-                    let x: Option<&SchemaClass> = c.as_string().and_then(|s| schema_classes.get(s));
-                    x
-                })
-                .collect();
+                match c.as_string() {
+                    Some(s) => match schema_classes.get(s) {
+                        Some(x) => classes.push(x),
+                        None => invalid_classes.push(s.clone()),
+                    },
+                    None => invalid_classes.push("corrupt classname".to_string()),
+                }
+            });
 
-            if classes.len() != entry_classes_size {
-                debug!("Class on entry not found in schema?");
-                return Err(SchemaError::InvalidClass);
+            if invalid_classes.len() != 0 {
+                // lrequest_error!("Class on entry not found in schema?");
+                return Err(SchemaError::InvalidClass(invalid_classes));
             };
 
             // What this is really doing is taking a set of classes, and building an
@@ -643,41 +647,47 @@ impl<STATE> Entry<EntryInvalid, STATE> {
 
             // Check that all must are inplace
             //   for each attr in must, check it's present on our ent
-            for attr in must {
+            let mut missing_must = Vec::with_capacity(0);
+            must.iter().for_each(|attr| {
                 let avas = ne.get_ava(&attr.name);
                 if avas.is_none() {
-                    return Err(SchemaError::MissingMustAttribute(attr.name.clone()));
+                    missing_must.push(attr.name.clone());
                 }
+            });
+
+            if missing_must.len() != 0 {
+                return Err(SchemaError::MissingMustAttribute(missing_must));
             }
 
-            debug!("Extensible object -> {}", extensible);
-
             if extensible {
+                // ladmin_warning!("Extensible Object In Use!");
                 for (attr_name, avas) in ne.avas() {
                     match schema_attributes.get(attr_name) {
                         Some(a_schema) => {
                             // Now, for each type we do a *full* check of the syntax
                             // and validity of the ava.
                             if a_schema.phantom {
-                                debug!(
+                                /*
+                                lrequest_error!(
                                     "Attempt to add phantom attribute to extensible: {}",
                                     attr_name
                                 );
-                                return Err(SchemaError::PhantomAttribute);
+                                */
+                                return Err(SchemaError::PhantomAttribute(attr_name.clone()));
                             }
 
                             let r = a_schema.validate_ava(avas);
                             match r {
                                 Ok(_) => {}
                                 Err(e) => {
-                                    debug!("Failed to validate: {}", attr_name);
+                                    // lrequest_error!("Failed to validate: {}", attr_name);
                                     return Err(e);
                                 }
                             }
                         }
                         None => {
-                            debug!("Invalid Attribute {} for extensible object", attr_name);
-                            return Err(SchemaError::InvalidAttribute);
+                            // lrequest_error!("Invalid Attribute {} for extensible object", attr_name);
+                            return Err(SchemaError::InvalidAttribute(attr_name.clone()));
                         }
                     }
                 }
@@ -725,14 +735,14 @@ impl<STATE> Entry<EntryInvalid, STATE> {
                             match r {
                                 Ok(_) => {}
                                 Err(e) => {
-                                    debug!("Failed to validate: {}", attr_name);
+                                    // lrequest_error!("Failed to validate: {}", attr_name);
                                     return Err(e);
                                 }
                             }
                         }
                         None => {
-                            debug!("Invalid Attribute {} for may+must set", attr_name);
-                            return Err(SchemaError::InvalidAttribute);
+                            // lrequest_error!("Invalid Attribute {} for may+must set", attr_name);
+                            return Err(SchemaError::InvalidAttribute(attr_name.clone()));
                         }
                     }
                 }
@@ -1533,10 +1543,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
 
     pub fn get_ava_single_protofilter(&self, attr: &str) -> Option<ProtoFilter> {
         self.get_ava_single(attr)
-            .and_then(|v: &Value| {
-                debug!("get_ava_single_protofilter -> {:?}", v);
-                v.as_json_filter()
-            })
+            .and_then(|v: &Value| v.as_json_filter())
             .map(|f: &ProtoFilter| (*f).clone())
     }
 
@@ -2086,12 +2093,12 @@ mod tests {
 
         // When we do None, None, we get nothing back.
         let r1 = Entry::idx_diff(&idxmeta, None, None);
-        println!("{:?}", r1);
+        debug!("{:?}", r1);
         assert!(r1 == Vec::new());
 
         // Check generating a delete diff
         let del_r = Entry::idx_diff(&idxmeta, Some(&e1), None);
-        println!("{:?}", del_r);
+        debug!("{:?}", del_r);
         assert!(
             del_r[0]
                 == Err((
@@ -2104,7 +2111,7 @@ mod tests {
 
         // Check generating an add diff
         let add_r = Entry::idx_diff(&idxmeta, None, Some(&e1));
-        println!("{:?}", add_r);
+        debug!("{:?}", add_r);
         assert!(
             add_r[0]
                 == Ok((
@@ -2162,6 +2169,6 @@ mod tests {
                     "claire".to_string()
                 ))
         );
-        println!("{:?}", chg_r);
+        debug!("{:?}", chg_r);
     }
 }

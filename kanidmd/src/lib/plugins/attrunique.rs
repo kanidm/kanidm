@@ -76,13 +76,13 @@ fn enforce_unique<STATE>(
     cand: &[Entry<EntryInvalid, STATE>],
     attr: &str,
 ) -> Result<(), OperationError> {
-    debug!("{:?}", attr);
+    ltrace!(au, "{:?}", attr);
 
     // Build a set of all the value -> uuid for the cands.
     // If already exist, reject due to dup.
     let cand_attr = try_audit!(au, get_cand_attr_set(au, cand, attr));
 
-    debug!("{:?}", cand_attr);
+    ltrace!(au, "{:?}", cand_attr);
 
     // No candidates to check!
     if cand_attr.is_empty() {
@@ -104,7 +104,7 @@ fn enforce_unique<STATE>(
             .collect()
     ));
 
-    debug!("{:?}", filt_in);
+    ltrace!(au, "{:?}", filt_in);
 
     // If any results, reject.
     let conflict_cand = try_audit!(au, qs.internal_exists(au, filt_in));
@@ -193,7 +193,7 @@ impl Plugin for AttrUnique {
             }
         }
 
-        debug!("{:?}", res);
+        ltrace!(au, "{:?}", res);
 
         res
     }

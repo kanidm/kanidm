@@ -17,6 +17,7 @@ use std::time::Duration;
 const BAD_PASSWORD_MSG: &str = "incorrect password";
 const BAD_TOTP_MSG: &str = "incorrect totp";
 const BAD_AUTH_TYPE_MSG: &str = "invalid authentication method in this context";
+const BAD_CREDENTIALS: &str = "invalid credential message";
 
 enum CredState {
     Success(Vec<Claim>),
@@ -72,10 +73,16 @@ impl TryFrom<&Credential> for CredHandler {
 }
 
 impl CredHandler {
-    pub fn validate(&mut self, creds: &[AuthCredential], ts: &Duration) -> CredState {
+    pub fn validate(
+        &mut self,
+        au: &mut AuditScope,
+        creds: &[AuthCredential],
+        ts: &Duration,
+    ) -> CredState {
         match self {
             CredHandler::Denied => {
                 // Sad trombone.
+                lsecurity!(au, "Handler::Denied -> Result::Denied");
                 CredState::Denied("authentication denied")
             }
             CredHandler::Anonymous => {
@@ -87,7 +94,10 @@ impl CredHandler {
                         // the session to continue up to some timelimit.
                         match acc {
                             // If denied, continue returning denied.
-                            CredState::Denied(_) => acc,
+                            CredState::Denied(_) => {
+                                lsecurity!(au, "Handler::Anonymous -> Result::Denied - already denied");
+                                acc
+                            }
                             // We have a continue or success, it's important we keep checking here
                             // after the success, because if they sent "multiple" anonymous or
                             // they sent anon + password, we need to handle both cases. Double anon
@@ -97,9 +107,13 @@ impl CredHandler {
                                 match cred {
                                     AuthCredential::Anonymous => {
                                         // For anonymous, no claims will ever be issued.
+                                        lsecurity!(au, "Handler::Anonymous -> Result::Success");
                                         CredState::Success(Vec::new())
                                     }
-                                    _ => CredState::Denied(BAD_AUTH_TYPE_MSG),
+                                    _ => {
+                                        lsecurity!(au, "Handler::Anonymous -> Result::Denied - invalid cred type for handler");
+                                        CredState::Denied(BAD_AUTH_TYPE_MSG)
+                                    }
                                 }
                             }
                         } // end match acc
@@ -113,18 +127,26 @@ impl CredHandler {
                     |acc, cred| {
                         match acc {
                             // If failed, continue to fail.
-                            CredState::Denied(_) => acc,
+                            CredState::Denied(_) => {
+                                lsecurity!(au, "Handler::Password -> Result::Denied - already denied");
+                                acc
+                            }
                             _ => {
                                 match cred {
                                     AuthCredential::Password(cleartext) => {
                                         if pw.verify(cleartext.as_str()) {
+                                            lsecurity!(au, "Handler::Password -> Result::Success");
                                             CredState::Success(Vec::new())
                                         } else {
+                                            lsecurity!(au, "Handler::Password -> Result::Denied - incorrect password");
                                             CredState::Denied(BAD_PASSWORD_MSG)
                                         }
                                     }
                                     // All other cases fail.
-                                    _ => CredState::Denied(BAD_AUTH_TYPE_MSG),
+                                    _ => {
+                                        lsecurity!(au, "Handler::Anonymous -> Result::Denied - invalid cred type for handler");
+                                        CredState::Denied(BAD_AUTH_TYPE_MSG)
+                                    }
                                 }
                             }
                         } // end match acc
@@ -138,7 +160,10 @@ impl CredHandler {
                     CredState::Continue(vec![AuthAllowed::TOTP, AuthAllowed::Password]),
                     |acc, cred| {
                         match acc {
-                            CredState::Denied(_) => acc,
+                            CredState::Denied(_) => {
+                                lsecurity!(au, "Handler::TOTPPassword -> Result::Denied - already denied");
+                                acc
+                            }
                             _ => {
                                 match cred {
                                     AuthCredential::Password(cleartext) => {
@@ -149,15 +174,18 @@ impl CredHandler {
                                                 CredVerifyState::Init => {
                                                     // TOTP hasn't been run yet, we need it before
                                                     // we indicate the pw status.
+                                                    lsecurity!(au, "Handler::TOTPPassword -> Result::Continue - TOTP -, password OK");
                                                     CredState::Continue(vec![AuthAllowed::TOTP])
                                                 }
                                                 CredVerifyState::Success => {
                                                     // The totp is success, and password good, let's go!
+                                                    lsecurity!(au, "Handler::TOTPPassword -> Result::Success - TOTP OK, password OK");
                                                     CredState::Success(Vec::new())
                                                 }
                                                 CredVerifyState::Fail => {
                                                     // The totp already failed, send that message now.
                                                     // Should be impossible state.
+                                                    lsecurity!(au, "Handler::TOTPPassword -> Result::Denied - TOTP Fail, password OK");
                                                     CredState::Denied(BAD_TOTP_MSG)
                                                 }
                                             }
@@ -167,15 +195,18 @@ impl CredHandler {
                                                 CredVerifyState::Init => {
                                                     // TOTP hasn't been run yet, we need it before
                                                     // we indicate the pw status.
+                                                    lsecurity!(au, "Handler::TOTPPassword -> Result::Continue - TOTP -, password Fail");
                                                     CredState::Continue(vec![AuthAllowed::TOTP])
                                                 }
                                                 CredVerifyState::Success => {
                                                     // The totp is success, but password bad.
+                                                    lsecurity!(au, "Handler::TOTPPassword -> Result::Denied - TOTP OK, password Fail");
                                                     CredState::Denied(BAD_PASSWORD_MSG)
                                                 }
                                                 CredVerifyState::Fail => {
                                                     // The totp already failed, remind.
                                                     // this should be an impossible state.
+                                                    lsecurity!(au, "Handler::TOTPPassword -> Result::Denied - TOTP Fail, password Fail");
                                                     CredState::Denied(BAD_TOTP_MSG)
                                                 }
                                             }
@@ -187,22 +218,29 @@ impl CredHandler {
                                             pw_totp.totp_state = CredVerifyState::Success;
                                             match pw_totp.pw_state {
                                                 CredVerifyState::Init => {
+                                                    lsecurity!(au, "Handler::TOTPPassword -> Result::Continue - TOTP OK, password -");
                                                     CredState::Continue(vec![AuthAllowed::Password])
                                                 }
                                                 CredVerifyState::Success => {
+                                                    lsecurity!(au, "Handler::TOTPPassword -> Result::Success - TOTP OK, password OK");
                                                     CredState::Success(Vec::new())
                                                 }
                                                 CredVerifyState::Fail => {
+                                                    lsecurity!(au, "Handler::TOTPPassword -> Result::Denied - TOTP OK, password Fail");
                                                     CredState::Denied(BAD_PASSWORD_MSG)
                                                 }
                                             }
                                         } else {
                                             pw_totp.totp_state = CredVerifyState::Fail;
+                                            lsecurity!(au, "Handler::TOTPPassword -> Result::Denied - TOTP Fail, password -");
                                             CredState::Denied(BAD_TOTP_MSG)
                                         }
                                     }
                                     // All other cases fail.
-                                    _ => CredState::Denied(BAD_AUTH_TYPE_MSG),
+                                    _ => {
+                                        lsecurity!(au, "Handler::TOTPPassword -> Result::Denied - invalid cred type for handler");
+                                        CredState::Denied(BAD_AUTH_TYPE_MSG)
+                                    }
                                 } // end match cred
                             }
                         } // end match acc
@@ -306,7 +344,16 @@ impl AuthSession {
             ));
         }
 
-        match self.handler.validate(creds, time) {
+        if creds.len() > 4 {
+            lsecurity!(
+                au,
+                "Credentials denied: potential flood/dos/bruteforce attempt. {} creds were sent.",
+                creds.len()
+            );
+            return Ok(AuthState::Denied(BAD_CREDENTIALS.to_string()));
+        }
+
+        match self.handler.validate(au, creds, time) {
             CredState::Success(claims) => {
                 lsecurity!(au, "Successful cred handling");
                 self.finished = true;
@@ -354,7 +401,9 @@ mod tests {
     use crate::constants::{JSON_ADMIN_V1, JSON_ANONYMOUS_V1};
     use crate::credential::totp::{TOTP, TOTP_DEFAULT_STEP};
     use crate::credential::Credential;
-    use crate::idm::authsession::{AuthSession, BAD_AUTH_TYPE_MSG, BAD_PASSWORD_MSG, BAD_TOTP_MSG};
+    use crate::idm::authsession::{
+        AuthSession, BAD_AUTH_TYPE_MSG, BAD_CREDENTIALS, BAD_PASSWORD_MSG, BAD_TOTP_MSG,
+    };
     use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthState};
     use std::time::Duration;
 
@@ -375,6 +424,29 @@ mod tests {
     }
 
     #[test]
+    fn test_idm_authsession_floodcheck_mech() {
+        let mut audit =
+            AuditScope::new("test_idm_authsession_floodcheck_mech", uuid::Uuid::new_v4());
+        let anon_account = entry_str_to_account!(JSON_ANONYMOUS_V1);
+        let mut session = AuthSession::new(anon_account, None);
+
+        let attempt = vec![
+            AuthCredential::Anonymous,
+            AuthCredential::Anonymous,
+            AuthCredential::Anonymous,
+            AuthCredential::Anonymous,
+            AuthCredential::Anonymous,
+        ];
+        match session.validate_creds(&mut audit, &attempt, &Duration::from_secs(0)) {
+            Ok(AuthState::Denied(msg)) => {
+                assert!(msg == BAD_CREDENTIALS);
+            }
+            _ => panic!(),
+        };
+        audit.write_log();
+    }
+
+    #[test]
     fn test_idm_authsession_missing_appid() {
         let anon_account = entry_str_to_account!(JSON_ANONYMOUS_V1);
 
@@ -388,7 +460,10 @@ mod tests {
 
     #[test]
     fn test_idm_authsession_simple_password_mech() {
-        let mut audit = AuditScope::new("test_idm_authsession_simple_password_mech");
+        let mut audit = AuditScope::new(
+            "test_idm_authsession_simple_password_mech",
+            uuid::Uuid::new_v4(),
+        );
         // create the ent
         let mut account = entry_str_to_account!(JSON_ADMIN_V1);
         // manually load in a cred
@@ -419,12 +494,15 @@ mod tests {
             _ => panic!(),
         };
 
-        println!("{}", audit);
+        audit.write_log();
     }
 
     #[test]
     fn test_idm_authsession_totp_password_mech() {
-        let mut audit = AuditScope::new("test_idm_authsession_totp_password_mech");
+        let mut audit = AuditScope::new(
+            "test_idm_authsession_totp_password_mech",
+            uuid::Uuid::new_v4(),
+        );
         // create the ent
         let mut account = entry_str_to_account!(JSON_ADMIN_V1);
 
@@ -650,6 +728,6 @@ mod tests {
             };
         }
 
-        println!("{}", audit);
+        audit.write_log();
     }
 }

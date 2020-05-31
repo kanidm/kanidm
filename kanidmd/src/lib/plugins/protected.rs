@@ -230,10 +230,10 @@ mod tests {
             "description": ["Builtin IDM Administrators Access Controls for TESTING."],
             "acp_enable": ["true"],
             "acp_receiver": [
-                "{\"Eq\":[\"uuid\",\"00000000-0000-0000-0000-000000000000\"]}"
+                "{\"eq\":[\"uuid\",\"00000000-0000-0000-0000-000000000000\"]}"
             ],
             "acp_targetscope": [
-                "{\"Pres\":\"class\"}"
+                "{\"pres\":\"class\"}"
             ],
             "acp_search_attr": ["name", "class", "uuid", "classname", "attributename"],
             "acp_modify_class": ["system", "domain_info"],

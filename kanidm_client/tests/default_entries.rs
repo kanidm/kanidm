@@ -98,8 +98,8 @@ fn is_attr_writable(rsclient: &KanidmClient, id: &str, attr: &str) -> Option<boo
         ),
         entry => {
             let new_value = match entry {
-                "acp_receiver" => "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000011\"]}".to_string(),
-                "acp_targetscope" => "{\"And\": [{\"Eq\": [\"class\",\"access_control_profile\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}".to_string(),
+                "acp_receiver" => "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000011\"]}".to_string(),
+                "acp_targetscope" => "{\"and\": [{\"eq\": [\"class\",\"access_control_profile\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}".to_string(),
                  _ => id.to_string(),
             };
             let m = ModifyList::new_list(vec![

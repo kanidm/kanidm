@@ -98,7 +98,8 @@ impl Opt {
     }
 }
 
-fn main() {
+#[actix_rt::main]
+async fn main() {
     // Read cli args, determine if we should backup/restore
     let opt = Opt::from_args();
 
@@ -113,7 +114,11 @@ fn main() {
     } else {
         ::std::env::set_var("RUST_LOG", "actix_web=info,kanidm=info");
     }
-    env_logger::init();
+
+    env_logger::builder()
+        .format_timestamp(None)
+        .format_level(false)
+        .init();
 
     match opt {
         Opt::Server(sopt) => {
@@ -123,9 +128,19 @@ fn main() {
             config.update_tls(&sopt.ca_path, &sopt.cert_path, &sopt.key_path);
             config.update_bind(&sopt.bind);
 
-            let sys = actix::System::new("kanidm-server");
-            create_server_core(config);
-            let _ = sys.run();
+            let _sys = actix::System::new("kanidm-server");
+            let sctx = create_server_core(config);
+            match sctx {
+                Ok(sctx) => {
+                    tokio::signal::ctrl_c().await.unwrap();
+                    println!("Ctrl-C received, shutting down");
+                    sctx.stop()
+                }
+                Err(_) => {
+                    error!("Failed to start server core!");
+                    return;
+                }
+            }
         }
         Opt::Backup(bopt) => {
             info!("Running in backup mode ...");
