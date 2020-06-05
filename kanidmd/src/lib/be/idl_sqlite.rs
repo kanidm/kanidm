@@ -239,7 +239,7 @@ pub trait IdlSqliteTransaction {
                 // have a corrupted index .....
                 None => IDLBitRange::new(),
             };
-            lfilter!(audit, "Got idl for index {:?} {:?} -> {}", itype, attr, idl);
+            ltrace!(audit, "Got idl for index {:?} {:?} -> {}", itype, attr, idl);
 
             Ok(Some(idl))
         })
@@ -316,25 +316,22 @@ pub trait IdlSqliteTransaction {
 
         // Allow this as it actually extends the life of stmt
         let r = match stmt.query(NO_PARAMS) {
-            Ok(mut rows) => {
-                match rows.next() {
-                    Ok(Some(v)) => {
-                        // println!("{:?}", v.column_names());
-                        let r: Result<String, _> = v.get(0);
-                        match r {
-                            Ok(t) => {
-                                if t == "ok" {
-                                    Vec::new()
-                                } else {
-                                    vec![Err(ConsistencyError::SqliteIntegrityFailure)]
-                                }
+            Ok(mut rows) => match rows.next() {
+                Ok(Some(v)) => {
+                    let r: Result<String, _> = v.get(0);
+                    match r {
+                        Ok(t) => {
+                            if t == "ok" {
+                                Vec::new()
+                            } else {
+                                vec![Err(ConsistencyError::SqliteIntegrityFailure)]
                             }
-                            Err(_) => vec![Err(ConsistencyError::SqliteIntegrityFailure)],
                         }
+                        Err(_) => vec![Err(ConsistencyError::SqliteIntegrityFailure)],
                     }
-                    _ => vec![Err(ConsistencyError::SqliteIntegrityFailure)],
                 }
-            }
+                _ => vec![Err(ConsistencyError::SqliteIntegrityFailure)],
+            },
             Err(_) => vec![Err(ConsistencyError::SqliteIntegrityFailure)],
         };
         r
@@ -351,7 +348,6 @@ impl Drop for IdlSqliteReadTransaction {
     // Abort - so far this has proven reliable to use drop here.
     fn drop(self: &mut Self) {
         if !self.committed {
-            debug!("Aborting BE RO txn");
             self.conn
                 .execute("ROLLBACK TRANSACTION", NO_PARAMS)
                 // We can't do this without expect.
@@ -365,7 +361,7 @@ impl Drop for IdlSqliteReadTransaction {
 impl IdlSqliteReadTransaction {
     pub fn new(conn: r2d2::PooledConnection<SqliteConnectionManager>) -> Self {
         // Start the transaction
-        debug!("Starting BE RO txn ...");
+        //
         // I'm happy for this to be an expect, because this is a huge failure
         // of the server ... but if it happens a lot we should consider making
         // this a Result<>
@@ -390,7 +386,6 @@ impl Drop for IdlSqliteWriteTransaction {
     // Abort
     fn drop(self: &mut Self) {
         if !self.committed {
-            debug!("Aborting BE WR txn");
             self.conn
                 .execute("ROLLBACK TRANSACTION", NO_PARAMS)
                 .expect("Unable to rollback transaction! Can not proceed!!!");
@@ -401,7 +396,6 @@ impl Drop for IdlSqliteWriteTransaction {
 impl IdlSqliteWriteTransaction {
     pub fn new(conn: r2d2::PooledConnection<SqliteConnectionManager>) -> Self {
         // Start the transaction
-        debug!("Starting BE WR txn ...");
         conn.execute("BEGIN TRANSACTION", NO_PARAMS)
             .expect("Unable to begin transaction!");
         IdlSqliteWriteTransaction {
@@ -412,7 +406,7 @@ impl IdlSqliteWriteTransaction {
 
     pub fn commit(mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
         lperf_segment!(audit, "be::idl_sqlite::commit", || {
-            ltrace!(audit, "Commiting BE txn");
+            // ltrace!(audit, "Commiting BE WR txn");
             assert!(!self.committed);
             self.committed = true;
 
@@ -420,7 +414,7 @@ impl IdlSqliteWriteTransaction {
                 .execute("COMMIT TRANSACTION", NO_PARAMS)
                 .map(|_| ())
                 .map_err(|e| {
-                    println!("{:?}", e);
+                    ladmin_error!(audit, "CRITICAL: failed to commit sqlite txn -> {:?}", e);
                     OperationError::BackendEngine
                 })
         })
@@ -510,12 +504,13 @@ impl IdlSqliteWriteTransaction {
         I: Iterator<Item = u64>,
     {
         lperf_segment!(au, "be::idl_sqlite::delete_identry", || {
-            let mut stmt = try_audit!(
-                au,
-                self.conn.prepare("DELETE FROM id2entry WHERE id = :id"),
-                "SQLite Error {:?}",
-                OperationError::SQLiteError
-            );
+            let mut stmt = self
+                .conn
+                .prepare("DELETE FROM id2entry WHERE id = :id")
+                .map_err(|e| {
+                    ladmin_error!(au, "SQLite Error {:?}", e);
+                    OperationError::SQLiteError
+                })?;
 
             idl.try_for_each(|id| {
                 let iid: i64 = id
@@ -531,9 +526,10 @@ impl IdlSqliteWriteTransaction {
 
                 debug_assert!(iid > 0);
 
-                stmt.execute(&[&iid])
-                    .map(|_| ())
-                    .map_err(|_| OperationError::SQLiteError)
+                stmt.execute(&[&iid]).map(|_| ()).map_err(|e| {
+                    ladmin_error!(au, "SQLite Error {:?}", e);
+                    OperationError::SQLiteError
+                })
             })
         })
     }
@@ -709,7 +705,7 @@ impl IdlSqliteWriteTransaction {
             )
             .map(|_| ())
             .map_err(|e| {
-                debug!("rusqlite error {:?}", e);
+                error!("rusqlite error {:?}", e);
 
                 OperationError::SQLiteError
             })
@@ -725,7 +721,7 @@ impl IdlSqliteWriteTransaction {
             )
             .map(|_| ())
             .map_err(|e| {
-                debug!("rusqlite error {:?}", e);
+                error!("rusqlite error {:?}", e);
 
                 OperationError::SQLiteError
             })
@@ -762,7 +758,7 @@ impl IdlSqliteWriteTransaction {
 
     pub(crate) fn set_db_index_version(&self, v: i64) -> Result<(), OperationError> {
         self.set_db_version_key(DBV_INDEXV, v).map_err(|e| {
-            debug!("sqlite error {:?}", e);
+            error!("sqlite error {:?}", e);
             OperationError::SQLiteError
         })
     }
@@ -926,7 +922,7 @@ mod tests {
 
     #[test]
     fn test_idl_sqlite_verify() {
-        let mut audit = AuditScope::new("run_test");
+        let mut audit = AuditScope::new("run_test", uuid::Uuid::new_v4());
         let be = IdlSqlite::new(&mut audit, "", 1).unwrap();
         let be_w = be.write();
         let r = be_w.verify();

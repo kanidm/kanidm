@@ -219,10 +219,10 @@ impl SchemaAttribute {
     }
 
     pub fn validate_ava(&self, ava: &BTreeSet<Value>) -> Result<(), SchemaError> {
-        debug!("Checking for valid {:?} -> {:?}", self.name, ava);
+        // ltrace!("Checking for valid {:?} -> {:?}", self.name, ava);
         // Check multivalue
         if !self.multivalue && ava.len() > 1 {
-            debug!("Ava len > 1 on single value attribute!");
+            // lrequest_error!("Ava len > 1 on single value attribute!");
             return Err(SchemaError::InvalidAttributeSyntax);
         };
         // If syntax, check the type is correct
@@ -496,8 +496,8 @@ pub trait SchemaTransaction {
         match self.get_attributes().get(attr) {
             Some(a_schema) => Ok(a_schema.multivalue),
             None => {
-                debug!("Attribute does not exist?!");
-                Err(SchemaError::InvalidAttribute)
+                // ladmin_error!("Attribute does not exist?!");
+                Err(SchemaError::InvalidAttribute(attr.to_string()))
             }
         }
     }
@@ -1828,18 +1828,18 @@ mod tests {
 
     #[test]
     fn test_schema_simple() {
-        let mut audit = AuditScope::new("test_schema_simple");
+        let mut audit = AuditScope::new("test_schema_simple", uuid::Uuid::new_v4());
         let schema = Schema::new(&mut audit).expect("failed to create schema");
         let schema_ro = schema.read();
         validate_schema!(schema_ro, &mut audit);
-        println!("{}", audit);
+        audit.write_log();
     }
 
     #[test]
     fn test_schema_entries() {
         // Given an entry, assert it's schema is valid
         // We do
-        let mut audit = AuditScope::new("test_schema_entries");
+        let mut audit = AuditScope::new("test_schema_entries", uuid::Uuid::new_v4());
         let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
         let schema = schema_outer.read();
         let e_no_uuid: Entry<EntryInvalid, EntryNew> = unsafe {
@@ -1853,7 +1853,7 @@ mod tests {
 
         assert_eq!(
             e_no_uuid.validate(&schema),
-            Err(SchemaError::MissingMustAttribute("uuid".to_string()))
+            Err(SchemaError::MissingMustAttribute(vec!["uuid".to_string()]))
         );
 
         let e_no_class: Entry<EntryInvalid, EntryNew> = unsafe {
@@ -1867,7 +1867,7 @@ mod tests {
             .into_invalid_new()
         };
 
-        assert_eq!(e_no_class.validate(&schema), Err(SchemaError::InvalidClass));
+        assert_eq!(e_no_class.validate(&schema), Err(SchemaError::NoClassFound));
 
         let e_bad_class: Entry<EntryInvalid, EntryNew> = unsafe {
             Entry::unsafe_from_entry_str(
@@ -1882,7 +1882,7 @@ mod tests {
         };
         assert_eq!(
             e_bad_class.validate(&schema),
-            Err(SchemaError::InvalidClass)
+            Err(SchemaError::InvalidClass(vec!["zzzzzz".to_string()]))
         );
 
         let e_attr_invalid: Entry<EntryInvalid, EntryNew> = unsafe {
@@ -1923,7 +1923,7 @@ mod tests {
 
         assert_eq!(
             e_attr_invalid_may.validate(&schema),
-            Err(SchemaError::InvalidAttribute)
+            Err(SchemaError::InvalidAttribute("zzzzz".to_string()))
         );
 
         let e_attr_invalid_syn: Entry<EntryInvalid, EntryNew> = unsafe {
@@ -1985,13 +1985,13 @@ mod tests {
             .into_invalid_new()
         };
         assert!(e_ok.validate(&schema).is_ok());
-        println!("{}", audit);
+        audit.write_log();
     }
 
     #[test]
     fn test_schema_entry_validate() {
         // Check that entries can be normalised and validated sanely
-        let mut audit = AuditScope::new("test_schema_entry_validate");
+        let mut audit = AuditScope::new("test_schema_entry_validate", uuid::Uuid::new_v4());
         let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
         let schema = schema_outer.write();
 
@@ -2032,12 +2032,12 @@ mod tests {
         let e_valid = e_test.validate(&schema).expect("validation failure");
 
         assert_eq!(e_expect, e_valid);
-        println!("{}", audit);
+        audit.write_log();
     }
 
     #[test]
     fn test_schema_extensible() {
-        let mut audit = AuditScope::new("test_schema_extensible");
+        let mut audit = AuditScope::new("test_schema_extensible", uuid::Uuid::new_v4());
         let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
         let schema = schema_outer.read();
         // Just because you are extensible, doesn't mean you can be lazy
@@ -2076,7 +2076,7 @@ mod tests {
 
         assert_eq!(
             e_extensible_phantom.validate(&schema),
-            Err(SchemaError::PhantomAttribute)
+            Err(SchemaError::PhantomAttribute("password_import".to_string()))
         );
 
         let e_extensible: Entry<EntryInvalid, EntryNew> = unsafe {
@@ -2094,19 +2094,19 @@ mod tests {
 
         /* Is okay because extensible! */
         assert!(e_extensible.validate(&schema).is_ok());
-        println!("{}", audit);
+        audit.write_log();
     }
 
     #[test]
     fn test_schema_filter_validation() {
-        let mut audit = AuditScope::new("test_schema_filter_validation");
+        let mut audit = AuditScope::new("test_schema_filter_validation", uuid::Uuid::new_v4());
         let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
         let schema = schema_outer.read();
         // Test non existant attr name
         let f_mixed = filter_all!(f_eq("nonClAsS", PartialValue::new_class("attributetype")));
         assert_eq!(
             f_mixed.validate(&schema),
-            Err(SchemaError::InvalidAttribute)
+            Err(SchemaError::InvalidAttribute("nonclass".to_string()))
         );
 
         // test syntax of bool
@@ -2156,13 +2156,13 @@ mod tests {
                 ])))
             })
         );
-        println!("{}", audit);
+        audit.write_log();
     }
 
     #[test]
     fn test_schema_class_phantom_reject() {
         // Check that entries can be normalised and validated sanely
-        let mut audit = AuditScope::new("test_schema_class_phantom_reject");
+        let mut audit = AuditScope::new("test_schema_class_phantom_reject", uuid::Uuid::new_v4());
         let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
         let mut schema = schema_outer.write();
 
@@ -2183,6 +2183,6 @@ mod tests {
 
         assert!(schema.validate(&mut audit).len() == 1);
 
-        println!("{}", audit);
+        audit.write_log();
     }
 }

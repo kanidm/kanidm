@@ -2099,7 +2099,7 @@ mod tests {
             assert!(cr.is_ok());
 
             let r2 = server_txn.search(audit, &se2).expect("search failure");
-            println!("--> {:?}", r2);
+            debug!("--> {:?}", r2);
             assert!(r2.len() == 1);
 
             let expected = unsafe { vec![e.into_sealed_committed()] };
@@ -2214,7 +2214,7 @@ mod tests {
             assert!(
                 r_inv_1
                     == Err(OperationError::SchemaViolation(
-                        SchemaError::InvalidAttribute
+                        SchemaError::InvalidAttribute("tnanuanou".to_string())
                     ))
             );
 
@@ -2231,7 +2231,7 @@ mod tests {
             assert!(
                 server_txn.modify(audit, &me_inv_m)
                     == Err(OperationError::SchemaViolation(
-                        SchemaError::InvalidAttribute
+                        SchemaError::InvalidAttribute("htnaonu".to_string())
                     ))
             );
 
@@ -2835,7 +2835,7 @@ mod tests {
                 &"cc8e95b4-c24f-4d68-ba54-8bed76f63930".to_string(),
             );
 
-            println!("{:?}", r4);
+            debug!("{:?}", r4);
             assert!(r4 == Ok(Value::new_refer_s("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap()));
         })
     }
@@ -3336,11 +3336,11 @@ mod tests {
             let schema = server_txn.get_schema();
 
             for k in schema.get_attributes().keys() {
-                println!("{}", k);
+                debug!("{}", k);
             }
-            println!("====");
+            debug!("====");
             for k in schema.get_classes().keys() {
-                println!("{}", k);
+                debug!("{}", k);
             }
 
         })

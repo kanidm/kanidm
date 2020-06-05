@@ -38,13 +38,13 @@ fn run_test(fix_fn: fn(&KanidmClient) -> (), test_fn: fn(CacheLayer, KanidmAsync
         // Spawn a thread for the test runner, this should have a unique
         // port....
         System::run(move || {
-            create_server_core(config);
-            let _ = tx.send(System::current());
+            let sctx = create_server_core(config);
+            let _ = tx.send(sctx);
         })
         .expect("Failed to start system");
     });
-    let sys = rx.recv().unwrap();
-    System::set_current(sys.clone());
+    let sctx = rx.recv().unwrap().expect("Failed to start server core");
+    System::set_current(sctx.current());
 
     // Setup the client, and the address we selected.
     let addr = format!("http://127.0.0.1:{}", port);
@@ -78,7 +78,7 @@ fn run_test(fix_fn: fn(&KanidmClient) -> (), test_fn: fn(CacheLayer, KanidmAsync
 
     // We DO NOT need teardown, as sqlite is in mem
     // let the tables hit the floor
-    sys.stop();
+    sctx.stop();
 }
 
 fn test_fixture(rsclient: &KanidmClient) -> () {

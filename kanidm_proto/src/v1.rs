@@ -7,19 +7,31 @@ use uuid::Uuid;
 
 /* ===== errors ===== */
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, thiserror::Error)]
+#[serde(rename_all = "lowercase")]
 pub enum SchemaError {
+    #[error("Not Implemented")]
     NotImplemented,
-    InvalidClass,
-    MissingMustAttribute(String),
-    InvalidAttribute,
+    #[error("This entry does not have any classes, which means it can not have structure.")]
+    NoClassFound,
+    #[error("A class or classes are found that do not exist in schema.")]
+    InvalidClass(Vec<String>),
+    #[error("")]
+    MissingMustAttribute(Vec<String>),
+    #[error("")]
+    InvalidAttribute(String),
+    #[error("")]
     InvalidAttributeSyntax,
+    #[error("")]
     EmptyFilter,
+    #[error("The schema has become internally inconsistent. You must restart and investigate.")]
     Corrupted,
-    PhantomAttribute,
+    #[error("Phantom attribute types may not be persisted on an entry")]
+    PhantomAttribute(String),
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[serde(rename_all = "lowercase")]
 pub enum PluginError {
     AttrUnique(String),
     Base(String),
@@ -28,6 +40,7 @@ pub enum PluginError {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[serde(rename_all = "lowercase")]
 pub enum ConsistencyError {
     Unknown,
     // Class, Attribute
@@ -46,6 +59,7 @@ pub enum ConsistencyError {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "lowercase")]
 pub enum OperationError {
     EmptyRequest,
     Backend,
@@ -224,6 +238,7 @@ pub struct Entry {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[serde(rename_all = "lowercase")]
 pub enum Filter {
     // This is attr - value
     Eq(String, String),
@@ -232,11 +247,12 @@ pub enum Filter {
     Or(Vec<Filter>),
     And(Vec<Filter>),
     AndNot(Box<Filter>),
-    #[serde(rename = "Self")]
+    #[serde(rename = "self")]
     SelfUUID,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "lowercase")]
 pub enum Modify {
     Present(String, String),
     Removed(String, String),
@@ -350,6 +366,7 @@ impl fmt::Debug for AuthCredential {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum AuthStep {
     // name, application id?
     Init(String, Option<String>),
@@ -372,6 +389,7 @@ pub struct AuthRequest {
 // Respond with the list of auth types and nonce, etc.
 // It can also contain a denied, or success.
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum AuthAllowed {
     Anonymous,
     Password,
@@ -380,6 +398,7 @@ pub enum AuthAllowed {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum AuthState {
     // Everything is good, your cookie has been issued, and a token is set here
     // for the client to view.
@@ -398,6 +417,7 @@ pub struct AuthResponse {
 
 // Types needed for setting credentials
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum SetCredentialRequest {
     Password(String),
     GeneratePassword,
@@ -408,6 +428,7 @@ pub enum SetCredentialRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum TOTPAlgo {
     Sha1,
     Sha256,
@@ -460,6 +481,7 @@ impl TOTPSecret {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum SetCredentialResponse {
     Success,
     Token(String),
@@ -470,6 +492,7 @@ pub enum SetCredentialResponse {
 
 // Only two actions on recycled is possible. Search and Revive.
 
+/*
 pub struct SearchRecycledRequest {
     pub filter: Filter,
 }
@@ -479,9 +502,11 @@ impl SearchRecycledRequest {
         SearchRecycledRequest { filter }
     }
 }
+*/
 
 // Need a search response here later.
 
+/*
 pub struct ReviveRecycledRequest {
     pub filter: Filter,
 }
@@ -491,8 +516,10 @@ impl ReviveRecycledRequest {
         ReviveRecycledRequest { filter }
     }
 }
+*/
 
 // This doesn't need seralise because it's only accessed via a "get".
+/*
 #[derive(Debug, Default)]
 pub struct WhoamiRequest {}
 
@@ -501,6 +528,7 @@ impl WhoamiRequest {
         Default::default()
     }
 }
+*/
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct WhoamiResponse {

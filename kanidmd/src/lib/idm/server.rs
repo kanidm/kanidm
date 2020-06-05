@@ -136,97 +136,104 @@ impl<'a> IdmServerWriteTransaction<'a> {
 
         match &ae.step {
             AuthEventStep::Init(init) => {
-                // Allocate a session id, based on current time.
-                let sessionid = uuid_from_duration(ct, self.sid);
+                lperf_segment!(au, "idm::server::auth<Init>", || {
+                    // Allocate a session id, based on current time.
+                    let sessionid = uuid_from_duration(ct, self.sid);
 
-                // Begin the auth procedure!
-                // Start a read
-                //
-                // Actually we may not need this - at the time we issue the auth-init
-                // we could generate the uat, the nonce and cache hashes in memory,
-                // then this can just be fully without a txn.
-                //
-                // We do need a txn so that we can process/search and claims
-                // or related based on the quality of the provided auth steps
-                //
-                // We *DO NOT* need a write though, because I think that lock outs
-                // and rate limits are *per server* and *in memory* only.
-                //
-                // Check anything needed? Get the current auth-session-id from request
-                // because it associates to the nonce's etc which were all cached.
+                    // Begin the auth procedure!
+                    // Start a read
+                    //
+                    // Actually we may not need this - at the time we issue the auth-init
+                    // we could generate the uat, the nonce and cache hashes in memory,
+                    // then this can just be fully without a txn.
+                    //
+                    // We do need a txn so that we can process/search and claims
+                    // or related based on the quality of the provided auth steps
+                    //
+                    // We *DO NOT* need a write though, because I think that lock outs
+                    // and rate limits are *per server* and *in memory* only.
+                    //
+                    // Check anything needed? Get the current auth-session-id from request
+                    // because it associates to the nonce's etc which were all cached.
 
-                let filter_entry = filter!(f_or!([
-                    f_eq("name", PartialValue::new_iutf8s(init.name.as_str())),
-                    // This currently says invalid syntax, which is correct, but also
-                    // annoying because it would be nice to search both ...
-                    // f_eq("uuid", name.as_str()),
-                ]));
+                    let filter_entry = filter!(f_or!([
+                        f_eq("name", PartialValue::new_iutf8s(init.name.as_str())),
+                        // This currently says invalid syntax, which is correct, but also
+                        // annoying because it would be nice to search both ...
+                        // f_eq("uuid", name.as_str()),
+                    ]));
 
-                // Get the first / single entry we expect here ....
-                let entry = match self.qs_read.internal_search(au, filter_entry) {
-                    Ok(mut entries) => {
-                        // Get only one entry out ...
-                        if entries.len() >= 2 {
-                            return Err(OperationError::InvalidDBState);
+                    // Get the first / single entry we expect here ....
+                    let entry = match self.qs_read.internal_search(au, filter_entry) {
+                        Ok(mut entries) => {
+                            // Get only one entry out ...
+                            if entries.len() >= 2 {
+                                return Err(OperationError::InvalidDBState);
+                            }
+                            entries.pop().ok_or(OperationError::NoMatchingEntries)?
                         }
-                        entries.pop().ok_or(OperationError::NoMatchingEntries)?
-                    }
-                    Err(e) => {
-                        // Something went wrong! Abort!
-                        return Err(e);
-                    }
-                };
+                        Err(e) => {
+                            // Something went wrong! Abort!
+                            return Err(e);
+                        }
+                    };
 
-                lsecurity!(au, "Initiating Authentication Session for ... {:?}", entry);
+                    lsecurity!(au, "Initiating Authentication Session for ... {:?}", entry);
 
-                // Now, convert the Entry to an account - this gives us some stronger
-                // typing and functionality so we can assess what auth types can
-                // continue, and helps to keep non-needed entry specific data
-                // out of the LRU.
-                let account = Account::try_from_entry_ro(au, entry, &mut self.qs_read)?;
-                let auth_session = AuthSession::new(account, init.appid.clone());
+                    // Now, convert the Entry to an account - this gives us some stronger
+                    // typing and functionality so we can assess what auth types can
+                    // continue, and helps to keep non-needed entry specific data
+                    // out of the LRU.
+                    let account = Account::try_from_entry_ro(au, entry, &mut self.qs_read)?;
+                    let auth_session = AuthSession::new(account, init.appid.clone());
 
-                // Get the set of mechanisms that can proceed. This is tied
-                // to the session so that it can mutate state and have progression
-                // of what's next, or ordering.
-                let next_mech = auth_session.valid_auth_mechs();
+                    // Get the set of mechanisms that can proceed. This is tied
+                    // to the session so that it can mutate state and have progression
+                    // of what's next, or ordering.
+                    let next_mech = auth_session.valid_auth_mechs();
 
-                // If we have a session of the same id, return an error (despite how
-                // unlikely this is ...
-                if self.sessions.contains_key(&sessionid) {
-                    return Err(OperationError::InvalidSessionState);
-                }
-                self.sessions.insert(sessionid, auth_session);
+                    // If we have a session of the same id, return an error (despite how
+                    // unlikely this is ...
+                    lperf_segment!(au, "idm::server::auth<Init> -> sessions", || {
+                        if self.sessions.contains_key(&sessionid) {
+                            Err(OperationError::InvalidSessionState)
+                        } else {
+                            self.sessions.insert(sessionid, auth_session);
+                            // Debugging: ensure we really inserted ...
+                            debug_assert!(self.sessions.get(&sessionid).is_some());
+                            Ok(())
+                        }
+                    })?;
 
-                // Debugging: ensure we really inserted ...
-                debug_assert!(self.sessions.get(&sessionid).is_some());
-
-                Ok(AuthResult {
-                    sessionid,
-                    state: AuthState::Continue(next_mech),
+                    Ok(AuthResult {
+                        sessionid,
+                        state: AuthState::Continue(next_mech),
+                    })
                 })
             }
             AuthEventStep::Creds(creds) => {
-                // Do we have a session?
-                let auth_session = try_audit!(
-                    au,
-                    self.sessions
-                        // Why is the session missing?
-                        .get_mut(&creds.sessionid)
-                        .ok_or(OperationError::InvalidSessionState)
-                );
-                // Process the credentials here as required.
-                // Basically throw them at the auth_session and see what
-                // falls out.
-                auth_session
-                    .validate_creds(au, &creds.creds, &ct)
-                    .map(|aus| {
-                        AuthResult {
-                            // Is this right?
-                            sessionid: creds.sessionid,
-                            state: aus,
-                        }
-                    })
+                lperf_segment!(au, "idm::server::auth<Creds>", || {
+                    // Do we have a session?
+                    let auth_session = try_audit!(
+                        au,
+                        self.sessions
+                            // Why is the session missing?
+                            .get_mut(&creds.sessionid)
+                            .ok_or(OperationError::InvalidSessionState)
+                    );
+                    // Process the credentials here as required.
+                    // Basically throw them at the auth_session and see what
+                    // falls out.
+                    auth_session
+                        .validate_creds(au, &creds.creds, &ct)
+                        .map(|aus| {
+                            AuthResult {
+                                // Is this right?
+                                sessionid: creds.sessionid,
+                                state: aus,
+                            }
+                        })
+                })
             }
         }
     }
@@ -252,9 +259,11 @@ impl<'a> IdmServerWriteTransaction<'a> {
         account.verify_unix_credential(au, uae.cleartext.as_str())
     }
 
-    pub fn commit(self) -> Result<(), OperationError> {
-        self.sessions.commit();
-        Ok(())
+    pub fn commit(self, au: &mut AuditScope) -> Result<(), OperationError> {
+        lperf_segment!(au, "idm::server::IdmServerWriteTransaction::commit", || {
+            self.sessions.commit();
+            Ok(())
+        })
     }
 }
 
@@ -421,10 +430,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             account.spn.as_str(),
         ];
 
-        try_audit!(
-            au,
-            self.check_password_quality(au, pce.cleartext.as_str(), related_inputs.as_slice())
-        );
+        self.check_password_quality(au, pce.cleartext.as_str(), related_inputs.as_slice())
+            .map_err(|e| {
+                lrequest_error!(au, "check_password_quality -> {:?}", e);
+                e
+            })?;
 
         // it returns a modify
         let modlist = try_audit!(
@@ -667,8 +677,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     }
 
     pub fn commit(self, au: &mut AuditScope) -> Result<(), OperationError> {
-        self.mfareg_sessions.commit();
-        self.qs_write.commit(au)
+        lperf_segment!(au, "idm::server::IdmServerWriteTransaction::commit", || {
+            self.mfareg_sessions.commit();
+            self.qs_write.commit(au)
+        })
     }
 }
 
@@ -746,9 +758,9 @@ mod tests {
                     }
                 };
 
-                println!("sessionid is ==> {:?}", sid);
+                debug!("sessionid is ==> {:?}", sid);
 
-                idms_write.commit().expect("Must not fail");
+                idms_write.commit(au).expect("Must not fail");
 
                 sid
             };
@@ -759,7 +771,7 @@ mod tests {
 
                 // Expect success
                 let r2 = idms_write.auth(au, &anon_step, Duration::from_secs(TEST_CURRENT_TIME));
-                println!("r2 ==> {:?}", r2);
+                debug!("r2 ==> {:?}", r2);
 
                 match r2 {
                     Ok(ar) => {
@@ -786,7 +798,7 @@ mod tests {
                     }
                 };
 
-                idms_write.commit().expect("Must not fail");
+                idms_write.commit(au).expect("Must not fail");
             }
         });
     }
@@ -802,7 +814,7 @@ mod tests {
 
                 // Expect failure
                 let r2 = idms_write.auth(au, &anon_step, Duration::from_secs(TEST_CURRENT_TIME));
-                println!("r2 ==> {:?}", r2);
+                debug!("r2 ==> {:?}", r2);
 
                 match r2 {
                     Ok(_) => {
@@ -859,7 +871,7 @@ mod tests {
             }
         };
 
-        idms_write.commit().expect("Must not fail");
+        idms_write.commit(au).expect("Must not fail");
 
         sessionid
     }
@@ -875,7 +887,7 @@ mod tests {
 
             // Expect success
             let r2 = idms_write.auth(au, &anon_step, Duration::from_secs(TEST_CURRENT_TIME));
-            println!("r2 ==> {:?}", r2);
+            debug!("r2 ==> {:?}", r2);
 
             match r2 {
                 Ok(ar) => {
@@ -900,7 +912,7 @@ mod tests {
                 }
             };
 
-            idms_write.commit().expect("Must not fail");
+            idms_write.commit(au).expect("Must not fail");
         })
     }
 
@@ -914,7 +926,7 @@ mod tests {
 
             // Expect success
             let r2 = idms_write.auth(au, &anon_step, Duration::from_secs(TEST_CURRENT_TIME));
-            println!("r2 ==> {:?}", r2);
+            debug!("r2 ==> {:?}", r2);
 
             match r2 {
                 Ok(ar) => {
@@ -939,7 +951,7 @@ mod tests {
                 }
             };
 
-            idms_write.commit().expect("Must not fail");
+            idms_write.commit(au).expect("Must not fail");
         })
     }
 
@@ -979,7 +991,7 @@ mod tests {
             // Expire as though we are in the future.
             idms_write.expire_auth_sessions(Duration::from_secs(TEST_CURRENT_EXPIRE));
             assert!(!idms_write.is_sessionid_present(&sid));
-            assert!(idms_write.commit().is_ok());
+            assert!(idms_write.commit(au).is_ok());
             let idms_write = idms.write();
             assert!(!idms_write.is_sessionid_present(&sid));
         })
@@ -1167,7 +1179,7 @@ mod tests {
                 Ok(None) => {}
                 _ => assert!(false),
             };
-            assert!(idms_write.commit().is_ok());
+            assert!(idms_write.commit(au).is_ok());
 
             // Check deleting the password
             let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
@@ -1187,7 +1199,7 @@ mod tests {
                 Ok(None) => {}
                 _ => assert!(false),
             };
-            assert!(idms_write.commit().is_ok());
+            assert!(idms_write.commit(au).is_ok());
         })
     }
 

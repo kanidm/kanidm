@@ -98,8 +98,10 @@ impl Account {
         value: Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        let groups = Group::try_from_account_entry_ro(au, &value, qs)?;
-        try_from_entry!(value, groups)
+        lperf_segment!(au, "idm::account::try_from_entry_ro", || {
+            let groups = Group::try_from_account_entry_ro(au, &value, qs)?;
+            try_from_entry!(value, groups)
+        })
     }
 
     pub(crate) fn try_from_entry_rw(
@@ -210,7 +212,7 @@ mod tests {
     #[test]
     fn test_idm_account_from_anonymous() {
         let anon_e = entry_str_to_account!(JSON_ANONYMOUS_V1);
-        println!("{:?}", anon_e);
+        debug!("{:?}", anon_e);
         // I think that's it? we may want to check anonymous mech ...
     }
 

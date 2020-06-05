@@ -1,8 +1,8 @@
+use crossbeam::channel::Sender;
 use std::sync::Arc;
 
 use crate::audit::AuditScope;
 
-use crate::async_log::EventLog;
 use crate::event::{AuthEvent, SearchEvent, SearchResult, WhoamiResult};
 use crate::idm::event::{
     RadiusAuthTokenEvent, UnixGroupTokenEvent, UnixUserAuthEvent, UnixUserTokenEvent,
@@ -33,11 +33,12 @@ use uuid::Uuid;
 
 pub struct WhoamiMessage {
     pub uat: Option<UserAuthToken>,
+    pub eventid: Uuid,
 }
 
 impl WhoamiMessage {
-    pub fn new(uat: Option<UserAuthToken>) -> Self {
-        WhoamiMessage { uat }
+    pub fn new(uat: Option<UserAuthToken>, eventid: Uuid) -> Self {
+        WhoamiMessage { uat, eventid }
     }
 }
 
@@ -49,11 +50,16 @@ impl Message for WhoamiMessage {
 pub struct AuthMessage {
     pub sessionid: Option<Uuid>,
     pub req: AuthRequest,
+    pub eventid: Uuid,
 }
 
 impl AuthMessage {
-    pub fn new(req: AuthRequest, sessionid: Option<Uuid>) -> Self {
-        AuthMessage { sessionid, req }
+    pub fn new(req: AuthRequest, sessionid: Option<Uuid>, eventid: Uuid) -> Self {
+        AuthMessage {
+            sessionid,
+            req,
+            eventid,
+        }
     }
 }
 
@@ -64,11 +70,12 @@ impl Message for AuthMessage {
 pub struct SearchMessage {
     pub uat: Option<UserAuthToken>,
     pub req: SearchRequest,
+    pub eventid: Uuid,
 }
 
 impl SearchMessage {
-    pub fn new(uat: Option<UserAuthToken>, req: SearchRequest) -> Self {
-        SearchMessage { uat, req }
+    pub fn new(uat: Option<UserAuthToken>, req: SearchRequest, eventid: Uuid) -> Self {
+        SearchMessage { uat, req, eventid }
     }
 }
 
@@ -80,6 +87,7 @@ pub struct InternalSearchMessage {
     pub uat: Option<UserAuthToken>,
     pub filter: Filter<FilterInvalid>,
     pub attrs: Option<Vec<String>>,
+    pub eventid: Uuid,
 }
 
 impl Message for InternalSearchMessage {
@@ -90,6 +98,7 @@ pub struct InternalSearchRecycledMessage {
     pub uat: Option<UserAuthToken>,
     pub filter: Filter<FilterInvalid>,
     pub attrs: Option<Vec<String>>,
+    pub eventid: Uuid,
 }
 
 impl Message for InternalSearchRecycledMessage {
@@ -99,6 +108,7 @@ impl Message for InternalSearchRecycledMessage {
 pub struct InternalRadiusReadMessage {
     pub uat: Option<UserAuthToken>,
     pub uuid_or_name: String,
+    pub eventid: Uuid,
 }
 
 impl Message for InternalRadiusReadMessage {
@@ -108,6 +118,7 @@ impl Message for InternalRadiusReadMessage {
 pub struct InternalRadiusTokenReadMessage {
     pub uat: Option<UserAuthToken>,
     pub uuid_or_name: String,
+    pub eventid: Uuid,
 }
 
 impl Message for InternalRadiusTokenReadMessage {
@@ -117,6 +128,7 @@ impl Message for InternalRadiusTokenReadMessage {
 pub struct InternalUnixUserTokenReadMessage {
     pub uat: Option<UserAuthToken>,
     pub uuid_or_name: String,
+    pub eventid: Uuid,
 }
 
 impl Message for InternalUnixUserTokenReadMessage {
@@ -126,6 +138,7 @@ impl Message for InternalUnixUserTokenReadMessage {
 pub struct InternalUnixGroupTokenReadMessage {
     pub uat: Option<UserAuthToken>,
     pub uuid_or_name: String,
+    pub eventid: Uuid,
 }
 
 impl Message for InternalUnixGroupTokenReadMessage {
@@ -135,6 +148,7 @@ impl Message for InternalUnixGroupTokenReadMessage {
 pub struct InternalSshKeyReadMessage {
     pub uat: Option<UserAuthToken>,
     pub uuid_or_name: String,
+    pub eventid: Uuid,
 }
 
 impl Message for InternalSshKeyReadMessage {
@@ -145,6 +159,7 @@ pub struct InternalSshKeyTagReadMessage {
     pub uat: Option<UserAuthToken>,
     pub uuid_or_name: String,
     pub tag: String,
+    pub eventid: Uuid,
 }
 
 impl Message for InternalSshKeyTagReadMessage {
@@ -155,6 +170,7 @@ pub struct IdmAccountUnixAuthMessage {
     pub uat: Option<UserAuthToken>,
     pub uuid_or_name: String,
     pub cred: String,
+    pub eventid: Uuid,
 }
 
 impl Message for IdmAccountUnixAuthMessage {
@@ -164,7 +180,7 @@ impl Message for IdmAccountUnixAuthMessage {
 // ===========================================================
 
 pub struct QueryServerReadV1 {
-    log: actix::Addr<EventLog>,
+    log: Sender<Option<AuditScope>>,
     qs: QueryServer,
     idms: Arc<IdmServer>,
 }
@@ -178,13 +194,13 @@ impl Actor for QueryServerReadV1 {
 }
 
 impl QueryServerReadV1 {
-    pub fn new(log: actix::Addr<EventLog>, qs: QueryServer, idms: Arc<IdmServer>) -> Self {
-        log_event!(log, "Starting query server v1 worker ...");
+    pub fn new(log: Sender<Option<AuditScope>>, qs: QueryServer, idms: Arc<IdmServer>) -> Self {
+        info!("Starting query server v1 worker ...");
         QueryServerReadV1 { log, qs, idms }
     }
 
     pub fn start(
-        log: actix::Addr<EventLog>,
+        log: Sender<Option<AuditScope>>,
         query_server: QueryServer,
         idms: Arc<IdmServer>,
         threads: usize,
@@ -204,7 +220,7 @@ impl Handler<SearchMessage> for QueryServerReadV1 {
     type Result = Result<SearchResponse, OperationError>;
 
     fn handle(&mut self, msg: SearchMessage, _: &mut Self::Context) -> Self::Result {
-        let mut audit = AuditScope::new("search");
+        let mut audit = AuditScope::new("search", msg.eventid.clone());
         let res = lperf_segment!(&mut audit, "actors::v1_read::handle<SearchMessage>", || {
             // Begin a read
             let mut qs_read = self.qs.read();
@@ -227,7 +243,10 @@ impl Handler<SearchMessage> for QueryServerReadV1 {
             }
         });
         // At the end of the event we send it for logging.
-        self.log.do_send(audit);
+        self.log.send(Some(audit)).map_err(|_| {
+            error!("CRITICAL: UNABLE TO COMMIT LOGS");
+            OperationError::InvalidState
+        })?;
         res
     }
 }
@@ -240,7 +259,7 @@ impl Handler<AuthMessage> for QueryServerReadV1 {
         // "on top" of the db server concept. In this case we check if
         // the credentials provided is sufficient to say if someone is
         // "authenticated" or not.
-        let mut audit = AuditScope::new("auth");
+        let mut audit = AuditScope::new("auth", msg.eventid.clone());
         let res = lperf_segment!(&mut audit, "actors::v1_read::handle<AuthMessage>", || {
             lsecurity!(audit, "Begin auth event {:?}", msg);
 
@@ -259,20 +278,27 @@ impl Handler<AuthMessage> for QueryServerReadV1 {
             // Trigger a session clean *before* we take any auth steps.
             // It's important to do this before to ensure that timeouts on
             // the session are enforced.
-            idm_write.expire_auth_sessions(ct);
+            lperf_segment!(
+                audit,
+                "actors::v1_read::handle<AuthMessage> -> expire_auth_sessions",
+                || { idm_write.expire_auth_sessions(ct) }
+            );
 
             // Generally things like auth denied are in Ok() msgs
             // so true errors should always trigger a rollback.
             let r = idm_write
                 .auth(&mut audit, &ae, ct)
-                .and_then(|r| idm_write.commit().map(|_| r));
+                .and_then(|r| idm_write.commit(&mut audit).map(|_| r));
 
-            lsecurity!(audit, "Sending result -> {:?}", r);
+            lsecurity!(audit, "Sending auth result -> {:?}", r);
             // Build the result.
             r.map(|r| r.response())
         });
         // At the end of the event we send it for logging.
-        self.log.do_send(audit);
+        self.log.send(Some(audit)).map_err(|_| {
+            error!("CRITICAL: UNABLE TO COMMIT LOGS");
+            OperationError::InvalidState
+        })?;
         res
     }
 }
@@ -281,7 +307,7 @@ impl Handler<WhoamiMessage> for QueryServerReadV1 {
     type Result = Result<WhoamiResponse, OperationError>;
 
     fn handle(&mut self, msg: WhoamiMessage, _: &mut Self::Context) -> Self::Result {
-        let mut audit = AuditScope::new("whoami");
+        let mut audit = AuditScope::new("whoami", msg.eventid.clone());
         let res = lperf_segment!(&mut audit, "actors::v1_read::handle<WhoamiMessage>", || {
             // TODO #62: Move this to IdmServer!!!
             // Begin a read
@@ -327,7 +353,10 @@ impl Handler<WhoamiMessage> for QueryServerReadV1 {
         });
         // Should we log the final result?
         // At the end of the event we send it for logging.
-        self.log.do_send(audit);
+        self.log.send(Some(audit)).map_err(|_| {
+            error!("CRITICAL: UNABLE TO COMMIT LOGS");
+            OperationError::InvalidState
+        })?;
         res
     }
 }
@@ -336,7 +365,7 @@ impl Handler<InternalSearchMessage> for QueryServerReadV1 {
     type Result = Result<Vec<ProtoEntry>, OperationError>;
 
     fn handle(&mut self, msg: InternalSearchMessage, _: &mut Self::Context) -> Self::Result {
-        let mut audit = AuditScope::new("internal_search_message");
+        let mut audit = AuditScope::new("internal_search_message", msg.eventid.clone());
         let res = lperf_segment!(
             &mut audit,
             "actors::v1_read::handle<InternalSearchMessage>",
@@ -361,7 +390,10 @@ impl Handler<InternalSearchMessage> for QueryServerReadV1 {
                 }
             }
         );
-        self.log.do_send(audit);
+        self.log.send(Some(audit)).map_err(|_| {
+            error!("CRITICAL: UNABLE TO COMMIT LOGS");
+            OperationError::InvalidState
+        })?;
         res
     }
 }
@@ -374,7 +406,7 @@ impl Handler<InternalSearchRecycledMessage> for QueryServerReadV1 {
         msg: InternalSearchRecycledMessage,
         _: &mut Self::Context,
     ) -> Self::Result {
-        let mut audit = AuditScope::new("internal_search_recycle_message");
+        let mut audit = AuditScope::new("internal_search_recycle_message", msg.eventid.clone());
         let res = lperf_segment!(
             &mut audit,
             "actors::v1_read::handle<InternalSearchRecycledMessage>",
@@ -401,7 +433,10 @@ impl Handler<InternalSearchRecycledMessage> for QueryServerReadV1 {
                 }
             }
         );
-        self.log.do_send(audit);
+        self.log.send(Some(audit)).map_err(|_| {
+            error!("CRITICAL: UNABLE TO COMMIT LOGS");
+            OperationError::InvalidState
+        })?;
         res
     }
 }
@@ -410,7 +445,7 @@ impl Handler<InternalRadiusReadMessage> for QueryServerReadV1 {
     type Result = Result<Option<String>, OperationError>;
 
     fn handle(&mut self, msg: InternalRadiusReadMessage, _: &mut Self::Context) -> Self::Result {
-        let mut audit = AuditScope::new("internal_radius_read_message");
+        let mut audit = AuditScope::new("internal_radius_read_message", msg.eventid.clone());
         let res = lperf_segment!(
             &mut audit,
             "actors::v1_read::handle<InternalRadiusReadMessage>",
@@ -459,7 +494,10 @@ impl Handler<InternalRadiusReadMessage> for QueryServerReadV1 {
                 }
             }
         );
-        self.log.do_send(audit);
+        self.log.send(Some(audit)).map_err(|_| {
+            error!("CRITICAL: UNABLE TO COMMIT LOGS");
+            OperationError::InvalidState
+        })?;
         res
     }
 }
@@ -472,7 +510,7 @@ impl Handler<InternalRadiusTokenReadMessage> for QueryServerReadV1 {
         msg: InternalRadiusTokenReadMessage,
         _: &mut Self::Context,
     ) -> Self::Result {
-        let mut audit = AuditScope::new("internal_radius_token_read_message");
+        let mut audit = AuditScope::new("internal_radius_token_read_message", msg.eventid.clone());
         let res = lperf_segment!(
             &mut audit,
             "actors::v1_read::handle<InternalRadiusTokenReadMessage>",
@@ -509,7 +547,10 @@ impl Handler<InternalRadiusTokenReadMessage> for QueryServerReadV1 {
                 idm_read.get_radiusauthtoken(&mut audit, &rate)
             }
         );
-        self.log.do_send(audit);
+        self.log.send(Some(audit)).map_err(|_| {
+            error!("CRITICAL: UNABLE TO COMMIT LOGS");
+            OperationError::InvalidState
+        })?;
         res
     }
 }
@@ -522,7 +563,7 @@ impl Handler<InternalUnixUserTokenReadMessage> for QueryServerReadV1 {
         msg: InternalUnixUserTokenReadMessage,
         _: &mut Self::Context,
     ) -> Self::Result {
-        let mut audit = AuditScope::new("internal_unix_token_read_message");
+        let mut audit = AuditScope::new("internal_unix_token_read_message", msg.eventid.clone());
         let res = lperf_segment!(
             &mut audit,
             "actors::v1_read::handle<InternalUnixUserTokenReadMessage>",
@@ -558,7 +599,10 @@ impl Handler<InternalUnixUserTokenReadMessage> for QueryServerReadV1 {
                 idm_read.get_unixusertoken(&mut audit, &rate)
             }
         );
-        self.log.do_send(audit);
+        self.log.send(Some(audit)).map_err(|_| {
+            error!("CRITICAL: UNABLE TO COMMIT LOGS");
+            OperationError::InvalidState
+        })?;
         res
     }
 }
@@ -571,7 +615,8 @@ impl Handler<InternalUnixGroupTokenReadMessage> for QueryServerReadV1 {
         msg: InternalUnixGroupTokenReadMessage,
         _: &mut Self::Context,
     ) -> Self::Result {
-        let mut audit = AuditScope::new("internal_unixgroup_token_read_message");
+        let mut audit =
+            AuditScope::new("internal_unixgroup_token_read_message", msg.eventid.clone());
         let res = lperf_segment!(
             &mut audit,
             "actors::v1_read::handle<InternalUnixGroupTokenReadMessage>",
@@ -607,7 +652,10 @@ impl Handler<InternalUnixGroupTokenReadMessage> for QueryServerReadV1 {
                 idm_read.get_unixgrouptoken(&mut audit, &rate)
             }
         );
-        self.log.do_send(audit);
+        self.log.send(Some(audit)).map_err(|_| {
+            error!("CRITICAL: UNABLE TO COMMIT LOGS");
+            OperationError::InvalidState
+        })?;
         res
     }
 }
@@ -616,7 +664,7 @@ impl Handler<InternalSshKeyReadMessage> for QueryServerReadV1 {
     type Result = Result<Vec<String>, OperationError>;
 
     fn handle(&mut self, msg: InternalSshKeyReadMessage, _: &mut Self::Context) -> Self::Result {
-        let mut audit = AuditScope::new("internal_sshkey_read_message");
+        let mut audit = AuditScope::new("internal_sshkey_read_message", msg.eventid.clone());
         let res = lperf_segment!(
             &mut audit,
             "actors::v1_read::handle<InternalSshKeyReadMessage>",
@@ -668,7 +716,10 @@ impl Handler<InternalSshKeyReadMessage> for QueryServerReadV1 {
                 }
             }
         );
-        self.log.do_send(audit);
+        self.log.send(Some(audit)).map_err(|_| {
+            error!("CRITICAL: UNABLE TO COMMIT LOGS");
+            OperationError::InvalidState
+        })?;
         res
     }
 }
@@ -677,18 +728,18 @@ impl Handler<InternalSshKeyTagReadMessage> for QueryServerReadV1 {
     type Result = Result<Option<String>, OperationError>;
 
     fn handle(&mut self, msg: InternalSshKeyTagReadMessage, _: &mut Self::Context) -> Self::Result {
-        let mut audit = AuditScope::new("internal_sshkey_tag_read_message");
+        let InternalSshKeyTagReadMessage {
+            uat,
+            uuid_or_name,
+            tag,
+            eventid,
+        } = msg;
+        let mut audit = AuditScope::new("internal_sshkey_tag_read_message", eventid);
         let res = lperf_segment!(
             &mut audit,
             "actors::v1_read::handle<InternalSshKeyTagReadMessage>",
             || {
                 let mut qs_read = self.qs.read();
-
-                let InternalSshKeyTagReadMessage {
-                    uat,
-                    uuid_or_name,
-                    tag,
-                } = msg;
 
                 let target_uuid = match Uuid::parse_str(uuid_or_name.as_str()) {
                     Ok(u) => u,
@@ -741,7 +792,10 @@ impl Handler<InternalSshKeyTagReadMessage> for QueryServerReadV1 {
                 }
             }
         );
-        self.log.do_send(audit);
+        self.log.send(Some(audit)).map_err(|_| {
+            error!("CRITICAL: UNABLE TO COMMIT LOGS");
+            OperationError::InvalidState
+        })?;
         res
     }
 }
@@ -750,7 +804,7 @@ impl Handler<IdmAccountUnixAuthMessage> for QueryServerReadV1 {
     type Result = Result<Option<UnixUserToken>, OperationError>;
 
     fn handle(&mut self, msg: IdmAccountUnixAuthMessage, _: &mut Self::Context) -> Self::Result {
-        let mut audit = AuditScope::new("idm_account_unix_auth");
+        let mut audit = AuditScope::new("idm_account_unix_auth", msg.eventid.clone());
         let res = lperf_segment!(
             &mut audit,
             "actors::v1_read::handle<IdmAccountUnixAuthMessage>",
@@ -790,13 +844,16 @@ impl Handler<IdmAccountUnixAuthMessage> for QueryServerReadV1 {
 
                 let r = idm_write
                     .auth_unix(&mut audit, &uuae, ct)
-                    .and_then(|r| idm_write.commit().map(|_| r));
+                    .and_then(|r| idm_write.commit(&mut audit).map(|_| r));
 
                 lsecurity!(audit, "Sending result -> {:?}", r);
                 r
             }
         );
-        self.log.do_send(audit);
+        self.log.send(Some(audit)).map_err(|_| {
+            error!("CRITICAL: UNABLE TO COMMIT LOGS");
+            OperationError::InvalidState
+        })?;
         res
     }
 }

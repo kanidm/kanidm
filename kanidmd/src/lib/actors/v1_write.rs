@@ -1,7 +1,7 @@
 use crate::audit::AuditScope;
+use crossbeam::channel::Sender;
 use std::sync::Arc;
 
-use crate::async_log::EventLog;
 use crate::event::{
     CreateEvent, DeleteEvent, ModifyEvent, PurgeRecycledEvent, PurgeTombstoneEvent,
     ReviveRecycledEvent,
@@ -34,17 +34,19 @@ use uuid::Uuid;
 pub struct CreateMessage {
     pub uat: Option<UserAuthToken>,
     pub req: CreateRequest,
+    pub eventid: Uuid,
 }
 
 impl CreateMessage {
-    pub fn new(uat: Option<UserAuthToken>, req: CreateRequest) -> Self {
-        CreateMessage { uat, req }
+    pub fn new(uat: Option<UserAuthToken>, req: CreateRequest, eventid: Uuid) -> Self {
+        CreateMessage { uat, req, eventid }
     }
 
-    pub fn new_entry(uat: Option<UserAuthToken>, req: ProtoEntry) -> Self {
+    pub fn new_entry(uat: Option<UserAuthToken>, req: ProtoEntry, eventid: Uuid) -> Self {
         CreateMessage {
             uat,
             req: CreateRequest { entries: vec![req] },
+            eventid,
         }
     }
 }
@@ -56,11 +58,12 @@ impl Message for CreateMessage {
 pub struct DeleteMessage {
     pub uat: Option<UserAuthToken>,
     pub req: DeleteRequest,
+    pub eventid: Uuid,
 }
 
 impl DeleteMessage {
-    pub fn new(uat: Option<UserAuthToken>, req: DeleteRequest) -> Self {
-        DeleteMessage { uat, req }
+    pub fn new(uat: Option<UserAuthToken>, req: DeleteRequest, eventid: Uuid) -> Self {
+        DeleteMessage { uat, req, eventid }
     }
 }
 
@@ -71,6 +74,7 @@ impl Message for DeleteMessage {
 pub struct InternalDeleteMessage {
     pub uat: Option<UserAuthToken>,
     pub filter: Filter<FilterInvalid>,
+    pub eventid: Uuid,
 }
 
 impl Message for InternalDeleteMessage {
@@ -80,11 +84,12 @@ impl Message for InternalDeleteMessage {
 pub struct ModifyMessage {
     pub uat: Option<UserAuthToken>,
     pub req: ModifyRequest,
+    pub eventid: Uuid,
 }
 
 impl ModifyMessage {
-    pub fn new(uat: Option<UserAuthToken>, req: ModifyRequest) -> Self {
-        ModifyMessage { uat, req }
+    pub fn new(uat: Option<UserAuthToken>, req: ModifyRequest, eventid: Uuid) -> Self {
+        ModifyMessage { uat, req, eventid }
     }
 }
 
@@ -95,6 +100,7 @@ impl Message for ModifyMessage {
 pub struct ReviveRecycledMessage {
     pub uat: Option<UserAuthToken>,
     pub filter: Filter<FilterInvalid>,
+    pub eventid: Uuid,
 }
 
 impl Message for ReviveRecycledMessage {
@@ -104,13 +110,15 @@ impl Message for ReviveRecycledMessage {
 pub struct IdmAccountSetPasswordMessage {
     pub uat: Option<UserAuthToken>,
     pub cleartext: String,
+    pub eventid: Uuid,
 }
 
 impl IdmAccountSetPasswordMessage {
-    pub fn new(uat: Option<UserAuthToken>, req: SingleStringRequest) -> Self {
+    pub fn new(uat: Option<UserAuthToken>, req: SingleStringRequest, eventid: Uuid) -> Self {
         IdmAccountSetPasswordMessage {
             uat,
             cleartext: req.value,
+            eventid,
         }
     }
 }
@@ -122,6 +130,7 @@ impl Message for IdmAccountSetPasswordMessage {
 pub struct IdmAccountPersonExtendMessage {
     pub uat: Option<UserAuthToken>,
     pub uuid_or_name: String,
+    pub eventid: Uuid,
 }
 
 impl Message for IdmAccountPersonExtendMessage {
@@ -133,16 +142,23 @@ pub struct IdmAccountUnixExtendMessage {
     pub uuid_or_name: String,
     pub gidnumber: Option<u32>,
     pub shell: Option<String>,
+    pub eventid: Uuid,
 }
 
 impl IdmAccountUnixExtendMessage {
-    pub fn new(uat: Option<UserAuthToken>, uuid_or_name: String, ux: AccountUnixExtend) -> Self {
+    pub fn new(
+        uat: Option<UserAuthToken>,
+        uuid_or_name: String,
+        ux: AccountUnixExtend,
+        eventid: Uuid,
+    ) -> Self {
         let AccountUnixExtend { gidnumber, shell } = ux;
         IdmAccountUnixExtendMessage {
             uat,
             uuid_or_name,
             gidnumber,
             shell,
+            eventid,
         }
     }
 }
@@ -155,15 +171,22 @@ pub struct IdmGroupUnixExtendMessage {
     pub uat: Option<UserAuthToken>,
     pub uuid_or_name: String,
     pub gidnumber: Option<u32>,
+    pub eventid: Uuid,
 }
 
 impl IdmGroupUnixExtendMessage {
-    pub fn new(uat: Option<UserAuthToken>, uuid_or_name: String, gx: GroupUnixExtend) -> Self {
+    pub fn new(
+        uat: Option<UserAuthToken>,
+        uuid_or_name: String,
+        gx: GroupUnixExtend,
+        eventid: Uuid,
+    ) -> Self {
         let GroupUnixExtend { gidnumber } = gx;
         IdmGroupUnixExtendMessage {
             uat,
             uuid_or_name,
             gidnumber,
+            eventid,
         }
     }
 }
@@ -176,6 +199,7 @@ pub struct IdmAccountUnixSetCredMessage {
     pub uat: Option<UserAuthToken>,
     pub uuid_or_name: String,
     pub cred: String,
+    pub eventid: Uuid,
 }
 
 impl Message for IdmAccountUnixSetCredMessage {
@@ -187,6 +211,7 @@ pub struct InternalCredentialSetMessage {
     pub uuid_or_name: String,
     pub appid: Option<String>,
     pub sac: SetCredentialRequest,
+    pub eventid: Uuid,
 }
 
 impl Message for InternalCredentialSetMessage {
@@ -196,11 +221,16 @@ impl Message for InternalCredentialSetMessage {
 pub struct InternalRegenerateRadiusMessage {
     pub uat: Option<UserAuthToken>,
     pub uuid_or_name: String,
+    pub eventid: Uuid,
 }
 
 impl InternalRegenerateRadiusMessage {
-    pub fn new(uat: Option<UserAuthToken>, uuid_or_name: String) -> Self {
-        InternalRegenerateRadiusMessage { uat, uuid_or_name }
+    pub fn new(uat: Option<UserAuthToken>, uuid_or_name: String, eventid: Uuid) -> Self {
+        InternalRegenerateRadiusMessage {
+            uat,
+            uuid_or_name,
+            eventid,
+        }
     }
 }
 
@@ -214,6 +244,7 @@ pub struct InternalSshKeyCreateMessage {
     pub tag: String,
     pub key: String,
     pub filter: Filter<FilterInvalid>,
+    pub eventid: Uuid,
 }
 
 impl Message for InternalSshKeyCreateMessage {
@@ -227,6 +258,7 @@ pub struct PurgeAttributeMessage {
     pub uuid_or_name: String,
     pub attr: String,
     pub filter: Filter<FilterInvalid>,
+    pub eventid: Uuid,
 }
 
 impl Message for PurgeAttributeMessage {
@@ -240,6 +272,7 @@ pub struct RemoveAttributeValueMessage {
     pub attr: String,
     pub value: String,
     pub filter: Filter<FilterInvalid>,
+    pub eventid: Uuid,
 }
 
 impl Message for RemoveAttributeValueMessage {
@@ -252,6 +285,7 @@ pub struct AppendAttributeMessage {
     pub attr: String,
     pub values: Vec<String>,
     pub filter: Filter<FilterInvalid>,
+    pub eventid: Uuid,
 }
 
 impl Message for AppendAttributeMessage {
@@ -264,6 +298,7 @@ pub struct SetAttributeMessage {
     pub attr: String,
     pub values: Vec<String>,
     pub filter: Filter<FilterInvalid>,
+    pub eventid: Uuid,
 }
 
 impl Message for SetAttributeMessage {
@@ -271,7 +306,7 @@ impl Message for SetAttributeMessage {
 }
 
 pub struct QueryServerWriteV1 {
-    log: actix::Addr<EventLog>,
+    log: Sender<Option<AuditScope>>,
     qs: QueryServer,
     idms: Arc<IdmServer>,
 }
@@ -287,13 +322,13 @@ impl Actor for QueryServerWriteV1 {
 }
 
 impl QueryServerWriteV1 {
-    pub fn new(log: actix::Addr<EventLog>, qs: QueryServer, idms: Arc<IdmServer>) -> Self {
-        log_event!(log, "Starting query server v1 worker ...");
+    pub fn new(log: Sender<Option<AuditScope>>, qs: QueryServer, idms: Arc<IdmServer>) -> Self {
+        info!("Starting query server v1 worker ...");
         QueryServerWriteV1 { log, qs, idms }
     }
 
     pub fn start(
-        log: actix::Addr<EventLog>,
+        log: Sender<Option<AuditScope>>,
         query_server: QueryServer,
         idms: Arc<IdmServer>,
     ) -> actix::Addr<QueryServerWriteV1> {
@@ -386,7 +421,7 @@ impl Handler<CreateMessage> for QueryServerWriteV1 {
     type Result = Result<OperationResponse, OperationError>;
 
     fn handle(&mut self, msg: CreateMessage, _: &mut Self::Context) -> Self::Result {
-        let mut audit = AuditScope::new("create");
+        let mut audit = AuditScope::new("create", msg.eventid.clone());
         let res = lperf_segment!(
             &mut audit,
             "actors::v1_write::handle<CreateMessage>",
@@ -396,7 +431,7 @@ impl Handler<CreateMessage> for QueryServerWriteV1 {
                 let crt = match CreateEvent::from_message(&mut audit, msg, &mut qs_write) {
                     Ok(c) => c,
                     Err(e) => {
-                        ladmin_error!(audit, "Failed to begin create: {:?}", e);
+                        ladmin_warning!(audit, "Failed to begin create: {:?}", e);
                         return Err(e);
                     }
                 };
@@ -409,7 +444,10 @@ impl Handler<CreateMessage> for QueryServerWriteV1 {
             }
         );
         // At the end of the event we send it for logging.
-        self.log.do_send(audit);
+        self.log.send(Some(audit)).map_err(|_| {
+            error!("CRITICAL: UNABLE TO COMMIT LOGS");
+            OperationError::InvalidState
+        })?;
         res
     }
 }
@@ -418,7 +456,7 @@ impl Handler<ModifyMessage> for QueryServerWriteV1 {
     type Result = Result<OperationResponse, OperationError>;
 
     fn handle(&mut self, msg: ModifyMessage, _: &mut Self::Context) -> Self::Result {
-        let mut audit = AuditScope::new("modify");
+        let mut audit = AuditScope::new("modify", msg.eventid.clone());
         let res = lperf_segment!(
             &mut audit,
             "actors::v1_write::handle<ModifyMessage>",
@@ -439,7 +477,10 @@ impl Handler<ModifyMessage> for QueryServerWriteV1 {
                     .and_then(|_| qs_write.commit(&mut audit).map(|_| OperationResponse {}))
             }
         );
-        self.log.do_send(audit);
+        self.log.send(Some(audit)).map_err(|_| {
+            error!("CRITICAL: UNABLE TO COMMIT LOGS");
+            OperationError::InvalidState
+        })?;
         res
     }
 }
@@ -448,7 +489,7 @@ impl Handler<DeleteMessage> for QueryServerWriteV1 {
     type Result = Result<OperationResponse, OperationError>;
 
     fn handle(&mut self, msg: DeleteMessage, _: &mut Self::Context) -> Self::Result {
-        let mut audit = AuditScope::new("delete");
+        let mut audit = AuditScope::new("delete", msg.eventid.clone());
         let res = lperf_segment!(
             &mut audit,
             "actors::v1_write::handle<DeleteMessage>",
@@ -470,7 +511,10 @@ impl Handler<DeleteMessage> for QueryServerWriteV1 {
                     .and_then(|_| qs_write.commit(&mut audit).map(|_| OperationResponse {}))
             }
         );
-        self.log.do_send(audit);
+        self.log.send(Some(audit)).map_err(|_| {
+            error!("CRITICAL: UNABLE TO COMMIT LOGS");
+            OperationError::InvalidState
+        })?;
         res
     }
 }
@@ -479,7 +523,7 @@ impl Handler<InternalDeleteMessage> for QueryServerWriteV1 {
     type Result = Result<(), OperationError>;
 
     fn handle(&mut self, msg: InternalDeleteMessage, _: &mut Self::Context) -> Self::Result {
-        let mut audit = AuditScope::new("delete");
+        let mut audit = AuditScope::new("delete", msg.eventid.clone());
         let res = lperf_segment!(
             &mut audit,
             "actors::v1_write::handle<InternalDeleteMessage>",
@@ -502,7 +546,10 @@ impl Handler<InternalDeleteMessage> for QueryServerWriteV1 {
                     .and_then(|_| qs_write.commit(&mut audit).map(|_| ()))
             }
         );
-        self.log.do_send(audit);
+        self.log.send(Some(audit)).map_err(|_| {
+            error!("CRITICAL: UNABLE TO COMMIT LOGS");
+            OperationError::InvalidState
+        })?;
         res
     }
 }
@@ -511,7 +558,7 @@ impl Handler<ReviveRecycledMessage> for QueryServerWriteV1 {
     type Result = Result<(), OperationError>;
 
     fn handle(&mut self, msg: ReviveRecycledMessage, _: &mut Self::Context) -> Self::Result {
-        let mut audit = AuditScope::new("revive");
+        let mut audit = AuditScope::new("revive", msg.eventid.clone());
         let res = lperf_segment!(
             &mut audit,
             "actors::v1_write::handle<ReviveRecycledMessage>",
@@ -538,7 +585,10 @@ impl Handler<ReviveRecycledMessage> for QueryServerWriteV1 {
                     .and_then(|_| qs_write.commit(&mut audit).map(|_| ()))
             }
         );
-        self.log.do_send(audit);
+        self.log.send(Some(audit)).map_err(|_| {
+            error!("CRITICAL: UNABLE TO COMMIT LOGS");
+            OperationError::InvalidState
+        })?;
         res
     }
 }
@@ -548,7 +598,7 @@ impl Handler<InternalCredentialSetMessage> for QueryServerWriteV1 {
     type Result = Result<SetCredentialResponse, OperationError>;
 
     fn handle(&mut self, msg: InternalCredentialSetMessage, _: &mut Self::Context) -> Self::Result {
-        let mut audit = AuditScope::new("internal_credential_set_message");
+        let mut audit = AuditScope::new("internal_credential_set_message", msg.eventid.clone());
         let res = lperf_segment!(
             &mut audit,
             "actors::v1_write::handle<InternalCredentialSetMessage>",
@@ -665,7 +715,10 @@ impl Handler<InternalCredentialSetMessage> for QueryServerWriteV1 {
                 }
             }
         );
-        self.log.do_send(audit);
+        self.log.send(Some(audit)).map_err(|_| {
+            error!("CRITICAL: UNABLE TO COMMIT LOGS");
+            OperationError::InvalidState
+        })?;
         res
     }
 }
@@ -674,7 +727,7 @@ impl Handler<IdmAccountSetPasswordMessage> for QueryServerWriteV1 {
     type Result = Result<OperationResponse, OperationError>;
 
     fn handle(&mut self, msg: IdmAccountSetPasswordMessage, _: &mut Self::Context) -> Self::Result {
-        let mut audit = AuditScope::new("idm_account_set_password");
+        let mut audit = AuditScope::new("idm_account_set_password", msg.eventid.clone());
         let res = lperf_segment!(
             &mut audit,
             "actors::v1_write::handle<IdmAccountSetPasswordMessage>",
@@ -699,7 +752,10 @@ impl Handler<IdmAccountSetPasswordMessage> for QueryServerWriteV1 {
                     .map(|_| OperationResponse::new(()))
             }
         );
-        self.log.do_send(audit);
+        self.log.send(Some(audit)).map_err(|_| {
+            error!("CRITICAL: UNABLE TO COMMIT LOGS");
+            OperationError::InvalidState
+        })?;
         res
     }
 }
@@ -712,7 +768,7 @@ impl Handler<InternalRegenerateRadiusMessage> for QueryServerWriteV1 {
         msg: InternalRegenerateRadiusMessage,
         _: &mut Self::Context,
     ) -> Self::Result {
-        let mut audit = AuditScope::new("idm_account_regenerate_radius");
+        let mut audit = AuditScope::new("idm_account_regenerate_radius", msg.eventid.clone());
         let res = lperf_segment!(
             &mut audit,
             "actors::v1_write::handle<InternalRegenerateRadiusMessage>",
@@ -752,7 +808,10 @@ impl Handler<InternalRegenerateRadiusMessage> for QueryServerWriteV1 {
                     .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
             }
         );
-        self.log.do_send(audit);
+        self.log.send(Some(audit)).map_err(|_| {
+            error!("CRITICAL: UNABLE TO COMMIT LOGS");
+            OperationError::InvalidState
+        })?;
         res
     }
 }
@@ -761,7 +820,7 @@ impl Handler<PurgeAttributeMessage> for QueryServerWriteV1 {
     type Result = Result<(), OperationError>;
 
     fn handle(&mut self, msg: PurgeAttributeMessage, _: &mut Self::Context) -> Self::Result {
-        let mut audit = AuditScope::new("purge_attribute");
+        let mut audit = AuditScope::new("purge_attribute", msg.eventid.clone());
         let res = lperf_segment!(
             &mut audit,
             "actors::v1_write::handle<PurgeAttributeMessage>",
@@ -792,14 +851,17 @@ impl Handler<PurgeAttributeMessage> for QueryServerWriteV1 {
                     }
                 };
 
-                ladmin_error!(audit, "Begin modify event {:?}", mdf);
+                ltrace!(audit, "Begin modify event {:?}", mdf);
 
                 qs_write
                     .modify(&mut audit, &mdf)
                     .and_then(|_| qs_write.commit(&mut audit).map(|_| ()))
             }
         );
-        self.log.do_send(audit);
+        self.log.send(Some(audit)).map_err(|_| {
+            error!("CRITICAL: UNABLE TO COMMIT LOGS");
+            OperationError::InvalidState
+        })?;
         res
     }
 }
@@ -808,7 +870,7 @@ impl Handler<RemoveAttributeValueMessage> for QueryServerWriteV1 {
     type Result = Result<(), OperationError>;
 
     fn handle(&mut self, msg: RemoveAttributeValueMessage, _: &mut Self::Context) -> Self::Result {
-        let mut audit = AuditScope::new("remove_attribute_value");
+        let mut audit = AuditScope::new("remove_attribute_value", msg.eventid.clone());
         let res = lperf_segment!(
             &mut audit,
             "actors::v1_write::handle<RemoveAttributeValueMessage>",
@@ -849,7 +911,10 @@ impl Handler<RemoveAttributeValueMessage> for QueryServerWriteV1 {
                     .and_then(|_| qs_write.commit(&mut audit).map(|_| ()))
             }
         );
-        self.log.do_send(audit);
+        self.log.send(Some(audit)).map_err(|_| {
+            error!("CRITICAL: UNABLE TO COMMIT LOGS");
+            OperationError::InvalidState
+        })?;
         res
     }
 }
@@ -858,18 +923,19 @@ impl Handler<AppendAttributeMessage> for QueryServerWriteV1 {
     type Result = Result<(), OperationError>;
 
     fn handle(&mut self, msg: AppendAttributeMessage, _: &mut Self::Context) -> Self::Result {
-        let mut audit = AuditScope::new("append_attribute");
+        let AppendAttributeMessage {
+            uat,
+            uuid_or_name,
+            attr,
+            values,
+            filter,
+            eventid,
+        } = msg;
+        let mut audit = AuditScope::new("append_attribute", eventid);
         let res = lperf_segment!(
             &mut audit,
             "actors::v1_write::handle<AppendAttributeMessage>",
             || {
-                let AppendAttributeMessage {
-                    uat,
-                    uuid_or_name,
-                    attr,
-                    values,
-                    filter,
-                } = msg;
                 // We need to turn these into proto modlists so they can be converted
                 // and validated.
                 let proto_ml = ProtoModifyList::new_list(
@@ -881,7 +947,10 @@ impl Handler<AppendAttributeMessage> for QueryServerWriteV1 {
                 self.modify_from_parts(&mut audit, uat, uuid_or_name, proto_ml, filter)
             }
         );
-        self.log.do_send(audit);
+        self.log.send(Some(audit)).map_err(|_| {
+            error!("CRITICAL: UNABLE TO COMMIT LOGS");
+            OperationError::InvalidState
+        })?;
         res
     }
 }
@@ -890,18 +959,19 @@ impl Handler<SetAttributeMessage> for QueryServerWriteV1 {
     type Result = Result<(), OperationError>;
 
     fn handle(&mut self, msg: SetAttributeMessage, _: &mut Self::Context) -> Self::Result {
-        let mut audit = AuditScope::new("set_attribute");
+        let SetAttributeMessage {
+            uat,
+            uuid_or_name,
+            attr,
+            values,
+            filter,
+            eventid,
+        } = msg;
+        let mut audit = AuditScope::new("set_attribute", eventid);
         let res = lperf_segment!(
             &mut audit,
             "actors::v1_write::handle<SetAttributeMessage>",
             || {
-                let SetAttributeMessage {
-                    uat,
-                    uuid_or_name,
-                    attr,
-                    values,
-                    filter,
-                } = msg;
                 // We need to turn these into proto modlists so they can be converted
                 // and validated.
                 let proto_ml = ProtoModifyList::new_list(
@@ -916,7 +986,10 @@ impl Handler<SetAttributeMessage> for QueryServerWriteV1 {
                 self.modify_from_parts(&mut audit, uat, uuid_or_name, proto_ml, filter)
             }
         );
-        self.log.do_send(audit);
+        self.log.send(Some(audit)).map_err(|_| {
+            error!("CRITICAL: UNABLE TO COMMIT LOGS");
+            OperationError::InvalidState
+        })?;
         res
     }
 }
@@ -925,19 +998,19 @@ impl Handler<InternalSshKeyCreateMessage> for QueryServerWriteV1 {
     type Result = Result<(), OperationError>;
 
     fn handle(&mut self, msg: InternalSshKeyCreateMessage, _: &mut Self::Context) -> Self::Result {
-        let mut audit = AuditScope::new("internal_sshkey_create");
+        let InternalSshKeyCreateMessage {
+            uat,
+            uuid_or_name,
+            tag,
+            key,
+            filter,
+            eventid,
+        } = msg;
+        let mut audit = AuditScope::new("internal_sshkey_create", eventid);
         let res = lperf_segment!(
             &mut audit,
             "actors::v1_write::handle<InternalSshKeyCreateMessage>",
             || {
-                let InternalSshKeyCreateMessage {
-                    uat,
-                    uuid_or_name,
-                    tag,
-                    key,
-                    filter,
-                } = msg;
-
                 // Because this is from internal, we can generate a real modlist, rather
                 // than relying on the proto ones.
                 let ml = ModifyList::new_append("ssh_publickey", Value::new_sshkey(tag, key));
@@ -945,7 +1018,10 @@ impl Handler<InternalSshKeyCreateMessage> for QueryServerWriteV1 {
                 self.modify_from_internal_parts(&mut audit, uat, uuid_or_name, ml, filter)
             }
         );
-        self.log.do_send(audit);
+        self.log.send(Some(audit)).map_err(|_| {
+            error!("CRITICAL: UNABLE TO COMMIT LOGS");
+            OperationError::InvalidState
+        })?;
         res
     }
 }
@@ -958,13 +1034,16 @@ impl Handler<IdmAccountPersonExtendMessage> for QueryServerWriteV1 {
         msg: IdmAccountPersonExtendMessage,
         _: &mut Self::Context,
     ) -> Self::Result {
-        let mut audit = AuditScope::new("idm_account_person_extend");
+        let IdmAccountPersonExtendMessage {
+            uat,
+            uuid_or_name,
+            eventid,
+        } = msg;
+        let mut audit = AuditScope::new("idm_account_person_extend", eventid);
         let res = lperf_segment!(
             &mut audit,
             "actors::v1_write::handle<IdmAccountPersonExtendMessage>",
             || {
-                let IdmAccountPersonExtendMessage { uat, uuid_or_name } = msg;
-
                 // The filter_map here means we only create the mods if the gidnumber or shell are set
                 // in the actual request.
                 let mods: Vec<_> = vec![Some(Modify::Present(
@@ -982,7 +1061,10 @@ impl Handler<IdmAccountPersonExtendMessage> for QueryServerWriteV1 {
                 self.modify_from_internal_parts(&mut audit, uat, uuid_or_name, ml, filter)
             }
         );
-        self.log.do_send(audit);
+        self.log.send(Some(audit)).map_err(|_| {
+            error!("CRITICAL: UNABLE TO COMMIT LOGS");
+            OperationError::InvalidState
+        })?;
         res
     }
 }
@@ -991,18 +1073,18 @@ impl Handler<IdmAccountUnixExtendMessage> for QueryServerWriteV1 {
     type Result = Result<(), OperationError>;
 
     fn handle(&mut self, msg: IdmAccountUnixExtendMessage, _: &mut Self::Context) -> Self::Result {
-        let mut audit = AuditScope::new("idm_account_unix_extend");
+        let IdmAccountUnixExtendMessage {
+            uat,
+            uuid_or_name,
+            gidnumber,
+            shell,
+            eventid,
+        } = msg;
+        let mut audit = AuditScope::new("idm_account_unix_extend", eventid);
         let res = lperf_segment!(
             &mut audit,
             "actors::v1_write::handle<IdmAccountUnixExtendMessage>",
             || {
-                let IdmAccountUnixExtendMessage {
-                    uat,
-                    uuid_or_name,
-                    gidnumber,
-                    shell,
-                } = msg;
-
                 // The filter_map here means we only create the mods if the gidnumber or shell are set
                 // in the actual request.
                 let mods: Vec<_> = vec![
@@ -1025,7 +1107,10 @@ impl Handler<IdmAccountUnixExtendMessage> for QueryServerWriteV1 {
                 self.modify_from_internal_parts(&mut audit, uat, uuid_or_name, ml, filter)
             }
         );
-        self.log.do_send(audit);
+        self.log.send(Some(audit)).map_err(|_| {
+            error!("CRITICAL: UNABLE TO COMMIT LOGS");
+            OperationError::InvalidState
+        })?;
         res
     }
 }
@@ -1034,17 +1119,17 @@ impl Handler<IdmGroupUnixExtendMessage> for QueryServerWriteV1 {
     type Result = Result<(), OperationError>;
 
     fn handle(&mut self, msg: IdmGroupUnixExtendMessage, _: &mut Self::Context) -> Self::Result {
-        let mut audit = AuditScope::new("idm_group_unix_extend");
+        let IdmGroupUnixExtendMessage {
+            uat,
+            uuid_or_name,
+            gidnumber,
+            eventid,
+        } = msg;
+        let mut audit = AuditScope::new("idm_group_unix_extend", eventid);
         let res = lperf_segment!(
             &mut audit,
             "actors::v1_write::handle<IdmGroupUnixExtendMessage>",
             || {
-                let IdmGroupUnixExtendMessage {
-                    uat,
-                    uuid_or_name,
-                    gidnumber,
-                } = msg;
-
                 // The filter_map here means we only create the mods if the gidnumber or shell are set
                 // in the actual request.
                 let mods: Vec<_> = vec![
@@ -1066,7 +1151,10 @@ impl Handler<IdmGroupUnixExtendMessage> for QueryServerWriteV1 {
                 self.modify_from_internal_parts(&mut audit, uat, uuid_or_name, ml, filter)
             }
         );
-        self.log.do_send(audit);
+        self.log.send(Some(audit)).map_err(|_| {
+            error!("CRITICAL: UNABLE TO COMMIT LOGS");
+            OperationError::InvalidState
+        })?;
         res
     }
 }
@@ -1075,7 +1163,7 @@ impl Handler<IdmAccountUnixSetCredMessage> for QueryServerWriteV1 {
     type Result = Result<(), OperationError>;
 
     fn handle(&mut self, msg: IdmAccountUnixSetCredMessage, _: &mut Self::Context) -> Self::Result {
-        let mut audit = AuditScope::new("idm_account_unix_set_cred");
+        let mut audit = AuditScope::new("idm_account_unix_set_cred", msg.eventid.clone());
         let res = lperf_segment!(
             &mut audit,
             "actors::v1_write::handle<IdmAccountUnixSetCredMessage>",
@@ -1111,7 +1199,10 @@ impl Handler<IdmAccountUnixSetCredMessage> for QueryServerWriteV1 {
                     .map(|_| ())
             }
         );
-        self.log.do_send(audit);
+        self.log.send(Some(audit)).map_err(|_| {
+            error!("CRITICAL: UNABLE TO COMMIT LOGS");
+            OperationError::InvalidState
+        })?;
         res
     }
 }
@@ -1122,7 +1213,7 @@ impl Handler<PurgeTombstoneEvent> for QueryServerWriteV1 {
     type Result = ();
 
     fn handle(&mut self, msg: PurgeTombstoneEvent, _: &mut Self::Context) -> Self::Result {
-        let mut audit = AuditScope::new("purge tombstones");
+        let mut audit = AuditScope::new("purge tombstones", msg.eventid.clone());
         lperf_segment!(
             &mut audit,
             "actors::v1_write::handle<PurgeTombstoneEvent>",
@@ -1138,7 +1229,9 @@ impl Handler<PurgeTombstoneEvent> for QueryServerWriteV1 {
             }
         );
         // At the end of the event we send it for logging.
-        self.log.do_send(audit);
+        self.log.send(Some(audit)).unwrap_or_else(|_| {
+            error!("CRITICAL: UNABLE TO COMMIT LOGS");
+        });
     }
 }
 
@@ -1146,7 +1239,7 @@ impl Handler<PurgeRecycledEvent> for QueryServerWriteV1 {
     type Result = ();
 
     fn handle(&mut self, msg: PurgeRecycledEvent, _: &mut Self::Context) -> Self::Result {
-        let mut audit = AuditScope::new("purge recycled");
+        let mut audit = AuditScope::new("purge recycled", msg.eventid.clone());
         lperf_segment!(
             &mut audit,
             "actors::v1_write::handle<PurgeRecycledEvent>",
@@ -1162,6 +1255,8 @@ impl Handler<PurgeRecycledEvent> for QueryServerWriteV1 {
             }
         );
         // At the end of the event we send it for logging.
-        self.log.do_send(audit);
+        self.log.send(Some(audit)).unwrap_or_else(|_| {
+            error!("CRITICAL: UNABLE TO COMMIT LOGS");
+        });
     }
 }

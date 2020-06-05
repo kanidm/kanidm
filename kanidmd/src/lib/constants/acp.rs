@@ -15,10 +15,10 @@ pub const JSON_IDM_ACP_XX_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff0000XX"],
         "description": ["Builtin IDM Control for xx"],
         "acp_receiver": [
-            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-0000000000XX\"]}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-0000000000XX\"]}"
         ],
         "acp_targetscope": [
-            "{\"And\": [{\"Eq\": [\"attr\",\"value\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+            "{\"and\": [{\"eq\": [\"attr\",\"value\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_search_attr": [
 
@@ -49,10 +49,10 @@ pub const JSON_IDM_ADMINS_ACP_RECYCLE_SEARCH_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000002"],
         "description": ["Builtin IDM admin recycle bin search permission."],
         "acp_receiver": [
-            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000019\"]}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000019\"]}"
         ],
         "acp_targetscope": [
-            "{\"Eq\": [\"class\", \"recycled\"]}"
+            "{\"eq\": [\"class\", \"recycled\"]}"
         ],
         "acp_search_attr": ["name", "class", "uuid", "last_modified_cid"]
     }
@@ -65,10 +65,10 @@ pub const JSON_IDM_ADMINS_ACP_REVIVE_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000003"],
         "description": ["Builtin IDM Administrators Access Controls."],
         "acp_receiver": [
-            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000019\"]}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000019\"]}"
         ],
         "acp_targetscope": [
-            "{\"Eq\":[\"class\",\"recycled\"]}"
+            "{\"eq\":[\"class\",\"recycled\"]}"
         ],
         "acp_modify_removedattr": ["class"],
         "acp_modify_class": ["recycled"]
@@ -82,10 +82,10 @@ pub const JSON_IDM_SELF_ACP_READ_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000004"],
         "description": ["Builtin IDM Control for self read - required for whoami and many other functions."],
         "acp_receiver": [
-            "{\"And\": [\"Self\", {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+            "{\"and\": [\"self\", {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_targetscope": [
-            "\"Self\""
+            "\"self\""
         ],
         "acp_search_attr": [
             "name",
@@ -109,10 +109,10 @@ pub const JSON_IDM_SELF_ACP_WRITE_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000021"],
         "description": ["Builtin IDM Control for self write - required for people to update their own identities and credentials in line with best practices."],
         "acp_receiver": [
-            "{\"And\": [\"Self\", {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}, {\"Eq\": [\"uuid\", \"00000000-0000-0000-0000-ffffffffffff\"]}]}}]}"
+            "{\"and\": [\"self\", {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}, {\"eq\": [\"uuid\", \"00000000-0000-0000-0000-ffffffffffff\"]}]}}]}"
         ],
         "acp_targetscope": [
-            "\"Self\""
+            "\"self\""
         ],
         "acp_modify_removedattr": [
             "name", "displayname", "legalname", "radius_secret", "primary_credential", "ssh_publickey", "unix_password"
@@ -131,10 +131,10 @@ pub const JSON_IDM_ALL_ACP_READ_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000006"],
         "description": ["Builtin IDM Control for all read - IE anonymous and all authenticated accounts."],
         "acp_receiver": [
-            "{\"Pres\":\"class\"}"
+            "{\"pres\":\"class\"}"
         ],
         "acp_targetscope": [
-            "{\"And\": [{\"Pres\": \"class\"}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+            "{\"and\": [{\"pres\": \"class\"}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_search_attr": [
             "name",
@@ -163,10 +163,10 @@ pub const JSON_IDM_ACP_PEOPLE_READ_PRIV_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000007"],
         "description": ["Builtin IDM Control for reading personal sensitive data."],
         "acp_receiver": [
-            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000002\"]}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000002\"]}"
         ],
         "acp_targetscope": [
-            "{\"And\": [{\"Eq\": [\"class\",\"account\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+            "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_search_attr": [
             "name", "displayname", "legalname", "mail"
@@ -185,10 +185,10 @@ pub const JSON_IDM_ACP_PEOPLE_WRITE_PRIV_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000008"],
         "description": ["Builtin IDM Control for managing personal and sensitive data."],
         "acp_receiver": [
-            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000003\"]}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000003\"]}"
         ],
         "acp_targetscope": [
-            "{\"And\": [{\"Eq\": [\"class\",\"person\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+            "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_modify_removedattr": [
             "name", "displayname", "legalname", "mail"
@@ -211,10 +211,10 @@ pub const JSON_IDM_ACP_PEOPLE_MANAGE_PRIV_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000013"],
         "description": ["Builtin IDM Control for creating person (user) accounts"],
         "acp_receiver": [
-            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000013\"]}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000013\"]}"
         ],
         "acp_targetscope": [
-            "{\"And\": [{\"Eq\": [\"class\",\"account\"]}, {\"Eq\": [\"class\",\"person\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+            "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"eq\": [\"class\",\"person\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_create_attr": [
             "class",
@@ -245,10 +245,10 @@ pub const JSON_IDM_ACP_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000031"],
         "description": ["Builtin IDM Control for allowing imports of passwords to people+account types."],
         "acp_receiver": [
-            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000023\"]}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000023\"]}"
         ],
         "acp_targetscope": [
-            "{\"And\": [{\"Eq\": [\"class\",\"person\"]}, {\"Eq\": [\"class\",\"account\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+            "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_modify_removedattr": [
             "password_import"
@@ -271,10 +271,10 @@ pub const JSON_IDM_ACP_PEOPLE_EXTEND_PRIV_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000032"],
         "description": ["Builtin IDM Control for allowing person class extension"],
         "acp_receiver": [
-            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000024\"]}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000024\"]}"
         ],
         "acp_targetscope": [
-            "{\"And\": [{\"Eq\": [\"class\",\"account\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+            "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_modify_presentattr": [
             "class"
@@ -298,10 +298,10 @@ pub const JSON_IDM_ACP_GROUP_WRITE_PRIV_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000009"],
         "description": ["Builtin IDM Control for managing groups"],
         "acp_receiver": [
-            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000004\"]}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000004\"]}"
         ],
         "acp_targetscope": [
-            "{\"And\": [{\"Eq\": [\"class\",\"group\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+            "{\"and\": [{\"eq\": [\"class\",\"group\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_search_attr": [
             "class", "name", "spn", "uuid", "description", "member"
@@ -326,10 +326,10 @@ pub const JSON_IDM_ACP_ACCOUNT_READ_PRIV_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000010"],
         "description": ["Builtin IDM Control for accounts."],
         "acp_receiver": [
-            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000005\"]}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000005\"]}"
         ],
         "acp_targetscope": [
-            "{\"And\": [{\"Eq\": [\"class\",\"account\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+            "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_search_attr": [
             "class", "name", "spn", "uuid", "displayname", "ssh_publickey", "primary_credential", "memberof", "mail", "gidnumber"
@@ -348,10 +348,10 @@ pub const JSON_IDM_ACP_ACCOUNT_WRITE_PRIV_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000011"],
         "description": ["Builtin IDM Control for managing accounts."],
         "acp_receiver": [
-            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000006\"]}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000006\"]}"
         ],
         "acp_targetscope": [
-            "{\"And\": [{\"Eq\": [\"class\",\"account\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+            "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_modify_removedattr": [
             "name", "displayname", "ssh_publickey", "primary_credential", "mail"
@@ -374,10 +374,10 @@ pub const JSON_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000012"],
         "description": ["Builtin IDM Control for creating and deleting (service) accounts"],
         "acp_receiver": [
-            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000014\"]}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000014\"]}"
         ],
         "acp_targetscope": [
-            "{\"And\": [{\"Eq\": [\"class\",\"account\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+            "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_create_attr": [
             "class",
@@ -407,10 +407,10 @@ pub const JSON_IDM_ACP_RADIUS_SERVERS_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000014"],
         "description": ["Builtin IDM Control for RADIUS servers to read credentials and other needed details."],
         "acp_receiver": [
-            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000007\"]}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000007\"]}"
         ],
         "acp_targetscope": [
-            "{\"And\": [{\"Pres\": \"class\"}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+            "{\"and\": [{\"pres\": \"class\"}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_search_attr": [
             "name", "spn", "uuid", "radius_secret"
@@ -429,10 +429,10 @@ pub const JSON_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000015"],
         "description": ["Builtin IDM Control for reading high privilege accounts."],
         "acp_receiver": [
-            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000009\"]}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000009\"]}"
         ],
         "acp_targetscope": [
-            "{\"And\": [{\"Eq\": [\"class\",\"account\"]}, {\"Eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+            "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_search_attr": [
             "class", "name", "spn", "uuid", "displayname", "ssh_publickey", "primary_credential", "memberof"
@@ -451,10 +451,10 @@ pub const JSON_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000016"],
         "description": ["Builtin IDM Control for managing high privilege accounts."],
         "acp_receiver": [
-            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000009\"]}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000009\"]}"
         ],
         "acp_targetscope": [
-            "{\"And\": [{\"Eq\": [\"class\",\"account\"]}, {\"Eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+            "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_modify_removedattr": [
             "name", "displayname", "ssh_publickey", "primary_credential"
@@ -478,10 +478,10 @@ pub const JSON_IDM_ACP_HP_GROUP_WRITE_PRIV_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000017"],
         "description": ["Builtin IDM Control for managing high privilege groups"],
         "acp_receiver": [
-            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000012\"]}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000012\"]}"
         ],
         "acp_targetscope": [
-            "{\"And\": [{\"Eq\": [\"class\",\"group\"]}, {\"Eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+            "{\"and\": [{\"eq\": [\"class\",\"group\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_search_attr": [
             "class", "name", "uuid", "description", "member"
@@ -509,10 +509,10 @@ pub const JSON_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000018"],
         "description": ["Builtin IDM Control for management of schema attributes."],
         "acp_receiver": [
-            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000010\"]}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000010\"]}"
         ],
         "acp_targetscope": [
-            "{\"And\": [{\"Eq\": [\"class\",\"attributetype\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+            "{\"and\": [{\"eq\": [\"class\",\"attributetype\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_search_attr": [
             "class",
@@ -570,10 +570,10 @@ pub const JSON_IDM_ACP_ACP_MANAGE_PRIV_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000019"],
         "description": ["Builtin IDM Control for access profiles management."],
         "acp_receiver": [
-            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000011\"]}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000011\"]}"
         ],
         "acp_targetscope": [
-            "{\"And\": [{\"Eq\": [\"class\",\"access_control_profile\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+            "{\"and\": [{\"eq\": [\"class\",\"access_control_profile\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_search_attr": [
             "name",
@@ -661,10 +661,10 @@ pub const JSON_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000020"],
         "description": ["Builtin IDM Control for management of schema classes."],
         "acp_receiver": [
-            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000010\"]}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000010\"]}"
         ],
         "acp_targetscope": [
-            "{\"And\": [{\"Eq\": [\"class\",\"classtype\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+            "{\"and\": [{\"eq\": [\"class\",\"classtype\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_search_attr": [
             "class",
@@ -718,10 +718,10 @@ pub const JSON_IDM_ACP_GROUP_MANAGE_PRIV_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000022"],
         "description": ["Builtin IDM Control for creating and deleting groups in the directory"],
         "acp_receiver": [
-            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000015\"]}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000015\"]}"
         ],
         "acp_targetscope": [
-            "{\"And\": [{\"Eq\": [\"class\",\"group\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+            "{\"and\": [{\"eq\": [\"class\",\"group\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_create_attr": [
             "class",
@@ -748,10 +748,10 @@ pub const JSON_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000023"],
         "description": ["Builtin IDM Control for creating and deleting hp and regular (service) accounts"],
         "acp_receiver": [
-            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000016\"]}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000016\"]}"
         ],
         "acp_targetscope": [
-            "{\"And\": [{\"Eq\": [\"class\",\"account\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+            "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_create_attr": [
             "class",
@@ -780,10 +780,10 @@ pub const JSON_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000024"],
         "description": ["Builtin IDM Control for creating and deleting hp and regular groups in the directory"],
         "acp_receiver": [
-            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000017\"]}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000017\"]}"
         ],
         "acp_targetscope": [
-            "{\"And\": [{\"Eq\": [\"class\",\"group\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+            "{\"and\": [{\"eq\": [\"class\",\"group\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_create_attr": [
             "class",
@@ -810,10 +810,10 @@ pub const JSON_IDM_ACP_DOMAIN_ADMIN_PRIV_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000026"],
         "description": ["Builtin IDM Control for granting domain info administration locally"],
         "acp_receiver": [
-            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000020\"]}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000020\"]}"
         ],
         "acp_targetscope": [
-            "{\"And\": [{\"Eq\": [\"uuid\",\"00000000-0000-0000-0000-ffffff000025\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+            "{\"and\": [{\"eq\": [\"uuid\",\"00000000-0000-0000-0000-ffffff000025\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_search_attr": [
             "name",
@@ -844,10 +844,10 @@ pub const JSON_IDM_ACP_SYSTEM_CONFIG_PRIV_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000028"],
         "description": ["Builtin IDM Control for granting system configuration rights"],
         "acp_receiver": [
-            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000019\"]}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000019\"]}"
         ],
         "acp_targetscope": [
-            "{\"And\": [{\"Eq\": [\"uuid\",\"00000000-0000-0000-0000-ffffff000027\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+            "{\"and\": [{\"eq\": [\"uuid\",\"00000000-0000-0000-0000-ffffff000027\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_search_attr": [
             "name",
@@ -874,10 +874,10 @@ pub const JSON_IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000029"],
         "description": ["Builtin IDM Control for managing accounts."],
         "acp_receiver": [
-            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000021\"]}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000021\"]}"
         ],
         "acp_targetscope": [
-            "{\"And\": [{\"Eq\": [\"class\",\"account\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+            "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_search_attr": [
             "class", "name", "spn", "uuid", "description", "gidnumber", "loginshell", "unix_password"
@@ -904,10 +904,10 @@ pub const JSON_IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000030"],
         "description": ["Builtin IDM Control for managing and extending unix groups"],
         "acp_receiver": [
-            "{\"Eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000022\"]}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000022\"]}"
         ],
         "acp_targetscope": [
-            "{\"And\": [{\"Eq\": [\"class\",\"group\"]}, {\"AndNot\": {\"Or\": [{\"Eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"Eq\": [\"class\", \"tombstone\"]}, {\"Eq\": [\"class\", \"recycled\"]}]}}]}"
+            "{\"and\": [{\"eq\": [\"class\",\"group\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_search_attr": [
             "class", "name", "spn", "uuid", "description", "member", "gidnumber"

@@ -7,7 +7,11 @@ macro_rules! setup_test {
         use crate::utils::duration_from_epoch_now;
         use env_logger;
         ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
-        let _ = env_logger::builder().is_test(true).try_init();
+        let _ = env_logger::builder()
+            .format_timestamp(None)
+            .format_level(false)
+            .is_test(true)
+            .try_init();
 
         // Create an in memory BE
         let be = Backend::new($au, "", 1).expect("Failed to init BE");
@@ -46,7 +50,7 @@ macro_rules! run_create_test {
         use crate::server::QueryServer;
         use crate::utils::duration_from_epoch_now;
 
-        let mut au = AuditScope::new("run_create_test");
+        let mut au = AuditScope::new("run_create_test", uuid::Uuid::new_v4());
         lperf_segment!(&mut au, "plugins::macros::run_create_test", || {
             let qs = setup_test!(&mut au, $preload_entries);
 
@@ -60,7 +64,7 @@ macro_rules! run_create_test {
             {
                 let mut qs_write = qs.write(duration_from_epoch_now());
                 let r = qs_write.create(&mut au, &ce);
-                debug!("r: {:?}", r);
+                debug!("test result: {:?}", r);
                 assert!(r == $expect);
                 $check(&mut au, &mut qs_write);
                 match r {
@@ -79,7 +83,7 @@ macro_rules! run_create_test {
             assert!(ver.len() == 0);
         });
         // Dump the raw audit log.
-        println!("{}", au);
+        au.write_log();
     }};
 }
 
@@ -101,7 +105,7 @@ macro_rules! run_modify_test {
         use crate::server::QueryServer;
         use crate::utils::duration_from_epoch_now;
 
-        let mut au = AuditScope::new("run_modify_test");
+        let mut au = AuditScope::new("run_modify_test", uuid::Uuid::new_v4());
         lperf_segment!(&mut au, "plugins::macros::run_modify_test", || {
             let qs = setup_test!(&mut au, $preload_entries);
 
@@ -124,7 +128,7 @@ macro_rules! run_modify_test {
                     "plugins::macros::run_modify_test -> post_test check",
                     || { $check(&mut au, &mut qs_write) }
                 );
-                debug!("{:?}", r);
+                debug!("test result: {:?}", r);
                 assert!(r == $expect);
                 match r {
                     Ok(_) => {
@@ -142,7 +146,7 @@ macro_rules! run_modify_test {
             assert!(ver.len() == 0);
         });
         // Dump the raw audit log.
-        println!("{}", au);
+        au.write_log();
     }};
 }
 
@@ -163,7 +167,7 @@ macro_rules! run_delete_test {
         use crate::server::QueryServer;
         use crate::utils::duration_from_epoch_now;
 
-        let mut au = AuditScope::new("run_delete_test");
+        let mut au = AuditScope::new("run_delete_test", uuid::Uuid::new_v4());
         lperf_segment!(&mut au, "plugins::macros::run_delete_test", || {
             let qs = setup_test!(&mut au, $preload_entries);
 
@@ -177,6 +181,7 @@ macro_rules! run_delete_test {
             {
                 let mut qs_write = qs.write(duration_from_epoch_now());
                 let r = qs_write.delete(&mut au, &de);
+                debug!("test result: {:?}", r);
                 $check(&mut au, &mut qs_write);
                 assert!(r == $expect);
                 match r {
@@ -195,6 +200,6 @@ macro_rules! run_delete_test {
             assert!(ver.len() == 0);
         });
         // Dump the raw audit log.
-        println!("{}", au);
+        au.write_log();
     }};
 }

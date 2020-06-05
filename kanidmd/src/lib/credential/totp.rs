@@ -213,7 +213,7 @@ mod tests {
         let otp = TOTP::new("".to_string(), key.clone(), step, algo.clone());
         let d = Duration::from_secs(secs);
         let r = otp.do_totp_duration_from_epoch(&d);
-        println!(
+        debug!(
             "key: {:?}, algo: {:?}, time: {:?}, step: {:?}, expect: {:?} == {:?}",
             key, algo, secs, step, expect, r
         );

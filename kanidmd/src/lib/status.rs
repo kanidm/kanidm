@@ -1,14 +1,16 @@
-use crate::async_log::{EventLog, LogEvent};
+use crate::audit::AuditScope;
 use actix::prelude::*;
+use crossbeam::channel::Sender;
+use uuid::Uuid;
 
 pub struct StatusActor {
-    log_addr: actix::Addr<EventLog>,
+    log_tx: Sender<Option<AuditScope>>,
 }
 
 impl StatusActor {
-    pub fn start(log_addr: actix::Addr<EventLog>) -> actix::Addr<StatusActor> {
+    pub fn start(log_tx: Sender<Option<AuditScope>>) -> actix::Addr<StatusActor> {
         SyncArbiter::start(1, move || StatusActor {
-            log_addr: log_addr.clone(),
+            log_tx: log_tx.clone(),
         })
     }
 }
@@ -17,7 +19,9 @@ impl Actor for StatusActor {
     type Context = SyncContext<Self>;
 }
 
-pub struct StatusRequestEvent {}
+pub struct StatusRequestEvent {
+    pub eventid: Uuid,
+}
 
 impl Message for StatusRequestEvent {
     type Result = bool;
@@ -26,9 +30,11 @@ impl Message for StatusRequestEvent {
 impl Handler<StatusRequestEvent> for StatusActor {
     type Result = bool;
 
-    fn handle(&mut self, _event: StatusRequestEvent, _ctx: &mut SyncContext<Self>) -> Self::Result {
-        self.log_addr.do_send(LogEvent {
-            msg: "status request event: ok".to_string(),
+    fn handle(&mut self, event: StatusRequestEvent, _ctx: &mut SyncContext<Self>) -> Self::Result {
+        let mut audit = AuditScope::new("status_handler", event.eventid.clone());
+        ladmin_info!(&mut audit, "status handler");
+        self.log_tx.send(Some(audit)).unwrap_or_else(|_| {
+            error!("CRITICAL: UNABLE TO COMMIT LOGS");
         });
         true
     }
