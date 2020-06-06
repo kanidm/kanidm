@@ -1,6 +1,7 @@
 use kanidm_proto::v1::OperationError;
 use std::time::Duration;
 use uuid::Uuid;
+    use std::cmp::Ordering;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Eq, PartialOrd, Ord)]
 pub struct Cid {
@@ -11,8 +12,21 @@ pub struct Cid {
 }
 
 impl Cid {
-    pub fn new(d_uuid: Uuid, s_uuid: Uuid, ts: Duration) -> Self {
+    pub(crate) fn new(d_uuid: Uuid, s_uuid: Uuid, ts: Duration) -> Self {
         Cid { d_uuid, s_uuid, ts }
+    }
+
+    pub fn new_lamport(d_uuid: Uuid, s_uuid: Uuid, ts: Duration, max_cid: &Self) -> Self {
+        let c_cand = Cid { d_uuid, s_uuid, ts };
+        if c_cand.cmp(max_cid) == Ordering::Greater {
+            // It's larger, return it.
+            c_cand
+        } else {
+            // It's smaller, so take max_cid and increment it.
+            let mut c_cand = max_cid.clone();
+            c_cand.ts = c_cand.ts + Duration::from_nanos(1);
+            c_cand
+        }
     }
 
     #[cfg(test)]
@@ -92,5 +106,25 @@ mod tests {
         assert!(cid_e.cmp(&cid_e) == Ordering::Equal);
         assert!(cid_e.cmp(&cid_f) == Ordering::Less);
         assert!(cid_f.cmp(&cid_e) == Ordering::Greater);
+    }
+
+    #[test]
+    fn test_cid_lamport() {
+        let d_uuid = Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap();
+        let s_uuid = d_uuid.clone();
+
+        let ts5 = Duration::new(5, 0);
+        let ts10 = Duration::new(10, 0);
+        let ts15 = Duration::new(15, 0);
+
+        let cid_z = unsafe { Cid::new_zero() };
+
+        let cid_a = Cid::new_lamport(d_uuid, s_uuid, ts5, &cid_z);
+        assert!(cid_a.cmp(&cid_z) == Ordering::Greater);
+        let cid_b = Cid::new_lamport(d_uuid, s_uuid, ts15, &cid_a);
+        assert!(cid_b.cmp(&cid_a) == Ordering::Greater);
+        // Even with an older ts, we should still step forward.
+        let cid_c = Cid::new_lamport(d_uuid, s_uuid, ts10, &cid_b);
+        assert!(cid_c.cmp(&cid_b) == Ordering::Greater);
     }
 }

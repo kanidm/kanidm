@@ -8,6 +8,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use std::time::Duration;
 use uuid::Uuid;
+use concread::cowcell::*;
 
 use crate::audit::AuditScope;
 use crate::be::{Backend, BackendReadTransaction, BackendTransaction, BackendWriteTransaction};
@@ -729,6 +730,7 @@ pub struct QueryServerWriteTransaction<'a> {
     be_txn: BackendWriteTransaction<'a>,
     schema: SchemaWriteTransaction<'a>,
     accesscontrols: AccessControlsWriteTransaction<'a>,
+    meta: CowCellWriteTxn<'a, QueryServerMeta>,
     // We store a set of flags that indicate we need a reload of
     // schema or acp, which is tested by checking the classes of the
     // changing content.
@@ -756,6 +758,11 @@ impl<'a> QueryServerTransaction for QueryServerWriteTransaction<'a> {
     }
 }
 
+#[derive(Clone, Debug)]
+struct QueryServerMeta {
+    pub max_cid: Cid,
+}
+
 #[derive(Clone)]
 pub struct QueryServer {
     // log: actix::Addr<EventLog>,
@@ -764,16 +771,24 @@ pub struct QueryServer {
     be: Backend,
     schema: Arc<Schema>,
     accesscontrols: Arc<AccessControls>,
+    meta: Arc<CowCell<QueryServerMeta>>,
 }
 
 impl QueryServer {
-    pub fn new(be: Backend, schema: Schema) -> Self {
+    pub fn new(be: Backend, schema: Schema, ts: Duration) -> Self {
         let (s_uuid, d_uuid) = {
             let mut wr = be.write(BTreeSet::new());
             (wr.get_db_s_uuid(), wr.get_db_d_uuid())
         };
+        // We need to get from the db OR generate from ts.
+        // if we have from db, use new_lamport.
+        // else, just generate from curretn ts.
+        let qsmeta = QueryServerMeta {
+            max_cid: Cid::new(s_uuid.clone(), d_uuid.clone(), ts)
+        };
         info!("Server ID -> {:?}", s_uuid);
         info!("Domain ID -> {:?}", d_uuid);
+        info!("Maximum CID -> {:?}", qsmeta.max_cid);
         // log_event!(log, "Starting query worker ...");
         QueryServer {
             s_uuid,
@@ -781,6 +796,7 @@ impl QueryServer {
             be,
             schema: Arc::new(schema),
             accesscontrols: Arc::new(AccessControls::new()),
+            meta: Arc::new(CowCell::new(qsmeta)),
         }
     }
 
@@ -796,8 +812,11 @@ impl QueryServer {
         // Feed the current schema index metadata to the be write transaction.
         let schema_write = self.schema.write();
         let idxmeta = schema_write.get_idxmeta_set();
+        let mut meta = self.meta.write();
 
-        let cid = Cid::new(self.s_uuid, self.d_uuid, ts);
+        let cid = Cid::new_lamport(self.s_uuid, self.d_uuid, ts, &meta.max_cid);
+
+        meta.max_cid = cid.clone();
 
         QueryServerWriteTransaction {
             // I think this is *not* needed, because commit is mut self which should
@@ -814,6 +833,7 @@ impl QueryServer {
             accesscontrols: self.accesscontrols.write(),
             changed_schema: false,
             changed_acp: false,
+            meta
         }
     }
 
@@ -2028,6 +2048,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             be_txn,
             schema,
             accesscontrols,
+            meta,
             ..
         } = self;
         debug_assert!(!committed);
@@ -2040,6 +2061,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // because both are consistent.
             schema
                 .commit()
+                .and_then(|r| {meta.commit(); Ok(r)})
                 .and_then(|_| accesscontrols.commit().and_then(|_| be_txn.commit(audit)))
         } else {
             Err(OperationError::ConsistencyError(r))
@@ -2323,7 +2345,7 @@ mod tests {
                     ModifyList::new_list(vec![
                         Modify::Present("class".to_string(), Value::new_class("system_info")),
                         // Modify::Present("domain".to_string(), Value::new_iutf8s("domain.name")),
-                        Modify::Present("version".to_string(), Value::new_iutf8s("1")),
+                        Modify::Present("version".to_string(), Value::new_uint32(1)),
                     ]),
                 )
             };

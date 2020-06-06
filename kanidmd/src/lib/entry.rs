@@ -381,7 +381,7 @@ impl Entry<EntryInit, EntryNew> {
             .map(|(k, vs)| {
                 let attr = k.to_lowercase();
                 let vv: BTreeSet<Value> = match attr.as_str() {
-                    "name" | "attributename" | "classname" | "version" | "domain" | "domain_name" => {
+                    "name" | "attributename" | "classname" | "domain" | "domain_name" => {
                         vs.into_iter().map(|v| Value::new_iutf8(v)).collect()
                     }
                     "userid" | "uidnumber" => {
@@ -451,7 +451,7 @@ impl Entry<EntryInit, EntryNew> {
                             })
                         }).collect()
                     }
-                    "gidnumber" => {
+                    "gidnumber" | "version" => {
                         vs.into_iter().map(|v| {
                             Value::new_uint32_str(v.as_str())
                             .unwrap_or_else(|| {

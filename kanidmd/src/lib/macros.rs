@@ -26,7 +26,7 @@ macro_rules! run_test {
             }
         };
         let schema_outer = Schema::new(&mut audit).expect("Failed to init schema");
-        let test_server = QueryServer::new(be, schema_outer);
+        let test_server = QueryServer::new(be, schema_outer, duration_from_epoch_now());
 
         test_server
             .initialise_helper(&mut audit, duration_from_epoch_now())

@@ -36,6 +36,8 @@ impl TryFrom<&str> for IndexType {
             "EQUALITY" => Ok(IndexType::EQUALITY),
             "PRESENCE" => Ok(IndexType::PRESENCE),
             "SUBSTRING" => Ok(IndexType::SUBSTRING),
+            // UUID map?
+            // UUID rev map?
             _ => Err(()),
         }
     }

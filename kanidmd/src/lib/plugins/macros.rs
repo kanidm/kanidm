@@ -17,7 +17,7 @@ macro_rules! setup_test {
         let be = Backend::new($au, "", 1).expect("Failed to init BE");
 
         let schema_outer = Schema::new($au).expect("Failed to init schema");
-        let qs = QueryServer::new(be, schema_outer);
+        let qs = QueryServer::new(be, schema_outer, duration_from_epoch_now());
         qs.initialise_helper($au, duration_from_epoch_now())
             .expect("init failed!");
 

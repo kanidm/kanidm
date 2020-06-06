@@ -1061,8 +1061,8 @@ impl<'a> SchemaWriteTransaction<'a> {
                     multivalue: false,
                     unique: false,
                     phantom: false,
-                    index: vec![IndexType::EQUALITY],
-                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                    index: vec![],
+                    syntax: SyntaxType::UINT32,
                 },
             );
             // Domain for sysinfo
