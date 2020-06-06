@@ -43,7 +43,7 @@ macro_rules! run_idm_test {
         let be = Backend::new(&mut audit, "", 1).expect("Failed to init be");
         let schema_outer = Schema::new(&mut audit).expect("Failed to init schema");
 
-        let test_server = QueryServer::new(be, schema_outer, duration_from_epoch_now());
+        let test_server = QueryServer::new(be, schema_outer);
         test_server
             .initialise_helper(&mut audit, duration_from_epoch_now())
             .expect("init failed");

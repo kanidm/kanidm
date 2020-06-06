@@ -19,6 +19,7 @@ use kanidm_proto::v1::Filter as ProtoFilter;
 use kanidm_proto::v1::{OperationError, SchemaError};
 use std::cmp::{Ordering, PartialOrd};
 use std::collections::BTreeSet;
+use std::iter;
 
 use uuid::Uuid;
 
@@ -67,13 +68,17 @@ pub fn f_self<'a>() -> FC<'a> {
 }
 
 pub fn f_id(id: &str) -> FC<'static> {
-    match Uuid::parse_str(id) {
-        Ok(u) => FC::Or(vec![
-            FC::Eq("name", PartialValue::new_iutf8s(id)),
-            FC::Eq("uuid", PartialValue::new_uuid(u)),
-        ]),
-        Err(_) => FC::Eq("name", PartialValue::new_iutf8s(id)),
-    }
+    let uf = Uuid::parse_str(id)
+        .ok()
+        .map(|u| FC::Eq("uuid", PartialValue::new_uuid(u)));
+    let spnf = PartialValue::new_spn_s(id).map(|spn| FC::Eq("spn", spn));
+    let nf = FC::Eq("name", PartialValue::new_iname(id));
+    let f: Vec<_> = iter::once(uf)
+        .chain(iter::once(spnf))
+        .filter_map(|v| v)
+        .chain(iter::once(nf))
+        .collect();
+    FC::Or(f)
 }
 
 // This is the short-form for tests and internal filters that can then
@@ -496,7 +501,7 @@ impl FilterComp {
                 match schema_attributes.get(&attr_norm) {
                     Some(schema_a) => {
                         schema_a
-                            .validate_partialvalue(&value)
+                            .validate_partialvalue(attr_norm.as_str(), &value)
                             // Okay, it worked, transform to a filter component
                             .map(|_| FilterComp::Eq(attr_norm, value.clone()))
                         // On error, pass the error back out.
@@ -511,7 +516,7 @@ impl FilterComp {
                 match schema_attributes.get(&attr_norm) {
                     Some(schema_a) => {
                         schema_a
-                            .validate_partialvalue(&value)
+                            .validate_partialvalue(attr_norm.as_str(), &value)
                             // Okay, it worked, transform to a filter component
                             .map(|_| FilterComp::Sub(attr_norm, value.clone()))
                         // On error, pass the error back out.
@@ -537,7 +542,7 @@ impl FilterComp {
                 match schema_attributes.get(&attr_norm) {
                     Some(schema_a) => {
                         schema_a
-                            .validate_partialvalue(&value)
+                            .validate_partialvalue(attr_norm.as_str(), &value)
                             // Okay, it worked, transform to a filter component
                             .map(|_| FilterComp::LessThan(attr_norm, value.clone()))
                         // On error, pass the error back out.

@@ -179,7 +179,7 @@ impl SchemaAttribute {
     // TODO: There may be a difference between a value and a filter value on complex
     // types - IE a complex type may have multiple parts that are secret, but a filter
     // on that may only use a single tagged attribute for example.
-    pub fn validate_partialvalue(&self, v: &PartialValue) -> Result<(), SchemaError> {
+    pub fn validate_partialvalue(&self, a: &str, v: &PartialValue) -> Result<(), SchemaError> {
         let r = match self.syntax {
             SyntaxType::BOOLEAN => v.is_bool(),
             SyntaxType::SYNTAX_ID => v.is_syntax(),
@@ -187,6 +187,7 @@ impl SchemaAttribute {
             SyntaxType::UUID => v.is_uuid(),
             SyntaxType::REFERENCE_UUID => v.is_refer(),
             SyntaxType::UTF8STRING_INSENSITIVE => v.is_iutf8(),
+            SyntaxType::UTF8STRING_INAME => v.is_iname(),
             SyntaxType::UTF8STRING => v.is_utf8(),
             SyntaxType::JSON_FILTER => v.is_json_filter(),
             SyntaxType::CREDENTIAL => v.is_credential(),
@@ -199,31 +200,29 @@ impl SchemaAttribute {
         if r {
             Ok(())
         } else {
-            Err(SchemaError::InvalidAttributeSyntax)
+            Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
         }
     }
 
-    pub fn validate_value(&self, v: &Value) -> Result<(), SchemaError> {
+    pub fn validate_value(&self, a: &str, v: &Value) -> Result<(), SchemaError> {
         let r = v.validate();
-        // TODO: Fix this validation - I think due to the design of Value it may not
-        // be possible for this to fail due to how we parse.
         if cfg!(test) {
             assert!(r);
         }
         if r {
             let pv: &PartialValue = v.borrow();
-            self.validate_partialvalue(pv)
+            self.validate_partialvalue(a, pv)
         } else {
-            Err(SchemaError::InvalidAttributeSyntax)
+            Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
         }
     }
 
-    pub fn validate_ava(&self, ava: &BTreeSet<Value>) -> Result<(), SchemaError> {
+    pub fn validate_ava(&self, a: &str, ava: &BTreeSet<Value>) -> Result<(), SchemaError> {
         // ltrace!("Checking for valid {:?} -> {:?}", self.name, ava);
         // Check multivalue
         if !self.multivalue && ava.len() > 1 {
             // lrequest_error!("Ava len > 1 on single value attribute!");
-            return Err(SchemaError::InvalidAttributeSyntax);
+            return Err(SchemaError::InvalidAttributeSyntax(a.to_string()));
         };
         // If syntax, check the type is correct
         match self.syntax {
@@ -232,7 +231,7 @@ impl SchemaAttribute {
                     if v.is_bool() {
                         Ok(())
                     } else {
-                        Err(SchemaError::InvalidAttributeSyntax)
+                        Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
                     }
                 })
             }),
@@ -241,7 +240,7 @@ impl SchemaAttribute {
                     if v.is_syntax() {
                         Ok(())
                     } else {
-                        Err(SchemaError::InvalidAttributeSyntax)
+                        Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
                     }
                 })
             }),
@@ -250,7 +249,7 @@ impl SchemaAttribute {
                     if v.is_uuid() {
                         Ok(())
                     } else {
-                        Err(SchemaError::InvalidAttributeSyntax)
+                        Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
                     }
                 })
             }),
@@ -260,7 +259,7 @@ impl SchemaAttribute {
                     if v.is_refer() {
                         Ok(())
                     } else {
-                        Err(SchemaError::InvalidAttributeSyntax)
+                        Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
                     }
                 })
             }),
@@ -269,7 +268,7 @@ impl SchemaAttribute {
                     if v.is_index() {
                         Ok(())
                     } else {
-                        Err(SchemaError::InvalidAttributeSyntax)
+                        Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
                     }
                 })
             }),
@@ -278,7 +277,16 @@ impl SchemaAttribute {
                     if v.is_insensitive_utf8() {
                         Ok(())
                     } else {
-                        Err(SchemaError::InvalidAttributeSyntax)
+                        Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
+                    }
+                })
+            }),
+            SyntaxType::UTF8STRING_INAME => ava.iter().fold(Ok(()), |acc, v| {
+                acc.and_then(|_| {
+                    if v.is_iname() {
+                        Ok(())
+                    } else {
+                        Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
                     }
                 })
             }),
@@ -287,7 +295,7 @@ impl SchemaAttribute {
                     if v.is_utf8() {
                         Ok(())
                     } else {
-                        Err(SchemaError::InvalidAttributeSyntax)
+                        Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
                     }
                 })
             }),
@@ -296,7 +304,7 @@ impl SchemaAttribute {
                     if v.is_json_filter() {
                         Ok(())
                     } else {
-                        Err(SchemaError::InvalidAttributeSyntax)
+                        Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
                     }
                 })
             }),
@@ -305,7 +313,7 @@ impl SchemaAttribute {
                     if v.is_credential() {
                         Ok(())
                     } else {
-                        Err(SchemaError::InvalidAttributeSyntax)
+                        Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
                     }
                 })
             }),
@@ -314,7 +322,7 @@ impl SchemaAttribute {
                     if v.is_radius_string() {
                         Ok(())
                     } else {
-                        Err(SchemaError::InvalidAttributeSyntax)
+                        Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
                     }
                 })
             }),
@@ -323,7 +331,7 @@ impl SchemaAttribute {
                     if v.is_sshkey() {
                         Ok(())
                     } else {
-                        Err(SchemaError::InvalidAttributeSyntax)
+                        Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
                     }
                 })
             }),
@@ -332,7 +340,7 @@ impl SchemaAttribute {
                     if v.is_spn() {
                         Ok(())
                     } else {
-                        Err(SchemaError::InvalidAttributeSyntax)
+                        Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
                     }
                 })
             }),
@@ -341,7 +349,7 @@ impl SchemaAttribute {
                     if v.is_uint32() {
                         Ok(())
                     } else {
-                        Err(SchemaError::InvalidAttributeSyntax)
+                        Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
                     }
                 })
             }),
@@ -350,7 +358,7 @@ impl SchemaAttribute {
                     if v.is_cid() {
                         Ok(())
                     } else {
-                        Err(SchemaError::InvalidAttributeSyntax)
+                        Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
                     }
                 })
             }),
@@ -679,8 +687,8 @@ impl<'a> SchemaWriteTransaction<'a> {
                     multivalue: false,
                     unique: true,
                     phantom: false,
-                    index: vec![IndexType::EQUALITY],
-                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                    index: vec![IndexType::EQUALITY, IndexType::PRESENCE],
+                    syntax: SyntaxType::UTF8STRING_INAME,
                 },
             );
             self.attributes.insert(
@@ -1077,7 +1085,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     unique: false,
                     phantom: false,
                     index: vec![IndexType::EQUALITY],
-                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                    syntax: SyntaxType::UTF8STRING_INAME,
                 },
             );
             self.attributes.insert(
@@ -1734,14 +1742,20 @@ mod tests {
             syntax: SyntaxType::UTF8STRING_INSENSITIVE,
         };
 
-        let r1 = single_value_string.validate_ava(&btreeset![Value::new_iutf8s("test")]);
+        let r1 =
+            single_value_string.validate_ava("single_value", &btreeset![Value::new_iutf8s("test")]);
         assert_eq!(r1, Ok(()));
 
-        let r2 = single_value_string.validate_ava(&btreeset![
-            Value::new_iutf8s("test1"),
-            Value::new_iutf8s("test2")
-        ]);
-        assert_eq!(r2, Err(SchemaError::InvalidAttributeSyntax));
+        let r2 = single_value_string.validate_ava(
+            "single_value",
+            &btreeset![Value::new_iutf8s("test1"), Value::new_iutf8s("test2")],
+        );
+        assert_eq!(
+            r2,
+            Err(SchemaError::InvalidAttributeSyntax(
+                "single_value".to_string()
+            ))
+        );
 
         // test multivalue string, boolean
 
@@ -1757,10 +1771,10 @@ mod tests {
             syntax: SyntaxType::UTF8STRING,
         };
 
-        let r5 = multi_value_string.validate_ava(&btreeset![
-            Value::new_utf8s("test1"),
-            Value::new_utf8s("test2")
-        ]);
+        let r5 = multi_value_string.validate_ava(
+            "mv_string",
+            &btreeset![Value::new_utf8s("test1"), Value::new_utf8s("test2")],
+        );
         assert_eq!(r5, Ok(()));
 
         let multi_value_boolean = SchemaAttribute {
@@ -1775,15 +1789,23 @@ mod tests {
             syntax: SyntaxType::BOOLEAN,
         };
 
-        let r3 = multi_value_boolean.validate_ava(&btreeset![
-            Value::new_bool(true),
-            Value::new_iutf8s("test1"),
-            Value::new_iutf8s("test2")
-        ]);
-        assert_eq!(r3, Err(SchemaError::InvalidAttributeSyntax));
+        let r3 = multi_value_boolean.validate_ava(
+            "mv_bool",
+            &btreeset![
+                Value::new_bool(true),
+                Value::new_iutf8s("test1"),
+                Value::new_iutf8s("test2")
+            ],
+        );
+        assert_eq!(
+            r3,
+            Err(SchemaError::InvalidAttributeSyntax("mv_bool".to_string()))
+        );
 
-        let r4 = multi_value_boolean
-            .validate_ava(&btreeset![Value::new_bool(true), Value::new_bool(false)]);
+        let r4 = multi_value_boolean.validate_ava(
+            "mv_bool",
+            &btreeset![Value::new_bool(true), Value::new_bool(false)],
+        );
         assert_eq!(r4, Ok(()));
 
         // syntax_id and index_type values
@@ -1799,12 +1821,18 @@ mod tests {
             syntax: SyntaxType::SYNTAX_ID,
         };
 
-        let r6 =
-            single_value_syntax.validate_ava(&btreeset![Value::new_syntaxs("UTF8STRING").unwrap()]);
+        let r6 = single_value_syntax.validate_ava(
+            "sv_syntax",
+            &btreeset![Value::new_syntaxs("UTF8STRING").unwrap()],
+        );
         assert_eq!(r6, Ok(()));
 
-        let r7 = single_value_syntax.validate_ava(&btreeset![Value::new_utf8s("thaeountaheu")]);
-        assert_eq!(r7, Err(SchemaError::InvalidAttributeSyntax));
+        let r7 = single_value_syntax
+            .validate_ava("sv_syntax", &btreeset![Value::new_utf8s("thaeountaheu")]);
+        assert_eq!(
+            r7,
+            Err(SchemaError::InvalidAttributeSyntax("sv_syntax".to_string()))
+        );
 
         let single_value_index = SchemaAttribute {
             // class: vec![String::from("attributetype")],
@@ -1818,12 +1846,18 @@ mod tests {
             syntax: SyntaxType::INDEX_ID,
         };
         //
-        let r8 =
-            single_value_index.validate_ava(&btreeset![Value::new_indexs("EQUALITY").unwrap()]);
+        let r8 = single_value_index.validate_ava(
+            "sv_index",
+            &btreeset![Value::new_indexs("EQUALITY").unwrap()],
+        );
         assert_eq!(r8, Ok(()));
 
-        let r9 = single_value_index.validate_ava(&btreeset![Value::new_utf8s("thaeountaheu")]);
-        assert_eq!(r9, Err(SchemaError::InvalidAttributeSyntax));
+        let r9 = single_value_index
+            .validate_ava("sv_index", &btreeset![Value::new_utf8s("thaeountaheu")]);
+        assert_eq!(
+            r9,
+            Err(SchemaError::InvalidAttributeSyntax("sv_index".to_string()))
+        );
     }
 
     #[test]
@@ -1945,7 +1979,9 @@ mod tests {
 
         assert_eq!(
             e_attr_invalid_syn.validate(&schema),
-            Err(SchemaError::InvalidAttributeSyntax)
+            Err(SchemaError::InvalidAttributeSyntax(
+                "multivalue".to_string()
+            ))
         );
 
         // You may not have the phantom.
@@ -2057,7 +2093,9 @@ mod tests {
 
         assert_eq!(
             e_extensible_bad.validate(&schema),
-            Err(SchemaError::InvalidAttributeSyntax)
+            Err(SchemaError::InvalidAttributeSyntax(
+                "multivalue".to_string()
+            ))
         );
 
         // Extensible doesn't mean you can have the phantoms
@@ -2113,7 +2151,9 @@ mod tests {
         let f_bool = filter_all!(f_eq("multivalue", PartialValue::new_iutf8s("zzzz")));
         assert_eq!(
             f_bool.validate(&schema),
-            Err(SchemaError::InvalidAttributeSyntax)
+            Err(SchemaError::InvalidAttributeSyntax(
+                "multivalue".to_string()
+            ))
         );
         // test insensitive values
         let f_insense = filter_all!(f_eq("class", PartialValue::new_class("AttributeType")));
@@ -2130,7 +2170,9 @@ mod tests {
         )]));
         assert_eq!(
             f_or.validate(&schema),
-            Err(SchemaError::InvalidAttributeSyntax)
+            Err(SchemaError::InvalidAttributeSyntax(
+                "multivalue".to_string()
+            ))
         );
         let f_or_mult = filter_all!(f_and!([
             f_eq("class", PartialValue::new_class("attributetype")),
@@ -2138,7 +2180,9 @@ mod tests {
         ]));
         assert_eq!(
             f_or_mult.validate(&schema),
-            Err(SchemaError::InvalidAttributeSyntax)
+            Err(SchemaError::InvalidAttributeSyntax(
+                "multivalue".to_string()
+            ))
         );
         // Test mixed case attr name - this is a pass, due to normalisation
         let f_or_ok = filter_all!(f_andnot(f_and!([

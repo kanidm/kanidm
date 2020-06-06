@@ -304,11 +304,11 @@ mod tests {
             preload,
             filter!(f_or!([f_eq(
                 "name",
-                PartialValue::new_iutf8s("testgroup_b")
+                PartialValue::new_iname("testgroup_b")
             ),])),
             ModifyList::new_list(vec![
                 Modify::Purged("name".to_string()),
-                Modify::Present("name".to_string(), Value::new_iutf8s("testgroup_a"))
+                Modify::Present("name".to_string(), Value::new_iname_s("testgroup_a"))
             ]),
             None,
             |_, _| {}
@@ -350,12 +350,12 @@ mod tests {
             ))),
             preload,
             filter!(f_or!([
-                f_eq("name", PartialValue::new_iutf8s("testgroup_a")),
-                f_eq("name", PartialValue::new_iutf8s("testgroup_b")),
+                f_eq("name", PartialValue::new_iname("testgroup_a")),
+                f_eq("name", PartialValue::new_iname("testgroup_b")),
             ])),
             ModifyList::new_list(vec![
                 Modify::Purged("name".to_string()),
-                Modify::Present("name".to_string(), Value::new_iutf8s("testgroup"))
+                Modify::Present("name".to_string(), Value::new_iname_s("testgroup"))
             ]),
             None,
             |_, _| {}

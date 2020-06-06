@@ -21,7 +21,7 @@ pub enum SchemaError {
     #[error("")]
     InvalidAttribute(String),
     #[error("")]
-    InvalidAttributeSyntax,
+    InvalidAttributeSyntax(String),
     #[error("")]
     EmptyFilter,
     #[error("The schema has become internally inconsistent. You must restart and investigate.")]
@@ -241,13 +241,19 @@ pub struct Entry {
 #[serde(rename_all = "lowercase")]
 pub enum Filter {
     // This is attr - value
+    #[serde(alias = "Eq")]
     Eq(String, String),
+    #[serde(alias = "Sub")]
     Sub(String, String),
+    #[serde(alias = "Pres")]
     Pres(String),
+    #[serde(alias = "Or")]
     Or(Vec<Filter>),
+    #[serde(alias = "And")]
     And(Vec<Filter>),
+    #[serde(alias = "AndNot")]
     AndNot(Box<Filter>),
-    #[serde(rename = "self")]
+    #[serde(rename = "self", alias = "Self")]
     SelfUUID,
 }
 

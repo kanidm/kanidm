@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use kanidm::config::Configuration;
 use kanidm::core::{
     backup_server_core, create_server_core, domain_rename_core, recover_account_core,
-    reindex_server_core, reset_sid_core, restore_server_core, verify_server_core,
+    reindex_server_core, restore_server_core, verify_server_core,
 };
 
 use log::{error, info};
@@ -77,8 +77,8 @@ enum Opt {
     Verify(CommonOpt),
     #[structopt(name = "recover_account")]
     RecoverAccount(RecoverAccountOpt),
-    #[structopt(name = "reset_server_id")]
-    ResetServerId(CommonOpt),
+    // #[structopt(name = "reset_server_id")]
+    // ResetServerId(CommonOpt),
     #[structopt(name = "reindex")]
     Reindex(CommonOpt),
     #[structopt(name = "domain_name_change")]
@@ -89,7 +89,7 @@ impl Opt {
     fn debug(&self) -> bool {
         match self {
             Opt::Server(sopt) => sopt.commonopts.debug,
-            Opt::Verify(sopt) | Opt::ResetServerId(sopt) | Opt::Reindex(sopt) => sopt.debug,
+            Opt::Verify(sopt) | Opt::Reindex(sopt) => sopt.debug,
             Opt::Backup(bopt) => bopt.commonopts.debug,
             Opt::Restore(ropt) => ropt.commonopts.debug,
             Opt::RecoverAccount(ropt) => ropt.commonopts.debug,
@@ -128,7 +128,6 @@ async fn main() {
             config.update_tls(&sopt.ca_path, &sopt.cert_path, &sopt.key_path);
             config.update_bind(&sopt.bind);
 
-            let _sys = actix::System::new("kanidm-server");
             let sctx = create_server_core(config);
             match sctx {
                 Ok(sctx) => {
@@ -184,12 +183,14 @@ async fn main() {
 
             recover_account_core(config, raopt.name, password);
         }
+        /*
         Opt::ResetServerId(vopt) => {
-            info!("Resetting server id. THIS MAY BREAK REPLICATION");
+            info!("Resetting server id. THIS WILL BREAK REPLICATION");
 
             config.update_db_path(&vopt.db_path);
             reset_sid_core(config);
         }
+        */
         Opt::Reindex(copt) => {
             info!("Running in reindex mode ...");
 

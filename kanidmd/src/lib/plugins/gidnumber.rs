@@ -22,8 +22,8 @@ const GID_SYSTEM_NUMBER_MIN: u32 = 65536;
 const GID_SAFETY_NUMBER_MIN: u32 = 1000;
 
 lazy_static! {
-    static ref CLASS_POSIXGROUP: PartialValue = PartialValue::new_iutf8s("posixgroup");
-    static ref CLASS_POSIXACCOUNT: PartialValue = PartialValue::new_iutf8s("posixaccount");
+    static ref CLASS_POSIXGROUP: PartialValue = PartialValue::new_class("posixgroup");
+    static ref CLASS_POSIXACCOUNT: PartialValue = PartialValue::new_class("posixaccount");
 }
 
 pub struct GidNumber {}
@@ -209,7 +209,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iutf8s("testperson"))),
+            filter!(f_eq("name", PartialValue::new_iname("testperson"))),
             modlist!([m_pres("class", &Value::new_class("posixgroup"))]),
             None,
             |au, qs_write: &mut QueryServerWriteTransaction| check_gid(
@@ -242,7 +242,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iutf8s("testperson"))),
+            filter!(f_eq("name", PartialValue::new_iname("testperson"))),
             modlist!([m_purge("gidnumber")]),
             None,
             |au, qs_write: &mut QueryServerWriteTransaction| check_gid(
@@ -277,7 +277,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iutf8s("testperson"))),
+            filter!(f_eq("name", PartialValue::new_iname("testperson"))),
             modlist!([
                 m_purge("gidnumber"),
                 m_pres("gidnumber", &Value::new_uint32(2000))

@@ -52,6 +52,7 @@ pub struct DbValueTaggedStringV1 {
 pub enum DbValueV1 {
     U8(String),
     I8(String),
+    N8(String),
     UU(Uuid),
     BO(bool),
     SY(usize),

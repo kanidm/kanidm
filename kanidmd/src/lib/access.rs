@@ -1852,9 +1852,9 @@ mod tests {
                 "test_acp",
                 "d38640c4-0254-49f9-99b7-8ba7d0233f3d",
                 // apply to admin only
-                filter_valid!(f_eq("name", PartialValue::new_iutf8s("admin"))),
+                filter_valid!(f_eq("name", PartialValue::new_iname("admin"))),
                 // Allow admin to read only testperson1
-                filter_valid!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
+                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
                 // In that read, admin may only view the "name" attribute, or query on
                 // the name attribute. Any other query (should be) rejected.
                 "name",
@@ -1928,7 +1928,7 @@ mod tests {
         let se_anon = unsafe {
             SearchEvent::new_impersonate_entry_ser(
                 JSON_ANONYMOUS_V1,
-                filter_all!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
+                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
             )
         };
 
@@ -1937,9 +1937,9 @@ mod tests {
                 "test_acp",
                 "d38640c4-0254-49f9-99b7-8ba7d0233f3d",
                 // apply to anonymous only
-                filter_valid!(f_eq("name", PartialValue::new_iutf8s("anonymous"))),
+                filter_valid!(f_eq("name", PartialValue::new_iname("anonymous"))),
                 // Allow anonymous to read only testperson1
-                filter_valid!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
+                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
                 // In that read, admin may only view the "name" attribute, or query on
                 // the name attribute. Any other query (should be) rejected.
                 "name",
@@ -1967,7 +1967,7 @@ mod tests {
         let mut se_anon = unsafe {
             SearchEvent::new_impersonate_entry_ser(
                 JSON_ANONYMOUS_V1,
-                filter_all!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
+                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
             )
         };
         // the requested attrs here.
@@ -1978,9 +1978,9 @@ mod tests {
                 "test_acp",
                 "d38640c4-0254-49f9-99b7-8ba7d0233f3d",
                 // apply to anonymous only
-                filter_valid!(f_eq("name", PartialValue::new_iutf8s("anonymous"))),
+                filter_valid!(f_eq("name", PartialValue::new_iname("anonymous"))),
                 // Allow anonymous to read only testperson1
-                filter_valid!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
+                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
                 // In that read, admin may only view the "name" attribute, or query on
                 // the name attribute. Any other query (should be) rejected.
                 "name uuid",
@@ -2024,23 +2024,23 @@ mod tests {
         let me_pres = unsafe {
             ModifyEvent::new_impersonate_entry_ser(
                 JSON_ADMIN_V1,
-                filter_all!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
-                modlist!([m_pres("name", &Value::new_iutf8s("value"))]),
+                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+                modlist!([m_pres("name", &Value::new_iname_s("value"))]),
             )
         };
         // Name rem
         let me_rem = unsafe {
             ModifyEvent::new_impersonate_entry_ser(
                 JSON_ADMIN_V1,
-                filter_all!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
-                modlist!([m_remove("name", &PartialValue::new_iutf8s("value"))]),
+                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+                modlist!([m_remove("name", &PartialValue::new_iname("value"))]),
             )
         };
         // Name purge
         let me_purge = unsafe {
             ModifyEvent::new_impersonate_entry_ser(
                 JSON_ADMIN_V1,
-                filter_all!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
+                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
                 modlist!([m_purge("name")]),
             )
         };
@@ -2049,7 +2049,7 @@ mod tests {
         let me_pres_class = unsafe {
             ModifyEvent::new_impersonate_entry_ser(
                 JSON_ADMIN_V1,
-                filter_all!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
+                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
                 modlist!([m_pres("class", &Value::new_class("account"))]),
             )
         };
@@ -2057,7 +2057,7 @@ mod tests {
         let me_rem_class = unsafe {
             ModifyEvent::new_impersonate_entry_ser(
                 JSON_ADMIN_V1,
-                filter_all!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
+                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
                 modlist!([m_remove("class", &PartialValue::new_class("account"))]),
             )
         };
@@ -2065,7 +2065,7 @@ mod tests {
         let me_purge_class = unsafe {
             ModifyEvent::new_impersonate_entry_ser(
                 JSON_ADMIN_V1,
-                filter_all!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
+                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
                 modlist!([m_purge("class")]),
             )
         };
@@ -2076,9 +2076,9 @@ mod tests {
                 "test_modify_allow",
                 "87bfe9b8-7600-431e-a492-1dde64bbc455",
                 // Apply to admin
-                filter_valid!(f_eq("name", PartialValue::new_iutf8s("admin"))),
+                filter_valid!(f_eq("name", PartialValue::new_iname("admin"))),
                 // To modify testperson
-                filter_valid!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
+                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
                 // Allow pres name and class
                 "name class",
                 // Allow rem name and class
@@ -2093,9 +2093,9 @@ mod tests {
                 "test_modify_deny",
                 "87bfe9b8-7600-431e-a492-1dde64bbc456",
                 // Apply to admin
-                filter_valid!(f_eq("name", PartialValue::new_iutf8s("admin"))),
+                filter_valid!(f_eq("name", PartialValue::new_iname("admin"))),
                 // To modify testperson
-                filter_valid!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
+                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
                 // Allow pres name and class
                 "member class",
                 // Allow rem name and class
@@ -2110,9 +2110,9 @@ mod tests {
                 "test_modify_no_class",
                 "87bfe9b8-7600-431e-a492-1dde64bbc457",
                 // Apply to admin
-                filter_valid!(f_eq("name", PartialValue::new_iutf8s("admin"))),
+                filter_valid!(f_eq("name", PartialValue::new_iname("admin"))),
                 // To modify testperson
-                filter_valid!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
+                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
                 // Allow pres name and class
                 "name class",
                 // Allow rem name and class
@@ -2243,10 +2243,10 @@ mod tests {
                 "test_create",
                 "87bfe9b8-7600-431e-a492-1dde64bbc453",
                 // Apply to admin
-                filter_valid!(f_eq("name", PartialValue::new_iutf8s("admin"))),
+                filter_valid!(f_eq("name", PartialValue::new_iname("admin"))),
                 // To create matching filter testperson
                 // Can this be empty?
-                filter_valid!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
+                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
                 // classes
                 "account",
                 // attrs
@@ -2259,9 +2259,9 @@ mod tests {
                 "test_create_2",
                 "87bfe9b8-7600-431e-a492-1dde64bbc454",
                 // Apply to admin
-                filter_valid!(f_eq("name", PartialValue::new_iutf8s("admin"))),
+                filter_valid!(f_eq("name", PartialValue::new_iname("admin"))),
                 // To create matching filter testperson
-                filter_valid!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
+                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
                 // classes
                 "group",
                 // attrs
@@ -2311,14 +2311,14 @@ mod tests {
         let de_admin = unsafe {
             DeleteEvent::new_impersonate_entry_ser(
                 JSON_ADMIN_V1,
-                filter_all!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
+                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
             )
         };
 
         let de_anon = unsafe {
             DeleteEvent::new_impersonate_entry_ser(
                 JSON_ANONYMOUS_V1,
-                filter_all!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
+                filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
             )
         };
 
@@ -2327,9 +2327,9 @@ mod tests {
                 "test_delete",
                 "87bfe9b8-7600-431e-a492-1dde64bbc453",
                 // Apply to admin
-                filter_valid!(f_eq("name", PartialValue::new_iutf8s("admin"))),
+                filter_valid!(f_eq("name", PartialValue::new_iname("admin"))),
                 // To delete testperson
-                filter_valid!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
+                filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
             )
         };
 

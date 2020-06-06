@@ -6,8 +6,10 @@ use crate::be::{IdRawEntry, IDL};
 use crate::entry::{Entry, EntryCommitted, EntrySealed};
 use crate::value::IndexType;
 use concread::cache::arc::{Arc, ArcReadTxn, ArcWriteTxn};
+use concread::cowcell::*;
 use idlset::IDLBitRange;
 use kanidm_proto::v1::{ConsistencyError, OperationError};
+use std::time::Duration;
 use uuid::Uuid;
 
 // use std::borrow::Borrow;
@@ -45,6 +47,7 @@ pub struct IdlArcSqlite {
     db: IdlSqlite,
     entry_cache: Arc<u64, Box<Entry<EntrySealed, EntryCommitted>>>,
     idl_cache: Arc<IdlCacheKey, Box<IDLBitRange>>,
+    op_ts_max: CowCell<Option<Duration>>,
 }
 
 pub struct IdlArcSqliteReadTransaction<'a> {
@@ -57,6 +60,7 @@ pub struct IdlArcSqliteWriteTransaction<'a> {
     db: IdlSqliteWriteTransaction,
     entry_cache: ArcWriteTxn<'a, u64, Box<Entry<EntrySealed, EntryCommitted>>>,
     idl_cache: ArcWriteTxn<'a, IdlCacheKey, Box<IDLBitRange>>,
+    op_ts_max: CowCellWriteTxn<'a, Option<Duration>>,
 }
 
 macro_rules! get_identry {
@@ -304,9 +308,11 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
                 db,
                 entry_cache,
                 idl_cache,
+                op_ts_max,
             } = self;
             // Undo the caches in the reverse order.
             db.commit(audit).and_then(|r| {
+                op_ts_max.commit();
                 idl_cache.commit();
                 entry_cache.commit();
                 Ok(r)
@@ -442,6 +448,18 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         self.db.write_db_d_uuid(nsid)
     }
 
+    pub fn set_db_ts_max(&mut self, ts: &Duration) -> Result<(), OperationError> {
+        *self.op_ts_max = Some(ts.clone());
+        self.db.set_db_ts_max(ts)
+    }
+
+    pub fn get_db_ts_max(&self) -> Result<Option<Duration>, OperationError> {
+        match *self.op_ts_max {
+            Some(ts) => Ok(Some(ts.clone())),
+            None => self.db.get_db_ts_max(),
+        }
+    }
+
     pub(crate) fn get_db_index_version(&self) -> i64 {
         self.db.get_db_index_version()
     }
@@ -473,10 +491,13 @@ impl IdlArcSqlite {
             DEFAULT_CACHE_WMISS,
         );
 
+        let op_ts_max = CowCell::new(None);
+
         Ok(IdlArcSqlite {
             db,
             entry_cache,
             idl_cache,
+            op_ts_max,
         })
     }
 
@@ -496,11 +517,13 @@ impl IdlArcSqlite {
         // IMPORTANT! Always take entrycache FIRST
         let entry_cache_write = self.entry_cache.write();
         let idl_cache_write = self.idl_cache.write();
+        let op_ts_max_write = self.op_ts_max.write();
         let db_write = self.db.write();
         IdlArcSqliteWriteTransaction {
             db: db_write,
             entry_cache: entry_cache_write,
             idl_cache: idl_cache_write,
+            op_ts_max: op_ts_max_write,
         }
     }
 

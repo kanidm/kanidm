@@ -1256,7 +1256,7 @@ fn setup_qs_idms(
     };
 
     // Create a query_server implementation
-    let query_server = QueryServer::new(be, schema, duration_from_epoch_now());
+    let query_server = QueryServer::new(be, schema);
 
     // TODO #62: Should the IDM parts be broken out to the IdmServer?
     // What's important about this initial setup here is that it also triggers
@@ -1312,6 +1312,7 @@ pub fn restore_server_core(config: Configuration, dst_path: &str) {
     let schema = match Schema::new(&mut audit) {
         Ok(s) => s,
         Err(e) => {
+            audit.write_log();
             error!("Failed to setup in memory schema: {:?}", e);
             std::process::exit(1);
         }
@@ -1330,7 +1331,7 @@ pub fn restore_server_core(config: Configuration, dst_path: &str) {
         error!("Failed to restore database: {:?}", r);
         std::process::exit(1);
     }
-    info!("Restore Success!");
+    info!("Database loaded successfully");
 
     info!("Attempting to init query server ...");
 
@@ -1354,10 +1355,13 @@ pub fn restore_server_core(config: Configuration, dst_path: &str) {
     match r {
         Ok(_) => info!("Reindex Success!"),
         Err(e) => {
+            audit.write_log();
             error!("Restore failed: {:?}", e);
             std::process::exit(1);
         }
     };
+
+    info!("✅ Restore Success!");
 }
 
 pub fn reindex_server_core(config: Configuration) {
@@ -1462,6 +1466,7 @@ pub fn domain_rename_core(config: Configuration, new_domain_name: String) {
     };
 }
 
+/*
 pub fn reset_sid_core(config: Configuration) {
     let mut audit = AuditScope::new("reset_sid_core", uuid::Uuid::new_v4());
     // Setup the be
@@ -1476,6 +1481,7 @@ pub fn reset_sid_core(config: Configuration) {
     audit.write_log();
     info!("New Server ID: {:?}", nsid);
 }
+*/
 
 pub fn verify_server_core(config: Configuration) {
     let mut audit = AuditScope::new("server_verify", uuid::Uuid::new_v4());
@@ -1495,7 +1501,7 @@ pub fn verify_server_core(config: Configuration) {
             return;
         }
     };
-    let server = QueryServer::new(be, schema_mem, duration_from_epoch_now());
+    let server = QueryServer::new(be, schema_mem);
 
     // Run verifications.
     let r = server.verify(&mut audit);
@@ -1868,6 +1874,7 @@ pub fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> {
     };
 
     server.expect("Failed to initialise server!").run();
+    info!("ready to rock! 🤘");
 
     Ok(ServerCtx::new(System::current(), log_tx, log_thread))
 }

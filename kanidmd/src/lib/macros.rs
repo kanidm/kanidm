@@ -1,4 +1,44 @@
 #[cfg(test)]
+macro_rules! run_test_no_init {
+    ($test_fn:expr) => {{
+        use crate::audit::AuditScope;
+        use crate::be::Backend;
+        use crate::schema::Schema;
+        use crate::server::QueryServer;
+        use crate::utils::duration_from_epoch_now;
+
+        use env_logger;
+        ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
+        let _ = env_logger::builder()
+            .format_timestamp(None)
+            .format_level(false)
+            .is_test(true)
+            .try_init();
+
+        let mut audit = AuditScope::new("run_test", uuid::Uuid::new_v4());
+
+        let be = match Backend::new(&mut audit, "", 1) {
+            Ok(be) => be,
+            Err(e) => {
+                audit.write_log();
+                error!("{:?}", e);
+                panic!()
+            }
+        };
+        let schema_outer = Schema::new(&mut audit).expect("Failed to init schema");
+        let test_server = QueryServer::new(be, schema_outer);
+
+        $test_fn(&test_server, &mut audit);
+        // Any needed teardown?
+        // Make sure there are no errors.
+        // let verifications = test_server.verify(&mut audit);
+        // ltrace!(audit, "Verification result: {:?}", verifications);
+        // assert!(verifications.len() == 0);
+        audit.write_log();
+    }};
+}
+
+#[cfg(test)]
 macro_rules! run_test {
     ($test_fn:expr) => {{
         use crate::audit::AuditScope;
@@ -26,7 +66,7 @@ macro_rules! run_test {
             }
         };
         let schema_outer = Schema::new(&mut audit).expect("Failed to init schema");
-        let test_server = QueryServer::new(be, schema_outer, duration_from_epoch_now());
+        let test_server = QueryServer::new(be, schema_outer);
 
         test_server
             .initialise_helper(&mut audit, duration_from_epoch_now())
@@ -38,6 +78,7 @@ macro_rules! run_test {
         let verifications = test_server.verify(&mut audit);
         ltrace!(audit, "Verification result: {:?}", verifications);
         assert!(verifications.len() == 0);
+        audit.write_log();
     }};
 }
 

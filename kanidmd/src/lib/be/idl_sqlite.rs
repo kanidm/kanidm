@@ -9,6 +9,7 @@ use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::OptionalExtension;
 use rusqlite::NO_PARAMS;
 use std::convert::{TryFrom, TryInto};
+use std::time::Duration;
 use uuid::Uuid;
 
 // use uuid::Uuid;
@@ -82,7 +83,7 @@ pub trait IdlSqliteTransaction {
         lperf_segment!(au, "be::idl_sqlite::get_identry", || {
             self.get_identry_raw(au, idl)?
                 .into_iter()
-                .map(|ide| ide.into_entry())
+                .map(|ide| ide.into_entry(au))
                 .collect()
         })
     }
@@ -727,6 +728,48 @@ impl IdlSqliteWriteTransaction {
             })
     }
 
+    pub fn set_db_ts_max(&self, ts: &Duration) -> Result<(), OperationError> {
+        let data = serde_cbor::to_vec(ts).map_err(|_e| OperationError::SerdeCborError)?;
+
+        self.conn
+            .execute_named(
+                "INSERT OR REPLACE INTO db_op_ts (id, data) VALUES(:id, :did)",
+                &[(":id", &1), (":did", &data)],
+            )
+            .map(|_| ())
+            .map_err(|e| {
+                error!("rusqlite error {:?}", e);
+
+                OperationError::SQLiteError
+            })
+    }
+
+    pub fn get_db_ts_max(&self) -> Result<Option<Duration>, OperationError> {
+        // Try to get a value.
+        let data: Option<Vec<u8>> = self
+            .get_conn()
+            .query_row_named("SELECT data FROM db_op_ts WHERE id = 1", &[], |row| {
+                row.get(0)
+            })
+            .optional()
+            .map(|e_opt| {
+                // If we have a row, we try to make it a sid
+                e_opt.map(|e| {
+                    let y: Vec<u8> = e;
+                    y
+                })
+                // If no sid, we return none.
+            })
+            .map_err(|_| OperationError::SQLiteError)?;
+
+        Ok(match data {
+            Some(d) => Some(
+                serde_cbor::from_slice(d.as_slice()).map_err(|_| OperationError::SerdeCborError)?,
+            ),
+            None => None,
+        })
+    }
+
     // ===== inner helpers =====
     // Some of these are not self due to use in new()
     fn get_db_version_key(&self, key: &str) -> i64 {
@@ -841,7 +884,11 @@ impl IdlSqliteWriteTransaction {
                 OperationError::SQLiteError
             );
             dbv_id2entry = 1;
-            ltrace!(audit, "dbv_id2entry migrated -> {}", dbv_id2entry);
+            ltrace!(
+                audit,
+                "dbv_id2entry migrated (id2entry, db_sid) -> {}",
+                dbv_id2entry
+            );
         }
         //   * if v1 -> add the domain uuid table
         if dbv_id2entry == 1 {
@@ -859,9 +906,31 @@ impl IdlSqliteWriteTransaction {
                 OperationError::SQLiteError
             );
             dbv_id2entry = 2;
-            ltrace!(audit, "dbv_id2entry migrated -> {}", dbv_id2entry);
+            ltrace!(audit, "dbv_id2entry migrated (db_did) -> {}", dbv_id2entry);
         }
-        //   * if v2 -> complete.
+        //   * if v2 -> add the op max ts table.
+        if dbv_id2entry == 2 {
+            try_audit!(
+                audit,
+                self.conn.execute(
+                    "CREATE TABLE IF NOT EXISTS db_op_ts (
+                        id INTEGER PRIMARY KEY ASC,
+                        data BLOB NOT NULL
+                    )
+                    ",
+                    NO_PARAMS,
+                ),
+                "sqlite error {:?}",
+                OperationError::SQLiteError
+            );
+            dbv_id2entry = 3;
+            ltrace!(
+                audit,
+                "dbv_id2entry migrated (db_op_ts) -> {}",
+                dbv_id2entry
+            );
+        }
+        //   * if v3 -> complete.
 
         try_audit!(
             audit,

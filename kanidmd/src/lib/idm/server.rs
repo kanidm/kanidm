@@ -157,7 +157,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
                     // because it associates to the nonce's etc which were all cached.
 
                     let filter_entry = filter!(f_or!([
-                        f_eq("name", PartialValue::new_iutf8s(init.name.as_str())),
+                        f_eq("name", PartialValue::new_iname(init.name.as_str())),
                         // This currently says invalid syntax, which is correct, but also
                         // annoying because it would be nice to search both ...
                         // f_eq("uuid", name.as_str()),
@@ -842,7 +842,7 @@ mod tests {
         // now modify and provide a primary credential.
         let me_inv_m = unsafe {
             ModifyEvent::new_internal_invalid(
-                filter!(f_eq("name", PartialValue::new_iutf8s("admin"))),
+                filter!(f_eq("name", PartialValue::new_iname("admin"))),
                 ModifyList::new_list(vec![Modify::Present(
                     "primary_credential".to_string(),
                     v_cred,
@@ -1076,7 +1076,7 @@ mod tests {
             // Modify admin to have posixaccount
             let me_posix = unsafe {
                 ModifyEvent::new_internal_invalid(
-                    filter!(f_eq("name", PartialValue::new_iutf8s("admin"))),
+                    filter!(f_eq("name", PartialValue::new_iname("admin"))),
                     ModifyList::new_list(vec![
                         Modify::Present("class".to_string(), Value::new_class("posixaccount")),
                         Modify::Present("gidnumber".to_string(), Value::new_uint32(2001)),
@@ -1148,7 +1148,7 @@ mod tests {
             // make the admin a valid posix account
             let me_posix = unsafe {
                 ModifyEvent::new_internal_invalid(
-                    filter!(f_eq("name", PartialValue::new_iutf8s("admin"))),
+                    filter!(f_eq("name", PartialValue::new_iname("admin"))),
                     ModifyList::new_list(vec![
                         Modify::Present("class".to_string(), Value::new_class("posixaccount")),
                         Modify::Present("gidnumber".to_string(), Value::new_uint32(2001)),
@@ -1185,7 +1185,7 @@ mod tests {
             let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
             let me_purge_up = unsafe {
                 ModifyEvent::new_internal_invalid(
-                    filter!(f_eq("name", PartialValue::new_iutf8s("admin"))),
+                    filter!(f_eq("name", PartialValue::new_iname("admin"))),
                     ModifyList::new_list(vec![Modify::Purged("unix_password".to_string())]),
                 )
             };

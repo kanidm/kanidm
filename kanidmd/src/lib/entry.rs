@@ -44,7 +44,7 @@ use kanidm_proto::v1::{OperationError, SchemaError};
 
 use crate::be::dbentry::{DbEntry, DbEntryV1, DbEntryVers};
 
-use std::collections::btree_map::{Iter as BTreeIter, IterMut as BTreeIterMut};
+use std::collections::btree_map::Iter as BTreeIter;
 use std::collections::btree_set::Iter as BTreeSetIter;
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
@@ -136,6 +136,7 @@ impl<'a> Iterator for EntryAvas<'a> {
     }
 }
 
+/*
 pub struct EntryAvasMut<'a> {
     inner: BTreeIterMut<'a, String, BTreeSet<Value>>,
 }
@@ -153,6 +154,7 @@ impl<'a> Iterator for EntryAvasMut<'a> {
         self.inner.size_hint()
     }
 }
+*/
 
 // Entry should have a lifecycle of types. This is Raw (modifiable) and Entry (verified).
 // This way, we can move between them, but only certain actions are possible on either
@@ -381,8 +383,11 @@ impl Entry<EntryInit, EntryNew> {
             .map(|(k, vs)| {
                 let attr = k.to_lowercase();
                 let vv: BTreeSet<Value> = match attr.as_str() {
-                    "name" | "attributename" | "classname" | "domain" | "domain_name" => {
+                    "attributename" | "classname" | "domain" => {
                         vs.into_iter().map(|v| Value::new_iutf8(v)).collect()
+                    }
+                    "name" | "domain_name" => {
+                        vs.into_iter().map(|v| Value::new_iname(v)).collect()
                     }
                     "userid" | "uidnumber" => {
                         warn!("WARNING: Use of unstabilised attributes userid/uidnumber");
@@ -676,7 +681,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
                                 return Err(SchemaError::PhantomAttribute(attr_name.clone()));
                             }
 
-                            let r = a_schema.validate_ava(avas);
+                            let r = a_schema.validate_ava(attr_name.as_str(), avas);
                             match r {
                                 Ok(_) => {}
                                 Err(e) => {
@@ -731,7 +736,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
                         Some(a_schema) => {
                             // Now, for each type we do a *full* check of the syntax
                             // and validity of the ava.
-                            let r = a_schema.validate_ava(avas);
+                            let r = a_schema.validate_ava(attr_name.as_str(), avas);
                             match r {
                                 Ok(_) => {}
                                 Err(e) => {
@@ -1136,7 +1141,7 @@ impl Entry<EntrySealed, EntryCommitted> {
         }
     }
 
-    pub fn from_dbentry(db_e: DbEntry, id: u64) -> Result<Self, ()> {
+    pub fn from_dbentry(au: &mut AuditScope, db_e: DbEntry, id: u64) -> Result<Self, ()> {
         // Convert attrs from db format to value
         let r_attrs: Result<BTreeMap<String, BTreeSet<Value>>, ()> = match db_e.ent {
             DbEntryVers::V1(v1) => v1
@@ -1147,7 +1152,10 @@ impl Entry<EntrySealed, EntryCommitted> {
                         vs.into_iter().map(Value::from_db_valuev1).collect();
                     match vv {
                         Ok(vv) => Ok((k, vv)),
-                        Err(()) => Err(()),
+                        Err(()) => {
+                            ladmin_error!(au, "from_dbentry failed on value {:?}", k);
+                            Err(())
+                        }
                     }
                 })
                 .collect(),
@@ -1777,11 +1785,19 @@ where
         let _ = self.attrs.insert(attr.to_string(), x);
     }
 
+    /// Provide a true ava set.
+    pub fn set_ava(&mut self, attr: &str, values: BTreeSet<Value>) {
+        // Overwrite the existing value, build a tree from the list.
+        let _ = self.attrs.insert(attr.to_string(), values);
+    }
+
+    /*
     pub fn avas_mut(&mut self) -> EntryAvasMut {
         EntryAvasMut {
             inner: self.attrs.iter_mut(),
         }
     }
+    */
 
     // Should this be schemaless, relying on checks of the modlist, and the entry validate after?
     // YES. Makes it very cheap.
