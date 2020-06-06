@@ -3495,6 +3495,12 @@ mod tests {
     fn test_qs_upgrade_entry_attrs() {
         run_test_no_init!(|server: &QueryServer, audit: &mut AuditScope| {
             let mut server_txn = server.write(duration_from_epoch_now());
+            assert!(server_txn
+                .upgrade_reindex(audit, SYSTEM_INDEX_VERSION)
+                .is_ok());
+            assert!(server_txn.commit(audit).is_ok());
+
+            let mut server_txn = server.write(duration_from_epoch_now());
             server_txn.initialise_schema_core(audit).unwrap();
             server_txn.initialise_schema_idm(audit).unwrap();
             assert!(server_txn.commit(audit).is_ok());
