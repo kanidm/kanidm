@@ -188,21 +188,31 @@ pub trait QueryServerTransaction {
 
             // construct the filter
             // Internal search - DO NOT SEARCH TOMBSTONES AND RECYCLE
-            let filt = filter!(f_eq("name", PartialValue::new_iutf8s(name)));
+            let filt = filter!(f_spn_name(name));
+
             ltrace!(audit, "name_to_uuid: name -> {:?}", name);
 
             let res = match self.internal_search(audit, filt) {
                 Ok(e) => e,
-                Err(e) => return Err(e),
+                Err(e) => {
+                    ladmin_error!(audit, "name_to_uuid search failure -> {:?}", e);
+                    return Err(e);
+                }
             };
 
             ltrace!(audit, "name_to_uuid: results -- {:?}", res);
 
             if res.is_empty() {
                 // If result len == 0, error no such result
+                ladmin_warning!(audit, "name_to_uuid no matching results -> {}", name);
                 return Err(OperationError::NoMatchingEntries);
             } else if res.len() >= 2 {
                 // if result len >= 2, error, invaid entry state.
+                ladmin_error!(
+                    audit,
+                    "name_to_uuid invalid db state, multiple results for name -> {}",
+                    name
+                );
                 return Err(OperationError::InvalidDBState);
             }
 
@@ -217,15 +227,15 @@ pub trait QueryServerTransaction {
         })
     }
 
-    fn uuid_to_name(
+    fn uuid_to_spn(
         &mut self,
         audit: &mut AuditScope,
         uuid: &Uuid,
     ) -> Result<Option<Value>, OperationError> {
-        lperf_segment!(audit, "server::uuid_to_name", || {
+        lperf_segment!(audit, "server::uuid_to_spn", || {
             // construct the filter
             let filt = filter!(f_eq("uuid", PartialValue::new_uuidr(uuid)));
-            ltrace!(audit, "uuid_to_name: uuid -> {:?}", uuid);
+            ltrace!(audit, "uuid_to_spn: uuid -> {:?}", uuid);
 
             // Internal search - DO NOT SEARCH TOMBSTONES AND RECYCLE
             let res = match self.internal_search(audit, filt) {
@@ -233,11 +243,11 @@ pub trait QueryServerTransaction {
                 Err(e) => return Err(e),
             };
 
-            ltrace!(audit, "uuid_to_name: results -- {:?}", res);
+            ltrace!(audit, "uuid_to_spn: results -- {:?}", res);
 
             if res.is_empty() {
                 // If result len == 0, error no such result
-                ltrace!(audit, "uuid_to_name: name, no such entry <- Ok(None)");
+                ltrace!(audit, "uuid_to_spn: name, no such entry <- Ok(None)");
                 return Ok(None);
             } else if res.len() >= 2 {
                 // if result len >= 2, error, invaid entry state.
@@ -247,23 +257,16 @@ pub trait QueryServerTransaction {
             // fine for 0/1 case, but check len for >= 2 to eliminate that case.
             let e = res.first().ok_or(OperationError::NoMatchingEntries)?;
             // Get the uuid from the entry. Again, check it exists, and only one.
-            let name_res = match e.get_ava(&String::from("name")) {
-                Some(vas) => match vas.first() {
-                    Some(u) => (*u).clone(),
-                    // Name is in an invalid state in the db
-                    None => return Err(OperationError::InvalidEntryState),
-                },
-                None => {
-                    // No attr name, some types this is valid, IE schema.
-                    // return Err(OperationError::InvalidEntryState),
-                    return Ok(None);
-                }
-            };
+            let name_res = e
+                .get_ava(&String::from("spn"))
+                .or_else(|| e.get_ava(&String::from("name")))
+                .and_then(|vas| vas.first().map(|u| (*u).clone()))
+                .ok_or(OperationError::InvalidEntryState)?;
 
-            ltrace!(audit, "uuid_to_name: name <- {:?}", name_res);
+            ltrace!(audit, "uuid_to_spn: name <- {:?}", name_res);
 
             // Make sure it's the right type ... (debug only)
-            debug_assert!(name_res.is_insensitive_utf8());
+            debug_assert!(name_res.is_spn() || name_res.is_iname());
 
             Ok(Some(name_res))
         })
@@ -275,7 +278,7 @@ pub trait QueryServerTransaction {
         name: &str,
     ) -> Result<Uuid, OperationError> {
         lperf_segment!(audit, "server::posixid_to_uuid", || {
-            let f_name = Some(f_eq("name", PartialValue::new_iutf8s(name)));
+            let f_name = Some(f_eq("name", PartialValue::new_iname(name)));
 
             let f_spn = PartialValue::new_spn_s(name).map(|v| f_eq("spn", v));
 
@@ -486,6 +489,7 @@ pub trait QueryServerTransaction {
                 match schema_a.syntax {
                     SyntaxType::UTF8STRING => Ok(Value::new_utf8(value.to_string())),
                     SyntaxType::UTF8STRING_INSENSITIVE => Ok(Value::new_iutf8s(value)),
+                    SyntaxType::UTF8STRING_INAME => Ok(Value::new_iname_s(value)),
                     SyntaxType::BOOLEAN => Value::new_bools(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid boolean syntax".to_string())),
                     SyntaxType::SYNTAX_ID => Value::new_syntaxs(value)
@@ -558,6 +562,7 @@ pub trait QueryServerTransaction {
                 match schema_a.syntax {
                     SyntaxType::UTF8STRING => Ok(PartialValue::new_utf8(value.to_string())),
                     SyntaxType::UTF8STRING_INSENSITIVE => Ok(PartialValue::new_iutf8s(value)),
+                    SyntaxType::UTF8STRING_INAME => Ok(PartialValue::new_iname(value)),
                     SyntaxType::BOOLEAN => PartialValue::new_bools(value).ok_or_else(|| {
                         OperationError::InvalidAttribute("Invalid boolean syntax".to_string())
                     }),
@@ -636,7 +641,7 @@ pub trait QueryServerTransaction {
     ) -> Result<String, OperationError> {
         // Are we a reference type? Try and resolve.
         if let Some(ur) = value.to_ref_uuid() {
-            let nv = self.uuid_to_name(audit, ur)?;
+            let nv = self.uuid_to_spn(audit, ur)?;
             return match nv {
                 Some(v) => Ok(v.to_proto_string_clone()),
                 None => Ok(value.to_proto_string_clone()),
@@ -756,6 +761,11 @@ impl<'a> QueryServerTransaction for QueryServerWriteTransaction<'a> {
     }
 }
 
+#[derive(Clone, Debug)]
+struct QueryServerMeta {
+    pub max_cid: Cid,
+}
+
 #[derive(Clone)]
 pub struct QueryServer {
     // log: actix::Addr<EventLog>,
@@ -772,6 +782,7 @@ impl QueryServer {
             let mut wr = be.write(BTreeSet::new());
             (wr.get_db_s_uuid(), wr.get_db_d_uuid())
         };
+
         info!("Server ID -> {:?}", s_uuid);
         info!("Domain ID -> {:?}", d_uuid);
         // log_event!(log, "Starting query worker ...");
@@ -796,8 +807,10 @@ impl QueryServer {
         // Feed the current schema index metadata to the be write transaction.
         let schema_write = self.schema.write();
         let idxmeta = schema_write.get_idxmeta_set();
+        let mut be_txn = self.be.write(idxmeta);
 
-        let cid = Cid::new(self.s_uuid, self.d_uuid, ts);
+        let ts_max = be_txn.get_db_ts_max(&ts).expect("Unable to get db_ts_max");
+        let cid = Cid::new_lamport(self.s_uuid, self.d_uuid, ts, &ts_max);
 
         QueryServerWriteTransaction {
             // I think this is *not* needed, because commit is mut self which should
@@ -809,7 +822,7 @@ impl QueryServer {
             committed: false,
             d_uuid: self.d_uuid,
             cid,
-            be_txn: self.be.write(idxmeta),
+            be_txn,
             schema: schema_write,
             accesscontrols: self.accesscontrols.write(),
             changed_schema: false,
@@ -864,10 +877,39 @@ impl QueryServer {
             .upgrade_reindex(audit, SYSTEM_INDEX_VERSION + 1)
             .and_then(|_| reindex_write_2.commit(audit))?;
 
+        // Now, based on the system version apply migrations. You may ask "should you not
+        // be doing migrations before indexes?". And this is a very good question! The issue
+        // is within a migration we must be able to search for content by pres index, and those
+        // rely on us being indexed! It *is* safe to index content even if the
+        // migration would cause a value type change (ie name changing from iutf8s to iname) because
+        // the indexing subsystem is schema/value agnostic - the fact the values still let their keys
+        // be extracted, means that the pres indexes will be valid even though the entries are pending
+        // migration. We must be sure to NOT use EQ/SUB indexes in the migration code however!
+        let mut migrate_txn = self.write(ts);
+        // If we are "in the process of being setup" this is 0, and the migrations will have no
+        // effect as ... there is nothing to migrate! It allows reset of the version to 0 to force
+        // db migrations to take place.
+        let system_info_version = match migrate_txn.internal_search_uuid(audit, &UUID_SYSTEM_INFO) {
+            Ok(e) => Ok(e.get_ava_single_uint32("version").unwrap_or(0)),
+            Err(OperationError::NoMatchingEntries) => Ok(0),
+            Err(r) => Err(r),
+        }?;
+        ladmin_info!(audit, "current system version -> {:?}", system_info_version);
+
+        if system_info_version < 3 {
+            migrate_txn.migrate_2_to_3(audit)?;
+        }
+
+        migrate_txn.commit(audit)?;
+        // Migrations complete. Init idm will now set the version as needed.
+
         let mut ts_write_3 = self.write(ts);
         ts_write_3
             .initialise_idm(audit)
-            .and_then(|_| ts_write_3.commit(audit))
+            .and_then(|_| ts_write_3.commit(audit))?;
+
+        ladmin_info!(audit, "ready to rock! 🤘");
+        Ok(())
     }
 
     pub fn verify(&self, au: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
@@ -1444,6 +1486,83 @@ impl<'a> QueryServerWriteTransaction<'a> {
         })
     }
 
+    /// Migrate 2 to 3 changes the name, domain_name types from iutf8 to iname.
+    pub fn migrate_2_to_3(&mut self, au: &mut AuditScope) -> Result<(), OperationError> {
+        lperf_segment!(au, "server::migrate_2_to_3", || {
+            ladmin_warning!(au, "starting 2 to 3 migration. THIS MAY TAKE A LONG TIME!");
+            // Get all entries where pres name or domain_name. INCLUDE TS + RECYCLE.
+
+            let filt = filter_all!(f_or!([f_pres("name"), f_pres("domain_name"),]));
+
+            let pre_candidates = self.internal_search(au, filt).map_err(|e| {
+                ladmin_error!(au, "migrate_2_to_3 internal search failure -> {:?}", e);
+                e
+            })?;
+
+            // If there is nothing, we donn't need to do anything.
+            if pre_candidates.len() == 0 {
+                ladmin_info!(au, "migrate_2_to_3 no entries to migrate, complete");
+                return Ok(());
+            }
+
+            // Change the value type.
+            let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
+                .iter()
+                .map(|er| er.clone().invalidate(self.cid.clone()))
+                .collect();
+
+            candidates.iter_mut().for_each(|er| {
+                let opt_names: Option<BTreeSet<_>> = er.pop_ava("name").map(|vs| {
+                    vs.into_iter()
+                        .filter_map(|v| v.migrate_iutf8_iname())
+                        .collect()
+                });
+                let opt_dnames: Option<BTreeSet<_>> = er.pop_ava("domain_name").map(|vs| {
+                    vs.into_iter()
+                        .filter_map(|v| v.migrate_iutf8_iname())
+                        .collect()
+                });
+
+                ltrace!(au, "{:?}", opt_names);
+                ltrace!(au, "{:?}", opt_dnames);
+
+                match opt_names {
+                    Some(v) => er.set_ava("name", v),
+                    None => {}
+                }
+
+                match opt_dnames {
+                    Some(v) => er.set_ava("domain_name", v),
+                    None => {}
+                }
+            });
+
+            // Schema check all.
+            let res: Result<Vec<Entry<EntrySealed, EntryCommitted>>, SchemaError> = candidates
+                .into_iter()
+                .map(|e| e.validate(&self.schema).map(|e| e.seal()))
+                .collect();
+
+            let norm_cand: Vec<Entry<_, _>> = match res {
+                Ok(v) => v,
+                Err(e) => {
+                    ladmin_error!(au, "migrate_2_to_3 schema error -> {:?}", e);
+                    return Err(OperationError::SchemaViolation(e));
+                }
+            };
+
+            // Write them back.
+            self.be_txn
+                .modify(au, &pre_candidates, &norm_cand)
+                .map_err(|e| {
+                    ladmin_error!(au, "migrate_2_to_3 modification failure -> {:?}", e);
+                    e
+                })
+
+            // Complete
+        })
+    }
+
     // These are where searches and other actions are actually implemented. This
     // is the "internal" version, where we define the event as being internal
     // only, allowing certain plugin by passes etc.
@@ -1689,6 +1808,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     */
 
     pub fn initialise_schema_core(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
+        ladmin_info!(audit, "initialise_schema_core -> start ...");
         // Load in all the "core" schema, that we already have in "memory".
         let entries = self.schema.to_entries();
 
@@ -1706,6 +1826,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     pub fn initialise_schema_idm(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
+        ladmin_info!(audit, "initialise_schema_idm -> start ...");
         // List of IDM schemas to init.
         let idm_schema: Vec<&str> = vec![
             JSON_SCHEMA_ATTR_DISPLAYNAME,
@@ -1985,7 +2106,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
         audit: &mut AuditScope,
         new_domain_name: &str,
     ) -> Result<(), OperationError> {
-        let modl = ModifyList::new_purge_and_set("domain_name", Value::new_iutf8s(new_domain_name));
+        let modl =
+            ModifyList::new_purge_and_set("domain_name", Value::new_iname_s(new_domain_name));
         let udi = PartialValue::new_uuids(UUID_DOMAIN_INFO).ok_or(OperationError::InvalidUuid)?;
         let filt = filter_all!(f_eq("uuid", udi));
         self.internal_modify(audit, filt, modl)
@@ -2025,13 +2147,17 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Now destructure the transaction ready to reset it.
         let QueryServerWriteTransaction {
             committed,
-            be_txn,
+            mut be_txn,
             schema,
             accesscontrols,
+            cid,
             ..
         } = self;
         debug_assert!(!committed);
-        // Begin an audit.
+
+        // Write the cid to the db. If this fails, we can't assume replication
+        // will be stable, so return if it fails.
+        be_txn.set_db_ts_max(&cid.ts)?;
         // Validate the schema as we just loaded it.
         let r = schema.validate(audit);
 
@@ -2053,7 +2179,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
 #[cfg(test)]
 mod tests {
     use crate::audit::AuditScope;
-    use crate::constants::{CHANGELOG_MAX_AGE, JSON_ADMIN_V1, RECYCLEBIN_MAX_AGE, UUID_ADMIN};
+    use crate::constants::{
+        CHANGELOG_MAX_AGE, JSON_ADMIN_V1, JSON_DOMAIN_INFO_V1, JSON_SYSTEM_CONFIG_V1,
+        JSON_SYSTEM_INFO_V1, RECYCLEBIN_MAX_AGE, SYSTEM_INDEX_VERSION, UUID_ADMIN,
+        UUID_DOMAIN_INFO,
+    };
     use crate::credential::Credential;
     use crate::entry::{Entry, EntryInit, EntryNew};
     use crate::event::{CreateEvent, DeleteEvent, ModifyEvent, ReviveRecycledEvent, SearchEvent};
@@ -2068,7 +2198,7 @@ mod tests {
     fn test_qs_create_user() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             let mut server_txn = server.write(duration_from_epoch_now());
-            let filt = filter!(f_eq("name", PartialValue::new_iutf8s("testperson")));
+            let filt = filter!(f_eq("name", PartialValue::new_iname("testperson")));
             let admin = server_txn
                 .internal_search_uuid(audit, &UUID_ADMIN)
                 .expect("failed");
@@ -2190,7 +2320,7 @@ mod tests {
             let me_nochg = unsafe {
                 ModifyEvent::new_impersonate_entry_ser(
                     JSON_ADMIN_V1,
-                    filter!(f_eq("name", PartialValue::new_iutf8s("flarbalgarble"))),
+                    filter!(f_eq("name", PartialValue::new_iname("flarbalgarble"))),
                     ModifyList::new_list(vec![Modify::Present(
                         "description".to_string(),
                         Value::from("anusaosu"),
@@ -2205,7 +2335,7 @@ mod tests {
             // this.
             let r_inv_1 = server_txn.internal_modify(
                 audit,
-                filter!(f_eq("tnanuanou", PartialValue::new_iutf8s("Flarbalgarble"))),
+                filter!(f_eq("tnanuanou", PartialValue::new_iname("Flarbalgarble"))),
                 ModifyList::new_list(vec![Modify::Present(
                     "description".to_string(),
                     Value::from("anusaosu"),
@@ -2238,7 +2368,7 @@ mod tests {
             // Mod single object
             let me_sin = unsafe {
                 ModifyEvent::new_internal_invalid(
-                    filter!(f_eq("name", PartialValue::new_iutf8s("testperson2"))),
+                    filter!(f_eq("name", PartialValue::new_iname("testperson2"))),
                     ModifyList::new_list(vec![Modify::Present(
                         "description".to_string(),
                         Value::from("anusaosu"),
@@ -2251,8 +2381,8 @@ mod tests {
             let me_mult = unsafe {
                 ModifyEvent::new_internal_invalid(
                     filter!(f_or!([
-                        f_eq("name", PartialValue::new_iutf8s("testperson1")),
-                        f_eq("name", PartialValue::new_iutf8s("testperson2")),
+                        f_eq("name", PartialValue::new_iname("testperson1")),
+                        f_eq("name", PartialValue::new_iname("testperson2")),
                     ])),
                     ModifyList::new_list(vec![Modify::Present(
                         "description".to_string(),
@@ -2295,7 +2425,7 @@ mod tests {
             // Add class but no values
             let me_sin = unsafe {
                 ModifyEvent::new_internal_invalid(
-                    filter!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
+                    filter!(f_eq("name", PartialValue::new_iname("testperson1"))),
                     ModifyList::new_list(vec![Modify::Present(
                         "class".to_string(),
                         Value::new_class("system_info"),
@@ -2307,10 +2437,10 @@ mod tests {
             // Add multivalue where not valid
             let me_sin = unsafe {
                 ModifyEvent::new_internal_invalid(
-                    filter!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
+                    filter!(f_eq("name", PartialValue::new_iname("testperson1"))),
                     ModifyList::new_list(vec![Modify::Present(
                         "name".to_string(),
-                        Value::new_iutf8s("testpersonx"),
+                        Value::new_iname_s("testpersonx"),
                     )]),
                 )
             };
@@ -2319,11 +2449,11 @@ mod tests {
             // add class and valid values?
             let me_sin = unsafe {
                 ModifyEvent::new_internal_invalid(
-                    filter!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
+                    filter!(f_eq("name", PartialValue::new_iname("testperson1"))),
                     ModifyList::new_list(vec![
                         Modify::Present("class".to_string(), Value::new_class("system_info")),
                         // Modify::Present("domain".to_string(), Value::new_iutf8s("domain.name")),
-                        Modify::Present("version".to_string(), Value::new_iutf8s("1")),
+                        Modify::Present("version".to_string(), Value::new_uint32(1)),
                     ]),
                 )
             };
@@ -2332,10 +2462,10 @@ mod tests {
             // Replace a value
             let me_sin = unsafe {
                 ModifyEvent::new_internal_invalid(
-                    filter!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
+                    filter!(f_eq("name", PartialValue::new_iname("testperson1"))),
                     ModifyList::new_list(vec![
                         Modify::Purged("name".to_string()),
-                        Modify::Present("name".to_string(), Value::new_iutf8s("testpersonx")),
+                        Modify::Present("name".to_string(), Value::new_iname_s("testpersonx")),
                     ]),
                 )
             };
@@ -2408,7 +2538,7 @@ mod tests {
             let de_sin = unsafe {
                 DeleteEvent::new_internal_invalid(filter!(f_eq(
                     "name",
-                    PartialValue::new_iutf8s("testperson3")
+                    PartialValue::new_iname("testperson3")
                 )))
             };
             assert!(server_txn.delete(audit, &de_sin).is_ok());
@@ -2562,7 +2692,7 @@ mod tests {
             let rre_rc = unsafe {
                 ReviveRecycledEvent::new_impersonate_entry(
                     admin,
-                    filter_all!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
+                    filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
                 )
             };
 
@@ -2689,7 +2819,7 @@ mod tests {
             let de_sin = unsafe {
                 DeleteEvent::new_internal_invalid(filter!(f_eq(
                     "name",
-                    PartialValue::new_iutf8s("testperson1")
+                    PartialValue::new_iname("testperson1")
                 )))
             };
             assert!(server_txn.delete(audit, &de_sin).is_ok());
@@ -2746,7 +2876,7 @@ mod tests {
     }
 
     #[test]
-    fn test_qs_uuid_to_name() {
+    fn test_qs_uuid_to_spn() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             let mut server_txn = server.write(duration_from_epoch_now());
 
@@ -2755,7 +2885,7 @@ mod tests {
                 "valid": null,
                 "state": null,
                 "attrs": {
-                    "class": ["object", "person"],
+                    "class": ["object", "person", "account"],
                     "name": ["testperson1"],
                     "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
                     "description": ["testperson"],
@@ -2768,24 +2898,25 @@ mod tests {
             assert!(cr.is_ok());
 
             // Name doesn't exist
-            let r1 = server_txn.uuid_to_name(
+            let r1 = server_txn.uuid_to_spn(
                 audit,
                 &Uuid::parse_str("bae3f507-e6c3-44ba-ad01-f8ff1083534a").unwrap(),
             );
             // There is nothing.
             assert!(r1 == Ok(None));
             // Name does exist
-            let r3 = server_txn.uuid_to_name(
+            let r3 = server_txn.uuid_to_spn(
                 audit,
                 &Uuid::parse_str("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap(),
             );
-            assert!(r3.is_ok());
+            println!("{:?}", r3);
+            assert!(r3.unwrap().unwrap() == Value::new_spn_str("testperson1", "example.com"));
             // Name is not syntax normalised (but exists)
-            let r4 = server_txn.uuid_to_name(
+            let r4 = server_txn.uuid_to_spn(
                 audit,
                 &Uuid::parse_str("CC8E95B4-C24F-4D68-BA54-8BED76F63930").unwrap(),
             );
-            assert!(r4.is_ok());
+            assert!(r4.unwrap().unwrap() == Value::new_spn_str("testperson1", "example.com"));
         })
     }
 
@@ -2820,7 +2951,7 @@ mod tests {
             // test attr not-reference
             let r2 = server_txn.clone_value(audit, &"NaMe".to_string(), &"NaMe".to_string());
 
-            assert!(r2 == Ok(Value::new_iutf8s("NaMe")));
+            assert!(r2 == Ok(Value::new_iname_s("NaMe")));
 
             // test attr reference
             let r3 =
@@ -2846,10 +2977,8 @@ mod tests {
             let mut server_txn = server.write(duration_from_epoch_now());
             let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
-                "valid": null,
-                "state": null,
                 "attrs": {
-                    "class": ["object", "person"],
+                    "class": ["object", "person", "account"],
                     "name": ["testperson1"],
                     "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
                     "description": ["testperson"],
@@ -2857,17 +2986,26 @@ mod tests {
                 }
             }"#,
             );
+            let e2: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
+                r#"{
+                "attrs": {
+                    "class": ["object", "person"],
+                    "name": ["testperson2"],
+                    "uuid": ["a67c0c71-0b35-4218-a6b0-22d23d131d27"],
+                    "description": ["testperson"],
+                    "displayname": ["testperson2"]
+                }
+            }"#,
+            );
             let e_ts: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
-                "valid": null,
-                "state": null,
                 "attrs": {
                     "class": ["tombstone", "object"],
                     "uuid": ["9557f49c-97a5-4277-a9a5-097d17eb8317"]
                 }
             }"#,
             );
-            let ce = CreateEvent::new_internal(vec![e1, e_ts]);
+            let ce = CreateEvent::new_internal(vec![e1, e2, e_ts]);
             let cr = server_txn.create(audit, &ce);
             assert!(cr.is_ok());
 
@@ -2876,11 +3014,17 @@ mod tests {
             let r1 = server_txn.resolve_value(audit, &t1);
             assert!(r1 == Ok("teststring".to_string()));
 
-            // Resolve UUID with matching name
+            // Resolve UUID with matching spn
             let t_uuid = Value::new_refer_s("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap();
             let r_uuid = server_txn.resolve_value(audit, &t_uuid);
             debug!("{:?}", r_uuid);
-            assert!(r_uuid == Ok("testperson1".to_string()));
+            assert!(r_uuid == Ok("testperson1@example.com".to_string()));
+
+            // Resolve UUID with matching name
+            let t_uuid = Value::new_refer_s("a67c0c71-0b35-4218-a6b0-22d23d131d27").unwrap();
+            let r_uuid = server_txn.resolve_value(audit, &t_uuid);
+            debug!("{:?}", r_uuid);
+            assert!(r_uuid == Ok("testperson2".to_string()));
 
             // Resolve UUID non-exist
             let t_uuid_non = Value::new_refer_s("b83e98f0-3d2e-41d2-9796-d8d993289c86").unwrap();
@@ -2953,7 +3097,7 @@ mod tests {
             let de_class = unsafe {
                 DeleteEvent::new_internal_invalid(filter!(f_eq(
                     "classname",
-                    PartialValue::new_iutf8s("testclass")
+                    PartialValue::new_class("testclass")
                 )))
             };
             assert!(server_txn.delete(audit, &de_class).is_ok());
@@ -2972,7 +3116,7 @@ mod tests {
                     &Uuid::parse_str("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap(),
                 )
                 .expect("failed");
-            assert!(testobj1.attribute_value_pres("class", &PartialValue::new_iutf8s("testclass")));
+            assert!(testobj1.attribute_value_pres("class", &PartialValue::new_class("testclass")));
 
             // Should still be good
             server_txn.commit(audit).expect("should not fail");
@@ -3095,7 +3239,7 @@ mod tests {
             // now modify and provide a primary credential.
             let me_inv_m = unsafe {
                 ModifyEvent::new_internal_invalid(
-                    filter!(f_eq("name", PartialValue::new_iutf8s("testperson1"))),
+                    filter!(f_eq("name", PartialValue::new_iname("testperson1"))),
                     ModifyList::new_list(vec![Modify::Present(
                         "primary_credential".to_string(),
                         v_cred,
@@ -3131,7 +3275,7 @@ mod tests {
             }"#,
         );
         e1.add_ava("uuid", &Value::new_uuids(uuid).unwrap());
-        e1.add_ava("name", &Value::new_iutf8s(name));
+        e1.add_ava("name", &Value::new_iname_s(name));
         e1.add_ava("displayname", &Value::new_utf8s(name));
         e1
     }
@@ -3145,7 +3289,7 @@ mod tests {
             }
             }"#,
         );
-        e1.add_ava("name", &Value::new_iutf8s(name));
+        e1.add_ava("name", &Value::new_iname_s(name));
         e1.add_ava("uuid", &Value::new_uuids(uuid).unwrap());
         members
             .iter()
@@ -3160,7 +3304,7 @@ mod tests {
         mo: &str,
     ) -> bool {
         let e = qs
-            .internal_search(audit, filter!(f_eq("name", PartialValue::new_iutf8s(name))))
+            .internal_search(audit, filter!(f_eq("name", PartialValue::new_iname(name))))
             .unwrap()
             .pop()
             .unwrap();
@@ -3222,12 +3366,12 @@ mod tests {
             // Now recycle the needed entries.
             let de = unsafe {
                 DeleteEvent::new_internal_invalid(filter!(f_or(vec![
-                    f_eq("name", PartialValue::new_iutf8s("u1")),
-                    f_eq("name", PartialValue::new_iutf8s("u2")),
-                    f_eq("name", PartialValue::new_iutf8s("u3")),
-                    f_eq("name", PartialValue::new_iutf8s("g3")),
-                    f_eq("name", PartialValue::new_iutf8s("u4")),
-                    f_eq("name", PartialValue::new_iutf8s("g4"))
+                    f_eq("name", PartialValue::new_iname("u1")),
+                    f_eq("name", PartialValue::new_iname("u2")),
+                    f_eq("name", PartialValue::new_iname("u3")),
+                    f_eq("name", PartialValue::new_iname("g3")),
+                    f_eq("name", PartialValue::new_iname("u4")),
+                    f_eq("name", PartialValue::new_iname("g4"))
                 ])))
             };
             assert!(server_txn.delete(audit, &de).is_ok());
@@ -3236,7 +3380,7 @@ mod tests {
             let rev1 = unsafe {
                 ReviveRecycledEvent::new_impersonate_entry(
                     admin.clone(),
-                    filter_all!(f_eq("name", PartialValue::new_iutf8s("u1"))),
+                    filter_all!(f_eq("name", PartialValue::new_iname("u1"))),
                 )
             };
             assert!(server_txn.revive_recycled(audit, &rev1).is_ok());
@@ -3252,7 +3396,7 @@ mod tests {
             let rev2 = unsafe {
                 ReviveRecycledEvent::new_impersonate_entry(
                     admin.clone(),
-                    filter_all!(f_eq("name", PartialValue::new_iutf8s("u2"))),
+                    filter_all!(f_eq("name", PartialValue::new_iname("u2"))),
                 )
             };
             assert!(server_txn.revive_recycled(audit, &rev2).is_ok());
@@ -3274,8 +3418,8 @@ mod tests {
                 ReviveRecycledEvent::new_impersonate_entry(
                     admin.clone(),
                     filter_all!(f_or(vec![
-                        f_eq("name", PartialValue::new_iutf8s("u3")),
-                        f_eq("name", PartialValue::new_iutf8s("g3"))
+                        f_eq("name", PartialValue::new_iname("u3")),
+                        f_eq("name", PartialValue::new_iname("g3"))
                     ])),
                 )
             };
@@ -3293,7 +3437,7 @@ mod tests {
             let rev4a = unsafe {
                 ReviveRecycledEvent::new_impersonate_entry(
                     admin.clone(),
-                    filter_all!(f_eq("name", PartialValue::new_iutf8s("u4"))),
+                    filter_all!(f_eq("name", PartialValue::new_iname("u4"))),
                 )
             };
             assert!(server_txn.revive_recycled(audit, &rev4a).is_ok());
@@ -3310,7 +3454,7 @@ mod tests {
             let rev4b = unsafe {
                 ReviveRecycledEvent::new_impersonate_entry(
                     admin,
-                    filter_all!(f_eq("name", PartialValue::new_iutf8s("g4"))),
+                    filter_all!(f_eq("name", PartialValue::new_iname("g4"))),
                 )
             };
             assert!(server_txn.revive_recycled(audit, &rev4b).is_ok());
@@ -3346,4 +3490,121 @@ mod tests {
         })
     }
     */
+
+    #[test]
+    fn test_qs_upgrade_entry_attrs() {
+        run_test_no_init!(|server: &QueryServer, audit: &mut AuditScope| {
+            let mut server_txn = server.write(duration_from_epoch_now());
+            assert!(server_txn
+                .upgrade_reindex(audit, SYSTEM_INDEX_VERSION)
+                .is_ok());
+            assert!(server_txn.commit(audit).is_ok());
+
+            let mut server_txn = server.write(duration_from_epoch_now());
+            server_txn.initialise_schema_core(audit).unwrap();
+            server_txn.initialise_schema_idm(audit).unwrap();
+            assert!(server_txn.commit(audit).is_ok());
+
+            let mut server_txn = server.write(duration_from_epoch_now());
+            assert!(server_txn
+                .upgrade_reindex(audit, SYSTEM_INDEX_VERSION + 1)
+                .is_ok());
+            assert!(server_txn.commit(audit).is_ok());
+
+            let mut server_txn = server.write(duration_from_epoch_now());
+            assert!(server_txn
+                .internal_migrate_or_create_str(audit, JSON_SYSTEM_INFO_V1)
+                .is_ok());
+            assert!(server_txn
+                .internal_migrate_or_create_str(audit, JSON_DOMAIN_INFO_V1)
+                .is_ok());
+            assert!(server_txn
+                .internal_migrate_or_create_str(audit, JSON_SYSTEM_CONFIG_V1)
+                .is_ok());
+            assert!(server_txn.commit(audit).is_ok());
+
+            let mut server_txn = server.write(duration_from_epoch_now());
+            // ++ Mod the schema to set name to the old string type
+            let me_syn = unsafe {
+                ModifyEvent::new_internal_invalid(
+                    filter!(f_or!([
+                        f_eq("attributename", PartialValue::new_iutf8s("name")),
+                        f_eq("attributename", PartialValue::new_iutf8s("domain_name")),
+                    ])),
+                    ModifyList::new_purge_and_set(
+                        "syntax",
+                        Value::new_syntaxs("UTF8STRING_INSENSITIVE").unwrap(),
+                    ),
+                )
+            };
+            assert!(server_txn.modify(audit, &me_syn).is_ok());
+            assert!(server_txn.commit(audit).is_ok());
+
+            let mut server_txn = server.write(duration_from_epoch_now());
+            // ++ Mod domain name and name to be the old type.
+            let me_dn = unsafe {
+                ModifyEvent::new_internal_invalid(
+                    filter!(f_eq(
+                        "uuid",
+                        PartialValue::new_uuids(UUID_DOMAIN_INFO).expect("invalid uuid")
+                    )),
+                    ModifyList::new_list(vec![
+                        Modify::Purged("name".to_string()),
+                        Modify::Purged("domain_name".to_string()),
+                        Modify::Present("name".to_string(), Value::new_iutf8s("domain_local")),
+                        Modify::Present(
+                            "domain_name".to_string(),
+                            Value::new_iutf8s("example.com"),
+                        ),
+                    ]),
+                )
+            };
+            assert!(server_txn.modify(audit, &me_dn).is_ok());
+            // Now, both the types are invalid.
+            assert!(server_txn.commit(audit).is_ok());
+
+            // We can't just re-run the migrate here because name takes it's definition from
+            // in memory, and we can't re-run the initial memory gen. So we just fix it to match
+            // what the migrate "would do".
+            let mut server_txn = server.write(duration_from_epoch_now());
+            let me_syn = unsafe {
+                ModifyEvent::new_internal_invalid(
+                    filter!(f_or!([
+                        f_eq("attributename", PartialValue::new_iutf8s("name")),
+                        f_eq("attributename", PartialValue::new_iutf8s("domain_name")),
+                    ])),
+                    ModifyList::new_purge_and_set(
+                        "syntax",
+                        Value::new_syntaxs("UTF8STRING_INAME").unwrap(),
+                    ),
+                )
+            };
+            assert!(server_txn.modify(audit, &me_syn).is_ok());
+            assert!(server_txn.commit(audit).is_ok());
+
+            // ++ Run the upgrade for X to Y
+            let mut server_txn = server.write(duration_from_epoch_now());
+            assert!(server_txn.migrate_2_to_3(audit).is_ok());
+            assert!(server_txn.commit(audit).is_ok());
+
+            // Assert that it migrated and worked as expected.
+            let mut server_txn = server.write(duration_from_epoch_now());
+            let domain = server_txn
+                .internal_search_uuid(audit, &Uuid::parse_str(UUID_DOMAIN_INFO).unwrap())
+                .expect("failed");
+            // ++ assert all names are iname
+            domain
+                .get_ava("name")
+                .expect("no name?")
+                .iter()
+                .for_each(|v| assert!(v.is_iname()));
+            // ++ assert all domain/domain_name are iname
+            domain
+                .get_ava("domain_name")
+                .expect("no domain_name?")
+                .iter()
+                .for_each(|v| assert!(v.is_iname()));
+            assert!(server_txn.commit(audit).is_ok());
+        })
+    }
 }

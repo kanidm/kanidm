@@ -59,140 +59,83 @@ macro_rules! audit_log {
     })
 }
 
+macro_rules! lqueue {
+    ($au:expr, $tag:expr, $($arg:tt)*) => ({
+        /*
+        if cfg!(test) || cfg!(debug_assertions) {
+            error!($($arg)*)
+        }
+        */
+        use std::fmt;
+        use crate::audit::LogTag;
+        $au.log_event(
+            $tag,
+            fmt::format(
+                format_args!($($arg)*)
+            )
+        )
+    })
+}
+
 macro_rules! ltrace {
     ($au:expr, $($arg:tt)*) => ({
         if log_enabled!(log::Level::Debug) {
-            /*
-            if cfg!(test) || cfg!(debug_assertions) {
-                error!($($arg)*)
-            }
-            */
-            use std::fmt;
-            use crate::audit::LogTag;
-            $au.log_event(
-                LogTag::Trace,
-                fmt::format(
-                    format_args!($($arg)*)
-                )
-            )
+            lqueue!($au, LogTag::Trace, $($arg)*)
         }
     })
 }
 
 macro_rules! lfilter {
     ($au:expr, $($arg:tt)*) => ({
-        use std::fmt;
-        use crate::audit::LogTag;
-        $au.log_event(
-            LogTag::Filter,
-            fmt::format(
-                format_args!($($arg)*)
-            )
-        )
+        lqueue!($au, LogTag::Filter, $($arg)*)
     })
 }
 
 macro_rules! lfilter_warning {
     ($au:expr, $($arg:tt)*) => ({
-        use std::fmt;
-        use crate::audit::LogTag;
-        $au.log_event(
-            LogTag::FilterWarning,
-            fmt::format(
-                format_args!($($arg)*)
-            )
-        )
+        lqueue!($au, LogTag::FilterWarning, $($arg)*)
     })
 }
 
 macro_rules! lfilter_error {
     ($au:expr, $($arg:tt)*) => ({
-        use std::fmt;
-        use crate::audit::LogTag;
-        $au.log_event(
-            LogTag::FilterError,
-            fmt::format(
-                format_args!($($arg)*)
-            )
-        )
+        lqueue!($au, LogTag::FilterError, $($arg)*)
     })
 }
 
 macro_rules! ladmin_error {
     ($au:expr, $($arg:tt)*) => ({
-        use std::fmt;
-        use crate::audit::LogTag;
-        $au.log_event(
-            LogTag::AdminError,
-            fmt::format(
-                format_args!($($arg)*)
-            )
-        )
+        lqueue!($au, LogTag::AdminError, $($arg)*)
     })
 }
 
 macro_rules! ladmin_warning {
     ($au:expr, $($arg:tt)*) => ({
-        use std::fmt;
-        use crate::audit::LogTag;
-        $au.log_event(
-            LogTag::AdminWarning,
-            fmt::format(
-                format_args!($($arg)*)
-            )
-        )
+        lqueue!($au, LogTag::AdminWarning, $($arg)*)
     })
 }
 
 macro_rules! ladmin_info {
     ($au:expr, $($arg:tt)*) => ({
-        use std::fmt;
-        use crate::audit::LogTag;
-        $au.log_event(
-            LogTag::AdminInfo,
-            fmt::format(
-                format_args!($($arg)*)
-            )
-        )
+        lqueue!($au, LogTag::AdminInfo, $($arg)*)
     })
 }
 
 macro_rules! lrequest_error {
     ($au:expr, $($arg:tt)*) => ({
-        use std::fmt;
-        use crate::audit::LogTag;
-        $au.log_event(
-            LogTag::RequestError,
-            fmt::format(
-                format_args!($($arg)*)
-            )
-        )
+        lqueue!($au, LogTag::RequestError, $($arg)*)
     })
 }
 
 macro_rules! lsecurity {
     ($au:expr, $($arg:tt)*) => ({
-        use std::fmt;
-        use crate::audit::LogTag;
-        $au.log_event(
-            LogTag::Security,
-            fmt::format(
-                format_args!($($arg)*)
-            )
-        )
+        lqueue!($au, LogTag::Security, $($arg)*)
     })
 }
 
 macro_rules! lsecurity_access {
     ($au:expr, $($arg:tt)*) => ({
-        use std::fmt;
-        use crate::audit::LogTag;
-        $au.log_event(
-            LogTag::SecurityAccess,
-            fmt::format(
-                format_args!($($arg)*)
-            )
-        )
+        lqueue!($au, LogTag::SecurityAccess, $($arg)*)
     })
 }
 

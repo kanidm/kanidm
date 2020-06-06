@@ -313,7 +313,7 @@ mod tests {
                 let cands = qs
                     .internal_search(
                         au,
-                        filter!(f_eq("name", PartialValue::new_iutf8s("testgroup_b"))),
+                        filter!(f_eq("name", PartialValue::new_iname("testgroup_b"))),
                     )
                     .expect("Internal search failure");
                 let _ue = cands.first().expect("No cand");
@@ -351,7 +351,7 @@ mod tests {
                 let cands = qs
                     .internal_search(
                         au,
-                        filter!(f_eq("name", PartialValue::new_iutf8s("testgroup"))),
+                        filter!(f_eq("name", PartialValue::new_iname("testgroup"))),
                     )
                     .expect("Internal search failure");
                 let _ue = cands.first().expect("No cand");
@@ -392,7 +392,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iutf8s("testgroup_b"))),
+            filter!(f_eq("name", PartialValue::new_iname("testgroup_b"))),
             ModifyList::new_list(vec![Modify::Present(
                 "member".to_string(),
                 Value::new_refer_s("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
@@ -424,7 +424,7 @@ mod tests {
                 "Uuid referenced not found in database".to_string()
             ))),
             preload,
-            filter!(f_eq("name", PartialValue::new_iutf8s("testgroup_b"))),
+            filter!(f_eq("name", PartialValue::new_iname("testgroup_b"))),
             ModifyList::new_list(vec![Modify::Present(
                 "member".to_string(),
                 Value::new_refer_s("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
@@ -468,7 +468,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iutf8s("testgroup_b"))),
+            filter!(f_eq("name", PartialValue::new_iname("testgroup_b"))),
             ModifyList::new_list(vec![Modify::Purged("member".to_string())]),
             None,
             |_, _| {}
@@ -496,7 +496,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iutf8s("testgroup_a"))),
+            filter!(f_eq("name", PartialValue::new_iname("testgroup_a"))),
             ModifyList::new_list(vec![Modify::Present(
                 "member".to_string(),
                 Value::new_refer_s("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
@@ -541,7 +541,7 @@ mod tests {
                 "Uuid referenced not found in database".to_string()
             ))),
             preload,
-            filter!(f_eq("name", PartialValue::new_iutf8s("testgroup_b"))),
+            filter!(f_eq("name", PartialValue::new_iname("testgroup_b"))),
             ModifyList::new_list(vec![Modify::Present(
                 "member".to_string(),
                 Value::new_refer_s("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
@@ -587,7 +587,7 @@ mod tests {
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iutf8s("testgroup_a"))),
+            filter!(f_eq("name", PartialValue::new_iname("testgroup_a"))),
             None,
             |_au: &mut AuditScope, _qs: &mut QueryServerWriteTransaction| {}
         );
@@ -633,7 +633,7 @@ mod tests {
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iutf8s("testgroup_b"))),
+            filter!(f_eq("name", PartialValue::new_iname("testgroup_b"))),
             None,
             |_au: &mut AuditScope, _qs: &mut QueryServerWriteTransaction| {}
         );
@@ -661,7 +661,7 @@ mod tests {
         run_delete_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iutf8s("testgroup_b"))),
+            filter!(f_eq("name", PartialValue::new_iname("testgroup_b"))),
             None,
             |_au: &mut AuditScope, _qs: &mut QueryServerWriteTransaction| {}
         );

@@ -11,7 +11,17 @@ pub struct Cid {
 }
 
 impl Cid {
-    pub fn new(d_uuid: Uuid, s_uuid: Uuid, ts: Duration) -> Self {
+    #[cfg(test)]
+    pub(crate) fn new(d_uuid: Uuid, s_uuid: Uuid, ts: Duration) -> Self {
+        Cid { d_uuid, s_uuid, ts }
+    }
+
+    pub fn new_lamport(d_uuid: Uuid, s_uuid: Uuid, ts: Duration, max_ts: &Duration) -> Self {
+        let ts = if ts > *max_ts {
+            ts
+        } else {
+            *max_ts + Duration::from_nanos(1)
+        };
         Cid { d_uuid, s_uuid, ts }
     }
 
@@ -92,5 +102,25 @@ mod tests {
         assert!(cid_e.cmp(&cid_e) == Ordering::Equal);
         assert!(cid_e.cmp(&cid_f) == Ordering::Less);
         assert!(cid_f.cmp(&cid_e) == Ordering::Greater);
+    }
+
+    #[test]
+    fn test_cid_lamport() {
+        let d_uuid = Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap();
+        let s_uuid = d_uuid.clone();
+
+        let ts5 = Duration::new(5, 0);
+        let ts10 = Duration::new(10, 0);
+        let ts15 = Duration::new(15, 0);
+
+        let cid_z = unsafe { Cid::new_zero() };
+
+        let cid_a = Cid::new_lamport(d_uuid, s_uuid, ts5.clone(), &ts5);
+        assert!(cid_a.cmp(&cid_z) == Ordering::Greater);
+        let cid_b = Cid::new_lamport(d_uuid, s_uuid, ts15.clone(), &ts10);
+        assert!(cid_b.cmp(&cid_a) == Ordering::Greater);
+        // Even with an older ts, we should still step forward.
+        let cid_c = Cid::new_lamport(d_uuid, s_uuid, ts10, &ts15);
+        assert!(cid_c.cmp(&cid_b) == Ordering::Greater);
     }
 }

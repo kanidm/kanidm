@@ -210,7 +210,8 @@ pub const JSON_SCHEMA_ATTR_DOMAIN_NAME: &str = r#"{
         "The domain's DNS name for webauthn and SPN generation purposes."
       ],
       "index": [
-        "EQUALITY"
+        "EQUALITY",
+        "PRESENCE"
       ],
       "unique": [
         "true"
@@ -222,7 +223,7 @@ pub const JSON_SCHEMA_ATTR_DOMAIN_NAME: &str = r#"{
         "domain_name"
       ],
       "syntax": [
-        "UTF8STRING_INSENSITIVE"
+        "UTF8STRING_INAME"
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000053"

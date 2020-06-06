@@ -17,6 +17,8 @@ use regex::Regex;
 lazy_static! {
     static ref SPN_RE: Regex =
         Regex::new("(?P<name>[^@]+)@(?P<realm>[^@]+)").expect("Invalid SPN regex found");
+    static ref INAME_RE: Regex =
+        Regex::new("^(_.*|.*@.*|\\d+|.*\\s.*)$").expect("Invalid Iname regex found");
 }
 
 #[allow(non_camel_case_types)]
@@ -36,6 +38,8 @@ impl TryFrom<&str> for IndexType {
             "EQUALITY" => Ok(IndexType::EQUALITY),
             "PRESENCE" => Ok(IndexType::PRESENCE),
             "SUBSTRING" => Ok(IndexType::SUBSTRING),
+            // UUID map?
+            // UUID rev map?
             _ => Err(()),
         }
     }
@@ -93,6 +97,7 @@ pub enum SyntaxType {
     // We also need to "self host" a syntax type, and index type
     UTF8STRING,
     UTF8STRING_INSENSITIVE,
+    UTF8STRING_INAME,
     UUID,
     BOOLEAN,
     SYNTAX_ID,
@@ -115,6 +120,7 @@ impl TryFrom<&str> for SyntaxType {
         match n_value.as_str() {
             "UTF8STRING" => Ok(SyntaxType::UTF8STRING),
             "UTF8STRING_INSENSITIVE" => Ok(SyntaxType::UTF8STRING_INSENSITIVE),
+            "UTF8STRING_INAME" => Ok(SyntaxType::UTF8STRING_INAME),
             "UUID" => Ok(SyntaxType::UUID),
             "BOOLEAN" => Ok(SyntaxType::BOOLEAN),
             "SYNTAX_ID" => Ok(SyntaxType::SYNTAX_ID),
@@ -151,6 +157,7 @@ impl TryFrom<usize> for SyntaxType {
             11 => Ok(SyntaxType::SERVICE_PRINCIPLE_NAME),
             12 => Ok(SyntaxType::UINT32),
             13 => Ok(SyntaxType::CID),
+            14 => Ok(SyntaxType::UTF8STRING_INAME),
             _ => Err(()),
         }
     }
@@ -173,6 +180,7 @@ impl SyntaxType {
             SyntaxType::SERVICE_PRINCIPLE_NAME => 11,
             SyntaxType::UINT32 => 12,
             SyntaxType::CID => 13,
+            SyntaxType::UTF8STRING_INAME => 14,
         }
     }
 }
@@ -185,6 +193,7 @@ impl fmt::Display for SyntaxType {
             match self {
                 SyntaxType::UTF8STRING => "UTF8STRING",
                 SyntaxType::UTF8STRING_INSENSITIVE => "UTF8STRING_INSENSITIVE",
+                SyntaxType::UTF8STRING_INAME => "UTF8STRING_INAME",
                 SyntaxType::UUID => "UUID",
                 SyntaxType::BOOLEAN => "BOOLEAN",
                 SyntaxType::SYNTAX_ID => "SYNTAX_ID",
@@ -223,6 +232,7 @@ impl std::fmt::Debug for DataValue {
 pub enum PartialValue {
     Utf8(String),
     Iutf8(String),
+    Iname(String),
     Uuid(Uuid),
     Bool(bool),
     Syntax(SyntaxType),
@@ -260,6 +270,10 @@ impl PartialValue {
         PartialValue::Iutf8(s.to_lowercase())
     }
 
+    pub fn new_iname(s: &str) -> Self {
+        PartialValue::Iname(s.to_lowercase())
+    }
+
     #[inline]
     pub fn new_class(s: &str) -> Self {
         PartialValue::new_iutf8s(s)
@@ -275,6 +289,13 @@ impl PartialValue {
     pub fn is_iutf8(&self) -> bool {
         match self {
             PartialValue::Iutf8(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_iname(&self) -> bool {
+        match self {
+            PartialValue::Iname(_) => true,
             _ => false,
         }
     }
@@ -424,18 +445,16 @@ impl PartialValue {
     }
 
     pub fn new_spn_s(s: &str) -> Option<Self> {
-        SPN_RE.captures(s).map(|caps| {
-            let name = caps
-                .name("name")
-                .expect("Failed to access name group")
-                .as_str()
-                .to_string();
-            let realm = caps
-                .name("realm")
-                .expect("Failed to access realm group")
-                .as_str()
-                .to_string();
-            PartialValue::Spn(name, realm)
+        SPN_RE.captures(s).and_then(|caps| {
+            let name = match caps.name("name") {
+                Some(v) => v.as_str().to_string(),
+                None => return None,
+            };
+            let realm = match caps.name("realm") {
+                Some(v) => v.as_str().to_string(),
+                None => return None,
+            };
+            Some(PartialValue::Spn(name, realm))
         })
     }
 
@@ -484,6 +503,7 @@ impl PartialValue {
         match self {
             PartialValue::Utf8(s) => Some(s.as_str()),
             PartialValue::Iutf8(s) => Some(s.as_str()),
+            PartialValue::Iname(s) => Some(s.as_str()),
             _ => None,
         }
     }
@@ -496,6 +516,7 @@ impl PartialValue {
         match (self, s) {
             (PartialValue::Utf8(s1), PartialValue::Utf8(s2)) => s1.contains(s2),
             (PartialValue::Iutf8(s1), PartialValue::Iutf8(s2)) => s1.contains(s2),
+            (PartialValue::Iname(s1), PartialValue::Iname(s2)) => s1.contains(s2),
             _ => false,
         }
     }
@@ -510,7 +531,7 @@ impl PartialValue {
 
     pub fn get_idx_eq_key(&self) -> String {
         match &self {
-            PartialValue::Utf8(s) | PartialValue::Iutf8(s) => s.clone(),
+            PartialValue::Utf8(s) | PartialValue::Iutf8(s) | PartialValue::Iname(s) => s.clone(),
             PartialValue::Refer(u) | PartialValue::Uuid(u) => u.to_hyphenated_ref().to_string(),
             PartialValue::Bool(b) => b.to_string(),
             PartialValue::Syntax(syn) => syn.to_string(),
@@ -685,6 +706,27 @@ impl Value {
     pub fn is_insensitive_utf8(&self) -> bool {
         match self.pv {
             PartialValue::Iutf8(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn new_iname(s: String) -> Self {
+        Value {
+            pv: PartialValue::new_iname(s.as_str()),
+            data: None,
+        }
+    }
+
+    pub fn new_iname_s(s: &str) -> Self {
+        Value {
+            pv: PartialValue::new_iname(s),
+            data: None,
+        }
+    }
+
+    pub fn is_iname(&self) -> bool {
+        match self.pv {
+            PartialValue::Iname(_) => true,
             _ => false,
         }
     }
@@ -999,6 +1041,10 @@ impl Value {
                     data: None,
                 })
             }
+            DbValueV1::N8(s) => Ok(Value {
+                pv: PartialValue::Iname(s.to_lowercase()),
+                data: None,
+            }),
             DbValueV1::UU(u) => Ok(Value {
                 pv: PartialValue::Uuid(u),
                 data: None,
@@ -1065,6 +1111,7 @@ impl Value {
         match &self.pv {
             PartialValue::Utf8(s) => DbValueV1::U8(s.clone()),
             PartialValue::Iutf8(s) => DbValueV1::I8(s.clone()),
+            PartialValue::Iname(s) => DbValueV1::N8(s.clone()),
             PartialValue::Uuid(u) => DbValueV1::UU(*u),
             PartialValue::Bool(b) => DbValueV1::BO(*b),
             PartialValue::Syntax(syn) => DbValueV1::SY(syn.to_usize()),
@@ -1127,6 +1174,7 @@ impl Value {
         match &self.pv {
             PartialValue::Utf8(s) => Some(s.as_str()),
             PartialValue::Iutf8(s) => Some(s.as_str()),
+            PartialValue::Iname(s) => Some(s.as_str()),
             _ => None,
         }
     }
@@ -1139,6 +1187,7 @@ impl Value {
         match &self.pv {
             PartialValue::Utf8(s) => Some(s),
             PartialValue::Iutf8(s) => Some(s),
+            PartialValue::Iname(s) => Some(s),
             _ => None,
         }
     }
@@ -1193,10 +1242,19 @@ impl Value {
         self.pv.clone()
     }
 
+    pub fn migrate_iutf8_iname(self) -> Option<Self> {
+        match self.pv {
+            PartialValue::Iutf8(v) => Some(Value {
+                pv: PartialValue::Iname(v),
+                data: None,
+            }),
+            _ => None,
+        }
+    }
+
     pub(crate) fn to_proto_string_clone(&self) -> String {
         match &self.pv {
-            PartialValue::Utf8(s) => s.clone(),
-            PartialValue::Iutf8(s) => s.clone(),
+            PartialValue::Utf8(s) | PartialValue::Iutf8(s) | PartialValue::Iname(s) => s.clone(),
             PartialValue::Uuid(u) => u.to_hyphenated_ref().to_string(),
             PartialValue::Bool(b) => b.to_string(),
             PartialValue::Syntax(syn) => syn.to_string(),
@@ -1244,6 +1302,14 @@ impl Value {
         // valid. IE json filter is really a filter, or cred types have supplemental
         // data.
         match &self.pv {
+            PartialValue::Iname(s) => {
+                match Uuid::parse_str(s) {
+                    // It is a uuid, disallow.
+                    Ok(_) => false,
+                    // Not a uuid, check it against the re.
+                    Err(_) => !INAME_RE.is_match(s),
+                }
+            }
             PartialValue::Cred(_) => match &self.data {
                 Some(v) => match &v {
                     DataValue::Cred(_) => true,
@@ -1273,7 +1339,9 @@ impl Value {
 
     pub fn generate_idx_eq_keys(&self) -> Vec<String> {
         match &self.pv {
-            PartialValue::Utf8(s) | PartialValue::Iutf8(s) => vec![s.clone()],
+            PartialValue::Utf8(s) | PartialValue::Iutf8(s) | PartialValue::Iname(s) => {
+                vec![s.clone()]
+            }
             PartialValue::Refer(u) | PartialValue::Uuid(u) => {
                 vec![u.to_hyphenated_ref().to_string()]
             }
@@ -1424,6 +1492,39 @@ mod tests {
     #[test]
     fn test_value_cid() {
         assert!(PartialValue::new_cid_s("_").is_none());
+    }
+
+    #[test]
+    fn test_value_iname() {
+        /*
+         * name MUST NOT:
+         * - be a pure int (confusion to gid/uid/linux)
+         * - a uuid (confuses our name mapper)
+         * - contain an @ (confuses SPN)
+         * - can not start with _ (... I forgot but it's important I swear >.>)
+         * - can not have spaces (confuses too many systems :()
+         */
+        let inv1 = Value::new_iname_s("1234");
+        let inv2 = Value::new_iname_s("bc23f637-4439-4c07-b95d-eaed0d9e4b8b");
+        let inv3 = Value::new_iname_s("hello@test.com");
+        let inv4 = Value::new_iname_s("_bad");
+        let inv5 = Value::new_iname_s("no spaces I'm sorry :(");
+
+        let val1 = Value::new_iname_s("William");
+        let val2 = Value::new_iname_s("this_is_okay");
+        let val3 = Value::new_iname_s("123_456");
+        let val4 = Value::new_iname_s("🍿");
+
+        assert!(!inv1.validate());
+        assert!(!inv2.validate());
+        assert!(!inv3.validate());
+        assert!(!inv4.validate());
+        assert!(!inv5.validate());
+
+        assert!(val1.validate());
+        assert!(val2.validate());
+        assert!(val3.validate());
+        assert!(val4.validate());
     }
 
     /*

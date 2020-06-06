@@ -277,6 +277,7 @@ impl SearchEvent {
 
         if let Some(s) = &r_attrs {
             if s.is_empty() {
+                lrequest_error!(audit, "EmptyRequest for attributes");
                 return Err(OperationError::EmptyRequest);
             }
         }
@@ -290,11 +291,14 @@ impl SearchEvent {
                 .clone()
                 .into_ignore_hidden()
                 .validate(qs.get_schema())
-                .map_err(OperationError::SchemaViolation)?,
-            filter_orig: msg
-                .filter
-                .validate(qs.get_schema())
-                .map_err(OperationError::SchemaViolation)?,
+                .map_err(|e| {
+                    lrequest_error!(audit, "filter schema violation -> {:?}", e);
+                    OperationError::SchemaViolation(e)
+                })?,
+            filter_orig: msg.filter.validate(qs.get_schema()).map_err(|e| {
+                lrequest_error!(audit, "filter_orig schema violation -> {:?}", e);
+                OperationError::SchemaViolation(e)
+            })?,
             attrs: r_attrs,
         })
     }

@@ -376,7 +376,7 @@ impl Handler<InternalSearchMessage> for QueryServerReadV1 {
                 let srch = match SearchEvent::from_internal_message(&mut audit, msg, &mut qs_read) {
                     Ok(s) => s,
                     Err(e) => {
-                        ladmin_error!(audit, "Failed to begin search: {:?}", e);
+                        ladmin_error!(audit, "Failed to begin internal api search: {:?}", e);
                         return Err(e);
                     }
                 };
@@ -471,7 +471,7 @@ impl Handler<InternalRadiusReadMessage> for QueryServerReadV1 {
                 ) {
                     Ok(s) => s,
                     Err(e) => {
-                        ladmin_error!(audit, "Failed to begin search: {:?}", e);
+                        ladmin_error!(audit, "Failed to begin radius read: {:?}", e);
                         return Err(e);
                     }
                 };
@@ -537,7 +537,7 @@ impl Handler<InternalRadiusTokenReadMessage> for QueryServerReadV1 {
                 ) {
                     Ok(s) => s,
                     Err(e) => {
-                        ladmin_error!(audit, "Failed to begin search: {:?}", e);
+                        ladmin_error!(audit, "Failed to begin radius token read: {:?}", e);
                         return Err(e);
                     }
                 };
@@ -589,7 +589,7 @@ impl Handler<InternalUnixUserTokenReadMessage> for QueryServerReadV1 {
                 ) {
                     Ok(s) => s,
                     Err(e) => {
-                        ladmin_error!(audit, "Failed to begin search: {:?}", e);
+                        ladmin_error!(audit, "Failed to begin unix token read: {:?}", e);
                         return Err(e);
                     }
                 };
@@ -642,7 +642,7 @@ impl Handler<InternalUnixGroupTokenReadMessage> for QueryServerReadV1 {
                 ) {
                     Ok(s) => s,
                     Err(e) => {
-                        ladmin_error!(audit, "Failed to begin search: {:?}", e);
+                        ladmin_error!(audit, "Failed to begin unix group token read: {:?}", e);
                         return Err(e);
                     }
                 };
@@ -690,7 +690,7 @@ impl Handler<InternalSshKeyReadMessage> for QueryServerReadV1 {
                 ) {
                     Ok(s) => s,
                     Err(e) => {
-                        ladmin_error!(audit, "Failed to begin search: {:?}", e);
+                        ladmin_error!(audit, "Failed to begin ssh key read: {:?}", e);
                         return Err(e);
                     }
                 };
@@ -760,7 +760,7 @@ impl Handler<InternalSshKeyTagReadMessage> for QueryServerReadV1 {
                 ) {
                     Ok(s) => s,
                     Err(e) => {
-                        ladmin_error!(audit, "Failed to begin search: {:?}", e);
+                        ladmin_error!(audit, "Failed to begin sshkey tag read: {:?}", e);
                         return Err(e);
                     }
                 };

@@ -19,8 +19,8 @@ pub struct Spn {}
 lazy_static! {
     static ref UUID_DOMAIN_INFO_T: Uuid =
         Uuid::parse_str(UUID_DOMAIN_INFO).expect("Unable to parse constant UUID_DOMAIN_INFO");
-    static ref CLASS_GROUP: PartialValue = PartialValue::new_iutf8s("group");
-    static ref CLASS_ACCOUNT: PartialValue = PartialValue::new_iutf8s("account");
+    static ref CLASS_GROUP: PartialValue = PartialValue::new_class("group");
+    static ref CLASS_ACCOUNT: PartialValue = PartialValue::new_class("account");
     static ref PV_UUID_DOMAIN_INFO: PartialValue = PartialValue::new_uuids(UUID_DOMAIN_INFO)
         .expect("Unable to parse constant UUID_DOMAIN_INFO");
 }
@@ -327,7 +327,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iutf8s("testperson"))),
+            filter!(f_eq("name", PartialValue::new_iname("testperson"))),
             modlist!([m_purge("spn")]),
             None,
             |_, _| {}
@@ -384,7 +384,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iutf8s("testperson"))),
+            filter!(f_eq("name", PartialValue::new_iname("testperson"))),
             modlist!([
                 m_purge("spn"),
                 m_pres("spn", &Value::new_spn_str("invalid", "spn"))

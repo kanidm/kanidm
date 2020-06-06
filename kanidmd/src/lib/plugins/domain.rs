@@ -46,7 +46,7 @@ impl Plugin for Domain {
                 ltrace!(au, "plugin_domain: Applying uuid transform");
                 // We only apply this if one isn't provided.
                 if !e.attribute_pres("domain_name") {
-                    let n = Value::new_iutf8s("example.com");
+                    let n = Value::new_iname_s("example.com");
                     e.set_avas("domain_name", vec![n]);
                     ltrace!(au, "plugin_domain: Applying domain_name transform");
                 }

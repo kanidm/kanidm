@@ -12,6 +12,7 @@ use crate::filter::{Filter, FilterPlan, FilterResolved, FilterValidResolved};
 use idlset::AndNot;
 use idlset::IDLBitRange;
 use kanidm_proto::v1::{ConsistencyError, OperationError};
+use std::time::Duration;
 use uuid::Uuid;
 
 pub mod dbentry;
@@ -57,11 +58,14 @@ pub struct BackendWriteTransaction<'a> {
 }
 
 impl IdRawEntry {
-    fn into_entry(self) -> Result<Entry<EntrySealed, EntryCommitted>, OperationError> {
+    fn into_entry(
+        self,
+        au: &mut AuditScope,
+    ) -> Result<Entry<EntrySealed, EntryCommitted>, OperationError> {
         let db_e = serde_cbor::from_slice(self.data.as_slice())
             .map_err(|_| OperationError::SerdeCborError)?;
         let id = u64::try_from(self.id).map_err(|_| OperationError::InvalidEntryID)?;
-        Entry::from_dbentry(db_e, id).map_err(|_| OperationError::CorruptedEntry(id))
+        Entry::from_dbentry(au, db_e, id).map_err(|_| OperationError::CorruptedEntry(id))
     }
 }
 
@@ -1064,6 +1068,18 @@ impl<'a> BackendWriteTransaction<'a> {
         {
             Some(d_uuid) => d_uuid,
             None => self.reset_db_d_uuid().expect("Failed to regenerate D_UUID"),
+        }
+    }
+
+    pub fn set_db_ts_max(&mut self, ts: &Duration) -> Result<(), OperationError> {
+        self.get_idlayer().set_db_ts_max(ts)
+    }
+
+    pub fn get_db_ts_max(&mut self, ts: &Duration) -> Result<Duration, OperationError> {
+        // if none, return ts. If found, return it.
+        match self.get_idlayer().get_db_ts_max()? {
+            Some(dts) => Ok(dts),
+            None => Ok(ts.clone()),
         }
     }
 

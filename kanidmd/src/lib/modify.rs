@@ -141,7 +141,7 @@ impl ModifyList<ModifyInvalid> {
                     let attr_norm = schema.normalise_attr_name(attr);
                     match schema_attributes.get(&attr_norm) {
                         Some(schema_a) => schema_a
-                            .validate_value(&value)
+                            .validate_value(attr_norm.as_str(), &value)
                             .map(|_| Modify::Present(attr_norm, value.clone())),
                         None => Err(SchemaError::InvalidAttribute(attr_norm)),
                     }
@@ -150,7 +150,7 @@ impl ModifyList<ModifyInvalid> {
                     let attr_norm = schema.normalise_attr_name(attr);
                     match schema_attributes.get(&attr_norm) {
                         Some(schema_a) => schema_a
-                            .validate_partialvalue(&value)
+                            .validate_partialvalue(attr_norm.as_str(), &value)
                             .map(|_| Modify::Removed(attr_norm, value.clone())),
                         None => Err(SchemaError::InvalidAttribute(attr_norm)),
                     }
