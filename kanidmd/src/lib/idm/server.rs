@@ -155,30 +155,17 @@ impl<'a> IdmServerWriteTransaction<'a> {
                     //
                     // Check anything needed? Get the current auth-session-id from request
                     // because it associates to the nonce's etc which were all cached.
-
-                    let filter_entry = filter!(f_or!([
-                        f_eq("name", PartialValue::new_iname(init.name.as_str())),
-                        // This currently says invalid syntax, which is correct, but also
-                        // annoying because it would be nice to search both ...
-                        // f_eq("uuid", name.as_str()),
-                    ]));
+                    let euuid = self.qs_read.name_to_uuid(au, init.name.as_str())?;
 
                     // Get the first / single entry we expect here ....
-                    let entry = match self.qs_read.internal_search(au, filter_entry) {
-                        Ok(mut entries) => {
-                            // Get only one entry out ...
-                            if entries.len() >= 2 {
-                                return Err(OperationError::InvalidDBState);
-                            }
-                            entries.pop().ok_or(OperationError::NoMatchingEntries)?
-                        }
-                        Err(e) => {
-                            // Something went wrong! Abort!
-                            return Err(e);
-                        }
-                    };
+                    let entry = self.qs_read.internal_search_uuid(au, &euuid)?;
 
-                    lsecurity!(au, "Initiating Authentication Session for ... {:?}", entry);
+                    lsecurity!(
+                        au,
+                        "Initiating Authentication Session for ... {:?}: {:?}",
+                        euuid,
+                        entry
+                    );
 
                     // Now, convert the Entry to an account - this gives us some stronger
                     // typing and functionality so we can assess what auth types can
@@ -881,6 +868,63 @@ mod tests {
         run_idm_test!(|qs: &QueryServer, idms: &IdmServer, au: &mut AuditScope| {
             init_admin_w_password(au, qs, TEST_PASSWORD).expect("Failed to setup admin account");
             let sid = init_admin_authsession_sid(idms, au);
+
+            let mut idms_write = idms.write();
+            let anon_step = AuthEvent::cred_step_password(sid, TEST_PASSWORD);
+
+            // Expect success
+            let r2 = idms_write.auth(au, &anon_step, Duration::from_secs(TEST_CURRENT_TIME));
+            debug!("r2 ==> {:?}", r2);
+
+            match r2 {
+                Ok(ar) => {
+                    let AuthResult {
+                        sessionid: _,
+                        state,
+                    } = ar;
+                    match state {
+                        AuthState::Success(_uat) => {
+                            // Check the uat.
+                        }
+                        _ => {
+                            error!("A critical error has occured! We have a non-succcess result!");
+                            panic!();
+                        }
+                    }
+                }
+                Err(e) => {
+                    error!("A critical error has occured! {:?}", e);
+                    // Should not occur!
+                    panic!();
+                }
+            };
+
+            idms_write.commit(au).expect("Must not fail");
+        })
+    }
+
+    #[test]
+    fn test_idm_simple_password_spn_auth() {
+        run_idm_test!(|qs: &QueryServer, idms: &IdmServer, au: &mut AuditScope| {
+            init_admin_w_password(au, qs, TEST_PASSWORD).expect("Failed to setup admin account");
+            let mut idms_write = idms.write();
+            let admin_init = AuthEvent::named_init("admin@example.com");
+
+            let r1 = idms_write.auth(au, &admin_init, Duration::from_secs(TEST_CURRENT_TIME));
+            let ar = r1.unwrap();
+            let AuthResult { sessionid, state } = ar;
+
+            match state {
+                AuthState::Continue(_) => {}
+                _ => {
+                    error!("Sessions was not initialised");
+                    panic!();
+                }
+            };
+
+            idms_write.commit(au).expect("Must not fail");
+
+            let sid = sessionid;
 
             let mut idms_write = idms.write();
             let anon_step = AuthEvent::cred_step_password(sid, TEST_PASSWORD);

@@ -254,14 +254,20 @@ fn test_server_rest_group_lifecycle() {
             .idm_group_add_members("demo_group", vec!["admin"])
             .unwrap();
         let members = rsclient.idm_group_get_members("demo_group").unwrap();
-        assert!(members == Some(vec!["admin".to_string()]));
+        assert!(members == Some(vec!["admin@example.com".to_string()]));
 
         // Set the list of members
         rsclient
             .idm_group_set_members("demo_group", vec!["admin", "demo_group"])
             .unwrap();
         let members = rsclient.idm_group_get_members("demo_group").unwrap();
-        assert!(members == Some(vec!["admin".to_string(), "demo_group".to_string()]));
+        assert!(
+            members
+                == Some(vec![
+                    "admin@example.com".to_string(),
+                    "demo_group@example.com".to_string()
+                ])
+        );
 
         // Remove a member from the group
         /*
@@ -290,7 +296,7 @@ fn test_server_rest_group_lifecycle() {
         // They should have members
         let members = rsclient.idm_group_get_members("idm_admins").unwrap();
         println!("{:?}", members);
-        assert!(members == Some(vec!["idm_admin".to_string()]));
+        assert!(members == Some(vec!["idm_admin@example.com".to_string()]));
     });
 }
 

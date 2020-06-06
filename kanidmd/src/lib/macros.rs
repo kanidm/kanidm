@@ -130,7 +130,9 @@ macro_rules! filter {
         #[allow(unused_imports)]
         use crate::filter::FC;
         #[allow(unused_imports)]
-        use crate::filter::{f_and, f_andnot, f_eq, f_id, f_lt, f_or, f_pres, f_self, f_sub};
+        use crate::filter::{
+            f_and, f_andnot, f_eq, f_id, f_lt, f_or, f_pres, f_self, f_spn_name, f_sub,
+        };
         Filter::new_ignore_hidden($fc)
     }};
 }
