@@ -17,6 +17,7 @@ pub struct TlsConfiguration {
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct Configuration {
     pub address: String,
+    pub ldapaddress: Option<String>,
     pub threads: usize,
     // db type later
     pub db_path: String,
@@ -30,6 +31,10 @@ pub struct Configuration {
 impl fmt::Display for Configuration {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "address: {}, ", self.address)
+            .and_then(|_| match &self.ldapaddress {
+                Some(la) => write!(f, "ldap address: {}, ", la),
+                None => write!(f, "ldap address: disabled, "),
+            })
             .and_then(|_| write!(f, "thread count: {}, ", self.threads))
             .and_then(|_| write!(f, "dbpath: {}, ", self.db_path))
             .and_then(|_| write!(f, "max request size: {}b, ", self.maximum_request))
@@ -49,6 +54,7 @@ impl Configuration {
     pub fn new() -> Self {
         let mut c = Configuration {
             address: String::from("127.0.0.1:8080"),
+            ldapaddress: None,
             threads: num_cpus::get(),
             db_path: String::from(""),
             maximum_request: 262_144, // 256k
@@ -80,6 +86,10 @@ impl Configuration {
             .as_ref()
             .cloned()
             .unwrap_or_else(|| String::from("127.0.0.1:8080"));
+    }
+
+    pub fn update_ldapbind(&mut self, l: &Option<String>) {
+        self.ldapaddress = l.clone();
     }
 
     pub fn update_tls(

@@ -29,6 +29,8 @@ struct ServerOpt {
     key_path: Option<PathBuf>,
     #[structopt(short = "b", long = "bindaddr")]
     bind: Option<String>,
+    #[structopt(short = "l", long = "ldapbindaddr")]
+    ldapbind: Option<String>,
     #[structopt(flatten)]
     commonopts: CommonOpt,
 }
@@ -127,8 +129,9 @@ async fn main() {
             config.update_db_path(&sopt.commonopts.db_path);
             config.update_tls(&sopt.ca_path, &sopt.cert_path, &sopt.key_path);
             config.update_bind(&sopt.bind);
+            config.update_ldapbind(&sopt.ldapbind);
 
-            let sctx = create_server_core(config);
+            let sctx = create_server_core(config).await;
             match sctx {
                 Ok(sctx) => {
                     tokio::signal::ctrl_c().await.unwrap();

@@ -1499,9 +1499,11 @@ dependencies = [
  "crossbeam",
  "env_logger",
  "futures",
+ "futures-util",
  "idlset",
  "kanidm_proto",
  "lazy_static",
+ "ldap3_server",
  "libsqlite3-sys",
  "log",
  "num_cpus",
@@ -1520,6 +1522,8 @@ dependencies = [
  "structopt",
  "time 0.1.43",
  "tokio",
+ "tokio-openssl",
+ "tokio-util 0.2.0",
  "uuid",
  "zxcvbn",
 ]
@@ -1622,6 +1626,28 @@ name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
+
+[[package]]
+name = "lber"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a749954d43fcfb8d4381aa0c6cf291065053e0590d622f4f830393a9bd8278a5"
+dependencies = [
+ "byteorder",
+ "bytes",
+ "nom 2.2.1",
+]
+
+[[package]]
+name = "ldap3_server"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "503fdf94b7d1a02104ba4ac79e382339e70d526e9be0b4ea877e021ebfe75e22"
+dependencies = [
+ "bytes",
+ "lber",
+ "tokio-util 0.2.0",
+]
 
 [[package]]
 name = "libc"
@@ -1839,6 +1865,12 @@ name = "nodrop"
 version = "0.1.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72ef4a56884ca558e5ddb05a1d1e7e1bfd9a68d9ed024c21704cc98872dae1bb"
+
+[[package]]
+name = "nom"
+version = "2.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cf51a729ecf40266a2368ad335a5fdde43471f545a967109cd62146ecf8b66ff"
 
 [[package]]
 name = "nom"
@@ -3175,7 +3207,7 @@ version = "0.5.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2ca2a14bc3fc5b64d188b087a7d3a927df87b152e941ccfbc66672e20c467ae"
 dependencies = [
- "nom",
+ "nom 4.2.3",
  "proc-macro2",
  "quote",
  "syn",

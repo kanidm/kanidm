@@ -1,4 +1,5 @@
 mod ctx;
+mod ldaps;
 // use actix_files as fs;
 use actix::prelude::*;
 use actix_session::{CookieSession, Session};
@@ -1562,7 +1563,7 @@ pub fn recover_account_core(config: Configuration, name: String, password: Strin
     };
 }
 
-pub fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> {
+pub async fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> {
     // Until this point, we probably want to write to the log macro fns.
 
     if config.integration_test_config.is_some() {
@@ -1657,6 +1658,24 @@ pub fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> {
 
     // Setup timed events associated to the write thread
     let _int_addr = IntervalActor::new(server_write_addr.clone()).start();
+
+    // If we have been requested to init LDAP, configure it now.
+    match &config.ldapaddress {
+        Some(la) => {
+            let opt_ldap_tls_params = match setup_tls(&config) {
+                Ok(t) => t,
+                Err(e) => {
+                    error!("Failed to configure LDAP TLS parameters -> {:?}", e);
+                    return Err(());
+                }
+            };
+            ldaps::create_ldap_server(la.as_str(), opt_ldap_tls_params, server_read_addr.clone())
+                .await?;
+        }
+        None => {
+            debug!("LDAP not requested, skipping");
+        }
+    }
 
     // Copy the max size
     let secure_cookies = config.secure_cookies;
@@ -1872,8 +1891,8 @@ pub fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> {
             server.bind(config.address)
         }
     };
-
     server.expect("Failed to initialise server!").run();
+
     info!("ready to rock! 🤘");
 
     Ok(ServerCtx::new(System::current(), log_tx, log_thread))

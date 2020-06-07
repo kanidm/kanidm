@@ -857,3 +857,16 @@ impl Handler<IdmAccountUnixAuthMessage> for QueryServerReadV1 {
         res
     }
 }
+
+#[derive(Message)]
+#[rtype(result = "Result<(), ()>")]
+pub struct Ping;
+
+impl Handler<Ping> for QueryServerReadV1 {
+    type Result = Result<(), ()>;
+
+    fn handle(&mut self, msg: Ping, _: &mut Self::Context) -> Self::Result {
+        println!("+++++++++++++ qsread v1");
+        Ok(())
+    }
+}
