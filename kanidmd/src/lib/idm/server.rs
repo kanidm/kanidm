@@ -9,10 +9,10 @@ use crate::idm::event::{
     RadiusAuthTokenEvent, RegenerateRadiusSecretEvent, UnixGroupTokenEvent,
     UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent, VerifyTOTPEvent,
 };
-use crate::idm::ldap::LdapBoundToken;
 use crate::idm::mfareg::{MfaRegCred, MfaRegNext, MfaRegSession, MfaReqInit, MfaReqStep};
 use crate::idm::radius::RadiusAccount;
 use crate::idm::unix::{UnixGroup, UnixUserAccount};
+use crate::ldap::LdapBoundToken;
 use crate::server::QueryServerReadTransaction;
 use crate::server::{QueryServer, QueryServerTransaction, QueryServerWriteTransaction};
 use crate::utils::{password_from_random, readable_password_from_random, uuid_from_duration, SID};

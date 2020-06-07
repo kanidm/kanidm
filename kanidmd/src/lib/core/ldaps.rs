@@ -1,5 +1,5 @@
-use crate::actors::v1_read::{LdapRequestMessage, LdapResponseState, QueryServerReadV1};
-use crate::idm::ldap::LdapBoundToken;
+use crate::actors::v1_read::{LdapRequestMessage, QueryServerReadV1};
+use crate::ldap::{LdapBoundToken, LdapResponseState};
 use openssl::ssl::{SslAcceptor, SslAcceptorBuilder};
 
 use actix::prelude::*;

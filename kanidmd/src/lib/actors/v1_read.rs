@@ -11,8 +11,8 @@ use crate::value::PartialValue;
 use kanidm_proto::v1::{OperationError, RadiusAuthToken};
 
 use crate::filter::{Filter, FilterInvalid};
-use crate::idm::ldap::LdapBoundToken;
 use crate::idm::server::IdmServer;
+use crate::ldap::{ldap_do_op, LdapBoundToken, LdapResponseState};
 use crate::server::{QueryServer, QueryServerTransaction};
 
 use kanidm_proto::v1::Entry as ProtoEntry;
@@ -872,14 +872,6 @@ pub struct LdapRequestMessage {
     pub uat: Option<LdapBoundToken>,
 }
 
-pub enum LdapResponseState {
-    Unbind,
-    Disconnect(LdapMsg),
-    Bind(LdapBoundToken, LdapMsg),
-    Respond(LdapMsg),
-    MultiPartResponse(Vec<LdapMsg>),
-}
-
 impl Handler<LdapRequestMessage> for QueryServerReadV1 {
     type Result = Option<LdapResponseState>;
 
@@ -904,90 +896,16 @@ impl Handler<LdapRequestMessage> for QueryServerReadV1 {
                     }
                 };
 
-                match server_op {
-                    ServerOps::SimpleBind(sbr) => {
-                        let mut idm_write = self.idms.write();
-
-                        let target_uuid: Uuid = if sbr.dn == "" && sbr.pw == "" {
-                            UUID_ANONYMOUS.clone()
-                        } else {
-                            match idm_write
-                                .qs_read
-                                .name_to_uuid(&mut audit, sbr.dn.as_str())
-                                .map_err(|e| {
-                                    ladmin_info!(
-                                        &mut audit,
-                                        "Error resolving id to target {:?}",
-                                        e
-                                    );
-                                }) {
-                                Ok(u) => u,
-                                Err(_) => {
-                                    return LdapResponseState::Disconnect(
-                                        DisconnectionNotice::gen(
-                                            LdapResultCode::ProtocolError,
-                                            format!("Invalid Request {:?}", &eventid).as_str(),
-                                        ),
-                                    );
-                                }
-                            }
-                        };
-
-                        let ct = SystemTime::now()
-                            .duration_since(SystemTime::UNIX_EPOCH)
-                            .expect("Clock failure!");
-
-                        let lae = match LdapAuthEvent::from_parts(
-                            &mut audit,
-                            target_uuid,
-                            sbr.pw.to_string(),
-                        ) {
-                            Ok(lae) => lae,
-                            Err(e) => {
-                                return LdapResponseState::Disconnect(DisconnectionNotice::gen(
-                                    LdapResultCode::ProtocolError,
-                                    format!("Invalid Request {:?}", &eventid).as_str(),
-                                ));
-                            }
-                        };
-                        let r = idm_write
-                            .auth_ldap(&mut audit, lae, ct)
-                            .and_then(|r| idm_write.commit(&mut audit).map(|_| r));
-
-                        match r {
-                            Ok(Some(lbt)) => LdapResponseState::Bind(lbt, sbr.gen_success()),
-                            Ok(None) => LdapResponseState::Respond(sbr.gen_invalid_cred()),
-                            Err(e) => LdapResponseState::Disconnect(DisconnectionNotice::gen(
-                                LdapResultCode::ProtocolError,
-                                format!("Invalid Request {:?}", &eventid).as_str(),
-                            )),
-                        }
-                    }
-                    ServerOps::Search(sr) => {
-                        // self.do_search(&sr)
-                        match uat {
-                            Some(u) => unimplemented!(),
-                            None => LdapResponseState::Respond(sr.gen_operror(
-                                format!("Unbound Connection {:?}", &eventid).as_str(),
-                            )),
-                        }
-                    }
-                    ServerOps::Unbind(_) => {
-                        // No need to notify on unbind (per rfc4511)
-                        LdapResponseState::Unbind
-                    }
-                    ServerOps::Whoami(wr) => match uat {
-                        Some(u) => LdapResponseState::Respond(
-                            wr.gen_success(format!("u: {}", u.spn).as_str()),
-                        ),
-                        None => LdapResponseState::Respond(
-                            wr.gen_operror(format!("Unbound Connection {:?}", &eventid).as_str()),
-                        ),
-                    },
-                } // end match server op
+                ldap_do_op(&mut audit, &self.idms, server_op, uat, &eventid).unwrap_or_else(|e| {
+                    LdapResponseState::Disconnect(DisconnectionNotice::gen(
+                        LdapResultCode::Other,
+                        format!("Internal Server Error {:?}", &eventid).as_str(),
+                    ))
+                })
             }
         );
         if self.log.send(Some(audit)).is_err() {
+            error!("Unable to commit log -> {:?}", &eventid);
             Some(LdapResponseState::Disconnect(DisconnectionNotice::gen(
                 LdapResultCode::Other,
                 format!("Internal Server Error {:?}", &eventid).as_str(),
