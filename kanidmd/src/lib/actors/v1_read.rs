@@ -5,12 +5,13 @@ use crate::audit::AuditScope;
 
 use crate::event::{AuthEvent, SearchEvent, SearchResult, WhoamiResult};
 use crate::idm::event::{
-    RadiusAuthTokenEvent, UnixGroupTokenEvent, UnixUserAuthEvent, UnixUserTokenEvent,
+    LdapAuthEvent, RadiusAuthTokenEvent, UnixGroupTokenEvent, UnixUserAuthEvent, UnixUserTokenEvent,
 };
 use crate::value::PartialValue;
 use kanidm_proto::v1::{OperationError, RadiusAuthToken};
 
 use crate::filter::{Filter, FilterInvalid};
+use crate::idm::ldap::LdapBoundToken;
 use crate::idm::server::IdmServer;
 use crate::server::{QueryServer, QueryServerTransaction};
 
@@ -20,9 +21,14 @@ use kanidm_proto::v1::{
     UserAuthToken, WhoamiResponse,
 };
 
+use crate::constants::uuids::UUID_ANONYMOUS;
+
 use actix::prelude::*;
 use std::time::SystemTime;
 use uuid::Uuid;
+
+use ldap3_server::simple::*;
+use std::convert::TryFrom;
 
 // These are used when the request (IE Get) has no intrising request
 // type. Additionally, they are used in some requests where we need
@@ -859,14 +865,135 @@ impl Handler<IdmAccountUnixAuthMessage> for QueryServerReadV1 {
 }
 
 #[derive(Message)]
-#[rtype(result = "Result<(), ()>")]
-pub struct Ping;
+#[rtype(result = "Option<LdapResponseState>")]
+pub struct LdapRequestMessage {
+    pub eventid: Uuid,
+    pub protomsg: LdapMsg,
+    pub uat: Option<LdapBoundToken>,
+}
 
-impl Handler<Ping> for QueryServerReadV1 {
-    type Result = Result<(), ()>;
+pub enum LdapResponseState {
+    Unbind,
+    Disconnect(LdapMsg),
+    Bind(LdapBoundToken, LdapMsg),
+    Respond(LdapMsg),
+    MultiPartResponse(Vec<LdapMsg>),
+}
 
-    fn handle(&mut self, msg: Ping, _: &mut Self::Context) -> Self::Result {
-        println!("+++++++++++++ qsread v1");
-        Ok(())
+impl Handler<LdapRequestMessage> for QueryServerReadV1 {
+    type Result = Option<LdapResponseState>;
+
+    fn handle(&mut self, msg: LdapRequestMessage, _: &mut Self::Context) -> Self::Result {
+        let LdapRequestMessage {
+            eventid,
+            protomsg,
+            uat,
+        } = msg;
+        let mut audit = AuditScope::new("ldap_request_message", eventid.clone());
+        let res = lperf_segment!(
+            &mut audit,
+            "actors::v1_read::handle<LdapRequestMessage>",
+            || {
+                let server_op = match ServerOps::try_from(protomsg) {
+                    Ok(v) => v,
+                    Err(_) => {
+                        return LdapResponseState::Disconnect(DisconnectionNotice::gen(
+                            LdapResultCode::ProtocolError,
+                            format!("Invalid Request {:?}", &eventid).as_str(),
+                        ));
+                    }
+                };
+
+                match server_op {
+                    ServerOps::SimpleBind(sbr) => {
+                        let mut idm_write = self.idms.write();
+
+                        let target_uuid: Uuid = if sbr.dn == "" && sbr.pw == "" {
+                            UUID_ANONYMOUS.clone()
+                        } else {
+                            match idm_write
+                                .qs_read
+                                .name_to_uuid(&mut audit, sbr.dn.as_str())
+                                .map_err(|e| {
+                                    ladmin_info!(
+                                        &mut audit,
+                                        "Error resolving id to target {:?}",
+                                        e
+                                    );
+                                }) {
+                                Ok(u) => u,
+                                Err(_) => {
+                                    return LdapResponseState::Disconnect(
+                                        DisconnectionNotice::gen(
+                                            LdapResultCode::ProtocolError,
+                                            format!("Invalid Request {:?}", &eventid).as_str(),
+                                        ),
+                                    );
+                                }
+                            }
+                        };
+
+                        let ct = SystemTime::now()
+                            .duration_since(SystemTime::UNIX_EPOCH)
+                            .expect("Clock failure!");
+
+                        let lae = match LdapAuthEvent::from_parts(
+                            &mut audit,
+                            target_uuid,
+                            sbr.pw.to_string(),
+                        ) {
+                            Ok(lae) => lae,
+                            Err(e) => {
+                                return LdapResponseState::Disconnect(DisconnectionNotice::gen(
+                                    LdapResultCode::ProtocolError,
+                                    format!("Invalid Request {:?}", &eventid).as_str(),
+                                ));
+                            }
+                        };
+                        let r = idm_write
+                            .auth_ldap(&mut audit, lae, ct)
+                            .and_then(|r| idm_write.commit(&mut audit).map(|_| r));
+
+                        match r {
+                            Ok(Some(lbt)) => LdapResponseState::Bind(lbt, sbr.gen_success()),
+                            Ok(None) => LdapResponseState::Respond(sbr.gen_invalid_cred()),
+                            Err(e) => LdapResponseState::Disconnect(DisconnectionNotice::gen(
+                                LdapResultCode::ProtocolError,
+                                format!("Invalid Request {:?}", &eventid).as_str(),
+                            )),
+                        }
+                    }
+                    ServerOps::Search(sr) => {
+                        // self.do_search(&sr)
+                        match uat {
+                            Some(u) => unimplemented!(),
+                            None => LdapResponseState::Respond(sr.gen_operror(
+                                format!("Unbound Connection {:?}", &eventid).as_str(),
+                            )),
+                        }
+                    }
+                    ServerOps::Unbind(_) => {
+                        // No need to notify on unbind (per rfc4511)
+                        LdapResponseState::Unbind
+                    }
+                    ServerOps::Whoami(wr) => match uat {
+                        Some(u) => LdapResponseState::Respond(
+                            wr.gen_success(format!("u: {}", u.spn).as_str()),
+                        ),
+                        None => LdapResponseState::Respond(
+                            wr.gen_operror(format!("Unbound Connection {:?}", &eventid).as_str()),
+                        ),
+                    },
+                } // end match server op
+            }
+        );
+        if self.log.send(Some(audit)).is_err() {
+            Some(LdapResponseState::Disconnect(DisconnectionNotice::gen(
+                LdapResultCode::Other,
+                format!("Internal Server Error {:?}", &eventid).as_str(),
+            )))
+        } else {
+            Some(res)
+        }
     }
 }

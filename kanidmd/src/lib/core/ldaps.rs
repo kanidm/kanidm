@@ -1,4 +1,5 @@
-use crate::actors::v1_read::{Ping, QueryServerReadV1};
+use crate::actors::v1_read::{LdapRequestMessage, LdapResponseState, QueryServerReadV1};
+use crate::idm::ldap::LdapBoundToken;
 use openssl::ssl::{SslAcceptor, SslAcceptorBuilder};
 
 use actix::prelude::*;
@@ -13,6 +14,7 @@ use std::str::FromStr;
 use tokio::io::{AsyncWrite, WriteHalf};
 use tokio::net::{TcpListener, TcpStream};
 use tokio_util::codec::FramedRead;
+use uuid::Uuid;
 
 struct LdapReq(pub LdapMsg);
 
@@ -30,6 +32,7 @@ where
 {
     qe_r: Addr<QueryServerReadV1>,
     framed: actix::io::FramedWrite<WriteHalf<T>, LdapCodec>,
+    uat: Option<LdapBoundToken>,
 }
 
 impl<T> Actor for LdapSession<T>
@@ -48,17 +51,39 @@ where
     type Result = ResponseActFuture<Self, Result<(), ()>>;
 
     fn handle(&mut self, msg: LdapReq, ctx: &mut Self::Context) -> Self::Result {
-        let qsf = self.qe_r.send(Ping);
+        let protomsg = msg.0;
+        // Transform the LdapMsg to something the query server can work with.
+
+        // Because of the way these futures works, it's up to the qe_r to manage
+        // a lot of this, so we just palm off the processing to the thead pool.
+        let eventid = Uuid::new_v4();
+        let uat = self.uat.clone();
+        let qsf = self.qe_r.send(LdapRequestMessage {
+            eventid,
+            protomsg,
+            uat,
+        });
         let qsf = actix::fut::wrap_future::<_, Self>(qsf);
 
         let f = qsf.map(|result, actor, ctx| {
             match result {
-                Ok(Ok(_)) => println!("great success"),
+                Ok(Some(LdapResponseState::Unbind)) => ctx.stop(),
+                Ok(Some(LdapResponseState::Disconnect(r))) => {
+                    actor.framed.write(r);
+                    ctx.stop()
+                }
+                Ok(Some(LdapResponseState::Bind(uat, r))) => {
+                    actor.uat = Some(uat);
+                    actor.framed.write(r);
+                }
+                Ok(Some(LdapResponseState::Respond(r))) => {
+                    actor.framed.write(r);
+                }
                 _ => {
                     error!("Internal server error");
                     ctx.stop();
                 }
-            }
+            };
             Ok(())
         });
 
@@ -96,7 +121,11 @@ where
         framed: actix::io::FramedWrite<WriteHalf<T>, LdapCodec>,
         qe_r: Addr<QueryServerReadV1>,
     ) -> Self {
-        LdapSession { qe_r, framed }
+        LdapSession {
+            qe_r,
+            framed,
+            uat: None,
+        }
     }
 }
 
