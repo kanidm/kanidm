@@ -5,7 +5,6 @@
 // which is importart for management of the replication topo and trust
 // relationships.
 use crate::plugins::Plugin;
-use uuid::Uuid;
 
 use crate::audit::AuditScope;
 use crate::constants::UUID_DOMAIN_INFO;

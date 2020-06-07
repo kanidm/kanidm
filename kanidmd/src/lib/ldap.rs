@@ -1,19 +1,18 @@
 use crate::audit::AuditScope;
-use crate::constants::{UUID_ANONYMOUS, UUID_DOMAIN_INFO};
+use crate::constants::{STR_UUID_DOMAIN_INFO, UUID_ANONYMOUS, UUID_DOMAIN_INFO};
+use crate::event::SearchEvent;
+use crate::filter::Filter;
 use crate::idm::event::LdapAuthEvent;
 use crate::idm::server::IdmServer;
 use crate::server::QueryServerTransaction;
-use crate::value::PartialValue;
 use kanidm_proto::v1::OperationError;
 use ldap3_server::simple::*;
+use std::collections::BTreeSet;
+use std::iter;
 use std::time::SystemTime;
 use uuid::Uuid;
 
 use regex::Regex;
-
-lazy_static! {
-    static ref PVUUID_DOMAIN_INFO: PartialValue = PartialValue::new_uuidr(&UUID_DOMAIN_INFO);
-}
 
 pub enum LdapResponseState {
     Unbind,
@@ -100,15 +99,6 @@ impl LdapServer {
         uat: LdapBoundToken,
         // eventid: &Uuid,
     ) -> Result<LdapResponseState, OperationError> {
-        ladmin_info!(
-            au,
-            "SearchRequest -> {:?}, {:?}, {:?}, {:?}",
-            sr.base,
-            sr.scope,
-            sr.filter,
-            sr.attrs
-        );
-
         // If the request is "", Base, Present("objectclass"), [], then we want the rootdse.
         if sr.base == "" && sr.scope == LdapSearchScope::Base {
             Ok(LdapResponseState::MultiPartResponse(vec![
@@ -151,48 +141,148 @@ impl LdapServer {
                 }
                 (LdapSearchScope::OneLevel, None) => {
                     // exclude domain_info
-                    Some(filter_all!(f_andnot(f_eq(
-                        "uuid",
-                        PVUUID_DOMAIN_INFO.clone()
+                    Some(LdapFilter::Not(Box::new(LdapFilter::Equality(
+                        "uuid".to_string(),
+                        STR_UUID_DOMAIN_INFO.to_string(),
                     ))))
                 }
-                (LdapSearchScope::Base, Some(r)) => {
-                    // specific entry, split dn.
-                    // Some(filter_all!(f_eq( ??? )))
-                    // unimplemented!();
-                    // FIXME
-                    None
-                }
+                (LdapSearchScope::Base, Some((a, v))) => Some(LdapFilter::Equality(a, v)),
                 (LdapSearchScope::Base, None) => {
                     // domain_info
-                    Some(filter_all!(f_eq("uuid", PVUUID_DOMAIN_INFO.clone())))
+                    Some(LdapFilter::Equality(
+                        "uuid".to_string(),
+                        STR_UUID_DOMAIN_INFO.to_string(),
+                    ))
                 }
-                (LdapSearchScope::Subtree, Some(r)) => {
-                    // specific entry, split dn.
-                    // unimplemented!();
-                    // FIXME
-                    None
-                }
+                (LdapSearchScope::Subtree, Some((a, v))) => Some(LdapFilter::Equality(a, v)),
                 (LdapSearchScope::Subtree, None) => {
                     // No filter changes needed.
                     None
                 }
             };
 
-            // If [], then "all" attrs
-            // if *, then all
-            // if +, then ignore (kanidm doesn't have operational) this part.
+            // TODO #67: limit the number of attributes here!
+            let attrs = if sr.attrs.len() == 0 {
+                // If [], then "all" attrs
+                None
+            } else {
+                let mut all_attrs = false;
+                let attrs: BTreeSet<_> = sr
+                    .attrs
+                    .iter()
+                    .filter_map(|a| {
+                        if a == "*" {
+                            // if *, then all
+                            all_attrs = true;
+                            None
+                        } else if a == "+" {
+                            // if +, then ignore (kanidm doesn't have operational) this part.
+                            None
+                        } else {
+                            // if list, add to the search
+                            Some(a.clone())
+                        }
+                    })
+                    .collect();
+                if all_attrs {
+                    None
+                } else {
+                    Some(attrs)
+                }
+            };
 
-            // if a list, we put it into the search.
+            ltrace!(au, "Attrs -> {:?}", attrs);
 
-            // Filter from LdapFilter
+            lperf_segment!(au, "ldap::do_search<core>", || {
+                // Now start the txn - we need it for resolving filter components.
+                let mut idm_read = idms.proxy_read();
 
-            // join the filter, with ext_filter, and wrap to exclude tomb/recycle.
+                // join the filter, with ext_filter
+                let lfilter = match ext_filter {
+                    Some(ext) => LdapFilter::And(vec![
+                        sr.filter.clone(),
+                        ext,
+                        LdapFilter::Not(Box::new(LdapFilter::Or(vec![
+                            LdapFilter::Equality("class".to_string(), "classtype".to_string()),
+                            LdapFilter::Equality("class".to_string(), "attributetype".to_string()),
+                            LdapFilter::Equality(
+                                "class".to_string(),
+                                "access_control_profile".to_string(),
+                            ),
+                        ]))),
+                    ]),
+                    None => LdapFilter::And(vec![
+                        sr.filter.clone(),
+                        LdapFilter::Not(Box::new(LdapFilter::Or(vec![
+                            LdapFilter::Equality("class".to_string(), "classtype".to_string()),
+                            LdapFilter::Equality("class".to_string(), "attributetype".to_string()),
+                            LdapFilter::Equality(
+                                "class".to_string(),
+                                "access_control_profile".to_string(),
+                            ),
+                        ]))),
+                    ]),
+                };
 
-            // Now start the txn
+                ltrace!(au, "ldapfilter -> {:?}", lfilter);
 
-            // Get what we need
-            Err(OperationError::EmptyRequest)
+                // Kanidm Filter from LdapFilter
+                let filter =
+                    Filter::from_ldap_ro(au, &lfilter, &mut idm_read.qs_read).map_err(|e| {
+                        lrequest_error!(au, "invalid ldap filter {:?}", e);
+                        e
+                    })?;
+
+                // Build the event, with the permissions from effective_uuid
+                // (should always be anonymous at the moment)
+                // ! Remember, searchEvent wraps to ignore hidden for us.
+                let se = SearchEvent::new_ext_impersonate_uuid(
+                    au,
+                    &mut idm_read.qs_read,
+                    &uat.effective_uuid,
+                    filter,
+                    attrs,
+                )?;
+
+                let res = idm_read.qs_read.search_ext(au, &se).map_err(|e| {
+                    ladmin_error!(au, "search failure {:?}", e);
+                    e
+                })?;
+
+                // These have already been fully reduced, so we can just slap it into the result.
+                let lres = lperf_segment!(au, "ldap::do_search<core><prepare results>", || {
+                    let lres: Result<Vec<_>, _> = res
+                        .into_iter()
+                        .map(|e| {
+                            // dn is uuid=
+                            let dn = format!(
+                                "uuid={},{}",
+                                e.get_uuid().to_hyphenated_ref(),
+                                self.basedn
+                            );
+                            // all others attrs are converted via the protoentry, which we'll disassemble
+                            let pe = e.to_pe(au, &mut idm_read.qs_read)?;
+
+                            let attributes: Vec<_> = pe
+                                .attrs
+                                .into_iter()
+                                .map(|(k, vs)| LdapPartialAttribute { atype: k, vals: vs })
+                                .collect();
+
+                            Ok(sr.gen_result_entry(LdapSearchResultEntry { dn, attributes }))
+                        })
+                        .chain(iter::once(Ok(sr.gen_success())))
+                        .collect();
+                    lres
+                });
+
+                let lres = lres.map_err(|e| {
+                    ladmin_error!(au, "entry resolve failure {:?}", e);
+                    e
+                })?;
+
+                Ok(LdapResponseState::MultiPartResponse(lres))
+            })
         }
     }
 

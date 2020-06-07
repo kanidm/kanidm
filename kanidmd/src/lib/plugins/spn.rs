@@ -12,7 +12,6 @@ use crate::server::{
 use crate::value::PartialValue;
 // use crate::value::{PartialValue, Value};
 use kanidm_proto::v1::{ConsistencyError, OperationError};
-use uuid::Uuid;
 
 pub struct Spn {}
 

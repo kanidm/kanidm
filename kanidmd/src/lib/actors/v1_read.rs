@@ -5,7 +5,7 @@ use crate::audit::AuditScope;
 
 use crate::event::{AuthEvent, SearchEvent, SearchResult, WhoamiResult};
 use crate::idm::event::{
-    LdapAuthEvent, RadiusAuthTokenEvent, UnixGroupTokenEvent, UnixUserAuthEvent, UnixUserTokenEvent,
+    RadiusAuthTokenEvent, UnixGroupTokenEvent, UnixUserAuthEvent, UnixUserTokenEvent,
 };
 use crate::value::PartialValue;
 use kanidm_proto::v1::{OperationError, RadiusAuthToken};
@@ -20,8 +20,6 @@ use kanidm_proto::v1::{
     AuthRequest, AuthResponse, SearchRequest, SearchResponse, UnixGroupToken, UnixUserToken,
     UserAuthToken, WhoamiResponse,
 };
-
-use crate::constants::uuids::UUID_ANONYMOUS;
 
 use actix::prelude::*;
 use std::time::SystemTime;
