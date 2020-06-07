@@ -12,7 +12,7 @@ use kanidm_proto::v1::{OperationError, RadiusAuthToken};
 
 use crate::filter::{Filter, FilterInvalid};
 use crate::idm::server::IdmServer;
-use crate::ldap::{ldap_do_op, LdapBoundToken, LdapResponseState};
+use crate::ldap::{LdapBoundToken, LdapResponseState, LdapServer};
 use crate::server::{QueryServer, QueryServerTransaction};
 
 use kanidm_proto::v1::Entry as ProtoEntry;
@@ -189,6 +189,7 @@ pub struct QueryServerReadV1 {
     log: Sender<Option<AuditScope>>,
     qs: QueryServer,
     idms: Arc<IdmServer>,
+    ldap: Arc<LdapServer>,
 }
 
 impl Actor for QueryServerReadV1 {
@@ -200,19 +201,35 @@ impl Actor for QueryServerReadV1 {
 }
 
 impl QueryServerReadV1 {
-    pub fn new(log: Sender<Option<AuditScope>>, qs: QueryServer, idms: Arc<IdmServer>) -> Self {
+    pub fn new(
+        log: Sender<Option<AuditScope>>,
+        qs: QueryServer,
+        idms: Arc<IdmServer>,
+        ldap: Arc<LdapServer>,
+    ) -> Self {
         info!("Starting query server v1 worker ...");
-        QueryServerReadV1 { log, qs, idms }
+        QueryServerReadV1 {
+            log,
+            qs,
+            idms,
+            ldap,
+        }
     }
 
     pub fn start(
         log: Sender<Option<AuditScope>>,
         query_server: QueryServer,
         idms: Arc<IdmServer>,
+        ldap: Arc<LdapServer>,
         threads: usize,
     ) -> actix::Addr<QueryServerReadV1> {
         SyncArbiter::start(threads, move || {
-            QueryServerReadV1::new(log.clone(), query_server.clone(), idms.clone())
+            QueryServerReadV1::new(
+                log.clone(),
+                query_server.clone(),
+                idms.clone(),
+                ldap.clone(),
+            )
         })
     }
 }
@@ -896,12 +913,14 @@ impl Handler<LdapRequestMessage> for QueryServerReadV1 {
                     }
                 };
 
-                ldap_do_op(&mut audit, &self.idms, server_op, uat, &eventid).unwrap_or_else(|e| {
-                    LdapResponseState::Disconnect(DisconnectionNotice::gen(
-                        LdapResultCode::Other,
-                        format!("Internal Server Error {:?}", &eventid).as_str(),
-                    ))
-                })
+                self.ldap
+                    .do_op(&mut audit, &self.idms, server_op, uat, &eventid)
+                    .unwrap_or_else(|e| {
+                        LdapResponseState::Disconnect(DisconnectionNotice::gen(
+                            LdapResultCode::Other,
+                            format!("Internal Server Error {:?}", &eventid).as_str(),
+                        ))
+                    })
             }
         );
         if self.log.send(Some(audit)).is_err() {

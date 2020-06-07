@@ -105,7 +105,7 @@ pub const UUID_SCHEMA_ATTR_PASSWORD_IMPORT: &str = "00000000-0000-0000-0000-ffff
 // System and domain infos
 // I'd like to strongly criticise william of the past for fucking up these allocations.
 pub const STR_UUID_SYSTEM_INFO: &str = "00000000-0000-0000-0000-ffffff000001";
-pub const UUID_DOMAIN_INFO: &str = "00000000-0000-0000-0000-ffffff000025";
+pub const STR_UUID_DOMAIN_INFO: &str = "00000000-0000-0000-0000-ffffff000025";
 // DO NOT allocate here, allocate below.
 
 // Access controls
@@ -152,4 +152,5 @@ lazy_static! {
     pub static ref UUID_ANONYMOUS: Uuid = Uuid::parse_str(STR_UUID_ANONYMOUS).unwrap();
     pub static ref UUID_SYSTEM_CONFIG: Uuid = Uuid::parse_str(STR_UUID_SYSTEM_CONFIG).unwrap();
     pub static ref UUID_SYSTEM_INFO: Uuid = Uuid::parse_str(STR_UUID_SYSTEM_INFO).unwrap();
+    pub static ref UUID_DOMAIN_INFO: Uuid = Uuid::parse_str(STR_UUID_DOMAIN_INFO).unwrap();
 }

@@ -17,9 +17,7 @@ use kanidm_proto::v1::OperationError;
 
 lazy_static! {
     static ref PVCLASS_DOMAIN_INFO: PartialValue = PartialValue::new_class("domain_info");
-    static ref PVUUID_DOMAIN_INFO: PartialValue = PartialValue::new_uuid(
-        Uuid::parse_str(UUID_DOMAIN_INFO).expect("Unable to parse constant UUID_DOMAIN_INFO")
-    );
+    static ref PVUUID_DOMAIN_INFO: PartialValue = PartialValue::new_uuidr(&UUID_DOMAIN_INFO);
 }
 
 pub struct Domain {}
@@ -69,10 +67,8 @@ mod tests {
     fn test_domain_generate_uuid() {
         run_test!(|server: &QueryServer, au: &mut AuditScope| {
             let mut server_txn = server.write(duration_from_epoch_now());
-            let uuid_domain = Uuid::parse_str(UUID_DOMAIN_INFO)
-                .expect("Unable to parse constant UUID_DOMAIN_INFO");
             let e_dom = server_txn
-                .internal_search_uuid(au, &uuid_domain)
+                .internal_search_uuid(au, UUID_DOMAIN_INFO)
                 .expect("must not fail");
 
             let u_dom = server_txn.get_domain_uuid();

@@ -79,6 +79,9 @@ where
                 Ok(Some(LdapResponseState::Respond(r))) => {
                     actor.framed.write(r);
                 }
+                Ok(Some(LdapResponseState::MultiPartResponse(v))) => {
+                    v.into_iter().for_each(|r| actor.framed.write(r));
+                }
                 _ => {
                     error!("Internal server error");
                     ctx.stop();

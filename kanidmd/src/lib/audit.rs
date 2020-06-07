@@ -377,7 +377,8 @@ impl AuditScope {
         // Now write the perf events
         proc_perf
             .iter()
-            .for_each(|pe| pe.int_write_fmt(0, &uuid_ref))
+            .for_each(|pe| pe.int_write_fmt(0, &uuid_ref));
+        debug!("[- {} perf::trace] -- end --", uuid_ref);
     }
 
     pub fn log_event(&mut self, tag: LogTag, data: String) {

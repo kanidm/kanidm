@@ -2108,7 +2108,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     ) -> Result<(), OperationError> {
         let modl =
             ModifyList::new_purge_and_set("domain_name", Value::new_iname_s(new_domain_name));
-        let udi = PartialValue::new_uuids(UUID_DOMAIN_INFO).ok_or(OperationError::InvalidUuid)?;
+        let udi = PartialValue::new_uuidr(&UUID_DOMAIN_INFO);
         let filt = filter_all!(f_eq("uuid", udi));
         self.internal_modify(audit, filt, modl)
     }

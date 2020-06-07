@@ -37,6 +37,7 @@ use crate::crypto::setup_tls;
 use crate::filter::{Filter, FilterInvalid};
 use crate::idm::server::IdmServer;
 use crate::interval::IntervalActor;
+use crate::ldap::LdapServer;
 use crate::schema::Schema;
 use crate::schema::SchemaTransaction;
 use crate::server::QueryServer;
@@ -1612,6 +1613,7 @@ pub async fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> 
             return Err(());
         }
     };
+
     // Any pre-start tasks here.
     match &config.integration_test_config {
         Some(itc) => {
@@ -1642,17 +1644,33 @@ pub async fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> 
         }
         None => {}
     }
+
+    let ldap = match LdapServer::new(&mut audit, &idms) {
+        Ok(l) => l,
+        Err(e) => {
+            audit.write_log();
+            error!("Unable to start LdapServer -> {:?}", e);
+            return Err(());
+        }
+    };
+
     log_tx.send(Some(audit)).unwrap_or_else(|_| {
         error!("CRITICAL: UNABLE TO COMMIT LOGS");
     });
 
-    // Arc the idms.
+    // Arc the idms and ldap
     let idms_arc = Arc::new(idms);
+    let ldap_arc = Arc::new(ldap);
 
     // Pass it to the actor for threading.
     // Start the read query server with the given be path: future config
-    let server_read_addr =
-        QueryServerReadV1::start(log_tx.clone(), qs.clone(), idms_arc.clone(), config.threads);
+    let server_read_addr = QueryServerReadV1::start(
+        log_tx.clone(),
+        qs.clone(),
+        idms_arc.clone(),
+        ldap_arc.clone(),
+        config.threads,
+    );
     // Start the write thread
     let server_write_addr = QueryServerWriteV1::start(log_tx.clone(), qs, idms_arc);
 
