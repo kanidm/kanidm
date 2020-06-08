@@ -236,13 +236,15 @@ impl LdapServer {
                 // Build the event, with the permissions from effective_uuid
                 // (should always be anonymous at the moment)
                 // ! Remember, searchEvent wraps to ignore hidden for us.
-                let se = SearchEvent::new_ext_impersonate_uuid(
-                    au,
-                    &mut idm_read.qs_read,
-                    &uat.effective_uuid,
-                    filter,
-                    attrs,
-                )?;
+                let se = lperf_segment!(au, "ldap::do_search<core><prepare_se>", || {
+                    SearchEvent::new_ext_impersonate_uuid(
+                        au,
+                        &mut idm_read.qs_read,
+                        &uat.effective_uuid,
+                        filter,
+                        attrs,
+                    )
+                })?;
 
                 let res = idm_read.qs_read.search_ext(au, &se).map_err(|e| {
                     ladmin_error!(au, "search failure {:?}", e);
