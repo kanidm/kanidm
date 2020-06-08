@@ -67,7 +67,7 @@ mod tests {
         run_test!(|server: &QueryServer, au: &mut AuditScope| {
             let mut server_txn = server.write(duration_from_epoch_now());
             let e_dom = server_txn
-                .internal_search_uuid(au, UUID_DOMAIN_INFO)
+                .internal_search_uuid(au, &UUID_DOMAIN_INFO)
                 .expect("must not fail");
 
             let u_dom = server_txn.get_domain_uuid();

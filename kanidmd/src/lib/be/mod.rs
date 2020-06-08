@@ -436,13 +436,12 @@ pub trait BackendTransaction {
         au: &mut AuditScope,
         filt: &Filter<FilterValidResolved>,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
-        //
         // Unlike DS, even if we don't get the index back, we can just pass
         // to the in-memory filter test and be done.
         lperf_segment!(au, "be::search", || {
             // Do a final optimise of the filter
             lfilter!(au, "filter unoptimised form --> {:?}", filt);
-            let filt = filt.optimise();
+            let filt = lperf_segment!(au, "be::search<filt::optimise>", || { filt.optimise() });
             lfilter!(au, "filter optimised to --> {:?}", filt);
 
             // Using the indexes, resolve the IDL here, or ALLIDS.
@@ -466,10 +465,12 @@ pub trait BackendTransaction {
                         "filter (search) was partially or fully unindexed. {:?}",
                         filt
                     );
-                    entries
-                        .into_iter()
-                        .filter(|e| e.entry_match_no_index(&filt))
-                        .collect()
+                    lperf_segment!(au, "be::search<entry::ftest::allids>", || {
+                        entries
+                            .into_iter()
+                            .filter(|e| e.entry_match_no_index(&filt))
+                            .collect()
+                    })
                 }
                 IDL::PartialThreshold(_) => {
                     lfilter_warning!(
@@ -477,10 +478,12 @@ pub trait BackendTransaction {
                         "filter (search) was partial unindexed due to test threshold {:?}",
                         filt
                     );
-                    entries
-                        .into_iter()
-                        .filter(|e| e.entry_match_no_index(&filt))
-                        .collect()
+                    lperf_segment!(au, "be::search<entry::ftest::thresh>", || {
+                        entries
+                            .into_iter()
+                            .filter(|e| e.entry_match_no_index(&filt))
+                            .collect()
+                    })
                 }
                 // Since the index fully resolved, we can shortcut the filter test step here!
                 IDL::Indexed(_) => {
@@ -1125,16 +1128,17 @@ impl Backend {
         }
     }
 
-    pub fn write(&self, idxmeta: BTreeSet<(String, IndexType)>) -> BackendWriteTransaction {
+    pub fn write(&self, idxmeta: &BTreeSet<(String, IndexType)>) -> BackendWriteTransaction {
         BackendWriteTransaction {
             idlayer: self.idlayer.write(),
-            idxmeta,
+            // TODO: Performance improvement here by NOT cloning the idxmeta.
+            idxmeta: (*idxmeta).clone(),
         }
     }
 
     // Should this actually call the idlayer directly?
     pub fn reset_db_s_uuid(&self, audit: &mut AuditScope) -> Uuid {
-        let wr = self.write(BTreeSet::new());
+        let wr = self.write(&BTreeSet::new());
         let sid = wr.reset_db_s_uuid().unwrap();
         wr.commit(audit).unwrap();
         sid
@@ -1186,7 +1190,7 @@ mod tests {
             idxmeta.insert(("uuid".to_string(), IndexType::PRESENCE));
             idxmeta.insert(("ta".to_string(), IndexType::EQUALITY));
             idxmeta.insert(("tb".to_string(), IndexType::EQUALITY));
-            let mut be_txn = be.write(idxmeta);
+            let mut be_txn = be.write(&idxmeta);
 
             // Could wrap another future here for the future::ok bit...
             let r = $test_fn(&mut audit, &mut be_txn);

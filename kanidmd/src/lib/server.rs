@@ -124,7 +124,12 @@ pub trait QueryServerTransaction {
             let schema = self.get_schema();
             let idxmeta = schema.get_idxmeta_set();
             // Now resolve all references and indexes.
-            let vfr = try_audit!(au, se.filter.resolve(&se.event, Some(&idxmeta)));
+            let vfr = try_audit!(
+                au,
+                lperf_segment!(au, "server::search<filter_resove>", || {
+                    se.filter.resolve(&se.event, Some(idxmeta))
+                })
+            );
 
             // NOTE: We currently can't build search plugins due to the inability to hand
             // the QS wr/ro to the plugin trait. However, there shouldn't be a need for search
@@ -155,7 +160,7 @@ pub trait QueryServerTransaction {
         lperf_segment!(au, "server::exists", || {
             let schema = self.get_schema();
             let idxmeta = schema.get_idxmeta_set();
-            let vfr = try_audit!(au, ee.filter.resolve(&ee.event, Some(&idxmeta)));
+            let vfr = try_audit!(au, ee.filter.resolve(&ee.event, Some(idxmeta)));
 
             self.get_be_txn()
                 .exists(au, &vfr)
@@ -779,7 +784,7 @@ pub struct QueryServer {
 impl QueryServer {
     pub fn new(be: Backend, schema: Schema) -> Self {
         let (s_uuid, d_uuid) = {
-            let mut wr = be.write(BTreeSet::new());
+            let mut wr = be.write(&BTreeSet::new());
             (wr.get_db_s_uuid(), wr.get_db_d_uuid())
         };
 
@@ -3544,10 +3549,7 @@ mod tests {
             // ++ Mod domain name and name to be the old type.
             let me_dn = unsafe {
                 ModifyEvent::new_internal_invalid(
-                    filter!(f_eq(
-                        "uuid",
-                        PartialValue::new_uuids(UUID_DOMAIN_INFO).expect("invalid uuid")
-                    )),
+                    filter!(f_eq("uuid", PartialValue::new_uuidr(&UUID_DOMAIN_INFO))),
                     ModifyList::new_list(vec![
                         Modify::Purged("name".to_string()),
                         Modify::Purged("domain_name".to_string()),
@@ -3590,7 +3592,7 @@ mod tests {
             // Assert that it migrated and worked as expected.
             let mut server_txn = server.write(duration_from_epoch_now());
             let domain = server_txn
-                .internal_search_uuid(audit, &Uuid::parse_str(UUID_DOMAIN_INFO).unwrap())
+                .internal_search_uuid(audit, &UUID_DOMAIN_INFO)
                 .expect("failed");
             // ++ assert all names are iname
             domain

@@ -1321,9 +1321,12 @@ pub fn restore_server_core(config: Configuration, dst_path: &str) {
     };
 
     // Limit the scope of the schema txn.
-    let idxmeta = { schema.write().get_idxmeta_set() };
 
-    let mut be_wr_txn = be.write(idxmeta);
+    let mut be_wr_txn = {
+        let schema_txn = schema.write();
+        let idxmeta = schema_txn.get_idxmeta_set();
+        be.write(idxmeta)
+    };
     let r = be_wr_txn
         .restore(&mut audit, dst_path)
         .and_then(|_| be_wr_txn.commit(&mut audit));
@@ -1386,11 +1389,13 @@ pub fn reindex_server_core(config: Configuration) {
     };
 
     info!("Start Index Phase 1 ...");
-    // Limit the scope of the schema txn.
-    let idxmeta = { schema.write().get_idxmeta_set() };
-
     // Reindex only the core schema attributes to bootstrap the process.
-    let mut be_wr_txn = be.write(idxmeta);
+    let mut be_wr_txn = {
+        // Limit the scope of the schema txn.
+        let schema_txn = schema.write();
+        let idxmeta = schema_txn.get_idxmeta_set();
+        be.write(idxmeta)
+    };
     let r = be_wr_txn
         .reindex(&mut audit)
         .and_then(|_| be_wr_txn.commit(&mut audit));
