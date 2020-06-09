@@ -253,22 +253,9 @@ impl LdapServer {
                     let lres: Result<Vec<_>, _> = res
                         .into_iter()
                         .map(|e| {
-                            // dn is uuid=
-                            let dn = format!(
-                                "uuid={},{}",
-                                e.get_uuid().to_hyphenated_ref(),
-                                self.basedn
-                            );
-                            // all others attrs are converted via the protoentry, which we'll disassemble
-                            let pe = e.to_pe(au, &mut idm_read.qs_read)?;
-
-                            let attributes: Vec<_> = pe
-                                .attrs
-                                .into_iter()
-                                .map(|(k, vs)| LdapPartialAttribute { atype: k, vals: vs })
-                                .collect();
-
-                            Ok(sr.gen_result_entry(LdapSearchResultEntry { dn, attributes }))
+                            e.to_ldap(au, &mut idm_read.qs_read, self.basedn.as_str())
+                                // if okay, wrap in a ldap msg.
+                                .map(|r| sr.gen_result_entry(r))
                         })
                         .chain(iter::once(Ok(sr.gen_success())))
                         .collect();
