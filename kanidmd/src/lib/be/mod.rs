@@ -858,10 +858,14 @@ impl<'a> BackendWriteTransaction<'a> {
         audit: &mut AuditScope,
         v: i64,
     ) -> Result<(), OperationError> {
-        if self.get_db_index_version() < v {
+        let dbv = self.get_db_index_version();
+        ladmin_info!(audit, "upgrade_reindex -> dbv: {} v: {}", dbv, v);
+        if dbv < v {
             self.reindex(audit)?;
+            self.set_db_index_version(v)
+        } else {
+            Ok(())
         }
-        self.set_db_index_version(v)
     }
 
     pub fn reindex(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {

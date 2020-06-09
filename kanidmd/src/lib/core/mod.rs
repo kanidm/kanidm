@@ -1737,7 +1737,8 @@ pub async fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> 
             // .app_data(web::Json::<CreateRequest>::configure(|cfg| { cfg
             .app_data(
                 web::JsonConfig::default()
-                    .limit(4096)
+                    // Currently 4MB
+                    .limit(4194304)
                     .error_handler(|err, _req| {
                         let s = format!("{}", err);
                         error::InternalError::from_response(err, HttpResponse::BadRequest().json(s))

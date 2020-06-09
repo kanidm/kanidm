@@ -307,7 +307,7 @@ impl PartialEq for PerfProcessed {
 impl PerfProcessed {
     fn int_write_fmt(&self, parents: usize, uuid: &HyphenatedRef) {
         let mut prefix = String::new();
-        prefix.push_str(format!("[- {} perf::trace] ", uuid).as_str());
+        prefix.push_str("[- perf::trace] ");
         let d = &self.duration;
         let df = d.as_secs() as f64 + d.subsec_nanos() as f64 * 1e-9;
         if parents > 0 {
@@ -379,6 +379,7 @@ impl AuditScope {
             LogTag::AdminInfo | LogTag::Filter => info!("[{} {}] {}", e.time, e.tag, e.data),
             LogTag::Trace => debug!("[{} {}] {}", e.time, e.tag, e.data),
         });
+        error!("[- event::end] {}", uuid_ref);
         // First, we pre-process all the perf events to order them
         let mut proc_perf: Vec<_> = self.perf.iter().map(|pe| pe.process()).collect();
 
@@ -389,7 +390,7 @@ impl AuditScope {
         proc_perf
             .iter()
             .for_each(|pe| pe.int_write_fmt(0, &uuid_ref));
-        error!("[- event::end] {}", uuid_ref);
+        error!("[- perf::end] {}", uuid_ref);
     }
 
     pub fn log_event(&mut self, tag: LogTag, data: String) {
