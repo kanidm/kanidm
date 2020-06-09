@@ -20,6 +20,7 @@ pub enum LdapResponseState {
     Bind(LdapBoundToken, LdapMsg),
     Respond(LdapMsg),
     MultiPartResponse(Vec<LdapMsg>),
+    BindMultiPartResponse(LdapBoundToken, Vec<LdapMsg>),
 }
 
 #[derive(Debug, Clone)]
@@ -95,16 +96,16 @@ impl LdapServer {
         &self,
         au: &mut AuditScope,
         idms: &IdmServer,
-        sr: SearchRequest,
-        uat: LdapBoundToken,
+        sr: &SearchRequest,
+        uat: &LdapBoundToken,
         // eventid: &Uuid,
-    ) -> Result<LdapResponseState, OperationError> {
+    ) -> Result<Vec<LdapMsg>, OperationError> {
         // If the request is "", Base, Present("objectclass"), [], then we want the rootdse.
         if sr.base == "" && sr.scope == LdapSearchScope::Base {
-            Ok(LdapResponseState::MultiPartResponse(vec![
+            Ok(vec![
                 sr.gen_result_entry(self.rootdse.clone()),
                 sr.gen_success(),
-            ]))
+            ])
         } else {
             // We want something else apparently. Need to do some more work ...
             // Parse the operation and make sure it's sane before we start the txn.
@@ -117,7 +118,6 @@ impl LdapServer {
                     caps.name("val").map(|v| v.as_str().to_string()),
                 ),
                 None => {
-                    ladmin_info!(au, "This request seems fishy ... 🐟");
                     return Err(OperationError::InvalidRequestState);
                 }
             };
@@ -126,7 +126,6 @@ impl LdapServer {
                 (Some(a), Some(v)) => Some((a, v)),
                 (None, None) => None,
                 _ => {
-                    ladmin_info!(au, "This rdn seems fishy ... 🐟");
                     return Err(OperationError::InvalidRequestState);
                 }
             };
@@ -136,9 +135,7 @@ impl LdapServer {
             // Map the Some(a,v) to ...?
 
             let ext_filter = match (&sr.scope, req_dn) {
-                (LdapSearchScope::OneLevel, Some(r)) => {
-                    return Ok(LdapResponseState::Respond(sr.gen_success()))
-                }
+                (LdapSearchScope::OneLevel, Some(_r)) => return Ok(vec![sr.gen_success()]),
                 (LdapSearchScope::OneLevel, None) => {
                     // exclude domain_info
                     Some(LdapFilter::Not(Box::new(LdapFilter::Equality(
@@ -283,9 +280,37 @@ impl LdapServer {
                     e
                 })?;
 
-                Ok(LdapResponseState::MultiPartResponse(lres))
+                Ok(lres)
             })
         }
+    }
+
+    fn do_bind(
+        &self,
+        au: &mut AuditScope,
+        idms: &IdmServer,
+        dn: &str,
+        pw: &str,
+    ) -> Result<Option<LdapBoundToken>, OperationError> {
+        let mut idm_write = idms.write();
+
+        let target_uuid: Uuid = if dn == "" && pw == "" {
+            UUID_ANONYMOUS.clone()
+        } else {
+            idm_write.qs_read.name_to_uuid(au, dn).map_err(|e| {
+                ladmin_info!(au, "Error resolving id to target {:?}", e);
+                e
+            })?
+        };
+
+        let ct = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .expect("Clock failure!");
+
+        let lae = LdapAuthEvent::from_parts(au, target_uuid, pw.to_string())?;
+        idm_write
+            .auth_ldap(au, lae, ct)
+            .and_then(|r| idm_write.commit(au).map(|_| r))
     }
 
     pub fn do_op(
@@ -297,39 +322,46 @@ impl LdapServer {
         eventid: &Uuid,
     ) -> Result<LdapResponseState, OperationError> {
         match server_op {
-            ServerOps::SimpleBind(sbr) => {
-                let mut idm_write = idms.write();
-
-                let target_uuid: Uuid = if sbr.dn == "" && sbr.pw == "" {
-                    UUID_ANONYMOUS.clone()
-                } else {
-                    idm_write
-                        .qs_read
-                        .name_to_uuid(au, sbr.dn.as_str())
-                        .map_err(|e| {
-                            ladmin_info!(au, "Error resolving id to target {:?}", e);
-                            e
-                        })?
-                };
-
-                let ct = SystemTime::now()
-                    .duration_since(SystemTime::UNIX_EPOCH)
-                    .expect("Clock failure!");
-
-                let lae = LdapAuthEvent::from_parts(au, target_uuid, sbr.pw.to_string())?;
-                idm_write
-                    .auth_ldap(au, lae, ct)
-                    .and_then(|r| idm_write.commit(au).map(|_| r))
-                    .map(|r| match r {
-                        Some(lbt) => LdapResponseState::Bind(lbt, sbr.gen_success()),
-                        None => LdapResponseState::Respond(sbr.gen_invalid_cred()),
-                    })
-            }
+            ServerOps::SimpleBind(sbr) => self
+                .do_bind(au, idms, sbr.dn.as_str(), sbr.pw.as_str())
+                .map(|r| match r {
+                    Some(lbt) => LdapResponseState::Bind(lbt, sbr.gen_success()),
+                    None => LdapResponseState::Respond(sbr.gen_invalid_cred()),
+                })
+                .or_else(|e| {
+                    let (rc, msg) = operationerr_to_ldapresultcode(e);
+                    Ok(LdapResponseState::Respond(sbr.gen_error(rc, msg)))
+                }),
             ServerOps::Search(sr) => match uat {
-                Some(u) => self.do_search(au, idms, sr, u),
-                None => Ok(LdapResponseState::Respond(sr.gen_operror(
-                    format!("Unbound Connection {:?}", &eventid).as_str(),
-                ))),
+                Some(u) => self
+                    .do_search(au, idms, &sr, &u)
+                    .map(LdapResponseState::MultiPartResponse)
+                    .or_else(|e| {
+                        let (rc, msg) = operationerr_to_ldapresultcode(e);
+                        Ok(LdapResponseState::Respond(sr.gen_error(rc, msg)))
+                    }),
+                None => {
+                    // Search can occur without a bind, so bind first.
+                    let lbt = match self.do_bind(au, idms, "", "") {
+                        Ok(Some(lbt)) => lbt,
+                        Ok(None) => {
+                            return Ok(LdapResponseState::Respond(
+                                sr.gen_error(LdapResultCode::InvalidCredentials, "".to_string()),
+                            ))
+                        }
+                        Err(e) => {
+                            let (rc, msg) = operationerr_to_ldapresultcode(e);
+                            return Ok(LdapResponseState::Respond(sr.gen_error(rc, msg)));
+                        }
+                    };
+                    // If okay, do the search.
+                    self.do_search(au, idms, &sr, &lbt)
+                        .map(|r| LdapResponseState::BindMultiPartResponse(lbt, r))
+                        .or_else(|e| {
+                            let (rc, msg) = operationerr_to_ldapresultcode(e);
+                            Ok(LdapResponseState::Respond(sr.gen_error(rc, msg)))
+                        })
+                }
             },
             ServerOps::Unbind(_) => {
                 // No need to notify on unbind (per rfc4511)
@@ -357,4 +389,19 @@ fn ldap_domain_to_dc(input: &str) -> String {
     // Remove the last ','
     output.pop();
     output
+}
+
+fn operationerr_to_ldapresultcode(e: OperationError) -> (LdapResultCode, String) {
+    match e {
+        OperationError::InvalidRequestState => {
+            (LdapResultCode::ConstraintViolation, "".to_string())
+        }
+        OperationError::InvalidAttributeName(s) | OperationError::InvalidAttribute(s) => {
+            (LdapResultCode::InvalidAttributeSyntax, s)
+        }
+        OperationError::SchemaViolation(se) => {
+            (LdapResultCode::UnwillingToPerform, format!("{:?}", se))
+        }
+        e => (LdapResultCode::Other, format!("{:?}", e)),
+    }
 }

@@ -42,7 +42,7 @@ RUN zypper mr -d repo-non-oss && \
 
 COPY --from=builder /usr/src/kanidm/target/release/kanidmd /sbin/
 
-EXPOSE 8443
+EXPOSE 8443 3636
 VOLUME /data
 
 ENV RUST_BACKTRACE 1

@@ -114,7 +114,7 @@ async fn main() {
     if opt.debug() {
         ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
     } else {
-        ::std::env::set_var("RUST_LOG", "actix_web=info,kanidm=info");
+        ::std::env::set_var("RUST_LOG", "actix_web=info,kanidm=warn");
     }
 
     env_logger::builder()

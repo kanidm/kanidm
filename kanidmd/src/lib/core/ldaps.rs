@@ -50,7 +50,7 @@ where
 {
     type Result = ResponseActFuture<Self, Result<(), ()>>;
 
-    fn handle(&mut self, msg: LdapReq, ctx: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, msg: LdapReq, _ctx: &mut Self::Context) -> Self::Result {
         let protomsg = msg.0;
         // Transform the LdapMsg to something the query server can work with.
 
@@ -82,7 +82,11 @@ where
                 Ok(Some(LdapResponseState::MultiPartResponse(v))) => {
                     v.into_iter().for_each(|r| actor.framed.write(r));
                 }
-                _ => {
+                Ok(Some(LdapResponseState::BindMultiPartResponse(uat, v))) => {
+                    actor.uat = Some(uat);
+                    v.into_iter().for_each(|r| actor.framed.write(r));
+                }
+                Ok(None) | Err(_) => {
                     error!("Internal server error");
                     ctx.stop();
                 }

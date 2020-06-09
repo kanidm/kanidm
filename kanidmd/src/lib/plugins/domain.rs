@@ -60,7 +60,7 @@ mod tests {
     use crate::constants::UUID_DOMAIN_INFO;
     use crate::server::QueryServerTransaction;
     use crate::value::PartialValue;
-    use uuid::Uuid;
+    // use uuid::Uuid;
     // test we can create and generate the id
     #[test]
     fn test_domain_generate_uuid() {

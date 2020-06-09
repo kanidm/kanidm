@@ -341,6 +341,7 @@ pub struct LdapAuthEvent {
 }
 
 impl LdapAuthEvent {
+    /*
     #[cfg(test)]
     pub fn new_internal(target: &Uuid, cleartext: &str) -> Self {
         LdapAuthEvent {
@@ -349,6 +350,7 @@ impl LdapAuthEvent {
             cleartext: cleartext.to_string(),
         }
     }
+    */
 
     pub fn from_parts(
         _audit: &mut AuditScope,

@@ -914,6 +914,7 @@ impl Handler<LdapRequestMessage> for QueryServerReadV1 {
                 self.ldap
                     .do_op(&mut audit, &self.idms, server_op, uat, &eventid)
                     .unwrap_or_else(|e| {
+                        ladmin_error!(&mut audit, "do_op failed -> {:?}", e);
                         LdapResponseState::Disconnect(DisconnectionNotice::gen(
                             LdapResultCode::Other,
                             format!("Internal Server Error {:?}", &eventid).as_str(),

@@ -1640,9 +1640,7 @@ dependencies = [
 
 [[package]]
 name = "ldap3_server"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "503fdf94b7d1a02104ba4ac79e382339e70d526e9be0b4ea877e021ebfe75e22"
+version = "0.1.1"
 dependencies = [
  "bytes",
  "lber",
