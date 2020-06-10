@@ -1864,6 +1864,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_SCHEMA_CLASS_POSIXACCOUNT,
             JSON_SCHEMA_CLASS_POSIXGROUP,
             JSON_SCHEMA_CLASS_SYSTEM_CONFIG,
+            JSON_SCHEMA_ATTR_NSUNIQUEID,
         ];
 
         let r: Result<Vec<()>, _> = idm_schema

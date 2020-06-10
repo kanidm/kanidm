@@ -101,6 +101,7 @@ pub const UUID_SCHEMA_ATTR_LAST_MOD_CID: &str = "00000000-0000-0000-0000-ffff000
 pub const UUID_SCHEMA_ATTR_PHANTOM: &str = "00000000-0000-0000-0000-ffff00000064";
 pub const UUID_SCHEMA_ATTR_CLAIM: &str = "00000000-0000-0000-0000-ffff00000065";
 pub const UUID_SCHEMA_ATTR_PASSWORD_IMPORT: &str = "00000000-0000-0000-0000-ffff00000066";
+pub const UUID_SCHEMA_ATTR_NSUNIQUEID: &str = "00000000-0000-0000-0000-ffff00000067";
 
 // System and domain infos
 // I'd like to strongly criticise william of the past for fucking up these allocations.
