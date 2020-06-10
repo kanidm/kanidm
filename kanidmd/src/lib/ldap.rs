@@ -177,7 +177,7 @@ impl LdapServer {
                             None
                         } else {
                             // if list, add to the search
-                            Some(a.clone())
+                            Some(ldap_attr_filter_map(a))
                         }
                     })
                     .collect();
