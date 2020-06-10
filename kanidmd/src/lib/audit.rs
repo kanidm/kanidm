@@ -366,37 +366,37 @@ impl AuditScope {
     pub fn write_log(self) {
         let uuid_ref = self.uuid.to_hyphenated_ref();
         if log_enabled!(log::Level::Warn) {
-        eprintln!("[- event::start] {}", uuid_ref);
+            eprintln!("[- event::start] {}", uuid_ref);
         }
-                    self.events.iter().for_each(|e| match e.tag {
-                        LogTag::AdminError => {
-                            eprintln!("[{} {}] {} {}", e.time, e.tag, uuid_ref, e.data)
-                        }
-                        LogTag::RequestError | LogTag::FilterError => {
-                            if log_enabled!(log::Level::Warn) {
-                            eprintln!("[{} {}] {}", e.time, e.tag, e.data)
-                            }
-                        }
-                        LogTag::AdminWarning
-                        | LogTag::Security
-                        | LogTag::SecurityAccess
-                        | LogTag::FilterWarning => 
-                            if log_enabled!(log::Level::Warn) {
-                            eprintln!("[{} {}] {}", e.time, e.tag, e.data)
-                        },
-                        LogTag::AdminInfo | LogTag::Filter => {
-                            if log_enabled!(log::Level::Info) {
-                            eprintln!("[{} {}] {}", e.time, e.tag, e.data)
-                            }
-                        }
-                        LogTag::Trace => 
-                            if log_enabled!(log::Level::Debug) {
-                            eprintln!("[{} {}] {}", e.time, e.tag, e.data)
-                        },
-                    });
+        self.events.iter().for_each(|e| match e.tag {
+            LogTag::AdminError => eprintln!("[{} {}] {} {}", e.time, e.tag, uuid_ref, e.data),
+            LogTag::RequestError | LogTag::FilterError => {
+                if log_enabled!(log::Level::Warn) {
+                    eprintln!("[{} {}] {}", e.time, e.tag, e.data)
+                }
+            }
+            LogTag::AdminWarning
+            | LogTag::Security
+            | LogTag::SecurityAccess
+            | LogTag::FilterWarning => {
+                if log_enabled!(log::Level::Warn) {
+                    eprintln!("[{} {}] {}", e.time, e.tag, e.data)
+                }
+            }
+            LogTag::AdminInfo | LogTag::Filter => {
+                if log_enabled!(log::Level::Info) {
+                    eprintln!("[{} {}] {}", e.time, e.tag, e.data)
+                }
+            }
+            LogTag::Trace => {
+                if log_enabled!(log::Level::Debug) {
+                    eprintln!("[{} {}] {}", e.time, e.tag, e.data)
+                }
+            }
+        });
 
         if log_enabled!(log::Level::Warn) {
-        eprintln!("[- event::end] {}", uuid_ref);
+            eprintln!("[- event::end] {}", uuid_ref);
         }
         // First, we pre-process all the perf events to order them
         let mut proc_perf: Vec<_> = self.perf.iter().map(|pe| pe.process()).collect();
@@ -409,7 +409,7 @@ impl AuditScope {
             .iter()
             .for_each(|pe| pe.int_write_fmt(0, &uuid_ref));
         if log_enabled!(log::Level::Debug) {
-        eprintln!("[- perf::trace] end: {}", uuid_ref);
+            eprintln!("[- perf::trace] end: {}", uuid_ref);
         }
     }
 
