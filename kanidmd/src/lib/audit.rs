@@ -47,7 +47,7 @@ macro_rules! audit_log {
         use crate::audit::LogTag;
         /*
         if cfg!(test) || cfg!(debug_assertions) {
-            error!($($arg)*)
+            println!($($arg)*)
         }
         */
         $audit.log_event(
@@ -63,7 +63,7 @@ macro_rules! lqueue {
     ($au:expr, $tag:expr, $($arg:tt)*) => ({
         /*
         if cfg!(test) || cfg!(debug_assertions) {
-            error!($($arg)*)
+            println!($($arg)*)
         }
         */
         use std::fmt;
@@ -315,7 +315,7 @@ impl PerfProcessed {
                 prefix.push_str("|   ");
             }
         };
-        debug!(
+        println!(
             "{}|--> {} {2:.9} {3:.3}%",
             prefix, self.id, df, self.percent
         );
@@ -367,19 +367,11 @@ impl AuditScope {
 
     pub fn write_log(self) {
         let uuid_ref = self.uuid.to_hyphenated_ref();
-        error!("[- event::start] {}", uuid_ref);
-        self.events.iter().for_each(|e| match e.tag {
-            LogTag::AdminError | LogTag::RequestError | LogTag::FilterError => {
-                error!("[{} {}] {}", e.time, e.tag, e.data)
-            }
-            LogTag::AdminWarning
-            | LogTag::Security
-            | LogTag::SecurityAccess
-            | LogTag::FilterWarning => warn!("[{} {}] {}", e.time, e.tag, e.data),
-            LogTag::AdminInfo | LogTag::Filter => info!("[{} {}] {}", e.time, e.tag, e.data),
-            LogTag::Trace => debug!("[{} {}] {}", e.time, e.tag, e.data),
-        });
-        error!("[- event::end] {}", uuid_ref);
+        println!("[- event::start] {}", uuid_ref);
+        self.events
+            .iter()
+            .for_each(|e| println!("[{} {}] {}", e.time, e.tag, e.data));
+        println!("[- event::end] {}", uuid_ref);
         // First, we pre-process all the perf events to order them
         let mut proc_perf: Vec<_> = self.perf.iter().map(|pe| pe.process()).collect();
 
@@ -390,7 +382,7 @@ impl AuditScope {
         proc_perf
             .iter()
             .for_each(|pe| pe.int_write_fmt(0, &uuid_ref));
-        error!("[- perf::end] {}", uuid_ref);
+        println!("[- perf::end] {}", uuid_ref);
     }
 
     pub fn log_event(&mut self, tag: LogTag, data: String) {

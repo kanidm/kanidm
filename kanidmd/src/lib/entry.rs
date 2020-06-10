@@ -30,6 +30,7 @@
 use crate::audit::AuditScope;
 use crate::credential::Credential;
 use crate::filter::{Filter, FilterInvalid, FilterResolved, FilterValidResolved};
+use crate::ldap::ldap_attr_entry_map;
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use crate::repl::cid::Cid;
 use crate::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
@@ -1358,15 +1359,9 @@ impl Entry<EntryReduced, EntryCommitted> {
                 let pvs: Result<Vec<String>, _> =
                     vs.iter().map(|v| qs.resolve_value(audit, v)).collect();
                 let pvs = pvs?;
-                let pvs = if k == "memberof" || k == "member" {
-                    pvs.into_iter()
-                        .map(|s| format!("spn={},{}", s, basedn))
-                        .collect()
-                } else {
-                    pvs
-                };
+                let ks = ldap_attr_entry_map(k.as_str());
                 Ok(LdapPartialAttribute {
-                    atype: k.clone(),
+                    atype: ks,
                     vals: pvs,
                 })
             })

@@ -392,3 +392,24 @@ fn operationerr_to_ldapresultcode(e: OperationError) -> (LdapResultCode, String)
         e => (LdapResultCode::Other, format!("{:?}", e)),
     }
 }
+
+#[inline]
+pub(crate) fn ldap_attr_filter_map(input: &str) -> String {
+    let lin = input.to_lowercase();
+    match lin.as_str() {
+        "entryuuid" => "uuid",
+        "objectclass" => "class",
+        a => a,
+    }
+    .to_string()
+}
+
+#[inline]
+pub(crate) fn ldap_attr_entry_map(attr: &str) -> String {
+    match attr {
+        "uuid" => "entryuuid",
+        "class" => "objectclass",
+        ks => ks,
+    }
+    .to_string()
+}

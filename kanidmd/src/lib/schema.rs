@@ -196,6 +196,7 @@ impl SchemaAttribute {
             SyntaxType::SERVICE_PRINCIPLE_NAME => v.is_spn(),
             SyntaxType::UINT32 => v.is_uint32(),
             SyntaxType::CID => v.is_cid(),
+            SyntaxType::NSUNIQUEID => v.is_nsuniqueid(),
         };
         if r {
             Ok(())
@@ -356,6 +357,15 @@ impl SchemaAttribute {
             SyntaxType::CID => ava.iter().fold(Ok(()), |acc, v| {
                 acc.and_then(|_| {
                     if v.is_cid() {
+                        Ok(())
+                    } else {
+                        Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
+                    }
+                })
+            }),
+            SyntaxType::NSUNIQUEID => ava.iter().fold(Ok(()), |acc, v| {
+                acc.and_then(|_| {
+                    if v.is_nsuniqueid() {
                         Ok(())
                     } else {
                         Err(SchemaError::InvalidAttributeSyntax(a.to_string()))

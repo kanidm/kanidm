@@ -541,6 +541,9 @@ pub trait QueryServerTransaction {
                     SyntaxType::UINT32 => Value::new_uint32_str(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid uint32 syntax".to_string())),
                     SyntaxType::CID => Err(OperationError::InvalidAttribute("CIDs are generated and not able to be set.".to_string())),
+                    SyntaxType::NSUNIQUEID => Value::new_nsuniqueid_s(value)
+                        .ok_or_else(|| OperationError::InvalidAttribute("Invalid nsuniqueid syntax".to_string())),
+
                 }
             }
             None => {
@@ -620,14 +623,21 @@ pub trait QueryServerTransaction {
                     SyntaxType::SSHKEY => Ok(PartialValue::new_sshkey_tag_s(value)),
                     SyntaxType::SERVICE_PRINCIPLE_NAME => PartialValue::new_spn_s(value)
                         .ok_or_else(|| {
-                            OperationError::InvalidAttribute("Invalid SPN syntax".to_string())
+                            OperationError::InvalidAttribute("Invalid spn syntax".to_string())
                         }),
                     SyntaxType::UINT32 => PartialValue::new_uint32_str(value).ok_or_else(|| {
-                        OperationError::InvalidAttribute("Invalid Uint32 syntax".to_string())
+                        OperationError::InvalidAttribute("Invalid uint32 syntax".to_string())
                     }),
                     SyntaxType::CID => PartialValue::new_cid_s(value).ok_or_else(|| {
-                        OperationError::InvalidAttribute("Invalid Cid syntax".to_string())
+                        OperationError::InvalidAttribute("Invalid cid syntax".to_string())
                     }),
+                    SyntaxType::NSUNIQUEID => {
+                        PartialValue::new_nsuniqueid_s(value).ok_or_else(|| {
+                            OperationError::InvalidAttribute(
+                                "Invalid nsuniqueid syntax".to_string(),
+                            )
+                        })
+                    }
                 }
             }
             None => {

@@ -10,6 +10,7 @@
 
 use crate::audit::AuditScope;
 use crate::event::{Event, EventOrigin};
+use crate::ldap::ldap_attr_filter_map;
 use crate::schema::SchemaTransaction;
 use crate::server::{
     QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
@@ -692,9 +693,11 @@ impl FilterComp {
             ),
             LdapFilter::Not(l) => FilterComp::AndNot(Box::new(Self::from_ldap_ro(audit, l, qs)?)),
             LdapFilter::Equality(a, v) => {
-                FilterComp::Eq(a.clone(), qs.clone_partialvalue(audit, a, v)?)
+                let a = ldap_attr_filter_map(a);
+                let v = qs.clone_partialvalue(audit, a.as_str(), v)?;
+                FilterComp::Eq(a, v)
             }
-            LdapFilter::Present(a) => FilterComp::Pres(a.clone()),
+            LdapFilter::Present(a) => FilterComp::Pres(ldap_attr_filter_map(a)),
         })
     }
 }
