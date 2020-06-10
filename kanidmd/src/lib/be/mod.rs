@@ -203,7 +203,7 @@ pub trait BackendTransaction {
                 // and terms.
                 let (f_andnot, f_rem): (Vec<_>, Vec<_>) = l.iter().partition(|f| f.is_andnot());
 
-                // We make this an iter, so everything comes off in order. Using pop means we
+                // We make this an iter, so everything comes off in order. if we used pop it means we
                 // pull from the tail, which is the WORST item to start with!
                 let mut f_rem_iter = f_rem.iter();
 
@@ -216,6 +216,11 @@ pub trait BackendTransaction {
                     }
                 };
 
+                // Setup the counter of terms we have left to evaluate.
+                // This is used so that we shortcut return ONLY when we really do have
+                // more terms remaining.
+                let mut f_rem_count = f_rem.len() + f_andnot.len() - 1;
+
                 // Setup the query plan tracker
                 let mut plan = Vec::new();
                 plan.push(fp);
@@ -225,20 +230,12 @@ pub trait BackendTransaction {
                         // When below thres, we have to return partials to trigger the entry_no_match_filter check.
                         // But we only do this when there are actually multiple elements in the and,
                         // because an and with 1 element now is FULLY resolved.
-                        if idl.len() < thres && f_rem.len() > 0 {
-                            lfilter_warning!(
-                                au,
-                                "NOTICE: Cand set shorter than threshold, early return"
-                            );
+                        if idl.len() < thres && f_rem_count > 0 {
                             let setplan = FilterPlan::AndPartialThreshold(plan);
                             return Ok((IDL::PartialThreshold(idl.clone()), setplan));
                         } else if idl.len() == 0 {
                             // Regardless of the input state, if it's empty, this can never
                             // be satisfied, so return we are indexed and complete.
-                            lfilter_warning!(
-                                au,
-                                "NOTICE: empty candidate set, shortcutting return."
-                            );
                             let setplan = FilterPlan::AndEmptyCand(plan);
                             return Ok((IDL::Indexed(IDLBitRange::new()), setplan));
                         }
@@ -248,26 +245,19 @@ pub trait BackendTransaction {
 
                 // Now, for all remaining,
                 for f in f_rem_iter {
+                    f_rem_count -= 1;
                     let (inter, fp) = self.filter2idl(au, f, thres)?;
                     plan.push(fp);
                     cand_idl = match (cand_idl, inter) {
                         (IDL::Indexed(ia), IDL::Indexed(ib)) => {
                             let r = ia & ib;
-                            if r.len() < thres {
+                            if r.len() < thres && f_rem_count > 0 {
                                 // When below thres, we have to return partials to trigger the entry_no_match_filter check.
-                                lfilter_warning!(
-                                    au,
-                                    "NOTICE: Cand set shorter than threshold, early return"
-                                );
                                 let setplan = FilterPlan::AndPartialThreshold(plan);
                                 return Ok((IDL::PartialThreshold(r), setplan));
                             } else if r.len() == 0 {
                                 // Regardless of the input state, if it's empty, this can never
                                 // be satisfied, so return we are indexed and complete.
-                                lfilter_warning!(
-                                    au,
-                                    "NOTICE: empty candidate set, shortcutting return."
-                                );
                                 let setplan = FilterPlan::AndEmptyCand(plan);
                                 return Ok((IDL::Indexed(IDLBitRange::new()), setplan));
                             } else {
@@ -278,12 +268,8 @@ pub trait BackendTransaction {
                         | (IDL::Partial(ia), IDL::Indexed(ib))
                         | (IDL::Partial(ia), IDL::Partial(ib)) => {
                             let r = ia & ib;
-                            if r.len() < thres {
+                            if r.len() < thres && f_rem_count > 0 {
                                 // When below thres, we have to return partials to trigger the entry_no_match_filter check.
-                                lfilter_warning!(
-                                    au,
-                                    "NOTICE: Cand set shorter than threshold, early return"
-                                );
                                 let setplan = FilterPlan::AndPartialThreshold(plan);
                                 return Ok((IDL::PartialThreshold(r), setplan));
                             } else {
@@ -296,12 +282,8 @@ pub trait BackendTransaction {
                         | (IDL::PartialThreshold(ia), IDL::Partial(ib))
                         | (IDL::Partial(ia), IDL::PartialThreshold(ib)) => {
                             let r = ia & ib;
-                            if r.len() < thres {
+                            if r.len() < thres && f_rem_count > 0 {
                                 // When below thres, we have to return partials to trigger the entry_no_match_filter check.
-                                lfilter_warning!(
-                                    au,
-                                    "NOTICE: Cand set shorter than threshold, early return"
-                                );
                                 let setplan = FilterPlan::AndPartialThreshold(plan);
                                 return Ok((IDL::PartialThreshold(r), setplan));
                             } else {
@@ -321,6 +303,7 @@ pub trait BackendTransaction {
                 // debug!("partial cand set ==> {:?}", cand_idl);
 
                 for f in f_andnot.iter() {
+                    f_rem_count -= 1;
                     let f_in = match f {
                         FilterResolved::AndNot(f_in) => f_in,
                         _ => {
@@ -341,7 +324,6 @@ pub trait BackendTransaction {
                             // Don't trigger threshold on and nots if fully indexed.
                             if r.len() < thres {
                                 // When below thres, we have to return partials to trigger the entry_no_match_filter check.
-                                lfilter_warning!(au, "NOTICE: Cand set shorter than threshold, early return");
                                 return Ok(IDL::PartialThreshold(r));
                             } else {
                                 IDL::Indexed(r)
@@ -355,11 +337,7 @@ pub trait BackendTransaction {
                             let r = ia.andnot(ib);
                             // DO trigger threshold on partials, because we have to apply the filter
                             // test anyway, so we may as well shortcut at this point.
-                            if r.len() < thres {
-                                lfilter_warning!(
-                                    au,
-                                    "NOTICE: Cand set shorter than threshold, early return"
-                                );
+                            if r.len() < thres && f_rem_count > 0 {
                                 let setplan = FilterPlan::AndPartialThreshold(plan);
                                 return Ok((IDL::PartialThreshold(r), setplan));
                             } else {
@@ -374,11 +352,7 @@ pub trait BackendTransaction {
                             let r = ia.andnot(ib);
                             // DO trigger threshold on partials, because we have to apply the filter
                             // test anyway, so we may as well shortcut at this point.
-                            if r.len() < thres {
-                                lfilter_warning!(
-                                    au,
-                                    "NOTICE: Cand set shorter than threshold, early return"
-                                );
+                            if r.len() < thres && f_rem_count > 0 {
                                 let setplan = FilterPlan::AndPartialThreshold(plan);
                                 return Ok((IDL::PartialThreshold(r), setplan));
                             } else {
@@ -436,13 +410,12 @@ pub trait BackendTransaction {
         au: &mut AuditScope,
         filt: &Filter<FilterValidResolved>,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
-        //
         // Unlike DS, even if we don't get the index back, we can just pass
         // to the in-memory filter test and be done.
         lperf_segment!(au, "be::search", || {
             // Do a final optimise of the filter
             lfilter!(au, "filter unoptimised form --> {:?}", filt);
-            let filt = filt.optimise();
+            let filt = lperf_segment!(au, "be::search<filt::optimise>", || { filt.optimise() });
             lfilter!(au, "filter optimised to --> {:?}", filt);
 
             // Using the indexes, resolve the IDL here, or ALLIDS.
@@ -466,21 +439,20 @@ pub trait BackendTransaction {
                         "filter (search) was partially or fully unindexed. {:?}",
                         filt
                     );
-                    entries
-                        .into_iter()
-                        .filter(|e| e.entry_match_no_index(&filt))
-                        .collect()
+                    lperf_segment!(au, "be::search<entry::ftest::allids>", || {
+                        entries
+                            .into_iter()
+                            .filter(|e| e.entry_match_no_index(&filt))
+                            .collect()
+                    })
                 }
                 IDL::PartialThreshold(_) => {
-                    lfilter_warning!(
-                        au,
-                        "filter (search) was partial unindexed due to test threshold {:?}",
-                        filt
-                    );
-                    entries
-                        .into_iter()
-                        .filter(|e| e.entry_match_no_index(&filt))
-                        .collect()
+                    lperf_segment!(au, "be::search<entry::ftest::thresh>", || {
+                        entries
+                            .into_iter()
+                            .filter(|e| e.entry_match_no_index(&filt))
+                            .collect()
+                    })
                 }
                 // Since the index fully resolved, we can shortcut the filter test step here!
                 IDL::Indexed(_) => {
@@ -537,16 +509,8 @@ pub trait BackendTransaction {
             // Now, check the idl -- if it's fully resolved, we can skip this because the query
             // was fully indexed.
             match &idl {
-                IDL::Indexed(idl) => {
-                    lfilter!(au, "filter (exists) was fully indexed 👏");
-                    Ok(idl.len() > 0)
-                }
+                IDL::Indexed(idl) => Ok(idl.len() > 0),
                 IDL::PartialThreshold(_) => {
-                    lfilter_warning!(
-                        au,
-                        "filter (exists) was partial unindexed due to test threshold {:?}",
-                        filt
-                    );
                     let entries = try_audit!(au, self.get_idlayer().get_identry(au, &idl));
 
                     // if not 100% resolved query, apply the filter test.
@@ -894,10 +858,14 @@ impl<'a> BackendWriteTransaction<'a> {
         audit: &mut AuditScope,
         v: i64,
     ) -> Result<(), OperationError> {
-        if self.get_db_index_version() < v {
+        let dbv = self.get_db_index_version();
+        ladmin_info!(audit, "upgrade_reindex -> dbv: {} v: {}", dbv, v);
+        if dbv < v {
             self.reindex(audit)?;
+            self.set_db_index_version(v)
+        } else {
+            Ok(())
         }
-        self.set_db_index_version(v)
     }
 
     pub fn reindex(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
@@ -1125,16 +1093,17 @@ impl Backend {
         }
     }
 
-    pub fn write(&self, idxmeta: BTreeSet<(String, IndexType)>) -> BackendWriteTransaction {
+    pub fn write(&self, idxmeta: &BTreeSet<(String, IndexType)>) -> BackendWriteTransaction {
         BackendWriteTransaction {
             idlayer: self.idlayer.write(),
-            idxmeta,
+            // TODO: Performance improvement here by NOT cloning the idxmeta.
+            idxmeta: (*idxmeta).clone(),
         }
     }
 
     // Should this actually call the idlayer directly?
     pub fn reset_db_s_uuid(&self, audit: &mut AuditScope) -> Uuid {
-        let wr = self.write(BTreeSet::new());
+        let wr = self.write(&BTreeSet::new());
         let sid = wr.reset_db_s_uuid().unwrap();
         wr.commit(audit).unwrap();
         sid
@@ -1186,7 +1155,7 @@ mod tests {
             idxmeta.insert(("uuid".to_string(), IndexType::PRESENCE));
             idxmeta.insert(("ta".to_string(), IndexType::EQUALITY));
             idxmeta.insert(("tb".to_string(), IndexType::EQUALITY));
-            let mut be_txn = be.write(idxmeta);
+            let mut be_txn = be.write(&idxmeta);
 
             // Could wrap another future here for the future::ok bit...
             let r = $test_fn(&mut audit, &mut be_txn);

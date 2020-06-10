@@ -130,6 +130,7 @@ impl Account {
 
         Some(UserAuthToken {
             name: self.name.clone(),
+            spn: self.spn.clone(),
             displayname: self.name.clone(),
             uuid: self.uuid.to_hyphenated_ref().to_string(),
             application: None,

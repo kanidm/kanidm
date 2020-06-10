@@ -17,6 +17,7 @@ use crate::server::{
 use crate::value::{IndexType, PartialValue};
 use kanidm_proto::v1::Filter as ProtoFilter;
 use kanidm_proto::v1::{OperationError, SchemaError};
+use ldap3_server::simple::LdapFilter;
 use std::cmp::{Ordering, PartialOrd};
 use std::collections::BTreeSet;
 use std::iter;
@@ -419,10 +420,12 @@ impl Filter<FilterInvalid> {
         f: &ProtoFilter,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        Ok(Filter {
-            state: FilterInvalid {
-                inner: FilterComp::from_ro(audit, f, qs)?,
-            },
+        lperf_segment!(audit, "filter::from_ro", || {
+            Ok(Filter {
+                state: FilterInvalid {
+                    inner: FilterComp::from_ro(audit, f, qs)?,
+                },
+            })
         })
     }
 
@@ -431,10 +434,26 @@ impl Filter<FilterInvalid> {
         f: &ProtoFilter,
         qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        Ok(Filter {
-            state: FilterInvalid {
-                inner: FilterComp::from_rw(audit, f, qs)?,
-            },
+        lperf_segment!(audit, "filter::from_rw", || {
+            Ok(Filter {
+                state: FilterInvalid {
+                    inner: FilterComp::from_rw(audit, f, qs)?,
+                },
+            })
+        })
+    }
+
+    pub fn from_ldap_ro(
+        audit: &mut AuditScope,
+        f: &LdapFilter,
+        qs: &mut QueryServerReadTransaction,
+    ) -> Result<Self, OperationError> {
+        lperf_segment!(audit, "filter::from_ldap_ro", || {
+            Ok(Filter {
+                state: FilterInvalid {
+                    inner: FilterComp::from_ldap_ro(audit, f, qs)?,
+                },
+            })
         })
     }
 }
@@ -652,6 +671,30 @@ impl FilterComp {
             ),
             ProtoFilter::AndNot(l) => FilterComp::AndNot(Box::new(Self::from_rw(audit, l, qs)?)),
             ProtoFilter::SelfUUID => FilterComp::SelfUUID,
+        })
+    }
+
+    fn from_ldap_ro(
+        audit: &mut AuditScope,
+        f: &LdapFilter,
+        qs: &mut QueryServerReadTransaction,
+    ) -> Result<Self, OperationError> {
+        Ok(match f {
+            LdapFilter::And(l) => FilterComp::And(
+                l.iter()
+                    .map(|f| Self::from_ldap_ro(audit, f, qs))
+                    .collect::<Result<Vec<_>, _>>()?,
+            ),
+            LdapFilter::Or(l) => FilterComp::Or(
+                l.iter()
+                    .map(|f| Self::from_ldap_ro(audit, f, qs))
+                    .collect::<Result<Vec<_>, _>>()?,
+            ),
+            LdapFilter::Not(l) => FilterComp::AndNot(Box::new(Self::from_ldap_ro(audit, l, qs)?)),
+            LdapFilter::Equality(a, v) => {
+                FilterComp::Eq(a.clone(), qs.clone_partialvalue(audit, a, v)?)
+            }
+            LdapFilter::Present(a) => FilterComp::Pres(a.clone()),
         })
     }
 }

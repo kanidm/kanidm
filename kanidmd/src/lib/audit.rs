@@ -87,15 +87,19 @@ macro_rules! ltrace {
 
 macro_rules! lfilter {
     ($au:expr, $($arg:tt)*) => ({
-        lqueue!($au, LogTag::Filter, $($arg)*)
+        if log_enabled!(log::Level::Info) {
+            lqueue!($au, LogTag::Filter, $($arg)*)
+        }
     })
 }
 
+/*
 macro_rules! lfilter_warning {
     ($au:expr, $($arg:tt)*) => ({
         lqueue!($au, LogTag::FilterWarning, $($arg)*)
     })
 }
+*/
 
 macro_rules! lfilter_error {
     ($au:expr, $($arg:tt)*) => ({
@@ -111,13 +115,17 @@ macro_rules! ladmin_error {
 
 macro_rules! ladmin_warning {
     ($au:expr, $($arg:tt)*) => ({
+        if log_enabled!(log::Level::Warn) {
         lqueue!($au, LogTag::AdminWarning, $($arg)*)
+        }
     })
 }
 
 macro_rules! ladmin_info {
     ($au:expr, $($arg:tt)*) => ({
-        lqueue!($au, LogTag::AdminInfo, $($arg)*)
+        if log_enabled!(log::Level::Info) {
+            lqueue!($au, LogTag::AdminInfo, $($arg)*)
+        }
     })
 }
 
@@ -141,28 +149,32 @@ macro_rules! lsecurity_access {
 
 macro_rules! lperf_segment {
     ($au:expr, $id:expr, $fun:expr) => {{
-        use std::time::Instant;
+        if log_enabled!(log::Level::Debug) {
+            use std::time::Instant;
 
-        // start timer.
-        let start = Instant::now();
+            // start timer.
+            let start = Instant::now();
 
-        // Create a new perf event - this sets
-        // us as the current active, and the parent
-        // correctly.
-        let pe = unsafe { $au.new_perfevent($id) };
+            // Create a new perf event - this sets
+            // us as the current active, and the parent
+            // correctly.
+            let pe = unsafe { $au.new_perfevent($id) };
 
-        // fun run time
-        let r = $fun();
-        // end timer, and diff
-        let end = Instant::now();
-        let diff = end.duration_since(start);
+            // fun run time
+            let r = $fun();
+            // end timer, and diff
+            let end = Instant::now();
+            let diff = end.duration_since(start);
 
-        // Now we are done, we put our parent back as
-        // the active.
-        unsafe { $au.end_perfevent(pe, diff) };
+            // Now we are done, we put our parent back as
+            // the active.
+            unsafe { $au.end_perfevent(pe, diff) };
 
-        // Return the result. Hope this works!
-        r
+            // Return the result. Hope this works!
+            r
+        } else {
+            $fun()
+        }
     }};
 }
 
@@ -295,7 +307,7 @@ impl PartialEq for PerfProcessed {
 impl PerfProcessed {
     fn int_write_fmt(&self, parents: usize, uuid: &HyphenatedRef) {
         let mut prefix = String::new();
-        prefix.push_str(format!("[- {} perf::trace] ", uuid).as_str());
+        prefix.push_str("[- perf::trace] ");
         let d = &self.duration;
         let df = d.as_secs() as f64 + d.subsec_nanos() as f64 * 1e-9;
         if parents > 0 {
@@ -355,19 +367,19 @@ impl AuditScope {
 
     pub fn write_log(self) {
         let uuid_ref = self.uuid.to_hyphenated_ref();
+        error!("[- event::start] {}", uuid_ref);
         self.events.iter().for_each(|e| match e.tag {
             LogTag::AdminError | LogTag::RequestError | LogTag::FilterError => {
-                error!("[{} {} {}] {}", e.time, uuid_ref, e.tag, e.data)
+                error!("[{} {}] {}", e.time, e.tag, e.data)
             }
             LogTag::AdminWarning
             | LogTag::Security
             | LogTag::SecurityAccess
-            | LogTag::FilterWarning => warn!("[{} {} {}] {}", e.time, uuid_ref, e.tag, e.data),
-            LogTag::AdminInfo | LogTag::Filter => {
-                info!("[{} {} {}] {}", e.time, uuid_ref, e.tag, e.data)
-            }
-            LogTag::Trace => debug!("[{} {} {}] {}", e.time, uuid_ref, e.tag, e.data),
+            | LogTag::FilterWarning => warn!("[{} {}] {}", e.time, e.tag, e.data),
+            LogTag::AdminInfo | LogTag::Filter => info!("[{} {}] {}", e.time, e.tag, e.data),
+            LogTag::Trace => debug!("[{} {}] {}", e.time, e.tag, e.data),
         });
+        error!("[- event::end] {}", uuid_ref);
         // First, we pre-process all the perf events to order them
         let mut proc_perf: Vec<_> = self.perf.iter().map(|pe| pe.process()).collect();
 
@@ -377,7 +389,8 @@ impl AuditScope {
         // Now write the perf events
         proc_perf
             .iter()
-            .for_each(|pe| pe.int_write_fmt(0, &uuid_ref))
+            .for_each(|pe| pe.int_write_fmt(0, &uuid_ref));
+        error!("[- perf::end] {}", uuid_ref);
     }
 
     pub fn log_event(&mut self, tag: LogTag, data: String) {

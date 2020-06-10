@@ -458,7 +458,7 @@ impl SchemaClass {
 pub trait SchemaTransaction {
     fn get_classes(&self) -> BptreeMapReadSnapshot<String, SchemaClass>;
     fn get_attributes(&self) -> BptreeMapReadSnapshot<String, SchemaAttribute>;
-    fn get_idxmeta(&self) -> BTreeSet<(String, IndexType)>;
+    fn get_idxmeta(&self) -> &BTreeSet<(String, IndexType)>;
 
     fn validate(&self, _audit: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
         let mut res = Vec::new();
@@ -546,7 +546,7 @@ pub trait SchemaTransaction {
             .collect()
     }
 
-    fn get_idxmeta_set(&self) -> BTreeSet<(String, IndexType)> {
+    fn get_idxmeta_set(&self) -> &BTreeSet<(String, IndexType)> {
         self.get_idxmeta()
     }
 }
@@ -1370,8 +1370,8 @@ impl<'a> SchemaTransaction for SchemaWriteTransaction<'a> {
         self.attributes.to_snapshot()
     }
 
-    fn get_idxmeta(&self) -> BTreeSet<(String, IndexType)> {
-        self.idxmeta.clone()
+    fn get_idxmeta(&self) -> &BTreeSet<(String, IndexType)> {
+        &self.idxmeta
     }
 }
 
@@ -1384,8 +1384,8 @@ impl SchemaTransaction for SchemaReadTransaction {
         self.attributes.to_snapshot()
     }
 
-    fn get_idxmeta(&self) -> BTreeSet<(String, IndexType)> {
-        (*self.idxmeta).clone()
+    fn get_idxmeta(&self) -> &BTreeSet<(String, IndexType)> {
+        &(*self.idxmeta)
     }
 }
 

@@ -77,6 +77,12 @@ idlset = { version = "0.1" , features = ["use_smallvec"] }
 zxcvbn = "2.0"
 base64 = "0.12"
 
+ldap3_server = "0.1"
+# ldap3_server = { path = "../../ldap3_server" }
+futures-util = "0.3"
+tokio-util = { version = "0.2", features = ["codec"] }
+tokio-openssl = "0.4"
+
 [features]
 default = [ "libsqlite3-sys/bundled", "openssl/vendored" ]
 

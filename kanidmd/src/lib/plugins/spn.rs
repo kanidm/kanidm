@@ -12,17 +12,13 @@ use crate::server::{
 use crate::value::PartialValue;
 // use crate::value::{PartialValue, Value};
 use kanidm_proto::v1::{ConsistencyError, OperationError};
-use uuid::Uuid;
 
 pub struct Spn {}
 
 lazy_static! {
-    static ref UUID_DOMAIN_INFO_T: Uuid =
-        Uuid::parse_str(UUID_DOMAIN_INFO).expect("Unable to parse constant UUID_DOMAIN_INFO");
     static ref CLASS_GROUP: PartialValue = PartialValue::new_class("group");
     static ref CLASS_ACCOUNT: PartialValue = PartialValue::new_class("account");
-    static ref PV_UUID_DOMAIN_INFO: PartialValue = PartialValue::new_uuids(UUID_DOMAIN_INFO)
-        .expect("Unable to parse constant UUID_DOMAIN_INFO");
+    static ref PV_UUID_DOMAIN_INFO: PartialValue = PartialValue::new_uuidr(&UUID_DOMAIN_INFO);
 }
 
 impl Spn {
@@ -30,7 +26,7 @@ impl Spn {
         au: &mut AuditScope,
         qs: &mut QueryServerWriteTransaction,
     ) -> Result<String, OperationError> {
-        qs.internal_search_uuid(au, &UUID_DOMAIN_INFO_T)
+        qs.internal_search_uuid(au, &UUID_DOMAIN_INFO)
             .and_then(|e| {
                 e.get_ava_single_string("domain_name")
                     .ok_or(OperationError::InvalidEntryState)
@@ -45,7 +41,7 @@ impl Spn {
         au: &mut AuditScope,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<String, OperationError> {
-        qs.internal_search_uuid(au, &UUID_DOMAIN_INFO_T)
+        qs.internal_search_uuid(au, &UUID_DOMAIN_INFO)
             .and_then(|e| {
                 e.get_ava_single_string("domain_name")
                     .ok_or(OperationError::InvalidEntryState)

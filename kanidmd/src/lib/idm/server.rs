@@ -1,17 +1,18 @@
 use crate::audit::AuditScope;
-use crate::constants::UUID_SYSTEM_CONFIG;
 use crate::constants::{AUTH_SESSION_TIMEOUT, MFAREG_SESSION_TIMEOUT, PW_MIN_LENGTH};
+use crate::constants::{UUID_ANONYMOUS, UUID_SYSTEM_CONFIG};
 use crate::event::{AuthEvent, AuthEventStep, AuthResult};
 use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
 use crate::idm::event::{
-    GeneratePasswordEvent, GenerateTOTPEvent, PasswordChangeEvent, RadiusAuthTokenEvent,
-    RegenerateRadiusSecretEvent, UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent,
-    UnixUserTokenEvent, VerifyTOTPEvent,
+    GeneratePasswordEvent, GenerateTOTPEvent, LdapAuthEvent, PasswordChangeEvent,
+    RadiusAuthTokenEvent, RegenerateRadiusSecretEvent, UnixGroupTokenEvent,
+    UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent, VerifyTOTPEvent,
 };
 use crate::idm::mfareg::{MfaRegCred, MfaRegNext, MfaRegSession, MfaReqInit, MfaReqStep};
 use crate::idm::radius::RadiusAccount;
 use crate::idm::unix::{UnixGroup, UnixUserAccount};
+use crate::ldap::LdapBoundToken;
 use crate::server::QueryServerReadTransaction;
 use crate::server::{QueryServer, QueryServerTransaction, QueryServerWriteTransaction};
 use crate::utils::{password_from_random, readable_password_from_random, uuid_from_duration, SID};
@@ -244,6 +245,43 @@ impl<'a> IdmServerWriteTransaction<'a> {
 
         // Validate the unix_pw - this checks the account/cred lock states.
         account.verify_unix_credential(au, uae.cleartext.as_str())
+    }
+
+    pub fn auth_ldap(
+        &mut self,
+        au: &mut AuditScope,
+        lae: LdapAuthEvent,
+        _ct: Duration,
+    ) -> Result<Option<LdapBoundToken>, OperationError> {
+        // TODO #59: Implement soft lock checking for unix creds here!
+
+        let account_entry = try_audit!(au, self.qs_read.internal_search_uuid(au, &lae.target));
+        /* !!! This would probably be better if we DIDN'T use the Unix/Account types ... ? */
+
+        // if anonymous
+        if lae.target == *UUID_ANONYMOUS {
+            // TODO: #59 We should have checked if anonymous was locked by now!
+            let account = Account::try_from_entry_ro(au, account_entry, &mut self.qs_read)?;
+            Ok(Some(LdapBoundToken {
+                spn: account.spn.clone(),
+                uuid: UUID_ANONYMOUS.clone(),
+                effective_uuid: UUID_ANONYMOUS.clone(),
+            }))
+        } else {
+            let account = UnixUserAccount::try_from_entry_ro(au, account_entry, &mut self.qs_read)?;
+            if account
+                .verify_unix_credential(au, lae.cleartext.as_str())?
+                .is_some()
+            {
+                Ok(Some(LdapBoundToken {
+                    spn: account.spn.clone(),
+                    uuid: account.uuid.clone(),
+                    effective_uuid: UUID_ANONYMOUS.clone(),
+                }))
+            } else {
+                Ok(None)
+            }
+        }
     }
 
     pub fn commit(self, au: &mut AuditScope) -> Result<(), OperationError> {

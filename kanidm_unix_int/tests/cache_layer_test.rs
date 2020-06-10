@@ -28,22 +28,26 @@ fn run_test(fix_fn: fn(&KanidmClient) -> (), test_fn: fn(CacheLayer, KanidmAsync
         admin_password: ADMIN_TEST_PASSWORD.to_string(),
     });
 
+    // Setup the config ...
     let mut config = Configuration::new();
     config.address = format!("127.0.0.1:{}", port);
     config.secure_cookies = false;
     config.integration_test_config = Some(int_config);
-    // Setup the config ...
-
     thread::spawn(move || {
         // Spawn a thread for the test runner, this should have a unique
         // port....
-        System::run(move || {
-            let sctx = create_server_core(config);
+        let system = System::new("test-rctx");
+
+        let rctx = async move {
+            let sctx = create_server_core(config).await;
             let _ = tx.send(sctx);
-        })
-        .expect("Failed to start system");
+        };
+
+        Arbiter::spawn(rctx);
+
+        system.run().expect("Failed to start thread");
     });
-    let sctx = rx.recv().unwrap().expect("Failed to start server core");
+    let sctx = rx.recv().unwrap().expect("failed to start ctx");
     System::set_current(sctx.current());
 
     // Setup the client, and the address we selected.

@@ -18,7 +18,12 @@ lazy_static! {
     static ref SPN_RE: Regex =
         Regex::new("(?P<name>[^@]+)@(?P<realm>[^@]+)").expect("Invalid SPN regex found");
     static ref INAME_RE: Regex =
-        Regex::new("^(_.*|.*@.*|\\d+|.*\\s.*)$").expect("Invalid Iname regex found");
+        Regex::new("^(_.*|.*(\\s|@|,|=).*|\\d+)$").expect("Invalid Iname regex found");
+        //            ^      ^            ^
+        //            |      |            \- must not be only integers
+        //            |      \- must not contain whitespace, @, ',', =
+        //            \- must not start with _
+        // Them's be the rules.
 }
 
 #[allow(non_camel_case_types)]
@@ -1503,12 +1508,15 @@ mod tests {
          * - contain an @ (confuses SPN)
          * - can not start with _ (... I forgot but it's important I swear >.>)
          * - can not have spaces (confuses too many systems :()
+         * - can not have = or , (confuses ldap)
          */
         let inv1 = Value::new_iname_s("1234");
         let inv2 = Value::new_iname_s("bc23f637-4439-4c07-b95d-eaed0d9e4b8b");
         let inv3 = Value::new_iname_s("hello@test.com");
         let inv4 = Value::new_iname_s("_bad");
         let inv5 = Value::new_iname_s("no spaces I'm sorry :(");
+        let inv6 = Value::new_iname_s("bad=equals");
+        let inv7 = Value::new_iname_s("bad,comma");
 
         let val1 = Value::new_iname_s("William");
         let val2 = Value::new_iname_s("this_is_okay");
@@ -1520,6 +1528,8 @@ mod tests {
         assert!(!inv3.validate());
         assert!(!inv4.validate());
         assert!(!inv5.validate());
+        assert!(!inv6.validate());
+        assert!(!inv7.validate());
 
         assert!(val1.validate());
         assert!(val2.validate());

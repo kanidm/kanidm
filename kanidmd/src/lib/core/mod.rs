@@ -1,4 +1,5 @@
 mod ctx;
+mod ldaps;
 // use actix_files as fs;
 use actix::prelude::*;
 use actix_session::{CookieSession, Session};
@@ -36,6 +37,7 @@ use crate::crypto::setup_tls;
 use crate::filter::{Filter, FilterInvalid};
 use crate::idm::server::IdmServer;
 use crate::interval::IntervalActor;
+use crate::ldap::LdapServer;
 use crate::schema::Schema;
 use crate::schema::SchemaTransaction;
 use crate::server::QueryServer;
@@ -1319,9 +1321,12 @@ pub fn restore_server_core(config: Configuration, dst_path: &str) {
     };
 
     // Limit the scope of the schema txn.
-    let idxmeta = { schema.write().get_idxmeta_set() };
 
-    let mut be_wr_txn = be.write(idxmeta);
+    let mut be_wr_txn = {
+        let schema_txn = schema.write();
+        let idxmeta = schema_txn.get_idxmeta_set();
+        be.write(idxmeta)
+    };
     let r = be_wr_txn
         .restore(&mut audit, dst_path)
         .and_then(|_| be_wr_txn.commit(&mut audit));
@@ -1384,11 +1389,13 @@ pub fn reindex_server_core(config: Configuration) {
     };
 
     info!("Start Index Phase 1 ...");
-    // Limit the scope of the schema txn.
-    let idxmeta = { schema.write().get_idxmeta_set() };
-
     // Reindex only the core schema attributes to bootstrap the process.
-    let mut be_wr_txn = be.write(idxmeta);
+    let mut be_wr_txn = {
+        // Limit the scope of the schema txn.
+        let schema_txn = schema.write();
+        let idxmeta = schema_txn.get_idxmeta_set();
+        be.write(idxmeta)
+    };
     let r = be_wr_txn
         .reindex(&mut audit)
         .and_then(|_| be_wr_txn.commit(&mut audit));
@@ -1562,7 +1569,7 @@ pub fn recover_account_core(config: Configuration, name: String, password: Strin
     };
 }
 
-pub fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> {
+pub async fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> {
     // Until this point, we probably want to write to the log macro fns.
 
     if config.integration_test_config.is_some() {
@@ -1611,6 +1618,7 @@ pub fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> {
             return Err(());
         }
     };
+
     // Any pre-start tasks here.
     match &config.integration_test_config {
         Some(itc) => {
@@ -1641,22 +1649,56 @@ pub fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> {
         }
         None => {}
     }
+
+    let ldap = match LdapServer::new(&mut audit, &idms) {
+        Ok(l) => l,
+        Err(e) => {
+            audit.write_log();
+            error!("Unable to start LdapServer -> {:?}", e);
+            return Err(());
+        }
+    };
+
     log_tx.send(Some(audit)).unwrap_or_else(|_| {
         error!("CRITICAL: UNABLE TO COMMIT LOGS");
     });
 
-    // Arc the idms.
+    // Arc the idms and ldap
     let idms_arc = Arc::new(idms);
+    let ldap_arc = Arc::new(ldap);
 
     // Pass it to the actor for threading.
     // Start the read query server with the given be path: future config
-    let server_read_addr =
-        QueryServerReadV1::start(log_tx.clone(), qs.clone(), idms_arc.clone(), config.threads);
+    let server_read_addr = QueryServerReadV1::start(
+        log_tx.clone(),
+        qs.clone(),
+        idms_arc.clone(),
+        ldap_arc.clone(),
+        config.threads,
+    );
     // Start the write thread
     let server_write_addr = QueryServerWriteV1::start(log_tx.clone(), qs, idms_arc);
 
     // Setup timed events associated to the write thread
     let _int_addr = IntervalActor::new(server_write_addr.clone()).start();
+
+    // If we have been requested to init LDAP, configure it now.
+    match &config.ldapaddress {
+        Some(la) => {
+            let opt_ldap_tls_params = match setup_tls(&config) {
+                Ok(t) => t,
+                Err(e) => {
+                    error!("Failed to configure LDAP TLS parameters -> {:?}", e);
+                    return Err(());
+                }
+            };
+            ldaps::create_ldap_server(la.as_str(), opt_ldap_tls_params, server_read_addr.clone())
+                .await?;
+        }
+        None => {
+            debug!("LDAP not requested, skipping");
+        }
+    }
 
     // Copy the max size
     let secure_cookies = config.secure_cookies;
@@ -1695,7 +1737,8 @@ pub fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> {
             // .app_data(web::Json::<CreateRequest>::configure(|cfg| { cfg
             .app_data(
                 web::JsonConfig::default()
-                    .limit(4096)
+                    // Currently 4MB
+                    .limit(4194304)
                     .error_handler(|err, _req| {
                         let s = format!("{}", err);
                         error::InternalError::from_response(err, HttpResponse::BadRequest().json(s))
@@ -1872,8 +1915,8 @@ pub fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> {
             server.bind(config.address)
         }
     };
-
     server.expect("Failed to initialise server!").run();
+
     info!("ready to rock! 🤘");
 
     Ok(ServerCtx::new(System::current(), log_tx, log_thread))

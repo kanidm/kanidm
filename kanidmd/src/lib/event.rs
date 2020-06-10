@@ -105,18 +105,9 @@ impl Event {
     pub fn from_ro_request(
         audit: &mut AuditScope,
         qs: &mut QueryServerReadTransaction,
-        user_uuid: &str,
+        user_uuid: &Uuid,
     ) -> Result<Self, OperationError> {
-        // Do we need to check or load the entry from the user_uuid?
-        // In the future, probably yes.
-        //
-        // For now, no.
-        let u = try_audit!(
-            audit,
-            Uuid::parse_str(user_uuid).map_err(|_| OperationError::InvalidUuid)
-        );
-
-        let e = try_audit!(audit, qs.internal_search_uuid(audit, &u));
+        let e = try_audit!(audit, qs.internal_search_uuid(audit, &user_uuid));
 
         Ok(Event {
             origin: EventOrigin::User(e),
@@ -436,6 +427,27 @@ impl SearchEvent {
             filter_orig: filter.into_valid(),
             attrs: None,
         }
+    }
+
+    pub(crate) fn new_ext_impersonate_uuid(
+        audit: &mut AuditScope,
+        qs: &mut QueryServerReadTransaction,
+        euuid: &Uuid,
+        filter: Filter<FilterInvalid>,
+        attrs: Option<BTreeSet<String>>,
+    ) -> Result<Self, OperationError> {
+        Ok(SearchEvent {
+            event: Event::from_ro_request(audit, qs, euuid)?,
+            filter: filter
+                .clone()
+                .into_ignore_hidden()
+                .validate(qs.get_schema())
+                .map_err(OperationError::SchemaViolation)?,
+            filter_orig: filter
+                .validate(qs.get_schema())
+                .map_err(OperationError::SchemaViolation)?,
+            attrs,
+        })
     }
 
     #[cfg(test)]

@@ -25,6 +25,7 @@ mod entry;
 mod event;
 mod filter;
 mod interval;
+pub(crate) mod ldap;
 mod modify;
 mod value;
 #[macro_use]

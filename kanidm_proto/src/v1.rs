@@ -152,6 +152,7 @@ pub struct UserAuthToken {
     // may depend on the client application.
     // pub expiry: DateTime,
     pub name: String,
+    pub spn: String,
     pub displayname: String,
     pub uuid: String,
     pub application: Option<Application>,
@@ -163,6 +164,7 @@ pub struct UserAuthToken {
 impl fmt::Display for UserAuthToken {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "name: {}", self.name)?;
+        writeln!(f, "spn: {}", self.spn)?;
         writeln!(f, "display: {}", self.displayname)?;
         writeln!(f, "uuid: {}", self.uuid)?;
         writeln!(f, "groups: {:?}", self.groups)?;

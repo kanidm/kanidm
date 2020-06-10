@@ -12,6 +12,7 @@ use kanidm_proto::v1::{OperationError, RadiusAuthToken};
 
 use crate::filter::{Filter, FilterInvalid};
 use crate::idm::server::IdmServer;
+use crate::ldap::{LdapBoundToken, LdapResponseState, LdapServer};
 use crate::server::{QueryServer, QueryServerTransaction};
 
 use kanidm_proto::v1::Entry as ProtoEntry;
@@ -23,6 +24,9 @@ use kanidm_proto::v1::{
 use actix::prelude::*;
 use std::time::SystemTime;
 use uuid::Uuid;
+
+use ldap3_server::simple::*;
+use std::convert::TryFrom;
 
 // These are used when the request (IE Get) has no intrising request
 // type. Additionally, they are used in some requests where we need
@@ -183,6 +187,7 @@ pub struct QueryServerReadV1 {
     log: Sender<Option<AuditScope>>,
     qs: QueryServer,
     idms: Arc<IdmServer>,
+    ldap: Arc<LdapServer>,
 }
 
 impl Actor for QueryServerReadV1 {
@@ -194,19 +199,35 @@ impl Actor for QueryServerReadV1 {
 }
 
 impl QueryServerReadV1 {
-    pub fn new(log: Sender<Option<AuditScope>>, qs: QueryServer, idms: Arc<IdmServer>) -> Self {
+    pub fn new(
+        log: Sender<Option<AuditScope>>,
+        qs: QueryServer,
+        idms: Arc<IdmServer>,
+        ldap: Arc<LdapServer>,
+    ) -> Self {
         info!("Starting query server v1 worker ...");
-        QueryServerReadV1 { log, qs, idms }
+        QueryServerReadV1 {
+            log,
+            qs,
+            idms,
+            ldap,
+        }
     }
 
     pub fn start(
         log: Sender<Option<AuditScope>>,
         query_server: QueryServer,
         idms: Arc<IdmServer>,
+        ldap: Arc<LdapServer>,
         threads: usize,
     ) -> actix::Addr<QueryServerReadV1> {
         SyncArbiter::start(threads, move || {
-            QueryServerReadV1::new(log.clone(), query_server.clone(), idms.clone())
+            QueryServerReadV1::new(
+                log.clone(),
+                query_server.clone(),
+                idms.clone(),
+                ldap.clone(),
+            )
         })
     }
 }
@@ -855,5 +876,60 @@ impl Handler<IdmAccountUnixAuthMessage> for QueryServerReadV1 {
             OperationError::InvalidState
         })?;
         res
+    }
+}
+
+#[derive(Message)]
+#[rtype(result = "Option<LdapResponseState>")]
+pub struct LdapRequestMessage {
+    pub eventid: Uuid,
+    pub protomsg: LdapMsg,
+    pub uat: Option<LdapBoundToken>,
+}
+
+impl Handler<LdapRequestMessage> for QueryServerReadV1 {
+    type Result = Option<LdapResponseState>;
+
+    fn handle(&mut self, msg: LdapRequestMessage, _: &mut Self::Context) -> Self::Result {
+        let LdapRequestMessage {
+            eventid,
+            protomsg,
+            uat,
+        } = msg;
+        let mut audit = AuditScope::new("ldap_request_message", eventid.clone());
+        let res = lperf_segment!(
+            &mut audit,
+            "actors::v1_read::handle<LdapRequestMessage>",
+            || {
+                let server_op = match ServerOps::try_from(protomsg) {
+                    Ok(v) => v,
+                    Err(_) => {
+                        return LdapResponseState::Disconnect(DisconnectionNotice::gen(
+                            LdapResultCode::ProtocolError,
+                            format!("Invalid Request {:?}", &eventid).as_str(),
+                        ));
+                    }
+                };
+
+                self.ldap
+                    .do_op(&mut audit, &self.idms, server_op, uat, &eventid)
+                    .unwrap_or_else(|e| {
+                        ladmin_error!(&mut audit, "do_op failed -> {:?}", e);
+                        LdapResponseState::Disconnect(DisconnectionNotice::gen(
+                            LdapResultCode::Other,
+                            format!("Internal Server Error {:?}", &eventid).as_str(),
+                        ))
+                    })
+            }
+        );
+        if self.log.send(Some(audit)).is_err() {
+            error!("Unable to commit log -> {:?}", &eventid);
+            Some(LdapResponseState::Disconnect(DisconnectionNotice::gen(
+                LdapResultCode::Other,
+                format!("Internal Server Error {:?}", &eventid).as_str(),
+            )))
+        } else {
+            Some(res)
+        }
     }
 }

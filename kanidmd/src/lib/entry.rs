@@ -44,6 +44,7 @@ use kanidm_proto::v1::{OperationError, SchemaError};
 
 use crate::be::dbentry::{DbEntry, DbEntryV1, DbEntryVers};
 
+use ldap3_server::simple::{LdapPartialAttribute, LdapSearchResultEntry};
 use std::collections::btree_map::Iter as BTreeIter;
 use std::collections::btree_set::Iter as BTreeSetIter;
 use std::collections::BTreeMap;
@@ -1331,6 +1332,47 @@ impl Entry<EntryReduced, EntryCommitted> {
             })
             .collect();
         Ok(ProtoEntry { attrs: attrs? })
+    }
+
+    pub fn to_ldap(
+        &self,
+        audit: &mut AuditScope,
+        qs: &mut QueryServerReadTransaction,
+        basedn: &str,
+    ) -> Result<LdapSearchResultEntry, OperationError> {
+        let (attr, rdn) = self
+            .get_ava_single("spn")
+            .map(|v| ("spn", v.to_proto_string_clone()))
+            .or_else(|| {
+                self.get_ava_single("name")
+                    .map(|v| ("name", v.to_proto_string_clone()))
+            })
+            .unwrap_or_else(|| ("uuid", self.get_uuid().to_hyphenated_ref().to_string()));
+
+        let dn = format!("{}={},{}", attr, rdn, basedn);
+
+        let attributes: Result<Vec<_>, _> = self
+            .attrs
+            .iter()
+            .map(|(k, vs)| {
+                let pvs: Result<Vec<String>, _> =
+                    vs.iter().map(|v| qs.resolve_value(audit, v)).collect();
+                let pvs = pvs?;
+                let pvs = if k == "memberof" || k == "member" {
+                    pvs.into_iter()
+                        .map(|s| format!("spn={},{}", s, basedn))
+                        .collect()
+                } else {
+                    pvs
+                };
+                Ok(LdapPartialAttribute {
+                    atype: k.clone(),
+                    vals: pvs,
+                })
+            })
+            .collect();
+        let attributes = attributes?;
+        Ok(LdapSearchResultEntry { dn, attributes })
     }
 }
 

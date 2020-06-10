@@ -332,3 +332,39 @@ impl VerifyTOTPEvent {
         }
     }
 }
+
+#[derive(Debug)]
+pub struct LdapAuthEvent {
+    // pub event: Event,
+    pub target: Uuid,
+    pub cleartext: String,
+}
+
+impl LdapAuthEvent {
+    /*
+    #[cfg(test)]
+    pub fn new_internal(target: &Uuid, cleartext: &str) -> Self {
+        LdapAuthEvent {
+            // event: Event::from_internal(),
+            target: *target,
+            cleartext: cleartext.to_string(),
+        }
+    }
+    */
+
+    pub fn from_parts(
+        _audit: &mut AuditScope,
+        // qs: &mut QueryServerReadTransaction,
+        // uat: Option<UserAuthToken>,
+        target: Uuid,
+        cleartext: String,
+    ) -> Result<Self, OperationError> {
+        // let e = Event::from_ro_uat(audit, qs, uat)?;
+
+        Ok(LdapAuthEvent {
+            // event: e,
+            target,
+            cleartext,
+        })
+    }
+}
