@@ -469,8 +469,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         ltrace!(au, "processing change {:?}", modlist);
         // given the new credential generate a modify
         // We use impersonate here to get the event from ae
-        try_audit!(
-            au,
             self.qs_write.impersonate_modify(
                 au,
                 // Filter as executed
@@ -479,8 +477,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 filter_all!(f_eq("uuid", PartialValue::new_uuidr(&pce.target))),
                 modlist,
                 &pce.event,
-            )
-        );
+            ).map_err(|e| {
+                lrequest_error!(au, "error -> {:?}", e);
+                e
+            })?;
 
         Ok(())
     }
@@ -521,8 +521,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         ltrace!(au, "processing change {:?}", modlist);
         // given the new credential generate a modify
         // We use impersonate here to get the event from ae
-        try_audit!(
-            au,
             self.qs_write.impersonate_modify(
                 au,
                 // Filter as executed
@@ -531,8 +529,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 filter_all!(f_eq("uuid", PartialValue::new_uuidr(&pce.target))),
                 modlist,
                 &pce.event,
-            )
-        );
+            ).map_err(|e| {
+                lrequest_error!(au, "error -> {:?}", e);
+                e
+            })?;
 
         Ok(())
     }
@@ -604,8 +604,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         ltrace!(au, "processing change {:?}", modlist);
 
         // Apply it.
-        try_audit!(
-            au,
             self.qs_write.impersonate_modify(
                 au,
                 // Filter as executed
@@ -615,8 +613,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 modlist,
                 // Provide the event to impersonate
                 &rrse.event,
-            )
-        );
+            ).map_err(|e| {
+                lrequest_error!(au, "error -> {:?}", e);
+                e
+            })?;
 
         Ok(cleartext)
     }

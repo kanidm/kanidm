@@ -47,7 +47,7 @@ macro_rules! audit_log {
         use crate::audit::LogTag;
         /*
         if cfg!(test) || cfg!(debug_assertions) {
-            println!($($arg)*)
+            eprintln!($($arg)*)
         }
         */
         $audit.log_event(
@@ -63,7 +63,7 @@ macro_rules! lqueue {
     ($au:expr, $tag:expr, $($arg:tt)*) => ({
         /*
         if cfg!(test) || cfg!(debug_assertions) {
-            println!($($arg)*)
+            eprintln!($($arg)*)
         }
         */
         use std::fmt;
@@ -115,9 +115,7 @@ macro_rules! ladmin_error {
 
 macro_rules! ladmin_warning {
     ($au:expr, $($arg:tt)*) => ({
-        if log_enabled!(log::Level::Warn) {
         lqueue!($au, LogTag::AdminWarning, $($arg)*)
-        }
     })
 }
 
@@ -315,7 +313,7 @@ impl PerfProcessed {
                 prefix.push_str("|   ");
             }
         };
-        println!(
+        eprintln!(
             "{}|--> {} {2:.9} {3:.3}%",
             prefix, self.id, df, self.percent
         );
@@ -367,11 +365,39 @@ impl AuditScope {
 
     pub fn write_log(self) {
         let uuid_ref = self.uuid.to_hyphenated_ref();
-        println!("[- event::start] {}", uuid_ref);
-        self.events
-            .iter()
-            .for_each(|e| println!("[{} {}] {}", e.time, e.tag, e.data));
-        println!("[- event::end] {}", uuid_ref);
+        if log_enabled!(log::Level::Warn) {
+        eprintln!("[- event::start] {}", uuid_ref);
+        }
+                    self.events.iter().for_each(|e| match e.tag {
+                        LogTag::AdminError => {
+                            eprintln!("[{} {}] {} {}", e.time, e.tag, uuid_ref, e.data)
+                        }
+                        LogTag::RequestError | LogTag::FilterError => {
+                            if log_enabled!(log::Level::Warn) {
+                            eprintln!("[{} {}] {}", e.time, e.tag, e.data)
+                            }
+                        }
+                        LogTag::AdminWarning
+                        | LogTag::Security
+                        | LogTag::SecurityAccess
+                        | LogTag::FilterWarning => 
+                            if log_enabled!(log::Level::Warn) {
+                            eprintln!("[{} {}] {}", e.time, e.tag, e.data)
+                        },
+                        LogTag::AdminInfo | LogTag::Filter => {
+                            if log_enabled!(log::Level::Info) {
+                            eprintln!("[{} {}] {}", e.time, e.tag, e.data)
+                            }
+                        }
+                        LogTag::Trace => 
+                            if log_enabled!(log::Level::Debug) {
+                            eprintln!("[{} {}] {}", e.time, e.tag, e.data)
+                        },
+                    });
+
+        if log_enabled!(log::Level::Warn) {
+        eprintln!("[- event::end] {}", uuid_ref);
+        }
         // First, we pre-process all the perf events to order them
         let mut proc_perf: Vec<_> = self.perf.iter().map(|pe| pe.process()).collect();
 
@@ -382,7 +408,9 @@ impl AuditScope {
         proc_perf
             .iter()
             .for_each(|pe| pe.int_write_fmt(0, &uuid_ref));
-        println!("[- perf::end] {}", uuid_ref);
+        if log_enabled!(log::Level::Debug) {
+        eprintln!("[- perf::trace] end: {}", uuid_ref);
+        }
     }
 
     pub fn log_event(&mut self, tag: LogTag, data: String) {

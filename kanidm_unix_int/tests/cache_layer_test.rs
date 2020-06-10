@@ -19,7 +19,7 @@ const TESTACCOUNT1_PASSWORD_B: &str = "password b for account1 test";
 const TESTACCOUNT1_PASSWORD_INC: &str = "never going to work";
 
 fn run_test(fix_fn: fn(&KanidmClient) -> (), test_fn: fn(CacheLayer, KanidmAsyncClient) -> ()) {
-    // ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
+    // ::std::env::set_var("RUST_LOG", "actix_web=warn,kanidm=error");
     let _ = env_logger::builder().is_test(true).try_init();
     let (tx, rx) = mpsc::channel();
     let port = PORT_ALLOC.fetch_add(1, Ordering::SeqCst);
