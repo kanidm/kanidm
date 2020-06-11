@@ -5,6 +5,7 @@ use crate::be::idl_sqlite::{
 use crate::be::{IdRawEntry, IDL};
 use crate::entry::{Entry, EntryCommitted, EntrySealed};
 use crate::value::IndexType;
+use crate::value::Value;
 use concread::cache::arc::{Arc, ArcReadTxn, ArcWriteTxn};
 use concread::cowcell::*;
 use idlset::IDLBitRange;
@@ -16,8 +17,22 @@ use uuid::Uuid;
 
 const DEFAULT_CACHE_TARGET: usize = 10240;
 const DEFAULT_IDL_CACHE_RATIO: usize = 32;
+const DEFAULT_NAME_CACHE_RATIO: usize = 8;
 const DEFAULT_CACHE_RMISS: usize = 8;
 const DEFAULT_CACHE_WMISS: usize = 8;
+
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
+enum NameCacheType {
+    Name2Uuid,
+    Uuid2Rdn,
+    Uuid2Spn,
+}
+
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
+struct NameCacheKey {
+    i: NameCacheType,
+    k: String,
+}
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 struct IdlCacheKey {
@@ -201,6 +216,24 @@ pub trait IdlArcSqliteTransaction {
     fn get_db_d_uuid(&self) -> Result<Option<Uuid>, OperationError>;
 
     fn verify(&self) -> Vec<Result<(), ConsistencyError>>;
+
+    fn name2uuid(
+        &mut self,
+        audit: &mut AuditScope,
+        name: &str,
+    ) -> Result<Option<Uuid>, OperationError>;
+
+    fn uuid2spn(
+        &mut self,
+        audit: &mut AuditScope,
+        uuid: &Uuid,
+    ) -> Result<Option<Value>, OperationError>;
+
+    fn uuid2rdn(
+        &mut self,
+        audit: &mut AuditScope,
+        uuid: &Uuid,
+    ) -> Result<Option<String>, OperationError>;
 }
 
 impl<'a> IdlArcSqliteTransaction for IdlArcSqliteReadTransaction<'a> {
@@ -250,6 +283,30 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteReadTransaction<'a> {
     fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
         self.db.verify()
     }
+
+    fn name2uuid(
+        &mut self,
+        audit: &mut AuditScope,
+        name: &str,
+    ) -> Result<Option<Uuid>, OperationError> {
+        unimplemented!();
+    }
+
+    fn uuid2spn(
+        &mut self,
+        audit: &mut AuditScope,
+        uuid: &Uuid,
+    ) -> Result<Option<Value>, OperationError> {
+        unimplemented!();
+    }
+
+    fn uuid2rdn(
+        &mut self,
+        audit: &mut AuditScope,
+        uuid: &Uuid,
+    ) -> Result<Option<String>, OperationError> {
+        unimplemented!();
+    }
 }
 
 impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
@@ -298,6 +355,30 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
 
     fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
         self.db.verify()
+    }
+
+    fn name2uuid(
+        &mut self,
+        audit: &mut AuditScope,
+        name: &str,
+    ) -> Result<Option<Uuid>, OperationError> {
+        unimplemented!();
+    }
+
+    fn uuid2spn(
+        &mut self,
+        audit: &mut AuditScope,
+        uuid: &Uuid,
+    ) -> Result<Option<Value>, OperationError> {
+        unimplemented!();
+    }
+
+    fn uuid2rdn(
+        &mut self,
+        audit: &mut AuditScope,
+        uuid: &Uuid,
+    ) -> Result<Option<String>, OperationError> {
+        unimplemented!();
     }
 }
 
@@ -407,8 +488,12 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         self.db.create_name2uuid(audit)
     }
 
-    pub fn create_uuid2name(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
-        self.db.create_uuid2name(audit)
+    pub fn create_uuid2spn(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
+        self.db.create_uuid2spn(audit)
+    }
+
+    pub fn create_uuid2rdn(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
+        self.db.create_uuid2rdn(audit)
     }
 
     pub fn create_idx(

@@ -186,7 +186,23 @@ pub trait QueryServerTransaction {
     // Remember, we don't care if the name is invalid, because search
     // will validate/normalise the filter we construct for us. COOL!
     fn name_to_uuid(&mut self, audit: &mut AuditScope, name: &str) -> Result<Uuid, OperationError> {
+        self.get_be_txn()
+            .name2uuid(audit, name)
+            .and_then(|v| match v {
+                Some(u) => Ok(u),
+                None => Err(OperationError::NoMatchingEntries),
+            })
+        /*
         lperf_segment!(audit, "server::name_to_uuid", || {
+            // Is it already a UUID?
+            match Uuid::parse_str(name) {
+                Ok(u) => {
+                    ltrace!(audit, "already a valid uuid!");
+                    return Ok(u);
+                }
+                Err(_) => {}
+            };
+
             // For now this just constructs a filter and searches, but later
             // we could actually improve this to contact the backend and do
             // index searches, completely bypassing id2entry.
@@ -230,6 +246,7 @@ pub trait QueryServerTransaction {
 
             Ok(uuid_res)
         })
+        */
     }
 
     fn uuid_to_spn(
@@ -237,6 +254,17 @@ pub trait QueryServerTransaction {
         audit: &mut AuditScope,
         uuid: &Uuid,
     ) -> Result<Option<Value>, OperationError> {
+        let r = self.get_be_txn().uuid2spn(audit, uuid)?;
+
+        match &r {
+            Some(n) => {
+                debug_assert!(n.is_spn() || n.is_iname());
+            }
+            None => {}
+        }
+        Ok(r)
+
+        /*
         lperf_segment!(audit, "server::uuid_to_spn", || {
             // construct the filter
             let filt = filter!(f_eq("uuid", PartialValue::new_uuidr(uuid)));
@@ -271,10 +299,35 @@ pub trait QueryServerTransaction {
             ltrace!(audit, "uuid_to_spn: name <- {:?}", name_res);
 
             // Make sure it's the right type ... (debug only)
-            debug_assert!(name_res.is_spn() || name_res.is_iname());
 
             Ok(Some(name_res))
         })
+        */
+    }
+
+    fn uuid_to_rdn(
+        &mut self,
+        audit: &mut AuditScope,
+        uuid: &Uuid,
+    ) -> Result<String, OperationError> {
+        self.get_be_txn()
+            .uuid2rdn(audit, uuid)
+            .and_then(|v| match v {
+                Some(u) => Ok(u),
+                None => Ok(format!("uuid={}", uuid.to_hyphenated_ref())),
+            })
+
+        // unimplemented!();
+        /*
+        let (attr, rdn) = self
+            .get_ava_single("spn")
+            .map(|v| ("spn", v.to_proto_string_clone()))
+            .or_else(|| {
+                self.get_ava_single("name")
+                    .map(|v| ("name", v.to_proto_string_clone()))
+            })
+            .unwrap_or_else(|| ("uuid", self.get_uuid().to_hyphenated_ref().to_string()));
+        */
     }
 
     fn posixid_to_uuid(
@@ -541,9 +594,7 @@ pub trait QueryServerTransaction {
                     SyntaxType::UINT32 => Value::new_uint32_str(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid uint32 syntax".to_string())),
                     SyntaxType::CID => Err(OperationError::InvalidAttribute("CIDs are generated and not able to be set.".to_string())),
-                    SyntaxType::NSUNIQUEID => Value::new_nsuniqueid_s(value)
-                        .ok_or_else(|| OperationError::InvalidAttribute("Invalid nsuniqueid syntax".to_string())),
-
+                    SyntaxType::NSUNIQUEID => Ok(Value::new_nsuniqueid_s(value)),
                 }
             }
             None => {
@@ -631,13 +682,7 @@ pub trait QueryServerTransaction {
                     SyntaxType::CID => PartialValue::new_cid_s(value).ok_or_else(|| {
                         OperationError::InvalidAttribute("Invalid cid syntax".to_string())
                     }),
-                    SyntaxType::NSUNIQUEID => {
-                        PartialValue::new_nsuniqueid_s(value).ok_or_else(|| {
-                            OperationError::InvalidAttribute(
-                                "Invalid nsuniqueid syntax".to_string(),
-                            )
-                        })
-                    }
+                    SyntaxType::NSUNIQUEID => Ok(PartialValue::new_nsuniqueid_s(value)),
                 }
             }
             None => {
@@ -665,6 +710,25 @@ pub trait QueryServerTransaction {
 
         // Not? Okay, do the to string.
         Ok(value.to_proto_string_clone())
+    }
+
+    fn resolve_value_ldap(
+        &mut self,
+        audit: &mut AuditScope,
+        value: &Value,
+        basedn: &str,
+    ) -> Result<String, OperationError> {
+        if let Some(ur) = value.to_ref_uuid() {
+            let rdn = self.uuid_to_rdn(audit, ur)?;
+            Ok(format!("{},{}", rdn, basedn))
+        } else if value.is_sshkey() {
+            value
+                .get_sshkey()
+                .ok_or_else(|| OperationError::InvalidValueState)
+        } else {
+            // Not? Okay, do the to string.
+            Ok(value.to_proto_string_clone())
+        }
     }
 }
 
@@ -2933,6 +2997,51 @@ mod tests {
                 &Uuid::parse_str("CC8E95B4-C24F-4D68-BA54-8BED76F63930").unwrap(),
             );
             assert!(r4.unwrap().unwrap() == Value::new_spn_str("testperson1", "example.com"));
+        })
+    }
+
+    #[test]
+    fn test_qs_uuid_to_rdn() {
+        run_test!(|server: &QueryServer, audit: &mut AuditScope| {
+            let mut server_txn = server.write(duration_from_epoch_now());
+
+            let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
+                r#"{
+                "valid": null,
+                "state": null,
+                "attrs": {
+                    "class": ["object", "person", "account"],
+                    "name": ["testperson1"],
+                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
+                    "description": ["testperson"],
+                    "displayname": ["testperson1"]
+                }
+            }"#,
+            );
+            let ce = CreateEvent::new_internal(vec![e1]);
+            let cr = server_txn.create(audit, &ce);
+            assert!(cr.is_ok());
+
+            // Name doesn't exist
+            let r1 = server_txn.uuid_to_rdn(
+                audit,
+                &Uuid::parse_str("bae3f507-e6c3-44ba-ad01-f8ff1083534a").unwrap(),
+            );
+            // There is nothing.
+            assert!(r1.unwrap() == "uuid=bae3f507-e6c3-44ba-ad01-f8ff1083534a");
+            // Name does exist
+            let r3 = server_txn.uuid_to_rdn(
+                audit,
+                &Uuid::parse_str("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap(),
+            );
+            println!("{:?}", r3);
+            assert!(r3.unwrap() == "spn=testperson1@example.com");
+            // Uuid is not syntax normalised (but exists)
+            let r4 = server_txn.uuid_to_rdn(
+                audit,
+                &Uuid::parse_str("CC8E95B4-C24F-4D68-BA54-8BED76F63930").unwrap(),
+            );
+            assert!(r4.unwrap() == "spn=testperson1@example.com");
         })
     }
 

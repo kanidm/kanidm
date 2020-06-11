@@ -604,11 +604,24 @@ impl IdlSqliteWriteTransaction {
         Ok(())
     }
 
-    pub fn create_uuid2name(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
+    pub fn create_uuid2spn(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
         try_audit!(
             audit,
             self.conn.execute(
-                "CREATE TABLE IF NOT EXISTS idx_uuid2name (uuid TEXT PRIMARY KEY, name TEXT)",
+                "CREATE TABLE IF NOT EXISTS idx_uuid2spn (uuid TEXT PRIMARY KEY, spn TEXT)",
+                NO_PARAMS
+            ),
+            "sqlite error {:?}",
+            OperationError::SQLiteError
+        );
+        Ok(())
+    }
+
+    pub fn create_uuid2rdn(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
+        try_audit!(
+            audit,
+            self.conn.execute(
+                "CREATE TABLE IF NOT EXISTS idx_uuid2rdn (uuid TEXT PRIMARY KEY, rdn TEXT)",
                 NO_PARAMS
             ),
             "sqlite error {:?}",

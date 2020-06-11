@@ -41,14 +41,14 @@ URL = CONFIG.get('kanidm_client', 'url')
 AUTH_URL = "%s/v1/auth" % URL
 
 def _authenticate(s, acct, pw):
-    init_auth = {"step": { "Init": [acct, None]}}
+    init_auth = {"step": { "init": [acct, None]}}
 
     r = s.post(AUTH_URL, json=init_auth, verify=CA, timeout=TIMEOUT)
     if r.status_code != 200:
         print(r.json())
         raise Exception("AuthInitFailed")
 
-    cred_auth = {"step": { "Creds": [{"Password": pw}]}}
+    cred_auth = {"step": { "creds": [{"Password": pw}]}}
     r = s.post(AUTH_URL, json=cred_auth, verify=CA, timeout=TIMEOUT)
     if r.status_code != 200:
         print(r.json())

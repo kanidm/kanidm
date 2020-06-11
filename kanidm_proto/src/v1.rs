@@ -73,6 +73,7 @@ pub enum OperationError {
     InvalidAttributeName(String),
     InvalidAttribute(String),
     InvalidDBState,
+    InvalidValueState,
     InvalidEntryID,
     InvalidRequestState,
     InvalidState,

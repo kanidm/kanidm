@@ -347,15 +347,12 @@ impl QueryServerWriteV1 {
     ) -> Result<(), OperationError> {
         let mut qs_write = self.qs.write(duration_from_epoch_now());
 
-        let target_uuid = match Uuid::parse_str(uuid_or_name.as_str()) {
-            Ok(u) => u,
-            Err(_) => qs_write
-                .name_to_uuid(audit, uuid_or_name.as_str())
-                .map_err(|e| {
-                    ladmin_error!(audit, "Error resolving id to target");
-                    e
-                })?,
-        };
+        let target_uuid = qs_write
+            .name_to_uuid(audit, uuid_or_name.as_str())
+            .map_err(|e| {
+                ladmin_error!(audit, "Error resolving id to target");
+                e
+            })?;
 
         let mdf =
             match ModifyEvent::from_parts(audit, uat, target_uuid, proto_ml, filter, &mut qs_write)
@@ -384,15 +381,12 @@ impl QueryServerWriteV1 {
     ) -> Result<(), OperationError> {
         let mut qs_write = self.qs.write(duration_from_epoch_now());
 
-        let target_uuid = match Uuid::parse_str(uuid_or_name.as_str()) {
-            Ok(u) => u,
-            Err(_) => qs_write
-                .name_to_uuid(audit, uuid_or_name.as_str())
-                .map_err(|e| {
-                    ladmin_error!(audit, "Error resolving id to target");
-                    e
-                })?,
-        };
+        let target_uuid = qs_write
+            .name_to_uuid(audit, uuid_or_name.as_str())
+            .map_err(|e| {
+                ladmin_error!(audit, "Error resolving id to target");
+                e
+            })?;
 
         let mdf = match ModifyEvent::from_internal_parts(
             audit,
@@ -615,16 +609,14 @@ impl Handler<InternalCredentialSetMessage> for QueryServerWriteV1 {
                 // We can either do this by trying to parse the name or by creating a filter
                 // to find the entry - there are risks to both TBH ... especially when the uuid
                 // is also an entries name, but that they aren't the same entry.
-                let target_uuid = match Uuid::parse_str(msg.uuid_or_name.as_str()) {
-                    Ok(u) => u,
-                    Err(_) => idms_prox_write
-                        .qs_write
-                        .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
-                        .map_err(|e| {
-                            ladmin_error!(&mut audit, "Error resolving id to target");
-                            e
-                        })?,
-                };
+
+                let target_uuid = idms_prox_write
+                    .qs_write
+                    .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                    .map_err(|e| {
+                        ladmin_error!(audit, "Error resolving id to target");
+                        e
+                    })?;
 
                 // What type of auth set did we recieve?
                 match msg.sac {
@@ -777,16 +769,13 @@ impl Handler<InternalRegenerateRadiusMessage> for QueryServerWriteV1 {
                 let mut idms_prox_write = self.idms.proxy_write(ct.clone());
                 idms_prox_write.expire_mfareg_sessions(ct);
 
-                let target_uuid = match Uuid::parse_str(msg.uuid_or_name.as_str()) {
-                    Ok(u) => u,
-                    Err(_) => idms_prox_write
-                        .qs_write
-                        .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
-                        .map_err(|e| {
-                            ladmin_error!(&mut audit, "Error resolving id to target");
-                            e
-                        })?,
-                };
+                let target_uuid = idms_prox_write
+                    .qs_write
+                    .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                    .map_err(|e| {
+                        ladmin_error!(audit, "Error resolving id to target");
+                        e
+                    })?;
 
                 let rrse = RegenerateRadiusSecretEvent::from_parts(
                     &mut audit,
@@ -826,15 +815,13 @@ impl Handler<PurgeAttributeMessage> for QueryServerWriteV1 {
             "actors::v1_write::handle<PurgeAttributeMessage>",
             || {
                 let mut qs_write = self.qs.write(duration_from_epoch_now());
-                let target_uuid = match Uuid::parse_str(msg.uuid_or_name.as_str()) {
-                    Ok(u) => u,
-                    Err(_) => qs_write
-                        .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
-                        .map_err(|e| {
-                            ladmin_error!(&mut audit, "Error resolving id to target");
-                            e
-                        })?,
-                };
+
+                let target_uuid = qs_write
+                    .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                    .map_err(|e| {
+                        ladmin_error!(audit, "Error resolving id to target");
+                        e
+                    })?;
 
                 let mdf = match ModifyEvent::from_target_uuid_attr_purge(
                     &mut audit,
@@ -876,15 +863,13 @@ impl Handler<RemoveAttributeValueMessage> for QueryServerWriteV1 {
             "actors::v1_write::handle<RemoveAttributeValueMessage>",
             || {
                 let mut qs_write = self.qs.write(duration_from_epoch_now());
-                let target_uuid = match Uuid::parse_str(msg.uuid_or_name.as_str()) {
-                    Ok(u) => u,
-                    Err(_) => qs_write
-                        .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
-                        .map_err(|e| {
-                            ladmin_error!(&mut audit, "Error resolving id to target");
-                            e
-                        })?,
-                };
+
+                let target_uuid = qs_write
+                    .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                    .map_err(|e| {
+                        ladmin_error!(audit, "Error resolving id to target");
+                        e
+                    })?;
 
                 let proto_ml =
                     ProtoModifyList::new_list(vec![ProtoModify::Removed(msg.attr, msg.value)]);

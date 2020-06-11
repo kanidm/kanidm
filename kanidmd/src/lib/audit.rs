@@ -61,11 +61,9 @@ macro_rules! audit_log {
 
 macro_rules! lqueue {
     ($au:expr, $tag:expr, $($arg:tt)*) => ({
-        /*
-        if cfg!(test) || cfg!(debug_assertions) {
-            eprintln!($($arg)*)
+        if cfg!(test) {
+            println!($($arg)*)
         }
-        */
         use std::fmt;
         use crate::audit::LogTag;
         $au.log_event(

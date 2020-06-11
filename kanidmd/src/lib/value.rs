@@ -512,12 +512,8 @@ impl PartialValue {
         }
     }
 
-    pub fn new_nsuniqueid_s(s: &str) -> Option<Self> {
-        if NSUNIQUEID_RE.is_match(s) {
-            Some(PartialValue::Nsuniqueid(s.to_lowercase()))
-        } else {
-            None
-        }
+    pub fn new_nsuniqueid_s(s: &str) -> Self {
+        PartialValue::Nsuniqueid(s.to_lowercase())
     }
 
     pub fn is_nsuniqueid(&self) -> bool {
@@ -1045,8 +1041,11 @@ impl Value {
         }
     }
 
-    pub fn new_nsuniqueid_s(s: &str) -> Option<Self> {
-        PartialValue::new_nsuniqueid_s(s).map(|pv| Value { pv, data: None })
+    pub fn new_nsuniqueid_s(s: &str) -> Self {
+        Value {
+            pv: PartialValue::new_nsuniqueid_s(s),
+            data: None,
+        }
     }
 
     pub fn is_nsuniqueid(&self) -> bool {
@@ -1380,6 +1379,7 @@ impl Value {
                 },
                 None => false,
             },
+            PartialValue::Nsuniqueid(s) => NSUNIQUEID_RE.is_match(s),
             _ => true,
         }
     }
@@ -1586,10 +1586,15 @@ mod tests {
         // d765e707-48e111e6-8c9ebed8-f7926cc3
         // uuid
         // d765e707-48e1-11e6-8c9e-bed8f7926cc3
-        assert!(Value::new_nsuniqueid_s("d765e707-48e111e6-8c9ebed8-f7926cc3").is_some());
-        assert!(Value::new_nsuniqueid_s("D765E707-48E111E6-8C9EBED8-F7926CC3").is_some());
-        assert!(Value::new_nsuniqueid_s("d765e707-48e1-11e6-8c9e-bed8f7926cc3").is_none());
-        assert!(Value::new_nsuniqueid_s("xxxx").is_none());
+        let val1 = Value::new_nsuniqueid_s("d765e707-48e111e6-8c9ebed8-f7926cc3");
+        let val2 = Value::new_nsuniqueid_s("D765E707-48E111E6-8C9EBED8-F7926CC3");
+        let inv1 = Value::new_nsuniqueid_s("d765e707-48e1-11e6-8c9e-bed8f7926cc3");
+        let inv2 = Value::new_nsuniqueid_s("xxxx");
+
+        assert!(!inv1.validate());
+        assert!(!inv2.validate());
+        assert!(val1.validate());
+        assert!(val2.validate());
     }
 
     /*

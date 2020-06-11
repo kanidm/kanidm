@@ -959,6 +959,27 @@ impl Entry<EntrySealed, EntryCommitted> {
         }
     }
 
+    pub(crate) fn idx_name2uuid_diff(
+        pre: Option<&Self>,
+        post: Option<&Self>,
+    ) -> Vec<Result<((), ()), ()>> {
+        unimplemented!();
+    }
+
+    pub(crate) fn idx_uuid2spn_diff(
+        pre: Option<&Self>,
+        post: Option<&Self>,
+    ) -> Vec<Result<((), ()), ()>> {
+        unimplemented!();
+    }
+
+    pub(crate) fn idx_uuid2rdn_diff(
+        pre: Option<&Self>,
+        post: Option<&Self>,
+    ) -> Vec<Result<((), ()), ()>> {
+        unimplemented!();
+    }
+
     // This is an associated method, not on & self so we can take options on
     // both sides.
     pub(crate) fn idx_diff<'a>(
@@ -1341,23 +1362,18 @@ impl Entry<EntryReduced, EntryCommitted> {
         qs: &mut QueryServerReadTransaction,
         basedn: &str,
     ) -> Result<LdapSearchResultEntry, OperationError> {
-        let (attr, rdn) = self
-            .get_ava_single("spn")
-            .map(|v| ("spn", v.to_proto_string_clone()))
-            .or_else(|| {
-                self.get_ava_single("name")
-                    .map(|v| ("name", v.to_proto_string_clone()))
-            })
-            .unwrap_or_else(|| ("uuid", self.get_uuid().to_hyphenated_ref().to_string()));
+        let rdn = qs.uuid_to_rdn(audit, self.get_uuid())?;
 
-        let dn = format!("{}={},{}", attr, rdn, basedn);
+        let dn = format!("{},{}", rdn, basedn);
 
         let attributes: Result<Vec<_>, _> = self
             .attrs
             .iter()
             .map(|(k, vs)| {
-                let pvs: Result<Vec<String>, _> =
-                    vs.iter().map(|v| qs.resolve_value(audit, v)).collect();
+                let pvs: Result<Vec<String>, _> = vs
+                    .iter()
+                    .map(|v| qs.resolve_value_ldap(audit, v, basedn))
+                    .collect();
                 let pvs = pvs?;
                 let ks = ldap_attr_entry_map(k.as_str());
                 Ok(LdapPartialAttribute {

@@ -9,6 +9,7 @@ use crate::audit::AuditScope;
 use crate::be::dbentry::DbEntry;
 use crate::entry::{Entry, EntryCommitted, EntryNew, EntrySealed};
 use crate::filter::{Filter, FilterPlan, FilterResolved, FilterValidResolved};
+use crate::value::Value;
 use idlset::AndNot;
 use idlset::IDLBitRange;
 use kanidm_proto::v1::{ConsistencyError, OperationError};
@@ -582,6 +583,30 @@ pub trait BackendTransaction {
 
         Ok(())
     }
+
+    fn name2uuid(
+        &mut self,
+        audit: &mut AuditScope,
+        name: &str,
+    ) -> Result<Option<Uuid>, OperationError> {
+        self.get_idlayer().name2uuid(audit, name)
+    }
+
+    fn uuid2spn(
+        &mut self,
+        audit: &mut AuditScope,
+        uuid: &Uuid,
+    ) -> Result<Option<Value>, OperationError> {
+        self.get_idlayer().uuid2spn(audit, uuid)
+    }
+
+    fn uuid2rdn(
+        &mut self,
+        audit: &mut AuditScope,
+        uuid: &Uuid,
+    ) -> Result<Option<String>, OperationError> {
+        self.get_idlayer().uuid2rdn(audit, uuid)
+    }
 }
 
 impl<'a> BackendTransaction for BackendReadTransaction<'a> {
@@ -750,7 +775,7 @@ impl<'a> BackendWriteTransaction<'a> {
                 pre.get_id()
             }
             (None, Some(post)) => {
-                ltrace!(audit, "Attempting to update indexes");
+                ltrace!(audit, "Attempting to create indexes");
                 post.get_id()
             }
             (Some(pre), Some(post)) => {
@@ -759,6 +784,45 @@ impl<'a> BackendWriteTransaction<'a> {
                 post.get_id()
             }
         };
+
+        // Update the names/uuid maps
+        let idx_name2uuid_diff = Entry::idx_name2uuid_diff(pre, post);
+        let uuid2spn_diff = Entry::idx_uuid2spn_diff(pre, post);
+        let uuid2rdn_diff = Entry::idx_uuid2rdn_diff(pre, post);
+
+        // Write them out. Remember, the order of these sets matters!
+        idx_name2uuid_diff.iter().for_each(|act| {
+            match act {
+                Ok((name, uuid)) => {
+                    // add the name, uuid as listed.
+                }
+                Err(name) => {
+                    // remove the following name
+                }
+            }
+        });
+
+        uuid2spn_diff.iter().for_each(|act| {
+            match act {
+                Ok((uuid, spn)) => {
+                    // add the spn as listed
+                }
+                Err(uuid) => {
+                    // remove the spn as listed.
+                }
+            }
+        });
+
+        uuid2rdn_diff.iter().for_each(|act| {
+            match act {
+                Ok((uuid, spn)) => {
+                    // add the rdn as listed
+                }
+                Err(uuid) => {
+                    // remove the rdn as listed.
+                }
+            }
+        });
 
         // Extremely Cursed - Okay, we know that self.idxmeta will NOT be changed
         // in this function, but we need to borrow self as mut for the caches in
@@ -845,8 +909,11 @@ impl<'a> BackendWriteTransaction<'a> {
         ltrace!(audit, "Creating index -> name2uuid");
         self.idlayer.create_name2uuid(audit)?;
 
-        ltrace!(audit, "Creating index -> uuid2name");
-        self.idlayer.create_uuid2name(audit)?;
+        ltrace!(audit, "Creating index -> uuid2spn");
+        self.idlayer.create_uuid2spn(audit)?;
+
+        ltrace!(audit, "Creating index -> uuid2rdn");
+        self.idlayer.create_uuid2rdn(audit)?;
 
         self.idxmeta
             .iter()
@@ -1121,11 +1188,11 @@ impl Backend {
 
 #[cfg(test)]
 mod tests {
-
     use idlset::IDLBitRange;
     use std::collections::BTreeSet;
     use std::fs;
     use std::iter::FromIterator;
+    use uuid::Uuid;
 
     use super::super::audit::AuditScope;
     use super::super::entry::{Entry, EntryInit, EntryNew};
@@ -1479,7 +1546,6 @@ mod tests {
     fn test_be_reindex_data() {
         run_test!(|audit: &mut AuditScope, be: &mut BackendWriteTransaction| {
             // Add some test data?
-            // TODO: Test reindex duplicate eq?
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
             e1.add_ava("name", &Value::from("william"));
             e1.add_ava("uuid", &Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
@@ -1588,7 +1654,20 @@ mod tests {
             assert_eq!(uuid_p_idl, None);
 
             // Check name2uuid
-            // check uuid2name
+            let claire_uuid = Uuid::parse_str("bd651620-00dd-426b-aaa0-4494f7b7906f").unwrap();
+            let william_uuid = Uuid::parse_str("db237e8a-0079-4b8c-8a56-593b22aa44d1").unwrap();
+
+            assert!(be.name2uuid(audit, "claire") == Ok(Some(claire_uuid)));
+            assert!(be.name2uuid(audit, "name=claire") == Ok(Some(claire_uuid)));
+            assert!(be.name2uuid(audit, "william") == Ok(Some(william_uuid)));
+            assert!(be.name2uuid(audit, "name=william") == Ok(Some(william_uuid)));
+            assert!(be.name2uuid(audit, "db237e8a-0079-4b8c-8a56-593b22aa44d1") == Ok(None));
+            // check uuid2spn
+            assert!(be.uuid2spn(audit, &claire_uuid) == Ok(Some(Value::from("claire"))));
+            assert!(be.uuid2spn(audit, &william_uuid) == Ok(Some(Value::from("william"))));
+            // check uuid2rdn
+            assert!(be.uuid2rdn(audit, &claire_uuid) == Ok(Some("name=claire".to_string())));
+            assert!(be.uuid2rdn(audit, &william_uuid) == Ok(Some("name=william".to_string())));
         });
     }
 
@@ -1628,6 +1707,12 @@ mod tests {
 
             idl_state!(audit, be, "uuid", IndexType::PRESENCE, "_", Some(vec![1]));
 
+            let william_uuid = Uuid::parse_str("db237e8a-0079-4b8c-8a56-593b22aa44d1").unwrap();
+            assert!(be.name2uuid(audit, "william") == Ok(Some(william_uuid)));
+            assert!(be.name2uuid(audit, "name=william") == Ok(Some(william_uuid)));
+            assert!(be.uuid2spn(audit, &william_uuid) == Ok(Some(Value::from("william"))));
+            assert!(be.uuid2rdn(audit, &william_uuid) == Ok(Some("name=william".to_string())));
+
             // == Now we delete, and assert we removed the items.
             be.delete(audit, &rset).unwrap();
 
@@ -1666,6 +1751,11 @@ mod tests {
                 "_",
                 Some(Vec::new())
             );
+
+            assert!(be.name2uuid(audit, "william") == Ok(None));
+            assert!(be.name2uuid(audit, "name=william") == Ok(None));
+            assert!(be.uuid2spn(audit, &william_uuid) == Ok(None));
+            assert!(be.uuid2rdn(audit, &william_uuid) == Ok(None));
         })
     }
 
@@ -1721,6 +1811,25 @@ mod tests {
             );
 
             idl_state!(audit, be, "uuid", IndexType::PRESENCE, "_", Some(vec![2]));
+
+            let claire_uuid = Uuid::parse_str("bd651620-00dd-426b-aaa0-4494f7b7906f").unwrap();
+            let william_uuid = Uuid::parse_str("db237e8a-0079-4b8c-8a56-593b22aa44d1").unwrap();
+            let lucy_uuid = Uuid::parse_str("7b23c99d-c06b-4a9a-a958-3afa56383e1d").unwrap();
+
+            assert!(be.name2uuid(audit, "claire") == Ok(Some(claire_uuid)));
+            assert!(be.name2uuid(audit, "name=claire") == Ok(Some(claire_uuid)));
+            assert!(be.uuid2spn(audit, &claire_uuid) == Ok(Some(Value::from("claire"))));
+            assert!(be.uuid2rdn(audit, &claire_uuid) == Ok(Some("claire".to_string())));
+
+            assert!(be.name2uuid(audit, "william") == Ok(None));
+            assert!(be.name2uuid(audit, "name=william") == Ok(None));
+            assert!(be.uuid2spn(audit, &william_uuid) == Ok(None));
+            assert!(be.uuid2rdn(audit, &william_uuid) == Ok(None));
+
+            assert!(be.name2uuid(audit, "lucy") == Ok(None));
+            assert!(be.name2uuid(audit, "name=lucy") == Ok(None));
+            assert!(be.uuid2spn(audit, &lucy_uuid) == Ok(None));
+            assert!(be.uuid2rdn(audit, &lucy_uuid) == Ok(None));
         })
     }
 
@@ -1767,6 +1876,15 @@ mod tests {
             idl_state!(audit, be, "tb", IndexType::EQUALITY, "test", Some(vec![1]));
 
             idl_state!(audit, be, "ta", IndexType::EQUALITY, "test", Some(vec![]));
+
+            // let claire_uuid = Uuid::parse_str("bd651620-00dd-426b-aaa0-4494f7b7906f").unwrap();
+            let william_uuid = Uuid::parse_str("db237e8a-0079-4b8c-8a56-593b22aa44d1").unwrap();
+            assert!(be.name2uuid(audit, "william") == Ok(None));
+            assert!(be.name2uuid(audit, "name=william") == Ok(None));
+            assert!(be.name2uuid(audit, "claire") == Ok(Some(william_uuid)));
+            assert!(be.name2uuid(audit, "name=claire") == Ok(Some(william_uuid)));
+            assert!(be.uuid2spn(audit, &william_uuid) == Ok(Some(Value::from("claire"))));
+            assert!(be.uuid2rdn(audit, &william_uuid) == Ok(Some("claire".to_string())));
         })
     }
 
@@ -1830,6 +1948,17 @@ mod tests {
                 "william",
                 Some(Vec::new())
             );
+
+            let claire_uuid = Uuid::parse_str("bd651620-00dd-426b-aaa0-4494f7b7906f").unwrap();
+            let william_uuid = Uuid::parse_str("db237e8a-0079-4b8c-8a56-593b22aa44d1").unwrap();
+            assert!(be.name2uuid(audit, "william") == Ok(None));
+            assert!(be.name2uuid(audit, "name=william") == Ok(None));
+            assert!(be.name2uuid(audit, "claire") == Ok(Some(claire_uuid)));
+            assert!(be.name2uuid(audit, "name=claire") == Ok(Some(claire_uuid)));
+            assert!(be.uuid2spn(audit, &william_uuid) == Ok(None));
+            assert!(be.uuid2rdn(audit, &william_uuid) == Ok(None));
+            assert!(be.uuid2spn(audit, &claire_uuid) == Ok(Some(Value::from("claire"))));
+            assert!(be.uuid2rdn(audit, &claire_uuid) == Ok(Some("claire".to_string())));
         })
     }
 
