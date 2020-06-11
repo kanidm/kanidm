@@ -963,6 +963,7 @@ impl Entry<EntrySealed, EntryCommitted> {
         pre: Option<&Self>,
         post: Option<&Self>,
     ) -> Vec<Result<((), ()), ()>> {
+        // needs to return gid for posix conversion
         unimplemented!();
     }
 

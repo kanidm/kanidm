@@ -192,61 +192,6 @@ pub trait QueryServerTransaction {
                 Some(u) => Ok(u),
                 None => Err(OperationError::NoMatchingEntries),
             })
-        /*
-        lperf_segment!(audit, "server::name_to_uuid", || {
-            // Is it already a UUID?
-            match Uuid::parse_str(name) {
-                Ok(u) => {
-                    ltrace!(audit, "already a valid uuid!");
-                    return Ok(u);
-                }
-                Err(_) => {}
-            };
-
-            // For now this just constructs a filter and searches, but later
-            // we could actually improve this to contact the backend and do
-            // index searches, completely bypassing id2entry.
-
-            // construct the filter
-            // Internal search - DO NOT SEARCH TOMBSTONES AND RECYCLE
-            let filt = filter!(f_spn_name(name));
-
-            ltrace!(audit, "name_to_uuid: name -> {:?}", name);
-
-            let res = match self.internal_search(audit, filt) {
-                Ok(e) => e,
-                Err(e) => {
-                    ladmin_error!(audit, "name_to_uuid search failure -> {:?}", e);
-                    return Err(e);
-                }
-            };
-
-            ltrace!(audit, "name_to_uuid: results -- {:?}", res);
-
-            if res.is_empty() {
-                // If result len == 0, error no such result
-                ladmin_warning!(audit, "name_to_uuid no matching results -> {}", name);
-                return Err(OperationError::NoMatchingEntries);
-            } else if res.len() >= 2 {
-                // if result len >= 2, error, invaid entry state.
-                ladmin_error!(
-                    audit,
-                    "name_to_uuid invalid db state, multiple results for name -> {}",
-                    name
-                );
-                return Err(OperationError::InvalidDBState);
-            }
-
-            // error should never be triggered due to the len checks above.
-            let e = res.first().ok_or(OperationError::NoMatchingEntries)?;
-            // Get the uuid from the entry. Again, check it exists, and only one.
-            let uuid_res: Uuid = *e.get_uuid();
-
-            ltrace!(audit, "name_to_uuid: uuid <- {:?}", uuid_res);
-
-            Ok(uuid_res)
-        })
-        */
     }
 
     fn uuid_to_spn(
@@ -263,46 +208,6 @@ pub trait QueryServerTransaction {
             None => {}
         }
         Ok(r)
-
-        /*
-        lperf_segment!(audit, "server::uuid_to_spn", || {
-            // construct the filter
-            let filt = filter!(f_eq("uuid", PartialValue::new_uuidr(uuid)));
-            ltrace!(audit, "uuid_to_spn: uuid -> {:?}", uuid);
-
-            // Internal search - DO NOT SEARCH TOMBSTONES AND RECYCLE
-            let res = match self.internal_search(audit, filt) {
-                Ok(e) => e,
-                Err(e) => return Err(e),
-            };
-
-            ltrace!(audit, "uuid_to_spn: results -- {:?}", res);
-
-            if res.is_empty() {
-                // If result len == 0, error no such result
-                ltrace!(audit, "uuid_to_spn: name, no such entry <- Ok(None)");
-                return Ok(None);
-            } else if res.len() >= 2 {
-                // if result len >= 2, error, invaid entry state.
-                return Err(OperationError::InvalidDBState);
-            }
-
-            // fine for 0/1 case, but check len for >= 2 to eliminate that case.
-            let e = res.first().ok_or(OperationError::NoMatchingEntries)?;
-            // Get the uuid from the entry. Again, check it exists, and only one.
-            let name_res = e
-                .get_ava(&String::from("spn"))
-                .or_else(|| e.get_ava(&String::from("name")))
-                .and_then(|vas| vas.first().map(|u| (*u).clone()))
-                .ok_or(OperationError::InvalidEntryState)?;
-
-            ltrace!(audit, "uuid_to_spn: name <- {:?}", name_res);
-
-            // Make sure it's the right type ... (debug only)
-
-            Ok(Some(name_res))
-        })
-        */
     }
 
     fn uuid_to_rdn(
@@ -316,18 +221,6 @@ pub trait QueryServerTransaction {
                 Some(u) => Ok(u),
                 None => Ok(format!("uuid={}", uuid.to_hyphenated_ref())),
             })
-
-        // unimplemented!();
-        /*
-        let (attr, rdn) = self
-            .get_ava_single("spn")
-            .map(|v| ("spn", v.to_proto_string_clone()))
-            .or_else(|| {
-                self.get_ava_single("name")
-                    .map(|v| ("name", v.to_proto_string_clone()))
-            })
-            .unwrap_or_else(|| ("uuid", self.get_uuid().to_hyphenated_ref().to_string()));
-        */
     }
 
     fn posixid_to_uuid(
@@ -335,6 +228,13 @@ pub trait QueryServerTransaction {
         audit: &mut AuditScope,
         name: &str,
     ) -> Result<Uuid, OperationError> {
+        self.get_be_txn()
+            .name2uuid(audit, name)
+            .and_then(|v| match v {
+                Some(u) => Ok(u),
+                None => Err(OperationError::NoMatchingEntries),
+            })
+        /*
         lperf_segment!(audit, "server::posixid_to_uuid", || {
             let f_name = Some(f_eq("name", PartialValue::new_iname(name)));
 
@@ -371,6 +271,7 @@ pub trait QueryServerTransaction {
 
             Ok(uuid_res)
         })
+        */
     }
 
     // From internal, generate an exists event and dispatch
