@@ -29,6 +29,13 @@ enum NameCacheKey {
     Uuid2Spn(Uuid),
 }
 
+#[derive(Debug, Clone)]
+enum NameCacheValue {
+    U(Uuid),
+    R(String),
+    S(Value),
+}
+
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 struct IdlCacheKey {
     a: String,
@@ -57,6 +64,7 @@ pub struct IdlArcSqlite {
     db: IdlSqlite,
     entry_cache: Arc<u64, Box<Entry<EntrySealed, EntryCommitted>>>,
     idl_cache: Arc<IdlCacheKey, Box<IDLBitRange>>,
+    name_cache: Arc<NameCacheKey, NameCacheValue>,
     op_ts_max: CowCell<Option<Duration>>,
 }
 
@@ -64,12 +72,14 @@ pub struct IdlArcSqliteReadTransaction<'a> {
     db: IdlSqliteReadTransaction,
     entry_cache: ArcReadTxn<'a, u64, Box<Entry<EntrySealed, EntryCommitted>>>,
     idl_cache: ArcReadTxn<'a, IdlCacheKey, Box<IDLBitRange>>,
+    name_cache: ArcReadTxn<'a, NameCacheKey, NameCacheValue>,
 }
 
 pub struct IdlArcSqliteWriteTransaction<'a> {
     db: IdlSqliteWriteTransaction,
     entry_cache: ArcWriteTxn<'a, u64, Box<Entry<EntrySealed, EntryCommitted>>>,
     idl_cache: ArcWriteTxn<'a, IdlCacheKey, Box<IDLBitRange>>,
+    name_cache: ArcWriteTxn<'a, NameCacheKey, NameCacheValue>,
     op_ts_max: CowCellWriteTxn<'a, Option<Duration>>,
 }
 
@@ -184,7 +194,22 @@ macro_rules! name2uuid {
         $audit:expr,
         $name:expr
     ) => {{
-        $self.db.name2uuid($audit, $name)
+        lperf_segment!($audit, "be::idl_arc_sqlite::name2uuid", || {
+            let cache_key = NameCacheKey::Name2Uuid($name.to_string());
+            let cache_r = $self.name_cache.get(&cache_key);
+            if let Some(NameCacheValue::U(uuid)) = cache_r {
+                ltrace!($audit, "Got cached uuid for name2uuid");
+                return Ok(Some(uuid.clone()));
+            }
+
+            let db_r = $self.db.name2uuid($audit, $name)?;
+            if let Some(uuid) = db_r {
+                $self
+                    .name_cache
+                    .insert(cache_key, NameCacheValue::U(uuid.clone()))
+            }
+            Ok(db_r)
+        })
     }};
 }
 
@@ -194,7 +219,22 @@ macro_rules! uuid2spn {
         $audit:expr,
         $uuid:expr
     ) => {{
-        $self.db.uuid2spn($audit, $uuid)
+        lperf_segment!($audit, "be::idl_arc_sqlite::name2uuid", || {
+            let cache_key = NameCacheKey::Uuid2Spn(*$uuid);
+            let cache_r = $self.name_cache.get(&cache_key);
+            if let Some(NameCacheValue::S(ref spn)) = cache_r {
+                ltrace!($audit, "Got cached spn for uuid2spn");
+                return Ok(Some(spn.clone()));
+            }
+
+            let db_r = $self.db.uuid2spn($audit, $uuid)?;
+            if let Some(ref data) = db_r {
+                $self
+                    .name_cache
+                    .insert(cache_key, NameCacheValue::S(data.clone()))
+            }
+            Ok(db_r)
+        })
     }};
 }
 
@@ -204,7 +244,22 @@ macro_rules! uuid2rdn {
         $audit:expr,
         $uuid:expr
     ) => {{
-        $self.db.uuid2rdn($audit, $uuid)
+        lperf_segment!($audit, "be::idl_arc_sqlite::name2uuid", || {
+            let cache_key = NameCacheKey::Uuid2Rdn(*$uuid);
+            let cache_r = $self.name_cache.get(&cache_key);
+            if let Some(NameCacheValue::R(ref rdn)) = cache_r {
+                ltrace!($audit, "Got cached rdn for uuid2rdn");
+                return Ok(Some(rdn.clone()));
+            }
+
+            let db_r = $self.db.uuid2rdn($audit, $uuid)?;
+            if let Some(ref data) = db_r {
+                $self
+                    .name_cache
+                    .insert(cache_key, NameCacheValue::R(data.clone()))
+            }
+            Ok(db_r)
+        })
     }};
 }
 
@@ -414,11 +469,13 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
                 db,
                 entry_cache,
                 idl_cache,
+                name_cache,
                 op_ts_max,
             } = self;
             // Undo the caches in the reverse order.
             db.commit(audit).and_then(|r| {
                 op_ts_max.commit();
+                name_cache.commit();
                 idl_cache.commit();
                 entry_cache.commit();
                 Ok(r)
@@ -514,20 +571,39 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
     }
 
     pub fn write_name2uuid_add(
-        &self,
+        &mut self,
         audit: &mut AuditScope,
         uuid: &Uuid,
         add: BTreeSet<String>,
     ) -> Result<(), OperationError> {
-        self.db.write_name2uuid_add(audit, uuid, &add)
+        lperf_segment!(audit, "be::idl_arc_sqlite::write_name2uuid_add", || {
+            self.db
+                .write_name2uuid_add(audit, uuid, &add)
+                .and_then(|_| {
+                    add.into_iter().for_each(|k| {
+                        let cache_key = NameCacheKey::Name2Uuid(k);
+                        let cache_value = NameCacheValue::U(*uuid);
+                        self.name_cache.insert(cache_key, cache_value)
+                    });
+                    Ok(())
+                })
+        })
     }
 
     pub fn write_name2uuid_rem(
-        &self,
+        &mut self,
         audit: &mut AuditScope,
         rem: BTreeSet<String>,
     ) -> Result<(), OperationError> {
-        self.db.write_name2uuid_rem(audit, &rem)
+        lperf_segment!(audit, "be::idl_arc_sqlite::write_name2uuid_add", || {
+            self.db.write_name2uuid_rem(audit, &rem).and_then(|_| {
+                rem.into_iter().for_each(|k| {
+                    let cache_key = NameCacheKey::Name2Uuid(k);
+                    self.name_cache.remove(cache_key)
+                });
+                Ok(())
+            })
+        })
     }
 
     pub fn create_uuid2spn(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
@@ -535,12 +611,23 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
     }
 
     pub fn write_uuid2spn(
-        &self,
+        &mut self,
         audit: &mut AuditScope,
         uuid: &Uuid,
         k: Option<Value>,
     ) -> Result<(), OperationError> {
-        self.db.write_uuid2spn(audit, uuid, k.as_ref())
+        lperf_segment!(audit, "be::idl_arc_sqlite::write_uuid2spn", || {
+            self.db
+                .write_uuid2spn(audit, uuid, k.as_ref())
+                .and_then(|_| {
+                    let cache_key = NameCacheKey::Uuid2Spn(uuid.clone());
+                    match k {
+                        Some(v) => self.name_cache.insert(cache_key, NameCacheValue::S(v)),
+                        None => self.name_cache.remove(cache_key),
+                    }
+                    Ok(())
+                })
+        })
     }
 
     pub fn create_uuid2rdn(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
@@ -548,12 +635,23 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
     }
 
     pub fn write_uuid2rdn(
-        &self,
+        &mut self,
         audit: &mut AuditScope,
         uuid: &Uuid,
         k: Option<String>,
     ) -> Result<(), OperationError> {
-        self.db.write_uuid2rdn(audit, uuid, k.as_ref())
+        lperf_segment!(audit, "be::idl_arc_sqlite::write_uuid2rdn", || {
+            self.db
+                .write_uuid2rdn(audit, uuid, k.as_ref())
+                .and_then(|_| {
+                    let cache_key = NameCacheKey::Uuid2Rdn(uuid.clone());
+                    match k {
+                        Some(s) => self.name_cache.insert(cache_key, NameCacheValue::R(s)),
+                        None => self.name_cache.remove(cache_key),
+                    }
+                    Ok(())
+                })
+        })
     }
 
     pub fn create_idx(
@@ -636,12 +734,20 @@ impl IdlArcSqlite {
             DEFAULT_CACHE_WMISS,
         );
 
+        let name_cache = Arc::new(
+            DEFAULT_CACHE_TARGET * DEFAULT_NAME_CACHE_RATIO,
+            pool_size as usize,
+            DEFAULT_CACHE_RMISS,
+            DEFAULT_CACHE_WMISS,
+        );
+
         let op_ts_max = CowCell::new(None);
 
         Ok(IdlArcSqlite {
             db,
             entry_cache,
             idl_cache,
+            name_cache,
             op_ts_max,
         })
     }
@@ -650,11 +756,13 @@ impl IdlArcSqlite {
         // IMPORTANT! Always take entrycache FIRST
         let entry_cache_read = self.entry_cache.read();
         let idl_cache_read = self.idl_cache.read();
+        let name_cache_read = self.name_cache.read();
         let db_read = self.db.read();
         IdlArcSqliteReadTransaction {
             db: db_read,
             entry_cache: entry_cache_read,
             idl_cache: idl_cache_read,
+            name_cache: name_cache_read,
         }
     }
 
@@ -662,12 +770,14 @@ impl IdlArcSqlite {
         // IMPORTANT! Always take entrycache FIRST
         let entry_cache_write = self.entry_cache.write();
         let idl_cache_write = self.idl_cache.write();
+        let name_cache_write = self.name_cache.write();
         let op_ts_max_write = self.op_ts_max.write();
         let db_write = self.db.write();
         IdlArcSqliteWriteTransaction {
             db: db_write,
             entry_cache: entry_cache_write,
             idl_cache: idl_cache_write,
+            name_cache: name_cache_write,
             op_ts_max: op_ts_max_write,
         }
     }

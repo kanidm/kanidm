@@ -474,14 +474,12 @@ mod tests {
     use crate::idm::event::UnixPasswordChangeEvent;
     use crate::modify::{Modify, ModifyList};
     use crate::value::{PartialValue, Value};
-    use kanidm_proto::v1::OperationError;
-
-    use crate::audit::AuditScope;
-    use crate::idm::server::IdmServer;
-    use crate::server::QueryServer;
-    use crate::utils::duration_from_epoch_now;
-    use uuid::Uuid;
-
+    // use kanidm_proto::v1::OperationError;
+    // use crate::audit::AuditScope;
+    // use crate::idm::server::IdmServer;
+    // use crate::server::QueryServer;
+    // use crate::utils::duration_from_epoch_now;
+    // use uuid::Uuid;
     use crate::ldap::LdapServer;
 
     const TEST_PASSWORD: &'static str = "ntaoeuntnaoeuhraohuercahu😍";

@@ -487,7 +487,7 @@ fn test_default_entries_rbac_admins_schema_entries() {
             .collect();
 
         // I wonder if this should be a subset op?
-        assert_eq!(default_attributenames, attributenames);
+        assert!(default_attributenames.is_subset(&attributenames));
     });
 }
 
