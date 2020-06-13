@@ -977,7 +977,9 @@ impl<'a> BackendWriteTransaction<'a> {
         let dbv = self.get_db_index_version();
         ladmin_info!(audit, "upgrade_reindex -> dbv: {} v: {}", dbv, v);
         if dbv < v {
+            eprintln!("NOTICE: A system reindex is required. This may take a long time ...");
             self.reindex(audit)?;
+            eprintln!("NOTICE: System reindex complete");
             self.set_db_index_version(v)
         } else {
             Ok(())
@@ -997,11 +999,21 @@ impl<'a> BackendWriteTransaction<'a> {
         let idl = IDL::ALLIDS;
         let entries = try_audit!(audit, self.idlayer.get_identry(audit, &idl));
 
+        let mut count = 0;
+
         try_audit!(
             audit,
             entries
                 .iter()
-                .try_for_each(|e| self.entry_index(audit, None, Some(e)))
+                .try_for_each(|e| {
+                count += 1;
+                if count % 1000 == 0 {
+                    eprint!("{}", count);
+                } else if count % 100 == 0 {
+                    eprint!(".");
+                }
+                self.entry_index(audit, None, Some(e))
+            })
         );
         Ok(())
     }
