@@ -1015,6 +1015,7 @@ impl<'a> BackendWriteTransaction<'a> {
                 self.entry_index(audit, None, Some(e))
             })
         );
+        eprintln!(" ✅");
         Ok(())
     }
 
