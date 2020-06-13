@@ -10,6 +10,7 @@ use concread::cache::arc::{Arc, ArcReadTxn, ArcWriteTxn};
 use concread::cowcell::*;
 use idlset::IDLBitRange;
 use kanidm_proto::v1::{ConsistencyError, OperationError};
+use std::collections::BTreeSet;
 use std::time::Duration;
 use uuid::Uuid;
 
@@ -22,16 +23,10 @@ const DEFAULT_CACHE_RMISS: usize = 8;
 const DEFAULT_CACHE_WMISS: usize = 8;
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
-enum NameCacheType {
-    Name2Uuid,
-    Uuid2Rdn,
-    Uuid2Spn,
-}
-
-#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
-struct NameCacheKey {
-    i: NameCacheType,
-    k: String,
+enum NameCacheKey {
+    Name2Uuid(String),
+    Uuid2Rdn(Uuid),
+    Uuid2Spn(Uuid),
 }
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
@@ -183,6 +178,36 @@ macro_rules! get_idl {
     }};
 }
 
+macro_rules! name2uuid {
+    (
+        $self:expr,
+        $audit:expr,
+        $name:expr
+    ) => {{
+        $self.db.name2uuid($audit, $name)
+    }};
+}
+
+macro_rules! uuid2spn {
+    (
+        $self:expr,
+        $audit:expr,
+        $uuid:expr
+    ) => {{
+        $self.db.uuid2spn($audit, $uuid)
+    }};
+}
+
+macro_rules! uuid2rdn {
+    (
+        $self:expr,
+        $audit:expr,
+        $uuid:expr
+    ) => {{
+        $self.db.uuid2rdn($audit, $uuid)
+    }};
+}
+
 pub trait IdlArcSqliteTransaction {
     fn get_identry(
         &mut self,
@@ -289,7 +314,7 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteReadTransaction<'a> {
         audit: &mut AuditScope,
         name: &str,
     ) -> Result<Option<Uuid>, OperationError> {
-        unimplemented!();
+        name2uuid!(self, audit, name)
     }
 
     fn uuid2spn(
@@ -297,7 +322,7 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteReadTransaction<'a> {
         audit: &mut AuditScope,
         uuid: &Uuid,
     ) -> Result<Option<Value>, OperationError> {
-        unimplemented!();
+        uuid2spn!(self, audit, uuid)
     }
 
     fn uuid2rdn(
@@ -305,7 +330,7 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteReadTransaction<'a> {
         audit: &mut AuditScope,
         uuid: &Uuid,
     ) -> Result<Option<String>, OperationError> {
-        unimplemented!();
+        uuid2rdn!(self, audit, uuid)
     }
 }
 
@@ -362,7 +387,7 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
         audit: &mut AuditScope,
         name: &str,
     ) -> Result<Option<Uuid>, OperationError> {
-        unimplemented!();
+        name2uuid!(self, audit, name)
     }
 
     fn uuid2spn(
@@ -370,7 +395,7 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
         audit: &mut AuditScope,
         uuid: &Uuid,
     ) -> Result<Option<Value>, OperationError> {
-        unimplemented!();
+        uuid2spn!(self, audit, uuid)
     }
 
     fn uuid2rdn(
@@ -378,7 +403,7 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
         audit: &mut AuditScope,
         uuid: &Uuid,
     ) -> Result<Option<String>, OperationError> {
-        unimplemented!();
+        uuid2rdn!(self, audit, uuid)
     }
 }
 
@@ -488,12 +513,47 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         self.db.create_name2uuid(audit)
     }
 
+    pub fn write_name2uuid_add(
+        &self,
+        audit: &mut AuditScope,
+        uuid: &Uuid,
+        add: BTreeSet<String>,
+    ) -> Result<(), OperationError> {
+        self.db.write_name2uuid_add(audit, uuid, &add)
+    }
+
+    pub fn write_name2uuid_rem(
+        &self,
+        audit: &mut AuditScope,
+        rem: BTreeSet<String>,
+    ) -> Result<(), OperationError> {
+        self.db.write_name2uuid_rem(audit, &rem)
+    }
+
     pub fn create_uuid2spn(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
         self.db.create_uuid2spn(audit)
     }
 
+    pub fn write_uuid2spn(
+        &self,
+        audit: &mut AuditScope,
+        uuid: &Uuid,
+        k: Option<Value>,
+    ) -> Result<(), OperationError> {
+        self.db.write_uuid2spn(audit, uuid, k.as_ref())
+    }
+
     pub fn create_uuid2rdn(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
         self.db.create_uuid2rdn(audit)
+    }
+
+    pub fn write_uuid2rdn(
+        &self,
+        audit: &mut AuditScope,
+        uuid: &Uuid,
+        k: Option<String>,
+    ) -> Result<(), OperationError> {
+        self.db.write_uuid2rdn(audit, uuid, k.as_ref())
     }
 
     pub fn create_idx(

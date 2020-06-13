@@ -26,7 +26,7 @@ use crate::event::{
     CreateEvent, DeleteEvent, Event, EventOrigin, ExistsEvent, ModifyEvent, ReviveRecycledEvent,
     SearchEvent,
 };
-use crate::filter::{f_eq, Filter, FilterInvalid, FilterValid};
+use crate::filter::{Filter, FilterInvalid, FilterValid};
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use crate::plugins::Plugins;
 use crate::repl::cid::Cid;
@@ -189,13 +189,15 @@ pub trait QueryServerTransaction {
         // Is it just a uuid?
         match Uuid::parse_str(name) {
             Ok(u) => return Ok(u),
-            Err(_) => self
-                .get_be_txn()
-                .name2uuid(audit, name)
-                .and_then(|v| match v {
-                    Some(u) => Ok(u),
-                    None => Err(OperationError::NoMatchingEntries),
-                }),
+            Err(_) => {
+                let lname = name.to_lowercase();
+                self.get_be_txn()
+                    .name2uuid(audit, lname.as_str())
+                    .and_then(|v| match v {
+                        Some(u) => Ok(u),
+                        None => Err(OperationError::NoMatchingEntries),
+                    })
+            }
         }
     }
 

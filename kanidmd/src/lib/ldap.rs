@@ -35,6 +35,7 @@ pub struct LdapServer {
     rootdse: LdapSearchResultEntry,
     basedn: String,
     dnre: Regex,
+    binddnre: Regex,
 }
 
 impl LdapServer {
@@ -53,6 +54,9 @@ impl LdapServer {
         let basedn = ldap_domain_to_dc(domain_name.as_str());
 
         let dnre = Regex::new(format!("^((?P<attr>[^=]+)=(?P<val>[^=]+),)?{}$", basedn).as_str())
+            .map_err(|_| OperationError::InvalidEntryState)?;
+
+        let binddnre = Regex::new(format!("^(([^=,]+)=)?(?P<val>[^=,]+)(,{})?$", basedn).as_str())
             .map_err(|_| OperationError::InvalidEntryState)?;
 
         let rootdse = LdapSearchResultEntry {
@@ -89,6 +93,7 @@ impl LdapServer {
             basedn,
             rootdse,
             dnre,
+            binddnre,
         })
     }
 
@@ -307,19 +312,19 @@ impl LdapServer {
             }
         } else {
             let rdn = match self
-                .dnre
+                .binddnre
                 .captures(dn)
                 .and_then(|caps| caps.name("val").map(|v| v.as_str().to_string()))
             {
                 Some(r) => r,
-                None => return Ok(None),
+                None => return Err(OperationError::NoMatchingEntries),
             };
 
             ltrace!(au, "rdn val is -> {:?}", rdn);
 
             if rdn == "" {
                 // That's weird ...
-                return Ok(None);
+                return Err(OperationError::NoMatchingEntries);
             }
 
             idm_write
@@ -608,8 +613,7 @@ mod tests {
                     "spn=admin@example.com,dc=clownshoes,dc=example,dc=com",
                     TEST_PASSWORD
                 )
-                .unwrap()
-                .is_none());
+                .is_err());
             assert!(ldaps
                 .do_bind(
                     au,
@@ -617,18 +621,15 @@ mod tests {
                     "spn=claire@example.com,dc=example,dc=com",
                     TEST_PASSWORD
                 )
-                .unwrap()
-                .is_none());
+                .is_err());
             assert!(ldaps
                 .do_bind(au, idms, ",dc=example,dc=com", TEST_PASSWORD)
-                .unwrap()
-                .is_none());
+                .is_err());
             assert!(ldaps
                 .do_bind(au, idms, "dc=example,dc=com", TEST_PASSWORD)
-                .unwrap()
-                .is_none());
+                .is_err());
 
-            assert!(ldaps.do_bind(au, idms, "claire", "test").unwrap().is_none());
+            assert!(ldaps.do_bind(au, idms, "claire", "test").is_err());
         })
     }
 }

@@ -981,16 +981,16 @@ impl Entry<EntrySealed, EntryCommitted> {
     }
 
     #[inline]
-    fn get_uuid2spn(&self) -> String {
+    fn get_uuid2spn(&self) -> Value {
         self.attrs
             .get("spn")
-            .and_then(|vs| vs.iter().take(1).next().map(|v| v.to_proto_string_clone()))
+            .and_then(|vs| vs.iter().take(1).next().map(|v| v.clone()))
             .or_else(|| {
                 self.attrs
                     .get("name")
-                    .and_then(|vs| vs.iter().take(1).next().map(|v| v.to_proto_string_clone()))
+                    .and_then(|vs| vs.iter().take(1).next().map(|v| v.clone()))
             })
-            .unwrap_or_else(|| self.get_uuid().to_hyphenated_ref().to_string())
+            .unwrap_or_else(|| Value::new_uuidr(self.get_uuid()))
     }
 
     #[inline]
@@ -1016,15 +1016,19 @@ impl Entry<EntrySealed, EntryCommitted> {
 
     #[inline]
     pub(crate) fn mask_recycled_ts(&self) -> Option<&Self> {
-        self.attrs.get("class").and_then(|cls| {
-            if cls.contains(&PVCLASS_TOMBSTONE as &PartialValue)
-                || cls.contains(&PVCLASS_RECYCLED as &PartialValue)
-            {
-                None
-            } else {
-                Some(self)
+        // Only when cls has ts/rc then None, else lways Some(self).
+        match self.attrs.get("class") {
+            Some(cls) => {
+                if cls.contains(&PVCLASS_TOMBSTONE as &PartialValue)
+                    || cls.contains(&PVCLASS_RECYCLED as &PartialValue)
+                {
+                    None
+                } else {
+                    Some(self)
+                }
             }
-        })
+            None => Some(self),
+        }
     }
 
     /// Generate the required values for a name2uuid index. IE this is
@@ -1069,7 +1073,7 @@ impl Entry<EntrySealed, EntryCommitted> {
     pub(crate) fn idx_uuid2spn_diff(
         pre: Option<&Self>,
         post: Option<&Self>,
-    ) -> Option<Result<String, ()>> {
+    ) -> Option<Result<Value, ()>> {
         match (pre, post) {
             (None, None) => {
                 // no action
@@ -1079,7 +1083,7 @@ impl Entry<EntrySealed, EntryCommitted> {
                 // add
                 Some(Ok(b.get_uuid2spn()))
             }
-            (Some(a), None) => {
+            (Some(_a), None) => {
                 // remove
                 Some(Err(()))
             }
@@ -1110,7 +1114,7 @@ impl Entry<EntrySealed, EntryCommitted> {
                 // add
                 Some(Ok(b.get_uuid2rdn()))
             }
-            (Some(a), None) => {
+            (Some(_a), None) => {
                 // remove
                 Some(Err(()))
             }
@@ -2536,13 +2540,13 @@ mod tests {
 
         assert!(
             Entry::idx_uuid2spn_diff(None, Some(&e1))
-                == Some(Ok("testperson@example.com".to_string()))
+                == Some(Ok(Value::new_spn_str("testperson", "example.com")))
         );
         assert!(Entry::idx_uuid2spn_diff(Some(&e1), None) == Some(Err(())));
         assert!(Entry::idx_uuid2spn_diff(Some(&e1), Some(&e1)) == None);
         assert!(
             Entry::idx_uuid2spn_diff(Some(&e1), Some(&e2))
-                == Some(Ok("renameperson@example.com".to_string()))
+                == Some(Ok(Value::new_spn_str("renameperson", "example.com")))
         );
     }
 

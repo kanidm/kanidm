@@ -65,6 +65,7 @@ pub enum OperationError {
     Backend,
     NoMatchingEntries,
     CorruptedEntry(u64),
+    CorruptedIndex(String),
     ConsistencyError(Vec<Result<(), ConsistencyError>>),
     SchemaViolation(SchemaError),
     Plugin(PluginError),

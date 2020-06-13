@@ -765,74 +765,113 @@ impl<'a> BackendWriteTransaction<'a> {
         pre: Option<&Entry<EntrySealed, EntryCommitted>>,
         post: Option<&Entry<EntrySealed, EntryCommitted>>,
     ) -> Result<(), OperationError> {
-        let e_id = match (pre, post) {
+        let (e_uuid, e_id, uuid_same) = match (pre, post) {
             (None, None) => {
                 ltrace!(audit, "Invalid call to entry_index - no entries provided");
                 return Err(OperationError::InvalidState);
             }
             (Some(pre), None) => {
-                ltrace!(audit, "Attempting to remove indexes");
-                pre.get_id()
+                ltrace!(audit, "Attempting to remove entry indexes");
+                (pre.get_uuid(), pre.get_id(), true)
             }
             (None, Some(post)) => {
-                ltrace!(audit, "Attempting to create indexes");
-                post.get_id()
+                ltrace!(audit, "Attempting to create entry indexes");
+                (post.get_uuid(), post.get_id(), true)
             }
             (Some(pre), Some(post)) => {
-                ltrace!(audit, "Attempting to modify indexes");
+                ltrace!(audit, "Attempting to modify entry indexes");
                 assert!(pre.get_id() == post.get_id());
-                post.get_id()
+                (
+                    post.get_uuid(),
+                    post.get_id(),
+                    pre.get_uuid() == post.get_uuid(),
+                )
             }
         };
 
         // Update the names/uuid maps. These have to mask out entries
         // that are recycled or tombstones, so these pretend as "deleted"
-        // and can trigger no action.
+        // and can trigger correct actions.
+        //
+
         let mask_pre = pre.and_then(|e| e.mask_recycled_ts());
+        let mask_pre = if !uuid_same {
+            // Okay, so if the uuids are different this is probably from
+            // a replication conflict.  We can't just use the normal none/some
+            // check from the Entry::idx functions as they only yield partial
+            // changes. Because the uuid is changing, we have to treat pre
+            // as a deleting entry, regardless of what state post is in.
+            let uuid = mask_pre
+                .map(|e| e.get_uuid())
+                .expect("Not possible to fail");
+            let (n2u_add, n2u_rem) = Entry::idx_name2uuid_diff(mask_pre, None);
+            // There will never be content to add.
+            assert!(n2u_add.is_none());
+
+            let u2s_act = Entry::idx_uuid2spn_diff(mask_pre, None);
+            let u2r_act = Entry::idx_uuid2rdn_diff(mask_pre, None);
+
+            ltrace!(audit, "!uuid_same n2u_rem -> {:?}", n2u_rem);
+            ltrace!(audit, "!uuid_same u2s_act -> {:?}", u2s_act);
+            ltrace!(audit, "!uuid_same u2r_act -> {:?}", u2r_act);
+
+            // Write the changes out to the backend
+            match n2u_rem {
+                Some(rem) => self.idlayer.write_name2uuid_rem(audit, rem)?,
+                None => {}
+            }
+
+            match u2s_act {
+                None => {}
+                Some(Ok(k)) => self.idlayer.write_uuid2spn(audit, uuid, Some(k))?,
+                Some(Err(_)) => self.idlayer.write_uuid2spn(audit, uuid, None)?,
+            }
+
+            match u2r_act {
+                None => {}
+                Some(Ok(k)) => self.idlayer.write_uuid2rdn(audit, uuid, Some(k))?,
+                Some(Err(_)) => self.idlayer.write_uuid2rdn(audit, uuid, None)?,
+            }
+            // Return none, mask_pre is now completed.
+            None
+        } else {
+            // Return the state.
+            mask_pre
+        };
+
         let mask_post = post.and_then(|e| e.mask_recycled_ts());
         let (n2u_add, n2u_rem) = Entry::idx_name2uuid_diff(mask_pre, mask_post);
 
+        let u2s_act = Entry::idx_uuid2spn_diff(mask_pre, mask_post);
+        let u2r_act = Entry::idx_uuid2rdn_diff(mask_pre, mask_post);
+
         ltrace!(audit, "n2u_add -> {:?}", n2u_add);
         ltrace!(audit, "n2u_rem -> {:?}", n2u_rem);
+        ltrace!(audit, "u2s_act -> {:?}", u2s_act);
+        ltrace!(audit, "u2r_act -> {:?}", u2r_act);
 
-        let uuid2spn_diff = Entry::idx_uuid2spn_diff(mask_pre, mask_post);
-        let uuid2rdn_diff = Entry::idx_uuid2rdn_diff(mask_pre, mask_post);
+        // Write the changes out to the backend
+        match n2u_add {
+            Some(add) => self.idlayer.write_name2uuid_add(audit, e_uuid, add)?,
+            None => {}
+        }
 
-        // Write them out. Remember, the order of these sets matters!
-        /*
-        idx_name2uuid_diff.iter().for_each(|act| {
-            match act {
-                Ok((name, uuid)) => {
-                    // add the name, uuid as listed.
-                }
-                Err(name) => {
-                    // remove the following name
-                }
-            }
-        });
+        match n2u_rem {
+            Some(rem) => self.idlayer.write_name2uuid_rem(audit, rem)?,
+            None => {}
+        }
 
-        uuid2spn_diff.iter().for_each(|act| {
-            match act {
-                Ok((uuid, spn)) => {
-                    // add the spn as listed
-                }
-                Err(uuid) => {
-                    // remove the spn as listed.
-                }
-            }
-        });
+        match u2s_act {
+            None => {}
+            Some(Ok(k)) => self.idlayer.write_uuid2spn(audit, e_uuid, Some(k))?,
+            Some(Err(_)) => self.idlayer.write_uuid2spn(audit, e_uuid, None)?,
+        }
 
-        uuid2rdn_diff.iter().for_each(|act| {
-            match act {
-                Ok((uuid, spn)) => {
-                    // add the rdn as listed
-                }
-                Err(uuid) => {
-                    // remove the rdn as listed.
-                }
-            }
-        });
-        */
+        match u2r_act {
+            None => {}
+            Some(Ok(k)) => self.idlayer.write_uuid2rdn(audit, e_uuid, Some(k))?,
+            Some(Err(_)) => self.idlayer.write_uuid2rdn(audit, e_uuid, None)?,
+        }
 
         // Extremely Cursed - Okay, we know that self.idxmeta will NOT be changed
         // in this function, but we need to borrow self as mut for the caches in
@@ -958,8 +997,6 @@ impl<'a> BackendWriteTransaction<'a> {
         let idl = IDL::ALLIDS;
         let entries = try_audit!(audit, self.idlayer.get_identry(audit, &idl));
 
-        // WHEN do we update name2uuid and uuid2name?
-        // Do they become attrs of the idx_cache? Should that be a struct?
         try_audit!(
             audit,
             entries
@@ -1234,7 +1271,6 @@ mod tests {
             idxmeta.insert(("tb".to_string(), IndexType::EQUALITY));
             let mut be_txn = be.write(&idxmeta);
 
-            // Could wrap another future here for the future::ok bit...
             let r = $test_fn(&mut audit, &mut be_txn);
             // Commit, to guarantee it worked.
             assert!(be_txn.commit(&mut audit).is_ok());
@@ -1557,12 +1593,12 @@ mod tests {
         run_test!(|audit: &mut AuditScope, be: &mut BackendWriteTransaction| {
             // Add some test data?
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("name", &Value::from("william"));
+            e1.add_ava("name", &Value::new_iname_s("william"));
             e1.add_ava("uuid", &Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
             let e1 = unsafe { e1.into_sealed_new() };
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava("name", &Value::from("claire"));
+            e2.add_ava("name", &Value::new_iname_s("claire"));
             e2.add_ava("uuid", &Value::from("bd651620-00dd-426b-aaa0-4494f7b7906f"));
             let e2 = unsafe { e2.into_sealed_new() };
 
@@ -1668,13 +1704,11 @@ mod tests {
             let william_uuid = Uuid::parse_str("db237e8a-0079-4b8c-8a56-593b22aa44d1").unwrap();
 
             assert!(be.name2uuid(audit, "claire") == Ok(Some(claire_uuid)));
-            assert!(be.name2uuid(audit, "name=claire") == Ok(Some(claire_uuid)));
             assert!(be.name2uuid(audit, "william") == Ok(Some(william_uuid)));
-            assert!(be.name2uuid(audit, "name=william") == Ok(Some(william_uuid)));
             assert!(be.name2uuid(audit, "db237e8a-0079-4b8c-8a56-593b22aa44d1") == Ok(None));
             // check uuid2spn
-            assert!(be.uuid2spn(audit, &claire_uuid) == Ok(Some(Value::from("claire"))));
-            assert!(be.uuid2spn(audit, &william_uuid) == Ok(Some(Value::from("william"))));
+            assert!(be.uuid2spn(audit, &claire_uuid) == Ok(Some(Value::new_iname_s("claire"))));
+            assert!(be.uuid2spn(audit, &william_uuid) == Ok(Some(Value::new_iname_s("william"))));
             // check uuid2rdn
             assert!(be.uuid2rdn(audit, &claire_uuid) == Ok(Some("name=claire".to_string())));
             assert!(be.uuid2rdn(audit, &william_uuid) == Ok(Some("name=william".to_string())));
@@ -1719,7 +1753,6 @@ mod tests {
 
             let william_uuid = Uuid::parse_str("db237e8a-0079-4b8c-8a56-593b22aa44d1").unwrap();
             assert!(be.name2uuid(audit, "william") == Ok(Some(william_uuid)));
-            assert!(be.name2uuid(audit, "name=william") == Ok(Some(william_uuid)));
             assert!(be.uuid2spn(audit, &william_uuid) == Ok(Some(Value::from("william"))));
             assert!(be.uuid2rdn(audit, &william_uuid) == Ok(Some("name=william".to_string())));
 
@@ -1763,7 +1796,6 @@ mod tests {
             );
 
             assert!(be.name2uuid(audit, "william") == Ok(None));
-            assert!(be.name2uuid(audit, "name=william") == Ok(None));
             assert!(be.uuid2spn(audit, &william_uuid) == Ok(None));
             assert!(be.uuid2rdn(audit, &william_uuid) == Ok(None));
         })
@@ -1827,17 +1859,14 @@ mod tests {
             let lucy_uuid = Uuid::parse_str("7b23c99d-c06b-4a9a-a958-3afa56383e1d").unwrap();
 
             assert!(be.name2uuid(audit, "claire") == Ok(Some(claire_uuid)));
-            assert!(be.name2uuid(audit, "name=claire") == Ok(Some(claire_uuid)));
             assert!(be.uuid2spn(audit, &claire_uuid) == Ok(Some(Value::from("claire"))));
-            assert!(be.uuid2rdn(audit, &claire_uuid) == Ok(Some("claire".to_string())));
+            assert!(be.uuid2rdn(audit, &claire_uuid) == Ok(Some("name=claire".to_string())));
 
             assert!(be.name2uuid(audit, "william") == Ok(None));
-            assert!(be.name2uuid(audit, "name=william") == Ok(None));
             assert!(be.uuid2spn(audit, &william_uuid) == Ok(None));
             assert!(be.uuid2rdn(audit, &william_uuid) == Ok(None));
 
             assert!(be.name2uuid(audit, "lucy") == Ok(None));
-            assert!(be.name2uuid(audit, "name=lucy") == Ok(None));
             assert!(be.uuid2spn(audit, &lucy_uuid) == Ok(None));
             assert!(be.uuid2rdn(audit, &lucy_uuid) == Ok(None));
         })
@@ -1890,11 +1919,9 @@ mod tests {
             // let claire_uuid = Uuid::parse_str("bd651620-00dd-426b-aaa0-4494f7b7906f").unwrap();
             let william_uuid = Uuid::parse_str("db237e8a-0079-4b8c-8a56-593b22aa44d1").unwrap();
             assert!(be.name2uuid(audit, "william") == Ok(None));
-            assert!(be.name2uuid(audit, "name=william") == Ok(None));
             assert!(be.name2uuid(audit, "claire") == Ok(Some(william_uuid)));
-            assert!(be.name2uuid(audit, "name=claire") == Ok(Some(william_uuid)));
             assert!(be.uuid2spn(audit, &william_uuid) == Ok(Some(Value::from("claire"))));
-            assert!(be.uuid2rdn(audit, &william_uuid) == Ok(Some("claire".to_string())));
+            assert!(be.uuid2rdn(audit, &william_uuid) == Ok(Some("name=claire".to_string())));
         })
     }
 
@@ -1959,16 +1986,14 @@ mod tests {
                 Some(Vec::new())
             );
 
-            let claire_uuid = Uuid::parse_str("bd651620-00dd-426b-aaa0-4494f7b7906f").unwrap();
+            let claire_uuid = Uuid::parse_str("04091a7a-6ce4-42d2-abf5-c2ce244ac9e8").unwrap();
             let william_uuid = Uuid::parse_str("db237e8a-0079-4b8c-8a56-593b22aa44d1").unwrap();
             assert!(be.name2uuid(audit, "william") == Ok(None));
-            assert!(be.name2uuid(audit, "name=william") == Ok(None));
             assert!(be.name2uuid(audit, "claire") == Ok(Some(claire_uuid)));
-            assert!(be.name2uuid(audit, "name=claire") == Ok(Some(claire_uuid)));
             assert!(be.uuid2spn(audit, &william_uuid) == Ok(None));
             assert!(be.uuid2rdn(audit, &william_uuid) == Ok(None));
             assert!(be.uuid2spn(audit, &claire_uuid) == Ok(Some(Value::from("claire"))));
-            assert!(be.uuid2rdn(audit, &claire_uuid) == Ok(Some("claire".to_string())));
+            assert!(be.uuid2rdn(audit, &claire_uuid) == Ok(Some("name=claire".to_string())));
         })
     }
 

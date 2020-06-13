@@ -77,7 +77,7 @@ macro_rules! lqueue {
 
 macro_rules! ltrace {
     ($au:expr, $($arg:tt)*) => ({
-        if log_enabled!(log::Level::Debug) {
+        if log_enabled!(log::Level::Debug) || cfg!(test) {
             lqueue!($au, LogTag::Trace, $($arg)*)
         }
     })
@@ -85,7 +85,7 @@ macro_rules! ltrace {
 
 macro_rules! lfilter {
     ($au:expr, $($arg:tt)*) => ({
-        if log_enabled!(log::Level::Info) {
+        if log_enabled!(log::Level::Info) || cfg!(test) {
             lqueue!($au, LogTag::Filter, $($arg)*)
         }
     })
@@ -119,7 +119,7 @@ macro_rules! ladmin_warning {
 
 macro_rules! ladmin_info {
     ($au:expr, $($arg:tt)*) => ({
-        if log_enabled!(log::Level::Info) {
+        if log_enabled!(log::Level::Info) || cfg!(test) {
             lqueue!($au, LogTag::AdminInfo, $($arg)*)
         }
     })
@@ -145,7 +145,7 @@ macro_rules! lsecurity_access {
 
 macro_rules! lperf_segment {
     ($au:expr, $id:expr, $fun:expr) => {{
-        if log_enabled!(log::Level::Debug) {
+        if log_enabled!(log::Level::Debug) || cfg!(test) {
             use std::time::Instant;
 
             // start timer.

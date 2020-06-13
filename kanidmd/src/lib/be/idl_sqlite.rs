@@ -1,13 +1,14 @@
 use crate::audit::AuditScope;
 use crate::be::{IdRawEntry, IDL};
 use crate::entry::{Entry, EntryCommitted, EntrySealed};
-use crate::value::IndexType;
+use crate::value::{IndexType, Value};
 use idlset::IDLBitRange;
 use kanidm_proto::v1::{ConsistencyError, OperationError};
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::OptionalExtension;
 use rusqlite::NO_PARAMS;
+use std::collections::BTreeSet;
 use std::convert::{TryFrom, TryInto};
 use std::time::Duration;
 use uuid::Uuid;
@@ -137,6 +138,13 @@ pub trait IdlSqliteTransaction {
                 // I have now is probably really bad :(
                 let mut results = Vec::new();
 
+                // TODO: Can this actually just load in a single select?
+                /*
+                let decompressed: Result<Vec<i64>, _> = idli.into_iter()
+                    .map(|u| i64::try_from(u).map_err(|_| OperationError::InvalidEntryID))
+                    .collect();
+                */
+
                 for id in idli {
                     let iid = i64::try_from(id).map_err(|_| OperationError::InvalidEntryID)?;
                     let id2entry_iter = stmt
@@ -246,15 +254,106 @@ pub trait IdlSqliteTransaction {
         })
     }
 
-    /*
-    fn get_name2uuid(&self, name: &str) -> Result<Uuid, OperationError> {
-        unimplemented!();
+    fn name2uuid(
+        &mut self,
+        audit: &mut AuditScope,
+        name: &str,
+    ) -> Result<Option<Uuid>, OperationError> {
+        lperf_segment!(audit, "be::idl_sqlite::name2uuid", || {
+            // The table exists - lets now get the actual index itself.
+            let mut stmt = try_audit!(
+                audit,
+                self.get_conn()
+                    .prepare("SELECT uuid FROM idx_name2uuid WHERE name = :name",),
+                "SQLite Error {:?}",
+                OperationError::SQLiteError
+            );
+            let uuid_raw: Option<String> = try_audit!(
+                audit,
+                stmt.query_row_named(&[(":name", &name)], |row| row.get(0))
+                    // We don't mind if it doesn't exist
+                    .optional(),
+                "SQLite Error {:?}",
+                OperationError::SQLiteError
+            );
+
+            let uuid = uuid_raw.as_ref().and_then(|u| Uuid::parse_str(u).ok());
+            ltrace!(audit, "Got uuid for index name {} -> {:?}", name, uuid);
+
+            Ok(uuid)
+        })
     }
 
-    fn get_uuid2name(&self, uuid: &Uuid) -> Result<String, OperationError> {
-        unimplemented!();
+    fn uuid2spn(
+        &mut self,
+        audit: &mut AuditScope,
+        uuid: &Uuid,
+    ) -> Result<Option<Value>, OperationError> {
+        lperf_segment!(audit, "be::idl_sqlite::uuid2spn", || {
+            let uuids = uuid.to_hyphenated_ref().to_string();
+            // The table exists - lets now get the actual index itself.
+            let mut stmt = try_audit!(
+                audit,
+                self.get_conn()
+                    .prepare("SELECT spn FROM idx_uuid2spn WHERE uuid = :uuid",),
+                "SQLite Error {:?}",
+                OperationError::SQLiteError
+            );
+            let spn_raw: Option<Vec<u8>> = try_audit!(
+                audit,
+                stmt.query_row_named(&[(":uuid", &uuids)], |row| row.get(0))
+                    // We don't mind if it doesn't exist
+                    .optional(),
+                "SQLite Error {:?}",
+                OperationError::SQLiteError
+            );
+
+            let spn: Option<Value> = match spn_raw {
+                Some(d) => {
+                    let dbv = serde_cbor::from_slice(d.as_slice())
+                        .map_err(|_| OperationError::SerdeCborError)?;
+                    let spn = Value::from_db_valuev1(dbv)
+                        .map_err(|_| OperationError::CorruptedIndex("uuid2spn".to_string()))?;
+                    Some(spn)
+                }
+                None => None,
+            };
+
+            ltrace!(audit, "Got spn for uuid {:?} -> {:?}", uuid, spn);
+
+            Ok(spn)
+        })
     }
-    */
+
+    fn uuid2rdn(
+        &mut self,
+        audit: &mut AuditScope,
+        uuid: &Uuid,
+    ) -> Result<Option<String>, OperationError> {
+        lperf_segment!(audit, "be::idl_sqlite::uuid2rdn", || {
+            let uuids = uuid.to_hyphenated_ref().to_string();
+            // The table exists - lets now get the actual index itself.
+            let mut stmt = try_audit!(
+                audit,
+                self.get_conn()
+                    .prepare("SELECT rdn FROM idx_uuid2rdn WHERE uuid = :uuid",),
+                "SQLite Error {:?}",
+                OperationError::SQLiteError
+            );
+            let rdn: Option<String> = try_audit!(
+                audit,
+                stmt.query_row_named(&[(":uuid", &uuids)], |row| row.get(0))
+                    // We don't mind if it doesn't exist
+                    .optional(),
+                "SQLite Error {:?}",
+                OperationError::SQLiteError
+            );
+
+            ltrace!(audit, "Got rdn for uuid {:?} -> {:?}", uuid, rdn);
+
+            Ok(rdn)
+        })
+    }
 
     fn get_db_s_uuid(&self) -> Result<Option<Uuid>, OperationError> {
         // Try to get a value.
@@ -604,17 +703,95 @@ impl IdlSqliteWriteTransaction {
         Ok(())
     }
 
+    pub fn write_name2uuid_add(
+        &self,
+        audit: &mut AuditScope,
+        uuid: &Uuid,
+        add: &BTreeSet<String>,
+    ) -> Result<(), OperationError> {
+        let uuids = uuid.to_hyphenated_ref().to_string();
+
+        add.iter().try_for_each(|k| {
+            self.conn
+                .execute_named(
+                    "INSERT OR REPLACE INTO idx_name2uuid (name, uuid) VALUES(:name, :uuid)",
+                    &[(":name", &k), (":uuid", &uuids)],
+                )
+                .map(|_| ())
+                .map_err(|e| {
+                    ladmin_error!(audit, "SQLite Error {:?}", e);
+                    OperationError::SQLiteError
+                })
+        })
+    }
+
+    pub fn write_name2uuid_rem(
+        &self,
+        audit: &mut AuditScope,
+        rem: &BTreeSet<String>,
+    ) -> Result<(), OperationError> {
+        rem.iter().try_for_each(|k| {
+            self.conn
+                .execute_named(
+                    "DELETE FROM idx_name2uuid WHERE name = :name",
+                    &[(":name", &k)],
+                )
+                .map(|_| ())
+                .map_err(|e| {
+                    ladmin_error!(audit, "SQLite Error {:?}", e);
+                    OperationError::SQLiteError
+                })
+        })
+    }
+
     pub fn create_uuid2spn(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
         try_audit!(
             audit,
             self.conn.execute(
-                "CREATE TABLE IF NOT EXISTS idx_uuid2spn (uuid TEXT PRIMARY KEY, spn TEXT)",
+                "CREATE TABLE IF NOT EXISTS idx_uuid2spn (uuid TEXT PRIMARY KEY, spn BLOB)",
                 NO_PARAMS
             ),
             "sqlite error {:?}",
             OperationError::SQLiteError
         );
         Ok(())
+    }
+
+    pub fn write_uuid2spn(
+        &self,
+        audit: &mut AuditScope,
+        uuid: &Uuid,
+        k: Option<&Value>,
+    ) -> Result<(), OperationError> {
+        let uuids = uuid.to_hyphenated_ref().to_string();
+        match k {
+            Some(k) => {
+                let dbv1 = k.to_db_valuev1();
+                let data =
+                    serde_cbor::to_vec(&dbv1).map_err(|_e| OperationError::SerdeCborError)?;
+                self.conn
+                    .execute_named(
+                        "INSERT OR REPLACE INTO idx_uuid2spn (uuid, spn) VALUES(:uuid, :spn)",
+                        &[(":uuid", &uuids), (":spn", &data)],
+                    )
+                    .map(|_| ())
+                    .map_err(|e| {
+                        ladmin_error!(audit, "SQLite Error {:?}", e);
+                        OperationError::SQLiteError
+                    })
+            }
+            None => self
+                .conn
+                .execute_named(
+                    "DELETE FROM idx_uuid2spn WHERE uuid = :uuid",
+                    &[(":uuid", &uuids)],
+                )
+                .map(|_| ())
+                .map_err(|e| {
+                    ladmin_error!(audit, "SQLite Error {:?}", e);
+                    OperationError::SQLiteError
+                }),
+        }
     }
 
     pub fn create_uuid2rdn(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
@@ -628,6 +805,39 @@ impl IdlSqliteWriteTransaction {
             OperationError::SQLiteError
         );
         Ok(())
+    }
+
+    pub fn write_uuid2rdn(
+        &self,
+        audit: &mut AuditScope,
+        uuid: &Uuid,
+        k: Option<&String>,
+    ) -> Result<(), OperationError> {
+        let uuids = uuid.to_hyphenated_ref().to_string();
+        match k {
+            Some(k) => self
+                .conn
+                .execute_named(
+                    "INSERT OR REPLACE INTO idx_uuid2rdn (uuid, rdn) VALUES(:uuid, :rdn)",
+                    &[(":uuid", &uuids), (":rdn", &k)],
+                )
+                .map(|_| ())
+                .map_err(|e| {
+                    ladmin_error!(audit, "SQLite Error {:?}", e);
+                    OperationError::SQLiteError
+                }),
+            None => self
+                .conn
+                .execute_named(
+                    "DELETE FROM idx_uuid2rdn WHERE uuid = :uuid",
+                    &[(":uuid", &uuids)],
+                )
+                .map(|_| ())
+                .map_err(|e| {
+                    ladmin_error!(audit, "SQLite Error {:?}", e);
+                    OperationError::SQLiteError
+                }),
+        }
     }
 
     pub fn create_idx(
@@ -897,7 +1107,7 @@ impl IdlSqliteWriteTransaction {
                 OperationError::SQLiteError
             );
             dbv_id2entry = 1;
-            ltrace!(
+            ladmin_info!(
                 audit,
                 "dbv_id2entry migrated (id2entry, db_sid) -> {}",
                 dbv_id2entry
@@ -919,7 +1129,7 @@ impl IdlSqliteWriteTransaction {
                 OperationError::SQLiteError
             );
             dbv_id2entry = 2;
-            ltrace!(audit, "dbv_id2entry migrated (db_did) -> {}", dbv_id2entry);
+            ladmin_info!(audit, "dbv_id2entry migrated (db_did) -> {}", dbv_id2entry);
         }
         //   * if v2 -> add the op max ts table.
         if dbv_id2entry == 2 {
@@ -937,13 +1147,25 @@ impl IdlSqliteWriteTransaction {
                 OperationError::SQLiteError
             );
             dbv_id2entry = 3;
-            ltrace!(
+            ladmin_info!(
                 audit,
                 "dbv_id2entry migrated (db_op_ts) -> {}",
                 dbv_id2entry
             );
         }
         //   * if v3 -> complete.
+        if dbv_id2entry == 3 {
+            self.create_name2uuid(audit)
+                .and_then(|_| self.create_uuid2spn(audit))
+                .and_then(|_| self.create_uuid2rdn(audit))?;
+            dbv_id2entry = 4;
+            ladmin_info!(
+                audit,
+                "dbv_id2entry migrated (name2uuid, uuid2spn, uuid2rdn) -> {}",
+                dbv_id2entry
+            );
+        }
+        //   * if v4 -> complete.
 
         try_audit!(
             audit,
