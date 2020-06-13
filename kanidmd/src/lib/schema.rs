@@ -196,6 +196,7 @@ impl SchemaAttribute {
             SyntaxType::SERVICE_PRINCIPLE_NAME => v.is_spn(),
             SyntaxType::UINT32 => v.is_uint32(),
             SyntaxType::CID => v.is_cid(),
+            SyntaxType::NSUNIQUEID => v.is_nsuniqueid(),
         };
         if r {
             Ok(())
@@ -356,6 +357,15 @@ impl SchemaAttribute {
             SyntaxType::CID => ava.iter().fold(Ok(()), |acc, v| {
                 acc.and_then(|_| {
                     if v.is_cid() {
+                        Ok(())
+                    } else {
+                        Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
+                    }
+                })
+            }),
+            SyntaxType::NSUNIQUEID => ava.iter().fold(Ok(()), |acc, v| {
+                acc.and_then(|_| {
+                    if v.is_nsuniqueid() {
                         Ok(())
                     } else {
                         Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
@@ -1116,6 +1126,50 @@ impl<'a> SchemaWriteTransaction<'a> {
                     syntax: SyntaxType::UTF8STRING,
                 },
             );
+
+            // LDAP Masking Phantoms
+            self.attributes.insert(
+                String::from("dn"),
+                SchemaAttribute {
+                    name: String::from("dn"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_DN).expect("unable to parse const uuid"),
+                    description: String::from("An LDAP Compatible DN"),
+                    multivalue: false,
+                    unique: false,
+                    phantom: true,
+                    index: vec![],
+                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                },
+            );
+            self.attributes.insert(
+                String::from("entryuuid"),
+                SchemaAttribute {
+                    name: String::from("entryuuid"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_ENTRYUUID)
+                        .expect("unable to parse const uuid"),
+                    description: String::from("An LDAP Compatible entryUUID"),
+                    multivalue: false,
+                    unique: false,
+                    phantom: true,
+                    index: vec![],
+                    syntax: SyntaxType::UUID,
+                },
+            );
+            self.attributes.insert(
+                String::from("objectclass"),
+                SchemaAttribute {
+                    name: String::from("objectclass"),
+                    uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_OBJECTCLASS)
+                        .expect("unable to parse const uuid"),
+                    description: String::from("An LDAP Compatible objectClass"),
+                    multivalue: true,
+                    unique: false,
+                    phantom: true,
+                    index: vec![],
+                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                },
+            );
+            // end LDAP masking phantoms
 
             self.classes.insert(
                 String::from("attributetype"),

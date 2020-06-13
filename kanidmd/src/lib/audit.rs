@@ -47,7 +47,7 @@ macro_rules! audit_log {
         use crate::audit::LogTag;
         /*
         if cfg!(test) || cfg!(debug_assertions) {
-            error!($($arg)*)
+            eprintln!($($arg)*)
         }
         */
         $audit.log_event(
@@ -61,11 +61,9 @@ macro_rules! audit_log {
 
 macro_rules! lqueue {
     ($au:expr, $tag:expr, $($arg:tt)*) => ({
-        /*
-        if cfg!(test) || cfg!(debug_assertions) {
-            error!($($arg)*)
+        if cfg!(test) {
+            println!($($arg)*)
         }
-        */
         use std::fmt;
         use crate::audit::LogTag;
         $au.log_event(
@@ -79,7 +77,7 @@ macro_rules! lqueue {
 
 macro_rules! ltrace {
     ($au:expr, $($arg:tt)*) => ({
-        if log_enabled!(log::Level::Debug) {
+        if log_enabled!(log::Level::Debug) || cfg!(test) {
             lqueue!($au, LogTag::Trace, $($arg)*)
         }
     })
@@ -87,7 +85,7 @@ macro_rules! ltrace {
 
 macro_rules! lfilter {
     ($au:expr, $($arg:tt)*) => ({
-        if log_enabled!(log::Level::Info) {
+        if log_enabled!(log::Level::Info) || cfg!(test) {
             lqueue!($au, LogTag::Filter, $($arg)*)
         }
     })
@@ -115,15 +113,13 @@ macro_rules! ladmin_error {
 
 macro_rules! ladmin_warning {
     ($au:expr, $($arg:tt)*) => ({
-        if log_enabled!(log::Level::Warn) {
         lqueue!($au, LogTag::AdminWarning, $($arg)*)
-        }
     })
 }
 
 macro_rules! ladmin_info {
     ($au:expr, $($arg:tt)*) => ({
-        if log_enabled!(log::Level::Info) {
+        if log_enabled!(log::Level::Info) || cfg!(test) {
             lqueue!($au, LogTag::AdminInfo, $($arg)*)
         }
     })
@@ -149,7 +145,7 @@ macro_rules! lsecurity_access {
 
 macro_rules! lperf_segment {
     ($au:expr, $id:expr, $fun:expr) => {{
-        if log_enabled!(log::Level::Debug) {
+        if log_enabled!(log::Level::Debug) || cfg!(test) {
             use std::time::Instant;
 
             // start timer.
@@ -315,7 +311,7 @@ impl PerfProcessed {
                 prefix.push_str("|   ");
             }
         };
-        debug!(
+        eprintln!(
             "{}|--> {} {2:.9} {3:.3}%",
             prefix, self.id, df, self.percent
         );
@@ -367,19 +363,39 @@ impl AuditScope {
 
     pub fn write_log(self) {
         let uuid_ref = self.uuid.to_hyphenated_ref();
-        error!("[- event::start] {}", uuid_ref);
+        if log_enabled!(log::Level::Warn) {
+            eprintln!("[- event::start] {}", uuid_ref);
+        }
         self.events.iter().for_each(|e| match e.tag {
-            LogTag::AdminError | LogTag::RequestError | LogTag::FilterError => {
-                error!("[{} {}] {}", e.time, e.tag, e.data)
+            LogTag::AdminError => eprintln!("[{} {}] {} {}", e.time, e.tag, uuid_ref, e.data),
+            LogTag::RequestError | LogTag::FilterError => {
+                if log_enabled!(log::Level::Warn) {
+                    eprintln!("[{} {}] {}", e.time, e.tag, e.data)
+                }
             }
             LogTag::AdminWarning
             | LogTag::Security
             | LogTag::SecurityAccess
-            | LogTag::FilterWarning => warn!("[{} {}] {}", e.time, e.tag, e.data),
-            LogTag::AdminInfo | LogTag::Filter => info!("[{} {}] {}", e.time, e.tag, e.data),
-            LogTag::Trace => debug!("[{} {}] {}", e.time, e.tag, e.data),
+            | LogTag::FilterWarning => {
+                if log_enabled!(log::Level::Warn) {
+                    eprintln!("[{} {}] {}", e.time, e.tag, e.data)
+                }
+            }
+            LogTag::AdminInfo | LogTag::Filter => {
+                if log_enabled!(log::Level::Info) {
+                    eprintln!("[{} {}] {}", e.time, e.tag, e.data)
+                }
+            }
+            LogTag::Trace => {
+                if log_enabled!(log::Level::Debug) {
+                    eprintln!("[{} {}] {}", e.time, e.tag, e.data)
+                }
+            }
         });
-        error!("[- event::end] {}", uuid_ref);
+
+        if log_enabled!(log::Level::Warn) {
+            eprintln!("[- event::end] {}", uuid_ref);
+        }
         // First, we pre-process all the perf events to order them
         let mut proc_perf: Vec<_> = self.perf.iter().map(|pe| pe.process()).collect();
 
@@ -390,7 +406,9 @@ impl AuditScope {
         proc_perf
             .iter()
             .for_each(|pe| pe.int_write_fmt(0, &uuid_ref));
-        error!("[- perf::end] {}", uuid_ref);
+        if log_enabled!(log::Level::Debug) {
+            eprintln!("[- perf::trace] end: {}", uuid_ref);
+        }
     }
 
     pub fn log_event(&mut self, tag: LogTag, data: String) {

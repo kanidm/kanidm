@@ -35,6 +35,7 @@ pub struct LdapServer {
     rootdse: LdapSearchResultEntry,
     basedn: String,
     dnre: Regex,
+    binddnre: Regex,
 }
 
 impl LdapServer {
@@ -53,6 +54,9 @@ impl LdapServer {
         let basedn = ldap_domain_to_dc(domain_name.as_str());
 
         let dnre = Regex::new(format!("^((?P<attr>[^=]+)=(?P<val>[^=]+),)?{}$", basedn).as_str())
+            .map_err(|_| OperationError::InvalidEntryState)?;
+
+        let binddnre = Regex::new(format!("^(([^=,]+)=)?(?P<val>[^=,]+)(,{})?$", basedn).as_str())
             .map_err(|_| OperationError::InvalidEntryState)?;
 
         let rootdse = LdapSearchResultEntry {
@@ -89,6 +93,7 @@ impl LdapServer {
             basedn,
             rootdse,
             dnre,
+            binddnre,
         })
     }
 
@@ -100,8 +105,10 @@ impl LdapServer {
         uat: &LdapBoundToken,
         // eventid: &Uuid,
     ) -> Result<Vec<LdapMsg>, OperationError> {
+        ladmin_info!(au, "Attempt LDAP Search for {}", uat.spn);
         // If the request is "", Base, Present("objectclass"), [], then we want the rootdse.
         if sr.base == "" && sr.scope == LdapSearchScope::Base {
+            ladmin_info!(au, "LDAP Search success - RootDSE");
             Ok(vec![
                 sr.gen_result_entry(self.rootdse.clone()),
                 sr.gen_success(),
@@ -118,6 +125,7 @@ impl LdapServer {
                     caps.name("val").map(|v| v.as_str().to_string()),
                 ),
                 None => {
+                    lrequest_error!(au, "LDAP Search failure - invalid basedn");
                     return Err(OperationError::InvalidRequestState);
                 }
             };
@@ -126,6 +134,7 @@ impl LdapServer {
                 (Some(a), Some(v)) => Some((a, v)),
                 (None, None) => None,
                 _ => {
+                    lrequest_error!(au, "LDAP Search failure - invalid rdn");
                     return Err(OperationError::InvalidRequestState);
                 }
             };
@@ -177,7 +186,7 @@ impl LdapServer {
                             None
                         } else {
                             // if list, add to the search
-                            Some(a.clone())
+                            Some(ldap_attr_filter_map(a))
                         }
                     })
                     .collect();
@@ -188,7 +197,7 @@ impl LdapServer {
                 }
             };
 
-            ltrace!(au, "Attrs -> {:?}", attrs);
+            ladmin_info!(au, "LDAP Search Request Attrs -> {:?}", attrs);
 
             lperf_segment!(au, "ldap::do_search<core>", || {
                 // Now start the txn - we need it for resolving filter components.
@@ -221,7 +230,7 @@ impl LdapServer {
                     ]),
                 };
 
-                ltrace!(au, "ldapfilter -> {:?}", lfilter);
+                ladmin_info!(au, "LDAP Search Filter -> {:?}", lfilter);
 
                 // Kanidm Filter from LdapFilter
                 let filter =
@@ -267,6 +276,12 @@ impl LdapServer {
                     e
                 })?;
 
+                ladmin_info!(
+                    au,
+                    "LDAP Search Success -> number of entries {}",
+                    lres.len()
+                );
+
                 Ok(lres)
             })
         }
@@ -279,15 +294,46 @@ impl LdapServer {
         dn: &str,
         pw: &str,
     ) -> Result<Option<LdapBoundToken>, OperationError> {
+        lsecurity!(
+            au,
+            "Attempt LDAP Bind for {}",
+            if dn == "" { "anonymous" } else { dn }
+        );
         let mut idm_write = idms.write();
 
-        let target_uuid: Uuid = if dn == "" && pw == "" {
-            UUID_ANONYMOUS.clone()
+        let target_uuid: Uuid = if dn == "" {
+            if pw == "" {
+                lsecurity!(au, "✅ LDAP Bind success anonymous");
+                UUID_ANONYMOUS.clone()
+            } else {
+                lsecurity!(au, "❌ LDAP Bind failure anonymous");
+                // Yeah-nahhhhh
+                return Ok(None);
+            }
         } else {
-            idm_write.qs_read.name_to_uuid(au, dn).map_err(|e| {
-                ladmin_info!(au, "Error resolving id to target {:?}", e);
-                e
-            })?
+            let rdn = match self
+                .binddnre
+                .captures(dn)
+                .and_then(|caps| caps.name("val").map(|v| v.as_str().to_string()))
+            {
+                Some(r) => r,
+                None => return Err(OperationError::NoMatchingEntries),
+            };
+
+            ltrace!(au, "rdn val is -> {:?}", rdn);
+
+            if rdn == "" {
+                // That's weird ...
+                return Err(OperationError::NoMatchingEntries);
+            }
+
+            idm_write
+                .qs_read
+                .name_to_uuid(au, rdn.as_str())
+                .map_err(|e| {
+                    lrequest_error!(au, "Error resolving rdn to target {:?} {:?}", rdn, e);
+                    e
+                })?
         };
 
         let ct = SystemTime::now()
@@ -295,9 +341,16 @@ impl LdapServer {
             .expect("Clock failure!");
 
         let lae = LdapAuthEvent::from_parts(au, target_uuid, pw.to_string())?;
-        idm_write
-            .auth_ldap(au, lae, ct)
-            .and_then(|r| idm_write.commit(au).map(|_| r))
+        idm_write.auth_ldap(au, lae, ct).and_then(|r| {
+            idm_write.commit(au).map(|_| {
+                if r.is_some() {
+                    lsecurity!(au, "✅ LDAP Bind success {}", dn);
+                } else {
+                    lsecurity!(au, "❌ LDAP Bind failure {}", dn);
+                };
+                r
+            })
+        })
     }
 
     pub fn do_op(
@@ -390,5 +443,191 @@ fn operationerr_to_ldapresultcode(e: OperationError) -> (LdapResultCode, String)
             (LdapResultCode::UnwillingToPerform, format!("{:?}", se))
         }
         e => (LdapResultCode::Other, format!("{:?}", e)),
+    }
+}
+
+#[inline]
+pub(crate) fn ldap_attr_filter_map(input: &str) -> String {
+    let lin = input.to_lowercase();
+    match lin.as_str() {
+        "entryuuid" => "uuid",
+        "objectclass" => "class",
+        a => a,
+    }
+    .to_string()
+}
+
+#[inline]
+pub(crate) fn ldap_attr_entry_map(attr: &str) -> String {
+    match attr {
+        "uuid" => "entryuuid",
+        "class" => "objectclass",
+        ks => ks,
+    }
+    .to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::constants::{STR_UUID_ADMIN, UUID_ADMIN, UUID_ANONYMOUS};
+    use crate::event::ModifyEvent;
+    use crate::idm::event::UnixPasswordChangeEvent;
+    use crate::modify::{Modify, ModifyList};
+    use crate::value::{PartialValue, Value};
+    // use kanidm_proto::v1::OperationError;
+    // use crate::audit::AuditScope;
+    // use crate::idm::server::IdmServer;
+    // use crate::server::QueryServer;
+    // use crate::utils::duration_from_epoch_now;
+    // use uuid::Uuid;
+    use crate::ldap::LdapServer;
+
+    const TEST_PASSWORD: &'static str = "ntaoeuntnaoeuhraohuercahu😍";
+
+    #[test]
+    fn test_ldap_simple_bind() {
+        run_idm_test!(|_qs: &QueryServer, idms: &IdmServer, au: &mut AuditScope| {
+            let ldaps = LdapServer::new(au, idms).expect("failed to start ldap");
+
+            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
+            // make the admin a valid posix account
+            let me_posix = unsafe {
+                ModifyEvent::new_internal_invalid(
+                    filter!(f_eq("name", PartialValue::new_iname("admin"))),
+                    ModifyList::new_list(vec![
+                        Modify::Present("class".to_string(), Value::new_class("posixaccount")),
+                        Modify::Present("gidnumber".to_string(), Value::new_uint32(2001)),
+                    ]),
+                )
+            };
+            assert!(idms_prox_write.qs_write.modify(au, &me_posix).is_ok());
+
+            let pce = UnixPasswordChangeEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD);
+
+            assert!(idms_prox_write.set_unix_account_password(au, &pce).is_ok());
+            assert!(idms_prox_write.commit(au).is_ok());
+
+            let anon_t = ldaps.do_bind(au, idms, "", "").unwrap().unwrap();
+            assert!(anon_t.uuid == *UUID_ANONYMOUS);
+            assert!(ldaps.do_bind(au, idms, "", "test").unwrap().is_none());
+
+            // Bad password
+            assert!(ldaps.do_bind(au, idms, "admin", "test").unwrap().is_none());
+
+            // Now test the admin and various DN's
+            let admin_t = ldaps
+                .do_bind(au, idms, "admin", TEST_PASSWORD)
+                .unwrap()
+                .unwrap();
+            assert!(admin_t.uuid == *UUID_ADMIN);
+            let admin_t = ldaps
+                .do_bind(au, idms, "admin@example.com", TEST_PASSWORD)
+                .unwrap()
+                .unwrap();
+            assert!(admin_t.uuid == *UUID_ADMIN);
+            let admin_t = ldaps
+                .do_bind(au, idms, STR_UUID_ADMIN, TEST_PASSWORD)
+                .unwrap()
+                .unwrap();
+            assert!(admin_t.uuid == *UUID_ADMIN);
+            let admin_t = ldaps
+                .do_bind(au, idms, "name=admin,dc=example,dc=com", TEST_PASSWORD)
+                .unwrap()
+                .unwrap();
+            assert!(admin_t.uuid == *UUID_ADMIN);
+            let admin_t = ldaps
+                .do_bind(
+                    au,
+                    idms,
+                    "spn=admin@example.com,dc=example,dc=com",
+                    TEST_PASSWORD,
+                )
+                .unwrap()
+                .unwrap();
+            assert!(admin_t.uuid == *UUID_ADMIN);
+            let admin_t = ldaps
+                .do_bind(
+                    au,
+                    idms,
+                    format!("uuid={},dc=example,dc=com", STR_UUID_ADMIN).as_str(),
+                    TEST_PASSWORD,
+                )
+                .unwrap()
+                .unwrap();
+            assert!(admin_t.uuid == *UUID_ADMIN);
+
+            let admin_t = ldaps
+                .do_bind(au, idms, "name=admin", TEST_PASSWORD)
+                .unwrap()
+                .unwrap();
+            assert!(admin_t.uuid == *UUID_ADMIN);
+            let admin_t = ldaps
+                .do_bind(au, idms, "spn=admin@example.com", TEST_PASSWORD)
+                .unwrap()
+                .unwrap();
+            assert!(admin_t.uuid == *UUID_ADMIN);
+            let admin_t = ldaps
+                .do_bind(
+                    au,
+                    idms,
+                    format!("uuid={}", STR_UUID_ADMIN).as_str(),
+                    TEST_PASSWORD,
+                )
+                .unwrap()
+                .unwrap();
+            assert!(admin_t.uuid == *UUID_ADMIN);
+
+            let admin_t = ldaps
+                .do_bind(au, idms, "admin,dc=example,dc=com", TEST_PASSWORD)
+                .unwrap()
+                .unwrap();
+            assert!(admin_t.uuid == *UUID_ADMIN);
+            let admin_t = ldaps
+                .do_bind(
+                    au,
+                    idms,
+                    "admin@example.com,dc=example,dc=com",
+                    TEST_PASSWORD,
+                )
+                .unwrap()
+                .unwrap();
+            assert!(admin_t.uuid == *UUID_ADMIN);
+            let admin_t = ldaps
+                .do_bind(
+                    au,
+                    idms,
+                    format!("{},dc=example,dc=com", STR_UUID_ADMIN).as_str(),
+                    TEST_PASSWORD,
+                )
+                .unwrap()
+                .unwrap();
+            assert!(admin_t.uuid == *UUID_ADMIN);
+
+            // Non-existant and invalid DNs
+            assert!(ldaps
+                .do_bind(
+                    au,
+                    idms,
+                    "spn=admin@example.com,dc=clownshoes,dc=example,dc=com",
+                    TEST_PASSWORD
+                )
+                .is_err());
+            assert!(ldaps
+                .do_bind(
+                    au,
+                    idms,
+                    "spn=claire@example.com,dc=example,dc=com",
+                    TEST_PASSWORD
+                )
+                .is_err());
+            assert!(ldaps
+                .do_bind(au, idms, ",dc=example,dc=com", TEST_PASSWORD)
+                .is_err());
+            assert!(ldaps
+                .do_bind(au, idms, "dc=example,dc=com", TEST_PASSWORD)
+                .is_err());
+
+            assert!(ldaps.do_bind(au, idms, "claire", "test").is_err());
+        })
     }
 }

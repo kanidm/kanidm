@@ -469,9 +469,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         ltrace!(au, "processing change {:?}", modlist);
         // given the new credential generate a modify
         // We use impersonate here to get the event from ae
-        try_audit!(
-            au,
-            self.qs_write.impersonate_modify(
+        self.qs_write
+            .impersonate_modify(
                 au,
                 // Filter as executed
                 filter!(f_eq("uuid", PartialValue::new_uuidr(&pce.target))),
@@ -480,7 +479,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 modlist,
                 &pce.event,
             )
-        );
+            .map_err(|e| {
+                lrequest_error!(au, "error -> {:?}", e);
+                e
+            })?;
 
         Ok(())
     }
@@ -521,9 +523,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         ltrace!(au, "processing change {:?}", modlist);
         // given the new credential generate a modify
         // We use impersonate here to get the event from ae
-        try_audit!(
-            au,
-            self.qs_write.impersonate_modify(
+        self.qs_write
+            .impersonate_modify(
                 au,
                 // Filter as executed
                 filter!(f_eq("uuid", PartialValue::new_uuidr(&pce.target))),
@@ -532,7 +533,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 modlist,
                 &pce.event,
             )
-        );
+            .map_err(|e| {
+                lrequest_error!(au, "error -> {:?}", e);
+                e
+            })?;
 
         Ok(())
     }
@@ -604,9 +608,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         ltrace!(au, "processing change {:?}", modlist);
 
         // Apply it.
-        try_audit!(
-            au,
-            self.qs_write.impersonate_modify(
+        self.qs_write
+            .impersonate_modify(
                 au,
                 // Filter as executed
                 filter!(f_eq("uuid", PartialValue::new_uuidr(&rrse.target))),
@@ -616,7 +619,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 // Provide the event to impersonate
                 &rrse.event,
             )
-        );
+            .map_err(|e| {
+                lrequest_error!(au, "error -> {:?}", e);
+                e
+            })?;
 
         Ok(cleartext)
     }

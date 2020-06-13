@@ -472,6 +472,7 @@ fn test_default_entries_rbac_admins_schema_entries() {
             "badlist_password",
             "loginshell",
             "unix_password",
+            "nsuniqueid",
         ]
         .iter()
         .map(ToString::to_string)
@@ -485,7 +486,8 @@ fn test_default_entries_rbac_admins_schema_entries() {
             .cloned()
             .collect();
 
-        assert_eq!(default_attributenames, attributenames);
+        // I wonder if this should be a subset op?
+        assert!(default_attributenames.is_subset(&attributenames));
     });
 }
 

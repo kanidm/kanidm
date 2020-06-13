@@ -411,6 +411,37 @@ pub const JSON_SCHEMA_ATTR_UNIX_PASSWORD: &str = r#"{
     }
 }"#;
 
+pub const JSON_SCHEMA_ATTR_NSUNIQUEID: &str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "A unique id compatibility for 389-ds/dsee"
+      ],
+      "index": [
+        "EQUALITY"
+      ],
+      "unique": [
+        "true"
+      ],
+      "multivalue": [
+        "false"
+      ],
+      "attributename": [
+        "nsuniqueid"
+      ],
+      "syntax": [
+        "NSUNIQUEID"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000067"
+      ]
+    }
+}"#;
+
 pub const JSON_SCHEMA_CLASS_PERSON: &str = r#"
   {
     "valid": {

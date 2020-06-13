@@ -473,15 +473,12 @@ impl Handler<InternalRadiusReadMessage> for QueryServerReadV1 {
             || {
                 let mut qs_read = self.qs.read();
 
-                let target_uuid = match Uuid::parse_str(msg.uuid_or_name.as_str()) {
-                    Ok(u) => u,
-                    Err(_) => qs_read
-                        .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
-                        .map_err(|e| {
-                            ladmin_error!(&mut audit, "Error resolving id to target");
-                            e
-                        })?,
-                };
+                let target_uuid = qs_read
+                    .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                    .map_err(|e| {
+                        ladmin_error!(&mut audit, "Error resolving id to target");
+                        e
+                    })?;
 
                 // Make an event from the request
                 let srch = match SearchEvent::from_target_uuid_request(
@@ -538,16 +535,13 @@ impl Handler<InternalRadiusTokenReadMessage> for QueryServerReadV1 {
             || {
                 let mut idm_read = self.idms.proxy_read();
 
-                let target_uuid = match Uuid::parse_str(msg.uuid_or_name.as_str()) {
-                    Ok(u) => u,
-                    Err(_) => idm_read
-                        .qs_read
-                        .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
-                        .map_err(|e| {
-                            ladmin_error!(&mut audit, "Error resolving id to target");
-                            e
-                        })?,
-                };
+                let target_uuid = idm_read
+                    .qs_read
+                    .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                    .map_err(|e| {
+                        ladmin_error!(&mut audit, "Error resolving id to target");
+                        e
+                    })?;
 
                 // Make an event from the request
                 let rate = match RadiusAuthTokenEvent::from_parts(
@@ -594,7 +588,7 @@ impl Handler<InternalUnixUserTokenReadMessage> for QueryServerReadV1 {
                 let target_uuid = Uuid::parse_str(msg.uuid_or_name.as_str()).or_else(|_| {
                     idm_read
                         .qs_read
-                        .posixid_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                        .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
                         .map_err(|e| {
                             ladmin_info!(&mut audit, "Error resolving as gidnumber continuing ...");
                             e
@@ -647,7 +641,7 @@ impl Handler<InternalUnixGroupTokenReadMessage> for QueryServerReadV1 {
                 let target_uuid = Uuid::parse_str(msg.uuid_or_name.as_str()).or_else(|_| {
                     idm_read
                         .qs_read
-                        .posixid_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                        .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
                         .map_err(|e| {
                             ladmin_info!(&mut audit, "Error resolving as gidnumber continuing ...");
                             e
@@ -692,15 +686,12 @@ impl Handler<InternalSshKeyReadMessage> for QueryServerReadV1 {
             || {
                 let mut qs_read = self.qs.read();
 
-                let target_uuid = match Uuid::parse_str(msg.uuid_or_name.as_str()) {
-                    Ok(u) => u,
-                    Err(_) => qs_read
-                        .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
-                        .map_err(|e| {
-                            ladmin_info!(&mut audit, "Error resolving id to target");
-                            e
-                        })?,
-                };
+                let target_uuid = qs_read
+                    .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                    .map_err(|e| {
+                        ladmin_error!(&mut audit, "Error resolving id to target");
+                        e
+                    })?;
 
                 // Make an event from the request
                 let srch = match SearchEvent::from_target_uuid_request(
@@ -762,15 +753,12 @@ impl Handler<InternalSshKeyTagReadMessage> for QueryServerReadV1 {
             || {
                 let mut qs_read = self.qs.read();
 
-                let target_uuid = match Uuid::parse_str(uuid_or_name.as_str()) {
-                    Ok(u) => u,
-                    Err(_) => qs_read
-                        .name_to_uuid(&mut audit, uuid_or_name.as_str())
-                        .map_err(|e| {
-                            ladmin_info!(&mut audit, "Error resolving id to target");
-                            e
-                        })?,
-                };
+                let target_uuid = qs_read
+                    .name_to_uuid(&mut audit, uuid_or_name.as_str())
+                    .map_err(|e| {
+                        ladmin_info!(&mut audit, "Error resolving id to target");
+                        e
+                    })?;
 
                 // Make an event from the request
                 let srch = match SearchEvent::from_target_uuid_request(
@@ -836,7 +824,7 @@ impl Handler<IdmAccountUnixAuthMessage> for QueryServerReadV1 {
                 let target_uuid = Uuid::parse_str(msg.uuid_or_name.as_str()).or_else(|_| {
                     idm_write
                         .qs_read
-                        .posixid_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                        .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
                         .map_err(|e| {
                             ladmin_info!(&mut audit, "Error resolving as gidnumber continuing ...");
                             e

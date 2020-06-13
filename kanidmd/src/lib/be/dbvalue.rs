@@ -65,6 +65,7 @@ pub enum DbValueV1 {
     SP(String, String),
     UI(u32),
     CI(DbCidV1),
+    NU(String),
 }
 
 #[cfg(test)]

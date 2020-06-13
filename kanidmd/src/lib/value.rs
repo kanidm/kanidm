@@ -24,6 +24,8 @@ lazy_static! {
         //            |      \- must not contain whitespace, @, ',', =
         //            \- must not start with _
         // Them's be the rules.
+    static ref NSUNIQUEID_RE: Regex =
+        Regex::new("^[0-9a-fA-F]{8}-[0-9a-fA-F]{8}-[0-9a-fA-F]{8}-[0-9a-fA-F]{8}$").expect("Invalid Nsunique regex found");
 }
 
 #[allow(non_camel_case_types)]
@@ -115,6 +117,7 @@ pub enum SyntaxType {
     SERVICE_PRINCIPLE_NAME,
     UINT32,
     CID,
+    NSUNIQUEID,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -138,6 +141,7 @@ impl TryFrom<&str> for SyntaxType {
             "SERVICE_PRINCIPLE_NAME" => Ok(SyntaxType::SERVICE_PRINCIPLE_NAME),
             "UINT32" => Ok(SyntaxType::UINT32),
             "CID" => Ok(SyntaxType::CID),
+            "NSUNIQUEID" => Ok(SyntaxType::NSUNIQUEID),
             _ => Err(()),
         }
     }
@@ -163,6 +167,7 @@ impl TryFrom<usize> for SyntaxType {
             12 => Ok(SyntaxType::UINT32),
             13 => Ok(SyntaxType::CID),
             14 => Ok(SyntaxType::UTF8STRING_INAME),
+            15 => Ok(SyntaxType::NSUNIQUEID),
             _ => Err(()),
         }
     }
@@ -186,6 +191,7 @@ impl SyntaxType {
             SyntaxType::UINT32 => 12,
             SyntaxType::CID => 13,
             SyntaxType::UTF8STRING_INAME => 14,
+            SyntaxType::NSUNIQUEID => 15,
         }
     }
 }
@@ -211,6 +217,7 @@ impl fmt::Display for SyntaxType {
                 SyntaxType::SERVICE_PRINCIPLE_NAME => "SERVICE_PRINCIPLE_NAME",
                 SyntaxType::UINT32 => "UINT32",
                 SyntaxType::CID => "CID",
+                SyntaxType::NSUNIQUEID => "NSUNIQUEID",
             }
         )
     }
@@ -253,6 +260,7 @@ pub enum PartialValue {
     Spn(String, String),
     Uint32(u32),
     Cid(Cid),
+    Nsuniqueid(String),
 }
 
 impl PartialValue {
@@ -504,6 +512,17 @@ impl PartialValue {
         }
     }
 
+    pub fn new_nsuniqueid_s(s: &str) -> Self {
+        PartialValue::Nsuniqueid(s.to_lowercase())
+    }
+
+    pub fn is_nsuniqueid(&self) -> bool {
+        match self {
+            PartialValue::Nsuniqueid(_) => true,
+            _ => false,
+        }
+    }
+
     pub fn to_str(&self) -> Option<&str> {
         match self {
             PartialValue::Utf8(s) => Some(s.as_str()),
@@ -536,7 +555,10 @@ impl PartialValue {
 
     pub fn get_idx_eq_key(&self) -> String {
         match &self {
-            PartialValue::Utf8(s) | PartialValue::Iutf8(s) | PartialValue::Iname(s) => s.clone(),
+            PartialValue::Utf8(s)
+            | PartialValue::Iutf8(s)
+            | PartialValue::Iname(s)
+            | PartialValue::Nsuniqueid(s) => s.clone(),
             PartialValue::Refer(u) | PartialValue::Uuid(u) => u.to_hyphenated_ref().to_string(),
             PartialValue::Bool(b) => b.to_string(),
             PartialValue::Syntax(syn) => syn.to_string(),
@@ -1019,6 +1041,17 @@ impl Value {
         }
     }
 
+    pub fn new_nsuniqueid_s(s: &str) -> Self {
+        Value {
+            pv: PartialValue::new_nsuniqueid_s(s),
+            data: None,
+        }
+    }
+
+    pub fn is_nsuniqueid(&self) -> bool {
+        self.pv.is_nsuniqueid()
+    }
+
     pub fn contains(&self, s: &PartialValue) -> bool {
         self.pv.contains(s)
     }
@@ -1108,6 +1141,10 @@ impl Value {
                 }),
                 data: None,
             }),
+            DbValueV1::NU(s) => Ok(Value {
+                pv: PartialValue::Nsuniqueid(s),
+                data: None,
+            }),
         }
     }
 
@@ -1172,6 +1209,7 @@ impl Value {
                 s: c.s_uuid,
                 t: c.ts,
             }),
+            PartialValue::Nsuniqueid(s) => DbValueV1::NU(s.clone()),
         }
     }
 
@@ -1259,7 +1297,10 @@ impl Value {
 
     pub(crate) fn to_proto_string_clone(&self) -> String {
         match &self.pv {
-            PartialValue::Utf8(s) | PartialValue::Iutf8(s) | PartialValue::Iname(s) => s.clone(),
+            PartialValue::Utf8(s)
+            | PartialValue::Iutf8(s)
+            | PartialValue::Iname(s)
+            | PartialValue::Nsuniqueid(s) => s.clone(),
             PartialValue::Uuid(u) => u.to_hyphenated_ref().to_string(),
             PartialValue::Bool(b) => b.to_string(),
             PartialValue::Syntax(syn) => syn.to_string(),
@@ -1338,15 +1379,17 @@ impl Value {
                 },
                 None => false,
             },
+            PartialValue::Nsuniqueid(s) => NSUNIQUEID_RE.is_match(s),
             _ => true,
         }
     }
 
     pub fn generate_idx_eq_keys(&self) -> Vec<String> {
         match &self.pv {
-            PartialValue::Utf8(s) | PartialValue::Iutf8(s) | PartialValue::Iname(s) => {
-                vec![s.clone()]
-            }
+            PartialValue::Utf8(s)
+            | PartialValue::Iutf8(s)
+            | PartialValue::Iname(s)
+            | PartialValue::Nsuniqueid(s) => vec![s.clone()],
             PartialValue::Refer(u) | PartialValue::Uuid(u) => {
                 vec![u.to_hyphenated_ref().to_string()]
             }
@@ -1535,6 +1578,23 @@ mod tests {
         assert!(val2.validate());
         assert!(val3.validate());
         assert!(val4.validate());
+    }
+
+    #[test]
+    fn test_value_nsuniqueid() {
+        // nsunique
+        // d765e707-48e111e6-8c9ebed8-f7926cc3
+        // uuid
+        // d765e707-48e1-11e6-8c9e-bed8f7926cc3
+        let val1 = Value::new_nsuniqueid_s("d765e707-48e111e6-8c9ebed8-f7926cc3");
+        let val2 = Value::new_nsuniqueid_s("D765E707-48E111E6-8C9EBED8-F7926CC3");
+        let inv1 = Value::new_nsuniqueid_s("d765e707-48e1-11e6-8c9e-bed8f7926cc3");
+        let inv2 = Value::new_nsuniqueid_s("xxxx");
+
+        assert!(!inv1.validate());
+        assert!(!inv2.validate());
+        assert!(val1.validate());
+        assert!(val2.validate());
     }
 
     /*

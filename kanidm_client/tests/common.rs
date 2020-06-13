@@ -14,7 +14,7 @@ static PORT_ALLOC: AtomicUsize = AtomicUsize::new(8080);
 // Test external behaviours of the service.
 
 pub fn run_test(test_fn: fn(KanidmClient) -> ()) {
-    // ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
+    // ::std::env::set_var("RUST_LOG", "actix_web=warn,kanidm=error");
     let _ = env_logger::builder()
         .format_timestamp(None)
         .format_level(false)

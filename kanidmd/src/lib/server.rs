@@ -26,7 +26,7 @@ use crate::event::{
     CreateEvent, DeleteEvent, Event, EventOrigin, ExistsEvent, ModifyEvent, ReviveRecycledEvent,
     SearchEvent,
 };
-use crate::filter::{f_eq, Filter, FilterInvalid, FilterValid};
+use crate::filter::{Filter, FilterInvalid, FilterValid};
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use crate::plugins::Plugins;
 use crate::repl::cid::Cid;
@@ -186,50 +186,19 @@ pub trait QueryServerTransaction {
     // Remember, we don't care if the name is invalid, because search
     // will validate/normalise the filter we construct for us. COOL!
     fn name_to_uuid(&mut self, audit: &mut AuditScope, name: &str) -> Result<Uuid, OperationError> {
-        lperf_segment!(audit, "server::name_to_uuid", || {
-            // For now this just constructs a filter and searches, but later
-            // we could actually improve this to contact the backend and do
-            // index searches, completely bypassing id2entry.
-
-            // construct the filter
-            // Internal search - DO NOT SEARCH TOMBSTONES AND RECYCLE
-            let filt = filter!(f_spn_name(name));
-
-            ltrace!(audit, "name_to_uuid: name -> {:?}", name);
-
-            let res = match self.internal_search(audit, filt) {
-                Ok(e) => e,
-                Err(e) => {
-                    ladmin_error!(audit, "name_to_uuid search failure -> {:?}", e);
-                    return Err(e);
-                }
-            };
-
-            ltrace!(audit, "name_to_uuid: results -- {:?}", res);
-
-            if res.is_empty() {
-                // If result len == 0, error no such result
-                ladmin_warning!(audit, "name_to_uuid no matching results -> {}", name);
-                return Err(OperationError::NoMatchingEntries);
-            } else if res.len() >= 2 {
-                // if result len >= 2, error, invaid entry state.
-                ladmin_error!(
-                    audit,
-                    "name_to_uuid invalid db state, multiple results for name -> {}",
-                    name
-                );
-                return Err(OperationError::InvalidDBState);
+        // Is it just a uuid?
+        match Uuid::parse_str(name) {
+            Ok(u) => return Ok(u),
+            Err(_) => {
+                let lname = name.to_lowercase();
+                self.get_be_txn()
+                    .name2uuid(audit, lname.as_str())
+                    .and_then(|v| match v {
+                        Some(u) => Ok(u),
+                        None => Err(OperationError::NoMatchingEntries),
+                    })
             }
-
-            // error should never be triggered due to the len checks above.
-            let e = res.first().ok_or(OperationError::NoMatchingEntries)?;
-            // Get the uuid from the entry. Again, check it exists, and only one.
-            let uuid_res: Uuid = *e.get_uuid();
-
-            ltrace!(audit, "name_to_uuid: uuid <- {:?}", uuid_res);
-
-            Ok(uuid_res)
-        })
+        }
     }
 
     fn uuid_to_spn(
@@ -237,87 +206,28 @@ pub trait QueryServerTransaction {
         audit: &mut AuditScope,
         uuid: &Uuid,
     ) -> Result<Option<Value>, OperationError> {
-        lperf_segment!(audit, "server::uuid_to_spn", || {
-            // construct the filter
-            let filt = filter!(f_eq("uuid", PartialValue::new_uuidr(uuid)));
-            ltrace!(audit, "uuid_to_spn: uuid -> {:?}", uuid);
+        let r = self.get_be_txn().uuid2spn(audit, uuid)?;
 
-            // Internal search - DO NOT SEARCH TOMBSTONES AND RECYCLE
-            let res = match self.internal_search(audit, filt) {
-                Ok(e) => e,
-                Err(e) => return Err(e),
-            };
-
-            ltrace!(audit, "uuid_to_spn: results -- {:?}", res);
-
-            if res.is_empty() {
-                // If result len == 0, error no such result
-                ltrace!(audit, "uuid_to_spn: name, no such entry <- Ok(None)");
-                return Ok(None);
-            } else if res.len() >= 2 {
-                // if result len >= 2, error, invaid entry state.
-                return Err(OperationError::InvalidDBState);
+        match &r {
+            Some(n) => {
+                debug_assert!(n.is_spn() || n.is_iname());
             }
-
-            // fine for 0/1 case, but check len for >= 2 to eliminate that case.
-            let e = res.first().ok_or(OperationError::NoMatchingEntries)?;
-            // Get the uuid from the entry. Again, check it exists, and only one.
-            let name_res = e
-                .get_ava(&String::from("spn"))
-                .or_else(|| e.get_ava(&String::from("name")))
-                .and_then(|vas| vas.first().map(|u| (*u).clone()))
-                .ok_or(OperationError::InvalidEntryState)?;
-
-            ltrace!(audit, "uuid_to_spn: name <- {:?}", name_res);
-
-            // Make sure it's the right type ... (debug only)
-            debug_assert!(name_res.is_spn() || name_res.is_iname());
-
-            Ok(Some(name_res))
-        })
+            None => {}
+        }
+        Ok(r)
     }
 
-    fn posixid_to_uuid(
+    fn uuid_to_rdn(
         &mut self,
         audit: &mut AuditScope,
-        name: &str,
-    ) -> Result<Uuid, OperationError> {
-        lperf_segment!(audit, "server::posixid_to_uuid", || {
-            let f_name = Some(f_eq("name", PartialValue::new_iname(name)));
-
-            let f_spn = PartialValue::new_spn_s(name).map(|v| f_eq("spn", v));
-
-            let f_gidnumber = PartialValue::new_uint32_str(name).map(|v| f_eq("gidnumber", v));
-
-            let x = vec![f_name, f_spn, f_gidnumber];
-
-            let filt = filter!(f_or(x.into_iter().filter_map(|v| v).collect()));
-            ltrace!(audit, "posixid_to_uuid: name -> {:?}", name);
-
-            let res = match self.internal_search(audit, filt) {
-                Ok(e) => e,
-                Err(e) => return Err(e),
-            };
-
-            ltrace!(audit, "posixid_to_uuid: results -- {:?}", res);
-
-            if res.is_empty() {
-                // If result len == 0, error no such result
-                return Err(OperationError::NoMatchingEntries);
-            } else if res.len() >= 2 {
-                // if result len >= 2, error, invaid entry state.
-                return Err(OperationError::InvalidDBState);
-            }
-
-            // error should never be triggered due to the len checks above.
-            let e = res.first().ok_or(OperationError::NoMatchingEntries)?;
-            // Get the uuid from the entry. Again, check it exists, and only one.
-            let uuid_res: Uuid = *e.get_uuid();
-
-            ltrace!(audit, "posixid_to_uuid: uuid <- {:?}", uuid_res);
-
-            Ok(uuid_res)
-        })
+        uuid: &Uuid,
+    ) -> Result<String, OperationError> {
+        self.get_be_txn()
+            .uuid2rdn(audit, uuid)
+            .and_then(|v| match v {
+                Some(u) => Ok(u),
+                None => Ok(format!("uuid={}", uuid.to_hyphenated_ref())),
+            })
     }
 
     // From internal, generate an exists event and dispatch
@@ -541,6 +451,7 @@ pub trait QueryServerTransaction {
                     SyntaxType::UINT32 => Value::new_uint32_str(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid uint32 syntax".to_string())),
                     SyntaxType::CID => Err(OperationError::InvalidAttribute("CIDs are generated and not able to be set.".to_string())),
+                    SyntaxType::NSUNIQUEID => Ok(Value::new_nsuniqueid_s(value)),
                 }
             }
             None => {
@@ -620,14 +531,15 @@ pub trait QueryServerTransaction {
                     SyntaxType::SSHKEY => Ok(PartialValue::new_sshkey_tag_s(value)),
                     SyntaxType::SERVICE_PRINCIPLE_NAME => PartialValue::new_spn_s(value)
                         .ok_or_else(|| {
-                            OperationError::InvalidAttribute("Invalid SPN syntax".to_string())
+                            OperationError::InvalidAttribute("Invalid spn syntax".to_string())
                         }),
                     SyntaxType::UINT32 => PartialValue::new_uint32_str(value).ok_or_else(|| {
-                        OperationError::InvalidAttribute("Invalid Uint32 syntax".to_string())
+                        OperationError::InvalidAttribute("Invalid uint32 syntax".to_string())
                     }),
                     SyntaxType::CID => PartialValue::new_cid_s(value).ok_or_else(|| {
-                        OperationError::InvalidAttribute("Invalid Cid syntax".to_string())
+                        OperationError::InvalidAttribute("Invalid cid syntax".to_string())
                     }),
+                    SyntaxType::NSUNIQUEID => Ok(PartialValue::new_nsuniqueid_s(value)),
                 }
             }
             None => {
@@ -655,6 +567,25 @@ pub trait QueryServerTransaction {
 
         // Not? Okay, do the to string.
         Ok(value.to_proto_string_clone())
+    }
+
+    fn resolve_value_ldap(
+        &mut self,
+        audit: &mut AuditScope,
+        value: &Value,
+        basedn: &str,
+    ) -> Result<String, OperationError> {
+        if let Some(ur) = value.to_ref_uuid() {
+            let rdn = self.uuid_to_rdn(audit, ur)?;
+            Ok(format!("{},{}", rdn, basedn))
+        } else if value.is_sshkey() {
+            value
+                .get_sshkey()
+                .ok_or_else(|| OperationError::InvalidValueState)
+        } else {
+            // Not? Okay, do the to string.
+            Ok(value.to_proto_string_clone())
+        }
     }
 }
 
@@ -1854,6 +1785,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_SCHEMA_CLASS_POSIXACCOUNT,
             JSON_SCHEMA_CLASS_POSIXGROUP,
             JSON_SCHEMA_CLASS_SYSTEM_CONFIG,
+            JSON_SCHEMA_ATTR_NSUNIQUEID,
         ];
 
         let r: Result<Vec<()>, _> = idm_schema
@@ -2922,6 +2854,133 @@ mod tests {
                 &Uuid::parse_str("CC8E95B4-C24F-4D68-BA54-8BED76F63930").unwrap(),
             );
             assert!(r4.unwrap().unwrap() == Value::new_spn_str("testperson1", "example.com"));
+        })
+    }
+
+    #[test]
+    fn test_qs_uuid_to_rdn() {
+        run_test!(|server: &QueryServer, audit: &mut AuditScope| {
+            let mut server_txn = server.write(duration_from_epoch_now());
+
+            let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
+                r#"{
+                "valid": null,
+                "state": null,
+                "attrs": {
+                    "class": ["object", "person", "account"],
+                    "name": ["testperson1"],
+                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
+                    "description": ["testperson"],
+                    "displayname": ["testperson1"]
+                }
+            }"#,
+            );
+            let ce = CreateEvent::new_internal(vec![e1]);
+            let cr = server_txn.create(audit, &ce);
+            assert!(cr.is_ok());
+
+            // Name doesn't exist
+            let r1 = server_txn.uuid_to_rdn(
+                audit,
+                &Uuid::parse_str("bae3f507-e6c3-44ba-ad01-f8ff1083534a").unwrap(),
+            );
+            // There is nothing.
+            assert!(r1.unwrap() == "uuid=bae3f507-e6c3-44ba-ad01-f8ff1083534a");
+            // Name does exist
+            let r3 = server_txn.uuid_to_rdn(
+                audit,
+                &Uuid::parse_str("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap(),
+            );
+            println!("{:?}", r3);
+            assert!(r3.unwrap() == "spn=testperson1@example.com");
+            // Uuid is not syntax normalised (but exists)
+            let r4 = server_txn.uuid_to_rdn(
+                audit,
+                &Uuid::parse_str("CC8E95B4-C24F-4D68-BA54-8BED76F63930").unwrap(),
+            );
+            assert!(r4.unwrap() == "spn=testperson1@example.com");
+        })
+    }
+
+    #[test]
+    fn test_qs_uuid_to_star_recycle() {
+        run_test!(|server: &QueryServer, audit: &mut AuditScope| {
+            let mut server_txn = server.write(duration_from_epoch_now());
+
+            let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
+                r#"{
+                "attrs": {
+                    "class": ["object", "person", "account"],
+                    "name": ["testperson1"],
+                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
+                    "description": ["testperson"],
+                    "displayname": ["testperson1"]
+                }
+            }"#,
+            );
+
+            let tuuid = Uuid::parse_str("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap();
+
+            let ce = CreateEvent::new_internal(vec![e1]);
+            let cr = server_txn.create(audit, &ce);
+            assert!(cr.is_ok());
+
+            assert!(
+                server_txn.uuid_to_rdn(audit, &tuuid)
+                    == Ok("spn=testperson1@example.com".to_string())
+            );
+
+            assert!(
+                server_txn.uuid_to_spn(audit, &tuuid)
+                    == Ok(Some(Value::new_spn_str("testperson1", "example.com")))
+            );
+
+            assert!(server_txn.name_to_uuid(audit, "testperson1") == Ok(tuuid));
+
+            // delete
+            let de_sin = unsafe {
+                DeleteEvent::new_internal_invalid(filter!(f_eq(
+                    "name",
+                    PartialValue::new_iname("testperson1")
+                )))
+            };
+            assert!(server_txn.delete(audit, &de_sin).is_ok());
+
+            // all should fail
+            assert!(
+                server_txn.uuid_to_rdn(audit, &tuuid)
+                    == Ok("uuid=cc8e95b4-c24f-4d68-ba54-8bed76f63930".to_string())
+            );
+
+            assert!(server_txn.uuid_to_spn(audit, &tuuid) == Ok(None));
+
+            assert!(server_txn.name_to_uuid(audit, "testperson1").is_err());
+
+            // revive
+            let admin = server_txn
+                .internal_search_uuid(audit, &UUID_ADMIN)
+                .expect("failed");
+            let rre_rc = unsafe {
+                ReviveRecycledEvent::new_impersonate_entry(
+                    admin,
+                    filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+                )
+            };
+            assert!(server_txn.revive_recycled(audit, &rre_rc).is_ok());
+
+            // all checks pass
+
+            assert!(
+                server_txn.uuid_to_rdn(audit, &tuuid)
+                    == Ok("spn=testperson1@example.com".to_string())
+            );
+
+            assert!(
+                server_txn.uuid_to_spn(audit, &tuuid)
+                    == Ok(Some(Value::new_spn_str("testperson1", "example.com")))
+            );
+
+            assert!(server_txn.name_to_uuid(audit, "testperson1") == Ok(tuuid));
         })
     }
 
