@@ -588,7 +588,7 @@ impl Handler<InternalUnixUserTokenReadMessage> for QueryServerReadV1 {
                 let target_uuid = Uuid::parse_str(msg.uuid_or_name.as_str()).or_else(|_| {
                     idm_read
                         .qs_read
-                        .posixid_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                        .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
                         .map_err(|e| {
                             ladmin_info!(&mut audit, "Error resolving as gidnumber continuing ...");
                             e
@@ -641,7 +641,7 @@ impl Handler<InternalUnixGroupTokenReadMessage> for QueryServerReadV1 {
                 let target_uuid = Uuid::parse_str(msg.uuid_or_name.as_str()).or_else(|_| {
                     idm_read
                         .qs_read
-                        .posixid_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                        .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
                         .map_err(|e| {
                             ladmin_info!(&mut audit, "Error resolving as gidnumber continuing ...");
                             e
@@ -824,7 +824,7 @@ impl Handler<IdmAccountUnixAuthMessage> for QueryServerReadV1 {
                 let target_uuid = Uuid::parse_str(msg.uuid_or_name.as_str()).or_else(|_| {
                     idm_write
                         .qs_read
-                        .posixid_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                        .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
                         .map_err(|e| {
                             ladmin_info!(&mut audit, "Error resolving as gidnumber continuing ...");
                             e

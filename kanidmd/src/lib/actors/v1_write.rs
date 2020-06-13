@@ -1160,7 +1160,7 @@ impl Handler<IdmAccountUnixSetCredMessage> for QueryServerWriteV1 {
                 let target_uuid = Uuid::parse_str(msg.uuid_or_name.as_str()).or_else(|_| {
                     idms_prox_write
                         .qs_write
-                        .posixid_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                        .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
                         .map_err(|e| {
                             ladmin_info!(&mut audit, "Error resolving as gidnumber continuing ...");
                             e

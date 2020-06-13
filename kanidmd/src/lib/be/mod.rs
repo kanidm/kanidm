@@ -785,12 +785,21 @@ impl<'a> BackendWriteTransaction<'a> {
             }
         };
 
-        // Update the names/uuid maps
-        let idx_name2uuid_diff = Entry::idx_name2uuid_diff(pre, post);
-        let uuid2spn_diff = Entry::idx_uuid2spn_diff(pre, post);
-        let uuid2rdn_diff = Entry::idx_uuid2rdn_diff(pre, post);
+        // Update the names/uuid maps. These have to mask out entries
+        // that are recycled or tombstones, so these pretend as "deleted"
+        // and can trigger no action.
+        let mask_pre = pre.and_then(|e| e.mask_recycled_ts());
+        let mask_post = post.and_then(|e| e.mask_recycled_ts());
+        let (n2u_add, n2u_rem) = Entry::idx_name2uuid_diff(mask_pre, mask_post);
+
+        ltrace!(audit, "n2u_add -> {:?}", n2u_add);
+        ltrace!(audit, "n2u_rem -> {:?}", n2u_rem);
+
+        let uuid2spn_diff = Entry::idx_uuid2spn_diff(mask_pre, mask_post);
+        let uuid2rdn_diff = Entry::idx_uuid2rdn_diff(mask_pre, mask_post);
 
         // Write them out. Remember, the order of these sets matters!
+        /*
         idx_name2uuid_diff.iter().for_each(|act| {
             match act {
                 Ok((name, uuid)) => {
@@ -823,6 +832,7 @@ impl<'a> BackendWriteTransaction<'a> {
                 }
             }
         });
+        */
 
         // Extremely Cursed - Okay, we know that self.idxmeta will NOT be changed
         // in this function, but we need to borrow self as mut for the caches in

@@ -186,12 +186,17 @@ pub trait QueryServerTransaction {
     // Remember, we don't care if the name is invalid, because search
     // will validate/normalise the filter we construct for us. COOL!
     fn name_to_uuid(&mut self, audit: &mut AuditScope, name: &str) -> Result<Uuid, OperationError> {
-        self.get_be_txn()
-            .name2uuid(audit, name)
-            .and_then(|v| match v {
-                Some(u) => Ok(u),
-                None => Err(OperationError::NoMatchingEntries),
-            })
+        // Is it just a uuid?
+        match Uuid::parse_str(name) {
+            Ok(u) => return Ok(u),
+            Err(_) => self
+                .get_be_txn()
+                .name2uuid(audit, name)
+                .and_then(|v| match v {
+                    Some(u) => Ok(u),
+                    None => Err(OperationError::NoMatchingEntries),
+                }),
+        }
     }
 
     fn uuid_to_spn(
@@ -221,57 +226,6 @@ pub trait QueryServerTransaction {
                 Some(u) => Ok(u),
                 None => Ok(format!("uuid={}", uuid.to_hyphenated_ref())),
             })
-    }
-
-    fn posixid_to_uuid(
-        &mut self,
-        audit: &mut AuditScope,
-        name: &str,
-    ) -> Result<Uuid, OperationError> {
-        self.get_be_txn()
-            .name2uuid(audit, name)
-            .and_then(|v| match v {
-                Some(u) => Ok(u),
-                None => Err(OperationError::NoMatchingEntries),
-            })
-        /*
-        lperf_segment!(audit, "server::posixid_to_uuid", || {
-            let f_name = Some(f_eq("name", PartialValue::new_iname(name)));
-
-            let f_spn = PartialValue::new_spn_s(name).map(|v| f_eq("spn", v));
-
-            let f_gidnumber = PartialValue::new_uint32_str(name).map(|v| f_eq("gidnumber", v));
-
-            let x = vec![f_name, f_spn, f_gidnumber];
-
-            let filt = filter!(f_or(x.into_iter().filter_map(|v| v).collect()));
-            ltrace!(audit, "posixid_to_uuid: name -> {:?}", name);
-
-            let res = match self.internal_search(audit, filt) {
-                Ok(e) => e,
-                Err(e) => return Err(e),
-            };
-
-            ltrace!(audit, "posixid_to_uuid: results -- {:?}", res);
-
-            if res.is_empty() {
-                // If result len == 0, error no such result
-                return Err(OperationError::NoMatchingEntries);
-            } else if res.len() >= 2 {
-                // if result len >= 2, error, invaid entry state.
-                return Err(OperationError::InvalidDBState);
-            }
-
-            // error should never be triggered due to the len checks above.
-            let e = res.first().ok_or(OperationError::NoMatchingEntries)?;
-            // Get the uuid from the entry. Again, check it exists, and only one.
-            let uuid_res: Uuid = *e.get_uuid();
-
-            ltrace!(audit, "posixid_to_uuid: uuid <- {:?}", uuid_res);
-
-            Ok(uuid_res)
-        })
-        */
     }
 
     // From internal, generate an exists event and dispatch
@@ -2943,6 +2897,88 @@ mod tests {
                 &Uuid::parse_str("CC8E95B4-C24F-4D68-BA54-8BED76F63930").unwrap(),
             );
             assert!(r4.unwrap() == "spn=testperson1@example.com");
+        })
+    }
+
+    #[test]
+    fn test_qs_uuid_to_star_recycle() {
+        run_test!(|server: &QueryServer, audit: &mut AuditScope| {
+            let mut server_txn = server.write(duration_from_epoch_now());
+
+            let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
+                r#"{
+                "attrs": {
+                    "class": ["object", "person", "account"],
+                    "name": ["testperson1"],
+                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
+                    "description": ["testperson"],
+                    "displayname": ["testperson1"]
+                }
+            }"#,
+            );
+
+            let tuuid = Uuid::parse_str("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap();
+
+            let ce = CreateEvent::new_internal(vec![e1]);
+            let cr = server_txn.create(audit, &ce);
+            assert!(cr.is_ok());
+
+            assert!(
+                server_txn.uuid_to_rdn(audit, &tuuid)
+                    == Ok("spn=testperson1@example.com".to_string())
+            );
+
+            assert!(
+                server_txn.uuid_to_spn(audit, &tuuid)
+                    == Ok(Some(Value::new_spn_str("testperson1", "example.com")))
+            );
+
+            assert!(server_txn.name_to_uuid(audit, "testperson1") == Ok(tuuid));
+
+            // delete
+            let de_sin = unsafe {
+                DeleteEvent::new_internal_invalid(filter!(f_eq(
+                    "name",
+                    PartialValue::new_iname("testperson1")
+                )))
+            };
+            assert!(server_txn.delete(audit, &de_sin).is_ok());
+
+            // all should fail
+            assert!(
+                server_txn.uuid_to_rdn(audit, &tuuid)
+                    == Ok("uuid=cc8e95b4-c24f-4d68-ba54-8bed76f63930".to_string())
+            );
+
+            assert!(server_txn.uuid_to_spn(audit, &tuuid) == Ok(None));
+
+            assert!(server_txn.name_to_uuid(audit, "testperson1").is_err());
+
+            // revive
+            let admin = server_txn
+                .internal_search_uuid(audit, &UUID_ADMIN)
+                .expect("failed");
+            let rre_rc = unsafe {
+                ReviveRecycledEvent::new_impersonate_entry(
+                    admin,
+                    filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
+                )
+            };
+            assert!(server_txn.revive_recycled(audit, &rre_rc).is_ok());
+
+            // all checks pass
+
+            assert!(
+                server_txn.uuid_to_rdn(audit, &tuuid)
+                    == Ok("spn=testperson1@example.com".to_string())
+            );
+
+            assert!(
+                server_txn.uuid_to_spn(audit, &tuuid)
+                    == Ok(Some(Value::new_spn_str("testperson1", "example.com")))
+            );
+
+            assert!(server_txn.name_to_uuid(audit, "testperson1") == Ok(tuuid));
         })
     }
 

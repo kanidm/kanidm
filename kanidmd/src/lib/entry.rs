@@ -86,6 +86,8 @@ use uuid::Uuid;
 
 lazy_static! {
     static ref CLASS_EXTENSIBLE: PartialValue = PartialValue::new_class("extensibleobject");
+    static ref PVCLASS_TOMBSTONE: PartialValue = PartialValue::new_class("tombstone");
+    static ref PVCLASS_RECYCLED: PartialValue = PartialValue::new_class("recycled");
 }
 
 pub struct EntryClasses<'a> {
@@ -959,26 +961,171 @@ impl Entry<EntrySealed, EntryCommitted> {
         }
     }
 
+    #[inline]
+    fn get_name2uuid_cands(&self) -> BTreeSet<String> {
+        // The cands are:
+        // * spn
+        // * name
+        // * gidnumber
+
+        let cands = ["spn", "name", "gidnumber"];
+        cands
+            .iter()
+            .filter_map(|c| {
+                self.attrs
+                    .get(*c)
+                    .map(|avs| avs.iter().map(|v| v.to_proto_string_clone()))
+            })
+            .flatten()
+            .collect()
+    }
+
+    #[inline]
+    fn get_uuid2spn(&self) -> String {
+        self.attrs
+            .get("spn")
+            .and_then(|vs| vs.iter().take(1).next().map(|v| v.to_proto_string_clone()))
+            .or_else(|| {
+                self.attrs
+                    .get("name")
+                    .and_then(|vs| vs.iter().take(1).next().map(|v| v.to_proto_string_clone()))
+            })
+            .unwrap_or_else(|| self.get_uuid().to_hyphenated_ref().to_string())
+    }
+
+    #[inline]
+    fn get_uuid2rdn(&self) -> String {
+        self.attrs
+            .get("spn")
+            .and_then(|vs| {
+                vs.iter()
+                    .take(1)
+                    .next()
+                    .map(|v| format!("spn={}", v.to_proto_string_clone()))
+            })
+            .or_else(|| {
+                self.attrs.get("name").and_then(|vs| {
+                    vs.iter()
+                        .take(1)
+                        .next()
+                        .map(|v| format!("name={}", v.to_proto_string_clone()))
+                })
+            })
+            .unwrap_or_else(|| format!("uuid={}", self.get_uuid().to_hyphenated_ref()))
+    }
+
+    #[inline]
+    pub(crate) fn mask_recycled_ts(&self) -> Option<&Self> {
+        self.attrs.get("class").and_then(|cls| {
+            if cls.contains(&PVCLASS_TOMBSTONE as &PartialValue)
+                || cls.contains(&PVCLASS_RECYCLED as &PartialValue)
+            {
+                None
+            } else {
+                Some(self)
+            }
+        })
+    }
+
+    /// Generate the required values for a name2uuid index. IE this is
+    /// ALL possible names this entry COULD be known uniquely by!
     pub(crate) fn idx_name2uuid_diff(
         pre: Option<&Self>,
         post: Option<&Self>,
-    ) -> Vec<Result<((), ()), ()>> {
+    ) -> (
+        // Add
+        Option<BTreeSet<String>>,
+        // Remove
+        Option<BTreeSet<String>>,
+    ) {
         // needs to return gid for posix conversion
-        unimplemented!();
+        match (pre, post) {
+            (None, None) => {
+                // No action required
+                (None, None)
+            }
+            (None, Some(b)) => {
+                // We are adding this entry (or restoring it),
+                // so we need to add the values.
+                (Some(b.get_name2uuid_cands()), None)
+            }
+            (Some(a), None) => {
+                // Removing the entry, remove all values.
+                (None, Some(a.get_name2uuid_cands()))
+            }
+            (Some(a), Some(b)) => {
+                let pre_set = a.get_name2uuid_cands();
+                let post_set = b.get_name2uuid_cands();
+
+                // what is in post, but not pre (added)
+                let add_set: BTreeSet<_> = post_set.difference(&pre_set).cloned().collect();
+                // what is in pre, but not post (removed)
+                let rem_set: BTreeSet<_> = pre_set.difference(&post_set).cloned().collect();
+                (Some(add_set), Some(rem_set))
+            }
+        }
     }
 
     pub(crate) fn idx_uuid2spn_diff(
         pre: Option<&Self>,
         post: Option<&Self>,
-    ) -> Vec<Result<((), ()), ()>> {
-        unimplemented!();
+    ) -> Option<Result<String, ()>> {
+        match (pre, post) {
+            (None, None) => {
+                // no action
+                None
+            }
+            (None, Some(b)) => {
+                // add
+                Some(Ok(b.get_uuid2spn()))
+            }
+            (Some(a), None) => {
+                // remove
+                Some(Err(()))
+            }
+            (Some(a), Some(b)) => {
+                let ia = a.get_uuid2spn();
+                let ib = b.get_uuid2spn();
+                if ia != ib {
+                    // Add (acts as replace)
+                    Some(Ok(ib))
+                } else {
+                    // no action
+                    None
+                }
+            }
+        }
     }
 
     pub(crate) fn idx_uuid2rdn_diff(
         pre: Option<&Self>,
         post: Option<&Self>,
-    ) -> Vec<Result<((), ()), ()>> {
-        unimplemented!();
+    ) -> Option<Result<String, ()>> {
+        match (pre, post) {
+            (None, None) => {
+                // no action
+                None
+            }
+            (None, Some(b)) => {
+                // add
+                Some(Ok(b.get_uuid2rdn()))
+            }
+            (Some(a), None) => {
+                // remove
+                Some(Err(()))
+            }
+            (Some(a), Some(b)) => {
+                let ia = a.get_uuid2rdn();
+                let ib = b.get_uuid2rdn();
+                if ia != ib {
+                    // Add (acts as replace)
+                    Some(Ok(ib))
+                } else {
+                    // no action
+                    None
+                }
+            }
+        }
     }
 
     // This is an associated method, not on & self so we can take options on
@@ -2240,5 +2387,186 @@ mod tests {
                 ))
         );
         debug!("{:?}", chg_r);
+    }
+
+    #[test]
+    fn test_entry_mask_recycled_ts() {
+        let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
+        e1.add_ava("class", &Value::new_class("person"));
+        let e1 = unsafe { e1.into_sealed_committed() };
+        assert!(e1.mask_recycled_ts().is_some());
+
+        let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
+        e2.add_ava("class", &Value::new_class("person"));
+        e2.add_ava("class", &Value::new_class("recycled"));
+        let e2 = unsafe { e2.into_sealed_committed() };
+        assert!(e2.mask_recycled_ts().is_none());
+
+        let mut e3: Entry<EntryInit, EntryNew> = Entry::new();
+        e3.add_ava("class", &Value::new_class("tombstone"));
+        let e3 = unsafe { e3.into_sealed_committed() };
+        assert!(e3.mask_recycled_ts().is_none());
+    }
+
+    #[test]
+    fn test_entry_idx_name2uuid_diff() {
+        // none, none,
+        let r = Entry::idx_name2uuid_diff(None, None);
+        assert!(r == (None, None));
+
+        // none, some - test adding an entry gives back add sets
+        {
+            let mut e: Entry<EntryInit, EntryNew> = Entry::new();
+            e.add_ava("class", &Value::new_class("person"));
+            let e = unsafe { e.into_sealed_committed() };
+
+            assert!(Entry::idx_name2uuid_diff(None, Some(&e)) == (Some(BTreeSet::new()), None));
+        }
+
+        {
+            let mut e: Entry<EntryInit, EntryNew> = Entry::new();
+            e.add_ava("class", &Value::new_class("person"));
+            e.add_ava("gidnumber", &Value::new_uint32(1300));
+            e.add_ava("name", &Value::new_iname_s("testperson"));
+            e.add_ava("spn", &Value::new_spn_str("testperson", "example.com"));
+            e.add_ava(
+                "uuid",
+                &Value::new_uuids("9fec0398-c46c-4df4-9df5-b0016f7d563f").unwrap(),
+            );
+            let e = unsafe { e.into_sealed_committed() };
+
+            // Note the uuid isn't present!
+            assert!(
+                Entry::idx_name2uuid_diff(None, Some(&e))
+                    == (
+                        Some(btreeset![
+                            "1300".to_string(),
+                            "testperson".to_string(),
+                            "testperson@example.com".to_string()
+                        ]),
+                        None
+                    )
+            );
+            // some, none,
+            // Check delete, swap the order of args
+            assert!(
+                Entry::idx_name2uuid_diff(Some(&e), None)
+                    == (
+                        None,
+                        Some(btreeset![
+                            "1300".to_string(),
+                            "testperson".to_string(),
+                            "testperson@example.com".to_string()
+                        ])
+                    )
+            );
+
+            // some, some (same), should be empty changes.
+            assert!(
+                Entry::idx_name2uuid_diff(Some(&e), Some(&e))
+                    == (Some(BTreeSet::new()), Some(BTreeSet::new()))
+            );
+        }
+        // some, some (diff)
+
+        {
+            let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
+            e1.add_ava("class", &Value::new_class("person"));
+            e1.add_ava("spn", &Value::new_spn_str("testperson", "example.com"));
+            let e1 = unsafe { e1.into_sealed_committed() };
+
+            let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
+            e2.add_ava("class", &Value::new_class("person"));
+            e2.add_ava("name", &Value::new_iname_s("testperson"));
+            e2.add_ava("spn", &Value::new_spn_str("testperson", "example.com"));
+            let e2 = unsafe { e2.into_sealed_committed() };
+
+            // One attr added
+            assert!(
+                Entry::idx_name2uuid_diff(Some(&e1), Some(&e2))
+                    == (
+                        Some(btreeset!["testperson".to_string()]),
+                        Some(BTreeSet::new())
+                    )
+            );
+
+            // One removed
+            assert!(
+                Entry::idx_name2uuid_diff(Some(&e2), Some(&e1))
+                    == (
+                        Some(BTreeSet::new()),
+                        Some(btreeset!["testperson".to_string()])
+                    )
+            );
+        }
+
+        // Value changed, remove old, add new.
+        {
+            let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
+            e1.add_ava("class", &Value::new_class("person"));
+            e1.add_ava("spn", &Value::new_spn_str("testperson", "example.com"));
+            let e1 = unsafe { e1.into_sealed_committed() };
+
+            let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
+            e2.add_ava("class", &Value::new_class("person"));
+            e2.add_ava("spn", &Value::new_spn_str("renameperson", "example.com"));
+            let e2 = unsafe { e2.into_sealed_committed() };
+
+            assert!(
+                Entry::idx_name2uuid_diff(Some(&e1), Some(&e2))
+                    == (
+                        Some(btreeset!["renameperson@example.com".to_string()]),
+                        Some(btreeset!["testperson@example.com".to_string()])
+                    )
+            );
+        }
+    }
+
+    #[test]
+    fn test_entry_idx_uuid2spn_diff() {
+        assert!(Entry::idx_uuid2spn_diff(None, None) == None);
+
+        let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
+        e1.add_ava("spn", &Value::new_spn_str("testperson", "example.com"));
+        let e1 = unsafe { e1.into_sealed_committed() };
+
+        let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
+        e2.add_ava("spn", &Value::new_spn_str("renameperson", "example.com"));
+        let e2 = unsafe { e2.into_sealed_committed() };
+
+        assert!(
+            Entry::idx_uuid2spn_diff(None, Some(&e1))
+                == Some(Ok("testperson@example.com".to_string()))
+        );
+        assert!(Entry::idx_uuid2spn_diff(Some(&e1), None) == Some(Err(())));
+        assert!(Entry::idx_uuid2spn_diff(Some(&e1), Some(&e1)) == None);
+        assert!(
+            Entry::idx_uuid2spn_diff(Some(&e1), Some(&e2))
+                == Some(Ok("renameperson@example.com".to_string()))
+        );
+    }
+
+    #[test]
+    fn test_entry_idx_uuid2rdn_diff() {
+        assert!(Entry::idx_uuid2rdn_diff(None, None) == None);
+
+        let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
+        e1.add_ava("spn", &Value::new_spn_str("testperson", "example.com"));
+        let e1 = unsafe { e1.into_sealed_committed() };
+
+        let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
+        e2.add_ava("spn", &Value::new_spn_str("renameperson", "example.com"));
+        let e2 = unsafe { e2.into_sealed_committed() };
+
+        assert!(
+            Entry::idx_uuid2rdn_diff(None, Some(&e1))
+                == Some(Ok("spn=testperson@example.com".to_string()))
+        );
+        assert!(Entry::idx_uuid2rdn_diff(Some(&e1), None) == Some(Err(())));
+        assert!(Entry::idx_uuid2rdn_diff(Some(&e1), Some(&e1)) == None);
+        assert!(
+            Entry::idx_uuid2rdn_diff(Some(&e1), Some(&e2))
+                == Some(Ok("spn=renameperson@example.com".to_string()))
+        );
     }
 }

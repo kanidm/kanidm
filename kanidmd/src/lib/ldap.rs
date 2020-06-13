@@ -35,7 +35,6 @@ pub struct LdapServer {
     rootdse: LdapSearchResultEntry,
     basedn: String,
     dnre: Regex,
-    binddnre: Regex,
 }
 
 impl LdapServer {
@@ -54,9 +53,6 @@ impl LdapServer {
         let basedn = ldap_domain_to_dc(domain_name.as_str());
 
         let dnre = Regex::new(format!("^((?P<attr>[^=]+)=(?P<val>[^=]+),)?{}$", basedn).as_str())
-            .map_err(|_| OperationError::InvalidEntryState)?;
-
-        let binddnre = Regex::new(format!("^(?P<rdn>[^,]+)(,{})?$", basedn).as_str())
             .map_err(|_| OperationError::InvalidEntryState)?;
 
         let rootdse = LdapSearchResultEntry {
@@ -93,7 +89,6 @@ impl LdapServer {
             basedn,
             rootdse,
             dnre,
-            binddnre,
         })
     }
 
@@ -303,22 +298,24 @@ impl LdapServer {
 
         let target_uuid: Uuid = if dn == "" {
             if pw == "" {
+                lsecurity!(au, "✅ LDAP Bind success anonymous");
                 UUID_ANONYMOUS.clone()
             } else {
+                lsecurity!(au, "❌ LDAP Bind failure anonymous");
                 // Yeah-nahhhhh
                 return Ok(None);
             }
         } else {
             let rdn = match self
-                .binddnre
+                .dnre
                 .captures(dn)
-                .and_then(|caps| caps.name("rdn").map(|v| v.as_str().to_string()))
+                .and_then(|caps| caps.name("val").map(|v| v.as_str().to_string()))
             {
                 Some(r) => r,
                 None => return Ok(None),
             };
 
-            ltrace!(au, "rdn is -> {:?}", rdn);
+            ltrace!(au, "rdn val is -> {:?}", rdn);
 
             if rdn == "" {
                 // That's weird ...
