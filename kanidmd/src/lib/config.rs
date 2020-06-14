@@ -26,6 +26,7 @@ pub struct Configuration {
     pub tls_config: Option<TlsConfiguration>,
     pub cookie_key: [u8; 32],
     pub integration_test_config: Option<Box<IntegrationTestConfig>>,
+    pub log_level: Option<u32>,
 }
 
 impl fmt::Display for Configuration {
@@ -65,10 +66,15 @@ impl Configuration {
             tls_config: None,
             cookie_key: [0; 32],
             integration_test_config: None,
+            log_level: None,
         };
         let mut rng = StdRng::from_entropy();
         rng.fill(&mut c.cookie_key);
         c
+    }
+
+    pub fn update_log_level(&mut self, log_level: Option<u32>) {
+        self.log_level = log_level;
     }
 
     pub fn update_db_path(&mut self, p: &PathBuf) {

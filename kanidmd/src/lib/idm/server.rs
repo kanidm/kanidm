@@ -285,7 +285,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
     }
 
     pub fn commit(self, au: &mut AuditScope) -> Result<(), OperationError> {
-        lperf_segment!(au, "idm::server::IdmServerWriteTransaction::commit", || {
+        lperf_trace_segment!(au, "idm::server::IdmServerWriteTransaction::commit", || {
             self.sessions.commit();
             Ok(())
         })
@@ -708,7 +708,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     }
 
     pub fn commit(self, au: &mut AuditScope) -> Result<(), OperationError> {
-        lperf_segment!(au, "idm::server::IdmServerWriteTransaction::commit", || {
+        lperf_trace_segment!(au, "idm::server::IdmServerWriteTransaction::commit", || {
             self.mfareg_sessions.commit();
             self.qs_write.commit(au)
         })

@@ -98,7 +98,7 @@ impl Account {
         value: Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        lperf_segment!(au, "idm::account::try_from_entry_ro", || {
+        lperf_trace_segment!(au, "idm::account::try_from_entry_ro", || {
             let groups = Group::try_from_account_entry_ro(au, &value, qs)?;
             try_from_entry!(value, groups)
         })

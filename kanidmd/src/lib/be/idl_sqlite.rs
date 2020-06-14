@@ -81,7 +81,7 @@ pub trait IdlSqliteTransaction {
         au: &mut AuditScope,
         idl: &IDL,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
-        lperf_segment!(au, "be::idl_sqlite::get_identry", || {
+        lperf_trace_segment!(au, "be::idl_sqlite::get_identry", || {
             self.get_identry_raw(au, idl)?
                 .into_iter()
                 .map(|ide| ide.into_entry(au))
@@ -214,7 +214,7 @@ pub trait IdlSqliteTransaction {
         itype: &IndexType,
         idx_key: &str,
     ) -> Result<Option<IDLBitRange>, OperationError> {
-        lperf_segment!(audit, "be::idl_sqlite::get_idl", || {
+        lperf_trace_segment!(audit, "be::idl_sqlite::get_idl", || {
             if !(self.exists_idx(audit, attr, itype)?) {
                 lfilter_error!(audit, "Index {:?} {:?} not found", itype, attr);
                 return Ok(None);
@@ -259,7 +259,7 @@ pub trait IdlSqliteTransaction {
         audit: &mut AuditScope,
         name: &str,
     ) -> Result<Option<Uuid>, OperationError> {
-        lperf_segment!(audit, "be::idl_sqlite::name2uuid", || {
+        lperf_trace_segment!(audit, "be::idl_sqlite::name2uuid", || {
             // The table exists - lets now get the actual index itself.
             let mut stmt = try_audit!(
                 audit,
@@ -289,7 +289,7 @@ pub trait IdlSqliteTransaction {
         audit: &mut AuditScope,
         uuid: &Uuid,
     ) -> Result<Option<Value>, OperationError> {
-        lperf_segment!(audit, "be::idl_sqlite::uuid2spn", || {
+        lperf_trace_segment!(audit, "be::idl_sqlite::uuid2spn", || {
             let uuids = uuid.to_hyphenated_ref().to_string();
             // The table exists - lets now get the actual index itself.
             let mut stmt = try_audit!(
@@ -330,7 +330,7 @@ pub trait IdlSqliteTransaction {
         audit: &mut AuditScope,
         uuid: &Uuid,
     ) -> Result<Option<String>, OperationError> {
-        lperf_segment!(audit, "be::idl_sqlite::uuid2rdn", || {
+        lperf_trace_segment!(audit, "be::idl_sqlite::uuid2rdn", || {
             let uuids = uuid.to_hyphenated_ref().to_string();
             // The table exists - lets now get the actual index itself.
             let mut stmt = try_audit!(
@@ -505,7 +505,7 @@ impl IdlSqliteWriteTransaction {
     }
 
     pub fn commit(mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
-        lperf_segment!(audit, "be::idl_sqlite::commit", || {
+        lperf_trace_segment!(audit, "be::idl_sqlite::commit", || {
             // ltrace!(audit, "Commiting BE WR txn");
             assert!(!self.committed);
             self.committed = true;
@@ -553,7 +553,7 @@ impl IdlSqliteWriteTransaction {
     where
         I: Iterator<Item = &'b Entry<EntrySealed, EntryCommitted>>,
     {
-        lperf_segment!(au, "be::idl_sqlite::write_identries", || {
+        lperf_trace_segment!(au, "be::idl_sqlite::write_identries", || {
             let raw_entries: Result<Vec<_>, _> = entries
                 .map(|e| {
                     let dbe = e.to_dbentry();
@@ -603,7 +603,7 @@ impl IdlSqliteWriteTransaction {
     where
         I: Iterator<Item = u64>,
     {
-        lperf_segment!(au, "be::idl_sqlite::delete_identry", || {
+        lperf_trace_segment!(au, "be::idl_sqlite::delete_identry", || {
             let mut stmt = self
                 .conn
                 .prepare("DELETE FROM id2entry WHERE id = :id")
@@ -642,7 +642,7 @@ impl IdlSqliteWriteTransaction {
         idx_key: &str,
         idl: &IDLBitRange,
     ) -> Result<(), OperationError> {
-        lperf_segment!(audit, "be::idl_sqlite::write_idl", || {
+        lperf_trace_segment!(audit, "be::idl_sqlite::write_idl", || {
             if idl.len() == 0 {
                 ltrace!(audit, "purging idl -> {:?}", idl);
                 // delete it
@@ -1226,7 +1226,7 @@ mod tests {
 
     #[test]
     fn test_idl_sqlite_verify() {
-        let mut audit = AuditScope::new("run_test", uuid::Uuid::new_v4());
+        let mut audit = AuditScope::new("run_test", uuid::Uuid::new_v4(), None);
         let be = IdlSqlite::new(&mut audit, "", 1).unwrap();
         let be_w = be.write();
         let r = be_w.verify();

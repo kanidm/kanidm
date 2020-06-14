@@ -5,12 +5,17 @@ use uuid::Uuid;
 
 pub struct StatusActor {
     log_tx: Sender<Option<AuditScope>>,
+    log_level: Option<u32>,
 }
 
 impl StatusActor {
-    pub fn start(log_tx: Sender<Option<AuditScope>>) -> actix::Addr<StatusActor> {
+    pub fn start(
+        log_tx: Sender<Option<AuditScope>>,
+        log_level: Option<u32>,
+    ) -> actix::Addr<StatusActor> {
         SyncArbiter::start(1, move || StatusActor {
             log_tx: log_tx.clone(),
+            log_level,
         })
     }
 }
@@ -31,7 +36,11 @@ impl Handler<StatusRequestEvent> for StatusActor {
     type Result = bool;
 
     fn handle(&mut self, event: StatusRequestEvent, _ctx: &mut SyncContext<Self>) -> Self::Result {
-        let mut audit = AuditScope::new("status_handler", event.eventid.clone());
+        let mut audit = AuditScope::new(
+            "status_handler",
+            event.eventid.clone(),
+            self.log_level.clone(),
+        );
         ladmin_info!(&mut audit, "status handler");
         self.log_tx.send(Some(audit)).unwrap_or_else(|_| {
             error!("CRITICAL: UNABLE TO COMMIT LOGS");

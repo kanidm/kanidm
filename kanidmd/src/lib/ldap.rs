@@ -242,7 +242,7 @@ impl LdapServer {
                 // Build the event, with the permissions from effective_uuid
                 // (should always be anonymous at the moment)
                 // ! Remember, searchEvent wraps to ignore hidden for us.
-                let se = lperf_segment!(au, "ldap::do_search<core><prepare_se>", || {
+                let se = lperf_trace_segment!(au, "ldap::do_search<core><prepare_se>", || {
                     SearchEvent::new_ext_impersonate_uuid(
                         au,
                         &mut idm_read.qs_read,
@@ -258,18 +258,19 @@ impl LdapServer {
                 })?;
 
                 // These have already been fully reduced, so we can just slap it into the result.
-                let lres = lperf_segment!(au, "ldap::do_search<core><prepare results>", || {
-                    let lres: Result<Vec<_>, _> = res
-                        .into_iter()
-                        .map(|e| {
-                            e.to_ldap(au, &mut idm_read.qs_read, self.basedn.as_str())
-                                // if okay, wrap in a ldap msg.
-                                .map(|r| sr.gen_result_entry(r))
-                        })
-                        .chain(iter::once(Ok(sr.gen_success())))
-                        .collect();
-                    lres
-                });
+                let lres =
+                    lperf_trace_segment!(au, "ldap::do_search<core><prepare results>", || {
+                        let lres: Result<Vec<_>, _> = res
+                            .into_iter()
+                            .map(|e| {
+                                e.to_ldap(au, &mut idm_read.qs_read, self.basedn.as_str())
+                                    // if okay, wrap in a ldap msg.
+                                    .map(|r| sr.gen_result_entry(r))
+                            })
+                            .chain(iter::once(Ok(sr.gen_success())))
+                            .collect();
+                        lres
+                    });
 
                 let lres = lres.map_err(|e| {
                     ladmin_error!(au, "entry resolve failure {:?}", e);

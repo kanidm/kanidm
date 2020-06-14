@@ -136,7 +136,7 @@ macro_rules! run_pre_create_transform_plugin {
         $ce:ident,
         $target_plugin:ty
     ) => {{
-        let r = lperf_segment!($au, <$target_plugin>::id(), || {
+        let r = lperf_trace_segment!($au, <$target_plugin>::id(), || {
             <$target_plugin>::pre_create_transform($au, $qs, $cand, $ce)
         });
         r
@@ -151,7 +151,7 @@ macro_rules! run_pre_create_plugin {
         $ce:ident,
         $target_plugin:ty
     ) => {{
-        let r = lperf_segment!(
+        let r = lperf_trace_segment!(
             $au,
             <$target_plugin>::id(),
             || <$target_plugin>::pre_create($au, $qs, $cand, $ce,)
@@ -168,7 +168,7 @@ macro_rules! run_post_create_plugin {
         $ce:ident,
         $target_plugin:ty
     ) => {{
-        let r = lperf_segment!($au, <$target_plugin>::id(), || {
+        let r = lperf_trace_segment!($au, <$target_plugin>::id(), || {
             <$target_plugin>::post_create($au, $qs, $cand, $ce)
         });
         r
@@ -183,7 +183,7 @@ macro_rules! run_pre_modify_plugin {
         $ce:ident,
         $target_plugin:ty
     ) => {{
-        let r = lperf_segment!(
+        let r = lperf_trace_segment!(
             $au,
             <$target_plugin>::id(),
             || <$target_plugin>::pre_modify($au, $qs, $cand, $ce)
@@ -201,7 +201,7 @@ macro_rules! run_post_modify_plugin {
         $ce:ident,
         $target_plugin:ty
     ) => {{
-        let r = lperf_segment!($au, <$target_plugin>::id(), || {
+        let r = lperf_trace_segment!($au, <$target_plugin>::id(), || {
             <$target_plugin>::post_modify($au, $qs, $pre_cand, $cand, $ce)
         });
         r
@@ -216,7 +216,7 @@ macro_rules! run_pre_delete_plugin {
         $ce:ident,
         $target_plugin:ty
     ) => {{
-        let r = lperf_segment!(
+        let r = lperf_trace_segment!(
             $au,
             <$target_plugin>::id(),
             || <$target_plugin>::pre_delete($au, $qs, $cand, $ce,)
@@ -233,7 +233,7 @@ macro_rules! run_post_delete_plugin {
         $ce:ident,
         $target_plugin:ty
     ) => {{
-        let r = lperf_segment!($au, <$target_plugin>::id(), || {
+        let r = lperf_trace_segment!($au, <$target_plugin>::id(), || {
             <$target_plugin>::post_delete($au, $qs, $cand, $ce)
         });
         r
@@ -247,7 +247,7 @@ macro_rules! run_verify_plugin {
         $results:expr,
         $target_plugin:ty
     ) => {{
-        let mut r = lperf_segment!($au, <$target_plugin>::id(), || <$target_plugin>::verify(
+        let mut r = lperf_trace_segment!($au, <$target_plugin>::id(), || <$target_plugin>::verify(
             $au, $qs,
         ));
         $results.append(&mut r);

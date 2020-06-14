@@ -17,7 +17,7 @@ mod utils;
 #[macro_use]
 mod async_log;
 #[macro_use]
-mod audit;
+pub mod audit;
 pub mod be;
 pub mod constants;
 pub mod credential;

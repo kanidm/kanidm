@@ -421,7 +421,7 @@ impl Filter<FilterInvalid> {
         f: &ProtoFilter,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        lperf_segment!(audit, "filter::from_ro", || {
+        lperf_trace_segment!(audit, "filter::from_ro", || {
             Ok(Filter {
                 state: FilterInvalid {
                     inner: FilterComp::from_ro(audit, f, qs)?,
@@ -435,7 +435,7 @@ impl Filter<FilterInvalid> {
         f: &ProtoFilter,
         qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        lperf_segment!(audit, "filter::from_rw", || {
+        lperf_trace_segment!(audit, "filter::from_rw", || {
             Ok(Filter {
                 state: FilterInvalid {
                     inner: FilterComp::from_rw(audit, f, qs)?,
@@ -449,7 +449,7 @@ impl Filter<FilterInvalid> {
         f: &LdapFilter,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        lperf_segment!(audit, "filter::from_ldap_ro", || {
+        lperf_trace_segment!(audit, "filter::from_ldap_ro", || {
             Ok(Filter {
                 state: FilterInvalid {
                     inner: FilterComp::from_ldap_ro(audit, f, qs)?,

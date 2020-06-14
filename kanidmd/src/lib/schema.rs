@@ -634,7 +634,7 @@ impl<'a> SchemaWriteTransaction<'a> {
     }
 
     pub fn generate_in_memory(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
-        let r = lperf_segment!(audit, "schema::generate_in_memory", || {
+        let r = lperf_trace_segment!(audit, "schema::generate_in_memory", || {
             //
             self.classes.clear();
             self.attributes.clear();
@@ -1916,7 +1916,7 @@ mod tests {
 
     #[test]
     fn test_schema_simple() {
-        let mut audit = AuditScope::new("test_schema_simple", uuid::Uuid::new_v4());
+        let mut audit = AuditScope::new("test_schema_simple", uuid::Uuid::new_v4(), None);
         let schema = Schema::new(&mut audit).expect("failed to create schema");
         let schema_ro = schema.read();
         validate_schema!(schema_ro, &mut audit);
@@ -1927,7 +1927,7 @@ mod tests {
     fn test_schema_entries() {
         // Given an entry, assert it's schema is valid
         // We do
-        let mut audit = AuditScope::new("test_schema_entries", uuid::Uuid::new_v4());
+        let mut audit = AuditScope::new("test_schema_entries", uuid::Uuid::new_v4(), None);
         let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
         let schema = schema_outer.read();
         let e_no_uuid: Entry<EntryInvalid, EntryNew> = unsafe {
@@ -2081,7 +2081,7 @@ mod tests {
     #[test]
     fn test_schema_entry_validate() {
         // Check that entries can be normalised and validated sanely
-        let mut audit = AuditScope::new("test_schema_entry_validate", uuid::Uuid::new_v4());
+        let mut audit = AuditScope::new("test_schema_entry_validate", uuid::Uuid::new_v4(), None);
         let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
         let schema = schema_outer.write();
 
@@ -2127,7 +2127,7 @@ mod tests {
 
     #[test]
     fn test_schema_extensible() {
-        let mut audit = AuditScope::new("test_schema_extensible", uuid::Uuid::new_v4());
+        let mut audit = AuditScope::new("test_schema_extensible", uuid::Uuid::new_v4(), None);
         let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
         let schema = schema_outer.read();
         // Just because you are extensible, doesn't mean you can be lazy
@@ -2191,7 +2191,8 @@ mod tests {
 
     #[test]
     fn test_schema_filter_validation() {
-        let mut audit = AuditScope::new("test_schema_filter_validation", uuid::Uuid::new_v4());
+        let mut audit =
+            AuditScope::new("test_schema_filter_validation", uuid::Uuid::new_v4(), None);
         let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
         let schema = schema_outer.read();
         // Test non existant attr name
@@ -2260,7 +2261,11 @@ mod tests {
     #[test]
     fn test_schema_class_phantom_reject() {
         // Check that entries can be normalised and validated sanely
-        let mut audit = AuditScope::new("test_schema_class_phantom_reject", uuid::Uuid::new_v4());
+        let mut audit = AuditScope::new(
+            "test_schema_class_phantom_reject",
+            uuid::Uuid::new_v4(),
+            None,
+        );
         let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
         let mut schema = schema_outer.write();
 

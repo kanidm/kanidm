@@ -110,7 +110,11 @@ pub trait QueryServerTransaction {
         se: &SearchEvent,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
         lperf_segment!(au, "server::search", || {
-            ladmin_info!(au, "search: filter -> {:?}", se.filter);
+            if se.event.is_internal() {
+                ltrace!(au, "search: internal filter -> {:?}", se.filter);
+            } else {
+                ladmin_info!(au, "search: external filter -> {:?}", se.filter);
+            }
 
             // This is an important security step because it prevents us from
             // performing un-indexed searches on attr's that don't exist in the
@@ -126,7 +130,7 @@ pub trait QueryServerTransaction {
             // Now resolve all references and indexes.
             let vfr = try_audit!(
                 au,
-                lperf_segment!(au, "server::search<filter_resove>", || {
+                lperf_trace_segment!(au, "server::search<filter_resolve>", || {
                     se.filter.resolve(&se.event, Some(idxmeta))
                 })
             );
@@ -966,7 +970,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
             // We are complete, finalise logging and return
 
-            ladmin_info!(au, "Create operation success");
+            if ce.event.is_internal() {
+                ltrace!(au, "Create operation success");
+            } else {
+                ladmin_info!(au, "Create operation success");
+            }
             Ok(())
         })
     }
@@ -1086,7 +1094,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
             );
 
             // Send result
-            ladmin_info!(au, "Delete operation success");
+            if de.event.is_internal() {
+                ltrace!(au, "Delete operation success");
+            } else {
+                ladmin_info!(au, "Delete operation success");
+            }
             res
         })
     }
@@ -1417,7 +1429,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
             );
 
             // return
-            ladmin_info!(au, "Modify operation success");
+            if me.event.is_internal() {
+                ltrace!(au, "Modify operation success");
+            } else {
+                ladmin_info!(au, "Modify operation success");
+            }
             res
         })
     }
@@ -1756,7 +1772,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 self.internal_migrate_or_create(audit, e)
             })
             .collect();
-        ladmin_info!(audit, "initialise_schema_core -> result {:?}", r);
+        if r.is_ok() {
+            ladmin_info!(audit, "initialise_schema_core -> Ok!");
+        } else {
+            ladmin_error!(audit, "initialise_schema_core -> Error {:?}", r);
+        }
         debug_assert!(r.is_ok());
         r
     }
@@ -1793,7 +1813,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // Each item individually logs it's result
             .map(|e_str| self.internal_migrate_or_create_str(audit, e_str))
             .collect();
-        ladmin_info!(audit, "initialise_schema_idm -> result {:?}", r);
+        if r.is_ok() {
+            ladmin_info!(audit, "initialise_schema_idm -> Ok!");
+        } else {
+            ladmin_error!(audit, "initialise_schema_idm -> Error {:?}", r);
+        }
         debug_assert!(r.is_ok());
 
         r.map(|_| ())
@@ -1808,7 +1832,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .internal_migrate_or_create_str(audit, JSON_SYSTEM_INFO_V1)
             .and_then(|_| self.internal_migrate_or_create_str(audit, JSON_DOMAIN_INFO_V1))
             .and_then(|_| self.internal_migrate_or_create_str(audit, JSON_SYSTEM_CONFIG_V1));
-        ladmin_info!(audit, "initialise_idm p1 -> result {:?}", res);
+        if !res.is_ok() {
+            ladmin_error!(audit, "initialise_idm p1 -> result {:?}", res);
+        }
         debug_assert!(res.is_ok());
         if res.is_err() {
             return res;
@@ -1831,7 +1857,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // Each item individually logs it's result
             .map(|e_str| self.internal_migrate_or_create_str(audit, e_str))
             .collect();
-        ladmin_info!(audit, "initialise_idm p2 -> result {:?}", res);
+        if !res.is_ok() {
+            ladmin_error!(audit, "initialise_idm p2 -> result {:?}", res);
+        }
         debug_assert!(res.is_ok());
         if res.is_err() {
             return res;
@@ -1902,7 +1930,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // Each item individually logs it's result
             .map(|e_str| self.internal_migrate_or_create_str(audit, e_str))
             .collect();
-        ladmin_info!(audit, "initialise_idm p3 -> result {:?}", res);
+        if res.is_ok() {
+            ladmin_info!(audit, "initialise_idm -> result Ok!");
+        } else {
+            ladmin_error!(audit, "initialise_idm p3 -> result {:?}", res);
+        }
         debug_assert!(res.is_ok());
         if res.is_err() {
             return res;

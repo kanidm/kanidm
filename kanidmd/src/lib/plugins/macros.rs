@@ -50,7 +50,7 @@ macro_rules! run_create_test {
         use crate::server::QueryServer;
         use crate::utils::duration_from_epoch_now;
 
-        let mut au = AuditScope::new("run_create_test", uuid::Uuid::new_v4());
+        let mut au = AuditScope::new("run_create_test", uuid::Uuid::new_v4(), None);
         lperf_segment!(&mut au, "plugins::macros::run_create_test", || {
             let qs = setup_test!(&mut au, $preload_entries);
 
@@ -105,7 +105,7 @@ macro_rules! run_modify_test {
         use crate::server::QueryServer;
         use crate::utils::duration_from_epoch_now;
 
-        let mut au = AuditScope::new("run_modify_test", uuid::Uuid::new_v4());
+        let mut au = AuditScope::new("run_modify_test", uuid::Uuid::new_v4(), None);
         lperf_segment!(&mut au, "plugins::macros::run_modify_test", || {
             let qs = setup_test!(&mut au, $preload_entries);
 
@@ -167,7 +167,7 @@ macro_rules! run_delete_test {
         use crate::server::QueryServer;
         use crate::utils::duration_from_epoch_now;
 
-        let mut au = AuditScope::new("run_delete_test", uuid::Uuid::new_v4());
+        let mut au = AuditScope::new("run_delete_test", uuid::Uuid::new_v4(), None);
         lperf_segment!(&mut au, "plugins::macros::run_delete_test", || {
             let qs = setup_test!(&mut au, $preload_entries);
 

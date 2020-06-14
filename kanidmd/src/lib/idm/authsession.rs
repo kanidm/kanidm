@@ -425,8 +425,11 @@ mod tests {
 
     #[test]
     fn test_idm_authsession_floodcheck_mech() {
-        let mut audit =
-            AuditScope::new("test_idm_authsession_floodcheck_mech", uuid::Uuid::new_v4());
+        let mut audit = AuditScope::new(
+            "test_idm_authsession_floodcheck_mech",
+            uuid::Uuid::new_v4(),
+            None,
+        );
         let anon_account = entry_str_to_account!(JSON_ANONYMOUS_V1);
         let mut session = AuthSession::new(anon_account, None);
 
@@ -463,6 +466,7 @@ mod tests {
         let mut audit = AuditScope::new(
             "test_idm_authsession_simple_password_mech",
             uuid::Uuid::new_v4(),
+            None,
         );
         // create the ent
         let mut account = entry_str_to_account!(JSON_ADMIN_V1);
@@ -502,6 +506,7 @@ mod tests {
         let mut audit = AuditScope::new(
             "test_idm_authsession_totp_password_mech",
             uuid::Uuid::new_v4(),
+            None,
         );
         // create the ent
         let mut account = entry_str_to_account!(JSON_ADMIN_V1);

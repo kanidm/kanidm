@@ -359,19 +359,17 @@ pub trait AccessControlsTransaction {
         se: &SearchEvent,
         entries: Vec<Entry<EntrySealed, EntryCommitted>>,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
+        // If this is an internal search, return our working set.
+        let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &se.event.origin {
+            EventOrigin::Internal => {
+                ltrace!(audit, "Internal operation, bypassing access check");
+                // No need to check ACS
+                return Ok(entries);
+            }
+            EventOrigin::User(e) => &e,
+        };
         lperf_segment!(audit, "access::search_filter_entries", || {
             lsecurity_access!(audit, "Access check for event: {:?}", se);
-
-            // If this is an internal search, return our working set.
-            let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &se.event.origin {
-                EventOrigin::Internal => {
-                    lsecurity_access!(audit, "Internal operation, bypassing access check");
-                    // No need to check ACS
-                    return Ok(entries);
-                }
-                EventOrigin::User(e) => &e,
-            };
-
             // Some useful references we'll use for the remainder of the operation
             let search_state = self.get_search();
 
@@ -499,6 +497,26 @@ pub trait AccessControlsTransaction {
         se: &SearchEvent,
         entries: Vec<Entry<EntrySealed, EntryCommitted>>,
     ) -> Result<Vec<Entry<EntryReduced, EntryCommitted>>, OperationError> {
+        // If this is an internal search, do nothing. This can occur in some test cases ONLY
+        let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &se.event.origin {
+            EventOrigin::Internal => {
+                if cfg!(test) {
+                    ltrace!(audit, "TEST: Internal search in external interface - allowing due to cfg test ...");
+                    // In tests we just push everything back.
+                    return Ok(entries
+                        .into_iter()
+                        .map(|e| unsafe { e.into_reduced() })
+                        .collect());
+                } else {
+                    // In production we can't risk leaking data here, so we return
+                    // empty sets.
+                    lsecurity_critical!(audit, "IMPOSSIBLE STATE: Internal search in external interface?! Returning empty for safety.");
+                    // No need to check ACS
+                    return Ok(Vec::new());
+                }
+            }
+            EventOrigin::User(e) => &e,
+        };
         lperf_segment!(audit, "access::search_filter_entry_attributes", || {
             /*
              * Super similar to above (could even re-use some parts). Given a set of entries,
@@ -508,28 +526,6 @@ pub trait AccessControlsTransaction {
              * modify and co.
              */
             lsecurity_access!(audit, "Access check and reduce for event: {:?}", se);
-
-            // If this is an internal search, do nothing. How this occurs in this
-            // interface is beyond me ....
-            let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &se.event.origin {
-                EventOrigin::Internal => {
-                    if cfg!(test) {
-                        lsecurity_access!(audit, "TEST: Internal search in external interface - allowing due to cfg test ...");
-                        // In tests we just push everything back.
-                        return Ok(entries
-                            .into_iter()
-                            .map(|e| unsafe { e.into_reduced() })
-                            .collect());
-                    } else {
-                        // In production we can't risk leaking data here, so we return
-                        // empty sets.
-                        ladmin_error!(audit, "IMPOSSIBLE STATE: Internal search in external interface?! Returning empty for safety.");
-                        // No need to check ACS
-                        return Ok(Vec::new());
-                    }
-                }
-                EventOrigin::User(e) => &e,
-            };
 
             // Some useful references we'll use for the remainder of the operation
             let search_state = self.get_search();
@@ -664,17 +660,16 @@ pub trait AccessControlsTransaction {
         me: &ModifyEvent,
         entries: &[Entry<EntrySealed, EntryCommitted>],
     ) -> Result<bool, OperationError> {
+        let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &me.event.origin {
+            EventOrigin::Internal => {
+                ltrace!(audit, "Internal operation, bypassing access check");
+                // No need to check ACS
+                return Ok(true);
+            }
+            EventOrigin::User(e) => &e,
+        };
         lperf_segment!(audit, "access::modify_allow_operation", || {
             lsecurity_access!(audit, "Access check for event: {:?}", me);
-
-            let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &me.event.origin {
-                EventOrigin::Internal => {
-                    lsecurity_access!(audit, "Internal operation, bypassing access check");
-                    // No need to check ACS
-                    return Ok(true);
-                }
-                EventOrigin::User(e) => &e,
-            };
 
             // Some useful references we'll use for the remainder of the operation
             let modify_state = self.get_modify();
@@ -871,17 +866,16 @@ pub trait AccessControlsTransaction {
         ce: &CreateEvent,
         entries: &[Entry<EntryInit, EntryNew>],
     ) -> Result<bool, OperationError> {
+        let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &ce.event.origin {
+            EventOrigin::Internal => {
+                ltrace!(audit, "Internal operation, bypassing access check");
+                // No need to check ACS
+                return Ok(true);
+            }
+            EventOrigin::User(e) => &e,
+        };
         lperf_segment!(audit, "access::create_allow_operation", || {
             lsecurity_access!(audit, "Access check for event: {:?}", ce);
-
-            let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &ce.event.origin {
-                EventOrigin::Internal => {
-                    lsecurity_access!(audit, "Internal operation, bypassing access check");
-                    // No need to check ACS
-                    return Ok(true);
-                }
-                EventOrigin::User(e) => &e,
-            };
 
             // Some useful references we'll use for the remainder of the operation
             let create_state = self.get_create();
@@ -1045,17 +1039,16 @@ pub trait AccessControlsTransaction {
         de: &DeleteEvent,
         entries: &[Entry<EntrySealed, EntryCommitted>],
     ) -> Result<bool, OperationError> {
+        let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &de.event.origin {
+            EventOrigin::Internal => {
+                ltrace!(audit, "Internal operation, bypassing access check");
+                // No need to check ACS
+                return Ok(true);
+            }
+            EventOrigin::User(e) => &e,
+        };
         lperf_segment!(audit, "access::delete_allow_operation", || {
             lsecurity_access!(audit, "Access check for event: {:?}", de);
-
-            let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &de.event.origin {
-                EventOrigin::Internal => {
-                    lsecurity_access!(audit, "Internal operation, bypassing access check");
-                    // No need to check ACS
-                    return Ok(true);
-                }
-                EventOrigin::User(e) => &e,
-            };
 
             // Some useful references we'll use for the remainder of the operation
             let delete_state = self.get_delete();
@@ -1792,7 +1785,7 @@ mod tests {
             acw.update_search($controls).expect("Failed to update");
             let acw = acw;
 
-            let mut audit = AuditScope::new("test_acp_search", uuid::Uuid::new_v4());
+            let mut audit = AuditScope::new("test_acp_search", uuid::Uuid::new_v4(), None);
             let res = acw
                 .search_filter_entries(&mut audit, $se, $entries)
                 .expect("op failed");
@@ -1895,7 +1888,7 @@ mod tests {
             acw.update_search($controls).expect("Failed to update");
             let acw = acw;
 
-            let mut audit = AuditScope::new("test_acp_search_reduce", uuid::Uuid::new_v4());
+            let mut audit = AuditScope::new("test_acp_search_reduce", uuid::Uuid::new_v4(), None);
             // We still have to reduce the entries to be sure that we are good.
             let res = acw
                 .search_filter_entries(&mut audit, $se, $entries)
@@ -2018,7 +2011,7 @@ mod tests {
             acw.update_modify($controls).expect("Failed to update");
             let acw = acw;
 
-            let mut audit = AuditScope::new("test_acp_modify", uuid::Uuid::new_v4());
+            let mut audit = AuditScope::new("test_acp_modify", uuid::Uuid::new_v4(), None);
             let res = acw
                 .modify_allow_operation(&mut audit, $me, $entries)
                 .expect("op failed");
@@ -2180,7 +2173,7 @@ mod tests {
             acw.update_create($controls).expect("Failed to update");
             let acw = acw;
 
-            let mut audit = AuditScope::new("test_acp_create", uuid::Uuid::new_v4());
+            let mut audit = AuditScope::new("test_acp_create", uuid::Uuid::new_v4(), None);
             let res = acw
                 .create_allow_operation(&mut audit, $ce, $entries)
                 .expect("op failed");
@@ -2306,7 +2299,7 @@ mod tests {
             acw.update_delete($controls).expect("Failed to update");
             let acw = acw;
 
-            let mut audit = AuditScope::new("test_acp_delete", uuid::Uuid::new_v4());
+            let mut audit = AuditScope::new("test_acp_delete", uuid::Uuid::new_v4(), None);
             let res = acw
                 .delete_allow_operation(&mut audit, $de, $entries)
                 .expect("op failed");

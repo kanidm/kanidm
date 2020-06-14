@@ -176,7 +176,7 @@ pub trait BackendTransaction {
                         (IDL::ALLIDS, fp) => {
                             plan.push(fp);
                             // If we find anything unindexed, the whole term is unindexed.
-                            lfilter_error!(au, "Term {:?} is ALLIDS, shortcut return", f);
+                            lfilter!(au, "Term {:?} is ALLIDS, shortcut return", f);
                             let setplan = FilterPlan::OrUnindexed(plan);
                             return Ok((IDL::ALLIDS, setplan));
                         }
@@ -413,19 +413,20 @@ pub trait BackendTransaction {
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
         // Unlike DS, even if we don't get the index back, we can just pass
         // to the in-memory filter test and be done.
-        lperf_segment!(au, "be::search", || {
+        lperf_trace_segment!(au, "be::search", || {
             // Do a final optimise of the filter
             lfilter!(au, "filter unoptimised form --> {:?}", filt);
-            let filt = lperf_segment!(au, "be::search<filt::optimise>", || { filt.optimise() });
+            let filt =
+                lperf_trace_segment!(au, "be::search<filt::optimise>", || { filt.optimise() });
             lfilter!(au, "filter optimised to --> {:?}", filt);
 
             // Using the indexes, resolve the IDL here, or ALLIDS.
             // Also get if the filter was 100% resolved or not.
-            let (idl, fplan) = lperf_segment!(au, "be::search -> filter2idl", || {
+            let (idl, fplan) = lperf_trace_segment!(au, "be::search -> filter2idl", || {
                 self.filter2idl(au, filt.to_inner(), FILTER_SEARCH_TEST_THRESHOLD)
             })?;
 
-            lfilter!(au, "filter executed plan -> {:?}", fplan);
+            lfilter_info!(au, "filter executed plan -> {:?}", fplan);
 
             let entries = try_audit!(au, self.get_idlayer().get_identry(au, &idl));
             // Do other things
@@ -435,11 +436,7 @@ pub trait BackendTransaction {
 
             let entries_filtered = match idl {
                 IDL::ALLIDS | IDL::Partial(_) => {
-                    lfilter_error!(
-                        au,
-                        "filter (search) was partially or fully unindexed. {:?}",
-                        filt
-                    );
+                    lfilter_error!(au, "filter (search) was partially or fully unindexed.",);
                     lperf_segment!(au, "be::search<entry::ftest::allids>", || {
                         entries
                             .into_iter()
@@ -448,7 +445,7 @@ pub trait BackendTransaction {
                     })
                 }
                 IDL::PartialThreshold(_) => {
-                    lperf_segment!(au, "be::search<entry::ftest::thresh>", || {
+                    lperf_trace_segment!(au, "be::search<entry::ftest::thresh>", || {
                         entries
                             .into_iter()
                             .filter(|e| e.entry_match_no_index(&filt))
@@ -493,7 +490,7 @@ pub trait BackendTransaction {
         au: &mut AuditScope,
         filt: &Filter<FilterValidResolved>,
     ) -> Result<bool, OperationError> {
-        lperf_segment!(au, "be::exists", || {
+        lperf_trace_segment!(au, "be::exists", || {
             // Do a final optimise of the filter
             lfilter!(au, "filter unoptimised form --> {:?}", filt);
             let filt = filt.optimise();
@@ -501,11 +498,11 @@ pub trait BackendTransaction {
 
             // Using the indexes, resolve the IDL here, or ALLIDS.
             // Also get if the filter was 100% resolved or not.
-            let (idl, fplan) = lperf_segment!(au, "be::exists -> filter2idl", || {
+            let (idl, fplan) = lperf_trace_segment!(au, "be::exists -> filter2idl", || {
                 self.filter2idl(au, filt.to_inner(), FILTER_EXISTS_TEST_THRESHOLD)
             })?;
 
-            lfilter!(au, "filter executed plan -> {:?}", fplan);
+            lfilter_info!(au, "filter executed plan -> {:?}", fplan);
 
             // Now, check the idl -- if it's fully resolved, we can skip this because the query
             // was fully indexed.
@@ -523,11 +520,7 @@ pub trait BackendTransaction {
                     Ok(!entries_filtered.is_empty())
                 }
                 _ => {
-                    lfilter_error!(
-                        au,
-                        "filter (exists) was partially or fully unindexed {:?}",
-                        filt
-                    );
+                    lfilter_error!(au, "filter (exists) was partially or fully unindexed",);
                     let entries = try_audit!(au, self.get_idlayer().get_identry(au, &idl));
 
                     // if not 100% resolved query, apply the filter test.
@@ -631,7 +624,7 @@ impl<'a> BackendWriteTransaction<'a> {
         au: &mut AuditScope,
         entries: Vec<Entry<EntrySealed, EntryNew>>,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
-        lperf_segment!(au, "be::create", || {
+        lperf_trace_segment!(au, "be::create", || {
             if entries.is_empty() {
                 ladmin_error!(
                     au,
@@ -670,7 +663,7 @@ impl<'a> BackendWriteTransaction<'a> {
         pre_entries: &[Entry<EntrySealed, EntryCommitted>],
         post_entries: &[Entry<EntrySealed, EntryCommitted>],
     ) -> Result<(), OperationError> {
-        lperf_segment!(au, "be::modify", || {
+        lperf_trace_segment!(au, "be::modify", || {
             if post_entries.is_empty() || pre_entries.is_empty() {
                 ladmin_error!(
                     au,
@@ -729,7 +722,7 @@ impl<'a> BackendWriteTransaction<'a> {
         au: &mut AuditScope,
         entries: &[Entry<EntrySealed, EntryCommitted>],
     ) -> Result<(), OperationError> {
-        lperf_segment!(au, "be::delete", || {
+        lperf_trace_segment!(au, "be::delete", || {
             if entries.is_empty() {
                 ladmin_error!(
                     au,
@@ -1003,9 +996,7 @@ impl<'a> BackendWriteTransaction<'a> {
 
         try_audit!(
             audit,
-            entries
-                .iter()
-                .try_for_each(|e| {
+            entries.iter().try_for_each(|e| {
                 count += 1;
                 if count % 1000 == 0 {
                     eprint!("{}", count);
@@ -1015,7 +1006,7 @@ impl<'a> BackendWriteTransaction<'a> {
                 self.entry_index(audit, None, Some(e))
             })
         );
-        eprintln!(" ✅");
+        eprintln!(" reindexed {} entries ✅", count);
         Ok(())
     }
 
@@ -1191,7 +1182,7 @@ impl<'a> BackendWriteTransaction<'a> {
 impl Backend {
     pub fn new(audit: &mut AuditScope, path: &str, pool_size: u32) -> Result<Self, OperationError> {
         // this has a ::memory() type, but will path == "" work?
-        lperf_segment!(audit, "be::new", || {
+        lperf_trace_segment!(audit, "be::new", || {
             let be = Backend {
                 idlayer: Arc::new(IdlArcSqlite::new(audit, path, pool_size)?),
             };
@@ -1269,7 +1260,7 @@ mod tests {
                 .is_test(true)
                 .try_init();
 
-            let mut audit = AuditScope::new("run_test", uuid::Uuid::new_v4());
+            let mut audit = AuditScope::new("run_test", uuid::Uuid::new_v4(), None);
 
             let be = Backend::new(&mut audit, "", 1).expect("Failed to setup backend");
 

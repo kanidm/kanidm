@@ -89,7 +89,7 @@ macro_rules! get_identry {
         $au:expr,
         $idl:expr
     ) => {{
-        lperf_segment!($au, "be::idl_arc_sqlite::get_identry", || {
+        lperf_trace_segment!($au, "be::idl_arc_sqlite::get_identry", || {
             match $idl {
                 IDL::Partial(idli) | IDL::PartialThreshold(idli) | IDL::Indexed(idli) => {
                     let mut result: Vec<Entry<_, _>> = Vec::new();
@@ -105,7 +105,6 @@ macro_rules! get_identry {
                     });
 
                     if !nidl.is_empty() {
-                        ladmin_warning!($au, "idl_arc_sqlite cache miss detected - if this occurs frequently you SHOULD adjust your cache tuning.");
                         // Now, get anything from nidl that is needed.
                         let mut db_result = $self.db.get_identry($au, &IDL::Partial(nidl))?;
 
@@ -158,7 +157,7 @@ macro_rules! get_idl {
         $itype:expr,
         $idx_key:expr
     ) => {{
-        lperf_segment!($audit, "be::idl_arc_sqlite::get_idl", || {
+        lperf_trace_segment!($audit, "be::idl_arc_sqlite::get_idl", || {
             // TODO: Find a way to implement borrow for this properly
             // First attempt to get from this cache.
             let cache_key = IdlCacheKey {
@@ -194,7 +193,7 @@ macro_rules! name2uuid {
         $audit:expr,
         $name:expr
     ) => {{
-        lperf_segment!($audit, "be::idl_arc_sqlite::name2uuid", || {
+        lperf_trace_segment!($audit, "be::idl_arc_sqlite::name2uuid", || {
             let cache_key = NameCacheKey::Name2Uuid($name.to_string());
             let cache_r = $self.name_cache.get(&cache_key);
             if let Some(NameCacheValue::U(uuid)) = cache_r {
@@ -219,7 +218,7 @@ macro_rules! uuid2spn {
         $audit:expr,
         $uuid:expr
     ) => {{
-        lperf_segment!($audit, "be::idl_arc_sqlite::name2uuid", || {
+        lperf_trace_segment!($audit, "be::idl_arc_sqlite::name2uuid", || {
             let cache_key = NameCacheKey::Uuid2Spn(*$uuid);
             let cache_r = $self.name_cache.get(&cache_key);
             if let Some(NameCacheValue::S(ref spn)) = cache_r {
@@ -244,7 +243,7 @@ macro_rules! uuid2rdn {
         $audit:expr,
         $uuid:expr
     ) => {{
-        lperf_segment!($audit, "be::idl_arc_sqlite::name2uuid", || {
+        lperf_trace_segment!($audit, "be::idl_arc_sqlite::name2uuid", || {
             let cache_key = NameCacheKey::Uuid2Rdn(*$uuid);
             let cache_r = $self.name_cache.get(&cache_key);
             if let Some(NameCacheValue::R(ref rdn)) = cache_r {
@@ -464,7 +463,7 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
 
 impl<'a> IdlArcSqliteWriteTransaction<'a> {
     pub fn commit(self, audit: &mut AuditScope) -> Result<(), OperationError> {
-        lperf_segment!(audit, "be::idl_arc_sqlite::commit", || {
+        lperf_trace_segment!(audit, "be::idl_arc_sqlite::commit", || {
             let IdlArcSqliteWriteTransaction {
                 db,
                 entry_cache,
@@ -497,7 +496,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
     where
         I: Iterator<Item = &'b Entry<EntrySealed, EntryCommitted>>,
     {
-        lperf_segment!(au, "be::idl_arc_sqlite::write_identries", || {
+        lperf_trace_segment!(au, "be::idl_arc_sqlite::write_identries", || {
             // Danger! We know that the entry cache is valid to manipulate here
             // but rust doesn't know that so it prevents the mut/immut borrow.
             let e_cache = unsafe { &mut *(&mut self.entry_cache as *mut ArcWriteTxn<_, _>) };
@@ -527,7 +526,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
     where
         I: Iterator<Item = u64>,
     {
-        lperf_segment!(au, "be::idl_arc_sqlite::delete_identry", || {
+        lperf_trace_segment!(au, "be::idl_arc_sqlite::delete_identry", || {
             // Danger! We know that the entry cache is valid to manipulate here
             // but rust doesn't know that so it prevents the mut/immut borrow.
             let e_cache = unsafe { &mut *(&mut self.entry_cache as *mut ArcWriteTxn<_, _>) };
@@ -547,7 +546,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         idx_key: &str,
         idl: &IDLBitRange,
     ) -> Result<(), OperationError> {
-        lperf_segment!(audit, "be::idl_arc_sqlite::write_idl", || {
+        lperf_trace_segment!(audit, "be::idl_arc_sqlite::write_idl", || {
             let cache_key = IdlCacheKey {
                 a: attr.to_string(),
                 i: itype.clone(),
@@ -576,7 +575,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         uuid: &Uuid,
         add: BTreeSet<String>,
     ) -> Result<(), OperationError> {
-        lperf_segment!(audit, "be::idl_arc_sqlite::write_name2uuid_add", || {
+        lperf_trace_segment!(audit, "be::idl_arc_sqlite::write_name2uuid_add", || {
             self.db
                 .write_name2uuid_add(audit, uuid, &add)
                 .and_then(|_| {
@@ -595,7 +594,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         audit: &mut AuditScope,
         rem: BTreeSet<String>,
     ) -> Result<(), OperationError> {
-        lperf_segment!(audit, "be::idl_arc_sqlite::write_name2uuid_add", || {
+        lperf_trace_segment!(audit, "be::idl_arc_sqlite::write_name2uuid_add", || {
             self.db.write_name2uuid_rem(audit, &rem).and_then(|_| {
                 rem.into_iter().for_each(|k| {
                     let cache_key = NameCacheKey::Name2Uuid(k);
@@ -616,7 +615,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         uuid: &Uuid,
         k: Option<Value>,
     ) -> Result<(), OperationError> {
-        lperf_segment!(audit, "be::idl_arc_sqlite::write_uuid2spn", || {
+        lperf_trace_segment!(audit, "be::idl_arc_sqlite::write_uuid2spn", || {
             self.db
                 .write_uuid2spn(audit, uuid, k.as_ref())
                 .and_then(|_| {
@@ -640,7 +639,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         uuid: &Uuid,
         k: Option<String>,
     ) -> Result<(), OperationError> {
-        lperf_segment!(audit, "be::idl_arc_sqlite::write_uuid2rdn", || {
+        lperf_trace_segment!(audit, "be::idl_arc_sqlite::write_uuid2rdn", || {
             self.db
                 .write_uuid2rdn(audit, uuid, k.as_ref())
                 .and_then(|_| {

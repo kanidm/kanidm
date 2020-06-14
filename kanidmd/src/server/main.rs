@@ -2,19 +2,19 @@
 
 use std::path::PathBuf;
 
+use kanidm::audit::LogLevel;
 use kanidm::config::Configuration;
 use kanidm::core::{
     backup_server_core, create_server_core, domain_rename_core, recover_account_core,
     reindex_server_core, restore_server_core, verify_server_core,
 };
 
-use log::{error, info};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 struct CommonOpt {
     #[structopt(short = "d", long = "debug")]
-    debug: bool,
+    debug: Option<LogLevel>,
     #[structopt(parse(from_os_str), short = "D", long = "db_path")]
     db_path: PathBuf,
 }
@@ -88,14 +88,14 @@ enum Opt {
 }
 
 impl Opt {
-    fn debug(&self) -> bool {
+    fn debug(&self) -> Option<LogLevel> {
         match self {
-            Opt::Server(sopt) => sopt.commonopts.debug,
-            Opt::Verify(sopt) | Opt::Reindex(sopt) => sopt.debug,
-            Opt::Backup(bopt) => bopt.commonopts.debug,
-            Opt::Restore(ropt) => ropt.commonopts.debug,
-            Opt::RecoverAccount(ropt) => ropt.commonopts.debug,
-            Opt::DomainChange(dopt) => dopt.commonopts.debug,
+            Opt::Server(sopt) => sopt.commonopts.debug.clone(),
+            Opt::Verify(sopt) | Opt::Reindex(sopt) => sopt.debug.clone(),
+            Opt::Backup(bopt) => bopt.commonopts.debug.clone(),
+            Opt::Restore(ropt) => ropt.commonopts.debug.clone(),
+            Opt::RecoverAccount(ropt) => ropt.commonopts.debug.clone(),
+            Opt::DomainChange(dopt) => dopt.commonopts.debug.clone(),
         }
     }
 }
@@ -111,11 +111,8 @@ async fn main() {
 
     // Configure the server logger. This could be adjusted based on what config
     // says.
-    if opt.debug() {
-        ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
-    } else {
-        ::std::env::set_var("RUST_LOG", "actix_web=info,kanidm=warn");
-    }
+    config.update_log_level(opt.debug().map(|v| v as u32));
+    ::std::env::set_var("RUST_LOG", "actix_web=info,kanidm=info");
 
     env_logger::builder()
         .format_timestamp(None)
@@ -124,7 +121,7 @@ async fn main() {
 
     match opt {
         Opt::Server(sopt) => {
-            info!("Running in server mode ...");
+            eprintln!("Running in server mode ...");
 
             config.update_db_path(&sopt.commonopts.db_path);
             config.update_tls(&sopt.ca_path, &sopt.cert_path, &sopt.key_path);
@@ -139,47 +136,47 @@ async fn main() {
                     sctx.stop()
                 }
                 Err(_) => {
-                    error!("Failed to start server core!");
+                    eprintln!("Failed to start server core!");
                     return;
                 }
             }
         }
         Opt::Backup(bopt) => {
-            info!("Running in backup mode ...");
+            eprintln!("Running in backup mode ...");
 
             config.update_db_path(&bopt.commonopts.db_path);
 
             let p = match bopt.path.to_str() {
                 Some(p) => p,
                 None => {
-                    error!("Invalid backup path");
+                    eprintln!("Invalid backup path");
                     std::process::exit(1);
                 }
             };
             backup_server_core(config, p);
         }
         Opt::Restore(ropt) => {
-            info!("Running in restore mode ...");
+            eprintln!("Running in restore mode ...");
 
             config.update_db_path(&ropt.commonopts.db_path);
 
             let p = match ropt.path.to_str() {
                 Some(p) => p,
                 None => {
-                    error!("Invalid restore path");
+                    eprintln!("Invalid restore path");
                     std::process::exit(1);
                 }
             };
             restore_server_core(config, p);
         }
         Opt::Verify(vopt) => {
-            info!("Running in db verification mode ...");
+            eprintln!("Running in db verification mode ...");
 
             config.update_db_path(&vopt.db_path);
             verify_server_core(config);
         }
         Opt::RecoverAccount(raopt) => {
-            info!("Running account recovery ...");
+            eprintln!("Running account recovery ...");
 
             let password = rpassword::prompt_password_stderr("new password: ").unwrap();
             config.update_db_path(&raopt.commonopts.db_path);
@@ -188,20 +185,20 @@ async fn main() {
         }
         /*
         Opt::ResetServerId(vopt) => {
-            info!("Resetting server id. THIS WILL BREAK REPLICATION");
+            eprintln!("Resetting server id. THIS WILL BREAK REPLICATION");
 
             config.update_db_path(&vopt.db_path);
             reset_sid_core(config);
         }
         */
         Opt::Reindex(copt) => {
-            info!("Running in reindex mode ...");
+            eprintln!("Running in reindex mode ...");
 
             config.update_db_path(&copt.db_path);
             reindex_server_core(config);
         }
         Opt::DomainChange(dopt) => {
-            info!("Running in domain name change mode ... this may take a long time ...");
+            eprintln!("Running in domain name change mode ... this may take a long time ...");
 
             config.update_db_path(&dopt.commonopts.db_path);
             domain_rename_core(config, dopt.new_domain_name);
