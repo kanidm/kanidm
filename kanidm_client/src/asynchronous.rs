@@ -45,7 +45,7 @@ impl KanidmAsyncClient {
             unexpect => return Err(ClientError::Http(unexpect, response.json().await.ok())),
         }
 
-        // TODO: What about errors
+        // TODO #253: What about errors
         let r: T = response.json().await.unwrap();
 
         Ok(r)
@@ -83,7 +83,7 @@ impl KanidmAsyncClient {
             unexpect => return Err(ClientError::Http(unexpect, response.json().await.ok())),
         }
 
-        // TODO: What about errors
+        // TODO #253: What about errors
         let r: T = response.json().await.unwrap();
 
         Ok(r)
@@ -111,7 +111,7 @@ impl KanidmAsyncClient {
             unexpect => return Err(ClientError::Http(unexpect, response.json().await.ok())),
         }
 
-        // TODO: What about errors
+        // TODO #253: What about errors
         let r: T = response.json().await.unwrap();
 
         Ok(r)
@@ -180,7 +180,8 @@ impl KanidmAsyncClient {
     }
 
     pub async fn auth_anonymous(&self) -> Result<UserAuthToken, ClientError> {
-        // TODO: Check state for auth continue contains anonymous.
+        // TODO #251: Check state for auth continue contains anonymous.
+        // #251 will remove the need for this check.
         let _state = match self.auth_step_init("anonymous", None).await {
             Ok(s) => s,
             Err(e) => return Err(e),

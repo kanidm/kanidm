@@ -176,7 +176,7 @@ impl SchemaAttribute {
         })
     }
 
-    // TODO: There may be a difference between a value and a filter value on complex
+    // There may be a difference between a value and a filter value on complex
     // types - IE a complex type may have multiple parts that are secret, but a filter
     // on that may only use a single tagged attribute for example.
     pub fn validate_partialvalue(&self, a: &str, v: &PartialValue) -> Result<(), SchemaError> {

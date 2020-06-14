@@ -458,7 +458,7 @@ impl CacheLayer {
             .unwrap_or_else(|_| Vec::new())
             .into_iter()
             .map(|ut| {
-                // TODO: We'll have a switch to convert this to spn in some configs
+                // TODO #181: We'll have a switch to convert this to spn in some configs
                 // in the future.
                 ut.name
             })
@@ -480,7 +480,7 @@ impl CacheLayer {
                         name: tok.name,
                         gid: tok.gidnumber,
                         gecos: tok.displayname,
-                        // TODO: default shell override.
+                        // TODO #254: default shell override.
                         shell: tok.shell.unwrap_or_else(|| "/bin/bash".to_string()),
                     }
                 })
@@ -496,7 +496,7 @@ impl CacheLayer {
                 name: tok.name,
                 gid: tok.gidnumber,
                 gecos: tok.displayname,
-                // TODO: default shell override.
+                // TODO #254: default shell override.
                 shell: tok.shell.unwrap_or_else(|| "/bin/bash".to_string()),
             }
         }))

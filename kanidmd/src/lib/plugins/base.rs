@@ -1,6 +1,5 @@
 use crate::plugins::Plugin;
 use std::collections::BTreeSet;
-// TODO: Should be able to generate all uuid's via Value.
 use uuid::Uuid;
 
 use crate::audit::AuditScope;

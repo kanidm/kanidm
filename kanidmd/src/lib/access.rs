@@ -45,7 +45,6 @@ lazy_static! {
 #[derive(Debug, Clone)]
 pub struct AccessControlSearch {
     acp: AccessControlProfile,
-    // TODO: Should this change to Value? May help to reduce transformations during processing.
     attrs: BTreeSet<String>,
 }
 

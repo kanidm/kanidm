@@ -173,7 +173,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
                     // continue, and helps to keep non-needed entry specific data
                     // out of the LRU.
                     let account = Account::try_from_entry_ro(au, entry, &mut self.qs_read)?;
-                    let auth_session = AuthSession::new(account, init.appid.clone());
+                    let auth_session = AuthSession::new(au, account, init.appid.clone());
 
                     // Get the set of mechanisms that can proceed. This is tied
                     // to the session so that it can mutate state and have progression
@@ -298,7 +298,6 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         au: &mut AuditScope,
         rate: &RadiusAuthTokenEvent,
     ) -> Result<RadiusAuthToken, OperationError> {
-        // TODO: This needs to be an impersonate search!
         let account_entry = try_audit!(
             au,
             self.qs_read

@@ -332,10 +332,11 @@ impl Entry<EntryInit, EntryNew> {
             .attrs
             .iter()
             .map(|(k, v)| {
+                let nk = qs.get_schema().normalise_attr_name(k);
                 let nv: Result<BTreeSet<Value>, _> =
-                    v.iter().map(|vr| qs.clone_value(audit, &k, vr)).collect();
+                    v.iter().map(|vr| qs.clone_value(audit, &nk, vr)).collect();
                 match nv {
-                    Ok(nvi) => Ok((k.clone(), nvi)),
+                    Ok(nvi) => Ok((nk, nvi)),
                     Err(e) => Err(e),
                 }
             })
@@ -1561,13 +1562,6 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         let _ = self.attrs.insert("last_modified_cid".to_string(), cv);
     }
 
-    /*
-     * WARNING: Should these TODO move to EntryValid only?
-     * I've tried to do this once, but the issue is that there
-     * is a lot of code in normalised and other states that
-     * relies on the ability to get ava. I think we may not be
-     * able to do so "easily".
-     */
     pub fn get_ava(&self, attr: &str) -> Option<Vec<&Value>> {
         match self.attrs.get(attr) {
             Some(vs) => {

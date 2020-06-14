@@ -398,12 +398,8 @@ pub trait QueryServerTransaction {
         // Should this actually be a fn of Value - no - I think that introduces issues with the
         // monomorphisation of the trait for transactions, so we should have this here.
 
-        // Normalise the attribute name for lookup.
-        // TODO: Should we return this?
-        let temp_a = schema.normalise_attr_name(attr);
-
         // Lookup the attr
-        match schema.get_attributes().get(&temp_a) {
+        match schema.get_attributes().get(attr) {
             Some(schema_a) => {
                 match schema_a.syntax {
                     SyntaxType::UTF8STRING => Ok(Value::new_utf8(value.to_string())),
@@ -461,7 +457,7 @@ pub trait QueryServerTransaction {
             None => {
                 // No attribute of this name exists - fail fast, there is no point to
                 // proceed, as nothing can be satisfied.
-                Err(OperationError::InvalidAttributeName(temp_a))
+                Err(OperationError::InvalidAttributeName(attr.to_string()))
             }
         }
     }
@@ -473,11 +469,9 @@ pub trait QueryServerTransaction {
         value: &str,
     ) -> Result<PartialValue, OperationError> {
         let schema = self.get_schema();
-        // TODO: Should we return this?
-        let temp_a = schema.normalise_attr_name(attr);
 
         // Lookup the attr
-        match schema.get_attributes().get(&temp_a) {
+        match schema.get_attributes().get(attr) {
             Some(schema_a) => {
                 match schema_a.syntax {
                     SyntaxType::UTF8STRING => Ok(PartialValue::new_utf8(value.to_string())),
@@ -549,7 +543,7 @@ pub trait QueryServerTransaction {
             None => {
                 // No attribute of this name exists - fail fast, there is no point to
                 // proceed, as nothing can be satisfied.
-                Err(OperationError::InvalidAttributeName(temp_a))
+                Err(OperationError::InvalidAttributeName(attr.to_string()))
             }
         }
     }
@@ -3025,11 +3019,11 @@ mod tests {
 
             assert!(r1.is_err());
 
-            // test attr not-normalised
+            // test attr not-normalised (error)
             // test attr not-reference
             let r2 = server_txn.clone_value(audit, &"NaMe".to_string(), &"NaMe".to_string());
 
-            assert!(r2 == Ok(Value::new_iname_s("NaMe")));
+            assert!(r2.is_err());
 
             // test attr reference
             let r3 =

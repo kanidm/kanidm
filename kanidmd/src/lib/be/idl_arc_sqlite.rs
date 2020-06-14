@@ -158,7 +158,7 @@ macro_rules! get_idl {
         $idx_key:expr
     ) => {{
         lperf_trace_segment!($audit, "be::idl_arc_sqlite::get_idl", || {
-            // TODO: Find a way to implement borrow for this properly
+            // TODO #259: Find a way to implement borrow for this properly
             // First attempt to get from this cache.
             let cache_key = IdlCacheKey {
                 a: $attr.to_string(),

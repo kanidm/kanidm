@@ -20,7 +20,7 @@ pub enum Policy {
 }
 */
 
-// TODO: Determine this at startup based on a time factor
+// TODO #255: Determine this at startup based on a time factor
 const PBKDF2_COST: usize = 10000;
 // NIST 800-63.b salt should be 112 bits -> 14  8u8.
 // I choose tinfoil hat though ...
@@ -170,7 +170,7 @@ pub struct Credential {
     // Uuid of Credential, used by auth session to lock this specific credential
     // if required.
     pub(crate) uuid: Uuid,
-    // TODO: Add auth policy IE validUntil, lock state ...
+    // TODO #59: Add auth policy IE validUntil, lock state ...
     // locked: bool
 }
 

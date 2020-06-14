@@ -270,7 +270,6 @@ async fn json_rest_event_get_id_attr(
 
     match state.qe_r.send(obj).await {
         Ok(Ok(mut event_result)) => {
-            // TODO: Check this only has len 1, even though that satte should be impossible.
             // Only get one result
             let r = event_result.pop().and_then(|mut e| {
                 // Only get the attribute as requested.
@@ -374,7 +373,8 @@ async fn json_rest_event_delete_id_attr(
     let (id, attr) = path.into_inner();
 
     let (eventid, hvalue) = new_eventid!();
-    // TODO: Attempt to get an option Vec<String> here?
+    // TODO #211: Attempt to get an option Vec<String> here?
+    // It's probably better to focus on SCIM instead, it seems richer than this.
     let obj = PurgeAttributeMessage {
         uat,
         uuid_or_name: id,

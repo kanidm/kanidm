@@ -104,12 +104,12 @@ impl Plugin for Protected {
                     Modify::Present(a, v) => {
                         // TODO: Can we avoid this clone?
                         if a == "class"
-                            && (v == &(VCLASS_SYSTEM.clone())
-                                || v == &(VCLASS_DOMAIN_INFO.clone())
-                                || v == &(VCLASS_SYSTEM_INFO.clone())
-                                || v == &(VCLASS_SYSTEM_CONFIG.clone())
-                                || v == &(VCLASS_TOMBSTONE.clone())
-                                || v == &(VCLASS_RECYCLED.clone()))
+                            && (v == &(*VCLASS_SYSTEM)
+                                || v == &(*VCLASS_DOMAIN_INFO)
+                                || v == &(*VCLASS_SYSTEM_INFO)
+                                || v == &(*VCLASS_SYSTEM_CONFIG)
+                                || v == &(*VCLASS_TOMBSTONE)
+                                || v == &(*VCLASS_RECYCLED))
                         {
                             Err(OperationError::SystemProtectedObject)
                         } else {

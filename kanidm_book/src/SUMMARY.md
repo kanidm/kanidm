@@ -11,6 +11,7 @@
 - [RADIUS](./radius.md)
 - [Password Quality and Badlisting](./password_quality.md)
 - [Recycle Bin](./recycle_bin.md)
+- [Legacy Applications -- LDAP](./ldap.md)
 -----------
 [Why TLS?](./why_tls.md)
 

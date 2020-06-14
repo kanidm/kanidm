@@ -73,7 +73,7 @@ impl KanidmClientBuilder {
 
     fn parse_certificate(ca_path: &str) -> Result<reqwest::Certificate, ()> {
         let mut buf = Vec::new();
-        // TODO: Handle these errors better, or at least provide diagnostics?
+        // TODO #253: Handle these errors better, or at least provide diagnostics?
         let mut f = File::open(ca_path).map_err(|_| ())?;
         f.read_to_end(&mut buf).map_err(|_| ())?;
         reqwest::Certificate::from_pem(&buf).map_err(|_| ())
@@ -314,7 +314,7 @@ impl KanidmClient {
             unexpect => return Err(ClientError::Http(unexpect, response.json().ok())),
         }
 
-        // TODO: What about errors
+        // TODO #253: What about errors
         let r: T = response.json().unwrap();
 
         Ok(r)
@@ -348,7 +348,7 @@ impl KanidmClient {
             unexpect => return Err(ClientError::Http(unexpect, response.json().ok())),
         }
 
-        // TODO: What about errors
+        // TODO #253: What about errors
         let r: T = response.json().unwrap();
 
         Ok(r)
@@ -373,7 +373,7 @@ impl KanidmClient {
             unexpect => return Err(ClientError::Http(unexpect, response.json().ok())),
         }
 
-        // TODO: What about errors
+        // TODO #253: What about errors
         let r: T = response.json().unwrap();
 
         Ok(r)
@@ -421,7 +421,7 @@ impl KanidmClient {
 
     // auth
     pub fn auth_anonymous(&self) -> Result<UserAuthToken, ClientError> {
-        // TODO: Check state for auth continue contains anonymous.
+        // TODO #251: Check state for auth continue contains anonymous.
         let _state = match self.auth_step_init("anonymous", None) {
             Ok(s) => s,
             Err(e) => return Err(e),

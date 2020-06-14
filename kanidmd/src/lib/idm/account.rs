@@ -87,7 +87,7 @@ pub(crate) struct Account {
     // app_creds: Vec<Credential>
     // account expiry? (as opposed to cred expiry)
     pub spn: String,
-    // TODO: When you add mail, you should update the check to zxcvbn
+    // TODO #256: When you add mail, you should update the check to zxcvbn
     // to include these.
     // pub mail: Vec<String>
 }
@@ -154,7 +154,7 @@ impl Account {
         match appid {
             Some(_) => Err(OperationError::InvalidState),
             None => {
-                // TODO: Enforce PW policy. Can we allow this change?
+                // TODO #59: Enforce PW policy. Can we allow this change?
                 match &self.primary {
                     // Change the cred
                     Some(primary) => {

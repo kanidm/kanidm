@@ -659,7 +659,6 @@ impl From<IndexType> for Value {
 impl From<&str> for Value {
     fn from(s: &str) -> Self {
         // Fuzzy match for uuid's
-        // TODO: Will I regret this?
         match Uuid::parse_str(s) {
             Ok(u) => Value {
                 pv: PartialValue::Uuid(u),
@@ -1065,7 +1064,6 @@ impl Value {
 
     // Keep this updated with DbValueV1 in be::dbvalue.
     pub(crate) fn from_db_valuev1(v: DbValueV1) -> Result<Self, ()> {
-        // TODO: Should this actually take ownership? Or do we clone?
         match v {
             DbValueV1::U8(s) => Ok(Value {
                 pv: PartialValue::Utf8(s),
@@ -1149,7 +1147,7 @@ impl Value {
     }
 
     pub(crate) fn to_db_valuev1(&self) -> DbValueV1 {
-        // TODO: Should this actually take ownership? Or do we clone?
+        // This has to clone due to how the backend works.
         match &self.pv {
             PartialValue::Utf8(s) => DbValueV1::U8(s.clone()),
             PartialValue::Iutf8(s) => DbValueV1::I8(s.clone()),

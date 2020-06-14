@@ -335,9 +335,6 @@ pub const JSON_ANONYMOUS_V1: &str = r#"{
     }
 }"#;
 
-// need a domain_trust_info as well.
-// TODO
-
 // ============ TEST DATA ============
 #[cfg(test)]
 pub const JSON_TESTPERSON1: &str = r#"{

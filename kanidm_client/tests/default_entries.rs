@@ -286,7 +286,7 @@ fn test_default_entries_rbac_account_managers() {
         static PRIVATE_DATA_ATTRS: [&str; 1] = ["legalname"];
         test_read_attrs(&rsclient, "test", &PRIVATE_DATA_ATTRS, false);
         test_write_attrs(&rsclient, "test", &PRIVATE_DATA_ATTRS, false);
-        // TODO: lock and _unlock, except high access members
+        // TODO #59: lock and _unlock, except high access members
     });
 }
 
@@ -381,7 +381,7 @@ fn test_default_entries_rbac_admins_access_control_entries() {
 }
 
 // read schema entries.
-// TODO: write schema entries
+// TODO #252: write schema entries
 #[test]
 fn test_default_entries_rbac_admins_schema_entries() {
     run_test(|rsclient: KanidmClient| {

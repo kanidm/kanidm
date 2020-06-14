@@ -341,7 +341,6 @@ impl SearchEvent {
             filter_orig: filter_all!(f_self())
                 .validate(qs.get_schema())
                 .map_err(OperationError::SchemaViolation)?,
-            // TODO: Should we limit this?
             attrs: None,
         })
     }

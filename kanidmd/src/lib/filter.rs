@@ -629,11 +629,20 @@ impl FilterComp {
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         Ok(match f {
-            ProtoFilter::Eq(a, v) => FilterComp::Eq(a.clone(), qs.clone_partialvalue(audit, a, v)?),
-            ProtoFilter::Sub(a, v) => {
-                FilterComp::Sub(a.clone(), qs.clone_partialvalue(audit, a, v)?)
+            ProtoFilter::Eq(a, v) => {
+                let nk = qs.get_schema().normalise_attr_name(a);
+                let v = qs.clone_partialvalue(audit, nk.as_str(), v)?;
+                FilterComp::Eq(nk, v)
             }
-            ProtoFilter::Pres(a) => FilterComp::Pres(a.clone()),
+            ProtoFilter::Sub(a, v) => {
+                let nk = qs.get_schema().normalise_attr_name(a);
+                let v = qs.clone_partialvalue(audit, nk.as_str(), v)?;
+                FilterComp::Sub(nk, v)
+            }
+            ProtoFilter::Pres(a) => {
+                let nk = qs.get_schema().normalise_attr_name(a);
+                FilterComp::Pres(nk)
+            }
             ProtoFilter::Or(l) => FilterComp::Or(
                 l.iter()
                     .map(|f| Self::from_ro(audit, f, qs))
@@ -655,11 +664,20 @@ impl FilterComp {
         qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         Ok(match f {
-            ProtoFilter::Eq(a, v) => FilterComp::Eq(a.clone(), qs.clone_partialvalue(audit, a, v)?),
-            ProtoFilter::Sub(a, v) => {
-                FilterComp::Sub(a.clone(), qs.clone_partialvalue(audit, a, v)?)
+            ProtoFilter::Eq(a, v) => {
+                let nk = qs.get_schema().normalise_attr_name(a);
+                let v = qs.clone_partialvalue(audit, nk.as_str(), v)?;
+                FilterComp::Eq(nk, v)
             }
-            ProtoFilter::Pres(a) => FilterComp::Pres(a.clone()),
+            ProtoFilter::Sub(a, v) => {
+                let nk = qs.get_schema().normalise_attr_name(a);
+                let v = qs.clone_partialvalue(audit, nk.as_str(), v)?;
+                FilterComp::Sub(nk, v)
+            }
+            ProtoFilter::Pres(a) => {
+                let nk = qs.get_schema().normalise_attr_name(a);
+                FilterComp::Pres(nk)
+            }
             ProtoFilter::Or(l) => FilterComp::Or(
                 l.iter()
                     .map(|f| Self::from_rw(audit, f, qs))

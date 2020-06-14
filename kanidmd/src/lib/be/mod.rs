@@ -1214,7 +1214,7 @@ impl Backend {
     pub fn write(&self, idxmeta: &BTreeSet<(String, IndexType)>) -> BackendWriteTransaction {
         BackendWriteTransaction {
             idlayer: self.idlayer.write(),
-            // TODO: Performance improvement here by NOT cloning the idxmeta.
+            // TODO #257: Performance improvement here by NOT cloning the idxmeta.
             idxmeta: (*idxmeta).clone(),
         }
     }

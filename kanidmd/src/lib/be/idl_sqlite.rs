@@ -134,11 +134,12 @@ pub trait IdlSqliteTransaction {
                     OperationError::SQLiteError
                 );
 
-                // TODO: I have no idea how to make this an iterator chain ... so what
+
+                // TODO #258: Can this actually just load in a single select?
+                // TODO #258: I have no idea how to make this an iterator chain ... so what
                 // I have now is probably really bad :(
                 let mut results = Vec::new();
 
-                // TODO: Can this actually just load in a single select?
                 /*
                 let decompressed: Result<Vec<i64>, _> = idli.into_iter()
                     .map(|u| i64::try_from(u).map_err(|_| OperationError::InvalidEntryID))

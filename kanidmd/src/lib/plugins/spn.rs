@@ -69,7 +69,8 @@ impl Plugin for Spn {
         // needed to validate is the same as generation, so we may as well
         // just generate and set blindly when required.
 
-        // TODO: Should we work out what classes dynamically from schema into a filter?
+        // Should we work out what classes dynamically from schema into a filter?
+        // No - types that are trust replicated are fixed.
         let mut domain_name: Option<String> = None;
 
         for e in cand.iter_mut() {
@@ -154,7 +155,7 @@ impl Plugin for Spn {
     ) -> Result<(), OperationError> {
         // On modify, if changing domain_name on UUID_DOMAIN_INFO
         //    trigger the spn regen ... which is expensive. Future
-        // todo will be improvements to modify on large txns.
+        // TODO #157: will be improvements to modify on large txns.
 
         let domain_name_changed =
             cand.iter()
