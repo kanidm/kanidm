@@ -123,8 +123,6 @@ mod tests {
     fn test_gidnumber_create_generate() {
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["account", "posixaccount"],
                 "name": ["testperson"],
@@ -157,8 +155,6 @@ mod tests {
     fn test_gidnumber_create_noaction() {
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["account", "posixaccount"],
                 "name": ["testperson"],
@@ -192,8 +188,6 @@ mod tests {
     fn test_gidnumber_modify_generate() {
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["account"],
                 "name": ["testperson"],
@@ -259,8 +253,6 @@ mod tests {
     fn test_gidnumber_modify_noregen() {
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["account", "posixaccount"],
                 "name": ["testperson"],

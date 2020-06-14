@@ -247,7 +247,7 @@ impl Handler<SearchMessage> for QueryServerReadV1 {
 
     fn handle(&mut self, msg: SearchMessage, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("search", msg.eventid.clone(), self.log_level.clone());
-        let res = lperf_segment!(&mut audit, "actors::v1_read::handle<SearchMessage>", || {
+        let res = lperf_op_segment!(&mut audit, "actors::v1_read::handle<SearchMessage>", || {
             // Begin a read
             let mut qs_read = self.qs.read();
 
@@ -286,7 +286,7 @@ impl Handler<AuthMessage> for QueryServerReadV1 {
         // the credentials provided is sufficient to say if someone is
         // "authenticated" or not.
         let mut audit = AuditScope::new("auth", msg.eventid.clone(), self.log_level.clone());
-        let res = lperf_segment!(&mut audit, "actors::v1_read::handle<AuthMessage>", || {
+        let res = lperf_op_segment!(&mut audit, "actors::v1_read::handle<AuthMessage>", || {
             lsecurity!(audit, "Begin auth event {:?}", msg);
 
             // Destructure it.
@@ -304,7 +304,7 @@ impl Handler<AuthMessage> for QueryServerReadV1 {
             // Trigger a session clean *before* we take any auth steps.
             // It's important to do this before to ensure that timeouts on
             // the session are enforced.
-            lperf_segment!(
+            lperf_trace_segment!(
                 audit,
                 "actors::v1_read::handle<AuthMessage> -> expire_auth_sessions",
                 || { idm_write.expire_auth_sessions(ct) }
@@ -334,7 +334,7 @@ impl Handler<WhoamiMessage> for QueryServerReadV1 {
 
     fn handle(&mut self, msg: WhoamiMessage, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("whoami", msg.eventid.clone(), self.log_level.clone());
-        let res = lperf_segment!(&mut audit, "actors::v1_read::handle<WhoamiMessage>", || {
+        let res = lperf_op_segment!(&mut audit, "actors::v1_read::handle<WhoamiMessage>", || {
             // TODO #62: Move this to IdmServer!!!
             // Begin a read
             let mut qs_read = self.qs.read();
@@ -396,7 +396,7 @@ impl Handler<InternalSearchMessage> for QueryServerReadV1 {
             msg.eventid.clone(),
             self.log_level.clone(),
         );
-        let res = lperf_segment!(
+        let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_read::handle<InternalSearchMessage>",
             || {
@@ -441,7 +441,7 @@ impl Handler<InternalSearchRecycledMessage> for QueryServerReadV1 {
             msg.eventid.clone(),
             self.log_level.clone(),
         );
-        let res = lperf_segment!(
+        let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_read::handle<InternalSearchRecycledMessage>",
             || {
@@ -484,7 +484,7 @@ impl Handler<InternalRadiusReadMessage> for QueryServerReadV1 {
             msg.eventid.clone(),
             self.log_level.clone(),
         );
-        let res = lperf_segment!(
+        let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_read::handle<InternalRadiusReadMessage>",
             || {
@@ -550,7 +550,7 @@ impl Handler<InternalRadiusTokenReadMessage> for QueryServerReadV1 {
             msg.eventid.clone(),
             self.log_level.clone(),
         );
-        let res = lperf_segment!(
+        let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_read::handle<InternalRadiusTokenReadMessage>",
             || {
@@ -604,7 +604,7 @@ impl Handler<InternalUnixUserTokenReadMessage> for QueryServerReadV1 {
             msg.eventid.clone(),
             self.log_level.clone(),
         );
-        let res = lperf_segment!(
+        let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_read::handle<InternalUnixUserTokenReadMessage>",
             || {
@@ -660,7 +660,7 @@ impl Handler<InternalUnixGroupTokenReadMessage> for QueryServerReadV1 {
             msg.eventid.clone(),
             self.log_level.clone(),
         );
-        let res = lperf_segment!(
+        let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_read::handle<InternalUnixGroupTokenReadMessage>",
             || {
@@ -712,7 +712,7 @@ impl Handler<InternalSshKeyReadMessage> for QueryServerReadV1 {
             msg.eventid.clone(),
             self.log_level.clone(),
         );
-        let res = lperf_segment!(
+        let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_read::handle<InternalSshKeyReadMessage>",
             || {
@@ -783,7 +783,7 @@ impl Handler<InternalSshKeyTagReadMessage> for QueryServerReadV1 {
             eventid,
             self.log_level.clone(),
         );
-        let res = lperf_segment!(
+        let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_read::handle<InternalSshKeyTagReadMessage>",
             || {
@@ -854,7 +854,7 @@ impl Handler<IdmAccountUnixAuthMessage> for QueryServerReadV1 {
             msg.eventid.clone(),
             self.log_level.clone(),
         );
-        let res = lperf_segment!(
+        let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_read::handle<IdmAccountUnixAuthMessage>",
             || {
@@ -929,7 +929,7 @@ impl Handler<LdapRequestMessage> for QueryServerReadV1 {
             eventid.clone(),
             self.log_level.clone(),
         );
-        let res = lperf_segment!(
+        let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_read::handle<LdapRequestMessage>",
             || {

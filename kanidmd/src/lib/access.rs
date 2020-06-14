@@ -441,9 +441,7 @@ pub trait AccessControlsTransaction {
                                             acs
                                         );
                                         // add search_attrs to allowed.
-                                        let r: Vec<&str> =
-                                            acs.attrs.iter().map(|s| s.as_str()).collect();
-                                        Some(r)
+                                        Some(acs.attrs.iter().map(|s| s.as_str()))
                                     } else {
                                         lsecurity_access!(
                                             audit,
@@ -603,9 +601,12 @@ pub trait AccessControlsTransaction {
                                             acs
                                         );
                                         // add search_attrs to allowed.
+                                        /*
                                         let r: Vec<&str> =
                                             acs.attrs.iter().map(|s| s.as_str()).collect();
                                         Some(r)
+                                        */
+                                        Some(acs.attrs.iter().map(|s| s.as_str()))
                                     } else {
                                         lsecurity_access!(
                                             audit,
@@ -1361,8 +1362,6 @@ mod tests {
                 audit,
                 &mut qs_write,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object"],
                         "name": ["acp_invalid"],
@@ -1376,8 +1375,6 @@ mod tests {
                 audit,
                 &mut qs_write,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object", "access_control_profile"],
                         "name": ["acp_invalid"],
@@ -1391,8 +1388,6 @@ mod tests {
                 audit,
                 &mut qs_write,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object", "access_control_profile"],
                         "name": ["acp_invalid"],
@@ -1409,8 +1404,6 @@ mod tests {
                 audit,
                 &mut qs_write,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object", "access_control_profile"],
                         "name": ["acp_valid"],
@@ -1437,8 +1430,6 @@ mod tests {
                 audit,
                 &mut qs_write,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object", "access_control_profile"],
                         "name": ["acp_valid"],
@@ -1458,8 +1449,6 @@ mod tests {
                 audit,
                 &mut qs_write,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object", "access_control_profile", "access_control_delete"],
                         "name": ["acp_valid"],
@@ -1488,8 +1477,6 @@ mod tests {
                 audit,
                 &mut qs_write,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object", "access_control_search"],
                         "name": ["acp_invalid"],
@@ -1511,8 +1498,6 @@ mod tests {
                 audit,
                 &mut qs_write,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object", "access_control_profile"],
                         "name": ["acp_invalid"],
@@ -1534,8 +1519,6 @@ mod tests {
                 audit,
                 &mut qs_write,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object", "access_control_profile", "access_control_search"],
                         "name": ["acp_invalid"],
@@ -1556,8 +1539,6 @@ mod tests {
                 audit,
                 &mut qs_write,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object", "access_control_profile", "access_control_search"],
                         "name": ["acp_valid"],
@@ -1586,8 +1567,6 @@ mod tests {
                 audit,
                 &mut qs_write,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object", "access_control_profile"],
                         "name": ["acp_valid"],
@@ -1610,8 +1589,6 @@ mod tests {
                 audit,
                 &mut qs_write,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object", "access_control_profile", "access_control_modify"],
                         "name": ["acp_valid"],
@@ -1631,8 +1608,6 @@ mod tests {
                 audit,
                 &mut qs_write,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object", "access_control_profile", "access_control_modify"],
                         "name": ["acp_valid"],
@@ -1663,8 +1638,6 @@ mod tests {
                 audit,
                 &mut qs_write,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object", "access_control_profile"],
                         "name": ["acp_valid"],
@@ -1686,8 +1659,6 @@ mod tests {
                 audit,
                 &mut qs_write,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object", "access_control_profile", "access_control_create"],
                         "name": ["acp_valid"],
@@ -1707,8 +1678,6 @@ mod tests {
                 audit,
                 &mut qs_write,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object", "access_control_profile", "access_control_create"],
                         "name": ["acp_valid"],
@@ -1738,8 +1707,6 @@ mod tests {
             let mut qs_write = qs.write(duration_from_epoch_now());
 
             let e: &str = r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": [
                             "object",
@@ -1803,8 +1770,6 @@ mod tests {
 
         let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-                "valid": null,
-                "state": null,
                 "attrs": {
                     "class": ["object"],
                     "name": ["testperson1"],
@@ -1912,8 +1877,6 @@ mod tests {
     }
 
     const JSON_TESTPERSON1_REDUCED: &'static str = r#"{
-        "valid": null,
-        "state": null,
         "attrs": {
             "name": ["testperson1"]
         }
@@ -2185,8 +2148,6 @@ mod tests {
     }
 
     const JSON_TEST_CREATE_AC1: &'static str = r#"{
-        "valid": null,
-        "state": null,
         "attrs": {
             "class": ["account"],
             "name": ["testperson1"],
@@ -2195,8 +2156,6 @@ mod tests {
     }"#;
 
     const JSON_TEST_CREATE_AC2: &'static str = r#"{
-        "valid": null,
-        "state": null,
         "attrs": {
             "class": ["account"],
             "name": ["testperson1"],
@@ -2206,8 +2165,6 @@ mod tests {
     }"#;
 
     const JSON_TEST_CREATE_AC3: &'static str = r#"{
-        "valid": null,
-        "state": null,
         "attrs": {
             "class": ["account", "notallowed"],
             "name": ["testperson1"],
@@ -2216,8 +2173,6 @@ mod tests {
     }"#;
 
     const JSON_TEST_CREATE_AC4: &'static str = r#"{
-        "valid": null,
-        "state": null,
         "attrs": {
             "class": ["account", "group"],
             "name": ["testperson1"],

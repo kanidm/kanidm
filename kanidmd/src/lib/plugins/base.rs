@@ -274,8 +274,6 @@ mod tests {
     use kanidm_proto::v1::{OperationError, PluginError};
 
     const JSON_ADMIN_ALLOW_ALL: &'static str = r#"{
-        "valid": null,
-        "state": null,
         "attrs": {
             "class": [
                 "object",
@@ -444,8 +442,6 @@ mod tests {
 
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["person"],
                 "name": ["testperson"],
@@ -481,8 +477,6 @@ mod tests {
     fn test_pre_create_uuid_exist() {
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["person"],
                 "name": ["testperson"],
@@ -514,8 +508,6 @@ mod tests {
 
         let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["person"],
                 "name": ["testperson_a"],
@@ -528,8 +520,6 @@ mod tests {
 
         let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["person"],
                 "name": ["testperson_a"],
@@ -559,8 +549,6 @@ mod tests {
         // Add another uuid to a type
         let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["group"],
                 "name": ["testgroup_a"],
@@ -590,8 +578,6 @@ mod tests {
         // Test attempting to remove a uuid
         let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["group"],
                 "name": ["testgroup_a"],
@@ -621,8 +607,6 @@ mod tests {
         // Test attempting to purge uuid
         let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["group"],
                 "name": ["testgroup_a"],

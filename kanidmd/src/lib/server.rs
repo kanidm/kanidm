@@ -2177,8 +2177,6 @@ mod tests {
 
             let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
-                "valid": null,
-                "state": null,
                 "attrs": {
                     "class": ["object", "person"],
                     "name": ["testperson"],
@@ -2245,8 +2243,6 @@ mod tests {
 
             let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
-                "valid": null,
-                "state": null,
                 "attrs": {
                     "class": ["object", "person"],
                     "name": ["testperson1"],
@@ -2259,8 +2255,6 @@ mod tests {
 
             let e2: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
-                "valid": null,
-                "state": null,
                 "attrs": {
                     "class": ["object", "person"],
                     "name": ["testperson2"],
@@ -2374,8 +2368,6 @@ mod tests {
 
             let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
-                "valid": null,
-                "state": null,
                 "attrs": {
                     "class": ["object", "person"],
                     "name": ["testperson1"],
@@ -2559,8 +2551,6 @@ mod tests {
             // First, create a tombstone
             let e_ts: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
-                "valid": null,
-                "state": null,
                 "attrs": {
                     "class": ["tombstone", "object"],
                     "uuid": ["9557f49c-97a5-4277-a9a5-097d17eb8317"]
@@ -2814,8 +2804,6 @@ mod tests {
 
             let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
-                "valid": null,
-                "state": null,
                 "attrs": {
                     "class": ["object", "person"],
                     "name": ["testperson1"],
@@ -2851,8 +2839,6 @@ mod tests {
 
             let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
-                "valid": null,
-                "state": null,
                 "attrs": {
                     "class": ["object", "person", "account"],
                     "name": ["testperson1"],
@@ -2896,8 +2882,6 @@ mod tests {
 
             let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
-                "valid": null,
-                "state": null,
                 "attrs": {
                     "class": ["object", "person", "account"],
                     "name": ["testperson1"],
@@ -3022,8 +3006,6 @@ mod tests {
             let mut server_txn = server.write(duration_from_epoch_now());
             let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
-                "valid": null,
-                "state": null,
                 "attrs": {
                     "class": ["object", "person"],
                     "name": ["testperson1"],
@@ -3141,8 +3123,6 @@ mod tests {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
-                "valid": null,
-                "state": null,
                 "attrs": {
                     "class": ["object", "testclass"],
                     "name": ["testobj1"],
@@ -3154,8 +3134,6 @@ mod tests {
             // Class definition
             let e_cd: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
-                "valid": null,
-                "state": null,
                 "attrs": {
                     "class": ["object", "classtype"],
                     "classname": ["testclass"],

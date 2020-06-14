@@ -164,8 +164,6 @@ mod tests {
         // Add another uuid to a type
         let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["account", "person"],
                 "name": ["testperson"],
@@ -196,8 +194,6 @@ mod tests {
         // Add another uuid to a type
         let mut ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["account", "person"],
                 "name": ["testperson"],
@@ -231,8 +227,6 @@ mod tests {
         // Add another uuid to a type
         let mut ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["account", "person"],
                 "name": ["testperson"],

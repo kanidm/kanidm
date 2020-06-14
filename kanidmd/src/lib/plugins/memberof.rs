@@ -402,8 +402,6 @@ mod tests {
     const UUID_D: &'static str = "dddddddd-2ab3-48e3-938d-1b4754cd2984";
 
     const EA: &'static str = r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["group", "memberof"],
                 "name": ["testgroup_a"],
@@ -412,8 +410,6 @@ mod tests {
         }"#;
 
     const EB: &'static str = r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["group", "memberof"],
                 "name": ["testgroup_b"],
@@ -422,8 +418,6 @@ mod tests {
         }"#;
 
     const EC: &'static str = r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["group", "memberof"],
                 "name": ["testgroup_c"],
@@ -432,8 +426,6 @@ mod tests {
         }"#;
 
     const ED: &'static str = r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["group", "memberof"],
                 "name": ["testgroup_d"],

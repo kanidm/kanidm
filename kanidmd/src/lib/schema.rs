@@ -1532,8 +1532,6 @@ mod tests {
             sch_from_entry_err!(
                 audit,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object", "attributetype"],
                         "attributename": ["schema_attr_test"],
@@ -1547,8 +1545,6 @@ mod tests {
             sch_from_entry_err!(
                 audit,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object", "attributetype"],
                         "attributename": ["schema_attr_test"],
@@ -1565,8 +1561,6 @@ mod tests {
             sch_from_entry_err!(
                 audit,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object", "attributetype"],
                         "attributename": ["schema_attr_test"],
@@ -1584,8 +1578,6 @@ mod tests {
             sch_from_entry_err!(
                 audit,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object", "attributetype"],
                         "attributename": ["schema_attr_test"],
@@ -1603,8 +1595,6 @@ mod tests {
             sch_from_entry_err!(
                 audit,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object", "attributetype"],
                         "attributename": ["schema_attr_test"],
@@ -1623,8 +1613,6 @@ mod tests {
             sch_from_entry_ok!(
                 audit,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object", "attributetype"],
                         "attributename": ["schema_attr_test"],
@@ -1642,8 +1630,6 @@ mod tests {
             sch_from_entry_ok!(
                 audit,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object", "attributetype"],
                         "attributename": ["schema_attr_test"],
@@ -1666,8 +1652,6 @@ mod tests {
             sch_from_entry_err!(
                 audit,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object", "classtype"],
                         "classname": ["schema_class_test"],
@@ -1680,8 +1664,6 @@ mod tests {
             sch_from_entry_err!(
                 audit,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object"],
                         "classname": ["schema_class_test"],
@@ -1696,8 +1678,6 @@ mod tests {
             sch_from_entry_ok!(
                 audit,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object", "classtype"],
                         "classname": ["schema_class_test"],
@@ -1712,8 +1692,6 @@ mod tests {
             sch_from_entry_ok!(
                 audit,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object", "classtype"],
                         "classname": ["schema_class_test"],
@@ -1728,8 +1706,6 @@ mod tests {
             sch_from_entry_ok!(
                 audit,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object", "classtype"],
                         "classname": ["schema_class_test"],
@@ -1744,8 +1720,6 @@ mod tests {
             sch_from_entry_ok!(
                 audit,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object", "classtype"],
                         "classname": ["schema_class_test"],
@@ -1761,8 +1735,6 @@ mod tests {
             sch_from_entry_ok!(
                 audit,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object", "classtype"],
                         "classname": ["schema_class_test"],

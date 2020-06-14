@@ -278,8 +278,6 @@ mod tests {
         // on create don't provide
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["account"],
                 "name": ["testperson"],
@@ -307,8 +305,6 @@ mod tests {
         // on a purge of the spen, generate it.
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["account"],
                 "name": ["testperson"],
@@ -335,8 +331,6 @@ mod tests {
         // on create providing invalid spn, we over-write it.
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["account"],
                 "spn": ["testperson@invalid_domain.com"],
@@ -364,8 +358,6 @@ mod tests {
         // On modify (removed/present) of the spn, just regenerate it.
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["account"],
                 "name": ["testperson"],

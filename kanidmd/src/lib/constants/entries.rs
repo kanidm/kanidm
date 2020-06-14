@@ -1,8 +1,4 @@
 pub const JSON_ADMIN_V1: &str = r#"{
-    "valid": {
-        "uuid": "00000000-0000-0000-0000-000000000000"
-    },
-    "state": null,
     "attrs": {
         "class": ["account", "memberof", "object"],
         "name": ["admin"],
@@ -13,10 +9,6 @@ pub const JSON_ADMIN_V1: &str = r#"{
 }"#;
 
 pub const JSON_IDM_ADMIN_V1: &str = r#"{
-    "valid": {
-        "uuid": "00000000-0000-0000-0000-000000000018"
-    },
-    "state": null,
     "attrs": {
         "class": ["account", "memberof", "object"],
         "name": ["idm_admin"],
@@ -27,10 +19,6 @@ pub const JSON_IDM_ADMIN_V1: &str = r#"{
 }"#;
 
 pub const JSON_IDM_ADMINS_V1: &str = r#"{
-    "valid": {
-        "uuid": "00000000-0000-0000-0000-000000000001"
-    },
-    "state": null,
     "attrs": {
         "class": ["group", "object"],
         "name": ["idm_admins"],
@@ -41,10 +29,6 @@ pub const JSON_IDM_ADMINS_V1: &str = r#"{
 }"#;
 
 pub const JSON_SYSTEM_ADMINS_V1: &str = r#"{
-    "valid": {
-        "uuid": "00000000-0000-0000-0000-000000000019"
-    },
-    "state": null,
     "attrs": {
         "class": ["group", "object"],
         "name": ["system_admins"],
@@ -357,8 +341,6 @@ pub const JSON_ANONYMOUS_V1: &str = r#"{
 // ============ TEST DATA ============
 #[cfg(test)]
 pub const JSON_TESTPERSON1: &str = r#"{
-    "valid": null,
-    "state": null,
     "attrs": {
         "class": ["object"],
         "name": ["testperson1"],
@@ -368,8 +350,6 @@ pub const JSON_TESTPERSON1: &str = r#"{
 
 #[cfg(test)]
 pub const JSON_TESTPERSON2: &str = r#"{
-    "valid": null,
-    "state": null,
     "attrs": {
         "class": ["object"],
         "name": ["testperson2"],

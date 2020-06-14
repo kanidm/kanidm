@@ -210,8 +210,6 @@ mod tests {
     fn test_pre_create_name_unique() {
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["person"],
                 "name": ["testperson"],
@@ -240,8 +238,6 @@ mod tests {
     fn test_pre_create_name_unique_2() {
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["person"],
                 "name": ["testperson"],
@@ -273,8 +269,6 @@ mod tests {
     fn test_pre_modify_name_unique() {
         let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["group"],
                 "name": ["testgroup_a"],
@@ -285,8 +279,6 @@ mod tests {
 
         let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["group"],
                 "name": ["testgroup_b"],
@@ -320,8 +312,6 @@ mod tests {
     fn test_pre_modify_name_unique_2() {
         let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["group"],
                 "name": ["testgroup_a"],
@@ -332,8 +322,6 @@ mod tests {
 
         let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["group"],
                 "name": ["testgroup_b"],

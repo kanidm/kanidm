@@ -28,8 +28,9 @@ pub enum LogTag {
     FilterWarning = 0x0000_2000,
     FilterInfo = 0x0000_4000,
     FilterTrace = 0x0000_8000,
-    PerfCoarse = 0x1000_0000,
-    PerfTrace = 0x2000_0000,
+    PerfOp = 0x1000_0000,
+    PerfCoarse = 0x2000_0000,
+    PerfTrace = 0x4000_0000,
     Trace = 0x8000_0000,
 }
 
@@ -39,15 +40,15 @@ pub enum LogLevel {
     // Errors only
     Quiet = 0x0000_1111,
     // All Error, All Security, Request and Admin Warning,
-    Default = 0x0000_1111 | 0x0000_0f00 | 0x0000_0022,
+    Default = 0x0000_1111 | 0x0000_0f00 | 0x0000_0022 | 0x1000_0000,
     // Default + Filter Plans
-    Filter = 0x0000_1111 | 0x0000_0f00 | 0x0000_0022 | 0x0000_4000,
+    Filter = 0x0000_1111 | 0x0000_0f00 | 0x0000_0022 | 0x0000_4000 | 0x1000_0000,
     // All Error, All Warning, All Info, Filter and Request Tracing
-    Verbose = 0x0000_ffff,
+    Verbose = 0x0000_ffff | 0x1000_0000,
     // Default + PerfCoarse
-    PerfBasic = 0x0000_1111 | 0x0000_0f00 | 0x0000_0022 | 0x1000_0000,
+    PerfBasic = 0x0000_1111 | 0x0000_0f00 | 0x0000_0022 | 0x3000_0000,
     // Default + PerfCoarse ? PerfTrace
-    PerfFull = 0x0000_1111 | 0x0000_0f00 | 0x0000_0022 | 0x3000_0000,
+    PerfFull = 0x0000_1111 | 0x0000_0f00 | 0x0000_0022 | 0x7000_0000,
     // Yolo
     FullTrace = 0xffff_ffff,
 }
@@ -85,8 +86,7 @@ impl fmt::Display for LogTag {
             LogTag::FilterWarning => write!(f, "filter::warning 🚧"),
             LogTag::FilterInfo => write!(f, "filter::info"),
             LogTag::FilterTrace => write!(f, "filter::trace"),
-            LogTag::PerfCoarse => write!(f, "perf::trace "),
-            LogTag::PerfTrace => write!(f, "perf::trace "),
+            LogTag::PerfOp | LogTag::PerfCoarse | LogTag::PerfTrace => write!(f, "perf::trace "),
             LogTag::Trace => write!(f, "trace::⌦"),
         }
     }
@@ -184,6 +184,13 @@ macro_rules! lsecurity_access {
     ($au:expr, $($arg:tt)*) => ({
         lqueue!($au, LogTag::SecurityAccess, $($arg)*)
     })
+}
+
+macro_rules! lperf_op_segment {
+    ($au:expr, $id:expr, $fun:expr) => {{
+        use crate::audit::LogTag;
+        lperf_tag_segment!($au, $id, LogTag::PerfOp, $fun)
+    }};
 }
 
 macro_rules! lperf_trace_segment {

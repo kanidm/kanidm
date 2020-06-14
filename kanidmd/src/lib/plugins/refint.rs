@@ -248,8 +248,6 @@ mod tests {
     fn test_create_uuid_reference_not_exist() {
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["group"],
                 "name": ["testgroup"],
@@ -277,8 +275,6 @@ mod tests {
     fn test_create_uuid_reference_exist() {
         let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["group"],
                 "name": ["testgroup_a"],
@@ -290,8 +286,6 @@ mod tests {
 
         let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["group"],
                 "name": ["testgroup_b"],
@@ -328,8 +322,6 @@ mod tests {
 
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["group"],
                 "name": ["testgroup"],
@@ -364,8 +356,6 @@ mod tests {
     fn test_modify_uuid_reference_exist() {
         let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["group"],
                 "name": ["testgroup_a"],
@@ -377,8 +367,6 @@ mod tests {
 
         let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["group"],
                 "name": ["testgroup_b"],
@@ -407,8 +395,6 @@ mod tests {
     fn test_modify_uuid_reference_not_exist() {
         let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["group"],
                 "name": ["testgroup_b"],
@@ -439,8 +425,6 @@ mod tests {
     fn test_modify_remove_referee() {
         let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["group"],
                 "name": ["testgroup_a"],
@@ -452,8 +436,6 @@ mod tests {
 
         let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["group"],
                 "name": ["testgroup_b"],
@@ -480,8 +462,6 @@ mod tests {
     fn test_modify_uuid_reference_self() {
         let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["group"],
                 "name": ["testgroup_a"],
@@ -511,8 +491,6 @@ mod tests {
     fn test_modify_reference_deleted() {
         let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["group", "recycled"],
                 "name": ["testgroup_a"],
@@ -524,8 +502,6 @@ mod tests {
 
         let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["group"],
                 "name": ["testgroup_b"],
@@ -558,8 +534,6 @@ mod tests {
     fn test_delete_remove_referent_valid() {
         let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["group"],
                 "name": ["testgroup_a"],
@@ -571,8 +545,6 @@ mod tests {
 
         let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["group"],
                 "name": ["testgroup_b"],
@@ -604,8 +576,6 @@ mod tests {
     fn test_delete_remove_referee() {
         let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["group"],
                 "name": ["testgroup_a"],
@@ -617,8 +587,6 @@ mod tests {
 
         let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["group"],
                 "name": ["testgroup_b"],
@@ -644,8 +612,6 @@ mod tests {
     fn test_delete_remove_reference_self() {
         let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["group"],
                 "name": ["testgroup_b"],

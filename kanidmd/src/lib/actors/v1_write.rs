@@ -433,7 +433,7 @@ impl Handler<CreateMessage> for QueryServerWriteV1 {
 
     fn handle(&mut self, msg: CreateMessage, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("create", msg.eventid.clone(), self.log_level.clone());
-        let res = lperf_segment!(
+        let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_write::handle<CreateMessage>",
             || {
@@ -501,7 +501,7 @@ impl Handler<DeleteMessage> for QueryServerWriteV1 {
 
     fn handle(&mut self, msg: DeleteMessage, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("delete", msg.eventid.clone(), self.log_level.clone());
-        let res = lperf_segment!(
+        let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_write::handle<DeleteMessage>",
             || {
@@ -535,7 +535,7 @@ impl Handler<InternalDeleteMessage> for QueryServerWriteV1 {
 
     fn handle(&mut self, msg: InternalDeleteMessage, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("delete", msg.eventid.clone(), self.log_level.clone());
-        let res = lperf_segment!(
+        let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_write::handle<InternalDeleteMessage>",
             || {
@@ -570,7 +570,7 @@ impl Handler<ReviveRecycledMessage> for QueryServerWriteV1 {
 
     fn handle(&mut self, msg: ReviveRecycledMessage, _: &mut Self::Context) -> Self::Result {
         let mut audit = AuditScope::new("revive", msg.eventid.clone(), self.log_level.clone());
-        let res = lperf_segment!(
+        let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_write::handle<ReviveRecycledMessage>",
             || {
@@ -614,7 +614,7 @@ impl Handler<InternalCredentialSetMessage> for QueryServerWriteV1 {
             msg.eventid.clone(),
             self.log_level.clone(),
         );
-        let res = lperf_segment!(
+        let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_write::handle<InternalCredentialSetMessage>",
             || {
@@ -745,7 +745,7 @@ impl Handler<IdmAccountSetPasswordMessage> for QueryServerWriteV1 {
             msg.eventid.clone(),
             self.log_level.clone(),
         );
-        let res = lperf_segment!(
+        let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_write::handle<IdmAccountSetPasswordMessage>",
             || {
@@ -790,7 +790,7 @@ impl Handler<InternalRegenerateRadiusMessage> for QueryServerWriteV1 {
             msg.eventid.clone(),
             self.log_level.clone(),
         );
-        let res = lperf_segment!(
+        let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_write::handle<InternalRegenerateRadiusMessage>",
             || {
@@ -843,7 +843,7 @@ impl Handler<PurgeAttributeMessage> for QueryServerWriteV1 {
             msg.eventid.clone(),
             self.log_level.clone(),
         );
-        let res = lperf_segment!(
+        let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_write::handle<PurgeAttributeMessage>",
             || {
@@ -895,7 +895,7 @@ impl Handler<RemoveAttributeValueMessage> for QueryServerWriteV1 {
             msg.eventid.clone(),
             self.log_level.clone(),
         );
-        let res = lperf_segment!(
+        let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_write::handle<RemoveAttributeValueMessage>",
             || {
@@ -954,7 +954,7 @@ impl Handler<AppendAttributeMessage> for QueryServerWriteV1 {
             eventid,
         } = msg;
         let mut audit = AuditScope::new("append_attribute", eventid, self.log_level.clone());
-        let res = lperf_segment!(
+        let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_write::handle<AppendAttributeMessage>",
             || {
@@ -990,7 +990,7 @@ impl Handler<SetAttributeMessage> for QueryServerWriteV1 {
             eventid,
         } = msg;
         let mut audit = AuditScope::new("set_attribute", eventid, self.log_level.clone());
-        let res = lperf_segment!(
+        let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_write::handle<SetAttributeMessage>",
             || {
@@ -1029,7 +1029,7 @@ impl Handler<InternalSshKeyCreateMessage> for QueryServerWriteV1 {
             eventid,
         } = msg;
         let mut audit = AuditScope::new("internal_sshkey_create", eventid, self.log_level.clone());
-        let res = lperf_segment!(
+        let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_write::handle<InternalSshKeyCreateMessage>",
             || {
@@ -1063,7 +1063,7 @@ impl Handler<IdmAccountPersonExtendMessage> for QueryServerWriteV1 {
         } = msg;
         let mut audit =
             AuditScope::new("idm_account_person_extend", eventid, self.log_level.clone());
-        let res = lperf_segment!(
+        let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_write::handle<IdmAccountPersonExtendMessage>",
             || {
@@ -1104,7 +1104,7 @@ impl Handler<IdmAccountUnixExtendMessage> for QueryServerWriteV1 {
             eventid,
         } = msg;
         let mut audit = AuditScope::new("idm_account_unix_extend", eventid, self.log_level.clone());
-        let res = lperf_segment!(
+        let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_write::handle<IdmAccountUnixExtendMessage>",
             || {
@@ -1149,7 +1149,7 @@ impl Handler<IdmGroupUnixExtendMessage> for QueryServerWriteV1 {
             eventid,
         } = msg;
         let mut audit = AuditScope::new("idm_group_unix_extend", eventid, self.log_level.clone());
-        let res = lperf_segment!(
+        let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_write::handle<IdmGroupUnixExtendMessage>",
             || {
@@ -1191,7 +1191,7 @@ impl Handler<IdmAccountUnixSetCredMessage> for QueryServerWriteV1 {
             msg.eventid.clone(),
             self.log_level.clone(),
         );
-        let res = lperf_segment!(
+        let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_write::handle<IdmAccountUnixSetCredMessage>",
             || {
@@ -1245,7 +1245,7 @@ impl Handler<PurgeTombstoneEvent> for QueryServerWriteV1 {
             msg.eventid.clone(),
             self.log_level.clone(),
         );
-        lperf_segment!(
+        lperf_op_segment!(
             &mut audit,
             "actors::v1_write::handle<PurgeTombstoneEvent>",
             || {
@@ -1275,7 +1275,7 @@ impl Handler<PurgeRecycledEvent> for QueryServerWriteV1 {
             msg.eventid.clone(),
             self.log_level.clone(),
         );
-        lperf_segment!(
+        lperf_op_segment!(
             &mut audit,
             "actors::v1_write::handle<PurgeRecycledEvent>",
             || {

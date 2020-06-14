@@ -3,10 +3,6 @@
 
 // system supplementary
 pub const JSON_SCHEMA_ATTR_DISPLAYNAME: &str = r#"{
-    "valid": {
-      "uuid": "00000000-0000-0000-0000-ffff00000040"
-    },
-    "state": null,
     "attrs": {
       "class": [
         "object",
@@ -38,10 +34,6 @@ pub const JSON_SCHEMA_ATTR_DISPLAYNAME: &str = r#"{
 }"#;
 pub const JSON_SCHEMA_ATTR_MAIL: &str = r#"
   {
-    "valid": {
-      "uuid": "00000000-0000-0000-0000-ffff00000041"
-    },
-    "state": null,
     "attrs": {
       "class": [
         "object",
@@ -74,10 +66,6 @@ pub const JSON_SCHEMA_ATTR_MAIL: &str = r#"
 "#;
 pub const JSON_SCHEMA_ATTR_SSH_PUBLICKEY: &str = r#"
   {
-    "valid": {
-      "uuid": "00000000-0000-0000-0000-ffff00000042"
-    },
-    "state": null,
     "attrs": {
       "class": [
         "object",
@@ -108,10 +96,6 @@ pub const JSON_SCHEMA_ATTR_SSH_PUBLICKEY: &str = r#"
 "#;
 pub const JSON_SCHEMA_ATTR_PRIMARY_CREDENTIAL: &str = r#"
   {
-    "valid": {
-      "uuid": "00000000-0000-0000-0000-ffff00000043"
-    },
-    "state": null,
     "attrs": {
       "class": [
         "object",
@@ -444,10 +428,6 @@ pub const JSON_SCHEMA_ATTR_NSUNIQUEID: &str = r#"{
 
 pub const JSON_SCHEMA_CLASS_PERSON: &str = r#"
   {
-    "valid": {
-      "uuid": "00000000-0000-0000-0000-ffff00000044"
-    },
-    "state": null,
     "attrs": {
       "class": [
         "object",
@@ -477,10 +457,6 @@ pub const JSON_SCHEMA_CLASS_PERSON: &str = r#"
 
 pub const JSON_SCHEMA_CLASS_GROUP: &str = r#"
   {
-    "valid": {
-      "uuid": "00000000-0000-0000-0000-ffff00000045"
-    },
-    "state": null,
     "attrs": {
       "class": [
         "object",
