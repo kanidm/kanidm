@@ -76,7 +76,7 @@ impl RawOpt {
                 let rset = client.search(filter).unwrap();
 
                 rset.iter().for_each(|e| {
-                    println!("{:?}", e);
+                    println!("{}", e);
                 });
             }
             RawOpt::Create(copt) => {

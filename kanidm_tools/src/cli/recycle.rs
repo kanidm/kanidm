@@ -29,13 +29,18 @@ impl RecycleOpt {
                 let client = copt.to_client();
                 let r = client.recycle_bin_list().unwrap();
                 for e in r {
-                    println!("{:?}", e);
+                    println!("{}", e);
                 }
             }
             RecycleOpt::Get(nopt) => {
                 let client = nopt.copt.to_client();
                 let e = client.recycle_bin_get(nopt.name.as_str()).unwrap();
-                println!("{:?}", e);
+                match e {
+                    Some(e)  =>
+                println!("{}", e),
+                    None => 
+                    println!("No matching entries"),
+                }
             }
             RecycleOpt::Revive(nopt) => {
                 let client = nopt.copt.to_client();
