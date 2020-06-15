@@ -379,7 +379,7 @@ impl KanidmClient {
         Ok(r)
     }
 
-    fn perform_delete_request(&self, dest: &str) -> Result<(), ClientError> {
+    fn perform_delete_request(&self, dest: &str) -> Result<bool, ClientError> {
         let dest = format!("{}{}", self.addr, dest);
         let response = self
             .client
@@ -398,7 +398,9 @@ impl KanidmClient {
             unexpect => return Err(ClientError::Http(unexpect, response.json().ok())),
         }
 
-        Ok(())
+        let r: bool = response.json().unwrap();
+
+        Ok(r)
     }
 
     // whoami
@@ -507,33 +509,33 @@ impl KanidmClient {
     }
 
     // create
-    pub fn create(&self, entries: Vec<Entry>) -> Result<(), ClientError> {
+    pub fn create(&self, entries: Vec<Entry>) -> Result<bool, ClientError> {
         let c = CreateRequest { entries };
         let r: Result<OperationResponse, _> = self.perform_post_request("/v1/raw/create", c);
-        r.map(|_| ())
+        r.map(|_| true)
     }
 
     // modify
-    pub fn modify(&self, filter: Filter, modlist: ModifyList) -> Result<(), ClientError> {
+    pub fn modify(&self, filter: Filter, modlist: ModifyList) -> Result<bool, ClientError> {
         let mr = ModifyRequest { filter, modlist };
         let r: Result<OperationResponse, _> = self.perform_post_request("/v1/raw/modify", mr);
-        r.map(|_| ())
+        r.map(|_| true)
     }
 
     // delete
-    pub fn delete(&self, filter: Filter) -> Result<(), ClientError> {
+    pub fn delete(&self, filter: Filter) -> Result<bool, ClientError> {
         let dr = DeleteRequest { filter };
         let r: Result<OperationResponse, _> = self.perform_post_request("/v1/raw/delete", dr);
-        r.map(|_| ())
+        r.map(|_| true)
     }
 
     // === idm actions here ==
-    pub fn idm_account_set_password(&self, cleartext: String) -> Result<(), ClientError> {
+    pub fn idm_account_set_password(&self, cleartext: String) -> Result<bool, ClientError> {
         let s = SingleStringRequest { value: cleartext };
 
         let r: Result<OperationResponse, _> =
             self.perform_post_request("/v1/self/_credential/primary/set_password", s);
-        r.map(|_| ())
+        r.map(|_| true)
     }
 
     pub fn auth_step_init(
@@ -562,12 +564,12 @@ impl KanidmClient {
         self.perform_get_request(format!("/v1/group/{}/_attr/member", id).as_str())
     }
 
-    pub fn idm_group_set_members(&self, id: &str, members: Vec<&str>) -> Result<(), ClientError> {
+    pub fn idm_group_set_members(&self, id: &str, members: Vec<&str>) -> Result<bool, ClientError> {
         let m: Vec<_> = members.iter().map(|v| (*v).to_string()).collect();
         self.perform_put_request(format!("/v1/group/{}/_attr/member", id).as_str(), m)
     }
 
-    pub fn idm_group_add_members(&self, id: &str, members: Vec<&str>) -> Result<(), ClientError> {
+    pub fn idm_group_add_members(&self, id: &str, members: Vec<&str>) -> Result<bool, ClientError> {
         let m: Vec<_> = members.iter().map(|v| (*v).to_string()).collect();
         self.perform_post_request(format!("/v1/group/{}/_attr/member", id).as_str(), m)
     }
@@ -578,7 +580,7 @@ impl KanidmClient {
     }
     */
 
-    pub fn idm_group_purge_members(&self, id: &str) -> Result<(), ClientError> {
+    pub fn idm_group_purge_members(&self, id: &str) -> Result<bool, ClientError> {
         self.perform_delete_request(format!("/v1/group/{}/_attr/member", id).as_str())
     }
 
@@ -590,16 +592,16 @@ impl KanidmClient {
         &self,
         id: &str,
         gidnumber: Option<u32>,
-    ) -> Result<(), ClientError> {
+    ) -> Result<bool, ClientError> {
         let gx = GroupUnixExtend { gidnumber };
         self.perform_post_request(format!("/v1/group/{}/_unix", id).as_str(), gx)
     }
 
-    pub fn idm_group_delete(&self, id: &str) -> Result<(), ClientError> {
+    pub fn idm_group_delete(&self, id: &str) -> Result<bool, ClientError> {
         self.perform_delete_request(format!("/v1/group/{}", id).as_str())
     }
 
-    pub fn idm_group_create(&self, name: &str) -> Result<(), ClientError> {
+    pub fn idm_group_create(&self, name: &str) -> Result<bool, ClientError> {
         let mut new_group = Entry {
             attrs: BTreeMap::new(),
         };
@@ -607,7 +609,7 @@ impl KanidmClient {
             .attrs
             .insert("name".to_string(), vec![name.to_string()]);
         self.perform_post_request("/v1/group", new_group)
-            .map(|_: OperationResponse| ())
+            .map(|_: OperationResponse| true)
     }
 
     // ==== accounts
@@ -615,7 +617,7 @@ impl KanidmClient {
         self.perform_get_request("/v1/account")
     }
 
-    pub fn idm_account_create(&self, name: &str, dn: &str) -> Result<(), ClientError> {
+    pub fn idm_account_create(&self, name: &str, dn: &str) -> Result<bool, ClientError> {
         let mut new_acct = Entry {
             attrs: BTreeMap::new(),
         };
@@ -626,17 +628,17 @@ impl KanidmClient {
             .attrs
             .insert("displayname".to_string(), vec![dn.to_string()]);
         self.perform_post_request("/v1/account", new_acct)
-            .map(|_: OperationResponse| ())
+            .map(|_: OperationResponse| true)
     }
 
-    pub fn idm_account_set_displayname(&self, id: &str, dn: &str) -> Result<(), ClientError> {
+    pub fn idm_account_set_displayname(&self, id: &str, dn: &str) -> Result<bool, ClientError> {
         self.perform_put_request(
             format!("/v1/account/{}/_attr/displayname", id).as_str(),
             vec![dn.to_string()],
         )
     }
 
-    pub fn idm_account_delete(&self, id: &str) -> Result<(), ClientError> {
+    pub fn idm_account_delete(&self, id: &str) -> Result<bool, ClientError> {
         self.perform_delete_request(format!("/v1/account/{}", id).as_str())
     }
 
@@ -662,7 +664,7 @@ impl KanidmClient {
         &self,
         id: &str,
         pw: &str,
-    ) -> Result<(), ClientError> {
+    ) -> Result<bool, ClientError> {
         self.perform_put_request(
             format!("/v1/account/{}/_attr/password_import", id).as_str(),
             vec![pw.to_string()],
@@ -709,14 +711,14 @@ impl KanidmClient {
         id: &str,
         otp: u32,
         session: Uuid,
-    ) -> Result<(), ClientError> {
+    ) -> Result<bool, ClientError> {
         let r = SetCredentialRequest::TOTPVerify(session, otp);
         let res: Result<SetCredentialResponse, ClientError> = self.perform_put_request(
             format!("/v1/account/{}/_credential/primary", id).as_str(),
             r,
         );
         match res {
-            Ok(SetCredentialResponse::Success) => Ok(()),
+            Ok(SetCredentialResponse::Success) => Ok(true),
             Ok(SetCredentialResponse::TOTPCheck(u, s)) => Err(ClientError::TOTPVerifyFailed(u, s)),
             Ok(_) => Err(ClientError::EmptyResponse),
             Err(e) => Err(e),
@@ -737,7 +739,7 @@ impl KanidmClient {
         self.perform_post_request(format!("/v1/account/{}/_radius", id).as_str(), ())
     }
 
-    pub fn idm_account_radius_credential_delete(&self, id: &str) -> Result<(), ClientError> {
+    pub fn idm_account_radius_credential_delete(&self, id: &str) -> Result<bool, ClientError> {
         self.perform_delete_request(format!("/v1/account/{}/_radius", id).as_str())
     }
 
@@ -750,7 +752,7 @@ impl KanidmClient {
         id: &str,
         gidnumber: Option<u32>,
         shell: Option<&str>,
-    ) -> Result<(), ClientError> {
+    ) -> Result<bool, ClientError> {
         let ux = AccountUnixExtend {
             shell: shell.map(|s| s.to_string()),
             gidnumber,
@@ -762,7 +764,7 @@ impl KanidmClient {
         self.perform_get_request(format!("/v1/account/{}/_unix/_token", id).as_str())
     }
 
-    pub fn idm_account_unix_cred_put(&self, id: &str, cred: &str) -> Result<(), ClientError> {
+    pub fn idm_account_unix_cred_put(&self, id: &str, cred: &str) -> Result<bool, ClientError> {
         let req = SingleStringRequest {
             value: cred.to_string(),
         };
@@ -772,7 +774,7 @@ impl KanidmClient {
         )
     }
 
-    pub fn idm_account_unix_cred_delete(&self, id: &str) -> Result<(), ClientError> {
+    pub fn idm_account_unix_cred_delete(&self, id: &str) -> Result<bool, ClientError> {
         self.perform_delete_request(format!("/v1/account/{}/_unix/_credential", id).as_str())
     }
 
@@ -796,12 +798,12 @@ impl KanidmClient {
         id: &str,
         tag: &str,
         pubkey: &str,
-    ) -> Result<(), ClientError> {
+    ) -> Result<bool, ClientError> {
         let sk = (tag.to_string(), pubkey.to_string());
         self.perform_post_request(format!("/v1/account/{}/_ssh_pubkeys", id).as_str(), sk)
     }
 
-    pub fn idm_account_person_extend(&self, id: &str) -> Result<(), ClientError> {
+    pub fn idm_account_person_extend(&self, id: &str) -> Result<bool, ClientError> {
         self.perform_post_request(format!("/v1/account/{}/_person/_extend", id).as_str(), ())
     }
 
@@ -819,7 +821,7 @@ impl KanidmClient {
         self.perform_get_request(format!("/v1/account/{}/_ssh_pubkeys/{}", id, tag).as_str())
     }
 
-    pub fn idm_account_delete_ssh_pubkey(&self, id: &str, tag: &str) -> Result<(), ClientError> {
+    pub fn idm_account_delete_ssh_pubkey(&self, id: &str, tag: &str) -> Result<bool, ClientError> {
         self.perform_delete_request(format!("/v1/account/{}/_ssh_pubkeys/{}", id, tag).as_str())
     }
 
@@ -839,7 +841,7 @@ impl KanidmClient {
     }
 
     // pub fn idm_domain_put_attr
-    pub fn idm_domain_set_ssid(&self, id: &str, ssid: &str) -> Result<(), ClientError> {
+    pub fn idm_domain_set_ssid(&self, id: &str, ssid: &str) -> Result<bool, ClientError> {
         self.perform_put_request(
             format!("/v1/domain/{}/_attr/domain_ssid", id).as_str(),
             vec![ssid.to_string()],

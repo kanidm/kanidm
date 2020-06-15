@@ -117,7 +117,7 @@ impl KanidmAsyncClient {
         Ok(r)
     }
 
-    async fn perform_delete_request(&self, dest: &str) -> Result<(), ClientError> {
+    async fn perform_delete_request(&self, dest: &str) -> Result<bool, ClientError> {
         let dest = format!("{}{}", self.addr, dest);
         let response = self
             .client
@@ -137,7 +137,9 @@ impl KanidmAsyncClient {
             unexpect => return Err(ClientError::Http(unexpect, response.json().await.ok())),
         }
 
-        Ok(())
+        let r: bool = response.json().await.unwrap();
+
+        Ok(r)
     }
 
     pub async fn auth_step_init(
@@ -236,17 +238,21 @@ impl KanidmAsyncClient {
             .await
     }
 
-    pub async fn idm_account_delete(&self, id: &str) -> Result<(), ClientError> {
+    pub async fn idm_account_delete(&self, id: &str) -> Result<bool, ClientError> {
         self.perform_delete_request(["/v1/account/", id].concat().as_str())
             .await
     }
 
-    pub async fn idm_group_delete(&self, id: &str) -> Result<(), ClientError> {
+    pub async fn idm_group_delete(&self, id: &str) -> Result<bool, ClientError> {
         self.perform_delete_request(["/v1/group/", id].concat().as_str())
             .await
     }
 
-    pub async fn idm_account_unix_cred_put(&self, id: &str, cred: &str) -> Result<(), ClientError> {
+    pub async fn idm_account_unix_cred_put(
+        &self,
+        id: &str,
+        cred: &str,
+    ) -> Result<bool, ClientError> {
         let req = SingleStringRequest {
             value: cred.to_string(),
         };
@@ -257,7 +263,7 @@ impl KanidmAsyncClient {
         .await
     }
 
-    pub async fn idm_account_unix_cred_delete(&self, id: &str) -> Result<(), ClientError> {
+    pub async fn idm_account_unix_cred_delete(&self, id: &str) -> Result<bool, ClientError> {
         self.perform_delete_request(["/v1/account/", id, "/_unix/_credential"].concat().as_str())
             .await
     }
@@ -278,7 +284,7 @@ impl KanidmAsyncClient {
         &self,
         id: &str,
         members: Vec<&str>,
-    ) -> Result<(), ClientError> {
+    ) -> Result<bool, ClientError> {
         let m: Vec<_> = members.iter().map(|v| (*v).to_string()).collect();
         self.perform_post_request(["/v1/group/", id, "/_attr/member"].concat().as_str(), m)
             .await
