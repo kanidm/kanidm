@@ -14,6 +14,9 @@ use uuid::Uuid;
 
 use regex::Regex;
 
+// Clippy doesn't like Bind here. But proto needs unboxed ldapmsg,
+// and ldapboundtoken is moved. Really, it's not too bad, every message here is pretty sucky.
+#[allow(clippy::large_enum_variant)]
 pub enum LdapResponseState {
     Unbind,
     Disconnect(LdapMsg),
@@ -168,7 +171,7 @@ impl LdapServer {
             };
 
             // TODO #67: limit the number of attributes here!
-            let attrs = if sr.attrs.len() == 0 {
+            let attrs = if sr.attrs.is_empty() {
                 // If [], then "all" attrs
                 None
             } else {
@@ -305,7 +308,7 @@ impl LdapServer {
         let target_uuid: Uuid = if dn == "" {
             if pw == "" {
                 lsecurity!(au, "✅ LDAP Bind success anonymous");
-                UUID_ANONYMOUS.clone()
+                *UUID_ANONYMOUS
             } else {
                 lsecurity!(au, "❌ LDAP Bind failure anonymous");
                 // Yeah-nahhhhh

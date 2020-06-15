@@ -1,3 +1,4 @@
+#![deny(warnings)]
 #[macro_use]
 extern crate log;
 
@@ -61,7 +62,6 @@ impl ClientCodec {
 fn rm_if_exist(p: &str) {
     let _ = std::fs::remove_file(p).map_err(|e| {
         error!("attempting to remove {:?} -> {:?}", p, e);
-        ()
     });
 }
 
@@ -80,7 +80,7 @@ async fn handle_client(
                 cachelayer
                     .get_sshkeys(account_id.as_str())
                     .await
-                    .map(|r| ClientResponse::SshKeys(r))
+                    .map(ClientResponse::SshKeys)
                     .unwrap_or_else(|_| {
                         error!("unable to load keys, returning empty set.");
                         ClientResponse::SshKeys(vec![])
@@ -90,7 +90,7 @@ async fn handle_client(
                 debug!("nssaccounts req");
                 cachelayer
                     .get_nssaccounts()
-                    .map(|r| ClientResponse::NssAccounts(r))
+                    .map(ClientResponse::NssAccounts)
                     .unwrap_or_else(|_| {
                         error!("unable to enum accounts");
                         ClientResponse::NssAccounts(Vec::new())
@@ -101,7 +101,7 @@ async fn handle_client(
                 cachelayer
                     .get_nssaccount_gid(gid)
                     .await
-                    .map(|acc| ClientResponse::NssAccount(acc))
+                    .map(ClientResponse::NssAccount)
                     .unwrap_or_else(|_| {
                         error!("unable to load account, returning empty.");
                         ClientResponse::NssAccount(None)
@@ -112,7 +112,7 @@ async fn handle_client(
                 cachelayer
                     .get_nssaccount_name(account_id.as_str())
                     .await
-                    .map(|acc| ClientResponse::NssAccount(acc))
+                    .map(ClientResponse::NssAccount)
                     .unwrap_or_else(|_| {
                         error!("unable to load account, returning empty.");
                         ClientResponse::NssAccount(None)
@@ -122,7 +122,7 @@ async fn handle_client(
                 debug!("nssgroups req");
                 cachelayer
                     .get_nssgroups()
-                    .map(|r| ClientResponse::NssGroups(r))
+                    .map(ClientResponse::NssGroups)
                     .unwrap_or_else(|_| {
                         error!("unable to enum groups");
                         ClientResponse::NssGroups(Vec::new())
@@ -133,7 +133,7 @@ async fn handle_client(
                 cachelayer
                     .get_nssgroup_gid(gid)
                     .await
-                    .map(|grp| ClientResponse::NssGroup(grp))
+                    .map(ClientResponse::NssGroup)
                     .unwrap_or_else(|_| {
                         error!("unable to load group, returning empty.");
                         ClientResponse::NssGroup(None)
@@ -144,7 +144,7 @@ async fn handle_client(
                 cachelayer
                     .get_nssgroup_name(grp_id.as_str())
                     .await
-                    .map(|grp| ClientResponse::NssGroup(grp))
+                    .map(ClientResponse::NssGroup)
                     .unwrap_or_else(|_| {
                         error!("unable to load group, returning empty.");
                         ClientResponse::NssGroup(None)
@@ -155,7 +155,7 @@ async fn handle_client(
                 cachelayer
                     .pam_account_authenticate(account_id.as_str(), cred.as_str())
                     .await
-                    .map(|r| ClientResponse::PamStatus(r))
+                    .map(ClientResponse::PamStatus)
                     .unwrap_or(ClientResponse::Error)
             }
             ClientRequest::PamAccountAllowed(account_id) => {
@@ -163,7 +163,7 @@ async fn handle_client(
                 cachelayer
                     .pam_account_allowed(account_id.as_str())
                     .await
-                    .map(|r| ClientResponse::PamStatus(r))
+                    .map(ClientResponse::PamStatus)
                     .unwrap_or(ClientResponse::Error)
             }
             ClientRequest::InvalidateCache => {

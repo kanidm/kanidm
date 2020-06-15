@@ -87,7 +87,7 @@ where
                     v.into_iter().for_each(|r| actor.framed.write(r));
                 }
                 Ok(None) | Err(_) => {
-                    error!("Internal server error");
+                    eprintln!("Internal server error");
                     ctx.stop();
                 }
             };
@@ -108,12 +108,12 @@ where
                 // It's queued, we are done.
                 Ok(_) => {}
                 Err(_) => {
-                    error!("Too many queue msgs for connection");
+                    eprintln!("Too many queue msgs for connection");
                     ctx.stop()
                 }
             },
             Err(_) => {
-                error!("Io error");
+                eprintln!("Io error");
                 ctx.stop()
             }
         }
@@ -179,11 +179,9 @@ impl Handler<TlsConnect> for LdapServer {
                             actor.qe_r.clone(),
                         )
                     });
-                    ()
                 })
                 .map_err(|_| {
-                    error!("invalid tls handshake");
-                    ()
+                    eprintln!("invalid tls handshake");
                 })
         });
 
@@ -197,8 +195,7 @@ pub(crate) async fn create_ldap_server(
     qe_r: Addr<QueryServerReadV1>,
 ) -> Result<(), ()> {
     let addr = net::SocketAddr::from_str(address).map_err(|e| {
-        error!("Could not parse ldap server address {} -> {:?}", address, e);
-        ()
+        eprintln!("Could not parse ldap server address {} -> {:?}", address, e);
     })?;
 
     let listener = Box::new(TcpListener::bind(&addr).await.unwrap());

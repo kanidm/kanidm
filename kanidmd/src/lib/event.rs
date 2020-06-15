@@ -78,7 +78,7 @@ impl From<&EventOrigin> for EventOriginId {
     fn from(event: &EventOrigin) -> Self {
         match event {
             EventOrigin::Internal => EventOriginId::Internal,
-            EventOrigin::User(e) => EventOriginId::User(e.get_uuid().clone()),
+            EventOrigin::User(e) => EventOriginId::User(*e.get_uuid()),
         }
     }
 }
@@ -99,6 +99,23 @@ pub struct Event {
     // The event's initiator aka origin source.
     // This importantly, is used for access control!
     pub origin: EventOrigin,
+}
+
+impl std::fmt::Display for Event {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match &self.origin {
+            EventOrigin::Internal => write!(f, "Internal"),
+            EventOrigin::User(e) => {
+                let nv = e.get_uuid2spn();
+                write!(
+                    f,
+                    "User( {}, {} ) ",
+                    nv.to_proto_string_clone(),
+                    e.get_uuid().to_hyphenated_ref()
+                )
+            }
+        }
+    }
 }
 
 impl Event {
@@ -1065,7 +1082,7 @@ impl ReviveRecycledEvent {
             filter: filter
                 .into_recycled()
                 .validate(qs.get_schema())
-                .map_err(|e| OperationError::SchemaViolation(e))?,
+                .map_err(OperationError::SchemaViolation)?,
         })
     }
 

@@ -263,9 +263,9 @@ impl<'a> IdmServerWriteTransaction<'a> {
             // TODO: #59 We should have checked if anonymous was locked by now!
             let account = Account::try_from_entry_ro(au, account_entry, &mut self.qs_read)?;
             Ok(Some(LdapBoundToken {
-                spn: account.spn.clone(),
-                uuid: UUID_ANONYMOUS.clone(),
-                effective_uuid: UUID_ANONYMOUS.clone(),
+                spn: account.spn,
+                uuid: *UUID_ANONYMOUS,
+                effective_uuid: *UUID_ANONYMOUS,
             }))
         } else {
             let account = UnixUserAccount::try_from_entry_ro(au, account_entry, &mut self.qs_read)?;
@@ -274,9 +274,9 @@ impl<'a> IdmServerWriteTransaction<'a> {
                 .is_some()
             {
                 Ok(Some(LdapBoundToken {
-                    spn: account.spn.clone(),
-                    uuid: account.uuid.clone(),
-                    effective_uuid: UUID_ANONYMOUS.clone(),
+                    spn: account.spn,
+                    uuid: account.uuid,
+                    effective_uuid: *UUID_ANONYMOUS,
                 }))
             } else {
                 Ok(None)
@@ -676,30 +676,29 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             )
         };
 
-        match (&next, opt_cred) {
-            (MfaRegNext::Success, Some(MfaRegCred::TOTP(token))) => {
-                // Purge the session.
-                let session = self
-                    .mfareg_sessions
-                    .remove(&sessionid)
-                    .expect("Session within transaction vanished!");
-                // reg the token
-                let modlist = try_audit!(au, session.account.gen_totp_mod(token));
-                // Perform the mod
-                try_audit!(
+        if let (MfaRegNext::Success, Some(MfaRegCred::TOTP(token))) = (&next, opt_cred) {
+            // Purge the session.
+            let session = self
+                .mfareg_sessions
+                .remove(&sessionid)
+                .expect("Session within transaction vanished!");
+            // reg the token
+            let modlist = try_audit!(au, session.account.gen_totp_mod(token));
+            // Perform the mod
+            self.qs_write
+                .impersonate_modify(
                     au,
-                    self.qs_write.impersonate_modify(
-                        au,
-                        // Filter as executed
-                        filter!(f_eq("uuid", PartialValue::new_uuidr(&session.account.uuid))),
-                        // Filter as intended (acp)
-                        filter_all!(f_eq("uuid", PartialValue::new_uuidr(&session.account.uuid))),
-                        modlist,
-                        &vte.event,
-                    )
-                );
-            }
-            _ => {}
+                    // Filter as executed
+                    filter!(f_eq("uuid", PartialValue::new_uuidr(&session.account.uuid))),
+                    // Filter as intended (acp)
+                    filter_all!(f_eq("uuid", PartialValue::new_uuidr(&session.account.uuid))),
+                    modlist,
+                    &vte.event,
+                )
+                .map_err(|e| {
+                    ladmin_error!(au, "verify_account_totp {:?}", e);
+                    e
+                })?;
         };
 
         let next = next.to_proto(&sessionid);

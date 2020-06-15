@@ -36,11 +36,7 @@ impl Handler<StatusRequestEvent> for StatusActor {
     type Result = bool;
 
     fn handle(&mut self, event: StatusRequestEvent, _ctx: &mut SyncContext<Self>) -> Self::Result {
-        let mut audit = AuditScope::new(
-            "status_handler",
-            event.eventid.clone(),
-            self.log_level.clone(),
-        );
+        let mut audit = AuditScope::new("status_handler", event.eventid, self.log_level);
         ladmin_info!(&mut audit, "status handler");
         self.log_tx.send(Some(audit)).unwrap_or_else(|_| {
             error!("CRITICAL: UNABLE TO COMMIT LOGS");

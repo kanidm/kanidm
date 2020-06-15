@@ -33,7 +33,7 @@ enum NameCacheKey {
 enum NameCacheValue {
     U(Uuid),
     R(String),
-    S(Value),
+    S(Box<Value>),
 }
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
@@ -223,14 +223,14 @@ macro_rules! uuid2spn {
             let cache_r = $self.name_cache.get(&cache_key);
             if let Some(NameCacheValue::S(ref spn)) = cache_r {
                 ltrace!($audit, "Got cached spn for uuid2spn");
-                return Ok(Some(spn.clone()));
+                return Ok(Some(spn.as_ref().clone()));
             }
 
             let db_r = $self.db.uuid2spn($audit, $uuid)?;
             if let Some(ref data) = db_r {
                 $self
                     .name_cache
-                    .insert(cache_key, NameCacheValue::S(data.clone()))
+                    .insert(cache_key, NameCacheValue::S(Box::new(data.clone())))
             }
             Ok(db_r)
         })
@@ -472,12 +472,12 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
                 op_ts_max,
             } = self;
             // Undo the caches in the reverse order.
-            db.commit(audit).and_then(|r| {
+            db.commit(audit).and_then(|()| {
                 op_ts_max.commit();
                 name_cache.commit();
                 idl_cache.commit();
                 entry_cache.commit();
-                Ok(r)
+                Ok(())
             })
         })
     }
@@ -555,7 +555,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
             // On idl == 0 the db will remove this, and synthesise an empty IDL on a miss
             // but we can cache this as a new empty IDL instead, so that we can avoid the
             // db lookup on this idl.
-            if idl.len() == 0 {
+            if idl.is_empty() {
                 self.idl_cache
                     .insert(cache_key, Box::new(IDLBitRange::new()));
             } else {
@@ -619,9 +619,11 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
             self.db
                 .write_uuid2spn(audit, uuid, k.as_ref())
                 .and_then(|_| {
-                    let cache_key = NameCacheKey::Uuid2Spn(uuid.clone());
+                    let cache_key = NameCacheKey::Uuid2Spn(*uuid);
                     match k {
-                        Some(v) => self.name_cache.insert(cache_key, NameCacheValue::S(v)),
+                        Some(v) => self
+                            .name_cache
+                            .insert(cache_key, NameCacheValue::S(Box::new(v))),
                         None => self.name_cache.remove(cache_key),
                     }
                     Ok(())
@@ -643,7 +645,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
             self.db
                 .write_uuid2rdn(audit, uuid, k.as_ref())
                 .and_then(|_| {
-                    let cache_key = NameCacheKey::Uuid2Rdn(uuid.clone());
+                    let cache_key = NameCacheKey::Uuid2Rdn(*uuid);
                     match k {
                         Some(s) => self.name_cache.insert(cache_key, NameCacheValue::R(s)),
                         None => self.name_cache.remove(cache_key),
@@ -669,16 +671,16 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
     }
 
     pub unsafe fn purge_idxs(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
-        self.db.purge_idxs(audit).and_then(|r| {
+        self.db.purge_idxs(audit).and_then(|()| {
             self.idl_cache.clear();
-            Ok(r)
+            Ok(())
         })
     }
 
     pub unsafe fn purge_id2entry(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
-        self.db.purge_id2entry(audit).and_then(|r| {
+        self.db.purge_id2entry(audit).and_then(|()| {
             self.entry_cache.clear();
-            Ok(r)
+            Ok(())
         })
     }
 
@@ -691,13 +693,13 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
     }
 
     pub fn set_db_ts_max(&mut self, ts: &Duration) -> Result<(), OperationError> {
-        *self.op_ts_max = Some(ts.clone());
+        *self.op_ts_max = Some(*ts);
         self.db.set_db_ts_max(ts)
     }
 
     pub fn get_db_ts_max(&self) -> Result<Option<Duration>, OperationError> {
         match *self.op_ts_max {
-            Some(ts) => Ok(Some(ts.clone())),
+            Some(ts) => Ok(Some(ts)),
             None => self.db.get_db_ts_max(),
         }
     }

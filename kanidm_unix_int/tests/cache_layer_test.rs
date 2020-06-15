@@ -3,6 +3,7 @@ use std::sync::mpsc;
 use std::thread;
 
 use actix::prelude::*;
+use kanidm::audit::LogLevel;
 use kanidm::config::{Configuration, IntegrationTestConfig};
 use kanidm::core::create_server_core;
 
@@ -33,6 +34,7 @@ fn run_test(fix_fn: fn(&KanidmClient) -> (), test_fn: fn(CacheLayer, KanidmAsync
     config.address = format!("127.0.0.1:{}", port);
     config.secure_cookies = false;
     config.integration_test_config = Some(int_config);
+    config.log_level = Some(LogLevel::Quiet as u32);
     thread::spawn(move || {
         // Spawn a thread for the test runner, this should have a unique
         // port....

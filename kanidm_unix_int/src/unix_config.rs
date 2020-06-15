@@ -24,6 +24,12 @@ pub struct KanidmUnixdConfig {
     pub pam_allowed_login_groups: Vec<String>,
 }
 
+impl Default for KanidmUnixdConfig {
+    fn default() -> Self {
+        KanidmUnixdConfig::new()
+    }
+}
+
 impl KanidmUnixdConfig {
     pub fn new() -> Self {
         KanidmUnixdConfig {

@@ -288,9 +288,7 @@ pub(crate) struct AuthSession {
 }
 
 impl AuthSession {
-    pub fn new(
-        au: &mut AuditScope,
-    account: Account, appid: Option<String>) -> Self {
+    pub fn new(au: &mut AuditScope, account: Account, appid: Option<String>) -> Self {
         // During this setup, determine the credential handler that we'll be using
         // for this session. This is currently based on presentation of an application
         // id.
@@ -308,7 +306,10 @@ impl AuthSession {
                         Some(cred) => {
                             // Probably means new authsession has to be failable
                             CredHandler::try_from(cred).unwrap_or_else(|_| {
-                                lsecurity_critical!(au, "corrupt credentials, unable to start credhandler");
+                                lsecurity_critical!(
+                                    au,
+                                    "corrupt credentials, unable to start credhandler"
+                                );
                                 CredHandler::Denied
                             })
                         }
@@ -467,7 +468,11 @@ mod tests {
             None,
         );
 
-        let session = AuthSession::new(&mut audit, anon_account, Some("NonExistantAppID".to_string()));
+        let session = AuthSession::new(
+            &mut audit,
+            anon_account,
+            Some("NonExistantAppID".to_string()),
+        );
 
         let auth_mechs = session.valid_auth_mechs();
 

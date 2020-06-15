@@ -36,10 +36,8 @@ impl RecycleOpt {
                 let client = nopt.copt.to_client();
                 let e = client.recycle_bin_get(nopt.name.as_str()).unwrap();
                 match e {
-                    Some(e)  =>
-                println!("{}", e),
-                    None => 
-                    println!("No matching entries"),
+                    Some(e) => println!("{}", e),
+                    None => println!("No matching entries"),
                 }
             }
             RecycleOpt::Revive(nopt) => {

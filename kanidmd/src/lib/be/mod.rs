@@ -82,7 +82,7 @@ pub trait BackendTransaction {
         filt: &FilterResolved,
         thres: usize,
     ) -> Result<(IDL, FilterPlan), OperationError> {
-        let fr = Ok(match filt {
+        Ok(match filt {
             FilterResolved::Eq(attr, value, idx) => {
                 if *idx {
                     // Get the idx_key
@@ -234,7 +234,7 @@ pub trait BackendTransaction {
                         if idl.len() < thres && f_rem_count > 0 {
                             let setplan = FilterPlan::AndPartialThreshold(plan);
                             return Ok((IDL::PartialThreshold(idl.clone()), setplan));
-                        } else if idl.len() == 0 {
+                        } else if idl.is_empty() {
                             // Regardless of the input state, if it's empty, this can never
                             // be satisfied, so return we are indexed and complete.
                             let setplan = FilterPlan::AndEmptyCand(plan);
@@ -256,7 +256,7 @@ pub trait BackendTransaction {
                                 // When below thres, we have to return partials to trigger the entry_no_match_filter check.
                                 let setplan = FilterPlan::AndPartialThreshold(plan);
                                 return Ok((IDL::PartialThreshold(r), setplan));
-                            } else if r.len() == 0 {
+                            } else if r.is_empty() {
                                 // Regardless of the input state, if it's empty, this can never
                                 // be satisfied, so return we are indexed and complete.
                                 let setplan = FilterPlan::AndEmptyCand(plan);
@@ -400,9 +400,7 @@ pub trait BackendTransaction {
                 );
                 (IDL::Indexed(IDLBitRange::new()), FilterPlan::Invalid)
             }
-        });
-        // debug!("result of {:?} -> {:?}", filt, fr);
-        fr
+        })
     }
 
     // Take filter, and AuditScope ref?
@@ -507,7 +505,7 @@ pub trait BackendTransaction {
             // Now, check the idl -- if it's fully resolved, we can skip this because the query
             // was fully indexed.
             match &idl {
-                IDL::Indexed(idl) => Ok(idl.len() > 0),
+                IDL::Indexed(idl) => Ok(!idl.is_empty()),
                 IDL::PartialThreshold(_) => {
                     let entries = try_audit!(au, self.get_idlayer().get_identry(au, &idl));
 
@@ -809,9 +807,8 @@ impl<'a> BackendWriteTransaction<'a> {
             ltrace!(audit, "!uuid_same u2r_act -> {:?}", u2r_act);
 
             // Write the changes out to the backend
-            match n2u_rem {
-                Some(rem) => self.idlayer.write_name2uuid_rem(audit, rem)?,
-                None => {}
+            if let Some(rem) = n2u_rem {
+                self.idlayer.write_name2uuid_rem(audit, rem)?
             }
 
             match u2s_act {
@@ -844,14 +841,11 @@ impl<'a> BackendWriteTransaction<'a> {
         ltrace!(audit, "u2r_act -> {:?}", u2r_act);
 
         // Write the changes out to the backend
-        match n2u_add {
-            Some(add) => self.idlayer.write_name2uuid_add(audit, e_uuid, add)?,
-            None => {}
+        if let Some(add) = n2u_add {
+            self.idlayer.write_name2uuid_add(audit, e_uuid, add)?
         }
-
-        match n2u_rem {
-            Some(rem) => self.idlayer.write_name2uuid_rem(audit, rem)?,
-            None => {}
+        if let Some(rem) = n2u_rem {
+            self.idlayer.write_name2uuid_rem(audit, rem)?
         }
 
         match u2s_act {
@@ -970,9 +964,12 @@ impl<'a> BackendWriteTransaction<'a> {
         let dbv = self.get_db_index_version();
         ladmin_info!(audit, "upgrade_reindex -> dbv: {} v: {}", dbv, v);
         if dbv < v {
-            eprintln!("NOTICE: A system reindex is required. This may take a long time ...");
+            limmediate_warning!(
+                audit,
+                "NOTICE: A system reindex is required. This may take a long time ...\n"
+            );
             self.reindex(audit)?;
-            eprintln!("NOTICE: System reindex complete");
+            limmediate_warning!(audit, "NOTICE: System reindex complete\n");
             self.set_db_index_version(v)
         } else {
             Ok(())
@@ -998,15 +995,15 @@ impl<'a> BackendWriteTransaction<'a> {
             audit,
             entries.iter().try_for_each(|e| {
                 count += 1;
-                if count % 1000 == 0 {
-                    eprint!("{}", count);
-                } else if count % 100 == 0 {
-                    eprint!(".");
+                if count % 2500 == 0 {
+                    limmediate_warning!(audit, "{}", count);
+                } else if count % 250 == 0 {
+                    limmediate_warning!(audit, ".");
                 }
                 self.entry_index(audit, None, Some(e))
             })
         );
-        eprintln!(" reindexed {} entries ✅", count);
+        limmediate_warning!(audit, " reindexed {} entries ✅\n", count);
         Ok(())
     }
 
@@ -1165,7 +1162,7 @@ impl<'a> BackendWriteTransaction<'a> {
         // if none, return ts. If found, return it.
         match self.get_idlayer().get_db_ts_max()? {
             Some(dts) => Ok(dts),
-            None => Ok(ts.clone()),
+            None => Ok(*ts),
         }
     }
 

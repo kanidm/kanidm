@@ -16,8 +16,11 @@ pub struct ModifyValid;
 pub struct ModifyInvalid;
 
 #[derive(Debug)]
+#[allow(clippy::large_enum_variant)]
 pub enum Modify {
     // This value *should* exist.
+    // Clippy doesn't like value here, as value > pv. It could be an improvement to
+    // box here, but not sure. ... TODO and thought needed.
     Present(String, Value),
     // This value *should not* exist.
     Removed(String, PartialValue),

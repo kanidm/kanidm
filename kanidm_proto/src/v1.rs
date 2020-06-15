@@ -201,9 +201,9 @@ impl fmt::Display for RadiusAuthToken {
         writeln!(f, "displayname: {}", self.displayname)?;
         writeln!(f, "uuid: {}", self.uuid)?;
         writeln!(f, "secret: {}", self.secret)?;
-        self.groups.iter().try_for_each(|g| {
-            writeln!(f, "group: {}", g)
-        })
+        self.groups
+            .iter()
+            .try_for_each(|g| writeln!(f, "group: {}", g))
     }
 }
 
@@ -249,17 +249,15 @@ impl fmt::Display for UnixUserToken {
         writeln!(f, "displayname: {}", self.displayname)?;
         writeln!(f, "uuid: {}", self.uuid)?;
         match &self.shell {
-            Some(s) =>
-                writeln!(f, "shell: {}", s)?,
-            None => 
-                writeln!(f, "shell: <none>")?,
+            Some(s) => writeln!(f, "shell: {}", s)?,
+            None => writeln!(f, "shell: <none>")?,
         }
-        self.sshkeys.iter().try_for_each(|s| {
-            writeln!(f, "ssh_publickey: {}", s)
-        })?;
-        self.groups.iter().try_for_each(|g| {
-            writeln!(f, "group: {}", g)
-        })
+        self.sshkeys
+            .iter()
+            .try_for_each(|s| writeln!(f, "ssh_publickey: {}", s))?;
+        self.groups
+            .iter()
+            .try_for_each(|g| writeln!(f, "group: {}", g))
     }
 }
 
@@ -284,11 +282,9 @@ pub struct Entry {
 impl fmt::Display for Entry {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "---")?;
-        self.attrs.iter().try_for_each(|(k, vs)| {
-            vs.iter().try_for_each(|v| {
-                writeln!(f, "{}: {}", k, v)
-            })
-        })
+        self.attrs
+            .iter()
+            .try_for_each(|(k, vs)| vs.iter().try_for_each(|v| writeln!(f, "{}: {}", k, v)))
     }
 }
 

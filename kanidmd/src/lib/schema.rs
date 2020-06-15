@@ -634,7 +634,7 @@ impl<'a> SchemaWriteTransaction<'a> {
     }
 
     pub fn generate_in_memory(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
-        let r = lperf_trace_segment!(audit, "schema::generate_in_memory", || {
+        lperf_trace_segment!(audit, "schema::generate_in_memory", || {
             //
             self.classes.clear();
             self.attributes.clear();
@@ -1410,8 +1410,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 ladmin_info!(audit, "schema validate -> errors {:?}", r);
                 Err(OperationError::ConsistencyError(r))
             }
-        });
-        r
+        })
     }
 }
 

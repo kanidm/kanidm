@@ -478,7 +478,7 @@ pub trait AccessControlsTransaction {
                 })
                 .collect();
 
-            if allowed_entries.len() > 0 {
+            if allowed_entries.is_empty() {
                 lsecurity_access!(audit, "allowed {} entries ✅", allowed_entries.len());
             } else {
                 lsecurity_access!(audit, "denied ❌");
@@ -826,18 +826,15 @@ pub trait AccessControlsTransaction {
 
                     // Now check all the subsets are true. Remember, purge class
                     // is already checked above.
-                    let mut result = true;
                     if !requested_pres.is_subset(&allowed_pres) {
                         lsecurity_access!(audit, "requested_pres is not a subset of allowed");
                         lsecurity_access!(audit, "{:?} !⊆ {:?}", requested_pres, allowed_pres);
-                        result = false;
-                    }
-                    if !requested_rem.is_subset(&allowed_rem) {
+                        false
+                    } else if !requested_rem.is_subset(&allowed_rem) {
                         lsecurity_access!(audit, "requested_rem is not a subset of allowed");
                         lsecurity_access!(audit, "{:?} !⊆ {:?}", requested_rem, allowed_rem);
-                        result = false;
-                    }
-                    if !requested_classes.is_subset(&allowed_classes) {
+                        false
+                    } else if !requested_classes.is_subset(&allowed_classes) {
                         lsecurity_access!(audit, "requested_classes is not a subset of allowed");
                         lsecurity_access!(
                             audit,
@@ -845,10 +842,11 @@ pub trait AccessControlsTransaction {
                             requested_classes,
                             allowed_classes
                         );
-                        result = false;
+                        false
+                    } else {
+                        lsecurity_access!(audit, "passed pres, rem, classes check.");
+                        true
                     }
-                    lsecurity_access!(audit, "passed pres, rem, classes check.");
-                    result
                 } // if acc == false
             });
             if r {

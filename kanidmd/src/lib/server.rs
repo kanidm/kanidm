@@ -113,6 +113,7 @@ pub trait QueryServerTransaction {
             if se.event.is_internal() {
                 ltrace!(au, "search: internal filter -> {:?}", se.filter);
             } else {
+                lsecurity!(au, "search initiator: -> {}", se.event);
                 ladmin_info!(au, "search: external filter -> {:?}", se.filter);
             }
 
@@ -191,18 +192,12 @@ pub trait QueryServerTransaction {
     // will validate/normalise the filter we construct for us. COOL!
     fn name_to_uuid(&mut self, audit: &mut AuditScope, name: &str) -> Result<Uuid, OperationError> {
         // Is it just a uuid?
-        match Uuid::parse_str(name) {
-            Ok(u) => return Ok(u),
-            Err(_) => {
-                let lname = name.to_lowercase();
-                self.get_be_txn()
-                    .name2uuid(audit, lname.as_str())
-                    .and_then(|v| match v {
-                        Some(u) => Ok(u),
-                        None => Err(OperationError::NoMatchingEntries),
-                    })
-            }
-        }
+        Uuid::parse_str(name).or_else(|_| {
+            let lname = name.to_lowercase();
+            self.get_be_txn()
+                .name2uuid(audit, lname.as_str())?
+                .ok_or(OperationError::NoMatchingEntries)
+        })
     }
 
     fn uuid_to_spn(
@@ -248,9 +243,7 @@ pub trait QueryServerTransaction {
             // Build an exists event
             let ee = ExistsEvent::new_internal(f_valid);
             // Submit it
-            let res = self.exists(au, &ee);
-            // return result
-            res
+            self.exists(au, &ee)
         })
     }
 
@@ -264,8 +257,7 @@ pub trait QueryServerTransaction {
                 .validate(self.get_schema())
                 .map_err(OperationError::SchemaViolation)?;
             let se = SearchEvent::new_internal(f_valid);
-            let res = self.search(audit, &se);
-            res
+            self.search(audit, &se)
         })
     }
 
@@ -278,8 +270,7 @@ pub trait QueryServerTransaction {
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
         lperf_segment!(audit, "server::internal_search_valid", || {
             let se = SearchEvent::new_impersonate(event, f_valid, f_intent_valid);
-            let res = self.search(audit, &se);
-            res
+            self.search(audit, &se)
         })
     }
 
@@ -292,8 +283,7 @@ pub trait QueryServerTransaction {
         event: &Event,
     ) -> Result<Vec<Entry<EntryReduced, EntryCommitted>>, OperationError> {
         let se = SearchEvent::new_impersonate(event, f_valid, f_intent_valid);
-        let res = self.search_ext(audit, &se);
-        res
+        self.search_ext(audit, &se)
     }
 
     // Who they are will go here
@@ -654,10 +644,8 @@ impl<'a> QueryServerReadTransaction<'a> {
         // do their job.
 
         // Now, call the plugins verification system.
-        let pl_errs = Plugins::run_verify(au, self);
-
-        // Finish up ...
-        pl_errs
+        Plugins::run_verify(au, self)
+        // Finished
     }
 }
 
@@ -858,6 +846,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // The create event is a raw, read only representation of the request
             // that was made to us, including information about the identity
             // performing the request.
+            if !ce.event.is_internal() {
+                lsecurity!(au, "create initiator: -> {}", ce.event);
+            }
 
             // Log the request
 
@@ -866,8 +857,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
             // Copy the entries to a writeable form, this involves assigning a
             // change id so we can track what's happening.
-            let candidates: Vec<Entry<EntryInit, EntryNew>> =
-                ce.entries.iter().map(|e| e.clone()).collect();
+            let candidates: Vec<Entry<EntryInit, EntryNew>> = ce.entries.clone();
 
             // Do we have rights to perform these creates?
             // create_allow_operation
@@ -880,7 +870,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // Assign our replication metadata now, since we can proceed with this operation.
             let mut candidates: Vec<Entry<EntryInvalid, EntryNew>> = candidates
                 .into_iter()
-                .map(|e| e.clone().assign_cid(self.cid.clone()))
+                .map(|e| e.assign_cid(self.cid.clone()))
                 .collect();
 
             // run any pre plugins, giving them the list of mutable candidates.
@@ -981,6 +971,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // In this case we need a search, but not INTERNAL to keep the same
             // associated credentials.
             // We only need to retrieve uuid though ...
+            if !de.event.is_internal() {
+                lsecurity!(au, "delete initiator: -> {}", de.event);
+            }
 
             // Now, delete only what you can see
             let pre_candidates = match self.impersonate_search_valid(
@@ -1035,7 +1028,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             let res: Result<Vec<Entry<EntrySealed, EntryCommitted>>, SchemaError> = candidates
                 .into_iter()
                 .map(|e| {
-                    e.to_recycled()
+                    e.into_recycled()
                         .validate(&self.schema)
                         // seal if it worked.
                         .map(|r| r.seal())
@@ -1222,7 +1215,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
             revive_cands.into_iter().for_each(|e| {
                 // Get this entries uuid.
-                let u: Uuid = e.get_uuid().clone();
+                let u: Uuid = *e.get_uuid();
 
                 e.get_ava_reference_uuid("directmemberof").and_then(|list| {
                     list.into_iter().for_each(|g_uuid| {
@@ -1271,6 +1264,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // Get the candidates.
             // Modify applies a modlist to a filter, so we need to internal search
             // then apply.
+            if !me.event.is_internal() {
+                lsecurity!(au, "modify initiator: -> {}", me.event);
+            }
 
             // Validate input.
 
@@ -1446,7 +1442,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             })?;
 
             // If there is nothing, we donn't need to do anything.
-            if pre_candidates.len() == 0 {
+            if pre_candidates.is_empty() {
                 ladmin_info!(au, "migrate_2_to_3 no entries to migrate, complete");
                 return Ok(());
             }
@@ -1471,16 +1467,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
                 ltrace!(au, "{:?}", opt_names);
                 ltrace!(au, "{:?}", opt_dnames);
-
-                match opt_names {
-                    Some(v) => er.set_ava("name", v),
-                    None => {}
-                }
-
-                match opt_dnames {
-                    Some(v) => er.set_ava("domain_name", v),
-                    None => {}
-                }
+                if let Some(v) = opt_names {
+                    er.set_ava("name", v)
+                };
+                if let Some(v) = opt_dnames {
+                    er.set_ava("domain_name", v)
+                };
             });
 
             // Schema check all.
@@ -1521,8 +1513,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Start the audit scope
         // Create the CreateEvent
         let ce = CreateEvent::new_internal(entries);
-        let res = self.create(audit, &ce);
-        res
+        self.create(audit, &ce)
     }
 
     pub fn internal_delete(
@@ -1534,8 +1525,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .validate(self.get_schema())
             .map_err(OperationError::SchemaViolation)?;
         let de = DeleteEvent::new_internal(f_valid);
-        let res = self.delete(audit, &de);
-        res
+        self.delete(audit, &de)
     }
 
     pub fn internal_modify(
@@ -1552,8 +1542,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .validate(self.get_schema())
                 .map_err(OperationError::SchemaViolation)?;
             let me = ModifyEvent::new_internal(f_valid, m_valid);
-            let res = self.modify(audit, &me);
-            res
+            self.modify(audit, &me)
         })
     }
 
@@ -1566,8 +1555,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         event: &Event,
     ) -> Result<(), OperationError> {
         let me = ModifyEvent::new_impersonate(event, f_valid, f_intent_valid, m_valid);
-        let res = self.modify(audit, &me);
-        res
+        self.modify(audit, &me)
     }
 
     pub fn impersonate_modify(
@@ -1826,7 +1814,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .internal_migrate_or_create_str(audit, JSON_SYSTEM_INFO_V1)
             .and_then(|_| self.internal_migrate_or_create_str(audit, JSON_DOMAIN_INFO_V1))
             .and_then(|_| self.internal_migrate_or_create_str(audit, JSON_SYSTEM_CONFIG_V1));
-        if !res.is_ok() {
+        if res.is_err() {
             ladmin_error!(audit, "initialise_idm p1 -> result {:?}", res);
         }
         debug_assert!(res.is_ok());
@@ -1851,7 +1839,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // Each item individually logs it's result
             .map(|e_str| self.internal_migrate_or_create_str(audit, e_str))
             .collect();
-        if !res.is_ok() {
+        if res.is_err() {
             ladmin_error!(audit, "initialise_idm p2 -> result {:?}", res);
         }
         debug_assert!(res.is_ok());

@@ -17,6 +17,7 @@ pub enum LogTag {
     AdminError = 0x0000_0001,
     AdminWarning = 0x0000_0002,
     AdminInfo = 0x0000_0004,
+    //          0x0000_0008,
     RequestError = 0x0000_0010,
     RequestWarning = 0x0000_0020,
     RequestInfo = 0x0000_0040,
@@ -24,10 +25,12 @@ pub enum LogTag {
     SecurityCritical = 0x0000_0100,
     SecurityInfo = 0x0000_0200,
     SecurityAccess = 0x0000_0400,
+    //               0x0000_0800
     FilterError = 0x0000_1000,
     FilterWarning = 0x0000_2000,
     FilterInfo = 0x0000_4000,
     FilterTrace = 0x0000_8000,
+    // 0x0001_0000 -> 0x0800_0000
     PerfOp = 0x1000_0000,
     PerfCoarse = 0x2000_0000,
     PerfTrace = 0x4000_0000,
@@ -238,6 +241,26 @@ macro_rules! lperf_tag_segment {
     }};
 }
 
+/*
+macro_rules! limmediate_error {
+    ($au:expr, $($arg:tt)*) => ({
+        use crate::audit::LogTag;
+        if ($au.level & LogTag::AdminError as u32) == LogTag::AdminError as u32 {
+            eprintln!($($arg)*)
+        }
+    })
+}
+*/
+
+macro_rules! limmediate_warning {
+    ($au:expr, $($arg:tt)*) => ({
+        use crate::audit::LogTag;
+        if ($au.level & LogTag::AdminWarning as u32) == LogTag::AdminWarning as u32 {
+            eprint!($($arg)*)
+        }
+    })
+}
+
 macro_rules! try_audit {
     ($audit:ident, $result:expr, $logFormat:expr, $errorType:expr) => {
         match $result {
@@ -292,14 +315,10 @@ impl PerfEvent {
             .map(|pe| pe.process_inner(opd))
             .collect();
         contains.sort_unstable();
-        let duration = self
-            .duration
-            .as_ref()
-            .expect("corrupted perf event")
-            .clone();
+        let duration = self.duration.as_ref().expect("corrupted perf event");
         let percent = (duration.as_secs_f64() / opd.as_secs_f64()) * 100.0;
         PerfProcessed {
-            duration,
+            duration: *duration,
             id: self.id.clone(),
             percent,
             contains,
@@ -307,11 +326,7 @@ impl PerfEvent {
     }
 
     fn process(&self) -> PerfProcessed {
-        let duration = self
-            .duration
-            .as_ref()
-            .expect("corrupted perf event")
-            .clone();
+        let duration = self.duration.as_ref().expect("corrupted perf event");
         let mut contains: Vec<_> = self
             .contains
             .iter()
@@ -319,7 +334,7 @@ impl PerfEvent {
             .collect();
         contains.sort_unstable();
         PerfProcessed {
-            duration,
+            duration: *duration,
             id: self.id.clone(),
             percent: 100.0,
             contains,
@@ -421,17 +436,37 @@ impl AuditScope {
         } else {
             level.unwrap_or(LogLevel::Default as u32)
         };
-        let t_now = SystemTime::now();
-        let datetime: DateTime<Utc> = t_now.into();
+
+        // Try to reduce re-allocs by pre-allocating the amount we will likely need.
+        let mut events = if level == LogLevel::FullTrace as u32 {
+            Vec::with_capacity(512)
+        } else if (level & LogLevel::PerfFull as u32) == LogLevel::PerfFull as u32 {
+            Vec::with_capacity(256)
+        } else if (level & LogLevel::PerfBasic as u32) == LogLevel::PerfBasic as u32
+            || (level & LogLevel::Verbose as u32) == LogLevel::Verbose as u32
+        {
+            Vec::with_capacity(64)
+        } else if level == LogLevel::Quiet as u32 {
+            Vec::with_capacity(0)
+        } else {
+            // (level & LogTag::Filter as u32) == LogTag::Filter as u32
+            // (level & LogTag::Default as u32) == LogTag::Default as u32
+            Vec::with_capacity(16)
+        };
+
+        if (level & LogTag::AdminInfo as u32) == LogTag::AdminInfo as u32 {
+            let t_now = SystemTime::now();
+            let datetime: DateTime<Utc> = t_now.into();
+            events.push(AuditLog {
+                tag: LogTag::AdminInfo,
+                data: format!("{} {}", name, datetime.to_rfc3339()),
+            })
+        }
 
         AuditScope {
             level,
             uuid: eventid,
-            events: vec![AuditLog {
-                // time: datetime.to_rfc3339(),
-                tag: LogTag::AdminInfo,
-                data: format!("start {} {}", name, datetime.to_rfc3339()),
-            }],
+            events,
             perf: vec![],
             active_perf: None,
         }
@@ -466,7 +501,7 @@ impl AuditScope {
         self.events.push(AuditLog {
             // time: datetime.to_rfc3339(),
             tag,
-            data: data,
+            data,
         })
     }
 

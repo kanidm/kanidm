@@ -301,10 +301,8 @@ impl AccountOpt {
                     .idm_account_get(aopt.aopts.account_id.as_str())
                     .unwrap();
                 match e {
-                    Some(e)  =>
-                println!("{}", e),
-                    None => 
-                    println!("No matching entries"),
+                    Some(e) => println!("{}", e),
+                    None => println!("No matching entries"),
                 }
             }
             AccountOpt::Delete(aopt) => {

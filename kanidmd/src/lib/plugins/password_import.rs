@@ -36,11 +36,11 @@ impl Plugin for PasswordImport {
                 // Until upstream btreeset supports first(), we need to convert to a vec.
                 let vs: Vec<_> = vs.into_iter().collect();
 
-                debug_assert!(vs.len() >= 1);
+                debug_assert!(!vs.is_empty());
                 let im_pw = vs.first()
                     .unwrap()
                     .to_str()
-                    .ok_or(OperationError::Plugin(PluginError::PasswordImport("password_import has incorrect value type".to_string())))?;
+                    .ok_or_else(|| OperationError::Plugin(PluginError::PasswordImport("password_import has incorrect value type".to_string())))?;
 
                 // convert the import_password to a cred
                 let pw = Password::try_from(im_pw)
@@ -86,10 +86,12 @@ impl Plugin for PasswordImport {
             // Until upstream btreeset supports first(), we need to convert to a vec.
             let vs: Vec<_> = vs.into_iter().collect();
 
-            debug_assert!(vs.len() >= 1);
-            let im_pw = vs.first().unwrap().to_str().ok_or(OperationError::Plugin(
-                PluginError::PasswordImport("password_import has incorrect value type".to_string()),
-            ))?;
+            debug_assert!(!vs.is_empty());
+            let im_pw = vs.first().unwrap().to_str().ok_or_else(|| {
+                OperationError::Plugin(PluginError::PasswordImport(
+                    "password_import has incorrect value type".to_string(),
+                ))
+            })?;
 
             // convert the import_password to a cred
             let pw = Password::try_from(im_pw).map_err(|_| {

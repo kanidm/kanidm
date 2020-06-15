@@ -1,3 +1,4 @@
+#![deny(warnings)]
 #[macro_use]
 extern crate log;
 
@@ -34,7 +35,7 @@ async fn main() {
         .read_options_from_optional_config("/etc/kanidm/unixd")
         .expect("Failed to parse /etc/kanidm/unixd");
 
-    let req = ClientRequest::SshKey(opt.account_id.clone());
+    let req = ClientRequest::SshKey(opt.account_id);
 
     match block_on(call_daemon(cfg.sock_path.as_str(), req)) {
         Ok(r) => match r {

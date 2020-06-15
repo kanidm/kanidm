@@ -1,3 +1,4 @@
+#![deny(warnings)]
 #[macro_use]
 extern crate libnss;
 #[macro_use]
@@ -10,8 +11,6 @@ use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse, NssGroup, Ns
 use libnss::group::{Group, GroupHooks};
 use libnss::interop::Response;
 use libnss::passwd::{Passwd, PasswdHooks};
-
-use libc;
 
 struct KanidmPasswd;
 libnss_passwd_hooks!(kanidm, KanidmPasswd);
@@ -27,7 +26,7 @@ impl PasswdHooks for KanidmPasswd {
                 ClientResponse::NssAccounts(l) => l.into_iter().map(passwd_from_nssuser).collect(),
                 _ => Vec::new(),
             })
-            .map(|v| Response::Success(v))
+            .map(Response::Success)
             .unwrap_or_else(|_| Response::Success(vec![]))
     }
 
@@ -40,7 +39,7 @@ impl PasswdHooks for KanidmPasswd {
             .map(|r| match r {
                 ClientResponse::NssAccount(opt) => opt
                     .map(passwd_from_nssuser)
-                    .map(|p| Response::Success(p))
+                    .map(Response::Success)
                     .unwrap_or_else(|| Response::NotFound),
                 _ => Response::NotFound,
             })
@@ -56,7 +55,7 @@ impl PasswdHooks for KanidmPasswd {
             .map(|r| match r {
                 ClientResponse::NssAccount(opt) => opt
                     .map(passwd_from_nssuser)
-                    .map(|p| Response::Success(p))
+                    .map(Response::Success)
                     .unwrap_or_else(|| Response::NotFound),
                 _ => Response::NotFound,
             })
@@ -78,7 +77,7 @@ impl GroupHooks for KanidmGroup {
                 ClientResponse::NssGroups(l) => l.into_iter().map(group_from_nssgroup).collect(),
                 _ => Vec::new(),
             })
-            .map(|v| Response::Success(v))
+            .map(Response::Success)
             .unwrap_or_else(|_| Response::Success(vec![]))
     }
 
@@ -91,7 +90,7 @@ impl GroupHooks for KanidmGroup {
             .map(|r| match r {
                 ClientResponse::NssGroup(opt) => opt
                     .map(group_from_nssgroup)
-                    .map(|p| Response::Success(p))
+                    .map(Response::Success)
                     .unwrap_or_else(|| Response::NotFound),
                 _ => Response::NotFound,
             })
@@ -107,7 +106,7 @@ impl GroupHooks for KanidmGroup {
             .map(|r| match r {
                 ClientResponse::NssGroup(opt) => opt
                     .map(group_from_nssgroup)
-                    .map(|p| Response::Success(p))
+                    .map(Response::Success)
                     .unwrap_or_else(|| Response::NotFound),
                 _ => Response::NotFound,
             })

@@ -45,7 +45,7 @@ impl TryFrom<IdRawEntry> for IdSqliteEntry {
     type Error = OperationError;
 
     fn try_from(value: IdRawEntry) -> Result<Self, Self::Error> {
-        if value.id <= 0 {
+        if value.id == 0 {
             return Err(OperationError::InvalidEntryID);
         }
         Ok(IdSqliteEntry {
@@ -133,7 +133,6 @@ pub trait IdlSqliteTransaction {
                     "SQLite Error {:?}",
                     OperationError::SQLiteError
                 );
-
 
                 // TODO #258: Can this actually just load in a single select?
                 // TODO #258: I have no idea how to make this an iterator chain ... so what
@@ -408,6 +407,7 @@ pub trait IdlSqliteTransaction {
         })
     }
 
+    // This allow is critical as it resolves a life time issue in stmt.
     #[allow(clippy::let_and_return)]
     fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
         let mut stmt = match self.get_conn().prepare("PRAGMA integrity_check;") {
@@ -644,7 +644,7 @@ impl IdlSqliteWriteTransaction {
         idl: &IDLBitRange,
     ) -> Result<(), OperationError> {
         lperf_trace_segment!(audit, "be::idl_sqlite::write_idl", || {
-            if idl.len() == 0 {
+            if idl.is_empty() {
                 ltrace!(audit, "purging idl -> {:?}", idl);
                 // delete it
                 // Delete this idx_key from the table.
