@@ -34,19 +34,17 @@ impl ReferentialIntegrity {
         rtype: &str,
         uuid_value: &Value,
     ) -> Result<(), OperationError> {
-        let uuid = try_audit!(
-            au,
-            uuid_value
-                .to_ref_uuid()
-                .ok_or_else(|| OperationError::InvalidAttribute(
-                    "uuid could not become reference value".to_string()
-                ))
-        );
+        let uuid = uuid_value.to_ref_uuid().ok_or_else(|| {
+            ladmin_error!(au, "uuid value could not convert to reference uuid");
+            OperationError::InvalidAttribute("uuid could not become reference value".to_string())
+        })?;
         // NOTE: This only checks LIVE entries (not using filter_all)
         let filt_in = filter!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
-        let r = qs.internal_exists(au, filt_in);
+        let b = qs.internal_exists(au, filt_in).map_err(|e| {
+            ladmin_error!(au, "internal exists failure -> {:?}", e);
+            e
+        })?;
 
-        let b = try_audit!(au, r);
         // Is the reference in the result set?
         if b {
             Ok(())

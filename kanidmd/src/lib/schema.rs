@@ -117,52 +117,46 @@ impl SchemaAttribute {
         let uuid = *value.get_uuid();
 
         // name
-        let name = try_audit!(
-            audit,
-            value.get_ava_single_string("attributename").ok_or_else(|| {
+        let name = value
+            .get_ava_single_string("attributename")
+            .ok_or_else(|| {
+                ladmin_error!(audit, "missing attributename");
                 OperationError::InvalidSchemaState("missing attributename".to_string())
-            })
-        );
+            })?;
         // description
-        let description = try_audit!(
-            audit,
-            value.get_ava_single_string("description").ok_or_else(|| {
-                OperationError::InvalidSchemaState("missing description".to_string())
-            })
-        );
+        let description = value.get_ava_single_string("description").ok_or_else(|| {
+            ladmin_error!(audit, "missing description");
+            OperationError::InvalidSchemaState("missing description".to_string())
+        })?;
 
         // multivalue
-        let multivalue = try_audit!(
-            audit,
-            value.get_ava_single_bool("multivalue").ok_or_else(|| {
-                OperationError::InvalidSchemaState("missing multivalue".to_string())
-            })
-        );
-        let unique = try_audit!(
-            audit,
-            value
-                .get_ava_single_bool("unique")
-                .ok_or_else(|| OperationError::InvalidSchemaState("missing unique".to_string()))
-        );
+        let multivalue = value.get_ava_single_bool("multivalue").ok_or_else(|| {
+            ladmin_error!(audit, "missing multivalue");
+            OperationError::InvalidSchemaState("missing multivalue".to_string())
+        })?;
+        let unique = value.get_ava_single_bool("unique").ok_or_else(|| {
+            ladmin_error!(audit, "missing unique");
+            OperationError::InvalidSchemaState("missing unique".to_string())
+        })?;
         let phantom = value.get_ava_single_bool("phantom").unwrap_or(false);
         // index vec
         // even if empty, it SHOULD be present ... (is that value to put an empty set?)
         // The get_ava_opt_index handles the optional case for us :)
-        let index = try_audit!(
-            audit,
-            value
-                .get_ava_opt_index("index")
-                .and_then(|vv: Vec<&IndexType>| Ok(vv.into_iter().cloned().collect()))
-                .map_err(|_| OperationError::InvalidSchemaState("Invalid index".to_string()))
-        );
+        let index = value
+            .get_ava_opt_index("index")
+            .and_then(|vv: Vec<&IndexType>| Ok(vv.into_iter().cloned().collect()))
+            .map_err(|_| {
+                ladmin_error!(audit, "invalid index");
+                OperationError::InvalidSchemaState("Invalid index".to_string())
+            })?;
         // syntax type
-        let syntax = try_audit!(
-            audit,
-            value
-                .get_ava_single_syntax("syntax")
-                .cloned()
-                .ok_or_else(|| OperationError::InvalidSchemaState("missing syntax".to_string()))
-        );
+        let syntax = value
+            .get_ava_single_syntax("syntax")
+            .cloned()
+            .ok_or_else(|| {
+                ladmin_error!(audit, "missing syntax");
+                OperationError::InvalidSchemaState("missing syntax".to_string())
+            })?;
 
         Ok(SchemaAttribute {
             name,
@@ -425,31 +419,31 @@ impl SchemaClass {
         let uuid = *value.get_uuid();
 
         // name
-        let name = try_audit!(
-            audit,
-            value
-                .get_ava_single_string("classname")
-                .ok_or_else(|| OperationError::InvalidSchemaState("missing classname".to_string()))
-        );
+        let name = value.get_ava_single_string("classname").ok_or_else(|| {
+            ladmin_error!(audit, "missing classname");
+            OperationError::InvalidSchemaState("missing classname".to_string())
+        })?;
         // description
-        let description = try_audit!(
-            audit,
-            value.get_ava_single_string("description").ok_or_else(|| {
-                OperationError::InvalidSchemaState("missing description".to_string())
-            })
-        );
+        let description = value.get_ava_single_string("description").ok_or_else(|| {
+            ladmin_error!(audit, "missing description");
+            OperationError::InvalidSchemaState("missing description".to_string())
+        })?;
 
         // These are all "optional" lists of strings.
         let systemmay = value.get_ava_opt_string("systemmay").ok_or_else(|| {
+            ladmin_error!(audit, "missing or invalid systemmay");
             OperationError::InvalidSchemaState("Missing or invalid systemmay".to_string())
         })?;
         let systemmust = value.get_ava_opt_string("systemmust").ok_or_else(|| {
+            ladmin_error!(audit, "missing or invalid systemmust");
             OperationError::InvalidSchemaState("Missing or invalid systemmust".to_string())
         })?;
         let may = value.get_ava_opt_string("may").ok_or_else(|| {
+            ladmin_error!(audit, "missing or invalid may");
             OperationError::InvalidSchemaState("Missing or invalid may".to_string())
         })?;
         let must = value.get_ava_opt_string("must").ok_or_else(|| {
+            ladmin_error!(audit, "missing or invalid must");
             OperationError::InvalidSchemaState("Missing or invalid must".to_string())
         })?;
 

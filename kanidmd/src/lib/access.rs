@@ -61,12 +61,10 @@ impl AccessControlSearch {
             ));
         }
 
-        let attrs = try_audit!(
-            audit,
-            value.get_ava_set_string("acp_search_attr").ok_or_else(|| {
-                OperationError::InvalidACPState("Missing acp_search_attr".to_string())
-            })
-        );
+        let attrs = value.get_ava_set_string("acp_search_attr").ok_or_else(|| {
+            ladmin_error!(audit, "Missing acp_search_attr");
+            OperationError::InvalidACPState("Missing acp_search_attr".to_string())
+        })?;
 
         let acp = AccessControlProfile::try_from(audit, qs, value)?;
 
@@ -282,47 +280,48 @@ impl AccessControlProfile {
         }
 
         // copy name
-        let name = try_audit!(
-            audit,
-            value
-                .get_ava_single_str("name")
-                .ok_or_else(|| OperationError::InvalidACPState("Missing name".to_string()))
-        )
-        .to_string();
+        let name = value
+            .get_ava_single_str("name")
+            .ok_or_else(|| {
+                ladmin_error!(audit, "Missing name");
+                OperationError::InvalidACPState("Missing name".to_string())
+            })?
+            .to_string();
         // copy uuid
         let uuid = *value.get_uuid();
         // receiver, and turn to real filter
-        let receiver_f: ProtoFilter = try_audit!(
-            audit,
-            value
-                .get_ava_single_protofilter("acp_receiver")
-                .ok_or_else(|| OperationError::InvalidACPState("Missing acp_receiver".to_string()))
-        );
+        let receiver_f: ProtoFilter = value
+            .get_ava_single_protofilter("acp_receiver")
+            .ok_or_else(|| {
+                ladmin_error!(audit, "Missing acp_receiver");
+                OperationError::InvalidACPState("Missing acp_receiver".to_string())
+            })?;
         // targetscope, and turn to real filter
-        let targetscope_f: ProtoFilter = try_audit!(
-            audit,
-            value
-                .get_ava_single_protofilter("acp_targetscope")
-                .ok_or_else(|| OperationError::InvalidACPState(
-                    "Missing acp_targetscope".to_string()
-                ))
-        );
+        let targetscope_f: ProtoFilter = value
+            .get_ava_single_protofilter("acp_targetscope")
+            .ok_or_else(|| {
+                ladmin_error!(audit, "Missing acp_targetscope");
+                OperationError::InvalidACPState("Missing acp_targetscope".to_string())
+            })?;
 
-        let receiver_i = try_audit!(audit, Filter::from_rw(audit, &receiver_f, qs));
-        let receiver = try_audit!(
-            audit,
-            receiver_i
-                .validate(qs.get_schema())
-                .map_err(OperationError::SchemaViolation)
-        );
+        let receiver_i = Filter::from_rw(audit, &receiver_f, qs).map_err(|e| {
+            ladmin_error!(audit, "Receiver validation failed {:?}", e);
+            e
+        })?;
+        let receiver = receiver_i.validate(qs.get_schema()).map_err(|e| {
+            ladmin_error!(audit, "acp_receiver Schema Violation {:?}", e);
+            OperationError::SchemaViolation(e)
+        })?;
 
-        let targetscope_i = try_audit!(audit, Filter::from_rw(audit, &targetscope_f, qs));
-        let targetscope = try_audit!(
-            audit,
-            targetscope_i
-                .validate(qs.get_schema())
-                .map_err(OperationError::SchemaViolation)
-        );
+        let targetscope_i = Filter::from_rw(audit, &targetscope_f, qs).map_err(|e| {
+            ladmin_error!(audit, "Targetscope validation failed {:?}", e);
+            e
+        })?;
+
+        let targetscope = targetscope_i.validate(qs.get_schema()).map_err(|e| {
+            ladmin_error!(audit, "acp_targetscope Schema Violation {:?}", e);
+            OperationError::SchemaViolation(e)
+        })?;
 
         Ok(AccessControlProfile {
             name,

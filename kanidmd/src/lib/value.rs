@@ -18,7 +18,7 @@ lazy_static! {
     static ref SPN_RE: Regex =
         Regex::new("(?P<name>[^@]+)@(?P<realm>[^@]+)").expect("Invalid SPN regex found");
     static ref INAME_RE: Regex =
-        Regex::new("^(_.*|.*(\\s|@|,|=).*|\\d+)$").expect("Invalid Iname regex found");
+        Regex::new("^(_.*|.*(\\s|@|,|=).*|\\d+|root|nobody|nogroup|wheel|sshd|shadow|systemd.*)$").expect("Invalid Iname regex found");
         //            ^      ^            ^
         //            |      |            \- must not be only integers
         //            |      \- must not contain whitespace, @, ',', =

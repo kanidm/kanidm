@@ -77,14 +77,15 @@ impl Plugin for Base {
                     // Should this be forgiving and just generate the UUID?
                     // NO! If you tried to specify it, but didn't give it, then you made
                     // a mistake and your intent is unknown.
-                    let v: Value = try_audit!(
-                        au,
-                        u.first()
-                            .ok_or_else(|| OperationError::Plugin(PluginError::Base(
-                                "Uuid format invalid".to_string()
-                            )))
-                            .map(|v| (*v).clone())
-                    );
+                    let v: Value = u
+                        .first()
+                        .ok_or_else(|| {
+                            ladmin_error!(au, "Uuid format invalid");
+                            OperationError::Plugin(PluginError::Base(
+                                "Uuid format invalid".to_string(),
+                            ))
+                        })
+                        .map(|v| (*v).clone())?;
                     v
                 }
                 None => Value::new_uuid(Uuid::new_v4()),

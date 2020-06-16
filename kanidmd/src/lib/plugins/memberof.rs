@@ -94,18 +94,20 @@ fn apply_memberof(
     // Now work on the affected set.
 
     // For each affected uuid
-    for a_uuid in affected_uuids {
+    affected_uuids.into_iter().try_for_each(|a_uuid| {
         // search where group + Eq("member": "uuid")
-        let groups = try_audit!(
-            au,
-            qs.internal_search(
+        let groups = qs
+            .internal_search(
                 au,
                 filter!(f_and!([
                     f_eq("class", CLASS_GROUP.clone()),
                     f_eq("member", PartialValue::new_refer_r(a_uuid))
-                ]))
+                ])),
             )
-        );
+            .map_err(|e| {
+                ladmin_error!(au, "internal search failure -> {:?}", e);
+                e
+            })?;
         // get UUID of all groups + all memberof values
         let mut dir_mo_set: Vec<Value> = groups
             .iter()
@@ -171,17 +173,16 @@ fn apply_memberof(
         // apply to affected uuid
         let modlist = ModifyList::new_list(mod_set);
 
-        try_audit!(
+        qs.internal_modify(
             au,
-            qs.internal_modify(
-                au,
-                filter!(f_eq("uuid", PartialValue::new_uuid(*a_uuid))),
-                modlist,
-            )
-        );
-    }
-
-    Ok(())
+            filter!(f_eq("uuid", PartialValue::new_uuid(*a_uuid))),
+            modlist,
+        )
+        .map_err(|e| {
+            ladmin_error!(au, "Internal modification failure -> {:?}", e);
+            e
+        })
+    })
 }
 
 impl Plugin for MemberOf {

@@ -261,6 +261,7 @@ macro_rules! limmediate_warning {
     })
 }
 
+/*
 macro_rules! try_audit {
     ($audit:ident, $result:expr, $logFormat:expr, $errorType:expr) => {
         match $result {
@@ -291,6 +292,7 @@ macro_rules! try_audit {
         }
     };
 }
+*/
 
 #[derive(Debug, Serialize, Deserialize)]
 struct AuditLog {

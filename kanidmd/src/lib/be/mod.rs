@@ -426,7 +426,10 @@ pub trait BackendTransaction {
 
             lfilter_info!(au, "filter executed plan -> {:?}", fplan);
 
-            let entries = try_audit!(au, self.get_idlayer().get_identry(au, &idl));
+            let entries = self.get_idlayer().get_identry(au, &idl).map_err(|e| {
+                ladmin_error!(au, "get_identry failed {:?}", e);
+                e
+            })?;
             // Do other things
             // Now, de-serialise the raw_entries back to entries, and populate their ID's
 
@@ -507,7 +510,10 @@ pub trait BackendTransaction {
             match &idl {
                 IDL::Indexed(idl) => Ok(!idl.is_empty()),
                 IDL::PartialThreshold(_) => {
-                    let entries = try_audit!(au, self.get_idlayer().get_identry(au, &idl));
+                    let entries = self.get_idlayer().get_identry(au, &idl).map_err(|e| {
+                        ladmin_error!(au, "get_identry failed {:?}", e);
+                        e
+                    })?;
 
                     // if not 100% resolved query, apply the filter test.
                     let entries_filtered: Vec<_> = entries
@@ -519,7 +525,10 @@ pub trait BackendTransaction {
                 }
                 _ => {
                     lfilter_error!(au, "filter (exists) was partially or fully unindexed",);
-                    let entries = try_audit!(au, self.get_idlayer().get_identry(au, &idl));
+                    let entries = self.get_idlayer().get_identry(au, &idl).map_err(|e| {
+                        ladmin_error!(au, "get_identry failed {:?}", e);
+                        e
+                    })?;
 
                     // if not 100% resolved query, apply the filter test.
                     let entries_filtered: Vec<_> = entries
@@ -554,25 +563,17 @@ pub trait BackendTransaction {
 
         let entries = entries?;
 
-        let serialized_entries = serde_json::to_string_pretty(&entries);
-
-        let serialized_entries_str = try_audit!(
-            audit,
-            serialized_entries,
-            "serde error {:?}",
+        let serialized_entries_str = serde_json::to_string_pretty(&entries).map_err(|e| {
+            ladmin_error!(audit, "serde error {:?}", e);
             OperationError::SerdeJsonError
-        );
+        })?;
 
-        let result = fs::write(dst_path, serialized_entries_str);
-
-        try_audit!(
-            audit,
-            result,
-            "fs::write error {:?}",
-            OperationError::FsError
-        );
-
-        Ok(())
+        fs::write(dst_path, serialized_entries_str)
+            .map(|_| ())
+            .map_err(|e| {
+                ladmin_error!(audit, "fs::write error {:?}", e);
+                OperationError::FsError
+            })
     }
 
     fn name2uuid(
@@ -987,13 +988,16 @@ impl<'a> BackendWriteTransaction<'a> {
         // Future idea: Do this in batches of X amount to limit memory
         // consumption.
         let idl = IDL::ALLIDS;
-        let entries = try_audit!(audit, self.idlayer.get_identry(audit, &idl));
+        let entries = self.idlayer.get_identry(audit, &idl).map_err(|e| {
+            ladmin_error!(audit, "get_identry failure {:?}", e);
+            e
+        })?;
 
         let mut count = 0;
 
-        try_audit!(
-            audit,
-            entries.iter().try_for_each(|e| {
+        entries
+            .iter()
+            .try_for_each(|e| {
                 count += 1;
                 if count % 2500 == 0 {
                     limmediate_warning!(audit, "{}", count);
@@ -1002,7 +1006,10 @@ impl<'a> BackendWriteTransaction<'a> {
                 }
                 self.entry_index(audit, None, Some(e))
             })
-        );
+            .map_err(|e| {
+                ladmin_error!(audit, "reindex failed -> {:?}", e);
+                e
+            })?;
         limmediate_warning!(audit, " reindexed {} entries ✅\n", count);
         Ok(())
     }
@@ -1030,26 +1037,23 @@ impl<'a> BackendWriteTransaction<'a> {
     ) -> Result<(), OperationError> {
         // load all entries into RAM, may need to change this later
         // if the size of the database compared to RAM is an issue
-        let serialized_string_option = fs::read_to_string(src_path);
-
-        let serialized_string = try_audit!(
-            audit,
-            serialized_string_option,
-            "fs::read_to_string {:?}",
+        let serialized_string = fs::read_to_string(src_path).map_err(|e| {
+            ladmin_error!(audit, "fs::read_to_string {:?}", e);
             OperationError::FsError
-        );
+        })?;
 
-        try_audit!(audit, unsafe { self.idlayer.purge_id2entry(audit) });
+        unsafe { self.idlayer.purge_id2entry(audit) }.map_err(|e| {
+            ladmin_error!(audit, "purge_id2entry failed {:?}", e);
+            e
+        })?;
 
         let dbentries_option: Result<Vec<DbEntry>, serde_json::Error> =
             serde_json::from_str(&serialized_string);
 
-        let dbentries = try_audit!(
-            audit,
-            dbentries_option,
-            "serde_json error {:?}",
+        let dbentries = dbentries_option.map_err(|e| {
+            ladmin_error!(audit, "serde_json error {:?}", e);
             OperationError::SerdeJsonError
-        );
+        })?;
 
         // Filter all elements that have a UUID in the system range.
         /*

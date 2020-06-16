@@ -369,13 +369,10 @@ impl Entry<EntryInit, EntryNew> {
             }
         }
         // str -> Proto entry
-        let pe: ProtoEntry = try_audit!(
-            audit,
-            serde_json::from_str(es).map_err(|e| {
-                ladmin_error!(audit, "SerdeJson Failure -> {:?}", e);
-                OperationError::SerdeJsonError
-            })
-        );
+        let pe: ProtoEntry = serde_json::from_str(es).map_err(|e| {
+            ladmin_error!(audit, "SerdeJson Failure -> {:?}", e);
+            OperationError::SerdeJsonError
+        })?;
         // now call from_proto_entry
         Self::from_proto_entry(audit, &pe, qs)
     }

@@ -295,7 +295,10 @@ impl Handler<AuthMessage> for QueryServerReadV1 {
 
             let mut idm_write = self.idms.write();
 
-            let ae = try_audit!(audit, AuthEvent::from_message(msg));
+            let ae = AuthEvent::from_message(msg).map_err(|e| {
+                ladmin_error!(audit, "Failed to parse AuthEvent -> {:?}", e);
+                e
+            })?;
 
             let ct = SystemTime::now()
                 .duration_since(SystemTime::UNIX_EPOCH)
