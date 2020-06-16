@@ -1,6 +1,5 @@
 use rand::prelude::*;
 use std::fmt;
-use std::path::PathBuf;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct IntegrationTestConfig {
@@ -77,14 +76,8 @@ impl Configuration {
         self.log_level = log_level;
     }
 
-    pub fn update_db_path(&mut self, p: &PathBuf) {
-        match p.to_str() {
-            Some(p) => self.db_path = p.to_string(),
-            None => {
-                error!("Invalid DB path supplied");
-                std::process::exit(1);
-            }
-        }
+    pub fn update_db_path(&mut self, p: &str) {
+        self.db_path = p.to_string();
     }
 
     pub fn update_bind(&mut self, b: &Option<String>) {
@@ -98,36 +91,13 @@ impl Configuration {
         self.ldapaddress = l.clone();
     }
 
-    pub fn update_tls(
-        &mut self,
-        ca: &Option<PathBuf>,
-        cert: &Option<PathBuf>,
-        key: &Option<PathBuf>,
-    ) {
+    pub fn update_tls(&mut self, ca: &Option<String>, cert: &Option<String>, key: &Option<String>) {
         match (ca, cert, key) {
             (None, None, None) => {}
             (Some(cap), Some(certp), Some(keyp)) => {
-                let cas = match cap.to_str() {
-                    Some(cav) => cav.to_string(),
-                    None => {
-                        error!("Invalid CA path");
-                        std::process::exit(1);
-                    }
-                };
-                let certs = match certp.to_str() {
-                    Some(certv) => certv.to_string(),
-                    None => {
-                        error!("Invalid Cert path");
-                        std::process::exit(1);
-                    }
-                };
-                let keys = match keyp.to_str() {
-                    Some(keyv) => keyv.to_string(),
-                    None => {
-                        error!("Invalid Key path");
-                        std::process::exit(1);
-                    }
-                };
+                let cas = cap.to_string();
+                let certs = certp.to_string();
+                let keys = keyp.to_string();
                 self.tls_config = Some(TlsConfiguration {
                     ca: cas,
                     cert: certs,

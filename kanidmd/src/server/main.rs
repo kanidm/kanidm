@@ -1,6 +1,11 @@
 #![deny(warnings)]
 
+use serde_derive::Deserialize;
+use std::fs::File;
+use std::io::Read;
+use std::path::Path;
 use std::path::PathBuf;
+use std::str::FromStr;
 
 use kanidm::audit::LogLevel;
 use kanidm::config::Configuration;
@@ -11,35 +16,40 @@ use kanidm::core::{
 
 use structopt::StructOpt;
 
+#[derive(Debug, Deserialize)]
+struct ServerConfig {
+    pub bindaddress: Option<String>,
+    pub ldapbindaddress: Option<String>,
+    // pub threads: Option<usize>,
+    pub db_path: String,
+    pub tls_ca: Option<String>,
+    pub tls_cert: Option<String>,
+    pub tls_key: Option<String>,
+    pub log_level: Option<String>,
+}
+
+impl ServerConfig {
+    pub fn new<P: AsRef<Path>>(config_path: P) -> Result<Self, ()> {
+        let mut f = File::open(config_path).map_err(|e| {
+            eprintln!("Unable to open config file [{:?}] 🥺", e);
+        })?;
+
+        let mut contents = String::new();
+        f.read_to_string(&mut contents)
+            .map_err(|e| eprintln!("unable to read contents {:?}", e))?;
+
+        toml::from_str(contents.as_str()).map_err(|e| eprintln!("unable to parse config {:?}", e))
+    }
+}
+
 #[derive(Debug, StructOpt)]
 struct CommonOpt {
     #[structopt(short = "d", long = "debug")]
     /// Logging level. quiet, default, filter, verbose, perffull
     debug: Option<LogLevel>,
-    #[structopt(parse(from_os_str), short = "D", long = "db_path")]
-    /// Path to the server's database. If it does not exist, it will be created.
-    db_path: PathBuf,
-}
-
-#[derive(Debug, StructOpt)]
-struct ServerOpt {
-    #[structopt(parse(from_os_str), short = "C", long = "ca")]
-    /// Path to a CA certificate (PEM)
-    ca_path: Option<PathBuf>,
-    #[structopt(parse(from_os_str), short = "c", long = "cert")]
-    /// Path to a server certificate (PEM)
-    cert_path: Option<PathBuf>,
-    #[structopt(parse(from_os_str), short = "k", long = "key")]
-    /// Path to a server key (PEM)
-    key_path: Option<PathBuf>,
-    #[structopt(short = "b", long = "bindaddr")]
-    /// Address to bind the webserver to. Default: 127.0.0.1:8080
-    bind: Option<String>,
-    #[structopt(short = "l", long = "ldapbindaddr")]
-    /// If provided, start an ldap server on the address:port. Defaults to None.
-    ldapbind: Option<String>,
-    #[structopt(flatten)]
-    commonopts: CommonOpt,
+    #[structopt(parse(from_os_str), short = "c", long = "config")]
+    /// Path to the server's configuration file. If it does not exist, it will be created.
+    config_path: PathBuf,
 }
 
 #[derive(Debug, StructOpt)]
@@ -82,7 +92,7 @@ struct DomainOpt {
 enum Opt {
     #[structopt(name = "server")]
     /// Start the IDM Server
-    Server(ServerOpt),
+    Server(CommonOpt),
     #[structopt(name = "backup")]
     /// Backup the database content (offline)
     Backup(BackupOpt),
@@ -106,14 +116,13 @@ enum Opt {
 }
 
 impl Opt {
-    fn debug(&self) -> Option<LogLevel> {
+    fn commonopt(&self) -> &CommonOpt {
         match self {
-            Opt::Server(sopt) => sopt.commonopts.debug.clone(),
-            Opt::Verify(sopt) | Opt::Reindex(sopt) => sopt.debug.clone(),
-            Opt::Backup(bopt) => bopt.commonopts.debug.clone(),
-            Opt::Restore(ropt) => ropt.commonopts.debug.clone(),
-            Opt::RecoverAccount(ropt) => ropt.commonopts.debug.clone(),
-            Opt::DomainChange(dopt) => dopt.commonopts.debug.clone(),
+            Opt::Server(sopt) | Opt::Verify(sopt) | Opt::Reindex(sopt) => &sopt,
+            Opt::Backup(bopt) => &bopt.commonopts,
+            Opt::Restore(ropt) => &ropt.commonopts,
+            Opt::RecoverAccount(ropt) => &ropt.commonopts,
+            Opt::DomainChange(dopt) => &dopt.commonopts,
         }
     }
 }
@@ -123,13 +132,34 @@ async fn main() {
     // Read cli args, determine if we should backup/restore
     let opt = Opt::from_args();
 
-    // Read our config (if any)
+    // Read our config
     let mut config = Configuration::new();
-    // Apply any cli overrides?
+    let sconfig = match ServerConfig::new(&(opt.commonopt().config_path)) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("Config Parse failure {:?}", e);
+            std::process::exit(1);
+        }
+    };
+    // Apply the file requirements
+    let ll = sconfig
+        .log_level
+        .map(|ll| match LogLevel::from_str(ll.as_str()) {
+            Ok(v) => v as u32,
+            Err(e) => {
+                eprintln!("{:?}", e);
+                std::process::exit(1);
+            }
+        });
 
-    // Configure the server logger. This could be adjusted based on what config
-    // says.
-    config.update_log_level(opt.debug().map(|v| v as u32));
+    config.update_log_level(ll);
+    config.update_db_path(&sconfig.db_path.as_str());
+    config.update_tls(&sconfig.tls_ca, &sconfig.tls_cert, &sconfig.tls_key);
+    config.update_bind(&sconfig.bindaddress);
+    config.update_ldapbind(&sconfig.ldapbindaddress);
+
+    // Apply any cli overrides, normally debug level.
+    config.update_log_level(opt.commonopt().debug.as_ref().map(|v| v.clone() as u32));
     ::std::env::set_var("RUST_LOG", "actix_web=info,kanidm=info");
 
     env_logger::builder()
@@ -138,13 +168,8 @@ async fn main() {
         .init();
 
     match opt {
-        Opt::Server(sopt) => {
+        Opt::Server(_sopt) => {
             eprintln!("Running in server mode ...");
-
-            config.update_db_path(&sopt.commonopts.db_path);
-            config.update_tls(&sopt.ca_path, &sopt.cert_path, &sopt.key_path);
-            config.update_bind(&sopt.bind);
-            config.update_ldapbind(&sopt.ldapbind);
 
             let sctx = create_server_core(config).await;
             match sctx {
@@ -162,7 +187,7 @@ async fn main() {
         Opt::Backup(bopt) => {
             eprintln!("Running in backup mode ...");
 
-            config.update_db_path(&bopt.commonopts.db_path);
+            // config.update_db_path(&bopt.commonopts.db_path);
 
             let p = match bopt.path.to_str() {
                 Some(p) => p,
@@ -176,7 +201,7 @@ async fn main() {
         Opt::Restore(ropt) => {
             eprintln!("Running in restore mode ...");
 
-            config.update_db_path(&ropt.commonopts.db_path);
+            // config.update_db_path(&ropt.commonopts.db_path);
 
             let p = match ropt.path.to_str() {
                 Some(p) => p,
@@ -187,17 +212,17 @@ async fn main() {
             };
             restore_server_core(config, p);
         }
-        Opt::Verify(vopt) => {
+        Opt::Verify(_vopt) => {
             eprintln!("Running in db verification mode ...");
 
-            config.update_db_path(&vopt.db_path);
+            // config.update_db_path(&vopt.db_path);
             verify_server_core(config);
         }
         Opt::RecoverAccount(raopt) => {
             eprintln!("Running account recovery ...");
 
             let password = rpassword::prompt_password_stderr("new password: ").unwrap();
-            config.update_db_path(&raopt.commonopts.db_path);
+            // config.update_db_path(&raopt.commonopts.db_path);
 
             recover_account_core(config, raopt.name, password);
         }
@@ -209,16 +234,16 @@ async fn main() {
             reset_sid_core(config);
         }
         */
-        Opt::Reindex(copt) => {
+        Opt::Reindex(_copt) => {
             eprintln!("Running in reindex mode ...");
 
-            config.update_db_path(&copt.db_path);
+            // config.update_db_path(&copt.db_path);
             reindex_server_core(config);
         }
         Opt::DomainChange(dopt) => {
             eprintln!("Running in domain name change mode ... this may take a long time ...");
 
-            config.update_db_path(&dopt.commonopts.db_path);
+            // config.update_db_path(&dopt.commonopts.db_path);
             domain_rename_core(config, dopt.new_domain_name);
         }
     }

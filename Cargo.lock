@@ -1525,6 +1525,7 @@ dependencies = [
  "tokio",
  "tokio-openssl",
  "tokio-util 0.2.0",
+ "toml",
  "uuid",
  "zxcvbn",
 ]
