@@ -478,9 +478,9 @@ pub trait AccessControlsTransaction {
                 .collect();
 
             if allowed_entries.is_empty() {
-                lsecurity_access!(audit, "allowed {} entries ✅", allowed_entries.len());
-            } else {
                 lsecurity_access!(audit, "denied ❌");
+            } else {
+                lsecurity_access!(audit, "allowed {} entries ✅", allowed_entries.len());
             }
 
             Ok(allowed_entries)
@@ -644,11 +644,12 @@ pub trait AccessControlsTransaction {
                 })
                 .collect();
 
-            lsecurity_access!(
-                audit,
-                "attribute set reduced on {} entries",
-                allowed_entries.len()
-            );
+            if allowed_entries.is_empty() {
+                lsecurity_access!(audit, "reduced to empty set on all entries ❌");
+            } else {
+                lsecurity_access!(audit, "attribute set reduced on {} entries ✅", allowed_entries.len());
+            }
+
             Ok(allowed_entries)
         })
     }
@@ -1752,6 +1753,7 @@ mod tests {
             let res = acw
                 .search_filter_entries(&mut audit, $se, $entries)
                 .expect("op failed");
+            audit.write_log();
             debug!("result --> {:?}", res);
             debug!("expect --> {:?}", $expect);
             // should be ok, and same as expect.
@@ -1865,6 +1867,8 @@ mod tests {
                 .map(|e| unsafe { e.into_reduced() })
                 .collect();
 
+            audit.write_log();
+
             debug!("expect --> {:?}", expect_set);
             debug!("result --> {:?}", reduced);
             // should be ok, and same as expect.
@@ -1974,6 +1978,8 @@ mod tests {
             let res = acw
                 .modify_allow_operation(&mut audit, $me, $entries)
                 .expect("op failed");
+
+            audit.write_log();
             debug!("result --> {:?}", res);
             debug!("expect --> {:?}", $expect);
             // should be ok, and same as expect.
@@ -2136,6 +2142,8 @@ mod tests {
             let res = acw
                 .create_allow_operation(&mut audit, $ce, $entries)
                 .expect("op failed");
+
+            audit.write_log();
             debug!("result --> {:?}", res);
             debug!("expect --> {:?}", $expect);
             // should be ok, and same as expect.
@@ -2254,6 +2262,8 @@ mod tests {
             let res = acw
                 .delete_allow_operation(&mut audit, $de, $entries)
                 .expect("op failed");
+
+            audit.write_log();
             debug!("result --> {:?}", res);
             debug!("expect --> {:?}", $expect);
             // should be ok, and same as expect.
