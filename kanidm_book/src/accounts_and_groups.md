@@ -102,7 +102,7 @@ Further, groups that are considered "idm_high_privilege" can NOT be managed
 by the standard "idm_group_manage_priv" group.
 
 Management of high privilege accounts and groups is granted through the
-the "hp" variants of all privileges. For example:
+the "hp" variants of all privileges. A non-conclusive list:
 
 * idm_hp_account_read_priv
 * idm_hp_account_manage_priv

@@ -12,8 +12,6 @@ pub struct AccountCommonOpt {
 pub struct AccountCredentialSet {
     #[structopt(flatten)]
     aopts: AccountCommonOpt,
-    #[structopt()]
-    application_id: Option<String>,
     #[structopt(flatten)]
     copt: CommonOpt,
 }

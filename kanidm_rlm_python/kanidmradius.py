@@ -34,14 +34,13 @@ else:
 USER = CONFIG.get("kanidm_client", "user")
 SECRET = CONFIG.get("kanidm_client", "secret")
 DEFAULT_VLAN = CONFIG.get("radiusd", "vlan")
-CACHE_PATH = CONFIG.get("radiusd", "cache_path")
 TIMEOUT = 8
 
 URL = CONFIG.get('kanidm_client', 'url')
 AUTH_URL = "%s/v1/auth" % URL
 
 def _authenticate(s, acct, pw):
-    init_auth = {"step": { "init": [acct, None]}}
+    init_auth = {"step": {"init": acct}}
 
     r = s.post(AUTH_URL, json=init_auth, verify=CA, timeout=TIMEOUT)
     if r.status_code != 200:
@@ -64,36 +63,8 @@ def _get_radius_token(username):
     r = s.get(rtok_url, verify=CA, timeout=TIMEOUT)
     if r.status_code != 200:
         raise Exception("Failed to get RadiusAuthToken")
-    tok = r.json()
-    return(tok)
-
-def _update_cache(token):
-    # Ensure the dir exists
-    try:
-        os.makedirs(CACHE_PATH, mode=0o700)
-    except:
-        # Already exists
-        pass
-    # User Item
-    item = os.path.join(CACHE_PATH, token["uuid"])
-    uitem = os.path.join(CACHE_PATH, token["name"])
-    # Token to json.
-    with open(item, 'w') as f:
-        json.dump(token, f)
-    # Symlink username -> uuid
-    try:
-        os.symlink(item, uitem)
-    except Exception as e:
-        print(e)
-
-def _get_cache(username):
-    print("Getting cached token ...")
-    uitem = os.path.join(CACHE_PATH, username)
-    try:
-        with open(uitem, 'r') as f: 
-            return json.load(f)
-    except:
-        None
+    else:
+        return r.json()
 
 def check_vlan(acc, group):
     if CONFIG.has_section("group.%s" % group['name']):
@@ -119,12 +90,8 @@ def authorize(args):
 
     try:
         tok = _get_radius_token(username)
-        # Update the cache?
-        _update_cache(tok)
     except Exception as e:
         print(e)
-        # Attempt the cache.
-        tok = _get_cache(username)
 
     if tok == None:
         return radiusd.RLM_MODULE_NOTFOUND

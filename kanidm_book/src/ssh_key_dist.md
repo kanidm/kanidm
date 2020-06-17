@@ -49,6 +49,8 @@ If the account has ssh public keys you should see them listed, one per line.
 To configure servers to accept these keys, you must change their /etc/ssh/sshd_config to
 contain the lines:
 
+    PubkeyAuthentication yes
+    UsePAM yes
     AuthorizedKeysCommand /usr/bin/kanidm_ssh_authorizedkeys %u
     AuthorizedKeysCommandUser nobody
 
@@ -57,7 +59,24 @@ Restart sshd, and then attempt to authenticate with the keys.
 It's highly recommended you keep your client configuration and sshd_configuration in a configuration
 management tool such as salt or ansible.
 
-### Direct configuration
+> **NOTICE:**
+> With a working SSH key setup, you should also consider adding the following
+> sshd_config options as hardening.
+
+    PermitRootLogin no
+    PasswordAuthentication no
+    PermitEmptyPasswords no
+    GSSAPIAuthentication no
+    KerberosAuthentication no
+
+### Direct communication configuration
+
+In this mode, the authorised keys commands will contact kanidm directly.
+
+> **NOTICE:**
+> As kanidm is contacted directly there is no ssh public key cache. Any network
+> outage or communication loss may prevent you accessing your systems. You should
+> only use this version if you have a requirement for it.
 
 The kanidm_ssh_authorizedkeys_direct command is part of the kanidm-clients package, so should be installed
 on the servers.
@@ -73,6 +92,8 @@ If the account has ssh public keys you should see them listed, one per line.
 To configure servers to accept these keys, you must change their /etc/ssh/sshd_config to
 contain the lines:
 
+    PubkeyAuthentication yes
+    UsePAM yes
     AuthorizedKeysCommand /usr/bin/kanidm_ssh_authorizedkeys_direct -D anonymous %u
     AuthorizedKeysCommandUser nobody
 

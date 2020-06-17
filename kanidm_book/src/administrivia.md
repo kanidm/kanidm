@@ -16,8 +16,8 @@ To take the backup (assuming our docker environment) you first need to stop the 
 
     docker stop <container name>
     docker run --rm -i -t -v kanidmd:/data -v kanidmd_backups:/backup \
-        kanidm/server:latest /sbin/kanidmd backup \
-        /backup/kanidm.backup.json -D /data/kanidm.db
+        kanidm/server:latest /sbin/kanidmd backup -c /data/server.toml \
+        /backup/kanidm.backup.json
     docker start <container name>
 
 You can then restart your instance. DO NOT modify the backup.json as it may introduce
@@ -27,8 +27,8 @@ To restore from the backup:
 
     docker stop <container name>
     docker run --rm -i -t -v kanidmd:/data -v kanidmd_backups:/backup \
-        kanidm/server:latest /sbin/kanidmd restore \
-        /backup/kanidm.backup.json -D /data/kanidm.db
+        kanidm/server:latest /sbin/kanidmd restore -c /data/server.toml \
+        /backup/kanidm.backup.json
     docker start <container name>
 
 That's it!
@@ -62,8 +62,8 @@ you can then rename the domain with the commands as follows:
 
     docker stop <container name>
     docker run --rm -i -t -v kandimd:/data \
-        kanidm/server:latest /sbin/kanidmd domain_name_change \
-        -D /data/kanidm.db -n idm.new.domain.name
+        kanidm/server:latest /sbin/kanidmd domain_name_change -c /data/server.toml \
+        -n idm.new.domain.name
     docker start <container name>
 
 
@@ -89,8 +89,7 @@ definitions (this works even though the schema is in the same database!)
 
     docker stop <container name>
     docker run --rm -i -t -v kanidmd:/data \
-        kanidm/server:latest /sbin/kanidmd reindex \
-        -D /data/kanidm.db
+        kanidm/server:latest /sbin/kanidmd reindex -c /data/server.toml
     docker start <container name>
 
 Generally, reindexing is a rare action and should not normally be required.
@@ -108,8 +107,7 @@ You can run a verification with:
 
     docker stop <container name>
     docker run --rm -i -t -v kanidmd:/data \
-        kanidm/server:latest /sbin/kanidmd verify \
-        -D /data/kanidm.db
+        kanidm/server:latest /sbin/kanidmd verify -c /data/server.toml
     docker start <container name>
 
 If you have errors, please contact the project to help support you to resolve these.
@@ -125,12 +123,11 @@ above.
     kanidm raw create  -H https://localhost:8443 -C ../insecure/ca.pem -D idm_admin example.create.group.json
 
     # Apply a json stateful modification to all entries matching a filter
-    kanidm raw modify -H https://localhost:8443 -C ../insecure/ca.pem -D admin '{"Or": [ {"Eq": ["name", "idm_person_account_create_priv"]}, {"Eq": ["name", "idm_service_account_create_priv"]}, {"Eq": ["name", "idm_account_write_priv"]}, {"Eq": ["name", "idm_group_write_priv"]}, {"Eq": ["name", "idm_people_write_priv"]}, {"Eq": ["name", "idm_group_create_priv"]} ]}' example.modify.idm_admin.json
-    kanidm raw modify -H https://localhost:8443 -C ../insecure/ca.pem -D idm_admin '{"Eq": ["name", "idm_admins"]}' example.modify.idm_admin.json
+    kanidm raw modify -H https://localhost:8443 -C ../insecure/ca.pem -D admin '{"or": [ {"eq": ["name", "idm_person_account_create_priv"]}, {"eq": ["name", "idm_service_account_create_priv"]}, {"eq": ["name", "idm_account_write_priv"]}, {"eq": ["name", "idm_group_write_priv"]}, {"eq": ["name", "idm_people_write_priv"]}, {"eq": ["name", "idm_group_create_priv"]} ]}' example.modify.idm_admin.json
+    kanidm raw modify -H https://localhost:8443 -C ../insecure/ca.pem -D idm_admin '{"eq": ["name", "idm_admins"]}' example.modify.idm_admin.json
 
     # Search and show the database representations
-    kanidm raw search -H https://localhost:8443 -C ../insecure/ca.pem -D admin '{"Eq": ["name", "idm_admin"]}'
-    > Entry { attrs: {"class": ["account", "memberof", "object"], "displayname": ["IDM Admin"], "memberof": ["idm_people_read_priv", "idm_people_write_priv", "idm_group_write_priv", "idm_account_read_priv", "idm_account_write_priv", "idm_service_account_create_priv", "idm_person_account_create_priv", "idm_high_privilege"], "name": ["idm_admin"], "uuid": ["bb852c38-8920-4932-a551-678253cae6ff"]} }
+    kanidm raw search -H https://localhost:8443 -C ../insecure/ca.pem -D admin '{"eq": ["name", "idm_admin"]}'
 
     # Delete all entries matching a filter
-    kanidm raw delete -H https://localhost:8443 -C ../insecure/ca.pem -D idm_admin '{"Eq": ["name", "test_account_delete_me"]}'
+    kanidm raw delete -H https://localhost:8443 -C ../insecure/ca.pem -D idm_admin '{"eq": ["name", "test_account_delete_me"]}'

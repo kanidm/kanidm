@@ -6,7 +6,7 @@ every application in the world being able to search and bind to LDAP. As there
 are still many of these in the world, Kanidm has the ability to host a read-only
 LDAP interface.
 
-> **WARNING** The LDAP server in Kanidm is not completely RFC compliant. This
+> **WARNING** The LDAP server in Kanidm is not RFC compliant. This
 > is intentional, as Kanidm wants to cover the common use case (simple bind and search).
 
 ## What is LDAP
@@ -47,7 +47,7 @@ decisions.
 These decisions were made to make the path as simple and effective as possible,
 relying more on the kanidm query and filter system than attempting to generate a tree like
 representation of data. As almost all clients can use filters for entry selection
-we don't believe this is a issue.
+we don't believe this is a limitation for consuming applications.
 
 ## Security
 
@@ -55,9 +55,9 @@ we don't believe this is a issue.
 
 StartTLS is not supported due to security risks. LDAPS is the only secure method
 of communicating to any LDAP server. Kanidm if configured with certificates will
-use them for LDAPS (and will not listen on LDAP ports). If no certificates exist
+use them for LDAPS (and will not listen on a plaintext LDAP port). If no certificates exist
 Kanidm will listen on a plaintext LDAP port, and you MUST TLS terminate in front
-of the Kanidm system to secure data.
+of the Kanidm system to secure data and authentication.
 
 ### Access Controls
 
@@ -70,10 +70,9 @@ All binds, have the permissions of "Anonymous" (even if the anonymous account is
 
 ## Server Configuration
 
-To configure Kanidm to provide LDAP you add the argument to the server command line:
+To configure Kanidm to provide LDAP you add the argument to the server.toml configuration:
 
-    -l addr:port
-    -l 127.0.0.1:3636
+    ldapbindaddress = "127.0.0.1:3636"
 
 You should configure TLS certificates and keys as usual - LDAP will re-use the webserver TLS
 material.
@@ -102,7 +101,6 @@ It is recommended that client applications filter accounts that can login with '
 and groups with '(class=group)'. If possible, group membership is defined in rfc2307bis or
 Active Directory style. This means groups are determined from the "memberof" attribute which contains
 a dn to a group.
-
 
 LDAP binds can use any unique identifier of the account. The following are all valid bind dn's for
 the object listed above (if it was a posix account that is).
@@ -133,6 +131,4 @@ This is despite the fact:
 * The third is an incorrect port
 
 To diganose errors like this you may need "-d 1" for your ldap commands or client.
-
-
 
