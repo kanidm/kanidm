@@ -647,7 +647,11 @@ pub trait AccessControlsTransaction {
             if allowed_entries.is_empty() {
                 lsecurity_access!(audit, "reduced to empty set on all entries ❌");
             } else {
-                lsecurity_access!(audit, "attribute set reduced on {} entries ✅", allowed_entries.len());
+                lsecurity_access!(
+                    audit,
+                    "attribute set reduced on {} entries ✅",
+                    allowed_entries.len()
+                );
             }
 
             Ok(allowed_entries)
