@@ -424,7 +424,7 @@ impl KanidmClient {
     // auth
     pub fn auth_anonymous(&self) -> Result<UserAuthToken, ClientError> {
         // TODO #251: Check state for auth continue contains anonymous.
-        let _state = match self.auth_step_init("anonymous", None) {
+        let _state = match self.auth_step_init("anonymous") {
             Ok(s) => s,
             Err(e) => return Err(e),
         };
@@ -450,7 +450,7 @@ impl KanidmClient {
         ident: &str,
         password: &str,
     ) -> Result<UserAuthToken, ClientError> {
-        let _state = match self.auth_step_init(ident, None) {
+        let _state = match self.auth_step_init(ident) {
             Ok(s) => s,
             Err(e) => return Err(e),
         };
@@ -477,7 +477,7 @@ impl KanidmClient {
         password: &str,
         totp: u32,
     ) -> Result<UserAuthToken, ClientError> {
-        let _state = match self.auth_step_init(ident, None) {
+        let _state = match self.auth_step_init(ident) {
             Ok(s) => s,
             Err(e) => return Err(e),
         };
@@ -538,13 +538,9 @@ impl KanidmClient {
         r.map(|_| true)
     }
 
-    pub fn auth_step_init(
-        &self,
-        ident: &str,
-        appid: Option<&str>,
-    ) -> Result<AuthState, ClientError> {
+    pub fn auth_step_init(&self, ident: &str) -> Result<AuthState, ClientError> {
         let auth_init = AuthRequest {
-            step: AuthStep::Init(ident.to_string(), appid.map(|s| s.to_string())),
+            step: AuthStep::Init(ident.to_string()),
         };
 
         let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_init);

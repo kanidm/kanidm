@@ -133,7 +133,7 @@ impl Account {
             spn: self.spn.clone(),
             displayname: self.name.clone(),
             uuid: self.uuid.to_hyphenated_ref().to_string(),
-            application: None,
+            // application: None,
             groups: self.groups.iter().map(|g| g.to_proto()).collect(),
             claims: claims.iter().map(|c| c.to_proto()).collect(),
         })

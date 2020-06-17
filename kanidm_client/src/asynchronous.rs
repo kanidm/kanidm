@@ -142,13 +142,9 @@ impl KanidmAsyncClient {
         Ok(r)
     }
 
-    pub async fn auth_step_init(
-        &self,
-        ident: &str,
-        appid: Option<&str>,
-    ) -> Result<AuthState, ClientError> {
+    pub async fn auth_step_init(&self, ident: &str) -> Result<AuthState, ClientError> {
         let auth_init = AuthRequest {
-            step: AuthStep::Init(ident.to_string(), appid.map(|s| s.to_string())),
+            step: AuthStep::Init(ident.to_string()),
         };
 
         let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_init).await;
@@ -160,7 +156,7 @@ impl KanidmAsyncClient {
         ident: &str,
         password: &str,
     ) -> Result<UserAuthToken, ClientError> {
-        let _state = match self.auth_step_init(ident, None).await {
+        let _state = match self.auth_step_init(ident).await {
             Ok(s) => s,
             Err(e) => return Err(e),
         };
@@ -184,7 +180,7 @@ impl KanidmAsyncClient {
     pub async fn auth_anonymous(&self) -> Result<UserAuthToken, ClientError> {
         // TODO #251: Check state for auth continue contains anonymous.
         // #251 will remove the need for this check.
-        let _state = match self.auth_step_init("anonymous", None).await {
+        let _state = match self.auth_step_init("anonymous").await {
             Ok(s) => s,
             Err(e) => return Err(e),
         };

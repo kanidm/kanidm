@@ -138,11 +138,13 @@ pub struct Claim {
     // pub expiry: DateTime
 }
 
+/*
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Application {
     pub name: String,
     pub uuid: String,
 }
+*/
 
 // The currently authenticated user, and any required metadata for them
 // to properly authorise them. This is similar in nature to oauth and the krb
@@ -164,7 +166,8 @@ pub struct UserAuthToken {
     pub spn: String,
     pub displayname: String,
     pub uuid: String,
-    pub application: Option<Application>,
+    // #[serde(skip_serializing_if = "Option::is_none")]
+    // pub application: Option<Application>,
     pub groups: Vec<Group>,
     pub claims: Vec<Claim>,
     // Should we allow supplemental ava's to be added on request?
@@ -236,6 +239,7 @@ pub struct UnixUserToken {
     pub displayname: String,
     pub gidnumber: u32,
     pub uuid: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub shell: Option<String>,
     pub groups: Vec<UnixGroupToken>,
     pub sshkeys: Vec<String>,
@@ -425,8 +429,8 @@ impl fmt::Debug for AuthCredential {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AuthStep {
-    // name, application id?
-    Init(String, Option<String>),
+    // name
+    Init(String),
     /*
     Step(
         Type(params ....)

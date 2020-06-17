@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=opensuse/tumbleweed@sha256:211becaf2c9250ae36eb313abf5db38cd5e159cac2d920e1ef7bb62429a51585
+ARG BASE_IMAGE=opensuse/tumbleweed:latest
 FROM ${BASE_IMAGE} AS builder
 LABEL mantainer william@blackhats.net.au
 
@@ -46,6 +46,6 @@ EXPOSE 8443 3636
 VOLUME /data
 
 ENV RUST_BACKTRACE 1
-CMD ["/sbin/kanidmd", "server", "-D", "/data/kanidm.db",  "-C", "/data/ca.pem", \
-     "-c", "/data/cert.pem", "-k", "/data/key.pem", "--bindaddr", "0.0.0.0:8443"]
+CMD ["/sbin/kanidmd", "server", "-c", "/data/server.toml"]
+
 
