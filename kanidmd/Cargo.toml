@@ -29,8 +29,6 @@ path = "src/server/main.rs"
 kanidm_proto = { path = "../kanidm_proto", version = "0.1" }
 
 actix = "0.9"
-# actix = { version = "0.9", path = "../../actix" }
-
 actix-rt = "1.1"
 actix-web = { version = "2.0", features = ["openssl"] }
 actix-session = "0.3"
@@ -62,8 +60,8 @@ r2d2_sqlite = "0.14"
 structopt = { version = "0.3", default-features = false }
 time = "0.1"
 
-# concread = "0.1"
-concread = { path = "../../concread" }
+concread = "0.1"
+# concread = { path = "../../concread" }
 crossbeam = "0.7"
 
 openssl = "0.10"
