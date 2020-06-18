@@ -98,11 +98,9 @@ impl fmt::Display for LogTag {
 macro_rules! lqueue {
     ($au:expr, $tag:expr, $($arg:tt)*) => ({
         use crate::audit::LogTag;
-        /*
         if cfg!(test) {
             println!($($arg)*)
         }
-        */
         if ($au.level & $tag as u32) == $tag as u32 {
             use std::fmt;
             $au.log_event(

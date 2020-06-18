@@ -1,10 +1,10 @@
 use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
+use libc::umask;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::NO_PARAMS;
 use std::convert::TryFrom;
 use std::fmt;
-use libc::umask;
 
 use crate::cache::Id;
 use std::sync::{Mutex, MutexGuard};
@@ -74,8 +74,7 @@ impl<'a> DbTxn<'a> {
     }
 
     pub fn migrate(&self) -> Result<(), ()> {
-        self.conn
-            .set_prepared_statement_cache_capacity(16);
+        self.conn.set_prepared_statement_cache_capacity(16);
         self.conn
             .prepare_cached("PRAGMA journal_mode=WAL;")
             .and_then(|mut wal_stmt| wal_stmt.query(NO_PARAMS).map(|_| ()))
@@ -424,7 +423,9 @@ impl<'a> DbTxn<'a> {
     pub fn check_account_password(&self, a_uuid: &str, cred: &str) -> Result<bool, ()> {
         let mut stmt = self
             .conn
-            .prepare_cached("SELECT password FROM account_t WHERE uuid = :a_uuid AND password IS NOT NULL")
+            .prepare_cached(
+                "SELECT password FROM account_t WHERE uuid = :a_uuid AND password IS NOT NULL",
+            )
             .map_err(|e| {
                 error!("sqlite select prepare failure -> {:?}", e);
             })?;

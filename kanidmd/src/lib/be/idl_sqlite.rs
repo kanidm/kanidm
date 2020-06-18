@@ -8,7 +8,6 @@ use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::OptionalExtension;
 use rusqlite::NO_PARAMS;
-use std::collections::BTreeSet;
 use std::convert::{TryFrom, TryInto};
 use std::time::Duration;
 use uuid::Uuid;
@@ -231,10 +230,13 @@ pub trait IdlSqliteTransaction {
                 itype.as_idx_str(),
                 attr
             );
-            let mut stmt = self.get_conn().prepare_cached(query.as_str()).map_err(|e| {
-                ladmin_error!(audit, "SQLite Error {:?}", e);
-                OperationError::SQLiteError
-            })?;
+            let mut stmt = self
+                .get_conn()
+                .prepare_cached(query.as_str())
+                .map_err(|e| {
+                    ladmin_error!(audit, "SQLite Error {:?}", e);
+                    OperationError::SQLiteError
+                })?;
             let idl_raw: Option<Vec<u8>> = stmt
                 .query_row_named(&[(":idx_key", &idx_key)], |row| row.get(0))
                 // We don't mind if it doesn't exist
@@ -549,6 +551,7 @@ impl IdlSqliteWriteTransaction {
         }
     }
 
+    /*
     pub fn write_identries<'b, I>(
         &'b self,
         au: &mut AuditScope,
@@ -572,6 +575,23 @@ impl IdlSqliteWriteTransaction {
                 .collect();
             self.write_identries_raw(au, raw_entries?.into_iter())
         })
+    }
+    */
+
+    pub fn write_identry(
+        &self,
+        au: &mut AuditScope,
+        entry: &Entry<EntrySealed, EntryCommitted>,
+    ) -> Result<(), OperationError> {
+        let dbe = entry.to_dbentry();
+        let data = serde_cbor::to_vec(&dbe).map_err(|_| OperationError::SerdeCborError)?;
+
+        let raw_entries = std::iter::once(IdRawEntry {
+            id: entry.get_id(),
+            data,
+        });
+
+        self.write_identries_raw(au, raw_entries)
     }
 
     pub fn write_identries_raw<I>(
@@ -603,11 +623,12 @@ impl IdlSqliteWriteTransaction {
         })
     }
 
-    pub fn delete_identry<I>(&self, au: &mut AuditScope, mut idl: I) -> Result<(), OperationError>
+    /*
+    pub fn delete_identries<I>(&self, au: &mut AuditScope, mut idl: I) -> Result<(), OperationError>
     where
         I: Iterator<Item = u64>,
     {
-        lperf_trace_segment!(au, "be::idl_sqlite::delete_identry", || {
+        lperf_trace_segment!(au, "be::idl_sqlite::delete_identries", || {
             let mut stmt = self
                 .conn
                 .prepare_cached("DELETE FROM id2entry WHERE id = :id")
@@ -636,6 +657,37 @@ impl IdlSqliteWriteTransaction {
                 })
             })
         })
+    }
+    */
+
+    pub fn delete_identry(&self, au: &mut AuditScope, id: u64) -> Result<(), OperationError> {
+        // lperf_trace_segment!(au, "be::idl_sqlite::delete_identry", || {
+        let mut stmt = self
+            .conn
+            .prepare_cached("DELETE FROM id2entry WHERE id = :id")
+            .map_err(|e| {
+                ladmin_error!(au, "SQLite Error {:?}", e);
+                OperationError::SQLiteError
+            })?;
+
+        let iid: i64 = id
+            .try_into()
+            .map_err(|_| OperationError::InvalidEntryID)
+            .and_then(|i| {
+                if i > 0 {
+                    Ok(i)
+                } else {
+                    Err(OperationError::InvalidEntryID)
+                }
+            })?;
+
+        debug_assert!(iid > 0);
+
+        stmt.execute(&[&iid]).map(|_| ()).map_err(|e| {
+            ladmin_error!(au, "SQLite Error {:?}", e);
+            OperationError::SQLiteError
+        })
+        // })
     }
 
     pub fn write_idl(
@@ -710,42 +762,36 @@ impl IdlSqliteWriteTransaction {
     pub fn write_name2uuid_add(
         &self,
         audit: &mut AuditScope,
+        name: &str,
         uuid: &Uuid,
-        add: &BTreeSet<String>,
     ) -> Result<(), OperationError> {
         let uuids = uuid.to_hyphenated_ref().to_string();
 
-        add.iter().try_for_each(|k| {
-            self.conn
-                .execute_named(
-                    "INSERT OR REPLACE INTO idx_name2uuid (name, uuid) VALUES(:name, :uuid)",
-                    &[(":name", &k), (":uuid", &uuids)],
-                )
-                .map(|_| ())
-                .map_err(|e| {
-                    ladmin_error!(audit, "SQLite Error {:?}", e);
-                    OperationError::SQLiteError
-                })
-        })
+        self.conn
+            .prepare_cached(
+                "INSERT OR REPLACE INTO idx_name2uuid (name, uuid) VALUES(:name, :uuid)",
+            )
+            .and_then(|mut stmt| stmt.execute_named(&[(":name", &name), (":uuid", &uuids)]))
+            .map(|_| ())
+            .map_err(|e| {
+                ladmin_error!(audit, "SQLite Error {:?}", e);
+                OperationError::SQLiteError
+            })
     }
 
     pub fn write_name2uuid_rem(
         &self,
         audit: &mut AuditScope,
-        rem: &BTreeSet<String>,
+        name: &str,
     ) -> Result<(), OperationError> {
-        rem.iter().try_for_each(|k| {
-            self.conn
-                .execute_named(
-                    "DELETE FROM idx_name2uuid WHERE name = :name",
-                    &[(":name", &k)],
-                )
-                .map(|_| ())
-                .map_err(|e| {
-                    ladmin_error!(audit, "SQLite Error {:?}", e);
-                    OperationError::SQLiteError
-                })
-        })
+        self.conn
+            .prepare_cached("DELETE FROM idx_name2uuid WHERE name = :name")
+            .and_then(|mut stmt| stmt.execute_named(&[(":name", &name)]))
+            .map(|_| ())
+            .map_err(|e| {
+                ladmin_error!(audit, "SQLite Error {:?}", e);
+                OperationError::SQLiteError
+            })
     }
 
     pub fn create_uuid2spn(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
@@ -774,10 +820,10 @@ impl IdlSqliteWriteTransaction {
                 let data =
                     serde_cbor::to_vec(&dbv1).map_err(|_e| OperationError::SerdeCborError)?;
                 self.conn
-                    .execute_named(
+                    .prepare_cached(
                         "INSERT OR REPLACE INTO idx_uuid2spn (uuid, spn) VALUES(:uuid, :spn)",
-                        &[(":uuid", &uuids), (":spn", &data)],
                     )
+                    .and_then(|mut stmt| stmt.execute_named(&[(":uuid", &uuids), (":spn", &data)]))
                     .map(|_| ())
                     .map_err(|e| {
                         ladmin_error!(audit, "SQLite Error {:?}", e);
@@ -786,10 +832,8 @@ impl IdlSqliteWriteTransaction {
             }
             None => self
                 .conn
-                .execute_named(
-                    "DELETE FROM idx_uuid2spn WHERE uuid = :uuid",
-                    &[(":uuid", &uuids)],
-                )
+                .prepare_cached("DELETE FROM idx_uuid2spn WHERE uuid = :uuid")
+                .and_then(|mut stmt| stmt.execute_named(&[(":uuid", &uuids)]))
                 .map(|_| ())
                 .map_err(|e| {
                     ladmin_error!(audit, "SQLite Error {:?}", e);
@@ -821,10 +865,10 @@ impl IdlSqliteWriteTransaction {
         match k {
             Some(k) => self
                 .conn
-                .execute_named(
+                .prepare_cached(
                     "INSERT OR REPLACE INTO idx_uuid2rdn (uuid, rdn) VALUES(:uuid, :rdn)",
-                    &[(":uuid", &uuids), (":rdn", &k)],
                 )
+                .and_then(|mut stmt| stmt.execute_named(&[(":uuid", &uuids), (":rdn", &k)]))
                 .map(|_| ())
                 .map_err(|e| {
                     ladmin_error!(audit, "SQLite Error {:?}", e);
@@ -832,10 +876,8 @@ impl IdlSqliteWriteTransaction {
                 }),
             None => self
                 .conn
-                .execute_named(
-                    "DELETE FROM idx_uuid2rdn WHERE uuid = :uuid",
-                    &[(":uuid", &uuids)],
-                )
+                .prepare_cached("DELETE FROM idx_uuid2rdn WHERE uuid = :uuid")
+                .and_then(|mut stmt| stmt.execute_named(&[(":uuid", &uuids)]))
                 .map(|_| ())
                 .map_err(|e| {
                     ladmin_error!(audit, "SQLite Error {:?}", e);
@@ -873,7 +915,9 @@ impl IdlSqliteWriteTransaction {
     pub fn list_idxs(&self, audit: &mut AuditScope) -> Result<Vec<String>, OperationError> {
         let mut stmt = self
             .get_conn()
-            .prepare_cached("SELECT name from sqlite_master where type='table' and name LIKE 'idx_%'")
+            .prepare_cached(
+                "SELECT name from sqlite_master where type='table' and name LIKE 'idx_%'",
+            )
             .map_err(|e| {
                 ladmin_error!(audit, "SQLite Error {:?}", e);
                 OperationError::SQLiteError
@@ -1026,6 +1070,35 @@ impl IdlSqliteWriteTransaction {
             eprintln!("CRITICAL: rusqlite error {:?}", e);
             OperationError::SQLiteError
         })
+    }
+
+    pub(crate) fn get_allids(&self, au: &mut AuditScope) -> Result<IDLBitRange, OperationError> {
+        ltrace!(au, "Building allids...");
+        let mut stmt = self
+            .conn
+            .prepare_cached("SELECT id FROM id2entry")
+            .map_err(|e| {
+                ladmin_error!(au, "SQLite Error {:?}", e);
+                OperationError::SQLiteError
+            })?;
+        let res = stmt.query_map(NO_PARAMS, |row| row.get(0)).map_err(|e| {
+            ladmin_error!(au, "SQLite Error {:?}", e);
+            OperationError::SQLiteError
+        })?;
+        res.map(|v| {
+            v.map_err(|e| {
+                ladmin_error!(au, "SQLite Error {:?}", e);
+                OperationError::SQLiteError
+            })
+            .and_then(|id: i64| {
+                // Convert the idsqlite to id raw
+                id.try_into().map_err(|e| {
+                    ladmin_error!(au, "I64 Parse Error {:?}", e);
+                    OperationError::SQLiteError
+                })
+            })
+        })
+        .collect()
     }
 
     pub fn setup(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
