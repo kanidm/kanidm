@@ -753,6 +753,8 @@ impl<'a> BackendWriteTransaction<'a> {
     //
     // At the end, we flush those cchange outs in a single run.
     // For create this is probably a
+    // TODO: Can this be improved?
+    #[allow(clippy::cognitive_complexity)]
     fn entry_index(
         &mut self,
         audit: &mut AuditScope,
