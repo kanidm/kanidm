@@ -17,6 +17,8 @@ use uuid::Uuid;
 
 const DBV_ID2ENTRY: &str = "id2entry";
 const DBV_INDEXV: &str = "indexv";
+// TODO: Needs to change over time as number of indexes grows?
+const PREPARE_STMT_CACHE: usize = 256;
 
 #[derive(Debug)]
 pub struct IdSqliteEntry {
@@ -99,7 +101,7 @@ pub trait IdlSqliteTransaction {
             IDL::ALLIDS => {
                 let mut stmt = self
                     .get_conn()
-                    .prepare("SELECT id, data FROM id2entry")
+                    .prepare_cached("SELECT id, data FROM id2entry")
                     .map_err(|e| {
                         ladmin_error!(au, "SQLite Error {:?}", e);
                         OperationError::SQLiteError
@@ -131,7 +133,7 @@ pub trait IdlSqliteTransaction {
             IDL::Partial(idli) | IDL::PartialThreshold(idli) | IDL::Indexed(idli) => {
                 let mut stmt = self
                     .get_conn()
-                    .prepare("SELECT id, data FROM id2entry WHERE id = :idl")
+                    .prepare_cached("SELECT id, data FROM id2entry WHERE id = :idl")
                     .map_err(|e| {
                         ladmin_error!(au, "SQLite Error {:?}", e);
                         OperationError::SQLiteError
@@ -191,7 +193,7 @@ pub trait IdlSqliteTransaction {
         let tname = format!("idx_{}_{}", itype.as_idx_str(), attr);
         let mut stmt = self
             .get_conn()
-            .prepare("SELECT COUNT(name) from sqlite_master where name = :tname")
+            .prepare_cached("SELECT COUNT(name) from sqlite_master where name = :tname")
             .map_err(|e| {
                 ladmin_error!(audit, "SQLite Error {:?}", e);
                 OperationError::SQLiteError
@@ -229,7 +231,7 @@ pub trait IdlSqliteTransaction {
                 itype.as_idx_str(),
                 attr
             );
-            let mut stmt = self.get_conn().prepare(query.as_str()).map_err(|e| {
+            let mut stmt = self.get_conn().prepare_cached(query.as_str()).map_err(|e| {
                 ladmin_error!(audit, "SQLite Error {:?}", e);
                 OperationError::SQLiteError
             })?;
@@ -264,7 +266,7 @@ pub trait IdlSqliteTransaction {
             // The table exists - lets now get the actual index itself.
             let mut stmt = self
                 .get_conn()
-                .prepare("SELECT uuid FROM idx_name2uuid WHERE name = :name")
+                .prepare_cached("SELECT uuid FROM idx_name2uuid WHERE name = :name")
                 .map_err(|e| {
                     ladmin_error!(audit, "SQLite Error {:?}", e);
                     OperationError::SQLiteError
@@ -295,7 +297,7 @@ pub trait IdlSqliteTransaction {
             // The table exists - lets now get the actual index itself.
             let mut stmt = self
                 .get_conn()
-                .prepare("SELECT spn FROM idx_uuid2spn WHERE uuid = :uuid")
+                .prepare_cached("SELECT spn FROM idx_uuid2spn WHERE uuid = :uuid")
                 .map_err(|e| {
                     ladmin_error!(audit, "SQLite Error {:?}", e);
                     OperationError::SQLiteError
@@ -336,7 +338,7 @@ pub trait IdlSqliteTransaction {
             // The table exists - lets now get the actual index itself.
             let mut stmt = self
                 .get_conn()
-                .prepare("SELECT rdn FROM idx_uuid2rdn WHERE uuid = :uuid")
+                .prepare_cached("SELECT rdn FROM idx_uuid2rdn WHERE uuid = :uuid")
                 .map_err(|e| {
                     ladmin_error!(audit, "SQLite Error {:?}", e);
                     OperationError::SQLiteError
@@ -411,7 +413,7 @@ pub trait IdlSqliteTransaction {
     // This allow is critical as it resolves a life time issue in stmt.
     #[allow(clippy::let_and_return)]
     fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
-        let mut stmt = match self.get_conn().prepare("PRAGMA integrity_check;") {
+        let mut stmt = match self.get_conn().prepare_cached("PRAGMA integrity_check;") {
             Ok(r) => r,
             Err(_) => return vec![Err(ConsistencyError::SqliteIntegrityFailure)],
         };
@@ -525,7 +527,7 @@ impl IdlSqliteWriteTransaction {
     pub fn get_id2entry_max_id(&self) -> Result<u64, OperationError> {
         let mut stmt = self
             .conn
-            .prepare("SELECT MAX(id) as id_max FROM id2entry")
+            .prepare_cached("SELECT MAX(id) as id_max FROM id2entry")
             .map_err(|_| OperationError::SQLiteError)?;
         // This exists checks for if any rows WERE returned
         // that way we know to shortcut or not.
@@ -582,7 +584,7 @@ impl IdlSqliteWriteTransaction {
     {
         let mut stmt = self
             .conn
-            .prepare("INSERT OR REPLACE INTO id2entry (id, data) VALUES(:id, :data)")
+            .prepare_cached("INSERT OR REPLACE INTO id2entry (id, data) VALUES(:id, :data)")
             .map_err(|e| {
                 ladmin_error!(au, "SQLite Error {:?}", e);
                 OperationError::SQLiteError
@@ -608,7 +610,7 @@ impl IdlSqliteWriteTransaction {
         lperf_trace_segment!(au, "be::idl_sqlite::delete_identry", || {
             let mut stmt = self
                 .conn
-                .prepare("DELETE FROM id2entry WHERE id = :id")
+                .prepare_cached("DELETE FROM id2entry WHERE id = :id")
                 .map_err(|e| {
                     ladmin_error!(au, "SQLite Error {:?}", e);
                     OperationError::SQLiteError
@@ -656,7 +658,7 @@ impl IdlSqliteWriteTransaction {
                 );
 
                 self.conn
-                    .prepare(query.as_str())
+                    .prepare_cached(query.as_str())
                     .and_then(|mut stmt| stmt.execute_named(&[(":key", &idx_key)]))
                     .map_err(|e| {
                         ladmin_error!(audit, "SQLite Error {:?}", e);
@@ -678,7 +680,7 @@ impl IdlSqliteWriteTransaction {
                 );
 
                 self.conn
-                    .prepare(query.as_str())
+                    .prepare_cached(query.as_str())
                     .and_then(|mut stmt| {
                         stmt.execute_named(&[(":key", &idx_key), (":idl", &idl_raw)])
                     })
@@ -871,7 +873,7 @@ impl IdlSqliteWriteTransaction {
     pub fn list_idxs(&self, audit: &mut AuditScope) -> Result<Vec<String>, OperationError> {
         let mut stmt = self
             .get_conn()
-            .prepare("SELECT name from sqlite_master where type='table' and name LIKE 'idx_%'")
+            .prepare_cached("SELECT name from sqlite_master where type='table' and name LIKE 'idx_%'")
             .map_err(|e| {
                 ladmin_error!(audit, "SQLite Error {:?}", e);
                 OperationError::SQLiteError
@@ -899,7 +901,7 @@ impl IdlSqliteWriteTransaction {
         idx_table_list.iter().try_for_each(|idx_table| {
             ltrace!(audit, "removing idx_table -> {:?}", idx_table);
             self.conn
-                .prepare(format!("DROP TABLE {}", idx_table).as_str())
+                .prepare_cached(format!("DROP TABLE {}", idx_table).as_str())
                 .and_then(|mut stmt| stmt.execute(NO_PARAMS).map(|_| ()))
                 .map_err(|e| {
                     ladmin_error!(audit, "sqlite error {:?}", e);
@@ -1027,12 +1029,14 @@ impl IdlSqliteWriteTransaction {
     }
 
     pub fn setup(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
+        self.conn
+            .set_prepared_statement_cache_capacity(PREPARE_STMT_CACHE);
         // Enable WAL mode, which is just faster and better.
         //
-        // We have to use stmt + prepare because execute can't handle
+        // We have to use stmt + prepare_cached because execute can't handle
         // the "wal" row on result when this works!
         self.conn
-            .prepare("PRAGMA journal_mode=WAL;")
+            .prepare_cached("PRAGMA journal_mode=WAL;")
             .and_then(|mut wal_stmt| wal_stmt.query(NO_PARAMS).map(|_| ()))
             .map_err(|e| {
                 ladmin_error!(audit, "sqlite error {:?}", e);
@@ -1181,7 +1185,8 @@ impl IdlSqlite {
             // a single DB thread, else we cause consistency issues.
             builder1.max_size(1)
         } else {
-            builder1.max_size(pool_size)
+            // Have to add 1 for the write thread.
+            builder1.max_size(pool_size + 1)
         };
         // Look at max_size and thread_pool here for perf later
         let pool = builder2.build(manager).map_err(|e| {
