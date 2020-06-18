@@ -82,7 +82,7 @@ pub trait BackendTransaction {
         filt: &FilterResolved,
         thres: usize,
     ) -> Result<(IDL, FilterPlan), OperationError> {
-        let fr = Ok(match filt {
+        Ok(match filt {
             FilterResolved::Eq(attr, value, idx) => {
                 if *idx {
                     // Get the idx_key
@@ -176,7 +176,7 @@ pub trait BackendTransaction {
                         (IDL::ALLIDS, fp) => {
                             plan.push(fp);
                             // If we find anything unindexed, the whole term is unindexed.
-                            lfilter_error!(au, "Term {:?} is ALLIDS, shortcut return", f);
+                            lfilter!(au, "Term {:?} is ALLIDS, shortcut return", f);
                             let setplan = FilterPlan::OrUnindexed(plan);
                             return Ok((IDL::ALLIDS, setplan));
                         }
@@ -234,7 +234,7 @@ pub trait BackendTransaction {
                         if idl.len() < thres && f_rem_count > 0 {
                             let setplan = FilterPlan::AndPartialThreshold(plan);
                             return Ok((IDL::PartialThreshold(idl.clone()), setplan));
-                        } else if idl.len() == 0 {
+                        } else if idl.is_empty() {
                             // Regardless of the input state, if it's empty, this can never
                             // be satisfied, so return we are indexed and complete.
                             let setplan = FilterPlan::AndEmptyCand(plan);
@@ -256,7 +256,7 @@ pub trait BackendTransaction {
                                 // When below thres, we have to return partials to trigger the entry_no_match_filter check.
                                 let setplan = FilterPlan::AndPartialThreshold(plan);
                                 return Ok((IDL::PartialThreshold(r), setplan));
-                            } else if r.len() == 0 {
+                            } else if r.is_empty() {
                                 // Regardless of the input state, if it's empty, this can never
                                 // be satisfied, so return we are indexed and complete.
                                 let setplan = FilterPlan::AndEmptyCand(plan);
@@ -400,9 +400,7 @@ pub trait BackendTransaction {
                 );
                 (IDL::Indexed(IDLBitRange::new()), FilterPlan::Invalid)
             }
-        });
-        // debug!("result of {:?} -> {:?}", filt, fr);
-        fr
+        })
     }
 
     // Take filter, and AuditScope ref?
@@ -413,21 +411,25 @@ pub trait BackendTransaction {
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
         // Unlike DS, even if we don't get the index back, we can just pass
         // to the in-memory filter test and be done.
-        lperf_segment!(au, "be::search", || {
+        lperf_trace_segment!(au, "be::search", || {
             // Do a final optimise of the filter
             lfilter!(au, "filter unoptimised form --> {:?}", filt);
-            let filt = lperf_segment!(au, "be::search<filt::optimise>", || { filt.optimise() });
+            let filt =
+                lperf_trace_segment!(au, "be::search<filt::optimise>", || { filt.optimise() });
             lfilter!(au, "filter optimised to --> {:?}", filt);
 
             // Using the indexes, resolve the IDL here, or ALLIDS.
             // Also get if the filter was 100% resolved or not.
-            let (idl, fplan) = lperf_segment!(au, "be::search -> filter2idl", || {
+            let (idl, fplan) = lperf_trace_segment!(au, "be::search -> filter2idl", || {
                 self.filter2idl(au, filt.to_inner(), FILTER_SEARCH_TEST_THRESHOLD)
             })?;
 
-            lfilter!(au, "filter executed plan -> {:?}", fplan);
+            lfilter_info!(au, "filter executed plan -> {:?}", fplan);
 
-            let entries = try_audit!(au, self.get_idlayer().get_identry(au, &idl));
+            let entries = self.get_idlayer().get_identry(au, &idl).map_err(|e| {
+                ladmin_error!(au, "get_identry failed {:?}", e);
+                e
+            })?;
             // Do other things
             // Now, de-serialise the raw_entries back to entries, and populate their ID's
 
@@ -435,11 +437,7 @@ pub trait BackendTransaction {
 
             let entries_filtered = match idl {
                 IDL::ALLIDS | IDL::Partial(_) => {
-                    lfilter_error!(
-                        au,
-                        "filter (search) was partially or fully unindexed. {:?}",
-                        filt
-                    );
+                    lfilter_error!(au, "filter (search) was partially or fully unindexed.",);
                     lperf_segment!(au, "be::search<entry::ftest::allids>", || {
                         entries
                             .into_iter()
@@ -448,7 +446,7 @@ pub trait BackendTransaction {
                     })
                 }
                 IDL::PartialThreshold(_) => {
-                    lperf_segment!(au, "be::search<entry::ftest::thresh>", || {
+                    lperf_trace_segment!(au, "be::search<entry::ftest::thresh>", || {
                         entries
                             .into_iter()
                             .filter(|e| e.entry_match_no_index(&filt))
@@ -493,7 +491,7 @@ pub trait BackendTransaction {
         au: &mut AuditScope,
         filt: &Filter<FilterValidResolved>,
     ) -> Result<bool, OperationError> {
-        lperf_segment!(au, "be::exists", || {
+        lperf_trace_segment!(au, "be::exists", || {
             // Do a final optimise of the filter
             lfilter!(au, "filter unoptimised form --> {:?}", filt);
             let filt = filt.optimise();
@@ -501,18 +499,21 @@ pub trait BackendTransaction {
 
             // Using the indexes, resolve the IDL here, or ALLIDS.
             // Also get if the filter was 100% resolved or not.
-            let (idl, fplan) = lperf_segment!(au, "be::exists -> filter2idl", || {
+            let (idl, fplan) = lperf_trace_segment!(au, "be::exists -> filter2idl", || {
                 self.filter2idl(au, filt.to_inner(), FILTER_EXISTS_TEST_THRESHOLD)
             })?;
 
-            lfilter!(au, "filter executed plan -> {:?}", fplan);
+            lfilter_info!(au, "filter executed plan -> {:?}", fplan);
 
             // Now, check the idl -- if it's fully resolved, we can skip this because the query
             // was fully indexed.
             match &idl {
-                IDL::Indexed(idl) => Ok(idl.len() > 0),
+                IDL::Indexed(idl) => Ok(!idl.is_empty()),
                 IDL::PartialThreshold(_) => {
-                    let entries = try_audit!(au, self.get_idlayer().get_identry(au, &idl));
+                    let entries = self.get_idlayer().get_identry(au, &idl).map_err(|e| {
+                        ladmin_error!(au, "get_identry failed {:?}", e);
+                        e
+                    })?;
 
                     // if not 100% resolved query, apply the filter test.
                     let entries_filtered: Vec<_> = entries
@@ -523,12 +524,11 @@ pub trait BackendTransaction {
                     Ok(!entries_filtered.is_empty())
                 }
                 _ => {
-                    lfilter_error!(
-                        au,
-                        "filter (exists) was partially or fully unindexed {:?}",
-                        filt
-                    );
-                    let entries = try_audit!(au, self.get_idlayer().get_identry(au, &idl));
+                    lfilter_error!(au, "filter (exists) was partially or fully unindexed",);
+                    let entries = self.get_idlayer().get_identry(au, &idl).map_err(|e| {
+                        ladmin_error!(au, "get_identry failed {:?}", e);
+                        e
+                    })?;
 
                     // if not 100% resolved query, apply the filter test.
                     let entries_filtered: Vec<_> = entries
@@ -563,25 +563,17 @@ pub trait BackendTransaction {
 
         let entries = entries?;
 
-        let serialized_entries = serde_json::to_string_pretty(&entries);
-
-        let serialized_entries_str = try_audit!(
-            audit,
-            serialized_entries,
-            "serde error {:?}",
+        let serialized_entries_str = serde_json::to_string_pretty(&entries).map_err(|e| {
+            ladmin_error!(audit, "serde error {:?}", e);
             OperationError::SerdeJsonError
-        );
+        })?;
 
-        let result = fs::write(dst_path, serialized_entries_str);
-
-        try_audit!(
-            audit,
-            result,
-            "fs::write error {:?}",
-            OperationError::FsError
-        );
-
-        Ok(())
+        fs::write(dst_path, serialized_entries_str)
+            .map(|_| ())
+            .map_err(|e| {
+                ladmin_error!(audit, "fs::write error {:?}", e);
+                OperationError::FsError
+            })
     }
 
     fn name2uuid(
@@ -631,7 +623,7 @@ impl<'a> BackendWriteTransaction<'a> {
         au: &mut AuditScope,
         entries: Vec<Entry<EntrySealed, EntryNew>>,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
-        lperf_segment!(au, "be::create", || {
+        lperf_trace_segment!(au, "be::create", || {
             if entries.is_empty() {
                 ladmin_error!(
                     au,
@@ -670,7 +662,7 @@ impl<'a> BackendWriteTransaction<'a> {
         pre_entries: &[Entry<EntrySealed, EntryCommitted>],
         post_entries: &[Entry<EntrySealed, EntryCommitted>],
     ) -> Result<(), OperationError> {
-        lperf_segment!(au, "be::modify", || {
+        lperf_trace_segment!(au, "be::modify", || {
             if post_entries.is_empty() || pre_entries.is_empty() {
                 ladmin_error!(
                     au,
@@ -729,7 +721,7 @@ impl<'a> BackendWriteTransaction<'a> {
         au: &mut AuditScope,
         entries: &[Entry<EntrySealed, EntryCommitted>],
     ) -> Result<(), OperationError> {
-        lperf_segment!(au, "be::delete", || {
+        lperf_trace_segment!(au, "be::delete", || {
             if entries.is_empty() {
                 ladmin_error!(
                     au,
@@ -816,9 +808,8 @@ impl<'a> BackendWriteTransaction<'a> {
             ltrace!(audit, "!uuid_same u2r_act -> {:?}", u2r_act);
 
             // Write the changes out to the backend
-            match n2u_rem {
-                Some(rem) => self.idlayer.write_name2uuid_rem(audit, rem)?,
-                None => {}
+            if let Some(rem) = n2u_rem {
+                self.idlayer.write_name2uuid_rem(audit, rem)?
             }
 
             match u2s_act {
@@ -851,14 +842,11 @@ impl<'a> BackendWriteTransaction<'a> {
         ltrace!(audit, "u2r_act -> {:?}", u2r_act);
 
         // Write the changes out to the backend
-        match n2u_add {
-            Some(add) => self.idlayer.write_name2uuid_add(audit, e_uuid, add)?,
-            None => {}
+        if let Some(add) = n2u_add {
+            self.idlayer.write_name2uuid_add(audit, e_uuid, add)?
         }
-
-        match n2u_rem {
-            Some(rem) => self.idlayer.write_name2uuid_rem(audit, rem)?,
-            None => {}
+        if let Some(rem) = n2u_rem {
+            self.idlayer.write_name2uuid_rem(audit, rem)?
         }
 
         match u2s_act {
@@ -977,9 +965,12 @@ impl<'a> BackendWriteTransaction<'a> {
         let dbv = self.get_db_index_version();
         ladmin_info!(audit, "upgrade_reindex -> dbv: {} v: {}", dbv, v);
         if dbv < v {
-            eprintln!("NOTICE: A system reindex is required. This may take a long time ...");
+            limmediate_warning!(
+                audit,
+                "NOTICE: A system reindex is required. This may take a long time ...\n"
+            );
             self.reindex(audit)?;
-            eprintln!("NOTICE: System reindex complete");
+            limmediate_warning!(audit, "NOTICE: System reindex complete\n");
             self.set_db_index_version(v)
         } else {
             Ok(())
@@ -997,25 +988,29 @@ impl<'a> BackendWriteTransaction<'a> {
         // Future idea: Do this in batches of X amount to limit memory
         // consumption.
         let idl = IDL::ALLIDS;
-        let entries = try_audit!(audit, self.idlayer.get_identry(audit, &idl));
+        let entries = self.idlayer.get_identry(audit, &idl).map_err(|e| {
+            ladmin_error!(audit, "get_identry failure {:?}", e);
+            e
+        })?;
 
         let mut count = 0;
 
-        try_audit!(
-            audit,
-            entries
-                .iter()
-                .try_for_each(|e| {
+        entries
+            .iter()
+            .try_for_each(|e| {
                 count += 1;
-                if count % 1000 == 0 {
-                    eprint!("{}", count);
-                } else if count % 100 == 0 {
-                    eprint!(".");
+                if count % 2500 == 0 {
+                    limmediate_warning!(audit, "{}", count);
+                } else if count % 250 == 0 {
+                    limmediate_warning!(audit, ".");
                 }
                 self.entry_index(audit, None, Some(e))
             })
-        );
-        eprintln!(" ✅");
+            .map_err(|e| {
+                ladmin_error!(audit, "reindex failed -> {:?}", e);
+                e
+            })?;
+        limmediate_warning!(audit, " reindexed {} entries ✅\n", count);
         Ok(())
     }
 
@@ -1042,26 +1037,23 @@ impl<'a> BackendWriteTransaction<'a> {
     ) -> Result<(), OperationError> {
         // load all entries into RAM, may need to change this later
         // if the size of the database compared to RAM is an issue
-        let serialized_string_option = fs::read_to_string(src_path);
-
-        let serialized_string = try_audit!(
-            audit,
-            serialized_string_option,
-            "fs::read_to_string {:?}",
+        let serialized_string = fs::read_to_string(src_path).map_err(|e| {
+            ladmin_error!(audit, "fs::read_to_string {:?}", e);
             OperationError::FsError
-        );
+        })?;
 
-        try_audit!(audit, unsafe { self.idlayer.purge_id2entry(audit) });
+        unsafe { self.idlayer.purge_id2entry(audit) }.map_err(|e| {
+            ladmin_error!(audit, "purge_id2entry failed {:?}", e);
+            e
+        })?;
 
         let dbentries_option: Result<Vec<DbEntry>, serde_json::Error> =
             serde_json::from_str(&serialized_string);
 
-        let dbentries = try_audit!(
-            audit,
-            dbentries_option,
-            "serde_json error {:?}",
+        let dbentries = dbentries_option.map_err(|e| {
+            ladmin_error!(audit, "serde_json error {:?}", e);
             OperationError::SerdeJsonError
-        );
+        })?;
 
         // Filter all elements that have a UUID in the system range.
         /*
@@ -1174,7 +1166,7 @@ impl<'a> BackendWriteTransaction<'a> {
         // if none, return ts. If found, return it.
         match self.get_idlayer().get_db_ts_max()? {
             Some(dts) => Ok(dts),
-            None => Ok(ts.clone()),
+            None => Ok(*ts),
         }
     }
 
@@ -1191,7 +1183,7 @@ impl<'a> BackendWriteTransaction<'a> {
 impl Backend {
     pub fn new(audit: &mut AuditScope, path: &str, pool_size: u32) -> Result<Self, OperationError> {
         // this has a ::memory() type, but will path == "" work?
-        lperf_segment!(audit, "be::new", || {
+        lperf_trace_segment!(audit, "be::new", || {
             let be = Backend {
                 idlayer: Arc::new(IdlArcSqlite::new(audit, path, pool_size)?),
             };
@@ -1223,7 +1215,7 @@ impl Backend {
     pub fn write(&self, idxmeta: &BTreeSet<(String, IndexType)>) -> BackendWriteTransaction {
         BackendWriteTransaction {
             idlayer: self.idlayer.write(),
-            // TODO: Performance improvement here by NOT cloning the idxmeta.
+            // TODO #257: Performance improvement here by NOT cloning the idxmeta.
             idxmeta: (*idxmeta).clone(),
         }
     }
@@ -1269,7 +1261,7 @@ mod tests {
                 .is_test(true)
                 .try_init();
 
-            let mut audit = AuditScope::new("run_test", uuid::Uuid::new_v4());
+            let mut audit = AuditScope::new("run_test", uuid::Uuid::new_v4(), None);
 
             let be = Backend::new(&mut audit, "", 1).expect("Failed to setup backend");
 

@@ -18,7 +18,7 @@
 /// pam_hooks!(MyPamModule);
 ///
 /// impl PamHooks for MyPamModule {
-///	   fn sm_authenticate(pamh: &PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
+///    fn sm_authenticate(pamh: &PamHandle, args: Vec<&CStr>, flags: PamFlag) -> PamResultCode {
 ///        println!("Everybody is authenticated!");
 ///        PamResultCode::PAM_SUCCESS
 ///    }

@@ -1,7 +1,5 @@
 use libc::{c_int, c_uint};
 
-// TODO: Import constants from C header file at compile time.
-
 pub type PamFlag = c_uint;
 pub type PamItemType = c_int;
 pub type PamMessageStyle = c_int;

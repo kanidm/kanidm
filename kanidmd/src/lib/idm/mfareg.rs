@@ -32,7 +32,7 @@ impl MfaRegNext {
         match self {
             MfaRegNext::Success => SetCredentialResponse::Success,
             MfaRegNext::TOTPCheck(secret) => {
-                SetCredentialResponse::TOTPCheck(u.clone(), (*secret).clone())
+                SetCredentialResponse::TOTPCheck(*u, (*secret).clone())
             }
         }
     }

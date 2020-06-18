@@ -20,7 +20,7 @@ use crate::access::{
 // We use so many, we just import them all ...
 use crate::constants::*;
 use crate::entry::{
-    Entry, EntryCommitted, EntryInit, EntryInvalid, EntryNew, EntryReduced, EntrySealed, EntryValid,
+    Entry, EntryCommitted, EntryInit, EntryInvalid, EntryNew, EntryReduced, EntrySealed,
 };
 use crate::event::{
     CreateEvent, DeleteEvent, Event, EventOrigin, ExistsEvent, ModifyEvent, ReviveRecycledEvent,
@@ -95,12 +95,14 @@ pub trait QueryServerTransaction {
             let entries = self.search(au, se)?;
 
             let access = self.get_accesscontrols();
-            let acp_res = access.search_filter_entry_attributes(au, se, entries);
-            // Log and fail if something went wrong.
-            let entries_filtered = try_audit!(au, acp_res);
-
-            // This is the final entry set that was reduced.
-            Ok(entries_filtered)
+            access
+                .search_filter_entry_attributes(au, se, entries)
+                .map_err(|e| {
+                    // Log and fail if something went wrong.
+                    ladmin_error!(au, "Failed to filter entry attributes {:?}", e);
+                    e
+                })
+            // This now returns the reduced vec.
         })
     }
 
@@ -110,7 +112,12 @@ pub trait QueryServerTransaction {
         se: &SearchEvent,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
         lperf_segment!(au, "server::search", || {
-            ladmin_info!(au, "search: filter -> {:?}", se.filter);
+            if se.event.is_internal() {
+                ltrace!(au, "search: internal filter -> {:?}", se.filter);
+            } else {
+                lsecurity!(au, "search initiator: -> {}", se.event);
+                ladmin_info!(au, "search: external filter -> {:?}", se.filter);
+            }
 
             // This is an important security step because it prevents us from
             // performing un-indexed searches on attr's that don't exist in the
@@ -124,24 +131,22 @@ pub trait QueryServerTransaction {
             let schema = self.get_schema();
             let idxmeta = schema.get_idxmeta_set();
             // Now resolve all references and indexes.
-            let vfr = try_audit!(
-                au,
-                lperf_segment!(au, "server::search<filter_resove>", || {
-                    se.filter.resolve(&se.event, Some(idxmeta))
-                })
-            );
+            let vfr = lperf_trace_segment!(au, "server::search<filter_resolve>", || {
+                se.filter.resolve(&se.event, Some(idxmeta))
+            })
+            .map_err(|e| {
+                ladmin_error!(au, "search filter resolve failure {:?}", e);
+                e
+            })?;
 
             // NOTE: We currently can't build search plugins due to the inability to hand
             // the QS wr/ro to the plugin trait. However, there shouldn't be a need for search
             // plugis, because all data transforms should be in the write path.
 
-            let res = self
-                .get_be_txn()
-                .search(au, &vfr)
-                .map(|r| r)
-                .map_err(|_| OperationError::Backend);
-
-            let res = try_audit!(au, res);
+            let res = self.get_be_txn().search(au, &vfr).map(|r| r).map_err(|e| {
+                ladmin_error!(au, "backend failure -> {:?}", e);
+                OperationError::Backend
+            })?;
 
             // Apply ACP before we let the plugins "have at it".
             // WARNING; for external searches this is NOT the only
@@ -149,10 +154,10 @@ pub trait QueryServerTransaction {
             // attribute set on the entries!
             //
             let access = self.get_accesscontrols();
-            let acp_res = access.search_filter_entries(au, se, res);
-            let acp_res = try_audit!(au, acp_res);
-
-            Ok(acp_res)
+            access.search_filter_entries(au, se, res).map_err(|e| {
+                ladmin_error!(au, "Unable to access filter entries {:?}", e);
+                e
+            })
         })
     }
 
@@ -160,12 +165,15 @@ pub trait QueryServerTransaction {
         lperf_segment!(au, "server::exists", || {
             let schema = self.get_schema();
             let idxmeta = schema.get_idxmeta_set();
-            let vfr = try_audit!(au, ee.filter.resolve(&ee.event, Some(idxmeta)));
+            let vfr = ee.filter.resolve(&ee.event, Some(idxmeta)).map_err(|e| {
+                ladmin_error!(au, "Failed to resolve filter {:?}", e);
+                e
+            })?;
 
-            self.get_be_txn()
-                .exists(au, &vfr)
-                .map(|r| r)
-                .map_err(|_| OperationError::Backend)
+            self.get_be_txn().exists(au, &vfr).map_err(|e| {
+                ladmin_error!(au, "backend failure -> {:?}", e);
+                OperationError::Backend
+            })
         })
     }
 
@@ -187,18 +195,12 @@ pub trait QueryServerTransaction {
     // will validate/normalise the filter we construct for us. COOL!
     fn name_to_uuid(&mut self, audit: &mut AuditScope, name: &str) -> Result<Uuid, OperationError> {
         // Is it just a uuid?
-        match Uuid::parse_str(name) {
-            Ok(u) => return Ok(u),
-            Err(_) => {
-                let lname = name.to_lowercase();
-                self.get_be_txn()
-                    .name2uuid(audit, lname.as_str())
-                    .and_then(|v| match v {
-                        Some(u) => Ok(u),
-                        None => Err(OperationError::NoMatchingEntries),
-                    })
-            }
-        }
+        Uuid::parse_str(name).or_else(|_| {
+            let lname = name.to_lowercase();
+            self.get_be_txn()
+                .name2uuid(audit, lname.as_str())?
+                .ok_or(OperationError::NoMatchingEntries)
+        })
     }
 
     fn uuid_to_spn(
@@ -244,9 +246,7 @@ pub trait QueryServerTransaction {
             // Build an exists event
             let ee = ExistsEvent::new_internal(f_valid);
             // Submit it
-            let res = self.exists(au, &ee);
-            // return result
-            res
+            self.exists(au, &ee)
         })
     }
 
@@ -260,8 +260,7 @@ pub trait QueryServerTransaction {
                 .validate(self.get_schema())
                 .map_err(OperationError::SchemaViolation)?;
             let se = SearchEvent::new_internal(f_valid);
-            let res = self.search(audit, &se);
-            res
+            self.search(audit, &se)
         })
     }
 
@@ -274,8 +273,7 @@ pub trait QueryServerTransaction {
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
         lperf_segment!(audit, "server::internal_search_valid", || {
             let se = SearchEvent::new_impersonate(event, f_valid, f_intent_valid);
-            let res = self.search(audit, &se);
-            res
+            self.search(audit, &se)
         })
     }
 
@@ -288,8 +286,7 @@ pub trait QueryServerTransaction {
         event: &Event,
     ) -> Result<Vec<Entry<EntryReduced, EntryCommitted>>, OperationError> {
         let se = SearchEvent::new_impersonate(event, f_valid, f_intent_valid);
-        let res = self.search_ext(audit, &se);
-        res
+        self.search_ext(audit, &se)
     }
 
     // Who they are will go here
@@ -394,12 +391,8 @@ pub trait QueryServerTransaction {
         // Should this actually be a fn of Value - no - I think that introduces issues with the
         // monomorphisation of the trait for transactions, so we should have this here.
 
-        // Normalise the attribute name for lookup.
-        // TODO: Should we return this?
-        let temp_a = schema.normalise_attr_name(attr);
-
         // Lookup the attr
-        match schema.get_attributes().get(&temp_a) {
+        match schema.get_attributes().get(attr) {
             Some(schema_a) => {
                 match schema_a.syntax {
                     SyntaxType::UTF8STRING => Ok(Value::new_utf8(value.to_string())),
@@ -457,7 +450,7 @@ pub trait QueryServerTransaction {
             None => {
                 // No attribute of this name exists - fail fast, there is no point to
                 // proceed, as nothing can be satisfied.
-                Err(OperationError::InvalidAttributeName(temp_a))
+                Err(OperationError::InvalidAttributeName(attr.to_string()))
             }
         }
     }
@@ -469,11 +462,9 @@ pub trait QueryServerTransaction {
         value: &str,
     ) -> Result<PartialValue, OperationError> {
         let schema = self.get_schema();
-        // TODO: Should we return this?
-        let temp_a = schema.normalise_attr_name(attr);
 
         // Lookup the attr
-        match schema.get_attributes().get(&temp_a) {
+        match schema.get_attributes().get(attr) {
             Some(schema_a) => {
                 match schema_a.syntax {
                     SyntaxType::UTF8STRING => Ok(PartialValue::new_utf8(value.to_string())),
@@ -545,7 +536,7 @@ pub trait QueryServerTransaction {
             None => {
                 // No attribute of this name exists - fail fast, there is no point to
                 // proceed, as nothing can be satisfied.
-                Err(OperationError::InvalidAttributeName(temp_a))
+                Err(OperationError::InvalidAttributeName(attr.to_string()))
             }
         }
     }
@@ -656,10 +647,8 @@ impl<'a> QueryServerReadTransaction<'a> {
         // do their job.
 
         // Now, call the plugins verification system.
-        let pl_errs = Plugins::run_verify(au, self);
-
-        // Finish up ...
-        pl_errs
+        Plugins::run_verify(au, self)
+        // Finished
     }
 }
 
@@ -860,6 +849,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // The create event is a raw, read only representation of the request
             // that was made to us, including information about the identity
             // performing the request.
+            if !ce.event.is_internal() {
+                lsecurity!(au, "create initiator: -> {}", ce.event);
+            }
 
             // Log the request
 
@@ -868,35 +860,39 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
             // Copy the entries to a writeable form, this involves assigning a
             // change id so we can track what's happening.
-            let candidates: Vec<Entry<EntryInit, EntryNew>> =
-                ce.entries.iter().map(|e| e.clone()).collect();
+            let candidates: Vec<Entry<EntryInit, EntryNew>> = ce.entries.clone();
 
             // Do we have rights to perform these creates?
             // create_allow_operation
             let access = self.get_accesscontrols();
-            let acp_res = access.create_allow_operation(au, ce, &candidates);
-            if !try_audit!(au, acp_res) {
+            let op_allow = access
+                .create_allow_operation(au, ce, &candidates)
+                .map_err(|e| {
+                    ladmin_error!(au, "Failed to check create access {:?}", e);
+                    e
+                })?;
+            if !op_allow {
                 return Err(OperationError::AccessDenied);
             }
 
             // Assign our replication metadata now, since we can proceed with this operation.
             let mut candidates: Vec<Entry<EntryInvalid, EntryNew>> = candidates
                 .into_iter()
-                .map(|e| e.clone().assign_cid(self.cid.clone()))
+                .map(|e| e.assign_cid(self.cid.clone()))
                 .collect();
 
             // run any pre plugins, giving them the list of mutable candidates.
             // pre-plugins are defined here in their correct order of calling!
             // I have no intent to make these dynamic or configurable.
 
-            let plug_pre_transform_res =
-                Plugins::run_pre_create_transform(au, self, &mut candidates, ce);
-
-            try_audit!(
-                au,
-                plug_pre_transform_res,
-                "Create operation failed (pre_transform plugin), {:?}"
-            );
+            Plugins::run_pre_create_transform(au, self, &mut candidates, ce).map_err(|e| {
+                ladmin_error!(
+                    au,
+                    "Create operation failed (pre_transform plugin), {:?}",
+                    e
+                );
+                e
+            })?;
 
             // NOTE: This is how you map from Vec<Result<T>> to Result<Vec<T>>
             // remember, that you only get the first error and the iter terminates.
@@ -907,38 +903,39 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .into_iter()
                 .map(|e| {
                     e.validate(&self.schema)
-                        .map_err(OperationError::SchemaViolation)
-                        .map(|e|
-                    // Then seal the changes?
-                    e.seal())
+                        .map_err(|e| {
+                            ladmin_error!(au, "Schema Violation -> {:?}", e);
+                            OperationError::SchemaViolation(e)
+                        })
+                        .map(|e| {
+                            // Then seal the changes?
+                            e.seal()
+                        })
                 })
                 .collect();
 
-            let norm_cand: Vec<Entry<_, _>> = try_audit!(au, res);
+            let norm_cand: Vec<Entry<_, _>> = res?;
 
             // Run any pre-create plugins now with schema validated entries.
             // This is important for normalisation of certain types IE class
             // or attributes for these checks.
-            let plug_pre_res = Plugins::run_pre_create(au, self, &norm_cand, ce);
-
-            try_audit!(au, plug_pre_res, "Create operation failed (plugin), {:?}");
+            Plugins::run_pre_create(au, self, &norm_cand, ce).map_err(|e| {
+                ladmin_error!(au, "Create operation failed (plugin), {:?}", e);
+                e
+            })?;
 
             // We may change from ce.entries later to something else?
-            let res = self.be_txn.create(au, norm_cand).map_err(|e| e);
+            let commit_cand = self.be_txn.create(au, norm_cand).map_err(|e| {
+                ladmin_error!(au, "betxn create failure {:?}", e);
 
-            let commit_cand = try_audit!(au, res);
+                e
+            })?;
             // Run any post plugins
 
-            let plug_post_res = Plugins::run_post_create(au, self, &commit_cand, ce);
-
-            if plug_post_res.is_err() {
-                ladmin_error!(
-                    au,
-                    "Create operation failed (post plugin), {:?}",
-                    plug_post_res
-                );
-                return plug_post_res;
-            }
+            Plugins::run_post_create(au, self, &commit_cand, ce).map_err(|e| {
+                ladmin_error!(au, "Create operation failed (post plugin), {:?}", e);
+                e
+            })?;
 
             // We have finished all plugs and now have a successful operation - flag if
             // schema or acp requires reload.
@@ -966,7 +963,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
             // We are complete, finalise logging and return
 
-            ladmin_info!(au, "Create operation success");
+            if ce.event.is_internal() {
+                ltrace!(au, "Create operation success");
+            } else {
+                ladmin_info!(au, "Create operation success");
+            }
             Ok(())
         })
     }
@@ -979,6 +980,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // In this case we need a search, but not INTERNAL to keep the same
             // associated credentials.
             // We only need to retrieve uuid though ...
+            if !de.event.is_internal() {
+                lsecurity!(au, "delete initiator: -> {}", de.event);
+            }
 
             // Now, delete only what you can see
             let pre_candidates = match self.impersonate_search_valid(
@@ -997,8 +1001,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // Apply access controls to reduce the set if required.
             // delete_allow_operation
             let access = self.get_accesscontrols();
-            let acp_res = access.delete_allow_operation(au, de, &pre_candidates);
-            if !try_audit!(au, acp_res) {
+            let op_allow = access
+                .delete_allow_operation(au, de, &pre_candidates)
+                .map_err(|e| {
+                    ladmin_error!(au, "Failed to check delete access {:?}", e);
+                    e
+                })?;
+            if !op_allow {
                 return Err(OperationError::AccessDenied);
             }
 
@@ -1017,12 +1026,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
             ltrace!(au, "delete: candidates -> {:?}", candidates);
 
             // Pre delete plugs
-            let plug_pre_res = Plugins::run_pre_delete(au, self, &mut candidates, de);
-
-            if plug_pre_res.is_err() {
-                ladmin_error!(au, "Delete operation failed (plugin), {:?}", plug_pre_res);
-                return plug_pre_res;
-            }
+            Plugins::run_pre_delete(au, self, &mut candidates, de).map_err(|e| {
+                ladmin_error!(au, "Delete operation failed (plugin), {:?}", e);
+                e
+            })?;
 
             ltrace!(
                 au,
@@ -1030,36 +1037,35 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 candidates
             );
 
-            let res: Result<Vec<Entry<EntrySealed, EntryCommitted>>, SchemaError> = candidates
+            let res: Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> = candidates
                 .into_iter()
                 .map(|e| {
-                    e.to_recycled()
+                    e.into_recycled()
                         .validate(&self.schema)
+                        .map_err(|e| {
+                            ladmin_error!(au, "Schema Violation -> {:?}", e);
+                            OperationError::SchemaViolation(e)
+                        })
                         // seal if it worked.
                         .map(|r| r.seal())
                 })
                 .collect();
 
-            let del_cand: Vec<Entry<_, _>> = match res {
-                Ok(v) => v,
-                Err(e) => return Err(OperationError::SchemaViolation(e)),
-            };
+            let del_cand: Vec<Entry<_, _>> = res?;
 
-            let res = self.be_txn.modify(au, &pre_candidates, &del_cand);
-
-            if res.is_err() {
-                // be_txn is dropped, ie aborted here.
-                ladmin_error!(au, "Delete operation failed (backend), {:?}", res);
-                return res;
-            }
+            self.be_txn
+                .modify(au, &pre_candidates, &del_cand)
+                .map_err(|e| {
+                    // be_txn is dropped, ie aborted here.
+                    ladmin_error!(au, "Delete operation failed (backend), {:?}", e);
+                    e
+                })?;
 
             // Post delete plugs
-            let plug_post_res = Plugins::run_post_delete(au, self, &del_cand, de);
-
-            if plug_post_res.is_err() {
-                ladmin_error!(au, "Delete operation failed (plugin), {:?}", plug_post_res);
-                return plug_post_res;
-            }
+            Plugins::run_post_delete(au, self, &del_cand, de).map_err(|e| {
+                ladmin_error!(au, "Delete operation failed (plugin), {:?}", e);
+                e
+            })?;
 
             // We have finished all plugs and now have a successful operation - flag if
             // schema or acp requires reload.
@@ -1086,15 +1092,22 @@ impl<'a> QueryServerWriteTransaction<'a> {
             );
 
             // Send result
-            ladmin_info!(au, "Delete operation success");
-            res
+            if de.event.is_internal() {
+                ltrace!(au, "Delete operation success");
+            } else {
+                ladmin_info!(au, "Delete operation success");
+            }
+            Ok(())
         })
     }
 
     pub fn purge_tombstones(&mut self, au: &mut AuditScope) -> Result<(), OperationError> {
         lperf_segment!(au, "server::purge_tombstones", || {
             // delete everything that is a tombstone.
-            let cid = try_audit!(au, self.cid.sub_secs(CHANGELOG_MAX_AGE));
+            let cid = self.cid.sub_secs(CHANGELOG_MAX_AGE).map_err(|e| {
+                ladmin_error!(au, "Unable to generate search cid {:?}", e);
+                e
+            })?;
             let ts = match self.internal_search(
                 au,
                 filter_all!(f_and!([
@@ -1111,21 +1124,16 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 return Ok(());
             }
 
-            // Delete them
-            let res = self
-                .be_txn
-                // Change this to an update, not delete.
-                .delete(au, &ts);
-
-            if res.is_err() {
-                // be_txn is dropped, ie aborted here.
-                ladmin_error!(au, "Tombstone purge operation failed (backend), {:?}", res);
-                return res;
-            }
-
-            // Send result
-            ladmin_info!(au, "Tombstone purge operation success");
-            res
+            // Delete them - this is a TRUE delete, no going back now!
+            self.be_txn
+                .delete(au, &ts)
+                .map_err(|e| {
+                    ladmin_error!(au, "Tombstone purge operation failed (backend), {:?}", e);
+                    e
+                })
+                .map(|_| {
+                    ladmin_info!(au, "Tombstone purge operation success");
+                })
         })
     }
 
@@ -1133,8 +1141,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
         lperf_segment!(au, "server::purge_recycled", || {
             // Send everything that is recycled to tombstone
             // Search all recycled
-
-            let cid = try_audit!(au, self.cid.sub_secs(RECYCLEBIN_MAX_AGE));
+            let cid = self.cid.sub_secs(RECYCLEBIN_MAX_AGE).map_err(|e| {
+                ladmin_error!(au, "Unable to generate search cid {:?}", e);
+                e
+            })?;
             let rc = match self.internal_search(
                 au,
                 filter_all!(f_and!([
@@ -1157,26 +1167,27 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .map(|e| {
                     e.to_tombstone(self.cid.clone())
                         .validate(&self.schema)
-                        .map_err(OperationError::SchemaViolation)
+                        .map_err(|e| {
+                            ladmin_error!(au, "Schema Violationi {:?}", e);
+                            OperationError::SchemaViolation(e)
+                        })
                         // seal if it worked.
                         .map(|r| r.seal())
                 })
                 .collect();
 
-            let tombstone_cand = try_audit!(au, tombstone_cand);
+            let tombstone_cand = tombstone_cand?;
 
             // Backend Modify
-            let res = self.be_txn.modify(au, &rc, &tombstone_cand);
-
-            if res.is_err() {
-                // be_txn is dropped, ie aborted here.
-                ladmin_error!(au, "Purge recycled operation failed (backend), {:?}", res);
-                return res;
-            }
-
-            // return
-            ladmin_info!(au, "Purge recycled operation success");
-            res
+            self.be_txn
+                .modify(au, &rc, &tombstone_cand)
+                .map_err(|e| {
+                    ladmin_error!(au, "Purge recycled operation failed (backend), {:?}", e);
+                    e
+                })
+                .map(|_| {
+                    ladmin_info!(au, "Purge recycled operation success");
+                })
         })
     }
 
@@ -1200,12 +1211,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 PVCLASS_RECYCLED.clone(),
             )]);
 
-            let m_valid = try_audit!(
-                au,
-                modlist
-                    .validate(self.get_schema())
-                    .map_err(OperationError::SchemaViolation)
-            );
+            let m_valid = modlist.validate(self.get_schema()).map_err(|e| {
+                ladmin_error!(au, "revive recycled modlist Schema Violation {:?}", e);
+                OperationError::SchemaViolation(e)
+            })?;
 
             // Get the entries we are about to revive.
             //    we make a set of per-entry mod lists. A list of lists even ...
@@ -1216,7 +1225,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
             revive_cands.into_iter().for_each(|e| {
                 // Get this entries uuid.
-                let u: Uuid = e.get_uuid().clone();
+                let u: Uuid = *e.get_uuid();
 
                 e.get_ava_reference_uuid("directmemberof").and_then(|list| {
                     list.into_iter().for_each(|g_uuid| {
@@ -1265,6 +1274,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // Get the candidates.
             // Modify applies a modlist to a filter, so we need to internal search
             // then apply.
+            if !me.event.is_internal() {
+                lsecurity!(au, "modify initiator: -> {}", me.event);
+            }
 
             // Validate input.
 
@@ -1318,8 +1330,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // Are we allowed to make the changes we want to?
             // modify_allow_operation
             let access = self.get_accesscontrols();
-            let acp_res = access.modify_allow_operation(au, me, &pre_candidates);
-            if !try_audit!(au, acp_res) {
+            let op_allow = access
+                .modify_allow_operation(au, me, &pre_candidates)
+                .map_err(|e| {
+                    ladmin_error!(au, "Unable to check modify access {:?}", e);
+                    e
+                })?;
+            if !op_allow {
                 return Err(OperationError::AccessDenied);
             }
 
@@ -1339,12 +1356,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
             // Pre mod plugins
             // We should probably supply the pre-post cands here.
-            let plug_pre_res = Plugins::run_pre_modify(au, self, &mut candidates, me);
-
-            if plug_pre_res.is_err() {
-                ladmin_error!(au, "Modify operation failed (plugin), {:?}", plug_pre_res);
-                return plug_pre_res;
-            }
+            Plugins::run_pre_modify(au, self, &mut candidates, me).map_err(|e| {
+                ladmin_error!(au, "Modify operation failed (plugin), {:?}", e);
+                e
+            })?;
 
             // NOTE: There is a potential optimisation here, where if
             // candidates == pre-candidates, then we don't need to store anything
@@ -1353,35 +1368,36 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // do the CORRECT thing and recommit as we may find later we always
             // want to add CSN's or other.
 
-            let res: Result<Vec<Entry<EntrySealed, EntryCommitted>>, SchemaError> = candidates
+            let res: Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> = candidates
                 .into_iter()
-                .map(|e| e.validate(&self.schema).map(|e| e.seal()))
+                .map(|e| {
+                    e.validate(&self.schema)
+                        .map_err(|e| {
+                            ladmin_error!(au, "Schema Violation {:?}", e);
+                            OperationError::SchemaViolation(e)
+                        })
+                        .map(|e| e.seal())
+                })
                 .collect();
 
-            let norm_cand: Vec<Entry<_, _>> = match res {
-                Ok(v) => v,
-                Err(e) => return Err(OperationError::SchemaViolation(e)),
-            };
+            let norm_cand: Vec<Entry<_, _>> = res?;
 
             // Backend Modify
-            let res = self.be_txn.modify(au, &pre_candidates, &norm_cand);
-
-            if res.is_err() {
-                // be_txn is dropped, ie aborted here.
-                ladmin_error!(au, "Modify operation failed (backend), {:?}", res);
-                return res;
-            }
+            self.be_txn
+                .modify(au, &pre_candidates, &norm_cand)
+                .map_err(|e| {
+                    ladmin_error!(au, "Modify operation failed (backend), {:?}", e);
+                    e
+                })?;
 
             // Post Plugins
             //
             // memberOf actually wants the pre cand list and the norm_cand list to see what
             // changed. Could be optimised, but this is correct still ...
-            let plug_post_res = Plugins::run_post_modify(au, self, &pre_candidates, &norm_cand, me);
-
-            if plug_post_res.is_err() {
-                ladmin_error!(au, "Modify operation failed (plugin), {:?}", plug_post_res);
-                return plug_post_res;
-            }
+            Plugins::run_post_modify(au, self, &pre_candidates, &norm_cand, me).map_err(|e| {
+                ladmin_error!(au, "Modify operation failed (plugin), {:?}", e);
+                e
+            })?;
 
             // We have finished all plugs and now have a successful operation - flag if
             // schema or acp requires reload. Remember, this is a modify, so we need to check
@@ -1417,8 +1433,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
             );
 
             // return
-            ladmin_info!(au, "Modify operation success");
-            res
+            if me.event.is_internal() {
+                ltrace!(au, "Modify operation success");
+            } else {
+                ladmin_info!(au, "Modify operation success");
+            }
+            Ok(())
         })
     }
 
@@ -1436,7 +1456,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             })?;
 
             // If there is nothing, we donn't need to do anything.
-            if pre_candidates.len() == 0 {
+            if pre_candidates.is_empty() {
                 ladmin_info!(au, "migrate_2_to_3 no entries to migrate, complete");
                 return Ok(());
             }
@@ -1461,16 +1481,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
                 ltrace!(au, "{:?}", opt_names);
                 ltrace!(au, "{:?}", opt_dnames);
-
-                match opt_names {
-                    Some(v) => er.set_ava("name", v),
-                    None => {}
-                }
-
-                match opt_dnames {
-                    Some(v) => er.set_ava("domain_name", v),
-                    None => {}
-                }
+                if let Some(v) = opt_names {
+                    er.set_ava("name", v)
+                };
+                if let Some(v) = opt_dnames {
+                    er.set_ava("domain_name", v)
+                };
             });
 
             // Schema check all.
@@ -1511,8 +1527,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Start the audit scope
         // Create the CreateEvent
         let ce = CreateEvent::new_internal(entries);
-        let res = self.create(audit, &ce);
-        res
+        self.create(audit, &ce)
     }
 
     pub fn internal_delete(
@@ -1524,8 +1539,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .validate(self.get_schema())
             .map_err(OperationError::SchemaViolation)?;
         let de = DeleteEvent::new_internal(f_valid);
-        let res = self.delete(audit, &de);
-        res
+        self.delete(audit, &de)
     }
 
     pub fn internal_modify(
@@ -1542,8 +1556,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .validate(self.get_schema())
                 .map_err(OperationError::SchemaViolation)?;
             let me = ModifyEvent::new_internal(f_valid, m_valid);
-            let res = self.modify(audit, &me);
-            res
+            self.modify(audit, &me)
         })
     }
 
@@ -1556,8 +1569,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         event: &Event,
     ) -> Result<(), OperationError> {
         let me = ModifyEvent::new_impersonate(event, f_valid, f_intent_valid, m_valid);
-        let res = self.modify(audit, &me);
-        res
+        self.modify(audit, &me)
     }
 
     pub fn impersonate_modify(
@@ -1568,24 +1580,18 @@ impl<'a> QueryServerWriteTransaction<'a> {
         modlist: ModifyList<ModifyInvalid>,
         event: &Event,
     ) -> Result<(), OperationError> {
-        let f_valid = try_audit!(
-            audit,
-            filter
-                .validate(self.get_schema())
-                .map_err(OperationError::SchemaViolation)
-        );
-        let f_intent_valid = try_audit!(
-            audit,
-            filter_intent
-                .validate(self.get_schema())
-                .map_err(OperationError::SchemaViolation)
-        );
-        let m_valid = try_audit!(
-            audit,
-            modlist
-                .validate(self.get_schema())
-                .map_err(OperationError::SchemaViolation)
-        );
+        let f_valid = filter.validate(self.get_schema()).map_err(|e| {
+            ladmin_error!(audit, "filter Schema Invalid {:?}", e);
+            OperationError::SchemaViolation(e)
+        })?;
+        let f_intent_valid = filter_intent.validate(self.get_schema()).map_err(|e| {
+            ladmin_error!(audit, "f_intent Schema Invalid {:?}", e);
+            OperationError::SchemaViolation(e)
+        })?;
+        let m_valid = modlist.validate(self.get_schema()).map_err(|e| {
+            ladmin_error!(audit, "modlist Schema Invalid {:?}", e);
+            OperationError::SchemaViolation(e)
+        })?;
         self.impersonate_modify_valid(audit, f_valid, f_intent_valid, m_valid, event)
     }
 
@@ -1595,6 +1601,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     // and markers. They act as though they have the highest level privilege
     // IE there are no access control checks.
 
+    /*
     pub fn internal_exists_or_create(
         &self,
         _e: Entry<EntryValid, EntryNew>,
@@ -1603,6 +1610,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // if not, create from Entry.
         unimplemented!()
     }
+    */
 
     pub fn internal_migrate_or_create_str(
         &mut self,
@@ -1756,7 +1764,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 self.internal_migrate_or_create(audit, e)
             })
             .collect();
-        ladmin_info!(audit, "initialise_schema_core -> result {:?}", r);
+        if r.is_ok() {
+            ladmin_info!(audit, "initialise_schema_core -> Ok!");
+        } else {
+            ladmin_error!(audit, "initialise_schema_core -> Error {:?}", r);
+        }
         debug_assert!(r.is_ok());
         r
     }
@@ -1793,7 +1805,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // Each item individually logs it's result
             .map(|e_str| self.internal_migrate_or_create_str(audit, e_str))
             .collect();
-        ladmin_info!(audit, "initialise_schema_idm -> result {:?}", r);
+        if r.is_ok() {
+            ladmin_info!(audit, "initialise_schema_idm -> Ok!");
+        } else {
+            ladmin_error!(audit, "initialise_schema_idm -> Error {:?}", r);
+        }
         debug_assert!(r.is_ok());
 
         r.map(|_| ())
@@ -1808,7 +1824,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .internal_migrate_or_create_str(audit, JSON_SYSTEM_INFO_V1)
             .and_then(|_| self.internal_migrate_or_create_str(audit, JSON_DOMAIN_INFO_V1))
             .and_then(|_| self.internal_migrate_or_create_str(audit, JSON_SYSTEM_CONFIG_V1));
-        ladmin_info!(audit, "initialise_idm p1 -> result {:?}", res);
+        if res.is_err() {
+            ladmin_error!(audit, "initialise_idm p1 -> result {:?}", res);
+        }
         debug_assert!(res.is_ok());
         if res.is_err() {
             return res;
@@ -1831,7 +1849,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // Each item individually logs it's result
             .map(|e_str| self.internal_migrate_or_create_str(audit, e_str))
             .collect();
-        ladmin_info!(audit, "initialise_idm p2 -> result {:?}", res);
+        if res.is_err() {
+            ladmin_error!(audit, "initialise_idm p2 -> result {:?}", res);
+        }
         debug_assert!(res.is_ok());
         if res.is_err() {
             return res;
@@ -1902,7 +1922,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // Each item individually logs it's result
             .map(|e_str| self.internal_migrate_or_create_str(audit, e_str))
             .collect();
-        ladmin_info!(audit, "initialise_idm p3 -> result {:?}", res);
+        if res.is_ok() {
+            ladmin_info!(audit, "initialise_idm -> result Ok!");
+        } else {
+            ladmin_error!(audit, "initialise_idm p3 -> result {:?}", res);
+        }
         debug_assert!(res.is_ok());
         if res.is_err() {
             return res;
@@ -1918,27 +1942,45 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // supply entries to the writable schema to reload from.
             // find all attributes.
             let filt = filter!(f_eq("class", PVCLASS_ATTRIBUTETYPE.clone()));
-            let res = try_audit!(audit, self.internal_search(audit, filt));
+            let res = self.internal_search(audit, filt).map_err(|e| {
+                ladmin_error!(audit, "reload schema internal search failed {:?}", e);
+                e
+            })?;
             // load them.
             let attributetypes: Result<Vec<_>, _> = res
                 .iter()
                 .map(|e| SchemaAttribute::try_from(audit, e))
                 .collect();
-            let attributetypes = try_audit!(audit, attributetypes);
+            let attributetypes = attributetypes.map_err(|e| {
+                ladmin_error!(audit, "reload schema attributetypes {:?}", e);
+                e
+            })?;
 
-            try_audit!(audit, self.schema.update_attributes(attributetypes));
+            self.schema.update_attributes(attributetypes).map_err(|e| {
+                ladmin_error!(audit, "reload schema update attributetypes {:?}", e);
+                e
+            })?;
 
             // find all classes
             let filt = filter!(f_eq("class", PVCLASS_CLASSTYPE.clone()));
-            let res = try_audit!(audit, self.internal_search(audit, filt));
+            let res = self.internal_search(audit, filt).map_err(|e| {
+                ladmin_error!(audit, "reload schema internal search failed {:?}", e);
+                e
+            })?;
             // load them.
             let classtypes: Result<Vec<_>, _> = res
                 .iter()
                 .map(|e| SchemaClass::try_from(audit, e))
                 .collect();
-            let classtypes = try_audit!(audit, classtypes);
+            let classtypes = classtypes.map_err(|e| {
+                ladmin_error!(audit, "reload schema classtypes {:?}", e);
+                e
+            })?;
 
-            try_audit!(audit, self.schema.update_classes(classtypes));
+            self.schema.update_classes(classtypes).map_err(|e| {
+                ladmin_error!(audit, "reload schema update classtypes {:?}", e);
+                e
+            })?;
 
             // validate.
             let valid_r = self.schema.validate(audit);
@@ -1971,15 +2013,30 @@ impl<'a> QueryServerWriteTransaction<'a> {
             f_andnot(f_eq("acp_enable", PVACP_ENABLE_FALSE.clone())),
         ]));
 
-        let res = try_audit!(audit, self.internal_search(audit, filt));
+        let res = self.internal_search(audit, filt).map_err(|e| {
+            ladmin_error!(
+                audit,
+                "reload accesscontrols internal search failed {:?}",
+                e
+            );
+            e
+        })?;
         let search_acps: Result<Vec<_>, _> = res
             .iter()
             .map(|e| AccessControlSearch::try_from(audit, self, e))
             .collect();
 
-        let search_acps = try_audit!(audit, search_acps);
+        let search_acps = search_acps.map_err(|e| {
+            ladmin_error!(audit, "Unable to parse search accesscontrols {:?}", e);
+            e
+        })?;
 
-        try_audit!(audit, self.accesscontrols.update_search(search_acps));
+        self.accesscontrols
+            .update_search(search_acps)
+            .map_err(|e| {
+                ladmin_error!(audit, "Failed to update search accesscontrols {:?}", e);
+                e
+            })?;
         // Update create
         let filt = filter!(f_and!([
             f_eq("class", PVCLASS_ACP.clone()),
@@ -1987,15 +2044,30 @@ impl<'a> QueryServerWriteTransaction<'a> {
             f_andnot(f_eq("acp_enable", PVACP_ENABLE_FALSE.clone())),
         ]));
 
-        let res = try_audit!(audit, self.internal_search(audit, filt));
+        let res = self.internal_search(audit, filt).map_err(|e| {
+            ladmin_error!(
+                audit,
+                "reload accesscontrols internal search failed {:?}",
+                e
+            );
+            e
+        })?;
         let create_acps: Result<Vec<_>, _> = res
             .iter()
             .map(|e| AccessControlCreate::try_from(audit, self, e))
             .collect();
 
-        let create_acps = try_audit!(audit, create_acps);
+        let create_acps = create_acps.map_err(|e| {
+            ladmin_error!(audit, "Unable to parse create accesscontrols {:?}", e);
+            e
+        })?;
 
-        try_audit!(audit, self.accesscontrols.update_create(create_acps));
+        self.accesscontrols
+            .update_create(create_acps)
+            .map_err(|e| {
+                ladmin_error!(audit, "Failed to update create accesscontrols {:?}", e);
+                e
+            })?;
         // Update modify
         let filt = filter!(f_and!([
             f_eq("class", PVCLASS_ACP.clone()),
@@ -2003,15 +2075,30 @@ impl<'a> QueryServerWriteTransaction<'a> {
             f_andnot(f_eq("acp_enable", PVACP_ENABLE_FALSE.clone())),
         ]));
 
-        let res = try_audit!(audit, self.internal_search(audit, filt));
+        let res = self.internal_search(audit, filt).map_err(|e| {
+            ladmin_error!(
+                audit,
+                "reload accesscontrols internal search failed {:?}",
+                e
+            );
+            e
+        })?;
         let modify_acps: Result<Vec<_>, _> = res
             .iter()
             .map(|e| AccessControlModify::try_from(audit, self, e))
             .collect();
 
-        let modify_acps = try_audit!(audit, modify_acps);
+        let modify_acps = modify_acps.map_err(|e| {
+            ladmin_error!(audit, "Unable to parse modify accesscontrols {:?}", e);
+            e
+        })?;
 
-        try_audit!(audit, self.accesscontrols.update_modify(modify_acps));
+        self.accesscontrols
+            .update_modify(modify_acps)
+            .map_err(|e| {
+                ladmin_error!(audit, "Failed to update modify accesscontrols {:?}", e);
+                e
+            })?;
         // Update delete
         let filt = filter!(f_and!([
             f_eq("class", PVCLASS_ACP.clone()),
@@ -2019,17 +2106,28 @@ impl<'a> QueryServerWriteTransaction<'a> {
             f_andnot(f_eq("acp_enable", PVACP_ENABLE_FALSE.clone())),
         ]));
 
-        let res = try_audit!(audit, self.internal_search(audit, filt));
+        let res = self.internal_search(audit, filt).map_err(|e| {
+            ladmin_error!(
+                audit,
+                "reload accesscontrols internal search failed {:?}",
+                e
+            );
+            e
+        })?;
         let delete_acps: Result<Vec<_>, _> = res
             .iter()
             .map(|e| AccessControlDelete::try_from(audit, self, e))
             .collect();
 
-        let delete_acps = try_audit!(audit, delete_acps);
+        let delete_acps = delete_acps.map_err(|e| {
+            ladmin_error!(audit, "Unable to parse delete accesscontrols {:?}", e);
+            e
+        })?;
 
-        try_audit!(audit, self.accesscontrols.update_delete(delete_acps));
-        // Alternately, we just get ACP class, and just let acctrl work it out ...
-        Ok(())
+        self.accesscontrols.update_delete(delete_acps).map_err(|e| {
+            ladmin_error!(audit, "Failed to update delete accesscontrols {:?}", e);
+            e
+        })
     }
 
     pub(crate) fn get_domain_uuid(&self) -> Uuid {
@@ -2145,8 +2243,6 @@ mod tests {
 
             let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
-                "valid": null,
-                "state": null,
                 "attrs": {
                     "class": ["object", "person"],
                     "name": ["testperson"],
@@ -2213,8 +2309,6 @@ mod tests {
 
             let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
-                "valid": null,
-                "state": null,
                 "attrs": {
                     "class": ["object", "person"],
                     "name": ["testperson1"],
@@ -2227,8 +2321,6 @@ mod tests {
 
             let e2: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
-                "valid": null,
-                "state": null,
                 "attrs": {
                     "class": ["object", "person"],
                     "name": ["testperson2"],
@@ -2342,8 +2434,6 @@ mod tests {
 
             let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
-                "valid": null,
-                "state": null,
                 "attrs": {
                     "class": ["object", "person"],
                     "name": ["testperson1"],
@@ -2527,8 +2617,6 @@ mod tests {
             // First, create a tombstone
             let e_ts: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
-                "valid": null,
-                "state": null,
                 "attrs": {
                     "class": ["tombstone", "object"],
                     "uuid": ["9557f49c-97a5-4277-a9a5-097d17eb8317"]
@@ -2782,8 +2870,6 @@ mod tests {
 
             let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
-                "valid": null,
-                "state": null,
                 "attrs": {
                     "class": ["object", "person"],
                     "name": ["testperson1"],
@@ -2819,8 +2905,6 @@ mod tests {
 
             let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
-                "valid": null,
-                "state": null,
                 "attrs": {
                     "class": ["object", "person", "account"],
                     "name": ["testperson1"],
@@ -2864,8 +2948,6 @@ mod tests {
 
             let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
-                "valid": null,
-                "state": null,
                 "attrs": {
                     "class": ["object", "person", "account"],
                     "name": ["testperson1"],
@@ -2990,8 +3072,6 @@ mod tests {
             let mut server_txn = server.write(duration_from_epoch_now());
             let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
-                "valid": null,
-                "state": null,
                 "attrs": {
                     "class": ["object", "person"],
                     "name": ["testperson1"],
@@ -3011,11 +3091,11 @@ mod tests {
 
             assert!(r1.is_err());
 
-            // test attr not-normalised
+            // test attr not-normalised (error)
             // test attr not-reference
             let r2 = server_txn.clone_value(audit, &"NaMe".to_string(), &"NaMe".to_string());
 
-            assert!(r2 == Ok(Value::new_iname_s("NaMe")));
+            assert!(r2.is_err());
 
             // test attr reference
             let r3 =
@@ -3109,8 +3189,6 @@ mod tests {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
-                "valid": null,
-                "state": null,
                 "attrs": {
                     "class": ["object", "testclass"],
                     "name": ["testobj1"],
@@ -3122,8 +3200,6 @@ mod tests {
             // Class definition
             let e_cd: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
-                "valid": null,
-                "state": null,
                 "attrs": {
                     "class": ["object", "classtype"],
                     "classname": ["testclass"],

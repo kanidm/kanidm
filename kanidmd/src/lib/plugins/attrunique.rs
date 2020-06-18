@@ -80,7 +80,10 @@ fn enforce_unique<STATE>(
 
     // Build a set of all the value -> uuid for the cands.
     // If already exist, reject due to dup.
-    let cand_attr = try_audit!(au, get_cand_attr_set(au, cand, attr));
+    let cand_attr = get_cand_attr_set(au, cand, attr).map_err(|e| {
+        ladmin_error!(au, "failed to get cand attr set {:?}", e);
+        e
+    })?;
 
     ltrace!(au, "{:?}", cand_attr);
 
@@ -107,16 +110,19 @@ fn enforce_unique<STATE>(
     ltrace!(au, "{:?}", filt_in);
 
     // If any results, reject.
-    let conflict_cand = try_audit!(au, qs.internal_exists(au, filt_in));
+    let conflict_cand = qs.internal_exists(au, filt_in).map_err(|e| {
+        ladmin_error!(au, "internal exists error {:?}", e);
+        e
+    })?;
 
     // If all okay, okay!
     if conflict_cand {
-        return Err(OperationError::Plugin(PluginError::AttrUnique(
+        Err(OperationError::Plugin(PluginError::AttrUnique(
             "duplicate value detected".to_string(),
-        )));
+        )))
+    } else {
+        Ok(())
     }
-
-    Ok(())
 }
 
 impl Plugin for AttrUnique {
@@ -210,8 +216,6 @@ mod tests {
     fn test_pre_create_name_unique() {
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["person"],
                 "name": ["testperson"],
@@ -240,8 +244,6 @@ mod tests {
     fn test_pre_create_name_unique_2() {
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["person"],
                 "name": ["testperson"],
@@ -273,8 +275,6 @@ mod tests {
     fn test_pre_modify_name_unique() {
         let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["group"],
                 "name": ["testgroup_a"],
@@ -285,8 +285,6 @@ mod tests {
 
         let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["group"],
                 "name": ["testgroup_b"],
@@ -320,8 +318,6 @@ mod tests {
     fn test_pre_modify_name_unique_2() {
         let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["group"],
                 "name": ["testgroup_a"],
@@ -332,8 +328,6 @@ mod tests {
 
         let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["group"],
                 "name": ["testgroup_b"],

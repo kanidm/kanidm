@@ -62,10 +62,10 @@ impl CacheLayer {
         // We assume we are offline at start up, and we mark the next "online check" as
         // being valid from "now".
         Ok(CacheLayer {
-            db: db,
-            client: client,
+            db,
+            client,
             state: Mutex::new(CacheState::OfflineNextCheck(SystemTime::now())),
-            timeout_seconds: timeout_seconds,
+            timeout_seconds,
             pam_allow_groups: pam_allow_groups.into_iter().collect(),
         })
     }
@@ -171,7 +171,6 @@ impl CacheLayer {
             .duration_since(SystemTime::UNIX_EPOCH)
             .map_err(|e| {
                 error!("time conversion error - ex_time less than epoch? {:?}", e);
-                ()
             })?;
 
         let dbtxn = self.db.write();
@@ -194,7 +193,6 @@ impl CacheLayer {
             .duration_since(SystemTime::UNIX_EPOCH)
             .map_err(|e| {
                 error!("time conversion error - ex_time less than epoch? {:?}", e);
-                ()
             })?;
 
         let dbtxn = self.db.write();
@@ -358,7 +356,6 @@ impl CacheLayer {
         // get the item from the cache
         let (expired, item) = self.get_cached_usertoken(&account_id).map_err(|e| {
             debug!("get_usertoken error -> {:?}", e);
-            ()
         })?;
 
         let state = self.get_cachestate().await;
@@ -406,7 +403,6 @@ impl CacheLayer {
         debug!("get_grouptoken");
         let (expired, item) = self.get_cached_grouptoken(&grp_id).map_err(|e| {
             debug!("get_grouptoken error -> {:?}", e);
-            ()
         })?;
 
         let state = self.get_cachestate().await;
@@ -458,7 +454,7 @@ impl CacheLayer {
             .unwrap_or_else(|_| Vec::new())
             .into_iter()
             .map(|ut| {
-                // TODO: We'll have a switch to convert this to spn in some configs
+                // TODO #181: We'll have a switch to convert this to spn in some configs
                 // in the future.
                 ut.name
             })
@@ -468,7 +464,7 @@ impl CacheLayer {
     // Get ssh keys for an account id
     pub async fn get_sshkeys(&self, account_id: &str) -> Result<Vec<String>, ()> {
         let token = self.get_usertoken(Id::Name(account_id.to_string())).await?;
-        Ok(token.map(|t| t.sshkeys).unwrap_or_else(|| Vec::new()))
+        Ok(token.map(|t| t.sshkeys).unwrap_or_else(Vec::new))
     }
 
     pub fn get_nssaccounts(&self) -> Result<Vec<NssUser>, ()> {
@@ -480,7 +476,7 @@ impl CacheLayer {
                         name: tok.name,
                         gid: tok.gidnumber,
                         gecos: tok.displayname,
-                        // TODO: default shell override.
+                        // TODO #254: default shell override.
                         shell: tok.shell.unwrap_or_else(|| "/bin/bash".to_string()),
                     }
                 })
@@ -496,7 +492,7 @@ impl CacheLayer {
                 name: tok.name,
                 gid: tok.gidnumber,
                 gecos: tok.displayname,
-                // TODO: default shell override.
+                // TODO #254: default shell override.
                 shell: tok.shell.unwrap_or_else(|| "/bin/bash".to_string()),
             }
         }))
@@ -518,7 +514,7 @@ impl CacheLayer {
                     NssGroup {
                         name: tok.name,
                         gid: tok.gidnumber,
-                        members: members,
+                        members,
                     }
                 })
                 .collect()
@@ -533,7 +529,7 @@ impl CacheLayer {
             NssGroup {
                 name: tok.name,
                 gid: tok.gidnumber,
-                members: members,
+                members,
             }
         }))
     }
@@ -639,8 +635,7 @@ impl CacheLayer {
                 user_set, self.pam_allow_groups
             );
 
-            let b = user_set.intersection(&self.pam_allow_groups).count() > 0;
-            b
+            user_set.intersection(&self.pam_allow_groups).count() > 0
         }))
     }
 

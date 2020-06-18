@@ -87,7 +87,7 @@ pub(crate) struct Account {
     // app_creds: Vec<Credential>
     // account expiry? (as opposed to cred expiry)
     pub spn: String,
-    // TODO: When you add mail, you should update the check to zxcvbn
+    // TODO #256: When you add mail, you should update the check to zxcvbn
     // to include these.
     // pub mail: Vec<String>
 }
@@ -98,7 +98,7 @@ impl Account {
         value: Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        lperf_segment!(au, "idm::account::try_from_entry_ro", || {
+        lperf_trace_segment!(au, "idm::account::try_from_entry_ro", || {
             let groups = Group::try_from_account_entry_ro(au, &value, qs)?;
             try_from_entry!(value, groups)
         })
@@ -133,7 +133,7 @@ impl Account {
             spn: self.spn.clone(),
             displayname: self.name.clone(),
             uuid: self.uuid.to_hyphenated_ref().to_string(),
-            application: None,
+            // application: None,
             groups: self.groups.iter().map(|g| g.to_proto()).collect(),
             claims: claims.iter().map(|c| c.to_proto()).collect(),
         })
@@ -154,7 +154,7 @@ impl Account {
         match appid {
             Some(_) => Err(OperationError::InvalidState),
             None => {
-                // TODO: Enforce PW policy. Can we allow this change?
+                // TODO #59: Enforce PW policy. Can we allow this change?
                 match &self.primary {
                     // Change the cred
                     Some(primary) => {

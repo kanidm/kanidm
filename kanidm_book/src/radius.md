@@ -48,7 +48,7 @@ This means, Kanidm stores RADIUS credentials in the database is cleartext.
 We believe this is a reasonable decision and is a low risk to security as:
 
 * The access controls around radius secret by default are "strong", limited to only self-account read and radius-server read.
-* As RADIUS credentials are seperate to the primary account credentials, and have no other rights, their disclosure is not going to lead to a fully compromise account.
+* As RADIUS credentials are seperate to the primary account credentials, and have no other rights, their disclosure is not going to lead to a full compromise account.
 * Having the credentials in cleartext allows a better user experience as clients can view the credentials at anytime to enroll further devices.
 
 ## Account Credential Configuration

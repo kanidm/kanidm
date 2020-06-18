@@ -288,7 +288,7 @@ pub(crate) struct AuthSession {
 }
 
 impl AuthSession {
-    pub fn new(account: Account, appid: Option<String>) -> Self {
+    pub fn new(au: &mut AuditScope, account: Account, appid: Option<String>) -> Self {
         // During this setup, determine the credential handler that we'll be using
         // for this session. This is currently based on presentation of an application
         // id.
@@ -304,9 +304,14 @@ impl AuthSession {
                     // Now we see if they have one ...
                     match &account.primary {
                         Some(cred) => {
-                            // TODO: Log this corruption better ... :(
                             // Probably means new authsession has to be failable
-                            CredHandler::try_from(cred).unwrap_or_else(|_| CredHandler::Denied)
+                            CredHandler::try_from(cred).unwrap_or_else(|_| {
+                                lsecurity_critical!(
+                                    au,
+                                    "corrupt credentials, unable to start credhandler"
+                                );
+                                CredHandler::Denied
+                            })
                         }
                         None => CredHandler::Denied,
                     }
@@ -409,9 +414,14 @@ mod tests {
 
     #[test]
     fn test_idm_authsession_anonymous_auth_mech() {
+        let mut audit = AuditScope::new(
+            "test_idm_authsession_anonymous_auth_mech",
+            uuid::Uuid::new_v4(),
+            None,
+        );
         let anon_account = entry_str_to_account!(JSON_ANONYMOUS_V1);
 
-        let session = AuthSession::new(anon_account, None);
+        let session = AuthSession::new(&mut audit, anon_account, None);
 
         let auth_mechs = session.valid_auth_mechs();
 
@@ -425,10 +435,13 @@ mod tests {
 
     #[test]
     fn test_idm_authsession_floodcheck_mech() {
-        let mut audit =
-            AuditScope::new("test_idm_authsession_floodcheck_mech", uuid::Uuid::new_v4());
+        let mut audit = AuditScope::new(
+            "test_idm_authsession_floodcheck_mech",
+            uuid::Uuid::new_v4(),
+            None,
+        );
         let anon_account = entry_str_to_account!(JSON_ANONYMOUS_V1);
-        let mut session = AuthSession::new(anon_account, None);
+        let mut session = AuthSession::new(&mut audit, anon_account, None);
 
         let attempt = vec![
             AuthCredential::Anonymous,
@@ -449,8 +462,17 @@ mod tests {
     #[test]
     fn test_idm_authsession_missing_appid() {
         let anon_account = entry_str_to_account!(JSON_ANONYMOUS_V1);
+        let mut audit = AuditScope::new(
+            "test_idm_authsession_missing_appid",
+            uuid::Uuid::new_v4(),
+            None,
+        );
 
-        let session = AuthSession::new(anon_account, Some("NonExistantAppID".to_string()));
+        let session = AuthSession::new(
+            &mut audit,
+            anon_account,
+            Some("NonExistantAppID".to_string()),
+        );
 
         let auth_mechs = session.valid_auth_mechs();
 
@@ -463,6 +485,7 @@ mod tests {
         let mut audit = AuditScope::new(
             "test_idm_authsession_simple_password_mech",
             uuid::Uuid::new_v4(),
+            None,
         );
         // create the ent
         let mut account = entry_str_to_account!(JSON_ADMIN_V1);
@@ -471,7 +494,7 @@ mod tests {
         account.primary = Some(cred);
 
         // now check
-        let mut session = AuthSession::new(account.clone(), None);
+        let mut session = AuthSession::new(&mut audit, account.clone(), None);
         let auth_mechs = session.valid_auth_mechs();
 
         assert!(
@@ -487,7 +510,7 @@ mod tests {
             _ => panic!(),
         };
 
-        let mut session = AuthSession::new(account, None);
+        let mut session = AuthSession::new(&mut audit, account, None);
         let attempt = vec![AuthCredential::Password("test_password".to_string())];
         match session.validate_creds(&mut audit, &attempt, &Duration::from_secs(0)) {
             Ok(AuthState::Success(_)) => {}
@@ -502,6 +525,7 @@ mod tests {
         let mut audit = AuditScope::new(
             "test_idm_authsession_totp_password_mech",
             uuid::Uuid::new_v4(),
+            None,
         );
         // create the ent
         let mut account = entry_str_to_account!(JSON_ADMIN_V1);
@@ -528,7 +552,7 @@ mod tests {
         account.primary = Some(cred);
 
         // now check
-        let session = AuthSession::new(account.clone(), None);
+        let session = AuthSession::new(&mut audit, account.clone(), None);
         let auth_mechs = session.valid_auth_mechs();
         assert!(auth_mechs.iter().fold(true, |acc, x| match x {
             AuthAllowed::Password => acc,
@@ -540,7 +564,7 @@ mod tests {
 
         // check send anon (fail)
         {
-            let mut session = AuthSession::new(account.clone(), None);
+            let mut session = AuthSession::new(&mut audit, account.clone(), None);
             match session.validate_creds(&mut audit, &vec![AuthCredential::Anonymous], &ts) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
                 _ => panic!(),
@@ -552,7 +576,7 @@ mod tests {
         // check send bad pw, should get continue (even though denied set)
         //      then send good totp, should fail.
         {
-            let mut session = AuthSession::new(account.clone(), None);
+            let mut session = AuthSession::new(&mut audit, account.clone(), None);
             match session.validate_creds(
                 &mut audit,
                 &vec![AuthCredential::Password(pw_bad.to_string())],
@@ -569,7 +593,7 @@ mod tests {
         // check send bad pw, should get continue (even though denied set)
         //      then send bad totp, should fail TOTP
         {
-            let mut session = AuthSession::new(account.clone(), None);
+            let mut session = AuthSession::new(&mut audit, account.clone(), None);
             match session.validate_creds(
                 &mut audit,
                 &vec![AuthCredential::Password(pw_bad.to_string())],
@@ -587,7 +611,7 @@ mod tests {
         // check send good pw, should get continue
         //      then send good totp, success
         {
-            let mut session = AuthSession::new(account.clone(), None);
+            let mut session = AuthSession::new(&mut audit, account.clone(), None);
             match session.validate_creds(
                 &mut audit,
                 &vec![AuthCredential::Password(pw_good.to_string())],
@@ -605,7 +629,7 @@ mod tests {
         // check send good pw, should get continue
         //      then send bad totp, fail otp
         {
-            let mut session = AuthSession::new(account.clone(), None);
+            let mut session = AuthSession::new(&mut audit, account.clone(), None);
             match session.validate_creds(
                 &mut audit,
                 &vec![AuthCredential::Password(pw_good.to_string())],
@@ -622,7 +646,7 @@ mod tests {
 
         // check send bad totp, should fail immediate
         {
-            let mut session = AuthSession::new(account.clone(), None);
+            let mut session = AuthSession::new(&mut audit, account.clone(), None);
             match session.validate_creds(&mut audit, &vec![AuthCredential::TOTP(totp_bad)], &ts) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_TOTP_MSG),
                 _ => panic!(),
@@ -632,7 +656,7 @@ mod tests {
         // check send good totp, should continue
         //      then bad pw, fail pw
         {
-            let mut session = AuthSession::new(account.clone(), None);
+            let mut session = AuthSession::new(&mut audit, account.clone(), None);
             match session.validate_creds(&mut audit, &vec![AuthCredential::TOTP(totp_good)], &ts) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -650,7 +674,7 @@ mod tests {
         // check send good totp, should continue
         //      then good pw, success
         {
-            let mut session = AuthSession::new(account.clone(), None);
+            let mut session = AuthSession::new(&mut audit, account.clone(), None);
             match session.validate_creds(&mut audit, &vec![AuthCredential::TOTP(totp_good)], &ts) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -669,7 +693,7 @@ mod tests {
 
         // check bad totp, bad pw, fail totp.
         {
-            let mut session = AuthSession::new(account.clone(), None);
+            let mut session = AuthSession::new(&mut audit, account.clone(), None);
             match session.validate_creds(
                 &mut audit,
                 &vec![
@@ -684,7 +708,7 @@ mod tests {
         }
         // check send bad pw, good totp fail password
         {
-            let mut session = AuthSession::new(account.clone(), None);
+            let mut session = AuthSession::new(&mut audit, account.clone(), None);
             match session.validate_creds(
                 &mut audit,
                 &vec![
@@ -699,7 +723,7 @@ mod tests {
         }
         // check send good pw, bad totp fail totp.
         {
-            let mut session = AuthSession::new(account.clone(), None);
+            let mut session = AuthSession::new(&mut audit, account.clone(), None);
             match session.validate_creds(
                 &mut audit,
                 &vec![
@@ -714,7 +738,7 @@ mod tests {
         }
         // check good pw, good totp, success
         {
-            let mut session = AuthSession::new(account.clone(), None);
+            let mut session = AuthSession::new(&mut audit, account.clone(), None);
             match session.validate_creds(
                 &mut audit,
                 &vec![

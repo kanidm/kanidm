@@ -7,21 +7,69 @@ use std::time::SystemTime;
 
 use chrono::offset::Utc;
 use chrono::DateTime;
-use uuid::adapter::HyphenatedRef;
 use uuid::Uuid;
 
+use std::str::FromStr;
+
 #[derive(Debug, Serialize, Deserialize)]
+#[repr(u32)]
 pub enum LogTag {
-    AdminError,
-    AdminWarning,
-    AdminInfo,
-    RequestError,
-    Security,
-    SecurityAccess,
-    Filter,
-    FilterError,
-    FilterWarning,
-    Trace,
+    AdminError = 0x0000_0001,
+    AdminWarning = 0x0000_0002,
+    AdminInfo = 0x0000_0004,
+    //          0x0000_0008,
+    RequestError = 0x0000_0010,
+    RequestWarning = 0x0000_0020,
+    RequestInfo = 0x0000_0040,
+    RequestTrace = 0x0000_0080,
+    SecurityCritical = 0x0000_0100,
+    SecurityInfo = 0x0000_0200,
+    SecurityAccess = 0x0000_0400,
+    //               0x0000_0800
+    FilterError = 0x0000_1000,
+    FilterWarning = 0x0000_2000,
+    FilterInfo = 0x0000_4000,
+    FilterTrace = 0x0000_8000,
+    // 0x0001_0000 -> 0x0800_0000
+    PerfOp = 0x1000_0000,
+    PerfCoarse = 0x2000_0000,
+    PerfTrace = 0x4000_0000,
+    Trace = 0x8000_0000,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[repr(u32)]
+pub enum LogLevel {
+    // Errors only
+    Quiet = 0x0000_1111,
+    // All Error, All Security, Request and Admin Warning,
+    Default = 0x0000_1111 | 0x0000_0f00 | 0x0000_0022 | 0x1000_0000,
+    // Default + Filter Plans
+    Filter = 0x0000_1111 | 0x0000_0f00 | 0x0000_0022 | 0x0000_4000 | 0x1000_0000,
+    // All Error, All Warning, All Info, Filter and Request Tracing
+    Verbose = 0x0000_ffff | 0x1000_0000,
+    // Default + PerfCoarse
+    PerfBasic = 0x0000_1111 | 0x0000_0f00 | 0x0000_0022 | 0x3000_0000,
+    // Default + PerfCoarse ? PerfTrace
+    PerfFull = 0x0000_1111 | 0x0000_0f00 | 0x0000_0022 | 0x7000_0000,
+    // Yolo
+    FullTrace = 0xffff_ffff,
+}
+
+impl FromStr for LogLevel {
+    type Err = &'static str;
+    fn from_str(l: &str) -> Result<Self, Self::Err> {
+        match l.to_lowercase().as_str() {
+            "quiet" => Ok(LogLevel::Quiet),
+            "default" => Ok(LogLevel::Default),
+            "filter" => Ok(LogLevel::Filter),
+            "verbose" => Ok(LogLevel::Verbose),
+            "perfbasic" => Ok(LogLevel::PerfBasic),
+            "perffull" => Ok(LogLevel::PerfFull),
+            "fulltrace" => Ok(LogLevel::FullTrace),
+            _ => Err("Could not parse loglevel"),
+        }
+    }
 }
 
 impl fmt::Display for LogTag {
@@ -31,63 +79,57 @@ impl fmt::Display for LogTag {
             LogTag::AdminWarning => write!(f, "admin::warning 🚧"),
             LogTag::AdminInfo => write!(f, "admin::info"),
             LogTag::RequestError => write!(f, "request::error 🚨"),
-            LogTag::Security => write!(f, "security 🔐"),
+            LogTag::RequestWarning => write!(f, "request::warning"),
+            LogTag::RequestInfo => write!(f, "request::info"),
+            LogTag::RequestTrace => write!(f, "request::trace"),
+            LogTag::SecurityCritical => write!(f, "security::critical 🐟"),
+            LogTag::SecurityInfo => write!(f, "security::info 🔐"),
             LogTag::SecurityAccess => write!(f, "security::access 🔓"),
-            LogTag::Filter => write!(f, "filter"),
-            LogTag::FilterWarning => write!(f, "filter::warning 🚧"),
             LogTag::FilterError => write!(f, "filter::error 🚨"),
-            LogTag::Trace => write!(f, "trace ⌦"),
+            LogTag::FilterWarning => write!(f, "filter::warning 🚧"),
+            LogTag::FilterInfo => write!(f, "filter::info"),
+            LogTag::FilterTrace => write!(f, "filter::trace"),
+            LogTag::PerfOp | LogTag::PerfCoarse | LogTag::PerfTrace => write!(f, "perf::trace "),
+            LogTag::Trace => write!(f, "trace::⌦"),
         }
     }
 }
 
-macro_rules! audit_log {
-    ($audit:expr, $($arg:tt)*) => ({
-        use std::fmt;
-        use crate::audit::LogTag;
-        /*
-        if cfg!(test) || cfg!(debug_assertions) {
-            eprintln!($($arg)*)
-        }
-        */
-        $audit.log_event(
-            LogTag::AdminError,
-            fmt::format(
-                format_args!($($arg)*)
-            )
-        )
-    })
-}
-
 macro_rules! lqueue {
     ($au:expr, $tag:expr, $($arg:tt)*) => ({
+        use crate::audit::LogTag;
+        /*
         if cfg!(test) {
             println!($($arg)*)
         }
-        use std::fmt;
-        use crate::audit::LogTag;
-        $au.log_event(
-            $tag,
-            fmt::format(
-                format_args!($($arg)*)
+        */
+        if ($au.level & $tag as u32) == $tag as u32 {
+            use std::fmt;
+            $au.log_event(
+                $tag,
+                fmt::format(
+                    format_args!($($arg)*)
+                )
             )
-        )
+        }
     })
 }
 
 macro_rules! ltrace {
     ($au:expr, $($arg:tt)*) => ({
-        if log_enabled!(log::Level::Debug) || cfg!(test) {
-            lqueue!($au, LogTag::Trace, $($arg)*)
-        }
+        lqueue!($au, LogTag::Trace, $($arg)*)
     })
 }
 
 macro_rules! lfilter {
     ($au:expr, $($arg:tt)*) => ({
-        if log_enabled!(log::Level::Info) || cfg!(test) {
-            lqueue!($au, LogTag::Filter, $($arg)*)
-        }
+        lqueue!($au, LogTag::FilterTrace, $($arg)*)
+    })
+}
+
+macro_rules! lfilter_info {
+    ($au:expr, $($arg:tt)*) => ({
+        lqueue!($au, LogTag::FilterInfo, $($arg)*)
     })
 }
 
@@ -119,9 +161,7 @@ macro_rules! ladmin_warning {
 
 macro_rules! ladmin_info {
     ($au:expr, $($arg:tt)*) => ({
-        if log_enabled!(log::Level::Info) || cfg!(test) {
-            lqueue!($au, LogTag::AdminInfo, $($arg)*)
-        }
+        lqueue!($au, LogTag::AdminInfo, $($arg)*)
     })
 }
 
@@ -133,7 +173,13 @@ macro_rules! lrequest_error {
 
 macro_rules! lsecurity {
     ($au:expr, $($arg:tt)*) => ({
-        lqueue!($au, LogTag::Security, $($arg)*)
+        lqueue!($au, LogTag::SecurityInfo, $($arg)*)
+    })
+}
+
+macro_rules! lsecurity_critical {
+    ($au:expr, $($arg:tt)*) => ({
+        lqueue!($au, LogTag::SecurityCritical, $($arg)*)
     })
 }
 
@@ -143,9 +189,30 @@ macro_rules! lsecurity_access {
     })
 }
 
+macro_rules! lperf_op_segment {
+    ($au:expr, $id:expr, $fun:expr) => {{
+        use crate::audit::LogTag;
+        lperf_tag_segment!($au, $id, LogTag::PerfOp, $fun)
+    }};
+}
+
+macro_rules! lperf_trace_segment {
+    ($au:expr, $id:expr, $fun:expr) => {{
+        use crate::audit::LogTag;
+        lperf_tag_segment!($au, $id, LogTag::PerfTrace, $fun)
+    }};
+}
+
 macro_rules! lperf_segment {
     ($au:expr, $id:expr, $fun:expr) => {{
-        if log_enabled!(log::Level::Debug) || cfg!(test) {
+        use crate::audit::LogTag;
+        lperf_tag_segment!($au, $id, LogTag::PerfCoarse, $fun)
+    }};
+}
+
+macro_rules! lperf_tag_segment {
+    ($au:expr, $id:expr, $tag:expr, $fun:expr) => {{
+        if ($au.level & $tag as u32) == $tag as u32 {
             use std::time::Instant;
 
             // start timer.
@@ -174,12 +241,34 @@ macro_rules! lperf_segment {
     }};
 }
 
+/*
+macro_rules! limmediate_error {
+    ($au:expr, $($arg:tt)*) => ({
+        use crate::audit::LogTag;
+        if ($au.level & LogTag::AdminError as u32) == LogTag::AdminError as u32 {
+            eprintln!($($arg)*)
+        }
+    })
+}
+*/
+
+macro_rules! limmediate_warning {
+    ($au:expr, $($arg:tt)*) => ({
+        use crate::audit::LogTag;
+        if ($au.level & LogTag::AdminWarning as u32) == LogTag::AdminWarning as u32 {
+            eprint!($($arg)*)
+        }
+    })
+}
+
+/*
 macro_rules! try_audit {
     ($audit:ident, $result:expr, $logFormat:expr, $errorType:expr) => {
         match $result {
             Ok(v) => v,
             Err(e) => {
-                audit_log!($audit, $logFormat, e);
+                ladmin_error!($audit, $logFormat, e);
+
                 return Err($errorType);
             }
         }
@@ -188,7 +277,7 @@ macro_rules! try_audit {
         match $result {
             Ok(v) => v,
             Err(e) => {
-                audit_log!($audit, $logFormat, e);
+                ladmin_error!($audit, $logFormat, e);
                 return Err(e);
             }
         }
@@ -197,16 +286,16 @@ macro_rules! try_audit {
         match $result {
             Ok(v) => v,
             Err(e) => {
-                audit_log!($audit, "error @ {} {} -> {:?}", file!(), line!(), e);
+                ladmin_error!($audit, "error @ {} {} -> {:?}", file!(), line!(), e);
                 return Err(e);
             }
         }
     };
 }
+*/
 
 #[derive(Debug, Serialize, Deserialize)]
 struct AuditLog {
-    time: String,
     tag: LogTag,
     data: String,
 }
@@ -228,14 +317,10 @@ impl PerfEvent {
             .map(|pe| pe.process_inner(opd))
             .collect();
         contains.sort_unstable();
-        let duration = self
-            .duration
-            .as_ref()
-            .expect("corrupted perf event")
-            .clone();
+        let duration = self.duration.as_ref().expect("corrupted perf event");
         let percent = (duration.as_secs_f64() / opd.as_secs_f64()) * 100.0;
         PerfProcessed {
-            duration,
+            duration: *duration,
             id: self.id.clone(),
             percent,
             contains,
@@ -243,11 +328,7 @@ impl PerfEvent {
     }
 
     fn process(&self) -> PerfProcessed {
-        let duration = self
-            .duration
-            .as_ref()
-            .expect("corrupted perf event")
-            .clone();
+        let duration = self.duration.as_ref().expect("corrupted perf event");
         let mut contains: Vec<_> = self
             .contains
             .iter()
@@ -255,7 +336,7 @@ impl PerfEvent {
             .collect();
         contains.sort_unstable();
         PerfProcessed {
-            duration,
+            duration: *duration,
             id: self.id.clone(),
             percent: 100.0,
             contains,
@@ -301,23 +382,27 @@ impl PartialEq for PerfProcessed {
  *     |    |--> another layer
  */
 impl PerfProcessed {
-    fn int_write_fmt(&self, parents: usize, uuid: &HyphenatedRef) {
-        let mut prefix = String::new();
-        prefix.push_str("[- perf::trace] ");
+    fn int_write_fmt(&self, parents: usize, header: &str) {
+        eprint!("{}", header);
+        // let mut prefix = header.to_string();
         let d = &self.duration;
         let df = d.as_secs() as f64 + d.subsec_nanos() as f64 * 1e-9;
         if parents > 0 {
             for _i in 0..parents {
-                prefix.push_str("|   ");
+                // prefix.push_str("|   ");
+                eprint!("|   ");
             }
         };
+        eprintln!("|--> {} {1:.9} {2:.3}%", self.id, df, self.percent);
+        /*
         eprintln!(
             "{}|--> {} {2:.9} {3:.3}%",
             prefix, self.id, df, self.percent
         );
+        */
         self.contains
             .iter()
-            .for_each(|pe| pe.int_write_fmt(parents + 1, uuid))
+            .for_each(|pe| pe.int_write_fmt(parents + 1, header))
     }
 }
 
@@ -329,6 +414,8 @@ pub struct AuditScope {
     // vec of start/end points of various parts of the event?
     // We probably need some functions for this. Is there a way in rust
     // to automatically annotate line numbers of code?
+    #[serde(skip_serializing)]
+    pub level: u32,
     uuid: Uuid,
     events: Vec<AuditLog>,
     perf: Vec<PerfEvent>,
@@ -345,17 +432,43 @@ impl Message for AuditScope {
 }
 
 impl AuditScope {
-    pub fn new(name: &str, eventid: Uuid) -> Self {
-        let t_now = SystemTime::now();
-        let datetime: DateTime<Utc> = t_now.into();
+    pub fn new(name: &str, eventid: Uuid, level: Option<u32>) -> Self {
+        let level = if cfg!(test) {
+            LogLevel::FullTrace as u32
+        } else {
+            level.unwrap_or(LogLevel::Default as u32)
+        };
+
+        // Try to reduce re-allocs by pre-allocating the amount we will likely need.
+        let mut events = if level == LogLevel::FullTrace as u32 {
+            Vec::with_capacity(512)
+        } else if (level & LogLevel::PerfFull as u32) == LogLevel::PerfFull as u32 {
+            Vec::with_capacity(256)
+        } else if (level & LogLevel::PerfBasic as u32) == LogLevel::PerfBasic as u32
+            || (level & LogLevel::Verbose as u32) == LogLevel::Verbose as u32
+        {
+            Vec::with_capacity(64)
+        } else if level == LogLevel::Quiet as u32 {
+            Vec::with_capacity(0)
+        } else {
+            // (level & LogTag::Filter as u32) == LogTag::Filter as u32
+            // (level & LogTag::Default as u32) == LogTag::Default as u32
+            Vec::with_capacity(16)
+        };
+
+        if (level & LogTag::AdminInfo as u32) == LogTag::AdminInfo as u32 {
+            let t_now = SystemTime::now();
+            let datetime: DateTime<Utc> = t_now.into();
+            events.push(AuditLog {
+                tag: LogTag::AdminInfo,
+                data: format!("{} {}", name, datetime.to_rfc3339()),
+            })
+        }
 
         AuditScope {
+            level,
             uuid: eventid,
-            events: vec![AuditLog {
-                time: datetime.to_rfc3339(),
-                tag: LogTag::AdminInfo,
-                data: format!("start {}", name),
-            }],
+            events,
             perf: vec![],
             active_perf: None,
         }
@@ -363,62 +476,34 @@ impl AuditScope {
 
     pub fn write_log(self) {
         let uuid_ref = self.uuid.to_hyphenated_ref();
-        if log_enabled!(log::Level::Warn) {
-            eprintln!("[- event::start] {}", uuid_ref);
-        }
-        self.events.iter().for_each(|e| match e.tag {
-            LogTag::AdminError => eprintln!("[{} {}] {} {}", e.time, e.tag, uuid_ref, e.data),
-            LogTag::RequestError | LogTag::FilterError => {
-                if log_enabled!(log::Level::Warn) {
-                    eprintln!("[{} {}] {}", e.time, e.tag, e.data)
-                }
-            }
-            LogTag::AdminWarning
-            | LogTag::Security
-            | LogTag::SecurityAccess
-            | LogTag::FilterWarning => {
-                if log_enabled!(log::Level::Warn) {
-                    eprintln!("[{} {}] {}", e.time, e.tag, e.data)
-                }
-            }
-            LogTag::AdminInfo | LogTag::Filter => {
-                if log_enabled!(log::Level::Info) {
-                    eprintln!("[{} {}] {}", e.time, e.tag, e.data)
-                }
-            }
-            LogTag::Trace => {
-                if log_enabled!(log::Level::Debug) {
-                    eprintln!("[{} {}] {}", e.time, e.tag, e.data)
-                }
-            }
-        });
+        self.events
+            .iter()
+            .for_each(|e| eprintln!("[{} {}] {}", uuid_ref, e.tag, e.data));
 
-        if log_enabled!(log::Level::Warn) {
-            eprintln!("[- event::end] {}", uuid_ref);
-        }
         // First, we pre-process all the perf events to order them
         let mut proc_perf: Vec<_> = self.perf.iter().map(|pe| pe.process()).collect();
 
         // We still sort them by duration.
         proc_perf.sort_unstable();
 
+        let header = format!("[{} perf::trace] ", uuid_ref);
         // Now write the perf events
         proc_perf
             .iter()
-            .for_each(|pe| pe.int_write_fmt(0, &uuid_ref));
+            .for_each(|pe| pe.int_write_fmt(0, header.as_str()));
         if log_enabled!(log::Level::Debug) {
-            eprintln!("[- perf::trace] end: {}", uuid_ref);
+            eprintln!("[{} perf::trace] -", uuid_ref);
         }
     }
 
     pub fn log_event(&mut self, tag: LogTag, data: String) {
-        let t_now = SystemTime::now();
-        let datetime: DateTime<Utc> = t_now.into();
+        // let t_now = SystemTime::now();
+        // let datetime: DateTime<Utc> = t_now.into();
 
         self.events.push(AuditLog {
-            time: datetime.to_rfc3339(),
+            // time: datetime.to_rfc3339(),
             tag,
-            data: data,
+            data,
         })
     }
 
@@ -482,7 +567,7 @@ mod tests {
     // Create and remove. Perhaps add some core details?
     #[test]
     fn test_audit_simple() {
-        let au = AuditScope::new("au", uuid::Uuid::new_v4());
+        let au = AuditScope::new("au", uuid::Uuid::new_v4(), None);
         let d = serde_json::to_string_pretty(&au).expect("Json serialise failure");
         debug!("{}", d);
     }

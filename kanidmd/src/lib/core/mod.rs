@@ -241,7 +241,9 @@ async fn json_rest_event_delete_id(
     };
 
     match state.qe_w.send(obj).await {
-        Ok(Ok(r)) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
+        Ok(Ok(())) => HttpResponse::Ok()
+            .header("X-KANIDM-OPID", hvalue)
+            .json(true),
         Ok(Err(e)) => operation_error_to_response(e, hvalue),
         Err(_) => HttpResponse::InternalServerError()
             .header("X-KANIDM-OPID", hvalue)
@@ -270,7 +272,6 @@ async fn json_rest_event_get_id_attr(
 
     match state.qe_r.send(obj).await {
         Ok(Ok(mut event_result)) => {
-            // TODO: Check this only has len 1, even though that satte should be impossible.
             // Only get one result
             let r = event_result.pop().and_then(|mut e| {
                 // Only get the attribute as requested.
@@ -328,7 +329,9 @@ async fn json_rest_event_post_id_attr(
     };
     // Add a msg here
     match state.qe_w.send(m_obj).await {
-        Ok(Ok(r)) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
+        Ok(Ok(())) => HttpResponse::Ok()
+            .header("X-KANIDM-OPID", hvalue)
+            .json(true),
         Ok(Err(e)) => operation_error_to_response(e, hvalue),
         Err(_) => HttpResponse::InternalServerError()
             .header("X-KANIDM-OPID", hvalue)
@@ -356,7 +359,9 @@ async fn json_rest_event_put_id_attr(
         eventid,
     };
     match state.qe_w.send(m_obj).await {
-        Ok(Ok(r)) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
+        Ok(Ok(())) => HttpResponse::Ok()
+            .header("X-KANIDM-OPID", hvalue)
+            .json(true),
         Ok(Err(e)) => operation_error_to_response(e, hvalue),
         Err(_) => HttpResponse::InternalServerError()
             .header("X-KANIDM-OPID", hvalue)
@@ -374,7 +379,8 @@ async fn json_rest_event_delete_id_attr(
     let (id, attr) = path.into_inner();
 
     let (eventid, hvalue) = new_eventid!();
-    // TODO: Attempt to get an option Vec<String> here?
+    // TODO #211: Attempt to get an option Vec<String> here?
+    // It's probably better to focus on SCIM instead, it seems richer than this.
     let obj = PurgeAttributeMessage {
         uat,
         uuid_or_name: id,
@@ -384,7 +390,9 @@ async fn json_rest_event_delete_id_attr(
     };
 
     match state.qe_w.send(obj).await {
-        Ok(Ok(r)) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
+        Ok(Ok(())) => HttpResponse::Ok()
+            .header("X-KANIDM-OPID", hvalue)
+            .json(true),
         Ok(Err(e)) => operation_error_to_response(e, hvalue),
         Err(_) => HttpResponse::InternalServerError()
             .header("X-KANIDM-OPID", hvalue)
@@ -560,6 +568,8 @@ async fn account_id_get_attr(
     json_rest_event_get_id_attr(path, session, state, filter).await
 }
 
+// Matches actix-web styles
+#[allow(clippy::type_complexity)]
 async fn account_id_post_attr(
     (values, path, session, state): (
         Json<Vec<String>>,
@@ -579,6 +589,8 @@ async fn account_id_delete_attr(
     json_rest_event_delete_id_attr(path, session, state, filter).await
 }
 
+// Matches actix-web styles
+#[allow(clippy::type_complexity)]
 async fn account_id_put_attr(
     (values, path, session, state): (
         Json<Vec<String>>,
@@ -633,6 +645,8 @@ async fn account_get_id_ssh_pubkeys(
     }
 }
 
+// Matches actix-web styles
+#[allow(clippy::type_complexity)]
 async fn account_post_id_ssh_pubkey(
     (obj, path, session, state): (
         Json<(String, String)>,
@@ -656,7 +670,9 @@ async fn account_post_id_ssh_pubkey(
     };
     // Add a msg here
     match state.qe_w.send(m_obj).await {
-        Ok(Ok(r)) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
+        Ok(Ok(())) => HttpResponse::Ok()
+            .header("X-KANIDM-OPID", hvalue)
+            .json(true),
         Ok(Err(e)) => operation_error_to_response(e, hvalue),
         Err(_) => HttpResponse::InternalServerError()
             .header("X-KANIDM-OPID", hvalue)
@@ -704,7 +720,9 @@ async fn account_delete_id_ssh_pubkey_tag(
     };
 
     match state.qe_w.send(obj).await {
-        Ok(Ok(r)) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
+        Ok(Ok(())) => HttpResponse::Ok()
+            .header("X-KANIDM-OPID", hvalue)
+            .json(true),
         Ok(Err(e)) => operation_error_to_response(e, hvalue),
         Err(_) => HttpResponse::InternalServerError()
             .header("X-KANIDM-OPID", hvalue)
@@ -797,7 +815,9 @@ async fn account_post_id_person_extend(
         eventid,
     };
     match state.qe_w.send(m_obj).await {
-        Ok(Ok(r)) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
+        Ok(Ok(())) => HttpResponse::Ok()
+            .header("X-KANIDM-OPID", hvalue)
+            .json(true),
         Ok(Err(e)) => operation_error_to_response(e, hvalue),
         Err(_) => HttpResponse::InternalServerError()
             .header("X-KANIDM-OPID", hvalue)
@@ -818,7 +838,9 @@ async fn account_post_id_unix(
     let (eventid, hvalue) = new_eventid!();
     let m_obj = IdmAccountUnixExtendMessage::new(uat, id, obj.into_inner(), eventid);
     match state.qe_w.send(m_obj).await {
-        Ok(Ok(r)) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
+        Ok(Ok(())) => HttpResponse::Ok()
+            .header("X-KANIDM-OPID", hvalue)
+            .json(true),
         Ok(Err(e)) => operation_error_to_response(e, hvalue),
         Err(_) => HttpResponse::InternalServerError()
             .header("X-KANIDM-OPID", hvalue)
@@ -892,7 +914,9 @@ async fn account_put_id_unix_credential(
         eventid,
     };
     match state.qe_w.send(m_obj).await {
-        Ok(Ok(r)) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
+        Ok(Ok(())) => HttpResponse::Ok()
+            .header("X-KANIDM-OPID", hvalue)
+            .json(true),
         Ok(Err(e)) => operation_error_to_response(e, hvalue),
         Err(_) => HttpResponse::InternalServerError()
             .header("X-KANIDM-OPID", hvalue)
@@ -916,7 +940,9 @@ async fn account_delete_id_unix_credential(
     };
 
     match state.qe_w.send(obj).await {
-        Ok(Ok(r)) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
+        Ok(Ok(())) => HttpResponse::Ok()
+            .header("X-KANIDM-OPID", hvalue)
+            .json(true),
         Ok(Err(e)) => operation_error_to_response(e, hvalue),
         Err(_) => HttpResponse::InternalServerError()
             .header("X-KANIDM-OPID", hvalue)
@@ -950,6 +976,8 @@ async fn group_id_get_attr(
     json_rest_event_get_id_attr(path, session, state, filter).await
 }
 
+// Matches actix-web styles
+#[allow(clippy::type_complexity)]
 async fn group_id_post_attr(
     (values, path, session, state): (
         Json<Vec<String>>,
@@ -969,6 +997,8 @@ async fn group_id_delete_attr(
     json_rest_event_delete_id_attr(path, session, state, filter).await
 }
 
+// Matches actix-web styles
+#[allow(clippy::type_complexity)]
 async fn group_id_put_attr(
     (values, path, session, state): (
         Json<Vec<String>>,
@@ -996,7 +1026,9 @@ async fn group_post_id_unix(
     let (eventid, hvalue) = new_eventid!();
     let m_obj = IdmGroupUnixExtendMessage::new(uat, id, obj.into_inner(), eventid);
     match state.qe_w.send(m_obj).await {
-        Ok(Ok(r)) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
+        Ok(Ok(())) => HttpResponse::Ok()
+            .header("X-KANIDM-OPID", hvalue)
+            .json(true),
         Ok(Err(e)) => operation_error_to_response(e, hvalue),
         Err(_) => HttpResponse::InternalServerError()
             .header("X-KANIDM-OPID", hvalue)
@@ -1045,6 +1077,8 @@ async fn domain_id_get_attr(
     json_rest_event_get_id_attr(path, session, state, filter).await
 }
 
+// Matches actix-web styles
+#[allow(clippy::type_complexity)]
 async fn domain_id_put_attr(
     (values, path, session, state): (
         Json<Vec<String>>,
@@ -1118,7 +1152,7 @@ async fn recycle_bin_revive_id_post(
         eventid,
     };
     match state.qe_w.send(m_obj).await {
-        Ok(Ok(r)) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
+        Ok(Ok(())) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(()),
         Ok(Err(e)) => operation_error_to_response(e, hvalue),
         Err(_) => HttpResponse::InternalServerError()
             .header("X-KANIDM-OPID", hvalue)
@@ -1230,7 +1264,7 @@ async fn status((_session, state): (Session, Data<AppState>)) -> HttpResponse {
 // === internal setup helpers
 
 fn setup_backend(config: &Configuration) -> Result<Backend, OperationError> {
-    let mut audit_be = AuditScope::new("backend_setup", uuid::Uuid::new_v4());
+    let mut audit_be = AuditScope::new("backend_setup", uuid::Uuid::new_v4(), config.log_level);
     let pool_size: u32 = config.threads as u32;
     let be = Backend::new(&mut audit_be, config.db_path.as_str(), pool_size);
     // debug!
@@ -1285,7 +1319,7 @@ pub fn backup_server_core(config: Configuration, dst_path: &str) {
             return;
         }
     };
-    let mut audit = AuditScope::new("backend_backup", uuid::Uuid::new_v4());
+    let mut audit = AuditScope::new("backend_backup", uuid::Uuid::new_v4(), config.log_level);
 
     let mut be_ro_txn = be.read();
     let r = be_ro_txn.backup(&mut audit, dst_path);
@@ -1308,7 +1342,7 @@ pub fn restore_server_core(config: Configuration, dst_path: &str) {
             return;
         }
     };
-    let mut audit = AuditScope::new("backend_restore", uuid::Uuid::new_v4());
+    let mut audit = AuditScope::new("backend_restore", uuid::Uuid::new_v4(), config.log_level);
 
     // First, we provide the in-memory schema so that core attrs are indexed correctly.
     let schema = match Schema::new(&mut audit) {
@@ -1377,18 +1411,18 @@ pub fn reindex_server_core(config: Configuration) {
             return;
         }
     };
-    let mut audit = AuditScope::new("server_reindex", uuid::Uuid::new_v4());
+    let mut audit = AuditScope::new("server_reindex", uuid::Uuid::new_v4(), config.log_level);
 
     // First, we provide the in-memory schema so that core attrs are indexed correctly.
     let schema = match Schema::new(&mut audit) {
         Ok(s) => s,
         Err(e) => {
-            error!("Failed to setup in memory schema: {:?}", e);
+            eprintln!("Failed to setup in memory schema: {:?}", e);
             std::process::exit(1);
         }
     };
 
-    info!("Start Index Phase 1 ...");
+    eprintln!("Start Index Phase 1 ...");
     // Reindex only the core schema attributes to bootstrap the process.
     let mut be_wr_txn = {
         // Limit the scope of the schema txn.
@@ -1403,12 +1437,15 @@ pub fn reindex_server_core(config: Configuration) {
     // Now that's done, setup a minimal qs and reindex from that.
     if r.is_err() {
         audit.write_log();
-        error!("Failed to reindex database: {:?}", r);
+        eprintln!("Failed to reindex database: {:?}", r);
         std::process::exit(1);
     }
-    info!("Index Phase 1 Success!");
+    eprintln!("Index Phase 1 Success!");
 
-    info!("Attempting to init query server ...");
+    audit.write_log();
+    let mut audit = AuditScope::new("server_reindex", uuid::Uuid::new_v4(), config.log_level);
+
+    eprintln!("Attempting to init query server ...");
 
     let (qs, _idms) = match setup_qs_idms(&mut audit, be) {
         Ok(t) => t,
@@ -1418,9 +1455,12 @@ pub fn reindex_server_core(config: Configuration) {
             return;
         }
     };
-    info!("Init Query Server Success!");
+    eprintln!("Init Query Server Success!");
 
-    info!("Start Index Phase 2 ...");
+    audit.write_log();
+    let mut audit = AuditScope::new("server_reindex", uuid::Uuid::new_v4(), config.log_level);
+
+    eprintln!("Start Index Phase 2 ...");
 
     let mut qs_write = qs.write(duration_from_epoch_now());
     let r = qs_write
@@ -1430,16 +1470,16 @@ pub fn reindex_server_core(config: Configuration) {
     audit.write_log();
 
     match r {
-        Ok(_) => info!("Index Phase 2 Success!"),
+        Ok(_) => eprintln!("Index Phase 2 Success!"),
         Err(e) => {
-            error!("Reindex failed: {:?}", e);
+            eprintln!("Reindex failed: {:?}", e);
             std::process::exit(1);
         }
     };
 }
 
 pub fn domain_rename_core(config: Configuration, new_domain_name: String) {
-    let mut audit = AuditScope::new("domain_rename", uuid::Uuid::new_v4());
+    let mut audit = AuditScope::new("domain_rename", uuid::Uuid::new_v4(), config.log_level);
 
     // Start the backend.
     let be = match setup_backend(&config) {
@@ -1491,7 +1531,7 @@ pub fn reset_sid_core(config: Configuration) {
 */
 
 pub fn verify_server_core(config: Configuration) {
-    let mut audit = AuditScope::new("server_verify", uuid::Uuid::new_v4());
+    let mut audit = AuditScope::new("server_verify", uuid::Uuid::new_v4(), config.log_level);
     // Setup the be
     let be = match setup_backend(&config) {
         Ok(be) => be,
@@ -1529,7 +1569,7 @@ pub fn verify_server_core(config: Configuration) {
 }
 
 pub fn recover_account_core(config: Configuration, name: String, password: String) {
-    let mut audit = AuditScope::new("recover_account", uuid::Uuid::new_v4());
+    let mut audit = AuditScope::new("recover_account", uuid::Uuid::new_v4(), config.log_level);
 
     // Start the backend.
     let be = match setup_backend(&config) {
@@ -1585,7 +1625,7 @@ pub async fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> 
     let log_thread = thread::spawn(move || async_log::run(log_rx));
 
     // Start the status tracking thread
-    let status_addr = StatusActor::start(log_tx.clone());
+    let status_addr = StatusActor::start(log_tx.clone(), config.log_level);
 
     // Setup TLS (if any)
     let opt_tls_params = match setup_tls(&config) {
@@ -1608,7 +1648,7 @@ pub async fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> 
         }
     };
 
-    let mut audit = AuditScope::new("setup_qs_idms", uuid::Uuid::new_v4());
+    let mut audit = AuditScope::new("setup_qs_idms", uuid::Uuid::new_v4(), config.log_level);
     // Start the IDM server.
     let (qs, idms) = match setup_qs_idms(&mut audit, be) {
         Ok(t) => t,
@@ -1671,13 +1711,15 @@ pub async fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> 
     // Start the read query server with the given be path: future config
     let server_read_addr = QueryServerReadV1::start(
         log_tx.clone(),
+        config.log_level,
         qs.clone(),
         idms_arc.clone(),
         ldap_arc.clone(),
         config.threads,
     );
     // Start the write thread
-    let server_write_addr = QueryServerWriteV1::start(log_tx.clone(), qs, idms_arc);
+    let server_write_addr =
+        QueryServerWriteV1::start(log_tx.clone(), config.log_level, qs, idms_arc);
 
     // Setup timed events associated to the write thread
     let _int_addr = IntervalActor::new(server_write_addr.clone()).start();
@@ -1738,7 +1780,7 @@ pub async fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> 
             .app_data(
                 web::JsonConfig::default()
                     // Currently 4MB
-                    .limit(4194304)
+                    .limit(4_194_304)
                     .error_handler(|err, _req| {
                         let s = format!("{}", err);
                         error::InternalError::from_response(err, HttpResponse::BadRequest().json(s))

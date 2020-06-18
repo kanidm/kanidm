@@ -104,12 +104,12 @@ impl Plugin for Protected {
                     Modify::Present(a, v) => {
                         // TODO: Can we avoid this clone?
                         if a == "class"
-                            && (v == &(VCLASS_SYSTEM.clone())
-                                || v == &(VCLASS_DOMAIN_INFO.clone())
-                                || v == &(VCLASS_SYSTEM_INFO.clone())
-                                || v == &(VCLASS_SYSTEM_CONFIG.clone())
-                                || v == &(VCLASS_TOMBSTONE.clone())
-                                || v == &(VCLASS_RECYCLED.clone()))
+                            && (v == &(*VCLASS_SYSTEM)
+                                || v == &(*VCLASS_DOMAIN_INFO)
+                                || v == &(*VCLASS_SYSTEM_INFO)
+                                || v == &(*VCLASS_SYSTEM_CONFIG)
+                                || v == &(*VCLASS_TOMBSTONE)
+                                || v == &(*VCLASS_RECYCLED))
                         {
                             Err(OperationError::SystemProtectedObject)
                         } else {
@@ -214,8 +214,6 @@ mod tests {
     use kanidm_proto::v1::OperationError;
 
     const JSON_ADMIN_ALLOW_ALL: &'static str = r#"{
-        "valid": null,
-        "state": null,
         "attrs": {
             "class": [
                 "object",
@@ -253,8 +251,6 @@ mod tests {
 
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["person", "system"],
                 "name": ["testperson"],
@@ -281,8 +277,6 @@ mod tests {
         // Test modify of class to a system is denied
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["person", "system"],
                 "name": ["testperson"],
@@ -313,37 +307,6 @@ mod tests {
         // Show that adding a system class is denied
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
-            "attrs": {
-                "class": ["person"],
-                "name": ["testperson"],
-                "description": ["testperson"],
-                "displayname": ["testperson"]
-            }
-        }"#,
-        );
-
-        let preload = vec![acp, e.clone()];
-
-        run_modify_test!(
-            Err(OperationError::SystemProtectedObject),
-            preload,
-            filter!(f_eq("name", PartialValue::new_iname("testperson"))),
-            modlist!([m_pres("class", &Value::new_class("system")),]),
-            Some(JSON_ADMIN_V1),
-            |_, _| {}
-        );
-    }
-
-    #[test]
-    fn test_pre_modify_attr_must_may_allow() {
-        let acp: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
-        // Show that adding a system class is denied
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["object", "classtype"],
                 "classname": ["testclass"],
@@ -374,8 +337,6 @@ mod tests {
         // Test deleting with class: system is rejected.
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["person", "system"],
                 "name": ["testperson"],

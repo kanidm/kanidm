@@ -117,52 +117,46 @@ impl SchemaAttribute {
         let uuid = *value.get_uuid();
 
         // name
-        let name = try_audit!(
-            audit,
-            value.get_ava_single_string("attributename").ok_or_else(|| {
+        let name = value
+            .get_ava_single_string("attributename")
+            .ok_or_else(|| {
+                ladmin_error!(audit, "missing attributename");
                 OperationError::InvalidSchemaState("missing attributename".to_string())
-            })
-        );
+            })?;
         // description
-        let description = try_audit!(
-            audit,
-            value.get_ava_single_string("description").ok_or_else(|| {
-                OperationError::InvalidSchemaState("missing description".to_string())
-            })
-        );
+        let description = value.get_ava_single_string("description").ok_or_else(|| {
+            ladmin_error!(audit, "missing description");
+            OperationError::InvalidSchemaState("missing description".to_string())
+        })?;
 
         // multivalue
-        let multivalue = try_audit!(
-            audit,
-            value.get_ava_single_bool("multivalue").ok_or_else(|| {
-                OperationError::InvalidSchemaState("missing multivalue".to_string())
-            })
-        );
-        let unique = try_audit!(
-            audit,
-            value
-                .get_ava_single_bool("unique")
-                .ok_or_else(|| OperationError::InvalidSchemaState("missing unique".to_string()))
-        );
+        let multivalue = value.get_ava_single_bool("multivalue").ok_or_else(|| {
+            ladmin_error!(audit, "missing multivalue");
+            OperationError::InvalidSchemaState("missing multivalue".to_string())
+        })?;
+        let unique = value.get_ava_single_bool("unique").ok_or_else(|| {
+            ladmin_error!(audit, "missing unique");
+            OperationError::InvalidSchemaState("missing unique".to_string())
+        })?;
         let phantom = value.get_ava_single_bool("phantom").unwrap_or(false);
         // index vec
         // even if empty, it SHOULD be present ... (is that value to put an empty set?)
         // The get_ava_opt_index handles the optional case for us :)
-        let index = try_audit!(
-            audit,
-            value
-                .get_ava_opt_index("index")
-                .and_then(|vv: Vec<&IndexType>| Ok(vv.into_iter().cloned().collect()))
-                .map_err(|_| OperationError::InvalidSchemaState("Invalid index".to_string()))
-        );
+        let index = value
+            .get_ava_opt_index("index")
+            .and_then(|vv: Vec<&IndexType>| Ok(vv.into_iter().cloned().collect()))
+            .map_err(|_| {
+                ladmin_error!(audit, "invalid index");
+                OperationError::InvalidSchemaState("Invalid index".to_string())
+            })?;
         // syntax type
-        let syntax = try_audit!(
-            audit,
-            value
-                .get_ava_single_syntax("syntax")
-                .cloned()
-                .ok_or_else(|| OperationError::InvalidSchemaState("missing syntax".to_string()))
-        );
+        let syntax = value
+            .get_ava_single_syntax("syntax")
+            .cloned()
+            .ok_or_else(|| {
+                ladmin_error!(audit, "missing syntax");
+                OperationError::InvalidSchemaState("missing syntax".to_string())
+            })?;
 
         Ok(SchemaAttribute {
             name,
@@ -176,7 +170,7 @@ impl SchemaAttribute {
         })
     }
 
-    // TODO: There may be a difference between a value and a filter value on complex
+    // There may be a difference between a value and a filter value on complex
     // types - IE a complex type may have multiple parts that are secret, but a filter
     // on that may only use a single tagged attribute for example.
     pub fn validate_partialvalue(&self, a: &str, v: &PartialValue) -> Result<(), SchemaError> {
@@ -425,31 +419,31 @@ impl SchemaClass {
         let uuid = *value.get_uuid();
 
         // name
-        let name = try_audit!(
-            audit,
-            value
-                .get_ava_single_string("classname")
-                .ok_or_else(|| OperationError::InvalidSchemaState("missing classname".to_string()))
-        );
+        let name = value.get_ava_single_string("classname").ok_or_else(|| {
+            ladmin_error!(audit, "missing classname");
+            OperationError::InvalidSchemaState("missing classname".to_string())
+        })?;
         // description
-        let description = try_audit!(
-            audit,
-            value.get_ava_single_string("description").ok_or_else(|| {
-                OperationError::InvalidSchemaState("missing description".to_string())
-            })
-        );
+        let description = value.get_ava_single_string("description").ok_or_else(|| {
+            ladmin_error!(audit, "missing description");
+            OperationError::InvalidSchemaState("missing description".to_string())
+        })?;
 
         // These are all "optional" lists of strings.
         let systemmay = value.get_ava_opt_string("systemmay").ok_or_else(|| {
+            ladmin_error!(audit, "missing or invalid systemmay");
             OperationError::InvalidSchemaState("Missing or invalid systemmay".to_string())
         })?;
         let systemmust = value.get_ava_opt_string("systemmust").ok_or_else(|| {
+            ladmin_error!(audit, "missing or invalid systemmust");
             OperationError::InvalidSchemaState("Missing or invalid systemmust".to_string())
         })?;
         let may = value.get_ava_opt_string("may").ok_or_else(|| {
+            ladmin_error!(audit, "missing or invalid may");
             OperationError::InvalidSchemaState("Missing or invalid may".to_string())
         })?;
         let must = value.get_ava_opt_string("must").ok_or_else(|| {
+            ladmin_error!(audit, "missing or invalid must");
             OperationError::InvalidSchemaState("Missing or invalid must".to_string())
         })?;
 
@@ -634,7 +628,7 @@ impl<'a> SchemaWriteTransaction<'a> {
     }
 
     pub fn generate_in_memory(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
-        let r = lperf_segment!(audit, "schema::generate_in_memory", || {
+        lperf_trace_segment!(audit, "schema::generate_in_memory", || {
             //
             self.classes.clear();
             self.attributes.clear();
@@ -1410,8 +1404,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 ladmin_info!(audit, "schema validate -> errors {:?}", r);
                 Err(OperationError::ConsistencyError(r))
             }
-        });
-        r
+        })
     }
 }
 
@@ -1532,8 +1525,6 @@ mod tests {
             sch_from_entry_err!(
                 audit,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object", "attributetype"],
                         "attributename": ["schema_attr_test"],
@@ -1547,8 +1538,6 @@ mod tests {
             sch_from_entry_err!(
                 audit,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object", "attributetype"],
                         "attributename": ["schema_attr_test"],
@@ -1565,8 +1554,6 @@ mod tests {
             sch_from_entry_err!(
                 audit,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object", "attributetype"],
                         "attributename": ["schema_attr_test"],
@@ -1584,8 +1571,6 @@ mod tests {
             sch_from_entry_err!(
                 audit,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object", "attributetype"],
                         "attributename": ["schema_attr_test"],
@@ -1603,8 +1588,6 @@ mod tests {
             sch_from_entry_err!(
                 audit,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object", "attributetype"],
                         "attributename": ["schema_attr_test"],
@@ -1623,8 +1606,6 @@ mod tests {
             sch_from_entry_ok!(
                 audit,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object", "attributetype"],
                         "attributename": ["schema_attr_test"],
@@ -1642,8 +1623,6 @@ mod tests {
             sch_from_entry_ok!(
                 audit,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object", "attributetype"],
                         "attributename": ["schema_attr_test"],
@@ -1666,8 +1645,6 @@ mod tests {
             sch_from_entry_err!(
                 audit,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object", "classtype"],
                         "classname": ["schema_class_test"],
@@ -1680,8 +1657,6 @@ mod tests {
             sch_from_entry_err!(
                 audit,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object"],
                         "classname": ["schema_class_test"],
@@ -1696,8 +1671,6 @@ mod tests {
             sch_from_entry_ok!(
                 audit,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object", "classtype"],
                         "classname": ["schema_class_test"],
@@ -1712,8 +1685,6 @@ mod tests {
             sch_from_entry_ok!(
                 audit,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object", "classtype"],
                         "classname": ["schema_class_test"],
@@ -1728,8 +1699,6 @@ mod tests {
             sch_from_entry_ok!(
                 audit,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object", "classtype"],
                         "classname": ["schema_class_test"],
@@ -1744,8 +1713,6 @@ mod tests {
             sch_from_entry_ok!(
                 audit,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object", "classtype"],
                         "classname": ["schema_class_test"],
@@ -1761,8 +1728,6 @@ mod tests {
             sch_from_entry_ok!(
                 audit,
                 r#"{
-                    "valid": null,
-                    "state": null,
                     "attrs": {
                         "class": ["object", "classtype"],
                         "classname": ["schema_class_test"],
@@ -1916,7 +1881,7 @@ mod tests {
 
     #[test]
     fn test_schema_simple() {
-        let mut audit = AuditScope::new("test_schema_simple", uuid::Uuid::new_v4());
+        let mut audit = AuditScope::new("test_schema_simple", uuid::Uuid::new_v4(), None);
         let schema = Schema::new(&mut audit).expect("failed to create schema");
         let schema_ro = schema.read();
         validate_schema!(schema_ro, &mut audit);
@@ -1927,7 +1892,7 @@ mod tests {
     fn test_schema_entries() {
         // Given an entry, assert it's schema is valid
         // We do
-        let mut audit = AuditScope::new("test_schema_entries", uuid::Uuid::new_v4());
+        let mut audit = AuditScope::new("test_schema_entries", uuid::Uuid::new_v4(), None);
         let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
         let schema = schema_outer.read();
         let e_no_uuid: Entry<EntryInvalid, EntryNew> = unsafe {
@@ -2081,7 +2046,7 @@ mod tests {
     #[test]
     fn test_schema_entry_validate() {
         // Check that entries can be normalised and validated sanely
-        let mut audit = AuditScope::new("test_schema_entry_validate", uuid::Uuid::new_v4());
+        let mut audit = AuditScope::new("test_schema_entry_validate", uuid::Uuid::new_v4(), None);
         let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
         let schema = schema_outer.write();
 
@@ -2127,7 +2092,7 @@ mod tests {
 
     #[test]
     fn test_schema_extensible() {
-        let mut audit = AuditScope::new("test_schema_extensible", uuid::Uuid::new_v4());
+        let mut audit = AuditScope::new("test_schema_extensible", uuid::Uuid::new_v4(), None);
         let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
         let schema = schema_outer.read();
         // Just because you are extensible, doesn't mean you can be lazy
@@ -2191,7 +2156,8 @@ mod tests {
 
     #[test]
     fn test_schema_filter_validation() {
-        let mut audit = AuditScope::new("test_schema_filter_validation", uuid::Uuid::new_v4());
+        let mut audit =
+            AuditScope::new("test_schema_filter_validation", uuid::Uuid::new_v4(), None);
         let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
         let schema = schema_outer.read();
         // Test non existant attr name
@@ -2260,7 +2226,11 @@ mod tests {
     #[test]
     fn test_schema_class_phantom_reject() {
         // Check that entries can be normalised and validated sanely
-        let mut audit = AuditScope::new("test_schema_class_phantom_reject", uuid::Uuid::new_v4());
+        let mut audit = AuditScope::new(
+            "test_schema_class_phantom_reject",
+            uuid::Uuid::new_v4(),
+            None,
+        );
         let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
         let mut schema = schema_outer.write();
 

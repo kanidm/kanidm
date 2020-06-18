@@ -78,7 +78,7 @@ impl From<&EventOrigin> for EventOriginId {
     fn from(event: &EventOrigin) -> Self {
         match event {
             EventOrigin::Internal => EventOriginId::Internal,
-            EventOrigin::User(e) => EventOriginId::User(e.get_uuid().clone()),
+            EventOrigin::User(e) => EventOriginId::User(*e.get_uuid()),
         }
     }
 }
@@ -101,17 +101,37 @@ pub struct Event {
     pub origin: EventOrigin,
 }
 
+impl std::fmt::Display for Event {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match &self.origin {
+            EventOrigin::Internal => write!(f, "Internal"),
+            EventOrigin::User(e) => {
+                let nv = e.get_uuid2spn();
+                write!(
+                    f,
+                    "User( {}, {} ) ",
+                    nv.to_proto_string_clone(),
+                    e.get_uuid().to_hyphenated_ref()
+                )
+            }
+        }
+    }
+}
+
 impl Event {
     pub fn from_ro_request(
         audit: &mut AuditScope,
         qs: &mut QueryServerReadTransaction,
         user_uuid: &Uuid,
     ) -> Result<Self, OperationError> {
-        let e = try_audit!(audit, qs.internal_search_uuid(audit, &user_uuid));
-
-        Ok(Event {
-            origin: EventOrigin::User(e),
-        })
+        qs.internal_search_uuid(audit, &user_uuid)
+            .map(|e| Event {
+                origin: EventOrigin::User(e),
+            })
+            .map_err(|e| {
+                ladmin_error!(audit, "from_ro_request failed {:?}", e);
+                e
+            })
     }
 
     pub fn from_ro_uat(
@@ -121,12 +141,15 @@ impl Event {
     ) -> Result<Self, OperationError> {
         ltrace!(audit, "from_ro_uat -> {:?}", uat);
         let uat = uat.ok_or(OperationError::NotAuthenticated)?;
-        let u = try_audit!(
-            audit,
-            Uuid::parse_str(uat.uuid.as_str()).map_err(|_| OperationError::InvalidUuid)
-        );
+        let u = Uuid::parse_str(uat.uuid.as_str()).map_err(|_| {
+            ladmin_error!(audit, "from_ro_uat invalid uat uuid");
+            OperationError::InvalidUuid
+        })?;
 
-        let e = try_audit!(audit, qs.internal_search_uuid(audit, &u));
+        let e = qs.internal_search_uuid(audit, &u).map_err(|e| {
+            ladmin_error!(audit, "from_ro_uat failed {:?}", e);
+            e
+        })?;
         // TODO #64: Now apply claims from the uat into the Entry
         // to allow filtering.
 
@@ -142,12 +165,15 @@ impl Event {
     ) -> Result<Self, OperationError> {
         ltrace!(audit, "from_rw_uat -> {:?}", uat);
         let uat = uat.ok_or(OperationError::NotAuthenticated)?;
-        let u = try_audit!(
-            audit,
-            Uuid::parse_str(uat.uuid.as_str()).map_err(|_| OperationError::InvalidUuid)
-        );
+        let u = Uuid::parse_str(uat.uuid.as_str()).map_err(|_| {
+            ladmin_error!(audit, "from_rw_uat invalid uat uuid");
+            OperationError::InvalidUuid
+        })?;
 
-        let e = try_audit!(audit, qs.internal_search_uuid(audit, &u));
+        let e = qs.internal_search_uuid(audit, &u).map_err(|e| {
+            ladmin_error!(audit, "from_rw_uat failed {:?}", e);
+            e
+        })?;
         // TODO #64: Now apply claims from the uat into the Entry
         // to allow filtering.
 
@@ -165,11 +191,14 @@ impl Event {
         // In the future, probably yes.
         //
         // For now, no.
-        let u = try_audit!(
-            audit,
-            Uuid::parse_str(user_uuid).map_err(|_| OperationError::InvalidUuid)
-        );
-        let e = try_audit!(audit, qs.internal_search_uuid(audit, &u));
+        let u = Uuid::parse_str(user_uuid).map_err(|_| {
+            ladmin_error!(audit, "from_ro_request invalid uat uuid");
+            OperationError::InvalidUuid
+        })?;
+        let e = qs.internal_search_uuid(audit, &u).map_err(|e| {
+            ladmin_error!(audit, "from_rw_request failed {:?}", e);
+            e
+        })?;
 
         Ok(Event {
             origin: EventOrigin::User(e),
@@ -341,7 +370,6 @@ impl SearchEvent {
             filter_orig: filter_all!(f_self())
                 .validate(qs.get_schema())
                 .map_err(OperationError::SchemaViolation)?,
-            // TODO: Should we limit this?
             attrs: None,
         })
     }
@@ -857,13 +885,13 @@ pub enum AuthEventStep {
 impl AuthEventStep {
     fn from_authstep(aus: AuthStep, sid: Option<Uuid>) -> Result<Self, OperationError> {
         match aus {
-            AuthStep::Init(name, appid) => {
+            AuthStep::Init(name) => {
                 if sid.is_some() {
                     Err(OperationError::InvalidAuthState(
                         "session id present in init".to_string(),
                     ))
                 } else {
-                    Ok(AuthEventStep::Init(AuthEventStepInit { name, appid }))
+                    Ok(AuthEventStep::Init(AuthEventStepInit { name, appid: None }))
                 }
             }
             AuthStep::Creds(creds) => match sid {
@@ -1066,7 +1094,7 @@ impl ReviveRecycledEvent {
             filter: filter
                 .into_recycled()
                 .validate(qs.get_schema())
-                .map_err(|e| OperationError::SchemaViolation(e))?,
+                .map_err(OperationError::SchemaViolation)?,
         })
     }
 

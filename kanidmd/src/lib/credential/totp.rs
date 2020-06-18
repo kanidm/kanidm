@@ -126,7 +126,7 @@ impl TOTP {
         DbTotpV1 {
             l: self.label.clone(),
             k: self.secret.clone(),
-            s: self.step.clone(),
+            s: self.step,
             a: match self.algo {
                 TOTPAlgo::Sha1 => DbTotpAlgoV1::S1,
                 TOTPAlgo::Sha256 => DbTotpAlgoV1::S256,
@@ -184,7 +184,7 @@ impl TOTP {
                 .replace("%3A", "")
                 .replace(" ", "%20"),
             secret: self.secret.clone(),
-            step: self.step.clone(),
+            step: self.step,
             algo: match self.algo {
                 TOTPAlgo::Sha1 => ProtoTOTPAlgo::Sha1,
                 TOTPAlgo::Sha256 => ProtoTOTPAlgo::Sha256,

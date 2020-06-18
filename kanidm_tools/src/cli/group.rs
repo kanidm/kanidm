@@ -72,7 +72,7 @@ impl GroupOpt {
                 let client = copt.to_client();
                 let r = client.idm_group_list().unwrap();
                 for e in r {
-                    println!("{:?}", e);
+                    println!("{}", e);
                 }
             }
             GroupOpt::Create(gcopt) => {
@@ -118,7 +118,7 @@ impl GroupOpt {
                     let token = client
                         .idm_group_unix_token_get(gcopt.name.as_str())
                         .unwrap();
-                    println!("{:?}", token);
+                    println!("{}", token);
                 }
                 GroupPosix::Set(gcopt) => {
                     let client = gcopt.copt.to_client();

@@ -14,6 +14,7 @@ Kanidm currently supports:
 Using zypper you can add the repository with:
 
     zypper ar obs://home:firstyear:kanidm home_firstyear_kanidm
+    zypper mr -f home_firstyear_kanidm
 
 Then you need to referesh your metadata and install the clients.
 
@@ -22,13 +23,14 @@ Then you need to referesh your metadata and install the clients.
 
 ### Fedora
 
-On fedora you need to add the repos into the correct directory
+On fedora you need to add the repos into the correct directory.
 
     cd /etc/yum.repos.d
-    30:
-    wget https://download.opensuse.org/repositories/home:/firstyear:/kanidm/Fedora_30/home:firstyear:kanidm.repo
-    31:
-    wget https://download.opensuse.org/repositories/home:/firstyear:/kanidm/Fedora_31/home:firstyear:kanidm.repo
+    wget https://download.opensuse.org/repositories/home:/firstyear:/kanidm/Fedora_Rawhide/home:firstyear:kanidm.repo
+
+> **NOTICE:**
+> While this is a rawhide repository, as kanidm is staticly linked, it works correctly on fedora
+> 31 and above.
 
 Now you can add the packages:
 
@@ -39,8 +41,7 @@ Now you can add the packages:
 After you check out the source (see github), navigate to:
 
     cd kanidm_tools
-    cargo build
-    cargo install --path ./
+    cargo install --path .
 
 ## Check the tools work
 
@@ -50,8 +51,7 @@ with the -C parameter:
     kanidm self whoami -C ../path/to/ca.pem -H https://localhost:8443 --name anonymous
     kanidm self whoami -H https://localhost:8443 --name anonymous
 
-Now you can take some time to look at what commands are available - things may still be rough so
-please ask for help at anytime.
+Now you can take some time to look at what commands are available - please ask for help at anytime.
 
 ## Kandim configuration
 

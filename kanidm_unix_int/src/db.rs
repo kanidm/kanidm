@@ -30,11 +30,10 @@ impl Db {
         let builder1 = Pool::builder().max_size(1);
         let pool = builder1.build(manager).map_err(|e| {
             error!("r2d2 error {:?}", e);
-            ()
         })?;
 
         Ok(Db {
-            pool: pool,
+            pool,
             lock: Mutex::new(()),
         })
     }
@@ -91,7 +90,6 @@ impl<'a> DbTxn<'a> {
             )
             .map_err(|e| {
                 error!("sqlite account_t create error -> {:?}", e);
-                ()
             })?;
 
         self.conn
@@ -109,7 +107,6 @@ impl<'a> DbTxn<'a> {
             )
             .map_err(|e| {
                 error!("sqlite group_t create error -> {:?}", e);
-                ()
             })?;
 
         self.conn
@@ -125,7 +122,6 @@ impl<'a> DbTxn<'a> {
             )
             .map_err(|e| {
                 error!("sqlite memberof_t create error -> {:?}", e);
-                ()
             })?;
 
         Ok(())
@@ -141,7 +137,6 @@ impl<'a> DbTxn<'a> {
             .map(|_| ())
             .map_err(|e| {
                 error!("sqlite commit failure -> {:?}", e);
-                ()
             })
     }
 
@@ -150,14 +145,12 @@ impl<'a> DbTxn<'a> {
             .execute("UPDATE group_t SET expiry = 0", NO_PARAMS)
             .map_err(|e| {
                 error!("sqlite update group_t failure -> {:?}", e);
-                ()
             })?;
 
         self.conn
             .execute("UPDATE account_t SET expiry = 0", NO_PARAMS)
             .map_err(|e| {
                 error!("sqlite update account_t failure -> {:?}", e);
-                ()
             })?;
 
         Ok(())
@@ -168,14 +161,12 @@ impl<'a> DbTxn<'a> {
             .execute("DELETE FROM group_t", NO_PARAMS)
             .map_err(|e| {
                 error!("sqlite delete group_t failure -> {:?}", e);
-                ()
             })?;
 
         self.conn
             .execute("DELETE FROM account_t", NO_PARAMS)
             .map_err(|e| {
                 error!("sqlite delete group_t failure -> {:?}", e);
-                ()
             })?;
 
         Ok(())
@@ -188,7 +179,6 @@ impl<'a> DbTxn<'a> {
             )
             .map_err(|e| {
                 error!("sqlite select prepare failure -> {:?}", e);
-                ()
             })?;
 
         // Makes tuple (token, expiry)
@@ -196,26 +186,23 @@ impl<'a> DbTxn<'a> {
             .query_map(&[account_id], |row| Ok((row.get(0)?, row.get(1)?)))
             .map_err(|e| {
                 error!("sqlite query_map failure -> {:?}", e);
-                ()
             })?;
         let data: Result<Vec<(Vec<u8>, i64)>, _> = data_iter
             .map(|v| {
                 v.map_err(|e| {
                     error!("sqlite map failure -> {:?}", e);
-                    ()
                 })
             })
             .collect();
         data
     }
 
-    fn get_account_data_gid(&self, gid: &u32) -> Result<Vec<(Vec<u8>, i64)>, ()> {
+    fn get_account_data_gid(&self, gid: u32) -> Result<Vec<(Vec<u8>, i64)>, ()> {
         let mut stmt = self
             .conn
             .prepare("SELECT token, expiry FROM account_t WHERE gidnumber = :gid")
             .map_err(|e| {
                 error!("sqlite select prepare failure -> {:?}", e);
-                ()
             })?;
 
         // Makes tuple (token, expiry)
@@ -223,13 +210,11 @@ impl<'a> DbTxn<'a> {
             .query_map(&[gid], |row| Ok((row.get(0)?, row.get(1)?)))
             .map_err(|e| {
                 error!("sqlite query_map failure -> {:?}", e);
-                ()
             })?;
         let data: Result<Vec<(Vec<u8>, i64)>, _> = data_iter
             .map(|v| {
                 v.map_err(|e| {
                     error!("sqlite map failure -> {:?}", e);
-                    ()
                 })
             })
             .collect();
@@ -239,7 +224,7 @@ impl<'a> DbTxn<'a> {
     pub fn get_account(&self, account_id: &Id) -> Result<Option<(UnixUserToken, u64)>, ()> {
         let data = match account_id {
             Id::Name(n) => self.get_account_data_name(n.as_str()),
-            Id::Gid(g) => self.get_account_data_gid(g),
+            Id::Gid(g) => self.get_account_data_gid(*g),
         }?;
 
         // Assert only one result?
@@ -254,11 +239,9 @@ impl<'a> DbTxn<'a> {
                 // token convert with cbor.
                 let t = serde_cbor::from_slice(token.as_slice()).map_err(|e| {
                     error!("cbor error -> {:?}", e);
-                    ()
                 })?;
                 let e = u64::try_from(*expiry).map_err(|e| {
                     error!("u64 convert error -> {:?}", e);
-                    ()
                 })?;
                 Ok((t, e))
             })
@@ -272,20 +255,17 @@ impl<'a> DbTxn<'a> {
             .prepare("SELECT token FROM account_t")
             .map_err(|e| {
                 error!("sqlite select prepare failure -> {:?}", e);
-                ()
             })?;
 
         let data_iter = stmt
             .query_map(NO_PARAMS, |row| Ok(row.get(0)?))
             .map_err(|e| {
                 error!("sqlite query_map failure -> {:?}", e);
-                ()
             })?;
         let data: Result<Vec<Vec<u8>>, _> = data_iter
             .map(|v| {
                 v.map_err(|e| {
                     error!("sqlite map failure -> {:?}", e);
-                    ()
                 })
             })
             .collect();
@@ -297,7 +277,6 @@ impl<'a> DbTxn<'a> {
                 // token convert with cbor.
                 serde_cbor::from_slice(token.as_slice()).map_err(|e| {
                     error!("cbor error -> {:?}", e);
-                    ()
                 })
             })
             .collect()
@@ -306,11 +285,9 @@ impl<'a> DbTxn<'a> {
     pub fn update_account(&self, account: &UnixUserToken, expire: u64) -> Result<(), ()> {
         let data = serde_cbor::to_vec(account).map_err(|e| {
             error!("cbor error -> {:?}", e);
-            ()
         })?;
         let expire = i64::try_from(expire).map_err(|e| {
             error!("i64 convert error -> {:?}", e);
-            ()
         })?;
 
         // This is needed because sqlites 'insert or replace into', will null the password field
@@ -328,7 +305,6 @@ impl<'a> DbTxn<'a> {
             )
             .map_err(|e| {
                 debug!("sqlite delete account_t duplicate failure -> {:?}", e);
-                ()
             })
             .map(|_| ())?;
 
@@ -345,7 +321,6 @@ impl<'a> DbTxn<'a> {
             )
             .map_err(|e| {
                 debug!("sqlite delete account_t duplicate failure -> {:?}", e);
-                ()
             })
             .map(|c| c)?;
 
@@ -354,7 +329,6 @@ impl<'a> DbTxn<'a> {
                 .prepare("INSERT INTO account_t (uuid, name, spn, gidnumber, token, expiry) VALUES (:uuid, :name, :spn, :gidnumber, :token, :expiry) ON CONFLICT(uuid) DO UPDATE SET name=excluded.name, spn=excluded.name, gidnumber=excluded.gidnumber, token=excluded.token, expiry=excluded.expiry")
                 .map_err(|e| {
                     error!("sqlite prepare error -> {:?}", e);
-                    ()
                 })?;
 
             stmt.execute_named(&[
@@ -367,11 +341,9 @@ impl<'a> DbTxn<'a> {
             ])
             .map(|r| {
                 debug!("insert -> {:?}", r);
-                ()
             })
             .map_err(|e| {
                 error!("sqlite execute_named error -> {:?}", e);
-                ()
             })?;
         }
 
@@ -383,16 +355,13 @@ impl<'a> DbTxn<'a> {
             .prepare("DELETE FROM memberof_t WHERE a_uuid = :a_uuid")
             .map_err(|e| {
                 error!("sqlite prepare error -> {:?}", e);
-                ()
             })?;
         stmt.execute(&[&account.uuid])
             .map(|r| {
                 debug!("delete memberships -> {:?}", r);
-                ()
             })
             .map_err(|e| {
                 error!("sqlite execute error -> {:?}", e);
-                ()
             })?;
 
         let mut stmt = self
@@ -400,18 +369,15 @@ impl<'a> DbTxn<'a> {
             .prepare("INSERT INTO memberof_t (a_uuid, g_uuid) VALUES (:a_uuid, :g_uuid)")
             .map_err(|e| {
                 error!("sqlite prepare error -> {:?}", e);
-                ()
             })?;
         // Now for each group, add the relation.
         account.groups.iter().try_for_each(|g| {
             stmt.execute_named(&[(":a_uuid", &account.uuid), (":g_uuid", &g.uuid)])
                 .map(|r| {
                     debug!("insert membership -> {:?}", r);
-                    ()
                 })
                 .map_err(|e| {
                     error!("sqlite execute_named error -> {:?}", e);
-                    ()
                 })
         })
     }
@@ -422,7 +388,6 @@ impl<'a> DbTxn<'a> {
             .map(|_| ())
             .map_err(|e| {
                 error!("sqlite memberof_t create error -> {:?}", e);
-                ()
             })
     }
 
@@ -431,7 +396,6 @@ impl<'a> DbTxn<'a> {
         let dbpw = pw.to_dbpasswordv1();
         let data = serde_cbor::to_vec(&dbpw).map_err(|e| {
             error!("cbor error -> {:?}", e);
-            ()
         })?;
 
         self.conn
@@ -441,7 +405,6 @@ impl<'a> DbTxn<'a> {
             )
             .map_err(|e| {
                 error!("sqlite update account_t password failure -> {:?}", e);
-                ()
             })
             .map(|_| ())
     }
@@ -452,7 +415,6 @@ impl<'a> DbTxn<'a> {
             .prepare("SELECT password FROM account_t WHERE uuid = :a_uuid AND password IS NOT NULL")
             .map_err(|e| {
                 error!("sqlite select prepare failure -> {:?}", e);
-                ()
             })?;
 
         // Makes tuple (token, expiry)
@@ -460,20 +422,18 @@ impl<'a> DbTxn<'a> {
             .query_map(&[a_uuid], |row| Ok(row.get(0)?))
             .map_err(|e| {
                 error!("sqlite query_map failure -> {:?}", e);
-                ()
             })?;
         let data: Result<Vec<Vec<u8>>, _> = data_iter
             .map(|v| {
                 v.map_err(|e| {
                     error!("sqlite map failure -> {:?}", e);
-                    ()
                 })
             })
             .collect();
 
         let data = data?;
 
-        if data.len() == 0 {
+        if data.is_empty() {
             info!("No cached password, failing authentication");
             return Ok(false);
         }
@@ -489,7 +449,6 @@ impl<'a> DbTxn<'a> {
                 // Map the option from data.first.
                 let dbpw: DbPasswordV1 = serde_cbor::from_slice(raw.as_slice()).map_err(|e| {
                     error!("cbor error -> {:?}", e);
-                    ()
                 })?;
                 let pw = Password::try_from(dbpw)?;
                 Ok(pw.verify(cred))
@@ -505,7 +464,6 @@ impl<'a> DbTxn<'a> {
             )
             .map_err(|e| {
                 error!("sqlite select prepare failure -> {:?}", e);
-                ()
             })?;
 
         // Makes tuple (token, expiry)
@@ -513,26 +471,23 @@ impl<'a> DbTxn<'a> {
             .query_map(&[grp_id], |row| Ok((row.get(0)?, row.get(1)?)))
             .map_err(|e| {
                 error!("sqlite query_map failure -> {:?}", e);
-                ()
             })?;
         let data: Result<Vec<(Vec<u8>, i64)>, _> = data_iter
             .map(|v| {
                 v.map_err(|e| {
                     error!("sqlite map failure -> {:?}", e);
-                    ()
                 })
             })
             .collect();
         data
     }
 
-    fn get_group_data_gid(&self, gid: &u32) -> Result<Vec<(Vec<u8>, i64)>, ()> {
+    fn get_group_data_gid(&self, gid: u32) -> Result<Vec<(Vec<u8>, i64)>, ()> {
         let mut stmt = self
             .conn
             .prepare("SELECT token, expiry FROM group_t WHERE gidnumber = :gid")
             .map_err(|e| {
                 error!("sqlite select prepare failure -> {:?}", e);
-                ()
             })?;
 
         // Makes tuple (token, expiry)
@@ -540,13 +495,11 @@ impl<'a> DbTxn<'a> {
             .query_map(&[gid], |row| Ok((row.get(0)?, row.get(1)?)))
             .map_err(|e| {
                 error!("sqlite query_map failure -> {:?}", e);
-                ()
             })?;
         let data: Result<Vec<(Vec<u8>, i64)>, _> = data_iter
             .map(|v| {
                 v.map_err(|e| {
                     error!("sqlite map failure -> {:?}", e);
-                    ()
                 })
             })
             .collect();
@@ -556,7 +509,7 @@ impl<'a> DbTxn<'a> {
     pub fn get_group(&self, grp_id: &Id) -> Result<Option<(UnixGroupToken, u64)>, ()> {
         let data = match grp_id {
             Id::Name(n) => self.get_group_data_name(n.as_str()),
-            Id::Gid(g) => self.get_group_data_gid(g),
+            Id::Gid(g) => self.get_group_data_gid(*g),
         }?;
 
         // Assert only one result?
@@ -571,11 +524,9 @@ impl<'a> DbTxn<'a> {
                 // token convert with cbor.
                 let t = serde_cbor::from_slice(token.as_slice()).map_err(|e| {
                     error!("cbor error -> {:?}", e);
-                    ()
                 })?;
                 let e = u64::try_from(*expiry).map_err(|e| {
                     error!("u64 convert error -> {:?}", e);
-                    ()
                 })?;
                 Ok((t, e))
             })
@@ -589,20 +540,17 @@ impl<'a> DbTxn<'a> {
             .prepare("SELECT account_t.token FROM (account_t, memberof_t) WHERE account_t.uuid = memberof_t.a_uuid AND memberof_t.g_uuid = :g_uuid")
             .map_err(|e| {
                 error!("sqlite select prepare failure -> {:?}", e);
-                ()
             })?;
 
         let data_iter = stmt
             .query_map(&[g_uuid], |row| Ok(row.get(0)?))
             .map_err(|e| {
                 error!("sqlite query_map failure -> {:?}", e);
-                ()
             })?;
         let data: Result<Vec<Vec<u8>>, _> = data_iter
             .map(|v| {
                 v.map_err(|e| {
                     error!("sqlite map failure -> {:?}", e);
-                    ()
                 })
             })
             .collect();
@@ -615,7 +563,6 @@ impl<'a> DbTxn<'a> {
                 // debug!("{:?}", token);
                 serde_cbor::from_slice(token.as_slice()).map_err(|e| {
                     error!("cbor error -> {:?}", e);
-                    ()
                 })
             })
             .collect()
@@ -627,20 +574,17 @@ impl<'a> DbTxn<'a> {
             .prepare("SELECT token FROM group_t")
             .map_err(|e| {
                 error!("sqlite select prepare failure -> {:?}", e);
-                ()
             })?;
 
         let data_iter = stmt
             .query_map(NO_PARAMS, |row| Ok(row.get(0)?))
             .map_err(|e| {
                 error!("sqlite query_map failure -> {:?}", e);
-                ()
             })?;
         let data: Result<Vec<Vec<u8>>, _> = data_iter
             .map(|v| {
                 v.map_err(|e| {
                     error!("sqlite map failure -> {:?}", e);
-                    ()
                 })
             })
             .collect();
@@ -653,7 +597,6 @@ impl<'a> DbTxn<'a> {
                 // debug!("{:?}", token);
                 serde_cbor::from_slice(token.as_slice()).map_err(|e| {
                     error!("cbor error -> {:?}", e);
-                    ()
                 })
             })
             .collect()
@@ -662,18 +605,15 @@ impl<'a> DbTxn<'a> {
     pub fn update_group(&self, grp: &UnixGroupToken, expire: u64) -> Result<(), ()> {
         let data = serde_cbor::to_vec(grp).map_err(|e| {
             error!("cbor error -> {:?}", e);
-            ()
         })?;
         let expire = i64::try_from(expire).map_err(|e| {
             error!("i64 convert error -> {:?}", e);
-            ()
         })?;
 
         let mut stmt = self.conn
             .prepare("INSERT OR REPLACE INTO group_t (uuid, name, spn, gidnumber, token, expiry) VALUES (:uuid, :name, :spn, :gidnumber, :token, :expiry)")
             .map_err(|e| {
                 error!("sqlite prepare error -> {:?}", e);
-                ()
             })?;
 
         stmt.execute_named(&[
@@ -686,11 +626,9 @@ impl<'a> DbTxn<'a> {
         ])
         .map(|r| {
             debug!("insert -> {:?}", r);
-            ()
         })
         .map_err(|e| {
             error!("sqlite execute_named error -> {:?}", e);
-            ()
         })
     }
 
@@ -700,7 +638,6 @@ impl<'a> DbTxn<'a> {
             .map(|_| ())
             .map_err(|e| {
                 error!("sqlite memberof_t create error -> {:?}", e);
-                ()
             })
     }
 }

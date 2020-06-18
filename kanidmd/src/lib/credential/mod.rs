@@ -20,7 +20,7 @@ pub enum Policy {
 }
 */
 
-// TODO: Determine this at startup based on a time factor
+// TODO #255: Determine this at startup based on a time factor
 const PBKDF2_COST: usize = 10000;
 // NIST 800-63.b salt should be 112 bits -> 14  8u8.
 // I choose tinfoil hat though ...
@@ -59,6 +59,8 @@ impl TryFrom<DbPasswordV1> for Password {
 impl TryFrom<&str> for Password {
     type Error = ();
 
+    // As we may add more algos, we keep the match algo single for later.
+    #[allow(clippy::single_match)]
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         // There is probably a more efficent way to try this given different types?
 
@@ -72,7 +74,7 @@ impl TryFrom<&str> for Password {
             match algo {
                 "pbkdf2_sha256" => {
                     let c = usize::from_str_radix(cost, 10).map_err(|_| ())?;
-                    let s: Vec<_> = salt.as_bytes().iter().map(|b| *b).collect();
+                    let s: Vec<_> = salt.as_bytes().to_vec();
                     let h = base64::decode(hash).map_err(|_| ())?;
                     if h.len() < PBKDF2_IMPORT_MIN_LEN {
                         return Err(());
@@ -170,7 +172,7 @@ pub struct Credential {
     // Uuid of Credential, used by auth session to lock this specific credential
     // if required.
     pub(crate) uuid: Uuid,
-    // TODO: Add auth policy IE validUntil, lock state ...
+    // TODO #59: Add auth policy IE validUntil, lock state ...
     // locked: bool
 }
 
@@ -246,7 +248,7 @@ impl Credential {
             password: Some(pw),
             totp: self.totp.clone(),
             claims: self.claims.clone(),
-            uuid: self.uuid.clone(),
+            uuid: self.uuid,
         }
     }
 
@@ -256,7 +258,7 @@ impl Credential {
             password: self.password.clone(),
             totp: Some(totp),
             claims: self.claims.clone(),
-            uuid: self.uuid.clone(),
+            uuid: self.uuid,
         }
     }
 

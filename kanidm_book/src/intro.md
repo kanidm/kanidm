@@ -3,9 +3,9 @@
 Kanidm is an identity management server, acting as an authority on accounts and authorisation
 within a technical environment.
 
-> **WARNING:** This project is still under heavy development, and has not had a production ready
-> release yet. It may lose your data, be offline for some periods of time, or otherwise cause
-> disruptions if you aren't ready.
+> **NOTICE:**
+> This is a pre-release project. While all effort has been made to ensure no dataloss
+> or security flaws, you should still be careful when using this in your environment.
 
 The intent of the Kanidm project is:
 

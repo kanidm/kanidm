@@ -122,6 +122,13 @@ pub struct Group {
     pub uuid: String,
 }
 
+impl fmt::Display for Group {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "[ name: {}, ", self.name)?;
+        write!(f, "uuid: {} ]", self.uuid)
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Claim {
     pub name: String,
@@ -131,11 +138,13 @@ pub struct Claim {
     // pub expiry: DateTime
 }
 
+/*
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Application {
     pub name: String,
     pub uuid: String,
 }
+*/
 
 // The currently authenticated user, and any required metadata for them
 // to properly authorise them. This is similar in nature to oauth and the krb
@@ -157,7 +166,8 @@ pub struct UserAuthToken {
     pub spn: String,
     pub displayname: String,
     pub uuid: String,
-    pub application: Option<Application>,
+    // #[serde(skip_serializing_if = "Option::is_none")]
+    // pub application: Option<Application>,
     pub groups: Vec<Group>,
     pub claims: Vec<Claim>,
     // Should we allow supplemental ava's to be added on request?
@@ -191,10 +201,12 @@ pub struct RadiusAuthToken {
 impl fmt::Display for RadiusAuthToken {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "name: {}", self.name)?;
-        writeln!(f, "display: {}", self.displayname)?;
+        writeln!(f, "displayname: {}", self.displayname)?;
         writeln!(f, "uuid: {}", self.uuid)?;
         writeln!(f, "secret: {}", self.secret)?;
-        writeln!(f, "groups: {:?}", self.groups)
+        self.groups
+            .iter()
+            .try_for_each(|g| writeln!(f, "group: {}", g))
     }
 }
 
@@ -204,6 +216,15 @@ pub struct UnixGroupToken {
     pub spn: String,
     pub uuid: String,
     pub gidnumber: u32,
+}
+
+impl fmt::Display for UnixGroupToken {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "[ spn: {}, ", self.spn)?;
+        write!(f, "gidnumber: {} ", self.gidnumber)?;
+        write!(f, "name: {}, ", self.name)?;
+        write!(f, "uuid: {} ]", self.uuid)
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -218,9 +239,30 @@ pub struct UnixUserToken {
     pub displayname: String,
     pub gidnumber: u32,
     pub uuid: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub shell: Option<String>,
     pub groups: Vec<UnixGroupToken>,
     pub sshkeys: Vec<String>,
+}
+
+impl fmt::Display for UnixUserToken {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "---")?;
+        writeln!(f, "spn: {}", self.name)?;
+        writeln!(f, "name: {}", self.name)?;
+        writeln!(f, "displayname: {}", self.displayname)?;
+        writeln!(f, "uuid: {}", self.uuid)?;
+        match &self.shell {
+            Some(s) => writeln!(f, "shell: {}", s)?,
+            None => writeln!(f, "shell: <none>")?,
+        }
+        self.sshkeys
+            .iter()
+            .try_for_each(|s| writeln!(f, "ssh_publickey: {}", s))?;
+        self.groups
+            .iter()
+            .try_for_each(|g| writeln!(f, "group: {}", g))
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -239,6 +281,15 @@ pub struct AccountUnixExtend {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Entry {
     pub attrs: BTreeMap<String, Vec<String>>,
+}
+
+impl fmt::Display for Entry {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "---")?;
+        self.attrs
+            .iter()
+            .try_for_each(|(k, vs)| vs.iter().try_for_each(|v| writeln!(f, "{}: {}", k, v)))
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq)]
@@ -378,8 +429,8 @@ impl fmt::Debug for AuthCredential {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AuthStep {
-    // name, application id?
-    Init(String, Option<String>),
+    // name
+    Init(String),
     /*
     Step(
         Type(params ....)

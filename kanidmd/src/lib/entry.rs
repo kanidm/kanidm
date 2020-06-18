@@ -268,10 +268,12 @@ pub struct Entry<VALID, STATE> {
 impl<VALID, STATE> std::fmt::Debug for Entry<VALID, STATE>
 where
     STATE: std::fmt::Debug,
+    VALID: std::fmt::Debug,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         f.debug_struct("Entry<EntrySealed, _>")
             .field("state", &self.state)
+            .field("valid", &self.valid)
             .finish()
     }
 }
@@ -332,10 +334,11 @@ impl Entry<EntryInit, EntryNew> {
             .attrs
             .iter()
             .map(|(k, v)| {
+                let nk = qs.get_schema().normalise_attr_name(k);
                 let nv: Result<BTreeSet<Value>, _> =
-                    v.iter().map(|vr| qs.clone_value(audit, &k, vr)).collect();
+                    v.iter().map(|vr| qs.clone_value(audit, &nk, vr)).collect();
                 match nv {
-                    Ok(nvi) => Ok((k.clone(), nvi)),
+                    Ok(nvi) => Ok((nk, nvi)),
                     Err(e) => Err(e),
                 }
             })
@@ -366,13 +369,10 @@ impl Entry<EntryInit, EntryNew> {
             }
         }
         // str -> Proto entry
-        let pe: ProtoEntry = try_audit!(
-            audit,
-            serde_json::from_str(es).map_err(|e| {
-                ladmin_error!(audit, "SerdeJson Failure -> {:?}", e);
-                OperationError::SerdeJsonError
-            })
-        );
+        let pe: ProtoEntry = serde_json::from_str(es).map_err(|e| {
+            ladmin_error!(audit, "SerdeJson Failure -> {:?}", e);
+            OperationError::SerdeJsonError
+        })?;
         // now call from_proto_entry
         Self::from_proto_entry(audit, &pe, qs)
     }
@@ -624,7 +624,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
                 }
             });
 
-            if invalid_classes.len() != 0 {
+            if !invalid_classes.is_empty() {
                 // lrequest_error!("Class on entry not found in schema?");
                 return Err(SchemaError::InvalidClass(invalid_classes));
             };
@@ -664,7 +664,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
                 }
             });
 
-            if missing_must.len() != 0 {
+            if !missing_must.is_empty() {
                 return Err(SchemaError::MissingMustAttribute(missing_must));
             }
 
@@ -796,7 +796,7 @@ impl Entry<EntryInvalid, EntryCommitted> {
         }
     }
 
-    pub fn to_recycled(mut self) -> Self {
+    pub fn into_recycled(mut self) -> Self {
         self.add_ava("class", &Value::new_class("recycled"));
 
         Entry {
@@ -918,7 +918,7 @@ impl<VALID> Entry<VALID, EntryCommitted> {
 }
 
 impl<STATE> Entry<EntrySealed, STATE> {
-    pub fn to_init(self) -> Entry<EntryInit, STATE> {
+    pub fn into_init(self) -> Entry<EntryInit, STATE> {
         Entry {
             valid: EntryInit,
             state: self.state,
@@ -981,14 +981,14 @@ impl Entry<EntrySealed, EntryCommitted> {
     }
 
     #[inline]
-    fn get_uuid2spn(&self) -> Value {
+    pub(crate) fn get_uuid2spn(&self) -> Value {
         self.attrs
             .get("spn")
-            .and_then(|vs| vs.iter().take(1).next().map(|v| v.clone()))
+            .and_then(|vs| vs.iter().take(1).next().cloned())
             .or_else(|| {
                 self.attrs
                     .get("name")
-                    .and_then(|vs| vs.iter().take(1).next().map(|v| v.clone()))
+                    .and_then(|vs| vs.iter().take(1).next().cloned())
             })
             .unwrap_or_else(|| Value::new_uuidr(self.get_uuid()))
     }
@@ -1415,7 +1415,7 @@ impl Entry<EntrySealed, EntryCommitted> {
         }
     }
 
-    pub fn to_valid(self, cid: Cid) -> Entry<EntryValid, EntryCommitted> {
+    pub fn into_valid(self, cid: Cid) -> Entry<EntryValid, EntryCommitted> {
         Entry {
             valid: EntryValid {
                 uuid: self.valid.uuid,
@@ -1561,13 +1561,6 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         let _ = self.attrs.insert("last_modified_cid".to_string(), cv);
     }
 
-    /*
-     * WARNING: Should these TODO move to EntryValid only?
-     * I've tried to do this once, but the issue is that there
-     * is a lot of code in normalised and other states that
-     * relies on the ability to get ava. I think we may not be
-     * able to do so "easily".
-     */
     pub fn get_ava(&self, attr: &str) -> Option<Vec<&Value>> {
         match self.attrs.get(attr) {
             Some(vs) => {

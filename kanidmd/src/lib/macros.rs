@@ -15,7 +15,7 @@ macro_rules! run_test_no_init {
             .is_test(true)
             .try_init();
 
-        let mut audit = AuditScope::new("run_test", uuid::Uuid::new_v4());
+        let mut audit = AuditScope::new("run_test", uuid::Uuid::new_v4(), None);
 
         let be = match Backend::new(&mut audit, "", 1) {
             Ok(be) => be,
@@ -55,7 +55,7 @@ macro_rules! run_test {
             .is_test(true)
             .try_init();
 
-        let mut audit = AuditScope::new("run_test", uuid::Uuid::new_v4());
+        let mut audit = AuditScope::new("run_test", uuid::Uuid::new_v4(), None);
 
         let be = match Backend::new(&mut audit, "", 1) {
             Ok(be) => be,
@@ -122,7 +122,7 @@ macro_rules! run_idm_test {
             .is_test(true)
             .try_init();
 
-        let mut audit = AuditScope::new("run_test", uuid::Uuid::new_v4());
+        let mut audit = AuditScope::new("run_test", uuid::Uuid::new_v4(), None);
 
         let be = Backend::new(&mut audit, "", 1).expect("Failed to init be");
         let schema_outer = Schema::new(&mut audit).expect("Failed to init schema");

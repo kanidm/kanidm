@@ -1,3 +1,4 @@
+#![deny(warnings)]
 #[macro_use]
 extern crate log;
 
@@ -37,7 +38,7 @@ async fn main() {
     let password = rpassword::prompt_password_stderr("Enter unix password: ").unwrap();
 
     let req = ClientRequest::PamAuthenticate(opt.account_id.clone(), password);
-    let sereq = ClientRequest::PamAccountAllowed(opt.account_id.clone());
+    let sereq = ClientRequest::PamAccountAllowed(opt.account_id);
 
     match block_on(call_daemon(cfg.sock_path.as_str(), req)) {
         Ok(r) => match r {

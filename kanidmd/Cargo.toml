@@ -39,6 +39,7 @@ actix-files = "0.2"
 log = "0.4"
 env_logger = "0.7"
 rand = "0.7"
+toml = "0.5"
 
 chrono = "0.4"
 cookie = "0.13"

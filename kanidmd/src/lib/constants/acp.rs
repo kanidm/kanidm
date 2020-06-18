@@ -124,7 +124,6 @@ pub const JSON_IDM_SELF_ACP_WRITE_V1: &str = r#"{
 }"#;
 
 pub const JSON_IDM_ALL_ACP_READ_V1: &str = r#"{
-    "state": null,
     "attrs": {
         "class": ["object", "access_control_profile", "access_control_search"],
         "name": ["idm_all_acp_read"],

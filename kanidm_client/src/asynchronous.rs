@@ -45,7 +45,7 @@ impl KanidmAsyncClient {
             unexpect => return Err(ClientError::Http(unexpect, response.json().await.ok())),
         }
 
-        // TODO: What about errors
+        // TODO #253: What about errors
         let r: T = response.json().await.unwrap();
 
         Ok(r)
@@ -83,7 +83,7 @@ impl KanidmAsyncClient {
             unexpect => return Err(ClientError::Http(unexpect, response.json().await.ok())),
         }
 
-        // TODO: What about errors
+        // TODO #253: What about errors
         let r: T = response.json().await.unwrap();
 
         Ok(r)
@@ -111,13 +111,13 @@ impl KanidmAsyncClient {
             unexpect => return Err(ClientError::Http(unexpect, response.json().await.ok())),
         }
 
-        // TODO: What about errors
+        // TODO #253: What about errors
         let r: T = response.json().await.unwrap();
 
         Ok(r)
     }
 
-    async fn perform_delete_request(&self, dest: &str) -> Result<(), ClientError> {
+    async fn perform_delete_request(&self, dest: &str) -> Result<bool, ClientError> {
         let dest = format!("{}{}", self.addr, dest);
         let response = self
             .client
@@ -137,16 +137,14 @@ impl KanidmAsyncClient {
             unexpect => return Err(ClientError::Http(unexpect, response.json().await.ok())),
         }
 
-        Ok(())
+        let r: bool = response.json().await.unwrap();
+
+        Ok(r)
     }
 
-    pub async fn auth_step_init(
-        &self,
-        ident: &str,
-        appid: Option<&str>,
-    ) -> Result<AuthState, ClientError> {
+    pub async fn auth_step_init(&self, ident: &str) -> Result<AuthState, ClientError> {
         let auth_init = AuthRequest {
-            step: AuthStep::Init(ident.to_string(), appid.map(|s| s.to_string())),
+            step: AuthStep::Init(ident.to_string()),
         };
 
         let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_init).await;
@@ -158,7 +156,7 @@ impl KanidmAsyncClient {
         ident: &str,
         password: &str,
     ) -> Result<UserAuthToken, ClientError> {
-        let _state = match self.auth_step_init(ident, None).await {
+        let _state = match self.auth_step_init(ident).await {
             Ok(s) => s,
             Err(e) => return Err(e),
         };
@@ -180,8 +178,9 @@ impl KanidmAsyncClient {
     }
 
     pub async fn auth_anonymous(&self) -> Result<UserAuthToken, ClientError> {
-        // TODO: Check state for auth continue contains anonymous.
-        let _state = match self.auth_step_init("anonymous", None).await {
+        // TODO #251: Check state for auth continue contains anonymous.
+        // #251 will remove the need for this check.
+        let _state = match self.auth_step_init("anonymous").await {
             Ok(s) => s,
             Err(e) => return Err(e),
         };
@@ -235,17 +234,21 @@ impl KanidmAsyncClient {
             .await
     }
 
-    pub async fn idm_account_delete(&self, id: &str) -> Result<(), ClientError> {
+    pub async fn idm_account_delete(&self, id: &str) -> Result<bool, ClientError> {
         self.perform_delete_request(["/v1/account/", id].concat().as_str())
             .await
     }
 
-    pub async fn idm_group_delete(&self, id: &str) -> Result<(), ClientError> {
+    pub async fn idm_group_delete(&self, id: &str) -> Result<bool, ClientError> {
         self.perform_delete_request(["/v1/group/", id].concat().as_str())
             .await
     }
 
-    pub async fn idm_account_unix_cred_put(&self, id: &str, cred: &str) -> Result<(), ClientError> {
+    pub async fn idm_account_unix_cred_put(
+        &self,
+        id: &str,
+        cred: &str,
+    ) -> Result<bool, ClientError> {
         let req = SingleStringRequest {
             value: cred.to_string(),
         };
@@ -256,7 +259,7 @@ impl KanidmAsyncClient {
         .await
     }
 
-    pub async fn idm_account_unix_cred_delete(&self, id: &str) -> Result<(), ClientError> {
+    pub async fn idm_account_unix_cred_delete(&self, id: &str) -> Result<bool, ClientError> {
         self.perform_delete_request(["/v1/account/", id, "/_unix/_credential"].concat().as_str())
             .await
     }
@@ -277,7 +280,7 @@ impl KanidmAsyncClient {
         &self,
         id: &str,
         members: Vec<&str>,
-    ) -> Result<(), ClientError> {
+    ) -> Result<bool, ClientError> {
         let m: Vec<_> = members.iter().map(|v| (*v).to_string()).collect();
         self.perform_post_request(["/v1/group/", id, "/_attr/member"].concat().as_str(), m)
             .await

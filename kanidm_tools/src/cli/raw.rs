@@ -76,7 +76,7 @@ impl RawOpt {
                 let rset = client.search(filter).unwrap();
 
                 rset.iter().for_each(|e| {
-                    println!("{:?}", e);
+                    println!("{}", e);
                 });
             }
             RawOpt::Create(copt) => {
@@ -86,7 +86,7 @@ impl RawOpt {
                     Some(p) => {
                         let r_entries: Vec<BTreeMap<String, Vec<String>>> = read_file(p).unwrap();
                         let entries = r_entries.into_iter().map(|b| Entry { attrs: b }).collect();
-                        client.create(entries).unwrap()
+                        client.create(entries).unwrap();
                     }
                     None => {
                         println!("Must provide a file");
@@ -101,7 +101,7 @@ impl RawOpt {
                         let filter: Filter = serde_json::from_str(mopt.filter.as_str()).unwrap();
                         let r_list: Vec<Modify> = read_file(p).unwrap();
                         let modlist = ModifyList::new_list(r_list);
-                        client.modify(filter, modlist).unwrap()
+                        client.modify(filter, modlist).unwrap();
                     }
                     None => {
                         println!("Must provide a file");

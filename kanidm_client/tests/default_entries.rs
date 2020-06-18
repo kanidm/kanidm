@@ -58,10 +58,10 @@ fn create_user(rsclient: &KanidmClient, id: &str, group_name: &str) -> () {
     rsclient.idm_account_create(id, "Deeeeemo").unwrap();
 
     // Create group and add to user to test read attr: member_of
-    match rsclient.idm_group_get(&group_name).unwrap() {
-        Some(_) => (),
+    let _ = match rsclient.idm_group_get(&group_name).unwrap() {
+        Some(_) => true,
         None => rsclient.idm_group_create(&group_name).unwrap(),
-    }
+    };
 
     rsclient
         .idm_group_add_members(&group_name, vec![id])
@@ -286,7 +286,7 @@ fn test_default_entries_rbac_account_managers() {
         static PRIVATE_DATA_ATTRS: [&str; 1] = ["legalname"];
         test_read_attrs(&rsclient, "test", &PRIVATE_DATA_ATTRS, false);
         test_write_attrs(&rsclient, "test", &PRIVATE_DATA_ATTRS, false);
-        // TODO: lock and _unlock, except high access members
+        // TODO #59: lock and _unlock, except high access members
     });
 }
 
@@ -381,7 +381,7 @@ fn test_default_entries_rbac_admins_access_control_entries() {
 }
 
 // read schema entries.
-// TODO: write schema entries
+// TODO #252: write schema entries
 #[test]
 fn test_default_entries_rbac_admins_schema_entries() {
     run_test(|rsclient: KanidmClient| {

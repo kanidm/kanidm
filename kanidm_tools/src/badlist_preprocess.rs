@@ -39,7 +39,7 @@ fn main() {
     info!("Kanidm badlist preprocessor - this may take a long time ...");
 
     // Build a temp struct for all the pws.
-    // TODO: Shellexpand all of these.
+    // Shellexpand all of these.
     /*
     let expanded_paths: Vec<_> = opt.password_list.iter()
         .map(|p| {

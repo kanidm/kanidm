@@ -14,6 +14,9 @@ can be small, helping to reduce the attack surface of the machine.
 
 We recommend you install the client daemon from your system package manager.
 
+    zypper in kanidm-unixd-clients
+    dnf install kanidm-unixd-clients
+
 You can check the daemon is running on your Linux system with
 
     # systemctl status kanidm_unixd
@@ -83,10 +86,10 @@ pam config in a way that will cause you to be unable to authenticate to your mac
 
 To configure PAM on suse you must module four files:
 
-    /etc/pam.d/common-account-pc
-    /etc/pam.d/common-auth-pc
-    /etc/pam.d/common-password-pc
-    /etc/pam.d/common-session-pc
+    /etc/pam.d/common-account
+    /etc/pam.d/common-auth
+    /etc/pam.d/common-password
+    /etc/pam.d/common-session
 
 Each of these controls one of the four stages of pam. The content should look like:
 
@@ -118,6 +121,9 @@ Each of these controls one of the four stages of pam. The content should look li
     session optional    pam_umask.so
     session optional    pam_env.so
 
+### Fedora
+
+TBD
 
 ## Troubleshooting
 

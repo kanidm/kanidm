@@ -421,7 +421,7 @@ impl Filter<FilterInvalid> {
         f: &ProtoFilter,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        lperf_segment!(audit, "filter::from_ro", || {
+        lperf_trace_segment!(audit, "filter::from_ro", || {
             Ok(Filter {
                 state: FilterInvalid {
                     inner: FilterComp::from_ro(audit, f, qs)?,
@@ -435,7 +435,7 @@ impl Filter<FilterInvalid> {
         f: &ProtoFilter,
         qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        lperf_segment!(audit, "filter::from_rw", || {
+        lperf_trace_segment!(audit, "filter::from_rw", || {
             Ok(Filter {
                 state: FilterInvalid {
                     inner: FilterComp::from_rw(audit, f, qs)?,
@@ -449,7 +449,7 @@ impl Filter<FilterInvalid> {
         f: &LdapFilter,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        lperf_segment!(audit, "filter::from_ldap_ro", || {
+        lperf_trace_segment!(audit, "filter::from_ldap_ro", || {
             Ok(Filter {
                 state: FilterInvalid {
                     inner: FilterComp::from_ldap_ro(audit, f, qs)?,
@@ -629,11 +629,20 @@ impl FilterComp {
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         Ok(match f {
-            ProtoFilter::Eq(a, v) => FilterComp::Eq(a.clone(), qs.clone_partialvalue(audit, a, v)?),
-            ProtoFilter::Sub(a, v) => {
-                FilterComp::Sub(a.clone(), qs.clone_partialvalue(audit, a, v)?)
+            ProtoFilter::Eq(a, v) => {
+                let nk = qs.get_schema().normalise_attr_name(a);
+                let v = qs.clone_partialvalue(audit, nk.as_str(), v)?;
+                FilterComp::Eq(nk, v)
             }
-            ProtoFilter::Pres(a) => FilterComp::Pres(a.clone()),
+            ProtoFilter::Sub(a, v) => {
+                let nk = qs.get_schema().normalise_attr_name(a);
+                let v = qs.clone_partialvalue(audit, nk.as_str(), v)?;
+                FilterComp::Sub(nk, v)
+            }
+            ProtoFilter::Pres(a) => {
+                let nk = qs.get_schema().normalise_attr_name(a);
+                FilterComp::Pres(nk)
+            }
             ProtoFilter::Or(l) => FilterComp::Or(
                 l.iter()
                     .map(|f| Self::from_ro(audit, f, qs))
@@ -655,11 +664,20 @@ impl FilterComp {
         qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         Ok(match f {
-            ProtoFilter::Eq(a, v) => FilterComp::Eq(a.clone(), qs.clone_partialvalue(audit, a, v)?),
-            ProtoFilter::Sub(a, v) => {
-                FilterComp::Sub(a.clone(), qs.clone_partialvalue(audit, a, v)?)
+            ProtoFilter::Eq(a, v) => {
+                let nk = qs.get_schema().normalise_attr_name(a);
+                let v = qs.clone_partialvalue(audit, nk.as_str(), v)?;
+                FilterComp::Eq(nk, v)
             }
-            ProtoFilter::Pres(a) => FilterComp::Pres(a.clone()),
+            ProtoFilter::Sub(a, v) => {
+                let nk = qs.get_schema().normalise_attr_name(a);
+                let v = qs.clone_partialvalue(audit, nk.as_str(), v)?;
+                FilterComp::Sub(nk, v)
+            }
+            ProtoFilter::Pres(a) => {
+                let nk = qs.get_schema().normalise_attr_name(a);
+                FilterComp::Pres(nk)
+            }
             ProtoFilter::Or(l) => FilterComp::Or(
                 l.iter()
                     .map(|f| Self::from_rw(audit, f, qs))
@@ -1286,10 +1304,6 @@ mod tests {
         let e: Entry<EntrySealed, EntryNew> = unsafe {
             Entry::unsafe_from_entry_str(
                 r#"{
-            "valid": {
-                "uuid": "db237e8a-0079-4b8c-8a56-593b22aa44d1"
-            },
-            "state": null,
             "attrs": {
                 "userid": ["william"],
                 "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
@@ -1338,10 +1352,6 @@ mod tests {
         let e: Entry<EntrySealed, EntryNew> = unsafe {
             Entry::unsafe_from_entry_str(
                 r#"{
-            "valid": {
-                "uuid": "db237e8a-0079-4b8c-8a56-593b22aa44d1"
-            },
-            "state": null,
             "attrs": {
                 "userid": ["william"],
                 "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
@@ -1390,10 +1400,6 @@ mod tests {
         let e1: Entry<EntrySealed, EntryNew> = unsafe {
             Entry::unsafe_from_entry_str(
                 r#"{
-            "valid": {
-                "uuid": "db237e8a-0079-4b8c-8a56-593b22aa44d1"
-            },
-            "state": null,
             "attrs": {
                 "userid": ["william"],
                 "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
@@ -1423,10 +1429,6 @@ mod tests {
         let e1: Entry<EntrySealed, EntryNew> = unsafe {
             Entry::unsafe_from_entry_str(
                 r#"{
-            "valid": {
-                "uuid": "db237e8a-0079-4b8c-8a56-593b22aa44d1"
-            },
-            "state": null,
             "attrs": {
                 "class": ["person"],
                 "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
@@ -1440,10 +1442,6 @@ mod tests {
         let e2: Entry<EntrySealed, EntryNew> = unsafe {
             Entry::unsafe_from_entry_str(
                 r#"{
-            "valid": {
-                "uuid": "4b6228ab-1dbe-42a4-a9f5-f6368222438e"
-            },
-            "state": null,
             "attrs": {
                 "class": ["person"],
                 "uuid": ["4b6228ab-1dbe-42a4-a9f5-f6368222438e"],
@@ -1457,10 +1455,6 @@ mod tests {
         let e3: Entry<EntrySealed, EntryNew> = unsafe {
             Entry::unsafe_from_entry_str(
                 r#"{
-            "valid": {
-                "uuid": "7b23c99d-c06b-4a9a-a958-3afa56383e1d"
-            },
-            "state": null,
             "attrs": {
                 "class": ["person"],
                 "uuid": ["7b23c99d-c06b-4a9a-a958-3afa56383e1d"],
@@ -1474,10 +1468,6 @@ mod tests {
         let e4: Entry<EntrySealed, EntryNew> = unsafe {
             Entry::unsafe_from_entry_str(
                 r#"{
-            "valid": {
-                "uuid": "21d816b5-1f6a-4696-b7c1-6ed06d22ed81"
-            },
-            "state": null,
             "attrs": {
                 "class": ["group"],
                 "uuid": ["21d816b5-1f6a-4696-b7c1-6ed06d22ed81"],

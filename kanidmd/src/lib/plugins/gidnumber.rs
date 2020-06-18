@@ -36,7 +36,14 @@ fn apply_gidnumber<T: Clone>(
         || e.attribute_value_pres("class", &CLASS_POSIXACCOUNT))
         && !e.attribute_pres("gidnumber")
     {
-        let u_ref = try_audit!(au, e.get_uuid().ok_or(OperationError::InvalidEntryState));
+        let u_ref = e
+            .get_uuid()
+            .ok_or(OperationError::InvalidEntryState)
+            .map_err(|e| {
+                ladmin_error!(au, "Invalid Entry State - Missing UUID");
+                e
+            })?;
+
         let gid = uuid_to_gid_u32(u_ref);
         // assert the value is greater than the system range.
         if gid < GID_SYSTEM_NUMBER_MIN {
@@ -123,8 +130,6 @@ mod tests {
     fn test_gidnumber_create_generate() {
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["account", "posixaccount"],
                 "name": ["testperson"],
@@ -157,8 +162,6 @@ mod tests {
     fn test_gidnumber_create_noaction() {
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["account", "posixaccount"],
                 "name": ["testperson"],
@@ -192,8 +195,6 @@ mod tests {
     fn test_gidnumber_modify_generate() {
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["account"],
                 "name": ["testperson"],
@@ -259,8 +260,6 @@ mod tests {
     fn test_gidnumber_modify_noregen() {
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
-            "valid": null,
-            "state": null,
             "attrs": {
                 "class": ["account", "posixaccount"],
                 "name": ["testperson"],

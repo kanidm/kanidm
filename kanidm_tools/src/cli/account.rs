@@ -12,8 +12,6 @@ pub struct AccountCommonOpt {
 pub struct AccountCredentialSet {
     #[structopt(flatten)]
     aopts: AccountCommonOpt,
-    #[structopt()]
-    application_id: Option<String>,
     #[structopt(flatten)]
     copt: CommonOpt,
 }
@@ -226,7 +224,7 @@ impl AccountOpt {
                     let token = client
                         .idm_account_unix_token_get(aopt.aopts.account_id.as_str())
                         .unwrap();
-                    println!("{:?}", token);
+                    println!("{}", token);
                 }
                 AccountPosix::Set(aopt) => {
                     let client = aopt.copt.to_client();
@@ -292,7 +290,7 @@ impl AccountOpt {
                 let client = copt.to_client();
                 let r = client.idm_account_list().unwrap();
                 for e in r {
-                    println!("{:?}", e);
+                    println!("{}", e);
                 }
             }
             AccountOpt::Get(aopt) => {
@@ -300,7 +298,10 @@ impl AccountOpt {
                 let e = client
                     .idm_account_get(aopt.aopts.account_id.as_str())
                     .unwrap();
-                println!("{:?}", e);
+                match e {
+                    Some(e) => println!("{}", e),
+                    None => println!("No matching entries"),
+                }
             }
             AccountOpt::Delete(aopt) => {
                 let client = aopt.copt.to_client();
