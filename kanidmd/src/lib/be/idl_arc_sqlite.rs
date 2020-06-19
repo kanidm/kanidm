@@ -93,7 +93,8 @@ macro_rules! get_identry {
     (
         $self:expr,
         $au:expr,
-        $idl:expr
+        $idl:expr,
+        $is_read_op:expr
     ) => {{
         lperf_trace_segment!($au, "be::idl_arc_sqlite::get_identry", || {
             let mut result: Vec<Entry<_, _>> = Vec::new();
@@ -114,9 +115,11 @@ macro_rules! get_identry {
                         // Now, get anything from nidl that is needed.
                         let mut db_result = $self.db.get_identry($au, &IDL::Partial(nidl))?;
                         // Clone everything from db_result into the cache.
-                        db_result.iter().for_each(|e| {
-                            $self.entry_cache.insert(e.get_id(), Box::new(e.clone()));
-                        });
+                        if $is_read_op {
+                            db_result.iter().for_each(|e| {
+                                $self.entry_cache.insert(e.get_id(), Box::new(e.clone()));
+                            });
+                        }
                         // Merge the two vecs
                         result.append(&mut db_result);
                     }
@@ -343,7 +346,7 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteReadTransaction<'a> {
         au: &mut AuditScope,
         idl: &IDL,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
-        get_identry!(self, au, idl)
+        get_identry!(self, au, idl, true)
     }
 
     fn get_identry_raw(
@@ -416,7 +419,7 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
         au: &mut AuditScope,
         idl: &IDL,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
-        get_identry!(self, au, idl)
+        get_identry!(self, au, idl, false)
     }
 
     fn get_identry_raw(
@@ -850,6 +853,7 @@ impl IdlArcSqlite {
             pool_size as usize,
             DEFAULT_CACHE_RMISS,
             DEFAULT_CACHE_WMISS,
+            false,
         );
         // The idl cache should have smaller items, and is critical for fast searches
         // so we allow it to have a higher ratio of items relative to the entries.
@@ -858,6 +862,7 @@ impl IdlArcSqlite {
             pool_size as usize,
             DEFAULT_CACHE_RMISS,
             DEFAULT_CACHE_WMISS,
+            false,
         );
 
         let name_cache = Arc::new(
@@ -865,6 +870,7 @@ impl IdlArcSqlite {
             pool_size as usize,
             DEFAULT_CACHE_RMISS,
             DEFAULT_CACHE_WMISS,
+            true,
         );
 
         let allids = CowCell::new(IDLBitRange::new());
