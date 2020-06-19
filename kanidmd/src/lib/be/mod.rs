@@ -647,6 +647,8 @@ impl<'a> BackendWriteTransaction<'a> {
 
             self.idlayer.write_identries(au, c_entries.iter())?;
 
+            self.idlayer.set_id2entry_max_id(id_max);
+
             // Now update the indexes as required.
             for e in c_entries.iter() {
                 self.entry_index(au, None, Some(e))?
@@ -751,6 +753,8 @@ impl<'a> BackendWriteTransaction<'a> {
     //
     // At the end, we flush those cchange outs in a single run.
     // For create this is probably a
+    // TODO: Can this be improved?
+    #[allow(clippy::cognitive_complexity)]
     fn entry_index(
         &mut self,
         audit: &mut AuditScope,
@@ -1193,7 +1197,7 @@ impl Backend {
             // access any parts of
             // the indexing subsystem here.
             let r = {
-                let idl_write = be.idlayer.write();
+                let mut idl_write = be.idlayer.write();
                 idl_write.setup(audit).and_then(|_| idl_write.commit(audit))
             };
 

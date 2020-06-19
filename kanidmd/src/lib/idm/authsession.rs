@@ -72,6 +72,8 @@ impl TryFrom<&Credential> for CredHandler {
     }
 }
 
+// TODO: Can this be improved?
+#[allow(clippy::cognitive_complexity)]
 impl CredHandler {
     pub fn validate(
         &mut self,

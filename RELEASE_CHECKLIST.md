@@ -1,4 +1,10 @@
 
+// cargo install cargo-audit
+// cargo install carga-outdated
+
+* cargo audit
+* cargo outdated
+
 * bump all cargo.toml versions
     find kani* -name Cargo.toml -exec cat '{}' \; | grep -e '^version ='
 

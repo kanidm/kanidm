@@ -42,6 +42,8 @@ impl Plugin for Base {
     //     contains who is creating them
     // the schema of the running instance
 
+    // TODO: Can this be improved?
+    #[allow(clippy::cognitive_complexity)]
     fn pre_create_transform(
         au: &mut AuditScope,
         qs: &mut QueryServerWriteTransaction,
