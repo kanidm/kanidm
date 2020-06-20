@@ -39,7 +39,6 @@ use crate::idm::server::IdmServer;
 use crate::interval::IntervalActor;
 use crate::ldap::LdapServer;
 use crate::schema::Schema;
-use crate::schema::SchemaTransaction;
 use crate::server::QueryServer;
 use crate::status::{StatusActor, StatusRequestEvent};
 use crate::utils::duration_from_epoch_now;
@@ -1263,10 +1262,14 @@ async fn status((_session, state): (Session, Data<AppState>)) -> HttpResponse {
 
 // === internal setup helpers
 
-fn setup_backend(config: &Configuration) -> Result<Backend, OperationError> {
+fn setup_backend(config: &Configuration, schema: &Schema) -> Result<Backend, OperationError> {
+    // Limit the scope of the schema txn.
+    let schema_txn = schema.write();
+    let idxmeta = schema_txn.reload_idxmeta();
+
     let mut audit_be = AuditScope::new("backend_setup", uuid::Uuid::new_v4(), config.log_level);
     let pool_size: u32 = config.threads as u32;
-    let be = Backend::new(&mut audit_be, config.db_path.as_str(), pool_size);
+    let be = Backend::new(&mut audit_be, config.db_path.as_str(), pool_size, idxmeta);
     // debug!
     audit_be.write_log();
     be
@@ -1279,18 +1282,8 @@ fn setup_backend(config: &Configuration) -> Result<Backend, OperationError> {
 fn setup_qs_idms(
     audit: &mut AuditScope,
     be: Backend,
+    schema: Schema,
 ) -> Result<(QueryServer, IdmServer), OperationError> {
-    // Create "just enough" schema for us to be able to load from
-    // disk ... Schema loading is one time where we validate the
-    // entries as we read them, so we need this here.
-    let schema = match Schema::new(audit) {
-        Ok(s) => s,
-        Err(e) => {
-            error!("Failed to setup in memory schema: {:?}", e);
-            return Err(e);
-        }
-    };
-
     // Create a query_server implementation
     let query_server = QueryServer::new(be, schema);
 
@@ -1312,14 +1305,23 @@ fn setup_qs_idms(
 }
 
 pub fn backup_server_core(config: Configuration, dst_path: &str) {
-    let be = match setup_backend(&config) {
+    let mut audit = AuditScope::new("backend_backup", uuid::Uuid::new_v4(), config.log_level);
+    let schema = match Schema::new(&mut audit) {
+        Ok(s) => s,
+        Err(e) => {
+            audit.write_log();
+            error!("Failed to setup in memory schema: {:?}", e);
+            std::process::exit(1);
+        }
+    };
+
+    let be = match setup_backend(&config, &schema) {
         Ok(be) => be,
         Err(e) => {
             error!("Failed to setup BE: {:?}", e);
             return;
         }
     };
-    let mut audit = AuditScope::new("backend_backup", uuid::Uuid::new_v4(), config.log_level);
 
     let mut be_ro_txn = be.read();
     let r = be_ro_txn.backup(&mut audit, dst_path);
@@ -1335,13 +1337,6 @@ pub fn backup_server_core(config: Configuration, dst_path: &str) {
 }
 
 pub fn restore_server_core(config: Configuration, dst_path: &str) {
-    let be = match setup_backend(&config) {
-        Ok(be) => be,
-        Err(e) => {
-            error!("Failed to setup BE: {:?}", e);
-            return;
-        }
-    };
     let mut audit = AuditScope::new("backend_restore", uuid::Uuid::new_v4(), config.log_level);
 
     // First, we provide the in-memory schema so that core attrs are indexed correctly.
@@ -1354,13 +1349,15 @@ pub fn restore_server_core(config: Configuration, dst_path: &str) {
         }
     };
 
-    // Limit the scope of the schema txn.
-
-    let mut be_wr_txn = {
-        let schema_txn = schema.write();
-        let idxmeta = schema_txn.get_idxmeta_set();
-        be.write(idxmeta)
+    let be = match setup_backend(&config, &schema) {
+        Ok(be) => be,
+        Err(e) => {
+            error!("Failed to setup BE: {:?}", e);
+            return;
+        }
     };
+
+    let mut be_wr_txn = be.write();
     let r = be_wr_txn
         .restore(&mut audit, dst_path)
         .and_then(|_| be_wr_txn.commit(&mut audit));
@@ -1374,7 +1371,7 @@ pub fn restore_server_core(config: Configuration, dst_path: &str) {
 
     info!("Attempting to init query server ...");
 
-    let (qs, _idms) = match setup_qs_idms(&mut audit, be) {
+    let (qs, _idms) = match setup_qs_idms(&mut audit, be, schema) {
         Ok(t) => t,
         Err(e) => {
             audit.write_log();
@@ -1404,15 +1401,8 @@ pub fn restore_server_core(config: Configuration, dst_path: &str) {
 }
 
 pub fn reindex_server_core(config: Configuration) {
-    let be = match setup_backend(&config) {
-        Ok(be) => be,
-        Err(e) => {
-            error!("Failed to setup BE: {:?}", e);
-            return;
-        }
-    };
     let mut audit = AuditScope::new("server_reindex", uuid::Uuid::new_v4(), config.log_level);
-
+    eprintln!("Start Index Phase 1 ...");
     // First, we provide the in-memory schema so that core attrs are indexed correctly.
     let schema = match Schema::new(&mut audit) {
         Ok(s) => s,
@@ -1422,14 +1412,16 @@ pub fn reindex_server_core(config: Configuration) {
         }
     };
 
-    eprintln!("Start Index Phase 1 ...");
-    // Reindex only the core schema attributes to bootstrap the process.
-    let mut be_wr_txn = {
-        // Limit the scope of the schema txn.
-        let schema_txn = schema.write();
-        let idxmeta = schema_txn.get_idxmeta_set();
-        be.write(idxmeta)
+    let be = match setup_backend(&config, &schema) {
+        Ok(be) => be,
+        Err(e) => {
+            error!("Failed to setup BE: {:?}", e);
+            return;
+        }
     };
+
+    // Reindex only the core schema attributes to bootstrap the process.
+    let mut be_wr_txn = be.write();
     let r = be_wr_txn
         .reindex(&mut audit)
         .and_then(|_| be_wr_txn.commit(&mut audit));
@@ -1447,7 +1439,7 @@ pub fn reindex_server_core(config: Configuration) {
 
     eprintln!("Attempting to init query server ...");
 
-    let (qs, _idms) = match setup_qs_idms(&mut audit, be) {
+    let (qs, _idms) = match setup_qs_idms(&mut audit, be, schema) {
         Ok(t) => t,
         Err(e) => {
             audit.write_log();
@@ -1481,8 +1473,16 @@ pub fn reindex_server_core(config: Configuration) {
 pub fn domain_rename_core(config: Configuration, new_domain_name: String) {
     let mut audit = AuditScope::new("domain_rename", uuid::Uuid::new_v4(), config.log_level);
 
+    let schema = match Schema::new(&mut audit) {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("Failed to setup in memory schema: {:?}", e);
+            std::process::exit(1);
+        }
+    };
+
     // Start the backend.
-    let be = match setup_backend(&config) {
+    let be = match setup_backend(&config, &schema) {
         Ok(be) => be,
         Err(e) => {
             error!("Failed to setup BE: {:?}", e);
@@ -1490,7 +1490,7 @@ pub fn domain_rename_core(config: Configuration, new_domain_name: String) {
         }
     };
     // setup the qs - *with* init of the migrations and schema.
-    let (qs, _idms) = match setup_qs_idms(&mut audit, be) {
+    let (qs, _idms) = match setup_qs_idms(&mut audit, be, schema) {
         Ok(t) => t,
         Err(e) => {
             audit.write_log();
@@ -1532,19 +1532,19 @@ pub fn reset_sid_core(config: Configuration) {
 
 pub fn verify_server_core(config: Configuration) {
     let mut audit = AuditScope::new("server_verify", uuid::Uuid::new_v4(), config.log_level);
-    // Setup the be
-    let be = match setup_backend(&config) {
-        Ok(be) => be,
-        Err(e) => {
-            error!("Failed to setup BE: {:?}", e);
-            return;
-        }
-    };
     // setup the qs - without initialise!
     let schema_mem = match Schema::new(&mut audit) {
         Ok(sc) => sc,
         Err(e) => {
             error!("Failed to setup in memory schema: {:?}", e);
+            return;
+        }
+    };
+    // Setup the be
+    let be = match setup_backend(&config, &schema_mem) {
+        Ok(be) => be,
+        Err(e) => {
+            error!("Failed to setup BE: {:?}", e);
             return;
         }
     };
@@ -1571,8 +1571,16 @@ pub fn verify_server_core(config: Configuration) {
 pub fn recover_account_core(config: Configuration, name: String, password: String) {
     let mut audit = AuditScope::new("recover_account", uuid::Uuid::new_v4(), config.log_level);
 
+    let schema = match Schema::new(&mut audit) {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("Failed to setup in memory schema: {:?}", e);
+            std::process::exit(1);
+        }
+    };
+
     // Start the backend.
-    let be = match setup_backend(&config) {
+    let be = match setup_backend(&config, &schema) {
         Ok(be) => be,
         Err(e) => {
             error!("Failed to setup BE: {:?}", e);
@@ -1580,7 +1588,7 @@ pub fn recover_account_core(config: Configuration, name: String, password: Strin
         }
     };
     // setup the qs - *with* init of the migrations and schema.
-    let (_qs, idms) = match setup_qs_idms(&mut audit, be) {
+    let (_qs, idms) = match setup_qs_idms(&mut audit, be, schema) {
         Ok(t) => t,
         Err(e) => {
             audit.write_log();
@@ -1624,6 +1632,8 @@ pub async fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> 
     let (log_tx, log_rx) = unbounded();
     let log_thread = thread::spawn(move || async_log::run(log_rx));
 
+    // Similar, create a stats thread which aggregates statistics from the
+    // server as they come in.
     // Start the status tracking thread
     let status_addr = StatusActor::start(log_tx.clone(), config.log_level);
 
@@ -1636,21 +1646,26 @@ pub async fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> 
         }
     };
 
-    // Similar, create a stats thread which aggregates statistics from the
-    // server as they come in.
+    let mut audit = AuditScope::new("setup_qs_idms", uuid::Uuid::new_v4(), config.log_level);
+
+    let schema = match Schema::new(&mut audit) {
+        Ok(s) => s,
+        Err(e) => {
+            error!("Failed to setup in memory schema: {:?}", e);
+            return Err(());
+        }
+    };
 
     // Setup the be for the qs.
-    let be = match setup_backend(&config) {
+    let be = match setup_backend(&config, &schema) {
         Ok(be) => be,
         Err(e) => {
             error!("Failed to setup BE -> {:?}", e);
             return Err(());
         }
     };
-
-    let mut audit = AuditScope::new("setup_qs_idms", uuid::Uuid::new_v4(), config.log_level);
     // Start the IDM server.
-    let (qs, idms) = match setup_qs_idms(&mut audit, be) {
+    let (qs, idms) = match setup_qs_idms(&mut audit, be, schema) {
         Ok(t) => t,
         Err(e) => {
             audit.write_log();

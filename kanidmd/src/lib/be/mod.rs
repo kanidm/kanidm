@@ -2,7 +2,7 @@ use std::convert::TryFrom;
 use std::fs;
 
 use crate::value::IndexType;
-use std::collections::BTreeSet;
+use std::collections::HashSet as Set;
 use std::sync::Arc;
 
 use crate::audit::AuditScope;
@@ -10,9 +10,11 @@ use crate::be::dbentry::DbEntry;
 use crate::entry::{Entry, EntryCommitted, EntryNew, EntrySealed};
 use crate::filter::{Filter, FilterPlan, FilterResolved, FilterValidResolved};
 use crate::value::Value;
+use concread::cowcell::*;
 use idlset::AndNot;
 use idlset::IDLBitRange;
 use kanidm_proto::v1::{ConsistencyError, OperationError};
+use std::ops::DerefMut;
 use std::time::Duration;
 use uuid::Uuid;
 
@@ -28,6 +30,20 @@ use crate::be::idl_arc_sqlite::{
 
 const FILTER_SEARCH_TEST_THRESHOLD: usize = 8;
 const FILTER_EXISTS_TEST_THRESHOLD: usize = 0;
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct IdxKey {
+    pub attr: String,
+    pub itype: IndexType,
+}
+
+/*
+#[derive(Debug)]
+pub(crate) struct IdxKeyRef<'a> {
+    pub attr: &'a str,
+    pub itype: &'a IndexType,
+}
+*/
 
 #[derive(Debug, Clone)]
 pub enum IDL {
@@ -46,16 +62,21 @@ pub struct IdRawEntry {
 #[derive(Clone)]
 pub struct Backend {
     idlayer: Arc<IdlArcSqlite>,
+    /// This is a copy-on-write cache of the index metadata that has been
+    /// extracted from attributes set, in the correct format for the backend
+    /// to consume.
+    idxmeta: Arc<CowCell<Set<IdxKey>>>,
 }
 
 pub struct BackendReadTransaction<'a> {
     idlayer: IdlArcSqliteReadTransaction<'a>,
+    idxmeta: CowCellReadTxn<Set<IdxKey>>,
 }
 
 pub struct BackendWriteTransaction<'a> {
-    idxmeta: BTreeSet<(String, IndexType)>,
-    // idxcache: IdxCache,
     idlayer: IdlArcSqliteWriteTransaction<'a>,
+    idxmeta: CowCellReadTxn<Set<IdxKey>>,
+    idxmeta_wr: CowCellWriteTxn<'a, Set<IdxKey>>,
 }
 
 impl IdRawEntry {
@@ -73,6 +94,8 @@ impl IdRawEntry {
 pub trait BackendTransaction {
     type IdlLayerType: IdlArcSqliteTransaction;
     fn get_idlayer(&mut self) -> &mut Self::IdlLayerType;
+
+    fn get_idxmeta_ref(&self) -> &Set<IdxKey>;
 
     /// Recursively apply a filter, transforming into IDL's on the way. This builds a query
     /// execution log, so that it can be examined how an operation proceeded.
@@ -607,6 +630,10 @@ impl<'a> BackendTransaction for BackendReadTransaction<'a> {
     fn get_idlayer(&mut self) -> &mut IdlArcSqliteReadTransaction<'a> {
         &mut self.idlayer
     }
+
+    fn get_idxmeta_ref(&self) -> &Set<IdxKey> {
+        &self.idxmeta
+    }
 }
 
 impl<'a> BackendTransaction for BackendWriteTransaction<'a> {
@@ -614,6 +641,10 @@ impl<'a> BackendTransaction for BackendWriteTransaction<'a> {
 
     fn get_idlayer(&mut self) -> &mut IdlArcSqliteWriteTransaction<'a> {
         &mut self.idlayer
+    }
+
+    fn get_idxmeta_ref(&self) -> &Set<IdxKey> {
+        &self.idxmeta
     }
 }
 
@@ -745,6 +776,10 @@ impl<'a> BackendWriteTransaction<'a> {
         })
     }
 
+    pub fn update_idxmeta(&mut self, mut idxmeta: Set<IdxKey>) {
+        std::mem::swap(self.idxmeta_wr.deref_mut(), &mut idxmeta);
+    }
+
     // Should take a mut index set, and then we write the whole thing back
     // in a single stripe.
     //
@@ -871,9 +906,9 @@ impl<'a> BackendWriteTransaction<'a> {
         // this we discard the lifetime on idxmeta, because we know that it will
         // remain constant for the life of the operation.
 
-        let idxmeta = unsafe { &(*(&self.idxmeta as *const _)) };
+        let idxmeta = unsafe { &(*(&*self.idxmeta as *const _)) };
 
-        let idx_diff = Entry::idx_diff(&idxmeta, pre, post);
+        let idx_diff = Entry::idx_diff(&(*idxmeta), pre, post);
 
         idx_diff.iter()
             .try_for_each(|act| {
@@ -925,20 +960,20 @@ impl<'a> BackendWriteTransaction<'a> {
         let idx_table_list = self.idlayer.list_idxs(audit)?;
 
         // Turn the vec to a real set
-        let idx_table_set: BTreeSet<_> = idx_table_list.into_iter().collect();
+        let idx_table_set: Set<_> = idx_table_list.into_iter().collect();
 
         let missing: Vec<_> = self
             .idxmeta
             .iter()
-            .filter_map(|(attr, itype)| {
+            .filter_map(|ikey| {
                 // what would the table name be?
-                let tname = format!("idx_{}_{}", itype.as_idx_str(), attr);
+                let tname = format!("idx_{}_{}", ikey.itype.as_idx_str(), ikey.attr.as_str());
                 ltrace!(audit, "Checking for {}", tname);
 
                 if idx_table_set.contains(&tname) {
                     None
                 } else {
-                    Some((attr.clone(), itype.clone()))
+                    Some((ikey.attr.clone(), ikey.itype.clone()))
                 }
             })
             .collect();
@@ -958,7 +993,7 @@ impl<'a> BackendWriteTransaction<'a> {
 
         self.idxmeta
             .iter()
-            .try_for_each(|(attr, itype)| self.idlayer.create_idx(audit, attr, itype))
+            .try_for_each(|ikey| self.idlayer.create_idx(audit, &ikey.attr, &ikey.itype))
     }
 
     pub fn upgrade_reindex(
@@ -1124,7 +1159,16 @@ impl<'a> BackendWriteTransaction<'a> {
     }
 
     pub fn commit(self, audit: &mut AuditScope) -> Result<(), OperationError> {
-        self.idlayer.commit(audit)
+        let BackendWriteTransaction {
+            idlayer,
+            idxmeta: _,
+            idxmeta_wr,
+        } = self;
+
+        idlayer.commit(audit).and_then(|r| {
+            idxmeta_wr.commit();
+            Ok(r)
+        })
     }
 
     fn reset_db_s_uuid(&self) -> Result<Uuid, OperationError> {
@@ -1185,11 +1229,17 @@ impl<'a> BackendWriteTransaction<'a> {
 
 // In the future this will do the routing between the chosen backends etc.
 impl Backend {
-    pub fn new(audit: &mut AuditScope, path: &str, pool_size: u32) -> Result<Self, OperationError> {
+    pub fn new(
+        audit: &mut AuditScope,
+        path: &str,
+        pool_size: u32,
+        idxmeta: Set<IdxKey>,
+    ) -> Result<Self, OperationError> {
         // this has a ::memory() type, but will path == "" work?
         lperf_trace_segment!(audit, "be::new", || {
             let be = Backend {
                 idlayer: Arc::new(IdlArcSqlite::new(audit, path, pool_size)?),
+                idxmeta: Arc::new(CowCell::new(idxmeta)),
             };
 
             // Now complete our setup with a txn
@@ -1213,20 +1263,21 @@ impl Backend {
     pub fn read(&self) -> BackendReadTransaction {
         BackendReadTransaction {
             idlayer: self.idlayer.read(),
+            idxmeta: self.idxmeta.read(),
         }
     }
 
-    pub fn write(&self, idxmeta: &BTreeSet<(String, IndexType)>) -> BackendWriteTransaction {
+    pub fn write(&self) -> BackendWriteTransaction {
         BackendWriteTransaction {
             idlayer: self.idlayer.write(),
-            // TODO #257: Performance improvement here by NOT cloning the idxmeta.
-            idxmeta: (*idxmeta).clone(),
+            idxmeta: self.idxmeta.read(),
+            idxmeta_wr: self.idxmeta.write(),
         }
     }
 
     // Should this actually call the idlayer directly?
     pub fn reset_db_s_uuid(&self, audit: &mut AuditScope) -> Uuid {
-        let wr = self.write(&BTreeSet::new());
+        let wr = self.write();
         let sid = wr.reset_db_s_uuid().unwrap();
         wr.commit(audit).unwrap();
         sid
@@ -1234,7 +1285,7 @@ impl Backend {
 
     /*
     pub fn get_db_s_uuid(&self) -> Uuid {
-        let wr = self.write(BTreeSet::new());
+        let wr = self.write(Set::new());
         wr.reset_db_s_uuid().unwrap()
     }
     */
@@ -1245,13 +1296,14 @@ impl Backend {
 #[cfg(test)]
 mod tests {
     use idlset::IDLBitRange;
-    use std::collections::BTreeSet;
+    use std::collections::HashSet as Set;
     use std::fs;
     use std::iter::FromIterator;
     use uuid::Uuid;
 
     use super::super::audit::AuditScope;
     use super::super::entry::{Entry, EntryInit, EntryNew};
+    use super::IdxKey;
     use super::{Backend, BackendTransaction, BackendWriteTransaction, OperationError, IDL};
     use crate::value::{IndexType, PartialValue, Value};
 
@@ -1267,18 +1319,40 @@ mod tests {
 
             let mut audit = AuditScope::new("run_test", uuid::Uuid::new_v4(), None);
 
-            let be = Backend::new(&mut audit, "", 1).expect("Failed to setup backend");
-
             // This is a demo idxmeta, purely for testing.
-            let mut idxmeta = BTreeSet::new();
-            idxmeta.insert(("name".to_string(), IndexType::EQUALITY));
-            idxmeta.insert(("name".to_string(), IndexType::PRESENCE));
-            idxmeta.insert(("name".to_string(), IndexType::SUBSTRING));
-            idxmeta.insert(("uuid".to_string(), IndexType::EQUALITY));
-            idxmeta.insert(("uuid".to_string(), IndexType::PRESENCE));
-            idxmeta.insert(("ta".to_string(), IndexType::EQUALITY));
-            idxmeta.insert(("tb".to_string(), IndexType::EQUALITY));
-            let mut be_txn = be.write(&idxmeta);
+            let mut idxmeta = Set::new();
+            idxmeta.insert(IdxKey {
+                attr: "name".to_string(),
+                itype: IndexType::EQUALITY,
+            });
+            idxmeta.insert(IdxKey {
+                attr: "name".to_string(),
+                itype: IndexType::PRESENCE,
+            });
+            idxmeta.insert(IdxKey {
+                attr: "name".to_string(),
+                itype: IndexType::SUBSTRING,
+            });
+            idxmeta.insert(IdxKey {
+                attr: "uuid".to_string(),
+                itype: IndexType::EQUALITY,
+            });
+            idxmeta.insert(IdxKey {
+                attr: "uuid".to_string(),
+                itype: IndexType::PRESENCE,
+            });
+            idxmeta.insert(IdxKey {
+                attr: "ta".to_string(),
+                itype: IndexType::EQUALITY,
+            });
+            idxmeta.insert(IdxKey {
+                attr: "tb".to_string(),
+                itype: IndexType::EQUALITY,
+            });
+
+            let be = Backend::new(&mut audit, "", 1, idxmeta).expect("Failed to setup backend");
+
+            let mut be_txn = be.write();
 
             let r = $test_fn(&mut audit, &mut be_txn);
             // Commit, to guarantee it worked.

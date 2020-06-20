@@ -128,8 +128,8 @@ pub trait QueryServerTransaction {
             //
             // NOTE: Filters are validated in event conversion.
 
-            let schema = self.get_schema();
-            let idxmeta = schema.get_idxmeta_set();
+            let be_txn = self.get_be_txn();
+            let idxmeta = be_txn.get_idxmeta_ref();
             // Now resolve all references and indexes.
             let vfr = lperf_trace_segment!(au, "server::search<filter_resolve>", || {
                 se.filter.resolve(&se.event, Some(idxmeta))
@@ -163,8 +163,8 @@ pub trait QueryServerTransaction {
 
     fn exists(&mut self, au: &mut AuditScope, ee: &ExistsEvent) -> Result<bool, OperationError> {
         lperf_segment!(au, "server::exists", || {
-            let schema = self.get_schema();
-            let idxmeta = schema.get_idxmeta_set();
+            let be_txn = self.get_be_txn();
+            let idxmeta = be_txn.get_idxmeta_ref();
             let vfr = ee.filter.resolve(&ee.event, Some(idxmeta)).map_err(|e| {
                 ladmin_error!(au, "Failed to resolve filter {:?}", e);
                 e
@@ -704,7 +704,7 @@ pub struct QueryServer {
 impl QueryServer {
     pub fn new(be: Backend, schema: Schema) -> Self {
         let (s_uuid, d_uuid) = {
-            let mut wr = be.write(&BTreeSet::new());
+            let mut wr = be.write();
             (wr.get_db_s_uuid(), wr.get_db_d_uuid())
         };
 
@@ -731,8 +731,7 @@ impl QueryServer {
     pub fn write(&self, ts: Duration) -> QueryServerWriteTransaction {
         // Feed the current schema index metadata to the be write transaction.
         let schema_write = self.schema.write();
-        let idxmeta = schema_write.get_idxmeta_set();
-        let mut be_txn = self.be.write(idxmeta);
+        let mut be_txn = self.be.write();
 
         let ts_max = be_txn.get_db_ts_max(&ts).expect("Unable to get db_ts_max");
         let cid = Cid::new_lamport(self.s_uuid, self.d_uuid, ts, &ts_max);
@@ -1987,6 +1986,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
             // Translate the result.
             if valid_r.is_empty() {
+                // Now use this to reload the backend idxmeta
+                ltrace!(audit, "Reloading idxmeta ...");
+                self.be_txn.update_idxmeta(self.schema.reload_idxmeta());
                 Ok(())
             } else {
                 // Log the failures?

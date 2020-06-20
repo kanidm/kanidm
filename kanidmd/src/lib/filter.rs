@@ -9,6 +9,7 @@
 //! [`Entry`]: ../entry/struct.Entry.html
 
 use crate::audit::AuditScope;
+use crate::be::IdxKey;
 use crate::event::{Event, EventOrigin};
 use crate::ldap::ldap_attr_filter_map;
 use crate::schema::SchemaTransaction;
@@ -21,6 +22,7 @@ use kanidm_proto::v1::{OperationError, SchemaError};
 use ldap3_server::simple::LdapFilter;
 use std::cmp::{Ordering, PartialOrd};
 use std::collections::BTreeSet;
+use std::collections::HashSet;
 use std::iter;
 
 use uuid::Uuid;
@@ -259,7 +261,7 @@ impl Filter<FilterValid> {
     pub fn resolve(
         &self,
         ev: &Event,
-        idxmeta: Option<&BTreeSet<(String, IndexType)>>,
+        idxmeta: Option<&HashSet<IdxKey>>,
     ) -> Result<Filter<FilterValidResolved>, OperationError> {
         // Given a filter, resolve Not and SelfUUID to real terms.
         Ok(Filter {
@@ -267,8 +269,11 @@ impl Filter<FilterValid> {
                 inner: match idxmeta {
                     Some(idx) => {
                         // Convert it to a reference set.
-                        let idx_ref: BTreeSet<(&String, &IndexType)> =
-                            idx.iter().map(|(attr, itype)| (attr, itype)).collect();
+
+                        // TODO #259: Fix this to use borrows
+                        let idx_ref: HashSet<(&String, &IndexType)> =
+                            idx.iter().map(|ikey| (&ikey.attr, &ikey.itype)).collect();
+
                         FilterResolved::resolve_idx(self.state.inner.clone(), ev, &idx_ref)
                     }
                     None => FilterResolved::resolve_no_idx(self.state.inner.clone(), ev),
@@ -822,7 +827,7 @@ impl Ord for FilterResolved {
 
 impl FilterResolved {
     #[cfg(test)]
-    unsafe fn from_invalid(fc: FilterComp, idxmeta: &BTreeSet<(&String, &IndexType)>) -> Self {
+    unsafe fn from_invalid(fc: FilterComp, idxmeta: &HashSet<(&String, &IndexType)>) -> Self {
         match fc {
             FilterComp::Eq(a, v) => {
                 let idx = idxmeta.contains(&(&a, &IndexType::EQUALITY));
@@ -872,7 +877,7 @@ impl FilterResolved {
     fn resolve_idx(
         fc: FilterComp,
         ev: &Event,
-        idxmeta: &BTreeSet<(&String, &IndexType)>,
+        idxmeta: &HashSet<(&String, &IndexType)>,
     ) -> Option<Self> {
         match fc {
             FilterComp::Eq(a, v) => {
