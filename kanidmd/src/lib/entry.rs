@@ -46,9 +46,10 @@ use kanidm_proto::v1::{OperationError, SchemaError};
 use crate::be::dbentry::{DbEntry, DbEntryV1, DbEntryVers};
 
 use ldap3_server::simple::{LdapPartialAttribute, LdapSearchResultEntry};
-use std::collections::btree_map::Iter as BTreeIter;
-use std::collections::btree_set::Iter as BTreeSetIter;
-use std::collections::BTreeMap;
+// use std::collections::btree_map::Iter as BTreeIter;
+use std::collections::hash_map::Iter as MapIter;
+use std::collections::btree_set::Iter as SetIter;
+// use std::collections::HashMap;
 use std::collections::BTreeSet;
 use std::collections::HashMap;
 use std::iter::ExactSizeIterator;
@@ -92,7 +93,7 @@ lazy_static! {
 
 pub struct EntryClasses<'a> {
     size: usize,
-    inner: Option<BTreeSetIter<'a, Value>>,
+    inner: Option<SetIter<'a, Value>>,
     // _p: &'a PhantomData<()>,
 }
 
@@ -123,7 +124,7 @@ impl<'a> ExactSizeIterator for EntryClasses<'a> {
 }
 
 pub struct EntryAvas<'a> {
-    inner: BTreeIter<'a, String, BTreeSet<Value>>,
+    inner: MapIter<'a, String, BTreeSet<Value>>,
 }
 
 impl<'a> Iterator for EntryAvas<'a> {
@@ -222,13 +223,21 @@ pub struct EntryReduced {
 }
 
 fn compare_attrs(
-    left: &BTreeMap<String, BTreeSet<Value>>,
-    right: &BTreeMap<String, BTreeSet<Value>>,
+    left: &HashMap<String, BTreeSet<Value>>,
+    right: &HashMap<String, BTreeSet<Value>>,
 ) -> bool {
+    /*
+    // We can't shortcut lens because cid mod may not be present.
+    if left.len() != right.len() {
+        return false
+    }
+    */
+
     left.iter()
+        // Always exclude last modified cid.
         .filter(|(k, _v)| k != &"last_modified_cid")
-        .zip(right.iter().filter(|(k, _v)| k != &"last_modified_cid"))
-        .all(|((ka, va), (kb, vb))| ka == kb && va == vb)
+        .all(|(kl, vl)| right.get(kl).map_or(false, |vr| vl == vr))
+
 }
 
 /// Entry is the core data storage type of the server. Almost every aspect of the server is
@@ -262,7 +271,7 @@ pub struct Entry<VALID, STATE> {
     valid: VALID,
     state: STATE,
     // We may need to change this to BTreeSet to allow borrow of Value -> PartialValue for lookups.
-    attrs: BTreeMap<String, BTreeSet<Value>>,
+    attrs: HashMap<String, BTreeSet<Value>>,
 }
 
 impl<VALID, STATE> std::fmt::Debug for Entry<VALID, STATE>
@@ -310,7 +319,7 @@ impl Entry<EntryInit, EntryNew> {
             // This means NEVER COMMITED
             valid: EntryInit,
             state: EntryNew,
-            attrs: BTreeMap::new(),
+            attrs: HashMap::new(),
         }
     }
 
@@ -330,7 +339,7 @@ impl Entry<EntryInit, EntryNew> {
 
         // Somehow we need to take the tree of e attrs, and convert
         // all ref types to our types ...
-        let map2: Result<BTreeMap<String, BTreeSet<Value>>, OperationError> = e
+        let map2: Result<HashMap<String, BTreeSet<Value>>, OperationError> = e
             .attrs
             .iter()
             .map(|(k, v)| {
@@ -383,7 +392,7 @@ impl Entry<EntryInit, EntryNew> {
         // str -> proto entry
         let pe: ProtoEntry = serde_json::from_str(es).expect("Invalid Proto Entry");
         // use a const map to convert str -> ava
-        let x: BTreeMap<String, BTreeSet<Value>> = pe.attrs.into_iter()
+        let x: HashMap<String, BTreeSet<Value>> = pe.attrs.into_iter()
             .map(|(k, vs)| {
                 let attr = k.to_lowercase();
                 let vv: BTreeSet<Value> = match attr.as_str() {
@@ -1318,7 +1327,7 @@ impl Entry<EntrySealed, EntryCommitted> {
 
     pub fn from_dbentry(au: &mut AuditScope, db_e: DbEntry, id: u64) -> Result<Self, ()> {
         // Convert attrs from db format to value
-        let r_attrs: Result<BTreeMap<String, BTreeSet<Value>>, ()> = match db_e.ent {
+        let r_attrs: Result<HashMap<String, BTreeSet<Value>>, ()> = match db_e.ent {
             DbEntryVers::V1(v1) => v1
                 .attrs
                 .into_iter()
@@ -1376,7 +1385,7 @@ impl Entry<EntrySealed, EntryCommitted> {
             attrs: s_attrs,
         } = self;
 
-        let f_attrs: BTreeMap<_, _> = s_attrs
+        let f_attrs: HashMap<_, _> = s_attrs
             .into_iter()
             .filter_map(|(k, v)| {
                 if allowed_attrs.contains(k.as_str()) {
@@ -1399,7 +1408,7 @@ impl Entry<EntrySealed, EntryCommitted> {
         let class_ava = btreeset![Value::new_class("object"), Value::new_class("tombstone")];
         let last_mod_ava = btreeset![Value::new_cid(cid.clone())];
 
-        let mut attrs_new: BTreeMap<String, BTreeSet<Value>> = BTreeMap::new();
+        let mut attrs_new: HashMap<String, BTreeSet<Value>> = HashMap::new();
 
         attrs_new.insert(
             "uuid".to_string(),
@@ -1778,7 +1787,9 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         // We also normalise filters, to ensure that their values are
         // syntax valid and will correctly match here with our indexes.
         match self.attrs.get(attr) {
-            Some(v_list) => v_list.contains(value),
+            Some(v_list) => {
+                v_list.contains(value)
+            }
             None => false,
         }
     }
@@ -2046,8 +2057,8 @@ impl From<&SchemaAttribute> for Entry<EntryInit, EntryNew> {
 
         let syntax_v = btreeset![Value::from(s.syntax.clone())];
 
-        // Build the BTreeMap of the attributes relevant
-        let mut attrs: BTreeMap<String, BTreeSet<Value>> = BTreeMap::new();
+        // Build the HashMap of the attributes relevant
+        let mut attrs: HashMap<String, BTreeSet<Value>> = HashMap::new();
         attrs.insert("attributename".to_string(), name_v);
         attrs.insert("description".to_string(), desc_v);
         attrs.insert("uuid".to_string(), uuid_v);
@@ -2081,7 +2092,7 @@ impl From<&SchemaClass> for Entry<EntryInit, EntryNew> {
         let name_v = btreeset![Value::new_iutf8(s.name.clone())];
         let desc_v = btreeset![Value::new_utf8(s.description.clone())];
 
-        let mut attrs: BTreeMap<String, BTreeSet<Value>> = BTreeMap::new();
+        let mut attrs: HashMap<String, BTreeSet<Value>> = HashMap::new();
         attrs.insert("classname".to_string(), name_v);
         attrs.insert("description".to_string(), desc_v);
         attrs.insert("uuid".to_string(), uuid_v);

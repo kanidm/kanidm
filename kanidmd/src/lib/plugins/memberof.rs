@@ -24,7 +24,7 @@ use std::collections::BTreeSet;
 use uuid::Uuid;
 
 lazy_static! {
-    static ref CLASS_GROUP: PartialValue = PartialValue::new_iutf8s("group");
+    static ref CLASS_GROUP: PartialValue = PartialValue::new_class("group");
 }
 
 pub struct MemberOf;
@@ -40,10 +40,9 @@ where
     let changed_groups: Vec<_> = changed
         .into_iter()
         .filter(|e| e.attribute_value_pres("class", &CLASS_GROUP))
-        .inspect(|e| {
-            ltrace!(au, "group reporting change: {:?}", e);
-        })
         .collect();
+
+    ltrace!(au, "groups reporting change: {:?}", changed_groups);
 
     // Now, build a map of all UUID's that will require updates as a result of this change
     let mut affected_uuids: Vec<&Uuid> = changed_groups
@@ -56,6 +55,8 @@ where
         .flatten()
         .filter_map(|uv| uv.to_ref_uuid())
         .collect();
+
+    ltrace!(au, "uuids reporting change: {:?}", affected_uuids);
 
     // IDEA: promote groups to head of the affected_uuids set!
     //
@@ -346,8 +347,8 @@ impl Plugin for MemberOf {
             if dmos.len() != direct_memberof.len() {
                 ladmin_error!(
                     au,
-                    "directmemberof set and DMO search set differ in size: {:?}",
-                    e.get_uuid()
+                    "MemberOfInvalid directmemberof set and DMO search set differ in size: {}",
+                    e
                 );
                 r.push(Err(ConsistencyError::MemberOfInvalid(e.get_id())));
                 debug_assert!(false);
@@ -359,8 +360,8 @@ impl Plugin for MemberOf {
                 if !d_groups_set.contains(mo_uuid) {
                     ladmin_error!(
                         au,
-                        "Entry {:?}, MO {:?} not in direct groups",
-                        e.get_uuid(),
+                        "MemberOfInvalid: Entry {}, MO {:?} not in direct groups",
+                        e,
                         mo_uuid
                     );
                     r.push(Err(ConsistencyError::MemberOfInvalid(e.get_id())));
