@@ -8,6 +8,10 @@ use kanidm::config::{Configuration, IntegrationTestConfig};
 use kanidm::core::create_server_core;
 
 use kanidm_unix_common::cache::CacheLayer;
+use kanidm_unix_common::constants::{
+    DEFAULT_GID_ATTR_MAP, DEFAULT_HOME_ATTR, DEFAULT_HOME_PREFIX, DEFAULT_SHELL,
+    DEFAULT_UID_ATTR_MAP,
+};
 use tokio::runtime::Runtime;
 
 use kanidm_client::asynchronous::KanidmAsyncClient;
@@ -77,6 +81,11 @@ fn run_test(fix_fn: fn(&KanidmClient) -> (), test_fn: fn(CacheLayer, KanidmAsync
         300,
         rsclient,
         vec!["allowed_group".to_string()],
+        DEFAULT_SHELL.to_string(),
+        DEFAULT_HOME_PREFIX.to_string(),
+        DEFAULT_HOME_ATTR,
+        DEFAULT_UID_ATTR_MAP,
+        DEFAULT_GID_ATTR_MAP,
     )
     .expect("Failed to build cache layer.");
 

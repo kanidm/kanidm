@@ -40,6 +40,10 @@ impl fmt::Display for Configuration {
             .and_then(|_| write!(f, "max request size: {}b, ", self.maximum_request))
             .and_then(|_| write!(f, "secure cookies: {}, ", self.secure_cookies))
             .and_then(|_| write!(f, "with TLS: {}, ", self.tls_config.is_some()))
+            .and_then(|_| match self.log_level {
+                Some(u) => write!(f, "with log_level: {:x}, ", u),
+                None => write!(f, "with log_level: default, "),
+            })
             .and_then(|_| {
                 write!(
                     f,

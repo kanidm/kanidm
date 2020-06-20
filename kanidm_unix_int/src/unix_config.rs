@@ -1,5 +1,6 @@
 use crate::constants::{
-    DEFAULT_CACHE_TIMEOUT, DEFAULT_CONN_TIMEOUT, DEFAULT_DB_PATH, DEFAULT_SOCK_PATH,
+    DEFAULT_CACHE_TIMEOUT, DEFAULT_CONN_TIMEOUT, DEFAULT_DB_PATH, DEFAULT_GID_ATTR_MAP,
+    DEFAULT_HOME_ATTR, DEFAULT_HOME_PREFIX, DEFAULT_SHELL, DEFAULT_SOCK_PATH, DEFAULT_UID_ATTR_MAP,
 };
 use serde_derive::Deserialize;
 use std::fs::File;
@@ -13,6 +14,24 @@ struct ConfigInt {
     conn_timeout: Option<u64>,
     cache_timeout: Option<u64>,
     pam_allowed_login_groups: Option<Vec<String>>,
+    default_shell: Option<String>,
+    home_prefix: Option<String>,
+    home_attr: Option<String>,
+    uid_attr_map: Option<String>,
+    gid_attr_map: Option<String>,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum HomeAttr {
+    Uuid,
+    Spn,
+    Name,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum UidAttr {
+    Name,
+    Spn,
 }
 
 #[derive(Debug)]
@@ -22,6 +41,11 @@ pub struct KanidmUnixdConfig {
     pub conn_timeout: u64,
     pub cache_timeout: u64,
     pub pam_allowed_login_groups: Vec<String>,
+    pub default_shell: String,
+    pub home_prefix: String,
+    pub home_attr: HomeAttr,
+    pub uid_attr_map: UidAttr,
+    pub gid_attr_map: UidAttr,
 }
 
 impl Default for KanidmUnixdConfig {
@@ -38,6 +62,11 @@ impl KanidmUnixdConfig {
             conn_timeout: DEFAULT_CONN_TIMEOUT,
             cache_timeout: DEFAULT_CACHE_TIMEOUT,
             pam_allowed_login_groups: Vec::new(),
+            default_shell: DEFAULT_SHELL.to_string(),
+            home_prefix: DEFAULT_HOME_PREFIX.to_string(),
+            home_attr: DEFAULT_HOME_ATTR,
+            uid_attr_map: DEFAULT_UID_ATTR_MAP,
+            gid_attr_map: DEFAULT_GID_ATTR_MAP,
         }
     }
 
@@ -69,6 +98,42 @@ impl KanidmUnixdConfig {
             pam_allowed_login_groups: config
                 .pam_allowed_login_groups
                 .unwrap_or(self.pam_allowed_login_groups),
+            default_shell: config.default_shell.unwrap_or(self.default_shell),
+            home_prefix: config.home_prefix.unwrap_or(self.home_prefix),
+            home_attr: config
+                .home_attr
+                .and_then(|v| match v.as_str() {
+                    "uuid" => Some(HomeAttr::Uuid),
+                    "spn" => Some(HomeAttr::Spn),
+                    "name" => Some(HomeAttr::Name),
+                    _ => {
+                        warn!("Invalid home_attr configured, using default ...");
+                        None
+                    }
+                })
+                .unwrap_or(self.home_attr),
+            uid_attr_map: config
+                .uid_attr_map
+                .and_then(|v| match v.as_str() {
+                    "spn" => Some(UidAttr::Spn),
+                    "name" => Some(UidAttr::Name),
+                    _ => {
+                        warn!("Invalid uid_attr_map configured, using default ...");
+                        None
+                    }
+                })
+                .unwrap_or(self.uid_attr_map),
+            gid_attr_map: config
+                .gid_attr_map
+                .and_then(|v| match v.as_str() {
+                    "spn" => Some(UidAttr::Spn),
+                    "name" => Some(UidAttr::Name),
+                    _ => {
+                        warn!("Invalid gid_attr_map configured, using default ...");
+                        None
+                    }
+                })
+                .unwrap_or(self.gid_attr_map),
         })
     }
 }

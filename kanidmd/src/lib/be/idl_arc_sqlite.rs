@@ -17,7 +17,7 @@ use uuid::Uuid;
 
 // use std::borrow::Borrow;
 
-const DEFAULT_CACHE_TARGET: usize = 10240;
+const DEFAULT_CACHE_TARGET: usize = 16384;
 const DEFAULT_IDL_CACHE_RATIO: usize = 32;
 const DEFAULT_NAME_CACHE_RATIO: usize = 8;
 const DEFAULT_CACHE_RMISS: usize = 8;
