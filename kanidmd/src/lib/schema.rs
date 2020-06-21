@@ -25,7 +25,6 @@ use kanidm_proto::v1::{ConsistencyError, OperationError, SchemaError};
 
 use std::borrow::Borrow;
 use std::collections::BTreeSet;
-// use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use uuid::Uuid;
@@ -55,8 +54,6 @@ lazy_static! {
 /// [`Attributes`]: struct.SchemaAttribute.html
 /// [`Classes`]: struct.SchemaClass.html
 pub struct Schema {
-    // classes: BptreeMap<String, SchemaClass>,
-    // attributes: BptreeMap<String, SchemaAttribute>,
     classes: CowCell<HashMap<String, SchemaClass>>,
     attributes: CowCell<HashMap<String, SchemaAttribute>>,
     unique_cache: CowCell<Vec<String>>,
@@ -67,8 +64,6 @@ pub struct Schema {
 /// the writability is for the server internally to allow reloading of the schema. Changes
 /// you make will be lost when the server re-reads the schema from disk.
 pub struct SchemaWriteTransaction<'a> {
-    // classes: BptreeMapWriteTxn<'a, String, SchemaClass>,
-    // attributes: BptreeMapWriteTxn<'a, String, SchemaAttribute>,
     classes: CowCellWriteTxn<'a, HashMap<String, SchemaClass>>,
     attributes: CowCellWriteTxn<'a, HashMap<String, SchemaAttribute>>,
 
@@ -78,8 +73,6 @@ pub struct SchemaWriteTransaction<'a> {
 
 /// A readonly transaction of the working schema set.
 pub struct SchemaReadTransaction {
-    // classes: BptreeMapReadTxn<String, SchemaClass>,
-    // attributes: BptreeMapReadTxn<String, SchemaAttribute>,
     classes: CowCellReadTxn<HashMap<String, SchemaClass>>,
     attributes: CowCellReadTxn<HashMap<String, SchemaAttribute>>,
 
@@ -481,9 +474,6 @@ impl SchemaClass {
 }
 
 pub trait SchemaTransaction {
-    // fn get_classes(&self) -> BptreeMapReadSnapshot<String, SchemaClass>;
-    // fn get_attributes(&self) -> BptreeMapReadSnapshot<String, SchemaAttribute>;
-
     fn get_classes(&self) -> &HashMap<String, SchemaClass>;
     fn get_attributes(&self) -> &HashMap<String, SchemaAttribute>;
 
@@ -1435,16 +1425,6 @@ impl<'a> SchemaTransaction for SchemaWriteTransaction<'a> {
     fn get_attributes(&self) -> &HashMap<String, SchemaAttribute> {
         &(*self.attributes)
     }
-
-    /*
-    fn get_classes(&self) -> BptreeMapReadSnapshot<String, SchemaClass> {
-        self.classes.to_snapshot()
-    }
-
-    fn get_attributes(&self) -> BptreeMapReadSnapshot<String, SchemaAttribute> {
-        self.attributes.to_snapshot()
-    }
-    */
 }
 
 impl SchemaTransaction for SchemaReadTransaction {
@@ -1463,23 +1443,11 @@ impl SchemaTransaction for SchemaReadTransaction {
     fn get_attributes(&self) -> &HashMap<String, SchemaAttribute> {
         &(*self.attributes)
     }
-
-    /*
-    fn get_classes(&self) -> BptreeMapReadSnapshot<String, SchemaClass> {
-        self.classes.to_snapshot()
-    }
-
-    fn get_attributes(&self) -> BptreeMapReadSnapshot<String, SchemaAttribute> {
-        self.attributes.to_snapshot()
-    }
-    */
 }
 
 impl Schema {
     pub fn new(audit: &mut AuditScope) -> Result<Self, OperationError> {
         let s = Schema {
-            // classes: BptreeMap::new(),
-            // attributes: BptreeMap::new(),
             classes: CowCell::new(HashMap::new()),
             attributes: CowCell::new(HashMap::new()),
             unique_cache: CowCell::new(Vec::new()),

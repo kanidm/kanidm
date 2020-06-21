@@ -26,7 +26,6 @@
 //! [`filter`]: ../filter/index.html
 //! [`schema`]: ../schema/index.html
 
-// use serde_json::{Error, Value};
 use crate::audit::AuditScope;
 use crate::credential::Credential;
 use crate::filter::{Filter, FilterInvalid, FilterResolved, FilterValidResolved};
@@ -48,9 +47,9 @@ use crate::be::IdxKey;
 
 use ldap3_server::simple::{LdapPartialAttribute, LdapSearchResultEntry};
 use std::collections::BTreeSet as Set;
-// For now, BTreeMap here is slighttly faster.
-// use std::collections::HashMap as Map;
-use std::collections::BTreeMap as Map;
+// BTreeMap could be faster, but it's small datasets?
+use std::collections::HashMap as Map;
+// use std::collections::BTreeMap as Map;
 use std::collections::HashSet;
 use uuid::Uuid;
 
@@ -153,14 +152,6 @@ pub struct EntryReduced {
 
 fn compare_attrs(left: &Map<String, Set<Value>>, right: &Map<String, Set<Value>>) -> bool {
     // We can't shortcut based on len because cid mod may not be present.
-    /*
-    // If BTreeMap ...
-    left.iter()
-        // Always exclude last modified cid.
-        .filter(|(k, _v)| k != &"last_modified_cid")
-        // .zip(right.iter().filter(|(k, _v)| k != &"last_modified_cid"))
-        // .all(|((ka, va), (kb, vb))| ka == kb && va == vb)
-    */
     // Build the set of all keys between both.
     let allkeys: Set<&str> = left
         .keys()

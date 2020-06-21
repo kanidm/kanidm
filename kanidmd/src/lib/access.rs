@@ -19,10 +19,10 @@
 use concread::cowcell::*;
 use kanidm_proto::v1::Filter as ProtoFilter;
 use kanidm_proto::v1::OperationError;
-use std::collections::BTreeSet;
 use std::collections::BTreeMap;
-use uuid::Uuid;
+use std::collections::BTreeSet;
 use std::ops::DerefMut;
+use uuid::Uuid;
 
 use crate::audit::AuditScope;
 use crate::entry::{Entry, EntryCommitted, EntryInit, EntryNew, EntryReduced, EntrySealed};

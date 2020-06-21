@@ -9,7 +9,7 @@
 // when that is written, as they *both* manipulate and alter entry reference
 // data, so we should be careful not to step on each other.
 
-use std::collections::BTreeSet;
+use std::collections::HashSet as Set;
 
 use crate::audit::AuditScope;
 use crate::entry::{Entry, EntryCommitted, EntrySealed};
@@ -143,17 +143,19 @@ impl Plugin for ReferentialIntegrity {
         let schema = qs.get_schema();
         let ref_types = schema.get_reference_types();
         // Get the UUID of all entries we are deleting
-        let uuids: Vec<&Uuid> = cand.iter().map(|e| e.get_uuid()).collect();
+        // let uuids: Vec<&Uuid> = cand.iter().map(|e| e.get_uuid()).collect();
 
         // Generate a filter which is the set of all schema reference types
         // as EQ to all uuid of all entries in delete. - this INCLUDES recycled
         // types too!
         let filt = filter_all!(FC::Or(
-            uuids
-                .iter()
+            // uuids
+            // .iter()
+            cand.iter()
+                .map(|e| e.get_uuid())
                 .map(|u| ref_types.values().map(move |r_type| {
                     // For everything that references the uuid's in the deleted set.
-                    f_eq(r_type.name.as_str(), PartialValue::new_refer(**u))
+                    f_eq(r_type.name.as_str(), PartialValue::new_refer(*u))
                 }))
                 .flatten()
                 .collect(),
@@ -164,11 +166,13 @@ impl Plugin for ReferentialIntegrity {
         // Create a modlist:
         //    In each, create a "removed" for each attr:uuid pair
         let modlist: ModifyList<ModifyInvalid> = ModifyList::new_list(
-            uuids
-                .iter()
+            // uuids
+            // .iter()
+            cand.iter()
+                .map(|e| e.get_uuid())
                 .map(|u| {
                     ref_types.values().map(move |r_type| {
-                        Modify::Removed(r_type.name.clone(), PartialValue::new_refer(**u))
+                        Modify::Removed(r_type.name.clone(), PartialValue::new_refer(*u))
                     })
                 })
                 .flatten()
@@ -198,7 +202,7 @@ impl Plugin for ReferentialIntegrity {
             Err(e) => return vec![e],
         };
 
-        let acu_map: BTreeSet<&Uuid> = all_cand.iter().map(|e| e.get_uuid()).collect();
+        let acu_map: Set<&Uuid> = all_cand.iter().map(|e| e.get_uuid()).collect();
 
         let schema = qs.get_schema();
         let ref_types = schema.get_reference_types();

@@ -37,16 +37,17 @@ where
     STATE: std::fmt::Debug,
 {
     // From the list of groups which were changed in this operation:
-    let changed_groups: Vec<_> = changed
+    // let changed_groups: Vec<_> = changed
+    let mut affected_uuids: Vec<&Uuid> = changed
         .into_iter()
         .filter(|e| e.attribute_value_pres("class", &CLASS_GROUP))
-        .collect();
-
-    ltrace!(au, "groups reporting change: {:?}", changed_groups);
-
-    // Now, build a map of all UUID's that will require updates as a result of this change
-    let mut affected_uuids: Vec<&Uuid> = changed_groups
-        .iter()
+        /*
+            .collect();
+        ltrace!(au, "groups reporting change: {:?}", changed_groups);
+        // Now, build a map of all UUID's that will require updates as a result of this change
+        let mut affected_uuids: Vec<&Uuid> = changed_groups
+            .iter()
+            */
         .filter_map(|e| {
             // Only groups with member get collected up here.
             e.get_ava("member")
@@ -369,7 +370,6 @@ impl Plugin for MemberOf {
                     continue;
                 }
             }
-
             // Could check all dmos in mos?
 
             /* To check nested! */
