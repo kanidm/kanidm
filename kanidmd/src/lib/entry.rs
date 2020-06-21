@@ -47,9 +47,10 @@ use crate::be::IdxKey;
 
 use ldap3_server::simple::{LdapPartialAttribute, LdapSearchResultEntry};
 use std::collections::BTreeSet as Set;
+use std::collections::BTreeSet;
 // BTreeMap could be faster, but it's small datasets?
-use std::collections::HashMap as Map;
-// use std::collections::BTreeMap as Map;
+// use std::collections::HashMap as Map;
+use std::collections::BTreeMap as Map;
 use std::collections::HashSet;
 use uuid::Uuid;
 
@@ -1299,7 +1300,7 @@ impl Entry<EntrySealed, EntryCommitted> {
 
     pub fn reduce_attributes(
         self,
-        allowed_attrs: Set<&str>,
+        allowed_attrs: BTreeSet<&str>,
     ) -> Entry<EntryReduced, EntryCommitted> {
         // Remove all attrs from our tree that are NOT in the allowed set.
 
