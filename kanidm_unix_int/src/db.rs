@@ -76,7 +76,7 @@ impl<'a> DbTxn<'a> {
     pub fn migrate(&self) -> Result<(), ()> {
         self.conn.set_prepared_statement_cache_capacity(16);
         self.conn
-            .prepare_cached("PRAGMA journal_mode=WAL;")
+            .prepare("PRAGMA journal_mode=WAL;")
             .and_then(|mut wal_stmt| wal_stmt.query(NO_PARAMS).map(|_| ()))
             .map_err(|e| {
                 error!("sqlite account_t create error -> {:?}", e);
@@ -185,7 +185,7 @@ impl<'a> DbTxn<'a> {
 
     fn get_account_data_name(&self, account_id: &str) -> Result<Vec<(Vec<u8>, i64)>, ()> {
         let mut stmt = self.conn
-            .prepare_cached(
+            .prepare(
         "SELECT token, expiry FROM account_t WHERE uuid = :account_id OR name = :account_id OR spn = :account_id"
             )
             .map_err(|e| {
@@ -211,7 +211,7 @@ impl<'a> DbTxn<'a> {
     fn get_account_data_gid(&self, gid: u32) -> Result<Vec<(Vec<u8>, i64)>, ()> {
         let mut stmt = self
             .conn
-            .prepare_cached("SELECT token, expiry FROM account_t WHERE gidnumber = :gid")
+            .prepare("SELECT token, expiry FROM account_t WHERE gidnumber = :gid")
             .map_err(|e| {
                 error!("sqlite select prepare failure -> {:?}", e);
             })?;
@@ -263,7 +263,7 @@ impl<'a> DbTxn<'a> {
     pub fn get_accounts(&self) -> Result<Vec<UnixUserToken>, ()> {
         let mut stmt = self
             .conn
-            .prepare_cached("SELECT token FROM account_t")
+            .prepare("SELECT token FROM account_t")
             .map_err(|e| {
                 error!("sqlite select prepare failure -> {:?}", e);
             })?;
@@ -337,7 +337,7 @@ impl<'a> DbTxn<'a> {
 
         if updated == 0 {
             let mut stmt = self.conn
-                .prepare_cached("INSERT INTO account_t (uuid, name, spn, gidnumber, token, expiry) VALUES (:uuid, :name, :spn, :gidnumber, :token, :expiry) ON CONFLICT(uuid) DO UPDATE SET name=excluded.name, spn=excluded.name, gidnumber=excluded.gidnumber, token=excluded.token, expiry=excluded.expiry")
+                .prepare("INSERT INTO account_t (uuid, name, spn, gidnumber, token, expiry) VALUES (:uuid, :name, :spn, :gidnumber, :token, :expiry) ON CONFLICT(uuid) DO UPDATE SET name=excluded.name, spn=excluded.name, gidnumber=excluded.gidnumber, token=excluded.token, expiry=excluded.expiry")
                 .map_err(|e| {
                     error!("sqlite prepare error -> {:?}", e);
                 })?;
@@ -363,7 +363,7 @@ impl<'a> DbTxn<'a> {
         // First remove everything that already exists:
         let mut stmt = self
             .conn
-            .prepare_cached("DELETE FROM memberof_t WHERE a_uuid = :a_uuid")
+            .prepare("DELETE FROM memberof_t WHERE a_uuid = :a_uuid")
             .map_err(|e| {
                 error!("sqlite prepare error -> {:?}", e);
             })?;
@@ -377,7 +377,7 @@ impl<'a> DbTxn<'a> {
 
         let mut stmt = self
             .conn
-            .prepare_cached("INSERT INTO memberof_t (a_uuid, g_uuid) VALUES (:a_uuid, :g_uuid)")
+            .prepare("INSERT INTO memberof_t (a_uuid, g_uuid) VALUES (:a_uuid, :g_uuid)")
             .map_err(|e| {
                 error!("sqlite prepare error -> {:?}", e);
             })?;
@@ -423,9 +423,7 @@ impl<'a> DbTxn<'a> {
     pub fn check_account_password(&self, a_uuid: &str, cred: &str) -> Result<bool, ()> {
         let mut stmt = self
             .conn
-            .prepare_cached(
-                "SELECT password FROM account_t WHERE uuid = :a_uuid AND password IS NOT NULL",
-            )
+            .prepare("SELECT password FROM account_t WHERE uuid = :a_uuid AND password IS NOT NULL")
             .map_err(|e| {
                 error!("sqlite select prepare failure -> {:?}", e);
             })?;
@@ -472,7 +470,7 @@ impl<'a> DbTxn<'a> {
 
     fn get_group_data_name(&self, grp_id: &str) -> Result<Vec<(Vec<u8>, i64)>, ()> {
         let mut stmt = self.conn
-            .prepare_cached(
+            .prepare(
         "SELECT token, expiry FROM group_t WHERE uuid = :grp_id OR name = :grp_id OR spn = :grp_id"
             )
             .map_err(|e| {
@@ -498,7 +496,7 @@ impl<'a> DbTxn<'a> {
     fn get_group_data_gid(&self, gid: u32) -> Result<Vec<(Vec<u8>, i64)>, ()> {
         let mut stmt = self
             .conn
-            .prepare_cached("SELECT token, expiry FROM group_t WHERE gidnumber = :gid")
+            .prepare("SELECT token, expiry FROM group_t WHERE gidnumber = :gid")
             .map_err(|e| {
                 error!("sqlite select prepare failure -> {:?}", e);
             })?;
@@ -550,7 +548,7 @@ impl<'a> DbTxn<'a> {
     pub fn get_group_members(&self, g_uuid: &str) -> Result<Vec<UnixUserToken>, ()> {
         let mut stmt = self
             .conn
-            .prepare_cached("SELECT account_t.token FROM (account_t, memberof_t) WHERE account_t.uuid = memberof_t.a_uuid AND memberof_t.g_uuid = :g_uuid")
+            .prepare("SELECT account_t.token FROM (account_t, memberof_t) WHERE account_t.uuid = memberof_t.a_uuid AND memberof_t.g_uuid = :g_uuid")
             .map_err(|e| {
                 error!("sqlite select prepare failure -> {:?}", e);
             })?;
@@ -584,7 +582,7 @@ impl<'a> DbTxn<'a> {
     pub fn get_groups(&self) -> Result<Vec<UnixGroupToken>, ()> {
         let mut stmt = self
             .conn
-            .prepare_cached("SELECT token FROM group_t")
+            .prepare("SELECT token FROM group_t")
             .map_err(|e| {
                 error!("sqlite select prepare failure -> {:?}", e);
             })?;
@@ -624,7 +622,7 @@ impl<'a> DbTxn<'a> {
         })?;
 
         let mut stmt = self.conn
-            .prepare_cached("INSERT OR REPLACE INTO group_t (uuid, name, spn, gidnumber, token, expiry) VALUES (:uuid, :name, :spn, :gidnumber, :token, :expiry)")
+            .prepare("INSERT OR REPLACE INTO group_t (uuid, name, spn, gidnumber, token, expiry) VALUES (:uuid, :name, :spn, :gidnumber, :token, :expiry)")
             .map_err(|e| {
                 error!("sqlite prepare error -> {:?}", e);
             })?;

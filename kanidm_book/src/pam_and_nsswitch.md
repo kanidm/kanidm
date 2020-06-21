@@ -25,10 +25,36 @@ This daemon uses connection configuration from /etc/kanidm/config. This is the c
 client_tools. You can also configure some details of the unixd daemon in /etc/kanidm/unixd.
 
     pam_allowed_login_groups = ["posix_group"]
+    default_shell = "/bin/bash"
+    home_prefix = "/home/"
+    home_attr = "uuid"
+    uid_attr_map = "spn"
+    gid_attr_map = "spn"
 
 The `pam_allowed_login_groups` defines a set of posix groups where membership of any of these
 groups will be allowed to login via pam. All posix users and groups can be resolved by nss
-regardless of pam login status.
+regardless of pam login status. This may be a group name, spn or uuid.
+
+`default_shell` is the default shell for users with none defined. Defaults to /bin/bash.
+
+`home_prefix` is the prepended path to where home directories are stored. Must end with
+a trailing `/`. Defaults to `/home/`.
+
+`home_attr` is the default token attribute used for the home directory path. Valid
+choices are `uuid`, `name`, `spn`. Defaults to `uuid`.
+
+> **NOTICE:**
+> All users in kanidm can change their name (and their spn) at any time. If you change
+> `home_attr` from `uuid` you *must* have a plan on how to manage these directory renames
+> in your system. We recommend that you have a stable id (like the uuid) and symlinks
+> from the name to the uuid folder. The project plans to add automatic support for this
+> with https://github.com/kanidm/kanidm/issues/180
+
+`uid_attr_map` chooses which attribute is used for domain local users in presentation. Defaults
+to `spn`. Users from a trust will always use spn.
+
+`gid_attr_map` chooses which attribute is used for domain local groups in presentation. Defaults
+to `spn`. Groups from a trust will always use spn.
 
 You can then check the communication status of the daemon as any user account.
 

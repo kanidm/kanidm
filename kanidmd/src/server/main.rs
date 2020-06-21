@@ -159,7 +159,10 @@ async fn main() {
     config.update_ldapbind(&sconfig.ldapbindaddress);
 
     // Apply any cli overrides, normally debug level.
-    config.update_log_level(opt.commonopt().debug.as_ref().map(|v| v.clone() as u32));
+    if let Some(dll) = opt.commonopt().debug.as_ref() {
+        config.update_log_level(Some(dll.clone() as u32));
+    }
+
     ::std::env::set_var("RUST_LOG", "actix_web=info,kanidm=info");
 
     env_logger::builder()

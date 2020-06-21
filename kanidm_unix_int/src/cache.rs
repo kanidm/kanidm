@@ -1,4 +1,5 @@
 use crate::db::Db;
+use crate::unix_config::{HomeAttr, UidAttr};
 use crate::unix_proto::{NssGroup, NssUser};
 use kanidm_client::asynchronous::KanidmAsyncClient;
 use kanidm_client::ClientError;
@@ -29,6 +30,11 @@ pub struct CacheLayer {
     state: Mutex<CacheState>,
     pam_allow_groups: BTreeSet<String>,
     timeout_seconds: u64,
+    default_shell: String,
+    home_prefix: String,
+    home_attr: HomeAttr,
+    uid_attr_map: UidAttr,
+    gid_attr_map: UidAttr,
 }
 
 impl ToString for Id {
@@ -41,6 +47,8 @@ impl ToString for Id {
 }
 
 impl CacheLayer {
+    // TODO: Could consider refactoring this to be better ...
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         // need db path
         path: &str,
@@ -49,6 +57,11 @@ impl CacheLayer {
         //
         client: KanidmAsyncClient,
         pam_allow_groups: Vec<String>,
+        default_shell: String,
+        home_prefix: String,
+        home_attr: HomeAttr,
+        uid_attr_map: UidAttr,
+        gid_attr_map: UidAttr,
     ) -> Result<Self, ()> {
         let db = Db::new(path)?;
 
@@ -67,6 +80,11 @@ impl CacheLayer {
             state: Mutex::new(CacheState::OfflineNextCheck(SystemTime::now())),
             timeout_seconds,
             pam_allow_groups: pam_allow_groups.into_iter().collect(),
+            default_shell,
+            home_prefix,
+            home_attr,
+            uid_attr_map,
+            gid_attr_map,
         })
     }
 
@@ -453,11 +471,7 @@ impl CacheLayer {
             .get_group_members(uuid)
             .unwrap_or_else(|_| Vec::new())
             .into_iter()
-            .map(|ut| {
-                // TODO #181: We'll have a switch to convert this to spn in some configs
-                // in the future.
-                ut.name
-            })
+            .map(|ut| self.token_uidattr(&ut))
             .collect()
     }
 
@@ -467,18 +481,37 @@ impl CacheLayer {
         Ok(token.map(|t| t.sshkeys).unwrap_or_else(Vec::new))
     }
 
+    #[inline(always)]
+    fn token_homedirectory(&self, token: &UnixUserToken) -> String {
+        format!(
+            "{}{}",
+            self.home_prefix,
+            match self.home_attr {
+                HomeAttr::Uuid => token.uuid.as_str(),
+                HomeAttr::Spn => token.spn.as_str(),
+                HomeAttr::Name => token.name.as_str(),
+            }
+        )
+    }
+
+    #[inline(always)]
+    fn token_uidattr(&self, token: &UnixUserToken) -> String {
+        match self.uid_attr_map {
+            UidAttr::Spn => token.spn.as_str(),
+            UidAttr::Name => token.name.as_str(),
+        }
+        .to_string()
+    }
+
     pub fn get_nssaccounts(&self) -> Result<Vec<NssUser>, ()> {
         self.get_cached_usertokens().map(|l| {
             l.into_iter()
-                .map(|tok| {
-                    NssUser {
-                        homedir: format!("/home/{}", tok.name),
-                        name: tok.name,
-                        gid: tok.gidnumber,
-                        gecos: tok.displayname,
-                        // TODO #254: default shell override.
-                        shell: tok.shell.unwrap_or_else(|| "/bin/bash".to_string()),
-                    }
+                .map(|tok| NssUser {
+                    homedir: self.token_homedirectory(&tok),
+                    name: self.token_uidattr(&tok),
+                    gid: tok.gidnumber,
+                    gecos: tok.displayname,
+                    shell: tok.shell.unwrap_or_else(|| self.default_shell.clone()),
                 })
                 .collect()
         })
@@ -486,15 +519,12 @@ impl CacheLayer {
 
     async fn get_nssaccount(&self, account_id: Id) -> Result<Option<NssUser>, ()> {
         let token = self.get_usertoken(account_id).await?;
-        Ok(token.map(|tok| {
-            NssUser {
-                homedir: format!("/home/{}", tok.name),
-                name: tok.name,
-                gid: tok.gidnumber,
-                gecos: tok.displayname,
-                // TODO #254: default shell override.
-                shell: tok.shell.unwrap_or_else(|| "/bin/bash".to_string()),
-            }
+        Ok(token.map(|tok| NssUser {
+            homedir: self.token_homedirectory(&tok),
+            name: self.token_uidattr(&tok),
+            gid: tok.gidnumber,
+            gecos: tok.displayname,
+            shell: tok.shell.unwrap_or_else(|| self.default_shell.clone()),
         }))
     }
 
@@ -506,13 +536,22 @@ impl CacheLayer {
         self.get_nssaccount(Id::Gid(gid)).await
     }
 
+    #[inline(always)]
+    fn token_gidattr(&self, token: &UnixGroupToken) -> String {
+        match self.gid_attr_map {
+            UidAttr::Spn => token.spn.as_str(),
+            UidAttr::Name => token.name.as_str(),
+        }
+        .to_string()
+    }
+
     pub fn get_nssgroups(&self) -> Result<Vec<NssGroup>, ()> {
         self.get_cached_grouptokens().map(|l| {
             l.into_iter()
                 .map(|tok| {
                     let members = self.get_groupmembers(&tok.uuid);
                     NssGroup {
-                        name: tok.name,
+                        name: self.token_gidattr(&tok),
                         gid: tok.gidnumber,
                         members,
                     }
@@ -527,7 +566,7 @@ impl CacheLayer {
         Ok(token.map(|tok| {
             let members = self.get_groupmembers(&tok.uuid);
             NssGroup {
-                name: tok.name,
+                name: self.token_gidattr(&tok),
                 gid: tok.gidnumber,
                 members,
             }
@@ -628,7 +667,12 @@ impl CacheLayer {
         let token = self.get_usertoken(Id::Name(account_id.to_string())).await?;
 
         Ok(token.map(|tok| {
-            let user_set: BTreeSet<_> = tok.groups.iter().map(|g| g.name.clone()).collect();
+            let user_set: BTreeSet<_> = tok
+                .groups
+                .iter()
+                .map(|g| vec![g.name.clone(), g.spn.clone(), g.uuid.clone()])
+                .flatten()
+                .collect();
 
             debug!(
                 "Checking if -> {:?} & {:?}",

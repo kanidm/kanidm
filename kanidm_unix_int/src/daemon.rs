@@ -225,6 +225,11 @@ async fn main() {
             cfg.cache_timeout,
             rsclient,
             cfg.pam_allowed_login_groups.clone(),
+            cfg.default_shell.clone(),
+            cfg.home_prefix.clone(),
+            cfg.home_attr,
+            cfg.uid_attr_map,
+            cfg.gid_attr_map,
         )
         .expect("Failed to build cache layer."),
     );

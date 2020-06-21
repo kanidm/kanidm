@@ -146,26 +146,22 @@ git rebase --abort
 
 ### Development Server Quickstart for Interactive Testing
 
-Today the server is still in a state of heavy development, and hasn't been packaged or setup for
-production usage.
-
-However, we are able to run test or demo servers that are suitable for previews and testing.
-
 After getting the code, you will need a rust environment. Please investigate rustup for your platform
 to establish this.
 
 Once you have the source code, you need certificates to use with the server. I recommend using
-let's encrypt, but if this is not possible, please use our insecure cert tool:
+let's encrypt, but if this is not possible, please use our insecure cert tool. Without certificates
+authentication will fail.
 
     mkdir insecure
     cd insecure
     ../insecure_generate_tls.sh
 
-You can now build and run the server with:
+You can now build and run the server with the commands below. It will use a database in /tmp/kanidm.db
 
     cd kanidmd
-    cargo run -- recover_account -D /tmp/kanidm.db -n admin
-    cargo run -- server -D /tmp/kanidm.db -C ../insecure/ca.pem -c ../insecure/cert.pem -k ../insecure/key.pem --bindaddr 127.0.0.1:8080
+    cargo run -- recover_account -c ./server.toml -n admin
+    cargo run -- server -c ./server.toml
 
 In a new terminal, you can now build and run the client tools with:
 
@@ -173,7 +169,6 @@ In a new terminal, you can now build and run the client tools with:
     cargo run -- --help
     cargo run -- self whoami -H https://localhost:8080 -D anonymous -C ../insecure/ca.pem
     cargo run -- self whoami -H https://localhost:8080 -D admin -C ../insecure/ca.pem
-
 
 ### Using curl with anonymous:
 
