@@ -2,6 +2,7 @@ use std::convert::TryFrom;
 use std::fs;
 
 use crate::value::IndexType;
+use std::cell::UnsafeCell;
 use std::collections::HashSet as Set;
 use std::sync::Arc;
 
@@ -69,12 +70,12 @@ pub struct Backend {
 }
 
 pub struct BackendReadTransaction<'a> {
-    idlayer: IdlArcSqliteReadTransaction<'a>,
+    idlayer: UnsafeCell<IdlArcSqliteReadTransaction<'a>>,
     idxmeta: CowCellReadTxn<Set<IdxKey>>,
 }
 
 pub struct BackendWriteTransaction<'a> {
-    idlayer: IdlArcSqliteWriteTransaction<'a>,
+    idlayer: UnsafeCell<IdlArcSqliteWriteTransaction<'a>>,
     idxmeta: CowCellReadTxn<Set<IdxKey>>,
     idxmeta_wr: CowCellWriteTxn<'a, Set<IdxKey>>,
 }
@@ -93,14 +94,14 @@ impl IdRawEntry {
 
 pub trait BackendTransaction {
     type IdlLayerType: IdlArcSqliteTransaction;
-    fn get_idlayer(&mut self) -> &mut Self::IdlLayerType;
+    fn get_idlayer(&self) -> &mut Self::IdlLayerType;
 
     fn get_idxmeta_ref(&self) -> &Set<IdxKey>;
 
     /// Recursively apply a filter, transforming into IDL's on the way. This builds a query
     /// execution log, so that it can be examined how an operation proceeded.
     fn filter2idl(
-        &mut self,
+        &self,
         au: &mut AuditScope,
         filt: &FilterResolved,
         thres: usize,
@@ -428,7 +429,7 @@ pub trait BackendTransaction {
 
     // Take filter, and AuditScope ref?
     fn search(
-        &mut self,
+        &self,
         au: &mut AuditScope,
         filt: &Filter<FilterValidResolved>,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
@@ -510,7 +511,7 @@ pub trait BackendTransaction {
     /// load any candidates if they match. This is heavily used in uuid
     /// refint and attr uniqueness.
     fn exists(
-        &mut self,
+        &self,
         au: &mut AuditScope,
         filt: &Filter<FilterValidResolved>,
     ) -> Result<bool, OperationError> {
@@ -565,12 +566,12 @@ pub trait BackendTransaction {
         }) // end audit segment
     }
 
-    fn verify(&mut self) -> Vec<Result<(), ConsistencyError>> {
+    fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
         // Vec::new()
         self.get_idlayer().verify()
     }
 
-    fn backup(&mut self, audit: &mut AuditScope, dst_path: &str) -> Result<(), OperationError> {
+    fn backup(&self, audit: &mut AuditScope, dst_path: &str) -> Result<(), OperationError> {
         // load all entries into RAM, may need to change this later
         // if the size of the database compared to RAM is an issue
         let idl = IDL::ALLIDS;
@@ -600,7 +601,7 @@ pub trait BackendTransaction {
     }
 
     fn name2uuid(
-        &mut self,
+        &self,
         audit: &mut AuditScope,
         name: &str,
     ) -> Result<Option<Uuid>, OperationError> {
@@ -608,7 +609,7 @@ pub trait BackendTransaction {
     }
 
     fn uuid2spn(
-        &mut self,
+        &self,
         audit: &mut AuditScope,
         uuid: &Uuid,
     ) -> Result<Option<Value>, OperationError> {
@@ -616,7 +617,7 @@ pub trait BackendTransaction {
     }
 
     fn uuid2rdn(
-        &mut self,
+        &self,
         audit: &mut AuditScope,
         uuid: &Uuid,
     ) -> Result<Option<String>, OperationError> {
@@ -627,8 +628,19 @@ pub trait BackendTransaction {
 impl<'a> BackendTransaction for BackendReadTransaction<'a> {
     type IdlLayerType = IdlArcSqliteReadTransaction<'a>;
 
-    fn get_idlayer(&mut self) -> &mut IdlArcSqliteReadTransaction<'a> {
-        &mut self.idlayer
+    fn get_idlayer(&self) -> &mut IdlArcSqliteReadTransaction<'a> {
+        // OKAY here be the cursed bullshit. We know that in our application
+        // that during a transaction, that we are the only holder of the
+        // idlayer, so we KNOW it can be mut, and we know every thing it
+        // returns is a copy anyway. But if we permeate that mut up, it prevents
+        // reference holding of read-only structures in loops, which was forcing
+        // a lot of clones.
+        //
+        // Instead we make everything immutable, and use interior mutability
+        // to the idlayer here since we know and can assert it is correct
+        // that during this inner mutable phase, that nothing will be
+        // conflicting during this cache operation.
+        unsafe { &mut (*self.idlayer.get()) }
     }
 
     fn get_idxmeta_ref(&self) -> &Set<IdxKey> {
@@ -639,8 +651,8 @@ impl<'a> BackendTransaction for BackendReadTransaction<'a> {
 impl<'a> BackendTransaction for BackendWriteTransaction<'a> {
     type IdlLayerType = IdlArcSqliteWriteTransaction<'a>;
 
-    fn get_idlayer(&mut self) -> &mut IdlArcSqliteWriteTransaction<'a> {
-        &mut self.idlayer
+    fn get_idlayer(&self) -> &mut IdlArcSqliteWriteTransaction<'a> {
+        unsafe { &mut (*self.idlayer.get()) }
     }
 
     fn get_idxmeta_ref(&self) -> &Set<IdxKey> {
@@ -650,7 +662,7 @@ impl<'a> BackendTransaction for BackendWriteTransaction<'a> {
 
 impl<'a> BackendWriteTransaction<'a> {
     pub fn create(
-        &mut self,
+        &self,
         au: &mut AuditScope,
         entries: Vec<Entry<EntrySealed, EntryNew>>,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
@@ -663,9 +675,10 @@ impl<'a> BackendWriteTransaction<'a> {
                 return Err(OperationError::EmptyRequest);
             }
 
+            let idlayer = self.get_idlayer();
             // Now, assign id's to all the new entries.
 
-            let mut id_max = self.idlayer.get_id2entry_max_id().and_then(|id_max| {
+            let mut id_max = idlayer.get_id2entry_max_id().and_then(|id_max| {
                 u64::try_from(id_max).map_err(|_| OperationError::InvalidEntryID)
             })?;
             let c_entries: Vec<_> = entries
@@ -676,9 +689,9 @@ impl<'a> BackendWriteTransaction<'a> {
                 })
                 .collect();
 
-            self.idlayer.write_identries(au, c_entries.iter())?;
+            idlayer.write_identries(au, c_entries.iter())?;
 
-            self.idlayer.set_id2entry_max_id(id_max);
+            idlayer.set_id2entry_max_id(id_max);
 
             // Now update the indexes as required.
             for e in c_entries.iter() {
@@ -690,7 +703,7 @@ impl<'a> BackendWriteTransaction<'a> {
     }
 
     pub fn modify(
-        &mut self,
+        &self,
         au: &mut AuditScope,
         pre_entries: &[Entry<EntrySealed, EntryCommitted>],
         post_entries: &[Entry<EntrySealed, EntryCommitted>],
@@ -738,7 +751,8 @@ impl<'a> BackendWriteTransaction<'a> {
             */
 
             // Now, given the list of id's, update them
-            self.idlayer.write_identries(au, post_entries.iter())?;
+            self.get_idlayer()
+                .write_identries(au, post_entries.iter())?;
 
             // Finally, we now reindex all the changed entries. We do this by iterating and zipping
             // over the set, because we know the list is in the same order.
@@ -750,7 +764,7 @@ impl<'a> BackendWriteTransaction<'a> {
     }
 
     pub fn delete(
-        &mut self,
+        &self,
         au: &mut AuditScope,
         entries: &[Entry<EntrySealed, EntryCommitted>],
     ) -> Result<(), OperationError> {
@@ -767,7 +781,7 @@ impl<'a> BackendWriteTransaction<'a> {
             let id_list = entries.iter().map(|e| e.get_id());
 
             // Now, given the list of id's, delete them.
-            self.idlayer.delete_identry(au, id_list)?;
+            self.get_idlayer().delete_identry(au, id_list)?;
 
             // Finally, purge the indexes from the entries we removed.
             entries
@@ -791,7 +805,7 @@ impl<'a> BackendWriteTransaction<'a> {
     // TODO: Can this be improved?
     #[allow(clippy::cognitive_complexity)]
     fn entry_index(
-        &mut self,
+        &self,
         audit: &mut AuditScope,
         pre: Option<&Entry<EntrySealed, EntryCommitted>>,
         post: Option<&Entry<EntrySealed, EntryCommitted>>,
@@ -825,6 +839,8 @@ impl<'a> BackendWriteTransaction<'a> {
         // and can trigger correct actions.
         //
 
+        let idlayer = self.get_idlayer();
+
         let mask_pre = pre.and_then(|e| e.mask_recycled_ts());
         let mask_pre = if !uuid_same {
             // Okay, so if the uuids are different this is probably from
@@ -848,19 +864,19 @@ impl<'a> BackendWriteTransaction<'a> {
 
             // Write the changes out to the backend
             if let Some(rem) = n2u_rem {
-                self.idlayer.write_name2uuid_rem(audit, rem)?
+                idlayer.write_name2uuid_rem(audit, rem)?
             }
 
             match u2s_act {
                 None => {}
-                Some(Ok(k)) => self.idlayer.write_uuid2spn(audit, uuid, Some(k))?,
-                Some(Err(_)) => self.idlayer.write_uuid2spn(audit, uuid, None)?,
+                Some(Ok(k)) => idlayer.write_uuid2spn(audit, uuid, Some(k))?,
+                Some(Err(_)) => idlayer.write_uuid2spn(audit, uuid, None)?,
             }
 
             match u2r_act {
                 None => {}
-                Some(Ok(k)) => self.idlayer.write_uuid2rdn(audit, uuid, Some(k))?,
-                Some(Err(_)) => self.idlayer.write_uuid2rdn(audit, uuid, None)?,
+                Some(Ok(k)) => idlayer.write_uuid2rdn(audit, uuid, Some(k))?,
+                Some(Err(_)) => idlayer.write_uuid2rdn(audit, uuid, None)?,
             }
             // Return none, mask_pre is now completed.
             None
@@ -882,22 +898,22 @@ impl<'a> BackendWriteTransaction<'a> {
 
         // Write the changes out to the backend
         if let Some(add) = n2u_add {
-            self.idlayer.write_name2uuid_add(audit, e_uuid, add)?
+            idlayer.write_name2uuid_add(audit, e_uuid, add)?
         }
         if let Some(rem) = n2u_rem {
-            self.idlayer.write_name2uuid_rem(audit, rem)?
+            idlayer.write_name2uuid_rem(audit, rem)?
         }
 
         match u2s_act {
             None => {}
-            Some(Ok(k)) => self.idlayer.write_uuid2spn(audit, e_uuid, Some(k))?,
-            Some(Err(_)) => self.idlayer.write_uuid2spn(audit, e_uuid, None)?,
+            Some(Ok(k)) => idlayer.write_uuid2spn(audit, e_uuid, Some(k))?,
+            Some(Err(_)) => idlayer.write_uuid2spn(audit, e_uuid, None)?,
         }
 
         match u2r_act {
             None => {}
-            Some(Ok(k)) => self.idlayer.write_uuid2rdn(audit, e_uuid, Some(k))?,
-            Some(Err(_)) => self.idlayer.write_uuid2rdn(audit, e_uuid, None)?,
+            Some(Ok(k)) => idlayer.write_uuid2rdn(audit, e_uuid, Some(k))?,
+            Some(Err(_)) => idlayer.write_uuid2rdn(audit, e_uuid, None)?,
         }
 
         // Extremely Cursed - Okay, we know that self.idxmeta will NOT be changed
@@ -915,10 +931,10 @@ impl<'a> BackendWriteTransaction<'a> {
                 match act {
                     Ok((attr, itype, idx_key)) => {
                         ltrace!(audit, "Adding {:?} idx -> {:?}: {:?}", itype, attr, idx_key);
-                        match self.idlayer.get_idl(audit, attr, itype, idx_key)? {
+                        match idlayer.get_idl(audit, attr, itype, idx_key)? {
                             Some(mut idl) => {
                                 idl.insert_id(e_id);
-                                self.idlayer.write_idl(audit, attr, itype, idx_key, &idl)
+                                idlayer.write_idl(audit, attr, itype, idx_key, &idl)
                             }
                             None => {
                                 ladmin_error!(
@@ -932,10 +948,10 @@ impl<'a> BackendWriteTransaction<'a> {
                     }
                     Err((attr, itype, idx_key)) => {
                         ltrace!(audit, "Removing {:?} idx -> {:?}: {:?}", itype, attr, idx_key);
-                        match self.idlayer.get_idl(audit, attr, itype, idx_key)? {
+                        match idlayer.get_idl(audit, attr, itype, idx_key)? {
                             Some(mut idl) => {
                                 idl.remove_id(e_id);
-                                self.idlayer.write_idl(audit, attr, itype, idx_key, &idl)
+                                idlayer.write_idl(audit, attr, itype, idx_key, &idl)
                             }
                             None => {
                                 ladmin_error!(
@@ -954,10 +970,10 @@ impl<'a> BackendWriteTransaction<'a> {
 
     #[allow(dead_code)]
     fn missing_idxs(
-        &mut self,
+        &self,
         audit: &mut AuditScope,
     ) -> Result<Vec<(String, IndexType)>, OperationError> {
-        let idx_table_list = self.idlayer.list_idxs(audit)?;
+        let idx_table_list = self.get_idlayer().list_idxs(audit)?;
 
         // Turn the vec to a real set
         let idx_table_set: Set<_> = idx_table_list.into_iter().collect();
@@ -981,26 +997,23 @@ impl<'a> BackendWriteTransaction<'a> {
     }
 
     fn create_idxs(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
+        let idlayer = self.get_idlayer();
         // Create name2uuid and uuid2name
         ltrace!(audit, "Creating index -> name2uuid");
-        self.idlayer.create_name2uuid(audit)?;
+        idlayer.create_name2uuid(audit)?;
 
         ltrace!(audit, "Creating index -> uuid2spn");
-        self.idlayer.create_uuid2spn(audit)?;
+        idlayer.create_uuid2spn(audit)?;
 
         ltrace!(audit, "Creating index -> uuid2rdn");
-        self.idlayer.create_uuid2rdn(audit)?;
+        idlayer.create_uuid2rdn(audit)?;
 
         self.idxmeta
             .iter()
-            .try_for_each(|ikey| self.idlayer.create_idx(audit, &ikey.attr, &ikey.itype))
+            .try_for_each(|ikey| idlayer.create_idx(audit, &ikey.attr, &ikey.itype))
     }
 
-    pub fn upgrade_reindex(
-        &mut self,
-        audit: &mut AuditScope,
-        v: i64,
-    ) -> Result<(), OperationError> {
+    pub fn upgrade_reindex(&self, audit: &mut AuditScope, v: i64) -> Result<(), OperationError> {
         let dbv = self.get_db_index_version();
         ladmin_info!(audit, "upgrade_reindex -> dbv: {} v: {}", dbv, v);
         if dbv < v {
@@ -1016,9 +1029,10 @@ impl<'a> BackendWriteTransaction<'a> {
         }
     }
 
-    pub fn reindex(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
+    pub fn reindex(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
+        let idlayer = self.get_idlayer();
         // Purge the idxs
-        unsafe { self.idlayer.purge_idxs(audit)? };
+        unsafe { idlayer.purge_idxs(audit)? };
 
         // Using the index metadata on the txn, create all our idx tables
         self.create_idxs(audit)?;
@@ -1027,7 +1041,7 @@ impl<'a> BackendWriteTransaction<'a> {
         // Future idea: Do this in batches of X amount to limit memory
         // consumption.
         let idl = IDL::ALLIDS;
-        let entries = self.idlayer.get_identry(audit, &idl).map_err(|e| {
+        let entries = idlayer.get_identry(audit, &idl).map_err(|e| {
             ladmin_error!(audit, "get_identry failure {:?}", e);
             e
         })?;
@@ -1054,26 +1068,23 @@ impl<'a> BackendWriteTransaction<'a> {
     }
 
     #[cfg(test)]
-    pub fn purge_idxs(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
-        unsafe { self.idlayer.purge_idxs(audit) }
+    pub fn purge_idxs(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
+        unsafe { self.get_idlayer().purge_idxs(audit) }
     }
 
     #[cfg(test)]
     pub fn load_test_idl(
-        &mut self,
+        &self,
         audit: &mut AuditScope,
         attr: &String,
         itype: &IndexType,
         idx_key: &String,
     ) -> Result<Option<IDLBitRange>, OperationError> {
-        self.idlayer.get_idl(audit, attr, itype, idx_key)
+        self.get_idlayer().get_idl(audit, attr, itype, idx_key)
     }
 
-    pub fn restore(
-        &mut self,
-        audit: &mut AuditScope,
-        src_path: &str,
-    ) -> Result<(), OperationError> {
+    pub fn restore(&self, audit: &mut AuditScope, src_path: &str) -> Result<(), OperationError> {
+        let idlayer = self.get_idlayer();
         // load all entries into RAM, may need to change this later
         // if the size of the database compared to RAM is an issue
         let serialized_string = fs::read_to_string(src_path).map_err(|e| {
@@ -1081,7 +1092,7 @@ impl<'a> BackendWriteTransaction<'a> {
             OperationError::FsError
         })?;
 
-        unsafe { self.idlayer.purge_id2entry(audit) }.map_err(|e| {
+        unsafe { idlayer.purge_id2entry(audit) }.map_err(|e| {
             ladmin_error!(audit, "purge_id2entry failed {:?}", e);
             e
         })?;
@@ -1134,8 +1145,7 @@ impl<'a> BackendWriteTransaction<'a> {
             })
             .collect();
 
-        self.idlayer
-            .write_identries_raw(audit, identries?.into_iter())?;
+        idlayer.write_identries_raw(audit, identries?.into_iter())?;
 
         // for debug
         /*
@@ -1165,6 +1175,9 @@ impl<'a> BackendWriteTransaction<'a> {
             idxmeta_wr,
         } = self;
 
+        // Unwrap the Cell we have finished with it.
+        let idlayer = idlayer.into_inner();
+
         idlayer.commit(audit).and_then(|r| {
             idxmeta_wr.commit();
             Ok(r)
@@ -1174,11 +1187,11 @@ impl<'a> BackendWriteTransaction<'a> {
     fn reset_db_s_uuid(&self) -> Result<Uuid, OperationError> {
         // The value is missing. Generate a new one and store it.
         let nsid = Uuid::new_v4();
-        self.idlayer.write_db_s_uuid(nsid)?;
+        self.get_idlayer().write_db_s_uuid(nsid)?;
         Ok(nsid)
     }
 
-    pub fn get_db_s_uuid(&mut self) -> Uuid {
+    pub fn get_db_s_uuid(&self) -> Uuid {
         match self
             .get_idlayer()
             .get_db_s_uuid()
@@ -1191,11 +1204,11 @@ impl<'a> BackendWriteTransaction<'a> {
 
     fn reset_db_d_uuid(&self) -> Result<Uuid, OperationError> {
         let nsid = Uuid::new_v4();
-        self.idlayer.write_db_d_uuid(nsid)?;
+        self.get_idlayer().write_db_d_uuid(nsid)?;
         Ok(nsid)
     }
 
-    pub fn get_db_d_uuid(&mut self) -> Uuid {
+    pub fn get_db_d_uuid(&self) -> Uuid {
         match self
             .get_idlayer()
             .get_db_d_uuid()
@@ -1206,11 +1219,11 @@ impl<'a> BackendWriteTransaction<'a> {
         }
     }
 
-    pub fn set_db_ts_max(&mut self, ts: &Duration) -> Result<(), OperationError> {
+    pub fn set_db_ts_max(&self, ts: &Duration) -> Result<(), OperationError> {
         self.get_idlayer().set_db_ts_max(ts)
     }
 
-    pub fn get_db_ts_max(&mut self, ts: &Duration) -> Result<Duration, OperationError> {
+    pub fn get_db_ts_max(&self, ts: &Duration) -> Result<Duration, OperationError> {
         // if none, return ts. If found, return it.
         match self.get_idlayer().get_db_ts_max()? {
             Some(dts) => Ok(dts),
@@ -1218,11 +1231,11 @@ impl<'a> BackendWriteTransaction<'a> {
         }
     }
 
-    fn get_db_index_version(&mut self) -> i64 {
+    fn get_db_index_version(&self) -> i64 {
         self.get_idlayer().get_db_index_version()
     }
 
-    fn set_db_index_version(&mut self, v: i64) -> Result<(), OperationError> {
+    fn set_db_index_version(&self, v: i64) -> Result<(), OperationError> {
         self.get_idlayer().set_db_index_version(v)
     }
 }
@@ -1262,14 +1275,14 @@ impl Backend {
 
     pub fn read(&self) -> BackendReadTransaction {
         BackendReadTransaction {
-            idlayer: self.idlayer.read(),
+            idlayer: UnsafeCell::new(self.idlayer.read()),
             idxmeta: self.idxmeta.read(),
         }
     }
 
     pub fn write(&self) -> BackendWriteTransaction {
         BackendWriteTransaction {
-            idlayer: self.idlayer.write(),
+            idlayer: UnsafeCell::new(self.idlayer.write()),
             idxmeta: self.idxmeta.read(),
             idxmeta_wr: self.idxmeta.write(),
         }

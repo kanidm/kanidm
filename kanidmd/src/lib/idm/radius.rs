@@ -40,15 +40,21 @@ impl RadiusAccount {
             })?
             .to_string();
 
-        let name = value.get_ava_single_string("name").ok_or_else(|| {
-            OperationError::InvalidAccountState("Missing attribute: name".to_string())
-        })?;
+        let name = value
+            .get_ava_single_str("name")
+            .map(|s| s.to_string())
+            .ok_or_else(|| {
+                OperationError::InvalidAccountState("Missing attribute: name".to_string())
+            })?;
 
         let uuid = *value.get_uuid();
 
-        let displayname = value.get_ava_single_string("displayname").ok_or_else(|| {
-            OperationError::InvalidAccountState("Missing attribute: displayname".to_string())
-        })?;
+        let displayname = value
+            .get_ava_single_str("displayname")
+            .map(|s| s.to_string())
+            .ok_or_else(|| {
+                OperationError::InvalidAccountState("Missing attribute: displayname".to_string())
+            })?;
 
         let groups = Group::try_from_account_entry_red_ro(au, &value, qs)?;
 

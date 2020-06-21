@@ -25,11 +25,12 @@ use kanidm_proto::v1::{ConsistencyError, OperationError, SchemaError};
 
 use std::borrow::Borrow;
 use std::collections::BTreeSet;
-use std::collections::HashMap as Map;
+// use std::collections::BTreeMap;
+use std::collections::HashMap;
 use std::collections::HashSet;
 use uuid::Uuid;
 
-use concread::collections::bptree::*;
+use concread::cowcell::*;
 
 // representations of schema that confines object types, classes
 // and attributes. This ties in deeply with "Entry".
@@ -54,22 +55,36 @@ lazy_static! {
 /// [`Attributes`]: struct.SchemaAttribute.html
 /// [`Classes`]: struct.SchemaClass.html
 pub struct Schema {
-    classes: BptreeMap<String, SchemaClass>,
-    attributes: BptreeMap<String, SchemaAttribute>,
+    // classes: BptreeMap<String, SchemaClass>,
+    // attributes: BptreeMap<String, SchemaAttribute>,
+    classes: CowCell<HashMap<String, SchemaClass>>,
+    attributes: CowCell<HashMap<String, SchemaAttribute>>,
+    unique_cache: CowCell<Vec<String>>,
+    ref_cache: CowCell<HashMap<String, SchemaAttribute>>,
 }
 
 /// A writable transaction of the working schema set. You should not change this directly,
 /// the writability is for the server internally to allow reloading of the schema. Changes
 /// you make will be lost when the server re-reads the schema from disk.
 pub struct SchemaWriteTransaction<'a> {
-    classes: BptreeMapWriteTxn<'a, String, SchemaClass>,
-    attributes: BptreeMapWriteTxn<'a, String, SchemaAttribute>,
+    // classes: BptreeMapWriteTxn<'a, String, SchemaClass>,
+    // attributes: BptreeMapWriteTxn<'a, String, SchemaAttribute>,
+    classes: CowCellWriteTxn<'a, HashMap<String, SchemaClass>>,
+    attributes: CowCellWriteTxn<'a, HashMap<String, SchemaAttribute>>,
+
+    unique_cache: CowCellWriteTxn<'a, Vec<String>>,
+    ref_cache: CowCellWriteTxn<'a, HashMap<String, SchemaAttribute>>,
 }
 
 /// A readonly transaction of the working schema set.
 pub struct SchemaReadTransaction {
-    classes: BptreeMapReadTxn<String, SchemaClass>,
-    attributes: BptreeMapReadTxn<String, SchemaAttribute>,
+    // classes: BptreeMapReadTxn<String, SchemaClass>,
+    // attributes: BptreeMapReadTxn<String, SchemaAttribute>,
+    classes: CowCellReadTxn<HashMap<String, SchemaClass>>,
+    attributes: CowCellReadTxn<HashMap<String, SchemaAttribute>>,
+
+    unique_cache: CowCellReadTxn<Vec<String>>,
+    ref_cache: CowCellReadTxn<HashMap<String, SchemaAttribute>>,
 }
 
 /// An item reperesenting an attribute and the rules that enforce it. These rules enforce if an
@@ -114,16 +129,20 @@ impl SchemaAttribute {
 
         // name
         let name = value
-            .get_ava_single_string("attributename")
+            .get_ava_single_str("attributename")
+            .map(|s| s.to_string())
             .ok_or_else(|| {
                 ladmin_error!(audit, "missing attributename");
                 OperationError::InvalidSchemaState("missing attributename".to_string())
             })?;
         // description
-        let description = value.get_ava_single_string("description").ok_or_else(|| {
-            ladmin_error!(audit, "missing description");
-            OperationError::InvalidSchemaState("missing description".to_string())
-        })?;
+        let description = value
+            .get_ava_single_str("description")
+            .map(|s| s.to_string())
+            .ok_or_else(|| {
+                ladmin_error!(audit, "missing description");
+                OperationError::InvalidSchemaState("missing description".to_string())
+            })?;
 
         // multivalue
         let multivalue = value.get_ava_single_bool("multivalue").ok_or_else(|| {
@@ -415,33 +434,39 @@ impl SchemaClass {
         let uuid = *value.get_uuid();
 
         // name
-        let name = value.get_ava_single_string("classname").ok_or_else(|| {
-            ladmin_error!(audit, "missing classname");
-            OperationError::InvalidSchemaState("missing classname".to_string())
-        })?;
+        let name = value
+            .get_ava_single_str("classname")
+            .map(|s| s.to_string())
+            .ok_or_else(|| {
+                ladmin_error!(audit, "missing classname");
+                OperationError::InvalidSchemaState("missing classname".to_string())
+            })?;
         // description
-        let description = value.get_ava_single_string("description").ok_or_else(|| {
-            ladmin_error!(audit, "missing description");
-            OperationError::InvalidSchemaState("missing description".to_string())
-        })?;
+        let description = value
+            .get_ava_single_str("description")
+            .map(|s| s.to_string())
+            .ok_or_else(|| {
+                ladmin_error!(audit, "missing description");
+                OperationError::InvalidSchemaState("missing description".to_string())
+            })?;
 
         // These are all "optional" lists of strings.
-        let systemmay = value.get_ava_opt_string("systemmay").ok_or_else(|| {
-            ladmin_error!(audit, "missing or invalid systemmay");
-            OperationError::InvalidSchemaState("Missing or invalid systemmay".to_string())
-        })?;
-        let systemmust = value.get_ava_opt_string("systemmust").ok_or_else(|| {
-            ladmin_error!(audit, "missing or invalid systemmust");
-            OperationError::InvalidSchemaState("Missing or invalid systemmust".to_string())
-        })?;
-        let may = value.get_ava_opt_string("may").ok_or_else(|| {
-            ladmin_error!(audit, "missing or invalid may");
-            OperationError::InvalidSchemaState("Missing or invalid may".to_string())
-        })?;
-        let must = value.get_ava_opt_string("must").ok_or_else(|| {
-            ladmin_error!(audit, "missing or invalid must");
-            OperationError::InvalidSchemaState("Missing or invalid must".to_string())
-        })?;
+        let systemmay = value
+            .get_ava_as_str("systemmay")
+            .map(|i| i.map(|s| s.to_string()).collect())
+            .unwrap_or_else(|| Vec::new());
+        let systemmust = value
+            .get_ava_as_str("systemmust")
+            .map(|i| i.map(|s| s.to_string()).collect())
+            .unwrap_or_else(|| Vec::new());
+        let may = value
+            .get_ava_as_str("may")
+            .map(|i| i.map(|s| s.to_string()).collect())
+            .unwrap_or_else(|| Vec::new());
+        let must = value
+            .get_ava_as_str("must")
+            .map(|i| i.map(|s| s.to_string()).collect())
+            .unwrap_or_else(|| Vec::new());
 
         Ok(SchemaClass {
             name,
@@ -456,8 +481,14 @@ impl SchemaClass {
 }
 
 pub trait SchemaTransaction {
-    fn get_classes(&self) -> BptreeMapReadSnapshot<String, SchemaClass>;
-    fn get_attributes(&self) -> BptreeMapReadSnapshot<String, SchemaAttribute>;
+    // fn get_classes(&self) -> BptreeMapReadSnapshot<String, SchemaClass>;
+    // fn get_attributes(&self) -> BptreeMapReadSnapshot<String, SchemaAttribute>;
+
+    fn get_classes(&self) -> &HashMap<String, SchemaClass>;
+    fn get_attributes(&self) -> &HashMap<String, SchemaAttribute>;
+
+    fn get_attributes_unique(&self) -> &Vec<String>;
+    fn get_reference_types(&self) -> &HashMap<String, SchemaAttribute>;
 
     fn validate(&self, _audit: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
         let mut res = Vec::new();
@@ -521,29 +552,6 @@ pub trait SchemaTransaction {
             None
         }
     }
-
-    fn get_attributes_unique(&self) -> Vec<String> {
-        // This could be improved by caching this set on schema reload!
-        self.get_attributes()
-            .iter()
-            .filter_map(|(k, v)| if v.unique { Some(k.clone()) } else { None })
-            .collect()
-    }
-
-    // Probably need something like get_classes or similar
-    // so that externals can call and use this data.
-
-    fn get_reference_types(&self) -> Map<String, SchemaAttribute> {
-        let snapshot = self.get_attributes();
-        snapshot
-            .iter()
-            .filter(|(_, sa)| match &sa.syntax {
-                SyntaxType::REFERENCE_UUID => true,
-                _ => false,
-            })
-            .map(|(k, v)| (k.clone(), v.clone()))
-            .collect()
-    }
 }
 
 impl<'a> SchemaWriteTransaction<'a> {
@@ -556,8 +564,12 @@ impl<'a> SchemaWriteTransaction<'a> {
         let SchemaWriteTransaction {
             classes,
             attributes,
+            unique_cache,
+            ref_cache,
         } = self;
 
+        unique_cache.commit();
+        ref_cache.commit();
         classes.commit();
         attributes.commit();
         Ok(())
@@ -569,10 +581,21 @@ impl<'a> SchemaWriteTransaction<'a> {
     ) -> Result<(), OperationError> {
         // purge all old attributes.
         self.attributes.clear();
+
+        self.unique_cache.clear();
+        self.ref_cache.clear();
         // Update with new ones.
         // Do we need to check for dups?
         // No, they'll over-write each other ... but we do need name uniqueness.
         attributetypes.into_iter().for_each(|a| {
+            // Update the unique and ref caches.
+            if a.syntax == SyntaxType::REFERENCE_UUID {
+                self.ref_cache.insert(a.name.clone(), a.clone());
+            }
+            if a.unique {
+                self.unique_cache.push(a.name.clone());
+            }
+            // Finally insert.
             self.attributes.insert(a.name.clone(), a);
         });
 
@@ -1397,6 +1420,23 @@ impl<'a> SchemaWriteTransaction<'a> {
 }
 
 impl<'a> SchemaTransaction for SchemaWriteTransaction<'a> {
+    fn get_attributes_unique(&self) -> &Vec<String> {
+        &(*self.unique_cache)
+    }
+
+    fn get_reference_types(&self) -> &HashMap<String, SchemaAttribute> {
+        &(*self.ref_cache)
+    }
+
+    fn get_classes(&self) -> &HashMap<String, SchemaClass> {
+        &(*self.classes)
+    }
+
+    fn get_attributes(&self) -> &HashMap<String, SchemaAttribute> {
+        &(*self.attributes)
+    }
+
+    /*
     fn get_classes(&self) -> BptreeMapReadSnapshot<String, SchemaClass> {
         self.classes.to_snapshot()
     }
@@ -1404,9 +1444,27 @@ impl<'a> SchemaTransaction for SchemaWriteTransaction<'a> {
     fn get_attributes(&self) -> BptreeMapReadSnapshot<String, SchemaAttribute> {
         self.attributes.to_snapshot()
     }
+    */
 }
 
 impl SchemaTransaction for SchemaReadTransaction {
+    fn get_attributes_unique(&self) -> &Vec<String> {
+        &(*self.unique_cache)
+    }
+
+    fn get_reference_types(&self) -> &HashMap<String, SchemaAttribute> {
+        &(*self.ref_cache)
+    }
+
+    fn get_classes(&self) -> &HashMap<String, SchemaClass> {
+        &(*self.classes)
+    }
+
+    fn get_attributes(&self) -> &HashMap<String, SchemaAttribute> {
+        &(*self.attributes)
+    }
+
+    /*
     fn get_classes(&self) -> BptreeMapReadSnapshot<String, SchemaClass> {
         self.classes.to_snapshot()
     }
@@ -1414,13 +1472,18 @@ impl SchemaTransaction for SchemaReadTransaction {
     fn get_attributes(&self) -> BptreeMapReadSnapshot<String, SchemaAttribute> {
         self.attributes.to_snapshot()
     }
+    */
 }
 
 impl Schema {
     pub fn new(audit: &mut AuditScope) -> Result<Self, OperationError> {
         let s = Schema {
-            classes: BptreeMap::new(),
-            attributes: BptreeMap::new(),
+            // classes: BptreeMap::new(),
+            // attributes: BptreeMap::new(),
+            classes: CowCell::new(HashMap::new()),
+            attributes: CowCell::new(HashMap::new()),
+            unique_cache: CowCell::new(Vec::new()),
+            ref_cache: CowCell::new(HashMap::new()),
         };
         let mut sw = s.write();
         let r1 = sw.generate_in_memory(audit);
@@ -1435,6 +1498,8 @@ impl Schema {
         SchemaReadTransaction {
             classes: self.classes.read(),
             attributes: self.attributes.read(),
+            unique_cache: self.unique_cache.read(),
+            ref_cache: self.ref_cache.read(),
         }
     }
 
@@ -1442,6 +1507,8 @@ impl Schema {
         SchemaWriteTransaction {
             classes: self.classes.write(),
             attributes: self.attributes.write(),
+            unique_cache: self.unique_cache.write(),
+            ref_cache: self.ref_cache.write(),
         }
     }
 }

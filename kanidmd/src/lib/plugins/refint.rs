@@ -30,7 +30,7 @@ pub struct ReferentialIntegrity;
 impl ReferentialIntegrity {
     fn check_uuid_exists(
         au: &mut AuditScope,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
         rtype: &str,
         uuid_value: &Value,
     ) -> Result<(), OperationError> {
@@ -83,7 +83,7 @@ impl Plugin for ReferentialIntegrity {
     // be in cand AND db" to simply "is it in the DB?".
     fn post_create(
         au: &mut AuditScope,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
         cand: &[Entry<EntrySealed, EntryCommitted>],
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
@@ -108,7 +108,7 @@ impl Plugin for ReferentialIntegrity {
 
     fn post_modify(
         au: &mut AuditScope,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
         _pre_cand: &[Entry<EntrySealed, EntryCommitted>],
         _cand: &[Entry<EntrySealed, EntryCommitted>],
         me: &ModifyEvent,
@@ -131,7 +131,7 @@ impl Plugin for ReferentialIntegrity {
 
     fn post_delete(
         au: &mut AuditScope,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
         cand: &[Entry<EntrySealed, EntryCommitted>],
         _ce: &DeleteEvent,
     ) -> Result<(), OperationError> {
@@ -184,7 +184,7 @@ impl Plugin for ReferentialIntegrity {
 
     fn verify(
         au: &mut AuditScope,
-        qs: &mut QueryServerReadTransaction,
+        qs: &QueryServerReadTransaction,
     ) -> Vec<Result<(), ConsistencyError>> {
         // Get all entries as cand
         //      build a cand-uuid set
@@ -301,7 +301,7 @@ mod tests {
             preload,
             create,
             None,
-            |au: &mut AuditScope, qs: &mut QueryServerWriteTransaction| {
+            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(
                         au,
@@ -337,7 +337,7 @@ mod tests {
             preload,
             create,
             None,
-            |au: &mut AuditScope, qs: &mut QueryServerWriteTransaction| {
+            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(
                         au,
@@ -559,7 +559,7 @@ mod tests {
             preload,
             filter!(f_eq("name", PartialValue::new_iname("testgroup_a"))),
             None,
-            |_au: &mut AuditScope, _qs: &mut QueryServerWriteTransaction| {}
+            |_au: &mut AuditScope, _qs: &QueryServerWriteTransaction| {}
         );
     }
 
@@ -601,7 +601,7 @@ mod tests {
             preload,
             filter!(f_eq("name", PartialValue::new_iname("testgroup_b"))),
             None,
-            |_au: &mut AuditScope, _qs: &mut QueryServerWriteTransaction| {}
+            |_au: &mut AuditScope, _qs: &QueryServerWriteTransaction| {}
         );
     }
 
@@ -627,7 +627,7 @@ mod tests {
             preload,
             filter!(f_eq("name", PartialValue::new_iname("testgroup_b"))),
             None,
-            |_au: &mut AuditScope, _qs: &mut QueryServerWriteTransaction| {}
+            |_au: &mut AuditScope, _qs: &QueryServerWriteTransaction| {}
         );
     }
 }

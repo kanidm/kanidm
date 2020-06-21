@@ -739,9 +739,10 @@ impl Handler<InternalSshKeyReadMessage> for QueryServerReadV1 {
                         let r = entries
                             .pop()
                             // get the first entry
-                            .map(|e| {
+                            .and_then(|e| {
                                 // From the entry, turn it into the value
-                                e.get_ava_ssh_pubkeys("ssh_publickey")
+                                e.get_ava_iter_sshpubkeys("ssh_publickey")
+                                    .map(|i| i.map(|s| s.to_string()).collect())
                             })
                             .unwrap_or_else(|| {
                                 // No matching entry? Return none.
@@ -815,6 +816,7 @@ impl Handler<InternalSshKeyTagReadMessage> for QueryServerReadV1 {
                                     vs.get(&pv)
                                         // Now turn that value to a pub key.
                                         .and_then(|v| v.get_sshkey())
+                                        .map(|s| s.to_string())
                                 })
                             })
                             .unwrap_or_else(|| {

@@ -35,7 +35,7 @@ pub struct SearchResult {
 impl SearchResult {
     pub fn new(
         audit: &mut AuditScope,
-        qs: &mut QueryServerReadTransaction,
+        qs: &QueryServerReadTransaction,
         entries: Vec<Entry<EntryReduced, EntryCommitted>>,
     ) -> Result<Self, OperationError> {
         let entries: Result<_, _> = entries
@@ -121,7 +121,7 @@ impl std::fmt::Display for Event {
 impl Event {
     pub fn from_ro_request(
         audit: &mut AuditScope,
-        qs: &mut QueryServerReadTransaction,
+        qs: &QueryServerReadTransaction,
         user_uuid: &Uuid,
     ) -> Result<Self, OperationError> {
         qs.internal_search_uuid(audit, &user_uuid)
@@ -136,7 +136,7 @@ impl Event {
 
     pub fn from_ro_uat(
         audit: &mut AuditScope,
-        qs: &mut QueryServerReadTransaction,
+        qs: &QueryServerReadTransaction,
         uat: Option<UserAuthToken>,
     ) -> Result<Self, OperationError> {
         ltrace!(audit, "from_ro_uat -> {:?}", uat);
@@ -160,7 +160,7 @@ impl Event {
 
     pub fn from_rw_uat(
         audit: &mut AuditScope,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
         uat: Option<UserAuthToken>,
     ) -> Result<Self, OperationError> {
         ltrace!(audit, "from_rw_uat -> {:?}", uat);
@@ -184,7 +184,7 @@ impl Event {
 
     pub fn from_rw_request(
         audit: &mut AuditScope,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
         user_uuid: &str,
     ) -> Result<Self, OperationError> {
         // Do we need to check or load the entry from the user_uuid?
@@ -261,7 +261,7 @@ impl SearchEvent {
     pub fn from_message(
         audit: &mut AuditScope,
         msg: SearchMessage,
-        qs: &mut QueryServerReadTransaction,
+        qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         match Filter::from_ro(audit, &msg.req.filter, qs) {
             Ok(f) => Ok(SearchEvent {
@@ -287,7 +287,7 @@ impl SearchEvent {
     pub fn from_internal_message(
         audit: &mut AuditScope,
         msg: InternalSearchMessage,
-        qs: &mut QueryServerReadTransaction,
+        qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         let r_attrs: Option<BTreeSet<String>> = msg.attrs.map(|vs| {
             vs.into_iter()
@@ -326,7 +326,7 @@ impl SearchEvent {
     pub fn from_internal_recycle_message(
         audit: &mut AuditScope,
         msg: InternalSearchRecycledMessage,
-        qs: &mut QueryServerReadTransaction,
+        qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         let r_attrs: Option<BTreeSet<String>> = msg.attrs.map(|vs| {
             vs.into_iter()
@@ -360,7 +360,7 @@ impl SearchEvent {
     pub fn from_whoami_request(
         audit: &mut AuditScope,
         uat: Option<UserAuthToken>,
-        qs: &mut QueryServerReadTransaction,
+        qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         Ok(SearchEvent {
             event: Event::from_ro_uat(audit, qs, uat)?,
@@ -378,7 +378,7 @@ impl SearchEvent {
         audit: &mut AuditScope,
         uat: Option<UserAuthToken>,
         target_uuid: Uuid,
-        qs: &mut QueryServerReadTransaction,
+        qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         Ok(SearchEvent {
             event: Event::from_ro_uat(audit, qs, uat)?,
@@ -459,7 +459,7 @@ impl SearchEvent {
 
     pub(crate) fn new_ext_impersonate_uuid(
         audit: &mut AuditScope,
-        qs: &mut QueryServerReadTransaction,
+        qs: &QueryServerReadTransaction,
         euuid: &Uuid,
         filter: Filter<FilterInvalid>,
         attrs: Option<BTreeSet<String>>,
@@ -515,7 +515,7 @@ impl CreateEvent {
     pub fn from_message(
         audit: &mut AuditScope,
         msg: CreateMessage,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         let rentries: Result<Vec<_>, _> = msg
             .req
@@ -597,7 +597,7 @@ impl DeleteEvent {
     pub fn from_message(
         audit: &mut AuditScope,
         msg: DeleteMessage,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         match Filter::from_rw(audit, &msg.req.filter, qs) {
             Ok(f) => Ok(DeleteEvent {
@@ -619,7 +619,7 @@ impl DeleteEvent {
         audit: &mut AuditScope,
         uat: Option<UserAuthToken>,
         filter: Filter<FilterInvalid>,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         Ok(DeleteEvent {
             event: Event::from_rw_uat(audit, qs, uat)?,
@@ -687,7 +687,7 @@ impl ModifyEvent {
     pub fn from_message(
         audit: &mut AuditScope,
         msg: ModifyMessage,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         match Filter::from_rw(audit, &msg.req.filter, qs) {
             Ok(f) => match ModifyList::from(audit, &msg.req.modlist, qs) {
@@ -718,7 +718,7 @@ impl ModifyEvent {
         target_uuid: Uuid,
         proto_ml: ProtoModifyList,
         filter: Filter<FilterInvalid>,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         let f_uuid = filter_all!(f_eq("uuid", PartialValue::new_uuid(target_uuid)));
         // Add any supplemental conditions we have.
@@ -749,7 +749,7 @@ impl ModifyEvent {
         target_uuid: Uuid,
         ml: ModifyList<ModifyInvalid>,
         filter: Filter<FilterInvalid>,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         let f_uuid = filter_all!(f_eq("uuid", PartialValue::new_uuid(target_uuid)));
         // Add any supplemental conditions we have.
@@ -777,7 +777,7 @@ impl ModifyEvent {
         target_uuid: Uuid,
         attr: String,
         filter: Filter<FilterInvalid>,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         let ml = ModifyList::new_purge(attr.as_str());
         let f_uuid = filter_all!(f_eq("uuid", PartialValue::new_uuid(target_uuid)));
@@ -1011,7 +1011,7 @@ pub struct WhoamiResult {
 impl WhoamiResult {
     pub fn new(
         audit: &mut AuditScope,
-        qs: &mut QueryServerReadTransaction,
+        qs: &QueryServerReadTransaction,
         e: Entry<EntryReduced, EntryCommitted>,
         uat: UserAuthToken,
     ) -> Result<Self, OperationError> {
@@ -1087,7 +1087,7 @@ impl ReviveRecycledEvent {
         audit: &mut AuditScope,
         uat: Option<UserAuthToken>,
         filter: Filter<FilterInvalid>,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         Ok(ReviveRecycledEvent {
             event: Event::from_rw_uat(audit, qs, uat)?,

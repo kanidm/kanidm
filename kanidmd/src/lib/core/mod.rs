@@ -1323,7 +1323,7 @@ pub fn backup_server_core(config: Configuration, dst_path: &str) {
         }
     };
 
-    let mut be_ro_txn = be.read();
+    let be_ro_txn = be.read();
     let r = be_ro_txn.backup(&mut audit, dst_path);
     audit.write_log();
     match r {
@@ -1357,7 +1357,7 @@ pub fn restore_server_core(config: Configuration, dst_path: &str) {
         }
     };
 
-    let mut be_wr_txn = be.write();
+    let be_wr_txn = be.write();
     let r = be_wr_txn
         .restore(&mut audit, dst_path)
         .and_then(|_| be_wr_txn.commit(&mut audit));
@@ -1383,7 +1383,7 @@ pub fn restore_server_core(config: Configuration, dst_path: &str) {
 
     info!("Start reindex phase ...");
 
-    let mut qs_write = qs.write(duration_from_epoch_now());
+    let qs_write = qs.write(duration_from_epoch_now());
     let r = qs_write
         .reindex(&mut audit)
         .and_then(|_| qs_write.commit(&mut audit));
@@ -1421,7 +1421,7 @@ pub fn reindex_server_core(config: Configuration) {
     };
 
     // Reindex only the core schema attributes to bootstrap the process.
-    let mut be_wr_txn = be.write();
+    let be_wr_txn = be.write();
     let r = be_wr_txn
         .reindex(&mut audit)
         .and_then(|_| be_wr_txn.commit(&mut audit));
@@ -1454,7 +1454,7 @@ pub fn reindex_server_core(config: Configuration) {
 
     eprintln!("Start Index Phase 2 ...");
 
-    let mut qs_write = qs.write(duration_from_epoch_now());
+    let qs_write = qs.write(duration_from_epoch_now());
     let r = qs_write
         .reindex(&mut audit)
         .and_then(|_| qs_write.commit(&mut audit));
@@ -1499,7 +1499,7 @@ pub fn domain_rename_core(config: Configuration, new_domain_name: String) {
         }
     };
 
-    let mut qs_write = qs.write(duration_from_epoch_now());
+    let qs_write = qs.write(duration_from_epoch_now());
     let r = qs_write
         .domain_rename(&mut audit, new_domain_name.as_str())
         .and_then(|_| qs_write.commit(&mut audit));

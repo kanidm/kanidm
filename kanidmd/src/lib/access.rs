@@ -61,10 +61,14 @@ impl AccessControlSearch {
             ));
         }
 
-        let attrs = value.get_ava_set_string("acp_search_attr").ok_or_else(|| {
-            ladmin_error!(audit, "Missing acp_search_attr");
-            OperationError::InvalidACPState("Missing acp_search_attr".to_string())
-        })?;
+        let attrs = value
+            .get_ava_as_str("acp_search_attr")
+            .ok_or_else(|| {
+                ladmin_error!(audit, "Missing acp_search_attr");
+                OperationError::InvalidACPState("Missing acp_search_attr".to_string())
+            })?
+            .map(|s| s.to_string())
+            .collect();
 
         let acp = AccessControlProfile::try_from(audit, qs, value)?;
 
@@ -153,11 +157,13 @@ impl AccessControlCreate {
         }
 
         let attrs = value
-            .get_ava_opt_string("acp_create_attr")
+            .get_ava_as_str("acp_create_attr")
+            .map(|i| i.map(|s| s.to_string()).collect())
             .unwrap_or_else(Vec::new);
 
         let classes = value
-            .get_ava_opt_string("acp_create_class")
+            .get_ava_as_str("acp_create_class")
+            .map(|i| i.map(|s| s.to_string()).collect())
             .unwrap_or_else(Vec::new);
 
         Ok(AccessControlCreate {
@@ -211,15 +217,18 @@ impl AccessControlModify {
         }
 
         let presattrs = value
-            .get_ava_opt_string("acp_modify_presentattr")
+            .get_ava_as_str("acp_modify_presentattr")
+            .map(|i| i.map(|s| s.to_string()).collect())
             .unwrap_or_else(Vec::new);
 
         let remattrs = value
-            .get_ava_opt_string("acp_modify_removedattr")
+            .get_ava_as_str("acp_modify_removedattr")
+            .map(|i| i.map(|s| s.to_string()).collect())
             .unwrap_or_else(Vec::new);
 
         let classes = value
-            .get_ava_opt_string("acp_modify_class")
+            .get_ava_as_str("acp_modify_class")
+            .map(|i| i.map(|s| s.to_string()).collect())
             .unwrap_or_else(Vec::new);
 
         Ok(AccessControlModify {
@@ -292,6 +301,7 @@ impl AccessControlProfile {
         // receiver, and turn to real filter
         let receiver_f: ProtoFilter = value
             .get_ava_single_protofilter("acp_receiver")
+            .map(|pf| pf.clone())
             .ok_or_else(|| {
                 ladmin_error!(audit, "Missing acp_receiver");
                 OperationError::InvalidACPState("Missing acp_receiver".to_string())
@@ -299,6 +309,7 @@ impl AccessControlProfile {
         // targetscope, and turn to real filter
         let targetscope_f: ProtoFilter = value
             .get_ava_single_protofilter("acp_targetscope")
+            .map(|pf| pf.clone())
             .ok_or_else(|| {
                 ladmin_error!(audit, "Missing acp_targetscope");
                 OperationError::InvalidACPState("Missing acp_targetscope".to_string())
@@ -916,7 +927,7 @@ pub trait AccessControlsTransaction {
                     false
                 } else {
                     // Build the set of requested classes and attrs here.
-                    let create_attrs: BTreeSet<&str> = e.get_ava_names();
+                    let create_attrs: BTreeSet<&str> = e.get_ava_names().collect();
                     // If this is empty, we make an empty set, which is fine because
                     // the empty class set despite matching is_subset, will have the
                     // following effect:
@@ -931,8 +942,8 @@ pub trait AccessControlsTransaction {
                     // I still think if this is None, we should just fail here ...
                     // because it shouldn't be possible to match.
 
-                    let create_classes: BTreeSet<&str> = match e.get_ava_set_str("class") {
-                        Some(s) => s,
+                    let create_classes: BTreeSet<&str> = match e.get_ava_as_str("class") {
+                        Some(s) => s.collect(),
                         None => {
                             ladmin_error!(audit, "Class set failed to build - corrupted entry?");
                             return false;

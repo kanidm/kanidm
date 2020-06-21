@@ -915,7 +915,7 @@ mod tests {
     ) -> Result<(), OperationError> {
         let cred = Credential::new_password_only(pw);
         let v_cred = Value::new_credential("primary", cred);
-        let mut qs_write = qs.write(duration_from_epoch_now());
+        let qs_write = qs.write(duration_from_epoch_now());
 
         // now modify and provide a primary credential.
         let me_inv_m = unsafe {
@@ -1207,7 +1207,7 @@ mod tests {
     #[test]
     fn test_idm_unixusertoken() {
         run_idm_test!(|_qs: &QueryServer, idms: &IdmServer, au: &mut AuditScope| {
-            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
+            let idms_prox_write = idms.proxy_write(duration_from_epoch_now());
             // Modify admin to have posixaccount
             let me_posix = unsafe {
                 ModifyEvent::new_internal_invalid(
@@ -1317,7 +1317,7 @@ mod tests {
             assert!(idms_write.commit(au).is_ok());
 
             // Check deleting the password
-            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
+            let idms_prox_write = idms.proxy_write(duration_from_epoch_now());
             let me_purge_up = unsafe {
                 ModifyEvent::new_internal_invalid(
                     filter!(f_eq("name", PartialValue::new_iname("admin"))),

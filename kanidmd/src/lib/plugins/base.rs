@@ -46,7 +46,7 @@ impl Plugin for Base {
     #[allow(clippy::cognitive_complexity)]
     fn pre_create_transform(
         au: &mut AuditScope,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
@@ -63,42 +63,28 @@ impl Plugin for Base {
             // If they have a name, but no principal name, derive it.
 
             // if they don't have uuid, create it.
-            let c_uuid: Value = match entry.get_ava("uuid") {
-                Some(u) => {
-                    // Actually check we have a value, could be empty array ...
-                    if u.len() > 1 {
-                        ladmin_error!(au, "Entry defines uuid attr, but multiple values.");
-                        return Err(OperationError::Plugin(PluginError::Base(
-                            "Uuid has multiple values".to_string(),
-                        )));
-                    };
-
-                    // Schema of the value v, is checked in the filter generation. Neat!
-                    // That way we don't need to check it here either.
-
-                    // Should this be forgiving and just generate the UUID?
-                    // NO! If you tried to specify it, but didn't give it, then you made
-                    // a mistake and your intent is unknown.
-                    let v: Value = u
-                        .first()
-                        .ok_or_else(|| {
-                            ladmin_error!(au, "Uuid format invalid");
-                            OperationError::Plugin(PluginError::Base(
-                                "Uuid format invalid".to_string(),
-                            ))
-                        })
-                        .map(|v| (*v).clone())?;
-                    v
+            match entry.get_ava_set("uuid").map(|s| s.len()) {
+                None => {
+                    // Generate
+                    let ava_uuid: Vec<Value> = vec![Value::new_uuid(Uuid::new_v4())];
+                    ltrace!(au, "Setting temporary UUID {:?} to entry", ava_uuid[0]);
+                    entry.set_avas("uuid", ava_uuid);
                 }
-                None => Value::new_uuid(Uuid::new_v4()),
-                // None => Value::new_uuid(uuid_from_now()),
+                Some(1) => {
+                    // Do nothing
+                }
+                Some(x) => {
+                    // If we get some it MUST be 2 +
+                    ladmin_error!(
+                        au,
+                        "Entry defines uuid attr, but has multiple ({}) values.",
+                        x
+                    );
+                    return Err(OperationError::Plugin(PluginError::Base(
+                        "Uuid has multiple values".to_string(),
+                    )));
+                }
             };
-
-            ltrace!(au, "Setting temporary UUID {:?} to entry", c_uuid);
-            let ava_uuid: Vec<Value> = vec![c_uuid];
-
-            entry.set_avas("uuid", ava_uuid);
-            ltrace!(au, "Temporary entry state: {:?}", entry);
         }
 
         // Now, every cand has a UUID - create a cand uuid set from it.
@@ -200,7 +186,7 @@ impl Plugin for Base {
 
     fn pre_modify(
         au: &mut AuditScope,
-        _qs: &mut QueryServerWriteTransaction,
+        _qs: &QueryServerWriteTransaction,
         _cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         me: &ModifyEvent,
     ) -> Result<(), OperationError> {
@@ -220,7 +206,7 @@ impl Plugin for Base {
 
     fn verify(
         au: &mut AuditScope,
-        qs: &mut QueryServerReadTransaction,
+        qs: &QueryServerReadTransaction,
     ) -> Vec<Result<(), ConsistencyError>> {
         // Verify all uuid's are unique?
         // Probably the literally worst thing ...
@@ -327,7 +313,7 @@ mod tests {
             preload,
             create,
             None,
-            |au: &mut AuditScope, qs: &mut QueryServerWriteTransaction| {
+            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(
                         au,
@@ -422,7 +408,7 @@ mod tests {
             preload,
             create,
             None,
-            |au: &mut AuditScope, qs: &mut QueryServerWriteTransaction| {
+            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(
                         au,

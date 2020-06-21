@@ -18,7 +18,7 @@ impl Plugin for PasswordImport {
 
     fn pre_create_transform(
         _au: &mut AuditScope,
-        _qs: &mut QueryServerWriteTransaction,
+        _qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
@@ -67,7 +67,7 @@ impl Plugin for PasswordImport {
 
     fn pre_modify(
         _au: &mut AuditScope,
-        _qs: &mut QueryServerWriteTransaction,
+        _qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
@@ -254,7 +254,7 @@ mod tests {
                 Value::from(IMPORT_HASH)
             )]),
             None,
-            |au: &mut AuditScope, qs: &mut QueryServerWriteTransaction| {
+            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 let e = qs
                     .internal_search_uuid(
                         au,

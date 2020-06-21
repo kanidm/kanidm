@@ -424,7 +424,7 @@ impl Filter<FilterInvalid> {
     pub fn from_ro(
         audit: &mut AuditScope,
         f: &ProtoFilter,
-        qs: &mut QueryServerReadTransaction,
+        qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         lperf_trace_segment!(audit, "filter::from_ro", || {
             Ok(Filter {
@@ -438,7 +438,7 @@ impl Filter<FilterInvalid> {
     pub fn from_rw(
         audit: &mut AuditScope,
         f: &ProtoFilter,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         lperf_trace_segment!(audit, "filter::from_rw", || {
             Ok(Filter {
@@ -452,7 +452,7 @@ impl Filter<FilterInvalid> {
     pub fn from_ldap_ro(
         audit: &mut AuditScope,
         f: &LdapFilter,
-        qs: &mut QueryServerReadTransaction,
+        qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         lperf_trace_segment!(audit, "filter::from_ldap_ro", || {
             Ok(Filter {
@@ -631,7 +631,7 @@ impl FilterComp {
     fn from_ro(
         audit: &mut AuditScope,
         f: &ProtoFilter,
-        qs: &mut QueryServerReadTransaction,
+        qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         Ok(match f {
             ProtoFilter::Eq(a, v) => {
@@ -666,7 +666,7 @@ impl FilterComp {
     fn from_rw(
         audit: &mut AuditScope,
         f: &ProtoFilter,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         Ok(match f {
             ProtoFilter::Eq(a, v) => {
@@ -701,7 +701,7 @@ impl FilterComp {
     fn from_ldap_ro(
         audit: &mut AuditScope,
         f: &LdapFilter,
-        qs: &mut QueryServerReadTransaction,
+        qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         Ok(match f {
             LdapFilter::And(l) => FilterComp::And(

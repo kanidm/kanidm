@@ -4,6 +4,7 @@
 // This is really only used for long lived, high level types that need clone
 // that otherwise can't be cloned. Think Mutex.
 // use actix::prelude::*;
+use std::cell::Cell;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use std::time::Duration;
@@ -64,7 +65,7 @@ lazy_static! {
 /// [`QueryServerWriteTransaction`]: struct.QueryServerWriteTransaction.html
 pub trait QueryServerTransaction {
     type BackendTransactionType: BackendTransaction;
-    fn get_be_txn(&mut self) -> &mut Self::BackendTransactionType;
+    fn get_be_txn(&self) -> &Self::BackendTransactionType;
 
     type SchemaTransactionType: SchemaTransaction;
     fn get_schema(&self) -> &Self::SchemaTransactionType;
@@ -82,7 +83,7 @@ pub trait QueryServerTransaction {
     /// [`access`]: ../access/index.html
     /// [`fn search`]: trait.QueryServerTransaction.html#method.search
     fn search_ext(
-        &mut self,
+        &self,
         au: &mut AuditScope,
         se: &SearchEvent,
     ) -> Result<Vec<Entry<EntryReduced, EntryCommitted>>, OperationError> {
@@ -107,7 +108,7 @@ pub trait QueryServerTransaction {
     }
 
     fn search(
-        &mut self,
+        &self,
         au: &mut AuditScope,
         se: &SearchEvent,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
@@ -161,7 +162,7 @@ pub trait QueryServerTransaction {
         })
     }
 
-    fn exists(&mut self, au: &mut AuditScope, ee: &ExistsEvent) -> Result<bool, OperationError> {
+    fn exists(&self, au: &mut AuditScope, ee: &ExistsEvent) -> Result<bool, OperationError> {
         lperf_segment!(au, "server::exists", || {
             let be_txn = self.get_be_txn();
             let idxmeta = be_txn.get_idxmeta_ref();
@@ -193,7 +194,7 @@ pub trait QueryServerTransaction {
     //
     // Remember, we don't care if the name is invalid, because search
     // will validate/normalise the filter we construct for us. COOL!
-    fn name_to_uuid(&mut self, audit: &mut AuditScope, name: &str) -> Result<Uuid, OperationError> {
+    fn name_to_uuid(&self, audit: &mut AuditScope, name: &str) -> Result<Uuid, OperationError> {
         // Is it just a uuid?
         Uuid::parse_str(name).or_else(|_| {
             let lname = name.to_lowercase();
@@ -204,7 +205,7 @@ pub trait QueryServerTransaction {
     }
 
     fn uuid_to_spn(
-        &mut self,
+        &self,
         audit: &mut AuditScope,
         uuid: &Uuid,
     ) -> Result<Option<Value>, OperationError> {
@@ -219,11 +220,7 @@ pub trait QueryServerTransaction {
         Ok(r)
     }
 
-    fn uuid_to_rdn(
-        &mut self,
-        audit: &mut AuditScope,
-        uuid: &Uuid,
-    ) -> Result<String, OperationError> {
+    fn uuid_to_rdn(&self, audit: &mut AuditScope, uuid: &Uuid) -> Result<String, OperationError> {
         self.get_be_txn()
             .uuid2rdn(audit, uuid)
             .and_then(|v| match v {
@@ -234,7 +231,7 @@ pub trait QueryServerTransaction {
 
     // From internal, generate an exists event and dispatch
     fn internal_exists(
-        &mut self,
+        &self,
         au: &mut AuditScope,
         filter: Filter<FilterInvalid>,
     ) -> Result<bool, OperationError> {
@@ -251,7 +248,7 @@ pub trait QueryServerTransaction {
     }
 
     fn internal_search(
-        &mut self,
+        &self,
         audit: &mut AuditScope,
         filter: Filter<FilterInvalid>,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
@@ -265,7 +262,7 @@ pub trait QueryServerTransaction {
     }
 
     fn impersonate_search_valid(
-        &mut self,
+        &self,
         audit: &mut AuditScope,
         f_valid: Filter<FilterValid>,
         f_intent_valid: Filter<FilterValid>,
@@ -279,7 +276,7 @@ pub trait QueryServerTransaction {
 
     // this applys ACP to filter result entries.
     fn impersonate_search_ext_valid(
-        &mut self,
+        &self,
         audit: &mut AuditScope,
         f_valid: Filter<FilterValid>,
         f_intent_valid: Filter<FilterValid>,
@@ -309,7 +306,7 @@ pub trait QueryServerTransaction {
     */
 
     fn impersonate_search_ext(
-        &mut self,
+        &self,
         audit: &mut AuditScope,
         filter: Filter<FilterInvalid>,
         filter_intent: Filter<FilterInvalid>,
@@ -329,7 +326,7 @@ pub trait QueryServerTransaction {
     // Get a single entry by it's UUID. This is heavily relied on for internal
     // server operations, especially in login and acp checks for acp.
     fn internal_search_uuid(
-        &mut self,
+        &self,
         audit: &mut AuditScope,
         uuid: &Uuid,
     ) -> Result<Entry<EntrySealed, EntryCommitted>, OperationError> {
@@ -355,7 +352,7 @@ pub trait QueryServerTransaction {
     }
 
     fn impersonate_search_ext_uuid(
-        &mut self,
+        &self,
         audit: &mut AuditScope,
         uuid: &Uuid,
         event: &Event,
@@ -381,7 +378,7 @@ pub trait QueryServerTransaction {
     /// Do a schema aware conversion from a String:String to String:Value for modification
     /// present.
     fn clone_value(
-        &mut self,
+        &self,
         audit: &mut AuditScope,
         attr: &str,
         value: &str,
@@ -456,7 +453,7 @@ pub trait QueryServerTransaction {
     }
 
     fn clone_partialvalue(
-        &mut self,
+        &self,
         audit: &mut AuditScope,
         attr: &str,
         value: &str,
@@ -543,7 +540,7 @@ pub trait QueryServerTransaction {
 
     // In the opposite direction, we can resolve values for presentation
     fn resolve_value(
-        &mut self,
+        &self,
         audit: &mut AuditScope,
         value: &Value,
     ) -> Result<String, OperationError> {
@@ -561,7 +558,7 @@ pub trait QueryServerTransaction {
     }
 
     fn resolve_value_ldap(
-        &mut self,
+        &self,
         audit: &mut AuditScope,
         value: &Value,
         basedn: &str,
@@ -572,6 +569,7 @@ pub trait QueryServerTransaction {
         } else if value.is_sshkey() {
             value
                 .get_sshkey()
+                .map(|s| s.to_string())
                 .ok_or_else(|| OperationError::InvalidValueState)
         } else {
             // Not? Okay, do the to string.
@@ -594,8 +592,8 @@ pub struct QueryServerReadTransaction<'a> {
 impl<'a> QueryServerTransaction for QueryServerReadTransaction<'a> {
     type BackendTransactionType = BackendReadTransaction<'a>;
 
-    fn get_be_txn(&mut self) -> &mut BackendReadTransaction<'a> {
-        &mut self.be_txn
+    fn get_be_txn(&self) -> &BackendReadTransaction<'a> {
+        &self.be_txn
     }
 
     type SchemaTransactionType = SchemaReadTransaction;
@@ -615,7 +613,7 @@ impl<'a> QueryServerReadTransaction<'a> {
     // Verify the data content of the server is as expected. This will probably
     // call various functions for validation, including possibly plugin
     // verifications.
-    fn verify(&mut self, au: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
+    fn verify(&self, au: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
         // If we fail after backend, we need to return NOW because we can't
         // assert any other faith in the DB states.
         //  * backend
@@ -662,15 +660,15 @@ pub struct QueryServerWriteTransaction<'a> {
     // We store a set of flags that indicate we need a reload of
     // schema or acp, which is tested by checking the classes of the
     // changing content.
-    changed_schema: bool,
-    changed_acp: bool,
+    changed_schema: Cell<bool>,
+    changed_acp: Cell<bool>,
 }
 
 impl<'a> QueryServerTransaction for QueryServerWriteTransaction<'a> {
     type BackendTransactionType = BackendWriteTransaction<'a>;
 
-    fn get_be_txn(&mut self) -> &mut BackendWriteTransaction<'a> {
-        &mut self.be_txn
+    fn get_be_txn(&self) -> &BackendWriteTransaction<'a> {
+        &self.be_txn
     }
 
     type SchemaTransactionType = SchemaWriteTransaction<'a>;
@@ -704,7 +702,7 @@ pub struct QueryServer {
 impl QueryServer {
     pub fn new(be: Backend, schema: Schema) -> Self {
         let (s_uuid, d_uuid) = {
-            let mut wr = be.write();
+            let wr = be.write();
             (wr.get_db_s_uuid(), wr.get_db_d_uuid())
         };
 
@@ -731,7 +729,7 @@ impl QueryServer {
     pub fn write(&self, ts: Duration) -> QueryServerWriteTransaction {
         // Feed the current schema index metadata to the be write transaction.
         let schema_write = self.schema.write();
-        let mut be_txn = self.be.write();
+        let be_txn = self.be.write();
 
         let ts_max = be_txn.get_db_ts_max(&ts).expect("Unable to get db_ts_max");
         let cid = Cid::new_lamport(self.s_uuid, self.d_uuid, ts, &ts_max);
@@ -749,8 +747,8 @@ impl QueryServer {
             be_txn,
             schema: schema_write,
             accesscontrols: self.accesscontrols.write(),
-            changed_schema: false,
-            changed_acp: false,
+            changed_schema: Cell::new(false),
+            changed_acp: Cell::new(false),
         }
     }
 
@@ -770,7 +768,7 @@ impl QueryServer {
         // reloading to occur, which causes the idxmeta to update, and allows validation
         // of the schema in the subsequent steps as we proceed.
 
-        let mut reindex_write_1 = self.write(ts);
+        let reindex_write_1 = self.write(ts);
         reindex_write_1
             .upgrade_reindex(audit, SYSTEM_INDEX_VERSION)
             .and_then(|_| reindex_write_1.commit(audit))?;
@@ -784,19 +782,19 @@ impl QueryServer {
         // the schema to tell us what's indexed), but because we have the in
         // mem schema that defines how schema is structuded, and this is all
         // marked "system", then we won't have an issue here.
-        let mut ts_write_1 = self.write(ts);
+        let ts_write_1 = self.write(ts);
         ts_write_1
             .initialise_schema_core(audit)
             .and_then(|_| ts_write_1.commit(audit))?;
 
-        let mut ts_write_2 = self.write(ts);
+        let ts_write_2 = self.write(ts);
         ts_write_2
             .initialise_schema_idm(audit)
             .and_then(|_| ts_write_2.commit(audit))?;
 
         // reindex and set to version + 1, this way when we bump the version
         // we are essetially pushing this version id back up to step write_1
-        let mut reindex_write_2 = self.write(ts);
+        let reindex_write_2 = self.write(ts);
         reindex_write_2
             .upgrade_reindex(audit, SYSTEM_INDEX_VERSION + 1)
             .and_then(|_| reindex_write_2.commit(audit))?;
@@ -809,7 +807,7 @@ impl QueryServer {
         // the indexing subsystem is schema/value agnostic - the fact the values still let their keys
         // be extracted, means that the pres indexes will be valid even though the entries are pending
         // migration. We must be sure to NOT use EQ/SUB indexes in the migration code however!
-        let mut migrate_txn = self.write(ts);
+        let migrate_txn = self.write(ts);
         // If we are "in the process of being setup" this is 0, and the migrations will have no
         // effect as ... there is nothing to migrate! It allows reset of the version to 0 to force
         // db migrations to take place.
@@ -827,7 +825,7 @@ impl QueryServer {
         migrate_txn.commit(audit)?;
         // Migrations complete. Init idm will now set the version as needed.
 
-        let mut ts_write_3 = self.write(ts);
+        let ts_write_3 = self.write(ts);
         ts_write_3
             .initialise_idm(audit)
             .and_then(|_| ts_write_3.commit(audit))?;
@@ -837,13 +835,13 @@ impl QueryServer {
     }
 
     pub fn verify(&self, au: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
-        let mut r_txn = self.read();
+        let r_txn = self.read();
         r_txn.verify(au)
     }
 }
 
 impl<'a> QueryServerWriteTransaction<'a> {
-    pub fn create(&mut self, au: &mut AuditScope, ce: &CreateEvent) -> Result<(), OperationError> {
+    pub fn create(&self, au: &mut AuditScope, ce: &CreateEvent) -> Result<(), OperationError> {
         lperf_segment!(au, "server::create", || {
             // The create event is a raw, read only representation of the request
             // that was made to us, including information about the identity
@@ -926,7 +924,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // We may change from ce.entries later to something else?
             let commit_cand = self.be_txn.create(au, norm_cand).map_err(|e| {
                 ladmin_error!(au, "betxn create failure {:?}", e);
-
                 e
             })?;
             // Run any post plugins
@@ -938,21 +935,25 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
             // We have finished all plugs and now have a successful operation - flag if
             // schema or acp requires reload.
-            self.changed_schema = commit_cand.iter().fold(false, |acc, e| {
-                if acc {
-                    acc
-                } else {
-                    e.attribute_value_pres("class", &PVCLASS_CLASSTYPE)
-                        || e.attribute_value_pres("class", &PVCLASS_ATTRIBUTETYPE)
-                }
-            });
-            self.changed_acp = commit_cand.iter().fold(false, |acc, e| {
-                if acc {
-                    acc
-                } else {
-                    e.attribute_value_pres("class", &PVCLASS_ACP)
-                }
-            });
+            let _ = self
+                .changed_schema
+                .replace(commit_cand.iter().fold(false, |acc, e| {
+                    if acc {
+                        acc
+                    } else {
+                        e.attribute_value_pres("class", &PVCLASS_CLASSTYPE)
+                            || e.attribute_value_pres("class", &PVCLASS_ATTRIBUTETYPE)
+                    }
+                }));
+            let _ = self
+                .changed_acp
+                .replace(commit_cand.iter().fold(false, |acc, e| {
+                    if acc {
+                        acc
+                    } else {
+                        e.attribute_value_pres("class", &PVCLASS_ACP)
+                    }
+                }));
             ltrace!(
                 au,
                 "Schema reload: {:?}, ACP reload: {:?}",
@@ -971,7 +972,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         })
     }
 
-    pub fn delete(&mut self, au: &mut AuditScope, de: &DeleteEvent) -> Result<(), OperationError> {
+    pub fn delete(&self, au: &mut AuditScope, de: &DeleteEvent) -> Result<(), OperationError> {
         lperf_segment!(au, "server::delete", || {
             // Do you have access to view all the set members? Reduce based on your
             // read permissions and attrs
@@ -1068,21 +1069,25 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
             // We have finished all plugs and now have a successful operation - flag if
             // schema or acp requires reload.
-            self.changed_schema = del_cand.iter().fold(false, |acc, e| {
-                if acc {
-                    acc
-                } else {
-                    e.attribute_value_pres("class", &PVCLASS_CLASSTYPE)
-                        || e.attribute_value_pres("class", &PVCLASS_ATTRIBUTETYPE)
-                }
-            });
-            self.changed_acp = del_cand.iter().fold(false, |acc, e| {
-                if acc {
-                    acc
-                } else {
-                    e.attribute_value_pres("class", &PVCLASS_ACP)
-                }
-            });
+            let _ = self
+                .changed_schema
+                .replace(del_cand.iter().fold(false, |acc, e| {
+                    if acc {
+                        acc
+                    } else {
+                        e.attribute_value_pres("class", &PVCLASS_CLASSTYPE)
+                            || e.attribute_value_pres("class", &PVCLASS_ATTRIBUTETYPE)
+                    }
+                }));
+            let _ = self
+                .changed_acp
+                .replace(del_cand.iter().fold(false, |acc, e| {
+                    if acc {
+                        acc
+                    } else {
+                        e.attribute_value_pres("class", &PVCLASS_ACP)
+                    }
+                }));
             ltrace!(
                 au,
                 "Schema reload: {:?}, ACP reload: {:?}",
@@ -1100,7 +1105,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         })
     }
 
-    pub fn purge_tombstones(&mut self, au: &mut AuditScope) -> Result<(), OperationError> {
+    pub fn purge_tombstones(&self, au: &mut AuditScope) -> Result<(), OperationError> {
         lperf_segment!(au, "server::purge_tombstones", || {
             // delete everything that is a tombstone.
             let cid = self.cid.sub_secs(CHANGELOG_MAX_AGE).map_err(|e| {
@@ -1136,7 +1141,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         })
     }
 
-    pub fn purge_recycled(&mut self, au: &mut AuditScope) -> Result<(), OperationError> {
+    pub fn purge_recycled(&self, au: &mut AuditScope) -> Result<(), OperationError> {
         lperf_segment!(au, "server::purge_recycled", || {
             // Send everything that is recycled to tombstone
             // Search all recycled
@@ -1192,7 +1197,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
     // Should this take a revive event?
     pub fn revive_recycled(
-        &mut self,
+        &self,
         au: &mut AuditScope,
         re: &ReviveRecycledEvent,
     ) -> Result<(), OperationError> {
@@ -1226,8 +1231,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 // Get this entries uuid.
                 let u: Uuid = *e.get_uuid();
 
-                e.get_ava_reference_uuid("directmemberof").and_then(|list| {
-                    list.into_iter().for_each(|g_uuid| {
+                e.get_ava_as_refuuid("directmemberof").and_then(|riter| {
+                    riter.for_each(|g_uuid| {
                         dm_mods
                             .entry(g_uuid.clone())
                             .and_modify(|mlist| {
@@ -1268,7 +1273,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         })
     }
 
-    pub fn modify(&mut self, au: &mut AuditScope, me: &ModifyEvent) -> Result<(), OperationError> {
+    pub fn modify(&self, au: &mut AuditScope, me: &ModifyEvent) -> Result<(), OperationError> {
         lperf_segment!(au, "server::modify", || {
             // Get the candidates.
             // Modify applies a modlist to a filter, so we need to internal search
@@ -1401,29 +1406,31 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // We have finished all plugs and now have a successful operation - flag if
             // schema or acp requires reload. Remember, this is a modify, so we need to check
             // pre and post cands.
-            self.changed_schema =
-                norm_cand
-                    .iter()
-                    .chain(pre_candidates.iter())
-                    .fold(false, |acc, e| {
-                        if acc {
-                            acc
-                        } else {
-                            e.attribute_value_pres("class", &PVCLASS_CLASSTYPE)
-                                || e.attribute_value_pres("class", &PVCLASS_ATTRIBUTETYPE)
-                        }
-                    });
-            self.changed_acp =
-                norm_cand
-                    .iter()
-                    .chain(pre_candidates.iter())
-                    .fold(false, |acc, e| {
-                        if acc {
-                            acc
-                        } else {
-                            e.attribute_value_pres("class", &PVCLASS_ACP)
-                        }
-                    });
+            let _ =
+                self.changed_schema
+                    .replace(norm_cand.iter().chain(pre_candidates.iter()).fold(
+                        false,
+                        |acc, e| {
+                            if acc {
+                                acc
+                            } else {
+                                e.attribute_value_pres("class", &PVCLASS_CLASSTYPE)
+                                    || e.attribute_value_pres("class", &PVCLASS_ATTRIBUTETYPE)
+                            }
+                        },
+                    ));
+            let _ =
+                self.changed_acp
+                    .replace(norm_cand.iter().chain(pre_candidates.iter()).fold(
+                        false,
+                        |acc, e| {
+                            if acc {
+                                acc
+                            } else {
+                                e.attribute_value_pres("class", &PVCLASS_ACP)
+                            }
+                        },
+                    ));
             ltrace!(
                 au,
                 "Schema reload: {:?}, ACP reload: {:?}",
@@ -1442,7 +1449,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     /// Migrate 2 to 3 changes the name, domain_name types from iutf8 to iname.
-    pub fn migrate_2_to_3(&mut self, au: &mut AuditScope) -> Result<(), OperationError> {
+    pub fn migrate_2_to_3(&self, au: &mut AuditScope) -> Result<(), OperationError> {
         lperf_segment!(au, "server::migrate_2_to_3", || {
             ladmin_warning!(au, "starting 2 to 3 migration. THIS MAY TAKE A LONG TIME!");
             // Get all entries where pres name or domain_name. INCLUDE TS + RECYCLE.
@@ -1519,7 +1526,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     // only, allowing certain plugin by passes etc.
 
     pub fn internal_create(
-        &mut self,
+        &self,
         audit: &mut AuditScope,
         entries: Vec<Entry<EntryInit, EntryNew>>,
     ) -> Result<(), OperationError> {
@@ -1530,7 +1537,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     pub fn internal_delete(
-        &mut self,
+        &self,
         audit: &mut AuditScope,
         filter: Filter<FilterInvalid>,
     ) -> Result<(), OperationError> {
@@ -1542,7 +1549,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     pub fn internal_modify(
-        &mut self,
+        &self,
         audit: &mut AuditScope,
         filter: Filter<FilterInvalid>,
         modlist: ModifyList<ModifyInvalid>,
@@ -1560,7 +1567,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     pub fn impersonate_modify_valid(
-        &mut self,
+        &self,
         audit: &mut AuditScope,
         f_valid: Filter<FilterValid>,
         f_intent_valid: Filter<FilterValid>,
@@ -1572,7 +1579,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     pub fn impersonate_modify(
-        &mut self,
+        &self,
         audit: &mut AuditScope,
         filter: Filter<FilterInvalid>,
         filter_intent: Filter<FilterInvalid>,
@@ -1612,7 +1619,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     */
 
     pub fn internal_migrate_or_create_str(
-        &mut self,
+        &self,
         audit: &mut AuditScope,
         e_str: &str,
     ) -> Result<(), OperationError> {
@@ -1632,7 +1639,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     pub fn internal_migrate_or_create(
-        &mut self,
+        &self,
         audit: &mut AuditScope,
         e: Entry<EntryInit, EntryNew>,
     ) -> Result<(), OperationError> {
@@ -1750,7 +1757,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
     */
 
-    pub fn initialise_schema_core(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
+    pub fn initialise_schema_core(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
         ladmin_info!(audit, "initialise_schema_core -> start ...");
         // Load in all the "core" schema, that we already have in "memory".
         let entries = self.schema.to_entries();
@@ -1772,7 +1779,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         r
     }
 
-    pub fn initialise_schema_idm(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
+    pub fn initialise_schema_idm(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
         ladmin_info!(audit, "initialise_schema_idm -> start ...");
         // List of IDM schemas to init.
         let idm_schema: Vec<&str> = vec![
@@ -1815,7 +1822,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     // This function is idempotent
-    pub fn initialise_idm(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
+    pub fn initialise_idm(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
         // First, check the system_info object. This stores some server information
         // and details. It's a pretty const thing. Also check anonymous, important to many
         // concepts.
@@ -2139,7 +2146,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     /// Initiate a domain rename process. This is generally an internal function but it's
     /// exposed to the cli for admins to be able to initiate the process.
     pub fn domain_rename(
-        &mut self,
+        &self,
         audit: &mut AuditScope,
         new_domain_name: &str,
     ) -> Result<(), OperationError> {
@@ -2150,7 +2157,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.internal_modify(audit, filt, modl)
     }
 
-    pub fn reindex(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
+    pub fn reindex(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
         // initiate a be reindex here. This could have been from first run checking
         // the versions, or it could just be from the cli where an admin needs to do an
         // indexing.
@@ -2158,7 +2165,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     pub(crate) fn upgrade_reindex(
-        &mut self,
+        &self,
         audit: &mut AuditScope,
         v: i64,
     ) -> Result<(), OperationError> {
@@ -2170,21 +2177,21 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // in an operation so we can check if we need to do the reload or not
         //
         // Reload the schema from qs.
-        if self.changed_schema {
+        if self.changed_schema.get() {
             self.reload_schema(audit)?;
         }
         // Determine if we need to update access control profiles
         // based on any modifications that have occured.
         // IF SCHEMA CHANGED WE MUST ALSO RELOAD!!! IE if schema had an attr removed
         // that we rely on we MUST fail this here!!
-        if self.changed_schema || self.changed_acp {
+        if self.changed_schema.get() || self.changed_acp.get() {
             self.reload_accesscontrols(audit)?;
         }
 
         // Now destructure the transaction ready to reset it.
         let QueryServerWriteTransaction {
             committed,
-            mut be_txn,
+            be_txn,
             schema,
             accesscontrols,
             cid,
@@ -2234,7 +2241,7 @@ mod tests {
     #[test]
     fn test_qs_create_user() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
-            let mut server_txn = server.write(duration_from_epoch_now());
+            let server_txn = server.write(duration_from_epoch_now());
             let filt = filter!(f_eq("name", PartialValue::new_iname("testperson")));
             let admin = server_txn
                 .internal_search_uuid(audit, &UUID_ADMIN)
@@ -2280,23 +2287,23 @@ mod tests {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             {
                 // Setup and abort.
-                let mut server_txn = server.write(duration_from_epoch_now());
+                let server_txn = server.write(duration_from_epoch_now());
                 assert!(server_txn.initialise_schema_core(audit).is_ok());
             }
             {
-                let mut server_txn = server.write(duration_from_epoch_now());
+                let server_txn = server.write(duration_from_epoch_now());
                 assert!(server_txn.initialise_schema_core(audit).is_ok());
                 assert!(server_txn.initialise_schema_core(audit).is_ok());
                 assert!(server_txn.commit(audit).is_ok());
             }
             {
                 // Now do it again in a new txn, but abort
-                let mut server_txn = server.write(duration_from_epoch_now());
+                let server_txn = server.write(duration_from_epoch_now());
                 assert!(server_txn.initialise_schema_core(audit).is_ok());
             }
             {
                 // Now do it again in a new txn.
-                let mut server_txn = server.write(duration_from_epoch_now());
+                let server_txn = server.write(duration_from_epoch_now());
                 assert!(server_txn.initialise_schema_core(audit).is_ok());
                 assert!(server_txn.commit(audit).is_ok());
             }
@@ -2307,7 +2314,7 @@ mod tests {
     fn test_qs_modify() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             // Create an object
-            let mut server_txn = server.write(duration_from_epoch_now());
+            let server_txn = server.write(duration_from_epoch_now());
 
             let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
@@ -2432,7 +2439,7 @@ mod tests {
         // Test modifying an entry and adding an extra class, that would cause the entry
         // to no longer conform to schema.
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
-            let mut server_txn = server.write(duration_from_epoch_now());
+            let server_txn = server.write(duration_from_epoch_now());
 
             let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
@@ -2506,7 +2513,7 @@ mod tests {
     fn test_qs_delete() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             // Create
-            let mut server_txn = server.write(duration_from_epoch_now());
+            let server_txn = server.write(duration_from_epoch_now());
 
             let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
@@ -2592,7 +2599,7 @@ mod tests {
             let time_p1 = duration_from_epoch_now();
             let time_p2 = time_p1 + Duration::from_secs(CHANGELOG_MAX_AGE * 2);
 
-            let mut server_txn = server.write(time_p1);
+            let server_txn = server.write(time_p1);
             let admin = server_txn
                 .internal_search_uuid(audit, &UUID_ADMIN)
                 .expect("failed");
@@ -2661,7 +2668,7 @@ mod tests {
             assert!(server_txn.commit(audit).is_ok());
 
             // New txn, push the cid forward.
-            let mut server_txn = server.write(time_p2);
+            let server_txn = server.write(time_p2);
 
             // Now purge
             assert!(server_txn.purge_tombstones(audit).is_ok());
@@ -2684,7 +2691,7 @@ mod tests {
             let time_p1 = duration_from_epoch_now();
             let time_p2 = time_p1 + Duration::from_secs(RECYCLEBIN_MAX_AGE * 2);
 
-            let mut server_txn = server.write(time_p1);
+            let server_txn = server.write(time_p1);
             let admin = server_txn
                 .internal_search_uuid(audit, &UUID_ADMIN)
                 .expect("failed");
@@ -2790,7 +2797,7 @@ mod tests {
             assert!(server_txn.commit(audit).is_ok());
 
             // Now, establish enough time for the recycled items to be purged.
-            let mut server_txn = server.write(time_p2);
+            let server_txn = server.write(time_p2);
 
             //  purge to tombstone, now that time has passed.
             assert!(server_txn.purge_recycled(audit).is_ok());
@@ -2822,7 +2829,7 @@ mod tests {
     fn test_qs_recycle_advanced() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             // Create items
-            let mut server_txn = server.write(duration_from_epoch_now());
+            let server_txn = server.write(duration_from_epoch_now());
             let admin = server_txn
                 .internal_search_uuid(audit, &UUID_ADMIN)
                 .expect("failed");
@@ -2868,7 +2875,7 @@ mod tests {
     #[test]
     fn test_qs_name_to_uuid() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
-            let mut server_txn = server.write(duration_from_epoch_now());
+            let server_txn = server.write(duration_from_epoch_now());
 
             let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
@@ -2903,7 +2910,7 @@ mod tests {
     #[test]
     fn test_qs_uuid_to_spn() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
-            let mut server_txn = server.write(duration_from_epoch_now());
+            let server_txn = server.write(duration_from_epoch_now());
 
             let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
@@ -2946,7 +2953,7 @@ mod tests {
     #[test]
     fn test_qs_uuid_to_rdn() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
-            let mut server_txn = server.write(duration_from_epoch_now());
+            let server_txn = server.write(duration_from_epoch_now());
 
             let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
@@ -2989,7 +2996,7 @@ mod tests {
     #[test]
     fn test_qs_uuid_to_star_recycle() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
-            let mut server_txn = server.write(duration_from_epoch_now());
+            let server_txn = server.write(duration_from_epoch_now());
 
             let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
@@ -3071,7 +3078,7 @@ mod tests {
     #[test]
     fn test_qs_clone_value() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
-            let mut server_txn = server.write(duration_from_epoch_now());
+            let server_txn = server.write(duration_from_epoch_now());
             let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "attrs": {
@@ -3120,7 +3127,7 @@ mod tests {
     #[test]
     fn test_qs_resolve_value() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
-            let mut server_txn = server.write(duration_from_epoch_now());
+            let server_txn = server.write(duration_from_epoch_now());
             let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
                 "attrs": {
@@ -3212,7 +3219,7 @@ mod tests {
             }"#,
             );
 
-            let mut server_txn = server.write(duration_from_epoch_now());
+            let server_txn = server.write(duration_from_epoch_now());
             // Add a new class.
             let ce_class = CreateEvent::new_internal(vec![e_cd.clone()]);
             assert!(server_txn.create(audit, &ce_class).is_ok());
@@ -3224,7 +3231,7 @@ mod tests {
             server_txn.commit(audit).expect("should not fail");
 
             // Start a new write
-            let mut server_txn = server.write(duration_from_epoch_now());
+            let server_txn = server.write(duration_from_epoch_now());
             // Add the class to an object
             // should work
             let ce_work = CreateEvent::new_internal(vec![e1.clone()]);
@@ -3234,7 +3241,7 @@ mod tests {
             server_txn.commit(audit).expect("should not fail");
 
             // Start a new write
-            let mut server_txn = server.write(duration_from_epoch_now());
+            let server_txn = server.write(duration_from_epoch_now());
             // delete the class
             let de_class = unsafe {
                 DeleteEvent::new_internal_invalid(filter!(f_eq(
@@ -3247,7 +3254,7 @@ mod tests {
             server_txn.commit(audit).expect("should not fail");
 
             // Start a new write
-            let mut server_txn = server.write(duration_from_epoch_now());
+            let server_txn = server.write(duration_from_epoch_now());
             // Trying to add now should fail
             let ce_fail = CreateEvent::new_internal(vec![e1.clone()]);
             assert!(server_txn.create(audit, &ce_fail).is_err());
@@ -3295,7 +3302,7 @@ mod tests {
             }"#,
             );
 
-            let mut server_txn = server.write(duration_from_epoch_now());
+            let server_txn = server.write(duration_from_epoch_now());
             // Add a new attribute.
             let ce_attr = CreateEvent::new_internal(vec![e_ad.clone()]);
             assert!(server_txn.create(audit, &ce_attr).is_ok());
@@ -3307,7 +3314,7 @@ mod tests {
             server_txn.commit(audit).expect("should not fail");
 
             // Start a new write
-            let mut server_txn = server.write(duration_from_epoch_now());
+            let server_txn = server.write(duration_from_epoch_now());
             // Add the attr to an object
             // should work
             let ce_work = CreateEvent::new_internal(vec![e1.clone()]);
@@ -3317,7 +3324,7 @@ mod tests {
             server_txn.commit(audit).expect("should not fail");
 
             // Start a new write
-            let mut server_txn = server.write(duration_from_epoch_now());
+            let server_txn = server.write(duration_from_epoch_now());
             // delete the attr
             let de_attr = unsafe {
                 DeleteEvent::new_internal_invalid(filter!(f_eq(
@@ -3330,7 +3337,7 @@ mod tests {
             server_txn.commit(audit).expect("should not fail");
 
             // Start a new write
-            let mut server_txn = server.write(duration_from_epoch_now());
+            let server_txn = server.write(duration_from_epoch_now());
             // Trying to add now should fail
             let ce_fail = CreateEvent::new_internal(vec![e1.clone()]);
             assert!(server_txn.create(audit, &ce_fail).is_err());
@@ -3366,7 +3373,7 @@ mod tests {
                 }
             }"#,
             );
-            let mut server_txn = server.write(duration_from_epoch_now());
+            let server_txn = server.write(duration_from_epoch_now());
             // Add the entry. Today we have no syntax to take simple str to a credential
             // but honestly, that's probably okay :)
             let ce = CreateEvent::new_internal(vec![e1]);
@@ -3440,7 +3447,7 @@ mod tests {
     }
 
     fn check_entry_has_mo(
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
         audit: &mut AuditScope,
         name: &str,
         mo: &str,
@@ -3458,7 +3465,7 @@ mod tests {
     fn test_qs_revive_advanced_directmemberships() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             // Create items
-            let mut server_txn = server.write(duration_from_epoch_now());
+            let server_txn = server.write(duration_from_epoch_now());
             let admin = server_txn
                 .internal_search_uuid(audit, &UUID_ADMIN)
                 .expect("failed");
@@ -3528,7 +3535,7 @@ mod tests {
             assert!(server_txn.revive_recycled(audit, &rev1).is_ok());
             // check u1 contains MO ->
             assert!(check_entry_has_mo(
-                &mut server_txn,
+                &server_txn,
                 audit,
                 "u1",
                 "cca2bbfc-5b43-43f3-be9e-f5b03b3defec"
@@ -3543,13 +3550,13 @@ mod tests {
             };
             assert!(server_txn.revive_recycled(audit, &rev2).is_ok());
             assert!(check_entry_has_mo(
-                &mut server_txn,
+                &server_txn,
                 audit,
                 "u2",
                 "e44cf9cd-9941-44cb-a02f-307b6e15ac54"
             ));
             assert!(check_entry_has_mo(
-                &mut server_txn,
+                &server_txn,
                 audit,
                 "u2",
                 "d3132e6e-18ce-4b87-bee1-1d25e4bfe96d"
@@ -3568,7 +3575,7 @@ mod tests {
             assert!(server_txn.revive_recycled(audit, &rev3).is_ok());
             assert!(
                 check_entry_has_mo(
-                    &mut server_txn,
+                    &server_txn,
                     audit,
                     "u3",
                     "36048117-e479-45ed-aeb5-611e8d83d5b1"
@@ -3585,7 +3592,7 @@ mod tests {
             assert!(server_txn.revive_recycled(audit, &rev4a).is_ok());
             assert!(
                 check_entry_has_mo(
-                    &mut server_txn,
+                    &server_txn,
                     audit,
                     "u4",
                     "d5c59ac6-c533-4b00-989f-d0e183f07bab"
@@ -3602,7 +3609,7 @@ mod tests {
             assert!(server_txn.revive_recycled(audit, &rev4b).is_ok());
             assert!(
                 check_entry_has_mo(
-                    &mut server_txn,
+                    &server_txn,
                     audit,
                     "u4",
                     "d5c59ac6-c533-4b00-989f-d0e183f07bab"
@@ -3636,24 +3643,24 @@ mod tests {
     #[test]
     fn test_qs_upgrade_entry_attrs() {
         run_test_no_init!(|server: &QueryServer, audit: &mut AuditScope| {
-            let mut server_txn = server.write(duration_from_epoch_now());
+            let server_txn = server.write(duration_from_epoch_now());
             assert!(server_txn
                 .upgrade_reindex(audit, SYSTEM_INDEX_VERSION)
                 .is_ok());
             assert!(server_txn.commit(audit).is_ok());
 
-            let mut server_txn = server.write(duration_from_epoch_now());
+            let server_txn = server.write(duration_from_epoch_now());
             server_txn.initialise_schema_core(audit).unwrap();
             server_txn.initialise_schema_idm(audit).unwrap();
             assert!(server_txn.commit(audit).is_ok());
 
-            let mut server_txn = server.write(duration_from_epoch_now());
+            let server_txn = server.write(duration_from_epoch_now());
             assert!(server_txn
                 .upgrade_reindex(audit, SYSTEM_INDEX_VERSION + 1)
                 .is_ok());
             assert!(server_txn.commit(audit).is_ok());
 
-            let mut server_txn = server.write(duration_from_epoch_now());
+            let server_txn = server.write(duration_from_epoch_now());
             assert!(server_txn
                 .internal_migrate_or_create_str(audit, JSON_SYSTEM_INFO_V1)
                 .is_ok());
@@ -3665,7 +3672,7 @@ mod tests {
                 .is_ok());
             assert!(server_txn.commit(audit).is_ok());
 
-            let mut server_txn = server.write(duration_from_epoch_now());
+            let server_txn = server.write(duration_from_epoch_now());
             // ++ Mod the schema to set name to the old string type
             let me_syn = unsafe {
                 ModifyEvent::new_internal_invalid(
@@ -3682,7 +3689,7 @@ mod tests {
             assert!(server_txn.modify(audit, &me_syn).is_ok());
             assert!(server_txn.commit(audit).is_ok());
 
-            let mut server_txn = server.write(duration_from_epoch_now());
+            let server_txn = server.write(duration_from_epoch_now());
             // ++ Mod domain name and name to be the old type.
             let me_dn = unsafe {
                 ModifyEvent::new_internal_invalid(
@@ -3705,7 +3712,7 @@ mod tests {
             // We can't just re-run the migrate here because name takes it's definition from
             // in memory, and we can't re-run the initial memory gen. So we just fix it to match
             // what the migrate "would do".
-            let mut server_txn = server.write(duration_from_epoch_now());
+            let server_txn = server.write(duration_from_epoch_now());
             let me_syn = unsafe {
                 ModifyEvent::new_internal_invalid(
                     filter!(f_or!([
@@ -3722,12 +3729,12 @@ mod tests {
             assert!(server_txn.commit(audit).is_ok());
 
             // ++ Run the upgrade for X to Y
-            let mut server_txn = server.write(duration_from_epoch_now());
+            let server_txn = server.write(duration_from_epoch_now());
             assert!(server_txn.migrate_2_to_3(audit).is_ok());
             assert!(server_txn.commit(audit).is_ok());
 
             // Assert that it migrated and worked as expected.
-            let mut server_txn = server.write(duration_from_epoch_now());
+            let server_txn = server.write(duration_from_epoch_now());
             let domain = server_txn
                 .internal_search_uuid(audit, &UUID_DOMAIN_INFO)
                 .expect("failed");
@@ -3735,13 +3742,11 @@ mod tests {
             domain
                 .get_ava("name")
                 .expect("no name?")
-                .iter()
                 .for_each(|v| assert!(v.is_iname()));
             // ++ assert all domain/domain_name are iname
             domain
                 .get_ava("domain_name")
                 .expect("no domain_name?")
-                .iter()
                 .for_each(|v| assert!(v.is_iname()));
             assert!(server_txn.commit(audit).is_ok());
         })

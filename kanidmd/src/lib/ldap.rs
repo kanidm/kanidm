@@ -43,7 +43,7 @@ pub struct LdapServer {
 
 impl LdapServer {
     pub fn new(au: &mut AuditScope, idms: &IdmServer) -> Result<Self, OperationError> {
-        let mut idms_prox_read = idms.proxy_read();
+        let idms_prox_read = idms.proxy_read();
         // This is the rootdse path.
         // get the domain_info item
         let domain_entry = idms_prox_read
@@ -51,7 +51,8 @@ impl LdapServer {
             .internal_search_uuid(au, &UUID_DOMAIN_INFO)?;
 
         let domain_name = domain_entry
-            .get_ava_single_string("domain_name")
+            .get_ava_single_str("domain_name")
+            .map(|s| s.to_string())
             .ok_or(OperationError::InvalidEntryState)?;
 
         let basedn = ldap_domain_to_dc(domain_name.as_str());

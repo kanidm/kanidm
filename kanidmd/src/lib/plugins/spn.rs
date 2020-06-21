@@ -24,11 +24,12 @@ lazy_static! {
 impl Spn {
     fn get_domain_name(
         au: &mut AuditScope,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
     ) -> Result<String, OperationError> {
         qs.internal_search_uuid(au, &UUID_DOMAIN_INFO)
             .and_then(|e| {
-                e.get_ava_single_string("domain_name")
+                e.get_ava_single_str("domain_name")
+                    .map(|s| s.to_string())
                     .ok_or(OperationError::InvalidEntryState)
             })
             .map_err(|e| {
@@ -39,11 +40,12 @@ impl Spn {
 
     fn get_domain_name_ro(
         au: &mut AuditScope,
-        qs: &mut QueryServerReadTransaction,
+        qs: &QueryServerReadTransaction,
     ) -> Result<String, OperationError> {
         qs.internal_search_uuid(au, &UUID_DOMAIN_INFO)
             .and_then(|e| {
-                e.get_ava_single_string("domain_name")
+                e.get_ava_single_str("domain_name")
+                    .map(|s| s.to_string())
                     .ok_or(OperationError::InvalidEntryState)
             })
             .map_err(|e| {
@@ -61,7 +63,7 @@ impl Plugin for Spn {
     // hook on pre-create and modify to generate / validate.
     fn pre_create_transform(
         au: &mut AuditScope,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
@@ -106,7 +108,7 @@ impl Plugin for Spn {
 
     fn pre_modify(
         au: &mut AuditScope,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
@@ -147,7 +149,7 @@ impl Plugin for Spn {
 
     fn post_modify(
         au: &mut AuditScope,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
         // List of what we modified that was valid?
         pre_cand: &[Entry<EntrySealed, EntryCommitted>],
         cand: &[Entry<EntrySealed, EntryCommitted>],
@@ -197,7 +199,7 @@ impl Plugin for Spn {
 
     fn verify(
         au: &mut AuditScope,
-        qs: &mut QueryServerReadTransaction,
+        qs: &QueryServerReadTransaction,
     ) -> Vec<Result<(), ConsistencyError>> {
         // Verify that all items with spn's have valid spns.
         //   We need to consider the case that an item has a different origin domain too,
@@ -386,7 +388,7 @@ mod tests {
     #[test]
     fn test_spn_regen_domain_rename() {
         run_test!(|server: &QueryServer, au: &mut AuditScope| {
-            let mut server_txn = server.write(duration_from_epoch_now());
+            let server_txn = server.write(duration_from_epoch_now());
 
             let ex1 = Value::new_spn_str("admin", "example.com");
             let ex2 = Value::new_spn_str("admin", "new.example.com");

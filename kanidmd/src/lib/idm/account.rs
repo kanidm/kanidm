@@ -29,16 +29,19 @@ macro_rules! try_from_entry {
         }
 
         // Now extract our needed attributes
-        let name =
-            $value
-                .get_ava_single_string("name")
-                .ok_or(OperationError::InvalidAccountState(
-                    "Missing attribute: name".to_string(),
-                ))?;
+        let name = $value
+            .get_ava_single_str("name")
+            .map(|s| s.to_string())
+            .ok_or(OperationError::InvalidAccountState(
+                "Missing attribute: name".to_string(),
+            ))?;
 
-        let displayname = $value.get_ava_single_string("displayname").ok_or(
-            OperationError::InvalidAccountState("Missing attribute: displayname".to_string()),
-        )?;
+        let displayname = $value
+            .get_ava_single_str("displayname")
+            .map(|s| s.to_string())
+            .ok_or(OperationError::InvalidAccountState(
+                "Missing attribute: displayname".to_string(),
+            ))?;
 
         let primary = $value
             .get_ava_single_credential("primary_credential")

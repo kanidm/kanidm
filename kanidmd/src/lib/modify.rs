@@ -47,7 +47,7 @@ impl Modify {
     pub fn from(
         audit: &mut AuditScope,
         m: &ProtoModify,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         Ok(match m {
             ProtoModify::Present(a, v) => Modify::Present(a.clone(), qs.clone_value(audit, a, v)?),
@@ -109,7 +109,7 @@ impl ModifyList<ModifyInvalid> {
     pub fn from(
         audit: &mut AuditScope,
         ml: &ProtoModifyList,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         // For each ProtoModify, do a from.
         let inner: Result<Vec<_>, _> = ml
