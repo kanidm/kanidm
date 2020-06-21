@@ -15,11 +15,14 @@
 //   requirements (also search).
 //
 
-use concread::collections::bptree::*;
+// use concread::collections::bptree::*;
+use concread::cowcell::*;
 use kanidm_proto::v1::Filter as ProtoFilter;
 use kanidm_proto::v1::OperationError;
 use std::collections::BTreeSet;
+use std::collections::BTreeMap;
 use uuid::Uuid;
+use std::ops::DerefMut;
 
 use crate::audit::AuditScope;
 use crate::entry::{Entry, EntryCommitted, EntryInit, EntryNew, EntryReduced, EntrySealed};
@@ -347,19 +350,23 @@ impl AccessControlProfile {
 // ACP transactions and management for server bits.
 // =========================================================================
 
+#[derive(Clone)]
+struct AccessControlsInner {
+    acps_search: BTreeMap<Uuid, AccessControlSearch>,
+    acps_create: BTreeMap<Uuid, AccessControlCreate>,
+    acps_modify: BTreeMap<Uuid, AccessControlModify>,
+    acps_delete: BTreeMap<Uuid, AccessControlDelete>,
+}
+
 pub struct AccessControls {
-    // inner: CowCell<AccessControlsInner>,
-    acps_search: BptreeMap<Uuid, AccessControlSearch>,
-    acps_create: BptreeMap<Uuid, AccessControlCreate>,
-    acps_modify: BptreeMap<Uuid, AccessControlModify>,
-    acps_delete: BptreeMap<Uuid, AccessControlDelete>,
+    inner: CowCell<AccessControlsInner>,
 }
 
 pub trait AccessControlsTransaction {
-    fn get_search(&self) -> BptreeMapReadSnapshot<Uuid, AccessControlSearch>;
-    fn get_create(&self) -> BptreeMapReadSnapshot<Uuid, AccessControlCreate>;
-    fn get_modify(&self) -> BptreeMapReadSnapshot<Uuid, AccessControlModify>;
-    fn get_delete(&self) -> BptreeMapReadSnapshot<Uuid, AccessControlDelete>;
+    fn get_search(&self) -> &BTreeMap<Uuid, AccessControlSearch>;
+    fn get_create(&self) -> &BTreeMap<Uuid, AccessControlCreate>;
+    fn get_modify(&self) -> &BTreeMap<Uuid, AccessControlModify>;
+    fn get_delete(&self) -> &BTreeMap<Uuid, AccessControlDelete>;
 
     // Contains all the way to eval acps to entries
     fn search_filter_entries(
@@ -1155,11 +1162,7 @@ pub trait AccessControlsTransaction {
 }
 
 pub struct AccessControlsWriteTransaction<'a> {
-    // inner: CowCellWriteTxn<'a, AccessControlsInner>,
-    acps_search: BptreeMapWriteTxn<'a, Uuid, AccessControlSearch>,
-    acps_create: BptreeMapWriteTxn<'a, Uuid, AccessControlCreate>,
-    acps_modify: BptreeMapWriteTxn<'a, Uuid, AccessControlModify>,
-    acps_delete: BptreeMapWriteTxn<'a, Uuid, AccessControlDelete>,
+    inner: CowCellWriteTxn<'a, AccessControlsInner>,
 }
 
 impl<'a> AccessControlsWriteTransaction<'a> {
@@ -1170,78 +1173,67 @@ impl<'a> AccessControlsWriteTransaction<'a> {
         // Clear the existing tree. We don't care that we are wiping it
         // because we have the transactions to protect us from errors
         // to allow rollbacks.
-        self.acps_search.clear();
+        let acps_search = &mut self.inner.deref_mut().acps_search;
+        acps_search.clear();
         for acp in acps {
             let uuid = acp.acp.uuid;
-            self.acps_search.insert(uuid, acp);
+            acps_search.insert(uuid, acp);
         }
-        // self.acps_search.compact();
         Ok(())
     }
 
     pub fn update_create(&mut self, acps: Vec<AccessControlCreate>) -> Result<(), OperationError> {
-        self.acps_create.clear();
+        let acps_create = &mut self.inner.deref_mut().acps_create;
+        acps_create.clear();
         for acp in acps {
             let uuid = acp.acp.uuid;
-            self.acps_create.insert(uuid, acp);
+            acps_create.insert(uuid, acp);
         }
-        // self.acps_create.compact();
         Ok(())
     }
 
     pub fn update_modify(&mut self, acps: Vec<AccessControlModify>) -> Result<(), OperationError> {
-        self.acps_modify.clear();
+        let acps_modify = &mut self.inner.deref_mut().acps_modify;
+        acps_modify.clear();
         for acp in acps {
             let uuid = acp.acp.uuid;
-            self.acps_modify.insert(uuid, acp);
+            acps_modify.insert(uuid, acp);
         }
-        // self.acps_modify.compact();
         Ok(())
     }
 
     pub fn update_delete(&mut self, acps: Vec<AccessControlDelete>) -> Result<(), OperationError> {
-        self.acps_delete.clear();
+        let acps_delete = &mut self.inner.deref_mut().acps_delete;
+        acps_delete.clear();
         for acp in acps {
             let uuid = acp.acp.uuid;
-            self.acps_delete.insert(uuid, acp);
+            acps_delete.insert(uuid, acp);
         }
-        // We could consider compact here ...
-        // self.acps_delete.compact();
         Ok(())
     }
 
     pub fn commit(self) -> Result<(), OperationError> {
-        let AccessControlsWriteTransaction {
-            acps_search,
-            acps_create,
-            acps_modify,
-            acps_delete,
-        } = self;
-
-        acps_search.commit();
-        acps_create.commit();
-        acps_modify.commit();
-        acps_delete.commit();
+        self.inner.commit();
 
         Ok(())
     }
 }
 
 impl<'a> AccessControlsTransaction for AccessControlsWriteTransaction<'a> {
-    fn get_search(&self) -> BptreeMapReadSnapshot<Uuid, AccessControlSearch> {
-        self.acps_search.to_snapshot()
+    fn get_search(&self) -> &BTreeMap<Uuid, AccessControlSearch> {
+        &self.inner.acps_search
     }
 
-    fn get_create(&self) -> BptreeMapReadSnapshot<Uuid, AccessControlCreate> {
-        self.acps_create.to_snapshot()
+    fn get_create(&self) -> &BTreeMap<Uuid, AccessControlCreate> {
+        &self.inner.acps_create
     }
 
-    fn get_modify(&self) -> BptreeMapReadSnapshot<Uuid, AccessControlModify> {
-        self.acps_modify.to_snapshot()
+    fn get_modify(&self) -> &BTreeMap<Uuid, AccessControlModify> {
+        &self.inner.acps_modify
     }
 
-    fn get_delete(&self) -> BptreeMapReadSnapshot<Uuid, AccessControlDelete> {
-        self.acps_delete.to_snapshot()
+    fn get_delete(&self) -> &BTreeMap<Uuid, AccessControlDelete> {
+        &self.inner.acps_delete
     }
 }
 
@@ -1250,27 +1242,24 @@ impl<'a> AccessControlsTransaction for AccessControlsWriteTransaction<'a> {
 // =========================================================================
 
 pub struct AccessControlsReadTransaction {
-    acps_search: BptreeMapReadTxn<Uuid, AccessControlSearch>,
-    acps_create: BptreeMapReadTxn<Uuid, AccessControlCreate>,
-    acps_modify: BptreeMapReadTxn<Uuid, AccessControlModify>,
-    acps_delete: BptreeMapReadTxn<Uuid, AccessControlDelete>,
+    inner: CowCellReadTxn<AccessControlsInner>,
 }
 
 impl AccessControlsTransaction for AccessControlsReadTransaction {
-    fn get_search(&self) -> BptreeMapReadSnapshot<Uuid, AccessControlSearch> {
-        self.acps_search.to_snapshot()
+    fn get_search(&self) -> &BTreeMap<Uuid, AccessControlSearch> {
+        &self.inner.acps_search
     }
 
-    fn get_create(&self) -> BptreeMapReadSnapshot<Uuid, AccessControlCreate> {
-        self.acps_create.to_snapshot()
+    fn get_create(&self) -> &BTreeMap<Uuid, AccessControlCreate> {
+        &self.inner.acps_create
     }
 
-    fn get_modify(&self) -> BptreeMapReadSnapshot<Uuid, AccessControlModify> {
-        self.acps_modify.to_snapshot()
+    fn get_modify(&self) -> &BTreeMap<Uuid, AccessControlModify> {
+        &self.inner.acps_modify
     }
 
-    fn get_delete(&self) -> BptreeMapReadSnapshot<Uuid, AccessControlDelete> {
-        self.acps_delete.to_snapshot()
+    fn get_delete(&self) -> &BTreeMap<Uuid, AccessControlDelete> {
+        &self.inner.acps_delete
     }
 }
 
@@ -1281,31 +1270,24 @@ impl AccessControlsTransaction for AccessControlsReadTransaction {
 impl AccessControls {
     pub fn new() -> Self {
         AccessControls {
-            // inner: CowCell::new(AccessControlsInner::new()),
-            acps_search: BptreeMap::new(),
-            acps_create: BptreeMap::new(),
-            acps_modify: BptreeMap::new(),
-            acps_delete: BptreeMap::new(),
+            inner: CowCell::new(AccessControlsInner {
+                acps_search: BTreeMap::new(),
+                acps_create: BTreeMap::new(),
+                acps_modify: BTreeMap::new(),
+                acps_delete: BTreeMap::new(),
+            }),
         }
     }
 
     pub fn read(&self) -> AccessControlsReadTransaction {
         AccessControlsReadTransaction {
-            // inner: self.inner.read(),
-            acps_search: self.acps_search.read(),
-            acps_create: self.acps_create.read(),
-            acps_modify: self.acps_modify.read(),
-            acps_delete: self.acps_delete.read(),
+            inner: self.inner.read(),
         }
     }
 
     pub fn write(&self) -> AccessControlsWriteTransaction {
         AccessControlsWriteTransaction {
-            // inner: self.inner.write(),
-            acps_search: self.acps_search.write(),
-            acps_create: self.acps_create.write(),
-            acps_modify: self.acps_modify.write(),
-            acps_delete: self.acps_delete.write(),
+            inner: self.inner.write(),
         }
     }
 }

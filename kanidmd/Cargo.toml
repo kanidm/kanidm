@@ -60,8 +60,8 @@ r2d2_sqlite = "0.14"
 structopt = { version = "0.3", default-features = false }
 time = "0.1"
 
-concread = "0.1"
-# concread = { path = "../../concread" }
+# concread = "0.1"
+concread = { path = "../../concread" }
 crossbeam = "0.7"
 
 openssl = "0.10"
