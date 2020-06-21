@@ -19,7 +19,7 @@
 use concread::cowcell::*;
 use kanidm_proto::v1::Filter as ProtoFilter;
 use kanidm_proto::v1::OperationError;
-use std::collections::BTreeMap;
+// use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::ops::DerefMut;
 use uuid::Uuid;
@@ -352,10 +352,11 @@ impl AccessControlProfile {
 
 #[derive(Clone)]
 struct AccessControlsInner {
-    acps_search: BTreeMap<Uuid, AccessControlSearch>,
-    acps_create: BTreeMap<Uuid, AccessControlCreate>,
-    acps_modify: BTreeMap<Uuid, AccessControlModify>,
-    acps_delete: BTreeMap<Uuid, AccessControlDelete>,
+    // acps_search: BTreeMap<Uuid, AccessControlSearch>,
+    acps_search: Vec<AccessControlSearch>,
+    acps_create: Vec<AccessControlCreate>,
+    acps_modify: Vec<AccessControlModify>,
+    acps_delete: Vec<AccessControlDelete>,
 }
 
 pub struct AccessControls {
@@ -363,10 +364,11 @@ pub struct AccessControls {
 }
 
 pub trait AccessControlsTransaction {
-    fn get_search(&self) -> &BTreeMap<Uuid, AccessControlSearch>;
-    fn get_create(&self) -> &BTreeMap<Uuid, AccessControlCreate>;
-    fn get_modify(&self) -> &BTreeMap<Uuid, AccessControlModify>;
-    fn get_delete(&self) -> &BTreeMap<Uuid, AccessControlDelete>;
+    // fn get_search(&self) -> &BTreeMap<Uuid, AccessControlSearch>;
+    fn get_search(&self) -> &Vec<AccessControlSearch>;
+    fn get_create(&self) -> &Vec<AccessControlCreate>;
+    fn get_modify(&self) -> &Vec<AccessControlModify>;
+    fn get_delete(&self) -> &Vec<AccessControlDelete>;
 
     // Contains all the way to eval acps to entries
     fn search_filter_entries(
@@ -392,7 +394,8 @@ pub trait AccessControlsTransaction {
             // First get the set of acps that apply to this receiver
             let related_acp: Vec<&AccessControlSearch> = search_state
                 .iter()
-                .filter_map(|(_, acs)| {
+                // .filter_map(|(_, acs)| {
+                .filter_map(|acs| {
                     // Now resolve the receiver filter
                     // Okay, so in filter resolution, the primary error case
                     // is that we have a non-user in the event. We have already
@@ -547,7 +550,8 @@ pub trait AccessControlsTransaction {
             // Get the relevant acps for this receiver.
             let related_acp: Vec<&AccessControlSearch> = search_state
                 .iter()
-                .filter_map(|(_, acs)| {
+                // .filter_map(|(_, acs)| {
+                .filter_map(|acs| {
                     let f_val = acs.acp.receiver.clone();
                     match f_val.resolve(&se.event, None) {
                         Ok(f_res) => {
@@ -715,7 +719,7 @@ pub trait AccessControlsTransaction {
             // Find the acps that relate to the caller.
             let related_acp: Vec<&AccessControlModify> = modify_state
                 .iter()
-                .filter_map(|(_, acs)| {
+                .filter_map(|acs| {
                     let f_val = acs.acp.receiver.clone();
                     match f_val.resolve(&me.event, None) {
                         Ok(f_res) => {
@@ -903,7 +907,7 @@ pub trait AccessControlsTransaction {
             // Find the acps that relate to the caller.
             let related_acp: Vec<&AccessControlCreate> = create_state
                 .iter()
-                .filter_map(|(_, acs)| {
+                .filter_map(|acs| {
                     let f_val = acs.acp.receiver.clone();
                     match f_val.resolve(&ce.event, None) {
                         Ok(f_res) => {
@@ -1076,7 +1080,7 @@ pub trait AccessControlsTransaction {
             // Find the acps that relate to the caller.
             let related_acp: Vec<&AccessControlDelete> = delete_state
                 .iter()
-                .filter_map(|(_, acs)| {
+                .filter_map(|acs| {
                     let f_val = acs.acp.receiver.clone();
                     match f_val.resolve(&de.event, None) {
                         Ok(f_res) => {
@@ -1169,46 +1173,34 @@ impl<'a> AccessControlsWriteTransaction<'a> {
     // We have a method to update each set, so that if an error
     // occurs we KNOW it's an error, rather than using errors as
     // part of the logic (IE try-parse-fail method).
-    pub fn update_search(&mut self, acps: Vec<AccessControlSearch>) -> Result<(), OperationError> {
+    pub fn update_search(&mut self, mut acps: Vec<AccessControlSearch>) -> Result<(), OperationError> {
         // Clear the existing tree. We don't care that we are wiping it
         // because we have the transactions to protect us from errors
         // to allow rollbacks.
+        /*
         let acps_search = &mut self.inner.deref_mut().acps_search;
         acps_search.clear();
         for acp in acps {
             let uuid = acp.acp.uuid;
             acps_search.insert(uuid, acp);
         }
+        */
+        std::mem::swap(&mut acps, &mut self.inner.deref_mut().acps_search);
         Ok(())
     }
 
-    pub fn update_create(&mut self, acps: Vec<AccessControlCreate>) -> Result<(), OperationError> {
-        let acps_create = &mut self.inner.deref_mut().acps_create;
-        acps_create.clear();
-        for acp in acps {
-            let uuid = acp.acp.uuid;
-            acps_create.insert(uuid, acp);
-        }
+    pub fn update_create(&mut self, mut acps: Vec<AccessControlCreate>) -> Result<(), OperationError> {
+        std::mem::swap(&mut acps, &mut self.inner.deref_mut().acps_create);
         Ok(())
     }
 
-    pub fn update_modify(&mut self, acps: Vec<AccessControlModify>) -> Result<(), OperationError> {
-        let acps_modify = &mut self.inner.deref_mut().acps_modify;
-        acps_modify.clear();
-        for acp in acps {
-            let uuid = acp.acp.uuid;
-            acps_modify.insert(uuid, acp);
-        }
+    pub fn update_modify(&mut self, mut acps: Vec<AccessControlModify>) -> Result<(), OperationError> {
+        std::mem::swap(&mut acps, &mut self.inner.deref_mut().acps_modify);
         Ok(())
     }
 
-    pub fn update_delete(&mut self, acps: Vec<AccessControlDelete>) -> Result<(), OperationError> {
-        let acps_delete = &mut self.inner.deref_mut().acps_delete;
-        acps_delete.clear();
-        for acp in acps {
-            let uuid = acp.acp.uuid;
-            acps_delete.insert(uuid, acp);
-        }
+    pub fn update_delete(&mut self, mut acps: Vec<AccessControlDelete>) -> Result<(), OperationError> {
+        std::mem::swap(&mut acps, &mut self.inner.deref_mut().acps_delete);
         Ok(())
     }
 
@@ -1220,19 +1212,20 @@ impl<'a> AccessControlsWriteTransaction<'a> {
 }
 
 impl<'a> AccessControlsTransaction for AccessControlsWriteTransaction<'a> {
-    fn get_search(&self) -> &BTreeMap<Uuid, AccessControlSearch> {
+    // fn get_search(&self) -> &BTreeMap<Uuid, AccessControlSearch> {
+    fn get_search(&self) -> &Vec<AccessControlSearch> {
         &self.inner.acps_search
     }
 
-    fn get_create(&self) -> &BTreeMap<Uuid, AccessControlCreate> {
+    fn get_create(&self) -> &Vec<AccessControlCreate> {
         &self.inner.acps_create
     }
 
-    fn get_modify(&self) -> &BTreeMap<Uuid, AccessControlModify> {
+    fn get_modify(&self) -> &Vec<AccessControlModify> {
         &self.inner.acps_modify
     }
 
-    fn get_delete(&self) -> &BTreeMap<Uuid, AccessControlDelete> {
+    fn get_delete(&self) -> &Vec<AccessControlDelete> {
         &self.inner.acps_delete
     }
 }
@@ -1246,19 +1239,20 @@ pub struct AccessControlsReadTransaction {
 }
 
 impl AccessControlsTransaction for AccessControlsReadTransaction {
-    fn get_search(&self) -> &BTreeMap<Uuid, AccessControlSearch> {
+    // fn get_search(&self) -> &BTreeMap<Uuid, AccessControlSearch> {
+    fn get_search(&self) -> &Vec<AccessControlSearch> {
         &self.inner.acps_search
     }
 
-    fn get_create(&self) -> &BTreeMap<Uuid, AccessControlCreate> {
+    fn get_create(&self) -> &Vec<AccessControlCreate> {
         &self.inner.acps_create
     }
 
-    fn get_modify(&self) -> &BTreeMap<Uuid, AccessControlModify> {
+    fn get_modify(&self) -> &Vec<AccessControlModify> {
         &self.inner.acps_modify
     }
 
-    fn get_delete(&self) -> &BTreeMap<Uuid, AccessControlDelete> {
+    fn get_delete(&self) -> &Vec<AccessControlDelete> {
         &self.inner.acps_delete
     }
 }
@@ -1271,10 +1265,10 @@ impl AccessControls {
     pub fn new() -> Self {
         AccessControls {
             inner: CowCell::new(AccessControlsInner {
-                acps_search: BTreeMap::new(),
-                acps_create: BTreeMap::new(),
-                acps_modify: BTreeMap::new(),
-                acps_delete: BTreeMap::new(),
+                acps_search: Vec::new(),
+                acps_create: Vec::new(),
+                acps_modify: Vec::new(),
+                acps_delete: Vec::new(),
             }),
         }
     }
