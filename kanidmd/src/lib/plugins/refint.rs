@@ -14,6 +14,7 @@ use std::collections::HashSet as Set;
 use crate::audit::AuditScope;
 use crate::entry::{Entry, EntryCommitted, EntrySealed};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
+use crate::filter::f_eq;
 use crate::modify::{Modify, ModifyInvalid, ModifyList};
 use crate::plugins::Plugin;
 use crate::schema::SchemaTransaction;
@@ -28,32 +29,51 @@ use uuid::Uuid;
 pub struct ReferentialIntegrity;
 
 impl ReferentialIntegrity {
-    fn check_uuid_exists(
+    fn check_uuids_exist<'a, I>(
         au: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
-        rtype: &str,
-        uuid_value: &Value,
-    ) -> Result<(), OperationError> {
-        let uuid = uuid_value.to_ref_uuid().ok_or_else(|| {
-            ladmin_error!(au, "uuid value could not convert to reference uuid");
-            OperationError::InvalidAttribute("uuid could not become reference value".to_string())
-        })?;
-        // NOTE: This only checks LIVE entries (not using filter_all)
-        let filt_in = filter!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
+        ref_iter: I
+    )
+    -> Result<(), OperationError>
+    where I: Iterator<Item = &'a Value>,
+    {
+        let inner: Result<Vec<_>, _> = ref_iter
+            .map(|uuid_value| {
+                uuid_value.to_ref_uuid()
+            .map(|uuid| {
+                f_eq("uuid", PartialValue::new_uuid(*uuid))
+            })
+                .ok_or_else(|| {
+                    ladmin_error!(au, "ref value could not convert to reference uuid");
+                    OperationError::InvalidAttribute("uuid could not become reference value".to_string())
+                })
+            })
+            .collect();
+
+        let inner = inner?;
+
+        if inner.len() == 0 {
+            // There is nothing to check! Move on.
+            ladmin_info!(au, "no reference types modified, skipping check");
+            return Ok(())
+        }
+
+        // F_inc(lusion). All items of inner must be 1 or more, or the filter
+        // will fail. This will return the union of the inclusion after the
+        // operationn.
+        let filt_in = filter!(f_inc(inner));
         let b = qs.internal_exists(au, filt_in).map_err(|e| {
             ladmin_error!(au, "internal exists failure -> {:?}", e);
             e
         })?;
 
-        // Is the reference in the result set?
+        // Is the existance of all id's confirmed?
         if b {
             Ok(())
         } else {
             ladmin_error!(
                 au,
-                "{:?}:{:?} UUID reference not found in database",
-                rtype,
-                uuid
+                "UUID reference set size differs from query result size <fast path, no uuid info available>"
             );
             Err(OperationError::Plugin(PluginError::ReferentialIntegrity(
                 "Uuid referenced not found in database".to_string(),
@@ -90,20 +110,18 @@ impl Plugin for ReferentialIntegrity {
         let schema = qs.get_schema();
         let ref_types = schema.get_reference_types();
 
-        // For all cands
-        for c in cand {
-            // For all reference in each cand.
-            for rtype in ref_types.values() {
-                // If the attribute is present
-                if let Some(vs) = c.get_ava(&rtype.name) {
-                    // For each value in the set.
-                    for v in vs {
-                        Self::check_uuid_exists(au, qs, &rtype.name, v)?
-                    }
-                }
-            }
-        }
-        Ok(())
+        // Fast Path
+        let i = cand.iter()
+            .map(|c| {
+                ref_types.values().filter_map(move |rtype| {
+                    c.get_ava(&rtype.name)
+                })
+            })
+            .flatten()
+            .flatten();
+
+
+        Self::check_uuids_exist(au, qs, i)
     }
 
     fn post_modify(
@@ -116,17 +134,20 @@ impl Plugin for ReferentialIntegrity {
         let schema = qs.get_schema();
         let ref_types = schema.get_reference_types();
 
-        // For all mods
-        for modify in me.modlist.into_iter() {
-            // If the mod affects a reference type and being ADDED.
-            if let Modify::Present(a, v) = &modify {
-                if let Some(a_type) = ref_types.get(a) {
-                    // So it is a reference type, now check it.
-                    Self::check_uuid_exists(au, qs, &a_type.name, v)?
+        let i = me.modlist.into_iter()
+            .filter_map(|modify| {
+                if let Modify::Present(a, v) = &modify {
+                    if ref_types.get(a).is_some() {
+                        Some(v)
+                    } else {
+                        None
+                    }
+                } else {
+                    None
                 }
-            }
-        }
-        Ok(())
+            });
+
+        Self::check_uuids_exist(au, qs, i)
     }
 
     fn post_delete(

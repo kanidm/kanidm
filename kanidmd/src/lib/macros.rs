@@ -182,6 +182,18 @@ macro_rules! f_and {
 
 #[allow(unused_macros)]
 #[macro_export]
+macro_rules! f_inc {
+    (
+        $vs:expr
+    ) => {{
+        use crate::filter::FC;
+        let s: Box<[FC]> = Box::new($vs);
+        f_inc(s.into_vec())
+    }};
+}
+
+#[allow(unused_macros)]
+#[macro_export]
 macro_rules! f_or {
     (
         $vs:expr
@@ -203,7 +215,7 @@ macro_rules! filter {
         use crate::filter::FC;
         #[allow(unused_imports)]
         use crate::filter::{
-            f_and, f_andnot, f_eq, f_id, f_lt, f_or, f_pres, f_self, f_spn_name, f_sub,
+            f_and, f_andnot, f_eq, f_id, f_lt, f_or, f_pres, f_self, f_spn_name, f_sub, f_inc
         };
         Filter::new_ignore_hidden($fc)
     }};
@@ -219,7 +231,7 @@ macro_rules! filter_rec {
         #[allow(unused_imports)]
         use crate::filter::FC;
         #[allow(unused_imports)]
-        use crate::filter::{f_and, f_andnot, f_eq, f_id, f_lt, f_or, f_pres, f_self, f_sub};
+        use crate::filter::{f_and, f_andnot, f_eq, f_id, f_lt, f_or, f_pres, f_self, f_sub, f_inc};
         Filter::new_recycled($fc)
     }};
 }
@@ -234,7 +246,7 @@ macro_rules! filter_all {
         #[allow(unused_imports)]
         use crate::filter::FC;
         #[allow(unused_imports)]
-        use crate::filter::{f_and, f_andnot, f_eq, f_id, f_lt, f_or, f_pres, f_self, f_sub};
+        use crate::filter::{f_and, f_andnot, f_eq, f_id, f_lt, f_or, f_pres, f_self, f_sub, f_inc};
         Filter::new($fc)
     }};
 }
@@ -247,7 +259,7 @@ macro_rules! filter_valid {
         $fc:expr
     ) => {{
         #[allow(unused_imports)]
-        use crate::filter::{f_and, f_andnot, f_eq, f_lt, f_or, f_pres, f_sub};
+        use crate::filter::{f_and, f_andnot, f_eq, f_lt, f_or, f_pres, f_sub, f_inc};
         use crate::filter::{Filter, FilterInvalid};
         let f: Filter<FilterInvalid> = Filter::new($fc);
         // Create a resolved filter, via the most unsafe means possible!
@@ -263,7 +275,7 @@ macro_rules! filter_resolved {
         $fc:expr
     ) => {{
         #[allow(unused_imports)]
-        use crate::filter::{f_and, f_andnot, f_eq, f_lt, f_or, f_pres, f_sub};
+        use crate::filter::{f_and, f_andnot, f_eq, f_lt, f_or, f_pres, f_sub, f_inc};
         use crate::filter::{Filter, FilterInvalid};
         let f: Filter<FilterInvalid> = Filter::new($fc);
         // Create a resolved filter, via the most unsafe means possible!

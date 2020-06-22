@@ -1699,6 +1699,12 @@ impl<VALID, STATE> Entry<VALID, STATE> {
                     acc
                 }
             }),
+            FilterResolved::Inclusion(_) => {
+                // An inclusion doesn't make sense on an entry in isolation!
+                // Inclusions are part of exists queries, on search they mean
+                // nothing!
+                false
+            },
             FilterResolved::AndNot(f) => !self.entry_match_no_index_inner(f),
         }
     }

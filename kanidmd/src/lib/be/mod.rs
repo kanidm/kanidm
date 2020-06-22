@@ -413,6 +413,34 @@ pub trait BackendTransaction {
                 // debug!("final cand set ==> {:?}", cand_idl);
                 (cand_idl, setplan)
             } // end and
+            FilterResolved::Inclusion(l) => {
+                // For inclusion to be valid, every term must have *at least* one element present.
+                // This really relies on indexing, and so it's internal only - generally only
+                // for fully indexed existance queries, such as from refint.
+
+                // This has a lot in common with an And and Or but not really quite either.
+                let mut plan = Vec::new();
+                let mut result = IDLBitRange::new();
+                // For each filter in l
+                for f in l.iter() {
+                    // get their idls
+                    match self.filter2idl(au, f, thres)? {
+                        (IDL::Indexed(idl), fp) => {
+                            plan.push(fp);
+                            result = result | idl;
+                        }
+                        (_, fp) => {
+                            plan.push(fp);
+                            lfilter_error!(au, "Inclusion is unable to proceed - all terms must be fully indexed!");
+                            let setplan = FilterPlan::InclusionInvalid(plan);
+                            return Ok((IDL::Partial(IDLBitRange::new()), setplan));
+                        }
+                    }
+                } // end or.iter()
+                // If we got here, every term must have been indexed
+                let setplan = FilterPlan::InclusionIndexed(plan);
+                (IDL::Indexed(result), setplan)
+            }
             // So why does this return empty? Normally we actually process an AndNot in the context
             // of an "AND" query, but if it's used anywhere else IE the root filter, then there is
             // no other set to exclude - therefore it's empty set. Additionally, even in an OR query
