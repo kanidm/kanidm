@@ -215,7 +215,7 @@ macro_rules! filter {
         use crate::filter::FC;
         #[allow(unused_imports)]
         use crate::filter::{
-            f_and, f_andnot, f_eq, f_id, f_lt, f_or, f_pres, f_self, f_spn_name, f_sub, f_inc
+            f_and, f_andnot, f_eq, f_id, f_inc, f_lt, f_or, f_pres, f_self, f_spn_name, f_sub,
         };
         Filter::new_ignore_hidden($fc)
     }};
@@ -231,7 +231,9 @@ macro_rules! filter_rec {
         #[allow(unused_imports)]
         use crate::filter::FC;
         #[allow(unused_imports)]
-        use crate::filter::{f_and, f_andnot, f_eq, f_id, f_lt, f_or, f_pres, f_self, f_sub, f_inc};
+        use crate::filter::{
+            f_and, f_andnot, f_eq, f_id, f_inc, f_lt, f_or, f_pres, f_self, f_sub,
+        };
         Filter::new_recycled($fc)
     }};
 }
@@ -246,7 +248,9 @@ macro_rules! filter_all {
         #[allow(unused_imports)]
         use crate::filter::FC;
         #[allow(unused_imports)]
-        use crate::filter::{f_and, f_andnot, f_eq, f_id, f_lt, f_or, f_pres, f_self, f_sub, f_inc};
+        use crate::filter::{
+            f_and, f_andnot, f_eq, f_id, f_inc, f_lt, f_or, f_pres, f_self, f_sub,
+        };
         Filter::new($fc)
     }};
 }
@@ -259,7 +263,7 @@ macro_rules! filter_valid {
         $fc:expr
     ) => {{
         #[allow(unused_imports)]
-        use crate::filter::{f_and, f_andnot, f_eq, f_lt, f_or, f_pres, f_sub, f_inc};
+        use crate::filter::{f_and, f_andnot, f_eq, f_inc, f_lt, f_or, f_pres, f_sub};
         use crate::filter::{Filter, FilterInvalid};
         let f: Filter<FilterInvalid> = Filter::new($fc);
         // Create a resolved filter, via the most unsafe means possible!
@@ -275,7 +279,7 @@ macro_rules! filter_resolved {
         $fc:expr
     ) => {{
         #[allow(unused_imports)]
-        use crate::filter::{f_and, f_andnot, f_eq, f_lt, f_or, f_pres, f_sub, f_inc};
+        use crate::filter::{f_and, f_andnot, f_eq, f_inc, f_lt, f_or, f_pres, f_sub};
         use crate::filter::{Filter, FilterInvalid};
         let f: Filter<FilterInvalid> = Filter::new($fc);
         // Create a resolved filter, via the most unsafe means possible!

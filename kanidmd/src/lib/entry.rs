@@ -1704,7 +1704,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
                 // Inclusions are part of exists queries, on search they mean
                 // nothing!
                 false
-            },
+            }
             FilterResolved::AndNot(f) => !self.entry_match_no_index_inner(f),
         }
     }

@@ -32,30 +32,31 @@ impl ReferentialIntegrity {
     fn check_uuids_exist<'a, I>(
         au: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
-        ref_iter: I
-    )
-    -> Result<(), OperationError>
-    where I: Iterator<Item = &'a Value>,
+        ref_iter: I,
+    ) -> Result<(), OperationError>
+    where
+        I: Iterator<Item = &'a Value>,
     {
         let inner: Result<Vec<_>, _> = ref_iter
             .map(|uuid_value| {
-                uuid_value.to_ref_uuid()
-            .map(|uuid| {
-                f_eq("uuid", PartialValue::new_uuid(*uuid))
-            })
-                .ok_or_else(|| {
-                    ladmin_error!(au, "ref value could not convert to reference uuid");
-                    OperationError::InvalidAttribute("uuid could not become reference value".to_string())
-                })
+                uuid_value
+                    .to_ref_uuid()
+                    .map(|uuid| f_eq("uuid", PartialValue::new_uuid(*uuid)))
+                    .ok_or_else(|| {
+                        ladmin_error!(au, "ref value could not convert to reference uuid");
+                        OperationError::InvalidAttribute(
+                            "uuid could not become reference value".to_string(),
+                        )
+                    })
             })
             .collect();
 
         let inner = inner?;
 
-        if inner.len() == 0 {
+        if inner.is_empty() {
             // There is nothing to check! Move on.
             ladmin_info!(au, "no reference types modified, skipping check");
-            return Ok(())
+            return Ok(());
         }
 
         // F_inc(lusion). All items of inner must be 1 or more, or the filter
@@ -111,15 +112,15 @@ impl Plugin for ReferentialIntegrity {
         let ref_types = schema.get_reference_types();
 
         // Fast Path
-        let i = cand.iter()
+        let i = cand
+            .iter()
             .map(|c| {
-                ref_types.values().filter_map(move |rtype| {
-                    c.get_ava(&rtype.name)
-                })
+                ref_types
+                    .values()
+                    .filter_map(move |rtype| c.get_ava(&rtype.name))
             })
             .flatten()
             .flatten();
-
 
         Self::check_uuids_exist(au, qs, i)
     }
@@ -134,18 +135,17 @@ impl Plugin for ReferentialIntegrity {
         let schema = qs.get_schema();
         let ref_types = schema.get_reference_types();
 
-        let i = me.modlist.into_iter()
-            .filter_map(|modify| {
-                if let Modify::Present(a, v) = &modify {
-                    if ref_types.get(a).is_some() {
-                        Some(v)
-                    } else {
-                        None
-                    }
+        let i = me.modlist.into_iter().filter_map(|modify| {
+            if let Modify::Present(a, v) = &modify {
+                if ref_types.get(a).is_some() {
+                    Some(v)
                 } else {
                     None
                 }
-            });
+            } else {
+                None
+            }
+        });
 
         Self::check_uuids_exist(au, qs, i)
     }
@@ -260,6 +260,7 @@ impl Plugin for ReferentialIntegrity {
 mod tests {
     // #[macro_use]
     // use crate::plugins::Plugin;
+    use crate::constants::UUID_DOES_NOT_EXIST;
     use crate::entry::{Entry, EntryInit, EntryNew};
     use crate::modify::{Modify, ModifyList};
     use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
@@ -438,6 +439,51 @@ mod tests {
                 "member".to_string(),
                 Value::new_refer_s("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
             )]),
+            None,
+            |_, _| {}
+        );
+    }
+
+    // Check that even when SOME references exist, so long as one does not,
+    // we fail.
+    #[test]
+    fn test_modify_uuid_reference_partial_not_exist() {
+        let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
+            r#"{
+            "attrs": {
+                "class": ["group"],
+                "name": ["testgroup_a"],
+                "description": ["testgroup"],
+                "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
+            }
+        }"#,
+        );
+
+        let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
+            r#"{
+            "attrs": {
+                "class": ["group"],
+                "name": ["testgroup_b"],
+                "description": ["testgroup"]
+            }
+        }"#,
+        );
+
+        let preload = vec![ea, eb];
+
+        run_modify_test!(
+            Err(OperationError::Plugin(PluginError::ReferentialIntegrity(
+                "Uuid referenced not found in database".to_string()
+            ))),
+            preload,
+            filter!(f_eq("name", PartialValue::new_iname("testgroup_b"))),
+            ModifyList::new_list(vec![
+                Modify::Present(
+                    "member".to_string(),
+                    Value::new_refer_s("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
+                ),
+                Modify::Present("member".to_string(), Value::new_refer(*UUID_DOES_NOT_EXIST)),
+            ]),
             None,
             |_, _| {}
         );

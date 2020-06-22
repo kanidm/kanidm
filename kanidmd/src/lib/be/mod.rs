@@ -102,6 +102,7 @@ pub trait BackendTransaction {
 
     /// Recursively apply a filter, transforming into IDL's on the way. This builds a query
     /// execution log, so that it can be examined how an operation proceeded.
+    #[allow(clippy::cognitive_complexity)]
     fn filter2idl(
         &self,
         au: &mut AuditScope,
@@ -427,17 +428,27 @@ pub trait BackendTransaction {
                     match self.filter2idl(au, f, thres)? {
                         (IDL::Indexed(idl), fp) => {
                             plan.push(fp);
-                            result = result | idl;
+                            if idl.is_empty() {
+                                // It's empty, so something is missing. Bail fast.
+                                lfilter!(au, "Inclusion is unable to proceed - an empty (missing) item was found!");
+                                let setplan = FilterPlan::InclusionIndexed(plan);
+                                return Ok((IDL::Indexed(IDLBitRange::new()), setplan));
+                            } else {
+                                result = result | idl;
+                            }
                         }
                         (_, fp) => {
                             plan.push(fp);
-                            lfilter_error!(au, "Inclusion is unable to proceed - all terms must be fully indexed!");
+                            lfilter_error!(
+                                au,
+                                "Inclusion is unable to proceed - all terms must be fully indexed!"
+                            );
                             let setplan = FilterPlan::InclusionInvalid(plan);
                             return Ok((IDL::Partial(IDLBitRange::new()), setplan));
                         }
                     }
                 } // end or.iter()
-                // If we got here, every term must have been indexed
+                  // If we got here, every term must have been indexed
                 let setplan = FilterPlan::InclusionIndexed(plan);
                 (IDL::Indexed(result), setplan)
             }
