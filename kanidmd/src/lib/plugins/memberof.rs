@@ -221,18 +221,16 @@ impl Plugin for MemberOf {
             .zip(cand.iter())
             .filter(|(pre, post)| {
                 // This is the base case to break cycles in recursion!
-                (
-                        // If it was a group, or will become a group.
-                        post.attribute_value_pres("class", &CLASS_GROUP)
-                            || pre.attribute_value_pres("class", &CLASS_GROUP)
-                    )
-                    // And the group has changed ...
-                    && pre != post
+                // If it was a group, or will become a group.
+                (post.attribute_value_pres("class", &CLASS_GROUP) ||
+                 pre.attribute_value_pres("class", &CLASS_GROUP))
+                 // And the group has changed ...
+                 && pre != post
                 // Then memberof should be updated!
             })
             // Flatten the pre-post tuples. We no longer care if it was
             // pre-post
-            .flat_map(|(pre, post)| vec![pre, post])
+            .flat_map(|(pre, post)| std::iter::once(pre).chain(std::iter::once(post)))
             .inspect(|e| {
                 ltrace!(au, "group reporting change: {:?}", e);
             })
@@ -265,12 +263,6 @@ impl Plugin for MemberOf {
         // As a result, on restore, the graph of where it was a member
         // would have to be rebuilt.
         //
-        // AN interesting possibility could be NOT to purge MO on delete
-        // and use that to rebuild the forward graph of member -> item, but
-        // due to the nature of MO, we do not know the difference between
-        // direct and indirect membership, meaning we would be safer
-        // to not do this.
-
         // NOTE: DO NOT purge directmemberof - we use that to restore memberships
         // in recycle revive!
 
