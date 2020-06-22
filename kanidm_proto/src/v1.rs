@@ -293,7 +293,7 @@ impl fmt::Display for Entry {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 #[serde(rename_all = "lowercase")]
 pub enum Filter {
     // This is attr - value

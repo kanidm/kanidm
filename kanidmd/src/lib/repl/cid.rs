@@ -2,7 +2,7 @@ use kanidm_proto::v1::OperationError;
 use std::time::Duration;
 use uuid::Uuid;
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Eq, PartialOrd, Ord)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Eq, PartialOrd, Ord, Hash)]
 pub struct Cid {
     // Mental note: Derive ord always checks in order of struct fields.
     pub ts: Duration,

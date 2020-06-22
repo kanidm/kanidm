@@ -19,7 +19,7 @@ pub struct Protected {}
 
 lazy_static! {
     static ref ALLOWED_ATTRS: HashSet<&'static str> = {
-        let mut m = HashSet::new();
+        let mut m = HashSet::with_capacity(8);
         // Allow modification of some schema class types to allow local extension
         // of schema types.
         m.insert("must");

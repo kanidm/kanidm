@@ -57,8 +57,8 @@ impl Plugin for PasswordImport {
                     None => {
                         // just set it then!
                         let c = Credential::new_from_password(pw);
-                        e.set_avas("primary_credential",
-                            vec![Value::new_credential("primary", c)]);
+                        e.set_ava("primary_credential",
+                            btreeset![Value::new_credential("primary", c)]);
                         Ok(())
                     }
                 }
@@ -105,18 +105,18 @@ impl Plugin for PasswordImport {
                 Some(c) => {
                     // This is the major diff to create, we can update in place!
                     let c = c.update_password(pw);
-                    e.set_avas(
+                    e.set_ava(
                         "primary_credential",
-                        vec![Value::new_credential("primary", c)],
+                        btreeset![Value::new_credential("primary", c)],
                     );
                     Ok(())
                 }
                 None => {
                     // just set it then!
                     let c = Credential::new_from_password(pw);
-                    e.set_avas(
+                    e.set_ava(
                         "primary_credential",
-                        vec![Value::new_credential("primary", c)],
+                        btreeset![Value::new_credential("primary", c)],
                     );
                     Ok(())
                 }
@@ -207,7 +207,7 @@ mod tests {
         );
 
         let c = Credential::new_password_only("password");
-        ea.add_ava("primary_credential", &Value::new_credential("primary", c));
+        ea.add_ava("primary_credential", Value::new_credential("primary", c));
 
         let preload = vec![ea];
 
@@ -241,7 +241,7 @@ mod tests {
 
         let totp = TOTP::generate_secure("test_totp".to_string(), TOTP_DEFAULT_STEP);
         let c = Credential::new_password_only("password").update_totp(totp);
-        ea.add_ava("primary_credential", &Value::new_credential("primary", c));
+        ea.add_ava("primary_credential", Value::new_credential("primary", c));
 
         let preload = vec![ea];
 

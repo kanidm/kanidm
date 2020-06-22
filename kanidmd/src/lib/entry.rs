@@ -48,9 +48,8 @@ use crate::be::IdxKey;
 use ldap3_server::simple::{LdapPartialAttribute, LdapSearchResultEntry};
 use std::collections::BTreeSet as Set;
 use std::collections::BTreeSet;
-// BTreeMap could be faster, but it's small datasets?
-// use std::collections::HashMap as Map;
-use std::collections::BTreeMap as Map;
+use std::collections::HashMap as Map;
+// use std::collections::BTreeMap as Map;
 use std::collections::HashSet;
 use uuid::Uuid;
 
@@ -246,7 +245,7 @@ impl Entry<EntryInit, EntryNew> {
             // This means NEVER COMMITED
             valid: EntryInit,
             state: EntryNew,
-            attrs: Map::new(),
+            attrs: Map::with_capacity(32),
         }
     }
 
@@ -486,7 +485,7 @@ impl Entry<EntryInit, EntryNew> {
     }
 
     #[cfg(test)]
-    pub fn add_ava(&mut self, attr: &str, value: &Value) {
+    pub fn add_ava(&mut self, attr: &str, value: Value) {
         self.add_ava_int(attr, value)
     }
 }
@@ -721,7 +720,7 @@ impl Entry<EntryInvalid, EntryCommitted> {
     }
 
     pub fn into_recycled(mut self) -> Self {
-        self.add_ava("class", &Value::new_class("recycled"));
+        self.add_ava("class", Value::new_class("recycled"));
 
         Entry {
             valid: self.valid.clone(),
@@ -1475,19 +1474,12 @@ impl Entry<EntryReduced, EntryCommitted> {
 
 // impl<STATE> Entry<EntryValid, STATE> {
 impl<VALID, STATE> Entry<VALID, STATE> {
-    fn add_ava_int(&mut self, attr: &str, value: &Value) {
+    fn add_ava_int(&mut self, attr: &str, value: Value) {
         // How do we make this turn into an ok / err?
-        self.attrs
-            .entry(attr.to_string())
-            .and_modify(|v| {
-                // Here we need to actually do a check/binary search ...
-                if v.contains(value) {
-                    // It already exists, done!
-                } else {
-                    v.insert(value.clone());
-                }
-            })
-            .or_insert(btreeset![value.clone()]);
+        let v = self.attrs.entry(attr.to_string()).or_insert_with(Set::new);
+        // Here we need to actually do a check/binary search ...
+        v.insert(value);
+        // Doesn't matter if it already exists, equality will replace.
     }
 
     fn set_last_changed(&mut self, cid: Cid) {
@@ -1699,6 +1691,12 @@ impl<VALID, STATE> Entry<VALID, STATE> {
                     acc
                 }
             }),
+            FilterResolved::Inclusion(_) => {
+                // An inclusion doesn't make sense on an entry in isolation!
+                // Inclusions are part of exists queries, on search they mean
+                // nothing!
+                false
+            }
             FilterResolved::AndNot(f) => !self.entry_match_no_index_inner(f),
         }
     }
@@ -1796,7 +1794,10 @@ where
     // a list of syntax violations ...
     // If this already exists, we silently drop the event? Is that an
     // acceptable interface?
-    pub fn add_ava(&mut self, attr: &str, value: &Value) {
+    //
+    // TODO: This should take Value not &Value, would save a lot of clones
+    // around the codebase.
+    pub fn add_ava(&mut self, attr: &str, value: Value) {
         self.add_ava_int(attr, value)
     }
 
@@ -1809,19 +1810,21 @@ where
         });
     }
 
+    // Need something that can remove by difference?
+    pub(crate) fn remove_avas(&mut self, attr: &str, values: &BTreeSet<PartialValue>) {
+        if let Some(set) = self.attrs.get_mut(attr) {
+            values.iter().for_each(|k| {
+                set.remove(k);
+            })
+        }
+    }
+
     pub fn purge_ava(&mut self, attr: &str) {
         self.attrs.remove(attr);
     }
 
     pub fn pop_ava(&mut self, attr: &str) -> Option<Set<Value>> {
         self.attrs.remove(attr)
-    }
-
-    /// Overwrite the existing avas.
-    pub fn set_avas(&mut self, attr: &str, values: Vec<Value>) {
-        // Overwrite the existing value, build a tree from the list.
-        let x: Set<_> = values.into_iter().collect();
-        let _ = self.attrs.insert(attr.to_string(), x);
     }
 
     /// Provide a true ava set.
@@ -1848,7 +1851,7 @@ where
         // mutate
         for modify in modlist {
             match modify {
-                Modify::Present(a, v) => self.add_ava(a.as_str(), v),
+                Modify::Present(a, v) => self.add_ava(a.as_str(), v.clone()),
                 Modify::Removed(a, v) => self.remove_ava(a.as_str(), v),
                 Modify::Purged(a) => self.purge_ava(a.as_str()),
             }
@@ -1888,7 +1891,7 @@ impl From<&SchemaAttribute> for Entry<EntryInit, EntryNew> {
         let syntax_v = btreeset![Value::from(s.syntax.clone())];
 
         // Build the Map of the attributes relevant
-        let mut attrs: Map<String, Set<Value>> = Map::new();
+        let mut attrs: Map<String, Set<Value>> = Map::with_capacity(16);
         attrs.insert("attributename".to_string(), name_v);
         attrs.insert("description".to_string(), desc_v);
         attrs.insert("uuid".to_string(), uuid_v);
@@ -1922,7 +1925,7 @@ impl From<&SchemaClass> for Entry<EntryInit, EntryNew> {
         let name_v = btreeset![Value::new_iutf8(s.name.clone())];
         let desc_v = btreeset![Value::new_utf8(s.description.clone())];
 
-        let mut attrs: Map<String, Set<Value>> = Map::new();
+        let mut attrs: Map<String, Set<Value>> = Map::with_capacity(16);
         attrs.insert("classname".to_string(), name_v);
         attrs.insert("description".to_string(), desc_v);
         attrs.insert("uuid".to_string(), uuid_v);
@@ -1976,7 +1979,7 @@ mod tests {
     fn test_entry_basic() {
         let mut e: Entry<EntryInit, EntryNew> = Entry::new();
 
-        e.add_ava("userid", &Value::from("william"));
+        e.add_ava("userid", Value::from("william"));
     }
 
     #[test]
@@ -1988,8 +1991,8 @@ mod tests {
         // are adding ... Or do we validate after the changes are made in
         // total?
         let mut e: Entry<EntryInit, EntryNew> = Entry::new();
-        e.add_ava("userid", &Value::from("william"));
-        e.add_ava("userid", &Value::from("william"));
+        e.add_ava("userid", Value::from("william"));
+        e.add_ava("userid", Value::from("william"));
 
         let values = e.get_ava_set("userid").expect("Failed to get ava");
         // Should only be one value!
@@ -1999,7 +2002,7 @@ mod tests {
     #[test]
     fn test_entry_pres() {
         let mut e: Entry<EntryInit, EntryNew> = Entry::new();
-        e.add_ava("userid", &Value::from("william"));
+        e.add_ava("userid", Value::from("william"));
 
         assert!(e.attribute_pres("userid"));
         assert!(!e.attribute_pres("name"));
@@ -2009,7 +2012,7 @@ mod tests {
     fn test_entry_equality() {
         let mut e: Entry<EntryInit, EntryNew> = Entry::new();
 
-        e.add_ava("userid", &Value::from("william"));
+        e.add_ava("userid", Value::from("william"));
 
         assert!(e.attribute_equality("userid", &PartialValue::new_utf8s("william")));
         assert!(!e.attribute_equality("userid", &PartialValue::new_utf8s("test")));
@@ -2022,7 +2025,7 @@ mod tests {
     fn test_entry_substring() {
         let mut e: Entry<EntryInit, EntryNew> = Entry::new();
 
-        e.add_ava("userid", &Value::from("william"));
+        e.add_ava("userid", Value::from("william"));
 
         assert!(e.attribute_substring("userid", &PartialValue::new_utf8s("william")));
         assert!(e.attribute_substring("userid", &PartialValue::new_utf8s("will")));
@@ -2042,14 +2045,14 @@ mod tests {
         let pv10 = PartialValue::new_uint32(10);
         let pv15 = PartialValue::new_uint32(15);
 
-        e1.add_ava("a", &Value::new_uint32(10));
+        e1.add_ava("a", Value::new_uint32(10));
 
         assert!(e1.attribute_lessthan("a", &pv2) == false);
         assert!(e1.attribute_lessthan("a", &pv8) == false);
         assert!(e1.attribute_lessthan("a", &pv10) == false);
         assert!(e1.attribute_lessthan("a", &pv15) == true);
 
-        e1.add_ava("a", &Value::new_uint32(8));
+        e1.add_ava("a", Value::new_uint32(8));
 
         assert!(e1.attribute_lessthan("a", &pv2) == false);
         assert!(e1.attribute_lessthan("a", &pv8) == false);
@@ -2062,7 +2065,7 @@ mod tests {
         // Test application of changes to an entry.
         let mut e: Entry<EntryInvalid, EntryNew> = unsafe { Entry::new().into_invalid_new() };
 
-        e.add_ava("userid", &Value::from("william"));
+        e.add_ava("userid", Value::from("william"));
 
         let present_single_mods = unsafe {
             ModifyList::new_valid_list(vec![Modify::Present(
@@ -2132,18 +2135,18 @@ mod tests {
     #[test]
     fn test_entry_idx_diff() {
         let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-        e1.add_ava("userid", &Value::from("william"));
+        e1.add_ava("userid", Value::from("william"));
         let mut e1_mod = e1.clone();
-        e1_mod.add_ava("extra", &Value::from("test"));
+        e1_mod.add_ava("extra", Value::from("test"));
 
         let e1 = unsafe { e1.into_sealed_committed() };
         let e1_mod = unsafe { e1_mod.into_sealed_committed() };
 
         let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-        e2.add_ava("userid", &Value::from("claire"));
+        e2.add_ava("userid", Value::from("claire"));
         let e2 = unsafe { e2.into_sealed_committed() };
 
-        let mut idxmeta = HashSet::new();
+        let mut idxmeta = HashSet::with_capacity(8);
         idxmeta.insert(IdxKey {
             attr: "userid".to_string(),
             itype: IndexType::EQUALITY,
@@ -2244,18 +2247,18 @@ mod tests {
     #[test]
     fn test_entry_mask_recycled_ts() {
         let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-        e1.add_ava("class", &Value::new_class("person"));
+        e1.add_ava("class", Value::new_class("person"));
         let e1 = unsafe { e1.into_sealed_committed() };
         assert!(e1.mask_recycled_ts().is_some());
 
         let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-        e2.add_ava("class", &Value::new_class("person"));
-        e2.add_ava("class", &Value::new_class("recycled"));
+        e2.add_ava("class", Value::new_class("person"));
+        e2.add_ava("class", Value::new_class("recycled"));
         let e2 = unsafe { e2.into_sealed_committed() };
         assert!(e2.mask_recycled_ts().is_none());
 
         let mut e3: Entry<EntryInit, EntryNew> = Entry::new();
-        e3.add_ava("class", &Value::new_class("tombstone"));
+        e3.add_ava("class", Value::new_class("tombstone"));
         let e3 = unsafe { e3.into_sealed_committed() };
         assert!(e3.mask_recycled_ts().is_none());
     }
@@ -2269,7 +2272,7 @@ mod tests {
         // none, some - test adding an entry gives back add sets
         {
             let mut e: Entry<EntryInit, EntryNew> = Entry::new();
-            e.add_ava("class", &Value::new_class("person"));
+            e.add_ava("class", Value::new_class("person"));
             let e = unsafe { e.into_sealed_committed() };
 
             assert!(Entry::idx_name2uuid_diff(None, Some(&e)) == (Some(Set::new()), None));
@@ -2277,13 +2280,13 @@ mod tests {
 
         {
             let mut e: Entry<EntryInit, EntryNew> = Entry::new();
-            e.add_ava("class", &Value::new_class("person"));
-            e.add_ava("gidnumber", &Value::new_uint32(1300));
-            e.add_ava("name", &Value::new_iname_s("testperson"));
-            e.add_ava("spn", &Value::new_spn_str("testperson", "example.com"));
+            e.add_ava("class", Value::new_class("person"));
+            e.add_ava("gidnumber", Value::new_uint32(1300));
+            e.add_ava("name", Value::new_iname_s("testperson"));
+            e.add_ava("spn", Value::new_spn_str("testperson", "example.com"));
             e.add_ava(
                 "uuid",
-                &Value::new_uuids("9fec0398-c46c-4df4-9df5-b0016f7d563f").unwrap(),
+                Value::new_uuids("9fec0398-c46c-4df4-9df5-b0016f7d563f").unwrap(),
             );
             let e = unsafe { e.into_sealed_committed() };
 
@@ -2323,14 +2326,14 @@ mod tests {
 
         {
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("class", &Value::new_class("person"));
-            e1.add_ava("spn", &Value::new_spn_str("testperson", "example.com"));
+            e1.add_ava("class", Value::new_class("person"));
+            e1.add_ava("spn", Value::new_spn_str("testperson", "example.com"));
             let e1 = unsafe { e1.into_sealed_committed() };
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava("class", &Value::new_class("person"));
-            e2.add_ava("name", &Value::new_iname_s("testperson"));
-            e2.add_ava("spn", &Value::new_spn_str("testperson", "example.com"));
+            e2.add_ava("class", Value::new_class("person"));
+            e2.add_ava("name", Value::new_iname_s("testperson"));
+            e2.add_ava("spn", Value::new_spn_str("testperson", "example.com"));
             let e2 = unsafe { e2.into_sealed_committed() };
 
             // One attr added
@@ -2349,13 +2352,13 @@ mod tests {
         // Value changed, remove old, add new.
         {
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("class", &Value::new_class("person"));
-            e1.add_ava("spn", &Value::new_spn_str("testperson", "example.com"));
+            e1.add_ava("class", Value::new_class("person"));
+            e1.add_ava("spn", Value::new_spn_str("testperson", "example.com"));
             let e1 = unsafe { e1.into_sealed_committed() };
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava("class", &Value::new_class("person"));
-            e2.add_ava("spn", &Value::new_spn_str("renameperson", "example.com"));
+            e2.add_ava("class", Value::new_class("person"));
+            e2.add_ava("spn", Value::new_spn_str("renameperson", "example.com"));
             let e2 = unsafe { e2.into_sealed_committed() };
 
             assert!(
@@ -2373,11 +2376,11 @@ mod tests {
         assert!(Entry::idx_uuid2spn_diff(None, None) == None);
 
         let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-        e1.add_ava("spn", &Value::new_spn_str("testperson", "example.com"));
+        e1.add_ava("spn", Value::new_spn_str("testperson", "example.com"));
         let e1 = unsafe { e1.into_sealed_committed() };
 
         let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-        e2.add_ava("spn", &Value::new_spn_str("renameperson", "example.com"));
+        e2.add_ava("spn", Value::new_spn_str("renameperson", "example.com"));
         let e2 = unsafe { e2.into_sealed_committed() };
 
         assert!(
@@ -2397,11 +2400,11 @@ mod tests {
         assert!(Entry::idx_uuid2rdn_diff(None, None) == None);
 
         let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-        e1.add_ava("spn", &Value::new_spn_str("testperson", "example.com"));
+        e1.add_ava("spn", Value::new_spn_str("testperson", "example.com"));
         let e1 = unsafe { e1.into_sealed_committed() };
 
         let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-        e2.add_ava("spn", &Value::new_spn_str("renameperson", "example.com"));
+        e2.add_ava("spn", Value::new_spn_str("renameperson", "example.com"));
         let e2 = unsafe { e2.into_sealed_committed() };
 
         assert!(
