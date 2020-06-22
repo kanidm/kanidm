@@ -447,19 +447,19 @@ impl SchemaClass {
         let systemmay = value
             .get_ava_as_str("systemmay")
             .map(|i| i.map(|s| s.to_string()).collect())
-            .unwrap_or_else(|| Vec::new());
+            .unwrap_or_else(Vec::new);
         let systemmust = value
             .get_ava_as_str("systemmust")
             .map(|i| i.map(|s| s.to_string()).collect())
-            .unwrap_or_else(|| Vec::new());
+            .unwrap_or_else(Vec::new);
         let may = value
             .get_ava_as_str("may")
             .map(|i| i.map(|s| s.to_string()).collect())
-            .unwrap_or_else(|| Vec::new());
+            .unwrap_or_else(Vec::new);
         let must = value
             .get_ava_as_str("must")
             .map(|i| i.map(|s| s.to_string()).collect())
-            .unwrap_or_else(|| Vec::new());
+            .unwrap_or_else(Vec::new);
 
         Ok(SchemaClass {
             name,

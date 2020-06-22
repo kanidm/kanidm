@@ -657,7 +657,7 @@ impl Handler<InternalCredentialSetMessage> for QueryServerWriteV1 {
                     SetCredentialRequest::GeneratePassword => {
                         let gpe = GeneratePasswordEvent::from_parts(
                             &mut audit,
-                            &mut idms_prox_write.qs_write,
+                            &idms_prox_write.qs_write,
                             msg.uat,
                             target_uuid,
                             msg.appid,

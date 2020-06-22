@@ -82,7 +82,7 @@ macro_rules! try_from_entry {
         let sshkeys = $value
             .get_ava_iter_sshpubkeys("ssh_publickey")
             .map(|i| i.map(|s| s.to_string()).collect())
-            .unwrap_or_else(|| Vec::new());
+            .unwrap_or_else(Vec::new);
 
         let cred = $value
             .get_ava_single_credential("unix_password")

@@ -38,7 +38,7 @@ fn get_cand_attr_set<VALID, STATE>(
         let mut values: Vec<PartialValue> = match e.get_ava(attr) {
             Some(vs) => {
                 // We have values, map them.
-                vs.into_iter().map(|v| v.to_partialvalue()).collect()
+                vs.map(|v| v.to_partialvalue()).collect()
             }
             None => {
                 // No values, so empty set.

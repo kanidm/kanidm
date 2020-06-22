@@ -305,7 +305,8 @@ impl AccessControlProfile {
         // receiver, and turn to real filter
         let receiver_f: ProtoFilter = value
             .get_ava_single_protofilter("acp_receiver")
-            .map(|pf| pf.clone())
+            // .map(|pf| pf.clone())
+            .cloned()
             .ok_or_else(|| {
                 ladmin_error!(audit, "Missing acp_receiver");
                 OperationError::InvalidACPState("Missing acp_receiver".to_string())
@@ -313,7 +314,8 @@ impl AccessControlProfile {
         // targetscope, and turn to real filter
         let targetscope_f: ProtoFilter = value
             .get_ava_single_protofilter("acp_targetscope")
-            .map(|pf| pf.clone())
+            // .map(|pf| pf.clone())
+            .cloned()
             .ok_or_else(|| {
                 ladmin_error!(audit, "Missing acp_targetscope");
                 OperationError::InvalidACPState("Missing acp_targetscope".to_string())
@@ -398,7 +400,7 @@ pub trait AccessControlsTransaction {
                     search_state
                         .iter()
                         // .filter_map(|(_, acs)| {
-                        .filter_map(|acs| {
+                        .filter(|acs| {
                             // Now resolve the receiver filter
                             // Okay, so in filter resolution, the primary error case
                             // is that we have a non-user in the event. We have already
@@ -416,20 +418,14 @@ pub trait AccessControlsTransaction {
                             // would create issues in search.
                             let f_val = acs.acp.receiver.clone();
                             match f_val.resolve(&se.event, None) {
-                                Ok(f_res) => {
-                                    if rec_entry.entry_match_no_index(&f_res) {
-                                        Some(acs)
-                                    } else {
-                                        None
-                                    }
-                                }
+                                Ok(f_res) => rec_entry.entry_match_no_index(&f_res),
                                 Err(e) => {
                                     ladmin_error!(
                                         audit,
                                         "A internal filter was passed for resolution!?!? {:?}",
                                         e
                                     );
-                                    None
+                                    false
                                 }
                             }
                         })
@@ -573,34 +569,28 @@ pub trait AccessControlsTransaction {
                     search_state
                         .iter()
                         // .filter_map(|(_, acs)| {
-                        .filter_map(|acs| {
+                        .filter(|acs| {
                             let f_val = acs.acp.receiver.clone();
                             match f_val.resolve(&se.event, None) {
                                 Ok(f_res) => {
                                     // Is our user covered by this acs?
                                     if rec_entry.entry_match_no_index(&f_res) {
                                         // If so, let's check if the attr request is relevant.
-
-                                        // If we have a requested attr set, are any of them
-                                        // in the attrs this acs covers?
-                                        let acs_target_attrs = match &se.attrs {
+                                        match &se.attrs {
                                             Some(r_attrs) => {
-                                                acs.attrs.intersection(r_attrs).count()
+                                                // If we have a requested attr set, are any of them
+                                                // in the attrs this acs covers?
+                                                //
+                                                // is disjoint sees if there is an overlap - we need
+                                                // not disjoint because if there is overlap, then this
+                                                // must be a relevant acp
+                                                !acs.attrs.is_disjoint(r_attrs)
                                             }
-                                            // All attrs requested, do nothing.
-                                            None => acs.attrs.len(),
-                                        };
-
-                                        // There is nothing in the ACS (not possible) or
-                                        // no overlap between the requested set and this acs, so it's
-                                        // not worth evaling.
-                                        if acs_target_attrs == 0 {
-                                            None
-                                        } else {
-                                            Some(acs)
+                                            // All attrs requested, it must be relevant.
+                                            None => true,
                                         }
                                     } else {
-                                        None
+                                        false
                                     }
                                 }
                                 Err(e) => {
@@ -609,7 +599,7 @@ pub trait AccessControlsTransaction {
                                         "A internal filter was passed for resolution!?!? {:?}",
                                         e
                                     );
-                                    None
+                                    false
                                 }
                             }
                         })
@@ -767,23 +757,17 @@ pub trait AccessControlsTransaction {
             // Find the acps that relate to the caller.
             let related_acp: Vec<&AccessControlModify> = modify_state
                 .iter()
-                .filter_map(|acs| {
+                .filter(|acs| {
                     let f_val = acs.acp.receiver.clone();
                     match f_val.resolve(&me.event, None) {
-                        Ok(f_res) => {
-                            if rec_entry.entry_match_no_index(&f_res) {
-                                Some(acs)
-                            } else {
-                                None
-                            }
-                        }
+                        Ok(f_res) => rec_entry.entry_match_no_index(&f_res),
                         Err(e) => {
                             ladmin_error!(
                                 audit,
                                 "A internal filter was passed for resolution!?!? {:?}",
                                 e
                             );
-                            None
+                            false
                         }
                     }
                 })
@@ -955,23 +939,17 @@ pub trait AccessControlsTransaction {
             // Find the acps that relate to the caller.
             let related_acp: Vec<&AccessControlCreate> = create_state
                 .iter()
-                .filter_map(|acs| {
+                .filter(|acs| {
                     let f_val = acs.acp.receiver.clone();
                     match f_val.resolve(&ce.event, None) {
-                        Ok(f_res) => {
-                            if rec_entry.entry_match_no_index(&f_res) {
-                                Some(acs)
-                            } else {
-                                None
-                            }
-                        }
+                        Ok(f_res) => rec_entry.entry_match_no_index(&f_res),
                         Err(e) => {
                             ladmin_error!(
                                 audit,
                                 "A internal filter was passed for resolution!?!? {:?}",
                                 e
                             );
-                            None
+                            false
                         }
                     }
                 })
@@ -1128,23 +1106,17 @@ pub trait AccessControlsTransaction {
             // Find the acps that relate to the caller.
             let related_acp: Vec<&AccessControlDelete> = delete_state
                 .iter()
-                .filter_map(|acs| {
+                .filter(|acs| {
                     let f_val = acs.acp.receiver.clone();
                     match f_val.resolve(&de.event, None) {
-                        Ok(f_res) => {
-                            if rec_entry.entry_match_no_index(&f_res) {
-                                Some(acs)
-                            } else {
-                                None
-                            }
-                        }
+                        Ok(f_res) => rec_entry.entry_match_no_index(&f_res),
                         Err(e) => {
                             ladmin_error!(
                                 audit,
                                 "A internal filter was passed for resolution!?!? {:?}",
                                 e
                             );
-                            None
+                            false
                         }
                     }
                 })

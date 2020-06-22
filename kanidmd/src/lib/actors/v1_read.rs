@@ -249,10 +249,10 @@ impl Handler<SearchMessage> for QueryServerReadV1 {
         let mut audit = AuditScope::new("search", msg.eventid, self.log_level);
         let res = lperf_op_segment!(&mut audit, "actors::v1_read::handle<SearchMessage>", || {
             // Begin a read
-            let mut qs_read = self.qs.read();
+            let qs_read = self.qs.read();
 
             // Make an event from the request
-            let srch = match SearchEvent::from_message(&mut audit, msg, &mut qs_read) {
+            let srch = match SearchEvent::from_message(&mut audit, msg, &qs_read) {
                 Ok(s) => s,
                 Err(e) => {
                     ladmin_error!(audit, "Failed to begin search: {:?}", e);
@@ -263,8 +263,9 @@ impl Handler<SearchMessage> for QueryServerReadV1 {
             ltrace!(audit, "Begin event {:?}", srch);
 
             match qs_read.search_ext(&mut audit, &srch) {
-                Ok(entries) => SearchResult::new(&mut audit, &mut qs_read, entries)
-                    .map(|ok_sr| ok_sr.response()),
+                Ok(entries) => {
+                    SearchResult::new(&mut audit, &qs_read, entries).map(|ok_sr| ok_sr.response())
+                }
                 Err(e) => Err(e),
             }
         });
@@ -340,7 +341,7 @@ impl Handler<WhoamiMessage> for QueryServerReadV1 {
         let res = lperf_op_segment!(&mut audit, "actors::v1_read::handle<WhoamiMessage>", || {
             // TODO #62: Move this to IdmServer!!!
             // Begin a read
-            let mut qs_read = self.qs.read();
+            let qs_read = self.qs.read();
 
             // Make an event from the whoami request. This will process the event and
             // generate a selfuuid search.
@@ -351,7 +352,7 @@ impl Handler<WhoamiMessage> for QueryServerReadV1 {
             // this far.
             let uat = msg.uat.clone().ok_or(OperationError::NotAuthenticated)?;
 
-            let srch = match SearchEvent::from_whoami_request(&mut audit, msg.uat, &mut qs_read) {
+            let srch = match SearchEvent::from_whoami_request(&mut audit, msg.uat, &qs_read) {
                 Ok(s) => s,
                 Err(e) => {
                     ladmin_error!(audit, "Failed to begin whoami: {:?}", e);
@@ -369,7 +370,7 @@ impl Handler<WhoamiMessage> for QueryServerReadV1 {
                         1 => {
                             let e = entries.pop().expect("Entry length mismatch!!!");
                             // Now convert to a response, and return
-                            WhoamiResult::new(&mut audit, &mut qs_read, e, uat)
+                            WhoamiResult::new(&mut audit, &qs_read, e, uat)
                                 .map(|ok_wr| ok_wr.response())
                         }
                         // Somehow we matched multiple, which should be impossible.
@@ -399,10 +400,10 @@ impl Handler<InternalSearchMessage> for QueryServerReadV1 {
             &mut audit,
             "actors::v1_read::handle<InternalSearchMessage>",
             || {
-                let mut qs_read = self.qs.read();
+                let qs_read = self.qs.read();
 
                 // Make an event from the request
-                let srch = match SearchEvent::from_internal_message(&mut audit, msg, &mut qs_read) {
+                let srch = match SearchEvent::from_internal_message(&mut audit, msg, &qs_read) {
                     Ok(s) => s,
                     Err(e) => {
                         ladmin_error!(audit, "Failed to begin internal api search: {:?}", e);
@@ -413,7 +414,7 @@ impl Handler<InternalSearchMessage> for QueryServerReadV1 {
                 ltrace!(audit, "Begin event {:?}", srch);
 
                 match qs_read.search_ext(&mut audit, &srch) {
-                    Ok(entries) => SearchResult::new(&mut audit, &mut qs_read, entries)
+                    Ok(entries) => SearchResult::new(&mut audit, &qs_read, entries)
                         .map(|ok_sr| ok_sr.into_proto_array()),
                     Err(e) => Err(e),
                 }
@@ -444,12 +445,11 @@ impl Handler<InternalSearchRecycledMessage> for QueryServerReadV1 {
             &mut audit,
             "actors::v1_read::handle<InternalSearchRecycledMessage>",
             || {
-                let mut qs_read = self.qs.read();
+                let qs_read = self.qs.read();
 
                 // Make an event from the request
                 let srch =
-                    match SearchEvent::from_internal_recycle_message(&mut audit, msg, &mut qs_read)
-                    {
+                    match SearchEvent::from_internal_recycle_message(&mut audit, msg, &qs_read) {
                         Ok(s) => s,
                         Err(e) => {
                             ladmin_error!(audit, "Failed to begin recycled search: {:?}", e);
@@ -460,7 +460,7 @@ impl Handler<InternalSearchRecycledMessage> for QueryServerReadV1 {
                 ltrace!(audit, "Begin event {:?}", srch);
 
                 match qs_read.search_ext(&mut audit, &srch) {
-                    Ok(entries) => SearchResult::new(&mut audit, &mut qs_read, entries)
+                    Ok(entries) => SearchResult::new(&mut audit, &qs_read, entries)
                         .map(|ok_sr| ok_sr.into_proto_array()),
                     Err(e) => Err(e),
                 }
@@ -484,7 +484,7 @@ impl Handler<InternalRadiusReadMessage> for QueryServerReadV1 {
             &mut audit,
             "actors::v1_read::handle<InternalRadiusReadMessage>",
             || {
-                let mut qs_read = self.qs.read();
+                let qs_read = self.qs.read();
 
                 let target_uuid = qs_read
                     .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
@@ -498,7 +498,7 @@ impl Handler<InternalRadiusReadMessage> for QueryServerReadV1 {
                     &mut audit,
                     msg.uat,
                     target_uuid,
-                    &mut qs_read,
+                    &qs_read,
                 ) {
                     Ok(s) => s,
                     Err(e) => {
@@ -563,7 +563,7 @@ impl Handler<InternalRadiusTokenReadMessage> for QueryServerReadV1 {
                 // Make an event from the request
                 let rate = match RadiusAuthTokenEvent::from_parts(
                     &mut audit,
-                    &mut idm_read.qs_read,
+                    &idm_read.qs_read,
                     msg.uat,
                     target_uuid,
                 ) {
@@ -619,7 +619,7 @@ impl Handler<InternalUnixUserTokenReadMessage> for QueryServerReadV1 {
                 // Make an event from the request
                 let rate = match UnixUserTokenEvent::from_parts(
                     &mut audit,
-                    &mut idm_read.qs_read,
+                    &idm_read.qs_read,
                     msg.uat,
                     target_uuid,
                 ) {
@@ -675,7 +675,7 @@ impl Handler<InternalUnixGroupTokenReadMessage> for QueryServerReadV1 {
                 // Make an event from the request
                 let rate = match UnixGroupTokenEvent::from_parts(
                     &mut audit,
-                    &mut idm_read.qs_read,
+                    &idm_read.qs_read,
                     msg.uat,
                     target_uuid,
                 ) {
@@ -709,7 +709,7 @@ impl Handler<InternalSshKeyReadMessage> for QueryServerReadV1 {
             &mut audit,
             "actors::v1_read::handle<InternalSshKeyReadMessage>",
             || {
-                let mut qs_read = self.qs.read();
+                let qs_read = self.qs.read();
 
                 let target_uuid = qs_read
                     .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
@@ -723,7 +723,7 @@ impl Handler<InternalSshKeyReadMessage> for QueryServerReadV1 {
                     &mut audit,
                     msg.uat,
                     target_uuid,
-                    &mut qs_read,
+                    &qs_read,
                 ) {
                     Ok(s) => s,
                     Err(e) => {
@@ -778,7 +778,7 @@ impl Handler<InternalSshKeyTagReadMessage> for QueryServerReadV1 {
             &mut audit,
             "actors::v1_read::handle<InternalSshKeyTagReadMessage>",
             || {
-                let mut qs_read = self.qs.read();
+                let qs_read = self.qs.read();
 
                 let target_uuid = qs_read
                     .name_to_uuid(&mut audit, uuid_or_name.as_str())
@@ -792,7 +792,7 @@ impl Handler<InternalSshKeyTagReadMessage> for QueryServerReadV1 {
                     &mut audit,
                     uat,
                     target_uuid,
-                    &mut qs_read,
+                    &qs_read,
                 ) {
                     Ok(s) => s,
                     Err(e) => {
@@ -861,7 +861,7 @@ impl Handler<IdmAccountUnixAuthMessage> for QueryServerReadV1 {
                 // Make an event from the request
                 let uuae = match UnixUserAuthEvent::from_parts(
                     &mut audit,
-                    &mut idm_write.qs_read,
+                    &idm_write.qs_read,
                     msg.uat,
                     target_uuid,
                     msg.cred,

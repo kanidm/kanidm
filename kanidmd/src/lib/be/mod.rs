@@ -94,6 +94,8 @@ impl IdRawEntry {
 
 pub trait BackendTransaction {
     type IdlLayerType: IdlArcSqliteTransaction;
+
+    #[allow(clippy::mut_from_ref)]
     fn get_idlayer(&self) -> &mut Self::IdlLayerType;
 
     fn get_idxmeta_ref(&self) -> &Set<IdxKey>;
@@ -628,6 +630,7 @@ pub trait BackendTransaction {
 impl<'a> BackendTransaction for BackendReadTransaction<'a> {
     type IdlLayerType = IdlArcSqliteReadTransaction<'a>;
 
+    #[allow(clippy::mut_from_ref)]
     fn get_idlayer(&self) -> &mut IdlArcSqliteReadTransaction<'a> {
         // OKAY here be the cursed bullshit. We know that in our application
         // that during a transaction, that we are the only holder of the
@@ -651,6 +654,7 @@ impl<'a> BackendTransaction for BackendReadTransaction<'a> {
 impl<'a> BackendTransaction for BackendWriteTransaction<'a> {
     type IdlLayerType = IdlArcSqliteWriteTransaction<'a>;
 
+    #[allow(clippy::mut_from_ref)]
     fn get_idlayer(&self) -> &mut IdlArcSqliteWriteTransaction<'a> {
         unsafe { &mut (*self.idlayer.get()) }
     }
@@ -1178,9 +1182,9 @@ impl<'a> BackendWriteTransaction<'a> {
         // Unwrap the Cell we have finished with it.
         let idlayer = idlayer.into_inner();
 
-        idlayer.commit(audit).and_then(|r| {
+        idlayer.commit(audit).and_then(|()| {
             idxmeta_wr.commit();
-            Ok(r)
+            Ok(())
         })
     }
 
