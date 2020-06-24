@@ -1,5 +1,6 @@
 use crate::plugins::Plugin;
 use std::collections::BTreeSet;
+use std::collections::HashSet;
 use uuid::Uuid;
 
 use crate::audit::AuditScope;
@@ -208,9 +209,6 @@ impl Plugin for Base {
         au: &mut AuditScope,
         qs: &QueryServerReadTransaction,
     ) -> Vec<Result<(), ConsistencyError>> {
-        // Verify all uuid's are unique?
-        // Probably the literally worst thing ...
-
         // Search for class = *
         let entries = match qs.internal_search(au, filter!(f_pres("class"))) {
             Ok(v) => v,
@@ -220,6 +218,8 @@ impl Plugin for Base {
             }
         };
 
+        let mut uuid_seen: HashSet<Uuid> = HashSet::with_capacity(entries.len());
+
         entries
             .iter()
             // do an exists checks on the uuid
@@ -228,20 +228,13 @@ impl Plugin for Base {
                 // will be thrown in the deserialise (possibly it will be better
                 // handled later). But it means this check only needs to validate
                 // uniqueness!
-                let uuid: &Uuid = e.get_uuid();
+                let uuid = e.get_uuid();
 
-                let filt = filter!(FC::Eq("uuid", PartialValue::new_uuid(*uuid)));
-                match qs.internal_search(au, filt) {
-                    Ok(r) => {
-                        if r.is_empty() {
-                            Err(ConsistencyError::UuidIndexCorrupt(uuid.to_string()))
-                        } else if r.len() == 1 {
-                            Ok(())
-                        } else {
-                            Err(ConsistencyError::UuidNotUnique(uuid.to_string()))
-                        }
-                    }
-                    Err(_) => Err(ConsistencyError::QueryServerSearchFailure),
+                if uuid_seen.insert(*uuid) {
+                    // Insert returns true if the item was unique.
+                    Ok(())
+                } else {
+                    Err(ConsistencyError::UuidNotUnique(uuid.to_string()))
                 }
             })
             .filter(|v| v.is_err())

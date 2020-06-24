@@ -255,8 +255,6 @@ impl Plugin for Spn {
                         );
                         debug_assert!(false);
                         r.push(Err(ConsistencyError::InvalidSPN(e.get_id())))
-                    } else {
-                        ltrace!(au, "spn is ok! 👍");
                     }
                 }
                 None => {

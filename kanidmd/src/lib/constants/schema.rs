@@ -320,7 +320,7 @@ pub const JSON_SCHEMA_ATTR_BADLIST_PASSWORD: &str = r#"{
         "EQUALITY"
       ],
       "unique": [
-        "true"
+        "false"
       ],
       "multivalue": [
         "true"

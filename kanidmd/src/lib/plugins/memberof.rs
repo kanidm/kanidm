@@ -20,9 +20,8 @@ use crate::server::{QueryServerReadTransaction, QueryServerWriteTransaction};
 use crate::value::{PartialValue, Value};
 use kanidm_proto::v1::{ConsistencyError, OperationError};
 
+use std::collections::BTreeSet;
 use std::collections::HashMap;
-use std::collections::HashSet;
-use std::collections::VecDeque;
 use uuid::Uuid;
 
 lazy_static! {
@@ -108,9 +107,7 @@ fn apply_memberof(
     // to speed up the later other_affect write op, and we can use this
     // to avoid loading things that aren't groups.
     // All other changed entries (mo, dmo cleared)
-    let mut other_cache: HashMap<Uuid, EntryTuple> = HashMap::new();
-    let mut group_queue: VecDeque<Uuid> = VecDeque::new();
-
+    let mut other_cache: HashMap<Uuid, EntryTuple> = HashMap::with_capacity(group_affect.len() * 2);
     while !group_affect.is_empty() {
         group_affect.sort();
         group_affect.dedup();
@@ -118,31 +115,25 @@ fn apply_memberof(
         let mut pre_candidates = Vec::with_capacity(group_affect.len());
         let mut candidates = Vec::with_capacity(group_affect.len());
 
+        // Ignore recycled/tombstones
+        let filt = filter!(FC::Or(
+            group_affect
+                .drain(0..)
+                .map(|u| f_eq("uuid", PartialValue::new_uuid(u)))
+                .collect()
+        ));
+
+        let mut work_set = qs.internal_search_writeable(au, filt)?;
         // Load the vecdeque with this batch.
-        group_queue.extend(group_affect.drain(0..));
-        debug_assert!(group_affect.is_empty());
 
-        while let Some(guuid) = group_queue.pop_front() {
+        while let Some((pre, mut tgte)) = work_set.pop() {
+            let guuid = *pre.get_uuid();
             // load the entry from the db.
-            let pair = qs.internal_search_uuid_writeable(au, &guuid).map_err(|e| {
-                ladmin_error!(au, "Invalid uuid {:?} in memberof group_affect set?", guuid);
-                e
-            })?;
-
-            let (pre, mut tgte) = match pair {
-                Some(p) => p,
-                None => {
-                    ltrace!(au, "Ignoring recycled/tombstone ...");
-                    continue;
-                }
-            };
-
             if !tgte.attribute_value_pres("class", &CLASS_GROUP) {
                 // It's not a group, we'll deal with you later. We should NOT
                 // have seen this UUID before, as either we are on the first
                 // iteration OR the checks belowe should have filtered it out.
                 ltrace!(au, "not a group, delaying update to -> {:?}", guuid);
-                debug_assert!(!other_cache.contains_key(&guuid));
                 other_cache.insert(guuid, (pre, tgte));
                 continue;
             }
@@ -176,12 +167,14 @@ fn apply_memberof(
         }
 
         debug_assert!(pre_candidates.len() == candidates.len());
-        // Write this stripe.
-        qs.internal_batch_modify(au, pre_candidates, candidates)
-            .map_err(|e| {
-                ladmin_error!(au, "Failed to commit memberof group set {:?}", e);
-                e
-            })?;
+        // Write this stripe if populated.
+        if !pre_candidates.is_empty() {
+            qs.internal_batch_modify(au, pre_candidates, candidates)
+                .map_err(|e| {
+                    ladmin_error!(au, "Failed to commit memberof group set {:?}", e);
+                    e
+                })?;
+        }
         // Next loop!
     }
 
@@ -346,9 +339,6 @@ impl Plugin for MemberOf {
 
         // for each entry in the DB (live).
         for e in all_cand {
-            // create new map
-            // let mo_set: BTreeMap<String, ()> = BTreeMap::new();
-            // searcch direct memberships of live groups.
             let filt_in = filter!(f_and!([
                 f_eq("class", PartialValue::new_class("group")),
                 f_eq("member", PartialValue::new_refer(*e.get_uuid()))
@@ -363,8 +353,16 @@ impl Plugin for MemberOf {
             };
             // for all direct -> add uuid to map
 
-            let d_groups_set: HashSet<&Uuid> =
-                direct_memberof.iter().map(|e| e.get_uuid()).collect();
+            let d_groups_set: BTreeSet<_> = direct_memberof
+                .iter()
+                .map(|e| Value::new_refer(*e.get_uuid()))
+                .collect();
+
+            let d_groups_set = if d_groups_set.is_empty() {
+                None
+            } else {
+                Some(d_groups_set)
+            };
 
             ltrace!(
                 au,
@@ -373,40 +371,32 @@ impl Plugin for MemberOf {
                 d_groups_set
             );
 
-            let dmos: Vec<&Uuid> = match e.get_ava_as_refuuid("directmemberof") {
-                // Avoid a reference issue to return empty set
-                Some(dmos) => dmos.collect(),
-                // No memberof, return empty set.
-                None => Vec::new(),
-            };
-
-            ltrace!(au, "Direct Member Of Set {:?} -> {:?}", e.get_uuid(), dmos);
-
-            if dmos.len() != direct_memberof.len() {
-                ladmin_error!(
-                    au,
-                    "MemberOfInvalid directmemberof set and DMO search set differ in size: {}",
-                    e
-                );
-                r.push(Err(ConsistencyError::MemberOfInvalid(e.get_id())));
-                debug_assert!(false);
-                // Next entry
-                continue;
-            };
-
-            for mo_uuid in dmos {
-                if !d_groups_set.contains(mo_uuid) {
+            match (e.get_ava_set("directmemberof"), d_groups_set) {
+                (Some(edmos), Some(dmos)) => {
+                    let diff: Vec<_> = dmos.symmetric_difference(edmos).collect();
+                    if !diff.is_empty() {
+                        ladmin_error!(
+                            au,
+                            "MemberOfInvalid: Entry {}, DMO has inconsistencies -> {:?}",
+                            e,
+                            diff
+                        );
+                        r.push(Err(ConsistencyError::MemberOfInvalid(e.get_id())));
+                    }
+                }
+                (None, None) => {
+                    // Ok
+                }
+                _ => {
                     ladmin_error!(
                         au,
-                        "MemberOfInvalid: Entry {}, MO {:?} not in direct groups",
-                        e,
-                        mo_uuid
+                        "MemberOfInvalid directmemberof set and DMO search set differ in size: {}",
+                        e.get_uuid()
                     );
                     r.push(Err(ConsistencyError::MemberOfInvalid(e.get_id())));
-                    // Next entry
-                    continue;
                 }
             }
+
             // Could check all dmos in mos?
 
             /* To check nested! */

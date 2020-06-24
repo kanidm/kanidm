@@ -296,7 +296,7 @@ impl Filter<FilterValid> {
 
     pub fn get_attr_set(&self) -> BTreeSet<&str> {
         // Recurse through the filter getting an attribute set.
-        let mut r_set: BTreeSet<&str> = BTreeSet::new();
+        let mut r_set = BTreeSet::new();
         self.state.inner.get_attr_set(&mut r_set);
         r_set
     }

@@ -427,7 +427,7 @@ async fn json_rest_event_credential_put(
 
 // Okay, so a put normally needs
 //  * filter of what we are working on (id + class)
-//  * a BTreeMap<String, Vec<String>> that we turn into a modlist.
+//  * a Map<String, Vec<String>> that we turn into a modlist.
 //
 // OR
 //  * filter of what we are working on (id + class)

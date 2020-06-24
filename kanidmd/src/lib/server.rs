@@ -5,7 +5,7 @@
 // that otherwise can't be cloned. Think Mutex.
 // use actix::prelude::*;
 use std::cell::Cell;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeSet, HashMap};
 use std::sync::Arc;
 use std::time::Duration;
 use uuid::Uuid;
@@ -1229,7 +1229,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             let revive_cands =
                 self.impersonate_search_valid(au, re.filter.clone(), re.filter.clone(), &re.event)?;
 
-            let mut dm_mods: BTreeMap<Uuid, ModifyList<ModifyInvalid>> = BTreeMap::new();
+            let mut dm_mods: HashMap<Uuid, ModifyList<ModifyInvalid>> =
+                HashMap::with_capacity(revive_cands.len());
 
             revive_cands.into_iter().for_each(|e| {
                 // Get this entries uuid.
@@ -1452,6 +1453,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
         })
     }
 
+    /// Used in conjunction with internal_batch_modify, to get a pre/post
+    /// pair, where post is pre-configured with metadata to allow
+    /// modificiation before submit back to internal_batch_modify
     pub(crate) fn internal_search_writeable(
         &self,
         audit: &mut AuditScope,
@@ -1469,44 +1473,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
                         (e, writeable)
                     })
                     .collect()
-            })
-        })
-    }
-
-    /// Used in conjunction with internal_batch_modify, to get a pre/post
-    /// pair, where post is pre-configured with metadata to allow
-    /// modificiation before submit back to internal_batch_modify
-    pub(crate) fn internal_search_uuid_writeable(
-        &self,
-        audit: &mut AuditScope,
-        uuid: &Uuid,
-    ) -> Result<Option<EntryTuple>, OperationError> {
-        lperf_segment!(audit, "server::internal_search_uuid_writeable", || {
-            let filter = filter_all!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
-            let f_valid = filter
-                .validate(self.get_schema())
-                .map_err(OperationError::SchemaViolation)?;
-            let se = SearchEvent::new_internal(f_valid);
-            self.search(audit, &se).and_then(|vs| {
-                if vs.len() > 1 {
-                    Err(OperationError::NoMatchingEntries)
-                } else {
-                    vs.into_iter()
-                        .next()
-                        .ok_or(OperationError::NoMatchingEntries)
-                        .map(|e| {
-                            // Must be okay, lets check other conditions.
-                            if e.attribute_value_pres("class", &PVCLASS_TOMBSTONE)
-                                || e.attribute_value_pres("class", &PVCLASS_RECYCLED)
-                            {
-                                // It's a ts/recycle, no.
-                                None
-                            } else {
-                                let writeable = e.clone().invalidate(self.cid.clone());
-                                Some((e, writeable))
-                            }
-                        })
-                }
             })
         })
     }

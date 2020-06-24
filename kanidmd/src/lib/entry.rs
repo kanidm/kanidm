@@ -48,9 +48,8 @@ use crate::be::IdxKey;
 use ldap3_server::simple::{LdapPartialAttribute, LdapSearchResultEntry};
 use std::collections::BTreeSet as Set;
 use std::collections::BTreeSet;
-// BTreeMap could be faster, but it's small datasets?
-// use std::collections::HashMap as Map;
-use std::collections::BTreeMap as Map;
+use std::collections::HashMap as Map;
+// use std::collections::BTreeMap as Map;
 use std::collections::HashSet;
 use uuid::Uuid;
 
@@ -246,7 +245,7 @@ impl Entry<EntryInit, EntryNew> {
             // This means NEVER COMMITED
             valid: EntryInit,
             state: EntryNew,
-            attrs: Map::new(),
+            attrs: Map::with_capacity(32),
         }
     }
 
@@ -1477,10 +1476,7 @@ impl Entry<EntryReduced, EntryCommitted> {
 impl<VALID, STATE> Entry<VALID, STATE> {
     fn add_ava_int(&mut self, attr: &str, value: Value) {
         // How do we make this turn into an ok / err?
-        let v = self
-            .attrs
-            .entry(attr.to_string())
-            .or_insert_with(BTreeSet::new);
+        let v = self.attrs.entry(attr.to_string()).or_insert_with(Set::new);
         // Here we need to actually do a check/binary search ...
         v.insert(value);
         // Doesn't matter if it already exists, equality will replace.
@@ -1895,7 +1891,7 @@ impl From<&SchemaAttribute> for Entry<EntryInit, EntryNew> {
         let syntax_v = btreeset![Value::from(s.syntax.clone())];
 
         // Build the Map of the attributes relevant
-        let mut attrs: Map<String, Set<Value>> = Map::new();
+        let mut attrs: Map<String, Set<Value>> = Map::with_capacity(16);
         attrs.insert("attributename".to_string(), name_v);
         attrs.insert("description".to_string(), desc_v);
         attrs.insert("uuid".to_string(), uuid_v);
@@ -1929,7 +1925,7 @@ impl From<&SchemaClass> for Entry<EntryInit, EntryNew> {
         let name_v = btreeset![Value::new_iutf8(s.name.clone())];
         let desc_v = btreeset![Value::new_utf8(s.description.clone())];
 
-        let mut attrs: Map<String, Set<Value>> = Map::new();
+        let mut attrs: Map<String, Set<Value>> = Map::with_capacity(16);
         attrs.insert("classname".to_string(), name_v);
         attrs.insert("description".to_string(), desc_v);
         attrs.insert("uuid".to_string(), uuid_v);
@@ -2150,7 +2146,7 @@ mod tests {
         e2.add_ava("userid", Value::from("claire"));
         let e2 = unsafe { e2.into_sealed_committed() };
 
-        let mut idxmeta = HashSet::new();
+        let mut idxmeta = HashSet::with_capacity(8);
         idxmeta.insert(IdxKey {
             attr: "userid".to_string(),
             itype: IndexType::EQUALITY,

@@ -1376,7 +1376,7 @@ mod tests {
             let mut audit = AuditScope::new("run_test", uuid::Uuid::new_v4(), None);
 
             // This is a demo idxmeta, purely for testing.
-            let mut idxmeta = Set::new();
+            let mut idxmeta = Set::with_capacity(16);
             idxmeta.insert(IdxKey {
                 attr: "name".to_string(),
                 itype: IndexType::EQUALITY,
