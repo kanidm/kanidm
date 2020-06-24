@@ -79,7 +79,7 @@ impl Plugin for GidNumber {
 
     fn pre_create_transform(
         au: &mut AuditScope,
-        _qs: &mut QueryServerWriteTransaction,
+        _qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
@@ -92,7 +92,7 @@ impl Plugin for GidNumber {
 
     fn pre_modify(
         au: &mut AuditScope,
-        _qs: &mut QueryServerWriteTransaction,
+        _qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
@@ -115,7 +115,7 @@ mod tests {
 
     fn check_gid(
         au: &mut AuditScope,
-        qs_write: &mut QueryServerWriteTransaction,
+        qs_write: &QueryServerWriteTransaction,
         uuid: &str,
         gid: u32,
     ) {
@@ -148,7 +148,7 @@ mod tests {
             preload,
             create,
             None,
-            |au, qs_write: &mut QueryServerWriteTransaction| check_gid(
+            |au, qs_write: &QueryServerWriteTransaction| check_gid(
                 au,
                 qs_write,
                 "83a0927f-3de1-45ec-bea0-2f7b997ef244",
@@ -181,7 +181,7 @@ mod tests {
             preload,
             create,
             None,
-            |au, qs_write: &mut QueryServerWriteTransaction| check_gid(
+            |au, qs_write: &QueryServerWriteTransaction| check_gid(
                 au,
                 qs_write,
                 "83a0927f-3de1-45ec-bea0-2f7b997ef244",
@@ -213,7 +213,7 @@ mod tests {
             filter!(f_eq("name", PartialValue::new_iname("testperson"))),
             modlist!([m_pres("class", &Value::new_class("posixgroup"))]),
             None,
-            |au, qs_write: &mut QueryServerWriteTransaction| check_gid(
+            |au, qs_write: &QueryServerWriteTransaction| check_gid(
                 au,
                 qs_write,
                 "83a0927f-3de1-45ec-bea0-2f7b997ef244",
@@ -246,7 +246,7 @@ mod tests {
             filter!(f_eq("name", PartialValue::new_iname("testperson"))),
             modlist!([m_purge("gidnumber")]),
             None,
-            |au, qs_write: &mut QueryServerWriteTransaction| check_gid(
+            |au, qs_write: &QueryServerWriteTransaction| check_gid(
                 au,
                 qs_write,
                 "83a0927f-3de1-45ec-bea0-2f7b997ef244",
@@ -282,7 +282,7 @@ mod tests {
                 m_pres("gidnumber", &Value::new_uint32(2000))
             ]),
             None,
-            |au, qs_write: &mut QueryServerWriteTransaction| check_gid(
+            |au, qs_write: &QueryServerWriteTransaction| check_gid(
                 au,
                 qs_write,
                 "83a0927f-3de1-45ec-bea0-2f7b997ef244",

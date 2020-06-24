@@ -26,7 +26,6 @@
 //! [`filter`]: ../filter/index.html
 //! [`schema`]: ../schema/index.html
 
-// use serde_json::{Error, Value};
 use crate::audit::AuditScope;
 use crate::credential::Credential;
 use crate::filter::{Filter, FilterInvalid, FilterResolved, FilterValidResolved};
@@ -44,14 +43,15 @@ use kanidm_proto::v1::Filter as ProtoFilter;
 use kanidm_proto::v1::{OperationError, SchemaError};
 
 use crate::be::dbentry::{DbEntry, DbEntryV1, DbEntryVers};
+use crate::be::IdxKey;
 
 use ldap3_server::simple::{LdapPartialAttribute, LdapSearchResultEntry};
-use std::collections::btree_map::Iter as BTreeIter;
-use std::collections::btree_set::Iter as BTreeSetIter;
-use std::collections::BTreeMap;
+use std::collections::BTreeSet as Set;
 use std::collections::BTreeSet;
-use std::collections::HashMap;
-use std::iter::ExactSizeIterator;
+// BTreeMap could be faster, but it's small datasets?
+// use std::collections::HashMap as Map;
+use std::collections::BTreeMap as Map;
+use std::collections::HashSet;
 use uuid::Uuid;
 
 // use std::convert::TryFrom;
@@ -89,76 +89,6 @@ lazy_static! {
     static ref PVCLASS_TOMBSTONE: PartialValue = PartialValue::new_class("tombstone");
     static ref PVCLASS_RECYCLED: PartialValue = PartialValue::new_class("recycled");
 }
-
-pub struct EntryClasses<'a> {
-    size: usize,
-    inner: Option<BTreeSetIter<'a, Value>>,
-    // _p: &'a PhantomData<()>,
-}
-
-impl<'a> Iterator for EntryClasses<'a> {
-    type Item = &'a Value;
-
-    #[inline]
-    fn next(&mut self) -> Option<&'a Value> {
-        match self.inner.iter_mut().next() {
-            Some(i) => i.next(),
-            None => None,
-        }
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        match self.inner.iter().next() {
-            Some(i) => i.size_hint(),
-            None => (0, None),
-        }
-    }
-}
-
-impl<'a> ExactSizeIterator for EntryClasses<'a> {
-    fn len(&self) -> usize {
-        self.size
-    }
-}
-
-pub struct EntryAvas<'a> {
-    inner: BTreeIter<'a, String, BTreeSet<Value>>,
-}
-
-impl<'a> Iterator for EntryAvas<'a> {
-    type Item = (&'a String, &'a BTreeSet<Value>);
-
-    #[inline]
-    fn next(&mut self) -> Option<(&'a String, &'a BTreeSet<Value>)> {
-        self.inner.next()
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.inner.size_hint()
-    }
-}
-
-/*
-pub struct EntryAvasMut<'a> {
-    inner: BTreeIterMut<'a, String, BTreeSet<Value>>,
-}
-
-impl<'a> Iterator for EntryAvasMut<'a> {
-    type Item = (&'a String, &'a mut BTreeSet<Value>);
-
-    #[inline]
-    fn next(&mut self) -> Option<(&'a String, &'a mut BTreeSet<Value>)> {
-        self.inner.next()
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.inner.size_hint()
-    }
-}
-*/
 
 // Entry should have a lifecycle of types. This is Raw (modifiable) and Entry (verified).
 // This way, we can move between them, but only certain actions are possible on either
@@ -221,14 +151,20 @@ pub struct EntryReduced {
     uuid: Uuid,
 }
 
-fn compare_attrs(
-    left: &BTreeMap<String, BTreeSet<Value>>,
-    right: &BTreeMap<String, BTreeSet<Value>>,
-) -> bool {
-    left.iter()
-        .filter(|(k, _v)| k != &"last_modified_cid")
-        .zip(right.iter().filter(|(k, _v)| k != &"last_modified_cid"))
-        .all(|((ka, va), (kb, vb))| ka == kb && va == vb)
+fn compare_attrs(left: &Map<String, Set<Value>>, right: &Map<String, Set<Value>>) -> bool {
+    // We can't shortcut based on len because cid mod may not be present.
+    // Build the set of all keys between both.
+    let allkeys: Set<&str> = left
+        .keys()
+        .filter(|k| k != &"last_modified_cid")
+        .chain(right.keys().filter(|k| k != &"last_modified_cid"))
+        .map(|s| s.as_str())
+        .collect();
+
+    allkeys.into_iter().all(|k| {
+        // Both must be Some, and both must have the same interiors.
+        left.get(k) == right.get(k)
+    })
 }
 
 /// Entry is the core data storage type of the server. Almost every aspect of the server is
@@ -261,8 +197,8 @@ fn compare_attrs(
 pub struct Entry<VALID, STATE> {
     valid: VALID,
     state: STATE,
-    // We may need to change this to BTreeSet to allow borrow of Value -> PartialValue for lookups.
-    attrs: BTreeMap<String, BTreeSet<Value>>,
+    // We may need to change this to Set to allow borrow of Value -> PartialValue for lookups.
+    attrs: Map<String, Set<Value>>,
 }
 
 impl<VALID, STATE> std::fmt::Debug for Entry<VALID, STATE>
@@ -310,7 +246,7 @@ impl Entry<EntryInit, EntryNew> {
             // This means NEVER COMMITED
             valid: EntryInit,
             state: EntryNew,
-            attrs: BTreeMap::new(),
+            attrs: Map::new(),
         }
     }
 
@@ -322,7 +258,7 @@ impl Entry<EntryInit, EntryNew> {
     pub fn from_proto_entry(
         audit: &mut AuditScope,
         e: &ProtoEntry,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         // Why not the trait? In the future we may want to extend
         // this with server aware functions for changes of the
@@ -330,12 +266,12 @@ impl Entry<EntryInit, EntryNew> {
 
         // Somehow we need to take the tree of e attrs, and convert
         // all ref types to our types ...
-        let map2: Result<BTreeMap<String, BTreeSet<Value>>, OperationError> = e
+        let map2: Result<Map<String, Set<Value>>, OperationError> = e
             .attrs
             .iter()
             .map(|(k, v)| {
                 let nk = qs.get_schema().normalise_attr_name(k);
-                let nv: Result<BTreeSet<Value>, _> =
+                let nv: Result<Set<Value>, _> =
                     v.iter().map(|vr| qs.clone_value(audit, &nk, vr)).collect();
                 match nv {
                     Ok(nvi) => Ok((nk, nvi)),
@@ -358,7 +294,7 @@ impl Entry<EntryInit, EntryNew> {
     pub fn from_proto_entry_str(
         audit: &mut AuditScope,
         es: &str,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         if cfg!(test) {
             if es.len() > 256 {
@@ -383,10 +319,10 @@ impl Entry<EntryInit, EntryNew> {
         // str -> proto entry
         let pe: ProtoEntry = serde_json::from_str(es).expect("Invalid Proto Entry");
         // use a const map to convert str -> ava
-        let x: BTreeMap<String, BTreeSet<Value>> = pe.attrs.into_iter()
+        let x: Map<String, Set<Value>> = pe.attrs.into_iter()
             .map(|(k, vs)| {
                 let attr = k.to_lowercase();
-                let vv: BTreeSet<Value> = match attr.as_str() {
+                let vv: Set<Value> = match attr.as_str() {
                     "attributename" | "classname" | "domain" => {
                         vs.into_iter().map(|v| Value::new_iutf8(v)).collect()
                     }
@@ -608,17 +544,17 @@ impl<STATE> Entry<EntryInvalid, STATE> {
             // Do we have extensible?
             let extensible = ne.attribute_value_pres("class", &CLASS_EXTENSIBLE);
 
-            let entry_classes = ne.classes().ok_or(SchemaError::NoClassFound)?;
+            let entry_classes = ne.get_ava_set("class").ok_or(SchemaError::NoClassFound)?;
             let mut invalid_classes = Vec::with_capacity(0);
 
             let mut classes: Vec<&SchemaClass> = Vec::with_capacity(entry_classes.len());
-            entry_classes.for_each(|c: &Value| {
+            entry_classes.iter().for_each(|c: &Value| {
                 // we specify types here to help me clarify a few things in the
                 // development process :)
-                match c.as_string() {
+                match c.to_str() {
                     Some(s) => match schema_classes.get(s) {
                         Some(x) => classes.push(x),
-                        None => invalid_classes.push(s.clone()),
+                        None => invalid_classes.push(s.to_string()),
                     },
                     None => invalid_classes.push("corrupt classname".to_string()),
                 }
@@ -670,7 +606,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
 
             if extensible {
                 // ladmin_warning!("Extensible Object In Use!");
-                for (attr_name, avas) in ne.avas() {
+                ne.attrs.iter().try_for_each(|(attr_name, avas)| {
                     match schema_attributes.get(attr_name) {
                         Some(a_schema) => {
                             // Now, for each type we do a *full* check of the syntax
@@ -682,24 +618,18 @@ impl<STATE> Entry<EntryInvalid, STATE> {
                                     attr_name
                                 );
                                 */
-                                return Err(SchemaError::PhantomAttribute(attr_name.clone()));
-                            }
-
-                            let r = a_schema.validate_ava(attr_name.as_str(), avas);
-                            match r {
-                                Ok(_) => {}
-                                Err(e) => {
-                                    // lrequest_error!("Failed to validate: {}", attr_name);
-                                    return Err(e);
-                                }
+                                Err(SchemaError::PhantomAttribute(attr_name.clone()))
+                            } else {
+                                a_schema.validate_ava(attr_name.as_str(), avas)
+                                // .map_err(|e| lrequest_error!("Failed to validate: {}", attr_name);)
                             }
                         }
                         None => {
                             // lrequest_error!("Invalid Attribute {} for extensible object", attr_name);
-                            return Err(SchemaError::InvalidAttribute(attr_name.clone()));
+                            Err(SchemaError::InvalidAttribute(attr_name.clone()))
                         }
                     }
-                }
+                })?;
             } else {
                 // Note - we do NOT need to check phantom attributes here because they are
                 // not allowed to exist in the class, which means a phantom attribute can't
@@ -708,7 +638,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
                 // We clone string here, but it's so we can check all
                 // the values in "may" ar here - so we can't avoid this look up. What we
                 // could do though, is have &String based on the schemaattribute though?;
-                let may: Result<HashMap<&String, &SchemaAttribute>, _> = classes
+                let may: Result<Map<&String, &SchemaAttribute>, _> = classes
                     .iter()
                     // Join our class systemmmust + must + systemmay + may into one.
                     .flat_map(|cls| {
@@ -735,26 +665,20 @@ impl<STATE> Entry<EntryInvalid, STATE> {
 
                 // Check that any other attributes are in may
                 //   for each attr on the object, check it's in the may+must set
-                for (attr_name, avas) in ne.avas() {
+                ne.attrs.iter().try_for_each(|(attr_name, avas)| {
                     match may.get(attr_name) {
                         Some(a_schema) => {
                             // Now, for each type we do a *full* check of the syntax
                             // and validity of the ava.
-                            let r = a_schema.validate_ava(attr_name.as_str(), avas);
-                            match r {
-                                Ok(_) => {}
-                                Err(e) => {
-                                    // lrequest_error!("Failed to validate: {}", attr_name);
-                                    return Err(e);
-                                }
-                            }
+                            a_schema.validate_ava(attr_name.as_str(), avas)
+                            // .map_err(|e| lrequest_error!("Failed to validate: {}", attr_name);
                         }
                         None => {
                             // lrequest_error!("Invalid Attribute {} for may+must set", attr_name);
-                            return Err(SchemaError::InvalidAttribute(attr_name.clone()));
+                            Err(SchemaError::InvalidAttribute(attr_name.clone()))
                         }
                     }
-                }
+                })?;
             }
         } // unborrow ne.
 
@@ -962,7 +886,7 @@ impl Entry<EntrySealed, EntryCommitted> {
     }
 
     #[inline]
-    fn get_name2uuid_cands(&self) -> BTreeSet<String> {
+    fn get_name2uuid_cands(&self) -> Set<String> {
         // The cands are:
         // * spn
         // * name
@@ -1038,9 +962,9 @@ impl Entry<EntrySealed, EntryCommitted> {
         post: Option<&Self>,
     ) -> (
         // Add
-        Option<BTreeSet<String>>,
+        Option<Set<String>>,
         // Remove
-        Option<BTreeSet<String>>,
+        Option<Set<String>>,
     ) {
         // needs to return gid for posix conversion
         match (pre, post) {
@@ -1062,9 +986,9 @@ impl Entry<EntrySealed, EntryCommitted> {
                 let post_set = b.get_name2uuid_cands();
 
                 // what is in post, but not pre (added)
-                let add_set: BTreeSet<_> = post_set.difference(&pre_set).cloned().collect();
+                let add_set: Set<_> = post_set.difference(&pre_set).cloned().collect();
                 // what is in pre, but not post (removed)
-                let rem_set: BTreeSet<_> = pre_set.difference(&post_set).cloned().collect();
+                let rem_set: Set<_> = pre_set.difference(&post_set).cloned().collect();
                 (Some(add_set), Some(rem_set))
             }
         }
@@ -1135,7 +1059,7 @@ impl Entry<EntrySealed, EntryCommitted> {
     // This is an associated method, not on & self so we can take options on
     // both sides.
     pub(crate) fn idx_diff<'a>(
-        idxmeta: &'a BTreeSet<(String, IndexType)>,
+        idxmeta: &'a HashSet<IdxKey>,
         pre: Option<&Self>,
         post: Option<&Self>,
     ) -> IdxDiff<'a> {
@@ -1152,24 +1076,23 @@ impl Entry<EntrySealed, EntryCommitted> {
                 // If we are none (?), yield our pre-state as removals.
                 idxmeta
                     .iter()
-                    .flat_map(|(attr, itype)| {
-                        match pre_e.get_ava(attr.as_str()) {
+                    .flat_map(|ikey| {
+                        match pre_e.get_ava(ikey.attr.as_str()) {
                             None => Vec::new(),
                             Some(vs) => {
-                                let changes: Vec<Result<_, _>> = match itype {
+                                let changes: Vec<Result<_, _>> = match ikey.itype {
                                     IndexType::EQUALITY => {
-                                        vs.iter()
-                                            .flat_map(|v| {
-                                                // Turn each idx_key to the tuple of
-                                                // changes.
-                                                v.generate_idx_eq_keys()
-                                                    .into_iter()
-                                                    .map(|idx_key| Err((attr, itype, idx_key)))
+                                        vs.flat_map(|v| {
+                                            // Turn each idx_key to the tuple of
+                                            // changes.
+                                            v.generate_idx_eq_keys().into_iter().map(|idx_key| {
+                                                Err((&ikey.attr, &ikey.itype, idx_key))
                                             })
-                                            .collect()
+                                        })
+                                        .collect()
                                     }
                                     IndexType::PRESENCE => {
-                                        vec![Err((attr, itype, "_".to_string()))]
+                                        vec![Err((&ikey.attr, &ikey.itype, "_".to_string()))]
                                     }
                                     IndexType::SUBSTRING => Vec::new(),
                                 };
@@ -1183,23 +1106,24 @@ impl Entry<EntrySealed, EntryCommitted> {
                 // If the pre-state is none, yield our additions.
                 idxmeta
                     .iter()
-                    .flat_map(|(attr, itype)| {
-                        match post_e.get_ava(attr.as_str()) {
+                    .flat_map(|ikey| {
+                        match post_e.get_ava(ikey.attr.as_str()) {
                             None => Vec::new(),
                             Some(vs) => {
-                                let changes: Vec<Result<_, _>> = match itype {
+                                let changes: Vec<Result<_, _>> = match ikey.itype {
                                     IndexType::EQUALITY => {
-                                        vs.iter()
-                                            .flat_map(|v| {
-                                                // Turn each idx_key to the tuple of
-                                                // changes.
-                                                v.generate_idx_eq_keys()
-                                                    .into_iter()
-                                                    .map(|idx_key| Ok((attr, itype, idx_key)))
+                                        vs.flat_map(|v| {
+                                            // Turn each idx_key to the tuple of
+                                            // changes.
+                                            v.generate_idx_eq_keys().into_iter().map(|idx_key| {
+                                                Ok((&ikey.attr, &ikey.itype, idx_key))
                                             })
-                                            .collect()
+                                        })
+                                        .collect()
                                     }
-                                    IndexType::PRESENCE => vec![Ok((attr, itype, "_".to_string()))],
+                                    IndexType::PRESENCE => {
+                                        vec![Ok((&ikey.attr, &ikey.itype, "_".to_string()))]
+                                    }
                                     IndexType::SUBSTRING => Vec::new(),
                                 };
                                 // For each value
@@ -1214,10 +1138,10 @@ impl Entry<EntrySealed, EntryCommitted> {
                 assert!(pre_e.state.id == post_e.state.id);
                 idxmeta
                     .iter()
-                    .flat_map(|(attr, itype)| {
+                    .flat_map(|ikey| {
                         match (
-                            pre_e.get_ava_set(attr.as_str()),
-                            post_e.get_ava_set(attr.as_str()),
+                            pre_e.get_ava_set(ikey.attr.as_str()),
+                            post_e.get_ava_set(ikey.attr.as_str()),
                         ) {
                             (None, None) => {
                                 // Neither have it, do nothing.
@@ -1225,21 +1149,23 @@ impl Entry<EntrySealed, EntryCommitted> {
                             }
                             (Some(pre_vs), None) => {
                                 // It existed before, but not anymore
-                                let changes: Vec<Result<_, _>> = match itype {
+                                let changes: Vec<Result<_, _>> = match ikey.itype {
                                     IndexType::EQUALITY => {
                                         pre_vs
                                             .iter()
                                             .flat_map(|v| {
                                                 // Turn each idx_key to the tuple of
                                                 // changes.
-                                                v.generate_idx_eq_keys()
-                                                    .into_iter()
-                                                    .map(|idx_key| Err((attr, itype, idx_key)))
+                                                v.generate_idx_eq_keys().into_iter().map(
+                                                    |idx_key| {
+                                                        Err((&ikey.attr, &ikey.itype, idx_key))
+                                                    },
+                                                )
                                             })
                                             .collect()
                                     }
                                     IndexType::PRESENCE => {
-                                        vec![Err((attr, itype, "_".to_string()))]
+                                        vec![Err((&ikey.attr, &ikey.itype, "_".to_string()))]
                                     }
                                     IndexType::SUBSTRING => Vec::new(),
                                 };
@@ -1247,20 +1173,24 @@ impl Entry<EntrySealed, EntryCommitted> {
                             }
                             (None, Some(post_vs)) => {
                                 // It was added now.
-                                let changes: Vec<Result<_, _>> = match itype {
+                                let changes: Vec<Result<_, _>> = match ikey.itype {
                                     IndexType::EQUALITY => {
                                         post_vs
                                             .iter()
                                             .flat_map(|v| {
                                                 // Turn each idx_key to the tuple of
                                                 // changes.
-                                                v.generate_idx_eq_keys()
-                                                    .into_iter()
-                                                    .map(|idx_key| Ok((attr, itype, idx_key)))
+                                                v.generate_idx_eq_keys().into_iter().map(
+                                                    |idx_key| {
+                                                        Ok((&ikey.attr, &ikey.itype, idx_key))
+                                                    },
+                                                )
                                             })
                                             .collect()
                                     }
-                                    IndexType::PRESENCE => vec![Ok((attr, itype, "_".to_string()))],
+                                    IndexType::PRESENCE => {
+                                        vec![Ok((&ikey.attr, &ikey.itype, "_".to_string()))]
+                                    }
                                     IndexType::SUBSTRING => Vec::new(),
                                 };
                                 changes
@@ -1271,13 +1201,15 @@ impl Entry<EntrySealed, EntryCommitted> {
                                     .difference(&post_vs)
                                     .map(|pre_v| {
                                         // Was in pre, now not in post
-                                        match itype {
+                                        match ikey.itype {
                                             IndexType::EQUALITY => {
                                                 // Remove the v
                                                 pre_v
                                                     .generate_idx_eq_keys()
                                                     .into_iter()
-                                                    .map(|idx_key| Err((attr, itype, idx_key)))
+                                                    .map(|idx_key| {
+                                                        Err((&ikey.attr, &ikey.itype, idx_key))
+                                                    })
                                                     .collect()
                                             }
                                             IndexType::PRESENCE => {
@@ -1289,13 +1221,15 @@ impl Entry<EntrySealed, EntryCommitted> {
                                     })
                                     .chain(post_vs.difference(&pre_vs).map(|post_v| {
                                         // is in post, but not in pre (add)
-                                        match itype {
+                                        match ikey.itype {
                                             IndexType::EQUALITY => {
                                                 // Remove the v
                                                 post_v
                                                     .generate_idx_eq_keys()
                                                     .into_iter()
-                                                    .map(|idx_key| Ok((attr, itype, idx_key)))
+                                                    .map(|idx_key| {
+                                                        Ok((&ikey.attr, &ikey.itype, idx_key))
+                                                    })
                                                     .collect()
                                             }
                                             IndexType::PRESENCE => {
@@ -1318,12 +1252,12 @@ impl Entry<EntrySealed, EntryCommitted> {
 
     pub fn from_dbentry(au: &mut AuditScope, db_e: DbEntry, id: u64) -> Result<Self, ()> {
         // Convert attrs from db format to value
-        let r_attrs: Result<BTreeMap<String, BTreeSet<Value>>, ()> = match db_e.ent {
+        let r_attrs: Result<Map<String, Set<Value>>, ()> = match db_e.ent {
             DbEntryVers::V1(v1) => v1
                 .attrs
                 .into_iter()
                 .map(|(k, vs)| {
-                    let vv: Result<BTreeSet<Value>, ()> =
+                    let vv: Result<Set<Value>, ()> =
                         vs.into_iter().map(Value::from_db_valuev1).collect();
                     match vv {
                         Ok(vv) => Ok((k, vv)),
@@ -1376,7 +1310,7 @@ impl Entry<EntrySealed, EntryCommitted> {
             attrs: s_attrs,
         } = self;
 
-        let f_attrs: BTreeMap<_, _> = s_attrs
+        let f_attrs: Map<_, _> = s_attrs
             .into_iter()
             .filter_map(|(k, v)| {
                 if allowed_attrs.contains(k.as_str()) {
@@ -1399,7 +1333,7 @@ impl Entry<EntrySealed, EntryCommitted> {
         let class_ava = btreeset![Value::new_class("object"), Value::new_class("tombstone")];
         let last_mod_ava = btreeset![Value::new_cid(cid.clone())];
 
-        let mut attrs_new: BTreeMap<String, BTreeSet<Value>> = BTreeMap::new();
+        let mut attrs_new: Map<String, Set<Value>> = Map::new();
 
         attrs_new.insert(
             "uuid".to_string(),
@@ -1492,7 +1426,7 @@ impl Entry<EntryReduced, EntryCommitted> {
     pub fn to_pe(
         &self,
         audit: &mut AuditScope,
-        qs: &mut QueryServerReadTransaction,
+        qs: &QueryServerReadTransaction,
     ) -> Result<ProtoEntry, OperationError> {
         // Turn values -> Strings.
         let attrs: Result<_, _> = self
@@ -1511,7 +1445,7 @@ impl Entry<EntryReduced, EntryCommitted> {
     pub fn to_ldap(
         &self,
         audit: &mut AuditScope,
-        qs: &mut QueryServerReadTransaction,
+        qs: &QueryServerReadTransaction,
         basedn: &str,
     ) -> Result<LdapSearchResultEntry, OperationError> {
         let rdn = qs.uuid_to_rdn(audit, self.get_uuid())?;
@@ -1561,28 +1495,62 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         let _ = self.attrs.insert("last_modified_cid".to_string(), cv);
     }
 
-    pub fn get_ava(&self, attr: &str) -> Option<Vec<&Value>> {
+    #[inline(always)]
+    pub fn get_ava_names(&self) -> impl Iterator<Item = &str> {
+        // Get the set of all attribute names in the entry
+        self.attrs.keys().map(|a| a.as_str())
+    }
+
+    #[inline(always)]
+    pub fn get_ava(&self, attr: &str) -> Option<impl Iterator<Item = &Value>> {
+        self.attrs.get(attr).map(|vs| vs.iter())
+    }
+
+    #[inline(always)]
+    pub fn get_ava_set(&self, attr: &str) -> Option<&Set<Value>> {
+        self.attrs.get(attr)
+    }
+
+    #[inline(always)]
+    pub fn get_ava_as_str(&self, attr: &str) -> Option<impl Iterator<Item = &str>> {
+        self.get_ava(attr).map(|i| i.filter_map(|s| s.to_str()))
+    }
+
+    #[inline(always)]
+    pub fn get_ava_as_refuuid(&self, attr: &str) -> Option<impl Iterator<Item = &Uuid>> {
+        // If any value is NOT a reference, it's filtered out.
+        self.get_ava(attr)
+            .map(|i| i.filter_map(|v| v.to_ref_uuid()))
+    }
+
+    #[inline(always)]
+    pub fn get_ava_iter_sshpubkeys(&self, attr: &str) -> Option<impl Iterator<Item = &str>> {
+        self.get_ava(attr).map(|i| i.filter_map(|v| v.get_sshkey()))
+    }
+
+    // These are special types to allow returning typed values from
+    // an entry, if we "know" what we expect to receive.
+
+    /// This returns an array of IndexTypes, when the type is an Optional
+    /// multivalue in schema - IE this will *not* fail if the attribute is
+    /// empty, yielding and empty array instead.
+    ///
+    /// However, the converstion to IndexType is fallaible, so in case of a failure
+    /// to convert, an Err is returned.
+    #[inline(always)]
+    // TODO: Can tis be an iterator?
+    pub(crate) fn get_ava_opt_index(&self, attr: &str) -> Result<Vec<&IndexType>, ()> {
         match self.attrs.get(attr) {
-            Some(vs) => {
-                let x: Vec<_> = vs.iter().collect();
-                Some(x)
+            Some(av) => {
+                let r: Result<Vec<_>, _> = av.iter().map(|v| v.to_indextype().ok_or(())).collect();
+                r
             }
-            None => None,
+            None => Ok(Vec::new()),
         }
     }
 
-    pub fn get_ava_set(&self, attr: &str) -> Option<BTreeSet<&Value>> {
-        self.attrs.get(attr).map(|vs| vs.iter().collect())
-    }
-
-    pub fn get_ava_set_str(&self, attr: &str) -> Option<BTreeSet<&str>> {
-        self.attrs.get(attr).and_then(|vs| {
-            let x: Option<BTreeSet<_>> = vs.iter().map(|s| s.to_str()).collect();
-            x
-        })
-    }
-
-    // Returns NONE if there is more than ONE!!!!
+    /// Returns NONE if there is more than ONE!!!!
+    #[inline(always)]
     pub fn get_ava_single(&self, attr: &str) -> Option<&Value> {
         match self.attrs.get(attr) {
             Some(vs) => {
@@ -1596,175 +1564,58 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         }
     }
 
-    pub fn get_ava_names(&self) -> BTreeSet<&str> {
-        // Get the set of all attribute names in the entry
-        let r: BTreeSet<&str> = self.attrs.keys().map(|a| a.as_str()).collect();
-        r
-    }
-
-    pub fn get_ava_reference_uuid(&self, attr: &str) -> Option<Vec<&Uuid>> {
-        // If any value is NOT a reference, return none!
-        match self.attrs.get(attr) {
-            Some(av) => {
-                let v: Option<Vec<&Uuid>> = av.iter().map(|e| e.to_ref_uuid()).collect();
-                v
-            }
-            None => None,
-        }
-    }
-
-    // These are special types to allow returning typed values from
-    // an entry, if we "know" what we expect to receive.
-
-    /// This returns an array of IndexTypes, when the type is an Optional
-    /// multivalue in schema - IE this will *not* fail if the attribute is
-    /// empty, yielding and empty array instead.
-    ///
-    /// However, the converstion to IndexType is fallaible, so in case of a failure
-    /// to convert, an Err is returned.
-    pub(crate) fn get_ava_opt_index(&self, attr: &str) -> Result<Vec<&IndexType>, ()> {
-        match self.attrs.get(attr) {
-            Some(av) => {
-                let r: Result<Vec<_>, _> = av.iter().map(|v| v.to_indextype().ok_or(())).collect();
-                r
-            }
-            None => Ok(Vec::new()),
-        }
-    }
-
     /// Get a bool from an ava
+    #[inline(always)]
     pub fn get_ava_single_bool(&self, attr: &str) -> Option<bool> {
-        match self.get_ava_single(attr) {
-            Some(a) => a.to_bool(),
-            None => None,
-        }
+        self.get_ava_single(attr).and_then(|a| a.to_bool())
     }
 
+    #[inline(always)]
     pub fn get_ava_single_uint32(&self, attr: &str) -> Option<u32> {
-        match self.get_ava_single(attr) {
-            Some(a) => a.to_uint32(),
-            None => None,
-        }
+        self.get_ava_single(attr).and_then(|a| a.to_uint32())
     }
 
+    #[inline(always)]
     pub fn get_ava_single_syntax(&self, attr: &str) -> Option<&SyntaxType> {
-        match self.get_ava_single(attr) {
-            Some(a) => a.to_syntaxtype(),
-            None => None,
-        }
+        self.get_ava_single(attr).and_then(|a| a.to_syntaxtype())
     }
 
+    #[inline(always)]
     pub fn get_ava_single_credential(&self, attr: &str) -> Option<&Credential> {
         self.get_ava_single(attr).and_then(|a| a.to_credential())
     }
 
+    #[inline(always)]
     pub fn get_ava_single_radiuscred(&self, attr: &str) -> Option<&str> {
         self.get_ava_single(attr)
             .and_then(|a| a.get_radius_secret())
     }
 
-    pub fn get_ava_ssh_pubkeys(&self, attr: &str) -> Vec<String> {
-        match self.attrs.get(attr) {
-            Some(ava) => ava.iter().filter_map(|v| v.get_sshkey()).collect(),
-            None => Vec::new(),
-        }
-    }
-
-    /*
-    /// This interface will get &str (if possible).
-    pub(crate) fn get_ava_opt_str(&self, attr: &str) -> Option<Vec<&str>> {
-        match self.attrs.get(attr) {
-            Some(a) => {
-                let r: Vec<_> = a.iter().filter_map(|v| v.to_str()).collect();
-                if r.len() == 0 {
-                    None
-                } else {
-                    Some(r)
-                }
-            }
-            None => Some(Vec::new()),
-        }
-    }
-    */
-
-    pub(crate) fn get_ava_opt_string(&self, attr: &str) -> Option<Vec<String>> {
-        match self.attrs.get(attr) {
-            Some(a) => {
-                let r: Vec<String> = a.iter().filter_map(|v| v.as_string().cloned()).collect();
-                if r.is_empty() {
-                    // Corrupt?
-                    None
-                } else {
-                    Some(r)
-                }
-            }
-            None => Some(Vec::new()),
-        }
-    }
-
-    /*
-    pub(crate) fn get_ava_string(&self, attr: &str) -> Option<Vec<String>> {
-        match self.attrs.get(attr) {
-            Some(a) => {
-                let r: Vec<String> = a
-                    .iter()
-                    .filter_map(|v| v.as_string().map(|s| s.clone()))
-                    .collect();
-                if r.len() == 0 {
-                    // Corrupt?
-                    None
-                } else {
-                    Some(r)
-                }
-            }
-            None => None,
-        }
-    }
-    */
-
-    pub(crate) fn get_ava_set_string(&self, attr: &str) -> Option<BTreeSet<String>> {
-        match self.attrs.get(attr) {
-            Some(a) => {
-                let r: BTreeSet<String> = a.iter().filter_map(|v| v.as_string().cloned()).collect();
-                if r.is_empty() {
-                    // Corrupt?
-                    None
-                } else {
-                    Some(r)
-                }
-            }
-            None => None,
-        }
-    }
-
+    #[inline(always)]
     pub fn get_ava_single_str(&self, attr: &str) -> Option<&str> {
         self.get_ava_single(attr).and_then(|v| v.to_str())
     }
 
-    pub fn get_ava_single_string(&self, attr: &str) -> Option<String> {
-        self.get_ava_single(attr)
-            .and_then(|v: &Value| v.as_string())
-            .map(|s: &String| (*s).clone())
-    }
-
-    pub fn get_ava_single_protofilter(&self, attr: &str) -> Option<ProtoFilter> {
+    #[inline(always)]
+    pub fn get_ava_single_protofilter(&self, attr: &str) -> Option<&ProtoFilter> {
         self.get_ava_single(attr)
             .and_then(|v: &Value| v.as_json_filter())
-            .map(|f: &ProtoFilter| (*f).clone())
     }
 
+    #[inline(always)]
     pub(crate) fn generate_spn(&self, domain_name: &str) -> Option<Value> {
         self.get_ava_single_str("name")
             .map(|name| Value::new_spn_str(name, domain_name))
     }
 
+    #[inline(always)]
     pub fn attribute_pres(&self, attr: &str) -> bool {
         // Note, we don't normalise attr name, but I think that's not
         // something we should over-optimise on.
         self.attrs.contains_key(attr)
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn attribute_value_pres(&self, attr: &str, value: &PartialValue) -> bool {
         // Yeah, this is techdebt, but both names of this fn are valid - we are
         // checking if an attribute-value is equal to, or asserting it's present
@@ -1772,6 +1623,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         self.attribute_equality(attr, value)
     }
 
+    #[inline(always)]
     pub fn attribute_equality(&self, attr: &str, value: &PartialValue) -> bool {
         // we assume based on schema normalisation on the way in
         // that the equality here of the raw values MUST be correct.
@@ -1783,6 +1635,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         }
     }
 
+    #[inline(always)]
     pub fn attribute_substring(&self, attr: &str, subvalue: &PartialValue) -> bool {
         match self.attrs.get(attr) {
             Some(v_list) => v_list
@@ -1793,6 +1646,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     }
 
     /// Confirm if at least one value in the ava is less than subvalue.
+    #[inline(always)]
     pub fn attribute_lessthan(&self, attr: &str, subvalue: &PartialValue) -> bool {
         match self.attrs.get(attr) {
             Some(v_list) => v_list
@@ -1802,24 +1656,11 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         }
     }
 
-    pub fn classes(&self) -> Option<EntryClasses> {
-        // Get the class vec, if any?
-        // How do we indicate "empty?"
-        let v = self.attrs.get("class").map(|c| c.len())?;
-        let c = self.attrs.get("class").map(|c| c.iter());
-        Some(EntryClasses { size: v, inner: c })
-    }
-
-    pub fn avas(&self) -> EntryAvas {
-        EntryAvas {
-            inner: self.attrs.iter(),
-        }
-    }
-
     // Since EntryValid/Invalid is just about class adherenece, not Value correctness, we
     // can now apply filters to invalid entries - why? Because even if they aren't class
     // valid, we still have strict typing checks between the filter -> entry to guarantee
     // they should be functional. We'll never match something that isn't syntactially valid.
+    #[inline(always)]
     pub fn entry_match_no_index(&self, filter: &Filter<FilterValidResolved>) -> bool {
         self.entry_match_no_index_inner(filter.to_inner())
     }
@@ -1972,19 +1813,19 @@ where
         self.attrs.remove(attr);
     }
 
-    pub fn pop_ava(&mut self, attr: &str) -> Option<BTreeSet<Value>> {
+    pub fn pop_ava(&mut self, attr: &str) -> Option<Set<Value>> {
         self.attrs.remove(attr)
     }
 
     /// Overwrite the existing avas.
     pub fn set_avas(&mut self, attr: &str, values: Vec<Value>) {
         // Overwrite the existing value, build a tree from the list.
-        let x: BTreeSet<_> = values.into_iter().collect();
+        let x: Set<_> = values.into_iter().collect();
         let _ = self.attrs.insert(attr.to_string(), x);
     }
 
     /// Provide a true ava set.
-    pub fn set_ava(&mut self, attr: &str, values: BTreeSet<Value>) {
+    pub fn set_ava(&mut self, attr: &str, values: Set<Value>) {
         // Overwrite the existing value, build a tree from the list.
         let _ = self.attrs.insert(attr.to_string(), values);
     }
@@ -2042,12 +1883,12 @@ impl From<&SchemaAttribute> for Entry<EntryInit, EntryNew> {
         let multivalue_v = btreeset![Value::from(s.multivalue)];
         let unique_v = btreeset![Value::from(s.unique)];
 
-        let index_v: BTreeSet<_> = s.index.iter().map(|i| Value::from(i.clone())).collect();
+        let index_v: Set<_> = s.index.iter().map(|i| Value::from(i.clone())).collect();
 
         let syntax_v = btreeset![Value::from(s.syntax.clone())];
 
-        // Build the BTreeMap of the attributes relevant
-        let mut attrs: BTreeMap<String, BTreeSet<Value>> = BTreeMap::new();
+        // Build the Map of the attributes relevant
+        let mut attrs: Map<String, Set<Value>> = Map::new();
         attrs.insert("attributename".to_string(), name_v);
         attrs.insert("description".to_string(), desc_v);
         attrs.insert("uuid".to_string(), uuid_v);
@@ -2081,7 +1922,7 @@ impl From<&SchemaClass> for Entry<EntryInit, EntryNew> {
         let name_v = btreeset![Value::new_iutf8(s.name.clone())];
         let desc_v = btreeset![Value::new_utf8(s.description.clone())];
 
-        let mut attrs: BTreeMap<String, BTreeSet<Value>> = BTreeMap::new();
+        let mut attrs: Map<String, Set<Value>> = Map::new();
         attrs.insert("classname".to_string(), name_v);
         attrs.insert("description".to_string(), desc_v);
         attrs.insert("uuid".to_string(), uuid_v);
@@ -2124,10 +1965,12 @@ impl From<&SchemaClass> for Entry<EntryInit, EntryNew> {
 
 #[cfg(test)]
 mod tests {
+    use crate::be::IdxKey;
     use crate::entry::{Entry, EntryInit, EntryInvalid, EntryNew};
     use crate::modify::{Modify, ModifyList};
     use crate::value::{IndexType, PartialValue, Value};
-    use std::collections::BTreeSet;
+    use std::collections::BTreeSet as Set;
+    use std::collections::HashSet;
 
     #[test]
     fn test_entry_basic() {
@@ -2148,7 +1991,7 @@ mod tests {
         e.add_ava("userid", &Value::from("william"));
         e.add_ava("userid", &Value::from("william"));
 
-        let values = e.get_ava("userid").expect("Failed to get ava");
+        let values = e.get_ava_set("userid").expect("Failed to get ava");
         // Should only be one value!
         assert_eq!(values.len(), 1)
     }
@@ -2300,19 +2143,29 @@ mod tests {
         e2.add_ava("userid", &Value::from("claire"));
         let e2 = unsafe { e2.into_sealed_committed() };
 
-        let mut idxmeta = BTreeSet::new();
-        idxmeta.insert(("userid".to_string(), IndexType::EQUALITY));
-        idxmeta.insert(("userid".to_string(), IndexType::PRESENCE));
-        idxmeta.insert(("extra".to_string(), IndexType::EQUALITY));
+        let mut idxmeta = HashSet::new();
+        idxmeta.insert(IdxKey {
+            attr: "userid".to_string(),
+            itype: IndexType::EQUALITY,
+        });
+        idxmeta.insert(IdxKey {
+            attr: "userid".to_string(),
+            itype: IndexType::PRESENCE,
+        });
+        idxmeta.insert(IdxKey {
+            attr: "extra".to_string(),
+            itype: IndexType::EQUALITY,
+        });
 
         // When we do None, None, we get nothing back.
         let r1 = Entry::idx_diff(&idxmeta, None, None);
-        debug!("{:?}", r1);
+        eprintln!("{:?}", r1);
         assert!(r1 == Vec::new());
 
         // Check generating a delete diff
-        let del_r = Entry::idx_diff(&idxmeta, Some(&e1), None);
-        debug!("{:?}", del_r);
+        let mut del_r = Entry::idx_diff(&idxmeta, Some(&e1), None);
+        del_r.sort_unstable();
+        eprintln!("del_r {:?}", del_r);
         assert!(
             del_r[0]
                 == Err((
@@ -2324,8 +2177,9 @@ mod tests {
         assert!(del_r[1] == Err((&"userid".to_string(), &IndexType::PRESENCE, "_".to_string())));
 
         // Check generating an add diff
-        let add_r = Entry::idx_diff(&idxmeta, None, Some(&e1));
-        debug!("{:?}", add_r);
+        let mut add_r = Entry::idx_diff(&idxmeta, None, Some(&e1));
+        add_r.sort_unstable();
+        eprintln!("{:?}", add_r);
         assert!(
             add_r[0]
                 == Ok((
@@ -2365,9 +2219,11 @@ mod tests {
         );
 
         // Change an attribute.
-        let chg_r = Entry::idx_diff(&idxmeta, Some(&e1), Some(&e2));
+        let mut chg_r = Entry::idx_diff(&idxmeta, Some(&e1), Some(&e2));
+        chg_r.sort_unstable();
+        eprintln!("{:?}", chg_r);
         assert!(
-            chg_r[0]
+            chg_r[1]
                 == Err((
                     &"userid".to_string(),
                     &IndexType::EQUALITY,
@@ -2376,14 +2232,13 @@ mod tests {
         );
 
         assert!(
-            chg_r[1]
+            chg_r[0]
                 == Ok((
                     &"userid".to_string(),
                     &IndexType::EQUALITY,
                     "claire".to_string()
                 ))
         );
-        debug!("{:?}", chg_r);
     }
 
     #[test]
@@ -2417,7 +2272,7 @@ mod tests {
             e.add_ava("class", &Value::new_class("person"));
             let e = unsafe { e.into_sealed_committed() };
 
-            assert!(Entry::idx_name2uuid_diff(None, Some(&e)) == (Some(BTreeSet::new()), None));
+            assert!(Entry::idx_name2uuid_diff(None, Some(&e)) == (Some(Set::new()), None));
         }
 
         {
@@ -2461,7 +2316,7 @@ mod tests {
             // some, some (same), should be empty changes.
             assert!(
                 Entry::idx_name2uuid_diff(Some(&e), Some(&e))
-                    == (Some(BTreeSet::new()), Some(BTreeSet::new()))
+                    == (Some(Set::new()), Some(Set::new()))
             );
         }
         // some, some (diff)
@@ -2481,19 +2336,13 @@ mod tests {
             // One attr added
             assert!(
                 Entry::idx_name2uuid_diff(Some(&e1), Some(&e2))
-                    == (
-                        Some(btreeset!["testperson".to_string()]),
-                        Some(BTreeSet::new())
-                    )
+                    == (Some(btreeset!["testperson".to_string()]), Some(Set::new()))
             );
 
             // One removed
             assert!(
                 Entry::idx_name2uuid_diff(Some(&e2), Some(&e1))
-                    == (
-                        Some(BTreeSet::new()),
-                        Some(btreeset!["testperson".to_string()])
-                    )
+                    == (Some(Set::new()), Some(btreeset!["testperson".to_string()]))
             );
         }
 

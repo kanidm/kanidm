@@ -9,7 +9,7 @@
 // when that is written, as they *both* manipulate and alter entry reference
 // data, so we should be careful not to step on each other.
 
-use std::collections::BTreeSet;
+use std::collections::HashSet as Set;
 
 use crate::audit::AuditScope;
 use crate::entry::{Entry, EntryCommitted, EntrySealed};
@@ -30,7 +30,7 @@ pub struct ReferentialIntegrity;
 impl ReferentialIntegrity {
     fn check_uuid_exists(
         au: &mut AuditScope,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
         rtype: &str,
         uuid_value: &Value,
     ) -> Result<(), OperationError> {
@@ -83,7 +83,7 @@ impl Plugin for ReferentialIntegrity {
     // be in cand AND db" to simply "is it in the DB?".
     fn post_create(
         au: &mut AuditScope,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
         cand: &[Entry<EntrySealed, EntryCommitted>],
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
@@ -108,7 +108,7 @@ impl Plugin for ReferentialIntegrity {
 
     fn post_modify(
         au: &mut AuditScope,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
         _pre_cand: &[Entry<EntrySealed, EntryCommitted>],
         _cand: &[Entry<EntrySealed, EntryCommitted>],
         me: &ModifyEvent,
@@ -131,7 +131,7 @@ impl Plugin for ReferentialIntegrity {
 
     fn post_delete(
         au: &mut AuditScope,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
         cand: &[Entry<EntrySealed, EntryCommitted>],
         _ce: &DeleteEvent,
     ) -> Result<(), OperationError> {
@@ -143,17 +143,19 @@ impl Plugin for ReferentialIntegrity {
         let schema = qs.get_schema();
         let ref_types = schema.get_reference_types();
         // Get the UUID of all entries we are deleting
-        let uuids: Vec<&Uuid> = cand.iter().map(|e| e.get_uuid()).collect();
+        // let uuids: Vec<&Uuid> = cand.iter().map(|e| e.get_uuid()).collect();
 
         // Generate a filter which is the set of all schema reference types
         // as EQ to all uuid of all entries in delete. - this INCLUDES recycled
         // types too!
         let filt = filter_all!(FC::Or(
-            uuids
-                .iter()
+            // uuids
+            // .iter()
+            cand.iter()
+                .map(|e| e.get_uuid())
                 .map(|u| ref_types.values().map(move |r_type| {
                     // For everything that references the uuid's in the deleted set.
-                    f_eq(r_type.name.as_str(), PartialValue::new_refer(**u))
+                    f_eq(r_type.name.as_str(), PartialValue::new_refer(*u))
                 }))
                 .flatten()
                 .collect(),
@@ -164,11 +166,13 @@ impl Plugin for ReferentialIntegrity {
         // Create a modlist:
         //    In each, create a "removed" for each attr:uuid pair
         let modlist: ModifyList<ModifyInvalid> = ModifyList::new_list(
-            uuids
-                .iter()
+            // uuids
+            // .iter()
+            cand.iter()
+                .map(|e| e.get_uuid())
                 .map(|u| {
                     ref_types.values().map(move |r_type| {
-                        Modify::Removed(r_type.name.clone(), PartialValue::new_refer(**u))
+                        Modify::Removed(r_type.name.clone(), PartialValue::new_refer(*u))
                     })
                 })
                 .flatten()
@@ -184,7 +188,7 @@ impl Plugin for ReferentialIntegrity {
 
     fn verify(
         au: &mut AuditScope,
-        qs: &mut QueryServerReadTransaction,
+        qs: &QueryServerReadTransaction,
     ) -> Vec<Result<(), ConsistencyError>> {
         // Get all entries as cand
         //      build a cand-uuid set
@@ -198,7 +202,7 @@ impl Plugin for ReferentialIntegrity {
             Err(e) => return vec![e],
         };
 
-        let acu_map: BTreeSet<&Uuid> = all_cand.iter().map(|e| e.get_uuid()).collect();
+        let acu_map: Set<&Uuid> = all_cand.iter().map(|e| e.get_uuid()).collect();
 
         let schema = qs.get_schema();
         let ref_types = schema.get_reference_types();
@@ -301,7 +305,7 @@ mod tests {
             preload,
             create,
             None,
-            |au: &mut AuditScope, qs: &mut QueryServerWriteTransaction| {
+            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(
                         au,
@@ -337,7 +341,7 @@ mod tests {
             preload,
             create,
             None,
-            |au: &mut AuditScope, qs: &mut QueryServerWriteTransaction| {
+            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(
                         au,
@@ -559,7 +563,7 @@ mod tests {
             preload,
             filter!(f_eq("name", PartialValue::new_iname("testgroup_a"))),
             None,
-            |_au: &mut AuditScope, _qs: &mut QueryServerWriteTransaction| {}
+            |_au: &mut AuditScope, _qs: &QueryServerWriteTransaction| {}
         );
     }
 
@@ -601,7 +605,7 @@ mod tests {
             preload,
             filter!(f_eq("name", PartialValue::new_iname("testgroup_b"))),
             None,
-            |_au: &mut AuditScope, _qs: &mut QueryServerWriteTransaction| {}
+            |_au: &mut AuditScope, _qs: &QueryServerWriteTransaction| {}
         );
     }
 
@@ -627,7 +631,7 @@ mod tests {
             preload,
             filter!(f_eq("name", PartialValue::new_iname("testgroup_b"))),
             None,
-            |_au: &mut AuditScope, _qs: &mut QueryServerWriteTransaction| {}
+            |_au: &mut AuditScope, _qs: &QueryServerWriteTransaction| {}
         );
     }
 }

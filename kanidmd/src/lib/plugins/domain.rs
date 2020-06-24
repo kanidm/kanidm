@@ -28,7 +28,7 @@ impl Plugin for Domain {
 
     fn pre_create_transform(
         au: &mut AuditScope,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
@@ -65,7 +65,7 @@ mod tests {
     #[test]
     fn test_domain_generate_uuid() {
         run_test!(|server: &QueryServer, au: &mut AuditScope| {
-            let mut server_txn = server.write(duration_from_epoch_now());
+            let server_txn = server.write(duration_from_epoch_now());
             let e_dom = server_txn
                 .internal_search_uuid(au, &UUID_DOMAIN_INFO)
                 .expect("must not fail");

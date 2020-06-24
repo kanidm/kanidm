@@ -38,7 +38,7 @@ fn get_cand_attr_set<VALID, STATE>(
         let mut values: Vec<PartialValue> = match e.get_ava(attr) {
             Some(vs) => {
                 // We have values, map them.
-                vs.into_iter().map(|v| v.to_partialvalue()).collect()
+                vs.map(|v| v.to_partialvalue()).collect()
             }
             None => {
                 // No values, so empty set.
@@ -72,7 +72,7 @@ fn get_cand_attr_set<VALID, STATE>(
 
 fn enforce_unique<STATE>(
     au: &mut AuditScope,
-    qs: &mut QueryServerWriteTransaction,
+    qs: &QueryServerWriteTransaction,
     cand: &[Entry<EntryInvalid, STATE>],
     attr: &str,
 ) -> Result<(), OperationError> {
@@ -132,7 +132,7 @@ impl Plugin for AttrUnique {
 
     fn pre_create_transform(
         au: &mut AuditScope,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
@@ -151,7 +151,7 @@ impl Plugin for AttrUnique {
 
     fn pre_modify(
         au: &mut AuditScope,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
@@ -170,7 +170,7 @@ impl Plugin for AttrUnique {
 
     fn verify(
         au: &mut AuditScope,
-        qs: &mut QueryServerReadTransaction,
+        qs: &QueryServerReadTransaction,
     ) -> Vec<Result<(), ConsistencyError>> {
         // Only check live entries, not recycled.
         let filt_in = filter!(f_pres("class"));

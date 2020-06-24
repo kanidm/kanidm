@@ -14,15 +14,19 @@ macro_rules! setup_test {
             .try_init();
 
         // Create an in memory BE
-        let be = Backend::new($au, "", 1).expect("Failed to init BE");
-
         let schema_outer = Schema::new($au).expect("Failed to init schema");
+        let idxmeta = {
+            let schema_txn = schema_outer.write();
+            schema_txn.reload_idxmeta()
+        };
+        let be = Backend::new($au, "", 1, idxmeta).expect("Failed to init BE");
+
         let qs = QueryServer::new(be, schema_outer);
         qs.initialise_helper($au, duration_from_epoch_now())
             .expect("init failed!");
 
         if !$preload_entries.is_empty() {
-            let mut qs_write = qs.write(duration_from_epoch_now());
+            let qs_write = qs.write(duration_from_epoch_now());
             qs_write
                 .internal_create($au, $preload_entries)
                 .expect("Failed to preload entries");
@@ -62,11 +66,11 @@ macro_rules! run_create_test {
             };
 
             {
-                let mut qs_write = qs.write(duration_from_epoch_now());
+                let qs_write = qs.write(duration_from_epoch_now());
                 let r = qs_write.create(&mut au, &ce);
                 debug!("test result: {:?}", r);
                 assert!(r == $expect);
-                $check(&mut au, &mut qs_write);
+                $check(&mut au, &qs_write);
                 match r {
                     Ok(_) => {
                         qs_write.commit(&mut au).expect("commit failure!");
@@ -117,7 +121,7 @@ macro_rules! run_modify_test {
             };
 
             {
-                let mut qs_write = qs.write(duration_from_epoch_now());
+                let qs_write = qs.write(duration_from_epoch_now());
                 let r = lperf_segment!(
                     &mut au,
                     "plugins::macros::run_modify_test -> main_test",
@@ -126,7 +130,7 @@ macro_rules! run_modify_test {
                 lperf_segment!(
                     &mut au,
                     "plugins::macros::run_modify_test -> post_test check",
-                    || { $check(&mut au, &mut qs_write) }
+                    || { $check(&mut au, &qs_write) }
                 );
                 debug!("test result: {:?}", r);
                 assert!(r == $expect);
@@ -179,10 +183,10 @@ macro_rules! run_delete_test {
             };
 
             {
-                let mut qs_write = qs.write(duration_from_epoch_now());
+                let qs_write = qs.write(duration_from_epoch_now());
                 let r = qs_write.delete(&mut au, &de);
                 debug!("test result: {:?}", r);
-                $check(&mut au, &mut qs_write);
+                $check(&mut au, &qs_write);
                 assert!(r == $expect);
                 match r {
                     Ok(_) => {

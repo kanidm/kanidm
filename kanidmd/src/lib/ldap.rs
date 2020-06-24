@@ -43,7 +43,7 @@ pub struct LdapServer {
 
 impl LdapServer {
     pub fn new(au: &mut AuditScope, idms: &IdmServer) -> Result<Self, OperationError> {
-        let mut idms_prox_read = idms.proxy_read();
+        let idms_prox_read = idms.proxy_read();
         // This is the rootdse path.
         // get the domain_info item
         let domain_entry = idms_prox_read
@@ -51,7 +51,8 @@ impl LdapServer {
             .internal_search_uuid(au, &UUID_DOMAIN_INFO)?;
 
         let domain_name = domain_entry
-            .get_ava_single_string("domain_name")
+            .get_ava_single_str("domain_name")
+            .map(|s| s.to_string())
             .ok_or(OperationError::InvalidEntryState)?;
 
         let basedn = ldap_domain_to_dc(domain_name.as_str());
@@ -204,7 +205,7 @@ impl LdapServer {
 
             lperf_segment!(au, "ldap::do_search<core>", || {
                 // Now start the txn - we need it for resolving filter components.
-                let mut idm_read = idms.proxy_read();
+                let idm_read = idms.proxy_read();
 
                 // join the filter, with ext_filter
                 let lfilter = match ext_filter {
@@ -237,7 +238,7 @@ impl LdapServer {
 
                 // Kanidm Filter from LdapFilter
                 let filter =
-                    Filter::from_ldap_ro(au, &lfilter, &mut idm_read.qs_read).map_err(|e| {
+                    Filter::from_ldap_ro(au, &lfilter, &idm_read.qs_read).map_err(|e| {
                         lrequest_error!(au, "invalid ldap filter {:?}", e);
                         e
                     })?;
@@ -248,7 +249,7 @@ impl LdapServer {
                 let se = lperf_trace_segment!(au, "ldap::do_search<core><prepare_se>", || {
                     SearchEvent::new_ext_impersonate_uuid(
                         au,
-                        &mut idm_read.qs_read,
+                        &idm_read.qs_read,
                         &uat.effective_uuid,
                         filter,
                         attrs,
@@ -266,7 +267,7 @@ impl LdapServer {
                         let lres: Result<Vec<_>, _> = res
                             .into_iter()
                             .map(|e| {
-                                e.to_ldap(au, &mut idm_read.qs_read, self.basedn.as_str())
+                                e.to_ldap(au, &idm_read.qs_read, self.basedn.as_str())
                                     // if okay, wrap in a ldap msg.
                                     .map(|r| sr.gen_result_entry(r))
                             })

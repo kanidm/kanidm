@@ -27,7 +27,7 @@ impl PasswordChangeEvent {
 
     pub fn from_idm_account_set_password(
         audit: &mut AuditScope,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
         msg: IdmAccountSetPasswordMessage,
     ) -> Result<Self, OperationError> {
         let e = Event::from_rw_uat(audit, qs, msg.uat)?;
@@ -43,7 +43,7 @@ impl PasswordChangeEvent {
 
     pub fn from_parts(
         audit: &mut AuditScope,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
         uat: Option<UserAuthToken>,
         target: Uuid,
         cleartext: String,
@@ -79,7 +79,7 @@ impl UnixPasswordChangeEvent {
 
     pub fn from_parts(
         audit: &mut AuditScope,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
         uat: Option<UserAuthToken>,
         target: Uuid,
         cleartext: String,
@@ -104,7 +104,7 @@ pub struct GeneratePasswordEvent {
 impl GeneratePasswordEvent {
     pub fn from_parts(
         audit: &mut AuditScope,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
         uat: Option<UserAuthToken>,
         target: Uuid,
         appid: Option<String>,
@@ -128,7 +128,7 @@ pub struct RegenerateRadiusSecretEvent {
 impl RegenerateRadiusSecretEvent {
     pub fn from_parts(
         audit: &mut AuditScope,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
         uat: Option<UserAuthToken>,
         target: Uuid,
     ) -> Result<Self, OperationError> {
@@ -154,7 +154,7 @@ pub struct RadiusAuthTokenEvent {
 impl RadiusAuthTokenEvent {
     pub fn from_parts(
         audit: &mut AuditScope,
-        qs: &mut QueryServerReadTransaction,
+        qs: &QueryServerReadTransaction,
         uat: Option<UserAuthToken>,
         target: Uuid,
     ) -> Result<Self, OperationError> {
@@ -180,7 +180,7 @@ pub struct UnixUserTokenEvent {
 impl UnixUserTokenEvent {
     pub fn from_parts(
         audit: &mut AuditScope,
-        qs: &mut QueryServerReadTransaction,
+        qs: &QueryServerReadTransaction,
         uat: Option<UserAuthToken>,
         target: Uuid,
     ) -> Result<Self, OperationError> {
@@ -206,7 +206,7 @@ pub struct UnixGroupTokenEvent {
 impl UnixGroupTokenEvent {
     pub fn from_parts(
         audit: &mut AuditScope,
-        qs: &mut QueryServerReadTransaction,
+        qs: &QueryServerReadTransaction,
         uat: Option<UserAuthToken>,
         target: Uuid,
     ) -> Result<Self, OperationError> {
@@ -242,7 +242,7 @@ impl UnixUserAuthEvent {
 
     pub fn from_parts(
         audit: &mut AuditScope,
-        qs: &mut QueryServerReadTransaction,
+        qs: &QueryServerReadTransaction,
         uat: Option<UserAuthToken>,
         target: Uuid,
         cleartext: String,
@@ -267,7 +267,7 @@ pub struct GenerateTOTPEvent {
 impl GenerateTOTPEvent {
     pub fn from_parts(
         audit: &mut AuditScope,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
         uat: Option<UserAuthToken>,
         target: Uuid,
         label: String,
@@ -304,7 +304,7 @@ pub struct VerifyTOTPEvent {
 impl VerifyTOTPEvent {
     pub fn from_parts(
         audit: &mut AuditScope,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
         uat: Option<UserAuthToken>,
         target: Uuid,
         session: Uuid,

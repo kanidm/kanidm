@@ -22,20 +22,23 @@ pub struct Group {
 
 macro_rules! try_from_account_e {
     ($au:expr, $value:expr, $qs:expr) => {{
-        let name = $value.get_ava_single_string("name").ok_or_else(|| {
-            OperationError::InvalidAccountState("Missing attribute: name".to_string())
-        })?;
+        let name = $value
+            .get_ava_single_str("name")
+            .map(|s| s.to_string())
+            .ok_or_else(|| {
+                OperationError::InvalidAccountState("Missing attribute: name".to_string())
+            })?;
 
         let uuid = *$value.get_uuid();
 
         let upg = Group { name, uuid };
 
-        let mut groups: Vec<Group> = match $value.get_ava_reference_uuid("memberof") {
-            Some(l) => {
+        let mut groups: Vec<Group> = match $value.get_ava_as_refuuid("memberof") {
+            Some(riter) => {
                 // given a list of uuid, make a filter: even if this is empty, the be will
                 // just give and empty result set.
                 let f = filter!(f_or(
-                    l.into_iter()
+                    riter
                         .map(|u| f_eq("uuid", PartialValue::new_uuidr(u)))
                         .collect()
                 ));
@@ -96,9 +99,12 @@ impl Group {
         }
 
         // Now extract our needed attributes
-        let name = value.get_ava_single_string("name").ok_or_else(|| {
-            OperationError::InvalidAccountState("Missing attribute: name".to_string())
-        })?;
+        let name = value
+            .get_ava_single_str("name")
+            .map(|s| s.to_string())
+            .ok_or_else(|| {
+                OperationError::InvalidAccountState("Missing attribute: name".to_string())
+            })?;
 
         let uuid = *value.get_uuid();
 

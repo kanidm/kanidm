@@ -24,7 +24,7 @@ use std::collections::BTreeSet;
 use uuid::Uuid;
 
 lazy_static! {
-    static ref CLASS_GROUP: PartialValue = PartialValue::new_iutf8s("group");
+    static ref CLASS_GROUP: PartialValue = PartialValue::new_class("group");
 }
 
 pub struct MemberOf;
@@ -37,17 +37,17 @@ where
     STATE: std::fmt::Debug,
 {
     // From the list of groups which were changed in this operation:
-    let changed_groups: Vec<_> = changed
+    // let changed_groups: Vec<_> = changed
+    let mut affected_uuids: Vec<&Uuid> = changed
         .into_iter()
         .filter(|e| e.attribute_value_pres("class", &CLASS_GROUP))
-        .inspect(|e| {
-            ltrace!(au, "group reporting change: {:?}", e);
-        })
-        .collect();
-
-    // Now, build a map of all UUID's that will require updates as a result of this change
-    let mut affected_uuids: Vec<&Uuid> = changed_groups
-        .iter()
+        /*
+            .collect();
+        ltrace!(au, "groups reporting change: {:?}", changed_groups);
+        // Now, build a map of all UUID's that will require updates as a result of this change
+        let mut affected_uuids: Vec<&Uuid> = changed_groups
+            .iter()
+            */
         .filter_map(|e| {
             // Only groups with member get collected up here.
             e.get_ava("member")
@@ -56,6 +56,8 @@ where
         .flatten()
         .filter_map(|uv| uv.to_ref_uuid())
         .collect();
+
+    ltrace!(au, "uuids reporting change: {:?}", affected_uuids);
 
     // IDEA: promote groups to head of the affected_uuids set!
     //
@@ -71,7 +73,7 @@ where
 
 fn apply_memberof(
     au: &mut AuditScope,
-    qs: &mut QueryServerWriteTransaction,
+    qs: &QueryServerWriteTransaction,
     affected_uuids: Vec<&Uuid>,
 ) -> Result<(), OperationError> {
     ltrace!(au, " => entering apply_memberof");
@@ -195,7 +197,7 @@ impl Plugin for MemberOf {
 
     fn post_create(
         au: &mut AuditScope,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
         cand: &[Entry<EntrySealed, EntryCommitted>],
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
@@ -208,7 +210,7 @@ impl Plugin for MemberOf {
 
     fn post_modify(
         au: &mut AuditScope,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
         pre_cand: &[Entry<EntrySealed, EntryCommitted>],
         cand: &[Entry<EntrySealed, EntryCommitted>],
         _me: &ModifyEvent,
@@ -236,7 +238,7 @@ impl Plugin for MemberOf {
             })
             .filter_map(|e| {
                 // Only groups with member get collected up here.
-                e.get_ava_reference_uuid("member")
+                e.get_ava_as_refuuid("member")
             })
             // Flatten the uuid reference lists.
             .flatten()
@@ -251,7 +253,7 @@ impl Plugin for MemberOf {
 
     fn pre_delete(
         _au: &mut AuditScope,
-        _qs: &mut QueryServerWriteTransaction,
+        _qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _de: &DeleteEvent,
     ) -> Result<(), OperationError> {
@@ -278,7 +280,7 @@ impl Plugin for MemberOf {
 
     fn post_delete(
         au: &mut AuditScope,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
         cand: &[Entry<EntrySealed, EntryCommitted>],
         _ce: &DeleteEvent,
     ) -> Result<(), OperationError> {
@@ -291,7 +293,7 @@ impl Plugin for MemberOf {
 
     fn verify(
         au: &mut AuditScope,
-        qs: &mut QueryServerReadTransaction,
+        qs: &QueryServerReadTransaction,
     ) -> Vec<Result<(), ConsistencyError>> {
         let mut r = Vec::new();
 
@@ -334,9 +336,9 @@ impl Plugin for MemberOf {
                 d_groups_set
             );
 
-            let dmos: Vec<&Uuid> = match e.get_ava_reference_uuid("directmemberof") {
+            let dmos: Vec<&Uuid> = match e.get_ava_as_refuuid("directmemberof") {
                 // Avoid a reference issue to return empty set
-                Some(dmos) => dmos,
+                Some(dmos) => dmos.collect(),
                 // No memberof, return empty set.
                 None => Vec::new(),
             };
@@ -346,8 +348,8 @@ impl Plugin for MemberOf {
             if dmos.len() != direct_memberof.len() {
                 ladmin_error!(
                     au,
-                    "directmemberof set and DMO search set differ in size: {:?}",
-                    e.get_uuid()
+                    "MemberOfInvalid directmemberof set and DMO search set differ in size: {}",
+                    e
                 );
                 r.push(Err(ConsistencyError::MemberOfInvalid(e.get_id())));
                 debug_assert!(false);
@@ -359,8 +361,8 @@ impl Plugin for MemberOf {
                 if !d_groups_set.contains(mo_uuid) {
                     ladmin_error!(
                         au,
-                        "Entry {:?}, MO {:?} not in direct groups",
-                        e.get_uuid(),
+                        "MemberOfInvalid: Entry {}, MO {:?} not in direct groups",
+                        e,
                         mo_uuid
                     );
                     r.push(Err(ConsistencyError::MemberOfInvalid(e.get_id())));
@@ -368,7 +370,6 @@ impl Plugin for MemberOf {
                     continue;
                 }
             }
-
             // Could check all dmos in mos?
 
             /* To check nested! */
@@ -515,7 +516,7 @@ mod tests {
             preload,
             create,
             None,
-            |au: &mut AuditScope, qs: &mut QueryServerWriteTransaction| {
+            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
                 assert_memberof!(au, qs, UUID_B, UUID_A);
@@ -546,7 +547,7 @@ mod tests {
             preload,
             create,
             None,
-            |au: &mut AuditScope, qs: &mut QueryServerWriteTransaction| {
+            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
                 assert_not_memberof!(au, qs, UUID_A, UUID_A);
@@ -598,7 +599,7 @@ mod tests {
             preload,
             create,
             None,
-            |au: &mut AuditScope, qs: &mut QueryServerWriteTransaction| {
+            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
                 assert_memberof!(au, qs, UUID_A, UUID_A);
@@ -656,7 +657,7 @@ mod tests {
             preload,
             create,
             None,
-            |au: &mut AuditScope, qs: &mut QueryServerWriteTransaction| {
+            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
                 assert_memberof!(au, qs, UUID_A, UUID_A);
@@ -721,7 +722,7 @@ mod tests {
                 Value::new_refer_s(&UUID_B).unwrap()
             )]),
             None,
-            |au: &mut AuditScope, qs: &mut QueryServerWriteTransaction| {
+            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
                 assert_memberof!(au, qs, UUID_B, UUID_A);
@@ -756,7 +757,7 @@ mod tests {
                 Value::new_refer_s(&UUID_B).unwrap()
             )]),
             None,
-            |au: &mut AuditScope, qs: &mut QueryServerWriteTransaction| {
+            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
                 assert_not_memberof!(au, qs, UUID_A, UUID_A);
@@ -809,7 +810,7 @@ mod tests {
                 Value::new_refer_s(&UUID_C).unwrap()
             )]),
             None,
-            |au: &mut AuditScope, qs: &mut QueryServerWriteTransaction| {
+            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
                 assert_not_memberof!(au, qs, UUID_A, UUID_A);
@@ -865,7 +866,7 @@ mod tests {
                 Value::new_refer_s(&UUID_A).unwrap()
             )]),
             None,
-            |au: &mut AuditScope, qs: &mut QueryServerWriteTransaction| {
+            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
                 assert_memberof!(au, qs, UUID_A, UUID_A);
@@ -931,7 +932,7 @@ mod tests {
                 Value::new_refer_s(&UUID_A).unwrap()
             )]),
             None,
-            |au: &mut AuditScope, qs: &mut QueryServerWriteTransaction| {
+            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
                 assert_memberof!(au, qs, UUID_A, UUID_A);
@@ -999,7 +1000,7 @@ mod tests {
                 PartialValue::new_refer_s(&UUID_B).unwrap()
             )]),
             None,
-            |au: &mut AuditScope, qs: &mut QueryServerWriteTransaction| {
+            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
                 assert_not_memberof!(au, qs, UUID_B, UUID_A);
@@ -1037,7 +1038,7 @@ mod tests {
                 PartialValue::new_refer_s(&UUID_B).unwrap()
             )]),
             None,
-            |au: &mut AuditScope, qs: &mut QueryServerWriteTransaction| {
+            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
                 assert_not_memberof!(au, qs, UUID_A, UUID_A);
@@ -1094,7 +1095,7 @@ mod tests {
                 PartialValue::new_refer_s(&UUID_C).unwrap()
             )]),
             None,
-            |au: &mut AuditScope, qs: &mut QueryServerWriteTransaction| {
+            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
                 assert_not_memberof!(au, qs, UUID_A, UUID_A);
@@ -1161,7 +1162,7 @@ mod tests {
                 PartialValue::new_refer_s(&UUID_A).unwrap()
             )]),
             None,
-            |au: &mut AuditScope, qs: &mut QueryServerWriteTransaction| {
+            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
                 assert_not_memberof!(au, qs, UUID_A, UUID_A);
@@ -1252,7 +1253,7 @@ mod tests {
                 ),
             ]),
             None,
-            |au: &mut AuditScope, qs: &mut QueryServerWriteTransaction| {
+            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
                 assert_not_memberof!(au, qs, UUID_A, UUID_A);
@@ -1314,7 +1315,7 @@ mod tests {
             preload,
             filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_A).unwrap())),
             None,
-            |au: &mut AuditScope, qs: &mut QueryServerWriteTransaction| {
+            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
                 assert_not_memberof!(au, qs, UUID_B, UUID_A);
@@ -1348,7 +1349,7 @@ mod tests {
             preload,
             filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_A).unwrap())),
             None,
-            |au: &mut AuditScope, qs: &mut QueryServerWriteTransaction| {
+            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
                 assert_not_memberof!(au, qs, UUID_B, UUID_A);
@@ -1392,7 +1393,7 @@ mod tests {
             preload,
             filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_B).unwrap())),
             None,
-            |au: &mut AuditScope, qs: &mut QueryServerWriteTransaction| {
+            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
                 assert_not_memberof!(au, qs, UUID_A, UUID_A);
@@ -1445,7 +1446,7 @@ mod tests {
             preload,
             filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_A).unwrap())),
             None,
-            |au: &mut AuditScope, qs: &mut QueryServerWriteTransaction| {
+            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
                 assert_not_memberof!(au, qs, UUID_B, UUID_A);
@@ -1511,7 +1512,7 @@ mod tests {
             preload,
             filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_B).unwrap())),
             None,
-            |au: &mut AuditScope, qs: &mut QueryServerWriteTransaction| {
+            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
                 assert_not_memberof!(au, qs, UUID_A, UUID_B);

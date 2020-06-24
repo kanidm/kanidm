@@ -17,7 +17,12 @@ macro_rules! run_test_no_init {
 
         let mut audit = AuditScope::new("run_test", uuid::Uuid::new_v4(), None);
 
-        let be = match Backend::new(&mut audit, "", 1) {
+        let schema_outer = Schema::new(&mut audit).expect("Failed to init schema");
+        let idxmeta = {
+            let schema_txn = schema_outer.write();
+            schema_txn.reload_idxmeta()
+        };
+        let be = match Backend::new(&mut audit, "", 1, idxmeta) {
             Ok(be) => be,
             Err(e) => {
                 audit.write_log();
@@ -25,7 +30,6 @@ macro_rules! run_test_no_init {
                 panic!()
             }
         };
-        let schema_outer = Schema::new(&mut audit).expect("Failed to init schema");
         let test_server = QueryServer::new(be, schema_outer);
 
         $test_fn(&test_server, &mut audit);
@@ -57,7 +61,12 @@ macro_rules! run_test {
 
         let mut audit = AuditScope::new("run_test", uuid::Uuid::new_v4(), None);
 
-        let be = match Backend::new(&mut audit, "", 1) {
+        let schema_outer = Schema::new(&mut audit).expect("Failed to init schema");
+        let idxmeta = {
+            let schema_txn = schema_outer.write();
+            schema_txn.reload_idxmeta()
+        };
+        let be = match Backend::new(&mut audit, "", 1, idxmeta) {
             Ok(be) => be,
             Err(e) => {
                 audit.write_log();
@@ -65,7 +74,6 @@ macro_rules! run_test {
                 panic!()
             }
         };
-        let schema_outer = Schema::new(&mut audit).expect("Failed to init schema");
         let test_server = QueryServer::new(be, schema_outer);
 
         test_server
@@ -124,8 +132,12 @@ macro_rules! run_idm_test {
 
         let mut audit = AuditScope::new("run_test", uuid::Uuid::new_v4(), None);
 
-        let be = Backend::new(&mut audit, "", 1).expect("Failed to init be");
         let schema_outer = Schema::new(&mut audit).expect("Failed to init schema");
+        let idxmeta = {
+            let schema_txn = schema_outer.write();
+            schema_txn.reload_idxmeta()
+        };
+        let be = Backend::new(&mut audit, "", 1, idxmeta).expect("Failed to init be");
 
         let test_server = QueryServer::new(be, schema_outer);
         test_server

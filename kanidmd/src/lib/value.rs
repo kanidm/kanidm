@@ -587,7 +587,7 @@ pub struct Value {
     pv: PartialValue,
     // Later we'll add extra data fields for different v types. They'll have to switch on
     // pv somehow, so probably need optional or union?
-    data: Option<DataValue>,
+    data: Option<Box<DataValue>>,
 }
 
 // TODO: Impl display
@@ -902,7 +902,7 @@ impl Value {
     pub fn new_credential(tag: &str, cred: Credential) -> Self {
         Value {
             pv: PartialValue::new_credential_tag(tag),
-            data: Some(DataValue::Cred(cred)),
+            data: Some(Box::new(DataValue::Cred(cred))),
         }
     }
 
@@ -916,7 +916,7 @@ impl Value {
     pub fn to_credential(&self) -> Option<&Credential> {
         match &self.pv {
             PartialValue::Cred(_) => match &self.data {
-                Some(dv) => match dv {
+                Some(dv) => match dv.as_ref() {
                     DataValue::Cred(c) => Some(&c),
                     _ => None,
                 },
@@ -929,7 +929,7 @@ impl Value {
     pub fn new_radius_str(cleartext: &str) -> Self {
         Value {
             pv: PartialValue::new_radius_string(),
-            data: Some(DataValue::RadiusCred(cleartext.to_string())),
+            data: Some(Box::new(DataValue::RadiusCred(cleartext.to_string()))),
         }
     }
 
@@ -943,7 +943,7 @@ impl Value {
     pub fn get_radius_secret(&self) -> Option<&str> {
         match &self.pv {
             PartialValue::RadiusCred => match &self.data {
-                Some(dv) => match dv {
+                Some(dv) => match dv.as_ref() {
                     DataValue::RadiusCred(c) => Some(c.as_str()),
                     _ => None,
                 },
@@ -956,14 +956,14 @@ impl Value {
     pub fn new_sshkey_str(tag: &str, key: &str) -> Self {
         Value {
             pv: PartialValue::new_sshkey_tag_s(tag),
-            data: Some(DataValue::SshKey(key.to_string())),
+            data: Some(Box::new(DataValue::SshKey(key.to_string()))),
         }
     }
 
     pub fn new_sshkey(tag: String, key: String) -> Self {
         Value {
             pv: PartialValue::new_sshkey_tag(tag),
-            data: Some(DataValue::SshKey(key)),
+            data: Some(Box::new(DataValue::SshKey(key))),
         }
     }
 
@@ -974,11 +974,11 @@ impl Value {
         }
     }
 
-    pub fn get_sshkey(&self) -> Option<String> {
+    pub fn get_sshkey(&self) -> Option<&str> {
         match &self.pv {
             PartialValue::SshKey(_) => match &self.data {
-                Some(v) => match &v {
-                    DataValue::SshKey(sc) => Some(sc.clone()),
+                Some(v) => match v.as_ref() {
+                    DataValue::SshKey(sc) => Some(sc.as_str()),
                     _ => None,
                 },
                 None => None,
@@ -1112,16 +1112,16 @@ impl Value {
                 // Deserialise the db cred here.
                 Ok(Value {
                     pv: PartialValue::Cred(dvc.t.to_lowercase()),
-                    data: Some(DataValue::Cred(Credential::try_from(dvc.d)?)),
+                    data: Some(Box::new(DataValue::Cred(Credential::try_from(dvc.d)?))),
                 })
             }
             DbValueV1::RU(d) => Ok(Value {
                 pv: PartialValue::RadiusCred,
-                data: Some(DataValue::RadiusCred(d)),
+                data: Some(Box::new(DataValue::RadiusCred(d))),
             }),
             DbValueV1::SK(ts) => Ok(Value {
                 pv: PartialValue::SshKey(ts.t),
-                data: Some(DataValue::SshKey(ts.d)),
+                data: Some(Box::new(DataValue::SshKey(ts.d))),
             }),
             DbValueV1::SP(n, r) => Ok(Value {
                 pv: PartialValue::Spn(n, r),
@@ -1164,7 +1164,7 @@ impl Value {
             PartialValue::Cred(tag) => {
                 // Get the credential out and make sure it matches the type we expect.
                 let c = match &self.data {
-                    Some(v) => match &v {
+                    Some(v) => match v.as_ref() {
                         DataValue::Cred(c) => c,
                         _ => panic!(),
                     },
@@ -1179,7 +1179,7 @@ impl Value {
             }
             PartialValue::RadiusCred => {
                 let ru = match &self.data {
-                    Some(v) => match &v {
+                    Some(v) => match v.as_ref() {
                         DataValue::RadiusCred(rc) => rc.clone(),
                         _ => panic!(),
                     },
@@ -1189,7 +1189,7 @@ impl Value {
             }
             PartialValue::SshKey(t) => {
                 let sk = match &self.data {
-                    Some(v) => match &v {
+                    Some(v) => match v.as_ref() {
                         DataValue::SshKey(sc) => sc.clone(),
                         _ => panic!(),
                     },
@@ -1316,7 +1316,7 @@ impl Value {
             }
             // We display the tag and fingerprint.
             PartialValue::SshKey(tag) => match &self.data {
-                Some(v) => match &v {
+                Some(v) => match v.as_ref() {
                     DataValue::SshKey(sk) => {
                         // Check it's really an sshkey in the
                         // supplemental data.
@@ -1355,14 +1355,14 @@ impl Value {
                 }
             }
             PartialValue::Cred(_) => match &self.data {
-                Some(v) => match &v {
+                Some(v) => match v.as_ref() {
                     DataValue::Cred(_) => true,
                     _ => false,
                 },
                 None => false,
             },
             PartialValue::SshKey(_) => match &self.data {
-                Some(v) => match &v {
+                Some(v) => match v.as_ref() {
                     // Check it's really an sshkey in the supplemental
                     // data.
                     DataValue::SshKey(sk) => SshPublicKey::from_string(sk).is_ok(),
@@ -1371,7 +1371,7 @@ impl Value {
                 None => false,
             },
             PartialValue::RadiusCred => match &self.data {
-                Some(v) => match &v {
+                Some(v) => match v.as_ref() {
                     DataValue::RadiusCred(_) => true,
                     _ => false,
                 },

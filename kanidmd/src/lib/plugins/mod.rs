@@ -24,7 +24,7 @@ trait Plugin {
 
     fn pre_create_transform(
         au: &mut AuditScope,
-        _qs: &mut QueryServerWriteTransaction,
+        _qs: &QueryServerWriteTransaction,
         _cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
@@ -38,7 +38,7 @@ trait Plugin {
 
     fn pre_create(
         au: &mut AuditScope,
-        _qs: &mut QueryServerWriteTransaction,
+        _qs: &QueryServerWriteTransaction,
         // List of what we will commit that is valid?
         _cand: &[Entry<EntrySealed, EntryNew>],
         _ce: &CreateEvent,
@@ -49,7 +49,7 @@ trait Plugin {
 
     fn post_create(
         au: &mut AuditScope,
-        _qs: &mut QueryServerWriteTransaction,
+        _qs: &QueryServerWriteTransaction,
         // List of what we commited that was valid?
         _cand: &[Entry<EntrySealed, EntryCommitted>],
         _ce: &CreateEvent,
@@ -64,7 +64,7 @@ trait Plugin {
 
     fn pre_modify(
         au: &mut AuditScope,
-        _qs: &mut QueryServerWriteTransaction,
+        _qs: &QueryServerWriteTransaction,
         _cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
@@ -74,7 +74,7 @@ trait Plugin {
 
     fn post_modify(
         au: &mut AuditScope,
-        _qs: &mut QueryServerWriteTransaction,
+        _qs: &QueryServerWriteTransaction,
         // List of what we modified that was valid?
         _pre_cand: &[Entry<EntrySealed, EntryCommitted>],
         _cand: &[Entry<EntrySealed, EntryCommitted>],
@@ -90,7 +90,7 @@ trait Plugin {
 
     fn pre_delete(
         au: &mut AuditScope,
-        _qs: &mut QueryServerWriteTransaction,
+        _qs: &QueryServerWriteTransaction,
         _cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _de: &DeleteEvent,
     ) -> Result<(), OperationError> {
@@ -100,7 +100,7 @@ trait Plugin {
 
     fn post_delete(
         au: &mut AuditScope,
-        _qs: &mut QueryServerWriteTransaction,
+        _qs: &QueryServerWriteTransaction,
         // List of what we delete that was valid?
         _cand: &[Entry<EntrySealed, EntryCommitted>],
         _ce: &DeleteEvent,
@@ -115,7 +115,7 @@ trait Plugin {
 
     fn verify(
         au: &mut AuditScope,
-        _qs: &mut QueryServerReadTransaction,
+        _qs: &QueryServerReadTransaction,
     ) -> Vec<Result<(), ConsistencyError>> {
         ladmin_error!(au, "plugin {} has an unimplemented verify!", Self::id());
         vec![Err(ConsistencyError::Unknown)]
@@ -257,7 +257,7 @@ macro_rules! run_verify_plugin {
 impl Plugins {
     pub fn run_pre_create_transform(
         au: &mut AuditScope,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
@@ -286,7 +286,7 @@ impl Plugins {
 
     pub fn run_pre_create(
         au: &mut AuditScope,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
         cand: &[Entry<EntrySealed, EntryNew>],
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
@@ -301,7 +301,7 @@ impl Plugins {
 
     pub fn run_post_create(
         au: &mut AuditScope,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
         cand: &[Entry<EntrySealed, EntryCommitted>],
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
@@ -323,7 +323,7 @@ impl Plugins {
 
     pub fn run_pre_modify(
         au: &mut AuditScope,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         me: &ModifyEvent,
     ) -> Result<(), OperationError> {
@@ -342,7 +342,7 @@ impl Plugins {
 
     pub fn run_post_modify(
         au: &mut AuditScope,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
         pre_cand: &[Entry<EntrySealed, EntryCommitted>],
         cand: &[Entry<EntrySealed, EntryCommitted>],
         me: &ModifyEvent,
@@ -368,7 +368,7 @@ impl Plugins {
 
     pub fn run_pre_delete(
         au: &mut AuditScope,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         de: &DeleteEvent,
     ) -> Result<(), OperationError> {
@@ -383,7 +383,7 @@ impl Plugins {
 
     pub fn run_post_delete(
         au: &mut AuditScope,
-        qs: &mut QueryServerWriteTransaction,
+        qs: &QueryServerWriteTransaction,
         cand: &[Entry<EntrySealed, EntryCommitted>],
         de: &DeleteEvent,
     ) -> Result<(), OperationError> {
@@ -405,7 +405,7 @@ impl Plugins {
 
     pub fn run_verify(
         au: &mut AuditScope,
-        qs: &mut QueryServerReadTransaction,
+        qs: &QueryServerReadTransaction,
     ) -> Vec<Result<(), ConsistencyError>> {
         lperf_segment!(au, "plugins::run_verify", || {
             let mut results = Vec::new();
