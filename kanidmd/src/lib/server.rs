@@ -38,6 +38,10 @@ use crate::schema::{
 use crate::value::{PartialValue, SyntaxType, Value};
 use kanidm_proto::v1::{ConsistencyError, OperationError, SchemaError};
 
+type EntrySealedCommitted = Entry<EntrySealed, EntryCommitted>;
+type EntryInvalidCommitted = Entry<EntryInvalid, EntryCommitted>;
+type EntryTuple = (EntrySealedCommitted, EntryInvalidCommitted);
+
 lazy_static! {
     static ref PVCLASS_ATTRIBUTETYPE: PartialValue = PartialValue::new_class("attributetype");
     static ref PVCLASS_CLASSTYPE: PartialValue = PartialValue::new_class("classtype");
@@ -1444,6 +1448,141 @@ impl<'a> QueryServerWriteTransaction<'a> {
             } else {
                 ladmin_info!(au, "Modify operation success");
             }
+            Ok(())
+        })
+    }
+
+    /// Used in conjunction with internal_batch_modify, to get a pre/post
+    /// pair, where post is pre-configured with metadata to allow
+    /// modificiation before submit back to internal_batch_modify
+    pub(crate) fn internal_search_uuid_writeable(
+        &self,
+        audit: &mut AuditScope,
+        uuid: &Uuid,
+    ) -> Result<Option<EntryTuple>, OperationError> {
+        lperf_segment!(audit, "server::internal_search_uuid_writeable", || {
+            let filter = filter_all!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
+            let f_valid = filter
+                .validate(self.get_schema())
+                .map_err(OperationError::SchemaViolation)?;
+            let se = SearchEvent::new_internal(f_valid);
+            self.search(audit, &se).and_then(|vs| {
+                if vs.len() > 1 {
+                    Err(OperationError::NoMatchingEntries)
+                } else {
+                    vs.into_iter()
+                        .next()
+                        .ok_or(OperationError::NoMatchingEntries)
+                        .map(|e| {
+                            // Must be okay, lets check other conditions.
+                            if e.attribute_value_pres("class", &PVCLASS_TOMBSTONE)
+                                || e.attribute_value_pres("class", &PVCLASS_RECYCLED)
+                            {
+                                // It's a ts/recycle, no.
+                                None
+                            } else {
+                                let writeable = e.clone().invalidate(self.cid.clone());
+                                Some((e, writeable))
+                            }
+                        })
+                }
+            })
+        })
+    }
+
+    /// Allows writing batches of modified entries without going through
+    /// the modlist path. This allows more effecient batch transformations
+    /// such as memberof, but at the expense that YOU must guarantee you
+    /// uphold all other plugin and state rules that are important. You
+    /// probably want modify instead.
+    pub(crate) fn internal_batch_modify(
+        &self,
+        au: &mut AuditScope,
+        pre_candidates: Vec<Entry<EntrySealed, EntryCommitted>>,
+        candidates: Vec<Entry<EntryInvalid, EntryCommitted>>,
+    ) -> Result<(), OperationError> {
+        lperf_segment!(au, "server::internal_batch_modify", || {
+            lsecurity!(au, "modify initiator: -> internal batch modify");
+
+            if pre_candidates.is_empty() && candidates.is_empty() {
+                // No action needed.
+                return Ok(());
+            }
+
+            if pre_candidates.len() != candidates.len() {
+                ladmin_error!(au, "internal_batch_modify - cand lengths differ");
+                return Err(OperationError::InvalidRequestState);
+            }
+
+            let res: Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> = candidates
+                .into_iter()
+                .map(|e| {
+                    e.validate(&self.schema)
+                        .map_err(|e| {
+                            ladmin_error!(au, "Schema Violation {:?}", e);
+                            OperationError::SchemaViolation(e)
+                        })
+                        .map(|e| e.seal())
+                })
+                .collect();
+
+            let norm_cand: Vec<Entry<_, _>> = res?;
+
+            if cfg!(debug_assertions) {
+                pre_candidates
+                    .iter()
+                    .zip(norm_cand.iter())
+                    .try_for_each(|(pre, post)| {
+                        if pre.get_uuid() == post.get_uuid() {
+                            Ok(())
+                        } else {
+                            ladmin_error!(au, "modify - cand sets not correctly aligned");
+                            Err(OperationError::InvalidRequestState)
+                        }
+                    })?;
+            }
+
+            // Backend Modify
+            self.be_txn
+                .modify(au, &pre_candidates, &norm_cand)
+                .map_err(|e| {
+                    ladmin_error!(au, "Modify operation failed (backend), {:?}", e);
+                    e
+                })?;
+
+            let _ =
+                self.changed_schema
+                    .replace(norm_cand.iter().chain(pre_candidates.iter()).fold(
+                        false,
+                        |acc, e| {
+                            if acc {
+                                acc
+                            } else {
+                                e.attribute_value_pres("class", &PVCLASS_CLASSTYPE)
+                                    || e.attribute_value_pres("class", &PVCLASS_ATTRIBUTETYPE)
+                            }
+                        },
+                    ));
+            let _ =
+                self.changed_acp
+                    .replace(norm_cand.iter().chain(pre_candidates.iter()).fold(
+                        false,
+                        |acc, e| {
+                            if acc {
+                                acc
+                            } else {
+                                e.attribute_value_pres("class", &PVCLASS_ACP)
+                            }
+                        },
+                    ));
+            ltrace!(
+                au,
+                "Schema reload: {:?}, ACP reload: {:?}",
+                self.changed_schema,
+                self.changed_acp
+            );
+
+            ltrace!(au, "Modify operation success");
             Ok(())
         })
     }

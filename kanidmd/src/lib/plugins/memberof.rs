@@ -13,7 +13,7 @@
 use crate::audit::AuditScope;
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntrySealed};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
-use crate::modify::{Modify, ModifyList};
+// use crate::modify::{Modify, ModifyList};
 use crate::plugins::Plugin;
 use crate::server::QueryServerTransaction;
 use crate::server::{QueryServerReadTransaction, QueryServerWriteTransaction};
@@ -21,170 +21,194 @@ use crate::value::{PartialValue, Value};
 use kanidm_proto::v1::{ConsistencyError, OperationError};
 
 use std::collections::BTreeSet;
+use std::collections::HashMap;
+use std::collections::VecDeque;
 use uuid::Uuid;
 
 lazy_static! {
     static ref CLASS_GROUP: PartialValue = PartialValue::new_class("group");
+    static ref CLASS_MEMBEROF: Value = Value::new_class("memberof");
 }
 
 pub struct MemberOf;
 
-fn affected_uuids<'a, STATE>(
+type EntrySealedCommitted = Entry<EntrySealed, EntryCommitted>;
+type EntryInvalidCommitted = Entry<EntryInvalid, EntryCommitted>;
+type EntryTuple = (EntrySealedCommitted, EntryInvalidCommitted);
+
+fn do_memberof(
     au: &mut AuditScope,
-    changed: Vec<&'a Entry<EntrySealed, STATE>>,
-) -> Vec<&'a Uuid>
-where
-    STATE: std::fmt::Debug,
-{
-    // From the list of groups which were changed in this operation:
-    // let changed_groups: Vec<_> = changed
-    let mut affected_uuids: Vec<&Uuid> = changed
-        .into_iter()
-        .filter(|e| e.attribute_value_pres("class", &CLASS_GROUP))
-        /*
-            .collect();
-        ltrace!(au, "groups reporting change: {:?}", changed_groups);
-        // Now, build a map of all UUID's that will require updates as a result of this change
-        let mut affected_uuids: Vec<&Uuid> = changed_groups
-            .iter()
-            */
-        .filter_map(|e| {
-            // Only groups with member get collected up here.
-            e.get_ava("member")
-        })
-        // Flatten the member's to the list.
-        .flatten()
-        .filter_map(|uv| uv.to_ref_uuid())
-        .collect();
+    qs: &QueryServerWriteTransaction,
+    uuid: &Uuid,
+    tgte: &mut EntryInvalidCommitted,
+) -> Result<(), OperationError> {
+    //  search where we are member
+    let groups = qs
+        .internal_search(
+            au,
+            filter!(f_and!([
+                f_eq("class", CLASS_GROUP.clone()),
+                f_eq("member", PartialValue::new_refer(*uuid))
+            ])),
+        )
+        .map_err(|e| {
+            ladmin_error!(au, "internal search failure -> {:?}", e);
+            e
+        })?;
 
-    ltrace!(au, "uuids reporting change: {:?}", affected_uuids);
+    // Ensure we are MO capable.
+    tgte.add_ava("class", &CLASS_MEMBEROF);
+    // Clear the dmo + mos, we will recreate them now.
+    // This is how we handle deletes/etc.
+    tgte.pop_ava("memberof");
+    tgte.pop_ava("directmemberof");
+    // Add all the direct mo's and mos.
+    groups.iter().for_each(|g| {
+        // TODO: Change add_ava to remove this alloc/clone.
+        let dmo = Value::new_refer(*g.get_uuid());
+        tgte.add_ava("directmemberof", &dmo);
+        tgte.add_ava("memberof", &dmo);
 
-    // IDEA: promote groups to head of the affected_uuids set!
-    //
-    // This isn't worth doing - it's only used in create/delete, it would not
-    // really make a large performance difference. Better to target improvements
-    // in the apply_memberof fn.
-    affected_uuids.sort();
-    // Remove dups
-    affected_uuids.dedup();
+        if let Some(miter) = g.get_ava("memberof") {
+            miter.for_each(|mo| {
+                tgte.add_ava("memberof", mo);
+            })
+        };
+    });
 
-    affected_uuids
+    ltrace!(
+        au,
+        "Updating {:?} to be dir mo {:?}",
+        uuid,
+        tgte.get_ava_set("directmemberof")
+    );
+    ltrace!(
+        au,
+        "Updating {:?} to be mo {:?}",
+        uuid,
+        tgte.get_ava_set("memberof")
+    );
+
+    Ok(())
 }
 
+#[allow(clippy::cognitive_complexity)]
 fn apply_memberof(
     au: &mut AuditScope,
     qs: &QueryServerWriteTransaction,
-    affected_uuids: Vec<&Uuid>,
+    // TODO: Experiment with HashSet/BTreeSet here instead of vec.
+    // May require https://github.com/rust-lang/rust/issues/62924 to allow poping
+    mut group_affect: Vec<Uuid>,
 ) -> Result<(), OperationError> {
     ltrace!(au, " => entering apply_memberof");
-    ltrace!(au, "affected uuids -> {:?}", affected_uuids);
+    ltrace!(au, " => initial group_affect {:?}", group_affect);
 
-    // Apply member takes a list of changes. We then filter that to only the changed groups
-    // and using this, we determine a list of UUID's from members that will be required to
-    // re-examine their MO attributes.
+    // We can't cache groups, because we need to be continually writing
+    // and querying them. But we can cache anything we find in the process
+    // to speed up the later other_affect write op, and we can use this
+    // to avoid loading things that aren't groups.
+    // All other changed entries (mo, dmo cleared)
+    let mut other_cache: HashMap<Uuid, EntryTuple> = HashMap::new();
+    let mut group_queue: VecDeque<Uuid> = VecDeque::new();
 
-    // Given the list of UUID that require changes, we attempt to trigger MO updates on groups
-    // first to stabilise the MO graph before we start triggering changes on entries.
-    //
-    // it's important to note that each change itself, especially groups, could trigger there
-    // own recursive updates until the base case - stable, no changes - is reached.
-    //
-    // That means the termination of recursion is ALWAYS to be found in the post_modify
-    // callback, as regardless of initial entry point, all subsequent MO internal operations
-    // are modifies - it is up to post_modify to break cycles!
+    while !group_affect.is_empty() {
+        group_affect.sort();
+        group_affect.dedup();
+        // Prep the write lists
+        let mut pre_candidates = Vec::with_capacity(group_affect.len());
+        let mut candidates = Vec::with_capacity(group_affect.len());
 
-    // Now work on the affected set.
+        // Load the vecdeque with this batch.
+        group_queue.extend(group_affect.drain(0..));
+        debug_assert!(group_affect.is_empty());
 
-    // For each affected uuid
-    affected_uuids.into_iter().try_for_each(|a_uuid| {
-        // search where group + Eq("member": "uuid")
-        let groups = qs
-            .internal_search(
-                au,
-                filter!(f_and!([
-                    f_eq("class", CLASS_GROUP.clone()),
-                    f_eq("member", PartialValue::new_refer_r(a_uuid))
-                ])),
-            )
-            .map_err(|e| {
-                ladmin_error!(au, "internal search failure -> {:?}", e);
+        while let Some(guuid) = group_queue.pop_front() {
+            // load the entry from the db.
+            let pair = qs.internal_search_uuid_writeable(au, &guuid).map_err(|e| {
+                ladmin_error!(au, "Invalid uuid {:?} in memberof group_affect set?", guuid);
                 e
             })?;
-        // get UUID of all groups + all memberof values
-        let mut dir_mo_set: Vec<Value> = groups
-            .iter()
-            .map(|g| {
-                // These are turned into reference values.
-                Value::new_refer(*g.get_uuid())
-            })
-            .collect();
 
-        // No need to dedup this. Sorting could be of questionable
-        // value too though ...
-        dir_mo_set.sort();
-        dir_mo_set.dedup();
-
-        let mut mo_set: Vec<Value> = groups
-            .iter()
-            .map(|g| {
-                // TODO #61: This could be more effecient
-                let mut v = vec![Value::new_refer(*g.get_uuid())];
-                if let Some(mos) = g.get_ava("memberof") {
-                    for mo in mos {
-                        // This is cloning the existing reference values
-                        v.push(mo.clone())
-                    }
+            let (pre, mut tgte) = match pair {
+                Some(p) => p,
+                None => {
+                    ltrace!(au, "Ignoring recycled/tombstone ...");
+                    continue;
                 }
-                v
-            })
-            .flatten()
-            .collect();
+            };
 
-        mo_set.sort();
-        mo_set.dedup();
+            if !tgte.attribute_value_pres("class", &CLASS_GROUP) {
+                // It's not a group, we'll deal with you later. We should NOT
+                // have seen this UUID before, as either we are on the first
+                // iteration OR the checks belowe should have filtered it out.
+                ltrace!(au, "not a group, delaying update to -> {:?}", guuid);
+                debug_assert!(!other_cache.contains_key(&guuid));
+                other_cache.insert(guuid, (pre, tgte));
+                continue;
+            }
 
-        ltrace!(au, "Updating {:?} to be dir mo {:?}", a_uuid, dir_mo_set);
-        ltrace!(au, "Updating {:?} to be mo {:?}", a_uuid, mo_set);
+            ltrace!(au, "=> processing group update -> {:?}", guuid);
 
-        // first add a purged memberof to remove all mo we no longer
-        // support.
-        // TODO #61: Could this be more efficient
-        // TODO #68: Could this affect replication? Or should the CL work out the
-        // true diff of the operation?
-        let mo_purge = vec![
-            Modify::Present("class".to_string(), Value::new_class("memberof")),
-            Modify::Purged("memberof".to_string()),
-            Modify::Purged("directmemberof".to_string()),
-        ];
+            do_memberof(au, qs, &guuid, &mut tgte)?;
 
-        // create modify present memberof all uuids
-        let mod_set: Vec<_> = mo_purge
-            .into_iter()
-            .chain(
-                mo_set
-                    .into_iter()
-                    .map(|mo_uuid| Modify::Present("memberof".to_string(), mo_uuid)),
-            )
-            .chain(
-                dir_mo_set
-                    .into_iter()
-                    .map(|mo_uuid| Modify::Present("directmemberof".to_string(), mo_uuid)),
-            )
-            .collect();
+            // Did we change? Note we don't check if the class changed, only if mo changed.
+            if pre.get_ava_set("memberof") != tgte.get_ava_set("memberof")
+                || pre.get_ava_set("directmemberof") != tgte.get_ava_set("directmemberof")
+            {
+                // Yes we changed - we now must process all our members, as they need to
+                // inherit changes. Some of these members COULD be non groups, but we
+                // handle that in the dbload step.
+                ltrace!(
+                    au,
+                    "{:?} changed, flagging members as groups to change. ",
+                    guuid
+                );
+                if let Some(miter) = tgte.get_ava_as_refuuid("member") {
+                    group_affect.extend(miter.filter(|m| !other_cache.contains_key(m)));
+                };
 
-        // apply to affected uuid
-        let modlist = ModifyList::new_list(mod_set);
+                // push the entries to pre/cand
+                pre_candidates.push(pre);
+                candidates.push(tgte);
+            } else {
+                ltrace!(au, "{:?} stable", guuid);
+            }
+        }
 
-        qs.internal_modify(
-            au,
-            filter!(f_eq("uuid", PartialValue::new_uuid(*a_uuid))),
-            modlist,
-        )
-        .map_err(|e| {
-            ladmin_error!(au, "Internal modification failure -> {:?}", e);
-            e
-        })
-    })
+        debug_assert!(pre_candidates.len() == candidates.len());
+        // Write this stripe.
+        qs.internal_batch_modify(au, pre_candidates, candidates)
+            .map_err(|e| {
+                ladmin_error!(au, "Failed to commit memberof group set {:?}", e);
+                e
+            })?;
+        // Next loop!
+    }
+
+    // ALL GROUP MOS + DMOS ARE NOW STABLE. We can load these into other items directly.
+    let mut pre_candidates = Vec::with_capacity(other_cache.len());
+    let mut candidates = Vec::with_capacity(other_cache.len());
+
+    other_cache
+        .into_iter()
+        .try_for_each(|(auuid, (pre, mut tgte))| {
+            ltrace!(au, "=> processing affected uuid {:?}", auuid);
+            debug_assert!(!tgte.attribute_value_pres("class", &CLASS_GROUP));
+            do_memberof(au, qs, &auuid, &mut tgte)?;
+            // Only write if a change occured.
+            if pre.get_ava_set("memberof") != tgte.get_ava_set("memberof")
+                || pre.get_ava_set("directmemberof") != tgte.get_ava_set("directmemberof")
+            {
+                pre_candidates.push(pre);
+                candidates.push(tgte);
+            }
+            Ok(())
+        })?;
+
+    // Turn the other_cache into a write set.
+    // Write the batch out in a single stripe.
+    qs.internal_batch_modify(au, pre_candidates, candidates)
+    // Done! 🎉
 }
 
 impl Plugin for MemberOf {
@@ -192,20 +216,31 @@ impl Plugin for MemberOf {
         "memberof"
     }
 
-    // TODO #61: We could make this more effecient by limiting change detection to ONLY member/memberof
-    // attrs rather than any attrs.
-
     fn post_create(
         au: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
         cand: &[Entry<EntrySealed, EntryCommitted>],
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        //
-        // Trigger apply_memberof on all because they changed.
-        let cand_refs: Vec<&Entry<_, _>> = cand.iter().map(|e| e).collect();
-        let uuids = affected_uuids(au, cand_refs);
-        apply_memberof(au, qs, uuids)
+        let group_affect = cand
+            .iter()
+            .map(|e| e.get_uuid())
+            .chain(
+                cand.iter()
+                    .filter_map(|e| {
+                        // Is it a group?
+                        if e.attribute_value_pres("class", &CLASS_GROUP) {
+                            e.get_ava_as_refuuid("member")
+                        } else {
+                            None
+                        }
+                    })
+                    .flatten(),
+            )
+            .copied()
+            .collect();
+
+        apply_memberof(au, qs, group_affect)
     }
 
     fn post_modify(
@@ -215,38 +250,36 @@ impl Plugin for MemberOf {
         cand: &[Entry<EntrySealed, EntryCommitted>],
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        // The condition here is critical - ONLY trigger on entries where changes occur!
-        let mut changed: Vec<&Uuid> = pre_cand
+        let group_affect = cand
             .iter()
-            .zip(cand.iter())
-            .filter(|(pre, post)| {
-                // This is the base case to break cycles in recursion!
-                // If it was a group, or will become a group.
-                (post.attribute_value_pres("class", &CLASS_GROUP) ||
-                 pre.attribute_value_pres("class", &CLASS_GROUP))
-                 // And the group has changed ...
-                 && pre != post
-                // Then memberof should be updated!
-            })
-            // Flatten the pre-post tuples. We no longer care if it was
-            // pre-post
-            .flat_map(|(pre, post)| std::iter::once(pre).chain(std::iter::once(post)))
-            .inspect(|e| {
-                ltrace!(au, "group reporting change: {:?}", e);
-            })
-            .filter_map(|e| {
-                // Only groups with member get collected up here.
-                e.get_ava_as_refuuid("member")
-            })
-            // Flatten the uuid reference lists.
-            .flatten()
+            .map(|post| post.get_uuid())
+            .chain(
+                pre_cand
+                    .iter()
+                    .filter_map(|pre| {
+                        if pre.attribute_value_pres("class", &CLASS_GROUP) {
+                            pre.get_ava_as_refuuid("member")
+                        } else {
+                            None
+                        }
+                    })
+                    .flatten(),
+            )
+            .chain(
+                cand.iter()
+                    .filter_map(|post| {
+                        if post.attribute_value_pres("class", &CLASS_GROUP) {
+                            post.get_ava_as_refuuid("member")
+                        } else {
+                            None
+                        }
+                    })
+                    .flatten(),
+            )
+            .copied()
             .collect();
 
-        // Now tidy them up to reduce excesse searches/work.
-        changed.sort();
-        changed.dedup();
-
-        apply_memberof(au, qs, changed)
+        apply_memberof(au, qs, group_affect)
     }
 
     fn pre_delete(
@@ -276,11 +309,34 @@ impl Plugin for MemberOf {
         cand: &[Entry<EntrySealed, EntryCommitted>],
         _ce: &DeleteEvent,
     ) -> Result<(), OperationError> {
-        //
-        // Trigger apply_memberof on all - because they all changed.
-        let cand_refs: Vec<&Entry<_, _>> = cand.iter().map(|e| e).collect();
-        let uuids = affected_uuids(au, cand_refs);
-        apply_memberof(au, qs, uuids)
+        let deleted_uuids: BTreeSet<Uuid> = cand.iter().map(|e| *(e.get_uuid())).collect();
+
+        ltrace!(au, "post delete mo -> ignoring {:?}", deleted_uuids);
+        // Similar condition to create - we only trigger updates on groups's members,
+        // so that they can find they are no longer a mo of what was deleted.
+        let group_affect = cand
+            .iter()
+            .filter_map(|e| {
+                // Is it a group?
+                if e.attribute_value_pres("class", &CLASS_GROUP) {
+                    e.get_ava_as_refuuid("member")
+                } else {
+                    None
+                }
+            })
+            .flatten()
+            .filter_map(|u| {
+                // Ignore any member that was just deleted. This generally occurs
+                // in cycles
+                if deleted_uuids.contains(u) {
+                    None
+                } else {
+                    Some(*u)
+                }
+            })
+            .collect();
+
+        apply_memberof(au, qs, group_affect)
     }
 
     fn verify(

@@ -1802,6 +1802,9 @@ where
     // a list of syntax violations ...
     // If this already exists, we silently drop the event? Is that an
     // acceptable interface?
+    //
+    // TODO: This should take Value not &Value, would save a lot of clones
+    // around the codebase.
     pub fn add_ava(&mut self, attr: &str, value: &Value) {
         self.add_ava_int(attr, value)
     }
