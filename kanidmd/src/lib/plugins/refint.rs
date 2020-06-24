@@ -9,13 +9,14 @@
 // when that is written, as they *both* manipulate and alter entry reference
 // data, so we should be careful not to step on each other.
 
+use std::collections::BTreeSet;
 use std::collections::HashSet as Set;
 
 use crate::audit::AuditScope;
 use crate::entry::{Entry, EntryCommitted, EntrySealed};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::filter::f_eq;
-use crate::modify::{Modify, ModifyInvalid, ModifyList};
+use crate::modify::Modify;
 use crate::plugins::Plugin;
 use crate::schema::SchemaTransaction;
 use crate::server::QueryServerTransaction;
@@ -184,27 +185,24 @@ impl Plugin for ReferentialIntegrity {
 
         ltrace!(au, "refint post_delete filter {:?}", filt);
 
-        // Create a modlist:
-        //    In each, create a "removed" for each attr:uuid pair
-        let modlist: ModifyList<ModifyInvalid> = ModifyList::new_list(
-            // uuids
-            // .iter()
-            cand.iter()
-                .map(|e| e.get_uuid())
-                .map(|u| {
-                    ref_types.values().map(move |r_type| {
-                        Modify::Removed(r_type.name.clone(), PartialValue::new_refer(*u))
-                    })
-                })
-                .flatten()
-                .collect(),
-        );
+        let removed_ids: BTreeSet<_> = cand
+            .iter()
+            .map(|e| PartialValue::new_refer(*e.get_uuid()))
+            .collect();
 
-        ltrace!(au, "refint post_delete modlist {:?}", modlist);
+        let work_set = qs.internal_search_writeable(au, filt)?;
 
-        // Do an internal modify to apply the modlist and filter.
+        let (pre_candidates, candidates) = work_set
+            .into_iter()
+            .map(|(pre, mut post)| {
+                ref_types
+                    .values()
+                    .for_each(|attr| post.remove_avas(attr.name.as_str(), &removed_ids));
+                (pre, post)
+            })
+            .unzip();
 
-        qs.internal_modify(au, filt, modlist)
+        qs.internal_batch_modify(au, pre_candidates, candidates)
     }
 
     fn verify(

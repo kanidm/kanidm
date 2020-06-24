@@ -56,7 +56,7 @@ impl Plugin for Base {
             ltrace!(au, "Base check on entry: {:?}", entry);
 
             // First, ensure we have the 'object', class in the class set.
-            entry.add_ava("class", &CLASS_OBJECT);
+            entry.add_ava("class", CLASS_OBJECT.clone());
 
             ltrace!(au, "Object should now be in entry: {:?}", entry);
 
@@ -66,9 +66,9 @@ impl Plugin for Base {
             match entry.get_ava_set("uuid").map(|s| s.len()) {
                 None => {
                     // Generate
-                    let ava_uuid: Vec<Value> = vec![Value::new_uuid(Uuid::new_v4())];
-                    ltrace!(au, "Setting temporary UUID {:?} to entry", ava_uuid[0]);
-                    entry.set_avas("uuid", ava_uuid);
+                    let ava_uuid = btreeset![Value::new_uuid(Uuid::new_v4())];
+                    ltrace!(au, "Setting temporary UUID {:?} to entry", ava_uuid);
+                    entry.set_ava("uuid", ava_uuid);
                 }
                 Some(1) => {
                     // Do nothing

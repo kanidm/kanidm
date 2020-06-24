@@ -104,7 +104,7 @@ macro_rules! entry_str_to_account {
             .get_ava_single_str("name")
             .map(|s| Value::new_spn_str(s, "example.com"))
             .expect("Failed to munge spn from name!");
-        e.set_avas("spn", vec![spn]);
+        e.set_ava("spn", btreeset![spn]);
 
         let e = unsafe { e.into_sealed_committed() };
 

@@ -100,7 +100,7 @@ impl Plugin for Spn {
                         e
                     })?;
                 ltrace!(au, "plugin_spn: set spn to {:?}", spn);
-                e.set_avas("spn", vec![spn]);
+                e.set_ava("spn", btreeset![spn]);
             }
         }
         Ok(())
@@ -141,7 +141,7 @@ impl Plugin for Spn {
                         e
                     })?;
                 ltrace!(au, "plugin_spn: set spn to {:?}", spn);
-                e.set_avas("spn", vec![spn]);
+                e.set_ava("spn", btreeset![spn]);
             }
         }
         Ok(())

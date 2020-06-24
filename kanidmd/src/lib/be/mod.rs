@@ -1467,8 +1467,8 @@ mod tests {
             assert_eq!(empty_result, Err(OperationError::EmptyRequest));
 
             let mut e: Entry<EntryInit, EntryNew> = Entry::new();
-            e.add_ava("userid", &Value::from("william"));
-            e.add_ava("uuid", &Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
+            e.add_ava("userid", Value::from("william"));
+            e.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
             let e = unsafe { e.into_sealed_new() };
 
             let single_result = be.create(audit, vec![e.clone()]);
@@ -1486,8 +1486,8 @@ mod tests {
             ltrace!(audit, "Simple Search");
 
             let mut e: Entry<EntryInit, EntryNew> = Entry::new();
-            e.add_ava("userid", &Value::from("claire"));
-            e.add_ava("uuid", &Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
+            e.add_ava("userid", Value::from("claire"));
+            e.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
             let e = unsafe { e.into_sealed_new() };
 
             let single_result = be.create(audit, vec![e.clone()]);
@@ -1514,12 +1514,12 @@ mod tests {
             ltrace!(audit, "Simple Modify");
             // First create some entries (3?)
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("userid", &Value::from("william"));
-            e1.add_ava("uuid", &Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
+            e1.add_ava("userid", Value::from("william"));
+            e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava("userid", &Value::from("alice"));
-            e2.add_ava("uuid", &Value::from("4b6228ab-1dbe-42a4-a9f5-f6368222438e"));
+            e2.add_ava("userid", Value::from("alice"));
+            e2.add_ava("uuid", Value::from("4b6228ab-1dbe-42a4-a9f5-f6368222438e"));
 
             let ve1 = unsafe { e1.clone().into_sealed_new() };
             let ve2 = unsafe { e2.clone().into_sealed_new() };
@@ -1551,8 +1551,8 @@ mod tests {
             // Make some changes to r1, r2.
             let pre1 = unsafe { r1.clone().into_sealed_committed() };
             let pre2 = unsafe { r2.clone().into_sealed_committed() };
-            r1.add_ava("desc", &Value::from("modified"));
-            r2.add_ava("desc", &Value::from("modified"));
+            r1.add_ava("desc", Value::from("modified"));
+            r2.add_ava("desc", Value::from("modified"));
 
             // Now ... cheat.
 
@@ -1588,16 +1588,16 @@ mod tests {
 
             // First create some entries (3?)
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("userid", &Value::from("william"));
-            e1.add_ava("uuid", &Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
+            e1.add_ava("userid", Value::from("william"));
+            e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava("userid", &Value::from("alice"));
-            e2.add_ava("uuid", &Value::from("4b6228ab-1dbe-42a4-a9f5-f6368222438e"));
+            e2.add_ava("userid", Value::from("alice"));
+            e2.add_ava("uuid", Value::from("4b6228ab-1dbe-42a4-a9f5-f6368222438e"));
 
             let mut e3: Entry<EntryInit, EntryNew> = Entry::new();
-            e3.add_ava("userid", &Value::from("lucy"));
-            e3.add_ava("uuid", &Value::from("7b23c99d-c06b-4a9a-a958-3afa56383e1d"));
+            e3.add_ava("userid", Value::from("lucy"));
+            e3.add_ava("uuid", Value::from("7b23c99d-c06b-4a9a-a958-3afa56383e1d"));
 
             let ve1 = unsafe { e1.clone().into_sealed_new() };
             let ve2 = unsafe { e2.clone().into_sealed_new() };
@@ -1629,8 +1629,8 @@ mod tests {
             // WARNING: Normally, this isn't possible, but we are pursposefully breaking
             // the state machine rules here!!!!
             let mut e4: Entry<EntryInit, EntryNew> = Entry::new();
-            e4.add_ava("userid", &Value::from("amy"));
-            e4.add_ava("uuid", &Value::from("21d816b5-1f6a-4696-b7c1-6ed06d22ed81"));
+            e4.add_ava("userid", Value::from("amy"));
+            e4.add_ava("uuid", Value::from("21d816b5-1f6a-4696-b7c1-6ed06d22ed81"));
 
             let ve4 = unsafe { e4.clone().into_sealed_committed() };
 
@@ -1658,16 +1658,16 @@ mod tests {
         run_test!(|audit: &mut AuditScope, be: &mut BackendWriteTransaction| {
             // First create some entries (3?)
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("userid", &Value::from("william"));
-            e1.add_ava("uuid", &Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
+            e1.add_ava("userid", Value::from("william"));
+            e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava("userid", &Value::from("alice"));
-            e2.add_ava("uuid", &Value::from("4b6228ab-1dbe-42a4-a9f5-f6368222438e"));
+            e2.add_ava("userid", Value::from("alice"));
+            e2.add_ava("uuid", Value::from("4b6228ab-1dbe-42a4-a9f5-f6368222438e"));
 
             let mut e3: Entry<EntryInit, EntryNew> = Entry::new();
-            e3.add_ava("userid", &Value::from("lucy"));
-            e3.add_ava("uuid", &Value::from("7b23c99d-c06b-4a9a-a958-3afa56383e1d"));
+            e3.add_ava("userid", Value::from("lucy"));
+            e3.add_ava("uuid", Value::from("7b23c99d-c06b-4a9a-a958-3afa56383e1d"));
 
             let ve1 = unsafe { e1.clone().into_sealed_new() };
             let ve2 = unsafe { e2.clone().into_sealed_new() };
@@ -1732,13 +1732,13 @@ mod tests {
         run_test!(|audit: &mut AuditScope, be: &mut BackendWriteTransaction| {
             // Add some test data?
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("name", &Value::new_iname_s("william"));
-            e1.add_ava("uuid", &Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
+            e1.add_ava("name", Value::new_iname_s("william"));
+            e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
             let e1 = unsafe { e1.into_sealed_new() };
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava("name", &Value::new_iname_s("claire"));
-            e2.add_ava("uuid", &Value::from("bd651620-00dd-426b-aaa0-4494f7b7906f"));
+            e2.add_ava("name", Value::new_iname_s("claire"));
+            e2.add_ava("uuid", Value::from("bd651620-00dd-426b-aaa0-4494f7b7906f"));
             let e2 = unsafe { e2.into_sealed_new() };
 
             be.create(audit, vec![e1.clone(), e2.clone()]).unwrap();
@@ -1862,8 +1862,8 @@ mod tests {
             // Test that on entry create, the indexes are made correctly.
             // this is a similar case to reindex.
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("name", &Value::from("william"));
-            e1.add_ava("uuid", &Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
+            e1.add_ava("name", Value::from("william"));
+            e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
             let e1 = unsafe { e1.into_sealed_new() };
 
             let rset = be.create(audit, vec![e1.clone()]).unwrap();
@@ -1949,18 +1949,18 @@ mod tests {
             // Test that on entry create, the indexes are made correctly.
             // this is a similar case to reindex.
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("name", &Value::from("william"));
-            e1.add_ava("uuid", &Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
+            e1.add_ava("name", Value::from("william"));
+            e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
             let e1 = unsafe { e1.into_sealed_new() };
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava("name", &Value::from("claire"));
-            e2.add_ava("uuid", &Value::from("bd651620-00dd-426b-aaa0-4494f7b7906f"));
+            e2.add_ava("name", Value::from("claire"));
+            e2.add_ava("uuid", Value::from("bd651620-00dd-426b-aaa0-4494f7b7906f"));
             let e2 = unsafe { e2.into_sealed_new() };
 
             let mut e3: Entry<EntryInit, EntryNew> = Entry::new();
-            e3.add_ava("userid", &Value::from("lucy"));
-            e3.add_ava("uuid", &Value::from("7b23c99d-c06b-4a9a-a958-3afa56383e1d"));
+            e3.add_ava("userid", Value::from("lucy"));
+            e3.add_ava("uuid", Value::from("7b23c99d-c06b-4a9a-a958-3afa56383e1d"));
             let e3 = unsafe { e3.into_sealed_new() };
 
             let mut rset = be
@@ -2019,21 +2019,21 @@ mod tests {
             // us. For the test to be "accurate" we must add one attr, remove one attr
             // and change one attr.
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("name", &Value::from("william"));
-            e1.add_ava("uuid", &Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
-            e1.add_ava("ta", &Value::from("test"));
+            e1.add_ava("name", Value::from("william"));
+            e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
+            e1.add_ava("ta", Value::from("test"));
             let e1 = unsafe { e1.into_sealed_new() };
 
             let rset = be.create(audit, vec![e1.clone()]).unwrap();
             // Now, alter the new entry.
             let mut ce1 = unsafe { rset[0].clone().into_invalid() };
             // add something.
-            ce1.add_ava("tb", &Value::from("test"));
+            ce1.add_ava("tb", Value::from("test"));
             // remove something.
             ce1.purge_ava("ta");
             // mod something.
             ce1.purge_ava("name");
-            ce1.add_ava("name", &Value::from("claire"));
+            ce1.add_ava("name", Value::from("claire"));
 
             let ce1 = unsafe { ce1.into_sealed_committed() };
 
@@ -2072,8 +2072,8 @@ mod tests {
             // This will be needing to be correct for conflicts when we add
             // replication support!
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("name", &Value::from("william"));
-            e1.add_ava("uuid", &Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
+            e1.add_ava("name", Value::from("william"));
+            e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
             let e1 = unsafe { e1.into_sealed_new() };
 
             let rset = be.create(audit, vec![e1.clone()]).unwrap();
@@ -2081,8 +2081,8 @@ mod tests {
             let mut ce1 = unsafe { rset[0].clone().into_invalid() };
             ce1.purge_ava("name");
             ce1.purge_ava("uuid");
-            ce1.add_ava("name", &Value::from("claire"));
-            ce1.add_ava("uuid", &Value::from("04091a7a-6ce4-42d2-abf5-c2ce244ac9e8"));
+            ce1.add_ava("name", Value::from("claire"));
+            ce1.add_ava("uuid", Value::from("04091a7a-6ce4-42d2-abf5-c2ce244ac9e8"));
             let ce1 = unsafe { ce1.into_sealed_committed() };
 
             be.modify(audit, &rset, &vec![ce1]).unwrap();
@@ -2143,15 +2143,15 @@ mod tests {
 
             // Create a test entry with some indexed / unindexed values.
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("name", &Value::from("william"));
-            e1.add_ava("uuid", &Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
-            e1.add_ava("no-index", &Value::from("william"));
-            e1.add_ava("other-no-index", &Value::from("william"));
+            e1.add_ava("name", Value::from("william"));
+            e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
+            e1.add_ava("no-index", Value::from("william"));
+            e1.add_ava("other-no-index", Value::from("william"));
             let e1 = unsafe { e1.into_sealed_new() };
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava("name", &Value::from("claire"));
-            e2.add_ava("uuid", &Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d2"));
+            e2.add_ava("name", Value::from("claire"));
+            e2.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d2"));
             let e2 = unsafe { e2.into_sealed_new() };
 
             let _rset = be.create(audit, vec![e1.clone(), e2.clone()]).unwrap();

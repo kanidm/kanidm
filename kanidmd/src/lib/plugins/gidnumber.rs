@@ -55,7 +55,7 @@ fn apply_gidnumber<T: Clone>(
 
         let gid_v = Value::new_uint32(gid);
         ladmin_info!(au, "Generated {} for {:?}", gid, u_ref);
-        e.set_avas("gidnumber", vec![gid_v]);
+        e.set_ava("gidnumber", btreeset![gid_v]);
         Ok(())
     } else if let Some(gid) = e.get_ava_single_uint32("gidnumber") {
         // If they provided us with a gid number, ensure it's in a safe range.

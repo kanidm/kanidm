@@ -1452,6 +1452,27 @@ impl<'a> QueryServerWriteTransaction<'a> {
         })
     }
 
+    pub(crate) fn internal_search_writeable(
+        &self,
+        audit: &mut AuditScope,
+        filter: Filter<FilterInvalid>,
+    ) -> Result<Vec<EntryTuple>, OperationError> {
+        lperf_segment!(audit, "server::internal_search_writeable", || {
+            let f_valid = filter
+                .validate(self.get_schema())
+                .map_err(OperationError::SchemaViolation)?;
+            let se = SearchEvent::new_internal(f_valid);
+            self.search(audit, &se).map(|vs| {
+                vs.into_iter()
+                    .map(|e| {
+                        let writeable = e.clone().invalidate(self.cid.clone());
+                        (e, writeable)
+                    })
+                    .collect()
+            })
+        })
+    }
+
     /// Used in conjunction with internal_batch_modify, to get a pre/post
     /// pair, where post is pre-configured with metadata to allow
     /// modificiation before submit back to internal_batch_modify
@@ -3562,9 +3583,9 @@ mod tests {
             }
             }"#,
         );
-        e1.add_ava("uuid", &Value::new_uuids(uuid).unwrap());
-        e1.add_ava("name", &Value::new_iname_s(name));
-        e1.add_ava("displayname", &Value::new_utf8s(name));
+        e1.add_ava("uuid", Value::new_uuids(uuid).unwrap());
+        e1.add_ava("name", Value::new_iname_s(name));
+        e1.add_ava("displayname", Value::new_utf8s(name));
         e1
     }
 
@@ -3577,11 +3598,11 @@ mod tests {
             }
             }"#,
         );
-        e1.add_ava("name", &Value::new_iname_s(name));
-        e1.add_ava("uuid", &Value::new_uuids(uuid).unwrap());
+        e1.add_ava("name", Value::new_iname_s(name));
+        e1.add_ava("uuid", Value::new_uuids(uuid).unwrap());
         members
             .iter()
-            .for_each(|m| e1.add_ava("member", &Value::new_refer_s(m).unwrap()));
+            .for_each(|m| e1.add_ava("member", Value::new_refer_s(m).unwrap()));
         e1
     }
 

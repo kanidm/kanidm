@@ -39,12 +39,12 @@ impl Plugin for Domain {
             {
                 // We always set this, because the DB uuid is authorative.
                 let u = Value::new_uuid(qs.get_domain_uuid());
-                e.set_avas("domain_uuid", vec![u]);
+                e.set_ava("domain_uuid", btreeset![u]);
                 ltrace!(au, "plugin_domain: Applying uuid transform");
                 // We only apply this if one isn't provided.
                 if !e.attribute_pres("domain_name") {
                     let n = Value::new_iname_s("example.com");
-                    e.set_avas("domain_name", vec![n]);
+                    e.set_ava("domain_name", btreeset![n]);
                     ltrace!(au, "plugin_domain: Applying domain_name transform");
                 }
                 ltrace!(au, "{:?}", e);
