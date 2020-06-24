@@ -98,7 +98,7 @@ impl fmt::Display for IndexType {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
+#[derive(Hash, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
 pub enum SyntaxType {
     // We need an insensitive string type too ...
     // We also need to "self host" a syntax type, and index type
@@ -240,7 +240,7 @@ impl std::fmt::Debug for DataValue {
     }
 }
 
-#[derive(Debug, Clone, Eq, Ord, PartialOrd, PartialEq, Deserialize, Serialize)]
+#[derive(Hash, Debug, Clone, Eq, Ord, PartialOrd, PartialEq, Deserialize, Serialize)]
 pub enum PartialValue {
     Utf8(String),
     Iutf8(String),

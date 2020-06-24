@@ -763,6 +763,9 @@ fn test_server_rest_totp_auth_lifecycle() {
                     .unwrap(),
             )
             .expect("Failed to do totp?");
+        // TODO: It's extremely rare, but it's happened ONCE where, the time window
+        // elapsed DURING this test, so there is a minor possibility of this actually
+        // having a false negative. Is it possible to prevent this?
         assert!(rsclient_good
             .auth_password_totp("demo_account", "sohdi3iuHo6mai7noh0a", totp)
             .is_ok());

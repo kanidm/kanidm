@@ -20,7 +20,7 @@ use crate::server::{QueryServerReadTransaction, QueryServerWriteTransaction};
 use crate::value::{PartialValue, Value};
 use kanidm_proto::v1::{ConsistencyError, OperationError};
 
-use std::collections::BTreeSet;
+use std::collections::HashSet;
 use std::collections::HashMap;
 use std::collections::VecDeque;
 use uuid::Uuid;
@@ -250,6 +250,7 @@ impl Plugin for MemberOf {
         cand: &[Entry<EntrySealed, EntryCommitted>],
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
+        // TODO: Limit this to when it's a class, member, mo, dmo change instead.
         let group_affect = cand
             .iter()
             .map(|post| post.get_uuid())
@@ -304,12 +305,22 @@ impl Plugin for MemberOf {
     }
 
     fn post_delete(
-        au: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
-        cand: &[Entry<EntrySealed, EntryCommitted>],
+        _au: &mut AuditScope,
+        _qs: &QueryServerWriteTransaction,
+        _cand: &[Entry<EntrySealed, EntryCommitted>],
         _ce: &DeleteEvent,
     ) -> Result<(), OperationError> {
-        let deleted_uuids: BTreeSet<Uuid> = cand.iter().map(|e| *(e.get_uuid())).collect();
+        /*
+         * 🚨🚨🚨
+         * Right, why is post_delete commented? How the fuck does this bullshit work?
+         * During a delete, we call refint, which will perform a mod to remove all ref
+         * types - due to that recursion, this triggers an inner MO that then does the
+         * stabilisation and commit of the attributes. As a result, we actually don't need
+         * need to do anything here because it's ALREADY DONE.
+         * 🚨🚨🚨
+         */
+        /*
+        let deleted_uuids: HashSet<Uuid> = cand.iter().map(|e| *(e.get_uuid())).collect();
 
         ltrace!(au, "post delete mo -> ignoring {:?}", deleted_uuids);
         // Similar condition to create - we only trigger updates on groups's members,
@@ -337,6 +348,8 @@ impl Plugin for MemberOf {
             .collect();
 
         apply_memberof(au, qs, group_affect)
+        */
+        Ok(())
     }
 
     fn verify(
@@ -374,7 +387,7 @@ impl Plugin for MemberOf {
             };
             // for all direct -> add uuid to map
 
-            let d_groups_set: BTreeSet<&Uuid> =
+            let d_groups_set: HashSet<&Uuid> =
                 direct_memberof.iter().map(|e| e.get_uuid()).collect();
 
             ltrace!(
