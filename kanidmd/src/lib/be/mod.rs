@@ -2,8 +2,8 @@ use std::convert::TryFrom;
 use std::fs;
 
 use crate::value::IndexType;
+use hashbrown::HashSet as Set;
 use std::cell::UnsafeCell;
-use std::collections::HashSet as Set;
 use std::sync::Arc;
 
 use crate::audit::AuditScope;
@@ -1351,8 +1351,8 @@ impl Backend {
 
 #[cfg(test)]
 mod tests {
+    use hashbrown::HashSet as Set;
     use idlset::IDLBitRange;
-    use std::collections::HashSet as Set;
     use std::fs;
     use std::iter::FromIterator;
     use uuid::Uuid;

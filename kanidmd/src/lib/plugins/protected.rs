@@ -8,8 +8,8 @@ use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::modify::Modify;
 use crate::server::QueryServerWriteTransaction;
 use crate::value::{PartialValue, Value};
+use hashbrown::HashSet;
 use kanidm_proto::v1::OperationError;
-use std::collections::HashSet;
 
 pub struct Protected {}
 

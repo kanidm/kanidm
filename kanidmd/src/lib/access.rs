@@ -20,7 +20,7 @@ use concread::cowcell::*;
 use kanidm_proto::v1::Filter as ProtoFilter;
 use kanidm_proto::v1::OperationError;
 use std::collections::BTreeSet;
-// use std::collections::HashSet;
+// use hashbrown::HashSet;
 use std::ops::DerefMut;
 use uuid::Uuid;
 

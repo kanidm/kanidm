@@ -9,8 +9,8 @@
 // when that is written, as they *both* manipulate and alter entry reference
 // data, so we should be careful not to step on each other.
 
+use hashbrown::HashSet as Set;
 use std::collections::BTreeSet;
-use std::collections::HashSet as Set;
 
 use crate::audit::AuditScope;
 use crate::entry::{Entry, EntryCommitted, EntrySealed};

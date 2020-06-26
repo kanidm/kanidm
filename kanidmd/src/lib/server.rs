@@ -4,8 +4,9 @@
 // This is really only used for long lived, high level types that need clone
 // that otherwise can't be cloned. Think Mutex.
 // use actix::prelude::*;
+use hashbrown::HashMap;
 use std::cell::Cell;
-use std::collections::{BTreeSet, HashMap};
+use std::collections::BTreeSet;
 use std::sync::Arc;
 use std::time::Duration;
 use uuid::Uuid;

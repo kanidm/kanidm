@@ -1,6 +1,6 @@
 use crate::plugins::Plugin;
+use hashbrown::HashSet;
 use std::collections::BTreeSet;
-use std::collections::HashSet;
 use uuid::Uuid;
 
 use crate::audit::AuditScope;

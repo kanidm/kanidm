@@ -48,9 +48,9 @@ use crate::be::IdxKey;
 use ldap3_server::simple::{LdapPartialAttribute, LdapSearchResultEntry};
 use std::collections::BTreeSet as Set;
 use std::collections::BTreeSet;
-use std::collections::HashMap as Map;
 // use std::collections::BTreeMap as Map;
-use std::collections::HashSet;
+use hashbrown::HashMap as Map;
+use hashbrown::HashSet;
 use uuid::Uuid;
 
 // use std::convert::TryFrom;
@@ -1972,8 +1972,8 @@ mod tests {
     use crate::entry::{Entry, EntryInit, EntryInvalid, EntryNew};
     use crate::modify::{Modify, ModifyList};
     use crate::value::{IndexType, PartialValue, Value};
+    use hashbrown::HashSet;
     use std::collections::BTreeSet as Set;
-    use std::collections::HashSet;
 
     #[test]
     fn test_entry_basic() {

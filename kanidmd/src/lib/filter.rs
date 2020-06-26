@@ -17,12 +17,12 @@ use crate::server::{
     QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
 };
 use crate::value::{IndexType, PartialValue};
+use hashbrown::HashSet;
 use kanidm_proto::v1::Filter as ProtoFilter;
 use kanidm_proto::v1::{OperationError, SchemaError};
 use ldap3_server::simple::LdapFilter;
 use std::cmp::{Ordering, PartialOrd};
 use std::collections::BTreeSet;
-use std::collections::HashSet;
 use std::iter;
 
 use uuid::Uuid;

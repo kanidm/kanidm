@@ -23,10 +23,10 @@ use crate::entry::{Entry, EntryCommitted, EntryInit, EntryNew, EntrySealed};
 use crate::value::{IndexType, PartialValue, SyntaxType, Value};
 use kanidm_proto::v1::{ConsistencyError, OperationError, SchemaError};
 
+use hashbrown::HashMap;
+use hashbrown::HashSet;
 use std::borrow::Borrow;
 use std::collections::BTreeSet;
-use std::collections::HashMap;
-use std::collections::HashSet;
 use uuid::Uuid;
 
 use concread::cowcell::*;

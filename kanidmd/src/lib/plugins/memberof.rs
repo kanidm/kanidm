@@ -20,8 +20,8 @@ use crate::server::{QueryServerReadTransaction, QueryServerWriteTransaction};
 use crate::value::{PartialValue, Value};
 use kanidm_proto::v1::{ConsistencyError, OperationError};
 
+use hashbrown::HashMap;
 use std::collections::BTreeSet;
-use std::collections::HashMap;
 use uuid::Uuid;
 
 lazy_static! {
