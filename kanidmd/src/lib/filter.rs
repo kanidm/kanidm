@@ -17,12 +17,12 @@ use crate::server::{
     QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
 };
 use crate::value::{IndexType, PartialValue};
+use hashbrown::HashSet;
 use kanidm_proto::v1::Filter as ProtoFilter;
 use kanidm_proto::v1::{OperationError, SchemaError};
 use ldap3_server::simple::LdapFilter;
 use std::cmp::{Ordering, PartialOrd};
 use std::collections::BTreeSet;
-use std::collections::HashSet;
 use std::iter;
 
 use uuid::Uuid;
@@ -59,6 +59,11 @@ pub fn f_or(vs: Vec<FC>) -> FC {
 #[allow(dead_code)]
 pub fn f_and(vs: Vec<FC>) -> FC {
     FC::And(vs)
+}
+
+#[allow(dead_code)]
+pub fn f_inc(vs: Vec<FC>) -> FC {
+    FC::Inclusion(vs)
 }
 
 #[allow(dead_code)]
@@ -107,6 +112,7 @@ pub enum FC<'a> {
     LessThan(&'a str, PartialValue),
     Or(Vec<FC<'a>>),
     And(Vec<FC<'a>>),
+    Inclusion(Vec<FC<'a>>),
     AndNot(Box<FC<'a>>),
     SelfUUID,
     // Not(Box<FC>),
@@ -122,6 +128,7 @@ enum FilterComp {
     LessThan(String, PartialValue),
     Or(Vec<FilterComp>),
     And(Vec<FilterComp>),
+    Inclusion(Vec<FilterComp>),
     AndNot(Box<FilterComp>),
     SelfUUID,
     // Does this mean we can add a true not to the type now?
@@ -141,6 +148,8 @@ pub enum FilterResolved {
     LessThan(String, PartialValue, bool),
     Or(Vec<FilterResolved>),
     And(Vec<FilterResolved>),
+    // All terms must have 1 or more items, or the inclusion is false!
+    Inclusion(Vec<FilterResolved>),
     AndNot(Box<FilterResolved>),
 }
 
@@ -182,6 +191,8 @@ pub enum FilterPlan {
     AndPartial(Vec<FilterPlan>),
     AndPartialThreshold(Vec<FilterPlan>),
     AndNot(Box<FilterPlan>),
+    InclusionInvalid(Vec<FilterPlan>),
+    InclusionIndexed(Vec<FilterPlan>),
 }
 
 /// A `Filter` is a logical set of assertions about the state of an [`Entry`] and
@@ -285,7 +296,7 @@ impl Filter<FilterValid> {
 
     pub fn get_attr_set(&self) -> BTreeSet<&str> {
         // Recurse through the filter getting an attribute set.
-        let mut r_set: BTreeSet<&str> = BTreeSet::new();
+        let mut r_set = BTreeSet::new();
         self.state.inner.get_attr_set(&mut r_set);
         r_set
     }
@@ -473,6 +484,7 @@ impl FilterComp {
             FC::LessThan(a, v) => FilterComp::LessThan(a.to_string(), v),
             FC::Or(v) => FilterComp::Or(v.into_iter().map(FilterComp::new).collect()),
             FC::And(v) => FilterComp::And(v.into_iter().map(FilterComp::new).collect()),
+            FC::Inclusion(v) => FilterComp::Inclusion(v.into_iter().map(FilterComp::new).collect()),
             FC::AndNot(b) => FilterComp::AndNot(Box::new(FilterComp::new(*b))),
             FC::SelfUUID => FilterComp::SelfUUID,
         }
@@ -511,6 +523,7 @@ impl FilterComp {
             }
             FilterComp::Or(vs) => vs.iter().for_each(|f| f.get_attr_set(r_set)),
             FilterComp::And(vs) => vs.iter().for_each(|f| f.get_attr_set(r_set)),
+            FilterComp::Inclusion(vs) => vs.iter().for_each(|f| f.get_attr_set(r_set)),
             FilterComp::AndNot(f) => f.get_attr_set(r_set),
             FilterComp::SelfUUID => {
                 r_set.insert("uuid");
@@ -614,6 +627,17 @@ impl FilterComp {
                     .collect();
                 // Now put the valid filters into the Filter
                 x.map(FilterComp::And)
+            }
+            FilterComp::Inclusion(filters) => {
+                if filters.is_empty() {
+                    return Err(SchemaError::EmptyFilter);
+                };
+                let x: Result<Vec<_>, _> = filters
+                    .iter()
+                    .map(|filter| filter.validate(schema))
+                    .collect();
+                // Now put the valid filters into the Filter
+                x.map(FilterComp::Inclusion)
             }
             FilterComp::AndNot(filter) => {
                 // Just validate the inner
@@ -859,6 +883,11 @@ impl FilterResolved {
                     .map(|v| FilterResolved::from_invalid(v, idxmeta))
                     .collect(),
             ),
+            FilterComp::Inclusion(vs) => FilterResolved::Inclusion(
+                vs.into_iter()
+                    .map(|v| FilterResolved::from_invalid(v, idxmeta))
+                    .collect(),
+            ),
             FilterComp::AndNot(f) => {
                 // TODO: pattern match box here. (AndNot(box f)).
                 // We have to clone f into our space here because pattern matching can
@@ -911,6 +940,13 @@ impl FilterResolved {
                     .collect();
                 fi.map(FilterResolved::And)
             }
+            FilterComp::Inclusion(vs) => {
+                let fi: Option<Vec<_>> = vs
+                    .into_iter()
+                    .map(|f| FilterResolved::resolve_idx(f, ev, idxmeta))
+                    .collect();
+                fi.map(FilterResolved::Inclusion)
+            }
             FilterComp::AndNot(f) => {
                 // TODO: pattern match box here. (AndNot(box f)).
                 // We have to clone f into our space here because pattern matching can
@@ -955,6 +991,13 @@ impl FilterResolved {
                     .collect();
                 fi.map(FilterResolved::And)
             }
+            FilterComp::Inclusion(vs) => {
+                let fi: Option<Vec<_>> = vs
+                    .into_iter()
+                    .map(|f| FilterResolved::resolve_no_idx(f, ev))
+                    .collect();
+                fi.map(FilterResolved::Inclusion)
+            }
             FilterComp::AndNot(f) => {
                 // TODO: pattern match box here. (AndNot(box f)).
                 // We have to clone f into our space here because pattern matching can
@@ -978,6 +1021,26 @@ impl FilterResolved {
     fn optimise(&self) -> Self {
         // Most optimisations only matter around or/and terms.
         match self {
+            FilterResolved::Inclusion(f_list) => {
+                // first, optimise all our inner elements
+                let (f_list_inc, mut f_list_new): (Vec<_>, Vec<_>) = f_list
+                    .iter()
+                    .map(|f_ref| f_ref.optimise())
+                    .partition(|f| match f {
+                        FilterResolved::Inclusion(_) => true,
+                        _ => false,
+                    });
+
+                f_list_inc.into_iter().for_each(|fc| {
+                    if let FilterResolved::Inclusion(mut l) = fc {
+                        f_list_new.append(&mut l)
+                    }
+                });
+                // finally, optimise this list by sorting.
+                f_list_new.sort_unstable();
+                f_list_new.dedup();
+                FilterResolved::Inclusion(f_list_new)
+            }
             FilterResolved::And(f_list) => {
                 // first, optimise all our inner elements
                 let (f_list_and, mut f_list_new): (Vec<_>, Vec<_>) = f_list

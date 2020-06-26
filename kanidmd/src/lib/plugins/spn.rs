@@ -100,7 +100,7 @@ impl Plugin for Spn {
                         e
                     })?;
                 ltrace!(au, "plugin_spn: set spn to {:?}", spn);
-                e.set_avas("spn", vec![spn]);
+                e.set_ava("spn", btreeset![spn]);
             }
         }
         Ok(())
@@ -141,7 +141,7 @@ impl Plugin for Spn {
                         e
                     })?;
                 ltrace!(au, "plugin_spn: set spn to {:?}", spn);
-                e.set_avas("spn", vec![spn]);
+                e.set_ava("spn", btreeset![spn]);
             }
         }
         Ok(())
@@ -255,8 +255,6 @@ impl Plugin for Spn {
                         );
                         debug_assert!(false);
                         r.push(Err(ConsistencyError::InvalidSPN(e.get_id())))
-                    } else {
-                        ltrace!(au, "spn is ok! 👍");
                     }
                 }
                 None => {

@@ -19,9 +19,8 @@
 use concread::cowcell::*;
 use kanidm_proto::v1::Filter as ProtoFilter;
 use kanidm_proto::v1::OperationError;
-// use std::collections::BTreeMap;
 use std::collections::BTreeSet;
-// use std::collections::HashSet;
+// use hashbrown::HashSet;
 use std::ops::DerefMut;
 use uuid::Uuid;
 
@@ -355,7 +354,6 @@ impl AccessControlProfile {
 
 #[derive(Clone)]
 struct AccessControlsInner {
-    // acps_search: BTreeMap<Uuid, AccessControlSearch>,
     acps_search: Vec<AccessControlSearch>,
     acps_create: Vec<AccessControlCreate>,
     acps_modify: Vec<AccessControlModify>,
@@ -367,7 +365,6 @@ pub struct AccessControls {
 }
 
 pub trait AccessControlsTransaction {
-    // fn get_search(&self) -> &BTreeMap<Uuid, AccessControlSearch>;
     fn get_search(&self) -> &Vec<AccessControlSearch>;
     fn get_create(&self) -> &Vec<AccessControlCreate>;
     fn get_modify(&self) -> &Vec<AccessControlModify>;
@@ -1244,7 +1241,6 @@ impl<'a> AccessControlsWriteTransaction<'a> {
 }
 
 impl<'a> AccessControlsTransaction for AccessControlsWriteTransaction<'a> {
-    // fn get_search(&self) -> &BTreeMap<Uuid, AccessControlSearch> {
     fn get_search(&self) -> &Vec<AccessControlSearch> {
         &self.inner.acps_search
     }
@@ -1271,7 +1267,6 @@ pub struct AccessControlsReadTransaction {
 }
 
 impl AccessControlsTransaction for AccessControlsReadTransaction {
-    // fn get_search(&self) -> &BTreeMap<Uuid, AccessControlSearch> {
     fn get_search(&self) -> &Vec<AccessControlSearch> {
         &self.inner.acps_search
     }

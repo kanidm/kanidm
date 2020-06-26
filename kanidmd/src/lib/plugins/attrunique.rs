@@ -26,48 +26,39 @@ fn get_cand_attr_set<VALID, STATE>(
 ) -> Result<BTreeMap<PartialValue, PartialValue>, OperationError> {
     let mut cand_attr: BTreeMap<PartialValue, PartialValue> = BTreeMap::new();
 
-    for e in cand.iter() {
-        let uuid = match e.get_ava_single("uuid") {
-            Some(v) => v.to_partialvalue(),
-            None => {
-                return Err(OperationError::InvalidEntryState);
-            }
-        };
-        // Get the value and uuid
-        //for each value in the ava.
-        let mut values: Vec<PartialValue> = match e.get_ava(attr) {
-            Some(vs) => {
-                // We have values, map them.
-                vs.map(|v| v.to_partialvalue()).collect()
-            }
-            None => {
-                // No values, so empty set.
-                Vec::new()
-            }
-        };
-
-        for v in values.drain(..) {
-            match cand_attr.insert(v, uuid.clone()) {
-                // Didn't exist, move on.
-                None => {}
-                // The duplicate/rejected value moved out of the tree
-                Some(vr) => {
-                    ladmin_error!(
-                        au,
-                        "ava already exists -> {:?}: {:?} on {:?}",
-                        attr,
-                        vr,
-                        uuid
-                    );
-                    return Err(OperationError::Plugin(PluginError::AttrUnique(
-                        "ava already exists".to_string(),
-                    )));
+    cand.iter()
+        .try_for_each(|e| {
+            let uuid = match e.get_ava_single("uuid") {
+                Some(v) => v.to_partialvalue(),
+                None => {
+                    return Err(OperationError::InvalidEntryState);
                 }
-            }
-        }
-    }
-
-    Ok(cand_attr)
+            };
+            // Get the value and uuid
+            //for each value in the ava.
+            e.get_ava(attr)
+                .map(|vs| {
+                    vs.map(|v| v.to_partialvalue()).try_for_each(|v| {
+                        match cand_attr.insert(v, uuid.clone()) {
+                            None => Ok(()),
+                            Some(vr) => {
+                                ladmin_error!(
+                                    au,
+                                    "ava already exists -> {:?}: {:?} on {:?}",
+                                    attr,
+                                    vr,
+                                    uuid
+                                );
+                                Err(OperationError::Plugin(PluginError::AttrUnique(
+                                    "ava already exists".to_string(),
+                                )))
+                            }
+                        }
+                    })
+                })
+                .unwrap_or(Ok(()))
+        })
+        .map(|()| cand_attr)
 }
 
 fn enforce_unique<STATE>(

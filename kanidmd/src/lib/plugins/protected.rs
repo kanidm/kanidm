@@ -8,8 +8,8 @@ use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::modify::Modify;
 use crate::server::QueryServerWriteTransaction;
 use crate::value::{PartialValue, Value};
+use hashbrown::HashSet;
 use kanidm_proto::v1::OperationError;
-use std::collections::HashSet;
 
 pub struct Protected {}
 
@@ -19,7 +19,7 @@ pub struct Protected {}
 
 lazy_static! {
     static ref ALLOWED_ATTRS: HashSet<&'static str> = {
-        let mut m = HashSet::new();
+        let mut m = HashSet::with_capacity(8);
         // Allow modification of some schema class types to allow local extension
         // of schema types.
         m.insert("must");

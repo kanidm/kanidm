@@ -13,178 +13,195 @@
 use crate::audit::AuditScope;
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntrySealed};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
-use crate::modify::{Modify, ModifyList};
+// use crate::modify::{Modify, ModifyList};
 use crate::plugins::Plugin;
 use crate::server::QueryServerTransaction;
 use crate::server::{QueryServerReadTransaction, QueryServerWriteTransaction};
 use crate::value::{PartialValue, Value};
 use kanidm_proto::v1::{ConsistencyError, OperationError};
 
+use hashbrown::HashMap;
 use std::collections::BTreeSet;
 use uuid::Uuid;
 
 lazy_static! {
     static ref CLASS_GROUP: PartialValue = PartialValue::new_class("group");
+    static ref CLASS_MEMBEROF: Value = Value::new_class("memberof");
 }
 
 pub struct MemberOf;
 
-fn affected_uuids<'a, STATE>(
+type EntrySealedCommitted = Entry<EntrySealed, EntryCommitted>;
+type EntryInvalidCommitted = Entry<EntryInvalid, EntryCommitted>;
+type EntryTuple = (EntrySealedCommitted, EntryInvalidCommitted);
+
+fn do_memberof(
     au: &mut AuditScope,
-    changed: Vec<&'a Entry<EntrySealed, STATE>>,
-) -> Vec<&'a Uuid>
-where
-    STATE: std::fmt::Debug,
-{
-    // From the list of groups which were changed in this operation:
-    // let changed_groups: Vec<_> = changed
-    let mut affected_uuids: Vec<&Uuid> = changed
-        .into_iter()
-        .filter(|e| e.attribute_value_pres("class", &CLASS_GROUP))
-        /*
-            .collect();
-        ltrace!(au, "groups reporting change: {:?}", changed_groups);
-        // Now, build a map of all UUID's that will require updates as a result of this change
-        let mut affected_uuids: Vec<&Uuid> = changed_groups
-            .iter()
-            */
-        .filter_map(|e| {
-            // Only groups with member get collected up here.
-            e.get_ava("member")
-        })
-        // Flatten the member's to the list.
-        .flatten()
-        .filter_map(|uv| uv.to_ref_uuid())
-        .collect();
+    qs: &QueryServerWriteTransaction,
+    uuid: &Uuid,
+    tgte: &mut EntryInvalidCommitted,
+) -> Result<(), OperationError> {
+    //  search where we are member
+    let groups = qs
+        .internal_search(
+            au,
+            filter!(f_and!([
+                f_eq("class", CLASS_GROUP.clone()),
+                f_eq("member", PartialValue::new_refer(*uuid))
+            ])),
+        )
+        .map_err(|e| {
+            ladmin_error!(au, "internal search failure -> {:?}", e);
+            e
+        })?;
 
-    ltrace!(au, "uuids reporting change: {:?}", affected_uuids);
+    // Ensure we are MO capable.
+    tgte.add_ava("class", CLASS_MEMBEROF.clone());
+    // Clear the dmo + mos, we will recreate them now.
+    // This is how we handle deletes/etc.
+    tgte.pop_ava("memberof");
+    tgte.pop_ava("directmemberof");
+    // Add all the direct mo's and mos.
+    groups.iter().for_each(|g| {
+        // TODO: Change add_ava to remove this alloc/clone.
+        let dmo = Value::new_refer(*g.get_uuid());
+        tgte.add_ava("directmemberof", dmo.clone());
+        tgte.add_ava("memberof", dmo);
 
-    // IDEA: promote groups to head of the affected_uuids set!
-    //
-    // This isn't worth doing - it's only used in create/delete, it would not
-    // really make a large performance difference. Better to target improvements
-    // in the apply_memberof fn.
-    affected_uuids.sort();
-    // Remove dups
-    affected_uuids.dedup();
+        if let Some(miter) = g.get_ava("memberof") {
+            miter.for_each(|mo| {
+                tgte.add_ava("memberof", mo.clone());
+            })
+        };
+    });
 
-    affected_uuids
+    ltrace!(
+        au,
+        "Updating {:?} to be dir mo {:?}",
+        uuid,
+        tgte.get_ava_set("directmemberof")
+    );
+    ltrace!(
+        au,
+        "Updating {:?} to be mo {:?}",
+        uuid,
+        tgte.get_ava_set("memberof")
+    );
+
+    Ok(())
 }
 
+#[allow(clippy::cognitive_complexity)]
 fn apply_memberof(
     au: &mut AuditScope,
     qs: &QueryServerWriteTransaction,
-    affected_uuids: Vec<&Uuid>,
+    // TODO: Experiment with HashSet/BTreeSet here instead of vec.
+    // May require https://github.com/rust-lang/rust/issues/62924 to allow poping
+    mut group_affect: Vec<Uuid>,
 ) -> Result<(), OperationError> {
     ltrace!(au, " => entering apply_memberof");
-    ltrace!(au, "affected uuids -> {:?}", affected_uuids);
+    ltrace!(au, " => initial group_affect {:?}", group_affect);
 
-    // Apply member takes a list of changes. We then filter that to only the changed groups
-    // and using this, we determine a list of UUID's from members that will be required to
-    // re-examine their MO attributes.
+    // We can't cache groups, because we need to be continually writing
+    // and querying them. But we can cache anything we find in the process
+    // to speed up the later other_affect write op, and we can use this
+    // to avoid loading things that aren't groups.
+    // All other changed entries (mo, dmo cleared)
+    let mut other_cache: HashMap<Uuid, EntryTuple> = HashMap::with_capacity(group_affect.len() * 2);
+    while !group_affect.is_empty() {
+        group_affect.sort();
+        group_affect.dedup();
+        // Prep the write lists
+        let mut pre_candidates = Vec::with_capacity(group_affect.len());
+        let mut candidates = Vec::with_capacity(group_affect.len());
 
-    // Given the list of UUID that require changes, we attempt to trigger MO updates on groups
-    // first to stabilise the MO graph before we start triggering changes on entries.
-    //
-    // it's important to note that each change itself, especially groups, could trigger there
-    // own recursive updates until the base case - stable, no changes - is reached.
-    //
-    // That means the termination of recursion is ALWAYS to be found in the post_modify
-    // callback, as regardless of initial entry point, all subsequent MO internal operations
-    // are modifies - it is up to post_modify to break cycles!
+        // Ignore recycled/tombstones
+        let filt = filter!(FC::Or(
+            group_affect
+                .drain(0..)
+                .map(|u| f_eq("uuid", PartialValue::new_uuid(u)))
+                .collect()
+        ));
 
-    // Now work on the affected set.
+        let mut work_set = qs.internal_search_writeable(au, filt)?;
+        // Load the vecdeque with this batch.
 
-    // For each affected uuid
-    affected_uuids.into_iter().try_for_each(|a_uuid| {
-        // search where group + Eq("member": "uuid")
-        let groups = qs
-            .internal_search(
-                au,
-                filter!(f_and!([
-                    f_eq("class", CLASS_GROUP.clone()),
-                    f_eq("member", PartialValue::new_refer_r(a_uuid))
-                ])),
-            )
-            .map_err(|e| {
-                ladmin_error!(au, "internal search failure -> {:?}", e);
-                e
-            })?;
-        // get UUID of all groups + all memberof values
-        let mut dir_mo_set: Vec<Value> = groups
-            .iter()
-            .map(|g| {
-                // These are turned into reference values.
-                Value::new_refer(*g.get_uuid())
-            })
-            .collect();
+        while let Some((pre, mut tgte)) = work_set.pop() {
+            let guuid = *pre.get_uuid();
+            // load the entry from the db.
+            if !tgte.attribute_value_pres("class", &CLASS_GROUP) {
+                // It's not a group, we'll deal with you later. We should NOT
+                // have seen this UUID before, as either we are on the first
+                // iteration OR the checks belowe should have filtered it out.
+                ltrace!(au, "not a group, delaying update to -> {:?}", guuid);
+                other_cache.insert(guuid, (pre, tgte));
+                continue;
+            }
 
-        // No need to dedup this. Sorting could be of questionable
-        // value too though ...
-        dir_mo_set.sort();
-        dir_mo_set.dedup();
+            ltrace!(au, "=> processing group update -> {:?}", guuid);
 
-        let mut mo_set: Vec<Value> = groups
-            .iter()
-            .map(|g| {
-                // TODO #61: This could be more effecient
-                let mut v = vec![Value::new_refer(*g.get_uuid())];
-                if let Some(mos) = g.get_ava("memberof") {
-                    for mo in mos {
-                        // This is cloning the existing reference values
-                        v.push(mo.clone())
-                    }
-                }
-                v
-            })
-            .flatten()
-            .collect();
+            do_memberof(au, qs, &guuid, &mut tgte)?;
 
-        mo_set.sort();
-        mo_set.dedup();
+            // Did we change? Note we don't check if the class changed, only if mo changed.
+            if pre.get_ava_set("memberof") != tgte.get_ava_set("memberof")
+                || pre.get_ava_set("directmemberof") != tgte.get_ava_set("directmemberof")
+            {
+                // Yes we changed - we now must process all our members, as they need to
+                // inherit changes. Some of these members COULD be non groups, but we
+                // handle that in the dbload step.
+                ltrace!(
+                    au,
+                    "{:?} changed, flagging members as groups to change. ",
+                    guuid
+                );
+                if let Some(miter) = tgte.get_ava_as_refuuid("member") {
+                    group_affect.extend(miter.filter(|m| !other_cache.contains_key(m)));
+                };
 
-        ltrace!(au, "Updating {:?} to be dir mo {:?}", a_uuid, dir_mo_set);
-        ltrace!(au, "Updating {:?} to be mo {:?}", a_uuid, mo_set);
+                // push the entries to pre/cand
+                pre_candidates.push(pre);
+                candidates.push(tgte);
+            } else {
+                ltrace!(au, "{:?} stable", guuid);
+            }
+        }
 
-        // first add a purged memberof to remove all mo we no longer
-        // support.
-        // TODO #61: Could this be more efficient
-        // TODO #68: Could this affect replication? Or should the CL work out the
-        // true diff of the operation?
-        let mo_purge = vec![
-            Modify::Present("class".to_string(), Value::new_class("memberof")),
-            Modify::Purged("memberof".to_string()),
-            Modify::Purged("directmemberof".to_string()),
-        ];
+        debug_assert!(pre_candidates.len() == candidates.len());
+        // Write this stripe if populated.
+        if !pre_candidates.is_empty() {
+            qs.internal_batch_modify(au, pre_candidates, candidates)
+                .map_err(|e| {
+                    ladmin_error!(au, "Failed to commit memberof group set {:?}", e);
+                    e
+                })?;
+        }
+        // Next loop!
+    }
 
-        // create modify present memberof all uuids
-        let mod_set: Vec<_> = mo_purge
-            .into_iter()
-            .chain(
-                mo_set
-                    .into_iter()
-                    .map(|mo_uuid| Modify::Present("memberof".to_string(), mo_uuid)),
-            )
-            .chain(
-                dir_mo_set
-                    .into_iter()
-                    .map(|mo_uuid| Modify::Present("directmemberof".to_string(), mo_uuid)),
-            )
-            .collect();
+    // ALL GROUP MOS + DMOS ARE NOW STABLE. We can load these into other items directly.
+    let mut pre_candidates = Vec::with_capacity(other_cache.len());
+    let mut candidates = Vec::with_capacity(other_cache.len());
 
-        // apply to affected uuid
-        let modlist = ModifyList::new_list(mod_set);
+    other_cache
+        .into_iter()
+        .try_for_each(|(auuid, (pre, mut tgte))| {
+            ltrace!(au, "=> processing affected uuid {:?}", auuid);
+            debug_assert!(!tgte.attribute_value_pres("class", &CLASS_GROUP));
+            do_memberof(au, qs, &auuid, &mut tgte)?;
+            // Only write if a change occured.
+            if pre.get_ava_set("memberof") != tgte.get_ava_set("memberof")
+                || pre.get_ava_set("directmemberof") != tgte.get_ava_set("directmemberof")
+            {
+                pre_candidates.push(pre);
+                candidates.push(tgte);
+            }
+            Ok(())
+        })?;
 
-        qs.internal_modify(
-            au,
-            filter!(f_eq("uuid", PartialValue::new_uuid(*a_uuid))),
-            modlist,
-        )
-        .map_err(|e| {
-            ladmin_error!(au, "Internal modification failure -> {:?}", e);
-            e
-        })
-    })
+    // Turn the other_cache into a write set.
+    // Write the batch out in a single stripe.
+    qs.internal_batch_modify(au, pre_candidates, candidates)
+    // Done! 🎉
 }
 
 impl Plugin for MemberOf {
@@ -192,20 +209,31 @@ impl Plugin for MemberOf {
         "memberof"
     }
 
-    // TODO #61: We could make this more effecient by limiting change detection to ONLY member/memberof
-    // attrs rather than any attrs.
-
     fn post_create(
         au: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
         cand: &[Entry<EntrySealed, EntryCommitted>],
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        //
-        // Trigger apply_memberof on all because they changed.
-        let cand_refs: Vec<&Entry<_, _>> = cand.iter().map(|e| e).collect();
-        let uuids = affected_uuids(au, cand_refs);
-        apply_memberof(au, qs, uuids)
+        let group_affect = cand
+            .iter()
+            .map(|e| e.get_uuid())
+            .chain(
+                cand.iter()
+                    .filter_map(|e| {
+                        // Is it a group?
+                        if e.attribute_value_pres("class", &CLASS_GROUP) {
+                            e.get_ava_as_refuuid("member")
+                        } else {
+                            None
+                        }
+                    })
+                    .flatten(),
+            )
+            .copied()
+            .collect();
+
+        apply_memberof(au, qs, group_affect)
     }
 
     fn post_modify(
@@ -215,40 +243,37 @@ impl Plugin for MemberOf {
         cand: &[Entry<EntrySealed, EntryCommitted>],
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        // The condition here is critical - ONLY trigger on entries where changes occur!
-        let mut changed: Vec<&Uuid> = pre_cand
+        // TODO: Limit this to when it's a class, member, mo, dmo change instead.
+        let group_affect = cand
             .iter()
-            .zip(cand.iter())
-            .filter(|(pre, post)| {
-                // This is the base case to break cycles in recursion!
-                (
-                        // If it was a group, or will become a group.
-                        post.attribute_value_pres("class", &CLASS_GROUP)
-                            || pre.attribute_value_pres("class", &CLASS_GROUP)
-                    )
-                    // And the group has changed ...
-                    && pre != post
-                // Then memberof should be updated!
-            })
-            // Flatten the pre-post tuples. We no longer care if it was
-            // pre-post
-            .flat_map(|(pre, post)| vec![pre, post])
-            .inspect(|e| {
-                ltrace!(au, "group reporting change: {:?}", e);
-            })
-            .filter_map(|e| {
-                // Only groups with member get collected up here.
-                e.get_ava_as_refuuid("member")
-            })
-            // Flatten the uuid reference lists.
-            .flatten()
+            .map(|post| post.get_uuid())
+            .chain(
+                pre_cand
+                    .iter()
+                    .filter_map(|pre| {
+                        if pre.attribute_value_pres("class", &CLASS_GROUP) {
+                            pre.get_ava_as_refuuid("member")
+                        } else {
+                            None
+                        }
+                    })
+                    .flatten(),
+            )
+            .chain(
+                cand.iter()
+                    .filter_map(|post| {
+                        if post.attribute_value_pres("class", &CLASS_GROUP) {
+                            post.get_ava_as_refuuid("member")
+                        } else {
+                            None
+                        }
+                    })
+                    .flatten(),
+            )
+            .copied()
             .collect();
 
-        // Now tidy them up to reduce excesse searches/work.
-        changed.sort();
-        changed.dedup();
-
-        apply_memberof(au, qs, changed)
+        apply_memberof(au, qs, group_affect)
     }
 
     fn pre_delete(
@@ -265,15 +290,8 @@ impl Plugin for MemberOf {
         // As a result, on restore, the graph of where it was a member
         // would have to be rebuilt.
         //
-        // AN interesting possibility could be NOT to purge MO on delete
-        // and use that to rebuild the forward graph of member -> item, but
-        // due to the nature of MO, we do not know the difference between
-        // direct and indirect membership, meaning we would be safer
-        // to not do this.
-
         // NOTE: DO NOT purge directmemberof - we use that to restore memberships
         // in recycle revive!
-
         cand.iter_mut().for_each(|e| e.purge_ava("memberof"));
         Ok(())
     }
@@ -284,11 +302,23 @@ impl Plugin for MemberOf {
         cand: &[Entry<EntrySealed, EntryCommitted>],
         _ce: &DeleteEvent,
     ) -> Result<(), OperationError> {
-        //
-        // Trigger apply_memberof on all - because they all changed.
-        let cand_refs: Vec<&Entry<_, _>> = cand.iter().map(|e| e).collect();
-        let uuids = affected_uuids(au, cand_refs);
-        apply_memberof(au, qs, uuids)
+        // Similar condition to create - we only trigger updates on groups's members,
+        // so that they can find they are no longer a mo of what was deleted.
+        let group_affect = cand
+            .iter()
+            .filter_map(|e| {
+                // Is it a group?
+                if e.attribute_value_pres("class", &CLASS_GROUP) {
+                    e.get_ava_as_refuuid("member")
+                } else {
+                    None
+                }
+            })
+            .flatten()
+            .copied()
+            .collect();
+
+        apply_memberof(au, qs, group_affect)
     }
 
     fn verify(
@@ -309,9 +339,6 @@ impl Plugin for MemberOf {
 
         // for each entry in the DB (live).
         for e in all_cand {
-            // create new map
-            // let mo_set: BTreeMap<String, ()> = BTreeMap::new();
-            // searcch direct memberships of live groups.
             let filt_in = filter!(f_and!([
                 f_eq("class", PartialValue::new_class("group")),
                 f_eq("member", PartialValue::new_refer(*e.get_uuid()))
@@ -326,8 +353,16 @@ impl Plugin for MemberOf {
             };
             // for all direct -> add uuid to map
 
-            let d_groups_set: BTreeSet<&Uuid> =
-                direct_memberof.iter().map(|e| e.get_uuid()).collect();
+            let d_groups_set: BTreeSet<_> = direct_memberof
+                .iter()
+                .map(|e| Value::new_refer(*e.get_uuid()))
+                .collect();
+
+            let d_groups_set = if d_groups_set.is_empty() {
+                None
+            } else {
+                Some(d_groups_set)
+            };
 
             ltrace!(
                 au,
@@ -336,40 +371,32 @@ impl Plugin for MemberOf {
                 d_groups_set
             );
 
-            let dmos: Vec<&Uuid> = match e.get_ava_as_refuuid("directmemberof") {
-                // Avoid a reference issue to return empty set
-                Some(dmos) => dmos.collect(),
-                // No memberof, return empty set.
-                None => Vec::new(),
-            };
-
-            ltrace!(au, "Direct Member Of Set {:?} -> {:?}", e.get_uuid(), dmos);
-
-            if dmos.len() != direct_memberof.len() {
-                ladmin_error!(
-                    au,
-                    "MemberOfInvalid directmemberof set and DMO search set differ in size: {}",
-                    e
-                );
-                r.push(Err(ConsistencyError::MemberOfInvalid(e.get_id())));
-                debug_assert!(false);
-                // Next entry
-                continue;
-            };
-
-            for mo_uuid in dmos {
-                if !d_groups_set.contains(mo_uuid) {
+            match (e.get_ava_set("directmemberof"), d_groups_set) {
+                (Some(edmos), Some(dmos)) => {
+                    let diff: Vec<_> = dmos.symmetric_difference(edmos).collect();
+                    if !diff.is_empty() {
+                        ladmin_error!(
+                            au,
+                            "MemberOfInvalid: Entry {}, DMO has inconsistencies -> {:?}",
+                            e,
+                            diff
+                        );
+                        r.push(Err(ConsistencyError::MemberOfInvalid(e.get_id())));
+                    }
+                }
+                (None, None) => {
+                    // Ok
+                }
+                _ => {
                     ladmin_error!(
                         au,
-                        "MemberOfInvalid: Entry {}, MO {:?} not in direct groups",
-                        e,
-                        mo_uuid
+                        "MemberOfInvalid directmemberof set and DMO search set differ in size: {}",
+                        e.get_uuid()
                     );
                     r.push(Err(ConsistencyError::MemberOfInvalid(e.get_id())));
-                    // Next entry
-                    continue;
                 }
             }
+
             // Could check all dmos in mos?
 
             /* To check nested! */
@@ -507,7 +534,7 @@ mod tests {
 
         let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
-        ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
+        ea.add_ava("member", Value::new_refer_s(&UUID_B).unwrap());
 
         let preload = Vec::new();
         let create = vec![ea, eb];
@@ -537,8 +564,8 @@ mod tests {
 
         let ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
-        ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
-        eb.add_ava("member", &Value::new_refer_s(&UUID_C).unwrap());
+        ea.add_ava("member", Value::new_refer_s(&UUID_B).unwrap());
+        eb.add_ava("member", Value::new_refer_s(&UUID_C).unwrap());
 
         let preload = Vec::new();
         let create = vec![ea, eb, ec];
@@ -588,9 +615,9 @@ mod tests {
 
         let mut ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
-        ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
-        eb.add_ava("member", &Value::new_refer_s(&UUID_C).unwrap());
-        ec.add_ava("member", &Value::new_refer_s(&UUID_A).unwrap());
+        ea.add_ava("member", Value::new_refer_s(&UUID_B).unwrap());
+        eb.add_ava("member", Value::new_refer_s(&UUID_C).unwrap());
+        ec.add_ava("member", Value::new_refer_s(&UUID_A).unwrap());
 
         let preload = Vec::new();
         let create = vec![ea, eb, ec];
@@ -642,13 +669,13 @@ mod tests {
 
         let mut ed: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(ED);
 
-        ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
-        eb.add_ava("member", &Value::new_refer_s(&UUID_C).unwrap());
+        ea.add_ava("member", Value::new_refer_s(&UUID_B).unwrap());
+        eb.add_ava("member", Value::new_refer_s(&UUID_C).unwrap());
 
-        ec.add_ava("member", &Value::new_refer_s(&UUID_A).unwrap());
-        ec.add_ava("member", &Value::new_refer_s(&UUID_D).unwrap());
+        ec.add_ava("member", Value::new_refer_s(&UUID_A).unwrap());
+        ec.add_ava("member", Value::new_refer_s(&UUID_D).unwrap());
 
-        ed.add_ava("member", &Value::new_refer_s(&UUID_A).unwrap());
+        ed.add_ava("member", Value::new_refer_s(&UUID_A).unwrap());
 
         let preload = Vec::new();
         let create = vec![ea, eb, ec, ed];
@@ -745,7 +772,7 @@ mod tests {
 
         let ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
-        eb.add_ava("member", &Value::new_refer_s(&UUID_C).unwrap());
+        eb.add_ava("member", Value::new_refer_s(&UUID_C).unwrap());
 
         let preload = vec![ea, eb, ec];
         run_modify_test!(
@@ -798,7 +825,7 @@ mod tests {
 
         let ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
-        ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
+        ea.add_ava("member", Value::new_refer_s(&UUID_B).unwrap());
 
         let preload = vec![ea, eb, ec];
         run_modify_test!(
@@ -853,8 +880,8 @@ mod tests {
 
         let ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
-        ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
-        eb.add_ava("member", &Value::new_refer_s(&UUID_C).unwrap());
+        ea.add_ava("member", Value::new_refer_s(&UUID_B).unwrap());
+        eb.add_ava("member", Value::new_refer_s(&UUID_C).unwrap());
 
         let preload = vec![ea, eb, ec];
         run_modify_test!(
@@ -915,9 +942,9 @@ mod tests {
 
         let ed: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(ED);
 
-        ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
-        eb.add_ava("member", &Value::new_refer_s(&UUID_C).unwrap());
-        ec.add_ava("member", &Value::new_refer_s(&UUID_D).unwrap());
+        ea.add_ava("member", Value::new_refer_s(&UUID_B).unwrap());
+        eb.add_ava("member", Value::new_refer_s(&UUID_C).unwrap());
+        ec.add_ava("member", Value::new_refer_s(&UUID_D).unwrap());
 
         let preload = vec![ea, eb, ec, ed];
         run_modify_test!(
@@ -987,8 +1014,8 @@ mod tests {
 
         let mut eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
-        ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
-        eb.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
+        ea.add_ava("member", Value::new_refer_s(&UUID_B).unwrap());
+        eb.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
 
         let preload = vec![ea, eb];
         run_modify_test!(
@@ -1023,10 +1050,10 @@ mod tests {
 
         let mut ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
-        ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
-        eb.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
-        eb.add_ava("member", &Value::new_refer_s(&UUID_C).unwrap());
-        ec.add_ava("memberof", &Value::new_refer_s(&UUID_B).unwrap());
+        ea.add_ava("member", Value::new_refer_s(&UUID_B).unwrap());
+        eb.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
+        eb.add_ava("member", Value::new_refer_s(&UUID_C).unwrap());
+        ec.add_ava("memberof", Value::new_refer_s(&UUID_B).unwrap());
 
         let preload = vec![ea, eb, ec];
         run_modify_test!(
@@ -1079,11 +1106,11 @@ mod tests {
 
         let mut ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
-        ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
-        eb.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
-        eb.add_ava("member", &Value::new_refer_s(&UUID_C).unwrap());
-        ec.add_ava("memberof", &Value::new_refer_s(&UUID_B).unwrap());
-        ec.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
+        ea.add_ava("member", Value::new_refer_s(&UUID_B).unwrap());
+        eb.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
+        eb.add_ava("member", Value::new_refer_s(&UUID_C).unwrap());
+        ec.add_ava("memberof", Value::new_refer_s(&UUID_B).unwrap());
+        ec.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
 
         let preload = vec![ea, eb, ec];
         run_modify_test!(
@@ -1137,20 +1164,20 @@ mod tests {
 
         let mut ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
-        ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
-        ea.add_ava("memberof", &Value::new_refer_s(&UUID_C).unwrap());
-        ea.add_ava("memberof", &Value::new_refer_s(&UUID_B).unwrap());
-        ea.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
+        ea.add_ava("member", Value::new_refer_s(&UUID_B).unwrap());
+        ea.add_ava("memberof", Value::new_refer_s(&UUID_C).unwrap());
+        ea.add_ava("memberof", Value::new_refer_s(&UUID_B).unwrap());
+        ea.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
 
-        eb.add_ava("member", &Value::new_refer_s(&UUID_C).unwrap());
-        eb.add_ava("memberof", &Value::new_refer_s(&UUID_C).unwrap());
-        eb.add_ava("memberof", &Value::new_refer_s(&UUID_B).unwrap());
-        eb.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
+        eb.add_ava("member", Value::new_refer_s(&UUID_C).unwrap());
+        eb.add_ava("memberof", Value::new_refer_s(&UUID_C).unwrap());
+        eb.add_ava("memberof", Value::new_refer_s(&UUID_B).unwrap());
+        eb.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
 
-        ec.add_ava("member", &Value::new_refer_s(&UUID_A).unwrap());
-        ec.add_ava("memberof", &Value::new_refer_s(&UUID_C).unwrap());
-        ec.add_ava("memberof", &Value::new_refer_s(&UUID_B).unwrap());
-        ec.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
+        ec.add_ava("member", Value::new_refer_s(&UUID_A).unwrap());
+        ec.add_ava("memberof", Value::new_refer_s(&UUID_C).unwrap());
+        ec.add_ava("memberof", Value::new_refer_s(&UUID_B).unwrap());
+        ec.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
 
         let preload = vec![ea, eb, ec];
         run_modify_test!(
@@ -1212,30 +1239,30 @@ mod tests {
 
         let mut ed: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(ED);
 
-        ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
-        ea.add_ava("memberof", &Value::new_refer_s(&UUID_D).unwrap());
-        ea.add_ava("memberof", &Value::new_refer_s(&UUID_C).unwrap());
-        ea.add_ava("memberof", &Value::new_refer_s(&UUID_B).unwrap());
-        ea.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
+        ea.add_ava("member", Value::new_refer_s(&UUID_B).unwrap());
+        ea.add_ava("memberof", Value::new_refer_s(&UUID_D).unwrap());
+        ea.add_ava("memberof", Value::new_refer_s(&UUID_C).unwrap());
+        ea.add_ava("memberof", Value::new_refer_s(&UUID_B).unwrap());
+        ea.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
 
-        eb.add_ava("member", &Value::new_refer_s(&UUID_C).unwrap());
-        eb.add_ava("memberof", &Value::new_refer_s(&UUID_D).unwrap());
-        eb.add_ava("memberof", &Value::new_refer_s(&UUID_C).unwrap());
-        eb.add_ava("memberof", &Value::new_refer_s(&UUID_B).unwrap());
-        eb.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
+        eb.add_ava("member", Value::new_refer_s(&UUID_C).unwrap());
+        eb.add_ava("memberof", Value::new_refer_s(&UUID_D).unwrap());
+        eb.add_ava("memberof", Value::new_refer_s(&UUID_C).unwrap());
+        eb.add_ava("memberof", Value::new_refer_s(&UUID_B).unwrap());
+        eb.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
 
-        ec.add_ava("member", &Value::new_refer_s(&UUID_A).unwrap());
-        ec.add_ava("member", &Value::new_refer_s(&UUID_D).unwrap());
-        ec.add_ava("memberof", &Value::new_refer_s(&UUID_D).unwrap());
-        ec.add_ava("memberof", &Value::new_refer_s(&UUID_C).unwrap());
-        ec.add_ava("memberof", &Value::new_refer_s(&UUID_B).unwrap());
-        ec.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
+        ec.add_ava("member", Value::new_refer_s(&UUID_A).unwrap());
+        ec.add_ava("member", Value::new_refer_s(&UUID_D).unwrap());
+        ec.add_ava("memberof", Value::new_refer_s(&UUID_D).unwrap());
+        ec.add_ava("memberof", Value::new_refer_s(&UUID_C).unwrap());
+        ec.add_ava("memberof", Value::new_refer_s(&UUID_B).unwrap());
+        ec.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
 
-        ed.add_ava("member", &Value::new_refer_s(&UUID_A).unwrap());
-        ed.add_ava("memberof", &Value::new_refer_s(&UUID_D).unwrap());
-        ed.add_ava("memberof", &Value::new_refer_s(&UUID_C).unwrap());
-        ed.add_ava("memberof", &Value::new_refer_s(&UUID_B).unwrap());
-        ed.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
+        ed.add_ava("member", Value::new_refer_s(&UUID_A).unwrap());
+        ed.add_ava("memberof", Value::new_refer_s(&UUID_D).unwrap());
+        ed.add_ava("memberof", Value::new_refer_s(&UUID_C).unwrap());
+        ed.add_ava("memberof", Value::new_refer_s(&UUID_B).unwrap());
+        ed.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
 
         let preload = vec![ea, eb, ec, ed];
         run_modify_test!(
@@ -1306,8 +1333,8 @@ mod tests {
 
         let mut eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
 
-        ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
-        eb.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
+        ea.add_ava("member", Value::new_refer_s(&UUID_B).unwrap());
+        eb.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
 
         let preload = vec![ea, eb];
         run_delete_test!(
@@ -1336,12 +1363,12 @@ mod tests {
 
         let mut ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
-        ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
-        eb.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
+        ea.add_ava("member", Value::new_refer_s(&UUID_B).unwrap());
+        eb.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
 
-        eb.add_ava("member", &Value::new_refer_s(&UUID_C).unwrap());
-        ec.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
-        ec.add_ava("memberof", &Value::new_refer_s(&UUID_B).unwrap());
+        eb.add_ava("member", Value::new_refer_s(&UUID_C).unwrap());
+        ec.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
+        ec.add_ava("memberof", Value::new_refer_s(&UUID_B).unwrap());
 
         let preload = vec![ea, eb, ec];
         run_delete_test!(
@@ -1380,12 +1407,12 @@ mod tests {
 
         let mut ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
-        ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
-        eb.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
+        ea.add_ava("member", Value::new_refer_s(&UUID_B).unwrap());
+        eb.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
 
-        eb.add_ava("member", &Value::new_refer_s(&UUID_C).unwrap());
-        ec.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
-        ec.add_ava("memberof", &Value::new_refer_s(&UUID_B).unwrap());
+        eb.add_ava("member", Value::new_refer_s(&UUID_C).unwrap());
+        ec.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
+        ec.add_ava("memberof", Value::new_refer_s(&UUID_B).unwrap());
 
         let preload = vec![ea, eb, ec];
         run_delete_test!(
@@ -1425,20 +1452,20 @@ mod tests {
 
         let mut ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
 
-        ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
-        ea.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
-        ea.add_ava("memberof", &Value::new_refer_s(&UUID_B).unwrap());
-        ea.add_ava("memberof", &Value::new_refer_s(&UUID_C).unwrap());
+        ea.add_ava("member", Value::new_refer_s(&UUID_B).unwrap());
+        ea.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
+        ea.add_ava("memberof", Value::new_refer_s(&UUID_B).unwrap());
+        ea.add_ava("memberof", Value::new_refer_s(&UUID_C).unwrap());
 
-        eb.add_ava("member", &Value::new_refer_s(&UUID_C).unwrap());
-        eb.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
-        eb.add_ava("memberof", &Value::new_refer_s(&UUID_B).unwrap());
-        eb.add_ava("memberof", &Value::new_refer_s(&UUID_C).unwrap());
+        eb.add_ava("member", Value::new_refer_s(&UUID_C).unwrap());
+        eb.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
+        eb.add_ava("memberof", Value::new_refer_s(&UUID_B).unwrap());
+        eb.add_ava("memberof", Value::new_refer_s(&UUID_C).unwrap());
 
-        ec.add_ava("member", &Value::new_refer_s(&UUID_A).unwrap());
-        ec.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
-        ec.add_ava("memberof", &Value::new_refer_s(&UUID_B).unwrap());
-        ec.add_ava("memberof", &Value::new_refer_s(&UUID_C).unwrap());
+        ec.add_ava("member", Value::new_refer_s(&UUID_A).unwrap());
+        ec.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
+        ec.add_ava("memberof", Value::new_refer_s(&UUID_B).unwrap());
+        ec.add_ava("memberof", Value::new_refer_s(&UUID_C).unwrap());
 
         let preload = vec![ea, eb, ec];
         run_delete_test!(
@@ -1481,30 +1508,30 @@ mod tests {
 
         let mut ed: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(ED);
 
-        ea.add_ava("member", &Value::new_refer_s(&UUID_B).unwrap());
-        ea.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
-        ea.add_ava("memberof", &Value::new_refer_s(&UUID_B).unwrap());
-        ea.add_ava("memberof", &Value::new_refer_s(&UUID_C).unwrap());
-        ea.add_ava("memberof", &Value::new_refer_s(&UUID_D).unwrap());
+        ea.add_ava("member", Value::new_refer_s(&UUID_B).unwrap());
+        ea.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
+        ea.add_ava("memberof", Value::new_refer_s(&UUID_B).unwrap());
+        ea.add_ava("memberof", Value::new_refer_s(&UUID_C).unwrap());
+        ea.add_ava("memberof", Value::new_refer_s(&UUID_D).unwrap());
 
-        eb.add_ava("member", &Value::new_refer_s(&UUID_C).unwrap());
-        eb.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
-        eb.add_ava("memberof", &Value::new_refer_s(&UUID_B).unwrap());
-        eb.add_ava("memberof", &Value::new_refer_s(&UUID_C).unwrap());
-        eb.add_ava("memberof", &Value::new_refer_s(&UUID_D).unwrap());
+        eb.add_ava("member", Value::new_refer_s(&UUID_C).unwrap());
+        eb.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
+        eb.add_ava("memberof", Value::new_refer_s(&UUID_B).unwrap());
+        eb.add_ava("memberof", Value::new_refer_s(&UUID_C).unwrap());
+        eb.add_ava("memberof", Value::new_refer_s(&UUID_D).unwrap());
 
-        ec.add_ava("member", &Value::new_refer_s(&UUID_A).unwrap());
-        ec.add_ava("member", &Value::new_refer_s(&UUID_D).unwrap());
-        ec.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
-        ec.add_ava("memberof", &Value::new_refer_s(&UUID_B).unwrap());
-        ec.add_ava("memberof", &Value::new_refer_s(&UUID_C).unwrap());
-        ec.add_ava("memberof", &Value::new_refer_s(&UUID_D).unwrap());
+        ec.add_ava("member", Value::new_refer_s(&UUID_A).unwrap());
+        ec.add_ava("member", Value::new_refer_s(&UUID_D).unwrap());
+        ec.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
+        ec.add_ava("memberof", Value::new_refer_s(&UUID_B).unwrap());
+        ec.add_ava("memberof", Value::new_refer_s(&UUID_C).unwrap());
+        ec.add_ava("memberof", Value::new_refer_s(&UUID_D).unwrap());
 
-        ed.add_ava("member", &Value::new_refer_s(&UUID_A).unwrap());
-        ed.add_ava("memberof", &Value::new_refer_s(&UUID_A).unwrap());
-        ed.add_ava("memberof", &Value::new_refer_s(&UUID_B).unwrap());
-        ed.add_ava("memberof", &Value::new_refer_s(&UUID_C).unwrap());
-        ed.add_ava("memberof", &Value::new_refer_s(&UUID_D).unwrap());
+        ed.add_ava("member", Value::new_refer_s(&UUID_A).unwrap());
+        ed.add_ava("memberof", Value::new_refer_s(&UUID_A).unwrap());
+        ed.add_ava("memberof", Value::new_refer_s(&UUID_B).unwrap());
+        ed.add_ava("memberof", Value::new_refer_s(&UUID_C).unwrap());
+        ed.add_ava("memberof", Value::new_refer_s(&UUID_D).unwrap());
 
         let preload = vec![ea, eb, ec, ed];
         run_delete_test!(

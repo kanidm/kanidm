@@ -23,10 +23,10 @@ use crate::entry::{Entry, EntryCommitted, EntryInit, EntryNew, EntrySealed};
 use crate::value::{IndexType, PartialValue, SyntaxType, Value};
 use kanidm_proto::v1::{ConsistencyError, OperationError, SchemaError};
 
+use hashbrown::HashMap;
+use hashbrown::HashSet;
 use std::borrow::Borrow;
 use std::collections::BTreeSet;
-use std::collections::HashMap;
-use std::collections::HashSet;
 use uuid::Uuid;
 
 use concread::cowcell::*;
@@ -1448,10 +1448,10 @@ impl SchemaTransaction for SchemaReadTransaction {
 impl Schema {
     pub fn new(audit: &mut AuditScope) -> Result<Self, OperationError> {
         let s = Schema {
-            classes: CowCell::new(HashMap::new()),
-            attributes: CowCell::new(HashMap::new()),
+            classes: CowCell::new(HashMap::with_capacity(128)),
+            attributes: CowCell::new(HashMap::with_capacity(128)),
             unique_cache: CowCell::new(Vec::new()),
-            ref_cache: CowCell::new(HashMap::new()),
+            ref_cache: CowCell::new(HashMap::with_capacity(64)),
         };
         let mut sw = s.write();
         let r1 = sw.generate_in_memory(audit);
