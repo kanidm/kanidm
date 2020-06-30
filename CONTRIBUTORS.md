@@ -1,8 +1,15 @@
 ## Author
-William Brown: william@blackhats.net.au
+
+* William Brown (Firstyear): william@blackhats.net.au
 
 ## Contributors
-Jake
-Charcol
-Pando85
+
+* Pando85
+* Alberto Planas (aplanas)
+* Jake (slipperyBishop)
+* Charcol
+* Leigh (excitedleigh)
+* Jamie (JJJollyjim)
+* Triss Healy (NiryaAestus)
+* Samuel Cabrero (scabrero)
 

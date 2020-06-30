@@ -1,6 +1,6 @@
 [package]
 name = "nss_kanidm"
-version = "0.1.2"
+version = "1.1.0-alpha"
 authors = ["William Brown <william@blackhats.net.au>"]
 edition = "2018"
 
@@ -10,7 +10,7 @@ crate-type = [ "cdylib" ]
 path =  "src/lib.rs"
 
 [dependencies]
-kanidm_unix_int = { path = "../", version = "0.1" }
+kanidm_unix_int = { path = "../", version = "1.1.0-alpha" }
 # libnss = "0.2"
 libnss = { git = "https://github.com/csnewman/libnss-rs.git", rev = "eab2d93d2438652773699b0807d558ce75b1e748" }
 libc = "0.2.0"

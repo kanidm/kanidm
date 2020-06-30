@@ -1,6 +1,6 @@
 [package]
 name = "kanidm_client"
-version = "0.1.2"
+version = "1.1.0-alpha"
 authors = ["William Brown <william@blackhats.net.au>"]
 edition = "2018"
 license = "MPL-2.0"
@@ -13,7 +13,7 @@ repository = "https://github.com/kanidm/kanidm/"
 log = "0.4"
 env_logger = "0.7"
 reqwest = { version = "0.10", features=["blocking", "cookies", "json", "native-tls"] }
-kanidm_proto = { path = "../kanidm_proto", version = "0.1" }
+kanidm_proto = { path = "../kanidm_proto", version = "1.1.0-alpha" }
 serde = "1.0"
 serde_json = "1.0"
 serde_derive = "1.0"

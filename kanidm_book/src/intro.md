@@ -14,5 +14,3 @@ The intent of the Kanidm project is:
 * To make system, network, application and web authentication easy and accessible.
 
 
-
-
