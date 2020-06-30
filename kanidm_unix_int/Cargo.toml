@@ -1,6 +1,6 @@
 [package]
 name = "kanidm_unix_int"
-version = "0.1.2"
+version = "1.1.0-alpha"
 authors = ["William Brown <william@blackhats.net.au>"]
 edition = "2018"
 license = "MPL-2.0"
@@ -40,9 +40,9 @@ name = "kanidm_test_auth"
 path =  "src/test_auth.rs"
 
 [dependencies]
-kanidm_client = { path = "../kanidm_client", version = "0.1" }
-kanidm_proto = { path = "../kanidm_proto", version = "0.1" }
-kanidm = { path = "../kanidmd", version = "0.1" }
+kanidm_client = { path = "../kanidm_client", version = "1.1.0-alpha" }
+kanidm_proto = { path = "../kanidm_proto", version = "1.1.0-alpha" }
+kanidm = { path = "../kanidmd", version = "1.1.0-alpha" }
 toml = "0.5"
 rpassword = "4.0"
 tokio = { version = "0.2", features=["full"] }
@@ -58,10 +58,10 @@ serde_derive = "1.0"
 serde_cbor = "0.11"
 structopt = { version = "0.3", default-features = false }
 
-libsqlite3-sys = { version = "0.17" }
-rusqlite = { version = "0.21" }
+libsqlite3-sys = { version = "0.18" }
+rusqlite = { version = "0.23" }
 r2d2 = "0.8"
-r2d2_sqlite = "0.14"
+r2d2_sqlite = "0.16"
 
 reqwest = { version = "0.10" }
 

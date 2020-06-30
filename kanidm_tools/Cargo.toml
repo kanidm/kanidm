@@ -1,6 +1,6 @@
 [package]
 name = "kanidm_tools"
-version = "0.1.2"
+version = "1.1.0-alpha"
 authors = ["William Brown <william@blackhats.net.au>"]
 edition = "2018"
 default-run = "kanidm"
@@ -27,8 +27,8 @@ name = "kanidm_badlist_preprocess"
 path = "src/badlist_preprocess.rs"
 
 [dependencies]
-kanidm_client = { path = "../kanidm_client", version = "0.1" }
-kanidm_proto = { path = "../kanidm_proto", version = "0.1" }
+kanidm_client = { path = "../kanidm_client", version = "1.1.0-alpha" }
+kanidm_proto = { path = "../kanidm_proto", version = "1.1.0-alpha" }
 rpassword = "4.0"
 structopt = { version = "0.3", default-features = false }
 log = "0.4"

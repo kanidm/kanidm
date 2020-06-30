@@ -2,7 +2,7 @@
 
 [package]
 name = "kanidm"
-version = "0.1.2"
+version = "1.1.0-alpha"
 authors = ["William Brown <william@blackhats.net.au>"]
 # default-run = "kanidm_core"
 edition = "2018"
@@ -26,7 +26,7 @@ path = "src/server/main.rs"
 
 
 [dependencies]
-kanidm_proto = { path = "../kanidm_proto", version = "0.1" }
+kanidm_proto = { path = "../kanidm_proto", version = "1.1.0-alpha" }
 
 actix = "0.9"
 actix-rt = "1.1"
@@ -40,7 +40,7 @@ rand = "0.7"
 toml = "0.5"
 
 chrono = "0.4"
-cookie = "0.13"
+cookie = "0.14"
 regex = "1"
 lazy_static = "1.2.0"
 
@@ -52,21 +52,21 @@ serde_cbor = "0.11"
 serde_json = "1.0"
 serde_derive = "1.0"
 
-libsqlite3-sys = { version = "0.17" }
-rusqlite = { version = "0.21", features = ["backup"] }
+libsqlite3-sys = { version = "0.18" }
+rusqlite = { version = "0.23", features = ["backup"] }
 r2d2 = "0.8"
-r2d2_sqlite = "0.14"
+r2d2_sqlite = "0.16"
 
 structopt = { version = "0.3", default-features = false }
 time = "0.1"
 
 hashbrown = "0.8"
-concread = "0.1"
+concread = "^0.1.18"
 # concread = { path = "../../concread" }
 crossbeam = "0.7"
 
 openssl = "0.10"
-sshkeys = "0.1"
+sshkeys = "0.3"
 
 rpassword = "4.0"
 num_cpus = "1.10"

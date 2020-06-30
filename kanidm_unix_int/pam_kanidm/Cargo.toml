@@ -1,6 +1,6 @@
 [package]
 name = "pam_kanidm"
-version = "0.1.2"
+version = "1.1.0-alpha"
 authors = ["William Brown <william@blackhats.net.au>"]
 edition = "2018"
 
@@ -10,7 +10,7 @@ crate-type = [ "cdylib" ]
 path =  "src/lib.rs"
 
 [dependencies]
-kanidm_unix_int = { path = "../", version = "0.1" }
+kanidm_unix_int = { path = "../", version = "1.1.0-alpha" }
 futures = "0.3"
 tokio = { version = "0.2", features=["full"] }
 libc = "0.2"
