@@ -5,13 +5,15 @@
 * cargo audit
 * cargo outdated
 
-* bump all cargo.toml versions
-    find kani* -name Cargo.toml -exec cat '{}' \; | grep -e '^version ='
-
 * bump index version in constants
 * check for breaking db entry changes.
 
 * Update RELEASE_NOTES.md
+
+* git tag v1.1.x-alpha
+
+* bump all cargo.toml versions
+    find kani* -name Cargo.toml -exec cat '{}' \; | grep -e '^version ='
 
 * release kanidm_proto
 * release kanidmd/kanidm
