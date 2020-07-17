@@ -24,14 +24,14 @@ eap {
 	#  then that EAP type takes precedence over the
 	#  default type configured here.
 	#
-	default_eap_type = md5
+	default_eap_type = peap
 
 	#  A list is maintained to correlate EAP-Response
 	#  packets with EAP-Request packets.  After a
 	#  configurable length of time, entries in the list
 	#  expire, and are deleted.
 	#
-	timer_expire     = 60
+	timer_expire     = 90
 
 	#  There are many EAP types, but the server has support
 	#  for only a limited subset.  If the server receives
@@ -626,7 +626,7 @@ eap {
 		#  EAP conversation, then this configuration entry is
 		#  ignored.
 		#
-		default_eap_type = md5
+		default_eap_type = mschapv2
 
 		#  The tunneled authentication request does not usually
 		#  contain useful attributes like 'Calling-Station-Id',
