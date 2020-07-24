@@ -7,6 +7,10 @@ IMAGE_VERSION ?= alpha
 help:
 	@fgrep -h "##" $(MAKEFILE_LIST) | fgrep -v fgrep | sed -e 's/\\$$//' | sed -e 's/##/\n\t/'
 
+buildx/kanidmd: ## build multiarch images
+buildx/kanidmd:
+	@docker buildx build --progress plain --platform linux/arm64 -f kanidmd/Dockerfile -t $(IMAGE_BASE)/server:$(IMAGE_VERSION) .
+
 build/kanidmd:	## build kanidmd images
 build/kanidmd:
 	@docker build -f kanidmd/Dockerfile -t $(IMAGE_BASE)/server:$(IMAGE_VERSION) .

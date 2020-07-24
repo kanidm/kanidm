@@ -21,9 +21,9 @@ RUN zypper mr -d repo-non-oss && \
     zypper clean -a
 
 COPY . /usr/src/kanidm
-WORKDIR /usr/src/kanidm
+WORKDIR /usr/src/kanidm/kanidmd
 
-RUN cargo build --release
+RUN RUSTC_BOOTSTRAP=1 cargo build --features=concread/simd_support --release
 
 FROM ${BASE_IMAGE}
 LABEL mantainer william@blackhats.net.au

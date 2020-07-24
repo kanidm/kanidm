@@ -1,6 +1,7 @@
 
 // cargo install cargo-audit
-// cargo install carga-outdated
+// cargo install cargo-outdated
+// cargo install cargo-release
 
 * cargo audit
 * cargo outdated

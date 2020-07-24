@@ -1,6 +1,7 @@
 
 [profile.release]
 debug = true
+lto = true
 
 [workspace]
 members = [

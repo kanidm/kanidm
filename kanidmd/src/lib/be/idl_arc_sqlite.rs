@@ -17,6 +17,7 @@ use uuid::Uuid;
 
 // use std::borrow::Borrow;
 
+// Appears to take about ~500MB on some stress tests
 const DEFAULT_CACHE_TARGET: usize = 16384;
 const DEFAULT_IDL_CACHE_RATIO: usize = 32;
 const DEFAULT_NAME_CACHE_RATIO: usize = 8;
