@@ -715,6 +715,7 @@ pub trait AccessControlsTransaction {
         })
     }
 
+    #[allow(clippy::cognitive_complexity)]
     fn modify_allow_operation(
         &self,
         audit: &mut AuditScope,
@@ -913,6 +914,7 @@ pub trait AccessControlsTransaction {
         })
     }
 
+    #[allow(clippy::cognitive_complexity)]
     fn create_allow_operation(
         &self,
         audit: &mut AuditScope,

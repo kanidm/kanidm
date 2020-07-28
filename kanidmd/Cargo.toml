@@ -83,6 +83,9 @@ futures-util = "0.3"
 tokio-util = { version = "0.2", features = ["codec"] }
 tokio-openssl = "0.4"
 
+libc = "0.2"
+users = "0.10"
+
 [features]
 default = [ "libsqlite3-sys/bundled", "openssl/vendored" ]
 

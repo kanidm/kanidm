@@ -12,6 +12,7 @@
 - [Password Quality and Badlisting](./password_quality.md)
 - [Recycle Bin](./recycle_bin.md)
 - [Legacy Applications -- LDAP](./ldap.md)
+- [Security Hardening](./security_hardening.md)
 -----------
 [Why TLS?](./why_tls.md)
 

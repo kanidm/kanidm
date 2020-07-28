@@ -7,7 +7,6 @@ use uuid::Uuid;
 
 use kanidm_proto::v1::{OperationError, UserAuthToken};
 
-#[derive(Debug)]
 pub struct PasswordChangeEvent {
     pub event: Event,
     pub target: Uuid,
@@ -60,7 +59,6 @@ impl PasswordChangeEvent {
     }
 }
 
-#[derive(Debug)]
 pub struct UnixPasswordChangeEvent {
     pub event: Event,
     pub target: Uuid,
@@ -223,11 +221,19 @@ impl UnixGroupTokenEvent {
     }
 }
 
-#[derive(Debug)]
 pub struct UnixUserAuthEvent {
     pub event: Event,
     pub target: Uuid,
     pub cleartext: String,
+}
+
+impl std::fmt::Debug for UnixUserAuthEvent {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.debug_struct("UnixUserAuthEvent")
+            .field("event", &self.event)
+            .field("target", &self.target)
+            .finish()
+    }
 }
 
 impl UnixUserAuthEvent {
@@ -333,7 +339,6 @@ impl VerifyTOTPEvent {
     }
 }
 
-#[derive(Debug)]
 pub struct LdapAuthEvent {
     // pub event: Event,
     pub target: Uuid,

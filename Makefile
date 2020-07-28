@@ -9,7 +9,8 @@ help:
 
 buildx/kanidmd: ## build multiarch images
 buildx/kanidmd:
-	@docker buildx build --progress plain --platform linux/arm64 -f kanidmd/Dockerfile -t $(IMAGE_BASE)/server:$(IMAGE_VERSION) .
+	@docker buildx build --push --platform linux/amd64,linux/arm64 -f kanidmd/Dockerfile -t $(IMAGE_BASE)/server:$(IMAGE_VERSION) .
+	@docker buildx imagetools inspect $(IMAGE_BASE)/server:$(IMAGE_VERSION)
 
 build/kanidmd:	## build kanidmd images
 build/kanidmd:
