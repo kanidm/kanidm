@@ -1,8 +1,11 @@
 #![deny(warnings)]
 
+use users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
+
 use serde_derive::Deserialize;
-use std::fs::File;
+use std::fs::{metadata, File, Metadata};
 use std::io::Read;
+use std::os::unix::fs::MetadataExt;
 use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -127,13 +130,63 @@ impl Opt {
     }
 }
 
+fn read_file_metadata(path: &PathBuf) -> Metadata {
+    match metadata(path) {
+        Ok(m) => m,
+        Err(e) => {
+            eprintln!(
+                "Unable to read metadata for {} - {:?}",
+                path.to_str().unwrap(),
+                e
+            );
+            std::process::exit(1);
+        }
+    }
+}
+
 #[actix_rt::main]
 async fn main() {
+    // Get info about who we are.
+    let cuid = get_current_uid();
+    let ceuid = get_effective_uid();
+    let cgid = get_current_gid();
+    let cegid = get_effective_gid();
+
+    if cuid == 0 || ceuid == 0 || cgid == 0 || cegid == 0 {
+        eprintln!("ERROR: Refusing to run - this process must not operate as root.");
+        std::process::exit(1);
+    }
+
+    if cuid != ceuid || cgid != cegid {
+        eprintln!("{} != {} || {} != {}", cuid, ceuid, cgid, cegid);
+        eprintln!("ERROR: Refusing to run - uid and euid OR gid and egid must be consistent.");
+        std::process::exit(1);
+    }
+
     // Read cli args, determine if we should backup/restore
     let opt = Opt::from_args();
 
-    // Read our config
     let mut config = Configuration::new();
+    // Check the permissions are sane.
+    let cfg_meta = read_file_metadata(&(opt.commonopt().config_path));
+    if !cfg_meta.permissions().readonly() {
+        eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
+            opt.commonopt().config_path.to_str().unwrap());
+    }
+
+    if cfg_meta.mode() & 0o007 != 0 {
+        eprintln!("WARNING: {} has 'everyone' permission bits in the mode. This could be a security risk ...",
+            opt.commonopt().config_path.to_str().unwrap()
+        );
+    }
+
+    if cfg_meta.uid() == cuid || cfg_meta.uid() == ceuid {
+        eprintln!("WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...",
+            opt.commonopt().config_path.to_str().unwrap()
+        );
+    }
+
+    // Read our config
     let sconfig = match ServerConfig::new(&(opt.commonopt().config_path)) {
         Ok(c) => c,
         Err(e) => {
@@ -151,6 +204,64 @@ async fn main() {
                 std::process::exit(1);
             }
         });
+
+    // Check the permissions of the files from the configuration.
+
+    if let Some(i_str) = &(sconfig.tls_ca) {
+        let i_path = PathBuf::from(i_str.as_str());
+        let i_meta = read_file_metadata(&i_path);
+        if !i_meta.permissions().readonly() {
+            eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", i_str);
+        }
+    }
+
+    if let Some(i_str) = &(sconfig.tls_cert) {
+        let i_path = PathBuf::from(i_str.as_str());
+        let i_meta = read_file_metadata(&i_path);
+        if !i_meta.permissions().readonly() {
+            eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", i_str);
+        }
+    }
+
+    if let Some(i_str) = &(sconfig.tls_key) {
+        let i_path = PathBuf::from(i_str.as_str());
+        let i_meta = read_file_metadata(&i_path);
+        if !i_meta.permissions().readonly() {
+            eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", i_str);
+        }
+
+        if i_meta.mode() & 0o007 != 0 {
+            eprintln!("WARNING: {} has 'everyone' permission bits in the mode. This could be a security risk ...", i_str);
+        }
+    }
+
+    let db_path = PathBuf::from(sconfig.db_path.as_str());
+    // We can't check the db_path permissions because it may note exist yet!
+    if let Some(db_parent_path) = db_path.parent() {
+        if !db_parent_path.exists() {
+            eprintln!(
+                "DB folder {} may not exist, server startup may FAIL!",
+                db_parent_path.to_str().unwrap()
+            );
+        }
+
+        let db_par_path_buf = db_parent_path.to_path_buf();
+        let i_meta = read_file_metadata(&db_par_path_buf);
+        if !i_meta.is_dir() {
+            eprintln!(
+                "ERROR: Refusing to run - DB folder {} may not be a directory",
+                db_par_path_buf.to_str().unwrap()
+            );
+            std::process::exit(1);
+        }
+        if i_meta.permissions().readonly() {
+            eprintln!("WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", db_par_path_buf.to_str().unwrap());
+        }
+
+        if i_meta.mode() & 0o007 != 0 {
+            eprintln!("WARNING: DB folder {} has 'everyone' permission bits in the mode. This could be a security risk ...", db_par_path_buf.to_str().unwrap());
+        }
+    }
 
     config.update_log_level(ll);
     config.update_db_path(&sconfig.db_path.as_str());

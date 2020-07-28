@@ -2,6 +2,12 @@
 #[macro_use]
 extern crate log;
 
+use users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
+
+use std::fs::metadata;
+use std::os::unix::fs::MetadataExt;
+use std::path::{Path, PathBuf};
+
 use bytes::{BufMut, BytesMut};
 use futures::SinkExt;
 use futures::StreamExt;
@@ -61,7 +67,7 @@ impl ClientCodec {
 
 fn rm_if_exist(p: &str) {
     let _ = std::fs::remove_file(p).map_err(|e| {
-        error!("attempting to remove {:?} -> {:?}", p, e);
+        warn!("attempting to remove {:?} -> {:?}", p, e);
     });
 }
 
@@ -201,23 +207,136 @@ async fn handle_client(
 
 #[tokio::main]
 async fn main() {
+    let cuid = get_current_uid();
+    let ceuid = get_effective_uid();
+    let cgid = get_current_gid();
+    let cegid = get_effective_gid();
+
+    if cuid == 0 || ceuid == 0 || cgid == 0 || cegid == 0 {
+        eprintln!("Refusing to run - this process must not operate as root.");
+        std::process::exit(1);
+    }
+
     // ::std::env::set_var("RUST_LOG", "kanidm=debug,kanidm_client=debug");
     env_logger::init();
 
-    // setup
-    let cb = KanidmClientBuilder::new()
-        .read_options_from_optional_config("/etc/kanidm/config")
-        .expect("Failed to parse /etc/kanidm/config");
+    let cfg_path = Path::new("/etc/kanidm/config");
+    if cfg_path.exists() {
+        let cfg_meta = match metadata(&cfg_path) {
+            Ok(v) => v,
+            Err(e) => {
+                error!(
+                    "Unable to read metadata for {} - {:?}",
+                    cfg_path.to_str().unwrap(),
+                    e
+                );
+                std::process::exit(1);
+            }
+        };
+        if !cfg_meta.permissions().readonly() {
+            warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
+                cfg_path.to_str().unwrap());
+        }
 
-    let cfg = KanidmUnixdConfig::new()
-        .read_options_from_optional_config("/etc/kanidm/unixd")
-        .expect("Failed to parse /etc/kanidm/unixd");
+        if cfg_meta.uid() == cuid || cfg_meta.uid() == ceuid {
+            warn!("WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...",
+                cfg_path.to_str().unwrap()
+            );
+        }
+    }
+
+    let unixd_path = Path::new("/etc/kanidm/config");
+    if unixd_path.exists() {
+        let unixd_meta = match metadata(&unixd_path) {
+            Ok(v) => v,
+            Err(e) => {
+                error!(
+                    "Unable to read metadata for {} - {:?}",
+                    unixd_path.to_str().unwrap(),
+                    e
+                );
+                std::process::exit(1);
+            }
+        };
+        if !unixd_meta.permissions().readonly() {
+            warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
+                unixd_path.to_str().unwrap());
+        }
+
+        if unixd_meta.uid() == cuid || unixd_meta.uid() == ceuid {
+            warn!("WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...",
+                unixd_path.to_str().unwrap()
+            );
+        }
+    }
+
+    // setup
+    let cb = match KanidmClientBuilder::new().read_options_from_optional_config(cfg_path) {
+        Ok(v) => v,
+        Err(_) => {
+            error!("Failed to parse {}", cfg_path.to_str().unwrap());
+            std::process::exit(1);
+        }
+    };
+
+    let cfg = match KanidmUnixdConfig::new().read_options_from_optional_config(unixd_path) {
+        Ok(v) => v,
+        Err(_) => {
+            error!("Failed to parse {}", unixd_path.to_str().unwrap());
+            std::process::exit(1);
+        }
+    };
 
     rm_if_exist(cfg.sock_path.as_str());
 
     let cb = cb.connect_timeout(cfg.conn_timeout);
 
     let rsclient = cb.build_async().expect("Failed to build async client");
+
+    // Check the pb path will be okay.
+    if cfg.db_path != "" {
+        let db_path = PathBuf::from(cfg.db_path.as_str());
+        // We only need to check the parent folder path permissions as the db itself may not
+        // exist yet.
+        if let Some(db_parent_path) = db_path.parent() {
+            if !db_parent_path.exists() {
+                error!(
+                    "Refusing to run, DB folder {} does not exist",
+                    db_parent_path.to_str().unwrap()
+                );
+                std::process::exit(1);
+            }
+
+            let db_par_path_buf = db_parent_path.to_path_buf();
+
+            let i_meta = match metadata(&db_par_path_buf) {
+                Ok(v) => v,
+                Err(e) => {
+                    error!(
+                        "Unable to read metadata for {} - {:?}",
+                        db_par_path_buf.to_str().unwrap(),
+                        e
+                    );
+                    std::process::exit(1);
+                }
+            };
+
+            if !i_meta.is_dir() {
+                error!(
+                    "Refusing to run - DB folder {} may not be a directory",
+                    db_par_path_buf.to_str().unwrap()
+                );
+                std::process::exit(1);
+            }
+            if i_meta.permissions().readonly() {
+                warn!("WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", db_par_path_buf.to_str().unwrap());
+            }
+
+            if i_meta.mode() & 0o007 != 0 {
+                warn!("WARNING: DB folder {} has 'everyone' permission bits in the mode. This could be a security risk ...", db_par_path_buf.to_str().unwrap());
+            }
+        }
+    }
 
     let cachelayer = Arc::new(
         CacheLayer::new(

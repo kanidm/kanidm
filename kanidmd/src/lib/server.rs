@@ -977,6 +977,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         })
     }
 
+    #[allow(clippy::cognitive_complexity)]
     pub fn delete(&self, au: &mut AuditScope, de: &DeleteEvent) -> Result<(), OperationError> {
         lperf_segment!(au, "server::delete", || {
             // Do you have access to view all the set members? Reduce based on your
@@ -1279,6 +1280,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         })
     }
 
+    #[allow(clippy::cognitive_complexity)]
     pub fn modify(&self, au: &mut AuditScope, me: &ModifyEvent) -> Result<(), OperationError> {
         lperf_segment!(au, "server::modify", || {
             // Get the candidates.

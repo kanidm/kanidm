@@ -1,6 +1,7 @@
 mod ctx;
 mod ldaps;
 // use actix_files as fs;
+use libc::umask;
 use actix::prelude::*;
 use actix_session::{CookieSession, Session};
 use actix_web::web::{self, Data, HttpResponse, Json, Path};
@@ -1626,9 +1627,11 @@ pub async fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> 
     }
 
     info!("Starting kanidm with configuration: {}", config);
+    // Setup umask, so that every we touch or create is secure.
+    let _ = unsafe { umask(0o0027) };
+
     // The log server is started on it's own thread, and is contacted
     // asynchronously.
-
     let (log_tx, log_rx) = unbounded();
     let log_thread = thread::spawn(move || async_log::run(log_rx));
 

@@ -9,11 +9,13 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_derive::Deserialize;
 use std::collections::BTreeMap;
-use std::fs::File;
+use std::fs::{metadata, File, Metadata};
 use std::io::Read;
+use std::os::unix::fs::MetadataExt;
 use std::path::Path;
 use std::time::Duration;
 use uuid::Uuid;
+// use users::{get_current_uid, get_effective_uid};
 
 use kanidm_proto::v1::{
     AccountUnixExtend, AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep,
@@ -60,6 +62,16 @@ pub struct KanidmClientBuilder {
     connect_timeout: Option<u64>,
 }
 
+fn read_file_metadata<P: AsRef<Path>>(path: &P) -> Result<Metadata, ()> {
+    metadata(path).map_err(|e| {
+        error!(
+            "Unable to read metadata for {} - {:?}",
+            path.as_ref().to_str().unwrap(),
+            e
+        );
+    })
+}
+
 impl KanidmClientBuilder {
     pub fn new() -> Self {
         KanidmClientBuilder {
@@ -73,6 +85,21 @@ impl KanidmClientBuilder {
 
     fn parse_certificate(ca_path: &str) -> Result<reqwest::Certificate, ()> {
         let mut buf = Vec::new();
+        // Is the CA secure?
+        let path = Path::new(ca_path);
+        let ca_meta = read_file_metadata(&path)?;
+
+        if !ca_meta.permissions().readonly() {
+            warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", ca_path);
+        }
+
+        if ca_meta.uid() != 0 || ca_meta.gid() != 0 {
+            warn!(
+                "{} should be owned be root:root to prevent tampering",
+                ca_path
+            );
+        }
+
         // TODO #253: Handle these errors better, or at least provide diagnostics?
         let mut f = File::open(ca_path).map_err(|_| ())?;
         f.read_to_end(&mut buf).map_err(|_| ())?;
@@ -186,6 +213,23 @@ impl KanidmClientBuilder {
         })
     }
 
+    fn display_warnings(&self, address: &str) {
+        // Check for problems now
+        if !self.verify_ca {
+            warn!("verify_ca set to false - this may allow network interception of passwords!");
+        }
+
+        if !self.verify_hostnames {
+            warn!(
+                "verify_hostnames set to false - this may allow network interception of passwords!"
+            );
+        }
+
+        if !address.starts_with("https://") {
+            warn!("address does not start with 'https://' - this may allow network interception of passwords!");
+        }
+    }
+
     // Consume self and return a client.
     pub fn build(self) -> Result<KanidmClient, reqwest::Error> {
         // Errghh, how to handle this cleaner.
@@ -196,6 +240,8 @@ impl KanidmClientBuilder {
                 unimplemented!();
             }
         };
+
+        self.display_warnings(address.as_str());
 
         let client_builder = reqwest::blocking::Client::builder()
             .cookie_store(true)
@@ -232,6 +278,8 @@ impl KanidmClientBuilder {
                 unimplemented!();
             }
         };
+
+        self.display_warnings(address.as_str());
 
         let client_builder = reqwest::Client::builder()
             .cookie_store(true)

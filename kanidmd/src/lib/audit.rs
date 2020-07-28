@@ -11,6 +11,8 @@ use uuid::Uuid;
 
 use std::str::FromStr;
 
+pub const AUDIT_LINE_SIZE: usize = 512;
+
 #[derive(Debug, Serialize, Deserialize)]
 #[repr(u32)]
 pub enum LogTag {
@@ -97,18 +99,23 @@ impl fmt::Display for LogTag {
 
 macro_rules! lqueue {
     ($au:expr, $tag:expr, $($arg:tt)*) => ({
-        use crate::audit::LogTag;
+        use crate::audit::{LogTag, AUDIT_LINE_SIZE};
         if cfg!(test) {
             println!($($arg)*)
         }
         if ($au.level & $tag as u32) == $tag as u32 {
             use std::fmt;
-            $au.log_event(
-                $tag,
-                fmt::format(
-                    format_args!($($arg)*)
-                )
-            )
+            // We have to buffer the string to over-alloc it.
+            let mut output = String::with_capacity(AUDIT_LINE_SIZE);
+            match fmt::write(&mut output, format_args!($($arg)*)) {
+                Ok(_) => $au.log_event($tag, output),
+                Err(e) => {
+                    $au.log_event(
+                        LogTag::AdminError,
+                        format!("CRITICAL UNABLE TO WRITE LOG EVENT - {:?}", e)
+                    )
+                }
+            }
         }
     })
 }
