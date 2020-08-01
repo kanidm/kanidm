@@ -63,9 +63,7 @@ fn create_user(rsclient: &KanidmClient, id: &str, group_name: &str) -> () {
         None => rsclient.idm_group_create(&group_name).unwrap(),
     };
 
-    rsclient
-        .idm_group_add_members(&group_name, vec![id])
-        .unwrap();
+    rsclient.idm_group_add_members(&group_name, &[id]).unwrap();
 }
 
 fn is_attr_writable(rsclient: &KanidmClient, id: &str, attr: &str) -> Option<bool> {
@@ -115,7 +113,7 @@ fn is_attr_writable(rsclient: &KanidmClient, id: &str, attr: &str) -> Option<boo
 fn add_all_attrs(mut rsclient: &mut KanidmClient, id: &str, group_name: &str) {
     // Extend with posix attrs to test read attr: gidnumber and loginshell
     rsclient
-        .idm_group_add_members("idm_admins", vec!["admin"])
+        .idm_group_add_members("idm_admins", &["admin"])
         .unwrap();
     rsclient
         .idm_account_unix_extend(id, None, Some(&"/bin/bash"))
@@ -157,10 +155,10 @@ fn create_user_with_all_attrs(
 
 fn login_account(rsclient: &mut KanidmClient, id: &str) -> () {
     rsclient
-        .idm_group_add_members("idm_people_account_password_import_priv", vec!["admin"])
+        .idm_group_add_members("idm_people_account_password_import_priv", &["admin"])
         .unwrap();
     rsclient
-        .idm_group_add_members("idm_people_extend_priv", vec!["admin"])
+        .idm_group_add_members("idm_people_extend_priv", &["admin"])
         .unwrap();
 
     rsclient
@@ -215,7 +213,7 @@ fn test_modify_group(rsclient: &KanidmClient, group_names: &[&str], is_modificab
         ["description", "name"].iter().for_each(|attr| {
             assert!(is_attr_writable(&rsclient, group, attr).unwrap() == is_modificable)
         });
-        assert!(rsclient.idm_group_add_members(group, vec!["test"]).is_ok() == is_modificable);
+        assert!(rsclient.idm_group_add_members(group, &["test"]).is_ok() == is_modificable);
     });
 }
 
@@ -326,7 +324,7 @@ fn test_default_entries_rbac_group_managers() {
 
         rsclient.idm_group_create("test_group").unwrap();
         rsclient
-            .idm_group_add_members("test_group", vec!["test"])
+            .idm_group_add_members("test_group", &["test"])
             .unwrap();
         assert!(is_attr_writable(&rsclient, "test_group", "description").unwrap());
     });
@@ -588,7 +586,7 @@ fn test_default_entries_rbac_anonymous_entry() {
             .unwrap();
         create_user_with_all_attrs(&mut rsclient, "test", Some("test_group"));
         rsclient
-            .idm_group_add_members("test_group", vec!["anonymous"])
+            .idm_group_add_members("test_group", &["anonymous"])
             .unwrap();
         add_all_attrs(&mut rsclient, "anonymous", "test_group");
 

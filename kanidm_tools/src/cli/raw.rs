@@ -11,14 +11,6 @@ use std::path::PathBuf;
 
 use serde::de::DeserializeOwned;
 
-fn read_file<T: DeserializeOwned, P: AsRef<Path>>(path: P) -> Result<T, Box<dyn Error>> {
-    let f = File::open(path)?;
-    let r = BufReader::new(f);
-
-    let t: T = serde_json::from_reader(r)?;
-    Ok(t)
-}
-
 #[derive(Debug, StructOpt)]
 pub struct FilterOpt {
     #[structopt()]
@@ -30,7 +22,7 @@ pub struct FilterOpt {
 #[derive(Debug, StructOpt)]
 pub struct CreateOpt {
     #[structopt(parse(from_os_str))]
-    file: Option<PathBuf>,
+    file: PathBuf,
     #[structopt(flatten)]
     commonopts: CommonOpt,
 }
@@ -42,7 +34,7 @@ pub struct ModifyOpt {
     #[structopt()]
     filter: String,
     #[structopt(parse(from_os_str))]
-    file: Option<PathBuf>,
+    file: PathBuf,
 }
 
 #[derive(Debug, StructOpt)]
@@ -55,6 +47,14 @@ pub enum RawOpt {
     Modify(ModifyOpt),
     #[structopt(name = "delete")]
     Delete(FilterOpt),
+}
+
+fn read_file<T: DeserializeOwned, P: AsRef<Path>>(path: P) -> Result<T, Box<dyn Error>> {
+    let f = File::open(path)?;
+    let r = BufReader::new(f);
+
+    let t: T = serde_json::from_reader(r)?;
+    Ok(t)
 }
 
 impl RawOpt {
@@ -72,46 +72,75 @@ impl RawOpt {
             RawOpt::Search(sopt) => {
                 let client = sopt.commonopts.to_client();
 
-                let filter: Filter = serde_json::from_str(sopt.filter.as_str()).unwrap();
-                let rset = client.search(filter).unwrap();
+                let filter: Filter = match serde_json::from_str(sopt.filter.as_str()) {
+                    Ok(f) => f,
+                    Err(e) => {
+                        eprintln!("Error -> {:?}", e);
+                        return;
+                    }
+                };
 
-                rset.iter().for_each(|e| {
-                    println!("{}", e);
-                });
+                match client.search(filter) {
+                    Ok(rset) => rset.iter().for_each(|e| println!("{}", e)),
+                    Err(e) => {
+                        eprintln!("Error -> {:?}", e);
+                    }
+                }
             }
             RawOpt::Create(copt) => {
                 let client = copt.commonopts.to_client();
                 // Read the file?
-                match &copt.file {
-                    Some(p) => {
-                        let r_entries: Vec<BTreeMap<String, Vec<String>>> = read_file(p).unwrap();
-                        let entries = r_entries.into_iter().map(|b| Entry { attrs: b }).collect();
-                        client.create(entries).unwrap();
+                let r_entries: Vec<BTreeMap<String, Vec<String>>> = match read_file(&copt.file) {
+                    Ok(r) => r,
+                    Err(e) => {
+                        eprintln!("Error -> {:?}", e);
+                        return;
                     }
-                    None => {
-                        println!("Must provide a file");
-                    }
+                };
+
+                let entries = r_entries.into_iter().map(|b| Entry { attrs: b }).collect();
+
+                if let Err(e) = client.create(entries) {
+                    eprintln!("Error -> {:?}", e);
                 }
             }
             RawOpt::Modify(mopt) => {
                 let client = mopt.commonopts.to_client();
                 // Read the file?
-                match &mopt.file {
-                    Some(p) => {
-                        let filter: Filter = serde_json::from_str(mopt.filter.as_str()).unwrap();
-                        let r_list: Vec<Modify> = read_file(p).unwrap();
-                        let modlist = ModifyList::new_list(r_list);
-                        client.modify(filter, modlist).unwrap();
+                let filter: Filter = match serde_json::from_str(mopt.filter.as_str()) {
+                    Ok(f) => f,
+                    Err(e) => {
+                        eprintln!("Error -> {:?}", e);
+                        return;
                     }
-                    None => {
-                        println!("Must provide a file");
+                };
+
+                let r_list: Vec<Modify> = match read_file(&mopt.file) {
+                    Ok(r) => r,
+                    Err(e) => {
+                        eprintln!("Error -> {:?}", e);
+                        return;
                     }
+                };
+
+                let modlist = ModifyList::new_list(r_list);
+                if let Err(e) = client.modify(filter, modlist) {
+                    eprintln!("Error -> {:?}", e);
                 }
             }
             RawOpt::Delete(dopt) => {
                 let client = dopt.commonopts.to_client();
-                let filter: Filter = serde_json::from_str(dopt.filter.as_str()).unwrap();
-                client.delete(filter).unwrap();
+                let filter: Filter = match serde_json::from_str(dopt.filter.as_str()) {
+                    Ok(f) => f,
+                    Err(e) => {
+                        eprintln!("Error -> {:?}", e);
+                        return;
+                    }
+                };
+
+                if let Err(e) = client.delete(filter) {
+                    eprintln!("Error -> {:?}", e);
+                }
             }
         }
     }

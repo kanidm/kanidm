@@ -101,7 +101,7 @@ fn test_fixture(rsclient: &KanidmClient) -> () {
     assert!(res.is_ok());
     // Not recommended in production!
     rsclient
-        .idm_group_add_members("idm_admins", vec!["admin"])
+        .idm_group_add_members("idm_admins", &["admin"])
         .unwrap();
 
     // Create a new account
@@ -126,7 +126,7 @@ fn test_fixture(rsclient: &KanidmClient) -> () {
     // Setup a group
     rsclient.idm_group_create("testgroup1").unwrap();
     rsclient
-        .idm_group_add_members("testgroup1", vec!["testaccount1"])
+        .idm_group_add_members("testgroup1", &["testaccount1"])
         .unwrap();
     rsclient
         .idm_group_unix_extend("testgroup1", Some(20001))

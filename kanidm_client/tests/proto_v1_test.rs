@@ -251,14 +251,14 @@ fn test_server_rest_group_lifecycle() {
 
         // Add a member.
         rsclient
-            .idm_group_add_members("demo_group", vec!["admin"])
+            .idm_group_add_members("demo_group", &["admin"])
             .unwrap();
         let members = rsclient.idm_group_get_members("demo_group").unwrap();
         assert!(members == Some(vec!["admin@example.com".to_string()]));
 
         // Set the list of members
         rsclient
-            .idm_group_set_members("demo_group", vec!["admin", "demo_group"])
+            .idm_group_set_members("demo_group", &["admin", "demo_group"])
             .unwrap();
         let members = rsclient.idm_group_get_members("demo_group").unwrap();
         assert!(
@@ -395,7 +395,7 @@ fn test_server_rest_account_lifecycle() {
         // To enable the admin to actually make some of these changes, we have
         // to make them a people admin. NOT recommended in production!
         rsclient
-            .idm_group_add_members("idm_account_write_priv", vec!["admin"])
+            .idm_group_add_members("idm_account_write_priv", &["admin"])
             .unwrap();
 
         // Create a new account
@@ -499,7 +499,7 @@ fn test_server_rest_posix_lifecycle() {
         assert!(res.is_ok());
         // Not recommended in production!
         rsclient
-            .idm_group_add_members("idm_admins", vec!["admin"])
+            .idm_group_add_members("idm_admins", &["admin"])
             .unwrap();
 
         // Create a new account
@@ -517,7 +517,7 @@ fn test_server_rest_posix_lifecycle() {
         // Extend the group with posix attrs
         rsclient.idm_group_create("posix_group").unwrap();
         rsclient
-            .idm_group_add_members("posix_group", vec!["posix_account"])
+            .idm_group_add_members("posix_group", &["posix_account"])
             .unwrap();
         rsclient.idm_group_unix_extend("posix_group", None).unwrap();
 
@@ -576,7 +576,7 @@ fn test_server_rest_posix_auth_lifecycle() {
 
         // Not recommended in production!
         rsclient
-            .idm_group_add_members("idm_admins", vec!["admin"])
+            .idm_group_add_members("idm_admins", &["admin"])
             .unwrap();
 
         // Setup a unix user
@@ -634,7 +634,7 @@ fn test_server_rest_recycle_lifecycle() {
 
         // Not recommended in production!
         rsclient
-            .idm_group_add_members("idm_admins", vec!["admin"])
+            .idm_group_add_members("idm_admins", &["admin"])
             .unwrap();
 
         // Setup a unix user
@@ -674,10 +674,10 @@ fn test_server_rest_account_import_password() {
         // To enable the admin to actually make some of these changes, we have
         // to make them a password import admin. NOT recommended in production!
         rsclient
-            .idm_group_add_members("idm_people_account_password_import_priv", vec!["admin"])
+            .idm_group_add_members("idm_people_account_password_import_priv", &["admin"])
             .unwrap();
         rsclient
-            .idm_group_add_members("idm_people_extend_priv", vec!["admin"])
+            .idm_group_add_members("idm_people_extend_priv", &["admin"])
             .unwrap();
 
         // Create a new account
@@ -718,7 +718,7 @@ fn test_server_rest_totp_auth_lifecycle() {
 
         // Not recommended in production!
         rsclient
-            .idm_group_add_members("idm_admins", vec!["admin"])
+            .idm_group_add_members("idm_admins", &["admin"])
             .unwrap();
 
         // Create a new account

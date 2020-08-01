@@ -1,3 +1,13 @@
+#![deny(warnings)]
+#![warn(unused_extern_crates)]
+#![deny(clippy::unwrap_used)]
+#![deny(clippy::expect_used)]
+#![deny(clippy::panic)]
+#![deny(clippy::unreachable)]
+#![deny(clippy::await_holding_lock)]
+#![deny(clippy::needless_pass_by_value)]
+#![deny(clippy::trivially_copy_pass_by_ref)]
+
 #[macro_use]
 extern crate log;
 use structopt::StructOpt;
@@ -52,9 +62,17 @@ impl SelfOpt {
             SelfOpt::SetPassword(copt) => {
                 let client = copt.to_client();
 
-                let password = rpassword::prompt_password_stderr("Enter new password: ").unwrap();
+                let password = match rpassword::prompt_password_stderr("Enter new password: ") {
+                    Ok(p) => p,
+                    Err(e) => {
+                        eprintln!("Error -> {:?}", e);
+                        return;
+                    }
+                };
 
-                client.idm_account_set_password(password).unwrap();
+                if let Err(e) = client.idm_account_set_password(password) {
+                    eprintln!("Error -> {:?}", e);
+                }
             }
         }
     }
@@ -103,14 +121,23 @@ impl ClientOpt {
 }
 
 pub(crate) fn password_prompt(prompt: &str) -> Option<String> {
-    let password = rpassword::prompt_password_stderr(prompt).unwrap();
+    for _ in 0..3 {
+        let password = match rpassword::prompt_password_stderr(prompt) {
+            Ok(p) => p,
+            Err(_e) => return None,
+        };
 
-    let password_confirm =
-        rpassword::prompt_password_stderr("Retype the new password to confirm: ").unwrap();
+        let password_confirm =
+            match rpassword::prompt_password_stderr("Retype the new password to confirm: ") {
+                Ok(p) => p,
+                Err(_e) => return None,
+            };
 
-    if password == password_confirm {
-        Some(password)
-    } else {
-        None
+        if password == password_confirm {
+            return Some(password);
+        } else {
+            eprintln!("Passwords do not match");
+        }
     }
+    None
 }
