@@ -7,7 +7,7 @@ use std::convert::TryFrom;
 use std::fmt;
 
 use crate::cache::Id;
-use std::sync::{Mutex, MutexGuard};
+use tokio::sync::{Mutex, MutexGuard};
 
 use kanidm::be::dbvalue::DbPasswordV1;
 use kanidm::credential::Password;

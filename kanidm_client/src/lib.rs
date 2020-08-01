@@ -1,5 +1,12 @@
 #![deny(warnings)]
 #![warn(unused_extern_crates)]
+#![deny(clippy::unwrap_used)]
+#![deny(clippy::expect_used)]
+#![deny(clippy::panic)]
+#![deny(clippy::unreachable)]
+#![deny(clippy::await_holding_lock)]
+#![deny(clippy::needless_pass_by_value)]
+#![deny(clippy::trivially_copy_pass_by_ref)]
 
 #[macro_use]
 extern crate log;
@@ -8,6 +15,7 @@ use reqwest::header::CONTENT_TYPE;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use serde_derive::Deserialize;
+use serde_json::error::Error as SerdeJsonError;
 use std::collections::BTreeMap;
 use std::fs::{metadata, File, Metadata};
 use std::io::Read;
@@ -35,12 +43,13 @@ pub const KOPID: &str = "X-KANIDM-OPID";
 #[derive(Debug)]
 pub enum ClientError {
     Unauthorized,
-    Http(reqwest::StatusCode, Option<OperationError>),
+    Http(reqwest::StatusCode, Option<OperationError>, String),
     Transport(reqwest::Error),
     AuthenticationFailed,
-    JsonParse,
     EmptyResponse,
     TOTPVerifyFailed(Uuid, TOTPSecret),
+    JSONDecode(reqwest::Error, String),
+    JSONEncode(SerdeJsonError),
 }
 
 #[derive(Debug, Deserialize)]
@@ -341,7 +350,7 @@ impl KanidmClient {
     ) -> Result<T, ClientError> {
         let dest = format!("{}{}", self.addr, dest);
 
-        let req_string = serde_json::to_string(&request).unwrap();
+        let req_string = serde_json::to_string(&request).map_err(ClientError::JSONEncode)?;
 
         let response = self
             .client
@@ -351,21 +360,21 @@ impl KanidmClient {
             .send()
             .map_err(ClientError::Transport)?;
 
-        let opid = response.headers().get(KOPID);
-        debug!(
-            "opid -> {:?}",
-            opid.expect("Missing opid? Refusing to proceed ...")
-        );
+        let opid = response
+            .headers()
+            .get(KOPID)
+            .and_then(|hv| hv.to_str().ok().map(|s| s.to_string()))
+            .unwrap_or_else(|| "missing_kopid".to_string());
+        debug!("opid -> {:?}", opid);
 
         match response.status() {
             reqwest::StatusCode::OK => {}
-            unexpect => return Err(ClientError::Http(unexpect, response.json().ok())),
+            unexpect => return Err(ClientError::Http(unexpect, response.json().ok(), opid)),
         }
 
-        // TODO #253: What about errors
-        let r: T = response.json().unwrap();
-
-        Ok(r)
+        response
+            .json()
+            .map_err(|e| ClientError::JSONDecode(e, opid))
     }
 
     fn perform_put_request<R: Serialize, T: DeserializeOwned>(
@@ -375,7 +384,7 @@ impl KanidmClient {
     ) -> Result<T, ClientError> {
         let dest = format!("{}{}", self.addr, dest);
 
-        let req_string = serde_json::to_string(&request).unwrap();
+        let req_string = serde_json::to_string(&request).map_err(ClientError::JSONEncode)?;
 
         let response = self
             .client
@@ -385,21 +394,21 @@ impl KanidmClient {
             .send()
             .map_err(ClientError::Transport)?;
 
-        let opid = response.headers().get(KOPID);
-        debug!(
-            "opid -> {:?}",
-            opid.expect("Missing opid? Refusing to proceed ...")
-        );
+        let opid = response
+            .headers()
+            .get(KOPID)
+            .and_then(|hv| hv.to_str().ok().map(|s| s.to_string()))
+            .unwrap_or_else(|| "missing_kopid".to_string());
+        debug!("opid -> {:?}", opid);
 
         match response.status() {
             reqwest::StatusCode::OK => {}
-            unexpect => return Err(ClientError::Http(unexpect, response.json().ok())),
+            unexpect => return Err(ClientError::Http(unexpect, response.json().ok(), opid)),
         }
 
-        // TODO #253: What about errors
-        let r: T = response.json().unwrap();
-
-        Ok(r)
+        response
+            .json()
+            .map_err(|e| ClientError::JSONDecode(e, opid))
     }
 
     fn perform_get_request<T: DeserializeOwned>(&self, dest: &str) -> Result<T, ClientError> {
@@ -410,21 +419,21 @@ impl KanidmClient {
             .send()
             .map_err(ClientError::Transport)?;
 
-        let opid = response.headers().get(KOPID);
-        debug!(
-            "opid -> {:?}",
-            opid.expect("Missing opid? Refusing to proceed ...")
-        );
+        let opid = response
+            .headers()
+            .get(KOPID)
+            .and_then(|hv| hv.to_str().ok().map(|s| s.to_string()))
+            .unwrap_or_else(|| "missing_kopid".to_string());
+        debug!("opid -> {:?}", opid);
 
         match response.status() {
             reqwest::StatusCode::OK => {}
-            unexpect => return Err(ClientError::Http(unexpect, response.json().ok())),
+            unexpect => return Err(ClientError::Http(unexpect, response.json().ok(), opid)),
         }
 
-        // TODO #253: What about errors
-        let r: T = response.json().unwrap();
-
-        Ok(r)
+        response
+            .json()
+            .map_err(|e| ClientError::JSONDecode(e, opid))
     }
 
     fn perform_delete_request(&self, dest: &str) -> Result<bool, ClientError> {
@@ -435,36 +444,50 @@ impl KanidmClient {
             .send()
             .map_err(ClientError::Transport)?;
 
-        let opid = response.headers().get(KOPID);
-        debug!(
-            "opid -> {:?}",
-            opid.expect("Missing opid? Refusing to proceed ...")
-        );
+        let opid = response
+            .headers()
+            .get(KOPID)
+            .and_then(|hv| hv.to_str().ok().map(|s| s.to_string()))
+            .unwrap_or_else(|| "missing_kopid".to_string());
+        debug!("opid -> {:?}", opid);
 
         match response.status() {
             reqwest::StatusCode::OK => {}
-            unexpect => return Err(ClientError::Http(unexpect, response.json().ok())),
+            unexpect => return Err(ClientError::Http(unexpect, response.json().ok(), opid)),
         }
 
-        let r: bool = response.json().unwrap();
-
-        Ok(r)
+        response
+            .json()
+            .map_err(|e| ClientError::JSONDecode(e, opid))
     }
 
     // whoami
     // Can't use generic get due to possible un-auth case.
     pub fn whoami(&self) -> Result<Option<(Entry, UserAuthToken)>, ClientError> {
         let whoami_dest = format!("{}/v1/self", self.addr);
-        let response = self.client.get(whoami_dest.as_str()).send().unwrap();
+        let response = self
+            .client
+            .get(whoami_dest.as_str())
+            .send()
+            .map_err(ClientError::Transport)?;
+
+        let opid = response
+            .headers()
+            .get(KOPID)
+            .and_then(|hv| hv.to_str().ok().map(|s| s.to_string()))
+            .unwrap_or_else(|| "missing_kopid".to_string());
+        debug!("opid -> {:?}", opid);
 
         match response.status() {
             // Continue to process.
             reqwest::StatusCode::OK => {}
             reqwest::StatusCode::UNAUTHORIZED => return Ok(None),
-            unexpect => return Err(ClientError::Http(unexpect, response.json().ok())),
+            unexpect => return Err(ClientError::Http(unexpect, response.json().ok(), opid)),
         }
 
-        let r: WhoamiResponse = serde_json::from_str(response.text().unwrap().as_str()).unwrap();
+        let r: WhoamiResponse = response
+            .json()
+            .map_err(|e| ClientError::JSONDecode(e, opid))?;
 
         Ok(Some((r.youare, r.uat)))
     }
@@ -608,12 +631,12 @@ impl KanidmClient {
         self.perform_get_request(format!("/v1/group/{}/_attr/member", id).as_str())
     }
 
-    pub fn idm_group_set_members(&self, id: &str, members: Vec<&str>) -> Result<bool, ClientError> {
+    pub fn idm_group_set_members(&self, id: &str, members: &[&str]) -> Result<bool, ClientError> {
         let m: Vec<_> = members.iter().map(|v| (*v).to_string()).collect();
         self.perform_put_request(format!("/v1/group/{}/_attr/member", id).as_str(), m)
     }
 
-    pub fn idm_group_add_members(&self, id: &str, members: Vec<&str>) -> Result<bool, ClientError> {
+    pub fn idm_group_add_members(&self, id: &str, members: &[&str]) -> Result<bool, ClientError> {
         let m: Vec<_> = members.iter().map(|v| (*v).to_string()).collect();
         self.perform_post_request(format!("/v1/group/{}/_attr/member", id).as_str(), m)
     }
@@ -881,7 +904,12 @@ impl KanidmClient {
     // pub fn idm_domain_get_attr
     pub fn idm_domain_get_ssid(&self, id: &str) -> Result<String, ClientError> {
         self.perform_get_request(format!("/v1/domain/{}/_attr/domain_ssid", id).as_str())
-            .and_then(|mut r: Vec<String>| Ok(r.pop().unwrap()))
+            .and_then(|mut r: Vec<String>|
+                // Get the first result
+                r.pop()
+                .ok_or(
+                    ClientError::EmptyResponse
+                ))
     }
 
     // pub fn idm_domain_put_attr

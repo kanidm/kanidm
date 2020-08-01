@@ -271,8 +271,12 @@ impl CacheLayer {
                     ClientError::Http(
                         StatusCode::UNAUTHORIZED,
                         Some(OperationError::NotAuthenticated),
+                        opid,
                     ) => {
-                        error!("transport unauthenticated, moving to offline");
+                        error!(
+                            "transport unauthenticated, moving to offline - eventid {}",
+                            opid
+                        );
                         // Something went wrong, mark offline.
                         let time = SystemTime::now().add(Duration::from_secs(15));
                         self.set_cachestate(CacheState::OfflineNextCheck(time))
@@ -282,14 +286,16 @@ impl CacheLayer {
                     ClientError::Http(
                         StatusCode::BAD_REQUEST,
                         Some(OperationError::NoMatchingEntries),
+                        opid,
                     )
                     | ClientError::Http(
                         StatusCode::BAD_REQUEST,
                         Some(OperationError::InvalidAccountState(_)),
+                        opid,
                     ) => {
                         // We wele able to contact the server but the entry has been removed, or
                         // is not longer a valid posix account.
-                        debug!("entry has been removed or is no longer a valid posix account, clearing from cache ...");
+                        debug!("entry has been removed or is no longer a valid posix account, clearing from cache ... - eventid {}", opid);
                         token
                             .map(|tok| self.delete_cache_usertoken(&tok.uuid))
                             // Now an option<result<t, _>>
@@ -335,8 +341,12 @@ impl CacheLayer {
                     ClientError::Http(
                         StatusCode::UNAUTHORIZED,
                         Some(OperationError::NotAuthenticated),
+                        opid,
                     ) => {
-                        error!("transport unauthenticated, moving to offline");
+                        error!(
+                            "transport unauthenticated, moving to offline - eventid {}",
+                            opid
+                        );
                         // Something went wrong, mark offline.
                         let time = SystemTime::now().add(Duration::from_secs(15));
                         self.set_cachestate(CacheState::OfflineNextCheck(time))
@@ -346,12 +356,14 @@ impl CacheLayer {
                     ClientError::Http(
                         StatusCode::BAD_REQUEST,
                         Some(OperationError::NoMatchingEntries),
+                        opid,
                     )
                     | ClientError::Http(
                         StatusCode::BAD_REQUEST,
                         Some(OperationError::InvalidAccountState(_)),
+                        opid,
                     ) => {
-                        debug!("entry has been removed or is no longer a valid posix group, clearing from cache ...");
+                        debug!("entry has been removed or is no longer a valid posix group, clearing from cache ... - eventid {}", opid);
                         token
                             .map(|tok| self.delete_cache_grouptoken(&tok.uuid))
                             // Now an option<result<t, _>>
@@ -620,8 +632,12 @@ impl CacheLayer {
                 ClientError::Http(
                     StatusCode::UNAUTHORIZED,
                     Some(OperationError::NotAuthenticated),
+                    opid,
                 ) => {
-                    error!("transport unauthenticated, moving to offline");
+                    error!(
+                        "transport unauthenticated, moving to offline - eventid {}",
+                        opid
+                    );
                     // Something went wrong, mark offline.
                     let time = SystemTime::now().add(Duration::from_secs(15));
                     self.set_cachestate(CacheState::OfflineNextCheck(time))
@@ -634,12 +650,17 @@ impl CacheLayer {
                 ClientError::Http(
                     StatusCode::BAD_REQUEST,
                     Some(OperationError::NoMatchingEntries),
+                    opid,
                 )
                 | ClientError::Http(
                     StatusCode::BAD_REQUEST,
                     Some(OperationError::InvalidAccountState(_)),
+                    opid,
                 ) => {
-                    error!("unknown account or is not a valid posix account");
+                    error!(
+                        "unknown account or is not a valid posix account - eventid {}",
+                        opid
+                    );
                     Ok(None)
                 }
                 er => {

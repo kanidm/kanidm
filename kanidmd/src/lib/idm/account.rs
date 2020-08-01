@@ -63,12 +63,12 @@ macro_rules! try_from_entry {
         let uuid = $value.get_uuid().clone();
 
         Ok(Account {
-            uuid: uuid,
-            name: name,
-            displayname: displayname,
-            groups: groups,
-            primary: primary,
-            spn: spn,
+            uuid,
+            name,
+            displayname,
+            groups,
+            primary,
+            spn,
         })
     }};
 }

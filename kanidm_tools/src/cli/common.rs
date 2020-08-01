@@ -27,35 +27,54 @@ impl CommonOpt {
         let config_path: String = shellexpand::tilde("~/.config/kanidm").into_owned();
 
         debug!("Attempting to use config {}", "/etc/kanidm/config");
-        let client_builder = KanidmClientBuilder::new()
+        let client_builder = match KanidmClientBuilder::new()
             .read_options_from_optional_config("/etc/kanidm/config")
             .and_then(|cb| {
                 debug!("Attempting to use config {}", config_path);
                 cb.read_options_from_optional_config(config_path)
-            })
-            .expect("Failed to parse config (if present)");
+            }) {
+            Ok(c) => c,
+            Err(e) => {
+                error!("Failed to parse config (if present) -- {:?}", e);
+                std::process::exit(1);
+            }
+        };
 
         let client_builder = match &self.addr {
             Some(a) => client_builder.address(a.to_string()),
             None => client_builder,
         };
 
-        let ca_path: Option<&str> = self.ca_path.as_ref().map(|p| p.to_str().unwrap());
+        let ca_path: Option<&str> = self.ca_path.as_ref().map(|p| p.to_str()).flatten();
         let client_builder = match ca_path {
-            Some(p) => client_builder
-                .add_root_certificate_filepath(p)
-                .expect("Failed to access CA file"),
+            Some(p) => match client_builder.add_root_certificate_filepath(p) {
+                Ok(cb) => cb,
+                Err(e) => {
+                    error!("Failed to add ca certificate -- {:?}", e);
+                    std::process::exit(1);
+                }
+            },
             None => client_builder,
         };
 
-        let client = client_builder
-            .build()
-            .expect("Failed to build client instance");
+        let client = match client_builder.build() {
+            Ok(c) => c,
+            Err(e) => {
+                error!("Failed to build client instance -- {:?}", e);
+                std::process::exit(1);
+            }
+        };
 
         let r = if self.username == "anonymous" {
             client.auth_anonymous()
         } else {
-            let password = rpassword::prompt_password_stderr("Enter password: ").unwrap();
+            let password = match rpassword::prompt_password_stderr("Enter password: ") {
+                Ok(p) => p,
+                Err(e) => {
+                    error!("Failed to create password prompt -- {:?}", e);
+                    std::process::exit(1);
+                }
+            };
             client.auth_simple_password(self.username.as_str(), password.as_str())
         };
 
