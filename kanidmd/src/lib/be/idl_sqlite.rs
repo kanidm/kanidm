@@ -6,6 +6,7 @@ use idlset::IDLBitRange;
 use kanidm_proto::v1::{ConsistencyError, OperationError};
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
+use rusqlite::OpenFlags;
 use rusqlite::OptionalExtension;
 use rusqlite::NO_PARAMS;
 use std::convert::{TryFrom, TryInto};
@@ -16,6 +17,13 @@ use uuid::Uuid;
 
 const DBV_ID2ENTRY: &str = "id2entry";
 const DBV_INDEXV: &str = "indexv";
+
+#[repr(u32)]
+#[derive(Debug, Copy, Clone)]
+pub enum FsType {
+    Generic = 4096,
+    ZFS = 65536,
+}
 
 #[derive(Debug)]
 pub struct IdSqliteEntry {
@@ -1090,18 +1098,6 @@ impl IdlSqliteWriteTransaction {
     }
 
     pub fn setup(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
-        // Enable WAL mode, which is just faster and better.
-        //
-        // We have to use stmt + prepare because execute can't handle
-        // the "wal" row on result when this works!
-        self.conn
-            .prepare("PRAGMA journal_mode=WAL;")
-            .and_then(|mut wal_stmt| wal_stmt.query(NO_PARAMS).map(|_| ()))
-            .map_err(|e| {
-                ladmin_error!(audit, "sqlite error {:?}", e);
-                OperationError::SQLiteError
-            })?;
-
         // This stores versions of components. For example:
         // ----------------------
         // | id       | version |
@@ -1236,8 +1232,27 @@ impl IdlSqliteWriteTransaction {
 }
 
 impl IdlSqlite {
-    pub fn new(audit: &mut AuditScope, path: &str, pool_size: u32) -> Result<Self, OperationError> {
-        let manager = SqliteConnectionManager::file(path);
+    pub fn new(
+        audit: &mut AuditScope,
+        path: &str,
+        pool_size: u32,
+        fstype: FsType,
+    ) -> Result<Self, OperationError> {
+        // If provided, set the page size to match the tuning we want. By default we use 4096. The VACUUM
+        // immediately after is so that on db create the page size takes effect.
+        //
+        // Enable WAL mode, which is just faster and better for our needs.
+        let mut flags = OpenFlags::default();
+        // Open with multi thread flags and locking options.
+        flags.insert(OpenFlags::SQLITE_OPEN_NO_MUTEX);
+        let manager = SqliteConnectionManager::file(path)
+            .with_init(move |c| {
+                c.execute_batch(
+                    format!("PRAGMA page_size={}; VACUUM; PRAGMA journal_mode=WAL;", fstype as u32)
+                    .as_str(),
+                )
+            })
+            .with_flags(flags);
         let builder1 = Pool::builder();
         let builder2 = if path == "" {
             // We are in a debug mode, with in memory. We MUST have only
@@ -1278,12 +1293,12 @@ impl IdlSqlite {
 #[cfg(test)]
 mod tests {
     use crate::audit::AuditScope;
-    use crate::be::idl_sqlite::{IdlSqlite, IdlSqliteTransaction};
+    use crate::be::idl_sqlite::{FsType, IdlSqlite, IdlSqliteTransaction};
 
     #[test]
     fn test_idl_sqlite_verify() {
         let mut audit = AuditScope::new("run_test", uuid::Uuid::new_v4(), None);
-        let be = IdlSqlite::new(&mut audit, "", 1).unwrap();
+        let be = IdlSqlite::new(&mut audit, "", 1, FsType::Generic).unwrap();
         let be_w = be.write();
         let r = be_w.verify();
         assert!(r.len() == 0);

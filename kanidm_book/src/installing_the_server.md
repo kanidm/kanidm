@@ -27,6 +27,12 @@ You will also need a config file in `/data/server.toml`. It's contents should be
     # ldapbindaddress = "127.0.0.1:3636"
     # The path to the kanidm database.
     db_path = "/data/kanidm.db"
+    # If you have a known filesystem, kanidm can tune sqlite to match. Valid choices are:
+    # [zfs, other]
+    # If you are unsure about this, default to other
+    # zfs:
+    # * sets sqlite pagesize to 64k, you should set recordsize=64k on the zfs filesystem.
+    # db_fs_type = "zfs"
     # TLS ca, certificate and key in pem format. All three must be commented, or present
     # tls_ca = "/data/ca.pem"
     # tls_cert = "/data/cert.pem"

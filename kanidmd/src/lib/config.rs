@@ -20,6 +20,7 @@ pub struct Configuration {
     pub threads: usize,
     // db type later
     pub db_path: String,
+    pub db_fs_type: Option<String>,
     pub maximum_request: usize,
     pub secure_cookies: bool,
     pub tls_config: Option<TlsConfiguration>,
@@ -61,6 +62,7 @@ impl Configuration {
             ldapaddress: None,
             threads: num_cpus::get(),
             db_path: String::from(""),
+            db_fs_type: None,
             maximum_request: 262_144, // 256k
             // log type
             // log path
@@ -82,6 +84,10 @@ impl Configuration {
 
     pub fn update_db_path(&mut self, p: &str) {
         self.db_path = p.to_string();
+    }
+
+    pub fn update_db_fs_type(&mut self, p: &Option<String>) {
+        self.db_fs_type = p.as_ref().map(|v| v.to_lowercase());
     }
 
     pub fn update_bind(&mut self, b: &Option<String>) {

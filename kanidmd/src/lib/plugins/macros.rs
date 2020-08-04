@@ -19,7 +19,7 @@ macro_rules! setup_test {
             let schema_txn = schema_outer.write();
             schema_txn.reload_idxmeta()
         };
-        let be = Backend::new($au, "", 1, idxmeta).expect("Failed to init BE");
+        let be = Backend::new($au, "", 1, FsType::Generic, idxmeta).expect("Failed to init BE");
 
         let qs = QueryServer::new(be, schema_outer);
         qs.initialise_helper($au, duration_from_epoch_now())
@@ -48,7 +48,7 @@ macro_rules! run_create_test {
         $check:expr
     ) => {{
         use crate::audit::AuditScope;
-        use crate::be::Backend;
+        use crate::be::{Backend, FsType};
         use crate::event::CreateEvent;
         use crate::schema::Schema;
         use crate::server::QueryServer;
@@ -103,7 +103,7 @@ macro_rules! run_modify_test {
         $check:expr
     ) => {{
         use crate::audit::AuditScope;
-        use crate::be::Backend;
+        use crate::be::{Backend, FsType};
         use crate::event::ModifyEvent;
         use crate::schema::Schema;
         use crate::server::QueryServer;
@@ -165,7 +165,7 @@ macro_rules! run_delete_test {
         $check:expr
     ) => {{
         use crate::audit::AuditScope;
-        use crate::be::Backend;
+        use crate::be::{Backend, FsType};
         use crate::event::DeleteEvent;
         use crate::schema::Schema;
         use crate::server::QueryServer;

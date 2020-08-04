@@ -1,6 +1,6 @@
 use crate::audit::AuditScope;
 use crate::be::idl_sqlite::{
-    IdlSqlite, IdlSqliteReadTransaction, IdlSqliteTransaction, IdlSqliteWriteTransaction,
+    FsType, IdlSqlite, IdlSqliteReadTransaction, IdlSqliteTransaction, IdlSqliteWriteTransaction,
 };
 use crate::be::{IdRawEntry, IDL};
 use crate::entry::{Entry, EntryCommitted, EntrySealed};
@@ -848,8 +848,13 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
 }
 
 impl IdlArcSqlite {
-    pub fn new(audit: &mut AuditScope, path: &str, pool_size: u32) -> Result<Self, OperationError> {
-        let db = IdlSqlite::new(audit, path, pool_size)?;
+    pub fn new(
+        audit: &mut AuditScope,
+        path: &str,
+        pool_size: u32,
+        fstype: FsType,
+    ) -> Result<Self, OperationError> {
+        let db = IdlSqlite::new(audit, path, pool_size, fstype)?;
         let entry_cache = Arc::new(
             DEFAULT_CACHE_TARGET,
             pool_size as usize,

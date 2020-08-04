@@ -2,7 +2,7 @@
 macro_rules! run_test_no_init {
     ($test_fn:expr) => {{
         use crate::audit::AuditScope;
-        use crate::be::Backend;
+        use crate::be::{Backend, FsType};
         use crate::schema::Schema;
         use crate::server::QueryServer;
         use crate::utils::duration_from_epoch_now;
@@ -22,7 +22,7 @@ macro_rules! run_test_no_init {
             let schema_txn = schema_outer.write();
             schema_txn.reload_idxmeta()
         };
-        let be = match Backend::new(&mut audit, "", 1, idxmeta) {
+        let be = match Backend::new(&mut audit, "", 1, FsType::Generic, idxmeta) {
             Ok(be) => be,
             Err(e) => {
                 audit.write_log();
@@ -46,7 +46,7 @@ macro_rules! run_test_no_init {
 macro_rules! run_test {
     ($test_fn:expr) => {{
         use crate::audit::AuditScope;
-        use crate::be::Backend;
+        use crate::be::{Backend, FsType};
         use crate::schema::Schema;
         use crate::server::QueryServer;
         use crate::utils::duration_from_epoch_now;
@@ -66,7 +66,7 @@ macro_rules! run_test {
             let schema_txn = schema_outer.write();
             schema_txn.reload_idxmeta()
         };
-        let be = match Backend::new(&mut audit, "", 1, idxmeta) {
+        let be = match Backend::new(&mut audit, "", 1, FsType::Generic, idxmeta) {
             Ok(be) => be,
             Err(e) => {
                 audit.write_log();
@@ -116,7 +116,7 @@ macro_rules! entry_str_to_account {
 macro_rules! run_idm_test {
     ($test_fn:expr) => {{
         use crate::audit::AuditScope;
-        use crate::be::Backend;
+        use crate::be::{Backend, FsType};
         use crate::idm::server::IdmServer;
         use crate::schema::Schema;
         use crate::server::QueryServer;
@@ -137,7 +137,8 @@ macro_rules! run_idm_test {
             let schema_txn = schema_outer.write();
             schema_txn.reload_idxmeta()
         };
-        let be = Backend::new(&mut audit, "", 1, idxmeta).expect("Failed to init be");
+        let be =
+            Backend::new(&mut audit, "", 1, FsType::Generic, idxmeta).expect("Failed to init be");
 
         let test_server = QueryServer::new(be, schema_outer);
         test_server

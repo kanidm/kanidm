@@ -33,6 +33,7 @@ struct ServerConfig {
     pub ldapbindaddress: Option<String>,
     // pub threads: Option<usize>,
     pub db_path: String,
+    pub db_fs_type: Option<String>,
     pub tls_ca: Option<String>,
     pub tls_cert: Option<String>,
     pub tls_key: Option<String>,
@@ -273,6 +274,7 @@ async fn main() {
 
     config.update_log_level(ll);
     config.update_db_path(&sconfig.db_path.as_str());
+    config.update_db_fs_type(&sconfig.db_fs_type);
     config.update_tls(&sconfig.tls_ca, &sconfig.tls_cert, &sconfig.tls_key);
     config.update_bind(&sconfig.bindaddress);
     config.update_ldapbind(&sconfig.ldapbindaddress);
