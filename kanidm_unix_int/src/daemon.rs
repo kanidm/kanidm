@@ -105,6 +105,7 @@ async fn handle_client(
                 debug!("nssaccounts req");
                 cachelayer
                     .get_nssaccounts()
+                    .await
                     .map(ClientResponse::NssAccounts)
                     .unwrap_or_else(|_| {
                         error!("unable to enum accounts");
@@ -137,6 +138,7 @@ async fn handle_client(
                 debug!("nssgroups req");
                 cachelayer
                     .get_nssgroups()
+                    .await
                     .map(ClientResponse::NssGroups)
                     .unwrap_or_else(|_| {
                         error!("unable to enum groups");
@@ -185,6 +187,7 @@ async fn handle_client(
                 debug!("invalidate cache");
                 cachelayer
                     .invalidate()
+                    .await
                     .map(|_| ClientResponse::Ok)
                     .unwrap_or(ClientResponse::Error)
             }
@@ -192,6 +195,7 @@ async fn handle_client(
                 debug!("clear cache");
                 cachelayer
                     .clear_cache()
+                    .await
                     .map(|_| ClientResponse::Ok)
                     .unwrap_or(ClientResponse::Error)
             }
@@ -359,6 +363,7 @@ async fn main() {
             cfg.uid_attr_map,
             cfg.gid_attr_map,
         )
+        .await
         .expect("Failed to build cache layer."),
     );
 

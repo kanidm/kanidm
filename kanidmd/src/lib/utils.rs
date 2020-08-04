@@ -22,7 +22,10 @@ fn uuid_from_u64_u32(a: u64, b: u32, sid: SID) -> Uuid {
     v.extend_from_slice(&b.to_be_bytes());
     v.extend_from_slice(&sid);
 
-    Builder::from_slice(v.as_slice()).unwrap().build()
+    #[allow(clippy::expect_used)]
+    Builder::from_slice(v.as_slice())
+        .expect("invalid slice for uuid builder")
+        .build()
 }
 
 pub fn uuid_from_duration(d: Duration, sid: SID) -> Uuid {
@@ -46,9 +49,10 @@ pub fn readable_password_from_random() -> String {
 }
 
 pub fn duration_from_epoch_now() -> Duration {
+    #[allow(clippy::expect_used)]
     SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap()
+        .expect("invalid duration from epoch now")
 }
 
 /*

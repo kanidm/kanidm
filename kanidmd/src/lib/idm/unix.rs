@@ -105,28 +105,28 @@ macro_rules! try_from_entry {
 impl UnixUserAccount {
     pub(crate) fn try_from_entry_rw(
         au: &mut AuditScope,
-        value: Entry<EntrySealed, EntryCommitted>,
+        value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        let groups = UnixGroup::try_from_account_entry_rw(au, &value, qs)?;
+        let groups = UnixGroup::try_from_account_entry_rw(au, value, qs)?;
         try_from_entry!(value, groups)
     }
 
     pub(crate) fn try_from_entry_ro(
         au: &mut AuditScope,
-        value: Entry<EntrySealed, EntryCommitted>,
+        value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        let groups = UnixGroup::try_from_account_entry_ro(au, &value, qs)?;
+        let groups = UnixGroup::try_from_account_entry_ro(au, value, qs)?;
         try_from_entry!(value, groups)
     }
 
     pub(crate) fn try_from_entry_reduced(
         au: &mut AuditScope,
-        value: Entry<EntryReduced, EntryCommitted>,
+        value: &Entry<EntryReduced, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        let groups = UnixGroup::try_from_account_entry_red_ro(au, &value, qs)?;
+        let groups = UnixGroup::try_from_account_entry_red_ro(au, value, qs)?;
         try_from_entry!(value, groups)
     }
 
@@ -154,7 +154,7 @@ impl UnixUserAccount {
         &self,
         cleartext: &str,
     ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
-        let ncred = Credential::new_password_only(cleartext);
+        let ncred = Credential::new_password_only(cleartext)?;
         let vcred = Value::new_credential("unix", ncred);
         Ok(ModifyList::new_purge_and_set("unix_password", vcred))
     }
@@ -169,7 +169,7 @@ impl UnixUserAccount {
         match &self.cred {
             Some(cred) => match &cred.password {
                 Some(pw) => {
-                    if pw.verify(cleartext) {
+                    if pw.verify(cleartext)? {
                         lsecurity!(au, "Successful unix cred handling");
                         Some(self.to_unixusertoken()).transpose()
                     } else {
@@ -304,7 +304,7 @@ macro_rules! try_from_account_group_e {
                 ]));
                 let ges: Vec<_> = $qs.internal_search($au, f)?;
                 let groups: Result<Vec<_>, _> = iter::once(Ok(upg))
-                    .chain(ges.into_iter().map(UnixGroup::try_from_entry))
+                    .chain(ges.iter().map(UnixGroup::try_from_entry))
                     .collect();
                 groups
             }
@@ -342,13 +342,13 @@ impl UnixGroup {
     }
 
     pub fn try_from_entry_reduced(
-        value: Entry<EntryReduced, EntryCommitted>,
+        value: &Entry<EntryReduced, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         try_from_group_e!(value)
     }
 
     pub fn try_from_entry(
-        value: Entry<EntrySealed, EntryCommitted>,
+        value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         try_from_group_e!(value)
     }

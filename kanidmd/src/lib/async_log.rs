@@ -1,7 +1,7 @@
 use crate::audit::AuditScope;
 use crossbeam::channel::Receiver;
 
-pub fn run(rx: Receiver<Option<AuditScope>>) {
+pub fn run(rx: &Receiver<Option<AuditScope>>) {
     info!("Log thread started ...");
     loop {
         match rx.recv() {

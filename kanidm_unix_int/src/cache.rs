@@ -49,7 +49,7 @@ impl ToString for Id {
 impl CacheLayer {
     // TODO: Could consider refactoring this to be better ...
     #[allow(clippy::too_many_arguments)]
-    pub fn new(
+    pub async fn new(
         // need db path
         path: &str,
         // cache timeout
@@ -67,7 +67,7 @@ impl CacheLayer {
 
         // setup and do a migrate.
         {
-            let dbtxn = db.write();
+            let dbtxn = db.write().await;
             dbtxn.migrate()?;
             dbtxn.commit()?;
         }
@@ -108,34 +108,37 @@ impl CacheLayer {
         self.set_cachestate(CacheState::Offline).await;
     }
 
-    pub fn clear_cache(&self) -> Result<(), ()> {
-        let dbtxn = self.db.write();
+    pub async fn clear_cache(&self) -> Result<(), ()> {
+        let dbtxn = self.db.write().await;
         dbtxn.clear_cache().and_then(|_| dbtxn.commit())
     }
 
-    pub fn invalidate(&self) -> Result<(), ()> {
-        let dbtxn = self.db.write();
+    pub async fn invalidate(&self) -> Result<(), ()> {
+        let dbtxn = self.db.write().await;
         dbtxn.invalidate().and_then(|_| dbtxn.commit())
     }
 
-    fn get_cached_usertokens(&self) -> Result<Vec<UnixUserToken>, ()> {
-        let dbtxn = self.db.write();
+    async fn get_cached_usertokens(&self) -> Result<Vec<UnixUserToken>, ()> {
+        let dbtxn = self.db.write().await;
         dbtxn.get_accounts()
     }
 
-    fn get_cached_grouptokens(&self) -> Result<Vec<UnixGroupToken>, ()> {
-        let dbtxn = self.db.write();
+    async fn get_cached_grouptokens(&self) -> Result<Vec<UnixGroupToken>, ()> {
+        let dbtxn = self.db.write().await;
         dbtxn.get_groups()
     }
 
-    fn get_cached_usertoken(&self, account_id: &Id) -> Result<(bool, Option<UnixUserToken>), ()> {
+    async fn get_cached_usertoken(
+        &self,
+        account_id: &Id,
+    ) -> Result<(bool, Option<UnixUserToken>), ()> {
         // Account_id could be:
         //  * gidnumber
         //  * name
         //  * spn
         //  * uuid
         //  Attempt to search these in the db.
-        let dbtxn = self.db.write();
+        let dbtxn = self.db.write().await;
         let r = dbtxn.get_account(&account_id)?;
 
         match r {
@@ -155,14 +158,17 @@ impl CacheLayer {
         }
     }
 
-    fn get_cached_grouptoken(&self, grp_id: &Id) -> Result<(bool, Option<UnixGroupToken>), ()> {
+    async fn get_cached_grouptoken(
+        &self,
+        grp_id: &Id,
+    ) -> Result<(bool, Option<UnixGroupToken>), ()> {
         // grp_id could be:
         //  * gidnumber
         //  * name
         //  * spn
         //  * uuid
         //  Attempt to search these in the db.
-        let dbtxn = self.db.write();
+        let dbtxn = self.db.write().await;
         let r = dbtxn.get_group(&grp_id)?;
 
         match r {
@@ -182,7 +188,7 @@ impl CacheLayer {
         }
     }
 
-    fn set_cache_usertoken(&self, token: &UnixUserToken) -> Result<(), ()> {
+    async fn set_cache_usertoken(&self, token: &UnixUserToken) -> Result<(), ()> {
         // Set an expiry
         let ex_time = SystemTime::now() + Duration::from_secs(self.timeout_seconds);
         let offset = ex_time
@@ -191,7 +197,7 @@ impl CacheLayer {
                 error!("time conversion error - ex_time less than epoch? {:?}", e);
             })?;
 
-        let dbtxn = self.db.write();
+        let dbtxn = self.db.write().await;
         // We need to add the groups first
         token
             .groups
@@ -204,7 +210,7 @@ impl CacheLayer {
             .and_then(|_| dbtxn.commit())
     }
 
-    fn set_cache_grouptoken(&self, token: &UnixGroupToken) -> Result<(), ()> {
+    async fn set_cache_grouptoken(&self, token: &UnixGroupToken) -> Result<(), ()> {
         // Set an expiry
         let ex_time = SystemTime::now() + Duration::from_secs(self.timeout_seconds);
         let offset = ex_time
@@ -213,31 +219,31 @@ impl CacheLayer {
                 error!("time conversion error - ex_time less than epoch? {:?}", e);
             })?;
 
-        let dbtxn = self.db.write();
+        let dbtxn = self.db.write().await;
         dbtxn
             .update_group(token, offset.as_secs())
             .and_then(|_| dbtxn.commit())
     }
 
-    fn delete_cache_usertoken(&self, a_uuid: &str) -> Result<(), ()> {
-        let dbtxn = self.db.write();
+    async fn delete_cache_usertoken(&self, a_uuid: &str) -> Result<(), ()> {
+        let dbtxn = self.db.write().await;
         dbtxn.delete_account(a_uuid).and_then(|_| dbtxn.commit())
     }
 
-    fn delete_cache_grouptoken(&self, g_uuid: &str) -> Result<(), ()> {
-        let dbtxn = self.db.write();
+    async fn delete_cache_grouptoken(&self, g_uuid: &str) -> Result<(), ()> {
+        let dbtxn = self.db.write().await;
         dbtxn.delete_group(g_uuid).and_then(|_| dbtxn.commit())
     }
 
-    fn set_cache_userpassword(&self, a_uuid: &str, cred: &str) -> Result<(), ()> {
-        let dbtxn = self.db.write();
+    async fn set_cache_userpassword(&self, a_uuid: &str, cred: &str) -> Result<(), ()> {
+        let dbtxn = self.db.write().await;
         dbtxn
             .update_account_password(a_uuid, cred)
             .and_then(|x| dbtxn.commit().map(|_| x))
     }
 
-    fn check_cache_userpassword(&self, a_uuid: &str, cred: &str) -> Result<bool, ()> {
-        let dbtxn = self.db.write();
+    async fn check_cache_userpassword(&self, a_uuid: &str, cred: &str) -> Result<bool, ()> {
+        let dbtxn = self.db.write().await;
         dbtxn
             .check_account_password(a_uuid, cred)
             .and_then(|x| dbtxn.commit().map(|_| x))
@@ -255,7 +261,7 @@ impl CacheLayer {
         {
             Ok(n_tok) => {
                 // We have the token!
-                self.set_cache_usertoken(&n_tok)?;
+                self.set_cache_usertoken(&n_tok).await?;
                 Ok(Some(n_tok))
             }
             Err(e) => {
@@ -296,12 +302,10 @@ impl CacheLayer {
                         // We wele able to contact the server but the entry has been removed, or
                         // is not longer a valid posix account.
                         debug!("entry has been removed or is no longer a valid posix account, clearing from cache ... - eventid {}", opid);
-                        token
-                            .map(|tok| self.delete_cache_usertoken(&tok.uuid))
-                            // Now an option<result<t, _>>
-                            .transpose()
-                            // now result<option<t>, _>
-                            .map(|_| None)
+                        if let Some(tok) = token {
+                            self.delete_cache_usertoken(&tok.uuid).await?;
+                        };
+                        Ok(None)
                     }
                     er => {
                         error!("client error -> {:?}", er);
@@ -325,7 +329,7 @@ impl CacheLayer {
         {
             Ok(n_tok) => {
                 // We have the token!
-                self.set_cache_grouptoken(&n_tok)?;
+                self.set_cache_grouptoken(&n_tok).await?;
                 Ok(Some(n_tok))
             }
             Err(e) => {
@@ -364,12 +368,10 @@ impl CacheLayer {
                         opid,
                     ) => {
                         debug!("entry has been removed or is no longer a valid posix group, clearing from cache ... - eventid {}", opid);
-                        token
-                            .map(|tok| self.delete_cache_grouptoken(&tok.uuid))
-                            // Now an option<result<t, _>>
-                            .transpose()
-                            // now result<option<t>, _>
-                            .map(|_| None)
+                        if let Some(tok) = token {
+                            self.delete_cache_grouptoken(&tok.uuid).await?;
+                        };
+                        Ok(None)
                     }
                     er => {
                         error!("client error -> {:?}", er);
@@ -384,7 +386,7 @@ impl CacheLayer {
     async fn get_usertoken(&self, account_id: Id) -> Result<Option<UnixUserToken>, ()> {
         debug!("get_usertoken");
         // get the item from the cache
-        let (expired, item) = self.get_cached_usertoken(&account_id).map_err(|e| {
+        let (expired, item) = self.get_cached_usertoken(&account_id).await.map_err(|e| {
             debug!("get_usertoken error -> {:?}", e);
         })?;
 
@@ -431,7 +433,7 @@ impl CacheLayer {
 
     async fn get_grouptoken(&self, grp_id: Id) -> Result<Option<UnixGroupToken>, ()> {
         debug!("get_grouptoken");
-        let (expired, item) = self.get_cached_grouptoken(&grp_id).map_err(|e| {
+        let (expired, item) = self.get_cached_grouptoken(&grp_id).await.map_err(|e| {
             debug!("get_grouptoken error -> {:?}", e);
         })?;
 
@@ -476,8 +478,8 @@ impl CacheLayer {
         }
     }
 
-    fn get_groupmembers(&self, uuid: &str) -> Vec<String> {
-        let dbtxn = self.db.write();
+    async fn get_groupmembers(&self, uuid: &str) -> Vec<String> {
+        let dbtxn = self.db.write().await;
 
         dbtxn
             .get_group_members(uuid)
@@ -515,8 +517,8 @@ impl CacheLayer {
         .to_string()
     }
 
-    pub fn get_nssaccounts(&self) -> Result<Vec<NssUser>, ()> {
-        self.get_cached_usertokens().map(|l| {
+    pub async fn get_nssaccounts(&self) -> Result<Vec<NssUser>, ()> {
+        self.get_cached_usertokens().await.map(|l| {
             l.into_iter()
                 .map(|tok| NssUser {
                     homedir: self.token_homedirectory(&tok),
@@ -557,32 +559,34 @@ impl CacheLayer {
         .to_string()
     }
 
-    pub fn get_nssgroups(&self) -> Result<Vec<NssGroup>, ()> {
-        self.get_cached_grouptokens().map(|l| {
-            l.into_iter()
-                .map(|tok| {
-                    let members = self.get_groupmembers(&tok.uuid);
-                    NssGroup {
-                        name: self.token_gidattr(&tok),
-                        gid: tok.gidnumber,
-                        members,
-                    }
-                })
-                .collect()
-        })
+    pub async fn get_nssgroups(&self) -> Result<Vec<NssGroup>, ()> {
+        let l = self.get_cached_grouptokens().await?;
+        let mut r: Vec<_> = Vec::with_capacity(l.len());
+        for tok in l.into_iter() {
+            let members = self.get_groupmembers(&tok.uuid).await;
+            r.push(NssGroup {
+                name: self.token_gidattr(&tok),
+                gid: tok.gidnumber,
+                members,
+            })
+        }
+        Ok(r)
     }
 
     async fn get_nssgroup(&self, grp_id: Id) -> Result<Option<NssGroup>, ()> {
         let token = self.get_grouptoken(grp_id).await?;
         // Get members set.
-        Ok(token.map(|tok| {
-            let members = self.get_groupmembers(&tok.uuid);
-            NssGroup {
-                name: self.token_gidattr(&tok),
-                gid: tok.gidnumber,
-                members,
+        match token {
+            Some(tok) => {
+                let members = self.get_groupmembers(&tok.uuid).await;
+                Ok(Some(NssGroup {
+                    name: self.token_gidattr(&tok),
+                    gid: tok.gidnumber,
+                    members,
+                }))
             }
-        }))
+            None => Ok(None),
+        }
     }
 
     pub async fn get_nssgroup_name(&self, grp_id: &str) -> Result<Option<NssGroup>, ()> {
@@ -608,8 +612,8 @@ impl CacheLayer {
         {
             Ok(Some(n_tok)) => {
                 debug!("online password check success.");
-                self.set_cache_usertoken(&n_tok)?;
-                self.set_cache_userpassword(&n_tok.uuid, cred)?;
+                self.set_cache_usertoken(&n_tok).await?;
+                self.set_cache_userpassword(&n_tok.uuid, cred).await?;
                 Ok(Some(true))
             }
             Ok(None) => {
@@ -624,10 +628,10 @@ impl CacheLayer {
                     let time = SystemTime::now().add(Duration::from_secs(15));
                     self.set_cachestate(CacheState::OfflineNextCheck(time))
                         .await;
-                    token
-                        .as_ref()
-                        .map(|t| self.check_cache_userpassword(&t.uuid, cred))
-                        .transpose()
+                    match token.as_ref() {
+                        Some(t) => self.check_cache_userpassword(&t.uuid, cred).await.map(Some),
+                        None => Ok(None),
+                    }
                 }
                 ClientError::Http(
                     StatusCode::UNAUTHORIZED,
@@ -642,10 +646,10 @@ impl CacheLayer {
                     let time = SystemTime::now().add(Duration::from_secs(15));
                     self.set_cachestate(CacheState::OfflineNextCheck(time))
                         .await;
-                    token
-                        .as_ref()
-                        .map(|t| self.check_cache_userpassword(&t.uuid, cred))
-                        .transpose()
+                    match token.as_ref() {
+                        Some(t) => self.check_cache_userpassword(&t.uuid, cred).await.map(Some),
+                        None => Ok(None),
+                    }
                 }
                 ClientError::Http(
                     StatusCode::BAD_REQUEST,
@@ -672,16 +676,22 @@ impl CacheLayer {
         }
     }
 
-    fn offline_account_authenticate(
+    async fn offline_account_authenticate(
         &self,
         token: &Option<UnixUserToken>,
         cred: &str,
     ) -> Result<Option<bool>, ()> {
         debug!("Attempt offline password check");
+        match token.as_ref() {
+            Some(t) => self.check_cache_userpassword(&t.uuid, cred).await.map(Some),
+            None => Ok(None),
+        }
+        /*
         token
             .as_ref()
-            .map(|t| self.check_cache_userpassword(&t.uuid, cred))
+            .map(async |t| self.check_cache_userpassword(&t.uuid, cred).await)
             .transpose()
+        */
     }
 
     pub async fn pam_account_allowed(&self, account_id: &str) -> Result<Option<bool>, ()> {
@@ -710,7 +720,9 @@ impl CacheLayer {
         cred: &str,
     ) -> Result<Option<bool>, ()> {
         let state = self.get_cachestate().await;
-        let (_expired, token) = self.get_cached_usertoken(&Id::Name(account_id.to_string()))?;
+        let (_expired, token) = self
+            .get_cached_usertoken(&Id::Name(account_id.to_string()))
+            .await?;
 
         match state {
             CacheState::Online => {
@@ -725,12 +737,12 @@ impl CacheLayer {
                         .await
                 } else {
                     // We are offline, check from the cache if possible.
-                    self.offline_account_authenticate(&token, cred)
+                    self.offline_account_authenticate(&token, cred).await
                 }
             }
             _ => {
                 // We are offline, check from the cache if possible.
-                self.offline_account_authenticate(&token, cred)
+                self.offline_account_authenticate(&token, cred).await
             }
         }
     }

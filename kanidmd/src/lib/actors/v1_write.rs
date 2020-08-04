@@ -178,14 +178,14 @@ impl IdmGroupUnixExtendMessage {
     pub fn new(
         uat: Option<UserAuthToken>,
         uuid_or_name: String,
-        gx: GroupUnixExtend,
+        gx: &GroupUnixExtend,
         eventid: Uuid,
     ) -> Self {
-        let GroupUnixExtend { gidnumber } = gx;
+        // let GroupUnixExtend { gidnumber } = gx;
         IdmGroupUnixExtendMessage {
             uat,
             uuid_or_name,
-            gidnumber,
+            gidnumber: gx.gidnumber,
             eventid,
         }
     }
@@ -353,18 +353,16 @@ impl QueryServerWriteV1 {
         &mut self,
         audit: &mut AuditScope,
         uat: Option<UserAuthToken>,
-        uuid_or_name: String,
-        proto_ml: ProtoModifyList,
+        uuid_or_name: &str,
+        proto_ml: &ProtoModifyList,
         filter: Filter<FilterInvalid>,
     ) -> Result<(), OperationError> {
         let qs_write = self.qs.write(duration_from_epoch_now());
 
-        let target_uuid = qs_write
-            .name_to_uuid(audit, uuid_or_name.as_str())
-            .map_err(|e| {
-                ladmin_error!(audit, "Error resolving id to target");
-                e
-            })?;
+        let target_uuid = qs_write.name_to_uuid(audit, uuid_or_name).map_err(|e| {
+            ladmin_error!(audit, "Error resolving id to target");
+            e
+        })?;
 
         let mdf =
             match ModifyEvent::from_parts(audit, uat, target_uuid, proto_ml, filter, &qs_write) {
@@ -386,18 +384,16 @@ impl QueryServerWriteV1 {
         &mut self,
         audit: &mut AuditScope,
         uat: Option<UserAuthToken>,
-        uuid_or_name: String,
-        ml: ModifyList<ModifyInvalid>,
+        uuid_or_name: &str,
+        ml: &ModifyList<ModifyInvalid>,
         filter: Filter<FilterInvalid>,
     ) -> Result<(), OperationError> {
         let qs_write = self.qs.write(duration_from_epoch_now());
 
-        let target_uuid = qs_write
-            .name_to_uuid(audit, uuid_or_name.as_str())
-            .map_err(|e| {
-                ladmin_error!(audit, "Error resolving id to target");
-                e
-            })?;
+        let target_uuid = qs_write.name_to_uuid(audit, uuid_or_name).map_err(|e| {
+            ladmin_error!(audit, "Error resolving id to target");
+            e
+        })?;
 
         let mdf = match ModifyEvent::from_internal_parts(
             audit,
@@ -535,7 +531,7 @@ impl Handler<InternalDeleteMessage> for QueryServerWriteV1 {
             || {
                 let qs_write = self.qs.write(duration_from_epoch_now());
 
-                let del = match DeleteEvent::from_parts(&mut audit, msg.uat, msg.filter, &qs_write)
+                let del = match DeleteEvent::from_parts(&mut audit, msg.uat, &msg.filter, &qs_write)
                 {
                     Ok(d) => d,
                     Err(e) => {
@@ -610,7 +606,7 @@ impl Handler<InternalCredentialSetMessage> for QueryServerWriteV1 {
             "actors::v1_write::handle<InternalCredentialSetMessage>",
             || {
                 let ct = duration_from_epoch_now();
-                let mut idms_prox_write = self.idms.proxy_write(ct.clone());
+                let mut idms_prox_write = self.idms.proxy_write(ct);
 
                 // Trigger a session clean *before* we take any auth steps.
                 // It's important to do this before to ensure that timeouts on
@@ -737,7 +733,7 @@ impl Handler<IdmAccountSetPasswordMessage> for QueryServerWriteV1 {
             "actors::v1_write::handle<IdmAccountSetPasswordMessage>",
             || {
                 let ct = duration_from_epoch_now();
-                let mut idms_prox_write = self.idms.proxy_write(ct.clone());
+                let mut idms_prox_write = self.idms.proxy_write(ct);
                 idms_prox_write.expire_mfareg_sessions(ct);
 
                 let pce = PasswordChangeEvent::from_idm_account_set_password(
@@ -779,7 +775,7 @@ impl Handler<InternalRegenerateRadiusMessage> for QueryServerWriteV1 {
             "actors::v1_write::handle<InternalRegenerateRadiusMessage>",
             || {
                 let ct = duration_from_epoch_now();
-                let mut idms_prox_write = self.idms.proxy_write(ct.clone());
+                let mut idms_prox_write = self.idms.proxy_write(ct);
                 idms_prox_write.expire_mfareg_sessions(ct);
 
                 let target_uuid = idms_prox_write
@@ -840,7 +836,7 @@ impl Handler<PurgeAttributeMessage> for QueryServerWriteV1 {
                     &mut audit,
                     msg.uat,
                     target_uuid,
-                    msg.attr,
+                    &msg.attr,
                     msg.filter,
                     &qs_write,
                 ) {
@@ -891,7 +887,7 @@ impl Handler<RemoveAttributeValueMessage> for QueryServerWriteV1 {
                     &mut audit,
                     msg.uat,
                     target_uuid,
-                    proto_ml,
+                    &proto_ml,
                     msg.filter,
                     &qs_write,
                 ) {
@@ -942,7 +938,7 @@ impl Handler<AppendAttributeMessage> for QueryServerWriteV1 {
                         .map(|v| ProtoModify::Present(attr.clone(), v))
                         .collect(),
                 );
-                self.modify_from_parts(&mut audit, uat, uuid_or_name, proto_ml, filter)
+                self.modify_from_parts(&mut audit, uat, &uuid_or_name, &proto_ml, filter)
             }
         );
         self.log.send(Some(audit)).map_err(|_| {
@@ -981,7 +977,7 @@ impl Handler<SetAttributeMessage> for QueryServerWriteV1 {
                         )
                         .collect(),
                 );
-                self.modify_from_parts(&mut audit, uat, uuid_or_name, proto_ml, filter)
+                self.modify_from_parts(&mut audit, uat, &uuid_or_name, &proto_ml, filter)
             }
         );
         self.log.send(Some(audit)).map_err(|_| {
@@ -1013,7 +1009,7 @@ impl Handler<InternalSshKeyCreateMessage> for QueryServerWriteV1 {
                 // than relying on the proto ones.
                 let ml = ModifyList::new_append("ssh_publickey", Value::new_sshkey(tag, key));
 
-                self.modify_from_internal_parts(&mut audit, uat, uuid_or_name, ml, filter)
+                self.modify_from_internal_parts(&mut audit, uat, &uuid_or_name, &ml, filter)
             }
         );
         self.log.send(Some(audit)).map_err(|_| {
@@ -1056,7 +1052,7 @@ impl Handler<IdmAccountPersonExtendMessage> for QueryServerWriteV1 {
 
                 let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
 
-                self.modify_from_internal_parts(&mut audit, uat, uuid_or_name, ml, filter)
+                self.modify_from_internal_parts(&mut audit, uat, &uuid_or_name, &ml, filter)
             }
         );
         self.log.send(Some(audit)).map_err(|_| {
@@ -1092,7 +1088,9 @@ impl Handler<IdmAccountUnixExtendMessage> for QueryServerWriteV1 {
                     )),
                     gidnumber
                         .map(|n| Modify::Present("gidnumber".to_string(), Value::new_uint32(n))),
-                    shell.map(|s| Modify::Present("loginshell".to_string(), Value::new_iutf8(s))),
+                    shell.map(|s| {
+                        Modify::Present("loginshell".to_string(), Value::new_iutf8(s.as_str()))
+                    }),
                 ]
                 .into_iter()
                 .filter_map(|v| v)
@@ -1102,7 +1100,7 @@ impl Handler<IdmAccountUnixExtendMessage> for QueryServerWriteV1 {
 
                 let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
 
-                self.modify_from_internal_parts(&mut audit, uat, uuid_or_name, ml, filter)
+                self.modify_from_internal_parts(&mut audit, uat, &uuid_or_name, &ml, filter)
             }
         );
         self.log.send(Some(audit)).map_err(|_| {
@@ -1146,7 +1144,7 @@ impl Handler<IdmGroupUnixExtendMessage> for QueryServerWriteV1 {
 
                 let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
 
-                self.modify_from_internal_parts(&mut audit, uat, uuid_or_name, ml, filter)
+                self.modify_from_internal_parts(&mut audit, uat, &uuid_or_name, &ml, filter)
             }
         );
         self.log.send(Some(audit)).map_err(|_| {
@@ -1167,7 +1165,7 @@ impl Handler<IdmAccountUnixSetCredMessage> for QueryServerWriteV1 {
             "actors::v1_write::handle<IdmAccountUnixSetCredMessage>",
             || {
                 let ct = duration_from_epoch_now();
-                let mut idms_prox_write = self.idms.proxy_write(ct.clone());
+                let mut idms_prox_write = self.idms.proxy_write(ct);
                 idms_prox_write.expire_mfareg_sessions(ct);
 
                 let target_uuid = Uuid::parse_str(msg.uuid_or_name.as_str()).or_else(|_| {
@@ -1223,6 +1221,7 @@ impl Handler<PurgeTombstoneEvent> for QueryServerWriteV1 {
                     .purge_tombstones(&mut audit)
                     .and_then(|_| qs_write.commit(&mut audit));
                 ladmin_info!(audit, "Purge tombstones result: {:?}", res);
+                #[allow(clippy::expect_used)]
                 res.expect("Invalid Server State");
             }
         );
@@ -1249,6 +1248,7 @@ impl Handler<PurgeRecycledEvent> for QueryServerWriteV1 {
                     .purge_recycled(&mut audit)
                     .and_then(|_| qs_write.commit(&mut audit));
                 ladmin_info!(audit, "Purge recycled result: {:?}", res);
+                #[allow(clippy::expect_used)]
                 res.expect("Invalid Server State");
             }
         );

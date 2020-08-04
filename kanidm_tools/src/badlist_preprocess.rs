@@ -1,3 +1,13 @@
+#![deny(warnings)]
+#![warn(unused_extern_crates)]
+#![deny(clippy::unwrap_used)]
+#![deny(clippy::expect_used)]
+#![deny(clippy::panic)]
+#![deny(clippy::unreachable)]
+#![deny(clippy::await_holding_lock)]
+#![deny(clippy::needless_pass_by_value)]
+#![deny(clippy::trivially_copy_pass_by_ref)]
+
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufWriter;
@@ -37,6 +47,15 @@ fn main() {
         debug!("Running in list filtering mode");
     }
     info!("Kanidm badlist preprocessor - this may take a long time ...");
+
+    // We open the file early to find out if we can create it or not.
+    let fileout = match File::create(opt.outfile) {
+        Ok(f) => f,
+        Err(e) => {
+            error!("Failed to create file - {:?}", e);
+            return;
+        }
+    };
 
     // Build a temp struct for all the pws.
     // Shellexpand all of these.
@@ -96,9 +115,15 @@ fn main() {
             if v.len() < 10 {
                 return false;
             }
-            let r = zxcvbn::zxcvbn(v.as_str(), site_opts.as_slice()).expect("Empty Password?");
-            // score of 2 or less is too weak and we'd already reject it.
-            r.score() >= 3
+            match zxcvbn::zxcvbn(v.as_str(), site_opts.as_slice()) {
+                // score of 2 or less is too weak and we'd already reject it.
+                Ok(r) => r.score() >= 3,
+                Err(e) => {
+                    error!("zxcvbn unable to process '{}' - {:?}", v.as_str(), e);
+                    error!("adding to badlist anyway ...");
+                    true
+                }
+            }
         })
         .collect();
 
@@ -110,7 +135,6 @@ fn main() {
     debug!("Starting file write ...");
 
     // Now we write these out.
-    let fileout = File::create(opt.outfile).expect("Failed to create file");
     let bwrite = BufWriter::new(fileout);
 
     //  All remaining are either
@@ -120,10 +144,17 @@ fn main() {
             .into_iter()
             .map(|p| Modify::Present("badlist_password".to_string(), p))
             .collect();
-        serde_json::to_writer_pretty(bwrite, &modlist).expect("Failed to serialise modlist");
-    // println!("next step: kanidm raw modify -D admin '{{\"Eq\": [\"uuid\", \"00000000-0000-0000-0000-ffffff000026\"]}}' <your outfile>");
+        match serde_json::to_writer(bwrite, &modlist) {
+            Ok(_) =>
+                info!("next step: kanidm raw modify -D admin '{{\"Eq\": [\"uuid\", \"00000000-0000-0000-0000-ffffff000026\"]}}' <outfile>"),
+            Err(e) => {
+                error!("Failed to serialised modifications - {:?}", e)
+            }
+        }
     } else {
         // - printed in json format
-        serde_json::to_writer_pretty(bwrite, &filt_pwset).expect("Failed to serialise modlist");
+        if let Err(e) = serde_json::to_writer_pretty(bwrite, &filt_pwset) {
+            error!("Failed to serialised badlist - {:?}", e)
+        }
     }
 }

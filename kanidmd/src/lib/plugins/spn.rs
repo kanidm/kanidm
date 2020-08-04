@@ -79,6 +79,7 @@ impl Plugin for Spn {
             if e.attribute_value_pres("class", &CLASS_GROUP)
                 || e.attribute_value_pres("class", &CLASS_ACCOUNT)
             {
+                // We do this in the loop so that we don't get it unless required.
                 if domain_name.is_none() {
                     domain_name = Some(Self::get_domain_name(au, qs)?);
                 }
@@ -86,7 +87,15 @@ impl Plugin for Spn {
                 // It should be impossible to hit this expect as the is_none case should cause it to be replaced above.
                 let some_domain_name = domain_name
                     .as_ref()
-                    .expect("Domain name option memory corruption has occured.");
+                    .ok_or(OperationError::InvalidEntryState)
+                    .map_err(|e| {
+                        ladmin_error!(
+                            au,
+                            "Domain name option memory corruption may have occured. {:?}",
+                            e
+                        );
+                        e
+                    })?;
 
                 let spn = e
                     .generate_spn(some_domain_name.as_str())
@@ -127,7 +136,15 @@ impl Plugin for Spn {
                 // It should be impossible to hit this expect as the is_none case should cause it to be replaced above.
                 let some_domain_name = domain_name
                     .as_ref()
-                    .expect("Domain name option memory corruption has occured.");
+                    .ok_or(OperationError::InvalidEntryState)
+                    .map_err(|e| {
+                        ladmin_error!(
+                            au,
+                            "Domain name option memory corruption may have occured. {:?}",
+                            e
+                        );
+                        e
+                    })?;
 
                 let spn = e
                     .generate_spn(some_domain_name.as_str())
@@ -189,11 +206,11 @@ impl Plugin for Spn {
         // within the transaction, just incase!
         qs.internal_modify(
             au,
-            filter!(f_or!([
+            &filter!(f_or!([
                 f_eq("class", PartialValue::new_class("group")),
                 f_eq("class", PartialValue::new_class("account"))
             ])),
-            modlist!([m_purge("spn")]),
+            &modlist!([m_purge("spn")]),
         )
     }
 

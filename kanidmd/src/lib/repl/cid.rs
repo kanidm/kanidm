@@ -34,12 +34,15 @@ impl Cid {
         }
     }
 
+    #[allow(clippy::expect_used)]
     pub fn sub_secs(&self, secs: u64) -> Result<Self, OperationError> {
         self.ts
             .checked_sub(Duration::from_secs(secs))
             .map(|r| Cid {
-                d_uuid: Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap(),
-                s_uuid: Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap(),
+                d_uuid: Uuid::parse_str("00000000-0000-0000-0000-000000000000")
+                    .expect("Invalid compiled d_uuid"),
+                s_uuid: Uuid::parse_str("00000000-0000-0000-0000-000000000000")
+                    .expect("Invalid compiled s_uuid"),
                 ts: r,
             })
             .ok_or(OperationError::InvalidReplCID)

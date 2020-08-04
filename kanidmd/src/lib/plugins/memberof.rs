@@ -123,7 +123,7 @@ fn apply_memberof(
                 .collect()
         ));
 
-        let mut work_set = qs.internal_search_writeable(au, filt)?;
+        let mut work_set = qs.internal_search_writeable(au, &filt)?;
         // Load the vecdeque with this batch.
 
         while let Some((pre, mut tgte)) = work_set.pop() {

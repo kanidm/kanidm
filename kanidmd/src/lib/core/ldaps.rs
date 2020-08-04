@@ -198,7 +198,12 @@ pub(crate) async fn create_ldap_server(
         eprintln!("Could not parse ldap server address {} -> {:?}", address, e);
     })?;
 
-    let listener = Box::new(TcpListener::bind(&addr).await.unwrap());
+    let listener = Box::new(TcpListener::bind(&addr).await.map_err(|e| {
+        eprintln!(
+            "Could not bind to ldap server address {} -> {:?}",
+            address, e
+        );
+    })?);
 
     match opt_tls_params {
         Some(tls_params) => {
@@ -208,8 +213,10 @@ pub(crate) async fn create_ldap_server(
                 let lacceptor = Box::leak(acceptor) as &'static _;
 
                 ctx.add_message_stream(Box::leak(listener).incoming().map(move |st| {
-                    let st = st.unwrap();
-                    let addr = st.peer_addr().unwrap();
+                    #[allow(clippy::expect_used)]
+                    let st = st.expect("Failed to access TCP stream");
+                    #[allow(clippy::expect_used)]
+                    let addr = st.peer_addr().expect("Failed to access peer adddress");
                     TlsConnect(lacceptor, st, addr)
                 }));
                 LdapServer { qe_r }
@@ -219,8 +226,10 @@ pub(crate) async fn create_ldap_server(
             info!("Starting LDAP interface ldap://{} ...", address);
             LdapServer::create(move |ctx| {
                 ctx.add_message_stream(Box::leak(listener).incoming().map(|st| {
-                    let st = st.unwrap();
-                    let addr = st.peer_addr().unwrap();
+                    #[allow(clippy::expect_used)]
+                    let st = st.expect("Failed to access TCP stream");
+                    #[allow(clippy::expect_used)]
+                    let addr = st.peer_addr().expect("Failed to access peer adddress");
                     TcpConnect(st, addr)
                 }));
                 LdapServer { qe_r }

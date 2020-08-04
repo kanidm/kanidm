@@ -17,6 +17,8 @@ use tokio::runtime::Runtime;
 use kanidm_client::asynchronous::KanidmAsyncClient;
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
 
+use async_std::task;
+
 static PORT_ALLOC: AtomicUsize = AtomicUsize::new(18080);
 const ADMIN_TEST_PASSWORD: &str = "integration test admin password";
 const TESTACCOUNT1_PASSWORD_A: &str = "password a for account1 test";
@@ -76,7 +78,7 @@ fn run_test(fix_fn: fn(&KanidmClient) -> (), test_fn: fn(CacheLayer, KanidmAsync
         .build_async()
         .expect("Failed to build client");
 
-    let cachelayer = CacheLayer::new(
+    let cachelayer = task::block_on(CacheLayer::new(
         "", // The sqlite db path, this is in memory.
         300,
         rsclient,
@@ -86,7 +88,7 @@ fn run_test(fix_fn: fn(&KanidmClient) -> (), test_fn: fn(CacheLayer, KanidmAsync
         DEFAULT_HOME_ATTR,
         DEFAULT_UID_ATTR_MAP,
         DEFAULT_GID_ATTR_MAP,
-    )
+    ))
     .expect("Failed to build cache layer.");
 
     test_fn(cachelayer, client);
@@ -213,6 +215,7 @@ fn test_cache_account() {
             // Finally, check we have "all accounts" in the list.
             let us = cachelayer
                 .get_nssaccounts()
+                .await
                 .expect("failed to list all accounts");
             assert!(us.len() == 1);
         };
@@ -254,7 +257,7 @@ fn test_cache_group() {
             assert!(gt.unwrap().members.len() == 0);
 
             // clear cache, go online
-            assert!(cachelayer.invalidate().is_ok());
+            assert!(cachelayer.invalidate().await.is_ok());
             cachelayer.attempt_online().await;
             assert!(cachelayer.test_connection().await);
 
@@ -281,6 +284,7 @@ fn test_cache_group() {
             // Finally, check we have "all groups" in the list.
             let gs = cachelayer
                 .get_nssgroups()
+                .await
                 .expect("failed to list all groups");
             assert!(gs.len() == 2);
         };
@@ -313,7 +317,7 @@ fn test_cache_group_delete() {
                 .expect("failed to delete");
 
             // invalidate cache
-            assert!(cachelayer.invalidate().is_ok());
+            assert!(cachelayer.invalidate().await.is_ok());
 
             // "get it"
             // should be empty.
@@ -352,7 +356,7 @@ fn test_cache_account_delete() {
                 .expect("failed to delete");
 
             // invalidate cache
-            assert!(cachelayer.invalidate().is_ok());
+            assert!(cachelayer.invalidate().await.is_ok());
 
             // "get it"
             let ut = cachelayer
@@ -435,7 +439,10 @@ fn test_cache_account_password() {
             assert!(a6 == Some(false));
 
             // clear cache
-            cachelayer.clear_cache().expect("failed to clear cache");
+            cachelayer
+                .clear_cache()
+                .await
+                .expect("failed to clear cache");
 
             // test auth good (fail)
             let a7 = cachelayer
@@ -483,7 +490,7 @@ fn test_cache_account_pam_allowed() {
                 .unwrap();
 
             // Invalidate cache to force a refresh
-            assert!(cachelayer.invalidate().is_ok());
+            assert!(cachelayer.invalidate().await.is_ok());
 
             // Should pass
             let a2 = cachelayer

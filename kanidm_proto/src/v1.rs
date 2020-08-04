@@ -100,6 +100,7 @@ pub enum OperationError {
     PasswordTooShort(usize),
     PasswordEmpty,
     PasswordBadListed,
+    CryptographyError,
 }
 
 impl PartialEq for OperationError {

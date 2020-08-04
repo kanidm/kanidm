@@ -449,6 +449,7 @@ impl Drop for IdlSqliteReadTransaction {
     // Abort - so far this has proven reliable to use drop here.
     fn drop(self: &mut Self) {
         if !self.committed {
+            #[allow(clippy::expect_used)]
             self.conn
                 .execute("ROLLBACK TRANSACTION", NO_PARAMS)
                 // We can't do this without expect.
@@ -468,6 +469,7 @@ impl IdlSqliteReadTransaction {
         // this a Result<>
         //
         // There is no way to flag this is an RO operation.
+        #[allow(clippy::expect_used)]
         conn.execute("BEGIN TRANSACTION", NO_PARAMS)
             .expect("Unable to begin transaction!");
         IdlSqliteReadTransaction {
@@ -487,6 +489,7 @@ impl Drop for IdlSqliteWriteTransaction {
     // Abort
     fn drop(self: &mut Self) {
         if !self.committed {
+            #[allow(clippy::expect_used)]
             self.conn
                 .execute("ROLLBACK TRANSACTION", NO_PARAMS)
                 .expect("Unable to rollback transaction! Can not proceed!!!");
@@ -497,6 +500,7 @@ impl Drop for IdlSqliteWriteTransaction {
 impl IdlSqliteWriteTransaction {
     pub fn new(conn: r2d2::PooledConnection<SqliteConnectionManager>) -> Self {
         // Start the transaction
+        #[allow(clippy::expect_used)]
         conn.execute("BEGIN TRANSACTION", NO_PARAMS)
             .expect("Unable to begin transaction!");
         IdlSqliteWriteTransaction {
@@ -1253,6 +1257,7 @@ impl IdlSqlite {
     }
 
     pub fn read(&self) -> IdlSqliteReadTransaction {
+        #[allow(clippy::expect_used)]
         let conn = self
             .pool
             .get()
@@ -1261,6 +1266,7 @@ impl IdlSqlite {
     }
 
     pub fn write(&self) -> IdlSqliteWriteTransaction {
+        #[allow(clippy::expect_used)]
         let conn = self
             .pool
             .get()

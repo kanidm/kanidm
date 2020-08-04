@@ -226,12 +226,10 @@ pub trait QueryServerTransaction {
     }
 
     fn uuid_to_rdn(&self, audit: &mut AuditScope, uuid: &Uuid) -> Result<String, OperationError> {
+        // If we have a some, pass it on, else unwrap into a default.
         self.get_be_txn()
             .uuid2rdn(audit, uuid)
-            .and_then(|v| match v {
-                Some(u) => Ok(u),
-                None => Ok(format!("uuid={}", uuid.to_hyphenated_ref())),
-            })
+            .map(|v| v.unwrap_or_else(|| format!("uuid={}", uuid.to_hyphenated_ref())))
     }
 
     // From internal, generate an exists event and dispatch
@@ -398,8 +396,8 @@ pub trait QueryServerTransaction {
             Some(schema_a) => {
                 match schema_a.syntax {
                     SyntaxType::UTF8STRING => Ok(Value::new_utf8(value.to_string())),
-                    SyntaxType::UTF8STRING_INSENSITIVE => Ok(Value::new_iutf8s(value)),
-                    SyntaxType::UTF8STRING_INAME => Ok(Value::new_iname_s(value)),
+                    SyntaxType::UTF8STRING_INSENSITIVE => Ok(Value::new_iutf8(value)),
+                    SyntaxType::UTF8STRING_INAME => Ok(Value::new_iname(value)),
                     SyntaxType::BOOLEAN => Value::new_bools(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid boolean syntax".to_string())),
                     SyntaxType::SYNTAX_ID => Value::new_syntaxs(value)
@@ -470,7 +468,7 @@ pub trait QueryServerTransaction {
             Some(schema_a) => {
                 match schema_a.syntax {
                     SyntaxType::UTF8STRING => Ok(PartialValue::new_utf8(value.to_string())),
-                    SyntaxType::UTF8STRING_INSENSITIVE => Ok(PartialValue::new_iutf8s(value)),
+                    SyntaxType::UTF8STRING_INSENSITIVE => Ok(PartialValue::new_iutf8(value)),
                     SyntaxType::UTF8STRING_INAME => Ok(PartialValue::new_iname(value)),
                     SyntaxType::BOOLEAN => PartialValue::new_bools(value).ok_or_else(|| {
                         OperationError::InvalidAttribute("Invalid boolean syntax".to_string())
@@ -736,6 +734,7 @@ impl QueryServer {
         let schema_write = self.schema.write();
         let be_txn = self.be.write();
 
+        #[allow(clippy::expect_used)]
         let ts_max = be_txn.get_db_ts_max(&ts).expect("Unable to get db_ts_max");
         let cid = Cid::new_lamport(self.s_uuid, self.d_uuid, ts, &ts_max);
 
@@ -1238,10 +1237,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 // Get this entries uuid.
                 let u: Uuid = *e.get_uuid();
 
-                e.get_ava_as_refuuid("directmemberof").and_then(|riter| {
+                if let Some(riter) = e.get_ava_as_refuuid("directmemberof") {
                     riter.for_each(|g_uuid| {
                         dm_mods
-                            .entry(g_uuid.clone())
+                            .entry(*g_uuid)
                             .and_modify(|mlist| {
                                 let m =
                                     Modify::Present("member".to_string(), Value::new_refer_r(&u));
@@ -1253,8 +1252,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                                 ModifyList::new_list(vec![m])
                             });
                     });
-                    Some(())
-                });
+                };
             });
 
             // Now impersonate the modify
@@ -1273,7 +1271,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                     // I think the filter/filter_all shouldn't matter here because the only
                     // valid direct memberships should be still valid/live references.
                     let f = filter_all!(f_eq("uuid", PartialValue::new_uuid(g)));
-                    self.internal_modify(au, f, mods)
+                    self.internal_modify(au, &f, &mods)
                 })
                 .collect();
             r
@@ -1462,7 +1460,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub(crate) fn internal_search_writeable(
         &self,
         audit: &mut AuditScope,
-        filter: Filter<FilterInvalid>,
+        filter: &Filter<FilterInvalid>,
     ) -> Result<Vec<EntryTuple>, OperationError> {
         lperf_segment!(audit, "server::internal_search_writeable", || {
             let f_valid = filter
@@ -1485,6 +1483,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     /// such as memberof, but at the expense that YOU must guarantee you
     /// uphold all other plugin and state rules that are important. You
     /// probably want modify instead.
+    #[allow(clippy::needless_pass_by_value)]
     pub(crate) fn internal_batch_modify(
         &self,
         au: &mut AuditScope,
@@ -1668,7 +1667,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub fn internal_delete(
         &self,
         audit: &mut AuditScope,
-        filter: Filter<FilterInvalid>,
+        filter: &Filter<FilterInvalid>,
     ) -> Result<(), OperationError> {
         let f_valid = filter
             .validate(self.get_schema())
@@ -1680,8 +1679,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub fn internal_modify(
         &self,
         audit: &mut AuditScope,
-        filter: Filter<FilterInvalid>,
-        modlist: ModifyList<ModifyInvalid>,
+        filter: &Filter<FilterInvalid>,
+        modlist: &ModifyList<ModifyInvalid>,
     ) -> Result<(), OperationError> {
         lperf_segment!(audit, "server::internal_modify", || {
             let f_valid = filter
@@ -1710,9 +1709,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub fn impersonate_modify(
         &self,
         audit: &mut AuditScope,
-        filter: Filter<FilterInvalid>,
-        filter_intent: Filter<FilterInvalid>,
-        modlist: ModifyList<ModifyInvalid>,
+        filter: &Filter<FilterInvalid>,
+        filter_intent: &Filter<FilterInvalid>,
+        modlist: &ModifyList<ModifyInvalid>,
         event: &Event,
     ) -> Result<(), OperationError> {
         let f_valid = filter.validate(self.get_schema()).map_err(|e| {
@@ -1805,7 +1804,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                         Ok(modlist) => {
                             // Apply to &results[0]
                             ltrace!(audit, "Generated modlist -> {:?}", modlist);
-                            self.internal_modify(audit, filt, modlist)
+                            self.internal_modify(audit, &filt, &modlist)
                         }
                         Err(e) => Err(OperationError::SchemaViolation(e)),
                     }
@@ -2279,11 +2278,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
         audit: &mut AuditScope,
         new_domain_name: &str,
     ) -> Result<(), OperationError> {
-        let modl =
-            ModifyList::new_purge_and_set("domain_name", Value::new_iname_s(new_domain_name));
+        let modl = ModifyList::new_purge_and_set("domain_name", Value::new_iname(new_domain_name));
         let udi = PartialValue::new_uuidr(&UUID_DOMAIN_INFO);
         let filt = filter_all!(f_eq("uuid", udi));
-        self.internal_modify(audit, filt, modl)
+        self.internal_modify(audit, &filt, &modl)
     }
 
     pub fn reindex(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
@@ -2502,8 +2500,8 @@ mod tests {
             // this.
             let r_inv_1 = server_txn.internal_modify(
                 audit,
-                filter!(f_eq("tnanuanou", PartialValue::new_iname("Flarbalgarble"))),
-                ModifyList::new_list(vec![Modify::Present(
+                &filter!(f_eq("tnanuanou", PartialValue::new_iname("Flarbalgarble"))),
+                &ModifyList::new_list(vec![Modify::Present(
                     "description".to_string(),
                     Value::from("anusaosu"),
                 )]),
@@ -2605,7 +2603,7 @@ mod tests {
                     filter!(f_eq("name", PartialValue::new_iname("testperson1"))),
                     ModifyList::new_list(vec![Modify::Present(
                         "name".to_string(),
-                        Value::new_iname_s("testpersonx"),
+                        Value::new_iname("testpersonx"),
                     )]),
                 )
             };
@@ -2617,7 +2615,7 @@ mod tests {
                     filter!(f_eq("name", PartialValue::new_iname("testperson1"))),
                     ModifyList::new_list(vec![
                         Modify::Present("class".to_string(), Value::new_class("system_info")),
-                        // Modify::Present("domain".to_string(), Value::new_iutf8s("domain.name")),
+                        // Modify::Present("domain".to_string(), Value::new_iutf8("domain.name")),
                         Modify::Present("version".to_string(), Value::new_uint32(1)),
                     ]),
                 )
@@ -2630,7 +2628,7 @@ mod tests {
                     filter!(f_eq("name", PartialValue::new_iname("testperson1"))),
                     ModifyList::new_list(vec![
                         Modify::Purged("name".to_string()),
-                        Modify::Present("name".to_string(), Value::new_iname_s("testpersonx")),
+                        Modify::Present("name".to_string(), Value::new_iname("testpersonx")),
                     ]),
                 )
             };
@@ -3458,7 +3456,7 @@ mod tests {
             let de_attr = unsafe {
                 DeleteEvent::new_internal_invalid(filter!(f_eq(
                     "attributename",
-                    PartialValue::new_iutf8s("testattr")
+                    PartialValue::new_iutf8("testattr")
                 )))
             };
             assert!(server_txn.delete(audit, &de_attr).is_ok());
@@ -3510,7 +3508,7 @@ mod tests {
             assert!(cr.is_ok());
 
             // Build the credential.
-            let cred = Credential::new_password_only("test_password");
+            let cred = Credential::new_password_only("test_password").unwrap();
             let v_cred = Value::new_credential("primary", cred);
             assert!(v_cred.validate());
 
@@ -3553,7 +3551,7 @@ mod tests {
             }"#,
         );
         e1.add_ava("uuid", Value::new_uuids(uuid).unwrap());
-        e1.add_ava("name", Value::new_iname_s(name));
+        e1.add_ava("name", Value::new_iname(name));
         e1.add_ava("displayname", Value::new_utf8s(name));
         e1
     }
@@ -3567,7 +3565,7 @@ mod tests {
             }
             }"#,
         );
-        e1.add_ava("name", Value::new_iname_s(name));
+        e1.add_ava("name", Value::new_iname(name));
         e1.add_ava("uuid", Value::new_uuids(uuid).unwrap());
         members
             .iter()
@@ -3806,8 +3804,8 @@ mod tests {
             let me_syn = unsafe {
                 ModifyEvent::new_internal_invalid(
                     filter!(f_or!([
-                        f_eq("attributename", PartialValue::new_iutf8s("name")),
-                        f_eq("attributename", PartialValue::new_iutf8s("domain_name")),
+                        f_eq("attributename", PartialValue::new_iutf8("name")),
+                        f_eq("attributename", PartialValue::new_iutf8("domain_name")),
                     ])),
                     ModifyList::new_purge_and_set(
                         "syntax",
@@ -3826,11 +3824,8 @@ mod tests {
                     ModifyList::new_list(vec![
                         Modify::Purged("name".to_string()),
                         Modify::Purged("domain_name".to_string()),
-                        Modify::Present("name".to_string(), Value::new_iutf8s("domain_local")),
-                        Modify::Present(
-                            "domain_name".to_string(),
-                            Value::new_iutf8s("example.com"),
-                        ),
+                        Modify::Present("name".to_string(), Value::new_iutf8("domain_local")),
+                        Modify::Present("domain_name".to_string(), Value::new_iutf8("example.com")),
                     ]),
                 )
             };
@@ -3845,8 +3840,8 @@ mod tests {
             let me_syn = unsafe {
                 ModifyEvent::new_internal_invalid(
                     filter!(f_or!([
-                        f_eq("attributename", PartialValue::new_iutf8s("name")),
-                        f_eq("attributename", PartialValue::new_iutf8s("domain_name")),
+                        f_eq("attributename", PartialValue::new_iutf8("name")),
+                        f_eq("attributename", PartialValue::new_iutf8("domain_name")),
                     ])),
                     ModifyList::new_purge_and_set(
                         "syntax",

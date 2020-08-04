@@ -1,11 +1,11 @@
 mod ctx;
 mod ldaps;
 // use actix_files as fs;
-use libc::umask;
 use actix::prelude::*;
 use actix_session::{CookieSession, Session};
 use actix_web::web::{self, Data, HttpResponse, Json, Path};
 use actix_web::{cookie, error, middleware, App, HttpServer};
+use libc::umask;
 
 use crossbeam::channel::unbounded;
 use std::sync::Arc;
@@ -462,7 +462,7 @@ async fn schema_attributetype_get_id(
 
     let filter = filter_all!(f_and!([
         f_eq("class", PartialValue::new_class("attributetype")),
-        f_eq("attributename", PartialValue::new_iutf8s(path.as_str()))
+        f_eq("attributename", PartialValue::new_iutf8(path.as_str()))
     ]));
 
     let (eventid, hvalue) = new_eventid!();
@@ -497,7 +497,7 @@ async fn schema_classtype_get_id(
 
     let filter = filter_all!(f_and!([
         f_eq("class", PartialValue::new_class("classtype")),
-        f_eq("classname", PartialValue::new_iutf8s(path.as_str()))
+        f_eq("classname", PartialValue::new_iutf8(path.as_str()))
     ]));
 
     let (eventid, hvalue) = new_eventid!();
@@ -1024,7 +1024,7 @@ async fn group_post_id_unix(
     let uat = get_current_user(&session);
     let id = path.into_inner();
     let (eventid, hvalue) = new_eventid!();
-    let m_obj = IdmGroupUnixExtendMessage::new(uat, id, obj.into_inner(), eventid);
+    let m_obj = IdmGroupUnixExtendMessage::new(uat, id, &obj, eventid);
     match state.qe_w.send(m_obj).await {
         Ok(Ok(())) => HttpResponse::Ok()
             .header("X-KANIDM-OPID", hvalue)
@@ -1305,7 +1305,7 @@ fn setup_qs_idms(
     Ok((query_server, idms))
 }
 
-pub fn backup_server_core(config: Configuration, dst_path: &str) {
+pub fn backup_server_core(config: &Configuration, dst_path: &str) {
     let mut audit = AuditScope::new("backend_backup", uuid::Uuid::new_v4(), config.log_level);
     let schema = match Schema::new(&mut audit) {
         Ok(s) => s,
@@ -1337,7 +1337,7 @@ pub fn backup_server_core(config: Configuration, dst_path: &str) {
     // Let the txn abort, even on success.
 }
 
-pub fn restore_server_core(config: Configuration, dst_path: &str) {
+pub fn restore_server_core(config: &Configuration, dst_path: &str) {
     let mut audit = AuditScope::new("backend_restore", uuid::Uuid::new_v4(), config.log_level);
 
     // First, we provide the in-memory schema so that core attrs are indexed correctly.
@@ -1401,7 +1401,7 @@ pub fn restore_server_core(config: Configuration, dst_path: &str) {
     info!("✅ Restore Success!");
 }
 
-pub fn reindex_server_core(config: Configuration) {
+pub fn reindex_server_core(config: &Configuration) {
     let mut audit = AuditScope::new("server_reindex", uuid::Uuid::new_v4(), config.log_level);
     eprintln!("Start Index Phase 1 ...");
     // First, we provide the in-memory schema so that core attrs are indexed correctly.
@@ -1471,7 +1471,7 @@ pub fn reindex_server_core(config: Configuration) {
     };
 }
 
-pub fn domain_rename_core(config: Configuration, new_domain_name: String) {
+pub fn domain_rename_core(config: &Configuration, new_domain_name: &str) {
     let mut audit = AuditScope::new("domain_rename", uuid::Uuid::new_v4(), config.log_level);
 
     let schema = match Schema::new(&mut audit) {
@@ -1502,7 +1502,7 @@ pub fn domain_rename_core(config: Configuration, new_domain_name: String) {
 
     let qs_write = qs.write(duration_from_epoch_now());
     let r = qs_write
-        .domain_rename(&mut audit, new_domain_name.as_str())
+        .domain_rename(&mut audit, new_domain_name)
         .and_then(|_| qs_write.commit(&mut audit));
 
     match r {
@@ -1531,7 +1531,7 @@ pub fn reset_sid_core(config: Configuration) {
 }
 */
 
-pub fn verify_server_core(config: Configuration) {
+pub fn verify_server_core(config: &Configuration) {
     let mut audit = AuditScope::new("server_verify", uuid::Uuid::new_v4(), config.log_level);
     // setup the qs - without initialise!
     let schema_mem = match Schema::new(&mut audit) {
@@ -1569,7 +1569,7 @@ pub fn verify_server_core(config: Configuration) {
     // Now add IDM server verifications?
 }
 
-pub fn recover_account_core(config: Configuration, name: String, password: String) {
+pub fn recover_account_core(config: &Configuration, name: &str, password: &str) {
     let mut audit = AuditScope::new("recover_account", uuid::Uuid::new_v4(), config.log_level);
 
     let schema = match Schema::new(&mut audit) {
@@ -1600,14 +1600,18 @@ pub fn recover_account_core(config: Configuration, name: String, password: Strin
 
     // Run the password change.
     let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
-    match idms_prox_write.recover_account(&mut audit, name, password) {
-        Ok(_) => {
-            idms_prox_write
-                .commit(&mut audit)
-                .expect("A critical error during commit occured.");
-            audit.write_log();
-            info!("Password reset!");
-        }
+    match idms_prox_write.recover_account(&mut audit, &name, &password) {
+        Ok(_) => match idms_prox_write.commit(&mut audit) {
+            Ok(()) => {
+                audit.write_log();
+                info!("Password reset!");
+            }
+            Err(e) => {
+                error!("A critical error during commit occured {:?}", e);
+                audit.write_log();
+                std::process::exit(1);
+            }
+        },
         Err(e) => {
             error!("Error during password reset -> {:?}", e);
             audit.write_log();
@@ -1633,7 +1637,7 @@ pub async fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> 
     // The log server is started on it's own thread, and is contacted
     // asynchronously.
     let (log_tx, log_rx) = unbounded();
-    let log_thread = thread::spawn(move || async_log::run(log_rx));
+    let log_thread = thread::spawn(move || async_log::run(&log_rx));
 
     // Similar, create a stats thread which aggregates statistics from the
     // server as they come in.
@@ -1681,11 +1685,7 @@ pub async fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> 
     match &config.integration_test_config {
         Some(itc) => {
             let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
-            match idms_prox_write.recover_account(
-                &mut audit,
-                "admin".to_string(),
-                itc.admin_password.clone(),
-            ) {
+            match idms_prox_write.recover_account(&mut audit, "admin", &itc.admin_password) {
                 Ok(_) => {}
                 Err(e) => {
                     audit.write_log();
@@ -1975,9 +1975,16 @@ pub async fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> 
             server.bind(config.address)
         }
     };
-    server.expect("Failed to initialise server!").run();
 
-    info!("ready to rock! 🤘");
+    match server {
+        Ok(s) => s.run(),
+        Err(e) => {
+            error!("Failed to initialise server! {:?}", e);
+            return Err(());
+        }
+    };
+
+    info!("ready to rock! 🧱");
 
     Ok(ServerCtx::new(System::current(), log_tx, log_thread))
 }

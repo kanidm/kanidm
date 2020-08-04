@@ -264,7 +264,7 @@ impl Handler<SearchMessage> for QueryServerReadV1 {
 
             match qs_read.search_ext(&mut audit, &srch) {
                 Ok(entries) => {
-                    SearchResult::new(&mut audit, &qs_read, entries).map(|ok_sr| ok_sr.response())
+                    SearchResult::new(&mut audit, &qs_read, &entries).map(|ok_sr| ok_sr.response())
                 }
                 Err(e) => Err(e),
             }
@@ -303,7 +303,10 @@ impl Handler<AuthMessage> for QueryServerReadV1 {
 
             let ct = SystemTime::now()
                 .duration_since(SystemTime::UNIX_EPOCH)
-                .expect("Clock failure!");
+                .map_err(|e| {
+                    ladmin_error!(audit, "Clock Error -> {:?}", e);
+                    OperationError::InvalidState
+                })?;
 
             // Trigger a session clean *before* we take any auth steps.
             // It's important to do this before to ensure that timeouts on
@@ -368,9 +371,10 @@ impl Handler<WhoamiMessage> for QueryServerReadV1 {
                     match entries.len() {
                         0 => Err(OperationError::NoMatchingEntries),
                         1 => {
+                            #[allow(clippy::expect_used)]
                             let e = entries.pop().expect("Entry length mismatch!!!");
                             // Now convert to a response, and return
-                            WhoamiResult::new(&mut audit, &qs_read, e, uat)
+                            WhoamiResult::new(&mut audit, &qs_read, &e, uat)
                                 .map(|ok_wr| ok_wr.response())
                         }
                         // Somehow we matched multiple, which should be impossible.
@@ -414,7 +418,7 @@ impl Handler<InternalSearchMessage> for QueryServerReadV1 {
                 ltrace!(audit, "Begin event {:?}", srch);
 
                 match qs_read.search_ext(&mut audit, &srch) {
-                    Ok(entries) => SearchResult::new(&mut audit, &qs_read, entries)
+                    Ok(entries) => SearchResult::new(&mut audit, &qs_read, &entries)
                         .map(|ok_sr| ok_sr.into_proto_array()),
                     Err(e) => Err(e),
                 }
@@ -460,7 +464,7 @@ impl Handler<InternalSearchRecycledMessage> for QueryServerReadV1 {
                 ltrace!(audit, "Begin event {:?}", srch);
 
                 match qs_read.search_ext(&mut audit, &srch) {
-                    Ok(entries) => SearchResult::new(&mut audit, &qs_read, entries)
+                    Ok(entries) => SearchResult::new(&mut audit, &qs_read, &entries)
                         .map(|ok_sr| ok_sr.into_proto_array()),
                     Err(e) => Err(e),
                 }
@@ -877,7 +881,10 @@ impl Handler<IdmAccountUnixAuthMessage> for QueryServerReadV1 {
 
                 let ct = SystemTime::now()
                     .duration_since(SystemTime::UNIX_EPOCH)
-                    .expect("Clock failure!");
+                    .map_err(|e| {
+                        ladmin_error!(audit, "Clock Error -> {:?}", e);
+                        OperationError::InvalidState
+                    })?;
 
                 let r = idm_write
                     .auth_unix(&mut audit, &uuae, ct)

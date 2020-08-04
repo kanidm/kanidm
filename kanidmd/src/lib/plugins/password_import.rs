@@ -38,8 +38,7 @@ impl Plugin for PasswordImport {
 
                 debug_assert!(!vs.is_empty());
                 let im_pw = vs.first()
-                    .unwrap()
-                    .to_str()
+                    .and_then(|v| v.to_str())
                     .ok_or_else(|| OperationError::Plugin(PluginError::PasswordImport("password_import has incorrect value type".to_string())))?;
 
                 // convert the import_password to a cred
@@ -87,7 +86,7 @@ impl Plugin for PasswordImport {
             let vs: Vec<_> = vs.into_iter().collect();
 
             debug_assert!(!vs.is_empty());
-            let im_pw = vs.first().unwrap().to_str().ok_or_else(|| {
+            let im_pw = vs.first().and_then(|v| v.to_str()).ok_or_else(|| {
                 OperationError::Plugin(PluginError::PasswordImport(
                     "password_import has incorrect value type".to_string(),
                 ))
@@ -181,7 +180,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iutf8s("testperson"))),
+            filter!(f_eq("name", PartialValue::new_iutf8("testperson"))),
             ModifyList::new_list(vec![Modify::Present(
                 "password_import".to_string(),
                 Value::from(IMPORT_HASH)
@@ -206,7 +205,7 @@ mod tests {
         }"#,
         );
 
-        let c = Credential::new_password_only("password");
+        let c = Credential::new_password_only("password").unwrap();
         ea.add_ava("primary_credential", Value::new_credential("primary", c));
 
         let preload = vec![ea];
@@ -214,7 +213,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iutf8s("testperson"))),
+            filter!(f_eq("name", PartialValue::new_iutf8("testperson"))),
             ModifyList::new_list(vec![Modify::Present(
                 "password_import".to_string(),
                 Value::from(IMPORT_HASH)
@@ -240,7 +239,9 @@ mod tests {
         );
 
         let totp = TOTP::generate_secure("test_totp".to_string(), TOTP_DEFAULT_STEP);
-        let c = Credential::new_password_only("password").update_totp(totp);
+        let c = Credential::new_password_only("password")
+            .unwrap()
+            .update_totp(totp);
         ea.add_ava("primary_credential", Value::new_credential("primary", c));
 
         let preload = vec![ea];
@@ -248,7 +249,7 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq("name", PartialValue::new_iutf8s("testperson"))),
+            filter!(f_eq("name", PartialValue::new_iutf8("testperson"))),
             ModifyList::new_list(vec![Modify::Present(
                 "password_import".to_string(),
                 Value::from(IMPORT_HASH)

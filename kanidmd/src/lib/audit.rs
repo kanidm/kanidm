@@ -309,7 +309,8 @@ struct AuditLog {
 pub struct PerfEvent {
     id: String,
     duration: Option<Duration>,
-    contains: Vec<PerfEvent>,
+    #[allow(clippy::vec_box)]
+    contains: Vec<Box<PerfEvent>>,
     #[serde(skip_serializing)]
     parent: Option<&'static mut PerfEvent>,
 }
@@ -322,10 +323,14 @@ impl PerfEvent {
             .map(|pe| pe.process_inner(opd))
             .collect();
         contains.sort_unstable();
-        let duration = self.duration.as_ref().expect("corrupted perf event");
+        let duration = self
+            .duration
+            .as_ref()
+            .copied()
+            .unwrap_or_else(|| Duration::new(0, 0));
         let percent = (duration.as_secs_f64() / opd.as_secs_f64()) * 100.0;
         PerfProcessed {
-            duration: *duration,
+            duration,
             id: self.id.clone(),
             percent,
             contains,
@@ -333,7 +338,11 @@ impl PerfEvent {
     }
 
     fn process(&self) -> PerfProcessed {
-        let duration = self.duration.as_ref().expect("corrupted perf event");
+        let duration = self
+            .duration
+            .as_ref()
+            .copied()
+            .unwrap_or_else(|| Duration::new(0, 0));
         let mut contains: Vec<_> = self
             .contains
             .iter()
@@ -341,7 +350,7 @@ impl PerfEvent {
             .collect();
         contains.sort_unstable();
         PerfProcessed {
-            duration: *duration,
+            duration,
             id: self.id.clone(),
             percent: 100.0,
             contains,
@@ -423,7 +432,8 @@ pub struct AuditScope {
     pub level: u32,
     uuid: Uuid,
     events: Vec<AuditLog>,
-    perf: Vec<PerfEvent>,
+    #[allow(clippy::vec_box)]
+    perf: Vec<Box<PerfEvent>>,
     // active perf event
     #[serde(skip_serializing)]
     active_perf: Option<&'static mut PerfEvent>,
@@ -516,14 +526,20 @@ impl AuditScope {
         // Does an active event currently exist?
         if self.active_perf.is_none() {
             // No, we are a new event.
-            self.perf.push(PerfEvent {
+            self.perf.push(Box::new(PerfEvent {
                 id: id.to_string(),
                 duration: None,
                 contains: vec![],
                 parent: None,
-            });
-            // Get a put ptr, we are now the active.
-            let xref = self.perf.last_mut().expect("perf alloc failure?") as *mut PerfEvent;
+            }));
+            // Get a our ptr, we are now the active.
+            let idx = self.perf.len() - 1;
+            let xref = self
+                .perf
+                // Get the box
+                .get_unchecked_mut(idx)
+                // Now the mut ptr to the inner of hte box
+                .as_mut() as *mut PerfEvent;
             let mref = &mut (*xref);
             self.active_perf = Some(mref);
             // return the mut ptr.
@@ -532,15 +548,18 @@ impl AuditScope {
             // Yes, there is an active event.
             // get the currennt active ptr
             let xref = if let Some(ref mut iparent) = self.active_perf {
-                iparent.contains.push(PerfEvent {
+                iparent.contains.push(Box::new(PerfEvent {
                     id: id.to_string(),
                     duration: None,
                     contains: vec![],
                     parent: None,
-                });
-                iparent.contains.last_mut().expect("perf alloc failure?") as *mut PerfEvent
+                }));
+
+                let idx = iparent.contains.len() - 1;
+                iparent.contains.get_unchecked_mut(idx).as_mut() as *mut PerfEvent
             } else {
-                panic!("Invalid parent state");
+                #[allow(clippy::unreachable)]
+                unreachable!("Invalid parent state");
             };
             // Alloc in the vec, set parnt to active, then get a mut pointer
             // to ourself, then set ourself as the active.

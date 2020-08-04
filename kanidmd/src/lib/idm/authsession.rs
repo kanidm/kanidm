@@ -136,7 +136,7 @@ impl CredHandler {
                             _ => {
                                 match cred {
                                     AuthCredential::Password(cleartext) => {
-                                        if pw.verify(cleartext.as_str()) {
+                                        if pw.verify(cleartext.as_str()).unwrap_or(false) {
                                             lsecurity!(au, "Handler::Password -> Result::Success");
                                             CredState::Success(Vec::new())
                                         } else {
@@ -170,7 +170,7 @@ impl CredHandler {
                                 match cred {
                                     AuthCredential::Password(cleartext) => {
                                         // if pw -> check
-                                        if pw_totp.pw.verify(cleartext.as_str()) {
+                                        if pw_totp.pw.verify(cleartext.as_str()).unwrap_or(false) {
                                             pw_totp.pw_state = CredVerifyState::Success;
                                             match pw_totp.totp_state {
                                                 CredVerifyState::Init => {
@@ -366,7 +366,7 @@ impl AuthSession {
                 self.finished = true;
                 let uat = self
                     .account
-                    .to_userauthtoken(claims)
+                    .to_userauthtoken(&claims)
                     .ok_or(OperationError::InvalidState)?;
                 Ok(AuthState::Success(uat))
             }
@@ -492,7 +492,7 @@ mod tests {
         // create the ent
         let mut account = entry_str_to_account!(JSON_ADMIN_V1);
         // manually load in a cred
-        let cred = Credential::new_password_only("test_password");
+        let cred = Credential::new_password_only("test_password").unwrap();
         account.primary = Some(cred);
 
         // now check
@@ -549,7 +549,9 @@ mod tests {
         let pw_good = "test_password";
         let pw_bad = "bad_password";
 
-        let cred = Credential::new_password_only(pw_good).update_totp(totp);
+        let cred = Credential::new_password_only(pw_good)
+            .unwrap()
+            .update_totp(totp);
         // add totp also
         account.primary = Some(cred);
 

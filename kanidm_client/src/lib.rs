@@ -75,7 +75,9 @@ fn read_file_metadata<P: AsRef<Path>>(path: &P) -> Result<Metadata, ()> {
     metadata(path).map_err(|e| {
         error!(
             "Unable to read metadata for {} - {:?}",
-            path.as_ref().to_str().unwrap(),
+            path.as_ref()
+                .to_str()
+                .unwrap_or_else(|| "alert: invalid path"),
             e
         );
     })

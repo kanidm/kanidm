@@ -108,7 +108,7 @@ macro_rules! entry_str_to_account {
 
         let e = unsafe { e.into_sealed_committed() };
 
-        Account::try_from_entry_no_groups(e).expect("Account conversion failure")
+        Account::try_from_entry_no_groups(&e).expect("Account conversion failure")
     }};
 }
 

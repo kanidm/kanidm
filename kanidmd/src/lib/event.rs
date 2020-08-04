@@ -36,7 +36,7 @@ impl SearchResult {
     pub fn new(
         audit: &mut AuditScope,
         qs: &QueryServerReadTransaction,
-        entries: Vec<Entry<EntryReduced, EntryCommitted>>,
+        entries: &[Entry<EntryReduced, EntryCommitted>],
     ) -> Result<Self, OperationError> {
         let entries: Result<_, _> = entries
             .iter()
@@ -461,7 +461,7 @@ impl SearchEvent {
         audit: &mut AuditScope,
         qs: &QueryServerReadTransaction,
         euuid: &Uuid,
-        filter: Filter<FilterInvalid>,
+        filter: &Filter<FilterInvalid>,
         attrs: Option<BTreeSet<String>>,
     ) -> Result<Self, OperationError> {
         Ok(SearchEvent {
@@ -618,7 +618,7 @@ impl DeleteEvent {
     pub fn from_parts(
         audit: &mut AuditScope,
         uat: Option<UserAuthToken>,
-        filter: Filter<FilterInvalid>,
+        filter: &Filter<FilterInvalid>,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         Ok(DeleteEvent {
@@ -716,7 +716,7 @@ impl ModifyEvent {
         audit: &mut AuditScope,
         uat: Option<UserAuthToken>,
         target_uuid: Uuid,
-        proto_ml: ProtoModifyList,
+        proto_ml: &ProtoModifyList,
         filter: Filter<FilterInvalid>,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
@@ -747,7 +747,7 @@ impl ModifyEvent {
         audit: &mut AuditScope,
         uat: Option<UserAuthToken>,
         target_uuid: Uuid,
-        ml: ModifyList<ModifyInvalid>,
+        ml: &ModifyList<ModifyInvalid>,
         filter: Filter<FilterInvalid>,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
@@ -775,11 +775,11 @@ impl ModifyEvent {
         audit: &mut AuditScope,
         uat: Option<UserAuthToken>,
         target_uuid: Uuid,
-        attr: String,
+        attr: &str,
         filter: Filter<FilterInvalid>,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        let ml = ModifyList::new_purge(attr.as_str());
+        let ml = ModifyList::new_purge(attr);
         let f_uuid = filter_all!(f_eq("uuid", PartialValue::new_uuid(target_uuid)));
         // Add any supplemental conditions we have.
         let f = Filter::join_parts_and(f_uuid, filter);
@@ -1012,7 +1012,7 @@ impl WhoamiResult {
     pub fn new(
         audit: &mut AuditScope,
         qs: &QueryServerReadTransaction,
-        e: Entry<EntryReduced, EntryCommitted>,
+        e: &Entry<EntryReduced, EntryCommitted>,
         uat: UserAuthToken,
     ) -> Result<Self, OperationError> {
         Ok(WhoamiResult {

@@ -47,8 +47,7 @@ macro_rules! try_from_account_e {
                     e
                 })?;
                 // Now convert the group entries to groups.
-                let groups: Result<Vec<_>, _> =
-                    ges.into_iter().map(Group::try_from_entry).collect();
+                let groups: Result<Vec<_>, _> = ges.iter().map(Group::try_from_entry).collect();
                 groups.map_err(|e| {
                     // log
                     e
@@ -90,7 +89,7 @@ impl Group {
     }
 
     pub fn try_from_entry(
-        value: Entry<EntrySealed, EntryCommitted>,
+        value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         if !value.attribute_value_pres("class", &PVCLASS_GROUP) {
             return Err(OperationError::InvalidAccountState(

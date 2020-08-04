@@ -172,7 +172,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
                     // typing and functionality so we can assess what auth types can
                     // continue, and helps to keep non-needed entry specific data
                     // out of the LRU.
-                    let account = Account::try_from_entry_ro(au, entry, &mut self.qs_read)?;
+                    let account = Account::try_from_entry_ro(au, &entry, &mut self.qs_read)?;
                     let auth_session = AuthSession::new(au, account, init.appid.clone());
 
                     // Get the set of mechanisms that can proceed. This is tied
@@ -240,7 +240,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
             .qs_read
             .internal_search_uuid(au, &uae.target)
             .and_then(|account_entry| {
-                UnixUserAccount::try_from_entry_ro(au, account_entry, &mut self.qs_read)
+                UnixUserAccount::try_from_entry_ro(au, &account_entry, &mut self.qs_read)
             })
             .map_err(|e| {
                 ladmin_error!(au, "Failed to start auth unix -> {:?}", e);
@@ -254,7 +254,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
     pub fn auth_ldap(
         &mut self,
         au: &mut AuditScope,
-        lae: LdapAuthEvent,
+        lae: &LdapAuthEvent,
         _ct: Duration,
     ) -> Result<Option<LdapBoundToken>, OperationError> {
         // TODO #59: Implement soft lock checking for unix creds here!
@@ -271,14 +271,15 @@ impl<'a> IdmServerWriteTransaction<'a> {
         // if anonymous
         if lae.target == *UUID_ANONYMOUS {
             // TODO: #59 We should have checked if anonymous was locked by now!
-            let account = Account::try_from_entry_ro(au, account_entry, &mut self.qs_read)?;
+            let account = Account::try_from_entry_ro(au, &account_entry, &mut self.qs_read)?;
             Ok(Some(LdapBoundToken {
                 spn: account.spn,
                 uuid: *UUID_ANONYMOUS,
                 effective_uuid: *UUID_ANONYMOUS,
             }))
         } else {
-            let account = UnixUserAccount::try_from_entry_ro(au, account_entry, &mut self.qs_read)?;
+            let account =
+                UnixUserAccount::try_from_entry_ro(au, &account_entry, &mut self.qs_read)?;
             if account
                 .verify_unix_credential(au, lae.cleartext.as_str())?
                 .is_some()
@@ -312,7 +313,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             .qs_read
             .impersonate_search_ext_uuid(au, &rate.target, &rate.event)
             .and_then(|account_entry| {
-                RadiusAccount::try_from_entry_reduced(au, account_entry, &mut self.qs_read)
+                RadiusAccount::try_from_entry_reduced(au, &account_entry, &mut self.qs_read)
             })
             .map_err(|e| {
                 ladmin_error!(au, "Failed to start radius auth token {:?}", e);
@@ -331,7 +332,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             .qs_read
             .impersonate_search_ext_uuid(au, &uute.target, &uute.event)
             .and_then(|account_entry| {
-                UnixUserAccount::try_from_entry_reduced(au, account_entry, &mut self.qs_read)
+                UnixUserAccount::try_from_entry_reduced(au, &account_entry, &mut self.qs_read)
             })
             .map_err(|e| {
                 ladmin_error!(au, "Failed to start unix user token -> {:?}", e);
@@ -349,7 +350,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         let group = self
             .qs_read
             .impersonate_search_ext_uuid(au, &uute.target, &uute.event)
-            .and_then(UnixGroup::try_from_entry_reduced)
+            .and_then(|e| UnixGroup::try_from_entry_reduced(&e))
             .map_err(|e| {
                 ladmin_error!(au, "Failed to start unix group token {:?}", e);
                 e
@@ -413,7 +414,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // check a password badlist to eliminate more content
         // we check the password as "lower case" to help eliminate possibilities
-        let lc_password = PartialValue::new_iutf8s(cleartext);
+        let lc_password = PartialValue::new_iutf8(cleartext);
         let badlist_entry = self
             .qs_write
             .internal_search_uuid(au, &UUID_SYSTEM_CONFIG)
@@ -439,7 +440,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .qs_write
             .internal_search_uuid(au, target)
             .and_then(|account_entry| {
-                Account::try_from_entry_rw(au, account_entry, &mut self.qs_write)
+                Account::try_from_entry_rw(au, &account_entry, &mut self.qs_write)
             })
             .map_err(|e| {
                 ladmin_error!(au, "Failed to search account {:?}", e);
@@ -495,10 +496,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .impersonate_modify(
                 au,
                 // Filter as executed
-                filter!(f_eq("uuid", PartialValue::new_uuidr(&pce.target))),
+                &filter!(f_eq("uuid", PartialValue::new_uuidr(&pce.target))),
                 // Filter as intended (acp)
-                filter_all!(f_eq("uuid", PartialValue::new_uuidr(&pce.target))),
-                modlist,
+                &filter_all!(f_eq("uuid", PartialValue::new_uuidr(&pce.target))),
+                &modlist,
                 &pce.event,
             )
             .map_err(|e| {
@@ -520,7 +521,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .internal_search_uuid(au, &pce.target)
             .and_then(|account_entry| {
                 // Assert the account is unix and valid.
-                UnixUserAccount::try_from_entry_rw(au, account_entry, &mut self.qs_write)
+                UnixUserAccount::try_from_entry_rw(au, &account_entry, &mut self.qs_write)
             })
             .map_err(|e| {
                 ladmin_error!(au, "Failed to start set unix account password {:?}", e);
@@ -560,10 +561,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .impersonate_modify(
                 au,
                 // Filter as executed
-                filter!(f_eq("uuid", PartialValue::new_uuidr(&pce.target))),
+                &filter!(f_eq("uuid", PartialValue::new_uuidr(&pce.target))),
                 // Filter as intended (acp)
-                filter_all!(f_eq("uuid", PartialValue::new_uuidr(&pce.target))),
-                modlist,
+                &filter_all!(f_eq("uuid", PartialValue::new_uuidr(&pce.target))),
+                &modlist,
                 &pce.event,
             )
             .map_err(|e| {
@@ -576,16 +577,16 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     pub fn recover_account(
         &mut self,
         au: &mut AuditScope,
-        name: String,
-        cleartext: String,
+        name: &str,
+        cleartext: &str,
     ) -> Result<(), OperationError> {
         // name to uuid
-        let target = self.qs_write.name_to_uuid(au, name.as_str()).map_err(|e| {
+        let target = self.qs_write.name_to_uuid(au, name).map_err(|e| {
             ladmin_error!(au, "name to uuid failed {:?}", e);
             e
         })?;
         // internal pce.
-        let pce = PasswordChangeEvent::new_internal(&target, cleartext.as_str(), None);
+        let pce = PasswordChangeEvent::new_internal(&target, cleartext, None);
         // now set_account_password.
         self.set_account_password(au, &pce)
     }
@@ -620,10 +621,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .impersonate_modify(
                 au,
                 // Filter as executed
-                filter!(f_eq("uuid", PartialValue::new_uuidr(&gpe.target))),
+                &filter!(f_eq("uuid", PartialValue::new_uuidr(&gpe.target))),
                 // Filter as intended (acp)
-                filter_all!(f_eq("uuid", PartialValue::new_uuidr(&gpe.target))),
-                modlist,
+                &filter_all!(f_eq("uuid", PartialValue::new_uuidr(&gpe.target))),
+                &modlist,
                 // Provide the event to impersonate
                 &gpe.event,
             )
@@ -659,10 +660,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .impersonate_modify(
                 au,
                 // Filter as executed
-                filter!(f_eq("uuid", PartialValue::new_uuidr(&rrse.target))),
+                &filter!(f_eq("uuid", PartialValue::new_uuidr(&rrse.target))),
                 // Filter as intended (acp)
-                filter_all!(f_eq("uuid", PartialValue::new_uuidr(&rrse.target))),
-                modlist,
+                &filter_all!(f_eq("uuid", PartialValue::new_uuidr(&rrse.target))),
+                &modlist,
                 // Provide the event to impersonate
                 &rrse.event,
             )
@@ -727,7 +728,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             let session = self
                 .mfareg_sessions
                 .remove(&sessionid)
-                .expect("Session within transaction vanished!");
+                .ok_or(OperationError::InvalidState)
+                .map_err(|e| {
+                    ladmin_error!(au, "Session within transaction vanished!");
+                    e
+                })?;
             // reg the token
             let modlist = session.account.gen_totp_mod(token).map_err(|e| {
                 ladmin_error!(au, "Failed to gen totp mod {:?}", e);
@@ -738,10 +743,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 .impersonate_modify(
                     au,
                     // Filter as executed
-                    filter!(f_eq("uuid", PartialValue::new_uuidr(&session.account.uuid))),
+                    &filter!(f_eq("uuid", PartialValue::new_uuidr(&session.account.uuid))),
                     // Filter as intended (acp)
-                    filter_all!(f_eq("uuid", PartialValue::new_uuidr(&session.account.uuid))),
-                    modlist,
+                    &filter_all!(f_eq("uuid", PartialValue::new_uuidr(&session.account.uuid))),
+                    &modlist,
                     &vte.event,
                 )
                 .map_err(|e| {
@@ -913,7 +918,7 @@ mod tests {
         qs: &QueryServer,
         pw: &str,
     ) -> Result<(), OperationError> {
-        let cred = Credential::new_password_only(pw);
+        let cred = Credential::new_password_only(pw)?;
         let v_cred = Value::new_credential("primary", cred);
         let qs_write = qs.write(duration_from_epoch_now());
 

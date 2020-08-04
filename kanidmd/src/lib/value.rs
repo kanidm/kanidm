@@ -15,17 +15,23 @@ use std::cmp::Ordering;
 use regex::Regex;
 
 lazy_static! {
-    static ref SPN_RE: Regex =
-        Regex::new("(?P<name>[^@]+)@(?P<realm>[^@]+)").expect("Invalid SPN regex found");
-    static ref INAME_RE: Regex =
-        Regex::new("^(_.*|.*(\\s|@|,|=).*|\\d+|root|nobody|nogroup|wheel|sshd|shadow|systemd.*)$").expect("Invalid Iname regex found");
+    static ref SPN_RE: Regex = {
+        #[allow(clippy::expect_used)]
+        Regex::new("(?P<name>[^@]+)@(?P<realm>[^@]+)").expect("Invalid SPN regex found")
+    };
+    static ref INAME_RE: Regex = {
+        #[allow(clippy::expect_used)]
+        Regex::new("^(_.*|.*(\\s|@|,|=).*|\\d+|root|nobody|nogroup|wheel|sshd|shadow|systemd.*)$").expect("Invalid Iname regex found")
         //            ^      ^            ^
         //            |      |            \- must not be only integers
         //            |      \- must not contain whitespace, @, ',', =
         //            \- must not start with _
         // Them's be the rules.
-    static ref NSUNIQUEID_RE: Regex =
-        Regex::new("^[0-9a-fA-F]{8}-[0-9a-fA-F]{8}-[0-9a-fA-F]{8}-[0-9a-fA-F]{8}$").expect("Invalid Nsunique regex found");
+    };
+    static ref NSUNIQUEID_RE: Regex = {
+        #[allow(clippy::expect_used)]
+        Regex::new("^[0-9a-fA-F]{8}-[0-9a-fA-F]{8}-[0-9a-fA-F]{8}-[0-9a-fA-F]{8}$").expect("Invalid Nsunique regex found")
+    };
 }
 
 #[allow(non_camel_case_types)]
@@ -279,7 +285,7 @@ impl PartialValue {
         }
     }
 
-    pub fn new_iutf8s(s: &str) -> Self {
+    pub fn new_iutf8(s: &str) -> Self {
         PartialValue::Iutf8(s.to_lowercase())
     }
 
@@ -289,7 +295,7 @@ impl PartialValue {
 
     #[inline]
     pub fn new_class(s: &str) -> Self {
-        PartialValue::new_iutf8s(s)
+        PartialValue::new_iutf8(s)
     }
 
     /*
@@ -532,10 +538,6 @@ impl PartialValue {
         }
     }
 
-    pub fn to_str_unwrap(&self) -> &str {
-        self.to_str().expect("An invalid value was returned!!!")
-    }
-
     pub fn contains(&self, s: &PartialValue) -> bool {
         match (self, s) {
             (PartialValue::Utf8(s1), PartialValue::Utf8(s2)) => s1.contains(s2),
@@ -563,7 +565,9 @@ impl PartialValue {
             PartialValue::Bool(b) => b.to_string(),
             PartialValue::Syntax(syn) => syn.to_string(),
             PartialValue::Index(it) => it.to_string(),
-            PartialValue::JsonFilt(s) => {
+            PartialValue::JsonFilt(s) =>
+            {
+                #[allow(clippy::expect_used)]
                 serde_json::to_string(s).expect("A json filter value was corrupted during run-time")
             }
             PartialValue::Cred(tag) => tag.to_string(),
@@ -715,16 +719,9 @@ impl Value {
         }
     }
 
-    pub fn new_iutf8(s: String) -> Self {
+    pub fn new_iutf8(s: &str) -> Self {
         Value {
-            pv: PartialValue::new_iutf8s(s.as_str()),
-            data: None,
-        }
-    }
-
-    pub fn new_iutf8s(s: &str) -> Self {
-        Value {
-            pv: PartialValue::new_iutf8s(s),
+            pv: PartialValue::new_iutf8(s),
             data: None,
         }
     }
@@ -736,14 +733,7 @@ impl Value {
         }
     }
 
-    pub fn new_iname(s: String) -> Self {
-        Value {
-            pv: PartialValue::new_iname(s.as_str()),
-            data: None,
-        }
-    }
-
-    pub fn new_iname_s(s: &str) -> Self {
+    pub fn new_iname(s: &str) -> Self {
         Value {
             pv: PartialValue::new_iname(s),
             data: None,
@@ -788,14 +778,14 @@ impl Value {
 
     pub fn new_class(s: &str) -> Self {
         Value {
-            pv: PartialValue::new_iutf8s(s),
+            pv: PartialValue::new_iutf8(s),
             data: None,
         }
     }
 
     pub fn new_attr(s: &str) -> Self {
         Value {
-            pv: PartialValue::new_iutf8s(s),
+            pv: PartialValue::new_iutf8(s),
             data: None,
         }
     }
@@ -1146,6 +1136,8 @@ impl Value {
         }
     }
 
+    #[allow(clippy::unreachable)]
+    #[allow(clippy::expect_used)]
     pub(crate) fn to_db_valuev1(&self) -> DbValueV1 {
         // This has to clone due to how the backend works.
         match &self.pv {
@@ -1166,9 +1158,9 @@ impl Value {
                 let c = match &self.data {
                     Some(v) => match v.as_ref() {
                         DataValue::Cred(c) => c,
-                        _ => panic!(),
+                        _ => unreachable!(),
                     },
-                    None => panic!(),
+                    None => unreachable!(),
                 };
 
                 // Save the tag AND the dataValue here!
@@ -1181,9 +1173,9 @@ impl Value {
                 let ru = match &self.data {
                     Some(v) => match v.as_ref() {
                         DataValue::RadiusCred(rc) => rc.clone(),
-                        _ => panic!(),
+                        _ => unreachable!(),
                     },
-                    None => panic!(),
+                    None => unreachable!(),
                 };
                 DbValueV1::RU(ru)
             }
@@ -1191,9 +1183,9 @@ impl Value {
                 let sk = match &self.data {
                     Some(v) => match v.as_ref() {
                         DataValue::SshKey(sc) => sc.clone(),
-                        _ => panic!(),
+                        _ => unreachable!(),
                     },
-                    None => panic!(),
+                    None => unreachable!(),
                 };
                 DbValueV1::SK(DbValueTaggedStringV1 {
                     t: t.clone(),
@@ -1218,10 +1210,6 @@ impl Value {
             PartialValue::Iname(s) => Some(s.as_str()),
             _ => None,
         }
-    }
-
-    pub fn to_str_unwrap(&self) -> &str {
-        self.to_str().expect("An invalid value was returned!!!")
     }
 
     pub fn as_string(&self) -> Option<&String> {
@@ -1306,7 +1294,9 @@ impl Value {
             // In resolve value, we bypass this, but we keep it here for complete
             // impl sake.
             PartialValue::Refer(u) => u.to_hyphenated_ref().to_string(),
-            PartialValue::JsonFilt(s) => {
+            PartialValue::JsonFilt(s) =>
+            {
+                #[allow(clippy::expect_used)]
                 serde_json::to_string(s).expect("A json filter value was corrupted during run-time")
             }
             PartialValue::Cred(tag) => {
@@ -1383,6 +1373,7 @@ impl Value {
     }
 
     pub fn generate_idx_eq_keys(&self) -> Vec<String> {
+        #[allow(clippy::expect_used)]
         match &self.pv {
             PartialValue::Utf8(s)
             | PartialValue::Iutf8(s)
@@ -1551,18 +1542,18 @@ mod tests {
          * - can not have spaces (confuses too many systems :()
          * - can not have = or , (confuses ldap)
          */
-        let inv1 = Value::new_iname_s("1234");
-        let inv2 = Value::new_iname_s("bc23f637-4439-4c07-b95d-eaed0d9e4b8b");
-        let inv3 = Value::new_iname_s("hello@test.com");
-        let inv4 = Value::new_iname_s("_bad");
-        let inv5 = Value::new_iname_s("no spaces I'm sorry :(");
-        let inv6 = Value::new_iname_s("bad=equals");
-        let inv7 = Value::new_iname_s("bad,comma");
+        let inv1 = Value::new_iname("1234");
+        let inv2 = Value::new_iname("bc23f637-4439-4c07-b95d-eaed0d9e4b8b");
+        let inv3 = Value::new_iname("hello@test.com");
+        let inv4 = Value::new_iname("_bad");
+        let inv5 = Value::new_iname("no spaces I'm sorry :(");
+        let inv6 = Value::new_iname("bad=equals");
+        let inv7 = Value::new_iname("bad,comma");
 
-        let val1 = Value::new_iname_s("William");
-        let val2 = Value::new_iname_s("this_is_okay");
-        let val3 = Value::new_iname_s("123_456");
-        let val4 = Value::new_iname_s("🍿");
+        let val1 = Value::new_iname("William");
+        let val2 = Value::new_iname("this_is_okay");
+        let val3 = Value::new_iname("123_456");
+        let val4 = Value::new_iname("🍿");
 
         assert!(!inv1.validate());
         assert!(!inv2.validate());
