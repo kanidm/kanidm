@@ -13,3 +13,6 @@
 * Triss Healy (NiryaAestus)
 * Samuel Cabrero (scabrero)
 
+## Acknowledgements
+
+* M. Gerstner

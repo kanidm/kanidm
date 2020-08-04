@@ -28,6 +28,9 @@ use crate::be::idl_arc_sqlite::{
     IdlArcSqliteWriteTransaction,
 };
 
+// Re-export this
+pub use crate::be::idl_sqlite::FsType;
+
 const FILTER_SEARCH_TEST_THRESHOLD: usize = 8;
 const FILTER_EXISTS_TEST_THRESHOLD: usize = 0;
 
@@ -1289,12 +1292,13 @@ impl Backend {
         audit: &mut AuditScope,
         path: &str,
         pool_size: u32,
+        fstype: FsType,
         idxmeta: Set<IdxKey>,
     ) -> Result<Self, OperationError> {
         // this has a ::memory() type, but will path == "" work?
         lperf_trace_segment!(audit, "be::new", || {
             let be = Backend {
-                idlayer: Arc::new(IdlArcSqlite::new(audit, path, pool_size)?),
+                idlayer: Arc::new(IdlArcSqlite::new(audit, path, pool_size, fstype)?),
                 idxmeta: Arc::new(CowCell::new(idxmeta)),
             };
 
@@ -1365,7 +1369,9 @@ mod tests {
     use super::super::audit::AuditScope;
     use super::super::entry::{Entry, EntryInit, EntryNew};
     use super::IdxKey;
-    use super::{Backend, BackendTransaction, BackendWriteTransaction, OperationError, IDL};
+    use super::{
+        Backend, BackendTransaction, BackendWriteTransaction, FsType, OperationError, IDL,
+    };
     use crate::value::{IndexType, PartialValue, Value};
 
     macro_rules! run_test {
@@ -1411,7 +1417,8 @@ mod tests {
                 itype: IndexType::EQUALITY,
             });
 
-            let be = Backend::new(&mut audit, "", 1, idxmeta).expect("Failed to setup backend");
+            let be = Backend::new(&mut audit, "", 1, FsType::Generic, idxmeta)
+                .expect("Failed to setup backend");
 
             let mut be_txn = be.write();
 

@@ -33,7 +33,7 @@ use crate::actors::v1_write::{
 };
 use crate::async_log;
 use crate::audit::AuditScope;
-use crate::be::{Backend, BackendTransaction};
+use crate::be::{Backend, BackendTransaction, FsType};
 use crate::crypto::setup_tls;
 use crate::filter::{Filter, FilterInvalid};
 use crate::idm::server::IdmServer;
@@ -1270,7 +1270,24 @@ fn setup_backend(config: &Configuration, schema: &Schema) -> Result<Backend, Ope
 
     let mut audit_be = AuditScope::new("backend_setup", uuid::Uuid::new_v4(), config.log_level);
     let pool_size: u32 = config.threads as u32;
-    let be = Backend::new(&mut audit_be, config.db_path.as_str(), pool_size, idxmeta);
+    let fstype: FsType = if config
+        .db_fs_type
+        .as_ref()
+        .map(|s| s == "zfs")
+        .unwrap_or(false)
+    {
+        FsType::ZFS
+    } else {
+        FsType::Generic
+    };
+
+    let be = Backend::new(
+        &mut audit_be,
+        config.db_path.as_str(),
+        pool_size,
+        fstype,
+        idxmeta,
+    );
     // debug!
     audit_be.write_log();
     be
