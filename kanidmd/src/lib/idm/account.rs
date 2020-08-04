@@ -98,33 +98,33 @@ pub(crate) struct Account {
 impl Account {
     pub(crate) fn try_from_entry_ro(
         au: &mut AuditScope,
-        value: Entry<EntrySealed, EntryCommitted>,
+        value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         lperf_trace_segment!(au, "idm::account::try_from_entry_ro", || {
-            let groups = Group::try_from_account_entry_ro(au, &value, qs)?;
+            let groups = Group::try_from_account_entry_ro(au, value, qs)?;
             try_from_entry!(value, groups)
         })
     }
 
     pub(crate) fn try_from_entry_rw(
         au: &mut AuditScope,
-        value: Entry<EntrySealed, EntryCommitted>,
+        value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        let groups = Group::try_from_account_entry_rw(au, &value, qs)?;
+        let groups = Group::try_from_account_entry_rw(au, value, qs)?;
         try_from_entry!(value, groups)
     }
 
     #[cfg(test)]
     pub(crate) fn try_from_entry_no_groups(
-        value: Entry<EntrySealed, EntryCommitted>,
+        value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         try_from_entry!(value, vec![])
     }
 
     // Could this actually take a claims list and application instead?
-    pub(crate) fn to_userauthtoken(&self, claims: Vec<Claim>) -> Option<UserAuthToken> {
+    pub(crate) fn to_userauthtoken(&self, claims: &[Claim]) -> Option<UserAuthToken> {
         // This could consume self?
         // The cred handler provided is what authenticated this user, so we can use it to
         // process what the proper claims should be.
@@ -161,13 +161,13 @@ impl Account {
                 match &self.primary {
                     // Change the cred
                     Some(primary) => {
-                        let ncred = primary.set_password(cleartext);
+                        let ncred = primary.set_password(cleartext)?;
                         let vcred = Value::new_credential("primary", ncred);
                         Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
                     }
                     // Make a new credential instead
                     None => {
-                        let ncred = Credential::new_password_only(cleartext);
+                        let ncred = Credential::new_password_only(cleartext)?;
                         let vcred = Value::new_credential("primary", ncred);
                         Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
                     }

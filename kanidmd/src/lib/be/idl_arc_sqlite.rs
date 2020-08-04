@@ -518,9 +518,13 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
                 idl_cache.iter_mut_mark_clean().try_for_each(|(k, v)| {
                     match v {
                         Some(idl) => db.write_idl(audit, k.a.as_str(), &k.i, k.k.as_str(), idl),
+                        #[allow(clippy::unreachable)]
                         None => {
                             // Due to how we remove items, we always write an empty idl
                             // to the cache, so this should never be none.
+                            //
+                            // If it is none, this means we have memory corruption so we MUST
+                            // panic.
                             unreachable!();
                         }
                     }
@@ -561,14 +565,13 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
             })?;
 
             // Undo the caches in the reverse order.
-            db.commit(audit).and_then(|()| {
+            db.commit(audit).map(|()| {
                 op_ts_max.commit();
                 name_cache.commit();
                 idl_cache.commit();
                 entry_cache.commit();
                 allids.commit();
                 maxid.commit();
-                Ok(())
             })
         })
     }
@@ -791,16 +794,14 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
     }
 
     pub unsafe fn purge_idxs(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
-        self.db.purge_idxs(audit).and_then(|()| {
+        self.db.purge_idxs(audit).map(|()| {
             self.idl_cache.clear();
-            Ok(())
         })
     }
 
     pub unsafe fn purge_id2entry(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
-        self.db.purge_id2entry(audit).and_then(|()| {
+        self.db.purge_id2entry(audit).map(|()| {
             self.entry_cache.clear();
-            Ok(())
         })
     }
 

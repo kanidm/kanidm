@@ -1,4 +1,3 @@
-use std::convert::TryFrom;
 use std::fs;
 
 use crate::value::IndexType;
@@ -87,8 +86,8 @@ impl IdRawEntry {
     ) -> Result<Entry<EntrySealed, EntryCommitted>, OperationError> {
         let db_e = serde_cbor::from_slice(self.data.as_slice())
             .map_err(|_| OperationError::SerdeCborError)?;
-        let id = u64::try_from(self.id).map_err(|_| OperationError::InvalidEntryID)?;
-        Entry::from_dbentry(au, db_e, id).map_err(|_| OperationError::CorruptedEntry(id))
+        // let id = u64::try_from(self.id).map_err(|_| OperationError::InvalidEntryID)?;
+        Entry::from_dbentry(au, db_e, self.id).map_err(|_| OperationError::CorruptedEntry(self.id))
     }
 }
 
@@ -721,9 +720,7 @@ impl<'a> BackendWriteTransaction<'a> {
             let idlayer = self.get_idlayer();
             // Now, assign id's to all the new entries.
 
-            let mut id_max = idlayer.get_id2entry_max_id().and_then(|id_max| {
-                u64::try_from(id_max).map_err(|_| OperationError::InvalidEntryID)
-            })?;
+            let mut id_max = idlayer.get_id2entry_max_id()?;
             let c_entries: Vec<_> = entries
                 .into_iter()
                 .map(|e| {
@@ -891,9 +888,11 @@ impl<'a> BackendWriteTransaction<'a> {
             // check from the Entry::idx functions as they only yield partial
             // changes. Because the uuid is changing, we have to treat pre
             // as a deleting entry, regardless of what state post is in.
-            let uuid = mask_pre
-                .map(|e| e.get_uuid())
-                .expect("Not possible to fail");
+            let uuid = mask_pre.map(|e| e.get_uuid()).ok_or_else(|| {
+                ladmin_error!(audit, "Invalid entry state - possible memory corruption");
+                OperationError::InvalidState
+            })?;
+
             let (n2u_add, n2u_rem) = Entry::idx_name2uuid_diff(mask_pre, None);
             // There will never be content to add.
             assert!(n2u_add.is_none());
@@ -1221,9 +1220,8 @@ impl<'a> BackendWriteTransaction<'a> {
         // Unwrap the Cell we have finished with it.
         let idlayer = idlayer.into_inner();
 
-        idlayer.commit(audit).and_then(|()| {
+        idlayer.commit(audit).map(|()| {
             idxmeta_wr.commit();
-            Ok(())
         })
     }
 
@@ -1235,6 +1233,7 @@ impl<'a> BackendWriteTransaction<'a> {
     }
 
     pub fn get_db_s_uuid(&self) -> Uuid {
+        #[allow(clippy::expect_used)]
         match self
             .get_idlayer()
             .get_db_s_uuid()
@@ -1252,6 +1251,7 @@ impl<'a> BackendWriteTransaction<'a> {
     }
 
     pub fn get_db_d_uuid(&self) -> Uuid {
+        #[allow(clippy::expect_used)]
         match self
             .get_idlayer()
             .get_db_d_uuid()
@@ -1334,8 +1334,13 @@ impl Backend {
     // Should this actually call the idlayer directly?
     pub fn reset_db_s_uuid(&self, audit: &mut AuditScope) -> Uuid {
         let wr = self.write();
-        let sid = wr.reset_db_s_uuid().unwrap();
-        wr.commit(audit).unwrap();
+        #[allow(clippy::expect_used)]
+        let sid = wr
+            .reset_db_s_uuid()
+            .expect("unable to reset db server uuid");
+        #[allow(clippy::expect_used)]
+        wr.commit(audit)
+            .expect("Unable to commit to backend, can not proceed");
         sid
     }
 
@@ -1732,12 +1737,12 @@ mod tests {
         run_test!(|audit: &mut AuditScope, be: &mut BackendWriteTransaction| {
             // Add some test data?
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("name", Value::new_iname_s("william"));
+            e1.add_ava("name", Value::new_iname("william"));
             e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
             let e1 = unsafe { e1.into_sealed_new() };
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava("name", Value::new_iname_s("claire"));
+            e2.add_ava("name", Value::new_iname("claire"));
             e2.add_ava("uuid", Value::from("bd651620-00dd-426b-aaa0-4494f7b7906f"));
             let e2 = unsafe { e2.into_sealed_new() };
 
@@ -1846,8 +1851,8 @@ mod tests {
             assert!(be.name2uuid(audit, "william") == Ok(Some(william_uuid)));
             assert!(be.name2uuid(audit, "db237e8a-0079-4b8c-8a56-593b22aa44d1") == Ok(None));
             // check uuid2spn
-            assert!(be.uuid2spn(audit, &claire_uuid) == Ok(Some(Value::new_iname_s("claire"))));
-            assert!(be.uuid2spn(audit, &william_uuid) == Ok(Some(Value::new_iname_s("william"))));
+            assert!(be.uuid2spn(audit, &claire_uuid) == Ok(Some(Value::new_iname("claire"))));
+            assert!(be.uuid2spn(audit, &william_uuid) == Ok(Some(Value::new_iname("william"))));
             // check uuid2rdn
             assert!(be.uuid2rdn(audit, &claire_uuid) == Ok(Some("name=claire".to_string())));
             assert!(be.uuid2rdn(audit, &william_uuid) == Ok(Some("name=william".to_string())));

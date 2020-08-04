@@ -43,7 +43,7 @@ impl Plugin for Domain {
                 ltrace!(au, "plugin_domain: Applying uuid transform");
                 // We only apply this if one isn't provided.
                 if !e.attribute_pres("domain_name") {
-                    let n = Value::new_iname_s("example.com");
+                    let n = Value::new_iname("example.com");
                     e.set_ava("domain_name", btreeset![n]);
                     ltrace!(au, "plugin_domain: Applying domain_name transform");
                 }

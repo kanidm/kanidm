@@ -323,8 +323,8 @@ mod tests {
             preload,
             filter!(f_eq("classname", PartialValue::new_class("testclass"))),
             modlist!([
-                m_pres("may", &Value::new_iutf8s("name")),
-                m_pres("must", &Value::new_iutf8s("name")),
+                m_pres("may", &Value::new_iutf8("name")),
+                m_pres("must", &Value::new_iutf8("name")),
             ]),
             Some(JSON_ADMIN_V1),
             |_, _| {}

@@ -1,4 +1,5 @@
 use crate::be::dbvalue::{DbCredV1, DbPasswordV1};
+use kanidm_proto::v1::OperationError;
 use openssl::hash::MessageDigest;
 use openssl::pkcs5::pbkdf2_hmac;
 use rand::prelude::*;
@@ -93,7 +94,7 @@ impl TryFrom<&str> for Password {
 }
 
 impl Password {
-    fn new_pbkdf2(cleartext: &str) -> KDF {
+    fn new_pbkdf2(cleartext: &str) -> Result<KDF, OperationError> {
         let mut rng = rand::thread_rng();
         let salt: Vec<u8> = (0..PBKDF2_SALT_LEN).map(|_| rng.gen()).collect();
         // This is 512 bits of output
@@ -106,18 +107,18 @@ impl Password {
             MessageDigest::sha256(),
             key.as_mut_slice(),
         )
-        .expect("PBKDF2 failure");
-        // Turn key to a vec.
-        KDF::PBKDF2(PBKDF2_COST, salt, key)
+        .map(|()| {
+            // Turn key to a vec.
+            KDF::PBKDF2(PBKDF2_COST, salt, key)
+        })
+        .map_err(|_| OperationError::CryptographyError)
     }
 
-    pub fn new(cleartext: &str) -> Self {
-        Password {
-            material: Self::new_pbkdf2(cleartext),
-        }
+    pub fn new(cleartext: &str) -> Result<Self, OperationError> {
+        Self::new_pbkdf2(cleartext).map(|material| Password { material })
     }
 
-    pub fn verify(&self, cleartext: &str) -> bool {
+    pub fn verify(&self, cleartext: &str) -> Result<bool, OperationError> {
         match &self.material {
             KDF::PBKDF2(cost, salt, key) => {
                 // We have to get the number of bits to derive from our stored hash
@@ -132,9 +133,11 @@ impl Password {
                     MessageDigest::sha256(),
                     chal_key.as_mut_slice(),
                 )
-                .expect("PBKDF2 failure");
-                // Actually compare the outputs.
-                &chal_key == key
+                .map_err(|_| OperationError::CryptographyError)
+                .map(|()| {
+                    // Actually compare the outputs.
+                    &chal_key == key
+                })
             }
         }
     }
@@ -208,29 +211,29 @@ impl TryFrom<DbCredV1> for Credential {
 }
 
 impl Credential {
-    pub fn new_password_only(cleartext: &str) -> Self {
-        Credential {
-            password: Some(Password::new(cleartext)),
+    pub fn new_password_only(cleartext: &str) -> Result<Self, OperationError> {
+        Password::new(cleartext).map(|pw| Credential {
+            password: Some(pw),
             totp: None,
             claims: Vec::new(),
             uuid: Uuid::new_v4(),
-        }
+        })
     }
 
-    pub fn set_password(&self, cleartext: &str) -> Self {
-        Credential {
-            password: Some(Password::new(cleartext)),
+    pub fn set_password(&self, cleartext: &str) -> Result<Self, OperationError> {
+        Password::new(cleartext).map(|pw| Credential {
+            password: Some(pw),
             totp: self.totp.clone(),
             claims: self.claims.clone(),
             uuid: self.uuid,
-        }
+        })
     }
 
     #[cfg(test)]
     pub fn verify_password(&self, cleartext: &str) -> bool {
         match &self.password {
-            Some(pw) => pw.verify(cleartext),
-            None => panic!(),
+            Some(pw) => pw.verify(cleartext).unwrap_or(false),
+            None => false,
         }
     }
 
@@ -299,7 +302,7 @@ mod tests {
 
     #[test]
     fn test_credential_simple() {
-        let c = Credential::new_password_only("password");
+        let c = Credential::new_password_only("password").unwrap();
         assert!(c.verify_password("password"));
         assert!(!c.verify_password("password1"));
         assert!(!c.verify_password("Password1"));
@@ -317,6 +320,6 @@ mod tests {
         let im_pw = "pbkdf2_sha256$36000$xIEozuZVAoYm$uW1b35DUKyhvQAf1mBqMvoBDcqSD06juzyO/nmyV0+w=";
         let password = "eicieY7ahchaoCh0eeTa";
         let r = Password::try_from(im_pw).expect("Failed to parse");
-        assert!(r.verify(password));
+        assert!(r.verify(password).unwrap_or(false));
     }
 }

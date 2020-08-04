@@ -1,8 +1,18 @@
+#![deny(warnings)]
+#![warn(unused_extern_crates)]
+#![deny(clippy::unwrap_used)]
+#![deny(clippy::expect_used)]
+#![deny(clippy::panic)]
+#![deny(clippy::unreachable)]
+#![deny(clippy::await_holding_lock)]
+#![deny(clippy::needless_pass_by_value)]
+#![deny(clippy::trivially_copy_pass_by_ref)]
+
 use std::path::PathBuf;
 
 use kanidm_client::KanidmClientBuilder;
 
-use log::debug;
+use log::{debug, error};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -34,35 +44,54 @@ fn main() {
 
     let config_path: String = shellexpand::tilde("~/.config/kanidm").into_owned();
     debug!("Attempting to use config {}", "/etc/kanidm/config");
-    let client_builder = KanidmClientBuilder::new()
+    let client_builder = match KanidmClientBuilder::new()
         .read_options_from_optional_config("/etc/kanidm/config")
         .and_then(|cb| {
             debug!("Attempting to use config {}", config_path);
             cb.read_options_from_optional_config(config_path)
-        })
-        .expect("Failed to parse config (if present)");
+        }) {
+        Ok(c) => c,
+        Err(e) => {
+            error!("Failed to parse config (if present) -- {:?}", e);
+            std::process::exit(1);
+        }
+    };
 
     let client_builder = match &opt.addr {
         Some(a) => client_builder.address(a.to_string()),
         None => client_builder,
     };
 
-    let ca_path: Option<&str> = opt.ca_path.as_ref().map(|p| p.to_str().unwrap());
+    let ca_path: Option<&str> = opt.ca_path.as_ref().map(|p| p.to_str()).flatten();
     let client_builder = match ca_path {
-        Some(p) => client_builder
-            .add_root_certificate_filepath(p)
-            .expect("Failed to access CA file"),
+        Some(p) => match client_builder.add_root_certificate_filepath(p) {
+            Ok(cb) => cb,
+            Err(e) => {
+                error!("Failed to add ca certificate -- {:?}", e);
+                std::process::exit(1);
+            }
+        },
         None => client_builder,
     };
 
-    let client = client_builder
-        .build()
-        .expect("Failed to build client instance");
+    let client = match client_builder.build() {
+        Ok(c) => c,
+        Err(e) => {
+            error!("Failed to build client instance -- {:?}", e);
+            std::process::exit(1);
+        }
+    };
 
     let r = if opt.username == "anonymous" {
         client.auth_anonymous()
     } else {
-        let password = rpassword::prompt_password_stderr("Enter password: ").unwrap();
+        let password = match rpassword::prompt_password_stderr("Enter password: ") {
+            Ok(pw) => pw,
+            Err(e) => {
+                error!("Failed to retrieve password - {:?}", e);
+                std::process::exit(1);
+            }
+        };
         client.auth_simple_password(opt.username.as_str(), password.as_str())
     };
 
@@ -71,11 +100,8 @@ fn main() {
         std::process::exit(1);
     }
 
-    let pkeys = client
-        .idm_account_get_ssh_pubkeys(opt.account_id.as_str())
-        .unwrap();
-
-    for pkey in pkeys {
-        println!("{}", pkey)
+    match client.idm_account_get_ssh_pubkeys(opt.account_id.as_str()) {
+        Ok(pkeys) => pkeys.iter().for_each(|pkey| println!("{}", pkey)),
+        Err(e) => error!("Failed to retrieve pubkeys - {:?}", e),
     }
 }

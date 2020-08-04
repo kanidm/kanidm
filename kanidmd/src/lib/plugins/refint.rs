@@ -190,7 +190,7 @@ impl Plugin for ReferentialIntegrity {
             .map(|e| PartialValue::new_refer(*e.get_uuid()))
             .collect();
 
-        let work_set = qs.internal_search_writeable(au, filt)?;
+        let work_set = qs.internal_search_writeable(au, &filt)?;
 
         let (pre_candidates, candidates) = work_set
             .into_iter()

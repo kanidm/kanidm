@@ -323,14 +323,14 @@ impl Entry<EntryInit, EntryNew> {
                 let attr = k.to_lowercase();
                 let vv: Set<Value> = match attr.as_str() {
                     "attributename" | "classname" | "domain" => {
-                        vs.into_iter().map(|v| Value::new_iutf8(v)).collect()
+                        vs.into_iter().map(|v| Value::new_iutf8(&v)).collect()
                     }
                     "name" | "domain_name" => {
-                        vs.into_iter().map(|v| Value::new_iname(v)).collect()
+                        vs.into_iter().map(|v| Value::new_iname(&v)).collect()
                     }
                     "userid" | "uidnumber" => {
                         warn!("WARNING: Use of unstabilised attributes userid/uidnumber");
-                        vs.into_iter().map(|v| Value::new_iutf8(v)).collect()
+                        vs.into_iter().map(|v| Value::new_iutf8(&v)).collect()
                     }
                     "class" | "acp_create_class" | "acp_modify_class"  => {
                         vs.into_iter().map(|v| Value::new_class(v.as_str())).collect()
@@ -1299,7 +1299,7 @@ impl Entry<EntrySealed, EntryCommitted> {
 
     pub fn reduce_attributes(
         self,
-        allowed_attrs: BTreeSet<&str>,
+        allowed_attrs: &BTreeSet<&str>,
     ) -> Entry<EntryReduced, EntryCommitted> {
         // Remove all attrs from our tree that are NOT in the allowed set.
 
@@ -1880,7 +1880,7 @@ impl From<&SchemaAttribute> for Entry<EntryInit, EntryNew> {
         // Convert an Attribute to an entry ... make it good!
         let uuid_v = btreeset![Value::new_uuidr(&s.uuid)];
 
-        let name_v = btreeset![Value::new_iutf8(s.name.clone())];
+        let name_v = btreeset![Value::new_iutf8(s.name.as_str())];
         let desc_v = btreeset![Value::new_utf8(s.description.clone())];
 
         let multivalue_v = btreeset![Value::from(s.multivalue)];
@@ -1922,7 +1922,7 @@ impl From<&SchemaClass> for Entry<EntryInit, EntryNew> {
     fn from(s: &SchemaClass) -> Self {
         let uuid_v = btreeset![Value::new_uuidr(&s.uuid)];
 
-        let name_v = btreeset![Value::new_iutf8(s.name.clone())];
+        let name_v = btreeset![Value::new_iutf8(s.name.as_str())];
         let desc_v = btreeset![Value::new_utf8(s.description.clone())];
 
         let mut attrs: Map<String, Set<Value>> = Map::with_capacity(16);
@@ -2070,7 +2070,7 @@ mod tests {
         let present_single_mods = unsafe {
             ModifyList::new_valid_list(vec![Modify::Present(
                 String::from("attr"),
-                Value::new_iutf8s("value"),
+                Value::new_iutf8("value"),
             )])
         };
 
@@ -2078,20 +2078,20 @@ mod tests {
 
         // Assert the changes are there
         assert!(e.attribute_equality("userid", &PartialValue::new_utf8s("william")));
-        assert!(e.attribute_equality("attr", &PartialValue::new_iutf8s("value")));
+        assert!(e.attribute_equality("attr", &PartialValue::new_iutf8("value")));
 
         // Assert present for multivalue
         let present_multivalue_mods = unsafe {
             ModifyList::new_valid_list(vec![
-                Modify::Present(String::from("class"), Value::new_iutf8s("test")),
-                Modify::Present(String::from("class"), Value::new_iutf8s("multi_test")),
+                Modify::Present(String::from("class"), Value::new_iutf8("test")),
+                Modify::Present(String::from("class"), Value::new_iutf8("multi_test")),
             ])
         };
 
         e.apply_modlist(&present_multivalue_mods);
 
-        assert!(e.attribute_equality("class", &PartialValue::new_iutf8s("test")));
-        assert!(e.attribute_equality("class", &PartialValue::new_iutf8s("multi_test")));
+        assert!(e.attribute_equality("class", &PartialValue::new_iutf8("test")));
+        assert!(e.attribute_equality("class", &PartialValue::new_iutf8("multi_test")));
 
         // Assert purge on single/multi/empty value
         let purge_single_mods =
@@ -2116,12 +2116,12 @@ mod tests {
         let remove_mods = unsafe {
             ModifyList::new_valid_list(vec![Modify::Removed(
                 String::from("attr"),
-                PartialValue::new_iutf8s("value"),
+                PartialValue::new_iutf8("value"),
             )])
         };
 
         e.apply_modlist(&present_single_mods);
-        assert!(e.attribute_equality("attr", &PartialValue::new_iutf8s("value")));
+        assert!(e.attribute_equality("attr", &PartialValue::new_iutf8("value")));
         e.apply_modlist(&remove_mods);
         assert!(e.attrs.get("attr").unwrap().is_empty());
 
@@ -2282,7 +2282,7 @@ mod tests {
             let mut e: Entry<EntryInit, EntryNew> = Entry::new();
             e.add_ava("class", Value::new_class("person"));
             e.add_ava("gidnumber", Value::new_uint32(1300));
-            e.add_ava("name", Value::new_iname_s("testperson"));
+            e.add_ava("name", Value::new_iname("testperson"));
             e.add_ava("spn", Value::new_spn_str("testperson", "example.com"));
             e.add_ava(
                 "uuid",
@@ -2332,7 +2332,7 @@ mod tests {
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
             e2.add_ava("class", Value::new_class("person"));
-            e2.add_ava("name", Value::new_iname_s("testperson"));
+            e2.add_ava("name", Value::new_iname("testperson"));
             e2.add_ava("spn", Value::new_spn_str("testperson", "example.com"));
             let e2 = unsafe { e2.into_sealed_committed() };
 

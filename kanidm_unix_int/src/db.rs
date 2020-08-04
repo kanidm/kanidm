@@ -41,8 +41,9 @@ impl Db {
         })
     }
 
-    pub fn write(&self) -> DbTxn {
-        let guard = self.lock.try_lock().expect("Unable to lock");
+    #[allow(clippy::expect_used)]
+    pub async fn write(&self) -> DbTxn<'_> {
+        let guard = self.lock.lock().await;
         let conn = self
             .pool
             .get()
@@ -64,6 +65,7 @@ impl<'a> DbTxn<'a> {
     ) -> Self {
         // Start the transaction
         // debug!("Starting db WR txn ...");
+        #[allow(clippy::expect_used)]
         conn.execute("BEGIN TRANSACTION", NO_PARAMS)
             .expect("Unable to begin transaction!");
         DbTxn {
@@ -140,7 +142,10 @@ impl<'a> DbTxn<'a> {
 
     pub fn commit(mut self) -> Result<(), ()> {
         // debug!("Commiting BE txn");
-        assert!(!self.committed);
+        if self.committed {
+            error!("Invalid state, txn already commited!");
+            return Err(());
+        }
         self.committed = true;
 
         self.conn
@@ -403,7 +408,9 @@ impl<'a> DbTxn<'a> {
     }
 
     pub fn update_account_password(&self, a_uuid: &str, cred: &str) -> Result<(), ()> {
-        let pw = Password::new(cred);
+        let pw = Password::new(cred).map_err(|e| {
+            error!("password error -> {:?}", e);
+        })?;
         let dbpw = pw.to_dbpasswordv1();
         let data = serde_cbor::to_vec(&dbpw).map_err(|e| {
             error!("cbor error -> {:?}", e);
@@ -462,7 +469,9 @@ impl<'a> DbTxn<'a> {
                     error!("cbor error -> {:?}", e);
                 })?;
                 let pw = Password::try_from(dbpw)?;
-                Ok(pw.verify(cred))
+                pw.verify(cred).map_err(|e| {
+                    error!("password error -> {:?}", e);
+                })
             })
             .unwrap_or(Ok(false));
         r
@@ -664,6 +673,7 @@ impl<'a> Drop for DbTxn<'a> {
     fn drop(self: &mut Self) {
         if !self.committed {
             // debug!("Aborting BE WR txn");
+            #[allow(clippy::expect_used)]
             self.conn
                 .execute("ROLLBACK TRANSACTION", NO_PARAMS)
                 .expect("Unable to rollback transaction! Can not proceed!!!");
@@ -675,6 +685,7 @@ impl<'a> Drop for DbTxn<'a> {
 mod tests {
     use super::Db;
     use crate::cache::Id;
+    use async_std::task;
     use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
 
     const TESTACCOUNT1_PASSWORD_A: &str = "password a for account1 test";
@@ -684,7 +695,7 @@ mod tests {
     fn test_cache_db_account_basic() {
         let _ = env_logger::builder().is_test(true).try_init();
         let db = Db::new("").expect("failed to create.");
-        let dbtxn = db.write();
+        let dbtxn = task::block_on(db.write());
         assert!(dbtxn.migrate().is_ok());
 
         let mut ut1 = UnixUserToken {
@@ -767,7 +778,7 @@ mod tests {
     fn test_cache_db_group_basic() {
         let _ = env_logger::builder().is_test(true).try_init();
         let db = Db::new("").expect("failed to create.");
-        let dbtxn = db.write();
+        let dbtxn = task::block_on(db.write());
         assert!(dbtxn.migrate().is_ok());
 
         let mut gt1 = UnixGroupToken {
@@ -842,7 +853,7 @@ mod tests {
     fn test_cache_db_account_group_update() {
         let _ = env_logger::builder().is_test(true).try_init();
         let db = Db::new("").expect("failed to create.");
-        let dbtxn = db.write();
+        let dbtxn = task::block_on(db.write());
         assert!(dbtxn.migrate().is_ok());
 
         let gt1 = UnixGroupToken {
@@ -909,7 +920,7 @@ mod tests {
     fn test_cache_db_account_password() {
         let _ = env_logger::builder().is_test(true).try_init();
         let db = Db::new("").expect("failed to create.");
-        let dbtxn = db.write();
+        let dbtxn = task::block_on(db.write());
         assert!(dbtxn.migrate().is_ok());
 
         let uuid1 = "0302b99c-f0f6-41ab-9492-852692b0fd16";
@@ -957,7 +968,7 @@ mod tests {
     fn test_cache_db_group_rename_duplicate() {
         let _ = env_logger::builder().is_test(true).try_init();
         let db = Db::new("").expect("failed to create.");
-        let dbtxn = db.write();
+        let dbtxn = task::block_on(db.write());
         assert!(dbtxn.migrate().is_ok());
 
         let mut gt1 = UnixGroupToken {
@@ -1012,7 +1023,7 @@ mod tests {
     fn test_cache_db_account_rename_duplicate() {
         let _ = env_logger::builder().is_test(true).try_init();
         let db = Db::new("").expect("failed to create.");
-        let dbtxn = db.write();
+        let dbtxn = task::block_on(db.write());
         assert!(dbtxn.migrate().is_ok());
 
         let mut ut1 = UnixUserToken {

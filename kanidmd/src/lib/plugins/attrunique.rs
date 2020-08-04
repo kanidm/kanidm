@@ -297,7 +297,7 @@ mod tests {
             ),])),
             ModifyList::new_list(vec![
                 Modify::Purged("name".to_string()),
-                Modify::Present("name".to_string(), Value::new_iname_s("testgroup_a"))
+                Modify::Present("name".to_string(), Value::new_iname("testgroup_a"))
             ]),
             None,
             |_, _| {}
@@ -340,7 +340,7 @@ mod tests {
             ])),
             ModifyList::new_list(vec![
                 Modify::Purged("name".to_string()),
-                Modify::Present("name".to_string(), Value::new_iname_s("testgroup"))
+                Modify::Present("name".to_string(), Value::new_iname("testgroup"))
             ]),
             None,
             |_, _| {}

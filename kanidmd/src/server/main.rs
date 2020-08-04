@@ -1,4 +1,12 @@
 #![deny(warnings)]
+#![warn(unused_extern_crates)]
+#![deny(clippy::unwrap_used)]
+#![deny(clippy::expect_used)]
+#![deny(clippy::panic)]
+#![deny(clippy::unreachable)]
+#![deny(clippy::await_holding_lock)]
+#![deny(clippy::needless_pass_by_value)]
+#![deny(clippy::trivially_copy_pass_by_ref)]
 
 use users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 
@@ -136,7 +144,7 @@ fn read_file_metadata(path: &PathBuf) -> Metadata {
         Err(e) => {
             eprintln!(
                 "Unable to read metadata for {} - {:?}",
-                path.to_str().unwrap(),
+                path.to_str().unwrap_or("invalid file path"),
                 e
             );
             std::process::exit(1);
@@ -171,18 +179,18 @@ async fn main() {
     let cfg_meta = read_file_metadata(&(opt.commonopt().config_path));
     if !cfg_meta.permissions().readonly() {
         eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
-            opt.commonopt().config_path.to_str().unwrap());
+            opt.commonopt().config_path.to_str().unwrap_or("invalid file path"));
     }
 
     if cfg_meta.mode() & 0o007 != 0 {
         eprintln!("WARNING: {} has 'everyone' permission bits in the mode. This could be a security risk ...",
-            opt.commonopt().config_path.to_str().unwrap()
+            opt.commonopt().config_path.to_str().unwrap_or("invalid file path")
         );
     }
 
     if cfg_meta.uid() == cuid || cfg_meta.uid() == ceuid {
         eprintln!("WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...",
-            opt.commonopt().config_path.to_str().unwrap()
+            opt.commonopt().config_path.to_str().unwrap_or("invalid file path")
         );
     }
 
@@ -241,7 +249,7 @@ async fn main() {
         if !db_parent_path.exists() {
             eprintln!(
                 "DB folder {} may not exist, server startup may FAIL!",
-                db_parent_path.to_str().unwrap()
+                db_parent_path.to_str().unwrap_or("invalid file path")
             );
         }
 
@@ -250,16 +258,16 @@ async fn main() {
         if !i_meta.is_dir() {
             eprintln!(
                 "ERROR: Refusing to run - DB folder {} may not be a directory",
-                db_par_path_buf.to_str().unwrap()
+                db_par_path_buf.to_str().unwrap_or("invalid file path")
             );
             std::process::exit(1);
         }
         if i_meta.permissions().readonly() {
-            eprintln!("WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", db_par_path_buf.to_str().unwrap());
+            eprintln!("WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", db_par_path_buf.to_str().unwrap_or("invalid file path"));
         }
 
         if i_meta.mode() & 0o007 != 0 {
-            eprintln!("WARNING: DB folder {} has 'everyone' permission bits in the mode. This could be a security risk ...", db_par_path_buf.to_str().unwrap());
+            eprintln!("WARNING: DB folder {} has 'everyone' permission bits in the mode. This could be a security risk ...", db_par_path_buf.to_str().unwrap_or("invalid file path"));
         }
     }
 
@@ -287,11 +295,16 @@ async fn main() {
 
             let sctx = create_server_core(config).await;
             match sctx {
-                Ok(sctx) => {
-                    tokio::signal::ctrl_c().await.unwrap();
-                    println!("Ctrl-C received, shutting down");
-                    sctx.stop()
-                }
+                Ok(sctx) => match tokio::signal::ctrl_c().await {
+                    Ok(_) => {
+                        eprintln!("Ctrl-C received, shutting down");
+                        sctx.stop()
+                    }
+                    Err(_) => {
+                        eprintln!("Invalid signal received, shutting down as a precaution ...");
+                        sctx.stop()
+                    }
+                },
                 Err(_) => {
                     eprintln!("Failed to start server core!");
                     return;
@@ -310,7 +323,7 @@ async fn main() {
                     std::process::exit(1);
                 }
             };
-            backup_server_core(config, p);
+            backup_server_core(&config, p);
         }
         Opt::Restore(ropt) => {
             eprintln!("Running in restore mode ...");
@@ -324,21 +337,27 @@ async fn main() {
                     std::process::exit(1);
                 }
             };
-            restore_server_core(config, p);
+            restore_server_core(&config, p);
         }
         Opt::Verify(_vopt) => {
             eprintln!("Running in db verification mode ...");
 
             // config.update_db_path(&vopt.db_path);
-            verify_server_core(config);
+            verify_server_core(&config);
         }
         Opt::RecoverAccount(raopt) => {
             eprintln!("Running account recovery ...");
 
-            let password = rpassword::prompt_password_stderr("new password: ").unwrap();
+            let password = match rpassword::prompt_password_stderr("new password: ") {
+                Ok(pw) => pw,
+                Err(e) => {
+                    eprintln!("Failed to get password from prompt {:?}", e);
+                    std::process::exit(1);
+                }
+            };
             // config.update_db_path(&raopt.commonopts.db_path);
 
-            recover_account_core(config, raopt.name, password);
+            recover_account_core(&config, &raopt.name, &password);
         }
         /*
         Opt::ResetServerId(vopt) => {
@@ -352,13 +371,13 @@ async fn main() {
             eprintln!("Running in reindex mode ...");
 
             // config.update_db_path(&copt.db_path);
-            reindex_server_core(config);
+            reindex_server_core(&config);
         }
         Opt::DomainChange(dopt) => {
             eprintln!("Running in domain name change mode ... this may take a long time ...");
 
             // config.update_db_path(&dopt.commonopts.db_path);
-            domain_rename_core(config, dopt.new_domain_name);
+            domain_rename_core(&config, &dopt.new_domain_name);
         }
     }
 }

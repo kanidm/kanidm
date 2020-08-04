@@ -251,7 +251,7 @@ impl LdapServer {
                         au,
                         &idm_read.qs_read,
                         &uat.effective_uuid,
-                        filter,
+                        &filter,
                         attrs,
                     )
                 })?;
@@ -343,10 +343,13 @@ impl LdapServer {
 
         let ct = SystemTime::now()
             .duration_since(SystemTime::UNIX_EPOCH)
-            .expect("Clock failure!");
+            .map_err(|e| {
+                ladmin_error!(au, "Clock Error -> {:?}", e);
+                OperationError::InvalidState
+            })?;
 
         let lae = LdapAuthEvent::from_parts(au, target_uuid, pw.to_string())?;
-        idm_write.auth_ldap(au, lae, ct).and_then(|r| {
+        idm_write.auth_ldap(au, &lae, ct).and_then(|r| {
             idm_write.commit(au).map(|_| {
                 if r.is_some() {
                     lsecurity!(au, "✅ LDAP Bind success {}", dn);

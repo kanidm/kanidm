@@ -26,6 +26,7 @@ impl ServerCtx {
         self.system.clone()
     }
 
+    #[allow(clippy::expect_used)]
     pub fn stop(self) {
         // stop the actix system
         self.system.stop();

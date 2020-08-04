@@ -695,7 +695,7 @@ pub trait AccessControlsTransaction {
                             */
 
                             // Now purge the attrs that are NOT in this.
-                            e.reduce_attributes(allowed_attrs)
+                            e.reduce_attributes(&allowed_attrs)
                         })
                         .collect()
                 }
@@ -810,14 +810,14 @@ pub trait AccessControlsTransaction {
                             // existance, and second, we would have failed the mod at schema checking
                             // earlier in the process as these were not correctly type. As a result
                             // we can trust these to be correct here and not to be "None".
-                            Some(v.to_str_unwrap())
+                            v.to_str()
                         } else {
                             None
                         }
                     }
                     Modify::Removed(a, v) => {
                         if a.as_str() == "class" {
-                            Some(v.to_str_unwrap())
+                            v.to_str()
                         } else {
                             None
                         }
@@ -2018,7 +2018,7 @@ mod tests {
             ModifyEvent::new_impersonate_entry_ser(
                 JSON_ADMIN_V1,
                 filter_all!(f_eq("name", PartialValue::new_iname("testperson1"))),
-                modlist!([m_pres("name", &Value::new_iname_s("value"))]),
+                modlist!([m_pres("name", &Value::new_iname("value"))]),
             )
         };
         // Name rem
