@@ -2,7 +2,7 @@ ARG BASE_IMAGE=opensuse/tumbleweed:latest
 FROM ${BASE_IMAGE} AS builder
 LABEL mantainer william@blackhats.net.au
 
-RUN zypper ref && \
+RUN zypper -vv ref && \
     zypper install -y \
         cargo \
         rust \
@@ -27,6 +27,7 @@ LABEL mantainer william@blackhats.net.au
 RUN zypper ref && \
     zypper install -y \
         timezone \
+        sqlite3 \
         pam && \
     zypper clean -a
 

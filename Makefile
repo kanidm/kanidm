@@ -1,7 +1,7 @@
 .PHONY: help build/kanidmd build/radiusd test/kanidmd push/kanidmd push/radiusd vendor-prep doc install-tools prep
 
 IMAGE_BASE ?= kanidm
-IMAGE_VERSION ?= alpha
+IMAGE_VERSION ?= devel
 
 .DEFAULT: help
 help:
