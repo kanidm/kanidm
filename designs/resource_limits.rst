@@ -1,12 +1,12 @@
 Resource Limits
 ---------------
 
-As a piece of security sensitive software, kanidm must be "available" (as defined by
-integrity, availability and confidentiality). This means that as a service we must
+As security sensitive software, kanidm must be "available" (as defined by
+confidentiality, integrity, and availability). This means that as a service we must
 be able to handle a large volume of potentially malicous traffic, and still able
 to serve legitimate requests without fault or failure.
 
-To achieve this, the resources of the server must be managed and distributed so allow
+To achieve this, the resources of the server must be managed and distributed to allow
 potentially thousands of operations per second, while preventing exhaustion of those
 resources.
 
@@ -19,9 +19,9 @@ someone's email address in a corporate directory context.
 Each operation requires resources to complete individually, but many operations
 can be processed in parallel.
 
-For a resource exhaustion to occur, this would be due to input from a client
-that consumes resources. This means the attack surface is any possible input
-and how the server interprets and processes that. In kanidm this could be
+Resource exhaustion occurs when input from a client consumes more resources 
+than the server can provide. This means the attack surface is any possible input
+and how the server interprets and processes that input. In kanidm this could be
 a search filter for example - the query may be small, but it could be expensive
 to compute.
 
@@ -57,20 +57,20 @@ These necesitate the following limits:
 Memory (RAM) Capacity
 =====================
 
-A system has finite ram amounts which must be shared between all CPU's of the system.
+A system has finite amounts of RAM which must be shared between all CPUs of the system.
 Effective use of that RAM improves the speed of all operations, meaning that as a shared
 resource it can not be monopolised by a single operation.
 
-Each operation can be assumed to have access to RAM/N CPUS of ram. If an operation tempororily
+Each operation can be assumed to have access to RAM/n CPUs of RAM. If an operation temporarily
 exceeds this, the impact is minimal, but continued use of a single CPU using a high capacity
 of RAM can prevent other operations functioning. Additionally, past operations can impact
-the content of RAM though cache invalidation attacks for example.
+the content of RAM though cache invalidation attacks.
 
 To prevent overuse of RAM, the following must be considered
 
 * Cache strategies to prevent invalidation attacks (done, ARC + ahash).
 * Limit the amount of entries that can be dirtied in a write operation
-* Limit the numer of entries that can be filter-tested in partial index queries
+* Limit the number of entries that can be filter-tested in partial index queries
 * Limit the amount of entries that can be loaded for a read operation
 * Limit the size of cache to allow room for operation result sets (done)
 * Cache closer to the application rather than using db/vfs caches (done)
@@ -90,7 +90,7 @@ or to not issue or allow requests that would generate large amounts of IOPS.
 * Limit the number of large items that can be loaded in an operation IE partial index scans, full table scans
 * Limit the size of write operations.
 
-Disk/Capacity
+Disk Capacity
 =============
 
 If the storage capacity is exceeded this can cause the system to panic or stop, which would act
@@ -99,14 +99,14 @@ the worst case, data corruption. This means that during write operations, the am
 must be limited.
 
 * Limit the number of entries that can be dirtied in an operation
-* Limit the maximum number of multivalue attributes on an entrie to prevent the entry growing over-size
+* Limit the maximum number of multivalue attributes on an entry to prevent the entry growing over-size
 * Entry maximum size limits
-* Limit the amount of churn in an entry to prevent changelog growth
+* Limit the amount of churn in an entry to prevent excessive changelog growth
 
 Stack Limits
 ============
 
-As some operations are recursive, the stack depth becomes a concern as when exceeded, the system
+As some operations are recursive, the stack depth becomes a concern because when the stack depth is exceeded, the system
 can crash or panic. The major recursive structure is filters and how we process queries.
 
 To prevent stack exhaustion:
@@ -131,7 +131,7 @@ Search Limits:
 * Prevent searching on terms that do not exist (done, filter schema validation)
 * Deny unindexed searches
 * Limit the amount of entries that can be loaded for a read operation
-* Limit the numer of entries that can be filter-tested in partial index queries
+* Limit the number of entries that can be filter-tested in partial index queries
 * Limit on the number of entries that can be loaded from a search
 * Limit the depth of nesting in a search query (filter).
 * Reduce the size of allowed queries to prevent complex index access patterns
@@ -151,9 +151,9 @@ Writes:
 * Limit the number of entries that can be dirtied in an operation
 * Limit the maximum number of multivalue attributes on an entry to prevent the entry growing over-size
 * Entry maximum size limits
-* Limit the amount of churn in an entry to prevent changelog growth
+* Limit the amount of churn in an entry to prevent excessive changelog growth
 
-These limits should be applied per-account to allow some accounts to over-ride these. For example
+These limits should be applied per-account to allow some accounts to override these, for example
 an application which needs to bulk update accounts, or admins who need to perform audits.
 
 The system maintains a default set of limits. Accounts can then have resource groups associated.
@@ -171,9 +171,8 @@ The session limits would be:
 * write rate limit (writes over time)
 * network request size
 
-The system limits that can not be account over-riden are:
+The system limits that can not be account overridden are:
 
 * maximum entry size
 * maximum number of multi value attributes
-
 
