@@ -29,8 +29,9 @@ CPU time
 ========
 
 Every operation requires time on a CPU. A CPU logically is many threads which
-can have many operations in parallel, but also bound by a frequency and their
-performance as to how many instructions can be performed per second.
+can have many processes in parallel, and each thread has a limit on how many
+instructions it can perform per second. This makes CPU a finite resource for
+our system.
 
 This means that given a say 8 core CPU, each individual core may be able to
 complete 1000 operations per second, and combined this becomes 8x1000.
