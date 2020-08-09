@@ -172,8 +172,10 @@ The session limits would be:
 * write rate limit (writes over time)
 * network request size
 
-The system limits that can not be account overridden are:
+The entry specific limits are:
 
 * maximum entry size
 * maximum number of multi value attributes
+
+These are store as attributes on the entry itself
 

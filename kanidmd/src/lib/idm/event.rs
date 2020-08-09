@@ -29,7 +29,7 @@ impl PasswordChangeEvent {
         qs: &QueryServerWriteTransaction,
         msg: IdmAccountSetPasswordMessage,
     ) -> Result<Self, OperationError> {
-        let e = Event::from_rw_uat(audit, qs, msg.uat)?;
+        let e = Event::from_rw_uat(audit, qs, msg.uat.as_ref())?;
         let u = *e.get_uuid().ok_or(OperationError::InvalidState)?;
 
         Ok(PasswordChangeEvent {
@@ -43,7 +43,7 @@ impl PasswordChangeEvent {
     pub fn from_parts(
         audit: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
-        uat: Option<UserAuthToken>,
+        uat: Option<&UserAuthToken>,
         target: Uuid,
         cleartext: String,
         appid: Option<String>,
@@ -78,7 +78,7 @@ impl UnixPasswordChangeEvent {
     pub fn from_parts(
         audit: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
-        uat: Option<UserAuthToken>,
+        uat: Option<&UserAuthToken>,
         target: Uuid,
         cleartext: String,
     ) -> Result<Self, OperationError> {
@@ -103,7 +103,7 @@ impl GeneratePasswordEvent {
     pub fn from_parts(
         audit: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
-        uat: Option<UserAuthToken>,
+        uat: Option<&UserAuthToken>,
         target: Uuid,
         appid: Option<String>,
     ) -> Result<Self, OperationError> {
@@ -127,7 +127,7 @@ impl RegenerateRadiusSecretEvent {
     pub fn from_parts(
         audit: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
-        uat: Option<UserAuthToken>,
+        uat: Option<&UserAuthToken>,
         target: Uuid,
     ) -> Result<Self, OperationError> {
         let e = Event::from_rw_uat(audit, qs, uat)?;
@@ -153,7 +153,7 @@ impl RadiusAuthTokenEvent {
     pub fn from_parts(
         audit: &mut AuditScope,
         qs: &QueryServerReadTransaction,
-        uat: Option<UserAuthToken>,
+        uat: Option<&UserAuthToken>,
         target: Uuid,
     ) -> Result<Self, OperationError> {
         let e = Event::from_ro_uat(audit, qs, uat)?;
@@ -179,7 +179,7 @@ impl UnixUserTokenEvent {
     pub fn from_parts(
         audit: &mut AuditScope,
         qs: &QueryServerReadTransaction,
-        uat: Option<UserAuthToken>,
+        uat: Option<&UserAuthToken>,
         target: Uuid,
     ) -> Result<Self, OperationError> {
         let e = Event::from_ro_uat(audit, qs, uat)?;
@@ -205,7 +205,7 @@ impl UnixGroupTokenEvent {
     pub fn from_parts(
         audit: &mut AuditScope,
         qs: &QueryServerReadTransaction,
-        uat: Option<UserAuthToken>,
+        uat: Option<&UserAuthToken>,
         target: Uuid,
     ) -> Result<Self, OperationError> {
         let e = Event::from_ro_uat(audit, qs, uat)?;
@@ -249,7 +249,7 @@ impl UnixUserAuthEvent {
     pub fn from_parts(
         audit: &mut AuditScope,
         qs: &QueryServerReadTransaction,
-        uat: Option<UserAuthToken>,
+        uat: Option<&UserAuthToken>,
         target: Uuid,
         cleartext: String,
     ) -> Result<Self, OperationError> {
@@ -274,7 +274,7 @@ impl GenerateTOTPEvent {
     pub fn from_parts(
         audit: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
-        uat: Option<UserAuthToken>,
+        uat: Option<&UserAuthToken>,
         target: Uuid,
         label: String,
     ) -> Result<Self, OperationError> {
@@ -311,7 +311,7 @@ impl VerifyTOTPEvent {
     pub fn from_parts(
         audit: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
-        uat: Option<UserAuthToken>,
+        uat: Option<&UserAuthToken>,
         target: Uuid,
         session: Uuid,
         chal: u32,

@@ -1248,7 +1248,10 @@ impl IdlSqlite {
         let manager = SqliteConnectionManager::file(path)
             .with_init(move |c| {
                 c.execute_batch(
-                    format!("PRAGMA page_size={}; VACUUM; PRAGMA journal_mode=WAL;", fstype as u32)
+                    format!(
+                        "PRAGMA page_size={}; VACUUM; PRAGMA journal_mode=WAL;",
+                        fstype as u32
+                    )
                     .as_str(),
                 )
             })

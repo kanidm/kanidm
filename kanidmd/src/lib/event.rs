@@ -95,10 +95,47 @@ pub enum EventOrigin {
 }
 
 #[derive(Debug, Clone)]
+/// Limits on the resources a single event can consume. These are defined per-event
+/// as they are derived from the userAuthToken based on that individual session
+pub struct EventLimits {
+    pub unindexed_allow: bool,
+    pub search_max_results: usize,
+    pub search_max_filter_test: usize,
+    pub filter_max_elements: usize,
+    // pub write_max_entries: usize,
+    // pub write_max_rate: usize,
+    // pub network_max_request: usize,
+}
+
+impl EventLimits {
+    pub fn unlimited() -> Self {
+        EventLimits {
+            unindexed_allow: true,
+            search_max_results: usize::MAX,
+            search_max_filter_test: usize::MAX,
+            filter_max_elements: usize::MAX,
+        }
+    }
+
+    // From a userauthtoken
+    pub fn from_uat(uat: &UserAuthToken) -> Self {
+        // unimplemented!();
+        // TODO: Un-hardcode this.
+        EventLimits {
+            unindexed_allow: false,
+            search_max_results: 256,
+            search_max_filter_test: 256,
+            filter_max_elements: 256,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct Event {
     // The event's initiator aka origin source.
     // This importantly, is used for access control!
     pub origin: EventOrigin,
+    pub(crate) limits: EventLimits,
 }
 
 impl std::fmt::Display for Event {
@@ -119,25 +156,10 @@ impl std::fmt::Display for Event {
 }
 
 impl Event {
-    pub fn from_ro_request(
-        audit: &mut AuditScope,
-        qs: &QueryServerReadTransaction,
-        user_uuid: &Uuid,
-    ) -> Result<Self, OperationError> {
-        qs.internal_search_uuid(audit, &user_uuid)
-            .map(|e| Event {
-                origin: EventOrigin::User(e),
-            })
-            .map_err(|e| {
-                ladmin_error!(audit, "from_ro_request failed {:?}", e);
-                e
-            })
-    }
-
     pub fn from_ro_uat(
         audit: &mut AuditScope,
         qs: &QueryServerReadTransaction,
-        uat: Option<UserAuthToken>,
+        uat: Option<&UserAuthToken>,
     ) -> Result<Self, OperationError> {
         ltrace!(audit, "from_ro_uat -> {:?}", uat);
         let uat = uat.ok_or(OperationError::NotAuthenticated)?;
@@ -153,15 +175,17 @@ impl Event {
         // TODO #64: Now apply claims from the uat into the Entry
         // to allow filtering.
 
+        let limits = EventLimits::from_uat(uat);
         Ok(Event {
             origin: EventOrigin::User(e),
+            limits,
         })
     }
 
     pub fn from_rw_uat(
         audit: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
-        uat: Option<UserAuthToken>,
+        uat: Option<&UserAuthToken>,
     ) -> Result<Self, OperationError> {
         ltrace!(audit, "from_rw_uat -> {:?}", uat);
         let uat = uat.ok_or(OperationError::NotAuthenticated)?;
@@ -177,37 +201,17 @@ impl Event {
         // TODO #64: Now apply claims from the uat into the Entry
         // to allow filtering.
 
+        let limits = EventLimits::from_uat(uat);
         Ok(Event {
             origin: EventOrigin::User(e),
-        })
-    }
-
-    pub fn from_rw_request(
-        audit: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
-        user_uuid: &str,
-    ) -> Result<Self, OperationError> {
-        // Do we need to check or load the entry from the user_uuid?
-        // In the future, probably yes.
-        //
-        // For now, no.
-        let u = Uuid::parse_str(user_uuid).map_err(|_| {
-            ladmin_error!(audit, "from_ro_request invalid uat uuid");
-            OperationError::InvalidUuid
-        })?;
-        let e = qs.internal_search_uuid(audit, &u).map_err(|e| {
-            ladmin_error!(audit, "from_rw_request failed {:?}", e);
-            e
-        })?;
-
-        Ok(Event {
-            origin: EventOrigin::User(e),
+            limits,
         })
     }
 
     pub fn from_internal() -> Self {
         Event {
             origin: EventOrigin::Internal,
+            limits: EventLimits::unlimited(),
         }
     }
 
@@ -215,6 +219,7 @@ impl Event {
     pub fn from_impersonate_entry(e: Entry<EntrySealed, EntryCommitted>) -> Self {
         Event {
             origin: EventOrigin::User(e),
+            limits: EventLimits::unlimited(),
         }
     }
 
@@ -265,7 +270,7 @@ impl SearchEvent {
     ) -> Result<Self, OperationError> {
         match Filter::from_ro(audit, &msg.req.filter, qs) {
             Ok(f) => Ok(SearchEvent {
-                event: Event::from_ro_uat(audit, qs, msg.uat)?,
+                event: Event::from_ro_uat(audit, qs, msg.uat.as_ref())?,
                 // We do need to do this twice to account for the ignore_hidden
                 // changes.
                 filter: f
@@ -303,7 +308,7 @@ impl SearchEvent {
         }
 
         Ok(SearchEvent {
-            event: Event::from_ro_uat(audit, qs, msg.uat)?,
+            event: Event::from_ro_uat(audit, qs, msg.uat.as_ref())?,
             // We do need to do this twice to account for the ignore_hidden
             // changes.
             filter: msg
@@ -341,7 +346,7 @@ impl SearchEvent {
         }
 
         Ok(SearchEvent {
-            event: Event::from_ro_uat(audit, qs, msg.uat)?,
+            event: Event::from_ro_uat(audit, qs, msg.uat.as_ref())?,
             filter: msg
                 .filter
                 .clone()
@@ -359,7 +364,7 @@ impl SearchEvent {
 
     pub fn from_whoami_request(
         audit: &mut AuditScope,
-        uat: Option<UserAuthToken>,
+        uat: Option<&UserAuthToken>,
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         Ok(SearchEvent {
@@ -376,7 +381,7 @@ impl SearchEvent {
 
     pub fn from_target_uuid_request(
         audit: &mut AuditScope,
-        uat: Option<UserAuthToken>,
+        uat: Option<&UserAuthToken>,
         target_uuid: Uuid,
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
@@ -460,12 +465,12 @@ impl SearchEvent {
     pub(crate) fn new_ext_impersonate_uuid(
         audit: &mut AuditScope,
         qs: &QueryServerReadTransaction,
-        euuid: &Uuid,
+        euat: &UserAuthToken,
         filter: &Filter<FilterInvalid>,
         attrs: Option<BTreeSet<String>>,
     ) -> Result<Self, OperationError> {
         Ok(SearchEvent {
-            event: Event::from_ro_request(audit, qs, euuid)?,
+            event: Event::from_ro_uat(audit, qs, Some(euat))?,
             filter: filter
                 .clone()
                 .into_ignore_hidden()
@@ -528,7 +533,7 @@ impl CreateEvent {
                 // From ProtoEntry -> Entry
                 // What is the correct consuming iterator here? Can we
                 // even do that?
-                event: Event::from_rw_uat(audit, qs, msg.uat)?,
+                event: Event::from_rw_uat(audit, qs, msg.uat.as_ref())?,
                 entries,
             }),
             Err(e) => Err(e),
@@ -601,7 +606,7 @@ impl DeleteEvent {
     ) -> Result<Self, OperationError> {
         match Filter::from_rw(audit, &msg.req.filter, qs) {
             Ok(f) => Ok(DeleteEvent {
-                event: Event::from_rw_uat(audit, qs, msg.uat)?,
+                event: Event::from_rw_uat(audit, qs, msg.uat.as_ref())?,
                 filter: f
                     .clone()
                     .into_ignore_hidden()
@@ -617,7 +622,7 @@ impl DeleteEvent {
 
     pub fn from_parts(
         audit: &mut AuditScope,
-        uat: Option<UserAuthToken>,
+        uat: Option<&UserAuthToken>,
         filter: &Filter<FilterInvalid>,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
@@ -692,7 +697,7 @@ impl ModifyEvent {
         match Filter::from_rw(audit, &msg.req.filter, qs) {
             Ok(f) => match ModifyList::from(audit, &msg.req.modlist, qs) {
                 Ok(m) => Ok(ModifyEvent {
-                    event: Event::from_rw_uat(audit, qs, msg.uat)?,
+                    event: Event::from_rw_uat(audit, qs, msg.uat.as_ref())?,
                     filter: f
                         .clone()
                         .into_ignore_hidden()
@@ -714,7 +719,7 @@ impl ModifyEvent {
 
     pub fn from_parts(
         audit: &mut AuditScope,
-        uat: Option<UserAuthToken>,
+        uat: Option<&UserAuthToken>,
         target_uuid: Uuid,
         proto_ml: &ProtoModifyList,
         filter: Filter<FilterInvalid>,
@@ -745,7 +750,7 @@ impl ModifyEvent {
 
     pub fn from_internal_parts(
         audit: &mut AuditScope,
-        uat: Option<UserAuthToken>,
+        uat: Option<&UserAuthToken>,
         target_uuid: Uuid,
         ml: &ModifyList<ModifyInvalid>,
         filter: Filter<FilterInvalid>,
@@ -773,7 +778,7 @@ impl ModifyEvent {
 
     pub fn from_target_uuid_attr_purge(
         audit: &mut AuditScope,
-        uat: Option<UserAuthToken>,
+        uat: Option<&UserAuthToken>,
         target_uuid: Uuid,
         attr: &str,
         filter: Filter<FilterInvalid>,
@@ -1085,7 +1090,7 @@ impl Message for ReviveRecycledEvent {
 impl ReviveRecycledEvent {
     pub fn from_parts(
         audit: &mut AuditScope,
-        uat: Option<UserAuthToken>,
+        uat: Option<&UserAuthToken>,
         filter: Filter<FilterInvalid>,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {

@@ -355,13 +355,14 @@ impl Handler<WhoamiMessage> for QueryServerReadV1 {
             // this far.
             let uat = msg.uat.clone().ok_or(OperationError::NotAuthenticated)?;
 
-            let srch = match SearchEvent::from_whoami_request(&mut audit, msg.uat, &qs_read) {
-                Ok(s) => s,
-                Err(e) => {
-                    ladmin_error!(audit, "Failed to begin whoami: {:?}", e);
-                    return Err(e);
-                }
-            };
+            let srch =
+                match SearchEvent::from_whoami_request(&mut audit, msg.uat.as_ref(), &qs_read) {
+                    Ok(s) => s,
+                    Err(e) => {
+                        ladmin_error!(audit, "Failed to begin whoami: {:?}", e);
+                        return Err(e);
+                    }
+                };
 
             ltrace!(audit, "Begin event {:?}", srch);
 
@@ -500,7 +501,7 @@ impl Handler<InternalRadiusReadMessage> for QueryServerReadV1 {
                 // Make an event from the request
                 let srch = match SearchEvent::from_target_uuid_request(
                     &mut audit,
-                    msg.uat,
+                    msg.uat.as_ref(),
                     target_uuid,
                     &qs_read,
                 ) {
@@ -568,7 +569,7 @@ impl Handler<InternalRadiusTokenReadMessage> for QueryServerReadV1 {
                 let rate = match RadiusAuthTokenEvent::from_parts(
                     &mut audit,
                     &idm_read.qs_read,
-                    msg.uat,
+                    msg.uat.as_ref(),
                     target_uuid,
                 ) {
                     Ok(s) => s,
@@ -624,7 +625,7 @@ impl Handler<InternalUnixUserTokenReadMessage> for QueryServerReadV1 {
                 let rate = match UnixUserTokenEvent::from_parts(
                     &mut audit,
                     &idm_read.qs_read,
-                    msg.uat,
+                    msg.uat.as_ref(),
                     target_uuid,
                 ) {
                     Ok(s) => s,
@@ -680,7 +681,7 @@ impl Handler<InternalUnixGroupTokenReadMessage> for QueryServerReadV1 {
                 let rate = match UnixGroupTokenEvent::from_parts(
                     &mut audit,
                     &idm_read.qs_read,
-                    msg.uat,
+                    msg.uat.as_ref(),
                     target_uuid,
                 ) {
                     Ok(s) => s,
@@ -725,7 +726,7 @@ impl Handler<InternalSshKeyReadMessage> for QueryServerReadV1 {
                 // Make an event from the request
                 let srch = match SearchEvent::from_target_uuid_request(
                     &mut audit,
-                    msg.uat,
+                    msg.uat.as_ref(),
                     target_uuid,
                     &qs_read,
                 ) {
@@ -794,7 +795,7 @@ impl Handler<InternalSshKeyTagReadMessage> for QueryServerReadV1 {
                 // Make an event from the request
                 let srch = match SearchEvent::from_target_uuid_request(
                     &mut audit,
-                    uat,
+                    uat.as_ref(),
                     target_uuid,
                     &qs_read,
                 ) {
@@ -866,7 +867,7 @@ impl Handler<IdmAccountUnixAuthMessage> for QueryServerReadV1 {
                 let uuae = match UnixUserAuthEvent::from_parts(
                     &mut audit,
                     &idm_write.qs_read,
-                    msg.uat,
+                    msg.uat.as_ref(),
                     target_uuid,
                     msg.cred,
                 ) {

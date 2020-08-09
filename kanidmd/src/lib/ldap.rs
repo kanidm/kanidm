@@ -5,7 +5,7 @@ use crate::filter::Filter;
 use crate::idm::event::LdapAuthEvent;
 use crate::idm::server::IdmServer;
 use crate::server::QueryServerTransaction;
-use kanidm_proto::v1::OperationError;
+use kanidm_proto::v1::{OperationError, UserAuthToken};
 use ldap3_server::simple::*;
 use std::collections::BTreeSet;
 use std::iter;
@@ -31,7 +31,7 @@ pub struct LdapBoundToken {
     pub spn: String,
     pub uuid: Uuid,
     // For now, always anonymous
-    pub effective_uuid: Uuid,
+    pub effective_uat: UserAuthToken,
 }
 
 pub struct LdapServer {
@@ -250,7 +250,7 @@ impl LdapServer {
                     SearchEvent::new_ext_impersonate_uuid(
                         au,
                         &idm_read.qs_read,
-                        &uat.effective_uuid,
+                        &uat.effective_uat,
                         &filter,
                         attrs,
                     )
