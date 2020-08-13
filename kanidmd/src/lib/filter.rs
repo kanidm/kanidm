@@ -27,6 +27,8 @@ use std::iter;
 
 use uuid::Uuid;
 
+const FILTER_DEPTH_MAX: usize = 16;
+
 // Default filter is safe, ignores all hidden types!
 
 // This is &Value so we can lazy const then clone, but perhaps we can reconsider
@@ -439,9 +441,13 @@ impl Filter<FilterInvalid> {
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         lperf_trace_segment!(audit, "filter::from_ro", || {
+            let depth = FILTER_DEPTH_MAX;
+            let mut elems = ev.limits.filter_max_elements;
             Ok(Filter {
                 state: FilterInvalid {
-                    inner: FilterComp::from_ro(audit, f, qs)?,
+                    inner: FilterComp::from_ro(audit, f, qs,
+                        depth, &mut elems,
+                    )?,
                 },
             })
         })
@@ -454,6 +460,8 @@ impl Filter<FilterInvalid> {
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         lperf_trace_segment!(audit, "filter::from_rw", || {
+            let depth = FILTER_DEPTH_MAX;
+            let mut elems = ev.limits.filter_max_elements;
             Ok(Filter {
                 state: FilterInvalid {
                     inner: FilterComp::from_rw(audit, f, qs)?,
@@ -469,6 +477,8 @@ impl Filter<FilterInvalid> {
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         lperf_trace_segment!(audit, "filter::from_ldap_ro", || {
+            let depth = FILTER_DEPTH_MAX;
+            let mut elems = ev.limits.filter_max_elements;
             Ok(Filter {
                 state: FilterInvalid {
                     inner: FilterComp::from_ldap_ro(audit, f, qs)?,
@@ -659,7 +669,11 @@ impl FilterComp {
         audit: &mut AuditScope,
         f: &ProtoFilter,
         qs: &QueryServerReadTransaction,
+        depth: usize,
+        elems: &mut usize,
     ) -> Result<Self, OperationError> {
+        let ndepth = depth.checked_sub(1)
+            .ok_or(OperationError::ResourceLimit)?;
         Ok(match f {
             ProtoFilter::Eq(a, v) => {
                 let nk = qs.get_schema().normalise_attr_name(a);
@@ -677,15 +691,15 @@ impl FilterComp {
             }
             ProtoFilter::Or(l) => FilterComp::Or(
                 l.iter()
-                    .map(|f| Self::from_ro(audit, f, qs))
+                    .map(|f| Self::from_ro(audit, f, qs, ndepth, elems))
                     .collect::<Result<Vec<_>, _>>()?,
             ),
             ProtoFilter::And(l) => FilterComp::And(
                 l.iter()
-                    .map(|f| Self::from_ro(audit, f, qs))
+                    .map(|f| Self::from_ro(audit, f, qs, ndepth, elems))
                     .collect::<Result<Vec<_>, _>>()?,
             ),
-            ProtoFilter::AndNot(l) => FilterComp::AndNot(Box::new(Self::from_ro(audit, l, qs)?)),
+            ProtoFilter::AndNot(l) => FilterComp::AndNot(Box::new(Self::from_ro(audit, l, qs, ndepth, elems)?)),
             ProtoFilter::SelfUUID => FilterComp::SelfUUID,
         })
     }
