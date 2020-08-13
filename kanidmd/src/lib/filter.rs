@@ -434,6 +434,7 @@ impl Filter<FilterInvalid> {
     // takes "clone_value(t, a, v) instead, but that may have a similar issue.
     pub fn from_ro(
         audit: &mut AuditScope,
+        ev: &Event,
         f: &ProtoFilter,
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
@@ -448,6 +449,7 @@ impl Filter<FilterInvalid> {
 
     pub fn from_rw(
         audit: &mut AuditScope,
+        ev: &Event,
         f: &ProtoFilter,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
@@ -462,6 +464,7 @@ impl Filter<FilterInvalid> {
 
     pub fn from_ldap_ro(
         audit: &mut AuditScope,
+        ev: &Event,
         f: &LdapFilter,
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {

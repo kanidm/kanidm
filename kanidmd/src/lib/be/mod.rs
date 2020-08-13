@@ -6,9 +6,9 @@ use std::cell::UnsafeCell;
 use std::sync::Arc;
 
 use crate::audit::AuditScope;
-use crate::event::EventLimits;
 use crate::be::dbentry::DbEntry;
 use crate::entry::{Entry, EntryCommitted, EntryNew, EntrySealed};
+use crate::event::EventLimits;
 use crate::filter::{Filter, FilterPlan, FilterResolved, FilterValidResolved};
 use crate::value::Value;
 use concread::cowcell::*;
@@ -529,22 +529,18 @@ pub trait BackendTransaction {
             })?;
 
             let entries_filtered = match idl {
-                IDL::ALLIDS => {
-                    lperf_segment!(au, "be::search<entry::ftest::allids>", || {
-                        entries
-                            .into_iter()
-                            .filter(|e| e.entry_match_no_index(&filt))
-                            .collect()
-                    })
-                }
-                IDL::Partial(_) => {
-                    lperf_segment!(au, "be::search<entry::ftest::partial>", || {
-                        entries
-                            .into_iter()
-                            .filter(|e| e.entry_match_no_index(&filt))
-                            .collect()
-                    })
-                }
+                IDL::ALLIDS => lperf_segment!(au, "be::search<entry::ftest::allids>", || {
+                    entries
+                        .into_iter()
+                        .filter(|e| e.entry_match_no_index(&filt))
+                        .collect()
+                }),
+                IDL::Partial(_) => lperf_segment!(au, "be::search<entry::ftest::partial>", || {
+                    entries
+                        .into_iter()
+                        .filter(|e| e.entry_match_no_index(&filt))
+                        .collect()
+                }),
                 IDL::PartialThreshold(_) => {
                     lperf_trace_segment!(au, "be::search<entry::ftest::thresh>", || {
                         entries
@@ -1395,13 +1391,13 @@ mod tests {
     use std::iter::FromIterator;
     use uuid::Uuid;
 
-    use crate::event::EventLimits;
     use super::super::audit::AuditScope;
     use super::super::entry::{Entry, EntryInit, EntryNew};
     use super::IdxKey;
     use super::{
         Backend, BackendTransaction, BackendWriteTransaction, FsType, OperationError, IDL,
     };
+    use crate::event::EventLimits;
     use crate::value::{IndexType, PartialValue, Value};
 
     macro_rules! run_test {
@@ -2619,8 +2615,8 @@ mod tests {
             //
             // This creates a partial, and because it's the first iteration in the loop, this
             // doesn't encounter partial threshold testing.
-            let filt = unsafe { filter_resolved!(
-                f_and!([
+            let filt = unsafe {
+                filter_resolved!(f_and!([
                     f_or!([
                         f_eq("nonexist", PartialValue::new_utf8s("x")),
                         f_eq("nonexist", PartialValue::new_utf8s("y"))
@@ -2629,8 +2625,8 @@ mod tests {
                         f_eq("name", PartialValue::new_utf8s("claire")),
                         f_eq("name", PartialValue::new_utf8s("william"))
                     ]),
-                ])
-            ) };
+                ]))
+            };
 
             let res = be.search(audit, &lim_allow, &filt);
             assert!(res.is_ok());
