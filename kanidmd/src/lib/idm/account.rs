@@ -128,7 +128,6 @@ impl Account {
         // This could consume self?
         // The cred handler provided is what authenticated this user, so we can use it to
         // process what the proper claims should be.
-
         // Get the claims from the cred_h
 
         Some(UserAuthToken {
@@ -139,6 +138,11 @@ impl Account {
             // application: None,
             groups: self.groups.iter().map(|g| g.to_proto()).collect(),
             claims: claims.iter().map(|c| c.to_proto()).collect(),
+            // What's the best way to get access to these limits with regard to claims/other?
+            lim_uidx: false,
+            lim_rmax: 256,
+            lim_pmax: 256,
+            lim_fmax: 256,
         })
     }
 

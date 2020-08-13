@@ -145,11 +145,13 @@ pub trait QueryServerTransaction {
                 e
             })?;
 
+            let lims = se.get_limits();
+
             // NOTE: We currently can't build search plugins due to the inability to hand
             // the QS wr/ro to the plugin trait. However, there shouldn't be a need for search
             // plugis, because all data transforms should be in the write path.
 
-            let res = self.get_be_txn().search(au, &vfr).map(|r| r).map_err(|e| {
+            let res = self.get_be_txn().search(au, lims, &vfr).map(|r| r).map_err(|e| {
                 ladmin_error!(au, "backend failure -> {:?}", e);
                 OperationError::Backend
             })?;
@@ -176,7 +178,9 @@ pub trait QueryServerTransaction {
                 e
             })?;
 
-            self.get_be_txn().exists(au, &vfr).map_err(|e| {
+            let lims = ee.get_limits();
+
+            self.get_be_txn().exists(au, &lims, &vfr).map_err(|e| {
                 ladmin_error!(au, "backend failure -> {:?}", e);
                 OperationError::Backend
             })

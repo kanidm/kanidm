@@ -119,13 +119,11 @@ impl EventLimits {
 
     // From a userauthtoken
     pub fn from_uat(uat: &UserAuthToken) -> Self {
-        // unimplemented!();
-        // TODO: Un-hardcode this.
         EventLimits {
-            unindexed_allow: false,
-            search_max_results: 256,
-            search_max_filter_test: 256,
-            filter_max_elements: 256,
+            unindexed_allow: uat.lim_uidx,
+            search_max_results: uat.lim_rmax,
+            search_max_filter_test: uat.lim_pmax,
+            filter_max_elements: uat.lim_fmax,
         }
     }
 }
@@ -501,6 +499,10 @@ impl SearchEvent {
             attrs: None,
         }
     }
+
+    pub(crate) fn get_limits(&self) -> &EventLimits {
+        &self.event.limits
+    }
 }
 
 // Represents the decoded entries from the protocol -> internal entry representation
@@ -586,6 +588,10 @@ impl ExistsEvent {
             filter: filter.clone().into_valid(),
             filter_orig: filter.into_valid(),
         }
+    }
+
+    pub(crate) fn get_limits(&self) -> &EventLimits {
+        &self.event.limits
     }
 }
 

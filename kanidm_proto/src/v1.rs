@@ -101,6 +101,7 @@ pub enum OperationError {
     PasswordEmpty,
     PasswordBadListed,
     CryptographyError,
+    ResourceLimit,
 }
 
 impl PartialEq for OperationError {
@@ -173,6 +174,10 @@ pub struct UserAuthToken {
     pub groups: Vec<Group>,
     pub claims: Vec<Claim>,
     // Should we allow supplemental ava's to be added on request?
+    pub lim_uidx: bool,
+    pub lim_rmax: usize,
+    pub lim_pmax: usize,
+    pub lim_fmax: usize,
 }
 
 impl fmt::Display for UserAuthToken {
