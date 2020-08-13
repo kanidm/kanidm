@@ -445,9 +445,7 @@ impl Filter<FilterInvalid> {
             let mut elems = ev.limits.filter_max_elements;
             Ok(Filter {
                 state: FilterInvalid {
-                    inner: FilterComp::from_ro(audit, f, qs,
-                        depth, &mut elems,
-                    )?,
+                    inner: FilterComp::from_ro(audit, f, qs, depth, &mut elems)?,
                 },
             })
         })
@@ -672,8 +670,7 @@ impl FilterComp {
         depth: usize,
         elems: &mut usize,
     ) -> Result<Self, OperationError> {
-        let ndepth = depth.checked_sub(1)
-            .ok_or(OperationError::ResourceLimit)?;
+        let ndepth = depth.checked_sub(1).ok_or(OperationError::ResourceLimit)?;
         Ok(match f {
             ProtoFilter::Eq(a, v) => {
                 let nk = qs.get_schema().normalise_attr_name(a);
@@ -689,17 +686,32 @@ impl FilterComp {
                 let nk = qs.get_schema().normalise_attr_name(a);
                 FilterComp::Pres(nk)
             }
-            ProtoFilter::Or(l) => FilterComp::Or(
-                l.iter()
-                    .map(|f| Self::from_ro(audit, f, qs, ndepth, elems))
-                    .collect::<Result<Vec<_>, _>>()?,
-            ),
-            ProtoFilter::And(l) => FilterComp::And(
-                l.iter()
-                    .map(|f| Self::from_ro(audit, f, qs, ndepth, elems))
-                    .collect::<Result<Vec<_>, _>>()?,
-            ),
-            ProtoFilter::AndNot(l) => FilterComp::AndNot(Box::new(Self::from_ro(audit, l, qs, ndepth, elems)?)),
+            ProtoFilter::Or(l) => {
+                *elems = (*elems)
+                    .checked_sub(l.len())
+                    .ok_or(OperationError::ResourceLimit)?;
+                FilterComp::Or(
+                    l.iter()
+                        .map(|f| Self::from_ro(audit, f, qs, ndepth, elems))
+                        .collect::<Result<Vec<_>, _>>()?,
+                )
+            }
+            ProtoFilter::And(l) => {
+                *elems = (*elems)
+                    .checked_sub(l.len())
+                    .ok_or(OperationError::ResourceLimit)?;
+                FilterComp::And(
+                    l.iter()
+                        .map(|f| Self::from_ro(audit, f, qs, ndepth, elems))
+                        .collect::<Result<Vec<_>, _>>()?,
+                )
+            }
+            ProtoFilter::AndNot(l) => {
+                *elems = (*elems)
+                    .checked_sub(1)
+                    .ok_or(OperationError::ResourceLimit)?;
+                FilterComp::AndNot(Box::new(Self::from_ro(audit, l, qs, ndepth, elems)?))
+            }
             ProtoFilter::SelfUUID => FilterComp::SelfUUID,
         })
     }
