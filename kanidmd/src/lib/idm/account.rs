@@ -140,9 +140,9 @@ impl Account {
             claims: claims.iter().map(|c| c.to_proto()).collect(),
             // What's the best way to get access to these limits with regard to claims/other?
             lim_uidx: false,
-            lim_rmax: 256,
+            lim_rmax: 128,
             lim_pmax: 256,
-            lim_fmax: 256,
+            lim_fmax: 32,
         })
     }
 

@@ -1262,8 +1262,8 @@ impl IdlSqlite {
             // a single DB thread, else we cause consistency issues.
             builder1.max_size(1)
         } else {
-            // Have to add 1 for the write thread.
-            builder1.max_size(pool_size + 1)
+            // Have to add 1 for the write thread, and for the interval threads
+            builder1.max_size(pool_size + 2)
         };
         // Look at max_size and thread_pool here for perf later
         let pool = builder2.build(manager).map_err(|e| {
@@ -1278,7 +1278,7 @@ impl IdlSqlite {
         #[allow(clippy::expect_used)]
         let conn = self
             .pool
-            .get()
+            .try_get()
             .expect("Unable to get connection from pool!!!");
         IdlSqliteReadTransaction::new(conn)
     }
@@ -1287,7 +1287,7 @@ impl IdlSqlite {
         #[allow(clippy::expect_used)]
         let conn = self
             .pool
-            .get()
+            .try_get()
             .expect("Unable to get connection from pool!!!");
         IdlSqliteWriteTransaction::new(conn)
     }
