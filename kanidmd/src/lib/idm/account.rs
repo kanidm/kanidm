@@ -5,6 +5,7 @@ use kanidm_proto::v1::UserAuthToken;
 
 use crate::audit::AuditScope;
 use crate::constants::UUID_ANONYMOUS;
+use crate::credential::policy::CryptoPolicy;
 use crate::credential::totp::TOTP;
 use crate::credential::Credential;
 use crate::idm::claim::Claim;
@@ -154,6 +155,7 @@ impl Account {
         &self,
         cleartext: &str,
         appid: &Option<String>,
+        crypto_policy: &CryptoPolicy,
     ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
         // What should this look like? Probablf an appid + stuff -> modify?
         // then the caller has to apply the modify under the requests event
@@ -165,13 +167,13 @@ impl Account {
                 match &self.primary {
                     // Change the cred
                     Some(primary) => {
-                        let ncred = primary.set_password(cleartext)?;
+                        let ncred = primary.set_password(crypto_policy, cleartext)?;
                         let vcred = Value::new_credential("primary", ncred);
                         Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
                     }
                     // Make a new credential instead
                     None => {
-                        let ncred = Credential::new_password_only(cleartext)?;
+                        let ncred = Credential::new_password_only(crypto_policy, cleartext)?;
                         let vcred = Value::new_credential("primary", ncred);
                         Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
                     }

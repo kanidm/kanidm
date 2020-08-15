@@ -2363,6 +2363,7 @@ mod tests {
         JSON_SYSTEM_INFO_V1, RECYCLEBIN_MAX_AGE, SYSTEM_INDEX_VERSION, UUID_ADMIN,
         UUID_DOMAIN_INFO,
     };
+    use crate::credential::policy::CryptoPolicy;
     use crate::credential::Credential;
     use crate::entry::{Entry, EntryInit, EntryNew};
     use crate::event::{CreateEvent, DeleteEvent, ModifyEvent, ReviveRecycledEvent, SearchEvent};
@@ -3447,7 +3448,8 @@ mod tests {
             assert!(cr.is_ok());
 
             // Build the credential.
-            let cred = Credential::new_password_only("test_password").unwrap();
+            let p = CryptoPolicy::minimum();
+            let cred = Credential::new_password_only(&p, "test_password").unwrap();
             let v_cred = Value::new_credential("primary", cred);
             assert!(v_cred.validate());
 

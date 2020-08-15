@@ -2,6 +2,7 @@ use uuid::Uuid;
 
 use crate::audit::AuditScope;
 use crate::constants::UUID_ANONYMOUS;
+use crate::credential::policy::CryptoPolicy;
 use crate::credential::Credential;
 use crate::entry::{Entry, EntryCommitted, EntryReduced, EntrySealed};
 use crate::modify::{ModifyInvalid, ModifyList};
@@ -153,8 +154,9 @@ impl UnixUserAccount {
     pub(crate) fn gen_password_mod(
         &self,
         cleartext: &str,
+        crypto_policy: &CryptoPolicy,
     ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
-        let ncred = Credential::new_password_only(cleartext)?;
+        let ncred = Credential::new_password_only(crypto_policy, cleartext)?;
         let vcred = Value::new_credential("unix", ncred);
         Ok(ModifyList::new_purge_and_set("unix_password", vcred))
     }

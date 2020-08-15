@@ -5,22 +5,26 @@ use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::NO_PARAMS;
 use std::convert::TryFrom;
 use std::fmt;
+use std::time::Duration;
 
 use crate::cache::Id;
 use tokio::sync::{Mutex, MutexGuard};
 
 use kanidm::be::dbvalue::DbPasswordV1;
+use kanidm::credential::policy::CryptoPolicy;
 use kanidm::credential::Password;
 
 pub struct Db {
     pool: Pool<SqliteConnectionManager>,
     lock: Mutex<()>,
+    crypto_policy: CryptoPolicy,
 }
 
 pub struct DbTxn<'a> {
     _guard: MutexGuard<'a, ()>,
     committed: bool,
     conn: r2d2::PooledConnection<SqliteConnectionManager>,
+    crypto_policy: &'a CryptoPolicy,
 }
 
 impl Db {
@@ -35,9 +39,14 @@ impl Db {
             error!("r2d2 error {:?}", e);
         })?;
 
+        let crypto_policy = CryptoPolicy::time_target(Duration::from_millis(250));
+
+        debug!("Configured {:?}", crypto_policy);
+
         Ok(Db {
             pool,
             lock: Mutex::new(()),
+            crypto_policy,
         })
     }
 
@@ -48,7 +57,7 @@ impl Db {
             .pool
             .get()
             .expect("Unable to get connection from pool!!!");
-        DbTxn::new(conn, guard)
+        DbTxn::new(conn, guard, &self.crypto_policy)
     }
 }
 
@@ -62,6 +71,7 @@ impl<'a> DbTxn<'a> {
     pub fn new(
         conn: r2d2::PooledConnection<SqliteConnectionManager>,
         guard: MutexGuard<'a, ()>,
+        crypto_policy: &'a CryptoPolicy,
     ) -> Self {
         // Start the transaction
         // debug!("Starting db WR txn ...");
@@ -72,6 +82,7 @@ impl<'a> DbTxn<'a> {
             committed: false,
             conn,
             _guard: guard,
+            crypto_policy,
         }
     }
 
@@ -408,7 +419,7 @@ impl<'a> DbTxn<'a> {
     }
 
     pub fn update_account_password(&self, a_uuid: &str, cred: &str) -> Result<(), ()> {
-        let pw = Password::new(cred).map_err(|e| {
+        let pw = Password::new(&self.crypto_policy, cred).map_err(|e| {
             error!("password error -> {:?}", e);
         })?;
         let dbpw = pw.to_dbpasswordv1();
