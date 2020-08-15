@@ -145,14 +145,20 @@ pub trait QueryServerTransaction {
                 e
             })?;
 
+            let lims = se.get_limits();
+
             // NOTE: We currently can't build search plugins due to the inability to hand
             // the QS wr/ro to the plugin trait. However, there shouldn't be a need for search
             // plugis, because all data transforms should be in the write path.
 
-            let res = self.get_be_txn().search(au, &vfr).map(|r| r).map_err(|e| {
-                ladmin_error!(au, "backend failure -> {:?}", e);
-                OperationError::Backend
-            })?;
+            let res = self
+                .get_be_txn()
+                .search(au, lims, &vfr)
+                .map(|r| r)
+                .map_err(|e| {
+                    ladmin_error!(au, "backend failure -> {:?}", e);
+                    OperationError::Backend
+                })?;
 
             // Apply ACP before we let the plugins "have at it".
             // WARNING; for external searches this is NOT the only
@@ -176,7 +182,9 @@ pub trait QueryServerTransaction {
                 e
             })?;
 
-            self.get_be_txn().exists(au, &vfr).map_err(|e| {
+            let lims = ee.get_limits();
+
+            self.get_be_txn().exists(au, &lims, &vfr).map_err(|e| {
                 ladmin_error!(au, "backend failure -> {:?}", e);
                 OperationError::Backend
             })
@@ -3248,75 +3256,6 @@ mod tests {
 
             debug!("{:?}", r4);
             assert!(r4 == Ok(Value::new_refer_s("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap()));
-        })
-    }
-
-    #[test]
-    fn test_qs_resolve_value() {
-        run_test!(|server: &QueryServer, audit: &mut AuditScope| {
-            let server_txn = server.write(duration_from_epoch_now());
-            let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-                r#"{
-                "attrs": {
-                    "class": ["object", "person", "account"],
-                    "name": ["testperson1"],
-                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
-                    "description": ["testperson"],
-                    "displayname": ["testperson1"]
-                }
-            }"#,
-            );
-            let e2: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-                r#"{
-                "attrs": {
-                    "class": ["object", "person"],
-                    "name": ["testperson2"],
-                    "uuid": ["a67c0c71-0b35-4218-a6b0-22d23d131d27"],
-                    "description": ["testperson"],
-                    "displayname": ["testperson2"]
-                }
-            }"#,
-            );
-            let e_ts: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-                r#"{
-                "attrs": {
-                    "class": ["tombstone", "object"],
-                    "uuid": ["9557f49c-97a5-4277-a9a5-097d17eb8317"]
-                }
-            }"#,
-            );
-            let ce = CreateEvent::new_internal(vec![e1, e2, e_ts]);
-            let cr = server_txn.create(audit, &ce);
-            assert!(cr.is_ok());
-
-            // Resolving most times should yield expected results
-            let t1 = Value::new_utf8s("teststring");
-            let r1 = server_txn.resolve_value(audit, &t1);
-            assert!(r1 == Ok("teststring".to_string()));
-
-            // Resolve UUID with matching spn
-            let t_uuid = Value::new_refer_s("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap();
-            let r_uuid = server_txn.resolve_value(audit, &t_uuid);
-            debug!("{:?}", r_uuid);
-            assert!(r_uuid == Ok("testperson1@example.com".to_string()));
-
-            // Resolve UUID with matching name
-            let t_uuid = Value::new_refer_s("a67c0c71-0b35-4218-a6b0-22d23d131d27").unwrap();
-            let r_uuid = server_txn.resolve_value(audit, &t_uuid);
-            debug!("{:?}", r_uuid);
-            assert!(r_uuid == Ok("testperson2".to_string()));
-
-            // Resolve UUID non-exist
-            let t_uuid_non = Value::new_refer_s("b83e98f0-3d2e-41d2-9796-d8d993289c86").unwrap();
-            let r_uuid_non = server_txn.resolve_value(audit, &t_uuid_non);
-            debug!("{:?}", r_uuid_non);
-            assert!(r_uuid_non == Ok("b83e98f0-3d2e-41d2-9796-d8d993289c86".to_string()));
-
-            // Resolve UUID to tombstone/recycled (same an non-exst)
-            let t_uuid_ts = Value::new_refer_s("9557f49c-97a5-4277-a9a5-097d17eb8317").unwrap();
-            let r_uuid_ts = server_txn.resolve_value(audit, &t_uuid_ts);
-            debug!("{:?}", r_uuid_ts);
-            assert!(r_uuid_ts == Ok("9557f49c-97a5-4277-a9a5-097d17eb8317".to_string()));
         })
     }
 

@@ -1,11 +1,10 @@
 use crate::audit::AuditScope;
 use crate::constants::{STR_UUID_DOMAIN_INFO, UUID_ANONYMOUS, UUID_DOMAIN_INFO};
 use crate::event::SearchEvent;
-use crate::filter::Filter;
 use crate::idm::event::LdapAuthEvent;
 use crate::idm::server::IdmServer;
 use crate::server::QueryServerTransaction;
-use kanidm_proto::v1::OperationError;
+use kanidm_proto::v1::{OperationError, UserAuthToken};
 use ldap3_server::simple::*;
 use std::collections::BTreeSet;
 use std::iter;
@@ -31,7 +30,7 @@ pub struct LdapBoundToken {
     pub spn: String,
     pub uuid: Uuid,
     // For now, always anonymous
-    pub effective_uuid: Uuid,
+    pub effective_uat: UserAuthToken,
 }
 
 pub struct LdapServer {
@@ -236,13 +235,6 @@ impl LdapServer {
 
                 ladmin_info!(au, "LDAP Search Filter -> {:?}", lfilter);
 
-                // Kanidm Filter from LdapFilter
-                let filter =
-                    Filter::from_ldap_ro(au, &lfilter, &idm_read.qs_read).map_err(|e| {
-                        lrequest_error!(au, "invalid ldap filter {:?}", e);
-                        e
-                    })?;
-
                 // Build the event, with the permissions from effective_uuid
                 // (should always be anonymous at the moment)
                 // ! Remember, searchEvent wraps to ignore hidden for us.
@@ -250,10 +242,14 @@ impl LdapServer {
                     SearchEvent::new_ext_impersonate_uuid(
                         au,
                         &idm_read.qs_read,
-                        &uat.effective_uuid,
-                        &filter,
+                        &uat.effective_uat,
+                        &lfilter,
                         attrs,
                     )
+                })
+                .map_err(|e| {
+                    ladmin_error!(au, "failed to create search event -> {:?}", e);
+                    e
                 })?;
 
                 let res = idm_read.qs_read.search_ext(au, &se).map_err(|e| {

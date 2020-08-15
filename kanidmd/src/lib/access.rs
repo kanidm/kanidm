@@ -31,7 +31,7 @@ use crate::modify::Modify;
 use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
 use crate::value::PartialValue;
 
-use crate::event::{CreateEvent, DeleteEvent, EventOrigin, ModifyEvent, SearchEvent};
+use crate::event::{CreateEvent, DeleteEvent, Event, EventOrigin, ModifyEvent, SearchEvent};
 
 lazy_static! {
     static ref CLASS_ACS: PartialValue = PartialValue::new_class("access_control_search");
@@ -320,7 +320,9 @@ impl AccessControlProfile {
                 OperationError::InvalidACPState("Missing acp_targetscope".to_string())
             })?;
 
-        let receiver_i = Filter::from_rw(audit, &receiver_f, qs).map_err(|e| {
+        let event = Event::from_internal();
+
+        let receiver_i = Filter::from_rw(audit, &event, &receiver_f, qs).map_err(|e| {
             ladmin_error!(audit, "Receiver validation failed {:?}", e);
             e
         })?;
@@ -329,7 +331,7 @@ impl AccessControlProfile {
             OperationError::SchemaViolation(e)
         })?;
 
-        let targetscope_i = Filter::from_rw(audit, &targetscope_f, qs).map_err(|e| {
+        let targetscope_i = Filter::from_rw(audit, &event, &targetscope_f, qs).map_err(|e| {
             ladmin_error!(audit, "Targetscope validation failed {:?}", e);
             e
         })?;

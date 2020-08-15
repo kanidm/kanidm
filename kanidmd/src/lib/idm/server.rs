@@ -272,10 +272,17 @@ impl<'a> IdmServerWriteTransaction<'a> {
         if lae.target == *UUID_ANONYMOUS {
             // TODO: #59 We should have checked if anonymous was locked by now!
             let account = Account::try_from_entry_ro(au, &account_entry, &mut self.qs_read)?;
+            // Account must be anon, so we can gen the uat.
             Ok(Some(LdapBoundToken {
-                spn: account.spn,
                 uuid: *UUID_ANONYMOUS,
-                effective_uuid: *UUID_ANONYMOUS,
+                effective_uat: account
+                    .to_userauthtoken(&[])
+                    .ok_or(OperationError::InvalidState)
+                    .map_err(|e| {
+                        ladmin_error!(au, "Unable to generate effective_uat -> {:?}", e);
+                        e
+                    })?,
+                spn: account.spn,
             }))
         } else {
             let account =
@@ -284,10 +291,26 @@ impl<'a> IdmServerWriteTransaction<'a> {
                 .verify_unix_credential(au, lae.cleartext.as_str())?
                 .is_some()
             {
+                // Get the anon uat
+                let anon_entry = self
+                    .qs_read
+                    .internal_search_uuid(au, &UUID_ANONYMOUS)
+                    .map_err(|e| {
+                        ladmin_error!(au, "Failed to find effective uat for auth ldap -> {:?}", e);
+                        e
+                    })?;
+                let anon_account = Account::try_from_entry_ro(au, &anon_entry, &mut self.qs_read)?;
+
                 Ok(Some(LdapBoundToken {
                     spn: account.spn,
                     uuid: account.uuid,
-                    effective_uuid: *UUID_ANONYMOUS,
+                    effective_uat: anon_account
+                        .to_userauthtoken(&[])
+                        .ok_or(OperationError::InvalidState)
+                        .map_err(|e| {
+                            ladmin_error!(au, "Unable to generate effective_uat -> {:?}", e);
+                            e
+                        })?,
                 }))
             } else {
                 Ok(None)

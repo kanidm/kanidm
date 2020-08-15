@@ -8,6 +8,7 @@ use std::sync::Arc;
 use crate::audit::AuditScope;
 use crate::be::dbentry::DbEntry;
 use crate::entry::{Entry, EntryCommitted, EntryNew, EntrySealed};
+use crate::event::EventLimits;
 use crate::filter::{Filter, FilterPlan, FilterResolved, FilterValidResolved};
 use crate::value::Value;
 use concread::cowcell::*;
@@ -470,10 +471,10 @@ pub trait BackendTransaction {
         })
     }
 
-    // Take filter, and AuditScope ref?
     fn search(
         &self,
         au: &mut AuditScope,
+        erl: &EventLimits,
         filt: &Filter<FilterValidResolved>,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
         // Unlike DS, even if we don't get the index back, we can just pass
@@ -493,25 +494,53 @@ pub trait BackendTransaction {
 
             lfilter_info!(au, "filter executed plan -> {:?}", fplan);
 
+            // Based on the IDL we determine if limits are required at this point.
+            match &idl {
+                IDL::ALLIDS => {
+                    if !erl.unindexed_allow {
+                        ladmin_error!(au, "filter (search) is fully unindexed, and not allowed by resource limits");
+                        return Err(OperationError::ResourceLimit);
+                    }
+                }
+                IDL::Partial(idl_br) => {
+                    if idl_br.len() > erl.search_max_filter_test {
+                        ladmin_error!(au, "filter (search) is partial indexed and greater than search_max_filter_test allowed by resource limits");
+                        return Err(OperationError::ResourceLimit);
+                    }
+                }
+                IDL::PartialThreshold(_) => {
+                    // Since we opted for this, this is not the fault
+                    // of the user and we should not penalise them by limiting on partial.
+                }
+                IDL::Indexed(idl_br) => {
+                    // We know this is resolved here, so we can attempt the limit
+                    // check. This has to fold the whole index, but you know, class=pres is
+                    // indexed ...
+                    if idl_br.len() > erl.search_max_results {
+                        ladmin_error!(au, "filter (search) is indexed and greater than search_max_results allowed by resource limits");
+                        return Err(OperationError::ResourceLimit);
+                    }
+                }
+            };
+
             let entries = self.get_idlayer().get_identry(au, &idl).map_err(|e| {
                 ladmin_error!(au, "get_identry failed {:?}", e);
                 e
             })?;
-            // Do other things
-            // Now, de-serialise the raw_entries back to entries, and populate their ID's
-
-            // if not 100% resolved.
 
             let entries_filtered = match idl {
-                IDL::ALLIDS | IDL::Partial(_) => {
-                    lfilter_error!(au, "filter (search) was partially or fully unindexed.",);
-                    lperf_segment!(au, "be::search<entry::ftest::allids>", || {
-                        entries
-                            .into_iter()
-                            .filter(|e| e.entry_match_no_index(&filt))
-                            .collect()
-                    })
-                }
+                IDL::ALLIDS => lperf_segment!(au, "be::search<entry::ftest::allids>", || {
+                    entries
+                        .into_iter()
+                        .filter(|e| e.entry_match_no_index(&filt))
+                        .collect()
+                }),
+                IDL::Partial(_) => lperf_segment!(au, "be::search<entry::ftest::partial>", || {
+                    entries
+                        .into_iter()
+                        .filter(|e| e.entry_match_no_index(&filt))
+                        .collect()
+                }),
                 IDL::PartialThreshold(_) => {
                     lperf_trace_segment!(au, "be::search<entry::ftest::thresh>", || {
                         entries
@@ -527,23 +556,12 @@ pub trait BackendTransaction {
                 }
             };
 
-            /*
-             // This is good for testing disagreements between the idl layer and the filter/entries
-            if cfg!(test) {
-                let check_raw_entries = try_audit!(au, self.get_idlayer().get_identry(au, &IDL::ALLIDS));
-                let check_entries: Result<Vec<_>, _> =
-                    check_raw_entries.into_iter().map(|ide| ide.into_entry()).collect();
-                let check_entries = try_audit!(au, check_entries);
-                let f_check_entries: Vec<_> =
-                    check_entries
-                        .into_iter()
-                        .filter(|e| e.entry_match_no_index(&filt))
-                        .collect();
-                debug!("raw   -> {:?}", entries_filtered);
-                debug!("check -> {:?}", f_check_entries);
-                assert!(f_check_entries == entries_filtered);
+            // If the idl was not indexed, apply the resource limit now. Avoid the needless match since the
+            // if statement is quick.
+            if entries_filtered.len() > erl.search_max_results {
+                ladmin_error!(au, "filter (search) is resolved and greater than search_max_results allowed by resource limits");
+                return Err(OperationError::ResourceLimit);
             }
-            */
 
             Ok(entries_filtered)
         })
@@ -556,6 +574,7 @@ pub trait BackendTransaction {
     fn exists(
         &self,
         au: &mut AuditScope,
+        erl: &EventLimits,
         filt: &Filter<FilterValidResolved>,
     ) -> Result<bool, OperationError> {
         lperf_trace_segment!(au, "be::exists", || {
@@ -572,26 +591,32 @@ pub trait BackendTransaction {
 
             lfilter_info!(au, "filter executed plan -> {:?}", fplan);
 
+            // Apply limits to the IDL.
+            match &idl {
+                IDL::ALLIDS => {
+                    if !erl.unindexed_allow {
+                        ladmin_error!(au, "filter (exists) is fully unindexed, and not allowed by resource limits");
+                        return Err(OperationError::ResourceLimit);
+                    }
+                }
+                IDL::Partial(idl_br) => {
+                    if idl_br.len() > erl.search_max_filter_test {
+                        ladmin_error!(au, "filter (exists) is partial indexed and greater than search_max_filter_test allowed by resource limits");
+                        return Err(OperationError::ResourceLimit);
+                    }
+                }
+                IDL::PartialThreshold(_) => {
+                    // Since we opted for this, this is not the fault
+                    // of the user and we should not penalise them.
+                }
+                IDL::Indexed(_) => {}
+            }
+
             // Now, check the idl -- if it's fully resolved, we can skip this because the query
             // was fully indexed.
             match &idl {
                 IDL::Indexed(idl) => Ok(!idl.is_empty()),
-                IDL::PartialThreshold(_) => {
-                    let entries = self.get_idlayer().get_identry(au, &idl).map_err(|e| {
-                        ladmin_error!(au, "get_identry failed {:?}", e);
-                        e
-                    })?;
-
-                    // if not 100% resolved query, apply the filter test.
-                    let entries_filtered: Vec<_> = entries
-                        .into_iter()
-                        .filter(|e| e.entry_match_no_index(&filt))
-                        .collect();
-
-                    Ok(!entries_filtered.is_empty())
-                }
                 _ => {
-                    lfilter_error!(au, "filter (exists) was partially or fully unindexed",);
                     let entries = self.get_idlayer().get_identry(au, &idl).map_err(|e| {
                         ladmin_error!(au, "get_identry failed {:?}", e);
                         e
@@ -1372,6 +1397,7 @@ mod tests {
     use super::{
         Backend, BackendTransaction, BackendWriteTransaction, FsType, OperationError, IDL,
     };
+    use crate::event::EventLimits;
     use crate::value::{IndexType, PartialValue, Value};
 
     macro_rules! run_test {
@@ -1438,7 +1464,8 @@ mod tests {
                     .expect("failed to generate filter")
                     .into_valid_resolved()
             };
-            let entries = $be.search($audit, &filt).expect("failed to search");
+            let lims = EventLimits::unlimited();
+            let entries = $be.search($audit, &lims, &filt).expect("failed to search");
             entries.first().is_some()
         }};
     }
@@ -1451,7 +1478,8 @@ mod tests {
                     .expect("failed to generate filter")
                     .into_valid_resolved()
             };
-            let entries = $be.search($audit, &filt).expect("failed to search");
+            let lims = EventLimits::unlimited();
+            let entries = $be.search($audit, &lims, &filt).expect("failed to search");
             match entries.first() {
                 Some(ent) => ent.attribute_pres($attr),
                 None => false,
@@ -1509,7 +1537,9 @@ mod tests {
             let filt =
                 unsafe { filter_resolved!(f_eq("userid", PartialValue::new_utf8s("claire"))) };
 
-            let r = be.search(audit, &filt);
+            let lims = EventLimits::unlimited();
+
+            let r = be.search(audit, &lims, &filt);
             assert!(r.expect("Search failed!").len() == 1);
 
             // Test empty search
@@ -1524,6 +1554,7 @@ mod tests {
     fn test_be_simple_modify() {
         run_test!(|audit: &mut AuditScope, be: &mut BackendWriteTransaction| {
             ltrace!(audit, "Simple Modify");
+            let lims = EventLimits::unlimited();
             // First create some entries (3?)
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
             e1.add_ava("userid", Value::from("william"));
@@ -1542,7 +1573,7 @@ mod tests {
 
             // You need to now retrieve the entries back out to get the entry id's
             let mut results = be
-                .search(audit, unsafe { &filter_resolved!(f_pres("userid")) })
+                .search(audit, &lims, unsafe { &filter_resolved!(f_pres("userid")) })
                 .expect("Failed to search");
 
             // Get these out to usable entries.
@@ -1597,6 +1628,7 @@ mod tests {
     fn test_be_simple_delete() {
         run_test!(|audit: &mut AuditScope, be: &mut BackendWriteTransaction| {
             ltrace!(audit, "Simple Delete");
+            let lims = EventLimits::unlimited();
 
             // First create some entries (3?)
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
@@ -1622,7 +1654,7 @@ mod tests {
 
             // You need to now retrieve the entries back out to get the entry id's
             let mut results = be
-                .search(audit, unsafe { &filter_resolved!(f_pres("userid")) })
+                .search(audit, &lims, unsafe { &filter_resolved!(f_pres("userid")) })
                 .expect("Failed to search");
 
             // Get these out to usable entries.
@@ -2456,6 +2488,157 @@ mod tests {
                     panic!("");
                 }
             }
+        })
+    }
+
+    #[test]
+    fn test_be_limits_allids() {
+        run_test!(|audit: &mut AuditScope, be: &mut BackendWriteTransaction| {
+            let mut lim_allow_allids = EventLimits::unlimited();
+            lim_allow_allids.unindexed_allow = true;
+
+            let mut lim_deny_allids = EventLimits::unlimited();
+            lim_deny_allids.unindexed_allow = false;
+
+            let mut e: Entry<EntryInit, EntryNew> = Entry::new();
+            e.add_ava("userid", Value::from("william"));
+            e.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
+            e.add_ava("nonexist", Value::from("x"));
+            let e = unsafe { e.into_sealed_new() };
+            let single_result = be.create(audit, vec![e.clone()]);
+
+            assert!(single_result.is_ok());
+            let filt = unsafe {
+                e.filter_from_attrs(&vec![String::from("nonexist")])
+                    .expect("failed to generate filter")
+                    .into_valid_resolved()
+            };
+            // check allow on allids
+            let res = be.search(audit, &lim_allow_allids, &filt);
+            assert!(res.is_ok());
+            let res = be.exists(audit, &lim_allow_allids, &filt);
+            assert!(res.is_ok());
+
+            // check deny on allids
+            let res = be.search(audit, &lim_deny_allids, &filt);
+            assert!(res == Err(OperationError::ResourceLimit));
+            let res = be.exists(audit, &lim_deny_allids, &filt);
+            assert!(res == Err(OperationError::ResourceLimit));
+        })
+    }
+
+    #[test]
+    fn test_be_limits_results_max() {
+        run_test!(|audit: &mut AuditScope, be: &mut BackendWriteTransaction| {
+            let mut lim_allow = EventLimits::unlimited();
+            lim_allow.search_max_results = usize::MAX;
+
+            let mut lim_deny = EventLimits::unlimited();
+            lim_deny.search_max_results = 0;
+
+            let mut e: Entry<EntryInit, EntryNew> = Entry::new();
+            e.add_ava("userid", Value::from("william"));
+            e.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
+            e.add_ava("nonexist", Value::from("x"));
+            let e = unsafe { e.into_sealed_new() };
+            let single_result = be.create(audit, vec![e.clone()]);
+            assert!(single_result.is_ok());
+
+            let filt = unsafe {
+                e.filter_from_attrs(&vec![String::from("nonexist")])
+                    .expect("failed to generate filter")
+                    .into_valid_resolved()
+            };
+
+            // --> This is the all ids path (unindexed)
+            // check allow on entry max
+            let res = be.search(audit, &lim_allow, &filt);
+            assert!(res.is_ok());
+            let res = be.exists(audit, &lim_allow, &filt);
+            assert!(res.is_ok());
+
+            // check deny on entry max
+            let res = be.search(audit, &lim_deny, &filt);
+            assert!(res == Err(OperationError::ResourceLimit));
+            // we don't limit on exists because we never load the entries.
+            let res = be.exists(audit, &lim_deny, &filt);
+            assert!(res.is_ok());
+
+            // --> This will shortcut due to indexing.
+            assert!(be.reindex(audit).is_ok());
+            let res = be.search(audit, &lim_deny, &filt);
+            assert!(res == Err(OperationError::ResourceLimit));
+            // we don't limit on exists because we never load the entries.
+            let res = be.exists(audit, &lim_deny, &filt);
+            assert!(res.is_ok());
+        })
+    }
+
+    #[test]
+    fn test_be_limits_partial_filter() {
+        run_test!(|audit: &mut AuditScope, be: &mut BackendWriteTransaction| {
+            // This relies on how we do partials, so it could be a bit sensitive.
+            // A partial is generated after an allids + indexed in a single and
+            // as we require both conditions to exist. Allids comes from unindexed
+            // terms. we need to ensure we don't hit partial threshold too.
+            //
+            // This means we need an and query where the first term is allids
+            // and the second is indexed, but without the filter shortcutting.
+            //
+            // To achieve this we need a monstrously evil query.
+            //
+            let mut lim_allow = EventLimits::unlimited();
+            lim_allow.search_max_filter_test = usize::MAX;
+
+            let mut lim_deny = EventLimits::unlimited();
+            lim_deny.search_max_filter_test = 0;
+
+            let mut e: Entry<EntryInit, EntryNew> = Entry::new();
+            e.add_ava("name", Value::from("william"));
+            e.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
+            e.add_ava("nonexist", Value::from("x"));
+            e.add_ava("nonexist", Value::from("y"));
+            let e = unsafe { e.into_sealed_new() };
+            let single_result = be.create(audit, vec![e.clone()]);
+            assert!(single_result.is_ok());
+
+            // Reindex so we have things in place for our query
+            assert!(be.reindex(audit).is_ok());
+
+            // 🚨 This is evil!
+            // The and allows us to hit "allids + indexed -> partial".
+            // the or terms prevent re-arrangement. They can't be folded or dead
+            // term elimed either.
+            //
+            // This means the f_or nonexist will become allids and the second will be indexed
+            // due to f_eq userid in both with the result of william.
+            //
+            // This creates a partial, and because it's the first iteration in the loop, this
+            // doesn't encounter partial threshold testing.
+            let filt = unsafe {
+                filter_resolved!(f_and!([
+                    f_or!([
+                        f_eq("nonexist", PartialValue::new_utf8s("x")),
+                        f_eq("nonexist", PartialValue::new_utf8s("y"))
+                    ]),
+                    f_or!([
+                        f_eq("name", PartialValue::new_utf8s("claire")),
+                        f_eq("name", PartialValue::new_utf8s("william"))
+                    ]),
+                ]))
+            };
+
+            let res = be.search(audit, &lim_allow, &filt);
+            assert!(res.is_ok());
+            let res = be.exists(audit, &lim_allow, &filt);
+            assert!(res.is_ok());
+
+            // check deny on entry max
+            let res = be.search(audit, &lim_deny, &filt);
+            assert!(res == Err(OperationError::ResourceLimit));
+            // we don't limit on exists because we never load the entries.
+            let res = be.exists(audit, &lim_deny, &filt);
+            assert!(res == Err(OperationError::ResourceLimit));
         })
     }
 }
