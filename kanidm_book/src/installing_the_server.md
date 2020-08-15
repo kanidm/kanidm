@@ -45,6 +45,9 @@ Then you can setup the initial admin account and initialise the database into yo
 
     docker run --rm -i -t -v kanidmd:/data kanidm/server:latest /sbin/kanidmd recover_account -c /data/server.toml -n admin
 
+> **HINT**
+> If you want to try the latest development releases instead, use the image tag kanidm/server:devel instead
+
 You then want to set your domain name so that spn's are generated correctly.
 
     docker run --rm -i -t -v kanidmd:/data kanidm/server:latest /sbin/kanidmd domain_name_change -c /data/server.toml -n idm.example.com
