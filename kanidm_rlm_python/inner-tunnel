@@ -158,11 +158,11 @@ authorize {
     # }
     # cache
     # if (notfound) {
-    #     python
+    #     python3
     # }
     # cache
 
-    python
+    python3
 
 	#
 	#  Enforce daily limits on time spent logged in.

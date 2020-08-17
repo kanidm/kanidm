@@ -325,7 +325,7 @@ authorize {
 	#
 	#  If you want to have a log of authentication requests,
 	#  un-comment the following line.
-#	auth_log
+    auth_log
 
 	#
 	#  The chap module will set 'Auth-Type := CHAP' if we are
@@ -426,11 +426,11 @@ authorize {
     # }
     # cache
     # if (notfound) {
-    #     python
+    #     python3
     # }
     # cache
 
-    python
+    python3
 
 	#
 	#  Enforce daily limits on time spent logged in.
