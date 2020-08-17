@@ -2,24 +2,31 @@
 
 IMAGE_BASE ?= kanidm
 IMAGE_VERSION ?= devel
+EXT_OPTS ?=
 
 .DEFAULT: help
 help:
 	@fgrep -h "##" $(MAKEFILE_LIST) | fgrep -v fgrep | sed -e 's/\\$$//' | sed -e 's/##/\n\t/'
 
-buildx/kanidmd: ## build multiarch images
+buildx/kanidmd: ## build multiarch server images
 buildx/kanidmd:
 	@docker buildx build --push --platform linux/amd64,linux/arm64 -f kanidmd/Dockerfile -t $(IMAGE_BASE)/server:$(IMAGE_VERSION) .
 	@docker buildx imagetools inspect $(IMAGE_BASE)/server:$(IMAGE_VERSION)
 
+buildx/radiusd: ## build multiarch radius images
+buildx/radiusd:
+	@docker buildx build --push --platform linux/amd64,linux/arm64 -f kanidm_rlm_python/Dockerfile -t $(IMAGE_BASE)/radius:$(IMAGE_VERSION) kanidm_rlm_python
+	@docker buildx imagetools inspect $(IMAGE_BASE)/server:$(IMAGE_VERSION)
+
+buildx: buildx/kanidmd buildx/radiusd
+
 build/kanidmd:	## build kanidmd images
 build/kanidmd:
-	@docker build -f kanidmd/Dockerfile -t $(IMAGE_BASE)/server:$(IMAGE_VERSION) .
+	@docker build $(EXT_OPTS) -f kanidmd/Dockerfile -t $(IMAGE_BASE)/server:$(IMAGE_VERSION) .
 
 build/radiusd:	## build radiusd image
 build/radiusd:
-	@docker build -f kanidm_rlm_python/Dockerfile -t $(IMAGE_BASE)/radius:$(IMAGE_VERSION) \
-		kanidm_rlm_python
+	@docker build $(EXT_OPTS) -f kanidm_rlm_python/Dockerfile -t $(IMAGE_BASE)/radius:$(IMAGE_VERSION) kanidm_rlm_python
 
 build: build/kanidmd build/radiusd
 
@@ -71,17 +78,17 @@ prep:
 	cargo outdated -R
 	cargo audit
 
-update-version: ## update version form VERSION file in all Cargo.toml manifests
-update-version: */Cargo.toml
-	@VERSION=`cat VERSION`; sed -i "0,/^version\ \= .*$$/{s//version = \"$$VERSION\"/}" */Cargo.toml
-	@echo updated to version "`cat VERSION`" cargo files
-
-publish:
-	cd kanidm_proto; cargo package
-	cd kanidm_proto; cargo publish
-	cd kanidmd; cargo package
-	cd kanidmd; cargo publish
-	cd kanidm_client; cargo package
-	cd kanidm_client; cargo publish
-	cd kanidm_tools; cargo package
-	cd kanidm_tools; cargo publish
+# update-version: ## update version form VERSION file in all Cargo.toml manifests
+# update-version: */Cargo.toml
+# 	@VERSION=`cat VERSION`; sed -i "0,/^version\ \= .*$$/{s//version = \"$$VERSION\"/}" */Cargo.toml
+# 	@echo updated to version "`cat VERSION`" cargo files
+# 
+# publish:
+# 	cd kanidm_proto; cargo package
+# 	cd kanidm_proto; cargo publish
+# 	cd kanidmd; cargo package
+# 	cd kanidmd; cargo publish
+# 	cd kanidm_client; cargo package
+# 	cd kanidm_client; cargo publish
+# 	cd kanidm_tools; cargo package
+# 	cd kanidm_tools; cargo publish

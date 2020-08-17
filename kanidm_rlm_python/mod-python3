@@ -6,14 +6,14 @@
 # rlm_python is called for a section which does not have
 # a function defined, it will return NOOP.
 #
-python {
+python3 {
 	#  Path to the python modules
 	#
 	#  Note that due to limitations on Python, this configuration
 	#  item is GLOBAL TO THE SERVER.  That is, you cannot have two
 	#  instances of the python module, each with a different path.
 	#
-        python_path="/usr/lib64/python2.7:/usr/lib/python2.7:/usr/lib/python2.7/site-packages:/usr/lib64/python2.7/site-packages:/usr/lib64/python2.7/lib-dynload:/etc/raddb"
+    python_path="/usr/lib64/python3.6:/usr/lib/python3.6:/usr/lib/python3.6/site-packages:/usr/lib64/python3.6/site-packages:/usr/lib64/python3.6/lib-dynload:/etc/raddb"
 
 	module = kanidmradius
 
