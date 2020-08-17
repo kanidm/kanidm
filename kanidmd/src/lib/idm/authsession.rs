@@ -406,6 +406,7 @@ impl AuthSession {
 mod tests {
     use crate::audit::AuditScope;
     use crate::constants::{JSON_ADMIN_V1, JSON_ANONYMOUS_V1};
+    use crate::credential::policy::CryptoPolicy;
     use crate::credential::totp::{TOTP, TOTP_DEFAULT_STEP};
     use crate::credential::Credential;
     use crate::idm::authsession::{
@@ -492,7 +493,8 @@ mod tests {
         // create the ent
         let mut account = entry_str_to_account!(JSON_ADMIN_V1);
         // manually load in a cred
-        let cred = Credential::new_password_only("test_password").unwrap();
+        let p = CryptoPolicy::minimum();
+        let cred = Credential::new_password_only(&p, "test_password").unwrap();
         account.primary = Some(cred);
 
         // now check
@@ -549,7 +551,8 @@ mod tests {
         let pw_good = "test_password";
         let pw_bad = "bad_password";
 
-        let cred = Credential::new_password_only(pw_good)
+        let p = CryptoPolicy::minimum();
+        let cred = Credential::new_password_only(&p, pw_good)
             .unwrap()
             .update_totp(totp);
         // add totp also

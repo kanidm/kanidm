@@ -4,11 +4,21 @@ use openssl::hash::MessageDigest;
 use openssl::pkcs5::pbkdf2_hmac;
 use rand::prelude::*;
 use std::convert::TryFrom;
+use std::time::{Duration, Instant};
 use uuid::Uuid;
 
+pub mod policy;
 pub mod totp;
 
+use crate::credential::policy::CryptoPolicy;
 use crate::credential::totp::TOTP;
+
+// NIST 800-63.b salt should be 112 bits -> 14  8u8.
+// I choose tinfoil hat though ...
+const PBKDF2_SALT_LEN: usize = 24;
+// 64 * u8 -> 512 bits of out.
+const PBKDF2_KEY_LEN: usize = 64;
+const PBKDF2_IMPORT_MIN_LEN: usize = 32;
 
 // These are in order of "relative" strength.
 /*
@@ -20,16 +30,6 @@ pub enum Policy {
     PasswordAndWebauthn,
 }
 */
-
-// TODO #255: Determine this at startup based on a time factor
-const PBKDF2_COST: usize = 10000;
-// NIST 800-63.b salt should be 112 bits -> 14  8u8.
-// I choose tinfoil hat though ...
-const PBKDF2_SALT_LEN: usize = 24;
-// 64 * u8 -> 512 bits of out.
-const PBKDF2_KEY_LEN: usize = 64;
-
-const PBKDF2_IMPORT_MIN_LEN: usize = 32;
 
 // Why PBKDF2? Rust's bcrypt has a number of hardcodings like max pw len of 72
 // I don't really feel like adding in so many restrictions, so I'll use
@@ -94,7 +94,28 @@ impl TryFrom<&str> for Password {
 }
 
 impl Password {
-    fn new_pbkdf2(cleartext: &str) -> Result<KDF, OperationError> {
+    fn bench_pbkdf2(pbkdf2_cost: usize) -> Option<Duration> {
+        let mut rng = rand::thread_rng();
+        let salt: Vec<u8> = (0..PBKDF2_SALT_LEN).map(|_| rng.gen()).collect();
+        let input: Vec<u8> = (0..PBKDF2_SALT_LEN).map(|_| rng.gen()).collect();
+        // This is 512 bits of output
+        let mut key: Vec<u8> = (0..PBKDF2_KEY_LEN).map(|_| 0).collect();
+
+        let start = Instant::now();
+        let _ = pbkdf2_hmac(
+            input.as_slice(),
+            salt.as_slice(),
+            pbkdf2_cost,
+            MessageDigest::sha256(),
+            key.as_mut_slice(),
+        )
+        .ok()?;
+        let end = Instant::now();
+
+        end.checked_duration_since(start)
+    }
+
+    fn new_pbkdf2(pbkdf2_cost: usize, cleartext: &str) -> Result<KDF, OperationError> {
         let mut rng = rand::thread_rng();
         let salt: Vec<u8> = (0..PBKDF2_SALT_LEN).map(|_| rng.gen()).collect();
         // This is 512 bits of output
@@ -103,19 +124,19 @@ impl Password {
         pbkdf2_hmac(
             cleartext.as_bytes(),
             salt.as_slice(),
-            PBKDF2_COST,
+            pbkdf2_cost,
             MessageDigest::sha256(),
             key.as_mut_slice(),
         )
         .map(|()| {
             // Turn key to a vec.
-            KDF::PBKDF2(PBKDF2_COST, salt, key)
+            KDF::PBKDF2(pbkdf2_cost, salt, key)
         })
         .map_err(|_| OperationError::CryptographyError)
     }
 
-    pub fn new(cleartext: &str) -> Result<Self, OperationError> {
-        Self::new_pbkdf2(cleartext).map(|material| Password { material })
+    pub fn new(policy: &CryptoPolicy, cleartext: &str) -> Result<Self, OperationError> {
+        Self::new_pbkdf2(policy.pbkdf2_cost, cleartext).map(|material| Password { material })
     }
 
     pub fn verify(&self, cleartext: &str) -> Result<bool, OperationError> {
@@ -211,8 +232,11 @@ impl TryFrom<DbCredV1> for Credential {
 }
 
 impl Credential {
-    pub fn new_password_only(cleartext: &str) -> Result<Self, OperationError> {
-        Password::new(cleartext).map(|pw| Credential {
+    pub fn new_password_only(
+        policy: &CryptoPolicy,
+        cleartext: &str,
+    ) -> Result<Self, OperationError> {
+        Password::new(policy, cleartext).map(|pw| Credential {
             password: Some(pw),
             totp: None,
             claims: Vec::new(),
@@ -220,8 +244,12 @@ impl Credential {
         })
     }
 
-    pub fn set_password(&self, cleartext: &str) -> Result<Self, OperationError> {
-        Password::new(cleartext).map(|pw| Credential {
+    pub fn set_password(
+        &self,
+        policy: &CryptoPolicy,
+        cleartext: &str,
+    ) -> Result<Self, OperationError> {
+        Password::new(policy, cleartext).map(|pw| Credential {
             password: Some(pw),
             totp: self.totp.clone(),
             claims: self.claims.clone(),
@@ -297,12 +325,14 @@ impl Credential {
 
 #[cfg(test)]
 mod tests {
+    use crate::credential::policy::CryptoPolicy;
     use crate::credential::*;
     use std::convert::TryFrom;
 
     #[test]
     fn test_credential_simple() {
-        let c = Credential::new_password_only("password").unwrap();
+        let p = CryptoPolicy::minimum();
+        let c = Credential::new_password_only(&p, "password").unwrap();
         assert!(c.verify_password("password"));
         assert!(!c.verify_password("password1"));
         assert!(!c.verify_password("Password1"));

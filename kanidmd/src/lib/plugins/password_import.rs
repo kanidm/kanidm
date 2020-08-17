@@ -126,6 +126,7 @@ impl Plugin for PasswordImport {
 
 #[cfg(test)]
 mod tests {
+    use crate::credential::policy::CryptoPolicy;
     use crate::credential::totp::{TOTP, TOTP_DEFAULT_STEP};
     use crate::credential::Credential;
     use crate::entry::{Entry, EntryInit, EntryNew};
@@ -205,7 +206,8 @@ mod tests {
         }"#,
         );
 
-        let c = Credential::new_password_only("password").unwrap();
+        let p = CryptoPolicy::minimum();
+        let c = Credential::new_password_only(&p, "password").unwrap();
         ea.add_ava("primary_credential", Value::new_credential("primary", c));
 
         let preload = vec![ea];
@@ -239,7 +241,8 @@ mod tests {
         );
 
         let totp = TOTP::generate_secure("test_totp".to_string(), TOTP_DEFAULT_STEP);
-        let c = Credential::new_password_only("password")
+        let p = CryptoPolicy::minimum();
+        let c = Credential::new_password_only(&p, "password")
             .unwrap()
             .update_totp(totp);
         ea.add_ava("primary_credential", Value::new_credential("primary", c));

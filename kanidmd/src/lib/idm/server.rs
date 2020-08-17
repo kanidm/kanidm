@@ -1,6 +1,7 @@
 use crate::audit::AuditScope;
 use crate::constants::{AUTH_SESSION_TIMEOUT, MFAREG_SESSION_TIMEOUT, PW_MIN_LENGTH};
 use crate::constants::{UUID_ANONYMOUS, UUID_SYSTEM_CONFIG};
+use crate::credential::policy::CryptoPolicy;
 use crate::event::{AuthEvent, AuthEventStep, AuthResult};
 use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
@@ -41,6 +42,9 @@ pub struct IdmServer {
     mfareg_sessions: BptreeMap<Uuid, MfaRegSession>,
     // Need a reference to the query server.
     qs: QueryServer,
+    // The configured crypto policy for the IDM server. Later this could be transactional
+    // and loaded from the db similar to access. But today it's just to allow dynamic pbkdf2rounds
+    crypto_policy: CryptoPolicy,
 }
 
 pub struct IdmServerWriteTransaction<'a> {
@@ -66,15 +70,25 @@ pub struct IdmServerProxyWriteTransaction<'a> {
     // Associate to an event origin ID, which has a TS and a UUID instead
     mfareg_sessions: BptreeMapWriteTxn<'a, Uuid, MfaRegSession>,
     sid: SID,
+    crypto_policy: &'a CryptoPolicy,
 }
 
 impl IdmServer {
     // TODO #59: Make number of authsessions configurable!!!
     pub fn new(qs: QueryServer) -> IdmServer {
+        // This is calculated back from:
+        //  500 auths / thread -> 0.002 sec per op
+        //      we can then spend up to ~0.001s hashing
+        //      that means an attacker could possibly have
+        //      1000 attempts/sec on a compromised pw.
+        // overtime, we could increase this as auth parallelism
+        // improves.
+        let crypto_policy = CryptoPolicy::time_target(Duration::from_millis(1));
         IdmServer {
             sessions: BptreeMap::new(),
             mfareg_sessions: BptreeMap::new(),
             qs,
+            crypto_policy,
         }
     }
 
@@ -106,6 +120,7 @@ impl IdmServer {
             mfareg_sessions: self.mfareg_sessions.write(),
             qs_write: self.qs.write(ts),
             sid,
+            crypto_policy: &self.crypto_policy,
         }
     }
 }
@@ -507,7 +522,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // it returns a modify
         let modlist = account
-            .gen_password_mod(pce.cleartext.as_str(), &pce.appid)
+            .gen_password_mod(pce.cleartext.as_str(), &pce.appid, self.crypto_policy)
             .map_err(|e| {
                 ladmin_error!(au, "Failed to generate password mod {:?}", e);
                 e
@@ -572,7 +587,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // it returns a modify
         let modlist = account
-            .gen_password_mod(pce.cleartext.as_str())
+            .gen_password_mod(pce.cleartext.as_str(), self.crypto_policy)
             .map_err(|e| {
                 ladmin_error!(au, "Unable to generate password change modlist {:?}", e);
                 e
@@ -631,7 +646,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // it returns a modify
         let modlist = account
-            .gen_password_mod(cleartext.as_str(), &gpe.appid)
+            .gen_password_mod(cleartext.as_str(), &gpe.appid, self.crypto_policy)
             .map_err(|e| {
                 ladmin_error!(au, "Unable to generate password mod {:?}", e);
                 e
@@ -797,6 +812,7 @@ mod tests {
     use crate::constants::{
         AUTH_SESSION_TIMEOUT, MFAREG_SESSION_TIMEOUT, UUID_ADMIN, UUID_ANONYMOUS,
     };
+    use crate::credential::policy::CryptoPolicy;
     use crate::credential::totp::TOTP;
     use crate::credential::Credential;
     use crate::entry::{Entry, EntryInit, EntryNew};
@@ -941,7 +957,8 @@ mod tests {
         qs: &QueryServer,
         pw: &str,
     ) -> Result<(), OperationError> {
-        let cred = Credential::new_password_only(pw)?;
+        let p = CryptoPolicy::minimum();
+        let cred = Credential::new_password_only(&p, pw)?;
         let v_cred = Value::new_credential("primary", cred);
         let qs_write = qs.write(duration_from_epoch_now());
 

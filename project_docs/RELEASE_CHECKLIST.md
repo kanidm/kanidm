@@ -6,6 +6,7 @@
 * cargo audit
 * cargo outdated
 
+* upgrade crypto policy values if requires
 * bump index version in constants
 * check for breaking db entry changes.
 
