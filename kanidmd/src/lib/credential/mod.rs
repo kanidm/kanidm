@@ -2,6 +2,7 @@ use crate::be::dbvalue::{DbCredV1, DbPasswordV1};
 use kanidm_proto::v1::OperationError;
 use openssl::hash::MessageDigest;
 use openssl::pkcs5::pbkdf2_hmac;
+use openssl::sha::Sha512;
 use rand::prelude::*;
 use std::convert::TryFrom;
 use std::time::{Duration, Instant};
@@ -19,6 +20,9 @@ const PBKDF2_SALT_LEN: usize = 24;
 // 64 * u8 -> 512 bits of out.
 const PBKDF2_KEY_LEN: usize = 64;
 const PBKDF2_IMPORT_MIN_LEN: usize = 32;
+
+const DS_SSHA512_SALT_LEN: usize = 8;
+const DS_SSHA512_HASH_LEN: usize = 64;
 
 // These are in order of "relative" strength.
 /*
@@ -38,6 +42,8 @@ pub enum Policy {
 enum KDF {
     //     cost, salt,   hash
     PBKDF2(usize, Vec<u8>, Vec<u8>),
+    //      salt     hash
+    SSHA512(Vec<u8>, Vec<u8>),
 }
 
 #[derive(Clone, Debug)]
@@ -52,6 +58,9 @@ impl TryFrom<DbPasswordV1> for Password {
         match value {
             DbPasswordV1::PBKDF2(c, s, h) => Ok(Password {
                 material: KDF::PBKDF2(c, s, h),
+            }),
+            DbPasswordV1::SSHA512(s, h) => Ok(Password {
+                material: KDF::SSHA512(s, h),
             }),
         }
     }
@@ -86,6 +95,18 @@ impl TryFrom<&str> for Password {
                 }
                 _ => {}
             }
+        }
+
+        // Test 389ds formats
+        if let Some(ds_ssha512) = value.strip_prefix("{SSHA512}") {
+            let sh = base64::decode(ds_ssha512).map_err(|_| ())?;
+            let (h, s) = sh.split_at(DS_SSHA512_HASH_LEN);
+            if s.len() != DS_SSHA512_SALT_LEN {
+                return Err(());
+            }
+            return Ok(Password {
+                material: KDF::SSHA512(s.to_vec(), h.to_vec()),
+            });
         }
 
         // Nothing matched to this point.
@@ -160,6 +181,13 @@ impl Password {
                     &chal_key == key
                 })
             }
+            KDF::SSHA512(salt, key) => {
+                let mut hasher = Sha512::new();
+                hasher.update(cleartext.as_bytes());
+                hasher.update(&salt);
+                let r = hasher.finish();
+                Ok(key == &(r.to_vec()))
+            }
         }
     }
 
@@ -168,6 +196,14 @@ impl Password {
             KDF::PBKDF2(cost, salt, hash) => {
                 DbPasswordV1::PBKDF2(*cost, salt.clone(), hash.clone())
             }
+            KDF::SSHA512(salt, hash) => DbPasswordV1::SSHA512(salt.clone(), hash.clone()),
+        }
+    }
+
+    pub fn requires_upgrade(&self) -> bool {
+        match &self.material {
+            KDF::PBKDF2(_, _, _) => false,
+            _ => true,
         }
     }
 }
@@ -350,6 +386,16 @@ mod tests {
         let im_pw = "pbkdf2_sha256$36000$xIEozuZVAoYm$uW1b35DUKyhvQAf1mBqMvoBDcqSD06juzyO/nmyV0+w=";
         let password = "eicieY7ahchaoCh0eeTa";
         let r = Password::try_from(im_pw).expect("Failed to parse");
+        assert!(r.verify(password).unwrap_or(false));
+    }
+
+    #[test]
+    fn test_password_from_ds_ssha512() {
+        let im_pw = "{SSHA512}JwrSUHkI7FTAfHRVR6KoFlSN0E3dmaQWARjZ+/UsShYlENOqDtFVU77HJLLrY2MuSp0jve52+pwtdVl2QUAHukQ0XUf5LDtM";
+        let password = "password";
+        let r = Password::try_from(im_pw).expect("Failed to parse");
+        // Known weak, require upgrade.
+        assert!(r.requires_upgrade());
         assert!(r.verify(password).unwrap_or(false));
     }
 }

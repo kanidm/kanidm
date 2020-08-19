@@ -11,6 +11,7 @@ pub struct DbCidV1 {
 #[derive(Serialize, Deserialize, Debug)]
 pub enum DbPasswordV1 {
     PBKDF2(usize, Vec<u8>, Vec<u8>),
+    SSHA512(Vec<u8>, Vec<u8>),
 }
 
 #[derive(Serialize, Deserialize, Debug)]

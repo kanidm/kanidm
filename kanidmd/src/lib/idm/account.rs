@@ -200,6 +200,31 @@ impl Account {
         }
     }
 
+    pub(crate) fn check_credential_pw(
+        &self,
+        cleartext: &str,
+        appid: &Option<String>,
+    ) -> Result<bool, OperationError> {
+        match appid {
+            Some(_) => Err(OperationError::InvalidState),
+            None => {
+                match &self.primary {
+                    // Check the cred's associated pw.
+                    Some(ref primary) => {
+                        primary.password.as_ref()
+                            .ok_or(OperationError::InvalidState)
+                            .and_then(|pw| {
+                                pw.verify(cleartext)
+                            })
+                    }
+                    None => {
+                        Err(OperationError::InvalidState)
+                    }
+                }
+            } // no appid
+        }
+    }
+
     pub(crate) fn regenerate_radius_secret_mod(
         &self,
         cleartext: &str,

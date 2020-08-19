@@ -34,6 +34,8 @@ actix-web = { version = "2.0", features = ["openssl"] }
 actix-session = "0.3"
 actix-files = "0.2"
 
+async-std = "1.6"
+
 log = "0.4"
 env_logger = "0.7"
 rand = "0.7"
