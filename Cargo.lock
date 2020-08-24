@@ -779,8 +779,6 @@ dependencies = [
 [[package]]
 name = "concread"
 version = "0.1.20"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c02cf6f4fea59e067ac56655a03c8b7f36719c673cbdb4cf80cd80fa8d4f6c74"
 dependencies = [
  "ahash",
  "crossbeam",
@@ -790,6 +788,7 @@ dependencies = [
  "parking_lot 0.10.2",
  "rand",
  "smallvec",
+ "tokio",
 ]
 
 [[package]]

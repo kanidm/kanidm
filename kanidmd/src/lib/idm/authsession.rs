@@ -83,9 +83,8 @@ impl CredHandler {
         pw: &Password,
         who: Uuid,
         cleartext: &str,
-        async_tx: &Sender<DelayedAction>
-    )
-    {
+        async_tx: &Sender<DelayedAction>,
+    ) {
         if pw.requires_upgrade() {
             if let Err(_e) = async_tx.send(DelayedAction::PwUpgrade(PasswordUpgrade {
                 target_uuid: who,
@@ -97,10 +96,7 @@ impl CredHandler {
         }
     }
 
-    fn validate_anonymous(
-        au: &mut AuditScope,
-        creds: &[AuthCredential],
-    ) -> CredState {
+    fn validate_anonymous(au: &mut AuditScope, creds: &[AuthCredential]) -> CredState {
         creds.iter().fold(
             CredState::Continue(vec![AuthAllowed::Anonymous]),
             |acc, cred| {
@@ -295,8 +291,12 @@ impl CredHandler {
                 CredState::Denied("authentication denied")
             }
             CredHandler::Anonymous => Self::validate_anonymous(au, creds),
-            CredHandler::Password(ref mut pw) => Self::validate_password(au, creds, pw, who, async_tx),
-            CredHandler::TOTPPassword(ref mut pw_totp) => Self::validate_totp_password(au, creds, ts, pw_totp, who, async_tx),
+            CredHandler::Password(ref mut pw) => {
+                Self::validate_password(au, creds, pw, who, async_tx)
+            }
+            CredHandler::TOTPPassword(ref mut pw_totp) => {
+                Self::validate_totp_password(au, creds, ts, pw_totp, who, async_tx)
+            }
         }
     }
 
@@ -409,7 +409,10 @@ impl AuthSession {
             return Ok(AuthState::Denied(BAD_CREDENTIALS.to_string()));
         }
 
-        match self.handler.validate(au, creds, time, self.account.uuid, async_tx) {
+        match self
+            .handler
+            .validate(au, creds, time, self.account.uuid, async_tx)
+        {
             CredState::Success(claims) => {
                 lsecurity!(au, "Successful cred handling");
                 self.finished = true;
@@ -631,7 +634,12 @@ mod tests {
         // check send anon (fail)
         {
             let mut session = AuthSession::new(&mut audit, account.clone(), None);
-            match session.validate_creds(&mut audit, &vec![AuthCredential::Anonymous], &ts, &async_tx) {
+            match session.validate_creds(
+                &mut audit,
+                &vec![AuthCredential::Anonymous],
+                &ts,
+                &async_tx,
+            ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
                 _ => panic!(),
             };
@@ -647,12 +655,17 @@ mod tests {
                 &mut audit,
                 &vec![AuthCredential::Password(pw_bad.to_string())],
                 &ts,
-                &async_tx
+                &async_tx,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::TOTP]),
                 _ => panic!(),
             };
-            match session.validate_creds(&mut audit, &vec![AuthCredential::TOTP(totp_good)], &ts, &async_tx) {
+            match session.validate_creds(
+                &mut audit,
+                &vec![AuthCredential::TOTP(totp_good)],
+                &ts,
+                &async_tx,
+            ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
                 _ => panic!(),
             };
@@ -665,12 +678,17 @@ mod tests {
                 &mut audit,
                 &vec![AuthCredential::Password(pw_bad.to_string())],
                 &ts,
-                &async_tx
+                &async_tx,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::TOTP]),
                 _ => panic!(),
             };
-            match session.validate_creds(&mut audit, &vec![AuthCredential::TOTP(totp_bad)], &ts, &async_tx) {
+            match session.validate_creds(
+                &mut audit,
+                &vec![AuthCredential::TOTP(totp_bad)],
+                &ts,
+                &async_tx,
+            ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_TOTP_MSG),
                 _ => panic!(),
             };
@@ -684,12 +702,17 @@ mod tests {
                 &mut audit,
                 &vec![AuthCredential::Password(pw_good.to_string())],
                 &ts,
-                &async_tx
+                &async_tx,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::TOTP]),
                 _ => panic!(),
             };
-            match session.validate_creds(&mut audit, &vec![AuthCredential::TOTP(totp_good)], &ts, &async_tx) {
+            match session.validate_creds(
+                &mut audit,
+                &vec![AuthCredential::TOTP(totp_good)],
+                &ts,
+                &async_tx,
+            ) {
                 Ok(AuthState::Success(_)) => {}
                 _ => panic!(),
             };
@@ -703,12 +726,17 @@ mod tests {
                 &mut audit,
                 &vec![AuthCredential::Password(pw_good.to_string())],
                 &ts,
-                &async_tx
+                &async_tx,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::TOTP]),
                 _ => panic!(),
             };
-            match session.validate_creds(&mut audit, &vec![AuthCredential::TOTP(totp_bad)], &ts, &async_tx) {
+            match session.validate_creds(
+                &mut audit,
+                &vec![AuthCredential::TOTP(totp_bad)],
+                &ts,
+                &async_tx,
+            ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_TOTP_MSG),
                 _ => panic!(),
             };
@@ -717,7 +745,12 @@ mod tests {
         // check send bad totp, should fail immediate
         {
             let mut session = AuthSession::new(&mut audit, account.clone(), None);
-            match session.validate_creds(&mut audit, &vec![AuthCredential::TOTP(totp_bad)], &ts, &async_tx) {
+            match session.validate_creds(
+                &mut audit,
+                &vec![AuthCredential::TOTP(totp_bad)],
+                &ts,
+                &async_tx,
+            ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_TOTP_MSG),
                 _ => panic!(),
             };
@@ -727,7 +760,12 @@ mod tests {
         //      then bad pw, fail pw
         {
             let mut session = AuthSession::new(&mut audit, account.clone(), None);
-            match session.validate_creds(&mut audit, &vec![AuthCredential::TOTP(totp_good)], &ts, &async_tx) {
+            match session.validate_creds(
+                &mut audit,
+                &vec![AuthCredential::TOTP(totp_good)],
+                &ts,
+                &async_tx,
+            ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
             };
@@ -735,7 +773,7 @@ mod tests {
                 &mut audit,
                 &vec![AuthCredential::Password(pw_bad.to_string())],
                 &ts,
-                &async_tx
+                &async_tx,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
                 _ => panic!(),
@@ -746,7 +784,12 @@ mod tests {
         //      then good pw, success
         {
             let mut session = AuthSession::new(&mut audit, account.clone(), None);
-            match session.validate_creds(&mut audit, &vec![AuthCredential::TOTP(totp_good)], &ts, &async_tx) {
+            match session.validate_creds(
+                &mut audit,
+                &vec![AuthCredential::TOTP(totp_good)],
+                &ts,
+                &async_tx,
+            ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
             };
@@ -754,7 +797,7 @@ mod tests {
                 &mut audit,
                 &vec![AuthCredential::Password(pw_good.to_string())],
                 &ts,
-                &async_tx
+                &async_tx,
             ) {
                 Ok(AuthState::Success(_)) => {}
                 _ => panic!(),
@@ -773,7 +816,7 @@ mod tests {
                     AuthCredential::TOTP(totp_bad),
                 ],
                 &ts,
-                &async_tx
+                &async_tx,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_TOTP_MSG),
                 _ => panic!(),
@@ -789,7 +832,7 @@ mod tests {
                     AuthCredential::Password(pw_bad.to_string()),
                 ],
                 &ts,
-                &async_tx
+                &async_tx,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
                 _ => panic!(),
@@ -805,7 +848,7 @@ mod tests {
                     AuthCredential::Password(pw_good.to_string()),
                 ],
                 &ts,
-                &async_tx
+                &async_tx,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_TOTP_MSG),
                 _ => panic!(),
@@ -821,7 +864,7 @@ mod tests {
                     AuthCredential::Password(pw_good.to_string()),
                 ],
                 &ts,
-                &async_tx
+                &async_tx,
             ) {
                 Ok(AuthState::Success(_)) => {}
                 _ => panic!(),

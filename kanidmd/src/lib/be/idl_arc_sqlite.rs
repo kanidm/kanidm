@@ -6,7 +6,7 @@ use crate::be::{IdRawEntry, IDL};
 use crate::entry::{Entry, EntryCommitted, EntrySealed};
 use crate::value::IndexType;
 use crate::value::Value;
-use concread::cache::arc::{Arc, ArcReadTxn, ArcWriteTxn};
+use concread::arcache::{ARCache, ARCacheReadTxn, ARCacheWriteTxn};
 use concread::cowcell::*;
 use idlset::IDLBitRange;
 use kanidm_proto::v1::{ConsistencyError, OperationError};
@@ -64,9 +64,9 @@ impl From<(&str, &IndexType, &str)> for IdlCacheKey {
 
 pub struct IdlArcSqlite {
     db: IdlSqlite,
-    entry_cache: Arc<u64, Box<Entry<EntrySealed, EntryCommitted>>>,
-    idl_cache: Arc<IdlCacheKey, Box<IDLBitRange>>,
-    name_cache: Arc<NameCacheKey, NameCacheValue>,
+    entry_cache: ARCache<u64, Box<Entry<EntrySealed, EntryCommitted>>>,
+    idl_cache: ARCache<IdlCacheKey, Box<IDLBitRange>>,
+    name_cache: ARCache<NameCacheKey, NameCacheValue>,
     op_ts_max: CowCell<Option<Duration>>,
     allids: CowCell<IDLBitRange>,
     maxid: CowCell<u64>,
@@ -74,17 +74,17 @@ pub struct IdlArcSqlite {
 
 pub struct IdlArcSqliteReadTransaction<'a> {
     db: IdlSqliteReadTransaction,
-    entry_cache: ArcReadTxn<'a, u64, Box<Entry<EntrySealed, EntryCommitted>>>,
-    idl_cache: ArcReadTxn<'a, IdlCacheKey, Box<IDLBitRange>>,
-    name_cache: ArcReadTxn<'a, NameCacheKey, NameCacheValue>,
+    entry_cache: ARCacheReadTxn<'a, u64, Box<Entry<EntrySealed, EntryCommitted>>>,
+    idl_cache: ARCacheReadTxn<'a, IdlCacheKey, Box<IDLBitRange>>,
+    name_cache: ARCacheReadTxn<'a, NameCacheKey, NameCacheValue>,
     allids: CowCellReadTxn<IDLBitRange>,
 }
 
 pub struct IdlArcSqliteWriteTransaction<'a> {
     db: IdlSqliteWriteTransaction,
-    entry_cache: ArcWriteTxn<'a, u64, Box<Entry<EntrySealed, EntryCommitted>>>,
-    idl_cache: ArcWriteTxn<'a, IdlCacheKey, Box<IDLBitRange>>,
-    name_cache: ArcWriteTxn<'a, NameCacheKey, NameCacheValue>,
+    entry_cache: ARCacheWriteTxn<'a, u64, Box<Entry<EntrySealed, EntryCommitted>>>,
+    idl_cache: ARCacheWriteTxn<'a, IdlCacheKey, Box<IDLBitRange>>,
+    name_cache: ARCacheWriteTxn<'a, NameCacheKey, NameCacheValue>,
     op_ts_max: CowCellWriteTxn<'a, Option<Duration>>,
     allids: CowCellWriteTxn<'a, IDLBitRange>,
     maxid: CowCellWriteTxn<'a, u64>,
@@ -855,7 +855,7 @@ impl IdlArcSqlite {
         fstype: FsType,
     ) -> Result<Self, OperationError> {
         let db = IdlSqlite::new(audit, path, pool_size, fstype)?;
-        let entry_cache = Arc::new(
+        let entry_cache = ARCache::new(
             DEFAULT_CACHE_TARGET,
             pool_size as usize,
             DEFAULT_CACHE_RMISS,
@@ -864,7 +864,7 @@ impl IdlArcSqlite {
         );
         // The idl cache should have smaller items, and is critical for fast searches
         // so we allow it to have a higher ratio of items relative to the entries.
-        let idl_cache = Arc::new(
+        let idl_cache = ARCache::new(
             DEFAULT_CACHE_TARGET * DEFAULT_IDL_CACHE_RATIO,
             pool_size as usize,
             DEFAULT_CACHE_RMISS,
@@ -872,7 +872,7 @@ impl IdlArcSqlite {
             false,
         );
 
-        let name_cache = Arc::new(
+        let name_cache = ARCache::new(
             DEFAULT_CACHE_TARGET * DEFAULT_NAME_CACHE_RATIO,
             pool_size as usize,
             DEFAULT_CACHE_RMISS,

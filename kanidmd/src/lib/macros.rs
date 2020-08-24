@@ -147,7 +147,12 @@ macro_rules! run_idm_test {
 
         let (test_idm_server, mut idms_delayed) = IdmServer::new(test_server.clone());
 
-        $test_fn(&test_server, &test_idm_server, &mut idms_delayed, &mut audit);
+        $test_fn(
+            &test_server,
+            &test_idm_server,
+            &mut idms_delayed,
+            &mut audit,
+        );
         // Any needed teardown?
         // Make sure there are no errors.
         assert!(test_server.verify(&mut audit).len() == 0);

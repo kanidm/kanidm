@@ -175,12 +175,13 @@ impl UnixUserAccount {
         // TODO #59: Is the cred locked?
         // is the cred some or none?
         match &self.cred {
-            Some(cred) => match &cred.password {
-                Some(pw) => {
-                    if pw.verify(cleartext)? {
-                        lsecurity!(au, "Successful unix cred handling");
-                        if pw.requires_upgrade() {
-                            async_tx.send(
+            Some(cred) => {
+                match &cred.password {
+                    Some(pw) => {
+                        if pw.verify(cleartext)? {
+                            lsecurity!(au, "Successful unix cred handling");
+                            if pw.requires_upgrade() {
+                                async_tx.send(
                                 DelayedAction::UnixPwUpgrade(UnixPasswordUpgrade {
                                     target_uuid: self.uuid,
                                     existing_password: cleartext.to_string(),
@@ -189,23 +190,24 @@ impl UnixUserAccount {
                                 ladmin_error!(au, "failed to queue delayed action - unix password upgrade");
                                 OperationError::InvalidState
                             })?;
-                        }
+                            }
 
-                        Some(self.to_unixusertoken()).transpose()
-                    } else {
-                        // Failed to auth
-                        lsecurity!(au, "Failed unix cred handling (denied)");
-                        Ok(None)
+                            Some(self.to_unixusertoken()).transpose()
+                        } else {
+                            // Failed to auth
+                            lsecurity!(au, "Failed unix cred handling (denied)");
+                            Ok(None)
+                        }
+                    }
+                    // We have a cred but it's not a password, that's weird
+                    None => {
+                        lsecurity!(au, "Invalid unix cred request");
+                        Err(OperationError::InvalidAccountState(
+                            "non-password cred type?".to_string(),
+                        ))
                     }
                 }
-                // We have a cred but it's not a password, that's weird
-                None => {
-                    lsecurity!(au, "Invalid unix cred request");
-                    Err(OperationError::InvalidAccountState(
-                        "non-password cred type?".to_string(),
-                    ))
-                }
-            },
+            }
             // They don't have a unix cred, fail the auth.
             None => {
                 lsecurity!(au, "Failed unix cred handling (no cred present)");
@@ -214,22 +216,13 @@ impl UnixUserAccount {
         }
     }
 
-    pub(crate) fn check_existing_pw(
-        &self,
-        cleartext: &str,
-    ) -> Result<bool, OperationError> {
+    pub(crate) fn check_existing_pw(&self, cleartext: &str) -> Result<bool, OperationError> {
         match &self.cred {
             Some(cred) => match &cred.password {
-                Some(pw) => {
-                    pw.verify(cleartext)
-                }
-                None => {
-                    Err(OperationError::InvalidState)
-                }
-            }
-            None => {
-                Err(OperationError::InvalidState)
-            }
+                Some(pw) => pw.verify(cleartext),
+                None => Err(OperationError::InvalidState),
+            },
+            None => Err(OperationError::InvalidState),
         }
     }
 }

@@ -1757,7 +1757,9 @@ pub async fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> 
         QueryServerWriteV1::start(log_tx.clone(), config.log_level, qs, idms_arc);
 
     // TODO #314: For now we just drop everything from the delayed queue until we rewrite to be async.
-    tokio::spawn(async move { idms_delayed.temp_drop_all().await; });
+    tokio::spawn(async move {
+        idms_delayed.temp_drop_all().await;
+    });
 
     // Setup timed events associated to the write thread
     let _int_addr = IntervalActor::new(server_write_addr.clone()).start();
