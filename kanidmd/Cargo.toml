@@ -29,7 +29,6 @@ path = "src/server/main.rs"
 kanidm_proto = { path = "../kanidm_proto", version = "1.1.0-alpha" }
 
 actix = "0.9"
-actix-rt = "1.1"
 actix-web = { version = "2.0", features = ["openssl"] }
 actix-session = "0.3"
 actix-files = "0.2"
@@ -46,7 +45,7 @@ cookie = "0.14"
 regex = "1"
 lazy_static = "1.2.0"
 
-tokio = "0.2"
+tokio = { version = "0.2", features = ["rt-threaded", "macros", "rt-util"] }
 futures = "0.3"
 uuid = { version = "0.8", features = ["serde", "v4" ] }
 serde = "1.0"
