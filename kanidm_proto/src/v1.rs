@@ -102,6 +102,7 @@ pub enum OperationError {
     PasswordBadListed,
     CryptographyError,
     ResourceLimit,
+    QueueDisconnected,
 }
 
 impl PartialEq for OperationError {

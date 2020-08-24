@@ -16,34 +16,25 @@ Today the project is still under heavy development to achieve these goals - we d
 functional release before early 2020. It is important to note that not all needed security features
 of the system have been completed yet!
 
-## Code of Conduct
+## Code of Conduct / Ethics
 
 See our [code of conduct]
 
-[code of conduct]: https://github.com/kanidm/kanidm/blob/master/CODE_OF_CONDUCT.md
-
-## Ethics / Rights
-
 See our documentation on [rights and ethics]
 
+[code of conduct]: https://github.com/kanidm/kanidm/blob/master/CODE_OF_CONDUCT.md
 [rights and ethics]: https://github.com/kanidm/kanidm/blob/master/ethics/README.md
 
-## Some key ideas
-
-* All people should be respected and able to be respresented securely.
-* Devices represent users and their identities - they are part of the authentication.
-* Human error occurs - we should be designed to minimise human mistakes and empower people.
-* The system should be easy to understand and reason about for users and admins.
-
-## Documentation
+## Documentation / Getting Started / Install
 
 If you want to deploy kanidm, or to see what it can do, you should read the [kanidm book]
 
 [kanidm book]: https://github.com/kanidm/kanidm/blob/master/kanidm_book/src/SUMMARY.md
 
-## Getting in Contact
+## Getting in Contact / Questions
 
-We have a [gitter community channel] where we can talk. Firstyear is also happy to answer questions via email, which can be found on their github profile.
+We have a [gitter community channel] where we can talk. Firstyear is also happy to
+answer questions via email, which can be found on their github profile.
 
 [gitter community channel]: https://gitter.im/kanidm/community
 
@@ -69,6 +60,13 @@ We have a [gitter community channel] where we can talk. Firstyear is also happy 
 * Fully synchronous behaviour: This is slow.
 * Generic database: We don't want to be another NoSQL database, we want to be an IDM solution.
 * Being LDAP/GSSAPI/Kerberos: These are all legacy protocols that are hard to use and confine our thinking - we should avoid "being like them".
+
+## Some key ideas
+
+* All people should be respected and able to be respresented securely.
+* Devices represent users and their identities - they are part of the authentication.
+* Human error occurs - we should be designed to minimise human mistakes and empower people.
+* The system should be easy to understand and reason about for users and admins.
 
 ## Development and Testing
 

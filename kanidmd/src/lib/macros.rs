@@ -117,7 +117,7 @@ macro_rules! run_idm_test {
     ($test_fn:expr) => {{
         use crate::audit::AuditScope;
         use crate::be::{Backend, FsType};
-        use crate::idm::server::IdmServer;
+        use crate::idm::server::{IdmServer, IdmServerDelayed};
         use crate::schema::Schema;
         use crate::server::QueryServer;
         use crate::utils::duration_from_epoch_now;
@@ -145,12 +145,13 @@ macro_rules! run_idm_test {
             .initialise_helper(&mut audit, duration_from_epoch_now())
             .expect("init failed");
 
-        let test_idm_server = IdmServer::new(test_server.clone());
+        let (test_idm_server, mut idms_delayed) = IdmServer::new(test_server.clone());
 
-        $test_fn(&test_server, &test_idm_server, &mut audit);
+        $test_fn(&test_server, &test_idm_server, &mut idms_delayed, &mut audit);
         // Any needed teardown?
         // Make sure there are no errors.
         assert!(test_server.verify(&mut audit).len() == 0);
+        idms_delayed.is_empty_or_panic();
         audit.write_log();
     }};
 }

@@ -13,6 +13,11 @@ use crate::value::{PartialValue, Value};
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
 
+use crate::idm::delayed::{DelayedAction, UnixPasswordUpgrade};
+
+// use crossbeam::channel::Sender;
+use tokio::sync::mpsc::UnboundedSender as Sender;
+
 use std::iter;
 
 #[derive(Debug, Clone)]
@@ -165,6 +170,7 @@ impl UnixUserAccount {
         &self,
         au: &mut AuditScope,
         cleartext: &str,
+        async_tx: &Sender<DelayedAction>,
     ) -> Result<Option<UnixUserToken>, OperationError> {
         // TODO #59: Is the cred locked?
         // is the cred some or none?
@@ -173,6 +179,18 @@ impl UnixUserAccount {
                 Some(pw) => {
                     if pw.verify(cleartext)? {
                         lsecurity!(au, "Successful unix cred handling");
+                        if pw.requires_upgrade() {
+                            async_tx.send(
+                                DelayedAction::UnixPwUpgrade(UnixPasswordUpgrade {
+                                    target_uuid: self.uuid,
+                                    existing_password: cleartext.to_string(),
+                                })
+                            ).map_err(|_| {
+                                ladmin_error!(au, "failed to queue delayed action - unix password upgrade");
+                                OperationError::InvalidState
+                            })?;
+                        }
+
                         Some(self.to_unixusertoken()).transpose()
                     } else {
                         // Failed to auth
@@ -192,6 +210,25 @@ impl UnixUserAccount {
             None => {
                 lsecurity!(au, "Failed unix cred handling (no cred present)");
                 Ok(None)
+            }
+        }
+    }
+
+    pub(crate) fn check_existing_pw(
+        &self,
+        cleartext: &str,
+    ) -> Result<bool, OperationError> {
+        match &self.cred {
+            Some(cred) => match &cred.password {
+                Some(pw) => {
+                    pw.verify(cleartext)
+                }
+                None => {
+                    Err(OperationError::InvalidState)
+                }
+            }
+            None => {
+                Err(OperationError::InvalidState)
             }
         }
     }

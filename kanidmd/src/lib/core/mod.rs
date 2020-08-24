@@ -36,7 +36,7 @@ use crate::audit::AuditScope;
 use crate::be::{Backend, BackendTransaction, FsType};
 use crate::crypto::setup_tls;
 use crate::filter::{Filter, FilterInvalid};
-use crate::idm::server::IdmServer;
+use crate::idm::server::{IdmServer, IdmServerDelayed};
 use crate::interval::IntervalActor;
 use crate::ldap::LdapServer;
 use crate::schema::Schema;
@@ -1301,7 +1301,7 @@ fn setup_qs_idms(
     audit: &mut AuditScope,
     be: Backend,
     schema: Schema,
-) -> Result<(QueryServer, IdmServer), OperationError> {
+) -> Result<(QueryServer, IdmServer, IdmServerDelayed), OperationError> {
     // Create a query_server implementation
     let query_server = QueryServer::new(be, schema);
 
@@ -1317,9 +1317,9 @@ fn setup_qs_idms(
 
     // We generate a SINGLE idms only!
 
-    let idms = IdmServer::new(query_server.clone());
+    let (idms, idms_delayed) = IdmServer::new(query_server.clone());
 
-    Ok((query_server, idms))
+    Ok((query_server, idms, idms_delayed))
 }
 
 pub fn backup_server_core(config: &Configuration, dst_path: &str) {
@@ -1389,7 +1389,7 @@ pub fn restore_server_core(config: &Configuration, dst_path: &str) {
 
     info!("Attempting to init query server ...");
 
-    let (qs, _idms) = match setup_qs_idms(&mut audit, be, schema) {
+    let (qs, _idms, _idms_delayed) = match setup_qs_idms(&mut audit, be, schema) {
         Ok(t) => t,
         Err(e) => {
             audit.write_log();
@@ -1457,7 +1457,7 @@ pub fn reindex_server_core(config: &Configuration) {
 
     eprintln!("Attempting to init query server ...");
 
-    let (qs, _idms) = match setup_qs_idms(&mut audit, be, schema) {
+    let (qs, _idms, _idms_delayed) = match setup_qs_idms(&mut audit, be, schema) {
         Ok(t) => t,
         Err(e) => {
             audit.write_log();
@@ -1508,7 +1508,7 @@ pub fn domain_rename_core(config: &Configuration, new_domain_name: &str) {
         }
     };
     // setup the qs - *with* init of the migrations and schema.
-    let (qs, _idms) = match setup_qs_idms(&mut audit, be, schema) {
+    let (qs, _idms, _idms_delayed) = match setup_qs_idms(&mut audit, be, schema) {
         Ok(t) => t,
         Err(e) => {
             audit.write_log();
@@ -1606,7 +1606,7 @@ pub fn recover_account_core(config: &Configuration, name: &str, password: &str) 
         }
     };
     // setup the qs - *with* init of the migrations and schema.
-    let (_qs, idms) = match setup_qs_idms(&mut audit, be, schema) {
+    let (_qs, idms, _idms_delayed) = match setup_qs_idms(&mut audit, be, schema) {
         Ok(t) => t,
         Err(e) => {
             audit.write_log();
@@ -1689,7 +1689,7 @@ pub async fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> 
         }
     };
     // Start the IDM server.
-    let (qs, idms) = match setup_qs_idms(&mut audit, be, schema) {
+    let (qs, idms, mut idms_delayed) = match setup_qs_idms(&mut audit, be, schema) {
         Ok(t) => t,
         Err(e) => {
             audit.write_log();
@@ -1755,6 +1755,9 @@ pub async fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> 
     // Start the write thread
     let server_write_addr =
         QueryServerWriteV1::start(log_tx.clone(), config.log_level, qs, idms_arc);
+
+    // TODO #314: For now we just drop everything from the delayed queue until we rewrite to be async.
+    tokio::spawn(async move { idms_delayed.temp_drop_all().await; });
 
     // Setup timed events associated to the write thread
     let _int_addr = IntervalActor::new(server_write_addr.clone()).start();

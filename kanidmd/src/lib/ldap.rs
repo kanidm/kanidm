@@ -490,7 +490,7 @@ mod tests {
 
     #[test]
     fn test_ldap_simple_bind() {
-        run_idm_test!(|_qs: &QueryServer, idms: &IdmServer, au: &mut AuditScope| {
+        run_idm_test!(|_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed, au: &mut AuditScope| {
             let ldaps = LdapServer::new(au, idms).expect("failed to start ldap");
 
             let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
