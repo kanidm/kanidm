@@ -149,7 +149,10 @@ impl IdmServer {
         }
     }
 
-    pub async fn proxy_write_async<'a>(&'a self, ts: Duration) -> IdmServerProxyWriteTransaction<'a> {
+    pub async fn proxy_write_async<'a>(
+        &'a self,
+        ts: Duration,
+    ) -> IdmServerProxyWriteTransaction<'a> {
         let mut sid = [0; 4];
         let mut rng = StdRng::from_entropy();
         rng.fill(&mut sid);

@@ -2,7 +2,7 @@ use crate::actors::v1_write::QueryServerWriteV1;
 use crate::constants::PURGE_FREQUENCY;
 use crate::event::{PurgeRecycledEvent, PurgeTombstoneEvent};
 
-use tokio::time::{Duration, interval};
+use tokio::time::{interval, Duration};
 
 pub struct IntervalActor;
 
@@ -12,12 +12,13 @@ impl IntervalActor {
             let mut inter = interval(Duration::from_secs(PURGE_FREQUENCY));
             loop {
                 inter.tick().await;
-                server.handle_purgetombstoneevent(
-                    PurgeTombstoneEvent::new()
-                ).await;
-                server.handle_purgerecycledevent(PurgeRecycledEvent::new()).await;
+                server
+                    .handle_purgetombstoneevent(PurgeTombstoneEvent::new())
+                    .await;
+                server
+                    .handle_purgerecycledevent(PurgeRecycledEvent::new())
+                    .await;
             }
         });
     }
 }
-

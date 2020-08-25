@@ -4,13 +4,14 @@
 // This is really only used for long lived, high level types that need clone
 // that otherwise can't be cloned. Think Mutex.
 // use actix::prelude::*;
+use async_std::task;
 use hashbrown::HashMap;
 use std::cell::Cell;
 use std::collections::BTreeSet;
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::sync::{Semaphore, SemaphorePermit};
 use uuid::Uuid;
-use async_std::task;
 
 use crate::audit::AuditScope;
 use crate::be::{Backend, BackendReadTransaction, BackendTransaction, BackendWriteTransaction};
@@ -55,6 +56,41 @@ lazy_static! {
     static ref PVCLASS_ACC: PartialValue = PartialValue::new_class("access_control_create");
     static ref PVCLASS_ACP: PartialValue = PartialValue::new_class("access_control_profile");
     static ref PVACP_ENABLE_FALSE: PartialValue = PartialValue::new_bool(false);
+}
+
+#[derive(Clone)]
+pub struct QueryServer {
+    // log: actix::Addr<EventLog>,
+    s_uuid: Uuid,
+    d_uuid: Uuid,
+    be: Backend,
+    schema: Arc<Schema>,
+    accesscontrols: Arc<AccessControls>,
+    db_tickets: Arc<Semaphore>,
+}
+
+pub struct QueryServerReadTransaction<'a> {
+    be_txn: BackendReadTransaction<'a>,
+    // Anything else? In the future, we'll need to have a schema transaction
+    // type, maybe others?
+    schema: SchemaReadTransaction,
+    accesscontrols: AccessControlsReadTransaction,
+    _db_ticket: SemaphorePermit<'a>,
+}
+
+pub struct QueryServerWriteTransaction<'a> {
+    committed: bool,
+    d_uuid: Uuid,
+    cid: Cid,
+    be_txn: BackendWriteTransaction<'a>,
+    schema: SchemaWriteTransaction<'a>,
+    accesscontrols: AccessControlsWriteTransaction<'a>,
+    // We store a set of flags that indicate we need a reload of
+    // schema or acp, which is tested by checking the classes of the
+    // changing content.
+    changed_schema: Cell<bool>,
+    changed_acp: Cell<bool>,
+    _db_ticket: SemaphorePermit<'a>,
 }
 
 // This is the core of the server. It implements all
@@ -590,14 +626,6 @@ pub trait QueryServerTransaction {
     }
 }
 
-pub struct QueryServerReadTransaction<'a> {
-    be_txn: BackendReadTransaction<'a>,
-    // Anything else? In the future, we'll need to have a schema transaction
-    // type, maybe others?
-    schema: SchemaReadTransaction,
-    accesscontrols: AccessControlsReadTransaction,
-}
-
 // Actually conduct a search request
 // This is the core of the server, as it processes the entire event
 // applies all parts required in order and more.
@@ -662,20 +690,6 @@ impl<'a> QueryServerReadTransaction<'a> {
     }
 }
 
-pub struct QueryServerWriteTransaction<'a> {
-    committed: bool,
-    d_uuid: Uuid,
-    cid: Cid,
-    be_txn: BackendWriteTransaction<'a>,
-    schema: SchemaWriteTransaction<'a>,
-    accesscontrols: AccessControlsWriteTransaction<'a>,
-    // We store a set of flags that indicate we need a reload of
-    // schema or acp, which is tested by checking the classes of the
-    // changing content.
-    changed_schema: Cell<bool>,
-    changed_acp: Cell<bool>,
-}
-
 impl<'a> QueryServerTransaction for QueryServerWriteTransaction<'a> {
     type BackendTransactionType = BackendWriteTransaction<'a>;
 
@@ -701,16 +715,6 @@ struct QueryServerMeta {
     pub max_cid: Cid,
 }
 
-#[derive(Clone)]
-pub struct QueryServer {
-    // log: actix::Addr<EventLog>,
-    s_uuid: Uuid,
-    d_uuid: Uuid,
-    be: Backend,
-    schema: Arc<Schema>,
-    accesscontrols: Arc<AccessControls>,
-}
-
 impl QueryServer {
     pub fn new(be: Backend, schema: Schema) -> Self {
         let (s_uuid, d_uuid) = {
@@ -718,8 +722,11 @@ impl QueryServer {
             (wr.get_db_s_uuid(), wr.get_db_d_uuid())
         };
 
+        let pool_size = be.get_pool_size();
+
         info!("Server ID -> {:?}", s_uuid);
         info!("Domain ID -> {:?}", d_uuid);
+        info!("DB tickets -> {:?}", pool_size);
         // log_event!(log, "Starting query worker ...");
         QueryServer {
             s_uuid,
@@ -727,45 +734,35 @@ impl QueryServer {
             be,
             schema: Arc::new(schema),
             accesscontrols: Arc::new(AccessControls::new()),
+            db_tickets: Arc::new(Semaphore::new(pool_size)),
         }
     }
 
     pub fn read(&self) -> QueryServerReadTransaction {
+        task::block_on(self.read_async())
+    }
+
+    pub async fn read_async<'a>(&'a self) -> QueryServerReadTransaction<'a> {
+        // We need to ensure a db conn will be available
+        let db_ticket = self.db_tickets.acquire().await;
+
         QueryServerReadTransaction {
             be_txn: self.be.read(),
             schema: self.schema.read(),
             accesscontrols: self.accesscontrols.read(),
+            _db_ticket: db_ticket,
         }
     }
 
     pub fn write(&self, ts: Duration) -> QueryServerWriteTransaction {
         // Feed the current schema index metadata to the be write transaction.
-        let schema_write = task::block_on(self.schema.write());
-        let be_txn = self.be.write();
-
-        #[allow(clippy::expect_used)]
-        let ts_max = be_txn.get_db_ts_max(&ts).expect("Unable to get db_ts_max");
-        let cid = Cid::new_lamport(self.s_uuid, self.d_uuid, ts, &ts_max);
-
-        QueryServerWriteTransaction {
-            // I think this is *not* needed, because commit is mut self which should
-            // take ownership of the value, and cause the commit to "only be run
-            // once".
-            //
-            // The commited flag is however used for abort-specific code in drop
-            // which today I don't think we have ... yet.
-            committed: false,
-            d_uuid: self.d_uuid,
-            cid,
-            be_txn,
-            schema: schema_write,
-            accesscontrols: self.accesscontrols.write(),
-            changed_schema: Cell::new(false),
-            changed_acp: Cell::new(false),
-        }
+        task::block_on(self.write_async(ts))
     }
 
     pub async fn write_async<'a>(&'a self, ts: Duration) -> QueryServerWriteTransaction<'a> {
+        // We need to ensure a db conn will be available
+        let db_ticket = self.db_tickets.acquire().await;
+
         // Feed the current schema index metadata to the be write transaction.
         let schema_write = self.schema.write().await;
         let be_txn = self.be.write();
@@ -789,6 +786,7 @@ impl QueryServer {
             accesscontrols: self.accesscontrols.write(),
             changed_schema: Cell::new(false),
             changed_acp: Cell::new(false),
+            _db_ticket: db_ticket,
         }
     }
 

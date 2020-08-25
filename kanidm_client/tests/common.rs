@@ -35,6 +35,8 @@ pub fn run_test(test_fn: fn(KanidmClient) -> ()) {
     config.secure_cookies = false;
     config.integration_test_config = Some(int_config);
     config.log_level = Some(LogLevel::Quiet as u32);
+    config.threads = 1;
+
     // config.log_level = Some(LogLevel::FullTrace as u32);
     thread::spawn(move || {
         // Spawn a thread for the test runner, this should have a unique
@@ -51,8 +53,6 @@ pub fn run_test(test_fn: fn(KanidmClient) -> ()) {
         system.run().expect("Failed to start thread");
     });
     let sctx = rx.recv().unwrap().expect("failed to start ctx");
-    System::set_current(sctx.current());
-
     // Do we need any fixtures?
     // Yes probably, but they'll need to be futures as well ...
     // later we could accept fixture as it's own future for re-use

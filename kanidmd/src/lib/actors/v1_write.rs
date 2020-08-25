@@ -1,6 +1,6 @@
 use crate::audit::AuditScope;
-use tokio::sync::mpsc::UnboundedSender as Sender;
 use std::sync::Arc;
+use tokio::sync::mpsc::UnboundedSender as Sender;
 
 use crate::event::{
     CreateEvent, DeleteEvent, ModifyEvent, PurgeRecycledEvent, PurgeTombstoneEvent,
@@ -355,9 +355,12 @@ impl QueryServerWriteV1 {
         query_server: QueryServer,
         idms: Arc<IdmServer>,
     ) -> &'static QueryServerWriteV1 {
-        let x = Box::new(
-            QueryServerWriteV1::new(log.clone(), log_level, query_server.clone(), idms.clone())
-        );
+        let x = Box::new(QueryServerWriteV1::new(
+            log.clone(),
+            log_level,
+            query_server.clone(),
+            idms.clone(),
+        ));
 
         let x_ptr = Box::leak(x);
         unsafe { &(*x_ptr) }
@@ -1183,7 +1186,10 @@ impl Handler<IdmGroupUnixExtendMessage> for QueryServerWriteV1 {
 }
 
 impl QueryServerWriteV1 {
-    pub async fn handle_idmaccountunixsetcred(&self, msg: IdmAccountUnixSetCredMessage) -> Result<(), OperationError> {
+    pub async fn handle_idmaccountunixsetcred(
+        &self,
+        msg: IdmAccountUnixSetCredMessage,
+    ) -> Result<(), OperationError> {
         let mut audit = AuditScope::new("idm_account_unix_set_cred", msg.eventid, self.log_level);
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write_async(ct).await;

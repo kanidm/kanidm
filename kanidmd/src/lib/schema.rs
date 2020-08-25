@@ -23,12 +23,12 @@ use crate::entry::{Entry, EntryCommitted, EntryInit, EntryNew, EntrySealed};
 use crate::value::{IndexType, PartialValue, SyntaxType, Value};
 use kanidm_proto::v1::{ConsistencyError, OperationError, SchemaError};
 
+use async_std::task;
 use hashbrown::HashMap;
 use hashbrown::HashSet;
 use std::borrow::Borrow;
 use std::collections::BTreeSet;
 use uuid::Uuid;
-use async_std::task;
 
 use concread::cowcell::asynch::*;
 

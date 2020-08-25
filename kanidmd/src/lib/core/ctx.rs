@@ -5,12 +5,8 @@ pub struct ServerCtx {
 }
 
 impl ServerCtx {
-    pub fn new(
-        system: System,
-    ) -> Self {
-        ServerCtx {
-            system,
-        }
+    pub fn new(system: System) -> Self {
+        ServerCtx { system }
     }
 
     pub fn current(&self) -> System {

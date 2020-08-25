@@ -41,6 +41,7 @@ fn run_test(fix_fn: fn(&KanidmClient) -> (), test_fn: fn(CacheLayer, KanidmAsync
     config.secure_cookies = false;
     config.integration_test_config = Some(int_config);
     config.log_level = Some(LogLevel::Quiet as u32);
+    config.threads = 1;
     thread::spawn(move || {
         // Spawn a thread for the test runner, this should have a unique
         // port....
@@ -56,7 +57,6 @@ fn run_test(fix_fn: fn(&KanidmClient) -> (), test_fn: fn(CacheLayer, KanidmAsync
         system.run().expect("Failed to start thread");
     });
     let sctx = rx.recv().unwrap().expect("failed to start ctx");
-    System::set_current(sctx.current());
 
     // Setup the client, and the address we selected.
     let addr = format!("http://127.0.0.1:{}", port);

@@ -1,6 +1,6 @@
 mod ctx;
-mod ldaps;
 mod https;
+mod ldaps;
 // use actix_files as fs;
 use actix::prelude::*;
 use actix_session::CookieSession;
@@ -9,9 +9,9 @@ use actix_web::{cookie, error, middleware, App, HttpServer};
 use libc::umask;
 
 // use crossbeam::channel::unbounded;
-use tokio::sync::mpsc::unbounded_channel as unbounded;
 use std::sync::Arc;
 use time::Duration;
+use tokio::sync::mpsc::unbounded_channel as unbounded;
 
 use crate::config::Configuration;
 
@@ -34,7 +34,6 @@ use crate::utils::duration_from_epoch_now;
 use self::https::*;
 
 use kanidm_proto::v1::OperationError;
-
 
 use async_std::task;
 
@@ -434,9 +433,7 @@ pub async fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> 
 
     // Similar, create a stats task which aggregates statistics from the
     // server as they come in.
-    let status_ref = StatusActor::start(
-        log_tx.clone(), config.log_level
-    );
+    let status_ref = StatusActor::start(log_tx.clone(), config.log_level);
 
     // Setup TLS (if any)
     let opt_tls_params = match setup_tls(&config) {
@@ -531,11 +528,19 @@ pub async fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> 
     );
 
     // Start the write thread
-    let server_write_addr =
-        QueryServerWriteV1::start(log_tx.clone(), config.log_level, qs.clone(), idms_arc.clone());
+    let server_write_addr = QueryServerWriteV1::start(
+        log_tx.clone(),
+        config.log_level,
+        qs.clone(),
+        idms_arc.clone(),
+    );
 
-    let server_write_ref = 
-        QueryServerWriteV1::start_static(log_tx.clone(), config.log_level, qs.clone(), idms_arc.clone());
+    let server_write_ref = QueryServerWriteV1::start_static(
+        log_tx.clone(),
+        config.log_level,
+        qs.clone(),
+        idms_arc.clone(),
+    );
 
     // TODO #314: For now we just drop everything from the delayed queue until we rewrite to be async.
     tokio::spawn(async move {

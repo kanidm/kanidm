@@ -1153,7 +1153,9 @@ pub async fn do_nothing(_session: Session) -> String {
 // We probably need an extract auth or similar to handle the different
 // types (cookie, bearer), and to generic this over get/post.
 
-pub async fn auth((obj, session, state): (Json<AuthRequest>, Session, Data<AppState>)) -> HttpResponse {
+pub async fn auth(
+    (obj, session, state): (Json<AuthRequest>, Session, Data<AppState>),
+) -> HttpResponse {
     // First, deal with some state management.
     // Do anything here first that's needed like getting the session details
     // out of the req cookie.
@@ -1236,8 +1238,9 @@ pub async fn idm_account_set_password(
 
 pub async fn status((_session, state): (Session, Data<AppState>)) -> HttpResponse {
     let (eventid, hvalue) = new_eventid!();
-    let r = state.status.handle_request(StatusRequestEvent { eventid }).await;
-    HttpResponse::Ok()
-        .header("X-KANIDM-OPID", hvalue)
-        .json(r)
+    let r = state
+        .status
+        .handle_request(StatusRequestEvent { eventid })
+        .await;
+    HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r)
 }
