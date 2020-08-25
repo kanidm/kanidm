@@ -1,4 +1,5 @@
-use crossbeam::channel::Sender;
+use tokio::sync::mpsc::UnboundedSender as Sender;
+
 use std::sync::Arc;
 
 use crate::audit::AuditScope;
@@ -184,7 +185,7 @@ impl Message for IdmAccountUnixAuthMessage {
 // ===========================================================
 
 pub struct QueryServerReadV1 {
-    log: Sender<Option<AuditScope>>,
+    log: Sender<AuditScope>,
     log_level: Option<u32>,
     qs: QueryServer,
     idms: Arc<IdmServer>,
@@ -201,7 +202,7 @@ impl Actor for QueryServerReadV1 {
 
 impl QueryServerReadV1 {
     pub fn new(
-        log: Sender<Option<AuditScope>>,
+        log: Sender<AuditScope>,
         log_level: Option<u32>,
         qs: QueryServer,
         idms: Arc<IdmServer>,
@@ -218,7 +219,7 @@ impl QueryServerReadV1 {
     }
 
     pub fn start(
-        log: Sender<Option<AuditScope>>,
+        log: Sender<AuditScope>,
         log_level: Option<u32>,
         query_server: QueryServer,
         idms: Arc<IdmServer>,
@@ -270,7 +271,7 @@ impl Handler<SearchMessage> for QueryServerReadV1 {
             }
         });
         // At the end of the event we send it for logging.
-        self.log.send(Some(audit)).map_err(|_| {
+        self.log.send(audit).map_err(|_| {
             error!("CRITICAL: UNABLE TO COMMIT LOGS");
             OperationError::InvalidState
         })?;
@@ -328,7 +329,7 @@ impl Handler<AuthMessage> for QueryServerReadV1 {
             r.map(|r| r.response())
         });
         // At the end of the event we send it for logging.
-        self.log.send(Some(audit)).map_err(|_| {
+        self.log.send(audit).map_err(|_| {
             error!("CRITICAL: UNABLE TO COMMIT LOGS");
             OperationError::InvalidState
         })?;
@@ -388,7 +389,7 @@ impl Handler<WhoamiMessage> for QueryServerReadV1 {
         });
         // Should we log the final result?
         // At the end of the event we send it for logging.
-        self.log.send(Some(audit)).map_err(|_| {
+        self.log.send(audit).map_err(|_| {
             error!("CRITICAL: UNABLE TO COMMIT LOGS");
             OperationError::InvalidState
         })?;
@@ -425,7 +426,7 @@ impl Handler<InternalSearchMessage> for QueryServerReadV1 {
                 }
             }
         );
-        self.log.send(Some(audit)).map_err(|_| {
+        self.log.send(audit).map_err(|_| {
             error!("CRITICAL: UNABLE TO COMMIT LOGS");
             OperationError::InvalidState
         })?;
@@ -471,7 +472,7 @@ impl Handler<InternalSearchRecycledMessage> for QueryServerReadV1 {
                 }
             }
         );
-        self.log.send(Some(audit)).map_err(|_| {
+        self.log.send(audit).map_err(|_| {
             error!("CRITICAL: UNABLE TO COMMIT LOGS");
             OperationError::InvalidState
         })?;
@@ -530,7 +531,7 @@ impl Handler<InternalRadiusReadMessage> for QueryServerReadV1 {
                 }
             }
         );
-        self.log.send(Some(audit)).map_err(|_| {
+        self.log.send(audit).map_err(|_| {
             error!("CRITICAL: UNABLE TO COMMIT LOGS");
             OperationError::InvalidState
         })?;
@@ -584,7 +585,7 @@ impl Handler<InternalRadiusTokenReadMessage> for QueryServerReadV1 {
                 idm_read.get_radiusauthtoken(&mut audit, &rate)
             }
         );
-        self.log.send(Some(audit)).map_err(|_| {
+        self.log.send(audit).map_err(|_| {
             error!("CRITICAL: UNABLE TO COMMIT LOGS");
             OperationError::InvalidState
         })?;
@@ -640,7 +641,7 @@ impl Handler<InternalUnixUserTokenReadMessage> for QueryServerReadV1 {
                 idm_read.get_unixusertoken(&mut audit, &rate)
             }
         );
-        self.log.send(Some(audit)).map_err(|_| {
+        self.log.send(audit).map_err(|_| {
             error!("CRITICAL: UNABLE TO COMMIT LOGS");
             OperationError::InvalidState
         })?;
@@ -696,7 +697,7 @@ impl Handler<InternalUnixGroupTokenReadMessage> for QueryServerReadV1 {
                 idm_read.get_unixgrouptoken(&mut audit, &rate)
             }
         );
-        self.log.send(Some(audit)).map_err(|_| {
+        self.log.send(audit).map_err(|_| {
             error!("CRITICAL: UNABLE TO COMMIT LOGS");
             OperationError::InvalidState
         })?;
@@ -759,7 +760,7 @@ impl Handler<InternalSshKeyReadMessage> for QueryServerReadV1 {
                 }
             }
         );
-        self.log.send(Some(audit)).map_err(|_| {
+        self.log.send(audit).map_err(|_| {
             error!("CRITICAL: UNABLE TO COMMIT LOGS");
             OperationError::InvalidState
         })?;
@@ -834,7 +835,7 @@ impl Handler<InternalSshKeyTagReadMessage> for QueryServerReadV1 {
                 }
             }
         );
-        self.log.send(Some(audit)).map_err(|_| {
+        self.log.send(audit).map_err(|_| {
             error!("CRITICAL: UNABLE TO COMMIT LOGS");
             OperationError::InvalidState
         })?;
@@ -895,7 +896,7 @@ impl Handler<IdmAccountUnixAuthMessage> for QueryServerReadV1 {
                 r
             }
         );
-        self.log.send(Some(audit)).map_err(|_| {
+        self.log.send(audit).map_err(|_| {
             error!("CRITICAL: UNABLE TO COMMIT LOGS");
             OperationError::InvalidState
         })?;
@@ -946,7 +947,7 @@ impl Handler<LdapRequestMessage> for QueryServerReadV1 {
                     })
             }
         );
-        if self.log.send(Some(audit)).is_err() {
+        if self.log.send(audit).is_err() {
             error!("Unable to commit log -> {:?}", &eventid);
             Some(LdapResponseState::Disconnect(DisconnectionNotice::gen(
                 LdapResultCode::Other,

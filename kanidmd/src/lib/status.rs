@@ -1,5 +1,4 @@
 use crate::audit::AuditScope;
-use actix::prelude::*;
 use tokio::sync::mpsc::UnboundedSender as Sender;
 use uuid::Uuid;
 

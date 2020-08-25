@@ -28,8 +28,9 @@ use hashbrown::HashSet;
 use std::borrow::Borrow;
 use std::collections::BTreeSet;
 use uuid::Uuid;
+use async_std::task;
 
-use concread::cowcell::*;
+use concread::cowcell::asynch::*;
 
 // representations of schema that confines object types, classes
 // and attributes. This ties in deeply with "Entry".
@@ -1409,7 +1410,7 @@ impl Schema {
             unique_cache: CowCell::new(Vec::new()),
             ref_cache: CowCell::new(HashMap::with_capacity(64)),
         };
-        let mut sw = s.write();
+        let mut sw = task::block_on(s.write());
         let r1 = sw.generate_in_memory(audit);
         debug_assert!(r1.is_ok());
         r1?;
@@ -1427,13 +1428,18 @@ impl Schema {
         }
     }
 
-    pub fn write(&self) -> SchemaWriteTransaction {
+    pub async fn write<'a>(&'a self) -> SchemaWriteTransaction<'a> {
         SchemaWriteTransaction {
-            classes: self.classes.write(),
-            attributes: self.attributes.write(),
-            unique_cache: self.unique_cache.write(),
-            ref_cache: self.ref_cache.write(),
+            classes: self.classes.write().await,
+            attributes: self.attributes.write().await,
+            unique_cache: self.unique_cache.write().await,
+            ref_cache: self.ref_cache.write().await,
         }
+    }
+
+    #[cfg(test)]
+    pub fn write_blocking<'a>(&'a self) -> SchemaWriteTransaction<'a> {
+        task::block_on(self.write())
     }
 }
 
@@ -2016,7 +2022,7 @@ mod tests {
         // Check that entries can be normalised and validated sanely
         let mut audit = AuditScope::new("test_schema_entry_validate", uuid::Uuid::new_v4(), None);
         let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
-        let schema = schema_outer.write();
+        let schema = schema_outer.write_blocking();
 
         // Check syntax to upper
         // check index to upper
@@ -2197,7 +2203,7 @@ mod tests {
             None,
         );
         let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
-        let mut schema = schema_outer.write();
+        let mut schema = schema_outer.write_blocking();
 
         assert!(schema.validate(&mut audit).len() == 0);
 

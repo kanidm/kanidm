@@ -19,7 +19,7 @@ macro_rules! run_test_no_init {
 
         let schema_outer = Schema::new(&mut audit).expect("Failed to init schema");
         let idxmeta = {
-            let schema_txn = schema_outer.write();
+            let schema_txn = schema_outer.write_blocking();
             schema_txn.reload_idxmeta()
         };
         let be = match Backend::new(&mut audit, "", 1, FsType::Generic, idxmeta) {
@@ -63,7 +63,7 @@ macro_rules! run_test {
 
         let schema_outer = Schema::new(&mut audit).expect("Failed to init schema");
         let idxmeta = {
-            let schema_txn = schema_outer.write();
+            let schema_txn = schema_outer.write_blocking();
             schema_txn.reload_idxmeta()
         };
         let be = match Backend::new(&mut audit, "", 1, FsType::Generic, idxmeta) {
@@ -134,7 +134,7 @@ macro_rules! run_idm_test {
 
         let schema_outer = Schema::new(&mut audit).expect("Failed to init schema");
         let idxmeta = {
-            let schema_txn = schema_outer.write();
+            let schema_txn = schema_outer.write_blocking();
             schema_txn.reload_idxmeta()
         };
         let be =

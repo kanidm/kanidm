@@ -3,15 +3,14 @@ mod ldaps;
 mod https;
 // use actix_files as fs;
 use actix::prelude::*;
-use actix_session::{CookieSession, Session};
-use actix_web::web::{self, Data, HttpResponse, Json, Path};
+use actix_session::CookieSession;
+use actix_web::web::{self, HttpResponse};
 use actix_web::{cookie, error, middleware, App, HttpServer};
 use libc::umask;
 
 // use crossbeam::channel::unbounded;
 use tokio::sync::mpsc::unbounded_channel as unbounded;
 use std::sync::Arc;
-use std::thread;
 use time::Duration;
 
 use crate::config::Configuration;
@@ -19,50 +18,31 @@ use crate::config::Configuration;
 // SearchResult
 use self::ctx::ServerCtx;
 use crate::actors::v1_read::QueryServerReadV1;
-use crate::actors::v1_read::{
-    AuthMessage, IdmAccountUnixAuthMessage, InternalRadiusReadMessage,
-    InternalRadiusTokenReadMessage, InternalSearchMessage, InternalSearchRecycledMessage,
-    InternalSshKeyReadMessage, InternalSshKeyTagReadMessage, InternalUnixGroupTokenReadMessage,
-    InternalUnixUserTokenReadMessage, SearchMessage, WhoamiMessage,
-};
 use crate::actors::v1_write::QueryServerWriteV1;
-use crate::actors::v1_write::{
-    AppendAttributeMessage, CreateMessage, DeleteMessage, IdmAccountPersonExtendMessage,
-    IdmAccountSetPasswordMessage, IdmAccountUnixExtendMessage, IdmAccountUnixSetCredMessage,
-    IdmGroupUnixExtendMessage, InternalCredentialSetMessage, InternalDeleteMessage,
-    InternalRegenerateRadiusMessage, InternalSshKeyCreateMessage, ModifyMessage,
-    PurgeAttributeMessage, RemoveAttributeValueMessage, ReviveRecycledMessage, SetAttributeMessage,
-};
 use crate::async_log;
 use crate::audit::AuditScope;
 use crate::be::{Backend, BackendTransaction, FsType};
 use crate::crypto::setup_tls;
-use crate::filter::{Filter, FilterInvalid};
 use crate::idm::server::{IdmServer, IdmServerDelayed};
 use crate::interval::IntervalActor;
 use crate::ldap::LdapServer;
 use crate::schema::Schema;
 use crate::server::QueryServer;
-use crate::status::{StatusActor, StatusRequestEvent};
+use crate::status::StatusActor;
 use crate::utils::duration_from_epoch_now;
-use crate::value::PartialValue;
 
 use self::https::*;
 
-use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::OperationError;
-use kanidm_proto::v1::{
-    AccountUnixExtend, AuthRequest, AuthState, CreateRequest, DeleteRequest, GroupUnixExtend,
-    ModifyRequest, SearchRequest, SetCredentialRequest, SingleStringRequest, UserAuthToken,
-};
 
-use uuid::Uuid;
+
+use async_std::task;
 
 // === internal setup helpers
 
 fn setup_backend(config: &Configuration, schema: &Schema) -> Result<Backend, OperationError> {
     // Limit the scope of the schema txn.
-    let schema_txn = schema.write();
+    let schema_txn = task::block_on(schema.write());
     let idxmeta = schema_txn.reload_idxmeta();
 
     let mut audit_be = AuditScope::new("backend_setup", uuid::Uuid::new_v4(), config.log_level);

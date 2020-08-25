@@ -36,6 +36,8 @@ use tokio::sync::mpsc::{
     unbounded_channel as unbounded, UnboundedReceiver as Receiver, UnboundedSender as Sender,
 };
 
+use async_std::task;
+
 use concread::bptree::{BptreeMap, BptreeMapWriteTxn};
 use rand::prelude::*;
 use std::time::Duration;
@@ -137,10 +139,25 @@ impl IdmServer {
         let mut sid = [0; 4];
         let mut rng = StdRng::from_entropy();
         rng.fill(&mut sid);
+        let qs_write = task::block_on(self.qs.write_async(ts));
 
         IdmServerProxyWriteTransaction {
             mfareg_sessions: self.mfareg_sessions.write(),
-            qs_write: self.qs.write(ts),
+            qs_write,
+            sid,
+            crypto_policy: &self.crypto_policy,
+        }
+    }
+
+    pub async fn proxy_write_async<'a>(&'a self, ts: Duration) -> IdmServerProxyWriteTransaction<'a> {
+        let mut sid = [0; 4];
+        let mut rng = StdRng::from_entropy();
+        rng.fill(&mut sid);
+        let qs_write = self.qs.write_async(ts).await;
+
+        IdmServerProxyWriteTransaction {
+            mfareg_sessions: self.mfareg_sessions.write(),
+            qs_write,
             sid,
             crypto_policy: &self.crypto_policy,
         }

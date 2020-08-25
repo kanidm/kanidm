@@ -4,15 +4,14 @@ use openssl::ssl::{SslAcceptor, SslAcceptorBuilder};
 
 use futures_util::sink::SinkExt;
 use futures_util::stream::StreamExt;
-use ldap3_server::simple::*;
+// use ldap3_server::simple::*;
 use ldap3_server::LdapCodec;
 // use std::convert::TryFrom;
-use std::io;
 use std::marker::Unpin;
 use std::net;
 use std::str::FromStr;
-use tokio::io::{AsyncRead, AsyncWrite, WriteHalf};
-use tokio::net::{TcpListener, TcpStream};
+use tokio::io::{AsyncRead, AsyncWrite};
+use tokio::net::{TcpListener};
 use tokio_util::codec::{FramedRead, FramedWrite};
 use uuid::Uuid;
 
@@ -34,7 +33,7 @@ impl LdapSession {
 async fn client_process<W: AsyncWrite + Unpin, R: AsyncRead + Unpin>(
     mut r: FramedRead<R, LdapCodec>,
     mut w: FramedWrite<W, LdapCodec>,
-    paddr: net::SocketAddr,
+    _paddr: net::SocketAddr,
     qe_r: Addr<QueryServerReadV1>,
 ) {
     // This is a connected client session. we need to associate some state to the
