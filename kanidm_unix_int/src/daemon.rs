@@ -218,7 +218,7 @@ async fn handle_client(
     Ok(())
 }
 
-#[tokio::main]
+#[tokio::main(core_threads = 1, max_threads = 1)]
 async fn main() {
     let cuid = get_current_uid();
     let ceuid = get_effective_uid();

@@ -295,6 +295,13 @@ async fn main() {
         Opt::Server(_sopt) => {
             eprintln!("Running in server mode ...");
 
+            /*
+            let mut rt = tokio::runtime::Builder::new()
+                .threaded_scheduler()
+                .build()
+                .unwrap();
+            */
+
             let sctx = create_server_core(config).await;
             match sctx {
                 Ok(sctx) => match tokio::signal::ctrl_c().await {
