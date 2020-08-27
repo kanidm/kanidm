@@ -36,6 +36,7 @@ pub struct AppState {
     pub qe_w: Addr<QueryServerWriteV1>,
     pub status: &'static StatusActor,
     pub qe_w_ref: &'static QueryServerWriteV1,
+    pub qe_r_ref: &'static QueryServerReadV1,
 }
 
 pub fn get_current_user(session: &Session) -> Option<UserAuthToken> {
@@ -91,28 +92,6 @@ macro_rules! json_event_post {
         }
     }};
 }
-
-macro_rules! json_event_get {
-    ($session:expr, $state:expr, $message_type:ty) => {{
-        // Get current auth data - remember, the QS checks if the
-        // none/some is okay, because it's too hard to make it work here
-        // with all the async parts.
-        let uat = get_current_user(&$session);
-        let (eventid, hvalue) = new_eventid!();
-
-        // New event, feed current auth data from the token to it.
-        let obj = <$message_type>::new(uat, eventid);
-
-        match $state.qe_r.send(obj).await {
-            Ok(Ok(r)) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
-            Ok(Err(e)) => operation_error_to_response(e, hvalue),
-            Err(_) => HttpResponse::InternalServerError()
-                .header("X-KANIDM-OPID", hvalue)
-                .json("mailbox failure"),
-        }
-    }};
-}
-
 // Handle the various end points we need to expose
 
 pub async fn create(
@@ -140,7 +119,16 @@ pub async fn search(
 }
 
 pub async fn whoami((session, state): (Session, Data<AppState>)) -> HttpResponse {
-    json_event_get!(session, state, WhoamiMessage)
+    let uat = get_current_user(&session);
+    let (eventid, hvalue) = new_eventid!();
+
+    // New event, feed current auth data from the token to it.
+    let obj = WhoamiMessage { uat, eventid };
+
+    match state.qe_r_ref.handle_whoami(obj).await {
+        Ok(r) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
+        Err(e) => operation_error_to_response(e, hvalue),
+    }
 }
 
 // =============== REST generics ========================
@@ -647,14 +635,11 @@ pub async fn account_post_id_ssh_pubkey(
         eventid,
     };
     // Add a msg here
-    match state.qe_w.send(m_obj).await {
-        Ok(Ok(())) => HttpResponse::Ok()
+    match state.qe_w_ref.handle_sshkeycreate(m_obj).await {
+        Ok(()) => HttpResponse::Ok()
             .header("X-KANIDM-OPID", hvalue)
             .json(true),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
+        Err(e) => operation_error_to_response(e, hvalue),
     }
 }
 
@@ -792,14 +777,11 @@ pub async fn account_post_id_person_extend(
         uuid_or_name,
         eventid,
     };
-    match state.qe_w.send(m_obj).await {
-        Ok(Ok(())) => HttpResponse::Ok()
+    match state.qe_w_ref.handle_idmaccountpersonextend(m_obj).await {
+        Ok(()) => HttpResponse::Ok()
             .header("X-KANIDM-OPID", hvalue)
             .json(true),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
+        Err(e) => operation_error_to_response(e, hvalue),
     }
 }
 
@@ -815,14 +797,11 @@ pub async fn account_post_id_unix(
     let id = path.into_inner();
     let (eventid, hvalue) = new_eventid!();
     let m_obj = IdmAccountUnixExtendMessage::new(uat, id, obj.into_inner(), eventid);
-    match state.qe_w.send(m_obj).await {
-        Ok(Ok(())) => HttpResponse::Ok()
+    match state.qe_w_ref.handle_idmaccountunixextend(m_obj).await {
+        Ok(()) => HttpResponse::Ok()
             .header("X-KANIDM-OPID", hvalue)
             .json(true),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
+        Err(e) => operation_error_to_response(e, hvalue),
     }
 }
 
@@ -1011,14 +990,11 @@ pub async fn group_post_id_unix(
     let id = path.into_inner();
     let (eventid, hvalue) = new_eventid!();
     let m_obj = IdmGroupUnixExtendMessage::new(uat, id, &obj, eventid);
-    match state.qe_w.send(m_obj).await {
-        Ok(Ok(())) => HttpResponse::Ok()
+    match state.qe_w_ref.handle_idmgroupunixextend(m_obj).await {
+        Ok(()) => HttpResponse::Ok()
             .header("X-KANIDM-OPID", hvalue)
             .json(true),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
+        Err(e) => operation_error_to_response(e, hvalue),
     }
 }
 
@@ -1181,11 +1157,11 @@ pub async fn auth(
     // invalid.
     match state
         // This may change in the future ...
-        .qe_r
-        .send(auth_msg)
+        .qe_r_ref
+        .handle_auth(auth_msg)
         .await
     {
-        Ok(Ok(ar)) => {
+        Ok(ar) => {
             match &ar.state {
                 AuthState::Success(uat) => {
                     // Remove the auth-session-id
@@ -1216,10 +1192,7 @@ pub async fn auth(
                 }
             }
         }
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
+        Err(e) => operation_error_to_response(e, hvalue),
     }
 }
 

@@ -30,7 +30,8 @@ use std::borrow::Borrow;
 use std::collections::BTreeSet;
 use uuid::Uuid;
 
-use concread::cowcell::asynch::*;
+// use concread::cowcell::asynch::*;
+use concread::cowcell::*;
 
 // representations of schema that confines object types, classes
 // and attributes. This ties in deeply with "Entry".
@@ -1410,7 +1411,8 @@ impl Schema {
             unique_cache: CowCell::new(Vec::new()),
             ref_cache: CowCell::new(HashMap::with_capacity(64)),
         };
-        let mut sw = task::block_on(s.write());
+        // let mut sw = task::block_on(s.write());
+        let mut sw = s.write();
         let r1 = sw.generate_in_memory(audit);
         debug_assert!(r1.is_ok());
         r1?;
@@ -1428,6 +1430,21 @@ impl Schema {
         }
     }
 
+    pub fn write<'a>(&'a self) -> SchemaWriteTransaction<'a> {
+        SchemaWriteTransaction {
+            classes: self.classes.write(),
+            attributes: self.attributes.write(),
+            unique_cache: self.unique_cache.write(),
+            ref_cache: self.ref_cache.write(),
+        }
+    }
+
+    #[cfg(test)]
+    pub fn write_blocking<'a>(&'a self) -> SchemaWriteTransaction<'a> {
+        self.write()
+    }
+
+    /*
     pub async fn write<'a>(&'a self) -> SchemaWriteTransaction<'a> {
         SchemaWriteTransaction {
             classes: self.classes.write().await,
@@ -1441,6 +1458,7 @@ impl Schema {
     pub fn write_blocking<'a>(&'a self) -> SchemaWriteTransaction<'a> {
         task::block_on(self.write())
     }
+    */
 }
 
 #[cfg(test)]

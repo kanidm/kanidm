@@ -41,7 +41,8 @@ use async_std::task;
 
 fn setup_backend(config: &Configuration, schema: &Schema) -> Result<Backend, OperationError> {
     // Limit the scope of the schema txn.
-    let schema_txn = task::block_on(schema.write());
+    // let schema_txn = task::block_on(schema.write());
+    let schema_txn = schema.write();
     let idxmeta = schema_txn.reload_idxmeta();
 
     let mut audit_be = AuditScope::new("backend_setup", uuid::Uuid::new_v4(), config.log_level);
@@ -527,6 +528,14 @@ pub async fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> 
         config.threads,
     );
 
+    let server_read_ref = QueryServerReadV1::start_static(
+        log_tx.clone(),
+        config.log_level,
+        qs.clone(),
+        idms_arc.clone(),
+        ldap_arc.clone(),
+    );
+
     // Start the write thread
     let server_write_addr = QueryServerWriteV1::start(
         log_tx.clone(),
@@ -582,6 +591,7 @@ pub async fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> 
                 qe_w: server_write_addr.clone(),
                 status: status_ref,
                 qe_w_ref: server_write_ref,
+                qe_r_ref: server_read_ref,
             })
             .wrap(middleware::Logger::default())
             .wrap(

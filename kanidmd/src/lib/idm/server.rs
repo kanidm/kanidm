@@ -29,12 +29,15 @@ use kanidm_proto::v1::SetCredentialResponse;
 use kanidm_proto::v1::UnixGroupToken;
 use kanidm_proto::v1::UnixUserToken;
 
+use std::sync::Arc;
+
 // use crossbeam::channel::{unbounded, Sender, Receiver, TryRecvError};
 #[cfg(test)]
 use tokio::sync::mpsc::error::TryRecvError;
 use tokio::sync::mpsc::{
     unbounded_channel as unbounded, UnboundedReceiver as Receiver, UnboundedSender as Sender,
 };
+use tokio::sync::{Semaphore, SemaphorePermit};
 
 use async_std::task;
 
@@ -48,6 +51,7 @@ pub struct IdmServer {
     // means that limits to sessions can be easily applied and checked to
     // variaous accounts, and we have a good idea of how to structure the
     // in memory caches related to locking.
+    session_ticket: Arc<Semaphore>,
     sessions: BptreeMap<Uuid, AuthSession>,
     // Keep a set of inprogress mfa registrations
     mfareg_sessions: BptreeMap<Uuid, MfaRegSession>,
@@ -63,6 +67,7 @@ pub struct IdmServerWriteTransaction<'a> {
     // Contains methods that require writes, but in the context of writing to
     // the idm in memory structures (maybe the query server too). This is
     // things like authentication
+    _session_ticket: SemaphorePermit<'a>,
     sessions: BptreeMapWriteTxn<'a, Uuid, AuthSession>,
     pub qs_read: QueryServerReadTransaction<'a>,
     // thread/server id
@@ -105,6 +110,7 @@ impl IdmServer {
         let (async_tx, async_rx) = unbounded();
         (
             IdmServer {
+                session_ticket: Arc::new(Semaphore::new(1)),
                 sessions: BptreeMap::new(),
                 mfareg_sessions: BptreeMap::new(),
                 qs,
@@ -116,37 +122,38 @@ impl IdmServer {
     }
 
     pub fn write(&self) -> IdmServerWriteTransaction {
+        task::block_on(self.write_async())
+    }
+
+    pub async fn write_async<'a>(&'a self) -> IdmServerWriteTransaction<'a> {
         let mut sid = [0; 4];
         let mut rng = StdRng::from_entropy();
         rng.fill(&mut sid);
 
+        let qs_read = self.qs.read_async().await;
+        let session_ticket = self.session_ticket.acquire().await;
+
         IdmServerWriteTransaction {
+            _session_ticket: session_ticket,
             sessions: self.sessions.write(),
-            // qs: &self.qs,
-            qs_read: self.qs.read(),
+            qs_read,
             sid,
             async_tx: self.async_tx.clone(),
         }
     }
 
-    pub fn proxy_read(&self) -> IdmServerProxyReadTransaction {
+    pub fn proxy_read<'a>(&'a self) -> IdmServerProxyReadTransaction<'a> {
+        task::block_on(self.proxy_read_async())
+    }
+
+    pub async fn proxy_read_async<'a>(&'a self) -> IdmServerProxyReadTransaction<'a> {
         IdmServerProxyReadTransaction {
-            qs_read: self.qs.read(),
+            qs_read: self.qs.read_async().await,
         }
     }
 
     pub fn proxy_write(&self, ts: Duration) -> IdmServerProxyWriteTransaction {
-        let mut sid = [0; 4];
-        let mut rng = StdRng::from_entropy();
-        rng.fill(&mut sid);
-        let qs_write = task::block_on(self.qs.write_async(ts));
-
-        IdmServerProxyWriteTransaction {
-            mfareg_sessions: self.mfareg_sessions.write(),
-            qs_write,
-            sid,
-            crypto_policy: &self.crypto_policy,
-        }
+        task::block_on(self.proxy_write_async(ts))
     }
 
     pub async fn proxy_write_async<'a>(

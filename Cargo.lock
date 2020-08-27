@@ -788,7 +788,6 @@ dependencies = [
  "parking_lot 0.10.2",
  "rand",
  "smallvec",
- "tokio",
 ]
 
 [[package]]

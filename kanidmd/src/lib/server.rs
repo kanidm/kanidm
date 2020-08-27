@@ -67,6 +67,7 @@ pub struct QueryServer {
     schema: Arc<Schema>,
     accesscontrols: Arc<AccessControls>,
     db_tickets: Arc<Semaphore>,
+    write_ticket: Arc<Semaphore>,
 }
 
 pub struct QueryServerReadTransaction<'a> {
@@ -91,6 +92,7 @@ pub struct QueryServerWriteTransaction<'a> {
     changed_schema: Cell<bool>,
     changed_acp: Cell<bool>,
     _db_ticket: SemaphorePermit<'a>,
+    _write_ticket: SemaphorePermit<'a>,
 }
 
 // This is the core of the server. It implements all
@@ -735,6 +737,7 @@ impl QueryServer {
             schema: Arc::new(schema),
             accesscontrols: Arc::new(AccessControls::new()),
             db_tickets: Arc::new(Semaphore::new(pool_size)),
+            write_ticket: Arc::new(Semaphore::new(1)),
         }
     }
 
@@ -762,9 +765,11 @@ impl QueryServer {
     pub async fn write_async<'a>(&'a self, ts: Duration) -> QueryServerWriteTransaction<'a> {
         // We need to ensure a db conn will be available
         let db_ticket = self.db_tickets.acquire().await;
+        // Guarantee we are the only writer on the thread pool
+        let write_ticket = self.write_ticket.acquire().await;
 
-        // Feed the current schema index metadata to the be write transaction.
-        let schema_write = self.schema.write().await;
+        // let schema_write = self.schema.write().await;
+        let schema_write = self.schema.write();
         let be_txn = self.be.write();
 
         #[allow(clippy::expect_used)]
@@ -787,6 +792,7 @@ impl QueryServer {
             changed_schema: Cell::new(false),
             changed_acp: Cell::new(false),
             _db_ticket: db_ticket,
+            _write_ticket: write_ticket,
         }
     }
 

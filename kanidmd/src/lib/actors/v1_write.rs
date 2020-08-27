@@ -1,4 +1,5 @@
 use crate::audit::AuditScope;
+use std::iter;
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender as Sender;
 
@@ -403,41 +404,43 @@ impl QueryServerWriteV1 {
             .and_then(|_| qs_write.commit(audit).map(|_| ()))
     }
 
-    fn modify_from_internal_parts(
-        &mut self,
+    async fn modify_from_internal_parts(
+        &self,
         audit: &mut AuditScope,
+        audit_tag: &str,
         uat: Option<UserAuthToken>,
         uuid_or_name: &str,
         ml: &ModifyList<ModifyInvalid>,
         filter: Filter<FilterInvalid>,
     ) -> Result<(), OperationError> {
-        let qs_write = self.qs.write(duration_from_epoch_now());
+        let qs_write = self.qs.write_async(duration_from_epoch_now()).await;
+        lperf_op_segment!(audit, audit_tag, || {
+            let target_uuid = qs_write.name_to_uuid(audit, uuid_or_name).map_err(|e| {
+                ladmin_error!(audit, "Error resolving id to target");
+                e
+            })?;
 
-        let target_uuid = qs_write.name_to_uuid(audit, uuid_or_name).map_err(|e| {
-            ladmin_error!(audit, "Error resolving id to target");
-            e
-        })?;
+            let mdf = match ModifyEvent::from_internal_parts(
+                audit,
+                uat.as_ref(),
+                target_uuid,
+                ml,
+                filter,
+                &qs_write,
+            ) {
+                Ok(m) => m,
+                Err(e) => {
+                    ladmin_error!(audit, "Failed to begin modify: {:?}", e);
+                    return Err(e);
+                }
+            };
 
-        let mdf = match ModifyEvent::from_internal_parts(
-            audit,
-            uat.as_ref(),
-            target_uuid,
-            ml,
-            filter,
-            &qs_write,
-        ) {
-            Ok(m) => m,
-            Err(e) => {
-                ladmin_error!(audit, "Failed to begin modify: {:?}", e);
-                return Err(e);
-            }
-        };
+            ltrace!(audit, "Begin modify event {:?}", mdf);
 
-        ltrace!(audit, "Begin modify event {:?}", mdf);
-
-        qs_write
-            .modify(audit, &mdf)
-            .and_then(|_| qs_write.commit(audit).map(|_| ()))
+            qs_write
+                .modify(audit, &mdf)
+                .and_then(|_| qs_write.commit(audit).map(|_| ()))
+        })
     }
 }
 
@@ -1018,10 +1021,11 @@ impl Handler<SetAttributeMessage> for QueryServerWriteV1 {
     }
 }
 
-impl Handler<InternalSshKeyCreateMessage> for QueryServerWriteV1 {
-    type Result = Result<(), OperationError>;
-
-    fn handle(&mut self, msg: InternalSshKeyCreateMessage, _: &mut Self::Context) -> Self::Result {
+impl QueryServerWriteV1 {
+    pub async fn handle_sshkeycreate(
+        &self,
+        msg: InternalSshKeyCreateMessage,
+    ) -> Result<(), OperationError> {
         let InternalSshKeyCreateMessage {
             uat,
             uuid_or_name,
@@ -1031,72 +1035,72 @@ impl Handler<InternalSshKeyCreateMessage> for QueryServerWriteV1 {
             eventid,
         } = msg;
         let mut audit = AuditScope::new("internal_sshkey_create", eventid, self.log_level);
-        let res = lperf_op_segment!(
-            &mut audit,
-            "actors::v1_write::handle<InternalSshKeyCreateMessage>",
-            || {
-                // Because this is from internal, we can generate a real modlist, rather
-                // than relying on the proto ones.
-                let ml = ModifyList::new_append("ssh_publickey", Value::new_sshkey(tag, key));
+        // Because this is from internal, we can generate a real modlist, rather
+        // than relying on the proto ones.
+        let ml = ModifyList::new_append("ssh_publickey", Value::new_sshkey(tag, key));
 
-                self.modify_from_internal_parts(&mut audit, uat, &uuid_or_name, &ml, filter)
-            }
-        );
+        let res = self
+            .modify_from_internal_parts(
+                &mut audit,
+                "actors::v1_write::handle<InternalSshKeyCreateMessage>",
+                uat,
+                &uuid_or_name,
+                &ml,
+                filter,
+            )
+            .await;
         self.log.send(audit).map_err(|_| {
             error!("CRITICAL: UNABLE TO COMMIT LOGS");
             OperationError::InvalidState
         })?;
         res
     }
-}
 
-impl Handler<IdmAccountPersonExtendMessage> for QueryServerWriteV1 {
-    type Result = Result<(), OperationError>;
-
-    fn handle(
-        &mut self,
+    pub async fn handle_idmaccountpersonextend(
+        &self,
         msg: IdmAccountPersonExtendMessage,
-        _: &mut Self::Context,
-    ) -> Self::Result {
+    ) -> Result<(), OperationError> {
         let IdmAccountPersonExtendMessage {
             uat,
             uuid_or_name,
             eventid,
         } = msg;
         let mut audit = AuditScope::new("idm_account_person_extend", eventid, self.log_level);
-        let res = lperf_op_segment!(
-            &mut audit,
-            "actors::v1_write::handle<IdmAccountPersonExtendMessage>",
-            || {
-                // The filter_map here means we only create the mods if the gidnumber or shell are set
-                // in the actual request.
-                let mods: Vec<_> = vec![Some(Modify::Present(
-                    "class".to_string(),
-                    Value::new_class("person"),
-                ))]
-                .into_iter()
-                .filter_map(|v| v)
-                .collect();
+        // The filter_map here means we only create the mods if the gidnumber or shell are set
+        // in the actual request.
+        // NOTE: This is an iter for future requirements to be added
+        let mods: Vec<_> = iter::once(Some(Modify::Present(
+            "class".to_string(),
+            Value::new_class("person"),
+        )))
+        .filter_map(|v| v)
+        .collect();
 
-                let ml = ModifyList::new_list(mods);
+        let ml = ModifyList::new_list(mods);
 
-                let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
+        let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
 
-                self.modify_from_internal_parts(&mut audit, uat, &uuid_or_name, &ml, filter)
-            }
-        );
+        let res = self
+            .modify_from_internal_parts(
+                &mut audit,
+                "actors::v1_write::handle<IdmAccountPersonExtendMessage>",
+                uat,
+                &uuid_or_name,
+                &ml,
+                filter,
+            )
+            .await;
         self.log.send(audit).map_err(|_| {
             error!("CRITICAL: UNABLE TO COMMIT LOGS");
             OperationError::InvalidState
         })?;
         res
     }
-}
 
-impl Handler<IdmAccountUnixExtendMessage> for QueryServerWriteV1 {
-    type Result = Result<(), OperationError>;
-
-    fn handle(&mut self, msg: IdmAccountUnixExtendMessage, _: &mut Self::Context) -> Self::Result {
+    pub async fn handle_idmaccountunixextend(
+        &self,
+        msg: IdmAccountUnixExtendMessage,
+    ) -> Result<(), OperationError> {
         let IdmAccountUnixExtendMessage {
             uat,
             uuid_or_name,
@@ -1105,46 +1109,46 @@ impl Handler<IdmAccountUnixExtendMessage> for QueryServerWriteV1 {
             eventid,
         } = msg;
         let mut audit = AuditScope::new("idm_account_unix_extend", eventid, self.log_level);
-        let res = lperf_op_segment!(
-            &mut audit,
-            "actors::v1_write::handle<IdmAccountUnixExtendMessage>",
-            || {
-                // The filter_map here means we only create the mods if the gidnumber or shell are set
-                // in the actual request.
-                let mods: Vec<_> = vec![
-                    Some(Modify::Present(
-                        "class".to_string(),
-                        Value::new_class("posixaccount"),
-                    )),
-                    gidnumber
-                        .map(|n| Modify::Present("gidnumber".to_string(), Value::new_uint32(n))),
-                    shell.map(|s| {
-                        Modify::Present("loginshell".to_string(), Value::new_iutf8(s.as_str()))
-                    }),
-                ]
-                .into_iter()
-                .filter_map(|v| v)
-                .collect();
+        // The filter_map here means we only create the mods if the gidnumber or shell are set
+        // in the actual request.
+        let mods: Vec<_> = iter::once(Some(Modify::Present(
+            "class".to_string(),
+            Value::new_class("posixaccount"),
+        )))
+        .chain(iter::once(gidnumber.map(|n| {
+            Modify::Present("gidnumber".to_string(), Value::new_uint32(n))
+        })))
+        .chain(iter::once(shell.map(|s| {
+            Modify::Present("loginshell".to_string(), Value::new_iutf8(s.as_str()))
+        })))
+        .filter_map(|v| v)
+        .collect();
 
-                let ml = ModifyList::new_list(mods);
+        let ml = ModifyList::new_list(mods);
 
-                let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
+        let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
 
-                self.modify_from_internal_parts(&mut audit, uat, &uuid_or_name, &ml, filter)
-            }
-        );
+        let res = self
+            .modify_from_internal_parts(
+                &mut audit,
+                "actors::v1_write::handle<IdmAccountUnixExtendMessage>",
+                uat,
+                &uuid_or_name,
+                &ml,
+                filter,
+            )
+            .await;
         self.log.send(audit).map_err(|_| {
             error!("CRITICAL: UNABLE TO COMMIT LOGS");
             OperationError::InvalidState
         })?;
         res
     }
-}
 
-impl Handler<IdmGroupUnixExtendMessage> for QueryServerWriteV1 {
-    type Result = Result<(), OperationError>;
-
-    fn handle(&mut self, msg: IdmGroupUnixExtendMessage, _: &mut Self::Context) -> Self::Result {
+    pub async fn handle_idmgroupunixextend(
+        &self,
+        msg: IdmGroupUnixExtendMessage,
+    ) -> Result<(), OperationError> {
         let IdmGroupUnixExtendMessage {
             uat,
             uuid_or_name,
@@ -1152,40 +1156,39 @@ impl Handler<IdmGroupUnixExtendMessage> for QueryServerWriteV1 {
             eventid,
         } = msg;
         let mut audit = AuditScope::new("idm_group_unix_extend", eventid, self.log_level);
-        let res = lperf_op_segment!(
-            &mut audit,
-            "actors::v1_write::handle<IdmGroupUnixExtendMessage>",
-            || {
-                // The filter_map here means we only create the mods if the gidnumber or shell are set
-                // in the actual request.
-                let mods: Vec<_> = vec![
-                    Some(Modify::Present(
-                        "class".to_string(),
-                        Value::new_class("posixgroup"),
-                    )),
-                    gidnumber
-                        .map(|n| Modify::Present("gidnumber".to_string(), Value::new_uint32(n))),
-                ]
-                .into_iter()
-                .filter_map(|v| v)
-                .collect();
+        // The filter_map here means we only create the mods if the gidnumber or shell are set
+        // in the actual request.
+        let mods: Vec<_> = iter::once(Some(Modify::Present(
+            "class".to_string(),
+            Value::new_class("posixgroup"),
+        )))
+        .chain(iter::once(gidnumber.map(|n| {
+            Modify::Present("gidnumber".to_string(), Value::new_uint32(n))
+        })))
+        .filter_map(|v| v)
+        .collect();
 
-                let ml = ModifyList::new_list(mods);
+        let ml = ModifyList::new_list(mods);
 
-                let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
+        let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
 
-                self.modify_from_internal_parts(&mut audit, uat, &uuid_or_name, &ml, filter)
-            }
-        );
+        let res = self
+            .modify_from_internal_parts(
+                &mut audit,
+                "actors::v1_write::handle<IdmGroupUnixExtendMessage>",
+                uat,
+                &uuid_or_name,
+                &ml,
+                filter,
+            )
+            .await;
         self.log.send(audit).map_err(|_| {
             error!("CRITICAL: UNABLE TO COMMIT LOGS");
             OperationError::InvalidState
         })?;
         res
     }
-}
 
-impl QueryServerWriteV1 {
     pub async fn handle_idmaccountunixsetcred(
         &self,
         msg: IdmAccountUnixSetCredMessage,

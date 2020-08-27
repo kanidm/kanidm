@@ -41,16 +41,6 @@ pub struct WhoamiMessage {
     pub eventid: Uuid,
 }
 
-impl WhoamiMessage {
-    pub fn new(uat: Option<UserAuthToken>, eventid: Uuid) -> Self {
-        WhoamiMessage { uat, eventid }
-    }
-}
-
-impl Message for WhoamiMessage {
-    type Result = Result<WhoamiResponse, OperationError>;
-}
-
 #[derive(Debug)]
 pub struct AuthMessage {
     pub sessionid: Option<Uuid>,
@@ -236,6 +226,25 @@ impl QueryServerReadV1 {
             )
         })
     }
+
+    pub fn start_static(
+        log: Sender<AuditScope>,
+        log_level: Option<u32>,
+        query_server: QueryServer,
+        idms: Arc<IdmServer>,
+        ldap: Arc<LdapServer>,
+    ) -> &'static Self {
+        let x = Box::new(QueryServerReadV1::new(
+            log.clone(),
+            log_level,
+            query_server.clone(),
+            idms.clone(),
+            ldap.clone(),
+        ));
+
+        let x_ref = Box::leak(x);
+        unsafe { &(*x_ref) }
+    }
 }
 
 // The server only recieves "Message" structures, which
@@ -279,24 +288,20 @@ impl Handler<SearchMessage> for QueryServerReadV1 {
     }
 }
 
-impl Handler<AuthMessage> for QueryServerReadV1 {
-    type Result = Result<AuthResponse, OperationError>;
-
-    fn handle(&mut self, msg: AuthMessage, _: &mut Self::Context) -> Self::Result {
+impl QueryServerReadV1 {
+    pub async fn handle_auth(&self, msg: AuthMessage) -> Result<AuthResponse, OperationError> {
         // This is probably the first function that really implements logic
         // "on top" of the db server concept. In this case we check if
         // the credentials provided is sufficient to say if someone is
         // "authenticated" or not.
         let mut audit = AuditScope::new("auth", msg.eventid, self.log_level);
+        let mut idm_write = self.idms.write_async().await;
         let res = lperf_op_segment!(&mut audit, "actors::v1_read::handle<AuthMessage>", || {
             lsecurity!(audit, "Begin auth event {:?}", msg);
 
             // Destructure it.
             // Convert the AuthRequest to an AuthEvent that the idm server
             // can use.
-
-            let mut idm_write = self.idms.write();
-
             let ae = AuthEvent::from_message(msg).map_err(|e| {
                 ladmin_error!(audit, "Failed to parse AuthEvent -> {:?}", e);
                 e
@@ -337,16 +342,16 @@ impl Handler<AuthMessage> for QueryServerReadV1 {
     }
 }
 
-impl Handler<WhoamiMessage> for QueryServerReadV1 {
-    type Result = Result<WhoamiResponse, OperationError>;
-
-    fn handle(&mut self, msg: WhoamiMessage, _: &mut Self::Context) -> Self::Result {
+impl QueryServerReadV1 {
+    pub async fn handle_whoami(
+        &self,
+        msg: WhoamiMessage,
+    ) -> Result<WhoamiResponse, OperationError> {
         let mut audit = AuditScope::new("whoami", msg.eventid, self.log_level);
+        // TODO #62: Move this to IdmServer!!!
+        // Begin a read
+        let qs_read = self.qs.read_async().await;
         let res = lperf_op_segment!(&mut audit, "actors::v1_read::handle<WhoamiMessage>", || {
-            // TODO #62: Move this to IdmServer!!!
-            // Begin a read
-            let qs_read = self.qs.read();
-
             // Make an event from the whoami request. This will process the event and
             // generate a selfuuid search.
             //
