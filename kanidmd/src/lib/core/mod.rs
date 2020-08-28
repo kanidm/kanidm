@@ -7,7 +7,8 @@ use libc::umask;
 
 // use crossbeam::channel::unbounded;
 use std::sync::Arc;
-use time::Duration;
+use time::Duration as TDuration;
+use std::time::Duration;
 use tokio::sync::mpsc::unbounded_channel as unbounded;
 
 use crate::config::Configuration;
@@ -564,6 +565,22 @@ pub async fn create_server_core(config: Configuration) -> Result<actix_server::S
     // domain will come from the qs now!
     let cookie_key: [u8; 32] = config.cookie_key;
 
+
+    let mut tserver = tide::Server::new();
+
+    // Add middleware?
+    tserver.with(
+        tide::sessions::SessionMiddleware::new(
+            tide::sessions::MemoryStore::new(),
+            &cookie_key)
+            .with_cookie_name("kanidm-session")
+            .with_same_site_policy(
+                 tide::http::cookies::SameSite::Strict
+            )
+            .with_session_ttl(Some(Duration::from_secs(3600)))
+    );
+
+
     // start the web server
     let server = HttpServer::new(move || {
         App::new()
@@ -589,7 +606,7 @@ pub async fn create_server_core(config: Configuration) -> Result<actix_server::S
                     // if true, only allow to https
                     .secure(secure_cookies)
                     // TODO #63: make this configurable!
-                    .max_age_time(Duration::hours(1)),
+                    .max_age_time(TDuration::hours(1)),
             )
             // .service(fs::Files::new("/static", "./static"))
             // Even though this says "CreateRequest", it's actually configuring *ALL* json requests.

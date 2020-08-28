@@ -33,7 +33,10 @@ actix-rt = "1.0"
 actix-web = { version = "2.0", features = ["openssl"] }
 actix-server = "1.0"
 actix-session = "0.3"
+cookie = "0.14"
 # actix-files = "0.2"
+
+tide = "0.13"
 
 async-std = "1.6"
 
@@ -43,7 +46,6 @@ rand = "0.7"
 toml = "0.5"
 
 chrono = "0.4"
-cookie = "0.14"
 regex = "1"
 lazy_static = "1.2.0"
 
