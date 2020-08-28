@@ -68,5 +68,5 @@ pub fn run_test(test_fn: fn(KanidmClient) -> ()) {
 
     // We DO NOT need teardown, as sqlite is in mem
     // let the tables hit the floor
-    sctx.stop();
+    async_std::task::block_on(sctx.stop(true));
 }

@@ -15,8 +15,6 @@ use tokio::net::TcpListener;
 use tokio_util::codec::{FramedRead, FramedWrite};
 use uuid::Uuid;
 
-use actix::prelude::Addr;
-
 struct LdapSession {
     uat: Option<LdapBoundToken>,
 }
@@ -34,7 +32,7 @@ async fn client_process<W: AsyncWrite + Unpin, R: AsyncRead + Unpin>(
     mut r: FramedRead<R, LdapCodec>,
     mut w: FramedWrite<W, LdapCodec>,
     _paddr: net::SocketAddr,
-    qe_r: Addr<QueryServerReadV1>,
+    qe_r_ref: &'static QueryServerReadV1,
 ) {
     // This is a connected client session. we need to associate some state to the
     // session
@@ -45,8 +43,8 @@ async fn client_process<W: AsyncWrite + Unpin, R: AsyncRead + Unpin>(
         // Start the event
         let eventid = Uuid::new_v4();
         let uat = session.uat.clone();
-        let qs_result = qe_r
-            .send(LdapRequestMessage {
+        let qs_result = qe_r_ref
+            .handle_ldaprequest(LdapRequestMessage {
                 eventid,
                 protomsg,
                 uat,
@@ -54,32 +52,32 @@ async fn client_process<W: AsyncWrite + Unpin, R: AsyncRead + Unpin>(
             .await;
 
         match qs_result {
-            Ok(Some(LdapResponseState::Unbind)) => return,
-            Ok(Some(LdapResponseState::Disconnect(rmsg))) => {
+            Some(LdapResponseState::Unbind) => return,
+            Some(LdapResponseState::Disconnect(rmsg)) => {
                 if let Err(_) = w.send(rmsg).await {
                     break;
                 }
                 break;
             }
-            Ok(Some(LdapResponseState::Bind(uat, rmsg))) => {
+            Some(LdapResponseState::Bind(uat, rmsg)) => {
                 session.uat = Some(uat);
                 if let Err(_) = w.send(rmsg).await {
                     break;
                 }
             }
-            Ok(Some(LdapResponseState::Respond(rmsg))) => {
+            Some(LdapResponseState::Respond(rmsg)) => {
                 if let Err(_) = w.send(rmsg).await {
                     break;
                 }
             }
-            Ok(Some(LdapResponseState::MultiPartResponse(v))) => {
+            Some(LdapResponseState::MultiPartResponse(v)) => {
                 for rmsg in v.into_iter() {
                     if let Err(_) = w.send(rmsg).await {
                         break;
                     }
                 }
             }
-            Ok(Some(LdapResponseState::BindMultiPartResponse(uat, v))) => {
+            Some(LdapResponseState::BindMultiPartResponse(uat, v)) => {
                 session.uat = Some(uat);
                 for rmsg in v.into_iter() {
                     if let Err(_) = w.send(rmsg).await {
@@ -87,7 +85,7 @@ async fn client_process<W: AsyncWrite + Unpin, R: AsyncRead + Unpin>(
                     }
                 }
             }
-            Ok(None) | Err(_) => {
+            None => {
                 error!("Internal server error");
                 break;
             }
@@ -99,7 +97,7 @@ async fn client_process<W: AsyncWrite + Unpin, R: AsyncRead + Unpin>(
 async fn tls_acceptor(
     mut listener: TcpListener,
     tls_parms: SslAcceptor,
-    qe_r: Addr<QueryServerReadV1>,
+    qe_r_ref: &'static QueryServerReadV1,
 ) {
     // Do we need to do the silly ssl leak?
     loop {
@@ -116,8 +114,7 @@ async fn tls_acceptor(
                 let (r, w) = tokio::io::split(tlsstream);
                 let r = FramedRead::new(r, LdapCodec);
                 let w = FramedWrite::new(w, LdapCodec);
-                let cqe_r = qe_r.clone();
-                tokio::spawn(client_process(r, w, paddr, cqe_r));
+                tokio::spawn(client_process(r, w, paddr, qe_r_ref));
             }
             Err(e) => {
                 error!("acceptor error, continuing -> {:?}", e);
@@ -126,16 +123,15 @@ async fn tls_acceptor(
     }
 }
 
-async fn acceptor(mut listener: TcpListener, qe_r: Addr<QueryServerReadV1>) {
+async fn acceptor(mut listener: TcpListener, qe_r_ref: &'static QueryServerReadV1) {
     loop {
         match listener.accept().await {
             Ok((tcpstream, paddr)) => {
-                let cqe_r = qe_r.clone();
                 let (r, w) = tokio::io::split(tcpstream);
                 let r = FramedRead::new(r, LdapCodec);
                 let w = FramedWrite::new(w, LdapCodec);
                 // Let it rip.
-                tokio::spawn(client_process(r, w, paddr, cqe_r));
+                tokio::spawn(client_process(r, w, paddr, qe_r_ref));
             }
             Err(e) => {
                 error!("acceptor error, continuing -> {:?}", e);
@@ -147,7 +143,7 @@ async fn acceptor(mut listener: TcpListener, qe_r: Addr<QueryServerReadV1>) {
 pub(crate) async fn create_ldap_server(
     address: &str,
     opt_tls_params: Option<SslAcceptorBuilder>,
-    qe_r: Addr<QueryServerReadV1>,
+    qe_r_ref: &'static QueryServerReadV1,
 ) -> Result<(), ()> {
     let addr = net::SocketAddr::from_str(address).map_err(|e| {
         eprintln!("Could not parse ldap server address {} -> {:?}", address, e);
@@ -164,11 +160,11 @@ pub(crate) async fn create_ldap_server(
         Some(tls_params) => {
             info!("Starting LDAPS interface ldaps://{} ...", address);
             let tls_parms = tls_params.build();
-            tokio::spawn(tls_acceptor(listener, tls_parms, qe_r));
+            tokio::spawn(tls_acceptor(listener, tls_parms, qe_r_ref));
         }
         None => {
             info!("Starting LDAP interface ldap://{} ...", address);
-            tokio::spawn(acceptor(listener, qe_r));
+            tokio::spawn(acceptor(listener, qe_r_ref));
         }
     }
 

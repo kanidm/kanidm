@@ -26,4 +26,4 @@ tokio = "0.2"
 actix = "0.9"
 kanidm = { path = "../kanidmd" }
 futures = "0.3"
-# async-std = "1.6"
+async-std = "1.6"

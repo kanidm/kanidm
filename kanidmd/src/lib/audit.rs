@@ -1,4 +1,3 @@
-use actix::prelude::*;
 use std::fmt;
 // use std::ptr;
 use std::cmp::Ordering;
@@ -437,13 +436,6 @@ pub struct AuditScope {
     // active perf event
     #[serde(skip_serializing)]
     active_perf: Option<&'static mut PerfEvent>,
-}
-
-// unsafe impl Sync for AuditScope {}
-
-// Allow us to be sent to the log subsystem
-impl Message for AuditScope {
-    type Result = ();
 }
 
 impl AuditScope {

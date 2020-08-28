@@ -95,7 +95,7 @@ fn run_test(fix_fn: fn(&KanidmClient) -> (), test_fn: fn(CacheLayer, KanidmAsync
 
     // We DO NOT need teardown, as sqlite is in mem
     // let the tables hit the floor
-    sctx.stop();
+    task::block_on(sctx.stop(true));
 }
 
 fn test_fixture(rsclient: &KanidmClient) -> () {

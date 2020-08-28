@@ -39,6 +39,7 @@ use tokio::sync::mpsc::{
 };
 use tokio::sync::{Semaphore, SemaphorePermit};
 
+#[cfg(test)]
 use async_std::task;
 
 use concread::bptree::{BptreeMap, BptreeMapWriteTxn};
@@ -121,6 +122,7 @@ impl IdmServer {
         )
     }
 
+    #[cfg(test)]
     pub fn write(&self) -> IdmServerWriteTransaction {
         task::block_on(self.write_async())
     }
@@ -130,8 +132,8 @@ impl IdmServer {
         let mut rng = StdRng::from_entropy();
         rng.fill(&mut sid);
 
-        let qs_read = self.qs.read_async().await;
         let session_ticket = self.session_ticket.acquire().await;
+        let qs_read = self.qs.read_async().await;
 
         IdmServerWriteTransaction {
             _session_ticket: session_ticket,
@@ -142,6 +144,7 @@ impl IdmServer {
         }
     }
 
+    #[cfg(test)]
     pub fn proxy_read<'a>(&'a self) -> IdmServerProxyReadTransaction<'a> {
         task::block_on(self.proxy_read_async())
     }
@@ -152,6 +155,7 @@ impl IdmServer {
         }
     }
 
+    #[cfg(test)]
     pub fn proxy_write(&self, ts: Duration) -> IdmServerProxyWriteTransaction {
         task::block_on(self.proxy_write_async(ts))
     }
@@ -173,6 +177,7 @@ impl IdmServer {
         }
     }
 
+    #[cfg(test)]
     pub(crate) fn delayed_action(
         &self,
         au: &mut AuditScope,

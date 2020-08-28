@@ -741,6 +741,7 @@ impl QueryServer {
         }
     }
 
+    #[cfg(test)]
     pub fn read(&self) -> QueryServerReadTransaction {
         task::block_on(self.read_async())
     }
@@ -757,6 +758,7 @@ impl QueryServer {
         }
     }
 
+    #[cfg(test)]
     pub fn write(&self, ts: Duration) -> QueryServerWriteTransaction {
         // Feed the current schema index metadata to the be write transaction.
         task::block_on(self.write_async(ts))
@@ -812,7 +814,7 @@ impl QueryServer {
         // reloading to occur, which causes the idxmeta to update, and allows validation
         // of the schema in the subsequent steps as we proceed.
 
-        let reindex_write_1 = self.write(ts);
+        let reindex_write_1 = task::block_on(self.write_async(ts));
         reindex_write_1
             .upgrade_reindex(audit, SYSTEM_INDEX_VERSION)
             .and_then(|_| reindex_write_1.commit(audit))?;
@@ -826,19 +828,19 @@ impl QueryServer {
         // the schema to tell us what's indexed), but because we have the in
         // mem schema that defines how schema is structuded, and this is all
         // marked "system", then we won't have an issue here.
-        let ts_write_1 = self.write(ts);
+        let ts_write_1 = task::block_on(self.write_async(ts));
         ts_write_1
             .initialise_schema_core(audit)
             .and_then(|_| ts_write_1.commit(audit))?;
 
-        let ts_write_2 = self.write(ts);
+        let ts_write_2 = task::block_on(self.write_async(ts));
         ts_write_2
             .initialise_schema_idm(audit)
             .and_then(|_| ts_write_2.commit(audit))?;
 
         // reindex and set to version + 1, this way when we bump the version
         // we are essetially pushing this version id back up to step write_1
-        let reindex_write_2 = self.write(ts);
+        let reindex_write_2 = task::block_on(self.write_async(ts));
         reindex_write_2
             .upgrade_reindex(audit, SYSTEM_INDEX_VERSION + 1)
             .and_then(|_| reindex_write_2.commit(audit))?;
@@ -851,7 +853,7 @@ impl QueryServer {
         // the indexing subsystem is schema/value agnostic - the fact the values still let their keys
         // be extracted, means that the pres indexes will be valid even though the entries are pending
         // migration. We must be sure to NOT use EQ/SUB indexes in the migration code however!
-        let migrate_txn = self.write(ts);
+        let migrate_txn = task::block_on(self.write_async(ts));
         // If we are "in the process of being setup" this is 0, and the migrations will have no
         // effect as ... there is nothing to migrate! It allows reset of the version to 0 to force
         // db migrations to take place.
@@ -869,7 +871,7 @@ impl QueryServer {
         migrate_txn.commit(audit)?;
         // Migrations complete. Init idm will now set the version as needed.
 
-        let ts_write_3 = self.write(ts);
+        let ts_write_3 = task::block_on(self.write_async(ts));
         ts_write_3
             .initialise_idm(audit)
             .and_then(|_| ts_write_3.commit(audit))?;
@@ -879,7 +881,7 @@ impl QueryServer {
     }
 
     pub fn verify(&self, au: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
-        let r_txn = self.read();
+        let r_txn = task::block_on(self.read_async());
         r_txn.verify(au)
     }
 }

@@ -307,11 +307,11 @@ async fn main() {
                 Ok(sctx) => match tokio::signal::ctrl_c().await {
                     Ok(_) => {
                         eprintln!("Ctrl-C received, shutting down");
-                        sctx.stop()
+                        sctx.stop(true).await;
                     }
                     Err(_) => {
                         eprintln!("Invalid signal received, shutting down as a precaution ...");
-                        sctx.stop()
+                        sctx.stop(true).await;
                     }
                 },
                 Err(_) => {

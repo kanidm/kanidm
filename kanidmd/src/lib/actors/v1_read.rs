@@ -22,7 +22,6 @@ use kanidm_proto::v1::{
     UserAuthToken, WhoamiResponse,
 };
 
-use actix::prelude::*;
 use std::time::SystemTime;
 use uuid::Uuid;
 
@@ -58,10 +57,6 @@ impl AuthMessage {
     }
 }
 
-impl Message for AuthMessage {
-    type Result = Result<AuthResponse, OperationError>;
-}
-
 pub struct SearchMessage {
     pub uat: Option<UserAuthToken>,
     pub req: SearchRequest,
@@ -74,19 +69,11 @@ impl SearchMessage {
     }
 }
 
-impl Message for SearchMessage {
-    type Result = Result<SearchResponse, OperationError>;
-}
-
 pub struct InternalSearchMessage {
     pub uat: Option<UserAuthToken>,
     pub filter: Filter<FilterInvalid>,
     pub attrs: Option<Vec<String>>,
     pub eventid: Uuid,
-}
-
-impl Message for InternalSearchMessage {
-    type Result = Result<Vec<ProtoEntry>, OperationError>;
 }
 
 pub struct InternalSearchRecycledMessage {
@@ -96,18 +83,10 @@ pub struct InternalSearchRecycledMessage {
     pub eventid: Uuid,
 }
 
-impl Message for InternalSearchRecycledMessage {
-    type Result = Result<Vec<ProtoEntry>, OperationError>;
-}
-
 pub struct InternalRadiusReadMessage {
     pub uat: Option<UserAuthToken>,
     pub uuid_or_name: String,
     pub eventid: Uuid,
-}
-
-impl Message for InternalRadiusReadMessage {
-    type Result = Result<Option<String>, OperationError>;
 }
 
 pub struct InternalRadiusTokenReadMessage {
@@ -116,18 +95,10 @@ pub struct InternalRadiusTokenReadMessage {
     pub eventid: Uuid,
 }
 
-impl Message for InternalRadiusTokenReadMessage {
-    type Result = Result<RadiusAuthToken, OperationError>;
-}
-
 pub struct InternalUnixUserTokenReadMessage {
     pub uat: Option<UserAuthToken>,
     pub uuid_or_name: String,
     pub eventid: Uuid,
-}
-
-impl Message for InternalUnixUserTokenReadMessage {
-    type Result = Result<UnixUserToken, OperationError>;
 }
 
 pub struct InternalUnixGroupTokenReadMessage {
@@ -136,18 +107,10 @@ pub struct InternalUnixGroupTokenReadMessage {
     pub eventid: Uuid,
 }
 
-impl Message for InternalUnixGroupTokenReadMessage {
-    type Result = Result<UnixGroupToken, OperationError>;
-}
-
 pub struct InternalSshKeyReadMessage {
     pub uat: Option<UserAuthToken>,
     pub uuid_or_name: String,
     pub eventid: Uuid,
-}
-
-impl Message for InternalSshKeyReadMessage {
-    type Result = Result<Vec<String>, OperationError>;
 }
 
 pub struct InternalSshKeyTagReadMessage {
@@ -157,10 +120,6 @@ pub struct InternalSshKeyTagReadMessage {
     pub eventid: Uuid,
 }
 
-impl Message for InternalSshKeyTagReadMessage {
-    type Result = Result<Option<String>, OperationError>;
-}
-
 pub struct IdmAccountUnixAuthMessage {
     pub uat: Option<UserAuthToken>,
     pub uuid_or_name: String,
@@ -168,8 +127,10 @@ pub struct IdmAccountUnixAuthMessage {
     pub eventid: Uuid,
 }
 
-impl Message for IdmAccountUnixAuthMessage {
-    type Result = Result<Option<UnixUserToken>, OperationError>;
+pub struct LdapRequestMessage {
+    pub eventid: Uuid,
+    pub protomsg: LdapMsg,
+    pub uat: Option<LdapBoundToken>,
 }
 
 // ===========================================================
@@ -180,14 +141,6 @@ pub struct QueryServerReadV1 {
     qs: QueryServer,
     idms: Arc<IdmServer>,
     ldap: Arc<LdapServer>,
-}
-
-impl Actor for QueryServerReadV1 {
-    type Context = SyncContext<Self>;
-
-    fn started(&mut self, _ctx: &mut Self::Context) {
-        // ctx.set_mailbox_capacity(1 << 31);
-    }
 }
 
 impl QueryServerReadV1 {
@@ -208,25 +161,6 @@ impl QueryServerReadV1 {
         }
     }
 
-    pub fn start(
-        log: Sender<AuditScope>,
-        log_level: Option<u32>,
-        query_server: QueryServer,
-        idms: Arc<IdmServer>,
-        ldap: Arc<LdapServer>,
-        threads: usize,
-    ) -> actix::Addr<QueryServerReadV1> {
-        SyncArbiter::start(threads, move || {
-            QueryServerReadV1::new(
-                log.clone(),
-                log_level,
-                query_server.clone(),
-                idms.clone(),
-                ldap.clone(),
-            )
-        })
-    }
-
     pub fn start_static(
         log: Sender<AuditScope>,
         log_level: Option<u32>,
@@ -245,22 +179,20 @@ impl QueryServerReadV1 {
         let x_ref = Box::leak(x);
         unsafe { &(*x_ref) }
     }
-}
 
-// The server only recieves "Message" structures, which
-// are whole self contained DB operations with all parsing
-// required complete. We still need to do certain validation steps, but
-// at this point our just is just to route to do_<action>
+    // The server only recieves "Message" structures, which
+    // are whole self contained DB operations with all parsing
+    // required complete. We still need to do certain validation steps, but
+    // at this point our just is just to route to do_<action>
 
-impl Handler<SearchMessage> for QueryServerReadV1 {
-    type Result = Result<SearchResponse, OperationError>;
-
-    fn handle(&mut self, msg: SearchMessage, _: &mut Self::Context) -> Self::Result {
+    pub async fn handle_search(
+        &self,
+        msg: SearchMessage,
+    ) -> Result<SearchResponse, OperationError> {
         let mut audit = AuditScope::new("search", msg.eventid, self.log_level);
+        // Begin a read
+        let qs_read = self.qs.read_async().await;
         let res = lperf_op_segment!(&mut audit, "actors::v1_read::handle<SearchMessage>", || {
-            // Begin a read
-            let qs_read = self.qs.read();
-
             // Make an event from the request
             let srch = match SearchEvent::from_message(&mut audit, msg, &qs_read) {
                 Ok(s) => s,
@@ -286,9 +218,7 @@ impl Handler<SearchMessage> for QueryServerReadV1 {
         })?;
         res
     }
-}
 
-impl QueryServerReadV1 {
     pub async fn handle_auth(&self, msg: AuthMessage) -> Result<AuthResponse, OperationError> {
         // This is probably the first function that really implements logic
         // "on top" of the db server concept. In this case we check if
@@ -340,9 +270,7 @@ impl QueryServerReadV1 {
         })?;
         res
     }
-}
 
-impl QueryServerReadV1 {
     pub async fn handle_whoami(
         &self,
         msg: WhoamiMessage,
@@ -400,19 +328,17 @@ impl QueryServerReadV1 {
         })?;
         res
     }
-}
 
-impl Handler<InternalSearchMessage> for QueryServerReadV1 {
-    type Result = Result<Vec<ProtoEntry>, OperationError>;
-
-    fn handle(&mut self, msg: InternalSearchMessage, _: &mut Self::Context) -> Self::Result {
+    pub async fn handle_internalsearch(
+        &self,
+        msg: InternalSearchMessage,
+    ) -> Result<Vec<ProtoEntry>, OperationError> {
         let mut audit = AuditScope::new("internal_search_message", msg.eventid, self.log_level);
+        let qs_read = self.qs.read_async().await;
         let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_read::handle<InternalSearchMessage>",
             || {
-                let qs_read = self.qs.read();
-
                 // Make an event from the request
                 let srch = match SearchEvent::from_internal_message(&mut audit, msg, &qs_read) {
                     Ok(s) => s,
@@ -437,27 +363,22 @@ impl Handler<InternalSearchMessage> for QueryServerReadV1 {
         })?;
         res
     }
-}
 
-impl Handler<InternalSearchRecycledMessage> for QueryServerReadV1 {
-    type Result = Result<Vec<ProtoEntry>, OperationError>;
-
-    fn handle(
-        &mut self,
+    pub async fn handle_internalsearchrecycled(
+        &self,
         msg: InternalSearchRecycledMessage,
-        _: &mut Self::Context,
-    ) -> Self::Result {
+    ) -> Result<Vec<ProtoEntry>, OperationError> {
         let mut audit = AuditScope::new(
             "internal_search_recycle_message",
             msg.eventid,
             self.log_level,
         );
+        let qs_read = self.qs.read_async().await;
+
         let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_read::handle<InternalSearchRecycledMessage>",
             || {
-                let qs_read = self.qs.read();
-
                 // Make an event from the request
                 let srch =
                     match SearchEvent::from_internal_recycle_message(&mut audit, msg, &qs_read) {
@@ -483,20 +404,18 @@ impl Handler<InternalSearchRecycledMessage> for QueryServerReadV1 {
         })?;
         res
     }
-}
 
-impl Handler<InternalRadiusReadMessage> for QueryServerReadV1 {
-    type Result = Result<Option<String>, OperationError>;
-
-    fn handle(&mut self, msg: InternalRadiusReadMessage, _: &mut Self::Context) -> Self::Result {
+    pub async fn handle_internalradiusread(
+        &self,
+        msg: InternalRadiusReadMessage,
+    ) -> Result<Option<String>, OperationError> {
         let mut audit =
             AuditScope::new("internal_radius_read_message", msg.eventid, self.log_level);
+        let qs_read = self.qs.read_async().await;
         let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_read::handle<InternalRadiusReadMessage>",
             || {
-                let qs_read = self.qs.read();
-
                 let target_uuid = qs_read
                     .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
                     .map_err(|e| {
@@ -542,27 +461,22 @@ impl Handler<InternalRadiusReadMessage> for QueryServerReadV1 {
         })?;
         res
     }
-}
 
-impl Handler<InternalRadiusTokenReadMessage> for QueryServerReadV1 {
-    type Result = Result<RadiusAuthToken, OperationError>;
-
-    fn handle(
-        &mut self,
+    pub async fn handle_internalradiustokenread(
+        &self,
         msg: InternalRadiusTokenReadMessage,
-        _: &mut Self::Context,
-    ) -> Self::Result {
+    ) -> Result<RadiusAuthToken, OperationError> {
         let mut audit = AuditScope::new(
             "internal_radius_token_read_message",
             msg.eventid,
             self.log_level,
         );
+        let mut idm_read = self.idms.proxy_read_async().await;
+
         let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_read::handle<InternalRadiusTokenReadMessage>",
             || {
-                let mut idm_read = self.idms.proxy_read();
-
                 let target_uuid = idm_read
                     .qs_read
                     .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
@@ -596,27 +510,22 @@ impl Handler<InternalRadiusTokenReadMessage> for QueryServerReadV1 {
         })?;
         res
     }
-}
 
-impl Handler<InternalUnixUserTokenReadMessage> for QueryServerReadV1 {
-    type Result = Result<UnixUserToken, OperationError>;
-
-    fn handle(
-        &mut self,
+    pub async fn handle_internalunixusertokenread(
+        &self,
         msg: InternalUnixUserTokenReadMessage,
-        _: &mut Self::Context,
-    ) -> Self::Result {
+    ) -> Result<UnixUserToken, OperationError> {
         let mut audit = AuditScope::new(
             "internal_unix_token_read_message",
             msg.eventid,
             self.log_level,
         );
+        let mut idm_read = self.idms.proxy_read_async().await;
+
         let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_read::handle<InternalUnixUserTokenReadMessage>",
             || {
-                let mut idm_read = self.idms.proxy_read();
-
                 let target_uuid = Uuid::parse_str(msg.uuid_or_name.as_str()).or_else(|_| {
                     idm_read
                         .qs_read
@@ -652,27 +561,21 @@ impl Handler<InternalUnixUserTokenReadMessage> for QueryServerReadV1 {
         })?;
         res
     }
-}
 
-impl Handler<InternalUnixGroupTokenReadMessage> for QueryServerReadV1 {
-    type Result = Result<UnixGroupToken, OperationError>;
-
-    fn handle(
-        &mut self,
+    pub async fn handle_internalunixgrouptokenread(
+        &self,
         msg: InternalUnixGroupTokenReadMessage,
-        _: &mut Self::Context,
-    ) -> Self::Result {
+    ) -> Result<UnixGroupToken, OperationError> {
         let mut audit = AuditScope::new(
             "internal_unixgroup_token_read_message",
             msg.eventid,
             self.log_level,
         );
+        let mut idm_read = self.idms.proxy_read_async().await;
         let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_read::handle<InternalUnixGroupTokenReadMessage>",
             || {
-                let mut idm_read = self.idms.proxy_read();
-
                 let target_uuid = Uuid::parse_str(msg.uuid_or_name.as_str()).or_else(|_| {
                     idm_read
                         .qs_read
@@ -708,20 +611,18 @@ impl Handler<InternalUnixGroupTokenReadMessage> for QueryServerReadV1 {
         })?;
         res
     }
-}
 
-impl Handler<InternalSshKeyReadMessage> for QueryServerReadV1 {
-    type Result = Result<Vec<String>, OperationError>;
-
-    fn handle(&mut self, msg: InternalSshKeyReadMessage, _: &mut Self::Context) -> Self::Result {
+    pub async fn handle_internalsshkeyread(
+        &self,
+        msg: InternalSshKeyReadMessage,
+    ) -> Result<Vec<String>, OperationError> {
         let mut audit =
             AuditScope::new("internal_sshkey_read_message", msg.eventid, self.log_level);
+        let qs_read = self.qs.read_async().await;
         let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_read::handle<InternalSshKeyReadMessage>",
             || {
-                let qs_read = self.qs.read();
-
                 let target_uuid = qs_read
                     .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
                     .map_err(|e| {
@@ -771,12 +672,11 @@ impl Handler<InternalSshKeyReadMessage> for QueryServerReadV1 {
         })?;
         res
     }
-}
 
-impl Handler<InternalSshKeyTagReadMessage> for QueryServerReadV1 {
-    type Result = Result<Option<String>, OperationError>;
-
-    fn handle(&mut self, msg: InternalSshKeyTagReadMessage, _: &mut Self::Context) -> Self::Result {
+    pub async fn handle_internalsshkeytagread(
+        &self,
+        msg: InternalSshKeyTagReadMessage,
+    ) -> Result<Option<String>, OperationError> {
         let InternalSshKeyTagReadMessage {
             uat,
             uuid_or_name,
@@ -785,12 +685,11 @@ impl Handler<InternalSshKeyTagReadMessage> for QueryServerReadV1 {
         } = msg;
         let mut audit =
             AuditScope::new("internal_sshkey_tag_read_message", eventid, self.log_level);
+        let qs_read = self.qs.read_async().await;
         let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_read::handle<InternalSshKeyTagReadMessage>",
             || {
-                let qs_read = self.qs.read();
-
                 let target_uuid = qs_read
                     .name_to_uuid(&mut audit, uuid_or_name.as_str())
                     .map_err(|e| {
@@ -846,19 +745,17 @@ impl Handler<InternalSshKeyTagReadMessage> for QueryServerReadV1 {
         })?;
         res
     }
-}
 
-impl Handler<IdmAccountUnixAuthMessage> for QueryServerReadV1 {
-    type Result = Result<Option<UnixUserToken>, OperationError>;
-
-    fn handle(&mut self, msg: IdmAccountUnixAuthMessage, _: &mut Self::Context) -> Self::Result {
+    pub async fn handle_idmaccountunixauth(
+        &self,
+        msg: IdmAccountUnixAuthMessage,
+    ) -> Result<Option<UnixUserToken>, OperationError> {
         let mut audit = AuditScope::new("idm_account_unix_auth", msg.eventid, self.log_level);
+        let mut idm_write = self.idms.write_async().await;
         let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_read::handle<IdmAccountUnixAuthMessage>",
             || {
-                let mut idm_write = self.idms.write();
-
                 // resolve the id
                 let target_uuid = Uuid::parse_str(msg.uuid_or_name.as_str()).or_else(|_| {
                     idm_write
@@ -907,51 +804,42 @@ impl Handler<IdmAccountUnixAuthMessage> for QueryServerReadV1 {
         })?;
         res
     }
-}
 
-#[derive(Message)]
-#[rtype(result = "Option<LdapResponseState>")]
-pub struct LdapRequestMessage {
-    pub eventid: Uuid,
-    pub protomsg: LdapMsg,
-    pub uat: Option<LdapBoundToken>,
-}
-
-impl Handler<LdapRequestMessage> for QueryServerReadV1 {
-    type Result = Option<LdapResponseState>;
-
-    fn handle(&mut self, msg: LdapRequestMessage, _: &mut Self::Context) -> Self::Result {
+    pub async fn handle_ldaprequest(&self, msg: LdapRequestMessage) -> Option<LdapResponseState> {
         let LdapRequestMessage {
             eventid,
             protomsg,
             uat,
         } = msg;
         let mut audit = AuditScope::new("ldap_request_message", eventid, self.log_level);
+
+        /*
         let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_read::handle<LdapRequestMessage>",
             || {
-                let server_op = match ServerOps::try_from(protomsg) {
-                    Ok(v) => v,
-                    Err(_) => {
-                        return LdapResponseState::Disconnect(DisconnectionNotice::gen(
-                            LdapResultCode::ProtocolError,
-                            format!("Invalid Request {:?}", &eventid).as_str(),
-                        ));
-                    }
-                };
-
-                self.ldap
-                    .do_op(&mut audit, &self.idms, server_op, uat, &eventid)
-                    .unwrap_or_else(|e| {
-                        ladmin_error!(&mut audit, "do_op failed -> {:?}", e);
-                        LdapResponseState::Disconnect(DisconnectionNotice::gen(
-                            LdapResultCode::Other,
-                            format!("Internal Server Error {:?}", &eventid).as_str(),
-                        ))
-                    })
+        */
+        let res = match ServerOps::try_from(protomsg) {
+            Ok(server_op) => self
+                .ldap
+                .do_op(&mut audit, &self.idms, server_op, uat, &eventid)
+                .await
+                .unwrap_or_else(|e| {
+                    ladmin_error!(&mut audit, "do_op failed -> {:?}", e);
+                    LdapResponseState::Disconnect(DisconnectionNotice::gen(
+                        LdapResultCode::Other,
+                        format!("Internal Server Error {:?}", &eventid).as_str(),
+                    ))
+                }),
+            Err(_) => LdapResponseState::Disconnect(DisconnectionNotice::gen(
+                LdapResultCode::ProtocolError,
+                format!("Invalid Request {:?}", &eventid).as_str(),
+            )),
+        };
+        /*
             }
         );
+        */
         if self.log.send(audit).is_err() {
             error!("Unable to commit log -> {:?}", &eventid);
             Some(LdapResponseState::Disconnect(DisconnectionNotice::gen(

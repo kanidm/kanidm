@@ -23,7 +23,6 @@ use crate::actors::v1_write::{CreateMessage, DeleteMessage, ModifyMessage};
 // Bring in schematransaction trait for validate
 // use crate::schema::SchemaTransaction;
 
-use actix::prelude::*;
 use ldap3_server::simple::LdapFilter;
 use std::collections::BTreeSet;
 use uuid::Uuid;
@@ -1085,10 +1084,6 @@ pub struct PurgeTombstoneEvent {
     pub eventid: Uuid,
 }
 
-impl Message for PurgeTombstoneEvent {
-    type Result = ();
-}
-
 impl PurgeTombstoneEvent {
     pub fn new() -> Self {
         PurgeTombstoneEvent {
@@ -1102,10 +1097,6 @@ impl PurgeTombstoneEvent {
 pub struct PurgeRecycledEvent {
     pub event: Event,
     pub eventid: Uuid,
-}
-
-impl Message for PurgeRecycledEvent {
-    type Result = ();
 }
 
 impl PurgeRecycledEvent {
@@ -1126,10 +1117,6 @@ pub struct ReviveRecycledEvent {
     // to be retained, because the filter is the orig filter for this check.
     //
     // It will be duplicated into the modify event as it exists.
-}
-
-impl Message for ReviveRecycledEvent {
-    type Result = ();
 }
 
 impl ReviveRecycledEvent {

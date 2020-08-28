@@ -1,8 +1,5 @@
-mod ctx;
 mod https;
 mod ldaps;
-// use actix_files as fs;
-use actix::prelude::*;
 use actix_session::CookieSession;
 use actix_web::web::{self, HttpResponse};
 use actix_web::{cookie, error, middleware, App, HttpServer};
@@ -16,7 +13,7 @@ use tokio::sync::mpsc::unbounded_channel as unbounded;
 use crate::config::Configuration;
 
 // SearchResult
-use self::ctx::ServerCtx;
+// use self::ctx::ServerCtx;
 use crate::actors::v1_read::QueryServerReadV1;
 use crate::actors::v1_write::QueryServerWriteV1;
 use crate::async_log;
@@ -178,7 +175,7 @@ pub fn restore_server_core(config: &Configuration, dst_path: &str) {
 
     info!("Start reindex phase ...");
 
-    let qs_write = qs.write(duration_from_epoch_now());
+    let qs_write = task::block_on(qs.write_async(duration_from_epoch_now()));
     let r = qs_write
         .reindex(&mut audit)
         .and_then(|_| qs_write.commit(&mut audit));
@@ -249,7 +246,7 @@ pub fn reindex_server_core(config: &Configuration) {
 
     eprintln!("Start Index Phase 2 ...");
 
-    let qs_write = qs.write(duration_from_epoch_now());
+    let qs_write = task::block_on(qs.write_async(duration_from_epoch_now()));
     let r = qs_write
         .reindex(&mut audit)
         .and_then(|_| qs_write.commit(&mut audit));
@@ -294,7 +291,7 @@ pub fn domain_rename_core(config: &Configuration, new_domain_name: &str) {
         }
     };
 
-    let qs_write = qs.write(duration_from_epoch_now());
+    let qs_write = task::block_on(qs.write_async(duration_from_epoch_now()));
     let r = qs_write
         .domain_rename(&mut audit, new_domain_name)
         .and_then(|_| qs_write.commit(&mut audit));
@@ -393,7 +390,7 @@ pub fn recover_account_core(config: &Configuration, name: &str, password: &str) 
     };
 
     // Run the password change.
-    let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
+    let mut idms_prox_write = task::block_on(idms.proxy_write_async(duration_from_epoch_now()));
     match idms_prox_write.recover_account(&mut audit, &name, &password) {
         Ok(_) => match idms_prox_write.commit(&mut audit) {
             Ok(()) => {
@@ -416,7 +413,7 @@ pub fn recover_account_core(config: &Configuration, name: &str, password: &str) 
     };
 }
 
-pub async fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> {
+pub async fn create_server_core(config: Configuration) -> Result<actix_server::Server, ()> {
     // Until this point, we probably want to write to the log macro fns.
 
     if config.integration_test_config.is_some() {
@@ -476,7 +473,8 @@ pub async fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> 
     // Any pre-start tasks here.
     match &config.integration_test_config {
         Some(itc) => {
-            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
+            let mut idms_prox_write =
+                task::block_on(idms.proxy_write_async(duration_from_epoch_now()));
             match idms_prox_write.recover_account(&mut audit, "admin", &itc.admin_password) {
                 Ok(_) => {}
                 Err(e) => {
@@ -519,15 +517,6 @@ pub async fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> 
 
     // Pass it to the actor for threading.
     // Start the read query server with the given be path: future config
-    let server_read_addr = QueryServerReadV1::start(
-        log_tx.clone(),
-        config.log_level,
-        qs.clone(),
-        idms_arc.clone(),
-        ldap_arc.clone(),
-        config.threads,
-    );
-
     let server_read_ref = QueryServerReadV1::start_static(
         log_tx.clone(),
         config.log_level,
@@ -536,14 +525,7 @@ pub async fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> 
         ldap_arc.clone(),
     );
 
-    // Start the write thread
-    let server_write_addr = QueryServerWriteV1::start(
-        log_tx.clone(),
-        config.log_level,
-        qs.clone(),
-        idms_arc.clone(),
-    );
-
+    // Create the server async write entry point.
     let server_write_ref = QueryServerWriteV1::start_static(
         log_tx.clone(),
         config.log_level,
@@ -569,8 +551,7 @@ pub async fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> 
                     return Err(());
                 }
             };
-            ldaps::create_ldap_server(la.as_str(), opt_ldap_tls_params, server_read_addr.clone())
-                .await?;
+            ldaps::create_ldap_server(la.as_str(), opt_ldap_tls_params, server_read_ref).await?;
         }
         None => {
             debug!("LDAP not requested, skipping");
@@ -587,8 +568,6 @@ pub async fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> 
     let server = HttpServer::new(move || {
         App::new()
             .data(AppState {
-                qe_r: server_read_addr.clone(),
-                qe_w: server_write_addr.clone(),
                 status: status_ref,
                 qe_w_ref: server_write_ref,
                 qe_r_ref: server_read_ref,
@@ -796,7 +775,7 @@ pub async fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> 
         }
     };
 
-    match server {
+    let server = match server {
         Ok(s) => s.run(),
         Err(e) => {
             error!("Failed to initialise server! {:?}", e);
@@ -806,5 +785,5 @@ pub async fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> 
 
     info!("ready to rock! 🧱");
 
-    Ok(ServerCtx::new(System::current()))
+    Ok(server)
 }

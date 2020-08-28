@@ -1,5 +1,3 @@
-// use actix_files as fs;
-use actix::prelude::*;
 use actix_session::Session;
 use actix_web::web::{Data, HttpResponse, Json, Path};
 
@@ -32,8 +30,6 @@ use kanidm_proto::v1::{
 use uuid::Uuid;
 
 pub struct AppState {
-    pub qe_r: Addr<QueryServerReadV1>,
-    pub qe_w: Addr<QueryServerWriteV1>,
     pub status: &'static StatusActor,
     pub qe_w_ref: &'static QueryServerWriteV1,
     pub qe_r_ref: &'static QueryServerReadV1,
@@ -75,47 +71,54 @@ macro_rules! new_eventid {
     }};
 }
 
-macro_rules! json_event_post {
-    ($req:expr, $session:expr, $message_type:ty, $dest:expr) => {{
-        // Get auth if any?
-        let uat = get_current_user(&$session);
-        // Send to the db for handling
-        // combine request + uat -> message.
-        let (eventid, hvalue) = new_eventid!();
-        let m_obj = <$message_type>::new(uat, $req, eventid);
-        match $dest.send(m_obj).await {
-            Ok(Ok(r)) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
-            Ok(Err(e)) => operation_error_to_response(e, hvalue),
-            Err(_) => HttpResponse::InternalServerError()
-                .header("X-KANIDM-OPID", hvalue)
-                .json("mailbox failure"),
-        }
-    }};
-}
 // Handle the various end points we need to expose
 
 pub async fn create(
     (req, session, state): (Json<CreateRequest>, Session, Data<AppState>),
 ) -> HttpResponse {
-    json_event_post!(req.into_inner(), session, CreateMessage, state.qe_w)
+    let uat = get_current_user(&session);
+    let (eventid, hvalue) = new_eventid!();
+    let m_obj = CreateMessage::new(uat, req.into_inner(), eventid);
+    match state.qe_w_ref.handle_create(m_obj).await {
+        Ok(r) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
+        Err(e) => operation_error_to_response(e, hvalue),
+    }
 }
 
 pub async fn modify(
     (req, session, state): (Json<ModifyRequest>, Session, Data<AppState>),
 ) -> HttpResponse {
-    json_event_post!(req.into_inner(), session, ModifyMessage, state.qe_w)
+    let uat = get_current_user(&session);
+    let (eventid, hvalue) = new_eventid!();
+    let m_obj = ModifyMessage::new(uat, req.into_inner(), eventid);
+    match state.qe_w_ref.handle_modify(m_obj).await {
+        Ok(r) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
+        Err(e) => operation_error_to_response(e, hvalue),
+    }
 }
 
 pub async fn delete(
     (req, session, state): (Json<DeleteRequest>, Session, Data<AppState>),
 ) -> HttpResponse {
-    json_event_post!(req.into_inner(), session, DeleteMessage, state.qe_w)
+    let uat = get_current_user(&session);
+    let (eventid, hvalue) = new_eventid!();
+    let m_obj = DeleteMessage::new(uat, req.into_inner(), eventid);
+    match state.qe_w_ref.handle_delete(m_obj).await {
+        Ok(r) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
+        Err(e) => operation_error_to_response(e, hvalue),
+    }
 }
 
 pub async fn search(
     (req, session, state): (Json<SearchRequest>, Session, Data<AppState>),
 ) -> HttpResponse {
-    json_event_post!(req.into_inner(), session, SearchMessage, state.qe_r)
+    let uat = get_current_user(&session);
+    let (eventid, hvalue) = new_eventid!();
+    let m_obj = SearchMessage::new(uat, req.into_inner(), eventid);
+    match state.qe_r_ref.handle_search(m_obj).await {
+        Ok(r) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
+        Err(e) => operation_error_to_response(e, hvalue),
+    }
 }
 
 pub async fn whoami((session, state): (Session, Data<AppState>)) -> HttpResponse {
@@ -149,12 +152,9 @@ pub async fn json_rest_event_get(
         eventid,
     };
 
-    match state.qe_r.send(obj).await {
-        Ok(Ok(r)) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
+    match state.qe_r_ref.handle_internalsearch(obj).await {
+        Ok(r) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
+        Err(e) => operation_error_to_response(e, hvalue),
     }
 }
 
@@ -178,14 +178,11 @@ async fn json_rest_event_get_id(
         eventid,
     };
 
-    match state.qe_r.send(obj).await {
-        Ok(Ok(mut r)) => HttpResponse::Ok()
+    match state.qe_r_ref.handle_internalsearch(obj).await {
+        Ok(mut r) => HttpResponse::Ok()
             .header("X-KANIDM-OPID", hvalue)
             .json(r.pop()),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
+        Err(e) => operation_error_to_response(e, hvalue),
     }
 }
 
@@ -206,14 +203,11 @@ async fn json_rest_event_delete_id(
         eventid,
     };
 
-    match state.qe_w.send(obj).await {
-        Ok(Ok(())) => HttpResponse::Ok()
+    match state.qe_w_ref.handle_internaldelete(obj).await {
+        Ok(()) => HttpResponse::Ok()
             .header("X-KANIDM-OPID", hvalue)
             .json(true),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
+        Err(e) => operation_error_to_response(e, hvalue),
     }
 }
 
@@ -236,8 +230,8 @@ async fn json_rest_event_get_id_attr(
         eventid,
     };
 
-    match state.qe_r.send(obj).await {
-        Ok(Ok(mut event_result)) => {
+    match state.qe_r_ref.handle_internalsearch(obj).await {
+        Ok(mut event_result) => {
             // Only get one result
             let r = event_result.pop().and_then(|mut e| {
                 // Only get the attribute as requested.
@@ -246,10 +240,7 @@ async fn json_rest_event_get_id_attr(
             // Only send back the first result, or None
             HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r)
         }
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
+        Err(e) => operation_error_to_response(e, hvalue),
     }
 }
 
@@ -265,12 +256,9 @@ async fn json_rest_event_post(
     obj.attrs.insert("class".to_string(), classes);
     let (eventid, hvalue) = new_eventid!();
     let m_obj = CreateMessage::new_entry(uat, obj, eventid);
-    match state.qe_w.send(m_obj).await {
-        Ok(Ok(r)) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
+    match state.qe_w_ref.handle_create(m_obj).await {
+        Ok(r) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
+        Err(e) => operation_error_to_response(e, hvalue),
     }
 }
 
@@ -294,14 +282,11 @@ async fn json_rest_event_post_id_attr(
         eventid,
     };
     // Add a msg here
-    match state.qe_w.send(m_obj).await {
-        Ok(Ok(())) => HttpResponse::Ok()
+    match state.qe_w_ref.handle_appendattribute(m_obj).await {
+        Ok(()) => HttpResponse::Ok()
             .header("X-KANIDM-OPID", hvalue)
             .json(true),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
+        Err(e) => operation_error_to_response(e, hvalue),
     }
 }
 
@@ -324,14 +309,11 @@ async fn json_rest_event_put_id_attr(
         filter,
         eventid,
     };
-    match state.qe_w.send(m_obj).await {
-        Ok(Ok(())) => HttpResponse::Ok()
+    match state.qe_w_ref.handle_setattribute(m_obj).await {
+        Ok(()) => HttpResponse::Ok()
             .header("X-KANIDM-OPID", hvalue)
             .json(true),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
+        Err(e) => operation_error_to_response(e, hvalue),
     }
 }
 
@@ -355,14 +337,11 @@ async fn json_rest_event_delete_id_attr(
         eventid,
     };
 
-    match state.qe_w.send(obj).await {
-        Ok(Ok(())) => HttpResponse::Ok()
+    match state.qe_w_ref.handle_purgeattribute(obj).await {
+        Ok(()) => HttpResponse::Ok()
             .header("X-KANIDM-OPID", hvalue)
             .json(true),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
+        Err(e) => operation_error_to_response(e, hvalue),
     }
 }
 
@@ -383,12 +362,9 @@ async fn json_rest_event_credential_put(
         sac: obj,
         eventid,
     };
-    match state.qe_w.send(m_obj).await {
-        Ok(Ok(r)) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
+    match state.qe_w_ref.handle_credentialset(m_obj).await {
+        Ok(r) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
+        Err(e) => operation_error_to_response(e, hvalue),
     }
 }
 
@@ -439,14 +415,11 @@ pub async fn schema_attributetype_get_id(
         eventid,
     };
 
-    match state.qe_r.send(obj).await {
-        Ok(Ok(mut r)) => HttpResponse::Ok()
+    match state.qe_r_ref.handle_internalsearch(obj).await {
+        Ok(mut r) => HttpResponse::Ok()
             .header("X-KANIDM-OPID", hvalue)
             .json(r.pop()),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
+        Err(e) => operation_error_to_response(e, hvalue),
     }
 }
 
@@ -474,14 +447,11 @@ pub async fn schema_classtype_get_id(
         eventid,
     };
 
-    match state.qe_r.send(obj).await {
-        Ok(Ok(mut r)) => HttpResponse::Ok()
+    match state.qe_r_ref.handle_internalsearch(obj).await {
+        Ok(mut r) => HttpResponse::Ok()
             .header("X-KANIDM-OPID", hvalue)
             .json(r.pop()),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
+        Err(e) => operation_error_to_response(e, hvalue),
     }
 }
 
@@ -602,12 +572,9 @@ pub async fn account_get_id_ssh_pubkeys(
         eventid,
     };
 
-    match state.qe_r.send(obj).await {
-        Ok(Ok(r)) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
+    match state.qe_r_ref.handle_internalsshkeyread(obj).await {
+        Ok(r) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
+        Err(e) => operation_error_to_response(e, hvalue),
     }
 }
 
@@ -657,12 +624,9 @@ pub async fn account_get_id_ssh_pubkey_tag(
         eventid,
     };
 
-    match state.qe_r.send(obj).await {
-        Ok(Ok(r)) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
+    match state.qe_r_ref.handle_internalsshkeytagread(obj).await {
+        Ok(r) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
+        Err(e) => operation_error_to_response(e, hvalue),
     }
 }
 
@@ -682,14 +646,11 @@ pub async fn account_delete_id_ssh_pubkey_tag(
         eventid,
     };
 
-    match state.qe_w.send(obj).await {
-        Ok(Ok(())) => HttpResponse::Ok()
+    match state.qe_w_ref.handle_removeattributevalue(obj).await {
+        Ok(()) => HttpResponse::Ok()
             .header("X-KANIDM-OPID", hvalue)
             .json(true),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
+        Err(e) => operation_error_to_response(e, hvalue),
     }
 }
 
@@ -707,12 +668,9 @@ pub async fn account_get_id_radius(
         eventid,
     };
 
-    match state.qe_r.send(obj).await {
-        Ok(Ok(r)) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
+    match state.qe_r_ref.handle_internalradiusread(obj).await {
+        Ok(r) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
+        Err(e) => operation_error_to_response(e, hvalue),
     }
 }
 
@@ -726,12 +684,9 @@ pub async fn account_post_id_radius_regenerate(
     let (eventid, hvalue) = new_eventid!();
     let obj = InternalRegenerateRadiusMessage::new(uat, id, eventid);
 
-    match state.qe_w.send(obj).await {
-        Ok(Ok(r)) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
+    match state.qe_w_ref.handle_regenerateradius(obj).await {
+        Ok(r) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
+        Err(e) => operation_error_to_response(e, hvalue),
     }
 }
 
@@ -757,12 +712,9 @@ pub async fn account_get_id_radius_token(
         eventid,
     };
 
-    match state.qe_r.send(obj).await {
-        Ok(Ok(r)) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
+    match state.qe_r_ref.handle_internalradiustokenread(obj).await {
+        Ok(r) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
+        Err(e) => operation_error_to_response(e, hvalue),
     }
 }
 
@@ -818,12 +770,9 @@ pub async fn account_get_id_unix_token(
         eventid,
     };
 
-    match state.qe_r.send(obj).await {
-        Ok(Ok(r)) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
+    match state.qe_r_ref.handle_internalunixusertokenread(obj).await {
+        Ok(r) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
+        Err(e) => operation_error_to_response(e, hvalue),
     }
 }
 
@@ -844,12 +793,9 @@ pub async fn account_post_id_unix_auth(
         cred: obj.into_inner().value,
         eventid,
     };
-    match state.qe_r.send(m_obj).await {
-        Ok(Ok(r)) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
+    match state.qe_r_ref.handle_idmaccountunixauth(m_obj).await {
+        Ok(r) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
+        Err(e) => operation_error_to_response(e, hvalue),
     }
 }
 
@@ -904,14 +850,11 @@ pub async fn account_delete_id_unix_credential(
         eventid,
     };
 
-    match state.qe_w.send(obj).await {
-        Ok(Ok(())) => HttpResponse::Ok()
+    match state.qe_w_ref.handle_purgeattribute(obj).await {
+        Ok(()) => HttpResponse::Ok()
             .header("X-KANIDM-OPID", hvalue)
             .json(true),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
+        Err(e) => operation_error_to_response(e, hvalue),
     }
 }
 
@@ -1011,12 +954,9 @@ pub async fn group_get_id_unix_token(
         eventid,
     };
 
-    match state.qe_r.send(obj).await {
-        Ok(Ok(r)) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
+    match state.qe_r_ref.handle_internalunixgrouptokenread(obj).await {
+        Ok(r) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
+        Err(e) => operation_error_to_response(e, hvalue),
     }
 }
 
@@ -1066,12 +1006,9 @@ pub async fn recycle_bin_get((session, state): (Session, Data<AppState>)) -> Htt
         eventid,
     };
 
-    match state.qe_r.send(obj).await {
-        Ok(Ok(r)) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
+    match state.qe_r_ref.handle_internalsearchrecycled(obj).await {
+        Ok(r) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
+        Err(e) => operation_error_to_response(e, hvalue),
     }
 }
 
@@ -1090,14 +1027,11 @@ pub async fn recycle_bin_id_get(
         eventid,
     };
 
-    match state.qe_r.send(obj).await {
-        Ok(Ok(mut r)) => HttpResponse::Ok()
+    match state.qe_r_ref.handle_internalsearchrecycled(obj).await {
+        Ok(mut r) => HttpResponse::Ok()
             .header("X-KANIDM-OPID", hvalue)
             .json(r.pop()),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
+        Err(e) => operation_error_to_response(e, hvalue),
     }
 }
 
@@ -1113,12 +1047,9 @@ pub async fn recycle_bin_revive_id_post(
         filter,
         eventid,
     };
-    match state.qe_w.send(m_obj).await {
-        Ok(Ok(())) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(()),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
+    match state.qe_w_ref.handle_reviverecycled(m_obj).await {
+        Ok(()) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(()),
+        Err(e) => operation_error_to_response(e, hvalue),
     }
 }
 
@@ -1197,14 +1128,15 @@ pub async fn auth(
 }
 
 pub async fn idm_account_set_password(
-    (obj, session, state): (Json<SingleStringRequest>, Session, Data<AppState>),
+    (req, session, state): (Json<SingleStringRequest>, Session, Data<AppState>),
 ) -> HttpResponse {
-    json_event_post!(
-        obj.into_inner(),
-        session,
-        IdmAccountSetPasswordMessage,
-        state.qe_w
-    )
+    let uat = get_current_user(&session);
+    let (eventid, hvalue) = new_eventid!();
+    let m_obj = IdmAccountSetPasswordMessage::new(uat, req.into_inner(), eventid);
+    match state.qe_w_ref.handle_idmaccountsetpassword(m_obj).await {
+        Ok(r) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
+        Err(e) => operation_error_to_response(e, hvalue),
+    }
 }
 
 // == Status
