@@ -535,7 +535,7 @@ pub async fn create_server_core(config: Configuration) -> Result<actix_server::S
 
     // TODO #314: For now we just drop everything from the delayed queue until we rewrite to be async.
     tokio::spawn(async move {
-        idms_delayed.temp_drop_all().await;
+        idms_delayed.process_all(server_write_ref).await;
     });
 
     // Setup timed events associated to the write thread

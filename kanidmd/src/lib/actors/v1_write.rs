@@ -16,6 +16,7 @@ use crate::value::{PartialValue, Value};
 use kanidm_proto::v1::OperationError;
 
 use crate::filter::{Filter, FilterInvalid};
+use crate::idm::delayed::DelayedAction;
 use crate::idm::server::IdmServer;
 use crate::server::{QueryServer, QueryServerTransaction};
 use crate::utils::duration_from_epoch_now;
@@ -1171,6 +1172,26 @@ impl QueryServerWriteV1 {
             }
         );
         // At the end of the event we send it for logging.
+        self.log.send(audit).unwrap_or_else(|_| {
+            error!("CRITICAL: UNABLE TO COMMIT LOGS");
+        });
+    }
+
+    pub(crate) async fn handle_delayedaction(&self, da: DelayedAction) {
+        let eventid = Uuid::new_v4();
+        let mut audit = AuditScope::new("delayed action", eventid, self.log_level);
+        ltrace!(audit, "Begin delayed action ...");
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write_async(ct).await;
+        lperf_op_segment!(
+            &mut audit,
+            "actors::v1_write::handle<DelayedAction>",
+            || {
+                idms_prox_write
+                    .process_delayedaction(&mut audit, da)
+                    .and_then(|_| idms_prox_write.commit(&mut audit));
+            }
+        );
         self.log.send(audit).unwrap_or_else(|_| {
             error!("CRITICAL: UNABLE TO COMMIT LOGS");
         });

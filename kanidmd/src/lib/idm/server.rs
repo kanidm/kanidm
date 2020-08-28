@@ -19,6 +19,7 @@ use crate::server::{QueryServer, QueryServerTransaction, QueryServerWriteTransac
 use crate::utils::{password_from_random, readable_password_from_random, uuid_from_duration, SID};
 use crate::value::PartialValue;
 
+use crate::actors::v1_write::QueryServerWriteV1;
 use crate::idm::delayed::{DelayedAction, PasswordUpgrade, UnixPasswordUpgrade};
 
 use kanidm_proto::v1::AuthState;
@@ -178,13 +179,13 @@ impl IdmServer {
     }
 
     #[cfg(test)]
-    pub(crate) fn delayed_action(
+    pub(crate) async fn delayed_action(
         &self,
         au: &mut AuditScope,
         ts: Duration,
         da: DelayedAction,
     ) -> Result<bool, OperationError> {
-        let mut pw = self.proxy_write(ts);
+        let mut pw = self.proxy_write_async(ts).await;
         pw.process_delayedaction(au, da)
             .and_then(|_| pw.commit(au))
             .map(|()| true)
@@ -205,11 +206,11 @@ impl IdmServerDelayed {
         })
     }
 
-    pub(crate) async fn temp_drop_all(&mut self) {
+    pub(crate) async fn process_all(&mut self, server: &'static QueryServerWriteV1) {
         loop {
             match self.async_rx.recv().await {
-                // Drop it
-                Some(_) => {}
+                // process it.
+                Some(da) => server.handle_delayedaction(da).await,
                 // Channel has closed
                 None => return,
             }
@@ -961,7 +962,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         }
     }
 
-    fn process_delayedaction(
+    pub(crate) fn process_delayedaction(
         &mut self,
         au: &mut AuditScope,
         da: DelayedAction,
@@ -1010,6 +1011,7 @@ mod tests {
     // , IdmServerDelayed;
     use crate::server::QueryServer;
     use crate::utils::duration_from_epoch_now;
+    use async_std::task;
     use std::convert::TryFrom;
     use std::time::Duration;
     use uuid::Uuid;
@@ -1770,7 +1772,8 @@ mod tests {
             check_admin_password(idms, au, "password");
             // process it.
             let da = idms_delayed.try_recv().expect("invalid");
-            assert!(Ok(true) == idms.delayed_action(au, duration_from_epoch_now(), da));
+            let r = task::block_on(idms.delayed_action(au, duration_from_epoch_now(), da));
+            assert!(Ok(true) == r);
             // Check the admin pw still matches
             check_admin_password(idms, au, "password");
             // No delayed action was queued.
@@ -1819,7 +1822,7 @@ mod tests {
             // The upgrade was queued
             // Process it.
             let da = idms_delayed.try_recv().expect("invalid");
-            assert!(Ok(true) == idms.delayed_action(au, duration_from_epoch_now(), da));
+            let _r = task::block_on(idms.delayed_action(au, duration_from_epoch_now(), da));
             // Go again
             let mut idms_write = idms.write();
             let a2 = idms_write.auth_unix(au, &uuae, Duration::from_secs(TEST_CURRENT_TIME));
