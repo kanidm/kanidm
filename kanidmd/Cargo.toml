@@ -37,6 +37,8 @@ cookie = "0.14"
 # actix-files = "0.2"
 
 tide = "0.13"
+async-trait = "0.1"
+async-h1 = "2.0"
 
 async-std = "1.6"
 
@@ -49,8 +51,13 @@ chrono = "0.4"
 regex = "1"
 lazy_static = "1.2.0"
 
-tokio = { version = "0.2", features = ["rt-threaded", "macros", "rt-util", "sync"] }
 futures = "0.3"
+futures-util = "0.3"
+tokio = { version = "0.2", features = ["rt-threaded", "macros", "rt-util", "sync"] }
+tokio-util = { version = "0.2", features = ["codec"] }
+tokio-openssl = "0.4"
+openssl = "0.10"
+
 uuid = { version = "0.8", features = ["serde", "v4" ] }
 serde = "1.0"
 serde_cbor = "0.11"
@@ -71,7 +78,6 @@ hashbrown = "0.8"
 concread = { path = "../../concread" }
 crossbeam = "0.7"
 
-openssl = "0.10"
 sshkeys = "0.3"
 
 rpassword = "4.0"
@@ -85,9 +91,6 @@ base64 = "0.12"
 
 ldap3_server = "0.1"
 # ldap3_server = { path = "../../ldap3_server" }
-futures-util = "0.3"
-tokio-util = { version = "0.2", features = ["codec"] }
-tokio-openssl = "0.4"
 
 libc = "0.2"
 users = "0.10"

@@ -7,8 +7,8 @@ use libc::umask;
 
 // use crossbeam::channel::unbounded;
 use std::sync::Arc;
-use time::Duration as TDuration;
 use std::time::Duration;
+use time::Duration as TDuration;
 use tokio::sync::mpsc::unbounded_channel as unbounded;
 
 use crate::config::Configuration;
@@ -414,7 +414,7 @@ pub fn recover_account_core(config: &Configuration, name: &str, password: &str) 
     };
 }
 
-pub async fn create_server_core(config: Configuration) -> Result<actix_server::Server, ()> {
+pub async fn create_server_core(config: Configuration) -> Result<(), ()> {
     // Until this point, we probably want to write to the log macro fns.
 
     if config.integration_test_config.is_some() {
@@ -565,27 +565,21 @@ pub async fn create_server_core(config: Configuration) -> Result<actix_server::S
     // domain will come from the qs now!
     let cookie_key: [u8; 32] = config.cookie_key;
 
-
-    let mut tserver = tide::Server::new();
-
-    // Add middleware?
-    tserver.with(
-        tide::sessions::SessionMiddleware::new(
-            tide::sessions::MemoryStore::new(),
-            &cookie_key)
-            .with_cookie_name("kanidm-session")
-            .with_same_site_policy(
-                 tide::http::cookies::SameSite::Strict
-            )
-            .with_session_ttl(Some(Duration::from_secs(3600)))
+    https::create_https_server(
+        config.address,
+        opt_tls_params,
+        &cookie_key,
+        status_ref,
+        server_write_ref,
+        server_read_ref,
     );
 
-
+    /*
     // start the web server
     let server = HttpServer::new(move || {
         App::new()
             .data(AppState {
-                status: status_ref,
+                status_ref: status_ref,
                 qe_w_ref: server_write_ref,
                 qe_r_ref: server_read_ref,
             })
@@ -621,7 +615,7 @@ pub async fn create_server_core(config: Configuration) -> Result<actix_server::S
                             .into()
                     }),
             )
-            .service(web::scope("/status").route("", web::get().to(status)))
+            // .service(web::scope("/status").route("", web::get().to(status)))
             .service(
                 web::scope("/v1/raw")
                     .route("/create", web::post().to(create))
@@ -671,14 +665,16 @@ pub async fn create_server_core(config: Configuration) -> Result<actix_server::S
                 web::scope("/v1/person")
                     .route("", web::get().to(person_get))
                     .route("", web::post().to(person_post))
-                    .route("/{id}", web::get().to(person_id_get)), /*
-                                                                   .route("/{id}", web::delete().to(account_id_delete))
-                                                                   .route("/{id}/_attr/{attr}", web::get().to(account_id_get_attr))
-                                                                   .route("/{id}/_attr/{attr}", web::post().to(account_id_post_attr))
-                                                                   .route("/{id}/_attr/{attr}", web::put().to(account_id_put_attr))
-                                                                   .route(
-                                                                       "/{id}/_attr/{attr}",
-                                                                       web::delete().to(account_id_delete_attr),
+                    .route("/{id}", web::get().to(person_id_get)),
+
+                    /*
+                                                   .route("/{id}", web::delete().to(account_id_delete))
+                                                   .route("/{id}/_attr/{attr}", web::get().to(account_id_get_attr))
+                                                   .route("/{id}/_attr/{attr}", web::post().to(account_id_post_attr))
+                                                   .route("/{id}/_attr/{attr}", web::put().to(account_id_put_attr))
+                                                   .route(
+                                                       "/{id}/_attr/{attr}",
+                                                       web::delete().to(account_id_delete_attr),
                                                                    )
                                                                    */
             )
@@ -799,8 +795,9 @@ pub async fn create_server_core(config: Configuration) -> Result<actix_server::S
             return Err(());
         }
     };
+    */
 
     info!("ready to rock! 🧱");
 
-    Ok(server)
+    Ok(())
 }

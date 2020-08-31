@@ -27,10 +27,17 @@ use kanidm_proto::v1::{
     ModifyRequest, SearchRequest, SetCredentialRequest, SingleStringRequest, UserAuthToken,
 };
 
+use async_std::io;
+use openssl::ssl::{SslAcceptor, SslAcceptorBuilder};
+use std::net;
+use std::str::FromStr;
+use std::time::Duration;
+use tokio::net::TcpListener;
 use uuid::Uuid;
 
+#[derive(Clone)]
 pub struct AppState {
-    pub status: &'static StatusActor,
+    pub status_ref: &'static StatusActor,
     pub qe_w_ref: &'static QueryServerWriteV1,
     pub qe_r_ref: &'static QueryServerReadV1,
 }
@@ -1053,8 +1060,10 @@ pub async fn recycle_bin_revive_id_post(
     }
 }
 
-pub async fn do_nothing(_session: Session) -> String {
-    "did nothing".to_string()
+pub async fn do_nothing(_req: tide::Request<AppState>) -> tide::Result {
+    let mut res = tide::Response::new(200);
+    res.set_body("did nothing");
+    Ok(res)
 }
 
 // We probably need an extract auth or similar to handle the different
@@ -1141,11 +1150,340 @@ pub async fn idm_account_set_password(
 
 // == Status
 
-pub async fn status((_session, state): (Session, Data<AppState>)) -> HttpResponse {
+pub async fn status(req: tide::Request<AppState>) -> tide::Result {
+    // We ignore the body in this req
     let (eventid, hvalue) = new_eventid!();
-    let r = state
-        .status
+    let r = req
+        .state()
+        .status_ref
         .handle_request(StatusRequestEvent { eventid })
         .await;
-    HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r)
+    let mut res = tide::Response::new(200);
+    res.insert_header("X-KANIDM-OPID", hvalue);
+    res.set_body(tide::Body::from_json(&r)?);
+    Ok(res)
+}
+
+struct TlsListener {
+    address: String,
+    tls_params: &'static SslAcceptor,
+}
+
+impl TlsListener {
+    fn new(address: String, tls_params: &'static SslAcceptor) -> Self {
+        Self {
+            address,
+            tls_params,
+        }
+    }
+}
+
+impl std::fmt::Debug for TlsListener {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "TlsListener {{}}")
+    }
+}
+
+impl std::fmt::Display for TlsListener {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "TlsListener {{}}")
+    }
+}
+
+impl<State: Clone + Send + Sync + 'static> tide::listener::ToListener<State> for TlsListener {
+    type Listener = TlsListener;
+
+    fn to_listener(self) -> std::io::Result<Self::Listener> {
+        Ok(self)
+    }
+}
+
+fn handle_client<State: Clone + Send + Sync + 'static>(
+    app: tide::Server<State>,
+    stream: tokio_openssl::SslStream<tokio::net::TcpStream>,
+    local_addr: std::net::SocketAddr,
+    peer_addr: std::net::SocketAddr,
+) {
+    /*
+    tokio::spawn(async move {
+        let fut = async_h1::accept(stream, |mut req| async {
+            req.set_local_addr(Some(local_addr));
+            req.set_peer_addr(Some(peer_addr));
+            app.respond(req).await
+        });
+
+        if let Err(error) = fut.await {
+            // Do nothing
+            // log::error!("async-h1 error", { error: error.to_string() });
+        }
+    });
+    */
+    unimplemented!();
+}
+
+#[async_trait::async_trait]
+impl<State: Clone + Send + Sync + 'static> tide::listener::Listener<State> for TlsListener {
+    async fn listen(&mut self, app: tide::Server<State>) -> io::Result<()> {
+        let addr = net::SocketAddr::from_str(&self.address).map_err(|e| {
+            eprintln!(
+                "Could not parse https server address {} -> {:?}",
+                self.address, e
+            );
+            std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Could not parse https server address",
+            )
+        })?;
+
+        let mut listener = TcpListener::bind(&addr).await?;
+
+        let tls_params = self.tls_params;
+
+        loop {
+            match listener.accept().await {
+                Ok((tcpstream, paddr)) => {
+                    let iapp = app.clone();
+                    tokio::spawn(async move {
+                        let res = tokio_openssl::accept(tls_params, tcpstream).await;
+                        match res {
+                            Ok(tlsstream) => {
+                                handle_client(iapp, tlsstream, addr, paddr);
+                            }
+                            Err(e) => {
+                                error!("tcp handshake error, continuing -> {:?}", e);
+                            }
+                        };
+                    });
+                }
+                Err(e) => {
+                    error!("acceptor error, continuing -> {:?}", e);
+                }
+            }
+        }
+    }
+}
+
+// TODO: Add request limits.
+pub fn create_https_server(
+    address: String,
+    opt_tls_params: Option<SslAcceptorBuilder>,
+    cookie_key: &[u8; 32],
+    status_ref: &'static StatusActor,
+    qe_w_ref: &'static QueryServerWriteV1,
+    qe_r_ref: &'static QueryServerReadV1,
+) -> () {
+    let mut tserver = tide::Server::with_state(AppState {
+        status_ref,
+        qe_w_ref,
+        qe_r_ref,
+    });
+
+    // Add middleware?
+    tserver.with(tide::log::LogMiddleware::new()).with(
+        tide::sessions::SessionMiddleware::new(tide::sessions::MemoryStore::new(), cookie_key)
+            .with_cookie_name("kanidm-session")
+            .with_same_site_policy(tide::http::cookies::SameSite::Strict)
+            .with_session_ttl(Some(Duration::from_secs(3600))),
+    );
+
+    // Add routes
+    tserver.at("/status").get(self::status);
+
+    let mut raw_route = tserver.at("/v1/raw");
+    raw_route.at("/create").post(|req| async { Ok("create") });
+    raw_route.at("/modify").post(|req| async { Ok("modify") });
+    raw_route.at("/delete").post(|req| async { Ok("delete") });
+    raw_route.at("/search").post(|req| async { Ok("search") });
+
+    tserver.at("/v1/auth").post(|_| async { Ok("") });
+
+    let mut schema_route = tserver.at("/v1/schema");
+    schema_route.at("").get(|req| async { Ok("schema") });
+    schema_route.at("/").get(|req| async { Ok("schema") });
+    schema_route
+        .at("/attributetype")
+        .get(|req| async { Ok("schema") })
+        .post(do_nothing);
+    schema_route
+        .at("/attributetype/:id")
+        .get(|req: tide::Request<AppState>| async move {
+            Ok(format!(
+                "{}",
+                req.param("id").unwrap_or("missing".to_owned())
+            ))
+        })
+        .put(do_nothing)
+        .patch(do_nothing);
+
+    schema_route
+        .at("/classtype")
+        .get(|req| async { Ok("schema") })
+        .post(do_nothing);
+    schema_route
+        .at("/classtype/:id")
+        .get(|req: tide::Request<AppState>| async move {
+            Ok(format!(
+                "{}",
+                req.param("id").unwrap_or("missing".to_owned())
+            ))
+        })
+        .put(do_nothing)
+        .patch(do_nothing);
+
+    let mut self_route = tserver.at("/v1/self");
+    self_route.at("").get(|req| async { Ok("self") });
+    self_route.at("/").get(|req| async { Ok("self") });
+
+    self_route.at("/_attr/:attr").get(do_nothing);
+    self_route.at("/_credential").get(do_nothing);
+
+    self_route
+        .at("/_credential/primary/set_password")
+        .post(|req| async { Ok("self") });
+    self_route.at("/_credential/:cid/_lock").get(do_nothing);
+
+    self_route
+        .at("/_radius")
+        .get(do_nothing)
+        .delete(do_nothing)
+        .post(do_nothing);
+
+    self_route.at("/_radius/_config").post(do_nothing);
+    self_route.at("/_radius/_config/:token").get(do_nothing);
+    self_route
+        .at("/_radius/_config/:token/apple")
+        .get(do_nothing);
+
+    let mut person_route = tserver.at("/v1/person");
+    person_route
+        .at("")
+        .get(|req| async { Ok("person") })
+        .post(|req| async { Ok("person") });
+
+    let mut account_route = tserver.at("/v1/account");
+
+    account_route
+        .at("")
+        .get(|req| async { Ok("account") })
+        .post(|req| async { Ok("account") });
+    account_route
+        .at("/:id")
+        .get(|req| async { Ok("account") })
+        .delete(|req| async { Ok("account") });
+    account_route
+        .at("/:id/_attr/:attr")
+        .get(|req| async { Ok("account") })
+        .put(|req| async { Ok("account") })
+        .post(|req| async { Ok("account") })
+        .delete(|req| async { Ok("account") });
+    account_route
+        .at("/:id/_person/_extend")
+        .post(|req| async { Ok("account") });
+    account_route.at("/:id/_lock").get(do_nothing);
+
+    account_route.at("/:id/_credential").get(do_nothing);
+    account_route
+        .at("/:id/_credential/primary")
+        .put(|req| async { Ok("account") });
+    account_route
+        .at("/:id/_credential/:cid/_lock")
+        .get(do_nothing);
+
+    account_route
+        .at("/:id/_ssh_pubkeys")
+        .get(|req| async { Ok("account") })
+        .post(|req| async { Ok("account") });
+
+    account_route
+        .at("/:id/_ssh_pubkeys/:tag")
+        .get(|req| async { Ok("account") })
+        .delete(|req| async { Ok("account") });
+
+    account_route
+        .at("/:id/_radius")
+        .get(|req| async { Ok("account") })
+        .post(|req| async { Ok("account") })
+        .delete(|req| async { Ok("account") });
+
+    account_route
+        .at("/:id/_radius/_token")
+        .get(|req| async { Ok("account") });
+
+    account_route
+        .at("/:id/_unix")
+        .post(|req| async { Ok("account") });
+    account_route
+        .at("/:id/_unix/_token")
+        .get(|req| async { Ok("account") });
+    account_route
+        .at("/:id/_unix/_auth")
+        .post(|req| async { Ok("account") });
+    account_route
+        .at("/:id/_unix/_credential")
+        .put(|req| async { Ok("account") })
+        .delete(|req| async { Ok("account") });
+
+    let mut group_route = tserver.at("/v1/group");
+    group_route
+        .at("")
+        .get(|req| async { Ok("group") })
+        .post(|req| async { Ok("group") });
+    group_route
+        .at("/:id")
+        .get(|req| async { Ok("group") })
+        .delete(|req| async { Ok("group") });
+    group_route
+        .at("/:id/_attr/:attr")
+        .get(|req| async { Ok("group") })
+        .put(|req| async { Ok("group") })
+        .post(|req| async { Ok("group") })
+        .delete(|req| async { Ok("group") });
+    group_route
+        .at("/:id/_unix")
+        .post(|req| async { Ok("group") });
+    group_route
+        .at("/:id/_unix/_token")
+        .get(|req| async { Ok("group") });
+
+    let mut domain_route = tserver.at("/v1/domain");
+    domain_route.at("").get(|req| async { Ok("domain") });
+    domain_route.at("/:id").get(|req| async { Ok("domain") });
+    domain_route
+        .at("/:id/_attr/:attr")
+        .get(|req| async { Ok("domain") })
+        .put(|req| async { Ok("domain") });
+
+    let mut recycle_route = tserver.at("/v1/recycle_bin");
+    recycle_route.at("").get(|req| async { Ok("recycle") });
+    recycle_route.at("/:id").get(|req| async { Ok("recycle") });
+    recycle_route
+        .at("/:id/_revive")
+        .post(|req| async { Ok("recycle") });
+
+    let mut accessprof_route = tserver.at("/v1/access_profile");
+    accessprof_route.at("").get(do_nothing);
+    accessprof_route.at("/:id").get(do_nothing);
+    accessprof_route.at("/:id/_attr/:attr").get(do_nothing);
+
+    // Create listener?
+    match opt_tls_params {
+        Some(tls_param) => {
+            let x = Box::new(tls_param.build());
+            let x_ref = Box::leak(x);
+            let tlsl = TlsListener::new(address, x_ref);
+
+            tokio::spawn(async move {
+                tserver.listen(tlsl).await.expect("Failed to start server");
+            });
+        }
+        None => {
+            // Create without https
+            tokio::spawn(async move {
+                tserver
+                    .listen(address)
+                    .await
+                    .expect("Failed to start server");
+            });
+        }
+    }
 }
