@@ -29,6 +29,7 @@ use kanidm_proto::v1::{
 
 use async_std::io;
 use openssl::ssl::{SslAcceptor, SslAcceptorBuilder};
+use serde::Serialize;
 use std::net;
 use std::str::FromStr;
 use std::time::Duration;
@@ -40,6 +41,16 @@ pub struct AppState {
     pub status_ref: &'static StatusActor,
     pub qe_w_ref: &'static QueryServerWriteV1,
     pub qe_r_ref: &'static QueryServerReadV1,
+}
+
+pub trait RequestExtensions {
+    fn get_current_uat(&self) -> Option<UserAuthToken>;
+}
+
+impl<State> RequestExtensions for tide::Request<State> {
+    fn get_current_uat(&self) -> Option<UserAuthToken> {
+        self.session().get::<UserAuthToken>("uat")
+    }
 }
 
 pub fn get_current_user(session: &Session) -> Option<UserAuthToken> {
@@ -70,6 +81,37 @@ pub fn operation_error_to_response(e: OperationError, hvalue: String) -> HttpRes
     }
 }
 
+pub fn to_tide_response<T: Serialize>(
+    v: Result<T, OperationError>,
+    hvalue: String,
+) -> tide::Result {
+    match v {
+        Ok(iv) => {
+            let mut res = tide::Response::new(200);
+            tide::Body::from_json(&iv).and_then(|b| {
+                res.set_body(b);
+                Ok(res)
+            })
+        }
+        Err(OperationError::NotAuthenticated) => {
+            Ok(tide::Response::new(tide::StatusCode::Unauthorized))
+        }
+        Err(OperationError::SystemProtectedObject) | Err(OperationError::AccessDenied) => {
+            Ok(tide::Response::new(tide::StatusCode::Forbidden))
+        }
+        Err(OperationError::EmptyRequest)
+        | Err(OperationError::NoMatchingEntries)
+        | Err(OperationError::SchemaViolation(_)) => {
+            Ok(tide::Response::new(tide::StatusCode::BadRequest))
+        }
+        Err(_) => Ok(tide::Response::new(tide::StatusCode::InternalServerError)),
+    }
+    .map(|mut res| {
+        res.insert_header("X-KANIDM-OPID", hvalue);
+        res
+    })
+}
+
 macro_rules! new_eventid {
     () => {{
         let eventid = Uuid::new_v4();
@@ -80,16 +122,17 @@ macro_rules! new_eventid {
 
 // Handle the various end points we need to expose
 
-pub async fn create(
-    (req, session, state): (Json<CreateRequest>, Session, Data<AppState>),
-) -> HttpResponse {
-    let uat = get_current_user(&session);
+// pub async fn create((req, session, state): (Json<CreateRequest>, Session, Data<AppState>),
+pub async fn create(mut req: tide::Request<AppState>) -> tide::Result {
+    let uat = req.get_current_uat();
+    // parse the req to a CreateRequest
+    let msg: CreateRequest = req.body_json().await?;
+
     let (eventid, hvalue) = new_eventid!();
-    let m_obj = CreateMessage::new(uat, req.into_inner(), eventid);
-    match state.qe_w_ref.handle_create(m_obj).await {
-        Ok(r) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
-        Err(e) => operation_error_to_response(e, hvalue),
-    }
+    let m_obj = CreateMessage::new(uat, msg, eventid);
+
+    let res = req.state().qe_w_ref.handle_create(m_obj).await;
+    to_tide_response(res, hvalue)
 }
 
 pub async fn modify(
@@ -1069,9 +1112,9 @@ pub async fn do_nothing(_req: tide::Request<AppState>) -> tide::Result {
 // We probably need an extract auth or similar to handle the different
 // types (cookie, bearer), and to generic this over get/post.
 
-pub async fn auth(
-    (obj, session, state): (Json<AuthRequest>, Session, Data<AppState>),
-) -> HttpResponse {
+pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
+    // AuthRequest
+
     // First, deal with some state management.
     // Do anything here first that's needed like getting the session details
     // out of the req cookie.
@@ -1081,59 +1124,53 @@ pub async fn auth(
     // content, and because we control it's get/set it SHOULD be fine
     // provided we use secure cookies. But we can't always trust that ...
     let (eventid, hvalue) = new_eventid!();
-    let maybe_sessionid = match session.get::<Uuid>("auth-session-id") {
-        Ok(c) => c,
-        Err(_e) => {
-            return HttpResponse::InternalServerError()
-                .header("X-KANIDM-OPID", hvalue)
-                .json(())
-        }
-    };
+    let maybe_sessionid = req.session().get::<Uuid>("auth-session-id");
 
-    let auth_msg = AuthMessage::new(obj.into_inner(), maybe_sessionid, eventid);
+    let obj: AuthRequest = req.body_json().await?;
+
+    let auth_msg = AuthMessage::new(obj, maybe_sessionid, eventid);
 
     // We probably need to know if we allocate the cookie, that this is a
     // new session, and in that case, anything *except* authrequest init is
     // invalid.
-    match state
+    let res = req
+        .state()
         // This may change in the future ...
         .qe_r_ref
         .handle_auth(auth_msg)
         .await
-    {
-        Ok(ar) => {
+        .and_then(|ar| {
+            // Do some response/state management.
             match &ar.state {
                 AuthState::Success(uat) => {
+                    let msession = req.session_mut();
                     // Remove the auth-session-id
-                    session.remove("auth-session-id");
+                    msession.remove("auth-session-id");
                     // Set the uat into the cookie
-                    match session.set("uat", uat) {
-                        Ok(_) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(ar),
-                        Err(_) => HttpResponse::InternalServerError()
-                            .header("X-KANIDM-OPID", hvalue)
-                            .json(()),
-                    }
+                    msession
+                        .insert("uat", uat)
+                        // .map(|_| ())
+                        .map_err(|_| OperationError::InvalidSessionState)
                 }
                 AuthState::Denied(_) => {
+                    let msession = req.session_mut();
                     // Remove the auth-session-id
-                    session.remove("auth-session-id");
-                    HttpResponse::Unauthorized()
-                        .header("X-KANIDM-OPID", hvalue)
-                        .json(ar)
+                    msession.remove("auth-session-id");
+                    Err(OperationError::AccessDenied)
                 }
                 AuthState::Continue(_) => {
+                    let msession = req.session_mut();
                     // Ensure the auth-session-id is set
-                    match session.set("auth-session-id", ar.sessionid) {
-                        Ok(_) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(ar),
-                        Err(_) => HttpResponse::InternalServerError()
-                            .header("X-KANIDM-OPID", hvalue)
-                            .json(()),
-                    }
+                    msession
+                        .insert("auth-session-id", ar.sessionid)
+                        // .map(|_| ())
+                        .map_err(|_| OperationError::InvalidSessionState)
                 }
             }
-        }
-        Err(e) => operation_error_to_response(e, hvalue),
-    }
+            // And put the auth result back in.
+            .map(|()| ar)
+        });
+    to_tide_response(res, hvalue)
 }
 
 pub async fn idm_account_set_password(
@@ -1158,7 +1195,7 @@ pub async fn status(req: tide::Request<AppState>) -> tide::Result {
         .status_ref
         .handle_request(StatusRequestEvent { eventid })
         .await;
-    let mut res = tide::Response::new(200);
+    let mut res = tide::Response::new(tide::StatusCode::Ok);
     res.insert_header("X-KANIDM-OPID", hvalue);
     res.set_body(tide::Body::from_json(&r)?);
     Ok(res)
@@ -1290,12 +1327,12 @@ pub fn create_https_server(
     tserver.at("/status").get(self::status);
 
     let mut raw_route = tserver.at("/v1/raw");
-    raw_route.at("/create").post(|req| async { Ok("create") });
+    raw_route.at("/create").post(create);
     raw_route.at("/modify").post(|req| async { Ok("modify") });
     raw_route.at("/delete").post(|req| async { Ok("delete") });
     raw_route.at("/search").post(|req| async { Ok("search") });
 
-    tserver.at("/v1/auth").post(|_| async { Ok("") });
+    tserver.at("/v1/auth").post(auth);
 
     let mut schema_route = tserver.at("/v1/schema");
     schema_route.at("").get(|req| async { Ok("schema") });
