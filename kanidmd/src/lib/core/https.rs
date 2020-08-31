@@ -135,53 +135,41 @@ pub async fn create(mut req: tide::Request<AppState>) -> tide::Result {
     to_tide_response(res, hvalue)
 }
 
-pub async fn modify(
-    (req, session, state): (Json<ModifyRequest>, Session, Data<AppState>),
-) -> HttpResponse {
-    let uat = get_current_user(&session);
+pub async fn modify(mut req: tide::Request<AppState>) -> tide::Result {
+    let uat = req.get_current_uat();
+    let msg: ModifyRequest = req.body_json().await?;
     let (eventid, hvalue) = new_eventid!();
-    let m_obj = ModifyMessage::new(uat, req.into_inner(), eventid);
-    match state.qe_w_ref.handle_modify(m_obj).await {
-        Ok(r) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
-        Err(e) => operation_error_to_response(e, hvalue),
-    }
+    let m_obj = ModifyMessage::new(uat, msg, eventid);
+    let res = req.state().qe_w_ref.handle_modify(m_obj).await;
+    to_tide_response(res, hvalue)
 }
 
-pub async fn delete(
-    (req, session, state): (Json<DeleteRequest>, Session, Data<AppState>),
-) -> HttpResponse {
-    let uat = get_current_user(&session);
+pub async fn delete(mut req: tide::Request<AppState>) -> tide::Result {
+    let uat = req.get_current_uat();
+    let msg: DeleteRequest = req.body_json().await?;
     let (eventid, hvalue) = new_eventid!();
-    let m_obj = DeleteMessage::new(uat, req.into_inner(), eventid);
-    match state.qe_w_ref.handle_delete(m_obj).await {
-        Ok(r) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
-        Err(e) => operation_error_to_response(e, hvalue),
-    }
+    let m_obj = DeleteMessage::new(uat, msg, eventid);
+    let res = req.state().qe_w_ref.handle_delete(m_obj).await;
+    to_tide_response(res, hvalue)
 }
 
-pub async fn search(
-    (req, session, state): (Json<SearchRequest>, Session, Data<AppState>),
-) -> HttpResponse {
-    let uat = get_current_user(&session);
+pub async fn search(mut req: tide::Request<AppState>) -> tide::Result {
+    let uat = req.get_current_uat();
+    let msg: SearchRequest = req.body_json().await?;
     let (eventid, hvalue) = new_eventid!();
-    let m_obj = SearchMessage::new(uat, req.into_inner(), eventid);
-    match state.qe_r_ref.handle_search(m_obj).await {
-        Ok(r) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
-        Err(e) => operation_error_to_response(e, hvalue),
-    }
+    let m_obj = SearchMessage::new(uat, msg, eventid);
+    let res = req.state().qe_r_ref.handle_search(m_obj).await;
+    to_tide_response(res, hvalue)
 }
 
-pub async fn whoami((session, state): (Session, Data<AppState>)) -> HttpResponse {
-    let uat = get_current_user(&session);
+pub async fn whoami(mut req: tide::Request<AppState>) -> tide::Result {
+    let uat = req.get_current_uat();
     let (eventid, hvalue) = new_eventid!();
-
     // New event, feed current auth data from the token to it.
-    let obj = WhoamiMessage { uat, eventid };
+    let m_obj = WhoamiMessage { uat, eventid };
 
-    match state.qe_r_ref.handle_whoami(obj).await {
-        Ok(r) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
-        Err(e) => operation_error_to_response(e, hvalue),
-    }
+    let res = req.state().qe_r_ref.handle_whoami(m_obj).await;
+    to_tide_response(res, hvalue)
 }
 
 // =============== REST generics ========================
@@ -1328,9 +1316,9 @@ pub fn create_https_server(
 
     let mut raw_route = tserver.at("/v1/raw");
     raw_route.at("/create").post(create);
-    raw_route.at("/modify").post(|req| async { Ok("modify") });
-    raw_route.at("/delete").post(|req| async { Ok("delete") });
-    raw_route.at("/search").post(|req| async { Ok("search") });
+    raw_route.at("/modify").post(modify);
+    raw_route.at("/delete").post(delete);
+    raw_route.at("/search").post(search);
 
     tserver.at("/v1/auth").post(auth);
 
@@ -1368,8 +1356,8 @@ pub fn create_https_server(
         .patch(do_nothing);
 
     let mut self_route = tserver.at("/v1/self");
-    self_route.at("").get(|req| async { Ok("self") });
-    self_route.at("/").get(|req| async { Ok("self") });
+    self_route.at("").get(whoami);
+    self_route.at("/").get(whoami);
 
     self_route.at("/_attr/:attr").get(do_nothing);
     self_route.at("/_credential").get(do_nothing);
