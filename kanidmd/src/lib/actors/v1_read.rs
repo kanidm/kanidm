@@ -177,7 +177,7 @@ impl QueryServerReadV1 {
         ));
 
         let x_ref = Box::leak(x);
-        unsafe { &(*x_ref) }
+        &(*x_ref)
     }
 
     // The server only recieves "Message" structures, which
@@ -526,14 +526,13 @@ impl QueryServerReadV1 {
             &mut audit,
             "actors::v1_read::handle<InternalUnixUserTokenReadMessage>",
             || {
-                let target_uuid = Uuid::parse_str(msg.uuid_or_name.as_str()).or_else(|_| {
+                let target_uuid = 
                     idm_read
                         .qs_read
                         .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
                         .map_err(|e| {
-                            ladmin_info!(&mut audit, "Error resolving as gidnumber continuing ...");
+                            ladmin_info!(&mut audit, "Error resolving {} as gidnumber continuing ... {:?}", msg.uuid_or_name, e);
                             e
-                        })
                 })?;
 
                 // Make an event from the request
@@ -576,14 +575,13 @@ impl QueryServerReadV1 {
             &mut audit,
             "actors::v1_read::handle<InternalUnixGroupTokenReadMessage>",
             || {
-                let target_uuid = Uuid::parse_str(msg.uuid_or_name.as_str()).or_else(|_| {
+                let target_uuid = 
                     idm_read
                         .qs_read
                         .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
                         .map_err(|e| {
                             ladmin_info!(&mut audit, "Error resolving as gidnumber continuing ...");
                             e
-                        })
                 })?;
 
                 // Make an event from the request
@@ -757,14 +755,13 @@ impl QueryServerReadV1 {
             "actors::v1_read::handle<IdmAccountUnixAuthMessage>",
             || {
                 // resolve the id
-                let target_uuid = Uuid::parse_str(msg.uuid_or_name.as_str()).or_else(|_| {
+                let target_uuid = 
                     idm_write
                         .qs_read
                         .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
                         .map_err(|e| {
                             ladmin_info!(&mut audit, "Error resolving as gidnumber continuing ...");
                             e
-                        })
                 })?;
                 // Make an event from the request
                 let uuae = match UnixUserAuthEvent::from_parts(

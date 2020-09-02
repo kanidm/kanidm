@@ -153,7 +153,7 @@ fn read_file_metadata(path: &PathBuf) -> Metadata {
     }
 }
 
-#[actix_rt::main]
+#[tokio::main]
 async fn main() {
     // Get info about who we are.
     let cuid = get_current_uid();

@@ -3,7 +3,6 @@
 
 // This is really only used for long lived, high level types that need clone
 // that otherwise can't be cloned. Think Mutex.
-// use actix::prelude::*;
 use async_std::task;
 use hashbrown::HashMap;
 use std::cell::Cell;
@@ -60,7 +59,6 @@ lazy_static! {
 
 #[derive(Clone)]
 pub struct QueryServer {
-    // log: actix::Addr<EventLog>,
     s_uuid: Uuid,
     d_uuid: Uuid,
     be: Backend,

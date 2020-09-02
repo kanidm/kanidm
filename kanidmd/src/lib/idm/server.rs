@@ -1783,14 +1783,14 @@ mod tests {
 
     #[test]
     fn test_idm_unix_password_upgrade() {
-        run_idm_test!(|qs: &QueryServer,
+        run_idm_test!(|_qs: &QueryServer,
                        idms: &IdmServer,
                        idms_delayed: &mut IdmServerDelayed,
                        au: &mut AuditScope| {
             // Assert the delayed action queue is empty
             idms_delayed.is_empty_or_panic();
             // Setup the admin with an imported unix pw.
-            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
+            let idms_prox_write = idms.proxy_write(duration_from_epoch_now());
 
             let im_pw = "{SSHA512}JwrSUHkI7FTAfHRVR6KoFlSN0E3dmaQWARjZ+/UsShYlENOqDtFVU77HJLLrY2MuSp0jve52+pwtdVl2QUAHukQ0XUf5LDtM";
             let pw = Password::try_from(im_pw).expect("failed to parse");

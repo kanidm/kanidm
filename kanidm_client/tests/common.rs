@@ -36,6 +36,7 @@ pub fn run_test(test_fn: fn(KanidmClient) -> ()) {
     config.address = format!("127.0.0.1:{}", port);
     config.secure_cookies = false;
     config.integration_test_config = Some(int_config);
+    // config.log_level = Some(LogLevel::Verbose as u32);
     config.log_level = Some(LogLevel::Quiet as u32);
     config.threads = 1;
 
@@ -52,6 +53,8 @@ pub fn run_test(test_fn: fn(KanidmClient) -> ()) {
             create_server_core(config)
                 .await
                 .expect("failed to start server core");
+            // We have to yield now to guarantee that the tide elements are setup.
+            task::yield_now().await;
             ready_tx
                 .send(())
                 .await

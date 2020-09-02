@@ -1,14 +1,9 @@
 mod https;
 mod ldaps;
-use actix_session::CookieSession;
-use actix_web::web::{self, HttpResponse};
-use actix_web::{cookie, error, middleware, App, HttpServer};
 use libc::umask;
 
 // use crossbeam::channel::unbounded;
 use std::sync::Arc;
-use std::time::Duration;
-use time::Duration as TDuration;
 use tokio::sync::mpsc::unbounded_channel as unbounded;
 
 use crate::config::Configuration;
@@ -28,8 +23,6 @@ use crate::schema::Schema;
 use crate::server::QueryServer;
 use crate::status::StatusActor;
 use crate::utils::duration_from_epoch_now;
-
-use self::https::*;
 
 use kanidm_proto::v1::OperationError;
 
@@ -561,11 +554,11 @@ pub async fn create_server_core(config: Configuration) -> Result<(), ()> {
 
     // TODO: Remove these when we go to auth bearer!
     // Copy the max size
-    let secure_cookies = config.secure_cookies;
+    let _secure_cookies = config.secure_cookies;
     // domain will come from the qs now!
     let cookie_key: [u8; 32] = config.cookie_key;
 
-    https::create_https_server(
+    self::https::create_https_server(
         config.address,
         opt_tls_params,
         &cookie_key,
@@ -573,229 +566,6 @@ pub async fn create_server_core(config: Configuration) -> Result<(), ()> {
         server_write_ref,
         server_read_ref,
     );
-
-    /*
-    // start the web server
-    let server = HttpServer::new(move || {
-        App::new()
-            .data(AppState {
-                status_ref: status_ref,
-                qe_w_ref: server_write_ref,
-                qe_r_ref: server_read_ref,
-            })
-            .wrap(middleware::Logger::default())
-            .wrap(
-                // Signed prevents tampering. this 32 byte key MUST
-                // be generated (probably a cli option, and it's up to the
-                // server process to coordinate these on hosts). IE an RODC
-                // could have a different key than our write servers to prevent
-                // disclosure of a writeable token in case of compromise. It does
-                // mean that you can't load balance between the rodc and the write
-                // though, but that's tottaly reasonable.
-                CookieSession::signed(&cookie_key)
-                    // .path(prefix.as_str())
-                    // .domain(domain.as_str())
-                    .same_site(cookie::SameSite::Strict)
-                    .name("kanidm-session")
-                    // if true, only allow to https
-                    .secure(secure_cookies)
-                    // TODO #63: make this configurable!
-                    .max_age_time(TDuration::hours(1)),
-            )
-            // .service(fs::Files::new("/static", "./static"))
-            // Even though this says "CreateRequest", it's actually configuring *ALL* json requests.
-            // .app_data(web::Json::<CreateRequest>::configure(|cfg| { cfg
-            .app_data(
-                web::JsonConfig::default()
-                    // Currently 4MB
-                    .limit(4_194_304)
-                    .error_handler(|err, _req| {
-                        let s = format!("{}", err);
-                        error::InternalError::from_response(err, HttpResponse::BadRequest().json(s))
-                            .into()
-                    }),
-            )
-            // .service(web::scope("/status").route("", web::get().to(status)))
-            .service(
-                web::scope("/v1/raw")
-                    .route("/create", web::post().to(create))
-                    .route("/modify", web::post().to(modify))
-                    .route("/delete", web::post().to(delete))
-                    .route("/search", web::post().to(search)),
-            )
-            .service(web::scope("/v1/auth").route("", web::post().to(auth)))
-            .service(
-                web::scope("/v1/schema")
-                    .route("", web::get().to(schema_get))
-                    .route("/attributetype", web::get().to(schema_attributetype_get))
-                    .route("/attributetype", web::post().to(do_nothing))
-                    .route(
-                        "/attributetype/{id}",
-                        web::get().to(schema_attributetype_get_id),
-                    )
-                    .route("/attributetype/{id}", web::put().to(do_nothing))
-                    .route("/attributetype/{id}", web::patch().to(do_nothing))
-                    .route("/classtype", web::get().to(schema_classtype_get))
-                    .route("/classtype", web::post().to(do_nothing))
-                    .route("/classtype/{id}", web::get().to(schema_classtype_get_id))
-                    .route("/classtype/{id}", web::put().to(do_nothing))
-                    .route("/classtype/{id}", web::patch().to(do_nothing)),
-            )
-            .service(
-                web::scope("/v1/self")
-                    .route("", web::get().to(whoami))
-                    .route("/_attr/{attr}", web::get().to(do_nothing))
-                    .route("/_credential", web::get().to(do_nothing))
-                    .route(
-                        "/_credential/primary/set_password",
-                        web::post().to(idm_account_set_password),
-                    )
-                    .route("/_credential/{cid}/_lock", web::get().to(do_nothing))
-                    .route("/_radius", web::get().to(do_nothing))
-                    .route("/_radius", web::delete().to(do_nothing))
-                    .route("/_radius", web::post().to(do_nothing))
-                    .route("/_radius/_config", web::post().to(do_nothing))
-                    .route("/_radius/_config/{secret_otp}", web::get().to(do_nothing))
-                    .route(
-                        "/_radius/_config/{secret_otp}/apple",
-                        web::get().to(do_nothing),
-                    ),
-            )
-            .service(
-                web::scope("/v1/person")
-                    .route("", web::get().to(person_get))
-                    .route("", web::post().to(person_post))
-                    .route("/{id}", web::get().to(person_id_get)),
-
-                    /*
-                                                   .route("/{id}", web::delete().to(account_id_delete))
-                                                   .route("/{id}/_attr/{attr}", web::get().to(account_id_get_attr))
-                                                   .route("/{id}/_attr/{attr}", web::post().to(account_id_post_attr))
-                                                   .route("/{id}/_attr/{attr}", web::put().to(account_id_put_attr))
-                                                   .route(
-                                                       "/{id}/_attr/{attr}",
-                                                       web::delete().to(account_id_delete_attr),
-                                                                   )
-                                                                   */
-            )
-            .service(
-                web::scope("/v1/account")
-                    .route("", web::get().to(account_get))
-                    .route("", web::post().to(account_post))
-                    .route("/{id}", web::get().to(account_id_get))
-                    .route("/{id}", web::delete().to(account_id_delete))
-                    .route("/{id}/_attr/{attr}", web::get().to(account_id_get_attr))
-                    .route("/{id}/_attr/{attr}", web::post().to(account_id_post_attr))
-                    .route("/{id}/_attr/{attr}", web::put().to(account_id_put_attr))
-                    .route(
-                        "/{id}/_attr/{attr}",
-                        web::delete().to(account_id_delete_attr),
-                    )
-                    .route(
-                        "/{id}/_person/_extend",
-                        web::post().to(account_post_id_person_extend),
-                    )
-                    .route("/{id}/_lock", web::get().to(do_nothing))
-                    .route("/{id}/_credential", web::get().to(do_nothing))
-                    .route(
-                        "/{id}/_credential/primary",
-                        web::put().to(account_put_id_credential_primary),
-                    )
-                    .route("/{id}/_credential/{cid}/_lock", web::get().to(do_nothing))
-                    .route(
-                        "/{id}/_ssh_pubkeys",
-                        web::get().to(account_get_id_ssh_pubkeys),
-                    )
-                    .route(
-                        "/{id}/_ssh_pubkeys",
-                        web::post().to(account_post_id_ssh_pubkey),
-                    )
-                    .route(
-                        "/{id}/_ssh_pubkeys/{tag}",
-                        web::get().to(account_get_id_ssh_pubkey_tag),
-                    )
-                    .route(
-                        "/{id}/_ssh_pubkeys/{tag}",
-                        web::delete().to(account_delete_id_ssh_pubkey_tag),
-                    )
-                    .route("/{id}/_radius", web::get().to(account_get_id_radius))
-                    .route(
-                        "/{id}/_radius",
-                        web::post().to(account_post_id_radius_regenerate),
-                    )
-                    .route("/{id}/_radius", web::delete().to(account_delete_id_radius))
-                    .route(
-                        "/{id}/_radius/_token",
-                        web::get().to(account_get_id_radius_token),
-                    )
-                    .route("/{id}/_unix", web::post().to(account_post_id_unix))
-                    .route(
-                        "/{id}/_unix/_token",
-                        web::get().to(account_get_id_unix_token),
-                    )
-                    .route(
-                        "/{id}/_unix/_auth",
-                        web::post().to(account_post_id_unix_auth),
-                    )
-                    .route(
-                        "/{id}/_unix/_credential",
-                        web::put().to(account_put_id_unix_credential),
-                    )
-                    .route(
-                        "/{id}/_unix/_credential",
-                        web::delete().to(account_delete_id_unix_credential),
-                    ),
-            )
-            .service(
-                web::scope("/v1/group")
-                    .route("", web::get().to(group_get))
-                    .route("", web::post().to(group_post))
-                    .route("/{id}", web::get().to(group_id_get))
-                    .route("/{id}", web::delete().to(group_id_delete))
-                    .route("/{id}/_attr/{attr}", web::get().to(group_id_get_attr))
-                    .route("/{id}/_attr/{attr}", web::post().to(group_id_post_attr))
-                    .route("/{id}/_attr/{attr}", web::put().to(group_id_put_attr))
-                    .route("/{id}/_attr/{attr}", web::delete().to(group_id_delete_attr))
-                    .route("/{id}/_unix", web::post().to(group_post_id_unix))
-                    .route("/{id}/_unix/_token", web::get().to(group_get_id_unix_token)),
-            )
-            .service(
-                web::scope("/v1/domain")
-                    .route("", web::get().to(domain_get))
-                    .route("/{id}", web::get().to(domain_id_get))
-                    .route("/{id}/_attr/{attr}", web::get().to(domain_id_get_attr))
-                    .route("/{id}/_attr/{attr}", web::put().to(domain_id_put_attr)),
-            )
-            .service(
-                web::scope("/v1/recycle_bin")
-                    .route("", web::get().to(recycle_bin_get))
-                    .route("/{id}", web::get().to(recycle_bin_id_get))
-                    .route("/{id}/_revive", web::post().to(recycle_bin_revive_id_post)),
-            )
-            .service(
-                web::scope("/v1/access_profile")
-                    .route("", web::get().to(do_nothing))
-                    .route("/{id}", web::get().to(do_nothing))
-                    .route("/{id}/_attr/{attr}", web::get().to(do_nothing)),
-            )
-    });
-
-    let server = match opt_tls_params {
-        Some(tls_params) => server.bind_openssl(config.address, tls_params),
-        None => {
-            warn!("Starting WITHOUT TLS parameters. This may cause authentication to fail!");
-            server.bind(config.address)
-        }
-    };
-
-    let server = match server {
-        Ok(s) => s.run(),
-        Err(e) => {
-            error!("Failed to initialise server! {:?}", e);
-            return Err(());
-        }
-    };
-    */
 
     info!("ready to rock! 🧱");
 

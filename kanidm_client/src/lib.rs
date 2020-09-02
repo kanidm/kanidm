@@ -952,7 +952,7 @@ impl KanidmClient {
         self.perform_get_request(format!("/v1/recycle_bin/{}", id).as_str())
     }
 
-    pub fn recycle_bin_revive(&self, id: &str) -> Result<(), ClientError> {
+    pub fn recycle_bin_revive(&self, id: &str) -> Result<bool, ClientError> {
         self.perform_post_request(format!("/v1/recycle_bin/{}/_revive", id).as_str(), ())
     }
 }

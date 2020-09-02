@@ -275,7 +275,7 @@ impl QueryServerWriteV1 {
         ));
 
         let x_ptr = Box::leak(x);
-        unsafe { &(*x_ptr) }
+        &(*x_ptr)
     }
 
     async fn modify_from_parts(
@@ -1187,9 +1187,11 @@ impl QueryServerWriteV1 {
             &mut audit,
             "actors::v1_write::handle<DelayedAction>",
             || {
-                idms_prox_write
+                if let Err(res) = idms_prox_write
                     .process_delayedaction(&mut audit, da)
-                    .and_then(|_| idms_prox_write.commit(&mut audit));
+                    .and_then(|_| idms_prox_write.commit(&mut audit)) {
+                    ladmin_info!(audit, "delayed action error: {:?}", res);
+                }
             }
         );
         self.log.send(audit).unwrap_or_else(|_| {
