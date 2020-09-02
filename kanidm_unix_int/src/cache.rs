@@ -294,11 +294,11 @@ impl CacheLayer {
                         Some(OperationError::NoMatchingEntries),
                         opid,
                     )
-                | ClientError::Http(
-                    StatusCode::NOT_FOUND,
-                    Some(OperationError::NoMatchingEntries),
-                    opid,
-                )
+                    | ClientError::Http(
+                        StatusCode::NOT_FOUND,
+                        Some(OperationError::NoMatchingEntries),
+                        opid,
+                    )
                     | ClientError::Http(
                         StatusCode::BAD_REQUEST,
                         Some(OperationError::InvalidAccountState(_)),
@@ -367,11 +367,11 @@ impl CacheLayer {
                         Some(OperationError::NoMatchingEntries),
                         opid,
                     )
-                | ClientError::Http(
-                    StatusCode::NOT_FOUND,
-                    Some(OperationError::NoMatchingEntries),
-                    opid,
-                )
+                    | ClientError::Http(
+                        StatusCode::NOT_FOUND,
+                        Some(OperationError::NoMatchingEntries),
+                        opid,
+                    )
                     | ClientError::Http(
                         StatusCode::BAD_REQUEST,
                         Some(OperationError::InvalidAccountState(_)),

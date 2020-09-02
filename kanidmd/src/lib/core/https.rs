@@ -1,4 +1,3 @@
-
 use crate::actors::v1_read::QueryServerReadV1;
 use crate::actors::v1_read::{
     AuthMessage, IdmAccountUnixAuthMessage, InternalRadiusReadMessage,
@@ -54,9 +53,7 @@ impl<State> RequestExtensions for tide::Request<State> {
 
     fn get_url_param(&self, param: &str) -> Result<String, tide::Error> {
         self.param(param)
-            .map_err(|_| {
-                tide::Error::from_str(tide::StatusCode::ImATeapot, "teapot")
-            })
+            .map_err(|_| tide::Error::from_str(tide::StatusCode::ImATeapot, "teapot"))
     }
 }
 
@@ -74,13 +71,14 @@ pub fn to_tide_response<T: Serialize>(
         }
         Err(e) => {
             let sc = match &e {
-                OperationError::NotAuthenticated =>
-                    tide::StatusCode::Unauthorized,
-                OperationError::SystemProtectedObject | OperationError::AccessDenied =>
-                    tide::StatusCode::Forbidden,
-                OperationError::NoMatchingEntries =>
-                    tide::StatusCode::NotFound,
-                OperationError::EmptyRequest | OperationError::SchemaViolation(_) => tide::StatusCode::BadRequest,
+                OperationError::NotAuthenticated => tide::StatusCode::Unauthorized,
+                OperationError::SystemProtectedObject | OperationError::AccessDenied => {
+                    tide::StatusCode::Forbidden
+                }
+                OperationError::NoMatchingEntries => tide::StatusCode::NotFound,
+                OperationError::EmptyRequest | OperationError::SchemaViolation(_) => {
+                    tide::StatusCode::BadRequest
+                }
                 _ => tide::StatusCode::InternalServerError,
             };
             let mut res = tide::Response::new(sc);
@@ -196,7 +194,11 @@ async fn json_rest_event_get_id(
         eventid,
     };
 
-    let res = req.state().qe_r_ref.handle_internalsearch(m_obj).await
+    let res = req
+        .state()
+        .qe_r_ref
+        .handle_internalsearch(m_obj)
+        .await
         .map(|mut r| r.pop());
     to_tide_response(res, hvalue)
 }
@@ -217,7 +219,11 @@ async fn json_rest_event_delete_id(
         eventid,
     };
 
-    let res = req.state().qe_w_ref.handle_internaldelete(m_obj).await
+    let res = req
+        .state()
+        .qe_w_ref
+        .handle_internaldelete(m_obj)
+        .await
         .map(|()| true);
     to_tide_response(res, hvalue)
 }
@@ -240,12 +246,12 @@ async fn json_rest_event_get_id_attr(
         eventid,
     };
 
-    let res: Result<Option<_>, _> = req.state().qe_r_ref.handle_internalsearch(m_obj).await
-        .map(|mut event_result| {
-            event_result.pop().and_then(|mut e| {
-                e.attrs.remove(&attr)
-            })
-        });
+    let res: Result<Option<_>, _> = req
+        .state()
+        .qe_r_ref
+        .handle_internalsearch(m_obj)
+        .await
+        .map(|mut event_result| event_result.pop().and_then(|mut e| e.attrs.remove(&attr)));
     to_tide_response(res, hvalue)
 }
 
@@ -285,7 +291,11 @@ async fn json_rest_event_post_id_attr(
         eventid,
     };
     // Add a msg here
-    let res = req.state().qe_w_ref.handle_appendattribute(m_obj).await
+    let res = req
+        .state()
+        .qe_w_ref
+        .handle_appendattribute(m_obj)
+        .await
         .map(|()| true);
     to_tide_response(res, hvalue)
 }
@@ -308,7 +318,11 @@ async fn json_rest_event_put_id_attr(
         filter,
         eventid,
     };
-    let res = req.state().qe_w_ref.handle_setattribute(m_obj).await
+    let res = req
+        .state()
+        .qe_w_ref
+        .handle_setattribute(m_obj)
+        .await
         .map(|()| true);
     to_tide_response(res, hvalue)
 }
@@ -332,7 +346,11 @@ async fn json_rest_event_delete_id_attr(
         filter,
         eventid,
     };
-    let res = req.state().qe_w_ref.handle_purgeattribute(m_obj).await
+    let res = req
+        .state()
+        .qe_w_ref
+        .handle_purgeattribute(m_obj)
+        .await
         .map(|()| true);
     to_tide_response(res, hvalue)
 }
@@ -385,9 +403,7 @@ pub async fn schema_attributetype_get(req: tide::Request<AppState>) -> tide::Res
     json_rest_event_get(req, filter, None).await
 }
 
-pub async fn schema_attributetype_get_id(
-    req: tide::Request<AppState>,
-) -> tide::Result {
+pub async fn schema_attributetype_get_id(req: tide::Request<AppState>) -> tide::Result {
     // These can't use get_id because they attribute name and class name aren't ... well name.
     let uat = req.get_current_uat();
     let id = req.get_url_param("id")?;
@@ -405,7 +421,11 @@ pub async fn schema_attributetype_get_id(
         eventid,
     };
 
-    let res = req.state().qe_r_ref.handle_internalsearch(obj).await
+    let res = req
+        .state()
+        .qe_r_ref
+        .handle_internalsearch(obj)
+        .await
         .map(|mut r| r.pop());
     to_tide_response(res, hvalue)
 }
@@ -415,9 +435,7 @@ pub async fn schema_classtype_get(req: tide::Request<AppState>) -> tide::Result 
     json_rest_event_get(req, filter, None).await
 }
 
-pub async fn schema_classtype_get_id(
-    req: tide::Request<AppState>,
-) -> tide::Result {
+pub async fn schema_classtype_get_id(req: tide::Request<AppState>) -> tide::Result {
     // These can't use get_id because they attribute name and class name aren't ... well name.
     let uat = req.get_current_uat();
     let id = req.get_url_param("id")?;
@@ -435,7 +453,11 @@ pub async fn schema_classtype_get_id(
         eventid,
     };
 
-    let res = req.state().qe_r_ref.handle_internalsearch(obj).await
+    let res = req
+        .state()
+        .qe_r_ref
+        .handle_internalsearch(obj)
+        .await
         .map(|mut r| r.pop());
     to_tide_response(res, hvalue)
 }
@@ -447,16 +469,12 @@ pub async fn person_get(req: tide::Request<AppState>) -> tide::Result {
     json_rest_event_get(req, filter, None).await
 }
 
-pub async fn person_post(
-    req: tide::Request<AppState>,
-) -> tide::Result {
+pub async fn person_post(req: tide::Request<AppState>) -> tide::Result {
     let classes = vec!["account".to_string(), "object".to_string()];
     json_rest_event_post(req, classes).await
 }
 
-pub async fn person_id_get(
-    req: tide::Request<AppState>,
-) -> tide::Result {
+pub async fn person_id_get(req: tide::Request<AppState>) -> tide::Result {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("person")));
     json_rest_event_get_id(req, filter, None).await
 }
@@ -468,66 +486,48 @@ pub async fn account_get(req: tide::Request<AppState>) -> tide::Result {
     json_rest_event_get(req, filter, None).await
 }
 
-pub async fn account_post(
-    req: tide::Request<AppState>,
-) -> tide::Result {
+pub async fn account_post(req: tide::Request<AppState>) -> tide::Result {
     let classes = vec!["account".to_string(), "object".to_string()];
     json_rest_event_post(req, classes).await
 }
 
-pub async fn account_id_get(
-    req: tide::Request<AppState>,
-) -> tide::Result {
+pub async fn account_id_get(req: tide::Request<AppState>) -> tide::Result {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
     json_rest_event_get_id(req, filter, None).await
 }
 
-pub async fn account_id_get_attr(
-    req: tide::Request<AppState>,
-) -> tide::Result {
+pub async fn account_id_get_attr(req: tide::Request<AppState>) -> tide::Result {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
     json_rest_event_get_id_attr(req, filter).await
 }
 
-pub async fn account_id_post_attr(
-    req: tide::Request<AppState>,
-) -> tide::Result {
+pub async fn account_id_post_attr(req: tide::Request<AppState>) -> tide::Result {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
     json_rest_event_post_id_attr(req, filter).await
 }
 
-pub async fn account_id_delete_attr(
-    req: tide::Request<AppState>,
-) -> tide::Result {
+pub async fn account_id_delete_attr(req: tide::Request<AppState>) -> tide::Result {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
     let attr = req.get_url_param("attr")?;
     json_rest_event_delete_id_attr(req, filter, attr).await
 }
 
-pub async fn account_id_put_attr(
-    req: tide::Request<AppState>,
-) -> tide::Result {
+pub async fn account_id_put_attr(req: tide::Request<AppState>) -> tide::Result {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
     json_rest_event_put_id_attr(req, filter).await
 }
 
-pub async fn account_id_delete(
-    req: tide::Request<AppState>,
-) -> tide::Result {
+pub async fn account_id_delete(req: tide::Request<AppState>) -> tide::Result {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
     json_rest_event_delete_id(req, filter).await
 }
 
-pub async fn account_put_id_credential_primary(
-    req: tide::Request<AppState>,
-) -> tide::Result {
+pub async fn account_put_id_credential_primary(req: tide::Request<AppState>) -> tide::Result {
     json_rest_event_credential_put(req, None).await
 }
 
 // Return a vec of str
-pub async fn account_get_id_ssh_pubkeys(
-    req: tide::Request<AppState>,
-) -> tide::Result {
+pub async fn account_get_id_ssh_pubkeys(req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
     let id = req.get_url_param("id")?;
 
@@ -542,9 +542,7 @@ pub async fn account_get_id_ssh_pubkeys(
     to_tide_response(res, hvalue)
 }
 
-pub async fn account_post_id_ssh_pubkey(
-    mut req: tide::Request<AppState>,
-) -> tide::Result {
+pub async fn account_post_id_ssh_pubkey(mut req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
     let id = req.get_url_param("id")?;
     let (tag, key): (String, String) = req.body_json().await?;
@@ -559,14 +557,16 @@ pub async fn account_post_id_ssh_pubkey(
         eventid,
     };
     // Add a msg here
-    let res = req.state().qe_w_ref.handle_sshkeycreate(m_obj).await
+    let res = req
+        .state()
+        .qe_w_ref
+        .handle_sshkeycreate(m_obj)
+        .await
         .map(|()| true);
     to_tide_response(res, hvalue)
 }
 
-pub async fn account_get_id_ssh_pubkey_tag(
-    req: tide::Request<AppState>,
-) -> tide::Result {
+pub async fn account_get_id_ssh_pubkey_tag(req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
     let id = req.get_url_param("id")?;
     let tag = req.get_url_param("tag")?;
@@ -583,9 +583,7 @@ pub async fn account_get_id_ssh_pubkey_tag(
     to_tide_response(res, hvalue)
 }
 
-pub async fn account_delete_id_ssh_pubkey_tag(
-    req: tide::Request<AppState>,
-) -> tide::Result {
+pub async fn account_delete_id_ssh_pubkey_tag(req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
     let id = req.get_url_param("id")?;
     let tag = req.get_url_param("tag")?;
@@ -600,15 +598,17 @@ pub async fn account_delete_id_ssh_pubkey_tag(
         eventid,
     };
 
-    let res = req.state().qe_w_ref.handle_removeattributevalue(obj).await
+    let res = req
+        .state()
+        .qe_w_ref
+        .handle_removeattributevalue(obj)
+        .await
         .map(|()| true);
     to_tide_response(res, hvalue)
 }
 
 // Get and return a single str
-pub async fn account_get_id_radius(
-    req: tide::Request<AppState>,
-) -> tide::Result {
+pub async fn account_get_id_radius(req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
     let id = req.get_url_param("id")?;
 
@@ -623,9 +623,7 @@ pub async fn account_get_id_radius(
     to_tide_response(res, hvalue)
 }
 
-pub async fn account_post_id_radius_regenerate(
-    req: tide::Request<AppState>,
-) -> tide::Result {
+pub async fn account_post_id_radius_regenerate(req: tide::Request<AppState>) -> tide::Result {
     // Need to to send the regen msg
     let uat = req.get_current_uat();
     let id = req.get_url_param("id")?;
@@ -637,17 +635,13 @@ pub async fn account_post_id_radius_regenerate(
     to_tide_response(res, hvalue)
 }
 
-pub async fn account_delete_id_radius(
-    req: tide::Request<AppState>,
-) -> tide::Result {
+pub async fn account_delete_id_radius(req: tide::Request<AppState>) -> tide::Result {
     let attr = "radius_secret".to_string();
     let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
     json_rest_event_delete_id_attr(req, filter, attr).await
 }
 
-pub async fn account_get_id_radius_token(
-    req: tide::Request<AppState>,
-) -> tide::Result {
+pub async fn account_get_id_radius_token(req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
     let id = req.get_url_param("id")?;
 
@@ -658,13 +652,15 @@ pub async fn account_get_id_radius_token(
         eventid,
     };
 
-    let res = req.state().qe_r_ref.handle_internalradiustokenread(obj).await;
+    let res = req
+        .state()
+        .qe_r_ref
+        .handle_internalradiustokenread(obj)
+        .await;
     to_tide_response(res, hvalue)
 }
 
-pub async fn account_post_id_person_extend(
-    req: tide::Request<AppState>,
-) -> tide::Result {
+pub async fn account_post_id_person_extend(req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
     let id = req.get_url_param("id")?;
     let (eventid, hvalue) = new_eventid!();
@@ -673,27 +669,31 @@ pub async fn account_post_id_person_extend(
         uuid_or_name: id,
         eventid,
     };
-    let res = req.state().qe_w_ref.handle_idmaccountpersonextend(m_obj).await
+    let res = req
+        .state()
+        .qe_w_ref
+        .handle_idmaccountpersonextend(m_obj)
+        .await
         .map(|()| true);
     to_tide_response(res, hvalue)
 }
 
-pub async fn account_post_id_unix(
-    mut req: tide::Request<AppState>,
-) -> tide::Result {
+pub async fn account_post_id_unix(mut req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
     let id = req.get_url_param("id")?;
     let obj: AccountUnixExtend = req.body_json().await?;
     let (eventid, hvalue) = new_eventid!();
     let m_obj = IdmAccountUnixExtendMessage::new(uat, id, obj, eventid);
-    let res = req.state().qe_w_ref.handle_idmaccountunixextend(m_obj).await
+    let res = req
+        .state()
+        .qe_w_ref
+        .handle_idmaccountunixextend(m_obj)
+        .await
         .map(|()| true);
     to_tide_response(res, hvalue)
 }
 
-pub async fn account_get_id_unix_token(
-    req: tide::Request<AppState>,
-) -> tide::Result {
+pub async fn account_get_id_unix_token(req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
     let id = req.get_url_param("id")?;
 
@@ -704,13 +704,15 @@ pub async fn account_get_id_unix_token(
         eventid,
     };
 
-    let res = req.state().qe_r_ref.handle_internalunixusertokenread(obj).await;
+    let res = req
+        .state()
+        .qe_r_ref
+        .handle_internalunixusertokenread(obj)
+        .await;
     to_tide_response(res, hvalue)
 }
 
-pub async fn account_post_id_unix_auth(
-    mut req: tide::Request<AppState>,
-) -> tide::Result {
+pub async fn account_post_id_unix_auth(mut req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
     let id = req.get_url_param("id")?;
     let obj: SingleStringRequest = req.body_json().await?;
@@ -725,9 +727,7 @@ pub async fn account_post_id_unix_auth(
     to_tide_response(res, hvalue)
 }
 
-pub async fn account_put_id_unix_credential(
-    mut req: tide::Request<AppState>,
-) -> tide::Result {
+pub async fn account_put_id_unix_credential(mut req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
     let id = req.get_url_param("id")?;
     let obj: SingleStringRequest = req.body_json().await?;
@@ -738,14 +738,16 @@ pub async fn account_put_id_unix_credential(
         cred: obj.value,
         eventid,
     };
-    let res = req.state().qe_w_ref.handle_idmaccountunixsetcred(m_obj).await
+    let res = req
+        .state()
+        .qe_w_ref
+        .handle_idmaccountunixsetcred(m_obj)
+        .await
         .map(|()| true);
     to_tide_response(res, hvalue)
 }
 
-pub async fn account_delete_id_unix_credential(
-    req: tide::Request<AppState>,
-) -> tide::Result {
+pub async fn account_delete_id_unix_credential(req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
     let id = req.get_url_param("id")?;
 
@@ -758,7 +760,11 @@ pub async fn account_delete_id_unix_credential(
         eventid,
     };
 
-    let res = req.state().qe_w_ref.handle_purgeattribute(obj).await
+    let res = req
+        .state()
+        .qe_w_ref
+        .handle_purgeattribute(obj)
+        .await
         .map(|()| true);
     to_tide_response(res, hvalue)
 }
@@ -768,72 +774,58 @@ pub async fn group_get(req: tide::Request<AppState>) -> tide::Result {
     json_rest_event_get(req, filter, None).await
 }
 
-pub async fn group_post(
-    req: tide::Request<AppState>,
-) -> tide::Result {
+pub async fn group_post(req: tide::Request<AppState>) -> tide::Result {
     let classes = vec!["group".to_string(), "object".to_string()];
     json_rest_event_post(req, classes).await
 }
 
-pub async fn group_id_get(
-    req: tide::Request<AppState>,
-) -> tide::Result {
+pub async fn group_id_get(req: tide::Request<AppState>) -> tide::Result {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
     json_rest_event_get_id(req, filter, None).await
 }
 
-pub async fn group_id_get_attr(
-    req: tide::Request<AppState>,
-) -> tide::Result {
+pub async fn group_id_get_attr(req: tide::Request<AppState>) -> tide::Result {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
     json_rest_event_get_id_attr(req, filter).await
 }
 
-pub async fn group_id_post_attr(
-    req: tide::Request<AppState>,
-) -> tide::Result {
+pub async fn group_id_post_attr(req: tide::Request<AppState>) -> tide::Result {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
     json_rest_event_post_id_attr(req, filter).await
 }
 
-pub async fn group_id_delete_attr(
-    req: tide::Request<AppState>,
-) -> tide::Result {
+pub async fn group_id_delete_attr(req: tide::Request<AppState>) -> tide::Result {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
     let attr = req.get_url_param("attr")?;
     json_rest_event_delete_id_attr(req, filter, attr).await
 }
 
-pub async fn group_id_put_attr(
-    req: tide::Request<AppState>,
-) -> tide::Result {
+pub async fn group_id_put_attr(req: tide::Request<AppState>) -> tide::Result {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
     json_rest_event_put_id_attr(req, filter).await
 }
 
-pub async fn group_id_delete(
-    req: tide::Request<AppState>,
-) -> tide::Result {
+pub async fn group_id_delete(req: tide::Request<AppState>) -> tide::Result {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
     json_rest_event_delete_id(req, filter).await
 }
 
-pub async fn group_post_id_unix(
-    mut req: tide::Request<AppState>,
-) -> tide::Result {
+pub async fn group_post_id_unix(mut req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
     let id = req.get_url_param("id")?;
     let obj: GroupUnixExtend = req.body_json().await?;
     let (eventid, hvalue) = new_eventid!();
     let m_obj = IdmGroupUnixExtendMessage::new(uat, id, &obj, eventid);
-    let res = req.state().qe_w_ref.handle_idmgroupunixextend(m_obj).await
+    let res = req
+        .state()
+        .qe_w_ref
+        .handle_idmgroupunixextend(m_obj)
+        .await
         .map(|()| true);
     to_tide_response(res, hvalue)
 }
 
-pub async fn group_get_id_unix_token(
-    req: tide::Request<AppState>,
-) -> tide::Result {
+pub async fn group_get_id_unix_token(req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
     let id = req.get_url_param("id")?;
 
@@ -844,7 +836,11 @@ pub async fn group_get_id_unix_token(
         eventid,
     };
 
-    let res = req.state().qe_r_ref.handle_internalunixgrouptokenread(obj).await;
+    let res = req
+        .state()
+        .qe_r_ref
+        .handle_internalunixgrouptokenread(obj)
+        .await;
     to_tide_response(res, hvalue)
 }
 
@@ -853,9 +849,7 @@ pub async fn domain_get(req: tide::Request<AppState>) -> tide::Result {
     json_rest_event_get(req, filter, None).await
 }
 
-pub async fn domain_id_get(
-    req: tide::Request<AppState>,
-) -> tide::Result {
+pub async fn domain_id_get(req: tide::Request<AppState>) -> tide::Result {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("domain_info")));
     json_rest_event_get_id(req, filter, None).await
 }
@@ -868,16 +862,12 @@ pub async fn domain_id_get_attr(
     json_rest_event_get_id_attr(req, filter).await
 }
 
-pub async fn domain_id_put_attr(
-    req: tide::Request<AppState>,
-) -> tide::Result {
+pub async fn domain_id_put_attr(req: tide::Request<AppState>) -> tide::Result {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("domain_info")));
     json_rest_event_put_id_attr(req, filter).await
 }
 
-pub async fn recycle_bin_get(
-    req: tide::Request<AppState>,
-) -> tide::Result {
+pub async fn recycle_bin_get(req: tide::Request<AppState>) -> tide::Result {
     let filter = filter_all!(f_pres("class"));
     let uat = req.get_current_uat();
     let attrs = None;
@@ -890,13 +880,15 @@ pub async fn recycle_bin_get(
         eventid,
     };
 
-    let res = req.state().qe_r_ref.handle_internalsearchrecycled(obj).await;
+    let res = req
+        .state()
+        .qe_r_ref
+        .handle_internalsearchrecycled(obj)
+        .await;
     to_tide_response(res, hvalue)
 }
 
-pub async fn recycle_bin_id_get(
-    req: tide::Request<AppState>,
-) -> tide::Result {
+pub async fn recycle_bin_id_get(req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
     let id = req.get_url_param("id")?;
     let filter = filter_all!(f_id(id.as_str()));
@@ -910,14 +902,16 @@ pub async fn recycle_bin_id_get(
         eventid,
     };
 
-    let res = req.state().qe_r_ref.handle_internalsearchrecycled(obj).await
+    let res = req
+        .state()
+        .qe_r_ref
+        .handle_internalsearchrecycled(obj)
+        .await
         .map(|mut r| r.pop());
     to_tide_response(res, hvalue)
 }
 
-pub async fn recycle_bin_revive_id_post(
-    req: tide::Request<AppState>,
-) -> tide::Result {
+pub async fn recycle_bin_revive_id_post(req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
     let id = req.get_url_param("id")?;
     let filter = filter_all!(f_id(id.as_str()));
@@ -928,7 +922,11 @@ pub async fn recycle_bin_revive_id_post(
         filter,
         eventid,
     };
-    let res = req.state().qe_w_ref.handle_reviverecycled(m_obj).await
+    let res = req
+        .state()
+        .qe_w_ref
+        .handle_reviverecycled(m_obj)
+        .await
         .map(|()| true);
     to_tide_response(res, hvalue)
 }
@@ -999,14 +997,16 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
     to_tide_response(res, hvalue)
 }
 
-pub async fn idm_account_set_password(
-    mut req: tide::Request<AppState>,
-) -> tide::Result {
+pub async fn idm_account_set_password(mut req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
     let obj: SingleStringRequest = req.body_json().await?;
     let (eventid, hvalue) = new_eventid!();
     let m_obj = IdmAccountSetPasswordMessage::new(uat, obj, eventid);
-    let res = req.state().qe_w_ref.handle_idmaccountsetpassword(m_obj).await;
+    let res = req
+        .state()
+        .qe_w_ref
+        .handle_idmaccountsetpassword(m_obj)
+        .await;
     to_tide_response(res, hvalue)
 }
 
@@ -1167,9 +1167,7 @@ pub fn create_https_server(
         .post(do_nothing);
     schema_route
         .at("/attributetype/:id")
-        .get(
-            schema_attributetype_get_id
-        )
+        .get(schema_attributetype_get_id)
         .put(do_nothing)
         .patch(do_nothing);
 
@@ -1179,9 +1177,7 @@ pub fn create_https_server(
         .post(do_nothing);
     schema_route
         .at("/classtype/:id")
-        .get(
-            schema_classtype_get_id
-        )
+        .get(schema_classtype_get_id)
         .put(do_nothing)
         .patch(do_nothing);
 
@@ -1193,9 +1189,7 @@ pub fn create_https_server(
 
     self_route
         .at("/_credential/primary/set_password")
-        .post(
-            idm_account_set_password
-        );
+        .post(idm_account_set_password);
     self_route.at("/_credential/:cid/_lock").get(do_nothing);
 
     self_route
@@ -1211,20 +1205,12 @@ pub fn create_https_server(
         .get(do_nothing);
 
     let mut person_route = tserver.at("/v1/person");
-    person_route
-        .at("/")
-        .get(person_get)
-        .post(person_post);
-    person_route
-        .at("/:id")
-        .get(person_id_get);
+    person_route.at("/").get(person_get).post(person_post);
+    person_route.at("/:id").get(person_id_get);
 
     let mut account_route = tserver.at("/v1/account");
 
-    account_route
-        .at("/")
-        .get(account_get)
-        .post(account_post);
+    account_route.at("/").get(account_get).post(account_post);
     account_route
         .at("/:id")
         .get(account_id_get)
@@ -1268,9 +1254,7 @@ pub fn create_https_server(
         .at("/:id/_radius/_token")
         .get(account_get_id_radius_token);
 
-    account_route
-        .at("/:id/_unix")
-        .post(account_post_id_unix);
+    account_route.at("/:id/_unix").post(account_post_id_unix);
     account_route
         .at("/:id/_unix/_token")
         .get(account_get_id_unix_token);
@@ -1283,10 +1267,7 @@ pub fn create_https_server(
         .delete(account_delete_id_unix_credential);
 
     let mut group_route = tserver.at("/v1/group");
-    group_route
-        .at("/")
-        .get(group_get)
-        .post(group_post);
+    group_route.at("/").get(group_get).post(group_post);
     group_route
         .at("/:id")
         .get(group_id_get)
@@ -1297,9 +1278,7 @@ pub fn create_https_server(
         .put(group_id_put_attr)
         .post(group_id_post_attr)
         .delete(group_id_delete_attr);
-    group_route
-        .at("/:id/_unix")
-        .post(group_post_id_unix);
+    group_route.at("/:id/_unix").post(group_post_id_unix);
     group_route
         .at("/:id/_unix/_token")
         .get(group_get_id_unix_token);

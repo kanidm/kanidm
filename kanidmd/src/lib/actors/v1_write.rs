@@ -1189,7 +1189,8 @@ impl QueryServerWriteV1 {
             || {
                 if let Err(res) = idms_prox_write
                     .process_delayedaction(&mut audit, da)
-                    .and_then(|_| idms_prox_write.commit(&mut audit)) {
+                    .and_then(|_| idms_prox_write.commit(&mut audit))
+                {
                     ladmin_info!(audit, "delayed action error: {:?}", res);
                 }
             }

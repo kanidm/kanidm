@@ -526,14 +526,18 @@ impl QueryServerReadV1 {
             &mut audit,
             "actors::v1_read::handle<InternalUnixUserTokenReadMessage>",
             || {
-                let target_uuid = 
-                    idm_read
-                        .qs_read
-                        .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
-                        .map_err(|e| {
-                            ladmin_info!(&mut audit, "Error resolving {} as gidnumber continuing ... {:?}", msg.uuid_or_name, e);
+                let target_uuid = idm_read
+                    .qs_read
+                    .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                    .map_err(|e| {
+                        ladmin_info!(
+                            &mut audit,
+                            "Error resolving {} as gidnumber continuing ... {:?}",
+                            msg.uuid_or_name,
                             e
-                })?;
+                        );
+                        e
+                    })?;
 
                 // Make an event from the request
                 let rate = match UnixUserTokenEvent::from_parts(
@@ -575,14 +579,13 @@ impl QueryServerReadV1 {
             &mut audit,
             "actors::v1_read::handle<InternalUnixGroupTokenReadMessage>",
             || {
-                let target_uuid = 
-                    idm_read
-                        .qs_read
-                        .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
-                        .map_err(|e| {
-                            ladmin_info!(&mut audit, "Error resolving as gidnumber continuing ...");
-                            e
-                })?;
+                let target_uuid = idm_read
+                    .qs_read
+                    .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                    .map_err(|e| {
+                        ladmin_info!(&mut audit, "Error resolving as gidnumber continuing ...");
+                        e
+                    })?;
 
                 // Make an event from the request
                 let rate = match UnixGroupTokenEvent::from_parts(
@@ -755,14 +758,13 @@ impl QueryServerReadV1 {
             "actors::v1_read::handle<IdmAccountUnixAuthMessage>",
             || {
                 // resolve the id
-                let target_uuid = 
-                    idm_write
-                        .qs_read
-                        .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
-                        .map_err(|e| {
-                            ladmin_info!(&mut audit, "Error resolving as gidnumber continuing ...");
-                            e
-                })?;
+                let target_uuid = idm_write
+                    .qs_read
+                    .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                    .map_err(|e| {
+                        ladmin_info!(&mut audit, "Error resolving as gidnumber continuing ...");
+                        e
+                    })?;
                 // Make an event from the request
                 let uuae = match UnixUserAuthEvent::from_parts(
                     &mut audit,
