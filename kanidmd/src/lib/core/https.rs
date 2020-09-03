@@ -13,6 +13,7 @@ use crate::actors::v1_write::{
     InternalRegenerateRadiusMessage, InternalSshKeyCreateMessage, ModifyMessage,
     PurgeAttributeMessage, RemoveAttributeValueMessage, ReviveRecycledMessage, SetAttributeMessage,
 };
+use crate::config::TlsConfiguration;
 use crate::filter::{Filter, FilterInvalid};
 use crate::status::{StatusActor, StatusRequestEvent};
 use crate::value::PartialValue;
@@ -24,14 +25,17 @@ use kanidm_proto::v1::{
     ModifyRequest, SearchRequest, SetCredentialRequest, SingleStringRequest, UserAuthToken,
 };
 
-use async_std::io;
-use openssl::ssl::{SslAcceptor, SslAcceptorBuilder};
 use serde::Serialize;
-use std::net;
-use std::str::FromStr;
 use std::time::Duration;
-use tokio::net::TcpListener;
 use uuid::Uuid;
+
+// Temporary
+use tide_rustls::TlsListener;
+// use openssl::ssl::{SslAcceptor, SslAcceptorBuilder};
+// use tokio::net::TcpListener;
+// use async_std::io;
+// use std::net;
+// use std::str::FromStr;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -1026,6 +1030,8 @@ pub async fn status(req: tide::Request<AppState>) -> tide::Result {
     Ok(res)
 }
 
+/*
+// For openssl
 struct TlsListener {
     address: String,
     tls_params: &'static SslAcceptor,
@@ -1066,7 +1072,6 @@ fn handle_client<State: Clone + Send + Sync + 'static>(
     _local_addr: std::net::SocketAddr,
     _peer_addr: std::net::SocketAddr,
 ) {
-    /*
     tokio::spawn(async move {
         let fut = async_h1::accept(stream, |mut req| async {
             req.set_local_addr(Some(local_addr));
@@ -1079,8 +1084,6 @@ fn handle_client<State: Clone + Send + Sync + 'static>(
             // log::error!("async-h1 error", { error: error.to_string() });
         }
     });
-    */
-    unimplemented!();
 }
 
 #[async_trait::async_trait]
@@ -1124,11 +1127,13 @@ impl<State: Clone + Send + Sync + 'static> tide::listener::Listener<State> for T
         }
     }
 }
+*/
 
 // TODO: Add request limits.
 pub fn create_https_server(
     address: String,
-    opt_tls_params: Option<SslAcceptorBuilder>,
+    // opt_tls_params: Option<SslAcceptorBuilder>,
+    opt_tls_params: Option<&TlsConfiguration>,
     cookie_key: &[u8; 32],
     status_ref: &'static StatusActor,
     qe_w_ref: &'static QueryServerWriteV1,
@@ -1306,9 +1311,17 @@ pub fn create_https_server(
     // Create listener?
     match opt_tls_params {
         Some(tls_param) => {
+            let tlsl = TlsListener::build()
+                .addrs(address)
+                .cert(&tls_param.cert)
+                .key(&tls_param.key)
+                .finish()
+                .expect("Failed to setup tls");
+            /*
             let x = Box::new(tls_param.build());
             let x_ref = Box::leak(x);
             let tlsl = TlsListener::new(address, x_ref);
+            */
 
             tokio::spawn(async move {
                 tserver.listen(tlsl).await.expect("Failed to start server");

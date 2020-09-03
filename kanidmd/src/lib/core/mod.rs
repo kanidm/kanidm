@@ -428,7 +428,7 @@ pub async fn create_server_core(config: Configuration) -> Result<(), ()> {
     let status_ref = StatusActor::start(log_tx.clone(), config.log_level);
 
     // Setup TLS (if any)
-    let opt_tls_params = match setup_tls(&config) {
+    let _opt_tls_params = match setup_tls(&config) {
         Ok(opt_tls_params) => opt_tls_params,
         Err(e) => {
             error!("Failed to configure TLS parameters -> {:?}", e);
@@ -527,7 +527,6 @@ pub async fn create_server_core(config: Configuration) -> Result<(), ()> {
         idms_arc.clone(),
     );
 
-    // TODO #314: For now we just drop everything from the delayed queue until we rewrite to be async.
     tokio::spawn(async move {
         idms_delayed.process_all(server_write_ref).await;
     });
@@ -560,7 +559,8 @@ pub async fn create_server_core(config: Configuration) -> Result<(), ()> {
 
     self::https::create_https_server(
         config.address,
-        opt_tls_params,
+        // opt_tls_params,
+        config.tls_config.as_ref(),
         &cookie_key,
         status_ref,
         server_write_ref,
