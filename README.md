@@ -47,7 +47,7 @@ answer questions via email, which can be found on their github profile.
 * OIDC/Oauth
 * RBAC/Claims (limited by time and credential scope)
 * MFA (Webauthn, TOTP) (TOTP done)
-* Highly concurrent desgin (MVCC, COW) (done)
+* Highly concurrent design (MVCC, COW) (done)
 * Replication (async multiple active write servers, read only servers)
 * Account impersonation
 * RADIUS integration (done)
