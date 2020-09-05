@@ -16,7 +16,7 @@ macro_rules! setup_test {
         // Create an in memory BE
         let schema_outer = Schema::new($au).expect("Failed to init schema");
         let idxmeta = {
-            let schema_txn = schema_outer.write();
+            let schema_txn = schema_outer.write_blocking();
             schema_txn.reload_idxmeta()
         };
         let be = Backend::new($au, "", 1, FsType::Generic, idxmeta).expect("Failed to init BE");

@@ -3,12 +3,13 @@
 
 // This is really only used for long lived, high level types that need clone
 // that otherwise can't be cloned. Think Mutex.
-// use actix::prelude::*;
+use async_std::task;
 use hashbrown::HashMap;
 use std::cell::Cell;
 use std::collections::BTreeSet;
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::sync::{Semaphore, SemaphorePermit};
 use uuid::Uuid;
 
 use crate::audit::AuditScope;
@@ -54,6 +55,42 @@ lazy_static! {
     static ref PVCLASS_ACC: PartialValue = PartialValue::new_class("access_control_create");
     static ref PVCLASS_ACP: PartialValue = PartialValue::new_class("access_control_profile");
     static ref PVACP_ENABLE_FALSE: PartialValue = PartialValue::new_bool(false);
+}
+
+#[derive(Clone)]
+pub struct QueryServer {
+    s_uuid: Uuid,
+    d_uuid: Uuid,
+    be: Backend,
+    schema: Arc<Schema>,
+    accesscontrols: Arc<AccessControls>,
+    db_tickets: Arc<Semaphore>,
+    write_ticket: Arc<Semaphore>,
+}
+
+pub struct QueryServerReadTransaction<'a> {
+    be_txn: BackendReadTransaction<'a>,
+    // Anything else? In the future, we'll need to have a schema transaction
+    // type, maybe others?
+    schema: SchemaReadTransaction,
+    accesscontrols: AccessControlsReadTransaction,
+    _db_ticket: SemaphorePermit<'a>,
+}
+
+pub struct QueryServerWriteTransaction<'a> {
+    committed: bool,
+    d_uuid: Uuid,
+    cid: Cid,
+    be_txn: BackendWriteTransaction<'a>,
+    schema: SchemaWriteTransaction<'a>,
+    accesscontrols: AccessControlsWriteTransaction<'a>,
+    // We store a set of flags that indicate we need a reload of
+    // schema or acp, which is tested by checking the classes of the
+    // changing content.
+    changed_schema: Cell<bool>,
+    changed_acp: Cell<bool>,
+    _db_ticket: SemaphorePermit<'a>,
+    _write_ticket: SemaphorePermit<'a>,
 }
 
 // This is the core of the server. It implements all
@@ -589,14 +626,6 @@ pub trait QueryServerTransaction {
     }
 }
 
-pub struct QueryServerReadTransaction<'a> {
-    be_txn: BackendReadTransaction<'a>,
-    // Anything else? In the future, we'll need to have a schema transaction
-    // type, maybe others?
-    schema: SchemaReadTransaction,
-    accesscontrols: AccessControlsReadTransaction,
-}
-
 // Actually conduct a search request
 // This is the core of the server, as it processes the entire event
 // applies all parts required in order and more.
@@ -661,20 +690,6 @@ impl<'a> QueryServerReadTransaction<'a> {
     }
 }
 
-pub struct QueryServerWriteTransaction<'a> {
-    committed: bool,
-    d_uuid: Uuid,
-    cid: Cid,
-    be_txn: BackendWriteTransaction<'a>,
-    schema: SchemaWriteTransaction<'a>,
-    accesscontrols: AccessControlsWriteTransaction<'a>,
-    // We store a set of flags that indicate we need a reload of
-    // schema or acp, which is tested by checking the classes of the
-    // changing content.
-    changed_schema: Cell<bool>,
-    changed_acp: Cell<bool>,
-}
-
 impl<'a> QueryServerTransaction for QueryServerWriteTransaction<'a> {
     type BackendTransactionType = BackendWriteTransaction<'a>;
 
@@ -700,16 +715,6 @@ struct QueryServerMeta {
     pub max_cid: Cid,
 }
 
-#[derive(Clone)]
-pub struct QueryServer {
-    // log: actix::Addr<EventLog>,
-    s_uuid: Uuid,
-    d_uuid: Uuid,
-    be: Backend,
-    schema: Arc<Schema>,
-    accesscontrols: Arc<AccessControls>,
-}
-
 impl QueryServer {
     pub fn new(be: Backend, schema: Schema) -> Self {
         let (s_uuid, d_uuid) = {
@@ -717,8 +722,11 @@ impl QueryServer {
             (wr.get_db_s_uuid(), wr.get_db_d_uuid())
         };
 
+        let pool_size = be.get_pool_size();
+
         info!("Server ID -> {:?}", s_uuid);
         info!("Domain ID -> {:?}", d_uuid);
+        info!("DB tickets -> {:?}", pool_size);
         // log_event!(log, "Starting query worker ...");
         QueryServer {
             s_uuid,
@@ -726,19 +734,41 @@ impl QueryServer {
             be,
             schema: Arc::new(schema),
             accesscontrols: Arc::new(AccessControls::new()),
+            db_tickets: Arc::new(Semaphore::new(pool_size)),
+            write_ticket: Arc::new(Semaphore::new(1)),
         }
     }
 
+    #[cfg(test)]
     pub fn read(&self) -> QueryServerReadTransaction {
+        task::block_on(self.read_async())
+    }
+
+    pub async fn read_async<'a>(&'a self) -> QueryServerReadTransaction<'a> {
+        // We need to ensure a db conn will be available
+        let db_ticket = self.db_tickets.acquire().await;
+
         QueryServerReadTransaction {
             be_txn: self.be.read(),
             schema: self.schema.read(),
             accesscontrols: self.accesscontrols.read(),
+            _db_ticket: db_ticket,
         }
     }
 
+    #[cfg(test)]
     pub fn write(&self, ts: Duration) -> QueryServerWriteTransaction {
         // Feed the current schema index metadata to the be write transaction.
+        task::block_on(self.write_async(ts))
+    }
+
+    pub async fn write_async<'a>(&'a self, ts: Duration) -> QueryServerWriteTransaction<'a> {
+        // We need to ensure a db conn will be available
+        let db_ticket = self.db_tickets.acquire().await;
+        // Guarantee we are the only writer on the thread pool
+        let write_ticket = self.write_ticket.acquire().await;
+
+        // let schema_write = self.schema.write().await;
         let schema_write = self.schema.write();
         let be_txn = self.be.write();
 
@@ -761,6 +791,8 @@ impl QueryServer {
             accesscontrols: self.accesscontrols.write(),
             changed_schema: Cell::new(false),
             changed_acp: Cell::new(false),
+            _db_ticket: db_ticket,
+            _write_ticket: write_ticket,
         }
     }
 
@@ -780,7 +812,7 @@ impl QueryServer {
         // reloading to occur, which causes the idxmeta to update, and allows validation
         // of the schema in the subsequent steps as we proceed.
 
-        let reindex_write_1 = self.write(ts);
+        let reindex_write_1 = task::block_on(self.write_async(ts));
         reindex_write_1
             .upgrade_reindex(audit, SYSTEM_INDEX_VERSION)
             .and_then(|_| reindex_write_1.commit(audit))?;
@@ -794,19 +826,19 @@ impl QueryServer {
         // the schema to tell us what's indexed), but because we have the in
         // mem schema that defines how schema is structuded, and this is all
         // marked "system", then we won't have an issue here.
-        let ts_write_1 = self.write(ts);
+        let ts_write_1 = task::block_on(self.write_async(ts));
         ts_write_1
             .initialise_schema_core(audit)
             .and_then(|_| ts_write_1.commit(audit))?;
 
-        let ts_write_2 = self.write(ts);
+        let ts_write_2 = task::block_on(self.write_async(ts));
         ts_write_2
             .initialise_schema_idm(audit)
             .and_then(|_| ts_write_2.commit(audit))?;
 
         // reindex and set to version + 1, this way when we bump the version
         // we are essetially pushing this version id back up to step write_1
-        let reindex_write_2 = self.write(ts);
+        let reindex_write_2 = task::block_on(self.write_async(ts));
         reindex_write_2
             .upgrade_reindex(audit, SYSTEM_INDEX_VERSION + 1)
             .and_then(|_| reindex_write_2.commit(audit))?;
@@ -819,7 +851,7 @@ impl QueryServer {
         // the indexing subsystem is schema/value agnostic - the fact the values still let their keys
         // be extracted, means that the pres indexes will be valid even though the entries are pending
         // migration. We must be sure to NOT use EQ/SUB indexes in the migration code however!
-        let migrate_txn = self.write(ts);
+        let migrate_txn = task::block_on(self.write_async(ts));
         // If we are "in the process of being setup" this is 0, and the migrations will have no
         // effect as ... there is nothing to migrate! It allows reset of the version to 0 to force
         // db migrations to take place.
@@ -837,7 +869,7 @@ impl QueryServer {
         migrate_txn.commit(audit)?;
         // Migrations complete. Init idm will now set the version as needed.
 
-        let ts_write_3 = self.write(ts);
+        let ts_write_3 = task::block_on(self.write_async(ts));
         ts_write_3
             .initialise_idm(audit)
             .and_then(|_| ts_write_3.commit(audit))?;
@@ -847,7 +879,7 @@ impl QueryServer {
     }
 
     pub fn verify(&self, au: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
-        let r_txn = self.read();
+        let r_txn = task::block_on(self.read_async());
         r_txn.verify(au)
     }
 }

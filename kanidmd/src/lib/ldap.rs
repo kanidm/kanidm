@@ -4,14 +4,14 @@ use crate::event::SearchEvent;
 use crate::idm::event::LdapAuthEvent;
 use crate::idm::server::IdmServer;
 use crate::server::QueryServerTransaction;
+use async_std::task;
 use kanidm_proto::v1::{OperationError, UserAuthToken};
 use ldap3_server::simple::*;
+use regex::Regex;
 use std::collections::BTreeSet;
 use std::iter;
 use std::time::SystemTime;
 use uuid::Uuid;
-
-use regex::Regex;
 
 // Clippy doesn't like Bind here. But proto needs unboxed ldapmsg,
 // and ldapboundtoken is moved. Really, it's not too bad, every message here is pretty sucky.
@@ -42,7 +42,7 @@ pub struct LdapServer {
 
 impl LdapServer {
     pub fn new(au: &mut AuditScope, idms: &IdmServer) -> Result<Self, OperationError> {
-        let idms_prox_read = idms.proxy_read();
+        let idms_prox_read = task::block_on(idms.proxy_read_async());
         // This is the rootdse path.
         // get the domain_info item
         let domain_entry = idms_prox_read
@@ -100,7 +100,7 @@ impl LdapServer {
         })
     }
 
-    fn do_search(
+    async fn do_search(
         &self,
         au: &mut AuditScope,
         idms: &IdmServer,
@@ -202,9 +202,9 @@ impl LdapServer {
 
             ladmin_info!(au, "LDAP Search Request Attrs -> {:?}", attrs);
 
+            let idm_read = idms.proxy_read_async().await;
             lperf_segment!(au, "ldap::do_search<core>", || {
                 // Now start the txn - we need it for resolving filter components.
-                let idm_read = idms.proxy_read();
 
                 // join the filter, with ext_filter
                 let lfilter = match ext_filter {
@@ -288,7 +288,7 @@ impl LdapServer {
         }
     }
 
-    fn do_bind(
+    async fn do_bind(
         &self,
         au: &mut AuditScope,
         idms: &IdmServer,
@@ -300,7 +300,7 @@ impl LdapServer {
             "Attempt LDAP Bind for {}",
             if dn == "" { "anonymous" } else { dn }
         );
-        let mut idm_write = idms.write();
+        let mut idm_write = idms.write_async().await;
 
         let target_uuid: Uuid = if dn == "" {
             if pw == "" {
@@ -357,7 +357,7 @@ impl LdapServer {
         })
     }
 
-    pub fn do_op(
+    pub async fn do_op(
         &self,
         au: &mut AuditScope,
         idms: &IdmServer,
@@ -368,6 +368,7 @@ impl LdapServer {
         match server_op {
             ServerOps::SimpleBind(sbr) => self
                 .do_bind(au, idms, sbr.dn.as_str(), sbr.pw.as_str())
+                .await
                 .map(|r| match r {
                     Some(lbt) => LdapResponseState::Bind(lbt, sbr.gen_success()),
                     None => LdapResponseState::Respond(sbr.gen_invalid_cred()),
@@ -379,6 +380,7 @@ impl LdapServer {
             ServerOps::Search(sr) => match uat {
                 Some(u) => self
                     .do_search(au, idms, &sr, &u)
+                    .await
                     .map(LdapResponseState::MultiPartResponse)
                     .or_else(|e| {
                         let (rc, msg) = operationerr_to_ldapresultcode(e);
@@ -386,7 +388,7 @@ impl LdapServer {
                     }),
                 None => {
                     // Search can occur without a bind, so bind first.
-                    let lbt = match self.do_bind(au, idms, "", "") {
+                    let lbt = match self.do_bind(au, idms, "", "").await {
                         Ok(Some(lbt)) => lbt,
                         Ok(None) => {
                             return Ok(LdapResponseState::Respond(
@@ -400,6 +402,7 @@ impl LdapServer {
                     };
                     // If okay, do the search.
                     self.do_search(au, idms, &sr, &lbt)
+                        .await
                         .map(|r| LdapResponseState::BindMultiPartResponse(lbt, r))
                         .or_else(|e| {
                             let (rc, msg) = operationerr_to_ldapresultcode(e);
@@ -485,12 +488,16 @@ mod tests {
     // use crate::utils::duration_from_epoch_now;
     // use uuid::Uuid;
     use crate::ldap::LdapServer;
+    use async_std::task;
 
     const TEST_PASSWORD: &'static str = "ntaoeuntnaoeuhraohuercahu😍";
 
     #[test]
     fn test_ldap_simple_bind() {
-        run_idm_test!(|_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed, au: &mut AuditScope| {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &IdmServerDelayed,
+                       au: &mut AuditScope| {
             let ldaps = LdapServer::new(au, idms).expect("failed to start ldap");
 
             let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
@@ -511,127 +518,129 @@ mod tests {
             assert!(idms_prox_write.set_unix_account_password(au, &pce).is_ok());
             assert!(idms_prox_write.commit(au).is_ok());
 
-            let anon_t = ldaps.do_bind(au, idms, "", "").unwrap().unwrap();
+            let anon_t = task::block_on(ldaps.do_bind(au, idms, "", ""))
+                .unwrap()
+                .unwrap();
             assert!(anon_t.uuid == *UUID_ANONYMOUS);
-            assert!(ldaps.do_bind(au, idms, "", "test").unwrap().is_none());
+            assert!(task::block_on(ldaps.do_bind(au, idms, "", "test"))
+                .unwrap()
+                .is_none());
 
             // Bad password
-            assert!(ldaps.do_bind(au, idms, "admin", "test").unwrap().is_none());
+            assert!(task::block_on(ldaps.do_bind(au, idms, "admin", "test"))
+                .unwrap()
+                .is_none());
 
             // Now test the admin and various DN's
-            let admin_t = ldaps
-                .do_bind(au, idms, "admin", TEST_PASSWORD)
+            let admin_t = task::block_on(ldaps.do_bind(au, idms, "admin", TEST_PASSWORD))
                 .unwrap()
                 .unwrap();
             assert!(admin_t.uuid == *UUID_ADMIN);
-            let admin_t = ldaps
-                .do_bind(au, idms, "admin@example.com", TEST_PASSWORD)
+            let admin_t =
+                task::block_on(ldaps.do_bind(au, idms, "admin@example.com", TEST_PASSWORD))
+                    .unwrap()
+                    .unwrap();
+            assert!(admin_t.uuid == *UUID_ADMIN);
+            let admin_t = task::block_on(ldaps.do_bind(au, idms, STR_UUID_ADMIN, TEST_PASSWORD))
                 .unwrap()
                 .unwrap();
             assert!(admin_t.uuid == *UUID_ADMIN);
-            let admin_t = ldaps
-                .do_bind(au, idms, STR_UUID_ADMIN, TEST_PASSWORD)
-                .unwrap()
-                .unwrap();
+            let admin_t = task::block_on(ldaps.do_bind(
+                au,
+                idms,
+                "name=admin,dc=example,dc=com",
+                TEST_PASSWORD,
+            ))
+            .unwrap()
+            .unwrap();
             assert!(admin_t.uuid == *UUID_ADMIN);
-            let admin_t = ldaps
-                .do_bind(au, idms, "name=admin,dc=example,dc=com", TEST_PASSWORD)
-                .unwrap()
-                .unwrap();
+            let admin_t = task::block_on(ldaps.do_bind(
+                au,
+                idms,
+                "spn=admin@example.com,dc=example,dc=com",
+                TEST_PASSWORD,
+            ))
+            .unwrap()
+            .unwrap();
             assert!(admin_t.uuid == *UUID_ADMIN);
-            let admin_t = ldaps
-                .do_bind(
-                    au,
-                    idms,
-                    "spn=admin@example.com,dc=example,dc=com",
-                    TEST_PASSWORD,
-                )
-                .unwrap()
-                .unwrap();
-            assert!(admin_t.uuid == *UUID_ADMIN);
-            let admin_t = ldaps
-                .do_bind(
-                    au,
-                    idms,
-                    format!("uuid={},dc=example,dc=com", STR_UUID_ADMIN).as_str(),
-                    TEST_PASSWORD,
-                )
-                .unwrap()
-                .unwrap();
-            assert!(admin_t.uuid == *UUID_ADMIN);
-
-            let admin_t = ldaps
-                .do_bind(au, idms, "name=admin", TEST_PASSWORD)
-                .unwrap()
-                .unwrap();
-            assert!(admin_t.uuid == *UUID_ADMIN);
-            let admin_t = ldaps
-                .do_bind(au, idms, "spn=admin@example.com", TEST_PASSWORD)
-                .unwrap()
-                .unwrap();
-            assert!(admin_t.uuid == *UUID_ADMIN);
-            let admin_t = ldaps
-                .do_bind(
-                    au,
-                    idms,
-                    format!("uuid={}", STR_UUID_ADMIN).as_str(),
-                    TEST_PASSWORD,
-                )
-                .unwrap()
-                .unwrap();
+            let admin_t = task::block_on(ldaps.do_bind(
+                au,
+                idms,
+                format!("uuid={},dc=example,dc=com", STR_UUID_ADMIN).as_str(),
+                TEST_PASSWORD,
+            ))
+            .unwrap()
+            .unwrap();
             assert!(admin_t.uuid == *UUID_ADMIN);
 
-            let admin_t = ldaps
-                .do_bind(au, idms, "admin,dc=example,dc=com", TEST_PASSWORD)
+            let admin_t = task::block_on(ldaps.do_bind(au, idms, "name=admin", TEST_PASSWORD))
                 .unwrap()
                 .unwrap();
             assert!(admin_t.uuid == *UUID_ADMIN);
-            let admin_t = ldaps
-                .do_bind(
-                    au,
-                    idms,
-                    "admin@example.com,dc=example,dc=com",
-                    TEST_PASSWORD,
-                )
-                .unwrap()
-                .unwrap();
+            let admin_t =
+                task::block_on(ldaps.do_bind(au, idms, "spn=admin@example.com", TEST_PASSWORD))
+                    .unwrap()
+                    .unwrap();
             assert!(admin_t.uuid == *UUID_ADMIN);
-            let admin_t = ldaps
-                .do_bind(
-                    au,
-                    idms,
-                    format!("{},dc=example,dc=com", STR_UUID_ADMIN).as_str(),
-                    TEST_PASSWORD,
-                )
-                .unwrap()
-                .unwrap();
+            let admin_t = task::block_on(ldaps.do_bind(
+                au,
+                idms,
+                format!("uuid={}", STR_UUID_ADMIN).as_str(),
+                TEST_PASSWORD,
+            ))
+            .unwrap()
+            .unwrap();
+            assert!(admin_t.uuid == *UUID_ADMIN);
+
+            let admin_t =
+                task::block_on(ldaps.do_bind(au, idms, "admin,dc=example,dc=com", TEST_PASSWORD))
+                    .unwrap()
+                    .unwrap();
+            assert!(admin_t.uuid == *UUID_ADMIN);
+            let admin_t = task::block_on(ldaps.do_bind(
+                au,
+                idms,
+                "admin@example.com,dc=example,dc=com",
+                TEST_PASSWORD,
+            ))
+            .unwrap()
+            .unwrap();
+            assert!(admin_t.uuid == *UUID_ADMIN);
+            let admin_t = task::block_on(ldaps.do_bind(
+                au,
+                idms,
+                format!("{},dc=example,dc=com", STR_UUID_ADMIN).as_str(),
+                TEST_PASSWORD,
+            ))
+            .unwrap()
+            .unwrap();
             assert!(admin_t.uuid == *UUID_ADMIN);
 
             // Non-existant and invalid DNs
-            assert!(ldaps
-                .do_bind(
-                    au,
-                    idms,
-                    "spn=admin@example.com,dc=clownshoes,dc=example,dc=com",
-                    TEST_PASSWORD
-                )
-                .is_err());
-            assert!(ldaps
-                .do_bind(
-                    au,
-                    idms,
-                    "spn=claire@example.com,dc=example,dc=com",
-                    TEST_PASSWORD
-                )
-                .is_err());
-            assert!(ldaps
-                .do_bind(au, idms, ",dc=example,dc=com", TEST_PASSWORD)
-                .is_err());
-            assert!(ldaps
-                .do_bind(au, idms, "dc=example,dc=com", TEST_PASSWORD)
-                .is_err());
+            assert!(task::block_on(ldaps.do_bind(
+                au,
+                idms,
+                "spn=admin@example.com,dc=clownshoes,dc=example,dc=com",
+                TEST_PASSWORD
+            ))
+            .is_err());
+            assert!(task::block_on(ldaps.do_bind(
+                au,
+                idms,
+                "spn=claire@example.com,dc=example,dc=com",
+                TEST_PASSWORD
+            ))
+            .is_err());
+            assert!(
+                task::block_on(ldaps.do_bind(au, idms, ",dc=example,dc=com", TEST_PASSWORD))
+                    .is_err()
+            );
+            assert!(
+                task::block_on(ldaps.do_bind(au, idms, "dc=example,dc=com", TEST_PASSWORD))
+                    .is_err()
+            );
 
-            assert!(ldaps.do_bind(au, idms, "claire", "test").is_err());
+            assert!(task::block_on(ldaps.do_bind(au, idms, "claire", "test")).is_err());
         })
     }
 }

@@ -19,6 +19,7 @@ use crate::server::{QueryServer, QueryServerTransaction, QueryServerWriteTransac
 use crate::utils::{password_from_random, readable_password_from_random, uuid_from_duration, SID};
 use crate::value::PartialValue;
 
+use crate::actors::v1_write::QueryServerWriteV1;
 use crate::idm::delayed::{DelayedAction, PasswordUpgrade, UnixPasswordUpgrade};
 
 use kanidm_proto::v1::AuthState;
@@ -29,13 +30,20 @@ use kanidm_proto::v1::SetCredentialResponse;
 use kanidm_proto::v1::UnixGroupToken;
 use kanidm_proto::v1::UnixUserToken;
 
+use std::sync::Arc;
+
 // use crossbeam::channel::{unbounded, Sender, Receiver, TryRecvError};
-use tokio::sync::mpsc::{unbounded_channel as unbounded, UnboundedSender as Sender, UnboundedReceiver as Receiver};
 #[cfg(test)]
 use tokio::sync::mpsc::error::TryRecvError;
+use tokio::sync::mpsc::{
+    unbounded_channel as unbounded, UnboundedReceiver as Receiver, UnboundedSender as Sender,
+};
+use tokio::sync::{Semaphore, SemaphorePermit};
 
+#[cfg(test)]
+use async_std::task;
 
-use concread::collections::bptree::*;
+use concread::bptree::{BptreeMap, BptreeMapWriteTxn};
 use rand::prelude::*;
 use std::time::Duration;
 use uuid::Uuid;
@@ -45,6 +53,7 @@ pub struct IdmServer {
     // means that limits to sessions can be easily applied and checked to
     // variaous accounts, and we have a good idea of how to structure the
     // in memory caches related to locking.
+    session_ticket: Arc<Semaphore>,
     sessions: BptreeMap<Uuid, AuthSession>,
     // Keep a set of inprogress mfa registrations
     mfareg_sessions: BptreeMap<Uuid, MfaRegSession>,
@@ -60,6 +69,7 @@ pub struct IdmServerWriteTransaction<'a> {
     // Contains methods that require writes, but in the context of writing to
     // the idm in memory structures (maybe the query server too). This is
     // things like authentication
+    _session_ticket: SemaphorePermit<'a>,
     sessions: BptreeMapWriteTxn<'a, Uuid, AuthSession>,
     pub qs_read: QueryServerReadTransaction<'a>,
     // thread/server id
@@ -100,60 +110,84 @@ impl IdmServer {
         // improves.
         let crypto_policy = CryptoPolicy::time_target(Duration::from_millis(1));
         let (async_tx, async_rx) = unbounded();
-        (IdmServer {
-            sessions: BptreeMap::new(),
-            mfareg_sessions: BptreeMap::new(),
-            qs,
-            crypto_policy,
-            async_tx
-        }, IdmServerDelayed {
-            async_rx
-        })
+        (
+            IdmServer {
+                session_ticket: Arc::new(Semaphore::new(1)),
+                sessions: BptreeMap::new(),
+                mfareg_sessions: BptreeMap::new(),
+                qs,
+                crypto_policy,
+                async_tx,
+            },
+            IdmServerDelayed { async_rx },
+        )
     }
 
+    #[cfg(test)]
     pub fn write(&self) -> IdmServerWriteTransaction {
+        task::block_on(self.write_async())
+    }
+
+    pub async fn write_async<'a>(&'a self) -> IdmServerWriteTransaction<'a> {
         let mut sid = [0; 4];
         let mut rng = StdRng::from_entropy();
         rng.fill(&mut sid);
 
+        let session_ticket = self.session_ticket.acquire().await;
+        let qs_read = self.qs.read_async().await;
+
         IdmServerWriteTransaction {
+            _session_ticket: session_ticket,
             sessions: self.sessions.write(),
-            // qs: &self.qs,
-            qs_read: self.qs.read(),
+            qs_read,
             sid,
             async_tx: self.async_tx.clone(),
         }
     }
 
-    pub fn proxy_read(&self) -> IdmServerProxyReadTransaction {
+    #[cfg(test)]
+    pub fn proxy_read<'a>(&'a self) -> IdmServerProxyReadTransaction<'a> {
+        task::block_on(self.proxy_read_async())
+    }
+
+    pub async fn proxy_read_async<'a>(&'a self) -> IdmServerProxyReadTransaction<'a> {
         IdmServerProxyReadTransaction {
-            qs_read: self.qs.read(),
+            qs_read: self.qs.read_async().await,
         }
     }
 
+    #[cfg(test)]
     pub fn proxy_write(&self, ts: Duration) -> IdmServerProxyWriteTransaction {
+        task::block_on(self.proxy_write_async(ts))
+    }
+
+    pub async fn proxy_write_async<'a>(
+        &'a self,
+        ts: Duration,
+    ) -> IdmServerProxyWriteTransaction<'a> {
         let mut sid = [0; 4];
         let mut rng = StdRng::from_entropy();
         rng.fill(&mut sid);
+        let qs_write = self.qs.write_async(ts).await;
 
         IdmServerProxyWriteTransaction {
             mfareg_sessions: self.mfareg_sessions.write(),
-            qs_write: self.qs.write(ts),
+            qs_write,
             sid,
             crypto_policy: &self.crypto_policy,
         }
     }
 
-    pub(crate) fn delayed_action(&self,
+    #[cfg(test)]
+    pub(crate) async fn delayed_action(
+        &self,
         au: &mut AuditScope,
         ts: Duration,
         da: DelayedAction,
     ) -> Result<bool, OperationError> {
-        let mut pw = self.proxy_write(ts);
+        let mut pw = self.proxy_write_async(ts).await;
         pw.process_delayedaction(au, da)
-            .and_then(|_| {
-                pw.commit(au)
-            })
+            .and_then(|_| pw.commit(au))
             .map(|()| true)
     }
 }
@@ -166,19 +200,17 @@ impl IdmServerDelayed {
 
     #[cfg(test)]
     pub(crate) fn try_recv(&mut self) -> Result<DelayedAction, OperationError> {
-        self.async_rx.try_recv().map_err(|e|
-            match e {
-                TryRecvError::Empty => OperationError::InvalidState,
-                TryRecvError::Closed => OperationError::QueueDisconnected,
-            }
-        )
+        self.async_rx.try_recv().map_err(|e| match e {
+            TryRecvError::Empty => OperationError::InvalidState,
+            TryRecvError::Closed => OperationError::QueueDisconnected,
+        })
     }
 
-    pub(crate) async fn temp_drop_all(&mut self) {
+    pub(crate) async fn process_all(&mut self, server: &'static QueryServerWriteV1) {
         loop {
             match self.async_rx.recv().await {
-                // Drop it
-                Some(_) => {},
+                // process it.
+                Some(da) => server.handle_delayedaction(da).await,
                 // Channel has closed
                 None => return,
             }
@@ -873,7 +905,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // if yes, gen the pw mod and apply.
         if same {
             let modlist = account
-                .gen_password_mod(pwu.existing_password.as_str(), &pwu.appid, self.crypto_policy)
+                .gen_password_mod(
+                    pwu.existing_password.as_str(),
+                    &pwu.appid,
+                    self.crypto_policy,
+                )
                 .map_err(|e| {
                     ladmin_error!(au, "Unable to generate password mod {:?}", e);
                     e
@@ -882,7 +918,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             self.qs_write.internal_modify(
                 au,
                 &filter_all!(f_eq("uuid", PartialValue::new_uuidr(&pwu.target_uuid))),
-                &modlist)
+                &modlist,
+            )
         } else {
             // No action needed, it's probably been changed/updated already.
             Ok(())
@@ -918,22 +955,21 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             self.qs_write.internal_modify(
                 au,
                 &filter_all!(f_eq("uuid", PartialValue::new_uuidr(&pwu.target_uuid))),
-                &modlist)
+                &modlist,
+            )
         } else {
             Ok(())
         }
     }
 
-    fn process_delayedaction(
+    pub(crate) fn process_delayedaction(
         &mut self,
         au: &mut AuditScope,
         da: DelayedAction,
     ) -> Result<(), OperationError> {
         match da {
-            DelayedAction::PwUpgrade(pwu) =>
-                self.process_pwupgrade(au, pwu),
-            DelayedAction::UnixPwUpgrade(upwu) =>
-                self.process_unixpwupgrade(au, upwu),
+            DelayedAction::PwUpgrade(pwu) => self.process_pwupgrade(au, pwu),
+            DelayedAction::UnixPwUpgrade(upwu) => self.process_unixpwupgrade(au, upwu),
         }
     }
 
@@ -975,8 +1011,9 @@ mod tests {
     // , IdmServerDelayed;
     use crate::server::QueryServer;
     use crate::utils::duration_from_epoch_now;
-    use std::time::Duration;
+    use async_std::task;
     use std::convert::TryFrom;
+    use std::time::Duration;
     use uuid::Uuid;
 
     const TEST_PASSWORD: &'static str = "ntaoeuntnaoeuhraohuercahu😍";
@@ -986,8 +1023,10 @@ mod tests {
 
     #[test]
     fn test_idm_anonymous_auth() {
-        run_idm_test!(|_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed,
-        au: &mut AuditScope| {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &IdmServerDelayed,
+                       au: &mut AuditScope| {
             let sid = {
                 // Start and test anonymous auth.
                 let mut idms_write = idms.write();
@@ -1073,7 +1112,10 @@ mod tests {
     // Test sending anonymous but with no session init.
     #[test]
     fn test_idm_anonymous_auth_invalid_states() {
-        run_idm_test!(|_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed, au: &mut AuditScope| {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &IdmServerDelayed,
+                       au: &mut AuditScope| {
             {
                 let mut idms_write = idms.write();
                 let sid = Uuid::new_v4();
@@ -1144,47 +1186,48 @@ mod tests {
         sessionid
     }
 
-    fn check_admin_password(
-        idms: &IdmServer, au: &mut AuditScope, pw: &str
-    ) {
-            let sid = init_admin_authsession_sid(idms, au);
+    fn check_admin_password(idms: &IdmServer, au: &mut AuditScope, pw: &str) {
+        let sid = init_admin_authsession_sid(idms, au);
 
-            let mut idms_write = idms.write();
-            let anon_step = AuthEvent::cred_step_password(sid, pw);
+        let mut idms_write = idms.write();
+        let anon_step = AuthEvent::cred_step_password(sid, pw);
 
-            // Expect success
-            let r2 = idms_write.auth(au, &anon_step, Duration::from_secs(TEST_CURRENT_TIME));
-            debug!("r2 ==> {:?}", r2);
+        // Expect success
+        let r2 = idms_write.auth(au, &anon_step, Duration::from_secs(TEST_CURRENT_TIME));
+        debug!("r2 ==> {:?}", r2);
 
-            match r2 {
-                Ok(ar) => {
-                    let AuthResult {
-                        sessionid: _,
-                        state,
-                    } = ar;
-                    match state {
-                        AuthState::Success(_uat) => {
-                            // Check the uat.
-                        }
-                        _ => {
-                            error!("A critical error has occured! We have a non-succcess result!");
-                            panic!();
-                        }
+        match r2 {
+            Ok(ar) => {
+                let AuthResult {
+                    sessionid: _,
+                    state,
+                } = ar;
+                match state {
+                    AuthState::Success(_uat) => {
+                        // Check the uat.
+                    }
+                    _ => {
+                        error!("A critical error has occured! We have a non-succcess result!");
+                        panic!();
                     }
                 }
-                Err(e) => {
-                    error!("A critical error has occured! {:?}", e);
-                    // Should not occur!
-                    panic!();
-                }
-            };
+            }
+            Err(e) => {
+                error!("A critical error has occured! {:?}", e);
+                // Should not occur!
+                panic!();
+            }
+        };
 
-            idms_write.commit(au).expect("Must not fail");
+        idms_write.commit(au).expect("Must not fail");
     }
 
     #[test]
     fn test_idm_simple_password_auth() {
-        run_idm_test!(|qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed, au: &mut AuditScope| {
+        run_idm_test!(|qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &IdmServerDelayed,
+                       au: &mut AuditScope| {
             init_admin_w_password(au, qs, TEST_PASSWORD).expect("Failed to setup admin account");
             check_admin_password(idms, au, TEST_PASSWORD);
         })
@@ -1192,7 +1235,10 @@ mod tests {
 
     #[test]
     fn test_idm_simple_password_spn_auth() {
-        run_idm_test!(|qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed, au: &mut AuditScope| {
+        run_idm_test!(|qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &IdmServerDelayed,
+                       au: &mut AuditScope| {
             init_admin_w_password(au, qs, TEST_PASSWORD).expect("Failed to setup admin account");
             let mut idms_write = idms.write();
             let admin_init = AuthEvent::named_init("admin@example.com");
@@ -1249,7 +1295,10 @@ mod tests {
 
     #[test]
     fn test_idm_simple_password_invalid() {
-        run_idm_test!(|qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed, au: &mut AuditScope| {
+        run_idm_test!(|qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &IdmServerDelayed,
+                       au: &mut AuditScope| {
             init_admin_w_password(au, qs, TEST_PASSWORD).expect("Failed to setup admin account");
             let sid = init_admin_authsession_sid(idms, au);
             let mut idms_write = idms.write();
@@ -1288,7 +1337,10 @@ mod tests {
 
     #[test]
     fn test_idm_simple_password_reset() {
-        run_idm_test!(|_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed, au: &mut AuditScope| {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &IdmServerDelayed,
+                       au: &mut AuditScope| {
             let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD, None);
 
             let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
@@ -1300,7 +1352,10 @@ mod tests {
 
     #[test]
     fn test_idm_anonymous_set_password_denied() {
-        run_idm_test!(|_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed, au: &mut AuditScope| {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &IdmServerDelayed,
+                       au: &mut AuditScope| {
             let pce = PasswordChangeEvent::new_internal(&UUID_ANONYMOUS, TEST_PASSWORD, None);
 
             let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
@@ -1311,7 +1366,10 @@ mod tests {
 
     #[test]
     fn test_idm_session_expire() {
-        run_idm_test!(|qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed, au: &mut AuditScope| {
+        run_idm_test!(|qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &IdmServerDelayed,
+                       au: &mut AuditScope| {
             init_admin_w_password(au, qs, TEST_PASSWORD).expect("Failed to setup admin account");
             let sid = init_admin_authsession_sid(idms, au);
             let mut idms_write = idms.write();
@@ -1330,7 +1388,10 @@ mod tests {
 
     #[test]
     fn test_idm_regenerate_radius_secret() {
-        run_idm_test!(|_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed, au: &mut AuditScope| {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &IdmServerDelayed,
+                       au: &mut AuditScope| {
             let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
             let rrse = RegenerateRadiusSecretEvent::new_internal(UUID_ADMIN.clone());
 
@@ -1348,7 +1409,10 @@ mod tests {
 
     #[test]
     fn test_idm_radiusauthtoken() {
-        run_idm_test!(|_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed, au: &mut AuditScope| {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &IdmServerDelayed,
+                       au: &mut AuditScope| {
             let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
             let rrse = RegenerateRadiusSecretEvent::new_internal(UUID_ADMIN.clone());
             let r1 = idms_prox_write
@@ -1369,7 +1433,10 @@ mod tests {
 
     #[test]
     fn test_idm_simple_password_reject_weak() {
-        run_idm_test!(|_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed, au: &mut AuditScope| {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &IdmServerDelayed,
+                       au: &mut AuditScope| {
             // len check
             let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
 
@@ -1402,7 +1469,10 @@ mod tests {
 
     #[test]
     fn test_idm_unixusertoken() {
-        run_idm_test!(|_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed, au: &mut AuditScope| {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &IdmServerDelayed,
+                       au: &mut AuditScope| {
             let idms_prox_write = idms.proxy_write(duration_from_epoch_now());
             // Modify admin to have posixaccount
             let me_posix = unsafe {
@@ -1474,7 +1544,10 @@ mod tests {
 
     #[test]
     fn test_idm_simple_unix_password_reset() {
-        run_idm_test!(|_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed, au: &mut AuditScope| {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &IdmServerDelayed,
+                       au: &mut AuditScope| {
             let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
             // make the admin a valid posix account
             let me_posix = unsafe {
@@ -1536,7 +1609,10 @@ mod tests {
 
     #[test]
     fn test_idm_totp_registration() {
-        run_idm_test!(|_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed, au: &mut AuditScope| {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &IdmServerDelayed,
+                       au: &mut AuditScope| {
             let ct = duration_from_epoch_now();
             let expire = Duration::from_secs(ct.as_secs() + MFAREG_SESSION_TIMEOUT + 2);
             let mut idms_prox_write = idms.proxy_write(ct.clone());
@@ -1667,7 +1743,10 @@ mod tests {
 
     #[test]
     fn test_idm_simple_password_upgrade() {
-        run_idm_test!(|qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed, au: &mut AuditScope| {
+        run_idm_test!(|qs: &QueryServer,
+                       idms: &IdmServer,
+                       idms_delayed: &mut IdmServerDelayed,
+                       au: &mut AuditScope| {
             // Assert the delayed action queue is empty
             idms_delayed.is_empty_or_panic();
             // Setup the admin w_ an imported password.
@@ -1693,7 +1772,8 @@ mod tests {
             check_admin_password(idms, au, "password");
             // process it.
             let da = idms_delayed.try_recv().expect("invalid");
-            assert!(Ok(true) == idms.delayed_action(au, duration_from_epoch_now(), da));
+            let r = task::block_on(idms.delayed_action(au, duration_from_epoch_now(), da));
+            assert!(Ok(true) == r);
             // Check the admin pw still matches
             check_admin_password(idms, au, "password");
             // No delayed action was queued.
@@ -1703,11 +1783,14 @@ mod tests {
 
     #[test]
     fn test_idm_unix_password_upgrade() {
-        run_idm_test!(|qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed, au: &mut AuditScope| {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       idms_delayed: &mut IdmServerDelayed,
+                       au: &mut AuditScope| {
             // Assert the delayed action queue is empty
             idms_delayed.is_empty_or_panic();
             // Setup the admin with an imported unix pw.
-            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
+            let idms_prox_write = idms.proxy_write(duration_from_epoch_now());
 
             let im_pw = "{SSHA512}JwrSUHkI7FTAfHRVR6KoFlSN0E3dmaQWARjZ+/UsShYlENOqDtFVU77HJLLrY2MuSp0jve52+pwtdVl2QUAHukQ0XUf5LDtM";
             let pw = Password::try_from(im_pw).expect("failed to parse");
@@ -1739,7 +1822,7 @@ mod tests {
             // The upgrade was queued
             // Process it.
             let da = idms_delayed.try_recv().expect("invalid");
-            assert!(Ok(true) == idms.delayed_action(au, duration_from_epoch_now(), da));
+            let _r = task::block_on(idms.delayed_action(au, duration_from_epoch_now(), da));
             // Go again
             let mut idms_write = idms.write();
             let a2 = idms_write.auth_unix(au, &uuae, Duration::from_secs(TEST_CURRENT_TIME));

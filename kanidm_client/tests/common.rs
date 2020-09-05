@@ -1,5 +1,4 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::mpsc;
 use std::thread;
 
 use kanidm::audit::LogLevel;
@@ -7,7 +6,8 @@ use kanidm::config::{Configuration, IntegrationTestConfig};
 use kanidm::core::create_server_core;
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
 
-use actix::prelude::*;
+use async_std::task;
+use tokio::sync::mpsc;
 
 pub const ADMIN_TEST_PASSWORD: &str = "integration test admin password";
 static PORT_ALLOC: AtomicUsize = AtomicUsize::new(8080);
@@ -22,7 +22,9 @@ pub fn run_test(test_fn: fn(KanidmClient) -> ()) {
         .is_test(true)
         .try_init();
 
-    let (tx, rx) = mpsc::channel();
+    let (mut ready_tx, mut ready_rx) = mpsc::channel(1);
+    let (mut finish_tx, mut finish_rx) = mpsc::channel(1);
+
     let port = PORT_ALLOC.fetch_add(1, Ordering::SeqCst);
 
     let int_config = Box::new(IntegrationTestConfig {
@@ -34,25 +36,34 @@ pub fn run_test(test_fn: fn(KanidmClient) -> ()) {
     config.address = format!("127.0.0.1:{}", port);
     config.secure_cookies = false;
     config.integration_test_config = Some(int_config);
+    // config.log_level = Some(LogLevel::Verbose as u32);
     config.log_level = Some(LogLevel::Quiet as u32);
+    config.threads = 1;
+
     // config.log_level = Some(LogLevel::FullTrace as u32);
-    thread::spawn(move || {
+    let t_handle = thread::spawn(move || {
         // Spawn a thread for the test runner, this should have a unique
         // port....
-        let system = System::new("test-rctx");
-
-        let rctx = async move {
-            let sctx = create_server_core(config).await;
-            let _ = tx.send(sctx);
-        };
-
-        Arbiter::spawn(rctx);
-
-        system.run().expect("Failed to start thread");
+        let mut rt = tokio::runtime::Builder::new()
+            .basic_scheduler()
+            .enable_all()
+            .build()
+            .expect("failed to start tokio");
+        rt.block_on(async {
+            create_server_core(config)
+                .await
+                .expect("failed to start server core");
+            // We have to yield now to guarantee that the tide elements are setup.
+            task::yield_now().await;
+            ready_tx
+                .send(())
+                .await
+                .expect("failed in indicate readiness");
+            finish_rx.recv().await;
+        });
     });
-    let sctx = rx.recv().unwrap().expect("failed to start ctx");
-    System::set_current(sctx.current());
 
+    let _ = task::block_on(ready_rx.recv()).expect("failed to start ctx");
     // Do we need any fixtures?
     // Yes probably, but they'll need to be futures as well ...
     // later we could accept fixture as it's own future for re-use
@@ -68,5 +79,8 @@ pub fn run_test(test_fn: fn(KanidmClient) -> ()) {
 
     // We DO NOT need teardown, as sqlite is in mem
     // let the tables hit the floor
-    sctx.stop();
+
+    // At this point, when the channel drops, it drops the thread too.
+    task::block_on(finish_tx.send(())).expect("unable to send to ctx");
+    t_handle.join().expect("failed to join thread");
 }

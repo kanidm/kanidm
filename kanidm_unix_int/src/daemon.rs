@@ -218,7 +218,7 @@ async fn handle_client(
     Ok(())
 }
 
-#[tokio::main]
+#[tokio::main(core_threads = 1, max_threads = 1)]
 async fn main() {
     let cuid = get_current_uid();
     let ceuid = get_effective_uid();
@@ -396,89 +396,3 @@ async fn main() {
 
     server.await;
 }
-
-// This is the actix version, but on MacOS there is an issue where it can't flush the socket properly :(
-
-//=== A connected client session
-/*
-
-struct ClientSession {
-    framed: actix::io::FramedWrite<WriteHalf<UnixStream>, ClientCodec>,
-}
-
-impl Actor for ClientSession {
-    type Context = Context<Self>;
-}
-
-impl actix::io::WriteHandler<io::Error> for ClientSession {}
-
-impl StreamHandler<Result<ClientRequest, io::Error>> for ClientSession {
-    fn handle(&mut self, msg: Result<ClientRequest, io::Error>, ctx: &mut Self::Context) {
-        debug!("Processing -> {:?}", msg);
-        match msg {
-            Ok(ClientRequest::SshKey(account_id)) => {
-                self.framed.write(ClientResponse::SshKeys(vec![]));
-            }
-            Err(e) => {
-                println!("Encountered an IO error, disconnecting session -> {:?}", e);
-                ctx.stop();
-            }
-        }
-    }
-}
-
-impl ClientSession {
-    fn new(framed: actix::io::FramedWrite<WriteHalf<UnixStream>, ClientCodec>) -> Self {
-        ClientSession { framed: framed }
-    }
-}
-
-//=== this is the accept server
-
-struct AcceptServer;
-
-impl Actor for AcceptServer {
-    type Context = Context<Self>;
-}
-
-#[derive(Message)]
-#[rtype(result = "()")]
-struct UdsConnect(pub UnixStream, pub SocketAddr);
-
-impl Handler<UdsConnect> for AcceptServer {
-    type Result = ();
-
-    fn handle(&mut self, msg: UdsConnect, _: &mut Context<Self>) {
-        debug!("Accepting new client ...");
-
-        // TODO: Clone the DB actor handle here.
-        ClientSession::create(move |ctx| {
-            let (r, w) = tokio::io::split(msg.0);
-            ClientSession::add_stream(FramedRead::new(r, ClientCodec), ctx);
-            ClientSession::new(actix::io::FramedWrite::new(w, ClientCodec, ctx))
-        });
-    }
-}
-
-#[actix_rt::main]
-async fn main() {
-    // Setup logging
-    ::std::env::set_var("RUST_LOG", "kanidm=debug,kanidm_client=debug");
-    env_logger::init();
-
-    rm_if_exist(DEFAULT_SOCK_PATH);
-    let listener = Box::new(UnixListener::bind(DEFAULT_SOCK_PATH).expect("Failed to bind"));
-    AcceptServer::create(|ctx| {
-        ctx.add_message_stream(Box::leak(listener).incoming().map(|st| {
-            let st = st.unwrap();
-            let addr = st.peer_addr().unwrap();
-            UdsConnect(st, addr)
-        }));
-        AcceptServer {}
-    });
-    println!("Running ...");
-    tokio::signal::ctrl_c().await.unwrap();
-    println!("Ctrl-C received, shutting down");
-    System::current().stop();
-}
-*/

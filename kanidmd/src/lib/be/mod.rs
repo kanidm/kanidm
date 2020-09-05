@@ -65,6 +65,7 @@ pub struct IdRawEntry {
 
 #[derive(Clone)]
 pub struct Backend {
+    pool_size: usize,
     idlayer: Arc<IdlArcSqlite>,
     /// This is a copy-on-write cache of the index metadata that has been
     /// extracted from attributes set, in the correct format for the backend
@@ -1316,13 +1317,19 @@ impl Backend {
     pub fn new(
         audit: &mut AuditScope,
         path: &str,
-        pool_size: u32,
+        mut pool_size: u32,
         fstype: FsType,
         idxmeta: Set<IdxKey>,
     ) -> Result<Self, OperationError> {
+        // If in memory, reduce pool to 1
+        if path == "" {
+            pool_size = 1;
+        }
+
         // this has a ::memory() type, but will path == "" work?
         lperf_trace_segment!(audit, "be::new", || {
             let be = Backend {
+                pool_size: pool_size as usize,
                 idlayer: Arc::new(IdlArcSqlite::new(audit, path, pool_size, fstype)?),
                 idxmeta: Arc::new(CowCell::new(idxmeta)),
             };
@@ -1343,6 +1350,11 @@ impl Backend {
                 Err(e) => Err(e),
             }
         })
+    }
+
+    pub fn get_pool_size(&self) -> usize {
+        debug_assert!(self.pool_size > 0);
+        self.pool_size
     }
 
     pub fn read(&self) -> BackendReadTransaction {

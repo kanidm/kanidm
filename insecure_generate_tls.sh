@@ -44,10 +44,10 @@ IP.1 = 127.0.0.1
 DEVEOF
 
 # Make the ca
-openssl req -x509 -new -newkey rsa:2048 -keyout cakey.pem -out ca.pem -days 31 -subj "/C=AU/ST=Queensland/L=Brisbane/O=INSECURE/CN=insecure.ca.localhost" -nodes
-openssl genrsa -out key.pem 2048
-openssl req -key key.pem -out cert.csr -days 31 -config altnames.cnf -new -extensions v3_req
-openssl x509 -req -days 31 -in cert.csr -CA ca.pem -CAkey cakey.pem -CAcreateserial -out cert.pem -extfile altnames.cnf -extensions v3_req
+openssl req -x509 -new -newkey rsa:4096 -sha256 -keyout cakey.pem -out ca.pem -days 31 -subj "/C=AU/ST=Queensland/L=Brisbane/O=INSECURE/CN=insecure.ca.localhost" -nodes
+openssl genrsa -out key.pem 4096
+openssl req -sha256 -key key.pem -out cert.csr -days 31 -config altnames.cnf -new -extensions v3_req
+openssl x509 -req -days 31 -in cert.csr -CA ca.pem -CAkey cakey.pem -CAcreateserial -out cert.pem -extfile altnames.cnf -extensions v3_req -sha256
 
 echo use ca.pem, cert.pem, and key.pem
 

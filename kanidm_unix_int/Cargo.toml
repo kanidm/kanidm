@@ -73,4 +73,3 @@ default = [ "libsqlite3-sys/bundled" ]
 
 [dev-dependencies]
 kanidm = { path = "../kanidmd" }
-actix = "0.9"

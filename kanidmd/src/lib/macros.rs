@@ -19,7 +19,7 @@ macro_rules! run_test_no_init {
 
         let schema_outer = Schema::new(&mut audit).expect("Failed to init schema");
         let idxmeta = {
-            let schema_txn = schema_outer.write();
+            let schema_txn = schema_outer.write_blocking();
             schema_txn.reload_idxmeta()
         };
         let be = match Backend::new(&mut audit, "", 1, FsType::Generic, idxmeta) {
@@ -63,7 +63,7 @@ macro_rules! run_test {
 
         let schema_outer = Schema::new(&mut audit).expect("Failed to init schema");
         let idxmeta = {
-            let schema_txn = schema_outer.write();
+            let schema_txn = schema_outer.write_blocking();
             schema_txn.reload_idxmeta()
         };
         let be = match Backend::new(&mut audit, "", 1, FsType::Generic, idxmeta) {
@@ -134,7 +134,7 @@ macro_rules! run_idm_test {
 
         let schema_outer = Schema::new(&mut audit).expect("Failed to init schema");
         let idxmeta = {
-            let schema_txn = schema_outer.write();
+            let schema_txn = schema_outer.write_blocking();
             schema_txn.reload_idxmeta()
         };
         let be =
@@ -147,7 +147,12 @@ macro_rules! run_idm_test {
 
         let (test_idm_server, mut idms_delayed) = IdmServer::new(test_server.clone());
 
-        $test_fn(&test_server, &test_idm_server, &mut idms_delayed, &mut audit);
+        $test_fn(
+            &test_server,
+            &test_idm_server,
+            &mut idms_delayed,
+            &mut audit,
+        );
         // Any needed teardown?
         // Make sure there are no errors.
         assert!(test_server.verify(&mut audit).len() == 0);

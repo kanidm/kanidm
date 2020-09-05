@@ -1238,6 +1238,9 @@ impl IdlSqlite {
         pool_size: u32,
         fstype: FsType,
     ) -> Result<Self, OperationError> {
+        if path == "" {
+            debug_assert!(pool_size == 1);
+        }
         // If provided, set the page size to match the tuning we want. By default we use 4096. The VACUUM
         // immediately after is so that on db create the page size takes effect.
         //
@@ -1245,6 +1248,9 @@ impl IdlSqlite {
         let mut flags = OpenFlags::default();
         // Open with multi thread flags and locking options.
         flags.insert(OpenFlags::SQLITE_OPEN_NO_MUTEX);
+
+        // TODO: This probably only needs to be run on first run OR we need a flag
+        // or something else. Maybe on reindex only?
         let manager = SqliteConnectionManager::file(path)
             .with_init(move |c| {
                 c.execute_batch(
@@ -1257,14 +1263,7 @@ impl IdlSqlite {
             })
             .with_flags(flags);
         let builder1 = Pool::builder();
-        let builder2 = if path == "" {
-            // We are in a debug mode, with in memory. We MUST have only
-            // a single DB thread, else we cause consistency issues.
-            builder1.max_size(1)
-        } else {
-            // Have to add 1 for the write thread, and for the interval threads
-            builder1.max_size(pool_size + 2)
-        };
+        let builder2 = builder1.max_size(pool_size);
         // Look at max_size and thread_pool here for perf later
         let pool = builder2.build(manager).map_err(|e| {
             ladmin_error!(audit, "r2d2 error {:?}", e);
@@ -1275,6 +1274,9 @@ impl IdlSqlite {
     }
 
     pub fn read(&self) -> IdlSqliteReadTransaction {
+        // When we make this async, this will allow us to backoff
+        // when we miss-grabbing from the conn-pool.
+        // async_std::task::yield_now().await
         #[allow(clippy::expect_used)]
         let conn = self
             .pool

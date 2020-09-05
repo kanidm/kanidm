@@ -153,7 +153,7 @@ fn read_file_metadata(path: &PathBuf) -> Metadata {
     }
 }
 
-#[actix_rt::main]
+#[tokio::main]
 async fn main() {
     // Get info about who we are.
     let cuid = get_current_uid();
@@ -295,16 +295,23 @@ async fn main() {
         Opt::Server(_sopt) => {
             eprintln!("Running in server mode ...");
 
+            /*
+            let mut rt = tokio::runtime::Builder::new()
+                .threaded_scheduler()
+                .build()
+                .unwrap();
+            */
+
             let sctx = create_server_core(config).await;
             match sctx {
-                Ok(sctx) => match tokio::signal::ctrl_c().await {
+                Ok(_sctx) => match tokio::signal::ctrl_c().await {
                     Ok(_) => {
                         eprintln!("Ctrl-C received, shutting down");
-                        sctx.stop()
+                        // sctx.stop(true).await;
                     }
                     Err(_) => {
                         eprintln!("Invalid signal received, shutting down as a precaution ...");
-                        sctx.stop()
+                        // sctx.stop(true).await;
                     }
                 },
                 Err(_) => {

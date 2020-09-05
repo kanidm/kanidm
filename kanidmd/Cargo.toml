@@ -28,11 +28,12 @@ path = "src/server/main.rs"
 [dependencies]
 kanidm_proto = { path = "../kanidm_proto", version = "1.1.0-alpha" }
 
-actix = "0.9"
-actix-rt = "1.1"
-actix-web = { version = "2.0", features = ["openssl"] }
-actix-session = "0.3"
-actix-files = "0.2"
+tide = "0.13"
+async-trait = "0.1"
+async-h1 = "2.0"
+# Temporary!
+# tide-rustls = "0.1"
+tide-rustls = { git = "https://github.com/http-rs/tide-rustls.git", rev = "c1f13a77e82369323274d832b8d3f33ba7c272c7" }
 
 async-std = "1.6"
 
@@ -42,12 +43,16 @@ rand = "0.7"
 toml = "0.5"
 
 chrono = "0.4"
-cookie = "0.14"
 regex = "1"
 lazy_static = "1.2.0"
 
-tokio = "0.2"
 futures = "0.3"
+futures-util = "0.3"
+tokio = { version = "0.2", features = ["rt-threaded", "macros", "rt-util", "sync", "time", "net", "io-util", "signal"] }
+tokio-util = { version = "0.2", features = ["codec"] }
+tokio-openssl = "0.4"
+openssl = "0.10"
+
 uuid = { version = "0.8", features = ["serde", "v4" ] }
 serde = "1.0"
 serde_cbor = "0.11"
@@ -63,11 +68,11 @@ structopt = { version = "0.3", default-features = false }
 time = "0.1"
 
 hashbrown = "0.8"
-concread = "^0.1.18"
+concread = "^0.2"
+# concread = { path = "../../concread", features = ["asynch"] }
 # concread = { path = "../../concread" }
 crossbeam = "0.7"
 
-openssl = "0.10"
 sshkeys = "0.3"
 
 rpassword = "4.0"
@@ -81,9 +86,6 @@ base64 = "0.12"
 
 ldap3_server = "0.1"
 # ldap3_server = { path = "../../ldap3_server" }
-futures-util = "0.3"
-tokio-util = { version = "0.2", features = ["codec"] }
-tokio-openssl = "0.4"
 
 libc = "0.2"
 users = "0.10"

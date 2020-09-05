@@ -1,1270 +1,38 @@
-mod ctx;
+mod https;
 mod ldaps;
-// use actix_files as fs;
-use actix::prelude::*;
-use actix_session::{CookieSession, Session};
-use actix_web::web::{self, Data, HttpResponse, Json, Path};
-use actix_web::{cookie, error, middleware, App, HttpServer};
 use libc::umask;
 
-use crossbeam::channel::unbounded;
+// use crossbeam::channel::unbounded;
 use std::sync::Arc;
-use std::thread;
-use time::Duration;
+use tokio::sync::mpsc::unbounded_channel as unbounded;
 
 use crate::config::Configuration;
 
 // SearchResult
-use self::ctx::ServerCtx;
+// use self::ctx::ServerCtx;
 use crate::actors::v1_read::QueryServerReadV1;
-use crate::actors::v1_read::{
-    AuthMessage, IdmAccountUnixAuthMessage, InternalRadiusReadMessage,
-    InternalRadiusTokenReadMessage, InternalSearchMessage, InternalSearchRecycledMessage,
-    InternalSshKeyReadMessage, InternalSshKeyTagReadMessage, InternalUnixGroupTokenReadMessage,
-    InternalUnixUserTokenReadMessage, SearchMessage, WhoamiMessage,
-};
 use crate::actors::v1_write::QueryServerWriteV1;
-use crate::actors::v1_write::{
-    AppendAttributeMessage, CreateMessage, DeleteMessage, IdmAccountPersonExtendMessage,
-    IdmAccountSetPasswordMessage, IdmAccountUnixExtendMessage, IdmAccountUnixSetCredMessage,
-    IdmGroupUnixExtendMessage, InternalCredentialSetMessage, InternalDeleteMessage,
-    InternalRegenerateRadiusMessage, InternalSshKeyCreateMessage, ModifyMessage,
-    PurgeAttributeMessage, RemoveAttributeValueMessage, ReviveRecycledMessage, SetAttributeMessage,
-};
 use crate::async_log;
 use crate::audit::AuditScope;
 use crate::be::{Backend, BackendTransaction, FsType};
 use crate::crypto::setup_tls;
-use crate::filter::{Filter, FilterInvalid};
 use crate::idm::server::{IdmServer, IdmServerDelayed};
 use crate::interval::IntervalActor;
 use crate::ldap::LdapServer;
 use crate::schema::Schema;
 use crate::server::QueryServer;
-use crate::status::{StatusActor, StatusRequestEvent};
+use crate::status::StatusActor;
 use crate::utils::duration_from_epoch_now;
-use crate::value::PartialValue;
 
-use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::OperationError;
-use kanidm_proto::v1::{
-    AccountUnixExtend, AuthRequest, AuthState, CreateRequest, DeleteRequest, GroupUnixExtend,
-    ModifyRequest, SearchRequest, SetCredentialRequest, SingleStringRequest, UserAuthToken,
-};
 
-use uuid::Uuid;
-
-struct AppState {
-    qe_r: Addr<QueryServerReadV1>,
-    qe_w: Addr<QueryServerWriteV1>,
-    status: Addr<StatusActor>,
-}
-
-fn get_current_user(session: &Session) -> Option<UserAuthToken> {
-    match session.get::<UserAuthToken>("uat") {
-        Ok(maybe_uat) => maybe_uat,
-        Err(_) => None,
-    }
-}
-
-fn operation_error_to_response(e: OperationError, hvalue: String) -> HttpResponse {
-    match e {
-        OperationError::NotAuthenticated => HttpResponse::Unauthorized()
-            .header("X-KANIDM-OPID", hvalue)
-            .json(e),
-        OperationError::AccessDenied | OperationError::SystemProtectedObject => {
-            HttpResponse::Forbidden()
-                .header("X-KANIDM-OPID", hvalue)
-                .json(e)
-        }
-        OperationError::EmptyRequest
-        | OperationError::NoMatchingEntries
-        | OperationError::SchemaViolation(_) => HttpResponse::BadRequest()
-            .header("X-KANIDM-OPID", hvalue)
-            .json(e),
-        _ => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json(e),
-    }
-}
-
-macro_rules! new_eventid {
-    () => {{
-        let eventid = Uuid::new_v4();
-        let hv = eventid.to_hyphenated().to_string();
-        (eventid, hv)
-    }};
-}
-
-macro_rules! json_event_post {
-    ($req:expr, $session:expr, $message_type:ty, $dest:expr) => {{
-        // Get auth if any?
-        let uat = get_current_user(&$session);
-        // Send to the db for handling
-        // combine request + uat -> message.
-        let (eventid, hvalue) = new_eventid!();
-        let m_obj = <$message_type>::new(uat, $req, eventid);
-        match $dest.send(m_obj).await {
-            Ok(Ok(r)) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
-            Ok(Err(e)) => operation_error_to_response(e, hvalue),
-            Err(_) => HttpResponse::InternalServerError()
-                .header("X-KANIDM-OPID", hvalue)
-                .json("mailbox failure"),
-        }
-    }};
-}
-
-macro_rules! json_event_get {
-    ($session:expr, $state:expr, $message_type:ty) => {{
-        // Get current auth data - remember, the QS checks if the
-        // none/some is okay, because it's too hard to make it work here
-        // with all the async parts.
-        let uat = get_current_user(&$session);
-        let (eventid, hvalue) = new_eventid!();
-
-        // New event, feed current auth data from the token to it.
-        let obj = <$message_type>::new(uat, eventid);
-
-        match $state.qe_r.send(obj).await {
-            Ok(Ok(r)) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
-            Ok(Err(e)) => operation_error_to_response(e, hvalue),
-            Err(_) => HttpResponse::InternalServerError()
-                .header("X-KANIDM-OPID", hvalue)
-                .json("mailbox failure"),
-        }
-    }};
-}
-
-// Handle the various end points we need to expose
-
-async fn create(
-    (req, session, state): (Json<CreateRequest>, Session, Data<AppState>),
-) -> HttpResponse {
-    json_event_post!(req.into_inner(), session, CreateMessage, state.qe_w)
-}
-
-async fn modify(
-    (req, session, state): (Json<ModifyRequest>, Session, Data<AppState>),
-) -> HttpResponse {
-    json_event_post!(req.into_inner(), session, ModifyMessage, state.qe_w)
-}
-
-async fn delete(
-    (req, session, state): (Json<DeleteRequest>, Session, Data<AppState>),
-) -> HttpResponse {
-    json_event_post!(req.into_inner(), session, DeleteMessage, state.qe_w)
-}
-
-async fn search(
-    (req, session, state): (Json<SearchRequest>, Session, Data<AppState>),
-) -> HttpResponse {
-    json_event_post!(req.into_inner(), session, SearchMessage, state.qe_r)
-}
-
-async fn whoami((session, state): (Session, Data<AppState>)) -> HttpResponse {
-    json_event_get!(session, state, WhoamiMessage)
-}
-
-// =============== REST generics ========================
-
-async fn json_rest_event_get(
-    session: Session,
-    state: Data<AppState>,
-    filter: Filter<FilterInvalid>,
-    attrs: Option<Vec<String>>,
-) -> HttpResponse {
-    let uat = get_current_user(&session);
-
-    let (eventid, hvalue) = new_eventid!();
-    let obj = InternalSearchMessage {
-        uat,
-        filter,
-        attrs,
-        eventid,
-    };
-
-    match state.qe_r.send(obj).await {
-        Ok(Ok(r)) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
-    }
-}
-
-async fn json_rest_event_get_id(
-    path: Path<String>,
-    session: Session,
-    state: Data<AppState>,
-    filter: Filter<FilterInvalid>,
-    attrs: Option<Vec<String>>,
-) -> HttpResponse {
-    let uat = get_current_user(&session);
-
-    let filter = Filter::join_parts_and(filter, filter_all!(f_id(path.as_str())));
-
-    let (eventid, hvalue) = new_eventid!();
-
-    let obj = InternalSearchMessage {
-        uat,
-        filter,
-        attrs,
-        eventid,
-    };
-
-    match state.qe_r.send(obj).await {
-        Ok(Ok(mut r)) => HttpResponse::Ok()
-            .header("X-KANIDM-OPID", hvalue)
-            .json(r.pop()),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
-    }
-}
-
-async fn json_rest_event_delete_id(
-    path: Path<String>,
-    session: Session,
-    state: Data<AppState>,
-    filter: Filter<FilterInvalid>,
-) -> HttpResponse {
-    let uat = get_current_user(&session);
-
-    let filter = Filter::join_parts_and(filter, filter_all!(f_id(path.as_str())));
-    let (eventid, hvalue) = new_eventid!();
-
-    let obj = InternalDeleteMessage {
-        uat,
-        filter,
-        eventid,
-    };
-
-    match state.qe_w.send(obj).await {
-        Ok(Ok(())) => HttpResponse::Ok()
-            .header("X-KANIDM-OPID", hvalue)
-            .json(true),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
-    }
-}
-
-async fn json_rest_event_get_id_attr(
-    path: Path<(String, String)>,
-    session: Session,
-    state: Data<AppState>,
-    filter: Filter<FilterInvalid>,
-) -> HttpResponse {
-    let (id, attr) = path.into_inner();
-    let uat = get_current_user(&session);
-
-    let filter = Filter::join_parts_and(filter, filter_all!(f_id(id.as_str())));
-    let (eventid, hvalue) = new_eventid!();
-
-    let obj = InternalSearchMessage {
-        uat,
-        filter,
-        attrs: Some(vec![attr.clone()]),
-        eventid,
-    };
-
-    match state.qe_r.send(obj).await {
-        Ok(Ok(mut event_result)) => {
-            // Only get one result
-            let r = event_result.pop().and_then(|mut e| {
-                // Only get the attribute as requested.
-                e.attrs.remove(&attr)
-            });
-            // Only send back the first result, or None
-            HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r)
-        }
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
-    }
-}
-
-async fn json_rest_event_post(
-    mut obj: ProtoEntry,
-    session: Session,
-    state: Data<AppState>,
-    classes: Vec<String>,
-) -> HttpResponse {
-    // Read the json from the wire.
-    let uat = get_current_user(&session);
-
-    obj.attrs.insert("class".to_string(), classes);
-    let (eventid, hvalue) = new_eventid!();
-    let m_obj = CreateMessage::new_entry(uat, obj, eventid);
-    match state.qe_w.send(m_obj).await {
-        Ok(Ok(r)) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
-    }
-}
-
-async fn json_rest_event_post_id_attr(
-    path: Path<(String, String)>,
-    session: Session,
-    state: Data<AppState>,
-    filter: Filter<FilterInvalid>,
-    values: Vec<String>,
-) -> HttpResponse {
-    let uat = get_current_user(&session);
-    let (id, attr) = path.into_inner();
-
-    let (eventid, hvalue) = new_eventid!();
-    let m_obj = AppendAttributeMessage {
-        uat,
-        uuid_or_name: id,
-        attr,
-        values,
-        filter,
-        eventid,
-    };
-    // Add a msg here
-    match state.qe_w.send(m_obj).await {
-        Ok(Ok(())) => HttpResponse::Ok()
-            .header("X-KANIDM-OPID", hvalue)
-            .json(true),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
-    }
-}
-
-async fn json_rest_event_put_id_attr(
-    path: Path<(String, String)>,
-    session: Session,
-    state: Data<AppState>,
-    filter: Filter<FilterInvalid>,
-    values: Vec<String>,
-) -> HttpResponse {
-    let uat = get_current_user(&session);
-    let (id, attr) = path.into_inner();
-
-    let (eventid, hvalue) = new_eventid!();
-    let m_obj = SetAttributeMessage {
-        uat,
-        uuid_or_name: id,
-        attr,
-        values,
-        filter,
-        eventid,
-    };
-    match state.qe_w.send(m_obj).await {
-        Ok(Ok(())) => HttpResponse::Ok()
-            .header("X-KANIDM-OPID", hvalue)
-            .json(true),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
-    }
-}
-
-async fn json_rest_event_delete_id_attr(
-    path: Path<(String, String)>,
-    session: Session,
-    state: Data<AppState>,
-    filter: Filter<FilterInvalid>,
-) -> HttpResponse {
-    let uat = get_current_user(&session);
-    let (id, attr) = path.into_inner();
-
-    let (eventid, hvalue) = new_eventid!();
-    // TODO #211: Attempt to get an option Vec<String> here?
-    // It's probably better to focus on SCIM instead, it seems richer than this.
-    let obj = PurgeAttributeMessage {
-        uat,
-        uuid_or_name: id,
-        attr,
-        filter,
-        eventid,
-    };
-
-    match state.qe_w.send(obj).await {
-        Ok(Ok(())) => HttpResponse::Ok()
-            .header("X-KANIDM-OPID", hvalue)
-            .json(true),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
-    }
-}
-
-async fn json_rest_event_credential_put(
-    id: String,
-    cred_id: Option<String>,
-    session: Session,
-    state: Data<AppState>,
-    obj: SetCredentialRequest,
-) -> HttpResponse {
-    let uat = get_current_user(&session);
-
-    let (eventid, hvalue) = new_eventid!();
-    let m_obj = InternalCredentialSetMessage {
-        uat,
-        uuid_or_name: id,
-        appid: cred_id,
-        sac: obj,
-        eventid,
-    };
-    match state.qe_w.send(m_obj).await {
-        Ok(Ok(r)) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
-    }
-}
-
-// Okay, so a put normally needs
-//  * filter of what we are working on (id + class)
-//  * a Map<String, Vec<String>> that we turn into a modlist.
-//
-// OR
-//  * filter of what we are working on (id + class)
-//  * a Vec<String> that we are changing
-//  * the attr name  (as a param to this in path)
-//
-// json_rest_event_put_id(path, req, state
-
-async fn schema_get((session, state): (Session, Data<AppState>)) -> HttpResponse {
-    // NOTE: This is filter_all, because from_internal_message will still do the alterations
-    // needed to make it safe. This is needed because there may be aci's that block access
-    // to the recycle/ts types in the filter, and we need the aci to only eval on this
-    // part of the filter!
-    let filter = filter_all!(f_or!([
-        f_eq("class", PartialValue::new_class("attributetype")),
-        f_eq("class", PartialValue::new_class("classtype"))
-    ]));
-    json_rest_event_get(session, state, filter, None).await
-}
-
-async fn schema_attributetype_get((session, state): (Session, Data<AppState>)) -> HttpResponse {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("attributetype")));
-    json_rest_event_get(session, state, filter, None).await
-}
-
-async fn schema_attributetype_get_id(
-    (path, session, state): (Path<String>, Session, Data<AppState>),
-) -> HttpResponse {
-    // These can't use get_id because they attribute name and class name aren't ... well name.
-    let uat = get_current_user(&session);
-
-    let filter = filter_all!(f_and!([
-        f_eq("class", PartialValue::new_class("attributetype")),
-        f_eq("attributename", PartialValue::new_iutf8(path.as_str()))
-    ]));
-
-    let (eventid, hvalue) = new_eventid!();
-    let obj = InternalSearchMessage {
-        uat,
-        filter,
-        attrs: None,
-        eventid,
-    };
-
-    match state.qe_r.send(obj).await {
-        Ok(Ok(mut r)) => HttpResponse::Ok()
-            .header("X-KANIDM-OPID", hvalue)
-            .json(r.pop()),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
-    }
-}
-
-async fn schema_classtype_get((session, state): (Session, Data<AppState>)) -> HttpResponse {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("classtype")));
-    json_rest_event_get(session, state, filter, None).await
-}
-
-async fn schema_classtype_get_id(
-    (path, session, state): (Path<String>, Session, Data<AppState>),
-) -> HttpResponse {
-    // These can't use get_id because they attribute name and class name aren't ... well name.
-    let uat = get_current_user(&session);
-
-    let filter = filter_all!(f_and!([
-        f_eq("class", PartialValue::new_class("classtype")),
-        f_eq("classname", PartialValue::new_iutf8(path.as_str()))
-    ]));
-
-    let (eventid, hvalue) = new_eventid!();
-    let obj = InternalSearchMessage {
-        uat,
-        filter,
-        attrs: None,
-        eventid,
-    };
-
-    match state.qe_r.send(obj).await {
-        Ok(Ok(mut r)) => HttpResponse::Ok()
-            .header("X-KANIDM-OPID", hvalue)
-            .json(r.pop()),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
-    }
-}
-
-// == person ==
-
-async fn person_get((session, state): (Session, Data<AppState>)) -> HttpResponse {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("person")));
-    json_rest_event_get(session, state, filter, None).await
-}
-
-async fn person_post(
-    (obj, session, state): (Json<ProtoEntry>, Session, Data<AppState>),
-) -> HttpResponse {
-    let classes = vec!["account".to_string(), "object".to_string()];
-    json_rest_event_post(obj.into_inner(), session, state, classes).await
-}
-
-async fn person_id_get(
-    (path, session, state): (Path<String>, Session, Data<AppState>),
-) -> HttpResponse {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("person")));
-    json_rest_event_get_id(path, session, state, filter, None).await
-}
-
-// == account ==
-
-async fn account_get((session, state): (Session, Data<AppState>)) -> HttpResponse {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
-    json_rest_event_get(session, state, filter, None).await
-}
-
-async fn account_post(
-    (obj, session, state): (Json<ProtoEntry>, Session, Data<AppState>),
-) -> HttpResponse {
-    let classes = vec!["account".to_string(), "object".to_string()];
-    json_rest_event_post(obj.into_inner(), session, state, classes).await
-}
-
-async fn account_id_get(
-    (path, session, state): (Path<String>, Session, Data<AppState>),
-) -> HttpResponse {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
-    json_rest_event_get_id(path, session, state, filter, None).await
-}
-
-async fn account_id_get_attr(
-    (path, session, state): (Path<(String, String)>, Session, Data<AppState>),
-) -> HttpResponse {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
-    json_rest_event_get_id_attr(path, session, state, filter).await
-}
-
-// Matches actix-web styles
-#[allow(clippy::type_complexity)]
-async fn account_id_post_attr(
-    (values, path, session, state): (
-        Json<Vec<String>>,
-        Path<(String, String)>,
-        Session,
-        Data<AppState>,
-    ),
-) -> HttpResponse {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
-    json_rest_event_post_id_attr(path, session, state, filter, values.into_inner()).await
-}
-
-async fn account_id_delete_attr(
-    (path, session, state): (Path<(String, String)>, Session, Data<AppState>),
-) -> HttpResponse {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
-    json_rest_event_delete_id_attr(path, session, state, filter).await
-}
-
-// Matches actix-web styles
-#[allow(clippy::type_complexity)]
-async fn account_id_put_attr(
-    (values, path, session, state): (
-        Json<Vec<String>>,
-        Path<(String, String)>,
-        Session,
-        Data<AppState>,
-    ),
-) -> HttpResponse {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
-    json_rest_event_put_id_attr(path, session, state, filter, values.into_inner()).await
-}
-
-async fn account_id_delete(
-    (path, session, state): (Path<String>, Session, Data<AppState>),
-) -> HttpResponse {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
-    json_rest_event_delete_id(path, session, state, filter).await
-}
-
-async fn account_put_id_credential_primary(
-    (obj, path, session, state): (
-        Json<SetCredentialRequest>,
-        Path<String>,
-        Session,
-        Data<AppState>,
-    ),
-) -> HttpResponse {
-    let id = path.into_inner();
-    json_rest_event_credential_put(id, None, session, state, obj.into_inner()).await
-}
-
-// Return a vec of str
-async fn account_get_id_ssh_pubkeys(
-    (path, session, state): (Path<String>, Session, Data<AppState>),
-) -> HttpResponse {
-    let uat = get_current_user(&session);
-    let id = path.into_inner();
-
-    let (eventid, hvalue) = new_eventid!();
-    let obj = InternalSshKeyReadMessage {
-        uat,
-        uuid_or_name: id,
-        eventid,
-    };
-
-    match state.qe_r.send(obj).await {
-        Ok(Ok(r)) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
-    }
-}
-
-// Matches actix-web styles
-#[allow(clippy::type_complexity)]
-async fn account_post_id_ssh_pubkey(
-    (obj, path, session, state): (
-        Json<(String, String)>,
-        Path<String>,
-        Session,
-        Data<AppState>,
-    ),
-) -> HttpResponse {
-    let uat = get_current_user(&session);
-    let id = path.into_inner();
-    let (tag, key) = obj.into_inner();
-
-    let (eventid, hvalue) = new_eventid!();
-    let m_obj = InternalSshKeyCreateMessage {
-        uat,
-        uuid_or_name: id,
-        tag,
-        key,
-        filter: filter_all!(f_eq("class", PartialValue::new_class("account"))),
-        eventid,
-    };
-    // Add a msg here
-    match state.qe_w.send(m_obj).await {
-        Ok(Ok(())) => HttpResponse::Ok()
-            .header("X-KANIDM-OPID", hvalue)
-            .json(true),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
-    }
-}
-
-async fn account_get_id_ssh_pubkey_tag(
-    (path, session, state): (Path<(String, String)>, Session, Data<AppState>),
-) -> HttpResponse {
-    let uat = get_current_user(&session);
-    let (id, tag) = path.into_inner();
-
-    let (eventid, hvalue) = new_eventid!();
-    let obj = InternalSshKeyTagReadMessage {
-        uat,
-        uuid_or_name: id,
-        tag,
-        eventid,
-    };
-
-    match state.qe_r.send(obj).await {
-        Ok(Ok(r)) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
-    }
-}
-
-async fn account_delete_id_ssh_pubkey_tag(
-    (path, session, state): (Path<(String, String)>, Session, Data<AppState>),
-) -> HttpResponse {
-    let uat = get_current_user(&session);
-    let (id, tag) = path.into_inner();
-
-    let (eventid, hvalue) = new_eventid!();
-    let obj = RemoveAttributeValueMessage {
-        uat,
-        uuid_or_name: id,
-        attr: "ssh_publickey".to_string(),
-        value: tag,
-        filter: filter_all!(f_eq("class", PartialValue::new_class("account"))),
-        eventid,
-    };
-
-    match state.qe_w.send(obj).await {
-        Ok(Ok(())) => HttpResponse::Ok()
-            .header("X-KANIDM-OPID", hvalue)
-            .json(true),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
-    }
-}
-
-// Get and return a single str
-async fn account_get_id_radius(
-    (path, session, state): (Path<String>, Session, Data<AppState>),
-) -> HttpResponse {
-    let uat = get_current_user(&session);
-    let id = path.into_inner();
-
-    let (eventid, hvalue) = new_eventid!();
-    let obj = InternalRadiusReadMessage {
-        uat,
-        uuid_or_name: id,
-        eventid,
-    };
-
-    match state.qe_r.send(obj).await {
-        Ok(Ok(r)) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
-    }
-}
-
-async fn account_post_id_radius_regenerate(
-    (path, session, state): (Path<String>, Session, Data<AppState>),
-) -> HttpResponse {
-    // Need to to send the regen msg
-    let uat = get_current_user(&session);
-    let id = path.into_inner();
-
-    let (eventid, hvalue) = new_eventid!();
-    let obj = InternalRegenerateRadiusMessage::new(uat, id, eventid);
-
-    match state.qe_w.send(obj).await {
-        Ok(Ok(r)) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
-    }
-}
-
-async fn account_delete_id_radius(
-    (path, session, state): (Path<String>, Session, Data<AppState>),
-) -> HttpResponse {
-    // We reconstruct path here to keep json_rest_event_delete_id_attr generic.
-    let p = Path::from((path.into_inner(), "radius_secret".to_string()));
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
-    json_rest_event_delete_id_attr(p, session, state, filter).await
-}
-
-async fn account_get_id_radius_token(
-    (path, session, state): (Path<String>, Session, Data<AppState>),
-) -> HttpResponse {
-    let uat = get_current_user(&session);
-    let id = path.into_inner();
-
-    let (eventid, hvalue) = new_eventid!();
-    let obj = InternalRadiusTokenReadMessage {
-        uat,
-        uuid_or_name: id,
-        eventid,
-    };
-
-    match state.qe_r.send(obj).await {
-        Ok(Ok(r)) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
-    }
-}
-
-async fn account_post_id_person_extend(
-    (path, session, state): (Path<String>, Session, Data<AppState>),
-) -> HttpResponse {
-    let uat = get_current_user(&session);
-    let uuid_or_name = path.into_inner();
-    let (eventid, hvalue) = new_eventid!();
-    let m_obj = IdmAccountPersonExtendMessage {
-        uat,
-        uuid_or_name,
-        eventid,
-    };
-    match state.qe_w.send(m_obj).await {
-        Ok(Ok(())) => HttpResponse::Ok()
-            .header("X-KANIDM-OPID", hvalue)
-            .json(true),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
-    }
-}
-
-async fn account_post_id_unix(
-    (obj, path, session, state): (
-        Json<AccountUnixExtend>,
-        Path<String>,
-        Session,
-        Data<AppState>,
-    ),
-) -> HttpResponse {
-    let uat = get_current_user(&session);
-    let id = path.into_inner();
-    let (eventid, hvalue) = new_eventid!();
-    let m_obj = IdmAccountUnixExtendMessage::new(uat, id, obj.into_inner(), eventid);
-    match state.qe_w.send(m_obj).await {
-        Ok(Ok(())) => HttpResponse::Ok()
-            .header("X-KANIDM-OPID", hvalue)
-            .json(true),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
-    }
-}
-
-async fn account_get_id_unix_token(
-    (path, session, state): (Path<String>, Session, Data<AppState>),
-) -> HttpResponse {
-    let uat = get_current_user(&session);
-    let id = path.into_inner();
-
-    let (eventid, hvalue) = new_eventid!();
-    let obj = InternalUnixUserTokenReadMessage {
-        uat,
-        uuid_or_name: id,
-        eventid,
-    };
-
-    match state.qe_r.send(obj).await {
-        Ok(Ok(r)) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
-    }
-}
-
-async fn account_post_id_unix_auth(
-    (obj, path, session, state): (
-        Json<SingleStringRequest>,
-        Path<String>,
-        Session,
-        Data<AppState>,
-    ),
-) -> HttpResponse {
-    let uat = get_current_user(&session);
-    let id = path.into_inner();
-    let (eventid, hvalue) = new_eventid!();
-    let m_obj = IdmAccountUnixAuthMessage {
-        uat,
-        uuid_or_name: id,
-        cred: obj.into_inner().value,
-        eventid,
-    };
-    match state.qe_r.send(m_obj).await {
-        Ok(Ok(r)) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
-    }
-}
-
-async fn account_put_id_unix_credential(
-    (obj, path, session, state): (
-        Json<SingleStringRequest>,
-        Path<String>,
-        Session,
-        Data<AppState>,
-    ),
-) -> HttpResponse {
-    let uat = get_current_user(&session);
-    let id = path.into_inner();
-    let (eventid, hvalue) = new_eventid!();
-    let m_obj = IdmAccountUnixSetCredMessage {
-        uat,
-        uuid_or_name: id,
-        cred: obj.into_inner().value,
-        eventid,
-    };
-    match state.qe_w.send(m_obj).await {
-        Ok(Ok(())) => HttpResponse::Ok()
-            .header("X-KANIDM-OPID", hvalue)
-            .json(true),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
-    }
-}
-
-async fn account_delete_id_unix_credential(
-    (path, session, state): (Path<String>, Session, Data<AppState>),
-) -> HttpResponse {
-    let uat = get_current_user(&session);
-    let id = path.into_inner();
-
-    let (eventid, hvalue) = new_eventid!();
-    let obj = PurgeAttributeMessage {
-        uat,
-        uuid_or_name: id,
-        attr: "unix_password".to_string(),
-        filter: filter_all!(f_eq("class", PartialValue::new_class("posixaccount"))),
-        eventid,
-    };
-
-    match state.qe_w.send(obj).await {
-        Ok(Ok(())) => HttpResponse::Ok()
-            .header("X-KANIDM-OPID", hvalue)
-            .json(true),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
-    }
-}
-
-async fn group_get((session, state): (Session, Data<AppState>)) -> HttpResponse {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
-    json_rest_event_get(session, state, filter, None).await
-}
-
-async fn group_post(
-    (obj, session, state): (Json<ProtoEntry>, Session, Data<AppState>),
-) -> HttpResponse {
-    let classes = vec!["group".to_string(), "object".to_string()];
-    json_rest_event_post(obj.into_inner(), session, state, classes).await
-}
-
-async fn group_id_get(
-    (path, session, state): (Path<String>, Session, Data<AppState>),
-) -> HttpResponse {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
-    json_rest_event_get_id(path, session, state, filter, None).await
-}
-
-async fn group_id_get_attr(
-    (path, session, state): (Path<(String, String)>, Session, Data<AppState>),
-) -> HttpResponse {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
-    json_rest_event_get_id_attr(path, session, state, filter).await
-}
-
-// Matches actix-web styles
-#[allow(clippy::type_complexity)]
-async fn group_id_post_attr(
-    (values, path, session, state): (
-        Json<Vec<String>>,
-        Path<(String, String)>,
-        Session,
-        Data<AppState>,
-    ),
-) -> HttpResponse {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
-    json_rest_event_post_id_attr(path, session, state, filter, values.into_inner()).await
-}
-
-async fn group_id_delete_attr(
-    (path, session, state): (Path<(String, String)>, Session, Data<AppState>),
-) -> HttpResponse {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
-    json_rest_event_delete_id_attr(path, session, state, filter).await
-}
-
-// Matches actix-web styles
-#[allow(clippy::type_complexity)]
-async fn group_id_put_attr(
-    (values, path, session, state): (
-        Json<Vec<String>>,
-        Path<(String, String)>,
-        Session,
-        Data<AppState>,
-    ),
-) -> HttpResponse {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
-    json_rest_event_put_id_attr(path, session, state, filter, values.into_inner()).await
-}
-
-async fn group_id_delete(
-    (path, session, state): (Path<String>, Session, Data<AppState>),
-) -> HttpResponse {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
-    json_rest_event_delete_id(path, session, state, filter).await
-}
-
-async fn group_post_id_unix(
-    (obj, path, session, state): (Json<GroupUnixExtend>, Path<String>, Session, Data<AppState>),
-) -> HttpResponse {
-    let uat = get_current_user(&session);
-    let id = path.into_inner();
-    let (eventid, hvalue) = new_eventid!();
-    let m_obj = IdmGroupUnixExtendMessage::new(uat, id, &obj, eventid);
-    match state.qe_w.send(m_obj).await {
-        Ok(Ok(())) => HttpResponse::Ok()
-            .header("X-KANIDM-OPID", hvalue)
-            .json(true),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
-    }
-}
-
-async fn group_get_id_unix_token(
-    (path, session, state): (Path<String>, Session, Data<AppState>),
-) -> HttpResponse {
-    let uat = get_current_user(&session);
-    let id = path.into_inner();
-
-    let (eventid, hvalue) = new_eventid!();
-    let obj = InternalUnixGroupTokenReadMessage {
-        uat,
-        uuid_or_name: id,
-        eventid,
-    };
-
-    match state.qe_r.send(obj).await {
-        Ok(Ok(r)) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
-    }
-}
-
-async fn domain_get((session, state): (Session, Data<AppState>)) -> HttpResponse {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("domain_info")));
-    json_rest_event_get(session, state, filter, None).await
-}
-
-async fn domain_id_get(
-    (path, session, state): (Path<String>, Session, Data<AppState>),
-) -> HttpResponse {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("domain_info")));
-    json_rest_event_get_id(path, session, state, filter, None).await
-}
-
-async fn domain_id_get_attr(
-    (path, session, state): (Path<(String, String)>, Session, Data<AppState>),
-) -> HttpResponse {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("domain_info")));
-    json_rest_event_get_id_attr(path, session, state, filter).await
-}
-
-// Matches actix-web styles
-#[allow(clippy::type_complexity)]
-async fn domain_id_put_attr(
-    (values, path, session, state): (
-        Json<Vec<String>>,
-        Path<(String, String)>,
-        Session,
-        Data<AppState>,
-    ),
-) -> HttpResponse {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("domain_info")));
-    json_rest_event_put_id_attr(path, session, state, filter, values.into_inner()).await
-}
-
-async fn recycle_bin_get((session, state): (Session, Data<AppState>)) -> HttpResponse {
-    let filter = filter_all!(f_pres("class"));
-    let uat = get_current_user(&session);
-    let attrs = None;
-
-    let (eventid, hvalue) = new_eventid!();
-    let obj = InternalSearchRecycledMessage {
-        uat,
-        filter,
-        attrs,
-        eventid,
-    };
-
-    match state.qe_r.send(obj).await {
-        Ok(Ok(r)) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(r),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
-    }
-}
-
-async fn recycle_bin_id_get(
-    (path, session, state): (Path<String>, Session, Data<AppState>),
-) -> HttpResponse {
-    let uat = get_current_user(&session);
-    let filter = filter_all!(f_id(path.as_str()));
-    let attrs = None;
-
-    let (eventid, hvalue) = new_eventid!();
-    let obj = InternalSearchRecycledMessage {
-        uat,
-        filter,
-        attrs,
-        eventid,
-    };
-
-    match state.qe_r.send(obj).await {
-        Ok(Ok(mut r)) => HttpResponse::Ok()
-            .header("X-KANIDM-OPID", hvalue)
-            .json(r.pop()),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
-    }
-}
-
-async fn recycle_bin_revive_id_post(
-    (path, session, state): (Path<String>, Session, Data<AppState>),
-) -> HttpResponse {
-    let uat = get_current_user(&session);
-    let filter = filter_all!(f_id(path.as_str()));
-
-    let (eventid, hvalue) = new_eventid!();
-    let m_obj = ReviveRecycledMessage {
-        uat,
-        filter,
-        eventid,
-    };
-    match state.qe_w.send(m_obj).await {
-        Ok(Ok(())) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(()),
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
-    }
-}
-
-async fn do_nothing(_session: Session) -> String {
-    "did nothing".to_string()
-}
-
-// We probably need an extract auth or similar to handle the different
-// types (cookie, bearer), and to generic this over get/post.
-
-async fn auth((obj, session, state): (Json<AuthRequest>, Session, Data<AppState>)) -> HttpResponse {
-    // First, deal with some state management.
-    // Do anything here first that's needed like getting the session details
-    // out of the req cookie.
-
-    // From the actix source errors here
-    // seems to be related to the serde_json deserialise of the cookie
-    // content, and because we control it's get/set it SHOULD be fine
-    // provided we use secure cookies. But we can't always trust that ...
-    let (eventid, hvalue) = new_eventid!();
-    let maybe_sessionid = match session.get::<Uuid>("auth-session-id") {
-        Ok(c) => c,
-        Err(_e) => {
-            return HttpResponse::InternalServerError()
-                .header("X-KANIDM-OPID", hvalue)
-                .json(())
-        }
-    };
-
-    let auth_msg = AuthMessage::new(obj.into_inner(), maybe_sessionid, eventid);
-
-    // We probably need to know if we allocate the cookie, that this is a
-    // new session, and in that case, anything *except* authrequest init is
-    // invalid.
-    match state
-        // This may change in the future ...
-        .qe_r
-        .send(auth_msg)
-        .await
-    {
-        Ok(Ok(ar)) => {
-            match &ar.state {
-                AuthState::Success(uat) => {
-                    // Remove the auth-session-id
-                    session.remove("auth-session-id");
-                    // Set the uat into the cookie
-                    match session.set("uat", uat) {
-                        Ok(_) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(ar),
-                        Err(_) => HttpResponse::InternalServerError()
-                            .header("X-KANIDM-OPID", hvalue)
-                            .json(()),
-                    }
-                }
-                AuthState::Denied(_) => {
-                    // Remove the auth-session-id
-                    session.remove("auth-session-id");
-                    HttpResponse::Unauthorized()
-                        .header("X-KANIDM-OPID", hvalue)
-                        .json(ar)
-                }
-                AuthState::Continue(_) => {
-                    // Ensure the auth-session-id is set
-                    match session.set("auth-session-id", ar.sessionid) {
-                        Ok(_) => HttpResponse::Ok().header("X-KANIDM-OPID", hvalue).json(ar),
-                        Err(_) => HttpResponse::InternalServerError()
-                            .header("X-KANIDM-OPID", hvalue)
-                            .json(()),
-                    }
-                }
-            }
-        }
-        Ok(Err(e)) => operation_error_to_response(e, hvalue),
-        Err(_) => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json("mailbox failure"),
-    }
-}
-
-async fn idm_account_set_password(
-    (obj, session, state): (Json<SingleStringRequest>, Session, Data<AppState>),
-) -> HttpResponse {
-    json_event_post!(
-        obj.into_inner(),
-        session,
-        IdmAccountSetPasswordMessage,
-        state.qe_w
-    )
-}
-
-// == Status
-
-async fn status((_session, state): (Session, Data<AppState>)) -> HttpResponse {
-    let (eventid, hvalue) = new_eventid!();
-    let r = state.status.send(StatusRequestEvent { eventid }).await;
-    match r {
-        Ok(true) => HttpResponse::Ok()
-            .header("X-KANIDM-OPID", hvalue)
-            .json(true),
-        _ => HttpResponse::InternalServerError()
-            .header("X-KANIDM-OPID", hvalue)
-            .json(false),
-    }
-}
+use async_std::task;
 
 // === internal setup helpers
 
 fn setup_backend(config: &Configuration, schema: &Schema) -> Result<Backend, OperationError> {
     // Limit the scope of the schema txn.
+    // let schema_txn = task::block_on(schema.write());
     let schema_txn = schema.write();
     let idxmeta = schema_txn.reload_idxmeta();
 
@@ -1401,7 +169,7 @@ pub fn restore_server_core(config: &Configuration, dst_path: &str) {
 
     info!("Start reindex phase ...");
 
-    let qs_write = qs.write(duration_from_epoch_now());
+    let qs_write = task::block_on(qs.write_async(duration_from_epoch_now()));
     let r = qs_write
         .reindex(&mut audit)
         .and_then(|_| qs_write.commit(&mut audit));
@@ -1472,7 +240,7 @@ pub fn reindex_server_core(config: &Configuration) {
 
     eprintln!("Start Index Phase 2 ...");
 
-    let qs_write = qs.write(duration_from_epoch_now());
+    let qs_write = task::block_on(qs.write_async(duration_from_epoch_now()));
     let r = qs_write
         .reindex(&mut audit)
         .and_then(|_| qs_write.commit(&mut audit));
@@ -1517,7 +285,7 @@ pub fn domain_rename_core(config: &Configuration, new_domain_name: &str) {
         }
     };
 
-    let qs_write = qs.write(duration_from_epoch_now());
+    let qs_write = task::block_on(qs.write_async(duration_from_epoch_now()));
     let r = qs_write
         .domain_rename(&mut audit, new_domain_name)
         .and_then(|_| qs_write.commit(&mut audit));
@@ -1616,7 +384,7 @@ pub fn recover_account_core(config: &Configuration, name: &str, password: &str) 
     };
 
     // Run the password change.
-    let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
+    let mut idms_prox_write = task::block_on(idms.proxy_write_async(duration_from_epoch_now()));
     match idms_prox_write.recover_account(&mut audit, &name, &password) {
         Ok(_) => match idms_prox_write.commit(&mut audit) {
             Ok(()) => {
@@ -1639,7 +407,7 @@ pub fn recover_account_core(config: &Configuration, name: &str, password: &str) 
     };
 }
 
-pub async fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> {
+pub async fn create_server_core(config: Configuration) -> Result<(), ()> {
     // Until this point, we probably want to write to the log macro fns.
 
     if config.integration_test_config.is_some() {
@@ -1651,18 +419,16 @@ pub async fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> 
     // Setup umask, so that every we touch or create is secure.
     let _ = unsafe { umask(0o0027) };
 
-    // The log server is started on it's own thread, and is contacted
-    // asynchronously.
+    // The log task is spawned. It will only consume a single thread at a time.
     let (log_tx, log_rx) = unbounded();
-    let log_thread = thread::spawn(move || async_log::run(&log_rx));
+    tokio::spawn(async_log::run(log_rx));
 
-    // Similar, create a stats thread which aggregates statistics from the
+    // Similar, create a stats task which aggregates statistics from the
     // server as they come in.
-    // Start the status tracking thread
-    let status_addr = StatusActor::start(log_tx.clone(), config.log_level);
+    let status_ref = StatusActor::start(log_tx.clone(), config.log_level);
 
     // Setup TLS (if any)
-    let opt_tls_params = match setup_tls(&config) {
+    let _opt_tls_params = match setup_tls(&config) {
         Ok(opt_tls_params) => opt_tls_params,
         Err(e) => {
             error!("Failed to configure TLS parameters -> {:?}", e);
@@ -1701,7 +467,8 @@ pub async fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> 
     // Any pre-start tasks here.
     match &config.integration_test_config {
         Some(itc) => {
-            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
+            let mut idms_prox_write =
+                task::block_on(idms.proxy_write_async(duration_from_epoch_now()));
             match idms_prox_write.recover_account(&mut audit, "admin", &itc.admin_password) {
                 Ok(_) => {}
                 Err(e) => {
@@ -1734,7 +501,7 @@ pub async fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> 
         }
     };
 
-    log_tx.send(Some(audit)).unwrap_or_else(|_| {
+    log_tx.send(audit).unwrap_or_else(|_| {
         error!("CRITICAL: UNABLE TO COMMIT LOGS");
     });
 
@@ -1744,23 +511,28 @@ pub async fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> 
 
     // Pass it to the actor for threading.
     // Start the read query server with the given be path: future config
-    let server_read_addr = QueryServerReadV1::start(
+    let server_read_ref = QueryServerReadV1::start_static(
         log_tx.clone(),
         config.log_level,
         qs.clone(),
         idms_arc.clone(),
         ldap_arc.clone(),
-        config.threads,
     );
-    // Start the write thread
-    let server_write_addr =
-        QueryServerWriteV1::start(log_tx.clone(), config.log_level, qs, idms_arc);
 
-    // TODO #314: For now we just drop everything from the delayed queue until we rewrite to be async.
-    tokio::spawn(async move { idms_delayed.temp_drop_all().await; });
+    // Create the server async write entry point.
+    let server_write_ref = QueryServerWriteV1::start_static(
+        log_tx.clone(),
+        config.log_level,
+        qs.clone(),
+        idms_arc.clone(),
+    );
+
+    tokio::spawn(async move {
+        idms_delayed.process_all(server_write_ref).await;
+    });
 
     // Setup timed events associated to the write thread
-    let _int_addr = IntervalActor::new(server_write_addr.clone()).start();
+    IntervalActor::start(server_write_ref);
 
     // If we have been requested to init LDAP, configure it now.
     match &config.ldapaddress {
@@ -1772,239 +544,30 @@ pub async fn create_server_core(config: Configuration) -> Result<ServerCtx, ()> 
                     return Err(());
                 }
             };
-            ldaps::create_ldap_server(la.as_str(), opt_ldap_tls_params, server_read_addr.clone())
-                .await?;
+            ldaps::create_ldap_server(la.as_str(), opt_ldap_tls_params, server_read_ref).await?;
         }
         None => {
             debug!("LDAP not requested, skipping");
         }
     }
 
+    // TODO: Remove these when we go to auth bearer!
     // Copy the max size
-    let secure_cookies = config.secure_cookies;
+    let _secure_cookies = config.secure_cookies;
     // domain will come from the qs now!
     let cookie_key: [u8; 32] = config.cookie_key;
 
-    // start the web server
-    let server = HttpServer::new(move || {
-        App::new()
-            .data(AppState {
-                qe_r: server_read_addr.clone(),
-                qe_w: server_write_addr.clone(),
-                status: status_addr.clone(),
-            })
-            .wrap(middleware::Logger::default())
-            .wrap(
-                // Signed prevents tampering. this 32 byte key MUST
-                // be generated (probably a cli option, and it's up to the
-                // server process to coordinate these on hosts). IE an RODC
-                // could have a different key than our write servers to prevent
-                // disclosure of a writeable token in case of compromise. It does
-                // mean that you can't load balance between the rodc and the write
-                // though, but that's tottaly reasonable.
-                CookieSession::signed(&cookie_key)
-                    // .path(prefix.as_str())
-                    // .domain(domain.as_str())
-                    .same_site(cookie::SameSite::Strict)
-                    .name("kanidm-session")
-                    // if true, only allow to https
-                    .secure(secure_cookies)
-                    // TODO #63: make this configurable!
-                    .max_age_time(Duration::hours(1)),
-            )
-            // .service(fs::Files::new("/static", "./static"))
-            // Even though this says "CreateRequest", it's actually configuring *ALL* json requests.
-            // .app_data(web::Json::<CreateRequest>::configure(|cfg| { cfg
-            .app_data(
-                web::JsonConfig::default()
-                    // Currently 4MB
-                    .limit(4_194_304)
-                    .error_handler(|err, _req| {
-                        let s = format!("{}", err);
-                        error::InternalError::from_response(err, HttpResponse::BadRequest().json(s))
-                            .into()
-                    }),
-            )
-            .service(web::scope("/status").route("", web::get().to(status)))
-            .service(
-                web::scope("/v1/raw")
-                    .route("/create", web::post().to(create))
-                    .route("/modify", web::post().to(modify))
-                    .route("/delete", web::post().to(delete))
-                    .route("/search", web::post().to(search)),
-            )
-            .service(web::scope("/v1/auth").route("", web::post().to(auth)))
-            .service(
-                web::scope("/v1/schema")
-                    .route("", web::get().to(schema_get))
-                    .route("/attributetype", web::get().to(schema_attributetype_get))
-                    .route("/attributetype", web::post().to(do_nothing))
-                    .route(
-                        "/attributetype/{id}",
-                        web::get().to(schema_attributetype_get_id),
-                    )
-                    .route("/attributetype/{id}", web::put().to(do_nothing))
-                    .route("/attributetype/{id}", web::patch().to(do_nothing))
-                    .route("/classtype", web::get().to(schema_classtype_get))
-                    .route("/classtype", web::post().to(do_nothing))
-                    .route("/classtype/{id}", web::get().to(schema_classtype_get_id))
-                    .route("/classtype/{id}", web::put().to(do_nothing))
-                    .route("/classtype/{id}", web::patch().to(do_nothing)),
-            )
-            .service(
-                web::scope("/v1/self")
-                    .route("", web::get().to(whoami))
-                    .route("/_attr/{attr}", web::get().to(do_nothing))
-                    .route("/_credential", web::get().to(do_nothing))
-                    .route(
-                        "/_credential/primary/set_password",
-                        web::post().to(idm_account_set_password),
-                    )
-                    .route("/_credential/{cid}/_lock", web::get().to(do_nothing))
-                    .route("/_radius", web::get().to(do_nothing))
-                    .route("/_radius", web::delete().to(do_nothing))
-                    .route("/_radius", web::post().to(do_nothing))
-                    .route("/_radius/_config", web::post().to(do_nothing))
-                    .route("/_radius/_config/{secret_otp}", web::get().to(do_nothing))
-                    .route(
-                        "/_radius/_config/{secret_otp}/apple",
-                        web::get().to(do_nothing),
-                    ),
-            )
-            .service(
-                web::scope("/v1/person")
-                    .route("", web::get().to(person_get))
-                    .route("", web::post().to(person_post))
-                    .route("/{id}", web::get().to(person_id_get)), /*
-                                                                   .route("/{id}", web::delete().to(account_id_delete))
-                                                                   .route("/{id}/_attr/{attr}", web::get().to(account_id_get_attr))
-                                                                   .route("/{id}/_attr/{attr}", web::post().to(account_id_post_attr))
-                                                                   .route("/{id}/_attr/{attr}", web::put().to(account_id_put_attr))
-                                                                   .route(
-                                                                       "/{id}/_attr/{attr}",
-                                                                       web::delete().to(account_id_delete_attr),
-                                                                   )
-                                                                   */
-            )
-            .service(
-                web::scope("/v1/account")
-                    .route("", web::get().to(account_get))
-                    .route("", web::post().to(account_post))
-                    .route("/{id}", web::get().to(account_id_get))
-                    .route("/{id}", web::delete().to(account_id_delete))
-                    .route("/{id}/_attr/{attr}", web::get().to(account_id_get_attr))
-                    .route("/{id}/_attr/{attr}", web::post().to(account_id_post_attr))
-                    .route("/{id}/_attr/{attr}", web::put().to(account_id_put_attr))
-                    .route(
-                        "/{id}/_attr/{attr}",
-                        web::delete().to(account_id_delete_attr),
-                    )
-                    .route(
-                        "/{id}/_person/_extend",
-                        web::post().to(account_post_id_person_extend),
-                    )
-                    .route("/{id}/_lock", web::get().to(do_nothing))
-                    .route("/{id}/_credential", web::get().to(do_nothing))
-                    .route(
-                        "/{id}/_credential/primary",
-                        web::put().to(account_put_id_credential_primary),
-                    )
-                    .route("/{id}/_credential/{cid}/_lock", web::get().to(do_nothing))
-                    .route(
-                        "/{id}/_ssh_pubkeys",
-                        web::get().to(account_get_id_ssh_pubkeys),
-                    )
-                    .route(
-                        "/{id}/_ssh_pubkeys",
-                        web::post().to(account_post_id_ssh_pubkey),
-                    )
-                    .route(
-                        "/{id}/_ssh_pubkeys/{tag}",
-                        web::get().to(account_get_id_ssh_pubkey_tag),
-                    )
-                    .route(
-                        "/{id}/_ssh_pubkeys/{tag}",
-                        web::delete().to(account_delete_id_ssh_pubkey_tag),
-                    )
-                    .route("/{id}/_radius", web::get().to(account_get_id_radius))
-                    .route(
-                        "/{id}/_radius",
-                        web::post().to(account_post_id_radius_regenerate),
-                    )
-                    .route("/{id}/_radius", web::delete().to(account_delete_id_radius))
-                    .route(
-                        "/{id}/_radius/_token",
-                        web::get().to(account_get_id_radius_token),
-                    )
-                    .route("/{id}/_unix", web::post().to(account_post_id_unix))
-                    .route(
-                        "/{id}/_unix/_token",
-                        web::get().to(account_get_id_unix_token),
-                    )
-                    .route(
-                        "/{id}/_unix/_auth",
-                        web::post().to(account_post_id_unix_auth),
-                    )
-                    .route(
-                        "/{id}/_unix/_credential",
-                        web::put().to(account_put_id_unix_credential),
-                    )
-                    .route(
-                        "/{id}/_unix/_credential",
-                        web::delete().to(account_delete_id_unix_credential),
-                    ),
-            )
-            .service(
-                web::scope("/v1/group")
-                    .route("", web::get().to(group_get))
-                    .route("", web::post().to(group_post))
-                    .route("/{id}", web::get().to(group_id_get))
-                    .route("/{id}", web::delete().to(group_id_delete))
-                    .route("/{id}/_attr/{attr}", web::get().to(group_id_get_attr))
-                    .route("/{id}/_attr/{attr}", web::post().to(group_id_post_attr))
-                    .route("/{id}/_attr/{attr}", web::put().to(group_id_put_attr))
-                    .route("/{id}/_attr/{attr}", web::delete().to(group_id_delete_attr))
-                    .route("/{id}/_unix", web::post().to(group_post_id_unix))
-                    .route("/{id}/_unix/_token", web::get().to(group_get_id_unix_token)),
-            )
-            .service(
-                web::scope("/v1/domain")
-                    .route("", web::get().to(domain_get))
-                    .route("/{id}", web::get().to(domain_id_get))
-                    .route("/{id}/_attr/{attr}", web::get().to(domain_id_get_attr))
-                    .route("/{id}/_attr/{attr}", web::put().to(domain_id_put_attr)),
-            )
-            .service(
-                web::scope("/v1/recycle_bin")
-                    .route("", web::get().to(recycle_bin_get))
-                    .route("/{id}", web::get().to(recycle_bin_id_get))
-                    .route("/{id}/_revive", web::post().to(recycle_bin_revive_id_post)),
-            )
-            .service(
-                web::scope("/v1/access_profile")
-                    .route("", web::get().to(do_nothing))
-                    .route("/{id}", web::get().to(do_nothing))
-                    .route("/{id}/_attr/{attr}", web::get().to(do_nothing)),
-            )
-    });
-
-    let server = match opt_tls_params {
-        Some(tls_params) => server.bind_openssl(config.address, tls_params),
-        None => {
-            warn!("Starting WITHOUT TLS parameters. This may cause authentication to fail!");
-            server.bind(config.address)
-        }
-    };
-
-    match server {
-        Ok(s) => s.run(),
-        Err(e) => {
-            error!("Failed to initialise server! {:?}", e);
-            return Err(());
-        }
-    };
+    self::https::create_https_server(
+        config.address,
+        // opt_tls_params,
+        config.tls_config.as_ref(),
+        &cookie_key,
+        status_ref,
+        server_write_ref,
+        server_read_ref,
+    );
 
     info!("ready to rock! 🧱");
 
-    Ok(ServerCtx::new(System::current(), log_tx, log_thread))
+    Ok(())
 }
