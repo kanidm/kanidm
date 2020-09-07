@@ -267,12 +267,7 @@ impl QueryServerWriteV1 {
         query_server: QueryServer,
         idms: Arc<IdmServer>,
     ) -> &'static QueryServerWriteV1 {
-        let x = Box::new(QueryServerWriteV1::new(
-            log,
-            log_level,
-            query_server,
-            idms,
-        ));
+        let x = Box::new(QueryServerWriteV1::new(log, log_level, query_server, idms));
 
         let x_ptr = Box::leak(x);
         &(*x_ptr)

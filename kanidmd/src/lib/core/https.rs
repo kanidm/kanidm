@@ -68,8 +68,7 @@ pub fn to_tide_response<T: Serialize>(
     match v {
         Ok(iv) => {
             let mut res = tide::Response::new(200);
-            tide::Body::from_json(&iv)
-            .map(|b| {
+            tide::Body::from_json(&iv).map(|b| {
                 res.set_body(b);
                 res
             })
@@ -1335,11 +1334,9 @@ pub fn create_https_server(
         None => {
             // Create without https
             tokio::spawn(async move {
-                if let Err(e) = tserver
-                    .listen(address)
-                    .await {
-
-                    error!("Failed to start server listener -> {:?}", e); }
+                if let Err(e) = tserver.listen(address).await {
+                    error!("Failed to start server listener -> {:?}", e);
+                }
             });
         }
     };
