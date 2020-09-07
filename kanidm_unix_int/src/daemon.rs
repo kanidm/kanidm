@@ -234,51 +234,58 @@ async fn main() {
     env_logger::init();
 
     let cfg_path = Path::new("/etc/kanidm/config");
+    let cfg_path_str = match cfg_path.to_str() {
+        Some(cps) => cps,
+        None => {
+            error!("Unable to turn cfg_path to str");
+            std::process::exit(1);
+        }
+    };
     if cfg_path.exists() {
         let cfg_meta = match metadata(&cfg_path) {
             Ok(v) => v,
             Err(e) => {
-                error!(
-                    "Unable to read metadata for {} - {:?}",
-                    cfg_path.to_str().unwrap(),
-                    e
-                );
+                error!("Unable to read metadata for {} - {:?}", cfg_path_str, e);
                 std::process::exit(1);
             }
         };
         if !cfg_meta.permissions().readonly() {
             warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
-                cfg_path.to_str().unwrap());
+                cfg_path_str
+                );
         }
 
         if cfg_meta.uid() == cuid || cfg_meta.uid() == ceuid {
             warn!("WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...",
-                cfg_path.to_str().unwrap()
+                cfg_path_str
             );
         }
     }
 
     let unixd_path = Path::new("/etc/kanidm/config");
+    let unixd_path_str = match unixd_path.to_str() {
+        Some(cps) => cps,
+        None => {
+            error!("Unable to turn unixd_path to str");
+            std::process::exit(1);
+        }
+    };
     if unixd_path.exists() {
         let unixd_meta = match metadata(&unixd_path) {
             Ok(v) => v,
             Err(e) => {
-                error!(
-                    "Unable to read metadata for {} - {:?}",
-                    unixd_path.to_str().unwrap(),
-                    e
-                );
+                error!("Unable to read metadata for {} - {:?}", unixd_path_str, e);
                 std::process::exit(1);
             }
         };
         if !unixd_meta.permissions().readonly() {
             warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
-                unixd_path.to_str().unwrap());
+                unixd_path_str);
         }
 
         if unixd_meta.uid() == cuid || unixd_meta.uid() == ceuid {
             warn!("WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...",
-                unixd_path.to_str().unwrap()
+                unixd_path_str
             );
         }
     }
@@ -287,7 +294,7 @@ async fn main() {
     let cb = match KanidmClientBuilder::new().read_options_from_optional_config(cfg_path) {
         Ok(v) => v,
         Err(_) => {
-            error!("Failed to parse {}", cfg_path.to_str().unwrap());
+            error!("Failed to parse {}", cfg_path_str);
             std::process::exit(1);
         }
     };
@@ -295,7 +302,7 @@ async fn main() {
     let cfg = match KanidmUnixdConfig::new().read_options_from_optional_config(unixd_path) {
         Ok(v) => v,
         Err(_) => {
-            error!("Failed to parse {}", unixd_path.to_str().unwrap());
+            error!("Failed to parse {}", unixd_path_str);
             std::process::exit(1);
         }
     };
@@ -304,7 +311,13 @@ async fn main() {
 
     let cb = cb.connect_timeout(cfg.conn_timeout);
 
-    let rsclient = cb.build_async().expect("Failed to build async client");
+    let rsclient = match cb.build_async() {
+        Ok(rsc) => rsc,
+        Err(_e) => {
+            error!("Failed to build async client");
+            std::process::exit(1);
+        }
+    };
 
     // Check the pb path will be okay.
     if cfg.db_path != "" {
@@ -315,7 +328,9 @@ async fn main() {
             if !db_parent_path.exists() {
                 error!(
                     "Refusing to run, DB folder {} does not exist",
-                    db_parent_path.to_str().unwrap()
+                    db_parent_path
+                        .to_str()
+                        .unwrap_or_else(|| "<db_parent_path invalid>")
                 );
                 std::process::exit(1);
             }
@@ -327,7 +342,9 @@ async fn main() {
                 Err(e) => {
                     error!(
                         "Unable to read metadata for {} - {:?}",
-                        db_par_path_buf.to_str().unwrap(),
+                        db_par_path_buf
+                            .to_str()
+                            .unwrap_or_else(|| "<db_par_path_buf invalid>"),
                         e
                     );
                     std::process::exit(1);
@@ -337,39 +354,57 @@ async fn main() {
             if !i_meta.is_dir() {
                 error!(
                     "Refusing to run - DB folder {} may not be a directory",
-                    db_par_path_buf.to_str().unwrap()
+                    db_par_path_buf
+                        .to_str()
+                        .unwrap_or_else(|| "<db_par_path_buf invalid>")
                 );
                 std::process::exit(1);
             }
             if i_meta.permissions().readonly() {
-                warn!("WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", db_par_path_buf.to_str().unwrap());
+                warn!("WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", db_par_path_buf.to_str()
+                .unwrap_or_else(|| "<db_par_path_buf invalid>")
+                );
             }
 
             if i_meta.mode() & 0o007 != 0 {
-                warn!("WARNING: DB folder {} has 'everyone' permission bits in the mode. This could be a security risk ...", db_par_path_buf.to_str().unwrap());
+                warn!("WARNING: DB folder {} has 'everyone' permission bits in the mode. This could be a security risk ...", db_par_path_buf.to_str()
+                .unwrap_or_else(|| "<db_par_path_buf invalid>")
+                );
             }
         }
     }
 
-    let cachelayer = Arc::new(
-        CacheLayer::new(
-            cfg.db_path.as_str(), // The sqlite db path
-            cfg.cache_timeout,
-            rsclient,
-            cfg.pam_allowed_login_groups.clone(),
-            cfg.default_shell.clone(),
-            cfg.home_prefix.clone(),
-            cfg.home_attr,
-            cfg.uid_attr_map,
-            cfg.gid_attr_map,
-        )
-        .await
-        .expect("Failed to build cache layer."),
-    );
+    let cl_inner = match CacheLayer::new(
+        cfg.db_path.as_str(), // The sqlite db path
+        cfg.cache_timeout,
+        rsclient,
+        cfg.pam_allowed_login_groups.clone(),
+        cfg.default_shell.clone(),
+        cfg.home_prefix.clone(),
+        cfg.home_attr,
+        cfg.uid_attr_map,
+        cfg.gid_attr_map,
+    )
+    .await
+    {
+        Ok(c) => c,
+        Err(_e) => {
+            error!("Failed to build cache layer.");
+            std::process::exit(1);
+        }
+    };
+
+    let cachelayer = Arc::new(cl_inner);
 
     // Set the umask while we open the path
     let before = unsafe { umask(0) };
-    let mut listener = UnixListener::bind(cfg.sock_path.as_str()).unwrap();
+    let mut listener = match UnixListener::bind(cfg.sock_path.as_str()) {
+        Ok(l) => l,
+        Err(_e) => {
+            error!("Failed to bind unix socket.");
+            std::process::exit(1);
+        }
+    };
     // Undo it.
     let _ = unsafe { umask(before) };
 
