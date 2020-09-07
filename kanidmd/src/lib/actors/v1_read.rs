@@ -169,11 +169,11 @@ impl QueryServerReadV1 {
         ldap: Arc<LdapServer>,
     ) -> &'static Self {
         let x = Box::new(QueryServerReadV1::new(
-            log.clone(),
+            log,
             log_level,
-            query_server.clone(),
-            idms.clone(),
-            ldap.clone(),
+            query_server,
+            idms,
+            ldap,
         ));
 
         let x_ref = Box::leak(x);
@@ -194,7 +194,7 @@ impl QueryServerReadV1 {
         let qs_read = self.qs.read_async().await;
         let res = lperf_op_segment!(&mut audit, "actors::v1_read::handle<SearchMessage>", || {
             // Make an event from the request
-            let srch = match SearchEvent::from_message(&mut audit, msg, &qs_read) {
+            let srch = match SearchEvent::from_message(&mut audit, &msg, &qs_read) {
                 Ok(s) => s,
                 Err(e) => {
                     ladmin_error!(audit, "Failed to begin search: {:?}", e);

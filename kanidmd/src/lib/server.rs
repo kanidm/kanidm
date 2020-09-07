@@ -744,7 +744,7 @@ impl QueryServer {
         task::block_on(self.read_async())
     }
 
-    pub async fn read_async<'a>(&'a self) -> QueryServerReadTransaction<'a> {
+    pub async fn read_async(&self) -> QueryServerReadTransaction<'_> {
         // We need to ensure a db conn will be available
         let db_ticket = self.db_tickets.acquire().await;
 
@@ -762,7 +762,7 @@ impl QueryServer {
         task::block_on(self.write_async(ts))
     }
 
-    pub async fn write_async<'a>(&'a self, ts: Duration) -> QueryServerWriteTransaction<'a> {
+    pub async fn write_async(&self, ts: Duration) -> QueryServerWriteTransaction<'_> {
         // We need to ensure a db conn will be available
         let db_ticket = self.db_tickets.acquire().await;
         // Guarantee we are the only writer on the thread pool

@@ -54,25 +54,25 @@ async fn client_process<W: AsyncWrite + Unpin, R: AsyncRead + Unpin>(
         match qs_result {
             Some(LdapResponseState::Unbind) => return,
             Some(LdapResponseState::Disconnect(rmsg)) => {
-                if let Err(_) = w.send(rmsg).await {
+                if w.send(rmsg).await.is_err() {
                     break;
                 }
                 break;
             }
             Some(LdapResponseState::Bind(uat, rmsg)) => {
                 session.uat = Some(uat);
-                if let Err(_) = w.send(rmsg).await {
+                if w.send(rmsg).await.is_err() {
                     break;
                 }
             }
             Some(LdapResponseState::Respond(rmsg)) => {
-                if let Err(_) = w.send(rmsg).await {
+                if w.send(rmsg).await.is_err() {
                     break;
                 }
             }
             Some(LdapResponseState::MultiPartResponse(v)) => {
                 for rmsg in v.into_iter() {
-                    if let Err(_) = w.send(rmsg).await {
+                    if w.send(rmsg).await.is_err() {
                         break;
                     }
                 }
@@ -80,7 +80,7 @@ async fn client_process<W: AsyncWrite + Unpin, R: AsyncRead + Unpin>(
             Some(LdapResponseState::BindMultiPartResponse(uat, v)) => {
                 session.uat = Some(uat);
                 for rmsg in v.into_iter() {
-                    if let Err(_) = w.send(rmsg).await {
+                    if w.send(rmsg).await.is_err() {
                         break;
                     }
                 }

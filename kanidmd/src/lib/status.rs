@@ -14,7 +14,7 @@ pub struct StatusActor {
 impl StatusActor {
     pub fn start(log_tx: Sender<AuditScope>, log_level: Option<u32>) -> &'static Self {
         let x = Box::new(StatusActor {
-            log_tx: log_tx.clone(),
+            log_tx,
             log_level,
         });
 
