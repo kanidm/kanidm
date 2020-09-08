@@ -1429,7 +1429,7 @@ impl Schema {
         }
     }
 
-    pub fn write<'a>(&'a self) -> SchemaWriteTransaction<'a> {
+    pub fn write(&self) -> SchemaWriteTransaction<'_> {
         SchemaWriteTransaction {
             classes: self.classes.write(),
             attributes: self.attributes.write(),
@@ -1439,7 +1439,7 @@ impl Schema {
     }
 
     #[cfg(test)]
-    pub fn write_blocking<'a>(&'a self) -> SchemaWriteTransaction<'a> {
+    pub fn write_blocking(&self) -> SchemaWriteTransaction<'_> {
         self.write()
     }
 

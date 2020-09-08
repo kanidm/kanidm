@@ -267,12 +267,7 @@ impl QueryServerWriteV1 {
         query_server: QueryServer,
         idms: Arc<IdmServer>,
     ) -> &'static QueryServerWriteV1 {
-        let x = Box::new(QueryServerWriteV1::new(
-            log.clone(),
-            log_level,
-            query_server.clone(),
-            idms.clone(),
-        ));
+        let x = Box::new(QueryServerWriteV1::new(log, log_level, query_server, idms));
 
         let x_ptr = Box::leak(x);
         &(*x_ptr)
@@ -366,7 +361,7 @@ impl QueryServerWriteV1 {
             &mut audit,
             "actors::v1_write::handle<CreateMessage>",
             || {
-                let crt = match CreateEvent::from_message(&mut audit, msg, &qs_write) {
+                let crt = match CreateEvent::from_message(&mut audit, &msg, &qs_write) {
                     Ok(c) => c,
                     Err(e) => {
                         ladmin_warning!(audit, "Failed to begin create: {:?}", e);
@@ -399,7 +394,7 @@ impl QueryServerWriteV1 {
             &mut audit,
             "actors::v1_write::handle<ModifyMessage>",
             || {
-                let mdf = match ModifyEvent::from_message(&mut audit, msg, &qs_write) {
+                let mdf = match ModifyEvent::from_message(&mut audit, &msg, &qs_write) {
                     Ok(m) => m,
                     Err(e) => {
                         ladmin_error!(audit, "Failed to begin modify: {:?}", e);
@@ -431,7 +426,7 @@ impl QueryServerWriteV1 {
             &mut audit,
             "actors::v1_write::handle<DeleteMessage>",
             || {
-                let del = match DeleteEvent::from_message(&mut audit, msg, &qs_write) {
+                let del = match DeleteEvent::from_message(&mut audit, &msg, &qs_write) {
                     Ok(d) => d,
                     Err(e) => {
                         ladmin_error!(audit, "Failed to begin delete: {:?}", e);

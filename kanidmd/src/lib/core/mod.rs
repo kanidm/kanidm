@@ -565,7 +565,7 @@ pub async fn create_server_core(config: Configuration) -> Result<(), ()> {
         status_ref,
         server_write_ref,
         server_read_ref,
-    );
+    )?;
 
     info!("ready to rock! 🧱");
 

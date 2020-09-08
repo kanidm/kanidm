@@ -49,7 +49,7 @@ lazy_static = "1.2.0"
 futures = "0.3"
 futures-util = "0.3"
 tokio = { version = "0.2", features = ["rt-threaded", "macros", "rt-util", "sync", "time", "net", "io-util", "signal"] }
-tokio-util = { version = "0.2", features = ["codec"] }
+tokio-util = { version = "0.3", features = ["codec"] }
 tokio-openssl = "0.4"
 openssl = "0.10"
 
@@ -71,7 +71,7 @@ hashbrown = "0.8"
 concread = "^0.2"
 # concread = { path = "../../concread", features = ["asynch"] }
 # concread = { path = "../../concread" }
-crossbeam = "0.7"
+# crossbeam = "0.7"
 
 sshkeys = "0.3"
 

@@ -128,7 +128,7 @@ impl IdmServer {
         task::block_on(self.write_async())
     }
 
-    pub async fn write_async<'a>(&'a self) -> IdmServerWriteTransaction<'a> {
+    pub async fn write_async(&self) -> IdmServerWriteTransaction<'_> {
         let mut sid = [0; 4];
         let mut rng = StdRng::from_entropy();
         rng.fill(&mut sid);
@@ -150,7 +150,7 @@ impl IdmServer {
         task::block_on(self.proxy_read_async())
     }
 
-    pub async fn proxy_read_async<'a>(&'a self) -> IdmServerProxyReadTransaction<'a> {
+    pub async fn proxy_read_async(&self) -> IdmServerProxyReadTransaction<'_> {
         IdmServerProxyReadTransaction {
             qs_read: self.qs.read_async().await,
         }
@@ -161,10 +161,7 @@ impl IdmServer {
         task::block_on(self.proxy_write_async(ts))
     }
 
-    pub async fn proxy_write_async<'a>(
-        &'a self,
-        ts: Duration,
-    ) -> IdmServerProxyWriteTransaction<'a> {
+    pub async fn proxy_write_async(&self, ts: Duration) -> IdmServerProxyWriteTransaction<'_> {
         let mut sid = [0; 4];
         let mut rng = StdRng::from_entropy();
         rng.fill(&mut sid);
@@ -894,7 +891,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     fn process_pwupgrade(
         &mut self,
         au: &mut AuditScope,
-        pwu: PasswordUpgrade,
+        pwu: &PasswordUpgrade,
     ) -> Result<(), OperationError> {
         // get the account
         let account = self.target_to_account(au, &pwu.target_uuid)?;
@@ -929,7 +926,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     fn process_unixpwupgrade(
         &mut self,
         au: &mut AuditScope,
-        pwu: UnixPasswordUpgrade,
+        pwu: &UnixPasswordUpgrade,
     ) -> Result<(), OperationError> {
         let account = self
             .qs_write
@@ -968,8 +965,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         da: DelayedAction,
     ) -> Result<(), OperationError> {
         match da {
-            DelayedAction::PwUpgrade(pwu) => self.process_pwupgrade(au, pwu),
-            DelayedAction::UnixPwUpgrade(upwu) => self.process_unixpwupgrade(au, upwu),
+            DelayedAction::PwUpgrade(pwu) => self.process_pwupgrade(au, &pwu),
+            DelayedAction::UnixPwUpgrade(upwu) => self.process_unixpwupgrade(au, &upwu),
         }
     }
 

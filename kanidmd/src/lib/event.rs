@@ -263,7 +263,7 @@ pub struct SearchEvent {
 impl SearchEvent {
     pub fn from_message(
         audit: &mut AuditScope,
-        msg: SearchMessage,
+        msg: &SearchMessage,
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         let event = Event::from_ro_uat(audit, qs, msg.uat.as_ref())?;
@@ -543,7 +543,7 @@ pub struct CreateEvent {
 impl CreateEvent {
     pub fn from_message(
         audit: &mut AuditScope,
-        msg: CreateMessage,
+        msg: &CreateMessage,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         let rentries: Result<Vec<_>, _> = msg
@@ -629,7 +629,7 @@ pub struct DeleteEvent {
 impl DeleteEvent {
     pub fn from_message(
         audit: &mut AuditScope,
-        msg: DeleteMessage,
+        msg: &DeleteMessage,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         let event = Event::from_rw_uat(audit, qs, msg.uat.as_ref())?;
@@ -723,7 +723,7 @@ pub struct ModifyEvent {
 impl ModifyEvent {
     pub fn from_message(
         audit: &mut AuditScope,
-        msg: ModifyMessage,
+        msg: &ModifyMessage,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         let event = Event::from_rw_uat(audit, qs, msg.uat.as_ref())?;

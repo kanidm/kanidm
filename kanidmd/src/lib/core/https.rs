@@ -68,9 +68,9 @@ pub fn to_tide_response<T: Serialize>(
     match v {
         Ok(iv) => {
             let mut res = tide::Response::new(200);
-            tide::Body::from_json(&iv).and_then(|b| {
+            tide::Body::from_json(&iv).map(|b| {
                 res.set_body(b);
-                Ok(res)
+                res
             })
         }
         Err(e) => {
@@ -86,9 +86,9 @@ pub fn to_tide_response<T: Serialize>(
                 _ => tide::StatusCode::InternalServerError,
             };
             let mut res = tide::Response::new(sc);
-            tide::Body::from_json(&e).and_then(|b| {
+            tide::Body::from_json(&e).map(|b| {
                 res.set_body(b);
-                Ok(res)
+                res
             })
         }
     }
@@ -263,7 +263,7 @@ async fn json_rest_event_post(
     mut req: tide::Request<AppState>,
     classes: Vec<String>,
 ) -> tide::Result {
-    debug_assert!(classes.len() > 0);
+    debug_assert!(!classes.is_empty());
     // Read the json from the wire.
     let uat = req.get_current_uat();
     let mut obj: ProtoEntry = req.body_json().await?;
@@ -1138,7 +1138,7 @@ pub fn create_https_server(
     status_ref: &'static StatusActor,
     qe_w_ref: &'static QueryServerWriteV1,
     qe_r_ref: &'static QueryServerReadV1,
-) -> () {
+) -> Result<(), ()> {
     let mut tserver = tide::Server::with_state(AppState {
         status_ref,
         qe_w_ref,
@@ -1316,7 +1316,9 @@ pub fn create_https_server(
                 .cert(&tls_param.cert)
                 .key(&tls_param.key)
                 .finish()
-                .expect("Failed to setup tls");
+                .map_err(|e| {
+                    error!("Failed to build TLS Listener -> {:?}", e);
+                })?;
             /*
             let x = Box::new(tls_param.build());
             let x_ref = Box::leak(x);
@@ -1324,17 +1326,19 @@ pub fn create_https_server(
             */
 
             tokio::spawn(async move {
-                tserver.listen(tlsl).await.expect("Failed to start server");
+                if let Err(e) = tserver.listen(tlsl).await {
+                    error!("Failed to start server listener -> {:?}", e);
+                }
             });
         }
         None => {
             // Create without https
             tokio::spawn(async move {
-                tserver
-                    .listen(address)
-                    .await
-                    .expect("Failed to start server");
+                if let Err(e) = tserver.listen(address).await {
+                    error!("Failed to start server listener -> {:?}", e);
+                }
             });
         }
-    }
+    };
+    Ok(())
 }

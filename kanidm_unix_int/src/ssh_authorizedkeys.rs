@@ -40,9 +40,14 @@ async fn main() {
 
     debug!("Starting authorized keys tool ...");
 
-    let cfg = KanidmUnixdConfig::new()
-        .read_options_from_optional_config("/etc/kanidm/unixd")
-        .expect("Failed to parse /etc/kanidm/unixd");
+    let cfg = match KanidmUnixdConfig::new().read_options_from_optional_config("/etc/kanidm/unixd")
+    {
+        Ok(c) => c,
+        Err(_e) => {
+            error!("Failed to parse /etc/kanidm/unixd");
+            std::process::exit(1);
+        }
+    };
 
     let req = ClientRequest::SshKey(opt.account_id);
 

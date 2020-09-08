@@ -26,9 +26,13 @@ libnss_passwd_hooks!(kanidm, KanidmPasswd);
 
 impl PasswdHooks for KanidmPasswd {
     fn get_all_entries() -> Response<Vec<Passwd>> {
-        let cfg = KanidmUnixdConfig::new()
-            .read_options_from_optional_config("/etc/kanidm/unixd")
-            .expect("Failed to parse /etc/kanidm/unixd");
+        let cfg =
+            match KanidmUnixdConfig::new().read_options_from_optional_config("/etc/kanidm/unixd") {
+                Ok(c) => c,
+                Err(_) => {
+                    return Response::Unavail;
+                }
+            };
         let req = ClientRequest::NssAccounts;
         call_daemon_blocking(cfg.sock_path.as_str(), req)
             .map(|r| match r {
@@ -40,9 +44,13 @@ impl PasswdHooks for KanidmPasswd {
     }
 
     fn get_entry_by_uid(uid: libc::uid_t) -> Response<Passwd> {
-        let cfg = KanidmUnixdConfig::new()
-            .read_options_from_optional_config("/etc/kanidm/unixd")
-            .expect("Failed to parse /etc/kanidm/unixd");
+        let cfg =
+            match KanidmUnixdConfig::new().read_options_from_optional_config("/etc/kanidm/unixd") {
+                Ok(c) => c,
+                Err(_) => {
+                    return Response::Unavail;
+                }
+            };
         let req = ClientRequest::NssAccountByUid(uid);
         call_daemon_blocking(cfg.sock_path.as_str(), req)
             .map(|r| match r {
@@ -56,9 +64,13 @@ impl PasswdHooks for KanidmPasswd {
     }
 
     fn get_entry_by_name(name: String) -> Response<Passwd> {
-        let cfg = KanidmUnixdConfig::new()
-            .read_options_from_optional_config("/etc/kanidm/unixd")
-            .expect("Failed to parse /etc/kanidm/unixd");
+        let cfg =
+            match KanidmUnixdConfig::new().read_options_from_optional_config("/etc/kanidm/unixd") {
+                Ok(c) => c,
+                Err(_) => {
+                    return Response::Unavail;
+                }
+            };
         let req = ClientRequest::NssAccountByName(name);
         call_daemon_blocking(cfg.sock_path.as_str(), req)
             .map(|r| match r {
@@ -77,9 +89,13 @@ libnss_group_hooks!(kanidm, KanidmGroup);
 
 impl GroupHooks for KanidmGroup {
     fn get_all_entries() -> Response<Vec<Group>> {
-        let cfg = KanidmUnixdConfig::new()
-            .read_options_from_optional_config("/etc/kanidm/unixd")
-            .expect("Failed to parse /etc/kanidm/unixd");
+        let cfg =
+            match KanidmUnixdConfig::new().read_options_from_optional_config("/etc/kanidm/unixd") {
+                Ok(c) => c,
+                Err(_) => {
+                    return Response::Unavail;
+                }
+            };
         let req = ClientRequest::NssGroups;
         call_daemon_blocking(cfg.sock_path.as_str(), req)
             .map(|r| match r {
@@ -91,9 +107,13 @@ impl GroupHooks for KanidmGroup {
     }
 
     fn get_entry_by_gid(gid: libc::gid_t) -> Response<Group> {
-        let cfg = KanidmUnixdConfig::new()
-            .read_options_from_optional_config("/etc/kanidm/unixd")
-            .expect("Failed to parse /etc/kanidm/unixd");
+        let cfg =
+            match KanidmUnixdConfig::new().read_options_from_optional_config("/etc/kanidm/unixd") {
+                Ok(c) => c,
+                Err(_) => {
+                    return Response::Unavail;
+                }
+            };
         let req = ClientRequest::NssGroupByGid(gid);
         call_daemon_blocking(cfg.sock_path.as_str(), req)
             .map(|r| match r {
@@ -107,9 +127,13 @@ impl GroupHooks for KanidmGroup {
     }
 
     fn get_entry_by_name(name: String) -> Response<Group> {
-        let cfg = KanidmUnixdConfig::new()
-            .read_options_from_optional_config("/etc/kanidm/unixd")
-            .expect("Failed to parse /etc/kanidm/unixd");
+        let cfg =
+            match KanidmUnixdConfig::new().read_options_from_optional_config("/etc/kanidm/unixd") {
+                Ok(c) => c,
+                Err(_) => {
+                    return Response::Unavail;
+                }
+            };
         let req = ClientRequest::NssGroupByName(name);
         call_daemon_blocking(cfg.sock_path.as_str(), req)
             .map(|r| match r {

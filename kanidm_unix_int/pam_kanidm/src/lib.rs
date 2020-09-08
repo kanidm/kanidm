@@ -1,7 +1,8 @@
 #![deny(warnings)]
 #![warn(unused_extern_crates)]
-#![deny(clippy::unwrap_used)]
-#![deny(clippy::expect_used)]
+// In this file, we do want to panic on these faults.
+// #![deny(clippy::unwrap_used)]
+// #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
 #![deny(clippy::unreachable)]
 #![deny(clippy::await_holding_lock)]
