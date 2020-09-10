@@ -3,6 +3,7 @@ use crate::be::idl_sqlite::{
     FsType, IdlSqlite, IdlSqliteReadTransaction, IdlSqliteTransaction, IdlSqliteWriteTransaction,
 };
 use crate::be::{IdRawEntry, IDL};
+use crate::be::idxkey::IdlCacheKey;
 use crate::entry::{Entry, EntryCommitted, EntrySealed};
 use crate::value::IndexType;
 use crate::value::Value;
@@ -37,30 +38,6 @@ enum NameCacheValue {
     R(String),
     S(Box<Value>),
 }
-
-#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
-struct IdlCacheKey {
-    a: String,
-    i: IndexType,
-    k: String,
-}
-
-/*
-impl Borrow<(&str, &IndexType, &str)> for IdlCacheKey {
-    #[inline]
-    fn borrow(&self) -> &(&str, &IndexType, &str) {
-        &(self.a.as_str(), &self.i, self.k.as_str())
-    }
-}
-
-impl From<(&str, &IndexType, &str)> for IdlCacheKey {
-    fn from((a, i, k): (&str, &IndexType, &str)) -> IdlCacheKey {
-        IdlCacheKey {
-            a: a.to_string(), i: (*i).clone(), k: k.to_string()
-        }
-    }
-}
-*/
 
 pub struct IdlArcSqlite {
     db: IdlSqlite,
@@ -184,7 +161,18 @@ macro_rules! get_idl {
         $idx_key:expr
     ) => {{
         lperf_trace_segment!($audit, "be::idl_arc_sqlite::get_idl", || {
-            // TODO #259: Find a way to implement borrow for this properly
+            // SEE ALSO #259: Find a way to implement borrow for this properly.
+            // I don't think this is possible. When we make this dyn, the arc
+            // needs the dyn trait to be sized so that it *could* claim a clone
+            // for hit tracking reasons. That also means that we need From and
+            // some other traits that just seem incompatible. And in the end,
+            // we clone a few times in arc, and if we miss we need to insert anyway
+            //
+            // So the best path could be to replace IdlCacheKey with a compressed
+            // or smaller type. Perhaps even a small cache of the IdlCacheKeys that
+            // are allocated to reduce some allocs? Probably over thinking it at
+            // this point.
+            //
             // First attempt to get from this cache.
             let cache_key = IdlCacheKey {
                 a: $attr.to_string(),
