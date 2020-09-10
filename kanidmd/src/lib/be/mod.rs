@@ -21,8 +21,11 @@ use uuid::Uuid;
 
 pub mod dbentry;
 pub mod dbvalue;
+pub(crate) mod idxkey;
 mod idl_arc_sqlite;
 mod idl_sqlite;
+
+pub(crate) use self::idxkey::{IdxKey, IdxKeyRef, IdxKeyToRef};
 
 use crate::be::idl_arc_sqlite::{
     IdlArcSqlite, IdlArcSqliteReadTransaction, IdlArcSqliteTransaction,
@@ -34,20 +37,6 @@ pub use crate::be::idl_sqlite::FsType;
 
 const FILTER_SEARCH_TEST_THRESHOLD: usize = 8;
 const FILTER_EXISTS_TEST_THRESHOLD: usize = 0;
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct IdxKey {
-    pub attr: String,
-    pub itype: IndexType,
-}
-
-/*
-#[derive(Debug)]
-pub(crate) struct IdxKeyRef<'a> {
-    pub attr: &'a str,
-    pub itype: &'a IndexType,
-}
-*/
 
 #[derive(Debug, Clone)]
 pub enum IDL {

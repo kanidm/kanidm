@@ -9,7 +9,7 @@
 //! [`Entry`]: ../entry/struct.Entry.html
 
 use crate::audit::AuditScope;
-use crate::be::IdxKey;
+use crate::be::{IdxKey, IdxKeyRef, IdxKeyToRef};
 use crate::event::{Event, EventOrigin};
 use crate::ldap::ldap_attr_filter_map;
 use crate::schema::SchemaTransaction;
@@ -281,13 +281,7 @@ impl Filter<FilterValid> {
             state: FilterValidResolved {
                 inner: match idxmeta {
                     Some(idx) => {
-                        // Convert it to a reference set.
-
-                        // TODO #259: Fix this to use borrows
-                        let idx_ref: HashSet<(&String, &IndexType)> =
-                            idx.iter().map(|ikey| (&ikey.attr, &ikey.itype)).collect();
-
-                        FilterResolved::resolve_idx(self.state.inner.clone(), ev, &idx_ref)
+                        FilterResolved::resolve_idx(self.state.inner.clone(), ev, idx)
                     }
                     None => FilterResolved::resolve_no_idx(self.state.inner.clone(), ev),
                 }
@@ -973,19 +967,22 @@ impl FilterResolved {
     fn resolve_idx(
         fc: FilterComp,
         ev: &Event,
-        idxmeta: &HashSet<(&String, &IndexType)>,
+        idxmeta: &HashSet<IdxKey>,
     ) -> Option<Self> {
         match fc {
             FilterComp::Eq(a, v) => {
-                let idx = idxmeta.contains(&(&a, &IndexType::EQUALITY));
+                let idxkref = IdxKeyRef::new(&a, &IndexType::EQUALITY);
+                let idx = idxmeta.contains(&idxkref as &dyn IdxKeyToRef);
                 Some(FilterResolved::Eq(a, v, idx))
             }
             FilterComp::Sub(a, v) => {
-                let idx = idxmeta.contains(&(&a, &IndexType::SUBSTRING));
+                let idxkref = IdxKeyRef::new(&a, &IndexType::SUBSTRING);
+                let idx = idxmeta.contains(&idxkref as &dyn IdxKeyToRef);
                 Some(FilterResolved::Sub(a, v, idx))
             }
             FilterComp::Pres(a) => {
-                let idx = idxmeta.contains(&(&a, &IndexType::PRESENCE));
+                let idxkref = IdxKeyRef::new(&a, &IndexType::PRESENCE);
+                let idx = idxmeta.contains(&idxkref as &dyn IdxKeyToRef);
                 Some(FilterResolved::Pres(a, idx))
             }
             FilterComp::LessThan(a, v) => {
@@ -1026,7 +1023,8 @@ impl FilterResolved {
             FilterComp::SelfUUID => match &ev.origin {
                 EventOrigin::User(e) => {
                     let uuid_s = "uuid".to_string();
-                    let idx = idxmeta.contains(&(&uuid_s, &IndexType::EQUALITY));
+                    let idxkref = IdxKeyRef::new(&uuid_s, &IndexType::EQUALITY);
+                    let idx = idxmeta.contains(&idxkref as &dyn IdxKeyToRef);
                     Some(FilterResolved::Eq(
                         uuid_s,
                         PartialValue::new_uuid(*e.get_uuid()),
