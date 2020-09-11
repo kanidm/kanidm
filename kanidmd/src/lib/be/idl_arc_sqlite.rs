@@ -2,8 +2,8 @@ use crate::audit::AuditScope;
 use crate::be::idl_sqlite::{
     FsType, IdlSqlite, IdlSqliteReadTransaction, IdlSqliteTransaction, IdlSqliteWriteTransaction,
 };
+use crate::be::idxkey::{IdlCacheKey, IdlCacheKeyRef, IdlCacheKeyToRef};
 use crate::be::{IdRawEntry, IDL};
-use crate::be::idxkey::IdlCacheKey;
 use crate::entry::{Entry, EntryCommitted, EntrySealed};
 use crate::value::IndexType;
 use crate::value::Value;
@@ -174,12 +174,12 @@ macro_rules! get_idl {
             // this point.
             //
             // First attempt to get from this cache.
-            let cache_key = IdlCacheKey {
-                a: $attr.to_string(),
-                i: $itype.clone(),
-                k: $idx_key.to_string(),
+            let cache_key = IdlCacheKeyRef {
+                a: $attr,
+                i: $itype,
+                k: $idx_key,
             };
-            let cache_r = $self.idl_cache.get(&cache_key);
+            let cache_r = $self.idl_cache.get(&cache_key as &dyn IdlCacheKeyToRef);
             // If hit, continue.
             if let Some(ref data) = cache_r {
                 ltrace!(
@@ -194,7 +194,12 @@ macro_rules! get_idl {
             // If miss, get from db *and* insert to the cache.
             let db_r = $self.db.get_idl($audit, $attr, $itype, $idx_key)?;
             if let Some(ref idl) = db_r {
-                $self.idl_cache.insert(cache_key, Box::new(idl.clone()))
+                let ncache_key = IdlCacheKey {
+                    a: $attr.to_string(),
+                    i: $itype.clone(),
+                    k: $idx_key.to_string(),
+                };
+                $self.idl_cache.insert(ncache_key, Box::new(idl.clone()))
             }
             Ok(db_r)
         })

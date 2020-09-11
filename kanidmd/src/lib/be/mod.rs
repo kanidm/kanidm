@@ -21,9 +21,9 @@ use uuid::Uuid;
 
 pub mod dbentry;
 pub mod dbvalue;
-pub(crate) mod idxkey;
 mod idl_arc_sqlite;
 mod idl_sqlite;
+pub(crate) mod idxkey;
 
 pub(crate) use self::idxkey::{IdxKey, IdxKeyRef, IdxKeyToRef};
 

@@ -1,7 +1,7 @@
 use crate::value::IndexType;
 use std::borrow::Borrow;
+use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
-// use std::cmp::Ordering;
 
 // Huge props to https://github.com/sunshowers/borrow-complex-key-example/blob/master/src/lib.rs
 
@@ -19,9 +19,7 @@ pub struct IdxKeyRef<'a> {
 
 impl<'a> IdxKeyRef<'a> {
     pub fn new(attr: &'a str, itype: &'a IndexType) -> Self {
-        IdxKeyRef {
-            attr, itype
-        }
+        IdxKeyRef { attr, itype }
     }
 }
 
@@ -53,7 +51,7 @@ impl<'a> Borrow<dyn IdxKeyToRef + 'a> for IdxKey {
 
 impl<'a> PartialEq for (dyn IdxKeyToRef + 'a) {
     fn eq(&self, other: &Self) -> bool {
-         self.keyref().eq(&other.keyref())
+        self.keyref().eq(&other.keyref())
     }
 }
 
@@ -65,7 +63,6 @@ impl<'a> Hash for (dyn IdxKeyToRef + 'a) {
     }
 }
 
-
 // ===== idlcachekey ======
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
@@ -75,33 +72,34 @@ pub struct IdlCacheKey {
     pub k: String,
 }
 
-/*
-#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
+#[derive(Debug, Clone, Copy, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct IdlCacheKeyRef<'a> {
-    a: &'a str,
-    i: &'a IndexType,
-    k: &'a str,
+    pub a: &'a str,
+    pub i: &'a IndexType,
+    pub k: &'a str,
 }
 
+/*
 impl<'a> IdlCacheKeyRef<'a> {
     pub fn new(a: &'a str, i: &'a IndexType, k: &'a str) -> Self {
         IdlCacheKeyRef { a, i, k }
     }
 }
+*/
 
 pub trait IdlCacheKeyToRef {
     fn keyref<'k>(&'k self) -> IdlCacheKeyRef<'k>;
 }
 
 impl<'a> IdlCacheKeyToRef for IdlCacheKeyRef<'a> {
-    fn keyref<'k>(&'k self) -> IdlCacheKeyRef<'k>{
+    fn keyref<'k>(&'k self) -> IdlCacheKeyRef<'k> {
         // Copy the self
         *self
     }
 }
 
 impl IdlCacheKeyToRef for IdlCacheKey {
-    fn keyref<'k>(&'k self) -> IdlCacheKeyRef<'k>{
+    fn keyref<'k>(&'k self) -> IdlCacheKeyRef<'k> {
         IdlCacheKeyRef {
             a: self.a.as_str(),
             i: &self.i,
@@ -118,7 +116,7 @@ impl<'a> Borrow<dyn IdlCacheKeyToRef + 'a> for IdlCacheKey {
 
 impl<'a> PartialEq for (dyn IdlCacheKeyToRef + 'a) {
     fn eq(&self, other: &Self) -> bool {
-         self.keyref().eq(&other.keyref())
+        self.keyref().eq(&other.keyref())
     }
 }
 
@@ -141,5 +139,3 @@ impl<'a> Ord for (dyn IdlCacheKeyToRef + 'a) {
         self.keyref().cmp(&other.keyref())
     }
 }
-*/
-

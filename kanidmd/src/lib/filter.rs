@@ -280,9 +280,7 @@ impl Filter<FilterValid> {
         Ok(Filter {
             state: FilterValidResolved {
                 inner: match idxmeta {
-                    Some(idx) => {
-                        FilterResolved::resolve_idx(self.state.inner.clone(), ev, idx)
-                    }
+                    Some(idx) => FilterResolved::resolve_idx(self.state.inner.clone(), ev, idx),
                     None => FilterResolved::resolve_no_idx(self.state.inner.clone(), ev),
                 }
                 .ok_or(OperationError::FilterUUIDResolution)?,
@@ -964,11 +962,7 @@ impl FilterResolved {
         }
     }
 
-    fn resolve_idx(
-        fc: FilterComp,
-        ev: &Event,
-        idxmeta: &HashSet<IdxKey>,
-    ) -> Option<Self> {
+    fn resolve_idx(fc: FilterComp, ev: &Event, idxmeta: &HashSet<IdxKey>) -> Option<Self> {
         match fc {
             FilterComp::Eq(a, v) => {
                 let idxkref = IdxKeyRef::new(&a, &IndexType::EQUALITY);

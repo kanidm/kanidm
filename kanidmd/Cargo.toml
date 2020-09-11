@@ -68,7 +68,7 @@ structopt = { version = "0.3", default-features = false }
 time = "0.1"
 
 hashbrown = "0.8"
-concread = "^0.2"
+concread = "^0.2.2"
 # concread = { path = "../../concread", features = ["asynch"] }
 # concread = { path = "../../concread" }
 # crossbeam = "0.7"
