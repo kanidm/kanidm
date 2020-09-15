@@ -15,7 +15,7 @@ const UNIX_TEST_PASSWORD: &str = "unix test user password";
 
 #[test]
 fn test_server_create() {
-    run_test(|rsclient: KanidmClient| {
+    run_test(|mut rsclient: KanidmClient| {
         let e: Entry = serde_json::from_str(
             r#"{
             "attrs": {
@@ -41,7 +41,7 @@ fn test_server_create() {
 
 #[test]
 fn test_server_modify() {
-    run_test(|rsclient: KanidmClient| {
+    run_test(|mut rsclient: KanidmClient| {
         // Build a self mod.
 
         let f = Filter::SelfUUID;
@@ -65,7 +65,7 @@ fn test_server_modify() {
 
 #[test]
 fn test_server_whoami_anonymous() {
-    run_test(|rsclient: KanidmClient| {
+    run_test(|mut rsclient: KanidmClient| {
         // First show we are un-authenticated.
         let pre_res = rsclient.whoami();
         // This means it was okay whoami, but no uat attached.
@@ -87,7 +87,7 @@ fn test_server_whoami_anonymous() {
 
 #[test]
 fn test_server_whoami_admin_simple_password() {
-    run_test(|rsclient: KanidmClient| {
+    run_test(|mut rsclient: KanidmClient| {
         // First show we are un-authenticated.
         let pre_res = rsclient.whoami();
         // This means it was okay whoami, but no uat attached.
@@ -108,7 +108,7 @@ fn test_server_whoami_admin_simple_password() {
 
 #[test]
 fn test_server_search() {
-    run_test(|rsclient: KanidmClient| {
+    run_test(|mut rsclient: KanidmClient| {
         // First show we are un-authenticated.
         let pre_res = rsclient.whoami();
         // This means it was okay whoami, but no uat attached.
@@ -159,7 +159,7 @@ fn test_server_admin_change_simple_password() {
 // Add a test for resetting another accounts pws via the rest api
 #[test]
 fn test_server_admin_reset_simple_password() {
-    run_test(|rsclient: KanidmClient| {
+    run_test(|mut rsclient: KanidmClient| {
         let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
         assert!(res.is_ok());
         // Create a diff account
@@ -197,7 +197,7 @@ fn test_server_admin_reset_simple_password() {
         );
         assert!(res.is_ok());
         // Check it stuck.
-        let tclient = rsclient.new_session().expect("failed to build new session");
+        let mut tclient = rsclient.new_session().expect("failed to build new session");
         assert!(tclient
             .auth_simple_password("testperson", "tai4eCohtae9aegheo3Uw0oobahVighaig6heeli")
             .is_ok());
@@ -206,7 +206,7 @@ fn test_server_admin_reset_simple_password() {
         let res = rsclient.idm_account_primary_credential_set_generated("testperson");
         assert!(res.is_ok());
         let gpw = res.unwrap();
-        let tclient = rsclient.new_session().expect("failed to build new session");
+        let mut tclient = rsclient.new_session().expect("failed to build new session");
         assert!(tclient
             .auth_simple_password("testperson", gpw.as_str())
             .is_ok());
@@ -216,7 +216,7 @@ fn test_server_admin_reset_simple_password() {
 // test the rest group endpoint.
 #[test]
 fn test_server_rest_group_read() {
-    run_test(|rsclient: KanidmClient| {
+    run_test(|mut rsclient: KanidmClient| {
         let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
         assert!(res.is_ok());
 
@@ -232,7 +232,7 @@ fn test_server_rest_group_read() {
 
 #[test]
 fn test_server_rest_group_lifecycle() {
-    run_test(|rsclient: KanidmClient| {
+    run_test(|mut rsclient: KanidmClient| {
         let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
         assert!(res.is_ok());
 
@@ -302,7 +302,7 @@ fn test_server_rest_group_lifecycle() {
 
 #[test]
 fn test_server_rest_account_read() {
-    run_test(|rsclient: KanidmClient| {
+    run_test(|mut rsclient: KanidmClient| {
         let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
         assert!(res.is_ok());
 
@@ -318,7 +318,7 @@ fn test_server_rest_account_read() {
 
 #[test]
 fn test_server_rest_schema_read() {
-    run_test(|rsclient: KanidmClient| {
+    run_test(|mut rsclient: KanidmClient| {
         let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
         assert!(res.is_ok());
 
@@ -346,7 +346,7 @@ fn test_server_rest_schema_read() {
 // Test resetting a radius cred, and then checking/viewing it.
 #[test]
 fn test_server_radius_credential_lifecycle() {
-    run_test(|rsclient: KanidmClient| {
+    run_test(|mut rsclient: KanidmClient| {
         let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
         assert!(res.is_ok());
 
@@ -389,7 +389,7 @@ fn test_server_radius_credential_lifecycle() {
 
 #[test]
 fn test_server_rest_account_lifecycle() {
-    run_test(|rsclient: KanidmClient| {
+    run_test(|mut rsclient: KanidmClient| {
         let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
         assert!(res.is_ok());
         // To enable the admin to actually make some of these changes, we have
@@ -418,7 +418,7 @@ fn test_server_rest_account_lifecycle() {
 
 #[test]
 fn test_server_rest_sshkey_lifecycle() {
-    run_test(|rsclient: KanidmClient| {
+    run_test(|mut rsclient: KanidmClient| {
         let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
         assert!(res.is_ok());
 
@@ -471,7 +471,7 @@ fn test_server_rest_sshkey_lifecycle() {
 
 #[test]
 fn test_server_rest_domain_lifecycle() {
-    run_test(|rsclient: KanidmClient| {
+    run_test(|mut rsclient: KanidmClient| {
         let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
         assert!(res.is_ok());
 
@@ -494,7 +494,7 @@ fn test_server_rest_domain_lifecycle() {
 
 #[test]
 fn test_server_rest_posix_lifecycle() {
-    run_test(|rsclient: KanidmClient| {
+    run_test(|mut rsclient: KanidmClient| {
         let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
         assert!(res.is_ok());
         // Not recommended in production!
@@ -567,11 +567,11 @@ fn test_server_rest_posix_lifecycle() {
 
 #[test]
 fn test_server_rest_posix_auth_lifecycle() {
-    run_test(|rsclient: KanidmClient| {
+    run_test(|mut rsclient: KanidmClient| {
         let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
         assert!(res.is_ok());
         // Get an anon connection
-        let anon_rsclient = rsclient.new_session().unwrap();
+        let mut anon_rsclient = rsclient.new_session().unwrap();
         assert!(anon_rsclient.auth_anonymous().is_ok());
 
         // Not recommended in production!
@@ -628,7 +628,7 @@ fn test_server_rest_posix_auth_lifecycle() {
 
 #[test]
 fn test_server_rest_recycle_lifecycle() {
-    run_test(|rsclient: KanidmClient| {
+    run_test(|mut rsclient: KanidmClient| {
         let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
         assert!(res.is_ok());
 
@@ -712,7 +712,7 @@ fn test_server_rest_account_import_password() {
 
 #[test]
 fn test_server_rest_totp_auth_lifecycle() {
-    run_test(|rsclient: KanidmClient| {
+    run_test(|mut rsclient: KanidmClient| {
         let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
         assert!(res.is_ok());
 
@@ -749,13 +749,13 @@ fn test_server_rest_totp_auth_lifecycle() {
 
         // Check a bad auth
         // Get a new connection
-        let rsclient_bad = rsclient.new_session().unwrap();
+        let mut rsclient_bad = rsclient.new_session().unwrap();
         assert!(rsclient_bad
             .auth_password_totp("demo_account", "sohdi3iuHo6mai7noh0a", 0)
             .is_err());
 
         // Check a good auth
-        let rsclient_good = rsclient.new_session().unwrap();
+        let mut rsclient_good = rsclient.new_session().unwrap();
         let totp = r_tok
             .do_totp_duration_from_epoch(
                 &SystemTime::now()

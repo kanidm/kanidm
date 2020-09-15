@@ -469,9 +469,10 @@ pub enum AuthAllowed {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AuthState {
-    // Everything is good, your cookie has been issued, and a token is set here
-    // for the client to view.
-    Success(UserAuthToken),
+    // Everything is good, your bearer header has been issued and is within
+    // the result.
+    // Success(UserAuthToken),
+    Success(String),
     // Something was bad, your session is terminated and no cookie.
     Denied(String),
     // Continue to auth, allowed mechanisms listed.

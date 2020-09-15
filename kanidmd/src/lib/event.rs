@@ -1,14 +1,12 @@
 use crate::audit::AuditScope;
 use crate::entry::{Entry, EntryCommitted, EntryInit, EntryNew, EntryReduced, EntrySealed};
 use crate::filter::{Filter, FilterInvalid, FilterValid};
+use crate::idm::AuthState;
 use crate::schema::SchemaTransaction;
 use crate::value::PartialValue;
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::ModifyList as ProtoModifyList;
-use kanidm_proto::v1::{
-    AuthCredential, AuthResponse, AuthState, AuthStep, SearchResponse, UserAuthToken,
-    WhoamiResponse,
-};
+use kanidm_proto::v1::{AuthCredential, AuthStep, SearchResponse, UserAuthToken, WhoamiResponse};
 // use error::OperationError;
 use crate::modify::{ModifyInvalid, ModifyList, ModifyValid};
 use crate::server::{
@@ -1043,6 +1041,7 @@ pub struct AuthResult {
     pub state: AuthState,
 }
 
+/*
 impl AuthResult {
     pub fn response(self) -> AuthResponse {
         AuthResponse {
@@ -1051,6 +1050,7 @@ impl AuthResult {
         }
     }
 }
+*/
 
 pub struct WhoamiResult {
     youare: ProtoEntry,

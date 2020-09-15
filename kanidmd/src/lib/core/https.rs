@@ -14,15 +14,18 @@ use crate::actors::v1_write::{
     PurgeAttributeMessage, RemoveAttributeValueMessage, ReviveRecycledMessage, SetAttributeMessage,
 };
 use crate::config::TlsConfiguration;
+use crate::event::AuthResult;
 use crate::filter::{Filter, FilterInvalid};
+use crate::idm::AuthState;
 use crate::status::{StatusActor, StatusRequestEvent};
 use crate::value::PartialValue;
 
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::{
-    AccountUnixExtend, AuthRequest, AuthState, CreateRequest, DeleteRequest, GroupUnixExtend,
-    ModifyRequest, SearchRequest, SetCredentialRequest, SingleStringRequest, UserAuthToken,
+    AccountUnixExtend, AuthRequest, AuthResponse, AuthState as ProtoAuthState, CreateRequest,
+    DeleteRequest, GroupUnixExtend, ModifyRequest, SearchRequest, SetCredentialRequest,
+    SingleStringRequest, UserAuthToken,
 };
 
 use serde::Serialize;
@@ -42,6 +45,8 @@ pub struct AppState {
     pub status_ref: &'static StatusActor,
     pub qe_w_ref: &'static QueryServerWriteV1,
     pub qe_r_ref: &'static QueryServerReadV1,
+    // Store the token management parts.
+    pub fernet_handle: fernet::Fernet,
 }
 
 pub trait RequestExtensions {
@@ -50,9 +55,29 @@ pub trait RequestExtensions {
     fn get_url_param(&self, param: &str) -> Result<String, tide::Error>;
 }
 
-impl<State> RequestExtensions for tide::Request<State> {
+impl RequestExtensions for tide::Request<AppState> {
     fn get_current_uat(&self) -> Option<UserAuthToken> {
-        self.session().get::<UserAuthToken>("uat")
+        // Contact the QS to get it to validate wtf is up.
+        let kref = &self.state().fernet_handle;
+        // self.session().get::<UserAuthToken>("uat")
+        self.header(tide::http::headers::AUTHORIZATION)
+            .and_then(|hv| {
+                // Get the first header value.
+                hv.get(0)
+            })
+            .and_then(|h| {
+                // Turn it to a &str, and then check the prefix
+                h.as_str().strip_prefix("Bearer ")
+            })
+            .and_then(|ts| {
+                // Take the token str and attempt to decrypt
+                // Attempt to re-inflate a UAT from bytes.
+                let uat: Option<UserAuthToken> = kref
+                    .decrypt(ts)
+                    .ok()
+                    .and_then(|b| serde_json::from_slice(&b).ok());
+                uat
+            })
     }
 
     fn get_url_param(&self, param: &str) -> Result<String, tide::Error> {
@@ -961,23 +986,27 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
     // We probably need to know if we allocate the cookie, that this is a
     // new session, and in that case, anything *except* authrequest init is
     // invalid.
-    let res = req
+    let res: Result<AuthResponse, _> = req
         .state()
         // This may change in the future ...
         .qe_r_ref
         .handle_auth(auth_msg)
         .await
         .and_then(|ar| {
+            let AuthResult { state, sessionid } = ar;
             // Do some response/state management.
-            match &ar.state {
+            match state {
                 AuthState::Success(uat) => {
-                    let msession = req.session_mut();
                     // Remove the auth-session-id
+                    let msession = req.session_mut();
                     msession.remove("auth-session-id");
-                    // Set the uat into the cookie
-                    msession
-                        .insert("uat", uat)
-                        // .map(|_| ())
+                    // Create the string "Bearer <token>"
+                    let kref = &req.state().fernet_handle;
+                    serde_json::to_vec(&uat)
+                        .map(|data| {
+                            let tok = kref.encrypt(&data);
+                            ProtoAuthState::Success(tok)
+                        })
                         .map_err(|_| OperationError::InvalidSessionState)
                 }
                 AuthState::Denied(_) => {
@@ -986,17 +1015,19 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
                     msession.remove("auth-session-id");
                     Err(OperationError::AccessDenied)
                 }
-                AuthState::Continue(_) => {
+                AuthState::Continue(allowed) => {
                     let msession = req.session_mut();
                     // Ensure the auth-session-id is set
                     msession
-                        .insert("auth-session-id", ar.sessionid)
-                        // .map(|_| ())
+                        .insert("auth-session-id", sessionid)
+                        .map(|_| ProtoAuthState::Continue(allowed))
                         .map_err(|_| OperationError::InvalidSessionState)
                 }
             }
-            // And put the auth result back in.
-            .map(|()| ar)
+            .map(|state| AuthResponse {
+                state,
+                sessionid: sessionid,
+            })
         });
     to_tide_response(res, hvalue)
 }
@@ -1139,10 +1170,16 @@ pub fn create_https_server(
     qe_w_ref: &'static QueryServerWriteV1,
     qe_r_ref: &'static QueryServerReadV1,
 ) -> Result<(), ()> {
+    // Create the in memory fernet key
+    let fernet_handle = fernet::Fernet::new(&fernet::Fernet::generate_key()).ok_or_else(|| {
+        error!("Failed to generate fernet key");
+    })?;
+
     let mut tserver = tide::Server::with_state(AppState {
         status_ref,
         qe_w_ref,
         qe_r_ref,
+        fernet_handle,
     });
 
     // Add middleware?

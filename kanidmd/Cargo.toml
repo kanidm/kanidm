@@ -34,6 +34,7 @@ async-h1 = "2.0"
 # Temporary!
 # tide-rustls = "0.1"
 tide-rustls = { git = "https://github.com/http-rs/tide-rustls.git", rev = "c1f13a77e82369323274d832b8d3f33ba7c272c7" }
+fernet = { git = "https://github.com/mozilla-services/fernet-rs.git" }
 
 async-std = "1.6"
 

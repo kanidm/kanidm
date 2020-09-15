@@ -22,7 +22,8 @@ use crate::value::PartialValue;
 use crate::actors::v1_write::QueryServerWriteV1;
 use crate::idm::delayed::{DelayedAction, PasswordUpgrade, UnixPasswordUpgrade};
 
-use kanidm_proto::v1::AuthState;
+use crate::idm::AuthState;
+
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::RadiusAuthToken;
 // use kanidm_proto::v1::TOTPSecret as ProtoTOTPSecret;
@@ -110,6 +111,7 @@ impl IdmServer {
         // improves.
         let crypto_policy = CryptoPolicy::time_target(Duration::from_millis(1));
         let (async_tx, async_rx) = unbounded();
+
         (
             IdmServer {
                 session_ticket: Arc::new(Semaphore::new(1)),
@@ -999,9 +1001,10 @@ mod tests {
     use crate::value::{PartialValue, Value};
     // use crate::idm::delayed::{PasswordUpgrade, DelayedAction};
 
+    use crate::idm::AuthState;
+    use kanidm_proto::v1::AuthAllowed;
     use kanidm_proto::v1::OperationError;
     use kanidm_proto::v1::SetCredentialResponse;
-    use kanidm_proto::v1::{AuthAllowed, AuthState};
 
     use crate::audit::AuditScope;
     use crate::idm::server::IdmServer;
