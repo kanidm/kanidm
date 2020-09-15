@@ -18,6 +18,7 @@ print(os.getcwd())
 
 CONFIG = configparser.ConfigParser()
 CONFIG.read('/data/config.ini')
+# CONFIG.read('/tmp/config.ini')
 
 GROUPS = [
     {
@@ -51,19 +52,32 @@ def _authenticate(s, acct, pw):
 
     cred_auth = {"step": { "creds": [{"Password": pw}]}}
     r = s.post(AUTH_URL, json=cred_auth, verify=CA, timeout=TIMEOUT)
+    response = r.json()
     if r.status_code != 200:
-        print(r.json())
+        print(response)
+        raise Exception("AuthCredFailed")
+
+    response = r.json()
+    # Get the token
+    try:
+        token = response['state']['success']
+        return token
+    except KeyError:
+        print(response)
         raise Exception("AuthCredFailed")
 
 def _get_radius_token(username):
     print("getting rtok for %s ..." % username)
     s = requests.session()
     # First authenticate a connection
-    _authenticate(s, USER, SECRET)
+    bearer_token = _authenticate(s, USER, SECRET)
     # Now get the radius token
     rtok_url = "%s/v1/account/%s/_radius/_token" % (URL, username)
-    r = s.get(rtok_url, verify=CA, timeout=TIMEOUT)
+    headers = {'Authorization': 'Bearer %s' % bearer_token}
+    r = s.get(rtok_url, verify=CA, timeout=TIMEOUT, headers=headers)
     if r.status_code != 200:
+        print(r.status_code)
+        print(r.json())
         raise Exception("Failed to get RadiusAuthToken")
     else:
         return r.json()
