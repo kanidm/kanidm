@@ -73,7 +73,7 @@ impl RequestExtensions for tide::Request<AppState> {
                 // Take the token str and attempt to decrypt
                 // Attempt to re-inflate a UAT from bytes.
                 let uat: Option<UserAuthToken> = kref
-                    .decrypt(ts)
+                    .decrypt_with_ttl(ts, 3600)
                     .ok()
                     .and_then(|b| serde_json::from_slice(&b).ok());
                 uat
@@ -1024,10 +1024,7 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
                         .map_err(|_| OperationError::InvalidSessionState)
                 }
             }
-            .map(|state| AuthResponse {
-                state,
-                sessionid: sessionid,
-            })
+            .map(|state| AuthResponse { state, sessionid })
         });
     to_tide_response(res, hvalue)
 }

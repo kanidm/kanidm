@@ -24,18 +24,18 @@ impl<'a> IdxKeyRef<'a> {
 }
 
 pub trait IdxKeyToRef {
-    fn keyref<'k>(&'k self) -> IdxKeyRef<'k>;
+    fn keyref(&self) -> IdxKeyRef<'_>;
 }
 
 impl<'a> IdxKeyToRef for IdxKeyRef<'a> {
-    fn keyref<'k>(&'k self) -> IdxKeyRef<'k> {
+    fn keyref(&self) -> IdxKeyRef<'_> {
         // Copy the self.
         *self
     }
 }
 
 impl IdxKeyToRef for IdxKey {
-    fn keyref<'a>(&'a self) -> IdxKeyRef<'a> {
+    fn keyref(&self) -> IdxKeyRef<'_> {
         IdxKeyRef {
             attr: self.attr.as_str(),
             itype: &self.itype,
@@ -88,18 +88,18 @@ impl<'a> IdlCacheKeyRef<'a> {
 */
 
 pub trait IdlCacheKeyToRef {
-    fn keyref<'k>(&'k self) -> IdlCacheKeyRef<'k>;
+    fn keyref(&self) -> IdlCacheKeyRef<'_>;
 }
 
 impl<'a> IdlCacheKeyToRef for IdlCacheKeyRef<'a> {
-    fn keyref<'k>(&'k self) -> IdlCacheKeyRef<'k> {
+    fn keyref(&self) -> IdlCacheKeyRef<'_> {
         // Copy the self
         *self
     }
 }
 
 impl IdlCacheKeyToRef for IdlCacheKey {
-    fn keyref<'k>(&'k self) -> IdlCacheKeyRef<'k> {
+    fn keyref(&self) -> IdlCacheKeyRef<'_> {
         IdlCacheKeyRef {
             a: self.a.as_str(),
             i: &self.i,
