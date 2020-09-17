@@ -336,6 +336,15 @@ impl KanidmClient {
         builder.build()
     }
 
+    pub fn set_token(&mut self, new_token: String) {
+        let mut new_token = Some(new_token);
+        std::mem::swap(&mut self.bearer_token, &mut new_token);
+    }
+
+    pub fn get_token(&self) -> Option<&str> {
+        self.bearer_token.as_ref().map(|s| s.as_str())
+    }
+
     pub fn logout(&mut self) -> Result<(), reqwest::Error> {
         // hack - we have to replace our reqwest client because that's the only way
         // to currently flush the cookie store. To achieve this we need to rebuild
