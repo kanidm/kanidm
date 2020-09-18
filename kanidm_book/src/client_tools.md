@@ -48,10 +48,21 @@ After you check out the source (see github), navigate to:
 Now you can check your instance is working. You may need to provide a CA certificate for verification
 with the -C parameter:
 
+    kanidm login --name anonymous
     kanidm self whoami -C ../path/to/ca.pem -H https://localhost:8443 --name anonymous
     kanidm self whoami -H https://localhost:8443 --name anonymous
 
 Now you can take some time to look at what commands are available - please ask for help at anytime.
+
+## Authenticating a user with the command line
+
+To authenticate as a user for use with the command line, you need to use the `login` command
+to establish a session token.
+
+    kanidm login --name USERNAME
+    kanidm login --name admin
+
+Once complete, you can use kanidm without reauthenticating for a period of time for administration.
 
 ## Kandim configuration
 
@@ -65,3 +76,4 @@ You can configure kanidm to help make commands simpler by modifying ~/.config/ka
 Once configured, you can test this with:
 
     kanidm self whoami --name anonymous
+

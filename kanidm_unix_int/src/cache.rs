@@ -9,7 +9,7 @@ use std::collections::BTreeSet;
 use std::ops::Add;
 use std::string::ToString;
 use std::time::{Duration, SystemTime};
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, RwLock};
 
 pub enum Id {
     Name(String),
@@ -26,7 +26,7 @@ enum CacheState {
 #[derive(Debug)]
 pub struct CacheLayer {
     db: Db,
-    client: KanidmAsyncClient,
+    client: RwLock<KanidmAsyncClient>,
     state: Mutex<CacheState>,
     pam_allow_groups: BTreeSet<String>,
     timeout_seconds: u64,
@@ -76,7 +76,7 @@ impl CacheLayer {
         // being valid from "now".
         Ok(CacheLayer {
             db,
-            client,
+            client: RwLock::new(client),
             state: Mutex::new(CacheState::OfflineNextCheck(SystemTime::now())),
             timeout_seconds,
             pam_allow_groups: pam_allow_groups.into_iter().collect(),
@@ -256,6 +256,8 @@ impl CacheLayer {
     ) -> Result<Option<UnixUserToken>, ()> {
         match self
             .client
+            .read()
+            .await
             .idm_account_unix_token_get(account_id.to_string().as_str())
             .await
         {
@@ -329,6 +331,8 @@ impl CacheLayer {
     ) -> Result<Option<UnixGroupToken>, ()> {
         match self
             .client
+            .read()
+            .await
             .idm_group_unix_token_get(grp_id.to_string().as_str())
             .await
         {
@@ -617,6 +621,8 @@ impl CacheLayer {
         // We are online, attempt the pw to the server.
         match self
             .client
+            .read()
+            .await
             .idm_account_unix_cred_verify(account_id, cred)
             .await
         {
@@ -769,20 +775,22 @@ impl CacheLayer {
                 debug!("Offline -> no change");
                 false
             }
-            CacheState::OfflineNextCheck(_time) => match self.client.auth_anonymous().await {
-                Ok(_uat) => {
-                    debug!("OfflineNextCheck -> authenticated");
-                    self.set_cachestate(CacheState::Online).await;
-                    true
+            CacheState::OfflineNextCheck(_time) => {
+                match self.client.write().await.auth_anonymous().await {
+                    Ok(_uat) => {
+                        debug!("OfflineNextCheck -> authenticated");
+                        self.set_cachestate(CacheState::Online).await;
+                        true
+                    }
+                    Err(e) => {
+                        debug!("OfflineNextCheck -> disconnected, staying offline. {:?}", e);
+                        let time = SystemTime::now().add(Duration::from_secs(15));
+                        self.set_cachestate(CacheState::OfflineNextCheck(time))
+                            .await;
+                        false
+                    }
                 }
-                Err(e) => {
-                    debug!("OfflineNextCheck -> disconnected, staying offline. {:?}", e);
-                    let time = SystemTime::now().add(Duration::from_secs(15));
-                    self.set_cachestate(CacheState::OfflineNextCheck(time))
-                        .await;
-                    false
-                }
-            },
+            }
             CacheState::Online => {
                 debug!("Online, no change");
                 true

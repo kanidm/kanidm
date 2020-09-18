@@ -334,7 +334,7 @@ fn test_default_entries_rbac_group_managers() {
 // read and write access control entries.
 #[test]
 fn test_default_entries_rbac_admins_access_control_entries() {
-    run_test(|rsclient: KanidmClient| {
+    run_test(|mut rsclient: KanidmClient| {
         rsclient
             .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
             .unwrap();
@@ -382,7 +382,7 @@ fn test_default_entries_rbac_admins_access_control_entries() {
 // TODO #252: write schema entries
 #[test]
 fn test_default_entries_rbac_admins_schema_entries() {
-    run_test(|rsclient: KanidmClient| {
+    run_test(|mut rsclient: KanidmClient| {
         rsclient
             .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
             .unwrap();
@@ -493,7 +493,7 @@ fn test_default_entries_rbac_admins_schema_entries() {
 // create new accounts (to bootstrap the system).
 #[test]
 fn test_default_entries_rbac_admins_group_entries() {
-    run_test(|rsclient: KanidmClient| {
+    run_test(|mut rsclient: KanidmClient| {
         rsclient
             .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
             .unwrap();
@@ -509,7 +509,7 @@ fn test_default_entries_rbac_admins_group_entries() {
 // modify high access accounts as an escalation for security sensitive accounts.
 #[test]
 fn test_default_entries_rbac_admins_ha_accounts() {
-    run_test(|rsclient: KanidmClient| {
+    run_test(|mut rsclient: KanidmClient| {
         rsclient
             .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
             .unwrap();
@@ -522,7 +522,7 @@ fn test_default_entries_rbac_admins_ha_accounts() {
 // recover from the recycle bin
 #[test]
 fn test_default_entries_rbac_admins_recycle_accounts() {
-    run_test(|rsclient: KanidmClient| {
+    run_test(|mut rsclient: KanidmClient| {
         rsclient
             .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
             .unwrap();

@@ -15,12 +15,14 @@ use structopt::StructOpt;
 pub mod account;
 pub mod common;
 pub mod group;
+pub mod login;
 pub mod raw;
 pub mod recycle;
 
 use crate::account::AccountOpt;
 use crate::common::CommonOpt;
 use crate::group::GroupOpt;
+use crate::login::LoginOpt;
 use crate::raw::RawOpt;
 use crate::recycle::RecycleOpt;
 
@@ -79,8 +81,11 @@ impl SelfOpt {
 }
 
 #[derive(Debug, StructOpt)]
-#[structopt(about = "I am a program and I work, just pass `-h`")]
+#[structopt(about = "Kanidm Client Utility")]
 pub enum ClientOpt {
+    #[structopt(name = "login")]
+    /// Login to an account to use with future cli operations
+    Login(LoginOpt),
     #[structopt(name = "self")]
     /// Actions for the current authenticated account
     CSelf(SelfOpt),
@@ -102,6 +107,7 @@ impl ClientOpt {
     pub fn debug(&self) -> bool {
         match self {
             ClientOpt::Raw(ropt) => ropt.debug(),
+            ClientOpt::Login(lopt) => lopt.debug(),
             ClientOpt::CSelf(csopt) => csopt.debug(),
             ClientOpt::Account(aopt) => aopt.debug(),
             ClientOpt::Group(gopt) => gopt.debug(),
@@ -112,6 +118,7 @@ impl ClientOpt {
     pub fn exec(&self) {
         match self {
             ClientOpt::Raw(ropt) => ropt.exec(),
+            ClientOpt::Login(lopt) => lopt.exec(),
             ClientOpt::CSelf(csopt) => csopt.exec(),
             ClientOpt::Account(aopt) => aopt.exec(),
             ClientOpt::Group(gopt) => gopt.exec(),

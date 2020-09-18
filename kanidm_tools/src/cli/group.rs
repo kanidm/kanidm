@@ -33,6 +33,8 @@ pub enum GroupPosix {
 pub enum GroupOpt {
     #[structopt(name = "list")]
     List(CommonOpt),
+    #[structopt(name = "get")]
+    Get(Named),
     #[structopt(name = "create")]
     Create(Named),
     #[structopt(name = "delete")]
@@ -53,6 +55,7 @@ impl GroupOpt {
     pub fn debug(&self) -> bool {
         match self {
             GroupOpt::List(copt) => copt.debug,
+            GroupOpt::Get(gcopt) => gcopt.copt.debug,
             GroupOpt::Create(gcopt) => gcopt.copt.debug,
             GroupOpt::Delete(gcopt) => gcopt.copt.debug,
             GroupOpt::ListMembers(gcopt) => gcopt.copt.debug,
@@ -75,6 +78,15 @@ impl GroupOpt {
                     Err(e) => {
                         eprintln!("Error -> {:?}", e);
                     }
+                }
+            }
+            GroupOpt::Get(gcopt) => {
+                let client = gcopt.copt.to_client();
+                // idm_group_get
+                match client.idm_group_get(gcopt.name.as_str()) {
+                    Ok(Some(e)) => println!("{}", e),
+                    Ok(None) => println!("No matching entries"),
+                    Err(e) => eprintln!("Error -> {:?}", e),
                 }
             }
             GroupOpt::Create(gcopt) => {

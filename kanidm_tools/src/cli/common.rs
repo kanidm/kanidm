@@ -1,3 +1,4 @@
+use crate::login::read_tokens;
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -17,13 +18,13 @@ pub struct CommonOpt {
     #[structopt(short = "H", long = "url")]
     pub addr: Option<String>,
     #[structopt(short = "D", long = "name")]
-    pub username: String,
+    pub username: Option<String>,
     #[structopt(parse(from_os_str), short = "C", long = "ca")]
     pub ca_path: Option<PathBuf>,
 }
 
 impl CommonOpt {
-    pub fn to_client(&self) -> KanidmClient {
+    pub fn to_unauth_client(&self) -> KanidmClient {
         let config_path: String = shellexpand::tilde("~/.config/kanidm").into_owned();
 
         debug!("Attempting to use config {}", "/etc/kanidm/config");
@@ -64,24 +65,55 @@ impl CommonOpt {
                 std::process::exit(1);
             }
         };
+        client
+    }
 
-        let r = if self.username == "anonymous" {
-            client.auth_anonymous()
-        } else {
-            let password = match rpassword::prompt_password_stderr("Enter password: ") {
-                Ok(p) => p,
-                Err(e) => {
-                    error!("Failed to create password prompt -- {:?}", e);
-                    std::process::exit(1);
-                }
-            };
-            client.auth_simple_password(self.username.as_str(), password.as_str())
+    pub fn to_client(&self) -> KanidmClient {
+        let mut client = self.to_unauth_client();
+        // Read the token file.
+        let tokens = match read_tokens() {
+            Ok(t) => t,
+            Err(_e) => {
+                error!("Error retrieving authentication token store");
+                std::process::exit(1);
+            }
         };
 
-        if r.is_err() {
-            println!("Error during authentication phase: {:?}", r);
+        if tokens.len() == 0 {
+            error!(
+                "No valid authentication tokens found. Please login with the 'login' subcommand."
+            );
             std::process::exit(1);
         }
+
+        // If we have a username, use that to select tokens
+        let token = match &self.username {
+            Some(username) => {
+                // Is it in the store?
+                match tokens.get(username) {
+                    Some(t) => t.clone(),
+                    None => {
+                        error!("No valid authentication tokens found for {}.", username);
+                        std::process::exit(1);
+                    }
+                }
+            }
+            None => {
+                if tokens.len() == 1 {
+                    let (f_uname, f_token) = tokens.iter().next().expect("Memory Corruption");
+                    // else pick the first token
+                    info!("Authenticated as {}", f_uname);
+                    f_token.clone()
+                } else {
+                    // Unable to select
+                    error!("Multiple authentication tokens exist. Please select one with --name.");
+                    std::process::exit(1);
+                }
+            }
+        };
+
+        // Set it into the client
+        client.set_token(token);
 
         client
     }

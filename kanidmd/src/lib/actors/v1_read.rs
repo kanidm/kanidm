@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use crate::audit::AuditScope;
 
-use crate::event::{AuthEvent, SearchEvent, SearchResult, WhoamiResult};
+use crate::event::{AuthEvent, AuthResult, SearchEvent, SearchResult, WhoamiResult};
 use crate::idm::event::{
     RadiusAuthTokenEvent, UnixGroupTokenEvent, UnixUserAuthEvent, UnixUserTokenEvent,
 };
@@ -18,8 +18,8 @@ use crate::server::{QueryServer, QueryServerTransaction};
 
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::{
-    AuthRequest, AuthResponse, SearchRequest, SearchResponse, UnixGroupToken, UnixUserToken,
-    UserAuthToken, WhoamiResponse,
+    AuthRequest, SearchRequest, SearchResponse, UnixGroupToken, UnixUserToken, UserAuthToken,
+    WhoamiResponse,
 };
 
 use std::time::SystemTime;
@@ -219,7 +219,7 @@ impl QueryServerReadV1 {
         res
     }
 
-    pub async fn handle_auth(&self, msg: AuthMessage) -> Result<AuthResponse, OperationError> {
+    pub async fn handle_auth(&self, msg: AuthMessage) -> Result<AuthResult, OperationError> {
         // This is probably the first function that really implements logic
         // "on top" of the db server concept. In this case we check if
         // the credentials provided is sufficient to say if someone is
@@ -261,7 +261,8 @@ impl QueryServerReadV1 {
 
             lsecurity!(audit, "Sending auth result -> {:?}", r);
             // Build the result.
-            r.map(|r| r.response())
+            // r.map(|r| r.response())
+            r
         });
         // At the end of the event we send it for logging.
         self.log.send(audit).map_err(|_| {

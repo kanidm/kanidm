@@ -10,6 +10,7 @@ pub struct KanidmAsyncClient {
     pub(crate) client: reqwest::Client,
     pub(crate) addr: String,
     pub(crate) builder: KanidmClientBuilder,
+    pub(crate) bearer_token: Option<String>,
 }
 
 impl KanidmAsyncClient {
@@ -29,10 +30,14 @@ impl KanidmAsyncClient {
             .client
             .post(dest.as_str())
             .body(req_string)
-            .header(CONTENT_TYPE, APPLICATION_JSON)
-            .send()
-            .await
-            .map_err(ClientError::Transport)?;
+            .header(CONTENT_TYPE, APPLICATION_JSON);
+        let response = if let Some(token) = &self.bearer_token {
+            response.bearer_auth(token)
+        } else {
+            response
+        };
+
+        let response = response.send().await.map_err(ClientError::Transport)?;
 
         let opid = response
             .headers()
@@ -73,7 +78,14 @@ impl KanidmAsyncClient {
         let response = self
             .client
             .put(dest.as_str())
-            .header(CONTENT_TYPE, APPLICATION_JSON)
+            .header(CONTENT_TYPE, APPLICATION_JSON);
+        let response = if let Some(token) = &self.bearer_token {
+            response.bearer_auth(token)
+        } else {
+            response
+        };
+
+        let response = response
             .body(req_string)
             .send()
             .await
@@ -108,12 +120,14 @@ impl KanidmAsyncClient {
         let dest = [self.addr.as_str(), dest].concat();
         debug!("{:?}", dest);
         // let dest = format!("{}{}", self.addr, dest);
-        let response = self
-            .client
-            .get(dest.as_str())
-            .send()
-            .await
-            .map_err(ClientError::Transport)?;
+        let response = self.client.get(dest.as_str());
+        let response = if let Some(token) = &self.bearer_token {
+            response.bearer_auth(token)
+        } else {
+            response
+        };
+
+        let response = response.send().await.map_err(ClientError::Transport)?;
 
         let opid = response
             .headers()
@@ -142,12 +156,14 @@ impl KanidmAsyncClient {
 
     async fn perform_delete_request(&self, dest: &str) -> Result<bool, ClientError> {
         let dest = format!("{}{}", self.addr, dest);
-        let response = self
-            .client
-            .delete(dest.as_str())
-            .send()
-            .await
-            .map_err(ClientError::Transport)?;
+        let response = self.client.delete(dest.as_str());
+        let response = if let Some(token) = &self.bearer_token {
+            response.bearer_auth(token)
+        } else {
+            response
+        };
+
+        let response = response.send().await.map_err(ClientError::Transport)?;
 
         let opid = response
             .headers()
@@ -183,10 +199,10 @@ impl KanidmAsyncClient {
     }
 
     pub async fn auth_simple_password(
-        &self,
+        &mut self,
         ident: &str,
         password: &str,
-    ) -> Result<UserAuthToken, ClientError> {
+    ) -> Result<(), ClientError> {
         let _state = match self.auth_step_init(ident).await {
             Ok(s) => s,
             Err(e) => return Err(e),
@@ -200,15 +216,15 @@ impl KanidmAsyncClient {
         let r = r?;
 
         match r.state {
-            AuthState::Success(uat) => {
-                debug!("==> Authed as uat; {:?}", uat);
-                Ok(uat)
+            AuthState::Success(token) => {
+                self.bearer_token = Some(token);
+                Ok(())
             }
             _ => Err(ClientError::AuthenticationFailed),
         }
     }
 
-    pub async fn auth_anonymous(&self) -> Result<UserAuthToken, ClientError> {
+    pub async fn auth_anonymous(&mut self) -> Result<(), ClientError> {
         // TODO #251: Check state for auth continue contains anonymous.
         // #251 will remove the need for this check.
         let _state = match self.auth_step_init("anonymous").await {
@@ -224,9 +240,9 @@ impl KanidmAsyncClient {
         let r = r?;
 
         match r.state {
-            AuthState::Success(uat) => {
-                debug!("==> Authed as uat; {:?}", uat);
-                Ok(uat)
+            AuthState::Success(token) => {
+                self.bearer_token = Some(token);
+                Ok(())
             }
             _ => Err(ClientError::AuthenticationFailed),
         }

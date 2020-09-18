@@ -1,8 +1,9 @@
 use crate::audit::AuditScope;
 use crate::idm::account::Account;
 use crate::idm::claim::Claim;
+use crate::idm::AuthState;
 use kanidm_proto::v1::OperationError;
-use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthState};
+use kanidm_proto::v1::{AuthAllowed, AuthCredential};
 
 use crate::credential::{totp::TOTP, Credential, Password};
 
@@ -420,6 +421,8 @@ impl AuthSession {
                     .account
                     .to_userauthtoken(&claims)
                     .ok_or(OperationError::InvalidState)?;
+
+                // Now encrypt and prepare the token for return to the client.
                 Ok(AuthState::Success(uat))
             }
             CredState::Continue(allowed) => {
@@ -464,7 +467,8 @@ mod tests {
     use crate::idm::authsession::{
         AuthSession, BAD_AUTH_TYPE_MSG, BAD_CREDENTIALS, BAD_PASSWORD_MSG, BAD_TOTP_MSG,
     };
-    use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthState};
+    use crate::idm::AuthState;
+    use kanidm_proto::v1::{AuthAllowed, AuthCredential};
     use std::time::Duration;
     // use async_std::task;
 

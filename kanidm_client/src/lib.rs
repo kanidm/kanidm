@@ -277,6 +277,7 @@ impl KanidmClientBuilder {
             client,
             addr: address,
             builder: self,
+            bearer_token: None,
         })
     }
 
@@ -315,6 +316,7 @@ impl KanidmClientBuilder {
             client,
             addr: address,
             builder: self,
+            bearer_token: None,
         })
     }
 }
@@ -324,6 +326,7 @@ pub struct KanidmClient {
     client: reqwest::blocking::Client,
     addr: String,
     builder: KanidmClientBuilder,
+    bearer_token: Option<String>,
 }
 
 impl KanidmClient {
@@ -331,6 +334,15 @@ impl KanidmClient {
         // Copy our builder, and then just process it.
         let builder = self.builder.clone();
         builder.build()
+    }
+
+    pub fn set_token(&mut self, new_token: String) {
+        let mut new_token = Some(new_token);
+        std::mem::swap(&mut self.bearer_token, &mut new_token);
+    }
+
+    pub fn get_token(&self) -> Option<&str> {
+        self.bearer_token.as_ref().map(|s| s.as_str())
     }
 
     pub fn logout(&mut self) -> Result<(), reqwest::Error> {
@@ -357,7 +369,15 @@ impl KanidmClient {
         let response = self
             .client
             .post(dest.as_str())
-            .header(CONTENT_TYPE, APPLICATION_JSON)
+            .header(CONTENT_TYPE, APPLICATION_JSON);
+
+        let response = if let Some(token) = &self.bearer_token {
+            response.bearer_auth(token)
+        } else {
+            response
+        };
+
+        let response = response
             .body(req_string)
             .send()
             .map_err(ClientError::Transport)?;
@@ -391,7 +411,15 @@ impl KanidmClient {
         let response = self
             .client
             .put(dest.as_str())
-            .header(CONTENT_TYPE, APPLICATION_JSON)
+            .header(CONTENT_TYPE, APPLICATION_JSON);
+
+        let response = if let Some(token) = &self.bearer_token {
+            response.bearer_auth(token)
+        } else {
+            response
+        };
+
+        let response = response
             .body(req_string)
             .send()
             .map_err(ClientError::Transport)?;
@@ -415,11 +443,15 @@ impl KanidmClient {
 
     fn perform_get_request<T: DeserializeOwned>(&self, dest: &str) -> Result<T, ClientError> {
         let dest = format!("{}{}", self.addr, dest);
-        let response = self
-            .client
-            .get(dest.as_str())
-            .send()
-            .map_err(ClientError::Transport)?;
+        let response = self.client.get(dest.as_str());
+
+        let response = if let Some(token) = &self.bearer_token {
+            response.bearer_auth(token)
+        } else {
+            response
+        };
+
+        let response = response.send().map_err(ClientError::Transport)?;
 
         let opid = response
             .headers()
@@ -440,11 +472,14 @@ impl KanidmClient {
 
     fn perform_delete_request(&self, dest: &str) -> Result<bool, ClientError> {
         let dest = format!("{}{}", self.addr, dest);
-        let response = self
-            .client
-            .delete(dest.as_str())
-            .send()
-            .map_err(ClientError::Transport)?;
+        let response = self.client.delete(dest.as_str());
+        let response = if let Some(token) = &self.bearer_token {
+            response.bearer_auth(token)
+        } else {
+            response
+        };
+
+        let response = response.send().map_err(ClientError::Transport)?;
 
         let opid = response
             .headers()
@@ -467,11 +502,15 @@ impl KanidmClient {
     // Can't use generic get due to possible un-auth case.
     pub fn whoami(&self) -> Result<Option<(Entry, UserAuthToken)>, ClientError> {
         let whoami_dest = format!("{}/v1/self", self.addr);
-        let response = self
-            .client
-            .get(whoami_dest.as_str())
-            .send()
-            .map_err(ClientError::Transport)?;
+        let response = self.client.get(whoami_dest.as_str());
+
+        let response = if let Some(token) = &self.bearer_token {
+            response.bearer_auth(token)
+        } else {
+            response
+        };
+
+        let response = response.send().map_err(ClientError::Transport)?;
 
         let opid = response
             .headers()
@@ -495,7 +534,7 @@ impl KanidmClient {
     }
 
     // auth
-    pub fn auth_anonymous(&self) -> Result<UserAuthToken, ClientError> {
+    pub fn auth_anonymous(&mut self) -> Result<(), ClientError> {
         // TODO #251: Check state for auth continue contains anonymous.
         let _state = match self.auth_step_init("anonymous") {
             Ok(s) => s,
@@ -510,19 +549,16 @@ impl KanidmClient {
         let r = r?;
 
         match r.state {
-            AuthState::Success(uat) => {
-                debug!("==> Authed as uat; {:?}", uat);
-                Ok(uat)
+            AuthState::Success(token) => {
+                // set the bearer.
+                self.bearer_token = Some(token);
+                Ok(())
             }
             _ => Err(ClientError::AuthenticationFailed),
         }
     }
 
-    pub fn auth_simple_password(
-        &self,
-        ident: &str,
-        password: &str,
-    ) -> Result<UserAuthToken, ClientError> {
+    pub fn auth_simple_password(&mut self, ident: &str, password: &str) -> Result<(), ClientError> {
         let _state = match self.auth_step_init(ident) {
             Ok(s) => s,
             Err(e) => return Err(e),
@@ -536,20 +572,21 @@ impl KanidmClient {
         let r = r?;
 
         match r.state {
-            AuthState::Success(uat) => {
-                debug!("==> Authed as uat; {:?}", uat);
-                Ok(uat)
+            AuthState::Success(token) => {
+                // set the bearer.
+                self.bearer_token = Some(token);
+                Ok(())
             }
             _ => Err(ClientError::AuthenticationFailed),
         }
     }
 
     pub fn auth_password_totp(
-        &self,
+        &mut self,
         ident: &str,
         password: &str,
         totp: u32,
-    ) -> Result<UserAuthToken, ClientError> {
+    ) -> Result<(), ClientError> {
         let _state = match self.auth_step_init(ident) {
             Ok(s) => s,
             Err(e) => return Err(e),
@@ -566,9 +603,10 @@ impl KanidmClient {
         let r = r?;
 
         match r.state {
-            AuthState::Success(uat) => {
-                debug!("==> Authed as uat; {:?}", uat);
-                Ok(uat)
+            AuthState::Success(token) => {
+                // set the bearer.
+                self.bearer_token = Some(token);
+                Ok(())
             }
             _ => Err(ClientError::AuthenticationFailed),
         }

@@ -24,7 +24,7 @@ const TESTACCOUNT1_PASSWORD_A: &str = "password a for account1 test";
 const TESTACCOUNT1_PASSWORD_B: &str = "password b for account1 test";
 const TESTACCOUNT1_PASSWORD_INC: &str = "never going to work";
 
-fn run_test(fix_fn: fn(&KanidmClient) -> (), test_fn: fn(CacheLayer, KanidmAsyncClient) -> ()) {
+fn run_test(fix_fn: fn(&mut KanidmClient) -> (), test_fn: fn(CacheLayer, KanidmAsyncClient) -> ()) {
     // ::std::env::set_var("RUST_LOG", "actix_web=warn,kanidm=error");
     let _ = env_logger::builder().is_test(true).try_init();
 
@@ -73,11 +73,11 @@ fn run_test(fix_fn: fn(&KanidmClient) -> (), test_fn: fn(CacheLayer, KanidmAsync
     let addr = format!("http://127.0.0.1:{}", port);
 
     // Run fixtures
-    let adminclient = KanidmClientBuilder::new()
+    let mut adminclient = KanidmClientBuilder::new()
         .address(addr.clone())
         .build()
         .expect("Failed to build sync client");
-    fix_fn(&adminclient);
+    fix_fn(&mut adminclient);
 
     let client = KanidmClientBuilder::new()
         .address(addr.clone())
@@ -110,7 +110,7 @@ fn run_test(fix_fn: fn(&KanidmClient) -> (), test_fn: fn(CacheLayer, KanidmAsync
     t_handle.join().expect("failed to join thread");
 }
 
-fn test_fixture(rsclient: &KanidmClient) -> () {
+fn test_fixture(rsclient: &mut KanidmClient) -> () {
     let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
     assert!(res.is_ok());
     // Not recommended in production!
@@ -306,7 +306,7 @@ fn test_cache_group() {
 
 #[test]
 fn test_cache_group_delete() {
-    run_test(test_fixture, |cachelayer, adminclient| {
+    run_test(test_fixture, |cachelayer, mut adminclient| {
         let mut rt = Runtime::new().expect("Failed to start tokio");
         let fut = async move {
             // get the group
@@ -345,7 +345,7 @@ fn test_cache_group_delete() {
 
 #[test]
 fn test_cache_account_delete() {
-    run_test(test_fixture, |cachelayer, adminclient| {
+    run_test(test_fixture, |cachelayer, mut adminclient| {
         let mut rt = Runtime::new().expect("Failed to start tokio");
         let fut = async move {
             // get the account
@@ -391,7 +391,7 @@ fn test_cache_account_delete() {
 
 #[test]
 fn test_cache_account_password() {
-    run_test(test_fixture, |cachelayer, adminclient| {
+    run_test(test_fixture, |cachelayer, mut adminclient| {
         let mut rt = Runtime::new().expect("Failed to start tokio");
         let fut = async move {
             cachelayer.attempt_online().await;
@@ -480,7 +480,7 @@ fn test_cache_account_password() {
 
 #[test]
 fn test_cache_account_pam_allowed() {
-    run_test(test_fixture, |cachelayer, adminclient| {
+    run_test(test_fixture, |cachelayer, mut adminclient| {
         let mut rt = Runtime::new().expect("Failed to start tokio");
         let fut = async move {
             cachelayer.attempt_online().await;
