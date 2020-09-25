@@ -92,6 +92,8 @@ These can then assist with choosing to lock or allow an auth to proceed in the f
 FUTURE:
 * Delayed notification about suspect login?
 
+Ratelimit on unix auth
+
 Hard Lock + Expiry/Active Time Limits
 =====================================
 
@@ -108,6 +110,10 @@ are stored on the server in unix epoch to account for timezones and geographic d
 
 * Interaction with already issued tokens.
     * it prevents them from working?
+
+Must prevent creation of radius auth tokens
+
+Must prevent login via unix.
 
 Application Passwords / Issued Oauth Tokens
 ===========================================
