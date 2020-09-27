@@ -436,6 +436,7 @@ pub const JSON_SCHEMA_ATTR_ACCOUNT_EXPIRE: &str = r#"{
       "description": [
         "The datetime after which this accounnt no longer may authenticate."
       ],
+      "index": [],
       "unique": [
         "false"
       ],
@@ -464,6 +465,7 @@ pub const JSON_SCHEMA_ATTR_ACCOUNT_VALID_FROM: &str = r#"{
       "description": [
         "The datetime after which this account may commence authenticating."
       ],
+      "index": [],
       "unique": [
         "false"
       ],
