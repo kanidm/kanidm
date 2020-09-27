@@ -200,6 +200,7 @@ impl SchemaAttribute {
             SyntaxType::UINT32 => v.is_uint32(),
             SyntaxType::CID => v.is_cid(),
             SyntaxType::NSUNIQUEID => v.is_nsuniqueid(),
+            SyntaxType::DATETIME => v.is_datetime(),
         };
         if r {
             Ok(())
@@ -369,6 +370,15 @@ impl SchemaAttribute {
             SyntaxType::NSUNIQUEID => ava.iter().fold(Ok(()), |acc, v| {
                 acc.and_then(|_| {
                     if v.is_nsuniqueid() {
+                        Ok(())
+                    } else {
+                        Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
+                    }
+                })
+            }),
+            SyntaxType::DATETIME => ava.iter().fold(Ok(()), |acc, v| {
+                acc.and_then(|_| {
+                    if v.is_datetime() {
                         Ok(())
                     } else {
                         Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
