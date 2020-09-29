@@ -1835,4 +1835,38 @@ mod tests {
             idms_delayed.is_empty_or_panic();
         })
     }
+
+    #[test]
+    fn test_idm_account_valid_from_expire() {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       idms_delayed: &mut IdmServerDelayed,
+                       au: &mut AuditScope| {
+            // Any account taht is not yet valrid / expired can't auth.
+            unimplemented!();
+        })
+    }
+
+    #[test]
+    fn test_idm_unix_valid_from_expire() {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       idms_delayed: &mut IdmServerDelayed,
+                       au: &mut AuditScope| {
+            // Any account that is expired can't unix auth.
+            unimplemented!();
+        })
+    }
+
+    #[test]
+    fn test_idm_radius_valid_from_expire() {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       idms_delayed: &mut IdmServerDelayed,
+                       au: &mut AuditScope| {
+            // Any account not valid/expiry should not return
+            // a radius packet.
+            unimplemented!();
+        })
+    }
 }
