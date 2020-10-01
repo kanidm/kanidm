@@ -2074,7 +2074,7 @@ dependencies = [
 
 [[package]]
 name = "pam_kanidm"
-version = "1.1.0-alpha"
+version = "1.1.0-alpha.2"
 dependencies = [
  "futures",
  "kanidm_unix_int",
