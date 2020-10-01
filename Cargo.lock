@@ -1910,7 +1910,7 @@ checksum = "cf51a729ecf40266a2368ad335a5fdde43471f545a967109cd62146ecf8b66ff"
 
 [[package]]
 name = "nss_kanidm"
-version = "1.1.0-alpha"
+version = "1.1.0-alpha.2"
 dependencies = [
  "kanidm_unix_int",
  "lazy_static",
