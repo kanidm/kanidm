@@ -12,10 +12,8 @@
 
 * Update RELEASE_NOTES.md
 
-* git tag v1.1.x-alpha
-
-* bump all cargo.toml versions
-    find kani* -name Cargo.toml -exec cat '{}' \; | grep -e '^version ='
+* cargo release --no-dev-version --skip-publish --skip-tag  1.1.0-alpha.2
+* git tag v1.1.0-alpha.x
 
 * release kanidm_proto
 * release kanidmd/kanidm
