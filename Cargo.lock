@@ -1573,7 +1573,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_client"
-version = "1.1.0-alpha"
+version = "1.1.0-alpha.2"
 dependencies = [
  "async-std",
  "env_logger",
