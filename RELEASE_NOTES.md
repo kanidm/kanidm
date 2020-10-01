@@ -5,7 +5,36 @@
 
 # Release Notes
 
-## 2020-07-01 - Kanidm 1.1.0-alpha
+## 2020-10-01 - Kanidm 1.1.0-alpha2
+
+This is the second alpha series release of the Kanidm Identity Management
+project. Alpha releases are to help get feedback and ideas from the community
+on how we can continue to make this project better for a future supported release.
+
+### Release Highlights
+
+* SIMD key lookups in container builds for datastructures
+* Server and Client hardening warnings for running users and file permissions
+* Search limits and denial of unindexed searches to prevent denial-of-service
+* Dynamic Rounds for PBKDF2 based on CPU performance
+* Radius module upgraded to python 3
+* On-login PW upgrade, allowing weaker hashes to be re-computed to stronger variants on login.
+* Replace actix with tide and async
+* Reduction in memory footprint during searches
+* Change authentication from cookies to auth-bearer tokens
+
+### Getting Started
+
+To get started, see the [kanidm book]
+
+### Feedback
+
+We value your feedback! First, please see our [code of conduct]. If you
+have questions please join our [gitter community channel] so that we
+can help. If you find a bug or issue, we'd love you to report it to our
+[issue tracker].
+
+## 2020-07-01 - Kanidm 1.1.0-alpha1
 
 This is the first alpha series release of the Kanidm Identity Management
 project. Alpha releases are to help get feedback and ideas from the community
