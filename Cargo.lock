@@ -1523,7 +1523,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm"
-version = "1.1.0-alpha"
+version = "1.1.0-alpha.2"
 dependencies = [
  "async-h1",
  "async-std",
