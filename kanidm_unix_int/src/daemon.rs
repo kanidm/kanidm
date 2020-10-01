@@ -262,7 +262,7 @@ async fn main() {
         }
     }
 
-    let unixd_path = Path::new("/etc/kanidm/config");
+    let unixd_path = Path::new("/etc/kanidm/unixd");
     let unixd_path_str = match unixd_path.to_str() {
         Some(cps) => cps,
         None => {
