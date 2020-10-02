@@ -7,8 +7,9 @@ use std::borrow::Borrow;
 use std::convert::TryFrom;
 use std::fmt;
 use std::str::FromStr;
-use uuid::Uuid;
+use std::time::Duration;
 use time::OffsetDateTime;
+use uuid::Uuid;
 
 use sshkeys::PublicKey as SshPublicKey;
 use std::cmp::Ordering;
@@ -534,6 +535,10 @@ impl PartialValue {
             PartialValue::Nsuniqueid(_) => true,
             _ => false,
         }
+    }
+
+    pub fn new_datetime_epoch(ts: Duration) -> Self {
+        PartialValue::DateTime(OffsetDateTime::unix_epoch() + ts)
     }
 
     pub fn new_datetime_s(s: &str) -> Option<Self> {
@@ -1066,13 +1071,25 @@ impl Value {
         self.pv.is_nsuniqueid()
     }
 
+    pub fn new_datetime_epoch(ts: Duration) -> Self {
+        Value {
+            pv: PartialValue::new_datetime_epoch(ts),
+            data: None,
+        }
+    }
+
     pub fn new_datetime_s(s: &str) -> Option<Self> {
-        PartialValue::new_datetime_s(s).map(|pv| {
-            Value {
-                pv,
-                data: None,
+        PartialValue::new_datetime_s(s).map(|pv| Value { pv, data: None })
+    }
+
+    pub fn to_datetime(&self) -> Option<OffsetDateTime> {
+        match &self.pv {
+            PartialValue::DateTime(odt) => {
+                debug_assert!(odt.offset() == time::UtcOffset::UTC);
+                Some(*odt)
             }
-        })
+            _ => None,
+        }
     }
 
     pub fn is_datetime(&self) -> bool {
@@ -1171,16 +1188,9 @@ impl Value {
                 pv: PartialValue::Nsuniqueid(s),
                 data: None,
             }),
-            DbValueV1::DT(s) => 
-                PartialValue::new_datetime_s(&s)
-                    .ok_or(())
-                    .map(|pv|
-                        Value {
-                            pv,
-                            data: None,
-                        }
-                    ),
-
+            DbValueV1::DT(s) => PartialValue::new_datetime_s(&s)
+                .ok_or(())
+                .map(|pv| Value { pv, data: None }),
         }
     }
 
@@ -1250,9 +1260,7 @@ impl Value {
             PartialValue::Nsuniqueid(s) => DbValueV1::NU(s.clone()),
             PartialValue::DateTime(odt) => {
                 debug_assert!(odt.offset() == time::UtcOffset::UTC);
-                DbValueV1::DT(
-                    odt.format(time::Format::Rfc3339)
-                )
+                DbValueV1::DT(odt.format(time::Format::Rfc3339))
             }
         }
     }
@@ -1426,8 +1434,7 @@ impl Value {
                 None => false,
             },
             PartialValue::Nsuniqueid(s) => NSUNIQUEID_RE.is_match(s),
-            PartialValue::DateTime(odt) =>
-                odt.offset() == time::UtcOffset::UTC,
+            PartialValue::DateTime(odt) => odt.offset() == time::UtcOffset::UTC,
             _ => true,
         }
     }
@@ -1665,13 +1672,13 @@ mod tests {
         // Manually craft
         let inv1 = Value {
             pv: PartialValue::DateTime(OffsetDateTime::now_local()),
-            data: None
+            data: None,
         };
         assert!(!inv1.validate());
 
         let val3 = Value {
             pv: PartialValue::DateTime(OffsetDateTime::now_utc()),
-            data: None
+            data: None,
         };
         assert!(val3.validate());
     }

@@ -484,7 +484,6 @@ pub const JSON_SCHEMA_ATTR_ACCOUNT_VALID_FROM: &str = r#"{
     }
 }"#;
 
-
 // === classes ===
 
 pub const JSON_SCHEMA_CLASS_PERSON: &str = r#"

@@ -22,8 +22,6 @@ use crate::value::PartialValue;
 use crate::actors::v1_write::QueryServerWriteV1;
 use crate::idm::delayed::{DelayedAction, PasswordUpgrade, UnixPasswordUpgrade};
 
-use crate::idm::AuthState;
-
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::RadiusAuthToken;
 // use kanidm_proto::v1::TOTPSecret as ProtoTOTPSecret;
@@ -239,6 +237,10 @@ impl<'a> IdmServerWriteTransaction<'a> {
         ct: Duration,
     ) -> Result<AuthResult, OperationError> {
         ltrace!(au, "Received -> {:?}", ae);
+        eprintln!(
+            "OFFSET FN AUTH DATETIME {:?}",
+            time::OffsetDateTime::unix_epoch() + ct
+        );
 
         // Match on the auth event, to see what we need to do.
 
@@ -280,30 +282,30 @@ impl<'a> IdmServerWriteTransaction<'a> {
                     // continue, and helps to keep non-needed entry specific data
                     // out of the LRU.
                     let account = Account::try_from_entry_ro(au, &entry, &mut self.qs_read)?;
-                    let auth_session = AuthSession::new(au, account, init.appid.clone());
+                    let (auth_session, state) =
+                        AuthSession::new(au, account, init.appid.clone(), ct);
 
-                    // Get the set of mechanisms that can proceed. This is tied
-                    // to the session so that it can mutate state and have progression
-                    // of what's next, or ordering.
-                    let next_mech = auth_session.valid_auth_mechs();
-
+                    match auth_session {
+                        Some(auth_session) => {
+                            lperf_segment!(au, "idm::server::auth<Init> -> sessions", || {
+                                if self.sessions.contains_key(&sessionid) {
+                                    Err(OperationError::InvalidSessionState)
+                                } else {
+                                    self.sessions.insert(sessionid, auth_session);
+                                    // Debugging: ensure we really inserted ...
+                                    debug_assert!(self.sessions.get(&sessionid).is_some());
+                                    Ok(())
+                                }
+                            })?;
+                        }
+                        None => {
+                            lsecurity!(au, "Authentication Session Unable to begin");
+                        }
+                    };
                     // If we have a session of the same id, return an error (despite how
                     // unlikely this is ...
-                    lperf_segment!(au, "idm::server::auth<Init> -> sessions", || {
-                        if self.sessions.contains_key(&sessionid) {
-                            Err(OperationError::InvalidSessionState)
-                        } else {
-                            self.sessions.insert(sessionid, auth_session);
-                            // Debugging: ensure we really inserted ...
-                            debug_assert!(self.sessions.get(&sessionid).is_some());
-                            Ok(())
-                        }
-                    })?;
 
-                    Ok(AuthResult {
-                        sessionid,
-                        state: AuthState::Continue(next_mech),
-                    })
+                    Ok(AuthResult { sessionid, state })
                 })
             }
             AuthEventStep::Creds(creds) => {
@@ -1836,23 +1838,99 @@ mod tests {
         })
     }
 
+    // For testing the timeouts
+    // We need times on this scale
+    //    not yet valid <-> valid from time <-> current_time <-> expire time <-> expired
+    const TEST_NOT_YET_VALID_TIME: u64 = TEST_CURRENT_TIME - 240;
+    const TEST_VALID_FROM_TIME: u64 = TEST_CURRENT_TIME - 120;
+    const TEST_EXPIRE_TIME: u64 = TEST_CURRENT_TIME + 120;
+    const TEST_AFTER_EXPIRY: u64 = TEST_CURRENT_TIME + 240;
+
+    fn set_admin_valid_time(au: &mut AuditScope, qs: &QueryServer) {
+        let qs_write = qs.write(duration_from_epoch_now());
+
+        let v_valid_from = Value::new_datetime_epoch(Duration::from_secs(TEST_VALID_FROM_TIME));
+        let v_expire = Value::new_datetime_epoch(Duration::from_secs(TEST_EXPIRE_TIME));
+
+        // now modify and provide a primary credential.
+        let me_inv_m = unsafe {
+            ModifyEvent::new_internal_invalid(
+                filter!(f_eq("name", PartialValue::new_iname("admin"))),
+                ModifyList::new_list(vec![
+                    Modify::Present("account_expire".to_string(), v_expire),
+                    Modify::Present("account_valid_from".to_string(), v_valid_from),
+                ]),
+            )
+        };
+        // go!
+        assert!(qs_write.modify(au, &me_inv_m).is_ok());
+
+        qs_write.commit(au).expect("Must not fail");
+    }
+
     #[test]
     fn test_idm_account_valid_from_expire() {
-        run_idm_test!(|_qs: &QueryServer,
+        run_idm_test!(|qs: &QueryServer,
                        idms: &IdmServer,
-                       idms_delayed: &mut IdmServerDelayed,
+                       _idms_delayed: &mut IdmServerDelayed,
                        au: &mut AuditScope| {
             // Any account taht is not yet valrid / expired can't auth.
-            unimplemented!();
+
+            init_admin_w_password(au, qs, TEST_PASSWORD).expect("Failed to setup admin account");
+            // Set the valid bounds high/low
+            // TEST_VALID_FROM_TIME/TEST_EXPIRE_TIME
+            set_admin_valid_time(au, qs);
+
+            let time_low = Duration::from_secs(TEST_NOT_YET_VALID_TIME);
+            let time_high = Duration::from_secs(TEST_AFTER_EXPIRY);
+
+            let mut idms_write = idms.write();
+            let admin_init = AuthEvent::named_init("admin");
+            let r1 = idms_write.auth(au, &admin_init, time_low);
+
+            let ar = r1.unwrap();
+            let AuthResult {
+                sessionid: _,
+                state,
+            } = ar;
+
+            match state {
+                AuthState::Denied(_) => {}
+                _ => {
+                    panic!();
+                }
+            };
+
+            idms_write.commit(au).expect("Must not fail");
+
+            // And here!
+            let mut idms_write = idms.write();
+            let admin_init = AuthEvent::named_init("admin");
+            let r1 = idms_write.auth(au, &admin_init, time_high);
+
+            let ar = r1.unwrap();
+            let AuthResult {
+                sessionid: _,
+                state,
+            } = ar;
+
+            match state {
+                AuthState::Denied(_) => {}
+                _ => {
+                    panic!();
+                }
+            };
+
+            idms_write.commit(au).expect("Must not fail");
         })
     }
 
     #[test]
     fn test_idm_unix_valid_from_expire() {
         run_idm_test!(|_qs: &QueryServer,
-                       idms: &IdmServer,
-                       idms_delayed: &mut IdmServerDelayed,
-                       au: &mut AuditScope| {
+                       _idms: &IdmServer,
+                       _idms_delayed: &mut IdmServerDelayed,
+                       _au: &mut AuditScope| {
             // Any account that is expired can't unix auth.
             unimplemented!();
         })
@@ -1861,9 +1939,9 @@ mod tests {
     #[test]
     fn test_idm_radius_valid_from_expire() {
         run_idm_test!(|_qs: &QueryServer,
-                       idms: &IdmServer,
-                       idms_delayed: &mut IdmServerDelayed,
-                       au: &mut AuditScope| {
+                       _idms: &IdmServer,
+                       _idms_delayed: &mut IdmServerDelayed,
+                       _au: &mut AuditScope| {
             // Any account not valid/expiry should not return
             // a radius packet.
             unimplemented!();
