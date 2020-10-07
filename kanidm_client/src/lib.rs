@@ -342,7 +342,7 @@ impl KanidmClient {
     }
 
     pub fn get_token(&self) -> Option<&str> {
-        self.bearer_token.as_ref().map(|s| s.as_str())
+        self.bearer_token.as_deref()
     }
 
     pub fn logout(&mut self) -> Result<(), reqwest::Error> {

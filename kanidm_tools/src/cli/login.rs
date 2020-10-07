@@ -4,7 +4,7 @@ use std::fs::File;
 use std::io::{BufReader, BufWriter};
 use structopt::StructOpt;
 
-static TOKEN_PATH: &'static str = "~/.cache/kanidm_tokens";
+static TOKEN_PATH: &str = "~/.cache/kanidm_tokens";
 
 pub fn read_tokens() -> Result<BTreeMap<String, String>, ()> {
     let token_path: String = shellexpand::tilde(TOKEN_PATH).into_owned();
@@ -50,7 +50,7 @@ impl LoginOpt {
     pub fn exec(&self) {
         let mut client = self.copt.to_unauth_client();
 
-        let (r, username) = match self.copt.username.as_ref().map(|s| s.as_str()) {
+        let (r, username) = match self.copt.username.as_deref() {
             None | Some("anonymous") => (client.auth_anonymous(), "anonymous".to_string()),
             Some(username) => {
                 let password = match rpassword::prompt_password_stderr("Enter password: ") {
