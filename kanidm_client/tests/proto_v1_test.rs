@@ -772,6 +772,8 @@ fn test_server_rest_totp_auth_lifecycle() {
     });
 }
 
+// Test setting account expiry
+
 // Test the self version of the radius path.
 
 // Test hitting all auth-required endpoints and assert they give unauthorized.

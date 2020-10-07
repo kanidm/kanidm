@@ -7,6 +7,8 @@ use crate::server::QueryServerReadTransaction;
 use crate::value::PartialValue;
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::RadiusAuthToken;
+use std::time::Duration;
+use time::OffsetDateTime;
 
 lazy_static! {
     static ref PVCLASS_ACCOUNT: PartialValue = PartialValue::new_class("account");
@@ -19,6 +21,8 @@ pub(crate) struct RadiusAccount {
     pub uuid: Uuid,
     pub groups: Vec<Group>,
     pub radius_secret: String,
+    pub valid_from: Option<OffsetDateTime>,
+    pub expire: Option<OffsetDateTime>,
 }
 
 impl RadiusAccount {
@@ -58,16 +62,52 @@ impl RadiusAccount {
 
         let groups = Group::try_from_account_entry_red_ro(au, &value, qs)?;
 
+        let valid_from = value.get_ava_single_datetime("account_valid_from");
+
+        let expire = value.get_ava_single_datetime("account_expire");
+
         Ok(RadiusAccount {
             name,
             uuid,
             displayname,
             groups,
             radius_secret,
+            valid_from,
+            expire,
         })
     }
 
-    pub(crate) fn to_radiusauthtoken(&self) -> Result<RadiusAuthToken, OperationError> {
+    fn is_within_valid_time(&self, ct: Duration) -> bool {
+        let cot = OffsetDateTime::unix_epoch() + ct;
+
+        let vmin = if let Some(vft) = &self.valid_from {
+            // If current time greater than strat time window
+            vft < &cot
+        } else {
+            // We have no time, not expired.
+            true
+        };
+        let vmax = if let Some(ext) = &self.expire {
+            // If exp greater than ct then expired.
+            &cot < ext
+        } else {
+            // If not present, we are not expired
+            true
+        };
+        // Mix the results
+        vmin && vmax
+    }
+
+    pub(crate) fn to_radiusauthtoken(
+        &self,
+        ct: Duration,
+    ) -> Result<RadiusAuthToken, OperationError> {
+        if !self.is_within_valid_time(ct) {
+            return Err(OperationError::InvalidAccountState(
+                "Account Expired".to_string(),
+            ));
+        }
+
         // If we don't have access/permission, then just error instead.
         // This includes if we don't have the secret.
         Ok(RadiusAuthToken {

@@ -237,11 +237,6 @@ impl<'a> IdmServerWriteTransaction<'a> {
         ct: Duration,
     ) -> Result<AuthResult, OperationError> {
         ltrace!(au, "Received -> {:?}", ae);
-        eprintln!(
-            "OFFSET FN AUTH DATETIME {:?}",
-            time::OffsetDateTime::unix_epoch() + ct
-        );
-
         // Match on the auth event, to see what we need to do.
 
         match &ae.step {
@@ -340,7 +335,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
         &mut self,
         au: &mut AuditScope,
         uae: &UnixUserAuthEvent,
-        _ct: Duration,
+        ct: Duration,
     ) -> Result<Option<UnixUserToken>, OperationError> {
         // TODO #59: Implement soft lock checking for unix creds here!
 
@@ -357,14 +352,14 @@ impl<'a> IdmServerWriteTransaction<'a> {
             })?;
 
         // Validate the unix_pw - this checks the account/cred lock states.
-        account.verify_unix_credential(au, uae.cleartext.as_str(), &self.async_tx)
+        account.verify_unix_credential(au, uae.cleartext.as_str(), &self.async_tx, ct)
     }
 
     pub fn auth_ldap(
         &mut self,
         au: &mut AuditScope,
         lae: &LdapAuthEvent,
-        _ct: Duration,
+        ct: Duration,
     ) -> Result<Option<LdapBoundToken>, OperationError> {
         // TODO #59: Implement soft lock checking for unix creds here!
 
@@ -397,7 +392,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
             let account =
                 UnixUserAccount::try_from_entry_ro(au, &account_entry, &mut self.qs_read)?;
             if account
-                .verify_unix_credential(au, lae.cleartext.as_str(), &self.async_tx)?
+                .verify_unix_credential(au, lae.cleartext.as_str(), &self.async_tx, ct)?
                 .is_some()
             {
                 // Get the anon uat
@@ -440,6 +435,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         &mut self,
         au: &mut AuditScope,
         rate: &RadiusAuthTokenEvent,
+        ct: Duration,
     ) -> Result<RadiusAuthToken, OperationError> {
         let account = self
             .qs_read
@@ -452,7 +448,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                 e
             })?;
 
-        account.to_radiusauthtoken()
+        account.to_radiusauthtoken(ct)
     }
 
     pub fn get_unixusertoken(
@@ -1425,7 +1421,7 @@ mod tests {
             let mut idms_prox_read = idms.proxy_read();
             let rate = RadiusAuthTokenEvent::new_internal(UUID_ADMIN.clone());
             let tok_r = idms_prox_read
-                .get_radiusauthtoken(au, &rate)
+                .get_radiusauthtoken(au, &rate, duration_from_epoch_now())
                 .expect("Failed to generate radius auth token");
 
             // view the token?
@@ -1565,7 +1561,6 @@ mod tests {
 
             let pce = UnixPasswordChangeEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD);
 
-            assert!(idms_prox_write.set_unix_account_password(au, &pce).is_ok());
             assert!(idms_prox_write.set_unix_account_password(au, &pce).is_ok());
             assert!(idms_prox_write.commit(au).is_ok());
 
@@ -1927,24 +1922,93 @@ mod tests {
 
     #[test]
     fn test_idm_unix_valid_from_expire() {
-        run_idm_test!(|_qs: &QueryServer,
-                       _idms: &IdmServer,
+        run_idm_test!(|qs: &QueryServer,
+                       idms: &IdmServer,
                        _idms_delayed: &mut IdmServerDelayed,
-                       _au: &mut AuditScope| {
+                       au: &mut AuditScope| {
             // Any account that is expired can't unix auth.
-            unimplemented!();
+            init_admin_w_password(au, qs, TEST_PASSWORD).expect("Failed to setup admin account");
+            set_admin_valid_time(au, qs);
+
+            let time_low = Duration::from_secs(TEST_NOT_YET_VALID_TIME);
+            let time_high = Duration::from_secs(TEST_AFTER_EXPIRY);
+
+            // make the admin a valid posix account
+            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
+            let me_posix = unsafe {
+                ModifyEvent::new_internal_invalid(
+                    filter!(f_eq("name", PartialValue::new_iname("admin"))),
+                    ModifyList::new_list(vec![
+                        Modify::Present("class".to_string(), Value::new_class("posixaccount")),
+                        Modify::Present("gidnumber".to_string(), Value::new_uint32(2001)),
+                    ]),
+                )
+            };
+            assert!(idms_prox_write.qs_write.modify(au, &me_posix).is_ok());
+
+            let pce = UnixPasswordChangeEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD);
+
+            assert!(idms_prox_write.set_unix_account_password(au, &pce).is_ok());
+            assert!(idms_prox_write.commit(au).is_ok());
+
+            // Now check auth when the time is too high or too low.
+
+            let mut idms_write = idms.write();
+            let uuae_good = UnixUserAuthEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD);
+            let a1 = idms_write.auth_unix(au, &uuae_good, time_low);
+            // Should this actually send an error with the details? Or just silently act as
+            // badpw?
+            match a1 {
+                Ok(None) => {}
+                _ => assert!(false),
+            };
+
+            let a2 = idms_write.auth_unix(au, &uuae_good, time_high);
+            match a2 {
+                Ok(None) => {}
+                _ => assert!(false),
+            };
         })
     }
 
     #[test]
     fn test_idm_radius_valid_from_expire() {
-        run_idm_test!(|_qs: &QueryServer,
-                       _idms: &IdmServer,
+        run_idm_test!(|qs: &QueryServer,
+                       idms: &IdmServer,
                        _idms_delayed: &mut IdmServerDelayed,
-                       _au: &mut AuditScope| {
+                       au: &mut AuditScope| {
             // Any account not valid/expiry should not return
             // a radius packet.
-            unimplemented!();
+            init_admin_w_password(au, qs, TEST_PASSWORD).expect("Failed to setup admin account");
+            set_admin_valid_time(au, qs);
+
+            let time_low = Duration::from_secs(TEST_NOT_YET_VALID_TIME);
+            let time_high = Duration::from_secs(TEST_AFTER_EXPIRY);
+
+            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
+            let rrse = RegenerateRadiusSecretEvent::new_internal(UUID_ADMIN.clone());
+            let _r1 = idms_prox_write
+                .regenerate_radius_secret(au, &rrse)
+                .expect("Failed to reset radius credential 1");
+            idms_prox_write.commit(au).expect("failed to commit");
+
+            let mut idms_prox_read = idms.proxy_read();
+            let rate = RadiusAuthTokenEvent::new_internal(UUID_ADMIN.clone());
+            let tok_r = idms_prox_read.get_radiusauthtoken(au, &rate, time_low);
+
+            if let Err(_) = tok_r {
+                // Ok?
+            } else {
+                assert!(false);
+            }
+
+            let tok_r = idms_prox_read.get_radiusauthtoken(au, &rate, time_high);
+
+            if let Err(_) = tok_r {
+                // Ok?
+            } else {
+                assert!(false);
+            }
         })
     }
 }

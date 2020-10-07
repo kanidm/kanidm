@@ -160,11 +160,6 @@ impl Account {
     pub fn is_within_valid_time(&self, ct: Duration) -> bool {
         let cot = OffsetDateTime::unix_epoch() + ct;
 
-        eprintln!("🥟🥟🥟🥟🥟🥟🥟🥟🥟🥟🥟🥟🥟🥟🥟🥟🥟🥟");
-        eprintln!("{:?}", self.valid_from);
-        eprintln!("{:?}", cot);
-        eprintln!("{:?}", self.expire);
-
         let vmin = if let Some(vft) = &self.valid_from {
             // If current time greater than strat time window
             vft < &cot
@@ -179,7 +174,6 @@ impl Account {
             // If not present, we are not expired
             true
         };
-        eprintln!("{:?} && {:?}", vmin, vmax);
         // Mix the results
         vmin && vmax
     }

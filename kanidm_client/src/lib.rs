@@ -767,6 +767,28 @@ impl KanidmClient {
         )
     }
 
+    pub fn idm_account_get_attr(
+        &self,
+        id: &str,
+        attr: &str,
+    ) -> Result<Option<Vec<String>>, ClientError> {
+        self.perform_get_request(format!("/v1/account/{}/_attr/{}", id, attr).as_str())
+    }
+
+    pub fn idm_account_purge_attr(&self, id: &str, attr: &str) -> Result<bool, ClientError> {
+        self.perform_delete_request(format!("/v1/account/{}/_attr/{}", id, attr).as_str())
+    }
+
+    pub fn idm_account_set_attr(
+        &self,
+        id: &str,
+        attr: &str,
+        values: &[&str],
+    ) -> Result<bool, ClientError> {
+        let m: Vec<_> = values.iter().map(|v| (*v).to_string()).collect();
+        self.perform_put_request(format!("/v1/account/{}/_attr/{}", id, attr).as_str(), m)
+    }
+
     pub fn idm_account_primary_credential_import_password(
         &self,
         id: &str,
