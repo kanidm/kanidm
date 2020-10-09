@@ -137,6 +137,7 @@ impl UnixUserAccount {
         try_from_entry!(value, groups)
     }
 
+    /*
     pub(crate) fn try_from_entry_reduced(
         au: &mut AuditScope,
         value: &Entry<EntryReduced, EntryCommitted>,
@@ -145,8 +146,9 @@ impl UnixUserAccount {
         let groups = UnixGroup::try_from_account_entry_red_ro(au, value, qs)?;
         try_from_entry!(value, groups)
     }
+    */
 
-    pub(crate) fn to_unixusertoken(&self) -> Result<UnixUserToken, OperationError> {
+    pub(crate) fn to_unixusertoken(&self, ct: Duration) -> Result<UnixUserToken, OperationError> {
         let groups: Result<Vec<_>, _> = self.groups.iter().map(|g| g.to_unixgrouptoken()).collect();
         let groups = groups?;
 
@@ -159,6 +161,7 @@ impl UnixUserAccount {
             shell: self.shell.clone(),
             groups,
             sshkeys: self.sshkeys.clone(),
+            valid: self.is_within_valid_time(ct),
         })
     }
 
@@ -180,7 +183,7 @@ impl UnixUserAccount {
         let cot = OffsetDateTime::unix_epoch() + ct;
 
         let vmin = if let Some(vft) = &self.valid_from {
-            // If current time greater than strat time window
+            // If current time greater than start time window
             vft < &cot
         } else {
             // We have no time, not expired.
@@ -207,6 +210,7 @@ impl UnixUserAccount {
         // Is the cred locked?
 
         if !self.is_within_valid_time(ct) {
+            lsecurity!(au, "Account is not within valid time period");
             return Ok(None);
         }
 
@@ -229,7 +233,9 @@ impl UnixUserAccount {
                             })?;
                             }
 
-                            Some(self.to_unixusertoken()).transpose()
+                            // Technically this means we check the times twice, but that doesn't
+                            // seem like a big deal when we want to short cut return on invalid.
+                            Some(self.to_unixusertoken(ct)).transpose()
                         } else {
                             // Failed to auth
                             lsecurity!(au, "Failed unix cred handling (denied)");
@@ -402,6 +408,7 @@ impl UnixGroup {
         try_from_account_group_e!(au, value, qs)
     }
 
+    /*
     pub fn try_from_account_entry_red_ro(
         au: &mut AuditScope,
         value: &Entry<EntryReduced, EntryCommitted>,
@@ -409,6 +416,7 @@ impl UnixGroup {
     ) -> Result<Vec<Self>, OperationError> {
         try_from_account_group_e!(au, value, qs)
     }
+    */
 
     pub fn try_from_entry_reduced(
         value: &Entry<EntryReduced, EntryCommitted>,

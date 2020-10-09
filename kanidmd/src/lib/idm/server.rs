@@ -455,19 +455,20 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         &mut self,
         au: &mut AuditScope,
         uute: &UnixUserTokenEvent,
+        ct: Duration,
     ) -> Result<UnixUserToken, OperationError> {
         let account = self
             .qs_read
-            .impersonate_search_ext_uuid(au, &uute.target, &uute.event)
+            .impersonate_search_uuid(au, &uute.target, &uute.event)
             .and_then(|account_entry| {
-                UnixUserAccount::try_from_entry_reduced(au, &account_entry, &mut self.qs_read)
+                UnixUserAccount::try_from_entry_ro(au, &account_entry, &mut self.qs_read)
             })
             .map_err(|e| {
                 ladmin_error!(au, "Failed to start unix user token -> {:?}", e);
                 e
             })?;
 
-        account.to_unixusertoken()
+        account.to_unixusertoken(ct)
     }
 
     pub fn get_unixgrouptoken(
@@ -1517,7 +1518,7 @@ mod tests {
 
             let uute = UnixUserTokenEvent::new_internal(UUID_ADMIN.clone());
             let tok_r = idms_prox_read
-                .get_unixusertoken(au, &uute)
+                .get_unixusertoken(au, &uute, duration_from_epoch_now())
                 .expect("Failed to generate unix user token");
 
             assert!(tok_r.name == "admin");
@@ -1525,6 +1526,7 @@ mod tests {
             assert!(tok_r.groups.len() == 2);
             assert!(tok_r.groups[0].name == "admin");
             assert!(tok_r.groups[1].name == "testgroup");
+            assert!(tok_r.valid == true);
 
             // Show we can get the admin as a unix group token too
             let ugte = UnixGroupTokenEvent::new_internal(
@@ -1952,9 +1954,9 @@ mod tests {
             assert!(idms_prox_write.commit(au).is_ok());
 
             // Now check auth when the time is too high or too low.
-
             let mut idms_write = idms.write();
             let uuae_good = UnixUserAuthEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD);
+
             let a1 = idms_write.auth_unix(au, &uuae_good, time_low);
             // Should this actually send an error with the details? Or just silently act as
             // badpw?
@@ -1968,6 +1970,25 @@ mod tests {
                 Ok(None) => {}
                 _ => assert!(false),
             };
+
+            idms_write.commit(au).expect("Must not fail");
+            // Also check the generated unix tokens are invalid.
+            let mut idms_prox_read = idms.proxy_read();
+            let uute = UnixUserTokenEvent::new_internal(UUID_ADMIN.clone());
+
+            let tok_r = idms_prox_read
+                .get_unixusertoken(au, &uute, time_low)
+                .expect("Failed to generate unix user token");
+
+            assert!(tok_r.name == "admin");
+            assert!(tok_r.valid == false);
+
+            let tok_r = idms_prox_read
+                .get_unixusertoken(au, &uute, time_high)
+                .expect("Failed to generate unix user token");
+
+            assert!(tok_r.name == "admin");
+            assert!(tok_r.valid == false);
         })
     }
 

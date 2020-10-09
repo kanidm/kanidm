@@ -561,9 +561,16 @@ impl QueryServerReadV1 {
                     }
                 };
 
+                let ct = SystemTime::now()
+                    .duration_since(SystemTime::UNIX_EPOCH)
+                    .map_err(|e| {
+                        ladmin_error!(audit, "Clock Error -> {:?}", e);
+                        OperationError::InvalidState
+                    })?;
+
                 ltrace!(audit, "Begin event {:?}", rate);
 
-                idm_read.get_unixusertoken(&mut audit, &rate)
+                idm_read.get_unixusertoken(&mut audit, &rate, ct)
             }
         );
         self.log.send(audit).map_err(|_| {

@@ -287,6 +287,17 @@ impl KanidmAsyncClient {
         Ok(Some((r.youare, r.uat)))
     }
 
+    pub async fn idm_account_set_attr(
+        &self,
+        id: &str,
+        attr: &str,
+        values: &[&str],
+    ) -> Result<bool, ClientError> {
+        let m: Vec<_> = values.iter().map(|v| (*v).to_string()).collect();
+        self.perform_put_request(format!("/v1/account/{}/_attr/{}", id, attr).as_str(), m)
+            .await
+    }
+
     pub async fn idm_account_unix_token_get(&self, id: &str) -> Result<UnixUserToken, ClientError> {
         // Format doesn't work in async
         // format!("/v1/account/{}/_unix/_token", id).as_str()

@@ -23,9 +23,10 @@ const ADMIN_TEST_PASSWORD: &str = "integration test admin password";
 const TESTACCOUNT1_PASSWORD_A: &str = "password a for account1 test";
 const TESTACCOUNT1_PASSWORD_B: &str = "password b for account1 test";
 const TESTACCOUNT1_PASSWORD_INC: &str = "never going to work";
+const ACCOUNT_EXPIRE: &str = "1970-01-01T00:00:00+00:00";
 
 fn run_test(fix_fn: fn(&mut KanidmClient) -> (), test_fn: fn(CacheLayer, KanidmAsyncClient) -> ()) {
-    // ::std::env::set_var("RUST_LOG", "actix_web=warn,kanidm=error");
+    // ::std::env::set_var("RUST_LOG", "kanidm=debug");
     let _ = env_logger::builder().is_test(true).try_init();
 
     let (mut ready_tx, mut ready_rx) = mpsc::channel(1);
@@ -42,8 +43,8 @@ fn run_test(fix_fn: fn(&mut KanidmClient) -> (), test_fn: fn(CacheLayer, KanidmA
     config.address = format!("127.0.0.1:{}", port);
     config.secure_cookies = false;
     config.integration_test_config = Some(int_config);
-    // config.log_level = Some(LogLevel::Verbose as u32);
     config.log_level = Some(LogLevel::Quiet as u32);
+    // config.log_level = Some(LogLevel::Verbose as u32);
     config.threads = 1;
 
     let t_handle = thread::spawn(move || {
@@ -547,6 +548,81 @@ fn test_cache_account_pam_nonexist() {
                 .await
                 .expect("failed to authenticate");
             assert!(a2 == None);
+        };
+        rt.block_on(fut);
+    })
+}
+
+#[test]
+fn test_cache_account_expiry() {
+    run_test(test_fixture, |cachelayer, mut adminclient| {
+        let mut rt = Runtime::new().expect("Failed to start tokio");
+        let fut = async move {
+            cachelayer.attempt_online().await;
+            assert!(cachelayer.test_connection().await);
+
+            // We need one good auth first to prime the cache with a hash.
+            let a1 = cachelayer
+                .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_A)
+                .await
+                .expect("failed to authenticate");
+            assert!(a1 == Some(true));
+            // Invalidate to make sure we go online next checks.
+            assert!(cachelayer.invalidate().await.is_ok());
+
+            // expire the account
+            adminclient
+                .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+                .await
+                .expect("failed to auth as admin");
+            adminclient
+                .idm_account_set_attr("testaccount1", "account_expire", &[ACCOUNT_EXPIRE])
+                .await
+                .unwrap();
+            // auth will fail
+            let a2 = cachelayer
+                .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_A)
+                .await
+                .expect("failed to authenticate");
+            assert!(a2 == Some(false));
+
+            // ssh keys should be empty
+            let sk = cachelayer
+                .get_sshkeys("testaccount1")
+                .await
+                .expect("Failed to get from cache.");
+            assert!(sk.len() == 0);
+
+            // Pam account allowed should be denied.
+            let a3 = cachelayer
+                .pam_account_allowed("testaccount1")
+                .await
+                .expect("failed to authenticate");
+            assert!(a3 == Some(false));
+
+            // go offline
+            cachelayer.mark_offline().await;
+
+            // Now, check again ...
+            let a4 = cachelayer
+                .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_A)
+                .await
+                .expect("failed to authenticate");
+            assert!(a4 == Some(false));
+
+            // ssh keys should be empty
+            let sk = cachelayer
+                .get_sshkeys("testaccount1")
+                .await
+                .expect("Failed to get from cache.");
+            assert!(sk.len() == 0);
+
+            // Pam account allowed should be denied.
+            let a5 = cachelayer
+                .pam_account_allowed("testaccount1")
+                .await
+                .expect("failed to authenticate");
+            assert!(a5 == Some(false));
         };
         rt.block_on(fut);
     })
