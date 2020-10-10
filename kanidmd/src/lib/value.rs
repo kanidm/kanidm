@@ -1671,7 +1671,9 @@ mod tests {
 
         // Manually craft
         let inv1 = Value {
-            pv: PartialValue::DateTime(OffsetDateTime::now_local()),
+            pv: PartialValue::DateTime(
+                OffsetDateTime::now_utc().to_offset(time::UtcOffset::east_hours(10)),
+            ),
             data: None,
         };
         assert!(!inv1.validate());
