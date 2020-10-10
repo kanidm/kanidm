@@ -16,6 +16,8 @@ use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
 use crate::idm::delayed::{DelayedAction, UnixPasswordUpgrade};
 
 // use crossbeam::channel::Sender;
+use std::time::Duration;
+use time::OffsetDateTime;
 use tokio::sync::mpsc::UnboundedSender as Sender;
 
 use std::iter;
@@ -31,6 +33,8 @@ pub(crate) struct UnixUserAccount {
     pub sshkeys: Vec<String>,
     pub groups: Vec<UnixGroup>,
     cred: Option<Credential>,
+    pub valid_from: Option<OffsetDateTime>,
+    pub expire: Option<OffsetDateTime>,
 }
 
 lazy_static! {
@@ -94,6 +98,10 @@ macro_rules! try_from_entry {
             .get_ava_single_credential("unix_password")
             .map(|v| v.clone());
 
+        let valid_from = $value.get_ava_single_datetime("account_valid_from");
+
+        let expire = $value.get_ava_single_datetime("account_expire");
+
         Ok(UnixUserAccount {
             name,
             spn,
@@ -104,6 +112,8 @@ macro_rules! try_from_entry {
             sshkeys,
             groups: $groups,
             cred,
+            valid_from,
+            expire,
         })
     }};
 }
@@ -127,6 +137,7 @@ impl UnixUserAccount {
         try_from_entry!(value, groups)
     }
 
+    /*
     pub(crate) fn try_from_entry_reduced(
         au: &mut AuditScope,
         value: &Entry<EntryReduced, EntryCommitted>,
@@ -135,8 +146,9 @@ impl UnixUserAccount {
         let groups = UnixGroup::try_from_account_entry_red_ro(au, value, qs)?;
         try_from_entry!(value, groups)
     }
+    */
 
-    pub(crate) fn to_unixusertoken(&self) -> Result<UnixUserToken, OperationError> {
+    pub(crate) fn to_unixusertoken(&self, ct: Duration) -> Result<UnixUserToken, OperationError> {
         let groups: Result<Vec<_>, _> = self.groups.iter().map(|g| g.to_unixgrouptoken()).collect();
         let groups = groups?;
 
@@ -149,6 +161,7 @@ impl UnixUserAccount {
             shell: self.shell.clone(),
             groups,
             sshkeys: self.sshkeys.clone(),
+            valid: self.is_within_valid_time(ct),
         })
     }
 
@@ -166,13 +179,41 @@ impl UnixUserAccount {
         Ok(ModifyList::new_purge_and_set("unix_password", vcred))
     }
 
+    fn is_within_valid_time(&self, ct: Duration) -> bool {
+        let cot = OffsetDateTime::unix_epoch() + ct;
+
+        let vmin = if let Some(vft) = &self.valid_from {
+            // If current time greater than start time window
+            vft < &cot
+        } else {
+            // We have no time, not expired.
+            true
+        };
+        let vmax = if let Some(ext) = &self.expire {
+            // If exp greater than ct then expired.
+            &cot < ext
+        } else {
+            // If not present, we are not expired
+            true
+        };
+        // Mix the results
+        vmin && vmax
+    }
+
     pub(crate) fn verify_unix_credential(
         &self,
         au: &mut AuditScope,
         cleartext: &str,
         async_tx: &Sender<DelayedAction>,
+        ct: Duration,
     ) -> Result<Option<UnixUserToken>, OperationError> {
-        // TODO #59: Is the cred locked?
+        // Is the cred locked?
+
+        if !self.is_within_valid_time(ct) {
+            lsecurity!(au, "Account is not within valid time period");
+            return Ok(None);
+        }
+
         // is the cred some or none?
         match &self.cred {
             Some(cred) => {
@@ -192,7 +233,9 @@ impl UnixUserAccount {
                             })?;
                             }
 
-                            Some(self.to_unixusertoken()).transpose()
+                            // Technically this means we check the times twice, but that doesn't
+                            // seem like a big deal when we want to short cut return on invalid.
+                            Some(self.to_unixusertoken(ct)).transpose()
                         } else {
                             // Failed to auth
                             lsecurity!(au, "Failed unix cred handling (denied)");
@@ -365,6 +408,7 @@ impl UnixGroup {
         try_from_account_group_e!(au, value, qs)
     }
 
+    /*
     pub fn try_from_account_entry_red_ro(
         au: &mut AuditScope,
         value: &Entry<EntryReduced, EntryCommitted>,
@@ -372,6 +416,7 @@ impl UnixGroup {
     ) -> Result<Vec<Self>, OperationError> {
         try_from_account_group_e!(au, value, qs)
     }
+    */
 
     pub fn try_from_entry_reduced(
         value: &Entry<EntryReduced, EntryCommitted>,

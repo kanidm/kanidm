@@ -426,6 +426,66 @@ pub const JSON_SCHEMA_ATTR_NSUNIQUEID: &str = r#"{
     }
 }"#;
 
+pub const JSON_SCHEMA_ATTR_ACCOUNT_EXPIRE: &str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "The datetime after which this accounnt no longer may authenticate."
+      ],
+      "index": [],
+      "unique": [
+        "false"
+      ],
+      "multivalue": [
+        "false"
+      ],
+      "attributename": [
+        "account_expire"
+      ],
+      "syntax": [
+        "DATETIME"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000072"
+      ]
+    }
+}"#;
+
+pub const JSON_SCHEMA_ATTR_ACCOUNT_VALID_FROM: &str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "The datetime after which this account may commence authenticating."
+      ],
+      "index": [],
+      "unique": [
+        "false"
+      ],
+      "multivalue": [
+        "false"
+      ],
+      "attributename": [
+        "account_valid_from"
+      ],
+      "syntax": [
+        "DATETIME"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000073"
+      ]
+    }
+}"#;
+
+// === classes ===
+
 pub const JSON_SCHEMA_CLASS_PERSON: &str = r#"
   {
     "attrs": {
@@ -499,7 +559,9 @@ pub const JSON_SCHEMA_CLASS_ACCOUNT: &str = r#"
       "systemmay": [
         "primary_credential",
         "ssh_publickey",
-        "radius_secret"
+        "radius_secret",
+        "account_expire",
+        "account_valid_from"
       ],
       "systemmust": [
         "displayname",

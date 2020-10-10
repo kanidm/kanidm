@@ -51,6 +51,7 @@ use std::collections::BTreeSet;
 // use std::collections::BTreeMap as Map;
 use hashbrown::HashMap as Map;
 use hashbrown::HashSet;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 // use std::convert::TryFrom;
@@ -1581,6 +1582,11 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     pub fn get_ava_single_radiuscred(&self, attr: &str) -> Option<&str> {
         self.get_ava_single(attr)
             .and_then(|a| a.get_radius_secret())
+    }
+
+    #[inline(always)]
+    pub fn get_ava_single_datetime(&self, attr: &str) -> Option<OffsetDateTime> {
+        self.get_ava_single(attr).and_then(|a| a.to_datetime())
     }
 
     #[inline(always)]

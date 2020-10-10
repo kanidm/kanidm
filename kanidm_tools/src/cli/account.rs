@@ -1,6 +1,7 @@
 use crate::common::CommonOpt;
 use crate::password_prompt;
 use structopt::StructOpt;
+use time::OffsetDateTime;
 
 #[derive(Debug, StructOpt)]
 pub struct AccountCommonOpt {
@@ -22,6 +23,30 @@ pub struct AccountNamedOpt {
     aopts: AccountCommonOpt,
     #[structopt(flatten)]
     copt: CommonOpt,
+}
+
+#[derive(Debug, StructOpt)]
+pub struct AccountNamedExpireDateTimeOpt {
+    #[structopt(flatten)]
+    aopts: AccountCommonOpt,
+    #[structopt(flatten)]
+    copt: CommonOpt,
+    #[structopt(name = "datetime")]
+    /// An rfc3339 time of the format "YYYY-MM-DDTHH:MM:SS+TZ", "2020-09-25T11:22:02+10:00"
+    /// or the word "never", "clear" to remove account expiry.
+    datetime: String,
+}
+
+#[derive(Debug, StructOpt)]
+pub struct AccountNamedValidDateTimeOpt {
+    #[structopt(flatten)]
+    aopts: AccountCommonOpt,
+    #[structopt(flatten)]
+    copt: CommonOpt,
+    #[structopt(name = "datetime")]
+    /// An rfc3339 time of the format "YYYY-MM-DDTHH:MM:SS+TZ", "2020-09-25T11:22:02+10:00"
+    /// or the word "any", "clear" to remove valid from enforcement.
+    datetime: String,
 }
 
 #[derive(Debug, StructOpt)]
@@ -107,6 +132,16 @@ pub enum AccountSsh {
 }
 
 #[derive(Debug, StructOpt)]
+pub enum AccountValidity {
+    #[structopt(name = "show")]
+    Show(AccountNamedOpt),
+    #[structopt(name = "expire_at")]
+    ExpireAt(AccountNamedExpireDateTimeOpt),
+    #[structopt(name = "begin_from")]
+    BeginFrom(AccountNamedValidDateTimeOpt),
+}
+
+#[derive(Debug, StructOpt)]
 pub enum AccountOpt {
     #[structopt(name = "credential")]
     Credential(AccountCredential),
@@ -124,6 +159,8 @@ pub enum AccountOpt {
     Create(AccountCreateOpt),
     #[structopt(name = "delete")]
     Delete(AccountNamedOpt),
+    #[structopt(name = "validity")]
+    Validity(AccountValidity),
 }
 
 impl AccountOpt {
@@ -152,6 +189,11 @@ impl AccountOpt {
             AccountOpt::Get(aopt) => aopt.copt.debug,
             AccountOpt::Delete(aopt) => aopt.copt.debug,
             AccountOpt::Create(aopt) => aopt.copt.debug,
+            AccountOpt::Validity(avopt) => match avopt {
+                AccountValidity::Show(ano) => ano.copt.debug,
+                AccountValidity::ExpireAt(ano) => ano.copt.debug,
+                AccountValidity::BeginFrom(ano) => ano.copt.debug,
+            },
         }
     }
 
@@ -327,6 +369,118 @@ impl AccountOpt {
                     eprintln!("Error -> {:?}", e)
                 }
             }
+            AccountOpt::Validity(avopt) => match avopt {
+                AccountValidity::Show(ano) => {
+                    let client = ano.copt.to_client();
+
+                    let r = client
+                        .idm_account_get_attr(ano.aopts.account_id.as_str(), "account_expire")
+                        .and_then(|v1| {
+                            client
+                                .idm_account_get_attr(
+                                    ano.aopts.account_id.as_str(),
+                                    "account_valid_from",
+                                )
+                                .map(|v2| (v1, v2))
+                        });
+
+                    match r {
+                        Ok((ex, vf)) => {
+                            if let Some(t) = vf {
+                                // Convert the time to local timezone.
+                                let t = OffsetDateTime::parse(&t[0], time::Format::Rfc3339)
+                                    .map(|odt| {
+                                        odt.to_offset(time::UtcOffset::current_local_offset())
+                                            .format(time::Format::Rfc3339)
+                                    })
+                                    .unwrap_or_else(|_| "invalid timestamp".to_string());
+
+                                println!("valid after: {}", t);
+                            } else {
+                                println!("valid after: any time");
+                            }
+
+                            if let Some(t) = ex {
+                                let t = OffsetDateTime::parse(&t[0], time::Format::Rfc3339)
+                                    .map(|odt| {
+                                        odt.to_offset(time::UtcOffset::current_local_offset())
+                                            .format(time::Format::Rfc3339)
+                                    })
+                                    .unwrap_or_else(|_| "invalid timestamp".to_string());
+                                println!("expire: {}", t);
+                            } else {
+                                println!("expire: never");
+                            }
+                        }
+                        Err(e) => eprintln!("Error -> {:?}", e),
+                    }
+                }
+                AccountValidity::ExpireAt(ano) => {
+                    let client = ano.copt.to_client();
+                    if ano.datetime == "never" || ano.datetime == "clear" {
+                        // Unset the value
+                        if let Err(e) = client
+                            .idm_account_purge_attr(ano.aopts.account_id.as_str(), "account_expire")
+                        {
+                            eprintln!("Error -> {:?}", e)
+                        } else {
+                            println!("Success")
+                        }
+                    } else {
+                        if let Err(e) =
+                            OffsetDateTime::parse(ano.datetime.as_str(), time::Format::Rfc3339)
+                        {
+                            eprintln!("Error -> {:?}", e);
+                            return;
+                        }
+
+                        if let Err(e) = client.idm_account_set_attr(
+                            ano.aopts.account_id.as_str(),
+                            "account_expire",
+                            &[ano.datetime.as_str()],
+                        ) {
+                            eprintln!("Error -> {:?}", e);
+                        } else {
+                            println!("Success")
+                        }
+                    }
+                }
+                AccountValidity::BeginFrom(ano) => {
+                    let client = ano.copt.to_client();
+                    if ano.datetime == "any"
+                        || ano.datetime == "clear"
+                        || ano.datetime == "whenever"
+                    {
+                        // Unset the value
+                        if let Err(e) = client.idm_account_purge_attr(
+                            ano.aopts.account_id.as_str(),
+                            "account_valid_from",
+                        ) {
+                            eprintln!("Error -> {:?}", e)
+                        } else {
+                            println!("Success")
+                        }
+                    } else {
+                        // Attempt to parse and set
+                        if let Err(e) =
+                            OffsetDateTime::parse(ano.datetime.as_str(), time::Format::Rfc3339)
+                        {
+                            eprintln!("Error -> {:?}", e);
+                            return;
+                        }
+
+                        if let Err(e) = client.idm_account_set_attr(
+                            ano.aopts.account_id.as_str(),
+                            "account_valid_from",
+                            &[ano.datetime.as_str()],
+                        ) {
+                            eprintln!("Error -> {:?}", e);
+                        } else {
+                            println!("Success")
+                        }
+                    }
+                }
+            }, // end AccountOpt::Validity
         }
     }
 }

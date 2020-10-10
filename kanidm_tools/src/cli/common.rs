@@ -58,14 +58,13 @@ impl CommonOpt {
             None => client_builder,
         };
 
-        let client = match client_builder.build() {
+        match client_builder.build() {
             Ok(c) => c,
             Err(e) => {
                 error!("Failed to build client instance -- {:?}", e);
                 std::process::exit(1);
             }
-        };
-        client
+        }
     }
 
     pub fn to_client(&self) -> KanidmClient {
@@ -79,7 +78,7 @@ impl CommonOpt {
             }
         };
 
-        if tokens.len() == 0 {
+        if tokens.is_empty() {
             error!(
                 "No valid authentication tokens found. Please login with the 'login' subcommand."
             );
@@ -100,6 +99,7 @@ impl CommonOpt {
             }
             None => {
                 if tokens.len() == 1 {
+                    #[allow(clippy::expect_used)]
                     let (f_uname, f_token) = tokens.iter().next().expect("Memory Corruption");
                     // else pick the first token
                     info!("Authenticated as {}", f_uname);

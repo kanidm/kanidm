@@ -335,9 +335,8 @@ pub trait QueryServerTransaction {
     }
 
     // Who they are will go here
-    /*
     fn impersonate_search(
-        &mut self,
+        &self,
         audit: &mut AuditScope,
         filter: Filter<FilterInvalid>,
         filter_intent: Filter<FilterInvalid>,
@@ -351,7 +350,6 @@ pub trait QueryServerTransaction {
             .map_err(OperationError::SchemaViolation)?;
         self.impersonate_search_valid(audit, f_valid, f_intent_valid, event)
     }
-    */
 
     fn impersonate_search_ext(
         &self,
@@ -409,6 +407,30 @@ pub trait QueryServerTransaction {
             let filter_intent = filter_all!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
             let filter = filter!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
             let res = self.impersonate_search_ext(audit, filter, filter_intent, event);
+            match res {
+                Ok(vs) => {
+                    if vs.len() > 1 {
+                        return Err(OperationError::NoMatchingEntries);
+                    }
+                    vs.into_iter()
+                        .next()
+                        .ok_or(OperationError::NoMatchingEntries)
+                }
+                Err(e) => Err(e),
+            }
+        })
+    }
+
+    fn impersonate_search_uuid(
+        &self,
+        audit: &mut AuditScope,
+        uuid: &Uuid,
+        event: &Event,
+    ) -> Result<Entry<EntrySealed, EntryCommitted>, OperationError> {
+        lperf_segment!(audit, "server::internal_search_uuid", || {
+            let filter_intent = filter_all!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
+            let filter = filter!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
+            let res = self.impersonate_search(audit, filter, filter_intent, event);
             match res {
                 Ok(vs) => {
                     if vs.len() > 1 {
@@ -490,6 +512,8 @@ pub trait QueryServerTransaction {
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid uint32 syntax".to_string())),
                     SyntaxType::CID => Err(OperationError::InvalidAttribute("CIDs are generated and not able to be set.".to_string())),
                     SyntaxType::NSUNIQUEID => Ok(Value::new_nsuniqueid_s(value)),
+                    SyntaxType::DATETIME => Value::new_datetime_s(value)
+                        .ok_or_else(|| OperationError::InvalidAttribute("Invalid DateTime (rfc3339) syntax".to_string())),
                 }
             }
             None => {
@@ -576,6 +600,11 @@ pub trait QueryServerTransaction {
                         OperationError::InvalidAttribute("Invalid cid syntax".to_string())
                     }),
                     SyntaxType::NSUNIQUEID => Ok(PartialValue::new_nsuniqueid_s(value)),
+                    SyntaxType::DATETIME => PartialValue::new_datetime_s(value).ok_or_else(|| {
+                        OperationError::InvalidAttribute(
+                            "Invalid DateTime (rfc3339) syntax".to_string(),
+                        )
+                    }),
                 }
             }
             None => {
@@ -1964,6 +1993,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_SCHEMA_ATTR_BADLIST_PASSWORD,
             JSON_SCHEMA_ATTR_LOGINSHELL,
             JSON_SCHEMA_ATTR_UNIX_PASSWORD,
+            JSON_SCHEMA_ATTR_ACCOUNT_EXPIRE,
+            JSON_SCHEMA_ATTR_ACCOUNT_VALID_FROM,
             JSON_SCHEMA_CLASS_PERSON,
             JSON_SCHEMA_CLASS_GROUP,
             JSON_SCHEMA_CLASS_ACCOUNT,

@@ -31,6 +31,8 @@ strength, random, machine only password.
     kanidm account credential generate_password  --name admin idm_admin
     Generated password for idm_admin: tqoReZfz....
 
+## Creating Accounts
+
 We can now use the idm_admin to create initial groups and accounts.
 
     kanidm group create demo_group --name idm_admin
@@ -78,6 +80,42 @@ An example can be easily shown with:
     kanidm group add_members group_1 group_2 --name idm_admin
     kanidm group add_members group2 nest_example --name idm_admin
     kanidm account get nest_example --name anonymous
+
+## Account Validity
+
+Kanidm supports accounts that are only able to be authenticated between specific datetime
+windows. This takes the form of a "valid from" attribute that defines the earliest start
+date where authentication can succeed, and an expiry date where the account will no longer
+allow authentication.
+
+This can be displayed with:
+
+    kanidm account validity show demo_user --name idm_admin
+    valid after: 2020-09-25T21:22:04+10:00
+    expire: 2020-09-25T01:22:04+10:00
+
+These datetimes are stored in the server as UTC, but presented according to your local system time
+to aid correct understanding of when the events will occur.
+
+To set the values, an account with account management permission is required (for example, idm_admin).
+Again, these values will correctly translated from the entered local timezone to UTC.
+
+    # Set the earliest time the account can start authenticating
+    kanidm account validity begin_from demo_user '2020-09-25T11:22:04+00:00' --name idm_admin
+    # Set the expiry or end date of the account
+    kanidm account validity expire_at demo_user '2020-09-25T11:22:04+00:00' --name idm_admin
+
+To unset or remove these values the following can be used:
+
+    kanidm account validity begin_from demo_user any|clear --name idm_admin
+    kanidm account validity expire_at demo_user never|clear --name idm_admin
+
+To "lock" an account, you can set the expire_at value to the past or unix epoch. Even in the situation
+where the "valid from" is *after* the expire_at, the expire_at will be respected.
+
+    kanidm account validity expire_at demo_user 1970-01-01T00:00:00+00:00 --name idm_admin
+
+These validity settings impact all authentication functions of the account (kanidm, ldap, radius).
 
 ## Why Can't I Change admin With idm_admin?
 

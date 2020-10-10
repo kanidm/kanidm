@@ -718,6 +718,7 @@ mod tests {
             shell: None,
             groups: Vec::new(),
             sshkeys: vec!["key-a".to_string()],
+            valid: true,
         };
 
         let id_name = Id::Name("testuser".to_string());
@@ -890,6 +891,7 @@ mod tests {
             shell: None,
             groups: vec![gt1.clone(), gt2],
             sshkeys: vec!["key-a".to_string()],
+            valid: true,
         };
 
         // First, add the groups.
@@ -944,6 +946,7 @@ mod tests {
             shell: None,
             groups: Vec::new(),
             sshkeys: vec!["key-a".to_string()],
+            valid: true,
         };
 
         // Test that with no account, is false
@@ -1046,6 +1049,7 @@ mod tests {
             shell: None,
             groups: Vec::new(),
             sshkeys: vec!["key-a".to_string()],
+            valid: true,
         };
 
         let ut2 = UnixUserToken {
@@ -1057,6 +1061,7 @@ mod tests {
             shell: None,
             groups: Vec::new(),
             sshkeys: vec!["key-a".to_string()],
+            valid: true,
         };
 
         let id_name = Id::Name("testuser".to_string());

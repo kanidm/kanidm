@@ -24,6 +24,7 @@ const BAD_PASSWORD_MSG: &str = "incorrect password";
 const BAD_TOTP_MSG: &str = "incorrect totp";
 const BAD_AUTH_TYPE_MSG: &str = "invalid authentication method in this context";
 const BAD_CREDENTIALS: &str = "invalid credential message";
+const ACCOUNT_EXPIRED: &str = "account expired";
 
 enum CredState {
     Success(Vec<Claim>),
@@ -48,7 +49,7 @@ struct CredTotpPw {
 
 #[derive(Clone, Debug)]
 enum CredHandler {
-    Denied,
+    Denied(&'static str),
     // The bool is a flag if the cred has been authed against.
     Anonymous,
     // AppPassword
@@ -286,10 +287,10 @@ impl CredHandler {
         async_tx: &Sender<DelayedAction>,
     ) -> CredState {
         match self {
-            CredHandler::Denied => {
+            CredHandler::Denied(reason) => {
                 // Sad trombone.
                 lsecurity!(au, "Handler::Denied -> Result::Denied");
-                CredState::Denied("authentication denied")
+                CredState::Denied(reason)
             }
             CredHandler::Anonymous => Self::validate_anonymous(au, creds),
             CredHandler::Password(ref mut pw) => {
@@ -303,7 +304,7 @@ impl CredHandler {
 
     pub fn valid_auth_mechs(&self) -> Vec<AuthAllowed> {
         match &self {
-            CredHandler::Denied => Vec::new(),
+            CredHandler::Denied(_) => Vec::new(),
             CredHandler::Anonymous => vec![AuthAllowed::Anonymous],
             CredHandler::Password(_) => vec![AuthAllowed::Password],
             // webauth
@@ -312,10 +313,10 @@ impl CredHandler {
         }
     }
 
-    pub(crate) fn is_denied(&self) -> bool {
+    pub(crate) fn is_denied(&self) -> Option<&'static str> {
         match &self {
-            CredHandler::Denied => true,
-            _ => false,
+            CredHandler::Denied(x) => Some(x),
+            _ => None,
         }
     }
 }
@@ -339,51 +340,69 @@ pub(crate) struct AuthSession {
 }
 
 impl AuthSession {
-    pub fn new(au: &mut AuditScope, account: Account, appid: Option<String>) -> Self {
+    pub fn new(
+        au: &mut AuditScope,
+        account: Account,
+        appid: Option<String>,
+        ct: Duration,
+    ) -> (Option<Self>, AuthState) {
         // During this setup, determine the credential handler that we'll be using
         // for this session. This is currently based on presentation of an application
         // id.
-        let handler = match appid {
-            Some(_) => CredHandler::Denied,
-            None => {
-                // We want the primary handler - this is where we make a decision
-                // based on the anonymous ... in theory this could be cleaner
-                // and interact with the account more?
-                if account.is_anonymous() {
-                    CredHandler::Anonymous
-                } else {
-                    // Now we see if they have one ...
-                    match &account.primary {
-                        Some(cred) => {
-                            // Probably means new authsession has to be failable
-                            CredHandler::try_from(cred).unwrap_or_else(|_| {
-                                lsecurity_critical!(
-                                    au,
-                                    "corrupt credentials, unable to start credhandler"
-                                );
-                                CredHandler::Denied
-                            })
+        let handler = if account.is_within_valid_time(ct) {
+            match appid {
+                Some(_) => CredHandler::Denied("authentication denied"),
+                None => {
+                    // We want the primary handler - this is where we make a decision
+                    // based on the anonymous ... in theory this could be cleaner
+                    // and interact with the account more?
+                    if account.is_anonymous() {
+                        CredHandler::Anonymous
+                    } else {
+                        // Now we see if they have one ...
+                        match &account.primary {
+                            Some(cred) => {
+                                // Probably means new authsession has to be failable
+                                CredHandler::try_from(cred).unwrap_or_else(|_| {
+                                    lsecurity_critical!(
+                                        au,
+                                        "corrupt credentials, unable to start credhandler"
+                                    );
+                                    CredHandler::Denied("invalid credential state")
+                                })
+                            }
+                            None => {
+                                lsecurity!(au, "account has no primary credentials");
+                                CredHandler::Denied("invalid credential state")
+                            }
                         }
-                        None => CredHandler::Denied,
                     }
                 }
             }
+        } else {
+            lsecurity!(au, "account expired");
+            CredHandler::Denied(ACCOUNT_EXPIRED)
         };
 
-        // Is this handler locked?
-        // Is the whole account locked?
-        // What about in memory account locking? Is that something
-        // we store in the account somehow?
-        // TODO #59: Implement handler locking!
-
         // if credhandler == deny, finish = true.
-        let finished: bool = handler.is_denied();
+        if let Some(reason) = handler.is_denied() {
+            // Already denied, lets send that result
+            (None, AuthState::Denied(reason.to_string()))
+        } else {
+            // We can proceed
+            let auth_session = AuthSession {
+                account,
+                handler,
+                appid,
+                finished: false,
+            };
+            // Get the set of mechanisms that can proceed. This is tied
+            // to the session so that it can mutate state and have progression
+            // of what's next, or ordering.
+            let next_mech = auth_session.valid_auth_mechs();
 
-        AuthSession {
-            account,
-            handler,
-            appid,
-            finished,
+            let state = AuthState::Continue(next_mech);
+            (Some(auth_session), state)
         }
     }
 
@@ -407,6 +426,7 @@ impl AuthSession {
                 "Credentials denied: potential flood/dos/bruteforce attempt. {} creds were sent.",
                 creds.len()
             );
+            self.finished = true;
             return Ok(AuthState::Denied(BAD_CREDENTIALS.to_string()));
         }
 
@@ -448,7 +468,7 @@ impl AuthSession {
         //  If success, to authtoken?
     }
 
-    pub fn valid_auth_mechs(&self) -> Vec<AuthAllowed> {
+    fn valid_auth_mechs(&self) -> Vec<AuthAllowed> {
         if self.finished {
             Vec::new()
         } else {
@@ -468,6 +488,7 @@ mod tests {
         AuthSession, BAD_AUTH_TYPE_MSG, BAD_CREDENTIALS, BAD_PASSWORD_MSG, BAD_TOTP_MSG,
     };
     use crate::idm::AuthState;
+    use crate::utils::duration_from_epoch_now;
     use kanidm_proto::v1::{AuthAllowed, AuthCredential};
     use std::time::Duration;
     // use async_std::task;
@@ -485,16 +506,19 @@ mod tests {
 
         let anon_account = entry_str_to_account!(JSON_ANONYMOUS_V1);
 
-        let session = AuthSession::new(&mut audit, anon_account, None);
+        let (_session, state) =
+            AuthSession::new(&mut audit, anon_account, None, duration_from_epoch_now());
 
-        let auth_mechs = session.valid_auth_mechs();
-
-        assert!(
-            true == auth_mechs.iter().fold(false, |acc, x| match x {
-                AuthAllowed::Anonymous => true,
-                _ => acc,
-            })
-        );
+        if let AuthState::Continue(auth_mechs) = state {
+            assert!(
+                true == auth_mechs.iter().fold(false, |acc, x| match x {
+                    AuthAllowed::Anonymous => true,
+                    _ => acc,
+                })
+            );
+        } else {
+            panic!("Invalid auth state")
+        }
     }
 
     #[test]
@@ -505,8 +529,12 @@ mod tests {
             None,
         );
         let anon_account = entry_str_to_account!(JSON_ANONYMOUS_V1);
-        let mut session = AuthSession::new(&mut audit, anon_account, None);
+        let (session, _) =
+            AuthSession::new(&mut audit, anon_account, None, duration_from_epoch_now());
         let (async_tx, mut async_rx) = unbounded();
+
+        // Will be some.
+        let mut session = session.unwrap();
 
         let attempt = vec![
             AuthCredential::Anonymous,
@@ -534,16 +562,20 @@ mod tests {
             None,
         );
 
-        let session = AuthSession::new(
+        let (session, state) = AuthSession::new(
             &mut audit,
             anon_account,
             Some("NonExistantAppID".to_string()),
+            duration_from_epoch_now(),
         );
 
-        let auth_mechs = session.valid_auth_mechs();
+        assert!(session.is_none());
 
-        // Will always move to denied.
-        assert!(auth_mechs == Vec::new());
+        if let AuthState::Denied(_) = state {
+            // Pass
+        } else {
+            panic!();
+        }
     }
 
     #[test]
@@ -561,16 +593,20 @@ mod tests {
         account.primary = Some(cred);
 
         // now check
-        let mut session = AuthSession::new(&mut audit, account.clone(), None);
+        let (session, state) =
+            AuthSession::new(&mut audit, account.clone(), None, duration_from_epoch_now());
+        let mut session = session.unwrap();
         let (async_tx, mut async_rx) = unbounded();
-        let auth_mechs = session.valid_auth_mechs();
-
-        assert!(
-            true == auth_mechs.iter().fold(false, |acc, x| match x {
-                AuthAllowed::Password => true,
-                _ => acc,
-            })
-        );
+        if let AuthState::Continue(auth_mechs) = state {
+            assert!(
+                true == auth_mechs.iter().fold(false, |acc, x| match x {
+                    AuthAllowed::Password => true,
+                    _ => acc,
+                })
+            );
+        } else {
+            panic!();
+        }
 
         let attempt = vec![AuthCredential::Password("bad_password".to_string())];
         match session.validate_creds(&mut audit, &attempt, &Duration::from_secs(0), &async_tx) {
@@ -578,7 +614,9 @@ mod tests {
             _ => panic!(),
         };
 
-        let mut session = AuthSession::new(&mut audit, account, None);
+        let (session, _state) =
+            AuthSession::new(&mut audit, account, None, duration_from_epoch_now());
+        let mut session = session.unwrap();
         let attempt = vec![AuthCredential::Password("test_password".to_string())];
         match session.validate_creds(&mut audit, &attempt, &Duration::from_secs(0), &async_tx) {
             Ok(AuthState::Success(_)) => {}
@@ -624,20 +662,26 @@ mod tests {
         account.primary = Some(cred);
 
         // now check
-        let session = AuthSession::new(&mut audit, account.clone(), None);
+        let (_session, state) =
+            AuthSession::new(&mut audit, account.clone(), None, duration_from_epoch_now());
         let (async_tx, mut async_rx) = unbounded();
-        let auth_mechs = session.valid_auth_mechs();
-        assert!(auth_mechs.iter().fold(true, |acc, x| match x {
-            AuthAllowed::Password => acc,
-            AuthAllowed::TOTP => acc,
-            _ => false,
-        }));
+        if let AuthState::Continue(auth_mechs) = state {
+            assert!(auth_mechs.iter().fold(true, |acc, x| match x {
+                AuthAllowed::Password => acc,
+                AuthAllowed::TOTP => acc,
+                _ => false,
+            }));
+        } else {
+            panic!();
+        }
 
         // Rest of test go here
 
         // check send anon (fail)
         {
-            let mut session = AuthSession::new(&mut audit, account.clone(), None);
+            let (session, _state) =
+                AuthSession::new(&mut audit, account.clone(), None, duration_from_epoch_now());
+            let mut session = session.unwrap();
             match session.validate_creds(
                 &mut audit,
                 &vec![AuthCredential::Anonymous],
@@ -654,7 +698,9 @@ mod tests {
         // check send bad pw, should get continue (even though denied set)
         //      then send good totp, should fail.
         {
-            let mut session = AuthSession::new(&mut audit, account.clone(), None);
+            let (session, _state) =
+                AuthSession::new(&mut audit, account.clone(), None, duration_from_epoch_now());
+            let mut session = session.unwrap();
             match session.validate_creds(
                 &mut audit,
                 &vec![AuthCredential::Password(pw_bad.to_string())],
@@ -677,7 +723,9 @@ mod tests {
         // check send bad pw, should get continue (even though denied set)
         //      then send bad totp, should fail TOTP
         {
-            let mut session = AuthSession::new(&mut audit, account.clone(), None);
+            let (session, _state) =
+                AuthSession::new(&mut audit, account.clone(), None, duration_from_epoch_now());
+            let mut session = session.unwrap();
             match session.validate_creds(
                 &mut audit,
                 &vec![AuthCredential::Password(pw_bad.to_string())],
@@ -701,7 +749,9 @@ mod tests {
         // check send good pw, should get continue
         //      then send good totp, success
         {
-            let mut session = AuthSession::new(&mut audit, account.clone(), None);
+            let (session, _state) =
+                AuthSession::new(&mut audit, account.clone(), None, duration_from_epoch_now());
+            let mut session = session.unwrap();
             match session.validate_creds(
                 &mut audit,
                 &vec![AuthCredential::Password(pw_good.to_string())],
@@ -725,7 +775,9 @@ mod tests {
         // check send good pw, should get continue
         //      then send bad totp, fail otp
         {
-            let mut session = AuthSession::new(&mut audit, account.clone(), None);
+            let (session, _state) =
+                AuthSession::new(&mut audit, account.clone(), None, duration_from_epoch_now());
+            let mut session = session.unwrap();
             match session.validate_creds(
                 &mut audit,
                 &vec![AuthCredential::Password(pw_good.to_string())],
@@ -748,7 +800,9 @@ mod tests {
 
         // check send bad totp, should fail immediate
         {
-            let mut session = AuthSession::new(&mut audit, account.clone(), None);
+            let (session, _state) =
+                AuthSession::new(&mut audit, account.clone(), None, duration_from_epoch_now());
+            let mut session = session.unwrap();
             match session.validate_creds(
                 &mut audit,
                 &vec![AuthCredential::TOTP(totp_bad)],
@@ -763,7 +817,9 @@ mod tests {
         // check send good totp, should continue
         //      then bad pw, fail pw
         {
-            let mut session = AuthSession::new(&mut audit, account.clone(), None);
+            let (session, _state) =
+                AuthSession::new(&mut audit, account.clone(), None, duration_from_epoch_now());
+            let mut session = session.unwrap();
             match session.validate_creds(
                 &mut audit,
                 &vec![AuthCredential::TOTP(totp_good)],
@@ -787,7 +843,9 @@ mod tests {
         // check send good totp, should continue
         //      then good pw, success
         {
-            let mut session = AuthSession::new(&mut audit, account.clone(), None);
+            let (session, _state) =
+                AuthSession::new(&mut audit, account.clone(), None, duration_from_epoch_now());
+            let mut session = session.unwrap();
             match session.validate_creds(
                 &mut audit,
                 &vec![AuthCredential::TOTP(totp_good)],
@@ -812,7 +870,9 @@ mod tests {
 
         // check bad totp, bad pw, fail totp.
         {
-            let mut session = AuthSession::new(&mut audit, account.clone(), None);
+            let (session, _state) =
+                AuthSession::new(&mut audit, account.clone(), None, duration_from_epoch_now());
+            let mut session = session.unwrap();
             match session.validate_creds(
                 &mut audit,
                 &vec![
@@ -828,7 +888,9 @@ mod tests {
         }
         // check send bad pw, good totp fail password
         {
-            let mut session = AuthSession::new(&mut audit, account.clone(), None);
+            let (session, _state) =
+                AuthSession::new(&mut audit, account.clone(), None, duration_from_epoch_now());
+            let mut session = session.unwrap();
             match session.validate_creds(
                 &mut audit,
                 &vec![
@@ -844,7 +906,9 @@ mod tests {
         }
         // check send good pw, bad totp fail totp.
         {
-            let mut session = AuthSession::new(&mut audit, account.clone(), None);
+            let (session, _state) =
+                AuthSession::new(&mut audit, account.clone(), None, duration_from_epoch_now());
+            let mut session = session.unwrap();
             match session.validate_creds(
                 &mut audit,
                 &vec![
@@ -860,7 +924,9 @@ mod tests {
         }
         // check good pw, good totp, success
         {
-            let mut session = AuthSession::new(&mut audit, account.clone(), None);
+            let (session, _state) =
+                AuthSession::new(&mut audit, account.clone(), None, duration_from_epoch_now());
+            let mut session = session.unwrap();
             match session.validate_creds(
                 &mut audit,
                 &vec![

@@ -443,6 +443,10 @@ impl CacheLayer {
                 self.refresh_usertoken(&account_id, item).await
             }
         }
+        .map(|t| {
+            debug!("token -> {:?}", t);
+            t
+        })
     }
 
     async fn get_grouptoken(&self, grp_id: Id) -> Result<Option<UnixGroupToken>, ()> {
@@ -506,7 +510,16 @@ impl CacheLayer {
     // Get ssh keys for an account id
     pub async fn get_sshkeys(&self, account_id: &str) -> Result<Vec<String>, ()> {
         let token = self.get_usertoken(Id::Name(account_id.to_string())).await?;
-        Ok(token.map(|t| t.sshkeys).unwrap_or_else(Vec::new))
+        Ok(token
+            .map(|t| {
+                // Only return keys if the account is valid
+                if t.valid {
+                    t.sshkeys
+                } else {
+                    Vec::with_capacity(0)
+                }
+            })
+            .unwrap_or_else(|| Vec::with_capacity(0)))
     }
 
     #[inline(always)]
@@ -704,7 +717,13 @@ impl CacheLayer {
     ) -> Result<Option<bool>, ()> {
         debug!("Attempt offline password check");
         match token.as_ref() {
-            Some(t) => self.check_cache_userpassword(&t.uuid, cred).await.map(Some),
+            Some(t) => {
+                if t.valid {
+                    self.check_cache_userpassword(&t.uuid, cred).await.map(Some)
+                } else {
+                    Ok(Some(false))
+                }
+            }
             None => Ok(None),
         }
         /*
@@ -731,7 +750,7 @@ impl CacheLayer {
                 user_set, self.pam_allow_groups
             );
 
-            user_set.intersection(&self.pam_allow_groups).count() > 0
+            user_set.intersection(&self.pam_allow_groups).count() > 0 && tok.valid
         }))
     }
 

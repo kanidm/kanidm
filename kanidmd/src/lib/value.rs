@@ -7,6 +7,8 @@ use std::borrow::Borrow;
 use std::convert::TryFrom;
 use std::fmt;
 use std::str::FromStr;
+use std::time::Duration;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use sshkeys::PublicKey as SshPublicKey;
@@ -124,6 +126,7 @@ pub enum SyntaxType {
     UINT32,
     CID,
     NSUNIQUEID,
+    DATETIME,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -148,6 +151,7 @@ impl TryFrom<&str> for SyntaxType {
             "UINT32" => Ok(SyntaxType::UINT32),
             "CID" => Ok(SyntaxType::CID),
             "NSUNIQUEID" => Ok(SyntaxType::NSUNIQUEID),
+            "DATETIME" => Ok(SyntaxType::DATETIME),
             _ => Err(()),
         }
     }
@@ -174,6 +178,7 @@ impl TryFrom<usize> for SyntaxType {
             13 => Ok(SyntaxType::CID),
             14 => Ok(SyntaxType::UTF8STRING_INAME),
             15 => Ok(SyntaxType::NSUNIQUEID),
+            16 => Ok(SyntaxType::DATETIME),
             _ => Err(()),
         }
     }
@@ -198,6 +203,7 @@ impl SyntaxType {
             SyntaxType::CID => 13,
             SyntaxType::UTF8STRING_INAME => 14,
             SyntaxType::NSUNIQUEID => 15,
+            SyntaxType::DATETIME => 16,
         }
     }
 }
@@ -224,6 +230,7 @@ impl fmt::Display for SyntaxType {
                 SyntaxType::UINT32 => "UINT32",
                 SyntaxType::CID => "CID",
                 SyntaxType::NSUNIQUEID => "NSUNIQUEID",
+                SyntaxType::DATETIME => "DATETIME",
             }
         )
     }
@@ -267,6 +274,7 @@ pub enum PartialValue {
     Uint32(u32),
     Cid(Cid),
     Nsuniqueid(String),
+    DateTime(OffsetDateTime),
 }
 
 impl PartialValue {
@@ -529,6 +537,24 @@ impl PartialValue {
         }
     }
 
+    pub fn new_datetime_epoch(ts: Duration) -> Self {
+        PartialValue::DateTime(OffsetDateTime::unix_epoch() + ts)
+    }
+
+    pub fn new_datetime_s(s: &str) -> Option<Self> {
+        OffsetDateTime::parse(s, time::Format::Rfc3339)
+            .ok()
+            .map(|odt| odt.to_offset(time::UtcOffset::UTC))
+            .map(PartialValue::DateTime)
+    }
+
+    pub fn is_datetime(&self) -> bool {
+        match self {
+            PartialValue::DateTime(_) => true,
+            _ => false,
+        }
+    }
+
     pub fn to_str(&self) -> Option<&str> {
         match self {
             PartialValue::Utf8(s) => Some(s.as_str()),
@@ -578,6 +604,10 @@ impl PartialValue {
             PartialValue::Uint32(u) => u.to_string(),
             // This will never work, we don't allow equality searching on Cid's
             PartialValue::Cid(_) => "_".to_string(),
+            PartialValue::DateTime(odt) => {
+                debug_assert!(odt.offset() == time::UtcOffset::UTC);
+                odt.format(time::Format::Rfc3339)
+            }
         }
     }
 
@@ -1041,6 +1071,31 @@ impl Value {
         self.pv.is_nsuniqueid()
     }
 
+    pub fn new_datetime_epoch(ts: Duration) -> Self {
+        Value {
+            pv: PartialValue::new_datetime_epoch(ts),
+            data: None,
+        }
+    }
+
+    pub fn new_datetime_s(s: &str) -> Option<Self> {
+        PartialValue::new_datetime_s(s).map(|pv| Value { pv, data: None })
+    }
+
+    pub fn to_datetime(&self) -> Option<OffsetDateTime> {
+        match &self.pv {
+            PartialValue::DateTime(odt) => {
+                debug_assert!(odt.offset() == time::UtcOffset::UTC);
+                Some(*odt)
+            }
+            _ => None,
+        }
+    }
+
+    pub fn is_datetime(&self) -> bool {
+        self.pv.is_datetime()
+    }
+
     pub fn contains(&self, s: &PartialValue) -> bool {
         self.pv.contains(s)
     }
@@ -1133,6 +1188,9 @@ impl Value {
                 pv: PartialValue::Nsuniqueid(s),
                 data: None,
             }),
+            DbValueV1::DT(s) => PartialValue::new_datetime_s(&s)
+                .ok_or(())
+                .map(|pv| Value { pv, data: None }),
         }
     }
 
@@ -1200,6 +1258,10 @@ impl Value {
                 t: c.ts,
             }),
             PartialValue::Nsuniqueid(s) => DbValueV1::NU(s.clone()),
+            PartialValue::DateTime(odt) => {
+                debug_assert!(odt.offset() == time::UtcOffset::UTC);
+                DbValueV1::DT(odt.format(time::Format::Rfc3339))
+            }
         }
     }
 
@@ -1328,6 +1390,10 @@ impl Value {
             PartialValue::Spn(n, r) => format!("{}@{}", n, r),
             PartialValue::Uint32(u) => u.to_string(),
             PartialValue::Cid(c) => format!("{:?}_{}_{}", c.ts, c.d_uuid, c.s_uuid),
+            PartialValue::DateTime(odt) => {
+                debug_assert!(odt.offset() == time::UtcOffset::UTC);
+                odt.format(time::Format::Rfc3339)
+            }
         }
     }
 
@@ -1368,6 +1434,7 @@ impl Value {
                 None => false,
             },
             PartialValue::Nsuniqueid(s) => NSUNIQUEID_RE.is_match(s),
+            PartialValue::DateTime(odt) => odt.offset() == time::UtcOffset::UTC,
             _ => true,
         }
     }
@@ -1396,6 +1463,10 @@ impl Value {
             PartialValue::Spn(n, r) => vec![format!("{}@{}", n, r)],
             PartialValue::Uint32(u) => vec![u.to_string()],
             PartialValue::Cid(_) => vec![],
+            PartialValue::DateTime(odt) => {
+                debug_assert!(odt.offset() == time::UtcOffset::UTC);
+                vec![odt.format(time::Format::Rfc3339)]
+            }
         }
     }
 }
@@ -1584,6 +1655,34 @@ mod tests {
         assert!(!inv2.validate());
         assert!(val1.validate());
         assert!(val2.validate());
+    }
+
+    #[test]
+    fn test_value_datetime() {
+        // Datetimes must always convert to UTC, and must always be rfc3339
+        let val1 = Value::new_datetime_s("2020-09-25T11:22:02+10:00").expect("Must be valid");
+        assert!(val1.validate());
+        let val2 = Value::new_datetime_s("2020-09-25T01:22:02+00:00").expect("Must be valid");
+        assert!(val2.validate());
+        assert!(Value::new_datetime_s("2020-09-25T01:22:02").is_none());
+        assert!(Value::new_datetime_s("2020-09-25").is_none());
+        assert!(Value::new_datetime_s("2020-09-25T01:22:02+10").is_none());
+        assert!(Value::new_datetime_s("2020-09-25 01:22:02+00:00").is_none());
+
+        // Manually craft
+        let inv1 = Value {
+            pv: PartialValue::DateTime(
+                OffsetDateTime::now_utc().to_offset(time::UtcOffset::east_hours(10)),
+            ),
+            data: None,
+        };
+        assert!(!inv1.validate());
+
+        let val3 = Value {
+            pv: PartialValue::DateTime(OffsetDateTime::now_utc()),
+            data: None,
+        };
+        assert!(val3.validate());
     }
 
     /*

@@ -116,6 +116,9 @@ pub const STR_UUID_SCHEMA_ATTR_NICE: &str = "00000000-0000-0000-0000-ffff0000006
 pub const STR_UUID_SCHEMA_ATTR_ENTRYUUID: &str = "00000000-0000-0000-0000-ffff00000070";
 pub const STR_UUID_SCHEMA_ATTR_OBJECTCLASS: &str = "00000000-0000-0000-0000-ffff00000071";
 
+pub const _STR_UUID_SCHEMA_ATTR_ACCOUNT_EXPIRE: &str = "00000000-0000-0000-0000-ffff00000072";
+pub const _STR_UUID_SCHEMA_ATTR_ACCOUNT_VALID_FROM: &str = "00000000-0000-0000-0000-ffff00000073";
+
 // System and domain infos
 // I'd like to strongly criticise william of the past for fucking up these allocations.
 pub const STR_UUID_SYSTEM_INFO: &str = "00000000-0000-0000-0000-ffffff000001";

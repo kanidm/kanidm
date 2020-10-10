@@ -251,6 +251,9 @@ pub struct UnixUserToken {
     pub shell: Option<String>,
     pub groups: Vec<UnixGroupToken>,
     pub sshkeys: Vec<String>,
+    // The default value of bool is false.
+    #[serde(default)]
+    pub valid: bool,
 }
 
 impl fmt::Display for UnixUserToken {

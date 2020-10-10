@@ -14,6 +14,8 @@ use crate::modify::{ModifyInvalid, ModifyList};
 use crate::server::{QueryServerReadTransaction, QueryServerWriteTransaction};
 use crate::value::{PartialValue, Value};
 
+use std::time::Duration;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 lazy_static! {
@@ -58,6 +60,10 @@ macro_rules! try_from_entry {
                 "Missing attribute: spn".to_string(),
             ))?;
 
+        let valid_from = $value.get_ava_single_datetime("account_valid_from");
+
+        let expire = $value.get_ava_single_datetime("account_expire");
+
         // Resolved by the caller
         let groups = $groups;
 
@@ -69,6 +75,8 @@ macro_rules! try_from_entry {
             displayname,
             groups,
             primary,
+            valid_from,
+            expire,
             spn,
         })
     }};
@@ -87,6 +95,8 @@ pub(crate) struct Account {
     pub uuid: Uuid,
     pub groups: Vec<Group>,
     pub primary: Option<Credential>,
+    pub valid_from: Option<OffsetDateTime>,
+    pub expire: Option<OffsetDateTime>,
     // primary: Credential
     // app_creds: Vec<Credential>
     // account expiry? (as opposed to cred expiry)
@@ -145,6 +155,27 @@ impl Account {
             lim_pmax: 256,
             lim_fmax: 32,
         })
+    }
+
+    pub fn is_within_valid_time(&self, ct: Duration) -> bool {
+        let cot = OffsetDateTime::unix_epoch() + ct;
+
+        let vmin = if let Some(vft) = &self.valid_from {
+            // If current time greater than strat time window
+            vft < &cot
+        } else {
+            // We have no time, not expired.
+            true
+        };
+        let vmax = if let Some(ext) = &self.expire {
+            // If exp greater than ct then expired.
+            &cot < ext
+        } else {
+            // If not present, we are not expired
+            true
+        };
+        // Mix the results
+        vmin && vmax
     }
 
     pub fn is_anonymous(&self) -> bool {
