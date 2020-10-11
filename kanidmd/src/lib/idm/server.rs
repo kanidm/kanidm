@@ -2,6 +2,7 @@ use crate::audit::AuditScope;
 use crate::constants::{AUTH_SESSION_TIMEOUT, MFAREG_SESSION_TIMEOUT, PW_MIN_LENGTH};
 use crate::constants::{UUID_ANONYMOUS, UUID_SYSTEM_CONFIG};
 use crate::credential::policy::CryptoPolicy;
+use crate::credential::softlock::CredSoftLock;
 use crate::event::{AuthEvent, AuthEventStep, AuthResult};
 use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
@@ -13,6 +14,7 @@ use crate::idm::event::{
 use crate::idm::mfareg::{MfaRegCred, MfaRegNext, MfaRegSession, MfaReqInit, MfaReqStep};
 use crate::idm::radius::RadiusAccount;
 use crate::idm::unix::{UnixGroup, UnixUserAccount};
+use crate::idm::AuthState;
 use crate::ldap::LdapBoundToken;
 use crate::server::QueryServerReadTransaction;
 use crate::server::{QueryServer, QueryServerTransaction, QueryServerWriteTransaction};
@@ -29,7 +31,7 @@ use kanidm_proto::v1::SetCredentialResponse;
 use kanidm_proto::v1::UnixGroupToken;
 use kanidm_proto::v1::UnixUserToken;
 
-use std::sync::Arc;
+// use std::sync::Arc;
 
 // use crossbeam::channel::{unbounded, Sender, Receiver, TryRecvError};
 #[cfg(test)]
@@ -37,12 +39,14 @@ use tokio::sync::mpsc::error::TryRecvError;
 use tokio::sync::mpsc::{
     unbounded_channel as unbounded, UnboundedReceiver as Receiver, UnboundedSender as Sender,
 };
-use tokio::sync::{Semaphore, SemaphorePermit};
+use tokio::sync::Semaphore;
+// SemaphorePermit
 
 #[cfg(test)]
 use async_std::task;
 
 use concread::bptree::{BptreeMap, BptreeMapWriteTxn};
+use concread::hashmap::HashMap;
 use rand::prelude::*;
 use std::time::Duration;
 use uuid::Uuid;
@@ -52,8 +56,11 @@ pub struct IdmServer {
     // means that limits to sessions can be easily applied and checked to
     // variaous accounts, and we have a good idea of how to structure the
     // in memory caches related to locking.
-    session_ticket: Arc<Semaphore>,
+    session_ticket: Semaphore,
     sessions: BptreeMap<Uuid, AuthSession>,
+    // Do we need a softlock ticket?
+    softlock_ticket: Semaphore,
+    softlocks: HashMap<Uuid, CredSoftLock>,
     // Keep a set of inprogress mfa registrations
     mfareg_sessions: BptreeMap<Uuid, MfaRegSession>,
     // Need a reference to the query server.
@@ -68,8 +75,13 @@ pub struct IdmServerWriteTransaction<'a> {
     // Contains methods that require writes, but in the context of writing to
     // the idm in memory structures (maybe the query server too). This is
     // things like authentication
-    _session_ticket: SemaphorePermit<'a>,
-    sessions: BptreeMapWriteTxn<'a, Uuid, AuthSession>,
+    // _session_ticket: SemaphorePermit<'a>,
+    // sessions: BptreeMapWriteTxn<'a, Uuid, AuthSession>,
+    session_ticket: &'a Semaphore,
+    sessions: &'a BptreeMap<Uuid, AuthSession>,
+
+    softlock_ticket: &'a Semaphore,
+    softlocks: &'a HashMap<Uuid, CredSoftLock>,
     pub qs_read: QueryServerReadTransaction<'a>,
     // thread/server id
     sid: SID,
@@ -112,8 +124,10 @@ impl IdmServer {
 
         (
             IdmServer {
-                session_ticket: Arc::new(Semaphore::new(1)),
+                session_ticket: Semaphore::new(1),
                 sessions: BptreeMap::new(),
+                softlock_ticket: Semaphore::new(1),
+                softlocks: HashMap::new(),
                 mfareg_sessions: BptreeMap::new(),
                 qs,
                 crypto_policy,
@@ -133,12 +147,16 @@ impl IdmServer {
         let mut rng = StdRng::from_entropy();
         rng.fill(&mut sid);
 
-        let session_ticket = self.session_ticket.acquire().await;
+        // let session_ticket = self.session_ticket.acquire().await;
         let qs_read = self.qs.read_async().await;
 
         IdmServerWriteTransaction {
-            _session_ticket: session_ticket,
-            sessions: self.sessions.write(),
+            // _session_ticket: session_ticket,
+            // sessions: self.sessions.write(),
+            session_ticket: &self.session_ticket,
+            sessions: &self.sessions,
+            softlock_ticket: &self.softlock_ticket,
+            softlocks: &self.softlocks,
             qs_read,
             sid,
             async_tx: self.async_tx.clone(),
@@ -218,19 +236,23 @@ impl IdmServerDelayed {
 impl<'a> IdmServerWriteTransaction<'a> {
     #[cfg(test)]
     pub fn is_sessionid_present(&self, sessionid: &Uuid) -> bool {
-        self.sessions.contains_key(sessionid)
+        let session_read = self.sessions.read();
+        session_read.contains_key(sessionid)
     }
 
-    pub fn expire_auth_sessions(&mut self, ct: Duration) {
+    pub async fn expire_auth_sessions(&mut self, ct: Duration) {
         // ct is current time - sub the timeout. and then split.
         let expire = ct - Duration::from_secs(AUTH_SESSION_TIMEOUT);
         let split_at = uuid_from_duration(expire, self.sid);
         // Removes older sessions in place.
-        self.sessions.split_off_lt(&split_at);
+        let _session_ticket = self.session_ticket.acquire().await;
+        let mut session_write = self.sessions.write();
+        session_write.split_off_lt(&split_at);
         // expired will now be dropped, and can't be used by future sessions.
+        session_write.commit();
     }
 
-    pub fn auth(
+    pub async fn auth(
         &mut self,
         au: &mut AuditScope,
         ae: &AuthEvent,
@@ -241,104 +263,197 @@ impl<'a> IdmServerWriteTransaction<'a> {
 
         match &ae.step {
             AuthEventStep::Init(init) => {
-                lperf_segment!(au, "idm::server::auth<Init>", || {
-                    // Allocate a session id, based on current time.
-                    let sessionid = uuid_from_duration(ct, self.sid);
+                // lperf_segment!(au, "idm::server::auth<Init>", || {
+                // Allocate a session id, based on current time.
+                let sessionid = uuid_from_duration(ct, self.sid);
 
-                    // Begin the auth procedure!
-                    // Start a read
-                    //
-                    // Actually we may not need this - at the time we issue the auth-init
-                    // we could generate the uat, the nonce and cache hashes in memory,
-                    // then this can just be fully without a txn.
-                    //
-                    // We do need a txn so that we can process/search and claims
-                    // or related based on the quality of the provided auth steps
-                    //
-                    // We *DO NOT* need a write though, because I think that lock outs
-                    // and rate limits are *per server* and *in memory* only.
-                    //
-                    // Check anything needed? Get the current auth-session-id from request
-                    // because it associates to the nonce's etc which were all cached.
-                    let euuid = self.qs_read.name_to_uuid(au, init.name.as_str())?;
+                // Begin the auth procedure!
+                // Start a read
+                //
+                // Actually we may not need this - at the time we issue the auth-init
+                // we could generate the uat, the nonce and cache hashes in memory,
+                // then this can just be fully without a txn.
+                //
+                // We do need a txn so that we can process/search and claims
+                // or related based on the quality of the provided auth steps
+                //
+                // We *DO NOT* need a write though, because I think that lock outs
+                // and rate limits are *per server* and *in memory* only.
+                //
+                // Check anything needed? Get the current auth-session-id from request
+                // because it associates to the nonce's etc which were all cached.
+                let euuid = self.qs_read.name_to_uuid(au, init.name.as_str())?;
 
-                    // Get the first / single entry we expect here ....
-                    let entry = self.qs_read.internal_search_uuid(au, &euuid)?;
+                // Get the first / single entry we expect here ....
+                let entry = self.qs_read.internal_search_uuid(au, &euuid)?;
 
-                    lsecurity!(
-                        au,
-                        "Initiating Authentication Session for ... {:?}: {:?}",
-                        euuid,
-                        entry
-                    );
+                lsecurity!(
+                    au,
+                    "Initiating Authentication Session for ... {:?}: {:?}",
+                    euuid,
+                    entry
+                );
 
-                    // Now, convert the Entry to an account - this gives us some stronger
-                    // typing and functionality so we can assess what auth types can
-                    // continue, and helps to keep non-needed entry specific data
-                    // out of the LRU.
-                    let account = Account::try_from_entry_ro(au, &entry, &mut self.qs_read)?;
-                    let (auth_session, state) =
-                        AuthSession::new(au, account, init.appid.clone(), ct);
+                // Now, convert the Entry to an account - this gives us some stronger
+                // typing and functionality so we can assess what auth types can
+                // continue, and helps to keep non-needed entry specific data
+                // out of the session tree.
+                let account = Account::try_from_entry_ro(au, &entry, &mut self.qs_read)?;
 
-                    match auth_session {
-                        Some(auth_session) => {
-                            lperf_segment!(au, "idm::server::auth<Init> -> sessions", || {
-                                if self.sessions.contains_key(&sessionid) {
-                                    Err(OperationError::InvalidSessionState)
-                                } else {
-                                    self.sessions.insert(sessionid, auth_session);
-                                    // Debugging: ensure we really inserted ...
-                                    debug_assert!(self.sessions.get(&sessionid).is_some());
-                                    Ok(())
-                                }
-                            })?;
-                        }
-                        None => {
-                            lsecurity!(au, "Authentication Session Unable to begin");
-                        }
-                    };
-                    // If we have a session of the same id, return an error (despite how
-                    // unlikely this is ...
+                // Check the credential that the auth_session will attempt to
+                // use.
+                let is_valid = {
+                    let cred_uuid = account.primary_cred_uuid();
+                    // Acquire the softlock map
+                    let _softlock_ticket = self.softlock_ticket.acquire().await;
+                    let mut softlock_write = self.softlocks.write();
+                    // Does it exist?
+                    let r = softlock_write
+                        .get_mut(&cred_uuid)
+                        .map(|slock| {
+                            // Apply the current time.
+                            slock.apply_time_step(ct);
+                            // Now check the results
+                            slock.is_valid()
+                        })
+                        .unwrap_or(true);
+                    softlock_write.commit();
+                    r
+                };
 
-                    Ok(AuthResult { sessionid, state })
+                let (auth_session, state) = if is_valid {
+                    AuthSession::new(au, account, init.appid.clone(), ct)
+                } else {
+                    // it's softlocked, don't even bother.
+                    lsecurity!(au, "Account is softlocked.");
+                    (
+                        None,
+                        AuthState::Denied("Account is temporarily locked".to_string()),
+                    )
+                };
+
+                match auth_session {
+                    Some(auth_session) => {
+                        // Now acquire the session tree for writing.
+                        let _session_ticket = self.session_ticket.acquire().await;
+                        let mut session_write = self.sessions.write();
+                        lperf_segment!(au, "idm::server::auth<Init> -> sessions", || {
+                            if session_write.contains_key(&sessionid) {
+                                Err(OperationError::InvalidSessionState)
+                            } else {
+                                session_write.insert(sessionid, auth_session);
+                                // Debugging: ensure we really inserted ...
+                                debug_assert!(session_write.get(&sessionid).is_some());
+                                Ok(())
+                            }
+                        })?;
+                        session_write.commit();
+                    }
+                    None => {
+                        lsecurity!(au, "Authentication Session Unable to begin");
+                    }
+                };
+
+                // TODO: Change this william!
+                // For now ...
+                let delay = None;
+
+                // If we have a session of the same id, return an error (despite how
+                // unlikely this is ...
+
+                Ok(AuthResult {
+                    sessionid,
+                    state,
+                    delay,
                 })
+                // })
             }
             AuthEventStep::Creds(creds) => {
-                lperf_segment!(au, "idm::server::auth<Creds>", || {
-                    // Do we have a session?
-                    let auth_session = self
-                        .sessions
-                        // Why is the session missing?
-                        .get_mut(&creds.sessionid)
-                        .ok_or_else(|| {
-                            ladmin_error!(au, "Invalid Session State (no present session uuid)");
-                            OperationError::InvalidSessionState
-                        })?;
+                // lperf_segment!(au, "idm::server::auth<Creds>", || {
+                let _session_ticket = self.session_ticket.acquire().await;
+                let _softlock_ticket = self.softlock_ticket.acquire().await;
+
+                let mut session_write = self.sessions.write();
+                // Do we have a session?
+                let auth_session = session_write
+                    // Why is the session missing?
+                    .get_mut(&creds.sessionid)
+                    .ok_or_else(|| {
+                        ladmin_error!(au, "Invalid Session State (no present session uuid)");
+                        OperationError::InvalidSessionState
+                    })?;
+
+                // From the auth_session, determine if the current account
+                // credential that we are using has become softlocked or not.
+                let mut softlock_write = self.softlocks.write();
+
+                let cred_uuid = auth_session.get_account().primary_cred_uuid();
+
+                let is_valid = softlock_write
+                    .get_mut(&cred_uuid)
+                    .map(|slock| {
+                        // Apply the current time.
+                        slock.apply_time_step(ct);
+                        // Now check the results
+                        slock.is_valid()
+                    })
+                    .unwrap_or(true);
+
+                let r = if is_valid {
                     // Process the credentials here as required.
                     // Basically throw them at the auth_session and see what
                     // falls out.
                     auth_session
                         .validate_creds(au, &creds.creds, &ct, &self.async_tx)
                         .map(|aus| {
-                            AuthResult {
-                                // Is this right?
-                                sessionid: creds.sessionid,
-                                state: aus,
-                            }
+                            // Inspect the result:
+                            // if it was a failure, we need to inc the softlock.
+                            if let AuthState::Denied(_) = &aus {
+                                if let Some(slock) = softlock_write.get_mut(&cred_uuid) {
+                                    // Update it.
+                                    slock.record_failure(ct);
+                                } else {
+                                    // Create if not exist, and the cred type supports softlocking.
+                                    if let Some(policy) =
+                                        auth_session.get_account().primary_cred_softlock_policy()
+                                    {
+                                        let mut slock = CredSoftLock::new(policy);
+                                        slock.record_failure(ct);
+                                        softlock_write.insert(cred_uuid, slock);
+                                    }
+                                }
+                            };
+                            aus
                         })
-                })
+                } else {
+                    // Fail the session
+                    auth_session.end_session("Account is temporarily locked".to_string())
+                }
+                .map(|aus| {
+                    // TODO: Change this william!
+                    // For now ...
+                    let delay = None;
+                    AuthResult {
+                        // Is this right?
+                        sessionid: creds.sessionid,
+                        state: aus,
+                        delay,
+                    }
+                });
+                softlock_write.commit();
+                session_write.commit();
+                r
+                // })
             }
         }
     }
 
-    pub fn auth_unix(
+    pub async fn auth_unix(
         &mut self,
         au: &mut AuditScope,
         uae: &UnixUserAuthEvent,
         ct: Duration,
     ) -> Result<Option<UnixUserToken>, OperationError> {
-        // TODO #59: Implement soft lock checking for unix creds here!
-
         // Get the entry/target we are working on.
         let account = self
             .qs_read
@@ -351,18 +466,69 @@ impl<'a> IdmServerWriteTransaction<'a> {
                 e
             })?;
 
+        if !account.is_within_valid_time(ct) {
+            lsecurity!(au, "Account is not within valid time period");
+            return Ok(None);
+        }
+
+        let _softlock_ticket = self.softlock_ticket.acquire().await;
+        let mut softlock_write = self.softlocks.write();
+
+        let cred_uuid = account.unix_cred_uuid();
+        let is_valid = if let Some(cu) = cred_uuid.as_ref() {
+            // Advanced and then check the softlock.
+            softlock_write
+                .get_mut(cu)
+                .map(|slock| {
+                    // Apply the current time.
+                    slock.apply_time_step(ct);
+                    // Now check the results
+                    slock.is_valid()
+                })
+                // No sl, it's valid.
+                .unwrap_or(true)
+        } else {
+            // No cred id? It'll fail in verify ...
+            true
+        };
+
         // Validate the unix_pw - this checks the account/cred lock states.
-        account.verify_unix_credential(au, uae.cleartext.as_str(), &self.async_tx, ct)
+        let res = if is_valid {
+            // Account is unlocked, can proceed.
+            account
+                .verify_unix_credential(au, uae.cleartext.as_str(), &self.async_tx, ct)
+                .map(|res| {
+                    if res.is_none() {
+                        if let Some(cu) = cred_uuid.as_ref() {
+                            // Update the cred failure.
+                            if let Some(slock) = softlock_write.get_mut(cu) {
+                                // Update it.
+                                slock.record_failure(ct);
+                            } else if let Some(policy) = account.unix_cred_softlock_policy() {
+                                let mut slock = CredSoftLock::new(policy);
+                                slock.record_failure(ct);
+                                softlock_write.insert(*cu, slock);
+                            };
+                        }
+                    };
+                    res
+                })
+        } else {
+            // Account is slocked!
+            lsecurity!(au, "Account is softlocked.");
+            Ok(None)
+        };
+
+        softlock_write.commit();
+        res
     }
 
-    pub fn auth_ldap(
+    pub async fn auth_ldap(
         &mut self,
         au: &mut AuditScope,
         lae: &LdapAuthEvent,
         ct: Duration,
     ) -> Result<Option<LdapBoundToken>, OperationError> {
-        // TODO #59: Implement soft lock checking for unix creds here!
-
         let account_entry = self
             .qs_read
             .internal_search_uuid(au, &lae.target)
@@ -370,12 +536,16 @@ impl<'a> IdmServerWriteTransaction<'a> {
                 ladmin_error!(au, "Failed to start auth ldap -> {:?}", e);
                 e
             })?;
-        /* !!! This would probably be better if we DIDN'T use the Unix/Account types ... ? */
 
         // if anonymous
         if lae.target == *UUID_ANONYMOUS {
-            // TODO: #59 We should have checked if anonymous was locked by now!
             let account = Account::try_from_entry_ro(au, &account_entry, &mut self.qs_read)?;
+            // Check if the anon account has been locked.
+            if !account.is_within_valid_time(ct) {
+                lsecurity!(au, "Account is not within valid time period");
+                return Ok(None);
+            }
+
             // Account must be anon, so we can gen the uat.
             Ok(Some(LdapBoundToken {
                 uuid: *UUID_ANONYMOUS,
@@ -391,42 +561,97 @@ impl<'a> IdmServerWriteTransaction<'a> {
         } else {
             let account =
                 UnixUserAccount::try_from_entry_ro(au, &account_entry, &mut self.qs_read)?;
-            if account
-                .verify_unix_credential(au, lae.cleartext.as_str(), &self.async_tx, ct)?
-                .is_some()
-            {
-                // Get the anon uat
-                let anon_entry = self
-                    .qs_read
-                    .internal_search_uuid(au, &UUID_ANONYMOUS)
-                    .map_err(|e| {
-                        ladmin_error!(au, "Failed to find effective uat for auth ldap -> {:?}", e);
-                        e
-                    })?;
-                let anon_account = Account::try_from_entry_ro(au, &anon_entry, &mut self.qs_read)?;
 
-                Ok(Some(LdapBoundToken {
-                    spn: account.spn,
-                    uuid: account.uuid,
-                    effective_uat: anon_account
-                        .to_userauthtoken(&[])
-                        .ok_or(OperationError::InvalidState)
-                        .map_err(|e| {
-                            ladmin_error!(au, "Unable to generate effective_uat -> {:?}", e);
-                            e
-                        })?,
-                }))
-            } else {
-                Ok(None)
+            if !account.is_within_valid_time(ct) {
+                lsecurity!(au, "Account is not within valid time period");
+                return Ok(None);
             }
+
+            let _softlock_ticket = self.softlock_ticket.acquire().await;
+            let mut softlock_write = self.softlocks.write();
+
+            let cred_uuid = account.unix_cred_uuid();
+            let is_valid = if let Some(cu) = cred_uuid.as_ref() {
+                // Advanced and then check the softlock.
+                softlock_write
+                    .get_mut(cu)
+                    .map(|slock| {
+                        // Apply the current time.
+                        slock.apply_time_step(ct);
+                        // Now check the results
+                        slock.is_valid()
+                    })
+                    // No sl, it's valid.
+                    .unwrap_or(true)
+            } else {
+                // No cred id? It'll fail in verify ...
+                true
+            };
+
+            let res = if is_valid {
+                if account
+                    .verify_unix_credential(au, lae.cleartext.as_str(), &self.async_tx, ct)?
+                    .is_some()
+                {
+                    // Get the anon uat
+                    let anon_entry = self
+                        .qs_read
+                        .internal_search_uuid(au, &UUID_ANONYMOUS)
+                        .map_err(|e| {
+                            ladmin_error!(
+                                au,
+                                "Failed to find effective uat for auth ldap -> {:?}",
+                                e
+                            );
+                            e
+                        })?;
+                    let anon_account =
+                        Account::try_from_entry_ro(au, &anon_entry, &mut self.qs_read)?;
+
+                    Ok(Some(LdapBoundToken {
+                        spn: account.spn,
+                        uuid: account.uuid,
+                        effective_uat: anon_account
+                            .to_userauthtoken(&[])
+                            .ok_or(OperationError::InvalidState)
+                            .map_err(|e| {
+                                ladmin_error!(au, "Unable to generate effective_uat -> {:?}", e);
+                                e
+                            })?,
+                    }))
+                } else {
+                    // PW failure, update softlock.
+                    if let Some(cu) = cred_uuid.as_ref() {
+                        // Update the cred failure.
+                        if let Some(slock) = softlock_write.get_mut(cu) {
+                            // Update it.
+                            slock.record_failure(ct);
+                        } else if let Some(policy) = account.unix_cred_softlock_policy() {
+                            let mut slock = CredSoftLock::new(policy);
+                            slock.record_failure(ct);
+                            softlock_write.insert(*cu, slock);
+                        };
+                    };
+                    Ok(None)
+                }
+            } else {
+                // Account is slocked!
+                lsecurity!(au, "Account is softlocked.");
+                Ok(None)
+            };
+
+            softlock_write.commit();
+            res
         }
     }
 
-    pub fn commit(self, au: &mut AuditScope) -> Result<(), OperationError> {
+    pub fn commit(self, _au: &mut AuditScope) -> Result<(), OperationError> {
+        /*
         lperf_trace_segment!(au, "idm::server::IdmServerWriteTransaction::commit", || {
             self.sessions.commit();
             Ok(())
-        })
+        })*/
+        Ok(())
     }
 }
 
@@ -1032,12 +1257,21 @@ mod tests {
                 // Send the initial auth event for initialising the session
                 let anon_init = AuthEvent::anonymous_init();
                 // Expect success
-                let r1 = idms_write.auth(au, &anon_init, Duration::from_secs(TEST_CURRENT_TIME));
+                let r1 = task::block_on(idms_write.auth(
+                    au,
+                    &anon_init,
+                    Duration::from_secs(TEST_CURRENT_TIME),
+                ));
                 /* Some weird lifetime shit happens here ... */
 
                 let sid = match r1 {
                     Ok(ar) => {
-                        let AuthResult { sessionid, state } = ar;
+                        let AuthResult {
+                            sessionid,
+                            state,
+                            delay,
+                        } = ar;
+                        debug_assert!(delay.is_none());
                         match state {
                             AuthState::Continue(mut conts) => {
                                 // Should only be one auth mech
@@ -1075,7 +1309,11 @@ mod tests {
                 let anon_step = AuthEvent::cred_step_anonymous(sid);
 
                 // Expect success
-                let r2 = idms_write.auth(au, &anon_step, Duration::from_secs(TEST_CURRENT_TIME));
+                let r2 = task::block_on(idms_write.auth(
+                    au,
+                    &anon_step,
+                    Duration::from_secs(TEST_CURRENT_TIME),
+                ));
                 debug!("r2 ==> {:?}", r2);
 
                 match r2 {
@@ -1083,7 +1321,10 @@ mod tests {
                         let AuthResult {
                             sessionid: _,
                             state,
+                            delay,
                         } = ar;
+
+                        debug_assert!(delay.is_none());
                         match state {
                             AuthState::Success(_uat) => {
                                 // Check the uat.
@@ -1121,7 +1362,11 @@ mod tests {
                 let anon_step = AuthEvent::cred_step_anonymous(sid);
 
                 // Expect failure
-                let r2 = idms_write.auth(au, &anon_step, Duration::from_secs(TEST_CURRENT_TIME));
+                let r2 = task::block_on(idms_write.auth(
+                    au,
+                    &anon_step,
+                    Duration::from_secs(TEST_CURRENT_TIME),
+                ));
                 debug!("r2 ==> {:?}", r2);
 
                 match r2 {
@@ -1164,13 +1409,19 @@ mod tests {
         qs_write.commit(au)
     }
 
-    fn init_admin_authsession_sid(idms: &IdmServer, au: &mut AuditScope) -> Uuid {
+    fn init_admin_authsession_sid(idms: &IdmServer, au: &mut AuditScope, ct: Duration) -> Uuid {
         let mut idms_write = idms.write();
         let admin_init = AuthEvent::named_init("admin");
 
-        let r1 = idms_write.auth(au, &admin_init, Duration::from_secs(TEST_CURRENT_TIME));
+        let r1 = task::block_on(idms_write.auth(au, &admin_init, ct));
         let ar = r1.unwrap();
-        let AuthResult { sessionid, state } = ar;
+        let AuthResult {
+            sessionid,
+            state,
+            delay,
+        } = ar;
+
+        debug_assert!(delay.is_none());
 
         match state {
             AuthState::Continue(_) => {}
@@ -1186,13 +1437,14 @@ mod tests {
     }
 
     fn check_admin_password(idms: &IdmServer, au: &mut AuditScope, pw: &str) {
-        let sid = init_admin_authsession_sid(idms, au);
+        let sid = init_admin_authsession_sid(idms, au, Duration::from_secs(TEST_CURRENT_TIME));
 
         let mut idms_write = idms.write();
         let anon_step = AuthEvent::cred_step_password(sid, pw);
 
         // Expect success
-        let r2 = idms_write.auth(au, &anon_step, Duration::from_secs(TEST_CURRENT_TIME));
+        let r2 =
+            task::block_on(idms_write.auth(au, &anon_step, Duration::from_secs(TEST_CURRENT_TIME)));
         debug!("r2 ==> {:?}", r2);
 
         match r2 {
@@ -1200,7 +1452,11 @@ mod tests {
                 let AuthResult {
                     sessionid: _,
                     state,
+                    delay,
                 } = ar;
+
+                debug_assert!(delay.is_none());
+
                 match state {
                     AuthState::Success(_uat) => {
                         // Check the uat.
@@ -1242,10 +1498,19 @@ mod tests {
             let mut idms_write = idms.write();
             let admin_init = AuthEvent::named_init("admin@example.com");
 
-            let r1 = idms_write.auth(au, &admin_init, Duration::from_secs(TEST_CURRENT_TIME));
+            let r1 = task::block_on(idms_write.auth(
+                au,
+                &admin_init,
+                Duration::from_secs(TEST_CURRENT_TIME),
+            ));
             let ar = r1.unwrap();
-            let AuthResult { sessionid, state } = ar;
+            let AuthResult {
+                sessionid,
+                state,
+                delay,
+            } = ar;
 
+            debug_assert!(delay.is_none());
             match state {
                 AuthState::Continue(_) => {}
                 _ => {
@@ -1262,7 +1527,11 @@ mod tests {
             let anon_step = AuthEvent::cred_step_password(sid, TEST_PASSWORD);
 
             // Expect success
-            let r2 = idms_write.auth(au, &anon_step, Duration::from_secs(TEST_CURRENT_TIME));
+            let r2 = task::block_on(idms_write.auth(
+                au,
+                &anon_step,
+                Duration::from_secs(TEST_CURRENT_TIME),
+            ));
             debug!("r2 ==> {:?}", r2);
 
             match r2 {
@@ -1270,7 +1539,9 @@ mod tests {
                     let AuthResult {
                         sessionid: _,
                         state,
+                        delay,
                     } = ar;
+                    debug_assert!(delay.is_none());
                     match state {
                         AuthState::Success(_uat) => {
                             // Check the uat.
@@ -1299,12 +1570,16 @@ mod tests {
                        _idms_delayed: &IdmServerDelayed,
                        au: &mut AuditScope| {
             init_admin_w_password(au, qs, TEST_PASSWORD).expect("Failed to setup admin account");
-            let sid = init_admin_authsession_sid(idms, au);
+            let sid = init_admin_authsession_sid(idms, au, Duration::from_secs(TEST_CURRENT_TIME));
             let mut idms_write = idms.write();
             let anon_step = AuthEvent::cred_step_password(sid, TEST_PASSWORD_INC);
 
             // Expect success
-            let r2 = idms_write.auth(au, &anon_step, Duration::from_secs(TEST_CURRENT_TIME));
+            let r2 = task::block_on(idms_write.auth(
+                au,
+                &anon_step,
+                Duration::from_secs(TEST_CURRENT_TIME),
+            ));
             debug!("r2 ==> {:?}", r2);
 
             match r2 {
@@ -1312,7 +1587,9 @@ mod tests {
                     let AuthResult {
                         sessionid: _,
                         state,
+                        delay,
                     } = ar;
+                    debug_assert!(delay.is_none());
                     match state {
                         AuthState::Denied(_reason) => {
                             // Check the uat.
@@ -1370,14 +1647,16 @@ mod tests {
                        _idms_delayed: &IdmServerDelayed,
                        au: &mut AuditScope| {
             init_admin_w_password(au, qs, TEST_PASSWORD).expect("Failed to setup admin account");
-            let sid = init_admin_authsession_sid(idms, au);
+            let sid = init_admin_authsession_sid(idms, au, Duration::from_secs(TEST_CURRENT_TIME));
             let mut idms_write = idms.write();
             assert!(idms_write.is_sessionid_present(&sid));
             // Expire like we are currently "now". Should not affect our session.
-            idms_write.expire_auth_sessions(Duration::from_secs(TEST_CURRENT_TIME));
+            task::block_on(idms_write.expire_auth_sessions(Duration::from_secs(TEST_CURRENT_TIME)));
             assert!(idms_write.is_sessionid_present(&sid));
             // Expire as though we are in the future.
-            idms_write.expire_auth_sessions(Duration::from_secs(TEST_CURRENT_EXPIRE));
+            task::block_on(
+                idms_write.expire_auth_sessions(Duration::from_secs(TEST_CURRENT_EXPIRE)),
+            );
             assert!(!idms_write.is_sessionid_present(&sid));
             assert!(idms_write.commit(au).is_ok());
             let idms_write = idms.write();
@@ -1570,14 +1849,22 @@ mod tests {
             // Check auth verification of the password
 
             let uuae_good = UnixUserAuthEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD);
-            let a1 = idms_write.auth_unix(au, &uuae_good, Duration::from_secs(TEST_CURRENT_TIME));
+            let a1 = task::block_on(idms_write.auth_unix(
+                au,
+                &uuae_good,
+                Duration::from_secs(TEST_CURRENT_TIME),
+            ));
             match a1 {
                 Ok(Some(_tok)) => {}
                 _ => assert!(false),
             };
             // Check bad password
             let uuae_bad = UnixUserAuthEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD_INC);
-            let a2 = idms_write.auth_unix(au, &uuae_bad, Duration::from_secs(TEST_CURRENT_TIME));
+            let a2 = task::block_on(idms_write.auth_unix(
+                au,
+                &uuae_bad,
+                Duration::from_secs(TEST_CURRENT_TIME),
+            ));
             match a2 {
                 Ok(None) => {}
                 _ => assert!(false),
@@ -1595,9 +1882,14 @@ mod tests {
             assert!(idms_prox_write.qs_write.modify(au, &me_purge_up).is_ok());
             assert!(idms_prox_write.commit(au).is_ok());
 
-            // And auth should now fail due to the lack of PW material
+            // And auth should now fail due to the lack of PW material (note that
+            // softlocking WONT kick in because the cred_uuid is gone!)
             let mut idms_write = idms.write();
-            let a3 = idms_write.auth_unix(au, &uuae_good, Duration::from_secs(TEST_CURRENT_TIME));
+            let a3 = task::block_on(idms_write.auth_unix(
+                au,
+                &uuae_good,
+                Duration::from_secs(TEST_CURRENT_TIME),
+            ));
             match a3 {
                 Ok(None) => {}
                 _ => assert!(false),
@@ -1812,7 +2104,11 @@ mod tests {
             // Get the auth ready.
             let uuae = UnixUserAuthEvent::new_internal(&UUID_ADMIN, "password");
             let mut idms_write = idms.write();
-            let a1 = idms_write.auth_unix(au, &uuae, Duration::from_secs(TEST_CURRENT_TIME));
+            let a1 = task::block_on(idms_write.auth_unix(
+                au,
+                &uuae,
+                Duration::from_secs(TEST_CURRENT_TIME),
+            ));
             match a1 {
                 Ok(Some(_tok)) => {}
                 _ => assert!(false),
@@ -1824,7 +2120,11 @@ mod tests {
             let _r = task::block_on(idms.delayed_action(au, duration_from_epoch_now(), da));
             // Go again
             let mut idms_write = idms.write();
-            let a2 = idms_write.auth_unix(au, &uuae, Duration::from_secs(TEST_CURRENT_TIME));
+            let a2 = task::block_on(idms_write.auth_unix(
+                au,
+                &uuae,
+                Duration::from_secs(TEST_CURRENT_TIME),
+            ));
             match a2 {
                 Ok(Some(_tok)) => {}
                 _ => assert!(false),
@@ -1883,14 +2183,16 @@ mod tests {
 
             let mut idms_write = idms.write();
             let admin_init = AuthEvent::named_init("admin");
-            let r1 = idms_write.auth(au, &admin_init, time_low);
+            let r1 = task::block_on(idms_write.auth(au, &admin_init, time_low));
 
             let ar = r1.unwrap();
             let AuthResult {
                 sessionid: _,
                 state,
+                delay,
             } = ar;
 
+            debug_assert!(delay.is_none());
             match state {
                 AuthState::Denied(_) => {}
                 _ => {
@@ -1903,14 +2205,16 @@ mod tests {
             // And here!
             let mut idms_write = idms.write();
             let admin_init = AuthEvent::named_init("admin");
-            let r1 = idms_write.auth(au, &admin_init, time_high);
+            let r1 = task::block_on(idms_write.auth(au, &admin_init, time_high));
 
             let ar = r1.unwrap();
             let AuthResult {
                 sessionid: _,
                 state,
+                delay,
             } = ar;
 
+            debug_assert!(delay.is_none());
             match state {
                 AuthState::Denied(_) => {}
                 _ => {
@@ -1957,7 +2261,7 @@ mod tests {
             let mut idms_write = idms.write();
             let uuae_good = UnixUserAuthEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD);
 
-            let a1 = idms_write.auth_unix(au, &uuae_good, time_low);
+            let a1 = task::block_on(idms_write.auth_unix(au, &uuae_good, time_low));
             // Should this actually send an error with the details? Or just silently act as
             // badpw?
             match a1 {
@@ -1965,7 +2269,7 @@ mod tests {
                 _ => assert!(false),
             };
 
-            let a2 = idms_write.auth_unix(au, &uuae_good, time_high);
+            let a2 = task::block_on(idms_write.auth_unix(au, &uuae_good, time_high));
             match a2 {
                 Ok(None) => {}
                 _ => assert!(false),
@@ -2030,6 +2334,288 @@ mod tests {
             } else {
                 assert!(false);
             }
+        })
+    }
+
+    #[test]
+    fn test_idm_account_softlocking() {
+        run_idm_test!(|qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &mut IdmServerDelayed,
+                       au: &mut AuditScope| {
+            init_admin_w_password(au, qs, TEST_PASSWORD).expect("Failed to setup admin account");
+
+            // Auth invalid, no softlock present.
+            let sid = init_admin_authsession_sid(idms, au, Duration::from_secs(TEST_CURRENT_TIME));
+            let mut idms_write = idms.write();
+            let anon_step = AuthEvent::cred_step_password(sid, TEST_PASSWORD_INC);
+
+            let r2 = task::block_on(idms_write.auth(
+                au,
+                &anon_step,
+                Duration::from_secs(TEST_CURRENT_TIME),
+            ));
+            debug!("r2 ==> {:?}", r2);
+
+            match r2 {
+                Ok(ar) => {
+                    let AuthResult {
+                        sessionid: _,
+                        state,
+                        delay,
+                    } = ar;
+                    debug_assert!(delay.is_none());
+                    match state {
+                        AuthState::Denied(reason) => {
+                            assert!(reason != "Account is temporarily locked");
+                        }
+                        _ => {
+                            error!("A critical error has occured! We have a non-denied result!");
+                            panic!();
+                        }
+                    }
+                }
+                Err(e) => {
+                    error!("A critical error has occured! {:?}", e);
+                    panic!();
+                }
+            };
+            idms_write.commit(au).expect("Must not fail");
+
+            // Auth init, softlock present, count == 1, same time (so before unlock_at)
+            // aka Auth valid immediate, (ct < exp), autofail
+            // aka Auth invalid immediate, (ct < exp), autofail
+            let mut idms_write = idms.write();
+            let admin_init = AuthEvent::named_init("admin");
+
+            let r1 = task::block_on(idms_write.auth(
+                au,
+                &admin_init,
+                Duration::from_secs(TEST_CURRENT_TIME),
+            ));
+            let ar = r1.unwrap();
+            let AuthResult {
+                sessionid: _,
+                state,
+                delay,
+            } = ar;
+
+            debug_assert!(delay.is_none());
+            match state {
+                AuthState::Denied(reason) => {
+                    assert!(reason == "Account is temporarily locked");
+                }
+                _ => {
+                    error!("Sessions was not denied (softlock)");
+                    panic!();
+                }
+            };
+
+            idms_write.commit(au).expect("Must not fail");
+
+            // Auth invalid once softlock pass (count == 2, exp_at grows)
+            // Tested in the softlock state machine.
+
+            // Auth valid once softlock pass, valid. Count remains.
+            let sid =
+                init_admin_authsession_sid(idms, au, Duration::from_secs(TEST_CURRENT_TIME + 2));
+
+            let mut idms_write = idms.write();
+            let anon_step = AuthEvent::cred_step_password(sid, TEST_PASSWORD);
+
+            // Expect success
+            let r2 = task::block_on(idms_write.auth(
+                au,
+                &anon_step,
+                Duration::from_secs(TEST_CURRENT_TIME + 2),
+            ));
+            debug!("r2 ==> {:?}", r2);
+
+            match r2 {
+                Ok(ar) => {
+                    let AuthResult {
+                        sessionid: _,
+                        state,
+                        delay,
+                    } = ar;
+                    debug_assert!(delay.is_none());
+                    match state {
+                        AuthState::Success(_uat) => {
+                            // Check the uat.
+                        }
+                        _ => {
+                            error!("A critical error has occured! We have a non-succcess result!");
+                            panic!();
+                        }
+                    }
+                }
+                Err(e) => {
+                    error!("A critical error has occured! {:?}", e);
+                    // Should not occur!
+                    panic!();
+                }
+            };
+
+            idms_write.commit(au).expect("Must not fail");
+            // Auth valid after reset at, count == 0.
+            // Tested in the softlock state machine.
+
+            // Auth invalid, softlock present, count == 1
+            // Auth invalid after reset at, count == 0 and then to count == 1
+            // Tested in the softlock state machine.
+        })
+    }
+
+    #[test]
+    fn test_idm_account_softlocking_interleaved() {
+        run_idm_test!(|qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &mut IdmServerDelayed,
+                       au: &mut AuditScope| {
+            init_admin_w_password(au, qs, TEST_PASSWORD).expect("Failed to setup admin account");
+
+            // Start an *early* auth session.
+            let sid_early =
+                init_admin_authsession_sid(idms, au, Duration::from_secs(TEST_CURRENT_TIME));
+
+            // Start a second auth session
+            let sid_later =
+                init_admin_authsession_sid(idms, au, Duration::from_secs(TEST_CURRENT_TIME));
+            // Get the detail wrong in sid_later.
+            let mut idms_write = idms.write();
+            let anon_step = AuthEvent::cred_step_password(sid_later, TEST_PASSWORD_INC);
+
+            let r2 = task::block_on(idms_write.auth(
+                au,
+                &anon_step,
+                Duration::from_secs(TEST_CURRENT_TIME),
+            ));
+            debug!("r2 ==> {:?}", r2);
+
+            match r2 {
+                Ok(ar) => {
+                    let AuthResult {
+                        sessionid: _,
+                        state,
+                        delay,
+                    } = ar;
+                    debug_assert!(delay.is_none());
+                    match state {
+                        AuthState::Denied(reason) => {
+                            assert!(reason != "Account is temporarily locked");
+                        }
+                        _ => {
+                            error!("A critical error has occured! We have a non-denied result!");
+                            panic!();
+                        }
+                    }
+                }
+                Err(e) => {
+                    error!("A critical error has occured! {:?}", e);
+                    panic!();
+                }
+            };
+            idms_write.commit(au).expect("Must not fail");
+
+            // Now check that sid_early is denied due to softlock.
+            let mut idms_write = idms.write();
+            let anon_step = AuthEvent::cred_step_password(sid_early, TEST_PASSWORD);
+
+            // Expect success
+            let r2 = task::block_on(idms_write.auth(
+                au,
+                &anon_step,
+                Duration::from_secs(TEST_CURRENT_TIME),
+            ));
+            debug!("r2 ==> {:?}", r2);
+            match r2 {
+                Ok(ar) => {
+                    let AuthResult {
+                        sessionid: _,
+                        state,
+                        delay,
+                    } = ar;
+                    debug_assert!(delay.is_none());
+                    match state {
+                        AuthState::Denied(reason) => {
+                            assert!(reason == "Account is temporarily locked");
+                        }
+                        _ => {
+                            error!("A critical error has occured! We have a non-denied result!");
+                            panic!();
+                        }
+                    }
+                }
+                Err(e) => {
+                    error!("A critical error has occured! {:?}", e);
+                    panic!();
+                }
+            };
+            idms_write.commit(au).expect("Must not fail");
+        })
+    }
+
+    #[test]
+    fn test_idm_account_unix_softlocking() {
+        run_idm_test!(|qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &mut IdmServerDelayed,
+                       au: &mut AuditScope| {
+            init_admin_w_password(au, qs, TEST_PASSWORD).expect("Failed to setup admin account");
+            // make the admin a valid posix account
+            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
+            let me_posix = unsafe {
+                ModifyEvent::new_internal_invalid(
+                    filter!(f_eq("name", PartialValue::new_iname("admin"))),
+                    ModifyList::new_list(vec![
+                        Modify::Present("class".to_string(), Value::new_class("posixaccount")),
+                        Modify::Present("gidnumber".to_string(), Value::new_uint32(2001)),
+                    ]),
+                )
+            };
+            assert!(idms_prox_write.qs_write.modify(au, &me_posix).is_ok());
+
+            let pce = UnixPasswordChangeEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD);
+            assert!(idms_prox_write.set_unix_account_password(au, &pce).is_ok());
+            assert!(idms_prox_write.commit(au).is_ok());
+
+            let mut idms_write = idms.write();
+            let uuae_good = UnixUserAuthEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD);
+            let uuae_bad = UnixUserAuthEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD_INC);
+
+            let a2 = task::block_on(idms_write.auth_unix(
+                au,
+                &uuae_bad,
+                Duration::from_secs(TEST_CURRENT_TIME),
+            ));
+            match a2 {
+                Ok(None) => {}
+                _ => assert!(false),
+            };
+
+            // Now if we immediately auth again, should fail at same time due to SL
+            let a1 = task::block_on(idms_write.auth_unix(
+                au,
+                &uuae_good,
+                Duration::from_secs(TEST_CURRENT_TIME),
+            ));
+            match a1 {
+                Ok(None) => {}
+                _ => assert!(false),
+            };
+
+            // And then later, works because of SL lifting.
+            let a1 = task::block_on(idms_write.auth_unix(
+                au,
+                &uuae_good,
+                Duration::from_secs(TEST_CURRENT_TIME + 2),
+            ));
+            match a1 {
+                Ok(Some(_tok)) => {}
+                _ => assert!(false),
+            };
+
+            assert!(idms_write.commit(au).is_ok());
         })
     }
 }

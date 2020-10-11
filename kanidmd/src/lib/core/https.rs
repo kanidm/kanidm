@@ -37,6 +37,7 @@ use tide_rustls::TlsListener;
 // use openssl::ssl::{SslAcceptor, SslAcceptorBuilder};
 // use tokio::net::TcpListener;
 // use async_std::io;
+use async_std::task;
 // use std::net;
 // use std::str::FromStr;
 
@@ -986,14 +987,24 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
     // We probably need to know if we allocate the cookie, that this is a
     // new session, and in that case, anything *except* authrequest init is
     // invalid.
-    let res: Result<AuthResponse, _> = req
+    let res: Result<AuthResponse, _> = match req
         .state()
         // This may change in the future ...
         .qe_r_ref
         .handle_auth(auth_msg)
         .await
-        .and_then(|ar| {
-            let AuthResult { state, sessionid } = ar;
+    {
+        // .and_then(|ar| {
+        Ok(ar) => {
+            let AuthResult {
+                state,
+                sessionid,
+                delay,
+            } = ar;
+            // If there is a delay, honour it now.
+            if let Some(delay_timer) = delay {
+                task::sleep(delay_timer).await;
+            }
             // Do some response/state management.
             match state {
                 AuthState::Success(uat) => {
@@ -1025,7 +1036,10 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
                 }
             }
             .map(|state| AuthResponse { state, sessionid })
-        });
+        }
+        Err(e) => Err(e),
+    };
+
     to_tide_response(res, hvalue)
 }
 

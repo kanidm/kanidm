@@ -147,12 +147,12 @@ fn test_server_admin_change_simple_password() {
 
         // Now "reset" the client.
         let _ = rsclient.logout();
-        // Old password fails
-        let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
-        assert!(res.is_err());
         // New password works!
         let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD_CHANGE);
         assert!(res.is_ok());
+        // Old password fails, check after to prevent soft-locking.
+        let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
+        assert!(res.is_err());
     });
 }
 
@@ -747,13 +747,6 @@ fn test_server_rest_totp_auth_lifecycle() {
             .idm_account_primary_credential_verify_totp("demo_account", totp, sessionid)
             .unwrap(); // the result
 
-        // Check a bad auth
-        // Get a new connection
-        let mut rsclient_bad = rsclient.new_session().unwrap();
-        assert!(rsclient_bad
-            .auth_password_totp("demo_account", "sohdi3iuHo6mai7noh0a", 0)
-            .is_err());
-
         // Check a good auth
         let mut rsclient_good = rsclient.new_session().unwrap();
         let totp = r_tok
@@ -769,6 +762,13 @@ fn test_server_rest_totp_auth_lifecycle() {
         assert!(rsclient_good
             .auth_password_totp("demo_account", "sohdi3iuHo6mai7noh0a", totp)
             .is_ok());
+
+        // Check a bad auth - needs to be second to prevent slocking
+        // Get a new connection
+        let mut rsclient_bad = rsclient.new_session().unwrap();
+        assert!(rsclient_bad
+            .auth_password_totp("demo_account", "sohdi3iuHo6mai7noh0a", 0)
+            .is_err());
     });
 }
 

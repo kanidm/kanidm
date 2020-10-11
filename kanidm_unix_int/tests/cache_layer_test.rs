@@ -1,5 +1,6 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread;
+use std::time::Duration;
 
 use kanidm::audit::LogLevel;
 use kanidm::config::{Configuration, IntegrationTestConfig};
@@ -403,6 +404,9 @@ fn test_cache_account_password() {
                 .expect("failed to authenticate");
             assert!(a1 == Some(false));
 
+            // We have to wait due to softlocking.
+            task::sleep(Duration::from_secs(1)).await;
+
             // Test authentication success.
             let a2 = cachelayer
                 .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_A)
@@ -427,6 +431,9 @@ fn test_cache_account_password() {
                 .expect("failed to authenticate");
             assert!(a3 == Some(false));
 
+            // We have to wait due to softlocking.
+            task::sleep(Duration::from_secs(1)).await;
+
             // test auth (new pw) success
             let a4 = cachelayer
                 .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_B)
@@ -443,6 +450,8 @@ fn test_cache_account_password() {
                 .await
                 .expect("failed to authenticate");
             assert!(a5 == Some(true));
+
+            // No softlock during offline.
 
             // Test auth failure.
             let a6 = cachelayer

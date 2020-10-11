@@ -56,3 +56,8 @@ Now we can run the server so that it can accept connections. This defaults to us
 
     docker run -p 8443:8443 -v kanidmd:/data kanidm/server:latest
 
+# Development Version
+
+If you are interested to run our latest code from development, you can do this by changing the
+docker tag to `kanidm/server:devel`.
+

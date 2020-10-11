@@ -23,6 +23,7 @@ use crate::actors::v1_write::{CreateMessage, DeleteMessage, ModifyMessage};
 
 use ldap3_server::simple::LdapFilter;
 use std::collections::BTreeSet;
+use std::time::Duration;
 use uuid::Uuid;
 
 #[derive(Debug)]
@@ -171,6 +172,9 @@ impl Event {
         // TODO #64: Now apply claims from the uat into the Entry
         // to allow filtering.
 
+        // TODO #59: If the account is expiredy, do not allow the event
+        // to proceed
+
         let limits = EventLimits::from_uat(uat);
         Ok(Event {
             origin: EventOrigin::User(e),
@@ -196,6 +200,9 @@ impl Event {
         })?;
         // TODO #64: Now apply claims from the uat into the Entry
         // to allow filtering.
+
+        // TODO #59: If the account is expiredy, do not allow the event
+        // to proceed
 
         let limits = EventLimits::from_uat(uat);
         Ok(Event {
@@ -1039,6 +1046,7 @@ impl AuthEvent {
 pub struct AuthResult {
     pub sessionid: Uuid,
     pub state: AuthState,
+    pub delay: Option<Duration>,
 }
 
 /*

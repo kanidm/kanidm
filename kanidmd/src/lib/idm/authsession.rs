@@ -50,15 +50,12 @@ struct CredTotpPw {
 #[derive(Clone, Debug)]
 enum CredHandler {
     Denied(&'static str),
-    // The bool is a flag if the cred has been authed against.
     Anonymous,
-    // AppPassword
-    // {
-    // Password
+    // AppPassword (?)
     Password(Password),
+    TOTPPassword(CredTotpPw),
     // Webauthn
     // Webauthn + Password
-    TOTPPassword(CredTotpPw),
 }
 
 impl TryFrom<&Credential> for CredHandler {
@@ -332,6 +329,8 @@ pub(crate) struct AuthSession {
     //
     // This handler will then handle the mfa and stepping up through to generate the auth states
     handler: CredHandler,
+    // The identity of the credential that uniquely identifies it.
+    // cred_uuid: Uuid,
     // Store any related appid we are processing for.
     appid: Option<String>,
     // Store claims related to the handler
@@ -404,6 +403,15 @@ impl AuthSession {
             let state = AuthState::Continue(next_mech);
             (Some(auth_session), state)
         }
+    }
+
+    pub fn get_account(&self) -> &Account {
+        &self.account
+    }
+
+    pub fn end_session(&mut self, reason: String) -> Result<AuthState, OperationError> {
+        self.finished = true;
+        Ok(AuthState::Denied(reason))
     }
 
     // This should return a AuthResult or similar state of checking?

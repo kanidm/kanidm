@@ -345,7 +345,7 @@ impl LdapServer {
             })?;
 
         let lae = LdapAuthEvent::from_parts(au, target_uuid, pw.to_string())?;
-        idm_write.auth_ldap(au, &lae, ct).and_then(|r| {
+        idm_write.auth_ldap(au, &lae, ct).await.and_then(|r| {
             idm_write.commit(au).map(|_| {
                 if r.is_some() {
                     lsecurity!(au, "✅ LDAP Bind success {}", dn);
@@ -526,11 +526,6 @@ mod tests {
                 .unwrap()
                 .is_none());
 
-            // Bad password
-            assert!(task::block_on(ldaps.do_bind(au, idms, "admin", "test"))
-                .unwrap()
-                .is_none());
-
             // Now test the admin and various DN's
             let admin_t = task::block_on(ldaps.do_bind(au, idms, "admin", TEST_PASSWORD))
                 .unwrap()
@@ -615,6 +610,11 @@ mod tests {
             .unwrap()
             .unwrap();
             assert!(admin_t.uuid == *UUID_ADMIN);
+
+            // Bad password, check last to prevent softlocking of the admin account.
+            assert!(task::block_on(ldaps.do_bind(au, idms, "admin", "test"))
+                .unwrap()
+                .is_none());
 
             // Non-existant and invalid DNs
             assert!(task::block_on(ldaps.do_bind(

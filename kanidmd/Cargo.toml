@@ -69,7 +69,7 @@ structopt = { version = "0.3", default-features = false }
 time = { version = "0.2", features = ["serde", "std"] }
 
 hashbrown = "0.8"
-concread = "^0.2.3"
+concread = "^0.2.5"
 # concread = { path = "../../concread", features = ["asynch"] }
 # concread = { path = "../../concread" }
 # crossbeam = "0.7"
