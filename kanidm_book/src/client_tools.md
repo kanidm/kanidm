@@ -9,9 +9,18 @@ Kanidm currently supports:
  * OpenSUSE leap 15.1
  * Tumbleweed
 
-### SUSE
+### OpenSUSE Tumbleweed
 
-Using zypper you can add the repository with:
+Kanidm is part of OpenSUSE Tumbleweed since October 2020. This means you can install
+the clients with:
+
+    zypper ref
+    zypper in kanidm-clients
+
+### OpenSUSE Leap 15.2
+
+Leap 15.2 is still not fully supported with Kanidm. For an experimental client, you can
+try the development repository. Using zypper you can add the repository with:
 
     zypper ar obs://home:firstyear:kanidm home_firstyear_kanidm
     zypper mr -f home_firstyear_kanidm
@@ -21,12 +30,17 @@ Then you need to referesh your metadata and install the clients.
     zypper ref
     zypper in kanidm-clients
 
+
 ### Fedora
 
-On fedora you need to add the repos into the correct directory.
+Fedora is still experimentally supported through the development repository. You need to add the repository metadata into the correct directory.
 
     cd /etc/yum.repos.d
     wget https://download.opensuse.org/repositories/home:/firstyear:/kanidm/Fedora_Rawhide/home:firstyear:kanidm.repo
+
+You can then install with:
+
+    dnf install kanidm-clients
 
 > **NOTICE:**
 > While this is a rawhide repository, as kanidm is staticly linked, it works correctly on fedora
