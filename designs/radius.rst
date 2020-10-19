@@ -134,3 +134,8 @@ we could switch to full CA generation and automation for auth instead of pw. Thi
 auth stronger, and certainly would fix the per-device credential issue. Care needs to be taken in
 how we revoke certs of course to be sure this process is robust.
 
+
+https://source.android.com/devices/tech/connect/wifi-passpoint
+
+
+
