@@ -7,7 +7,7 @@ use crate::audit::AuditScope;
 use crate::constants::UUID_ANONYMOUS;
 use crate::credential::policy::CryptoPolicy;
 use crate::credential::totp::TOTP;
-use crate::credential::Credential;
+use crate::credential::{softlock::CredSoftLockPolicy, Credential};
 use crate::idm::claim::Claim;
 use crate::idm::group::Group;
 use crate::modify::{ModifyInvalid, ModifyList};
@@ -176,6 +176,19 @@ impl Account {
         };
         // Mix the results
         vmin && vmax
+    }
+
+    pub fn primary_cred_uuid(&self) -> Uuid {
+        match &self.primary {
+            Some(cred) => cred.uuid,
+            None => *UUID_ANONYMOUS,
+        }
+    }
+
+    pub fn primary_cred_softlock_policy(&self) -> Option<CredSoftLockPolicy> {
+        self.primary
+            .as_ref()
+            .and_then(|cred| cred.softlock_policy())
     }
 
     pub fn is_anonymous(&self) -> bool {

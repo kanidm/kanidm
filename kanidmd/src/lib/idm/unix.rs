@@ -3,7 +3,7 @@ use uuid::Uuid;
 use crate::audit::AuditScope;
 use crate::constants::UUID_ANONYMOUS;
 use crate::credential::policy::CryptoPolicy;
-use crate::credential::Credential;
+use crate::credential::{softlock::CredSoftLockPolicy, Credential};
 use crate::entry::{Entry, EntryCommitted, EntryReduced, EntrySealed};
 use crate::modify::{ModifyInvalid, ModifyList};
 use crate::server::{
@@ -165,6 +165,14 @@ impl UnixUserAccount {
         })
     }
 
+    pub fn unix_cred_uuid(&self) -> Option<Uuid> {
+        self.cred.as_ref().map(|c| c.uuid)
+    }
+
+    pub fn unix_cred_softlock_policy(&self) -> Option<CredSoftLockPolicy> {
+        self.cred.as_ref().and_then(|cred| cred.softlock_policy())
+    }
+
     pub fn is_anonymous(&self) -> bool {
         self.uuid == *UUID_ANONYMOUS
     }
@@ -179,7 +187,7 @@ impl UnixUserAccount {
         Ok(ModifyList::new_purge_and_set("unix_password", vcred))
     }
 
-    fn is_within_valid_time(&self, ct: Duration) -> bool {
+    pub fn is_within_valid_time(&self, ct: Duration) -> bool {
         let cot = OffsetDateTime::unix_epoch() + ct;
 
         let vmin = if let Some(vft) = &self.valid_from {
@@ -208,11 +216,14 @@ impl UnixUserAccount {
         ct: Duration,
     ) -> Result<Option<UnixUserToken>, OperationError> {
         // Is the cred locked?
+        // NOW checked by the caller!
 
+        /*
         if !self.is_within_valid_time(ct) {
             lsecurity!(au, "Account is not within valid time period");
             return Ok(None);
         }
+        */
 
         // is the cred some or none?
         match &self.cred {

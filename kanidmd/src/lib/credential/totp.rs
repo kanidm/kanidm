@@ -62,7 +62,7 @@ impl TOTPAlgo {
 pub struct TOTP {
     label: String,
     secret: Vec<u8>,
-    step: u64,
+    pub(crate) step: u64,
     algo: TOTPAlgo,
 }
 
@@ -196,7 +196,7 @@ impl TOTP {
 
 #[cfg(test)]
 mod tests {
-    use crate::credential::totp::{TOTPAlgo, TOTPError, TOTP};
+    use crate::credential::totp::{TOTPAlgo, TOTPError, TOTP, TOTP_DEFAULT_STEP};
     use std::time::Duration;
 
     #[test]
@@ -226,14 +226,14 @@ mod tests {
             vec![0x00, 0x00, 0x00, 0x00],
             TOTPAlgo::Sha1,
             1585368920,
-            30,
+            TOTP_DEFAULT_STEP,
             Ok(728926),
         );
         do_test(
             vec![0x00, 0xaa, 0xbb, 0xcc],
             TOTPAlgo::Sha1,
             1585369498,
-            30,
+            TOTP_DEFAULT_STEP,
             Ok(985074),
         );
     }
@@ -244,14 +244,14 @@ mod tests {
             vec![0x00, 0x00, 0x00, 0x00],
             TOTPAlgo::Sha256,
             1585369682,
-            30,
+            TOTP_DEFAULT_STEP,
             Ok(795483),
         );
         do_test(
             vec![0x00, 0xaa, 0xbb, 0xcc],
             TOTPAlgo::Sha256,
             1585369689,
-            30,
+            TOTP_DEFAULT_STEP,
             Ok(728402),
         );
     }
@@ -262,14 +262,14 @@ mod tests {
             vec![0x00, 0x00, 0x00, 0x00],
             TOTPAlgo::Sha512,
             1585369775,
-            30,
+            TOTP_DEFAULT_STEP,
             Ok(587735),
         );
         do_test(
             vec![0x00, 0xaa, 0xbb, 0xcc],
             TOTPAlgo::Sha512,
             1585369780,
-            30,
+            TOTP_DEFAULT_STEP,
             Ok(952181),
         );
     }

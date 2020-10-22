@@ -9,9 +9,11 @@ use std::time::{Duration, Instant};
 use uuid::Uuid;
 
 pub mod policy;
+pub mod softlock;
 pub mod totp;
 
 use crate::credential::policy::CryptoPolicy;
+use crate::credential::softlock::CredSoftLockPolicy;
 use crate::credential::totp::TOTP;
 
 // NIST 800-63.b salt should be 112 bits -> 14  8u8.
@@ -335,6 +337,18 @@ impl Credential {
             totp: None,
             claims: Vec::new(),
             uuid: Uuid::new_v4(),
+        }
+    }
+
+    pub(crate) fn softlock_policy(&self) -> Option<CredSoftLockPolicy> {
+        match (&self.totp, &self.password) {
+            // Has any kind of Webauthn ....
+            // Has any kind of totp.
+            (Some(totp), _) => Some(CredSoftLockPolicy::TOTP(totp.step)),
+            // No totp, pw
+            (None, Some(_)) => Some(CredSoftLockPolicy::Password),
+            // Indeterminate
+            _ => None,
         }
     }
 

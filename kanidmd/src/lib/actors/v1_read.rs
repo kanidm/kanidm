@@ -226,44 +226,41 @@ impl QueryServerReadV1 {
         // "authenticated" or not.
         let mut audit = AuditScope::new("auth", msg.eventid, self.log_level);
         let mut idm_write = self.idms.write_async().await;
-        let res = lperf_op_segment!(&mut audit, "actors::v1_read::handle<AuthMessage>", || {
-            lsecurity!(audit, "Begin auth event {:?}", msg);
+        // let res = lperf_op_segment!(&mut audit, "actors::v1_read::handle<AuthMessage>", || {
+        lsecurity!(audit, "Begin auth event {:?}", msg);
 
-            // Destructure it.
-            // Convert the AuthRequest to an AuthEvent that the idm server
-            // can use.
-            let ae = AuthEvent::from_message(msg).map_err(|e| {
-                ladmin_error!(audit, "Failed to parse AuthEvent -> {:?}", e);
-                e
+        // Destructure it.
+        // Convert the AuthRequest to an AuthEvent that the idm server
+        // can use.
+        let ae = AuthEvent::from_message(msg).map_err(|e| {
+            ladmin_error!(audit, "Failed to parse AuthEvent -> {:?}", e);
+            e
+        })?;
+
+        let ct = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .map_err(|e| {
+                ladmin_error!(audit, "Clock Error -> {:?}", e);
+                OperationError::InvalidState
             })?;
 
-            let ct = SystemTime::now()
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .map_err(|e| {
-                    ladmin_error!(audit, "Clock Error -> {:?}", e);
-                    OperationError::InvalidState
-                })?;
+        // Trigger a session clean *before* we take any auth steps.
+        // It's important to do this before to ensure that timeouts on
+        // the session are enforced.
+        idm_write.expire_auth_sessions(ct).await;
 
-            // Trigger a session clean *before* we take any auth steps.
-            // It's important to do this before to ensure that timeouts on
-            // the session are enforced.
-            lperf_trace_segment!(
-                audit,
-                "actors::v1_read::handle<AuthMessage> -> expire_auth_sessions",
-                || { idm_write.expire_auth_sessions(ct) }
-            );
+        // Generally things like auth denied are in Ok() msgs
+        // so true errors should always trigger a rollback.
+        let res = idm_write
+            .auth(&mut audit, &ae, ct)
+            .await
+            .and_then(|r| idm_write.commit(&mut audit).map(|_| r));
 
-            // Generally things like auth denied are in Ok() msgs
-            // so true errors should always trigger a rollback.
-            let r = idm_write
-                .auth(&mut audit, &ae, ct)
-                .and_then(|r| idm_write.commit(&mut audit).map(|_| r));
-
-            lsecurity!(audit, "Sending auth result -> {:?}", r);
-            // Build the result.
-            // r.map(|r| r.response())
-            r
-        });
+        lsecurity!(audit, "Sending auth result -> {:?}", res);
+        // Build the result.
+        // r.map(|r| r.response())
+        // r
+        // });
         // At the end of the event we send it for logging.
         self.log.send(audit).map_err(|_| {
             error!("CRITICAL: UNABLE TO COMMIT LOGS");
@@ -768,50 +765,47 @@ impl QueryServerReadV1 {
     ) -> Result<Option<UnixUserToken>, OperationError> {
         let mut audit = AuditScope::new("idm_account_unix_auth", msg.eventid, self.log_level);
         let mut idm_write = self.idms.write_async().await;
-        let res = lperf_op_segment!(
+        // let res = lperf_op_segment!(&mut audit, "actors::v1_read::handle<IdmAccountUnixAuthMessage>", || {
+        // resolve the id
+        let target_uuid = idm_write
+            .qs_read
+            .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+            .map_err(|e| {
+                ladmin_info!(&mut audit, "Error resolving as gidnumber continuing ...");
+                e
+            })?;
+        // Make an event from the request
+        let uuae = match UnixUserAuthEvent::from_parts(
             &mut audit,
-            "actors::v1_read::handle<IdmAccountUnixAuthMessage>",
-            || {
-                // resolve the id
-                let target_uuid = idm_write
-                    .qs_read
-                    .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
-                    .map_err(|e| {
-                        ladmin_info!(&mut audit, "Error resolving as gidnumber continuing ...");
-                        e
-                    })?;
-                // Make an event from the request
-                let uuae = match UnixUserAuthEvent::from_parts(
-                    &mut audit,
-                    &idm_write.qs_read,
-                    msg.uat.as_ref(),
-                    target_uuid,
-                    msg.cred,
-                ) {
-                    Ok(s) => s,
-                    Err(e) => {
-                        ladmin_error!(audit, "Failed to begin unix auth: {:?}", e);
-                        return Err(e);
-                    }
-                };
-
-                lsecurity!(audit, "Begin event {:?}", uuae);
-
-                let ct = SystemTime::now()
-                    .duration_since(SystemTime::UNIX_EPOCH)
-                    .map_err(|e| {
-                        ladmin_error!(audit, "Clock Error -> {:?}", e);
-                        OperationError::InvalidState
-                    })?;
-
-                let r = idm_write
-                    .auth_unix(&mut audit, &uuae, ct)
-                    .and_then(|r| idm_write.commit(&mut audit).map(|_| r));
-
-                lsecurity!(audit, "Sending result -> {:?}", r);
-                r
+            &idm_write.qs_read,
+            msg.uat.as_ref(),
+            target_uuid,
+            msg.cred,
+        ) {
+            Ok(s) => s,
+            Err(e) => {
+                ladmin_error!(audit, "Failed to begin unix auth: {:?}", e);
+                return Err(e);
             }
-        );
+        };
+
+        lsecurity!(audit, "Begin event {:?}", uuae);
+
+        let ct = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .map_err(|e| {
+                ladmin_error!(audit, "Clock Error -> {:?}", e);
+                OperationError::InvalidState
+            })?;
+
+        let res = idm_write
+            .auth_unix(&mut audit, &uuae, ct)
+            .await
+            .and_then(|r| idm_write.commit(&mut audit).map(|_| r));
+
+        lsecurity!(audit, "Sending result -> {:?}", res);
+        // res
+        // });
         self.log.send(audit).map_err(|_| {
             error!("CRITICAL: UNABLE TO COMMIT LOGS");
             OperationError::InvalidState
