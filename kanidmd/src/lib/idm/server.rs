@@ -1028,6 +1028,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .map(|_| cleartext)
     }
 
+    // reg_account_webauthn_init
+    // reg_account_webauthn_complete
+
     pub fn generate_account_totp(
         &mut self,
         au: &mut AuditScope,

@@ -7,24 +7,30 @@ use std::mem;
 use std::time::Duration;
 use uuid::Uuid;
 
+use webauthn_rs::proto::{CreationChallengeResponse, RegisterPublicKeyCredential};
+use webauthn_rs::proto::Credential as WebauthnCredential;
+use webauthn_rs::RegistrationState as WebauthnRegistrationState;
+
 // Client requests they want to reg a TOTP to account.
 pub(crate) enum MfaReqInit {
     TOTP(String),
-    // Webauthn
+    Webauthn(String),
 }
 
 pub(crate) enum MfaReqStep {
     TOTPVerify(u32),
+    WebauthnRegister(RegisterPublicKeyCredential),
 }
 
 pub(crate) enum MfaRegCred {
     TOTP(TOTP),
+    Webauthn(WebauthnCredential),
 }
 
 pub(crate) enum MfaRegNext {
     Success,
     TOTPCheck(TOTPSecret),
-    // Webauthn(chal)
+    WebauthnChallenge(CreationChallengeResponse)
 }
 
 impl MfaRegNext {
@@ -34,6 +40,9 @@ impl MfaRegNext {
             MfaRegNext::TOTPCheck(secret) => {
                 SetCredentialResponse::TOTPCheck(*u, (*secret).clone())
             }
+            MfaRegNext::WebauthnChallenge(ccr) => {
+                SetCredentialResponse::WebauthnCreationChallengeResponse(*u, (*ccr).clone())
+            }
         }
     }
 }
@@ -42,7 +51,8 @@ impl MfaRegNext {
 enum MfaRegState {
     TOTPInit(TOTP),
     TOTPDone,
-    // Webauthn ...
+    WebauthnInit(String, WebauthnRegistrationState),
+    WebauthnDone,
 }
 
 #[derive(Clone)]
@@ -67,6 +77,11 @@ impl MfaRegSession {
         let state = match req {
             MfaReqInit::TOTP(label) => {
                 MfaRegState::TOTPInit(TOTP::generate_secure(label, TOTP_DEFAULT_STEP))
+            }
+            MfaReqInit::Webauthn(label) => {
+                unimplemented!();
+                // let registration_state = ();
+                // MfaRegState::WebauthnInit(label, registration_state)
             }
         };
         let s = MfaRegSession {
@@ -111,6 +126,9 @@ impl MfaRegSession {
                     ))
                 }
             }
+            (MfaReqStep::WebauthnRegister(ref rpkc), MfaRegState::WebauthnInit(label,  registration_state)) => {
+                unimplemented!();
+            }
             _ => Err(OperationError::InvalidRequestState),
         }
     }
@@ -120,11 +138,14 @@ impl MfaRegSession {
     pub fn next(&self) -> MfaRegNext {
         // Given our current state, what is the next step we need to process or offer?
         match &self.state {
-            MfaRegState::TOTPDone => MfaRegNext::Success,
+            MfaRegState::TOTPDone | MfaRegState::WebauthnDone => MfaRegNext::Success,
             MfaRegState::TOTPInit(token) => {
                 let accountname = self.account.name.as_str();
                 let issuer = self.account.spn.as_str();
                 MfaRegNext::TOTPCheck(token.to_proto(accountname, issuer))
+            }
+            MfaRegState::WebauthnInit(label, registration_state) => {
+                unimplemented!();
             }
         }
     }

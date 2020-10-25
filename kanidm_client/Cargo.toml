@@ -20,6 +20,7 @@ serde_derive = "1.0"
 toml = "0.5"
 uuid = { version = "0.8", features = ["serde", "v4"] }
 # users = "0.10"
+webauthn-authenticator-rs = "^0.1.2"
 
 [dev-dependencies]
 tokio = { version = "0.2", features = ["full"] }

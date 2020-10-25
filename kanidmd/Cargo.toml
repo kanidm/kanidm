@@ -88,6 +88,9 @@ base64 = "0.12"
 ldap3_server = "0.1"
 # ldap3_server = { path = "../../ldap3_server" }
 
+# webauthn-rs = "^0.2.5"
+webauthn-rs = { path = "../../webauthn-rs" }
+
 libc = "0.2"
 users = "0.10"
 
@@ -96,6 +99,8 @@ default = [ "libsqlite3-sys/bundled", "openssl/vendored" ]
 
 [dev-dependencies]
 criterion = "0.3"
+# For testing webauthn
+webauthn-authenticator-rs = "^0.1.2"
 
 [dev-dependencies.cargo-husky]
 version = "1"

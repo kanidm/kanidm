@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::fmt;
 use uuid::Uuid;
 // use zxcvbn::feedback;
+use webauthn_rs::proto::CreationChallengeResponse;
 
 // These proto implementations are here because they have public definitions
 
@@ -559,6 +560,8 @@ pub enum SetCredentialResponse {
     Success,
     Token(String),
     TOTPCheck(Uuid, TOTPSecret),
+    WebauthnCreationChallengeResponse(Uuid, CreationChallengeResponse),
+
 }
 
 /* Recycle Requests area */
