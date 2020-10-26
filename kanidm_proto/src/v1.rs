@@ -560,8 +560,7 @@ pub enum SetCredentialResponse {
     Success,
     Token(String),
     TOTPCheck(Uuid, TOTPSecret),
-    WebauthnCreationChallengeResponse(Uuid, CreationChallengeResponse),
-
+    WebauthnCreateChallenge(Uuid, CreationChallengeResponse),
 }
 
 /* Recycle Requests area */

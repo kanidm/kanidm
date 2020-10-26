@@ -6,6 +6,7 @@ use crate::server::{QueryServerReadTransaction, QueryServerWriteTransaction};
 use uuid::Uuid;
 
 use kanidm_proto::v1::{OperationError, UserAuthToken};
+use webauthn_rs::proto::RegisterPublicKeyCredential;
 
 pub struct PasswordChangeEvent {
     pub event: Event,
@@ -331,6 +332,49 @@ impl VerifyTOTPEvent {
         let e = Event::from_internal();
 
         VerifyTOTPEvent {
+            event: e,
+            target,
+            session,
+            chal,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct WebauthnInitRegisterEvent {
+    pub event: Event,
+    pub target: Uuid,
+    pub label: String,
+}
+
+impl WebauthnInitRegisterEvent {
+    #[cfg(test)]
+    pub fn new_internal(target: Uuid, label: String) -> Self {
+        let e = Event::from_internal();
+        WebauthnInitRegisterEvent {
+            event: e,
+            target,
+            label,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct WebauthnDoRegisterEvent {
+    pub event: Event,
+    pub target: Uuid,
+    pub session: Uuid,
+    pub chal: RegisterPublicKeyCredential,
+}
+
+impl WebauthnDoRegisterEvent {
+    #[cfg(test)]
+    pub fn new_internal(target: Uuid,
+        session: Uuid,
+        chal: RegisterPublicKeyCredential
+    ) -> Self {
+        let e = Event::from_internal();
+        WebauthnDoRegisterEvent {
             event: e,
             target,
             session,

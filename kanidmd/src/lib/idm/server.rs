@@ -10,6 +10,7 @@ use crate::idm::event::{
     GeneratePasswordEvent, GenerateTOTPEvent, LdapAuthEvent, PasswordChangeEvent,
     RadiusAuthTokenEvent, RegenerateRadiusSecretEvent, UnixGroupTokenEvent,
     UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent, VerifyTOTPEvent,
+    WebauthnInitRegisterEvent, WebauthnDoRegisterEvent
 };
 use crate::idm::mfareg::{MfaRegCred, MfaRegNext, MfaRegSession, MfaReqInit, MfaReqStep};
 use crate::idm::radius::RadiusAccount;
@@ -1028,8 +1029,23 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .map(|_| cleartext)
     }
 
-    // reg_account_webauthn_init
-    // reg_account_webauthn_complete
+    pub fn reg_account_webauthn_init(
+        &mut self,
+        au: &mut AuditScope,
+        wre: &WebauthnInitRegisterEvent,
+        ct: Duration,
+    ) -> Result<SetCredentialResponse, OperationError> {
+        unimplemented!();
+    }
+
+    pub fn reg_account_webauthn_complete(
+        &mut self,
+        au: &mut AuditScope,
+        wre: &WebauthnDoRegisterEvent,
+        ct: Duration,
+    ) -> Result<SetCredentialResponse, OperationError> {
+        unimplemented!();
+    }
 
     pub fn generate_account_totp(
         &mut self,
@@ -1242,6 +1258,7 @@ mod tests {
     use std::convert::TryFrom;
     use std::time::Duration;
     use uuid::Uuid;
+    use webauthn_authenticator_rs::{softtok::U2FSoft, WebauthnAuthenticator};
 
     const TEST_PASSWORD: &'static str = "ntaoeuntnaoeuhraohuercahu😍";
     const TEST_PASSWORD_INC: &'static str = "ntaoentu nkrcgaeunhibwmwmqj;k wqjbkx ";
@@ -2619,6 +2636,38 @@ mod tests {
             };
 
             assert!(idms_write.commit(au).is_ok());
+        })
+    }
+
+
+    #[test]
+    fn test_idm_webauthn_registration() {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &IdmServerDelayed,
+                       au: &mut AuditScope| {
+            let ct = duration_from_epoch_now();
+            let mut idms_prox_write = idms.proxy_write(ct.clone());
+
+            let mut wa_softtok = WebauthnAuthenticator::new(U2FSoft::new());
+
+            let wrei = WebauthnInitRegisterEvent::new_internal(
+                UUID_ADMIN.clone(),
+                "softtoken".to_string()
+            );
+
+            let (sessionid, ccr) = match idms_prox_write.reg_account_webauthn_init(
+                au, wrei, ct
+            ) {
+                Ok(SetCredentialResponse::WebauthnCreateChallenge(sessionid, ccr)) => {
+                    (sessionid, ccr)
+                }
+                _=> {
+                    panic!();
+                }
+            };
+
+            assert!(idms_prox_write.commit(au).is_ok());
         })
     }
 }
