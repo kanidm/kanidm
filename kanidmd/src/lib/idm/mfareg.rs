@@ -41,7 +41,7 @@ impl MfaRegNext {
                 SetCredentialResponse::TOTPCheck(*u, (*secret).clone())
             }
             MfaRegNext::WebauthnChallenge(ccr) => {
-                SetCredentialResponse::WebauthnCreationChallengeResponse(*u, (*ccr).clone())
+                SetCredentialResponse::WebauthnCreateChallenge(*u, (*ccr).clone())
             }
         }
     }

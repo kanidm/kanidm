@@ -85,7 +85,7 @@ fn setup_qs_idms(
 
     // We generate a SINGLE idms only!
 
-    let (idms, idms_delayed) = IdmServer::new(query_server.clone());
+    let (idms, idms_delayed) = IdmServer::new(query_server.clone())?;
 
     Ok((query_server, idms, idms_delayed))
 }

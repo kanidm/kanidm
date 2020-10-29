@@ -11,6 +11,7 @@ use uuid::Uuid;
 pub mod policy;
 pub mod softlock;
 pub mod totp;
+pub mod webauthn;
 
 use crate::credential::policy::CryptoPolicy;
 use crate::credential::softlock::CredSoftLockPolicy;

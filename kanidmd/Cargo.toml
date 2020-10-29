@@ -100,7 +100,8 @@ default = [ "libsqlite3-sys/bundled", "openssl/vendored" ]
 [dev-dependencies]
 criterion = "0.3"
 # For testing webauthn
-webauthn-authenticator-rs = "^0.1.2"
+# webauthn-authenticator-rs = "^0.1.2"
+webauthn-authenticator-rs = { path = "../../webauthn-authenticator-rs" }
 
 [dev-dependencies.cargo-husky]
 version = "1"

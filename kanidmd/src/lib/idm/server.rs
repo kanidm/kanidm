@@ -3,6 +3,7 @@ use crate::constants::{AUTH_SESSION_TIMEOUT, MFAREG_SESSION_TIMEOUT, PW_MIN_LENG
 use crate::constants::{UUID_ANONYMOUS, UUID_SYSTEM_CONFIG};
 use crate::credential::policy::CryptoPolicy;
 use crate::credential::softlock::CredSoftLock;
+use crate::credential::webauthn::WebauthnDomainConfig;
 use crate::event::{AuthEvent, AuthEventStep, AuthResult};
 use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
@@ -52,6 +53,8 @@ use rand::prelude::*;
 use std::time::Duration;
 use uuid::Uuid;
 
+use webauthn_rs::Webauthn;
+
 pub struct IdmServer {
     // There is a good reason to keep this single thread - it
     // means that limits to sessions can be easily applied and checked to
@@ -70,6 +73,8 @@ pub struct IdmServer {
     // and loaded from the db similar to access. But today it's just to allow dynamic pbkdf2rounds
     crypto_policy: CryptoPolicy,
     async_tx: Sender<DelayedAction>,
+    // Our webauthn verifier/config
+    webauthn: Webauthn<WebauthnDomainConfig>,
 }
 
 pub struct IdmServerWriteTransaction<'a> {
@@ -104,6 +109,7 @@ pub struct IdmServerProxyWriteTransaction<'a> {
     mfareg_sessions: BptreeMapWriteTxn<'a, Uuid, MfaRegSession>,
     sid: SID,
     crypto_policy: &'a CryptoPolicy,
+    webauthn: &'a Webauthn<WebauthnDomainConfig>,
 }
 
 pub struct IdmServerDelayed {
@@ -112,7 +118,7 @@ pub struct IdmServerDelayed {
 
 impl IdmServer {
     // TODO #59: Make number of authsessions configurable!!!
-    pub fn new(qs: QueryServer) -> (IdmServer, IdmServerDelayed) {
+    pub fn new(qs: QueryServer) -> Result<(IdmServer, IdmServerDelayed), OperationError> {
         // This is calculated back from:
         //  500 auths / thread -> 0.002 sec per op
         //      we can then spend up to ~0.001s hashing
@@ -123,7 +129,11 @@ impl IdmServer {
         let crypto_policy = CryptoPolicy::time_target(Duration::from_millis(1));
         let (async_tx, async_rx) = unbounded();
 
-        (
+        let webauthn = Webauthn::new(WebauthnDomainConfig {
+            
+        });
+
+        Ok((
             IdmServer {
                 session_ticket: Semaphore::new(1),
                 sessions: BptreeMap::new(),
@@ -133,9 +143,10 @@ impl IdmServer {
                 qs,
                 crypto_policy,
                 async_tx,
+                webauthn,
             },
             IdmServerDelayed { async_rx },
-        )
+        ))
     }
 
     #[cfg(test)]
@@ -191,6 +202,7 @@ impl IdmServer {
             qs_write,
             sid,
             crypto_policy: &self.crypto_policy,
+            webauthn: &self.webauthn,
         }
     }
 
@@ -1035,7 +1047,23 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         wre: &WebauthnInitRegisterEvent,
         ct: Duration,
     ) -> Result<SetCredentialResponse, OperationError> {
-        unimplemented!();
+        let account = self.target_to_account(au, &wre.target)?;
+        let sessionid = uuid_from_duration(ct, self.sid);
+
+        let origin = (&wre.event.origin).into();
+        let label = wre.label.clone();
+        let (session, next) = MfaRegSession::new(origin, account, MfaReqInit::Webauthn(label))
+            .map_err(|e| {
+                ladmin_error!(au, "Unable to start webauthn MfaRegSession {:?}", e);
+                e
+            })?;
+
+        let next = next.to_proto(&sessionid);
+
+        // Add session to tree
+        self.mfareg_sessions.insert(sessionid, session);
+        ltrace!(au, "Start mfa reg session -> {:?}", sessionid);
+        Ok(next)
     }
 
     pub fn reg_account_webauthn_complete(
@@ -1238,7 +1266,7 @@ mod tests {
     use crate::idm::event::{
         GenerateTOTPEvent, PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
         UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent,
-        VerifyTOTPEvent,
+        VerifyTOTPEvent, WebauthnInitRegisterEvent, WebauthnDoRegisterEvent
     };
     use crate::modify::{Modify, ModifyList};
     use crate::value::{PartialValue, Value};
@@ -2657,7 +2685,7 @@ mod tests {
             );
 
             let (sessionid, ccr) = match idms_prox_write.reg_account_webauthn_init(
-                au, wrei, ct
+                au, &wrei, ct
             ) {
                 Ok(SetCredentialResponse::WebauthnCreateChallenge(sessionid, ccr)) => {
                     (sessionid, ccr)
@@ -2666,6 +2694,27 @@ mod tests {
                     panic!();
                 }
             };
+
+            let rego = wa_softtok
+                .do_registration("", ccr)
+                .expect("Failed to register to softtoken");
+
+            let wdre = WebauthnDoRegisterEvent::new_internal(
+                UUID_ADMIN.clone(),
+                sessionid,
+                rego
+            );
+
+            match idms_prox_write.reg_account_webauthn_complete(
+                au, &wdre, ct,
+            ) {
+                Ok(SetCredentialResponse::Success) => {}
+                _=> {
+                    panic!();
+                }
+            };
+
+            // Now test auth
 
             assert!(idms_prox_write.commit(au).is_ok());
         })

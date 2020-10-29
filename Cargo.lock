@@ -1630,7 +1630,7 @@ dependencies = [
  "users",
  "uuid",
  "webauthn-authenticator-rs",
- "webauthn-rs 0.2.5",
+ "webauthn-rs",
  "zxcvbn",
 ]
 
@@ -1664,7 +1664,7 @@ dependencies = [
  "serde_json",
  "thiserror",
  "uuid",
- "webauthn-rs 0.2.5",
+ "webauthn-rs",
  "zxcvbn",
 ]
 
@@ -3578,8 +3578,6 @@ dependencies = [
 [[package]]
 name = "webauthn-authenticator-rs"
 version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "58997ba6dfe242b62fc567c25986750cfc7a076bf063f337e20f76d91c0bdc0f"
 dependencies = [
  "authenticator",
  "log",
@@ -3588,31 +3586,12 @@ dependencies = [
  "serde_cbor",
  "serde_json",
  "url",
- "webauthn-rs 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "webauthn-rs",
 ]
 
 [[package]]
 name = "webauthn-rs"
 version = "0.2.5"
-dependencies = [
- "base64",
- "log",
- "nom 4.2.3",
- "openssl",
- "rand",
- "serde",
- "serde_bytes",
- "serde_cbor",
- "serde_derive",
- "serde_json",
- "thiserror",
-]
-
-[[package]]
-name = "webauthn-rs"
-version = "0.2.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dca232368e409a186d2cc0a83380398429a5b6c39608143c2a9bcc16e96b08d0"
 dependencies = [
  "base64",
  "log",
