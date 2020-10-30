@@ -28,6 +28,7 @@ path = "src/server/main.rs"
 [dependencies]
 kanidm_proto = { path = "../kanidm_proto", version = "1.1.0-alpha" }
 
+url = "2.1"
 tide = "0.13"
 async-trait = "0.1"
 async-h1 = "2.0"

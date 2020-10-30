@@ -13,7 +13,7 @@ use crate::idm::event::{
     UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent, VerifyTOTPEvent,
     WebauthnInitRegisterEvent, WebauthnDoRegisterEvent
 };
-use crate::idm::mfareg::{MfaRegCred, MfaRegNext, MfaRegSession, MfaReqInit, MfaReqStep};
+use crate::idm::mfareg::{MfaRegCred, MfaRegNext, MfaRegSession};
 use crate::idm::radius::RadiusAccount;
 use crate::idm::unix::{UnixGroup, UnixUserAccount};
 use crate::idm::AuthState;
@@ -44,7 +44,6 @@ use tokio::sync::mpsc::{
 use tokio::sync::Semaphore;
 // SemaphorePermit
 
-#[cfg(test)]
 use async_std::task;
 
 use concread::bptree::{BptreeMap, BptreeMapWriteTxn};
@@ -52,8 +51,9 @@ use concread::hashmap::HashMap;
 use rand::prelude::*;
 use std::time::Duration;
 use uuid::Uuid;
+use url::Url;
 
-use webauthn_rs::Webauthn;
+use webauthn_rs::{Webauthn, proto::UserVerificationPolicy};
 
 pub struct IdmServer {
     // There is a good reason to keep this single thread - it
@@ -118,7 +118,11 @@ pub struct IdmServerDelayed {
 
 impl IdmServer {
     // TODO #59: Make number of authsessions configurable!!!
-    pub fn new(qs: QueryServer) -> Result<(IdmServer, IdmServerDelayed), OperationError> {
+    pub fn new(
+        au: &mut AuditScope,
+        qs: QueryServer,
+        origin: String,
+    ) -> Result<(IdmServer, IdmServerDelayed), OperationError> {
         // This is calculated back from:
         //  500 auths / thread -> 0.002 sec per op
         //      we can then spend up to ~0.001s hashing
@@ -129,8 +133,39 @@ impl IdmServer {
         let crypto_policy = CryptoPolicy::time_target(Duration::from_millis(1));
         let (async_tx, async_rx) = unbounded();
 
+        // Get the domain name, as the relying party id.
+        let rp_id = {
+            let qs_read = task::block_on(qs.read_async());
+            qs_read.get_domain_name(au)?
+        };
+
+        // Check that it gels with our origin.
+        Url::parse(origin.as_str())
+            .map_err(|e| {
+                ladmin_error!(au, "Unable to parse origin URL - refusing to start. You must correct the value for origin. {:?}", origin);
+                OperationError::InvalidState
+            })
+            .and_then(|url| {
+                url.domain().map(|effective_domain| {
+                    if effective_domain.ends_with(&rp_id) {
+                        Some(())
+                    } else {
+                        None
+                    }
+                })
+                .ok_or_else(|| {
+                    ladmin_error!(au, "Effective domain is not a descendent of server domain name (rp_id). You must change origin or domain name to be consistent. ed: {:?} - rp_id: {:?}", origin, rp_id);
+                    OperationError::InvalidState
+                })
+            })?;
+
+        // Now clone to rp_name.
+        let rp_name = rp_id.clone();
+
         let webauthn = Webauthn::new(WebauthnDomainConfig {
-            
+            rp_name,
+            origin,
+            rp_id,
         });
 
         Ok((
@@ -1052,13 +1087,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         let origin = (&wre.event.origin).into();
         let label = wre.label.clone();
-        let (session, next) = MfaRegSession::new(origin, account, MfaReqInit::Webauthn(label))
-            .map_err(|e| {
-                ladmin_error!(au, "Unable to start webauthn MfaRegSession {:?}", e);
-                e
-            })?;
 
-        let next = next.to_proto(&sessionid);
+        let (session, next) = MfaRegSession::webauthn_new(au, origin, account, label, self.webauthn)
+        ?;
+
+        let next = next.to_proto(sessionid);
 
         // Add session to tree
         self.mfareg_sessions.insert(sessionid, session);
@@ -1072,7 +1105,34 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         wre: &WebauthnDoRegisterEvent,
         ct: Duration,
     ) -> Result<SetCredentialResponse, OperationError> {
-        unimplemented!();
+        let sessionid = wre.session;
+        let origin = (&wre.event.origin).into();
+        let webauthn = self.webauthn;
+
+        let (next, wan_cred) = self
+            .mfareg_sessions
+            .get_mut(&sessionid)
+            .ok_or(OperationError::InvalidRequestState)
+            .and_then(|session| {
+                session.webauthn_step(
+                    au,
+                    &origin, &wre.target, &wre.chal,
+                    ct,
+                    webauthn,
+                )
+            })
+            .map_err(|e| {
+                ladmin_error!(au, "Failed to register webauthn -> {:?}", e);
+                OperationError::Webauthn
+            })?;
+
+        if let (MfaRegNext::Success, Some(MfaRegCred::Webauthn(cred))) = (&next, wan_cred) {
+            // Persist the credential
+            unimplemented!();
+        }
+
+        let next = next.to_proto(sessionid);
+        Ok(next)
     }
 
     pub fn generate_account_totp(
@@ -1086,13 +1146,13 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         let origin = (&gte.event.origin).into();
         let label = gte.label.clone();
-        let (session, next) = MfaRegSession::new(origin, account, MfaReqInit::TOTP(label))
+        let (session, next) = MfaRegSession::totp_new(origin, account, label)
             .map_err(|e| {
                 ladmin_error!(au, "Unable to start totp MfaRegSession {:?}", e);
                 e
             })?;
 
-        let next = next.to_proto(&sessionid);
+        let next = next.to_proto(sessionid);
 
         // Add session to tree
         self.mfareg_sessions.insert(sessionid, session);
@@ -1117,7 +1177,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .get_mut(&sessionid)
             .ok_or(OperationError::InvalidRequestState)
             .and_then(|session| {
-                session.step(&origin, &vte.target, MfaReqStep::TOTPVerify(chal), &ct)
+                session.totp_step(&origin, &vte.target, chal, &ct)
             })
             .map_err(|e| {
                 ladmin_error!(au, "Failed to verify totp {:?}", e);
@@ -1156,7 +1216,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 })?;
         };
 
-        let next = next.to_proto(&sessionid);
+        let next = next.to_proto(sessionid);
         Ok(next)
     }
 
@@ -2696,7 +2756,7 @@ mod tests {
             };
 
             let rego = wa_softtok
-                .do_registration("", ccr)
+                .do_registration("https://idm.example.com", ccr)
                 .expect("Failed to register to softtoken");
 
             let wdre = WebauthnDoRegisterEvent::new_internal(

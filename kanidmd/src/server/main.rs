@@ -38,6 +38,7 @@ struct ServerConfig {
     pub tls_cert: Option<String>,
     pub tls_key: Option<String>,
     pub log_level: Option<String>,
+    pub origin: String,
 }
 
 impl ServerConfig {
@@ -279,6 +280,7 @@ async fn main() {
     config.update_tls(&sconfig.tls_ca, &sconfig.tls_cert, &sconfig.tls_key);
     config.update_bind(&sconfig.bindaddress);
     config.update_ldapbind(&sconfig.ldapbindaddress);
+    config.update_origin(&sconfig.origin.as_str());
 
     // Apply any cli overrides, normally debug level.
     if let Some(dll) = opt.commonopt().debug.as_ref() {

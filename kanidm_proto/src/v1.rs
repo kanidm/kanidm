@@ -104,6 +104,7 @@ pub enum OperationError {
     CryptographyError,
     ResourceLimit,
     QueueDisconnected,
+    Webauthn,
 }
 
 impl PartialEq for OperationError {
