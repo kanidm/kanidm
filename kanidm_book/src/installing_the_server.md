@@ -61,3 +61,33 @@ Now we can run the server so that it can accept connections. This defaults to us
 If you are interested to run our latest code from development, you can do this by changing the
 docker tag to `kanidm/server:devel`.
 
+# Running as non-root in docker
+
+By default the above commands will run kanidmd as "root" in the container to make the onboarding
+smoother. However, this is not recommended in production for security reasons.
+
+You should allocate a uidnumber/gidnumber for the service to run as that is unique on your host
+system. In this example we use `1000:1000`
+
+You will need to adjust the permissions on the /data volume to ensure that the process
+can manage the files. Kanidm requires the ability to write to the /data directory to create
+the sqlite files. This uid/gidnumber should match the above. You could consider the following
+changes to help isolate these changes:
+
+    docker run --rm -i -t -v kanidmd:/data opensuse/leap:latest /bin/sh
+    # mkdir /data/db/
+    # chown 1000:1000 /data/db/
+    # chmod 750 /data/db/
+    # sed -i -e "s/db_path.*/db_path = \"\/data\/db\/kanidm.db\"/g" /data/server.toml
+    # chown root:root /data/server.toml
+    # chmod 644 /data/server.toml
+
+You can then use this with run the kanidm server in docker with a user.
+
+    docker run --rm -i -t -u 1000:1000 -v kanidmd:/data kanidm/server:latest /sbin/kanidmd ...
+
+> **HINT**
+> You need to use the uidnumber/gidnumber to the `-u` argument, as the container can't resolve
+> usernames from the host system.
+
+
