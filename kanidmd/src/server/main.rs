@@ -162,8 +162,9 @@ async fn main() {
     let cegid = get_effective_gid();
 
     if cuid == 0 || ceuid == 0 || cgid == 0 || cegid == 0 {
-        eprintln!("ERROR: Refusing to run - this process must not operate as root.");
-        std::process::exit(1);
+        eprintln!("WARNING: This is running as uid == 0 (root) which may be a security risk.");
+        // eprintln!("ERROR: Refusing to run - this process must not operate as root.");
+        // std::process::exit(1);
     }
 
     if cuid != ceuid || cgid != cegid {
