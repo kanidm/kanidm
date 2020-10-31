@@ -1,5 +1,6 @@
 use std::time::Duration;
 use uuid::Uuid;
+use webauthn_rs::crypto::COSEKey;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DbCidV1 {
@@ -30,8 +31,17 @@ pub struct DbTotpV1 {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct DbWebauthnV1 {
+    pub l: String,
+    pub i: Vec<u8>,
+    pub c: COSEKey,
+    pub t: u32,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct DbCredV1 {
     pub password: Option<DbPasswordV1>,
+    pub webauthn: Option<Vec<DbWebauthnV1>>,
     pub totp: Option<DbTotpV1>,
     pub claims: Vec<String>,
     pub uuid: Uuid,

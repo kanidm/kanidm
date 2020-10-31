@@ -16,7 +16,7 @@ use webauthn_rs::{Webauthn, proto::UserVerificationPolicy};
 
 pub(crate) enum MfaRegCred {
     TOTP(TOTP),
-    Webauthn(WebauthnCredential),
+    Webauthn(String, WebauthnCredential),
 }
 
 pub(crate) enum MfaRegNext {
@@ -165,7 +165,7 @@ impl MfaRegSession {
                         OperationError::Webauthn
                     })
                     .map(|cred| {
-                        (MfaRegNext::Success, Some(MfaRegCred::Webauthn(cred)))
+                        (MfaRegNext::Success, Some(MfaRegCred::Webauthn(label, cred)))
                     })
             }
             _ => Err(OperationError::InvalidRequestState),

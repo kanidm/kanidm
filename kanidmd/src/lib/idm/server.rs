@@ -1109,26 +1109,50 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let origin = (&wre.event.origin).into();
         let webauthn = self.webauthn;
 
-        let (next, wan_cred) = self
+        // Regardless of the outcome, we purge this session, so we get it
+        // from the tree instead of a mut pointer.
+        let mut session = self
             .mfareg_sessions
-            .get_mut(&sessionid)
-            .ok_or(OperationError::InvalidRequestState)
-            .and_then(|session| {
+            .remove(&sessionid)
+            .ok_or(OperationError::InvalidState)
+            .map_err(|e| {
+                ladmin_error!(au, "Failed to register webauthn -> {:?}", e);
+                e
+            })?;
+
+        let (next, wan_cred) =
                 session.webauthn_step(
                     au,
                     &origin, &wre.target, &wre.chal,
                     ct,
                     webauthn,
                 )
-            })
             .map_err(|e| {
                 ladmin_error!(au, "Failed to register webauthn -> {:?}", e);
                 OperationError::Webauthn
             })?;
 
-        if let (MfaRegNext::Success, Some(MfaRegCred::Webauthn(cred))) = (&next, wan_cred) {
+        if let (MfaRegNext::Success, Some(MfaRegCred::Webauthn(label, cred))) = (&next, wan_cred) {
             // Persist the credential
-            unimplemented!();
+            let modlist = session.account.gen_webauthn_mod(label, cred).map_err(|e| {
+                ladmin_error!(au, "Failed to gen webauthn mod {:?}", e);
+                e
+            })?;
+            // Perform the mod
+            self.qs_write
+                .impersonate_modify(
+                    au,
+                    // Filter as executed
+                    &filter!(f_eq("uuid", PartialValue::new_uuidr(&session.account.uuid))),
+                    // Filter as intended (acp)
+                    &filter_all!(f_eq("uuid", PartialValue::new_uuidr(&session.account.uuid))),
+                    &modlist,
+                    &wre.event,
+                )
+                .map_err(|e| {
+                    ladmin_error!(au, "reg_account_webauthn_complete {:?}", e);
+                    e
+                })?;
         }
 
         let next = next.to_proto(sessionid);

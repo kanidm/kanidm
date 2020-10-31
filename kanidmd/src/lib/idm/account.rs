@@ -17,6 +17,7 @@ use crate::value::{PartialValue, Value};
 use std::time::Duration;
 use time::OffsetDateTime;
 use uuid::Uuid;
+use webauthn_rs::proto::Credential as WebauthnCredential;
 
 lazy_static! {
     static ref PVCLASS_ACCOUNT: PartialValue = PartialValue::new_class("account");
@@ -242,6 +243,19 @@ impl Account {
                 Err(OperationError::InvalidState)
             }
         }
+    }
+
+    pub(crate) fn gen_webauthn_mod(
+        &self,
+        label: String,
+        cred: WebauthnCredential,
+    ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
+        let ncred = match &self.primary {
+            Some(primary) => primary.append_webauthn(label, cred)?,
+            None => Credential::new_webauthn_only(label, cred),
+        };
+        let vcred = Value::new_credential("primary", ncred);
+        Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
     }
 
     pub(crate) fn check_credential_pw(
