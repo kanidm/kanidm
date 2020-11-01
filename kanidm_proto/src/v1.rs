@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::fmt;
 use uuid::Uuid;
 // use zxcvbn::feedback;
-use webauthn_rs::proto::CreationChallengeResponse;
+use webauthn_rs::proto::{CreationChallengeResponse, RequestChallengeResponse, PublicKeyCredential};
 
 // These proto implementations are here because they have public definitions
 
@@ -427,6 +427,7 @@ pub enum AuthCredential {
     Anonymous,
     Password(String),
     TOTP(u32),
+    Webauthn(PublicKeyCredential),
 }
 
 impl fmt::Debug for AuthCredential {
@@ -435,6 +436,7 @@ impl fmt::Debug for AuthCredential {
             AuthCredential::Anonymous => write!(fmt, "Anonymous"),
             AuthCredential::Password(_) => write!(fmt, "Password(_)"),
             AuthCredential::TOTP(_) => write!(fmt, "TOTP(_)"),
+            AuthCredential::Webauthn(_) => write!(fmt, "Webauthn(_)"),
         }
     }
 }
@@ -462,13 +464,19 @@ pub struct AuthRequest {
 
 // Respond with the list of auth types and nonce, etc.
 // It can also contain a denied, or success.
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AuthAllowed {
     Anonymous,
     Password,
     TOTP,
-    // Webauthn(String),
+    Webauthn(RequestChallengeResponse),
+}
+
+impl PartialEq for AuthAllowed {
+    fn eq(&self, other: &Self) -> bool {
+        std::mem::discriminant(self) == std::mem::discriminant(other)
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]

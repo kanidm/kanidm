@@ -93,6 +93,7 @@ pub struct IdmServerWriteTransaction<'a> {
     sid: SID,
     // For flagging eventual actions.
     async_tx: Sender<DelayedAction>,
+    webauthn: &'a Webauthn<WebauthnDomainConfig>,
 }
 
 pub struct IdmServerProxyReadTransaction<'a> {
@@ -207,6 +208,7 @@ impl IdmServer {
             qs_read,
             sid,
             async_tx: self.async_tx.clone(),
+            webauthn: &self.webauthn,
         }
     }
 
@@ -370,7 +372,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
                 };
 
                 let (auth_session, state) = if is_valid {
-                    AuthSession::new(au, account, init.appid.clone(), ct)
+                    AuthSession::new(au, account, init.appid.clone(), self.webauthn, ct)
                 } else {
                     // it's softlocked, don't even bother.
                     lsecurity!(au, "Account is softlocked.");
@@ -452,7 +454,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
                     // Basically throw them at the auth_session and see what
                     // falls out.
                     auth_session
-                        .validate_creds(au, &creds.creds, &ct, &self.async_tx)
+                        .validate_creds(au, &creds.creds, &ct, &self.async_tx, self.webauthn)
                         .map(|aus| {
                             // Inspect the result:
                             // if it was a failure, we need to inc the softlock.
@@ -2751,7 +2753,6 @@ mod tests {
         })
     }
 
-
     #[test]
     fn test_idm_webauthn_registration() {
         run_idm_test!(|_qs: &QueryServer,
@@ -2797,9 +2798,6 @@ mod tests {
                     panic!();
                 }
             };
-
-            // Now test auth
-
             assert!(idms_prox_write.commit(au).is_ok());
         })
     }
