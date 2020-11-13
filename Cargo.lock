@@ -1720,6 +1720,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "toml",
+ "url",
  "uuid",
  "webauthn-authenticator-rs",
  "webauthn-rs",
@@ -1754,6 +1755,7 @@ dependencies = [
  "shellexpand",
  "structopt",
  "time 0.2.22",
+ "webauthn-authenticator-rs",
  "zxcvbn",
 ]
 

@@ -3,6 +3,8 @@ use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::{BufReader, BufWriter};
 use structopt::StructOpt;
+use kanidm_client::{KanidmClient, ClientError};
+use webauthn_authenticator_rs::{u2fhid::U2FHid, WebauthnAuthenticator};
 
 static TOKEN_PATH: &str = "~/.cache/kanidm_tokens";
 
@@ -40,11 +42,52 @@ pub fn write_tokens(tokens: &BTreeMap<String, String>) -> Result<(), ()> {
 pub struct LoginOpt {
     #[structopt(flatten)]
     pub copt: CommonOpt,
+    #[structopt(short = "w", long = "webauthn")]
+    pub webauthn: bool,
 }
 
 impl LoginOpt {
     pub fn debug(&self) -> bool {
         self.copt.debug
+    }
+
+    fn do_password(&self, client: &mut KanidmClient, username: &str) -> (Result<(), ClientError>, String) {
+        let password = match rpassword::prompt_password_stderr("Enter password: ") {
+            Ok(p) => p,
+            Err(e) => {
+                error!("Failed to create password prompt -- {:?}", e);
+                std::process::exit(1);
+            }
+        };
+        (
+            client.auth_simple_password(username, password.as_str()),
+            username.to_string(),
+        )
+    }
+
+    fn do_webauthn(&self, client: &mut KanidmClient, username: &str) -> (Result<(), ClientError>, String) {
+        let pkr = match client.auth_webauthn_begin(username) {
+            Ok(pkr) => pkr,
+            Err(e) => {
+                error!("Failed to request webauthn challenge. -- {:?}", e);
+                std::process::exit(1);
+            }
+        };
+
+        let mut wa = WebauthnAuthenticator::new(U2FHid::new());
+        println!("Your authenticator will now flash for you to interact with it.");
+        let auth = match wa.do_authentication(client.get_origin(), pkr) {
+            Ok(a) => a,
+            Err(e) => {
+                error!("Failed to interact with webauthn device. -- {:?}", e);
+                std::process::exit(1);
+            }
+        };
+
+        (
+            client.auth_webauthn_complete(auth),
+            username.to_string(),
+        )
     }
 
     pub fn exec(&self) {
@@ -53,17 +96,11 @@ impl LoginOpt {
         let (r, username) = match self.copt.username.as_deref() {
             None | Some("anonymous") => (client.auth_anonymous(), "anonymous".to_string()),
             Some(username) => {
-                let password = match rpassword::prompt_password_stderr("Enter password: ") {
-                    Ok(p) => p,
-                    Err(e) => {
-                        error!("Failed to create password prompt -- {:?}", e);
-                        std::process::exit(1);
-                    }
-                };
-                (
-                    client.auth_simple_password(username, password.as_str()),
-                    username.to_string(),
-                )
+                if self.webauthn {
+                    self.do_webauthn(&mut client, username)
+                } else {
+                    self.do_password(&mut client, username)
+                }
             }
         };
 

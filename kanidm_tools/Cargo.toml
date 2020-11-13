@@ -40,3 +40,6 @@ rayon = "1.2"
 time = "0.2"
 
 zxcvbn = "2.0"
+
+# webauthn-authenticator-rs = "^0.1.2"
+webauthn-authenticator-rs = { path = "../../webauthn-authenticator-rs" }

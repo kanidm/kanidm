@@ -23,6 +23,8 @@ use std::os::unix::fs::MetadataExt;
 use std::path::Path;
 use std::time::Duration;
 use uuid::Uuid;
+use url::Url;
+
 use webauthn_rs::proto::{
     CreationChallengeResponse,
     RegisterPublicKeyCredential,
@@ -279,9 +281,18 @@ impl KanidmClientBuilder {
 
         let client = client_builder.build()?;
 
+        // Now get the origin.
+        let uri = Url::parse(&address)
+            .expect("can not fail");
+
+        let origin = uri.host_str().map(|h|
+            format!("{}://{}", uri.scheme(), h))
+            .expect("can not fail");
+
         Ok(KanidmClient {
             client,
             addr: address,
+            origin,
             builder: self,
             bearer_token: None,
         })
@@ -331,11 +342,16 @@ impl KanidmClientBuilder {
 pub struct KanidmClient {
     client: reqwest::blocking::Client,
     addr: String,
+    origin: String,
     builder: KanidmClientBuilder,
     bearer_token: Option<String>,
 }
 
 impl KanidmClient {
+    pub fn get_origin(&self) -> &str {
+        self.origin.as_str()
+    }
+
     pub fn new_session(&self) -> Result<Self, reqwest::Error> {
         // Copy our builder, and then just process it.
         let builder = self.builder.clone();
