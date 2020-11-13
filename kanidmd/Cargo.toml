@@ -29,12 +29,12 @@ path = "src/server/main.rs"
 kanidm_proto = { path = "../kanidm_proto", version = "1.1.0-alpha" }
 
 url = "2.1"
-tide = "0.13"
+tide = "0.14"
 async-trait = "0.1"
 async-h1 = "2.0"
 # Temporary!
-# tide-rustls = "0.1"
-tide-rustls = { git = "https://github.com/http-rs/tide-rustls.git", rev = "c1f13a77e82369323274d832b8d3f33ba7c272c7" }
+tide-rustls = "0.1"
+# tide-rustls = { git = "https://github.com/http-rs/tide-rustls.git", rev = "c1f13a77e82369323274d832b8d3f33ba7c272c7" }
 fernet = { git = "https://github.com/mozilla-services/fernet-rs.git" }
 
 async-std = "1.6"

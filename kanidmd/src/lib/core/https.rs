@@ -83,6 +83,7 @@ impl RequestExtensions for tide::Request<AppState> {
 
     fn get_url_param(&self, param: &str) -> Result<String, tide::Error> {
         self.param(param)
+            .map(|s| s.to_string())
             .map_err(|_| tide::Error::from_str(tide::StatusCode::ImATeapot, "teapot"))
     }
 }
@@ -979,6 +980,7 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
 
     let (eventid, hvalue) = new_eventid!();
     let maybe_sessionid = req.session().get::<Uuid>("auth-session-id");
+    debug!("🍿 {:?}", maybe_sessionid);
 
     let obj: AuthRequest = req.body_json().await?;
 
@@ -1008,6 +1010,7 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
             // Do some response/state management.
             match state {
                 AuthState::Success(uat) => {
+                    debug!("🧩 -> AuthState::Success");
                     // Remove the auth-session-id
                     let msession = req.session_mut();
                     msession.remove("auth-session-id");
@@ -1021,14 +1024,19 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
                         .map_err(|_| OperationError::InvalidSessionState)
                 }
                 AuthState::Denied(_) => {
+                    debug!("🧩 -> AuthState::Denied");
                     let msession = req.session_mut();
                     // Remove the auth-session-id
                     msession.remove("auth-session-id");
                     Err(OperationError::AccessDenied)
                 }
                 AuthState::Continue(allowed) => {
+                    debug!("🧩 -> AuthState::Continue");
                     let msession = req.session_mut();
+                    // Force a new cookie session.
+                    // msession.regenerate();
                     // Ensure the auth-session-id is set
+                    msession.remove("auth-session-id");
                     msession
                         .insert("auth-session-id", sessionid)
                         .map(|_| ProtoAuthState::Continue(allowed))

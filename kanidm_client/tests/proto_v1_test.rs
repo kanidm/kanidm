@@ -810,7 +810,7 @@ fn test_server_rest_webauthn_auth_lifecycle() {
         // Now do an auth
         let mut rsclient_good = rsclient.new_session().unwrap();
 
-        let pkr = rsclient
+        let pkr = rsclient_good
             .auth_webauthn_begin("demo_account")
             .unwrap();
 

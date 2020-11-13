@@ -36,7 +36,7 @@ use kanidm_proto::v1::{
     CreateRequest, DeleteRequest, Entry, Filter, GroupUnixExtend, ModifyList, ModifyRequest,
     OperationError, OperationResponse, RadiusAuthToken, SearchRequest, SearchResponse,
     SetCredentialRequest, SetCredentialResponse, SingleStringRequest, TOTPSecret, UnixGroupToken,
-    UnixUserToken, UserAuthToken, WhoamiResponse,
+    UnixUserToken, UserAuthToken, WhoamiResponse, AuthAllowed
 };
 
 pub mod asynchronous;
@@ -622,15 +622,19 @@ impl KanidmClient {
         &mut self,
         ident: &str,
     ) -> Result<RequestChallengeResponse, ClientError> {
-        let state = match self.auth_step_init(ident) {
+        let mut state = match self.auth_step_init(ident) {
             Ok(s) => s,
             Err(e) => return Err(e),
         };
 
         match state {
-            AuthState::Continue(proc) => {
+            AuthState::Continue(mut proc) => {
                 // get the webauthn chal out of the state.
-                unimplemented!();
+                let chal = proc.pop();
+                match chal {
+                    Some(AuthAllowed::Webauthn(r)) => Ok(r),
+                    _ => Err(ClientError::AuthenticationFailed),
+                }
             }
             _ => Err(ClientError::AuthenticationFailed),
         }
@@ -906,7 +910,16 @@ impl KanidmClient {
         id: &str,
         label: &str,
     ) -> Result<(Uuid, CreationChallengeResponse), ClientError> {
-        unimplemented!();
+        let r = SetCredentialRequest::WebauthnBegin(label.to_string());
+        let res: Result<SetCredentialResponse, ClientError> = self.perform_put_request(
+            format!("/v1/account/{}/_credential/primary", id).as_str(),
+            r,
+        );
+        match res {
+            Ok(SetCredentialResponse::WebauthnCreateChallenge(u, s)) => Ok((u, s)),
+            Ok(_) => Err(ClientError::EmptyResponse),
+            Err(e) => Err(e),
+        }
     }
 
     pub fn idm_account_primary_credential_complete_webuthn_registration(
@@ -915,7 +928,16 @@ impl KanidmClient {
         rego: RegisterPublicKeyCredential,
         session: Uuid,
     ) -> Result<(), ClientError> {
-        unimplemented!();
+        let r = SetCredentialRequest::WebauthnRegister(session, rego);
+        let res: Result<SetCredentialResponse, ClientError> = self.perform_put_request(
+            format!("/v1/account/{}/_credential/primary", id).as_str(),
+            r,
+        );
+        match res {
+            Ok(SetCredentialResponse::Success) => Ok(()),
+            Ok(_) => Err(ClientError::EmptyResponse),
+            Err(e) => Err(e),
+        }
     }
 
     pub fn idm_account_radius_credential_get(
