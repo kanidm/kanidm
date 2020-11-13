@@ -1,4 +1,4 @@
-#![deny(warnings)]
+// #![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
@@ -23,6 +23,12 @@ use std::os::unix::fs::MetadataExt;
 use std::path::Path;
 use std::time::Duration;
 use uuid::Uuid;
+use webauthn_rs::proto::{
+    CreationChallengeResponse,
+    RegisterPublicKeyCredential,
+    RequestChallengeResponse,
+    PublicKeyCredential,
+};
 // use users::{get_current_uid, get_effective_uid};
 
 use kanidm_proto::v1::{
@@ -612,6 +618,47 @@ impl KanidmClient {
         }
     }
 
+    pub fn auth_webauthn_begin(
+        &mut self,
+        ident: &str,
+    ) -> Result<RequestChallengeResponse, ClientError> {
+        let state = match self.auth_step_init(ident) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+
+        match state {
+            AuthState::Continue(proc) => {
+                // get the webauthn chal out of the state.
+                unimplemented!();
+            }
+            _ => Err(ClientError::AuthenticationFailed),
+        }
+    }
+
+    pub fn auth_webauthn_complete(
+        &mut self,
+        pkc: PublicKeyCredential,
+    ) -> Result<(), ClientError> {
+        let auth_req = AuthRequest {
+            step: AuthStep::Creds(vec![
+                AuthCredential::Webauthn(pkc),
+            ]),
+        };
+        let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_req);
+
+        let r = r?;
+
+        match r.state {
+            AuthState::Success(token) => {
+                // set the bearer.
+                self.bearer_token = Some(token);
+                Ok(())
+            }
+            _ => Err(ClientError::AuthenticationFailed),
+        }
+    }
+
     // search
     pub fn search(&self, filter: Filter) -> Result<Vec<Entry>, ClientError> {
         let sr = SearchRequest { filter };
@@ -852,6 +899,23 @@ impl KanidmClient {
             Ok(_) => Err(ClientError::EmptyResponse),
             Err(e) => Err(e),
         }
+    }
+
+    pub fn idm_account_primary_credential_register_webauthn(
+        &self,
+        id: &str,
+        label: &str,
+    ) -> Result<(Uuid, CreationChallengeResponse), ClientError> {
+        unimplemented!();
+    }
+
+    pub fn idm_account_primary_credential_complete_webuthn_registration(
+        &self,
+        id: &str,
+        rego: RegisterPublicKeyCredential,
+        session: Uuid,
+    ) -> Result<(), ClientError> {
+        unimplemented!();
     }
 
     pub fn idm_account_radius_credential_get(

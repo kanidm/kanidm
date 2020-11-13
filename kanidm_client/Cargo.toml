@@ -21,10 +21,16 @@ toml = "0.5"
 uuid = { version = "0.8", features = ["serde", "v4"] }
 # users = "0.10"
 # webauthn-authenticator-rs = "^0.1.2"
-webauthn-authenticator-rs = { path = "../../webauthn-authenticator-rs" }
+# webauthn-authenticator-rs = { path = "../../webauthn-authenticator-rs" }
+
+# webauthn-rs = "^0.2.5"
+webauthn-rs = { path = "../../webauthn-rs" }
 
 [dev-dependencies]
 tokio = { version = "0.2", features = ["full"] }
 kanidm = { path = "../kanidmd" }
 futures = "0.3"
 async-std = "1.6"
+
+# webauthn-authenticator-rs = "^0.1.2"
+webauthn-authenticator-rs = { path = "../../webauthn-authenticator-rs" }

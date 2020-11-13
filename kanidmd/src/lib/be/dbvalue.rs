@@ -36,6 +36,7 @@ pub struct DbWebauthnV1 {
     pub i: Vec<u8>,
     pub c: COSEKey,
     pub t: u32,
+    pub v: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

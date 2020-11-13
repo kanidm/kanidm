@@ -86,7 +86,7 @@ impl CredHandler {
                 totp_state: CredVerifyState::Init,
             })),
             (None, None, Some(wan)) => webauthn
-                .generate_challenge_authenticate(wan.values().map(|c| c.clone()).collect(), Some(UserVerificationPolicy::Discouraged))
+                .generate_challenge_authenticate(wan.values().map(|c| c.clone()).collect())
                 .map(|(chal, wan_state)| {
                     CredHandler::Webauthn(CredWebauthn {
                         chal,
@@ -1226,8 +1226,7 @@ mod tests {
                 .expect("Failed to register soft token");
 
             let (chal, auth_state) = webauthn
-                .generate_challenge_authenticate(vec![inv_cred], 
-                Some(UserVerificationPolicy::Discouraged)).expect("Failed to generate challenge for in inv softtoken");
+                .generate_challenge_authenticate(vec![inv_cred]).expect("Failed to generate challenge for in inv softtoken");
 
             let resp = inv_wa
                 .do_authentication("https://idm.example.com", chal)

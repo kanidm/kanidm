@@ -2,7 +2,10 @@ use std::collections::BTreeMap;
 use std::fmt;
 use uuid::Uuid;
 // use zxcvbn::feedback;
-use webauthn_rs::proto::{CreationChallengeResponse, RequestChallengeResponse, PublicKeyCredential};
+use webauthn_rs::proto::{CreationChallengeResponse,
+    RegisterPublicKeyCredential,
+    RequestChallengeResponse,
+    PublicKeyCredential};
 
 // These proto implementations are here because they have public definitions
 
@@ -506,8 +509,10 @@ pub enum SetCredentialRequest {
     GeneratePassword,
     TOTPGenerate(String),
     TOTPVerify(Uuid, u32),
-    //
-    // Webauthn(response)
+    // Start the rego.
+    WebauthnBegin(String),
+    // Finish it.
+    WebauthnRegister(Uuid, RegisterPublicKeyCredential)
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

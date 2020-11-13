@@ -10,6 +10,7 @@ use crate::event::{
 use crate::idm::event::{
     GeneratePasswordEvent, GenerateTOTPEvent, PasswordChangeEvent, RegenerateRadiusSecretEvent,
     UnixPasswordChangeEvent, VerifyTOTPEvent,
+    WebauthnInitRegisterEvent, WebauthnDoRegisterEvent,
 };
 use crate::modify::{Modify, ModifyInvalid, ModifyList};
 use crate::value::{PartialValue, Value};
@@ -640,6 +641,47 @@ impl QueryServerWriteV1 {
                         })?;
                         idms_prox_write
                             .verify_account_totp(&mut audit, &vte, ct)
+                            .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
+                    }
+                    SetCredentialRequest::WebauthnBegin(label) => {
+                        let wre = WebauthnInitRegisterEvent::from_parts(
+                            &mut audit,
+                            &idms_prox_write.qs_write,
+                            msg.uat.as_ref(),
+                            target_uuid,
+                            label
+                        )
+                        .map_err(|e| {
+                            ladmin_error!(
+                                audit,
+                                "Failed to begin internal_credential_set_message: {:?}",
+                                e
+                            );
+                            e
+                        })?;
+                        idms_prox_write
+                            .reg_account_webauthn_init(&mut audit, &wre, ct)
+                            .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
+                    }
+                    SetCredentialRequest::WebauthnRegister(uuid, rpkc) => {
+                        let wre = WebauthnDoRegisterEvent::from_parts(
+                            &mut audit,
+                            &idms_prox_write.qs_write,
+                            msg.uat.as_ref(),
+                            target_uuid,
+                            uuid,
+                            rpkc
+                        )
+                        .map_err(|e| {
+                            ladmin_error!(
+                                audit,
+                                "Failed to begin internal_credential_set_message: {:?}",
+                                e
+                            );
+                            e
+                        })?;
+                        idms_prox_write
+                            .reg_account_webauthn_complete(&mut audit, &wre, ct)
                             .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
                     }
                 }

@@ -348,6 +348,22 @@ pub struct WebauthnInitRegisterEvent {
 }
 
 impl WebauthnInitRegisterEvent {
+    pub fn from_parts(
+        audit: &mut AuditScope,
+        qs: &QueryServerWriteTransaction,
+        uat: Option<&UserAuthToken>,
+        target: Uuid,
+        label: String,
+    ) -> Result<Self, OperationError> {
+        let e = Event::from_rw_uat(audit, qs, uat)?;
+
+        Ok(WebauthnInitRegisterEvent {
+            event: e,
+            target,
+            label,
+        })
+    }
+
     #[cfg(test)]
     pub fn new_internal(target: Uuid, label: String) -> Self {
         let e = Event::from_internal();
@@ -368,6 +384,24 @@ pub struct WebauthnDoRegisterEvent {
 }
 
 impl WebauthnDoRegisterEvent {
+    pub fn from_parts(
+        audit: &mut AuditScope,
+        qs: &QueryServerWriteTransaction,
+        uat: Option<&UserAuthToken>,
+        target: Uuid,
+        session: Uuid,
+        chal: RegisterPublicKeyCredential,
+    ) -> Result<Self, OperationError> {
+        let e = Event::from_rw_uat(audit, qs, uat)?;
+
+        Ok(WebauthnDoRegisterEvent {
+            event: e,
+            target,
+            session,
+            chal,
+        })
+    }
+
     #[cfg(test)]
     pub fn new_internal(target: Uuid,
         session: Uuid,

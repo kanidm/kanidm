@@ -12,8 +12,8 @@ impl WebauthnConfig for WebauthnDomainConfig {
         self.rp_name.clone()
     }
 
-    fn get_origin(&self) -> &String {
-        &self.origin
+    fn get_origin(&self) -> &str {
+        self.origin.as_str()
     }
 
     fn get_relying_party_id(&self) -> String {

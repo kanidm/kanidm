@@ -1653,6 +1653,7 @@ dependencies = [
  "toml",
  "uuid",
  "webauthn-authenticator-rs",
+ "webauthn-rs",
 ]
 
 [[package]]

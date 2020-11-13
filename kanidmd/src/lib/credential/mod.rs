@@ -273,6 +273,7 @@ impl TryFrom<DbCredV1> for Credential {
                             cred_id: wc.i,
                             cred: wc.c,
                             counter: wc.t,
+                            verified: wc.v,
                         }
                     ))
                     .collect())
@@ -379,6 +380,7 @@ impl Credential {
                             i: v.cred_id.clone(),
                             c: v.cred.clone(),
                             t: v.counter,
+                            v: v.verified,
                         }
                     })
                     .collect()
