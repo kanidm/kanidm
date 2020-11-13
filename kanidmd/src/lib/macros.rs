@@ -148,9 +148,9 @@ macro_rules! run_idm_test {
         let (test_idm_server, mut idms_delayed) = IdmServer::new(
             &mut audit,
             test_server.clone(),
-            "https://idm.example.com".to_string()
-            )
-            .expect("Failed to setup idms");
+            "https://idm.example.com".to_string(),
+        )
+        .expect("Failed to setup idms");
 
         $test_fn(
             &test_server,

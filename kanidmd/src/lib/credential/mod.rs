@@ -1,4 +1,5 @@
 use crate::be::dbvalue::{DbCredV1, DbPasswordV1, DbWebauthnV1};
+use hashbrown::HashMap as Map;
 use kanidm_proto::v1::OperationError;
 use openssl::hash::MessageDigest;
 use openssl::pkcs5::pbkdf2_hmac;
@@ -7,7 +8,6 @@ use rand::prelude::*;
 use std::convert::TryFrom;
 use std::time::{Duration, Instant};
 use uuid::Uuid;
-use hashbrown::HashMap as Map;
 use webauthn_rs::proto::Credential as WebauthnCredential;
 
 pub mod policy;
@@ -265,19 +265,21 @@ impl TryFrom<DbCredV1> for Credential {
         };
 
         let v_webauthn = match webauthn {
-            Some(dbw) => {
-                Some(dbw.into_iter()
-                    .map(|wc| (
-                        wc.l,
-                        WebauthnCredential {
-                            cred_id: wc.i,
-                            cred: wc.c,
-                            counter: wc.t,
-                            verified: wc.v,
-                        }
-                    ))
-                    .collect())
-            },
+            Some(dbw) => Some(
+                dbw.into_iter()
+                    .map(|wc| {
+                        (
+                            wc.l,
+                            WebauthnCredential {
+                                cred_id: wc.i,
+                                cred: wc.c,
+                                counter: wc.t,
+                                verified: wc.v,
+                            },
+                        )
+                    })
+                    .collect(),
+            ),
             None => None,
         };
 
@@ -296,15 +298,10 @@ impl Credential {
         policy: &CryptoPolicy,
         cleartext: &str,
     ) -> Result<Self, OperationError> {
-        Password::new(policy, cleartext).map(|pw|
-            Self::new_from_password(pw)
-        )
+        Password::new(policy, cleartext).map(|pw| Self::new_from_password(pw))
     }
 
-    pub fn new_webauthn_only(
-        label: String,
-        cred: WebauthnCredential,
-    ) -> Self {
+    pub fn new_webauthn_only(label: String, cred: WebauthnCredential) -> Self {
         let mut webauthn_map = Map::new();
         webauthn_map.insert(label, cred);
         Credential {
@@ -340,7 +337,10 @@ impl Credential {
                 let mut nmap = map.clone();
                 match nmap.insert(label.clone(), cred) {
                     Some(_) => {
-                        return Err(OperationError::InvalidAttribute(format!("Webauthn label '{:?}' already exists", label)));
+                        return Err(OperationError::InvalidAttribute(format!(
+                            "Webauthn label '{:?}' already exists",
+                            label
+                        )));
                     }
                     None => nmap,
                 }
@@ -374,14 +374,12 @@ impl Credential {
             password: self.password.as_ref().map(|pw| pw.to_dbpasswordv1()),
             webauthn: self.webauthn.as_ref().map(|map| {
                 map.iter()
-                    .map(|(k, v)| {
-                        DbWebauthnV1 {
-                            l: k.clone(),
-                            i: v.cred_id.clone(),
-                            c: v.cred.clone(),
-                            t: v.counter,
-                            v: v.verified,
-                        }
+                    .map(|(k, v)| DbWebauthnV1 {
+                        l: k.clone(),
+                        i: v.cred_id.clone(),
+                        c: v.cred.clone(),
+                        t: v.counter,
+                        v: v.verified,
                     })
                     .collect()
             }),

@@ -189,7 +189,8 @@ impl Plugin for Spn {
         // so we should be able to verify that *those* spns validate to the trusted domain info
         // we have been sent also. It's not up to use to generate those though ...
 
-        let domain_name = match qs.get_domain_name(au)
+        let domain_name = match qs
+            .get_domain_name(au)
             .map_err(|_| Err(ConsistencyError::QueryServerSearchFailure))
         {
             Ok(dn) => dn,

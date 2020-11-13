@@ -9,8 +9,7 @@ use crate::event::{
 };
 use crate::idm::event::{
     GeneratePasswordEvent, GenerateTOTPEvent, PasswordChangeEvent, RegenerateRadiusSecretEvent,
-    UnixPasswordChangeEvent, VerifyTOTPEvent,
-    WebauthnInitRegisterEvent, WebauthnDoRegisterEvent,
+    UnixPasswordChangeEvent, VerifyTOTPEvent, WebauthnDoRegisterEvent, WebauthnInitRegisterEvent,
 };
 use crate::modify::{Modify, ModifyInvalid, ModifyList};
 use crate::value::{PartialValue, Value};
@@ -649,7 +648,7 @@ impl QueryServerWriteV1 {
                             &idms_prox_write.qs_write,
                             msg.uat.as_ref(),
                             target_uuid,
-                            label
+                            label,
                         )
                         .map_err(|e| {
                             ladmin_error!(
@@ -670,7 +669,7 @@ impl QueryServerWriteV1 {
                             msg.uat.as_ref(),
                             target_uuid,
                             uuid,
-                            rpkc
+                            rpkc,
                         )
                         .map_err(|e| {
                             ladmin_error!(

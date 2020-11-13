@@ -9,10 +9,10 @@ use std::mem;
 use std::time::Duration;
 use uuid::Uuid;
 
-use webauthn_rs::proto::{CreationChallengeResponse, RegisterPublicKeyCredential};
 use webauthn_rs::proto::Credential as WebauthnCredential;
+use webauthn_rs::proto::{CreationChallengeResponse, RegisterPublicKeyCredential};
 use webauthn_rs::RegistrationState as WebauthnRegistrationState;
-use webauthn_rs::{Webauthn, proto::UserVerificationPolicy};
+use webauthn_rs::{proto::UserVerificationPolicy, Webauthn};
 
 pub(crate) enum MfaRegCred {
     TOTP(TOTP),
@@ -22,16 +22,14 @@ pub(crate) enum MfaRegCred {
 pub(crate) enum MfaRegNext {
     Success,
     TOTPCheck(TOTPSecret),
-    WebauthnChallenge(CreationChallengeResponse)
+    WebauthnChallenge(CreationChallengeResponse),
 }
 
 impl MfaRegNext {
     pub fn to_proto(self, u: Uuid) -> SetCredentialResponse {
         match self {
             MfaRegNext::Success => SetCredentialResponse::Success,
-            MfaRegNext::TOTPCheck(secret) => {
-                SetCredentialResponse::TOTPCheck(u, secret)
-            }
+            MfaRegNext::TOTPCheck(secret) => SetCredentialResponse::TOTPCheck(u, secret),
             MfaRegNext::WebauthnChallenge(ccr) => {
                 SetCredentialResponse::WebauthnCreateChallenge(u, ccr)
             }
@@ -66,8 +64,7 @@ impl MfaRegSession {
     ) -> Result<(Self, MfaRegNext), OperationError> {
         // Based on the req, init our session, and the return the next step.
         // Store the ID of the event that start's the attempt
-        let state = 
-                MfaRegState::TOTPInit(TOTP::generate_secure(label, TOTP_DEFAULT_STEP));
+        let state = MfaRegState::TOTPInit(TOTP::generate_secure(label, TOTP_DEFAULT_STEP));
         let s = MfaRegSession {
             origin,
             account,
@@ -158,20 +155,16 @@ impl MfaRegSession {
         mem::swap(&mut self.state, &mut nstate);
 
         match nstate {
-            MfaRegState::WebauthnInit(label, reg_state) => {
-                webauthn.register_credential(chal, reg_state, |_| Ok(false)) 
-                    .map_err(|e| {
-                        ladmin_error!(au, "Unable to register webauthn credential -> {:?}", e);
-                        OperationError::Webauthn
-                    })
-                    .map(|cred| {
-                        (MfaRegNext::Success, Some(MfaRegCred::Webauthn(label, cred)))
-                    })
-            }
+            MfaRegState::WebauthnInit(label, reg_state) => webauthn
+                .register_credential(chal, reg_state, |_| Ok(false))
+                .map_err(|e| {
+                    ladmin_error!(au, "Unable to register webauthn credential -> {:?}", e);
+                    OperationError::Webauthn
+                })
+                .map(|cred| (MfaRegNext::Success, Some(MfaRegCred::Webauthn(label, cred)))),
             _ => Err(OperationError::InvalidRequestState),
         }
     }
-
 }
 
 impl MfaRegSession {

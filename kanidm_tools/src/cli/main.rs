@@ -15,7 +15,10 @@ fn main() {
     let opt = ClientOpt::from_args();
 
     if opt.debug() {
-        ::std::env::set_var("RUST_LOG", "kanidm=debug,kanidm_client=debug,webauthn=debug");
+        ::std::env::set_var(
+            "RUST_LOG",
+            "kanidm=debug,kanidm_client=debug,webauthn=debug",
+        );
     } else {
         ::std::env::set_var("RUST_LOG", "kanidm=info,kanidm_client=info,webauthn=info");
     }

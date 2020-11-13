@@ -11,7 +11,7 @@ use crate::idm::event::{
     GeneratePasswordEvent, GenerateTOTPEvent, LdapAuthEvent, PasswordChangeEvent,
     RadiusAuthTokenEvent, RegenerateRadiusSecretEvent, UnixGroupTokenEvent,
     UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent, VerifyTOTPEvent,
-    WebauthnInitRegisterEvent, WebauthnDoRegisterEvent
+    WebauthnDoRegisterEvent, WebauthnInitRegisterEvent,
 };
 use crate::idm::mfareg::{MfaRegCred, MfaRegNext, MfaRegSession};
 use crate::idm::radius::RadiusAccount;
@@ -50,10 +50,10 @@ use concread::bptree::{BptreeMap, BptreeMapWriteTxn};
 use concread::hashmap::HashMap;
 use rand::prelude::*;
 use std::time::Duration;
-use uuid::Uuid;
 use url::Url;
+use uuid::Uuid;
 
-use webauthn_rs::{Webauthn, proto::UserVerificationPolicy};
+use webauthn_rs::{proto::UserVerificationPolicy, Webauthn};
 
 pub struct IdmServer {
     // There is a good reason to keep this single thread - it
@@ -1090,8 +1090,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let origin = (&wre.event.origin).into();
         let label = wre.label.clone();
 
-        let (session, next) = MfaRegSession::webauthn_new(au, origin, account, label, self.webauthn)
-        ?;
+        let (session, next) =
+            MfaRegSession::webauthn_new(au, origin, account, label, self.webauthn)?;
 
         let next = next.to_proto(sessionid);
 
@@ -1122,13 +1122,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 e
             })?;
 
-        let (next, wan_cred) =
-                session.webauthn_step(
-                    au,
-                    &origin, &wre.target, &wre.chal,
-                    ct,
-                    webauthn,
-                )
+        let (next, wan_cred) = session
+            .webauthn_step(au, &origin, &wre.target, &wre.chal, ct, webauthn)
             .map_err(|e| {
                 ladmin_error!(au, "Failed to register webauthn -> {:?}", e);
                 OperationError::Webauthn
@@ -1172,11 +1167,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         let origin = (&gte.event.origin).into();
         let label = gte.label.clone();
-        let (session, next) = MfaRegSession::totp_new(origin, account, label)
-            .map_err(|e| {
-                ladmin_error!(au, "Unable to start totp MfaRegSession {:?}", e);
-                e
-            })?;
+        let (session, next) = MfaRegSession::totp_new(origin, account, label).map_err(|e| {
+            ladmin_error!(au, "Unable to start totp MfaRegSession {:?}", e);
+            e
+        })?;
 
         let next = next.to_proto(sessionid);
 
@@ -1202,9 +1196,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .mfareg_sessions
             .get_mut(&sessionid)
             .ok_or(OperationError::InvalidRequestState)
-            .and_then(|session| {
-                session.totp_step(&origin, &vte.target, chal, &ct)
-            })
+            .and_then(|session| session.totp_step(&origin, &vte.target, chal, &ct))
             .map_err(|e| {
                 ladmin_error!(au, "Failed to verify totp {:?}", e);
                 e
@@ -1352,7 +1344,7 @@ mod tests {
     use crate::idm::event::{
         GenerateTOTPEvent, PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
         UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent,
-        VerifyTOTPEvent, WebauthnInitRegisterEvent, WebauthnDoRegisterEvent
+        VerifyTOTPEvent, WebauthnDoRegisterEvent, WebauthnInitRegisterEvent,
     };
     use crate::modify::{Modify, ModifyList};
     use crate::value::{PartialValue, Value};
@@ -2766,16 +2758,14 @@ mod tests {
 
             let wrei = WebauthnInitRegisterEvent::new_internal(
                 UUID_ADMIN.clone(),
-                "softtoken".to_string()
+                "softtoken".to_string(),
             );
 
-            let (sessionid, ccr) = match idms_prox_write.reg_account_webauthn_init(
-                au, &wrei, ct
-            ) {
+            let (sessionid, ccr) = match idms_prox_write.reg_account_webauthn_init(au, &wrei, ct) {
                 Ok(SetCredentialResponse::WebauthnCreateChallenge(sessionid, ccr)) => {
                     (sessionid, ccr)
                 }
-                _=> {
+                _ => {
                     panic!();
                 }
             };
@@ -2784,17 +2774,11 @@ mod tests {
                 .do_registration("https://idm.example.com", ccr)
                 .expect("Failed to register to softtoken");
 
-            let wdre = WebauthnDoRegisterEvent::new_internal(
-                UUID_ADMIN.clone(),
-                sessionid,
-                rego
-            );
+            let wdre = WebauthnDoRegisterEvent::new_internal(UUID_ADMIN.clone(), sessionid, rego);
 
-            match idms_prox_write.reg_account_webauthn_complete(
-                au, &wdre, ct,
-            ) {
+            match idms_prox_write.reg_account_webauthn_complete(au, &wdre, ct) {
                 Ok(SetCredentialResponse::Success) => {}
-                _=> {
+                _ => {
                     panic!();
                 }
             };

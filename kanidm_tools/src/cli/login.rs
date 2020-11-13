@@ -1,9 +1,9 @@
 use crate::common::CommonOpt;
+use kanidm_client::{ClientError, KanidmClient};
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::{BufReader, BufWriter};
 use structopt::StructOpt;
-use kanidm_client::{KanidmClient, ClientError};
 use webauthn_authenticator_rs::{u2fhid::U2FHid, WebauthnAuthenticator};
 
 static TOKEN_PATH: &str = "~/.cache/kanidm_tokens";
@@ -51,7 +51,11 @@ impl LoginOpt {
         self.copt.debug
     }
 
-    fn do_password(&self, client: &mut KanidmClient, username: &str) -> (Result<(), ClientError>, String) {
+    fn do_password(
+        &self,
+        client: &mut KanidmClient,
+        username: &str,
+    ) -> (Result<(), ClientError>, String) {
         let password = match rpassword::prompt_password_stderr("Enter password: ") {
             Ok(p) => p,
             Err(e) => {
@@ -65,7 +69,11 @@ impl LoginOpt {
         )
     }
 
-    fn do_webauthn(&self, client: &mut KanidmClient, username: &str) -> (Result<(), ClientError>, String) {
+    fn do_webauthn(
+        &self,
+        client: &mut KanidmClient,
+        username: &str,
+    ) -> (Result<(), ClientError>, String) {
         let pkr = match client.auth_webauthn_begin(username) {
             Ok(pkr) => pkr,
             Err(e) => {
@@ -84,10 +92,7 @@ impl LoginOpt {
             }
         };
 
-        (
-            client.auth_webauthn_complete(auth),
-            username.to_string(),
-        )
+        (client.auth_webauthn_complete(auth), username.to_string())
     }
 
     pub fn exec(&self) {

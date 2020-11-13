@@ -1,4 +1,3 @@
-
 use webauthn_rs::WebauthnConfig;
 
 pub struct WebauthnDomainConfig {
@@ -20,4 +19,3 @@ impl WebauthnConfig for WebauthnDomainConfig {
         self.rp_id.clone()
     }
 }
-

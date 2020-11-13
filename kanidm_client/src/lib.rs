@@ -22,23 +22,21 @@ use std::io::Read;
 use std::os::unix::fs::MetadataExt;
 use std::path::Path;
 use std::time::Duration;
-use uuid::Uuid;
 use url::Url;
+use uuid::Uuid;
 
 use webauthn_rs::proto::{
-    CreationChallengeResponse,
-    RegisterPublicKeyCredential,
+    CreationChallengeResponse, PublicKeyCredential, RegisterPublicKeyCredential,
     RequestChallengeResponse,
-    PublicKeyCredential,
 };
 // use users::{get_current_uid, get_effective_uid};
 
 use kanidm_proto::v1::{
-    AccountUnixExtend, AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep,
+    AccountUnixExtend, AuthAllowed, AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep,
     CreateRequest, DeleteRequest, Entry, Filter, GroupUnixExtend, ModifyList, ModifyRequest,
     OperationError, OperationResponse, RadiusAuthToken, SearchRequest, SearchResponse,
     SetCredentialRequest, SetCredentialResponse, SingleStringRequest, TOTPSecret, UnixGroupToken,
-    UnixUserToken, UserAuthToken, WhoamiResponse, AuthAllowed
+    UnixUserToken, UserAuthToken, WhoamiResponse,
 };
 
 pub mod asynchronous;
@@ -282,11 +280,11 @@ impl KanidmClientBuilder {
         let client = client_builder.build()?;
 
         // Now get the origin.
-        let uri = Url::parse(&address)
-            .expect("can not fail");
+        let uri = Url::parse(&address).expect("can not fail");
 
-        let origin = uri.host_str().map(|h|
-            format!("{}://{}", uri.scheme(), h))
+        let origin = uri
+            .host_str()
+            .map(|h| format!("{}://{}", uri.scheme(), h))
             .expect("can not fail");
 
         Ok(KanidmClient {
@@ -656,14 +654,9 @@ impl KanidmClient {
         }
     }
 
-    pub fn auth_webauthn_complete(
-        &mut self,
-        pkc: PublicKeyCredential,
-    ) -> Result<(), ClientError> {
+    pub fn auth_webauthn_complete(&mut self, pkc: PublicKeyCredential) -> Result<(), ClientError> {
         let auth_req = AuthRequest {
-            step: AuthStep::Creds(vec![
-                AuthCredential::Webauthn(pkc),
-            ]),
+            step: AuthStep::Creds(vec![AuthCredential::Webauthn(pkc)]),
         };
         let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_req);
 

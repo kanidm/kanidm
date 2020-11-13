@@ -250,30 +250,29 @@ impl AccountOpt {
                             acsopt.aopts.account_id.as_str(),
                             acsopt.tag.as_str(),
                         ) {
-                            Ok(v) => v,
-                            Err(e) => {
-                                eprintln!("Error Starting Registration -> {:?}", e);
-                                return
-                            }
-                        };
+                        Ok(v) => v,
+                        Err(e) => {
+                            eprintln!("Error Starting Registration -> {:?}", e);
+                            return;
+                        }
+                    };
 
                     let mut wa = WebauthnAuthenticator::new(U2FHid::new());
 
                     println!("Your authenticator will now flash for you to interact with.");
 
-                    let rego = match wa.do_registration(client.get_origin(), chal)
-                    {
+                    let rego = match wa.do_registration(client.get_origin(), chal) {
                         Ok(rego) => rego,
                         Err(e) => {
                             eprintln!("Error Signing -> {:?}", e);
-                            return
+                            return;
                         }
                     };
 
                     match client.idm_account_primary_credential_complete_webuthn_registration(
                         acsopt.aopts.account_id.as_str(),
                         rego,
-                        session
+                        session,
                     ) {
                         Ok(()) => {
                             println!("Webauthn token registration success.");

@@ -656,10 +656,7 @@ pub trait QueryServerTransaction {
 
     // This is a prebaked helper to get the domain name for related modules.
     // in the future we could make this cache the value to avoid entry lookups.
-    fn get_domain_name(
-        &self,
-        audit: &mut AuditScope,
-    ) -> Result<String, OperationError> {
+    fn get_domain_name(&self, audit: &mut AuditScope) -> Result<String, OperationError> {
         self.internal_search_uuid(audit, &UUID_DOMAIN_INFO)
             .and_then(|e| {
                 e.get_ava_single_str("domain_name")

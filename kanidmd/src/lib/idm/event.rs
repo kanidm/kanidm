@@ -403,10 +403,7 @@ impl WebauthnDoRegisterEvent {
     }
 
     #[cfg(test)]
-    pub fn new_internal(target: Uuid,
-        session: Uuid,
-        chal: RegisterPublicKeyCredential
-    ) -> Self {
+    pub fn new_internal(target: Uuid, session: Uuid, chal: RegisterPublicKeyCredential) -> Self {
         let e = Event::from_internal();
         WebauthnDoRegisterEvent {
             event: e,

@@ -804,15 +804,17 @@ fn test_server_rest_webauthn_auth_lifecycle() {
 
         // Enroll the cred after signing.
         rsclient
-            .idm_account_primary_credential_complete_webuthn_registration("demo_account", rego, sessionid)
+            .idm_account_primary_credential_complete_webuthn_registration(
+                "demo_account",
+                rego,
+                sessionid,
+            )
             .unwrap();
 
         // Now do an auth
         let mut rsclient_good = rsclient.new_session().unwrap();
 
-        let pkr = rsclient_good
-            .auth_webauthn_begin("demo_account")
-            .unwrap();
+        let pkr = rsclient_good.auth_webauthn_begin("demo_account").unwrap();
 
         // Get the auth chal.
         let auth = wa_softtok
@@ -820,7 +822,8 @@ fn test_server_rest_webauthn_auth_lifecycle() {
             .expect("Failed to auth to softtoken");
 
         // Submit the webauthn auth.
-        rsclient_good.auth_webauthn_complete(auth)
+        rsclient_good
+            .auth_webauthn_complete(auth)
             .expect("Failed to authenticate")
     });
 }
