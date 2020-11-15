@@ -142,7 +142,6 @@ impl MfaRegSession {
         origin: &EventOriginId,
         target: &Uuid,
         chal: &RegisterPublicKeyCredential,
-        ct: Duration,
         webauthn: &Webauthn<WebauthnDomainConfig>,
     ) -> Result<(MfaRegNext, Option<MfaRegCred>), OperationError> {
         if &self.origin != origin || target != &self.account.uuid {

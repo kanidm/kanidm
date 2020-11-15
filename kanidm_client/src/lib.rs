@@ -1,4 +1,4 @@
-// #![deny(warnings)]
+#![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
@@ -636,7 +636,7 @@ impl KanidmClient {
         &mut self,
         ident: &str,
     ) -> Result<RequestChallengeResponse, ClientError> {
-        let mut state = match self.auth_step_init(ident) {
+        let state = match self.auth_step_init(ident) {
             Ok(s) => s,
             Err(e) => return Err(e),
         };

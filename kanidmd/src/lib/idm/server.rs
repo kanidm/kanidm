@@ -53,7 +53,7 @@ use std::time::Duration;
 use url::Url;
 use uuid::Uuid;
 
-use webauthn_rs::{proto::UserVerificationPolicy, Webauthn};
+use webauthn_rs::Webauthn;
 
 pub struct IdmServer {
     // There is a good reason to keep this single thread - it
@@ -142,7 +142,7 @@ impl IdmServer {
 
         // Check that it gels with our origin.
         Url::parse(origin.as_str())
-            .map_err(|e| {
+            .map_err(|_e| {
                 ladmin_error!(au, "Unable to parse origin URL - refusing to start. You must correct the value for origin. {:?}", origin);
                 OperationError::InvalidState
             })
@@ -1105,7 +1105,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         &mut self,
         au: &mut AuditScope,
         wre: &WebauthnDoRegisterEvent,
-        ct: Duration,
     ) -> Result<SetCredentialResponse, OperationError> {
         let sessionid = wre.session;
         let origin = (&wre.event.origin).into();
@@ -1123,7 +1122,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             })?;
 
         let (next, wan_cred) = session
-            .webauthn_step(au, &origin, &wre.target, &wre.chal, ct, webauthn)
+            .webauthn_step(au, &origin, &wre.target, &wre.chal, webauthn)
             .map_err(|e| {
                 ladmin_error!(au, "Failed to register webauthn -> {:?}", e);
                 OperationError::Webauthn
@@ -2776,7 +2775,7 @@ mod tests {
 
             let wdre = WebauthnDoRegisterEvent::new_internal(UUID_ADMIN.clone(), sessionid, rego);
 
-            match idms_prox_write.reg_account_webauthn_complete(au, &wdre, ct) {
+            match idms_prox_write.reg_account_webauthn_complete(au, &wdre) {
                 Ok(SetCredentialResponse::Success) => {}
                 _ => {
                     panic!();

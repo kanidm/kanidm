@@ -12,11 +12,10 @@ use crate::idm::delayed::{DelayedAction, PasswordUpgrade};
 use tokio::sync::mpsc::UnboundedSender as Sender;
 
 use crate::credential::webauthn::WebauthnDomainConfig;
-use std::convert::TryFrom;
 use std::time::Duration;
 use uuid::Uuid;
-use webauthn_rs::proto::Credential as WebauthnCredential;
-use webauthn_rs::proto::{RequestChallengeResponse, UserVerificationPolicy};
+// use webauthn_rs::proto::Credential as WebauthnCredential;
+use webauthn_rs::proto::{RequestChallengeResponse};
 use webauthn_rs::{AuthenticationState, Webauthn};
 
 // Each CredHandler takes one or more credentials and determines if the
@@ -1228,7 +1227,7 @@ mod tests {
             assert!(auth_mechs.len() == 1);
             auth_mechs
                 .into_iter()
-                .fold(None, |acc, x| match x {
+                .fold(None, |_acc, x| match x {
                     AuthAllowed::Webauthn(chal) => Some(chal),
                     _ => None,
                 })
@@ -1335,10 +1334,12 @@ mod tests {
                 .register_credential(&r, reg_state, |_| Ok(false))
                 .expect("Failed to register soft token");
 
-            let (chal, auth_state) = webauthn
+            // Discard the auth_state, we only need the invalid challenge.
+            let (chal, _auth_state) = webauthn
                 .generate_challenge_authenticate(vec![inv_cred])
                 .expect("Failed to generate challenge for in inv softtoken");
 
+            // Create the response.
             let resp = inv_wa
                 .do_authentication("https://idm.example.com", chal)
                 .expect("Failed to use softtoken for response.");

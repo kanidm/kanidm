@@ -680,7 +680,7 @@ impl QueryServerWriteV1 {
                             e
                         })?;
                         idms_prox_write
-                            .reg_account_webauthn_complete(&mut audit, &wre, ct)
+                            .reg_account_webauthn_complete(&mut audit, &wre)
                             .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
                     }
                 }

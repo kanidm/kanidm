@@ -422,8 +422,8 @@ impl Credential {
 
     pub(crate) fn softlock_policy(&self) -> Option<CredSoftLockPolicy> {
         match (&self.webauthn, &self.totp, &self.password) {
-            (Some(webauthn), _, _) => Some(CredSoftLockPolicy::Webauthn),
             // Has any kind of Webauthn ....
+            (Some(_webauthn), _, _) => Some(CredSoftLockPolicy::Webauthn),
             // Has any kind of totp.
             (None, Some(totp), _) => Some(CredSoftLockPolicy::TOTP(totp.step)),
             // No totp, pw
