@@ -9,6 +9,7 @@ use std::convert::TryFrom;
 use std::time::{Duration, Instant};
 use uuid::Uuid;
 use webauthn_rs::proto::Credential as WebauthnCredential;
+use webauthn_rs::proto::{Counter, CredentialID};
 
 pub mod policy;
 pub mod softlock;
@@ -359,6 +360,42 @@ impl Credential {
             claims: self.claims.clone(),
             uuid: self.uuid,
         })
+    }
+
+    pub fn update_webauthn_counter(
+        &self,
+        cid: &CredentialID,
+        counter: Counter,
+    ) -> Result<Option<Self>, OperationError> {
+
+        let opt_label = self.webauthn.as_ref().and_then(|m|
+            m.iter()
+            .fold(None, |acc, (k, v)| {
+                if acc.is_none() && &v.cred_id == cid && v.counter < counter {
+                    Some(k)
+                } else {
+                    acc
+                }
+            }));
+
+        if let Some(label) = opt_label {
+            let mut webauthn_map = self.webauthn.clone();
+
+            webauthn_map
+                .as_mut()
+                .and_then(|m| m.get_mut(label))
+                .map(|cred| cred.counter = counter);
+
+                Ok(Some(Credential {
+                    password: self.password.clone(),
+                    webauthn: webauthn_map,
+                    totp: self.totp.clone(),
+                    claims: self.claims.clone(),
+                    uuid: self.uuid,
+                }))
+        } else {
+            Ok(None)
+        }
     }
 
     #[cfg(test)]

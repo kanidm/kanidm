@@ -18,6 +18,7 @@ use std::time::Duration;
 use time::OffsetDateTime;
 use uuid::Uuid;
 use webauthn_rs::proto::Credential as WebauthnCredential;
+use webauthn_rs::proto::{Counter, CredentialID};
 
 lazy_static! {
     static ref PVCLASS_ACCOUNT: PartialValue = PartialValue::new_class("account");
@@ -256,6 +257,26 @@ impl Account {
         };
         let vcred = Value::new_credential("primary", ncred);
         Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
+    }
+
+    pub(crate) fn gen_webauthn_counter_mod(
+        &self,
+        cid: &CredentialID,
+        counter: Counter,
+    ) -> Result<Option<ModifyList<ModifyInvalid>>, OperationError> {
+        //
+        let opt_ncred = match self.primary.as_ref() {
+            Some(primary) => primary.update_webauthn_counter(cid, counter)?,
+            None => None,
+        };
+
+        match opt_ncred {
+            Some(ncred) => {
+                let vcred = Value::new_credential("primary", ncred);
+                Ok(Some(ModifyList::new_purge_and_set("primary_credential", vcred)))
+            }
+            None => Ok(None),
+        }
     }
 
     pub(crate) fn check_credential_pw(

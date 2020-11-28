@@ -599,16 +599,15 @@ mod tests {
         BAD_WEBAUTHN_MSG,
     };
     use crate::idm::AuthState;
+    use crate::idm::delayed::DelayedAction;
     use crate::utils::duration_from_epoch_now;
     use kanidm_proto::v1::{AuthAllowed, AuthCredential};
     use std::time::Duration;
-    // use async_std::task;
     use crate::credential::webauthn::WebauthnDomainConfig;
     use webauthn_rs::proto::UserVerificationPolicy;
     use webauthn_rs::Webauthn;
 
     use tokio::sync::mpsc::unbounded_channel as unbounded;
-    // , UnboundedSender as Sender, UnboundedReceiver as Receiver};
     use webauthn_authenticator_rs::{softtok::U2FSoft, WebauthnAuthenticator};
 
     fn create_webauthn() -> Webauthn<WebauthnDomainConfig> {
@@ -1290,6 +1289,13 @@ mod tests {
                 _ => panic!(),
             };
         }
+
+        // Check the async counter update was sent.
+        match async_rx.try_recv() {
+            Ok(DelayedAction::WebauthnCounterIncrement(_)) => {}
+            _ => assert!(false),
+        }
+
         // Check bad challenge.
         {
             let (session, state) =

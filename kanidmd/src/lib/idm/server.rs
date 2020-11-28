@@ -1314,20 +1314,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         au: &mut AuditScope,
         wci: &WebauthnCounterIncrement,
     ) -> Result<(), OperationError> {
-        let account = self
-            .qs_write
-            .internal_search_uuid(au, &wci.target_uuid)
-            .and_then(|account_entry| {
-                UnixUserAccount::try_from_entry_rw(au, &account_entry, &mut self.qs_write)
-            })
-            .map_err(|e| {
-                ladmin_error!(au, "Failed to start unix pw upgrade -> {:?}", e);
-                e
-            })?;
+        let account = self.target_to_account(au, &wci.target_uuid)?;
 
         // Generate an optional mod and then attempt to apply it.
         let opt_modlist = account
-            .gen_webauthn_counter_mod(wci.cid, wci.counter)
+            .gen_webauthn_counter_mod(&wci.cid, wci.counter)
             .map_err(|e| {
                 ladmin_error!(au, "Unable to generate webauthn counter mod {:?}", e);
                 e
@@ -1385,8 +1376,7 @@ mod tests {
     };
     use crate::modify::{Modify, ModifyList};
     use crate::value::{PartialValue, Value};
-    // use crate::idm::delayed::{PasswordUpgrade, DelayedAction};
-
+    use crate::idm::delayed::{DelayedAction, WebauthnCounterIncrement};
     use crate::idm::AuthState;
     use kanidm_proto::v1::AuthAllowed;
     use kanidm_proto::v1::OperationError;
@@ -2783,10 +2773,10 @@ mod tests {
     }
 
     #[test]
-    fn test_idm_webauthn_registration() {
+    fn test_idm_webauthn_registration_and_counter_inc() {
         run_idm_test!(|_qs: &QueryServer,
                        idms: &IdmServer,
-                       _idms_delayed: &IdmServerDelayed,
+                       idms_delayed: &mut IdmServerDelayed,
                        au: &mut AuditScope| {
             let ct = duration_from_epoch_now();
             let mut idms_prox_write = idms.proxy_write(ct.clone());
@@ -2819,7 +2809,37 @@ mod tests {
                     panic!();
                 }
             };
+
+            // Get the account now so we can peek at the registered credential.
+            let account = idms_prox_write.target_to_account(au, &UUID_ADMIN)
+                .expect("account must exist");
+
+            let cred = account.primary.expect("Must exist.");
+
+            let wcred = cred.webauthn.expect("must have webauthn")
+                .values()
+                .next()
+                .map(|c| c.clone())
+                .expect("must have a webauthn credential");
+
             assert!(idms_prox_write.commit(au).is_ok());
+
+            // ===
+            // Assert we can increment the counter if needed.
+
+            // Assert the delayed action queue is empty
+            idms_delayed.is_empty_or_panic();
+
+            // Generate a fake counter increment
+            let da = DelayedAction::WebauthnCounterIncrement(WebauthnCounterIncrement {
+                target_uuid: UUID_ADMIN.clone(),
+                counter: wcred.counter + 1,
+                cid: wcred.cred_id,
+            });
+            let r = task::block_on(idms.delayed_action(au, duration_from_epoch_now(), da));
+            assert!(Ok(true) == r);
+
+
         })
     }
 }
