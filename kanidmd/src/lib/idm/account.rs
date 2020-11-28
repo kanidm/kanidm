@@ -273,7 +273,10 @@ impl Account {
         match opt_ncred {
             Some(ncred) => {
                 let vcred = Value::new_credential("primary", ncred);
-                Ok(Some(ModifyList::new_purge_and_set("primary_credential", vcred)))
+                Ok(Some(ModifyList::new_purge_and_set(
+                    "primary_credential",
+                    vcred,
+                )))
             }
             None => Ok(None),
         }

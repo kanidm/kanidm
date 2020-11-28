@@ -24,7 +24,9 @@ use crate::utils::{password_from_random, readable_password_from_random, uuid_fro
 use crate::value::PartialValue;
 
 use crate::actors::v1_write::QueryServerWriteV1;
-use crate::idm::delayed::{DelayedAction, PasswordUpgrade, UnixPasswordUpgrade, WebauthnCounterIncrement};
+use crate::idm::delayed::{
+    DelayedAction, PasswordUpgrade, UnixPasswordUpgrade, WebauthnCounterIncrement,
+};
 
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::RadiusAuthToken;
@@ -1345,7 +1347,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         match da {
             DelayedAction::PwUpgrade(pwu) => self.process_pwupgrade(au, &pwu),
             DelayedAction::UnixPwUpgrade(upwu) => self.process_unixpwupgrade(au, &upwu),
-            DelayedAction::WebauthnCounterIncrement(wci) => self.process_webauthncounterinc(au, &wci),
+            DelayedAction::WebauthnCounterIncrement(wci) => {
+                self.process_webauthncounterinc(au, &wci)
+            }
         }
     }
 
@@ -1369,15 +1373,15 @@ mod tests {
     use crate::credential::{Credential, Password};
     use crate::entry::{Entry, EntryInit, EntryNew};
     use crate::event::{AuthEvent, AuthResult, CreateEvent, ModifyEvent};
+    use crate::idm::delayed::{DelayedAction, WebauthnCounterIncrement};
     use crate::idm::event::{
         GenerateTOTPEvent, PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
         UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent,
         VerifyTOTPEvent, WebauthnDoRegisterEvent, WebauthnInitRegisterEvent,
     };
+    use crate::idm::AuthState;
     use crate::modify::{Modify, ModifyList};
     use crate::value::{PartialValue, Value};
-    use crate::idm::delayed::{DelayedAction, WebauthnCounterIncrement};
-    use crate::idm::AuthState;
     use kanidm_proto::v1::AuthAllowed;
     use kanidm_proto::v1::OperationError;
     use kanidm_proto::v1::SetCredentialResponse;
@@ -2811,12 +2815,15 @@ mod tests {
             };
 
             // Get the account now so we can peek at the registered credential.
-            let account = idms_prox_write.target_to_account(au, &UUID_ADMIN)
+            let account = idms_prox_write
+                .target_to_account(au, &UUID_ADMIN)
                 .expect("account must exist");
 
             let cred = account.primary.expect("Must exist.");
 
-            let wcred = cred.webauthn.expect("must have webauthn")
+            let wcred = cred
+                .webauthn
+                .expect("must have webauthn")
                 .values()
                 .next()
                 .map(|c| c.clone())
@@ -2838,8 +2845,6 @@ mod tests {
             });
             let r = task::block_on(idms.delayed_action(au, duration_from_epoch_now(), da));
             assert!(Ok(true) == r);
-
-
         })
     }
 }

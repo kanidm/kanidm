@@ -15,7 +15,7 @@ use crate::credential::webauthn::WebauthnDomainConfig;
 use std::time::Duration;
 use uuid::Uuid;
 // use webauthn_rs::proto::Credential as WebauthnCredential;
-use webauthn_rs::proto::{RequestChallengeResponse};
+use webauthn_rs::proto::RequestChallengeResponse;
 use webauthn_rs::{AuthenticationState, Webauthn};
 
 // Each CredHandler takes one or more credentials and determines if the
@@ -593,17 +593,17 @@ mod tests {
     use crate::constants::{JSON_ADMIN_V1, JSON_ANONYMOUS_V1};
     use crate::credential::policy::CryptoPolicy;
     use crate::credential::totp::{TOTP, TOTP_DEFAULT_STEP};
+    use crate::credential::webauthn::WebauthnDomainConfig;
     use crate::credential::Credential;
     use crate::idm::authsession::{
         AuthSession, BAD_AUTH_TYPE_MSG, BAD_CREDENTIALS, BAD_PASSWORD_MSG, BAD_TOTP_MSG,
         BAD_WEBAUTHN_MSG,
     };
-    use crate::idm::AuthState;
     use crate::idm::delayed::DelayedAction;
+    use crate::idm::AuthState;
     use crate::utils::duration_from_epoch_now;
     use kanidm_proto::v1::{AuthAllowed, AuthCredential};
     use std::time::Duration;
-    use crate::credential::webauthn::WebauthnDomainConfig;
     use webauthn_rs::proto::UserVerificationPolicy;
     use webauthn_rs::Webauthn;
 
