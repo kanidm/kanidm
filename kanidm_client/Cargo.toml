@@ -24,8 +24,8 @@ url = "2.1.1"
 # webauthn-authenticator-rs = "^0.1.2"
 # webauthn-authenticator-rs = { path = "../../webauthn-authenticator-rs" }
 
-# webauthn-rs = "^0.2.5"
-webauthn-rs = { path = "../../webauthn-rs" }
+webauthn-rs = "0.3.0-alpha.1"
+# webauthn-rs = { path = "../../webauthn-rs" }
 
 [dev-dependencies]
 tokio = { version = "0.2", features = ["full"] }
@@ -33,5 +33,5 @@ kanidm = { path = "../kanidmd" }
 futures = "0.3"
 async-std = "1.6"
 
-# webauthn-authenticator-rs = "^0.1.2"
-webauthn-authenticator-rs = { path = "../../webauthn-authenticator-rs" }
+webauthn-authenticator-rs = "0.3.0-alpha.1"
+# webauthn-authenticator-rs = { path = "../../webauthn-authenticator-rs" }

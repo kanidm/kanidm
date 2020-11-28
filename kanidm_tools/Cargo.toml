@@ -41,5 +41,5 @@ time = "0.2"
 
 zxcvbn = "2.0"
 
-# webauthn-authenticator-rs = "^0.1.2"
-webauthn-authenticator-rs = { path = "../../webauthn-authenticator-rs" }
+webauthn-authenticator-rs = "0.3.0-alpha.1"
+# webauthn-authenticator-rs = { path = "../../webauthn-authenticator-rs" }

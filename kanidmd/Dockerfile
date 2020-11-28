@@ -19,7 +19,7 @@ WORKDIR /usr/src/kanidm/kanidmd
 RUN ln -s -f /usr/bin/clang /usr/bin/cc && \
     ln -s -f /usr/bin/ld.lld /usr/bin/ld
 
-RUN CC=/usr/bin/clang RUSTC_BOOTSTRAP=1 cargo build --features=concread/simd_support --release
+RUN CC=/usr/bin/clang RUSTC_BOOTSTRAP=1 RUSTFLAGS='-C target-feature=+avx2,+avx' cargo build --features=concread/simd_support --release
 
 FROM ${BASE_IMAGE}
 LABEL mantainer william@blackhats.net.au

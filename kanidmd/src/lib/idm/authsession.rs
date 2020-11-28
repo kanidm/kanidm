@@ -7,7 +7,7 @@ use kanidm_proto::v1::{AuthAllowed, AuthCredential};
 
 use crate::credential::{totp::TOTP, Credential, Password};
 
-use crate::idm::delayed::{DelayedAction, PasswordUpgrade};
+use crate::idm::delayed::{DelayedAction, PasswordUpgrade, WebauthnCounterIncrement};
 // use crossbeam::channel::Sender;
 use tokio::sync::mpsc::UnboundedSender as Sender;
 
@@ -342,6 +342,13 @@ impl CredHandler {
                                         // async from r.
                                         if let Some((cid, counter)) = r {
                                             // Do async
+            if let Err(_e) = async_tx.send(DelayedAction::WebauthnCounterIncrement(WebauthnCounterIncrement {
+                target_uuid: who,
+                cid,
+                counter,
+            })) {
+                ladmin_warning!(au, "unable to queue delayed webauthn counter increment, continuing ... ");
+            };
                                         };
                                         CredState::Success(Vec::new())
                                     })

@@ -24,7 +24,7 @@ use crate::utils::{password_from_random, readable_password_from_random, uuid_fro
 use crate::value::PartialValue;
 
 use crate::actors::v1_write::QueryServerWriteV1;
-use crate::idm::delayed::{DelayedAction, PasswordUpgrade, UnixPasswordUpgrade};
+use crate::idm::delayed::{DelayedAction, PasswordUpgrade, UnixPasswordUpgrade, WebauthnCounterIncrement};
 
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::RadiusAuthToken;
@@ -1309,6 +1309,43 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         }
     }
 
+    pub(crate) fn process_webauthncounterinc(
+        &mut self,
+        au: &mut AuditScope,
+        wci: &WebauthnCounterIncrement,
+    ) -> Result<(), OperationError> {
+        let account = self
+            .qs_write
+            .internal_search_uuid(au, &wci.target_uuid)
+            .and_then(|account_entry| {
+                UnixUserAccount::try_from_entry_rw(au, &account_entry, &mut self.qs_write)
+            })
+            .map_err(|e| {
+                ladmin_error!(au, "Failed to start unix pw upgrade -> {:?}", e);
+                e
+            })?;
+
+        // Generate an optional mod and then attempt to apply it.
+        let opt_modlist = account
+            .gen_webauthn_counter_mod(wci.cid, wci.counter)
+            .map_err(|e| {
+                ladmin_error!(au, "Unable to generate webauthn counter mod {:?}", e);
+                e
+            })?;
+
+        if let Some(modlist) = opt_modlist {
+            self.qs_write.internal_modify(
+                au,
+                &filter_all!(f_eq("uuid", PartialValue::new_uuidr(&wci.target_uuid))),
+                &modlist,
+            )
+        } else {
+            // No mod needed.
+            ltrace!(au, "No modification required");
+            Ok(())
+        }
+    }
+
     pub(crate) fn process_delayedaction(
         &mut self,
         au: &mut AuditScope,
@@ -1317,6 +1354,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         match da {
             DelayedAction::PwUpgrade(pwu) => self.process_pwupgrade(au, &pwu),
             DelayedAction::UnixPwUpgrade(upwu) => self.process_unixpwupgrade(au, &upwu),
+            DelayedAction::WebauthnCounterIncrement(wci) => self.process_webauthncounterinc(au, &wci),
         }
     }
 

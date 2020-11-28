@@ -576,9 +576,9 @@ dependencies = [
 
 [[package]]
 name = "concread"
-version = "0.2.5"
+version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2242b1bac936b6a156d2056e3d98d2424d044dbf7bbdaa856c4e6d629cc5aa5"
+checksum = "14fe52c39ed4e846fb3e6ad4bfe46224ef24db64ff7c5f496d2501c88c270b14"
 dependencies = [
  "ahash 0.4.6",
  "crossbeam",
@@ -3692,7 +3692,9 @@ dependencies = [
 
 [[package]]
 name = "webauthn-authenticator-rs"
-version = "0.1.2"
+version = "0.3.0-alpha.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "52b888769ddbb48a4c8886ab1c538b36d8f85299a16e18437a5a0083c3075311"
 dependencies = [
  "authenticator",
  "log",
@@ -3706,7 +3708,9 @@ dependencies = [
 
 [[package]]
 name = "webauthn-rs"
-version = "0.2.5"
+version = "0.3.0-alpha.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7df7c4e7be2638b04ec02465e79376f5df03ac681814b968faf1627fffd6ef20"
 dependencies = [
  "base64 0.12.3",
  "log",
