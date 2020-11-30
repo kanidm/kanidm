@@ -97,7 +97,7 @@ libc = "0.2"
 users = "0.10"
 
 [features]
-default = [ "libsqlite3-sys/bundled", "openssl/vendored" ]
+# default = [ "libsqlite3-sys/bundled", "openssl/vendored" ]
 
 [dev-dependencies]
 criterion = "0.3"
