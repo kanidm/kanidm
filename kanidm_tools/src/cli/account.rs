@@ -435,8 +435,11 @@ impl AccountOpt {
                                 // Convert the time to local timezone.
                                 let t = OffsetDateTime::parse(&t[0], time::Format::Rfc3339)
                                     .map(|odt| {
-                                        odt.to_offset(time::UtcOffset::current_local_offset())
-                                            .format(time::Format::Rfc3339)
+                                        odt.to_offset(
+                                            time::UtcOffset::try_current_local_offset()
+                                                .unwrap_or(time::UtcOffset::UTC),
+                                        )
+                                        .format(time::Format::Rfc3339)
                                     })
                                     .unwrap_or_else(|_| "invalid timestamp".to_string());
 
@@ -448,8 +451,11 @@ impl AccountOpt {
                             if let Some(t) = ex {
                                 let t = OffsetDateTime::parse(&t[0], time::Format::Rfc3339)
                                     .map(|odt| {
-                                        odt.to_offset(time::UtcOffset::current_local_offset())
-                                            .format(time::Format::Rfc3339)
+                                        odt.to_offset(
+                                            time::UtcOffset::try_current_local_offset()
+                                                .unwrap_or(time::UtcOffset::UTC),
+                                        )
+                                        .format(time::Format::Rfc3339)
                                     })
                                     .unwrap_or_else(|_| "invalid timestamp".to_string());
                                 println!("expire: {}", t);
