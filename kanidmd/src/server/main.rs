@@ -38,6 +38,7 @@ struct ServerConfig {
     pub tls_cert: Option<String>,
     pub tls_key: Option<String>,
     pub log_level: Option<String>,
+    pub origin: String,
 }
 
 impl ServerConfig {
@@ -279,13 +280,14 @@ async fn main() {
     config.update_tls(&sconfig.tls_ca, &sconfig.tls_cert, &sconfig.tls_key);
     config.update_bind(&sconfig.bindaddress);
     config.update_ldapbind(&sconfig.ldapbindaddress);
+    config.update_origin(&sconfig.origin.as_str());
 
     // Apply any cli overrides, normally debug level.
     if let Some(dll) = opt.commonopt().debug.as_ref() {
         config.update_log_level(Some(dll.clone() as u32));
     }
 
-    ::std::env::set_var("RUST_LOG", "actix_web=info,kanidm=info");
+    ::std::env::set_var("RUST_LOG", "tide=info,kanidm=info,webauthn=debug");
 
     env_logger::builder()
         .format_timestamp(None)

@@ -3,6 +3,8 @@ use crate::password_prompt;
 use structopt::StructOpt;
 use time::OffsetDateTime;
 
+use webauthn_authenticator_rs::{u2fhid::U2FHid, WebauthnAuthenticator};
+
 #[derive(Debug, StructOpt)]
 pub struct AccountCommonOpt {
     #[structopt()]
@@ -87,6 +89,8 @@ pub enum AccountCredential {
     SetPassword(AccountCredentialSet),
     #[structopt(name = "generate_password")]
     GeneratePassword(AccountCredentialSet),
+    #[structopt(name = "register_webauthn")]
+    RegisterWebauthn(AccountNamedTagOpt),
 }
 
 #[derive(Debug, StructOpt)]
@@ -169,6 +173,7 @@ impl AccountOpt {
             AccountOpt::Credential(acopt) => match acopt {
                 AccountCredential::SetPassword(acs) => acs.copt.debug,
                 AccountCredential::GeneratePassword(acs) => acs.copt.debug,
+                AccountCredential::RegisterWebauthn(acs) => acs.copt.debug,
             },
             AccountOpt::Radius(acopt) => match acopt {
                 AccountRadius::Show(aro) => aro.copt.debug,
@@ -234,6 +239,46 @@ impl AccountOpt {
                         }
                         Err(e) => {
                             eprintln!("Error -> {:?}", e);
+                        }
+                    }
+                }
+                AccountCredential::RegisterWebauthn(acsopt) => {
+                    let client = acsopt.copt.to_client();
+
+                    let (session, chal) = match client
+                        .idm_account_primary_credential_register_webauthn(
+                            acsopt.aopts.account_id.as_str(),
+                            acsopt.tag.as_str(),
+                        ) {
+                        Ok(v) => v,
+                        Err(e) => {
+                            eprintln!("Error Starting Registration -> {:?}", e);
+                            return;
+                        }
+                    };
+
+                    let mut wa = WebauthnAuthenticator::new(U2FHid::new());
+
+                    println!("Your authenticator will now flash for you to interact with.");
+
+                    let rego = match wa.do_registration(client.get_origin(), chal) {
+                        Ok(rego) => rego,
+                        Err(e) => {
+                            eprintln!("Error Signing -> {:?}", e);
+                            return;
+                        }
+                    };
+
+                    match client.idm_account_primary_credential_complete_webuthn_registration(
+                        acsopt.aopts.account_id.as_str(),
+                        rego,
+                        session,
+                    ) {
+                        Ok(()) => {
+                            println!("Webauthn token registration success.");
+                        }
+                        Err(e) => {
+                            eprintln!("Error Completing -> {:?}", e);
                         }
                     }
                 }
@@ -390,8 +435,11 @@ impl AccountOpt {
                                 // Convert the time to local timezone.
                                 let t = OffsetDateTime::parse(&t[0], time::Format::Rfc3339)
                                     .map(|odt| {
-                                        odt.to_offset(time::UtcOffset::current_local_offset())
-                                            .format(time::Format::Rfc3339)
+                                        odt.to_offset(
+                                            time::UtcOffset::try_current_local_offset()
+                                                .unwrap_or(time::UtcOffset::UTC),
+                                        )
+                                        .format(time::Format::Rfc3339)
                                     })
                                     .unwrap_or_else(|_| "invalid timestamp".to_string());
 
@@ -403,8 +451,11 @@ impl AccountOpt {
                             if let Some(t) = ex {
                                 let t = OffsetDateTime::parse(&t[0], time::Format::Rfc3339)
                                     .map(|odt| {
-                                        odt.to_offset(time::UtcOffset::current_local_offset())
-                                            .format(time::Format::Rfc3339)
+                                        odt.to_offset(
+                                            time::UtcOffset::try_current_local_offset()
+                                                .unwrap_or(time::UtcOffset::UTC),
+                                        )
+                                        .format(time::Format::Rfc3339)
                                     })
                                     .unwrap_or_else(|_| "invalid timestamp".to_string());
                                 println!("expire: {}", t);

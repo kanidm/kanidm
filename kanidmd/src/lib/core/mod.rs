@@ -69,6 +69,7 @@ fn setup_qs_idms(
     audit: &mut AuditScope,
     be: Backend,
     schema: Schema,
+    config: &Configuration,
 ) -> Result<(QueryServer, IdmServer, IdmServerDelayed), OperationError> {
     // Create a query_server implementation
     let query_server = QueryServer::new(be, schema);
@@ -85,7 +86,7 @@ fn setup_qs_idms(
 
     // We generate a SINGLE idms only!
 
-    let (idms, idms_delayed) = IdmServer::new(query_server.clone());
+    let (idms, idms_delayed) = IdmServer::new(audit, query_server.clone(), config.origin.clone())?;
 
     Ok((query_server, idms, idms_delayed))
 }
@@ -157,7 +158,7 @@ pub fn restore_server_core(config: &Configuration, dst_path: &str) {
 
     info!("Attempting to init query server ...");
 
-    let (qs, _idms, _idms_delayed) = match setup_qs_idms(&mut audit, be, schema) {
+    let (qs, _idms, _idms_delayed) = match setup_qs_idms(&mut audit, be, schema, &config) {
         Ok(t) => t,
         Err(e) => {
             audit.write_log();
@@ -225,7 +226,7 @@ pub fn reindex_server_core(config: &Configuration) {
 
     eprintln!("Attempting to init query server ...");
 
-    let (qs, _idms, _idms_delayed) = match setup_qs_idms(&mut audit, be, schema) {
+    let (qs, _idms, _idms_delayed) = match setup_qs_idms(&mut audit, be, schema, &config) {
         Ok(t) => t,
         Err(e) => {
             audit.write_log();
@@ -276,7 +277,7 @@ pub fn domain_rename_core(config: &Configuration, new_domain_name: &str) {
         }
     };
     // setup the qs - *with* init of the migrations and schema.
-    let (qs, _idms, _idms_delayed) = match setup_qs_idms(&mut audit, be, schema) {
+    let (qs, _idms, _idms_delayed) = match setup_qs_idms(&mut audit, be, schema, &config) {
         Ok(t) => t,
         Err(e) => {
             audit.write_log();
@@ -374,7 +375,7 @@ pub fn recover_account_core(config: &Configuration, name: &str, password: &str) 
         }
     };
     // setup the qs - *with* init of the migrations and schema.
-    let (_qs, idms, _idms_delayed) = match setup_qs_idms(&mut audit, be, schema) {
+    let (_qs, idms, _idms_delayed) = match setup_qs_idms(&mut audit, be, schema, &config) {
         Ok(t) => t,
         Err(e) => {
             audit.write_log();
@@ -455,7 +456,7 @@ pub async fn create_server_core(config: Configuration) -> Result<(), ()> {
         }
     };
     // Start the IDM server.
-    let (qs, idms, mut idms_delayed) = match setup_qs_idms(&mut audit, be, schema) {
+    let (qs, idms, mut idms_delayed) = match setup_qs_idms(&mut audit, be, schema, &config) {
         Ok(t) => t,
         Err(e) => {
             audit.write_log();

@@ -28,12 +28,11 @@ path = "src/server/main.rs"
 [dependencies]
 kanidm_proto = { path = "../kanidm_proto", version = "1.1.0-alpha" }
 
-tide = "0.13"
+url = "2.1"
+tide = "0.15"
 async-trait = "0.1"
 async-h1 = "2.0"
-# Temporary!
-# tide-rustls = "0.1"
-tide-rustls = { git = "https://github.com/http-rs/tide-rustls.git", rev = "c1f13a77e82369323274d832b8d3f33ba7c272c7" }
+tide-rustls = "0.1"
 fernet = { git = "https://github.com/mozilla-services/fernet-rs.git" }
 
 async-std = "1.6"
@@ -70,8 +69,9 @@ time = { version = "0.2", features = ["serde", "std"] }
 
 hashbrown = "0.8"
 concread = "^0.2.5"
-# concread = { path = "../../concread", features = ["asynch"] }
+# concread = { version = "^0.2.5", features = ["simd_support"] }
 # concread = { path = "../../concread" }
+# concread = { path = "../../concread", features = ["asynch"] }
 # crossbeam = "0.7"
 
 sshkeys = "0.3"
@@ -88,14 +88,20 @@ base64 = "0.12"
 ldap3_server = "0.1"
 # ldap3_server = { path = "../../ldap3_server" }
 
+webauthn-rs = "0.3.0-alpha.1"
+# webauthn-rs = { path = "../../webauthn-rs" }
+
 libc = "0.2"
 users = "0.10"
 
 [features]
-default = [ "libsqlite3-sys/bundled", "openssl/vendored" ]
+# default = [ "libsqlite3-sys/bundled", "openssl/vendored" ]
 
 [dev-dependencies]
 criterion = "0.3"
+# For testing webauthn
+webauthn-authenticator-rs = "0.3.0-alpha.1"
+# webauthn-authenticator-rs = { path = "../../webauthn-authenticator-rs" }
 
 [dev-dependencies.cargo-husky]
 version = "1"

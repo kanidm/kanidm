@@ -22,11 +22,17 @@ use std::io::Read;
 use std::os::unix::fs::MetadataExt;
 use std::path::Path;
 use std::time::Duration;
+use url::Url;
 use uuid::Uuid;
+
+use webauthn_rs::proto::{
+    CreationChallengeResponse, PublicKeyCredential, RegisterPublicKeyCredential,
+    RequestChallengeResponse,
+};
 // use users::{get_current_uid, get_effective_uid};
 
 use kanidm_proto::v1::{
-    AccountUnixExtend, AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep,
+    AccountUnixExtend, AuthAllowed, AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep,
     CreateRequest, DeleteRequest, Entry, Filter, GroupUnixExtend, ModifyList, ModifyRequest,
     OperationError, OperationResponse, RadiusAuthToken, SearchRequest, SearchResponse,
     SetCredentialRequest, SetCredentialResponse, SingleStringRequest, TOTPSecret, UnixGroupToken,
@@ -273,9 +279,18 @@ impl KanidmClientBuilder {
 
         let client = client_builder.build()?;
 
+        // Now get the origin.
+        let uri = Url::parse(&address).expect("can not fail");
+
+        let origin = uri
+            .host_str()
+            .map(|h| format!("{}://{}", uri.scheme(), h))
+            .expect("can not fail");
+
         Ok(KanidmClient {
             client,
             addr: address,
+            origin,
             builder: self,
             bearer_token: None,
         })
@@ -325,11 +340,16 @@ impl KanidmClientBuilder {
 pub struct KanidmClient {
     client: reqwest::blocking::Client,
     addr: String,
+    origin: String,
     builder: KanidmClientBuilder,
     bearer_token: Option<String>,
 }
 
 impl KanidmClient {
+    pub fn get_origin(&self) -> &str {
+        self.origin.as_str()
+    }
+
     pub fn new_session(&self) -> Result<Self, reqwest::Error> {
         // Copy our builder, and then just process it.
         let builder = self.builder.clone();
@@ -612,6 +632,46 @@ impl KanidmClient {
         }
     }
 
+    pub fn auth_webauthn_begin(
+        &mut self,
+        ident: &str,
+    ) -> Result<RequestChallengeResponse, ClientError> {
+        let state = match self.auth_step_init(ident) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+
+        match state {
+            AuthState::Continue(mut proc) => {
+                // get the webauthn chal out of the state.
+                let chal = proc.pop();
+                match chal {
+                    Some(AuthAllowed::Webauthn(r)) => Ok(r),
+                    _ => Err(ClientError::AuthenticationFailed),
+                }
+            }
+            _ => Err(ClientError::AuthenticationFailed),
+        }
+    }
+
+    pub fn auth_webauthn_complete(&mut self, pkc: PublicKeyCredential) -> Result<(), ClientError> {
+        let auth_req = AuthRequest {
+            step: AuthStep::Creds(vec![AuthCredential::Webauthn(pkc)]),
+        };
+        let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_req);
+
+        let r = r?;
+
+        match r.state {
+            AuthState::Success(token) => {
+                // set the bearer.
+                self.bearer_token = Some(token);
+                Ok(())
+            }
+            _ => Err(ClientError::AuthenticationFailed),
+        }
+    }
+
     // search
     pub fn search(&self, filter: Filter) -> Result<Vec<Entry>, ClientError> {
         let sr = SearchRequest { filter };
@@ -849,6 +909,41 @@ impl KanidmClient {
         match res {
             Ok(SetCredentialResponse::Success) => Ok(true),
             Ok(SetCredentialResponse::TOTPCheck(u, s)) => Err(ClientError::TOTPVerifyFailed(u, s)),
+            Ok(_) => Err(ClientError::EmptyResponse),
+            Err(e) => Err(e),
+        }
+    }
+
+    pub fn idm_account_primary_credential_register_webauthn(
+        &self,
+        id: &str,
+        label: &str,
+    ) -> Result<(Uuid, CreationChallengeResponse), ClientError> {
+        let r = SetCredentialRequest::WebauthnBegin(label.to_string());
+        let res: Result<SetCredentialResponse, ClientError> = self.perform_put_request(
+            format!("/v1/account/{}/_credential/primary", id).as_str(),
+            r,
+        );
+        match res {
+            Ok(SetCredentialResponse::WebauthnCreateChallenge(u, s)) => Ok((u, s)),
+            Ok(_) => Err(ClientError::EmptyResponse),
+            Err(e) => Err(e),
+        }
+    }
+
+    pub fn idm_account_primary_credential_complete_webuthn_registration(
+        &self,
+        id: &str,
+        rego: RegisterPublicKeyCredential,
+        session: Uuid,
+    ) -> Result<(), ClientError> {
+        let r = SetCredentialRequest::WebauthnRegister(session, rego);
+        let res: Result<SetCredentialResponse, ClientError> = self.perform_put_request(
+            format!("/v1/account/{}/_credential/primary", id).as_str(),
+            r,
+        );
+        match res {
+            Ok(SetCredentialResponse::Success) => Ok(()),
             Ok(_) => Err(ClientError::EmptyResponse),
             Err(e) => Err(e),
         }

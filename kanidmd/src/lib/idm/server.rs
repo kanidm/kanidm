@@ -3,6 +3,7 @@ use crate::constants::{AUTH_SESSION_TIMEOUT, MFAREG_SESSION_TIMEOUT, PW_MIN_LENG
 use crate::constants::{UUID_ANONYMOUS, UUID_SYSTEM_CONFIG};
 use crate::credential::policy::CryptoPolicy;
 use crate::credential::softlock::CredSoftLock;
+use crate::credential::webauthn::WebauthnDomainConfig;
 use crate::event::{AuthEvent, AuthEventStep, AuthResult};
 use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
@@ -10,8 +11,9 @@ use crate::idm::event::{
     GeneratePasswordEvent, GenerateTOTPEvent, LdapAuthEvent, PasswordChangeEvent,
     RadiusAuthTokenEvent, RegenerateRadiusSecretEvent, UnixGroupTokenEvent,
     UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent, VerifyTOTPEvent,
+    WebauthnDoRegisterEvent, WebauthnInitRegisterEvent,
 };
-use crate::idm::mfareg::{MfaRegCred, MfaRegNext, MfaRegSession, MfaReqInit, MfaReqStep};
+use crate::idm::mfareg::{MfaRegCred, MfaRegNext, MfaRegSession};
 use crate::idm::radius::RadiusAccount;
 use crate::idm::unix::{UnixGroup, UnixUserAccount};
 use crate::idm::AuthState;
@@ -22,7 +24,9 @@ use crate::utils::{password_from_random, readable_password_from_random, uuid_fro
 use crate::value::PartialValue;
 
 use crate::actors::v1_write::QueryServerWriteV1;
-use crate::idm::delayed::{DelayedAction, PasswordUpgrade, UnixPasswordUpgrade};
+use crate::idm::delayed::{
+    DelayedAction, PasswordUpgrade, UnixPasswordUpgrade, WebauthnCounterIncrement,
+};
 
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::RadiusAuthToken;
@@ -42,14 +46,16 @@ use tokio::sync::mpsc::{
 use tokio::sync::Semaphore;
 // SemaphorePermit
 
-#[cfg(test)]
 use async_std::task;
 
 use concread::bptree::{BptreeMap, BptreeMapWriteTxn};
 use concread::hashmap::HashMap;
 use rand::prelude::*;
 use std::time::Duration;
+use url::Url;
 use uuid::Uuid;
+
+use webauthn_rs::Webauthn;
 
 pub struct IdmServer {
     // There is a good reason to keep this single thread - it
@@ -69,6 +75,8 @@ pub struct IdmServer {
     // and loaded from the db similar to access. But today it's just to allow dynamic pbkdf2rounds
     crypto_policy: CryptoPolicy,
     async_tx: Sender<DelayedAction>,
+    // Our webauthn verifier/config
+    webauthn: Webauthn<WebauthnDomainConfig>,
 }
 
 pub struct IdmServerWriteTransaction<'a> {
@@ -87,6 +95,7 @@ pub struct IdmServerWriteTransaction<'a> {
     sid: SID,
     // For flagging eventual actions.
     async_tx: Sender<DelayedAction>,
+    webauthn: &'a Webauthn<WebauthnDomainConfig>,
 }
 
 pub struct IdmServerProxyReadTransaction<'a> {
@@ -103,6 +112,7 @@ pub struct IdmServerProxyWriteTransaction<'a> {
     mfareg_sessions: BptreeMapWriteTxn<'a, Uuid, MfaRegSession>,
     sid: SID,
     crypto_policy: &'a CryptoPolicy,
+    webauthn: &'a Webauthn<WebauthnDomainConfig>,
 }
 
 pub struct IdmServerDelayed {
@@ -111,7 +121,11 @@ pub struct IdmServerDelayed {
 
 impl IdmServer {
     // TODO #59: Make number of authsessions configurable!!!
-    pub fn new(qs: QueryServer) -> (IdmServer, IdmServerDelayed) {
+    pub fn new(
+        au: &mut AuditScope,
+        qs: QueryServer,
+        origin: String,
+    ) -> Result<(IdmServer, IdmServerDelayed), OperationError> {
         // This is calculated back from:
         //  500 auths / thread -> 0.002 sec per op
         //      we can then spend up to ~0.001s hashing
@@ -122,7 +136,42 @@ impl IdmServer {
         let crypto_policy = CryptoPolicy::time_target(Duration::from_millis(1));
         let (async_tx, async_rx) = unbounded();
 
-        (
+        // Get the domain name, as the relying party id.
+        let rp_id = {
+            let qs_read = task::block_on(qs.read_async());
+            qs_read.get_domain_name(au)?
+        };
+
+        // Check that it gels with our origin.
+        Url::parse(origin.as_str())
+            .map_err(|_e| {
+                ladmin_error!(au, "Unable to parse origin URL - refusing to start. You must correct the value for origin. {:?}", origin);
+                OperationError::InvalidState
+            })
+            .and_then(|url| {
+                url.domain().map(|effective_domain| {
+                    if effective_domain.ends_with(&rp_id) {
+                        Some(())
+                    } else {
+                        None
+                    }
+                })
+                .ok_or_else(|| {
+                    ladmin_error!(au, "Effective domain is not a descendent of server domain name (rp_id). You must change origin or domain name to be consistent. ed: {:?} - rp_id: {:?}", origin, rp_id);
+                    OperationError::InvalidState
+                })
+            })?;
+
+        // Now clone to rp_name.
+        let rp_name = rp_id.clone();
+
+        let webauthn = Webauthn::new(WebauthnDomainConfig {
+            rp_name,
+            origin,
+            rp_id,
+        });
+
+        Ok((
             IdmServer {
                 session_ticket: Semaphore::new(1),
                 sessions: BptreeMap::new(),
@@ -132,9 +181,10 @@ impl IdmServer {
                 qs,
                 crypto_policy,
                 async_tx,
+                webauthn,
             },
             IdmServerDelayed { async_rx },
-        )
+        ))
     }
 
     #[cfg(test)]
@@ -160,6 +210,7 @@ impl IdmServer {
             qs_read,
             sid,
             async_tx: self.async_tx.clone(),
+            webauthn: &self.webauthn,
         }
     }
 
@@ -190,6 +241,7 @@ impl IdmServer {
             qs_write,
             sid,
             crypto_policy: &self.crypto_policy,
+            webauthn: &self.webauthn,
         }
     }
 
@@ -322,7 +374,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
                 };
 
                 let (auth_session, state) = if is_valid {
-                    AuthSession::new(au, account, init.appid.clone(), ct)
+                    AuthSession::new(au, account, init.appid.clone(), self.webauthn, ct)
                 } else {
                     // it's softlocked, don't even bother.
                     lsecurity!(au, "Account is softlocked.");
@@ -404,7 +456,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
                     // Basically throw them at the auth_session and see what
                     // falls out.
                     auth_session
-                        .validate_creds(au, &creds.creds, &ct, &self.async_tx)
+                        .validate_creds(au, &creds.creds, &ct, &self.async_tx, self.webauthn)
                         .map(|aus| {
                             // Inspect the result:
                             // if it was a failure, we need to inc the softlock.
@@ -1028,6 +1080,83 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .map(|_| cleartext)
     }
 
+    pub fn reg_account_webauthn_init(
+        &mut self,
+        au: &mut AuditScope,
+        wre: &WebauthnInitRegisterEvent,
+        ct: Duration,
+    ) -> Result<SetCredentialResponse, OperationError> {
+        let account = self.target_to_account(au, &wre.target)?;
+        let sessionid = uuid_from_duration(ct, self.sid);
+
+        let origin = (&wre.event.origin).into();
+        let label = wre.label.clone();
+
+        let (session, next) =
+            MfaRegSession::webauthn_new(au, origin, account, label, self.webauthn)?;
+
+        let next = next.to_proto(sessionid);
+
+        // Add session to tree
+        self.mfareg_sessions.insert(sessionid, session);
+        ltrace!(au, "Start mfa reg session -> {:?}", sessionid);
+        Ok(next)
+    }
+
+    pub fn reg_account_webauthn_complete(
+        &mut self,
+        au: &mut AuditScope,
+        wre: &WebauthnDoRegisterEvent,
+    ) -> Result<SetCredentialResponse, OperationError> {
+        let sessionid = wre.session;
+        let origin = (&wre.event.origin).into();
+        let webauthn = self.webauthn;
+
+        // Regardless of the outcome, we purge this session, so we get it
+        // from the tree instead of a mut pointer.
+        let mut session = self
+            .mfareg_sessions
+            .remove(&sessionid)
+            .ok_or(OperationError::InvalidState)
+            .map_err(|e| {
+                ladmin_error!(au, "Failed to register webauthn -> {:?}", e);
+                e
+            })?;
+
+        let (next, wan_cred) = session
+            .webauthn_step(au, &origin, &wre.target, &wre.chal, webauthn)
+            .map_err(|e| {
+                ladmin_error!(au, "Failed to register webauthn -> {:?}", e);
+                OperationError::Webauthn
+            })?;
+
+        if let (MfaRegNext::Success, Some(MfaRegCred::Webauthn(label, cred))) = (&next, wan_cred) {
+            // Persist the credential
+            let modlist = session.account.gen_webauthn_mod(label, cred).map_err(|e| {
+                ladmin_error!(au, "Failed to gen webauthn mod {:?}", e);
+                e
+            })?;
+            // Perform the mod
+            self.qs_write
+                .impersonate_modify(
+                    au,
+                    // Filter as executed
+                    &filter!(f_eq("uuid", PartialValue::new_uuidr(&session.account.uuid))),
+                    // Filter as intended (acp)
+                    &filter_all!(f_eq("uuid", PartialValue::new_uuidr(&session.account.uuid))),
+                    &modlist,
+                    &wre.event,
+                )
+                .map_err(|e| {
+                    ladmin_error!(au, "reg_account_webauthn_complete {:?}", e);
+                    e
+                })?;
+        }
+
+        let next = next.to_proto(sessionid);
+        Ok(next)
+    }
+
     pub fn generate_account_totp(
         &mut self,
         au: &mut AuditScope,
@@ -1039,13 +1168,12 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         let origin = (&gte.event.origin).into();
         let label = gte.label.clone();
-        let (session, next) = MfaRegSession::new(origin, account, MfaReqInit::TOTP(label))
-            .map_err(|e| {
-                ladmin_error!(au, "Unable to start totp MfaRegSession {:?}", e);
-                e
-            })?;
+        let (session, next) = MfaRegSession::totp_new(origin, account, label).map_err(|e| {
+            ladmin_error!(au, "Unable to start totp MfaRegSession {:?}", e);
+            e
+        })?;
 
-        let next = next.to_proto(&sessionid);
+        let next = next.to_proto(sessionid);
 
         // Add session to tree
         self.mfareg_sessions.insert(sessionid, session);
@@ -1069,9 +1197,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .mfareg_sessions
             .get_mut(&sessionid)
             .ok_or(OperationError::InvalidRequestState)
-            .and_then(|session| {
-                session.step(&origin, &vte.target, MfaReqStep::TOTPVerify(chal), &ct)
-            })
+            .and_then(|session| session.totp_step(&origin, &vte.target, chal, &ct))
             .map_err(|e| {
                 ladmin_error!(au, "Failed to verify totp {:?}", e);
                 e
@@ -1109,7 +1235,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 })?;
         };
 
-        let next = next.to_proto(&sessionid);
+        let next = next.to_proto(sessionid);
         Ok(next)
     }
 
@@ -1185,6 +1311,34 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         }
     }
 
+    pub(crate) fn process_webauthncounterinc(
+        &mut self,
+        au: &mut AuditScope,
+        wci: &WebauthnCounterIncrement,
+    ) -> Result<(), OperationError> {
+        let account = self.target_to_account(au, &wci.target_uuid)?;
+
+        // Generate an optional mod and then attempt to apply it.
+        let opt_modlist = account
+            .gen_webauthn_counter_mod(&wci.cid, wci.counter)
+            .map_err(|e| {
+                ladmin_error!(au, "Unable to generate webauthn counter mod {:?}", e);
+                e
+            })?;
+
+        if let Some(modlist) = opt_modlist {
+            self.qs_write.internal_modify(
+                au,
+                &filter_all!(f_eq("uuid", PartialValue::new_uuidr(&wci.target_uuid))),
+                &modlist,
+            )
+        } else {
+            // No mod needed.
+            ltrace!(au, "No modification required");
+            Ok(())
+        }
+    }
+
     pub(crate) fn process_delayedaction(
         &mut self,
         au: &mut AuditScope,
@@ -1193,6 +1347,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         match da {
             DelayedAction::PwUpgrade(pwu) => self.process_pwupgrade(au, &pwu),
             DelayedAction::UnixPwUpgrade(upwu) => self.process_unixpwupgrade(au, &upwu),
+            DelayedAction::WebauthnCounterIncrement(wci) => {
+                self.process_webauthncounterinc(au, &wci)
+            }
         }
     }
 
@@ -1216,16 +1373,15 @@ mod tests {
     use crate::credential::{Credential, Password};
     use crate::entry::{Entry, EntryInit, EntryNew};
     use crate::event::{AuthEvent, AuthResult, CreateEvent, ModifyEvent};
+    use crate::idm::delayed::{DelayedAction, WebauthnCounterIncrement};
     use crate::idm::event::{
         GenerateTOTPEvent, PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
         UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent,
-        VerifyTOTPEvent,
+        VerifyTOTPEvent, WebauthnDoRegisterEvent, WebauthnInitRegisterEvent,
     };
+    use crate::idm::AuthState;
     use crate::modify::{Modify, ModifyList};
     use crate::value::{PartialValue, Value};
-    // use crate::idm::delayed::{PasswordUpgrade, DelayedAction};
-
-    use crate::idm::AuthState;
     use kanidm_proto::v1::AuthAllowed;
     use kanidm_proto::v1::OperationError;
     use kanidm_proto::v1::SetCredentialResponse;
@@ -1239,6 +1395,7 @@ mod tests {
     use std::convert::TryFrom;
     use std::time::Duration;
     use uuid::Uuid;
+    use webauthn_authenticator_rs::{softtok::U2FSoft, WebauthnAuthenticator};
 
     const TEST_PASSWORD: &'static str = "ntaoeuntnaoeuhraohuercahu😍";
     const TEST_PASSWORD_INC: &'static str = "ntaoentu nkrcgaeunhibwmwmqj;k wqjbkx ";
@@ -2616,6 +2773,78 @@ mod tests {
             };
 
             assert!(idms_write.commit(au).is_ok());
+        })
+    }
+
+    #[test]
+    fn test_idm_webauthn_registration_and_counter_inc() {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       idms_delayed: &mut IdmServerDelayed,
+                       au: &mut AuditScope| {
+            let ct = duration_from_epoch_now();
+            let mut idms_prox_write = idms.proxy_write(ct.clone());
+
+            let mut wa_softtok = WebauthnAuthenticator::new(U2FSoft::new());
+
+            let wrei = WebauthnInitRegisterEvent::new_internal(
+                UUID_ADMIN.clone(),
+                "softtoken".to_string(),
+            );
+
+            let (sessionid, ccr) = match idms_prox_write.reg_account_webauthn_init(au, &wrei, ct) {
+                Ok(SetCredentialResponse::WebauthnCreateChallenge(sessionid, ccr)) => {
+                    (sessionid, ccr)
+                }
+                _ => {
+                    panic!();
+                }
+            };
+
+            let rego = wa_softtok
+                .do_registration("https://idm.example.com", ccr)
+                .expect("Failed to register to softtoken");
+
+            let wdre = WebauthnDoRegisterEvent::new_internal(UUID_ADMIN.clone(), sessionid, rego);
+
+            match idms_prox_write.reg_account_webauthn_complete(au, &wdre) {
+                Ok(SetCredentialResponse::Success) => {}
+                _ => {
+                    panic!();
+                }
+            };
+
+            // Get the account now so we can peek at the registered credential.
+            let account = idms_prox_write
+                .target_to_account(au, &UUID_ADMIN)
+                .expect("account must exist");
+
+            let cred = account.primary.expect("Must exist.");
+
+            let wcred = cred
+                .webauthn
+                .expect("must have webauthn")
+                .values()
+                .next()
+                .map(|c| c.clone())
+                .expect("must have a webauthn credential");
+
+            assert!(idms_prox_write.commit(au).is_ok());
+
+            // ===
+            // Assert we can increment the counter if needed.
+
+            // Assert the delayed action queue is empty
+            idms_delayed.is_empty_or_panic();
+
+            // Generate a fake counter increment
+            let da = DelayedAction::WebauthnCounterIncrement(WebauthnCounterIncrement {
+                target_uuid: UUID_ADMIN.clone(),
+                counter: wcred.counter + 1,
+                cid: wcred.cred_id,
+            });
+            let r = task::block_on(idms.delayed_action(au, duration_from_epoch_now(), da));
+            assert!(Ok(true) == r);
         })
     }
 }

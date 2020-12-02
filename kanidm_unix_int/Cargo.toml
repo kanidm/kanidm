@@ -69,7 +69,7 @@ users = "0.10"
 async-std = "1.6"
 
 [features]
-default = [ "libsqlite3-sys/bundled" ]
+# default = [ "libsqlite3-sys/bundled" ]
 
 [dev-dependencies]
 kanidm = { path = "../kanidmd" }

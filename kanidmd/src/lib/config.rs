@@ -27,6 +27,7 @@ pub struct Configuration {
     pub cookie_key: [u8; 32],
     pub integration_test_config: Option<Box<IntegrationTestConfig>>,
     pub log_level: Option<u32>,
+    pub origin: String,
 }
 
 impl fmt::Display for Configuration {
@@ -72,6 +73,7 @@ impl Configuration {
             cookie_key: [0; 32],
             integration_test_config: None,
             log_level: None,
+            origin: "https://idm.example.com".to_string(),
         };
         let mut rng = StdRng::from_entropy();
         rng.fill(&mut c.cookie_key);
@@ -99,6 +101,10 @@ impl Configuration {
 
     pub fn update_ldapbind(&mut self, l: &Option<String>) {
         self.ldapaddress = l.clone();
+    }
+
+    pub fn update_origin(&mut self, o: &str) {
+        self.origin = o.to_string();
     }
 
     pub fn update_tls(&mut self, ca: &Option<String>, cert: &Option<String>, key: &Option<String>) {

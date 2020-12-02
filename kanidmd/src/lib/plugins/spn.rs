@@ -21,40 +21,6 @@ lazy_static! {
     static ref PV_UUID_DOMAIN_INFO: PartialValue = PartialValue::new_uuidr(&UUID_DOMAIN_INFO);
 }
 
-impl Spn {
-    fn get_domain_name(
-        au: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
-    ) -> Result<String, OperationError> {
-        qs.internal_search_uuid(au, &UUID_DOMAIN_INFO)
-            .and_then(|e| {
-                e.get_ava_single_str("domain_name")
-                    .map(|s| s.to_string())
-                    .ok_or(OperationError::InvalidEntryState)
-            })
-            .map_err(|e| {
-                ladmin_error!(au, "Error getting domain name -> {:?}", e);
-                e
-            })
-    }
-
-    fn get_domain_name_ro(
-        au: &mut AuditScope,
-        qs: &QueryServerReadTransaction,
-    ) -> Result<String, OperationError> {
-        qs.internal_search_uuid(au, &UUID_DOMAIN_INFO)
-            .and_then(|e| {
-                e.get_ava_single_str("domain_name")
-                    .map(|s| s.to_string())
-                    .ok_or(OperationError::InvalidEntryState)
-            })
-            .map_err(|e| {
-                ladmin_error!(au, "Error getting domain name -> {:?}", e);
-                e
-            })
-    }
-}
-
 impl Plugin for Spn {
     fn id() -> &'static str {
         "plugin_spn"
@@ -81,7 +47,7 @@ impl Plugin for Spn {
             {
                 // We do this in the loop so that we don't get it unless required.
                 if domain_name.is_none() {
-                    domain_name = Some(Self::get_domain_name(au, qs)?);
+                    domain_name = Some(qs.get_domain_name(au)?);
                 }
 
                 // It should be impossible to hit this expect as the is_none case should cause it to be replaced above.
@@ -130,7 +96,7 @@ impl Plugin for Spn {
                 || e.attribute_value_pres("class", &CLASS_ACCOUNT)
             {
                 if domain_name.is_none() {
-                    domain_name = Some(Self::get_domain_name(au, qs)?);
+                    domain_name = Some(qs.get_domain_name(au)?);
                 }
 
                 // It should be impossible to hit this expect as the is_none case should cause it to be replaced above.
@@ -223,7 +189,8 @@ impl Plugin for Spn {
         // so we should be able to verify that *those* spns validate to the trusted domain info
         // we have been sent also. It's not up to use to generate those though ...
 
-        let domain_name = match Self::get_domain_name_ro(au, qs)
+        let domain_name = match qs
+            .get_domain_name(au)
             .map_err(|_| Err(ConsistencyError::QueryServerSearchFailure))
         {
             Ok(dn) => dn,

@@ -1,4 +1,5 @@
-use crate::be::dbvalue::{DbCredV1, DbPasswordV1};
+use crate::be::dbvalue::{DbCredV1, DbPasswordV1, DbWebauthnV1};
+use hashbrown::HashMap as Map;
 use kanidm_proto::v1::OperationError;
 use openssl::hash::MessageDigest;
 use openssl::pkcs5::pbkdf2_hmac;
@@ -7,10 +8,13 @@ use rand::prelude::*;
 use std::convert::TryFrom;
 use std::time::{Duration, Instant};
 use uuid::Uuid;
+use webauthn_rs::proto::Credential as WebauthnCredential;
+use webauthn_rs::proto::{Counter, CredentialID};
 
 pub mod policy;
 pub mod softlock;
 pub mod totp;
+pub mod webauthn;
 
 use crate::credential::policy::CryptoPolicy;
 use crate::credential::softlock::CredSoftLockPolicy;
@@ -227,7 +231,7 @@ pub struct Credential {
     // Source (machine, user, ....). Strength?
     // policy: Policy,
     pub(crate) password: Option<Password>,
-    // webauthn: Option<NonEmptyVec<Webauthn>>
+    pub(crate) webauthn: Option<Map<String, WebauthnCredential>>,
     // totp: Option<NonEmptyVec<TOTP>>
     pub(crate) totp: Option<TOTP>,
     pub(crate) claims: Vec<String>,
@@ -245,6 +249,7 @@ impl TryFrom<DbCredV1> for Credential {
         // Work out what the policy is?
         let DbCredV1 {
             password,
+            webauthn,
             totp,
             claims,
             uuid,
@@ -260,8 +265,28 @@ impl TryFrom<DbCredV1> for Credential {
             None => None,
         };
 
+        let v_webauthn = match webauthn {
+            Some(dbw) => Some(
+                dbw.into_iter()
+                    .map(|wc| {
+                        (
+                            wc.l,
+                            WebauthnCredential {
+                                cred_id: wc.i,
+                                cred: wc.c,
+                                counter: wc.t,
+                                verified: wc.v,
+                            },
+                        )
+                    })
+                    .collect(),
+            ),
+            None => None,
+        };
+
         Ok(Credential {
             password: v_password,
+            webauthn: v_webauthn,
             totp: v_totp,
             claims,
             uuid,
@@ -274,12 +299,19 @@ impl Credential {
         policy: &CryptoPolicy,
         cleartext: &str,
     ) -> Result<Self, OperationError> {
-        Password::new(policy, cleartext).map(|pw| Credential {
-            password: Some(pw),
+        Password::new(policy, cleartext).map(|pw| Self::new_from_password(pw))
+    }
+
+    pub fn new_webauthn_only(label: String, cred: WebauthnCredential) -> Self {
+        let mut webauthn_map = Map::new();
+        webauthn_map.insert(label, cred);
+        Credential {
+            password: None,
+            webauthn: Some(webauthn_map),
             totp: None,
             claims: Vec::new(),
             uuid: Uuid::new_v4(),
-        })
+        }
     }
 
     pub fn set_password(
@@ -289,10 +321,80 @@ impl Credential {
     ) -> Result<Self, OperationError> {
         Password::new(policy, cleartext).map(|pw| Credential {
             password: Some(pw),
+            webauthn: self.webauthn.clone(),
             totp: self.totp.clone(),
             claims: self.claims.clone(),
             uuid: self.uuid,
         })
+    }
+
+    pub fn append_webauthn(
+        &self,
+        label: String,
+        cred: WebauthnCredential,
+    ) -> Result<Self, OperationError> {
+        let webauthn_map = match &self.webauthn {
+            Some(map) => {
+                let mut nmap = map.clone();
+                match nmap.insert(label.clone(), cred) {
+                    Some(_) => {
+                        return Err(OperationError::InvalidAttribute(format!(
+                            "Webauthn label '{:?}' already exists",
+                            label
+                        )));
+                    }
+                    None => nmap,
+                }
+            }
+            None => {
+                let mut map = Map::new();
+                map.insert(label, cred);
+                map
+            }
+        };
+        // Check stuff
+        Ok(Credential {
+            password: self.password.clone(),
+            webauthn: Some(webauthn_map),
+            totp: self.totp.clone(),
+            claims: self.claims.clone(),
+            uuid: self.uuid,
+        })
+    }
+
+    pub fn update_webauthn_counter(
+        &self,
+        cid: &CredentialID,
+        counter: Counter,
+    ) -> Result<Option<Self>, OperationError> {
+        let opt_label = self.webauthn.as_ref().and_then(|m| {
+            m.iter().fold(None, |acc, (k, v)| {
+                if acc.is_none() && &v.cred_id == cid && v.counter < counter {
+                    Some(k)
+                } else {
+                    acc
+                }
+            })
+        });
+
+        if let Some(label) = opt_label {
+            let mut webauthn_map = self.webauthn.clone();
+
+            webauthn_map
+                .as_mut()
+                .and_then(|m| m.get_mut(label))
+                .map(|cred| cred.counter = counter);
+
+            Ok(Some(Credential {
+                password: self.password.clone(),
+                webauthn: webauthn_map,
+                totp: self.totp.clone(),
+                claims: self.claims.clone(),
+                uuid: self.uuid,
+            }))
+        } else {
+            Ok(None)
+        }
     }
 
     #[cfg(test)]
@@ -306,6 +408,17 @@ impl Credential {
     pub fn to_db_valuev1(&self) -> DbCredV1 {
         DbCredV1 {
             password: self.password.as_ref().map(|pw| pw.to_dbpasswordv1()),
+            webauthn: self.webauthn.as_ref().map(|map| {
+                map.iter()
+                    .map(|(k, v)| DbWebauthnV1 {
+                        l: k.clone(),
+                        i: v.cred_id.clone(),
+                        c: v.cred.clone(),
+                        t: v.counter,
+                        v: v.verified,
+                    })
+                    .collect()
+            }),
             totp: self.totp.as_ref().map(|t| t.to_dbtotpv1()),
             claims: self.claims.clone(),
             uuid: self.uuid,
@@ -315,6 +428,7 @@ impl Credential {
     pub(crate) fn update_password(&self, pw: Password) -> Self {
         Credential {
             password: Some(pw),
+            webauthn: self.webauthn.clone(),
             totp: self.totp.clone(),
             claims: self.claims.clone(),
             uuid: self.uuid,
@@ -325,6 +439,7 @@ impl Credential {
     pub(crate) fn update_totp(&self, totp: TOTP) -> Self {
         Credential {
             password: self.password.clone(),
+            webauthn: self.webauthn.clone(),
             totp: Some(totp),
             claims: self.claims.clone(),
             uuid: self.uuid,
@@ -334,6 +449,7 @@ impl Credential {
     pub(crate) fn new_from_password(pw: Password) -> Self {
         Credential {
             password: Some(pw),
+            webauthn: None,
             totp: None,
             claims: Vec::new(),
             uuid: Uuid::new_v4(),
@@ -341,12 +457,13 @@ impl Credential {
     }
 
     pub(crate) fn softlock_policy(&self) -> Option<CredSoftLockPolicy> {
-        match (&self.totp, &self.password) {
+        match (&self.webauthn, &self.totp, &self.password) {
             // Has any kind of Webauthn ....
+            (Some(_webauthn), _, _) => Some(CredSoftLockPolicy::Webauthn),
             // Has any kind of totp.
-            (Some(totp), _) => Some(CredSoftLockPolicy::TOTP(totp.step)),
+            (None, Some(totp), _) => Some(CredSoftLockPolicy::TOTP(totp.step)),
             // No totp, pw
-            (None, Some(_)) => Some(CredSoftLockPolicy::Password),
+            (None, None, Some(_)) => Some(CredSoftLockPolicy::Password),
             // Indeterminate
             _ => None,
         }

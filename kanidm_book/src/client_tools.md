@@ -5,8 +5,8 @@ To interact with Kanidm as an administration, you'll need to use our command lin
 ## From (experimental) packages
 
 Kanidm currently supports:
- * Fedora 30/31
- * OpenSUSE leap 15.1
+ * Fedora 33
+ * OpenSUSE leap 15.2
  * Tumbleweed
 
 ### OpenSUSE Tumbleweed
@@ -30,23 +30,14 @@ Then you need to referesh your metadata and install the clients.
     zypper ref
     zypper in kanidm-clients
 
-
 ### Fedora
 
 Fedora is still experimentally supported through the development repository. You need to add the repository metadata into the correct directory.
 
     cd /etc/yum.repos.d
-    wget https://download.opensuse.org/repositories/home:/firstyear:/kanidm/Fedora_Rawhide/home:firstyear:kanidm.repo
+    wget https://download.opensuse.org/repositories/home:/firstyear:/kanidm/Fedora_33/home:firstyear:kanidm.repo
 
 You can then install with:
-
-    dnf install kanidm-clients
-
-> **NOTICE:**
-> While this is a rawhide repository, as kanidm is staticly linked, it works correctly on fedora
-> 31 and above.
-
-Now you can add the packages:
 
     dnf install kanidm-clients
 

@@ -14,12 +14,14 @@ can be small, helping to reduce the attack surface of the machine.
 
 We recommend you install the client daemon from your system package manager.
 
+    # OpenSUSE
     zypper in kanidm-unixd-clients
+    # Fedora
     dnf install kanidm-unixd-clients
 
 You can check the daemon is running on your Linux system with
 
-    # systemctl status kanidm_unixd
+    systemctl status kanidm_unixd
 
 This daemon uses connection configuration from /etc/kanidm/config. This is the covered in
 client_tools. You can also configure some details of the unixd daemon in /etc/kanidm/unixd.

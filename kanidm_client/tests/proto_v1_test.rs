@@ -10,6 +10,8 @@ use kanidm_proto::v1::{Entry, Filter, Modify, ModifyList};
 mod common;
 use crate::common::{run_test, ADMIN_TEST_PASSWORD};
 
+use webauthn_authenticator_rs::{softtok::U2FSoft, WebauthnAuthenticator};
+
 const ADMIN_TEST_PASSWORD_CHANGE: &str = "integration test admin new🎉";
 const UNIX_TEST_PASSWORD: &str = "unix test user password";
 
@@ -769,6 +771,60 @@ fn test_server_rest_totp_auth_lifecycle() {
         assert!(rsclient_bad
             .auth_password_totp("demo_account", "sohdi3iuHo6mai7noh0a", 0)
             .is_err());
+    });
+}
+
+#[test]
+fn test_server_rest_webauthn_auth_lifecycle() {
+    run_test(|mut rsclient: KanidmClient| {
+        let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
+        assert!(res.is_ok());
+
+        // Not recommended in production!
+        rsclient
+            .idm_group_add_members("idm_admins", &["admin"])
+            .unwrap();
+
+        // Create a new account
+        rsclient
+            .idm_account_create("demo_account", "Deeeeemo")
+            .unwrap();
+
+        // Enroll a soft token to the account webauthn.
+        let mut wa_softtok = WebauthnAuthenticator::new(U2FSoft::new());
+
+        // Do the challenge
+        let (sessionid, regchal) = rsclient
+            .idm_account_primary_credential_register_webauthn("demo_account", "softtok")
+            .unwrap();
+
+        let rego = wa_softtok
+            .do_registration("https://idm.example.com", regchal)
+            .expect("Failed to register to softtoken");
+
+        // Enroll the cred after signing.
+        rsclient
+            .idm_account_primary_credential_complete_webuthn_registration(
+                "demo_account",
+                rego,
+                sessionid,
+            )
+            .unwrap();
+
+        // Now do an auth
+        let mut rsclient_good = rsclient.new_session().unwrap();
+
+        let pkr = rsclient_good.auth_webauthn_begin("demo_account").unwrap();
+
+        // Get the auth chal.
+        let auth = wa_softtok
+            .do_authentication("https://idm.example.com", pkr)
+            .expect("Failed to auth to softtoken");
+
+        // Submit the webauthn auth.
+        rsclient_good
+            .auth_webauthn_complete(auth)
+            .expect("Failed to authenticate")
     });
 }
 
