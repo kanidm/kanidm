@@ -16,7 +16,8 @@ jobs:
       run: |
         sudo apt install -y \
           libpam0g-dev \
-          libssl1.0-dev
+          libssl1.0-dev \
+          libudev-dev
 
     - name: Build
       run: cargo build --verbose
