@@ -8,7 +8,7 @@ jobs:
 
 
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v2
 
@@ -16,7 +16,6 @@ jobs:
       run: |
         sudo apt install -y \
           libpam0g-dev \
-          libssl1.0-dev \
           libudev-dev
 
     - name: Build
