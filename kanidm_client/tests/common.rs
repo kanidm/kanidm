@@ -11,7 +11,7 @@ use async_std::task;
 use tokio::sync::mpsc;
 
 pub const ADMIN_TEST_PASSWORD: &str = "integration test admin password";
-static PORT_ALLOC: AtomicU16 = AtomicU16::new(8080);
+static PORT_ALLOC: AtomicU16 = AtomicU16::new(18080);
 
 fn is_free_port(port: u16) -> bool {
     match TcpStream::connect(("0.0.0.0", port)) {
@@ -33,10 +33,16 @@ pub fn run_test(test_fn: fn(KanidmClient) -> ()) {
     let (mut ready_tx, mut ready_rx) = mpsc::channel(1);
     let (mut finish_tx, mut finish_rx) = mpsc::channel(1);
 
+    let mut counter = 0;
     let port = loop {
         let possible_port = PORT_ALLOC.fetch_add(1, Ordering::SeqCst);
         if is_free_port(possible_port) {
             break possible_port;
+        }
+        counter += 1;
+        if counter >= 5 {
+            eprintln!("Unable to allocate port!");
+            assert!(false);
         }
     };
 

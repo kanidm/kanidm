@@ -16,7 +16,9 @@ jobs:
       run: |
         sudo apt install -y \
           libpam0g-dev \
-          libudev-dev
+          libudev-dev \
+          libssl-dev \
+          libsqlite3-dev
 
     - name: Build
       run: cargo build --verbose

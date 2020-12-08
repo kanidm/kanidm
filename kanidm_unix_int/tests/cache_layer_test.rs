@@ -1,4 +1,5 @@
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::net::TcpStream;
+use std::sync::atomic::{AtomicU16, Ordering};
 use std::thread;
 use std::time::Duration;
 
@@ -19,12 +20,19 @@ use kanidm_client::{KanidmClient, KanidmClientBuilder};
 use async_std::task;
 use tokio::sync::mpsc;
 
-static PORT_ALLOC: AtomicUsize = AtomicUsize::new(18080);
+static PORT_ALLOC: AtomicU16 = AtomicU16::new(28080);
 const ADMIN_TEST_PASSWORD: &str = "integration test admin password";
 const TESTACCOUNT1_PASSWORD_A: &str = "password a for account1 test";
 const TESTACCOUNT1_PASSWORD_B: &str = "password b for account1 test";
 const TESTACCOUNT1_PASSWORD_INC: &str = "never going to work";
 const ACCOUNT_EXPIRE: &str = "1970-01-01T00:00:00+00:00";
+
+fn is_free_port(port: u16) -> bool {
+    match TcpStream::connect(("0.0.0.0", port)) {
+        Ok(_) => false,
+        Err(_) => true,
+    }
+}
 
 fn run_test(fix_fn: fn(&mut KanidmClient) -> (), test_fn: fn(CacheLayer, KanidmAsyncClient) -> ()) {
     // ::std::env::set_var("RUST_LOG", "kanidm=debug");
@@ -33,7 +41,18 @@ fn run_test(fix_fn: fn(&mut KanidmClient) -> (), test_fn: fn(CacheLayer, KanidmA
     let (mut ready_tx, mut ready_rx) = mpsc::channel(1);
     let (mut finish_tx, mut finish_rx) = mpsc::channel(1);
 
-    let port = PORT_ALLOC.fetch_add(1, Ordering::SeqCst);
+    let mut counter = 0;
+    let port = loop {
+        let possible_port = PORT_ALLOC.fetch_add(1, Ordering::SeqCst);
+        if is_free_port(possible_port) {
+            break possible_port;
+        }
+        counter += 1;
+        if counter >= 5 {
+            eprintln!("Unable to allocate port!");
+            assert!(false);
+        }
+    };
 
     let int_config = Box::new(IntegrationTestConfig {
         admin_password: ADMIN_TEST_PASSWORD.to_string(),
