@@ -47,8 +47,8 @@ New Design (late 2020 - future)
 ===============================
 
 A clearer configuration of credentials and how they function for the account is needed. This means
-changing how the current credential memory representation works. The database format does *not* need
-to change, but *may* be extended.
+changing how the current credential memory representation works. The database format does need to
+change.
 
 Currently Credentials can have *any* combination of factors.
 

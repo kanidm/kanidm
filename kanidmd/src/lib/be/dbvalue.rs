@@ -40,9 +40,24 @@ pub struct DbWebauthnV1 {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub enum DbCredTypeV1 {
+    Pw,
+    GPw,
+    PwMfa,
+    // PwWn,
+    Wn,
+    // WnVer,
+    // PwWnVer,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct DbCredV1 {
+    pub type_: DbCredTypeV1,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub password: Option<DbPasswordV1>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub webauthn: Option<Vec<DbWebauthnV1>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub totp: Option<DbTotpV1>,
     pub claims: Vec<String>,
     pub uuid: Uuid,
