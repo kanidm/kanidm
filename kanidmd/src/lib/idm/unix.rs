@@ -228,39 +228,33 @@ impl UnixUserAccount {
         // is the cred some or none?
         match &self.cred {
             Some(cred) => {
-                match &cred.password {
-                    Some(pw) => {
-                        if pw.verify(cleartext)? {
-                            lsecurity!(au, "Successful unix cred handling");
-                            if pw.requires_upgrade() {
-                                async_tx.send(
-                                DelayedAction::UnixPwUpgrade(UnixPasswordUpgrade {
+                cred.password_ref().and_then(|pw| {
+                    if pw.verify(cleartext)? {
+                        lsecurity!(au, "Successful unix cred handling");
+                        if pw.requires_upgrade() {
+                            async_tx
+                                .send(DelayedAction::UnixPwUpgrade(UnixPasswordUpgrade {
                                     target_uuid: self.uuid,
                                     existing_password: cleartext.to_string(),
-                                })
-                            ).map_err(|_| {
-                                ladmin_error!(au, "failed to queue delayed action - unix password upgrade");
-                                OperationError::InvalidState
-                            })?;
-                            }
-
-                            // Technically this means we check the times twice, but that doesn't
-                            // seem like a big deal when we want to short cut return on invalid.
-                            Some(self.to_unixusertoken(ct)).transpose()
-                        } else {
-                            // Failed to auth
-                            lsecurity!(au, "Failed unix cred handling (denied)");
-                            Ok(None)
+                                }))
+                                .map_err(|_| {
+                                    ladmin_error!(
+                                        au,
+                                        "failed to queue delayed action - unix password upgrade"
+                                    );
+                                    OperationError::InvalidState
+                                })?;
                         }
+
+                        // Technically this means we check the times twice, but that doesn't
+                        // seem like a big deal when we want to short cut return on invalid.
+                        Some(self.to_unixusertoken(ct)).transpose()
+                    } else {
+                        // Failed to auth
+                        lsecurity!(au, "Failed unix cred handling (denied)");
+                        Ok(None)
                     }
-                    // We have a cred but it's not a password, that's weird
-                    None => {
-                        lsecurity!(au, "Invalid unix cred request");
-                        Err(OperationError::InvalidAccountState(
-                            "non-password cred type?".to_string(),
-                        ))
-                    }
-                }
+                })
             }
             // They don't have a unix cred, fail the auth.
             None => {
@@ -272,10 +266,7 @@ impl UnixUserAccount {
 
     pub(crate) fn check_existing_pw(&self, cleartext: &str) -> Result<bool, OperationError> {
         match &self.cred {
-            Some(cred) => match &cred.password {
-                Some(pw) => pw.verify(cleartext),
-                None => Err(OperationError::InvalidState),
-            },
+            Some(cred) => cred.password_ref().and_then(|pw| pw.verify(cleartext)),
             None => Err(OperationError::InvalidState),
         }
     }

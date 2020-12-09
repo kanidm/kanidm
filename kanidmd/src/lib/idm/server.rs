@@ -2822,7 +2822,7 @@ mod tests {
             let cred = account.primary.expect("Must exist.");
 
             let wcred = cred
-                .webauthn
+                .webauthn_ref()
                 .expect("must have webauthn")
                 .values()
                 .next()

@@ -3556,7 +3556,7 @@ mod tests {
                 .get_ava_single_credential("primary_credential")
                 .expect("Failed");
             // do a pw check.
-            assert!(cred_ref.verify_password("test_password"));
+            assert!(cred_ref.verify_password("test_password").unwrap());
         })
     }
 

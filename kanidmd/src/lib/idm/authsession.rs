@@ -5,7 +5,7 @@ use crate::idm::AuthState;
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::{AuthAllowed, AuthCredential};
 
-use crate::credential::{totp::TOTP, Credential, Password};
+use crate::credential::{totp::TOTP, Credential, CredentialType, Password};
 
 use crate::idm::delayed::{DelayedAction, PasswordUpgrade, WebauthnCounterIncrement};
 // use crossbeam::channel::Sender;
@@ -76,15 +76,20 @@ impl CredHandler {
         c: &Credential,
         webauthn: &Webauthn<WebauthnDomainConfig>,
     ) -> Result<Self, ()> {
-        match (c.password.as_ref(), c.totp.as_ref(), c.webauthn.as_ref()) {
-            (Some(pw), None, None) => Ok(CredHandler::Password(pw.clone())),
-            (Some(pw), Some(totp), None) => Ok(CredHandler::TOTPPassword(CredTotpPw {
-                pw: pw.clone(),
-                pw_state: CredVerifyState::Init,
-                totp: totp.clone(),
-                totp_state: CredVerifyState::Init,
-            })),
-            (None, None, Some(wan)) => webauthn
+        match &c.type_ {
+            CredentialType::Password(pw) | CredentialType::GeneratedPassword(pw) => {
+                Ok(CredHandler::Password(pw.clone()))
+            }
+            CredentialType::PasswordMFA(pw, Some(totp), _) => {
+                Ok(CredHandler::TOTPPassword(CredTotpPw {
+                    pw: pw.clone(),
+                    pw_state: CredVerifyState::Init,
+                    totp: totp.clone(),
+                    totp_state: CredVerifyState::Init,
+                }))
+            }
+            CredentialType::PasswordMFA(_, None, _) => Err(()),
+            CredentialType::Webauthn(wan) => webauthn
                 .generate_challenge_authenticate(wan.values().map(|c| c.clone()).collect())
                 .map(|(chal, wan_state)| {
                     CredHandler::Webauthn(CredWebauthn {
@@ -101,8 +106,6 @@ impl CredHandler {
                     );
                     ()
                 }),
-            // Must be an invalid set of credentials. WTF?
-            _ => Err(()),
         }
     }
 }

@@ -50,8 +50,13 @@ pub enum DbCredTypeV1 {
     // PwWnVer,
 }
 
+fn dbcred_type_default_pw() -> DbCredTypeV1 {
+    DbCredTypeV1::Pw
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DbCredV1 {
+    #[serde(default = "dbcred_type_default_pw")]
     pub type_: DbCredTypeV1,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub password: Option<DbPasswordV1>,
