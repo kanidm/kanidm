@@ -925,15 +925,15 @@ pub struct AuthEventStepInit {
 }
 
 #[derive(Debug)]
-pub struct AuthEventStepCreds {
+pub struct AuthEventStepCred {
     pub sessionid: Uuid,
-    pub creds: Vec<AuthCredential>,
+    pub cred: AuthCredential,
 }
 
 #[derive(Debug)]
 pub enum AuthEventStep {
     Init(AuthEventStepInit),
-    Creds(AuthEventStepCreds),
+    Cred(AuthEventStepCred),
 }
 
 impl AuthEventStep {
@@ -948,10 +948,10 @@ impl AuthEventStep {
                     Ok(AuthEventStep::Init(AuthEventStepInit { name, appid: None }))
                 }
             }
-            AuthStep::Creds(creds) => match sid {
-                Some(ssid) => Ok(AuthEventStep::Creds(AuthEventStepCreds {
+            AuthStep::Cred(cred) => match sid {
+                Some(ssid) => Ok(AuthEventStep::Cred(AuthEventStepCred {
                     sessionid: ssid,
-                    creds,
+                    cred,
                 })),
                 None => Err(OperationError::InvalidAuthState(
                     "session id not present in cred".to_string(),
@@ -978,17 +978,17 @@ impl AuthEventStep {
 
     #[cfg(test)]
     pub fn cred_step_anonymous(sid: Uuid) -> Self {
-        AuthEventStep::Creds(AuthEventStepCreds {
+        AuthEventStep::Cred(AuthEventStepCred {
             sessionid: sid,
-            creds: vec![AuthCredential::Anonymous],
+            cred: AuthCredential::Anonymous,
         })
     }
 
     #[cfg(test)]
     pub fn cred_step_password(sid: Uuid, pw: &str) -> Self {
-        AuthEventStep::Creds(AuthEventStepCreds {
+        AuthEventStep::Cred(AuthEventStepCred {
             sessionid: sid,
-            creds: vec![AuthCredential::Password(pw.to_string())],
+            cred: AuthCredential::Password(pw.to_string()),
         })
     }
 }

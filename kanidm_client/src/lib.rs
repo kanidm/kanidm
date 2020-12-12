@@ -562,7 +562,7 @@ impl KanidmClient {
         };
 
         let auth_anon = AuthRequest {
-            step: AuthStep::Creds(vec![AuthCredential::Anonymous]),
+            step: AuthStep::Cred(AuthCredential::Anonymous),
         };
         let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_anon);
 
@@ -585,7 +585,7 @@ impl KanidmClient {
         };
 
         let auth_req = AuthRequest {
-            step: AuthStep::Creds(vec![AuthCredential::Password(password.to_string())]),
+            step: AuthStep::Cred(AuthCredential::Password(password.to_string())),
         };
         let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_req);
 
@@ -604,7 +604,7 @@ impl KanidmClient {
     pub fn auth_password_totp(
         &mut self,
         ident: &str,
-        password: &str,
+        _password: &str,
         totp: u32,
     ) -> Result<(), ClientError> {
         let _state = match self.auth_step_init(ident) {
@@ -613,10 +613,10 @@ impl KanidmClient {
         };
 
         let auth_req = AuthRequest {
-            step: AuthStep::Creds(vec![
+            step: AuthStep::Cred(
                 AuthCredential::TOTP(totp),
-                AuthCredential::Password(password.to_string()),
-            ]),
+                // AuthCredential::Password(password.to_string()),
+            ),
         };
         let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_req);
 
@@ -656,7 +656,7 @@ impl KanidmClient {
 
     pub fn auth_webauthn_complete(&mut self, pkc: PublicKeyCredential) -> Result<(), ClientError> {
         let auth_req = AuthRequest {
-            step: AuthStep::Creds(vec![AuthCredential::Webauthn(pkc)]),
+            step: AuthStep::Cred(AuthCredential::Webauthn(pkc)),
         };
         let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_req);
 

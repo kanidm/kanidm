@@ -420,7 +420,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
                 })
                 // })
             }
-            AuthEventStep::Creds(creds) => {
+            AuthEventStep::Cred(creds) => {
                 // lperf_segment!(au, "idm::server::auth<Creds>", || {
                 let _session_ticket = self.session_ticket.acquire().await;
                 let _softlock_ticket = self.softlock_ticket.acquire().await;
@@ -456,7 +456,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
                     // Basically throw them at the auth_session and see what
                     // falls out.
                     auth_session
-                        .validate_creds(au, &creds.creds, &ct, &self.async_tx, self.webauthn)
+                        .validate_creds(au, &creds.cred, &ct, &self.async_tx, self.webauthn)
                         .map(|aus| {
                             // Inspect the result:
                             // if it was a failure, we need to inc the softlock.

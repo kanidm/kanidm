@@ -446,15 +446,24 @@ impl fmt::Debug for AuthCredential {
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+pub enum AuthMech {
+    Anonymous,
+    Password,
+    PasswordMFA,
+    Webauthn,
+    // WebauthnVerified,
+    // PasswordWebauthnVerified
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum AuthStep {
     // name
     Init(String),
-    /*
-    Step(
-        Type(params ....)
-    ),
-    */
-    Creds(Vec<AuthCredential>),
+    // We want to talk to you like this.
+    Begin(AuthMech),
+    // Step
+    Cred(AuthCredential),
     // Should we have a "finalise" type to attempt to finish based on
     // what we have given?
 }
@@ -485,14 +494,15 @@ impl PartialEq for AuthAllowed {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AuthState {
-    // Everything is good, your bearer header has been issued and is within
-    // the result.
-    // Success(UserAuthToken),
-    Success(String),
+    // You need to select how you want to talk to me.
+    Choose(Vec<AuthMech>),
+    // Continue to auth, allowed mechanisms/challenges listed.
+    Continue(Vec<AuthAllowed>),
     // Something was bad, your session is terminated and no cookie.
     Denied(String),
-    // Continue to auth, allowed mechanisms listed.
-    Continue(Vec<AuthAllowed>),
+    // Everything is good, your bearer header has been issued and is within
+    // the result.
+    Success(String),
 }
 
 #[derive(Debug, Serialize, Deserialize)]

@@ -209,7 +209,7 @@ impl KanidmAsyncClient {
         };
 
         let auth_req = AuthRequest {
-            step: AuthStep::Creds(vec![AuthCredential::Password(password.to_string())]),
+            step: AuthStep::Cred(AuthCredential::Password(password.to_string())),
         };
         let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_req).await;
 
@@ -233,7 +233,7 @@ impl KanidmAsyncClient {
         };
 
         let auth_anon = AuthRequest {
-            step: AuthStep::Creds(vec![AuthCredential::Anonymous]),
+            step: AuthStep::Cred(AuthCredential::Anonymous),
         };
         let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_anon).await;
 
