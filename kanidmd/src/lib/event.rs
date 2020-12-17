@@ -6,7 +6,9 @@ use crate::schema::SchemaTransaction;
 use crate::value::PartialValue;
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::ModifyList as ProtoModifyList;
-use kanidm_proto::v1::{AuthCredential, AuthStep, SearchResponse, UserAuthToken, WhoamiResponse};
+use kanidm_proto::v1::{
+    AuthCredential, AuthMech, AuthStep, SearchResponse, UserAuthToken, WhoamiResponse,
+};
 // use error::OperationError;
 use crate::modify::{ModifyInvalid, ModifyList, ModifyValid};
 use crate::server::{
@@ -931,8 +933,15 @@ pub struct AuthEventStepCred {
 }
 
 #[derive(Debug)]
+pub struct AuthEventStepMech {
+    pub sessionid: Uuid,
+    pub mech: AuthMech,
+}
+
+#[derive(Debug)]
 pub enum AuthEventStep {
     Init(AuthEventStepInit),
+    Begin(AuthEventStepMech),
     Cred(AuthEventStepCred),
 }
 
@@ -948,6 +957,15 @@ impl AuthEventStep {
                     Ok(AuthEventStep::Init(AuthEventStepInit { name, appid: None }))
                 }
             }
+            AuthStep::Begin(mech) => match sid {
+                Some(ssid) => Ok(AuthEventStep::Begin(AuthEventStepMech {
+                    sessionid: ssid,
+                    mech,
+                })),
+                None => Err(OperationError::InvalidAuthState(
+                    "session id not present in cred".to_string(),
+                )),
+            },
             AuthStep::Cred(cred) => match sid {
                 Some(ssid) => Ok(AuthEventStep::Cred(AuthEventStepCred {
                     sessionid: ssid,

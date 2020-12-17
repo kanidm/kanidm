@@ -10,11 +10,12 @@ pub(crate) mod server;
 pub(crate) mod unix;
 // mod identity;
 
-use kanidm_proto::v1::{AuthAllowed, UserAuthToken};
+use kanidm_proto::v1::{AuthAllowed, AuthMech, UserAuthToken};
 
 #[derive(Debug)]
 pub enum AuthState {
-    Success(UserAuthToken),
-    Denied(String),
+    Choose(Vec<AuthMech>),
     Continue(Vec<AuthAllowed>),
+    Denied(String),
+    Success(UserAuthToken),
 }

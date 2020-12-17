@@ -3,7 +3,7 @@ use crate::idm::account::Account;
 use crate::idm::claim::Claim;
 use crate::idm::AuthState;
 use kanidm_proto::v1::OperationError;
-use kanidm_proto::v1::{AuthAllowed, AuthCredential};
+use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthMech};
 
 use crate::credential::{totp::TOTP, Credential, CredentialType, Password};
 
@@ -60,11 +60,10 @@ struct CredWebauthn {
 
 #[derive(Clone, Debug)]
 enum CredHandler {
-    Denied(&'static str),
     Anonymous,
     // AppPassword (?)
     Password(Password),
-    TOTPPassword(CredTotpPw),
+    PasswordMFA(CredTotpPw),
     Webauthn(CredWebauthn),
     // Webauthn + Password
 }
@@ -81,7 +80,7 @@ impl CredHandler {
                 Ok(CredHandler::Password(pw.clone()))
             }
             CredentialType::PasswordMFA(pw, Some(totp), _) => {
-                Ok(CredHandler::TOTPPassword(CredTotpPw {
+                Ok(CredHandler::PasswordMFA(CredTotpPw {
                     pw: pw.clone(),
                     pw_state: CredVerifyState::Init,
                     totp: totp.clone(),
@@ -186,21 +185,21 @@ impl CredHandler {
         who: Uuid,
         async_tx: &Sender<DelayedAction>,
     ) -> CredState {
-        match (cred, pw_totp.totp_state, pw_totp.pw_state) {
+        match (cred, &pw_totp.totp_state, &pw_totp.pw_state) {
             // Must be done first.
             (AuthCredential::TOTP(totp_chal), CredVerifyState::Init, CredVerifyState::Init) => {
                 if pw_totp.totp.verify(*totp_chal, ts) {
                     pw_totp.totp_state = CredVerifyState::Success;
                     lsecurity!(
                         au,
-                        "Handler::TOTPPassword -> Result::Continue - TOTP OK, password -"
+                        "Handler::PasswordMFA -> Result::Continue - TOTP OK, password -"
                     );
                     CredState::Continue(vec![AuthAllowed::Password])
                 } else {
                     pw_totp.totp_state = CredVerifyState::Fail;
                     lsecurity!(
                         au,
-                        "Handler::TOTPPassword -> Result::Denied - TOTP Fail, password -"
+                        "Handler::PasswordMFA -> Result::Denied - TOTP Fail, password -"
                     );
                     CredState::Denied(BAD_TOTP_MSG)
                 }
@@ -215,14 +214,15 @@ impl CredHandler {
                     pw_totp.pw_state = CredVerifyState::Success;
                     lsecurity!(
                         au,
-                        "Handler::TOTPPassword -> Result::Success - TOTP OK, password OK"
+                        "Handler::PasswordMFA -> Result::Success - TOTP OK, password OK"
                     );
+                    Self::maybe_pw_upgrade(au, &pw_totp.pw, who, cleartext.as_str(), async_tx);
                     CredState::Success(Vec::new())
                 } else {
                     pw_totp.pw_state = CredVerifyState::Fail;
                     lsecurity!(
                         au,
-                        "Handler::TOTPPassword -> Result::Denied - TOTP OK, password Fail"
+                        "Handler::PasswordMFA -> Result::Denied - TOTP OK, password Fail"
                     );
                     CredState::Denied(BAD_PASSWORD_MSG)
                 }
@@ -230,12 +230,12 @@ impl CredHandler {
             _ => {
                 lsecurity!(
                     au,
-                    "Handler::TOTPPassword -> Result::Denied - invalid cred type for handler"
+                    "Handler::PasswordMFA -> Result::Denied - invalid cred type for handler"
                 );
                 CredState::Denied(BAD_AUTH_TYPE_MSG)
             }
         }
-    } // end CredHandler::TOTPPassword
+    } // end CredHandler::PasswordMFA
 
     pub fn validate_webauthn(
         au: &mut AuditScope,
@@ -300,16 +300,11 @@ impl CredHandler {
         webauthn: &Webauthn<WebauthnDomainConfig>,
     ) -> CredState {
         match self {
-            CredHandler::Denied(reason) => {
-                // Sad trombone.
-                lsecurity!(au, "Handler::Denied -> Result::Denied");
-                CredState::Denied(reason)
-            }
             CredHandler::Anonymous => Self::validate_anonymous(au, cred),
             CredHandler::Password(ref mut pw) => {
                 Self::validate_password(au, cred, pw, who, async_tx)
             }
-            CredHandler::TOTPPassword(ref mut pw_totp) => {
+            CredHandler::PasswordMFA(ref mut pw_totp) => {
                 Self::validate_totp_password(au, cred, ts, pw_totp, who, async_tx)
             }
             CredHandler::Webauthn(ref mut wan_cred) => {
@@ -318,21 +313,56 @@ impl CredHandler {
         }
     }
 
-    pub fn valid_auth_mechs(&self) -> Vec<AuthAllowed> {
+    pub fn next_auth_allowed(&self) -> Vec<AuthAllowed> {
         match &self {
-            CredHandler::Denied(_) => Vec::new(),
             CredHandler::Anonymous => vec![AuthAllowed::Anonymous],
             CredHandler::Password(_) => vec![AuthAllowed::Password],
             // webauth
             // mfa
-            CredHandler::TOTPPassword(_) => vec![AuthAllowed::Password, AuthAllowed::TOTP],
+            CredHandler::PasswordMFA(_) => vec![AuthAllowed::Password, AuthAllowed::TOTP],
             CredHandler::Webauthn(webauthn) => vec![AuthAllowed::Webauthn(webauthn.chal.clone())],
         }
     }
 
-    pub(crate) fn is_denied(&self) -> Option<&'static str> {
+    fn can_proceed(&self, mech: &AuthMech) -> bool {
+        match (self, mech) {
+            (CredHandler::Anonymous, AuthMech::Anonymous)
+            | (CredHandler::Password(_), AuthMech::Password)
+            | (CredHandler::PasswordMFA(_), AuthMech::PasswordMFA)
+            | (CredHandler::Webauthn(_), AuthMech::Webauthn) => true,
+            (_, _) => false,
+        }
+    }
+
+    fn allows_mech(&self) -> AuthMech {
+        match self {
+            CredHandler::Anonymous => AuthMech::Anonymous,
+            CredHandler::Password(_) => AuthMech::Password,
+            CredHandler::PasswordMFA(_) => AuthMech::PasswordMFA,
+            CredHandler::Webauthn(_) => AuthMech::Webauthn,
+        }
+    }
+}
+
+#[derive(Clone)]
+/// This interleaves with the client auth step. The client sends an "init"
+/// and we go to the init state, sending back the list of what can proceed.
+/// The client then sends a "begin" with the chosen mech that moves to
+/// "InProgress", "Success" or "Denied". From there the CredHandler
+/// is interacted with until we move to either "Success" or "Denied".
+enum AuthSessionState {
+    Init(Vec<CredHandler>),
+    // Stop! Don't make this a vec - make the credhandler able to hold multiple
+    // internal copies of it's type and check against them all.
+    InProgress(CredHandler),
+    Success,
+    Denied(&'static str),
+}
+
+impl AuthSessionState {
+    fn is_denied(&self) -> Option<&'static str> {
         match &self {
-            CredHandler::Denied(x) => Some(x),
+            AuthSessionState::Denied(x) => Some(x),
             _ => None,
         }
     }
@@ -348,81 +378,67 @@ pub(crate) struct AuthSession {
     // we want the primary-interaction credentials.
     //
     // This handler will then handle the mfa and stepping up through to generate the auth states
-    handler: CredHandler,
-    // The identity of the credential that uniquely identifies it.
-    // cred_uuid: Uuid,
-    // Store any related appid we are processing for.
-    appid: Option<String>,
-    // Store claims related to the handler
-    // need to store state somehow?
-    finished: bool,
+    state: AuthSessionState,
 }
 
 impl AuthSession {
     pub fn new(
         au: &mut AuditScope,
         account: Account,
-        appid: Option<String>,
+        _appid: Option<String>,
         webauthn: &Webauthn<WebauthnDomainConfig>,
         ct: Duration,
     ) -> (Option<Self>, AuthState) {
         // During this setup, determine the credential handler that we'll be using
         // for this session. This is currently based on presentation of an application
         // id.
-        let handler = if account.is_within_valid_time(ct) {
-            match appid {
-                Some(_) => CredHandler::Denied("authentication denied"),
-                None => {
-                    // We want the primary handler - this is where we make a decision
-                    // based on the anonymous ... in theory this could be cleaner
-                    // and interact with the account more?
-                    if account.is_anonymous() {
-                        CredHandler::Anonymous
-                    } else {
-                        // Now we see if they have one ...
-                        match &account.primary {
-                            Some(cred) => {
-                                // Probably means new authsession has to be failable
-                                CredHandler::try_from(au, cred, webauthn).unwrap_or_else(|_| {
-                                    lsecurity_critical!(
-                                        au,
-                                        "corrupt credentials, unable to start credhandler"
-                                    );
-                                    CredHandler::Denied("invalid credential state")
-                                })
-                            }
-                            None => {
-                                lsecurity!(au, "account has no primary credentials");
-                                CredHandler::Denied("invalid credential state")
-                            }
-                        }
+        let state = if account.is_within_valid_time(ct) {
+            // We want the primary handler - this is where we make a decision
+            // based on the anonymous ... in theory this could be cleaner
+            // and interact with the account more?
+            if account.is_anonymous() {
+                AuthSessionState::Init(vec![CredHandler::Anonymous])
+            } else {
+                // Now we see if they have one ...
+                match &account.primary {
+                    Some(cred) => {
+                        // TODO: Make it possible to have multiple creds.
+                        // Probably means new authsession has to be failable
+                        CredHandler::try_from(au, cred, webauthn)
+                            .map(|ch| AuthSessionState::Init(vec![ch]))
+                            .unwrap_or_else(|_| {
+                                lsecurity_critical!(
+                                    au,
+                                    "corrupt credentials, unable to start credhandler"
+                                );
+                                AuthSessionState::Denied("invalid credential state")
+                            })
+                    }
+                    None => {
+                        lsecurity!(au, "account has no primary credentials");
+                        AuthSessionState::Denied("invalid credential state")
                     }
                 }
             }
         } else {
             lsecurity!(au, "account expired");
-            CredHandler::Denied(ACCOUNT_EXPIRED)
+            AuthSessionState::Denied(ACCOUNT_EXPIRED)
         };
 
         // if credhandler == deny, finish = true.
-        if let Some(reason) = handler.is_denied() {
+        if let Some(reason) = state.is_denied() {
             // Already denied, lets send that result
             (None, AuthState::Denied(reason.to_string()))
         } else {
             // We can proceed
-            let auth_session = AuthSession {
-                account,
-                handler,
-                appid,
-                finished: false,
-            };
+            let auth_session = AuthSession { account, state };
             // Get the set of mechanisms that can proceed. This is tied
             // to the session so that it can mutate state and have progression
             // of what's next, or ordering.
-            let next_mech = auth_session.valid_auth_mechs();
+            let valid_mechs = auth_session.valid_auth_mechs();
 
-            let state = AuthState::Continue(next_mech);
-            (Some(auth_session), state)
+            let as_state = AuthState::Choose(valid_mechs);
+            (Some(auth_session), as_state)
         }
     }
 
@@ -430,9 +446,65 @@ impl AuthSession {
         &self.account
     }
 
-    pub fn end_session(&mut self, reason: String) -> Result<AuthState, OperationError> {
-        self.finished = true;
-        Ok(AuthState::Denied(reason))
+    pub fn start_session(
+        &mut self,
+        _au: &mut AuditScope,
+        mech: &AuthMech,
+        // time: &Duration,
+        // webauthn: &Webauthn<WebauthnDomainConfig>,
+    ) -> Result<AuthState, OperationError> {
+        // Given some auth mech, select which credential(s) are apropriate
+        // and attempt to use them.
+
+        // Today we only select one, but later we could have *multiple* that
+        // match the selector.
+        let (next_state, response) = match &mut self.state {
+            AuthSessionState::Success
+            | AuthSessionState::Denied(_)
+            | AuthSessionState::InProgress(_) => (
+                None,
+                Err(OperationError::InvalidAuthState(
+                    "session already finalised!".to_string(),
+                )),
+            ),
+            AuthSessionState::Init(handlers) => {
+                // Which handlers are relevant?
+                let mut allowed_handlers: Vec<_> = handlers
+                    .iter()
+                    .filter(|ch| ch.can_proceed(mech))
+                    .cloned()
+                    .collect();
+
+                if let Some(allowed_handler) = allowed_handlers.pop() {
+                    let allowed: Vec<_> = allowed_handler.next_auth_allowed();
+
+                    if allowed.is_empty() {
+                        (
+                            None,
+                            Err(OperationError::InvalidAuthState(
+                                "unable to negotitate credentials".to_string(),
+                            )),
+                        )
+                    } else {
+                        (
+                            Some(AuthSessionState::InProgress(allowed_handler)),
+                            Ok(AuthState::Continue(allowed)),
+                        )
+                    }
+                } else {
+                    (
+                        Some(AuthSessionState::Denied(BAD_CREDENTIALS)),
+                        Ok(AuthState::Denied(BAD_CREDENTIALS.to_string())),
+                    )
+                }
+            }
+        };
+
+        if let Some(mut next_state) = next_state {
+            std::mem::swap(&mut self.state, &mut next_state);
+        };
+
+        response
     }
 
     // This should return a AuthResult or similar state of checking?
@@ -444,37 +516,43 @@ impl AuthSession {
         async_tx: &Sender<DelayedAction>,
         webauthn: &Webauthn<WebauthnDomainConfig>,
     ) -> Result<AuthState, OperationError> {
-        if self.finished {
-            return Err(OperationError::InvalidAuthState(
-                "session already finalised!".to_string(),
-            ));
-        }
+        let (next_state, response) = match &mut self.state {
+            AuthSessionState::Init(_) | AuthSessionState::Success | AuthSessionState::Denied(_) => {
+                return Err(OperationError::InvalidAuthState(
+                    "session already finalised!".to_string(),
+                ));
+            }
+            AuthSessionState::InProgress(ref mut handler) => {
+                match handler.validate(au, cred, time, self.account.uuid, async_tx, webauthn) {
+                    CredState::Success(claims) => {
+                        lsecurity!(au, "Successful cred handling");
+                        let uat = self
+                            .account
+                            .to_userauthtoken(&claims)
+                            .ok_or(OperationError::InvalidState)?;
 
-        match self
-            .handler
-            .validate(au, cred, time, self.account.uuid, async_tx, webauthn)
-        {
-            CredState::Success(claims) => {
-                lsecurity!(au, "Successful cred handling");
-                self.finished = true;
-                let uat = self
-                    .account
-                    .to_userauthtoken(&claims)
-                    .ok_or(OperationError::InvalidState)?;
+                        // Now encrypt and prepare the token for return to the client.
+                        (Some(AuthSessionState::Success), Ok(AuthState::Success(uat)))
+                    }
+                    CredState::Continue(allowed) => {
+                        lsecurity!(au, "Request credential continuation: {:?}", allowed);
+                        (None, Ok(AuthState::Continue(allowed)))
+                    }
+                    CredState::Denied(reason) => {
+                        lsecurity!(au, "Credentials denied: {}", reason);
+                        (
+                            Some(AuthSessionState::Denied(reason)),
+                            Ok(AuthState::Denied(reason.to_string())),
+                        )
+                    }
+                }
+            }
+        };
 
-                // Now encrypt and prepare the token for return to the client.
-                Ok(AuthState::Success(uat))
-            }
-            CredState::Continue(allowed) => {
-                lsecurity!(au, "Request credential continuation: {:?}", allowed);
-                Ok(AuthState::Continue(allowed))
-            }
-            CredState::Denied(reason) => {
-                self.finished = true;
-                lsecurity!(au, "Credentials denied: {}", reason);
-                Ok(AuthState::Denied(reason.to_string()))
-            }
-        }
+        if let Some(mut next_state) = next_state {
+            std::mem::swap(&mut self.state, &mut next_state);
+        };
+
         // Also send an async message to self to log the auth as provided.
         // Alternately, open a write, and commit the needed security metadata here
         // now rather than async (probably better for lock-outs etc)
@@ -486,13 +564,26 @@ impl AuthSession {
 
         // If this suceeds audit?
         //  If success, to authtoken?
+
+        response
     }
 
-    fn valid_auth_mechs(&self) -> Vec<AuthAllowed> {
-        if self.finished {
-            Vec::new()
-        } else {
-            self.handler.valid_auth_mechs()
+    pub fn end_session(&mut self, reason: &'static str) -> Result<AuthState, OperationError> {
+        let mut next_state = AuthSessionState::Denied(reason);
+        std::mem::swap(&mut self.state, &mut next_state);
+        Ok(AuthState::Denied(reason.to_string()))
+    }
+
+    fn valid_auth_mechs(&self) -> Vec<AuthMech> {
+        match &self.state {
+            AuthSessionState::Success
+            | AuthSessionState::Denied(_)
+            | AuthSessionState::InProgress(_) => Vec::new(),
+            AuthSessionState::Init(handlers) => {
+                // Iterate over the handlers into what mechs they are
+                // and filter to unique?
+                handlers.iter().map(|h| h.allows_mech()).collect()
+            }
         }
     }
 }
@@ -506,8 +597,7 @@ mod tests {
     use crate::credential::webauthn::WebauthnDomainConfig;
     use crate::credential::Credential;
     use crate::idm::authsession::{
-        AuthSession, BAD_AUTH_TYPE_MSG, BAD_CREDENTIALS, BAD_PASSWORD_MSG, BAD_TOTP_MSG,
-        BAD_WEBAUTHN_MSG,
+        AuthSession, BAD_AUTH_TYPE_MSG, BAD_PASSWORD_MSG, BAD_TOTP_MSG, BAD_WEBAUTHN_MSG,
     };
     use crate::idm::delayed::DelayedAction;
     use crate::idm::AuthState;
@@ -557,50 +647,6 @@ mod tests {
         } else {
             panic!("Invalid auth state")
         }
-    }
-
-    #[test]
-    fn test_idm_authsession_floodcheck_mech() {
-        let mut audit = AuditScope::new(
-            "test_idm_authsession_floodcheck_mech",
-            uuid::Uuid::new_v4(),
-            None,
-        );
-        let webauthn = create_webauthn();
-        let anon_account = entry_str_to_account!(JSON_ANONYMOUS_V1);
-        let (session, _) = AuthSession::new(
-            &mut audit,
-            anon_account,
-            None,
-            &webauthn,
-            duration_from_epoch_now(),
-        );
-        let (async_tx, mut async_rx) = unbounded();
-
-        // Will be some.
-        let mut session = session.unwrap();
-
-        let attempt = vec![
-            AuthCredential::Anonymous,
-            AuthCredential::Anonymous,
-            AuthCredential::Anonymous,
-            AuthCredential::Anonymous,
-            AuthCredential::Anonymous,
-        ];
-        match session.validate_creds(
-            &mut audit,
-            &attempt,
-            &Duration::from_secs(0),
-            &async_tx,
-            &webauthn,
-        ) {
-            Ok(AuthState::Denied(msg)) => {
-                assert!(msg == BAD_CREDENTIALS);
-            }
-            _ => panic!(),
-        };
-        assert!(async_rx.try_recv().is_err());
-        audit.write_log();
     }
 
     #[test]
@@ -666,7 +712,7 @@ mod tests {
             panic!();
         }
 
-        let attempt = vec![AuthCredential::Password("bad_password".to_string())];
+        let attempt = AuthCredential::Password("bad_password".to_string());
         match session.validate_creds(
             &mut audit,
             &attempt,
@@ -686,7 +732,7 @@ mod tests {
             duration_from_epoch_now(),
         );
         let mut session = session.unwrap();
-        let attempt = vec![AuthCredential::Password("test_password".to_string())];
+        let attempt = AuthCredential::Password("test_password".to_string());
         match session.validate_creds(
             &mut audit,
             &attempt,
@@ -746,6 +792,7 @@ mod tests {
             duration_from_epoch_now(),
         );
         let (async_tx, mut async_rx) = unbounded();
+        eprintln!("👻 {:?}", state);
         if let AuthState::Continue(auth_mechs) = state {
             assert!(auth_mechs.iter().fold(true, |acc, x| match x {
                 AuthAllowed::Password => acc,
@@ -770,7 +817,7 @@ mod tests {
             let mut session = session.unwrap();
             match session.validate_creds(
                 &mut audit,
-                &vec![AuthCredential::Anonymous],
+                &AuthCredential::Anonymous,
                 &ts,
                 &async_tx,
                 &webauthn,
@@ -795,7 +842,7 @@ mod tests {
             let mut session = session.unwrap();
             match session.validate_creds(
                 &mut audit,
-                &vec![AuthCredential::Password(pw_bad.to_string())],
+                &AuthCredential::Password(pw_bad.to_string()),
                 &ts,
                 &async_tx,
                 &webauthn,
@@ -805,7 +852,7 @@ mod tests {
             };
             match session.validate_creds(
                 &mut audit,
-                &vec![AuthCredential::TOTP(totp_good)],
+                &AuthCredential::TOTP(totp_good),
                 &ts,
                 &async_tx,
                 &webauthn,
@@ -827,7 +874,7 @@ mod tests {
             let mut session = session.unwrap();
             match session.validate_creds(
                 &mut audit,
-                &vec![AuthCredential::Password(pw_bad.to_string())],
+                &AuthCredential::Password(pw_bad.to_string()),
                 &ts,
                 &async_tx,
                 &webauthn,
@@ -837,7 +884,7 @@ mod tests {
             };
             match session.validate_creds(
                 &mut audit,
-                &vec![AuthCredential::TOTP(totp_bad)],
+                &AuthCredential::TOTP(totp_bad),
                 &ts,
                 &async_tx,
                 &webauthn,
@@ -860,7 +907,7 @@ mod tests {
             let mut session = session.unwrap();
             match session.validate_creds(
                 &mut audit,
-                &vec![AuthCredential::Password(pw_good.to_string())],
+                &AuthCredential::Password(pw_good.to_string()),
                 &ts,
                 &async_tx,
                 &webauthn,
@@ -870,7 +917,7 @@ mod tests {
             };
             match session.validate_creds(
                 &mut audit,
-                &vec![AuthCredential::TOTP(totp_good)],
+                &AuthCredential::TOTP(totp_good),
                 &ts,
                 &async_tx,
                 &webauthn,
@@ -893,7 +940,7 @@ mod tests {
             let mut session = session.unwrap();
             match session.validate_creds(
                 &mut audit,
-                &vec![AuthCredential::Password(pw_good.to_string())],
+                &AuthCredential::Password(pw_good.to_string()),
                 &ts,
                 &async_tx,
                 &webauthn,
@@ -903,7 +950,7 @@ mod tests {
             };
             match session.validate_creds(
                 &mut audit,
-                &vec![AuthCredential::TOTP(totp_bad)],
+                &AuthCredential::TOTP(totp_bad),
                 &ts,
                 &async_tx,
                 &webauthn,
@@ -925,7 +972,7 @@ mod tests {
             let mut session = session.unwrap();
             match session.validate_creds(
                 &mut audit,
-                &vec![AuthCredential::TOTP(totp_bad)],
+                &AuthCredential::TOTP(totp_bad),
                 &ts,
                 &async_tx,
                 &webauthn,
@@ -948,7 +995,7 @@ mod tests {
             let mut session = session.unwrap();
             match session.validate_creds(
                 &mut audit,
-                &vec![AuthCredential::TOTP(totp_good)],
+                &AuthCredential::TOTP(totp_good),
                 &ts,
                 &async_tx,
                 &webauthn,
@@ -958,7 +1005,7 @@ mod tests {
             };
             match session.validate_creds(
                 &mut audit,
-                &vec![AuthCredential::Password(pw_bad.to_string())],
+                &AuthCredential::Password(pw_bad.to_string()),
                 &ts,
                 &async_tx,
                 &webauthn,
@@ -981,7 +1028,7 @@ mod tests {
             let mut session = session.unwrap();
             match session.validate_creds(
                 &mut audit,
-                &vec![AuthCredential::TOTP(totp_good)],
+                &AuthCredential::TOTP(totp_good),
                 &ts,
                 &async_tx,
                 &webauthn,
@@ -991,106 +1038,7 @@ mod tests {
             };
             match session.validate_creds(
                 &mut audit,
-                &vec![AuthCredential::Password(pw_good.to_string())],
-                &ts,
-                &async_tx,
-                &webauthn,
-            ) {
-                Ok(AuthState::Success(_)) => {}
-                _ => panic!(),
-            };
-        }
-
-        // == one step checks
-
-        // check bad totp, bad pw, fail totp.
-        {
-            let (session, _state) = AuthSession::new(
-                &mut audit,
-                account.clone(),
-                None,
-                &webauthn,
-                duration_from_epoch_now(),
-            );
-            let mut session = session.unwrap();
-            match session.validate_creds(
-                &mut audit,
-                &vec![
-                    AuthCredential::Password(pw_bad.to_string()),
-                    AuthCredential::TOTP(totp_bad),
-                ],
-                &ts,
-                &async_tx,
-                &webauthn,
-            ) {
-                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_TOTP_MSG),
-                _ => panic!(),
-            };
-        }
-        // check send bad pw, good totp fail password
-        {
-            let (session, _state) = AuthSession::new(
-                &mut audit,
-                account.clone(),
-                None,
-                &webauthn,
-                duration_from_epoch_now(),
-            );
-            let mut session = session.unwrap();
-            match session.validate_creds(
-                &mut audit,
-                &vec![
-                    AuthCredential::TOTP(totp_good),
-                    AuthCredential::Password(pw_bad.to_string()),
-                ],
-                &ts,
-                &async_tx,
-                &webauthn,
-            ) {
-                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
-                _ => panic!(),
-            };
-        }
-        // check send good pw, bad totp fail totp.
-        {
-            let (session, _state) = AuthSession::new(
-                &mut audit,
-                account.clone(),
-                None,
-                &webauthn,
-                duration_from_epoch_now(),
-            );
-            let mut session = session.unwrap();
-            match session.validate_creds(
-                &mut audit,
-                &vec![
-                    AuthCredential::TOTP(totp_bad),
-                    AuthCredential::Password(pw_good.to_string()),
-                ],
-                &ts,
-                &async_tx,
-                &webauthn,
-            ) {
-                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_TOTP_MSG),
-                _ => panic!(),
-            };
-        }
-        // check good pw, good totp, success
-        {
-            let (session, _state) = AuthSession::new(
-                &mut audit,
-                account.clone(),
-                None,
-                &webauthn,
-                duration_from_epoch_now(),
-            );
-            let mut session = session.unwrap();
-            match session.validate_creds(
-                &mut audit,
-                &vec![
-                    AuthCredential::TOTP(totp_good),
-                    AuthCredential::Password(pw_good.to_string()),
-                ],
+                &AuthCredential::Password(pw_good.to_string()),
                 &ts,
                 &async_tx,
                 &webauthn,
@@ -1159,7 +1107,7 @@ mod tests {
             let mut session = session.unwrap();
             match session.validate_creds(
                 &mut audit,
-                &vec![AuthCredential::Anonymous],
+                &AuthCredential::Anonymous,
                 &ts,
                 &async_tx,
                 &webauthn,
@@ -1190,7 +1138,7 @@ mod tests {
             let mut session = session.unwrap();
             match session.validate_creds(
                 &mut audit,
-                &vec![AuthCredential::Webauthn(resp)],
+                &AuthCredential::Webauthn(resp),
                 &ts,
                 &async_tx,
                 &webauthn,
@@ -1229,7 +1177,7 @@ mod tests {
             let mut session = session.unwrap();
             match session.validate_creds(
                 &mut audit,
-                &vec![AuthCredential::Webauthn(resp)],
+                &AuthCredential::Webauthn(resp),
                 &ts,
                 &async_tx,
                 &webauthn,
@@ -1276,7 +1224,7 @@ mod tests {
             let mut session = session.unwrap();
             match session.validate_creds(
                 &mut audit,
-                &vec![AuthCredential::Webauthn(resp)],
+                &AuthCredential::Webauthn(resp),
                 &ts,
                 &async_tx,
                 &webauthn,

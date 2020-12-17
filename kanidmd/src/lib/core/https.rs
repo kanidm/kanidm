@@ -1009,6 +1009,30 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
             }
             // Do some response/state management.
             match state {
+                AuthState::Choose(allowed) => {
+                    debug!("🧩 -> AuthState::Choose");
+                    let msession = req.session_mut();
+                    // Force a new cookie session.
+                    // msession.regenerate();
+                    // Ensure the auth-session-id is set
+                    msession.remove("auth-session-id");
+                    msession
+                        .insert("auth-session-id", sessionid)
+                        .map(|_| ProtoAuthState::Choose(allowed))
+                        .map_err(|_| OperationError::InvalidSessionState)
+                }
+                AuthState::Continue(allowed) => {
+                    debug!("🧩 -> AuthState::Continue");
+                    let msession = req.session_mut();
+                    // Force a new cookie session.
+                    // msession.regenerate();
+                    // Ensure the auth-session-id is set
+                    msession.remove("auth-session-id");
+                    msession
+                        .insert("auth-session-id", sessionid)
+                        .map(|_| ProtoAuthState::Continue(allowed))
+                        .map_err(|_| OperationError::InvalidSessionState)
+                }
                 AuthState::Success(uat) => {
                     debug!("🧩 -> AuthState::Success");
                     // Remove the auth-session-id
@@ -1029,18 +1053,6 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
                     // Remove the auth-session-id
                     msession.remove("auth-session-id");
                     Err(OperationError::AccessDenied)
-                }
-                AuthState::Continue(allowed) => {
-                    debug!("🧩 -> AuthState::Continue");
-                    let msession = req.session_mut();
-                    // Force a new cookie session.
-                    // msession.regenerate();
-                    // Ensure the auth-session-id is set
-                    msession.remove("auth-session-id");
-                    msession
-                        .insert("auth-session-id", sessionid)
-                        .map(|_| ProtoAuthState::Continue(allowed))
-                        .map_err(|_| OperationError::InvalidSessionState)
                 }
             }
             .map(|state| AuthResponse { state, sessionid })

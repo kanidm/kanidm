@@ -418,8 +418,57 @@ impl<'a> IdmServerWriteTransaction<'a> {
                     state,
                     delay,
                 })
-                // })
-            }
+            } // AuthEventStep::Init
+            AuthEventStep::Begin(mech) => {
+                // lperf_segment!(au, "idm::server::auth<Begin>", || {
+                let _session_ticket = self.session_ticket.acquire().await;
+                let _softlock_ticket = self.softlock_ticket.acquire().await;
+
+                let mut session_write = self.sessions.write();
+                // Do we have a session?
+                let auth_session = session_write
+                    // Why is the session missing?
+                    .get_mut(&mech.sessionid)
+                    .ok_or_else(|| {
+                        ladmin_error!(au, "Invalid Session State (no present session uuid)");
+                        OperationError::InvalidSessionState
+                    })?;
+
+                // From the auth_session, determine if the current account
+                // credential that we are using has become softlocked or not.
+                let mut softlock_write = self.softlocks.write();
+
+                let cred_uuid = auth_session.get_account().primary_cred_uuid();
+
+                let is_valid = softlock_write
+                    .get_mut(&cred_uuid)
+                    .map(|slock| {
+                        // Apply the current time.
+                        slock.apply_time_step(ct);
+                        // Now check the results
+                        slock.is_valid()
+                    })
+                    .unwrap_or(true);
+
+                let r = if is_valid {
+                    // Indicate to the session which auth mech we now want to proceed with.
+                    auth_session.start_session(au, &mech.mech)
+                } else {
+                    // Fail the session
+                    auth_session.end_session("Account is temporarily locked")
+                }
+                .map(|aus| {
+                    let delay = None;
+                    AuthResult {
+                        sessionid: mech.sessionid,
+                        state: aus,
+                        delay,
+                    }
+                });
+                softlock_write.commit();
+                session_write.commit();
+                r
+            } // End AuthEventStep::Mech
             AuthEventStep::Cred(creds) => {
                 // lperf_segment!(au, "idm::server::auth<Creds>", || {
                 let _session_ticket = self.session_ticket.acquire().await;
@@ -479,7 +528,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
                         })
                 } else {
                     // Fail the session
-                    auth_session.end_session("Account is temporarily locked".to_string())
+                    auth_session.end_session("Account is temporarily locked")
                 }
                 .map(|aus| {
                     // TODO: Change this william!
@@ -495,8 +544,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
                 softlock_write.commit();
                 session_write.commit();
                 r
-                // })
-            }
+            } // End AuthEventStep::Cred
         }
     }
 
