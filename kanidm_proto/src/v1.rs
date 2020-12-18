@@ -491,31 +491,6 @@ impl PartialEq for AuthAllowed {
     }
 }
 
-impl Eq for AuthAllowed {}
-
-impl Ord for AuthAllowed {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        if std::mem::discriminant(self) == std::mem::discriminant(other) {
-            std::cmp::Ordering::Equal
-        } else if self == &AuthAllowed::Anonymous {
-            std::cmp::Ordering::Less
-        } else if self == &AuthAllowed::Password {
-            std::cmp::Ordering::Less
-        } else if self == &AuthAllowed::TOTP {
-            std::cmp::Ordering::Less
-        } else {
-            // Webauthn
-            std::cmp::Ordering::Greater
-        }
-    }
-}
-
-impl PartialOrd for AuthAllowed {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AuthState {
