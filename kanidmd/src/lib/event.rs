@@ -995,6 +995,16 @@ impl AuthEventStep {
     }
 
     #[cfg(test)]
+    pub fn begin_mech(sessionid: Uuid, mech: AuthMech) -> Self {
+        AuthEventStep::Begin(
+            AuthEventStepMech {
+                sessionid,
+                mech
+            }
+        )
+    }
+
+    #[cfg(test)]
     pub fn cred_step_anonymous(sid: Uuid) -> Self {
         AuthEventStep::Cred(AuthEventStepCred {
             sessionid: sid,
@@ -1039,6 +1049,14 @@ impl AuthEvent {
         AuthEvent {
             event: None,
             step: AuthEventStep::named_init(name),
+        }
+    }
+
+    #[cfg(test)]
+    pub fn begin_mech(sessionid: Uuid, mech: AuthMech) -> Self {
+        AuthEvent {
+            event: None,
+            step: AuthEventStep::begin_mech(sessionid, mech),
         }
     }
 
