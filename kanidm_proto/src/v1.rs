@@ -427,6 +427,7 @@ impl ModifyRequest {
 // On loginSuccess, we send a cookie, and that allows the token to be
 // generated. The cookie can be shared between servers.
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum AuthCredential {
     Anonymous,
     Password(String),

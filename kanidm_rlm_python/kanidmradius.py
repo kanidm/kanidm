@@ -16,9 +16,10 @@ else:
 # Setup the config too
 print(os.getcwd())
 
+CONFIG_PATH = os.environ.get('KANIDM_RLM_CONFIG', '/data/config.ini')
+
 CONFIG = configparser.ConfigParser()
-CONFIG.read('/data/config.ini')
-# CONFIG.read('/tmp/config.ini')
+CONFIG.read(CONFIG_PATH)
 
 GROUPS = [
     {
@@ -50,7 +51,19 @@ def _authenticate(s, acct, pw):
         print(r.json())
         raise Exception("AuthInitFailed")
 
-    cred_auth = {"step": { "creds": [{"Password": pw}]}}
+    # {'sessionid': '00000000-5fe5-46e1-06b6-b830dd035a10', 'state': {'choose': ['password']}}
+    if 'password' not in r.json().get('state', {'choose': None}).get('choose', None):
+        print("invalid auth mech presented %s" % r.json())
+        raise Exception("AuthMechUnknown")
+
+    begin_auth = {"step": {"begin": "password"}}
+
+    r = s.post(AUTH_URL, json=begin_auth, verify=CA, timeout=TIMEOUT)
+    if r.status_code != 200:
+        print(r.json())
+        raise Exception("AuthBeginFailed")
+
+    cred_auth = {"step": { "cred": {"password": pw}}}
     r = s.post(AUTH_URL, json=cred_auth, verify=CA, timeout=TIMEOUT)
     response = r.json()
     if r.status_code != 200:
