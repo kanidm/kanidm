@@ -2,11 +2,11 @@ use std::collections::BTreeMap;
 use std::fmt;
 use uuid::Uuid;
 // use zxcvbn::feedback;
+use std::cmp::Ordering;
 use webauthn_rs::proto::{
     CreationChallengeResponse, PublicKeyCredential, RegisterPublicKeyCredential,
     RequestChallengeResponse,
 };
-use std::cmp::Ordering;
 
 // These proto implementations are here because they have public definitions
 
@@ -501,30 +501,30 @@ impl PartialEq for AuthAllowed {
 impl Eq for AuthAllowed {}
 
 impl Ord for AuthAllowed {
-        fn cmp(&self, other: &Self) -> Ordering {
-            if self.eq(other) {
-                Ordering::Equal
-            } else {
-                // Relies on the fact that match is executed in order!
-                match (self, other) {
-                    (AuthAllowed::Anonymous, _) => Ordering::Less,
-                    (_, AuthAllowed::Anonymous) => Ordering::Greater,
-                    (AuthAllowed::Password, _) => Ordering::Less,
-                    (_, AuthAllowed::Password) => Ordering::Greater,
-                    (AuthAllowed::TOTP, _) => Ordering::Less,
-                    (_, AuthAllowed::TOTP) => Ordering::Greater,
-                    (AuthAllowed::Webauthn(_), _) => Ordering::Less,
-                    // Unreachable
-                    // (_, AuthAllowed::Webauthn(_)) => Ordering::Greater,
-                }
+    fn cmp(&self, other: &Self) -> Ordering {
+        if self.eq(other) {
+            Ordering::Equal
+        } else {
+            // Relies on the fact that match is executed in order!
+            match (self, other) {
+                (AuthAllowed::Anonymous, _) => Ordering::Less,
+                (_, AuthAllowed::Anonymous) => Ordering::Greater,
+                (AuthAllowed::Password, _) => Ordering::Less,
+                (_, AuthAllowed::Password) => Ordering::Greater,
+                (AuthAllowed::TOTP, _) => Ordering::Less,
+                (_, AuthAllowed::TOTP) => Ordering::Greater,
+                (AuthAllowed::Webauthn(_), _) => Ordering::Less,
+                // Unreachable
+                // (_, AuthAllowed::Webauthn(_)) => Ordering::Greater,
             }
         }
+    }
 }
 
 impl PartialOrd for AuthAllowed {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-            Some(self.cmp(other))
-                }
+        Some(self.cmp(other))
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]

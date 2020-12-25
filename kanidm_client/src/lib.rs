@@ -33,11 +33,11 @@ use webauthn_rs::proto::{
 // use users::{get_current_uid, get_effective_uid};
 
 use kanidm_proto::v1::{
-    AccountUnixExtend, AuthAllowed, AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep, AuthMech,
-    CreateRequest, DeleteRequest, Entry, Filter, GroupUnixExtend, ModifyList, ModifyRequest,
-    OperationError, OperationResponse, RadiusAuthToken, SearchRequest, SearchResponse,
-    SetCredentialRequest, SetCredentialResponse, SingleStringRequest, TOTPSecret, UnixGroupToken,
-    UnixUserToken, UserAuthToken, WhoamiResponse,
+    AccountUnixExtend, AuthAllowed, AuthCredential, AuthMech, AuthRequest, AuthResponse, AuthState,
+    AuthStep, CreateRequest, DeleteRequest, Entry, Filter, GroupUnixExtend, ModifyList,
+    ModifyRequest, OperationError, OperationResponse, RadiusAuthToken, SearchRequest,
+    SearchResponse, SetCredentialRequest, SetCredentialResponse, SingleStringRequest, TOTPSecret,
+    UnixGroupToken, UnixUserToken, UserAuthToken, WhoamiResponse,
 };
 
 pub mod asynchronous;
@@ -656,11 +656,12 @@ impl KanidmClient {
 
         // Should need to continue.
         match r.state {
-            AuthState::Continue(allowed) =>
+            AuthState::Continue(allowed) => {
                 if !allowed.contains(&AuthAllowed::Password) {
                     debug!("Password step not offered.");
                     return Err(ClientError::AuthenticationFailed);
                 }
+            }
             _ => {
                 debug!("Invalid AuthState presented.");
                 return Err(ClientError::AuthenticationFailed);
@@ -775,13 +776,9 @@ impl KanidmClient {
             debug!("Authentication Session ID -> {:?}", v.sessionid);
             v.state
         })
-        .and_then(|state| {
-            match state {
-                AuthState::Choose(mechs) => Ok(mechs),
-                _ => Err(
-                    ClientError::AuthenticationFailed
-                )
-            }
+        .and_then(|state| match state {
+            AuthState::Choose(mechs) => Ok(mechs),
+            _ => Err(ClientError::AuthenticationFailed),
         })
         .map(|mechs| mechs.into_iter().collect())
     }
@@ -796,13 +793,9 @@ impl KanidmClient {
             debug!("Authentication Session ID -> {:?}", v.sessionid);
             v.state
         })
-        .and_then(|state| {
-            match state {
-                AuthState::Continue(allowed) => Ok(allowed),
-                _ => Err(
-                    ClientError::AuthenticationFailed
-                )
-            }
+        .and_then(|state| match state {
+            AuthState::Continue(allowed) => Ok(allowed),
+            _ => Err(ClientError::AuthenticationFailed),
         })
         // For converting to a Set
         // .map(|allowed| allowed.into_iter().collect())

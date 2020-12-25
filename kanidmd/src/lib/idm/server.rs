@@ -1430,9 +1430,9 @@ mod tests {
     use crate::idm::AuthState;
     use crate::modify::{Modify, ModifyList};
     use crate::value::{PartialValue, Value};
-    use kanidm_proto::v1::{AuthAllowed, AuthMech};
     use kanidm_proto::v1::OperationError;
     use kanidm_proto::v1::SetCredentialResponse;
+    use kanidm_proto::v1::{AuthAllowed, AuthMech};
 
     use crate::audit::AuditScope;
     use crate::idm::server::IdmServer;
@@ -1550,7 +1550,6 @@ mod tests {
                 };
 
                 idms_write.commit(au).expect("Must not fail");
-
             };
             {
                 let mut idms_write = idms.write();
@@ -1658,7 +1657,12 @@ mod tests {
         qs_write.commit(au)
     }
 
-    fn init_admin_authsession_sid(idms: &IdmServer, au: &mut AuditScope, ct: Duration, name: &str) -> Uuid {
+    fn init_admin_authsession_sid(
+        idms: &IdmServer,
+        au: &mut AuditScope,
+        ct: Duration,
+        name: &str,
+    ) -> Uuid {
         let mut idms_write = idms.write();
         let admin_init = AuthEvent::named_init(name);
 
@@ -1706,7 +1710,8 @@ mod tests {
     }
 
     fn check_admin_password(idms: &IdmServer, au: &mut AuditScope, pw: &str) {
-        let sid = init_admin_authsession_sid(idms, au, Duration::from_secs(TEST_CURRENT_TIME), "admin");
+        let sid =
+            init_admin_authsession_sid(idms, au, Duration::from_secs(TEST_CURRENT_TIME), "admin");
 
         let mut idms_write = idms.write();
         let anon_step = AuthEvent::cred_step_password(sid, pw);
@@ -1765,7 +1770,12 @@ mod tests {
                        au: &mut AuditScope| {
             init_admin_w_password(au, qs, TEST_PASSWORD).expect("Failed to setup admin account");
 
-            let sid = init_admin_authsession_sid(idms, au, Duration::from_secs(TEST_CURRENT_TIME), "admin@example.com");
+            let sid = init_admin_authsession_sid(
+                idms,
+                au,
+                Duration::from_secs(TEST_CURRENT_TIME),
+                "admin@example.com",
+            );
 
             let mut idms_write = idms.write();
             let anon_step = AuthEvent::cred_step_password(sid, TEST_PASSWORD);
@@ -1814,7 +1824,12 @@ mod tests {
                        _idms_delayed: &IdmServerDelayed,
                        au: &mut AuditScope| {
             init_admin_w_password(au, qs, TEST_PASSWORD).expect("Failed to setup admin account");
-            let sid = init_admin_authsession_sid(idms, au, Duration::from_secs(TEST_CURRENT_TIME), "admin");
+            let sid = init_admin_authsession_sid(
+                idms,
+                au,
+                Duration::from_secs(TEST_CURRENT_TIME),
+                "admin",
+            );
             let mut idms_write = idms.write();
             let anon_step = AuthEvent::cred_step_password(sid, TEST_PASSWORD_INC);
 
@@ -1891,7 +1906,12 @@ mod tests {
                        _idms_delayed: &IdmServerDelayed,
                        au: &mut AuditScope| {
             init_admin_w_password(au, qs, TEST_PASSWORD).expect("Failed to setup admin account");
-            let sid = init_admin_authsession_sid(idms, au, Duration::from_secs(TEST_CURRENT_TIME), "admin");
+            let sid = init_admin_authsession_sid(
+                idms,
+                au,
+                Duration::from_secs(TEST_CURRENT_TIME),
+                "admin",
+            );
             let mut idms_write = idms.write();
             assert!(idms_write.is_sessionid_present(&sid));
             // Expire like we are currently "now". Should not affect our session.
@@ -2590,7 +2610,12 @@ mod tests {
             init_admin_w_password(au, qs, TEST_PASSWORD).expect("Failed to setup admin account");
 
             // Auth invalid, no softlock present.
-            let sid = init_admin_authsession_sid(idms, au, Duration::from_secs(TEST_CURRENT_TIME), "admin");
+            let sid = init_admin_authsession_sid(
+                idms,
+                au,
+                Duration::from_secs(TEST_CURRENT_TIME),
+                "admin",
+            );
             let mut idms_write = idms.write();
             let anon_step = AuthEvent::cred_step_password(sid, TEST_PASSWORD_INC);
 
@@ -2661,8 +2686,12 @@ mod tests {
             // Tested in the softlock state machine.
 
             // Auth valid once softlock pass, valid. Count remains.
-            let sid =
-                init_admin_authsession_sid(idms, au, Duration::from_secs(TEST_CURRENT_TIME + 2), "admin");
+            let sid = init_admin_authsession_sid(
+                idms,
+                au,
+                Duration::from_secs(TEST_CURRENT_TIME + 2),
+                "admin",
+            );
 
             let mut idms_write = idms.write();
             let anon_step = AuthEvent::cred_step_password(sid, TEST_PASSWORD);
@@ -2719,12 +2748,20 @@ mod tests {
             init_admin_w_password(au, qs, TEST_PASSWORD).expect("Failed to setup admin account");
 
             // Start an *early* auth session.
-            let sid_early =
-                init_admin_authsession_sid(idms, au, Duration::from_secs(TEST_CURRENT_TIME), "admin");
+            let sid_early = init_admin_authsession_sid(
+                idms,
+                au,
+                Duration::from_secs(TEST_CURRENT_TIME),
+                "admin",
+            );
 
             // Start a second auth session
-            let sid_later =
-                init_admin_authsession_sid(idms, au, Duration::from_secs(TEST_CURRENT_TIME), "admin");
+            let sid_later = init_admin_authsession_sid(
+                idms,
+                au,
+                Duration::from_secs(TEST_CURRENT_TIME),
+                "admin",
+            );
             // Get the detail wrong in sid_later.
             let mut idms_write = idms.write();
             let anon_step = AuthEvent::cred_step_password(sid_later, TEST_PASSWORD_INC);

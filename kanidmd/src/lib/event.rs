@@ -996,12 +996,7 @@ impl AuthEventStep {
 
     #[cfg(test)]
     pub fn begin_mech(sessionid: Uuid, mech: AuthMech) -> Self {
-        AuthEventStep::Begin(
-            AuthEventStepMech {
-                sessionid,
-                mech
-            }
-        )
+        AuthEventStep::Begin(AuthEventStepMech { sessionid, mech })
     }
 
     #[cfg(test)]
