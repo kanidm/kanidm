@@ -289,17 +289,11 @@ impl Account {
     ) -> Result<bool, OperationError> {
         match appid {
             Some(_) => Err(OperationError::InvalidState),
-            None => {
-                match &self.primary {
-                    // Check the cred's associated pw.
-                    Some(ref primary) => primary
-                        .password
-                        .as_ref()
-                        .ok_or(OperationError::InvalidState)
-                        .and_then(|pw| pw.verify(cleartext)),
-                    None => Err(OperationError::InvalidState),
-                }
-            } // no appid
+            None => self
+                .primary
+                .as_ref()
+                .ok_or(OperationError::InvalidState)
+                .and_then(|cred| cred.password_ref().and_then(|pw| pw.verify(cleartext))),
         }
     }
 

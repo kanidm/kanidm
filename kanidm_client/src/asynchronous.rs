@@ -2,6 +2,7 @@ use crate::{ClientError, KanidmClientBuilder, APPLICATION_JSON, KOPID};
 use reqwest::header::CONTENT_TYPE;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use std::collections::BTreeSet as Set;
 
 use kanidm_proto::v1::*;
 
@@ -189,13 +190,39 @@ impl KanidmAsyncClient {
             .map_err(|e| ClientError::JSONDecode(e, opid))
     }
 
-    pub async fn auth_step_init(&self, ident: &str) -> Result<AuthState, ClientError> {
+    pub async fn auth_step_init(&self, ident: &str) -> Result<Set<AuthMech>, ClientError> {
         let auth_init = AuthRequest {
             step: AuthStep::Init(ident.to_string()),
         };
 
         let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_init).await;
-        r.map(|v| v.state)
+        r.map(|v| {
+            debug!("Authentication Session ID -> {:?}", v.sessionid);
+            v.state
+        })
+        .and_then(|state| match state {
+            AuthState::Choose(mechs) => Ok(mechs),
+            _ => Err(ClientError::AuthenticationFailed),
+        })
+        .map(|mechs| mechs.into_iter().collect())
+    }
+
+    pub async fn auth_step_begin(&self, mech: AuthMech) -> Result<Vec<AuthAllowed>, ClientError> {
+        let auth_begin = AuthRequest {
+            step: AuthStep::Begin(mech),
+        };
+
+        let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_begin).await;
+        r.map(|v| {
+            debug!("Authentication Session ID -> {:?}", v.sessionid);
+            v.state
+        })
+        .and_then(|state| match state {
+            AuthState::Continue(allowed) => Ok(allowed),
+            _ => Err(ClientError::AuthenticationFailed),
+        })
+        // For converting to a Set
+        // .map(|allowed| allowed.into_iter().collect())
     }
 
     pub async fn auth_simple_password(
@@ -203,13 +230,23 @@ impl KanidmAsyncClient {
         ident: &str,
         password: &str,
     ) -> Result<(), ClientError> {
-        let _state = match self.auth_step_init(ident).await {
+        let mechs = match self.auth_step_init(ident).await {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+
+        if !mechs.contains(&AuthMech::Password) {
+            debug!("Password mech not presented");
+            return Err(ClientError::AuthenticationFailed);
+        }
+
+        let _state = match self.auth_step_begin(AuthMech::Password).await {
             Ok(s) => s,
             Err(e) => return Err(e),
         };
 
         let auth_req = AuthRequest {
-            step: AuthStep::Creds(vec![AuthCredential::Password(password.to_string())]),
+            step: AuthStep::Cred(AuthCredential::Password(password.to_string())),
         };
         let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_req).await;
 
@@ -225,15 +262,23 @@ impl KanidmAsyncClient {
     }
 
     pub async fn auth_anonymous(&mut self) -> Result<(), ClientError> {
-        // TODO #251: Check state for auth continue contains anonymous.
-        // #251 will remove the need for this check.
-        let _state = match self.auth_step_init("anonymous").await {
+        let mechs = match self.auth_step_init("anonymous").await {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+
+        if !mechs.contains(&AuthMech::Anonymous) {
+            debug!("Anonymous mech not presented");
+            return Err(ClientError::AuthenticationFailed);
+        }
+
+        let _state = match self.auth_step_begin(AuthMech::Anonymous).await {
             Ok(s) => s,
             Err(e) => return Err(e),
         };
 
         let auth_anon = AuthRequest {
-            step: AuthStep::Creds(vec![AuthCredential::Anonymous]),
+            step: AuthStep::Cred(AuthCredential::Anonymous),
         };
         let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_anon).await;
 

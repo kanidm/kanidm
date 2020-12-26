@@ -17,6 +17,7 @@ use serde::Serialize;
 use serde_derive::Deserialize;
 use serde_json::error::Error as SerdeJsonError;
 use std::collections::BTreeMap;
+use std::collections::BTreeSet as Set;
 use std::fs::{metadata, File, Metadata};
 use std::io::Read;
 use std::os::unix::fs::MetadataExt;
@@ -32,11 +33,11 @@ use webauthn_rs::proto::{
 // use users::{get_current_uid, get_effective_uid};
 
 use kanidm_proto::v1::{
-    AccountUnixExtend, AuthAllowed, AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep,
-    CreateRequest, DeleteRequest, Entry, Filter, GroupUnixExtend, ModifyList, ModifyRequest,
-    OperationError, OperationResponse, RadiusAuthToken, SearchRequest, SearchResponse,
-    SetCredentialRequest, SetCredentialResponse, SingleStringRequest, TOTPSecret, UnixGroupToken,
-    UnixUserToken, UserAuthToken, WhoamiResponse,
+    AccountUnixExtend, AuthAllowed, AuthCredential, AuthMech, AuthRequest, AuthResponse, AuthState,
+    AuthStep, CreateRequest, DeleteRequest, Entry, Filter, GroupUnixExtend, ModifyList,
+    ModifyRequest, OperationError, OperationResponse, RadiusAuthToken, SearchRequest,
+    SearchResponse, SetCredentialRequest, SetCredentialResponse, SingleStringRequest, TOTPSecret,
+    UnixGroupToken, UnixUserToken, UserAuthToken, WhoamiResponse,
 };
 
 pub mod asynchronous;
@@ -555,14 +556,23 @@ impl KanidmClient {
 
     // auth
     pub fn auth_anonymous(&mut self) -> Result<(), ClientError> {
-        // TODO #251: Check state for auth continue contains anonymous.
-        let _state = match self.auth_step_init("anonymous") {
+        let mechs = match self.auth_step_init("anonymous") {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+
+        if !mechs.contains(&AuthMech::Anonymous) {
+            debug!("Anonymous mech not presented");
+            return Err(ClientError::AuthenticationFailed);
+        }
+
+        let _state = match self.auth_step_begin(AuthMech::Anonymous) {
             Ok(s) => s,
             Err(e) => return Err(e),
         };
 
         let auth_anon = AuthRequest {
-            step: AuthStep::Creds(vec![AuthCredential::Anonymous]),
+            step: AuthStep::Cred(AuthCredential::Anonymous),
         };
         let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_anon);
 
@@ -579,13 +589,23 @@ impl KanidmClient {
     }
 
     pub fn auth_simple_password(&mut self, ident: &str, password: &str) -> Result<(), ClientError> {
-        let _state = match self.auth_step_init(ident) {
+        let mechs = match self.auth_step_init(ident) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+
+        if !mechs.contains(&AuthMech::Password) {
+            debug!("Password mech not presented");
+            return Err(ClientError::AuthenticationFailed);
+        }
+
+        let _state = match self.auth_step_begin(AuthMech::Password) {
             Ok(s) => s,
             Err(e) => return Err(e),
         };
 
         let auth_req = AuthRequest {
-            step: AuthStep::Creds(vec![AuthCredential::Password(password.to_string())]),
+            step: AuthStep::Cred(AuthCredential::Password(password.to_string())),
         };
         let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_req);
 
@@ -607,19 +627,52 @@ impl KanidmClient {
         password: &str,
         totp: u32,
     ) -> Result<(), ClientError> {
-        let _state = match self.auth_step_init(ident) {
+        let mechs = match self.auth_step_init(ident) {
             Ok(s) => s,
             Err(e) => return Err(e),
         };
 
-        let auth_req = AuthRequest {
-            step: AuthStep::Creds(vec![
-                AuthCredential::TOTP(totp),
-                AuthCredential::Password(password.to_string()),
-            ]),
-        };
-        let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_req);
+        if !mechs.contains(&AuthMech::PasswordMFA) {
+            debug!("PasswordMFA mech not presented");
+            return Err(ClientError::AuthenticationFailed);
+        }
 
+        let state = match self.auth_step_begin(AuthMech::PasswordMFA) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+
+        if !state.contains(&AuthAllowed::TOTP) {
+            debug!("TOTP step not offered.");
+            return Err(ClientError::AuthenticationFailed);
+        }
+
+        let auth_req = AuthRequest {
+            step: AuthStep::Cred(AuthCredential::TOTP(totp)),
+        };
+
+        let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_req);
+        let r = r?;
+
+        // Should need to continue.
+        match r.state {
+            AuthState::Continue(allowed) => {
+                if !allowed.contains(&AuthAllowed::Password) {
+                    debug!("Password step not offered.");
+                    return Err(ClientError::AuthenticationFailed);
+                }
+            }
+            _ => {
+                debug!("Invalid AuthState presented.");
+                return Err(ClientError::AuthenticationFailed);
+            }
+        };
+
+        let auth_req = AuthRequest {
+            step: AuthStep::Cred(AuthCredential::Password(password.to_string())),
+        };
+
+        let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_req);
         let r = r?;
 
         match r.state {
@@ -636,27 +689,31 @@ impl KanidmClient {
         &mut self,
         ident: &str,
     ) -> Result<RequestChallengeResponse, ClientError> {
-        let state = match self.auth_step_init(ident) {
+        let mechs = match self.auth_step_init(ident) {
             Ok(s) => s,
             Err(e) => return Err(e),
         };
 
-        match state {
-            AuthState::Continue(mut proc) => {
-                // get the webauthn chal out of the state.
-                let chal = proc.pop();
-                match chal {
-                    Some(AuthAllowed::Webauthn(r)) => Ok(r),
-                    _ => Err(ClientError::AuthenticationFailed),
-                }
-            }
+        if !mechs.contains(&AuthMech::Webauthn) {
+            debug!("Webauthn mech not presented");
+            return Err(ClientError::AuthenticationFailed);
+        }
+
+        let mut state = match self.auth_step_begin(AuthMech::Webauthn) {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+
+        // State is now a set of auth continues.
+        match state.pop() {
+            Some(AuthAllowed::Webauthn(r)) => Ok(r),
             _ => Err(ClientError::AuthenticationFailed),
         }
     }
 
     pub fn auth_webauthn_complete(&mut self, pkc: PublicKeyCredential) -> Result<(), ClientError> {
         let auth_req = AuthRequest {
-            step: AuthStep::Creds(vec![AuthCredential::Webauthn(pkc)]),
+            step: AuthStep::Cred(AuthCredential::Webauthn(pkc)),
         };
         let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_req);
 
@@ -709,13 +766,39 @@ impl KanidmClient {
         r.map(|_| true)
     }
 
-    pub fn auth_step_init(&self, ident: &str) -> Result<AuthState, ClientError> {
+    pub fn auth_step_init(&self, ident: &str) -> Result<Set<AuthMech>, ClientError> {
         let auth_init = AuthRequest {
             step: AuthStep::Init(ident.to_string()),
         };
 
         let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_init);
-        r.map(|v| v.state)
+        r.map(|v| {
+            debug!("Authentication Session ID -> {:?}", v.sessionid);
+            v.state
+        })
+        .and_then(|state| match state {
+            AuthState::Choose(mechs) => Ok(mechs),
+            _ => Err(ClientError::AuthenticationFailed),
+        })
+        .map(|mechs| mechs.into_iter().collect())
+    }
+
+    pub fn auth_step_begin(&self, mech: AuthMech) -> Result<Vec<AuthAllowed>, ClientError> {
+        let auth_begin = AuthRequest {
+            step: AuthStep::Begin(mech),
+        };
+
+        let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_begin);
+        r.map(|v| {
+            debug!("Authentication Session ID -> {:?}", v.sessionid);
+            v.state
+        })
+        .and_then(|state| match state {
+            AuthState::Continue(allowed) => Ok(allowed),
+            _ => Err(ClientError::AuthenticationFailed),
+        })
+        // For converting to a Set
+        // .map(|allowed| allowed.into_iter().collect())
     }
 
     // ===== GROUPS

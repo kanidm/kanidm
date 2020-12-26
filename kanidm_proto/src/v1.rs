@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::fmt;
 use uuid::Uuid;
 // use zxcvbn::feedback;
+use std::cmp::Ordering;
 use webauthn_rs::proto::{
     CreationChallengeResponse, PublicKeyCredential, RegisterPublicKeyCredential,
     RequestChallengeResponse,
@@ -426,6 +427,7 @@ impl ModifyRequest {
 // On loginSuccess, we send a cookie, and that allows the token to be
 // generated. The cookie can be shared between servers.
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum AuthCredential {
     Anonymous,
     Password(String),
@@ -444,17 +446,32 @@ impl fmt::Debug for AuthCredential {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize, Eq, PartialOrd, Ord)]
+#[serde(rename_all = "lowercase")]
+pub enum AuthMech {
+    Anonymous,
+    Password,
+    PasswordMFA,
+    Webauthn,
+    // WebauthnVerified,
+    // PasswordWebauthnVerified
+}
+
+impl PartialEq for AuthMech {
+    fn eq(&self, other: &Self) -> bool {
+        std::mem::discriminant(self) == std::mem::discriminant(other)
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AuthStep {
     // name
     Init(String),
-    /*
-    Step(
-        Type(params ....)
-    ),
-    */
-    Creds(Vec<AuthCredential>),
+    // We want to talk to you like this.
+    Begin(AuthMech),
+    // Step
+    Cred(AuthCredential),
     // Should we have a "finalise" type to attempt to finish based on
     // what we have given?
 }
@@ -482,17 +499,47 @@ impl PartialEq for AuthAllowed {
     }
 }
 
+impl Eq for AuthAllowed {}
+
+impl Ord for AuthAllowed {
+    fn cmp(&self, other: &Self) -> Ordering {
+        if self.eq(other) {
+            Ordering::Equal
+        } else {
+            // Relies on the fact that match is executed in order!
+            match (self, other) {
+                (AuthAllowed::Anonymous, _) => Ordering::Less,
+                (_, AuthAllowed::Anonymous) => Ordering::Greater,
+                (AuthAllowed::Password, _) => Ordering::Less,
+                (_, AuthAllowed::Password) => Ordering::Greater,
+                (AuthAllowed::TOTP, _) => Ordering::Less,
+                (_, AuthAllowed::TOTP) => Ordering::Greater,
+                (AuthAllowed::Webauthn(_), _) => Ordering::Less,
+                // Unreachable
+                // (_, AuthAllowed::Webauthn(_)) => Ordering::Greater,
+            }
+        }
+    }
+}
+
+impl PartialOrd for AuthAllowed {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AuthState {
-    // Everything is good, your bearer header has been issued and is within
-    // the result.
-    // Success(UserAuthToken),
-    Success(String),
+    // You need to select how you want to talk to me.
+    Choose(Vec<AuthMech>),
+    // Continue to auth, allowed mechanisms/challenges listed.
+    Continue(Vec<AuthAllowed>),
     // Something was bad, your session is terminated and no cookie.
     Denied(String),
-    // Continue to auth, allowed mechanisms listed.
-    Continue(Vec<AuthAllowed>),
+    // Everything is good, your bearer header has been issued and is within
+    // the result.
+    Success(String),
 }
 
 #[derive(Debug, Serialize, Deserialize)]

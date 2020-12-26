@@ -128,7 +128,7 @@ impl Plugin for PasswordImport {
 mod tests {
     use crate::credential::policy::CryptoPolicy;
     use crate::credential::totp::{TOTP, TOTP_DEFAULT_STEP};
-    use crate::credential::Credential;
+    use crate::credential::{Credential, CredentialType};
     use crate::entry::{Entry, EntryInit, EntryNew};
     use crate::modify::{Modify, ModifyList};
     use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
@@ -268,8 +268,13 @@ mod tests {
                 let c = e
                     .get_ava_single_credential("primary_credential")
                     .expect("failed to get primary cred.");
-                assert!(c.totp.is_some());
-                assert!(c.password.is_some());
+                match &c.type_ {
+                    CredentialType::PasswordMFA(_pw, totp, webauthn) => {
+                        assert!(totp.is_some());
+                        assert!(webauthn.is_empty());
+                    }
+                    _ => assert!(false),
+                };
             }
         );
     }

@@ -6,7 +6,9 @@ use crate::schema::SchemaTransaction;
 use crate::value::PartialValue;
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::ModifyList as ProtoModifyList;
-use kanidm_proto::v1::{AuthCredential, AuthStep, SearchResponse, UserAuthToken, WhoamiResponse};
+use kanidm_proto::v1::{
+    AuthCredential, AuthMech, AuthStep, SearchResponse, UserAuthToken, WhoamiResponse,
+};
 // use error::OperationError;
 use crate::modify::{ModifyInvalid, ModifyList, ModifyValid};
 use crate::server::{
@@ -925,15 +927,22 @@ pub struct AuthEventStepInit {
 }
 
 #[derive(Debug)]
-pub struct AuthEventStepCreds {
+pub struct AuthEventStepCred {
     pub sessionid: Uuid,
-    pub creds: Vec<AuthCredential>,
+    pub cred: AuthCredential,
+}
+
+#[derive(Debug)]
+pub struct AuthEventStepMech {
+    pub sessionid: Uuid,
+    pub mech: AuthMech,
 }
 
 #[derive(Debug)]
 pub enum AuthEventStep {
     Init(AuthEventStepInit),
-    Creds(AuthEventStepCreds),
+    Begin(AuthEventStepMech),
+    Cred(AuthEventStepCred),
 }
 
 impl AuthEventStep {
@@ -948,10 +957,19 @@ impl AuthEventStep {
                     Ok(AuthEventStep::Init(AuthEventStepInit { name, appid: None }))
                 }
             }
-            AuthStep::Creds(creds) => match sid {
-                Some(ssid) => Ok(AuthEventStep::Creds(AuthEventStepCreds {
+            AuthStep::Begin(mech) => match sid {
+                Some(ssid) => Ok(AuthEventStep::Begin(AuthEventStepMech {
                     sessionid: ssid,
-                    creds,
+                    mech,
+                })),
+                None => Err(OperationError::InvalidAuthState(
+                    "session id not present in cred".to_string(),
+                )),
+            },
+            AuthStep::Cred(cred) => match sid {
+                Some(ssid) => Ok(AuthEventStep::Cred(AuthEventStepCred {
+                    sessionid: ssid,
+                    cred,
                 })),
                 None => Err(OperationError::InvalidAuthState(
                     "session id not present in cred".to_string(),
@@ -977,18 +995,23 @@ impl AuthEventStep {
     }
 
     #[cfg(test)]
+    pub fn begin_mech(sessionid: Uuid, mech: AuthMech) -> Self {
+        AuthEventStep::Begin(AuthEventStepMech { sessionid, mech })
+    }
+
+    #[cfg(test)]
     pub fn cred_step_anonymous(sid: Uuid) -> Self {
-        AuthEventStep::Creds(AuthEventStepCreds {
+        AuthEventStep::Cred(AuthEventStepCred {
             sessionid: sid,
-            creds: vec![AuthCredential::Anonymous],
+            cred: AuthCredential::Anonymous,
         })
     }
 
     #[cfg(test)]
     pub fn cred_step_password(sid: Uuid, pw: &str) -> Self {
-        AuthEventStep::Creds(AuthEventStepCreds {
+        AuthEventStep::Cred(AuthEventStepCred {
             sessionid: sid,
-            creds: vec![AuthCredential::Password(pw.to_string())],
+            cred: AuthCredential::Password(pw.to_string()),
         })
     }
 }
@@ -1021,6 +1044,14 @@ impl AuthEvent {
         AuthEvent {
             event: None,
             step: AuthEventStep::named_init(name),
+        }
+    }
+
+    #[cfg(test)]
+    pub fn begin_mech(sessionid: Uuid, mech: AuthMech) -> Self {
+        AuthEvent {
+            event: None,
+            step: AuthEventStep::begin_mech(sessionid, mech),
         }
     }
 
