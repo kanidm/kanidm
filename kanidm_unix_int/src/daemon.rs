@@ -408,6 +408,8 @@ async fn main() {
     // Undo it.
     let _ = unsafe { umask(before) };
 
+    // TODO: Setup a task that handles pre-fetching here.
+
     let server = async move {
         let mut incoming = listener.incoming();
         while let Some(socket_res) = incoming.next().await {
