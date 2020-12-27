@@ -374,7 +374,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
                 };
 
                 let (auth_session, state) = if is_valid {
-                    AuthSession::new(au, account, init.appid.clone(), self.webauthn, ct)
+                    AuthSession::new(au, account, &init.appid, self.webauthn, ct)
                 } else {
                     // it's softlocked, don't even bother.
                     lsecurity!(au, "Account is softlocked.");

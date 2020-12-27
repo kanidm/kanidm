@@ -89,7 +89,7 @@ impl CredHandler {
             }
             CredentialType::PasswordMFA(_, None, _) => Err(()),
             CredentialType::Webauthn(wan) => webauthn
-                .generate_challenge_authenticate(wan.values().map(|c| c.clone()).collect())
+                .generate_challenge_authenticate(wan.values().cloned().collect())
                 .map(|(chal, wan_state)| {
                     CredHandler::Webauthn(CredWebauthn {
                         chal,
@@ -103,7 +103,7 @@ impl CredHandler {
                         "Unable to create webauthn authentication challenge -> {:?}",
                         e
                     );
-                    ()
+                    // maps to unit.
                 }),
         }
     }
@@ -385,7 +385,7 @@ impl AuthSession {
     pub fn new(
         au: &mut AuditScope,
         account: Account,
-        _appid: Option<String>,
+        _appid: &Option<String>,
         webauthn: &Webauthn<WebauthnDomainConfig>,
         ct: Duration,
     ) -> (Option<Self>, AuthState) {

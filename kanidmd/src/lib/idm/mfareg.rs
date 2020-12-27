@@ -26,6 +26,7 @@ pub(crate) enum MfaRegNext {
 }
 
 impl MfaRegNext {
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_proto(self, u: Uuid) -> SetCredentialResponse {
         match self {
             MfaRegNext::Success => SetCredentialResponse::Success,
@@ -64,13 +65,18 @@ impl MfaRegSession {
     ) -> Result<(Self, MfaRegNext), OperationError> {
         // Based on the req, init our session, and the return the next step.
         // Store the ID of the event that start's the attempt
-        let state = MfaRegState::TOTPInit(TOTP::generate_secure(label, TOTP_DEFAULT_STEP));
+        let token = TOTP::generate_secure(label, TOTP_DEFAULT_STEP);
+
+        let accountname = account.name.as_str();
+        let issuer = account.spn.as_str();
+        let next = MfaRegNext::TOTPCheck(token.to_proto(accountname, issuer));
+
+        let state = MfaRegState::TOTPInit(token);
         let s = MfaRegSession {
             origin,
             account,
             state,
         };
-        let next = s.next();
         Ok((s, next))
     }
 
@@ -162,23 +168,6 @@ impl MfaRegSession {
                 })
                 .map(|cred| (MfaRegNext::Success, Some(MfaRegCred::Webauthn(label, cred)))),
             _ => Err(OperationError::InvalidRequestState),
-        }
-    }
-}
-
-impl MfaRegSession {
-    pub fn next(&self) -> MfaRegNext {
-        // Given our current state, what is the next step we need to process or offer?
-        match &self.state {
-            MfaRegState::TOTPDone | MfaRegState::WebauthnDone => MfaRegNext::Success,
-            MfaRegState::TOTPInit(token) => {
-                let accountname = self.account.name.as_str();
-                let issuer = self.account.spn.as_str();
-                MfaRegNext::TOTPCheck(token.to_proto(accountname, issuer))
-            }
-            MfaRegState::WebauthnInit(_label, _registration_state) => {
-                unreachable!();
-            }
         }
     }
 }

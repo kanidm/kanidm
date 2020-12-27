@@ -8,7 +8,9 @@ can be used on the machine for various interactive tasks.
 
 Kanidm provide a unix daemon that runs on any client that wants to use pam
 and nsswitch integration. This is provided as the daemon can cache the accounts
-for users who have unreliable networks or leave the site where kanidm is.
+for users who have unreliable networks or leave the site where kanidm is. The
+cache is also able to cache missing-entry responses to reduce network traffic
+and main server load.
 Additionally, the daemon means that the pam and nsswitch integration libraries
 can be small, helping to reduce the attack surface of the machine.
 

@@ -281,8 +281,10 @@ impl KanidmClientBuilder {
         let client = client_builder.build()?;
 
         // Now get the origin.
+        #[allow(clippy::expect_used)]
         let uri = Url::parse(&address).expect("can not fail");
 
+        #[allow(clippy::expect_used)]
         let origin = uri
             .host_str()
             .map(|h| format!("{}://{}", uri.scheme(), h))

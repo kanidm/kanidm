@@ -318,7 +318,7 @@ impl Credential {
         policy: &CryptoPolicy,
         cleartext: &str,
     ) -> Result<Self, OperationError> {
-        Password::new(policy, cleartext).map(|pw| Self::new_from_password(pw))
+        Password::new(policy, cleartext).map(Self::new_from_password)
     }
 
     pub fn new_webauthn_only(label: String, cred: WebauthnCredential) -> Self {
@@ -352,7 +352,7 @@ impl Credential {
             }
             CredentialType::PasswordMFA(pw, totp, map) => {
                 let mut nmap = map.clone();
-                if let Some(_) = nmap.insert(label.clone(), cred) {
+                if nmap.insert(label.clone(), cred).is_some() {
                     return Err(OperationError::InvalidAttribute(format!(
                         "Webauthn label '{:?}' already exists",
                         label
@@ -362,7 +362,7 @@ impl Credential {
             }
             CredentialType::Webauthn(map) => {
                 let mut nmap = map.clone();
-                if let Some(_) = nmap.insert(label.clone(), cred) {
+                if nmap.insert(label.clone(), cred).is_some() {
                     return Err(OperationError::InvalidAttribute(format!(
                         "Webauthn label '{:?}' already exists",
                         label
@@ -380,6 +380,7 @@ impl Credential {
         })
     }
 
+    #[allow(clippy::ptr_arg)]
     pub fn update_webauthn_counter(
         &self,
         cid: &CredentialID,
@@ -402,9 +403,11 @@ impl Credential {
                 .map(|label| {
                     let mut webauthn_map = map.clone();
 
+                    if let Some(cred) = 
                     webauthn_map
-                        .get_mut(label)
-                        .map(|cred| cred.counter = counter);
+                        .get_mut(label) {
+                        cred.counter = counter
+                    };
                     webauthn_map
                 }),
         };
@@ -420,7 +423,7 @@ impl Credential {
         let type_ = match &self.type_ {
             CredentialType::Password(_pw) | CredentialType::GeneratedPassword(_pw) => {
                 // Should not be possible!
-                unreachable!();
+                return Err(OperationError::InvalidState);
             }
             CredentialType::Webauthn(_) => CredentialType::Webauthn(map),
             CredentialType::PasswordMFA(pw, totp, _) => {
@@ -576,7 +579,7 @@ impl Credential {
             CredentialType::PasswordMFA(_pw, totp, wan) => {
                 if let Some(r_totp) = totp {
                     Some(CredSoftLockPolicy::TOTP(r_totp.step))
-                } else if wan.len() > 0 {
+                } else if !wan.is_empty() {
                     Some(CredSoftLockPolicy::Webauthn)
                 } else {
                     None
