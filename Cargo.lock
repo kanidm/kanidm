@@ -2111,7 +2111,7 @@ dependencies = [
 
 [[package]]
 name = "nss_kanidm"
-version = "1.1.0-alpha.2"
+version = "1.1.0-alpha.3"
 dependencies = [
  "kanidm_unix_int",
  "lazy_static",
