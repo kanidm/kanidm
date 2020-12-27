@@ -5,6 +5,31 @@
 
 # Release Notes
 
+## 2021-01-01 - Kanidm 1.1.0-alpha3
+
+This is the third alpha series release of the Kanidm Identity Management
+project. Alpha releases are to help get feedback and ideas from the community
+on how we can continue to make this project better for a future supported release.
+
+### Release Highlights
+
+* Account "valid from" and "expiry" times.
+* Rate limiting and softlocking of account credentials to prevent bruteforcing.
+* Foundations of webauthn and multiple credential support.
+* Rewrite of json authentication protocol components.
+* Unixd will cache "non-existant" items to improve nss/pam latency.
+
+### Getting Started
+
+To get started, see the [kanidm book]
+
+### Feedback
+
+We value your feedback! First, please see our [code of conduct]. If you
+have questions please join our [gitter community channel] so that we
+can help. If you find a bug or issue, we'd love you to report it to our
+[issue tracker].
+
 ## 2020-10-01 - Kanidm 1.1.0-alpha2
 
 This is the second alpha series release of the Kanidm Identity Management
