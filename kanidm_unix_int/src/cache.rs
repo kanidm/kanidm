@@ -4,6 +4,7 @@ use crate::unix_proto::{NssGroup, NssUser};
 use kanidm_client::asynchronous::KanidmAsyncClient;
 use kanidm_client::ClientError;
 use kanidm_proto::v1::{OperationError, UnixGroupToken, UnixUserToken};
+use lru::LruCache;
 use reqwest::StatusCode;
 use std::collections::BTreeSet;
 use std::ops::Add;
@@ -11,6 +12,9 @@ use std::string::ToString;
 use std::time::{Duration, SystemTime};
 use tokio::sync::{Mutex, RwLock};
 
+const NXCACHE_SIZE: usize = 2048;
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Id {
     Name(String),
     Gid(u32),
@@ -35,6 +39,7 @@ pub struct CacheLayer {
     home_attr: HomeAttr,
     uid_attr_map: UidAttr,
     gid_attr_map: UidAttr,
+    nxcache: Mutex<LruCache<Id, SystemTime>>,
 }
 
 impl ToString for Id {
@@ -85,6 +90,7 @@ impl CacheLayer {
             home_attr,
             uid_attr_map,
             gid_attr_map,
+            nxcache: Mutex::new(LruCache::new(NXCACHE_SIZE)),
         })
     }
 
@@ -109,11 +115,15 @@ impl CacheLayer {
     }
 
     pub async fn clear_cache(&self) -> Result<(), ()> {
+        let mut nxcache_txn = self.nxcache.lock().await;
+        nxcache_txn.clear();
         let dbtxn = self.db.write().await;
         dbtxn.clear_cache().and_then(|_| dbtxn.commit())
     }
 
     pub async fn invalidate(&self) -> Result<(), ()> {
+        let mut nxcache_txn = self.nxcache.lock().await;
+        nxcache_txn.clear();
         let dbtxn = self.db.write().await;
         dbtxn.invalidate().and_then(|_| dbtxn.commit())
     }
@@ -126,6 +136,17 @@ impl CacheLayer {
     async fn get_cached_grouptokens(&self) -> Result<Vec<UnixGroupToken>, ()> {
         let dbtxn = self.db.write().await;
         dbtxn.get_groups()
+    }
+
+    async fn set_nxcache(&self, id: &Id) {
+        let mut nxcache_txn = self.nxcache.lock().await;
+        let ex_time = SystemTime::now() + Duration::from_secs(self.timeout_seconds);
+        nxcache_txn.put(id.clone(), ex_time);
+    }
+
+    pub async fn check_nxcache(&self, id: &Id) -> bool {
+        let nxcache_txn = self.nxcache.lock().await;
+        nxcache_txn.contains(id)
     }
 
     async fn get_cached_usertoken(
@@ -154,8 +175,30 @@ impl CacheLayer {
                     Ok((false, Some(ut)))
                 }
             }
-            None => Ok((true, None)),
-        }
+            None => {
+                // it wasn't in the DB - lets see if it's in the nxcache.
+                let mut nxcache_txn = self.nxcache.lock().await;
+                match nxcache_txn.get(account_id) {
+                    Some(ex_time) => {
+                        let now = SystemTime::now();
+                        if &now >= ex_time {
+                            // It's in the LRU, but we are past the expiry so
+                            // lets attempt a refresh.
+                            Ok((true, None))
+                        } else {
+                            // It's in the LRU and still valid, so return that
+                            // no check is needed.
+                            Ok((false, None))
+                        }
+                    }
+                    None => {
+                        // Not in the LRU. Return that this IS expired
+                        // and we have no data.
+                        Ok((true, None))
+                    }
+                }
+            }
+        } // end match r
     }
 
     async fn get_cached_grouptoken(
@@ -184,7 +227,29 @@ impl CacheLayer {
                     Ok((false, Some(ut)))
                 }
             }
-            None => Ok((true, None)),
+            None => {
+                // it wasn't in the DB - lets see if it's in the nxcache.
+                let mut nxcache_txn = self.nxcache.lock().await;
+                match nxcache_txn.get(grp_id) {
+                    Some(ex_time) => {
+                        let now = SystemTime::now();
+                        if &now >= ex_time {
+                            // It's in the LRU, but we are past the expiry so
+                            // lets attempt a refresh.
+                            Ok((true, None))
+                        } else {
+                            // It's in the LRU and still valid, so return that
+                            // no check is needed.
+                            Ok((false, None))
+                        }
+                    }
+                    None => {
+                        // Not in the LRU. Return that this IS expired
+                        // and we have no data.
+                        Ok((true, None))
+                    }
+                }
+            }
         }
     }
 
@@ -312,6 +377,9 @@ impl CacheLayer {
                         if let Some(tok) = token {
                             self.delete_cache_usertoken(&tok.uuid).await?;
                         };
+                        // Cache the NX here.
+                        self.set_nxcache(account_id).await;
+
                         Ok(None)
                     }
                     er => {
@@ -385,6 +453,9 @@ impl CacheLayer {
                         if let Some(tok) = token {
                             self.delete_cache_grouptoken(&tok.uuid).await?;
                         };
+                        // Cache the NX here.
+                        self.set_nxcache(grp_id).await;
+
                         Ok(None)
                     }
                     er => {

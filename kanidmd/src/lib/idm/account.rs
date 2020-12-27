@@ -259,6 +259,7 @@ impl Account {
         Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
     }
 
+    #[allow(clippy::ptr_arg)]
     pub(crate) fn gen_webauthn_counter_mod(
         &self,
         cid: &CredentialID,

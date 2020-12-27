@@ -68,6 +68,8 @@ reqwest = { version = "0.10" }
 users = "0.10"
 async-std = "1.6"
 
+lru = "0.6"
+
 [features]
 # default = [ "libsqlite3-sys/bundled" ]
 

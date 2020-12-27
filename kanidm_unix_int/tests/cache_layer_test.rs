@@ -7,7 +7,7 @@ use kanidm::audit::LogLevel;
 use kanidm::config::{Configuration, IntegrationTestConfig};
 use kanidm::core::create_server_core;
 
-use kanidm_unix_common::cache::CacheLayer;
+use kanidm_unix_common::cache::{CacheLayer, Id};
 use kanidm_unix_common::constants::{
     DEFAULT_GID_ATTR_MAP, DEFAULT_HOME_ATTR, DEFAULT_HOME_PREFIX, DEFAULT_SHELL,
     DEFAULT_UID_ATTR_MAP,
@@ -651,6 +651,86 @@ fn test_cache_account_expiry() {
                 .await
                 .expect("failed to authenticate");
             assert!(a5 == Some(false));
+        };
+        rt.block_on(fut);
+    })
+}
+
+#[test]
+fn test_cache_nxcache() {
+    run_test(test_fixture, |cachelayer, mut _adminclient| {
+        let mut rt = Runtime::new().expect("Failed to start tokio");
+        let fut = async move {
+            cachelayer.attempt_online().await;
+            assert!(cachelayer.test_connection().await);
+            // Is it in the nxcache?
+
+            assert!(
+                !cachelayer
+                    .check_nxcache(&Id::Name("root".to_string()))
+                    .await
+            );
+            assert!(!cachelayer.check_nxcache(&Id::Gid(0)).await);
+            assert!(
+                !cachelayer
+                    .check_nxcache(&Id::Name("root_group".to_string()))
+                    .await
+            );
+            assert!(!cachelayer.check_nxcache(&Id::Gid(1)).await);
+
+            // Look for the acc id + nss id
+            let ut = cachelayer
+                .get_nssaccount_name("root")
+                .await
+                .expect("Failed to get from cache");
+            assert!(ut.is_none());
+            let ut = cachelayer
+                .get_nssaccount_gid(0)
+                .await
+                .expect("Failed to get from cache");
+            assert!(ut.is_none());
+
+            let gt = cachelayer
+                .get_nssgroup_name("root_group")
+                .await
+                .expect("Failed to get from cache");
+            assert!(gt.is_none());
+            let gt = cachelayer
+                .get_nssgroup_gid(1)
+                .await
+                .expect("Failed to get from cache");
+            assert!(gt.is_none());
+
+            // Should all now be nxed
+            assert!(
+                cachelayer
+                    .check_nxcache(&Id::Name("root".to_string()))
+                    .await
+            );
+            assert!(cachelayer.check_nxcache(&Id::Gid(0)).await);
+            assert!(
+                cachelayer
+                    .check_nxcache(&Id::Name("root_group".to_string()))
+                    .await
+            );
+            assert!(cachelayer.check_nxcache(&Id::Gid(1)).await);
+
+            // invalidate cache
+            assert!(cachelayer.invalidate().await.is_ok());
+
+            // Both should NOT be in nxcache now.
+            assert!(
+                !cachelayer
+                    .check_nxcache(&Id::Name("root".to_string()))
+                    .await
+            );
+            assert!(!cachelayer.check_nxcache(&Id::Gid(0)).await);
+            assert!(
+                !cachelayer
+                    .check_nxcache(&Id::Name("root_group".to_string()))
+                    .await
+            );
+            assert!(!cachelayer.check_nxcache(&Id::Gid(1)).await);
         };
         rt.block_on(fut);
     })

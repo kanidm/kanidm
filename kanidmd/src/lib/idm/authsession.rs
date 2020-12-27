@@ -89,7 +89,7 @@ impl CredHandler {
             }
             CredentialType::PasswordMFA(_, None, _) => Err(()),
             CredentialType::Webauthn(wan) => webauthn
-                .generate_challenge_authenticate(wan.values().map(|c| c.clone()).collect())
+                .generate_challenge_authenticate(wan.values().cloned().collect())
                 .map(|(chal, wan_state)| {
                     CredHandler::Webauthn(CredWebauthn {
                         chal,
@@ -103,7 +103,7 @@ impl CredHandler {
                         "Unable to create webauthn authentication challenge -> {:?}",
                         e
                     );
-                    ()
+                    // maps to unit.
                 }),
         }
     }
@@ -385,7 +385,7 @@ impl AuthSession {
     pub fn new(
         au: &mut AuditScope,
         account: Account,
-        _appid: Option<String>,
+        _appid: &Option<String>,
         webauthn: &Webauthn<WebauthnDomainConfig>,
         ct: Duration,
     ) -> (Option<Self>, AuthState) {
@@ -632,7 +632,7 @@ mod tests {
         let (session, state) = AuthSession::new(
             &mut audit,
             anon_account,
-            None,
+            &None,
             &webauthn,
             duration_from_epoch_now(),
         );
@@ -679,7 +679,7 @@ mod tests {
         let (session, state) = AuthSession::new(
             &mut audit,
             anon_account,
-            Some("NonExistantAppID".to_string()),
+            &Some("NonExistantAppID".to_string()),
             &webauthn,
             duration_from_epoch_now(),
         );
@@ -703,7 +703,7 @@ mod tests {
             let (session, state) = AuthSession::new(
                 $audit,
                 $account.clone(),
-                None,
+                &None,
                 $webauthn,
                 duration_from_epoch_now(),
             );
@@ -800,7 +800,7 @@ mod tests {
             let (session, state) = AuthSession::new(
                 $audit,
                 $account.clone(),
-                None,
+                &None,
                 $webauthn,
                 duration_from_epoch_now(),
             );
@@ -992,7 +992,7 @@ mod tests {
             let (session, state) = AuthSession::new(
                 $audit,
                 $account.clone(),
-                None,
+                &None,
                 $webauthn,
                 duration_from_epoch_now(),
             );
