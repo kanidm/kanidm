@@ -632,7 +632,7 @@ mod tests {
         let (session, state) = AuthSession::new(
             &mut audit,
             anon_account,
-            None,
+            &None,
             &webauthn,
             duration_from_epoch_now(),
         );
@@ -679,7 +679,7 @@ mod tests {
         let (session, state) = AuthSession::new(
             &mut audit,
             anon_account,
-            Some("NonExistantAppID".to_string()),
+            &Some("NonExistantAppID".to_string()),
             &webauthn,
             duration_from_epoch_now(),
         );
@@ -703,7 +703,7 @@ mod tests {
             let (session, state) = AuthSession::new(
                 $audit,
                 $account.clone(),
-                None,
+                &None,
                 $webauthn,
                 duration_from_epoch_now(),
             );
@@ -800,7 +800,7 @@ mod tests {
             let (session, state) = AuthSession::new(
                 $audit,
                 $account.clone(),
-                None,
+                &None,
                 $webauthn,
                 duration_from_epoch_now(),
             );
@@ -992,7 +992,7 @@ mod tests {
             let (session, state) = AuthSession::new(
                 $audit,
                 $account.clone(),
-                None,
+                &None,
                 $webauthn,
                 duration_from_epoch_now(),
             );
