@@ -498,7 +498,7 @@ impl QueryServerWriteV1 {
                 let rev = match ReviveRecycledEvent::from_parts(
                     &mut audit,
                     msg.uat.as_ref(),
-                    msg.filter,
+                    &msg.filter,
                     &qs_write,
                 ) {
                     Ok(r) => r,

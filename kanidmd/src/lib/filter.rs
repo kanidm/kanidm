@@ -8,6 +8,7 @@
 //! [`Filter`]: struct.Filter.html
 //! [`Entry`]: ../entry/struct.Entry.html
 
+
 use crate::audit::AuditScope;
 use crate::be::{IdxKey, IdxKeyRef, IdxKeyToRef};
 use crate::event::{Event, EventOrigin};
@@ -21,10 +22,10 @@ use hashbrown::HashSet;
 use kanidm_proto::v1::Filter as ProtoFilter;
 use kanidm_proto::v1::{OperationError, SchemaError};
 use ldap3_server::simple::LdapFilter;
+// use smartstring::alias::String;
 use std::cmp::{Ordering, PartialOrd};
 use std::collections::BTreeSet;
 use std::iter;
-
 use uuid::Uuid;
 
 const FILTER_DEPTH_MAX: usize = 16;
@@ -294,6 +295,30 @@ impl Filter<FilterValid> {
         self.state.inner.get_attr_set(&mut r_set);
         r_set
     }
+
+    /*
+     * CORRECTNESS: This is a transform on the "immutable" filtervalid type.
+     * We know this is correct because internally we can assert that the hidden
+     * and recycled types *must* be valid.
+     */
+
+    pub fn into_ignore_hidden(self) -> Self {
+        // Destructure the former filter, and surround it with an ignore_hidden.
+        Filter {
+            state: FilterValid {
+                inner: FilterComp::new_ignore_hidden(self.state.inner),
+            },
+        }
+    }
+
+    pub fn into_recycled(self) -> Self {
+        // Destructure the former filter and surround it with a recycled only query
+        Filter {
+            state: FilterValid {
+                inner: FilterComp::new_recycled(self.state.inner),
+            },
+        }
+    }
 }
 
 impl Filter<FilterInvalid> {
@@ -313,30 +338,12 @@ impl Filter<FilterInvalid> {
         }
     }
 
-    pub fn into_ignore_hidden(self) -> Self {
-        // Destructure the former filter, and surround it with an ignore_hidden.
-        Filter {
-            state: FilterInvalid {
-                inner: FilterComp::new_ignore_hidden(self.state.inner),
-            },
-        }
-    }
-
     pub fn new_recycled(inner: FC) -> Self {
         // Create a filter that searches recycled items only.
         let fc = FilterComp::new(inner);
         Filter {
             state: FilterInvalid {
                 inner: FilterComp::new_recycled(fc),
-            },
-        }
-    }
-
-    pub fn into_recycled(self) -> Self {
-        // Destructure the former filter and surround it with a recycled only query
-        Filter {
-            state: FilterInvalid {
-                inner: FilterComp::new_recycled(self.state.inner),
             },
         }
     }

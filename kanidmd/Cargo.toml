@@ -94,6 +94,8 @@ webauthn-rs = "0.3.0-alpha.1"
 libc = "0.2"
 users = "0.10"
 
+smartstring = { version = "0.2", features = ["serde"] }
+
 [features]
 # default = [ "libsqlite3-sys/bundled", "openssl/vendored" ]
 

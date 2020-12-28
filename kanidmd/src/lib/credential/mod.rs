@@ -403,9 +403,7 @@ impl Credential {
                 .map(|label| {
                     let mut webauthn_map = map.clone();
 
-                    if let Some(cred) = 
-                    webauthn_map
-                        .get_mut(label) {
+                    if let Some(cred) = webauthn_map.get_mut(label) {
                         cred.counter = counter
                     };
                     webauthn_map
