@@ -196,14 +196,8 @@ impl AccessControlCreate {
                 receiver,
                 targetscope,
             },
-            classes: classes
-                .split_whitespace()
-                .map(AttrString::from)
-                .collect(),
-            attrs: attrs
-                .split_whitespace()
-                .map(AttrString::from)
-                .collect(),
+            classes: classes.split_whitespace().map(AttrString::from).collect(),
+            attrs: attrs.split_whitespace().map(AttrString::from).collect(),
         }
     }
 }
