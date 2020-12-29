@@ -253,6 +253,7 @@ mod tests {
     use crate::server::QueryServerWriteTransaction;
     use crate::value::{PartialValue, Value};
     use kanidm_proto::v1::{OperationError, PluginError};
+    use smartstring::alias::String as AttrString;
 
     const JSON_ADMIN_ALLOW_ALL: &'static str = r#"{
         "attrs": {
@@ -546,7 +547,7 @@ mod tests {
             preload,
             filter!(f_eq("name", PartialValue::new_iname("testgroup_a"))),
             ModifyList::new_list(vec![Modify::Present(
-                "uuid".to_string(),
+                AttrString::from("uuid"),
                 Value::from("f15a7219-1d15-44e3-a7b4-bec899c07788")
             )]),
             None,
@@ -575,7 +576,7 @@ mod tests {
             preload,
             filter!(f_eq("name", PartialValue::new_iname("testgroup_a"))),
             ModifyList::new_list(vec![Modify::Removed(
-                "uuid".to_string(),
+                AttrString::from("uuid"),
                 PartialValue::new_uuids("f15a7219-1d15-44e3-a7b4-bec899c07788").unwrap()
             )]),
             None,
@@ -603,7 +604,7 @@ mod tests {
             Err(OperationError::SystemProtectedAttribute),
             preload,
             filter!(f_eq("name", PartialValue::new_iname("testgroup_a"))),
-            ModifyList::new_list(vec![Modify::Purged("uuid".to_string())]),
+            ModifyList::new_list(vec![Modify::Purged(AttrString::from("uuid"))]),
             None,
             |_, _| {}
         );

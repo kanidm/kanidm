@@ -15,6 +15,7 @@ use concread::cowcell::*;
 use idlset::AndNot;
 use idlset::IDLBitRange;
 use kanidm_proto::v1::{ConsistencyError, OperationError};
+use smartstring::alias::String as AttrString;
 use std::ops::DerefMut;
 use std::time::Duration;
 use uuid::Uuid;
@@ -114,13 +115,13 @@ pub trait BackendTransaction {
                     {
                         Some(idl) => (
                             IDL::Indexed(idl),
-                            FilterPlan::EqIndexed(attr.to_string(), idx_key),
+                            FilterPlan::EqIndexed(attr.clone(), idx_key),
                         ),
-                        None => (IDL::ALLIDS, FilterPlan::EqCorrupt(attr.to_string())),
+                        None => (IDL::ALLIDS, FilterPlan::EqCorrupt(attr.clone())),
                     }
                 } else {
                     // Schema believes this is not indexed
-                    (IDL::ALLIDS, FilterPlan::EqUnindexed(attr.to_string()))
+                    (IDL::ALLIDS, FilterPlan::EqUnindexed(attr.clone()))
                 }
             }
             FilterResolved::Sub(attr, subvalue, idx) => {
@@ -134,13 +135,13 @@ pub trait BackendTransaction {
                     {
                         Some(idl) => (
                             IDL::Indexed(idl),
-                            FilterPlan::SubIndexed(attr.to_string(), idx_key),
+                            FilterPlan::SubIndexed(attr.clone(), idx_key),
                         ),
-                        None => (IDL::ALLIDS, FilterPlan::SubCorrupt(attr.to_string())),
+                        None => (IDL::ALLIDS, FilterPlan::SubCorrupt(attr.clone())),
                     }
                 } else {
                     // Schema believes this is not indexed
-                    (IDL::ALLIDS, FilterPlan::SubUnindexed(attr.to_string()))
+                    (IDL::ALLIDS, FilterPlan::SubUnindexed(attr.clone()))
                 }
             }
             FilterResolved::Pres(attr, idx) => {
@@ -152,17 +153,17 @@ pub trait BackendTransaction {
                         &IndexType::PRESENCE,
                         &"_".to_string(),
                     )? {
-                        Some(idl) => (IDL::Indexed(idl), FilterPlan::PresIndexed(attr.to_string())),
-                        None => (IDL::ALLIDS, FilterPlan::PresCorrupt(attr.to_string())),
+                        Some(idl) => (IDL::Indexed(idl), FilterPlan::PresIndexed(attr.clone())),
+                        None => (IDL::ALLIDS, FilterPlan::PresCorrupt(attr.clone())),
                     }
                 } else {
                     // Schema believes this is not indexed
-                    (IDL::ALLIDS, FilterPlan::PresUnindexed(attr.to_string()))
+                    (IDL::ALLIDS, FilterPlan::PresUnindexed(attr.clone()))
                 }
             }
             FilterResolved::LessThan(attr, _subvalue, _idx) => {
                 // We have no process for indexing this right now.
-                (IDL::ALLIDS, FilterPlan::LessThanUnindexed(attr.to_string()))
+                (IDL::ALLIDS, FilterPlan::LessThanUnindexed(attr.clone()))
             }
             FilterResolved::Or(l) => {
                 // Importantly if this has no inner elements, this returns
@@ -1032,7 +1033,7 @@ impl<'a> BackendWriteTransaction<'a> {
     fn missing_idxs(
         &self,
         audit: &mut AuditScope,
-    ) -> Result<Vec<(String, IndexType)>, OperationError> {
+    ) -> Result<Vec<(AttrString, IndexType)>, OperationError> {
         let idx_table_list = self.get_idlayer().list_idxs(audit)?;
 
         // Turn the vec to a real set
@@ -1400,6 +1401,7 @@ mod tests {
     };
     use crate::event::EventLimits;
     use crate::value::{IndexType, PartialValue, Value};
+    use smartstring::alias::String as AttrString;
 
     macro_rules! run_test {
         ($test_fn:expr) => {{
@@ -1416,31 +1418,31 @@ mod tests {
             // This is a demo idxmeta, purely for testing.
             let mut idxmeta = Set::with_capacity(16);
             idxmeta.insert(IdxKey {
-                attr: "name".to_string(),
+                attr: AttrString::from("name"),
                 itype: IndexType::EQUALITY,
             });
             idxmeta.insert(IdxKey {
-                attr: "name".to_string(),
+                attr: AttrString::from("name"),
                 itype: IndexType::PRESENCE,
             });
             idxmeta.insert(IdxKey {
-                attr: "name".to_string(),
+                attr: AttrString::from("name"),
                 itype: IndexType::SUBSTRING,
             });
             idxmeta.insert(IdxKey {
-                attr: "uuid".to_string(),
+                attr: AttrString::from("uuid"),
                 itype: IndexType::EQUALITY,
             });
             idxmeta.insert(IdxKey {
-                attr: "uuid".to_string(),
+                attr: AttrString::from("uuid"),
                 itype: IndexType::PRESENCE,
             });
             idxmeta.insert(IdxKey {
-                attr: "ta".to_string(),
+                attr: AttrString::from("ta"),
                 itype: IndexType::EQUALITY,
             });
             idxmeta.insert(IdxKey {
-                attr: "tb".to_string(),
+                attr: AttrString::from("tb"),
                 itype: IndexType::EQUALITY,
             });
 
@@ -1461,7 +1463,7 @@ mod tests {
         ($audit:expr, $be:expr, $ent:expr) => {{
             let ei = unsafe { $ent.clone().into_sealed_committed() };
             let filt = unsafe {
-                ei.filter_from_attrs(&vec![String::from("userid")])
+                ei.filter_from_attrs(&vec![AttrString::from("userid")])
                     .expect("failed to generate filter")
                     .into_valid_resolved()
             };
@@ -1475,7 +1477,7 @@ mod tests {
         ($audit:expr, $be:expr, $ent:expr, $attr:expr) => {{
             let ei = unsafe { $ent.clone().into_sealed_committed() };
             let filt = unsafe {
-                ei.filter_from_attrs(&vec![String::from("userid")])
+                ei.filter_from_attrs(&vec![AttrString::from("userid")])
                     .expect("failed to generate filter")
                     .into_valid_resolved()
             };
@@ -2510,7 +2512,7 @@ mod tests {
 
             assert!(single_result.is_ok());
             let filt = unsafe {
-                e.filter_from_attrs(&vec![String::from("nonexist")])
+                e.filter_from_attrs(&vec![AttrString::from("nonexist")])
                     .expect("failed to generate filter")
                     .into_valid_resolved()
             };
@@ -2546,7 +2548,7 @@ mod tests {
             assert!(single_result.is_ok());
 
             let filt = unsafe {
-                e.filter_from_attrs(&vec![String::from("nonexist")])
+                e.filter_from_attrs(&vec![AttrString::from("nonexist")])
                     .expect("failed to generate filter")
                     .into_valid_resolved()
             };

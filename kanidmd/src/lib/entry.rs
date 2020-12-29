@@ -51,6 +51,7 @@ use std::collections::BTreeSet;
 // use std::collections::BTreeMap as Map;
 use hashbrown::HashMap as Map;
 use hashbrown::HashSet;
+use smartstring::alias::String as AttrString;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -151,7 +152,7 @@ pub struct EntryReduced {
     uuid: Uuid,
 }
 
-fn compare_attrs(left: &Map<String, Set<Value>>, right: &Map<String, Set<Value>>) -> bool {
+fn compare_attrs(left: &Map<AttrString, Set<Value>>, right: &Map<AttrString, Set<Value>>) -> bool {
     // We can't shortcut based on len because cid mod may not be present.
     // Build the set of all keys between both.
     let allkeys: Set<&str> = left
@@ -198,7 +199,7 @@ pub struct Entry<VALID, STATE> {
     valid: VALID,
     state: STATE,
     // We may need to change this to Set to allow borrow of Value -> PartialValue for lookups.
-    attrs: Map<String, Set<Value>>,
+    attrs: Map<AttrString, Set<Value>>,
 }
 
 impl<VALID, STATE> std::fmt::Debug for Entry<VALID, STATE>
@@ -266,7 +267,7 @@ impl Entry<EntryInit, EntryNew> {
 
         // Somehow we need to take the tree of e attrs, and convert
         // all ref types to our types ...
-        let map2: Result<Map<String, Set<Value>>, OperationError> = e
+        let map2: Result<Map<AttrString, Set<Value>>, OperationError> = e
             .attrs
             .iter()
             .map(|(k, v)| {
@@ -319,9 +320,9 @@ impl Entry<EntryInit, EntryNew> {
         // str -> proto entry
         let pe: ProtoEntry = serde_json::from_str(es).expect("Invalid Proto Entry");
         // use a const map to convert str -> ava
-        let x: Map<String, Set<Value>> = pe.attrs.into_iter()
+        let x: Map<AttrString, Set<Value>> = pe.attrs.into_iter()
             .map(|(k, vs)| {
-                let attr = k.to_lowercase();
+                let attr = AttrString::from(k.to_lowercase());
                 let vv: Set<Value> = match attr.as_str() {
                     "attributename" | "classname" | "domain" => {
                         vs.into_iter().map(|v| Value::new_iutf8(&v)).collect()
@@ -596,7 +597,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
             must.iter().for_each(|attr| {
                 let avas = ne.get_ava(&attr.name);
                 if avas.is_none() {
-                    missing_must.push(attr.name.clone());
+                    missing_must.push(attr.name.to_string());
                 }
             });
 
@@ -618,7 +619,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
                                     attr_name
                                 );
                                 */
-                                Err(SchemaError::PhantomAttribute(attr_name.clone()))
+                                Err(SchemaError::PhantomAttribute(attr_name.to_string()))
                             } else {
                                 a_schema.validate_ava(attr_name.as_str(), avas)
                                 // .map_err(|e| lrequest_error!("Failed to validate: {}", attr_name);)
@@ -626,7 +627,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
                         }
                         None => {
                             // lrequest_error!("Invalid Attribute {} for extensible object", attr_name);
-                            Err(SchemaError::InvalidAttribute(attr_name.clone()))
+                            Err(SchemaError::InvalidAttribute(attr_name.to_string()))
                         }
                     }
                 })?;
@@ -638,7 +639,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
                 // We clone string here, but it's so we can check all
                 // the values in "may" ar here - so we can't avoid this look up. What we
                 // could do though, is have &String based on the schemaattribute though?;
-                let may: Result<Map<&String, &SchemaAttribute>, _> = classes
+                let may: Result<Map<&AttrString, &SchemaAttribute>, _> = classes
                     .iter()
                     // Join our class systemmmust + must + systemmay + may into one.
                     .flat_map(|cls| {
@@ -675,7 +676,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
                         }
                         None => {
                             // lrequest_error!("Invalid Attribute {} for may+must set", attr_name);
-                            Err(SchemaError::InvalidAttribute(attr_name.clone()))
+                            Err(SchemaError::InvalidAttribute(attr_name.to_string()))
                         }
                     }
                 })?;
@@ -833,7 +834,7 @@ impl Entry<EntrySealed, EntryNew> {
 }
 
 type IdxDiff<'a> =
-    Vec<Result<(&'a String, &'a IndexType, String), (&'a String, &'a IndexType, String)>>;
+    Vec<Result<(&'a AttrString, &'a IndexType, String), (&'a AttrString, &'a IndexType, String)>>;
 
 impl<VALID> Entry<VALID, EntryCommitted> {
     pub fn get_id(&self) -> u64 {
@@ -1252,7 +1253,7 @@ impl Entry<EntrySealed, EntryCommitted> {
 
     pub fn from_dbentry(au: &mut AuditScope, db_e: DbEntry, id: u64) -> Result<Self, ()> {
         // Convert attrs from db format to value
-        let r_attrs: Result<Map<String, Set<Value>>, ()> = match db_e.ent {
+        let r_attrs: Result<Map<AttrString, Set<Value>>, ()> = match db_e.ent {
             DbEntryVers::V1(v1) => v1
                 .attrs
                 .into_iter()
@@ -1333,14 +1334,14 @@ impl Entry<EntrySealed, EntryCommitted> {
         let class_ava = btreeset![Value::new_class("object"), Value::new_class("tombstone")];
         let last_mod_ava = btreeset![Value::new_cid(cid.clone())];
 
-        let mut attrs_new: Map<String, Set<Value>> = Map::new();
+        let mut attrs_new: Map<AttrString, Set<Value>> = Map::new();
 
         attrs_new.insert(
-            "uuid".to_string(),
+            AttrString::from("uuid"),
             btreeset![Value::new_uuidr(&self.get_uuid())],
         );
-        attrs_new.insert("class".to_string(), class_ava);
-        attrs_new.insert("last_modified_cid".to_string(), last_mod_ava);
+        attrs_new.insert(AttrString::from("class"), class_ava);
+        attrs_new.insert(AttrString::from("last_modified_cid"), last_mod_ava);
 
         Entry {
             valid: EntryInvalid { cid },
@@ -1436,7 +1437,7 @@ impl Entry<EntryReduced, EntryCommitted> {
                 let pvs: Result<Vec<String>, _> =
                     vs.iter().map(|v| qs.resolve_value(audit, v)).collect();
                 let pvs = pvs?;
-                Ok((k.clone(), pvs))
+                Ok((k.to_string(), pvs))
             })
             .collect();
         Ok(ProtoEntry { attrs: attrs? })
@@ -1477,7 +1478,10 @@ impl Entry<EntryReduced, EntryCommitted> {
 impl<VALID, STATE> Entry<VALID, STATE> {
     fn add_ava_int(&mut self, attr: &str, value: Value) {
         // How do we make this turn into an ok / err?
-        let v = self.attrs.entry(attr.to_string()).or_insert_with(Set::new);
+        let v = self
+            .attrs
+            .entry(AttrString::from(attr))
+            .or_insert_with(Set::new);
         // Here we need to actually do a check/binary search ...
         v.insert(value);
         // Doesn't matter if it already exists, equality will replace.
@@ -1485,7 +1489,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
 
     fn set_last_changed(&mut self, cid: Cid) {
         let cv = btreeset![Value::new_cid(cid)];
-        let _ = self.attrs.insert("last_modified_cid".to_string(), cv);
+        let _ = self.attrs.insert(AttrString::from("last_modified_cid"), cv);
     }
 
     #[inline(always)]
@@ -1707,7 +1711,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         }
     }
 
-    pub fn filter_from_attrs(&self, attrs: &[String]) -> Option<Filter<FilterInvalid>> {
+    pub fn filter_from_attrs(&self, attrs: &[AttrString]) -> Option<Filter<FilterInvalid>> {
         // Because we are a valid entry, a filter we create still may not
         // be valid because the internal server entry templates are still
         // created by humans! Plus double checking something already valid
@@ -1810,7 +1814,7 @@ where
     fn remove_ava(&mut self, attr: &str, value: &PartialValue) {
         // It would be great to remove these extra allocations, but they
         // really don't cost much :(
-        self.attrs.entry(attr.to_string()).and_modify(|v| {
+        self.attrs.entry(AttrString::from(attr)).and_modify(|v| {
             // Here we need to actually do a check/binary search ...
             v.remove(value);
         });
@@ -1836,7 +1840,7 @@ where
     /// Provide a true ava set.
     pub fn set_ava(&mut self, attr: &str, values: Set<Value>) {
         // Overwrite the existing value, build a tree from the list.
-        let _ = self.attrs.insert(attr.to_string(), values);
+        let _ = self.attrs.insert(AttrString::from(attr), values);
     }
 
     /*
@@ -1897,16 +1901,16 @@ impl From<&SchemaAttribute> for Entry<EntryInit, EntryNew> {
         let syntax_v = btreeset![Value::from(s.syntax.clone())];
 
         // Build the Map of the attributes relevant
-        let mut attrs: Map<String, Set<Value>> = Map::with_capacity(16);
-        attrs.insert("attributename".to_string(), name_v);
-        attrs.insert("description".to_string(), desc_v);
-        attrs.insert("uuid".to_string(), uuid_v);
-        attrs.insert("multivalue".to_string(), multivalue_v);
-        attrs.insert("unique".to_string(), unique_v);
-        attrs.insert("index".to_string(), index_v);
-        attrs.insert("syntax".to_string(), syntax_v);
+        let mut attrs: Map<AttrString, Set<Value>> = Map::with_capacity(16);
+        attrs.insert(AttrString::from("attributename"), name_v);
+        attrs.insert(AttrString::from("description"), desc_v);
+        attrs.insert(AttrString::from("uuid"), uuid_v);
+        attrs.insert(AttrString::from("multivalue"), multivalue_v);
+        attrs.insert(AttrString::from("unique"), unique_v);
+        attrs.insert(AttrString::from("index"), index_v);
+        attrs.insert(AttrString::from("syntax"), syntax_v);
         attrs.insert(
-            "class".to_string(),
+            AttrString::from("class"),
             btreeset![
                 Value::new_class("object"),
                 Value::new_class("system"),
@@ -1931,12 +1935,12 @@ impl From<&SchemaClass> for Entry<EntryInit, EntryNew> {
         let name_v = btreeset![Value::new_iutf8(s.name.as_str())];
         let desc_v = btreeset![Value::new_utf8(s.description.clone())];
 
-        let mut attrs: Map<String, Set<Value>> = Map::with_capacity(16);
-        attrs.insert("classname".to_string(), name_v);
-        attrs.insert("description".to_string(), desc_v);
-        attrs.insert("uuid".to_string(), uuid_v);
+        let mut attrs: Map<AttrString, Set<Value>> = Map::with_capacity(16);
+        attrs.insert(AttrString::from("classname"), name_v);
+        attrs.insert(AttrString::from("description"), desc_v);
+        attrs.insert(AttrString::from("uuid"), uuid_v);
         attrs.insert(
-            "class".to_string(),
+            AttrString::from("class"),
             btreeset![
                 Value::new_class("object"),
                 Value::new_class("system"),
@@ -1946,7 +1950,7 @@ impl From<&SchemaClass> for Entry<EntryInit, EntryNew> {
 
         if !s.systemmay.is_empty() {
             attrs.insert(
-                "systemmay".to_string(),
+                AttrString::from("systemmay"),
                 s.systemmay
                     .iter()
                     .map(|sm| Value::new_attr(sm.as_str()))
@@ -1956,7 +1960,7 @@ impl From<&SchemaClass> for Entry<EntryInit, EntryNew> {
 
         if !s.systemmust.is_empty() {
             attrs.insert(
-                "systemmust".to_string(),
+                AttrString::from("systemmust"),
                 s.systemmust
                     .iter()
                     .map(|sm| Value::new_attr(sm.as_str()))
@@ -1979,6 +1983,7 @@ mod tests {
     use crate::modify::{Modify, ModifyList};
     use crate::value::{IndexType, PartialValue, Value};
     use hashbrown::HashSet;
+    use smartstring::alias::String as AttrString;
     use std::collections::BTreeSet as Set;
 
     #[test]
@@ -2075,7 +2080,7 @@ mod tests {
 
         let present_single_mods = unsafe {
             ModifyList::new_valid_list(vec![Modify::Present(
-                String::from("attr"),
+                AttrString::from("attr"),
                 Value::new_iutf8("value"),
             )])
         };
@@ -2089,8 +2094,8 @@ mod tests {
         // Assert present for multivalue
         let present_multivalue_mods = unsafe {
             ModifyList::new_valid_list(vec![
-                Modify::Present(String::from("class"), Value::new_iutf8("test")),
-                Modify::Present(String::from("class"), Value::new_iutf8("multi_test")),
+                Modify::Present(AttrString::from("class"), Value::new_iutf8("test")),
+                Modify::Present(AttrString::from("class"), Value::new_iutf8("multi_test")),
             ])
         };
 
@@ -2101,14 +2106,14 @@ mod tests {
 
         // Assert purge on single/multi/empty value
         let purge_single_mods =
-            unsafe { ModifyList::new_valid_list(vec![Modify::Purged(String::from("attr"))]) };
+            unsafe { ModifyList::new_valid_list(vec![Modify::Purged(AttrString::from("attr"))]) };
 
         e.apply_modlist(&purge_single_mods);
 
         assert!(!e.attribute_pres("attr"));
 
         let purge_multi_mods =
-            unsafe { ModifyList::new_valid_list(vec![Modify::Purged(String::from("class"))]) };
+            unsafe { ModifyList::new_valid_list(vec![Modify::Purged(AttrString::from("class"))]) };
 
         e.apply_modlist(&purge_multi_mods);
 
@@ -2121,7 +2126,7 @@ mod tests {
         // Assert removed on value that exists and doesn't exist
         let remove_mods = unsafe {
             ModifyList::new_valid_list(vec![Modify::Removed(
-                String::from("attr"),
+                AttrString::from("attr"),
                 PartialValue::new_iutf8("value"),
             )])
         };
@@ -2154,15 +2159,15 @@ mod tests {
 
         let mut idxmeta = HashSet::with_capacity(8);
         idxmeta.insert(IdxKey {
-            attr: "userid".to_string(),
+            attr: AttrString::from("userid"),
             itype: IndexType::EQUALITY,
         });
         idxmeta.insert(IdxKey {
-            attr: "userid".to_string(),
+            attr: AttrString::from("userid"),
             itype: IndexType::PRESENCE,
         });
         idxmeta.insert(IdxKey {
-            attr: "extra".to_string(),
+            attr: AttrString::from("extra"),
             itype: IndexType::EQUALITY,
         });
 
@@ -2178,12 +2183,19 @@ mod tests {
         assert!(
             del_r[0]
                 == Err((
-                    &"userid".to_string(),
+                    &AttrString::from("userid"),
                     &IndexType::EQUALITY,
                     "william".to_string()
                 ))
         );
-        assert!(del_r[1] == Err((&"userid".to_string(), &IndexType::PRESENCE, "_".to_string())));
+        assert!(
+            del_r[1]
+                == Err((
+                    &AttrString::from("userid"),
+                    &IndexType::PRESENCE,
+                    "_".to_string()
+                ))
+        );
 
         // Check generating an add diff
         let mut add_r = Entry::idx_diff(&idxmeta, None, Some(&e1));
@@ -2192,12 +2204,19 @@ mod tests {
         assert!(
             add_r[0]
                 == Ok((
-                    &"userid".to_string(),
+                    &AttrString::from("userid"),
                     &IndexType::EQUALITY,
                     "william".to_string()
                 ))
         );
-        assert!(add_r[1] == Ok((&"userid".to_string(), &IndexType::PRESENCE, "_".to_string())));
+        assert!(
+            add_r[1]
+                == Ok((
+                    &AttrString::from("userid"),
+                    &IndexType::PRESENCE,
+                    "_".to_string()
+                ))
+        );
 
         // Check the mod cases now
 
@@ -2210,7 +2229,7 @@ mod tests {
         assert!(
             add_a_r[0]
                 == Ok((
-                    &"extra".to_string(),
+                    &AttrString::from("extra"),
                     &IndexType::EQUALITY,
                     "test".to_string()
                 ))
@@ -2221,7 +2240,7 @@ mod tests {
         assert!(
             del_a_r[0]
                 == Err((
-                    &"extra".to_string(),
+                    &AttrString::from("extra"),
                     &IndexType::EQUALITY,
                     "test".to_string()
                 ))
@@ -2234,7 +2253,7 @@ mod tests {
         assert!(
             chg_r[1]
                 == Err((
-                    &"userid".to_string(),
+                    &AttrString::from("userid"),
                     &IndexType::EQUALITY,
                     "william".to_string()
                 ))
@@ -2243,7 +2262,7 @@ mod tests {
         assert!(
             chg_r[0]
                 == Ok((
-                    &"userid".to_string(),
+                    &AttrString::from("userid"),
                     &IndexType::EQUALITY,
                     "claire".to_string()
                 ))

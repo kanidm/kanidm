@@ -424,6 +424,7 @@ mod tests {
     use crate::modify::{Modify, ModifyList};
     use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
     use crate::value::{PartialValue, Value};
+    use smartstring::alias::String as AttrString;
 
     const UUID_A: &'static str = "aaaaaaaa-f82e-4484-a407-181aa03bda5c";
     const UUID_B: &'static str = "bbbbbbbb-2438-4384-9891-48f4c8172e9b";
@@ -745,7 +746,7 @@ mod tests {
             preload,
             filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_A).unwrap())),
             ModifyList::new_list(vec![Modify::Present(
-                "member".to_string(),
+                AttrString::from("member"),
                 Value::new_refer_s(&UUID_B).unwrap()
             )]),
             None,
@@ -780,7 +781,7 @@ mod tests {
             preload,
             filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_A).unwrap())),
             ModifyList::new_list(vec![Modify::Present(
-                "member".to_string(),
+                AttrString::from("member"),
                 Value::new_refer_s(&UUID_B).unwrap()
             )]),
             None,
@@ -833,7 +834,7 @@ mod tests {
             preload,
             filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_B).unwrap())),
             ModifyList::new_list(vec![Modify::Present(
-                "member".to_string(),
+                AttrString::from("member"),
                 Value::new_refer_s(&UUID_C).unwrap()
             )]),
             None,
@@ -889,7 +890,7 @@ mod tests {
             preload,
             filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_C).unwrap())),
             ModifyList::new_list(vec![Modify::Present(
-                "member".to_string(),
+                AttrString::from("member"),
                 Value::new_refer_s(&UUID_A).unwrap()
             )]),
             None,
@@ -955,7 +956,7 @@ mod tests {
                 f_eq("uuid", PartialValue::new_uuids(&UUID_D).unwrap()),
             ])),
             ModifyList::new_list(vec![Modify::Present(
-                "member".to_string(),
+                AttrString::from("member"),
                 Value::new_refer_s(&UUID_A).unwrap()
             )]),
             None,
@@ -1023,7 +1024,7 @@ mod tests {
             preload,
             filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_A).unwrap())),
             ModifyList::new_list(vec![Modify::Removed(
-                "member".to_string(),
+                AttrString::from("member"),
                 PartialValue::new_refer_s(&UUID_B).unwrap()
             )]),
             None,
@@ -1061,7 +1062,7 @@ mod tests {
             preload,
             filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_A).unwrap())),
             ModifyList::new_list(vec![Modify::Removed(
-                "member".to_string(),
+                AttrString::from("member"),
                 PartialValue::new_refer_s(&UUID_B).unwrap()
             )]),
             None,
@@ -1118,7 +1119,7 @@ mod tests {
             preload,
             filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_B).unwrap())),
             ModifyList::new_list(vec![Modify::Removed(
-                "member".to_string(),
+                AttrString::from("member"),
                 PartialValue::new_refer_s(&UUID_C).unwrap()
             )]),
             None,
@@ -1185,7 +1186,7 @@ mod tests {
             preload,
             filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_C).unwrap())),
             ModifyList::new_list(vec![Modify::Removed(
-                "member".to_string(),
+                AttrString::from("member"),
                 PartialValue::new_refer_s(&UUID_A).unwrap()
             )]),
             None,
@@ -1271,11 +1272,11 @@ mod tests {
             filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_C).unwrap())),
             ModifyList::new_list(vec![
                 Modify::Removed(
-                    "member".to_string(),
+                    AttrString::from("member"),
                     PartialValue::new_refer_s(&UUID_A).unwrap()
                 ),
                 Modify::Removed(
-                    "member".to_string(),
+                    AttrString::from("member"),
                     PartialValue::new_refer_s(&UUID_D).unwrap()
                 ),
             ]),

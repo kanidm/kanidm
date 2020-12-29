@@ -39,6 +39,7 @@ use crate::schema::{
 };
 use crate::value::{PartialValue, SyntaxType, Value};
 use kanidm_proto::v1::{ConsistencyError, OperationError, SchemaError};
+use smartstring::alias::String as AttrString;
 
 type EntrySealedCommitted = Entry<EntrySealed, EntryCommitted>;
 type EntryInvalidCommitted = Entry<EntryInvalid, EntryCommitted>;
@@ -1300,7 +1301,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // create the modify
             // tl;dr, remove the class=recycled
             let modlist = ModifyList::new_list(vec![Modify::Removed(
-                "class".to_string(),
+                AttrString::from("class"),
                 PVCLASS_RECYCLED.clone(),
             )]);
 
@@ -1326,13 +1327,17 @@ impl<'a> QueryServerWriteTransaction<'a> {
                         dm_mods
                             .entry(*g_uuid)
                             .and_modify(|mlist| {
-                                let m =
-                                    Modify::Present("member".to_string(), Value::new_refer_r(&u));
+                                let m = Modify::Present(
+                                    AttrString::from("member"),
+                                    Value::new_refer_r(&u),
+                                );
                                 mlist.push_mod(m);
                             })
                             .or_insert({
-                                let m =
-                                    Modify::Present("member".to_string(), Value::new_refer_r(&u));
+                                let m = Modify::Present(
+                                    AttrString::from("member"),
+                                    Value::new_refer_r(&u),
+                                );
                                 ModifyList::new_list(vec![m])
                             });
                     });
@@ -1870,7 +1875,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             e.get_uuid()
         );
 
-        let filt = match e.filter_from_attrs(&[String::from("uuid")]) {
+        let filt = match e.filter_from_attrs(&[AttrString::from("uuid")]) {
             Some(f) => f,
             None => return Err(OperationError::FilterGeneration),
         };
@@ -2449,6 +2454,7 @@ mod tests {
     use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
     use crate::value::{PartialValue, Value};
     use kanidm_proto::v1::{OperationError, SchemaError};
+    use smartstring::alias::String as AttrString;
     use std::time::Duration;
     use uuid::Uuid;
 
@@ -2574,7 +2580,7 @@ mod tests {
                     JSON_ADMIN_V1,
                     filter!(f_eq("name", PartialValue::new_iname("flarbalgarble"))),
                     ModifyList::new_list(vec![Modify::Present(
-                        "description".to_string(),
+                        AttrString::from("description"),
                         Value::from("anusaosu"),
                     )]),
                 )
@@ -2589,7 +2595,7 @@ mod tests {
                 audit,
                 &filter!(f_eq("tnanuanou", PartialValue::new_iname("Flarbalgarble"))),
                 &ModifyList::new_list(vec![Modify::Present(
-                    "description".to_string(),
+                    AttrString::from("description"),
                     Value::from("anusaosu"),
                 )]),
             );
@@ -2605,7 +2611,7 @@ mod tests {
                 ModifyEvent::new_internal_invalid(
                     filter!(f_pres("class")),
                     ModifyList::new_list(vec![Modify::Present(
-                        "htnaonu".to_string(),
+                        AttrString::from("htnaonu"),
                         Value::from("anusaosu"),
                     )]),
                 )
@@ -2622,7 +2628,7 @@ mod tests {
                 ModifyEvent::new_internal_invalid(
                     filter!(f_eq("name", PartialValue::new_iname("testperson2"))),
                     ModifyList::new_list(vec![Modify::Present(
-                        "description".to_string(),
+                        AttrString::from("description"),
                         Value::from("anusaosu"),
                     )]),
                 )
@@ -2637,7 +2643,7 @@ mod tests {
                         f_eq("name", PartialValue::new_iname("testperson2")),
                     ])),
                     ModifyList::new_list(vec![Modify::Present(
-                        "description".to_string(),
+                        AttrString::from("description"),
                         Value::from("anusaosu"),
                     )]),
                 )
@@ -2677,7 +2683,7 @@ mod tests {
                 ModifyEvent::new_internal_invalid(
                     filter!(f_eq("name", PartialValue::new_iname("testperson1"))),
                     ModifyList::new_list(vec![Modify::Present(
-                        "class".to_string(),
+                        AttrString::from("class"),
                         Value::new_class("system_info"),
                     )]),
                 )
@@ -2689,7 +2695,7 @@ mod tests {
                 ModifyEvent::new_internal_invalid(
                     filter!(f_eq("name", PartialValue::new_iname("testperson1"))),
                     ModifyList::new_list(vec![Modify::Present(
-                        "name".to_string(),
+                        AttrString::from("name"),
                         Value::new_iname("testpersonx"),
                     )]),
                 )
@@ -2701,9 +2707,9 @@ mod tests {
                 ModifyEvent::new_internal_invalid(
                     filter!(f_eq("name", PartialValue::new_iname("testperson1"))),
                     ModifyList::new_list(vec![
-                        Modify::Present("class".to_string(), Value::new_class("system_info")),
+                        Modify::Present(AttrString::from("class"), Value::new_class("system_info")),
                         // Modify::Present("domain".to_string(), Value::new_iutf8("domain.name")),
-                        Modify::Present("version".to_string(), Value::new_uint32(1)),
+                        Modify::Present(AttrString::from("version"), Value::new_uint32(1)),
                     ]),
                 )
             };
@@ -2714,8 +2720,8 @@ mod tests {
                 ModifyEvent::new_internal_invalid(
                     filter!(f_eq("name", PartialValue::new_iname("testperson1"))),
                     ModifyList::new_list(vec![
-                        Modify::Purged("name".to_string()),
-                        Modify::Present("name".to_string(), Value::new_iname("testpersonx")),
+                        Modify::Purged(AttrString::from("name")),
+                        Modify::Present(AttrString::from("name"), Value::new_iname("testpersonx")),
                     ]),
                 )
             };
@@ -2827,7 +2833,7 @@ mod tests {
                     admin.clone(),
                     filt_i_ts.clone(),
                     ModifyList::new_list(vec![Modify::Present(
-                        "class".to_string(),
+                        AttrString::from("class"),
                         Value::new_class("tombstone"),
                     )]),
                 )
@@ -2922,7 +2928,7 @@ mod tests {
                     admin.clone(),
                     filt_i_rc.clone(),
                     ModifyList::new_list(vec![Modify::Present(
-                        "class".to_string(),
+                        AttrString::from("class"),
                         Value::new_class("recycled"),
                     )]),
                 )
@@ -3536,7 +3542,7 @@ mod tests {
                 ModifyEvent::new_internal_invalid(
                     filter!(f_eq("name", PartialValue::new_iname("testperson1"))),
                     ModifyList::new_list(vec![Modify::Present(
-                        "primary_credential".to_string(),
+                        AttrString::from("primary_credential"),
                         v_cred,
                     )]),
                 )
@@ -3841,10 +3847,13 @@ mod tests {
                 ModifyEvent::new_internal_invalid(
                     filter!(f_eq("uuid", PartialValue::new_uuidr(&UUID_DOMAIN_INFO))),
                     ModifyList::new_list(vec![
-                        Modify::Purged("name".to_string()),
-                        Modify::Purged("domain_name".to_string()),
-                        Modify::Present("name".to_string(), Value::new_iutf8("domain_local")),
-                        Modify::Present("domain_name".to_string(), Value::new_iutf8("example.com")),
+                        Modify::Purged(AttrString::from("name")),
+                        Modify::Purged(AttrString::from("domain_name")),
+                        Modify::Present(AttrString::from("name"), Value::new_iutf8("domain_local")),
+                        Modify::Present(
+                            AttrString::from("domain_name"),
+                            Value::new_iutf8("example.com"),
+                        ),
                     ]),
                 )
             };

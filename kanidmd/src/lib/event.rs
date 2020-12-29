@@ -24,6 +24,7 @@ use crate::actors::v1_write::{CreateMessage, DeleteMessage, ModifyMessage};
 // use crate::schema::SchemaTransaction;
 
 use ldap3_server::simple::LdapFilter;
+use smartstring::alias::String as AttrString;
 use std::collections::BTreeSet;
 use std::time::Duration;
 use uuid::Uuid;
@@ -264,7 +265,7 @@ pub struct SearchEvent {
     pub filter: Filter<FilterValid>,
     // This is the original filter, for the purpose of ACI checking.
     pub filter_orig: Filter<FilterValid>,
-    pub attrs: Option<BTreeSet<String>>,
+    pub attrs: Option<BTreeSet<AttrString>>,
 }
 
 impl SearchEvent {
@@ -277,14 +278,10 @@ impl SearchEvent {
         let f = Filter::from_ro(audit, &event, &msg.req.filter, qs)?;
         // We do need to do this twice to account for the ignore_hidden
         // changes.
-        let filter = f
-            .clone()
-            .into_ignore_hidden()
-            .validate(qs.get_schema())
-            .map_err(OperationError::SchemaViolation)?;
         let filter_orig = f
             .validate(qs.get_schema())
             .map_err(OperationError::SchemaViolation)?;
+        let filter = filter_orig.clone().into_ignore_hidden();
         Ok(SearchEvent {
             event,
             filter,
@@ -300,7 +297,7 @@ impl SearchEvent {
         msg: InternalSearchMessage,
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        let r_attrs: Option<BTreeSet<String>> = msg.attrs.map(|vs| {
+        let r_attrs: Option<BTreeSet<AttrString>> = msg.attrs.map(|vs| {
             vs.into_iter()
                 .filter_map(|a| qs.get_schema().normalise_attr_if_exists(a.as_str()))
                 .collect()
@@ -315,24 +312,14 @@ impl SearchEvent {
 
         let event = Event::from_ro_uat(audit, qs, msg.uat.as_ref())?;
 
-        let filter = msg
-            .filter
-            .clone()
-            .into_ignore_hidden()
-            .validate(qs.get_schema())
-            .map_err(|e| {
-                lrequest_error!(audit, "filter schema violation -> {:?}", e);
-                OperationError::SchemaViolation(e)
-            })?;
         let filter_orig = msg.filter.validate(qs.get_schema()).map_err(|e| {
-            lrequest_error!(audit, "filter_orig schema violation -> {:?}", e);
+            lrequest_error!(audit, "filter schema violation -> {:?}", e);
             OperationError::SchemaViolation(e)
         })?;
+        let filter = filter_orig.clone().into_ignore_hidden();
 
         Ok(SearchEvent {
             event,
-            // We do need to do this twice to account for the ignore_hidden
-            // changes.
             filter,
             filter_orig,
             attrs: r_attrs,
@@ -344,7 +331,7 @@ impl SearchEvent {
         msg: InternalSearchRecycledMessage,
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        let r_attrs: Option<BTreeSet<String>> = msg.attrs.map(|vs| {
+        let r_attrs: Option<BTreeSet<AttrString>> = msg.attrs.map(|vs| {
             vs.into_iter()
                 .filter_map(|a| qs.get_schema().normalise_attr_if_exists(a.as_str()))
                 .collect()
@@ -357,17 +344,12 @@ impl SearchEvent {
         }
 
         let event = Event::from_ro_uat(audit, qs, msg.uat.as_ref())?;
-        let filter = msg
-            .filter
-            .clone()
-            .into_recycled()
-            .validate(qs.get_schema())
-            .map_err(OperationError::SchemaViolation)?;
         let filter_orig = msg
             .filter
-            .into_recycled()
             .validate(qs.get_schema())
+            .map(|f| f.into_recycled())
             .map_err(OperationError::SchemaViolation)?;
+        let filter = filter_orig.clone();
 
         Ok(SearchEvent {
             event,
@@ -383,12 +365,10 @@ impl SearchEvent {
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         let event = Event::from_ro_uat(audit, qs, uat)?;
-        let filter = filter!(f_self())
-            .validate(qs.get_schema())
-            .map_err(OperationError::SchemaViolation)?;
         let filter_orig = filter_all!(f_self())
             .validate(qs.get_schema())
             .map_err(OperationError::SchemaViolation)?;
+        let filter = filter_orig.clone().into_ignore_hidden();
 
         Ok(SearchEvent {
             event,
@@ -405,12 +385,10 @@ impl SearchEvent {
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         let event = Event::from_ro_uat(audit, qs, uat)?;
-        let filter = filter!(f_eq("uuid", PartialValue::new_uuid(target_uuid)))
-            .validate(qs.get_schema())
-            .map_err(OperationError::SchemaViolation)?;
         let filter_orig = filter_all!(f_eq("uuid", PartialValue::new_uuid(target_uuid)))
             .validate(qs.get_schema())
             .map_err(OperationError::SchemaViolation)?;
+        let filter = filter_orig.clone().into_ignore_hidden();
         Ok(SearchEvent {
             event,
             filter,
@@ -462,10 +440,12 @@ impl SearchEvent {
         e: Entry<EntrySealed, EntryCommitted>,
         filter: Filter<FilterInvalid>,
     ) -> Self {
+        let filter_orig = filter.into_valid();
+        let filter = filter_orig.clone().into_recycled();
         SearchEvent {
             event: Event::from_impersonate_entry(e),
-            filter: filter.clone().into_recycled().into_valid(),
-            filter_orig: filter.into_valid(),
+            filter,
+            filter_orig,
             attrs: None,
         }
     }
@@ -478,7 +458,7 @@ impl SearchEvent {
     ) -> Self {
         SearchEvent {
             event: Event::from_impersonate_entry(e),
-            filter: filter.clone().into_ignore_hidden().into_valid(),
+            filter: filter.clone().into_valid().into_ignore_hidden(),
             filter_orig: filter.into_valid(),
             attrs: None,
         }
@@ -489,19 +469,15 @@ impl SearchEvent {
         qs: &QueryServerReadTransaction,
         euat: &UserAuthToken,
         lf: &LdapFilter,
-        attrs: Option<BTreeSet<String>>,
+        attrs: Option<BTreeSet<AttrString>>,
     ) -> Result<Self, OperationError> {
         let event = Event::from_ro_uat(audit, qs, Some(euat))?;
         // Kanidm Filter from LdapFilter
         let f = Filter::from_ldap_ro(audit, &event, &lf, qs)?;
-        let filter = f
-            .clone()
-            .into_ignore_hidden()
-            .validate(qs.get_schema())
-            .map_err(OperationError::SchemaViolation)?;
         let filter_orig = f
             .validate(qs.get_schema())
             .map_err(OperationError::SchemaViolation)?;
+        let filter = filter_orig.clone().into_ignore_hidden();
         Ok(SearchEvent {
             event,
             filter,
@@ -641,14 +617,10 @@ impl DeleteEvent {
     ) -> Result<Self, OperationError> {
         let event = Event::from_rw_uat(audit, qs, msg.uat.as_ref())?;
         let f = Filter::from_rw(audit, &event, &msg.req.filter, qs)?;
-        let filter = f
-            .clone()
-            .into_ignore_hidden()
-            .validate(qs.get_schema())
-            .map_err(OperationError::SchemaViolation)?;
         let filter_orig = f
             .validate(qs.get_schema())
             .map_err(OperationError::SchemaViolation)?;
+        let filter = filter_orig.clone().into_ignore_hidden();
         Ok(DeleteEvent {
             event,
             filter,
@@ -663,14 +635,10 @@ impl DeleteEvent {
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         let event = Event::from_rw_uat(audit, qs, uat)?;
-        let filter = f
-            .clone()
-            .into_ignore_hidden()
-            .validate(qs.get_schema())
-            .map_err(OperationError::SchemaViolation)?;
         let filter_orig = f
             .validate(qs.get_schema())
             .map_err(OperationError::SchemaViolation)?;
+        let filter = filter_orig.clone().into_ignore_hidden();
         Ok(DeleteEvent {
             event,
             filter,
@@ -736,14 +704,10 @@ impl ModifyEvent {
         let event = Event::from_rw_uat(audit, qs, msg.uat.as_ref())?;
         let f = Filter::from_rw(audit, &event, &msg.req.filter, qs)?;
         let m = ModifyList::from(audit, &msg.req.modlist, qs)?;
-        let filter = f
-            .clone()
-            .into_ignore_hidden()
-            .validate(qs.get_schema())
-            .map_err(OperationError::SchemaViolation)?;
         let filter_orig = f
             .validate(qs.get_schema())
             .map_err(OperationError::SchemaViolation)?;
+        let filter = filter_orig.clone().into_ignore_hidden();
         let modlist = m
             .validate(qs.get_schema())
             .map_err(OperationError::SchemaViolation)?;
@@ -769,14 +733,10 @@ impl ModifyEvent {
 
         let m = ModifyList::from(audit, &proto_ml, qs)?;
         let event = Event::from_rw_uat(audit, qs, uat)?;
-        let filter = f
-            .clone()
-            .into_ignore_hidden()
-            .validate(qs.get_schema())
-            .map_err(OperationError::SchemaViolation)?;
         let filter_orig = f
             .validate(qs.get_schema())
             .map_err(OperationError::SchemaViolation)?;
+        let filter = filter_orig.clone().into_ignore_hidden();
         let modlist = m
             .validate(qs.get_schema())
             .map_err(OperationError::SchemaViolation)?;
@@ -802,14 +762,10 @@ impl ModifyEvent {
         let f = Filter::join_parts_and(f_uuid, filter);
 
         let event = Event::from_rw_uat(audit, qs, uat)?;
-        let filter = f
-            .clone()
-            .into_ignore_hidden()
-            .validate(qs.get_schema())
-            .map_err(OperationError::SchemaViolation)?;
         let filter_orig = f
             .validate(qs.get_schema())
             .map_err(OperationError::SchemaViolation)?;
+        let filter = filter_orig.clone().into_ignore_hidden();
         let modlist = ml
             .validate(qs.get_schema())
             .map_err(OperationError::SchemaViolation)?;
@@ -836,14 +792,10 @@ impl ModifyEvent {
         let f = Filter::join_parts_and(f_uuid, filter);
 
         let event = Event::from_rw_uat(audit, qs, uat)?;
-        let filter = f
-            .clone()
-            .into_ignore_hidden()
-            .validate(qs.get_schema())
-            .map_err(OperationError::SchemaViolation)?;
         let filter_orig = f
             .validate(qs.get_schema())
             .map_err(OperationError::SchemaViolation)?;
+        let filter = filter_orig.clone().into_ignore_hidden();
         let modlist = ml
             .validate(qs.get_schema())
             .map_err(OperationError::SchemaViolation)?;
@@ -1162,13 +1114,13 @@ impl ReviveRecycledEvent {
     pub fn from_parts(
         audit: &mut AuditScope,
         uat: Option<&UserAuthToken>,
-        filter: Filter<FilterInvalid>,
+        filter: &Filter<FilterInvalid>,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         let event = Event::from_rw_uat(audit, qs, uat)?;
         let filter = filter
-            .into_recycled()
             .validate(qs.get_schema())
+            .map(|f| f.into_recycled())
             .map_err(OperationError::SchemaViolation)?;
         Ok(ReviveRecycledEvent { event, filter })
     }

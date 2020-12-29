@@ -264,6 +264,7 @@ mod tests {
     use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
     use crate::value::{PartialValue, Value};
     use kanidm_proto::v1::{OperationError, PluginError};
+    use smartstring::alias::String as AttrString;
 
     // The create references a uuid that doesn't exist - reject
     #[test]
@@ -404,7 +405,7 @@ mod tests {
             preload,
             filter!(f_eq("name", PartialValue::new_iname("testgroup_b"))),
             ModifyList::new_list(vec![Modify::Present(
-                "member".to_string(),
+                AttrString::from("member"),
                 Value::new_refer_s("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
             )]),
             None,
@@ -434,7 +435,7 @@ mod tests {
             preload,
             filter!(f_eq("name", PartialValue::new_iname("testgroup_b"))),
             ModifyList::new_list(vec![Modify::Present(
-                "member".to_string(),
+                AttrString::from("member"),
                 Value::new_refer_s("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
             )]),
             None,
@@ -477,10 +478,13 @@ mod tests {
             filter!(f_eq("name", PartialValue::new_iname("testgroup_b"))),
             ModifyList::new_list(vec![
                 Modify::Present(
-                    "member".to_string(),
+                    AttrString::from("member"),
                     Value::new_refer_s("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
                 ),
-                Modify::Present("member".to_string(), Value::new_refer(*UUID_DOES_NOT_EXIST)),
+                Modify::Present(
+                    AttrString::from("member"),
+                    Value::new_refer(*UUID_DOES_NOT_EXIST)
+                ),
             ]),
             None,
             |_, _| {}
@@ -518,7 +522,7 @@ mod tests {
             Ok(()),
             preload,
             filter!(f_eq("name", PartialValue::new_iname("testgroup_b"))),
-            ModifyList::new_list(vec![Modify::Purged("member".to_string())]),
+            ModifyList::new_list(vec![Modify::Purged(AttrString::from("member"))]),
             None,
             |_, _| {}
         );
@@ -545,7 +549,7 @@ mod tests {
             preload,
             filter!(f_eq("name", PartialValue::new_iname("testgroup_a"))),
             ModifyList::new_list(vec![Modify::Present(
-                "member".to_string(),
+                AttrString::from("member"),
                 Value::new_refer_s("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
             )]),
             None,
@@ -586,7 +590,7 @@ mod tests {
             preload,
             filter!(f_eq("name", PartialValue::new_iname("testgroup_b"))),
             ModifyList::new_list(vec![Modify::Present(
-                "member".to_string(),
+                AttrString::from("member"),
                 Value::new_refer_s("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
             )]),
             None,

@@ -133,6 +133,7 @@ mod tests {
     use crate::modify::{Modify, ModifyList};
     use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
     use crate::value::{PartialValue, Value};
+    use smartstring::alias::String as AttrString;
     use uuid::Uuid;
 
     const IMPORT_HASH: &'static str =
@@ -183,7 +184,7 @@ mod tests {
             preload,
             filter!(f_eq("name", PartialValue::new_iutf8("testperson"))),
             ModifyList::new_list(vec![Modify::Present(
-                "password_import".to_string(),
+                AttrString::from("password_import"),
                 Value::from(IMPORT_HASH)
             )]),
             None,
@@ -217,7 +218,7 @@ mod tests {
             preload,
             filter!(f_eq("name", PartialValue::new_iutf8("testperson"))),
             ModifyList::new_list(vec![Modify::Present(
-                "password_import".to_string(),
+                AttrString::from("password_import"),
                 Value::from(IMPORT_HASH)
             )]),
             None,
@@ -254,7 +255,7 @@ mod tests {
             preload,
             filter!(f_eq("name", PartialValue::new_iutf8("testperson"))),
             ModifyList::new_list(vec![Modify::Present(
-                "password_import".to_string(),
+                AttrString::from("password_import"),
                 Value::from(IMPORT_HASH)
             )]),
             None,

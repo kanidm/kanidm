@@ -8,6 +8,7 @@ use crate::value::{PartialValue, Value};
 use kanidm_proto::v1::{OperationError, SchemaError};
 
 // Should this be std?
+use smartstring::alias::String as AttrString;
 use std::slice;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -21,26 +22,26 @@ pub enum Modify {
     // This value *should* exist.
     // Clippy doesn't like value here, as value > pv. It could be an improvement to
     // box here, but not sure. ... TODO and thought needed.
-    Present(String, Value),
+    Present(AttrString, Value),
     // This value *should not* exist.
-    Removed(String, PartialValue),
+    Removed(AttrString, PartialValue),
     // This attr *should not* exist.
-    Purged(String),
+    Purged(AttrString),
 }
 
 #[allow(dead_code)]
 pub fn m_pres(a: &str, v: &Value) -> Modify {
-    Modify::Present(a.to_string(), v.clone())
+    Modify::Present(a.into(), v.clone())
 }
 
 #[allow(dead_code)]
 pub fn m_remove(a: &str, v: &PartialValue) -> Modify {
-    Modify::Removed(a.to_string(), v.clone())
+    Modify::Removed(a.into(), v.clone())
 }
 
 #[allow(dead_code)]
 pub fn m_purge(a: &str) -> Modify {
-    Modify::Purged(a.to_string())
+    Modify::Purged(AttrString::from(a))
 }
 
 impl Modify {
@@ -50,11 +51,11 @@ impl Modify {
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         Ok(match m {
-            ProtoModify::Present(a, v) => Modify::Present(a.clone(), qs.clone_value(audit, a, v)?),
+            ProtoModify::Present(a, v) => Modify::Present(a.into(), qs.clone_value(audit, a, v)?),
             ProtoModify::Removed(a, v) => {
-                Modify::Removed(a.clone(), qs.clone_partialvalue(audit, a, v)?)
+                Modify::Removed(a.into(), qs.clone_partialvalue(audit, a, v)?)
             }
-            ProtoModify::Purged(a) => Modify::Purged(a.clone()),
+            ProtoModify::Purged(a) => Modify::Purged(a.into()),
         })
     }
 }
@@ -91,11 +92,14 @@ impl ModifyList<ModifyInvalid> {
     }
 
     pub fn new_purge_and_set(attr: &str, v: Value) -> Self {
-        Self::new_list(vec![m_purge(attr), Modify::Present(attr.to_string(), v)])
+        Self::new_list(vec![
+            m_purge(attr),
+            Modify::Present(AttrString::from(attr), v),
+        ])
     }
 
     pub fn new_append(attr: &str, v: Value) -> Self {
-        Self::new_list(vec![Modify::Present(attr.to_string(), v)])
+        Self::new_list(vec![Modify::Present(AttrString::from(attr), v)])
     }
 
     pub fn new_purge(attr: &str) -> Self {
@@ -146,7 +150,7 @@ impl ModifyList<ModifyInvalid> {
                         Some(schema_a) => schema_a
                             .validate_value(attr_norm.as_str(), &value)
                             .map(|_| Modify::Present(attr_norm, value.clone())),
-                        None => Err(SchemaError::InvalidAttribute(attr_norm)),
+                        None => Err(SchemaError::InvalidAttribute(attr_norm.to_string())),
                     }
                 }
                 Modify::Removed(attr, value) => {
@@ -155,14 +159,14 @@ impl ModifyList<ModifyInvalid> {
                         Some(schema_a) => schema_a
                             .validate_partialvalue(attr_norm.as_str(), &value)
                             .map(|_| Modify::Removed(attr_norm, value.clone())),
-                        None => Err(SchemaError::InvalidAttribute(attr_norm)),
+                        None => Err(SchemaError::InvalidAttribute(attr_norm.to_string())),
                     }
                 }
                 Modify::Purged(attr) => {
                     let attr_norm = schema.normalise_attr_name(attr);
                     match schema_attributes.get(&attr_norm) {
                         Some(_attr_name) => Ok(Modify::Purged(attr_norm)),
-                        None => Err(SchemaError::InvalidAttribute(attr_norm)),
+                        None => Err(SchemaError::InvalidAttribute(attr_norm.to_string())),
                     }
                 }
             })

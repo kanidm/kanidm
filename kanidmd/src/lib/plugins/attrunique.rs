@@ -185,7 +185,7 @@ impl Plugin for AttrUnique {
             // We do a fully in memory check.
             if get_cand_attr_set(au, &all_cand, attr.as_str()).is_err() {
                 res.push(Err(ConsistencyError::DuplicateUniqueAttribute(
-                    attr.clone(),
+                    attr.to_string(),
                 )))
             }
         }
@@ -202,6 +202,7 @@ mod tests {
     use crate::modify::{Modify, ModifyList};
     use crate::value::{PartialValue, Value};
     use kanidm_proto::v1::{OperationError, PluginError};
+    use smartstring::alias::String as AttrString;
     // Test entry in db, and same name, reject.
     #[test]
     fn test_pre_create_name_unique() {
@@ -296,8 +297,8 @@ mod tests {
                 PartialValue::new_iname("testgroup_b")
             ),])),
             ModifyList::new_list(vec![
-                Modify::Purged("name".to_string()),
-                Modify::Present("name".to_string(), Value::new_iname("testgroup_a"))
+                Modify::Purged(AttrString::from("name")),
+                Modify::Present(AttrString::from("name"), Value::new_iname("testgroup_a"))
             ]),
             None,
             |_, _| {}
@@ -339,8 +340,8 @@ mod tests {
                 f_eq("name", PartialValue::new_iname("testgroup_b")),
             ])),
             ModifyList::new_list(vec![
-                Modify::Purged("name".to_string()),
-                Modify::Present("name".to_string(), Value::new_iname("testgroup"))
+                Modify::Purged(AttrString::from("name")),
+                Modify::Present(AttrString::from("name"), Value::new_iname("testgroup"))
             ]),
             None,
             |_, _| {}

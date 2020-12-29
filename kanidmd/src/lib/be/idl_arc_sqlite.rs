@@ -195,9 +195,9 @@ macro_rules! get_idl {
             let db_r = $self.db.get_idl($audit, $attr, $itype, $idx_key)?;
             if let Some(ref idl) = db_r {
                 let ncache_key = IdlCacheKey {
-                    a: $attr.to_string(),
+                    a: $attr.into(),
                     i: $itype.clone(),
-                    k: $idx_key.to_string(),
+                    k: $idx_key.into(),
                 };
                 $self.idl_cache.insert(ncache_key, Box::new(idl.clone()))
             }
@@ -647,9 +647,9 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
     ) -> Result<(), OperationError> {
         lperf_trace_segment!(audit, "be::idl_arc_sqlite::write_idl", || {
             let cache_key = IdlCacheKey {
-                a: attr.to_string(),
+                a: attr.into(),
                 i: itype.clone(),
-                k: idx_key.to_string(),
+                k: idx_key.into(),
             };
             // On idl == 0 the db will remove this, and synthesise an empty IDL on a miss
             // but we can cache this as a new empty IDL instead, so that we can avoid the
