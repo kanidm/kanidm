@@ -1,9 +1,10 @@
 use crate::be::dbvalue::DbValueV1;
+use smartstring::alias::String as AttrString;
 use std::collections::BTreeMap;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DbEntryV1 {
-    pub attrs: BTreeMap<String, Vec<DbValueV1>>,
+    pub attrs: BTreeMap<AttrString, Vec<DbValueV1>>,
 }
 
 // REMEMBER: If you add a new version here, you MUST

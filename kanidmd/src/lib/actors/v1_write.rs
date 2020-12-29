@@ -1000,7 +1000,7 @@ impl QueryServerWriteV1 {
         // in the actual request.
         // NOTE: This is an iter for future requirements to be added
         let mods: Vec<_> = iter::once(Some(Modify::Present(
-            "class".to_string(),
+            "class".into(),
             Value::new_class("person"),
         )))
         .filter_map(|v| v)
@@ -1042,14 +1042,14 @@ impl QueryServerWriteV1 {
         // The filter_map here means we only create the mods if the gidnumber or shell are set
         // in the actual request.
         let mods: Vec<_> = iter::once(Some(Modify::Present(
-            "class".to_string(),
+            "class".into(),
             Value::new_class("posixaccount"),
         )))
         .chain(iter::once(gidnumber.map(|n| {
-            Modify::Present("gidnumber".to_string(), Value::new_uint32(n))
+            Modify::Present("gidnumber".into(), Value::new_uint32(n))
         })))
         .chain(iter::once(shell.map(|s| {
-            Modify::Present("loginshell".to_string(), Value::new_iutf8(s.as_str()))
+            Modify::Present("loginshell".into(), Value::new_iutf8(s.as_str()))
         })))
         .filter_map(|v| v)
         .collect();
@@ -1089,11 +1089,11 @@ impl QueryServerWriteV1 {
         // The filter_map here means we only create the mods if the gidnumber or shell are set
         // in the actual request.
         let mods: Vec<_> = iter::once(Some(Modify::Present(
-            "class".to_string(),
+            "class".into(),
             Value::new_class("posixgroup"),
         )))
         .chain(iter::once(gidnumber.map(|n| {
-            Modify::Present("gidnumber".to_string(), Value::new_uint32(n))
+            Modify::Present("gidnumber".into(), Value::new_uint32(n))
         })))
         .filter_map(|v| v)
         .collect();

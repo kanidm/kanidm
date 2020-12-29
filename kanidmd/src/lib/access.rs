@@ -32,6 +32,7 @@ use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
 use crate::value::PartialValue;
 
 use crate::event::{CreateEvent, DeleteEvent, Event, EventOrigin, ModifyEvent, SearchEvent};
+use smartstring::alias::String as AttrString;
 
 lazy_static! {
     static ref CLASS_ACS: PartialValue = PartialValue::new_class("access_control_search");
@@ -48,7 +49,7 @@ lazy_static! {
 #[derive(Debug, Clone)]
 pub struct AccessControlSearch {
     acp: AccessControlProfile,
-    attrs: BTreeSet<String>,
+    attrs: BTreeSet<AttrString>,
 }
 
 impl AccessControlSearch {
@@ -70,7 +71,7 @@ impl AccessControlSearch {
                 ladmin_error!(audit, "Missing acp_search_attr");
                 OperationError::InvalidACPState("Missing acp_search_attr".to_string())
             })?
-            .map(|s| s.to_string())
+            .map(|s| AttrString::from(s))
             .collect();
 
         let acp = AccessControlProfile::try_from(audit, qs, value)?;
@@ -93,7 +94,10 @@ impl AccessControlSearch {
                 receiver,
                 targetscope,
             },
-            attrs: attrs.split_whitespace().map(|s| s.to_string()).collect(),
+            attrs: attrs
+                .split_whitespace()
+                .map(|s| AttrString::from(s))
+                .collect(),
         }
     }
 }
@@ -142,8 +146,8 @@ impl AccessControlDelete {
 #[derive(Debug, Clone)]
 pub struct AccessControlCreate {
     acp: AccessControlProfile,
-    classes: Vec<String>,
-    attrs: Vec<String>,
+    classes: Vec<AttrString>,
+    attrs: Vec<AttrString>,
 }
 
 impl AccessControlCreate {
@@ -161,12 +165,12 @@ impl AccessControlCreate {
 
         let attrs = value
             .get_ava_as_str("acp_create_attr")
-            .map(|i| i.map(|s| s.to_string()).collect())
+            .map(|i| i.map(|s| AttrString::from(s)).collect())
             .unwrap_or_else(Vec::new);
 
         let classes = value
             .get_ava_as_str("acp_create_class")
-            .map(|i| i.map(|s| s.to_string()).collect())
+            .map(|i| i.map(|s| AttrString::from(s)).collect())
             .unwrap_or_else(Vec::new);
 
         Ok(AccessControlCreate {
@@ -192,8 +196,14 @@ impl AccessControlCreate {
                 receiver,
                 targetscope,
             },
-            classes: classes.split_whitespace().map(|s| s.to_string()).collect(),
-            attrs: attrs.split_whitespace().map(|s| s.to_string()).collect(),
+            classes: classes
+                .split_whitespace()
+                .map(|s| AttrString::from(s))
+                .collect(),
+            attrs: attrs
+                .split_whitespace()
+                .map(|s| AttrString::from(s))
+                .collect(),
         }
     }
 }
@@ -201,9 +211,9 @@ impl AccessControlCreate {
 #[derive(Debug, Clone)]
 pub struct AccessControlModify {
     acp: AccessControlProfile,
-    classes: Vec<String>,
-    presattrs: Vec<String>,
-    remattrs: Vec<String>,
+    classes: Vec<AttrString>,
+    presattrs: Vec<AttrString>,
+    remattrs: Vec<AttrString>,
 }
 
 impl AccessControlModify {
@@ -221,17 +231,17 @@ impl AccessControlModify {
 
         let presattrs = value
             .get_ava_as_str("acp_modify_presentattr")
-            .map(|i| i.map(|s| s.to_string()).collect())
+            .map(|i| i.map(|s| AttrString::from(s)).collect())
             .unwrap_or_else(Vec::new);
 
         let remattrs = value
             .get_ava_as_str("acp_modify_removedattr")
-            .map(|i| i.map(|s| s.to_string()).collect())
+            .map(|i| i.map(|s| AttrString::from(s)).collect())
             .unwrap_or_else(Vec::new);
 
         let classes = value
             .get_ava_as_str("acp_modify_class")
-            .map(|i| i.map(|s| s.to_string()).collect())
+            .map(|i| i.map(|s| AttrString::from(s)).collect())
             .unwrap_or_else(Vec::new);
 
         Ok(AccessControlModify {
@@ -259,12 +269,18 @@ impl AccessControlModify {
                 receiver,
                 targetscope,
             },
-            classes: classes.split_whitespace().map(|s| s.to_string()).collect(),
+            classes: classes
+                .split_whitespace()
+                .map(|s| AttrString::from(s))
+                .collect(),
             presattrs: presattrs
                 .split_whitespace()
-                .map(|s| s.to_string())
+                .map(|s| AttrString::from(s))
                 .collect(),
-            remattrs: remattrs.split_whitespace().map(|s| s.to_string()).collect(),
+            remattrs: remattrs
+                .split_whitespace()
+                .map(|s| AttrString::from(s))
+                .collect(),
         }
     }
 }
@@ -1332,6 +1348,7 @@ mod tests {
     // use crate::proto_v1::Filter as ProtoFilter;
     use crate::constants::{JSON_ADMIN_V1, JSON_ANONYMOUS_V1, JSON_TESTPERSON1, JSON_TESTPERSON2};
     use crate::value::{PartialValue, Value};
+    use smartstring::alias::String as AttrString;
 
     macro_rules! acp_from_entry_err {
         (
@@ -1964,7 +1981,7 @@ mod tests {
             )
         };
         // the requested attrs here.
-        se_anon.attrs = Some(btreeset!["name".to_string()]);
+        se_anon.attrs = Some(btreeset![AttrString::from("name")]);
 
         let acp = unsafe {
             AccessControlSearch::from_raw(

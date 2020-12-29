@@ -24,6 +24,7 @@ use crate::actors::v1_write::{CreateMessage, DeleteMessage, ModifyMessage};
 // use crate::schema::SchemaTransaction;
 
 use ldap3_server::simple::LdapFilter;
+use smartstring::alias::String as AttrString;
 use std::collections::BTreeSet;
 use std::time::Duration;
 use uuid::Uuid;
@@ -264,7 +265,7 @@ pub struct SearchEvent {
     pub filter: Filter<FilterValid>,
     // This is the original filter, for the purpose of ACI checking.
     pub filter_orig: Filter<FilterValid>,
-    pub attrs: Option<BTreeSet<String>>,
+    pub attrs: Option<BTreeSet<AttrString>>,
 }
 
 impl SearchEvent {
@@ -296,7 +297,7 @@ impl SearchEvent {
         msg: InternalSearchMessage,
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        let r_attrs: Option<BTreeSet<String>> = msg.attrs.map(|vs| {
+        let r_attrs: Option<BTreeSet<AttrString>> = msg.attrs.map(|vs| {
             vs.into_iter()
                 .filter_map(|a| qs.get_schema().normalise_attr_if_exists(a.as_str()))
                 .collect()
@@ -330,7 +331,7 @@ impl SearchEvent {
         msg: InternalSearchRecycledMessage,
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        let r_attrs: Option<BTreeSet<String>> = msg.attrs.map(|vs| {
+        let r_attrs: Option<BTreeSet<AttrString>> = msg.attrs.map(|vs| {
             vs.into_iter()
                 .filter_map(|a| qs.get_schema().normalise_attr_if_exists(a.as_str()))
                 .collect()
@@ -468,7 +469,7 @@ impl SearchEvent {
         qs: &QueryServerReadTransaction,
         euat: &UserAuthToken,
         lf: &LdapFilter,
-        attrs: Option<BTreeSet<String>>,
+        attrs: Option<BTreeSet<AttrString>>,
     ) -> Result<Self, OperationError> {
         let event = Event::from_ro_uat(audit, qs, Some(euat))?;
         // Kanidm Filter from LdapFilter

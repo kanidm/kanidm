@@ -8,7 +8,6 @@
 //! [`Filter`]: struct.Filter.html
 //! [`Entry`]: ../entry/struct.Entry.html
 
-
 use crate::audit::AuditScope;
 use crate::be::{IdxKey, IdxKeyRef, IdxKeyToRef};
 use crate::event::{Event, EventOrigin};
@@ -23,6 +22,7 @@ use kanidm_proto::v1::Filter as ProtoFilter;
 use kanidm_proto::v1::{OperationError, SchemaError};
 use ldap3_server::simple::LdapFilter;
 // use smartstring::alias::String;
+use smartstring::alias::String as AttrString;
 use std::cmp::{Ordering, PartialOrd};
 use std::collections::BTreeSet;
 use std::iter;
@@ -125,10 +125,10 @@ pub enum FC<'a> {
 #[derive(Debug, Clone, PartialEq)]
 enum FilterComp {
     // This is attr - value
-    Eq(String, PartialValue),
-    Sub(String, PartialValue),
-    Pres(String),
-    LessThan(String, PartialValue),
+    Eq(AttrString, PartialValue),
+    Sub(AttrString, PartialValue),
+    Pres(AttrString),
+    LessThan(AttrString, PartialValue),
     Or(Vec<FilterComp>),
     And(Vec<FilterComp>),
     Inclusion(Vec<FilterComp>),
@@ -145,10 +145,10 @@ enum FilterComp {
 #[derive(Debug, Clone)]
 pub enum FilterResolved {
     // This is attr - value - indexed
-    Eq(String, PartialValue, bool),
-    Sub(String, PartialValue, bool),
-    Pres(String, bool),
-    LessThan(String, PartialValue, bool),
+    Eq(AttrString, PartialValue, bool),
+    Sub(AttrString, PartialValue, bool),
+    Pres(AttrString, bool),
+    LessThan(AttrString, PartialValue, bool),
     Or(Vec<FilterResolved>),
     And(Vec<FilterResolved>),
     // All terms must have 1 or more items, or the inclusion is false!
@@ -174,16 +174,16 @@ pub struct FilterValidResolved {
 #[derive(Debug)]
 pub enum FilterPlan {
     Invalid,
-    EqIndexed(String, String),
-    EqUnindexed(String),
-    EqCorrupt(String),
-    SubIndexed(String, String),
-    SubUnindexed(String),
-    SubCorrupt(String),
-    PresIndexed(String),
-    PresUnindexed(String),
-    PresCorrupt(String),
-    LessThanUnindexed(String),
+    EqIndexed(AttrString, String),
+    EqUnindexed(AttrString),
+    EqCorrupt(AttrString),
+    SubIndexed(AttrString, String),
+    SubUnindexed(AttrString),
+    SubCorrupt(AttrString),
+    PresIndexed(AttrString),
+    PresUnindexed(AttrString),
+    PresCorrupt(AttrString),
+    LessThanUnindexed(AttrString),
     OrUnindexed(Vec<FilterPlan>),
     OrIndexed(Vec<FilterPlan>),
     OrPartial(Vec<FilterPlan>),
@@ -370,19 +370,19 @@ impl Filter<FilterInvalid> {
         // some core test idxs faster. This is never used in production, it's JUST for
         // test case speedups.
         let idxmeta = vec![
-            ("uuid".to_string(), IndexType::EQUALITY),
-            ("uuid".to_string(), IndexType::PRESENCE),
-            ("name".to_string(), IndexType::EQUALITY),
-            ("name".to_string(), IndexType::SUBSTRING),
-            ("name".to_string(), IndexType::PRESENCE),
-            ("class".to_string(), IndexType::EQUALITY),
-            ("class".to_string(), IndexType::PRESENCE),
-            ("member".to_string(), IndexType::EQUALITY),
-            ("member".to_string(), IndexType::PRESENCE),
-            ("memberof".to_string(), IndexType::EQUALITY),
-            ("memberof".to_string(), IndexType::PRESENCE),
-            ("directmemberof".to_string(), IndexType::EQUALITY),
-            ("directmemberof".to_string(), IndexType::PRESENCE),
+            (AttrString::from("uuid"), IndexType::EQUALITY),
+            (AttrString::from("uuid"), IndexType::PRESENCE),
+            (AttrString::from("name"), IndexType::EQUALITY),
+            (AttrString::from("name"), IndexType::SUBSTRING),
+            (AttrString::from("name"), IndexType::PRESENCE),
+            (AttrString::from("class"), IndexType::EQUALITY),
+            (AttrString::from("class"), IndexType::PRESENCE),
+            (AttrString::from("member"), IndexType::EQUALITY),
+            (AttrString::from("member"), IndexType::PRESENCE),
+            (AttrString::from("memberof"), IndexType::EQUALITY),
+            (AttrString::from("memberof"), IndexType::PRESENCE),
+            (AttrString::from("directmemberof"), IndexType::EQUALITY),
+            (AttrString::from("directmemberof"), IndexType::PRESENCE),
         ];
 
         let idxmeta_ref = idxmeta.iter().map(|(attr, itype)| (attr, itype)).collect();
@@ -488,10 +488,10 @@ impl Filter<FilterInvalid> {
 impl FilterComp {
     fn new(fc: FC) -> Self {
         match fc {
-            FC::Eq(a, v) => FilterComp::Eq(a.to_string(), v),
-            FC::Sub(a, v) => FilterComp::Sub(a.to_string(), v),
-            FC::Pres(a) => FilterComp::Pres(a.to_string()),
-            FC::LessThan(a, v) => FilterComp::LessThan(a.to_string(), v),
+            FC::Eq(a, v) => FilterComp::Eq(AttrString::from(a), v),
+            FC::Sub(a, v) => FilterComp::Sub(AttrString::from(a), v),
+            FC::Pres(a) => FilterComp::Pres(AttrString::from(a)),
+            FC::LessThan(a, v) => FilterComp::LessThan(AttrString::from(a), v),
             FC::Or(v) => FilterComp::Or(v.into_iter().map(FilterComp::new).collect()),
             FC::And(v) => FilterComp::And(v.into_iter().map(FilterComp::new).collect()),
             FC::Inclusion(v) => FilterComp::Inclusion(v.into_iter().map(FilterComp::new).collect()),
@@ -503,8 +503,14 @@ impl FilterComp {
     fn new_ignore_hidden(fc: FilterComp) -> Self {
         FilterComp::And(vec![
             FilterComp::AndNot(Box::new(FilterComp::Or(vec![
-                FilterComp::Eq("class".to_string(), PartialValue::new_iutf8("tombstone")),
-                FilterComp::Eq("class".to_string(), PartialValue::new_iutf8("recycled")),
+                FilterComp::Eq(
+                    AttrString::from("class"),
+                    PartialValue::new_iutf8("tombstone"),
+                ),
+                FilterComp::Eq(
+                    AttrString::from("class"),
+                    PartialValue::new_iutf8("recycled"),
+                ),
             ]))),
             fc,
         ])
@@ -512,7 +518,10 @@ impl FilterComp {
 
     fn new_recycled(fc: FilterComp) -> Self {
         FilterComp::And(vec![
-            FilterComp::Eq("class".to_string(), PartialValue::new_iutf8("recycled")),
+            FilterComp::Eq(
+                AttrString::from("class"),
+                PartialValue::new_iutf8("recycled"),
+            ),
             fc,
         ])
     }
@@ -566,7 +575,7 @@ impl FilterComp {
                             .map(|_| FilterComp::Eq(attr_norm, value.clone()))
                         // On error, pass the error back out.
                     }
-                    None => Err(SchemaError::InvalidAttribute(attr_norm)),
+                    None => Err(SchemaError::InvalidAttribute(attr_norm.to_string())),
                 }
             }
             FilterComp::Sub(attr, value) => {
@@ -581,7 +590,7 @@ impl FilterComp {
                             .map(|_| FilterComp::Sub(attr_norm, value.clone()))
                         // On error, pass the error back out.
                     }
-                    None => Err(SchemaError::InvalidAttribute(attr_norm)),
+                    None => Err(SchemaError::InvalidAttribute(attr_norm.to_string())),
                 }
             }
             FilterComp::Pres(attr) => {
@@ -592,7 +601,7 @@ impl FilterComp {
                         // Return our valid data
                         Ok(FilterComp::Pres(attr_norm))
                     }
-                    None => Err(SchemaError::InvalidAttribute(attr_norm)),
+                    None => Err(SchemaError::InvalidAttribute(attr_norm.to_string())),
                 }
             }
             FilterComp::LessThan(attr, value) => {
@@ -607,7 +616,7 @@ impl FilterComp {
                             .map(|_| FilterComp::LessThan(attr_norm, value.clone()))
                         // On error, pass the error back out.
                     }
-                    None => Err(SchemaError::InvalidAttribute(attr_norm)),
+                    None => Err(SchemaError::InvalidAttribute(attr_norm.to_string())),
                 }
             }
             FilterComp::Or(filters) => {
@@ -917,7 +926,7 @@ impl Ord for FilterResolved {
 
 impl FilterResolved {
     #[cfg(test)]
-    unsafe fn from_invalid(fc: FilterComp, idxmeta: &HashSet<(&String, &IndexType)>) -> Self {
+    unsafe fn from_invalid(fc: FilterComp, idxmeta: &HashSet<(&AttrString, &IndexType)>) -> Self {
         match fc {
             FilterComp::Eq(a, v) => {
                 let idx = idxmeta.contains(&(&a, &IndexType::EQUALITY));
@@ -1023,7 +1032,7 @@ impl FilterResolved {
             }
             FilterComp::SelfUUID => match &ev.origin {
                 EventOrigin::User(e) => {
-                    let uuid_s = "uuid".to_string();
+                    let uuid_s = AttrString::from("uuid");
                     let idxkref = IdxKeyRef::new(&uuid_s, &IndexType::EQUALITY);
                     let idx = idxmeta.contains(&idxkref as &dyn IdxKeyToRef);
                     Some(FilterResolved::Eq(
@@ -1075,7 +1084,7 @@ impl FilterResolved {
             }
             FilterComp::SelfUUID => match &ev.origin {
                 EventOrigin::User(e) => Some(FilterResolved::Eq(
-                    "uuid".to_string(),
+                    AttrString::from("uuid"),
                     PartialValue::new_uuid(*e.get_uuid()),
                     false,
                 )),

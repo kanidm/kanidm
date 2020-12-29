@@ -1,4 +1,5 @@
 use crate::value::IndexType;
+use smartstring::alias::String as AttrString;
 use std::borrow::Borrow;
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
@@ -7,7 +8,7 @@ use std::hash::{Hash, Hasher};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct IdxKey {
-    pub attr: String,
+    pub attr: AttrString,
     pub itype: IndexType,
 }
 
@@ -67,7 +68,7 @@ impl<'a> Hash for (dyn IdxKeyToRef + 'a) {
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 pub struct IdlCacheKey {
-    pub a: String,
+    pub a: AttrString,
     pub i: IndexType,
     pub k: String,
 }

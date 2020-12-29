@@ -1440,6 +1440,7 @@ mod tests {
     use crate::server::QueryServer;
     use crate::utils::duration_from_epoch_now;
     use async_std::task;
+    use smartstring::alias::String as AttrString;
     use std::convert::TryFrom;
     use std::time::Duration;
     use uuid::Uuid;
@@ -1646,7 +1647,7 @@ mod tests {
             ModifyEvent::new_internal_invalid(
                 filter!(f_eq("name", PartialValue::new_iname("admin"))),
                 ModifyList::new_list(vec![Modify::Present(
-                    "primary_credential".to_string(),
+                    AttrString::from("primary_credential"),
                     v_cred,
                 )]),
             )
@@ -2021,8 +2022,11 @@ mod tests {
                 ModifyEvent::new_internal_invalid(
                     filter!(f_eq("name", PartialValue::new_iname("admin"))),
                     ModifyList::new_list(vec![
-                        Modify::Present("class".to_string(), Value::new_class("posixaccount")),
-                        Modify::Present("gidnumber".to_string(), Value::new_uint32(2001)),
+                        Modify::Present(
+                            AttrString::from("class"),
+                            Value::new_class("posixaccount"),
+                        ),
+                        Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
                     ]),
                 )
             };
@@ -2097,8 +2101,11 @@ mod tests {
                 ModifyEvent::new_internal_invalid(
                     filter!(f_eq("name", PartialValue::new_iname("admin"))),
                     ModifyList::new_list(vec![
-                        Modify::Present("class".to_string(), Value::new_class("posixaccount")),
-                        Modify::Present("gidnumber".to_string(), Value::new_uint32(2001)),
+                        Modify::Present(
+                            AttrString::from("class"),
+                            Value::new_class("posixaccount"),
+                        ),
+                        Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
                     ]),
                 )
             };
@@ -2140,7 +2147,7 @@ mod tests {
             let me_purge_up = unsafe {
                 ModifyEvent::new_internal_invalid(
                     filter!(f_eq("name", PartialValue::new_iname("admin"))),
-                    ModifyList::new_list(vec![Modify::Purged("unix_password".to_string())]),
+                    ModifyList::new_list(vec![Modify::Purged(AttrString::from("unix_password"))]),
                 )
             };
             assert!(idms_prox_write.qs_write.modify(au, &me_purge_up).is_ok());
@@ -2312,7 +2319,7 @@ mod tests {
                     ModifyEvent::new_internal_invalid(
                         filter!(f_eq("name", PartialValue::new_iname("admin"))),
                         ModifyList::new_list(vec![Modify::Present(
-                            "password_import".to_string(),
+                            AttrString::from("password_import"),
                             Value::from("{SSHA512}JwrSUHkI7FTAfHRVR6KoFlSN0E3dmaQWARjZ+/UsShYlENOqDtFVU77HJLLrY2MuSp0jve52+pwtdVl2QUAHukQ0XUf5LDtM")
                         )]),
                     )
@@ -2356,9 +2363,12 @@ mod tests {
                 ModifyEvent::new_internal_invalid(
                     filter!(f_eq("name", PartialValue::new_iname("admin"))),
                     ModifyList::new_list(vec![
-                        Modify::Present("class".to_string(), Value::new_class("posixaccount")),
-                        Modify::Present("gidnumber".to_string(), Value::new_uint32(2001)),
-                        Modify::Present("unix_password".to_string(), v_cred),
+                        Modify::Present(
+                            AttrString::from("class"),
+                            Value::new_class("posixaccount"),
+                        ),
+                        Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
+                        Modify::Present(AttrString::from("unix_password"), v_cred),
                     ]),
                 )
             };
@@ -2418,8 +2428,8 @@ mod tests {
             ModifyEvent::new_internal_invalid(
                 filter!(f_eq("name", PartialValue::new_iname("admin"))),
                 ModifyList::new_list(vec![
-                    Modify::Present("account_expire".to_string(), v_expire),
-                    Modify::Present("account_valid_from".to_string(), v_valid_from),
+                    Modify::Present(AttrString::from("account_expire"), v_expire),
+                    Modify::Present(AttrString::from("account_valid_from"), v_valid_from),
                 ]),
             )
         };
@@ -2509,8 +2519,11 @@ mod tests {
                 ModifyEvent::new_internal_invalid(
                     filter!(f_eq("name", PartialValue::new_iname("admin"))),
                     ModifyList::new_list(vec![
-                        Modify::Present("class".to_string(), Value::new_class("posixaccount")),
-                        Modify::Present("gidnumber".to_string(), Value::new_uint32(2001)),
+                        Modify::Present(
+                            AttrString::from("class"),
+                            Value::new_class("posixaccount"),
+                        ),
+                        Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
                     ]),
                 )
             };
@@ -2849,8 +2862,11 @@ mod tests {
                 ModifyEvent::new_internal_invalid(
                     filter!(f_eq("name", PartialValue::new_iname("admin"))),
                     ModifyList::new_list(vec![
-                        Modify::Present("class".to_string(), Value::new_class("posixaccount")),
-                        Modify::Present("gidnumber".to_string(), Value::new_uint32(2001)),
+                        Modify::Present(
+                            AttrString::from("class"),
+                            Value::new_class("posixaccount"),
+                        ),
+                        Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
                     ]),
                 )
             };

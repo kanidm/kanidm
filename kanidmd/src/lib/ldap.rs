@@ -8,6 +8,7 @@ use async_std::task;
 use kanidm_proto::v1::{OperationError, UserAuthToken};
 use ldap3_server::simple::*;
 use regex::Regex;
+use smartstring::alias::String as AttrString;
 use std::collections::BTreeSet;
 use std::iter;
 use std::time::SystemTime;
@@ -454,14 +455,13 @@ fn operationerr_to_ldapresultcode(e: OperationError) -> (LdapResultCode, String)
 }
 
 #[inline]
-pub(crate) fn ldap_attr_filter_map(input: &str) -> String {
+pub(crate) fn ldap_attr_filter_map(input: &str) -> AttrString {
     let lin = input.to_lowercase();
-    match lin.as_str() {
+    AttrString::from(match lin.as_str() {
         "entryuuid" => "uuid",
         "objectclass" => "class",
         a => a,
-    }
-    .to_string()
+    })
 }
 
 #[inline]
@@ -489,6 +489,7 @@ mod tests {
     // use uuid::Uuid;
     use crate::ldap::LdapServer;
     use async_std::task;
+    use smartstring::alias::String as AttrString;
 
     const TEST_PASSWORD: &'static str = "ntaoeuntnaoeuhraohuercahu😍";
 
@@ -506,8 +507,11 @@ mod tests {
                 ModifyEvent::new_internal_invalid(
                     filter!(f_eq("name", PartialValue::new_iname("admin"))),
                     ModifyList::new_list(vec![
-                        Modify::Present("class".to_string(), Value::new_class("posixaccount")),
-                        Modify::Present("gidnumber".to_string(), Value::new_uint32(2001)),
+                        Modify::Present(
+                            AttrString::from("class"),
+                            Value::new_class("posixaccount"),
+                        ),
+                        Modify::Present(AttrString::from("gidnumber"), Value::new_uint32(2001)),
                     ]),
                 )
             };
