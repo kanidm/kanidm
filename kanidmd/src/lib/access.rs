@@ -71,7 +71,7 @@ impl AccessControlSearch {
                 ladmin_error!(audit, "Missing acp_search_attr");
                 OperationError::InvalidACPState("Missing acp_search_attr".to_string())
             })?
-            .map(|s| AttrString::from(s))
+            .map(AttrString::from)
             .collect();
 
         let acp = AccessControlProfile::try_from(audit, qs, value)?;
@@ -165,12 +165,12 @@ impl AccessControlCreate {
 
         let attrs = value
             .get_ava_as_str("acp_create_attr")
-            .map(|i| i.map(|s| AttrString::from(s)).collect())
+            .map(|i| i.map(AttrString::from).collect())
             .unwrap_or_else(Vec::new);
 
         let classes = value
             .get_ava_as_str("acp_create_class")
-            .map(|i| i.map(|s| AttrString::from(s)).collect())
+            .map(|i| i.map(AttrString::from).collect())
             .unwrap_or_else(Vec::new);
 
         Ok(AccessControlCreate {
@@ -198,11 +198,11 @@ impl AccessControlCreate {
             },
             classes: classes
                 .split_whitespace()
-                .map(|s| AttrString::from(s))
+                .map(AttrString::from)
                 .collect(),
             attrs: attrs
                 .split_whitespace()
-                .map(|s| AttrString::from(s))
+                .map(AttrString::from)
                 .collect(),
         }
     }
@@ -231,17 +231,17 @@ impl AccessControlModify {
 
         let presattrs = value
             .get_ava_as_str("acp_modify_presentattr")
-            .map(|i| i.map(|s| AttrString::from(s)).collect())
+            .map(|i| i.map(AttrString::from).collect())
             .unwrap_or_else(Vec::new);
 
         let remattrs = value
             .get_ava_as_str("acp_modify_removedattr")
-            .map(|i| i.map(|s| AttrString::from(s)).collect())
+            .map(|i| i.map(AttrString::from).collect())
             .unwrap_or_else(Vec::new);
 
         let classes = value
             .get_ava_as_str("acp_modify_class")
-            .map(|i| i.map(|s| AttrString::from(s)).collect())
+            .map(|i| i.map(AttrString::from).collect())
             .unwrap_or_else(Vec::new);
 
         Ok(AccessControlModify {

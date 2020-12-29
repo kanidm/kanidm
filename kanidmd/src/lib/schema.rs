@@ -441,7 +441,7 @@ impl SchemaClass {
         // name
         let name = value
             .get_ava_single_str("classname")
-            .map(|s| AttrString::from(s))
+            .map(AttrString::from)
             .ok_or_else(|| {
                 ladmin_error!(audit, "missing classname");
                 OperationError::InvalidSchemaState("missing classname".to_string())
@@ -449,7 +449,7 @@ impl SchemaClass {
         // description
         let description = value
             .get_ava_single_str("description")
-            .map(|s| s.to_string())
+            .map(String::from)
             .ok_or_else(|| {
                 ladmin_error!(audit, "missing description");
                 OperationError::InvalidSchemaState("missing description".to_string())
@@ -458,19 +458,19 @@ impl SchemaClass {
         // These are all "optional" lists of strings.
         let systemmay = value
             .get_ava_as_str("systemmay")
-            .map(|i| i.map(|s| AttrString::from(s)).collect())
+            .map(|i| i.map(AttrString::from).collect())
             .unwrap_or_else(Vec::new);
         let systemmust = value
             .get_ava_as_str("systemmust")
-            .map(|i| i.map(|s| AttrString::from(s)).collect())
+            .map(|i| i.map(AttrString::from).collect())
             .unwrap_or_else(Vec::new);
         let may = value
             .get_ava_as_str("may")
-            .map(|i| i.map(|s| AttrString::from(s)).collect())
+            .map(|i| i.map(AttrString::from).collect())
             .unwrap_or_else(Vec::new);
         let must = value
             .get_ava_as_str("must")
-            .map(|i| i.map(|s| AttrString::from(s)).collect())
+            .map(|i| i.map(AttrString::from).collect())
             .unwrap_or_else(Vec::new);
 
         Ok(SchemaClass {
