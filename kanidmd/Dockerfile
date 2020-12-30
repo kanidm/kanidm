@@ -19,7 +19,14 @@ WORKDIR /usr/src/kanidm/kanidmd
 RUN ln -s -f /usr/bin/clang /usr/bin/cc && \
     ln -s -f /usr/bin/ld.lld /usr/bin/ld
 
-RUN CC=/usr/bin/clang RUSTC_BOOTSTRAP=1 RUSTFLAGS='-C target-feature=+avx2,+avx' \
+RUN if [ "$(uname -m)" == "x86_64" ]; \
+	then export RUSTFLAGS='-Ctarget-cpu=haswell'; \
+	fi; \
+	if [ "$(uname -m)" == "aarch64" ]; \
+	then export RUSTFLAGS=''; \
+	fi; \
+	echo $RUSTFLAGS; \
+	CC=/usr/bin/clang RUSTC_BOOTSTRAP=1 \
 	cargo build --features=concread/simd_support,libsqlite3-sys/bundled \
 	--release
 

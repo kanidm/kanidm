@@ -3,6 +3,7 @@
 IMAGE_BASE ?= kanidm
 IMAGE_VERSION ?= devel
 EXT_OPTS ?=
+IMAGE_ARCH ?= "linux/amd64,linux/arm64"
 
 .DEFAULT: help
 help:
@@ -10,12 +11,12 @@ help:
 
 buildx/kanidmd: ## build multiarch server images
 buildx/kanidmd:
-	@docker buildx build --push --platform linux/amd64,linux/arm64 -f kanidmd/Dockerfile -t $(IMAGE_BASE)/server:$(IMAGE_VERSION) .
+	@docker buildx build --push --platform $(IMAGE_ARCH) -f kanidmd/Dockerfile -t $(IMAGE_BASE)/server:$(IMAGE_VERSION) .
 	@docker buildx imagetools inspect $(IMAGE_BASE)/server:$(IMAGE_VERSION)
 
 buildx/radiusd: ## build multiarch radius images
 buildx/radiusd:
-	@docker buildx build --push --platform linux/amd64,linux/arm64 -f kanidm_rlm_python/Dockerfile -t $(IMAGE_BASE)/radius:$(IMAGE_VERSION) kanidm_rlm_python
+	@docker buildx build --push --platform $(IMAGE_ARCH) -f kanidm_rlm_python/Dockerfile -t $(IMAGE_BASE)/radius:$(IMAGE_VERSION) kanidm_rlm_python
 	@docker buildx imagetools inspect $(IMAGE_BASE)/server:$(IMAGE_VERSION)
 
 buildx: buildx/kanidmd buildx/radiusd
