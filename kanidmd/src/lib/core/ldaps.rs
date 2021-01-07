@@ -32,7 +32,7 @@ impl LdapSession {
     }
 }
 
-async fn client_process<W: AsyncWrite + Unpin, R: AsyncRead + Unpin> (
+async fn client_process<W: AsyncWrite + Unpin, R: AsyncRead + Unpin>(
     mut r: FramedRead<R, LdapCodec>,
     mut w: FramedWrite<W, LdapCodec>,
     _paddr: net::SocketAddr,
