@@ -7,7 +7,7 @@ use tokio_openssl::SslStream;
 use futures_util::sink::SinkExt;
 use futures_util::stream::StreamExt;
 // use ldap3_server::simple::*;
-use ldap3_server::proto::LdapMsg;
+// use ldap3_server::proto::LdapMsg;
 use ldap3_server::LdapCodec;
 // use std::convert::TryFrom;
 use std::marker::Unpin;
@@ -15,7 +15,7 @@ use std::net;
 use std::str::FromStr;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpListener;
-use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
+// use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio_util::codec::{FramedRead, FramedWrite};
 use uuid::Uuid;
 
@@ -32,21 +32,9 @@ impl LdapSession {
     }
 }
 
-async fn client_write_process<W: AsyncWrite + Unpin>(
-    mut w: FramedWrite<W, LdapCodec>,
-    mut async_rx: UnboundedReceiver<LdapMsg>,
-) {
-    while let Some(rmsg) = async_rx.recv().await {
-        if w.send(rmsg).await.is_err() {
-            // This will close the channel, so the reader will now fail and close.
-            return;
-        }
-    }
-}
-
-async fn client_read_process<R: AsyncRead + Unpin>(
+async fn client_process<W: AsyncWrite + Unpin, R: AsyncRead + Unpin> (
     mut r: FramedRead<R, LdapCodec>,
-    async_tx: UnboundedSender<LdapMsg>,
+    mut w: FramedWrite<W, LdapCodec>,
     _paddr: net::SocketAddr,
     qe_r_ref: &'static QueryServerReadV1,
 ) {
@@ -70,25 +58,25 @@ async fn client_read_process<R: AsyncRead + Unpin>(
         match qs_result {
             Some(LdapResponseState::Unbind) => return,
             Some(LdapResponseState::Disconnect(rmsg)) => {
-                if async_tx.send(rmsg).is_err() {
+                if w.send(rmsg).await.is_err() {
                     break;
                 }
                 break;
             }
             Some(LdapResponseState::Bind(uat, rmsg)) => {
                 session.uat = Some(uat);
-                if async_tx.send(rmsg).is_err() {
+                if w.send(rmsg).await.is_err() {
                     break;
                 }
             }
             Some(LdapResponseState::Respond(rmsg)) => {
-                if async_tx.send(rmsg).is_err() {
+                if w.send(rmsg).await.is_err() {
                     break;
                 }
             }
             Some(LdapResponseState::MultiPartResponse(v)) => {
                 for rmsg in v.into_iter() {
-                    if async_tx.send(rmsg).is_err() {
+                    if w.send(rmsg).await.is_err() {
                         break;
                     }
                 }
@@ -96,7 +84,7 @@ async fn client_read_process<R: AsyncRead + Unpin>(
             Some(LdapResponseState::BindMultiPartResponse(uat, v)) => {
                 session.uat = Some(uat);
                 for rmsg in v.into_iter() {
-                    if async_tx.send(rmsg).is_err() {
+                    if w.send(rmsg).await.is_err() {
                         break;
                     }
                 }
@@ -107,7 +95,6 @@ async fn client_read_process<R: AsyncRead + Unpin>(
             }
         };
     }
-    // We now are leaving, so any cleanup done here.
 }
 
 async fn tls_acceptor(
@@ -135,10 +122,7 @@ async fn tls_acceptor(
                 let (r, w) = tokio::io::split(tlsstream);
                 let r = FramedRead::new(r, LdapCodec);
                 let w = FramedWrite::new(w, LdapCodec);
-                let (async_tx, async_rx) = unbounded_channel();
-
-                tokio::spawn(client_write_process(w, async_rx));
-                tokio::spawn(client_read_process(r, async_tx, paddr, qe_r_ref));
+                tokio::spawn(client_process(r, w, paddr, qe_r_ref));
             }
             Err(e) => {
                 error!("acceptor error, continuing -> {:?}", e);
@@ -155,9 +139,7 @@ async fn acceptor(listener: TcpListener, qe_r_ref: &'static QueryServerReadV1) {
                 let r = FramedRead::new(r, LdapCodec);
                 let w = FramedWrite::new(w, LdapCodec);
                 // Let it rip.
-                let (async_tx, async_rx) = unbounded_channel();
-                tokio::spawn(client_write_process(w, async_rx));
-                tokio::spawn(client_read_process(r, async_tx, paddr, qe_r_ref));
+                tokio::spawn(client_process(r, w, paddr, qe_r_ref));
             }
             Err(e) => {
                 error!("acceptor error, continuing -> {:?}", e);
