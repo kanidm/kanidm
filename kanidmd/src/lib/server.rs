@@ -814,12 +814,14 @@ impl QueryServer {
 
     pub async fn write_async(&self, ts: Duration) -> QueryServerWriteTransaction<'_> {
         // Guarantee we are the only writer on the thread pool
+        #[allow(clippy::expect_used)]
         let write_ticket = self
             .write_ticket
             .acquire()
             .await
             .expect("unable to aquire writer_ticket for qsw");
         // We need to ensure a db conn will be available
+        #[allow(clippy::expect_used)]
         let db_ticket = self
             .db_tickets
             .acquire()
