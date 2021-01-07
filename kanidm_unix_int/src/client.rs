@@ -1,3 +1,4 @@
+use async_std::task;
 use bytes::{BufMut, BytesMut};
 use futures::SinkExt;
 use futures::StreamExt;
@@ -7,7 +8,6 @@ use std::io::ErrorKind;
 use tokio::net::UnixStream;
 use tokio_util::codec::Framed;
 use tokio_util::codec::{Decoder, Encoder};
-use async_std::task;
 
 use crate::unix_proto::{ClientRequest, ClientResponse};
 

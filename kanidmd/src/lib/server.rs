@@ -792,7 +792,10 @@ impl QueryServer {
     pub async fn read_async(&self) -> QueryServerReadTransaction<'_> {
         // We need to ensure a db conn will be available
         #[allow(clippy::expect_used)]
-        let db_ticket = self.db_tickets.acquire().await
+        let db_ticket = self
+            .db_tickets
+            .acquire()
+            .await
             .expect("unable to aquire db_ticket for qsr");
 
         QueryServerReadTransaction {
@@ -811,10 +814,16 @@ impl QueryServer {
 
     pub async fn write_async(&self, ts: Duration) -> QueryServerWriteTransaction<'_> {
         // Guarantee we are the only writer on the thread pool
-        let write_ticket = self.write_ticket.acquire().await
+        let write_ticket = self
+            .write_ticket
+            .acquire()
+            .await
             .expect("unable to aquire writer_ticket for qsw");
         // We need to ensure a db conn will be available
-        let db_ticket = self.db_tickets.acquire().await
+        let db_ticket = self
+            .db_tickets
+            .acquire()
+            .await
             .expect("unable to aquire db_ticket for qsw");
 
         // let schema_write = self.schema.write().await;

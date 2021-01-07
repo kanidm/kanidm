@@ -88,7 +88,7 @@ base64 = "0.13"
 ldap3_server = "0.1"
 # ldap3_server = { path = "../../ldap3_server" }
 
-webauthn-rs = "0.3.0-alpha.1"
+webauthn-rs = "0.3.0-alpha.5"
 # webauthn-rs = { path = "../../webauthn-rs" }
 
 libc = "0.2"
@@ -102,7 +102,7 @@ smartstring = { version = "0.2", features = ["serde"] }
 [dev-dependencies]
 criterion = "0.3"
 # For testing webauthn
-webauthn-authenticator-rs = "0.3.0-alpha.1"
+webauthn-authenticator-rs = "0.3.0-alpha.5"
 # webauthn-authenticator-rs = { path = "../../webauthn-authenticator-rs" }
 
 [dev-dependencies.cargo-husky]

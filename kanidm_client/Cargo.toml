@@ -11,8 +11,8 @@ repository = "https://github.com/kanidm/kanidm/"
 
 [dependencies]
 log = "0.4"
-env_logger = "0.7"
-reqwest = { version = "0.10", features=["blocking", "cookies", "json", "native-tls"] }
+env_logger = "0.8"
+reqwest = { version = "0.11", features=["blocking", "cookies", "json", "native-tls"] }
 kanidm_proto = { path = "../kanidm_proto", version = "1.1.0-alpha" }
 serde = "1.0"
 serde_json = "1.0"

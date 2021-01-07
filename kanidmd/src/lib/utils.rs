@@ -41,10 +41,22 @@ pub fn readable_password_from_random() -> String {
     let mut trng = thread_rng();
     format!(
         "{}-{}-{}-{}",
-        (&mut trng).sample_iter(&DistinctAlpha).take(4).collect::<String>(),
-        (&mut trng).sample_iter(&DistinctAlpha).take(4).collect::<String>(),
-        (&mut trng).sample_iter(&DistinctAlpha).take(4).collect::<String>(),
-        (&mut trng).sample_iter(&DistinctAlpha).take(4).collect::<String>(),
+        (&mut trng)
+            .sample_iter(&DistinctAlpha)
+            .take(4)
+            .collect::<String>(),
+        (&mut trng)
+            .sample_iter(&DistinctAlpha)
+            .take(4)
+            .collect::<String>(),
+        (&mut trng)
+            .sample_iter(&DistinctAlpha)
+            .take(4)
+            .collect::<String>(),
+        (&mut trng)
+            .sample_iter(&DistinctAlpha)
+            .take(4)
+            .collect::<String>(),
     )
 }
 
