@@ -5,9 +5,9 @@ use std::error::Error;
 use std::io::Error as IoError;
 use std::io::ErrorKind;
 use tokio::net::UnixStream;
-use tokio::runtime::Runtime;
 use tokio_util::codec::Framed;
 use tokio_util::codec::{Decoder, Encoder};
+use async_std::task;
 
 use crate::unix_proto::{ClientRequest, ClientResponse};
 
@@ -73,6 +73,5 @@ pub fn call_daemon_blocking(
     path: &str,
     req: ClientRequest,
 ) -> Result<ClientResponse, Box<dyn Error>> {
-    let mut rt = Runtime::new()?;
-    rt.block_on(call_daemon(path, req))
+    task::block_on(call_daemon(path, req))
 }

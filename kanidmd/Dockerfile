@@ -9,12 +9,14 @@ RUN zypper -vv ref && \
         gcc \
         clang lld \
         make automake autoconf \
-        libopenssl-devel pam-devel && \
+        libopenssl-devel pam-devel \
+        sccache && \
     zypper clean -a
-
 
 COPY . /usr/src/kanidm
 WORKDIR /usr/src/kanidm/kanidmd
+
+ARG SCCACHE_REDIS
 
 RUN ln -s -f /usr/bin/clang /usr/bin/cc && \
     ln -s -f /usr/bin/ld.lld /usr/bin/ld
@@ -25,10 +27,22 @@ RUN if [ "$(uname -m)" == "x86_64" ]; \
 	if [ "$(uname -m)" == "aarch64" ]; \
 	then export RUSTFLAGS=''; \
 	fi; \
+	if [ "${SCCACHE_REDIS}" != "" ]; \
+	then export CC="/usr/bin/sccache /usr/bin/clang"; export RUSTC_WRAPPER=sccache; sccache --start-server; \
+	else export CC="/usr/bin/clang"; \
+	fi; \
+	echo $RUSTC_WRAPPER; \
 	echo $RUSTFLAGS; \
-	CC=/usr/bin/clang RUSTC_BOOTSTRAP=1 \
+	echo $CC; \
+	RUSTC_BOOTSTRAP=1 \
 	cargo build --features=concread/simd_support,libsqlite3-sys/bundled \
-	--release
+	--release; \
+	if [ "${SCCACHE_REDIS}" != "" ]; \
+	then sccache -s; \
+	fi; \
+	echo $RUSTFLAGS; \
+	echo $CC; \
+	echo $RUSTC_WRAPPER;
 
 FROM ${BASE_IMAGE}
 LABEL mantainer william@blackhats.net.au

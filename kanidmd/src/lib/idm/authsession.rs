@@ -786,7 +786,9 @@ mod tests {
             Ok(AuthState::Success(_)) => {}
             _ => panic!(),
         };
-        assert!(async_rx.try_recv().is_err());
+
+        drop(async_tx);
+        assert!(async_rx.blocking_recv().is_none());
 
         audit.write_log();
     }
@@ -979,7 +981,8 @@ mod tests {
             };
         }
 
-        assert!(async_rx.try_recv().is_err());
+        drop(async_tx);
+        assert!(async_rx.blocking_recv().is_none());
         audit.write_log();
     }
 
@@ -1104,8 +1107,8 @@ mod tests {
         }
 
         // Check the async counter update was sent.
-        match async_rx.try_recv() {
-            Ok(DelayedAction::WebauthnCounterIncrement(_)) => {}
+        match async_rx.blocking_recv() {
+            Some(DelayedAction::WebauthnCounterIncrement(_)) => {}
             _ => assert!(false),
         }
 
@@ -1174,7 +1177,8 @@ mod tests {
             };
         }
 
-        assert!(async_rx.try_recv().is_err());
+        drop(async_tx);
+        assert!(async_rx.blocking_recv().is_none());
         audit.write_log();
     }
 }

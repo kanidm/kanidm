@@ -4,6 +4,7 @@ IMAGE_BASE ?= kanidm
 IMAGE_VERSION ?= devel
 EXT_OPTS ?=
 IMAGE_ARCH ?= "linux/amd64,linux/arm64"
+ARGS ?= --build-arg "SCCACHE_REDIS=redis://172.24.20.4:6379"
 
 .DEFAULT: help
 help:
@@ -11,7 +12,8 @@ help:
 
 buildx/kanidmd: ## build multiarch server images
 buildx/kanidmd:
-	@docker buildx build --push --platform $(IMAGE_ARCH) -f kanidmd/Dockerfile -t $(IMAGE_BASE)/server:$(IMAGE_VERSION) .
+	echo @docker buildx build --push --platform $(IMAGE_ARCH) -f kanidmd/Dockerfile -t $(IMAGE_BASE)/server:$(IMAGE_VERSION) $(ARGS) .
+	@docker buildx build --push --platform $(IMAGE_ARCH) -f kanidmd/Dockerfile -t $(IMAGE_BASE)/server:$(IMAGE_VERSION) $(ARGS) .
 	@docker buildx imagetools inspect $(IMAGE_BASE)/server:$(IMAGE_VERSION)
 
 buildx/radiusd: ## build multiarch radius images

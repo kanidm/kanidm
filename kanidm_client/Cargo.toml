@@ -28,7 +28,8 @@ webauthn-rs = "0.3.0-alpha.1"
 # webauthn-rs = { path = "../../webauthn-rs" }
 
 [dev-dependencies]
-tokio = { version = "0.2", features = ["full"] }
+# tokio = { version = "0.2", features = ["full"] }
+tokio = { version = "1", features = ["rt", "net", "time", "macros", "sync", "signal"] }
 kanidm = { path = "../kanidmd" }
 futures = "0.3"
 async-std = "1.6"

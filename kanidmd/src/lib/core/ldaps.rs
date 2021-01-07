@@ -1,6 +1,8 @@
 use crate::actors::v1_read::{LdapRequestMessage, QueryServerReadV1};
 use crate::ldap::{LdapBoundToken, LdapResponseState};
-use openssl::ssl::{SslAcceptor, SslAcceptorBuilder};
+use openssl::ssl::{SslAcceptor, SslAcceptorBuilder, Ssl};
+use tokio_openssl::SslStream;
+use core::pin::Pin;
 
 use futures_util::sink::SinkExt;
 use futures_util::stream::StreamExt;
@@ -95,21 +97,27 @@ async fn client_process<W: AsyncWrite + Unpin, R: AsyncRead + Unpin>(
 }
 
 async fn tls_acceptor(
-    mut listener: TcpListener,
+    listener: TcpListener,
     tls_parms: SslAcceptor,
     qe_r_ref: &'static QueryServerReadV1,
 ) {
-    // Do we need to do the silly ssl leak?
     loop {
         match listener.accept().await {
             Ok((tcpstream, paddr)) => {
-                let res = tokio_openssl::accept(&tls_parms, tcpstream).await;
-                let tlsstream = match res {
-                    Ok(ts) => ts,
+                // From the parms we need to create an SslContext.
+                let mut tlsstream = match Ssl::new(tls_parms.context())
+                    .and_then(|tls_obj| {
+                        SslStream::new(tls_obj, tcpstream)
+                    }) {
+                    Ok(ta) => ta,
                     Err(e) => {
-                        error!("tls handshake error, continuing -> {:?}", e);
+                        error!("tls setup error, continuing -> {:?}", e);
                         continue;
-                    }
+                        }
+                    };
+                if let Err(e) = SslStream::accept(Pin::new(&mut tlsstream)).await {
+                        error!("tls accept error, continuing -> {:?}", e);
+                        continue;
                 };
                 let (r, w) = tokio::io::split(tlsstream);
                 let r = FramedRead::new(r, LdapCodec);
@@ -123,7 +131,7 @@ async fn tls_acceptor(
     }
 }
 
-async fn acceptor(mut listener: TcpListener, qe_r_ref: &'static QueryServerReadV1) {
+async fn acceptor(listener: TcpListener, qe_r_ref: &'static QueryServerReadV1) {
     loop {
         match listener.accept().await {
             Ok((tcpstream, paddr)) => {

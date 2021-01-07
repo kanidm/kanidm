@@ -20,10 +20,7 @@ use std::collections::BTreeSet;
 use std::convert::TryFrom;
 use std::ffi::CStr;
 // use std::os::raw::c_char;
-
-// use futures::executor::block_on;
-use tokio::runtime::Runtime;
-
+use async_std::task;
 use kanidm_unix_common::client::call_daemon;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
@@ -95,12 +92,7 @@ impl PamHooks for PamKanidm {
         let req = ClientRequest::PamAccountAllowed(account_id);
         // PamResultCode::PAM_IGNORE
 
-        let mut rt = match Runtime::new() {
-            Ok(rt) => rt,
-            Err(_) => return PamResultCode::PAM_SERVICE_ERR,
-        };
-
-        match rt.block_on(call_daemon(cfg.sock_path.as_str(), req)) {
+        match task::block_on(call_daemon(cfg.sock_path.as_str(), req)) {
             Ok(r) => match r {
                 ClientResponse::PamStatus(Some(true)) => {
                     // println!("PAM_SUCCESS");
@@ -209,12 +201,7 @@ impl PamHooks for PamKanidm {
         };
         let req = ClientRequest::PamAuthenticate(account_id, authtok);
 
-        let mut rt = match Runtime::new() {
-            Ok(rt) => rt,
-            Err(_) => return PamResultCode::PAM_SERVICE_ERR,
-        };
-
-        match rt.block_on(call_daemon(cfg.sock_path.as_str(), req)) {
+        match task::block_on(call_daemon(cfg.sock_path.as_str(), req)) {
             Ok(r) => match r {
                 ClientResponse::PamStatus(Some(true)) => {
                     // println!("PAM_SUCCESS");

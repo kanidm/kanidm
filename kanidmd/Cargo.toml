@@ -38,8 +38,8 @@ fernet = { git = "https://github.com/mozilla-services/fernet-rs.git" }
 async-std = "1.6"
 
 log = "0.4"
-env_logger = "0.7"
-rand = "0.7"
+env_logger = "0.8"
+rand = "0.8"
 toml = "0.5"
 
 chrono = "0.4"
@@ -48,9 +48,9 @@ lazy_static = "1.2.0"
 
 futures = "0.3"
 futures-util = "0.3"
-tokio = { version = "0.2", features = ["rt-threaded", "macros", "rt-util", "sync", "time", "net", "io-util", "signal"] }
-tokio-util = { version = "0.3", features = ["codec"] }
-tokio-openssl = "0.4"
+tokio = { version = "1", features = ["full"] }
+tokio-util = { version = "0.6", features = ["codec"] }
+tokio-openssl = "0.6"
 openssl = "0.10"
 
 uuid = { version = "0.8", features = ["serde", "v4" ] }
@@ -67,7 +67,7 @@ r2d2_sqlite = "0.16"
 structopt = { version = "0.3", default-features = false }
 time = { version = "0.2", features = ["serde", "std"] }
 
-hashbrown = "0.8"
+hashbrown = "0.9"
 concread = "^0.2.5"
 # concread = { version = "^0.2.5", features = ["simd_support"] }
 # concread = { path = "../../concread" }
@@ -76,14 +76,14 @@ concread = "^0.2.5"
 
 sshkeys = "0.3"
 
-rpassword = "4.0"
+rpassword = "5.0"
 num_cpus = "1.10"
 
 idlset = { version = "0.1" , features = ["use_smallvec"] }
 # idlset = { path = "../../idlset", features = ["use_smallvec"] }
 
 zxcvbn = "2.0"
-base64 = "0.12"
+base64 = "0.13"
 
 ldap3_server = "0.1"
 # ldap3_server = { path = "../../ldap3_server" }
@@ -92,7 +92,7 @@ webauthn-rs = "0.3.0-alpha.1"
 # webauthn-rs = { path = "../../webauthn-rs" }
 
 libc = "0.2"
-users = "0.10"
+users = "0.11"
 
 smartstring = { version = "0.2", features = ["serde"] }
 
