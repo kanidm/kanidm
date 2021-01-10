@@ -25,7 +25,7 @@ dependencies = [
 
 [[package]]
 name = "pam_tester"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "pam 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]

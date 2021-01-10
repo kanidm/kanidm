@@ -30,23 +30,21 @@ use crate::idm::delayed::{
 
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::RadiusAuthToken;
-// use kanidm_proto::v1::TOTPSecret as ProtoTOTPSecret;
 use kanidm_proto::v1::SetCredentialResponse;
 use kanidm_proto::v1::UnixGroupToken;
 use kanidm_proto::v1::UnixUserToken;
 
-// use std::sync::Arc;
-
-// use crossbeam::channel::{unbounded, Sender, Receiver, TryRecvError};
-#[cfg(test)]
-use tokio::sync::mpsc::error::TryRecvError;
 use tokio::sync::mpsc::{
     unbounded_channel as unbounded, UnboundedReceiver as Receiver, UnboundedSender as Sender,
 };
 use tokio::sync::Semaphore;
-// SemaphorePermit
 
 use async_std::task;
+
+#[cfg(test)]
+use core::task::{Context, Poll};
+#[cfg(test)]
+use futures::task as futures_task;
 
 use concread::bptree::{BptreeMap, BptreeMapWriteTxn};
 use concread::hashmap::HashMap;
@@ -262,15 +260,23 @@ impl IdmServer {
 impl IdmServerDelayed {
     #[cfg(test)]
     pub fn is_empty_or_panic(&mut self) {
-        assert!(self.async_rx.try_recv().is_err());
+        let waker = futures_task::noop_waker();
+        let mut cx = Context::from_waker(&waker);
+        match self.async_rx.poll_recv(&mut cx) {
+            Poll::Pending | Poll::Ready(None) => {}
+            Poll::Ready(Some(_m)) => panic!("Task queue not empty"),
+        }
     }
 
     #[cfg(test)]
     pub(crate) fn try_recv(&mut self) -> Result<DelayedAction, OperationError> {
-        self.async_rx.try_recv().map_err(|e| match e {
-            TryRecvError::Empty => OperationError::InvalidState,
-            TryRecvError::Closed => OperationError::QueueDisconnected,
-        })
+        let waker = futures_task::noop_waker();
+        let mut cx = Context::from_waker(&waker);
+        match self.async_rx.poll_recv(&mut cx) {
+            Poll::Pending => Err(OperationError::InvalidState),
+            Poll::Ready(None) => Err(OperationError::QueueDisconnected),
+            Poll::Ready(Some(m)) => Ok(m),
+        }
     }
 
     pub(crate) async fn process_all(&mut self, server: &'static QueryServerWriteV1) {

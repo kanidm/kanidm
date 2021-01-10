@@ -44,15 +44,15 @@ kanidm_client = { path = "../kanidm_client", version = "1.1.0-alpha" }
 kanidm_proto = { path = "../kanidm_proto", version = "1.1.0-alpha" }
 kanidm = { path = "../kanidmd", version = "1.1.0-alpha" }
 toml = "0.5"
-rpassword = "4.0"
-tokio = { version = "0.2", features = ["rt-threaded", "macros", "rt-util", "sync", "time", "net", "io-util", "signal"] }
-tokio-util = { version = "0.3", features = ["codec"] }
+rpassword = "5.0"
+tokio = { version = "1", features = ["rt", "macros", "sync", "time", "net", "io-util", "signal"] }
+tokio-util = { version = "0.6", features = ["codec"] }
 futures = "0.3"
-bytes = "0.5"
+bytes = "1.0"
 
 libc = "0.2"
 log = "0.4"
-env_logger = "0.7"
+env_logger = "0.8"
 serde = "1.0"
 serde_derive = "1.0"
 serde_cbor = "0.11"
@@ -63,9 +63,9 @@ rusqlite = { version = "0.23", features = ["backup"] }
 r2d2 = "0.8"
 r2d2_sqlite = "0.16"
 
-reqwest = { version = "0.10" }
+reqwest = { version = "0.11" }
 
-users = "0.10"
+users = "0.11"
 async-std = "1.6"
 
 lru = "0.6"

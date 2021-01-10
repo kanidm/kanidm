@@ -30,8 +30,8 @@ pub fn run_test(test_fn: fn(KanidmClient) -> ()) {
         .is_test(true)
         .try_init();
 
-    let (mut ready_tx, mut ready_rx) = mpsc::channel(1);
-    let (mut finish_tx, mut finish_rx) = mpsc::channel(1);
+    let (ready_tx, mut ready_rx) = mpsc::channel(1);
+    let (finish_tx, mut finish_rx) = mpsc::channel(1);
 
     let mut counter = 0;
     let port = loop {
@@ -63,8 +63,7 @@ pub fn run_test(test_fn: fn(KanidmClient) -> ()) {
     let t_handle = thread::spawn(move || {
         // Spawn a thread for the test runner, this should have a unique
         // port....
-        let mut rt = tokio::runtime::Builder::new()
-            .basic_scheduler()
+        let rt = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
             .expect("failed to start tokio");

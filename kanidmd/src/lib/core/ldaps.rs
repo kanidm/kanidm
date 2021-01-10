@@ -1,10 +1,13 @@
 use crate::actors::v1_read::{LdapRequestMessage, QueryServerReadV1};
 use crate::ldap::{LdapBoundToken, LdapResponseState};
-use openssl::ssl::{SslAcceptor, SslAcceptorBuilder};
+use core::pin::Pin;
+use openssl::ssl::{Ssl, SslAcceptor, SslAcceptorBuilder};
+use tokio_openssl::SslStream;
 
 use futures_util::sink::SinkExt;
 use futures_util::stream::StreamExt;
 // use ldap3_server::simple::*;
+// use ldap3_server::proto::LdapMsg;
 use ldap3_server::LdapCodec;
 // use std::convert::TryFrom;
 use std::marker::Unpin;
@@ -12,6 +15,7 @@ use std::net;
 use std::str::FromStr;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpListener;
+// use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio_util::codec::{FramedRead, FramedWrite};
 use uuid::Uuid;
 
@@ -91,25 +95,29 @@ async fn client_process<W: AsyncWrite + Unpin, R: AsyncRead + Unpin>(
             }
         };
     }
-    // We now are leaving, so any cleanup done here.
 }
 
 async fn tls_acceptor(
-    mut listener: TcpListener,
+    listener: TcpListener,
     tls_parms: SslAcceptor,
     qe_r_ref: &'static QueryServerReadV1,
 ) {
-    // Do we need to do the silly ssl leak?
     loop {
         match listener.accept().await {
             Ok((tcpstream, paddr)) => {
-                let res = tokio_openssl::accept(&tls_parms, tcpstream).await;
-                let tlsstream = match res {
-                    Ok(ts) => ts,
+                // From the parms we need to create an SslContext.
+                let mut tlsstream = match Ssl::new(tls_parms.context())
+                    .and_then(|tls_obj| SslStream::new(tls_obj, tcpstream))
+                {
+                    Ok(ta) => ta,
                     Err(e) => {
-                        error!("tls handshake error, continuing -> {:?}", e);
+                        error!("tls setup error, continuing -> {:?}", e);
                         continue;
                     }
+                };
+                if let Err(e) = SslStream::accept(Pin::new(&mut tlsstream)).await {
+                    error!("tls accept error, continuing -> {:?}", e);
+                    continue;
                 };
                 let (r, w) = tokio::io::split(tlsstream);
                 let r = FramedRead::new(r, LdapCodec);
@@ -123,7 +131,7 @@ async fn tls_acceptor(
     }
 }
 
-async fn acceptor(mut listener: TcpListener, qe_r_ref: &'static QueryServerReadV1) {
+async fn acceptor(listener: TcpListener, qe_r_ref: &'static QueryServerReadV1) {
     loop {
         match listener.accept().await {
             Ok((tcpstream, paddr)) => {

@@ -218,7 +218,7 @@ async fn handle_client(
     Ok(())
 }
 
-#[tokio::main(core_threads = 1, max_threads = 1)]
+#[tokio::main]
 async fn main() {
     let cuid = get_current_uid();
     let ceuid = get_effective_uid();
@@ -398,7 +398,7 @@ async fn main() {
 
     // Set the umask while we open the path
     let before = unsafe { umask(0) };
-    let mut listener = match UnixListener::bind(cfg.sock_path.as_str()) {
+    let listener = match UnixListener::bind(cfg.sock_path.as_str()) {
         Ok(l) => l,
         Err(_e) => {
             error!("Failed to bind unix socket.");
@@ -411,10 +411,9 @@ async fn main() {
     // TODO: Setup a task that handles pre-fetching here.
 
     let server = async move {
-        let mut incoming = listener.incoming();
-        while let Some(socket_res) = incoming.next().await {
-            match socket_res {
-                Ok(socket) => {
+        loop {
+            match listener.accept().await {
+                Ok((socket, _addr)) => {
                     let cachelayer_ref = cachelayer.clone();
                     tokio::spawn(async move {
                         if let Err(e) = handle_client(socket, cachelayer_ref.clone()).await {
