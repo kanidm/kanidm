@@ -252,7 +252,7 @@ pub trait BackendTransaction {
                         // When below thres, we have to return partials to trigger the entry_no_match_filter check.
                         // But we only do this when there are actually multiple elements in the and,
                         // because an and with 1 element now is FULLY resolved.
-                        if idl.len() < thres && f_rem_count > 0 {
+                        if idl.below_threshold(thres) && f_rem_count > 0 {
                             let setplan = FilterPlan::AndPartialThreshold(plan);
                             return Ok((IDL::PartialThreshold(idl.clone()), setplan));
                         } else if idl.is_empty() {
@@ -273,7 +273,7 @@ pub trait BackendTransaction {
                     cand_idl = match (cand_idl, inter) {
                         (IDL::Indexed(ia), IDL::Indexed(ib)) => {
                             let r = ia & ib;
-                            if r.len() < thres && f_rem_count > 0 {
+                            if r.below_threshold(thres) && f_rem_count > 0 {
                                 // When below thres, we have to return partials to trigger the entry_no_match_filter check.
                                 let setplan = FilterPlan::AndPartialThreshold(plan);
                                 return Ok((IDL::PartialThreshold(r), setplan));
@@ -290,7 +290,7 @@ pub trait BackendTransaction {
                         | (IDL::Partial(ia), IDL::Indexed(ib))
                         | (IDL::Partial(ia), IDL::Partial(ib)) => {
                             let r = ia & ib;
-                            if r.len() < thres && f_rem_count > 0 {
+                            if r.below_threshold(thres) && f_rem_count > 0 {
                                 // When below thres, we have to return partials to trigger the entry_no_match_filter check.
                                 let setplan = FilterPlan::AndPartialThreshold(plan);
                                 return Ok((IDL::PartialThreshold(r), setplan));
@@ -304,7 +304,7 @@ pub trait BackendTransaction {
                         | (IDL::PartialThreshold(ia), IDL::Partial(ib))
                         | (IDL::Partial(ia), IDL::PartialThreshold(ib)) => {
                             let r = ia & ib;
-                            if r.len() < thres && f_rem_count > 0 {
+                            if r.below_threshold(thres) && f_rem_count > 0 {
                                 // When below thres, we have to return partials to trigger the entry_no_match_filter check.
                                 let setplan = FilterPlan::AndPartialThreshold(plan);
                                 return Ok((IDL::PartialThreshold(r), setplan));
@@ -344,7 +344,7 @@ pub trait BackendTransaction {
                             let r = ia.andnot(ib);
                             /*
                             // Don't trigger threshold on and nots if fully indexed.
-                            if r.len() < thres {
+                            if r.below_threshold(thres) {
                                 // When below thres, we have to return partials to trigger the entry_no_match_filter check.
                                 return Ok(IDL::PartialThreshold(r));
                             } else {
@@ -359,7 +359,7 @@ pub trait BackendTransaction {
                             let r = ia.andnot(ib);
                             // DO trigger threshold on partials, because we have to apply the filter
                             // test anyway, so we may as well shortcut at this point.
-                            if r.len() < thres && f_rem_count > 0 {
+                            if r.below_threshold(thres) && f_rem_count > 0 {
                                 let setplan = FilterPlan::AndPartialThreshold(plan);
                                 return Ok((IDL::PartialThreshold(r), setplan));
                             } else {
@@ -374,7 +374,7 @@ pub trait BackendTransaction {
                             let r = ia.andnot(ib);
                             // DO trigger threshold on partials, because we have to apply the filter
                             // test anyway, so we may as well shortcut at this point.
-                            if r.len() < thres && f_rem_count > 0 {
+                            if r.below_threshold(thres) && f_rem_count > 0 {
                                 let setplan = FilterPlan::AndPartialThreshold(plan);
                                 return Ok((IDL::PartialThreshold(r), setplan));
                             } else {
@@ -494,7 +494,8 @@ pub trait BackendTransaction {
                     }
                 }
                 IDL::Partial(idl_br) => {
-                    if idl_br.len() > erl.search_max_filter_test {
+                    // if idl_br.len() > erl.search_max_filter_test {
+                    if !idl_br.below_threshold(erl.search_max_filter_test) {
                         ladmin_error!(au, "filter (search) is partial indexed and greater than search_max_filter_test allowed by resource limits");
                         return Err(OperationError::ResourceLimit);
                     }
@@ -507,7 +508,8 @@ pub trait BackendTransaction {
                     // We know this is resolved here, so we can attempt the limit
                     // check. This has to fold the whole index, but you know, class=pres is
                     // indexed ...
-                    if idl_br.len() > erl.search_max_results {
+                    // if idl_br.len() > erl.search_max_results {
+                    if !idl_br.below_threshold(erl.search_max_results) {
                         ladmin_error!(au, "filter (search) is indexed and greater than search_max_results allowed by resource limits");
                         return Err(OperationError::ResourceLimit);
                     }
@@ -591,7 +593,7 @@ pub trait BackendTransaction {
                     }
                 }
                 IDL::Partial(idl_br) => {
-                    if idl_br.len() > erl.search_max_filter_test {
+                    if !idl_br.below_threshold(erl.search_max_filter_test) {
                         ladmin_error!(au, "filter (exists) is partial indexed and greater than search_max_filter_test allowed by resource limits");
                         return Err(OperationError::ResourceLimit);
                     }

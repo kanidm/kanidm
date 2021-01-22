@@ -79,7 +79,7 @@ sshkeys = "0.3"
 rpassword = "5.0"
 num_cpus = "1.10"
 
-idlset = { version = "0.1" , features = ["use_smallvec"] }
+idlset = { version = "^0.1.12" , features = ["use_smallvec"] }
 # idlset = { path = "../../idlset", features = ["use_smallvec"] }
 
 zxcvbn = "2.0"
