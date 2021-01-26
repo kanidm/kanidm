@@ -605,13 +605,17 @@ impl TOTPSecret {
             .replace("%3A", "")
             .replace(" ", "%20");
         let label = format!("{}:{}", issuer, accountname);
-        let secret = base32::encode(base32::Alphabet::RFC4648 { padding: false }, &self.secret);
         let algo = self.algo.to_string();
+        let secret = self.get_secret();
         let period = self.step;
         format!(
             "otpauth://totp/{}?secret={}&issuer={}&algorithm={}&digits=6&period={}",
             label, secret, issuer, algo, period
         )
+    }
+
+    pub fn get_secret(&self) -> String {
+        base32::encode(base32::Alphabet::RFC4648 { padding: false }, &self.secret)
     }
 }
 
