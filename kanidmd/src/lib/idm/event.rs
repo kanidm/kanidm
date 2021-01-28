@@ -341,6 +341,40 @@ impl VerifyTOTPEvent {
 }
 
 #[derive(Debug)]
+pub struct RemoveTOTPEvent {
+    pub event: Event,
+    pub target: Uuid,
+}
+
+impl RemoveTOTPEvent {
+    /*
+    pub fn from_parts(
+        audit: &mut AuditScope,
+        qs: &QueryServerWriteTransaction,
+        uat: Option<&UserAuthToken>,
+        target: Uuid,
+    ) -> Result<Self, OperationError> {
+        let e = Event::from_rw_uat(audit, qs, uat)?;
+
+        Ok(RemoveTOTPEvent {
+            event: e,
+            target,
+        })
+    }
+    */
+
+    #[cfg(test)]
+    pub fn new_internal(target: Uuid) -> Self {
+        let e = Event::from_internal();
+
+        RemoveTOTPEvent {
+            event: e,
+            target,
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct WebauthnInitRegisterEvent {
     pub event: Event,
     pub target: Uuid,

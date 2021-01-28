@@ -246,6 +246,23 @@ impl Account {
         }
     }
 
+    pub(crate) fn gen_totp_remove_mod(
+        &self
+    ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
+        match &self.primary {
+            // Change the cred
+            Some(primary) => {
+                let ncred = primary.remove_totp();
+                let vcred = Value::new_credential("primary", ncred);
+                Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
+            }
+            None => {
+                // No credential exists, we can't supplementy it.
+                Err(OperationError::InvalidState)
+            }
+        }
+    }
+
     pub(crate) fn gen_webauthn_mod(
         &self,
         label: String,

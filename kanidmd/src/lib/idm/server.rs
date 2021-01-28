@@ -8,7 +8,7 @@ use crate::event::{AuthEvent, AuthEventStep, AuthResult};
 use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
 use crate::idm::event::{
-    GeneratePasswordEvent, GenerateTOTPEvent, LdapAuthEvent, PasswordChangeEvent,
+    GeneratePasswordEvent, GenerateTOTPEvent, RemoveTOTPEvent, LdapAuthEvent, PasswordChangeEvent,
     RadiusAuthTokenEvent, RegenerateRadiusSecretEvent, UnixGroupTokenEvent,
     UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent, VerifyTOTPEvent,
     WebauthnDoRegisterEvent, WebauthnInitRegisterEvent,
@@ -1293,6 +1293,35 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         Ok(next)
     }
 
+    pub fn remove_account_totp(
+        &mut self,
+        au: &mut AuditScope,
+        rte: &RemoveTOTPEvent,
+    ) -> Result<(), OperationError> {
+        ltrace!(au, "Attempting to remove totp -> {:?}", rte.target);
+
+        let account = self.target_to_account(au, &rte.target)?;
+        let modlist = account.gen_totp_remove_mod().map_err(|e| {
+            ladmin_error!(au, "Failed to gen totp remove mod {:?}", e);
+            e
+        })?;
+        // Perform the mod
+        self.qs_write
+            .impersonate_modify(
+                au,
+                // Filter as executed
+                &filter!(f_eq("uuid", PartialValue::new_uuidr(&account.uuid))),
+                // Filter as intended (acp)
+                &filter_all!(f_eq("uuid", PartialValue::new_uuidr(&account.uuid))),
+                &modlist,
+                &rte.event,
+            )
+            .map_err(|e| {
+                ladmin_error!(au, "remove_account_totp {:?}", e);
+                e
+            })
+    }
+
     // -- delayed action processing --
     fn process_pwupgrade(
         &mut self,
@@ -1429,7 +1458,7 @@ mod tests {
     use crate::event::{AuthEvent, AuthResult, CreateEvent, ModifyEvent};
     use crate::idm::delayed::{DelayedAction, WebauthnCounterIncrement};
     use crate::idm::event::{
-        GenerateTOTPEvent, PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
+        GenerateTOTPEvent, RemoveTOTPEvent, PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
         UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent,
         VerifyTOTPEvent, WebauthnDoRegisterEvent, WebauthnInitRegisterEvent,
     };
@@ -2305,7 +2334,15 @@ mod tests {
             };
             idms_prox_write.expire_mfareg_sessions(expire.clone());
 
+            // Test removing the TOTP and then authing with password only.
+            let rte = RemoveTOTPEvent::new_internal(UUID_ADMIN.clone());
+            idms_prox_write
+                .remove_account_totp(au, &rte)
+                .unwrap();
             assert!(idms_prox_write.commit(au).is_ok());
+
+            check_admin_password(idms, au, TEST_PASSWORD);
+            // All done!
         })
     }
 
