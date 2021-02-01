@@ -265,7 +265,7 @@ pub struct UnixUserToken {
 impl fmt::Display for UnixUserToken {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "---")?;
-        writeln!(f, "spn: {}", self.name)?;
+        writeln!(f, "spn: {}", self.spn)?;
         writeln!(f, "name: {}", self.name)?;
         writeln!(f, "displayname: {}", self.displayname)?;
         writeln!(f, "uuid: {}", self.uuid)?;

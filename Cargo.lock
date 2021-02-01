@@ -1631,7 +1631,7 @@ dependencies = [
  "url",
  "users",
  "uuid",
- "webauthn-authenticator-rs 0.3.0-alpha.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "webauthn-authenticator-rs",
  "webauthn-rs",
  "zxcvbn",
 ]
@@ -1654,7 +1654,7 @@ dependencies = [
  "toml",
  "url",
  "uuid",
- "webauthn-authenticator-rs 0.3.0-alpha.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "webauthn-authenticator-rs",
  "webauthn-rs",
 ]
 
@@ -1688,7 +1688,7 @@ dependencies = [
  "shellexpand",
  "structopt",
  "time 0.2.24",
- "webauthn-authenticator-rs 0.3.0-alpha.5",
+ "webauthn-authenticator-rs",
  "zxcvbn",
 ]
 
@@ -3628,23 +3628,9 @@ dependencies = [
 
 [[package]]
 name = "webauthn-authenticator-rs"
-version = "0.3.0-alpha.5"
-dependencies = [
- "authenticator",
- "log",
- "nom 4.2.3",
- "openssl",
- "serde_cbor",
- "serde_json",
- "url",
- "webauthn-rs",
-]
-
-[[package]]
-name = "webauthn-authenticator-rs"
-version = "0.3.0-alpha.5"
+version = "0.3.0-alpha.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57f2a998d035484b3a3e21fd839d5c56e014fdf7756077ffbe209b1f09e6d265"
+checksum = "2240df596f30224b3268abac6fa1117f12312fc994bd49bab5e52752d73a9403"
 dependencies = [
  "authenticator",
  "log",
