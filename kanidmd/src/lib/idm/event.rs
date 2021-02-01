@@ -347,7 +347,6 @@ pub struct RemoveTOTPEvent {
 }
 
 impl RemoveTOTPEvent {
-    /*
     pub fn from_parts(
         audit: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
@@ -356,21 +355,14 @@ impl RemoveTOTPEvent {
     ) -> Result<Self, OperationError> {
         let e = Event::from_rw_uat(audit, qs, uat)?;
 
-        Ok(RemoveTOTPEvent {
-            event: e,
-            target,
-        })
+        Ok(RemoveTOTPEvent { event: e, target })
     }
-    */
 
     #[cfg(test)]
     pub fn new_internal(target: Uuid) -> Self {
         let e = Event::from_internal();
 
-        RemoveTOTPEvent {
-            event: e,
-            target,
-        }
+        RemoveTOTPEvent { event: e, target }
     }
 }
 

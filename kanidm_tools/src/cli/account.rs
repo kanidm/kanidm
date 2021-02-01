@@ -100,7 +100,7 @@ pub enum AccountCredential {
     RegisterTOTP(AccountNamedTagOpt),
     /// Remove TOTP from the account. If no TOTP exists, no action is taken.
     #[structopt(name = "remove_totp")]
-    RemoveTOTP(AccountNamedTagOpt),
+    RemoveTOTP(AccountNamedOpt),
 }
 
 #[derive(Debug, StructOpt)]
@@ -310,8 +310,13 @@ impl AccountOpt {
                     // display the tok.
                     eprintln!("You should scan the follow QR code with your OTP App.");
 
-                    let code = QrCode::new(tok.to_uri().as_str())
-                        .expect("Unable to create unicode QR code.");
+                    let code = match QrCode::new(tok.to_uri().as_str()) {
+                        Ok(c) => c,
+                        Err(e) => {
+                            eprintln!("Failed to generate QR code -> {:?}", e);
+                            return;
+                        }
+                    };
                     let image = code
                         .render::<unicode::Dense1x2>()
                         .dark_color(unicode::Dense1x2::Light)
@@ -333,9 +338,10 @@ impl AccountOpt {
                     );
 
                     let mut totp_input = String::new();
-                    io::stdin()
-                        .read_line(&mut totp_input)
-                        .expect("Failed to read totp_input");
+                    if let Err(e) = io::stdin().read_line(&mut totp_input) {
+                        eprintln!("Failed to read from stdin -> {:?}", e);
+                        return;
+                    };
 
                     // Convert to a u32.
                     let totp = match u32::from_str_radix(totp_input.trim(), 10) {
@@ -360,7 +366,17 @@ impl AccountOpt {
                     }
                 }
                 AccountCredential::RemoveTOTP(acsopt) => {
-                    let _client = acsopt.copt.to_client();
+                    let client = acsopt.copt.to_client();
+                    match client.idm_account_primary_credential_remove_totp(
+                        acsopt.aopts.account_id.as_str(),
+                    ) {
+                        Ok(_) => {
+                            println!("TOTP removal success.");
+                        }
+                        Err(e) => {
+                            eprintln!("Error Removing TOTP from account -> {:?}", e);
+                        }
+                    }
                 }
             }, // end AccountOpt::Credential
             AccountOpt::Radius(aropt) => match aropt {

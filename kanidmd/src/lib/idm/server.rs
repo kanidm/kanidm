@@ -8,8 +8,8 @@ use crate::event::{AuthEvent, AuthEventStep, AuthResult};
 use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
 use crate::idm::event::{
-    GeneratePasswordEvent, GenerateTOTPEvent, RemoveTOTPEvent, LdapAuthEvent, PasswordChangeEvent,
-    RadiusAuthTokenEvent, RegenerateRadiusSecretEvent, UnixGroupTokenEvent,
+    GeneratePasswordEvent, GenerateTOTPEvent, LdapAuthEvent, PasswordChangeEvent,
+    RadiusAuthTokenEvent, RegenerateRadiusSecretEvent, RemoveTOTPEvent, UnixGroupTokenEvent,
     UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent, VerifyTOTPEvent,
     WebauthnDoRegisterEvent, WebauthnInitRegisterEvent,
 };
@@ -1297,7 +1297,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         &mut self,
         au: &mut AuditScope,
         rte: &RemoveTOTPEvent,
-    ) -> Result<(), OperationError> {
+    ) -> Result<SetCredentialResponse, OperationError> {
         ltrace!(au, "Attempting to remove totp -> {:?}", rte.target);
 
         let account = self.target_to_account(au, &rte.target)?;
@@ -1320,6 +1320,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 ladmin_error!(au, "remove_account_totp {:?}", e);
                 e
             })
+            .map(|_| SetCredentialResponse::Success)
     }
 
     // -- delayed action processing --
@@ -1458,9 +1459,9 @@ mod tests {
     use crate::event::{AuthEvent, AuthResult, CreateEvent, ModifyEvent};
     use crate::idm::delayed::{DelayedAction, WebauthnCounterIncrement};
     use crate::idm::event::{
-        GenerateTOTPEvent, RemoveTOTPEvent, PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
-        UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent,
-        VerifyTOTPEvent, WebauthnDoRegisterEvent, WebauthnInitRegisterEvent,
+        GenerateTOTPEvent, PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
+        RemoveTOTPEvent, UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent,
+        UnixUserTokenEvent, VerifyTOTPEvent, WebauthnDoRegisterEvent, WebauthnInitRegisterEvent,
     };
     use crate::idm::AuthState;
     use crate::modify::{Modify, ModifyList};
@@ -2336,9 +2337,7 @@ mod tests {
 
             // Test removing the TOTP and then authing with password only.
             let rte = RemoveTOTPEvent::new_internal(UUID_ADMIN.clone());
-            idms_prox_write
-                .remove_account_totp(au, &rte)
-                .unwrap();
+            idms_prox_write.remove_account_totp(au, &rte).unwrap();
             assert!(idms_prox_write.commit(au).is_ok());
 
             check_admin_password(idms, au, TEST_PASSWORD);

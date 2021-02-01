@@ -246,9 +246,7 @@ impl Account {
         }
     }
 
-    pub(crate) fn gen_totp_remove_mod(
-        &self
-    ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
+    pub(crate) fn gen_totp_remove_mod(&self) -> Result<ModifyList<ModifyInvalid>, OperationError> {
         match &self.primary {
             // Change the cred
             Some(primary) => {

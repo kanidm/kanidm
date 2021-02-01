@@ -319,7 +319,7 @@ impl CredHandler {
             CredHandler::Password(_) => vec![AuthAllowed::Password],
             // webauth
             // mfa
-            CredHandler::PasswordMFA(_) => vec![AuthAllowed::Password, AuthAllowed::TOTP],
+            CredHandler::PasswordMFA(_) => vec![AuthAllowed::TOTP],
             CredHandler::Webauthn(webauthn) => vec![AuthAllowed::Webauthn(webauthn.chal.clone())],
         }
     }
