@@ -72,8 +72,17 @@ impl TaskCodec {
 }
 
 fn create_home_directory(info: &HomeDirectoryInfo) -> Result<(), String> {
+    // Final sanity check to prevent certain classes of attacks.
+    let name = info
+        .name
+        .replace(".", "")
+        .replace("/", "")
+        .replace("\\", "");
+    // Note, due to how this works, we can't remove '/'. But we still want to stop traversals.
+    let path = info.path.replace(".", "").replace("\\", "");
+
     // Actually process the request here.
-    let hd_path_raw = format!("{}{}", info.path, info.name);
+    let hd_path_raw = format!("{}{}", path, name);
     let hd_path = Path::new(&hd_path_raw);
 
     let hd_path_os =
@@ -98,10 +107,12 @@ fn create_home_directory(info: &HomeDirectoryInfo) -> Result<(), String> {
         }
     }
 
-    let name_rel_path = Path::new(&info.name);
+    let name_rel_path = Path::new(&name);
     // Does the aliases exist
     for alias in info.aliases.iter() {
-        let alias_path_raw = format!("{}{}", info.path, alias);
+        // Sanity check the alias.
+        let alias = alias.replace(".", "").replace("/", "").replace("\\", "");
+        let alias_path_raw = format!("{}{}", path, alias);
         let alias_path = Path::new(&alias_path_raw);
         if alias_path.exists() {
             let attr = match fs::symlink_metadata(alias_path) {
