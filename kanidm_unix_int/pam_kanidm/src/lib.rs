@@ -20,8 +20,7 @@ use std::collections::BTreeSet;
 use std::convert::TryFrom;
 use std::ffi::CStr;
 // use std::os::raw::c_char;
-use async_std::task;
-use kanidm_unix_common::client::call_daemon;
+use kanidm_unix_common::client::call_daemon_blocking;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
 
@@ -92,7 +91,7 @@ impl PamHooks for PamKanidm {
         let req = ClientRequest::PamAccountAllowed(account_id);
         // PamResultCode::PAM_IGNORE
 
-        match task::block_on(call_daemon(cfg.sock_path.as_str(), req)) {
+        match call_daemon_blocking(cfg.sock_path.as_str(), req) {
             Ok(r) => match r {
                 ClientResponse::PamStatus(Some(true)) => {
                     // println!("PAM_SUCCESS");
@@ -201,7 +200,7 @@ impl PamHooks for PamKanidm {
         };
         let req = ClientRequest::PamAuthenticate(account_id, authtok);
 
-        match task::block_on(call_daemon(cfg.sock_path.as_str(), req)) {
+        match call_daemon_blocking(cfg.sock_path.as_str(), req) {
             Ok(r) => match r {
                 ClientResponse::PamStatus(Some(true)) => {
                     // println!("PAM_SUCCESS");
@@ -264,7 +263,7 @@ impl PamHooks for PamKanidm {
         PamResultCode::PAM_SUCCESS
     }
 
-    fn sm_open_session(_pamh: &PamHandle, args: Vec<&CStr>, _flags: PamFlag) -> PamResultCode {
+    fn sm_open_session(pamh: &PamHandle, args: Vec<&CStr>, _flags: PamFlag) -> PamResultCode {
         let opts = match Options::try_from(&args) {
             Ok(o) => o,
             Err(_) => return PamResultCode::PAM_SERVICE_ERR,
@@ -275,7 +274,35 @@ impl PamHooks for PamKanidm {
             println!("args -> {:?}", args);
             println!("opts -> {:?}", opts);
         }
-        PamResultCode::PAM_SUCCESS
+
+        let account_id = match pamh.get_user(None) {
+            Ok(aid) => aid,
+            Err(e) => {
+                if opts.debug {
+                    println!("Error get_user -> {:?}", e);
+                }
+                return e;
+            }
+        };
+
+        let cfg = match get_cfg() {
+            Ok(cfg) => cfg,
+            Err(e) => return e,
+        };
+        let req = ClientRequest::PamAccountBeginSession(account_id);
+
+        match call_daemon_blocking(cfg.sock_path.as_str(), req) {
+            Ok(ClientResponse::Ok) => {
+                // println!("PAM_SUCCESS");
+                PamResultCode::PAM_SUCCESS
+            }
+            other => {
+                if opts.debug {
+                    println!("PAM_IGNORE  -> {:?}", other);
+                }
+                PamResultCode::PAM_IGNORE
+            }
+        }
     }
 
     fn sm_setcred(_pamh: &PamHandle, args: Vec<&CStr>, _flags: PamFlag) -> PamResultCode {

@@ -20,6 +20,10 @@ name = "kanidm_unixd"
 path = "src/daemon.rs"
 
 [[bin]]
+name = "kanidm_unixd_tasks"
+path = "src/tasks_daemon.rs"
+
+[[bin]]
 name = "kanidm_ssh_authorizedkeys"
 path = "src/ssh_authorizedkeys.rs"
 
