@@ -2232,7 +2232,6 @@ dependencies = [
 name = "pam_kanidm"
 version = "1.1.0-alpha.3"
 dependencies = [
- "async-std",
  "kanidm_unix_int",
  "libc",
 ]

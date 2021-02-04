@@ -25,6 +25,7 @@ pub enum ClientRequest {
     NssGroupByName(String),
     PamAuthenticate(String, String),
     PamAccountAllowed(String),
+    PamAccountBeginSession(String),
     InvalidateCache,
     ClearCache,
     Status,
@@ -40,4 +41,23 @@ pub enum ClientResponse {
     PamStatus(Option<bool>),
     Ok,
     Error,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct HomeDirectoryInfo {
+    pub gid: u32,
+    pub path: String,
+    pub name: String,
+    pub aliases: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum TaskRequest {
+    HomeDirectory(HomeDirectoryInfo),
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub enum TaskResponse {
+    Success,
+    Error(String),
 }

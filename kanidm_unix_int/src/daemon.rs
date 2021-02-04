@@ -14,6 +14,8 @@ extern crate log;
 use users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 
 use std::fs::metadata;
+use std::io::Error as IoError;
+use std::io::ErrorKind;
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 
@@ -24,7 +26,11 @@ use libc::umask;
 use std::error::Error;
 use std::io;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::net::{UnixListener, UnixStream};
+use tokio::sync::mpsc::{channel, Receiver, Sender};
+use tokio::sync::oneshot;
+use tokio::time;
 use tokio_util::codec::Framed;
 use tokio_util::codec::{Decoder, Encoder};
 
@@ -32,9 +38,11 @@ use kanidm_client::KanidmClientBuilder;
 
 use kanidm_unix_common::cache::CacheLayer;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
-use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
+use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse, TaskRequest, TaskResponse};
 
 //=== the codec
+
+type AsyncTaskRequest = (TaskRequest, oneshot::Sender<()>);
 
 struct ClientCodec;
 
@@ -74,15 +82,100 @@ impl ClientCodec {
     }
 }
 
+struct TaskCodec;
+
+impl Decoder for TaskCodec {
+    type Item = TaskResponse;
+    type Error = io::Error;
+
+    fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
+        match serde_cbor::from_slice::<TaskResponse>(&src) {
+            Ok(msg) => {
+                // Clear the buffer for the next message.
+                src.clear();
+                Ok(Some(msg))
+            }
+            _ => Ok(None),
+        }
+    }
+}
+
+impl Encoder<TaskRequest> for TaskCodec {
+    type Error = io::Error;
+
+    fn encode(&mut self, msg: TaskRequest, dst: &mut BytesMut) -> Result<(), Self::Error> {
+        debug!("Attempting to send request -> {:?} ...", msg);
+        let data = serde_cbor::to_vec(&msg).map_err(|e| {
+            error!("socket encoding error -> {:?}", e);
+            io::Error::new(io::ErrorKind::Other, "CBOR encode error")
+        })?;
+        dst.put(data.as_slice());
+        Ok(())
+    }
+}
+
+impl TaskCodec {
+    fn new() -> Self {
+        TaskCodec
+    }
+}
+
 fn rm_if_exist(p: &str) {
     let _ = std::fs::remove_file(p).map_err(|e| {
         warn!("attempting to remove {:?} -> {:?}", p, e);
     });
 }
 
+async fn handle_task_client(
+    stream: UnixStream,
+    task_channel_tx: &Sender<AsyncTaskRequest>,
+    task_channel_rx: &mut Receiver<AsyncTaskRequest>,
+) -> Result<(), Box<dyn Error>> {
+    // setup the codec
+    let mut reqs = Framed::new(stream, TaskCodec::new());
+
+    loop {
+        // TODO wait on the channel OR the task handler, so we know
+        // when it closes.
+        let v = match task_channel_rx.recv().await {
+            Some(v) => v,
+            None => return Ok(()),
+        };
+
+        debug!("Sending Task -> {:?}", v.0);
+
+        // Write the req to the socket.
+        if let Err(_e) = reqs.send(v.0.clone()).await {
+            // re-queue the event if not timed out.
+            // This is indicated by the one shot being dropped.
+            if !v.1.is_closed() {
+                let _ = task_channel_tx
+                    .send_timeout(v, Duration::from_millis(100))
+                    .await;
+            }
+            // now return the error.
+            return Err(Box::new(IoError::new(ErrorKind::Other, "oh no!")));
+        }
+
+        match reqs.next().await {
+            Some(Ok(TaskResponse::Success)) => {
+                debug!("Task was acknowledged and completed.");
+                // Send a result back via the one-shot
+                // Ignore if it fails.
+                let _ = v.1.send(());
+            }
+            other => {
+                error!("Error -> {:?}", other);
+                return Err(Box::new(IoError::new(ErrorKind::Other, "oh no!")));
+            }
+        }
+    }
+}
+
 async fn handle_client(
     sock: UnixStream,
     cachelayer: Arc<CacheLayer>,
+    task_channel_tx: &Sender<AsyncTaskRequest>,
 ) -> Result<(), Box<dyn Error>> {
     debug!("Accepted connection");
 
@@ -182,6 +275,50 @@ async fn handle_client(
                     .await
                     .map(ClientResponse::PamStatus)
                     .unwrap_or(ClientResponse::Error)
+            }
+            ClientRequest::PamAccountBeginSession(account_id) => {
+                debug!("pam account begin session");
+                match cachelayer
+                    .pam_account_beginsession(account_id.as_str())
+                    .await
+                {
+                    Ok(Some(info)) => {
+                        let (tx, rx) = oneshot::channel();
+
+                        match task_channel_tx
+                            .send_timeout(
+                                (TaskRequest::HomeDirectory(info), tx),
+                                Duration::from_millis(100),
+                            )
+                            .await
+                        {
+                            Ok(()) => {
+                                // Now wait for the other end OR
+                                // timeout.
+                                match time::timeout_at(
+                                    time::Instant::now() + Duration::from_millis(1000),
+                                    rx,
+                                )
+                                .await
+                                {
+                                    Ok(Ok(_)) => {
+                                        debug!("Task completed, returning to pam ...");
+                                        ClientResponse::Ok
+                                    }
+                                    _ => {
+                                        // Timeout or other error.
+                                        ClientResponse::Error
+                                    }
+                                }
+                            }
+                            Err(_) => {
+                                // We could not submit the req. Move on!
+                                ClientResponse::Error
+                            }
+                        }
+                    }
+                    _ => ClientResponse::Error,
+                }
             }
             ClientRequest::InvalidateCache => {
                 debug!("invalidate cache");
@@ -308,6 +445,7 @@ async fn main() {
     };
 
     rm_if_exist(cfg.sock_path.as_str());
+    rm_if_exist(cfg.task_sock_path.as_str());
 
     let cb = cb.connect_timeout(cfg.conn_timeout);
 
@@ -382,6 +520,7 @@ async fn main() {
         cfg.default_shell.clone(),
         cfg.home_prefix.clone(),
         cfg.home_attr,
+        cfg.home_alias,
         cfg.uid_attr_map,
         cfg.gid_attr_map,
     )
@@ -396,7 +535,7 @@ async fn main() {
 
     let cachelayer = Arc::new(cl_inner);
 
-    // Set the umask while we open the path
+    // Set the umask while we open the path for most clients.
     let before = unsafe { umask(0) };
     let listener = match UnixListener::bind(cfg.sock_path.as_str()) {
         Ok(l) => l,
@@ -405,18 +544,71 @@ async fn main() {
             std::process::exit(1);
         }
     };
+    // Setup the root-only socket. Take away all others.
+    let _ = unsafe { umask(0o0077) };
+    let task_listener = match UnixListener::bind(cfg.task_sock_path.as_str()) {
+        Ok(l) => l,
+        Err(_e) => {
+            error!("Failed to bind unix socket.");
+            std::process::exit(1);
+        }
+    };
+
     // Undo it.
     let _ = unsafe { umask(before) };
+
+    let (task_channel_tx, mut task_channel_rx) = channel(16);
+    let task_channel_tx = Arc::new(task_channel_tx);
+
+    let task_channel_tx_cln = task_channel_tx.clone();
+
+    tokio::spawn(async move {
+        loop {
+            match task_listener.accept().await {
+                Ok((socket, _addr)) => {
+                    // Did it come from root?
+                    if let Ok(ucred) = socket.peer_cred() {
+                        if ucred.uid() == 0 {
+                            // all good!
+                        } else {
+                            // move along.
+                            debug!("Task handler not running as root, ignoring ...");
+                            continue;
+                        }
+                    } else {
+                        // move along.
+                        debug!("Task handler not running as root, ignoring ...");
+                        continue;
+                    };
+                    debug!("A task handler has connected.");
+                    // It did? Great, now we can wait and spin on that one
+                    // client.
+                    if let Err(e) =
+                        handle_task_client(socket, &task_channel_tx, &mut task_channel_rx).await
+                    {
+                        error!("Task client error occured; error = {:?}", e);
+                    }
+                    // If they DC we go back to accept.
+                }
+                Err(err) => {
+                    error!("Task Accept error -> {:?}", err);
+                }
+            }
+            // done
+        }
+    });
 
     // TODO: Setup a task that handles pre-fetching here.
 
     let server = async move {
         loop {
+            let tc_tx = task_channel_tx_cln.clone();
             match listener.accept().await {
                 Ok((socket, _addr)) => {
                     let cachelayer_ref = cachelayer.clone();
                     tokio::spawn(async move {
-                        if let Err(e) = handle_client(socket, cachelayer_ref.clone()).await {
+                        if let Err(e) = handle_client(socket, cachelayer_ref.clone(), &tc_tx).await
+                        {
                             error!("an error occured; error = {:?}", e);
                         }
                     });

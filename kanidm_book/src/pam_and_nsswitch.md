@@ -13,6 +13,9 @@ cache is also able to cache missing-entry responses to reduce network traffic
 and main server load.
 Additionally, the daemon means that the pam and nsswitch integration libraries
 can be small, helping to reduce the attack surface of the machine.
+Similar, a tasks daemon is also provided that can create home directories on first
+login, and supports a number of features related to aliases and links to these
+home directories.
 
 We recommend you install the client daemon from your system package manager.
 
@@ -25,13 +28,22 @@ You can check the daemon is running on your Linux system with
 
     systemctl status kanidm_unixd
 
-This daemon uses connection configuration from /etc/kanidm/config. This is the covered in
-client_tools. You can also configure some details of the unixd daemon in /etc/kanidm/unixd.
+You can check the privileged tasks daemon is running with
+
+    systemctl status kanidm_unixd_tasks
+
+> **NOTE** The `kanidm_unixd_tasks` daemon is not required for pam and nsswitch functionality.
+> If disabled, your system will function as usual. It is however recommended due to the features
+> it provides supporting kanidm's capabilities.
+
+Both unixd daemons use the connection configuration from /etc/kanidm/config. This is the covered in
+client_tools. You can also configure some details of the unixd daemons in /etc/kanidm/unixd.
 
     pam_allowed_login_groups = ["posix_group"]
     default_shell = "/bin/bash"
     home_prefix = "/home/"
     home_attr = "uuid"
+    home_alias = "spn"
     uid_attr_map = "spn"
     gid_attr_map = "spn"
 
@@ -47,12 +59,17 @@ a trailing `/`. Defaults to `/home/`.
 `home_attr` is the default token attribute used for the home directory path. Valid
 choices are `uuid`, `name`, `spn`. Defaults to `uuid`.
 
+`home_alias` is the default token attribute used for generating symlinks pointing to the users
+home directory. If set, this will become the value of the home path
+to nss calls. It is recommended you choose a "human friendly" attribute here.
+Valid choices are `none`, `uuid`, `name`, `spn`. Defaults to `spn`.
+
 > **NOTICE:**
 > All users in kanidm can change their name (and their spn) at any time. If you change
 > `home_attr` from `uuid` you *must* have a plan on how to manage these directory renames
 > in your system. We recommend that you have a stable id (like the uuid) and symlinks
-> from the name to the uuid folder. The project plans to add automatic support for this
-> with https://github.com/kanidm/kanidm/issues/180
+> from the name to the uuid folder. Automatic support is provided for this via the unixd
+> tasks daemon, as documented here.
 
 `uid_attr_map` chooses which attribute is used for domain local users in presentation. Defaults
 to `spn`. Users from a trust will always use spn.
@@ -140,16 +157,18 @@ Each of these controls one of the four stages of pam. The content should look li
     password    requisite   pam_cracklib.so
     password    [default=1 ignore=ignore success=ok] pam_localuser.so
     password    required    pam_unix.so use_authtok nullok shadow try_first_pass
-    password    required  pam_kanidm.so
+    password    required    pam_kanidm.so
 
     # /etc/pam.d/common-session-pc
     session optional    pam_systemd.so
     session required    pam_limits.so
-    session required    pam_mkhomedir.so skel=/etc/skel/ umask=0022
     session optional    pam_unix.so try_first_pass
     session optional    pam_kanidm.so
     session optional    pam_umask.so
     session optional    pam_env.so
+
+> **WARNING:** Ensure that `pam_mkhomedir` or `pam_oddjobd` are *not* present in your pam configuration
+> these interfer with the correct operation of the kanidm tasks daemon.
 
 ### Fedora
 
@@ -170,6 +189,8 @@ And add the lines:
 
 Then restart the kanidm-unixd.service.
 
+The same pattern is true for the kanidm-unixd-tasks.service daemon.
+
 To debug the pam module interactions add `debug` to the module arguments such as:
 
     auth sufficient pam_kanidm.so debug
@@ -178,6 +199,9 @@ To debug the pam module interactions add `debug` to the module arguments such as
 
 Check that the /var/run/kanidm-unixd/sock is 777, and that non-root readers can see it with
 ls or other tools.
+
+Ensure that /var/run/kanidm-unixd/task_sock is 700, and that it is owned by the kanidm unixd
+process user.
 
 ### Check you can access the kanidm server
 

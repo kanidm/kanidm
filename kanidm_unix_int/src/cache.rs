@@ -1,6 +1,6 @@
 use crate::db::Db;
 use crate::unix_config::{HomeAttr, UidAttr};
-use crate::unix_proto::{NssGroup, NssUser};
+use crate::unix_proto::{HomeDirectoryInfo, NssGroup, NssUser};
 use kanidm_client::asynchronous::KanidmAsyncClient;
 use kanidm_client::ClientError;
 use kanidm_proto::v1::{OperationError, UnixGroupToken, UnixUserToken};
@@ -37,6 +37,7 @@ pub struct CacheLayer {
     default_shell: String,
     home_prefix: String,
     home_attr: HomeAttr,
+    home_alias: Option<HomeAttr>,
     uid_attr_map: UidAttr,
     gid_attr_map: UidAttr,
     nxcache: Mutex<LruCache<Id, SystemTime>>,
@@ -65,6 +66,7 @@ impl CacheLayer {
         default_shell: String,
         home_prefix: String,
         home_attr: HomeAttr,
+        home_alias: Option<HomeAttr>,
         uid_attr_map: UidAttr,
         gid_attr_map: UidAttr,
     ) -> Result<Self, ()> {
@@ -88,6 +90,7 @@ impl CacheLayer {
             default_shell,
             home_prefix,
             home_attr,
+            home_alias,
             uid_attr_map,
             gid_attr_map,
             nxcache: Mutex::new(LruCache::new(NXCACHE_SIZE)),
@@ -594,16 +597,33 @@ impl CacheLayer {
     }
 
     #[inline(always)]
+    fn token_homedirectory_alias(&self, token: &UnixUserToken) -> Option<String> {
+        self.home_alias.map(|t| match t {
+            // If we have an alias. use it.
+            HomeAttr::Uuid => token.uuid.as_str().to_string(),
+            HomeAttr::Spn => token.spn.as_str().to_string(),
+            HomeAttr::Name => token.name.as_str().to_string(),
+        })
+    }
+
+    #[inline(always)]
+    fn token_homedirectory_attr(&self, token: &UnixUserToken) -> String {
+        match self.home_attr {
+            HomeAttr::Uuid => token.uuid.as_str().to_string(),
+            HomeAttr::Spn => token.spn.as_str().to_string(),
+            HomeAttr::Name => token.name.as_str().to_string(),
+        }
+    }
+
+    #[inline(always)]
     fn token_homedirectory(&self, token: &UnixUserToken) -> String {
-        format!(
-            "{}{}",
-            self.home_prefix,
-            match self.home_attr {
-                HomeAttr::Uuid => token.uuid.as_str(),
-                HomeAttr::Spn => token.spn.as_str(),
-                HomeAttr::Name => token.name.as_str(),
-            }
-        )
+        self.token_homedirectory_alias(token)
+            .unwrap_or_else(|| self.token_homedirectory_attr(token))
+    }
+
+    #[inline(always)]
+    fn token_abs_homedirectory(&self, token: &UnixUserToken) -> String {
+        format!("{}{}", self.home_prefix, self.token_homedirectory(token))
     }
 
     #[inline(always)]
@@ -619,7 +639,7 @@ impl CacheLayer {
         self.get_cached_usertokens().await.map(|l| {
             l.into_iter()
                 .map(|tok| NssUser {
-                    homedir: self.token_homedirectory(&tok),
+                    homedir: self.token_abs_homedirectory(&tok),
                     name: self.token_uidattr(&tok),
                     gid: tok.gidnumber,
                     gecos: tok.displayname,
@@ -632,7 +652,7 @@ impl CacheLayer {
     async fn get_nssaccount(&self, account_id: Id) -> Result<Option<NssUser>, ()> {
         let token = self.get_usertoken(account_id).await?;
         Ok(token.map(|tok| NssUser {
-            homedir: self.token_homedirectory(&tok),
+            homedir: self.token_abs_homedirectory(&tok),
             name: self.token_uidattr(&tok),
             gid: tok.gidnumber,
             gecos: tok.displayname,
@@ -856,6 +876,22 @@ impl CacheLayer {
                 self.offline_account_authenticate(&token, cred).await
             }
         }
+    }
+
+    pub async fn pam_account_beginsession(
+        &self,
+        account_id: &str,
+    ) -> Result<Option<HomeDirectoryInfo>, ()> {
+        let token = self.get_usertoken(Id::Name(account_id.to_string())).await?;
+        Ok(token.as_ref().map(|tok| HomeDirectoryInfo {
+            gid: tok.gidnumber,
+            path: self.home_prefix.clone(),
+            name: self.token_homedirectory_attr(tok),
+            aliases: self
+                .token_homedirectory_alias(tok)
+                .map(|s| vec![s])
+                .unwrap_or_else(Vec::new),
+        }))
     }
 
     pub async fn test_connection(&self) -> bool {

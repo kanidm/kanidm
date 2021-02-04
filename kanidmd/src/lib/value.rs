@@ -23,11 +23,12 @@ lazy_static! {
     };
     static ref INAME_RE: Regex = {
         #[allow(clippy::expect_used)]
-        Regex::new("^(_.*|.*(\\s|@|,|=).*|\\d+|root|nobody|nogroup|wheel|sshd|shadow|systemd.*)$").expect("Invalid Iname regex found")
-        //            ^      ^            ^
-        //            |      |            \- must not be only integers
-        //            |      \- must not contain whitespace, @, ',', =
-        //            \- must not start with _
+        Regex::new("^((\\.|_).*|.*(\\s|@|,|/|\\\\|=).*|\\d+|root|nobody|nogroup|wheel|sshd|shadow|systemd.*)$").expect("Invalid Iname regex found")
+        //            ^      ^                          ^   ^
+        //            |      |                          |   \- must not be a reserved name.
+        //            |      |                          \- must not be only integers
+        //            |      \- must not contain whitespace, @, ',', /, \, =
+        //            \- must not start with _ or .
         // Them's be the rules.
     };
     static ref NSUNIQUEID_RE: Regex = {
@@ -1609,9 +1610,10 @@ mod tests {
          * - be a pure int (confusion to gid/uid/linux)
          * - a uuid (confuses our name mapper)
          * - contain an @ (confuses SPN)
-         * - can not start with _ (... I forgot but it's important I swear >.>)
+         * - can not start with _ (... api end points have _ as a magic char)
          * - can not have spaces (confuses too many systems :()
          * - can not have = or , (confuses ldap)
+         * - can not have ., /, \ (path injection attacks)
          */
         let inv1 = Value::new_iname("1234");
         let inv2 = Value::new_iname("bc23f637-4439-4c07-b95d-eaed0d9e4b8b");
