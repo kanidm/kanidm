@@ -38,8 +38,9 @@ serde_json = "1.0"
 shellexpand = "2.0"
 rayon = "1.2"
 time = "0.2"
+qrcode = { version = "0.12", default-features = false }
 
 zxcvbn = "2.0"
 
-webauthn-authenticator-rs = "0.3.0-alpha.5"
+webauthn-authenticator-rs = "^0.3.0-alpha.6"
 # webauthn-authenticator-rs = { path = "../../webauthn-authenticator-rs" }

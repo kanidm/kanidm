@@ -57,6 +57,7 @@ pub enum ClientError {
     TOTPVerifyFailed(Uuid, TOTPSecret),
     JSONDecode(reqwest::Error, String),
     JSONEncode(SerdeJsonError),
+    SystemError,
 }
 
 #[derive(Debug, Deserialize)]
@@ -557,6 +558,65 @@ impl KanidmClient {
     }
 
     // auth
+    pub fn auth_step_anonymous(&mut self) -> Result<AuthResponse, ClientError> {
+        let auth_anon = AuthRequest {
+            step: AuthStep::Cred(AuthCredential::Anonymous),
+        };
+        let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_anon);
+
+        r.map(|ar| {
+            if let AuthState::Success(token) = &ar.state {
+                self.bearer_token = Some(token.clone());
+            };
+            ar
+        })
+    }
+
+    pub fn auth_step_password(&mut self, password: &str) -> Result<AuthResponse, ClientError> {
+        let auth_req = AuthRequest {
+            step: AuthStep::Cred(AuthCredential::Password(password.to_string())),
+        };
+        let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_req);
+
+        r.map(|ar| {
+            if let AuthState::Success(token) = &ar.state {
+                self.bearer_token = Some(token.clone());
+            };
+            ar
+        })
+    }
+
+    pub fn auth_step_totp(&mut self, totp: u32) -> Result<AuthResponse, ClientError> {
+        let auth_req = AuthRequest {
+            step: AuthStep::Cred(AuthCredential::TOTP(totp)),
+        };
+        let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_req);
+
+        r.map(|ar| {
+            if let AuthState::Success(token) = &ar.state {
+                self.bearer_token = Some(token.clone());
+            };
+            ar
+        })
+    }
+
+    pub fn auth_step_webauthn_complete(
+        &mut self,
+        pkc: PublicKeyCredential,
+    ) -> Result<AuthResponse, ClientError> {
+        let auth_req = AuthRequest {
+            step: AuthStep::Cred(AuthCredential::Webauthn(pkc)),
+        };
+        let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_req);
+
+        r.map(|ar| {
+            if let AuthState::Success(token) = &ar.state {
+                self.bearer_token = Some(token.clone());
+            };
+            ar
+        })
+    }
+
     pub fn auth_anonymous(&mut self) -> Result<(), ClientError> {
         let mechs = match self.auth_step_init("anonymous") {
             Ok(s) => s,
@@ -573,19 +633,10 @@ impl KanidmClient {
             Err(e) => return Err(e),
         };
 
-        let auth_anon = AuthRequest {
-            step: AuthStep::Cred(AuthCredential::Anonymous),
-        };
-        let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_anon);
-
-        let r = r?;
+        let r = self.auth_step_anonymous()?;
 
         match r.state {
-            AuthState::Success(token) => {
-                // set the bearer.
-                self.bearer_token = Some(token);
-                Ok(())
-            }
+            AuthState::Success(_token) => Ok(()),
             _ => Err(ClientError::AuthenticationFailed),
         }
     }
@@ -606,19 +657,10 @@ impl KanidmClient {
             Err(e) => return Err(e),
         };
 
-        let auth_req = AuthRequest {
-            step: AuthStep::Cred(AuthCredential::Password(password.to_string())),
-        };
-        let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_req);
-
-        let r = r?;
+        let r = self.auth_step_password(password)?;
 
         match r.state {
-            AuthState::Success(token) => {
-                // set the bearer.
-                self.bearer_token = Some(token);
-                Ok(())
-            }
+            AuthState::Success(_token) => Ok(()),
             _ => Err(ClientError::AuthenticationFailed),
         }
     }
@@ -649,12 +691,7 @@ impl KanidmClient {
             return Err(ClientError::AuthenticationFailed);
         }
 
-        let auth_req = AuthRequest {
-            step: AuthStep::Cred(AuthCredential::TOTP(totp)),
-        };
-
-        let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_req);
-        let r = r?;
+        let r = self.auth_step_totp(totp)?;
 
         // Should need to continue.
         match r.state {
@@ -670,19 +707,10 @@ impl KanidmClient {
             }
         };
 
-        let auth_req = AuthRequest {
-            step: AuthStep::Cred(AuthCredential::Password(password.to_string())),
-        };
-
-        let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_req);
-        let r = r?;
+        let r = self.auth_step_password(password)?;
 
         match r.state {
-            AuthState::Success(token) => {
-                // set the bearer.
-                self.bearer_token = Some(token);
-                Ok(())
-            }
+            AuthState::Success(_token) => Ok(()),
             _ => Err(ClientError::AuthenticationFailed),
         }
     }
@@ -714,19 +742,9 @@ impl KanidmClient {
     }
 
     pub fn auth_webauthn_complete(&mut self, pkc: PublicKeyCredential) -> Result<(), ClientError> {
-        let auth_req = AuthRequest {
-            step: AuthStep::Cred(AuthCredential::Webauthn(pkc)),
-        };
-        let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_req);
-
-        let r = r?;
-
+        let r = self.auth_step_webauthn_complete(pkc)?;
         match r.state {
-            AuthState::Success(token) => {
-                // set the bearer.
-                self.bearer_token = Some(token);
-                Ok(())
-            }
+            AuthState::Success(_token) => Ok(()),
             _ => Err(ClientError::AuthenticationFailed),
         }
     }
@@ -994,6 +1012,22 @@ impl KanidmClient {
         match res {
             Ok(SetCredentialResponse::Success) => Ok(true),
             Ok(SetCredentialResponse::TOTPCheck(u, s)) => Err(ClientError::TOTPVerifyFailed(u, s)),
+            Ok(_) => Err(ClientError::EmptyResponse),
+            Err(e) => Err(e),
+        }
+    }
+
+    pub fn idm_account_primary_credential_remove_totp(
+        &self,
+        id: &str,
+    ) -> Result<bool, ClientError> {
+        let r = SetCredentialRequest::TOTPRemove;
+        let res: Result<SetCredentialResponse, ClientError> = self.perform_put_request(
+            format!("/v1/account/{}/_credential/primary", id).as_str(),
+            r,
+        );
+        match res {
+            Ok(SetCredentialResponse::Success) => Ok(true),
             Ok(_) => Err(ClientError::EmptyResponse),
             Err(e) => Err(e),
         }

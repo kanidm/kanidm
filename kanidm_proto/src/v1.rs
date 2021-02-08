@@ -265,7 +265,7 @@ pub struct UnixUserToken {
 impl fmt::Display for UnixUserToken {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "---")?;
-        writeln!(f, "spn: {}", self.name)?;
+        writeln!(f, "spn: {}", self.spn)?;
         writeln!(f, "name: {}", self.name)?;
         writeln!(f, "displayname: {}", self.displayname)?;
         writeln!(f, "uuid: {}", self.uuid)?;
@@ -446,7 +446,7 @@ impl fmt::Debug for AuthCredential {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialOrd, Ord)]
 #[serde(rename_all = "lowercase")]
 pub enum AuthMech {
     Anonymous,
@@ -460,6 +460,17 @@ pub enum AuthMech {
 impl PartialEq for AuthMech {
     fn eq(&self, other: &Self) -> bool {
         std::mem::discriminant(self) == std::mem::discriminant(other)
+    }
+}
+
+impl fmt::Display for AuthMech {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AuthMech::Anonymous => write!(f, "Anonymous (no credentials)"),
+            AuthMech::Password => write!(f, "Passwold Only"),
+            AuthMech::PasswordMFA => write!(f, "TOTP or Token, and Password"),
+            AuthMech::Webauthn => write!(f, "Webauthn Token"),
+        }
     }
 }
 
@@ -484,7 +495,7 @@ pub struct AuthRequest {
 
 // Respond with the list of auth types and nonce, etc.
 // It can also contain a denied, or success.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum AuthAllowed {
     Anonymous,
@@ -528,6 +539,17 @@ impl PartialOrd for AuthAllowed {
     }
 }
 
+impl fmt::Display for AuthAllowed {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AuthAllowed::Anonymous => write!(f, "Anonymous (no credentials)"),
+            AuthAllowed::Password => write!(f, "Password"),
+            AuthAllowed::TOTP => write!(f, "TOTP"),
+            AuthAllowed::Webauthn(_) => write!(f, "Webauthn Token"),
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AuthState {
@@ -556,6 +578,7 @@ pub enum SetCredentialRequest {
     GeneratePassword,
     TOTPGenerate(String),
     TOTPVerify(Uuid, u32),
+    TOTPRemove,
     // Start the rego.
     WebauthnBegin(String),
     // Finish it.
@@ -605,13 +628,17 @@ impl TOTPSecret {
             .replace("%3A", "")
             .replace(" ", "%20");
         let label = format!("{}:{}", issuer, accountname);
-        let secret = base32::encode(base32::Alphabet::RFC4648 { padding: false }, &self.secret);
         let algo = self.algo.to_string();
+        let secret = self.get_secret();
         let period = self.step;
         format!(
             "otpauth://totp/{}?secret={}&issuer={}&algorithm={}&digits=6&period={}",
             label, secret, issuer, algo, period
         )
+    }
+
+    pub fn get_secret(&self) -> String {
+        base32::encode(base32::Alphabet::RFC4648 { padding: false }, &self.secret)
     }
 }
 

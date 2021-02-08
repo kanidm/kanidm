@@ -561,6 +561,24 @@ impl Credential {
         }
     }
 
+    pub(crate) fn remove_totp(&self) -> Self {
+        let type_ = match &self.type_ {
+            CredentialType::PasswordMFA(pw, Some(_), wan) => {
+                if wan.is_empty() {
+                    CredentialType::Password(pw.clone())
+                } else {
+                    CredentialType::PasswordMFA(pw.clone(), None, wan.clone())
+                }
+            }
+            _ => self.type_.clone(),
+        };
+        Credential {
+            type_,
+            claims: self.claims.clone(),
+            uuid: self.uuid,
+        }
+    }
+
     pub(crate) fn new_from_password(pw: Password) -> Self {
         Credential {
             type_: CredentialType::Password(pw),

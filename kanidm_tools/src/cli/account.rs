@@ -1,5 +1,8 @@
 use crate::common::CommonOpt;
 use crate::password_prompt;
+use qrcode::render::unicode;
+use qrcode::QrCode;
+use std::io;
 use structopt::StructOpt;
 use time::OffsetDateTime;
 
@@ -91,6 +94,13 @@ pub enum AccountCredential {
     GeneratePassword(AccountCredentialSet),
     #[structopt(name = "register_webauthn")]
     RegisterWebauthn(AccountNamedTagOpt),
+    /// Set the TOTP credential of the account. If a TOTP already exists, on a successful
+    /// registration, this will replace it.
+    #[structopt(name = "set_totp")]
+    RegisterTOTP(AccountNamedTagOpt),
+    /// Remove TOTP from the account. If no TOTP exists, no action is taken.
+    #[structopt(name = "remove_totp")]
+    RemoveTOTP(AccountNamedOpt),
 }
 
 #[derive(Debug, StructOpt)]
@@ -174,6 +184,8 @@ impl AccountOpt {
                 AccountCredential::SetPassword(acs) => acs.copt.debug,
                 AccountCredential::GeneratePassword(acs) => acs.copt.debug,
                 AccountCredential::RegisterWebauthn(acs) => acs.copt.debug,
+                AccountCredential::RegisterTOTP(acs) => acs.copt.debug,
+                AccountCredential::RemoveTOTP(acs) => acs.copt.debug,
             },
             AccountOpt::Radius(acopt) => match acopt {
                 AccountRadius::Show(aro) => aro.copt.debug,
@@ -259,7 +271,7 @@ impl AccountOpt {
 
                     let mut wa = WebauthnAuthenticator::new(U2FHid::new());
 
-                    println!("Your authenticator will now flash for you to interact with.");
+                    eprintln!("Your authenticator will now flash for you to interact with.");
 
                     let rego = match wa.do_registration(client.get_origin(), chal) {
                         Ok(rego) => rego,
@@ -279,6 +291,90 @@ impl AccountOpt {
                         }
                         Err(e) => {
                             eprintln!("Error Completing -> {:?}", e);
+                        }
+                    }
+                }
+                AccountCredential::RegisterTOTP(acsopt) => {
+                    let client = acsopt.copt.to_client();
+                    let (session, tok) = match client.idm_account_primary_credential_generate_totp(
+                        acsopt.aopts.account_id.as_str(),
+                        acsopt.tag.as_str(),
+                    ) {
+                        Ok(v) => v,
+                        Err(e) => {
+                            eprintln!("Error Starting Registration -> {:?}", e);
+                            return;
+                        }
+                    };
+
+                    // display the tok.
+                    eprintln!("You should scan the follow QR code with your OTP App.");
+
+                    let code = match QrCode::new(tok.to_uri().as_str()) {
+                        Ok(c) => c,
+                        Err(e) => {
+                            eprintln!("Failed to generate QR code -> {:?}", e);
+                            return;
+                        }
+                    };
+                    let image = code
+                        .render::<unicode::Dense1x2>()
+                        .dark_color(unicode::Dense1x2::Light)
+                        .light_color(unicode::Dense1x2::Dark)
+                        .build();
+                    eprintln!("{}", image);
+
+                    eprintln!("Alternately, you can manually enter the following OTP details:");
+                    println!("Account Name: {}", tok.accountname);
+                    println!("Issuer: {}", tok.issuer);
+                    println!("Algorithm: {}", tok.algo.to_string());
+                    println!("Period/Step: {}", tok.step);
+                    println!("Secret: {}", tok.get_secret());
+
+                    // prompt for the totp.
+                    eprintln!("--------------------------------------------------------------");
+                    eprint!(
+                        "Enter a TOTP from your authenticator to complete registration: \nTOTP: "
+                    );
+
+                    let mut totp_input = String::new();
+                    if let Err(e) = io::stdin().read_line(&mut totp_input) {
+                        eprintln!("Failed to read from stdin -> {:?}", e);
+                        return;
+                    };
+
+                    // Convert to a u32.
+                    let totp = match u32::from_str_radix(totp_input.trim(), 10) {
+                        Ok(v) => v,
+                        Err(e) => {
+                            eprintln!("Invalid TOTP -> {:?}", e);
+                            return;
+                        }
+                    };
+
+                    match client.idm_account_primary_credential_verify_totp(
+                        acsopt.aopts.account_id.as_str(),
+                        totp,
+                        session,
+                    ) {
+                        Ok(_) => {
+                            println!("TOTP registration success.");
+                        }
+                        Err(e) => {
+                            eprintln!("Error Completing -> {:?}", e);
+                        }
+                    }
+                }
+                AccountCredential::RemoveTOTP(acsopt) => {
+                    let client = acsopt.copt.to_client();
+                    match client.idm_account_primary_credential_remove_totp(
+                        acsopt.aopts.account_id.as_str(),
+                    ) {
+                        Ok(_) => {
+                            println!("TOTP removal success.");
+                        }
+                        Err(e) => {
+                            eprintln!("Error Removing TOTP from account -> {:?}", e);
                         }
                     }
                 }

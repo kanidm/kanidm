@@ -771,6 +771,19 @@ fn test_server_rest_totp_auth_lifecycle() {
         assert!(rsclient_bad
             .auth_password_totp("demo_account", "sohdi3iuHo6mai7noh0a", 0)
             .is_err());
+
+        // Remove TOTP on the account.
+        rsclient
+            .idm_account_primary_credential_remove_totp("demo_account")
+            .unwrap(); // the result
+                       // Delay by one second to allow the account to recover from the
+                       // softlock.
+        std::thread::sleep(std::time::Duration::from_millis(1100));
+        // Check password auth.
+        let mut rsclient_good = rsclient.new_session().unwrap();
+        assert!(rsclient_good
+            .auth_simple_password("demo_account", "sohdi3iuHo6mai7noh0a")
+            .is_ok());
     });
 }
 
