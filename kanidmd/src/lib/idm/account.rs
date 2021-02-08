@@ -255,7 +255,7 @@ impl Account {
                 Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
             }
             None => {
-                // No credential exists, we can't supplementy it.
+                // No credential exists, we can't remove what is not real.
                 Err(OperationError::InvalidState)
             }
         }
