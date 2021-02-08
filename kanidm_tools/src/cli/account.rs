@@ -307,8 +307,8 @@ impl AccountOpt {
                         }
                     };
 
-                    // display the tok.
-                    eprintln!("You should scan the follow QR code with your OTP App.");
+                    // display the token.
+                    eprintln!("Scan the following QR code with your OTP app.");
 
                     let code = match QrCode::new(tok.to_uri().as_str()) {
                         Ok(c) => c,
@@ -324,7 +324,7 @@ impl AccountOpt {
                         .build();
                     eprintln!("{}", image);
 
-                    eprintln!("Alternately, you can manually enter the following OTP details:");
+                    eprintln!("Alternatively, you can manually enter the following OTP details:");
                     println!("Account Name: {}", tok.accountname);
                     println!("Issuer: {}", tok.issuer);
                     println!("Algorithm: {}", tok.algo.to_string());

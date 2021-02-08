@@ -765,20 +765,19 @@ fn test_server_rest_totp_auth_lifecycle() {
             .auth_password_totp("demo_account", "sohdi3iuHo6mai7noh0a", totp)
             .is_ok());
 
-        // Check a bad auth - needs to be second to prevent slocking
+        // Check a bad auth - needs to be second as we are going to trigger the slock.
         // Get a new connection
         let mut rsclient_bad = rsclient.new_session().unwrap();
         assert!(rsclient_bad
             .auth_password_totp("demo_account", "sohdi3iuHo6mai7noh0a", 0)
             .is_err());
+        // Delay by one second to allow the account to recover from the softlock.
+        std::thread::sleep(std::time::Duration::from_millis(1100));
 
         // Remove TOTP on the account.
         rsclient
             .idm_account_primary_credential_remove_totp("demo_account")
-            .unwrap(); // the result
-                       // Delay by one second to allow the account to recover from the
-                       // softlock.
-        std::thread::sleep(std::time::Duration::from_millis(1100));
+            .unwrap();
         // Check password auth.
         let mut rsclient_good = rsclient.new_session().unwrap();
         assert!(rsclient_good
