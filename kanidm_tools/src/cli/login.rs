@@ -139,7 +139,13 @@ impl LoginOpt {
                 error!("Error during authentication init phase: Server offered no authentication mechanisms");
                 std::process::exit(1);
             }
-            1 => unsafe { mechs.get_unchecked(0) },
+            1 =>
+            {
+                #[allow(clippy::expect_used)]
+                mechs
+                    .get(0)
+                    .expect("can not fail - bounds already checked.")
+            }
             len => {
                 println!("Please choose how you want to authenticate:");
                 for (i, val) in mechs.iter().enumerate() {
@@ -152,7 +158,10 @@ impl LoginOpt {
                         std::process::exit(1);
                     }
                 };
-                unsafe { mechs.get_unchecked(mech_idx as usize) }
+                #[allow(clippy::expect_used)]
+                mechs
+                    .get(mech_idx as usize)
+                    .expect("can not fail - bounds already checked.")
             }
         };
 
@@ -175,7 +184,13 @@ impl LoginOpt {
                     );
                     std::process::exit(1);
                 }
-                1 => unsafe { allowed.get_unchecked(0) },
+                1 =>
+                {
+                    #[allow(clippy::expect_used)]
+                    allowed
+                        .get(0)
+                        .expect("can not fail - bounds already checked.")
+                }
                 len => {
                     println!("Please choose what credential to provide:");
                     for (i, val) in allowed.iter().enumerate() {
@@ -188,7 +203,10 @@ impl LoginOpt {
                             std::process::exit(1);
                         }
                     };
-                    unsafe { allowed.get_unchecked(idx as usize) }
+                    #[allow(clippy::expect_used)]
+                    allowed
+                        .get(idx as usize)
+                        .expect("can not fail - bounds already checked.")
                 }
             };
 
