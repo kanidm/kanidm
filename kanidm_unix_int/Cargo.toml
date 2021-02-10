@@ -75,3 +75,7 @@ lru = "0.6"
 
 [dev-dependencies]
 kanidm = { path = "../kanidmd" }
+
+[build-dependencies]
+structopt = { version = "0.3", default-features = false }
+

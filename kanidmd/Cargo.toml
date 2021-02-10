@@ -111,3 +111,9 @@ webauthn-authenticator-rs = "0.3.0-alpha.5"
 version = "1"
 default-features = false # Disable features which are enabled by default
 features = ["precommit-hook", "run-cargo-fmt"]
+
+[build-dependencies]
+structopt = { version = "0.3", default-features = false }
+serde = "1.0"
+serde_derive = "1.0"
+

@@ -8,11 +8,11 @@
 #![deny(clippy::needless_pass_by_value)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
-use kanidm_cli::ClientOpt;
+use kanidm_cli::KanidmClientOpt;
 use structopt::StructOpt;
 
 fn main() {
-    let opt = ClientOpt::from_args();
+    let opt = KanidmClientOpt::from_args();
 
     if opt.debug() {
         ::std::env::set_var(

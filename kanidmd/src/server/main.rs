@@ -27,6 +27,8 @@ use kanidm::core::{
 
 use structopt::StructOpt;
 
+include!("./opt.rs");
+
 #[derive(Debug, Deserialize)]
 struct ServerConfig {
     pub bindaddress: Option<String>,
@@ -55,87 +57,16 @@ impl ServerConfig {
     }
 }
 
-#[derive(Debug, StructOpt)]
-struct CommonOpt {
-    #[structopt(short = "d", long = "debug")]
-    /// Logging level. quiet, default, filter, verbose, perffull
-    debug: Option<LogLevel>,
-    #[structopt(parse(from_os_str), short = "c", long = "config")]
-    /// Path to the server's configuration file. If it does not exist, it will be created.
-    config_path: PathBuf,
-}
-
-#[derive(Debug, StructOpt)]
-struct BackupOpt {
-    #[structopt(parse(from_os_str))]
-    /// Output path for the backup content.
-    path: PathBuf,
-    #[structopt(flatten)]
-    commonopts: CommonOpt,
-}
-
-#[derive(Debug, StructOpt)]
-struct RestoreOpt {
-    #[structopt(parse(from_os_str))]
-    /// Restore from this path. Should be created with "backupu".
-    path: PathBuf,
-    #[structopt(flatten)]
-    commonopts: CommonOpt,
-}
-
-#[derive(Debug, StructOpt)]
-struct RecoverAccountOpt {
-    #[structopt(short)]
-    /// The account name to recover credentials for.
-    name: String,
-    #[structopt(flatten)]
-    commonopts: CommonOpt,
-}
-
-#[derive(Debug, StructOpt)]
-struct DomainOpt {
-    #[structopt(short)]
-    /// The new domain name.
-    new_domain_name: String,
-    #[structopt(flatten)]
-    commonopts: CommonOpt,
-}
-
-#[derive(Debug, StructOpt)]
-enum Opt {
-    #[structopt(name = "server")]
-    /// Start the IDM Server
-    Server(CommonOpt),
-    #[structopt(name = "backup")]
-    /// Backup the database content (offline)
-    Backup(BackupOpt),
-    #[structopt(name = "restore")]
-    /// Restore the database content (offline)
-    Restore(RestoreOpt),
-    #[structopt(name = "verify")]
-    /// Verify database and entity consistency.
-    Verify(CommonOpt),
-    #[structopt(name = "recover_account")]
-    /// Recover an account's password
-    RecoverAccount(RecoverAccountOpt),
-    // #[structopt(name = "reset_server_id")]
-    // ResetServerId(CommonOpt),
-    #[structopt(name = "reindex")]
-    /// Reindex the database (offline)
-    Reindex(CommonOpt),
-    #[structopt(name = "domain_name_change")]
-    /// Change the IDM domain name
-    DomainChange(DomainOpt),
-}
-
-impl Opt {
+impl KanidmdOpt {
     fn commonopt(&self) -> &CommonOpt {
         match self {
-            Opt::Server(sopt) | Opt::Verify(sopt) | Opt::Reindex(sopt) => &sopt,
-            Opt::Backup(bopt) => &bopt.commonopts,
-            Opt::Restore(ropt) => &ropt.commonopts,
-            Opt::RecoverAccount(ropt) => &ropt.commonopts,
-            Opt::DomainChange(dopt) => &dopt.commonopts,
+            KanidmdOpt::Server(sopt) | KanidmdOpt::Verify(sopt) | KanidmdOpt::Reindex(sopt) => {
+                &sopt
+            }
+            KanidmdOpt::Backup(bopt) => &bopt.commonopts,
+            KanidmdOpt::Restore(ropt) => &ropt.commonopts,
+            KanidmdOpt::RecoverAccount(ropt) => &ropt.commonopts,
+            KanidmdOpt::DomainChange(dopt) => &dopt.commonopts,
         }
     }
 }
@@ -175,7 +106,7 @@ async fn main() {
     }
 
     // Read cli args, determine if we should backup/restore
-    let opt = Opt::from_args();
+    let opt = KanidmdOpt::from_args();
 
     let mut config = Configuration::new();
     // Check the permissions are sane.
@@ -295,7 +226,7 @@ async fn main() {
         .init();
 
     match opt {
-        Opt::Server(_sopt) => {
+        KanidmdOpt::Server(_sopt) => {
             eprintln!("Running in server mode ...");
 
             /*
@@ -323,7 +254,7 @@ async fn main() {
                 }
             }
         }
-        Opt::Backup(bopt) => {
+        KanidmdOpt::Backup(bopt) => {
             eprintln!("Running in backup mode ...");
 
             // config.update_db_path(&bopt.commonopts.db_path);
@@ -337,7 +268,7 @@ async fn main() {
             };
             backup_server_core(&config, p);
         }
-        Opt::Restore(ropt) => {
+        KanidmdOpt::Restore(ropt) => {
             eprintln!("Running in restore mode ...");
 
             // config.update_db_path(&ropt.commonopts.db_path);
@@ -351,13 +282,13 @@ async fn main() {
             };
             restore_server_core(&config, p);
         }
-        Opt::Verify(_vopt) => {
+        KanidmdOpt::Verify(_vopt) => {
             eprintln!("Running in db verification mode ...");
 
             // config.update_db_path(&vopt.db_path);
             verify_server_core(&config);
         }
-        Opt::RecoverAccount(raopt) => {
+        KanidmdOpt::RecoverAccount(raopt) => {
             eprintln!("Running account recovery ...");
 
             let password = match rpassword::prompt_password_stderr("new password: ") {
@@ -372,20 +303,20 @@ async fn main() {
             recover_account_core(&config, &raopt.name, &password);
         }
         /*
-        Opt::ResetServerId(vopt) => {
+        KanidmdOpt::ResetServerId(vopt) => {
             eprintln!("Resetting server id. THIS WILL BREAK REPLICATION");
 
             config.update_db_path(&vopt.db_path);
             reset_sid_core(config);
         }
         */
-        Opt::Reindex(_copt) => {
+        KanidmdOpt::Reindex(_copt) => {
             eprintln!("Running in reindex mode ...");
 
             // config.update_db_path(&copt.db_path);
             reindex_server_core(&config);
         }
-        Opt::DomainChange(dopt) => {
+        KanidmdOpt::DomainChange(dopt) => {
             eprintln!("Running in domain name change mode ... this may take a long time ...");
 
             // config.update_db_path(&dopt.commonopts.db_path);
