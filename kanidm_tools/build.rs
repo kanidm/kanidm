@@ -33,5 +33,5 @@ fn main() {
     BadlistProcOpt::clap().gen_completions("kanidm_badlist_preprocess", Shell::Zsh, outdir.clone());
 
     KanidmClientOpt::clap().gen_completions("kanidm", Shell::Bash, outdir.clone());
-    KanidmClientOpt::clap().gen_completions("kanidm", Shell::Zsh, outdir.clone());
+    KanidmClientOpt::clap().gen_completions("kanidm", Shell::Zsh, outdir);
 }

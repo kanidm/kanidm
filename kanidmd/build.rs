@@ -17,5 +17,5 @@ fn main() {
     };
 
     KanidmdOpt::clap().gen_completions("kanidmd", Shell::Bash, outdir.clone());
-    KanidmdOpt::clap().gen_completions("kanidmd", Shell::Zsh, outdir.clone());
+    KanidmdOpt::clap().gen_completions("kanidmd", Shell::Zsh, outdir);
 }

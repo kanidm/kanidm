@@ -40,5 +40,5 @@ fn main() {
     CacheClearOpt::clap().gen_completions("kanidm_cache_clear", Shell::Zsh, outdir.clone());
 
     UnixdStatusOpt::clap().gen_completions("kanidm_unixd_status", Shell::Bash, outdir.clone());
-    UnixdStatusOpt::clap().gen_completions("kanidm_unixd_status", Shell::Zsh, outdir.clone());
+    UnixdStatusOpt::clap().gen_completions("kanidm_unixd_status", Shell::Zsh, outdir);
 }
