@@ -1,18 +1,29 @@
 use crate::common::CommonOpt;
 use kanidm_client::{ClientError, KanidmClient};
 use kanidm_proto::v1::{AuthAllowed, AuthResponse, AuthState};
+use libc::umask;
 use std::collections::BTreeMap;
-use std::fs::File;
+use std::fs::{create_dir, File};
 use std::io::{self, BufReader, BufWriter};
+use std::path::PathBuf;
 use structopt::StructOpt;
 use webauthn_authenticator_rs::{u2fhid::U2FHid, RequestChallengeResponse, WebauthnAuthenticator};
 
+static TOKEN_DIR: &str = "~/.cache";
 static TOKEN_PATH: &str = "~/.cache/kanidm_tokens";
 
 pub fn read_tokens() -> Result<BTreeMap<String, String>, ()> {
-    let token_path: String = shellexpand::tilde(TOKEN_PATH).into_owned();
+    let token_path = PathBuf::from(shellexpand::tilde(TOKEN_PATH).into_owned());
+    if !token_path.exists() {
+        debug!(
+            "Token path {} does not exist, assuming empty ... ",
+            TOKEN_PATH
+        );
+        return Ok(BTreeMap::new());
+    }
+
     // If the file does not exist, return Ok<map>
-    let file = match File::open(token_path) {
+    let file = match File::open(&token_path) {
         Ok(f) => f,
         Err(e) => {
             warn!("Can not read from {}, continuing ... {:?}", TOKEN_PATH, e);
@@ -28,10 +39,41 @@ pub fn read_tokens() -> Result<BTreeMap<String, String>, ()> {
 }
 
 pub fn write_tokens(tokens: &BTreeMap<String, String>) -> Result<(), ()> {
-    let token_path: String = shellexpand::tilde(TOKEN_PATH).into_owned();
-    let file = File::create(token_path).map_err(|e| {
+    let token_dir = PathBuf::from(shellexpand::tilde(TOKEN_DIR).into_owned());
+    let token_path = PathBuf::from(shellexpand::tilde(TOKEN_PATH).into_owned());
+
+    token_dir
+        .parent()
+        .ok_or_else(|| {
+            error!(
+                "Parent directory to {} is invalid (root directory?).",
+                TOKEN_DIR
+            );
+        })
+        .and_then(|parent_dir| {
+            if parent_dir.exists() {
+                Ok(())
+            } else {
+                error!("Parent directory to {} does not exist.", TOKEN_DIR);
+                Err(())
+            }
+        })?;
+
+    if !token_dir.exists() {
+        create_dir(token_dir).map_err(|e| {
+            error!("Unable to create directory - {} {:?}", TOKEN_DIR, e);
+        })?;
+    }
+
+    // Take away group/everyone read/write
+    let before = unsafe { umask(0o177) };
+
+    let file = File::create(&token_path).map_err(|e| {
+        let _ = unsafe { umask(before) };
         error!("Can not write to {} -> {:?}", TOKEN_PATH, e);
     })?;
+
+    let _ = unsafe { umask(before) };
 
     let writer = BufWriter::new(file);
     serde_json::to_writer_pretty(writer, tokens).map_err(|e| {

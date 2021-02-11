@@ -1707,6 +1707,7 @@ dependencies = [
  "env_logger",
  "kanidm_client",
  "kanidm_proto",
+ "libc",
  "log",
  "qrcode",
  "rayon",
