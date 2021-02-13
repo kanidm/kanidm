@@ -164,7 +164,11 @@ dependencies = [
  "httparse",
  "lazy_static",
  "log",
+<<<<<<< HEAD
  "pin-project",
+=======
+ "pin-project 1.0.5",
+>>>>>>> Update deps
 ]
 
 [[package]]
@@ -1439,12 +1443,20 @@ dependencies = [
 
 [[package]]
 name = "http-client"
+<<<<<<< HEAD
 version = "6.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "034fc6371e1657295cd261c2f705941af300a8438ce41dedbdf74d674f52ad0f"
 dependencies = [
  "async-trait",
  "cfg-if 1.0.0",
+=======
+version = "6.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "518cdefb188f1e14c60151ca4ee1c186c9b6e0d7047c334e53478d3d9f2b0dfa"
+dependencies = [
+ "async-trait",
+>>>>>>> Update deps
  "dashmap",
  "http-types",
  "log",
@@ -1506,7 +1518,11 @@ dependencies = [
  "httparse",
  "httpdate",
  "itoa",
+<<<<<<< HEAD
  "pin-project",
+=======
+ "pin-project 1.0.5",
+>>>>>>> Update deps
  "socket2",
  "tokio",
  "tower-service",
@@ -1823,6 +1839,7 @@ dependencies = [
 [[package]]
 name = "libc"
 version = "0.2.86"
+<<<<<<< HEAD
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b7282d924be3275cec7f6756ff4121987bc6481325397dde6ba3e7802b1a8b1c"
 
@@ -1831,6 +1848,10 @@ name = "libm"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7fc7aa29613bd6a620df431842069224d8bc9011086b1db4c0e0cd47fa03ec9a"
+=======
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b7282d924be3275cec7f6756ff4121987bc6481325397dde6ba3e7802b1a8b1c"
+>>>>>>> Update deps
 
 [[package]]
 name = "libnss"
@@ -2270,7 +2291,29 @@ checksum = "d4fd5641d01c8f18a23da7b6fe29298ff4b55afcccdf78973b24cf3175fee32e"
 
 [[package]]
 name = "pin-project"
+<<<<<<< HEAD
 version = "1.0.5"
+=======
+version = "0.4.27"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2ffbc8e94b38ea3d2d8ba92aea2983b503cd75d0888d75b86bb37970b5698e15"
+dependencies = [
+ "pin-project-internal 0.4.27",
+]
+
+[[package]]
+name = "pin-project"
+version = "1.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96fa8ebb90271c4477f144354485b8068bd8f6b78b428b01ba892ca26caf0b63"
+dependencies = [
+ "pin-project-internal 1.0.5",
+]
+
+[[package]]
+name = "pin-project-internal"
+version = "0.4.27"
+>>>>>>> Update deps
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "96fa8ebb90271c4477f144354485b8068bd8f6b78b428b01ba892ca26caf0b63"
 dependencies = [
@@ -2581,7 +2624,11 @@ dependencies = [
 
 [[package]]
 name = "redox_syscall"
+<<<<<<< HEAD
 version = "0.2.5"
+=======
+version = "0.2.4"
+>>>>>>> Update deps
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "94341e4e44e24f6b591b59e47a8a027df12e008d73fd5672dbea9cc22f4507d9"
 dependencies = [
@@ -3386,7 +3433,11 @@ checksum = "ac1bec5c0a4aa71e3459802c7a12e8912c2091ce2151004f9ce95cc5d1c6124e"
 dependencies = [
  "futures",
  "openssl",
+<<<<<<< HEAD
  "pin-project",
+=======
+ "pin-project 1.0.5",
+>>>>>>> Update deps
  "tokio",
 ]
 
