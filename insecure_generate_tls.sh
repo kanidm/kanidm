@@ -48,6 +48,8 @@ openssl req -x509 -new -newkey rsa:4096 -sha256 -keyout cakey.pem -out ca.pem -d
 openssl genrsa -out key.pem 4096
 openssl req -sha256 -key key.pem -out cert.csr -days 31 -config altnames.cnf -new -extensions v3_req
 openssl x509 -req -days 31 -in cert.csr -CA ca.pem -CAkey cakey.pem -CAcreateserial -out cert.pem -extfile altnames.cnf -extensions v3_req -sha256
+# Create the chain
+cat cert.pem ca.pem > chain.pem
 
-echo use ca.pem, cert.pem, and key.pem
+echo use chain.pem, and key.pem
 

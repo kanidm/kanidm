@@ -19,7 +19,7 @@ buildx/kanidmd:
 buildx/radiusd: ## build multiarch radius images
 buildx/radiusd:
 	@docker buildx build --push --platform $(IMAGE_ARCH) -f kanidm_rlm_python/Dockerfile -t $(IMAGE_BASE)/radius:$(IMAGE_VERSION) kanidm_rlm_python
-	@docker buildx imagetools inspect $(IMAGE_BASE)/server:$(IMAGE_VERSION)
+	@docker buildx imagetools inspect $(IMAGE_BASE)/radius:$(IMAGE_VERSION)
 
 buildx: buildx/kanidmd buildx/radiusd
 
