@@ -215,8 +215,9 @@ async fn main() {
                     // If it returns (dc, etc, then we loop and try again).
                     handle_tasks(stream).await;
                 }
-                Err(_e) => {
+                Err(e) => {
                     error!("Unable to find kanidm_unixd, sleeping ...");
+                    debug!("\\---> {:?}", e);
                     // Back off.
                     time::sleep(Duration::from_millis(5000)).await;
                 }
