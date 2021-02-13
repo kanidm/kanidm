@@ -1,27 +1,6 @@
 use crate::login::read_tokens;
+use crate::CommonOpt;
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
-use std::path::PathBuf;
-use structopt::StructOpt;
-
-#[derive(Debug, StructOpt)]
-pub struct Named {
-    #[structopt()]
-    pub name: String,
-    #[structopt(flatten)]
-    pub copt: CommonOpt,
-}
-
-#[derive(Debug, StructOpt)]
-pub struct CommonOpt {
-    #[structopt(short = "d", long = "debug")]
-    pub debug: bool,
-    #[structopt(short = "H", long = "url")]
-    pub addr: Option<String>,
-    #[structopt(short = "D", long = "name")]
-    pub username: Option<String>,
-    #[structopt(parse(from_os_str), short = "C", long = "ca")]
-    pub ca_path: Option<PathBuf>,
-}
 
 impl CommonOpt {
     pub fn to_unauth_client(&self) -> KanidmClient {

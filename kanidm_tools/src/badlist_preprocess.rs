@@ -20,20 +20,10 @@ use log::{debug, error, info};
 use rayon::prelude::*;
 use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
-struct ClientOpt {
-    #[structopt(short = "d", long = "debug")]
-    debug: bool,
-    #[structopt(short = "m", long = "modlist")]
-    modlist: bool,
-    #[structopt(short = "o", long = "output")]
-    outfile: PathBuf,
-    #[structopt(parse(from_os_str))]
-    password_list: Vec<PathBuf>,
-}
+include!("opt/badlist_preprocess.rs");
 
 fn main() {
-    let opt = ClientOpt::from_args();
+    let opt = BadlistProcOpt::from_args();
     if opt.debug {
         ::std::env::set_var("RUST_LOG", "kanidm=debug,kanidm_client=debug");
     } else {

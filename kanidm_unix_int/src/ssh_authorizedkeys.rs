@@ -20,17 +20,11 @@ use kanidm_unix_common::client::call_daemon;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
 
-#[derive(Debug, StructOpt)]
-struct ClientOpt {
-    #[structopt(short = "d", long = "debug")]
-    debug: bool,
-    #[structopt()]
-    account_id: String,
-}
+include!("./opt/ssh_authorizedkeys.rs");
 
 #[tokio::main]
 async fn main() {
-    let opt = ClientOpt::from_args();
+    let opt = SshAuthorizedOpt::from_args();
     if opt.debug {
         ::std::env::set_var("RUST_LOG", "kanidm=debug,kanidm_client=debug");
     } else {

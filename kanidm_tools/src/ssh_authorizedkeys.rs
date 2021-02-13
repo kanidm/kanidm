@@ -8,33 +8,20 @@
 #![deny(clippy::needless_pass_by_value)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
-use std::path::PathBuf;
-
 use kanidm_client::KanidmClientBuilder;
+use std::path::PathBuf;
 
 use log::{debug, error};
 use structopt::StructOpt;
 
-#[derive(Debug, StructOpt)]
-struct ClientOpt {
-    #[structopt(short = "d", long = "debug")]
-    debug: bool,
-    #[structopt(short = "H", long = "url")]
-    addr: Option<String>,
-    #[structopt(short = "D", long = "name")]
-    username: String,
-    #[structopt(parse(from_os_str), short = "C", long = "ca")]
-    ca_path: Option<PathBuf>,
-    #[structopt()]
-    account_id: String,
-}
+include!("opt/ssh_authorizedkeys.rs");
 
 // For now we lift a few things from the main.rs to use.
 //
 // usage: AuthorizedKeysCommand /usr/sbin/kanidm_ssh_authorizedkeys %u -H URL -D anonymous -C /etc/kanidm/ca.pem
 //
 fn main() {
-    let opt = ClientOpt::from_args();
+    let opt = SshAuthorizedOpt::from_args();
     if opt.debug {
         ::std::env::set_var("RUST_LOG", "kanidm=debug,kanidm_client=debug");
     } else {
