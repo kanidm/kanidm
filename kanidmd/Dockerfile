@@ -22,27 +22,32 @@ RUN ln -s -f /usr/bin/clang /usr/bin/cc && \
     ln -s -f /usr/bin/ld.lld /usr/bin/ld
 
 RUN if [ "$(uname -m)" == "x86_64" ]; \
-	then export RUSTFLAGS='-Ctarget-cpu=haswell'; \
+		then export RUSTFLAGS='-Ctarget-cpu=haswell'; \
 	fi; \
 	if [ "$(uname -m)" == "aarch64" ]; \
-	then export RUSTFLAGS=''; \
+		then export RUSTFLAGS=''; \
 	fi; \
 	if [ "${SCCACHE_REDIS}" != "" ]; \
-	then export CC="/usr/bin/sccache /usr/bin/clang"; export RUSTC_WRAPPER=sccache; sccache --start-server; \
-	else export CC="/usr/bin/clang"; \
+		then \
+			export CC="/usr/bin/sccache /usr/bin/clang" && \
+			export RUSTC_WRAPPER=sccache && \
+			sccache --start-server; \
+		else \
+			export CC="/usr/bin/clang"; \
 	fi; \
-	echo $RUSTC_WRAPPER; \
-	echo $RUSTFLAGS; \
-	echo $CC; \
-	RUSTC_BOOTSTRAP=1 \
-	cargo build --features=concread/simd_support,libsqlite3-sys/bundled \
-	--release; \
+	export RUSTC_BOOTSTRAP=1 && \
+	echo $RUSTC_BOOTSTRAP && \
+	echo $RUSTC_WRAPPER && \
+	echo $RUSTFLAGS && \
+	echo $CC && \
+	cargo build \
+		--features=concread/simd_support,libsqlite3-sys/bundled \
+		--release; \
 	if [ "${SCCACHE_REDIS}" != "" ]; \
-	then sccache -s; \
+		then sccache -s; \
 	fi; \
-	echo $RUSTFLAGS; \
-	echo $CC; \
-	echo $RUSTC_WRAPPER;
+	ls -al /usr/src/kanidm/target/release/
+
 
 FROM ${BASE_IMAGE}
 LABEL mantainer william@blackhats.net.au
