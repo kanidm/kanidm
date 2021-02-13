@@ -75,11 +75,11 @@ fn create_home_directory(info: &HomeDirectoryInfo) -> Result<(), String> {
     // Final sanity check to prevent certain classes of attacks.
     let name = info
         .name
-        .replace(".", "")
+        .trim_start_matches('.')
         .replace("/", "")
         .replace("\\", "");
     // Note, due to how this works, we can't remove '/'. But we still want to stop traversals.
-    let path = info.path.replace(".", "").replace("\\", "");
+    let path = info.path.trim_start_matches('.').replace("\\", "");
 
     // Actually process the request here.
     let hd_path_raw = format!("{}{}", path, name);
