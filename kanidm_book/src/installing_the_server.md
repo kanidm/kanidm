@@ -14,20 +14,19 @@ There are a number of configuration steps you must perform before you can run th
 
 ## TLS
 
-You'll need a volume where you can place configuration, certificates and the database:
+You'll need a volume where you can place configuration, certificates, and the database:
 
     docker volume create kanidmd
 
 You should have a chain.pem and key.pem in your kanidmd volume. The reason for requiring
-TLS is explained in [why tls](./why_tls.md). In summary TLS is our root of trust between the
+TLS is explained in [why tls](./why_tls.md). In summary, TLS is our root of trust between the
 server and clients, and a critical element of ensuring a secure system.
 
 The key.pem should be a single PEM private key, with no encryption. The file content should be
 similar to:
 
     -----BEGIN RSA PRIVATE KEY-----
-    MII...
-    ...
+    MII...<base64>
     -----END RSA PRIVATE KEY-----
 
 The chain.pem is a series of PEM formatted certificates. The leaf certificate, or the certificate
@@ -45,16 +44,26 @@ by the series of intermediates, and the final certificate should be the CA root.
     <ca/croot certificate>
     -----END CERTIFICATE-----
 
-You can validate that the leaf certificate is matching to the key with the command:
+> **HINT**
+> If you are using Let's Encrypt the provided files "fullchain.pem" and "privkey.pem" are already
+> correctly formatted as required for Kanidm.
+
+You can validate that the leaf certificate matches the key with the command:
 
     # openssl rsa -noout -modulus -in key.pem | openssl sha1
     d2188932f520e45f2e76153fbbaf13f81ea6c1ef
     # openssl x509 -noout -modulus -in chain.pem | openssl sha1
     d2188932f520e45f2e76153fbbaf13f81ea6c1ef
 
-You can validate the chain to the certificate with:
+If your chain.pem contains the CA certificate, you can validate this file with the command:
 
     openssl verify -CAfile chain.pem chain.pem
+
+If your chain.pem does not contain the CA certificate (Let's Encrypt chains do not contain the CA
+for example) then you can validate with this command. Note that here "untrusted" means a list of
+further certificates in the chain to build up to the root, not that the verification is bypassed.
+
+    openssl verify -untrusted fullchain.pem fullchain.pem
 
 If these verifications pass you can now use these certificates with Kanidm. To put the certificates
 in place you can use a shell container that mounts the volume such as:
@@ -71,7 +80,7 @@ You will also need a config file in the volume named `server.toml` (Within the c
     #   The webserver bind address. Will use HTTPS if tls_* is provided.
     #   Defaults to "127.0.0.1:8443"
     bindaddress = "127.0.0.1:8443"
-    #   The read-only ldap server bind address. will use LDAPS if tls_* is provided.
+    #   The read-only ldap server bind address. The server will use LDAPS if tls_* is provided.
     #   Defaults to "" (disabled)
     # ldapbindaddress = "127.0.0.1:3636"
     #   The path to the kanidm database.

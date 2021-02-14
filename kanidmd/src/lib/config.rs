@@ -115,7 +115,7 @@ impl Configuration {
                 self.tls_config = Some(TlsConfiguration { chain, key })
             }
             _ => {
-                error!("Invalid TLS configuration - must provide chain and key!");
+                eprintln!("Invalid TLS configuration - must provide chain and key!");
                 std::process::exit(1);
             }
         }
