@@ -49,7 +49,7 @@ impl ClientCodec {
     }
 }
 
-pub async fn call_daemon(path: &str, req: ClientRequest) -> Result<ClientResponse, Box<dyn Error>> {
+async fn call_daemon(path: &str, req: ClientRequest) -> Result<ClientResponse, Box<dyn Error>> {
     let stream = UnixStream::connect(path).await?;
 
     let mut reqs = Framed::new(stream, ClientCodec::new());
