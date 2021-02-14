@@ -75,7 +75,7 @@ pub fn call_daemon_blocking(
 ) -> Result<ClientResponse, Box<dyn Error>> {
     let rt = Builder::new_current_thread()
         .enable_time()
-        .enable_minimal_io()
+        .enable_io()
         .build()
         .map_err(Box::new)?;
     rt.block_on(call_daemon(path, req))
