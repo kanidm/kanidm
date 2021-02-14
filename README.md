@@ -12,9 +12,9 @@ Kanidm is an identity management platform written in rust. Our goals are:
 * Extensible for various needs
 * Correct and secure behaviour by default
 
-Today the project is still under heavy development to achieve these goals - we don't expect a fully
-functional release before early 2020. It is important to note that not all needed security features
-of the system have been completed yet!
+Today the project is still under heavy development to achieve these goals - We have many foundational
+parts in place, and many of the required security features, but it is still an Alpha, and should be
+treated as such.
 
 ## Code of Conduct / Ethics
 
