@@ -14,16 +14,15 @@ extern crate log;
 use log::debug;
 use structopt::StructOpt;
 
-use futures::executor::block_on;
+// use futures::executor::block_on;
 
-use kanidm_unix_common::client::call_daemon;
+use kanidm_unix_common::client_sync::call_daemon_blocking;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
 
 include!("./opt/unixd_status.rs");
 
-#[tokio::main]
-async fn main() {
+fn main() {
     let opt = UnixdStatusOpt::from_args();
     if opt.debug {
         ::std::env::set_var("RUST_LOG", "kanidm=debug,kanidm_client=debug");
@@ -32,7 +31,7 @@ async fn main() {
     }
     env_logger::init();
 
-    debug!("Starting cache invalidate tool ...");
+    debug!("Starting cache status tool ...");
 
     let cfg = match KanidmUnixdConfig::new().read_options_from_optional_config("/etc/kanidm/unixd")
     {
@@ -45,7 +44,7 @@ async fn main() {
 
     let req = ClientRequest::Status;
 
-    match block_on(call_daemon(cfg.sock_path.as_str(), req)) {
+    match call_daemon_blocking(cfg.sock_path.as_str(), req) {
         Ok(r) => match r {
             ClientResponse::Ok => info!("working!"),
             _ => {
