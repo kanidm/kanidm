@@ -15,7 +15,7 @@ pub fn call_daemon_blocking(
     req: ClientRequest,
 ) -> Result<ClientResponse, Box<dyn Error>> {
     let mut stream = UnixStream::connect(path)
-        .and_then(|socket| socket.set_nonblocking(true).map(|_| socket))
+        // .and_then(|socket| socket.set_nonblocking(true).map(|_| socket))
         .map_err(|e| {
             error!("stream setup error -> {:?}", e);
             e
@@ -42,6 +42,7 @@ pub fn call_daemon_blocking(
     let timeout = Duration::from_millis(TIMEOUT);
     let mut read_started = false;
     let mut data = Vec::with_capacity(1024);
+    let mut counter = 0;
 
     loop {
         let mut buffer = [0; 1024];
@@ -68,6 +69,7 @@ pub fn call_daemon_blocking(
             }
             Ok(count) => {
                 data.extend_from_slice(&buffer);
+                counter += count;
                 if count == 1024 {
                     debug!("Filled 1024 bytes, looping ...");
                     // We have filled the buffer, we need to copy and loop again.
@@ -86,6 +88,9 @@ pub fn call_daemon_blocking(
             }
         }
     }
+
+    // Extend from slice fills with 0's, so we need to truncate now.
+    data.truncate(counter);
 
     // Now attempt to decode.
     let cr = serde_cbor::from_slice::<ClientResponse>(data.as_slice()).map_err(|e| {
