@@ -15,7 +15,14 @@ pub fn call_daemon_blocking(
     req: ClientRequest,
 ) -> Result<ClientResponse, Box<dyn Error>> {
     let mut stream = UnixStream::connect(path)
-        // .and_then(|socket| socket.set_nonblocking(true).map(|_| socket))
+        .and_then(|socket| 
+            socket.set_read_timeout(Some(Duration::from_millis(TIMEOUT)))
+            .map(|_| socket)
+        )
+        .and_then(|socket| 
+            socket.set_write_timeout(Some(Duration::from_millis(TIMEOUT)))
+            .map(|_| socket)
+        )
         .map_err(|e| {
             error!("stream setup error -> {:?}", e);
             e
@@ -46,6 +53,12 @@ pub fn call_daemon_blocking(
 
     loop {
         let mut buffer = [0; 1024];
+        let durr = SystemTime::now().duration_since(start).map_err(Box::new)?;
+        if durr > timeout {
+            error!("Socket timeout");
+            // timed out, not enough activity.
+            break;
+        }
         // Would be a lot easier if we had peek ...
         // https://github.com/rust-lang/rust/issues/76923
         match stream.read(&mut buffer) {
@@ -55,16 +68,9 @@ pub fn call_daemon_blocking(
                     // We're done, no more bytes.
                     break;
                 } else {
-                    let durr = SystemTime::now().duration_since(start).map_err(Box::new)?;
-                    if durr > timeout {
-                        debug!("Timeout");
-                        // timed out, no activity.
-                        break;
-                    } else {
-                        debug!("Waiting ...");
-                        // Still can wait ...
-                        continue;
-                    }
+                    debug!("Waiting ...");
+                    // Still can wait ...
+                    continue;
                 }
             }
             Ok(count) => {
@@ -95,7 +101,7 @@ pub fn call_daemon_blocking(
     // Now attempt to decode.
     let cr = serde_cbor::from_slice::<ClientResponse>(data.as_slice()).map_err(|e| {
         error!("socket encoding error -> {:?}", e);
-        Box::new(IoError::new(ErrorKind::Other, "CBOR encode error"))
+        Box::new(IoError::new(ErrorKind::Other, "CBOR decode error"))
     })?;
 
     Ok(cr)
