@@ -16,6 +16,10 @@ pub fn call_daemon_blocking(
 ) -> Result<ClientResponse, Box<dyn Error>> {
     let mut stream = UnixStream::connect(path)
         .and_then(|socket| socket.set_nonblocking(true).map(|_| socket))
+        .map_err(|e| {
+            error!("stream setup error -> {:?}", e);
+            e
+        })
         .map_err(Box::new)?;
 
     let data = serde_cbor::to_vec(&req).map_err(|e| {
@@ -27,6 +31,10 @@ pub fn call_daemon_blocking(
     stream
         .write_all(data.as_slice())
         .and_then(|_| stream.flush())
+        .map_err(|e| {
+            error!("stream write error -> {:?}", e);
+            e
+        })
         .map_err(Box::new)?;
 
     // Now wait on the response.
@@ -42,14 +50,17 @@ pub fn call_daemon_blocking(
         match stream.read(&mut buffer) {
             Ok(0) => {
                 if read_started {
+                    debug!("read_started true, we have completed");
                     // We're done, no more bytes.
                     break;
                 } else {
                     let durr = SystemTime::now().duration_since(start).map_err(Box::new)?;
                     if durr > timeout {
+                        debug!("Timeout");
                         // timed out, no activity.
                         break;
                     } else {
+                        debug!("Waiting ...");
                         // Still can wait ...
                         continue;
                     }
@@ -58,15 +69,18 @@ pub fn call_daemon_blocking(
             Ok(count) => {
                 data.extend_from_slice(&buffer);
                 if count == 1024 {
+                    debug!("Filled 1024 bytes, looping ...");
                     // We have filled the buffer, we need to copy and loop again.
                     read_started = true;
                     continue;
                 } else {
+                    debug!("Filled {} bytes, complete", count);
                     // We have a partial read, so we are complete.
                     break;
                 }
             }
             Err(e) => {
+                error!("Steam read failure -> {:?}", e);
                 // Failure!
                 return Err(Box::new(e));
             }
