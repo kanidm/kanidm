@@ -15,6 +15,7 @@ extern crate log;
 
 pub mod cache;
 pub mod client;
+pub mod client_sync;
 pub mod constants;
 pub(crate) mod db;
 pub mod unix_config;

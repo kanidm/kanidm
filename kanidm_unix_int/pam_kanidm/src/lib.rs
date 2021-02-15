@@ -20,7 +20,7 @@ use std::collections::BTreeSet;
 use std::convert::TryFrom;
 use std::ffi::CStr;
 // use std::os::raw::c_char;
-use kanidm_unix_common::client::call_daemon_blocking;
+use kanidm_unix_common::client_sync::call_daemon_blocking;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
 
