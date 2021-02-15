@@ -13,7 +13,7 @@ extern crate libnss;
 #[macro_use]
 extern crate lazy_static;
 
-use kanidm_unix_common::client::call_daemon_blocking;
+use kanidm_unix_common::client_sync::call_daemon_blocking;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse, NssGroup, NssUser};
 

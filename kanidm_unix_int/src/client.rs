@@ -5,7 +5,7 @@ use std::error::Error;
 use std::io::Error as IoError;
 use std::io::ErrorKind;
 use tokio::net::UnixStream;
-use tokio::runtime::Builder;
+// use tokio::runtime::Builder;
 use tokio_util::codec::Framed;
 use tokio_util::codec::{Decoder, Encoder};
 
@@ -49,7 +49,7 @@ impl ClientCodec {
     }
 }
 
-async fn call_daemon(path: &str, req: ClientRequest) -> Result<ClientResponse, Box<dyn Error>> {
+pub async fn call_daemon(path: &str, req: ClientRequest) -> Result<ClientResponse, Box<dyn Error>> {
     let stream = UnixStream::connect(path).await?;
 
     let mut reqs = Framed::new(stream, ClientCodec::new());
@@ -67,16 +67,4 @@ async fn call_daemon(path: &str, req: ClientRequest) -> Result<ClientResponse, B
             Err(Box::new(IoError::new(ErrorKind::Other, "oh no!")))
         }
     }
-}
-
-pub fn call_daemon_blocking(
-    path: &str,
-    req: ClientRequest,
-) -> Result<ClientResponse, Box<dyn Error>> {
-    let rt = Builder::new_current_thread()
-        .enable_time()
-        .enable_io()
-        .build()
-        .map_err(Box::new)?;
-    rt.block_on(call_daemon(path, req))
 }
