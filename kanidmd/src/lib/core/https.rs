@@ -1381,7 +1381,7 @@ pub fn create_https_server(
         Some(tls_param) => {
             let tlsl = TlsListener::build()
                 .addrs(address)
-                .cert(&tls_param.cert)
+                .cert(&tls_param.chain)
                 .key(&tls_param.key)
                 .finish()
                 .map_err(|e| {

@@ -8,8 +8,7 @@ pub struct IntegrationTestConfig {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct TlsConfiguration {
-    pub ca: String,
-    pub cert: String,
+    pub chain: String,
     pub key: String,
 }
 
@@ -107,21 +106,16 @@ impl Configuration {
         self.origin = o.to_string();
     }
 
-    pub fn update_tls(&mut self, ca: &Option<String>, cert: &Option<String>, key: &Option<String>) {
-        match (ca, cert, key) {
-            (None, None, None) => {}
-            (Some(cap), Some(certp), Some(keyp)) => {
-                let cas = cap.to_string();
-                let certs = certp.to_string();
-                let keys = keyp.to_string();
-                self.tls_config = Some(TlsConfiguration {
-                    ca: cas,
-                    cert: certs,
-                    key: keys,
-                })
+    pub fn update_tls(&mut self, chain: &Option<String>, key: &Option<String>) {
+        match (chain, key) {
+            (None, None) => {}
+            (Some(chainp), Some(keyp)) => {
+                let chain = chainp.to_string();
+                let key = keyp.to_string();
+                self.tls_config = Some(TlsConfiguration { chain, key })
             }
             _ => {
-                error!("Invalid TLS configuration - must provide ca, cert and key!");
+                eprintln!("ERROR: Invalid TLS configuration - must provide chain and key!");
                 std::process::exit(1);
             }
         }

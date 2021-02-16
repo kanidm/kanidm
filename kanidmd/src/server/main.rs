@@ -40,8 +40,7 @@ struct ServerConfig {
     // pub threads: Option<usize>,
     pub db_path: String,
     pub db_fs_type: Option<String>,
-    pub tls_ca: Option<String>,
-    pub tls_cert: Option<String>,
+    pub tls_chain: Option<String>,
     pub tls_key: Option<String>,
     pub log_level: Option<String>,
     pub origin: String,
@@ -153,15 +152,7 @@ async fn main() {
 
     // Check the permissions of the files from the configuration.
 
-    if let Some(i_str) = &(sconfig.tls_ca) {
-        let i_path = PathBuf::from(i_str.as_str());
-        let i_meta = read_file_metadata(&i_path);
-        if !i_meta.permissions().readonly() {
-            eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", i_str);
-        }
-    }
-
-    if let Some(i_str) = &(sconfig.tls_cert) {
+    if let Some(i_str) = &(sconfig.tls_chain) {
         let i_path = PathBuf::from(i_str.as_str());
         let i_meta = read_file_metadata(&i_path);
         if !i_meta.permissions().readonly() {
@@ -212,7 +203,7 @@ async fn main() {
     config.update_log_level(ll);
     config.update_db_path(&sconfig.db_path.as_str());
     config.update_db_fs_type(&sconfig.db_fs_type);
-    config.update_tls(&sconfig.tls_ca, &sconfig.tls_cert, &sconfig.tls_key);
+    config.update_tls(&sconfig.tls_chain, &sconfig.tls_key);
     config.update_bind(&sconfig.bindaddress);
     config.update_ldapbind(&sconfig.ldapbindaddress);
     config.update_origin(&sconfig.origin.as_str());
