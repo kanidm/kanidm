@@ -38,26 +38,39 @@ answer questions via email, which can be found on their github profile.
 
 [gitter community channel]: https://gitter.im/kanidm/community
 
-## Implemented/Planned features
+## Features
 
-* SSH key distribution for servers (done)
-* Pam/nsswitch clients (with limited offline auth) (done)
-* Sudo rule distribution via nsswitch
-* CLI and WebUI for administration
-* OIDC/Oauth
+### Implemented
+
+* SSH key distribution for servers
+* Pam/nsswitch clients (with limited offline auth)
+* MFA - TOTP
+* Highly concurrent design (MVCC, COW)
+* RADIUS integration
+
+### Currently Working On
+
+* CLI for administration
+* MFA - Webauthn
+
+### Upcoming Focus Areas
+
+* WebUI for self service with wifi enrollment, claim management and more.
 * RBAC/Claims (limited by time and credential scope)
-* MFA (Webauthn, TOTP) (TOTP done)
-* Highly concurrent design (MVCC, COW) (done)
+* OIDC/Oauth
 * Replication (async multiple active write servers, read only servers)
+
+### Future
+
+* Sudo rule distribution via nsswitch
+* WebUI for administration
 * Account impersonation
-* RADIUS integration (done)
-* Self service UI with wifi enrollment, claim management and more.
 * Synchronisation to other IDM services
 
-## Features we want to avoid
+### Features We Want to Avoid
 
 * Auditing: This is better solved by SIEM software, so we should generate data they can consume.
-* Fully synchronous behaviour: This is slow.
+* Fully synchronous behaviour: This prevents scaling and our future ability to expand.
 * Generic database: We don't want to be another NoSQL database, we want to be an IDM solution.
 * Being LDAP/GSSAPI/Kerberos: These are all legacy protocols that are hard to use and confine our thinking - we should avoid "being like them".
 
