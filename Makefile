@@ -12,14 +12,14 @@ help:
 
 buildx/kanidmd: ## build multiarch server images
 buildx/kanidmd:
-	echo @docker buildx build --push --platform $(IMAGE_ARCH) -f kanidmd/Dockerfile -t $(IMAGE_BASE)/server:$(IMAGE_VERSION) $(ARGS) .
-	@docker buildx build --push --platform $(IMAGE_ARCH) -f kanidmd/Dockerfile -t $(IMAGE_BASE)/server:$(IMAGE_VERSION) $(ARGS) .
-	@docker buildx imagetools inspect $(IMAGE_BASE)/server:$(IMAGE_VERSION)
+	echo @docker buildx build $(EXT_OPTS) --pull --push --platform $(IMAGE_ARCH) -f kanidmd/Dockerfile -t $(IMAGE_BASE)/server:$(IMAGE_VERSION) $(ARGS) .
+	@docker buildx build $(EXT_OPTS) --pull --push --platform $(IMAGE_ARCH) -f kanidmd/Dockerfile -t $(IMAGE_BASE)/server:$(IMAGE_VERSION) $(ARGS) .
+	@docker buildx imagetools $(EXT_OPTS) inspect $(IMAGE_BASE)/server:$(IMAGE_VERSION)
 
 buildx/radiusd: ## build multiarch radius images
 buildx/radiusd:
-	@docker buildx build --push --platform $(IMAGE_ARCH) -f kanidm_rlm_python/Dockerfile -t $(IMAGE_BASE)/radius:$(IMAGE_VERSION) kanidm_rlm_python
-	@docker buildx imagetools inspect $(IMAGE_BASE)/radius:$(IMAGE_VERSION)
+	@docker buildx build $(EXT_OPTS) --pull --push --platform $(IMAGE_ARCH) -f kanidm_rlm_python/Dockerfile -t $(IMAGE_BASE)/radius:$(IMAGE_VERSION) kanidm_rlm_python
+	@docker buildx imagetools $(EXT_OPTS) inspect $(IMAGE_BASE)/radius:$(IMAGE_VERSION)
 
 buildx: buildx/kanidmd buildx/radiusd
 

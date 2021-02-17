@@ -3,6 +3,7 @@ FROM ${BASE_IMAGE} AS builder
 LABEL mantainer william@blackhats.net.au
 
 RUN zypper -vv ref && \
+    zypper dup -y && \
     zypper install -y \
         cargo \
         rust \
@@ -41,7 +42,7 @@ RUN if [ "$(uname -m)" == "x86_64" ]; \
 	echo $RUSTFLAGS && \
 	echo $CC && \
 	cargo build \
-		--features=concread/simd_support,libsqlite3-sys/bundled \
+		--features=simd_support,libsqlite3-sys/bundled \
 		--release; \
 	if [ "${SCCACHE_REDIS}" != "" ]; \
 		then sccache -s; \
@@ -53,6 +54,7 @@ FROM ${BASE_IMAGE}
 LABEL mantainer william@blackhats.net.au
 
 RUN zypper ref && \
+    zypper dup -y && \
     zypper install -y \
         timezone \
         sqlite3 \
