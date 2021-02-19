@@ -1068,6 +1068,23 @@ impl KanidmClient {
         }
     }
 
+    pub fn idm_account_primary_credential_remove_webauthn(
+        &self,
+        id: &str,
+        label: &str,
+    ) -> Result<bool, ClientError> {
+        let r = SetCredentialRequest::WebauthnRemove(label.to_string());
+        let res: Result<SetCredentialResponse, ClientError> = self.perform_put_request(
+            format!("/v1/account/{}/_credential/primary", id).as_str(),
+            r,
+        );
+        match res {
+            Ok(SetCredentialResponse::Success) => Ok(true),
+            Ok(_) => Err(ClientError::EmptyResponse),
+            Err(e) => Err(e),
+        }
+    }
+
     pub fn idm_account_radius_credential_get(
         &self,
         id: &str,

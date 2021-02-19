@@ -823,6 +823,103 @@ fn test_server_rest_webauthn_auth_lifecycle() {
             )
             .unwrap();
 
+        // ====== Reg a second token.
+        let mut wa_softtok_2 = WebauthnAuthenticator::new(U2FSoft::new());
+
+        // Do the challenge
+        let (sessionid, regchal) = rsclient
+            .idm_account_primary_credential_register_webauthn("demo_account", "softtok_2")
+            .unwrap();
+
+        let rego = wa_softtok_2
+            .do_registration("https://idm.example.com", regchal)
+            .expect("Failed to register to softtoken");
+
+        // Enroll the cred after signing.
+        rsclient
+            .idm_account_primary_credential_complete_webuthn_registration(
+                "demo_account",
+                rego,
+                sessionid,
+            )
+            .unwrap();
+
+        // Now do an auth
+        let mut rsclient_good = rsclient.new_session().unwrap();
+
+        let pkr = rsclient_good.auth_webauthn_begin("demo_account").unwrap();
+
+        // Get the auth chal.
+        let auth = wa_softtok_2
+            .do_authentication("https://idm.example.com", pkr)
+            .expect("Failed to auth to softtoken");
+
+        // Submit the webauthn auth.
+        rsclient_good
+            .auth_webauthn_complete(auth)
+            .expect("Failed to authenticate");
+
+        // ======== remove the second softtok.
+
+        rsclient
+            .idm_account_primary_credential_remove_webauthn("demo_account", "softtok_2")
+            .expect("failed to remove softtoken");
+
+        // All good, check first tok auth.
+
+        let mut rsclient_good = rsclient.new_session().unwrap();
+
+        let pkr = rsclient_good.auth_webauthn_begin("demo_account").unwrap();
+
+        // Get the auth chal.
+        let auth = wa_softtok
+            .do_authentication("https://idm.example.com", pkr)
+            .expect("Failed to auth to softtoken");
+
+        // Submit the webauthn auth.
+        rsclient_good
+            .auth_webauthn_complete(auth)
+            .expect("Failed to authenticate");
+    });
+}
+
+#[test]
+fn test_server_rest_webauthn_mfa_auth_lifecycle() {
+    run_test(|mut rsclient: KanidmClient| {
+        let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
+        assert!(res.is_ok());
+
+        // Not recommended in production!
+        rsclient
+            .idm_group_add_members("idm_admins", &["admin"])
+            .unwrap();
+
+        // Create a new account
+        rsclient
+            .idm_account_create("demo_account", "Deeeeemo")
+            .unwrap();
+
+        // Enroll a soft token to the account webauthn.
+        let mut wa_softtok = WebauthnAuthenticator::new(U2FSoft::new());
+
+        // Do the challenge
+        let (sessionid, regchal) = rsclient
+            .idm_account_primary_credential_register_webauthn("demo_account", "softtok")
+            .unwrap();
+
+        let rego = wa_softtok
+            .do_registration("https://idm.example.com", regchal)
+            .expect("Failed to register to softtoken");
+
+        // Enroll the cred after signing.
+        rsclient
+            .idm_account_primary_credential_complete_webuthn_registration(
+                "demo_account",
+                rego,
+                sessionid,
+            )
+            .unwrap();
+
         // Now do an auth
         let mut rsclient_good = rsclient.new_session().unwrap();
 
@@ -836,7 +933,23 @@ fn test_server_rest_webauthn_auth_lifecycle() {
         // Submit the webauthn auth.
         rsclient_good
             .auth_webauthn_complete(auth)
-            .expect("Failed to authenticate")
+            .expect("Failed to authenticate");
+
+        // Set a password to cause the state to change to PasswordMFA
+        assert!(rsclient
+            .idm_account_primary_credential_set_password("demo_account", "sohdi3iuHo6mai7noh0a")
+            .is_ok());
+
+        // Now remove Webauthn ...
+        rsclient
+            .idm_account_primary_credential_remove_webauthn("demo_account", "softtok")
+            .expect("failed to remove softtoken");
+
+        // Check pw only
+        let mut rsclient_good = rsclient.new_session().unwrap();
+        assert!(rsclient_good
+            .auth_simple_password("demo_account", "sohdi3iuHo6mai7noh0a")
+            .is_ok());
     });
 }
 

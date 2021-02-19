@@ -156,6 +156,8 @@ pub enum AccountCredential {
     GeneratePassword(AccountCredentialSet),
     #[structopt(name = "register_webauthn")]
     RegisterWebauthn(AccountNamedTagOpt),
+    #[structopt(name = "remove_webauthn")]
+    RemoveWebauthn(AccountNamedTagOpt),
     /// Set the TOTP credential of the account. If a TOTP already exists, on a successful
     /// registration, this will replace it.
     #[structopt(name = "set_totp")]
