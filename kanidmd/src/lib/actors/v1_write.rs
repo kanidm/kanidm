@@ -9,8 +9,8 @@ use crate::event::{
 };
 use crate::idm::event::{
     GeneratePasswordEvent, GenerateTOTPEvent, PasswordChangeEvent, RegenerateRadiusSecretEvent,
-    RemoveTOTPEvent, UnixPasswordChangeEvent, VerifyTOTPEvent, WebauthnDoRegisterEvent,
-    WebauthnInitRegisterEvent,
+    RemoveTOTPEvent, RemoveWebauthnEvent, UnixPasswordChangeEvent, VerifyTOTPEvent,
+    WebauthnDoRegisterEvent, WebauthnInitRegisterEvent,
 };
 use crate::modify::{Modify, ModifyInvalid, ModifyList};
 use crate::value::{PartialValue, Value};
@@ -701,6 +701,26 @@ impl QueryServerWriteV1 {
                         })?;
                         idms_prox_write
                             .reg_account_webauthn_complete(&mut audit, &wre)
+                            .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
+                    }
+                    SetCredentialRequest::WebauthnRemove(label) => {
+                        let rwe = RemoveWebauthnEvent::from_parts(
+                            &mut audit,
+                            &idms_prox_write.qs_write,
+                            msg.uat.as_ref(),
+                            target_uuid,
+                            label,
+                        )
+                        .map_err(|e| {
+                            ladmin_error!(
+                                audit,
+                                "Failed to begin internal_credential_set_message: {:?}",
+                                e
+                            );
+                            e
+                        })?;
+                        idms_prox_write
+                            .remove_account_webauthn(&mut audit, &rwe)
                             .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
                     }
                 }

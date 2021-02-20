@@ -44,11 +44,12 @@ enum CredVerifyState {
 }
 
 #[derive(Clone, Debug)]
-struct CredTotpPw {
+struct CredMfa {
     pw: Password,
     pw_state: CredVerifyState,
-    totp: TOTP,
-    totp_state: CredVerifyState,
+    totp: Option<TOTP>,
+    wan: Option<(RequestChallengeResponse, AuthenticationState)>,
+    mfa_state: CredVerifyState,
 }
 
 #[derive(Clone, Debug)]
@@ -63,7 +64,7 @@ enum CredHandler {
     Anonymous,
     // AppPassword (?)
     Password(Password),
-    PasswordMFA(CredTotpPw),
+    PasswordMFA(Box<CredMfa>),
     Webauthn(CredWebauthn),
     // Webauthn + Password
 }
@@ -79,15 +80,41 @@ impl CredHandler {
             CredentialType::Password(pw) | CredentialType::GeneratedPassword(pw) => {
                 Ok(CredHandler::Password(pw.clone()))
             }
-            CredentialType::PasswordMFA(pw, Some(totp), _) => {
-                Ok(CredHandler::PasswordMFA(CredTotpPw {
+            CredentialType::PasswordMFA(pw, maybe_totp, maybe_wan) => {
+                let wan = if !maybe_wan.is_empty() {
+                    webauthn
+                        .generate_challenge_authenticate(maybe_wan.values().cloned().collect())
+                        .map(Some)
+                        .map_err(|e| {
+                            lsecurity!(
+                                au,
+                                "Unable to create webauthn authentication challenge -> {:?}",
+                                e
+                            );
+                        })?
+                } else {
+                    None
+                };
+
+                let cmfa = Box::new(CredMfa {
                     pw: pw.clone(),
                     pw_state: CredVerifyState::Init,
-                    totp: totp.clone(),
-                    totp_state: CredVerifyState::Init,
-                }))
+                    totp: maybe_totp.clone(),
+                    wan,
+                    mfa_state: CredVerifyState::Init,
+                });
+
+                // Paranoia. Should NEVER occur.
+                if cmfa.totp.is_none() && cmfa.wan.is_none() {
+                    lsecurity_critical!(
+                        au,
+                        "Unable to create CredHandler::PasswordMFA - totp and webauthn are both not present. Credentials MAY be corrupt!"
+                    );
+                    return Err(());
+                }
+
+                Ok(CredHandler::PasswordMFA(cmfa))
             }
-            CredentialType::PasswordMFA(_, None, _) => Err(()),
             CredentialType::Webauthn(wan) => webauthn
                 .generate_challenge_authenticate(wan.values().cloned().collect())
                 .map(|(chal, wan_state)| {
@@ -177,60 +204,110 @@ impl CredHandler {
         }
     }
 
-    fn validate_totp_password(
+    fn validate_password_mfa(
         au: &mut AuditScope,
         cred: &AuthCredential,
         ts: &Duration,
-        pw_totp: &mut CredTotpPw,
+        pw_mfa: &mut CredMfa,
+        webauthn: &Webauthn<WebauthnDomainConfig>,
         who: Uuid,
         async_tx: &Sender<DelayedAction>,
     ) -> CredState {
-        match (cred, &pw_totp.totp_state, &pw_totp.pw_state) {
-            // Must be done first.
-            (AuthCredential::TOTP(totp_chal), CredVerifyState::Init, CredVerifyState::Init) => {
-                if pw_totp.totp.verify(*totp_chal, ts) {
-                    pw_totp.totp_state = CredVerifyState::Success;
-                    lsecurity!(
-                        au,
-                        "Handler::PasswordMFA -> Result::Continue - TOTP OK, password -"
-                    );
-                    CredState::Continue(vec![AuthAllowed::Password])
-                } else {
-                    pw_totp.totp_state = CredVerifyState::Fail;
-                    lsecurity!(
-                        au,
-                        "Handler::PasswordMFA -> Result::Denied - TOTP Fail, password -"
-                    );
-                    CredState::Denied(BAD_TOTP_MSG)
+        match (&pw_mfa.mfa_state, &pw_mfa.pw_state) {
+            (CredVerifyState::Init, CredVerifyState::Init) => {
+                // MFA first
+                match (cred, pw_mfa.totp.as_ref(), pw_mfa.wan.as_ref()) {
+                    (AuthCredential::Webauthn(resp), _, Some((_, wan_state))) => {
+                        webauthn.authenticate_credential(&resp, wan_state.clone())
+                                .map(|r| {
+                                    pw_mfa.mfa_state = CredVerifyState::Success;
+                                    // Success. Determine if we need to update the counter
+                                    // async from r.
+                                    if let Some((cid, counter)) = r {
+                                        // Do async
+                                        if let Err(_e) = async_tx.send(DelayedAction::WebauthnCounterIncrement(WebauthnCounterIncrement {
+                                            target_uuid: who,
+                                            cid,
+                                            counter,
+                                        })) {
+                                            ladmin_warning!(au, "unable to queue delayed webauthn counter increment, continuing ... ");
+                                        };
+                                    };
+                                    CredState::Continue(vec![AuthAllowed::Password])
+                                })
+                                .unwrap_or_else(|e| {
+                                    pw_mfa.mfa_state = CredVerifyState::Fail;
+                                    // Denied.
+                                    lsecurity!(au, "Handler::Webauthn -> Result::Denied - webauthn error {:?}", e);
+                                    CredState::Denied(BAD_WEBAUTHN_MSG)
+                                })
+                    }
+                    (AuthCredential::TOTP(totp_chal), Some(totp), _) => {
+                        if totp.verify(*totp_chal, ts) {
+                            pw_mfa.mfa_state = CredVerifyState::Success;
+                            lsecurity!(
+                                au,
+                                "Handler::PasswordMFA -> Result::Continue - TOTP OK, password -"
+                            );
+                            CredState::Continue(vec![AuthAllowed::Password])
+                        } else {
+                            pw_mfa.mfa_state = CredVerifyState::Fail;
+                            lsecurity!(
+                                au,
+                                "Handler::PasswordMFA -> Result::Denied - TOTP Fail, password -"
+                            );
+                            CredState::Denied(BAD_TOTP_MSG)
+                        }
+                    }
+                    _ => {
+                        lsecurity!(
+                            au,
+                            "Handler::PasswordMFA -> Result::Denied - invalid cred type for handler"
+                        );
+                        CredState::Denied(BAD_AUTH_TYPE_MSG)
+                    }
                 }
             }
-            // Must only proceed if totp was success.
-            (
-                AuthCredential::Password(cleartext),
-                CredVerifyState::Success,
-                CredVerifyState::Init,
-            ) => {
-                if pw_totp.pw.verify(cleartext.as_str()).unwrap_or(false) {
-                    pw_totp.pw_state = CredVerifyState::Success;
-                    lsecurity!(
-                        au,
-                        "Handler::PasswordMFA -> Result::Success - TOTP OK, password OK"
-                    );
-                    Self::maybe_pw_upgrade(au, &pw_totp.pw, who, cleartext.as_str(), async_tx);
-                    CredState::Success(Vec::new())
-                } else {
-                    pw_totp.pw_state = CredVerifyState::Fail;
-                    lsecurity!(
-                        au,
-                        "Handler::PasswordMFA -> Result::Denied - TOTP OK, password Fail"
-                    );
-                    CredState::Denied(BAD_PASSWORD_MSG)
+            (CredVerifyState::Success, CredVerifyState::Init) => {
+                // PW second.
+                match cred {
+                    AuthCredential::Password(cleartext) => {
+                        if pw_mfa.pw.verify(cleartext.as_str()).unwrap_or(false) {
+                            pw_mfa.pw_state = CredVerifyState::Success;
+                            lsecurity!(
+                                au,
+                                "Handler::PasswordMFA -> Result::Success - TOTP OK, password OK"
+                            );
+                            Self::maybe_pw_upgrade(
+                                au,
+                                &pw_mfa.pw,
+                                who,
+                                cleartext.as_str(),
+                                async_tx,
+                            );
+                            CredState::Success(Vec::new())
+                        } else {
+                            pw_mfa.pw_state = CredVerifyState::Fail;
+                            lsecurity!(
+                                au,
+                                "Handler::PasswordMFA -> Result::Denied - TOTP OK, password Fail"
+                            );
+                            CredState::Denied(BAD_PASSWORD_MSG)
+                        }
+                    }
+                    _ => {
+                        lsecurity!(
+                            au,
+                            "Handler::PasswordMFA -> Result::Denied - invalid cred type for handler"
+                        );
+                        CredState::Denied(BAD_AUTH_TYPE_MSG)
+                    }
                 }
             }
             _ => {
                 lsecurity!(
                     au,
-                    "Handler::PasswordMFA -> Result::Denied - invalid cred type for handler"
+                    "Handler::PasswordMFA -> Result::Denied - invalid credential mfa and pw state"
                 );
                 CredState::Denied(BAD_AUTH_TYPE_MSG)
             }
@@ -304,8 +381,8 @@ impl CredHandler {
             CredHandler::Password(ref mut pw) => {
                 Self::validate_password(au, cred, pw, who, async_tx)
             }
-            CredHandler::PasswordMFA(ref mut pw_totp) => {
-                Self::validate_totp_password(au, cred, ts, pw_totp, who, async_tx)
+            CredHandler::PasswordMFA(ref mut pw_mfa) => {
+                Self::validate_password_mfa(au, cred, ts, pw_mfa, webauthn, who, async_tx)
             }
             CredHandler::Webauthn(ref mut wan_cred) => {
                 Self::validate_webauthn(au, cred, wan_cred, webauthn, who, async_tx)
@@ -317,9 +394,17 @@ impl CredHandler {
         match &self {
             CredHandler::Anonymous => vec![AuthAllowed::Anonymous],
             CredHandler::Password(_) => vec![AuthAllowed::Password],
-            // webauth
-            // mfa
-            CredHandler::PasswordMFA(_) => vec![AuthAllowed::TOTP],
+            CredHandler::PasswordMFA(ref pw_mfa) => pw_mfa
+                .totp
+                .iter()
+                .map(|_| AuthAllowed::TOTP)
+                .chain(
+                    pw_mfa
+                        .wan
+                        .iter()
+                        .map(|(chal, _)| AuthAllowed::Webauthn(chal.clone())),
+                )
+                .collect(),
             CredHandler::Webauthn(webauthn) => vec![AuthAllowed::Webauthn(webauthn.chal.clone())],
         }
     }
@@ -806,7 +891,7 @@ mod tests {
                 $webauthn,
                 duration_from_epoch_now(),
             );
-            let mut session = session.unwrap();
+            let mut session = session.expect("Session was unable to be created.");
 
             if let AuthState::Choose(auth_mechs) = state {
                 assert!(
@@ -823,10 +908,16 @@ mod tests {
                 .start_session($audit, &AuthMech::PasswordMFA)
                 .expect("Failed to select anonymous mech.");
 
+            let mut rchal = None;
+
             if let AuthState::Continue(auth_mechs) = state {
                 assert!(
                     true == auth_mechs.iter().fold(false, |acc, x| match x {
                         // TODO: How to return webauthn chal?
+                        AuthAllowed::Webauthn(chal) => {
+                            rchal = Some(chal.clone());
+                            true
+                        }
                         AuthAllowed::TOTP => true,
                         _ => acc,
                     })
@@ -835,7 +926,7 @@ mod tests {
                 panic!("Invalid auth state")
             }
 
-            session
+            (session, rchal)
         }};
     }
 
@@ -880,7 +971,7 @@ mod tests {
 
         // check send anon (fail)
         {
-            let mut session = start_password_mfa_session!(&mut audit, account, &webauthn);
+            let (mut session, _) = start_password_mfa_session!(&mut audit, account, &webauthn);
 
             match session.validate_creds(
                 &mut audit,
@@ -898,7 +989,7 @@ mod tests {
 
         // Sending a PW first is an immediate fail.
         {
-            let mut session = start_password_mfa_session!(&mut audit, account, &webauthn);
+            let (mut session, _) = start_password_mfa_session!(&mut audit, account, &webauthn);
 
             match session.validate_creds(
                 &mut audit,
@@ -913,7 +1004,7 @@ mod tests {
         }
         // check send bad totp, should fail immediate
         {
-            let mut session = start_password_mfa_session!(&mut audit, account, &webauthn);
+            let (mut session, _) = start_password_mfa_session!(&mut audit, account, &webauthn);
 
             match session.validate_creds(
                 &mut audit,
@@ -930,7 +1021,7 @@ mod tests {
         // check send good totp, should continue
         //      then bad pw, fail pw
         {
-            let mut session = start_password_mfa_session!(&mut audit, account, &webauthn);
+            let (mut session, _) = start_password_mfa_session!(&mut audit, account, &webauthn);
 
             match session.validate_creds(
                 &mut audit,
@@ -957,7 +1048,7 @@ mod tests {
         // check send good totp, should continue
         //      then good pw, success
         {
-            let mut session = start_password_mfa_session!(&mut audit, account, &webauthn);
+            let (mut session, _) = start_password_mfa_session!(&mut audit, account, &webauthn);
 
             match session.validate_creds(
                 &mut audit,
@@ -1033,24 +1124,19 @@ mod tests {
         }};
     }
 
-    #[test]
-    fn test_idm_authsession_webauthn_only_mech() {
-        let mut audit = AuditScope::new(
-            "test_idm_authsession_webauthn_mech",
-            uuid::Uuid::new_v4(),
-            None,
-        );
+    fn setup_webauthn(
+        name: &str,
+    ) -> (
+        webauthn_rs::Webauthn<crate::credential::webauthn::WebauthnDomainConfig>,
+        webauthn_authenticator_rs::WebauthnAuthenticator<U2FSoft>,
+        webauthn_rs::proto::Credential,
+    ) {
         let webauthn = create_webauthn();
-        let (async_tx, mut async_rx) = unbounded();
-        let ts = duration_from_epoch_now();
-        // create the ent
-        let mut account = entry_str_to_account!(JSON_ADMIN_V1);
-
         // Setup a soft token
         let mut wa = WebauthnAuthenticator::new(U2FSoft::new());
 
         let (chal, reg_state) = webauthn
-            .generate_challenge_register(&account.name, Some(UserVerificationPolicy::Discouraged))
+            .generate_challenge_register(name, Some(UserVerificationPolicy::Discouraged))
             .expect("Failed to setup webauthn rego challenge");
 
         let r = wa
@@ -1061,13 +1147,28 @@ mod tests {
             .register_credential(&r, reg_state, |_| Ok(false))
             .expect("Failed to register soft token");
 
+        (webauthn, wa, wan_cred)
+    }
+
+    #[test]
+    fn test_idm_authsession_webauthn_only_mech() {
+        let mut audit = AuditScope::new(
+            "test_idm_authsession_webauthn_only_mech",
+            uuid::Uuid::new_v4(),
+            None,
+        );
+        let (async_tx, mut async_rx) = unbounded();
+        let ts = duration_from_epoch_now();
+        // create the ent
+        let mut account = entry_str_to_account!(JSON_ADMIN_V1);
+
+        let (webauthn, mut wa, wan_cred) = setup_webauthn(account.name.as_str());
+
         // Now create the credential for the account.
         let cred = Credential::new_webauthn_only("soft".to_string(), wan_cred);
         account.primary = Some(cred);
 
-        // now check correct mech was offered. we stash this challenge for later
-        // to help generate a failure.
-        let (_session, inv_chal) = start_webauthn_only_session!(&mut audit, account, &webauthn);
+        // now check correct mech was offered.
 
         // check send anon (fail)
         {
@@ -1114,6 +1215,7 @@ mod tests {
 
         // Check bad challenge.
         {
+            let (_session, inv_chal) = start_webauthn_only_session!(&mut audit, account, &webauthn);
             let (mut session, _chal) = start_webauthn_only_session!(&mut audit, account, &webauthn);
 
             let resp = wa
@@ -1175,6 +1277,391 @@ mod tests {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_WEBAUTHN_MSG),
                 _ => panic!(),
             };
+        }
+
+        drop(async_tx);
+        assert!(async_rx.blocking_recv().is_none());
+        audit.write_log();
+    }
+
+    #[test]
+    fn test_idm_authsession_webauthn_password_mech() {
+        let mut audit = AuditScope::new(
+            "test_idm_authsession_webauthn_password_mech",
+            uuid::Uuid::new_v4(),
+            None,
+        );
+        let (async_tx, mut async_rx) = unbounded();
+        let ts = duration_from_epoch_now();
+        // create the ent
+        let mut account = entry_str_to_account!(JSON_ADMIN_V1);
+
+        let (webauthn, mut wa, wan_cred) = setup_webauthn(account.name.as_str());
+        let pw_good = "test_password";
+        let pw_bad = "bad_password";
+
+        // Now create the credential for the account.
+        let p = CryptoPolicy::minimum();
+        let cred = Credential::new_password_only(&p, pw_good)
+            .unwrap()
+            .append_webauthn("soft".to_string(), wan_cred)
+            .unwrap();
+
+        account.primary = Some(cred);
+
+        // check pw first (fail)
+        {
+            let (mut session, _) = start_password_mfa_session!(&mut audit, account, &webauthn);
+
+            match session.validate_creds(
+                &mut audit,
+                &AuthCredential::Password(pw_bad.to_string()),
+                &ts,
+                &async_tx,
+                &webauthn,
+            ) {
+                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
+                _ => panic!(),
+            };
+        }
+
+        // Check totp first attempt fails.
+        {
+            let (mut session, _) = start_password_mfa_session!(&mut audit, account, &webauthn);
+
+            match session.validate_creds(
+                &mut audit,
+                &AuthCredential::TOTP(0),
+                &ts,
+                &async_tx,
+                &webauthn,
+            ) {
+                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
+                _ => panic!(),
+            };
+        }
+
+        // check bad webauthn (fail)
+        // NOTE: We only check bad challenge here as bad softtoken is already
+        // extensively tested.
+        {
+            let (_session, inv_chal) = start_password_mfa_session!(&mut audit, account, &webauthn);
+            let (mut session, _chal) = start_password_mfa_session!(&mut audit, account, &webauthn);
+
+            let inv_chal = inv_chal.unwrap();
+
+            let resp = wa
+                // HERE -> we use inv_chal instead.
+                .do_authentication("https://idm.example.com", inv_chal)
+                .expect("failed to use softtoken to authenticate");
+
+            match session.validate_creds(
+                &mut audit,
+                &AuthCredential::Webauthn(resp),
+                &ts,
+                &async_tx,
+                &webauthn,
+            ) {
+                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_WEBAUTHN_MSG),
+                _ => panic!(),
+            };
+        }
+
+        // check good webauthn/bad pw (fail)
+        {
+            let (mut session, chal) = start_password_mfa_session!(&mut audit, account, &webauthn);
+            let chal = chal.unwrap();
+
+            let resp = wa
+                .do_authentication("https://idm.example.com", chal)
+                .expect("failed to use softtoken to authenticate");
+
+            match session.validate_creds(
+                &mut audit,
+                &AuthCredential::Webauthn(resp),
+                &ts,
+                &async_tx,
+                &webauthn,
+            ) {
+                Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
+                _ => panic!(),
+            };
+            match session.validate_creds(
+                &mut audit,
+                &AuthCredential::Password(pw_bad.to_string()),
+                &ts,
+                &async_tx,
+                &webauthn,
+            ) {
+                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
+                _ => panic!(),
+            };
+
+            // Check the async counter update was sent.
+            match async_rx.blocking_recv() {
+                Some(DelayedAction::WebauthnCounterIncrement(_)) => {}
+                _ => assert!(false),
+            }
+        }
+
+        // Check good webauthn/good pw (pass)
+        {
+            let (mut session, chal) = start_password_mfa_session!(&mut audit, account, &webauthn);
+            let chal = chal.unwrap();
+
+            let resp = wa
+                .do_authentication("https://idm.example.com", chal)
+                .expect("failed to use softtoken to authenticate");
+
+            match session.validate_creds(
+                &mut audit,
+                &AuthCredential::Webauthn(resp),
+                &ts,
+                &async_tx,
+                &webauthn,
+            ) {
+                Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
+                _ => panic!(),
+            };
+            match session.validate_creds(
+                &mut audit,
+                &AuthCredential::Password(pw_good.to_string()),
+                &ts,
+                &async_tx,
+                &webauthn,
+            ) {
+                Ok(AuthState::Success(_)) => {}
+                _ => panic!(),
+            };
+
+            // Check the async counter update was sent.
+            match async_rx.blocking_recv() {
+                Some(DelayedAction::WebauthnCounterIncrement(_)) => {}
+                _ => assert!(false),
+            }
+        }
+
+        drop(async_tx);
+        assert!(async_rx.blocking_recv().is_none());
+        audit.write_log();
+    }
+
+    #[test]
+    fn test_idm_authsession_webauthn_password_totp_mech() {
+        let mut audit = AuditScope::new(
+            "test_idm_authsession_webauthn_password_totp_mech",
+            uuid::Uuid::new_v4(),
+            None,
+        );
+        let (async_tx, mut async_rx) = unbounded();
+        let ts = duration_from_epoch_now();
+        // create the ent
+        let mut account = entry_str_to_account!(JSON_ADMIN_V1);
+
+        let (webauthn, mut wa, wan_cred) = setup_webauthn(account.name.as_str());
+
+        let totp = TOTP::generate_secure("test_totp".to_string(), TOTP_DEFAULT_STEP);
+        let totp_good = totp
+            .do_totp_duration_from_epoch(&ts)
+            .expect("failed to perform totp.");
+        let totp_bad = totp
+            .do_totp_duration_from_epoch(&Duration::from_secs(1234567))
+            .expect("failed to perform totp.");
+        assert!(totp_bad != totp_good);
+
+        let pw_good = "test_password";
+        let pw_bad = "bad_password";
+
+        // Now create the credential for the account.
+        let p = CryptoPolicy::minimum();
+        let cred = Credential::new_password_only(&p, pw_good)
+            .unwrap()
+            .append_webauthn("soft".to_string(), wan_cred)
+            .unwrap()
+            .update_totp(totp);
+
+        account.primary = Some(cred);
+
+        // check pw first (fail)
+        {
+            let (mut session, _) = start_password_mfa_session!(&mut audit, account, &webauthn);
+
+            match session.validate_creds(
+                &mut audit,
+                &AuthCredential::Password(pw_bad.to_string()),
+                &ts,
+                &async_tx,
+                &webauthn,
+            ) {
+                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
+                _ => panic!(),
+            };
+        }
+
+        // Check bad totp (fail)
+        {
+            let (mut session, _) = start_password_mfa_session!(&mut audit, account, &webauthn);
+
+            match session.validate_creds(
+                &mut audit,
+                &AuthCredential::TOTP(totp_bad),
+                &ts,
+                &async_tx,
+                &webauthn,
+            ) {
+                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_TOTP_MSG),
+                _ => panic!(),
+            };
+        }
+
+        // check bad webauthn (fail)
+        {
+            let (_session, inv_chal) = start_password_mfa_session!(&mut audit, account, &webauthn);
+            let (mut session, _chal) = start_password_mfa_session!(&mut audit, account, &webauthn);
+
+            let inv_chal = inv_chal.unwrap();
+
+            let resp = wa
+                // HERE -> we use inv_chal instead.
+                .do_authentication("https://idm.example.com", inv_chal)
+                .expect("failed to use softtoken to authenticate");
+
+            match session.validate_creds(
+                &mut audit,
+                &AuthCredential::Webauthn(resp),
+                &ts,
+                &async_tx,
+                &webauthn,
+            ) {
+                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_WEBAUTHN_MSG),
+                _ => panic!(),
+            };
+        }
+
+        // check good webauthn/bad pw (fail)
+        {
+            let (mut session, chal) = start_password_mfa_session!(&mut audit, account, &webauthn);
+            let chal = chal.unwrap();
+
+            let resp = wa
+                .do_authentication("https://idm.example.com", chal)
+                .expect("failed to use softtoken to authenticate");
+
+            match session.validate_creds(
+                &mut audit,
+                &AuthCredential::Webauthn(resp),
+                &ts,
+                &async_tx,
+                &webauthn,
+            ) {
+                Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
+                _ => panic!(),
+            };
+            match session.validate_creds(
+                &mut audit,
+                &AuthCredential::Password(pw_bad.to_string()),
+                &ts,
+                &async_tx,
+                &webauthn,
+            ) {
+                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
+                _ => panic!(),
+            };
+
+            // Check the async counter update was sent.
+            match async_rx.blocking_recv() {
+                Some(DelayedAction::WebauthnCounterIncrement(_)) => {}
+                _ => assert!(false),
+            }
+        }
+
+        // check good totp/bad pw (fail)
+        {
+            let (mut session, _) = start_password_mfa_session!(&mut audit, account, &webauthn);
+
+            match session.validate_creds(
+                &mut audit,
+                &AuthCredential::TOTP(totp_good),
+                &ts,
+                &async_tx,
+                &webauthn,
+            ) {
+                Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
+                _ => panic!(),
+            };
+            match session.validate_creds(
+                &mut audit,
+                &AuthCredential::Password(pw_bad.to_string()),
+                &ts,
+                &async_tx,
+                &webauthn,
+            ) {
+                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
+                _ => panic!(),
+            };
+        }
+
+        // check good totp/good pw (pass)
+        {
+            let (mut session, _) = start_password_mfa_session!(&mut audit, account, &webauthn);
+
+            match session.validate_creds(
+                &mut audit,
+                &AuthCredential::TOTP(totp_good),
+                &ts,
+                &async_tx,
+                &webauthn,
+            ) {
+                Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
+                _ => panic!(),
+            };
+            match session.validate_creds(
+                &mut audit,
+                &AuthCredential::Password(pw_good.to_string()),
+                &ts,
+                &async_tx,
+                &webauthn,
+            ) {
+                Ok(AuthState::Success(_)) => {}
+                _ => panic!(),
+            };
+        }
+
+        // Check good webauthn/good pw (pass)
+        {
+            let (mut session, chal) = start_password_mfa_session!(&mut audit, account, &webauthn);
+            let chal = chal.unwrap();
+
+            let resp = wa
+                .do_authentication("https://idm.example.com", chal)
+                .expect("failed to use softtoken to authenticate");
+
+            match session.validate_creds(
+                &mut audit,
+                &AuthCredential::Webauthn(resp),
+                &ts,
+                &async_tx,
+                &webauthn,
+            ) {
+                Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
+                _ => panic!(),
+            };
+            match session.validate_creds(
+                &mut audit,
+                &AuthCredential::Password(pw_good.to_string()),
+                &ts,
+                &async_tx,
+                &webauthn,
+            ) {
+                Ok(AuthState::Success(_)) => {}
+                _ => panic!(),
+            };
+
+            // Check the async counter update was sent.
+            match async_rx.blocking_recv() {
+                Some(DelayedAction::WebauthnCounterIncrement(_)) => {}
+                _ => assert!(false),
+            }
         }
 
         drop(async_tx);

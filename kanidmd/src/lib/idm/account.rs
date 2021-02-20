@@ -274,6 +274,24 @@ impl Account {
         Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
     }
 
+    pub(crate) fn gen_webauthn_remove_mod(
+        &self,
+        label: &str,
+    ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
+        match &self.primary {
+            // Change the cred
+            Some(primary) => {
+                let ncred = primary.remove_webauthn(label)?;
+                let vcred = Value::new_credential("primary", ncred);
+                Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
+            }
+            None => {
+                // No credential exists, we can't remove what is not real.
+                Err(OperationError::InvalidState)
+            }
+        }
+    }
+
     #[allow(clippy::ptr_arg)]
     pub(crate) fn gen_webauthn_counter_mod(
         &self,

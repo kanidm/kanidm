@@ -9,9 +9,9 @@ use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
 use crate::idm::event::{
     GeneratePasswordEvent, GenerateTOTPEvent, LdapAuthEvent, PasswordChangeEvent,
-    RadiusAuthTokenEvent, RegenerateRadiusSecretEvent, RemoveTOTPEvent, UnixGroupTokenEvent,
-    UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent, VerifyTOTPEvent,
-    WebauthnDoRegisterEvent, WebauthnInitRegisterEvent,
+    RadiusAuthTokenEvent, RegenerateRadiusSecretEvent, RemoveTOTPEvent, RemoveWebauthnEvent,
+    UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent,
+    VerifyTOTPEvent, WebauthnDoRegisterEvent, WebauthnInitRegisterEvent,
 };
 use crate::idm::mfareg::{MfaRegCred, MfaRegNext, MfaRegSession};
 use crate::idm::radius::RadiusAccount;
@@ -1211,6 +1211,43 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         Ok(next)
     }
 
+    pub fn remove_account_webauthn(
+        &mut self,
+        au: &mut AuditScope,
+        rwe: &RemoveWebauthnEvent,
+    ) -> Result<SetCredentialResponse, OperationError> {
+        ltrace!(
+            au,
+            "Attempting to remove webauthn {:?} -> {:?}",
+            rwe.label,
+            rwe.target
+        );
+
+        let account = self.target_to_account(au, &rwe.target)?;
+        let modlist = account
+            .gen_webauthn_remove_mod(rwe.label.as_str())
+            .map_err(|e| {
+                ladmin_error!(au, "Failed to gen webauthn remove mod {:?}", e);
+                e
+            })?;
+        // Perform the mod
+        self.qs_write
+            .impersonate_modify(
+                au,
+                // Filter as executed
+                &filter!(f_eq("uuid", PartialValue::new_uuidr(&account.uuid))),
+                // Filter as intended (acp)
+                &filter_all!(f_eq("uuid", PartialValue::new_uuidr(&account.uuid))),
+                &modlist,
+                &rwe.event,
+            )
+            .map_err(|e| {
+                ladmin_error!(au, "remove_account_webauthn {:?}", e);
+                e
+            })
+            .map(|_| SetCredentialResponse::Success)
+    }
+
     pub fn generate_account_totp(
         &mut self,
         au: &mut AuditScope,
@@ -1460,8 +1497,9 @@ mod tests {
     use crate::idm::delayed::{DelayedAction, WebauthnCounterIncrement};
     use crate::idm::event::{
         GenerateTOTPEvent, PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
-        RemoveTOTPEvent, UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent,
-        UnixUserTokenEvent, VerifyTOTPEvent, WebauthnDoRegisterEvent, WebauthnInitRegisterEvent,
+        RemoveTOTPEvent, RemoveWebauthnEvent, UnixGroupTokenEvent, UnixPasswordChangeEvent,
+        UnixUserAuthEvent, UnixUserTokenEvent, VerifyTOTPEvent, WebauthnDoRegisterEvent,
+        WebauthnInitRegisterEvent,
     };
     use crate::idm::AuthState;
     use crate::modify::{Modify, ModifyList};
@@ -3027,6 +3065,30 @@ mod tests {
             });
             let r = task::block_on(idms.delayed_action(au, duration_from_epoch_now(), da));
             assert!(Ok(true) == r);
+
+            // Check we can remove the webauthn device - provided we set a pw.
+            let mut idms_prox_write = idms.proxy_write(ct.clone());
+            let rwe =
+                RemoveWebauthnEvent::new_internal(UUID_ADMIN.clone(), "softtoken".to_string());
+            // This fails because the acc is webauthn only.
+            match idms_prox_write.remove_account_webauthn(au, &rwe) {
+                Err(OperationError::InvalidAttribute(_)) => {
+                    //ok
+                }
+                _ => assert!(false),
+            };
+            // Reg a pw.
+            let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD, None);
+            assert!(idms_prox_write.set_account_password(au, &pce).is_ok());
+            // Now remove, it will work.
+            idms_prox_write
+                .remove_account_webauthn(au, &rwe)
+                .expect("Failed to remove webauthn");
+
+            assert!(idms_prox_write.commit(au).is_ok());
+
+            check_admin_password(idms, au, TEST_PASSWORD);
+            // All done!
         })
     }
 }

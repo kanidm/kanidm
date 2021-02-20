@@ -583,6 +583,8 @@ pub enum SetCredentialRequest {
     WebauthnBegin(String),
     // Finish it.
     WebauthnRegister(Uuid, RegisterPublicKeyCredential),
+    // Remove
+    WebauthnRemove(String),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -440,6 +440,42 @@ impl WebauthnDoRegisterEvent {
     }
 }
 
+#[derive(Debug)]
+pub struct RemoveWebauthnEvent {
+    pub event: Event,
+    pub target: Uuid,
+    pub label: String,
+}
+
+impl RemoveWebauthnEvent {
+    pub fn from_parts(
+        audit: &mut AuditScope,
+        qs: &QueryServerWriteTransaction,
+        uat: Option<&UserAuthToken>,
+        target: Uuid,
+        label: String,
+    ) -> Result<Self, OperationError> {
+        let e = Event::from_rw_uat(audit, qs, uat)?;
+
+        Ok(RemoveWebauthnEvent {
+            event: e,
+            target,
+            label,
+        })
+    }
+
+    #[cfg(test)]
+    pub fn new_internal(target: Uuid, label: String) -> Self {
+        let e = Event::from_internal();
+
+        RemoveWebauthnEvent {
+            event: e,
+            target,
+            label,
+        }
+    }
+}
+
 pub struct LdapAuthEvent {
     // pub event: Event,
     pub target: Uuid,

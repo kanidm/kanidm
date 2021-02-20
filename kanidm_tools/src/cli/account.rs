@@ -16,6 +16,7 @@ impl AccountOpt {
                 AccountCredential::SetPassword(acs) => acs.copt.debug,
                 AccountCredential::GeneratePassword(acs) => acs.copt.debug,
                 AccountCredential::RegisterWebauthn(acs) => acs.copt.debug,
+                AccountCredential::RemoveWebauthn(acs) => acs.copt.debug,
                 AccountCredential::RegisterTOTP(acs) => acs.copt.debug,
                 AccountCredential::RemoveTOTP(acs) => acs.copt.debug,
             },
@@ -123,6 +124,20 @@ impl AccountOpt {
                         }
                         Err(e) => {
                             eprintln!("Error Completing -> {:?}", e);
+                        }
+                    }
+                }
+                AccountCredential::RemoveWebauthn(acsopt) => {
+                    let client = acsopt.copt.to_client();
+                    match client.idm_account_primary_credential_remove_webauthn(
+                        acsopt.aopts.account_id.as_str(),
+                        acsopt.tag.as_str(),
+                    ) {
+                        Ok(_) => {
+                            println!("Webauthn removal success.");
+                        }
+                        Err(e) => {
+                            eprintln!("Error Removing Webauthn from account -> {:?}", e);
                         }
                     }
                 }

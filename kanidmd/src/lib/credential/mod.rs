@@ -380,6 +380,57 @@ impl Credential {
         })
     }
 
+    pub fn remove_webauthn(&self, label: &str) -> Result<Self, OperationError> {
+        let type_ = match &self.type_ {
+            CredentialType::Password(_) | CredentialType::GeneratedPassword(_) => {
+                return Err(OperationError::InvalidAttribute(
+                    "Webauthn is not present on this credential".to_string(),
+                ));
+            }
+            CredentialType::PasswordMFA(pw, totp, map) => {
+                let mut nmap = map.clone();
+                if nmap.remove(label).is_none() {
+                    return Err(OperationError::InvalidAttribute(format!(
+                        "Removing Webauthn token with label '{:?}': does not exist",
+                        label
+                    )));
+                }
+                if nmap.is_empty() {
+                    if totp.is_some() {
+                        CredentialType::PasswordMFA(pw.clone(), totp.clone(), nmap)
+                    } else {
+                        CredentialType::Password(pw.clone())
+                    }
+                } else {
+                    CredentialType::PasswordMFA(pw.clone(), totp.clone(), nmap)
+                }
+            }
+            CredentialType::Webauthn(map) => {
+                let mut nmap = map.clone();
+                if nmap.remove(label).is_none() {
+                    return Err(OperationError::InvalidAttribute(format!(
+                        "Removing Webauthn token with label '{:?}': does not exist",
+                        label
+                    )));
+                }
+                if nmap.is_empty() {
+                    return Err(OperationError::InvalidAttribute(format!(
+                        "Removing Webauthn token with label '{:?}': unable to remove, this is the last webauthn token",
+                        label
+                    )));
+                }
+                CredentialType::Webauthn(nmap)
+            }
+        };
+
+        // Check stuff
+        Ok(Credential {
+            type_,
+            claims: self.claims.clone(),
+            uuid: self.uuid,
+        })
+    }
+
     #[allow(clippy::ptr_arg)]
     pub fn update_webauthn_counter(
         &self,
@@ -527,11 +578,7 @@ impl Credential {
             CredentialType::PasswordMFA(_, totp, wan) => {
                 CredentialType::PasswordMFA(pw, totp.clone(), wan.clone())
             }
-            CredentialType::Webauthn(wan) => {
-                // Or should this become PasswordWebauthn?
-                debug_assert!(false);
-                CredentialType::Webauthn(wan.clone())
-            }
+            CredentialType::Webauthn(wan) => CredentialType::PasswordMFA(pw, None, wan.clone()),
         };
         Credential {
             type_,
