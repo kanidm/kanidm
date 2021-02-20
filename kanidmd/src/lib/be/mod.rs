@@ -1449,7 +1449,7 @@ mod tests {
                 itype: IndexType::EQUALITY,
             });
 
-            let be = Backend::new(&mut audit, "", 1, FsType::Generic, idxmeta)
+            let be = Backend::new(&mut audit, "", 1, FsType::Generic, idxmeta, false)
                 .expect("Failed to setup backend");
 
             let mut be_txn = be.write();

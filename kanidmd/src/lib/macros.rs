@@ -22,7 +22,7 @@ macro_rules! run_test_no_init {
             let schema_txn = schema_outer.write_blocking();
             schema_txn.reload_idxmeta()
         };
-        let be = match Backend::new(&mut audit, "", 1, FsType::Generic, idxmeta) {
+        let be = match Backend::new(&mut audit, "", 1, FsType::Generic, idxmeta, false) {
             Ok(be) => be,
             Err(e) => {
                 audit.write_log();
@@ -66,7 +66,7 @@ macro_rules! run_test {
             let schema_txn = schema_outer.write_blocking();
             schema_txn.reload_idxmeta()
         };
-        let be = match Backend::new(&mut audit, "", 1, FsType::Generic, idxmeta) {
+        let be = match Backend::new(&mut audit, "", 1, FsType::Generic, idxmeta, false) {
             Ok(be) => be,
             Err(e) => {
                 audit.write_log();
@@ -138,7 +138,7 @@ macro_rules! run_idm_test {
             schema_txn.reload_idxmeta()
         };
         let be =
-            Backend::new(&mut audit, "", 1, FsType::Generic, idxmeta).expect("Failed to init be");
+            Backend::new(&mut audit, "", 1, FsType::Generic, idxmeta, false).expect("Failed to init be");
 
         let test_server = QueryServer::new(be, schema_outer);
         test_server

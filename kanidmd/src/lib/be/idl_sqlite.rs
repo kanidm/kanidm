@@ -1360,7 +1360,7 @@ mod tests {
     #[test]
     fn test_idl_sqlite_verify() {
         let mut audit = AuditScope::new("run_test", uuid::Uuid::new_v4(), None);
-        let be = IdlSqlite::new(&mut audit, "", 1, FsType::Generic).unwrap();
+        let be = IdlSqlite::new(&mut audit, "", 1, FsType::Generic, false).unwrap();
         let be_w = be.write();
         let r = be_w.verify();
         assert!(r.len() == 0);
