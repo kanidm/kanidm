@@ -87,11 +87,12 @@ You will also need a config file in the volume named `server.toml` (Within the c
     db_path = "/data/kanidm.db"
     #   If you have a known filesystem, kanidm can tune sqlite to match. Valid choices are:
     #   [zfs, other]
-    #   If you are unsure about this leave it as the default (other).
-    #   zfs:
-    #   * sets sqlite pagesize to 64k. You must set recordsize=64k on the zfs filesystem.
-    #   other:
-    #   * sets sqlite pagesize to 4k, matching most filesystems block sizes.
+    #   If you are unsure about this leave it as the default (other). After changing this
+    #   value you must run a vacuum task.
+    #   - zfs:
+    #     * sets sqlite pagesize to 64k. You must set recordsize=64k on the zfs filesystem.
+    #   - other:
+    #     * sets sqlite pagesize to 4k, matching most filesystems block sizes.
     # db_fs_type = "zfs"
     #   TLS chain and key in pem format. Both must be commented, or both must be present
     # tls_chain = "/data/chain.pem"

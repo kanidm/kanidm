@@ -66,6 +66,9 @@ enum KanidmdOpt {
     #[structopt(name = "reindex")]
     /// Reindex the database (offline)
     Reindex(CommonOpt),
+    #[structopt(name = "vacuum")]
+    /// Vacuum the database to reclaim space or change page_size (offline)
+    Vacuum(CommonOpt),
     #[structopt(name = "domain_name_change")]
     /// Change the IDM domain name
     DomainChange(DomainOpt),

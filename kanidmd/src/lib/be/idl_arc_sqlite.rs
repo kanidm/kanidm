@@ -846,8 +846,9 @@ impl IdlArcSqlite {
         path: &str,
         pool_size: u32,
         fstype: FsType,
+        vacuum: bool,
     ) -> Result<Self, OperationError> {
-        let db = IdlSqlite::new(audit, path, pool_size, fstype)?;
+        let db = IdlSqlite::new(audit, path, pool_size, fstype, vacuum)?;
         let entry_cache = ARCache::new(
             DEFAULT_CACHE_TARGET,
             pool_size as usize,

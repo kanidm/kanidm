@@ -26,7 +26,7 @@ use kanidm::audit::LogLevel;
 use kanidm::config::Configuration;
 use kanidm::core::{
     backup_server_core, create_server_core, domain_rename_core, recover_account_core,
-    reindex_server_core, restore_server_core, verify_server_core,
+    reindex_server_core, restore_server_core, vacuum_server_core, verify_server_core,
 };
 
 use structopt::StructOpt;
@@ -63,9 +63,10 @@ impl ServerConfig {
 impl KanidmdOpt {
     fn commonopt(&self) -> &CommonOpt {
         match self {
-            KanidmdOpt::Server(sopt) | KanidmdOpt::Verify(sopt) | KanidmdOpt::Reindex(sopt) => {
-                &sopt
-            }
+            KanidmdOpt::Server(sopt)
+            | KanidmdOpt::Verify(sopt)
+            | KanidmdOpt::Reindex(sopt)
+            | KanidmdOpt::Vacuum(sopt) => &sopt,
             KanidmdOpt::Backup(bopt) => &bopt.commonopts,
             KanidmdOpt::Restore(ropt) => &ropt.commonopts,
             KanidmdOpt::RecoverAccount(ropt) => &ropt.commonopts,
@@ -223,24 +224,14 @@ async fn main() {
     match opt {
         KanidmdOpt::Server(_sopt) => {
             eprintln!("Running in server mode ...");
-
-            /*
-            let mut rt = tokio::runtime::Builder::new()
-                .threaded_scheduler()
-                .build()
-                .unwrap();
-            */
-
             let sctx = create_server_core(config).await;
             match sctx {
                 Ok(_sctx) => match tokio::signal::ctrl_c().await {
                     Ok(_) => {
                         eprintln!("Ctrl-C received, shutting down");
-                        // sctx.stop(true).await;
                     }
                     Err(_) => {
                         eprintln!("Invalid signal received, shutting down as a precaution ...");
-                        // sctx.stop(true).await;
                     }
                 },
                 Err(_) => {
@@ -251,9 +242,6 @@ async fn main() {
         }
         KanidmdOpt::Backup(bopt) => {
             eprintln!("Running in backup mode ...");
-
-            // config.update_db_path(&bopt.commonopts.db_path);
-
             let p = match bopt.path.to_str() {
                 Some(p) => p,
                 None => {
@@ -265,9 +253,6 @@ async fn main() {
         }
         KanidmdOpt::Restore(ropt) => {
             eprintln!("Running in restore mode ...");
-
-            // config.update_db_path(&ropt.commonopts.db_path);
-
             let p = match ropt.path.to_str() {
                 Some(p) => p,
                 None => {
@@ -279,13 +264,10 @@ async fn main() {
         }
         KanidmdOpt::Verify(_vopt) => {
             eprintln!("Running in db verification mode ...");
-
-            // config.update_db_path(&vopt.db_path);
             verify_server_core(&config);
         }
         KanidmdOpt::RecoverAccount(raopt) => {
             eprintln!("Running account recovery ...");
-
             let password = match rpassword::prompt_password_stderr("new password: ") {
                 Ok(pw) => pw,
                 Err(e) => {
@@ -293,28 +275,18 @@ async fn main() {
                     std::process::exit(1);
                 }
             };
-            // config.update_db_path(&raopt.commonopts.db_path);
-
             recover_account_core(&config, &raopt.name, &password);
         }
-        /*
-        KanidmdOpt::ResetServerId(vopt) => {
-            eprintln!("Resetting server id. THIS WILL BREAK REPLICATION");
-
-            config.update_db_path(&vopt.db_path);
-            reset_sid_core(config);
-        }
-        */
         KanidmdOpt::Reindex(_copt) => {
             eprintln!("Running in reindex mode ...");
-
-            // config.update_db_path(&copt.db_path);
             reindex_server_core(&config);
+        }
+        KanidmdOpt::Vacuum(_copt) => {
+            eprintln!("Running in vacuum mode ...");
+            vacuum_server_core(&config);
         }
         KanidmdOpt::DomainChange(dopt) => {
             eprintln!("Running in domain name change mode ... this may take a long time ...");
-
-            // config.update_db_path(&dopt.commonopts.db_path);
             domain_rename_core(&config, &dopt.new_domain_name);
         }
     }

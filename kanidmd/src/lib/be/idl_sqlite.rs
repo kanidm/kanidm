@@ -6,6 +6,7 @@ use idlset::IDLBitRange;
 use kanidm_proto::v1::{ConsistencyError, OperationError};
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
+use rusqlite::Connection;
 use rusqlite::OpenFlags;
 use rusqlite::OptionalExtension;
 use rusqlite::NO_PARAMS;
@@ -1237,6 +1238,7 @@ impl IdlSqlite {
         path: &str,
         pool_size: u32,
         fstype: FsType,
+        vacuum: bool,
     ) -> Result<Self, OperationError> {
         if path == "" {
             debug_assert!(pool_size == 1);
@@ -1249,19 +1251,74 @@ impl IdlSqlite {
         // Open with multi thread flags and locking options.
         flags.insert(OpenFlags::SQLITE_OPEN_NO_MUTEX);
 
-        // TODO: This probably only needs to be run on first run OR we need a flag
-        // or something else. Maybe on reindex only?
+        // We need to run vacuum in the setup else we hit sqlite lock conditions.
+        if vacuum {
+            limmediate_warning!(
+                audit,
+                "NOTICE: A db vacuum has been requested. This may take a long time ...\n"
+            );
+
+            let vconn = Connection::open_with_flags(path, flags).map_err(|e| {
+                ladmin_error!(audit, "rusqlite error {:?}", e);
+                OperationError::SQLiteError
+            })?;
+
+            vconn
+                .pragma_update(None, "journal_mode", &"DELETE")
+                .map_err(|e| {
+                    ladmin_error!(audit, "rusqlite journal_mode update error {:?}", e);
+                    OperationError::SQLiteError
+                })?;
+
+            vconn.close().map_err(|e| {
+                ladmin_error!(audit, "rusqlite db close error {:?}", e);
+                OperationError::SQLiteError
+            })?;
+
+            let vconn = Connection::open_with_flags(path, flags).map_err(|e| {
+                ladmin_error!(audit, "rusqlite error {:?}", e);
+                OperationError::SQLiteError
+            })?;
+
+            vconn
+                .pragma_update(None, "page_size", &(fstype as u32))
+                .map_err(|e| {
+                    ladmin_error!(audit, "rusqlite page_size update error {:?}", e);
+                    OperationError::SQLiteError
+                })?;
+
+            vconn.execute_batch("VACUUM").map_err(|e| {
+                ladmin_error!(audit, "rusqlite vacuum error {:?}", e);
+                OperationError::SQLiteError
+            })?;
+
+            vconn
+                .pragma_update(None, "journal_mode", &"WAL")
+                .map_err(|e| {
+                    ladmin_error!(audit, "rusqlite journal_mode update error {:?}", e);
+                    OperationError::SQLiteError
+                })?;
+
+            vconn.close().map_err(|e| {
+                ladmin_error!(audit, "rusqlite db close error {:?}", e);
+                OperationError::SQLiteError
+            })?;
+
+            limmediate_warning!(audit, "NOTICE: db vacuum complete\n");
+        };
+
         let manager = SqliteConnectionManager::file(path)
             .with_init(move |c| {
                 c.execute_batch(
                     format!(
-                        "PRAGMA page_size={}; VACUUM; PRAGMA journal_mode=WAL;",
+                        "PRAGMA page_size={}; PRAGMA journal_mode=WAL;",
                         fstype as u32
                     )
                     .as_str(),
                 )
             })
             .with_flags(flags);
+
         let builder1 = Pool::builder();
         let builder2 = builder1.max_size(pool_size);
         // Look at max_size and thread_pool here for perf later
