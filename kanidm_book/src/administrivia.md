@@ -100,8 +100,8 @@ Vacuuming is the process of reclaiming un-used pages from the sqlite freelists, 
 some data reordering tasks that may make some queries more efficient . It is recommended that you
 vacuum after a reindex is performed or when you wish to reclaim space in the database file.
 
-Vacuum is also able to change the pagesize of the database. After changing pagesize in server.toml,
-you must run a vacuum for this to take effect.
+Vacuum is also able to change the pagesize of the database. After changing db\_fs\_type (which affects 
+pagesize) in server.toml, you must run a vacuum for this to take effect.
 
     docker stop <container name>
     docker run --rm -i -t -v kanidmd:/data \
