@@ -35,7 +35,7 @@ pub mod constants;
 pub mod credential;
 pub mod entry;
 pub mod event;
-mod filter;
+pub mod filter;
 mod interval;
 pub(crate) mod ldap;
 mod modify;
