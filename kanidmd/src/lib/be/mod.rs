@@ -1312,6 +1312,7 @@ impl Backend {
         mut pool_size: u32,
         fstype: FsType,
         idxmeta: Set<IdxKey>,
+        vacuum: bool,
     ) -> Result<Self, OperationError> {
         // If in memory, reduce pool to 1
         if path == "" {
@@ -1322,7 +1323,7 @@ impl Backend {
         lperf_trace_segment!(audit, "be::new", || {
             let be = Backend {
                 pool_size: pool_size as usize,
-                idlayer: Arc::new(IdlArcSqlite::new(audit, path, pool_size, fstype)?),
+                idlayer: Arc::new(IdlArcSqlite::new(audit, path, pool_size, fstype, vacuum)?),
                 idxmeta: Arc::new(CowCell::new(idxmeta)),
             };
 
@@ -1448,7 +1449,7 @@ mod tests {
                 itype: IndexType::EQUALITY,
             });
 
-            let be = Backend::new(&mut audit, "", 1, FsType::Generic, idxmeta)
+            let be = Backend::new(&mut audit, "", 1, FsType::Generic, idxmeta, false)
                 .expect("Failed to setup backend");
 
             let mut be_txn = be.write();

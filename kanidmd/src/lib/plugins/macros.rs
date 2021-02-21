@@ -19,7 +19,7 @@ macro_rules! setup_test {
             let schema_txn = schema_outer.write_blocking();
             schema_txn.reload_idxmeta()
         };
-        let be = Backend::new($au, "", 1, FsType::Generic, idxmeta).expect("Failed to init BE");
+        let be = Backend::new($au, "", 1, FsType::Generic, idxmeta, false).expect("Failed to init BE");
 
         let qs = QueryServer::new(be, schema_outer);
         qs.initialise_helper($au, duration_from_epoch_now())

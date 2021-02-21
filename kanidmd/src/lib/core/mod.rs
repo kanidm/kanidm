@@ -31,6 +31,14 @@ use async_std::task;
 // === internal setup helpers
 
 fn setup_backend(config: &Configuration, schema: &Schema) -> Result<Backend, OperationError> {
+    setup_backend_vacuum(config, schema, false)
+}
+
+fn setup_backend_vacuum(
+    config: &Configuration,
+    schema: &Schema,
+    vacuum: bool,
+) -> Result<Backend, OperationError> {
     // Limit the scope of the schema txn.
     // let schema_txn = task::block_on(schema.write());
     let schema_txn = schema.write();
@@ -55,6 +63,7 @@ fn setup_backend(config: &Configuration, schema: &Schema) -> Result<Backend, Ope
         pool_size,
         fstype,
         idxmeta,
+        vacuum,
     );
     // debug!
     audit_be.write_log();
@@ -252,6 +261,32 @@ pub fn reindex_server_core(config: &Configuration) {
         Ok(_) => eprintln!("Index Phase 2 Success!"),
         Err(e) => {
             eprintln!("Reindex failed: {:?}", e);
+            std::process::exit(1);
+        }
+    };
+}
+
+pub fn vacuum_server_core(config: &Configuration) {
+    let mut audit = AuditScope::new("server_vacuum", uuid::Uuid::new_v4(), config.log_level);
+
+    let schema = match Schema::new(&mut audit) {
+        Ok(s) => s,
+        Err(e) => {
+            eprintln!("Failed to setup in memory schema: {:?}", e);
+            std::process::exit(1);
+        }
+    };
+
+    // The schema doesn't matter here. Vacuum is run as part of db open to avoid
+    // locking.
+    let r = setup_backend_vacuum(&config, &schema, true);
+
+    audit.write_log();
+
+    match r {
+        Ok(_) => eprintln!("Vacuum Success!"),
+        Err(e) => {
+            eprintln!("Vacuum failed: {:?}", e);
             std::process::exit(1);
         }
     };
