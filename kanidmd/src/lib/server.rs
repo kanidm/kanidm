@@ -2485,16 +2485,16 @@ mod tests {
             let se1 = unsafe { SearchEvent::new_impersonate_entry(admin.clone(), filt.clone()) };
             let se2 = unsafe { SearchEvent::new_impersonate_entry(admin, filt) };
 
-            let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-                r#"{
-                "attrs": {
-                    "class": ["object", "person"],
-                    "name": ["testperson"],
-                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
-                    "description": ["testperson"],
-                    "displayname": ["testperson"]
-                }
-            }"#,
+            let e = entry_init!(
+                ("class", Value::new_class("object")),
+                ("class", Value::new_class("person")),
+                ("name", Value::new_iname("testperson")),
+                (
+                    "uuid",
+                    Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+                ),
+                ("description", Value::new_utf8s("testperson")),
+                ("displayname", Value::new_utf8s("testperson"))
             );
 
             let ce = CreateEvent::new_internal(vec![e.clone()]);
@@ -2551,28 +2551,28 @@ mod tests {
             // Create an object
             let server_txn = server.write(duration_from_epoch_now());
 
-            let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-                r#"{
-                "attrs": {
-                    "class": ["object", "person"],
-                    "name": ["testperson1"],
-                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
-                    "description": ["testperson1"],
-                    "displayname": ["testperson1"]
-                }
-            }"#,
+            let e1 = entry_init!(
+                ("class", Value::new_class("object")),
+                ("class", Value::new_class("person")),
+                ("name", Value::new_iname("testperson1")),
+                (
+                    "uuid",
+                    Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+                ),
+                ("description", Value::new_utf8s("testperson1")),
+                ("displayname", Value::new_utf8s("testperson1"))
             );
 
-            let e2: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-                r#"{
-                "attrs": {
-                    "class": ["object", "person"],
-                    "name": ["testperson2"],
-                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63932"],
-                    "description": ["testperson2"],
-                    "displayname": ["testperson2"]
-                }
-            }"#,
+            let e2 = entry_init!(
+                ("class", Value::new_class("object")),
+                ("class", Value::new_class("person")),
+                ("name", Value::new_iname("testperson2")),
+                (
+                    "uuid",
+                    Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63932").expect("uuid")
+                ),
+                ("description", Value::new_utf8s("testperson2")),
+                ("displayname", Value::new_utf8s("testperson2"))
             );
 
             let ce = CreateEvent::new_internal(vec![e1.clone(), e2.clone()]);
@@ -2676,16 +2676,16 @@ mod tests {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             let server_txn = server.write(duration_from_epoch_now());
 
-            let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-                r#"{
-                "attrs": {
-                    "class": ["object", "person"],
-                    "name": ["testperson1"],
-                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
-                    "description": ["testperson1"],
-                    "displayname": ["testperson1"]
-                }
-            }"#,
+            let e1 = entry_init!(
+                ("class", Value::new_class("object")),
+                ("class", Value::new_class("person")),
+                ("name", Value::new_iname("testperson1")),
+                (
+                    "uuid",
+                    Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+                ),
+                ("description", Value::new_utf8s("testperson1")),
+                ("displayname", Value::new_utf8s("testperson1"))
             );
 
             let ce = CreateEvent::new_internal(vec![e1.clone()]);
@@ -2750,40 +2750,40 @@ mod tests {
             // Create
             let server_txn = server.write(duration_from_epoch_now());
 
-            let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-                r#"{
-                "attrs": {
-                    "class": ["object", "person"],
-                    "name": ["testperson1"],
-                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
-                    "description": ["testperson"],
-                    "displayname": ["testperson1"]
-                }
-            }"#,
+            let e1 = entry_init!(
+                ("class", Value::new_class("object")),
+                ("class", Value::new_class("person")),
+                ("name", Value::new_iname("testperson1")),
+                (
+                    "uuid",
+                    Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+                ),
+                ("description", Value::new_utf8s("testperson")),
+                ("displayname", Value::new_utf8s("testperson1"))
             );
 
-            let e2: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-                r#"{
-                "attrs": {
-                    "class": ["object", "person"],
-                    "name": ["testperson2"],
-                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63932"],
-                    "description": ["testperson"],
-                    "displayname": ["testperson2"]
-                }
-            }"#,
+            let e2 = entry_init!(
+                ("class", Value::new_class("object")),
+                ("class", Value::new_class("person")),
+                ("name", Value::new_iname("testperson2")),
+                (
+                    "uuid",
+                    Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63932").expect("uuid")
+                ),
+                ("description", Value::new_utf8s("testperson")),
+                ("displayname", Value::new_utf8s("testperson2"))
             );
 
-            let e3: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-                r#"{
-                "attrs": {
-                    "class": ["object", "person"],
-                    "name": ["testperson3"],
-                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63933"],
-                    "description": ["testperson"],
-                    "displayname": ["testperson3"]
-                }
-            }"#,
+            let e3 = entry_init!(
+                ("class", Value::new_class("object")),
+                ("class", Value::new_class("person")),
+                ("name", Value::new_iname("testperson3")),
+                (
+                    "uuid",
+                    Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63933").expect("uuid")
+                ),
+                ("description", Value::new_utf8s("testperson")),
+                ("displayname", Value::new_utf8s("testperson3"))
             );
 
             let ce = CreateEvent::new_internal(vec![e1.clone(), e2.clone(), e3.clone()]);
@@ -2859,13 +2859,13 @@ mod tests {
             let se_ts = unsafe { SearchEvent::new_ext_impersonate_entry(admin, filt_i_ts.clone()) };
 
             // First, create a tombstone
-            let e_ts: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-                r#"{
-                "attrs": {
-                    "class": ["tombstone", "object"],
-                    "uuid": ["9557f49c-97a5-4277-a9a5-097d17eb8317"]
-                }
-            }"#,
+            let e_ts = entry_init!(
+                ("class", Value::new_class("object")),
+                ("class", Value::new_class("tombstone")),
+                (
+                    "uuid",
+                    Value::new_uuids("9557f49c-97a5-4277-a9a5-097d17eb8317").expect("uuid")
+                )
             );
 
             let ce = CreateEvent::new_internal(vec![e_ts]);
@@ -2966,28 +2966,30 @@ mod tests {
             };
 
             // Create some recycled objects
-            let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-                r#"{
-                "attrs": {
-                    "class": ["object", "person", "recycled"],
-                    "name": ["testperson1"],
-                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
-                    "description": ["testperson"],
-                    "displayname": ["testperson1"]
-                }
-            }"#,
+            let e1 = entry_init!(
+                ("class", Value::new_class("object")),
+                ("class", Value::new_class("person")),
+                ("class", Value::new_class("recycled")),
+                ("name", Value::new_iname("testperson1")),
+                (
+                    "uuid",
+                    Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+                ),
+                ("description", Value::new_utf8s("testperson1")),
+                ("displayname", Value::new_utf8s("testperson1"))
             );
 
-            let e2: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-                r#"{
-                "attrs": {
-                    "class": ["object", "person", "recycled"],
-                    "name": ["testperson2"],
-                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63932"],
-                    "description": ["testperson"],
-                    "displayname": ["testperson2"]
-                }
-            }"#,
+            let e2 = entry_init!(
+                ("class", Value::new_class("object")),
+                ("class", Value::new_class("person")),
+                ("class", Value::new_class("recycled")),
+                ("name", Value::new_iname("testperson2")),
+                (
+                    "uuid",
+                    Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63932").expect("uuid")
+                ),
+                ("description", Value::new_utf8s("testperson2")),
+                ("displayname", Value::new_utf8s("testperson2"))
             );
 
             let ce = CreateEvent::new_internal(vec![e1, e2]);
@@ -3069,16 +3071,16 @@ mod tests {
                 .internal_search_uuid(audit, &UUID_ADMIN)
                 .expect("failed");
 
-            let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-                r#"{
-                "attrs": {
-                    "class": ["object", "person"],
-                    "name": ["testperson1"],
-                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
-                    "description": ["testperson"],
-                    "displayname": ["testperson1"]
-                }
-            }"#,
+            let e1 = entry_init!(
+                ("class", Value::new_class("object")),
+                ("class", Value::new_class("person")),
+                ("name", Value::new_iname("testperson1")),
+                (
+                    "uuid",
+                    Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+                ),
+                ("description", Value::new_utf8s("testperson1")),
+                ("displayname", Value::new_utf8s("testperson1"))
             );
             let ce = CreateEvent::new_internal(vec![e1]);
 
@@ -3112,16 +3114,16 @@ mod tests {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             let server_txn = server.write(duration_from_epoch_now());
 
-            let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-                r#"{
-                "attrs": {
-                    "class": ["object", "person"],
-                    "name": ["testperson1"],
-                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
-                    "description": ["testperson"],
-                    "displayname": ["testperson1"]
-                }
-                }"#,
+            let e1 = entry_init!(
+                ("class", Value::new_class("object")),
+                ("class", Value::new_class("person")),
+                ("name", Value::new_iname("testperson1")),
+                (
+                    "uuid",
+                    Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+                ),
+                ("description", Value::new_utf8s("testperson1")),
+                ("displayname", Value::new_utf8s("testperson1"))
             );
             let ce = CreateEvent::new_internal(vec![e1]);
             let cr = server_txn.create(audit, &ce);
@@ -3147,16 +3149,17 @@ mod tests {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             let server_txn = server.write(duration_from_epoch_now());
 
-            let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-                r#"{
-                "attrs": {
-                    "class": ["object", "person", "account"],
-                    "name": ["testperson1"],
-                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
-                    "description": ["testperson"],
-                    "displayname": ["testperson1"]
-                }
-            }"#,
+            let e1 = entry_init!(
+                ("class", Value::new_class("object")),
+                ("class", Value::new_class("person")),
+                ("class", Value::new_class("account")),
+                ("name", Value::new_iname("testperson1")),
+                (
+                    "uuid",
+                    Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+                ),
+                ("description", Value::new_utf8s("testperson1")),
+                ("displayname", Value::new_utf8s("testperson1"))
             );
             let ce = CreateEvent::new_internal(vec![e1]);
             let cr = server_txn.create(audit, &ce);
@@ -3190,16 +3193,17 @@ mod tests {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             let server_txn = server.write(duration_from_epoch_now());
 
-            let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-                r#"{
-                "attrs": {
-                    "class": ["object", "person", "account"],
-                    "name": ["testperson1"],
-                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
-                    "description": ["testperson"],
-                    "displayname": ["testperson1"]
-                }
-            }"#,
+            let e1 = entry_init!(
+                ("class", Value::new_class("object")),
+                ("class", Value::new_class("person")),
+                ("class", Value::new_class("account")),
+                ("name", Value::new_iname("testperson1")),
+                (
+                    "uuid",
+                    Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+                ),
+                ("description", Value::new_utf8s("testperson")),
+                ("displayname", Value::new_utf8s("testperson1"))
             );
             let ce = CreateEvent::new_internal(vec![e1]);
             let cr = server_txn.create(audit, &ce);
@@ -3233,16 +3237,17 @@ mod tests {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             let server_txn = server.write(duration_from_epoch_now());
 
-            let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-                r#"{
-                "attrs": {
-                    "class": ["object", "person", "account"],
-                    "name": ["testperson1"],
-                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
-                    "description": ["testperson"],
-                    "displayname": ["testperson1"]
-                }
-            }"#,
+            let e1 = entry_init!(
+                ("class", Value::new_class("object")),
+                ("class", Value::new_class("person")),
+                ("class", Value::new_class("account")),
+                ("name", Value::new_iname("testperson1")),
+                (
+                    "uuid",
+                    Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+                ),
+                ("description", Value::new_utf8s("testperson1")),
+                ("displayname", Value::new_utf8s("testperson1"))
             );
 
             let tuuid = Uuid::parse_str("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap();
@@ -3314,16 +3319,16 @@ mod tests {
     fn test_qs_clone_value() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             let server_txn = server.write(duration_from_epoch_now());
-            let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-                r#"{
-                "attrs": {
-                    "class": ["object", "person"],
-                    "name": ["testperson1"],
-                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
-                    "description": ["testperson"],
-                    "displayname": ["testperson1"]
-                }
-            }"#,
+            let e1 = entry_init!(
+                ("class", Value::new_class("object")),
+                ("class", Value::new_class("person")),
+                ("name", Value::new_iname("testperson1")),
+                (
+                    "uuid",
+                    Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+                ),
+                ("description", Value::new_utf8s("testperson1")),
+                ("displayname", Value::new_utf8s("testperson1"))
             );
             let ce = CreateEvent::new_internal(vec![e1]);
             let cr = server_txn.create(audit, &ce);
@@ -3362,29 +3367,28 @@ mod tests {
     #[test]
     fn test_qs_dynamic_schema_class() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
-            let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-                r#"{
-                "attrs": {
-                    "class": ["object", "testclass"],
-                    "name": ["testobj1"],
-                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"]
-                }
-            }"#,
+            let e1 = entry_init!(
+                ("class", Value::new_class("object")),
+                ("class", Value::new_class("testclass")),
+                ("name", Value::new_iname("testobj1")),
+                (
+                    "uuid",
+                    Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+                )
             );
 
             // Class definition
-            let e_cd: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-                r#"{
-                "attrs": {
-                    "class": ["object", "classtype"],
-                    "classname": ["testclass"],
-                    "uuid": ["cfcae205-31c3-484b-8ced-667d1709c5e3"],
-                    "description": ["Test Class"],
-                    "may": ["name"]
-                }
-            }"#,
+            let e_cd = entry_init!(
+                ("class", Value::new_class("object")),
+                ("class", Value::new_class("classtype")),
+                ("classname", Value::new_iutf8("testclass")),
+                (
+                    "uuid",
+                    Value::new_uuids("cfcae205-31c3-484b-8ced-667d1709c5e3").expect("uuid")
+                ),
+                ("description", Value::new_utf8s("Test Class")),
+                ("may", Value::new_iutf8("name"))
             );
-
             let server_txn = server.write(duration_from_epoch_now());
             // Add a new class.
             let ce_class = CreateEvent::new_internal(vec![e_cd.clone()]);
@@ -3442,30 +3446,30 @@ mod tests {
     #[test]
     fn test_qs_dynamic_schema_attr() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
-            let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-                r#"{
-                "attrs": {
-                    "class": ["object", "extensibleobject"],
-                    "name": ["testobj1"],
-                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
-                    "testattr": ["test"]
-                }
-            }"#,
+            let e1 = entry_init!(
+                ("class", Value::new_class("object")),
+                ("class", Value::new_class("extensibleobject")),
+                ("name", Value::new_iname("testobj1")),
+                (
+                    "uuid",
+                    Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+                ),
+                ("testattr", Value::new_utf8s("test"))
             );
 
             // Attribute definition
-            let e_ad: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-                r#"{
-                "attrs": {
-                    "class": ["object", "attributetype"],
-                    "attributename": ["testattr"],
-                    "uuid": ["cfcae205-31c3-484b-8ced-667d1709c5e3"],
-                    "description": ["Test Attribute"],
-                    "multivalue": ["false"],
-                    "unique": ["false"],
-                    "syntax": ["UTF8STRING"]
-                }
-            }"#,
+            let e_ad = entry_init!(
+                ("class", Value::new_class("object")),
+                ("class", Value::new_class("attributetype")),
+                (
+                    "uuid",
+                    Value::new_uuids("cfcae205-31c3-484b-8ced-667d1709c5e3").expect("uuid")
+                ),
+                ("attributename", Value::new_iutf8("testattr")),
+                ("description", Value::new_utf8s("Test Attribute")),
+                ("multivalue", Value::new_bool(false)),
+                ("unique", Value::new_bool(false)),
+                ("syntax", Value::new_syntaxs("UTF8STRING").expect("syntax"))
             );
 
             let server_txn = server.write(duration_from_epoch_now());
@@ -3528,16 +3532,17 @@ mod tests {
     #[test]
     fn test_qs_modify_password_only() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
-            let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-                r#"{
-                "attrs": {
-                    "class": ["object", "person", "account"],
-                    "name": ["testperson1"],
-                    "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
-                    "description": ["testperson"],
-                    "displayname": ["testperson1"]
-                }
-            }"#,
+            let e1 = entry_init!(
+                ("class", Value::new_class("object")),
+                ("class", Value::new_class("person")),
+                ("class", Value::new_class("account")),
+                ("name", Value::new_iname("testperson1")),
+                (
+                    "uuid",
+                    Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+                ),
+                ("description", Value::new_utf8s("testperson1")),
+                ("displayname", Value::new_utf8s("testperson1"))
             );
             let server_txn = server.write(duration_from_epoch_now());
             // Add the entry. Today we have no syntax to take simple str to a credential
@@ -3582,31 +3587,24 @@ mod tests {
     }
 
     fn create_user(name: &str, uuid: &str) -> Entry<EntryInit, EntryNew> {
-        let mut e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["object", "person"],
-                "description": ["testperson-entry"]
-            }
-            }"#,
-        );
-        e1.add_ava("uuid", Value::new_uuids(uuid).unwrap());
-        e1.add_ava("name", Value::new_iname(name));
-        e1.add_ava("displayname", Value::new_utf8s(name));
-        e1
+        entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("person")),
+            ("name", Value::new_iname(name)),
+            ("uuid", Value::new_uuids(uuid).expect("uuid")),
+            ("description", Value::new_utf8s("testperson-entry")),
+            ("displayname", Value::new_utf8s(name))
+        )
     }
 
     fn create_group(name: &str, uuid: &str, members: &[&str]) -> Entry<EntryInit, EntryNew> {
-        let mut e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["object", "group"],
-                "description": ["testgroup-entry"]
-            }
-            }"#,
+        let mut e1 = entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("group")),
+            ("name", Value::new_iname(name)),
+            ("uuid", Value::new_uuids(uuid).expect("uuid")),
+            ("description", Value::new_utf8s("testgroup-entry"))
         );
-        e1.add_ava("name", Value::new_iname(name));
-        e1.add_ava("uuid", Value::new_uuids(uuid).unwrap());
         members
             .iter()
             .for_each(|m| e1.add_ava("member", Value::new_refer_s(m).unwrap()));

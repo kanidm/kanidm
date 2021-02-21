@@ -23,6 +23,7 @@ extern crate lazy_static;
 // This has to be before 'be' so the import order works
 #[macro_use]
 pub mod macros;
+
 mod crypto;
 pub mod utils;
 #[macro_use]

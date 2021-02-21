@@ -1,11 +1,38 @@
-#[cfg(test)]
 macro_rules! setup_test {
     (
-        $au:expr,
-        $preload_entries:ident
+        $au:expr
     ) => {{
         use crate::utils::duration_from_epoch_now;
         use env_logger;
+
+        ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
+        let _ = env_logger::builder()
+            .format_timestamp(None)
+            .format_level(false)
+            .is_test(true)
+            .try_init();
+
+        // Create an in memory BE
+        let schema_outer = Schema::new($au).expect("Failed to init schema");
+        let idxmeta = {
+            let schema_txn = schema_outer.write_blocking();
+            schema_txn.reload_idxmeta()
+        };
+        let be = Backend::new($au, "", 1, FsType::Generic, idxmeta).expect("Failed to init BE");
+
+        let qs = QueryServer::new(be, schema_outer);
+        qs.initialise_helper($au, duration_from_epoch_now())
+            .expect("init failed!");
+        qs
+    }};
+    (
+        $au:expr,
+        $preload_entries:expr
+    ) => {{
+        use crate::utils::duration_from_epoch_now;
+        use async_std::task;
+        use env_logger;
+
         ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
         let _ = env_logger::builder()
             .format_timestamp(None)
@@ -26,7 +53,7 @@ macro_rules! setup_test {
             .expect("init failed!");
 
         if !$preload_entries.is_empty() {
-            let qs_write = qs.write(duration_from_epoch_now());
+            let qs_write = task::block_on(qs.write_async(duration_from_epoch_now()));
             qs_write
                 .internal_create($au, $preload_entries)
                 .expect("Failed to preload entries");
@@ -87,6 +114,7 @@ macro_rules! run_test {
         use crate::be::{Backend, FsType};
         use crate::schema::Schema;
         use crate::server::QueryServer;
+        #[allow(unused_imports)]
         use crate::utils::duration_from_epoch_now;
 
         use env_logger;
@@ -99,7 +127,7 @@ macro_rules! run_test {
 
         let mut audit = AuditScope::new("run_test", uuid::Uuid::new_v4(), None);
 
-        let test_server = setup_test!(&mut au, vec![]);
+        let test_server = setup_test!(&mut audit);
 
         $test_fn(&test_server, &mut audit);
         // Any needed teardown?
@@ -136,11 +164,15 @@ macro_rules! entry_str_to_account {
 macro_rules! run_idm_test_inner {
     ($test_fn:expr) => {{
         use crate::audit::AuditScope;
+        #[allow(unused_imports)]
         use crate::be::{Backend, FsType};
         #[allow(unused_imports)]
         use crate::idm::server::{IdmServer, IdmServerDelayed};
+        #[allow(unused_imports)]
         use crate::schema::Schema;
+        #[allow(unused_imports)]
         use crate::server::QueryServer;
+        #[allow(unused_imports)]
         use crate::utils::duration_from_epoch_now;
 
         use env_logger;
@@ -153,7 +185,7 @@ macro_rules! run_idm_test_inner {
 
         let mut audit = AuditScope::new("run_test", uuid::Uuid::new_v4(), None);
 
-        let test_server = setup_test!(&mut au, vec![]);
+        let test_server = setup_test!(&mut audit);
 
         let (test_idm_server, mut idms_delayed) = IdmServer::new(
             &mut audit,
@@ -185,7 +217,13 @@ macro_rules! run_idm_test {
 }
 
 pub fn run_idm_test_no_logging<F>(mut test_fn: F)
-    where F: FnMut(&crate::server::QueryServer, &crate::idm::server::IdmServer, &crate::idm::server::IdmServerDelayed, &mut crate::audit::AuditScope) -> ()
+where
+    F: FnMut(
+        &crate::server::QueryServer,
+        &crate::idm::server::IdmServer,
+        &crate::idm::server::IdmServerDelayed,
+        &mut crate::audit::AuditScope,
+    ),
 {
     let _ = run_idm_test_inner!(test_fn);
 }
@@ -543,5 +581,25 @@ macro_rules! btreeset {
         assert!(x.insert($e));
         $(assert!(x.insert($item));)*
         x
+    });
+}
+
+#[allow(unused_macros)]
+#[macro_export]
+macro_rules! entry_init {
+    () => ({
+        let e1: Entry<EntryInit, EntryNew> = Entry::new();
+        e1
+    });
+    ($ava:expr) => ({
+        let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
+        e1.add_ava($ava.0, $ava.1);
+        e1
+    });
+    ($ava:expr, $($item:expr),*) => ({
+        let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
+        e1.add_ava($ava.0, $ava.1);
+        $(e1.add_ava($item.0, $item.1);)*
+        e1
     });
 }
