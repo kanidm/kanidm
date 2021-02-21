@@ -41,9 +41,7 @@ use tokio::sync::Semaphore;
 
 use async_std::task;
 
-#[cfg(test)]
 use core::task::{Context, Poll};
-#[cfg(test)]
 use futures::task as futures_task;
 
 use concread::bptree::{BptreeMap, BptreeMapWriteTxn};
@@ -258,8 +256,7 @@ impl IdmServer {
 }
 
 impl IdmServerDelayed {
-    #[cfg(test)]
-    pub fn is_empty_or_panic(&mut self) {
+    pub(crate) fn is_empty_or_panic(&mut self) {
         let waker = futures_task::noop_waker();
         let mut cx = Context::from_waker(&waker);
         match self.async_rx.poll_recv(&mut cx) {

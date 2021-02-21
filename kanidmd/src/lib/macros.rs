@@ -1,4 +1,42 @@
 #[cfg(test)]
+macro_rules! setup_test {
+    (
+        $au:expr,
+        $preload_entries:ident
+    ) => {{
+        use crate::utils::duration_from_epoch_now;
+        use env_logger;
+        ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
+        let _ = env_logger::builder()
+            .format_timestamp(None)
+            .format_level(false)
+            .is_test(true)
+            .try_init();
+
+        // Create an in memory BE
+        let schema_outer = Schema::new($au).expect("Failed to init schema");
+        let idxmeta = {
+            let schema_txn = schema_outer.write_blocking();
+            schema_txn.reload_idxmeta()
+        };
+        let be = Backend::new($au, "", 1, FsType::Generic, idxmeta, false).expect("Failed to init BE");
+
+        let qs = QueryServer::new(be, schema_outer);
+        qs.initialise_helper($au, duration_from_epoch_now())
+            .expect("init failed!");
+
+        if !$preload_entries.is_empty() {
+            let qs_write = qs.write(duration_from_epoch_now());
+            qs_write
+                .internal_create($au, $preload_entries)
+                .expect("Failed to preload entries");
+            assert!(qs_write.commit($au).is_ok());
+        }
+        qs
+    }};
+}
+
+#[cfg(test)]
 macro_rules! run_test_no_init {
     ($test_fn:expr) => {{
         use crate::audit::AuditScope;
@@ -61,24 +99,7 @@ macro_rules! run_test {
 
         let mut audit = AuditScope::new("run_test", uuid::Uuid::new_v4(), None);
 
-        let schema_outer = Schema::new(&mut audit).expect("Failed to init schema");
-        let idxmeta = {
-            let schema_txn = schema_outer.write_blocking();
-            schema_txn.reload_idxmeta()
-        };
-        let be = match Backend::new(&mut audit, "", 1, FsType::Generic, idxmeta, false) {
-            Ok(be) => be,
-            Err(e) => {
-                audit.write_log();
-                error!("{:?}", e);
-                panic!()
-            }
-        };
-        let test_server = QueryServer::new(be, schema_outer);
-
-        test_server
-            .initialise_helper(&mut audit, duration_from_epoch_now())
-            .expect("init failed!");
+        let test_server = setup_test!(&mut au, vec![]);
 
         $test_fn(&test_server, &mut audit);
         // Any needed teardown?
@@ -112,11 +133,11 @@ macro_rules! entry_str_to_account {
     }};
 }
 
-#[cfg(test)]
-macro_rules! run_idm_test {
+macro_rules! run_idm_test_inner {
     ($test_fn:expr) => {{
         use crate::audit::AuditScope;
         use crate::be::{Backend, FsType};
+        #[allow(unused_imports)]
         use crate::idm::server::{IdmServer, IdmServerDelayed};
         use crate::schema::Schema;
         use crate::server::QueryServer;
@@ -132,18 +153,7 @@ macro_rules! run_idm_test {
 
         let mut audit = AuditScope::new("run_test", uuid::Uuid::new_v4(), None);
 
-        let schema_outer = Schema::new(&mut audit).expect("Failed to init schema");
-        let idxmeta = {
-            let schema_txn = schema_outer.write_blocking();
-            schema_txn.reload_idxmeta()
-        };
-        let be =
-            Backend::new(&mut audit, "", 1, FsType::Generic, idxmeta, false).expect("Failed to init be");
-
-        let test_server = QueryServer::new(be, schema_outer);
-        test_server
-            .initialise_helper(&mut audit, duration_from_epoch_now())
-            .expect("init failed");
+        let test_server = setup_test!(&mut au, vec![]);
 
         let (test_idm_server, mut idms_delayed) = IdmServer::new(
             &mut audit,
@@ -162,7 +172,193 @@ macro_rules! run_idm_test {
         // Make sure there are no errors.
         assert!(test_server.verify(&mut audit).len() == 0);
         idms_delayed.is_empty_or_panic();
+        audit
+    }};
+}
+
+#[cfg(test)]
+macro_rules! run_idm_test {
+    ($test_fn:expr) => {{
+        let audit = run_idm_test_inner!($test_fn);
         audit.write_log();
+    }};
+}
+
+pub fn run_idm_test_no_logging<F>(mut test_fn: F)
+    where F: FnMut(&crate::server::QueryServer, &crate::idm::server::IdmServer, &crate::idm::server::IdmServerDelayed, &mut crate::audit::AuditScope) -> ()
+{
+    let _ = run_idm_test_inner!(test_fn);
+}
+
+// Test helpers for all plugins.
+#[cfg(test)]
+#[macro_export]
+macro_rules! run_create_test {
+    (
+        $expect:expr,
+        $preload_entries:ident,
+        $create_entries:ident,
+        $internal:expr,
+        $check:expr
+    ) => {{
+        use crate::audit::AuditScope;
+        use crate::be::{Backend, FsType};
+        use crate::event::CreateEvent;
+        use crate::schema::Schema;
+        use crate::server::QueryServer;
+        use crate::utils::duration_from_epoch_now;
+
+        let mut au = AuditScope::new("run_create_test", uuid::Uuid::new_v4(), None);
+        lperf_segment!(&mut au, "plugins::macros::run_create_test", || {
+            let qs = setup_test!(&mut au, $preload_entries);
+
+            let ce = match $internal {
+                None => CreateEvent::new_internal($create_entries.clone()),
+                Some(e_str) => unsafe {
+                    CreateEvent::new_impersonate_entry_ser(e_str, $create_entries.clone())
+                },
+            };
+
+            {
+                let qs_write = qs.write(duration_from_epoch_now());
+                let r = qs_write.create(&mut au, &ce);
+                debug!("test result: {:?}", r);
+                assert!(r == $expect);
+                $check(&mut au, &qs_write);
+                match r {
+                    Ok(_) => {
+                        qs_write.commit(&mut au).expect("commit failure!");
+                    }
+                    Err(e) => {
+                        ladmin_error!(&mut au, "Rolling back => {:?}", e);
+                    }
+                }
+            }
+            // Make sure there are no errors.
+            debug!("starting verification");
+            let ver = qs.verify(&mut au);
+            debug!("verification -> {:?}", ver);
+            assert!(ver.len() == 0);
+        });
+        // Dump the raw audit log.
+        au.write_log();
+    }};
+}
+
+#[cfg(test)]
+#[macro_export]
+macro_rules! run_modify_test {
+    (
+        $expect:expr,
+        $preload_entries:ident,
+        $modify_filter:expr,
+        $modify_list:expr,
+        $internal:expr,
+        $check:expr
+    ) => {{
+        use crate::audit::AuditScope;
+        use crate::be::{Backend, FsType};
+        use crate::event::ModifyEvent;
+        use crate::schema::Schema;
+        use crate::server::QueryServer;
+        use crate::utils::duration_from_epoch_now;
+
+        let mut au = AuditScope::new("run_modify_test", uuid::Uuid::new_v4(), None);
+        lperf_segment!(&mut au, "plugins::macros::run_modify_test", || {
+            let qs = setup_test!(&mut au, $preload_entries);
+
+            let me = match $internal {
+                None => unsafe { ModifyEvent::new_internal_invalid($modify_filter, $modify_list) },
+                Some(e_str) => unsafe {
+                    ModifyEvent::new_impersonate_entry_ser(e_str, $modify_filter, $modify_list)
+                },
+            };
+
+            {
+                let qs_write = qs.write(duration_from_epoch_now());
+                let r = lperf_segment!(
+                    &mut au,
+                    "plugins::macros::run_modify_test -> main_test",
+                    || { qs_write.modify(&mut au, &me) }
+                );
+                lperf_segment!(
+                    &mut au,
+                    "plugins::macros::run_modify_test -> post_test check",
+                    || { $check(&mut au, &qs_write) }
+                );
+                debug!("test result: {:?}", r);
+                assert!(r == $expect);
+                match r {
+                    Ok(_) => {
+                        qs_write.commit(&mut au).expect("commit failure!");
+                    }
+                    Err(e) => {
+                        ladmin_error!(&mut au, "Rolling back => {:?}", e);
+                    }
+                }
+            }
+            // Make sure there are no errors.
+            debug!("starting verification");
+            let ver = qs.verify(&mut au);
+            debug!("verification -> {:?}", ver);
+            assert!(ver.len() == 0);
+        });
+        // Dump the raw audit log.
+        au.write_log();
+    }};
+}
+
+#[cfg(test)]
+#[macro_export]
+macro_rules! run_delete_test {
+    (
+        $expect:expr,
+        $preload_entries:ident,
+        $delete_filter:expr,
+        $internal:expr,
+        $check:expr
+    ) => {{
+        use crate::audit::AuditScope;
+        use crate::be::{Backend, FsType};
+        use crate::event::DeleteEvent;
+        use crate::schema::Schema;
+        use crate::server::QueryServer;
+        use crate::utils::duration_from_epoch_now;
+
+        let mut au = AuditScope::new("run_delete_test", uuid::Uuid::new_v4(), None);
+        lperf_segment!(&mut au, "plugins::macros::run_delete_test", || {
+            let qs = setup_test!(&mut au, $preload_entries);
+
+            let de = match $internal {
+                Some(e_str) => unsafe {
+                    DeleteEvent::new_impersonate_entry_ser(e_str, $delete_filter.clone())
+                },
+                None => unsafe { DeleteEvent::new_internal_invalid($delete_filter.clone()) },
+            };
+
+            {
+                let qs_write = qs.write(duration_from_epoch_now());
+                let r = qs_write.delete(&mut au, &de);
+                debug!("test result: {:?}", r);
+                $check(&mut au, &qs_write);
+                assert!(r == $expect);
+                match r {
+                    Ok(_) => {
+                        qs_write.commit(&mut au).expect("commit failure!");
+                    }
+                    Err(e) => {
+                        ladmin_error!(&mut au, "Rolling back => {:?}", e);
+                    }
+                }
+            }
+            // Make sure there are no errors.
+            debug!("starting verification");
+            let ver = qs.verify(&mut au);
+            debug!("verification -> {:?}", ver);
+            assert!(ver.len() == 0);
+        });
+        // Dump the raw audit log.
+        au.write_log();
     }};
 }
 

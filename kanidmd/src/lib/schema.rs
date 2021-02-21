@@ -1452,8 +1452,7 @@ impl Schema {
         }
     }
 
-    #[cfg(test)]
-    pub fn write_blocking(&self) -> SchemaWriteTransaction<'_> {
+    pub(crate) fn write_blocking(&self) -> SchemaWriteTransaction<'_> {
         self.write()
     }
 
