@@ -1,77 +1,124 @@
-use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, SamplingMode};
+use criterion::{
+    criterion_group, criterion_main, BenchmarkId, Criterion, SamplingMode, Throughput,
+};
 
 use kanidm;
 use kanidm::audit::AuditScope;
 use kanidm::entry::{Entry, EntryInit, EntryNew};
 use kanidm::entry_init;
-use kanidm::filter::{f_eq, Filter};
 use kanidm::idm::server::{IdmServer, IdmServerDelayed};
 use kanidm::server::QueryServer;
 use kanidm::utils::duration_from_epoch_now;
-use kanidm::value::{PartialValue, Value};
+use kanidm::value::Value;
 
 use async_std::task;
 use std::time::{Duration, Instant};
 
-pub fn scaling_unloaded_user_create(c: &mut Criterion) {
-    kanidm::macros::run_idm_test_no_logging(
-        |_qs: &QueryServer,
-         idms: &IdmServer,
-         _idms_delayed: &IdmServerDelayed,
-         au: &mut AuditScope| {
-            let mut group = c.benchmark_group("unloaded_user_create");
-            group.sample_size(10);
-            group.sampling_mode(SamplingMode::Flat);
+pub fn scaling_user_create_single(c: &mut Criterion) {
+    let mut group = c.benchmark_group("user_create_single");
+    group.sample_size(10);
+    group.sampling_mode(SamplingMode::Flat);
+    group.warm_up_time(Duration::from_secs(5));
+    group.measurement_time(Duration::from_secs(120));
 
-            for size in &[100, 250, 500, 1000] {
-                group.bench_with_input(BenchmarkId::from_parameter(size), size, |b, &size| {
-                    b.iter_custom(|iters| {
-                        println!("iters, size -> {:?}, {:?}", iters, size);
-                        let ct = duration_from_epoch_now();
+    for size in &[100, 250, 500, 1000, 1500, 2000, 5000, 10000] {
+        group.throughput(Throughput::Elements(*size));
+        group.bench_with_input(BenchmarkId::from_parameter(size), size, |b, &size| {
+            b.iter_custom(|iters| {
+                let mut elapsed = Duration::from_secs(0);
+                println!("iters, size -> {:?}, {:?}", iters, size);
 
-                        let start = Instant::now();
-                        for counter in 0..size {
+                for _i in 0..iters {
+                    kanidm::macros::run_idm_test_no_logging(
+                        |_qs: &QueryServer,
+                         idms: &IdmServer,
+                         _idms_delayed: &IdmServerDelayed,
+                         au: &mut AuditScope| {
+                            let ct = duration_from_epoch_now();
+
+                            let start = Instant::now();
+                            for counter in 0..size {
+                                let idms_prox_write = task::block_on(idms.proxy_write_async(ct));
+
+                                let name = format!("testperson_{}", counter);
+                                let e1 = entry_init!(
+                                    ("class", Value::new_class("object")),
+                                    ("class", Value::new_class("person")),
+                                    ("class", Value::new_class("account")),
+                                    ("name", Value::new_iname(&name)),
+                                    ("description", Value::new_utf8s("criterion")),
+                                    ("displayname", Value::new_utf8s(&name))
+                                );
+
+                                let cr = idms_prox_write.qs_write.internal_create(au, vec![e1]);
+                                assert!(cr.is_ok());
+
+                                idms_prox_write.commit(au).expect("Must not fail");
+                            }
+                            elapsed = elapsed.checked_add(start.elapsed()).unwrap();
+                        },
+                    );
+                }
+                elapsed
+            });
+        });
+    }
+    group.finish();
+}
+
+pub fn scaling_user_create_batched(c: &mut Criterion) {
+    let mut group = c.benchmark_group("user_create_batched");
+    group.sample_size(10);
+    group.sampling_mode(SamplingMode::Flat);
+    group.warm_up_time(Duration::from_secs(5));
+    group.measurement_time(Duration::from_secs(120));
+
+    for size in &[100, 250, 500, 1000, 1500, 2000, 5000, 10000] {
+        group.throughput(Throughput::Elements(*size));
+        group.bench_with_input(BenchmarkId::from_parameter(size), size, |b, &size| {
+            b.iter_custom(|iters| {
+                let mut elapsed = Duration::from_secs(0);
+                println!("iters, size -> {:?}, {:?}", iters, size);
+
+                let data: Vec<_> = (0..size)
+                    .into_iter()
+                    .map(|i| {
+                        let name = format!("testperson_{}", i);
+                        entry_init!(
+                            ("class", Value::new_class("object")),
+                            ("class", Value::new_class("person")),
+                            ("class", Value::new_class("account")),
+                            ("name", Value::new_iname(&name)),
+                            ("description", Value::new_utf8s("criterion")),
+                            ("displayname", Value::new_utf8s(&name))
+                        )
+                    })
+                    .collect();
+
+                for _i in 0..iters {
+                    kanidm::macros::run_idm_test_no_logging(
+                        |_qs: &QueryServer,
+                         idms: &IdmServer,
+                         _idms_delayed: &IdmServerDelayed,
+                         au: &mut AuditScope| {
+                            let ct = duration_from_epoch_now();
+
+                            let start = Instant::now();
+
                             let idms_prox_write = task::block_on(idms.proxy_write_async(ct));
-
-                            let name = format!("testperson_{}", counter);
-                            let e1 = entry_init!(
-                                ("class", Value::new_class("object")),
-                                ("class", Value::new_class("person")),
-                                ("class", Value::new_class("account")),
-                                ("name", Value::new_iname(&name)),
-                                ("description", Value::new_utf8s("criterion")),
-                                ("displayname", Value::new_utf8s(&name))
-                            );
-
-                            let cr = idms_prox_write.qs_write.internal_create(au, vec![e1]);
+                            let cr = idms_prox_write.qs_write.internal_create(au, data.clone());
                             assert!(cr.is_ok());
 
                             idms_prox_write.commit(au).expect("Must not fail");
-                        }
-                        let elapsed = start.elapsed();
-
-                        // Clean up.
-                        let idms_prox_write = task::block_on(idms.proxy_write_async(ct));
-                        assert!(idms_prox_write
-                            .qs_write
-                            .internal_delete(
-                                au,
-                                &Filter::new_ignore_hidden(f_eq(
-                                    "description",
-                                    PartialValue::new_utf8s("criterion")
-                                ))
-                            )
-                            .is_ok());
-                        idms_prox_write.commit(au).expect("Must not fail");
-
-                        // Return the result.
-                        elapsed
-                    });
-                });
-            }
-            group.finish();
-        },
-    );
+                            elapsed = elapsed.checked_add(start.elapsed()).unwrap();
+                        },
+                    );
+                }
+                elapsed
+            });
+        });
+    }
+    group.finish();
 }
 
 criterion_group!(
@@ -79,6 +126,6 @@ criterion_group!(
     config = Criterion::default()
         .measurement_time(Duration::from_secs(15))
         .with_plots();
-    targets = scaling_unloaded_user_create
+    targets = scaling_user_create_single, scaling_user_create_batched
 );
 criterion_main!(scaling_basic);
