@@ -20,10 +20,6 @@ path = "src/lib/lib.rs"
 name = "kanidmd"
 path = "src/server/main.rs"
 
-# [[bench]]
-# name = "kanidm_benchmark"
-# harness = false
-
 [dependencies]
 kanidm_proto = { path = "../kanidm_proto", version = "1.1.0-alpha" }
 
@@ -99,7 +95,7 @@ simd_support = [ "concread/simd_support" ]
 # default = [ "libsqlite3-sys/bundled", "openssl/vendored" ]
 
 [dev-dependencies]
-criterion = "0.3"
+criterion = { version = "0.3", features = ["html_reports"] }
 # For testing webauthn
 webauthn-authenticator-rs = "0.3.0-alpha.5"
 # webauthn-authenticator-rs = { path = "../../webauthn-authenticator-rs" }
@@ -113,4 +109,8 @@ features = ["precommit-hook", "run-cargo-fmt"]
 structopt = { version = "0.3", default-features = false }
 serde = "1.0"
 serde_derive = "1.0"
+
+[[bench]]
+name = "scaling_10k"
+harness = false
 

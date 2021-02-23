@@ -46,7 +46,7 @@ use crate::be::dbentry::{DbEntry, DbEntryV1, DbEntryVers};
 use crate::be::IdxKey;
 
 use ldap3_server::simple::{LdapPartialAttribute, LdapSearchResultEntry};
-use std::collections::BTreeSet as Set;
+pub use std::collections::BTreeSet as Set;
 use std::collections::BTreeSet;
 // use std::collections::BTreeMap as Map;
 use hashbrown::HashMap as Map;
@@ -241,7 +241,6 @@ impl<STATE> Entry<EntryInit, STATE> {
 }
 
 impl Entry<EntryInit, EntryNew> {
-    #[cfg(test)]
     pub fn new() -> Self {
         Entry {
             // This means NEVER COMMITED
@@ -486,9 +485,12 @@ impl Entry<EntryInit, EntryNew> {
         }
     }
 
-    #[cfg(test)]
     pub fn add_ava(&mut self, attr: &str, value: Value) {
         self.add_ava_int(attr, value)
+    }
+
+    pub fn set_ava(&mut self, attr: &str, values: Set<Value>) {
+        self.set_ava_int(attr, values)
     }
 }
 
@@ -1487,6 +1489,11 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         // Doesn't matter if it already exists, equality will replace.
     }
 
+    pub fn set_ava_int(&mut self, attr: &str, values: Set<Value>) {
+        // Overwrite the existing value, build a tree from the list.
+        let _ = self.attrs.insert(AttrString::from(attr), values);
+    }
+
     fn set_last_changed(&mut self, cid: Cid) {
         let cv = btreeset![Value::new_cid(cid)];
         let _ = self.attrs.insert(AttrString::from("last_modified_cid"), cv);
@@ -1839,8 +1846,7 @@ where
 
     /// Provide a true ava set.
     pub fn set_ava(&mut self, attr: &str, values: Set<Value>) {
-        // Overwrite the existing value, build a tree from the list.
-        let _ = self.attrs.insert(AttrString::from(attr), values);
+        self.set_ava_int(attr, values)
     }
 
     /*

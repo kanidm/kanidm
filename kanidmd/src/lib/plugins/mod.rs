@@ -4,9 +4,6 @@ use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::server::{QueryServerReadTransaction, QueryServerWriteTransaction};
 use kanidm_proto::v1::{ConsistencyError, OperationError};
 
-#[macro_use]
-mod macros;
-
 mod attrunique;
 mod base;
 mod domain;
