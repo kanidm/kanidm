@@ -176,7 +176,7 @@ To debug the pam module interactions add `debug` to the module arguments such as
 
 ### Check the socket permissions
 
-Check that the /var/run/kanidm.sock is 777, and that non-root readers can see it with
+Check that the /var/run/kanidm-unixd/sock is 777, and that non-root readers can see it with
 ls or other tools.
 
 ### Check you can access the kanidm server
