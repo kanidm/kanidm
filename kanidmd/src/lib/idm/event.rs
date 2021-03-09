@@ -476,6 +476,32 @@ impl RemoveWebauthnEvent {
     }
 }
 
+#[derive(Debug)]
+pub struct CredentialStatusEvent {
+    pub event: Event,
+    pub target: Uuid,
+}
+
+impl CredentialStatusEvent {
+    pub fn from_parts(
+        audit: &mut AuditScope,
+        qs: &QueryServerReadTransaction,
+        uat: Option<&UserAuthToken>,
+        target: Uuid,
+    ) -> Result<Self, OperationError> {
+        let e = Event::from_ro_uat(audit, qs, uat)?;
+
+        Ok(CredentialStatusEvent { event: e, target })
+    }
+
+    #[cfg(test)]
+    pub fn new_internal(target: Uuid) -> Self {
+        let e = Event::from_internal();
+
+        CredentialStatusEvent { event: e, target }
+    }
+}
+
 pub struct LdapAuthEvent {
     // pub event: Event,
     pub target: Uuid,

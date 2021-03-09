@@ -6,7 +6,8 @@ use crate::audit::AuditScope;
 
 use crate::event::{AuthEvent, AuthResult, SearchEvent, SearchResult, WhoamiResult};
 use crate::idm::event::{
-    RadiusAuthTokenEvent, UnixGroupTokenEvent, UnixUserAuthEvent, UnixUserTokenEvent,
+    CredentialStatusEvent, RadiusAuthTokenEvent, UnixGroupTokenEvent, UnixUserAuthEvent,
+    UnixUserTokenEvent,
 };
 use crate::value::PartialValue;
 use kanidm_proto::v1::{OperationError, RadiusAuthToken};
@@ -18,8 +19,8 @@ use crate::server::{QueryServer, QueryServerTransaction};
 
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::{
-    AuthRequest, SearchRequest, SearchResponse, UnixGroupToken, UnixUserToken, UserAuthToken,
-    WhoamiResponse,
+    AuthRequest, CredentialStatus, SearchRequest, SearchResponse, UnixGroupToken, UnixUserToken,
+    UserAuthToken, WhoamiResponse,
 };
 
 use std::time::SystemTime;
@@ -124,6 +125,12 @@ pub struct IdmAccountUnixAuthMessage {
     pub uat: Option<UserAuthToken>,
     pub uuid_or_name: String,
     pub cred: String,
+    pub eventid: Uuid,
+}
+
+pub struct IdmCredentialStatusMessage {
+    pub uat: Option<UserAuthToken>,
+    pub uuid_or_name: String,
     pub eventid: Uuid,
 }
 
@@ -806,6 +813,52 @@ impl QueryServerReadV1 {
         lsecurity!(audit, "Sending result -> {:?}", res);
         // res
         // });
+        self.log.send(audit).map_err(|_| {
+            error!("CRITICAL: UNABLE TO COMMIT LOGS");
+            OperationError::InvalidState
+        })?;
+        res
+    }
+
+    pub async fn handle_idmcredentialstatus(
+        &self,
+        msg: IdmCredentialStatusMessage,
+    ) -> Result<CredentialStatus, OperationError> {
+        let mut audit =
+            AuditScope::new("idm_credential_status_message", msg.eventid, self.log_level);
+        let mut idm_read = self.idms.proxy_read_async().await;
+
+        let res = lperf_op_segment!(
+            &mut audit,
+            "actors::v1_read::handle<IdmCredentialStatusMessage>",
+            || {
+                let target_uuid = idm_read
+                    .qs_read
+                    .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                    .map_err(|e| {
+                        ladmin_error!(&mut audit, "Error resolving id to target");
+                        e
+                    })?;
+
+                // Make an event from the request
+                let cse = match CredentialStatusEvent::from_parts(
+                    &mut audit,
+                    &idm_read.qs_read,
+                    msg.uat.as_ref(),
+                    target_uuid,
+                ) {
+                    Ok(s) => s,
+                    Err(e) => {
+                        ladmin_error!(audit, "Failed to begin credential status read: {:?}", e);
+                        return Err(e);
+                    }
+                };
+
+                ltrace!(audit, "Begin event {:?}", cse);
+
+                idm_read.get_credentialstatus(&mut audit, &cse)
+            }
+        );
         self.log.send(audit).map_err(|_| {
             error!("CRITICAL: UNABLE TO COMMIT LOGS");
             OperationError::InvalidState

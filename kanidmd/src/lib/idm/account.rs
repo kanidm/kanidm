@@ -1,6 +1,7 @@
-use crate::entry::{Entry, EntryCommitted, EntrySealed};
+use crate::entry::{Entry, EntryCommitted, EntryReduced, EntrySealed};
 use kanidm_proto::v1::OperationError;
 
+use kanidm_proto::v1::CredentialStatus;
 use kanidm_proto::v1::UserAuthToken;
 
 use crate::audit::AuditScope;
@@ -125,8 +126,21 @@ impl Account {
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        let groups = Group::try_from_account_entry_rw(au, value, qs)?;
-        try_from_entry!(value, groups)
+        lperf_trace_segment!(au, "idm::account::try_from_entry_rw", || {
+            let groups = Group::try_from_account_entry_rw(au, value, qs)?;
+            try_from_entry!(value, groups)
+        })
+    }
+
+    pub(crate) fn try_from_entry_reduced(
+        au: &mut AuditScope,
+        value: &Entry<EntryReduced, EntryCommitted>,
+        qs: &mut QueryServerReadTransaction,
+    ) -> Result<Self, OperationError> {
+        lperf_trace_segment!(au, "idm::account::try_from_entry_reduced", || {
+            let groups = Group::try_from_account_entry_red_ro(au, value, qs)?;
+            try_from_entry!(value, groups)
+        })
     }
 
     #[cfg(test)]
@@ -337,6 +351,17 @@ impl Account {
     ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
         let vcred = Value::new_radius_str(cleartext);
         Ok(ModifyList::new_purge_and_set("radius_secret", vcred))
+    }
+
+    pub(crate) fn to_credentialstatus(&self) -> Result<CredentialStatus, OperationError> {
+        // In the future this will need to handle multiple credentials, not just single.
+
+        self.primary
+            .as_ref()
+            .map(|cred| CredentialStatus {
+                creds: vec![cred.into()],
+            })
+            .ok_or(OperationError::NoMatchingAttributes)
     }
 }
 

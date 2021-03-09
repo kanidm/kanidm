@@ -69,6 +69,7 @@ pub enum OperationError {
     EmptyRequest,
     Backend,
     NoMatchingEntries,
+    NoMatchingAttributes,
     CorruptedEntry(u64),
     CorruptedIndex(String),
     ConsistencyError(Vec<Result<(), ConsistencyError>>),
@@ -286,6 +287,71 @@ impl fmt::Display for UnixUserToken {
 pub struct AccountUnixExtend {
     pub gidnumber: Option<u32>,
     pub shell: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub enum CredentialDetailType {
+    Password,
+    GeneratedPassword,
+    Webauthn(Vec<String>),
+    /// totp, webauthn
+    PasswordMFA(bool, Vec<String>),
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CredentialDetail {
+    pub uuid: Uuid,
+    pub claims: Vec<String>,
+    pub type_: CredentialDetailType,
+}
+
+impl fmt::Display for CredentialDetail {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "uuid: {}", self.uuid)?;
+        writeln!(f, "claims:")?;
+        for claim in &self.claims {
+            writeln!(f, "-- {}", claim)?;
+        }
+        match &self.type_ {
+            CredentialDetailType::Password => writeln!(f, "password: set"),
+            CredentialDetailType::GeneratedPassword => writeln!(f, "generated password: set"),
+            CredentialDetailType::Webauthn(labels) => {
+                writeln!(f, "webauthn:")?;
+                for label in labels {
+                    writeln!(f, "-- {}", label)?;
+                }
+                write!(f, "")
+            }
+            CredentialDetailType::PasswordMFA(totp, labels) => {
+                writeln!(f, "password: set")?;
+                if *totp {
+                    writeln!(f, "totp: enabled")?;
+                } else {
+                    writeln!(f, "totp: disabled")?;
+                }
+                writeln!(f, "webauthn:")?;
+                for label in labels {
+                    writeln!(f, "-- {}", label)?;
+                }
+                write!(f, "")
+            }
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CredentialStatus {
+    pub creds: Vec<CredentialDetail>,
+}
+
+impl fmt::Display for CredentialStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for cred in &self.creds {
+            writeln!(f, "---")?;
+            cred.fmt(f)?;
+        }
+        writeln!(f, "---")
+    }
 }
 
 /* ===== low level proto types ===== */

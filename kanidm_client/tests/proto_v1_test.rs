@@ -5,7 +5,7 @@ use log::debug;
 
 use kanidm::credential::totp::TOTP;
 use kanidm_client::KanidmClient;
-use kanidm_proto::v1::{Entry, Filter, Modify, ModifyList};
+use kanidm_proto::v1::{CredentialDetailType, Entry, Filter, Modify, ModifyList};
 
 mod common;
 use crate::common::{run_test, ADMIN_TEST_PASSWORD};
@@ -152,6 +152,20 @@ fn test_server_admin_change_simple_password() {
         // New password works!
         let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD_CHANGE);
         assert!(res.is_ok());
+
+        // On the admin, show our credential state.
+        let cred_state = rsclient.idm_account_get_credential_status("admin").unwrap();
+        // Check the creds are what we expect.
+        if cred_state.creds.len() != 1 {
+            assert!(false);
+        }
+
+        if let Some(cred) = cred_state.creds.get(0) {
+            assert!(cred.type_ == CredentialDetailType::Password)
+        } else {
+            assert!(false);
+        }
+
         // Old password fails, check after to prevent soft-locking.
         let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
         assert!(res.is_err());

@@ -1,6 +1,6 @@
 use crate::actors::v1_read::QueryServerReadV1;
 use crate::actors::v1_read::{
-    AuthMessage, IdmAccountUnixAuthMessage, InternalRadiusReadMessage,
+    AuthMessage, IdmAccountUnixAuthMessage, IdmCredentialStatusMessage, InternalRadiusReadMessage,
     InternalRadiusTokenReadMessage, InternalSearchMessage, InternalSearchRecycledMessage,
     InternalSshKeyReadMessage, InternalSshKeyTagReadMessage, InternalUnixGroupTokenReadMessage,
     InternalUnixUserTokenReadMessage, SearchMessage, WhoamiMessage,
@@ -555,6 +555,21 @@ pub async fn account_id_delete(req: tide::Request<AppState>) -> tide::Result {
 
 pub async fn account_put_id_credential_primary(req: tide::Request<AppState>) -> tide::Result {
     json_rest_event_credential_put(req, None).await
+}
+
+pub async fn account_get_id_credential_status(req: tide::Request<AppState>) -> tide::Result {
+    let uat = req.get_current_uat();
+    let id = req.get_url_param("id")?;
+
+    let (eventid, hvalue) = new_eventid!();
+    let obj = IdmCredentialStatusMessage {
+        uat,
+        uuid_or_name: id,
+        eventid,
+    };
+
+    let res = req.state().qe_r_ref.handle_idmcredentialstatus(obj).await;
+    to_tide_response(res, hvalue)
 }
 
 // Return a vec of str
@@ -1300,6 +1315,9 @@ pub fn create_https_server(
     account_route.at("/:id/_lock").get(do_nothing);
 
     account_route.at("/:id/_credential").get(do_nothing);
+    account_route
+        .at("/:id/_credential/_status")
+        .get(account_get_id_credential_status);
     account_route
         .at("/:id/_credential/primary")
         .put(account_put_id_credential_primary);
