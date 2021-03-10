@@ -310,17 +310,21 @@ impl fmt::Display for CredentialDetail {
         writeln!(f, "uuid: {}", self.uuid)?;
         writeln!(f, "claims:")?;
         for claim in &self.claims {
-            writeln!(f, "-- {}", claim)?;
+            writeln!(f, " * {}", claim)?;
         }
         match &self.type_ {
             CredentialDetailType::Password => writeln!(f, "password: set"),
             CredentialDetailType::GeneratedPassword => writeln!(f, "generated password: set"),
             CredentialDetailType::Webauthn(labels) => {
-                writeln!(f, "webauthn:")?;
-                for label in labels {
-                    writeln!(f, "-- {}", label)?;
+                if labels.is_empty() {
+                    writeln!(f, "webauthn: no authenticators")
+                } else {
+                    writeln!(f, "webauthn:")?;
+                    for label in labels {
+                        writeln!(f, " * {}", label)?;
+                    }
+                    write!(f, "")
                 }
-                write!(f, "")
             }
             CredentialDetailType::PasswordMFA(totp, labels) => {
                 writeln!(f, "password: set")?;
@@ -329,11 +333,15 @@ impl fmt::Display for CredentialDetail {
                 } else {
                     writeln!(f, "totp: disabled")?;
                 }
-                writeln!(f, "webauthn:")?;
-                for label in labels {
-                    writeln!(f, "-- {}", label)?;
+                if labels.is_empty() {
+                    writeln!(f, "webauthn: no authenticators")
+                } else {
+                    writeln!(f, "webauthn:")?;
+                    for label in labels {
+                        writeln!(f, " * {}", label)?;
+                    }
+                    write!(f, "")
                 }
-                write!(f, "")
             }
         }
     }

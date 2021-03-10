@@ -231,7 +231,7 @@ impl AccountOpt {
                     match client.idm_account_get_credential_status(acsopt.aopts.account_id.as_str())
                     {
                         Ok(status) => {
-                            println!("{}", status);
+                            print!("{}", status);
                         }
                         Err(e) => {
                             eprintln!("Error displaying credential status -> {:?}", e);
