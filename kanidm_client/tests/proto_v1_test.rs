@@ -723,6 +723,17 @@ fn test_server_rest_account_import_password() {
         let _ = rsclient.logout();
         let res = rsclient.auth_simple_password("demo_account", "eicieY7ahchaoCh0eeTa");
         assert!(res.is_ok());
+
+        // And that the account can self read the cred status.
+        let cred_state = rsclient
+            .idm_account_get_credential_status("demo_account")
+            .unwrap();
+
+        if let Some(cred) = cred_state.creds.get(0) {
+            assert!(cred.type_ == CredentialDetailType::Password)
+        } else {
+            assert!(false);
+        }
     });
 }
 
