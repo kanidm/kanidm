@@ -15,14 +15,16 @@ pub fn call_daemon_blocking(
     req: ClientRequest,
 ) -> Result<ClientResponse, Box<dyn Error>> {
     let mut stream = UnixStream::connect(path)
-        .and_then(|socket| 
-            socket.set_read_timeout(Some(Duration::from_millis(TIMEOUT)))
-            .map(|_| socket)
-        )
-        .and_then(|socket| 
-            socket.set_write_timeout(Some(Duration::from_millis(TIMEOUT)))
-            .map(|_| socket)
-        )
+        .and_then(|socket| {
+            socket
+                .set_read_timeout(Some(Duration::from_millis(TIMEOUT)))
+                .map(|_| socket)
+        })
+        .and_then(|socket| {
+            socket
+                .set_write_timeout(Some(Duration::from_millis(TIMEOUT)))
+                .map(|_| socket)
+        })
         .map_err(|e| {
             error!("stream setup error -> {:?}", e);
             e
