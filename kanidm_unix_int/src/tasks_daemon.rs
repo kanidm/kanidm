@@ -83,7 +83,7 @@ fn create_home_directory(info: &HomeDirectoryInfo, home_prefix: &str) -> Result<
 
     // Does our home_prefix actually exist?
     if !home_prefix_path.exists() || !home_prefix_path.is_dir() {
-        return Err("Invalid home_prefix from configuration".to_string())
+        return Err("Invalid home_prefix from configuration".to_string());
     }
 
     // Actually process the request here.
