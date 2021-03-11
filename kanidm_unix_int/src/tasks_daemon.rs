@@ -71,19 +71,33 @@ impl TaskCodec {
     }
 }
 
-fn create_home_directory(info: &HomeDirectoryInfo) -> Result<(), String> {
+fn create_home_directory(info: &HomeDirectoryInfo, home_prefix: &str) -> Result<(), String> {
     // Final sanity check to prevent certain classes of attacks.
     let name = info
         .name
         .trim_start_matches('.')
         .replace("/", "")
         .replace("\\", "");
-    // Note, due to how this works, we can't remove '/'. But we still want to stop traversals.
-    let path = info.path.trim_start_matches('.').replace("\\", "");
+
+    let home_prefix_path = Path::new(home_prefix);
+
+    // Does our home_prefix actually exist?
+    if !home_prefix_path.exists() || !home_prefix_path.is_dir() {
+        return Err("Invalid home_prefix from configuration".to_string())
+    }
 
     // Actually process the request here.
-    let hd_path_raw = format!("{}{}", path, name);
+    let hd_path_raw = format!("{}{}", home_prefix, name);
     let hd_path = Path::new(&hd_path_raw);
+
+    // Assert the resulting named home path is consistent and correct.
+    if let Some(pp) = hd_path.parent() {
+        if pp != home_prefix_path {
+            return Err("Invalid home directory name - not within home_prefix".to_string());
+        }
+    } else {
+        return Err("Invalid/Corrupt home directory path - no prefix found".to_string());
+    }
 
     let hd_path_os =
         CString::new(hd_path_raw.clone()).map_err(|_| "Unable to create c-string".to_string())?;
@@ -112,8 +126,18 @@ fn create_home_directory(info: &HomeDirectoryInfo) -> Result<(), String> {
     for alias in info.aliases.iter() {
         // Sanity check the alias.
         let alias = alias.replace(".", "").replace("/", "").replace("\\", "");
-        let alias_path_raw = format!("{}{}", path, alias);
+        let alias_path_raw = format!("{}{}", home_prefix, alias);
         let alias_path = Path::new(&alias_path_raw);
+
+        // Assert the resulting alias path is consistent and correct.
+        if let Some(pp) = alias_path.parent() {
+            if pp != home_prefix_path {
+                return Err("Invalid home directory alias - not within home_prefix".to_string());
+            }
+        } else {
+            return Err("Invalid/Corrupt alias directory path - no prefix found".to_string());
+        }
+
         if alias_path.exists() {
             let attr = match fs::symlink_metadata(alias_path) {
                 Ok(a) => a,
@@ -141,7 +165,7 @@ fn create_home_directory(info: &HomeDirectoryInfo) -> Result<(), String> {
     Ok(())
 }
 
-async fn handle_tasks(stream: UnixStream) {
+async fn handle_tasks(stream: UnixStream, home_prefix: &str) {
     let mut reqs = Framed::new(stream, TaskCodec::new());
 
     loop {
@@ -149,7 +173,7 @@ async fn handle_tasks(stream: UnixStream) {
             Some(Ok(TaskRequest::HomeDirectory(info))) => {
                 debug!("Received task -> HomeDirectory({:?})", info);
 
-                let resp = match create_home_directory(&info) {
+                let resp = match create_home_directory(&info, home_prefix) {
                     Ok(()) => TaskResponse::Success,
                     Err(msg) => TaskResponse::Error(msg),
                 };
@@ -213,7 +237,7 @@ async fn main() {
                     info!("Found kanidm_unixd, waiting for tasks ...");
                     // Yep! Now let the main handler do it's job.
                     // If it returns (dc, etc, then we loop and try again).
-                    handle_tasks(stream).await;
+                    handle_tasks(stream, &cfg.home_prefix).await;
                 }
                 Err(e) => {
                     error!("Unable to find kanidm_unixd, sleeping ...");

@@ -5,8 +5,8 @@ Kanidm attempts to promote uuid's as the primary foreign key that should be
 used by applications. A classic feature of pam and nsswitch tools is to create
 the home directory of the account on first login.
 
-Because of these two things, we previously would have to ask deployments to chose between
-the follow attributes for home directory names.
+Because of these two things, we previously would have to ask deployments to choose between
+the following attributes for home directory names.
 
 * uuid - the preferred foreign key, but not user-friendly.
 * name/spn - user friendly, but will break on account rename.
@@ -42,21 +42,21 @@ responses, and a symlink from "home_alias" is made to home attr. For example:
     /home/6a159739-93f0-4bff-bdfb-6044c1bab55c
     /home/<id>@<domain> -> /home/6a159739-93f0-4bff-bdfb-6044c1bab55c
 
-This allows us to flip the symlink on logins if id/domain is ever changed, with
-out losing or breaking the content of the home directory. 
+This allows us to flip the symlink on logins if id/domain is ever changed, without
+losing or breaking the content of the home directory.
 
 tasks daemon design
 -------------------
 
-The current unixd daemon runs as an isolated and unprivileged user. This is so that pam/nss
-contact the unixd daemon and that performs network access on their behalf. due to this
-design, this limits damage in a compromise as the unixd daemon is not-root, and has limited
+The current unixd daemon runs as an isolated and unprivileged user. This is because pam/nss
+contact the unixd daemon which performs network access on their behalf. Due to this
+design, this limits damage in a compromise as the unixd daemon user is not root, and has limited
 channels to other processes.
 
-However, to create home directories, this requires root permissions to perform the tasks.
+However, to create home directories, root permissions are required.
 
-An extra daemon is created that carries this out. This is the unixd-tasks daemon. As this runs
-as root, the tasks daemon an attractive target for "bad people" ™ so careful design around
+An extra daemon is created that carries this out. This is the unixd-tasks daemon. As it runs
+as root, the tasks daemon is an attractive target for "bad people" ™ so careful design around
 the security of this is required.
 
 ::
@@ -84,15 +84,15 @@ the security of this is required.
 
 
 The tasks daemon runs as root and has no network facing elements. It connects to the
-unixd daemon via a protected unix socket. The unixd daemon established a listening
-socket that only root or itself can access at /var/run/kanidm-unixd/tasks-sock which
+unixd daemon via a protected unix socket. The unixd daemon establishes a listening
+unix domain socket that only root or itself can access at /var/run/kanidm-unixd/tasks-sock which
 the unixd tasks daemon connects to. This is because with systemd dynamic users
 the tasks daemon may not know what user account it has to chown sockets to, so it is
 not viable for the tasks daemon to create the listening socket with the correct permissions.
 This is especially true if the unixd daemon restarts and acquires a new uid, while the tasks
 daemon persists.
 
-The tasks daemon only recieves a single datagram, which informs it of the details of
+The tasks daemon only receives a single datagram, which informs it of the details of
 the path and symlinks to create. The daemon filters for a number of path injection attacks
 that may be present in the names of the accounts. The Kanidm server also filters for path injections in
 usernames.

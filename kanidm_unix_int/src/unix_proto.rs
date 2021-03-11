@@ -46,7 +46,6 @@ pub enum ClientResponse {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct HomeDirectoryInfo {
     pub gid: u32,
-    pub path: String,
     pub name: String,
     pub aliases: Vec<String>,
 }
