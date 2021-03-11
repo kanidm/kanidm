@@ -885,7 +885,6 @@ impl CacheLayer {
         let token = self.get_usertoken(Id::Name(account_id.to_string())).await?;
         Ok(token.as_ref().map(|tok| HomeDirectoryInfo {
             gid: tok.gidnumber,
-            path: self.home_prefix.clone(),
             name: self.token_homedirectory_attr(tok),
             aliases: self
                 .token_homedirectory_alias(tok)
