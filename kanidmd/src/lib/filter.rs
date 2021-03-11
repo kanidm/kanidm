@@ -20,7 +20,7 @@ use crate::value::{IndexType, PartialValue};
 use hashbrown::HashSet;
 use kanidm_proto::v1::Filter as ProtoFilter;
 use kanidm_proto::v1::{OperationError, SchemaError};
-use ldap3_server::simple::LdapFilter;
+use ldap3_server::proto::{LdapFilter, LdapSubstringFilter};
 // use smartstring::alias::String;
 use smartstring::alias::String as AttrString;
 use std::cmp::{Ordering, PartialOrd};
@@ -820,6 +820,18 @@ impl FilterComp {
                 FilterComp::Eq(a, v)
             }
             LdapFilter::Present(a) => FilterComp::Pres(ldap_attr_filter_map(a)),
+            LdapFilter::Substring(
+                _a,
+                LdapSubstringFilter {
+                    initial: _,
+                    any: _,
+                    final_: _,
+                },
+            ) => {
+                // let a = ldap_attr_filter_map(a);
+                ladmin_error!(audit, "Unable to convert ldapsubstringfilter to sub filter");
+                return Err(OperationError::FilterGeneration);
+            }
         })
     }
 }
