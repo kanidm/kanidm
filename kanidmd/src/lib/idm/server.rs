@@ -8,10 +8,10 @@ use crate::event::{AuthEvent, AuthEventStep, AuthResult};
 use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
 use crate::idm::event::{
-    GeneratePasswordEvent, GenerateTOTPEvent, LdapAuthEvent, PasswordChangeEvent,
-    RadiusAuthTokenEvent, RegenerateRadiusSecretEvent, RemoveTOTPEvent, RemoveWebauthnEvent,
-    UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent,
-    VerifyTOTPEvent, WebauthnDoRegisterEvent, WebauthnInitRegisterEvent,
+    CredentialStatusEvent, GeneratePasswordEvent, GenerateTOTPEvent, LdapAuthEvent,
+    PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent, RemoveTOTPEvent,
+    RemoveWebauthnEvent, UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent,
+    UnixUserTokenEvent, VerifyTOTPEvent, WebauthnDoRegisterEvent, WebauthnInitRegisterEvent,
 };
 use crate::idm::mfareg::{MfaRegCred, MfaRegNext, MfaRegSession};
 use crate::idm::radius::RadiusAccount;
@@ -28,6 +28,7 @@ use crate::idm::delayed::{
     DelayedAction, PasswordUpgrade, UnixPasswordUpgrade, WebauthnCounterIncrement,
 };
 
+use kanidm_proto::v1::CredentialStatus;
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::RadiusAuthToken;
 use kanidm_proto::v1::SetCredentialResponse;
@@ -813,6 +814,25 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                 e
             })?;
         group.to_unixgrouptoken()
+    }
+
+    pub fn get_credentialstatus(
+        &mut self,
+        au: &mut AuditScope,
+        cse: &CredentialStatusEvent,
+    ) -> Result<CredentialStatus, OperationError> {
+        let account = self
+            .qs_read
+            .impersonate_search_ext_uuid(au, &cse.target, &cse.event)
+            .and_then(|account_entry| {
+                Account::try_from_entry_reduced(au, &account_entry, &mut self.qs_read)
+            })
+            .map_err(|e| {
+                ladmin_error!(au, "Failed to search account {:?}", e);
+                e
+            })?;
+
+        account.to_credentialstatus()
     }
 }
 

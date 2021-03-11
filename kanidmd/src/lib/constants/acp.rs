@@ -99,7 +99,8 @@ pub const JSON_IDM_SELF_ACP_READ_V1: &str = r#"{
             "loginshell",
             "uuid",
             "account_expire",
-            "account_valid_from"
+            "account_valid_from",
+            "primary_credential"
         ]
     }
 }"#;

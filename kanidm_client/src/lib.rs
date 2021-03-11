@@ -34,8 +34,8 @@ use webauthn_rs::proto::{
 
 use kanidm_proto::v1::{
     AccountUnixExtend, AuthAllowed, AuthCredential, AuthMech, AuthRequest, AuthResponse, AuthState,
-    AuthStep, CreateRequest, DeleteRequest, Entry, Filter, GroupUnixExtend, ModifyList,
-    ModifyRequest, OperationError, OperationResponse, RadiusAuthToken, SearchRequest,
+    AuthStep, CreateRequest, CredentialStatus, DeleteRequest, Entry, Filter, GroupUnixExtend,
+    ModifyList, ModifyRequest, OperationError, OperationResponse, RadiusAuthToken, SearchRequest,
     SearchResponse, SetCredentialRequest, SetCredentialResponse, SingleStringRequest, TOTPSecret,
     UnixGroupToken, UnixUserToken, UserAuthToken, WhoamiResponse,
 };
@@ -1083,6 +1083,21 @@ impl KanidmClient {
             Ok(_) => Err(ClientError::EmptyResponse),
             Err(e) => Err(e),
         }
+    }
+
+    pub fn idm_account_get_credential_status(
+        &self,
+        id: &str,
+    ) -> Result<CredentialStatus, ClientError> {
+        let res: Result<CredentialStatus, ClientError> =
+            self.perform_get_request(format!("/v1/account/{}/_credential/_status", id).as_str());
+        res.and_then(|cs| {
+            if cs.creds.is_empty() {
+                Err(ClientError::EmptyResponse)
+            } else {
+                Ok(cs)
+            }
+        })
     }
 
     pub fn idm_account_radius_credential_get(

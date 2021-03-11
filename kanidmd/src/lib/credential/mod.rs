@@ -1,6 +1,6 @@
 use crate::be::dbvalue::{DbCredTypeV1, DbCredV1, DbPasswordV1, DbWebauthnV1};
 use hashbrown::HashMap as Map;
-use kanidm_proto::v1::OperationError;
+use kanidm_proto::v1::{CredentialDetail, CredentialDetailType, OperationError};
 use openssl::hash::MessageDigest;
 use openssl::pkcs5::pbkdf2_hmac;
 use openssl::sha::Sha512;
@@ -247,6 +247,29 @@ pub enum CredentialType {
     // PasswordWebauthn(Password, Map<String, WebauthnCredential>),
     // WebauthnVerified(Map<String, WebauthnCredential>),
     // PasswordWebauthnVerified(Password, Map<String, WebauthnCredential>),
+}
+
+impl Into<CredentialDetail> for &Credential {
+    fn into(self) -> CredentialDetail {
+        CredentialDetail {
+            uuid: self.uuid,
+            claims: self.claims.clone(),
+            type_: match &self.type_ {
+                CredentialType::Password(_) => CredentialDetailType::Password,
+                CredentialType::GeneratedPassword(_) => CredentialDetailType::GeneratedPassword,
+                CredentialType::Webauthn(wan) => {
+                    let mut labels: Vec<_> = wan.keys().cloned().collect();
+                    labels.sort_unstable();
+                    CredentialDetailType::Webauthn(labels)
+                }
+                CredentialType::PasswordMFA(_, totp, wan) => {
+                    let mut labels: Vec<_> = wan.keys().cloned().collect();
+                    labels.sort_unstable();
+                    CredentialDetailType::PasswordMFA(totp.is_some(), labels)
+                }
+            },
+        }
+    }
 }
 
 impl TryFrom<DbCredV1> for Credential {

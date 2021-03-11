@@ -19,6 +19,7 @@ impl AccountOpt {
                 AccountCredential::RemoveWebauthn(acs) => acs.copt.debug,
                 AccountCredential::RegisterTOTP(acs) => acs.copt.debug,
                 AccountCredential::RemoveTOTP(acs) => acs.copt.debug,
+                AccountCredential::Status(acs) => acs.copt.debug,
             },
             AccountOpt::Radius(acopt) => match acopt {
                 AccountRadius::Show(aro) => aro.copt.debug,
@@ -222,6 +223,18 @@ impl AccountOpt {
                         }
                         Err(e) => {
                             eprintln!("Error Removing TOTP from account -> {:?}", e);
+                        }
+                    }
+                }
+                AccountCredential::Status(acsopt) => {
+                    let client = acsopt.copt.to_client();
+                    match client.idm_account_get_credential_status(acsopt.aopts.account_id.as_str())
+                    {
+                        Ok(status) => {
+                            print!("{}", status);
+                        }
+                        Err(e) => {
+                            eprintln!("Error displaying credential status -> {:?}", e);
                         }
                     }
                 }
