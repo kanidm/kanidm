@@ -11,7 +11,7 @@
 #[macro_use]
 extern crate log;
 
-use users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
+use users::{get_effective_gid, get_effective_uid};
 
 use std::os::unix::fs::symlink;
 
@@ -114,7 +114,7 @@ fn create_home_directory(info: &HomeDirectoryInfo, home_prefix: &str) -> Result<
         }
         let _ = unsafe { umask(before) };
 
-        // Change the owner/gid
+        // Change the owner to the gid - remember, kanidm ONLY has gid's, the uid is implied.
 
         if unsafe { lchown(hd_path_os.as_ptr(), info.gid, info.gid) } != 0 {
             return Err("Unable to set ownership".to_string());
@@ -195,12 +195,13 @@ async fn handle_tasks(stream: UnixStream, home_prefix: &str) {
 
 #[tokio::main]
 async fn main() {
-    let cuid = get_current_uid();
+    // let cuid = get_current_uid();
+    // let cgid = get_current_gid();
+    // We only need to check effective id
     let ceuid = get_effective_uid();
-    let cgid = get_current_gid();
     let cegid = get_effective_gid();
 
-    if cuid != 0 && ceuid != 0 && cgid != 0 && cegid != 0 {
+    if ceuid != 0 || cegid != 0 {
         eprintln!("Refusing to run - this process *MUST* operate as root.");
         std::process::exit(1);
     }
@@ -224,14 +225,14 @@ async fn main() {
         }
     };
 
-    let task_sock_path = cfg.task_sock_path.as_str();
+    let task_sock_path = cfg.task_sock_path.clone();
     debug!("Attempting to use {} ...", task_sock_path);
 
     let server = async move {
         loop {
             info!("Attempting to connect to kanidm_unixd ...");
             // Try to connect to the daemon.
-            match UnixStream::connect(task_sock_path).await {
+            match UnixStream::connect(&task_sock_path).await {
                 // Did we connect?
                 Ok(stream) => {
                     info!("Found kanidm_unixd, waiting for tasks ...");
