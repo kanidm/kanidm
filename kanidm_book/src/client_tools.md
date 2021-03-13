@@ -22,7 +22,7 @@ the clients with:
 Leap 15.2 is still not fully supported with Kanidm. For an experimental client, you can
 try the development repository. Using zypper you can add the repository with:
 
-    zypper ar obs://home:firstyear:kanidm home_firstyear_kanidm
+    zypper ar https://download.opensuse.org/repositories/home:/firstyear:/kanidm/openSUSE_Leap_15.2/ home_firstyear_kanidm
     zypper mr -f home_firstyear_kanidm
 
 Then you need to referesh your metadata and install the clients.
