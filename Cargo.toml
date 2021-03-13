@@ -19,3 +19,15 @@ exclude = [
     "kanidm_unix_int/pam_tester"
 ]
 
+
+[patch.crates-io]
+# tokio = { path = "../../tokio/tokio" }
+# tokio-util = { path = "../../tokio/tokio-util" }
+# tokio = { git = "https://github.com/Firstyear/tokio.git", rev = "aa6fb48d9a1f3652ee79e3b018a2b9d0c9f89c1e" }
+# tokio-util = { git = "https://github.com/Firstyear/tokio.git", rev = "aa6fb48d9a1f3652ee79e3b018a2b9d0c9f89c1e" }
+
+# concread = { path = "../concread" }
+# idlset = { path = "../idlset" }
+# ldap3_server = { path = "../ldap3_server" }
+# webauthn-rs = { path = "../webauthn-rs" }
+# webauthn-authenticator-rs = { path = "../webauthn-authenticator-rs" }

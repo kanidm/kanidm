@@ -9,8 +9,8 @@ use kanidm::core::create_server_core;
 
 use kanidm_unix_common::cache::{CacheLayer, Id};
 use kanidm_unix_common::constants::{
-    DEFAULT_GID_ATTR_MAP, DEFAULT_HOME_ATTR, DEFAULT_HOME_PREFIX, DEFAULT_SHELL,
-    DEFAULT_UID_ATTR_MAP,
+    DEFAULT_GID_ATTR_MAP, DEFAULT_HOME_ALIAS, DEFAULT_HOME_ATTR, DEFAULT_HOME_PREFIX,
+    DEFAULT_SHELL, DEFAULT_UID_ATTR_MAP,
 };
 use tokio::runtime::Runtime;
 
@@ -117,6 +117,7 @@ fn run_test(fix_fn: fn(&mut KanidmClient) -> (), test_fn: fn(CacheLayer, KanidmA
         DEFAULT_SHELL.to_string(),
         DEFAULT_HOME_PREFIX.to_string(),
         DEFAULT_HOME_ATTR,
+        DEFAULT_HOME_ALIAS,
         DEFAULT_UID_ATTR_MAP,
         DEFAULT_GID_ATTR_MAP,
     ))

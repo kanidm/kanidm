@@ -1,4 +1,3 @@
-use async_std::task;
 use bytes::{BufMut, BytesMut};
 use futures::SinkExt;
 use futures::StreamExt;
@@ -6,6 +5,7 @@ use std::error::Error;
 use std::io::Error as IoError;
 use std::io::ErrorKind;
 use tokio::net::UnixStream;
+// use tokio::runtime::Builder;
 use tokio_util::codec::Framed;
 use tokio_util::codec::{Decoder, Encoder};
 
@@ -67,11 +67,4 @@ pub async fn call_daemon(path: &str, req: ClientRequest) -> Result<ClientRespons
             Err(Box::new(IoError::new(ErrorKind::Other, "oh no!")))
         }
     }
-}
-
-pub fn call_daemon_blocking(
-    path: &str,
-    req: ClientRequest,
-) -> Result<ClientResponse, Box<dyn Error>> {
-    task::block_on(call_daemon(path, req))
 }

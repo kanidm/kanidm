@@ -73,17 +73,12 @@ sshkeys = "0.3"
 rpassword = "5.0"
 num_cpus = "1.10"
 
-idlset = { version = "^0.1.12" , features = ["use_smallvec"] }
-# idlset = { path = "../../idlset", features = ["use_smallvec"] }
-
 zxcvbn = "2.0"
 base64 = "0.13"
 
+idlset = { version = "^0.1.12" , features = ["use_smallvec"] }
 ldap3_server = "0.1"
-# ldap3_server = { path = "../../ldap3_server" }
-
 webauthn-rs = "0.3.0-alpha.5"
-# webauthn-rs = { path = "../../webauthn-rs" }
 
 libc = "0.2"
 users = "0.11"
@@ -98,7 +93,6 @@ simd_support = [ "concread/simd_support" ]
 criterion = { version = "0.3", features = ["html_reports"] }
 # For testing webauthn
 webauthn-authenticator-rs = "0.3.0-alpha.5"
-# webauthn-authenticator-rs = { path = "../../webauthn-authenticator-rs" }
 
 [dev-dependencies.cargo-husky]
 version = "1"
