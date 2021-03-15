@@ -68,7 +68,7 @@ hashbrown = "0.9"
 concread = "^0.2.5"
 # concread = { version = "^0.2.5", features = ["simd_support"] }
 
-sshkeys = "0.3"
+sshkeys = "^0.3.1"
 
 rpassword = "5.0"
 num_cpus = "1.10"
