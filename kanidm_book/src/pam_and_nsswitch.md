@@ -26,11 +26,11 @@ We recommend you install the client daemon from your system package manager.
 
 You can check the daemon is running on your Linux system with
 
-    systemctl status kanidm_unixd
+    systemctl status kanidm-unixd
 
 You can check the privileged tasks daemon is running with
 
-    systemctl status kanidm_unixd_tasks
+    systemctl status kanidm-unixd-tasks
 
 > **NOTE** The `kanidm_unixd_tasks` daemon is not required for pam and nsswitch functionality.
 > If disabled, your system will function as usual. It is however recommended due to the features
@@ -150,7 +150,7 @@ Each of these controls one of the four stages of pam. The content should look li
     auth        [default=1 ignore=ignore success=ok] pam_localuser.so
     auth        sufficient    pam_unix.so nullok try_first_pass
     auth        requisite     pam_succeed_if.so uid >= 1000 quiet_success
-    auth        sufficient    pam_kanidm.so debug ignore_unknown_user
+    auth        sufficient    pam_kanidm.so ignore_unknown_user
     auth        required      pam_deny.so
 
     # /etc/pam.d/common-password-pc
@@ -170,9 +170,75 @@ Each of these controls one of the four stages of pam. The content should look li
 > **WARNING:** Ensure that `pam_mkhomedir` or `pam_oddjobd` are *not* present in your pam configuration
 > these interfer with the correct operation of the kanidm tasks daemon.
 
-### Fedora
+### Fedora 33
 
-TBD
+> **WARNING:** kanidm currently has no support for SELinux policy - this may mean you need to
+> run the daemon with permissive mode for the unconfined_service_t daemon type. To do this run:
+> `semanage permissive -a unconfined_service_t`. To undo this run `semanage permissive -d unconfined_service_t`.
+>
+> You may also need to run "audit2allow" for sshd and other types to be able to access the unix daemon sockets.
+
+These files are managed by authselect as symlinks. You will need to remove the symlinks first, then
+edit the content.
+
+    # /etc/pam.d/password-auth
+    auth        required                                     pam_env.so
+    auth        required                                     pam_faildelay.so delay=2000000
+    auth        [default=1 ignore=ignore success=ok]         pam_usertype.so isregular
+    auth        [default=1 ignore=ignore success=ok]         pam_localuser.so
+    auth        sufficient                                   pam_unix.so nullok try_first_pass
+    auth        [default=1 ignore=ignore success=ok]         pam_usertype.so isregular
+    auth        sufficient                                   pam_kanidm.so debug ignore_unknown_user
+    auth        required                                     pam_deny.so
+    
+    account     sufficient                                   pam_unix.so
+    account     sufficient                                   pam_localuser.so
+    account     sufficient                                   pam_usertype.so issystem
+    account     sufficient                                   pam_kanidm.so debug ignore_unknown_user
+    account     required                                     pam_permit.so
+    
+    password    requisite                                    pam_pwquality.so try_first_pass local_users_only
+    password    sufficient                                   pam_unix.so sha512 shadow nullok try_first_pass use_authtok
+    password    sufficient                                   pam_kanidm.so debug
+    password    required                                     pam_deny.so
+    
+    session     optional                                     pam_keyinit.so revoke
+    session     required                                     pam_limits.so
+    -session    optional                                     pam_systemd.so
+    session     [success=1 default=ignore]                   pam_succeed_if.so service in crond quiet use_uid
+    session     required                                     pam_unix.so
+    session     optional                                     pam_kanidm.so debug
+
+-
+
+    # /etc/pam.d/system-auth
+    auth        required                                     pam_env.so
+    auth        required                                     pam_faildelay.so delay=2000000
+    auth        sufficient                                   pam_fprintd.so
+    auth        [default=1 ignore=ignore success=ok]         pam_usertype.so isregular
+    auth        [default=1 ignore=ignore success=ok]         pam_localuser.so
+    auth        sufficient                                   pam_unix.so nullok try_first_pass
+    auth        [default=1 ignore=ignore success=ok]         pam_usertype.so isregular
+    auth        sufficient                                   pam_kanidm.so debug ignore_unknown_user
+    auth        required                                     pam_deny.so
+
+    account     sufficient                                   pam_unix.so
+    account     sufficient                                   pam_localuser.so
+    account     sufficient                                   pam_usertype.so issystem
+    account     sufficient                                   pam_kanidm.so debug ignore_unknown_user
+    account     required                                     pam_permit.so
+
+    password    requisite                                    pam_pwquality.so try_first_pass local_users_only
+    password    sufficient                                   pam_unix.so sha512 shadow nullok try_first_pass use_authtok
+    password    sufficient                                   pam_kanidm.so debug
+    password    required                                     pam_deny.so
+
+    session     optional                                     pam_keyinit.so revoke
+    session     required                                     pam_limits.so
+    -session    optional                                     pam_systemd.so
+    session     [success=1 default=ignore]                   pam_succeed_if.so service in crond quiet use_uid
+    session     required                                     pam_unix.so
+    session     optional                                     pam_kanidm.so debug
 
 ## Troubleshooting
 
