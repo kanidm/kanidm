@@ -26,11 +26,11 @@ We recommend you install the client daemon from your system package manager.
 
 You can check the daemon is running on your Linux system with
 
-    systemctl status kanidm_unixd
+    systemctl status kanidm-unixd
 
 You can check the privileged tasks daemon is running with
 
-    systemctl status kanidm_unixd_tasks
+    systemctl status kanidm-unixd-tasks
 
 > **NOTE** The `kanidm_unixd_tasks` daemon is not required for pam and nsswitch functionality.
 > If disabled, your system will function as usual. It is however recommended due to the features
