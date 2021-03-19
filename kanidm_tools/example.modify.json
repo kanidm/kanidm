@@ -1,4 +1,4 @@
 [
-    { "Purged": "name" },
-    { "Present": ["name", "demo_group"] }
+    { "purged": "name" },
+    { "present": ["name", "demo_group"] }
 ]
