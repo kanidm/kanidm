@@ -125,7 +125,11 @@ fn create_home_directory(info: &HomeDirectoryInfo, home_prefix: &str) -> Result<
     // Does the aliases exist
     for alias in info.aliases.iter() {
         // Sanity check the alias.
-        let alias = alias.replace(".", "").replace("/", "").replace("\\", "");
+        // let alias = alias.replace(".", "").replace("/", "").replace("\\", "");
+        let alias = alias
+            .trim_start_matches('.')
+            .replace("/", "")
+            .replace("\\", "");
         let alias_path_raw = format!("{}{}", home_prefix, alias);
         let alias_path = Path::new(&alias_path_raw);
 
