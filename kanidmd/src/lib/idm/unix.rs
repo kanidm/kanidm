@@ -155,7 +155,7 @@ impl UnixUserAccount {
         Ok(UnixUserToken {
             name: self.name.clone(),
             spn: self.spn.clone(),
-            displayname: self.name.clone(),
+            displayname: self.displayname.clone(),
             gidnumber: self.gidnumber,
             uuid: self.uuid.to_hyphenated_ref().to_string(),
             shell: self.shell.clone(),
