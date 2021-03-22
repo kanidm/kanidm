@@ -24,10 +24,10 @@ RUN ln -s -f /usr/bin/clang /usr/bin/cc && \
 
 RUN if [ "$(uname -m)" == "x86_64" ]; \
 		then export RUSTFLAGS='-Ctarget-cpu=haswell'; \
-	fi; \
+	fi && \
 	if [ "$(uname -m)" == "aarch64" ]; \
 		then export RUSTFLAGS=''; \
-	fi; \
+	fi && \
 	if [ "${SCCACHE_REDIS}" != "" ]; \
 		then \
 			export CC="/usr/bin/sccache /usr/bin/clang" && \
@@ -35,7 +35,7 @@ RUN if [ "$(uname -m)" == "x86_64" ]; \
 			sccache --start-server; \
 		else \
 			export CC="/usr/bin/clang"; \
-	fi; \
+	fi && \
 	export RUSTC_BOOTSTRAP=1 && \
 	echo $RUSTC_BOOTSTRAP && \
 	echo $RUSTC_WRAPPER && \
@@ -43,10 +43,10 @@ RUN if [ "$(uname -m)" == "x86_64" ]; \
 	echo $CC && \
 	cargo build \
 		--features=simd_support,libsqlite3-sys/bundled \
-		--release; \
+		--release && \
 	if [ "${SCCACHE_REDIS}" != "" ]; \
 		then sccache -s; \
-	fi; \
+	fi && \
 	ls -al /usr/src/kanidm/target/release/
 
 
