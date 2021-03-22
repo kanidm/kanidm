@@ -1,6 +1,6 @@
 # Installing the Server
 
-Currently we have a pre-release docker image based on git master. They can be found at:
+Currently we have docker images for the server components. They can be found at:
 
     https://hub.docker.com/r/kanidm/server
     https://hub.docker.com/r/kanidm/radius
@@ -10,17 +10,25 @@ You can fetch these with:
     docker pull kanidm/server:latest
     docker pull kanidm/radius:latest
 
+If you wish to use an x86\_64 cpu-optimised version, you should use:
+
+    docker pull kanidm/server:x86_64_latest
+
+You may need to adjust your example commands throughout this document to suit.
+
 There are a number of configuration steps you must perform before you can run this container.
 
 ## System Requirements
 
 ### CPU
 
-You must have a CPU that is from 2013 or newer (Haswell, Ryzen). This is due to the usage of
-SIMD for a number of internal components.
+If you are using the cpu-optimised version, you must have a CPU that is from 2013 or newer
+(Haswell, Ryzen). This is due to the usage of SIMD for a number of internal components.
 
 Older or unsupported CPU's may raise a SIGIL (Illegal Instruction) on hardware that is not supported
 by the project.
+
+In this case, you should use the standard server:latest image.
 
 ### Memory
 

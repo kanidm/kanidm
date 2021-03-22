@@ -1,12 +1,21 @@
+#[macro_use]
+extern crate serde_derive;
+
 use std::env;
 
 use structopt::clap::Shell;
 use structopt::StructOpt;
 
+use std::fs::File;
+use std::io::Read;
+use std::path::PathBuf;
+
 include!("src/opt/ssh_authorizedkeys.rs");
 include!("src/opt/cache_invalidate.rs");
 include!("src/opt/cache_clear.rs");
 include!("src/opt/unixd_status.rs");
+
+include!("../profiles/syntax.rs");
 
 fn main() {
     let outdir = match env::var_os("OUT_DIR") {
@@ -41,4 +50,32 @@ fn main() {
 
     UnixdStatusOpt::clap().gen_completions("kanidm_unixd_status", Shell::Bash, outdir.clone());
     UnixdStatusOpt::clap().gen_completions("kanidm_unixd_status", Shell::Zsh, outdir);
+
+    println!("cargo:rerun-if-env-changed=KANIDM_BUILD_PROFILE");
+    let profile = env::var("KANIDM_BUILD_PROFILE").unwrap_or_else(|_| "developer".to_string());
+
+    let profile_path: PathBuf = ["../profiles", format!("{}.toml", profile).as_str()]
+        .iter()
+        .collect();
+
+    println!("cargo:rerun-if-changed={}", profile_path.to_str().unwrap());
+
+    let mut f =
+        File::open(&profile_path).expect(format!("Failed to open {:?}", profile_path).as_str());
+
+    let mut contents = String::new();
+    f.read_to_string(&mut contents)
+        .expect(format!("Failed to read {:?}", profile_path).as_str());
+
+    let profile_cfg: ProfileConfig = toml::from_str(contents.as_str())
+        .expect(format!("Failed to parse {:?}", profile_path).as_str());
+
+    match profile_cfg.cpu_flags {
+        CpuOptLevel::none => {}
+        CpuOptLevel::native => println!("cargo:rustc-env=RUSTFLAGS=-Ctarget-cpu=native"),
+        CpuOptLevel::x86_64_v1 => println!("cargo:rustc-env=RUSTFLAGS=-Ctarget-feature=+cmov,+cx8,+fxsr,+mmx,+sse,+sse2"),
+        CpuOptLevel::x86_64_v3 => println!("cargo:rustc-env=RUSTFLAGS=-Ctarget-feature=+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+cx16,+sahf,+popcnt,+sse3,+sse4.1,+sse4.2,+avx,+avx2,+bmi,+bmi2,+f16c,+fma,+lzcnt,+movbe,+xsave"),
+    }
+    println!("cargo:rustc-env=KANIDM_PROFILE_NAME={}", profile);
+    println!("cargo:rustc-env=KANIDM_CPU_FLAGS={}", profile_cfg.cpu_flags);
 }

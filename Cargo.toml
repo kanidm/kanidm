@@ -8,6 +8,7 @@ debug = true
 members = [
     "kanidm_proto",
     "kanidmd",
+    "kanidmd_web_ui",
     "kanidm_client",
     "kanidm_tools",
     "kanidm_unix_int",

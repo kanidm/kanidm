@@ -370,6 +370,9 @@ async fn main() {
     // ::std::env::set_var("RUST_LOG", "kanidm=debug,kanidm_client=debug");
     env_logger::init();
 
+    debug!("Profile -> {}", env!("KANIDM_PROFILE_NAME"));
+    debug!("CPU Flags -> {}", env!("KANIDM_CPU_FLAGS"));
+
     let cfg_path = Path::new("/etc/kanidm/config");
     let cfg_path_str = match cfg_path.to_str() {
         Some(cps) => cps,

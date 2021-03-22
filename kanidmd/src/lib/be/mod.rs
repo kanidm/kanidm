@@ -1314,6 +1314,10 @@ impl Backend {
         idxmeta: Set<IdxKey>,
         vacuum: bool,
     ) -> Result<Self, OperationError> {
+        info!("DB tickets -> {:?}", pool_size);
+        info!("Profile -> {}", env!("KANIDM_PROFILE_NAME"));
+        info!("CPU Flags -> {}", env!("KANIDM_CPU_FLAGS"));
+
         // If in memory, reduce pool to 1
         if path == "" {
             pool_size = 1;

@@ -1,6 +1,6 @@
 use std::time::Duration;
 use uuid::Uuid;
-use webauthn_rs::crypto::COSEKey;
+use webauthn_rs::proto::COSEKey;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DbCidV1 {

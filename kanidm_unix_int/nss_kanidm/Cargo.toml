@@ -11,8 +11,8 @@ path =  "src/lib.rs"
 
 [dependencies]
 kanidm_unix_int = { path = "../", version = "1.1.0-alpha" }
-# libnss = "0.2"
-libnss = { git = "https://github.com/csnewman/libnss-rs.git", rev = "eab2d93d2438652773699b0807d558ce75b1e748" }
+libnss = "0.4"
+# libnss = { git = "https://github.com/csnewman/libnss-rs.git", rev = "eab2d93d2438652773699b0807d558ce75b1e748" }
 libc = "0.2.0"
 paste = "1.0"
 lazy_static = "1.3"
