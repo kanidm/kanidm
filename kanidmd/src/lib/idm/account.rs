@@ -160,7 +160,7 @@ impl Account {
         Some(UserAuthToken {
             name: self.name.clone(),
             spn: self.spn.clone(),
-            displayname: self.name.clone(),
+            displayname: self.displayname.clone(),
             uuid: self.uuid.to_hyphenated_ref().to_string(),
             // application: None,
             groups: self.groups.iter().map(|g| g.to_proto()).collect(),
