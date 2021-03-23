@@ -95,5 +95,7 @@ In a new terminal, you can now build and run the client tools with:
 
     cd kanidm_tools
     cargo run -- --help
-    cargo run -- self whoami -H https://localhost:8080 -D anonymous -C ../insecure/ca.pem
-    cargo run -- self whoami -H https://localhost:8080 -D admin -C ../insecure/ca.pem
+    cargo run -- login -H https://localhost:8443 -D anonymous -C ../insecure/ca.pem
+    cargo run -- self whoami -H https://localhost:8443 -D anonymous -C ../insecure/ca.pem
+    cargo run -- login -H https://localhost:8443 -D admin -C ../insecure/ca.pem
+    cargo run -- self whoami -H https://localhost:8443 -D admin -C ../insecure/ca.pem
