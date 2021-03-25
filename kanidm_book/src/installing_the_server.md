@@ -12,6 +12,28 @@ You can fetch these with:
 
 There are a number of configuration steps you must perform before you can run this container.
 
+## System Requirements
+
+### CPU
+
+You must have a CPU that is from 2013 or newer (Haswell, Ryzen). This is due to the usage of
+SIMD for a number of internal components.
+
+Older or unsupported CPU's may raise a SIGIL (Illegal Instruction) on hardware that is not supported
+by the project.
+
+### Memory
+
+Kanidm extensively uses memory caching, trading memory consumption to improve parallel throughput.
+You should expect to see 64KB of ram per entry in your database, depending on cache tuning and settings.
+
+### Disk
+
+You should expect to use up to 8KB of disk per entry you plan to store. At an estimate 10,000 entry
+databases will consume 40MB, 100,000 entry will consume 400MB.
+
+For best performance, you should use NVME or other Flash media.
+
 ## TLS
 
 You'll need a volume where you can place configuration, certificates, and the database:

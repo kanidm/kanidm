@@ -25,3 +25,16 @@ In the case these issues are found, an out of band alpha snapshot will be made.
 
 Alpha releases are "best effort", and are trial releases, to help get early feedback and improvements
 from the community, while still allowing us to make large, breaking changes that may be needed.
+
+## API stability
+
+There are a number of "surfaces" that can be considered as "API" in Kanidm.
+
+* JSON HTTP end points of kanidmd
+* unix domain socket API of kanidm_unixd resolver
+* CLI interface of kanidm admin command
+
+During the Alpha, there is no guarantee that *any* of these APIs will remain stable. Only elements from "the same release" are guaranteed to work with each other.
+
+Once an official release is made, only the JSON API will be declared stable. The unix domain socket API is internal, and the CLI is *not* an API and can change with the interest of human interaction during any release.
+
