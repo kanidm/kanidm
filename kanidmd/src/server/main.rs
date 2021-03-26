@@ -214,7 +214,7 @@ async fn main() {
         config.update_log_level(Some(dll.clone() as u32));
     }
 
-    ::std::env::set_var("RUST_LOG", "tide=info,kanidm=info,webauthn=debug");
+    // ::std::env::set_var("RUST_LOG", "tide=info,kanidm=info,webauthn=debug");
 
     env_logger::builder()
         .format_timestamp(None)

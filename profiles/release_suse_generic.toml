@@ -1,0 +1,2 @@
+web_ui_pkg_path = "/usr/share/kanidm/ui/pkg"
+cpu_flags = "none"

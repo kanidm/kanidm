@@ -84,4 +84,7 @@ kanidm = { path = "../kanidmd" }
 
 [build-dependencies]
 structopt = { version = "0.3", default-features = false }
+toml = "0.5"
+serde = "1.0"
+serde_derive = "1.0"
 

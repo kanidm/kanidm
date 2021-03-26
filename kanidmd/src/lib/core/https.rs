@@ -134,6 +134,31 @@ macro_rules! new_eventid {
 }
 
 // Handle the various end points we need to expose
+async fn index_view(_req: tide::Request<AppState>) -> tide::Result {
+    let mut res = tide::Response::new(200);
+    res.set_content_type("text/html;charset=utf-8");
+    res.set_body(
+        r#"
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Kanidm</title>
+        <link rel="stylesheet" href="/pkg/external/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T">
+        <script src="/pkg/external/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"></script>
+        <script src="/pkg/external/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"></script>
+        <script src="/pkg/external/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"></script>
+        <script src="/pkg/bundle.js" defer></script>
+    </head>
+
+    <body>
+    </body>
+</html>
+    "#,
+    );
+
+    Ok(res)
+}
 
 // pub async fn create((req, session, state): (Json<CreateRequest>, Session, Data<AppState>),
 pub async fn create(mut req: tide::Request<AppState>) -> tide::Result {
@@ -997,7 +1022,9 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
     let maybe_sessionid = req.session().get::<Uuid>("auth-session-id");
     debug!("🍿 {:?}", maybe_sessionid);
 
-    let obj: AuthRequest = req.body_json().await?;
+    let obj: AuthRequest = req.body_json().await
+        .map_err(|e| {debug!("wat? {:?}", e); e})
+    ?;
 
     let auth_msg = AuthMessage::new(obj, maybe_sessionid, eventid);
 
@@ -1216,6 +1243,8 @@ pub fn create_https_server(
     qe_w_ref: &'static QueryServerWriteV1,
     qe_r_ref: &'static QueryServerReadV1,
 ) -> Result<(), ()> {
+    info!("WEB_UI_PKG_PATH -> {}", env!("KANIDM_WEB_UI_PKG_PATH"));
+
     // Create the in memory fernet key
     let fernet_handle = fernet::Fernet::new(&fernet::Fernet::generate_key()).ok_or_else(|| {
         error!("Failed to generate fernet key");
@@ -1237,6 +1266,17 @@ pub fn create_https_server(
     );
 
     // Add routes
+    tserver.at("/").get(index_view);
+    tserver
+        .at("/pkg")
+        .serve_dir(env!("KANIDM_WEB_UI_PKG_PATH"))
+        .map_err(|e| {
+            error!(
+                "Failed to serve pkg dir {} -> {:?}",
+                env!("KANIDM_WEB_UI_PKG_PATH"),
+                e
+            );
+        })?;
     tserver.at("/status").get(self::status);
 
     let mut raw_route = tserver.at("/v1/raw");

@@ -771,7 +771,6 @@ impl QueryServer {
 
         info!("Server ID -> {:?}", s_uuid);
         info!("Domain ID -> {:?}", d_uuid);
-        info!("DB tickets -> {:?}", pool_size);
         // log_event!(log, "Starting query worker ...");
         QueryServer {
             s_uuid,

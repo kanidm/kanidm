@@ -1,0 +1,20 @@
+[package]
+name = "kanidmd_web_ui"
+version = "1.1.0-alpha.3"
+authors = ["William Brown <william@blackhats.net.au>"]
+edition = "2018"
+license = "MPL-2.0"
+description = "Kanidm Server Web User Interface"
+documentation = "https://docs.rs/kanidm/latest/kanidm/"
+homepage = "https://github.com/kanidm/kanidm/"
+repository = "https://github.com/kanidm/kanidm/"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
+wasm-bindgen-futures = { version = "0.4" }
+yew = "0.17"
+kanidm_proto = { path = "../kanidm_proto", version = "1.1.0-alpha" }
+anyhow = "1"

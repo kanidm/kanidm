@@ -1,10 +1,7 @@
-# cargo-features = ["default-run"]
-
 [package]
 name = "kanidm"
 version = "1.1.0-alpha.3"
 authors = ["William Brown <william@blackhats.net.au>"]
-# default-run = "kanidm_core"
 edition = "2018"
 license = "MPL-2.0"
 description = "Kanidm Server Library and Binary"
@@ -30,7 +27,7 @@ tide = "0.15"
 async-trait = "0.1"
 async-h1 = "2.0"
 tide-rustls = "0.1"
-fernet = { git = "https://github.com/mozilla-services/fernet-rs.git" }
+fernet = "^0.1.4"
 
 async-std = "1.6"
 
@@ -78,7 +75,7 @@ base64 = "0.13"
 
 idlset = { version = "^0.1.12" , features = ["use_smallvec"] }
 ldap3_server = "0.1"
-webauthn-rs = "0.3.0-alpha.5"
+webauthn-rs = "0.3.0-alpha.7"
 
 libc = "0.2"
 users = "0.11"
@@ -92,7 +89,7 @@ simd_support = [ "concread/simd_support" ]
 [dev-dependencies]
 criterion = { version = "0.3", features = ["html_reports"] }
 # For testing webauthn
-webauthn-authenticator-rs = "0.3.0-alpha.5"
+webauthn-authenticator-rs = "0.3.0-alpha.7"
 
 [dev-dependencies.cargo-husky]
 version = "1"
@@ -103,6 +100,7 @@ features = ["precommit-hook", "run-cargo-fmt"]
 structopt = { version = "0.3", default-features = false }
 serde = "1.0"
 serde_derive = "1.0"
+toml = "0.5"
 
 [[bench]]
 name = "scaling_10k"

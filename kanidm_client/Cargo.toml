@@ -20,7 +20,7 @@ serde_derive = "1.0"
 toml = "0.5"
 uuid = { version = "0.8", features = ["serde", "v4"] }
 url = "2.1.1"
-webauthn-rs = "0.3.0-alpha.1"
+webauthn-rs = "0.3.0-alpha.7"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt", "net", "time", "macros", "sync", "signal"] }
@@ -28,4 +28,4 @@ kanidm = { path = "../kanidmd" }
 futures = "0.3"
 async-std = "1.6"
 
-webauthn-authenticator-rs = "0.3.0-alpha.1"
+webauthn-authenticator-rs = "0.3.0-alpha.7"

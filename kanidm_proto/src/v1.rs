@@ -1,8 +1,7 @@
+use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::fmt;
 use uuid::Uuid;
-// use zxcvbn::feedback;
-use std::cmp::Ordering;
 use webauthn_rs::proto::{
     CreationChallengeResponse, PublicKeyCredential, RegisterPublicKeyCredential,
     RequestChallengeResponse,
@@ -12,26 +11,17 @@ use webauthn_rs::proto::{
 
 /* ===== errors ===== */
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, thiserror::Error)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum SchemaError {
-    #[error("Not Implemented")]
     NotImplemented,
-    #[error("This entry does not have any classes, which means it can not have structure.")]
     NoClassFound,
-    #[error("A class or classes are found that do not exist in schema.")]
     InvalidClass(Vec<String>),
-    #[error("")]
     MissingMustAttribute(Vec<String>),
-    #[error("")]
     InvalidAttribute(String),
-    #[error("")]
     InvalidAttributeSyntax(String),
-    #[error("")]
     EmptyFilter,
-    #[error("The schema has become internally inconsistent. You must restart and investigate.")]
     Corrupted,
-    #[error("Phantom attribute types may not be persisted on an entry")]
     PhantomAttribute(String),
 }
 

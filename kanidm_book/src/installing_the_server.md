@@ -1,6 +1,6 @@
 # Installing the Server
 
-Currently we have a pre-release docker image based on git master. They can be found at:
+Currently we have docker images for the server components. They can be found at:
 
     https://hub.docker.com/r/kanidm/server
     https://hub.docker.com/r/kanidm/radius
@@ -10,17 +10,31 @@ You can fetch these with:
     docker pull kanidm/server:latest
     docker pull kanidm/radius:latest
 
-There are a number of configuration steps you must perform before you can run this container.
+If you wish to use an x86\_64 cpu-optimised version (See System Requirements CPU), you should use:
+
+    docker pull kanidm/server:x86_64_latest
+
+You may need to adjust your example commands throughout this document to suit.
 
 ## System Requirements
 
 ### CPU
 
-You must have a CPU that is from 2013 or newer (Haswell, Ryzen). This is due to the usage of
-SIMD for a number of internal components.
+If you are using the x86\_64 cpu-optimised version, you must have a CPU that is from 2013 or newer
+(Haswell, Ryzen). The following instruction flags are used.
+
+    cmov, cx8, fxsr, mmx, sse, sse2, cx16, sahf, popcnt, sse3, sse4.1, sse4.2, avx, avx2,
+    bmi, bmi2, f16c, fma, lzcnt, movbe, xsave
 
 Older or unsupported CPU's may raise a SIGIL (Illegal Instruction) on hardware that is not supported
 by the project.
+
+In this case, you should use the standard server:latest image.
+
+In the future we may apply a baseline of flags as a requirement for x86\_64 for the server:latest
+image. These flags will be:
+
+    cmov, cx8, fxsr, mmx, sse, sse2
 
 ### Memory
 
@@ -82,10 +96,13 @@ If your chain.pem contains the CA certificate, you can validate this file with t
     openssl verify -CAfile chain.pem chain.pem
 
 If your chain.pem does not contain the CA certificate (Let's Encrypt chains do not contain the CA
-for example) then you can validate with this command. Note that here "untrusted" means a list of
-further certificates in the chain to build up to the root, not that the verification is bypassed.
+for example) then you can validate with this command.
 
     openssl verify -untrusted fullchain.pem fullchain.pem
+
+> **NOTE** Here "-untrusted" flag means a list of further certificates in the chain to build up
+> to the root is provided, but that the system CA root should be consulted. Verification is NOT bypassed
+> or allowed to be invalid.
 
 If these verifications pass you can now use these certificates with Kanidm. To put the certificates
 in place you can use a shell container that mounts the volume such as:
@@ -129,10 +146,9 @@ Then you can setup the initial admin account and initialise the database into yo
 
     docker run --rm -i -t -v kanidmd:/data kanidm/server:latest /sbin/kanidmd recover_account -c /data/server.toml -n admin
 
-> **HINT**
-> If you want to try the latest development releases instead, use the image tag kanidm/server:devel instead
-
-You then want to set your domain name so that spn's are generated correctly.
+You then want to set your domain name so that security principal names (spn's) are generated correctly.
+This domain name *must* match the url/origin of the server that you plan to use to interact with
+so that other features work correctly. It is possible to change this domain name later.
 
     docker run --rm -i -t -v kanidmd:/data kanidm/server:latest /sbin/kanidmd domain_name_change -c /data/server.toml -n idm.example.com
 
@@ -143,7 +159,7 @@ Now we can run the server so that it can accept connections. This defaults to us
 # Development Version
 
 If you are interested to run our latest code from development, you can do this by changing the
-docker tag to `kanidm/server:devel`.
+docker tag to `kanidm/server:devel` or `kanidm/server:x86_64_v3_devel` instead.
 
 # Running as non-root in docker
 

@@ -10,6 +10,33 @@ cargo doc --document-private-items --open --no-deps
 
 [designs]: https://github.com/kanidm/kanidm/tree/master/designs
 
+### Minimum Supported Rust Version
+
+The project is expected to work on MSRV of 1.47.0.
+
+### Dependencies
+
+#### MacOS
+
+You will need [rustup] to install a rust toolchain.
+
+[rustup]: https://rustup.rs/
+
+If you plan to work on the web-ui, you may also need npm for setting up some parts.
+
+    brew install npm
+
+#### SUSE
+
+You will need [rustup] to install a rust toolchain.
+
+[rustup]: https://rustup.rs/
+
+You will also need some system libraries to build this:
+
+    libudev-devel sqlite3-devel libopenssl-devel npm-default
+
+
 ### Get involved
 
 To get started, you'll need to fork or branch, and we'll merge based on PR's.
@@ -99,3 +126,17 @@ In a new terminal, you can now build and run the client tools with:
     cargo run -- self whoami -H https://localhost:8443 -D anonymous -C ../insecure/ca.pem
     cargo run -- login -H https://localhost:8443 -D admin -C ../insecure/ca.pem
     cargo run -- self whoami -H https://localhost:8443 -D admin -C ../insecure/ca.pem
+
+### Building the Web UI
+
+The web ui uses rust wasm rather than javascript. To build this you need to setup the environment.
+
+    cargo install wasm-pack
+    npm install --global rollup
+
+Then you are able to build the ui.
+
+    cd kanidmd_web_ui/
+    ./build_wasm.sh
+
+The "developer" profile for kanidmd will automatically use the pkg output in this folder.

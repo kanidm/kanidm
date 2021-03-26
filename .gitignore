@@ -11,4 +11,5 @@ vendor.tar.gz
 kanidm_rlm_python/test_data/ca.pem
 loc.sh
 todo.sh
+vendor.tar.*
 

@@ -219,16 +219,16 @@ impl CredHandler {
                 match (cred, pw_mfa.totp.as_ref(), pw_mfa.wan.as_ref()) {
                     (AuthCredential::Webauthn(resp), _, Some((_, wan_state))) => {
                         webauthn.authenticate_credential(&resp, wan_state.clone())
-                                .map(|r| {
+                                .map(|(cid, auth_data)| {
                                     pw_mfa.mfa_state = CredVerifyState::Success;
                                     // Success. Determine if we need to update the counter
                                     // async from r.
-                                    if let Some((cid, counter)) = r {
+                                    if auth_data.counter != 0 {
                                         // Do async
                                         if let Err(_e) = async_tx.send(DelayedAction::WebauthnCounterIncrement(WebauthnCounterIncrement {
                                             target_uuid: who,
                                             cid,
-                                            counter,
+                                            counter: auth_data.counter,
                                         })) {
                                             ladmin_warning!(au, "unable to queue delayed webauthn counter increment, continuing ... ");
                                         };
@@ -334,16 +334,16 @@ impl CredHandler {
             AuthCredential::Webauthn(resp) => {
                 // lets see how we go.
                 webauthn.authenticate_credential(&resp, wan_cred.wan_state.clone())
-                    .map(|r| {
+                    .map(|(cid, auth_data)| {
                         wan_cred.state = CredVerifyState::Success;
                         // Success. Determine if we need to update the counter
                         // async from r.
-                        if let Some((cid, counter)) = r {
+                        if auth_data.counter != 0 {
                             // Do async
                             if let Err(_e) = async_tx.send(DelayedAction::WebauthnCounterIncrement(WebauthnCounterIncrement {
                                 target_uuid: who,
                                 cid,
-                                counter,
+                                counter: auth_data.counter,
                             })) {
                                 ladmin_warning!(au, "unable to queue delayed webauthn counter increment, continuing ... ");
                             };
