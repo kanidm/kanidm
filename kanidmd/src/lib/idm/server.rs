@@ -378,7 +378,22 @@ impl<'a> IdmServerWriteTransaction<'a> {
                 };
 
                 let (auth_session, state) = if is_valid {
-                    AuthSession::new(au, account, &init.appid, self.webauthn, ct)
+                    //TODO: we can keep a cached map of the badlist, and pass by reference rather than by value
+                    let badlist_entry = self
+                        .qs_read
+                        .internal_search_uuid(au, &UUID_SYSTEM_CONFIG)
+                        .map_err(|e| {
+                            ladmin_error!(au, "Failed to retrieve system configuration {:?}", e);
+                            e
+                        })?;
+                    AuthSession::new(
+                        au,
+                        account,
+                        &init.appid,
+                        self.webauthn,
+                        ct,
+                        badlist_entry.get_ava_set("badlist_password").cloned(),
+                    )
                 } else {
                     // it's softlocked, don't even bother.
                     lsecurity!(au, "Account is softlocked.");
@@ -2094,6 +2109,23 @@ mod tests {
                 "demo_badlist_shohfie3aeci2oobur0aru9uushah6EiPi2woh4hohngoighaiRuepieN3ongoo1",
                 None,
             );
+            let e = idms_prox_write.set_account_password(au, &pce);
+            assert!(e.is_err());
+
+            assert!(idms_prox_write.commit(au).is_ok());
+        })
+    }
+
+    #[test]
+    fn test_idm_simple_password_reject_badlist() {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &IdmServerDelayed,
+                       au: &mut AuditScope| {
+            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
+
+            // Check that the badlist password inserted is rejected.
+            let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, "bad@no3IBTyqHu$list", None);
             let e = idms_prox_write.set_account_password(au, &pce);
             assert!(e.is_err());
 
