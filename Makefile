@@ -40,7 +40,7 @@ buildx: buildx/kanidmd buildx/radiusd
 
 build/kanidmd:	## build kanidmd images
 build/kanidmd:
-	@docker build $(EXT_OPTS) -f kanidmd/Dockerfile -t $(IMAGE_BASE)/server:$(IMAGE_VERSION) 
+	@docker build $(EXT_OPTS) -f kanidmd/Dockerfile -t $(IMAGE_BASE)/server:$(IMAGE_VERSION) \
 		--build-arg "KANIDM_BUILD_PROFILE=developer" \
 		--build-arg "KANIDM_FEATURES=" \
 		$(ARGS) .
