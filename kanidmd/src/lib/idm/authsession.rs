@@ -1178,9 +1178,9 @@ mod tests {
     }
 
     #[test]
-    fn test_idm_authsession_totp_password_badlist() {
+    fn test_idm_authsession_password_mfa_badlist() {
         let mut audit = AuditScope::new(
-            "test_idm_authsession_totp_password_badlist",
+            "test_idm_authsession_password_mfa_badlist",
             uuid::Uuid::new_v4(),
             None,
         );
