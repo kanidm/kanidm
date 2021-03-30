@@ -53,6 +53,8 @@ pub struct AppState {
 pub trait RequestExtensions {
     fn get_current_uat(&self) -> Option<UserAuthToken>;
 
+    fn get_current_auth_session_id(&self) -> Option<Uuid>;
+
     fn get_url_param(&self, param: &str) -> Result<String, tide::Error>;
 }
 
@@ -79,6 +81,27 @@ impl RequestExtensions for tide::Request<AppState> {
                     .and_then(|b| serde_json::from_slice(&b).ok());
                 uat
             })
+    }
+
+    fn get_current_auth_session_id(&self) -> Option<Uuid> {
+        // We see if there is a signed header copy first.
+        let kref = &self.state().fernet_handle;
+        self.header("X-KANIDM-AUTH-SESSION-ID")
+            .and_then(|hv| {
+                // Get the first header value.
+                hv.get(0)
+            })
+            .and_then(|h| {
+                // Take the token str and attempt to decrypt
+                // Attempt to re-inflate a uuid from bytes.
+                let uat: Option<Uuid> = kref
+                    .decrypt_with_ttl(h.as_str(), 3600)
+                    .ok()
+                    .and_then(|b| serde_json::from_slice(&b).ok());
+                uat
+            })
+            // If not there, get from the cookie instead.
+            .or_else(|| self.session().get::<Uuid>("auth-session-id"))
     }
 
     fn get_url_param(&self, param: &str) -> Result<String, tide::Error> {
@@ -1008,25 +1031,23 @@ pub async fn do_nothing(_req: tide::Request<AppState>) -> tide::Result {
     Ok(res)
 }
 
-// We probably need an extract auth or similar to handle the different
-// types (cookie, bearer), and to generic this over get/post.
-
 pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
-    // AuthRequest
-
     // First, deal with some state management.
     // Do anything here first that's needed like getting the session details
     // out of the req cookie.
-
     let (eventid, hvalue) = new_eventid!();
-    let maybe_sessionid = req.session().get::<Uuid>("auth-session-id");
+
+    let maybe_sessionid = req.get_current_auth_session_id();
     debug!("🍿 {:?}", maybe_sessionid);
 
-    let obj: AuthRequest = req.body_json().await
-        .map_err(|e| {debug!("wat? {:?}", e); e})
-    ?;
+    let obj: AuthRequest = req.body_json().await.map_err(|e| {
+        debug!("wat? {:?}", e);
+        e
+    })?;
 
     let auth_msg = AuthMessage::new(obj, maybe_sessionid, eventid);
+
+    let mut auth_session_id_tok = None;
 
     // We probably need to know if we allocate the cookie, that this is a
     // new session, and in that case, anything *except* authrequest init is
@@ -1054,26 +1075,41 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
                 AuthState::Choose(allowed) => {
                     debug!("🧩 -> AuthState::Choose");
                     let msession = req.session_mut();
-                    // Force a new cookie session.
-                    // msession.regenerate();
+
                     // Ensure the auth-session-id is set
                     msession.remove("auth-session-id");
                     msession
                         .insert("auth-session-id", sessionid)
-                        .map(|_| ProtoAuthState::Choose(allowed))
                         .map_err(|_| OperationError::InvalidSessionState)
+                        .and_then(|_| {
+                            let kref = &req.state().fernet_handle;
+                            // Get the header token ready.
+                            serde_json::to_vec(&sessionid)
+                                .map(|data| {
+                                    auth_session_id_tok = Some(kref.encrypt(&data));
+                                })
+                                .map_err(|_| OperationError::InvalidSessionState)
+                        })
+                        .map(|_| ProtoAuthState::Choose(allowed))
                 }
                 AuthState::Continue(allowed) => {
                     debug!("🧩 -> AuthState::Continue");
                     let msession = req.session_mut();
-                    // Force a new cookie session.
-                    // msession.regenerate();
                     // Ensure the auth-session-id is set
                     msession.remove("auth-session-id");
                     msession
                         .insert("auth-session-id", sessionid)
-                        .map(|_| ProtoAuthState::Continue(allowed))
                         .map_err(|_| OperationError::InvalidSessionState)
+                        .and_then(|_| {
+                            let kref = &req.state().fernet_handle;
+                            // Get the header token ready.
+                            serde_json::to_vec(&sessionid)
+                                .map(|data| {
+                                    auth_session_id_tok = Some(kref.encrypt(&data));
+                                })
+                                .map_err(|_| OperationError::InvalidSessionState)
+                        })
+                        .map(|_| ProtoAuthState::Continue(allowed))
                 }
                 AuthState::Success(uat) => {
                     debug!("🧩 -> AuthState::Success");
@@ -1102,7 +1138,14 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
         Err(e) => Err(e),
     };
 
-    to_tide_response(res, hvalue)
+    to_tide_response(res, hvalue).map(|mut res| {
+        // if the sessionid was injected into our cookie, set it in the
+        // header too.
+        if let Some(tok) = auth_session_id_tok {
+            res.insert_header("X-KANIDM-AUTH-SESSION-ID", tok);
+        }
+        res
+    })
 }
 
 pub async fn idm_account_set_password(mut req: tide::Request<AppState>) -> tide::Result {

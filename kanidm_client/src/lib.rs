@@ -11,12 +11,8 @@
 #[macro_use]
 extern crate log;
 
-use reqwest::header::CONTENT_TYPE;
-use serde::de::DeserializeOwned;
-use serde::Serialize;
 use serde_derive::Deserialize;
 use serde_json::error::Error as SerdeJsonError;
-use std::collections::BTreeMap;
 use std::collections::BTreeSet as Set;
 use std::fs::{metadata, File, Metadata};
 use std::io::Read;
@@ -32,13 +28,7 @@ use webauthn_rs::proto::{
 };
 // use users::{get_current_uid, get_effective_uid};
 
-use kanidm_proto::v1::{
-    AccountUnixExtend, AuthAllowed, AuthCredential, AuthMech, AuthRequest, AuthResponse, AuthState,
-    AuthStep, CreateRequest, CredentialStatus, DeleteRequest, Entry, Filter, GroupUnixExtend,
-    ModifyList, ModifyRequest, OperationError, OperationResponse, RadiusAuthToken, SearchRequest,
-    SearchResponse, SetCredentialRequest, SetCredentialResponse, SingleStringRequest, TOTPSecret,
-    UnixGroupToken, UnixUserToken, UserAuthToken, WhoamiResponse,
-};
+use kanidm_proto::v1::*;
 
 pub mod asynchronous;
 
@@ -46,6 +36,7 @@ use crate::asynchronous::KanidmAsyncClient;
 
 pub const APPLICATION_JSON: &str = "application/json";
 pub const KOPID: &str = "X-KANIDM-OPID";
+pub const KSESSIONID: &str = "X-KANIDM-AUTH-SESSION-ID";
 
 #[derive(Debug)]
 pub enum ClientError {
@@ -251,53 +242,7 @@ impl KanidmClientBuilder {
 
     // Consume self and return a client.
     pub fn build(self) -> Result<KanidmClient, reqwest::Error> {
-        // Errghh, how to handle this cleaner.
-        let address = match &self.address {
-            Some(a) => a.clone(),
-            None => {
-                eprintln!("uri (-H) missing, can not proceed");
-                unimplemented!();
-            }
-        };
-
-        self.display_warnings(address.as_str());
-
-        let client_builder = reqwest::blocking::Client::builder()
-            .cookie_store(true)
-            .danger_accept_invalid_hostnames(!self.verify_hostnames)
-            .danger_accept_invalid_certs(!self.verify_ca);
-
-        let client_builder = match &self.ca {
-            Some(cert) => client_builder.add_root_certificate(cert.clone()),
-            None => client_builder,
-        };
-
-        let client_builder = match &self.connect_timeout {
-            Some(secs) => client_builder
-                .connect_timeout(Duration::from_secs(*secs))
-                .timeout(Duration::from_secs(*secs)),
-            None => client_builder,
-        };
-
-        let client = client_builder.build()?;
-
-        // Now get the origin.
-        #[allow(clippy::expect_used)]
-        let uri = Url::parse(&address).expect("can not fail");
-
-        #[allow(clippy::expect_used)]
-        let origin = uri
-            .host_str()
-            .map(|h| format!("{}://{}", uri.scheme(), h))
-            .expect("can not fail");
-
-        Ok(KanidmClient {
-            client,
-            addr: address,
-            origin,
-            builder: self,
-            bearer_token: None,
-        })
+        self.build_async().map(|asclient| KanidmClient { asclient })
     }
 
     pub fn build_async(self) -> Result<KanidmAsyncClient, reqwest::Error> {
@@ -331,338 +276,106 @@ impl KanidmClientBuilder {
 
         let client = client_builder.build()?;
 
+        // Now get the origin.
+        #[allow(clippy::expect_used)]
+        let uri = Url::parse(&address).expect("can not fail");
+
+        #[allow(clippy::expect_used)]
+        let origin = uri
+            .host_str()
+            .map(|h| format!("{}://{}", uri.scheme(), h))
+            .expect("can not fail");
+
         Ok(KanidmAsyncClient {
             client,
             addr: address,
             builder: self,
             bearer_token: None,
+            origin,
         })
     }
 }
 
 #[derive(Debug)]
 pub struct KanidmClient {
-    client: reqwest::blocking::Client,
-    addr: String,
-    origin: String,
-    builder: KanidmClientBuilder,
-    bearer_token: Option<String>,
+    asclient: KanidmAsyncClient,
+}
+
+fn tokio_block_on<R, F>(f: F) -> R
+where
+    F: std::future::Future + std::future::Future<Output = R>,
+{
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .expect("failed to start tokio");
+    rt.block_on(f)
 }
 
 impl KanidmClient {
     pub fn get_origin(&self) -> &str {
-        self.origin.as_str()
+        self.asclient.get_origin()
     }
 
     pub fn new_session(&self) -> Result<Self, reqwest::Error> {
         // Copy our builder, and then just process it.
-        let builder = self.builder.clone();
-        builder.build()
+        self.asclient
+            .new_session()
+            .map(|asclient| KanidmClient { asclient })
     }
 
     pub fn set_token(&mut self, new_token: String) {
-        let mut new_token = Some(new_token);
-        std::mem::swap(&mut self.bearer_token, &mut new_token);
+        self.asclient.set_token(new_token);
     }
 
     pub fn get_token(&self) -> Option<&str> {
-        self.bearer_token.as_deref()
+        self.asclient.get_token()
     }
 
     pub fn logout(&mut self) -> Result<(), reqwest::Error> {
-        // hack - we have to replace our reqwest client because that's the only way
-        // to currently flush the cookie store. To achieve this we need to rebuild
-        // and then destructure.
-
-        let builder = self.builder.clone();
-        let KanidmClient { mut client, .. } = builder.build()?;
-
-        std::mem::swap(&mut self.client, &mut client);
-        Ok(())
-    }
-
-    fn perform_post_request<R: Serialize, T: DeserializeOwned>(
-        &self,
-        dest: &str,
-        request: R,
-    ) -> Result<T, ClientError> {
-        let dest = format!("{}{}", self.addr, dest);
-
-        let req_string = serde_json::to_string(&request).map_err(ClientError::JSONEncode)?;
-
-        let response = self
-            .client
-            .post(dest.as_str())
-            .header(CONTENT_TYPE, APPLICATION_JSON);
-
-        let response = if let Some(token) = &self.bearer_token {
-            response.bearer_auth(token)
-        } else {
-            response
-        };
-
-        let response = response
-            .body(req_string)
-            .send()
-            .map_err(ClientError::Transport)?;
-
-        let opid = response
-            .headers()
-            .get(KOPID)
-            .and_then(|hv| hv.to_str().ok().map(|s| s.to_string()))
-            .unwrap_or_else(|| "missing_kopid".to_string());
-        debug!("opid -> {:?}", opid);
-
-        match response.status() {
-            reqwest::StatusCode::OK => {}
-            unexpect => return Err(ClientError::Http(unexpect, response.json().ok(), opid)),
-        }
-
-        response
-            .json()
-            .map_err(|e| ClientError::JSONDecode(e, opid))
-    }
-
-    fn perform_put_request<R: Serialize, T: DeserializeOwned>(
-        &self,
-        dest: &str,
-        request: R,
-    ) -> Result<T, ClientError> {
-        let dest = format!("{}{}", self.addr, dest);
-
-        let req_string = serde_json::to_string(&request).map_err(ClientError::JSONEncode)?;
-
-        let response = self
-            .client
-            .put(dest.as_str())
-            .header(CONTENT_TYPE, APPLICATION_JSON);
-
-        let response = if let Some(token) = &self.bearer_token {
-            response.bearer_auth(token)
-        } else {
-            response
-        };
-
-        let response = response
-            .body(req_string)
-            .send()
-            .map_err(ClientError::Transport)?;
-
-        let opid = response
-            .headers()
-            .get(KOPID)
-            .and_then(|hv| hv.to_str().ok().map(|s| s.to_string()))
-            .unwrap_or_else(|| "missing_kopid".to_string());
-        debug!("opid -> {:?}", opid);
-
-        match response.status() {
-            reqwest::StatusCode::OK => {}
-            unexpect => return Err(ClientError::Http(unexpect, response.json().ok(), opid)),
-        }
-
-        response
-            .json()
-            .map_err(|e| ClientError::JSONDecode(e, opid))
-    }
-
-    fn perform_get_request<T: DeserializeOwned>(&self, dest: &str) -> Result<T, ClientError> {
-        let dest = format!("{}{}", self.addr, dest);
-        let response = self.client.get(dest.as_str());
-
-        let response = if let Some(token) = &self.bearer_token {
-            response.bearer_auth(token)
-        } else {
-            response
-        };
-
-        let response = response.send().map_err(ClientError::Transport)?;
-
-        let opid = response
-            .headers()
-            .get(KOPID)
-            .and_then(|hv| hv.to_str().ok().map(|s| s.to_string()))
-            .unwrap_or_else(|| "missing_kopid".to_string());
-        debug!("opid -> {:?}", opid);
-
-        match response.status() {
-            reqwest::StatusCode::OK => {}
-            unexpect => return Err(ClientError::Http(unexpect, response.json().ok(), opid)),
-        }
-
-        response
-            .json()
-            .map_err(|e| ClientError::JSONDecode(e, opid))
-    }
-
-    fn perform_delete_request(&self, dest: &str) -> Result<bool, ClientError> {
-        let dest = format!("{}{}", self.addr, dest);
-        let response = self.client.delete(dest.as_str());
-        let response = if let Some(token) = &self.bearer_token {
-            response.bearer_auth(token)
-        } else {
-            response
-        };
-
-        let response = response.send().map_err(ClientError::Transport)?;
-
-        let opid = response
-            .headers()
-            .get(KOPID)
-            .and_then(|hv| hv.to_str().ok().map(|s| s.to_string()))
-            .unwrap_or_else(|| "missing_kopid".to_string());
-        debug!("opid -> {:?}", opid);
-
-        match response.status() {
-            reqwest::StatusCode::OK => {}
-            unexpect => return Err(ClientError::Http(unexpect, response.json().ok(), opid)),
-        }
-
-        response
-            .json()
-            .map_err(|e| ClientError::JSONDecode(e, opid))
+        self.asclient.logout()
     }
 
     // whoami
     // Can't use generic get due to possible un-auth case.
     pub fn whoami(&self) -> Result<Option<(Entry, UserAuthToken)>, ClientError> {
-        let whoami_dest = format!("{}/v1/self", self.addr);
-        let response = self.client.get(whoami_dest.as_str());
-
-        let response = if let Some(token) = &self.bearer_token {
-            response.bearer_auth(token)
-        } else {
-            response
-        };
-
-        let response = response.send().map_err(ClientError::Transport)?;
-
-        let opid = response
-            .headers()
-            .get(KOPID)
-            .and_then(|hv| hv.to_str().ok().map(|s| s.to_string()))
-            .unwrap_or_else(|| "missing_kopid".to_string());
-        debug!("opid -> {:?}", opid);
-
-        match response.status() {
-            // Continue to process.
-            reqwest::StatusCode::OK => {}
-            reqwest::StatusCode::UNAUTHORIZED => return Ok(None),
-            unexpect => return Err(ClientError::Http(unexpect, response.json().ok(), opid)),
-        }
-
-        let r: WhoamiResponse = response
-            .json()
-            .map_err(|e| ClientError::JSONDecode(e, opid))?;
-
-        Ok(Some((r.youare, r.uat)))
+        tokio_block_on(self.asclient.whoami())
     }
 
     // auth
-    pub fn auth_step_anonymous(&mut self) -> Result<AuthResponse, ClientError> {
-        let auth_anon = AuthRequest {
-            step: AuthStep::Cred(AuthCredential::Anonymous),
-        };
-        let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_anon);
+    pub fn auth_step_init(&self, ident: &str) -> Result<Set<AuthMech>, ClientError> {
+        tokio_block_on(self.asclient.auth_step_init(ident))
+    }
 
-        r.map(|ar| {
-            if let AuthState::Success(token) = &ar.state {
-                self.bearer_token = Some(token.clone());
-            };
-            ar
-        })
+    pub fn auth_step_begin(&self, mech: AuthMech) -> Result<Vec<AuthAllowed>, ClientError> {
+        tokio_block_on(self.asclient.auth_step_begin(mech))
+    }
+
+    pub fn auth_step_anonymous(&mut self) -> Result<AuthResponse, ClientError> {
+        tokio_block_on(self.asclient.auth_step_anonymous())
     }
 
     pub fn auth_step_password(&mut self, password: &str) -> Result<AuthResponse, ClientError> {
-        let auth_req = AuthRequest {
-            step: AuthStep::Cred(AuthCredential::Password(password.to_string())),
-        };
-        let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_req);
-
-        r.map(|ar| {
-            if let AuthState::Success(token) = &ar.state {
-                self.bearer_token = Some(token.clone());
-            };
-            ar
-        })
+        tokio_block_on(self.asclient.auth_step_password(password))
     }
 
     pub fn auth_step_totp(&mut self, totp: u32) -> Result<AuthResponse, ClientError> {
-        let auth_req = AuthRequest {
-            step: AuthStep::Cred(AuthCredential::TOTP(totp)),
-        };
-        let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_req);
-
-        r.map(|ar| {
-            if let AuthState::Success(token) = &ar.state {
-                self.bearer_token = Some(token.clone());
-            };
-            ar
-        })
+        tokio_block_on(self.asclient.auth_step_totp(totp))
     }
 
     pub fn auth_step_webauthn_complete(
         &mut self,
         pkc: PublicKeyCredential,
     ) -> Result<AuthResponse, ClientError> {
-        let auth_req = AuthRequest {
-            step: AuthStep::Cred(AuthCredential::Webauthn(pkc)),
-        };
-        let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_req);
-
-        r.map(|ar| {
-            if let AuthState::Success(token) = &ar.state {
-                self.bearer_token = Some(token.clone());
-            };
-            ar
-        })
+        tokio_block_on(self.asclient.auth_step_webauthn_complete(pkc))
     }
 
     pub fn auth_anonymous(&mut self) -> Result<(), ClientError> {
-        let mechs = match self.auth_step_init("anonymous") {
-            Ok(s) => s,
-            Err(e) => return Err(e),
-        };
-
-        if !mechs.contains(&AuthMech::Anonymous) {
-            debug!("Anonymous mech not presented");
-            return Err(ClientError::AuthenticationFailed);
-        }
-
-        let _state = match self.auth_step_begin(AuthMech::Anonymous) {
-            Ok(s) => s,
-            Err(e) => return Err(e),
-        };
-
-        let r = self.auth_step_anonymous()?;
-
-        match r.state {
-            AuthState::Success(_token) => Ok(()),
-            _ => Err(ClientError::AuthenticationFailed),
-        }
+        tokio_block_on(self.asclient.auth_anonymous())
     }
 
     pub fn auth_simple_password(&mut self, ident: &str, password: &str) -> Result<(), ClientError> {
-        let mechs = match self.auth_step_init(ident) {
-            Ok(s) => s,
-            Err(e) => return Err(e),
-        };
-
-        if !mechs.contains(&AuthMech::Password) {
-            debug!("Password mech not presented");
-            return Err(ClientError::AuthenticationFailed);
-        }
-
-        let _state = match self.auth_step_begin(AuthMech::Password) {
-            Ok(s) => s,
-            Err(e) => return Err(e),
-        };
-
-        let r = self.auth_step_password(password)?;
-
-        match r.state {
-            AuthState::Success(_token) => Ok(()),
-            _ => Err(ClientError::AuthenticationFailed),
-        }
+        tokio_block_on(self.asclient.auth_simple_password(ident, password))
     }
 
     pub fn auth_password_totp(
@@ -671,177 +384,61 @@ impl KanidmClient {
         password: &str,
         totp: u32,
     ) -> Result<(), ClientError> {
-        let mechs = match self.auth_step_init(ident) {
-            Ok(s) => s,
-            Err(e) => return Err(e),
-        };
-
-        if !mechs.contains(&AuthMech::PasswordMFA) {
-            debug!("PasswordMFA mech not presented");
-            return Err(ClientError::AuthenticationFailed);
-        }
-
-        let state = match self.auth_step_begin(AuthMech::PasswordMFA) {
-            Ok(s) => s,
-            Err(e) => return Err(e),
-        };
-
-        if !state.contains(&AuthAllowed::TOTP) {
-            debug!("TOTP step not offered.");
-            return Err(ClientError::AuthenticationFailed);
-        }
-
-        let r = self.auth_step_totp(totp)?;
-
-        // Should need to continue.
-        match r.state {
-            AuthState::Continue(allowed) => {
-                if !allowed.contains(&AuthAllowed::Password) {
-                    debug!("Password step not offered.");
-                    return Err(ClientError::AuthenticationFailed);
-                }
-            }
-            _ => {
-                debug!("Invalid AuthState presented.");
-                return Err(ClientError::AuthenticationFailed);
-            }
-        };
-
-        let r = self.auth_step_password(password)?;
-
-        match r.state {
-            AuthState::Success(_token) => Ok(()),
-            _ => Err(ClientError::AuthenticationFailed),
-        }
+        tokio_block_on(self.asclient.auth_password_totp(ident, password, totp))
     }
 
     pub fn auth_webauthn_begin(
         &mut self,
         ident: &str,
     ) -> Result<RequestChallengeResponse, ClientError> {
-        let mechs = match self.auth_step_init(ident) {
-            Ok(s) => s,
-            Err(e) => return Err(e),
-        };
-
-        if !mechs.contains(&AuthMech::Webauthn) {
-            debug!("Webauthn mech not presented");
-            return Err(ClientError::AuthenticationFailed);
-        }
-
-        let mut state = match self.auth_step_begin(AuthMech::Webauthn) {
-            Ok(s) => s,
-            Err(e) => return Err(e),
-        };
-
-        // State is now a set of auth continues.
-        match state.pop() {
-            Some(AuthAllowed::Webauthn(r)) => Ok(r),
-            _ => Err(ClientError::AuthenticationFailed),
-        }
+        tokio_block_on(self.asclient.auth_webauthn_begin(ident))
     }
 
     pub fn auth_webauthn_complete(&mut self, pkc: PublicKeyCredential) -> Result<(), ClientError> {
-        let r = self.auth_step_webauthn_complete(pkc)?;
-        match r.state {
-            AuthState::Success(_token) => Ok(()),
-            _ => Err(ClientError::AuthenticationFailed),
-        }
+        tokio_block_on(self.asclient.auth_webauthn_complete(pkc))
     }
 
     // search
     pub fn search(&self, filter: Filter) -> Result<Vec<Entry>, ClientError> {
-        let sr = SearchRequest { filter };
-        let r: Result<SearchResponse, _> = self.perform_post_request("/v1/raw/search", sr);
-        r.map(|v| v.entries)
+        tokio_block_on(self.asclient.search(filter))
     }
 
     // create
     pub fn create(&self, entries: Vec<Entry>) -> Result<bool, ClientError> {
-        let c = CreateRequest { entries };
-        let r: Result<OperationResponse, _> = self.perform_post_request("/v1/raw/create", c);
-        r.map(|_| true)
+        tokio_block_on(self.asclient.create(entries))
     }
 
     // modify
     pub fn modify(&self, filter: Filter, modlist: ModifyList) -> Result<bool, ClientError> {
-        let mr = ModifyRequest { filter, modlist };
-        let r: Result<OperationResponse, _> = self.perform_post_request("/v1/raw/modify", mr);
-        r.map(|_| true)
+        tokio_block_on(self.asclient.modify(filter, modlist))
     }
 
     // delete
     pub fn delete(&self, filter: Filter) -> Result<bool, ClientError> {
-        let dr = DeleteRequest { filter };
-        let r: Result<OperationResponse, _> = self.perform_post_request("/v1/raw/delete", dr);
-        r.map(|_| true)
+        tokio_block_on(self.asclient.delete(filter))
     }
 
     // === idm actions here ==
-    pub fn idm_account_set_password(&self, cleartext: String) -> Result<bool, ClientError> {
-        let s = SingleStringRequest { value: cleartext };
-
-        let r: Result<OperationResponse, _> =
-            self.perform_post_request("/v1/self/_credential/primary/set_password", s);
-        r.map(|_| true)
-    }
-
-    pub fn auth_step_init(&self, ident: &str) -> Result<Set<AuthMech>, ClientError> {
-        let auth_init = AuthRequest {
-            step: AuthStep::Init(ident.to_string()),
-        };
-
-        let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_init);
-        r.map(|v| {
-            debug!("Authentication Session ID -> {:?}", v.sessionid);
-            v.state
-        })
-        .and_then(|state| match state {
-            AuthState::Choose(mechs) => Ok(mechs),
-            _ => Err(ClientError::AuthenticationFailed),
-        })
-        .map(|mechs| mechs.into_iter().collect())
-    }
-
-    pub fn auth_step_begin(&self, mech: AuthMech) -> Result<Vec<AuthAllowed>, ClientError> {
-        let auth_begin = AuthRequest {
-            step: AuthStep::Begin(mech),
-        };
-
-        let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_begin);
-        r.map(|v| {
-            debug!("Authentication Session ID -> {:?}", v.sessionid);
-            v.state
-        })
-        .and_then(|state| match state {
-            AuthState::Continue(allowed) => Ok(allowed),
-            _ => Err(ClientError::AuthenticationFailed),
-        })
-        // For converting to a Set
-        // .map(|allowed| allowed.into_iter().collect())
-    }
 
     // ===== GROUPS
     pub fn idm_group_list(&self) -> Result<Vec<Entry>, ClientError> {
-        self.perform_get_request("/v1/group")
+        tokio_block_on(self.asclient.idm_group_list())
     }
 
     pub fn idm_group_get(&self, id: &str) -> Result<Option<Entry>, ClientError> {
-        self.perform_get_request(format!("/v1/group/{}", id).as_str())
+        tokio_block_on(self.asclient.idm_group_get(id))
     }
 
     pub fn idm_group_get_members(&self, id: &str) -> Result<Option<Vec<String>>, ClientError> {
-        self.perform_get_request(format!("/v1/group/{}/_attr/member", id).as_str())
+        tokio_block_on(self.asclient.idm_group_get_members(id))
     }
 
     pub fn idm_group_set_members(&self, id: &str, members: &[&str]) -> Result<bool, ClientError> {
-        let m: Vec<_> = members.iter().map(|v| (*v).to_string()).collect();
-        self.perform_put_request(format!("/v1/group/{}/_attr/member", id).as_str(), m)
+        tokio_block_on(self.asclient.idm_group_set_members(id, members))
     }
 
     pub fn idm_group_add_members(&self, id: &str, members: &[&str]) -> Result<bool, ClientError> {
-        let m: Vec<_> = members.iter().map(|v| (*v).to_string()).collect();
-        self.perform_post_request(format!("/v1/group/{}/_attr/member", id).as_str(), m)
+        tokio_block_on(self.asclient.idm_group_add_members(id, members))
     }
 
     /*
@@ -851,11 +448,11 @@ impl KanidmClient {
     */
 
     pub fn idm_group_purge_members(&self, id: &str) -> Result<bool, ClientError> {
-        self.perform_delete_request(format!("/v1/group/{}/_attr/member", id).as_str())
+        tokio_block_on(self.asclient.idm_group_purge_members(id))
     }
 
     pub fn idm_group_unix_token_get(&self, id: &str) -> Result<UnixGroupToken, ClientError> {
-        self.perform_get_request(format!("/v1/group/{}/_unix/_token", id).as_str())
+        tokio_block_on(self.asclient.idm_group_unix_token_get(id))
     }
 
     pub fn idm_group_unix_extend(
@@ -863,57 +460,48 @@ impl KanidmClient {
         id: &str,
         gidnumber: Option<u32>,
     ) -> Result<bool, ClientError> {
-        let gx = GroupUnixExtend { gidnumber };
-        self.perform_post_request(format!("/v1/group/{}/_unix", id).as_str(), gx)
+        tokio_block_on(self.asclient.idm_group_unix_extend(id, gidnumber))
     }
 
     pub fn idm_group_delete(&self, id: &str) -> Result<bool, ClientError> {
-        self.perform_delete_request(format!("/v1/group/{}", id).as_str())
+        tokio_block_on(self.asclient.idm_group_delete(id))
     }
 
     pub fn idm_group_create(&self, name: &str) -> Result<bool, ClientError> {
-        let mut new_group = Entry {
-            attrs: BTreeMap::new(),
-        };
-        new_group
-            .attrs
-            .insert("name".to_string(), vec![name.to_string()]);
-        self.perform_post_request("/v1/group", new_group)
-            .map(|_: OperationResponse| true)
+        tokio_block_on(self.asclient.idm_group_create(name))
     }
 
     // ==== accounts
     pub fn idm_account_list(&self) -> Result<Vec<Entry>, ClientError> {
-        self.perform_get_request("/v1/account")
+        tokio_block_on(self.asclient.idm_account_list())
     }
 
     pub fn idm_account_create(&self, name: &str, dn: &str) -> Result<bool, ClientError> {
-        let mut new_acct = Entry {
-            attrs: BTreeMap::new(),
-        };
-        new_acct
-            .attrs
-            .insert("name".to_string(), vec![name.to_string()]);
-        new_acct
-            .attrs
-            .insert("displayname".to_string(), vec![dn.to_string()]);
-        self.perform_post_request("/v1/account", new_acct)
-            .map(|_: OperationResponse| true)
+        tokio_block_on(self.asclient.idm_account_create(name, dn))
+    }
+
+    pub fn idm_account_set_password(&self, cleartext: String) -> Result<bool, ClientError> {
+        tokio_block_on(self.asclient.idm_account_set_password(cleartext))
     }
 
     pub fn idm_account_set_displayname(&self, id: &str, dn: &str) -> Result<bool, ClientError> {
-        self.perform_put_request(
-            format!("/v1/account/{}/_attr/displayname", id).as_str(),
-            vec![dn.to_string()],
-        )
+        tokio_block_on(self.asclient.idm_account_set_displayname(id, dn))
     }
 
     pub fn idm_account_delete(&self, id: &str) -> Result<bool, ClientError> {
-        self.perform_delete_request(format!("/v1/account/{}", id).as_str())
+        tokio_block_on(self.asclient.idm_account_delete(id))
     }
 
     pub fn idm_account_get(&self, id: &str) -> Result<Option<Entry>, ClientError> {
-        self.perform_get_request(format!("/v1/account/{}", id).as_str())
+        tokio_block_on(self.asclient.idm_account_get(id))
+    }
+
+    pub fn idm_account_get_attr(
+        &self,
+        id: &str,
+        attr: &str,
+    ) -> Result<Option<Vec<String>>, ClientError> {
+        tokio_block_on(self.asclient.idm_account_get_attr(id, attr))
     }
 
     // different ways to set the primary credential?
@@ -923,23 +511,14 @@ impl KanidmClient {
         id: &str,
         pw: &str,
     ) -> Result<SetCredentialResponse, ClientError> {
-        let r = SetCredentialRequest::Password(pw.to_string());
-        self.perform_put_request(
-            format!("/v1/account/{}/_credential/primary", id).as_str(),
-            r,
+        tokio_block_on(
+            self.asclient
+                .idm_account_primary_credential_set_password(id, pw),
         )
     }
 
-    pub fn idm_account_get_attr(
-        &self,
-        id: &str,
-        attr: &str,
-    ) -> Result<Option<Vec<String>>, ClientError> {
-        self.perform_get_request(format!("/v1/account/{}/_attr/{}", id, attr).as_str())
-    }
-
     pub fn idm_account_purge_attr(&self, id: &str, attr: &str) -> Result<bool, ClientError> {
-        self.perform_delete_request(format!("/v1/account/{}/_attr/{}", id, attr).as_str())
+        tokio_block_on(self.asclient.idm_account_purge_attr(id, attr))
     }
 
     pub fn idm_account_set_attr(
@@ -948,8 +527,7 @@ impl KanidmClient {
         attr: &str,
         values: &[&str],
     ) -> Result<bool, ClientError> {
-        let m: Vec<_> = values.iter().map(|v| (*v).to_string()).collect();
-        self.perform_put_request(format!("/v1/account/{}/_attr/{}", id, attr).as_str(), m)
+        tokio_block_on(self.asclient.idm_account_set_attr(id, attr, values))
     }
 
     pub fn idm_account_primary_credential_import_password(
@@ -957,9 +535,9 @@ impl KanidmClient {
         id: &str,
         pw: &str,
     ) -> Result<bool, ClientError> {
-        self.perform_put_request(
-            format!("/v1/account/{}/_attr/password_import", id).as_str(),
-            vec![pw.to_string()],
+        tokio_block_on(
+            self.asclient
+                .idm_account_primary_credential_import_password(id, pw),
         )
     }
 
@@ -967,16 +545,10 @@ impl KanidmClient {
         &self,
         id: &str,
     ) -> Result<String, ClientError> {
-        let r = SetCredentialRequest::GeneratePassword;
-        let res: Result<SetCredentialResponse, ClientError> = self.perform_put_request(
-            format!("/v1/account/{}/_credential/primary", id).as_str(),
-            r,
-        );
-        match res {
-            Ok(SetCredentialResponse::Token(p)) => Ok(p),
-            Ok(_) => Err(ClientError::EmptyResponse),
-            Err(e) => Err(e),
-        }
+        tokio_block_on(
+            self.asclient
+                .idm_account_primary_credential_set_generated(id),
+        )
     }
 
     // Reg intent for totp
@@ -985,16 +557,10 @@ impl KanidmClient {
         id: &str,
         label: &str,
     ) -> Result<(Uuid, TOTPSecret), ClientError> {
-        let r = SetCredentialRequest::TOTPGenerate(label.to_string());
-        let res: Result<SetCredentialResponse, ClientError> = self.perform_put_request(
-            format!("/v1/account/{}/_credential/primary", id).as_str(),
-            r,
-        );
-        match res {
-            Ok(SetCredentialResponse::TOTPCheck(u, s)) => Ok((u, s)),
-            Ok(_) => Err(ClientError::EmptyResponse),
-            Err(e) => Err(e),
-        }
+        tokio_block_on(
+            self.asclient
+                .idm_account_primary_credential_generate_totp(id, label),
+        )
     }
 
     // Verify the totp
@@ -1004,33 +570,17 @@ impl KanidmClient {
         otp: u32,
         session: Uuid,
     ) -> Result<bool, ClientError> {
-        let r = SetCredentialRequest::TOTPVerify(session, otp);
-        let res: Result<SetCredentialResponse, ClientError> = self.perform_put_request(
-            format!("/v1/account/{}/_credential/primary", id).as_str(),
-            r,
-        );
-        match res {
-            Ok(SetCredentialResponse::Success) => Ok(true),
-            Ok(SetCredentialResponse::TOTPCheck(u, s)) => Err(ClientError::TOTPVerifyFailed(u, s)),
-            Ok(_) => Err(ClientError::EmptyResponse),
-            Err(e) => Err(e),
-        }
+        tokio_block_on(
+            self.asclient
+                .idm_account_primary_credential_verify_totp(id, otp, session),
+        )
     }
 
     pub fn idm_account_primary_credential_remove_totp(
         &self,
         id: &str,
     ) -> Result<bool, ClientError> {
-        let r = SetCredentialRequest::TOTPRemove;
-        let res: Result<SetCredentialResponse, ClientError> = self.perform_put_request(
-            format!("/v1/account/{}/_credential/primary", id).as_str(),
-            r,
-        );
-        match res {
-            Ok(SetCredentialResponse::Success) => Ok(true),
-            Ok(_) => Err(ClientError::EmptyResponse),
-            Err(e) => Err(e),
-        }
+        tokio_block_on(self.asclient.idm_account_primary_credential_remove_totp(id))
     }
 
     pub fn idm_account_primary_credential_register_webauthn(
@@ -1038,16 +588,10 @@ impl KanidmClient {
         id: &str,
         label: &str,
     ) -> Result<(Uuid, CreationChallengeResponse), ClientError> {
-        let r = SetCredentialRequest::WebauthnBegin(label.to_string());
-        let res: Result<SetCredentialResponse, ClientError> = self.perform_put_request(
-            format!("/v1/account/{}/_credential/primary", id).as_str(),
-            r,
-        );
-        match res {
-            Ok(SetCredentialResponse::WebauthnCreateChallenge(u, s)) => Ok((u, s)),
-            Ok(_) => Err(ClientError::EmptyResponse),
-            Err(e) => Err(e),
-        }
+        tokio_block_on(
+            self.asclient
+                .idm_account_primary_credential_register_webauthn(id, label),
+        )
     }
 
     pub fn idm_account_primary_credential_complete_webuthn_registration(
@@ -1056,16 +600,10 @@ impl KanidmClient {
         rego: RegisterPublicKeyCredential,
         session: Uuid,
     ) -> Result<(), ClientError> {
-        let r = SetCredentialRequest::WebauthnRegister(session, rego);
-        let res: Result<SetCredentialResponse, ClientError> = self.perform_put_request(
-            format!("/v1/account/{}/_credential/primary", id).as_str(),
-            r,
-        );
-        match res {
-            Ok(SetCredentialResponse::Success) => Ok(()),
-            Ok(_) => Err(ClientError::EmptyResponse),
-            Err(e) => Err(e),
-        }
+        tokio_block_on(
+            self.asclient
+                .idm_account_primary_credential_complete_webuthn_registration(id, rego, session),
+        )
     }
 
     pub fn idm_account_primary_credential_remove_webauthn(
@@ -1073,53 +611,39 @@ impl KanidmClient {
         id: &str,
         label: &str,
     ) -> Result<bool, ClientError> {
-        let r = SetCredentialRequest::WebauthnRemove(label.to_string());
-        let res: Result<SetCredentialResponse, ClientError> = self.perform_put_request(
-            format!("/v1/account/{}/_credential/primary", id).as_str(),
-            r,
-        );
-        match res {
-            Ok(SetCredentialResponse::Success) => Ok(true),
-            Ok(_) => Err(ClientError::EmptyResponse),
-            Err(e) => Err(e),
-        }
+        tokio_block_on(
+            self.asclient
+                .idm_account_primary_credential_remove_webauthn(id, label),
+        )
     }
 
     pub fn idm_account_get_credential_status(
         &self,
         id: &str,
     ) -> Result<CredentialStatus, ClientError> {
-        let res: Result<CredentialStatus, ClientError> =
-            self.perform_get_request(format!("/v1/account/{}/_credential/_status", id).as_str());
-        res.and_then(|cs| {
-            if cs.creds.is_empty() {
-                Err(ClientError::EmptyResponse)
-            } else {
-                Ok(cs)
-            }
-        })
+        tokio_block_on(self.asclient.idm_account_get_credential_status(id))
     }
 
     pub fn idm_account_radius_credential_get(
         &self,
         id: &str,
     ) -> Result<Option<String>, ClientError> {
-        self.perform_get_request(format!("/v1/account/{}/_radius", id).as_str())
+        tokio_block_on(self.asclient.idm_account_radius_credential_get(id))
     }
 
     pub fn idm_account_radius_credential_regenerate(
         &self,
         id: &str,
     ) -> Result<String, ClientError> {
-        self.perform_post_request(format!("/v1/account/{}/_radius", id).as_str(), ())
+        tokio_block_on(self.asclient.idm_account_radius_credential_regenerate(id))
     }
 
     pub fn idm_account_radius_credential_delete(&self, id: &str) -> Result<bool, ClientError> {
-        self.perform_delete_request(format!("/v1/account/{}/_radius", id).as_str())
+        tokio_block_on(self.asclient.idm_account_radius_credential_delete(id))
     }
 
     pub fn idm_account_radius_token_get(&self, id: &str) -> Result<RadiusAuthToken, ClientError> {
-        self.perform_get_request(format!("/v1/account/{}/_radius/_token", id).as_str())
+        tokio_block_on(self.asclient.idm_account_radius_token_get(id))
     }
 
     pub fn idm_account_unix_extend(
@@ -1128,29 +652,19 @@ impl KanidmClient {
         gidnumber: Option<u32>,
         shell: Option<&str>,
     ) -> Result<bool, ClientError> {
-        let ux = AccountUnixExtend {
-            shell: shell.map(|s| s.to_string()),
-            gidnumber,
-        };
-        self.perform_post_request(format!("/v1/account/{}/_unix", id).as_str(), ux)
+        tokio_block_on(self.asclient.idm_account_unix_extend(id, gidnumber, shell))
     }
 
     pub fn idm_account_unix_token_get(&self, id: &str) -> Result<UnixUserToken, ClientError> {
-        self.perform_get_request(format!("/v1/account/{}/_unix/_token", id).as_str())
+        tokio_block_on(self.asclient.idm_account_unix_token_get(id))
     }
 
     pub fn idm_account_unix_cred_put(&self, id: &str, cred: &str) -> Result<bool, ClientError> {
-        let req = SingleStringRequest {
-            value: cred.to_string(),
-        };
-        self.perform_put_request(
-            format!("/v1/account/{}/_unix/_credential", id).as_str(),
-            req,
-        )
+        tokio_block_on(self.asclient.idm_account_unix_cred_put(id, cred))
     }
 
     pub fn idm_account_unix_cred_delete(&self, id: &str) -> Result<bool, ClientError> {
-        self.perform_delete_request(format!("/v1/account/{}/_unix/_credential", id).as_str())
+        tokio_block_on(self.asclient.idm_account_unix_cred_delete(id))
     }
 
     pub fn idm_account_unix_cred_verify(
@@ -1158,14 +672,11 @@ impl KanidmClient {
         id: &str,
         cred: &str,
     ) -> Result<Option<UnixUserToken>, ClientError> {
-        let req = SingleStringRequest {
-            value: cred.to_string(),
-        };
-        self.perform_post_request(format!("/v1/account/{}/_unix/_auth", id).as_str(), req)
+        tokio_block_on(self.asclient.idm_account_unix_cred_verify(id, cred))
     }
 
     pub fn idm_account_get_ssh_pubkeys(&self, id: &str) -> Result<Vec<String>, ClientError> {
-        self.perform_get_request(format!("/v1/account/{}/_ssh_pubkeys", id).as_str())
+        tokio_block_on(self.asclient.idm_account_get_ssh_pubkeys(id))
     }
 
     pub fn idm_account_post_ssh_pubkey(
@@ -1174,12 +685,11 @@ impl KanidmClient {
         tag: &str,
         pubkey: &str,
     ) -> Result<bool, ClientError> {
-        let sk = (tag.to_string(), pubkey.to_string());
-        self.perform_post_request(format!("/v1/account/{}/_ssh_pubkeys", id).as_str(), sk)
+        tokio_block_on(self.asclient.idm_account_post_ssh_pubkey(id, tag, pubkey))
     }
 
     pub fn idm_account_person_extend(&self, id: &str) -> Result<bool, ClientError> {
-        self.perform_post_request(format!("/v1/account/{}/_person/_extend", id).as_str(), ())
+        tokio_block_on(self.asclient.idm_account_person_extend(id))
     }
 
     /*
@@ -1193,72 +703,63 @@ impl KanidmClient {
         id: &str,
         tag: &str,
     ) -> Result<Option<String>, ClientError> {
-        self.perform_get_request(format!("/v1/account/{}/_ssh_pubkeys/{}", id, tag).as_str())
+        tokio_block_on(self.asclient.idm_account_get_ssh_pubkey(id, tag))
     }
 
     pub fn idm_account_delete_ssh_pubkey(&self, id: &str, tag: &str) -> Result<bool, ClientError> {
-        self.perform_delete_request(format!("/v1/account/{}/_ssh_pubkeys/{}", id, tag).as_str())
+        tokio_block_on(self.asclient.idm_account_delete_ssh_pubkey(id, tag))
     }
 
     // ==== domain_info (aka domain)
     pub fn idm_domain_list(&self) -> Result<Vec<Entry>, ClientError> {
-        self.perform_get_request("/v1/domain")
+        tokio_block_on(self.asclient.idm_domain_list())
     }
 
     pub fn idm_domain_get(&self, id: &str) -> Result<Entry, ClientError> {
-        self.perform_get_request(format!("/v1/domain/{}", id).as_str())
+        tokio_block_on(self.asclient.idm_domain_get(id))
     }
 
     // pub fn idm_domain_get_attr
     pub fn idm_domain_get_ssid(&self, id: &str) -> Result<String, ClientError> {
-        self.perform_get_request(format!("/v1/domain/{}/_attr/domain_ssid", id).as_str())
-            .and_then(|mut r: Vec<String>|
-                // Get the first result
-                r.pop()
-                .ok_or(
-                    ClientError::EmptyResponse
-                ))
+        tokio_block_on(self.asclient.idm_domain_get_ssid(id))
     }
 
     // pub fn idm_domain_put_attr
     pub fn idm_domain_set_ssid(&self, id: &str, ssid: &str) -> Result<bool, ClientError> {
-        self.perform_put_request(
-            format!("/v1/domain/{}/_attr/domain_ssid", id).as_str(),
-            vec![ssid.to_string()],
-        )
+        tokio_block_on(self.asclient.idm_domain_set_ssid(id, ssid))
     }
 
     // ==== schema
     pub fn idm_schema_list(&self) -> Result<Vec<Entry>, ClientError> {
-        self.perform_get_request("/v1/schema")
+        tokio_block_on(self.asclient.idm_schema_list())
     }
 
     pub fn idm_schema_attributetype_list(&self) -> Result<Vec<Entry>, ClientError> {
-        self.perform_get_request("/v1/schema/attributetype")
+        tokio_block_on(self.asclient.idm_schema_attributetype_list())
     }
 
     pub fn idm_schema_attributetype_get(&self, id: &str) -> Result<Option<Entry>, ClientError> {
-        self.perform_get_request(format!("/v1/schema/attributetype/{}", id).as_str())
+        tokio_block_on(self.asclient.idm_schema_attributetype_get(id))
     }
 
     pub fn idm_schema_classtype_list(&self) -> Result<Vec<Entry>, ClientError> {
-        self.perform_get_request("/v1/schema/classtype")
+        tokio_block_on(self.asclient.idm_schema_classtype_list())
     }
 
     pub fn idm_schema_classtype_get(&self, id: &str) -> Result<Option<Entry>, ClientError> {
-        self.perform_get_request(format!("/v1/schema/classtype/{}", id).as_str())
+        tokio_block_on(self.asclient.idm_schema_classtype_get(id))
     }
 
     // ==== recycle bin
     pub fn recycle_bin_list(&self) -> Result<Vec<Entry>, ClientError> {
-        self.perform_get_request("/v1/recycle_bin")
+        tokio_block_on(self.asclient.recycle_bin_list())
     }
 
     pub fn recycle_bin_get(&self, id: &str) -> Result<Option<Entry>, ClientError> {
-        self.perform_get_request(format!("/v1/recycle_bin/{}", id).as_str())
+        tokio_block_on(self.asclient.recycle_bin_get(id))
     }
 
     pub fn recycle_bin_revive(&self, id: &str) -> Result<bool, ClientError> {
-        self.perform_post_request(format!("/v1/recycle_bin/{}/_revive", id).as_str(), ())
+        tokio_block_on(self.asclient.recycle_bin_revive(id))
     }
 }
