@@ -378,7 +378,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
                 };
 
                 let (auth_session, state) = if is_valid {
-                    //TODO: we can keep a cached map of the badlist, and pass by reference rather than by value
+                    //TODO #397: we can keep a cached map of the badlist, and pass by reference rather than by value
                     let badlist_entry = self
                         .qs_read
                         .internal_search_uuid(au, &UUID_SYSTEM_CONFIG)
