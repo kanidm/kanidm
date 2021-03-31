@@ -51,6 +51,9 @@ def _authenticate(s, acct, pw):
         print(r.json())
         raise Exception("AuthInitFailed")
 
+    session_id = r.headers["x-kanidm-auth-session-id"]
+    headers = {"X-KANIDM-AUTH-SESSION-ID": session_id}
+
     # {'sessionid': '00000000-5fe5-46e1-06b6-b830dd035a10', 'state': {'choose': ['password']}}
     if 'password' not in r.json().get('state', {'choose': None}).get('choose', None):
         print("invalid auth mech presented %s" % r.json())
@@ -58,13 +61,13 @@ def _authenticate(s, acct, pw):
 
     begin_auth = {"step": {"begin": "password"}}
 
-    r = s.post(AUTH_URL, json=begin_auth, verify=CA, timeout=TIMEOUT)
+    r = s.post(AUTH_URL, json=begin_auth, verify=CA, timeout=TIMEOUT, headers=headers)
     if r.status_code != 200:
         print(r.json())
         raise Exception("AuthBeginFailed")
 
     cred_auth = {"step": { "cred": {"password": pw}}}
-    r = s.post(AUTH_URL, json=cred_auth, verify=CA, timeout=TIMEOUT)
+    r = s.post(AUTH_URL, json=cred_auth, verify=CA, timeout=TIMEOUT, headers=headers)
     response = r.json()
     if r.status_code != 200:
         print(response)

@@ -456,7 +456,7 @@ impl IdlSqliteTransaction for IdlSqliteReadTransaction {
 
 impl Drop for IdlSqliteReadTransaction {
     // Abort - so far this has proven reliable to use drop here.
-    fn drop(self: &mut Self) {
+    fn drop(&mut self) {
         if !self.committed {
             #[allow(clippy::expect_used)]
             self.conn
@@ -496,7 +496,7 @@ impl IdlSqliteTransaction for IdlSqliteWriteTransaction {
 
 impl Drop for IdlSqliteWriteTransaction {
     // Abort
-    fn drop(self: &mut Self) {
+    fn drop(&mut self) {
         if !self.committed {
             #[allow(clippy::expect_used)]
             self.conn
