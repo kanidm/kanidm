@@ -1,7 +1,7 @@
-use crate::audit::AuditScope;
 use crate::idm::account::Account;
 use crate::idm::claim::Claim;
 use crate::idm::AuthState;
+use crate::{audit::AuditScope, value::Value};
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthMech};
 
@@ -15,6 +15,8 @@ use crate::credential::webauthn::WebauthnDomainConfig;
 use std::time::Duration;
 use uuid::Uuid;
 // use webauthn_rs::proto::Credential as WebauthnCredential;
+use crate::value::PartialValue;
+pub use std::collections::BTreeSet as Set;
 use webauthn_rs::proto::RequestChallengeResponse;
 use webauthn_rs::{AuthenticationState, Webauthn};
 
@@ -29,6 +31,7 @@ const BAD_WEBAUTHN_MSG: &str = "invalid webauthn authentication";
 const BAD_AUTH_TYPE_MSG: &str = "invalid authentication method in this context";
 const BAD_CREDENTIALS: &str = "invalid credential message";
 const ACCOUNT_EXPIRED: &str = "account expired";
+const PW_BADLIST_MSG: &str = "password is in badlist";
 
 enum CredState {
     Success(Vec<Claim>),
@@ -178,13 +181,25 @@ impl CredHandler {
         pw: &mut Password,
         who: Uuid,
         async_tx: &Sender<DelayedAction>,
+        pw_badlist_set: Option<Set<Value>>,
     ) -> CredState {
         match cred {
             AuthCredential::Password(cleartext) => {
                 if pw.verify(cleartext.as_str()).unwrap_or(false) {
-                    lsecurity!(au, "Handler::Password -> Result::Success");
-                    Self::maybe_pw_upgrade(au, pw, who, cleartext.as_str(), async_tx);
-                    CredState::Success(Vec::new())
+                    match pw_badlist_set {
+                        Some(p) if p.contains(&PartialValue::new_iutf8(cleartext)) => {
+                            lsecurity!(
+                                au,
+                                "Handler::Password -> Result::Denied - Password found in badlist during login"
+                            );
+                            CredState::Denied(PW_BADLIST_MSG)
+                        }
+                        _ => {
+                            lsecurity!(au, "Handler::Password -> Result::Success");
+                            Self::maybe_pw_upgrade(au, pw, who, cleartext.as_str(), async_tx);
+                            CredState::Success(Vec::new())
+                        }
+                    }
                 } else {
                     lsecurity!(
                         au,
@@ -197,7 +212,7 @@ impl CredHandler {
             _ => {
                 lsecurity!(
                     au,
-                    "Handler::Anonymous -> Result::Denied - invalid cred type for handler"
+                    "Handler::Password -> Result::Denied - invalid cred type for handler"
                 );
                 CredState::Denied(BAD_AUTH_TYPE_MSG)
             }
@@ -212,6 +227,7 @@ impl CredHandler {
         webauthn: &Webauthn<WebauthnDomainConfig>,
         who: Uuid,
         async_tx: &Sender<DelayedAction>,
+        pw_badlist_set: Option<Set<Value>>,
     ) -> CredState {
         match (&pw_mfa.mfa_state, &pw_mfa.pw_state) {
             (CredVerifyState::Init, CredVerifyState::Init) => {
@@ -273,19 +289,31 @@ impl CredHandler {
                 match cred {
                     AuthCredential::Password(cleartext) => {
                         if pw_mfa.pw.verify(cleartext.as_str()).unwrap_or(false) {
-                            pw_mfa.pw_state = CredVerifyState::Success;
-                            lsecurity!(
-                                au,
-                                "Handler::PasswordMFA -> Result::Success - TOTP OK, password OK"
-                            );
-                            Self::maybe_pw_upgrade(
-                                au,
-                                &pw_mfa.pw,
-                                who,
-                                cleartext.as_str(),
-                                async_tx,
-                            );
-                            CredState::Success(Vec::new())
+                            match pw_badlist_set {
+                                Some(p) if p.contains(&PartialValue::new_iutf8(cleartext)) => {
+                                    pw_mfa.pw_state = CredVerifyState::Fail;
+                                    lsecurity!(
+                                        au,
+                                        "Handler::PasswordMFA -> Result::Denied - Password found in badlist during login"
+                                    );
+                                    CredState::Denied(PW_BADLIST_MSG)
+                                }
+                                _ => {
+                                    pw_mfa.pw_state = CredVerifyState::Success;
+                                    lsecurity!(
+                                        au,
+                                        "Handler::PasswordMFA -> Result::Success - TOTP OK, password OK"
+                                    );
+                                    Self::maybe_pw_upgrade(
+                                        au,
+                                        &pw_mfa.pw,
+                                        who,
+                                        cleartext.as_str(),
+                                        async_tx,
+                                    );
+                                    CredState::Success(Vec::new())
+                                }
+                            }
                         } else {
                             pw_mfa.pw_state = CredVerifyState::Fail;
                             lsecurity!(
@@ -375,15 +403,23 @@ impl CredHandler {
         who: Uuid,
         async_tx: &Sender<DelayedAction>,
         webauthn: &Webauthn<WebauthnDomainConfig>,
+        pw_badlist_set: Option<Set<Value>>,
     ) -> CredState {
         match self {
             CredHandler::Anonymous => Self::validate_anonymous(au, cred),
             CredHandler::Password(ref mut pw) => {
-                Self::validate_password(au, cred, pw, who, async_tx)
+                Self::validate_password(au, cred, pw, who, async_tx, pw_badlist_set)
             }
-            CredHandler::PasswordMFA(ref mut pw_mfa) => {
-                Self::validate_password_mfa(au, cred, ts, pw_mfa, webauthn, who, async_tx)
-            }
+            CredHandler::PasswordMFA(ref mut pw_mfa) => Self::validate_password_mfa(
+                au,
+                cred,
+                ts,
+                pw_mfa,
+                webauthn,
+                who,
+                async_tx,
+                pw_badlist_set,
+            ),
             CredHandler::Webauthn(ref mut wan_cred) => {
                 Self::validate_webauthn(au, cred, wan_cred, webauthn, who, async_tx)
             }
@@ -464,6 +500,8 @@ pub(crate) struct AuthSession {
     //
     // This handler will then handle the mfa and stepping up through to generate the auth states
     state: AuthSessionState,
+    // Store the password badlist
+    pw_badlist_set: Option<Set<Value>>,
 }
 
 impl AuthSession {
@@ -473,6 +511,7 @@ impl AuthSession {
         _appid: &Option<String>,
         webauthn: &Webauthn<WebauthnDomainConfig>,
         ct: Duration,
+        pw_badlist_set: Option<Set<Value>>,
     ) -> (Option<Self>, AuthState) {
         // During this setup, determine the credential handler that we'll be using
         // for this session. This is currently based on presentation of an application
@@ -516,7 +555,11 @@ impl AuthSession {
             (None, AuthState::Denied(reason.to_string()))
         } else {
             // We can proceed
-            let auth_session = AuthSession { account, state };
+            let auth_session = AuthSession {
+                account,
+                state,
+                pw_badlist_set,
+            };
             // Get the set of mechanisms that can proceed. This is tied
             // to the session so that it can mutate state and have progression
             // of what's next, or ordering.
@@ -608,7 +651,15 @@ impl AuthSession {
                 ));
             }
             AuthSessionState::InProgress(ref mut handler) => {
-                match handler.validate(au, cred, time, self.account.uuid, async_tx, webauthn) {
+                match handler.validate(
+                    au,
+                    cred,
+                    time,
+                    self.account.uuid,
+                    async_tx,
+                    webauthn,
+                    self.pw_badlist_set.clone(),
+                ) {
                     CredState::Success(claims) => {
                         lsecurity!(au, "Successful cred handling");
                         let uat = self
@@ -683,9 +734,13 @@ mod tests {
     use crate::credential::Credential;
     use crate::idm::authsession::{
         AuthSession, BAD_AUTH_TYPE_MSG, BAD_PASSWORD_MSG, BAD_TOTP_MSG, BAD_WEBAUTHN_MSG,
+        PW_BADLIST_MSG,
     };
     use crate::idm::delayed::DelayedAction;
     use crate::idm::AuthState;
+    use crate::value::Value;
+    pub use std::collections::BTreeSet as Set;
+
     use crate::utils::duration_from_epoch_now;
     use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthMech};
     use std::time::Duration;
@@ -720,6 +775,7 @@ mod tests {
             &None,
             &webauthn,
             duration_from_epoch_now(),
+            Option::None,
         );
 
         if let AuthState::Choose(auth_mechs) = state {
@@ -767,6 +823,7 @@ mod tests {
             &Some("NonExistantAppID".to_string()),
             &webauthn,
             duration_from_epoch_now(),
+            Option::None,
         );
 
         // We now ignore appids.
@@ -785,12 +842,15 @@ mod tests {
             $account:expr,
             $webauthn:expr
         ) => {{
+            let mut pw_badlist_set = Set::new();
+            pw_badlist_set.insert(Value::new_iutf8("list@no3IBTyqHu$bad"));
             let (session, state) = AuthSession::new(
                 $audit,
                 $account.clone(),
                 &None,
                 $webauthn,
                 duration_from_epoch_now(),
+                Some(pw_badlist_set),
             );
             let mut session = session.unwrap();
 
@@ -878,18 +938,58 @@ mod tests {
         audit.write_log();
     }
 
+    #[test]
+    fn test_idm_authsession_simple_password_badlist() {
+        let mut audit = AuditScope::new(
+            "test_idm_authsession_simple_password_badlist",
+            uuid::Uuid::new_v4(),
+            None,
+        );
+        let webauthn = create_webauthn();
+        // create the ent
+        let mut account = entry_str_to_account!(JSON_ADMIN_V1);
+        // manually load in a cred
+        let p = CryptoPolicy::minimum();
+        let cred = Credential::new_password_only(&p, "list@no3IBTyqHu$bad").unwrap();
+        account.primary = Some(cred);
+
+        let (async_tx, mut async_rx) = unbounded();
+
+        // now check, even though the password is correct, Auth should be denied since it is in badlist
+        let mut session = start_password_session!(&mut audit, account, &webauthn);
+
+        let attempt = AuthCredential::Password("list@no3IBTyqHu$bad".to_string());
+        match session.validate_creds(
+            &mut audit,
+            &attempt,
+            &Duration::from_secs(0),
+            &async_tx,
+            &webauthn,
+        ) {
+            Ok(AuthState::Denied(msg)) => assert!(msg == PW_BADLIST_MSG),
+            _ => panic!(),
+        };
+
+        drop(async_tx);
+        assert!(async_rx.blocking_recv().is_none());
+        audit.write_log();
+    }
+
     macro_rules! start_password_mfa_session {
         (
             $audit:expr,
             $account:expr,
             $webauthn:expr
         ) => {{
+            let mut pw_badlist_set = Set::new();
+            pw_badlist_set.insert(Value::new_iutf8("list@no3IBTyqHu$bad"));
             let (session, state) = AuthSession::new(
                 $audit,
                 $account.clone(),
                 &None,
                 $webauthn,
                 duration_from_epoch_now(),
+                Some(pw_badlist_set),
             );
             let mut session = session.expect("Session was unable to be created.");
 
@@ -1077,6 +1177,74 @@ mod tests {
         audit.write_log();
     }
 
+    #[test]
+    fn test_idm_authsession_password_mfa_badlist() {
+        let mut audit = AuditScope::new(
+            "test_idm_authsession_password_mfa_badlist",
+            uuid::Uuid::new_v4(),
+            None,
+        );
+        let webauthn = create_webauthn();
+        // create the ent
+        let mut account = entry_str_to_account!(JSON_ADMIN_V1);
+
+        // Setup a fake time stamp for consistency.
+        let ts = Duration::from_secs(12345);
+
+        // manually load in a cred
+        let totp = TOTP::generate_secure("test_totp".to_string(), TOTP_DEFAULT_STEP);
+
+        let totp_good = totp
+            .do_totp_duration_from_epoch(&ts)
+            .expect("failed to perform totp.");
+
+        let pw_badlist = "list@no3IBTyqHu$bad";
+
+        let p = CryptoPolicy::minimum();
+        let cred = Credential::new_password_only(&p, pw_badlist)
+            .unwrap()
+            .update_totp(totp);
+        // add totp also
+        account.primary = Some(cred);
+
+        let (async_tx, mut async_rx) = unbounded();
+
+        // now check
+
+        // == two step checks
+
+        // check send good totp, should continue
+        //      then badlist pw, failed
+        {
+            let (mut session, _) = start_password_mfa_session!(&mut audit, account, &webauthn);
+
+            match session.validate_creds(
+                &mut audit,
+                &AuthCredential::TOTP(totp_good),
+                &ts,
+                &async_tx,
+                &webauthn,
+            ) {
+                Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
+                _ => panic!(),
+            };
+            match session.validate_creds(
+                &mut audit,
+                &AuthCredential::Password(pw_badlist.to_string()),
+                &ts,
+                &async_tx,
+                &webauthn,
+            ) {
+                Ok(AuthState::Denied(msg)) => assert!(msg == PW_BADLIST_MSG),
+                _ => panic!(),
+            };
+        }
+
+        drop(async_tx);
+        assert!(async_rx.blocking_recv().is_none());
+        audit.write_log();
+    }
+
     macro_rules! start_webauthn_only_session {
         (
             $audit:expr,
@@ -1089,6 +1257,7 @@ mod tests {
                 &None,
                 $webauthn,
                 duration_from_epoch_now(),
+                Option::None,
             );
             let mut session = session.unwrap();
 

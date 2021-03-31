@@ -1,9 +1,9 @@
-use wasm_bindgen::prelude::*;
 use anyhow::Error;
+use wasm_bindgen::prelude::*;
 use yew::format::{Json, Nothing};
 use yew::prelude::*;
-use yew::services::{ConsoleService, StorageService};
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
+use yew::services::{ConsoleService, StorageService};
 
 use kanidm_proto::v1::{AuthRequest, AuthState, AuthStep};
 
@@ -24,32 +24,24 @@ pub enum LoginAppMsg {
 impl LoginApp {
     fn auth_begin(&mut self) {
         let username_copy = self.username.clone();
-        let callback = self.link.callback(
-            move |response: Response<Json<Result<AuthState, Error>>>| {
-                let (parts, body) = response.into_parts();
-                match body {
-                    Json(Ok(state)) => {
-                        LoginAppMsg::Next(state)
+        let callback =
+            self.link
+                .callback(move |response: Response<Json<Result<AuthState, Error>>>| {
+                    let (parts, body) = response.into_parts();
+                    match body {
+                        Json(Ok(state)) => LoginAppMsg::Next(state),
+                        Json(Err(_)) => LoginAppMsg::DoNothing,
                     }
-                    Json(Err(_)) => {
-                        LoginAppMsg::DoNothing
-                    }
-                }
-            }
-        );
+                });
         let authreq = AuthRequest {
-            step: AuthStep::Init(self.username.clone())
+            step: AuthStep::Init(self.username.clone()),
         };
         // Setup the auth step::init(username);
         self.ft = Request::post("/v1/auth")
             .header("Content-Type", "application/json")
             .body(Json(&authreq))
             .map_err(|_| ())
-            .and_then(|request| {
-                FetchService::fetch_binary(request, callback)
-                    .map_err(|_| ())
-
-            })
+            .and_then(|request| FetchService::fetch_binary(request, callback).map_err(|_| ()))
             .map(|ft| Some(ft))
             .unwrap_or_else(|_e| None);
     }
@@ -63,9 +55,7 @@ impl Component for LoginApp {
         ConsoleService::log(format!("create").as_str());
 
         // First we need to work out what state we are in.
-        let lstorage = StorageService::new(
-            yew::services::storage::Area::Local
-        ).unwrap();
+        let lstorage = StorageService::new(yew::services::storage::Area::Local).unwrap();
 
         // Get any previous sessions?
         // Are they still valid?
@@ -74,7 +64,7 @@ impl Component for LoginApp {
             link,
             username: "".to_string(),
             lstorage,
-            ft: None
+            ft: None,
         }
     }
 
@@ -98,9 +88,7 @@ impl Component for LoginApp {
                 ConsoleService::log(format!("next -> {:?}", state).as_str());
                 true
             }
-            LoginAppMsg::DoNothing => {
-                false
-            }
+            LoginAppMsg::DoNothing => false,
         }
     }
 

@@ -526,7 +526,7 @@ fn test_cache_account_pam_allowed() {
                 .await
                 .expect("failed to auth as admin");
             adminclient
-                .idm_group_add_members("allowed_group", vec!["testaccount1"])
+                .idm_group_add_members("allowed_group", &["testaccount1"])
                 .await
                 .unwrap();
 

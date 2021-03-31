@@ -1085,15 +1085,17 @@ impl QueryServerWriteV1 {
             "class".into(),
             Value::new_class("posixaccount"),
         )))
-        .chain(iter::once(gidnumber.as_ref().map(|_| {
-            Modify::Purged("gidnumber".into())
-        })))
+        .chain(iter::once(
+            gidnumber
+                .as_ref()
+                .map(|_| Modify::Purged("gidnumber".into())),
+        ))
         .chain(iter::once(gidnumber.map(|n| {
             Modify::Present("gidnumber".into(), Value::new_uint32(n))
         })))
-        .chain(iter::once(shell.as_ref().map(|_| {
-            Modify::Purged("loginshell".into())
-        })))
+        .chain(iter::once(
+            shell.as_ref().map(|_| Modify::Purged("loginshell".into())),
+        ))
         .chain(iter::once(shell.map(|s| {
             Modify::Present("loginshell".into(), Value::new_iutf8(s.as_str()))
         })))
