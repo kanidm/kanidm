@@ -258,7 +258,6 @@ impl KanidmClientBuilder {
         self.display_warnings(address.as_str());
 
         let client_builder = reqwest::Client::builder()
-            .cookie_store(true)
             .danger_accept_invalid_hostnames(!self.verify_hostnames)
             .danger_accept_invalid_certs(!self.verify_ca);
 
@@ -292,6 +291,7 @@ impl KanidmClientBuilder {
             builder: self,
             bearer_token: None,
             origin,
+            auth_session_id: None,
         })
     }
 }
@@ -301,6 +301,7 @@ pub struct KanidmClient {
     asclient: KanidmAsyncClient,
 }
 
+#[allow(clippy::expect_used)]
 fn tokio_block_on<R, F>(f: F) -> R
 where
     F: std::future::Future + std::future::Future<Output = R>,
@@ -343,11 +344,11 @@ impl KanidmClient {
     }
 
     // auth
-    pub fn auth_step_init(&self, ident: &str) -> Result<Set<AuthMech>, ClientError> {
+    pub fn auth_step_init(&mut self, ident: &str) -> Result<Set<AuthMech>, ClientError> {
         tokio_block_on(self.asclient.auth_step_init(ident))
     }
 
-    pub fn auth_step_begin(&self, mech: AuthMech) -> Result<Vec<AuthAllowed>, ClientError> {
+    pub fn auth_step_begin(&mut self, mech: AuthMech) -> Result<Vec<AuthAllowed>, ClientError> {
         tokio_block_on(self.asclient.auth_step_begin(mech))
     }
 

@@ -1,4 +1,4 @@
-use crate::{ClientError, KanidmClientBuilder, APPLICATION_JSON, KOPID};
+use crate::{ClientError, KanidmClientBuilder, APPLICATION_JSON, KOPID, KSESSIONID};
 use reqwest::header::CONTENT_TYPE;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -20,6 +20,7 @@ pub struct KanidmAsyncClient {
     pub(crate) origin: String,
     pub(crate) builder: KanidmClientBuilder,
     pub(crate) bearer_token: Option<String>,
+    pub(crate) auth_session_id: Option<String>,
 }
 
 impl KanidmAsyncClient {
@@ -51,6 +52,70 @@ impl KanidmAsyncClient {
 
         std::mem::swap(&mut self.client, &mut client);
         Ok(())
+    }
+
+    async fn perform_auth_post_request<R: Serialize, T: DeserializeOwned>(
+        &mut self,
+        dest: &str,
+        request: R,
+    ) -> Result<T, ClientError> {
+        let dest = [self.addr.as_str(), dest].concat();
+        debug!("{:?}", dest);
+        // format doesn't work in async ?!
+        // let dest = format!("{}{}", self.addr, dest);
+
+        let req_string = serde_json::to_string(&request).map_err(ClientError::JSONEncode)?;
+
+        let response = self
+            .client
+            .post(dest.as_str())
+            .body(req_string)
+            .header(CONTENT_TYPE, APPLICATION_JSON);
+        let response = if let Some(token) = &self.bearer_token {
+            response.bearer_auth(token)
+        } else {
+            response
+        };
+
+        // If we have a session header, set it now.
+        let response = if let Some(sessionid) = &self.auth_session_id {
+            response.header(KSESSIONID, sessionid)
+        } else {
+            response
+        };
+
+        let response = response.send().await.map_err(ClientError::Transport)?;
+
+        // If we have a sessionid header in the response, get it now.
+
+        let headers = response.headers();
+
+        self.auth_session_id = headers
+            .get(KSESSIONID)
+            .map(|hv| hv.to_str().ok().map(|s| s.to_string()))
+            .flatten();
+
+        let opid = headers
+            .get(KOPID)
+            .and_then(|hv| hv.to_str().ok().map(|s| s.to_string()))
+            .unwrap_or_else(|| "missing_kopid".to_string());
+        debug!("opid -> {:?}", opid);
+
+        match response.status() {
+            reqwest::StatusCode::OK => {}
+            unexpect => {
+                return Err(ClientError::Http(
+                    unexpect,
+                    response.json().await.ok(),
+                    opid,
+                ))
+            }
+        }
+
+        response
+            .json()
+            .await
+            .map_err(|e| ClientError::JSONDecode(e, opid))
     }
 
     async fn perform_post_request<R: Serialize, T: DeserializeOwned>(
@@ -228,14 +293,16 @@ impl KanidmAsyncClient {
             .map_err(|e| ClientError::JSONDecode(e, opid))
     }
 
-    pub async fn auth_step_init(&self, ident: &str) -> Result<Set<AuthMech>, ClientError> {
+    pub async fn auth_step_init(&mut self, ident: &str) -> Result<Set<AuthMech>, ClientError> {
         let auth_init = AuthRequest {
             step: AuthStep::Init(ident.to_string()),
         };
 
-        let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_init).await;
+        let r: Result<AuthResponse, _> =
+            self.perform_auth_post_request("/v1/auth", auth_init).await;
         r.map(|v| {
             debug!("Authentication Session ID -> {:?}", v.sessionid);
+            // Stash the session ID header.
             v.state
         })
         .and_then(|state| match state {
@@ -245,12 +312,16 @@ impl KanidmAsyncClient {
         .map(|mechs| mechs.into_iter().collect())
     }
 
-    pub async fn auth_step_begin(&self, mech: AuthMech) -> Result<Vec<AuthAllowed>, ClientError> {
+    pub async fn auth_step_begin(
+        &mut self,
+        mech: AuthMech,
+    ) -> Result<Vec<AuthAllowed>, ClientError> {
         let auth_begin = AuthRequest {
             step: AuthStep::Begin(mech),
         };
 
-        let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_begin).await;
+        let r: Result<AuthResponse, _> =
+            self.perform_auth_post_request("/v1/auth", auth_begin).await;
         r.map(|v| {
             debug!("Authentication Session ID -> {:?}", v.sessionid);
             v.state
@@ -267,7 +338,8 @@ impl KanidmAsyncClient {
         let auth_anon = AuthRequest {
             step: AuthStep::Cred(AuthCredential::Anonymous),
         };
-        let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_anon).await;
+        let r: Result<AuthResponse, _> =
+            self.perform_auth_post_request("/v1/auth", auth_anon).await;
 
         r.map(|ar| {
             if let AuthState::Success(token) = &ar.state {
@@ -284,7 +356,7 @@ impl KanidmAsyncClient {
         let auth_req = AuthRequest {
             step: AuthStep::Cred(AuthCredential::Password(password.to_string())),
         };
-        let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_req).await;
+        let r: Result<AuthResponse, _> = self.perform_auth_post_request("/v1/auth", auth_req).await;
 
         r.map(|ar| {
             if let AuthState::Success(token) = &ar.state {
@@ -298,7 +370,7 @@ impl KanidmAsyncClient {
         let auth_req = AuthRequest {
             step: AuthStep::Cred(AuthCredential::TOTP(totp)),
         };
-        let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_req).await;
+        let r: Result<AuthResponse, _> = self.perform_auth_post_request("/v1/auth", auth_req).await;
 
         r.map(|ar| {
             if let AuthState::Success(token) = &ar.state {
@@ -315,7 +387,7 @@ impl KanidmAsyncClient {
         let auth_req = AuthRequest {
             step: AuthStep::Cred(AuthCredential::Webauthn(pkc)),
         };
-        let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_req).await;
+        let r: Result<AuthResponse, _> = self.perform_auth_post_request("/v1/auth", auth_req).await;
 
         r.map(|ar| {
             if let AuthState::Success(token) = &ar.state {
@@ -341,12 +413,7 @@ impl KanidmAsyncClient {
             Err(e) => return Err(e),
         };
 
-        let auth_anon = AuthRequest {
-            step: AuthStep::Cred(AuthCredential::Anonymous),
-        };
-        let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_anon).await;
-
-        let r = r?;
+        let r = self.auth_step_anonymous().await?;
 
         match r.state {
             AuthState::Success(token) => {
@@ -377,18 +444,10 @@ impl KanidmAsyncClient {
             Err(e) => return Err(e),
         };
 
-        let auth_req = AuthRequest {
-            step: AuthStep::Cred(AuthCredential::Password(password.to_string())),
-        };
-        let r: Result<AuthResponse, _> = self.perform_post_request("/v1/auth", auth_req).await;
-
-        let r = r?;
+        let r = self.auth_step_password(password).await?;
 
         match r.state {
-            AuthState::Success(token) => {
-                self.bearer_token = Some(token);
-                Ok(())
-            }
+            AuthState::Success(_) => Ok(()),
             _ => Err(ClientError::AuthenticationFailed),
         }
     }

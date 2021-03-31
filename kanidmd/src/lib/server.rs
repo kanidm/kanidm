@@ -189,14 +189,10 @@ pub trait QueryServerTransaction {
             // the QS wr/ro to the plugin trait. However, there shouldn't be a need for search
             // plugis, because all data transforms should be in the write path.
 
-            let res = self
-                .get_be_txn()
-                .search(au, lims, &vfr)
-                .map(|r| r)
-                .map_err(|e| {
-                    ladmin_error!(au, "backend failure -> {:?}", e);
-                    OperationError::Backend
-                })?;
+            let res = self.get_be_txn().search(au, lims, &vfr).map_err(|e| {
+                ladmin_error!(au, "backend failure -> {:?}", e);
+                OperationError::Backend
+            })?;
 
             // Apply ACP before we let the plugins "have at it".
             // WARNING; for external searches this is NOT the only
