@@ -3,7 +3,38 @@
   <img src="https://raw.githubusercontent.com/kanidm/kanidm/master/artwork/logo-small.png" width="20%" height="auto" />
 </p>
 
+# Getting Started
+
+To get started, see the [kanidm book]
+
+# Feedback
+
+We value your feedback! First, please see our [code of conduct]. If you
+have questions please join our [gitter community channel] so that we
+can help. If you find a bug or issue, we'd love you to report it to our
+[issue tracker].
+
 # Release Notes
+
+## 2021-04-01 - Kanidm 1.1.0-alpha4
+
+This is the fourth alpha series release of the Kanidm Identity Management
+project. Alpha releases are to help get feedback and ideas from the community
+on how we can continue to make this project better for a future supported release.
+
+### Release Highlights
+
+* Performance Improvements
+* TOTP CLI enrollment
+* Jemalloc in main server instead of system allocator
+* Command line completion
+* TLS file handling improvements
+* Webauthn authentication and enrollment on CLI
+* Add db vacuum task
+* Unix tasks daemon that automatically creates home directories
+* Support for sk-ecdsa public ssh keys
+* Badlist checked at login to determine account compromise
+* Minor Fixes for attribute display
 
 ## 2021-01-01 - Kanidm 1.1.0-alpha3
 
@@ -18,17 +49,6 @@ on how we can continue to make this project better for a future supported releas
 * Foundations of webauthn and multiple credential support.
 * Rewrite of json authentication protocol components.
 * Unixd will cache "non-existant" items to improve nss/pam latency.
-
-### Getting Started
-
-To get started, see the [kanidm book]
-
-### Feedback
-
-We value your feedback! First, please see our [code of conduct]. If you
-have questions please join our [gitter community channel] so that we
-can help. If you find a bug or issue, we'd love you to report it to our
-[issue tracker].
 
 ## 2020-10-01 - Kanidm 1.1.0-alpha2
 
@@ -47,17 +67,6 @@ on how we can continue to make this project better for a future supported releas
 * Replace actix with tide and async
 * Reduction in memory footprint during searches
 * Change authentication from cookies to auth-bearer tokens
-
-### Getting Started
-
-To get started, see the [kanidm book]
-
-### Feedback
-
-We value your feedback! First, please see our [code of conduct]. If you
-have questions please join our [gitter community channel] so that we
-can help. If you find a bug or issue, we'd love you to report it to our
-[issue tracker].
 
 ## 2020-07-01 - Kanidm 1.1.0-alpha1
 
@@ -89,17 +98,6 @@ and help of many people. I would especially like to thank:
 * Memberof and reverse group management with referential integrity
 * Recycle Bin
 * Performance analysis tools
-
-### Getting Started
-
-To get started, see the [kanidm book]
-
-### Feedback
-
-We value your feedback! First, please see our [code of conduct]. If you
-have questions please join our [gitter community channel] so that we
-can help. If you find a bug or issue, we'd love you to report it to our
-[issue tracker].
 
 [issue tracker]: https://github.com/kanidm/kanidm/issues
 [gitter community channel]: https://gitter.im/kanidm/community

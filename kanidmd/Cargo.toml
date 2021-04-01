@@ -23,10 +23,10 @@ kanidm_proto = { path = "../kanidm_proto", version = "1.1.0-alpha" }
 jemallocator = { version = "0.3.0", optional = true }
 
 url = "2.1"
-tide = "0.15"
+tide = "0.16"
+tide-rustls = "0.3"
 async-trait = "0.1"
 async-h1 = "2.0"
-tide-rustls = "0.1"
 fernet = "^0.1.4"
 
 async-std = "1.6"
@@ -53,15 +53,15 @@ serde_cbor = "0.11"
 serde_json = "1.0"
 serde_derive = "1.0"
 
-libsqlite3-sys = { version = "0.18" }
-rusqlite = { version = "0.23", features = ["backup"] }
+libsqlite3-sys = { version = "0.20" }
+rusqlite = { version = "0.24", features = ["backup"] }
 r2d2 = "0.8"
-r2d2_sqlite = "0.16"
+r2d2_sqlite = "0.17"
 
 structopt = { version = "0.3", default-features = false }
 time = { version = "0.2", features = ["serde", "std"] }
 
-hashbrown = "0.9"
+hashbrown = "0.11"
 concread = "^0.2.5"
 # concread = { version = "^0.2.5", features = ["simd_support"] }
 

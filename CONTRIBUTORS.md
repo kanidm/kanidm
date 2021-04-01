@@ -12,6 +12,7 @@
 * Jamie (JJJollyjim)
 * Triss Healy (NiryaAestus)
 * Samuel Cabrero (scabrero)
+* Victor Wai (vcwai)
 
 ## Acknowledgements
 

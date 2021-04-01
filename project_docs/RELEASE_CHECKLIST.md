@@ -4,7 +4,7 @@
 // cargo install cargo-release
 
 * cargo audit
-* cargo outdated
+* cargo outdated -R
 
 * upgrade crypto policy values if requires
 * bump index version in constants
