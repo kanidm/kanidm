@@ -123,9 +123,10 @@ def authorize(args):
     try:
         tok = _get_radius_token(username)
     except Exception as e:
-        print(e)
+        radiusd.radlog(radiusd.L_INFO, 'kanidm exception %s' % e)
 
     if tok == None:
+        radiusd.radlog(radiusd.L_INFO, 'kanidm RLM_MODULE_NOTFOUND due to no auth token')
         return radiusd.RLM_MODULE_NOTFOUND
 
     # print("got token %s" % tok)
@@ -136,15 +137,15 @@ def authorize(args):
     for group in tok["groups"]:
         if group['name'] == REQ_GROUP:
             req_sat = True
-    print("required group satisfied -> %s:%s" % (username, req_sat))
+    radiusd.radlog(radiusd.L_INFO, "required group satisfied -> %s:%s" % (username, req_sat))
     if req_sat is not True:
         return radiusd.RLM_MODULE_NOTFOUND
 
     # look up them in config for group vlan if possible.
     uservlan = reduce(check_vlan, tok["groups"], DEFAULT_VLAN)
     if uservlan == 0:
-        print("mistake!")
-    print("selected vlan %s:%s" % (username, uservlan))
+        radiusd.radlog(radiusd.L_INFO, "Invalid uservlan of 0")
+    radiusd.radlog(radiusd.L_INFO, "selected vlan %s:%s" % (username, uservlan))
     # Convert the tok groups to groups.
     name = tok["name"]
     secret = tok["secret"]
@@ -160,7 +161,7 @@ def authorize(args):
         ('Cleartext-Password', str(secret)),
     )
 
-    print("OK! Returning details to radius for %s ..." % username)
+    radiusd.radlog(radiusd.L_INFO, "OK! Returning details to radius for %s ..." % username)
     return (radiusd.RLM_MODULE_OK, reply, config)
 
 
