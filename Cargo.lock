@@ -1805,7 +1805,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_tools"
-version = "1.1.0-alpha.3"
+version = "1.1.0-alpha.4"
 dependencies = [
  "env_logger",
  "kanidm_client",
