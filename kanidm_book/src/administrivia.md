@@ -71,7 +71,7 @@ you can then rename the domain with the commands as follows:
 
 In some (rare) cases you may need to reindex.
 Please note the server will sometimes reindex on startup as a result of the project
-changing it's internal schema definitions. This is normal and expected - you may never need
+changing its internal schema definitions. This is normal and expected - you may never need
 to start a reindex yourself as a result!
 
 You'll likely notice a need to reindex if you add indexes to schema and you see a message in your logs such as:
@@ -80,8 +80,8 @@ You'll likely notice a need to reindex if you add indexes to schema and you see 
     Index {type} {attribute} not found
 
 This indicates that an index of type equality has been added for name, but the indexing process
-has not been run - the server will continue to operate and the query execution code will correctly
-process the query however it will not be the optimal method of delivering the results as we need to
+has not been run. The server will continue to operate and the query execution code will correctly
+process the query - however it will not be the optimal method of delivering the results as we need to
 disregard this part of the query and act as though it's un-indexed.
 
 Reindexing will resolve this by forcing all indexes to be recreated based on their schema
@@ -96,9 +96,10 @@ Generally, reindexing is a rare action and should not normally be required.
 
 # Vacuum
 
-Vacuuming is the process of reclaiming un-used pages from the sqlite freelists, as well as performing
-some data reordering tasks that may make some queries more efficient . It is recommended that you
-vacuum after a reindex is performed or when you wish to reclaim space in the database file.
+[Vacuuming](https://www.sqlite.org/lang_vacuum.html) is the process of reclaiming un-used pages 
+from the sqlite freelists, as well as performing some data reordering tasks that may make some 
+queries more efficient . It is recommended that you vacuum after a reindex is performed or 
+when you wish to reclaim space in the database file.
 
 Vacuum is also able to change the pagesize of the database. After changing db\_fs\_type (which affects 
 pagesize) in server.toml, you must run a vacuum for this to take effect.
@@ -129,7 +130,7 @@ If you have errors, please contact the project to help support you to resolve th
 # Raw actions
 
 The server has a low-level stateful API you can use for more complex or advanced tasks on large numbers
-of entries at once. Some examples are below, but generally we advise you to use the apis as listed
+of entries at once. Some examples are below, but generally we advise you to use the APIs as listed
 above.
 
     # Create from json (group or account)
