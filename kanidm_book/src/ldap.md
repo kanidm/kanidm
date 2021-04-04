@@ -23,7 +23,7 @@ many applications - an IDM just like Kanidm!
 Kanidm is not able to be mapped 100% to LDAP's objects. This is because LDAP
 types are simple key-values on objects which are all UTF8 strings or subsets
 of based on validation (matching) rules. Kanidm internally implements complex
-datatypes such as taging on SSH keys, or multi-value credentials. These can not
+datatypes such as tagging on SSH keys, or multi-value credentials. These can not
 be represented in LDAP.
 
 As well many of the structures in Kanidm don't correlate closely to LDAP. For example
