@@ -1574,7 +1574,7 @@ mod tests {
                     &anon_init,
                     Duration::from_secs(TEST_CURRENT_TIME),
                 ));
-                /* Some weird lifetime shit happens here ... */
+                /* Some weird lifetime things happen here ... */
 
                 let sid = match r1 {
                     Ok(ar) => {
