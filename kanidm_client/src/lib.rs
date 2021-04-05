@@ -153,7 +153,7 @@ impl KanidmClientBuilder {
         let mut f = match File::open(config_path) {
             Ok(f) => f,
             Err(e) => {
-                debug!("Unabled to open config file [{:?}], skipping ...", e);
+                debug!("Unable to open config file [{:?}], skipping ...", e);
                 return Ok(self);
             }
         };
