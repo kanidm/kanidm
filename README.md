@@ -63,13 +63,13 @@ all backgrounds.
 ### Currently Working On
 
 * CLI for administration
-* WebUI for self service with wifi enrollment, claim management and more.
+* WebUI for self-service with wifi enrollment, claim management and more.
 * RBAC/Claims/Policy (limited by time and credential scope)
 
 ### Upcoming Focus Areas
 
 * OIDC/Oauth
-* Replication (async multiple active write servers, read only servers)
+* Replication (async multiple active write servers, read-only servers)
 
 ### Future
 
@@ -81,7 +81,7 @@ all backgrounds.
 
 ## Some key project ideas
 
-* All people should be respected and able to be respresented securely.
+* All people should be respected and able to be represented securely.
 * Devices represent users and their identities - they are part of the authentication.
 * Human error occurs - we should be designed to minimise human mistakes and empower people.
 * The system should be easy to understand and reason about for users and admins.
@@ -97,5 +97,5 @@ all backgrounds.
 
 The original project name was rsidm while it was a thought experiment. Now that it's growing
 and developing, we gave it a better project name. Kani is Japanese for "crab". Rust's mascot is a crab.
-Idm is the common industry term for identity management services.
+IDM is the common industry term for identity management services.
 

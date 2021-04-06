@@ -114,7 +114,7 @@ in place you can use a shell container that mounts the volume such as:
 ## Configuration
 
 You will also need a config file in the volume named `server.toml` (Within the container it should be
-`/data/server.toml`). It's contents should be as follows:
+`/data/server.toml`). Its contents should be as follows:
 
     #   The webserver bind address. Will use HTTPS if tls_* is provided.
     #   Defaults to "127.0.0.1:8443"
