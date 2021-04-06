@@ -691,7 +691,7 @@ impl<'a> BackendTransaction for BackendReadTransaction<'a> {
 
     #[allow(clippy::mut_from_ref)]
     fn get_idlayer(&self) -> &mut IdlArcSqliteReadTransaction<'a> {
-        // OKAY here be the cursed bullshit. We know that in our application
+        // OKAY here be the cursed thing. We know that in our application
         // that during a transaction, that we are the only holder of the
         // idlayer, so we KNOW it can be mut, and we know every thing it
         // returns is a copy anyway. But if we permeate that mut up, it prevents

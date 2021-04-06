@@ -8,7 +8,6 @@ MAJOR, MINOR, _, _, _ = sys.version_info
 
 if MAJOR >= 3:
     import configparser
-    # Absolutely fuck you python3
     from functools import reduce
 else:
     import ConfigParser as configparser
