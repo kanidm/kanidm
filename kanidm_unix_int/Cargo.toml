@@ -50,7 +50,6 @@ kanidm_proto = { path = "../kanidm_proto", version = "1.1.0-alpha" }
 kanidm = { path = "../kanidmd", version = "1.1.0-alpha" }
 toml = "0.5"
 rpassword = "5.0"
-## Removed "signal"
 tokio = { version = "1", features = ["rt", "macros", "sync", "time", "net", "io-util"] }
 tokio-util = { version = "0.6", features = ["codec"] }
 
