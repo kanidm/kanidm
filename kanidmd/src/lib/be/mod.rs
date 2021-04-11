@@ -12,8 +12,8 @@ use crate::event::EventLimits;
 use crate::filter::{Filter, FilterPlan, FilterResolved, FilterValidResolved};
 use crate::value::Value;
 use concread::cowcell::*;
+use idlset::v2::IDLBitRange;
 use idlset::AndNot;
-use idlset::IDLBitRange;
 use kanidm_proto::v1::{ConsistencyError, OperationError};
 use smartstring::alias::String as AttrString;
 use std::ops::DerefMut;
@@ -36,7 +36,7 @@ use crate::be::idl_arc_sqlite::{
 // Re-export this
 pub use crate::be::idl_sqlite::FsType;
 
-const FILTER_SEARCH_TEST_THRESHOLD: usize = 8;
+const FILTER_SEARCH_TEST_THRESHOLD: usize = 2;
 const FILTER_EXISTS_TEST_THRESHOLD: usize = 0;
 
 #[derive(Debug, Clone)]
@@ -616,10 +616,13 @@ pub trait BackendTransaction {
                     })?;
 
                     // if not 100% resolved query, apply the filter test.
-                    let entries_filtered: Vec<_> = entries
-                        .into_iter()
-                        .filter(|e| e.entry_match_no_index(&filt))
-                        .collect();
+                    let entries_filtered: Vec<_> =
+                        lperf_trace_segment!(au, "be::exists -> entry_match_no_index", || {
+                            entries
+                                .into_iter()
+                                .filter(|e| e.entry_match_no_index(&filt))
+                                .collect()
+                        });
 
                     Ok(!entries_filtered.is_empty())
                 }
@@ -1127,6 +1130,10 @@ impl<'a> BackendWriteTransaction<'a> {
                 e
             })?;
         limmediate_warning!(audit, " reindexed {} entries ✅\n", count);
+        limmediate_warning!(audit, "Optimising Indexes ... ");
+        idlayer.optimise_dirty_idls(audit);
+        limmediate_warning!(audit, "done ✅\n");
+
         Ok(())
     }
 
@@ -1395,7 +1402,7 @@ impl Backend {
 #[cfg(test)]
 mod tests {
     use hashbrown::HashSet as Set;
-    use idlset::IDLBitRange;
+    use idlset::v2::IDLBitRange;
     use std::fs;
     use std::iter::FromIterator;
     use uuid::Uuid;

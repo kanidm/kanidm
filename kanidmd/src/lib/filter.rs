@@ -284,6 +284,7 @@ impl Filter<FilterValid> {
                     Some(idx) => FilterResolved::resolve_idx(self.state.inner.clone(), ev, idx),
                     None => FilterResolved::resolve_no_idx(self.state.inner.clone(), ev),
                 }
+                .map(|f| f.fast_optimise())
                 .ok_or(OperationError::FilterUUIDResolution)?,
             },
         })
@@ -1102,6 +1103,23 @@ impl FilterResolved {
                 )),
                 _ => None,
             },
+        }
+    }
+
+    // This is an optimise that only attempts to optimise the outer terms.
+    fn fast_optimise(self) -> Self {
+        match self {
+            FilterResolved::Inclusion(mut f_list) => {
+                f_list.sort_unstable();
+                f_list.dedup();
+                FilterResolved::Inclusion(f_list)
+            }
+            FilterResolved::And(mut f_list) => {
+                f_list.sort_unstable();
+                f_list.dedup();
+                FilterResolved::And(f_list)
+            }
+            v => v,
         }
     }
 

@@ -2,7 +2,7 @@ use crate::audit::AuditScope;
 use crate::be::{IdRawEntry, IDL};
 use crate::entry::{Entry, EntryCommitted, EntrySealed};
 use crate::value::{IndexType, Value};
-use idlset::IDLBitRange;
+use idlset::v2::IDLBitRange;
 use kanidm_proto::v1::{ConsistencyError, OperationError};
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;

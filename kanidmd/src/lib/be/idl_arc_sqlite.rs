@@ -9,7 +9,7 @@ use crate::value::IndexType;
 use crate::value::Value;
 use concread::arcache::{ARCache, ARCacheReadTxn, ARCacheWriteTxn};
 use concread::cowcell::*;
-use idlset::IDLBitRange;
+use idlset::v2::IDLBitRange;
 use kanidm_proto::v1::{ConsistencyError, OperationError};
 use std::collections::BTreeSet;
 use std::ops::DerefMut;
@@ -663,6 +663,16 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
             }
             // self.db.write_idl(audit, attr, itype, idx_key, idl)
             Ok(())
+        })
+    }
+
+    pub fn optimise_dirty_idls(&mut self, audit: &mut AuditScope) {
+        self.idl_cache.iter_mut_dirty().for_each(|(k, maybe_idl)| {
+            if let Some(idl) = maybe_idl {
+                if idl.maybe_compress() {
+                    lfilter_info!(audit, "Compressed idl -> {:?} ", k);
+                }
+            }
         })
     }
 
