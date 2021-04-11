@@ -471,11 +471,14 @@ pub trait BackendTransaction {
         // Unlike DS, even if we don't get the index back, we can just pass
         // to the in-memory filter test and be done.
         lperf_trace_segment!(au, "be::search", || {
+            /*
             // Do a final optimise of the filter
             lfilter!(au, "filter unoptimised form --> {:?}", filt);
             let filt =
                 lperf_trace_segment!(au, "be::search<filt::optimise>", || { filt.optimise() });
             lfilter!(au, "filter optimised to --> {:?}", filt);
+            */
+            lfilter!(au, "filter optimised --> {:?}", filt);
 
             // Using the indexes, resolve the IDL here, or ALLIDS.
             // Also get if the filter was 100% resolved or not.
@@ -571,10 +574,13 @@ pub trait BackendTransaction {
         filt: &Filter<FilterValidResolved>,
     ) -> Result<bool, OperationError> {
         lperf_trace_segment!(au, "be::exists", || {
+            /*
             // Do a final optimise of the filter
             lfilter!(au, "filter unoptimised form --> {:?}", filt);
             let filt = filt.optimise();
             lfilter!(au, "filter optimised to --> {:?}", filt);
+            */
+            lfilter!(au, "filter optimised --> {:?}", filt);
 
             // Using the indexes, resolve the IDL here, or ALLIDS.
             // Also get if the filter was 100% resolved or not.

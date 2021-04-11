@@ -227,7 +227,9 @@ pub struct Filter<STATE> {
 impl Filter<FilterValidResolved> {
     // Does this need mut self? Aren't we returning
     // a new copied filter?
-    pub fn optimise(&self) -> Self {
+
+    #[cfg(test)]
+    fn optimise(&self) -> Self {
         // Apply optimisations to the filter
         // An easy way would be imple partialOrd
         // then do sort on the or/and/not
@@ -276,15 +278,27 @@ impl Filter<FilterValid> {
         &self,
         ev: &Event,
         idxmeta: Option<&HashSet<IdxKey>>,
+        // rsv_cache: (),
     ) -> Result<Filter<FilterValidResolved>, OperationError> {
         // Given a filter, resolve Not and SelfUUID to real terms.
+        //
+        // The benefit of moving optimisation to this step is from various inputs, we can
+        // get to a resolved + optimised filter, and then we can cache those outputs in many
+        // cases!
         Ok(Filter {
             state: FilterValidResolved {
                 inner: match idxmeta {
                     Some(idx) => FilterResolved::resolve_idx(self.state.inner.clone(), ev, idx),
                     None => FilterResolved::resolve_no_idx(self.state.inner.clone(), ev),
                 }
-                .map(|f| f.fast_optimise())
+                .map(|f| {
+                    match idxmeta {
+                        // Do a proper optimise if we have idxmeta.
+                        Some(_) => f.optimise(),
+                        // Only do this if we don't have idxmeta.
+                        None => f.fast_optimise(),
+                    }
+                })
                 .ok_or(OperationError::FilterUUIDResolution)?,
             },
         })
@@ -424,6 +438,8 @@ impl Filter<FilterInvalid> {
         &self,
         schema: &dyn SchemaTransaction,
     ) -> Result<Filter<FilterValid>, SchemaError> {
+        // TODO: Add a schema validation cache that can return pre-validated filters.
+
         Ok(Filter {
             state: FilterValid {
                 inner: self.state.inner.validate(schema)?,
@@ -551,7 +567,7 @@ impl FilterComp {
         }
     }
 
-    pub fn validate(&self, schema: &dyn SchemaTransaction) -> Result<FilterComp, SchemaError> {
+    fn validate(&self, schema: &dyn SchemaTransaction) -> Result<FilterComp, SchemaError> {
         // Optimisation is done at another stage.
 
         // This probably needs some rework
