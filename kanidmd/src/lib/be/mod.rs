@@ -53,25 +53,65 @@ pub struct IdRawEntry {
     data: Vec<u8>,
 }
 
+#[derive(Debug, Clone)]
+pub struct IdxMeta {
+    pub idxkeys: Set<IdxKey>,
+}
+
+impl IdxMeta {
+    pub fn new(idxkeys: Set<IdxKey>) -> Self {
+        IdxMeta { idxkeys }
+    }
+}
+
+#[derive(Clone)]
+pub struct BackendConfig {
+    path: String,
+    pool_size: u32,
+    fstype: FsType,
+    // Cachesizes?
+    arcsize: Option<usize>,
+}
+
+impl BackendConfig {
+    pub fn new(path: &str, pool_size: u32, fstype: FsType, arcsize: Option<usize>) -> Self {
+        BackendConfig {
+            pool_size,
+            path: path.to_string(),
+            fstype,
+            arcsize,
+        }
+    }
+
+    pub(crate) fn new_test() -> Self {
+        BackendConfig {
+            pool_size: 1,
+            path: "".to_string(),
+            fstype: FsType::Generic,
+            arcsize: Some(1024),
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct Backend {
-    pool_size: usize,
     idlayer: Arc<IdlArcSqlite>,
     /// This is a copy-on-write cache of the index metadata that has been
     /// extracted from attributes set, in the correct format for the backend
     /// to consume.
-    idxmeta: Arc<CowCell<Set<IdxKey>>>,
+    idxmeta: Arc<CowCell<IdxMeta>>,
+    cfg: BackendConfig,
 }
 
 pub struct BackendReadTransaction<'a> {
     idlayer: UnsafeCell<IdlArcSqliteReadTransaction<'a>>,
-    idxmeta: CowCellReadTxn<Set<IdxKey>>,
+    idxmeta: CowCellReadTxn<IdxMeta>,
 }
 
 pub struct BackendWriteTransaction<'a> {
     idlayer: UnsafeCell<IdlArcSqliteWriteTransaction<'a>>,
-    idxmeta: CowCellReadTxn<Set<IdxKey>>,
-    idxmeta_wr: CowCellWriteTxn<'a, Set<IdxKey>>,
+    idxmeta: CowCellReadTxn<IdxMeta>,
+    idxmeta_wr: CowCellWriteTxn<'a, IdxMeta>,
 }
 
 impl IdRawEntry {
@@ -92,7 +132,7 @@ pub trait BackendTransaction {
     #[allow(clippy::mut_from_ref)]
     fn get_idlayer(&self) -> &mut Self::IdlLayerType;
 
-    fn get_idxmeta_ref(&self) -> &Set<IdxKey>;
+    fn get_idxmeta_ref(&self) -> &IdxMeta;
 
     /// Recursively apply a filter, transforming into IDL's on the way. This builds a query
     /// execution log, so that it can be examined how an operation proceeded.
@@ -714,7 +754,7 @@ impl<'a> BackendTransaction for BackendReadTransaction<'a> {
         unsafe { &mut (*self.idlayer.get()) }
     }
 
-    fn get_idxmeta_ref(&self) -> &Set<IdxKey> {
+    fn get_idxmeta_ref(&self) -> &IdxMeta {
         &self.idxmeta
     }
 }
@@ -727,7 +767,7 @@ impl<'a> BackendTransaction for BackendWriteTransaction<'a> {
         unsafe { &mut (*self.idlayer.get()) }
     }
 
-    fn get_idxmeta_ref(&self) -> &Set<IdxKey> {
+    fn get_idxmeta_ref(&self) -> &IdxMeta {
         &self.idxmeta
     }
 }
@@ -860,8 +900,8 @@ impl<'a> BackendWriteTransaction<'a> {
         })
     }
 
-    pub fn update_idxmeta(&mut self, mut idxmeta: Set<IdxKey>) {
-        std::mem::swap(self.idxmeta_wr.deref_mut(), &mut idxmeta);
+    pub fn update_idxmeta(&mut self, mut idxkeys: Set<IdxKey>) {
+        std::mem::swap(&mut self.idxmeta_wr.deref_mut().idxkeys, &mut idxkeys);
     }
 
     // Should take a mut index set, and then we write the whole thing back
@@ -994,7 +1034,7 @@ impl<'a> BackendWriteTransaction<'a> {
         // this we discard the lifetime on idxmeta, because we know that it will
         // remain constant for the life of the operation.
 
-        let idxmeta = unsafe { &(*(&*self.idxmeta as *const _)) };
+        let idxmeta = unsafe { &(*(&self.idxmeta.idxkeys as *const _)) };
 
         let idx_diff = Entry::idx_diff(&(*idxmeta), pre, post);
 
@@ -1052,6 +1092,7 @@ impl<'a> BackendWriteTransaction<'a> {
 
         let missing: Vec<_> = self
             .idxmeta
+            .idxkeys
             .iter()
             .filter_map(|ikey| {
                 // what would the table name be?
@@ -1081,6 +1122,7 @@ impl<'a> BackendWriteTransaction<'a> {
         idlayer.create_uuid2rdn(audit)?;
 
         self.idxmeta
+            .idxkeys
             .iter()
             .try_for_each(|ikey| idlayer.create_idx(audit, &ikey.attr, &ikey.itype))
     }
@@ -1321,27 +1363,29 @@ impl<'a> BackendWriteTransaction<'a> {
 impl Backend {
     pub fn new(
         audit: &mut AuditScope,
-        path: &str,
-        mut pool_size: u32,
-        fstype: FsType,
-        idxmeta: Set<IdxKey>,
+        mut cfg: BackendConfig,
+        // path: &str,
+        // mut pool_size: u32,
+        // fstype: FsType,
+        idxkeys: Set<IdxKey>,
         vacuum: bool,
     ) -> Result<Self, OperationError> {
-        info!("DB tickets -> {:?}", pool_size);
+        info!("DB tickets -> {:?}", cfg.pool_size);
         info!("Profile -> {}", env!("KANIDM_PROFILE_NAME"));
         info!("CPU Flags -> {}", env!("KANIDM_CPU_FLAGS"));
 
         // If in memory, reduce pool to 1
-        if path == "" {
-            pool_size = 1;
+        if &cfg.path == "" {
+            cfg.pool_size = 1;
         }
 
         // this has a ::memory() type, but will path == "" work?
         lperf_trace_segment!(audit, "be::new", || {
+            let idlayer = Arc::new(IdlArcSqlite::new(audit, &cfg, vacuum)?);
             let be = Backend {
-                pool_size: pool_size as usize,
-                idlayer: Arc::new(IdlArcSqlite::new(audit, path, pool_size, fstype, vacuum)?),
-                idxmeta: Arc::new(CowCell::new(idxmeta)),
+                cfg,
+                idlayer,
+                idxmeta: Arc::new(CowCell::new(IdxMeta::new(idxkeys))),
             };
 
             // Now complete our setup with a txn
@@ -1362,9 +1406,9 @@ impl Backend {
         })
     }
 
-    pub fn get_pool_size(&self) -> usize {
-        debug_assert!(self.pool_size > 0);
-        self.pool_size
+    pub fn get_pool_size(&self) -> u32 {
+        debug_assert!(self.cfg.pool_size > 0);
+        self.cfg.pool_size
     }
 
     pub fn read(&self) -> BackendReadTransaction {
@@ -1417,7 +1461,7 @@ mod tests {
     use super::super::entry::{Entry, EntryInit, EntryNew};
     use super::IdxKey;
     use super::{
-        Backend, BackendTransaction, BackendWriteTransaction, FsType, OperationError, IDL,
+        Backend, BackendConfig, BackendTransaction, BackendWriteTransaction, OperationError, IDL,
     };
     use crate::event::EventLimits;
     use crate::value::{IndexType, PartialValue, Value};
@@ -1466,7 +1510,7 @@ mod tests {
                 itype: IndexType::EQUALITY,
             });
 
-            let be = Backend::new(&mut audit, "", 1, FsType::Generic, idxmeta, false)
+            let be = Backend::new(&mut audit, BackendConfig::new_test(), idxmeta, false)
                 .expect("Failed to setup backend");
 
             let mut be_txn = be.write();

@@ -119,11 +119,14 @@ You will also need a config file in the volume named `server.toml` (Within the c
     #   The webserver bind address. Will use HTTPS if tls_* is provided.
     #   Defaults to "127.0.0.1:8443"
     bindaddress = "127.0.0.1:8443"
+    #
     #   The read-only ldap server bind address. The server will use LDAPS if tls_* is provided.
     #   Defaults to "" (disabled)
     # ldapbindaddress = "127.0.0.1:3636"
+    #
     #   The path to the kanidm database.
     db_path = "/data/kanidm.db"
+    #
     #   If you have a known filesystem, kanidm can tune sqlite to match. Valid choices are:
     #   [zfs, other]
     #   If you are unsure about this leave it as the default (other). After changing this
@@ -133,12 +136,18 @@ You will also need a config file in the volume named `server.toml` (Within the c
     #   - other:
     #     * sets sqlite pagesize to 4k, matching most filesystems block sizes.
     # db_fs_type = "zfs"
+    #
+    #   The number of entries to store in the in-memory cache. Minimum value is 256.
+    # db_arc_size = 2048
+    #
     #   TLS chain and key in pem format. Both must be commented, or both must be present
     # tls_chain = "/data/chain.pem"
     # tls_key = "/data/key.pem"
+    #
     #   The log level of the server. May be default, verbose, perfbasic, perffull
     #   Defaults to "default"
     # log_level = "default"
+    #
     #   The origin for webauthn. This is the url to the server minus port information
     origin = "https://idm.example.com"
 

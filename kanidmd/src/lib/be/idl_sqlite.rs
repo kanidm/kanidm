@@ -1,5 +1,5 @@
 use crate::audit::AuditScope;
-use crate::be::{IdRawEntry, IDL};
+use crate::be::{BackendConfig, IdRawEntry, IDL};
 use crate::entry::{Entry, EntryCommitted, EntrySealed};
 use crate::value::{IndexType, Value};
 use idlset::v2::IDLBitRange;
@@ -1235,13 +1235,11 @@ impl IdlSqliteWriteTransaction {
 impl IdlSqlite {
     pub fn new(
         audit: &mut AuditScope,
-        path: &str,
-        pool_size: u32,
-        fstype: FsType,
+        cfg: &BackendConfig,
         vacuum: bool,
     ) -> Result<Self, OperationError> {
-        if path == "" {
-            debug_assert!(pool_size == 1);
+        if cfg.path == "" {
+            debug_assert!(cfg.pool_size == 1);
         }
         // If provided, set the page size to match the tuning we want. By default we use 4096. The VACUUM
         // immediately after is so that on db create the page size takes effect.
@@ -1258,7 +1256,7 @@ impl IdlSqlite {
                 "NOTICE: A db vacuum has been requested. This may take a long time ...\n"
             );
 
-            let vconn = Connection::open_with_flags(path, flags).map_err(|e| {
+            let vconn = Connection::open_with_flags(cfg.path.as_str(), flags).map_err(|e| {
                 ladmin_error!(audit, "rusqlite error {:?}", e);
                 OperationError::SQLiteError
             })?;
@@ -1275,13 +1273,13 @@ impl IdlSqlite {
                 OperationError::SQLiteError
             })?;
 
-            let vconn = Connection::open_with_flags(path, flags).map_err(|e| {
+            let vconn = Connection::open_with_flags(cfg.path.as_str(), flags).map_err(|e| {
                 ladmin_error!(audit, "rusqlite error {:?}", e);
                 OperationError::SQLiteError
             })?;
 
             vconn
-                .pragma_update(None, "page_size", &(fstype as u32))
+                .pragma_update(None, "page_size", &(cfg.fstype as u32))
                 .map_err(|e| {
                     ladmin_error!(audit, "rusqlite page_size update error {:?}", e);
                     OperationError::SQLiteError
@@ -1307,20 +1305,18 @@ impl IdlSqlite {
             limmediate_warning!(audit, "NOTICE: db vacuum complete\n");
         };
 
-        let manager = SqliteConnectionManager::file(path)
+        let fstype = cfg.fstype as u32;
+
+        let manager = SqliteConnectionManager::file(cfg.path.as_str())
             .with_init(move |c| {
                 c.execute_batch(
-                    format!(
-                        "PRAGMA page_size={}; PRAGMA journal_mode=WAL;",
-                        fstype as u32
-                    )
-                    .as_str(),
+                    format!("PRAGMA page_size={}; PRAGMA journal_mode=WAL;", fstype).as_str(),
                 )
             })
             .with_flags(flags);
 
         let builder1 = Pool::builder();
-        let builder2 = builder1.max_size(pool_size);
+        let builder2 = builder1.max_size(cfg.pool_size);
         // Look at max_size and thread_pool here for perf later
         let pool = builder2.build(manager).map_err(|e| {
             ladmin_error!(audit, "r2d2 error {:?}", e);
@@ -1355,12 +1351,14 @@ impl IdlSqlite {
 #[cfg(test)]
 mod tests {
     use crate::audit::AuditScope;
-    use crate::be::idl_sqlite::{FsType, IdlSqlite, IdlSqliteTransaction};
+    use crate::be::idl_sqlite::{IdlSqlite, IdlSqliteTransaction};
+    use crate::be::BackendConfig;
 
     #[test]
     fn test_idl_sqlite_verify() {
         let mut audit = AuditScope::new("run_test", uuid::Uuid::new_v4(), None);
-        let be = IdlSqlite::new(&mut audit, "", 1, FsType::Generic, false).unwrap();
+        let cfg = BackendConfig::new_test();
+        let be = IdlSqlite::new(&mut audit, &cfg, false).unwrap();
         let be_w = be.write();
         let r = be_w.verify();
         assert!(r.len() == 0);

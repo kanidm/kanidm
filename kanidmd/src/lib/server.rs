@@ -4,6 +4,7 @@
 // This is really only used for long lived, high level types that need clone
 // that otherwise can't be cloned. Think Mutex.
 use async_std::task;
+use concread::arcache::{ARCache, ARCacheReadTxn};
 use hashbrown::HashMap;
 use std::cell::Cell;
 use std::collections::BTreeSet;
@@ -26,10 +27,10 @@ use crate::entry::{
     Entry, EntryCommitted, EntryInit, EntryInvalid, EntryNew, EntryReduced, EntrySealed,
 };
 use crate::event::{
-    CreateEvent, DeleteEvent, Event, EventOrigin, ExistsEvent, ModifyEvent, ReviveRecycledEvent,
-    SearchEvent,
+    CreateEvent, DeleteEvent, Event, EventOrigin, EventOriginId, ExistsEvent, ModifyEvent,
+    ReviveRecycledEvent, SearchEvent,
 };
-use crate::filter::{Filter, FilterInvalid, FilterValid};
+use crate::filter::{Filter, FilterInvalid, FilterValid, FilterValidResolved};
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use crate::plugins::Plugins;
 use crate::repl::cid::Cid;
@@ -44,6 +45,9 @@ use smartstring::alias::String as AttrString;
 type EntrySealedCommitted = Entry<EntrySealed, EntryCommitted>;
 type EntryInvalidCommitted = Entry<EntryInvalid, EntryCommitted>;
 type EntryTuple = (EntrySealedCommitted, EntryInvalidCommitted);
+
+const RESOLVE_FILTER_CACHE_MAX: usize = 4096;
+const RESOLVE_FILTER_CACHE_LOCAL: usize = 0;
 
 lazy_static! {
     static ref PVCLASS_ATTRIBUTETYPE: PartialValue = PartialValue::new_class("attributetype");
@@ -67,6 +71,8 @@ pub struct QueryServer {
     accesscontrols: Arc<AccessControls>,
     db_tickets: Arc<Semaphore>,
     write_ticket: Arc<Semaphore>,
+    resolve_filter_cache:
+        Arc<ARCache<(EventOriginId, Filter<FilterValid>), Filter<FilterValidResolved>>>,
 }
 
 pub struct QueryServerReadTransaction<'a> {
@@ -76,6 +82,8 @@ pub struct QueryServerReadTransaction<'a> {
     schema: SchemaReadTransaction,
     accesscontrols: AccessControlsReadTransaction<'a>,
     _db_ticket: SemaphorePermit<'a>,
+    resolve_filter_cache:
+        Cell<ARCacheReadTxn<'a, (EventOriginId, Filter<FilterValid>), Filter<FilterValidResolved>>>,
 }
 
 pub struct QueryServerWriteTransaction<'a> {
@@ -94,6 +102,8 @@ pub struct QueryServerWriteTransaction<'a> {
     changed_uuid: Cell<Vec<Uuid>>,
     _db_ticket: SemaphorePermit<'a>,
     _write_ticket: SemaphorePermit<'a>,
+    resolve_filter_cache:
+        Cell<ARCacheReadTxn<'a, (EventOriginId, Filter<FilterValid>), Filter<FilterValidResolved>>>,
 }
 
 // This is the core of the server. It implements all
@@ -117,6 +127,10 @@ pub trait QueryServerTransaction<'a> {
 
     type AccessControlsTransactionType: AccessControlsTransaction<'a>;
     fn get_accesscontrols(&self) -> &Self::AccessControlsTransactionType;
+
+    fn get_resolve_filter_cache(
+        &self,
+    ) -> &mut ARCacheReadTxn<'a, (EventOriginId, Filter<FilterValid>), Filter<FilterValidResolved>>;
 
     /// Conduct a search and apply access controls to yield a set of entries that
     /// have been reduced to the set of user visible avas. Note that if you provide
@@ -174,11 +188,14 @@ pub trait QueryServerTransaction<'a> {
             //
             // NOTE: Filters are validated in event conversion.
 
+            let resolve_filter_cache = self.get_resolve_filter_cache();
+
             let be_txn = self.get_be_txn();
             let idxmeta = be_txn.get_idxmeta_ref();
             // Now resolve all references and indexes.
             let vfr = lperf_trace_segment!(au, "server::search<filter_resolve>", || {
-                se.filter.resolve(&se.event, Some(idxmeta))
+                se.filter
+                    .resolve(&se.event, Some(idxmeta), Some(resolve_filter_cache))
             })
             .map_err(|e| {
                 ladmin_error!(au, "search filter resolve failure {:?}", e);
@@ -213,10 +230,16 @@ pub trait QueryServerTransaction<'a> {
         lperf_segment!(au, "server::exists", || {
             let be_txn = self.get_be_txn();
             let idxmeta = be_txn.get_idxmeta_ref();
-            let vfr = ee.filter.resolve(&ee.event, Some(idxmeta)).map_err(|e| {
-                ladmin_error!(au, "Failed to resolve filter {:?}", e);
-                e
-            })?;
+
+            let resolve_filter_cache = self.get_resolve_filter_cache();
+
+            let vfr = ee
+                .filter
+                .resolve(&ee.event, Some(idxmeta), Some(resolve_filter_cache))
+                .map_err(|e| {
+                    ladmin_error!(au, "Failed to resolve filter {:?}", e);
+                    e
+                })?;
 
             let lims = ee.get_limits();
 
@@ -696,6 +719,21 @@ impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
     fn get_accesscontrols(&self) -> &AccessControlsReadTransaction<'a> {
         &self.accesscontrols
     }
+
+    fn get_resolve_filter_cache(
+        &self,
+    ) -> &mut ARCacheReadTxn<'a, (EventOriginId, Filter<FilterValid>), Filter<FilterValidResolved>>
+    {
+        unsafe {
+            let mptr = self.resolve_filter_cache.as_ptr();
+            &mut (*mptr)
+                as &mut ARCacheReadTxn<
+                    'a,
+                    (EventOriginId, Filter<FilterValid>),
+                    Filter<FilterValidResolved>,
+                >
+        }
+    }
 }
 
 impl<'a> QueryServerReadTransaction<'a> {
@@ -757,6 +795,21 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
     fn get_accesscontrols(&self) -> &AccessControlsWriteTransaction<'a> {
         &self.accesscontrols
     }
+
+    fn get_resolve_filter_cache(
+        &self,
+    ) -> &mut ARCacheReadTxn<'a, (EventOriginId, Filter<FilterValid>), Filter<FilterValidResolved>>
+    {
+        unsafe {
+            let mptr = self.resolve_filter_cache.as_ptr();
+            &mut (*mptr)
+                as &mut ARCacheReadTxn<
+                    'a,
+                    (EventOriginId, Filter<FilterValid>),
+                    Filter<FilterValidResolved>,
+                >
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -782,8 +835,12 @@ impl QueryServer {
             be,
             schema: Arc::new(schema),
             accesscontrols: Arc::new(AccessControls::new()),
-            db_tickets: Arc::new(Semaphore::new(pool_size)),
+            db_tickets: Arc::new(Semaphore::new(pool_size as usize)),
             write_ticket: Arc::new(Semaphore::new(1)),
+            resolve_filter_cache: Arc::new(ARCache::new_size(
+                RESOLVE_FILTER_CACHE_MAX,
+                RESOLVE_FILTER_CACHE_LOCAL,
+            )),
         }
     }
 
@@ -806,6 +863,7 @@ impl QueryServer {
             schema: self.schema.read(),
             accesscontrols: self.accesscontrols.read(),
             _db_ticket: db_ticket,
+            resolve_filter_cache: Cell::new(self.resolve_filter_cache.read()),
         }
     }
 
@@ -857,6 +915,7 @@ impl QueryServer {
             changed_uuid: Cell::new(Vec::new()),
             _db_ticket: db_ticket,
             _write_ticket: write_ticket,
+            resolve_filter_cache: Cell::new(self.resolve_filter_cache.read()),
         }
     }
 

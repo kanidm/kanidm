@@ -1,9 +1,9 @@
 use crate::audit::AuditScope;
 use crate::be::idl_sqlite::{
-    FsType, IdlSqlite, IdlSqliteReadTransaction, IdlSqliteTransaction, IdlSqliteWriteTransaction,
+    IdlSqlite, IdlSqliteReadTransaction, IdlSqliteTransaction, IdlSqliteWriteTransaction,
 };
 use crate::be::idxkey::{IdlCacheKey, IdlCacheKeyRef, IdlCacheKeyToRef};
-use crate::be::{IdRawEntry, IDL};
+use crate::be::{BackendConfig, IdRawEntry, IDL};
 use crate::entry::{Entry, EntryCommitted, EntrySealed};
 use crate::value::IndexType;
 use crate::value::Value;
@@ -853,15 +853,19 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
 impl IdlArcSqlite {
     pub fn new(
         audit: &mut AuditScope,
-        path: &str,
-        pool_size: u32,
-        fstype: FsType,
+        cfg: &BackendConfig,
         vacuum: bool,
     ) -> Result<Self, OperationError> {
-        let db = IdlSqlite::new(audit, path, pool_size, fstype, vacuum)?;
+        let db = IdlSqlite::new(audit, cfg, vacuum)?;
+        let mut cache_size = cfg.arcsize.unwrap_or(DEFAULT_CACHE_TARGET);
+        if cache_size < 256 {
+            cache_size = 256;
+            ladmin_warning!(audit, "Arc Cache size too low - setting to 256 ...");
+        }
+
         let entry_cache = ARCache::new(
-            DEFAULT_CACHE_TARGET,
-            pool_size as usize,
+            cache_size,
+            cfg.pool_size as usize,
             DEFAULT_CACHE_RMISS,
             DEFAULT_CACHE_WMISS,
             false,
@@ -869,16 +873,16 @@ impl IdlArcSqlite {
         // The idl cache should have smaller items, and is critical for fast searches
         // so we allow it to have a higher ratio of items relative to the entries.
         let idl_cache = ARCache::new(
-            DEFAULT_CACHE_TARGET * DEFAULT_IDL_CACHE_RATIO,
-            pool_size as usize,
+            cache_size * DEFAULT_IDL_CACHE_RATIO,
+            cfg.pool_size as usize,
             DEFAULT_CACHE_RMISS,
             DEFAULT_CACHE_WMISS,
             false,
         );
 
         let name_cache = ARCache::new(
-            DEFAULT_CACHE_TARGET * DEFAULT_NAME_CACHE_RATIO,
-            pool_size as usize,
+            cache_size * DEFAULT_NAME_CACHE_RATIO,
+            cfg.pool_size as usize,
             DEFAULT_CACHE_RMISS,
             DEFAULT_CACHE_WMISS,
             true,

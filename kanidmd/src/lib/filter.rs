@@ -9,8 +9,8 @@
 //! [`Entry`]: ../entry/struct.Entry.html
 
 use crate::audit::AuditScope;
-use crate::be::{IdxKey, IdxKeyRef, IdxKeyToRef};
-use crate::event::{Event, EventOrigin};
+use crate::be::{IdxKey, IdxKeyRef, IdxKeyToRef, IdxMeta};
+use crate::event::{Event, EventOriginId};
 use crate::ldap::ldap_attr_filter_map;
 use crate::schema::SchemaTransaction;
 use crate::server::{
@@ -22,9 +22,11 @@ use kanidm_proto::v1::Filter as ProtoFilter;
 use kanidm_proto::v1::{OperationError, SchemaError};
 use ldap3_server::proto::{LdapFilter, LdapSubstringFilter};
 // use smartstring::alias::String;
+use concread::arcache::ARCacheReadTxn;
 use smartstring::alias::String as AttrString;
 use std::cmp::{Ordering, PartialOrd};
 use std::collections::BTreeSet;
+use std::hash::Hash;
 use std::iter;
 use uuid::Uuid;
 
@@ -122,7 +124,7 @@ pub enum FC<'a> {
 }
 
 // This is the filters internal representation.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Hash, PartialEq, PartialOrd, Ord, Eq)]
 enum FilterComp {
     // This is attr - value
     Eq(AttrString, PartialValue),
@@ -142,7 +144,7 @@ enum FilterComp {
 // because these are resolved into And(Pres(class), AndNot(term)) and Eq(uuid, ...).
 // Importantly, we make this accessible to Entry so that it can then match on filters
 // properly.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FilterResolved {
     // This is attr - value - indexed
     Eq(AttrString, PartialValue, bool),
@@ -156,17 +158,17 @@ pub enum FilterResolved {
     AndNot(Box<FilterResolved>),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct FilterInvalid {
     inner: FilterComp,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct FilterValid {
     inner: FilterComp,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct FilterValidResolved {
     inner: FilterResolved,
 }
@@ -219,7 +221,7 @@ pub enum FilterPlan {
 /// helps to prevent errors at compile time to assert `Filters` are secuerly. checked
 ///
 /// [`Entry`]: ../entry/struct.Entry.html
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, Ord, Eq, PartialOrd, PartialEq)]
 pub struct Filter<STATE> {
     state: STATE,
 }
@@ -274,21 +276,46 @@ impl Filter<FilterValid> {
         }
     }
 
-    pub fn resolve(
+    pub fn resolve<'a>(
         &self,
         ev: &Event,
-        idxmeta: Option<&HashSet<IdxKey>>,
-        // rsv_cache: (),
+        idxmeta: Option<&IdxMeta>,
+        mut rsv_cache: Option<
+            &mut ARCacheReadTxn<
+                'a,
+                (EventOriginId, Filter<FilterValid>),
+                Filter<FilterValidResolved>,
+            >,
+        >,
     ) -> Result<Filter<FilterValidResolved>, OperationError> {
         // Given a filter, resolve Not and SelfUUID to real terms.
         //
         // The benefit of moving optimisation to this step is from various inputs, we can
         // get to a resolved + optimised filter, and then we can cache those outputs in many
         // cases!
-        Ok(Filter {
+
+        // do we have a cache?
+        let cache_key = if let Some(rcache) = rsv_cache.as_mut() {
+            // construct the key. For now it's expensive because we have to clone, but ... eh.
+            let cache_key = (ev.get_event_origin_id(), self.clone());
+            if let Some(f) = rcache.get(&cache_key) {
+                // Got it? Shortcut and return!
+                return Ok(f.clone());
+            };
+            // Not in cache? Set the cache_key.
+            Some(cache_key)
+        } else {
+            None
+        };
+
+        // If we got here, nothing in cache - resolve it the hard way.
+
+        let resolved_filt = Filter {
             state: FilterValidResolved {
                 inner: match idxmeta {
-                    Some(idx) => FilterResolved::resolve_idx(self.state.inner.clone(), ev, idx),
+                    Some(idx) => {
+                        FilterResolved::resolve_idx(self.state.inner.clone(), ev, &idx.idxkeys)
+                    }
                     None => FilterResolved::resolve_no_idx(self.state.inner.clone(), ev),
                 }
                 .map(|f| {
@@ -301,7 +328,16 @@ impl Filter<FilterValid> {
                 })
                 .ok_or(OperationError::FilterUUIDResolution)?,
             },
-        })
+        };
+
+        // Now it's computed, inject it.
+        if let Some(rcache) = rsv_cache.as_mut() {
+            if let Some(cache_key) = cache_key {
+                rcache.insert(cache_key, resolved_filt.clone());
+            }
+        }
+
+        Ok(resolved_filt)
     }
 
     pub fn get_attr_set(&self) -> BTreeSet<&str> {
@@ -854,14 +890,13 @@ impl FilterComp {
 }
 
 /* We only configure partial eq if cfg test on the invalid/valid types */
-#[cfg(test)]
+/*
 impl PartialEq for Filter<FilterInvalid> {
     fn eq(&self, rhs: &Filter<FilterInvalid>) -> bool {
         self.state.inner == rhs.state.inner
     }
 }
 
-#[cfg(test)]
 impl PartialEq for Filter<FilterValid> {
     fn eq(&self, rhs: &Filter<FilterValid>) -> bool {
         self.state.inner == rhs.state.inner
@@ -873,7 +908,9 @@ impl PartialEq for Filter<FilterValidResolved> {
         self.state.inner == rhs.state.inner
     }
 }
+*/
 
+/*
 impl PartialEq for FilterResolved {
     fn eq(&self, rhs: &FilterResolved) -> bool {
         match (self, rhs) {
@@ -891,8 +928,7 @@ impl PartialEq for FilterResolved {
         }
     }
 }
-
-impl Eq for FilterResolved {}
+*/
 
 /*
  * Only needed in tests, in run time order only matters on the inner for
@@ -1059,19 +1095,12 @@ impl FilterResolved {
                 FilterResolved::resolve_idx((*f).clone(), ev, idxmeta)
                     .map(|fi| FilterResolved::AndNot(Box::new(fi)))
             }
-            FilterComp::SelfUUID => match &ev.origin {
-                EventOrigin::User(e) => {
-                    let uuid_s = AttrString::from("uuid");
-                    let idxkref = IdxKeyRef::new(&uuid_s, &IndexType::EQUALITY);
-                    let idx = idxmeta.contains(&idxkref as &dyn IdxKeyToRef);
-                    Some(FilterResolved::Eq(
-                        uuid_s,
-                        PartialValue::new_uuid(*e.get_uuid()),
-                        idx,
-                    ))
-                }
-                _ => None,
-            },
+            FilterComp::SelfUUID => ev.get_uuid().map(|uuid| {
+                let uuid_s = AttrString::from("uuid");
+                let idxkref = IdxKeyRef::new(&uuid_s, &IndexType::EQUALITY);
+                let idx = idxmeta.contains(&idxkref as &dyn IdxKeyToRef);
+                FilterResolved::Eq(uuid_s, PartialValue::new_uuid(uuid), idx)
+            }),
         }
     }
 
@@ -1111,14 +1140,14 @@ impl FilterResolved {
                 FilterResolved::resolve_no_idx((*f).clone(), ev)
                     .map(|fi| FilterResolved::AndNot(Box::new(fi)))
             }
-            FilterComp::SelfUUID => match &ev.origin {
-                EventOrigin::User(e) => Some(FilterResolved::Eq(
+
+            FilterComp::SelfUUID => ev.get_uuid().map(|uuid| {
+                FilterResolved::Eq(
                     AttrString::from("uuid"),
-                    PartialValue::new_uuid(*e.get_uuid()),
+                    PartialValue::new_uuid(uuid),
                     false,
-                )),
-                _ => None,
-            },
+                )
+            }),
         }
     }
 

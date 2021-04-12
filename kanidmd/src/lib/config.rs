@@ -20,6 +20,7 @@ pub struct Configuration {
     // db type later
     pub db_path: String,
     pub db_fs_type: Option<String>,
+    pub db_arc_size: Option<usize>,
     pub maximum_request: usize,
     pub secure_cookies: bool,
     pub tls_config: Option<TlsConfiguration>,
@@ -38,6 +39,10 @@ impl fmt::Display for Configuration {
             })
             .and_then(|_| write!(f, "thread count: {}, ", self.threads))
             .and_then(|_| write!(f, "dbpath: {}, ", self.db_path))
+            .and_then(|_| match self.db_arc_size {
+                Some(v) => write!(f, "arcsize: {}, ", v),
+                None => write!(f, "arcsize: AUTO, "),
+            })
             .and_then(|_| write!(f, "max request size: {}b, ", self.maximum_request))
             .and_then(|_| write!(f, "secure cookies: {}, ", self.secure_cookies))
             .and_then(|_| write!(f, "with TLS: {}, ", self.tls_config.is_some()))
@@ -63,6 +68,7 @@ impl Configuration {
             threads: num_cpus::get(),
             db_path: String::from(""),
             db_fs_type: None,
+            db_arc_size: None,
             maximum_request: 262_144, // 256k
             // log type
             // log path
@@ -85,6 +91,10 @@ impl Configuration {
 
     pub fn update_db_path(&mut self, p: &str) {
         self.db_path = p.to_string();
+    }
+
+    pub fn update_db_arc_size(&mut self, v: Option<usize>) {
+        self.db_arc_size = v
     }
 
     pub fn update_db_fs_type(&mut self, p: &Option<String>) {

@@ -28,16 +28,21 @@ use uuid::Uuid;
 
 use crate::audit::AuditScope;
 use crate::entry::{Entry, EntryCommitted, EntryInit, EntryNew, EntryReduced, EntrySealed};
-use crate::filter::{Filter, FilterValid};
+use crate::filter::{Filter, FilterValid, FilterValidResolved};
 use crate::modify::Modify;
 use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
 use crate::value::PartialValue;
 
-use crate::event::{CreateEvent, DeleteEvent, Event, EventOrigin, ModifyEvent, SearchEvent};
+use crate::event::{
+    CreateEvent, DeleteEvent, Event, EventOrigin, EventOriginId, ModifyEvent, SearchEvent,
+};
 use smartstring::alias::String as AttrString;
 
 const ACP_RELATED_SEARCH_CACHE_MAX: usize = 2048;
 const ACP_RELATED_SEARCH_CACHE_LOCAL: usize = 16;
+
+const ACP_RESOLVE_FILTER_CACHE_MAX: usize = 512;
+const ACP_RESOLVE_FILTER_CACHE_LOCAL: usize = 16;
 
 lazy_static! {
     static ref CLASS_ACS: PartialValue = PartialValue::new_class("access_control_search");
@@ -380,6 +385,8 @@ struct AccessControlsInner {
 pub struct AccessControls {
     inner: CowCell<AccessControlsInner>,
     acp_related_search_cache: ARCache<Uuid, Vec<Uuid>>,
+    acp_resolve_filter_cache:
+        ARCache<(EventOriginId, Filter<FilterValid>), Filter<FilterValidResolved>>,
 }
 
 pub trait AccessControlsTransaction<'a> {
@@ -388,6 +395,9 @@ pub trait AccessControlsTransaction<'a> {
     fn get_modify(&self) -> &Vec<AccessControlModify>;
     fn get_delete(&self) -> &Vec<AccessControlDelete>;
     fn get_acp_related_search_cache(&self) -> &mut ARCacheReadTxn<'a, Uuid, Vec<Uuid>>;
+    fn get_acp_resolve_filter_cache(
+        &self,
+    ) -> &mut ARCacheReadTxn<'a, (EventOriginId, Filter<FilterValid>), Filter<FilterValidResolved>>;
 
     fn search_related_acp<'b>(
         &'b self,
@@ -397,6 +407,7 @@ pub trait AccessControlsTransaction<'a> {
     ) -> Vec<&'b AccessControlSearch> {
         let search_state = self.get_search();
         let acp_related_search_cache = self.get_acp_related_search_cache();
+        let acp_resolve_filter_cache = self.get_acp_resolve_filter_cache();
 
         if let Some(acs_uuids) = acp_related_search_cache.get(rec_entry.get_uuid()) {
             lperf_trace_segment!(audit, "access::search_related_acp<cached>", || {
@@ -432,7 +443,7 @@ pub trait AccessControlsTransaction<'a> {
                             // such that it takes an entry, rather than an event, but that
                             // would create issues in search.
                             let f_val = acs.acp.receiver.clone();
-                            match f_val.resolve(&se.event, None) {
+                            match f_val.resolve(&se.event, None, Some(acp_resolve_filter_cache)) {
                                 Ok(f_res) => rec_entry.entry_match_no_index(&f_res),
                                 Err(e) => {
                                     ladmin_error!(
@@ -477,6 +488,7 @@ pub trait AccessControlsTransaction<'a> {
 
             // First get the set of acps that apply to this receiver
             let related_acp = self.search_related_acp(audit, rec_entry, se);
+            let acp_resolve_filter_cache = self.get_acp_resolve_filter_cache();
 
             /*
             related_acp.iter().for_each(|racp| {
@@ -501,7 +513,7 @@ pub trait AccessControlsTransaction<'a> {
                                 .iter()
                                 .filter_map(|acs| {
                                     let f_val = acs.acp.targetscope.clone();
-                                    match f_val.resolve(&se.event, None) {
+                                    match f_val.resolve(&se.event, None, Some(acp_resolve_filter_cache)) {
                                         Ok(f_res) => {
                                             // if it applies
                                             if e.entry_match_no_index(&f_res) {
@@ -600,6 +612,7 @@ pub trait AccessControlsTransaction<'a> {
              * modify and co.
              */
             ltrace!(audit, "Access check and reduce for event: {}", se.event);
+            let acp_resolve_filter_cache = self.get_acp_resolve_filter_cache();
 
             // Get the relevant acps for this receiver.
             let related_acp = lperf_segment!(
@@ -648,7 +661,7 @@ pub trait AccessControlsTransaction<'a> {
                                 .iter()
                                 .filter_map(|acs| {
                                     let f_val = acs.acp.targetscope.clone();
-                                    match f_val.resolve(&se.event, None) {
+                                    match f_val.resolve(&se.event, None, Some(acp_resolve_filter_cache)) {
                                         Ok(f_res) => {
                                             // if it applies
                                             if e.entry_match_no_index(&f_res) {
@@ -753,6 +766,7 @@ pub trait AccessControlsTransaction<'a> {
 
             // Some useful references we'll use for the remainder of the operation
             let modify_state = self.get_modify();
+            let acp_resolve_filter_cache = self.get_acp_resolve_filter_cache();
 
             // Pre-check if the no-no purge class is present
             let disallow = me.modlist.iter().fold(false, |acc, m| {
@@ -775,7 +789,7 @@ pub trait AccessControlsTransaction<'a> {
                 .iter()
                 .filter(|acs| {
                     let f_val = acs.acp.receiver.clone();
-                    match f_val.resolve(&me.event, None) {
+                    match f_val.resolve(&me.event, None, Some(acp_resolve_filter_cache)) {
                         Ok(f_res) => rec_entry.entry_match_no_index(&f_res),
                         Err(e) => {
                             ladmin_error!(
@@ -864,7 +878,7 @@ pub trait AccessControlsTransaction<'a> {
                             // to cache or handle these filters better - filter compiler
                             // cache maybe?
                             let f_val = acm.acp.targetscope.clone();
-                            match f_val.resolve(&me.event, None) {
+                            match f_val.resolve(&me.event, None, Some(acp_resolve_filter_cache)) {
                                 Ok(f_res) => {
                                     if e.entry_match_no_index(&f_res) {
                                         Some(*acm)
@@ -954,13 +968,14 @@ pub trait AccessControlsTransaction<'a> {
 
             // Some useful references we'll use for the remainder of the operation
             let create_state = self.get_create();
+            let acp_resolve_filter_cache = self.get_acp_resolve_filter_cache();
 
             // Find the acps that relate to the caller.
             let related_acp: Vec<&AccessControlCreate> = create_state
                 .iter()
                 .filter(|acs| {
                     let f_val = acs.acp.receiver.clone();
-                    match f_val.resolve(&ce.event, None) {
+                    match f_val.resolve(&ce.event, None, Some(acp_resolve_filter_cache)) {
                         Ok(f_res) => rec_entry.entry_match_no_index(&f_res),
                         Err(e) => {
                             ladmin_error!(
@@ -1013,7 +1028,7 @@ pub trait AccessControlsTransaction<'a> {
                         } else {
                             // Check to see if allowed.
                             let f_val = accr.acp.targetscope.clone();
-                            match f_val.resolve(&ce.event, None) {
+                            match f_val.resolve(&ce.event, None, Some(acp_resolve_filter_cache)) {
                                 Ok(f_res) => {
                                     if e.entry_match_no_index(&f_res) {
                                         lsecurity_access!(
@@ -1121,13 +1136,14 @@ pub trait AccessControlsTransaction<'a> {
 
             // Some useful references we'll use for the remainder of the operation
             let delete_state = self.get_delete();
+            let acp_resolve_filter_cache = self.get_acp_resolve_filter_cache();
 
             // Find the acps that relate to the caller.
             let related_acp: Vec<&AccessControlDelete> = delete_state
                 .iter()
                 .filter(|acs| {
                     let f_val = acs.acp.receiver.clone();
-                    match f_val.resolve(&de.event, None) {
+                    match f_val.resolve(&de.event, None, Some(acp_resolve_filter_cache)) {
                         Ok(f_res) => rec_entry.entry_match_no_index(&f_res),
                         Err(e) => {
                             ladmin_error!(
@@ -1159,7 +1175,7 @@ pub trait AccessControlsTransaction<'a> {
                             r_acc
                         } else {
                             let f_val = acd.acp.targetscope.clone();
-                            match f_val.resolve(&de.event, None) {
+                            match f_val.resolve(&de.event, None, Some(acp_resolve_filter_cache)) {
                                 Ok(f_res) => {
                                     if e.entry_match_no_index(&f_res) {
                                         lsecurity_access!(
@@ -1210,6 +1226,8 @@ pub struct AccessControlsWriteTransaction<'a> {
     inner: CowCellWriteTxn<'a, AccessControlsInner>,
     acp_related_search_cache_wr: ARCacheWriteTxn<'a, Uuid, Vec<Uuid>>,
     acp_related_search_cache: Cell<ARCacheReadTxn<'a, Uuid, Vec<Uuid>>>,
+    acp_resolve_filter_cache:
+        Cell<ARCacheReadTxn<'a, (EventOriginId, Filter<FilterValid>), Filter<FilterValidResolved>>>,
 }
 
 impl<'a> AccessControlsWriteTransaction<'a> {
@@ -1297,6 +1315,21 @@ impl<'a> AccessControlsTransaction<'a> for AccessControlsWriteTransaction<'a> {
             &mut (*mptr) as &mut ARCacheReadTxn<'a, Uuid, Vec<Uuid>>
         }
     }
+
+    fn get_acp_resolve_filter_cache(
+        &self,
+    ) -> &mut ARCacheReadTxn<'a, (EventOriginId, Filter<FilterValid>), Filter<FilterValidResolved>>
+    {
+        unsafe {
+            let mptr = self.acp_resolve_filter_cache.as_ptr();
+            &mut (*mptr)
+                as &mut ARCacheReadTxn<
+                    'a,
+                    (EventOriginId, Filter<FilterValid>),
+                    Filter<FilterValidResolved>,
+                >
+        }
+    }
 }
 
 // =========================================================================
@@ -1306,6 +1339,8 @@ impl<'a> AccessControlsTransaction<'a> for AccessControlsWriteTransaction<'a> {
 pub struct AccessControlsReadTransaction<'a> {
     inner: CowCellReadTxn<AccessControlsInner>,
     acp_related_search_cache: Cell<ARCacheReadTxn<'a, Uuid, Vec<Uuid>>>,
+    acp_resolve_filter_cache:
+        Cell<ARCacheReadTxn<'a, (EventOriginId, Filter<FilterValid>), Filter<FilterValidResolved>>>,
 }
 
 impl<'a> AccessControlsTransaction<'a> for AccessControlsReadTransaction<'a> {
@@ -1331,6 +1366,21 @@ impl<'a> AccessControlsTransaction<'a> for AccessControlsReadTransaction<'a> {
             &mut (*mptr) as &mut ARCacheReadTxn<'a, Uuid, Vec<Uuid>>
         }
     }
+
+    fn get_acp_resolve_filter_cache(
+        &self,
+    ) -> &mut ARCacheReadTxn<'a, (EventOriginId, Filter<FilterValid>), Filter<FilterValidResolved>>
+    {
+        unsafe {
+            let mptr = self.acp_resolve_filter_cache.as_ptr();
+            &mut (*mptr)
+                as &mut ARCacheReadTxn<
+                    'a,
+                    (EventOriginId, Filter<FilterValid>),
+                    Filter<FilterValidResolved>,
+                >
+        }
+    }
 }
 
 // =========================================================================
@@ -1350,6 +1400,10 @@ impl AccessControls {
                 ACP_RELATED_SEARCH_CACHE_MAX,
                 ACP_RELATED_SEARCH_CACHE_LOCAL,
             ),
+            acp_resolve_filter_cache: ARCache::new_size(
+                ACP_RESOLVE_FILTER_CACHE_MAX,
+                ACP_RESOLVE_FILTER_CACHE_LOCAL,
+            ),
         }
     }
 
@@ -1357,6 +1411,7 @@ impl AccessControls {
         AccessControlsReadTransaction {
             inner: self.inner.read(),
             acp_related_search_cache: Cell::new(self.acp_related_search_cache.read()),
+            acp_resolve_filter_cache: Cell::new(self.acp_resolve_filter_cache.read()),
         }
     }
 
@@ -1365,6 +1420,7 @@ impl AccessControls {
             inner: self.inner.write(),
             acp_related_search_cache_wr: self.acp_related_search_cache.write(),
             acp_related_search_cache: Cell::new(self.acp_related_search_cache.read()),
+            acp_resolve_filter_cache: Cell::new(self.acp_resolve_filter_cache.read()),
         }
     }
 }
