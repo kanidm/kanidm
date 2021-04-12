@@ -1,6 +1,6 @@
 # Interacting with the Server
 
-To interact with Kanidm as an administration, you'll need to use our command line tools
+To interact with Kanidm as an administrator, you'll need to use our command line tools
 
 ## From (experimental) packages
 
