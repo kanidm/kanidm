@@ -384,7 +384,7 @@ struct AccessControlsInner {
 
 pub struct AccessControls {
     inner: CowCell<AccessControlsInner>,
-    acp_related_search_cache: ARCache<Uuid, Vec<Uuid>>,
+    // acp_related_search_cache: ARCache<Uuid, Vec<Uuid>>,
     acp_resolve_filter_cache:
         ARCache<(EventOriginId, Filter<FilterValid>), Filter<FilterValidResolved>>,
 }
@@ -394,7 +394,7 @@ pub trait AccessControlsTransaction<'a> {
     fn get_create(&self) -> &Vec<AccessControlCreate>;
     fn get_modify(&self) -> &Vec<AccessControlModify>;
     fn get_delete(&self) -> &Vec<AccessControlDelete>;
-    fn get_acp_related_search_cache(&self) -> &mut ARCacheReadTxn<'a, Uuid, Vec<Uuid>>;
+    // fn get_acp_related_search_cache(&self) -> &mut ARCacheReadTxn<'a, Uuid, Vec<Uuid>>;
     fn get_acp_resolve_filter_cache(
         &self,
     ) -> &mut ARCacheReadTxn<'a, (EventOriginId, Filter<FilterValid>), Filter<FilterValidResolved>>;
@@ -406,9 +406,23 @@ pub trait AccessControlsTransaction<'a> {
         se: &SearchEvent,
     ) -> Vec<&'b AccessControlSearch> {
         let search_state = self.get_search();
-        let acp_related_search_cache = self.get_acp_related_search_cache();
+        // let acp_related_search_cache = self.get_acp_related_search_cache();
         let acp_resolve_filter_cache = self.get_acp_resolve_filter_cache();
 
+
+        // ⚠️  WARNING ⚠️  -- Why is this cache commented out?
+        //
+        // The reason for this is that to determine what acps relate, we need to be
+        // aware of session claims - since these can change session to session, we
+        // would need the cache to be structured to handle this. It's much better
+        // in a search to just lean on the filter resolve cache because of this
+        // dynamic behaviour.
+        //
+        // It may be possible to do per-operation caching when we know that we will
+        // perform the reduce step, but it may not be worth it. It's probably better
+        // to make entry_match_no_index faster.
+
+        /*
         if let Some(acs_uuids) = acp_related_search_cache.get(rec_entry.get_uuid()) {
             lperf_trace_segment!(audit, "access::search_related_acp<cached>", || {
                 // If we have a cache, we should look here first for all the uuids that match
@@ -420,6 +434,7 @@ pub trait AccessControlsTransaction<'a> {
                     .collect()
             })
         } else {
+        */
             // else, we calculate this, and then stash/cache the uuids.
             let related_acp: Vec<&AccessControlSearch> =
                 lperf_trace_segment!(audit, "access::search_related_acp<uncached>", || {
@@ -458,13 +473,15 @@ pub trait AccessControlsTransaction<'a> {
                         .collect()
                 });
 
+            /*
             // Stash the uuids into the cache.
             let mut acs_uuids: Vec<Uuid> = related_acp.iter().map(|acs| acs.acp.uuid).collect();
             acs_uuids.sort_unstable();
             acp_related_search_cache.insert(*rec_entry.get_uuid(), acs_uuids);
+            */
 
             related_acp
-        }
+        // }
     }
 
     // Contains all the way to eval acps to entries
@@ -1225,7 +1242,7 @@ pub trait AccessControlsTransaction<'a> {
 pub struct AccessControlsWriteTransaction<'a> {
     inner: CowCellWriteTxn<'a, AccessControlsInner>,
     acp_related_search_cache_wr: ARCacheWriteTxn<'a, Uuid, Vec<Uuid>>,
-    acp_related_search_cache: Cell<ARCacheReadTxn<'a, Uuid, Vec<Uuid>>>,
+    // acp_related_search_cache: Cell<ARCacheReadTxn<'a, Uuid, Vec<Uuid>>>,
     acp_resolve_filter_cache:
         Cell<ARCacheReadTxn<'a, (EventOriginId, Filter<FilterValid>), Filter<FilterValidResolved>>>,
 }
@@ -1251,14 +1268,16 @@ impl<'a> AccessControlsWriteTransaction<'a> {
         */
         std::mem::swap(&mut acps, &mut self.inner.deref_mut().acps_search);
         // We reloaded the search acps, so we need to ditch all the cache.
-        self.acp_related_search_cache_wr.clear();
+        // self.acp_related_search_cache_wr.clear();
         Ok(())
     }
 
+    /*
     pub fn invalidate_related_cache(&mut self, inv: &[Uuid]) {
         inv.iter()
             .for_each(|uuid| self.acp_related_search_cache_wr.remove(*uuid))
     }
+    */
 
     pub fn update_create(
         &mut self,
@@ -1309,12 +1328,14 @@ impl<'a> AccessControlsTransaction<'a> for AccessControlsWriteTransaction<'a> {
         &self.inner.acps_delete
     }
 
+    /*
     fn get_acp_related_search_cache(&self) -> &mut ARCacheReadTxn<'a, Uuid, Vec<Uuid>> {
         unsafe {
             let mptr = self.acp_related_search_cache.as_ptr();
             &mut (*mptr) as &mut ARCacheReadTxn<'a, Uuid, Vec<Uuid>>
         }
     }
+    */
 
     fn get_acp_resolve_filter_cache(
         &self,
@@ -1338,7 +1359,7 @@ impl<'a> AccessControlsTransaction<'a> for AccessControlsWriteTransaction<'a> {
 
 pub struct AccessControlsReadTransaction<'a> {
     inner: CowCellReadTxn<AccessControlsInner>,
-    acp_related_search_cache: Cell<ARCacheReadTxn<'a, Uuid, Vec<Uuid>>>,
+    // acp_related_search_cache: Cell<ARCacheReadTxn<'a, Uuid, Vec<Uuid>>>,
     acp_resolve_filter_cache:
         Cell<ARCacheReadTxn<'a, (EventOriginId, Filter<FilterValid>), Filter<FilterValidResolved>>>,
 }
@@ -1360,12 +1381,14 @@ impl<'a> AccessControlsTransaction<'a> for AccessControlsReadTransaction<'a> {
         &self.inner.acps_delete
     }
 
+    /*
     fn get_acp_related_search_cache(&self) -> &mut ARCacheReadTxn<'a, Uuid, Vec<Uuid>> {
         unsafe {
             let mptr = self.acp_related_search_cache.as_ptr();
             &mut (*mptr) as &mut ARCacheReadTxn<'a, Uuid, Vec<Uuid>>
         }
     }
+    */
 
     fn get_acp_resolve_filter_cache(
         &self,
@@ -1396,10 +1419,12 @@ impl AccessControls {
                 acps_modify: Vec::new(),
                 acps_delete: Vec::new(),
             }),
+            /*
             acp_related_search_cache: ARCache::new_size(
                 ACP_RELATED_SEARCH_CACHE_MAX,
                 ACP_RELATED_SEARCH_CACHE_LOCAL,
             ),
+            */
             acp_resolve_filter_cache: ARCache::new_size(
                 ACP_RESOLVE_FILTER_CACHE_MAX,
                 ACP_RESOLVE_FILTER_CACHE_LOCAL,
@@ -1410,7 +1435,7 @@ impl AccessControls {
     pub fn read(&self) -> AccessControlsReadTransaction {
         AccessControlsReadTransaction {
             inner: self.inner.read(),
-            acp_related_search_cache: Cell::new(self.acp_related_search_cache.read()),
+            // acp_related_search_cache: Cell::new(self.acp_related_search_cache.read()),
             acp_resolve_filter_cache: Cell::new(self.acp_resolve_filter_cache.read()),
         }
     }
@@ -1418,8 +1443,8 @@ impl AccessControls {
     pub fn write(&self) -> AccessControlsWriteTransaction {
         AccessControlsWriteTransaction {
             inner: self.inner.write(),
-            acp_related_search_cache_wr: self.acp_related_search_cache.write(),
-            acp_related_search_cache: Cell::new(self.acp_related_search_cache.read()),
+            // acp_related_search_cache_wr: self.acp_related_search_cache.write(),
+            // acp_related_search_cache: Cell::new(self.acp_related_search_cache.read()),
             acp_resolve_filter_cache: Cell::new(self.acp_resolve_filter_cache.read()),
         }
     }
