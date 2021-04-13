@@ -137,7 +137,8 @@ You will also need a config file in the volume named `server.toml` (Within the c
     #     * sets sqlite pagesize to 4k, matching most filesystems block sizes.
     # db_fs_type = "zfs"
     #
-    #   The number of entries to store in the in-memory cache. Minimum value is 256.
+    #   The number of entries to store in the in-memory cache. Minimum value is 256. If unset
+    #   an automatic heuristic is used to scale this.
     # db_arc_size = 2048
     #
     #   TLS chain and key in pem format. Both must be commented, or both must be present

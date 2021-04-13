@@ -9,7 +9,6 @@ use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::Connection;
 use rusqlite::OpenFlags;
 use rusqlite::OptionalExtension;
-use rusqlite::NO_PARAMS;
 use std::convert::{TryFrom, TryInto};
 use std::time::Duration;
 use uuid::Uuid;
@@ -113,7 +112,7 @@ pub trait IdlSqliteTransaction {
                         OperationError::SQLiteError
                     })?;
                 let id2entry_iter = stmt
-                    .query_map(NO_PARAMS, |row| {
+                    .query_map([], |row| {
                         Ok(IdSqliteEntry {
                             id: row.get(0)?,
                             data: row.get(1)?,
@@ -205,7 +204,7 @@ pub trait IdlSqliteTransaction {
                 OperationError::SQLiteError
             })?;
         let i: Option<i64> = stmt
-            .query_row_named(&[(":tname", &tname)], |row| row.get(0))
+            .query_row(&[(":tname", &tname)], |row| row.get(0))
             .map_err(|e| {
                 ladmin_error!(audit, "SQLite Error {:?}", e);
                 OperationError::SQLiteError
@@ -242,7 +241,7 @@ pub trait IdlSqliteTransaction {
                 OperationError::SQLiteError
             })?;
             let idl_raw: Option<Vec<u8>> = stmt
-                .query_row_named(&[(":idx_key", &idx_key)], |row| row.get(0))
+                .query_row(&[(":idx_key", &idx_key)], |row| row.get(0))
                 // We don't mind if it doesn't exist
                 .optional()
                 .map_err(|e| {
@@ -278,7 +277,7 @@ pub trait IdlSqliteTransaction {
                     OperationError::SQLiteError
                 })?;
             let uuid_raw: Option<String> = stmt
-                .query_row_named(&[(":name", &name)], |row| row.get(0))
+                .query_row(&[(":name", &name)], |row| row.get(0))
                 // We don't mind if it doesn't exist
                 .optional()
                 .map_err(|e| {
@@ -309,7 +308,7 @@ pub trait IdlSqliteTransaction {
                     OperationError::SQLiteError
                 })?;
             let spn_raw: Option<Vec<u8>> = stmt
-                .query_row_named(&[(":uuid", &uuids)], |row| row.get(0))
+                .query_row(&[(":uuid", &uuids)], |row| row.get(0))
                 // We don't mind if it doesn't exist
                 .optional()
                 .map_err(|e| {
@@ -350,7 +349,7 @@ pub trait IdlSqliteTransaction {
                     OperationError::SQLiteError
                 })?;
             let rdn: Option<String> = stmt
-                .query_row_named(&[(":uuid", &uuids)], |row| row.get(0))
+                .query_row(&[(":uuid", &uuids)], |row| row.get(0))
                 // We don't mind if it doesn't exist
                 .optional()
                 .map_err(|e| {
@@ -368,9 +367,7 @@ pub trait IdlSqliteTransaction {
         // Try to get a value.
         let data: Option<Vec<u8>> = self
             .get_conn()
-            .query_row_named("SELECT data FROM db_sid WHERE id = 2", &[], |row| {
-                row.get(0)
-            })
+            .query_row("SELECT data FROM db_sid WHERE id = 2", [], |row| row.get(0))
             .optional()
             .map(|e_opt| {
                 // If we have a row, we try to make it a sid
@@ -394,9 +391,7 @@ pub trait IdlSqliteTransaction {
         // Try to get a value.
         let data: Option<Vec<u8>> = self
             .get_conn()
-            .query_row_named("SELECT data FROM db_did WHERE id = 2", &[], |row| {
-                row.get(0)
-            })
+            .query_row("SELECT data FROM db_did WHERE id = 2", [], |row| row.get(0))
             .optional()
             .map(|e_opt| {
                 // If we have a row, we try to make it a sid
@@ -425,7 +420,7 @@ pub trait IdlSqliteTransaction {
         };
 
         // Allow this as it actually extends the life of stmt
-        let r = match stmt.query(NO_PARAMS) {
+        let r = match stmt.query([]) {
             Ok(mut rows) => match rows.next() {
                 Ok(Some(v)) => {
                     let r: Result<String, _> = v.get(0);
@@ -460,7 +455,7 @@ impl Drop for IdlSqliteReadTransaction {
         if !self.committed {
             #[allow(clippy::expect_used)]
             self.conn
-                .execute("ROLLBACK TRANSACTION", NO_PARAMS)
+                .execute("ROLLBACK TRANSACTION", [])
                 // We can't do this without expect.
                 // We may need to change how we do transactions to not rely on drop if
                 // it becomes and issue :(
@@ -479,7 +474,7 @@ impl IdlSqliteReadTransaction {
         //
         // There is no way to flag this is an RO operation.
         #[allow(clippy::expect_used)]
-        conn.execute("BEGIN TRANSACTION", NO_PARAMS)
+        conn.execute("BEGIN TRANSACTION", [])
             .expect("Unable to begin transaction!");
         IdlSqliteReadTransaction {
             committed: false,
@@ -500,7 +495,7 @@ impl Drop for IdlSqliteWriteTransaction {
         if !self.committed {
             #[allow(clippy::expect_used)]
             self.conn
-                .execute("ROLLBACK TRANSACTION", NO_PARAMS)
+                .execute("ROLLBACK TRANSACTION", [])
                 .expect("Unable to rollback transaction! Can not proceed!!!");
         }
     }
@@ -510,7 +505,7 @@ impl IdlSqliteWriteTransaction {
     pub fn new(conn: r2d2::PooledConnection<SqliteConnectionManager>) -> Self {
         // Start the transaction
         #[allow(clippy::expect_used)]
-        conn.execute("BEGIN TRANSACTION", NO_PARAMS)
+        conn.execute("BEGIN TRANSACTION", [])
             .expect("Unable to begin transaction!");
         IdlSqliteWriteTransaction {
             committed: false,
@@ -525,7 +520,7 @@ impl IdlSqliteWriteTransaction {
             self.committed = true;
 
             self.conn
-                .execute("COMMIT TRANSACTION", NO_PARAMS)
+                .execute("COMMIT TRANSACTION", [])
                 .map(|_| ())
                 .map_err(|e| {
                     ladmin_error!(audit, "CRITICAL: failed to commit sqlite txn -> {:?}", e);
@@ -541,14 +536,12 @@ impl IdlSqliteWriteTransaction {
             .map_err(|_| OperationError::SQLiteError)?;
         // This exists checks for if any rows WERE returned
         // that way we know to shortcut or not.
-        let v = stmt
-            .exists(NO_PARAMS)
-            .map_err(|_| OperationError::SQLiteError)?;
+        let v = stmt.exists([]).map_err(|_| OperationError::SQLiteError)?;
 
         if v {
             // We have some rows, let get max!
             let i: Option<i64> = stmt
-                .query_row(NO_PARAMS, |row| row.get(0))
+                .query_row([], |row| row.get(0))
                 .map_err(|_| OperationError::SQLiteError)?;
             i.unwrap_or(0)
                 .try_into()
@@ -620,13 +613,16 @@ impl IdlSqliteWriteTransaction {
 
         entries.try_for_each(|e| {
             IdSqliteEntry::try_from(e).and_then(|ser_ent| {
-                stmt.execute_named(&[(":id", &ser_ent.id), (":data", &ser_ent.data)])
-                    // remove the updated usize
-                    .map(|_| ())
-                    .map_err(|e| {
-                        ladmin_error!(au, "SQLite Error {:?}", e);
-                        OperationError::SQLiteError
-                    })
+                stmt.execute(named_params! {
+                    ":id": &ser_ent.id,
+                    ":data": &ser_ent.data.as_slice()
+                })
+                // remove the updated usize
+                .map(|_| ())
+                .map_err(|e| {
+                    ladmin_error!(au, "SQLite Error {:?}", e);
+                    OperationError::SQLiteError
+                })
             })
         })
     }
@@ -719,7 +715,7 @@ impl IdlSqliteWriteTransaction {
 
                 self.conn
                     .prepare(query.as_str())
-                    .and_then(|mut stmt| stmt.execute_named(&[(":key", &idx_key)]))
+                    .and_then(|mut stmt| stmt.execute(&[(":key", &idx_key)]))
                     .map_err(|e| {
                         ladmin_error!(audit, "SQLite Error {:?}", e);
                         OperationError::SQLiteError
@@ -742,7 +738,10 @@ impl IdlSqliteWriteTransaction {
                 self.conn
                     .prepare(query.as_str())
                     .and_then(|mut stmt| {
-                        stmt.execute_named(&[(":key", &idx_key), (":idl", &idl_raw)])
+                        stmt.execute(named_params! {
+                            ":key": &idx_key,
+                            ":idl": &idl_raw
+                        })
                     })
                     .map_err(|e| {
                         ladmin_error!(audit, "SQLite Error {:?}", e);
@@ -758,7 +757,7 @@ impl IdlSqliteWriteTransaction {
         self.conn
             .execute(
                 "CREATE TABLE IF NOT EXISTS idx_name2uuid (name TEXT PRIMARY KEY, uuid TEXT)",
-                NO_PARAMS,
+                [],
             )
             .map(|_| ())
             .map_err(|e| {
@@ -777,7 +776,12 @@ impl IdlSqliteWriteTransaction {
 
         self.conn
             .prepare("INSERT OR REPLACE INTO idx_name2uuid (name, uuid) VALUES(:name, :uuid)")
-            .and_then(|mut stmt| stmt.execute_named(&[(":name", &name), (":uuid", &uuids)]))
+            .and_then(|mut stmt| {
+                stmt.execute(named_params! {
+                    ":name": &name,
+                    ":uuid": uuids.as_str()
+                })
+            })
             .map(|_| ())
             .map_err(|e| {
                 ladmin_error!(audit, "SQLite Error {:?}", e);
@@ -792,7 +796,7 @@ impl IdlSqliteWriteTransaction {
     ) -> Result<(), OperationError> {
         self.conn
             .prepare("DELETE FROM idx_name2uuid WHERE name = :name")
-            .and_then(|mut stmt| stmt.execute_named(&[(":name", &name)]))
+            .and_then(|mut stmt| stmt.execute(&[(":name", &name)]))
             .map(|_| ())
             .map_err(|e| {
                 ladmin_error!(audit, "SQLite Error {:?}", e);
@@ -804,7 +808,7 @@ impl IdlSqliteWriteTransaction {
         self.conn
             .execute(
                 "CREATE TABLE IF NOT EXISTS idx_uuid2spn (uuid TEXT PRIMARY KEY, spn BLOB)",
-                NO_PARAMS,
+                [],
             )
             .map(|_| ())
             .map_err(|e| {
@@ -827,7 +831,12 @@ impl IdlSqliteWriteTransaction {
                     serde_cbor::to_vec(&dbv1).map_err(|_e| OperationError::SerdeCborError)?;
                 self.conn
                     .prepare("INSERT OR REPLACE INTO idx_uuid2spn (uuid, spn) VALUES(:uuid, :spn)")
-                    .and_then(|mut stmt| stmt.execute_named(&[(":uuid", &uuids), (":spn", &data)]))
+                    .and_then(|mut stmt| {
+                        stmt.execute(named_params! {
+                            ":uuid": &uuids,
+                            ":spn": &data,
+                        })
+                    })
                     .map(|_| ())
                     .map_err(|e| {
                         ladmin_error!(audit, "SQLite Error {:?}", e);
@@ -837,7 +846,7 @@ impl IdlSqliteWriteTransaction {
             None => self
                 .conn
                 .prepare("DELETE FROM idx_uuid2spn WHERE uuid = :uuid")
-                .and_then(|mut stmt| stmt.execute_named(&[(":uuid", &uuids)]))
+                .and_then(|mut stmt| stmt.execute(&[(":uuid", &uuids)]))
                 .map(|_| ())
                 .map_err(|e| {
                     ladmin_error!(audit, "SQLite Error {:?}", e);
@@ -850,7 +859,7 @@ impl IdlSqliteWriteTransaction {
         self.conn
             .execute(
                 "CREATE TABLE IF NOT EXISTS idx_uuid2rdn (uuid TEXT PRIMARY KEY, rdn TEXT)",
-                NO_PARAMS,
+                [],
             )
             .map(|_| ())
             .map_err(|e| {
@@ -870,7 +879,7 @@ impl IdlSqliteWriteTransaction {
             Some(k) => self
                 .conn
                 .prepare("INSERT OR REPLACE INTO idx_uuid2rdn (uuid, rdn) VALUES(:uuid, :rdn)")
-                .and_then(|mut stmt| stmt.execute_named(&[(":uuid", &uuids), (":rdn", &k)]))
+                .and_then(|mut stmt| stmt.execute(&[(":uuid", &uuids), (":rdn", &k)]))
                 .map(|_| ())
                 .map_err(|e| {
                     ladmin_error!(audit, "SQLite Error {:?}", e);
@@ -879,7 +888,7 @@ impl IdlSqliteWriteTransaction {
             None => self
                 .conn
                 .prepare("DELETE FROM idx_uuid2rdn WHERE uuid = :uuid")
-                .and_then(|mut stmt| stmt.execute_named(&[(":uuid", &uuids)]))
+                .and_then(|mut stmt| stmt.execute(&[(":uuid", &uuids)]))
                 .map(|_| ())
                 .map_err(|e| {
                     ladmin_error!(audit, "SQLite Error {:?}", e);
@@ -906,7 +915,7 @@ impl IdlSqliteWriteTransaction {
         ltrace!(audit, "Creating index -> {}", idx_stmt);
 
         self.conn
-            .execute(idx_stmt.as_str(), NO_PARAMS)
+            .execute(idx_stmt.as_str(), [])
             .map(|_| ())
             .map_err(|e| {
                 ladmin_error!(audit, "SQLite Error {:?}", e);
@@ -922,7 +931,7 @@ impl IdlSqliteWriteTransaction {
                 ladmin_error!(audit, "SQLite Error {:?}", e);
                 OperationError::SQLiteError
             })?;
-        let idx_table_iter = stmt.query_map(NO_PARAMS, |row| row.get(0)).map_err(|e| {
+        let idx_table_iter = stmt.query_map([], |row| row.get(0)).map_err(|e| {
             ladmin_error!(audit, "SQLite Error {:?}", e);
             OperationError::SQLiteError
         })?;
@@ -946,7 +955,7 @@ impl IdlSqliteWriteTransaction {
             ltrace!(audit, "removing idx_table -> {:?}", idx_table);
             self.conn
                 .prepare(format!("DROP TABLE {}", idx_table).as_str())
-                .and_then(|mut stmt| stmt.execute(NO_PARAMS).map(|_| ()))
+                .and_then(|mut stmt| stmt.execute([]).map(|_| ()))
                 .map_err(|e| {
                     ladmin_error!(audit, "sqlite error {:?}", e);
                     OperationError::SQLiteError
@@ -957,7 +966,7 @@ impl IdlSqliteWriteTransaction {
     pub unsafe fn purge_id2entry(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
         ltrace!(audit, "purge id2entry ...");
         self.conn
-            .execute("DELETE FROM id2entry", NO_PARAMS)
+            .execute("DELETE FROM id2entry", [])
             .map(|_| ())
             .map_err(|e| {
                 ladmin_error!(audit, "sqlite error {:?}", e);
@@ -969,9 +978,12 @@ impl IdlSqliteWriteTransaction {
         let data = serde_cbor::to_vec(&nsid).map_err(|_e| OperationError::SerdeCborError)?;
 
         self.conn
-            .execute_named(
+            .execute(
                 "INSERT OR REPLACE INTO db_sid (id, data) VALUES(:id, :sid)",
-                &[(":id", &2), (":sid", &data)],
+                named_params! {
+                    ":id": &2,
+                    ":sid": &data,
+                },
             )
             .map(|_| ())
             .map_err(|e| {
@@ -984,9 +996,12 @@ impl IdlSqliteWriteTransaction {
         let data = serde_cbor::to_vec(&nsid).map_err(|_e| OperationError::SerdeCborError)?;
 
         self.conn
-            .execute_named(
+            .execute(
                 "INSERT OR REPLACE INTO db_did (id, data) VALUES(:id, :did)",
-                &[(":id", &2), (":did", &data)],
+                named_params! {
+                    ":id": &2,
+                    ":did": &data,
+                },
             )
             .map(|_| ())
             .map_err(|e| {
@@ -999,9 +1014,12 @@ impl IdlSqliteWriteTransaction {
         let data = serde_cbor::to_vec(ts).map_err(|_e| OperationError::SerdeCborError)?;
 
         self.conn
-            .execute_named(
+            .execute(
                 "INSERT OR REPLACE INTO db_op_ts (id, data) VALUES(:id, :did)",
-                &[(":id", &1), (":did", &data)],
+                named_params! {
+                    ":id": &1,
+                    ":did": &data,
+                },
             )
             .map(|_| ())
             .map_err(|e| {
@@ -1014,7 +1032,7 @@ impl IdlSqliteWriteTransaction {
         // Try to get a value.
         let data: Option<Vec<u8>> = self
             .get_conn()
-            .query_row_named("SELECT data FROM db_op_ts WHERE id = 1", &[], |row| {
+            .query_row("SELECT data FROM db_op_ts WHERE id = 1", [], |row| {
                 row.get(0)
             })
             .optional()
@@ -1039,7 +1057,7 @@ impl IdlSqliteWriteTransaction {
     // ===== inner helpers =====
     // Some of these are not self due to use in new()
     fn get_db_version_key(&self, key: &str) -> i64 {
-        match self.conn.query_row_named(
+        match self.conn.query_row(
             "SELECT version FROM db_version WHERE id = :id",
             &[(":id", &key)],
             |row| row.get(0),
@@ -1054,9 +1072,12 @@ impl IdlSqliteWriteTransaction {
 
     fn set_db_version_key(&self, key: &str, v: i64) -> Result<(), rusqlite::Error> {
         self.conn
-            .execute_named(
+            .execute(
                 "INSERT OR REPLACE INTO db_version (id, version) VALUES(:id, :dbv_id2entry)",
-                &[(":id", &key), (":dbv_id2entry", &v)],
+                named_params! {
+                    ":id": &key,
+                    ":dbv_id2entry": v,
+                },
             )
             .map(|_| ())
     }
@@ -1078,7 +1099,7 @@ impl IdlSqliteWriteTransaction {
             ladmin_error!(au, "SQLite Error {:?}", e);
             OperationError::SQLiteError
         })?;
-        let res = stmt.query_map(NO_PARAMS, |row| row.get(0)).map_err(|e| {
+        let res = stmt.query_map([], |row| row.get(0)).map_err(|e| {
             ladmin_error!(au, "SQLite Error {:?}", e);
             OperationError::SQLiteError
         })?;
@@ -1118,7 +1139,7 @@ impl IdlSqliteWriteTransaction {
                     version INTEGER
                 )
                 ",
-                NO_PARAMS,
+                [],
             )
             .map_err(|e| {
                 ladmin_error!(audit, "sqlite error {:?}", e);
@@ -1139,7 +1160,7 @@ impl IdlSqliteWriteTransaction {
                         data BLOB NOT NULL
                     )
                     ",
-                    NO_PARAMS,
+                    [],
                 )
                 .and_then(|_| {
                     self.conn.execute(
@@ -1148,7 +1169,7 @@ impl IdlSqliteWriteTransaction {
                         data BLOB NOT NULL
                     )
                     ",
-                        NO_PARAMS,
+                        [],
                     )
                 })
                 .map_err(|e| {
@@ -1172,7 +1193,7 @@ impl IdlSqliteWriteTransaction {
                         data BLOB NOT NULL
                     )
                     ",
-                    NO_PARAMS,
+                    [],
                 )
                 .map_err(|e| {
                     ladmin_error!(audit, "sqlite error {:?}", e);
@@ -1191,7 +1212,7 @@ impl IdlSqliteWriteTransaction {
                         data BLOB NOT NULL
                     )
                     ",
-                    NO_PARAMS,
+                    [],
                 )
                 .map_err(|e| {
                     ladmin_error!(audit, "sqlite error {:?}", e);
@@ -1324,6 +1345,18 @@ impl IdlSqlite {
         })?;
 
         Ok(IdlSqlite { pool })
+    }
+
+    pub(crate) fn get_allids_count(&self, au: &mut AuditScope) -> Result<u64, OperationError> {
+        ltrace!(au, "Counting allids...");
+        self.pool
+            .try_get()
+            .expect("Unable to get connection from pool!!!")
+            .query_row("select count(id) from id2entry", [], |row| row.get(0))
+            .map_err(|e| {
+                ltrace!(au, "SQLite Error {:?}", e);
+                OperationError::SQLiteError
+            })
     }
 
     pub fn read(&self) -> IdlSqliteReadTransaction {

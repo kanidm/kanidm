@@ -19,7 +19,7 @@ use uuid::Uuid;
 // use std::borrow::Borrow;
 
 // Appears to take about ~500MB on some stress tests
-const DEFAULT_CACHE_TARGET: usize = 16384;
+const DEFAULT_CACHE_TARGET: usize = 2048;
 const DEFAULT_IDL_CACHE_RATIO: usize = 32;
 const DEFAULT_NAME_CACHE_RATIO: usize = 8;
 const DEFAULT_CACHE_RMISS: usize = 8;
@@ -857,10 +857,33 @@ impl IdlArcSqlite {
         vacuum: bool,
     ) -> Result<Self, OperationError> {
         let db = IdlSqlite::new(audit, cfg, vacuum)?;
-        let mut cache_size = cfg.arcsize.unwrap_or(DEFAULT_CACHE_TARGET);
-        if cache_size < 256 {
-            cache_size = 256;
-            ladmin_warning!(audit, "Arc Cache size too low - setting to 256 ...");
+
+        // Autotune heuristic.
+        let mut cache_size = match cfg.arcsize {
+            Some(v) => v,
+            None => {
+                // For now I've noticed about 20% of the number of entries
+                // works well, but it may not be perfect ...
+                db.get_allids_count(audit)
+                    .map(|c| {
+                        (if c > 0 {
+                            // We want one fifth of this.
+                            c / 5
+                        } else {
+                            c
+                        }) as usize
+                    })
+                    .unwrap_or(DEFAULT_CACHE_TARGET)
+            }
+        };
+
+        if cache_size < DEFAULT_CACHE_TARGET {
+            cache_size = DEFAULT_CACHE_TARGET;
+            ladmin_warning!(
+                audit,
+                "Arc Cache size too low - setting to {} ...",
+                DEFAULT_CACHE_TARGET
+            );
         }
 
         let entry_cache = ARCache::new(
