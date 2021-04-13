@@ -1,8 +1,7 @@
 
 [profile.release]
 debug = true
-# Have to disable to allow aarch64 to build
-# lto = true
+lto = "thin"
 
 [workspace]
 members = [

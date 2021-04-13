@@ -9,9 +9,6 @@ documentation = "https://docs.rs/kanidm/latest/kanidm/"
 homepage = "https://github.com/kanidm/kanidm/"
 repository = "https://github.com/kanidm/kanidm/"
 
-[profile.release]
-lto = "thin"
-
 [lib]
 name = "kanidm_unix_common"
 path = "src/lib.rs"

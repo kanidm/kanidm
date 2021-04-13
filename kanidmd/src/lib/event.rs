@@ -164,12 +164,14 @@ impl Event {
     ) -> Result<Self, OperationError> {
         ltrace!(audit, "from_ro_uat -> {:?}", uat);
         let uat = uat.ok_or(OperationError::NotAuthenticated)?;
+        /*
         let u = Uuid::parse_str(uat.uuid.as_str()).map_err(|_| {
             ladmin_error!(audit, "from_ro_uat invalid uat uuid");
             OperationError::InvalidUuid
         })?;
+        */
 
-        let e = qs.internal_search_uuid(audit, &u).map_err(|e| {
+        let e = qs.internal_search_uuid(audit, &uat.uuid).map_err(|e| {
             ladmin_error!(audit, "from_ro_uat failed {:?}", e);
             e
         })?;
@@ -193,12 +195,14 @@ impl Event {
     ) -> Result<Self, OperationError> {
         ltrace!(audit, "from_rw_uat -> {:?}", uat);
         let uat = uat.ok_or(OperationError::NotAuthenticated)?;
+        /*
         let u = Uuid::parse_str(uat.uuid.as_str()).map_err(|_| {
             ladmin_error!(audit, "from_rw_uat invalid uat uuid");
             OperationError::InvalidUuid
         })?;
+        */
 
-        let e = qs.internal_search_uuid(audit, &u).map_err(|e| {
+        let e = qs.internal_search_uuid(audit, &uat.uuid).map_err(|e| {
             ladmin_error!(audit, "from_rw_uat failed {:?}", e);
             e
         })?;

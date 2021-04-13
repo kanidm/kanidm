@@ -2481,8 +2481,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
         } else {
             // On a reload the cache is dropped, otherwise we tell accesscontrols
             // to drop anything related that was changed.
-            self.accesscontrols
-                .invalidate_related_cache(self.changed_uuid.into_inner().as_slice())
+            // self.accesscontrols
+            //    .invalidate_related_cache(self.changed_uuid.into_inner().as_slice())
         }
 
         // Now destructure the transaction ready to reset it.
