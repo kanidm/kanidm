@@ -1206,27 +1206,25 @@ pub trait AccessControlsTransaction<'a> {
                         if r_acc {
                             // If something allowed us to delete, skip doing silly work.
                             r_acc
+                        } else if e.entry_match_no_index(&f_res) {
+                            lsecurity_access!(
+                                audit,
+                                "entry {:?} matches acs {}",
+                                e.get_uuid(),
+                                acd.acp.name
+                            );
+                            // It matches, so we can delete this!
+                            lsecurity_access!(audit, "passed");
+                            true
                         } else {
-                            if e.entry_match_no_index(&f_res) {
-                                lsecurity_access!(
-                                    audit,
-                                    "entry {:?} matches acs {}",
-                                    e.get_uuid(),
-                                    acd.acp.name
-                                );
-                                // It matches, so we can delete this!
-                                lsecurity_access!(audit, "passed");
-                                true
-                            } else {
-                                ltrace!(
-                                    audit,
-                                    "entry {:?} DOES NOT match acs {}",
-                                    e.get_uuid(),
-                                    acd.acp.name
-                                );
-                                // Does not match, fail.
-                                false
-                            }
+                            ltrace!(
+                                audit,
+                                "entry {:?} DOES NOT match acs {}",
+                                e.get_uuid(),
+                                acd.acp.name
+                            );
+                            // Does not match, fail.
+                            false
                         } // else
                     }) // fold related_acp
                 } // if/else
