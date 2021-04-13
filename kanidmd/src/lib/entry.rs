@@ -46,10 +46,10 @@ use crate::be::dbentry::{DbEntry, DbEntryV1, DbEntryVers};
 use crate::be::IdxKey;
 
 use ldap3_server::simple::{LdapPartialAttribute, LdapSearchResultEntry};
+use std::collections::BTreeMap as Map;
 pub use std::collections::BTreeSet as Set;
 use std::collections::BTreeSet;
-// use std::collections::BTreeMap as Map;
-use hashbrown::HashMap as Map;
+// use hashbrown::HashMap as Map;
 use hashbrown::HashSet;
 use smartstring::alias::String as AttrString;
 use time::OffsetDateTime;
@@ -246,7 +246,8 @@ impl Entry<EntryInit, EntryNew> {
             // This means NEVER COMMITED
             valid: EntryInit,
             state: EntryNew,
-            attrs: Map::with_capacity(32),
+            attrs: Map::new(),
+            // attrs: Map::with_capacity(32),
         }
     }
 
@@ -1692,22 +1693,10 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             FilterResolved::LessThan(attr, subvalue, _) => {
                 self.attribute_lessthan(attr.as_str(), subvalue)
             }
-            FilterResolved::Or(l) => l.iter().fold(false, |acc, f| {
-                // Check with ftweedal about or filter zero len correctness.
-                if acc {
-                    acc
-                } else {
-                    self.entry_match_no_index_inner(f)
-                }
-            }),
-            FilterResolved::And(l) => l.iter().fold(true, |acc, f| {
-                // Check with ftweedal about and filter zero len correctness.
-                if acc {
-                    self.entry_match_no_index_inner(f)
-                } else {
-                    acc
-                }
-            }),
+            // Check with ftweedal about or filter zero len correctness.
+            FilterResolved::Or(l) => l.iter().any(|f| self.entry_match_no_index_inner(f)),
+            // Check with ftweedal about and filter zero len correctness.
+            FilterResolved::And(l) => l.iter().all(|f| self.entry_match_no_index_inner(f)),
             FilterResolved::Inclusion(_) => {
                 // An inclusion doesn't make sense on an entry in isolation!
                 // Inclusions are part of exists queries, on search they mean
@@ -1907,7 +1896,8 @@ impl From<&SchemaAttribute> for Entry<EntryInit, EntryNew> {
         let syntax_v = btreeset![Value::from(s.syntax.clone())];
 
         // Build the Map of the attributes relevant
-        let mut attrs: Map<AttrString, Set<Value>> = Map::with_capacity(16);
+        // let mut attrs: Map<AttrString, Set<Value>> = Map::with_capacity(8);
+        let mut attrs: Map<AttrString, Set<Value>> = Map::new();
         attrs.insert(AttrString::from("attributename"), name_v);
         attrs.insert(AttrString::from("description"), desc_v);
         attrs.insert(AttrString::from("uuid"), uuid_v);
@@ -1941,7 +1931,8 @@ impl From<&SchemaClass> for Entry<EntryInit, EntryNew> {
         let name_v = btreeset![Value::new_iutf8(s.name.as_str())];
         let desc_v = btreeset![Value::new_utf8(s.description.clone())];
 
-        let mut attrs: Map<AttrString, Set<Value>> = Map::with_capacity(16);
+        // let mut attrs: Map<AttrString, Set<Value>> = Map::with_capacity(8);
+        let mut attrs: Map<AttrString, Set<Value>> = Map::new();
         attrs.insert(AttrString::from("classname"), name_v);
         attrs.insert(AttrString::from("description"), desc_v);
         attrs.insert(AttrString::from("uuid"), uuid_v);

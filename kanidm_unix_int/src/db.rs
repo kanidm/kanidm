@@ -2,7 +2,6 @@ use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
 use libc::umask;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
-use rusqlite::NO_PARAMS;
 use std::convert::TryFrom;
 use std::fmt;
 use std::time::Duration;
@@ -76,7 +75,7 @@ impl<'a> DbTxn<'a> {
         // Start the transaction
         // debug!("Starting db WR txn ...");
         #[allow(clippy::expect_used)]
-        conn.execute("BEGIN TRANSACTION", NO_PARAMS)
+        conn.execute("BEGIN TRANSACTION", [])
             .expect("Unable to begin transaction!");
         DbTxn {
             committed: false,
@@ -90,7 +89,7 @@ impl<'a> DbTxn<'a> {
         self.conn.set_prepared_statement_cache_capacity(16);
         self.conn
             .prepare("PRAGMA journal_mode=WAL;")
-            .and_then(|mut wal_stmt| wal_stmt.query(NO_PARAMS).map(|_| ()))
+            .and_then(|mut wal_stmt| wal_stmt.query([]).map(|_| ()))
             .map_err(|e| {
                 error!("sqlite account_t create error -> {:?}", e);
             })?;
@@ -110,7 +109,7 @@ impl<'a> DbTxn<'a> {
                 expiry NUMERIC NOT NULL
             )
             ",
-                NO_PARAMS,
+                [],
             )
             .map_err(|e| {
                 error!("sqlite account_t create error -> {:?}", e);
@@ -127,7 +126,7 @@ impl<'a> DbTxn<'a> {
                 expiry NUMERIC NOT NULL
             )
             ",
-                NO_PARAMS,
+                [],
             )
             .map_err(|e| {
                 error!("sqlite group_t create error -> {:?}", e);
@@ -142,7 +141,7 @@ impl<'a> DbTxn<'a> {
                 FOREIGN KEY(a_uuid) REFERENCES account_t(uuid) ON DELETE CASCADE
             )
             ",
-                NO_PARAMS,
+                [],
             )
             .map_err(|e| {
                 error!("sqlite memberof_t create error -> {:?}", e);
@@ -160,7 +159,7 @@ impl<'a> DbTxn<'a> {
         self.committed = true;
 
         self.conn
-            .execute("COMMIT TRANSACTION", NO_PARAMS)
+            .execute("COMMIT TRANSACTION", [])
             .map(|_| ())
             .map_err(|e| {
                 error!("sqlite commit failure -> {:?}", e);
@@ -169,13 +168,13 @@ impl<'a> DbTxn<'a> {
 
     pub fn invalidate(&self) -> Result<(), ()> {
         self.conn
-            .execute("UPDATE group_t SET expiry = 0", NO_PARAMS)
+            .execute("UPDATE group_t SET expiry = 0", [])
             .map_err(|e| {
                 error!("sqlite update group_t failure -> {:?}", e);
             })?;
 
         self.conn
-            .execute("UPDATE account_t SET expiry = 0", NO_PARAMS)
+            .execute("UPDATE account_t SET expiry = 0", [])
             .map_err(|e| {
                 error!("sqlite update account_t failure -> {:?}", e);
             })?;
@@ -184,14 +183,12 @@ impl<'a> DbTxn<'a> {
     }
 
     pub fn clear_cache(&self) -> Result<(), ()> {
-        self.conn
-            .execute("DELETE FROM group_t", NO_PARAMS)
-            .map_err(|e| {
-                error!("sqlite delete group_t failure -> {:?}", e);
-            })?;
+        self.conn.execute("DELETE FROM group_t", []).map_err(|e| {
+            error!("sqlite delete group_t failure -> {:?}", e);
+        })?;
 
         self.conn
-            .execute("DELETE FROM account_t", NO_PARAMS)
+            .execute("DELETE FROM account_t", [])
             .map_err(|e| {
                 error!("sqlite delete group_t failure -> {:?}", e);
             })?;
@@ -234,7 +231,7 @@ impl<'a> DbTxn<'a> {
 
         // Makes tuple (token, expiry)
         let data_iter = stmt
-            .query_map(&[gid], |row| Ok((row.get(0)?, row.get(1)?)))
+            .query_map(params![gid], |row| Ok((row.get(0)?, row.get(1)?)))
             .map_err(|e| {
                 error!("sqlite query_map failure -> {:?}", e);
             })?;
@@ -284,11 +281,9 @@ impl<'a> DbTxn<'a> {
                 error!("sqlite select prepare failure -> {:?}", e);
             })?;
 
-        let data_iter = stmt
-            .query_map(NO_PARAMS, |row| Ok(row.get(0)?))
-            .map_err(|e| {
-                error!("sqlite query_map failure -> {:?}", e);
-            })?;
+        let data_iter = stmt.query_map([], |row| Ok(row.get(0)?)).map_err(|e| {
+            error!("sqlite query_map failure -> {:?}", e);
+        })?;
         let data: Result<Vec<Vec<u8>>, _> = data_iter
             .map(|v| {
                 v.map_err(|e| {
@@ -322,29 +317,29 @@ impl<'a> DbTxn<'a> {
         // to manually manage the update or insert :( :(
 
         // Find anything conflicting and purge it.
-        self.conn.execute_named("DELETE FROM account_t WHERE NOT uuid = :uuid AND (name = :name OR spn = :spn OR gidnumber = :gidnumber)",
-            &[
-                (":uuid", &account.uuid),
-                (":name", &account.name),
-                (":spn", &account.spn),
-                (":gidnumber", &account.gidnumber),
-            ]
+        self.conn.execute("DELETE FROM account_t WHERE NOT uuid = :uuid AND (name = :name OR spn = :spn OR gidnumber = :gidnumber)",
+            named_params!{
+                ":uuid": &account.uuid,
+                ":name": &account.name,
+                ":spn": &account.spn,
+                ":gidnumber": &account.gidnumber,
+            }
             )
             .map_err(|e| {
                 debug!("sqlite delete account_t duplicate failure -> {:?}", e);
             })
             .map(|_| ())?;
 
-        let updated = self.conn.execute_named(
+        let updated = self.conn.execute(
                 "UPDATE account_t SET name=:name, spn=:spn, gidnumber=:gidnumber, token=:token, expiry=:expiry WHERE uuid = :uuid",
-            &[
-                (":uuid", &account.uuid),
-                (":name", &account.name),
-                (":spn", &account.spn),
-                (":gidnumber", &account.gidnumber),
-                (":token", &data),
-                (":expiry", &expire),
-            ]
+            named_params!{
+                ":uuid": &account.uuid,
+                ":name": &account.name,
+                ":spn": &account.spn,
+                ":gidnumber": &account.gidnumber,
+                ":token": &data,
+                ":expiry": &expire,
+            }
             )
             .map_err(|e| {
                 debug!("sqlite delete account_t duplicate failure -> {:?}", e);
@@ -358,19 +353,19 @@ impl<'a> DbTxn<'a> {
                     error!("sqlite prepare error -> {:?}", e);
                 })?;
 
-            stmt.execute_named(&[
-                (":uuid", &account.uuid),
-                (":name", &account.name),
-                (":spn", &account.spn),
-                (":gidnumber", &account.gidnumber),
-                (":token", &data),
-                (":expiry", &expire),
-            ])
+            stmt.execute(named_params! {
+                ":uuid": &account.uuid,
+                ":name": &account.name,
+                ":spn": &account.spn,
+                ":gidnumber": &account.gidnumber,
+                ":token": &data,
+                ":expiry": &expire,
+            })
             .map(|r| {
                 debug!("insert -> {:?}", r);
             })
             .map_err(|e| {
-                error!("sqlite execute_named error -> {:?}", e);
+                error!("sqlite execute error -> {:?}", e);
             })?;
         }
 
@@ -399,19 +394,25 @@ impl<'a> DbTxn<'a> {
             })?;
         // Now for each group, add the relation.
         account.groups.iter().try_for_each(|g| {
-            stmt.execute_named(&[(":a_uuid", &account.uuid), (":g_uuid", &g.uuid)])
-                .map(|r| {
-                    debug!("insert membership -> {:?}", r);
-                })
-                .map_err(|e| {
-                    error!("sqlite execute_named error -> {:?}", e);
-                })
+            stmt.execute(named_params! {
+                ":a_uuid": &account.uuid,
+                ":g_uuid": &g.uuid,
+            })
+            .map(|r| {
+                debug!("insert membership -> {:?}", r);
+            })
+            .map_err(|e| {
+                error!("sqlite execute error -> {:?}", e);
+            })
         })
     }
 
     pub fn delete_account(&self, a_uuid: &str) -> Result<(), ()> {
         self.conn
-            .execute("DELETE FROM account_t WHERE uuid = :a_uuid", &[a_uuid])
+            .execute(
+                "DELETE FROM account_t WHERE uuid = :a_uuid",
+                params![a_uuid],
+            )
             .map(|_| ())
             .map_err(|e| {
                 error!("sqlite memberof_t create error -> {:?}", e);
@@ -428,9 +429,12 @@ impl<'a> DbTxn<'a> {
         })?;
 
         self.conn
-            .execute_named(
+            .execute(
                 "UPDATE account_t SET password = :data WHERE uuid = :a_uuid",
-                &[(":a_uuid", &a_uuid), (":data", &data)],
+                named_params! {
+                    ":a_uuid": &a_uuid,
+                    ":data": &data,
+                },
             )
             .map_err(|e| {
                 error!("sqlite update account_t password failure -> {:?}", e);
@@ -523,7 +527,7 @@ impl<'a> DbTxn<'a> {
 
         // Makes tuple (token, expiry)
         let data_iter = stmt
-            .query_map(&[gid], |row| Ok((row.get(0)?, row.get(1)?)))
+            .query_map(params![gid], |row| Ok((row.get(0)?, row.get(1)?)))
             .map_err(|e| {
                 error!("sqlite query_map failure -> {:?}", e);
             })?;
@@ -607,11 +611,9 @@ impl<'a> DbTxn<'a> {
                 error!("sqlite select prepare failure -> {:?}", e);
             })?;
 
-        let data_iter = stmt
-            .query_map(NO_PARAMS, |row| Ok(row.get(0)?))
-            .map_err(|e| {
-                error!("sqlite query_map failure -> {:?}", e);
-            })?;
+        let data_iter = stmt.query_map([], |row| Ok(row.get(0)?)).map_err(|e| {
+            error!("sqlite query_map failure -> {:?}", e);
+        })?;
         let data: Result<Vec<Vec<u8>>, _> = data_iter
             .map(|v| {
                 v.map_err(|e| {
@@ -647,19 +649,19 @@ impl<'a> DbTxn<'a> {
                 error!("sqlite prepare error -> {:?}", e);
             })?;
 
-        stmt.execute_named(&[
-            (":uuid", &grp.uuid),
-            (":name", &grp.name),
-            (":spn", &grp.spn),
-            (":gidnumber", &grp.gidnumber),
-            (":token", &data),
-            (":expiry", &expire),
-        ])
+        stmt.execute(named_params! {
+            ":uuid": &grp.uuid,
+            ":name": &grp.name,
+            ":spn": &grp.spn,
+            ":gidnumber": &grp.gidnumber,
+            ":token": &data,
+            ":expiry": &expire,
+        })
         .map(|r| {
             debug!("insert -> {:?}", r);
         })
         .map_err(|e| {
-            error!("sqlite execute_named error -> {:?}", e);
+            error!("sqlite execute error -> {:?}", e);
         })
     }
 
@@ -686,7 +688,7 @@ impl<'a> Drop for DbTxn<'a> {
             // debug!("Aborting BE WR txn");
             #[allow(clippy::expect_used)]
             self.conn
-                .execute("ROLLBACK TRANSACTION", NO_PARAMS)
+                .execute("ROLLBACK TRANSACTION", [])
                 .expect("Unable to rollback transaction! Can not proceed!!!");
         }
     }

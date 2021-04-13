@@ -4,6 +4,7 @@
 // This is really only used for long lived, high level types that need clone
 // that otherwise can't be cloned. Think Mutex.
 use async_std::task;
+use concread::arcache::{ARCache, ARCacheReadTxn};
 use hashbrown::HashMap;
 use std::cell::Cell;
 use std::collections::BTreeSet;
@@ -26,10 +27,10 @@ use crate::entry::{
     Entry, EntryCommitted, EntryInit, EntryInvalid, EntryNew, EntryReduced, EntrySealed,
 };
 use crate::event::{
-    CreateEvent, DeleteEvent, Event, EventOrigin, ExistsEvent, ModifyEvent, ReviveRecycledEvent,
-    SearchEvent,
+    CreateEvent, DeleteEvent, Event, EventOrigin, EventOriginId, ExistsEvent, ModifyEvent,
+    ReviveRecycledEvent, SearchEvent,
 };
-use crate::filter::{Filter, FilterInvalid, FilterValid};
+use crate::filter::{Filter, FilterInvalid, FilterValid, FilterValidResolved};
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use crate::plugins::Plugins;
 use crate::repl::cid::Cid;
@@ -44,6 +45,9 @@ use smartstring::alias::String as AttrString;
 type EntrySealedCommitted = Entry<EntrySealed, EntryCommitted>;
 type EntryInvalidCommitted = Entry<EntryInvalid, EntryCommitted>;
 type EntryTuple = (EntrySealedCommitted, EntryInvalidCommitted);
+
+const RESOLVE_FILTER_CACHE_MAX: usize = 4096;
+const RESOLVE_FILTER_CACHE_LOCAL: usize = 0;
 
 lazy_static! {
     static ref PVCLASS_ATTRIBUTETYPE: PartialValue = PartialValue::new_class("attributetype");
@@ -67,6 +71,8 @@ pub struct QueryServer {
     accesscontrols: Arc<AccessControls>,
     db_tickets: Arc<Semaphore>,
     write_ticket: Arc<Semaphore>,
+    resolve_filter_cache:
+        Arc<ARCache<(EventOriginId, Filter<FilterValid>), Filter<FilterValidResolved>>>,
 }
 
 pub struct QueryServerReadTransaction<'a> {
@@ -74,8 +80,10 @@ pub struct QueryServerReadTransaction<'a> {
     // Anything else? In the future, we'll need to have a schema transaction
     // type, maybe others?
     schema: SchemaReadTransaction,
-    accesscontrols: AccessControlsReadTransaction,
+    accesscontrols: AccessControlsReadTransaction<'a>,
     _db_ticket: SemaphorePermit<'a>,
+    resolve_filter_cache:
+        Cell<ARCacheReadTxn<'a, (EventOriginId, Filter<FilterValid>), Filter<FilterValidResolved>>>,
 }
 
 pub struct QueryServerWriteTransaction<'a> {
@@ -90,8 +98,12 @@ pub struct QueryServerWriteTransaction<'a> {
     // changing content.
     changed_schema: Cell<bool>,
     changed_acp: Cell<bool>,
+    // Store the list of changed uuids for other invalidation needs?
+    changed_uuid: Cell<Vec<Uuid>>,
     _db_ticket: SemaphorePermit<'a>,
     _write_ticket: SemaphorePermit<'a>,
+    resolve_filter_cache:
+        Cell<ARCacheReadTxn<'a, (EventOriginId, Filter<FilterValid>), Filter<FilterValidResolved>>>,
 }
 
 // This is the core of the server. It implements all
@@ -106,15 +118,19 @@ pub struct QueryServerWriteTransaction<'a> {
 ///
 /// [`QueryServerReadTransaction`]: struct.QueryServerReadTransaction.html
 /// [`QueryServerWriteTransaction`]: struct.QueryServerWriteTransaction.html
-pub trait QueryServerTransaction {
+pub trait QueryServerTransaction<'a> {
     type BackendTransactionType: BackendTransaction;
     fn get_be_txn(&self) -> &Self::BackendTransactionType;
 
     type SchemaTransactionType: SchemaTransaction;
     fn get_schema(&self) -> &Self::SchemaTransactionType;
 
-    type AccessControlsTransactionType: AccessControlsTransaction;
+    type AccessControlsTransactionType: AccessControlsTransaction<'a>;
     fn get_accesscontrols(&self) -> &Self::AccessControlsTransactionType;
+
+    fn get_resolve_filter_cache(
+        &self,
+    ) -> &mut ARCacheReadTxn<'a, (EventOriginId, Filter<FilterValid>), Filter<FilterValidResolved>>;
 
     /// Conduct a search and apply access controls to yield a set of entries that
     /// have been reduced to the set of user visible avas. Note that if you provide
@@ -172,11 +188,14 @@ pub trait QueryServerTransaction {
             //
             // NOTE: Filters are validated in event conversion.
 
+            let resolve_filter_cache = self.get_resolve_filter_cache();
+
             let be_txn = self.get_be_txn();
             let idxmeta = be_txn.get_idxmeta_ref();
             // Now resolve all references and indexes.
             let vfr = lperf_trace_segment!(au, "server::search<filter_resolve>", || {
-                se.filter.resolve(&se.event, Some(idxmeta))
+                se.filter
+                    .resolve(&se.event, Some(idxmeta), Some(resolve_filter_cache))
             })
             .map_err(|e| {
                 ladmin_error!(au, "search filter resolve failure {:?}", e);
@@ -211,10 +230,16 @@ pub trait QueryServerTransaction {
         lperf_segment!(au, "server::exists", || {
             let be_txn = self.get_be_txn();
             let idxmeta = be_txn.get_idxmeta_ref();
-            let vfr = ee.filter.resolve(&ee.event, Some(idxmeta)).map_err(|e| {
-                ladmin_error!(au, "Failed to resolve filter {:?}", e);
-                e
-            })?;
+
+            let resolve_filter_cache = self.get_resolve_filter_cache();
+
+            let vfr = ee
+                .filter
+                .resolve(&ee.event, Some(idxmeta), Some(resolve_filter_cache))
+                .map_err(|e| {
+                    ladmin_error!(au, "Failed to resolve filter {:?}", e);
+                    e
+                })?;
 
             let lims = ee.get_limits();
 
@@ -375,9 +400,15 @@ pub trait QueryServerTransaction {
     ) -> Result<Entry<EntrySealed, EntryCommitted>, OperationError> {
         lperf_segment!(audit, "server::internal_search_uuid", || {
             let filter = filter!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
-            let f_valid = filter
-                .validate(self.get_schema())
-                .map_err(OperationError::SchemaViolation)?;
+            let f_valid = lperf_trace_segment!(
+                audit,
+                "server::internal_search_uuid<filter_validate>",
+                || {
+                    filter
+                        .validate(self.get_schema())
+                        .map_err(OperationError::SchemaViolation)
+                }
+            )?;
             let se = SearchEvent::new_internal(f_valid);
             let res = self.search(audit, &se);
             match res {
@@ -670,7 +701,7 @@ pub trait QueryServerTransaction {
 // Actually conduct a search request
 // This is the core of the server, as it processes the entire event
 // applies all parts required in order and more.
-impl<'a> QueryServerTransaction for QueryServerReadTransaction<'a> {
+impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
     type BackendTransactionType = BackendReadTransaction<'a>;
 
     fn get_be_txn(&self) -> &BackendReadTransaction<'a> {
@@ -683,10 +714,25 @@ impl<'a> QueryServerTransaction for QueryServerReadTransaction<'a> {
         &self.schema
     }
 
-    type AccessControlsTransactionType = AccessControlsReadTransaction;
+    type AccessControlsTransactionType = AccessControlsReadTransaction<'a>;
 
-    fn get_accesscontrols(&self) -> &AccessControlsReadTransaction {
+    fn get_accesscontrols(&self) -> &AccessControlsReadTransaction<'a> {
         &self.accesscontrols
+    }
+
+    fn get_resolve_filter_cache(
+        &self,
+    ) -> &mut ARCacheReadTxn<'a, (EventOriginId, Filter<FilterValid>), Filter<FilterValidResolved>>
+    {
+        unsafe {
+            let mptr = self.resolve_filter_cache.as_ptr();
+            &mut (*mptr)
+                as &mut ARCacheReadTxn<
+                    'a,
+                    (EventOriginId, Filter<FilterValid>),
+                    Filter<FilterValidResolved>,
+                >
+        }
     }
 }
 
@@ -731,7 +777,7 @@ impl<'a> QueryServerReadTransaction<'a> {
     }
 }
 
-impl<'a> QueryServerTransaction for QueryServerWriteTransaction<'a> {
+impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
     type BackendTransactionType = BackendWriteTransaction<'a>;
 
     fn get_be_txn(&self) -> &BackendWriteTransaction<'a> {
@@ -748,6 +794,21 @@ impl<'a> QueryServerTransaction for QueryServerWriteTransaction<'a> {
 
     fn get_accesscontrols(&self) -> &AccessControlsWriteTransaction<'a> {
         &self.accesscontrols
+    }
+
+    fn get_resolve_filter_cache(
+        &self,
+    ) -> &mut ARCacheReadTxn<'a, (EventOriginId, Filter<FilterValid>), Filter<FilterValidResolved>>
+    {
+        unsafe {
+            let mptr = self.resolve_filter_cache.as_ptr();
+            &mut (*mptr)
+                as &mut ARCacheReadTxn<
+                    'a,
+                    (EventOriginId, Filter<FilterValid>),
+                    Filter<FilterValidResolved>,
+                >
+        }
     }
 }
 
@@ -774,8 +835,12 @@ impl QueryServer {
             be,
             schema: Arc::new(schema),
             accesscontrols: Arc::new(AccessControls::new()),
-            db_tickets: Arc::new(Semaphore::new(pool_size)),
+            db_tickets: Arc::new(Semaphore::new(pool_size as usize)),
             write_ticket: Arc::new(Semaphore::new(1)),
+            resolve_filter_cache: Arc::new(ARCache::new_size(
+                RESOLVE_FILTER_CACHE_MAX,
+                RESOLVE_FILTER_CACHE_LOCAL,
+            )),
         }
     }
 
@@ -798,6 +863,7 @@ impl QueryServer {
             schema: self.schema.read(),
             accesscontrols: self.accesscontrols.read(),
             _db_ticket: db_ticket,
+            resolve_filter_cache: Cell::new(self.resolve_filter_cache.read()),
         }
     }
 
@@ -846,8 +912,10 @@ impl QueryServer {
             accesscontrols: self.accesscontrols.write(),
             changed_schema: Cell::new(false),
             changed_acp: Cell::new(false),
+            changed_uuid: Cell::new(Vec::new()),
             _db_ticket: db_ticket,
             _write_ticket: write_ticket,
+            resolve_filter_cache: Cell::new(self.resolve_filter_cache.read()),
         }
     }
 
@@ -1034,25 +1102,24 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
             // We have finished all plugs and now have a successful operation - flag if
             // schema or acp requires reload.
-            let _ = self
-                .changed_schema
-                .replace(commit_cand.iter().fold(false, |acc, e| {
-                    if acc {
-                        acc
-                    } else {
-                        e.attribute_value_pres("class", &PVCLASS_CLASSTYPE)
-                            || e.attribute_value_pres("class", &PVCLASS_ATTRIBUTETYPE)
-                    }
-                }));
-            let _ = self
-                .changed_acp
-                .replace(commit_cand.iter().fold(false, |acc, e| {
-                    if acc {
-                        acc
-                    } else {
-                        e.attribute_value_pres("class", &PVCLASS_ACP)
-                    }
-                }));
+            if !self.changed_schema.get() {
+                self.changed_schema.set(commit_cand.iter().any(|e| {
+                    e.attribute_value_pres("class", &PVCLASS_CLASSTYPE)
+                        || e.attribute_value_pres("class", &PVCLASS_ATTRIBUTETYPE)
+                }))
+            }
+            if !self.changed_acp.get() {
+                self.changed_acp.set(
+                    commit_cand
+                        .iter()
+                        .any(|e| e.attribute_value_pres("class", &PVCLASS_ACP)),
+                )
+            }
+
+            let cu = self.changed_uuid.as_ptr();
+            unsafe {
+                (*cu).extend(commit_cand.iter().map(|e| e.get_uuid()));
+            }
             ltrace!(
                 au,
                 "Schema reload: {:?}, ACP reload: {:?}",
@@ -1169,25 +1236,25 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
             // We have finished all plugs and now have a successful operation - flag if
             // schema or acp requires reload.
-            let _ = self
-                .changed_schema
-                .replace(del_cand.iter().fold(false, |acc, e| {
-                    if acc {
-                        acc
-                    } else {
-                        e.attribute_value_pres("class", &PVCLASS_CLASSTYPE)
-                            || e.attribute_value_pres("class", &PVCLASS_ATTRIBUTETYPE)
-                    }
-                }));
-            let _ = self
-                .changed_acp
-                .replace(del_cand.iter().fold(false, |acc, e| {
-                    if acc {
-                        acc
-                    } else {
-                        e.attribute_value_pres("class", &PVCLASS_ACP)
-                    }
-                }));
+            if !self.changed_schema.get() {
+                self.changed_schema.set(del_cand.iter().any(|e| {
+                    e.attribute_value_pres("class", &PVCLASS_CLASSTYPE)
+                        || e.attribute_value_pres("class", &PVCLASS_ATTRIBUTETYPE)
+                }))
+            }
+            if !self.changed_acp.get() {
+                self.changed_acp.set(
+                    del_cand
+                        .iter()
+                        .any(|e| e.attribute_value_pres("class", &PVCLASS_ACP)),
+                )
+            }
+
+            let cu = self.changed_uuid.as_ptr();
+            unsafe {
+                (*cu).extend(del_cand.iter().map(|e| e.get_uuid()));
+            }
+
             ltrace!(
                 au,
                 "Schema reload: {:?}, ACP reload: {:?}",
@@ -1511,31 +1578,31 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // We have finished all plugs and now have a successful operation - flag if
             // schema or acp requires reload. Remember, this is a modify, so we need to check
             // pre and post cands.
-            let _ =
+            if !self.changed_schema.get() {
                 self.changed_schema
-                    .replace(norm_cand.iter().chain(pre_candidates.iter()).fold(
-                        false,
-                        |acc, e| {
-                            if acc {
-                                acc
-                            } else {
-                                e.attribute_value_pres("class", &PVCLASS_CLASSTYPE)
-                                    || e.attribute_value_pres("class", &PVCLASS_ATTRIBUTETYPE)
-                            }
-                        },
-                    ));
-            let _ =
-                self.changed_acp
-                    .replace(norm_cand.iter().chain(pre_candidates.iter()).fold(
-                        false,
-                        |acc, e| {
-                            if acc {
-                                acc
-                            } else {
-                                e.attribute_value_pres("class", &PVCLASS_ACP)
-                            }
-                        },
-                    ));
+                    .set(norm_cand.iter().chain(pre_candidates.iter()).any(|e| {
+                        e.attribute_value_pres("class", &PVCLASS_CLASSTYPE)
+                            || e.attribute_value_pres("class", &PVCLASS_ATTRIBUTETYPE)
+                    }))
+            }
+            if !self.changed_acp.get() {
+                self.changed_acp.set(
+                    norm_cand
+                        .iter()
+                        .chain(pre_candidates.iter())
+                        .any(|e| e.attribute_value_pres("class", &PVCLASS_ACP)),
+                )
+            }
+            let cu = self.changed_uuid.as_ptr();
+            unsafe {
+                (*cu).extend(
+                    norm_cand
+                        .iter()
+                        .chain(pre_candidates.iter())
+                        .map(|e| e.get_uuid()),
+                );
+            }
+
             ltrace!(
                 au,
                 "Schema reload: {:?}, ACP reload: {:?}",
@@ -1590,8 +1657,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
         candidates: Vec<Entry<EntryInvalid, EntryCommitted>>,
     ) -> Result<(), OperationError> {
         lperf_segment!(au, "server::internal_batch_modify", || {
-            lsecurity!(au, "modify initiator: -> internal batch modify");
-
             if pre_candidates.is_empty() && candidates.is_empty() {
                 // No action needed.
                 return Ok(());
@@ -1638,31 +1703,30 @@ impl<'a> QueryServerWriteTransaction<'a> {
                     e
                 })?;
 
-            let _ =
+            if !self.changed_schema.get() {
                 self.changed_schema
-                    .replace(norm_cand.iter().chain(pre_candidates.iter()).fold(
-                        false,
-                        |acc, e| {
-                            if acc {
-                                acc
-                            } else {
-                                e.attribute_value_pres("class", &PVCLASS_CLASSTYPE)
-                                    || e.attribute_value_pres("class", &PVCLASS_ATTRIBUTETYPE)
-                            }
-                        },
-                    ));
-            let _ =
-                self.changed_acp
-                    .replace(norm_cand.iter().chain(pre_candidates.iter()).fold(
-                        false,
-                        |acc, e| {
-                            if acc {
-                                acc
-                            } else {
-                                e.attribute_value_pres("class", &PVCLASS_ACP)
-                            }
-                        },
-                    ));
+                    .set(norm_cand.iter().chain(pre_candidates.iter()).any(|e| {
+                        e.attribute_value_pres("class", &PVCLASS_CLASSTYPE)
+                            || e.attribute_value_pres("class", &PVCLASS_ATTRIBUTETYPE)
+                    }))
+            }
+            if !self.changed_acp.get() {
+                self.changed_acp.set(
+                    norm_cand
+                        .iter()
+                        .chain(pre_candidates.iter())
+                        .any(|e| e.attribute_value_pres("class", &PVCLASS_ACP)),
+                )
+            }
+            let cu = self.changed_uuid.as_ptr();
+            unsafe {
+                (*cu).extend(
+                    norm_cand
+                        .iter()
+                        .chain(pre_candidates.iter())
+                        .map(|e| e.get_uuid()),
+                );
+            }
             ltrace!(
                 au,
                 "Schema reload: {:?}, ACP reload: {:?}",
@@ -2414,6 +2478,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // that we rely on we MUST fail this here!!
         if self.changed_schema.get() || self.changed_acp.get() {
             self.reload_accesscontrols(audit)?;
+        } else {
+            // On a reload the cache is dropped, otherwise we tell accesscontrols
+            // to drop anything related that was changed.
+            // self.accesscontrols
+            //    .invalidate_related_cache(self.changed_uuid.into_inner().as_slice())
         }
 
         // Now destructure the transaction ready to reset it.
