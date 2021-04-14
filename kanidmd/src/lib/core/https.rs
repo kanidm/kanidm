@@ -1503,8 +1503,11 @@ pub fn create_https_server(
         None => {
             // Create without https
             tokio::spawn(async move {
-                if let Err(e) = tserver.listen(address).await {
-                    error!("Failed to start server listener -> {:?}", e);
+                if let Err(e) = tserver.listen(&address).await {
+                    error!(
+                        "Failed to start server listener on {:?} -> {:?}",
+                        &address, e,
+                    );
                 }
             });
         }
