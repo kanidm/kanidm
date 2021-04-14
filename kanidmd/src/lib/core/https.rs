@@ -1481,7 +1481,7 @@ pub fn create_https_server(
     match opt_tls_params {
         Some(tls_param) => {
             let tlsl = TlsListener::build()
-                .addrs(address)
+                .addrs(&address)
                 .cert(&tls_param.chain)
                 .key(&tls_param.key)
                 .finish()
@@ -1496,7 +1496,10 @@ pub fn create_https_server(
 
             tokio::spawn(async move {
                 if let Err(e) = tserver.listen(tlsl).await {
-                    error!("Failed to start server listener -> {:?}", e);
+                    error!(
+                        "Failed to start server listener on address {:?} -> {:?}",
+                        &address, e
+                    );
                 }
             });
         }
