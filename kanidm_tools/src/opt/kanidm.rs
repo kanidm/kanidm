@@ -127,7 +127,7 @@ pub struct AccountNamedTagOpt {
 }
 
 #[derive(Debug, StructOpt)]
-pub struct AccountNamedTagPKOpt {
+pub struct AccountNamedTagPkOpt {
     #[structopt(flatten)]
     aopts: AccountCommonOpt,
     #[structopt(flatten)]
@@ -161,7 +161,7 @@ pub enum AccountCredential {
     /// Set the TOTP credential of the account. If a TOTP already exists, on a successful
     /// registration, this will replace it.
     #[structopt(name = "set_totp")]
-    RegisterTOTP(AccountNamedTagOpt),
+    RegisterTotp(AccountNamedTagOpt),
     /// Remove TOTP from the account. If no TOTP exists, no action is taken.
     #[structopt(name = "remove_totp")]
     RemoveTOTP(AccountNamedOpt),
@@ -207,7 +207,7 @@ pub enum AccountSsh {
     #[structopt(name = "list_publickeys")]
     List(AccountNamedOpt),
     #[structopt(name = "add_publickey")]
-    Add(AccountNamedTagPKOpt),
+    Add(AccountNamedTagPkOpt),
     #[structopt(name = "delete_publickey")]
     Delete(AccountNamedTagOpt),
 }
