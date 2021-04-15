@@ -16,6 +16,8 @@ static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 extern crate log;
 #[macro_use]
 extern crate serde_derive;
+#[macro_use]
+extern crate rusqlite;
 
 #[macro_use]
 extern crate lazy_static;

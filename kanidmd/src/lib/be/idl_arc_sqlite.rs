@@ -1,15 +1,15 @@
 use crate::audit::AuditScope;
 use crate::be::idl_sqlite::{
-    FsType, IdlSqlite, IdlSqliteReadTransaction, IdlSqliteTransaction, IdlSqliteWriteTransaction,
+    IdlSqlite, IdlSqliteReadTransaction, IdlSqliteTransaction, IdlSqliteWriteTransaction,
 };
 use crate::be::idxkey::{IdlCacheKey, IdlCacheKeyRef, IdlCacheKeyToRef};
-use crate::be::{IdRawEntry, IDL};
+use crate::be::{BackendConfig, IdRawEntry, IDL};
 use crate::entry::{Entry, EntryCommitted, EntrySealed};
 use crate::value::IndexType;
 use crate::value::Value;
 use concread::arcache::{ARCache, ARCacheReadTxn, ARCacheWriteTxn};
 use concread::cowcell::*;
-use idlset::IDLBitRange;
+use idlset::v2::IDLBitRange;
 use kanidm_proto::v1::{ConsistencyError, OperationError};
 use std::collections::BTreeSet;
 use std::ops::DerefMut;
@@ -19,7 +19,7 @@ use uuid::Uuid;
 // use std::borrow::Borrow;
 
 // Appears to take about ~500MB on some stress tests
-const DEFAULT_CACHE_TARGET: usize = 16384;
+const DEFAULT_CACHE_TARGET: usize = 2048;
 const DEFAULT_IDL_CACHE_RATIO: usize = 32;
 const DEFAULT_NAME_CACHE_RATIO: usize = 8;
 const DEFAULT_CACHE_RMISS: usize = 8;
@@ -666,6 +666,16 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         })
     }
 
+    pub fn optimise_dirty_idls(&mut self, audit: &mut AuditScope) {
+        self.idl_cache.iter_mut_dirty().for_each(|(k, maybe_idl)| {
+            if let Some(idl) = maybe_idl {
+                if idl.maybe_compress() {
+                    lfilter_info!(audit, "Compressed idl -> {:?} ", k);
+                }
+            }
+        })
+    }
+
     pub fn create_name2uuid(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
         self.db.create_name2uuid(audit)
     }
@@ -843,15 +853,42 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
 impl IdlArcSqlite {
     pub fn new(
         audit: &mut AuditScope,
-        path: &str,
-        pool_size: u32,
-        fstype: FsType,
+        cfg: &BackendConfig,
         vacuum: bool,
     ) -> Result<Self, OperationError> {
-        let db = IdlSqlite::new(audit, path, pool_size, fstype, vacuum)?;
+        let db = IdlSqlite::new(audit, cfg, vacuum)?;
+
+        // Autotune heuristic.
+        let mut cache_size = match cfg.arcsize {
+            Some(v) => v,
+            None => {
+                // For now I've noticed about 20% of the number of entries
+                // works well, but it may not be perfect ...
+                db.get_allids_count(audit)
+                    .map(|c| {
+                        (if c > 0 {
+                            // We want one fifth of this.
+                            c / 5
+                        } else {
+                            c
+                        }) as usize
+                    })
+                    .unwrap_or(DEFAULT_CACHE_TARGET)
+            }
+        };
+
+        if cache_size < DEFAULT_CACHE_TARGET {
+            cache_size = DEFAULT_CACHE_TARGET;
+            ladmin_warning!(
+                audit,
+                "Arc Cache size too low - setting to {} ...",
+                DEFAULT_CACHE_TARGET
+            );
+        }
+
         let entry_cache = ARCache::new(
-            DEFAULT_CACHE_TARGET,
-            pool_size as usize,
+            cache_size,
+            cfg.pool_size as usize,
             DEFAULT_CACHE_RMISS,
             DEFAULT_CACHE_WMISS,
             false,
@@ -859,16 +896,16 @@ impl IdlArcSqlite {
         // The idl cache should have smaller items, and is critical for fast searches
         // so we allow it to have a higher ratio of items relative to the entries.
         let idl_cache = ARCache::new(
-            DEFAULT_CACHE_TARGET * DEFAULT_IDL_CACHE_RATIO,
-            pool_size as usize,
+            cache_size * DEFAULT_IDL_CACHE_RATIO,
+            cfg.pool_size as usize,
             DEFAULT_CACHE_RMISS,
             DEFAULT_CACHE_WMISS,
             false,
         );
 
         let name_cache = ARCache::new(
-            DEFAULT_CACHE_TARGET * DEFAULT_NAME_CACHE_RATIO,
-            pool_size as usize,
+            cache_size * DEFAULT_NAME_CACHE_RATIO,
+            cfg.pool_size as usize,
             DEFAULT_CACHE_RMISS,
             DEFAULT_CACHE_WMISS,
             true,

@@ -14,7 +14,7 @@ use crate::actors::v1_read::QueryServerReadV1;
 use crate::actors::v1_write::QueryServerWriteV1;
 use crate::async_log;
 use crate::audit::AuditScope;
-use crate::be::{Backend, BackendTransaction, FsType};
+use crate::be::{Backend, BackendConfig, BackendTransaction, FsType};
 use crate::crypto::setup_tls;
 use crate::idm::server::{IdmServer, IdmServerDelayed};
 use crate::interval::IntervalActor;
@@ -57,14 +57,14 @@ fn setup_backend_vacuum(
         FsType::Generic
     };
 
-    let be = Backend::new(
-        &mut audit_be,
+    let cfg = BackendConfig::new(
         config.db_path.as_str(),
         pool_size,
         fstype,
-        idxmeta,
-        vacuum,
+        config.db_arc_size,
     );
+
+    let be = Backend::new(&mut audit_be, cfg, idxmeta, vacuum);
     // debug!
     audit_be.write_log();
     be

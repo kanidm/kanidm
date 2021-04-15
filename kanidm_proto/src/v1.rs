@@ -160,13 +160,14 @@ pub struct Application {
 // and to the Entry so that filters or access controls can be applied.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UserAuthToken {
+    pub session_id: Uuid,
     // When this data should be considered invalid. Interpretation
     // may depend on the client application.
-    // pub expiry: DateTime,
+    pub expiry: Option<String>,
     pub name: String,
     pub spn: String,
     pub displayname: String,
-    pub uuid: String,
+    pub uuid: Uuid,
     // #[serde(skip_serializing_if = "Option::is_none")]
     // pub application: Option<Application>,
     pub groups: Vec<Group>,

@@ -669,7 +669,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
             Ok(Some(LdapBoundToken {
                 uuid: *UUID_ANONYMOUS,
                 effective_uat: account
-                    .to_userauthtoken(&[])
+                    .to_userauthtoken(au.uuid, &[])
                     .ok_or(OperationError::InvalidState)
                     .map_err(|e| {
                         ladmin_error!(au, "Unable to generate effective_uat -> {:?}", e);
@@ -731,7 +731,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
                         spn: account.spn,
                         uuid: account.uuid,
                         effective_uat: anon_account
-                            .to_userauthtoken(&[])
+                            .to_userauthtoken(au.uuid, &[])
                             .ok_or(OperationError::InvalidState)
                             .map_err(|e| {
                                 ladmin_error!(au, "Unable to generate effective_uat -> {:?}", e);

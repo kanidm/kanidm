@@ -151,17 +151,24 @@ impl Account {
     }
 
     // Could this actually take a claims list and application instead?
-    pub(crate) fn to_userauthtoken(&self, claims: &[Claim]) -> Option<UserAuthToken> {
+    pub(crate) fn to_userauthtoken(
+        &self,
+        session_id: Uuid,
+        claims: &[Claim],
+    ) -> Option<UserAuthToken> {
         // This could consume self?
         // The cred handler provided is what authenticated this user, so we can use it to
         // process what the proper claims should be.
         // Get the claims from the cred_h
 
         Some(UserAuthToken {
+            session_id,
+            // TODO: Fill this in!
+            expiry: None,
             name: self.name.clone(),
             spn: self.spn.clone(),
             displayname: self.displayname.clone(),
-            uuid: self.uuid.to_hyphenated_ref().to_string(),
+            uuid: self.uuid,
             // application: None,
             groups: self.groups.iter().map(|g| g.to_proto()).collect(),
             claims: claims.iter().map(|c| c.to_proto()).collect(),

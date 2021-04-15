@@ -12,6 +12,8 @@
 extern crate serde_derive;
 #[macro_use]
 extern crate log;
+#[macro_use]
+extern crate rusqlite;
 
 pub mod cache;
 pub mod client;
