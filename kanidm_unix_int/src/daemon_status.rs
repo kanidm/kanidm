@@ -12,8 +12,8 @@
 extern crate log;
 
 use log::debug;
-use structopt::StructOpt;
 use std::path::PathBuf;
+use structopt::StructOpt;
 
 // use futures::executor::block_on;
 
@@ -47,7 +47,10 @@ fn main() {
 
     let spath = PathBuf::from(cfg.sock_path.as_str());
     if !spath.exists() {
-        error!("kanidm_unixd socket {} does not exist - is the service running?", cfg.sock_path)
+        error!(
+            "kanidm_unixd socket {} does not exist - is the service running?",
+            cfg.sock_path
+        )
     } else {
         match call_daemon_blocking(cfg.sock_path.as_str(), req) {
             Ok(r) => match r {
