@@ -74,9 +74,7 @@ fn read_file_metadata<P: AsRef<Path>>(path: &P) -> Result<Metadata, ()> {
     metadata(path).map_err(|e| {
         error!(
             "Unable to read metadata for {} - {:?}",
-            path.as_ref()
-                .to_str()
-                .unwrap_or_else(|| "alert: invalid path"),
+            path.as_ref().to_str().unwrap_or("Alert: invalid path"),
             e
         );
     })
@@ -129,8 +127,8 @@ impl KanidmClientBuilder {
             Some(uri) => Some(uri),
             None => address,
         };
-        let verify_ca = kcc.verify_ca.unwrap_or_else(|| verify_ca);
-        let verify_hostnames = kcc.verify_hostnames.unwrap_or_else(|| verify_hostnames);
+        let verify_ca = kcc.verify_ca.unwrap_or(verify_ca);
+        let verify_hostnames = kcc.verify_hostnames.unwrap_or(verify_hostnames);
         let ca = match kcc.ca_path {
             Some(ca_path) => Some(Self::parse_certificate(ca_path.as_str())?),
             None => ca,
