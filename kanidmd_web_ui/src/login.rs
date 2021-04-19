@@ -27,7 +27,7 @@ impl LoginApp {
         let callback =
             self.link
                 .callback(move |response: Response<Json<Result<AuthState, Error>>>| {
-                    let (parts, body) = response.into_parts();
+                    let (_parts, body) = response.into_parts();
                     match body {
                         Json(Ok(state)) => LoginAppMsg::Next(state),
                         Json(Err(_)) => LoginAppMsg::DoNothing,

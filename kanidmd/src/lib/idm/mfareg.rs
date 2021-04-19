@@ -1,9 +1,9 @@
 use crate::audit::AuditScope;
-use crate::credential::totp::{TOTP, TOTP_DEFAULT_STEP};
+use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
 use crate::credential::webauthn::WebauthnDomainConfig;
 use crate::event::EventOriginId;
 use crate::idm::account::Account;
-use kanidm_proto::v1::TOTPSecret;
+use kanidm_proto::v1::TotpSecret;
 use kanidm_proto::v1::{OperationError, SetCredentialResponse};
 use std::mem;
 use std::time::Duration;
@@ -15,13 +15,13 @@ use webauthn_rs::RegistrationState as WebauthnRegistrationState;
 use webauthn_rs::{proto::UserVerificationPolicy, Webauthn};
 
 pub(crate) enum MfaRegCred {
-    TOTP(TOTP),
+    Totp(Totp),
     Webauthn(String, WebauthnCredential),
 }
 
 pub(crate) enum MfaRegNext {
     Success,
-    TOTPCheck(TOTPSecret),
+    TotpCheck(TotpSecret),
     WebauthnChallenge(CreationChallengeResponse),
 }
 
@@ -30,7 +30,7 @@ impl MfaRegNext {
     pub fn to_proto(self, u: Uuid) -> SetCredentialResponse {
         match self {
             MfaRegNext::Success => SetCredentialResponse::Success,
-            MfaRegNext::TOTPCheck(secret) => SetCredentialResponse::TOTPCheck(u, secret),
+            MfaRegNext::TotpCheck(secret) => SetCredentialResponse::TotpCheck(u, secret),
             MfaRegNext::WebauthnChallenge(ccr) => {
                 SetCredentialResponse::WebauthnCreateChallenge(u, ccr)
             }
@@ -40,8 +40,8 @@ impl MfaRegNext {
 
 #[derive(Clone)]
 enum MfaRegState {
-    TOTPInit(TOTP),
-    TOTPDone,
+    TotpInit(Totp),
+    TotpDone,
     WebauthnInit(String, WebauthnRegistrationState),
     WebauthnDone,
 }
@@ -65,13 +65,13 @@ impl MfaRegSession {
     ) -> Result<(Self, MfaRegNext), OperationError> {
         // Based on the req, init our session, and the return the next step.
         // Store the ID of the event that start's the attempt
-        let token = TOTP::generate_secure(label, TOTP_DEFAULT_STEP);
+        let token = Totp::generate_secure(label, TOTP_DEFAULT_STEP);
 
         let accountname = account.name.as_str();
         let issuer = account.spn.as_str();
-        let next = MfaRegNext::TOTPCheck(token.to_proto(accountname, issuer));
+        let next = MfaRegNext::TotpCheck(token.to_proto(accountname, issuer));
 
-        let state = MfaRegState::TOTPInit(token);
+        let state = MfaRegState::TotpInit(token);
         let s = MfaRegSession {
             origin,
             account,
@@ -93,13 +93,13 @@ impl MfaRegSession {
         };
 
         match &self.state {
-            MfaRegState::TOTPInit(token) => {
+            MfaRegState::TotpInit(token) => {
                 if token.verify(chal, ct) {
-                    let mut nstate = MfaRegState::TOTPDone;
+                    let mut nstate = MfaRegState::TotpDone;
                     mem::swap(&mut self.state, &mut nstate);
                     match nstate {
-                        MfaRegState::TOTPInit(token) => {
-                            Ok((MfaRegNext::Success, Some(MfaRegCred::TOTP(token))))
+                        MfaRegState::TotpInit(token) => {
+                            Ok((MfaRegNext::Success, Some(MfaRegCred::Totp(token))))
                         }
                         _ => Err(OperationError::InvalidState),
                     }
@@ -108,7 +108,7 @@ impl MfaRegSession {
                     let accountname = self.account.name.as_str();
                     let issuer = self.account.spn.as_str();
                     Ok((
-                        MfaRegNext::TOTPCheck(token.to_proto(accountname, issuer)),
+                        MfaRegNext::TotpCheck(token.to_proto(accountname, issuer)),
                         None,
                     ))
                 }

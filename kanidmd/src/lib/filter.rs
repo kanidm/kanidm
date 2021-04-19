@@ -326,7 +326,7 @@ impl Filter<FilterValid> {
                         None => f.fast_optimise(),
                     }
                 })
-                .ok_or(OperationError::FilterUUIDResolution)?,
+                .ok_or(OperationError::FilterUuidResolution)?,
             },
         };
 
@@ -1176,10 +1176,7 @@ impl FilterResolved {
                 let (f_list_inc, mut f_list_new): (Vec<_>, Vec<_>) = f_list
                     .iter()
                     .map(|f_ref| f_ref.optimise())
-                    .partition(|f| match f {
-                        FilterResolved::Inclusion(_) => true,
-                        _ => false,
-                    });
+                    .partition(|f| matches!(f, FilterResolved::Inclusion(_)));
 
                 f_list_inc.into_iter().for_each(|fc| {
                     if let FilterResolved::Inclusion(mut l) = fc {
@@ -1196,10 +1193,7 @@ impl FilterResolved {
                 let (f_list_and, mut f_list_new): (Vec<_>, Vec<_>) = f_list
                     .iter()
                     .map(|f_ref| f_ref.optimise())
-                    .partition(|f| match f {
-                        FilterResolved::And(_) => true,
-                        _ => false,
-                    });
+                    .partition(|f| matches!(f,FilterResolved::And(_)));
 
                 // now, iterate over this list - for each "and" term, fold
                 // it's elements to this level.
@@ -1237,10 +1231,7 @@ impl FilterResolved {
                     // Optimise all inner items.
                     .map(|f_ref| f_ref.optimise())
                     // Split out inner-or terms to fold into this term.
-                    .partition(|f| match f {
-                        FilterResolved::Or(_) => true,
-                        _ => false,
-                    });
+                    .partition(|f| matches!(f,FilterResolved::Or(_)));
 
                 // Append the inner terms.
                 f_list_or.into_iter().for_each(|fc| {
@@ -1267,10 +1258,7 @@ impl FilterResolved {
     }
 
     pub fn is_andnot(&self) -> bool {
-        match self {
-            FilterResolved::AndNot(_) => true,
-            _ => false,
-        }
+        matches!(self, FilterResolved::AndNot(_))
     }
 }
 

@@ -45,7 +45,7 @@ pub enum ClientError {
     Transport(reqwest::Error),
     AuthenticationFailed,
     EmptyResponse,
-    TOTPVerifyFailed(Uuid, TOTPSecret),
+    TotpVerifyFailed(Uuid, TotpSecret),
     JSONDecode(reqwest::Error, String),
     JSONEncode(SerdeJsonError),
     SystemError,
@@ -558,7 +558,7 @@ impl KanidmClient {
         &self,
         id: &str,
         label: &str,
-    ) -> Result<(Uuid, TOTPSecret), ClientError> {
+    ) -> Result<(Uuid, TotpSecret), ClientError> {
         tokio_block_on(
             self.asclient
                 .idm_account_primary_credential_generate_totp(id, label),

@@ -66,7 +66,7 @@ pub enum OperationError {
     SchemaViolation(SchemaError),
     Plugin(PluginError),
     FilterGeneration,
-    FilterUUIDResolution,
+    FilterUuidResolution,
     InvalidAttributeName(String),
     InvalidAttribute(String),
     InvalidDBState,
@@ -496,7 +496,7 @@ impl ModifyRequest {
 pub enum AuthCredential {
     Anonymous,
     Password(String),
-    TOTP(u32),
+    Totp(u32),
     Webauthn(PublicKeyCredential),
 }
 
@@ -505,7 +505,7 @@ impl fmt::Debug for AuthCredential {
         match self {
             AuthCredential::Anonymous => write!(fmt, "Anonymous"),
             AuthCredential::Password(_) => write!(fmt, "Password(_)"),
-            AuthCredential::TOTP(_) => write!(fmt, "TOTP(_)"),
+            AuthCredential::Totp(_) => write!(fmt, "TOTP(_)"),
             AuthCredential::Webauthn(_) => write!(fmt, "Webauthn(_)"),
         }
     }
@@ -565,7 +565,7 @@ pub struct AuthRequest {
 pub enum AuthAllowed {
     Anonymous,
     Password,
-    TOTP,
+    Totp,
     Webauthn(RequestChallengeResponse),
 }
 
@@ -588,8 +588,8 @@ impl Ord for AuthAllowed {
                 (_, AuthAllowed::Anonymous) => Ordering::Greater,
                 (AuthAllowed::Password, _) => Ordering::Less,
                 (_, AuthAllowed::Password) => Ordering::Greater,
-                (AuthAllowed::TOTP, _) => Ordering::Less,
-                (_, AuthAllowed::TOTP) => Ordering::Greater,
+                (AuthAllowed::Totp, _) => Ordering::Less,
+                (_, AuthAllowed::Totp) => Ordering::Greater,
                 (AuthAllowed::Webauthn(_), _) => Ordering::Less,
                 // Unreachable
                 // (_, AuthAllowed::Webauthn(_)) => Ordering::Greater,
@@ -609,7 +609,7 @@ impl fmt::Display for AuthAllowed {
         match self {
             AuthAllowed::Anonymous => write!(f, "Anonymous (no credentials)"),
             AuthAllowed::Password => write!(f, "Password"),
-            AuthAllowed::TOTP => write!(f, "TOTP"),
+            AuthAllowed::Totp => write!(f, "TOTP"),
             AuthAllowed::Webauthn(_) => write!(f, "Webauthn Token"),
         }
     }
@@ -641,9 +641,9 @@ pub struct AuthResponse {
 pub enum SetCredentialRequest {
     Password(String),
     GeneratePassword,
-    TOTPGenerate(String),
-    TOTPVerify(Uuid, u32),
-    TOTPRemove,
+    TotpGenerate(String),
+    TotpVerify(Uuid, u32),
+    TotpRemove,
     // Start the rego.
     WebauthnBegin(String),
     // Finish it.
@@ -654,32 +654,32 @@ pub enum SetCredentialRequest {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
-pub enum TOTPAlgo {
+pub enum TotpAlgo {
     Sha1,
     Sha256,
     Sha512,
 }
 
-impl fmt::Display for TOTPAlgo {
+impl fmt::Display for TotpAlgo {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            TOTPAlgo::Sha1 => write!(f, "SHA1"),
-            TOTPAlgo::Sha256 => write!(f, "SHA256"),
-            TOTPAlgo::Sha512 => write!(f, "SHA512"),
+            TotpAlgo::Sha1 => write!(f, "SHA1"),
+            TotpAlgo::Sha256 => write!(f, "SHA256"),
+            TotpAlgo::Sha512 => write!(f, "SHA512"),
         }
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TOTPSecret {
+pub struct TotpSecret {
     pub accountname: String,
     pub issuer: String,
     pub secret: Vec<u8>,
-    pub algo: TOTPAlgo,
+    pub algo: TotpAlgo,
     pub step: u64,
 }
 
-impl TOTPSecret {
+impl TotpSecret {
     /// https://github.com/google/google-authenticator/wiki/Key-Uri-Format
     pub fn to_uri(&self) -> String {
         // label = accountname / issuer (“:” / “%3A”) *”%20” accountname
@@ -714,7 +714,7 @@ impl TOTPSecret {
 pub enum SetCredentialResponse {
     Success,
     Token(String),
-    TOTPCheck(Uuid, TOTPSecret),
+    TotpCheck(Uuid, TotpSecret),
     WebauthnCreateChallenge(Uuid, CreationChallengeResponse),
 }
 
@@ -789,7 +789,7 @@ impl SingleStringRequest {
 #[cfg(test)]
 mod tests {
     use crate::v1::Filter as ProtoFilter;
-    use crate::v1::{TOTPAlgo, TOTPSecret};
+    use crate::v1::{TotpAlgo, TotpSecret};
 
     #[test]
     fn test_protofilter_simple() {
@@ -800,23 +800,23 @@ mod tests {
 
     #[test]
     fn totp_to_string() {
-        let totp = TOTPSecret {
+        let totp = TotpSecret {
             accountname: "william".to_string(),
             issuer: "blackhats".to_string(),
             secret: vec![0xaa, 0xbb, 0xcc, 0xdd],
             step: 30,
-            algo: TOTPAlgo::Sha256,
+            algo: TotpAlgo::Sha256,
         };
         let s = totp.to_uri();
         assert!(s == "otpauth://totp/blackhats:william?secret=VK54ZXI&issuer=blackhats&algorithm=SHA256&digits=6&period=30");
 
         // check that invalid issuer/accounts are cleaned up.
-        let totp = TOTPSecret {
+        let totp = TotpSecret {
             accountname: "william:%3A".to_string(),
             issuer: "blackhats australia".to_string(),
             secret: vec![0xaa, 0xbb, 0xcc, 0xdd],
             step: 30,
-            algo: TOTPAlgo::Sha256,
+            algo: TotpAlgo::Sha256,
         };
         let s = totp.to_uri();
         assert!(s == "otpauth://totp/blackhats%20australia:william?secret=VK54ZXI&issuer=blackhats%20australia&algorithm=SHA256&digits=6&period=30");

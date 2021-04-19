@@ -3,7 +3,7 @@ use std::time::SystemTime;
 
 use log::debug;
 
-use kanidm::credential::totp::TOTP;
+use kanidm::credential::totp::Totp;
 use kanidm_client::KanidmClient;
 use kanidm_proto::v1::{CredentialDetailType, Entry, Filter, Modify, ModifyList};
 
@@ -761,7 +761,7 @@ fn test_server_rest_totp_auth_lifecycle() {
             .idm_account_primary_credential_generate_totp("demo_account", "demo")
             .unwrap();
 
-        let r_tok: TOTP = tok.into();
+        let r_tok: Totp = tok.into();
         let totp = r_tok
             .do_totp_duration_from_epoch(
                 &SystemTime::now()

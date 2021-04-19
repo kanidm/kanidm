@@ -8,10 +8,10 @@ use crate::event::{AuthEvent, AuthEventStep, AuthResult};
 use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
 use crate::idm::event::{
-    CredentialStatusEvent, GeneratePasswordEvent, GenerateTOTPEvent, LdapAuthEvent,
-    PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent, RemoveTOTPEvent,
+    CredentialStatusEvent, GeneratePasswordEvent, GenerateTotpEvent, LdapAuthEvent,
+    PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent, RemoveTotpEvent,
     RemoveWebauthnEvent, UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent,
-    UnixUserTokenEvent, VerifyTOTPEvent, WebauthnDoRegisterEvent, WebauthnInitRegisterEvent,
+    UnixUserTokenEvent, VerifyTotpEvent, WebauthnDoRegisterEvent, WebauthnInitRegisterEvent,
 };
 use crate::idm::mfareg::{MfaRegCred, MfaRegNext, MfaRegSession};
 use crate::idm::radius::RadiusAccount;
@@ -1283,7 +1283,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     pub fn generate_account_totp(
         &mut self,
         au: &mut AuditScope,
-        gte: &GenerateTOTPEvent,
+        gte: &GenerateTotpEvent,
         ct: Duration,
     ) -> Result<SetCredentialResponse, OperationError> {
         let account = self.target_to_account(au, &gte.target)?;
@@ -1307,7 +1307,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     pub fn verify_account_totp(
         &mut self,
         au: &mut AuditScope,
-        vte: &VerifyTOTPEvent,
+        vte: &VerifyTotpEvent,
         ct: Duration,
     ) -> Result<SetCredentialResponse, OperationError> {
         let sessionid = vte.session;
@@ -1326,7 +1326,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 e
             })?;
 
-        if let (MfaRegNext::Success, Some(MfaRegCred::TOTP(token))) = (&next, opt_cred) {
+        if let (MfaRegNext::Success, Some(MfaRegCred::Totp(token))) = (&next, opt_cred) {
             // Purge the session.
             let session = self
                 .mfareg_sessions
@@ -1365,7 +1365,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     pub fn remove_account_totp(
         &mut self,
         au: &mut AuditScope,
-        rte: &RemoveTOTPEvent,
+        rte: &RemoveTotpEvent,
     ) -> Result<SetCredentialResponse, OperationError> {
         ltrace!(au, "Attempting to remove totp -> {:?}", rte.target);
 
@@ -1522,15 +1522,15 @@ mod tests {
         AUTH_SESSION_TIMEOUT, MFAREG_SESSION_TIMEOUT, UUID_ADMIN, UUID_ANONYMOUS,
     };
     use crate::credential::policy::CryptoPolicy;
-    use crate::credential::totp::TOTP;
+    use crate::credential::totp::Totp;
     use crate::credential::{Credential, Password};
     use crate::entry::{Entry, EntryInit, EntryNew};
     use crate::event::{AuthEvent, AuthResult, CreateEvent, ModifyEvent};
     use crate::idm::delayed::{DelayedAction, WebauthnCounterIncrement};
     use crate::idm::event::{
-        GenerateTOTPEvent, PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
-        RemoveTOTPEvent, RemoveWebauthnEvent, UnixGroupTokenEvent, UnixPasswordChangeEvent,
-        UnixUserAuthEvent, UnixUserTokenEvent, VerifyTOTPEvent, WebauthnDoRegisterEvent,
+        GenerateTotpEvent, PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
+        RemoveTotpEvent, RemoveWebauthnEvent, UnixGroupTokenEvent, UnixPasswordChangeEvent,
+        UnixUserAuthEvent, UnixUserTokenEvent, VerifyTotpEvent, WebauthnDoRegisterEvent,
         WebauthnInitRegisterEvent,
     };
     use crate::idm::AuthState;
@@ -2303,7 +2303,7 @@ mod tests {
             let mut idms_prox_write = idms.proxy_write(ct.clone());
 
             // verify with no session (fail)
-            let vte1 = VerifyTOTPEvent::new_internal(UUID_ADMIN.clone(), Uuid::new_v4(), 0);
+            let vte1 = VerifyTotpEvent::new_internal(UUID_ADMIN.clone(), Uuid::new_v4(), 0);
 
             match idms_prox_write.verify_account_totp(au, &vte1, ct.clone()) {
                 Err(e) => {
@@ -2313,18 +2313,18 @@ mod tests {
             };
 
             // reg, expire session, attempt verify (fail)
-            let gte1 = GenerateTOTPEvent::new_internal(UUID_ADMIN.clone());
+            let gte1 = GenerateTotpEvent::new_internal(UUID_ADMIN.clone());
 
             let res = idms_prox_write
                 .generate_account_totp(au, &gte1, ct.clone())
                 .unwrap();
             let sesid = match res {
-                SetCredentialResponse::TOTPCheck(id, _) => id,
+                SetCredentialResponse::TotpCheck(id, _) => id,
                 _ => panic!("invalid state!"),
             };
             idms_prox_write.expire_mfareg_sessions(expire.clone());
 
-            let vte2 = VerifyTOTPEvent::new_internal(UUID_ADMIN.clone(), sesid, 0);
+            let vte2 = VerifyTotpEvent::new_internal(UUID_ADMIN.clone(), sesid, 0);
 
             match idms_prox_write.verify_account_totp(au, &vte1, ct.clone()) {
                 Err(e) => {
@@ -2338,16 +2338,16 @@ mod tests {
                 .generate_account_totp(au, &gte1, ct.clone())
                 .unwrap();
             let (sesid, tok) = match res {
-                SetCredentialResponse::TOTPCheck(id, tok) => (id, tok),
+                SetCredentialResponse::TotpCheck(id, tok) => (id, tok),
                 _ => panic!("invalid state!"),
             };
             // get the correct otp
-            let r_tok: TOTP = tok.into();
+            let r_tok: Totp = tok.into();
             let chal = r_tok
                 .do_totp_duration_from_epoch(&ct)
                 .expect("Failed to do totp?");
             // attempt the verify
-            let vte3 = VerifyTOTPEvent::new_internal(UUID_ADMIN.clone(), sesid, chal);
+            let vte3 = VerifyTotpEvent::new_internal(UUID_ADMIN.clone(), sesid, chal);
 
             match idms_prox_write.verify_account_totp(au, &vte3, ct.clone()) {
                 Err(e) => assert!(e == OperationError::InvalidState),
@@ -2366,16 +2366,16 @@ mod tests {
                 .generate_account_totp(au, &gte1, ct.clone())
                 .unwrap();
             let (sesid, tok) = match res {
-                SetCredentialResponse::TOTPCheck(id, tok) => (id, tok),
+                SetCredentialResponse::TotpCheck(id, tok) => (id, tok),
                 _ => panic!("invalid state!"),
             };
             // get the correct otp
-            let r_tok: TOTP = tok.into();
+            let r_tok: Totp = tok.into();
             let chal = r_tok
                 .do_totp_duration_from_epoch(&ct)
                 .expect("Failed to do totp?");
             // attempt the verify
-            let vte3 = VerifyTOTPEvent::new_internal(UUID_ANONYMOUS.clone(), sesid, chal);
+            let vte3 = VerifyTotpEvent::new_internal(UUID_ANONYMOUS.clone(), sesid, chal);
 
             match idms_prox_write.verify_account_totp(au, &vte3, ct.clone()) {
                 Err(e) => assert!(e == OperationError::InvalidRequestState),
@@ -2387,14 +2387,14 @@ mod tests {
                 .generate_account_totp(au, &gte1, ct.clone())
                 .unwrap();
             let (_sesid, _tok) = match res {
-                SetCredentialResponse::TOTPCheck(id, tok) => (id, tok),
+                SetCredentialResponse::TotpCheck(id, tok) => (id, tok),
                 _ => panic!("invalid state!"),
             };
 
             // We can reuse the OTP/Vte2 from before, since we want the invalid otp.
             match idms_prox_write.verify_account_totp(au, &vte2, ct.clone()) {
                 // On failure we get back another attempt to setup the token.
-                Ok(SetCredentialResponse::TOTPCheck(_id, _tok)) => {}
+                Ok(SetCredentialResponse::TotpCheck(_id, _tok)) => {}
                 _ => panic!(),
             };
             idms_prox_write.expire_mfareg_sessions(expire.clone());
@@ -2405,16 +2405,16 @@ mod tests {
                 .generate_account_totp(au, &gte1, ct.clone())
                 .unwrap();
             let (sesid, tok) = match res {
-                SetCredentialResponse::TOTPCheck(id, tok) => (id, tok),
+                SetCredentialResponse::TotpCheck(id, tok) => (id, tok),
                 _ => panic!("invalid state!"),
             };
             // We can't reuse the OTP/Vte from before, since the token seed changes
-            let r_tok: TOTP = tok.into();
+            let r_tok: Totp = tok.into();
             let chal = r_tok
                 .do_totp_duration_from_epoch(&ct)
                 .expect("Failed to do totp?");
             // attempt the verify
-            let vte3 = VerifyTOTPEvent::new_internal(UUID_ADMIN.clone(), sesid, chal);
+            let vte3 = VerifyTotpEvent::new_internal(UUID_ADMIN.clone(), sesid, chal);
 
             match idms_prox_write.verify_account_totp(au, &vte3, ct.clone()) {
                 Ok(SetCredentialResponse::Success) => {}
@@ -2423,7 +2423,7 @@ mod tests {
             idms_prox_write.expire_mfareg_sessions(expire.clone());
 
             // Test removing the TOTP and then authing with password only.
-            let rte = RemoveTOTPEvent::new_internal(UUID_ADMIN.clone());
+            let rte = RemoveTotpEvent::new_internal(UUID_ADMIN.clone());
             idms_prox_write.remove_account_totp(au, &rte).unwrap();
             assert!(idms_prox_write.commit(au).is_ok());
 

@@ -5,7 +5,7 @@ use crate::{audit::AuditScope, value::Value};
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthMech};
 
-use crate::credential::{totp::TOTP, Credential, CredentialType, Password};
+use crate::credential::{totp::Totp, Credential, CredentialType, Password};
 
 use crate::idm::delayed::{DelayedAction, PasswordUpgrade, WebauthnCounterIncrement};
 // use crossbeam::channel::Sender;
@@ -50,7 +50,7 @@ enum CredVerifyState {
 struct CredMfa {
     pw: Password,
     pw_state: CredVerifyState,
-    totp: Option<TOTP>,
+    totp: Option<Totp>,
     wan: Option<(RequestChallengeResponse, AuthenticationState)>,
     mfa_state: CredVerifyState,
 }
@@ -258,7 +258,7 @@ impl CredHandler {
                                     CredState::Denied(BAD_WEBAUTHN_MSG)
                                 })
                     }
-                    (AuthCredential::TOTP(totp_chal), Some(totp), _) => {
+                    (AuthCredential::Totp(totp_chal), Some(totp), _) => {
                         if totp.verify(*totp_chal, ts) {
                             pw_mfa.mfa_state = CredVerifyState::Success;
                             lsecurity!(
@@ -395,6 +395,7 @@ impl CredHandler {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn validate(
         &mut self,
         au: &mut AuditScope,
@@ -433,7 +434,7 @@ impl CredHandler {
             CredHandler::PasswordMFA(ref pw_mfa) => pw_mfa
                 .totp
                 .iter()
-                .map(|_| AuthAllowed::TOTP)
+                .map(|_| AuthAllowed::Totp)
                 .chain(
                     pw_mfa
                         .wan
@@ -729,7 +730,7 @@ mod tests {
     use crate::audit::AuditScope;
     use crate::constants::{JSON_ADMIN_V1, JSON_ANONYMOUS_V1};
     use crate::credential::policy::CryptoPolicy;
-    use crate::credential::totp::{TOTP, TOTP_DEFAULT_STEP};
+    use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
     use crate::credential::webauthn::WebauthnDomainConfig;
     use crate::credential::Credential;
     use crate::idm::authsession::{
@@ -1018,7 +1019,7 @@ mod tests {
                             rchal = Some(chal.clone());
                             true
                         }
-                        AuthAllowed::TOTP => true,
+                        AuthAllowed::Totp => true,
                         _ => acc,
                     })
                 );
@@ -1045,7 +1046,7 @@ mod tests {
         let ts = Duration::from_secs(12345);
 
         // manually load in a cred
-        let totp = TOTP::generate_secure("test_totp".to_string(), TOTP_DEFAULT_STEP);
+        let totp = Totp::generate_secure("test_totp".to_string(), TOTP_DEFAULT_STEP);
 
         let totp_good = totp
             .do_totp_duration_from_epoch(&ts)
@@ -1108,7 +1109,7 @@ mod tests {
 
             match session.validate_creds(
                 &mut audit,
-                &AuthCredential::TOTP(totp_bad),
+                &AuthCredential::Totp(totp_bad),
                 &ts,
                 &async_tx,
                 &webauthn,
@@ -1125,7 +1126,7 @@ mod tests {
 
             match session.validate_creds(
                 &mut audit,
-                &AuthCredential::TOTP(totp_good),
+                &AuthCredential::Totp(totp_good),
                 &ts,
                 &async_tx,
                 &webauthn,
@@ -1152,7 +1153,7 @@ mod tests {
 
             match session.validate_creds(
                 &mut audit,
-                &AuthCredential::TOTP(totp_good),
+                &AuthCredential::Totp(totp_good),
                 &ts,
                 &async_tx,
                 &webauthn,
@@ -1192,7 +1193,7 @@ mod tests {
         let ts = Duration::from_secs(12345);
 
         // manually load in a cred
-        let totp = TOTP::generate_secure("test_totp".to_string(), TOTP_DEFAULT_STEP);
+        let totp = Totp::generate_secure("test_totp".to_string(), TOTP_DEFAULT_STEP);
 
         let totp_good = totp
             .do_totp_duration_from_epoch(&ts)
@@ -1220,7 +1221,7 @@ mod tests {
 
             match session.validate_creds(
                 &mut audit,
-                &AuthCredential::TOTP(totp_good),
+                &AuthCredential::Totp(totp_good),
                 &ts,
                 &async_tx,
                 &webauthn,
@@ -1500,7 +1501,7 @@ mod tests {
 
             match session.validate_creds(
                 &mut audit,
-                &AuthCredential::TOTP(0),
+                &AuthCredential::Totp(0),
                 &ts,
                 &async_tx,
                 &webauthn,
@@ -1629,7 +1630,7 @@ mod tests {
 
         let (webauthn, mut wa, wan_cred) = setup_webauthn(account.name.as_str());
 
-        let totp = TOTP::generate_secure("test_totp".to_string(), TOTP_DEFAULT_STEP);
+        let totp = Totp::generate_secure("test_totp".to_string(), TOTP_DEFAULT_STEP);
         let totp_good = totp
             .do_totp_duration_from_epoch(&ts)
             .expect("failed to perform totp.");
@@ -1673,7 +1674,7 @@ mod tests {
 
             match session.validate_creds(
                 &mut audit,
-                &AuthCredential::TOTP(totp_bad),
+                &AuthCredential::Totp(totp_bad),
                 &ts,
                 &async_tx,
                 &webauthn,
@@ -1750,7 +1751,7 @@ mod tests {
 
             match session.validate_creds(
                 &mut audit,
-                &AuthCredential::TOTP(totp_good),
+                &AuthCredential::Totp(totp_good),
                 &ts,
                 &async_tx,
                 &webauthn,
@@ -1776,7 +1777,7 @@ mod tests {
 
             match session.validate_creds(
                 &mut audit,
-                &AuthCredential::TOTP(totp_good),
+                &AuthCredential::Totp(totp_good),
                 &ts,
                 &async_tx,
                 &webauthn,
