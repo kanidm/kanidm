@@ -1193,7 +1193,7 @@ impl FilterResolved {
                 let (f_list_and, mut f_list_new): (Vec<_>, Vec<_>) = f_list
                     .iter()
                     .map(|f_ref| f_ref.optimise())
-                    .partition(|f| matches!(f,FilterResolved::And(_)));
+                    .partition(|f| matches!(f, FilterResolved::And(_)));
 
                 // now, iterate over this list - for each "and" term, fold
                 // it's elements to this level.
@@ -1231,7 +1231,7 @@ impl FilterResolved {
                     // Optimise all inner items.
                     .map(|f_ref| f_ref.optimise())
                     // Split out inner-or terms to fold into this term.
-                    .partition(|f| matches!(f,FilterResolved::Or(_)));
+                    .partition(|f| matches!(f, FilterResolved::Or(_)));
 
                 // Append the inner terms.
                 f_list_or.into_iter().for_each(|fc| {
