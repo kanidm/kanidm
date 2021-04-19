@@ -1,6 +1,6 @@
 use anyhow::Error;
-use wasm_bindgen::prelude::*;
-use yew::format::{Json, Nothing};
+// use wasm_bindgen::prelude::*;
+use yew::format::Json; // , Nothing};
 use yew::prelude::*;
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use yew::services::{ConsoleService, StorageService};
@@ -23,7 +23,7 @@ pub enum LoginAppMsg {
 
 impl LoginApp {
     fn auth_begin(&mut self) {
-        let username_copy = self.username.clone();
+        //let username_copy = self.username.clone();
         let callback =
             self.link
                 .callback(move |response: Response<Json<Result<AuthState, Error>>>| {
