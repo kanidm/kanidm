@@ -17,7 +17,7 @@ impl AccountOpt {
                 AccountCredential::GeneratePassword(acs) => acs.copt.debug,
                 AccountCredential::RegisterWebauthn(acs) => acs.copt.debug,
                 AccountCredential::RemoveWebauthn(acs) => acs.copt.debug,
-                AccountCredential::RegisterTOTP(acs) => acs.copt.debug,
+                AccountCredential::RegisterTotp(acs) => acs.copt.debug,
                 AccountCredential::RemoveTOTP(acs) => acs.copt.debug,
                 AccountCredential::Status(acs) => acs.copt.debug,
             },
@@ -142,7 +142,7 @@ impl AccountOpt {
                         }
                     }
                 }
-                AccountCredential::RegisterTOTP(acsopt) => {
+                AccountCredential::RegisterTotp(acsopt) => {
                     let client = acsopt.copt.to_client();
                     let (session, tok) = match client.idm_account_primary_credential_generate_totp(
                         acsopt.aopts.account_id.as_str(),

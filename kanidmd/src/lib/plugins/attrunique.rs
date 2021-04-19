@@ -135,8 +135,7 @@ impl Plugin for AttrUnique {
 
         let r: Result<(), OperationError> = uniqueattrs
             .iter()
-            .map(|attr| enforce_unique(au, qs, cand, attr.as_str()))
-            .collect();
+            .try_for_each(|attr| enforce_unique(au, qs, cand, attr.as_str()));
         r
     }
 
@@ -154,8 +153,7 @@ impl Plugin for AttrUnique {
 
         let r: Result<(), OperationError> = uniqueattrs
             .iter()
-            .map(|attr| enforce_unique(au, qs, cand, attr.as_str()))
-            .collect();
+            .try_for_each(|attr| enforce_unique(au, qs, cand, attr.as_str()));
         r
     }
 

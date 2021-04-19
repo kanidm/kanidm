@@ -675,7 +675,7 @@ pub trait QueryServerTransaction<'a> {
             value
                 .get_sshkey()
                 .map(|s| s.to_string())
-                .ok_or_else(|| OperationError::InvalidValueState)
+                .ok_or(OperationError::InvalidValueState)
         } else {
             // Not? Okay, do the to string.
             Ok(value.to_proto_string_clone())
@@ -1431,15 +1431,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
             )?;
             // If and only if that succeeds, apply the direct membership modifications
             // if possible.
-            let r: Result<_, _> = dm_mods
-                .into_iter()
-                .map(|(g, mods)| {
-                    // I think the filter/filter_all shouldn't matter here because the only
-                    // valid direct memberships should be still valid/live references.
-                    let f = filter_all!(f_eq("uuid", PartialValue::new_uuid(g)));
-                    self.internal_modify(au, &f, &mods)
-                })
-                .collect();
+            let r: Result<_, _> = dm_mods.into_iter().try_for_each(|(g, mods)| {
+                // I think the filter/filter_all shouldn't matter here because the only
+                // valid direct memberships should be still valid/live references.
+                let f = filter_all!(f_eq("uuid", PartialValue::new_uuid(g)));
+                self.internal_modify(au, &f, &mods)
+            });
             r
         })
     }
@@ -2054,13 +2051,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let entries = self.schema.to_entries();
 
         // internal_migrate_or_create.
-        let r: Result<_, _> = entries
-            .into_iter()
-            .map(|e| {
-                ltrace!(audit, "init schema -> {}", e);
-                self.internal_migrate_or_create(audit, e)
-            })
-            .collect();
+        let r: Result<_, _> = entries.into_iter().try_for_each(|e| {
+            ltrace!(audit, "init schema -> {}", e);
+            self.internal_migrate_or_create(audit, e)
+        });
         if r.is_ok() {
             ladmin_info!(audit, "initialise_schema_core -> Ok!");
         } else {
@@ -2146,8 +2140,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let res: Result<(), _> = admin_entries
             .iter()
             // Each item individually logs it's result
-            .map(|e_str| self.internal_migrate_or_create_str(audit, e_str))
-            .collect();
+            .try_for_each(|e_str| self.internal_migrate_or_create_str(audit, e_str));
         if res.is_err() {
             ladmin_error!(audit, "initialise_idm p2 -> result {:?}", res);
         }
@@ -2218,9 +2211,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         let res: Result<(), _> = idm_entries
             .iter()
-            // Each item individually logs it's result
-            .map(|e_str| self.internal_migrate_or_create_str(audit, e_str))
-            .collect();
+            .try_for_each(|e_str| self.internal_migrate_or_create_str(audit, e_str));
         if res.is_ok() {
             ladmin_info!(audit, "initialise_idm -> result Ok!");
         } else {

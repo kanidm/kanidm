@@ -907,10 +907,7 @@ impl Value {
     }
 
     pub fn is_json_filter(&self) -> bool {
-        match self.pv {
-            PartialValue::JsonFilt(_) => true,
-            _ => false,
-        }
+        matches!(self.pv, PartialValue::JsonFilt(_))
     }
 
     pub fn as_json_filter(&self) -> Option<&ProtoFilter> {
@@ -955,10 +952,7 @@ impl Value {
     }
 
     pub fn is_radius_string(&self) -> bool {
-        match &self.pv {
-            PartialValue::RadiusCred => true,
-            _ => false,
-        }
+        matches!(&self.pv, PartialValue::RadiusCred)
     }
 
     pub fn get_radius_secret(&self) -> Option<&str> {
@@ -989,10 +983,7 @@ impl Value {
     }
 
     pub fn is_sshkey(&self) -> bool {
-        match &self.pv {
-            PartialValue::SshKey(_) => true,
-            _ => false,
-        }
+        matches!(&self.pv, PartialValue::SshKey(_))
     }
 
     pub fn get_sshkey(&self) -> Option<&str> {
@@ -1023,10 +1014,7 @@ impl Value {
     }
 
     pub fn is_spn(&self) -> bool {
-        match &self.pv {
-            PartialValue::Spn(_, _) => true,
-            _ => false,
-        }
+        matches!(&self.pv, PartialValue::Spn(_, _))
     }
 
     pub fn new_uint32(u: u32) -> Self {
@@ -1041,10 +1029,7 @@ impl Value {
     }
 
     pub fn is_uint32(&self) -> bool {
-        match &self.pv {
-            PartialValue::Uint32(_) => true,
-            _ => false,
-        }
+        matches!(&self.pv, PartialValue::Uint32(_))
     }
 
     pub fn new_cid(c: Cid) -> Self {
@@ -1055,10 +1040,7 @@ impl Value {
     }
 
     pub fn is_cid(&self) -> bool {
-        match &self.pv {
-            PartialValue::Cid(_) => true,
-            _ => false,
-        }
+        matches!(&self.pv, PartialValue::Cid(_))
     }
 
     pub fn new_nsuniqueid_s(s: &str) -> Self {
