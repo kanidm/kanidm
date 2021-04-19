@@ -55,11 +55,11 @@ pub fn run_test(test_fn: fn(KanidmClient) -> ()) {
     config.address = format!("127.0.0.1:{}", port);
     config.secure_cookies = false;
     config.integration_test_config = Some(int_config);
-    config.log_level = Some(LogLevel::Quiet as u32);
-    config.log_level = Some(LogLevel::Verbose as u32);
+    // config.log_level = Some(LogLevel::Quiet as u32);
+    // config.log_level = Some(LogLevel::Verbose as u32);
+    config.log_level = Some(LogLevel::FullTrace as u32);
     config.threads = 1;
 
-    // config.log_level = Some(LogLevel::FullTrace as u32);
     let t_handle = thread::spawn(move || {
         // Spawn a thread for the test runner, this should have a unique
         // port....
