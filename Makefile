@@ -66,7 +66,7 @@ vendor:
 	cargo vendor
 
 vendor-prep: vendor
-	tar -czf vendor.tar.gz vendor
+	tar -cJf vendor.tar.xz vendor
 
 doc: ## build doc local
 doc:

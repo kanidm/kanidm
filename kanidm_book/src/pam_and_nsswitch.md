@@ -1,6 +1,6 @@
-# Pam and nsswitch
+# PAM and nsswitch
 
-Pam and nsswitch are the core mechanisms used by Linux and Bsd clients
+PAM and nsswitch are the core mechanisms used by Linux and BSD clients
 to resolve identities from an IDM service like kanidm into accounts that
 can be used on the machine for various interactive tasks.
 
@@ -11,10 +11,11 @@ and nsswitch integration. This is provided as the daemon can cache the accounts
 for users who have unreliable networks or leave the site where kanidm is. The
 cache is also able to cache missing-entry responses to reduce network traffic
 and main server load.
+
 Additionally, the daemon means that the pam and nsswitch integration libraries
 can be small, helping to reduce the attack surface of the machine.
-Similar, a tasks daemon is also provided that can create home directories on first
-login, and supports a number of features related to aliases and links to these
+Similarly, a tasks daemon is available that can create home directories on first
+login and supports several features related to aliases and links to these
 home directories.
 
 We recommend you install the client daemon from your system package manager.
@@ -31,6 +32,7 @@ You can check the daemon is running on your Linux system with
 You can check the privileged tasks daemon is running with
 
     systemctl status kanidm-unixd-tasks
+
 
 > **NOTE** The `kanidm_unixd_tasks` daemon is not required for pam and nsswitch functionality.
 > If disabled, your system will function as usual. It is however recommended due to the features
@@ -115,16 +117,16 @@ You can also do the same for groups.
 > **WARNING:** Modifications to pam configuration *may* leave your system in a state
 > where you are unable to login or authenticate. You should always have a recovery
 > shell open while making changes (ie root), or have access to single-user mode
-> at the machines console.
+> at the machine's console.
 
-PAM (Pluggable Authentication Modules) is how a unix like system allows users to authenticate
+PAM (Pluggable Authentication Modules) is how a unix-like system allows users to authenticate
 and be authorised to start interactive sessions. This is configured through a stack of modules
 that are executed in order to evaluate the request. This is done through a series of steps
-where each module may request or reused authentication token information.
+where each module may request or reuse authentication token information.
 
 ### Before you start
 
-You *should* backup your /etc/pam.d directory from it's original state as you *may* change the
+You *should* backup your /etc/pam.d directory from its original state as you *may* change the
 pam config in a way that will cause you to be unable to authenticate to your machine.
 
     cp -a /etc/pam.d /root/pam.d.backup
@@ -167,8 +169,8 @@ Each of these controls one of the four stages of pam. The content should look li
     session optional    pam_umask.so
     session optional    pam_env.so
 
-> **WARNING:** Ensure that `pam_mkhomedir` or `pam_oddjobd` are *not* present in your pam configuration
-> these interfer with the correct operation of the kanidm tasks daemon.
+> **WARNING:** Ensure that `pam_mkhomedir` or `pam_oddjobd` are *not* present in your 
+> pam configuration, as they interfere with the correct operation of the kanidm tasks daemon.
 
 ### Fedora 33
 
@@ -176,7 +178,7 @@ Each of these controls one of the four stages of pam. The content should look li
 > run the daemon with permissive mode for the unconfined_service_t daemon type. To do this run:
 > `semanage permissive -a unconfined_service_t`. To undo this run `semanage permissive -d unconfined_service_t`.
 >
-> You may also need to run "audit2allow" for sshd and other types to be able to access the unix daemon sockets.
+> You may also need to run `audit2allow` for sshd and other types to be able to access the unix daemon sockets.
 
 These files are managed by authselect as symlinks. You will need to remove the symlinks first, then
 edit the content.
@@ -286,10 +288,11 @@ You should have:
 In some high latency environments, you may need to increase the connection timeout. We set
 this low to improve response on LANs, but over the internet this may need to be increased.
 By increasing the conn timeout, you will be able to operate on higher latency links, but
-some operations may take longer to complete causing a degree of latency. By increasing the
-cache_timeout, you will need to refresh "less" but it may mean on an account lockout or
-group change, that you need up to cache_timeout to see the effect (this has security
-implications)
+some operations may take longer to complete causing a degree of latency. 
+
+By increasing the cache_timeout, you will need to refresh "less" but it may mean on an 
+account lockout or group change, that you need to wait until cache_timeout to see the effect 
+(this has security implications)
 
     # /etc/kanidm/unixd
     # Seconds
@@ -307,11 +310,11 @@ You can clear (wipe) the cache with:
 
     $ kanidm_cache_clear
 
-There is an important distinction between these two - invalidate cache items may still
+There is an important distinction between these two - invalidated cache items may still
 be yielded to a client request if the communication to the main kanidm server is not
 possible. For example, you may have your laptop in a park without wifi.
 
-Clearing the cache however, completely wipes all local data about all accounts and groups.
+Clearing the cache, however, completely wipes all local data about all accounts and groups.
 If you are relying on this cached (but invalid data) you may lose access to your accounts until
 other communication issues have been resolved.
 

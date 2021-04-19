@@ -3,7 +3,7 @@
 While many applications can support systems like SAML or OAuth, many do not. LDAP
 has been the "lingua franca" of authentication for many years, with almost
 every application in the world being able to search and bind to LDAP. As there
-are still many of these in the world, Kanidm has the ability to host a read-only
+are still many of these in the world, Kanidm can host a read-only
 LDAP interface.
 
 > **WARNING** The LDAP server in Kanidm is not RFC compliant. This
@@ -21,20 +21,19 @@ many applications - an IDM just like Kanidm!
 ## Data Mapping
 
 Kanidm is not able to be mapped 100% to LDAP's objects. This is because LDAP
-types are simple key-values on objects which are all UTF8 strings or subsets
-of based on validation (matching) rules. Kanidm internally implements complex
-datatypes such as taging on SSH keys, or multi-value credentials. These can not
+types are simple key-values on objects which are all UTF8 strings (or subsets
+thereof) based on validation (matching) rules. Kanidm internally implements complex
+data types such as tagging on SSH keys, or multi-value credentials. These can not
 be represented in LDAP.
 
 As well many of the structures in Kanidm don't correlate closely to LDAP. For example
 Kanidm only has a gidnumber, where LDAP's schema's define uidnumber and gidnumber.
 
 Entries in the database also have a specific name in LDAP, related to their path
-in the directory tree. Kanidm is a flat model, so we have to emulate some tree like
+in the directory tree. Kanidm is a flat model, so we have to emulate some tree-like
 elements, and ignore others.
 
-For this reason, when you search the ldap interface, Kanidm will make some mappinng
-decisions.
+For this reason, when you search the LDAP interface, Kanidm will make some mapping decisions.
 
 * Queries requesting objectClass/EntryUUID will be mapped to class/uuid
 * Entry attributes to LDAP may be renamed for presentation to LDAP clients (ie class to ObjectClass)
@@ -45,7 +44,7 @@ decisions.
 * The Kanidm domain name is used to generate the basedn.
 
 These decisions were made to make the path as simple and effective as possible,
-relying more on the kanidm query and filter system than attempting to generate a tree like
+relying more on the kanidm query and filter system than attempting to generate a tree-like
 representation of data. As almost all clients can use filters for entry selection
 we don't believe this is a limitation for consuming applications.
 
@@ -62,15 +61,15 @@ of the Kanidm system to secure data and authentication.
 ### Access Controls
 
 LDAP only supports password authentication. As LDAP is used heavily in posix environments
-the LDAP bind for any DN will use it's configured posix password.
+the LDAP bind for any DN will use its configured posix password.
 
-As the posix password is not eqivalent in strength to the primary credentials of Kanidm
+As the posix password is not equivalent in strength to the primary credentials of Kanidm
 (which may be MFA), the LDAP bind does not grant rights to elevated read permissions.
-All binds, have the permissions of "Anonymous" (even if the anonymous account is locked).
+All binds have the permissions of "Anonymous" (even if the anonymous account is locked).
 
 ## Server Configuration
 
-To configure Kanidm to provide LDAP you add the argument to the server.toml configuration:
+To configure Kanidm to provide LDAP you add the argument to the `server.toml` configuration:
 
     ldapbindaddress = "127.0.0.1:3636"
 
@@ -79,7 +78,7 @@ material.
 
 ## Example
 
-Given a default install with domain "example.com" the configured LDAP dn will be "dc=example,dc=com".
+Given a default install with domain "example.com" the configured LDAP DN will be "dc=example,dc=com".
 This can be queried with:
 
     cargo run -- server -D kanidm.db -C ca.pem -c cert.pem -k key.pem -b 127.0.0.1:8443 -l 127.0.0.1:3636
@@ -100,9 +99,9 @@ This can be queried with:
 It is recommended that client applications filter accounts that can login with '(class=account)'
 and groups with '(class=group)'. If possible, group membership is defined in rfc2307bis or
 Active Directory style. This means groups are determined from the "memberof" attribute which contains
-a dn to a group.
+a DN to a group.
 
-LDAP binds can use any unique identifier of the account. The following are all valid bind dn's for
+LDAP binds can use any unique identifier of the account. The following are all valid bind DN's for
 the object listed above (if it was a posix account that is).
 
     ldapwhoami ... -x -D 'name=test1'
@@ -127,8 +126,8 @@ All give the same error:
 This is despite the fact:
 
 * The first command is a certificate validation error
-* The second is a missing ldaps on a TLS port
+* The second is a missing LDAPS on a TLS port
 * The third is an incorrect port
 
-To diganose errors like this you may need "-d 1" for your ldap commands or client.
+To diagnose errors like this, you may need to add "-d 1" to your LDAP commands or client.
 

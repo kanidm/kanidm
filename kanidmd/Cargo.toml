@@ -53,17 +53,18 @@ serde_cbor = "0.11"
 serde_json = "1.0"
 serde_derive = "1.0"
 
-libsqlite3-sys = { version = "0.20" }
-rusqlite = { version = "0.24", features = ["backup"] }
+libsqlite3-sys = { version = "0.22" }
+rusqlite = { version = "0.25", features = ["backup"] }
 r2d2 = "0.8"
-r2d2_sqlite = "0.17"
+r2d2_sqlite = "0.18"
 
 structopt = { version = "0.3", default-features = false }
 time = { version = "0.2", features = ["serde", "std"] }
 
 hashbrown = "0.11"
-concread = "^0.2.5"
-# concread = { version = "^0.2.5", features = ["simd_support"] }
+concread = "^0.2.9"
+# concread = { version = "^0.2.9", path = "../../concread" }
+# concread = { version = "^0.2.9", features = ["simd_support"] }
 
 sshkeys = "^0.3.1"
 
@@ -73,7 +74,9 @@ num_cpus = "1.10"
 zxcvbn = "2.0"
 base64 = "0.13"
 
-idlset = { version = "^0.1.12" , features = ["use_smallvec"] }
+idlset = { version = "^0.2" }
+# idlset = { version = "^0.2", path = "../../idlset" }
+
 ldap3_server = "0.1"
 webauthn-rs = "0.3.0-alpha.7"
 

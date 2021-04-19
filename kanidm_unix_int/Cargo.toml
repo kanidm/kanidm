@@ -9,8 +9,6 @@ documentation = "https://docs.rs/kanidm/latest/kanidm/"
 homepage = "https://github.com/kanidm/kanidm/"
 repository = "https://github.com/kanidm/kanidm/"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [lib]
 name = "kanidm_unix_common"
 path = "src/lib.rs"
@@ -49,7 +47,6 @@ kanidm_proto = { path = "../kanidm_proto", version = "1.1.0-alpha" }
 kanidm = { path = "../kanidmd", version = "1.1.0-alpha" }
 toml = "0.5"
 rpassword = "5.0"
-## Removed "signal"
 tokio = { version = "1", features = ["rt", "macros", "sync", "time", "net", "io-util"] }
 tokio-util = { version = "0.6", features = ["codec"] }
 
@@ -64,10 +61,10 @@ serde_derive = "1.0"
 serde_cbor = "0.11"
 structopt = { version = "0.3", default-features = false }
 
-libsqlite3-sys = { version = "0.20" }
-rusqlite = { version = "0.24", features = ["backup"] }
+libsqlite3-sys = { version = "0.22" }
+rusqlite = { version = "0.25", features = ["backup"] }
 r2d2 = "0.8"
-r2d2_sqlite = "0.17"
+r2d2_sqlite = "0.18"
 
 reqwest = { version = "0.11" }
 

@@ -394,7 +394,7 @@ pub struct AuditScope {
     // to automatically annotate line numbers of code?
     #[serde(skip_serializing)]
     pub level: u32,
-    uuid: Uuid,
+    pub uuid: Uuid,
     events: Vec<AuditLog>,
     #[allow(clippy::vec_box)]
     perf: Vec<Box<PerfEvent>>,

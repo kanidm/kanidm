@@ -77,14 +77,17 @@ impl KanidmUnixdConfig {
         }
     }
 
-    pub fn read_options_from_optional_config<P: AsRef<Path>>(
+    pub fn read_options_from_optional_config<P: AsRef<Path> + std::fmt::Debug>(
         self,
         config_path: P,
     ) -> Result<Self, ()> {
-        let mut f = match File::open(config_path) {
+        let mut f = match File::open(&config_path) {
             Ok(f) => f,
             Err(e) => {
-                debug!("Unabled to open config file [{:?}], skipping ...", e);
+                debug!(
+                    "Unable to open config file {:#?} [{:?}], skipping ...",
+                    &config_path, e
+                );
                 return Ok(self);
             }
         };

@@ -120,7 +120,7 @@ pub const _STR_UUID_SCHEMA_ATTR_ACCOUNT_EXPIRE: &str = "00000000-0000-0000-0000-
 pub const _STR_UUID_SCHEMA_ATTR_ACCOUNT_VALID_FROM: &str = "00000000-0000-0000-0000-ffff00000073";
 
 // System and domain infos
-// I'd like to strongly criticise william of the past for fucking up these allocations.
+// I'd like to strongly criticise william of the past for making poor choices about these allocations.
 pub const STR_UUID_SYSTEM_INFO: &str = "00000000-0000-0000-0000-ffffff000001";
 pub const STR_UUID_DOMAIN_INFO: &str = "00000000-0000-0000-0000-ffffff000025";
 // DO NOT allocate here, allocate below.

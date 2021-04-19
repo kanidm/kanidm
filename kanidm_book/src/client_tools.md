@@ -1,34 +1,15 @@
 # Interacting with the Server
 
-To interact with Kanidm as an administration, you'll need to use our command line tools
+To interact with Kanidm as an administrator, you'll need to use our command line tools.
 
 ## From (experimental) packages
 
 Kanidm currently supports:
+
  * Fedora 33
- * OpenSUSE leap 15.2
- * Tumbleweed
+ * OpenSUSE Leap 15.2
+ * OpenSUSE Tumbleweed
 
-### OpenSUSE Tumbleweed
-
-Kanidm is part of OpenSUSE Tumbleweed since October 2020. This means you can install
-the clients with:
-
-    zypper ref
-    zypper in kanidm-clients
-
-### OpenSUSE Leap 15.2
-
-Leap 15.2 is still not fully supported with Kanidm. For an experimental client, you can
-try the development repository. Using zypper you can add the repository with:
-
-    zypper ar obs://home:firstyear:kanidm home_firstyear_kanidm
-    zypper mr -f home_firstyear_kanidm
-
-Then you need to referesh your metadata and install the clients.
-
-    zypper ref
-    zypper in kanidm-clients
 
 ### Fedora
 
@@ -41,14 +22,35 @@ You can then install with:
 
     dnf install kanidm-clients
 
+### OpenSUSE Leap 15.2
+
+Leap 15.2 is still not fully supported with Kanidm. For an experimental client, you can
+try the development repository. Using zypper you can add the repository with:
+
+    zypper ar obs://home:firstyear:kanidm home_firstyear_kanidm
+    zypper mr -f home_firstyear_kanidm
+
+Then you need to refresh your metadata and install the clients.
+
+    zypper ref
+    zypper in kanidm-clients
+    
+### OpenSUSE Tumbleweed
+
+Kanidm is part of OpenSUSE Tumbleweed since October 2020. This means you can install
+the clients with:
+
+    zypper ref
+    zypper in kanidm-clients
+
 ## From source
 
-After you check out the source (see github), navigate to:
+After you check out the source (see [GitHub](https://github.com/kanidm/kanidm)), navigate to:
 
     cd kanidm_tools
     cargo install --path .
 
-## Check the tools work
+## Checking that the tools work
 
 Now you can check your instance is working. You may need to provide a CA certificate for verification
 with the -C parameter:
@@ -57,7 +59,7 @@ with the -C parameter:
     kanidm self whoami -C ../path/to/ca.pem -H https://localhost:8443 --name anonymous
     kanidm self whoami -H https://localhost:8443 --name anonymous
 
-Now you can take some time to look at what commands are available - please ask for help at anytime.
+Now you can take some time to look at what commands are available - please [ask for help at any time](https://github.com/kanidm/kanidm#getting-in-contact--questions).
 
 ## Authenticating a user with the command line
 

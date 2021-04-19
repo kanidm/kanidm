@@ -31,7 +31,7 @@ impl PasswordChangeEvent {
         msg: IdmAccountSetPasswordMessage,
     ) -> Result<Self, OperationError> {
         let e = Event::from_rw_uat(audit, qs, msg.uat.as_ref())?;
-        let u = *e.get_uuid().ok_or(OperationError::InvalidState)?;
+        let u = e.get_uuid().ok_or(OperationError::InvalidState)?;
 
         Ok(PasswordChangeEvent {
             event: e,

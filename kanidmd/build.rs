@@ -37,7 +37,7 @@ fn main() {
     println!("cargo:rerun-if-changed={}", profile_path.to_str().unwrap());
 
     let mut f =
-        File::open(&profile_path).expect(format!("Failed to open {:?}", profile_path).as_str());
+        File::open(&profile_path).unwrap_or_else(|_| panic!("Failed to open {:?}", profile_path));
 
     let mut contents = String::new();
     f.read_to_string(&mut contents)

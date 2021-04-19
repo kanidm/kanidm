@@ -26,6 +26,7 @@ use crate::actors::v1_write::{CreateMessage, DeleteMessage, ModifyMessage};
 use ldap3_server::simple::LdapFilter;
 use smartstring::alias::String as AttrString;
 use std::collections::BTreeSet;
+use std::hash::Hash;
 use std::time::Duration;
 use uuid::Uuid;
 
@@ -68,7 +69,7 @@ impl SearchResult {
 // At the top we get "event types" and they contain the needed
 // actions, and a generic event component.
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Hash, Ord, PartialOrd, Eq)]
 pub enum EventOriginId {
     // Time stamp of the originating event.
     // The uuid of the originiating user
@@ -163,12 +164,14 @@ impl Event {
     ) -> Result<Self, OperationError> {
         ltrace!(audit, "from_ro_uat -> {:?}", uat);
         let uat = uat.ok_or(OperationError::NotAuthenticated)?;
+        /*
         let u = Uuid::parse_str(uat.uuid.as_str()).map_err(|_| {
             ladmin_error!(audit, "from_ro_uat invalid uat uuid");
             OperationError::InvalidUuid
         })?;
+        */
 
-        let e = qs.internal_search_uuid(audit, &u).map_err(|e| {
+        let e = qs.internal_search_uuid(audit, &uat.uuid).map_err(|e| {
             ladmin_error!(audit, "from_ro_uat failed {:?}", e);
             e
         })?;
@@ -192,12 +195,14 @@ impl Event {
     ) -> Result<Self, OperationError> {
         ltrace!(audit, "from_rw_uat -> {:?}", uat);
         let uat = uat.ok_or(OperationError::NotAuthenticated)?;
+        /*
         let u = Uuid::parse_str(uat.uuid.as_str()).map_err(|_| {
             ladmin_error!(audit, "from_rw_uat invalid uat uuid");
             OperationError::InvalidUuid
         })?;
+        */
 
-        let e = qs.internal_search_uuid(audit, &u).map_err(|e| {
+        let e = qs.internal_search_uuid(audit, &uat.uuid).map_err(|e| {
             ladmin_error!(audit, "from_rw_uat failed {:?}", e);
             e
         })?;
@@ -250,11 +255,15 @@ impl Event {
         }
     }
 
-    pub fn get_uuid(&self) -> Option<&Uuid> {
+    pub fn get_uuid(&self) -> Option<Uuid> {
         match &self.origin {
             EventOrigin::Internal => None,
-            EventOrigin::User(e) => Some(e.get_uuid()),
+            EventOrigin::User(e) => Some(*e.get_uuid()),
         }
+    }
+
+    pub fn get_event_origin_id(&self) -> EventOriginId {
+        EventOriginId::from(&self.origin)
     }
 }
 

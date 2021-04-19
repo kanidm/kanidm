@@ -40,6 +40,7 @@ struct ServerConfig {
     // pub threads: Option<usize>,
     pub db_path: String,
     pub db_fs_type: Option<String>,
+    pub db_arc_size: Option<usize>,
     pub tls_chain: Option<String>,
     pub tls_key: Option<String>,
     pub log_level: Option<String>,
@@ -208,6 +209,7 @@ async fn main() {
     config.update_bind(&sconfig.bindaddress);
     config.update_ldapbind(&sconfig.ldapbindaddress);
     config.update_origin(&sconfig.origin.as_str());
+    config.update_db_arc_size(sconfig.db_arc_size);
 
     // Apply any cli overrides, normally debug level.
     if let Some(dll) = opt.commonopt().debug.as_ref() {
