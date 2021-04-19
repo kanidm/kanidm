@@ -1259,7 +1259,7 @@ impl IdlSqlite {
         cfg: &BackendConfig,
         vacuum: bool,
     ) -> Result<Self, OperationError> {
-        if cfg.path == "" {
+        if cfg.path.is_empty() {
             debug_assert!(cfg.pool_size == 1);
         }
         // If provided, set the page size to match the tuning we want. By default we use 4096. The VACUUM

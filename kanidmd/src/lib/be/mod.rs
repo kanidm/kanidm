@@ -1375,7 +1375,7 @@ impl Backend {
         info!("CPU Flags -> {}", env!("KANIDM_CPU_FLAGS"));
 
         // If in memory, reduce pool to 1
-        if &cfg.path == "" {
+        if cfg.path.is_empty() {
             cfg.pool_size = 1;
         }
 

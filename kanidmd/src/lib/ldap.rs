@@ -111,7 +111,7 @@ impl LdapServer {
     ) -> Result<Vec<LdapMsg>, OperationError> {
         ladmin_info!(au, "Attempt LDAP Search for {}", uat.spn);
         // If the request is "", Base, Present("objectclass"), [], then we want the rootdse.
-        if sr.base == "" && sr.scope == LdapSearchScope::Base {
+        if sr.base.is_empty() && sr.scope == LdapSearchScope::Base {
             ladmin_info!(au, "LDAP Search success - RootDSE");
             Ok(vec![
                 sr.gen_result_entry(self.rootdse.clone()),
@@ -299,12 +299,12 @@ impl LdapServer {
         lsecurity!(
             au,
             "Attempt LDAP Bind for {}",
-            if dn == "" { "anonymous" } else { dn }
+            if dn.is_empty() { "anonymous" } else { dn }
         );
         let mut idm_write = idms.write_async().await;
 
-        let target_uuid: Uuid = if dn == "" {
-            if pw == "" {
+        let target_uuid: Uuid = if dn.is_empty() {
+            if pw.is_empty() {
                 lsecurity!(au, "✅ LDAP Bind success anonymous");
                 *UUID_ANONYMOUS
             } else {
@@ -324,7 +324,7 @@ impl LdapServer {
 
             ltrace!(au, "rdn val is -> {:?}", rdn);
 
-            if rdn == "" {
+            if rdn.is_empty() {
                 // That's weird ...
                 return Err(OperationError::NoMatchingEntries);
             }
