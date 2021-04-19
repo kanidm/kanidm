@@ -170,10 +170,7 @@ impl CredSoftLock {
 
     /// Is this credential valid to proceed at this point in time.
     pub fn is_valid(&self) -> bool {
-        match self.state {
-            LockState::Locked(_count, _reset_at, _unlock_at) => false,
-            _ => true,
-        }
+        !matches!(self.state, LockState::Locked(_count, _reset_at, _unlock_at))
     }
 
     /// Document a failure of authentication at this time.

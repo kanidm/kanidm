@@ -18,7 +18,7 @@ pub mod webauthn;
 
 use crate::credential::policy::CryptoPolicy;
 use crate::credential::softlock::CredSoftLockPolicy;
-use crate::credential::totp::TOTP;
+use crate::credential::totp::Totp;
 
 // NIST 800-63.b salt should be 112 bits -> 14  8u8.
 // I choose tinfoil hat though ...
@@ -207,10 +207,7 @@ impl Password {
     }
 
     pub fn requires_upgrade(&self) -> bool {
-        match &self.material {
-            KDF::PBKDF2(_, _, _) => false,
-            _ => true,
-        }
+        !matches!(&self.material, KDF::PBKDF2(_, _, _))
     }
 }
 
@@ -243,7 +240,7 @@ pub enum CredentialType {
     Password(Password),
     GeneratedPassword(Password),
     Webauthn(Map<String, WebauthnCredential>),
-    PasswordMFA(Password, Option<TOTP>, Map<String, WebauthnCredential>),
+    PasswordMFA(Password, Option<Totp>, Map<String, WebauthnCredential>),
     // PasswordWebauthn(Password, Map<String, WebauthnCredential>),
     // WebauthnVerified(Map<String, WebauthnCredential>),
     // PasswordWebauthnVerified(Password, Map<String, WebauthnCredential>),
@@ -292,7 +289,7 @@ impl TryFrom<DbCredV1> for Credential {
         };
 
         let v_totp = match totp {
-            Some(dbt) => Some(TOTP::try_from(dbt)?),
+            Some(dbt) => Some(Totp::try_from(dbt)?),
             None => None,
         };
 
@@ -611,7 +608,7 @@ impl Credential {
     }
 
     // We don't make totp accessible from outside the crate for now.
-    pub(crate) fn update_totp(&self, totp: TOTP) -> Self {
+    pub(crate) fn update_totp(&self, totp: Totp) -> Self {
         let type_ = match &self.type_ {
             CredentialType::Password(pw) | CredentialType::GeneratedPassword(pw) => {
                 CredentialType::PasswordMFA(pw.clone(), Some(totp), Map::new())

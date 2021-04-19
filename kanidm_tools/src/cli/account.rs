@@ -18,7 +18,7 @@ impl AccountOpt {
                 AccountCredential::RegisterWebauthn(acs) => acs.copt.debug,
                 AccountCredential::RemoveWebauthn(acs) => acs.copt.debug,
                 AccountCredential::RegisterTotp(acs) => acs.copt.debug,
-                AccountCredential::RemoveTOTP(acs) => acs.copt.debug,
+                AccountCredential::RemoveTotp(acs) => acs.copt.debug,
                 AccountCredential::Status(acs) => acs.copt.debug,
             },
             AccountOpt::Radius(acopt) => match acopt {
@@ -213,7 +213,7 @@ impl AccountOpt {
                         }
                     }
                 }
-                AccountCredential::RemoveTOTP(acsopt) => {
+                AccountCredential::RemoveTotp(acsopt) => {
                     let client = acsopt.copt.to_client();
                     match client.idm_account_primary_credential_remove_totp(
                         acsopt.aopts.account_id.as_str(),
