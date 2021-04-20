@@ -10,6 +10,7 @@ use kanidm_client::{KanidmClient, KanidmClientBuilder};
 use async_std::task;
 use tokio::sync::mpsc;
 
+pub const ADMIN_TEST_USER: &str = "admin";
 pub const ADMIN_TEST_PASSWORD: &str = "integration test admin password";
 static PORT_ALLOC: AtomicU16 = AtomicU16::new(18080);
 
@@ -47,6 +48,7 @@ pub fn run_test(test_fn: fn(KanidmClient) -> ()) {
     };
 
     let int_config = Box::new(IntegrationTestConfig {
+        admin_user: ADMIN_TEST_USER.to_string(),
         admin_password: ADMIN_TEST_PASSWORD.to_string(),
     });
 

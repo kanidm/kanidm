@@ -3,6 +3,7 @@ use std::fmt;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct IntegrationTestConfig {
+    pub admin_user: String,
     pub admin_password: String,
 }
 
