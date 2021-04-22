@@ -449,19 +449,33 @@ impl Component for LoginApp {
 
     fn view(&self) -> Html {
         // How do we add a top level theme?
+
+        let (width, height): (u32, u32) = if let Some(win) = web_sys::window() {
+            let w = win.inner_width().unwrap();
+            let h = win.inner_height().unwrap();
+            ConsoleService::log(format!("width {:?} {:?}", w, w.as_f64()).as_str());
+            ConsoleService::log(format!("height {:?} {:?}", h, h.as_f64()).as_str());
+            (w.as_f64().unwrap() as u32, h.as_f64().unwrap() as u32)
+        } else {
+            ConsoleService::log("Unable to access document window");
+            (0, 0)
+        };
+
         html! {
-            <div id="content" class="container">
-                <canvas id="confetti-canvas" style="position:absolute" width="1920" height="1200"></canvas>
-                <div class="row d-flex justify-content-center align-items-center" style="min-height: 100vh;">
-                    <div class="col">
-                    </div>
-                    <div class="col-sm-6">
-                        <div class="container">
-                            <h2>{ "Kanidm Alpha 🦀 " }</h2>
+            <div>
+                <canvas id="confetti-canvas" style="position:absolute" width=width height=height></canvas>
+                <div id="content" class="container">
+                    <div class="row d-flex justify-content-center align-items-center" style="min-height: 100vh;">
+                        <div class="col">
                         </div>
-                        { self.view_state() }
-                    </div>
-                    <div class="col">
+                        <div class="col-sm-6">
+                            <div class="container">
+                                <h2>{ "Kanidm Alpha 🦀 " }</h2>
+                            </div>
+                            { self.view_state() }
+                        </div>
+                        <div class="col">
+                        </div>
                     </div>
                 </div>
             </div>
