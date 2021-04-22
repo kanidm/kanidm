@@ -463,12 +463,12 @@ impl KanidmAsyncClient {
             Err(e) => return Err(e),
         };
 
-        if !mechs.contains(&AuthMech::PasswordMFA) {
-            debug!("PasswordMFA mech not presented");
+        if !mechs.contains(&AuthMech::PasswordMfa) {
+            debug!("PasswordMfa mech not presented");
             return Err(ClientError::AuthenticationFailed);
         }
 
-        let state = match self.auth_step_begin(AuthMech::PasswordMFA).await {
+        let state = match self.auth_step_begin(AuthMech::PasswordMfa).await {
             Ok(s) => s,
             Err(e) => return Err(e),
         };

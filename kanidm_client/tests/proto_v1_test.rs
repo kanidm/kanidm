@@ -960,7 +960,7 @@ fn test_server_rest_webauthn_mfa_auth_lifecycle() {
             .auth_webauthn_complete(auth)
             .expect("Failed to authenticate");
 
-        // Set a password to cause the state to change to PasswordMFA
+        // Set a password to cause the state to change to PasswordMfa
         assert!(rsclient
             .idm_account_primary_credential_set_password("demo_account", "sohdi3iuHo6mai7noh0a")
             .is_ok());

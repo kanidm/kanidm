@@ -67,7 +67,7 @@ enum CredHandler {
     Anonymous,
     // AppPassword (?)
     Password(Password),
-    PasswordMFA(Box<CredMfa>),
+    PasswordMfa(Box<CredMfa>),
     Webauthn(CredWebauthn),
     // Webauthn + Password
 }
@@ -83,7 +83,7 @@ impl CredHandler {
             CredentialType::Password(pw) | CredentialType::GeneratedPassword(pw) => {
                 Ok(CredHandler::Password(pw.clone()))
             }
-            CredentialType::PasswordMFA(pw, maybe_totp, maybe_wan) => {
+            CredentialType::PasswordMfa(pw, maybe_totp, maybe_wan) => {
                 let wan = if !maybe_wan.is_empty() {
                     webauthn
                         .generate_challenge_authenticate(maybe_wan.values().cloned().collect())
@@ -111,12 +111,12 @@ impl CredHandler {
                 if cmfa.totp.is_none() && cmfa.wan.is_none() {
                     lsecurity_critical!(
                         au,
-                        "Unable to create CredHandler::PasswordMFA - totp and webauthn are both not present. Credentials MAY be corrupt!"
+                        "Unable to create CredHandler::PasswordMfa - totp and webauthn are both not present. Credentials MAY be corrupt!"
                     );
                     return Err(());
                 }
 
-                Ok(CredHandler::PasswordMFA(cmfa))
+                Ok(CredHandler::PasswordMfa(cmfa))
             }
             CredentialType::Webauthn(wan) => webauthn
                 .generate_challenge_authenticate(wan.values().cloned().collect())
@@ -263,14 +263,14 @@ impl CredHandler {
                             pw_mfa.mfa_state = CredVerifyState::Success;
                             lsecurity!(
                                 au,
-                                "Handler::PasswordMFA -> Result::Continue - TOTP OK, password -"
+                                "Handler::PasswordMfa -> Result::Continue - TOTP OK, password -"
                             );
                             CredState::Continue(vec![AuthAllowed::Password])
                         } else {
                             pw_mfa.mfa_state = CredVerifyState::Fail;
                             lsecurity!(
                                 au,
-                                "Handler::PasswordMFA -> Result::Denied - TOTP Fail, password -"
+                                "Handler::PasswordMfa -> Result::Denied - TOTP Fail, password -"
                             );
                             CredState::Denied(BAD_TOTP_MSG)
                         }
@@ -278,7 +278,7 @@ impl CredHandler {
                     _ => {
                         lsecurity!(
                             au,
-                            "Handler::PasswordMFA -> Result::Denied - invalid cred type for handler"
+                            "Handler::PasswordMfa -> Result::Denied - invalid cred type for handler"
                         );
                         CredState::Denied(BAD_AUTH_TYPE_MSG)
                     }
@@ -294,7 +294,7 @@ impl CredHandler {
                                     pw_mfa.pw_state = CredVerifyState::Fail;
                                     lsecurity!(
                                         au,
-                                        "Handler::PasswordMFA -> Result::Denied - Password found in badlist during login"
+                                        "Handler::PasswordMfa -> Result::Denied - Password found in badlist during login"
                                     );
                                     CredState::Denied(PW_BADLIST_MSG)
                                 }
@@ -302,7 +302,7 @@ impl CredHandler {
                                     pw_mfa.pw_state = CredVerifyState::Success;
                                     lsecurity!(
                                         au,
-                                        "Handler::PasswordMFA -> Result::Success - TOTP OK, password OK"
+                                        "Handler::PasswordMfa -> Result::Success - TOTP OK, password OK"
                                     );
                                     Self::maybe_pw_upgrade(
                                         au,
@@ -318,7 +318,7 @@ impl CredHandler {
                             pw_mfa.pw_state = CredVerifyState::Fail;
                             lsecurity!(
                                 au,
-                                "Handler::PasswordMFA -> Result::Denied - TOTP OK, password Fail"
+                                "Handler::PasswordMfa -> Result::Denied - TOTP OK, password Fail"
                             );
                             CredState::Denied(BAD_PASSWORD_MSG)
                         }
@@ -326,7 +326,7 @@ impl CredHandler {
                     _ => {
                         lsecurity!(
                             au,
-                            "Handler::PasswordMFA -> Result::Denied - invalid cred type for handler"
+                            "Handler::PasswordMfa -> Result::Denied - invalid cred type for handler"
                         );
                         CredState::Denied(BAD_AUTH_TYPE_MSG)
                     }
@@ -335,12 +335,12 @@ impl CredHandler {
             _ => {
                 lsecurity!(
                     au,
-                    "Handler::PasswordMFA -> Result::Denied - invalid credential mfa and pw state"
+                    "Handler::PasswordMfa -> Result::Denied - invalid credential mfa and pw state"
                 );
                 CredState::Denied(BAD_AUTH_TYPE_MSG)
             }
         }
-    } // end CredHandler::PasswordMFA
+    } // end CredHandler::PasswordMfa
 
     pub fn validate_webauthn(
         au: &mut AuditScope,
@@ -411,7 +411,7 @@ impl CredHandler {
             CredHandler::Password(ref mut pw) => {
                 Self::validate_password(au, cred, pw, who, async_tx, pw_badlist_set)
             }
-            CredHandler::PasswordMFA(ref mut pw_mfa) => Self::validate_password_mfa(
+            CredHandler::PasswordMfa(ref mut pw_mfa) => Self::validate_password_mfa(
                 au,
                 cred,
                 ts,
@@ -431,7 +431,7 @@ impl CredHandler {
         match &self {
             CredHandler::Anonymous => vec![AuthAllowed::Anonymous],
             CredHandler::Password(_) => vec![AuthAllowed::Password],
-            CredHandler::PasswordMFA(ref pw_mfa) => pw_mfa
+            CredHandler::PasswordMfa(ref pw_mfa) => pw_mfa
                 .totp
                 .iter()
                 .map(|_| AuthAllowed::Totp)
@@ -450,7 +450,7 @@ impl CredHandler {
         match (self, mech) {
             (CredHandler::Anonymous, AuthMech::Anonymous)
             | (CredHandler::Password(_), AuthMech::Password)
-            | (CredHandler::PasswordMFA(_), AuthMech::PasswordMFA)
+            | (CredHandler::PasswordMfa(_), AuthMech::PasswordMfa)
             | (CredHandler::Webauthn(_), AuthMech::Webauthn) => true,
             (_, _) => false,
         }
@@ -460,7 +460,7 @@ impl CredHandler {
         match self {
             CredHandler::Anonymous => AuthMech::Anonymous,
             CredHandler::Password(_) => AuthMech::Password,
-            CredHandler::PasswordMFA(_) => AuthMech::PasswordMFA,
+            CredHandler::PasswordMfa(_) => AuthMech::PasswordMfa,
             CredHandler::Webauthn(_) => AuthMech::Webauthn,
         }
     }
@@ -997,7 +997,7 @@ mod tests {
             if let AuthState::Choose(auth_mechs) = state {
                 assert!(
                     true == auth_mechs.iter().fold(false, |acc, x| match x {
-                        AuthMech::PasswordMFA => true,
+                        AuthMech::PasswordMfa => true,
                         _ => acc,
                     })
                 );
@@ -1006,7 +1006,7 @@ mod tests {
             }
 
             let state = session
-                .start_session($audit, &AuthMech::PasswordMFA)
+                .start_session($audit, &AuthMech::PasswordMfa)
                 .expect("Failed to select anonymous mech.");
 
             let mut rchal = None;
