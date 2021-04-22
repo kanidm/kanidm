@@ -449,7 +449,6 @@ impl Component for LoginApp {
 
     fn view(&self) -> Html {
         // How do we add a top level theme?
-
         let (width, height): (u32, u32) = if let Some(win) = web_sys::window() {
             let w = win.inner_width().unwrap();
             let h = win.inner_height().unwrap();
