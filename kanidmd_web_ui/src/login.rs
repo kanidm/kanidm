@@ -1,13 +1,16 @@
 use anyhow::Error;
 use wasm_bindgen::prelude::*;
-use yew::format::{Json, Nothing};
+use wasm_bindgen_futures::{spawn_local, JsFuture};
+use yew::format::Json;
 use yew::prelude::*;
 use yew::services::fetch::{FetchService, FetchTask, Request, Response};
 use yew::services::{ConsoleService, StorageService};
 
 use kanidm_proto::v1::{
-    AuthAllowed, AuthCredential, AuthMech, AuthRequest, AuthResponse, AuthState, AuthStep,
+    AuthAllowed, AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep,
 };
+
+use webauthn_rs::proto::PublicKeyCredential;
 
 #[wasm_bindgen]
 extern "C" {
@@ -23,26 +26,37 @@ pub struct LoginApp {
     state: LoginState,
 }
 
+#[derive(PartialEq)]
+enum TotpState {
+    Enabled,
+    Disabled,
+    Invalid,
+}
+
 enum LoginState {
     Init(bool),
 
     // MechChoice
     // CredChoice
     Password(bool),
-    // Totp(bool),
-    // Webauthn,
-    Error,
+    Totp(TotpState),
+    Webauthn(web_sys::CredentialRequestOptions),
+    Error(String, Option<String>),
+    Denied(String),
     Authenticated,
 }
 
 pub enum LoginAppMsg {
     Input(String),
+    Restart,
     Begin,
     PasswordSubmit,
+    TotpSubmit,
+    WebauthnSubmit(PublicKeyCredential),
     Start(String, AuthResponse),
     Next(AuthResponse),
     // DoNothing,
-    Error(String),
+    Error(String, Option<String>),
 }
 
 impl LoginApp {
@@ -50,19 +64,23 @@ impl LoginApp {
         let callback = self.link.callback(
             move |response: Response<Json<Result<AuthResponse, Error>>>| {
                 let (parts, body) = response.into_parts();
-                parts
+
+                let session_id = parts
                     .headers
                     .get("x-kanidm-auth-session-id")
-                    .map(|session_id| {
-                        let session_id = session_id.to_str().unwrap().to_string();
-                        match body {
-                            Json(Ok(state)) => LoginAppMsg::Start(session_id, state),
-                            Json(Err(e)) => LoginAppMsg::Error(format!("{:?}", e)),
-                        }
-                    })
-                    .unwrap_or_else(|| {
-                        LoginAppMsg::Error("x-kanidm-auth-session-id not present".to_string())
-                    })
+                    .map(|session_id| session_id.to_str().unwrap().to_string())
+                    .unwrap_or_else(|| "".to_string());
+
+                match body {
+                    Json(Ok(state)) => LoginAppMsg::Start(session_id, state),
+                    Json(Err(e)) => LoginAppMsg::Error(
+                        format!("{:?}", e),
+                        parts
+                            .headers
+                            .get("x-kanidm-opid")
+                            .map(|id| id.to_str().unwrap().to_string()),
+                    ),
+                }
             },
         );
         let authreq = AuthRequest {
@@ -80,10 +98,17 @@ impl LoginApp {
     fn auth_step(&mut self, authreq: AuthRequest) {
         let callback = self.link.callback(
             move |response: Response<Json<Result<AuthResponse, Error>>>| {
-                let (_parts, body) = response.into_parts();
+                let (parts, body) = response.into_parts();
+
                 match body {
                     Json(Ok(state)) => LoginAppMsg::Next(state),
-                    Json(Err(e)) => LoginAppMsg::Error(format!("{:?}", e)),
+                    Json(Err(e)) => LoginAppMsg::Error(
+                        format!("{:?}", e),
+                        parts
+                            .headers
+                            .get("x-kanidm-opid")
+                            .map(|id| id.to_str().unwrap().to_string()),
+                    ),
                 }
             },
         );
@@ -134,6 +159,63 @@ impl LoginApp {
                     </>
                 }
             }
+            LoginState::Totp(state) => {
+                html! {
+                    <>
+                    <div class="container">
+                        <p>
+                        {" TOTP: "}
+                        { if state==&TotpState::Invalid { "can only contain numeric digits" } else { "" } }
+                        </p>
+                    </div>
+                    <div class="container">
+                        <div>
+                            <input id="totp" type="text" class="form-control" value=self.inputvalue oninput=self.link.callback(|e: InputData| LoginAppMsg::Input(e.value)) disabled=state==&TotpState::Disabled />
+                            <button type="button" class="btn btn-dark" onclick=self.link.callback(|_| LoginAppMsg::TotpSubmit) disabled=state==&TotpState::Disabled >{" Submit "}</button>
+                        </div>
+                    </div>
+                    </>
+                }
+            }
+            LoginState::Webauthn(challenge) => {
+                // Start the navigator parts.
+                if let Some(win) = web_sys::window() {
+                    let promise = win
+                        .navigator()
+                        .credentials()
+                        .get_with_options(&challenge)
+                        .expect("Unable to create promise");
+                    let fut = JsFuture::from(promise);
+                    let linkc = self.link.clone();
+
+                    spawn_local(async move {
+                        match fut.await {
+                            Ok(data) => {
+                                let data = PublicKeyCredential::from(
+                                    web_sys::PublicKeyCredential::from(data),
+                                );
+                                linkc.send_message(LoginAppMsg::WebauthnSubmit(data));
+                            }
+                            Err(e) => {
+                                linkc.send_message(LoginAppMsg::Error(format!("{:?}", e), None));
+                            }
+                        }
+                    });
+                } else {
+                    self.link.send_message(LoginAppMsg::Error(
+                        "failed to access navigator credentials".to_string(),
+                        None,
+                    ));
+                };
+
+                html! {
+                    <div class="container">
+                        <p>
+                        {" Webauthn "}
+                        </p>
+                    </div>
+                }
+            }
             LoginState::Authenticated => {
                 html! {
                     <div class="container">
@@ -143,11 +225,30 @@ impl LoginApp {
                     </div>
                 }
             }
-            LoginState::Error => {
+            LoginState::Denied(msg) => {
                 html! {
                     <div class="container">
                         <p>
-                            { "An error has occured :( " }
+                            { "Authentication Denied" }
+                        </p>
+                        <p>
+                            { msg.as_str() }
+                        </p>
+                        <button type="button" class="btn btn-dark" onclick=self.link.callback(|_| LoginAppMsg::Restart) >{" Start Again "}</button>
+                    </div>
+                }
+            }
+            LoginState::Error(msg, last_opid) => {
+                html! {
+                    <div class="container">
+                        <p>
+                            { "An error has occured 😔 " }
+                        </p>
+                        <p>
+                            { msg.as_str() }
+                        </p>
+                        <p>
+                            { if let Some(opid) = last_opid.as_ref() { opid.clone() } else { "Local Error".to_string() } }
                         </p>
                     </div>
                 }
@@ -167,6 +268,10 @@ impl Component for LoginApp {
         let lstorage = StorageService::new(yew::services::storage::Area::Local).unwrap();
 
         // Get any previous sessions?
+        let prev_session: Result<String, _> = lstorage.restore("kanidm_bearer_token");
+
+        ConsoleService::log(format!("prev_session -> {:?}", prev_session).as_str());
+
         // Are they still valid?
 
         LoginApp {
@@ -189,6 +294,14 @@ impl Component for LoginApp {
                 std::mem::swap(&mut self.inputvalue, &mut inputvalue);
                 true
             }
+            LoginAppMsg::Restart => {
+                // Clear any leftover input
+                self.inputvalue = "".to_string();
+                self.ft = None;
+                self.session_id = "".to_string();
+                self.state = LoginState::Init(true);
+                true
+            }
             LoginAppMsg::Begin => {
                 ConsoleService::log(format!("begin -> {:?}", self.inputvalue).as_str());
                 // Disable the button?
@@ -197,7 +310,7 @@ impl Component for LoginApp {
                 true
             }
             LoginAppMsg::PasswordSubmit => {
-                ConsoleService::log(format!("password -> {:?}", self.inputvalue).as_str());
+                ConsoleService::log("password");
                 // Disable the button?
                 self.state = LoginState::Password(false);
                 let authreq = AuthRequest {
@@ -207,6 +320,36 @@ impl Component for LoginApp {
                 // Clear the password from memory.
                 self.inputvalue = "".to_string();
                 true
+            }
+            LoginAppMsg::TotpSubmit => {
+                ConsoleService::log("totp");
+                // Disable the button?
+                match u32::from_str_radix(&self.inputvalue, 10) {
+                    Ok(totp) => {
+                        self.state = LoginState::Totp(TotpState::Disabled);
+                        let authreq = AuthRequest {
+                            step: AuthStep::Cred(AuthCredential::TOTP(totp)),
+                        };
+                        self.auth_step(authreq);
+                    }
+                    Err(_) => {
+                        self.state = LoginState::Totp(TotpState::Invalid);
+                    }
+                }
+
+                // Clear the totp from memory.
+                self.inputvalue = "".to_string();
+
+                true
+            }
+            LoginAppMsg::WebauthnSubmit(resp) => {
+                ConsoleService::log("webauthn");
+                let authreq = AuthRequest {
+                    step: AuthStep::Cred(AuthCredential::Webauthn(resp.into())),
+                };
+                self.auth_step(authreq);
+                // Do not submit here, we need to wait for the next ui transition.
+                false
             }
             LoginAppMsg::Start(session_id, resp) => {
                 // Clear any leftover input
@@ -228,13 +371,19 @@ impl Component for LoginApp {
                         } else {
                             // Offer the choices.
                             ConsoleService::log(format!("unimplemented").as_str());
-                            self.state = LoginState::Error;
+                            self.state = LoginState::Error("Unimplemented".to_string(), None);
                             true
                         }
                     }
+                    AuthState::Denied(reason) => {
+                        ConsoleService::log(format!("denied -> {:?}", reason).as_str());
+                        self.state = LoginState::Denied(reason);
+                        true
+                    }
                     _ => {
                         ConsoleService::log(format!("invalid state transition").as_str());
-                        self.state = LoginState::Error;
+                        self.state =
+                            LoginState::Error("Invalid UI State Transition".to_string(), None);
                         true
                     }
                 }
@@ -247,7 +396,8 @@ impl Component for LoginApp {
                 match resp.state {
                     AuthState::Choose(_mechs) => {
                         ConsoleService::log(format!("invalid state transition").as_str());
-                        self.state = LoginState::Error;
+                        self.state =
+                            LoginState::Error("Invalid UI State Transition".to_string(), None);
                         true
                     }
                     AuthState::Continue(mut allowed) => {
@@ -261,8 +411,12 @@ impl Component for LoginApp {
                                     // Go to the password view.
                                     self.state = LoginState::Password(true);
                                 }
-                                AuthAllowed::TOTP => {}
-                                AuthAllowed::Webauthn(challenge) => {}
+                                AuthAllowed::TOTP => {
+                                    self.state = LoginState::Totp(TotpState::Enabled);
+                                }
+                                AuthAllowed::Webauthn(challenge) => {
+                                    self.state = LoginState::Webauthn(challenge.into())
+                                }
                             }
                         } else {
                             // Else, present the options in a choice.
@@ -270,22 +424,25 @@ impl Component for LoginApp {
                         true
                     }
                     AuthState::Denied(reason) => {
-                        self.state = LoginState::Error;
+                        ConsoleService::log(format!("denied -> {:?}", reason).as_str());
+                        self.state = LoginState::Denied(reason);
                         true
                     }
                     AuthState::Success(bearer_token) => {
                         // Store the bearer here!
+                        self.lstorage.store("kanidm_bearer_token", Ok(bearer_token));
                         self.state = LoginState::Authenticated;
                         startConfetti();
                         true
                     }
                 }
             }
-            LoginAppMsg::Error(msg) => {
+            LoginAppMsg::Error(msg, opid) => {
                 // Clear any leftover input
                 self.inputvalue = "".to_string();
-                ConsoleService::log(format!("error -> {:?}", msg).as_str());
-                false
+                ConsoleService::log(format!("error -> {:?}, {:?}", msg, opid).as_str());
+                self.state = LoginState::Error(msg, opid);
+                true
             }
         }
     }

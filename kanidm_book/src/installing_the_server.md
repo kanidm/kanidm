@@ -149,8 +149,10 @@ You will also need a config file in the volume named `server.toml` (Within the c
     #   Defaults to "default"
     # log_level = "default"
     #
-    #   The origin for webauthn. This is the url to the server minus port information
-    origin = "https://idm.example.com"
+    #   The origin for webauthn. This is the url to the server, with the port included if
+    #   it is non-standard (any port except 443)
+    # origin = "https://idm.example.com"
+    origin = "https://idm.example.com:8443"
 
 Then you can setup the initial admin account and initialise the database into your volume.
 

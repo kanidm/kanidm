@@ -92,7 +92,7 @@ simd_support = [ "concread/simd_support" ]
 [dev-dependencies]
 criterion = { version = "0.3", features = ["html_reports"] }
 # For testing webauthn
-webauthn-authenticator-rs = "0.3.0-alpha.7"
+webauthn-authenticator-rs = "0.3.0-alpha.8"
 
 [dev-dependencies.cargo-husky]
 version = "1"

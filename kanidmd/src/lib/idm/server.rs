@@ -1077,10 +1077,30 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             ladmin_error!(au, "name to uuid failed {:?}", e);
             e
         })?;
-        // internal pce.
-        let pce = PasswordChangeEvent::new_internal(&target, cleartext, None);
-        // now set_account_password.
-        self.set_account_password(au, &pce)
+
+        let account = self.target_to_account(au, &target)?;
+
+        let modlist = account
+            .gen_password_recover_mod(cleartext, self.crypto_policy)
+            .map_err(|e| {
+                ladmin_error!(au, "Failed to generate password mod {:?}", e);
+                e
+            })?;
+        ltrace!(au, "processing change {:?}", modlist);
+
+        self.qs_write
+            .internal_modify(
+                au,
+                // Filter as executed
+                &filter!(f_eq("uuid", PartialValue::new_uuidr(&target))),
+                &modlist,
+            )
+            .map_err(|e| {
+                lrequest_error!(au, "error -> {:?}", e);
+                e
+            })?;
+
+        Ok(())
     }
 
     pub fn generate_account_password(

@@ -1126,12 +1126,12 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
                         })
                         .map_err(|_| OperationError::InvalidSessionState)
                 }
-                AuthState::Denied(_) => {
+                AuthState::Denied(reason) => {
                     debug!("🧩 -> AuthState::Denied");
                     let msession = req.session_mut();
                     // Remove the auth-session-id
                     msession.remove("auth-session-id");
-                    Err(OperationError::AccessDenied)
+                    Ok(ProtoAuthState::Denied(reason))
                 }
             }
             .map(|state| AuthResponse { state, sessionid })

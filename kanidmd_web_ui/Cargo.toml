@@ -18,3 +18,9 @@ wasm-bindgen-futures = { version = "0.4" }
 yew = "0.17"
 kanidm_proto = { path = "../kanidm_proto", version = "1.1.0-alpha" }
 anyhow = "1"
+
+webauthn-rs = { version = "0.3.0-alpha.7", default-features = false, features = ["wasm"] }
+web-sys = { version = "0.3", features = ["PublicKeyCredentialUserEntity", "CredentialCreationOptions", "Navigator", "Window", "CredentialsContainer", "PublicKeyCredentialRpEntity", "PublicKeyCredentialCreationOptions", "PublicKeyCredential", "AuthenticatorResponse", "AuthenticationExtensionsClientOutputs", "CredentialRequestOptions"] }
+js-sys = "0.3"
+
+
