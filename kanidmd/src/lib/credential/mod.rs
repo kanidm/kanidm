@@ -240,7 +240,7 @@ pub enum CredentialType {
     Password(Password),
     GeneratedPassword(Password),
     Webauthn(Map<String, WebauthnCredential>),
-    PasswordMFA(Password, Option<Totp>, Map<String, WebauthnCredential>),
+    PasswordMfa(Password, Option<Totp>, Map<String, WebauthnCredential>),
     // PasswordWebauthn(Password, Map<String, WebauthnCredential>),
     // WebauthnVerified(Map<String, WebauthnCredential>),
     // PasswordWebauthnVerified(Password, Map<String, WebauthnCredential>),
@@ -259,10 +259,10 @@ impl Into<CredentialDetail> for &Credential {
                     labels.sort_unstable();
                     CredentialDetailType::Webauthn(labels)
                 }
-                CredentialType::PasswordMFA(_, totp, wan) => {
+                CredentialType::PasswordMfa(_, totp, wan) => {
                     let mut labels: Vec<_> = wan.keys().cloned().collect();
                     labels.sort_unstable();
-                    CredentialDetailType::PasswordMFA(totp.is_some(), labels)
+                    CredentialDetailType::PasswordMfa(totp.is_some(), labels)
                 }
             },
         }
@@ -317,7 +317,7 @@ impl TryFrom<DbCredV1> for Credential {
             DbCredTypeV1::GPw => v_password.map(CredentialType::GeneratedPassword),
             // In the future this could use .zip
             DbCredTypeV1::PwMfa => match (v_password, v_webauthn) {
-                (Some(pw), Some(wn)) => Some(CredentialType::PasswordMFA(pw, v_totp, wn)),
+                (Some(pw), Some(wn)) => Some(CredentialType::PasswordMfa(pw, v_totp, wn)),
                 _ => None,
             },
             DbCredTypeV1::Wn => v_webauthn.map(CredentialType::Webauthn),
@@ -368,9 +368,9 @@ impl Credential {
             CredentialType::Password(pw) | CredentialType::GeneratedPassword(pw) => {
                 let mut wan = Map::new();
                 wan.insert(label, cred);
-                CredentialType::PasswordMFA(pw.clone(), None, wan)
+                CredentialType::PasswordMfa(pw.clone(), None, wan)
             }
-            CredentialType::PasswordMFA(pw, totp, map) => {
+            CredentialType::PasswordMfa(pw, totp, map) => {
                 let mut nmap = map.clone();
                 if nmap.insert(label.clone(), cred).is_some() {
                     return Err(OperationError::InvalidAttribute(format!(
@@ -378,7 +378,7 @@ impl Credential {
                         label
                     )));
                 }
-                CredentialType::PasswordMFA(pw.clone(), totp.clone(), nmap)
+                CredentialType::PasswordMfa(pw.clone(), totp.clone(), nmap)
             }
             CredentialType::Webauthn(map) => {
                 let mut nmap = map.clone();
@@ -407,7 +407,7 @@ impl Credential {
                     "Webauthn is not present on this credential".to_string(),
                 ));
             }
-            CredentialType::PasswordMFA(pw, totp, map) => {
+            CredentialType::PasswordMfa(pw, totp, map) => {
                 let mut nmap = map.clone();
                 if nmap.remove(label).is_none() {
                     return Err(OperationError::InvalidAttribute(format!(
@@ -417,12 +417,12 @@ impl Credential {
                 }
                 if nmap.is_empty() {
                     if totp.is_some() {
-                        CredentialType::PasswordMFA(pw.clone(), totp.clone(), nmap)
+                        CredentialType::PasswordMfa(pw.clone(), totp.clone(), nmap)
                     } else {
                         CredentialType::Password(pw.clone())
                     }
                 } else {
-                    CredentialType::PasswordMFA(pw.clone(), totp.clone(), nmap)
+                    CredentialType::PasswordMfa(pw.clone(), totp.clone(), nmap)
                 }
             }
             CredentialType::Webauthn(map) => {
@@ -462,7 +462,7 @@ impl Credential {
                 // No action required
                 return Ok(None);
             }
-            CredentialType::PasswordMFA(_, _, map) | CredentialType::Webauthn(map) => map
+            CredentialType::PasswordMfa(_, _, map) | CredentialType::Webauthn(map) => map
                 .iter()
                 .fold(None, |acc, (k, v)| {
                     if acc.is_none() && &v.cred_id == cid && v.counter < counter {
@@ -495,8 +495,8 @@ impl Credential {
                 return Err(OperationError::InvalidState);
             }
             CredentialType::Webauthn(_) => CredentialType::Webauthn(map),
-            CredentialType::PasswordMFA(pw, totp, _) => {
-                CredentialType::PasswordMFA(pw.clone(), totp.clone(), map)
+            CredentialType::PasswordMfa(pw, totp, _) => {
+                CredentialType::PasswordMfa(pw.clone(), totp.clone(), map)
             }
         };
 
@@ -512,7 +512,7 @@ impl Credential {
             CredentialType::Password(_) | CredentialType::GeneratedPassword(_) => Err(
                 OperationError::InvalidAccountState("non-webauthn cred type?".to_string()),
             ),
-            CredentialType::PasswordMFA(_, _, map) | CredentialType::Webauthn(map) => Ok(map),
+            CredentialType::PasswordMfa(_, _, map) | CredentialType::Webauthn(map) => Ok(map),
         }
     }
 
@@ -520,7 +520,7 @@ impl Credential {
         match &self.type_ {
             CredentialType::Password(pw)
             | CredentialType::GeneratedPassword(pw)
-            | CredentialType::PasswordMFA(pw, _, _) => Ok(pw),
+            | CredentialType::PasswordMfa(pw, _, _) => Ok(pw),
             CredentialType::Webauthn(_) => Err(OperationError::InvalidAccountState(
                 "non-password cred type?".to_string(),
             )),
@@ -552,7 +552,7 @@ impl Credential {
                 claims,
                 uuid,
             },
-            CredentialType::PasswordMFA(pw, totp, map) => DbCredV1 {
+            CredentialType::PasswordMfa(pw, totp, map) => DbCredV1 {
                 type_: DbCredTypeV1::PwMfa,
                 password: Some(pw.to_dbpasswordv1()),
                 webauthn: Some(
@@ -595,10 +595,10 @@ impl Credential {
         let type_ = match &self.type_ {
             CredentialType::Password(_) => CredentialType::Password(pw),
             CredentialType::GeneratedPassword(_) => CredentialType::GeneratedPassword(pw),
-            CredentialType::PasswordMFA(_, totp, wan) => {
-                CredentialType::PasswordMFA(pw, totp.clone(), wan.clone())
+            CredentialType::PasswordMfa(_, totp, wan) => {
+                CredentialType::PasswordMfa(pw, totp.clone(), wan.clone())
             }
-            CredentialType::Webauthn(wan) => CredentialType::PasswordMFA(pw, None, wan.clone()),
+            CredentialType::Webauthn(wan) => CredentialType::PasswordMfa(pw, None, wan.clone()),
         };
         Credential {
             type_,
@@ -611,10 +611,10 @@ impl Credential {
     pub(crate) fn update_totp(&self, totp: Totp) -> Self {
         let type_ = match &self.type_ {
             CredentialType::Password(pw) | CredentialType::GeneratedPassword(pw) => {
-                CredentialType::PasswordMFA(pw.clone(), Some(totp), Map::new())
+                CredentialType::PasswordMfa(pw.clone(), Some(totp), Map::new())
             }
-            CredentialType::PasswordMFA(pw, _, wan) => {
-                CredentialType::PasswordMFA(pw.clone(), Some(totp), wan.clone())
+            CredentialType::PasswordMfa(pw, _, wan) => {
+                CredentialType::PasswordMfa(pw.clone(), Some(totp), wan.clone())
             }
             CredentialType::Webauthn(wan) => {
                 debug_assert!(false);
@@ -630,11 +630,11 @@ impl Credential {
 
     pub(crate) fn remove_totp(&self) -> Self {
         let type_ = match &self.type_ {
-            CredentialType::PasswordMFA(pw, Some(_), wan) => {
+            CredentialType::PasswordMfa(pw, Some(_), wan) => {
                 if wan.is_empty() {
                     CredentialType::Password(pw.clone())
                 } else {
-                    CredentialType::PasswordMFA(pw.clone(), None, wan.clone())
+                    CredentialType::PasswordMfa(pw.clone(), None, wan.clone())
                 }
             }
             _ => self.type_.clone(),
@@ -659,7 +659,7 @@ impl Credential {
             CredentialType::Password(_pw) | CredentialType::GeneratedPassword(_pw) => {
                 Some(CredSoftLockPolicy::Password)
             }
-            CredentialType::PasswordMFA(_pw, totp, wan) => {
+            CredentialType::PasswordMfa(_pw, totp, wan) => {
                 if let Some(r_totp) = totp {
                     Some(CredSoftLockPolicy::TOTP(r_totp.step))
                 } else if !wan.is_empty() {
@@ -697,7 +697,7 @@ impl CredentialType {
     fn is_valid(&self) -> bool {
         match self {
             CredentialType::Password(_) | CredentialType::GeneratedPassword(_) => true,
-            CredentialType::PasswordMFA(_, m_totp, webauthn) => {
+            CredentialType::PasswordMfa(_, m_totp, webauthn) => {
                 m_totp.is_some() || !webauthn.is_empty()
             }
             CredentialType::Webauthn(webauthn) => !webauthn.is_empty(),

@@ -270,7 +270,7 @@ mod tests {
                     .get_ava_single_credential("primary_credential")
                     .expect("failed to get primary cred.");
                 match &c.type_ {
-                    CredentialType::PasswordMFA(_pw, totp, webauthn) => {
+                    CredentialType::PasswordMfa(_pw, totp, webauthn) => {
                         assert!(totp.is_some());
                         assert!(webauthn.is_empty());
                     }

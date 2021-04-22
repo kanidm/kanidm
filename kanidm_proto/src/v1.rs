@@ -286,7 +286,7 @@ pub enum CredentialDetailType {
     GeneratedPassword,
     Webauthn(Vec<String>),
     /// totp, webauthn
-    PasswordMFA(bool, Vec<String>),
+    PasswordMfa(bool, Vec<String>),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -317,7 +317,7 @@ impl fmt::Display for CredentialDetail {
                     write!(f, "")
                 }
             }
-            CredentialDetailType::PasswordMFA(totp, labels) => {
+            CredentialDetailType::PasswordMfa(totp, labels) => {
                 writeln!(f, "password: set")?;
                 if *totp {
                     writeln!(f, "totp: enabled")?;
@@ -516,7 +516,7 @@ impl fmt::Debug for AuthCredential {
 pub enum AuthMech {
     Anonymous,
     Password,
-    PasswordMFA,
+    PasswordMfa,
     Webauthn,
     // WebauthnVerified,
     // PasswordWebauthnVerified
@@ -533,7 +533,7 @@ impl fmt::Display for AuthMech {
         match self {
             AuthMech::Anonymous => write!(f, "Anonymous (no credentials)"),
             AuthMech::Password => write!(f, "Passwold Only"),
-            AuthMech::PasswordMFA => write!(f, "TOTP or Token, and Password"),
+            AuthMech::PasswordMfa => write!(f, "TOTP or Token, and Password"),
             AuthMech::Webauthn => write!(f, "Webauthn Token"),
         }
     }
