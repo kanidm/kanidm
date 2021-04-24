@@ -6,12 +6,8 @@
 // relationships.
 use crate::plugins::Plugin;
 
-use crate::audit::AuditScope;
-use crate::constants::UUID_DOMAIN_INFO;
-use crate::entry::{Entry, EntryInvalid, EntryNew};
 use crate::event::CreateEvent;
-use crate::server::QueryServerWriteTransaction;
-use crate::value::{PartialValue, Value};
+use crate::prelude::*;
 use kanidm_proto::v1::OperationError;
 
 lazy_static! {
@@ -57,10 +53,8 @@ impl Plugin for Domain {
 
 #[cfg(test)]
 mod tests {
-    use crate::constants::UUID_DOMAIN_INFO;
-    use crate::server::QueryServerTransaction;
-    use crate::value::PartialValue;
-    // use uuid::Uuid;
+    // use crate::prelude::*;
+
     // test we can create and generate the id
     #[test]
     fn test_domain_generate_uuid() {

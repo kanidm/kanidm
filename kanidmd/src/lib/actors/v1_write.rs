@@ -1,7 +1,8 @@
-use crate::audit::AuditScope;
 use std::iter;
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender as Sender;
+
+use crate::prelude::*;
 
 use crate::event::{
     CreateEvent, DeleteEvent, ModifyEvent, PurgeRecycledEvent, PurgeTombstoneEvent,
@@ -19,7 +20,6 @@ use kanidm_proto::v1::OperationError;
 use crate::filter::{Filter, FilterInvalid};
 use crate::idm::delayed::DelayedAction;
 use crate::idm::server::IdmServer;
-use crate::server::{QueryServer, QueryServerTransaction};
 use crate::utils::duration_from_epoch_now;
 
 use kanidm_proto::v1::Entry as ProtoEntry;
@@ -242,22 +242,15 @@ pub struct SetAttributeMessage {
 pub struct QueryServerWriteV1 {
     log: Sender<AuditScope>,
     log_level: Option<u32>,
-    qs: QueryServer,
     idms: Arc<IdmServer>,
 }
 
 impl QueryServerWriteV1 {
-    pub fn new(
-        log: Sender<AuditScope>,
-        log_level: Option<u32>,
-        qs: QueryServer,
-        idms: Arc<IdmServer>,
-    ) -> Self {
+    pub fn new(log: Sender<AuditScope>, log_level: Option<u32>, idms: Arc<IdmServer>) -> Self {
         info!("Starting query server v1 worker ...");
         QueryServerWriteV1 {
             log,
             log_level,
-            qs,
             idms,
         }
     }
@@ -265,10 +258,9 @@ impl QueryServerWriteV1 {
     pub fn start_static(
         log: Sender<AuditScope>,
         log_level: Option<u32>,
-        query_server: QueryServer,
         idms: Arc<IdmServer>,
     ) -> &'static QueryServerWriteV1 {
-        let x = Box::new(QueryServerWriteV1::new(log, log_level, query_server, idms));
+        let x = Box::new(QueryServerWriteV1::new(log, log_level, idms));
 
         let x_ptr = Box::leak(x);
         &(*x_ptr)
@@ -283,12 +275,15 @@ impl QueryServerWriteV1 {
         proto_ml: &ProtoModifyList,
         filter: Filter<FilterInvalid>,
     ) -> Result<(), OperationError> {
-        let qs_write = self.qs.write_async(duration_from_epoch_now()).await;
+        let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
         lperf_op_segment!(audit, audit_tag, || {
-            let target_uuid = qs_write.name_to_uuid(audit, uuid_or_name).map_err(|e| {
-                ladmin_error!(audit, "Error resolving id to target");
-                e
-            })?;
+            let target_uuid = idms_prox_write
+                .qs_write
+                .name_to_uuid(audit, uuid_or_name)
+                .map_err(|e| {
+                    ladmin_error!(audit, "Error resolving id to target");
+                    e
+                })?;
 
             let mdf = match ModifyEvent::from_parts(
                 audit,
@@ -296,7 +291,7 @@ impl QueryServerWriteV1 {
                 target_uuid,
                 proto_ml,
                 filter,
-                &qs_write,
+                &idms_prox_write.qs_write,
             ) {
                 Ok(m) => m,
                 Err(e) => {
@@ -307,9 +302,10 @@ impl QueryServerWriteV1 {
 
             ltrace!(audit, "Begin modify event {:?}", mdf);
 
-            qs_write
+            idms_prox_write
+                .qs_write
                 .modify(audit, &mdf)
-                .and_then(|_| qs_write.commit(audit).map(|_| ()))
+                .and_then(|_| idms_prox_write.commit(audit).map(|_| ()))
         })
     }
 
@@ -322,12 +318,15 @@ impl QueryServerWriteV1 {
         ml: &ModifyList<ModifyInvalid>,
         filter: Filter<FilterInvalid>,
     ) -> Result<(), OperationError> {
-        let qs_write = self.qs.write_async(duration_from_epoch_now()).await;
+        let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
         lperf_op_segment!(audit, audit_tag, || {
-            let target_uuid = qs_write.name_to_uuid(audit, uuid_or_name).map_err(|e| {
-                ladmin_error!(audit, "Error resolving id to target");
-                e
-            })?;
+            let target_uuid = idms_prox_write
+                .qs_write
+                .name_to_uuid(audit, uuid_or_name)
+                .map_err(|e| {
+                    ladmin_error!(audit, "Error resolving id to target");
+                    e
+                })?;
 
             let mdf = match ModifyEvent::from_internal_parts(
                 audit,
@@ -335,7 +334,7 @@ impl QueryServerWriteV1 {
                 target_uuid,
                 ml,
                 filter,
-                &qs_write,
+                &idms_prox_write.qs_write,
             ) {
                 Ok(m) => m,
                 Err(e) => {
@@ -346,9 +345,10 @@ impl QueryServerWriteV1 {
 
             ltrace!(audit, "Begin modify event {:?}", mdf);
 
-            qs_write
+            idms_prox_write
+                .qs_write
                 .modify(audit, &mdf)
-                .and_then(|_| qs_write.commit(audit).map(|_| ()))
+                .and_then(|_| idms_prox_write.commit(audit).map(|_| ()))
         })
     }
 
@@ -357,24 +357,30 @@ impl QueryServerWriteV1 {
         msg: CreateMessage,
     ) -> Result<OperationResponse, OperationError> {
         let mut audit = AuditScope::new("create", msg.eventid, self.log_level);
-        let qs_write = self.qs.write_async(duration_from_epoch_now()).await;
+        let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
         let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_write::handle<CreateMessage>",
             || {
-                let crt = match CreateEvent::from_message(&mut audit, &msg, &qs_write) {
-                    Ok(c) => c,
-                    Err(e) => {
-                        ladmin_warning!(audit, "Failed to begin create: {:?}", e);
-                        return Err(e);
-                    }
-                };
+                let crt =
+                    match CreateEvent::from_message(&mut audit, &msg, &idms_prox_write.qs_write) {
+                        Ok(c) => c,
+                        Err(e) => {
+                            ladmin_warning!(audit, "Failed to begin create: {:?}", e);
+                            return Err(e);
+                        }
+                    };
 
                 ltrace!(audit, "Begin create event {:?}", crt);
 
-                qs_write
+                idms_prox_write
+                    .qs_write
                     .create(&mut audit, &crt)
-                    .and_then(|_| qs_write.commit(&mut audit).map(|_| OperationResponse {}))
+                    .and_then(|_| {
+                        idms_prox_write
+                            .commit(&mut audit)
+                            .map(|_| OperationResponse {})
+                    })
             }
         );
         // At the end of the event we send it for logging.
@@ -390,24 +396,30 @@ impl QueryServerWriteV1 {
         msg: ModifyMessage,
     ) -> Result<OperationResponse, OperationError> {
         let mut audit = AuditScope::new("modify", msg.eventid, self.log_level);
-        let qs_write = self.qs.write_async(duration_from_epoch_now()).await;
+        let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
         let res = lperf_segment!(
             &mut audit,
             "actors::v1_write::handle<ModifyMessage>",
             || {
-                let mdf = match ModifyEvent::from_message(&mut audit, &msg, &qs_write) {
-                    Ok(m) => m,
-                    Err(e) => {
-                        ladmin_error!(audit, "Failed to begin modify: {:?}", e);
-                        return Err(e);
-                    }
-                };
+                let mdf =
+                    match ModifyEvent::from_message(&mut audit, &msg, &idms_prox_write.qs_write) {
+                        Ok(m) => m,
+                        Err(e) => {
+                            ladmin_error!(audit, "Failed to begin modify: {:?}", e);
+                            return Err(e);
+                        }
+                    };
 
                 ltrace!(audit, "Begin modify event {:?}", mdf);
 
-                qs_write
+                idms_prox_write
+                    .qs_write
                     .modify(&mut audit, &mdf)
-                    .and_then(|_| qs_write.commit(&mut audit).map(|_| OperationResponse {}))
+                    .and_then(|_| {
+                        idms_prox_write
+                            .commit(&mut audit)
+                            .map(|_| OperationResponse {})
+                    })
             }
         );
         self.log.send(audit).map_err(|_| {
@@ -422,24 +434,30 @@ impl QueryServerWriteV1 {
         msg: DeleteMessage,
     ) -> Result<OperationResponse, OperationError> {
         let mut audit = AuditScope::new("delete", msg.eventid, self.log_level);
-        let qs_write = self.qs.write_async(duration_from_epoch_now()).await;
+        let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
         let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_write::handle<DeleteMessage>",
             || {
-                let del = match DeleteEvent::from_message(&mut audit, &msg, &qs_write) {
-                    Ok(d) => d,
-                    Err(e) => {
-                        ladmin_error!(audit, "Failed to begin delete: {:?}", e);
-                        return Err(e);
-                    }
-                };
+                let del =
+                    match DeleteEvent::from_message(&mut audit, &msg, &idms_prox_write.qs_write) {
+                        Ok(d) => d,
+                        Err(e) => {
+                            ladmin_error!(audit, "Failed to begin delete: {:?}", e);
+                            return Err(e);
+                        }
+                    };
 
                 ltrace!(audit, "Begin delete event {:?}", del);
 
-                qs_write
+                idms_prox_write
+                    .qs_write
                     .delete(&mut audit, &del)
-                    .and_then(|_| qs_write.commit(&mut audit).map(|_| OperationResponse {}))
+                    .and_then(|_| {
+                        idms_prox_write
+                            .commit(&mut audit)
+                            .map(|_| OperationResponse {})
+                    })
             }
         );
         self.log.send(audit).map_err(|_| {
@@ -454,7 +472,7 @@ impl QueryServerWriteV1 {
         msg: InternalDeleteMessage,
     ) -> Result<(), OperationError> {
         let mut audit = AuditScope::new("internal_delete", msg.eventid, self.log_level);
-        let qs_write = self.qs.write_async(duration_from_epoch_now()).await;
+        let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
         let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_write::handle<InternalDeleteMessage>",
@@ -463,7 +481,7 @@ impl QueryServerWriteV1 {
                     &mut audit,
                     msg.uat.as_ref(),
                     &msg.filter,
-                    &qs_write,
+                    &idms_prox_write.qs_write,
                 ) {
                     Ok(d) => d,
                     Err(e) => {
@@ -474,9 +492,10 @@ impl QueryServerWriteV1 {
 
                 ltrace!(audit, "Begin delete event {:?}", del);
 
-                qs_write
+                idms_prox_write
+                    .qs_write
                     .delete(&mut audit, &del)
-                    .and_then(|_| qs_write.commit(&mut audit).map(|_| ()))
+                    .and_then(|_| idms_prox_write.commit(&mut audit).map(|_| ()))
             }
         );
         self.log.send(audit).map_err(|_| {
@@ -491,7 +510,7 @@ impl QueryServerWriteV1 {
         msg: ReviveRecycledMessage,
     ) -> Result<(), OperationError> {
         let mut audit = AuditScope::new("revive", msg.eventid, self.log_level);
-        let qs_write = self.qs.write_async(duration_from_epoch_now()).await;
+        let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
         let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_write::handle<ReviveRecycledMessage>",
@@ -500,7 +519,7 @@ impl QueryServerWriteV1 {
                     &mut audit,
                     msg.uat.as_ref(),
                     &msg.filter,
-                    &qs_write,
+                    &idms_prox_write.qs_write,
                 ) {
                     Ok(r) => r,
                     Err(e) => {
@@ -511,9 +530,10 @@ impl QueryServerWriteV1 {
 
                 ltrace!(audit, "Begin revive event {:?}", rev);
 
-                qs_write
+                idms_prox_write
+                    .qs_write
                     .revive_recycled(&mut audit, &rev)
-                    .and_then(|_| qs_write.commit(&mut audit).map(|_| ()))
+                    .and_then(|_| idms_prox_write.commit(&mut audit).map(|_| ()))
             }
         );
         self.log.send(audit).map_err(|_| {
@@ -823,12 +843,13 @@ impl QueryServerWriteV1 {
         msg: PurgeAttributeMessage,
     ) -> Result<(), OperationError> {
         let mut audit = AuditScope::new("purge_attribute", msg.eventid, self.log_level);
-        let qs_write = self.qs.write_async(duration_from_epoch_now()).await;
+        let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
         let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_write::handle<PurgeAttributeMessage>",
             || {
-                let target_uuid = qs_write
+                let target_uuid = idms_prox_write
+                    .qs_write
                     .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
                     .map_err(|e| {
                         ladmin_error!(audit, "Error resolving id to target");
@@ -841,7 +862,7 @@ impl QueryServerWriteV1 {
                     target_uuid,
                     &msg.attr,
                     msg.filter,
-                    &qs_write,
+                    &idms_prox_write.qs_write,
                 ) {
                     Ok(m) => m,
                     Err(e) => {
@@ -852,9 +873,10 @@ impl QueryServerWriteV1 {
 
                 ltrace!(audit, "Begin modify event {:?}", mdf);
 
-                qs_write
+                idms_prox_write
+                    .qs_write
                     .modify(&mut audit, &mdf)
-                    .and_then(|_| qs_write.commit(&mut audit).map(|_| ()))
+                    .and_then(|_| idms_prox_write.commit(&mut audit).map(|_| ()))
             }
         );
         self.log.send(audit).map_err(|_| {
@@ -869,12 +891,13 @@ impl QueryServerWriteV1 {
         msg: RemoveAttributeValueMessage,
     ) -> Result<(), OperationError> {
         let mut audit = AuditScope::new("remove_attribute_value", msg.eventid, self.log_level);
-        let qs_write = self.qs.write_async(duration_from_epoch_now()).await;
+        let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
         let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_write::handle<RemoveAttributeValueMessage>",
             || {
-                let target_uuid = qs_write
+                let target_uuid = idms_prox_write
+                    .qs_write
                     .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
                     .map_err(|e| {
                         ladmin_error!(audit, "Error resolving id to target");
@@ -890,7 +913,7 @@ impl QueryServerWriteV1 {
                     target_uuid,
                     &proto_ml,
                     msg.filter,
-                    &qs_write,
+                    &idms_prox_write.qs_write,
                 ) {
                     Ok(m) => m,
                     Err(e) => {
@@ -901,9 +924,10 @@ impl QueryServerWriteV1 {
 
                 ltrace!(audit, "Begin modify event {:?}", mdf);
 
-                qs_write
+                idms_prox_write
+                    .qs_write
                     .modify(&mut audit, &mdf)
-                    .and_then(|_| qs_write.commit(&mut audit).map(|_| ()))
+                    .and_then(|_| idms_prox_write.commit(&mut audit).map(|_| ()))
             }
         );
         self.log.send(audit).map_err(|_| {
@@ -1219,15 +1243,16 @@ impl QueryServerWriteV1 {
         let mut audit = AuditScope::new("purge tombstones", msg.eventid, self.log_level);
 
         ltrace!(audit, "Begin purge tombstone event {:?}", msg);
-        let qs_write = self.qs.write_async(duration_from_epoch_now()).await;
+        let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
 
         lperf_op_segment!(
             &mut audit,
             "actors::v1_write::handle<PurgeTombstoneEvent>",
             || {
-                let res = qs_write
+                let res = idms_prox_write
+                    .qs_write
                     .purge_tombstones(&mut audit)
-                    .and_then(|_| qs_write.commit(&mut audit));
+                    .and_then(|_| idms_prox_write.commit(&mut audit));
                 ladmin_info!(audit, "Purge tombstones result: {:?}", res);
                 #[allow(clippy::expect_used)]
                 res.expect("Invalid Server State");
@@ -1242,14 +1267,15 @@ impl QueryServerWriteV1 {
     pub(crate) async fn handle_purgerecycledevent(&self, msg: PurgeRecycledEvent) {
         let mut audit = AuditScope::new("purge recycled", msg.eventid, self.log_level);
         ltrace!(audit, "Begin purge recycled event {:?}", msg);
-        let qs_write = self.qs.write_async(duration_from_epoch_now()).await;
+        let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
         lperf_op_segment!(
             &mut audit,
             "actors::v1_write::handle<PurgeRecycledEvent>",
             || {
-                let res = qs_write
+                let res = idms_prox_write
+                    .qs_write
                     .purge_recycled(&mut audit)
-                    .and_then(|_| qs_write.commit(&mut audit));
+                    .and_then(|_| idms_prox_write.commit(&mut audit));
                 ladmin_info!(audit, "Purge recycled result: {:?}", res);
                 #[allow(clippy::expect_used)]
                 res.expect("Invalid Server State");

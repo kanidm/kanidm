@@ -1,15 +1,12 @@
 // System protected objects. Items matching specific requirements
 // may only have certain modifications performed.
-use crate::plugins::Plugin;
 
-use crate::audit::AuditScope;
-use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntrySealed};
+use crate::plugins::Plugin;
+use crate::prelude::*;
+
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::modify::Modify;
-use crate::server::QueryServerWriteTransaction;
-use crate::value::{PartialValue, Value};
 use hashbrown::HashSet;
-use kanidm_proto::v1::OperationError;
 
 pub struct Protected {}
 
@@ -208,10 +205,7 @@ impl Plugin for Protected {
 
 #[cfg(test)]
 mod tests {
-    use crate::constants::JSON_ADMIN_V1;
-    use crate::entry::{Entry, EntryInit, EntryNew};
-    use crate::value::{PartialValue, Value};
-    use kanidm_proto::v1::OperationError;
+    use crate::prelude::*;
 
     const JSON_ADMIN_ALLOW_ALL: &'static str = r#"{
         "attrs": {

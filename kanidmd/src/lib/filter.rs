@@ -8,14 +8,11 @@
 //! [`Filter`]: struct.Filter.html
 //! [`Entry`]: ../entry/struct.Entry.html
 
-use crate::audit::AuditScope;
 use crate::be::{IdxKey, IdxKeyRef, IdxKeyToRef, IdxMeta};
 use crate::event::{Event, EventOriginId};
 use crate::ldap::ldap_attr_filter_map;
+use crate::prelude::*;
 use crate::schema::SchemaTransaction;
-use crate::server::{
-    QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
-};
 use crate::value::{IndexType, PartialValue};
 use hashbrown::HashSet;
 use kanidm_proto::v1::Filter as ProtoFilter;
@@ -1276,16 +1273,13 @@ impl FilterResolved {
 
 #[cfg(test)]
 mod tests {
-    use crate::entry::{Entry, EntryInit, EntryNew, EntrySealed};
     use crate::event::{CreateEvent, Event};
     use crate::filter::{Filter, FilterInvalid, FILTER_DEPTH_MAX};
-    use crate::server::QueryServerTransaction;
-    use crate::value::{PartialValue, Value};
+    use crate::prelude::*;
     use std::cmp::{Ordering, PartialOrd};
     use std::collections::BTreeSet;
 
     use kanidm_proto::v1::Filter as ProtoFilter;
-    use kanidm_proto::v1::OperationError;
     use ldap3_server::simple::LdapFilter;
 
     #[test]

@@ -1,7 +1,7 @@
 use crate::idm::account::Account;
 use crate::idm::claim::Claim;
 use crate::idm::AuthState;
-use crate::{audit::AuditScope, value::Value};
+use crate::prelude::*;
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthMech};
 
@@ -726,8 +726,6 @@ impl AuthSession {
 
 #[cfg(test)]
 mod tests {
-    use crate::audit::AuditScope;
-    use crate::constants::{JSON_ADMIN_V1, JSON_ANONYMOUS_V1};
     use crate::credential::policy::CryptoPolicy;
     use crate::credential::totp::{TOTP, TOTP_DEFAULT_STEP};
     use crate::credential::webauthn::WebauthnDomainConfig;
@@ -738,7 +736,7 @@ mod tests {
     };
     use crate::idm::delayed::DelayedAction;
     use crate::idm::AuthState;
-    use crate::value::Value;
+    use crate::prelude::*;
     pub use std::collections::BTreeSet as Set;
 
     use crate::utils::duration_from_epoch_now;

@@ -54,3 +54,21 @@ mod status;
 
 pub mod config;
 pub mod core;
+
+pub mod prelude {
+    pub use kanidm_proto::v1::OperationError;
+    pub use smartstring::alias::String as AttrString;
+    pub use uuid::Uuid;
+
+    pub use crate::audit::AuditScope;
+    pub use crate::constants::*;
+    pub use crate::entry::{
+        Entry, EntryCommitted, EntryInit, EntryInvalid, EntryInvalidCommitted, EntryNew,
+        EntryReduced, EntrySealed, EntrySealedCommitted, EntryTuple, EntryValid,
+    };
+    pub use crate::server::{
+        QueryServer, QueryServerReadTransaction, QueryServerTransaction,
+        QueryServerWriteTransaction,
+    };
+    pub use crate::value::{IndexType, PartialValue, SyntaxType, Value};
+}
