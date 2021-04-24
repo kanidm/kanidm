@@ -49,7 +49,7 @@ pub enum ConsistencyError {
     MemberOfInvalid(u64),
     InvalidAttributeType(String),
     DuplicateUniqueAttribute(String),
-    InvalidSPN(u64),
+    InvalidSpn(u64),
     SqliteIntegrityFailure,
 }
 
@@ -69,20 +69,20 @@ pub enum OperationError {
     FilterUuidResolution,
     InvalidAttributeName(String),
     InvalidAttribute(String),
-    InvalidDBState,
+    InvalidDbState,
     InvalidCacheState,
     InvalidValueState,
-    InvalidEntryID,
+    InvalidEntryId,
     InvalidRequestState,
     InvalidState,
     InvalidEntryState,
     InvalidUuid,
     InvalidReplCID,
-    InvalidACPState(String),
+    InvalidAcpState(String),
     InvalidSchemaState(String),
     InvalidAccountState(String),
     BackendEngine,
-    SQLiteError, //(RusqliteError)
+    SqliteError, //(RusqliteError)
     FsError,
     SerdeJsonError,
     SerdeCborError,
@@ -391,7 +391,7 @@ pub enum Filter {
     #[serde(alias = "AndNot")]
     AndNot(Box<Filter>),
     #[serde(rename = "self", alias = "Self")]
-    SelfUUID,
+    SelfUuid,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

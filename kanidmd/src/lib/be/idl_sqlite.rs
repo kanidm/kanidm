@@ -36,13 +36,13 @@ impl TryFrom<IdSqliteEntry> for IdRawEntry {
 
     fn try_from(value: IdSqliteEntry) -> Result<Self, Self::Error> {
         if value.id <= 0 {
-            return Err(OperationError::InvalidEntryID);
+            return Err(OperationError::InvalidEntryId);
         }
         Ok(IdRawEntry {
             id: value
                 .id
                 .try_into()
-                .map_err(|_| OperationError::InvalidEntryID)?,
+                .map_err(|_| OperationError::InvalidEntryId)?,
             data: value.data,
         })
     }
@@ -53,13 +53,13 @@ impl TryFrom<IdRawEntry> for IdSqliteEntry {
 
     fn try_from(value: IdRawEntry) -> Result<Self, Self::Error> {
         if value.id == 0 {
-            return Err(OperationError::InvalidEntryID);
+            return Err(OperationError::InvalidEntryId);
         }
         Ok(IdSqliteEntry {
             id: value
                 .id
                 .try_into()
-                .map_err(|_| OperationError::InvalidEntryID)?,
+                .map_err(|_| OperationError::InvalidEntryId)?,
             data: value.data,
         })
     }
@@ -109,7 +109,7 @@ pub trait IdlSqliteTransaction {
                     .prepare("SELECT id, data FROM id2entry")
                     .map_err(|e| {
                         ladmin_error!(au, "SQLite Error {:?}", e);
-                        OperationError::SQLiteError
+                        OperationError::SqliteError
                     })?;
                 let id2entry_iter = stmt
                     .query_map([], |row| {
@@ -120,13 +120,13 @@ pub trait IdlSqliteTransaction {
                     })
                     .map_err(|e| {
                         ladmin_error!(au, "SQLite Error {:?}", e);
-                        OperationError::SQLiteError
+                        OperationError::SqliteError
                     })?;
                 id2entry_iter
                     .map(|v| {
                         v.map_err(|e| {
                             ladmin_error!(au, "SQLite Error {:?}", e);
-                            OperationError::SQLiteError
+                            OperationError::SqliteError
                         })
                         .and_then(|ise| {
                             // Convert the idsqlite to id raw
@@ -141,7 +141,7 @@ pub trait IdlSqliteTransaction {
                     .prepare("SELECT id, data FROM id2entry WHERE id = :idl")
                     .map_err(|e| {
                         ladmin_error!(au, "SQLite Error {:?}", e);
-                        OperationError::SQLiteError
+                        OperationError::SqliteError
                     })?;
 
                 // TODO #258: Can this actually just load in a single select?
@@ -151,12 +151,12 @@ pub trait IdlSqliteTransaction {
 
                 /*
                 let decompressed: Result<Vec<i64>, _> = idli.into_iter()
-                    .map(|u| i64::try_from(u).map_err(|_| OperationError::InvalidEntryID))
+                    .map(|u| i64::try_from(u).map_err(|_| OperationError::InvalidEntryId))
                     .collect();
                 */
 
                 for id in idli {
-                    let iid = i64::try_from(id).map_err(|_| OperationError::InvalidEntryID)?;
+                    let iid = i64::try_from(id).map_err(|_| OperationError::InvalidEntryId)?;
                     let id2entry_iter = stmt
                         .query_map(&[&iid], |row| {
                             Ok(IdSqliteEntry {
@@ -166,14 +166,14 @@ pub trait IdlSqliteTransaction {
                         })
                         .map_err(|e| {
                             ladmin_error!(au, "SQLite Error {:?}", e);
-                            OperationError::SQLiteError
+                            OperationError::SqliteError
                         })?;
 
                     let r: Result<Vec<_>, _> = id2entry_iter
                         .map(|v| {
                             v.map_err(|e| {
                                 ladmin_error!(au, "SQLite Error {:?}", e);
-                                OperationError::SQLiteError
+                                OperationError::SqliteError
                             })
                             .and_then(|ise| {
                                 // Convert the idsqlite to id raw
@@ -201,13 +201,13 @@ pub trait IdlSqliteTransaction {
             .prepare("SELECT COUNT(name) from sqlite_master where name = :tname")
             .map_err(|e| {
                 ladmin_error!(audit, "SQLite Error {:?}", e);
-                OperationError::SQLiteError
+                OperationError::SqliteError
             })?;
         let i: Option<i64> = stmt
             .query_row(&[(":tname", &tname)], |row| row.get(0))
             .map_err(|e| {
                 ladmin_error!(audit, "SQLite Error {:?}", e);
-                OperationError::SQLiteError
+                OperationError::SqliteError
             })?;
 
         if i.unwrap_or(0) == 0 {
@@ -238,7 +238,7 @@ pub trait IdlSqliteTransaction {
             );
             let mut stmt = self.get_conn().prepare(query.as_str()).map_err(|e| {
                 ladmin_error!(audit, "SQLite Error {:?}", e);
-                OperationError::SQLiteError
+                OperationError::SqliteError
             })?;
             let idl_raw: Option<Vec<u8>> = stmt
                 .query_row(&[(":idx_key", &idx_key)], |row| row.get(0))
@@ -246,7 +246,7 @@ pub trait IdlSqliteTransaction {
                 .optional()
                 .map_err(|e| {
                     ladmin_error!(audit, "SQLite Error {:?}", e);
-                    OperationError::SQLiteError
+                    OperationError::SqliteError
                 })?;
 
             let idl = match idl_raw {
@@ -274,7 +274,7 @@ pub trait IdlSqliteTransaction {
                 .prepare("SELECT uuid FROM idx_name2uuid WHERE name = :name")
                 .map_err(|e| {
                     ladmin_error!(audit, "SQLite Error {:?}", e);
-                    OperationError::SQLiteError
+                    OperationError::SqliteError
                 })?;
             let uuid_raw: Option<String> = stmt
                 .query_row(&[(":name", &name)], |row| row.get(0))
@@ -282,7 +282,7 @@ pub trait IdlSqliteTransaction {
                 .optional()
                 .map_err(|e| {
                     ladmin_error!(audit, "SQLite Error {:?}", e);
-                    OperationError::SQLiteError
+                    OperationError::SqliteError
                 })?;
 
             let uuid = uuid_raw.as_ref().and_then(|u| Uuid::parse_str(u).ok());
@@ -305,7 +305,7 @@ pub trait IdlSqliteTransaction {
                 .prepare("SELECT spn FROM idx_uuid2spn WHERE uuid = :uuid")
                 .map_err(|e| {
                     ladmin_error!(audit, "SQLite Error {:?}", e);
-                    OperationError::SQLiteError
+                    OperationError::SqliteError
                 })?;
             let spn_raw: Option<Vec<u8>> = stmt
                 .query_row(&[(":uuid", &uuids)], |row| row.get(0))
@@ -313,7 +313,7 @@ pub trait IdlSqliteTransaction {
                 .optional()
                 .map_err(|e| {
                     ladmin_error!(audit, "SQLite Error {:?}", e);
-                    OperationError::SQLiteError
+                    OperationError::SqliteError
                 })?;
 
             let spn: Option<Value> = match spn_raw {
@@ -346,7 +346,7 @@ pub trait IdlSqliteTransaction {
                 .prepare("SELECT rdn FROM idx_uuid2rdn WHERE uuid = :uuid")
                 .map_err(|e| {
                     ladmin_error!(audit, "SQLite Error {:?}", e);
-                    OperationError::SQLiteError
+                    OperationError::SqliteError
                 })?;
             let rdn: Option<String> = stmt
                 .query_row(&[(":uuid", &uuids)], |row| row.get(0))
@@ -354,7 +354,7 @@ pub trait IdlSqliteTransaction {
                 .optional()
                 .map_err(|e| {
                     ladmin_error!(audit, "SQLite Error {:?}", e);
-                    OperationError::SQLiteError
+                    OperationError::SqliteError
                 })?;
 
             ltrace!(audit, "Got rdn for uuid {:?} -> {:?}", uuid, rdn);
@@ -377,7 +377,7 @@ pub trait IdlSqliteTransaction {
                 })
                 // If no sid, we return none.
             })
-            .map_err(|_| OperationError::SQLiteError)?;
+            .map_err(|_| OperationError::SqliteError)?;
 
         Ok(match data {
             Some(d) => Some(
@@ -401,7 +401,7 @@ pub trait IdlSqliteTransaction {
                 })
                 // If no sid, we return none.
             })
-            .map_err(|_| OperationError::SQLiteError)?;
+            .map_err(|_| OperationError::SqliteError)?;
 
         Ok(match data {
             Some(d) => Some(
@@ -533,19 +533,19 @@ impl IdlSqliteWriteTransaction {
         let mut stmt = self
             .conn
             .prepare("SELECT MAX(id) as id_max FROM id2entry")
-            .map_err(|_| OperationError::SQLiteError)?;
+            .map_err(|_| OperationError::SqliteError)?;
         // This exists checks for if any rows WERE returned
         // that way we know to shortcut or not.
-        let v = stmt.exists([]).map_err(|_| OperationError::SQLiteError)?;
+        let v = stmt.exists([]).map_err(|_| OperationError::SqliteError)?;
 
         if v {
             // We have some rows, let get max!
             let i: Option<i64> = stmt
                 .query_row([], |row| row.get(0))
-                .map_err(|_| OperationError::SQLiteError)?;
+                .map_err(|_| OperationError::SqliteError)?;
             i.unwrap_or(0)
                 .try_into()
-                .map_err(|_| OperationError::InvalidEntryID)
+                .map_err(|_| OperationError::InvalidEntryId)
         } else {
             // No rows are present, return a 0.
             Ok(0)
@@ -608,7 +608,7 @@ impl IdlSqliteWriteTransaction {
             .prepare("INSERT OR REPLACE INTO id2entry (id, data) VALUES(:id, :data)")
             .map_err(|e| {
                 ladmin_error!(au, "SQLite Error {:?}", e);
-                OperationError::SQLiteError
+                OperationError::SqliteError
             })?;
 
         entries.try_for_each(|e| {
@@ -621,7 +621,7 @@ impl IdlSqliteWriteTransaction {
                 .map(|_| ())
                 .map_err(|e| {
                     ladmin_error!(au, "SQLite Error {:?}", e);
-                    OperationError::SQLiteError
+                    OperationError::SqliteError
                 })
             })
         })
@@ -638,18 +638,18 @@ impl IdlSqliteWriteTransaction {
                 .prepare("DELETE FROM id2entry WHERE id = :id")
                 .map_err(|e| {
                     ladmin_error!(au, "SQLite Error {:?}", e);
-                    OperationError::SQLiteError
+                    OperationError::SqliteError
                 })?;
 
             idl.try_for_each(|id| {
                 let iid: i64 = id
                     .try_into()
-                    .map_err(|_| OperationError::InvalidEntryID)
+                    .map_err(|_| OperationError::InvalidEntryId)
                     .and_then(|i| {
                         if i > 0 {
                             Ok(i)
                         } else {
-                            Err(OperationError::InvalidEntryID)
+                            Err(OperationError::InvalidEntryId)
                         }
                     })?;
 
@@ -657,7 +657,7 @@ impl IdlSqliteWriteTransaction {
 
                 stmt.execute(&[&iid]).map(|_| ()).map_err(|e| {
                     ladmin_error!(au, "SQLite Error {:?}", e);
-                    OperationError::SQLiteError
+                    OperationError::SqliteError
                 })
             })
         })
@@ -671,17 +671,17 @@ impl IdlSqliteWriteTransaction {
             .prepare("DELETE FROM id2entry WHERE id = :id")
             .map_err(|e| {
                 ladmin_error!(au, "SQLite Error {:?}", e);
-                OperationError::SQLiteError
+                OperationError::SqliteError
             })?;
 
         let iid: i64 = id
             .try_into()
-            .map_err(|_| OperationError::InvalidEntryID)
+            .map_err(|_| OperationError::InvalidEntryId)
             .and_then(|i| {
                 if i > 0 {
                     Ok(i)
                 } else {
-                    Err(OperationError::InvalidEntryID)
+                    Err(OperationError::InvalidEntryId)
                 }
             })?;
 
@@ -689,7 +689,7 @@ impl IdlSqliteWriteTransaction {
 
         stmt.execute(&[&iid]).map(|_| ()).map_err(|e| {
             ladmin_error!(au, "SQLite Error {:?}", e);
-            OperationError::SQLiteError
+            OperationError::SqliteError
         })
         // })
     }
@@ -718,7 +718,7 @@ impl IdlSqliteWriteTransaction {
                     .and_then(|mut stmt| stmt.execute(&[(":key", &idx_key)]))
                     .map_err(|e| {
                         ladmin_error!(audit, "SQLite Error {:?}", e);
-                        OperationError::SQLiteError
+                        OperationError::SqliteError
                     })
             } else {
                 ltrace!(audit, "writing idl -> {}", idl);
@@ -745,7 +745,7 @@ impl IdlSqliteWriteTransaction {
                     })
                     .map_err(|e| {
                         ladmin_error!(audit, "SQLite Error {:?}", e);
-                        OperationError::SQLiteError
+                        OperationError::SqliteError
                     })
             }
             // Get rid of the sqlite rows usize
@@ -762,7 +762,7 @@ impl IdlSqliteWriteTransaction {
             .map(|_| ())
             .map_err(|e| {
                 ladmin_error!(audit, "SQLite Error {:?}", e);
-                OperationError::SQLiteError
+                OperationError::SqliteError
             })
     }
 
@@ -785,7 +785,7 @@ impl IdlSqliteWriteTransaction {
             .map(|_| ())
             .map_err(|e| {
                 ladmin_error!(audit, "SQLite Error {:?}", e);
-                OperationError::SQLiteError
+                OperationError::SqliteError
             })
     }
 
@@ -800,7 +800,7 @@ impl IdlSqliteWriteTransaction {
             .map(|_| ())
             .map_err(|e| {
                 ladmin_error!(audit, "SQLite Error {:?}", e);
-                OperationError::SQLiteError
+                OperationError::SqliteError
             })
     }
 
@@ -813,7 +813,7 @@ impl IdlSqliteWriteTransaction {
             .map(|_| ())
             .map_err(|e| {
                 ladmin_error!(audit, "SQLite Error {:?}", e);
-                OperationError::SQLiteError
+                OperationError::SqliteError
             })
     }
 
@@ -840,7 +840,7 @@ impl IdlSqliteWriteTransaction {
                     .map(|_| ())
                     .map_err(|e| {
                         ladmin_error!(audit, "SQLite Error {:?}", e);
-                        OperationError::SQLiteError
+                        OperationError::SqliteError
                     })
             }
             None => self
@@ -850,7 +850,7 @@ impl IdlSqliteWriteTransaction {
                 .map(|_| ())
                 .map_err(|e| {
                     ladmin_error!(audit, "SQLite Error {:?}", e);
-                    OperationError::SQLiteError
+                    OperationError::SqliteError
                 }),
         }
     }
@@ -864,7 +864,7 @@ impl IdlSqliteWriteTransaction {
             .map(|_| ())
             .map_err(|e| {
                 ladmin_error!(audit, "SQLite Error {:?}", e);
-                OperationError::SQLiteError
+                OperationError::SqliteError
             })
     }
 
@@ -883,7 +883,7 @@ impl IdlSqliteWriteTransaction {
                 .map(|_| ())
                 .map_err(|e| {
                     ladmin_error!(audit, "SQLite Error {:?}", e);
-                    OperationError::SQLiteError
+                    OperationError::SqliteError
                 }),
             None => self
                 .conn
@@ -892,7 +892,7 @@ impl IdlSqliteWriteTransaction {
                 .map(|_| ())
                 .map_err(|e| {
                     ladmin_error!(audit, "SQLite Error {:?}", e);
-                    OperationError::SQLiteError
+                    OperationError::SqliteError
                 }),
         }
     }
@@ -919,7 +919,7 @@ impl IdlSqliteWriteTransaction {
             .map(|_| ())
             .map_err(|e| {
                 ladmin_error!(audit, "SQLite Error {:?}", e);
-                OperationError::SQLiteError
+                OperationError::SqliteError
             })
     }
 
@@ -929,18 +929,18 @@ impl IdlSqliteWriteTransaction {
             .prepare("SELECT name from sqlite_master where type='table' and name LIKE 'idx_%'")
             .map_err(|e| {
                 ladmin_error!(audit, "SQLite Error {:?}", e);
-                OperationError::SQLiteError
+                OperationError::SqliteError
             })?;
         let idx_table_iter = stmt.query_map([], |row| row.get(0)).map_err(|e| {
             ladmin_error!(audit, "SQLite Error {:?}", e);
-            OperationError::SQLiteError
+            OperationError::SqliteError
         })?;
 
         let r: Result<_, _> = idx_table_iter
             .map(|v| {
                 v.map_err(|e| {
                     ladmin_error!(audit, "SQLite Error {:?}", e);
-                    OperationError::SQLiteError
+                    OperationError::SqliteError
                 })
             })
             .collect();
@@ -958,7 +958,7 @@ impl IdlSqliteWriteTransaction {
                 .and_then(|mut stmt| stmt.execute([]).map(|_| ()))
                 .map_err(|e| {
                     ladmin_error!(audit, "sqlite error {:?}", e);
-                    OperationError::SQLiteError
+                    OperationError::SqliteError
                 })
         })
     }
@@ -970,7 +970,7 @@ impl IdlSqliteWriteTransaction {
             .map(|_| ())
             .map_err(|e| {
                 ladmin_error!(audit, "sqlite error {:?}", e);
-                OperationError::SQLiteError
+                OperationError::SqliteError
             })
     }
 
@@ -988,7 +988,7 @@ impl IdlSqliteWriteTransaction {
             .map(|_| ())
             .map_err(|e| {
                 eprintln!("CRITICAL: rusqlite error {:?}", e);
-                OperationError::SQLiteError
+                OperationError::SqliteError
             })
     }
 
@@ -1006,7 +1006,7 @@ impl IdlSqliteWriteTransaction {
             .map(|_| ())
             .map_err(|e| {
                 eprintln!("CRITICAL: rusqlite error {:?}", e);
-                OperationError::SQLiteError
+                OperationError::SqliteError
             })
     }
 
@@ -1024,7 +1024,7 @@ impl IdlSqliteWriteTransaction {
             .map(|_| ())
             .map_err(|e| {
                 eprintln!("CRITICAL: rusqlite error {:?}", e);
-                OperationError::SQLiteError
+                OperationError::SqliteError
             })
     }
 
@@ -1044,7 +1044,7 @@ impl IdlSqliteWriteTransaction {
                 })
                 // If no sid, we return none.
             })
-            .map_err(|_| OperationError::SQLiteError)?;
+            .map_err(|_| OperationError::SqliteError)?;
 
         Ok(match data {
             Some(d) => Some(
@@ -1089,7 +1089,7 @@ impl IdlSqliteWriteTransaction {
     pub(crate) fn set_db_index_version(&self, v: i64) -> Result<(), OperationError> {
         self.set_db_version_key(DBV_INDEXV, v).map_err(|e| {
             eprintln!("CRITICAL: rusqlite error {:?}", e);
-            OperationError::SQLiteError
+            OperationError::SqliteError
         })
     }
 
@@ -1097,22 +1097,22 @@ impl IdlSqliteWriteTransaction {
         ltrace!(au, "Building allids...");
         let mut stmt = self.conn.prepare("SELECT id FROM id2entry").map_err(|e| {
             ladmin_error!(au, "SQLite Error {:?}", e);
-            OperationError::SQLiteError
+            OperationError::SqliteError
         })?;
         let res = stmt.query_map([], |row| row.get(0)).map_err(|e| {
             ladmin_error!(au, "SQLite Error {:?}", e);
-            OperationError::SQLiteError
+            OperationError::SqliteError
         })?;
         res.map(|v| {
             v.map_err(|e| {
                 ladmin_error!(au, "SQLite Error {:?}", e);
-                OperationError::SQLiteError
+                OperationError::SqliteError
             })
             .and_then(|id: i64| {
                 // Convert the idsqlite to id raw
                 id.try_into().map_err(|e| {
                     ladmin_error!(au, "I64 Parse Error {:?}", e);
-                    OperationError::SQLiteError
+                    OperationError::SqliteError
                 })
             })
         })
@@ -1143,7 +1143,7 @@ impl IdlSqliteWriteTransaction {
             )
             .map_err(|e| {
                 ladmin_error!(audit, "sqlite error {:?}", e);
-                OperationError::SQLiteError
+                OperationError::SqliteError
             })?;
 
         // If the table is empty, populate the versions as 0.
@@ -1174,7 +1174,7 @@ impl IdlSqliteWriteTransaction {
                 })
                 .map_err(|e| {
                     ladmin_error!(audit, "sqlite error {:?}", e);
-                    OperationError::SQLiteError
+                    OperationError::SqliteError
                 })?;
 
             dbv_id2entry = 1;
@@ -1197,7 +1197,7 @@ impl IdlSqliteWriteTransaction {
                 )
                 .map_err(|e| {
                     ladmin_error!(audit, "sqlite error {:?}", e);
-                    OperationError::SQLiteError
+                    OperationError::SqliteError
                 })?;
 
             dbv_id2entry = 2;
@@ -1216,7 +1216,7 @@ impl IdlSqliteWriteTransaction {
                 )
                 .map_err(|e| {
                     ladmin_error!(audit, "sqlite error {:?}", e);
-                    OperationError::SQLiteError
+                    OperationError::SqliteError
                 })?;
             dbv_id2entry = 3;
             ladmin_info!(
@@ -1242,7 +1242,7 @@ impl IdlSqliteWriteTransaction {
         self.set_db_version_key(DBV_ID2ENTRY, dbv_id2entry)
             .map_err(|e| {
                 ladmin_error!(audit, "sqlite error {:?}", e);
-                OperationError::SQLiteError
+                OperationError::SqliteError
             })?;
 
         // NOTE: Indexing is configured in a different step!
@@ -1279,48 +1279,48 @@ impl IdlSqlite {
 
             let vconn = Connection::open_with_flags(cfg.path.as_str(), flags).map_err(|e| {
                 ladmin_error!(audit, "rusqlite error {:?}", e);
-                OperationError::SQLiteError
+                OperationError::SqliteError
             })?;
 
             vconn
                 .pragma_update(None, "journal_mode", &"DELETE")
                 .map_err(|e| {
                     ladmin_error!(audit, "rusqlite journal_mode update error {:?}", e);
-                    OperationError::SQLiteError
+                    OperationError::SqliteError
                 })?;
 
             vconn.close().map_err(|e| {
                 ladmin_error!(audit, "rusqlite db close error {:?}", e);
-                OperationError::SQLiteError
+                OperationError::SqliteError
             })?;
 
             let vconn = Connection::open_with_flags(cfg.path.as_str(), flags).map_err(|e| {
                 ladmin_error!(audit, "rusqlite error {:?}", e);
-                OperationError::SQLiteError
+                OperationError::SqliteError
             })?;
 
             vconn
                 .pragma_update(None, "page_size", &(cfg.fstype as u32))
                 .map_err(|e| {
                     ladmin_error!(audit, "rusqlite page_size update error {:?}", e);
-                    OperationError::SQLiteError
+                    OperationError::SqliteError
                 })?;
 
             vconn.execute_batch("VACUUM").map_err(|e| {
                 ladmin_error!(audit, "rusqlite vacuum error {:?}", e);
-                OperationError::SQLiteError
+                OperationError::SqliteError
             })?;
 
             vconn
                 .pragma_update(None, "journal_mode", &"WAL")
                 .map_err(|e| {
                     ladmin_error!(audit, "rusqlite journal_mode update error {:?}", e);
-                    OperationError::SQLiteError
+                    OperationError::SqliteError
                 })?;
 
             vconn.close().map_err(|e| {
                 ladmin_error!(audit, "rusqlite db close error {:?}", e);
-                OperationError::SQLiteError
+                OperationError::SqliteError
             })?;
 
             limmediate_warning!(audit, "NOTICE: db vacuum complete\n");
@@ -1341,7 +1341,7 @@ impl IdlSqlite {
         // Look at max_size and thread_pool here for perf later
         let pool = builder2.build(manager).map_err(|e| {
             ladmin_error!(audit, "r2d2 error {:?}", e);
-            OperationError::SQLiteError
+            OperationError::SqliteError
         })?;
 
         Ok(IdlSqlite { pool })
@@ -1355,7 +1355,7 @@ impl IdlSqlite {
             .query_row("select count(id) from id2entry", [], |row| row.get(0))
             .map_err(|e| {
                 ltrace!(au, "SQLite Error {:?}", e);
-                OperationError::SQLiteError
+                OperationError::SqliteError
             })
     }
 

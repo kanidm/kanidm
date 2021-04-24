@@ -227,13 +227,6 @@ fn test_modify_group(rsclient: &KanidmClient, group_names: &[&str], is_modificab
 #[test]
 fn test_default_entries_rbac_users() {
     run_test(|mut rsclient: KanidmClient| {
-        use std::{thread, time};
-
-        let wait_seconds = time::Duration::from_millis(5000);
-        //let now = time::Instant::now();
-
-        thread::sleep(wait_seconds);
-
         rsclient
             .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
             .unwrap();

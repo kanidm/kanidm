@@ -46,7 +46,7 @@ fn test_server_modify() {
     run_test(|mut rsclient: KanidmClient| {
         // Build a self mod.
 
-        let f = Filter::SelfUUID;
+        let f = Filter::SelfUuid;
         let m = ModifyList::new_list(vec![
             Modify::Purged("displayname".to_string()),
             Modify::Present("displayname".to_string(), "test".to_string()),

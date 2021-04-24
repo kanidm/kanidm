@@ -222,7 +222,7 @@ impl Plugin for Spn {
                         e.get_uuid()
                     );
                     debug_assert!(false);
-                    r.push(Err(ConsistencyError::InvalidSPN(e.get_id())));
+                    r.push(Err(ConsistencyError::InvalidSpn(e.get_id())));
                     continue;
                 }
             };
@@ -238,12 +238,12 @@ impl Plugin for Spn {
                             g_spn,
                         );
                         debug_assert!(false);
-                        r.push(Err(ConsistencyError::InvalidSPN(e.get_id())))
+                        r.push(Err(ConsistencyError::InvalidSpn(e.get_id())))
                     }
                 }
                 None => {
                     ladmin_error!(au, "Entry {:?} does not contain an SPN", e.get_uuid(),);
-                    r.push(Err(ConsistencyError::InvalidSPN(e.get_id())))
+                    r.push(Err(ConsistencyError::InvalidSpn(e.get_id())))
                 }
             }
         }
