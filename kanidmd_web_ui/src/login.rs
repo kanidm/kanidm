@@ -329,7 +329,7 @@ impl Component for LoginApp {
                     Ok(totp) => {
                         self.state = LoginState::Totp(TotpState::Disabled);
                         let authreq = AuthRequest {
-                            step: AuthStep::Cred(AuthCredential::TOTP(totp)),
+                            step: AuthStep::Cred(AuthCredential::Totp(totp)),
                         };
                         self.auth_step(authreq);
                     }
@@ -412,7 +412,7 @@ impl Component for LoginApp {
                                     // Go to the password view.
                                     self.state = LoginState::Password(true);
                                 }
-                                AuthAllowed::TOTP => {
+                                AuthAllowed::Totp => {
                                     self.state = LoginState::Totp(TotpState::Enabled);
                                 }
                                 AuthAllowed::Webauthn(challenge) => {

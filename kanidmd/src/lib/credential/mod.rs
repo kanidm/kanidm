@@ -661,7 +661,7 @@ impl Credential {
             }
             CredentialType::PasswordMfa(_pw, totp, wan) => {
                 if let Some(r_totp) = totp {
-                    Some(CredSoftLockPolicy::TOTP(r_totp.step))
+                    Some(CredSoftLockPolicy::Totp(r_totp.step))
                 } else if !wan.is_empty() {
                     Some(CredSoftLockPolicy::Webauthn)
                 } else {
