@@ -281,10 +281,7 @@ impl KanidmClientBuilder {
         let uri = Url::parse(&address).expect("can not fail");
 
         #[allow(clippy::expect_used)]
-        let origin = uri
-            .host_str()
-            .map(|h| format!("{}://{}", uri.scheme(), h))
-            .expect("can not fail");
+        let origin = uri.origin().unicode_serialization();
 
         Ok(KanidmAsyncClient {
             client,
