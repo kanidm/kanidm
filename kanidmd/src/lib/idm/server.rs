@@ -73,8 +73,6 @@ pub struct IdmServerAuthTransaction<'a> {
     // Contains methods that require writes, but in the context of writing to
     // the idm in memory structures (maybe the query server too). This is
     // things like authentication
-    // _session_ticket: SemaphorePermit<'a>,
-    // sessions: BptreeMapWriteTxn<'a, Uuid, AuthSession>,
     session_ticket: &'a Semaphore,
     sessions: &'a BptreeMap<Uuid, AuthSession>,
 
@@ -110,7 +108,7 @@ pub struct IdmServerDelayed {
 }
 
 impl IdmServer {
-    // TODO #59: Make number of authsessions configurable!!!
+    // TODO: Make number of authsessions configurable!!!
     pub fn new(
         au: &mut AuditScope,
         qs: QueryServer,
