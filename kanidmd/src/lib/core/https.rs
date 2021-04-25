@@ -171,6 +171,7 @@ async fn index_view(_req: tide::Request<AppState>) -> tide::Result {
         <script src="/pkg/external/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"></script>
         <script src="/pkg/external/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"></script>
         <script src="/pkg/external/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"></script>
+        <script src="/pkg/external/confetti.js"></script>
         <script src="/pkg/bundle.js" defer></script>
     </head>
 
@@ -1125,12 +1126,12 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
                         })
                         .map_err(|_| OperationError::InvalidSessionState)
                 }
-                AuthState::Denied(_) => {
+                AuthState::Denied(reason) => {
                     debug!("🧩 -> AuthState::Denied");
                     let msession = req.session_mut();
                     // Remove the auth-session-id
                     msession.remove("auth-session-id");
-                    Err(OperationError::AccessDenied)
+                    Ok(ProtoAuthState::Denied(reason))
                 }
             }
             .map(|state| AuthResponse { state, sessionid })
@@ -1481,7 +1482,7 @@ pub fn create_https_server(
     match opt_tls_params {
         Some(tls_param) => {
             let tlsl = TlsListener::build()
-                .addrs(address)
+                .addrs(&address)
                 .cert(&tls_param.chain)
                 .key(&tls_param.key)
                 .finish()
@@ -1496,15 +1497,21 @@ pub fn create_https_server(
 
             tokio::spawn(async move {
                 if let Err(e) = tserver.listen(tlsl).await {
-                    error!("Failed to start server listener -> {:?}", e);
+                    error!(
+                        "Failed to start server listener on address {:?} -> {:?}",
+                        &address, e
+                    );
                 }
             });
         }
         None => {
             // Create without https
             tokio::spawn(async move {
-                if let Err(e) = tserver.listen(address).await {
-                    error!("Failed to start server listener -> {:?}", e);
+                if let Err(e) = tserver.listen(&address).await {
+                    error!(
+                        "Failed to start server listener on address {:?} -> {:?}",
+                        &address, e,
+                    );
                 }
             });
         }

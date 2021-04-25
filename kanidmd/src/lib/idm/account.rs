@@ -218,6 +218,16 @@ impl Account {
         self.uuid == *UUID_ANONYMOUS
     }
 
+    pub(crate) fn gen_password_recover_mod(
+        &self,
+        cleartext: &str,
+        crypto_policy: &CryptoPolicy,
+    ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
+        let ncred = Credential::new_password_only(crypto_policy, cleartext)?;
+        let vcred = Value::new_credential("primary", ncred);
+        Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
+    }
+
     pub(crate) fn gen_password_mod(
         &self,
         cleartext: &str,
