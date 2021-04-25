@@ -80,7 +80,7 @@ pub fn write_tokens(tokens: &BTreeMap<String, String>) -> Result<(), ()> {
 
     let writer = BufWriter::new(file);
     serde_json::to_writer_pretty(writer, tokens).map_err(|e| {
-        error!("JSON/IO error reading file {:?} -> {:?}", &token_path, e);
+        error!("JSON/IO error writing file {:?} -> {:?}", &token_path, e);
     })
 }
 
