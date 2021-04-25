@@ -368,7 +368,7 @@ impl KanidmAsyncClient {
 
     pub async fn auth_step_totp(&mut self, totp: u32) -> Result<AuthResponse, ClientError> {
         let auth_req = AuthRequest {
-            step: AuthStep::Cred(AuthCredential::TOTP(totp)),
+            step: AuthStep::Cred(AuthCredential::Totp(totp)),
         };
         let r: Result<AuthResponse, _> = self.perform_auth_post_request("/v1/auth", auth_req).await;
 
@@ -463,17 +463,17 @@ impl KanidmAsyncClient {
             Err(e) => return Err(e),
         };
 
-        if !mechs.contains(&AuthMech::PasswordMFA) {
-            debug!("PasswordMFA mech not presented");
+        if !mechs.contains(&AuthMech::PasswordMfa) {
+            debug!("PasswordMfa mech not presented");
             return Err(ClientError::AuthenticationFailed);
         }
 
-        let state = match self.auth_step_begin(AuthMech::PasswordMFA).await {
+        let state = match self.auth_step_begin(AuthMech::PasswordMfa).await {
             Ok(s) => s,
             Err(e) => return Err(e),
         };
 
-        if !state.contains(&AuthAllowed::TOTP) {
+        if !state.contains(&AuthAllowed::Totp) {
             debug!("TOTP step not offered.");
             return Err(ClientError::AuthenticationFailed);
         }
@@ -818,8 +818,8 @@ impl KanidmAsyncClient {
         &self,
         id: &str,
         label: &str,
-    ) -> Result<(Uuid, TOTPSecret), ClientError> {
-        let r = SetCredentialRequest::TOTPGenerate(label.to_string());
+    ) -> Result<(Uuid, TotpSecret), ClientError> {
+        let r = SetCredentialRequest::TotpGenerate(label.to_string());
         let res: Result<SetCredentialResponse, ClientError> = self
             .perform_put_request(
                 format!("/v1/account/{}/_credential/primary", id).as_str(),
@@ -827,7 +827,7 @@ impl KanidmAsyncClient {
             )
             .await;
         match res {
-            Ok(SetCredentialResponse::TOTPCheck(u, s)) => Ok((u, s)),
+            Ok(SetCredentialResponse::TotpCheck(u, s)) => Ok((u, s)),
             Ok(_) => Err(ClientError::EmptyResponse),
             Err(e) => Err(e),
         }
@@ -840,7 +840,7 @@ impl KanidmAsyncClient {
         otp: u32,
         session: Uuid,
     ) -> Result<bool, ClientError> {
-        let r = SetCredentialRequest::TOTPVerify(session, otp);
+        let r = SetCredentialRequest::TotpVerify(session, otp);
         let res: Result<SetCredentialResponse, ClientError> = self
             .perform_put_request(
                 format!("/v1/account/{}/_credential/primary", id).as_str(),
@@ -849,7 +849,7 @@ impl KanidmAsyncClient {
             .await;
         match res {
             Ok(SetCredentialResponse::Success) => Ok(true),
-            Ok(SetCredentialResponse::TOTPCheck(u, s)) => Err(ClientError::TOTPVerifyFailed(u, s)),
+            Ok(SetCredentialResponse::TotpCheck(u, s)) => Err(ClientError::TotpVerifyFailed(u, s)),
             Ok(_) => Err(ClientError::EmptyResponse),
             Err(e) => Err(e),
         }
@@ -859,7 +859,7 @@ impl KanidmAsyncClient {
         &self,
         id: &str,
     ) -> Result<bool, ClientError> {
-        let r = SetCredentialRequest::TOTPRemove;
+        let r = SetCredentialRequest::TotpRemove;
         let res: Result<SetCredentialResponse, ClientError> = self
             .perform_put_request(
                 format!("/v1/account/{}/_credential/primary", id).as_str(),

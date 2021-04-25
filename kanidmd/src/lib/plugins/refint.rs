@@ -12,18 +12,14 @@
 use hashbrown::HashSet as Set;
 use std::collections::BTreeSet;
 
-use crate::audit::AuditScope;
-use crate::entry::{Entry, EntryCommitted, EntrySealed};
+use crate::plugins::Plugin;
+use crate::prelude::*;
+
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::filter::f_eq;
 use crate::modify::Modify;
-use crate::plugins::Plugin;
 use crate::schema::SchemaTransaction;
-use crate::server::QueryServerTransaction;
-use crate::server::{QueryServerReadTransaction, QueryServerWriteTransaction};
-use crate::value::{PartialValue, Value};
-use kanidm_proto::v1::{ConsistencyError, OperationError, PluginError};
-use uuid::Uuid;
+use kanidm_proto::v1::{ConsistencyError, PluginError};
 
 // NOTE: This *must* be after base.rs!!!
 
@@ -256,15 +252,9 @@ impl Plugin for ReferentialIntegrity {
 
 #[cfg(test)]
 mod tests {
-    // #[macro_use]
-    // use crate::plugins::Plugin;
-    use crate::constants::UUID_DOES_NOT_EXIST;
-    use crate::entry::{Entry, EntryInit, EntryNew};
     use crate::modify::{Modify, ModifyList};
-    use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
-    use crate::value::{PartialValue, Value};
-    use kanidm_proto::v1::{OperationError, PluginError};
-    use smartstring::alias::String as AttrString;
+    use crate::prelude::*;
+    use kanidm_proto::v1::PluginError;
 
     // The create references a uuid that doesn't exist - reject
     #[test]

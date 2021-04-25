@@ -5,7 +5,7 @@ use kanidm_client::KanidmClient;
 use kanidm_proto::v1::{Filter, Modify, ModifyList};
 
 mod common;
-use crate::common::{run_test, ADMIN_TEST_PASSWORD};
+use crate::common::{run_test, ADMIN_TEST_PASSWORD, ADMIN_TEST_USER};
 
 static USER_READABLE_ATTRS: [&str; 9] = [
     "name",
@@ -113,7 +113,7 @@ fn is_attr_writable(rsclient: &KanidmClient, id: &str, attr: &str) -> Option<boo
 fn add_all_attrs(mut rsclient: &mut KanidmClient, id: &str, group_name: &str) {
     // Extend with posix attrs to test read attr: gidnumber and loginshell
     rsclient
-        .idm_group_add_members("idm_admins", &["admin"])
+        .idm_group_add_members("idm_admins", &[ADMIN_TEST_USER])
         .unwrap();
     rsclient
         .idm_account_unix_extend(id, None, Some(&"/bin/bash"))
@@ -136,7 +136,7 @@ fn add_all_attrs(mut rsclient: &mut KanidmClient, id: &str, group_name: &str) {
             .idm_account_radius_credential_regenerate(id)
             .unwrap();
         rsclient
-            .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+            .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
             .unwrap();
     }
 }
@@ -155,10 +155,13 @@ fn create_user_with_all_attrs(
 
 fn login_account(rsclient: &mut KanidmClient, id: &str) -> () {
     rsclient
-        .idm_group_add_members("idm_people_account_password_import_priv", &["admin"])
+        .idm_group_add_members(
+            "idm_people_account_password_import_priv",
+            &[ADMIN_TEST_USER],
+        )
         .unwrap();
     rsclient
-        .idm_group_add_members("idm_people_extend_priv", &["admin"])
+        .idm_group_add_members("idm_people_extend_priv", &[ADMIN_TEST_USER])
         .unwrap();
 
     rsclient
@@ -225,7 +228,7 @@ fn test_modify_group(rsclient: &KanidmClient, group_names: &[&str], is_modificab
 fn test_default_entries_rbac_users() {
     run_test(|mut rsclient: KanidmClient| {
         rsclient
-            .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+            .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
             .unwrap();
 
         create_user_with_all_attrs(&mut rsclient, "self_account", Some("self_group"));
@@ -263,7 +266,7 @@ fn test_default_entries_rbac_users() {
 fn test_default_entries_rbac_account_managers() {
     run_test(|mut rsclient: KanidmClient| {
         rsclient
-            .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+            .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
             .unwrap();
 
         create_user(&rsclient, "account_manager", "idm_account_manage_priv");
@@ -295,7 +298,7 @@ fn test_default_entries_rbac_account_managers() {
 fn test_default_entries_rbac_group_managers() {
     run_test(|mut rsclient: KanidmClient| {
         rsclient
-            .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+            .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
             .unwrap();
 
         create_user(&rsclient, "group_manager", "idm_group_manage_priv");
@@ -336,7 +339,7 @@ fn test_default_entries_rbac_group_managers() {
 fn test_default_entries_rbac_admins_access_control_entries() {
     run_test(|mut rsclient: KanidmClient| {
         rsclient
-            .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+            .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
             .unwrap();
         static ACP_COMMON_ATTRS: [&str; 4] =
             ["name", "description", "acp_receiver", "acp_targetscope"];
@@ -384,7 +387,7 @@ fn test_default_entries_rbac_admins_access_control_entries() {
 fn test_default_entries_rbac_admins_schema_entries() {
     run_test(|mut rsclient: KanidmClient| {
         rsclient
-            .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+            .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
             .unwrap();
         let default_classnames: HashSet<String> = [
             "access_control_create",
@@ -495,7 +498,7 @@ fn test_default_entries_rbac_admins_schema_entries() {
 fn test_default_entries_rbac_admins_group_entries() {
     run_test(|mut rsclient: KanidmClient| {
         rsclient
-            .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+            .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
             .unwrap();
         create_user(&rsclient, "test", "test_group");
 
@@ -511,7 +514,7 @@ fn test_default_entries_rbac_admins_group_entries() {
 fn test_default_entries_rbac_admins_ha_accounts() {
     run_test(|mut rsclient: KanidmClient| {
         rsclient
-            .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+            .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
             .unwrap();
 
         static MAIN_ATTRS: [&str; 3] = ["name", "displayname", "primary_credential"];
@@ -524,7 +527,7 @@ fn test_default_entries_rbac_admins_ha_accounts() {
 fn test_default_entries_rbac_admins_recycle_accounts() {
     run_test(|mut rsclient: KanidmClient| {
         rsclient
-            .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+            .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
             .unwrap();
         create_user(&rsclient, "test", "test_group");
 
@@ -543,7 +546,7 @@ fn test_default_entries_rbac_admins_recycle_accounts() {
 fn test_default_entries_rbac_people_managers() {
     run_test(|mut rsclient: KanidmClient| {
         rsclient
-            .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+            .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
             .unwrap();
 
         create_user(&rsclient, "read_people_manager", "idm_people_read_priv");
@@ -564,7 +567,7 @@ fn test_default_entries_rbac_people_managers() {
 
         let _ = rsclient.logout();
         rsclient
-            .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+            .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
             .unwrap();
         create_user(&rsclient, "write_people_manager", "idm_people_write_priv");
         login_account(&mut rsclient, "write_people_manager");
@@ -582,7 +585,7 @@ fn test_default_entries_rbac_people_managers() {
 fn test_default_entries_rbac_anonymous_entry() {
     run_test(|mut rsclient: KanidmClient| {
         rsclient
-            .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+            .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
             .unwrap();
         create_user_with_all_attrs(&mut rsclient, "test", Some("test_group"));
         rsclient
@@ -607,7 +610,7 @@ fn test_default_entries_rbac_anonymous_entry() {
 fn test_default_entries_rbac_radius_servers() {
     run_test(|mut rsclient: KanidmClient| {
         rsclient
-            .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+            .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
             .unwrap();
         create_user(&rsclient, "radius_server", "idm_radius_servers");
         create_user_with_all_attrs(&mut rsclient, "test", Some("test_group"));

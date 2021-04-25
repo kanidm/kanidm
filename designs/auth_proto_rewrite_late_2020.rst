@@ -101,7 +101,7 @@ An improved design will have Credential become an enum representing the valid au
         Anonymous,
         Password(),
         GeneratedPassword(),
-        PasswordMFA(),
+        PasswordMfa(),
         PasswordWebauthn(),
         Webauthn(),
         WebauthnVerified(),
@@ -160,7 +160,7 @@ the correct way to handle these).
         Anonymous,
         Password,
         // This covers PasswordWebauthn as well.
-        PasswordMFA,
+        PasswordMfa,
         Webauthn,
         WebauthnVerified,
         PasswordWebauthnVerified,

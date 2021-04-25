@@ -1,14 +1,11 @@
-use crate::audit::AuditScope;
-use crate::constants::{STR_UUID_DOMAIN_INFO, UUID_ANONYMOUS, UUID_DOMAIN_INFO};
 use crate::event::SearchEvent;
 use crate::idm::event::LdapAuthEvent;
 use crate::idm::server::IdmServer;
-use crate::server::QueryServerTransaction;
+use crate::prelude::*;
 use async_std::task;
 use kanidm_proto::v1::{OperationError, UserAuthToken};
 use ldap3_server::simple::*;
 use regex::Regex;
-use smartstring::alias::String as AttrString;
 use std::collections::BTreeSet;
 use std::iter;
 use std::time::SystemTime;
@@ -111,7 +108,7 @@ impl LdapServer {
     ) -> Result<Vec<LdapMsg>, OperationError> {
         ladmin_info!(au, "Attempt LDAP Search for {}", uat.spn);
         // If the request is "", Base, Present("objectclass"), [], then we want the rootdse.
-        if sr.base == "" && sr.scope == LdapSearchScope::Base {
+        if sr.base.is_empty() && sr.scope == LdapSearchScope::Base {
             ladmin_info!(au, "LDAP Search success - RootDSE");
             Ok(vec![
                 sr.gen_result_entry(self.rootdse.clone()),
@@ -299,12 +296,12 @@ impl LdapServer {
         lsecurity!(
             au,
             "Attempt LDAP Bind for {}",
-            if dn == "" { "anonymous" } else { dn }
+            if dn.is_empty() { "anonymous" } else { dn }
         );
-        let mut idm_write = idms.write_async().await;
+        let mut idm_auth = idms.auth_async().await;
 
-        let target_uuid: Uuid = if dn == "" {
-            if pw == "" {
+        let target_uuid: Uuid = if dn.is_empty() {
+            if pw.is_empty() {
                 lsecurity!(au, "✅ LDAP Bind success anonymous");
                 *UUID_ANONYMOUS
             } else {
@@ -324,12 +321,12 @@ impl LdapServer {
 
             ltrace!(au, "rdn val is -> {:?}", rdn);
 
-            if rdn == "" {
+            if rdn.is_empty() {
                 // That's weird ...
                 return Err(OperationError::NoMatchingEntries);
             }
 
-            idm_write
+            idm_auth
                 .qs_read
                 .name_to_uuid(au, rdn.as_str())
                 .map_err(|e| {
@@ -346,8 +343,8 @@ impl LdapServer {
             })?;
 
         let lae = LdapAuthEvent::from_parts(au, target_uuid, pw.to_string())?;
-        idm_write.auth_ldap(au, &lae, ct).await.and_then(|r| {
-            idm_write.commit(au).map(|_| {
+        idm_auth.auth_ldap(au, &lae, ct).await.and_then(|r| {
+            idm_auth.commit(au).map(|_| {
                 if r.is_some() {
                     lsecurity!(au, "✅ LDAP Bind success {}", dn);
                 } else {
@@ -432,6 +429,7 @@ fn ldap_domain_to_dc(input: &str) -> String {
     input.split('.').for_each(|dc| {
         output.push_str("dc=");
         output.push_str(dc);
+        #[allow(clippy::single_char_add_str)]
         output.push_str(",");
     });
     // Remove the last ','
@@ -476,20 +474,12 @@ pub(crate) fn ldap_attr_entry_map(attr: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::constants::{STR_UUID_ADMIN, UUID_ADMIN, UUID_ANONYMOUS};
+    // use crate::prelude::*;
     use crate::event::ModifyEvent;
     use crate::idm::event::UnixPasswordChangeEvent;
-    use crate::modify::{Modify, ModifyList};
-    use crate::value::{PartialValue, Value};
-    // use kanidm_proto::v1::OperationError;
-    // use crate::audit::AuditScope;
-    // use crate::idm::server::IdmServer;
-    // use crate::server::QueryServer;
-    // use crate::utils::duration_from_epoch_now;
-    // use uuid::Uuid;
     use crate::ldap::LdapServer;
+    use crate::modify::{Modify, ModifyList};
     use async_std::task;
-    use smartstring::alias::String as AttrString;
 
     const TEST_PASSWORD: &'static str = "ntaoeuntnaoeuhraohuercahu😍";
 

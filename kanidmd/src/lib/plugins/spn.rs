@@ -1,14 +1,11 @@
 // Generate and manage spn's for all entries in the domain. Also deals with
 // the infrequent - but possible - case where a domain is renamed.
 use crate::plugins::Plugin;
+use crate::prelude::*;
 
-use crate::audit::AuditScope;
 use crate::constants::UUID_DOMAIN_INFO;
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntrySealed};
 use crate::event::{CreateEvent, ModifyEvent};
-use crate::server::{
-    QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
-};
 use crate::value::PartialValue;
 // use crate::value::{PartialValue, Value};
 use kanidm_proto::v1::{ConsistencyError, OperationError};
@@ -222,7 +219,7 @@ impl Plugin for Spn {
                         e.get_uuid()
                     );
                     debug_assert!(false);
-                    r.push(Err(ConsistencyError::InvalidSPN(e.get_id())));
+                    r.push(Err(ConsistencyError::InvalidSpn(e.get_id())));
                     continue;
                 }
             };
@@ -238,12 +235,12 @@ impl Plugin for Spn {
                             g_spn,
                         );
                         debug_assert!(false);
-                        r.push(Err(ConsistencyError::InvalidSPN(e.get_id())))
+                        r.push(Err(ConsistencyError::InvalidSpn(e.get_id())))
                     }
                 }
                 None => {
                     ladmin_error!(au, "Entry {:?} does not contain an SPN", e.get_uuid(),);
-                    r.push(Err(ConsistencyError::InvalidSPN(e.get_id())))
+                    r.push(Err(ConsistencyError::InvalidSpn(e.get_id())))
                 }
             }
         }
@@ -253,10 +250,7 @@ impl Plugin for Spn {
 
 #[cfg(test)]
 mod tests {
-    use crate::constants::UUID_ADMIN;
-    use crate::entry::{Entry, EntryInit, EntryNew};
-    use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
-    use crate::value::{PartialValue, Value};
+    use crate::prelude::*;
 
     #[test]
     fn test_spn_generate_create() {

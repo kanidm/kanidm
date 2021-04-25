@@ -1,21 +1,18 @@
 //! [`Filter`]s are one of the three foundational concepts of the design in kanidm.
-//! They are used in nearly every aspect ofthe server to provide searching of
-//! datasets, and assertion of entry properties.
+//! They are used in nearly every aspect of the server to provide searching of
+//! datasets and assertion of entry properties.
 //!
-//! A filter is a logical statement of properties that an [`Entry`] and it's
-//! avas must uphold to be considered true.
+//! A filter is a logical statement of properties that an [`Entry`] and its
+//! AVAs must uphold to be considered true.
 //!
 //! [`Filter`]: struct.Filter.html
 //! [`Entry`]: ../entry/struct.Entry.html
 
-use crate::audit::AuditScope;
 use crate::be::{IdxKey, IdxKeyRef, IdxKeyToRef, IdxMeta};
 use crate::event::{Event, EventOriginId};
 use crate::ldap::ldap_attr_filter_map;
+use crate::prelude::*;
 use crate::schema::SchemaTransaction;
-use crate::server::{
-    QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
-};
 use crate::value::{IndexType, PartialValue};
 use hashbrown::HashSet;
 use kanidm_proto::v1::Filter as ProtoFilter;
@@ -78,7 +75,7 @@ pub fn f_andnot(fc: FC) -> FC {
 
 #[allow(dead_code)]
 pub fn f_self<'a>() -> FC<'a> {
-    FC::SelfUUID
+    FC::SelfUuid
 }
 
 #[allow(dead_code)]
@@ -119,7 +116,7 @@ pub enum FC<'a> {
     And(Vec<FC<'a>>),
     Inclusion(Vec<FC<'a>>),
     AndNot(Box<FC<'a>>),
-    SelfUUID,
+    SelfUuid,
     // Not(Box<FC>),
 }
 
@@ -135,7 +132,7 @@ enum FilterComp {
     And(Vec<FilterComp>),
     Inclusion(Vec<FilterComp>),
     AndNot(Box<FilterComp>),
-    SelfUUID,
+    SelfUuid,
     // Does this mean we can add a true not to the type now?
     // Not(Box<FilterComp>),
 }
@@ -288,7 +285,7 @@ impl Filter<FilterValid> {
             >,
         >,
     ) -> Result<Filter<FilterValidResolved>, OperationError> {
-        // Given a filter, resolve Not and SelfUUID to real terms.
+        // Given a filter, resolve Not and SelfUuid to real terms.
         //
         // The benefit of moving optimisation to this step is from various inputs, we can
         // get to a resolved + optimised filter, and then we can cache those outputs in many
@@ -326,7 +323,7 @@ impl Filter<FilterValid> {
                         None => f.fast_optimise(),
                     }
                 })
-                .ok_or(OperationError::FilterUUIDResolution)?,
+                .ok_or(OperationError::FilterUuidResolution)?,
             },
         };
 
@@ -549,7 +546,7 @@ impl FilterComp {
             FC::And(v) => FilterComp::And(v.into_iter().map(FilterComp::new).collect()),
             FC::Inclusion(v) => FilterComp::Inclusion(v.into_iter().map(FilterComp::new).collect()),
             FC::AndNot(b) => FilterComp::AndNot(Box::new(FilterComp::new(*b))),
-            FC::SelfUUID => FilterComp::SelfUUID,
+            FC::SelfUuid => FilterComp::SelfUuid,
         }
     }
 
@@ -597,7 +594,7 @@ impl FilterComp {
             FilterComp::And(vs) => vs.iter().for_each(|f| f.get_attr_set(r_set)),
             FilterComp::Inclusion(vs) => vs.iter().for_each(|f| f.get_attr_set(r_set)),
             FilterComp::AndNot(f) => f.get_attr_set(r_set),
-            FilterComp::SelfUUID => {
+            FilterComp::SelfUuid => {
                 r_set.insert("uuid");
             }
         }
@@ -717,9 +714,9 @@ impl FilterComp {
                     .validate(schema)
                     .map(|r_filter| FilterComp::AndNot(Box::new(r_filter)))
             }
-            FilterComp::SelfUUID => {
+            FilterComp::SelfUuid => {
                 // Pretty hard to mess this one up ;)
-                Ok(FilterComp::SelfUUID)
+                Ok(FilterComp::SelfUuid)
             }
         }
     }
@@ -773,7 +770,7 @@ impl FilterComp {
                     .ok_or(OperationError::ResourceLimit)?;
                 FilterComp::AndNot(Box::new(Self::from_ro(audit, l, qs, ndepth, elems)?))
             }
-            ProtoFilter::SelfUUID => FilterComp::SelfUUID,
+            ProtoFilter::SelfUuid => FilterComp::SelfUuid,
         })
     }
 
@@ -827,7 +824,7 @@ impl FilterComp {
 
                 FilterComp::AndNot(Box::new(Self::from_rw(audit, l, qs, ndepth, elems)?))
             }
-            ProtoFilter::SelfUUID => FilterComp::SelfUUID,
+            ProtoFilter::SelfUuid => FilterComp::SelfUuid,
         })
     }
 
@@ -1039,7 +1036,7 @@ impl FilterResolved {
                     idxmeta,
                 )))
             }
-            FilterComp::SelfUUID => panic!("Not possible to resolve SelfUUID in from_invalid!"),
+            FilterComp::SelfUuid => panic!("Not possible to resolve SelfUuid in from_invalid!"),
         }
     }
 
@@ -1095,7 +1092,7 @@ impl FilterResolved {
                 FilterResolved::resolve_idx((*f).clone(), ev, idxmeta)
                     .map(|fi| FilterResolved::AndNot(Box::new(fi)))
             }
-            FilterComp::SelfUUID => ev.get_uuid().map(|uuid| {
+            FilterComp::SelfUuid => ev.get_uuid().map(|uuid| {
                 let uuid_s = AttrString::from("uuid");
                 let idxkref = IdxKeyRef::new(&uuid_s, &IndexType::EQUALITY);
                 let idx = idxmeta.contains(&idxkref as &dyn IdxKeyToRef);
@@ -1141,7 +1138,7 @@ impl FilterResolved {
                     .map(|fi| FilterResolved::AndNot(Box::new(fi)))
             }
 
-            FilterComp::SelfUUID => ev.get_uuid().map(|uuid| {
+            FilterComp::SelfUuid => ev.get_uuid().map(|uuid| {
                 FilterResolved::Eq(
                     AttrString::from("uuid"),
                     PartialValue::new_uuid(uuid),
@@ -1176,10 +1173,7 @@ impl FilterResolved {
                 let (f_list_inc, mut f_list_new): (Vec<_>, Vec<_>) = f_list
                     .iter()
                     .map(|f_ref| f_ref.optimise())
-                    .partition(|f| match f {
-                        FilterResolved::Inclusion(_) => true,
-                        _ => false,
-                    });
+                    .partition(|f| matches!(f, FilterResolved::Inclusion(_)));
 
                 f_list_inc.into_iter().for_each(|fc| {
                     if let FilterResolved::Inclusion(mut l) = fc {
@@ -1196,10 +1190,7 @@ impl FilterResolved {
                 let (f_list_and, mut f_list_new): (Vec<_>, Vec<_>) = f_list
                     .iter()
                     .map(|f_ref| f_ref.optimise())
-                    .partition(|f| match f {
-                        FilterResolved::And(_) => true,
-                        _ => false,
-                    });
+                    .partition(|f| matches!(f, FilterResolved::And(_)));
 
                 // now, iterate over this list - for each "and" term, fold
                 // it's elements to this level.
@@ -1237,10 +1228,7 @@ impl FilterResolved {
                     // Optimise all inner items.
                     .map(|f_ref| f_ref.optimise())
                     // Split out inner-or terms to fold into this term.
-                    .partition(|f| match f {
-                        FilterResolved::Or(_) => true,
-                        _ => false,
-                    });
+                    .partition(|f| matches!(f, FilterResolved::Or(_)));
 
                 // Append the inner terms.
                 f_list_or.into_iter().for_each(|fc| {
@@ -1267,25 +1255,19 @@ impl FilterResolved {
     }
 
     pub fn is_andnot(&self) -> bool {
-        match self {
-            FilterResolved::AndNot(_) => true,
-            _ => false,
-        }
+        matches!(self, FilterResolved::AndNot(_))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::entry::{Entry, EntryInit, EntryNew, EntrySealed};
     use crate::event::{CreateEvent, Event};
     use crate::filter::{Filter, FilterInvalid, FILTER_DEPTH_MAX};
-    use crate::server::QueryServerTransaction;
-    use crate::value::{PartialValue, Value};
+    use crate::prelude::*;
     use std::cmp::{Ordering, PartialOrd};
     use std::collections::BTreeSet;
 
     use kanidm_proto::v1::Filter as ProtoFilter;
-    use kanidm_proto::v1::OperationError;
     use ldap3_server::simple::LdapFilter;
 
     #[test]

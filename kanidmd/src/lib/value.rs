@@ -288,10 +288,7 @@ impl PartialValue {
     }
 
     pub fn is_utf8(&self) -> bool {
-        match self {
-            PartialValue::Utf8(_) => true,
-            _ => false,
-        }
+        matches!(self, PartialValue::Utf8(_))
     }
 
     pub fn new_iutf8(s: &str) -> Self {
@@ -315,17 +312,11 @@ impl PartialValue {
     */
 
     pub fn is_iutf8(&self) -> bool {
-        match self {
-            PartialValue::Iutf8(_) => true,
-            _ => false,
-        }
+        matches!(self, PartialValue::Iutf8(_))
     }
 
     pub fn is_iname(&self) -> bool {
-        match self {
-            PartialValue::Iname(_) => true,
-            _ => false,
-        }
+        matches!(self, PartialValue::Iname(_))
     }
 
     pub fn new_bool(b: bool) -> Self {
@@ -340,10 +331,7 @@ impl PartialValue {
     }
 
     pub fn is_bool(&self) -> bool {
-        match self {
-            PartialValue::Bool(_) => true,
-            _ => false,
-        }
+        matches!(self, PartialValue::Bool(_))
     }
 
     pub fn new_uuid(u: Uuid) -> Self {
@@ -362,10 +350,7 @@ impl PartialValue {
     }
 
     pub fn is_uuid(&self) -> bool {
-        match self {
-            PartialValue::Uuid(_) => true,
-            _ => false,
-        }
+        matches!(self, PartialValue::Uuid(_))
     }
 
     pub fn new_refer(u: Uuid) -> Self {
@@ -384,10 +369,7 @@ impl PartialValue {
     }
 
     pub fn is_refer(&self) -> bool {
-        match self {
-            PartialValue::Refer(_) => true,
-            _ => false,
-        }
+        matches!(self, PartialValue::Refer(_))
     }
 
     pub fn new_indexs(s: &str) -> Option<Self> {
@@ -399,10 +381,7 @@ impl PartialValue {
     }
 
     pub fn is_index(&self) -> bool {
-        match self {
-            PartialValue::Index(_) => true,
-            _ => false,
-        }
+        matches!(self, PartialValue::Index(_))
     }
 
     pub fn new_syntaxs(s: &str) -> Option<Self> {
@@ -414,10 +393,7 @@ impl PartialValue {
     }
 
     pub fn is_syntax(&self) -> bool {
-        match self {
-            PartialValue::Syntax(_) => true,
-            _ => false,
-        }
+        matches!(self, PartialValue::Syntax(_))
     }
 
     pub fn new_json_filter(s: &str) -> Option<Self> {
@@ -429,10 +405,7 @@ impl PartialValue {
     }
 
     pub fn is_json_filter(&self) -> bool {
-        match self {
-            PartialValue::JsonFilt(_) => true,
-            _ => false,
-        }
+        matches!(self, PartialValue::JsonFilt(_))
     }
 
     pub fn new_credential_tag(s: &str) -> Self {
@@ -440,10 +413,7 @@ impl PartialValue {
     }
 
     pub fn is_credential(&self) -> bool {
-        match self {
-            PartialValue::Cred(_) => true,
-            _ => false,
-        }
+        matches!(self, PartialValue::Cred(_))
     }
 
     pub fn new_radius_string() -> Self {
@@ -451,10 +421,7 @@ impl PartialValue {
     }
 
     pub fn is_radius_string(&self) -> bool {
-        match self {
-            PartialValue::RadiusCred => true,
-            _ => false,
-        }
+        matches!(self, PartialValue::RadiusCred)
     }
 
     pub fn new_sshkey_tag(s: String) -> Self {
@@ -466,10 +433,7 @@ impl PartialValue {
     }
 
     pub fn is_sshkey(&self) -> bool {
-        match self {
-            PartialValue::SshKey(_) => true,
-            _ => false,
-        }
+        matches!(self, PartialValue::SshKey(_))
     }
 
     pub fn new_spn_s(s: &str) -> Option<Self> {
@@ -491,10 +455,7 @@ impl PartialValue {
     }
 
     pub fn is_spn(&self) -> bool {
-        match self {
-            PartialValue::Spn(_, _) => true,
-            _ => false,
-        }
+        matches!(self, PartialValue::Spn(_, _))
     }
 
     pub fn new_uint32(u: u32) -> Self {
@@ -506,10 +467,7 @@ impl PartialValue {
     }
 
     pub fn is_uint32(&self) -> bool {
-        match self {
-            PartialValue::Uint32(_) => true,
-            _ => false,
-        }
+        matches!(self, PartialValue::Uint32(_))
     }
 
     pub fn new_cid(c: Cid) -> Self {
@@ -521,10 +479,7 @@ impl PartialValue {
     }
 
     pub fn is_cid(&self) -> bool {
-        match self {
-            PartialValue::Cid(_) => true,
-            _ => false,
-        }
+        matches!(self, PartialValue::Cid(_))
     }
 
     pub fn new_nsuniqueid_s(s: &str) -> Self {
@@ -532,10 +487,7 @@ impl PartialValue {
     }
 
     pub fn is_nsuniqueid(&self) -> bool {
-        match self {
-            PartialValue::Nsuniqueid(_) => true,
-            _ => false,
-        }
+        matches!(self, PartialValue::Nsuniqueid(_))
     }
 
     pub fn new_datetime_epoch(ts: Duration) -> Self {
@@ -550,10 +502,7 @@ impl PartialValue {
     }
 
     pub fn is_datetime(&self) -> bool {
-        match self {
-            PartialValue::DateTime(_) => true,
-            _ => false,
-        }
+        matches!(self, PartialValue::DateTime(_))
     }
 
     pub fn to_str(&self) -> Option<&str> {
@@ -744,10 +693,7 @@ impl Value {
     }
 
     pub fn is_utf8(&self) -> bool {
-        match self.pv {
-            PartialValue::Utf8(_) => true,
-            _ => false,
-        }
+        matches!(self.pv, PartialValue::Utf8(_))
     }
 
     pub fn new_iutf8(s: &str) -> Self {
@@ -758,10 +704,7 @@ impl Value {
     }
 
     pub fn is_insensitive_utf8(&self) -> bool {
-        match self.pv {
-            PartialValue::Iutf8(_) => true,
-            _ => false,
-        }
+        matches!(self.pv, PartialValue::Iutf8(_))
     }
 
     pub fn new_iname(s: &str) -> Self {
@@ -772,10 +715,7 @@ impl Value {
     }
 
     pub fn is_iname(&self) -> bool {
-        match self.pv {
-            PartialValue::Iname(_) => true,
-            _ => false,
-        }
+        matches!(self.pv, PartialValue::Iname(_))
     }
 
     pub fn new_uuid(u: Uuid) -> Self {
@@ -801,10 +741,7 @@ impl Value {
 
     // Is this correct? Should ref be seperate?
     pub fn is_uuid(&self) -> bool {
-        match self.pv {
-            PartialValue::Uuid(_) => true,
-            _ => false,
-        }
+        matches!(self.pv, PartialValue::Uuid(_))
     }
 
     pub fn new_class(s: &str) -> Self {
@@ -837,10 +774,7 @@ impl Value {
 
     #[inline]
     pub fn is_bool(&self) -> bool {
-        match self.pv {
-            PartialValue::Bool(_) => true,
-            _ => false,
-        }
+        matches!(self.pv, PartialValue::Bool(_))
     }
 
     pub fn new_syntaxs(s: &str) -> Option<Self> {
@@ -851,10 +785,7 @@ impl Value {
     }
 
     pub fn is_syntax(&self) -> bool {
-        match self.pv {
-            PartialValue::Syntax(_) => true,
-            _ => false,
-        }
+        matches!(self.pv, PartialValue::Syntax(_))
     }
 
     pub fn new_indexs(s: &str) -> Option<Self> {
@@ -865,10 +796,7 @@ impl Value {
     }
 
     pub fn is_index(&self) -> bool {
-        match self.pv {
-            PartialValue::Index(_) => true,
-            _ => false,
-        }
+        matches!(self.pv, PartialValue::Index(_))
     }
 
     pub fn new_refer(u: Uuid) -> Self {
@@ -893,10 +821,7 @@ impl Value {
     }
 
     pub fn is_refer(&self) -> bool {
-        match self.pv {
-            PartialValue::Refer(_) => true,
-            _ => false,
-        }
+        matches!(self.pv, PartialValue::Refer(_))
     }
 
     pub fn new_json_filter(s: &str) -> Option<Self> {
@@ -925,10 +850,7 @@ impl Value {
     }
 
     pub fn is_credential(&self) -> bool {
-        match &self.pv {
-            PartialValue::Cred(_) => true,
-            _ => false,
-        }
+        matches!(&self.pv, PartialValue::Cred(_))
     }
 
     pub fn to_credential(&self) -> Option<&Credential> {
@@ -1394,10 +1316,7 @@ impl Value {
                 }
             }
             PartialValue::Cred(_) => match &self.data {
-                Some(v) => match v.as_ref() {
-                    DataValue::Cred(_) => true,
-                    _ => false,
-                },
+                Some(v) => matches!(v.as_ref(), DataValue::Cred(_)),
                 None => false,
             },
             PartialValue::SshKey(_) => match &self.data {
@@ -1410,10 +1329,7 @@ impl Value {
                 None => false,
             },
             PartialValue::RadiusCred => match &self.data {
-                Some(v) => match v.as_ref() {
-                    DataValue::RadiusCred(_) => true,
-                    _ => false,
-                },
+                Some(v) => matches!(v.as_ref(), DataValue::RadiusCred(_)),
                 None => false,
             },
             PartialValue::Nsuniqueid(s) => NSUNIQUEID_RE.is_match(s),
