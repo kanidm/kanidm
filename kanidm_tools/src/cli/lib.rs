@@ -36,13 +36,18 @@ impl SelfOpt {
                 let client = copt.to_client();
 
                 match client.whoami() {
-                    Ok(o_ent) => match o_ent {
-                        Some((ent, uat)) => {
-                            debug!("{:?}", ent);
-                            println!("{}", uat);
+                    Ok(o_ent) => {
+                        match o_ent {
+                            Some((ent, uat)) => {
+                                debug!("{:?}", ent);
+                                println!("{}", uat);
+                            }
+                            None => {
+                                error!("Authentication with cached token failed, can't query information.");
+                                // TODO: remove token when we know it's not valid
+                            }
                         }
-                        None => println!("Unauthenticated"),
-                    },
+                    }
                     Err(e) => println!("Error: {:?}", e),
                 }
             }
@@ -53,13 +58,13 @@ impl SelfOpt {
                 let password = match rpassword::prompt_password_stderr("Enter new password: ") {
                     Ok(p) => p,
                     Err(e) => {
-                        eprintln!("Error -> {:?}", e);
+                        error!("Error -> {:?}", e);
                         return;
                     }
                 };
 
                 if let Err(e) = client.idm_account_set_password(password) {
-                    eprintln!("Error -> {:?}", e);
+                    error!("Error -> {:?}", e);
                 }
             }
         }
@@ -106,7 +111,7 @@ pub(crate) fn password_prompt(prompt: &str) -> Option<String> {
         if password == password_confirm {
             return Some(password);
         } else {
-            eprintln!("Passwords do not match");
+            error!("Passwords do not match");
         }
     }
     None

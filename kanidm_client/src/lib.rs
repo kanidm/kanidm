@@ -15,6 +15,7 @@ use serde_derive::Deserialize;
 use serde_json::error::Error as SerdeJsonError;
 use std::collections::BTreeSet as Set;
 use std::fs::{metadata, File, Metadata};
+use std::io::ErrorKind;
 use std::io::Read;
 use std::os::unix::fs::MetadataExt;
 use std::path::Path;
@@ -151,10 +152,26 @@ impl KanidmClientBuilder {
         let mut f = match File::open(&config_path) {
             Ok(f) => f,
             Err(e) => {
-                debug!(
-                    "Unable to open config file {:#?} [{:?}], skipping ...",
-                    &config_path, e
-                );
+                match e.kind() {
+                    ErrorKind::NotFound => {
+                        debug!(
+                            "Configuration file {:#?} not found, skipping ...",
+                            &config_path
+                        );
+                    }
+                    ErrorKind::PermissionDenied => {
+                        warn!(
+                            "Permission denied loading configuration file {:#?}, skipping ...",
+                            &config_path
+                        );
+                    }
+                    _ => {
+                        debug!(
+                            "Unable to open config file {:#?} [{:?}], skipping ...",
+                            &config_path, e
+                        );
+                    }
+                };
                 return Ok(self);
             }
         };
