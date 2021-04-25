@@ -2,17 +2,15 @@
 //! concepts along with [`filter`]s and [`schema`] that everything else builds upon.
 //!
 //! An [`Entry`] is a collection of attribute-value sets. There are sometimes called attribute value
-//! assertions, or AVAs. The attribute is a "key" and it holds 1 to infinitite associtade values
+//! assertions, or AVAs. The attribute is a "key" and it holds 1 to infinite associated values
 //! with no ordering. An entry has many AVAs. A pseudo example, minus schema and typing:
 //!
-//! ```
-//! /*
+//! ```text
 //! Entry {
 //!   "name": ["william"],
 //!   "uuid": ["..."],
 //!   "mail": ["maila@example.com", "mailb@example.com"],
 //! };
-//!*/
 //! ```
 //!
 //! There are three rules for entries:
@@ -56,7 +54,7 @@ use uuid::Uuid;
 // use std::str::FromStr;
 
 // make a trait entry for everything to adhere to?
-//  * How to get indexs out?
+//  * How to get indexes out?
 //  * How to track pending diffs?
 
 // Entry is really similar to serde Value, but limits the possibility
