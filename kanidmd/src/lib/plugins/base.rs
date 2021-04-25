@@ -1,20 +1,11 @@
 use crate::plugins::Plugin;
 use hashbrown::HashSet;
 use std::collections::BTreeSet;
-use uuid::Uuid;
 
-use crate::audit::AuditScope;
-// use crate::constants::{STR_UUID_ADMIN, STR_UUID_ANONYMOUS, STR_UUID_DOES_NOT_EXIST};
-use crate::constants::{UUID_ADMIN, UUID_ANONYMOUS, UUID_DOES_NOT_EXIST};
-use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew};
 use crate::event::{CreateEvent, ModifyEvent};
 use crate::modify::Modify;
-use crate::server::{
-    QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
-};
-use crate::value::{PartialValue, Value};
-use kanidm_proto::v1::{ConsistencyError, OperationError, PluginError};
-// use utils::uuid_from_now;
+use crate::prelude::*;
+use kanidm_proto::v1::{ConsistencyError, PluginError};
 
 lazy_static! {
     static ref CLASS_OBJECT: Value = Value::new_class("object");
@@ -244,16 +235,9 @@ impl Plugin for Base {
 
 #[cfg(test)]
 mod tests {
-    // #[macro_use]
-    // use crate::plugins::Plugin;
-    use crate::constants::JSON_ADMIN_V1;
-    use crate::entry::{Entry, EntryInit, EntryNew};
     use crate::modify::{Modify, ModifyList};
-    use crate::server::QueryServerTransaction;
-    use crate::server::QueryServerWriteTransaction;
-    use crate::value::{PartialValue, Value};
-    use kanidm_proto::v1::{OperationError, PluginError};
-    use smartstring::alias::String as AttrString;
+    use crate::prelude::*;
+    use kanidm_proto::v1::PluginError;
 
     const JSON_ADMIN_ALLOW_ALL: &'static str = r#"{
         "attrs": {

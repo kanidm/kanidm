@@ -5,27 +5,21 @@
 // that otherwise can't be cloned. Think Mutex.
 use async_std::task;
 use concread::arcache::{ARCache, ARCacheReadTxn};
-use hashbrown::HashMap;
+use hashbrown::{HashMap, HashSet};
 use std::cell::Cell;
 use std::collections::BTreeSet;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{Semaphore, SemaphorePermit};
-use uuid::Uuid;
-
-use crate::audit::AuditScope;
-use crate::be::{Backend, BackendReadTransaction, BackendTransaction, BackendWriteTransaction};
 
 use crate::access::{
     AccessControlCreate, AccessControlDelete, AccessControlModify, AccessControlSearch,
     AccessControls, AccessControlsReadTransaction, AccessControlsTransaction,
     AccessControlsWriteTransaction,
 };
+use crate::be::{Backend, BackendReadTransaction, BackendTransaction, BackendWriteTransaction};
+use crate::prelude::*;
 // We use so many, we just import them all ...
-use crate::constants::*;
-use crate::entry::{
-    Entry, EntryCommitted, EntryInit, EntryInvalid, EntryNew, EntryReduced, EntrySealed,
-};
 use crate::event::{
     CreateEvent, DeleteEvent, Event, EventOrigin, EventOriginId, ExistsEvent, ModifyEvent,
     ReviveRecycledEvent, SearchEvent,
@@ -38,13 +32,7 @@ use crate::schema::{
     Schema, SchemaAttribute, SchemaClass, SchemaReadTransaction, SchemaTransaction,
     SchemaWriteTransaction,
 };
-use crate::value::{PartialValue, SyntaxType, Value};
-use kanidm_proto::v1::{ConsistencyError, OperationError, SchemaError};
-use smartstring::alias::String as AttrString;
-
-type EntrySealedCommitted = Entry<EntrySealed, EntryCommitted>;
-type EntryInvalidCommitted = Entry<EntryInvalid, EntryCommitted>;
-type EntryTuple = (EntrySealedCommitted, EntryInvalidCommitted);
+use kanidm_proto::v1::{ConsistencyError, SchemaError};
 
 const RESOLVE_FILTER_CACHE_MAX: usize = 4096;
 const RESOLVE_FILTER_CACHE_LOCAL: usize = 0;
@@ -99,7 +87,7 @@ pub struct QueryServerWriteTransaction<'a> {
     changed_schema: Cell<bool>,
     changed_acp: Cell<bool>,
     // Store the list of changed uuids for other invalidation needs?
-    changed_uuid: Cell<Vec<Uuid>>,
+    changed_uuid: Cell<HashSet<Uuid>>,
     _db_ticket: SemaphorePermit<'a>,
     _write_ticket: SemaphorePermit<'a>,
     resolve_filter_cache:
@@ -912,7 +900,7 @@ impl QueryServer {
             accesscontrols: self.accesscontrols.write(),
             changed_schema: Cell::new(false),
             changed_acp: Cell::new(false),
-            changed_uuid: Cell::new(Vec::new()),
+            changed_uuid: Cell::new(HashSet::new()),
             _db_ticket: db_ticket,
             _write_ticket: write_ticket,
             resolve_filter_cache: Cell::new(self.resolve_filter_cache.read()),
@@ -997,7 +985,7 @@ impl QueryServer {
             .initialise_idm(audit)
             .and_then(|_| ts_write_3.commit(audit))?;
 
-        ladmin_info!(audit, "ready to rock! 🤘");
+        ladmin_info!(audit, "ready to rock! 🪨  ");
         Ok(())
     }
 
@@ -1969,7 +1957,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                         Err(e) => Err(OperationError::SchemaViolation(e)),
                     }
                 } else {
-                    Err(OperationError::InvalidDBState)
+                    Err(OperationError::InvalidDbState)
                 }
             }
             Err(e) => {
@@ -2034,7 +2022,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                         Ok(())
                     }
                 } else {
-                    Err(OperationError::InvalidDBState)
+                    Err(OperationError::InvalidDbState)
                 }
             }
             Err(er) => {
@@ -2455,6 +2443,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.be_txn.upgrade_reindex(audit, v)
     }
 
+    pub fn get_changed_uuids(&self) -> &HashSet<Uuid> {
+        unsafe { &(*self.changed_uuid.as_ptr()) }
+    }
+
     pub fn commit(mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
         // This could be faster if we cache the set of classes changed
         // in an operation so we can check if we need to do the reload or not
@@ -2510,23 +2502,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::audit::AuditScope;
-    use crate::constants::{
-        CHANGELOG_MAX_AGE, JSON_ADMIN_V1, JSON_DOMAIN_INFO_V1, JSON_SYSTEM_CONFIG_V1,
-        JSON_SYSTEM_INFO_V1, RECYCLEBIN_MAX_AGE, SYSTEM_INDEX_VERSION, UUID_ADMIN,
-        UUID_DOMAIN_INFO,
-    };
     use crate::credential::policy::CryptoPolicy;
     use crate::credential::Credential;
-    use crate::entry::{Entry, EntryInit, EntryNew};
     use crate::event::{CreateEvent, DeleteEvent, ModifyEvent, ReviveRecycledEvent, SearchEvent};
     use crate::modify::{Modify, ModifyList};
-    use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
-    use crate::value::{PartialValue, Value};
-    use kanidm_proto::v1::{OperationError, SchemaError};
-    use smartstring::alias::String as AttrString;
+    use crate::prelude::*;
+    use kanidm_proto::v1::SchemaError;
     use std::time::Duration;
-    use uuid::Uuid;
 
     #[test]
     fn test_qs_create_user() {

@@ -121,7 +121,7 @@ impl IdRawEntry {
     ) -> Result<Entry<EntrySealed, EntryCommitted>, OperationError> {
         let db_e = serde_cbor::from_slice(self.data.as_slice())
             .map_err(|_| OperationError::SerdeCborError)?;
-        // let id = u64::try_from(self.id).map_err(|_| OperationError::InvalidEntryID)?;
+        // let id = u64::try_from(self.id).map_err(|_| OperationError::InvalidEntryId)?;
         Entry::from_dbentry(au, db_e, self.id).map_err(|_| OperationError::CorruptedEntry(self.id))
     }
 }
@@ -836,10 +836,10 @@ impl<'a> BackendWriteTransaction<'a> {
                 .iter()
                 .map(|e| {
                     let id = i64::try_from(e.get_id())
-                        .map_err(|_| OperationError::InvalidEntryID)
+                        .map_err(|_| OperationError::InvalidEntryId)
                         .and_then(|id| {
                             if id == 0 {
-                                Err(OperationError::InvalidEntryID)
+                                Err(OperationError::InvalidEntryId)
                             } else {
                                 Ok(id)
                             }
@@ -1375,7 +1375,7 @@ impl Backend {
         info!("CPU Flags -> {}", env!("KANIDM_CPU_FLAGS"));
 
         // If in memory, reduce pool to 1
-        if &cfg.path == "" {
+        if cfg.path.is_empty() {
             cfg.pool_size = 1;
         }
 

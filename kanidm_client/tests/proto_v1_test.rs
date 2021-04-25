@@ -3,7 +3,7 @@ use std::time::SystemTime;
 
 use log::debug;
 
-use kanidm::credential::totp::TOTP;
+use kanidm::credential::totp::Totp;
 use kanidm_client::KanidmClient;
 use kanidm_proto::v1::{CredentialDetailType, Entry, Filter, Modify, ModifyList};
 
@@ -46,7 +46,7 @@ fn test_server_modify() {
     run_test(|mut rsclient: KanidmClient| {
         // Build a self mod.
 
-        let f = Filter::SelfUUID;
+        let f = Filter::SelfUuid;
         let m = ModifyList::new_list(vec![
             Modify::Purged("displayname".to_string()),
             Modify::Present("displayname".to_string(), "test".to_string()),
@@ -761,7 +761,7 @@ fn test_server_rest_totp_auth_lifecycle() {
             .idm_account_primary_credential_generate_totp("demo_account", "demo")
             .unwrap();
 
-        let r_tok: TOTP = tok.into();
+        let r_tok: Totp = tok.into();
         let totp = r_tok
             .do_totp_duration_from_epoch(
                 &SystemTime::now()
@@ -960,7 +960,7 @@ fn test_server_rest_webauthn_mfa_auth_lifecycle() {
             .auth_webauthn_complete(auth)
             .expect("Failed to authenticate");
 
-        // Set a password to cause the state to change to PasswordMFA
+        // Set a password to cause the state to change to PasswordMfa
         assert!(rsclient
             .idm_account_primary_credential_set_password("demo_account", "sohdi3iuHo6mai7noh0a")
             .is_ok());

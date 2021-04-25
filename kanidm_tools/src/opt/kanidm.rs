@@ -164,7 +164,7 @@ pub enum AccountCredential {
     RegisterTotp(AccountNamedTagOpt),
     /// Remove TOTP from the account. If no TOTP exists, no action is taken.
     #[structopt(name = "remove_totp")]
-    RemoveTOTP(AccountNamedOpt),
+    RemoveTotp(AccountNamedOpt),
     /// Show the status of the accounts credentials.
     #[structopt(name = "status")]
     Status(AccountNamedOpt),

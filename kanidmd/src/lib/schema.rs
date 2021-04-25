@@ -18,14 +18,11 @@
 
 use crate::audit::AuditScope;
 use crate::be::IdxKey;
-use crate::constants::*;
-use crate::entry::{Entry, EntryCommitted, EntryInit, EntryNew, EntrySealed};
-use crate::value::{IndexType, PartialValue, SyntaxType, Value};
+use crate::prelude::*;
 use kanidm_proto::v1::{ConsistencyError, OperationError, SchemaError};
 
 use hashbrown::HashMap;
 use hashbrown::HashSet;
-use smartstring::alias::String as AttrString;
 use std::borrow::Borrow;
 use std::collections::BTreeSet;
 use uuid::Uuid;
@@ -1475,15 +1472,10 @@ impl Schema {
 
 #[cfg(test)]
 mod tests {
-    use crate::audit::AuditScope;
-    // use crate::constants::*;
-    use crate::entry::{Entry, EntryInit, EntryInvalid, EntryNew, EntryValid};
-    use kanidm_proto::v1::{ConsistencyError, SchemaError};
-    // use crate::filter::{Filter, FilterValid};
+    use crate::prelude::*;
     use crate::schema::SchemaTransaction;
     use crate::schema::{IndexType, Schema, SchemaAttribute, SchemaClass, SyntaxType};
-    use crate::value::{PartialValue, Value};
-    use smartstring::alias::String as AttrString;
+    use kanidm_proto::v1::{ConsistencyError, SchemaError};
     use uuid::Uuid;
 
     // use crate::proto_v1::Filter as ProtoFilter;

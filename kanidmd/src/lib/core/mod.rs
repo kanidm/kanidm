@@ -6,6 +6,8 @@ use libc::umask;
 use std::sync::Arc;
 use tokio::sync::mpsc::unbounded_channel as unbounded;
 
+use crate::prelude::*;
+
 use crate::config::Configuration;
 
 // SearchResult
@@ -13,14 +15,12 @@ use crate::config::Configuration;
 use crate::actors::v1_read::QueryServerReadV1;
 use crate::actors::v1_write::QueryServerWriteV1;
 use crate::async_log;
-use crate::audit::AuditScope;
 use crate::be::{Backend, BackendConfig, BackendTransaction, FsType};
 use crate::crypto::setup_tls;
 use crate::idm::server::{IdmServer, IdmServerDelayed};
 use crate::interval::IntervalActor;
 use crate::ldap::LdapServer;
 use crate::schema::Schema;
-use crate::server::QueryServer;
 use crate::status::StatusActor;
 use crate::utils::duration_from_epoch_now;
 
@@ -491,7 +491,7 @@ pub async fn create_server_core(config: Configuration) -> Result<(), ()> {
         }
     };
     // Start the IDM server.
-    let (qs, idms, mut idms_delayed) = match setup_qs_idms(&mut audit, be, schema, &config) {
+    let (_qs, idms, mut idms_delayed) = match setup_qs_idms(&mut audit, be, schema, &config) {
         Ok(t) => t,
         Err(e) => {
             audit.write_log();
@@ -550,18 +550,13 @@ pub async fn create_server_core(config: Configuration) -> Result<(), ()> {
     let server_read_ref = QueryServerReadV1::start_static(
         log_tx.clone(),
         config.log_level,
-        qs.clone(),
         idms_arc.clone(),
         ldap_arc.clone(),
     );
 
     // Create the server async write entry point.
-    let server_write_ref = QueryServerWriteV1::start_static(
-        log_tx.clone(),
-        config.log_level,
-        qs.clone(),
-        idms_arc.clone(),
-    );
+    let server_write_ref =
+        QueryServerWriteV1::start_static(log_tx.clone(), config.log_level, idms_arc.clone());
 
     tokio::spawn(async move {
         idms_delayed.process_all(server_write_ref).await;

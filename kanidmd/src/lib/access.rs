@@ -26,17 +26,15 @@ use std::cell::Cell;
 use std::ops::DerefMut;
 use uuid::Uuid;
 
-use crate::audit::AuditScope;
 use crate::entry::{Entry, EntryCommitted, EntryInit, EntryNew, EntryReduced, EntrySealed};
 use crate::filter::{Filter, FilterValid, FilterValidResolved};
 use crate::modify::Modify;
-use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
+use crate::prelude::*;
 use crate::value::PartialValue;
 
 use crate::event::{
     CreateEvent, DeleteEvent, Event, EventOrigin, EventOriginId, ModifyEvent, SearchEvent,
 };
-use smartstring::alias::String as AttrString;
 
 // const ACP_RELATED_SEARCH_CACHE_MAX: usize = 2048;
 // const ACP_RELATED_SEARCH_CACHE_LOCAL: usize = 16;
@@ -70,7 +68,7 @@ impl AccessControlSearch {
     ) -> Result<Self, OperationError> {
         if !value.attribute_value_pres("class", &CLASS_ACS) {
             ladmin_error!(audit, "class access_control_search not present.");
-            return Err(OperationError::InvalidACPState(
+            return Err(OperationError::InvalidAcpState(
                 "Missing access_control_search".to_string(),
             ));
         }
@@ -79,7 +77,7 @@ impl AccessControlSearch {
             .get_ava_as_str("acp_search_attr")
             .ok_or_else(|| {
                 ladmin_error!(audit, "Missing acp_search_attr");
-                OperationError::InvalidACPState("Missing acp_search_attr".to_string())
+                OperationError::InvalidAcpState("Missing acp_search_attr".to_string())
             })?
             .map(AttrString::from)
             .collect();
@@ -125,7 +123,7 @@ impl AccessControlDelete {
     ) -> Result<Self, OperationError> {
         if !value.attribute_value_pres("class", &CLASS_ACD) {
             ladmin_error!(audit, "class access_control_delete not present.");
-            return Err(OperationError::InvalidACPState(
+            return Err(OperationError::InvalidAcpState(
                 "Missing access_control_delete".to_string(),
             ));
         }
@@ -168,7 +166,7 @@ impl AccessControlCreate {
     ) -> Result<Self, OperationError> {
         if !value.attribute_value_pres("class", &CLASS_ACC) {
             ladmin_error!(audit, "class access_control_create not present.");
-            return Err(OperationError::InvalidACPState(
+            return Err(OperationError::InvalidAcpState(
                 "Missing access_control_create".to_string(),
             ));
         }
@@ -228,7 +226,7 @@ impl AccessControlModify {
     ) -> Result<Self, OperationError> {
         if !value.attribute_value_pres("class", &CLASS_ACM) {
             ladmin_error!(audit, "class access_control_modify not present.");
-            return Err(OperationError::InvalidACPState(
+            return Err(OperationError::InvalidAcpState(
                 "Missing access_control_modify".to_string(),
             ));
         }
@@ -306,7 +304,7 @@ impl AccessControlProfile {
         // Assert we have class access_control_profile
         if !value.attribute_value_pres("class", &CLASS_ACP) {
             ladmin_error!(audit, "class access_control_profile not present.");
-            return Err(OperationError::InvalidACPState(
+            return Err(OperationError::InvalidAcpState(
                 "Missing access_control_profile".to_string(),
             ));
         }
@@ -316,7 +314,7 @@ impl AccessControlProfile {
             .get_ava_single_str("name")
             .ok_or_else(|| {
                 ladmin_error!(audit, "Missing name");
-                OperationError::InvalidACPState("Missing name".to_string())
+                OperationError::InvalidAcpState("Missing name".to_string())
             })?
             .to_string();
         // copy uuid
@@ -328,7 +326,7 @@ impl AccessControlProfile {
             .cloned()
             .ok_or_else(|| {
                 ladmin_error!(audit, "Missing acp_receiver");
-                OperationError::InvalidACPState("Missing acp_receiver".to_string())
+                OperationError::InvalidAcpState("Missing acp_receiver".to_string())
             })?;
         // targetscope, and turn to real filter
         let targetscope_f: ProtoFilter = value
@@ -337,7 +335,7 @@ impl AccessControlProfile {
             .cloned()
             .ok_or_else(|| {
                 ladmin_error!(audit, "Missing acp_targetscope");
-                OperationError::InvalidACPState("Missing acp_targetscope".to_string())
+                OperationError::InvalidAcpState("Missing acp_targetscope".to_string())
             })?;
 
         let event = Event::from_internal();
@@ -1456,16 +1454,8 @@ mod tests {
         AccessControlCreate, AccessControlDelete, AccessControlModify, AccessControlProfile,
         AccessControlSearch, AccessControls, AccessControlsTransaction,
     };
-    use crate::audit::AuditScope;
-    use crate::entry::{Entry, EntryCommitted, EntryInit, EntryNew, EntryReduced};
-    // use crate::server::QueryServerWriteTransaction;
-
     use crate::event::{CreateEvent, DeleteEvent, ModifyEvent, SearchEvent};
-    // use crate::filter::Filter;
-    // use crate::proto_v1::Filter as ProtoFilter;
-    use crate::constants::{JSON_ADMIN_V1, JSON_ANONYMOUS_V1, JSON_TESTPERSON1, JSON_TESTPERSON2};
-    use crate::value::{PartialValue, Value};
-    use smartstring::alias::String as AttrString;
+    use crate::prelude::*;
 
     macro_rules! acp_from_entry_err {
         (

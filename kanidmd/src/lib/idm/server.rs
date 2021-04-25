@@ -1,6 +1,3 @@
-use crate::audit::AuditScope;
-use crate::constants::{AUTH_SESSION_TIMEOUT, MFAREG_SESSION_TIMEOUT, PW_MIN_LENGTH};
-use crate::constants::{UUID_ANONYMOUS, UUID_SYSTEM_CONFIG};
 use crate::credential::policy::CryptoPolicy;
 use crate::credential::softlock::CredSoftLock;
 use crate::credential::webauthn::WebauthnDomainConfig;
@@ -8,20 +5,18 @@ use crate::event::{AuthEvent, AuthEventStep, AuthResult};
 use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
 use crate::idm::event::{
-    CredentialStatusEvent, GeneratePasswordEvent, GenerateTOTPEvent, LdapAuthEvent,
-    PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent, RemoveTOTPEvent,
+    CredentialStatusEvent, GeneratePasswordEvent, GenerateTotpEvent, LdapAuthEvent,
+    PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent, RemoveTotpEvent,
     RemoveWebauthnEvent, UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent,
-    UnixUserTokenEvent, VerifyTOTPEvent, WebauthnDoRegisterEvent, WebauthnInitRegisterEvent,
+    UnixUserTokenEvent, VerifyTotpEvent, WebauthnDoRegisterEvent, WebauthnInitRegisterEvent,
 };
 use crate::idm::mfareg::{MfaRegCred, MfaRegNext, MfaRegSession};
 use crate::idm::radius::RadiusAccount;
 use crate::idm::unix::{UnixGroup, UnixUserAccount};
 use crate::idm::AuthState;
 use crate::ldap::LdapBoundToken;
-use crate::server::QueryServerReadTransaction;
-use crate::server::{QueryServer, QueryServerTransaction, QueryServerWriteTransaction};
+use crate::prelude::*;
 use crate::utils::{password_from_random, readable_password_from_random, uuid_from_duration, SID};
-use crate::value::PartialValue;
 
 use crate::actors::v1_write::QueryServerWriteV1;
 use crate::idm::delayed::{
@@ -29,7 +24,6 @@ use crate::idm::delayed::{
 };
 
 use kanidm_proto::v1::CredentialStatus;
-use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::RadiusAuthToken;
 use kanidm_proto::v1::SetCredentialResponse;
 use kanidm_proto::v1::UnixGroupToken;
@@ -50,7 +44,6 @@ use concread::hashmap::HashMap;
 use rand::prelude::*;
 use std::time::Duration;
 use url::Url;
-use uuid::Uuid;
 
 use webauthn_rs::Webauthn;
 
@@ -76,12 +69,10 @@ pub struct IdmServer {
     webauthn: Webauthn<WebauthnDomainConfig>,
 }
 
-pub struct IdmServerWriteTransaction<'a> {
+pub struct IdmServerAuthTransaction<'a> {
     // Contains methods that require writes, but in the context of writing to
     // the idm in memory structures (maybe the query server too). This is
     // things like authentication
-    // _session_ticket: SemaphorePermit<'a>,
-    // sessions: BptreeMapWriteTxn<'a, Uuid, AuthSession>,
     session_ticket: &'a Semaphore,
     sessions: &'a BptreeMap<Uuid, AuthSession>,
 
@@ -117,7 +108,7 @@ pub struct IdmServerDelayed {
 }
 
 impl IdmServer {
-    // TODO #59: Make number of authsessions configurable!!!
+    // TODO: Make number of authsessions configurable!!!
     pub fn new(
         au: &mut AuditScope,
         qs: QueryServer,
@@ -185,11 +176,11 @@ impl IdmServer {
     }
 
     #[cfg(test)]
-    pub fn write(&self) -> IdmServerWriteTransaction {
-        task::block_on(self.write_async())
+    pub fn auth(&self) -> IdmServerAuthTransaction {
+        task::block_on(self.auth_async())
     }
 
-    pub async fn write_async(&self) -> IdmServerWriteTransaction<'_> {
+    pub async fn auth_async(&self) -> IdmServerAuthTransaction<'_> {
         let mut sid = [0; 4];
         let mut rng = StdRng::from_entropy();
         rng.fill(&mut sid);
@@ -197,7 +188,7 @@ impl IdmServer {
         // let session_ticket = self.session_ticket.acquire().await;
         let qs_read = self.qs.read_async().await;
 
-        IdmServerWriteTransaction {
+        IdmServerAuthTransaction {
             // _session_ticket: session_ticket,
             // sessions: self.sessions.write(),
             session_ticket: &self.session_ticket,
@@ -289,7 +280,7 @@ impl IdmServerDelayed {
     }
 }
 
-impl<'a> IdmServerWriteTransaction<'a> {
+impl<'a> IdmServerAuthTransaction<'a> {
     #[cfg(test)]
     pub fn is_sessionid_present(&self, sessionid: &Uuid) -> bool {
         let session_read = self.sessions.read();
@@ -766,7 +757,7 @@ impl<'a> IdmServerWriteTransaction<'a> {
 
     pub fn commit(self, _au: &mut AuditScope) -> Result<(), OperationError> {
         /*
-        lperf_trace_segment!(au, "idm::server::IdmServerWriteTransaction::commit", || {
+        lperf_trace_segment!(au, "idm::server::IdmServerAuthTransaction::commit", || {
             self.sessions.commit();
             Ok(())
         })*/
@@ -1077,10 +1068,30 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             ladmin_error!(au, "name to uuid failed {:?}", e);
             e
         })?;
-        // internal pce.
-        let pce = PasswordChangeEvent::new_internal(&target, cleartext, None);
-        // now set_account_password.
-        self.set_account_password(au, &pce)
+
+        let account = self.target_to_account(au, &target)?;
+
+        let modlist = account
+            .gen_password_recover_mod(cleartext, self.crypto_policy)
+            .map_err(|e| {
+                ladmin_error!(au, "Failed to generate password mod {:?}", e);
+                e
+            })?;
+        ltrace!(au, "processing change {:?}", modlist);
+
+        self.qs_write
+            .internal_modify(
+                au,
+                // Filter as executed
+                &filter!(f_eq("uuid", PartialValue::new_uuidr(&target))),
+                &modlist,
+            )
+            .map_err(|e| {
+                lrequest_error!(au, "error -> {:?}", e);
+                e
+            })?;
+
+        Ok(())
     }
 
     pub fn generate_account_password(
@@ -1283,7 +1294,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     pub fn generate_account_totp(
         &mut self,
         au: &mut AuditScope,
-        gte: &GenerateTOTPEvent,
+        gte: &GenerateTotpEvent,
         ct: Duration,
     ) -> Result<SetCredentialResponse, OperationError> {
         let account = self.target_to_account(au, &gte.target)?;
@@ -1307,7 +1318,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     pub fn verify_account_totp(
         &mut self,
         au: &mut AuditScope,
-        vte: &VerifyTOTPEvent,
+        vte: &VerifyTotpEvent,
         ct: Duration,
     ) -> Result<SetCredentialResponse, OperationError> {
         let sessionid = vte.session;
@@ -1326,7 +1337,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 e
             })?;
 
-        if let (MfaRegNext::Success, Some(MfaRegCred::TOTP(token))) = (&next, opt_cred) {
+        if let (MfaRegNext::Success, Some(MfaRegCred::Totp(token))) = (&next, opt_cred) {
             // Purge the session.
             let session = self
                 .mfareg_sessions
@@ -1365,7 +1376,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     pub fn remove_account_totp(
         &mut self,
         au: &mut AuditScope,
-        rte: &RemoveTOTPEvent,
+        rte: &RemoveTotpEvent,
     ) -> Result<SetCredentialResponse, OperationError> {
         ltrace!(au, "Attempting to remove totp -> {:?}", rte.target);
 
@@ -1507,10 +1518,14 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     }
 
     pub fn commit(self, au: &mut AuditScope) -> Result<(), OperationError> {
-        lperf_trace_segment!(au, "idm::server::IdmServerWriteTransaction::commit", || {
-            self.mfareg_sessions.commit();
-            self.qs_write.commit(au)
-        })
+        lperf_trace_segment!(
+            au,
+            "idm::server::IdmServerProxyWriteTransaction::commit",
+            || {
+                self.mfareg_sessions.commit();
+                self.qs_write.commit(au)
+            }
+        )
     }
 }
 
@@ -1518,32 +1533,26 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::constants::{
-        AUTH_SESSION_TIMEOUT, MFAREG_SESSION_TIMEOUT, UUID_ADMIN, UUID_ANONYMOUS,
-    };
     use crate::credential::policy::CryptoPolicy;
-    use crate::credential::totp::TOTP;
+    use crate::credential::totp::Totp;
     use crate::credential::{Credential, Password};
-    use crate::entry::{Entry, EntryInit, EntryNew};
     use crate::event::{AuthEvent, AuthResult, CreateEvent, ModifyEvent};
     use crate::idm::delayed::{DelayedAction, WebauthnCounterIncrement};
     use crate::idm::event::{
-        GenerateTOTPEvent, PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
-        RemoveTOTPEvent, RemoveWebauthnEvent, UnixGroupTokenEvent, UnixPasswordChangeEvent,
-        UnixUserAuthEvent, UnixUserTokenEvent, VerifyTOTPEvent, WebauthnDoRegisterEvent,
+        GenerateTotpEvent, PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
+        RemoveTotpEvent, RemoveWebauthnEvent, UnixGroupTokenEvent, UnixPasswordChangeEvent,
+        UnixUserAuthEvent, UnixUserTokenEvent, VerifyTotpEvent, WebauthnDoRegisterEvent,
         WebauthnInitRegisterEvent,
     };
     use crate::idm::AuthState;
     use crate::modify::{Modify, ModifyList};
-    use crate::value::{PartialValue, Value};
+    use crate::prelude::*;
     use kanidm_proto::v1::OperationError;
     use kanidm_proto::v1::SetCredentialResponse;
     use kanidm_proto::v1::{AuthAllowed, AuthMech};
 
-    use crate::audit::AuditScope;
     use crate::idm::server::IdmServer;
     // , IdmServerDelayed;
-    use crate::server::QueryServer;
     use crate::utils::duration_from_epoch_now;
     use async_std::task;
     use smartstring::alias::String as AttrString;
@@ -1565,11 +1574,11 @@ mod tests {
                        au: &mut AuditScope| {
             let sid = {
                 // Start and test anonymous auth.
-                let mut idms_write = idms.write();
+                let mut idms_auth = idms.auth();
                 // Send the initial auth event for initialising the session
                 let anon_init = AuthEvent::anonymous_init();
                 // Expect success
-                let r1 = task::block_on(idms_write.auth(
+                let r1 = task::block_on(idms_auth.auth(
                     au,
                     &anon_init,
                     Duration::from_secs(TEST_CURRENT_TIME),
@@ -1611,15 +1620,15 @@ mod tests {
 
                 debug!("sessionid is ==> {:?}", sid);
 
-                idms_write.commit(au).expect("Must not fail");
+                idms_auth.commit(au).expect("Must not fail");
 
                 sid
             };
             {
-                let mut idms_write = idms.write();
+                let mut idms_auth = idms.auth();
                 let anon_begin = AuthEvent::begin_mech(sid, AuthMech::Anonymous);
 
-                let r2 = task::block_on(idms_write.auth(
+                let r2 = task::block_on(idms_auth.auth(
                     au,
                     &anon_begin,
                     Duration::from_secs(TEST_CURRENT_TIME),
@@ -1656,15 +1665,15 @@ mod tests {
                     }
                 };
 
-                idms_write.commit(au).expect("Must not fail");
+                idms_auth.commit(au).expect("Must not fail");
             };
             {
-                let mut idms_write = idms.write();
+                let mut idms_auth = idms.auth();
                 // Now send the anonymous request, given the session id.
                 let anon_step = AuthEvent::cred_step_anonymous(sid);
 
                 // Expect success
-                let r2 = task::block_on(idms_write.auth(
+                let r2 = task::block_on(idms_auth.auth(
                     au,
                     &anon_step,
                     Duration::from_secs(TEST_CURRENT_TIME),
@@ -1699,7 +1708,7 @@ mod tests {
                     }
                 };
 
-                idms_write.commit(au).expect("Must not fail");
+                idms_auth.commit(au).expect("Must not fail");
             }
         });
     }
@@ -1712,12 +1721,12 @@ mod tests {
                        _idms_delayed: &IdmServerDelayed,
                        au: &mut AuditScope| {
             {
-                let mut idms_write = idms.write();
+                let mut idms_auth = idms.auth();
                 let sid = Uuid::new_v4();
                 let anon_step = AuthEvent::cred_step_anonymous(sid);
 
                 // Expect failure
-                let r2 = task::block_on(idms_write.auth(
+                let r2 = task::block_on(idms_auth.auth(
                     au,
                     &anon_step,
                     Duration::from_secs(TEST_CURRENT_TIME),
@@ -1770,10 +1779,10 @@ mod tests {
         ct: Duration,
         name: &str,
     ) -> Uuid {
-        let mut idms_write = idms.write();
+        let mut idms_auth = idms.auth();
         let admin_init = AuthEvent::named_init(name);
 
-        let r1 = task::block_on(idms_write.auth(au, &admin_init, ct));
+        let r1 = task::block_on(idms_auth.auth(au, &admin_init, ct));
         let ar = r1.unwrap();
         let AuthResult {
             sessionid,
@@ -1793,7 +1802,7 @@ mod tests {
         // Now push that we want the Password Mech.
         let admin_begin = AuthEvent::begin_mech(sessionid, AuthMech::Password);
 
-        let r2 = task::block_on(idms_write.auth(au, &admin_begin, ct));
+        let r2 = task::block_on(idms_auth.auth(au, &admin_begin, ct));
         let ar = r2.unwrap();
         let AuthResult {
             sessionid,
@@ -1811,7 +1820,7 @@ mod tests {
             }
         };
 
-        idms_write.commit(au).expect("Must not fail");
+        idms_auth.commit(au).expect("Must not fail");
 
         sessionid
     }
@@ -1820,12 +1829,12 @@ mod tests {
         let sid =
             init_admin_authsession_sid(idms, au, Duration::from_secs(TEST_CURRENT_TIME), "admin");
 
-        let mut idms_write = idms.write();
+        let mut idms_auth = idms.auth();
         let anon_step = AuthEvent::cred_step_password(sid, pw);
 
         // Expect success
         let r2 =
-            task::block_on(idms_write.auth(au, &anon_step, Duration::from_secs(TEST_CURRENT_TIME)));
+            task::block_on(idms_auth.auth(au, &anon_step, Duration::from_secs(TEST_CURRENT_TIME)));
         debug!("r2 ==> {:?}", r2);
 
         match r2 {
@@ -1855,7 +1864,7 @@ mod tests {
             }
         };
 
-        idms_write.commit(au).expect("Must not fail");
+        idms_auth.commit(au).expect("Must not fail");
     }
 
     #[test]
@@ -1884,11 +1893,11 @@ mod tests {
                 "admin@example.com",
             );
 
-            let mut idms_write = idms.write();
+            let mut idms_auth = idms.auth();
             let anon_step = AuthEvent::cred_step_password(sid, TEST_PASSWORD);
 
             // Expect success
-            let r2 = task::block_on(idms_write.auth(
+            let r2 = task::block_on(idms_auth.auth(
                 au,
                 &anon_step,
                 Duration::from_secs(TEST_CURRENT_TIME),
@@ -1920,7 +1929,7 @@ mod tests {
                 }
             };
 
-            idms_write.commit(au).expect("Must not fail");
+            idms_auth.commit(au).expect("Must not fail");
         })
     }
 
@@ -1937,11 +1946,11 @@ mod tests {
                 Duration::from_secs(TEST_CURRENT_TIME),
                 "admin",
             );
-            let mut idms_write = idms.write();
+            let mut idms_auth = idms.auth();
             let anon_step = AuthEvent::cred_step_password(sid, TEST_PASSWORD_INC);
 
             // Expect success
-            let r2 = task::block_on(idms_write.auth(
+            let r2 = task::block_on(idms_auth.auth(
                 au,
                 &anon_step,
                 Duration::from_secs(TEST_CURRENT_TIME),
@@ -1973,7 +1982,7 @@ mod tests {
                 }
             };
 
-            idms_write.commit(au).expect("Must not fail");
+            idms_auth.commit(au).expect("Must not fail");
         })
     }
 
@@ -2019,19 +2028,19 @@ mod tests {
                 Duration::from_secs(TEST_CURRENT_TIME),
                 "admin",
             );
-            let mut idms_write = idms.write();
-            assert!(idms_write.is_sessionid_present(&sid));
+            let mut idms_auth = idms.auth();
+            assert!(idms_auth.is_sessionid_present(&sid));
             // Expire like we are currently "now". Should not affect our session.
-            task::block_on(idms_write.expire_auth_sessions(Duration::from_secs(TEST_CURRENT_TIME)));
-            assert!(idms_write.is_sessionid_present(&sid));
+            task::block_on(idms_auth.expire_auth_sessions(Duration::from_secs(TEST_CURRENT_TIME)));
+            assert!(idms_auth.is_sessionid_present(&sid));
             // Expire as though we are in the future.
             task::block_on(
-                idms_write.expire_auth_sessions(Duration::from_secs(TEST_CURRENT_EXPIRE)),
+                idms_auth.expire_auth_sessions(Duration::from_secs(TEST_CURRENT_EXPIRE)),
             );
-            assert!(!idms_write.is_sessionid_present(&sid));
-            assert!(idms_write.commit(au).is_ok());
-            let idms_write = idms.write();
-            assert!(!idms_write.is_sessionid_present(&sid));
+            assert!(!idms_auth.is_sessionid_present(&sid));
+            assert!(idms_auth.commit(au).is_ok());
+            let idms_auth = idms.auth();
+            assert!(!idms_auth.is_sessionid_present(&sid));
         })
     }
 
@@ -2239,11 +2248,11 @@ mod tests {
             assert!(idms_prox_write.set_unix_account_password(au, &pce).is_ok());
             assert!(idms_prox_write.commit(au).is_ok());
 
-            let mut idms_write = idms.write();
+            let mut idms_auth = idms.auth();
             // Check auth verification of the password
 
             let uuae_good = UnixUserAuthEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD);
-            let a1 = task::block_on(idms_write.auth_unix(
+            let a1 = task::block_on(idms_auth.auth_unix(
                 au,
                 &uuae_good,
                 Duration::from_secs(TEST_CURRENT_TIME),
@@ -2254,7 +2263,7 @@ mod tests {
             };
             // Check bad password
             let uuae_bad = UnixUserAuthEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD_INC);
-            let a2 = task::block_on(idms_write.auth_unix(
+            let a2 = task::block_on(idms_auth.auth_unix(
                 au,
                 &uuae_bad,
                 Duration::from_secs(TEST_CURRENT_TIME),
@@ -2263,7 +2272,7 @@ mod tests {
                 Ok(None) => {}
                 _ => assert!(false),
             };
-            assert!(idms_write.commit(au).is_ok());
+            assert!(idms_auth.commit(au).is_ok());
 
             // Check deleting the password
             let idms_prox_write = idms.proxy_write(duration_from_epoch_now());
@@ -2278,8 +2287,8 @@ mod tests {
 
             // And auth should now fail due to the lack of PW material (note that
             // softlocking WONT kick in because the cred_uuid is gone!)
-            let mut idms_write = idms.write();
-            let a3 = task::block_on(idms_write.auth_unix(
+            let mut idms_auth = idms.auth();
+            let a3 = task::block_on(idms_auth.auth_unix(
                 au,
                 &uuae_good,
                 Duration::from_secs(TEST_CURRENT_TIME),
@@ -2288,7 +2297,7 @@ mod tests {
                 Ok(None) => {}
                 _ => assert!(false),
             };
-            assert!(idms_write.commit(au).is_ok());
+            assert!(idms_auth.commit(au).is_ok());
         })
     }
 
@@ -2303,7 +2312,7 @@ mod tests {
             let mut idms_prox_write = idms.proxy_write(ct.clone());
 
             // verify with no session (fail)
-            let vte1 = VerifyTOTPEvent::new_internal(UUID_ADMIN.clone(), Uuid::new_v4(), 0);
+            let vte1 = VerifyTotpEvent::new_internal(UUID_ADMIN.clone(), Uuid::new_v4(), 0);
 
             match idms_prox_write.verify_account_totp(au, &vte1, ct.clone()) {
                 Err(e) => {
@@ -2313,18 +2322,18 @@ mod tests {
             };
 
             // reg, expire session, attempt verify (fail)
-            let gte1 = GenerateTOTPEvent::new_internal(UUID_ADMIN.clone());
+            let gte1 = GenerateTotpEvent::new_internal(UUID_ADMIN.clone());
 
             let res = idms_prox_write
                 .generate_account_totp(au, &gte1, ct.clone())
                 .unwrap();
             let sesid = match res {
-                SetCredentialResponse::TOTPCheck(id, _) => id,
+                SetCredentialResponse::TotpCheck(id, _) => id,
                 _ => panic!("invalid state!"),
             };
             idms_prox_write.expire_mfareg_sessions(expire.clone());
 
-            let vte2 = VerifyTOTPEvent::new_internal(UUID_ADMIN.clone(), sesid, 0);
+            let vte2 = VerifyTotpEvent::new_internal(UUID_ADMIN.clone(), sesid, 0);
 
             match idms_prox_write.verify_account_totp(au, &vte1, ct.clone()) {
                 Err(e) => {
@@ -2338,16 +2347,16 @@ mod tests {
                 .generate_account_totp(au, &gte1, ct.clone())
                 .unwrap();
             let (sesid, tok) = match res {
-                SetCredentialResponse::TOTPCheck(id, tok) => (id, tok),
+                SetCredentialResponse::TotpCheck(id, tok) => (id, tok),
                 _ => panic!("invalid state!"),
             };
             // get the correct otp
-            let r_tok: TOTP = tok.into();
+            let r_tok: Totp = tok.into();
             let chal = r_tok
                 .do_totp_duration_from_epoch(&ct)
                 .expect("Failed to do totp?");
             // attempt the verify
-            let vte3 = VerifyTOTPEvent::new_internal(UUID_ADMIN.clone(), sesid, chal);
+            let vte3 = VerifyTotpEvent::new_internal(UUID_ADMIN.clone(), sesid, chal);
 
             match idms_prox_write.verify_account_totp(au, &vte3, ct.clone()) {
                 Err(e) => assert!(e == OperationError::InvalidState),
@@ -2366,16 +2375,16 @@ mod tests {
                 .generate_account_totp(au, &gte1, ct.clone())
                 .unwrap();
             let (sesid, tok) = match res {
-                SetCredentialResponse::TOTPCheck(id, tok) => (id, tok),
+                SetCredentialResponse::TotpCheck(id, tok) => (id, tok),
                 _ => panic!("invalid state!"),
             };
             // get the correct otp
-            let r_tok: TOTP = tok.into();
+            let r_tok: Totp = tok.into();
             let chal = r_tok
                 .do_totp_duration_from_epoch(&ct)
                 .expect("Failed to do totp?");
             // attempt the verify
-            let vte3 = VerifyTOTPEvent::new_internal(UUID_ANONYMOUS.clone(), sesid, chal);
+            let vte3 = VerifyTotpEvent::new_internal(UUID_ANONYMOUS.clone(), sesid, chal);
 
             match idms_prox_write.verify_account_totp(au, &vte3, ct.clone()) {
                 Err(e) => assert!(e == OperationError::InvalidRequestState),
@@ -2387,14 +2396,14 @@ mod tests {
                 .generate_account_totp(au, &gte1, ct.clone())
                 .unwrap();
             let (_sesid, _tok) = match res {
-                SetCredentialResponse::TOTPCheck(id, tok) => (id, tok),
+                SetCredentialResponse::TotpCheck(id, tok) => (id, tok),
                 _ => panic!("invalid state!"),
             };
 
             // We can reuse the OTP/Vte2 from before, since we want the invalid otp.
             match idms_prox_write.verify_account_totp(au, &vte2, ct.clone()) {
                 // On failure we get back another attempt to setup the token.
-                Ok(SetCredentialResponse::TOTPCheck(_id, _tok)) => {}
+                Ok(SetCredentialResponse::TotpCheck(_id, _tok)) => {}
                 _ => panic!(),
             };
             idms_prox_write.expire_mfareg_sessions(expire.clone());
@@ -2405,16 +2414,16 @@ mod tests {
                 .generate_account_totp(au, &gte1, ct.clone())
                 .unwrap();
             let (sesid, tok) = match res {
-                SetCredentialResponse::TOTPCheck(id, tok) => (id, tok),
+                SetCredentialResponse::TotpCheck(id, tok) => (id, tok),
                 _ => panic!("invalid state!"),
             };
             // We can't reuse the OTP/Vte from before, since the token seed changes
-            let r_tok: TOTP = tok.into();
+            let r_tok: Totp = tok.into();
             let chal = r_tok
                 .do_totp_duration_from_epoch(&ct)
                 .expect("Failed to do totp?");
             // attempt the verify
-            let vte3 = VerifyTOTPEvent::new_internal(UUID_ADMIN.clone(), sesid, chal);
+            let vte3 = VerifyTotpEvent::new_internal(UUID_ADMIN.clone(), sesid, chal);
 
             match idms_prox_write.verify_account_totp(au, &vte3, ct.clone()) {
                 Ok(SetCredentialResponse::Success) => {}
@@ -2423,7 +2432,7 @@ mod tests {
             idms_prox_write.expire_mfareg_sessions(expire.clone());
 
             // Test removing the TOTP and then authing with password only.
-            let rte = RemoveTOTPEvent::new_internal(UUID_ADMIN.clone());
+            let rte = RemoveTotpEvent::new_internal(UUID_ADMIN.clone());
             idms_prox_write.remove_account_totp(au, &rte).unwrap();
             assert!(idms_prox_write.commit(au).is_ok());
 
@@ -2506,8 +2515,8 @@ mod tests {
             idms_delayed.is_empty_or_panic();
             // Get the auth ready.
             let uuae = UnixUserAuthEvent::new_internal(&UUID_ADMIN, "password");
-            let mut idms_write = idms.write();
-            let a1 = task::block_on(idms_write.auth_unix(
+            let mut idms_auth = idms.auth();
+            let a1 = task::block_on(idms_auth.auth_unix(
                 au,
                 &uuae,
                 Duration::from_secs(TEST_CURRENT_TIME),
@@ -2516,14 +2525,14 @@ mod tests {
                 Ok(Some(_tok)) => {}
                 _ => assert!(false),
             };
-            idms_write.commit(au).expect("Must not fail");
+            idms_auth.commit(au).expect("Must not fail");
             // The upgrade was queued
             // Process it.
             let da = idms_delayed.try_recv().expect("invalid");
             let _r = task::block_on(idms.delayed_action(au, duration_from_epoch_now(), da));
             // Go again
-            let mut idms_write = idms.write();
-            let a2 = task::block_on(idms_write.auth_unix(
+            let mut idms_auth = idms.auth();
+            let a2 = task::block_on(idms_auth.auth_unix(
                 au,
                 &uuae,
                 Duration::from_secs(TEST_CURRENT_TIME),
@@ -2532,7 +2541,7 @@ mod tests {
                 Ok(Some(_tok)) => {}
                 _ => assert!(false),
             };
-            idms_write.commit(au).expect("Must not fail");
+            idms_auth.commit(au).expect("Must not fail");
             // No delayed action was queued.
             idms_delayed.is_empty_or_panic();
         })
@@ -2584,9 +2593,9 @@ mod tests {
             let time_low = Duration::from_secs(TEST_NOT_YET_VALID_TIME);
             let time_high = Duration::from_secs(TEST_AFTER_EXPIRY);
 
-            let mut idms_write = idms.write();
+            let mut idms_auth = idms.auth();
             let admin_init = AuthEvent::named_init("admin");
-            let r1 = task::block_on(idms_write.auth(au, &admin_init, time_low));
+            let r1 = task::block_on(idms_auth.auth(au, &admin_init, time_low));
 
             let ar = r1.unwrap();
             let AuthResult {
@@ -2603,12 +2612,12 @@ mod tests {
                 }
             };
 
-            idms_write.commit(au).expect("Must not fail");
+            idms_auth.commit(au).expect("Must not fail");
 
             // And here!
-            let mut idms_write = idms.write();
+            let mut idms_auth = idms.auth();
             let admin_init = AuthEvent::named_init("admin");
-            let r1 = task::block_on(idms_write.auth(au, &admin_init, time_high));
+            let r1 = task::block_on(idms_auth.auth(au, &admin_init, time_high));
 
             let ar = r1.unwrap();
             let AuthResult {
@@ -2625,7 +2634,7 @@ mod tests {
                 }
             };
 
-            idms_write.commit(au).expect("Must not fail");
+            idms_auth.commit(au).expect("Must not fail");
         })
     }
 
@@ -2664,10 +2673,10 @@ mod tests {
             assert!(idms_prox_write.commit(au).is_ok());
 
             // Now check auth when the time is too high or too low.
-            let mut idms_write = idms.write();
+            let mut idms_auth = idms.auth();
             let uuae_good = UnixUserAuthEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD);
 
-            let a1 = task::block_on(idms_write.auth_unix(au, &uuae_good, time_low));
+            let a1 = task::block_on(idms_auth.auth_unix(au, &uuae_good, time_low));
             // Should this actually send an error with the details? Or just silently act as
             // badpw?
             match a1 {
@@ -2675,13 +2684,13 @@ mod tests {
                 _ => assert!(false),
             };
 
-            let a2 = task::block_on(idms_write.auth_unix(au, &uuae_good, time_high));
+            let a2 = task::block_on(idms_auth.auth_unix(au, &uuae_good, time_high));
             match a2 {
                 Ok(None) => {}
                 _ => assert!(false),
             };
 
-            idms_write.commit(au).expect("Must not fail");
+            idms_auth.commit(au).expect("Must not fail");
             // Also check the generated unix tokens are invalid.
             let mut idms_prox_read = idms.proxy_read();
             let uute = UnixUserTokenEvent::new_internal(UUID_ADMIN.clone());
@@ -2758,10 +2767,10 @@ mod tests {
                 Duration::from_secs(TEST_CURRENT_TIME),
                 "admin",
             );
-            let mut idms_write = idms.write();
+            let mut idms_auth = idms.auth();
             let anon_step = AuthEvent::cred_step_password(sid, TEST_PASSWORD_INC);
 
-            let r2 = task::block_on(idms_write.auth(
+            let r2 = task::block_on(idms_auth.auth(
                 au,
                 &anon_step,
                 Duration::from_secs(TEST_CURRENT_TIME),
@@ -2791,15 +2800,15 @@ mod tests {
                     panic!();
                 }
             };
-            idms_write.commit(au).expect("Must not fail");
+            idms_auth.commit(au).expect("Must not fail");
 
             // Auth init, softlock present, count == 1, same time (so before unlock_at)
             // aka Auth valid immediate, (ct < exp), autofail
             // aka Auth invalid immediate, (ct < exp), autofail
-            let mut idms_write = idms.write();
+            let mut idms_auth = idms.auth();
             let admin_init = AuthEvent::named_init("admin");
 
-            let r1 = task::block_on(idms_write.auth(
+            let r1 = task::block_on(idms_auth.auth(
                 au,
                 &admin_init,
                 Duration::from_secs(TEST_CURRENT_TIME),
@@ -2822,7 +2831,7 @@ mod tests {
                 }
             };
 
-            idms_write.commit(au).expect("Must not fail");
+            idms_auth.commit(au).expect("Must not fail");
 
             // Auth invalid once softlock pass (count == 2, exp_at grows)
             // Tested in the softlock state machine.
@@ -2835,11 +2844,11 @@ mod tests {
                 "admin",
             );
 
-            let mut idms_write = idms.write();
+            let mut idms_auth = idms.auth();
             let anon_step = AuthEvent::cred_step_password(sid, TEST_PASSWORD);
 
             // Expect success
-            let r2 = task::block_on(idms_write.auth(
+            let r2 = task::block_on(idms_auth.auth(
                 au,
                 &anon_step,
                 Duration::from_secs(TEST_CURRENT_TIME + 2),
@@ -2871,7 +2880,7 @@ mod tests {
                 }
             };
 
-            idms_write.commit(au).expect("Must not fail");
+            idms_auth.commit(au).expect("Must not fail");
             // Auth valid after reset at, count == 0.
             // Tested in the softlock state machine.
 
@@ -2905,10 +2914,10 @@ mod tests {
                 "admin",
             );
             // Get the detail wrong in sid_later.
-            let mut idms_write = idms.write();
+            let mut idms_auth = idms.auth();
             let anon_step = AuthEvent::cred_step_password(sid_later, TEST_PASSWORD_INC);
 
-            let r2 = task::block_on(idms_write.auth(
+            let r2 = task::block_on(idms_auth.auth(
                 au,
                 &anon_step,
                 Duration::from_secs(TEST_CURRENT_TIME),
@@ -2938,14 +2947,14 @@ mod tests {
                     panic!();
                 }
             };
-            idms_write.commit(au).expect("Must not fail");
+            idms_auth.commit(au).expect("Must not fail");
 
             // Now check that sid_early is denied due to softlock.
-            let mut idms_write = idms.write();
+            let mut idms_auth = idms.auth();
             let anon_step = AuthEvent::cred_step_password(sid_early, TEST_PASSWORD);
 
             // Expect success
-            let r2 = task::block_on(idms_write.auth(
+            let r2 = task::block_on(idms_auth.auth(
                 au,
                 &anon_step,
                 Duration::from_secs(TEST_CURRENT_TIME),
@@ -2974,7 +2983,7 @@ mod tests {
                     panic!();
                 }
             };
-            idms_write.commit(au).expect("Must not fail");
+            idms_auth.commit(au).expect("Must not fail");
         })
     }
 
@@ -3005,11 +3014,11 @@ mod tests {
             assert!(idms_prox_write.set_unix_account_password(au, &pce).is_ok());
             assert!(idms_prox_write.commit(au).is_ok());
 
-            let mut idms_write = idms.write();
+            let mut idms_auth = idms.auth();
             let uuae_good = UnixUserAuthEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD);
             let uuae_bad = UnixUserAuthEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD_INC);
 
-            let a2 = task::block_on(idms_write.auth_unix(
+            let a2 = task::block_on(idms_auth.auth_unix(
                 au,
                 &uuae_bad,
                 Duration::from_secs(TEST_CURRENT_TIME),
@@ -3020,7 +3029,7 @@ mod tests {
             };
 
             // Now if we immediately auth again, should fail at same time due to SL
-            let a1 = task::block_on(idms_write.auth_unix(
+            let a1 = task::block_on(idms_auth.auth_unix(
                 au,
                 &uuae_good,
                 Duration::from_secs(TEST_CURRENT_TIME),
@@ -3031,7 +3040,7 @@ mod tests {
             };
 
             // And then later, works because of SL lifting.
-            let a1 = task::block_on(idms_write.auth_unix(
+            let a1 = task::block_on(idms_auth.auth_unix(
                 au,
                 &uuae_good,
                 Duration::from_secs(TEST_CURRENT_TIME + 2),
@@ -3041,7 +3050,7 @@ mod tests {
                 _ => assert!(false),
             };
 
-            assert!(idms_write.commit(au).is_ok());
+            assert!(idms_auth.commit(au).is_ok());
         })
     }
 

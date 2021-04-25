@@ -4,16 +4,11 @@
 // both change approaches.
 //
 //
-use crate::audit::AuditScope;
-use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew};
 use crate::event::{CreateEvent, ModifyEvent};
 use crate::plugins::Plugin;
+use crate::prelude::*;
 use crate::schema::SchemaTransaction;
-use crate::server::{
-    QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
-};
-use crate::value::PartialValue;
-use kanidm_proto::v1::{ConsistencyError, OperationError, PluginError};
+use kanidm_proto::v1::{ConsistencyError, PluginError};
 
 use std::collections::BTreeMap;
 
@@ -196,11 +191,10 @@ impl Plugin for AttrUnique {
 
 #[cfg(test)]
 mod tests {
-    use crate::entry::{Entry, EntryInit, EntryNew};
     use crate::modify::{Modify, ModifyList};
-    use crate::value::{PartialValue, Value};
-    use kanidm_proto::v1::{OperationError, PluginError};
-    use smartstring::alias::String as AttrString;
+    use crate::prelude::*;
+    use kanidm_proto::v1::PluginError;
+
     // Test entry in db, and same name, reject.
     #[test]
     fn test_pre_create_name_unique() {

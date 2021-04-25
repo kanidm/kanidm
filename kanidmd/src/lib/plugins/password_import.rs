@@ -1,12 +1,9 @@
 // Transform password import requests into proper kanidm credentials.
-use crate::audit::AuditScope;
 use crate::credential::{Credential, Password};
-use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew};
 use crate::event::{CreateEvent, ModifyEvent};
 use crate::plugins::Plugin;
-use crate::server::QueryServerWriteTransaction;
-use crate::value::Value;
-use kanidm_proto::v1::{OperationError, PluginError};
+use crate::prelude::*;
+use kanidm_proto::v1::PluginError;
 use std::convert::TryFrom;
 
 pub struct PasswordImport {}
@@ -127,14 +124,10 @@ impl Plugin for PasswordImport {
 #[cfg(test)]
 mod tests {
     use crate::credential::policy::CryptoPolicy;
-    use crate::credential::totp::{TOTP, TOTP_DEFAULT_STEP};
+    use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
     use crate::credential::{Credential, CredentialType};
-    use crate::entry::{Entry, EntryInit, EntryNew};
     use crate::modify::{Modify, ModifyList};
-    use crate::server::{QueryServerTransaction, QueryServerWriteTransaction};
-    use crate::value::{PartialValue, Value};
-    use smartstring::alias::String as AttrString;
-    use uuid::Uuid;
+    use crate::prelude::*;
 
     const IMPORT_HASH: &'static str =
         "pbkdf2_sha256$36000$xIEozuZVAoYm$uW1b35DUKyhvQAf1mBqMvoBDcqSD06juzyO/nmyV0+w=";
@@ -241,7 +234,7 @@ mod tests {
         }"#,
         );
 
-        let totp = TOTP::generate_secure("test_totp".to_string(), TOTP_DEFAULT_STEP);
+        let totp = Totp::generate_secure("test_totp".to_string(), TOTP_DEFAULT_STEP);
         let p = CryptoPolicy::minimum();
         let c = Credential::new_password_only(&p, "password")
             .unwrap()
@@ -270,7 +263,7 @@ mod tests {
                     .get_ava_single_credential("primary_credential")
                     .expect("failed to get primary cred.");
                 match &c.type_ {
-                    CredentialType::PasswordMFA(_pw, totp, webauthn) => {
+                    CredentialType::PasswordMfa(_pw, totp, webauthn) => {
                         assert!(totp.is_some());
                         assert!(webauthn.is_empty());
                     }

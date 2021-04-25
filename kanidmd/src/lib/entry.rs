@@ -26,16 +26,13 @@
 //! [`filter`]: ../filter/index.html
 //! [`schema`]: ../schema/index.html
 
-use crate::audit::AuditScope;
 use crate::credential::Credential;
 use crate::filter::{Filter, FilterInvalid, FilterResolved, FilterValidResolved};
 use crate::ldap::ldap_attr_entry_map;
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
+use crate::prelude::*;
 use crate::repl::cid::Cid;
 use crate::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
-use crate::server::{
-    QueryServerReadTransaction, QueryServerTransaction, QueryServerWriteTransaction,
-};
 use crate::value::{IndexType, SyntaxType};
 use crate::value::{PartialValue, Value};
 use kanidm_proto::v1::Entry as ProtoEntry;
@@ -90,6 +87,10 @@ lazy_static! {
     static ref PVCLASS_TOMBSTONE: PartialValue = PartialValue::new_class("tombstone");
     static ref PVCLASS_RECYCLED: PartialValue = PartialValue::new_class("recycled");
 }
+
+pub type EntrySealedCommitted = Entry<EntrySealed, EntryCommitted>;
+pub type EntryInvalidCommitted = Entry<EntryInvalid, EntryCommitted>;
+pub type EntryTuple = (EntrySealedCommitted, EntryInvalidCommitted);
 
 // Entry should have a lifecycle of types. This is Raw (modifiable) and Entry (verified).
 // This way, we can move between them, but only certain actions are possible on either

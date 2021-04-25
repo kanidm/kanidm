@@ -45,7 +45,7 @@ pub enum ClientError {
     Transport(reqwest::Error),
     AuthenticationFailed,
     EmptyResponse,
-    TOTPVerifyFailed(Uuid, TOTPSecret),
+    TotpVerifyFailed(Uuid, TotpSecret),
     JSONDecode(reqwest::Error, String),
     JSONEncode(SerdeJsonError),
     SystemError,
@@ -281,10 +281,7 @@ impl KanidmClientBuilder {
         let uri = Url::parse(&address).expect("can not fail");
 
         #[allow(clippy::expect_used)]
-        let origin = uri
-            .host_str()
-            .map(|h| format!("{}://{}", uri.scheme(), h))
-            .expect("can not fail");
+        let origin = uri.origin().unicode_serialization();
 
         Ok(KanidmAsyncClient {
             client,
@@ -558,7 +555,7 @@ impl KanidmClient {
         &self,
         id: &str,
         label: &str,
-    ) -> Result<(Uuid, TOTPSecret), ClientError> {
+    ) -> Result<(Uuid, TotpSecret), ClientError> {
         tokio_block_on(
             self.asclient
                 .idm_account_primary_credential_generate_totp(id, label),

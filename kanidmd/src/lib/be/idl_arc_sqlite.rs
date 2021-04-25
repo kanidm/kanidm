@@ -590,7 +590,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
             entries.try_for_each(|e| {
                 ltrace!(au, "Inserting {:?} to cache", e.get_id());
                 if e.get_id() == 0 {
-                    Err(OperationError::InvalidEntryID)
+                    Err(OperationError::InvalidEntryId)
                 } else {
                     (*self.allids).insert_id(e.get_id());
                     self.entry_cache
@@ -627,7 +627,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
             idl.try_for_each(|i| {
                 ltrace!(au, "Removing {:?} from cache", i);
                 if i == 0 {
-                    Err(OperationError::InvalidEntryID)
+                    Err(OperationError::InvalidEntryId)
                 } else {
                     (*self.allids).remove_id(i);
                     self.entry_cache.remove_dirty(i);
