@@ -68,10 +68,9 @@ macro_rules! setup_test {
 #[cfg(test)]
 macro_rules! run_test_no_init {
     ($test_fn:expr) => {{
-        use crate::audit::AuditScope;
         use crate::be::{Backend, BackendConfig};
+        use crate::prelude::*;
         use crate::schema::Schema;
-        use crate::server::QueryServer;
         use crate::utils::duration_from_epoch_now;
 
         use env_logger;
@@ -112,10 +111,9 @@ macro_rules! run_test_no_init {
 #[cfg(test)]
 macro_rules! run_test {
     ($test_fn:expr) => {{
-        use crate::audit::AuditScope;
         use crate::be::{Backend, BackendConfig};
+        use crate::prelude::*;
         use crate::schema::Schema;
-        use crate::server::QueryServer;
         #[allow(unused_imports)]
         use crate::utils::duration_from_epoch_now;
 
@@ -165,15 +163,13 @@ macro_rules! entry_str_to_account {
 
 macro_rules! run_idm_test_inner {
     ($test_fn:expr) => {{
-        use crate::audit::AuditScope;
         #[allow(unused_imports)]
         use crate::be::{Backend, BackendConfig};
         #[allow(unused_imports)]
         use crate::idm::server::{IdmServer, IdmServerDelayed};
+        use crate::prelude::*;
         #[allow(unused_imports)]
         use crate::schema::Schema;
-        #[allow(unused_imports)]
-        use crate::server::QueryServer;
         #[allow(unused_imports)]
         use crate::utils::duration_from_epoch_now;
 
@@ -241,11 +237,10 @@ macro_rules! run_create_test {
         $internal:expr,
         $check:expr
     ) => {{
-        use crate::audit::AuditScope;
         use crate::be::{Backend, BackendConfig};
         use crate::event::CreateEvent;
+        use crate::prelude::*;
         use crate::schema::Schema;
-        use crate::server::QueryServer;
         use crate::utils::duration_from_epoch_now;
 
         let mut au = AuditScope::new("run_create_test", uuid::Uuid::new_v4(), None);
@@ -296,11 +291,10 @@ macro_rules! run_modify_test {
         $internal:expr,
         $check:expr
     ) => {{
-        use crate::audit::AuditScope;
         use crate::be::{Backend, BackendConfig};
         use crate::event::ModifyEvent;
+        use crate::prelude::*;
         use crate::schema::Schema;
-        use crate::server::QueryServer;
         use crate::utils::duration_from_epoch_now;
 
         let mut au = AuditScope::new("run_modify_test", uuid::Uuid::new_v4(), None);
@@ -358,11 +352,10 @@ macro_rules! run_delete_test {
         $internal:expr,
         $check:expr
     ) => {{
-        use crate::audit::AuditScope;
         use crate::be::{Backend, BackendConfig};
         use crate::event::DeleteEvent;
+        use crate::prelude::*;
         use crate::schema::Schema;
-        use crate::server::QueryServer;
         use crate::utils::duration_from_epoch_now;
 
         let mut au = AuditScope::new("run_delete_test", uuid::Uuid::new_v4(), None);

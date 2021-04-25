@@ -1,7 +1,6 @@
 use crate::actors::v1_write::IdmAccountSetPasswordMessage;
-use crate::audit::AuditScope;
 use crate::event::Event;
-use crate::server::{QueryServerReadTransaction, QueryServerWriteTransaction};
+use crate::prelude::*;
 
 use uuid::Uuid;
 
