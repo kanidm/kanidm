@@ -20,7 +20,6 @@ extern "C" {
 pub struct LoginApp {
     link: ComponentLink<Self>,
     inputvalue: String,
-    #[allow(dead_code)]
     lstorage: StorageService,
     ft: Option<FetchTask>,
     session_id: String,
@@ -263,7 +262,7 @@ impl Component for LoginApp {
     type Properties = ();
 
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
-        ConsoleService::log(&"create".to_string());
+        ConsoleService::log("create");
 
         // First we need to work out what state we are in.
         let lstorage = StorageService::new(yew::services::storage::Area::Local).unwrap();
