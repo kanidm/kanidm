@@ -21,11 +21,15 @@ pub fn read_tokens() -> Result<BTreeMap<String, String>, ()> {
         return Ok(BTreeMap::new());
     }
 
+    debug!("Attempting to read tokens from {:?}", &token_path);
     // If the file does not exist, return Ok<map>
     let file = match File::open(&token_path) {
         Ok(f) => f,
         Err(e) => {
-            warn!("Can not read from {}, continuing ... {:?}", TOKEN_PATH, e);
+            warn!(
+                "Cannot read tokens from {} due to error: {:?} ... continuing.",
+                TOKEN_PATH, e
+            );
             return Ok(BTreeMap::new());
         }
     };
@@ -33,7 +37,10 @@ pub fn read_tokens() -> Result<BTreeMap<String, String>, ()> {
 
     // Else try to read
     serde_json::from_reader(reader).map_err(|e| {
-        error!("JSON/IO error -> {:?}", e);
+        error!(
+            "JSON/IO error reading tokens from {:?} -> {:?}",
+            &token_path, e
+        );
     })
 }
 
@@ -76,7 +83,10 @@ pub fn write_tokens(tokens: &BTreeMap<String, String>) -> Result<(), ()> {
 
     let writer = BufWriter::new(file);
     serde_json::to_writer_pretty(writer, tokens).map_err(|e| {
-        error!("JSON/IO error -> {:?}", e);
+        error!(
+            "JSON/IO error writing tokens to file {:?} -> {:?}",
+            &token_path, e
+        );
     })
 }
 
