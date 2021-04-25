@@ -13,6 +13,7 @@
 * Triss Healy (NiryaAestus)
 * Samuel Cabrero (scabrero)
 * Victor Wai (vcwai)
+* James Hodgkinson (yaleman)
 
 ## Acknowledgements
 
