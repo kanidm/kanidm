@@ -262,7 +262,7 @@ impl Component for LoginApp {
     type Properties = ();
 
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
-        ConsoleService::log(format!("create").as_str());
+        ConsoleService::log("create");
 
         // First we need to work out what state we are in.
         let lstorage = StorageService::new(yew::services::storage::Area::Local).unwrap();
@@ -328,7 +328,7 @@ impl Component for LoginApp {
                     Ok(totp) => {
                         self.state = LoginState::Totp(TotpState::Disabled);
                         let authreq = AuthRequest {
-                            step: AuthStep::Cred(AuthCredential::TOTP(totp)),
+                            step: AuthStep::Cred(AuthCredential::Totp(totp)),
                         };
                         self.auth_step(authreq);
                     }
@@ -411,7 +411,7 @@ impl Component for LoginApp {
                                     // Go to the password view.
                                     self.state = LoginState::Password(true);
                                 }
-                                AuthAllowed::TOTP => {
+                                AuthAllowed::Totp => {
                                     self.state = LoginState::Totp(TotpState::Enabled);
                                 }
                                 AuthAllowed::Webauthn(challenge) => {

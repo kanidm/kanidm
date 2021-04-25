@@ -63,7 +63,7 @@ const ONEDAY: u64 = 86400;
 #[derive(Debug, Clone)]
 pub enum CredSoftLockPolicy {
     Password,
-    TOTP(u64),
+    Totp(u64),
     Webauthn,
 }
 
@@ -89,7 +89,7 @@ impl CredSoftLockPolicy {
                     LockState::Locked(count, reset_at, reset_at)
                 }
             }
-            CredSoftLockPolicy::TOTP(step) => {
+            CredSoftLockPolicy::Totp(step) => {
                 // reset at is based on the next step ending.
                 let next_window_end = ct.as_secs() + step;
                 let rem = next_window_end % step;
@@ -170,10 +170,7 @@ impl CredSoftLock {
 
     /// Is this credential valid to proceed at this point in time.
     pub fn is_valid(&self) -> bool {
-        match self.state {
-            LockState::Locked(_count, _reset_at, _unlock_at) => false,
-            _ => true,
-        }
+        !matches!(self.state, LockState::Locked(_count, _reset_at, _unlock_at))
     }
 
     /// Document a failure of authentication at this time.
@@ -320,7 +317,7 @@ mod tests {
 
     #[test]
     fn test_credential_softlock_policy_totp() {
-        let policy = CredSoftLockPolicy::TOTP(TOTP_DEFAULT_STEP);
+        let policy = CredSoftLockPolicy::Totp(TOTP_DEFAULT_STEP);
 
         assert!(
             policy.failure_next_state(1, Duration::from_secs(10))

@@ -9,8 +9,8 @@ use crate::event::{
     ReviveRecycledEvent,
 };
 use crate::idm::event::{
-    GeneratePasswordEvent, GenerateTOTPEvent, PasswordChangeEvent, RegenerateRadiusSecretEvent,
-    RemoveTOTPEvent, RemoveWebauthnEvent, UnixPasswordChangeEvent, VerifyTOTPEvent,
+    GeneratePasswordEvent, GenerateTotpEvent, PasswordChangeEvent, RegenerateRadiusSecretEvent,
+    RemoveTotpEvent, RemoveWebauthnEvent, UnixPasswordChangeEvent, VerifyTotpEvent,
     WebauthnDoRegisterEvent, WebauthnInitRegisterEvent,
 };
 use crate::modify::{Modify, ModifyInvalid, ModifyList};
@@ -622,8 +622,8 @@ impl QueryServerWriteV1 {
                             .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
                             .map(SetCredentialResponse::Token)
                     }
-                    SetCredentialRequest::TOTPGenerate(label) => {
-                        let gte = GenerateTOTPEvent::from_parts(
+                    SetCredentialRequest::TotpGenerate(label) => {
+                        let gte = GenerateTotpEvent::from_parts(
                             &mut audit,
                             &idms_prox_write.qs_write,
                             msg.uat.as_ref(),
@@ -642,8 +642,8 @@ impl QueryServerWriteV1 {
                             .generate_account_totp(&mut audit, &gte, ct)
                             .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
                     }
-                    SetCredentialRequest::TOTPVerify(uuid, chal) => {
-                        let vte = VerifyTOTPEvent::from_parts(
+                    SetCredentialRequest::TotpVerify(uuid, chal) => {
+                        let vte = VerifyTotpEvent::from_parts(
                             &mut audit,
                             &idms_prox_write.qs_write,
                             msg.uat.as_ref(),
@@ -663,8 +663,8 @@ impl QueryServerWriteV1 {
                             .verify_account_totp(&mut audit, &vte, ct)
                             .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
                     }
-                    SetCredentialRequest::TOTPRemove => {
-                        let rte = RemoveTOTPEvent::from_parts(
+                    SetCredentialRequest::TotpRemove => {
+                        let rte = RemoveTotpEvent::from_parts(
                             &mut audit,
                             &idms_prox_write.qs_write,
                             msg.uat.as_ref(),

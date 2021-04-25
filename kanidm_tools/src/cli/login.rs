@@ -256,7 +256,7 @@ impl LoginOpt {
             let res = match choice {
                 AuthAllowed::Anonymous => client.auth_step_anonymous(),
                 AuthAllowed::Password => self.do_password(&mut client),
-                AuthAllowed::TOTP => self.do_totp(&mut client),
+                AuthAllowed::Totp => self.do_totp(&mut client),
                 AuthAllowed::Webauthn(chal) => self.do_webauthn(&mut client, chal.clone()),
             };
 

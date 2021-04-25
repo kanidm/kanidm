@@ -264,13 +264,13 @@ impl UnixUserAuthEvent {
 }
 
 #[derive(Debug)]
-pub struct GenerateTOTPEvent {
+pub struct GenerateTotpEvent {
     pub event: Event,
     pub target: Uuid,
     pub label: String,
 }
 
-impl GenerateTOTPEvent {
+impl GenerateTotpEvent {
     pub fn from_parts(
         audit: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
@@ -280,7 +280,7 @@ impl GenerateTOTPEvent {
     ) -> Result<Self, OperationError> {
         let e = Event::from_rw_uat(audit, qs, uat)?;
 
-        Ok(GenerateTOTPEvent {
+        Ok(GenerateTotpEvent {
             event: e,
             target,
             label,
@@ -291,7 +291,7 @@ impl GenerateTOTPEvent {
     pub fn new_internal(target: Uuid) -> Self {
         let e = Event::from_internal();
 
-        GenerateTOTPEvent {
+        GenerateTotpEvent {
             event: e,
             target,
             label: "internal_token".to_string(),
@@ -300,14 +300,14 @@ impl GenerateTOTPEvent {
 }
 
 #[derive(Debug)]
-pub struct VerifyTOTPEvent {
+pub struct VerifyTotpEvent {
     pub event: Event,
     pub target: Uuid,
     pub session: Uuid,
     pub chal: u32,
 }
 
-impl VerifyTOTPEvent {
+impl VerifyTotpEvent {
     pub fn from_parts(
         audit: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
@@ -318,7 +318,7 @@ impl VerifyTOTPEvent {
     ) -> Result<Self, OperationError> {
         let e = Event::from_rw_uat(audit, qs, uat)?;
 
-        Ok(VerifyTOTPEvent {
+        Ok(VerifyTotpEvent {
             event: e,
             target,
             session,
@@ -330,7 +330,7 @@ impl VerifyTOTPEvent {
     pub fn new_internal(target: Uuid, session: Uuid, chal: u32) -> Self {
         let e = Event::from_internal();
 
-        VerifyTOTPEvent {
+        VerifyTotpEvent {
             event: e,
             target,
             session,
@@ -340,12 +340,12 @@ impl VerifyTOTPEvent {
 }
 
 #[derive(Debug)]
-pub struct RemoveTOTPEvent {
+pub struct RemoveTotpEvent {
     pub event: Event,
     pub target: Uuid,
 }
 
-impl RemoveTOTPEvent {
+impl RemoveTotpEvent {
     pub fn from_parts(
         audit: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
@@ -354,14 +354,14 @@ impl RemoveTOTPEvent {
     ) -> Result<Self, OperationError> {
         let e = Event::from_rw_uat(audit, qs, uat)?;
 
-        Ok(RemoveTOTPEvent { event: e, target })
+        Ok(RemoveTotpEvent { event: e, target })
     }
 
     #[cfg(test)]
     pub fn new_internal(target: Uuid) -> Self {
         let e = Event::from_internal();
 
-        RemoveTOTPEvent { event: e, target }
+        RemoveTotpEvent { event: e, target }
     }
 }
 

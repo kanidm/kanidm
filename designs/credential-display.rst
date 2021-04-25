@@ -24,7 +24,7 @@ An example of this display for the CLI:
     expire_at: <date>
 
     - <credential_id>
-    type: Password|APIKey|PasswordMFA
+    type: Password|APIKey|PasswordMfa
     locked: true|false
     valid_from: <date>
     expire_at: <date>

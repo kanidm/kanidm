@@ -7,51 +7,51 @@ use std::convert::TryFrom;
 use std::convert::TryInto;
 use std::time::{Duration, SystemTime};
 
-use kanidm_proto::v1::TOTPAlgo as ProtoTOTPAlgo;
-use kanidm_proto::v1::TOTPSecret as ProtoTOTP;
+use kanidm_proto::v1::TotpAlgo as ProtoTotpAlgo;
+use kanidm_proto::v1::TotpSecret as ProtoTotp;
 
 // This is 64 bits of entropy, as the examples in https://tools.ietf.org/html/rfc6238 show.
 const SECRET_SIZE_BYTES: usize = 8;
 pub const TOTP_DEFAULT_STEP: u64 = 30;
 
 #[derive(Debug, PartialEq)]
-pub enum TOTPError {
+pub enum TotpError {
     OpenSSLError,
     HmacError,
     TimeError,
 }
 
 #[derive(Debug, Clone)]
-pub enum TOTPAlgo {
+pub enum TotpAlgo {
     Sha1,
     Sha256,
     Sha512,
 }
 
-impl TOTPAlgo {
-    pub(crate) fn digest(&self, key: &[u8], counter: u64) -> Result<Vec<u8>, TOTPError> {
-        let key = PKey::hmac(key).map_err(|_e| TOTPError::OpenSSLError)?;
+impl TotpAlgo {
+    pub(crate) fn digest(&self, key: &[u8], counter: u64) -> Result<Vec<u8>, TotpError> {
+        let key = PKey::hmac(key).map_err(|_e| TotpError::OpenSSLError)?;
         let mut signer =
             match self {
-                TOTPAlgo::Sha1 => Signer::new(MessageDigest::sha1(), &key)
-                    .map_err(|_e| TOTPError::OpenSSLError)?,
-                TOTPAlgo::Sha256 => Signer::new(MessageDigest::sha256(), &key)
-                    .map_err(|_e| TOTPError::OpenSSLError)?,
-                TOTPAlgo::Sha512 => Signer::new(MessageDigest::sha512(), &key)
-                    .map_err(|_e| TOTPError::OpenSSLError)?,
+                TotpAlgo::Sha1 => Signer::new(MessageDigest::sha1(), &key)
+                    .map_err(|_e| TotpError::OpenSSLError)?,
+                TotpAlgo::Sha256 => Signer::new(MessageDigest::sha256(), &key)
+                    .map_err(|_e| TotpError::OpenSSLError)?,
+                TotpAlgo::Sha512 => Signer::new(MessageDigest::sha512(), &key)
+                    .map_err(|_e| TotpError::OpenSSLError)?,
             };
         signer
             .update(&counter.to_be_bytes())
-            .map_err(|_e| TOTPError::OpenSSLError)?;
-        let hmac = signer.sign_to_vec().map_err(|_e| TOTPError::OpenSSLError)?;
+            .map_err(|_e| TotpError::OpenSSLError)?;
+        let hmac = signer.sign_to_vec().map_err(|_e| TotpError::OpenSSLError)?;
 
         let expect = match self {
-            TOTPAlgo::Sha1 => 20,
-            TOTPAlgo::Sha256 => 32,
-            TOTPAlgo::Sha512 => 64,
+            TotpAlgo::Sha1 => 20,
+            TotpAlgo::Sha256 => 32,
+            TotpAlgo::Sha512 => 64,
         };
         if hmac.len() != expect {
-            return Err(TOTPError::HmacError);
+            return Err(TotpError::HmacError);
         }
         Ok(hmac)
     }
@@ -59,23 +59,23 @@ impl TOTPAlgo {
 
 /// https://tools.ietf.org/html/rfc6238 which relies on https://tools.ietf.org/html/rfc4226
 #[derive(Debug, Clone)]
-pub struct TOTP {
+pub struct Totp {
     label: String,
     secret: Vec<u8>,
     pub(crate) step: u64,
-    algo: TOTPAlgo,
+    algo: TotpAlgo,
 }
 
-impl TryFrom<DbTotpV1> for TOTP {
+impl TryFrom<DbTotpV1> for Totp {
     type Error = ();
 
     fn try_from(value: DbTotpV1) -> Result<Self, Self::Error> {
         let algo = match value.a {
-            DbTotpAlgoV1::S1 => TOTPAlgo::Sha1,
-            DbTotpAlgoV1::S256 => TOTPAlgo::Sha256,
-            DbTotpAlgoV1::S512 => TOTPAlgo::Sha512,
+            DbTotpAlgoV1::S1 => TotpAlgo::Sha1,
+            DbTotpAlgoV1::S256 => TotpAlgo::Sha256,
+            DbTotpAlgoV1::S512 => TotpAlgo::Sha512,
         };
-        Ok(TOTP {
+        Ok(Totp {
             label: value.l,
             secret: value.k,
             step: value.s,
@@ -84,24 +84,24 @@ impl TryFrom<DbTotpV1> for TOTP {
     }
 }
 
-impl From<ProtoTOTP> for TOTP {
-    fn from(value: ProtoTOTP) -> Self {
-        TOTP {
+impl From<ProtoTotp> for Totp {
+    fn from(value: ProtoTotp) -> Self {
+        Totp {
             label: "test_token".to_string(),
             secret: value.secret,
             algo: match value.algo {
-                ProtoTOTPAlgo::Sha1 => TOTPAlgo::Sha1,
-                ProtoTOTPAlgo::Sha256 => TOTPAlgo::Sha256,
-                ProtoTOTPAlgo::Sha512 => TOTPAlgo::Sha512,
+                ProtoTotpAlgo::Sha1 => TotpAlgo::Sha1,
+                ProtoTotpAlgo::Sha256 => TotpAlgo::Sha256,
+                ProtoTotpAlgo::Sha512 => TotpAlgo::Sha512,
             },
             step: value.step,
         }
     }
 }
 
-impl TOTP {
-    pub fn new(label: String, secret: Vec<u8>, step: u64, algo: TOTPAlgo) -> Self {
-        TOTP {
+impl Totp {
+    pub fn new(label: String, secret: Vec<u8>, step: u64, algo: TotpAlgo) -> Self {
+        Totp {
             label,
             secret,
             step,
@@ -113,8 +113,8 @@ impl TOTP {
     pub fn generate_secure(label: String, step: u64) -> Self {
         let mut rng = rand::thread_rng();
         let secret: Vec<u8> = (0..SECRET_SIZE_BYTES).map(|_| rng.gen()).collect();
-        let algo = TOTPAlgo::Sha512;
-        TOTP {
+        let algo = TotpAlgo::Sha512;
+        Totp {
             label,
             secret,
             step,
@@ -128,40 +128,40 @@ impl TOTP {
             k: self.secret.clone(),
             s: self.step,
             a: match self.algo {
-                TOTPAlgo::Sha1 => DbTotpAlgoV1::S1,
-                TOTPAlgo::Sha256 => DbTotpAlgoV1::S256,
-                TOTPAlgo::Sha512 => DbTotpAlgoV1::S512,
+                TotpAlgo::Sha1 => DbTotpAlgoV1::S1,
+                TotpAlgo::Sha256 => DbTotpAlgoV1::S256,
+                TotpAlgo::Sha512 => DbTotpAlgoV1::S512,
             },
         }
     }
 
-    fn digest(&self, counter: u64) -> Result<u32, TOTPError> {
+    fn digest(&self, counter: u64) -> Result<u32, TotpError> {
         let hmac = self.algo.digest(&self.secret, counter)?;
         // Now take the hmac and encode it as hotp expects.
         // https://tools.ietf.org/html/rfc4226#page-7
         let offset = hmac
             .last()
             .map(|v| (v & 0xf) as usize)
-            .ok_or(TOTPError::HmacError)?;
+            .ok_or(TotpError::HmacError)?;
         let bytes: [u8; 4] = hmac[offset..offset + 4]
             .try_into()
-            .map_err(|_| TOTPError::HmacError)?;
+            .map_err(|_| TotpError::HmacError)?;
 
         let otp = u32::from_be_bytes(bytes);
         Ok((otp & 0x7fff_ffff) % 1_000_000)
     }
 
-    pub fn do_totp_duration_from_epoch(&self, time: &Duration) -> Result<u32, TOTPError> {
+    pub fn do_totp_duration_from_epoch(&self, time: &Duration) -> Result<u32, TotpError> {
         let secs = time.as_secs();
         // do the window calculation
         let counter = secs / self.step;
         self.digest(counter)
     }
 
-    pub fn do_totp(&self, time: &SystemTime) -> Result<u32, TOTPError> {
+    pub fn do_totp(&self, time: &SystemTime) -> Result<u32, TotpError> {
         let dur = time
             .duration_since(SystemTime::UNIX_EPOCH)
-            .map_err(|_| TOTPError::TimeError)?;
+            .map_err(|_| TotpError::TimeError)?;
         self.do_totp_duration_from_epoch(&dur)
     }
 
@@ -173,8 +173,8 @@ impl TOTP {
         }
     }
 
-    pub fn to_proto(&self, accountname: &str, issuer: &str) -> ProtoTOTP {
-        ProtoTOTP {
+    pub fn to_proto(&self, accountname: &str, issuer: &str) -> ProtoTotp {
+        ProtoTotp {
             accountname: accountname
                 .replace(":", "")
                 .replace("%3A", "")
@@ -186,9 +186,9 @@ impl TOTP {
             secret: self.secret.clone(),
             step: self.step,
             algo: match self.algo {
-                TOTPAlgo::Sha1 => ProtoTOTPAlgo::Sha1,
-                TOTPAlgo::Sha256 => ProtoTOTPAlgo::Sha256,
-                TOTPAlgo::Sha512 => ProtoTOTPAlgo::Sha512,
+                TotpAlgo::Sha1 => ProtoTotpAlgo::Sha1,
+                TotpAlgo::Sha256 => ProtoTotpAlgo::Sha256,
+                TotpAlgo::Sha512 => ProtoTotpAlgo::Sha512,
             },
         }
     }
@@ -196,21 +196,21 @@ impl TOTP {
 
 #[cfg(test)]
 mod tests {
-    use crate::credential::totp::{TOTPAlgo, TOTPError, TOTP, TOTP_DEFAULT_STEP};
+    use crate::credential::totp::{Totp, TotpAlgo, TotpError, TOTP_DEFAULT_STEP};
     use std::time::Duration;
 
     #[test]
     fn hotp_basic() {
-        let otp_sha1 = TOTP::new("".to_string(), vec![0], 30, TOTPAlgo::Sha1);
+        let otp_sha1 = Totp::new("".to_string(), vec![0], 30, TotpAlgo::Sha1);
         assert!(otp_sha1.digest(0) == Ok(328482));
-        let otp_sha256 = TOTP::new("".to_string(), vec![0], 30, TOTPAlgo::Sha256);
+        let otp_sha256 = Totp::new("".to_string(), vec![0], 30, TotpAlgo::Sha256);
         assert!(otp_sha256.digest(0) == Ok(356306));
-        let otp_sha512 = TOTP::new("".to_string(), vec![0], 30, TOTPAlgo::Sha512);
+        let otp_sha512 = Totp::new("".to_string(), vec![0], 30, TotpAlgo::Sha512);
         assert!(otp_sha512.digest(0) == Ok(674061));
     }
 
-    fn do_test(key: Vec<u8>, algo: TOTPAlgo, secs: u64, step: u64, expect: Result<u32, TOTPError>) {
-        let otp = TOTP::new("".to_string(), key.clone(), step, algo.clone());
+    fn do_test(key: Vec<u8>, algo: TotpAlgo, secs: u64, step: u64, expect: Result<u32, TotpError>) {
+        let otp = Totp::new("".to_string(), key.clone(), step, algo.clone());
         let d = Duration::from_secs(secs);
         let r = otp.do_totp_duration_from_epoch(&d);
         debug!(
@@ -224,14 +224,14 @@ mod tests {
     fn totp_sha1_vectors() {
         do_test(
             vec![0x00, 0x00, 0x00, 0x00],
-            TOTPAlgo::Sha1,
+            TotpAlgo::Sha1,
             1585368920,
             TOTP_DEFAULT_STEP,
             Ok(728926),
         );
         do_test(
             vec![0x00, 0xaa, 0xbb, 0xcc],
-            TOTPAlgo::Sha1,
+            TotpAlgo::Sha1,
             1585369498,
             TOTP_DEFAULT_STEP,
             Ok(985074),
@@ -242,14 +242,14 @@ mod tests {
     fn totp_sha256_vectors() {
         do_test(
             vec![0x00, 0x00, 0x00, 0x00],
-            TOTPAlgo::Sha256,
+            TotpAlgo::Sha256,
             1585369682,
             TOTP_DEFAULT_STEP,
             Ok(795483),
         );
         do_test(
             vec![0x00, 0xaa, 0xbb, 0xcc],
-            TOTPAlgo::Sha256,
+            TotpAlgo::Sha256,
             1585369689,
             TOTP_DEFAULT_STEP,
             Ok(728402),
@@ -260,14 +260,14 @@ mod tests {
     fn totp_sha512_vectors() {
         do_test(
             vec![0x00, 0x00, 0x00, 0x00],
-            TOTPAlgo::Sha512,
+            TotpAlgo::Sha512,
             1585369775,
             TOTP_DEFAULT_STEP,
             Ok(587735),
         );
         do_test(
             vec![0x00, 0xaa, 0xbb, 0xcc],
-            TOTPAlgo::Sha512,
+            TotpAlgo::Sha512,
             1585369780,
             TOTP_DEFAULT_STEP,
             Ok(952181),

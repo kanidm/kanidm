@@ -1957,7 +1957,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                         Err(e) => Err(OperationError::SchemaViolation(e)),
                     }
                 } else {
-                    Err(OperationError::InvalidDBState)
+                    Err(OperationError::InvalidDbState)
                 }
             }
             Err(e) => {
@@ -2022,7 +2022,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                         Ok(())
                     }
                 } else {
-                    Err(OperationError::InvalidDBState)
+                    Err(OperationError::InvalidDbState)
                 }
             }
             Err(er) => {

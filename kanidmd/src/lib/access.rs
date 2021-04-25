@@ -68,7 +68,7 @@ impl AccessControlSearch {
     ) -> Result<Self, OperationError> {
         if !value.attribute_value_pres("class", &CLASS_ACS) {
             ladmin_error!(audit, "class access_control_search not present.");
-            return Err(OperationError::InvalidACPState(
+            return Err(OperationError::InvalidAcpState(
                 "Missing access_control_search".to_string(),
             ));
         }
@@ -77,7 +77,7 @@ impl AccessControlSearch {
             .get_ava_as_str("acp_search_attr")
             .ok_or_else(|| {
                 ladmin_error!(audit, "Missing acp_search_attr");
-                OperationError::InvalidACPState("Missing acp_search_attr".to_string())
+                OperationError::InvalidAcpState("Missing acp_search_attr".to_string())
             })?
             .map(AttrString::from)
             .collect();
@@ -123,7 +123,7 @@ impl AccessControlDelete {
     ) -> Result<Self, OperationError> {
         if !value.attribute_value_pres("class", &CLASS_ACD) {
             ladmin_error!(audit, "class access_control_delete not present.");
-            return Err(OperationError::InvalidACPState(
+            return Err(OperationError::InvalidAcpState(
                 "Missing access_control_delete".to_string(),
             ));
         }
@@ -166,7 +166,7 @@ impl AccessControlCreate {
     ) -> Result<Self, OperationError> {
         if !value.attribute_value_pres("class", &CLASS_ACC) {
             ladmin_error!(audit, "class access_control_create not present.");
-            return Err(OperationError::InvalidACPState(
+            return Err(OperationError::InvalidAcpState(
                 "Missing access_control_create".to_string(),
             ));
         }
@@ -226,7 +226,7 @@ impl AccessControlModify {
     ) -> Result<Self, OperationError> {
         if !value.attribute_value_pres("class", &CLASS_ACM) {
             ladmin_error!(audit, "class access_control_modify not present.");
-            return Err(OperationError::InvalidACPState(
+            return Err(OperationError::InvalidAcpState(
                 "Missing access_control_modify".to_string(),
             ));
         }
@@ -304,7 +304,7 @@ impl AccessControlProfile {
         // Assert we have class access_control_profile
         if !value.attribute_value_pres("class", &CLASS_ACP) {
             ladmin_error!(audit, "class access_control_profile not present.");
-            return Err(OperationError::InvalidACPState(
+            return Err(OperationError::InvalidAcpState(
                 "Missing access_control_profile".to_string(),
             ));
         }
@@ -314,7 +314,7 @@ impl AccessControlProfile {
             .get_ava_single_str("name")
             .ok_or_else(|| {
                 ladmin_error!(audit, "Missing name");
-                OperationError::InvalidACPState("Missing name".to_string())
+                OperationError::InvalidAcpState("Missing name".to_string())
             })?
             .to_string();
         // copy uuid
@@ -326,7 +326,7 @@ impl AccessControlProfile {
             .cloned()
             .ok_or_else(|| {
                 ladmin_error!(audit, "Missing acp_receiver");
-                OperationError::InvalidACPState("Missing acp_receiver".to_string())
+                OperationError::InvalidAcpState("Missing acp_receiver".to_string())
             })?;
         // targetscope, and turn to real filter
         let targetscope_f: ProtoFilter = value
@@ -335,7 +335,7 @@ impl AccessControlProfile {
             .cloned()
             .ok_or_else(|| {
                 ladmin_error!(audit, "Missing acp_targetscope");
-                OperationError::InvalidACPState("Missing acp_targetscope".to_string())
+                OperationError::InvalidAcpState("Missing acp_targetscope".to_string())
             })?;
 
         let event = Event::from_internal();

@@ -5,7 +5,7 @@ use crate::prelude::*;
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthMech};
 
-use crate::credential::{totp::TOTP, Credential, CredentialType, Password};
+use crate::credential::{totp::Totp, Credential, CredentialType, Password};
 
 use crate::idm::delayed::{DelayedAction, PasswordUpgrade, WebauthnCounterIncrement};
 // use crossbeam::channel::Sender;
@@ -50,7 +50,7 @@ enum CredVerifyState {
 struct CredMfa {
     pw: Password,
     pw_state: CredVerifyState,
-    totp: Option<TOTP>,
+    totp: Option<Totp>,
     wan: Option<(RequestChallengeResponse, AuthenticationState)>,
     mfa_state: CredVerifyState,
 }
@@ -67,7 +67,7 @@ enum CredHandler {
     Anonymous,
     // AppPassword (?)
     Password(Password),
-    PasswordMFA(Box<CredMfa>),
+    PasswordMfa(Box<CredMfa>),
     Webauthn(CredWebauthn),
     // Webauthn + Password
 }
@@ -83,7 +83,7 @@ impl CredHandler {
             CredentialType::Password(pw) | CredentialType::GeneratedPassword(pw) => {
                 Ok(CredHandler::Password(pw.clone()))
             }
-            CredentialType::PasswordMFA(pw, maybe_totp, maybe_wan) => {
+            CredentialType::PasswordMfa(pw, maybe_totp, maybe_wan) => {
                 let wan = if !maybe_wan.is_empty() {
                     webauthn
                         .generate_challenge_authenticate(maybe_wan.values().cloned().collect())
@@ -111,12 +111,12 @@ impl CredHandler {
                 if cmfa.totp.is_none() && cmfa.wan.is_none() {
                     lsecurity_critical!(
                         au,
-                        "Unable to create CredHandler::PasswordMFA - totp and webauthn are both not present. Credentials MAY be corrupt!"
+                        "Unable to create CredHandler::PasswordMfa - totp and webauthn are both not present. Credentials MAY be corrupt!"
                     );
                     return Err(());
                 }
 
-                Ok(CredHandler::PasswordMFA(cmfa))
+                Ok(CredHandler::PasswordMfa(cmfa))
             }
             CredentialType::Webauthn(wan) => webauthn
                 .generate_challenge_authenticate(wan.values().cloned().collect())
@@ -258,19 +258,19 @@ impl CredHandler {
                                     CredState::Denied(BAD_WEBAUTHN_MSG)
                                 })
                     }
-                    (AuthCredential::TOTP(totp_chal), Some(totp), _) => {
+                    (AuthCredential::Totp(totp_chal), Some(totp), _) => {
                         if totp.verify(*totp_chal, ts) {
                             pw_mfa.mfa_state = CredVerifyState::Success;
                             lsecurity!(
                                 au,
-                                "Handler::PasswordMFA -> Result::Continue - TOTP OK, password -"
+                                "Handler::PasswordMfa -> Result::Continue - TOTP OK, password -"
                             );
                             CredState::Continue(vec![AuthAllowed::Password])
                         } else {
                             pw_mfa.mfa_state = CredVerifyState::Fail;
                             lsecurity!(
                                 au,
-                                "Handler::PasswordMFA -> Result::Denied - TOTP Fail, password -"
+                                "Handler::PasswordMfa -> Result::Denied - TOTP Fail, password -"
                             );
                             CredState::Denied(BAD_TOTP_MSG)
                         }
@@ -278,7 +278,7 @@ impl CredHandler {
                     _ => {
                         lsecurity!(
                             au,
-                            "Handler::PasswordMFA -> Result::Denied - invalid cred type for handler"
+                            "Handler::PasswordMfa -> Result::Denied - invalid cred type for handler"
                         );
                         CredState::Denied(BAD_AUTH_TYPE_MSG)
                     }
@@ -294,7 +294,7 @@ impl CredHandler {
                                     pw_mfa.pw_state = CredVerifyState::Fail;
                                     lsecurity!(
                                         au,
-                                        "Handler::PasswordMFA -> Result::Denied - Password found in badlist during login"
+                                        "Handler::PasswordMfa -> Result::Denied - Password found in badlist during login"
                                     );
                                     CredState::Denied(PW_BADLIST_MSG)
                                 }
@@ -302,7 +302,7 @@ impl CredHandler {
                                     pw_mfa.pw_state = CredVerifyState::Success;
                                     lsecurity!(
                                         au,
-                                        "Handler::PasswordMFA -> Result::Success - TOTP OK, password OK"
+                                        "Handler::PasswordMfa -> Result::Success - TOTP OK, password OK"
                                     );
                                     Self::maybe_pw_upgrade(
                                         au,
@@ -318,7 +318,7 @@ impl CredHandler {
                             pw_mfa.pw_state = CredVerifyState::Fail;
                             lsecurity!(
                                 au,
-                                "Handler::PasswordMFA -> Result::Denied - TOTP OK, password Fail"
+                                "Handler::PasswordMfa -> Result::Denied - TOTP OK, password Fail"
                             );
                             CredState::Denied(BAD_PASSWORD_MSG)
                         }
@@ -326,7 +326,7 @@ impl CredHandler {
                     _ => {
                         lsecurity!(
                             au,
-                            "Handler::PasswordMFA -> Result::Denied - invalid cred type for handler"
+                            "Handler::PasswordMfa -> Result::Denied - invalid cred type for handler"
                         );
                         CredState::Denied(BAD_AUTH_TYPE_MSG)
                     }
@@ -335,12 +335,12 @@ impl CredHandler {
             _ => {
                 lsecurity!(
                     au,
-                    "Handler::PasswordMFA -> Result::Denied - invalid credential mfa and pw state"
+                    "Handler::PasswordMfa -> Result::Denied - invalid credential mfa and pw state"
                 );
                 CredState::Denied(BAD_AUTH_TYPE_MSG)
             }
         }
-    } // end CredHandler::PasswordMFA
+    } // end CredHandler::PasswordMfa
 
     pub fn validate_webauthn(
         au: &mut AuditScope,
@@ -395,6 +395,7 @@ impl CredHandler {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn validate(
         &mut self,
         au: &mut AuditScope,
@@ -410,7 +411,7 @@ impl CredHandler {
             CredHandler::Password(ref mut pw) => {
                 Self::validate_password(au, cred, pw, who, async_tx, pw_badlist_set)
             }
-            CredHandler::PasswordMFA(ref mut pw_mfa) => Self::validate_password_mfa(
+            CredHandler::PasswordMfa(ref mut pw_mfa) => Self::validate_password_mfa(
                 au,
                 cred,
                 ts,
@@ -430,10 +431,10 @@ impl CredHandler {
         match &self {
             CredHandler::Anonymous => vec![AuthAllowed::Anonymous],
             CredHandler::Password(_) => vec![AuthAllowed::Password],
-            CredHandler::PasswordMFA(ref pw_mfa) => pw_mfa
+            CredHandler::PasswordMfa(ref pw_mfa) => pw_mfa
                 .totp
                 .iter()
-                .map(|_| AuthAllowed::TOTP)
+                .map(|_| AuthAllowed::Totp)
                 .chain(
                     pw_mfa
                         .wan
@@ -449,7 +450,7 @@ impl CredHandler {
         match (self, mech) {
             (CredHandler::Anonymous, AuthMech::Anonymous)
             | (CredHandler::Password(_), AuthMech::Password)
-            | (CredHandler::PasswordMFA(_), AuthMech::PasswordMFA)
+            | (CredHandler::PasswordMfa(_), AuthMech::PasswordMfa)
             | (CredHandler::Webauthn(_), AuthMech::Webauthn) => true,
             (_, _) => false,
         }
@@ -459,7 +460,7 @@ impl CredHandler {
         match self {
             CredHandler::Anonymous => AuthMech::Anonymous,
             CredHandler::Password(_) => AuthMech::Password,
-            CredHandler::PasswordMFA(_) => AuthMech::PasswordMFA,
+            CredHandler::PasswordMfa(_) => AuthMech::PasswordMfa,
             CredHandler::Webauthn(_) => AuthMech::Webauthn,
         }
     }
@@ -727,7 +728,7 @@ impl AuthSession {
 #[cfg(test)]
 mod tests {
     use crate::credential::policy::CryptoPolicy;
-    use crate::credential::totp::{TOTP, TOTP_DEFAULT_STEP};
+    use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
     use crate::credential::webauthn::WebauthnDomainConfig;
     use crate::credential::Credential;
     use crate::idm::authsession::{
@@ -994,7 +995,7 @@ mod tests {
             if let AuthState::Choose(auth_mechs) = state {
                 assert!(
                     true == auth_mechs.iter().fold(false, |acc, x| match x {
-                        AuthMech::PasswordMFA => true,
+                        AuthMech::PasswordMfa => true,
                         _ => acc,
                     })
                 );
@@ -1003,7 +1004,7 @@ mod tests {
             }
 
             let state = session
-                .start_session($audit, &AuthMech::PasswordMFA)
+                .start_session($audit, &AuthMech::PasswordMfa)
                 .expect("Failed to select anonymous mech.");
 
             let mut rchal = None;
@@ -1016,7 +1017,7 @@ mod tests {
                             rchal = Some(chal.clone());
                             true
                         }
-                        AuthAllowed::TOTP => true,
+                        AuthAllowed::Totp => true,
                         _ => acc,
                     })
                 );
@@ -1043,7 +1044,7 @@ mod tests {
         let ts = Duration::from_secs(12345);
 
         // manually load in a cred
-        let totp = TOTP::generate_secure("test_totp".to_string(), TOTP_DEFAULT_STEP);
+        let totp = Totp::generate_secure("test_totp".to_string(), TOTP_DEFAULT_STEP);
 
         let totp_good = totp
             .do_totp_duration_from_epoch(&ts)
@@ -1106,7 +1107,7 @@ mod tests {
 
             match session.validate_creds(
                 &mut audit,
-                &AuthCredential::TOTP(totp_bad),
+                &AuthCredential::Totp(totp_bad),
                 &ts,
                 &async_tx,
                 &webauthn,
@@ -1123,7 +1124,7 @@ mod tests {
 
             match session.validate_creds(
                 &mut audit,
-                &AuthCredential::TOTP(totp_good),
+                &AuthCredential::Totp(totp_good),
                 &ts,
                 &async_tx,
                 &webauthn,
@@ -1150,7 +1151,7 @@ mod tests {
 
             match session.validate_creds(
                 &mut audit,
-                &AuthCredential::TOTP(totp_good),
+                &AuthCredential::Totp(totp_good),
                 &ts,
                 &async_tx,
                 &webauthn,
@@ -1190,7 +1191,7 @@ mod tests {
         let ts = Duration::from_secs(12345);
 
         // manually load in a cred
-        let totp = TOTP::generate_secure("test_totp".to_string(), TOTP_DEFAULT_STEP);
+        let totp = Totp::generate_secure("test_totp".to_string(), TOTP_DEFAULT_STEP);
 
         let totp_good = totp
             .do_totp_duration_from_epoch(&ts)
@@ -1218,7 +1219,7 @@ mod tests {
 
             match session.validate_creds(
                 &mut audit,
-                &AuthCredential::TOTP(totp_good),
+                &AuthCredential::Totp(totp_good),
                 &ts,
                 &async_tx,
                 &webauthn,
@@ -1498,7 +1499,7 @@ mod tests {
 
             match session.validate_creds(
                 &mut audit,
-                &AuthCredential::TOTP(0),
+                &AuthCredential::Totp(0),
                 &ts,
                 &async_tx,
                 &webauthn,
@@ -1627,7 +1628,7 @@ mod tests {
 
         let (webauthn, mut wa, wan_cred) = setup_webauthn(account.name.as_str());
 
-        let totp = TOTP::generate_secure("test_totp".to_string(), TOTP_DEFAULT_STEP);
+        let totp = Totp::generate_secure("test_totp".to_string(), TOTP_DEFAULT_STEP);
         let totp_good = totp
             .do_totp_duration_from_epoch(&ts)
             .expect("failed to perform totp.");
@@ -1671,7 +1672,7 @@ mod tests {
 
             match session.validate_creds(
                 &mut audit,
-                &AuthCredential::TOTP(totp_bad),
+                &AuthCredential::Totp(totp_bad),
                 &ts,
                 &async_tx,
                 &webauthn,
@@ -1748,7 +1749,7 @@ mod tests {
 
             match session.validate_creds(
                 &mut audit,
-                &AuthCredential::TOTP(totp_good),
+                &AuthCredential::Totp(totp_good),
                 &ts,
                 &async_tx,
                 &webauthn,
@@ -1774,7 +1775,7 @@ mod tests {
 
             match session.validate_creds(
                 &mut audit,
-                &AuthCredential::TOTP(totp_good),
+                &AuthCredential::Totp(totp_good),
                 &ts,
                 &async_tx,
                 &webauthn,

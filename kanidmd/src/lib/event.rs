@@ -246,10 +246,7 @@ impl Event {
     }
 
     pub fn is_internal(&self) -> bool {
-        match self.origin {
-            EventOrigin::Internal => true,
-            _ => false,
-        }
+        matches!(self.origin, EventOrigin::Internal)
     }
 
     pub fn get_uuid(&self) -> Option<Uuid> {
