@@ -4,6 +4,7 @@ use kanidm_proto::v1::{AuthAllowed, AuthResponse, AuthState};
 use libc::umask;
 use std::collections::BTreeMap;
 use std::fs::{create_dir, File};
+use std::io::ErrorKind;
 use std::io::{self, BufReader, BufWriter};
 use std::path::PathBuf;
 use webauthn_authenticator_rs::{u2fhid::U2FHid, RequestChallengeResponse, WebauthnAuthenticator};
@@ -15,7 +16,7 @@ pub fn read_tokens() -> Result<BTreeMap<String, String>, ()> {
     let token_path = PathBuf::from(shellexpand::tilde(TOKEN_PATH).into_owned());
     if !token_path.exists() {
         debug!(
-            "Token path {} does not exist, assuming empty ... ",
+            "Token cache file path {:?} does not exist, returning an empty token store.",
             TOKEN_PATH
         );
         return Ok(BTreeMap::new());
@@ -26,11 +27,24 @@ pub fn read_tokens() -> Result<BTreeMap<String, String>, ()> {
     let file = match File::open(&token_path) {
         Ok(f) => f,
         Err(e) => {
-            warn!(
-                "Cannot read tokens from {} due to error: {:?} ... continuing.",
-                TOKEN_PATH, e
-            );
-            return Ok(BTreeMap::new());
+            match e.kind() {
+                ErrorKind::PermissionDenied => {
+                    // we bail here because you won't be able to write them back...
+                    error!(
+                        "Permission denied reading token store file {:?}",
+                        &token_path
+                    );
+                    return Err(());
+                }
+                // other errors are OK to continue past
+                _ => {
+                    warn!(
+                        "Cannot read tokens from {} due to error: {:?} ... continuing.",
+                        TOKEN_PATH, e
+                    );
+                    return Ok(BTreeMap::new());
+                }
+            };
         }
     };
     let reader = BufReader::new(file);

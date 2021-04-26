@@ -1,9 +1,9 @@
 //! [`Filter`]s are one of the three foundational concepts of the design in kanidm.
-//! They are used in nearly every aspect ofthe server to provide searching of
-//! datasets, and assertion of entry properties.
+//! They are used in nearly every aspect of the server to provide searching of
+//! datasets and assertion of entry properties.
 //!
-//! A filter is a logical statement of properties that an [`Entry`] and it's
-//! avas must uphold to be considered true.
+//! A filter is a logical statement of properties that an [`Entry`] and its
+//! AVAs must uphold to be considered true.
 //!
 //! [`Filter`]: struct.Filter.html
 //! [`Entry`]: ../entry/struct.Entry.html

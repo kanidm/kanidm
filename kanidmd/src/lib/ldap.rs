@@ -431,8 +431,6 @@ fn ldap_domain_to_dc(input: &str) -> String {
         output.push_str(dc);
         #[allow(clippy::single_char_add_str)]
         output.push_str(",");
-        //  Can't use concat as it's evalled at compile, not run time.
-        // output.push_str(concat!("dc=", dc, ","));
     });
     // Remove the last ','
     output.pop();

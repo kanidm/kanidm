@@ -153,6 +153,12 @@ pub(crate) async fn create_ldap_server(
     opt_tls_params: Option<SslAcceptorBuilder>,
     qe_r_ref: &'static QueryServerReadV1,
 ) -> Result<(), ()> {
+    if address.starts_with(":::") {
+        // takes :::xxxx to xxxx
+        let port = address.replacen(":::", "", 1);
+        eprintln!("Address '{}' looks like an attempt to wildcard bind with IPv6 on port {} - please try using ldapbindaddress = '[::]:{}'", address, port, port);
+    };
+
     let addr = net::SocketAddr::from_str(address).map_err(|e| {
         eprintln!("Could not parse ldap server address {} -> {:?}", address, e);
     })?;

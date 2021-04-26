@@ -1,0 +1,13 @@
+########################################################################
+# complexity clippy settings
+#
+# because the clippy devs also acknowledge that complexity is hard to define
+# https://github.com/rust-lang/rust-clippy/issues/5418#issuecomment-610054361
+#
+########################################################################
+
+# default is 7, 8's ok. https://rust-lang.github.io/rust-clippy/master/index.html#too_many_arguments
+too-many-arguments-threshold = 8
+
+# default's 250
+type-complexity-threshold = 300

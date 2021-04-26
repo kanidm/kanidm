@@ -81,7 +81,7 @@ impl CommonOpt {
                     #[allow(clippy::expect_used)]
                     let (f_uname, f_token) = tokens.iter().next().expect("Memory Corruption");
                     // else pick the first token
-                    info!("Authenticated as {}", f_uname);
+                    info!("Using cached token for name {}", f_uname);
                     f_token.clone()
                 } else {
                     // Unable to select
