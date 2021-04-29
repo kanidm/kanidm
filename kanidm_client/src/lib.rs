@@ -23,6 +23,8 @@ use std::time::Duration;
 use url::Url;
 use uuid::Uuid;
 
+pub use reqwest::StatusCode;
+
 use webauthn_rs::proto::{
     CreationChallengeResponse, PublicKeyCredential, RegisterPublicKeyCredential,
     RequestChallengeResponse,
