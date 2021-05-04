@@ -2,6 +2,7 @@ use crate::idm::account::Account;
 use crate::idm::claim::Claim;
 use crate::idm::AuthState;
 use crate::prelude::*;
+use hashbrown::HashSet;
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthMech};
 
@@ -15,7 +16,6 @@ use crate::credential::webauthn::WebauthnDomainConfig;
 use std::time::Duration;
 use uuid::Uuid;
 // use webauthn_rs::proto::Credential as WebauthnCredential;
-use crate::value::PartialValue;
 pub use std::collections::BTreeSet as Set;
 use webauthn_rs::proto::RequestChallengeResponse;
 use webauthn_rs::{AuthenticationState, Webauthn};
@@ -181,13 +181,13 @@ impl CredHandler {
         pw: &mut Password,
         who: Uuid,
         async_tx: &Sender<DelayedAction>,
-        pw_badlist_set: Option<Set<Value>>,
+        pw_badlist_set: Option<HashSet<String>>,
     ) -> CredState {
         match cred {
             AuthCredential::Password(cleartext) => {
                 if pw.verify(cleartext.as_str()).unwrap_or(false) {
                     match pw_badlist_set {
-                        Some(p) if p.contains(&PartialValue::new_iutf8(cleartext)) => {
+                        Some(p) if p.contains(&cleartext.to_lowercase()) => {
                             lsecurity!(
                                 au,
                                 "Handler::Password -> Result::Denied - Password found in badlist during login"
@@ -227,7 +227,7 @@ impl CredHandler {
         webauthn: &Webauthn<WebauthnDomainConfig>,
         who: Uuid,
         async_tx: &Sender<DelayedAction>,
-        pw_badlist_set: Option<Set<Value>>,
+        pw_badlist_set: Option<HashSet<String>>,
     ) -> CredState {
         match (&pw_mfa.mfa_state, &pw_mfa.pw_state) {
             (CredVerifyState::Init, CredVerifyState::Init) => {
@@ -290,7 +290,7 @@ impl CredHandler {
                     AuthCredential::Password(cleartext) => {
                         if pw_mfa.pw.verify(cleartext.as_str()).unwrap_or(false) {
                             match pw_badlist_set {
-                                Some(p) if p.contains(&PartialValue::new_iutf8(cleartext)) => {
+                                Some(p) if p.contains(&cleartext.to_lowercase()) => {
                                     pw_mfa.pw_state = CredVerifyState::Fail;
                                     lsecurity!(
                                         au,
@@ -404,7 +404,7 @@ impl CredHandler {
         who: Uuid,
         async_tx: &Sender<DelayedAction>,
         webauthn: &Webauthn<WebauthnDomainConfig>,
-        pw_badlist_set: Option<Set<Value>>,
+        pw_badlist_set: Option<HashSet<String>>,
     ) -> CredState {
         match self {
             CredHandler::Anonymous => Self::validate_anonymous(au, cred),
@@ -502,7 +502,7 @@ pub(crate) struct AuthSession {
     // This handler will then handle the mfa and stepping up through to generate the auth states
     state: AuthSessionState,
     // Store the password badlist
-    pw_badlist_set: Option<Set<Value>>,
+    pw_badlist_set: Option<HashSet<String>>,
 }
 
 impl AuthSession {
@@ -512,7 +512,7 @@ impl AuthSession {
         _appid: &Option<String>,
         webauthn: &Webauthn<WebauthnDomainConfig>,
         ct: Duration,
-        pw_badlist_set: Option<Set<Value>>,
+        pw_badlist_set: Option<HashSet<String>>,
     ) -> (Option<Self>, AuthState) {
         // During this setup, determine the credential handler that we'll be using
         // for this session. This is currently based on presentation of an application
@@ -738,6 +738,7 @@ mod tests {
     use crate::idm::delayed::DelayedAction;
     use crate::idm::AuthState;
     use crate::prelude::*;
+    use hashbrown::HashSet;
     pub use std::collections::BTreeSet as Set;
 
     use crate::utils::duration_from_epoch_now;
@@ -841,8 +842,8 @@ mod tests {
             $account:expr,
             $webauthn:expr
         ) => {{
-            let mut pw_badlist_set = Set::new();
-            pw_badlist_set.insert(Value::new_iutf8("list@no3IBTyqHu$bad"));
+            let mut pw_badlist_set = HashSet::new();
+            pw_badlist_set.insert((&"list@no3IBTyqHu$bad").to_lowercase());
             let (session, state) = AuthSession::new(
                 $audit,
                 $account.clone(),
@@ -980,8 +981,8 @@ mod tests {
             $account:expr,
             $webauthn:expr
         ) => {{
-            let mut pw_badlist_set = Set::new();
-            pw_badlist_set.insert(Value::new_iutf8("list@no3IBTyqHu$bad"));
+            let mut pw_badlist_set = HashSet::new();
+            pw_badlist_set.insert((&"list@no3IBTyqHu$bad").to_lowercase());
             let (session, state) = AuthSession::new(
                 $audit,
                 $account.clone(),

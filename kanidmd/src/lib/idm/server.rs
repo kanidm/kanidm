@@ -23,6 +23,7 @@ use crate::idm::delayed::{
     DelayedAction, PasswordUpgrade, UnixPasswordUpgrade, WebauthnCounterIncrement,
 };
 
+use hashbrown::HashSet;
 use kanidm_proto::v1::CredentialStatus;
 use kanidm_proto::v1::RadiusAuthToken;
 use kanidm_proto::v1::SetCredentialResponse;
@@ -39,13 +40,16 @@ use async_std::task;
 use core::task::{Context, Poll};
 use futures::task as futures_task;
 
-use concread::hashmap::HashMap;
 use concread::{
     bptree::{BptreeMap, BptreeMapWriteTxn},
     CowCell,
 };
+use concread::{
+    cowcell::{CowCellReadTxn, CowCellWriteTxn},
+    hashmap::HashMap,
+};
 use rand::prelude::*;
-use std::{collections::BTreeSet, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 use url::Url;
 
 use webauthn_rs::Webauthn;
@@ -70,7 +74,7 @@ pub struct IdmServer {
     async_tx: Sender<DelayedAction>,
     // Our webauthn verifier/config
     webauthn: Webauthn<WebauthnDomainConfig>,
-    pw_badlist_cache: Arc<CowCell<BTreeSet<Value>>>,
+    pw_badlist_cache: Arc<CowCell<HashSet<String>>>,
 }
 
 pub struct IdmServerAuthTransaction<'a> {
@@ -88,7 +92,7 @@ pub struct IdmServerAuthTransaction<'a> {
     // For flagging eventual actions.
     async_tx: Sender<DelayedAction>,
     webauthn: &'a Webauthn<WebauthnDomainConfig>,
-    pw_badlist_cache: Arc<CowCell<BTreeSet<Value>>>,
+    pw_badlist_cache: CowCellReadTxn<HashSet<String>>,
 }
 
 pub struct IdmServerProxyReadTransaction<'a> {
@@ -106,7 +110,7 @@ pub struct IdmServerProxyWriteTransaction<'a> {
     sid: SID,
     crypto_policy: &'a CryptoPolicy,
     webauthn: &'a Webauthn<WebauthnDomainConfig>,
-    pw_badlist_cache: Arc<CowCell<BTreeSet<Value>>>,
+    pw_badlist_cache: CowCellWriteTxn<'a, HashSet<String>>,
 }
 
 pub struct IdmServerDelayed {
@@ -209,7 +213,7 @@ impl IdmServer {
             sid,
             async_tx: self.async_tx.clone(),
             webauthn: &self.webauthn,
-            pw_badlist_cache: self.pw_badlist_cache.clone(),
+            pw_badlist_cache: self.pw_badlist_cache.read(),
         }
     }
 
@@ -241,7 +245,7 @@ impl IdmServer {
             sid,
             crypto_policy: &self.crypto_policy,
             webauthn: &self.webauthn,
-            pw_badlist_cache: self.pw_badlist_cache.clone(),
+            pw_badlist_cache: self.pw_badlist_cache.write(),
         }
     }
 
@@ -381,7 +385,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 };
 
                 let (auth_session, state) = if is_valid {
-                    let pw_badlist_cache = Some((*self.pw_badlist_cache.read()).clone());
+                    let pw_badlist_cache = Some((*self.pw_badlist_cache).clone());
                     AuthSession::new(
                         au,
                         account,
@@ -902,9 +906,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // check a password badlist to eliminate more content
         // we check the password as "lower case" to help eliminate possibilities
-        let lc_password = PartialValue::new_iutf8(cleartext);
-        let pw_badlist_cache = &*self.pw_badlist_cache.read();
-        if pw_badlist_cache.contains(&lc_password) {
+        // also, when pw_badlist_cache is read from DB, it is read as Value (iutf8 lowercase)
+        if (&*self.pw_badlist_cache).contains(&cleartext.to_lowercase()) {
             lsecurity!(au, "Password found in badlist, rejecting");
             Err(OperationError::PasswordBadListed)
         } else {
@@ -1516,7 +1519,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         }
     }
 
-    pub fn commit(self, au: &mut AuditScope) -> Result<(), OperationError> {
+    pub fn commit(mut self, au: &mut AuditScope) -> Result<(), OperationError> {
         lperf_trace_segment!(
             au,
             "idm::server::IdmServerProxyWriteTransaction::commit",
@@ -1527,6 +1530,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     .contains(&UUID_SYSTEM_CONFIG)
                 {
                     self.reload_password_badlist(au)?;
+                    self.pw_badlist_cache.commit();
                 };
                 self.mfareg_sessions.commit();
                 self.qs_write.commit(au)
@@ -1534,12 +1538,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         )
     }
 
-    fn reload_password_badlist(&self, au: &mut AuditScope) -> Result<(), OperationError> {
+    fn reload_password_badlist(&mut self, au: &mut AuditScope) -> Result<(), OperationError> {
         match self.qs_write.get_password_badlist(au) {
             Ok(badlist_entry) => {
-                let mut pw_badlist_cache_write_txn = self.pw_badlist_cache.write();
-                *pw_badlist_cache_write_txn = badlist_entry;
-                pw_badlist_cache_write_txn.commit();
+                *self.pw_badlist_cache = badlist_entry;
                 Ok(())
             }
             Err(e) => Err(e),
