@@ -418,7 +418,7 @@ async fn json_rest_event_delete_id_attr(
 
     // TODO: #429: make this work
     let values = req.body_string().await?;
-    debug!("uwuvalues {}", values);
+    println!("#421 values 😞 {:?}", values);
 
     let (eventid, hvalue) = new_eventid!();
     // TODO #211: Attempt to get an option Vec<String> here?
