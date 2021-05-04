@@ -193,7 +193,7 @@ group
         GET -> get this groups attr
         PUT -> overwrite this group attr value list
         POST -> append this list to group attr
-        DELETE -> purge this attr
+        DELETE -> purge this attr (if body empty) or the elements listed in the body
 
 schema
 ======

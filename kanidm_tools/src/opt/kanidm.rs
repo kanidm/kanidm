@@ -64,6 +64,8 @@ pub enum GroupOpt {
     PurgeMembers(Named),
     #[structopt(name = "add_members")]
     AddMembers(GroupNamedMembers),
+    #[structopt(name = "remove_members")]
+    RemoveMembers(GroupNamedMembers),
     #[structopt(name = "posix")]
     Posix(GroupPosix),
 }

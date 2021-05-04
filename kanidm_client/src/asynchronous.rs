@@ -258,9 +258,21 @@ impl KanidmAsyncClient {
             .map_err(|e| ClientError::JSONDecode(e, opid))
     }
 
-    async fn perform_delete_request(&self, dest: &str) -> Result<bool, ClientError> {
+    async fn perform_delete_request<R: Serialize>(
+        &self,
+        dest: &str,
+        _request: R,
+    ) -> Result<bool, ClientError> {
         let dest = format!("{}{}", self.addr, dest);
+
         let response = self.client.delete(dest.as_str());
+
+        // let req_string = serde_json::to_string(&request).map_err(ClientError::JSONEncode)?;
+        // let response = if req_string.len() > 0 {
+        //     response.body(req_string)
+        // } else {
+        //     response
+        // };
         let response = if let Some(token) = &self.bearer_token {
             response.bearer_auth(token)
         } else {
@@ -658,14 +670,29 @@ impl KanidmAsyncClient {
             .await
     }
 
-    /*
-    pub fn idm_group_remove_member(&self, id: &str, member: &str) -> Result<(), ClientError> {
-        unimplemented!();
+    pub async fn idm_group_remove_members(
+        &self,
+        group: &str,
+        members: &[&str],
+    ) -> Result<bool, ClientError> {
+        let m: Vec<_> = members.iter().map(|v| (*v).to_string()).collect();
+        debug!(
+            "{}",
+            [
+                "Asked to remove members ",
+                &members.join(","),
+                " from ",
+                group
+            ]
+            .concat()
+            .to_string()
+        );
+        self.perform_delete_request(["/v1/group/", group, "/_attr/member"].concat().as_str(), m)
+            .await
     }
-    */
 
     pub async fn idm_group_purge_members(&self, id: &str) -> Result<bool, ClientError> {
-        self.perform_delete_request(format!("/v1/group/{}/_attr/member", id).as_str())
+        self.perform_delete_request(format!("/v1/group/{}/_attr/member", id).as_str(), "")
             .await
     }
 
@@ -687,7 +714,7 @@ impl KanidmAsyncClient {
     }
 
     pub async fn idm_group_delete(&self, id: &str) -> Result<bool, ClientError> {
-        self.perform_delete_request(["/v1/group/", id].concat().as_str())
+        self.perform_delete_request(["/v1/group/", id].concat().as_str(), "")
             .await
     }
 
@@ -736,7 +763,7 @@ impl KanidmAsyncClient {
     }
 
     pub async fn idm_account_delete(&self, id: &str) -> Result<bool, ClientError> {
-        self.perform_delete_request(["/v1/account/", id].concat().as_str())
+        self.perform_delete_request(["/v1/account/", id].concat().as_str(), "")
             .await
     }
 
@@ -766,7 +793,7 @@ impl KanidmAsyncClient {
     }
 
     pub async fn idm_account_purge_attr(&self, id: &str, attr: &str) -> Result<bool, ClientError> {
-        self.perform_delete_request(format!("/v1/account/{}/_attr/{}", id, attr).as_str())
+        self.perform_delete_request(format!("/v1/account/{}/_attr/{}", id, attr).as_str(), "")
             .await
     }
 
@@ -967,7 +994,7 @@ impl KanidmAsyncClient {
         &self,
         id: &str,
     ) -> Result<bool, ClientError> {
-        self.perform_delete_request(format!("/v1/account/{}/_radius", id).as_str())
+        self.perform_delete_request(format!("/v1/account/{}/_radius", id).as_str(), "")
             .await
     }
 
@@ -1009,8 +1036,11 @@ impl KanidmAsyncClient {
     }
 
     pub async fn idm_account_unix_cred_delete(&self, id: &str) -> Result<bool, ClientError> {
-        self.perform_delete_request(["/v1/account/", id, "/_unix/_credential"].concat().as_str())
-            .await
+        self.perform_delete_request(
+            ["/v1/account/", id, "/_unix/_credential"].concat().as_str(),
+            "",
+        )
+        .await
     }
 
     pub async fn idm_account_unix_cred_verify(
@@ -1060,8 +1090,11 @@ impl KanidmAsyncClient {
         id: &str,
         tag: &str,
     ) -> Result<bool, ClientError> {
-        self.perform_delete_request(format!("/v1/account/{}/_ssh_pubkeys/{}", id, tag).as_str())
-            .await
+        self.perform_delete_request(
+            format!("/v1/account/{}/_ssh_pubkeys/{}", id, tag).as_str(),
+            "",
+        )
+        .await
     }
 
     // ==== domain_info (aka domain)

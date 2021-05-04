@@ -1449,10 +1449,10 @@ pub fn create_https_server(
         .delete(group_id_delete);
     group_route
         .at("/:id/_attr/:attr")
+        .delete(group_id_delete_attr)
         .get(group_id_get_attr)
         .put(group_id_put_attr)
-        .post(group_id_post_attr)
-        .delete(group_id_delete_attr);
+        .post(group_id_post_attr);
     group_route.at("/:id/_unix").post(group_post_id_unix);
     group_route
         .at("/:id/_unix/_token")
