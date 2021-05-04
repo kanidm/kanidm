@@ -408,13 +408,17 @@ async fn json_rest_event_put_id_attr(
 }
 
 async fn json_rest_event_delete_id_attr(
-    req: tide::Request<AppState>,
+    mut req: tide::Request<AppState>,
     filter: Filter<FilterInvalid>,
     // Seperate for account_delete_id_radius
     attr: String,
 ) -> tide::Result {
     let uat = req.get_current_uat();
     let id = req.get_url_param("id")?;
+
+    // TODO: #429: make this work
+    let values = req.body_string().await?;
+    debug!("uwuvalues {}", values);
 
     let (eventid, hvalue) = new_eventid!();
     // TODO #211: Attempt to get an option Vec<String> here?
