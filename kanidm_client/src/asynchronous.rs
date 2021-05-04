@@ -261,18 +261,18 @@ impl KanidmAsyncClient {
     async fn perform_delete_request<R: Serialize>(
         &self,
         dest: &str,
-        _request: R,
+        request: R,
     ) -> Result<bool, ClientError> {
         let dest = format!("{}{}", self.addr, dest);
 
         let response = self.client.delete(dest.as_str());
 
-        // let req_string = serde_json::to_string(&request).map_err(ClientError::JSONEncode)?;
-        // let response = if req_string.len() > 0 {
-        //     response.body(req_string)
-        // } else {
-        //     response
-        // };
+        let req_string = serde_json::to_string(&request).map_err(ClientError::JSONEncode)?;
+        let response = if req_string.len() > 0 {
+            response.body(req_string)
+        } else {
+            response
+        };
         let response = if let Some(token) = &self.bearer_token {
             response.bearer_auth(token)
         } else {
