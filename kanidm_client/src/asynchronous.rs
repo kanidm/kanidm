@@ -125,7 +125,6 @@ impl KanidmAsyncClient {
     ) -> Result<T, ClientError> {
         let dest = [self.addr.as_str(), dest].concat();
         debug!("{:?}", dest);
-        println!("{:?}", dest);
         // format doesn't work in async ?!
         // let dest = format!("{}{}", self.addr, dest);
 
