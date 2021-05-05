@@ -2,6 +2,8 @@ use crate::data::{Entity, OpType, TestData};
 use crate::profile::Profile;
 use crate::{TargetServer, TargetServerBuilder};
 use crossbeam::channel::{unbounded, RecvTimeoutError};
+use mathru::statistics::distrib::Continuous;
+use mathru::statistics::distrib::Normal;
 use rand::seq::IteratorRandom;
 use rand::seq::SliceRandom;
 use std::fs::File;
@@ -136,16 +138,27 @@ async fn basic_worker(
             searches.as_slice().choose(&mut rng).unwrap()
         };
 
+        // Ensure we are logged out.
+        server.close_connection().await;
+
         // Search something!
-        match server.search(test_start, s.as_slice()).await {
-            Ok(r) => {
-                let _ = raw_results_tx.send(r);
+        let cr = match server.open_user_connection(test_start, &name, &pw).await {
+            Ok(r) => r,
+            Err(_) => {
+                error!("Failed to authenticate connection");
+                continue;
             }
+        };
+        let sr = match server.search(test_start, s.as_slice()).await {
+            Ok(r) => r,
             Err(_) => {
                 error!("Search Error");
+                continue;
             }
-        }
+        };
         // Append results
+        let r = (cr.0, cr.1 + sr.1, sr.2);
+        let _ = raw_results_tx.send(r);
     }
     // Done
     debug!("Stopping worker ...");
@@ -266,6 +279,9 @@ pub(crate) async fn basic(
         .send(TestPhase::Shutdown)
         .map_err(|_| error!("Unable to broadcast stop state change"));
 
+    // Now we can finalise our data, based on what analysis we can actually do here.
+    process_raw_results(&raw_results);
+
     // Write the raw results out.
 
     let result_name = format!("basic_{}.csv", server.rname());
@@ -295,4 +311,22 @@ pub(crate) async fn basic(
     wtr.flush().map_err(|e| error!("csv error {:?}", e))?;
 
     Ok(())
+}
+
+fn process_raw_results(raw_results: &Vec<(Duration, Duration, usize)>) {
+    // Do nerd shit.
+
+    // Get the times
+    let optimes: Vec<_> = raw_results
+        .iter()
+        .map(|(_, d, _)| d.as_secs_f64())
+        .collect();
+
+    let distrib: Normal<f64> = Normal::from_data(&optimes);
+    let sd = distrib.variance().sqrt();
+
+    info!("mean: {} seconds", distrib.mean());
+    info!("variance: {}", distrib.variance());
+    info!("SD: {} seconds", sd);
+    info!("95%: {}", distrib.mean() + (2.0 * sd));
 }

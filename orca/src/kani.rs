@@ -290,6 +290,10 @@ impl KaniHttpServer {
             })
     }
 
+    pub async fn close_connection(&self) {
+        self.client.logout().await;
+    }
+
     pub async fn search(
         &self,
         test_start: Instant,
@@ -401,6 +405,10 @@ impl KaniLdapServer {
         pw: &str,
     ) -> Result<(Duration, Duration), ()> {
         self.ldap.open_user_connection(test_start, name, pw).await
+    }
+
+    pub async fn close_connection(&self) {
+        self.ldap.close_connection().await;
     }
 
     pub async fn search(

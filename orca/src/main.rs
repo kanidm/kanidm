@@ -140,6 +140,13 @@ impl TargetServer {
         }
     }
 
+    async fn close_connection(&self) {
+        match self {
+            TargetServer::Kanidm(k) => k.close_connection().await,
+            TargetServer::KanidmLdap(k) => k.close_connection().await,
+        }
+    }
+
     async fn search(
         &self,
         test_start: Instant,

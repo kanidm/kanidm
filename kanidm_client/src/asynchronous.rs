@@ -36,7 +36,7 @@ impl KanidmAsyncClient {
 
     pub async fn get_token(&self) -> Option<String> {
         let tguard = self.bearer_token.read().await;
-        (*tguard).as_ref().map(|v| v.clone())
+        (*tguard).as_ref().cloned()
     }
 
     pub fn new_session(&self) -> Result<Self, reqwest::Error> {

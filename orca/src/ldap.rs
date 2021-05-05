@@ -147,6 +147,11 @@ impl LdapClient {
         Err(())
     }
 
+    pub async fn close_connection(&self) {
+        let mut mguard = self.conn.lock().await;
+        *mguard = None;
+    }
+
     pub async fn search(
         &self,
         test_start: Instant,

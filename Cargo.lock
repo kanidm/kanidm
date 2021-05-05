@@ -2005,6 +2005,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7ffc5c5338469d4d3ea17d269fa8ea3512ad247247c30bd2df69e68309ed0a08"
 
 [[package]]
+name = "mathru"
+version = "0.9.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c215ebdf47c84492edae3ecf33951a95d786201132d1521b3809df18bec293e1"
+dependencies = [
+ "rand 0.8.3",
+]
+
+[[package]]
 name = "memchr"
 version = "2.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2224,6 +2233,7 @@ dependencies = [
  "kanidm_proto",
  "ldap3_server",
  "log",
+ "mathru",
  "openssl",
  "rand 0.8.3",
  "serde",

@@ -91,7 +91,7 @@ impl LoginApp {
             .body(Json(&authreq))
             .map_err(|_| ())
             .and_then(|request| FetchService::fetch_binary(request, callback).map_err(|_| ()))
-            .map(|ft| Some(ft))
+            .map(Some)
             .unwrap_or_else(|_e| None);
     }
 
@@ -119,7 +119,7 @@ impl LoginApp {
             .body(Json(&authreq))
             .map_err(|_| ())
             .and_then(|request| FetchService::fetch_binary(request, callback).map_err(|_| ()))
-            .map(|ft| Some(ft))
+            .map(Some)
             .unwrap_or_else(|_e| None);
     }
 
@@ -345,7 +345,7 @@ impl Component for LoginApp {
             LoginAppMsg::WebauthnSubmit(resp) => {
                 ConsoleService::log("webauthn");
                 let authreq = AuthRequest {
-                    step: AuthStep::Cred(AuthCredential::Webauthn(resp.into())),
+                    step: AuthStep::Cred(AuthCredential::Webauthn(resp)),
                 };
                 self.auth_step(authreq);
                 // Do not submit here, we need to wait for the next ui transition.
@@ -370,7 +370,7 @@ impl Component for LoginApp {
                             false
                         } else {
                             // Offer the choices.
-                            ConsoleService::log(format!("unimplemented").as_str());
+                            ConsoleService::log("unimplemented");
                             self.state = LoginState::Error("Unimplemented".to_string(), None);
                             true
                         }
@@ -381,7 +381,7 @@ impl Component for LoginApp {
                         true
                     }
                     _ => {
-                        ConsoleService::log(format!("invalid state transition").as_str());
+                        ConsoleService::log("invalid state transition");
                         self.state =
                             LoginState::Error("Invalid UI State Transition".to_string(), None);
                         true
@@ -395,7 +395,7 @@ impl Component for LoginApp {
                 // Based on the state we have, we need to chose our steps.
                 match resp.state {
                     AuthState::Choose(_mechs) => {
-                        ConsoleService::log(format!("invalid state transition").as_str());
+                        ConsoleService::log("invalid state transition");
                         self.state =
                             LoginState::Error("Invalid UI State Transition".to_string(), None);
                         true
