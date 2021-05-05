@@ -217,6 +217,15 @@ pub const JSON_IDM_HP_ACCOUNT_WRITE_PRIV_V1: &str = r#"{
         ]
     }
 }"#;
+pub const JSON_IDM_HP_ACCOUNT_UNIX_EXTEND_PRIV_V1: &str = r#"{
+    "attrs": {
+        "class": ["group", "object"],
+        "name": ["idm_hp_account_unix_extend_priv"],
+        "uuid": ["00000000-0000-0000-0000-000000000025"],
+        "description": ["Builtin IDM Group for granting account unix extend permissions for high privilege accounts."],
+        "member": ["00000000-0000-0000-0000-000000000019"]
+    }
+}"#;
 // * Schema write manager
 pub const JSON_IDM_SCHEMA_MANAGE_PRIV_V1: &str = r#"{
     "attrs": {
@@ -239,7 +248,7 @@ pub const JSON_IDM_ACP_MANAGE_PRIV_V1: &str = r#"{
         "member": ["00000000-0000-0000-0000-000000000019"]
     }
 }"#;
-
+// * HP Group Management
 pub const JSON_IDM_HP_GROUP_MANAGE_PRIV_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -260,6 +269,18 @@ pub const JSON_IDM_HP_GROUP_WRITE_PRIV_V1: &str = r#"{
         ]
     }
 }"#;
+pub const JSON_IDM_HP_GROUP_UNIX_EXTEND_PRIV_V1: &str = r#"{
+    "attrs": {
+        "class": ["group", "object"],
+        "name": ["idm_hp_group_unix_extend_priv"],
+        "uuid": ["00000000-0000-0000-0000-000000000026"],
+        "description": ["Builtin IDM Group for granting unix group extension permissions for high privilege groups."],
+        "member": [
+            "00000000-0000-0000-0000-000000000019"
+        ]
+    }
+}"#;
+// Who can configure this domain?
 pub const JSON_DOMAIN_ADMINS: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -301,6 +322,8 @@ pub const JSON_IDM_HIGH_PRIVILEGE_V1: &str = r#"{
             "00000000-0000-0000-0000-000000000020",
             "00000000-0000-0000-0000-000000000023",
             "00000000-0000-0000-0000-000000000024",
+            "00000000-0000-0000-0000-000000000025",
+            "00000000-0000-0000-0000-000000000026",
             "00000000-0000-0000-0000-000000001000"
         ]
     }

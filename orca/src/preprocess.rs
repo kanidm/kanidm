@@ -198,7 +198,7 @@ pub fn doit(input: &Path, output: &Path) {
         }
     };
 
-    let mut out_file = match File::create(output) {
+    let out_file = match File::create(output) {
         Ok(f) => f,
         Err(e) => {
             error!("Failed to open {} - {:?}", output.to_str().unwrap(), e);
@@ -220,7 +220,7 @@ pub fn doit(input: &Path, output: &Path) {
 
     let data = match data {
         Ok(d) => d,
-        Err(e) => {
+        Err(_) => {
             error!("Failed to transform record");
             return;
         }

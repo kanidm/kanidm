@@ -3,7 +3,6 @@ use std::time::Duration;
 use uuid::Uuid;
 
 use rand::distributions::Alphanumeric;
-use rand::distributions::Distribution;
 use rand::{thread_rng, Rng};
 
 pub fn readable_password_from_random() -> String {

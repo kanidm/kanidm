@@ -1,5 +1,5 @@
 use crate::data::TestData;
-use crate::kani::KaniHttpServer;
+use crate::kani::{KaniHttpServer, KaniLdapServer};
 use crate::profile::Profile;
 use crate::TargetOpt;
 use crate::TargetServer;
@@ -46,12 +46,17 @@ pub(crate) fn config(
     debug!("Data Path -> {}", data_path.to_str().unwrap());
 
     // Does our target section exist?
-    let mut server: TargetServer = match target {
+    let server: TargetServer = match target {
         TargetOpt::Ds => {
             unimplemented!();
         }
         TargetOpt::KanidmLdap => {
-            unimplemented!();
+            if let Some(klconfig) = profile.kani_ldap_config.as_ref() {
+                KaniLdapServer::new(klconfig)?
+            } else {
+                error!("To use kanidm_ldap, you must have the kani_ldap_config section in your profile");
+                return Err(());
+            }
         }
         TargetOpt::Kanidm => {
             if let Some(khconfig) = profile.kani_http_config.as_ref() {
@@ -66,7 +71,7 @@ pub(crate) fn config(
     debug!("Target server info -> {}", server.info());
 
     // load the related data (if any) or generate it if that is what we have.
-    let mut data_file = File::open(data_path).map_err(|e| {
+    let data_file = File::open(data_path).map_err(|e| {
         error!("Unable to open data file [{:?}] 🥺", e);
     })?;
 
@@ -89,7 +94,7 @@ pub(crate) async fn doit(target: &TargetOpt, profile_path: &PathBuf) -> Result<(
         profile_path.to_str().unwrap(),
     );
 
-    let (data, _profile, mut server) = config(target, profile_path)?;
+    let (data, _profile, server) = config(target, profile_path)?;
 
     // ensure that things we will "add" won't be there.
     // delete anything that is modded, so that it will be reset.

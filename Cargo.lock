@@ -2218,6 +2218,7 @@ dependencies = [
  "crossbeam",
  "csv",
  "env_logger",
+ "futures-util",
  "jemallocator",
  "kanidm_client",
  "kanidm_proto",

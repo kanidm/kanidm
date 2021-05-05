@@ -15,6 +15,7 @@ pub struct KaniLdapConfig {
     pub uri: String,
     pub ldap_uri: String,
     pub admin_pw: String,
+    pub base_dn: String,
 }
 
 #[derive(Debug, Deserialize)]

@@ -4,11 +4,10 @@ use crate::{TargetServer, TargetServerBuilder};
 use crossbeam::channel::{unbounded, RecvTimeoutError};
 use rand::seq::IteratorRandom;
 use rand::seq::SliceRandom;
-use rand::{thread_rng, Rng};
 use std::fs::File;
 use std::io::BufWriter;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::broadcast;
 use tokio::task;
@@ -16,7 +15,7 @@ use tokio::task;
 #[derive(Debug, Clone)]
 enum TestPhase {
     WarmUp,
-    Running,
+    // Running,
     Shutdown,
 }
 
@@ -112,9 +111,7 @@ async fn basic_worker(
         }
     };
 
-    let f = server.open_user_connection(&name, &pw);
-
-    if let Err(_) = f.await {
+    if let Err(_) = server.open_user_connection(test_start, &name, &pw).await {
         error!("Failed to authenticate connection");
         return;
     }
@@ -144,7 +141,7 @@ async fn basic_worker(
             Ok(r) => {
                 let _ = raw_results_tx.send(r);
             }
-            Err(e) => {
+            Err(_) => {
                 error!("Search Error");
             }
         }
@@ -186,7 +183,7 @@ pub(crate) async fn basic(
     let (raw_results_tx, raw_results_rx) = unbounded();
 
     // Setup a broadcast for the notifications.
-    let (broadcast_tx, mut broadcast_rx) = broadcast::channel(2);
+    let (broadcast_tx, broadcast_rx) = broadcast::channel(2);
 
     // Start an arbiter that will control the test.
     // This should use spawn blocking.
@@ -257,17 +254,17 @@ pub(crate) async fn basic(
     // Tell the arbiter to start the warm up counter now.
     broadcast_tx
         .send(TestPhase::WarmUp)
-        .map_err(|e| error!("Unable to broadcast state change"))?;
+        .map_err(|_| error!("Unable to broadcast warmup state change"))?;
 
     // Wait on the arbiter, it will return our results when it's ready.
-    let raw_results = arbiter_join_handle.await.map_err(|e| {
+    let raw_results = arbiter_join_handle.await.map_err(|_| {
         error!("Test arbiter was unable to rejoin.");
     })?;
 
     // Now signal the workers to stop. We don't care if this fails.
     let _ = broadcast_tx
         .send(TestPhase::Shutdown)
-        .map_err(|e| error!("Unable to broadcast state change"));
+        .map_err(|_| error!("Unable to broadcast stop state change"));
 
     // Write the raw results out.
 

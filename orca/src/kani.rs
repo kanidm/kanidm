@@ -1,5 +1,6 @@
 use crate::data::*;
-use crate::profile::KaniHttpConfig;
+use crate::ldap::{LdapClient, LdapSchema};
+use crate::profile::{KaniHttpConfig, KaniLdapConfig};
 use crate::{TargetServer, TargetServerBuilder};
 use kanidm_client::{
     asynchronous::KanidmAsyncClient, ClientError, KanidmClientBuilder, StatusCode,
@@ -16,8 +17,14 @@ pub struct KaniHttpServer {
     client: KanidmAsyncClient,
 }
 
+#[derive(Debug)]
+pub struct KaniLdapServer {
+    http: KaniHttpServer,
+    ldap: LdapClient,
+}
+
 impl KaniHttpServer {
-    pub fn build(uri: String, admin_pw: String) -> Result<TargetServer, ()> {
+    fn construct(uri: String, admin_pw: String) -> Result<Self, ()> {
         let client = KanidmClientBuilder::new()
             .address(uri.clone())
             .danger_accept_invalid_hostnames(true)
@@ -27,15 +34,20 @@ impl KaniHttpServer {
                 error!("Unable to create kanidm client {:?}", e);
             })?;
 
-        Ok(TargetServer::Kanidm(KaniHttpServer {
+        Ok(KaniHttpServer {
             uri,
             admin_pw,
             client,
-        }))
+        })
+    }
+
+    pub fn build(uri: String, admin_pw: String) -> Result<TargetServer, ()> {
+        Self::construct(uri, admin_pw).map(|s| TargetServer::Kanidm(s))
     }
 
     pub fn new(khconfig: &KaniHttpConfig) -> Result<TargetServer, ()> {
-        Self::build(khconfig.uri.clone(), khconfig.admin_pw.clone())
+        Self::construct(khconfig.uri.clone(), khconfig.admin_pw.clone())
+            .map(|s| TargetServer::Kanidm(s))
     }
 
     pub fn info(&self) -> String {
@@ -44,15 +56,6 @@ impl KaniHttpServer {
 
     pub fn builder(&self) -> TargetServerBuilder {
         TargetServerBuilder::Kanidm(self.uri.clone(), self.admin_pw.clone())
-    }
-
-    pub async fn open_user_connection(&self, name: &str, pw: &str) -> Result<(), ()> {
-        self.client
-            .auth_simple_password(name, pw)
-            .await
-            .map_err(|e| {
-                error!("Unable to authenticate -> {:?}", e);
-            })
     }
 
     // open the admin internal connection
@@ -70,7 +73,7 @@ impl KaniHttpServer {
             .await
             .map(|_| ())
             .map_err(|e| {
-                error!("Unable to extend admin permissions -> {:?}", e);
+                error!("Unable to extend admin permissions (idm) -> {:?}", e);
             })
     }
 
@@ -128,7 +131,24 @@ impl KaniHttpServer {
                         .await
                         .map(|_| ())
                         .map_err(|e| {
-                            error!("Unable to set password for {}", a.name);
+                            error!("Unable to set password for {}: {:?}", a.name, e);
+                        })?;
+
+                    // For ldap tests, we need to make these posix accounts.
+                    self.client
+                        .idm_account_unix_extend(&a.name, None, None)
+                        .await
+                        .map(|_| ())
+                        .map_err(|e| {
+                            error!("Unable to set unix attributes for {}: {:?}", a.name, e);
+                        })?;
+
+                    self.client
+                        .idm_account_unix_cred_put(&a.name, &a.password)
+                        .await
+                        .map(|_| ())
+                        .map_err(|e| {
+                            error!("Unable to set unix password for {}: {:?}", a.name, e);
                         })?;
                 }
                 Entity::Group(g) => {
@@ -249,6 +269,25 @@ impl KaniHttpServer {
         Ok(())
     }
 
+    pub async fn open_user_connection(&self,
+        test_start: Instant,
+        name: &str, pw: &str
+    ) -> Result<(Duration, Duration), ()> {
+        let start = Instant::now();
+        self.client
+            .auth_simple_password(name, pw)
+            .await
+            .map_err(|e| {
+                error!("Unable to authenticate -> {:?}", e);
+            })
+            .map(|_| {
+                let end = Instant::now();
+                let diff = end.duration_since(start);
+                let rel_diff = start.duration_since(test_start);
+                (rel_diff, diff)
+            })
+    }
+
     pub async fn search(
         &self,
         test_start: Instant,
@@ -259,7 +298,7 @@ impl KaniHttpServer {
             .iter()
             .map(|n| Filter::Eq("name".to_string(), n.to_string()))
             .collect();
-        let filter = Filter::And(inner);
+        let filter = Filter::Or(inner);
 
         let start = Instant::now();
         let l = self
@@ -276,5 +315,95 @@ impl KaniHttpServer {
         let rel_diff = start.duration_since(test_start);
 
         Ok((rel_diff, diff, l))
+    }
+}
+
+impl KaniLdapServer {
+    fn construct(
+        uri: String,
+        admin_pw: String,
+        ldap_uri: String,
+        basedn: String,
+    ) -> Result<Self, ()> {
+        let http = KaniHttpServer::construct(uri, admin_pw)?;
+        let ldap = LdapClient::new(ldap_uri, basedn, LdapSchema::Kanidm)?;
+
+        Ok(KaniLdapServer { http, ldap })
+    }
+
+    pub fn build(
+        uri: String,
+        admin_pw: String,
+        ldap_uri: String,
+        basedn: String,
+    ) -> Result<TargetServer, ()> {
+        Self::construct(uri, admin_pw, ldap_uri, basedn).map(|s| TargetServer::KanidmLdap(s))
+    }
+
+    pub fn new(klconfig: &KaniLdapConfig) -> Result<TargetServer, ()> {
+        Self::construct(
+            klconfig.uri.clone(),
+            klconfig.admin_pw.clone(),
+            klconfig.ldap_uri.clone(),
+            klconfig.base_dn.clone(),
+        )
+        .map(|s| TargetServer::KanidmLdap(s))
+    }
+
+    pub fn info(&self) -> String {
+        format!(
+            "Kanidm LDAP Connection: {} {}",
+            self.ldap.uri, self.ldap.basedn
+        )
+    }
+
+    pub fn builder(&self) -> TargetServerBuilder {
+        TargetServerBuilder::KanidmLdap(
+            self.http.uri.clone(),
+            self.http.admin_pw.clone(),
+            self.ldap.uri.clone(),
+            self.ldap.basedn.clone(),
+        )
+    }
+
+    pub async fn open_admin_connection(&self) -> Result<(), ()> {
+        self.http.open_admin_connection().await
+    }
+
+    pub async fn setup_admin_delete_uuids(&self, targets: &[Uuid]) -> Result<(), ()> {
+        self.http.setup_admin_delete_uuids(targets).await
+    }
+
+    pub async fn setup_admin_precreate_entities(
+        &self,
+        targets: &HashSet<Uuid>,
+        all_entities: &HashMap<Uuid, Entity>,
+    ) -> Result<(), ()> {
+        self.http
+            .setup_admin_precreate_entities(targets, all_entities)
+            .await
+    }
+
+    pub async fn setup_access_controls(
+        &self,
+        access: &HashMap<Uuid, Vec<EntityType>>,
+        all_entities: &HashMap<Uuid, Entity>,
+    ) -> Result<(), ()> {
+        self.http.setup_access_controls(access, all_entities).await
+    }
+
+    pub async fn open_user_connection(&self,
+        test_start: Instant,
+        name: &str, pw: &str
+    ) -> Result<(Duration, Duration), ()> {
+        self.ldap.open_user_connection(test_start, name, pw).await
+    }
+
+    pub async fn search(
+        &self,
+        test_start: Instant,
+        ids: &[String],
+    ) -> Result<(Duration, Duration, usize), ()> {
+        self.ldap.search(test_start, ids).await
     }
 }

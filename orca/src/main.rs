@@ -18,7 +18,7 @@ extern crate log;
 #[macro_use]
 extern crate serde_derive;
 
-use crate::kani::KaniHttpServer;
+use crate::kani::{KaniHttpServer, KaniLdapServer};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
@@ -27,6 +27,7 @@ use uuid::Uuid;
 
 mod data;
 mod kani;
+mod ldap;
 mod preprocess;
 mod profile;
 mod runner;
@@ -46,54 +47,56 @@ impl OrcaOpt {
 
 pub enum TargetServerBuilder {
     Kanidm(String, String),
+    KanidmLdap(String, String, String, String),
 }
 
 impl TargetServerBuilder {
     pub fn build(self) -> Result<TargetServer, ()> {
         match self {
             TargetServerBuilder::Kanidm(a, b) => KaniHttpServer::build(a, b),
+            TargetServerBuilder::KanidmLdap(a, b, c, d) => KaniLdapServer::build(a, b, c, d),
         }
     }
 }
 
 pub enum TargetServer {
     Kanidm(KaniHttpServer),
+    KanidmLdap(KaniLdapServer),
 }
 
 impl TargetServer {
     fn info(&self) -> String {
         match self {
             TargetServer::Kanidm(k) => k.info(),
+            TargetServer::KanidmLdap(k) => k.info(),
         }
     }
 
     fn rname(&self) -> &str {
         match self {
-            TargetServer::Kanidm(k) => "kanidm_http",
+            TargetServer::Kanidm(_) => "kanidm_http",
+            TargetServer::KanidmLdap(_) => "kanidm_ldap",
         }
     }
 
     fn builder(&self) -> TargetServerBuilder {
         match self {
             TargetServer::Kanidm(k) => k.builder(),
-        }
-    }
-
-    async fn open_user_connection(&self, name: &str, pw: &str) -> Result<(), ()> {
-        match self {
-            TargetServer::Kanidm(k) => k.open_user_connection(name, pw).await,
+            TargetServer::KanidmLdap(k) => k.builder(),
         }
     }
 
     async fn open_admin_connection(&self) -> Result<(), ()> {
         match self {
             TargetServer::Kanidm(k) => k.open_admin_connection().await,
+            TargetServer::KanidmLdap(k) => k.open_admin_connection().await,
         }
     }
 
     async fn setup_admin_delete_uuids(&self, targets: &[Uuid]) -> Result<(), ()> {
         match self {
             TargetServer::Kanidm(k) => k.setup_admin_delete_uuids(targets).await,
+            TargetServer::KanidmLdap(k) => k.setup_admin_delete_uuids(targets).await,
         }
     }
 
@@ -107,6 +110,10 @@ impl TargetServer {
                 k.setup_admin_precreate_entities(targets, all_entities)
                     .await
             }
+            TargetServer::KanidmLdap(k) => {
+                k.setup_admin_precreate_entities(targets, all_entities)
+                    .await
+            }
         }
     }
 
@@ -117,6 +124,17 @@ impl TargetServer {
     ) -> Result<(), ()> {
         match self {
             TargetServer::Kanidm(k) => k.setup_access_controls(access, all_entities).await,
+            TargetServer::KanidmLdap(k) => k.setup_access_controls(access, all_entities).await,
+        }
+    }
+
+    async fn open_user_connection(&self,
+        test_start: Instant,
+        name: &str, pw: &str
+    ) -> Result<(Duration, Duration), ()> {
+        match self {
+            TargetServer::Kanidm(k) => k.open_user_connection(test_start, name, pw).await,
+            TargetServer::KanidmLdap(k) => k.open_user_connection(test_start, name, pw).await,
         }
     }
 
@@ -127,6 +145,7 @@ impl TargetServer {
     ) -> Result<(Duration, Duration, usize), ()> {
         match self {
             TargetServer::Kanidm(k) => k.search(test_start, ids).await,
+            TargetServer::KanidmLdap(k) => k.search(test_start, ids).await,
         }
     }
 }
@@ -141,10 +160,7 @@ async fn main() {
             "orca=debug,kanidm=debug,kanidm_client=debug,webauthn=debug",
         );
     } else {
-        ::std::env::set_var(
-            "RUST_LOG",
-            "orca=info,kanidm=info,kanidm_client=info,webauthn=info",
-        );
+        ::std::env::set_var("RUST_LOG", "orca=info");
     }
     env_logger::init();
 
