@@ -360,7 +360,6 @@ async fn json_rest_event_post_id_attr(
     let id = req.get_url_param("id")?;
     let attr = req.get_url_param("attr")?;
     let values: Vec<String> = req.body_json().await?;
-
     let (eventid, hvalue) = new_eventid!();
     let m_obj = AppendAttributeMessage {
         uat,
@@ -417,9 +416,27 @@ async fn json_rest_event_delete_id_attr(
     let id = req.get_url_param("id")?;
 
     // TODO: #429: make this work
-    let values = req.body_string().await?;
+    // This  was just
+    // let values: Option<Vec<String>> = match req.body_json().await?
+    // fails when an empty body is returned, not continuing to the "done converting body" bit..
 
-    if values == "\"\"" {
+    println!("#421 😊 converting body");
+    let values: Option<Vec<String>> = req.body_json().await?;
+    // this is all very very silly code.
+    // let values: Option<Vec<String>> = match req.body_json().await? {
+    //         // Ok(Some(val)) => val,
+    //         Err(_) => {
+    //             debug!("Uhh... awkward?");
+    //             None
+    //         }
+    //         _ => { println!("uwu"); Some(Vec::new()) }
+    //         };
+    // };
+
+    println!("#421 😊 done converting body {:?}", values);
+
+    let values = values.unwrap();
+    if values.len() == 0 {
         println!("#421 😊 values is empty, can use PurgeAttributeMessage");
         let (eventid, hvalue) = new_eventid!();
         // TODO #211: Attempt to get an option Vec<String> here?
@@ -439,7 +456,12 @@ async fn json_rest_event_delete_id_attr(
             .map(|()| true);
         to_tide_response(res, hvalue)
     } else {
-        println!("#421 😞 values {:?}", values);
+        println!("#421 😞 values herpaderp {:?}", &values);
+        // let s = match std::str::from_utf8(&values) {
+        //     Ok(v) => v,
+        //     Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
+        // };
+        // println!("oh no {:#?}", s);
         panic!("oh no")
     }
 }

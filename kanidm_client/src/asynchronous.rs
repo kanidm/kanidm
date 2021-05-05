@@ -125,11 +125,11 @@ impl KanidmAsyncClient {
     ) -> Result<T, ClientError> {
         let dest = [self.addr.as_str(), dest].concat();
         debug!("{:?}", dest);
+        println!("{:?}", dest);
         // format doesn't work in async ?!
         // let dest = format!("{}{}", self.addr, dest);
 
         let req_string = serde_json::to_string(&request).map_err(ClientError::JSONEncode)?;
-
         let response = self
             .client
             .post(dest.as_str())
@@ -258,16 +258,56 @@ impl KanidmAsyncClient {
             .map_err(|e| ClientError::JSONDecode(e, opid))
     }
 
-    async fn perform_delete_request<R: Serialize>(
+    async fn perform_delete_request(&self, dest: &str) -> Result<bool, ClientError> {
+        let dest = format!("{}{}", self.addr, dest);
+
+        let response = self
+            .client
+            .delete(dest.as_str())
+            .header(CONTENT_TYPE, APPLICATION_JSON);
+        let response = if let Some(token) = &self.bearer_token {
+            response.bearer_auth(token)
+        } else {
+            response
+        };
+
+        let response = response.send().await.map_err(ClientError::Transport)?;
+
+        let opid = response
+            .headers()
+            .get(KOPID)
+            .and_then(|hv| hv.to_str().ok().map(|s| s.to_string()))
+            .unwrap_or_else(|| "missing_kopid".to_string());
+        debug!("opid -> {:?}", opid);
+
+        match response.status() {
+            reqwest::StatusCode::OK => {}
+            unexpect => {
+                return Err(ClientError::Http(
+                    unexpect,
+                    response.json().await.ok(),
+                    opid,
+                ))
+            }
+        }
+
+        response
+            .json()
+            .await
+            .map_err(|e| ClientError::JSONDecode(e, opid))
+    }
+    async fn perform_delete_request_with_body<R: Serialize>(
         &self,
         dest: &str,
         request: R,
     ) -> Result<bool, ClientError> {
         let dest = format!("{}{}", self.addr, dest);
 
-        let req_body = serde_json::to_string(&request).map_err(ClientError::JSONEncode)?;
-        let response = self.client.delete(dest.as_str()).body(req_body);
-
+        let response = self
+            .client
+            .delete(dest.as_str())
+            .body(serde_json::to_string(&request).map_err(ClientError::JSONEncode)?)
+            .header(CONTENT_TYPE, APPLICATION_JSON);
         let response = if let Some(token) = &self.bearer_token {
             response.bearer_auth(token)
         } else {
@@ -670,7 +710,6 @@ impl KanidmAsyncClient {
         group: &str,
         members: &[&str],
     ) -> Result<bool, ClientError> {
-        let m: Vec<_> = members.iter().map(|v| (*v).to_string()).collect();
         debug!(
             "{}",
             [
@@ -682,12 +721,15 @@ impl KanidmAsyncClient {
             .concat()
             .to_string()
         );
-        self.perform_delete_request(["/v1/group/", group, "/_attr/member"].concat().as_str(), m)
-            .await
+        self.perform_delete_request_with_body(
+            ["/v1/group/", group, "/_attr/member"].concat().as_str(),
+            &members,
+        )
+        .await
     }
 
     pub async fn idm_group_purge_members(&self, id: &str) -> Result<bool, ClientError> {
-        self.perform_delete_request(format!("/v1/group/{}/_attr/member", id).as_str(), "")
+        self.perform_delete_request(format!("/v1/group/{}/_attr/member", id).as_str())
             .await
     }
 
@@ -709,7 +751,7 @@ impl KanidmAsyncClient {
     }
 
     pub async fn idm_group_delete(&self, id: &str) -> Result<bool, ClientError> {
-        self.perform_delete_request(["/v1/group/", id].concat().as_str(), "")
+        self.perform_delete_request(["/v1/group/", id].concat().as_str())
             .await
     }
 
@@ -758,7 +800,7 @@ impl KanidmAsyncClient {
     }
 
     pub async fn idm_account_delete(&self, id: &str) -> Result<bool, ClientError> {
-        self.perform_delete_request(["/v1/account/", id].concat().as_str(), "")
+        self.perform_delete_request(["/v1/account/", id].concat().as_str())
             .await
     }
 
@@ -788,7 +830,7 @@ impl KanidmAsyncClient {
     }
 
     pub async fn idm_account_purge_attr(&self, id: &str, attr: &str) -> Result<bool, ClientError> {
-        self.perform_delete_request(format!("/v1/account/{}/_attr/{}", id, attr).as_str(), "")
+        self.perform_delete_request(format!("/v1/account/{}/_attr/{}", id, attr).as_str())
             .await
     }
 
@@ -989,7 +1031,7 @@ impl KanidmAsyncClient {
         &self,
         id: &str,
     ) -> Result<bool, ClientError> {
-        self.perform_delete_request(format!("/v1/account/{}/_radius", id).as_str(), "")
+        self.perform_delete_request(format!("/v1/account/{}/_radius", id).as_str())
             .await
     }
 
@@ -1031,11 +1073,8 @@ impl KanidmAsyncClient {
     }
 
     pub async fn idm_account_unix_cred_delete(&self, id: &str) -> Result<bool, ClientError> {
-        self.perform_delete_request(
-            ["/v1/account/", id, "/_unix/_credential"].concat().as_str(),
-            "",
-        )
-        .await
+        self.perform_delete_request(["/v1/account/", id, "/_unix/_credential"].concat().as_str())
+            .await
     }
 
     pub async fn idm_account_unix_cred_verify(
@@ -1085,11 +1124,8 @@ impl KanidmAsyncClient {
         id: &str,
         tag: &str,
     ) -> Result<bool, ClientError> {
-        self.perform_delete_request(
-            format!("/v1/account/{}/_ssh_pubkeys/{}", id, tag).as_str(),
-            "",
-        )
-        .await
+        self.perform_delete_request(format!("/v1/account/{}/_ssh_pubkeys/{}", id, tag).as_str())
+            .await
     }
 
     // ==== domain_info (aka domain)
