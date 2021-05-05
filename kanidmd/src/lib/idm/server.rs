@@ -385,15 +385,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 };
 
                 let (auth_session, state) = if is_valid {
-                    let pw_badlist_cache = Some((*self.pw_badlist_cache).clone());
-                    AuthSession::new(
-                        au,
-                        account,
-                        &init.appid,
-                        self.webauthn,
-                        ct,
-                        pw_badlist_cache,
-                    )
+                    AuthSession::new(au, account, &init.appid, self.webauthn, ct)
                 } else {
                     // it's softlocked, don't even bother.
                     lsecurity!(au, "Account is softlocked.");
@@ -523,8 +515,16 @@ impl<'a> IdmServerAuthTransaction<'a> {
                     // Process the credentials here as required.
                     // Basically throw them at the auth_session and see what
                     // falls out.
+                    let pw_badlist_cache = Some(&(*self.pw_badlist_cache));
                     auth_session
-                        .validate_creds(au, &creds.cred, &ct, &self.async_tx, self.webauthn)
+                        .validate_creds(
+                            au,
+                            &creds.cred,
+                            &ct,
+                            &self.async_tx,
+                            self.webauthn,
+                            pw_badlist_cache,
+                        )
                         .map(|aus| {
                             // Inspect the result:
                             // if it was a failure, we need to inc the softlock.
