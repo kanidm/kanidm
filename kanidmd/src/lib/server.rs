@@ -684,6 +684,32 @@ pub trait QueryServerTransaction<'a> {
                 e
             })
     }
+
+    // This is a helper to get password badlist.
+    fn get_password_badlist(
+        &self,
+        audit: &mut AuditScope,
+    ) -> Result<HashSet<String>, OperationError> {
+        self.internal_search_uuid(audit, &UUID_SYSTEM_CONFIG)
+            .and_then(|e| match e.get_ava_set("badlist_password") {
+                Some(badlist_entry) => {
+                    let mut badlist_hashset = HashSet::with_capacity(badlist_entry.len());
+                    badlist_entry
+                        .iter()
+                        .filter_map(|e| e.as_string())
+                        .cloned()
+                        .for_each(|s| {
+                            badlist_hashset.insert(s);
+                        });
+                    Ok(badlist_hashset)
+                }
+                None => Err(OperationError::InvalidEntryState),
+            })
+            .map_err(|e| {
+                ladmin_error!(audit, "Failed to retrieve system configuration {:?}", e);
+                e
+            })
+    }
 }
 
 // Actually conduct a search request

@@ -2,6 +2,7 @@ use crate::idm::account::Account;
 use crate::idm::claim::Claim;
 use crate::idm::AuthState;
 use crate::prelude::*;
+use hashbrown::HashSet;
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthMech};
 
@@ -15,7 +16,6 @@ use crate::credential::webauthn::WebauthnDomainConfig;
 use std::time::Duration;
 use uuid::Uuid;
 // use webauthn_rs::proto::Credential as WebauthnCredential;
-use crate::value::PartialValue;
 pub use std::collections::BTreeSet as Set;
 use webauthn_rs::proto::RequestChallengeResponse;
 use webauthn_rs::{AuthenticationState, Webauthn};
@@ -181,13 +181,13 @@ impl CredHandler {
         pw: &mut Password,
         who: Uuid,
         async_tx: &Sender<DelayedAction>,
-        pw_badlist_set: Option<Set<Value>>,
+        pw_badlist_set: Option<&HashSet<String>>,
     ) -> CredState {
         match cred {
             AuthCredential::Password(cleartext) => {
                 if pw.verify(cleartext.as_str()).unwrap_or(false) {
                     match pw_badlist_set {
-                        Some(p) if p.contains(&PartialValue::new_iutf8(cleartext)) => {
+                        Some(p) if p.contains(&cleartext.to_lowercase()) => {
                             lsecurity!(
                                 au,
                                 "Handler::Password -> Result::Denied - Password found in badlist during login"
@@ -227,7 +227,7 @@ impl CredHandler {
         webauthn: &Webauthn<WebauthnDomainConfig>,
         who: Uuid,
         async_tx: &Sender<DelayedAction>,
-        pw_badlist_set: Option<Set<Value>>,
+        pw_badlist_set: Option<&HashSet<String>>,
     ) -> CredState {
         match (&pw_mfa.mfa_state, &pw_mfa.pw_state) {
             (CredVerifyState::Init, CredVerifyState::Init) => {
@@ -290,7 +290,7 @@ impl CredHandler {
                     AuthCredential::Password(cleartext) => {
                         if pw_mfa.pw.verify(cleartext.as_str()).unwrap_or(false) {
                             match pw_badlist_set {
-                                Some(p) if p.contains(&PartialValue::new_iutf8(cleartext)) => {
+                                Some(p) if p.contains(&cleartext.to_lowercase()) => {
                                     pw_mfa.pw_state = CredVerifyState::Fail;
                                     lsecurity!(
                                         au,
@@ -404,7 +404,7 @@ impl CredHandler {
         who: Uuid,
         async_tx: &Sender<DelayedAction>,
         webauthn: &Webauthn<WebauthnDomainConfig>,
-        pw_badlist_set: Option<Set<Value>>,
+        pw_badlist_set: Option<&HashSet<String>>,
     ) -> CredState {
         match self {
             CredHandler::Anonymous => Self::validate_anonymous(au, cred),
@@ -501,8 +501,6 @@ pub(crate) struct AuthSession {
     //
     // This handler will then handle the mfa and stepping up through to generate the auth states
     state: AuthSessionState,
-    // Store the password badlist
-    pw_badlist_set: Option<Set<Value>>,
 }
 
 impl AuthSession {
@@ -512,7 +510,6 @@ impl AuthSession {
         _appid: &Option<String>,
         webauthn: &Webauthn<WebauthnDomainConfig>,
         ct: Duration,
-        pw_badlist_set: Option<Set<Value>>,
     ) -> (Option<Self>, AuthState) {
         // During this setup, determine the credential handler that we'll be using
         // for this session. This is currently based on presentation of an application
@@ -556,11 +553,7 @@ impl AuthSession {
             (None, AuthState::Denied(reason.to_string()))
         } else {
             // We can proceed
-            let auth_session = AuthSession {
-                account,
-                state,
-                pw_badlist_set,
-            };
+            let auth_session = AuthSession { account, state };
             // Get the set of mechanisms that can proceed. This is tied
             // to the session so that it can mutate state and have progression
             // of what's next, or ordering.
@@ -644,6 +637,7 @@ impl AuthSession {
         time: &Duration,
         async_tx: &Sender<DelayedAction>,
         webauthn: &Webauthn<WebauthnDomainConfig>,
+        pw_badlist_set: Option<&HashSet<String>>,
     ) -> Result<AuthState, OperationError> {
         let (next_state, response) = match &mut self.state {
             AuthSessionState::Init(_) | AuthSessionState::Success | AuthSessionState::Denied(_) => {
@@ -659,7 +653,7 @@ impl AuthSession {
                     self.account.uuid,
                     async_tx,
                     webauthn,
-                    self.pw_badlist_set.clone(),
+                    pw_badlist_set,
                 ) {
                     CredState::Success(claims) => {
                         lsecurity!(au, "Successful cred handling");
@@ -738,6 +732,7 @@ mod tests {
     use crate::idm::delayed::DelayedAction;
     use crate::idm::AuthState;
     use crate::prelude::*;
+    use hashbrown::HashSet;
     pub use std::collections::BTreeSet as Set;
 
     use crate::utils::duration_from_epoch_now;
@@ -748,6 +743,12 @@ mod tests {
 
     use tokio::sync::mpsc::unbounded_channel as unbounded;
     use webauthn_authenticator_rs::{softtok::U2FSoft, WebauthnAuthenticator};
+
+    fn create_pw_badlist_cache() -> HashSet<String> {
+        let mut s = HashSet::new();
+        s.insert((&"list@no3IBTyqHu$bad").to_lowercase());
+        s
+    }
 
     fn create_webauthn() -> Webauthn<WebauthnDomainConfig> {
         Webauthn::new(WebauthnDomainConfig {
@@ -774,7 +775,6 @@ mod tests {
             &None,
             &webauthn,
             duration_from_epoch_now(),
-            Option::None,
         );
 
         if let AuthState::Choose(auth_mechs) = state {
@@ -822,7 +822,6 @@ mod tests {
             &Some("NonExistantAppID".to_string()),
             &webauthn,
             duration_from_epoch_now(),
-            Option::None,
         );
 
         // We now ignore appids.
@@ -841,15 +840,12 @@ mod tests {
             $account:expr,
             $webauthn:expr
         ) => {{
-            let mut pw_badlist_set = Set::new();
-            pw_badlist_set.insert(Value::new_iutf8("list@no3IBTyqHu$bad"));
             let (session, state) = AuthSession::new(
                 $audit,
                 $account.clone(),
                 &None,
                 $webauthn,
                 duration_from_epoch_now(),
-                Some(pw_badlist_set),
             );
             let mut session = session.unwrap();
 
@@ -879,7 +875,7 @@ mod tests {
                 panic!("Invalid auth state")
             }
 
-            session
+            (session, create_pw_badlist_cache())
         }};
     }
 
@@ -901,7 +897,8 @@ mod tests {
         let (async_tx, mut async_rx) = unbounded();
 
         // now check
-        let mut session = start_password_session!(&mut audit, account, &webauthn);
+        let (mut session, pw_badlist_cache) =
+            start_password_session!(&mut audit, account, &webauthn);
 
         let attempt = AuthCredential::Password("bad_password".to_string());
         match session.validate_creds(
@@ -910,6 +907,7 @@ mod tests {
             &Duration::from_secs(0),
             &async_tx,
             &webauthn,
+            Some(&pw_badlist_cache),
         ) {
             Ok(AuthState::Denied(_)) => {}
             _ => panic!(),
@@ -917,7 +915,8 @@ mod tests {
 
         // === Now begin a new session, and use a good pw.
 
-        let mut session = start_password_session!(&mut audit, account, &webauthn);
+        let (mut session, pw_badlist_cache) =
+            start_password_session!(&mut audit, account, &webauthn);
 
         let attempt = AuthCredential::Password("test_password".to_string());
         match session.validate_creds(
@@ -926,6 +925,7 @@ mod tests {
             &Duration::from_secs(0),
             &async_tx,
             &webauthn,
+            Some(&pw_badlist_cache),
         ) {
             Ok(AuthState::Success(_)) => {}
             _ => panic!(),
@@ -955,7 +955,8 @@ mod tests {
         let (async_tx, mut async_rx) = unbounded();
 
         // now check, even though the password is correct, Auth should be denied since it is in badlist
-        let mut session = start_password_session!(&mut audit, account, &webauthn);
+        let (mut session, pw_badlist_cache) =
+            start_password_session!(&mut audit, account, &webauthn);
 
         let attempt = AuthCredential::Password("list@no3IBTyqHu$bad".to_string());
         match session.validate_creds(
@@ -964,6 +965,7 @@ mod tests {
             &Duration::from_secs(0),
             &async_tx,
             &webauthn,
+            Some(&pw_badlist_cache),
         ) {
             Ok(AuthState::Denied(msg)) => assert!(msg == PW_BADLIST_MSG),
             _ => panic!(),
@@ -980,15 +982,12 @@ mod tests {
             $account:expr,
             $webauthn:expr
         ) => {{
-            let mut pw_badlist_set = Set::new();
-            pw_badlist_set.insert(Value::new_iutf8("list@no3IBTyqHu$bad"));
             let (session, state) = AuthSession::new(
                 $audit,
                 $account.clone(),
                 &None,
                 $webauthn,
                 duration_from_epoch_now(),
-                Some(pw_badlist_set),
             );
             let mut session = session.expect("Session was unable to be created.");
 
@@ -1025,7 +1024,7 @@ mod tests {
                 panic!("Invalid auth state")
             }
 
-            (session, rchal)
+            (session, rchal, create_pw_badlist_cache())
         }};
     }
 
@@ -1070,7 +1069,8 @@ mod tests {
 
         // check send anon (fail)
         {
-            let (mut session, _) = start_password_mfa_session!(&mut audit, account, &webauthn);
+            let (mut session, _, pw_badlist_cache) =
+                start_password_mfa_session!(&mut audit, account, &webauthn);
 
             match session.validate_creds(
                 &mut audit,
@@ -1078,6 +1078,7 @@ mod tests {
                 &ts,
                 &async_tx,
                 &webauthn,
+                Some(&pw_badlist_cache),
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
                 _ => panic!(),
@@ -1088,7 +1089,8 @@ mod tests {
 
         // Sending a PW first is an immediate fail.
         {
-            let (mut session, _) = start_password_mfa_session!(&mut audit, account, &webauthn);
+            let (mut session, _, pw_badlist_cache) =
+                start_password_mfa_session!(&mut audit, account, &webauthn);
 
             match session.validate_creds(
                 &mut audit,
@@ -1096,6 +1098,7 @@ mod tests {
                 &ts,
                 &async_tx,
                 &webauthn,
+                Some(&pw_badlist_cache),
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
                 _ => panic!(),
@@ -1103,7 +1106,8 @@ mod tests {
         }
         // check send bad totp, should fail immediate
         {
-            let (mut session, _) = start_password_mfa_session!(&mut audit, account, &webauthn);
+            let (mut session, _, pw_badlist_cache) =
+                start_password_mfa_session!(&mut audit, account, &webauthn);
 
             match session.validate_creds(
                 &mut audit,
@@ -1111,6 +1115,7 @@ mod tests {
                 &ts,
                 &async_tx,
                 &webauthn,
+                Some(&pw_badlist_cache),
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_TOTP_MSG),
                 _ => panic!(),
@@ -1120,7 +1125,8 @@ mod tests {
         // check send good totp, should continue
         //      then bad pw, fail pw
         {
-            let (mut session, _) = start_password_mfa_session!(&mut audit, account, &webauthn);
+            let (mut session, _, pw_badlist_cache) =
+                start_password_mfa_session!(&mut audit, account, &webauthn);
 
             match session.validate_creds(
                 &mut audit,
@@ -1128,6 +1134,7 @@ mod tests {
                 &ts,
                 &async_tx,
                 &webauthn,
+                Some(&pw_badlist_cache),
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -1138,6 +1145,7 @@ mod tests {
                 &ts,
                 &async_tx,
                 &webauthn,
+                Some(&pw_badlist_cache),
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
                 _ => panic!(),
@@ -1147,7 +1155,8 @@ mod tests {
         // check send good totp, should continue
         //      then good pw, success
         {
-            let (mut session, _) = start_password_mfa_session!(&mut audit, account, &webauthn);
+            let (mut session, _, pw_badlist_cache) =
+                start_password_mfa_session!(&mut audit, account, &webauthn);
 
             match session.validate_creds(
                 &mut audit,
@@ -1155,6 +1164,7 @@ mod tests {
                 &ts,
                 &async_tx,
                 &webauthn,
+                Some(&pw_badlist_cache),
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -1165,6 +1175,7 @@ mod tests {
                 &ts,
                 &async_tx,
                 &webauthn,
+                Some(&pw_badlist_cache),
             ) {
                 Ok(AuthState::Success(_)) => {}
                 _ => panic!(),
@@ -1215,7 +1226,8 @@ mod tests {
         // check send good totp, should continue
         //      then badlist pw, failed
         {
-            let (mut session, _) = start_password_mfa_session!(&mut audit, account, &webauthn);
+            let (mut session, _, pw_badlist_cache) =
+                start_password_mfa_session!(&mut audit, account, &webauthn);
 
             match session.validate_creds(
                 &mut audit,
@@ -1223,6 +1235,7 @@ mod tests {
                 &ts,
                 &async_tx,
                 &webauthn,
+                Some(&pw_badlist_cache),
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -1233,6 +1246,7 @@ mod tests {
                 &ts,
                 &async_tx,
                 &webauthn,
+                Some(&pw_badlist_cache),
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == PW_BADLIST_MSG),
                 _ => panic!(),
@@ -1256,7 +1270,6 @@ mod tests {
                 &None,
                 $webauthn,
                 duration_from_epoch_now(),
-                Option::None,
             );
             let mut session = session.unwrap();
 
@@ -1349,6 +1362,7 @@ mod tests {
                 &ts,
                 &async_tx,
                 &webauthn,
+                None,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
                 _ => panic!(),
@@ -1369,6 +1383,7 @@ mod tests {
                 &ts,
                 &async_tx,
                 &webauthn,
+                None,
             ) {
                 Ok(AuthState::Success(_)) => {}
                 _ => panic!(),
@@ -1397,6 +1412,7 @@ mod tests {
                 &ts,
                 &async_tx,
                 &webauthn,
+                None,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_WEBAUTHN_MSG),
                 _ => panic!(),
@@ -1441,6 +1457,7 @@ mod tests {
                 &ts,
                 &async_tx,
                 &webauthn,
+                None,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_WEBAUTHN_MSG),
                 _ => panic!(),
@@ -1479,7 +1496,8 @@ mod tests {
 
         // check pw first (fail)
         {
-            let (mut session, _) = start_password_mfa_session!(&mut audit, account, &webauthn);
+            let (mut session, _, pw_badlist_cache) =
+                start_password_mfa_session!(&mut audit, account, &webauthn);
 
             match session.validate_creds(
                 &mut audit,
@@ -1487,6 +1505,7 @@ mod tests {
                 &ts,
                 &async_tx,
                 &webauthn,
+                Some(&pw_badlist_cache),
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
                 _ => panic!(),
@@ -1495,7 +1514,8 @@ mod tests {
 
         // Check totp first attempt fails.
         {
-            let (mut session, _) = start_password_mfa_session!(&mut audit, account, &webauthn);
+            let (mut session, _, pw_badlist_cache) =
+                start_password_mfa_session!(&mut audit, account, &webauthn);
 
             match session.validate_creds(
                 &mut audit,
@@ -1503,6 +1523,7 @@ mod tests {
                 &ts,
                 &async_tx,
                 &webauthn,
+                Some(&pw_badlist_cache),
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
                 _ => panic!(),
@@ -1513,8 +1534,10 @@ mod tests {
         // NOTE: We only check bad challenge here as bad softtoken is already
         // extensively tested.
         {
-            let (_session, inv_chal) = start_password_mfa_session!(&mut audit, account, &webauthn);
-            let (mut session, _chal) = start_password_mfa_session!(&mut audit, account, &webauthn);
+            let (_session, inv_chal, pw_badlist_cache) =
+                start_password_mfa_session!(&mut audit, account, &webauthn);
+            let (mut session, _chal, _) =
+                start_password_mfa_session!(&mut audit, account, &webauthn);
 
             let inv_chal = inv_chal.unwrap();
 
@@ -1529,6 +1552,7 @@ mod tests {
                 &ts,
                 &async_tx,
                 &webauthn,
+                Some(&pw_badlist_cache),
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_WEBAUTHN_MSG),
                 _ => panic!(),
@@ -1537,7 +1561,8 @@ mod tests {
 
         // check good webauthn/bad pw (fail)
         {
-            let (mut session, chal) = start_password_mfa_session!(&mut audit, account, &webauthn);
+            let (mut session, chal, pw_badlist_cache) =
+                start_password_mfa_session!(&mut audit, account, &webauthn);
             let chal = chal.unwrap();
 
             let resp = wa
@@ -1550,6 +1575,7 @@ mod tests {
                 &ts,
                 &async_tx,
                 &webauthn,
+                Some(&pw_badlist_cache),
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -1560,6 +1586,7 @@ mod tests {
                 &ts,
                 &async_tx,
                 &webauthn,
+                Some(&pw_badlist_cache),
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
                 _ => panic!(),
@@ -1574,7 +1601,8 @@ mod tests {
 
         // Check good webauthn/good pw (pass)
         {
-            let (mut session, chal) = start_password_mfa_session!(&mut audit, account, &webauthn);
+            let (mut session, chal, pw_badlist_cache) =
+                start_password_mfa_session!(&mut audit, account, &webauthn);
             let chal = chal.unwrap();
 
             let resp = wa
@@ -1587,6 +1615,7 @@ mod tests {
                 &ts,
                 &async_tx,
                 &webauthn,
+                Some(&pw_badlist_cache),
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -1597,6 +1626,7 @@ mod tests {
                 &ts,
                 &async_tx,
                 &webauthn,
+                Some(&pw_badlist_cache),
             ) {
                 Ok(AuthState::Success(_)) => {}
                 _ => panic!(),
@@ -1652,7 +1682,8 @@ mod tests {
 
         // check pw first (fail)
         {
-            let (mut session, _) = start_password_mfa_session!(&mut audit, account, &webauthn);
+            let (mut session, _, pw_badlist_cache) =
+                start_password_mfa_session!(&mut audit, account, &webauthn);
 
             match session.validate_creds(
                 &mut audit,
@@ -1660,6 +1691,7 @@ mod tests {
                 &ts,
                 &async_tx,
                 &webauthn,
+                Some(&pw_badlist_cache),
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
                 _ => panic!(),
@@ -1668,7 +1700,8 @@ mod tests {
 
         // Check bad totp (fail)
         {
-            let (mut session, _) = start_password_mfa_session!(&mut audit, account, &webauthn);
+            let (mut session, _, pw_badlist_cache) =
+                start_password_mfa_session!(&mut audit, account, &webauthn);
 
             match session.validate_creds(
                 &mut audit,
@@ -1676,6 +1709,7 @@ mod tests {
                 &ts,
                 &async_tx,
                 &webauthn,
+                Some(&pw_badlist_cache),
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_TOTP_MSG),
                 _ => panic!(),
@@ -1684,8 +1718,10 @@ mod tests {
 
         // check bad webauthn (fail)
         {
-            let (_session, inv_chal) = start_password_mfa_session!(&mut audit, account, &webauthn);
-            let (mut session, _chal) = start_password_mfa_session!(&mut audit, account, &webauthn);
+            let (_session, inv_chal, pw_badlist_cache) =
+                start_password_mfa_session!(&mut audit, account, &webauthn);
+            let (mut session, _chal, _) =
+                start_password_mfa_session!(&mut audit, account, &webauthn);
 
             let inv_chal = inv_chal.unwrap();
 
@@ -1700,6 +1736,7 @@ mod tests {
                 &ts,
                 &async_tx,
                 &webauthn,
+                Some(&pw_badlist_cache),
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_WEBAUTHN_MSG),
                 _ => panic!(),
@@ -1708,7 +1745,8 @@ mod tests {
 
         // check good webauthn/bad pw (fail)
         {
-            let (mut session, chal) = start_password_mfa_session!(&mut audit, account, &webauthn);
+            let (mut session, chal, pw_badlist_cache) =
+                start_password_mfa_session!(&mut audit, account, &webauthn);
             let chal = chal.unwrap();
 
             let resp = wa
@@ -1721,6 +1759,7 @@ mod tests {
                 &ts,
                 &async_tx,
                 &webauthn,
+                Some(&pw_badlist_cache),
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -1731,6 +1770,7 @@ mod tests {
                 &ts,
                 &async_tx,
                 &webauthn,
+                Some(&pw_badlist_cache),
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
                 _ => panic!(),
@@ -1745,7 +1785,8 @@ mod tests {
 
         // check good totp/bad pw (fail)
         {
-            let (mut session, _) = start_password_mfa_session!(&mut audit, account, &webauthn);
+            let (mut session, _, pw_badlist_cache) =
+                start_password_mfa_session!(&mut audit, account, &webauthn);
 
             match session.validate_creds(
                 &mut audit,
@@ -1753,6 +1794,7 @@ mod tests {
                 &ts,
                 &async_tx,
                 &webauthn,
+                Some(&pw_badlist_cache),
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -1763,6 +1805,7 @@ mod tests {
                 &ts,
                 &async_tx,
                 &webauthn,
+                Some(&pw_badlist_cache),
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
                 _ => panic!(),
@@ -1771,7 +1814,8 @@ mod tests {
 
         // check good totp/good pw (pass)
         {
-            let (mut session, _) = start_password_mfa_session!(&mut audit, account, &webauthn);
+            let (mut session, _, pw_badlist_cache) =
+                start_password_mfa_session!(&mut audit, account, &webauthn);
 
             match session.validate_creds(
                 &mut audit,
@@ -1779,6 +1823,7 @@ mod tests {
                 &ts,
                 &async_tx,
                 &webauthn,
+                Some(&pw_badlist_cache),
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -1789,6 +1834,7 @@ mod tests {
                 &ts,
                 &async_tx,
                 &webauthn,
+                Some(&pw_badlist_cache),
             ) {
                 Ok(AuthState::Success(_)) => {}
                 _ => panic!(),
@@ -1797,7 +1843,8 @@ mod tests {
 
         // Check good webauthn/good pw (pass)
         {
-            let (mut session, chal) = start_password_mfa_session!(&mut audit, account, &webauthn);
+            let (mut session, chal, pw_badlist_cache) =
+                start_password_mfa_session!(&mut audit, account, &webauthn);
             let chal = chal.unwrap();
 
             let resp = wa
@@ -1810,6 +1857,7 @@ mod tests {
                 &ts,
                 &async_tx,
                 &webauthn,
+                Some(&pw_badlist_cache),
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
                 _ => panic!(),
@@ -1820,6 +1868,7 @@ mod tests {
                 &ts,
                 &async_tx,
                 &webauthn,
+                Some(&pw_badlist_cache),
             ) {
                 Ok(AuthState::Success(_)) => {}
                 _ => panic!(),
