@@ -343,7 +343,7 @@ impl KanidmClient {
             .map(|asclient| KanidmClient { asclient })
     }
 
-    pub fn set_token(&mut self, new_token: String) {
+    pub fn set_token(&self, new_token: String) {
         tokio_block_on(self.asclient.set_token(new_token));
     }
 
@@ -351,7 +351,7 @@ impl KanidmClient {
         tokio_block_on(self.asclient.get_token())
     }
 
-    pub fn logout(&mut self) {
+    pub fn logout(&self) {
         tokio_block_on(self.asclient.logout())
     }
 
@@ -362,43 +362,43 @@ impl KanidmClient {
     }
 
     // auth
-    pub fn auth_step_init(&mut self, ident: &str) -> Result<Set<AuthMech>, ClientError> {
+    pub fn auth_step_init(&self, ident: &str) -> Result<Set<AuthMech>, ClientError> {
         tokio_block_on(self.asclient.auth_step_init(ident))
     }
 
-    pub fn auth_step_begin(&mut self, mech: AuthMech) -> Result<Vec<AuthAllowed>, ClientError> {
+    pub fn auth_step_begin(&self, mech: AuthMech) -> Result<Vec<AuthAllowed>, ClientError> {
         tokio_block_on(self.asclient.auth_step_begin(mech))
     }
 
-    pub fn auth_step_anonymous(&mut self) -> Result<AuthResponse, ClientError> {
+    pub fn auth_step_anonymous(&self) -> Result<AuthResponse, ClientError> {
         tokio_block_on(self.asclient.auth_step_anonymous())
     }
 
-    pub fn auth_step_password(&mut self, password: &str) -> Result<AuthResponse, ClientError> {
+    pub fn auth_step_password(&self, password: &str) -> Result<AuthResponse, ClientError> {
         tokio_block_on(self.asclient.auth_step_password(password))
     }
 
-    pub fn auth_step_totp(&mut self, totp: u32) -> Result<AuthResponse, ClientError> {
+    pub fn auth_step_totp(&self, totp: u32) -> Result<AuthResponse, ClientError> {
         tokio_block_on(self.asclient.auth_step_totp(totp))
     }
 
     pub fn auth_step_webauthn_complete(
-        &mut self,
+        &self,
         pkc: PublicKeyCredential,
     ) -> Result<AuthResponse, ClientError> {
         tokio_block_on(self.asclient.auth_step_webauthn_complete(pkc))
     }
 
-    pub fn auth_anonymous(&mut self) -> Result<(), ClientError> {
+    pub fn auth_anonymous(&self) -> Result<(), ClientError> {
         tokio_block_on(self.asclient.auth_anonymous())
     }
 
-    pub fn auth_simple_password(&mut self, ident: &str, password: &str) -> Result<(), ClientError> {
+    pub fn auth_simple_password(&self, ident: &str, password: &str) -> Result<(), ClientError> {
         tokio_block_on(self.asclient.auth_simple_password(ident, password))
     }
 
     pub fn auth_password_totp(
-        &mut self,
+        &self,
         ident: &str,
         password: &str,
         totp: u32,
@@ -407,13 +407,13 @@ impl KanidmClient {
     }
 
     pub fn auth_webauthn_begin(
-        &mut self,
+        &self,
         ident: &str,
     ) -> Result<RequestChallengeResponse, ClientError> {
         tokio_block_on(self.asclient.auth_webauthn_begin(ident))
     }
 
-    pub fn auth_webauthn_complete(&mut self, pkc: PublicKeyCredential) -> Result<(), ClientError> {
+    pub fn auth_webauthn_complete(&self, pkc: PublicKeyCredential) -> Result<(), ClientError> {
         tokio_block_on(self.asclient.auth_webauthn_complete(pkc))
     }
 

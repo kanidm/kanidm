@@ -61,7 +61,7 @@ fn main() {
         None => client_builder,
     };
 
-    let mut client = match client_builder.build() {
+    let client = match client_builder.build() {
         Ok(c) => c,
         Err(e) => {
             error!("Failed to build client instance -- {:?}", e);
