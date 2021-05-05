@@ -418,25 +418,30 @@ async fn json_rest_event_delete_id_attr(
 
     // TODO: #429: make this work
     let values = req.body_string().await?;
-    println!("#421 values 😞 {:?}", values);
 
-    let (eventid, hvalue) = new_eventid!();
-    // TODO #211: Attempt to get an option Vec<String> here?
-    // It's probably better to focus on SCIM instead, it seems richer than this.
-    let m_obj = PurgeAttributeMessage {
-        uat,
-        uuid_or_name: id,
-        attr,
-        filter,
-        eventid,
-    };
-    let res = req
-        .state()
-        .qe_w_ref
-        .handle_purgeattribute(m_obj)
-        .await
-        .map(|()| true);
-    to_tide_response(res, hvalue)
+    if values == "\"\"" {
+        println!("#421 😊 values is empty, can use PurgeAttributeMessage");
+        let (eventid, hvalue) = new_eventid!();
+        // TODO #211: Attempt to get an option Vec<String> here?
+        // It's probably better to focus on SCIM instead, it seems richer than this.
+        let m_obj = PurgeAttributeMessage {
+            uat,
+            uuid_or_name: id,
+            attr,
+            filter,
+            eventid,
+        };
+        let res = req
+            .state()
+            .qe_w_ref
+            .handle_purgeattribute(m_obj)
+            .await
+            .map(|()| true);
+        to_tide_response(res, hvalue)
+    } else {
+        println!("#421 😞 values {:?}", values);
+        panic!("oh no")
+    }
 }
 
 async fn json_rest_event_credential_put(
