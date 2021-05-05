@@ -1,0 +1,459 @@
+[
+    {
+        "conn": "-1",
+        "etime": "0",
+        "ids": [
+            "f62b0bfe-3196-4836-bfce-4f2f8730138b",
+            "e56b8837-f4e7-4935-86d2-239f23b1f4ef",
+            "3fe997de-8e79-4a0a-b057-8ff39c9c2f7c",
+            "dbde6c65-4404-4f1d-8627-9a0956c37959"
+        ],
+        "nentries": 4,
+        "rtime": "0:00:00",
+        "type": "precreate"
+    },
+    {
+        "conn": "1",
+        "etime": "0.000528091",
+        "ids": [
+            "f62b0bfe-3196-4836-bfce-4f2f8730138b"
+        ],
+        "nentries": 1,
+        "rtime": "0:00:00",
+        "type": "bind"
+    },
+    {
+        "conn": "2",
+        "etime": "0.000397756",
+        "ids": [
+            "f62b0bfe-3196-4836-bfce-4f2f8730138b"
+        ],
+        "nentries": 1,
+        "rtime": "0:00:00.038973",
+        "type": "bind"
+    },
+    {
+        "conn": "1",
+        "etime": "0.000585359",
+        "ids": [
+            "f62b0bfe-3196-4836-bfce-4f2f8730138b"
+        ],
+        "nentries": 1,
+        "rtime": "0:00:06.139358",
+        "type": "bind"
+    },
+    {
+        "conn": "2",
+        "etime": "0.000431519",
+        "ids": [
+            "f62b0bfe-3196-4836-bfce-4f2f8730138b"
+        ],
+        "nentries": 1,
+        "rtime": "0:00:06.148107",
+        "type": "bind"
+    },
+    {
+        "conn": "3",
+        "etime": "0.000508000",
+        "ids": [
+            "f62b0bfe-3196-4836-bfce-4f2f8730138b"
+        ],
+        "nentries": 1,
+        "rtime": "1:33:54.277936",
+        "type": "bind"
+    },
+    {
+        "conn": "4",
+        "etime": "0.000486000",
+        "ids": [
+            "f62b0bfe-3196-4836-bfce-4f2f8730138b"
+        ],
+        "nentries": 1,
+        "rtime": "1:34:00.790073",
+        "type": "bind"
+    },
+    {
+        "conn": "4",
+        "etime": "0.000401700",
+        "ids": [
+            "81e63faf-538a-4660-b327-7bcdea83f0aa"
+        ],
+        "nentries": 0,
+        "rtime": "1:34:00.790858",
+        "type": "srch"
+    },
+    {
+        "conn": "5",
+        "etime": "0.000700300",
+        "ids": [
+            "f62b0bfe-3196-4836-bfce-4f2f8730138b"
+        ],
+        "nentries": 1,
+        "rtime": "1:34:14.651418",
+        "type": "bind"
+    },
+    {
+        "conn": "6",
+        "etime": "0.000602600",
+        "ids": [
+            "f62b0bfe-3196-4836-bfce-4f2f8730138b"
+        ],
+        "nentries": 1,
+        "rtime": "1:34:33.585998",
+        "type": "bind"
+    },
+    {
+        "conn": "7",
+        "etime": "0.000649300",
+        "ids": [
+            "f62b0bfe-3196-4836-bfce-4f2f8730138b"
+        ],
+        "nentries": 1,
+        "rtime": "1:34:51.648221",
+        "type": "bind"
+    },
+    {
+        "conn": "7",
+        "etime": "0.025628300",
+        "ids": [
+            "81e63faf-538a-4660-b327-7bcdea83f0aa"
+        ],
+        "nentries": 1,
+        "rtime": "1:34:51.667005",
+        "type": "add"
+    },
+    {
+        "conn": "7",
+        "etime": "0.005475700",
+        "ids": [
+            "81e63faf-538a-4660-b327-7bcdea83f0aa"
+        ],
+        "nentries": 1,
+        "rtime": "1:34:51.692743",
+        "type": "mod"
+    },
+    {
+        "conn": "7",
+        "etime": "0.015649500",
+        "ids": [
+            "5defe265-8a47-4f3f-9cd8-344061f1b071"
+        ],
+        "nentries": 1,
+        "rtime": "1:34:51.698652",
+        "type": "add"
+    },
+    {
+        "conn": "7",
+        "etime": "0.002385200",
+        "ids": [
+            "169a8db1-d484-4519-ac6f-a19b70e6e3f8"
+        ],
+        "nentries": 1,
+        "rtime": "1:34:51.714690",
+        "type": "add"
+    },
+    {
+        "conn": "7",
+        "etime": "0.004335000",
+        "ids": [
+            "37cc595b-fa48-4822-903f-e5c0a0bd79b5"
+        ],
+        "nentries": 1,
+        "rtime": "1:34:51.717484",
+        "type": "add"
+    },
+    {
+        "conn": "7",
+        "etime": "0.003308400",
+        "ids": [
+            "0c6bfac0-9214-44f7-86f6-90a3cba18a54"
+        ],
+        "nentries": 1,
+        "rtime": "1:34:51.721901",
+        "type": "add"
+    },
+    {
+        "conn": "7",
+        "etime": "0.002083600",
+        "ids": [
+            "543a641e-8667-4460-9536-65d7e5e1132b"
+        ],
+        "nentries": 1,
+        "rtime": "1:34:51.725496",
+        "type": "add"
+    },
+    {
+        "conn": "7",
+        "etime": "0.010227700",
+        "ids": [
+            "34e53981-a403-4283-9d73-37cb30386e04"
+        ],
+        "nentries": 1,
+        "rtime": "1:34:51.729333",
+        "type": "add"
+    },
+    {
+        "conn": "7",
+        "etime": "0.003348700",
+        "ids": [
+            "c0e4e2f6-5d16-4550-ae49-b30164545b89"
+        ],
+        "nentries": 1,
+        "rtime": "1:34:51.740695",
+        "type": "add"
+    },
+    {
+        "conn": "7",
+        "etime": "0.003131700",
+        "ids": [
+            "83c088bf-8c78-4344-8726-b0f0ab4c2c9b"
+        ],
+        "nentries": 1,
+        "rtime": "1:34:51.745069",
+        "type": "add"
+    },
+    {
+        "conn": "7",
+        "etime": "0.003571300",
+        "ids": [
+            "4a15deef-c31c-4a0d-ab3f-6ccd8d2f4e38"
+        ],
+        "nentries": 1,
+        "rtime": "1:34:51.749149",
+        "type": "add"
+    },
+    {
+        "conn": "7",
+        "etime": "0.003427600",
+        "ids": [
+            "b88c12da-8c6a-497c-8ca9-832db87d10de"
+        ],
+        "nentries": 1,
+        "rtime": "1:34:51.753605",
+        "type": "add"
+    },
+    {
+        "conn": "7",
+        "etime": "0.003846700",
+        "ids": [
+            "4c155ed6-a358-4a1b-bd37-b092e134fbb3"
+        ],
+        "nentries": 1,
+        "rtime": "1:34:51.757942",
+        "type": "add"
+    },
+    {
+        "conn": "7",
+        "etime": "0.003432100",
+        "ids": [
+            "ef1a6e8f-2e8a-49a7-8a95-88ee1feee02e"
+        ],
+        "nentries": 1,
+        "rtime": "1:34:51.762748",
+        "type": "add"
+    },
+    {
+        "conn": "7",
+        "etime": "0.003518100",
+        "ids": [
+            "59770fb1-b160-4c54-816a-87dcd85ca392"
+        ],
+        "nentries": 1,
+        "rtime": "1:34:51.767198",
+        "type": "add"
+    },
+    {
+        "conn": "8",
+        "etime": "0.000500500",
+        "ids": [
+            "f62b0bfe-3196-4836-bfce-4f2f8730138b"
+        ],
+        "nentries": 1,
+        "rtime": "1:34:55.204540",
+        "type": "bind"
+    },
+    {
+        "conn": "8",
+        "etime": "0.001086100",
+        "ids": [
+            "c0e4e2f6-5d16-4550-ae49-b30164545b89",
+            "169a8db1-d484-4519-ac6f-a19b70e6e3f8",
+            "4c155ed6-a358-4a1b-bd37-b092e134fbb3",
+            "34e53981-a403-4283-9d73-37cb30386e04",
+            "e56b8837-f4e7-4935-86d2-239f23b1f4ef",
+            "5defe265-8a47-4f3f-9cd8-344061f1b071",
+            "543a641e-8667-4460-9536-65d7e5e1132b",
+            "4a15deef-c31c-4a0d-ab3f-6ccd8d2f4e38",
+            "83c088bf-8c78-4344-8726-b0f0ab4c2c9b",
+            "37cc595b-fa48-4822-903f-e5c0a0bd79b5",
+            "ef1a6e8f-2e8a-49a7-8a95-88ee1feee02e",
+            "0c6bfac0-9214-44f7-86f6-90a3cba18a54",
+            "b88c12da-8c6a-497c-8ca9-832db87d10de"
+        ],
+        "nentries": 13,
+        "rtime": "1:34:55.205408",
+        "type": "srch"
+    },
+    {
+        "conn": "9",
+        "etime": "0.000667100",
+        "ids": [
+            "f62b0bfe-3196-4836-bfce-4f2f8730138b"
+        ],
+        "nentries": 1,
+        "rtime": "1:35:31.405417",
+        "type": "bind"
+    },
+    {
+        "conn": "9",
+        "etime": "0.005077600",
+        "ids": [
+            "c28a49f3-c0cd-4eaf-806b-3bbc045ff214"
+        ],
+        "nentries": 1,
+        "rtime": "1:35:31.425350",
+        "type": "add"
+    },
+    {
+        "conn": "9",
+        "etime": "0.000433300",
+        "ids": [
+            "c28a49f3-c0cd-4eaf-806b-3bbc045ff214"
+        ],
+        "nentries": 1,
+        "rtime": "1:35:31.430615",
+        "type": "srch"
+    },
+    {
+        "conn": "10",
+        "etime": "0.000564700",
+        "ids": [
+            "f62b0bfe-3196-4836-bfce-4f2f8730138b"
+        ],
+        "nentries": 1,
+        "rtime": "1:35:35.351913",
+        "type": "bind"
+    },
+    {
+        "conn": "10",
+        "etime": "0.000893100",
+        "ids": [
+            "c0e4e2f6-5d16-4550-ae49-b30164545b89",
+            "c28a49f3-c0cd-4eaf-806b-3bbc045ff214"
+        ],
+        "nentries": 2,
+        "rtime": "1:35:35.371215",
+        "type": "srch"
+    },
+    {
+        "conn": "10",
+        "etime": "0.000465000",
+        "ids": [
+            "3fe997de-8e79-4a0a-b057-8ff39c9c2f7c"
+        ],
+        "nentries": 1,
+        "rtime": "1:35:35.373590",
+        "type": "srch"
+    },
+    {
+        "conn": "10",
+        "etime": "0.000540200",
+        "ids": [
+            "dbde6c65-4404-4f1d-8627-9a0956c37959"
+        ],
+        "nentries": 1,
+        "rtime": "1:35:35.374385",
+        "type": "srch"
+    },
+    {
+        "conn": "11",
+        "etime": "0.000577300",
+        "ids": [
+            "f62b0bfe-3196-4836-bfce-4f2f8730138b"
+        ],
+        "nentries": 1,
+        "rtime": "1:35:41.643026",
+        "type": "bind"
+    },
+    {
+        "conn": "11",
+        "etime": "0.001376500",
+        "ids": [
+            "c28a49f3-c0cd-4eaf-806b-3bbc045ff214"
+        ],
+        "nentries": 1,
+        "rtime": "1:35:49.466015",
+        "type": "srch"
+    },
+    {
+        "conn": "11",
+        "etime": "0.009469100",
+        "ids": [
+            "dbde6c65-4404-4f1d-8627-9a0956c37959"
+        ],
+        "nentries": 1,
+        "rtime": "1:35:49.468983",
+        "type": "mod"
+    },
+    {
+        "conn": "12",
+        "etime": "0.000602800",
+        "ids": [
+            "f62b0bfe-3196-4836-bfce-4f2f8730138b"
+        ],
+        "nentries": 1,
+        "rtime": "1:35:56.951866",
+        "type": "bind"
+    },
+    {
+        "conn": "12",
+        "etime": "0.000812300",
+        "ids": [
+            "e56b8837-f4e7-4935-86d2-239f23b1f4ef",
+            "c28a49f3-c0cd-4eaf-806b-3bbc045ff214"
+        ],
+        "nentries": 2,
+        "rtime": "1:35:56.971102",
+        "type": "srch"
+    },
+    {
+        "conn": "12",
+        "etime": "0.000426400",
+        "ids": [
+            "3fe997de-8e79-4a0a-b057-8ff39c9c2f7c"
+        ],
+        "nentries": 1,
+        "rtime": "1:35:56.973504",
+        "type": "srch"
+    },
+    {
+        "conn": "12",
+        "etime": "0.000810100",
+        "ids": [
+            "dbde6c65-4404-4f1d-8627-9a0956c37959"
+        ],
+        "nentries": 1,
+        "rtime": "1:35:56.974321",
+        "type": "srch"
+    },
+    {
+        "conn": "13",
+        "etime": "0.000633700",
+        "ids": [
+            "f62b0bfe-3196-4836-bfce-4f2f8730138b"
+        ],
+        "nentries": 1,
+        "rtime": "1:36:25.041289",
+        "type": "bind"
+    },
+    {
+        "conn": "13",
+        "etime": "0.005287900",
+        "ids": [
+            "dbde6c65-4404-4f1d-8627-9a0956c37959"
+        ],
+        "nentries": 1,
+        "rtime": "1:36:27.795820",
+        "type": "del"
+    }
+]

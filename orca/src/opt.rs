@@ -38,6 +38,13 @@ struct SetupOpt {
 struct RunOpt {
     #[structopt(flatten)]
     pub copt: CommonOpt,
+    #[structopt(name = "target")]
+    /// Which service to target during this operation.
+    /// Valid values are "ds" or "kanidm"
+    pub target: TargetOpt,
+    #[structopt(name = "test_type")]
+    /// Which type of test to run against this system
+    pub test_type: TestTypeOpt,
     #[structopt(parse(from_os_str), short = "p", long = "profile")]
     /// Path to the test profile.
     pub profile_path: PathBuf,
@@ -65,6 +72,32 @@ impl FromStr for TargetOpt {
             "kanidm" => Ok(TargetOpt::Kanidm),
             "kanidm_ldap" => Ok(TargetOpt::KanidmLdap),
             _ => Err("Invalid target type. Must be ds, kanidm, or kanidm_ldap"),
+        }
+    }
+}
+
+#[derive(Debug, StructOpt)]
+pub(crate) enum TestTypeOpt {
+    #[structopt(name = "search-basic")]
+    /// Perform a basic search-only test
+    SearchBasic,
+}
+
+impl FromStr for TestTypeOpt {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "search-basic" => Ok(TestTypeOpt::SearchBasic),
+            _ => Err("Invalid test type."),
+        }
+    }
+}
+
+impl std::fmt::Display for TestTypeOpt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self {
+            TestTypeOpt::SearchBasic => write!(f, "search-basic"),
         }
     }
 }

@@ -3,7 +3,7 @@ use rand::seq::SliceRandom;
 use rand::Rng;
 use serde::Deserialize;
 use std::cmp::Ordering;
-use std::collections::{BTreeMap, HashSet, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::convert::TryFrom;
 use std::fs::File;
 use std::io::BufReader;
@@ -94,9 +94,7 @@ impl Record {
                 let new = self
                     .ids
                     .iter()
-                    .map(|id| {
-                        all_entities.get(id).unwrap().get_uuid()
-                    })
+                    .map(|id| all_entities.get(id).unwrap().get_uuid())
                     .collect();
 
                 OpType::Add(new)
@@ -110,13 +108,12 @@ impl Record {
                     .iter()
                     .map(|id| {
                         match all_entities.get(id) {
-                            Some(Entity::Account(_a)) => {
-                                (*id, Change::Account)
-                            }
+                            Some(Entity::Account(_a)) => (*id, Change::Account),
                             Some(Entity::Group(_g)) => {
-                            // This could be better! It's quite an evil method at the moment...
+                                // This could be better! It's quite an evil method at the moment...
                                 let m = rng.gen_range(0..max_m);
-                                let ngrp = (&exists).choose_multiple(&mut rng, m).cloned().collect();
+                                let ngrp =
+                                    (&exists).choose_multiple(&mut rng, m).cloned().collect();
                                 (*id, Change::Group(ngrp))
                             }
                             None => {
@@ -273,24 +270,12 @@ pub fn doit(input: &Path, output: &Path) {
         .iter()
         .map(|id| {
             let ent = if accounts.contains(id) {
-                Entity::Account(Account {
-                    name: (),
-                    display_name: (),
-                    password: (),
-                    uuid: *id
-                })
+                Entity::Account(Account::generate(*id))
             } else {
                 // Choose the number of members:
                 let m = rng.gen_range(0..max_m);
-                Entity::Group(Group {
-                    name: (),
-                    uuid: *id,
-                    // For now we leave groups empty.
-                    members: (&precreate)
-                        .choose_multiple(&mut rng, m)
-                        .cloned()
-                        .collect(),
-                })
+                let members = (&precreate).choose_multiple(&mut rng, m).cloned().collect();
+                Entity::Group(Group::generate(*id, members))
             };
             (*id, ent)
         })
@@ -322,12 +307,73 @@ pub fn doit(input: &Path, output: &Path) {
         }
     });
 
-    // Create the struct
-
+    // now collect these into the set of connections containing their operations.
     let connections: Vec<_> = connections.into_iter().map(|(_, v)| v).collect();
 
+    // Now from the set of connections, we need to know what access may or may not
+    // be required.
+    let mut access: HashMap<Uuid, Vec<EntityType>> = HashMap::new();
+
+    connections.iter().for_each(|conn| {
+        let mut curbind = None;
+        // start by assuming there is no auth
+        conn.ops.iter().for_each(|op| {
+            // if it's a bind, update our current access.
+            match &op.op_type {
+                OpType::Bind(id) => curbind = Some(id),
+                OpType::Add(list) | OpType::Delete(list) => {
+                    if let Some(id) = curbind.as_ref() {
+                        let mut nlist: Vec<EntityType> = list
+                            .iter()
+                            .map(|uuid| all_entities.get(uuid).unwrap().get_entity_type())
+                            .collect();
+
+                        if let Some(ac) = access.get_mut(id) {
+                            ac.append(&mut nlist);
+                        } else {
+                            access.insert(**id, nlist);
+                        }
+                    } else {
+                        // Else, no current bind, wtf?
+                        panic!();
+                    }
+                }
+                OpType::Mod(list) => {
+                    if let Some(id) = curbind.as_ref() {
+                        let mut nlist: Vec<EntityType> = list
+                            .iter()
+                            .map(|v| all_entities.get(&v.0).unwrap().get_entity_type())
+                            .collect();
+
+                        if let Some(ac) = access.get_mut(id) {
+                            ac.append(&mut nlist);
+                        } else {
+                            access.insert(**id, nlist);
+                        }
+                    } else {
+                        // Else, no current bind, wtf?
+                        panic!();
+                    }
+                }
+                OpType::Search(_) => {}
+            }
+            // if it's a mod, declare we need that.
+        });
+    });
+
+    // For each access
+    // sort/dedup them.
+    access.values_mut().for_each(|v| {
+        v.sort_unstable();
+        v.dedup();
+    });
+
+    let precreate: HashSet<_> = precreate.into_iter().collect();
+
+    // Create the struct
     let td = TestData {
         all_entities,
+        access,
         accounts,
         precreate,
         connections,

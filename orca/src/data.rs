@@ -2,6 +2,37 @@ use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 use uuid::Uuid;
 
+use rand::distributions::Alphanumeric;
+use rand::distributions::Distribution;
+use rand::{thread_rng, Rng};
+
+pub fn readable_password_from_random() -> String {
+    let mut trng = thread_rng();
+    format!(
+        "{}-{}-{}-{}",
+        (&mut trng)
+            .sample_iter(&Alphanumeric)
+            .take(4)
+            .map(|v| v as char)
+            .collect::<String>(),
+        (&mut trng)
+            .sample_iter(&Alphanumeric)
+            .take(4)
+            .map(|v| v as char)
+            .collect::<String>(),
+        (&mut trng)
+            .sample_iter(&Alphanumeric)
+            .take(4)
+            .map(|v| v as char)
+            .collect::<String>(),
+        (&mut trng)
+            .sample_iter(&Alphanumeric)
+            .take(4)
+            .map(|v| v as char)
+            .collect::<String>(),
+    )
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Account {
     pub name: String,
@@ -10,11 +41,42 @@ pub struct Account {
     pub uuid: Uuid,
 }
 
+impl Account {
+    pub fn generate(uuid: Uuid) -> Self {
+        let mut rng = rand::thread_rng();
+        let id: u64 = rng.gen();
+        let name = format!("account_{}", id);
+        let display_name = format!("Account {}", id);
+
+        Account {
+            name,
+            display_name,
+            password: readable_password_from_random(),
+            uuid,
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Group {
     pub name: String,
     pub uuid: Uuid,
     pub members: Vec<Uuid>,
+}
+
+impl Group {
+    pub fn generate(uuid: Uuid, members: Vec<Uuid>) -> Self {
+        let mut rng = rand::thread_rng();
+
+        let id: u64 = rng.gen();
+        let name = format!("group_{}", id);
+
+        Group {
+            name,
+            members,
+            uuid,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -37,6 +99,19 @@ impl Entity {
             Entity::Group(g) => g.name.as_str(),
         }
     }
+
+    pub fn get_entity_type(&self) -> EntityType {
+        match self {
+            Entity::Account(a) => EntityType::Account(a.uuid),
+            Entity::Group(g) => EntityType::Group(g.uuid),
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub enum EntityType {
+    Account(Uuid),
+    Group(Uuid),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -81,7 +156,8 @@ pub struct Conn {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TestData {
     pub all_entities: HashMap<Uuid, Entity>,
+    pub access: HashMap<Uuid, Vec<EntityType>>,
     pub accounts: HashSet<Uuid>,
-    pub precreate: Vec<Uuid>,
+    pub precreate: HashSet<Uuid>,
     pub connections: Vec<Conn>,
 }

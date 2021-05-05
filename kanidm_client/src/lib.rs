@@ -20,6 +20,7 @@ use std::io::Read;
 use std::os::unix::fs::MetadataExt;
 use std::path::Path;
 use std::time::Duration;
+use tokio::sync::RwLock;
 use url::Url;
 use uuid::Uuid;
 
@@ -306,9 +307,9 @@ impl KanidmClientBuilder {
             client,
             addr: address,
             builder: self,
-            bearer_token: None,
+            bearer_token: RwLock::new(None),
             origin,
-            auth_session_id: None,
+            auth_session_id: RwLock::new(None),
         })
     }
 }
@@ -343,15 +344,15 @@ impl KanidmClient {
     }
 
     pub fn set_token(&mut self, new_token: String) {
-        self.asclient.set_token(new_token);
+        tokio_block_on(self.asclient.set_token(new_token));
     }
 
-    pub fn get_token(&self) -> Option<&str> {
-        self.asclient.get_token()
+    pub fn get_token(&self) -> Option<String> {
+        tokio_block_on(self.asclient.get_token())
     }
 
-    pub fn logout(&mut self) -> Result<(), reqwest::Error> {
-        self.asclient.logout()
+    pub fn logout(&mut self) {
+        tokio_block_on(self.asclient.logout())
     }
 
     // whoami

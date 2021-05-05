@@ -2214,7 +2214,9 @@ dependencies = [
 name = "orca"
 version = "0.1.0"
 dependencies = [
- "async-trait",
+ "async-std",
+ "crossbeam",
+ "csv",
  "env_logger",
  "jemallocator",
  "kanidm_client",

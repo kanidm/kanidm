@@ -18,17 +18,18 @@ extern crate log;
 #[macro_use]
 extern crate serde_derive;
 
-use async_trait::async_trait;
+use crate::kani::KaniHttpServer;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
+use std::time::{Duration, Instant};
 use structopt::StructOpt;
-use std::collections::HashMap;
 use uuid::Uuid;
 
-mod name;
 mod data;
 mod kani;
 mod preprocess;
 mod profile;
+mod runner;
 mod setup;
 
 include!("./opt.rs");
@@ -43,16 +44,91 @@ impl OrcaOpt {
     }
 }
 
-#[async_trait]
-pub trait TargetServer {
-    fn info(&self) -> String;
+pub enum TargetServerBuilder {
+    Kanidm(String, String),
+}
 
-    async fn open_admin_connection(&mut self) -> Result<(), ()>;
+impl TargetServerBuilder {
+    pub fn build(self) -> Result<TargetServer, ()> {
+        match self {
+            TargetServerBuilder::Kanidm(a, b) => KaniHttpServer::build(a, b),
+        }
+    }
+}
 
-    async fn setup_admin_delete_uuids(&self, targets: &[Uuid]) -> Result<(), ()>;
+pub enum TargetServer {
+    Kanidm(KaniHttpServer),
+}
 
-    // async fn setup_admin_precreate_entities(&self, targets: &[data::Entity]) -> Result<(), ()>;
-    async fn setup_admin_precreate_entities(&self, targets: &[Uuid], all_entities: &HashMap<Uuid, data::Entity>) -> Result<(), ()>;
+impl TargetServer {
+    fn info(&self) -> String {
+        match self {
+            TargetServer::Kanidm(k) => k.info(),
+        }
+    }
+
+    fn rname(&self) -> &str {
+        match self {
+            TargetServer::Kanidm(k) => "kanidm_http",
+        }
+    }
+
+    fn builder(&self) -> TargetServerBuilder {
+        match self {
+            TargetServer::Kanidm(k) => k.builder(),
+        }
+    }
+
+    async fn open_user_connection(&self, name: &str, pw: &str) -> Result<(), ()> {
+        match self {
+            TargetServer::Kanidm(k) => k.open_user_connection(name, pw).await,
+        }
+    }
+
+    async fn open_admin_connection(&self) -> Result<(), ()> {
+        match self {
+            TargetServer::Kanidm(k) => k.open_admin_connection().await,
+        }
+    }
+
+    async fn setup_admin_delete_uuids(&self, targets: &[Uuid]) -> Result<(), ()> {
+        match self {
+            TargetServer::Kanidm(k) => k.setup_admin_delete_uuids(targets).await,
+        }
+    }
+
+    async fn setup_admin_precreate_entities(
+        &self,
+        targets: &HashSet<Uuid>,
+        all_entities: &HashMap<Uuid, data::Entity>,
+    ) -> Result<(), ()> {
+        match self {
+            TargetServer::Kanidm(k) => {
+                k.setup_admin_precreate_entities(targets, all_entities)
+                    .await
+            }
+        }
+    }
+
+    async fn setup_access_controls(
+        &self,
+        access: &HashMap<Uuid, Vec<data::EntityType>>,
+        all_entities: &HashMap<Uuid, data::Entity>,
+    ) -> Result<(), ()> {
+        match self {
+            TargetServer::Kanidm(k) => k.setup_access_controls(access, all_entities).await,
+        }
+    }
+
+    async fn search(
+        &self,
+        test_start: Instant,
+        ids: &[String],
+    ) -> Result<(Duration, Duration, usize), ()> {
+        match self {
+            TargetServer::Kanidm(k) => k.search(test_start, ids).await,
+        }
+    }
 }
 
 #[tokio::main]
@@ -80,6 +156,7 @@ async fn main() {
             let _ = setup::doit(&opt.target, &opt.profile_path).await;
         }
         OrcaOpt::Run(opt) => {
+            let _ = runner::doit(&opt.test_type, &opt.target, &opt.profile_path).await;
             // read the profile that we are going to be using/testing
             // load the related data (if any) or generate it
             // run the test!

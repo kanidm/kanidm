@@ -9,13 +9,10 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 use uuid::Uuid;
 
-pub(crate) async fn doit(target: &TargetOpt, profile_path: &PathBuf) -> Result<(), ()> {
-    info!(
-        "Performing setup of {:?} from {}",
-        target,
-        profile_path.to_str().unwrap(),
-    );
-
+pub(crate) fn config(
+    target: &TargetOpt,
+    profile_path: &PathBuf,
+) -> Result<(TestData, Profile, TargetServer), ()> {
     // read the profile that we are going to be using/testing
     let mut f = File::open(profile_path).map_err(|e| {
         error!("Unable to open profile file [{:?}] 🥺", e);
@@ -36,7 +33,7 @@ pub(crate) async fn doit(target: &TargetOpt, profile_path: &PathBuf) -> Result<(
         PathBuf::from(&profile.data)
     } else {
         if let Some(p) = profile_path.parent() {
-            p.join(profile.data)
+            p.join(&profile.data)
         } else {
             error!(
                 "Unable to find parent directory of {}",
@@ -49,7 +46,7 @@ pub(crate) async fn doit(target: &TargetOpt, profile_path: &PathBuf) -> Result<(
     debug!("Data Path -> {}", data_path.to_str().unwrap());
 
     // Does our target section exist?
-    let mut server: Box<dyn TargetServer> = match target {
+    let mut server: TargetServer = match target {
         TargetOpt::Ds => {
             unimplemented!();
         }
@@ -82,6 +79,18 @@ pub(crate) async fn doit(target: &TargetOpt, profile_path: &PathBuf) -> Result<(
         );
     })?;
 
+    Ok((data, profile, server))
+}
+
+pub(crate) async fn doit(target: &TargetOpt, profile_path: &PathBuf) -> Result<(), ()> {
+    info!(
+        "Performing setup of {:?} from {}",
+        target,
+        profile_path.to_str().unwrap(),
+    );
+
+    let (data, _profile, mut server) = config(target, profile_path)?;
+
     // ensure that things we will "add" won't be there.
     // delete anything that is modded, so that it will be reset.
 
@@ -111,10 +120,15 @@ pub(crate) async fn doit(target: &TargetOpt, profile_path: &PathBuf) -> Result<(
     server.setup_admin_delete_uuids(remove.as_slice()).await?;
 
     // ensure that all items we need to precreate are!
-    server.setup_admin_precreate_entities(data.precreate.as_slice(), &data.all_entities).await?;
+    server
+        .setup_admin_precreate_entities(&data.precreate, &data.all_entities)
+        .await?;
 
     // Setup access controls - if something modifies something that IS NOT
     // itself, we grant them extra privs.
+    server
+        .setup_access_controls(&data.access, &data.all_entities)
+        .await?;
 
     // Done!
 

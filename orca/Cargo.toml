@@ -19,7 +19,8 @@ jemallocator = { version = "0.3.0", optional = true }
 structopt = { version = "0.3", default-features = false }
 
 uuid = { version = "0.8", features = ["serde", "v4" ] }
-serde = "1.0"
+csv = "1.1"
+serde = { version = "1", features = ["derive"] }
 serde_json = "1.0"
 serde_derive = "1.0"
 
@@ -31,10 +32,13 @@ toml = "0.5"
 kanidm_proto = { path = "../kanidm_proto", version = "1.1.0-alpha" }
 kanidm_client = { path = "../kanidm_client", version = "1.1.0-alpha" }
 
-async-trait = "0.1"
 tokio = { version = "1", features = ["full"] }
 tokio-util = { version = "0.6", features = ["codec"] }
 tokio-openssl = "0.6"
 openssl = "0.10"
 
 ldap3_server = "0.1"
+
+crossbeam = "0.8"
+async-std = "1.6"
+

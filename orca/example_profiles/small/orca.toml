@@ -1,5 +1,6 @@
 name = "Orca Small Example"
 data = "data.json"
+results = "/tmp/small_results"
 
 [ds_config]
 uri = "ldaps://localhost:"
@@ -13,3 +14,6 @@ admin_pw = "laNgei6doa9iengoh4to"
 uri = "https://localhost:8443"
 ldap_uri = "ldaps://localhost:3636"
 admin_pw = "laNgei6doa9iengoh4to"
+
+# [search_basic_config]
+
