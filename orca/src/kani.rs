@@ -269,9 +269,11 @@ impl KaniHttpServer {
         Ok(())
     }
 
-    pub async fn open_user_connection(&self,
+    pub async fn open_user_connection(
+        &self,
         test_start: Instant,
-        name: &str, pw: &str
+        name: &str,
+        pw: &str,
     ) -> Result<(Duration, Duration), ()> {
         let start = Instant::now();
         self.client
@@ -392,9 +394,11 @@ impl KaniLdapServer {
         self.http.setup_access_controls(access, all_entities).await
     }
 
-    pub async fn open_user_connection(&self,
+    pub async fn open_user_connection(
+        &self,
         test_start: Instant,
-        name: &str, pw: &str
+        name: &str,
+        pw: &str,
     ) -> Result<(Duration, Duration), ()> {
         self.ldap.open_user_connection(test_start, name, pw).await
     }

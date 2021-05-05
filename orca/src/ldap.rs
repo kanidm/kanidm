@@ -78,9 +78,11 @@ impl LdapClient {
         })
     }
 
-    pub async fn open_user_connection(&self,
+    pub async fn open_user_connection(
+        &self,
         test_start: Instant,
-        name: &str, pw: &str
+        name: &str,
+        pw: &str,
     ) -> Result<(Duration, Duration), ()> {
         let dn = match self.schema {
             LdapSchema::Kanidm => name.to_string(),

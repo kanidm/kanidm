@@ -501,7 +501,11 @@ pub trait AccessControlsTransaction<'a> {
             EventOrigin::User(e) => &e,
         };
         lperf_segment!(audit, "access::search_filter_entries", || {
-            ltrace!(audit, "Access check for search (filter) event: {}", se.event);
+            ltrace!(
+                audit,
+                "Access check for search (filter) event: {}",
+                se.event
+            );
 
             // First get the set of acps that apply to this receiver
             let related_acp = self.search_related_acp(audit, rec_entry, se);
@@ -633,7 +637,11 @@ pub trait AccessControlsTransaction<'a> {
              * impersonate and such actually still get the whole entry back as not to break
              * modify and co.
              */
-            ltrace!(audit, "Access check for search (reduce) event: {}", se.event);
+            ltrace!(
+                audit,
+                "Access check for search (reduce) event: {}",
+                se.event
+            );
             let acp_resolve_filter_cache = self.get_acp_resolve_filter_cache();
 
             // Get the relevant acps for this receiver.

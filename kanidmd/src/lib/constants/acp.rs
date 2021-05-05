@@ -927,3 +927,64 @@ pub const JSON_IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1: &str = r#"{
         "acp_modify_class": ["posixgroup"]
     }
 }"#;
+
+// 33 hp account unix extend
+pub const JSON_IDM_HP_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1: &str = r#"{
+    "attrs": {
+        "class": [
+            "object",
+            "access_control_search",
+            "access_control_profile",
+            "access_control_modify"
+        ],
+        "name": ["idm_acp_hp_account_unix_extend_priv"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000033"],
+        "description": ["Builtin IDM Control for managing and extending unix high privilege accounts."],
+        "acp_receiver": [
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000025\"]}"
+        ],
+        "acp_targetscope": [
+            "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+        ],
+        "acp_search_attr": [
+            "class", "name", "spn", "uuid", "description", "gidnumber", "loginshell", "unix_password"
+        ],
+        "acp_modify_removedattr": [
+            "class", "loginshell", "gidnumber", "unix_password"
+        ],
+        "acp_modify_presentattr": [
+            "class", "loginshell", "gidnumber", "unix_password"
+        ],
+        "acp_modify_class": ["posixaccount"]
+    }
+}"#;
+// 34 hp group unix extend
+pub const JSON_IDM_HP_ACP_GROUP_UNIX_EXTEND_PRIV_V1: &str = r#"{
+    "attrs": {
+        "class": [
+            "object",
+            "access_control_profile",
+            "access_control_search",
+            "access_control_modify"
+        ],
+        "name": ["idm_acp_hp_group_unix_extend_priv"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000034"],
+        "description": ["Builtin IDM Control for managing and extending unix high privilege groups"],
+        "acp_receiver": [
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000026\"]}"
+        ],
+        "acp_targetscope": [
+            "{\"and\": [{\"eq\": [\"class\",\"group\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+        ],
+        "acp_search_attr": [
+            "class", "name", "spn", "uuid", "description", "member", "gidnumber"
+        ],
+        "acp_modify_removedattr": [
+            "class", "gidnumber"
+        ],
+        "acp_modify_presentattr": [
+            "class", "gidnumber"
+        ],
+        "acp_modify_class": ["posixgroup"]
+    }
+}"#;

@@ -128,9 +128,11 @@ impl TargetServer {
         }
     }
 
-    async fn open_user_connection(&self,
+    async fn open_user_connection(
+        &self,
         test_start: Instant,
-        name: &str, pw: &str
+        name: &str,
+        pw: &str,
     ) -> Result<(Duration, Duration), ()> {
         match self {
             TargetServer::Kanidm(k) => k.open_user_connection(test_start, name, pw).await,
