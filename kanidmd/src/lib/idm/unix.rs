@@ -29,6 +29,7 @@ pub(crate) struct UnixUserAccount {
     cred: Option<Credential>,
     pub valid_from: Option<OffsetDateTime>,
     pub expire: Option<OffsetDateTime>,
+    pub radius_secret: Option<String>,
 }
 
 lazy_static! {
@@ -92,6 +93,10 @@ macro_rules! try_from_entry {
             .get_ava_single_credential("unix_password")
             .map(|v| v.clone());
 
+        let radius_secret = $value
+            .get_ava_single_radiuscred("radius_secret")
+            .map(|s| s.to_string());
+
         let valid_from = $value.get_ava_single_datetime("account_valid_from");
 
         let expire = $value.get_ava_single_datetime("account_expire");
@@ -108,6 +113,7 @@ macro_rules! try_from_entry {
             cred,
             valid_from,
             expire,
+            radius_secret,
         })
     }};
 }
