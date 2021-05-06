@@ -153,6 +153,19 @@ You will also need a config file in the volume named `server.toml` (Within the c
     #   it is non-standard (any port except 443)
     # origin = "https://idm.example.com"
     origin = "https://idm.example.com:8443"
+    #
+    #   The role of this server. This affects features available and how replication may interact.
+    #   Valid roles are:
+    #   - write_replica
+    #     This server provides all functionality of Kanidm. It allows authentication, writes, and
+    #     the web user interface to be served.
+    #   - write_replica_no_ui
+    #     This server is the same as a write_replica, but does NOT offer the web user interface.
+    #   - read_only_replica
+    #     This server will not writes initiated by clients. It supports authentication and reads,
+    #     and must have a replication agreement as a source of it's data.
+    #   Defaults to "write_replica".
+    # role = "write_replica"
 
 Then you can setup the initial admin account and initialise the database into your volume.
 

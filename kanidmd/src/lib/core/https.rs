@@ -14,7 +14,7 @@ use crate::actors::v1_write::{
     PurgeAttributeMessage, RemoveAttributeValuesMessage, ReviveRecycledMessage,
     SetAttributeMessage,
 };
-use crate::config::TlsConfiguration;
+use crate::config::{ServerRole, TlsConfiguration};
 use crate::event::AuthResult;
 use crate::filter::{Filter, FilterInvalid};
 use crate::idm::AuthState;
@@ -1309,6 +1309,7 @@ pub fn create_https_server(
     address: String,
     // opt_tls_params: Option<SslAcceptorBuilder>,
     opt_tls_params: Option<&TlsConfiguration>,
+    role: ServerRole,
     cookie_key: &[u8; 32],
     status_ref: &'static StatusActor,
     qe_w_ref: &'static QueryServerWriteV1,
@@ -1337,17 +1338,22 @@ pub fn create_https_server(
     );
 
     // Add routes
-    tserver.at("/").get(index_view);
-    tserver
-        .at("/pkg")
-        .serve_dir(env!("KANIDM_WEB_UI_PKG_PATH"))
-        .map_err(|e| {
-            error!(
-                "Failed to serve pkg dir {} -> {:?}",
-                env!("KANIDM_WEB_UI_PKG_PATH"),
-                e
-            );
-        })?;
+
+    // If we are no-ui, we remove this.
+    if !matches!(role, ServerRole::WriteReplicaNoUI) {
+        tserver.at("/").get(index_view);
+        tserver
+            .at("/pkg")
+            .serve_dir(env!("KANIDM_WEB_UI_PKG_PATH"))
+            .map_err(|e| {
+                error!(
+                    "Failed to serve pkg dir {} -> {:?}",
+                    env!("KANIDM_WEB_UI_PKG_PATH"),
+                    e
+                );
+            })?;
+    };
+
     tserver.at("/status").get(self::status);
 
     let mut raw_route = tserver.at("/v1/raw");

@@ -592,6 +592,7 @@ pub async fn create_server_core(config: Configuration) -> Result<(), ()> {
         config.address,
         // opt_tls_params,
         config.tls_config.as_ref(),
+        config.role,
         &cookie_key,
         status_ref,
         server_write_ref,
