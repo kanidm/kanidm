@@ -23,7 +23,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use kanidm::audit::LogLevel;
-use kanidm::config::Configuration;
+use kanidm::config::{Configuration, ServerRole};
 use kanidm::core::{
     backup_server_core, create_server_core, domain_rename_core, recover_account_core,
     reindex_server_core, restore_server_core, vacuum_server_core, verify_server_core,
@@ -45,6 +45,8 @@ struct ServerConfig {
     pub tls_key: Option<String>,
     pub log_level: Option<String>,
     pub origin: String,
+    #[serde(default)]
+    pub role: ServerRole,
 }
 
 impl ServerConfig {
@@ -210,6 +212,7 @@ async fn main() {
     config.update_ldapbind(&sconfig.ldapbindaddress);
     config.update_origin(&sconfig.origin.as_str());
     config.update_db_arc_size(sconfig.db_arc_size);
+    config.update_role(sconfig.role);
 
     // Apply any cli overrides, normally debug level.
     if let Some(dll) = opt.commonopt().debug.as_ref() {

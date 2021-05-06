@@ -1,5 +1,6 @@
 use rand::prelude::*;
 use std::fmt;
+use std::str::FromStr;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct IntegrationTestConfig {
@@ -12,6 +13,33 @@ pub struct TlsConfiguration {
     pub chain: String,
     pub key: String,
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
+pub enum ServerRole {
+    WriteReplica,
+    WriteReplicaNoUI,
+    ReadOnlyReplica,
+}
+
+impl Default for ServerRole {
+    fn default() -> Self {
+        ServerRole::WriteReplica
+    }
+}
+
+impl FromStr for ServerRole {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "write_replica" => Ok(ServerRole::WriteReplica),
+            "write_replica_no_ui" => Ok(ServerRole::WriteReplicaNoUI),
+            "read_only_replica" => Ok(ServerRole::ReadOnlyReplica),
+            _ => Err("Must be one of write_replica, write_replica_no_ui, read_only_replica"),
+        }
+    }
+}
+
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct Configuration {
@@ -29,6 +57,7 @@ pub struct Configuration {
     pub integration_test_config: Option<Box<IntegrationTestConfig>>,
     pub log_level: Option<u32>,
     pub origin: String,
+    pub role: ServerRole,
 }
 
 impl fmt::Display for Configuration {
@@ -80,6 +109,7 @@ impl Configuration {
             integration_test_config: None,
             log_level: None,
             origin: "https://idm.example.com".to_string(),
+            role: ServerRole::WriteReplica,
         };
         let mut rng = StdRng::from_entropy();
         rng.fill(&mut c.cookie_key);
@@ -115,6 +145,10 @@ impl Configuration {
 
     pub fn update_origin(&mut self, o: &str) {
         self.origin = o.to_string();
+    }
+
+    pub fn update_role(&mut self, r: ServerRole) {
+        self.role = r;
     }
 
     pub fn update_tls(&mut self, chain: &Option<String>, key: &Option<String>) {
