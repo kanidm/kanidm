@@ -281,6 +281,30 @@ macro_rules! uuid2rdn {
     }};
 }
 
+macro_rules! verify {
+    (
+        $self:expr,
+        $audit:expr
+    ) => {{
+        let mut r = $self.db.verify();
+        if r.is_empty() && !$self.is_dirty() {
+            // Check allids.
+            match $self.db.get_allids($audit) {
+                Ok(db_allids) => {
+                    if !db_allids.is_compressed() || !(*($self).allids).is_compressed() {
+                        r.push(Err(ConsistencyError::BackendAllIdsSync))
+                    }
+                    if db_allids != (*($self).allids) {
+                        r.push(Err(ConsistencyError::BackendAllIdsSync))
+                    }
+                }
+                Err(_) => r.push(Err(ConsistencyError::Unknown)),
+            };
+        };
+        r
+    }};
+}
+
 pub trait IdlArcSqliteTransaction {
     fn get_identry(
         &mut self,
@@ -313,7 +337,9 @@ pub trait IdlArcSqliteTransaction {
 
     fn get_db_d_uuid(&self) -> Result<Option<Uuid>, OperationError>;
 
-    fn verify(&self) -> Vec<Result<(), ConsistencyError>>;
+    fn verify(&self, audit: &mut AuditScope) -> Vec<Result<(), ConsistencyError>>;
+
+    fn is_dirty(&self) -> bool;
 
     fn name2uuid(
         &mut self,
@@ -378,8 +404,12 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteReadTransaction<'a> {
         self.db.get_db_d_uuid()
     }
 
-    fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
-        self.db.verify()
+    fn verify(&self, audit: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
+        verify!(self, audit)
+    }
+
+    fn is_dirty(&self) -> bool {
+        false
     }
 
     fn name2uuid(
@@ -451,8 +481,12 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
         self.db.get_db_d_uuid()
     }
 
-    fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
-        self.db.verify()
+    fn verify(&self, audit: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
+        verify!(self, audit)
+    }
+
+    fn is_dirty(&self) -> bool {
+        self.entry_cache.is_dirty()
     }
 
     fn name2uuid(
@@ -804,6 +838,9 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
 
     pub unsafe fn purge_id2entry(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
         self.db.purge_id2entry(audit).map(|()| {
+            let mut ids = IDLBitRange::new();
+            ids.compress();
+            std::mem::swap(self.allids.deref_mut(), &mut ids);
             self.entry_cache.clear();
         })
     }

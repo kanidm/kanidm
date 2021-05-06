@@ -758,7 +758,7 @@ impl<'a> QueryServerReadTransaction<'a> {
         // If we fail after backend, we need to return NOW because we can't
         // assert any other faith in the DB states.
         //  * backend
-        let be_errs = self.get_be_txn().verify();
+        let be_errs = self.get_be_txn().verify(au);
 
         if !be_errs.is_empty() {
             return be_errs;
@@ -772,14 +772,11 @@ impl<'a> QueryServerReadTransaction<'a> {
         }
 
         //  * Indexing (req be + sch )
-        /*
-        idx_errs = self.get_be_txn()
-            .verify_indexes();
+        let idx_errs = self.get_be_txn().verify_indexes(au);
 
         if !idx_errs.is_empty() {
             return idx_errs;
         }
-         */
 
         // Ok BE passed, lets move on to the content.
         // Most of our checks are in the plugins, so we let them

@@ -40,7 +40,8 @@ impl ReferentialIntegrity {
                     .to_ref_uuid()
                     .map(|uuid| f_eq("uuid", PartialValue::new_uuid(*uuid)))
                     .ok_or_else(|| {
-                        ladmin_error!(au, "ref value could not convert to reference uuid");
+                        ladmin_error!(au, "reference value could not convert to reference uuid.");
+                        ladmin_error!(au, "If you are sure the name/uuid/spn exist, and that this is in error, you should run a verify task.");
                         OperationError::InvalidAttribute(
                             "uuid could not become reference value".to_string(),
                         )

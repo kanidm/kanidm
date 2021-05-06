@@ -411,6 +411,40 @@ pub trait IdlSqliteTransaction {
         })
     }
 
+    fn get_allids(&self, au: &mut AuditScope) -> Result<IDLBitRange, OperationError> {
+        ltrace!(au, "Building allids...");
+        let mut stmt = self
+            .get_conn()
+            .prepare("SELECT id FROM id2entry")
+            .map_err(|e| {
+                ladmin_error!(au, "SQLite Error {:?}", e);
+                OperationError::SqliteError
+            })?;
+        let res = stmt.query_map([], |row| row.get(0)).map_err(|e| {
+            ladmin_error!(au, "SQLite Error {:?}", e);
+            OperationError::SqliteError
+        })?;
+        let mut ids: Result<IDLBitRange, _> = res
+            .map(|v| {
+                v.map_err(|e| {
+                    ladmin_error!(au, "SQLite Error {:?}", e);
+                    OperationError::SqliteError
+                })
+                .and_then(|id: i64| {
+                    // Convert the idsqlite to id raw
+                    id.try_into().map_err(|e| {
+                        ladmin_error!(au, "I64 Parse Error {:?}", e);
+                        OperationError::SqliteError
+                    })
+                })
+            })
+            .collect();
+        if let Ok(i) = &mut ids {
+            i.compress()
+        }
+        ids
+    }
+
     // This allow is critical as it resolves a life time issue in stmt.
     #[allow(clippy::let_and_return)]
     fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
@@ -1091,32 +1125,6 @@ impl IdlSqliteWriteTransaction {
             eprintln!("CRITICAL: rusqlite error {:?}", e);
             OperationError::SqliteError
         })
-    }
-
-    pub(crate) fn get_allids(&self, au: &mut AuditScope) -> Result<IDLBitRange, OperationError> {
-        ltrace!(au, "Building allids...");
-        let mut stmt = self.conn.prepare("SELECT id FROM id2entry").map_err(|e| {
-            ladmin_error!(au, "SQLite Error {:?}", e);
-            OperationError::SqliteError
-        })?;
-        let res = stmt.query_map([], |row| row.get(0)).map_err(|e| {
-            ladmin_error!(au, "SQLite Error {:?}", e);
-            OperationError::SqliteError
-        })?;
-        res.map(|v| {
-            v.map_err(|e| {
-                ladmin_error!(au, "SQLite Error {:?}", e);
-                OperationError::SqliteError
-            })
-            .and_then(|id: i64| {
-                // Convert the idsqlite to id raw
-                id.try_into().map_err(|e| {
-                    ladmin_error!(au, "I64 Parse Error {:?}", e);
-                    OperationError::SqliteError
-                })
-            })
-        })
-        .collect()
     }
 
     pub fn setup(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
