@@ -1,0 +1,20 @@
+name = "Orca Small Example"
+data = "data.json"
+results = "/tmp/small_results"
+
+[ds_config]
+uri = "ldaps://localhost:3636"
+dm_pw = "password"
+
+[kani_http_config]
+uri = "https://localhost:8443"
+admin_pw = "laNgei6doa9iengoh4to"
+
+[kani_ldap_config]
+uri = "https://localhost:8443"
+ldap_uri = "ldaps://localhost:3636"
+admin_pw = "laNgei6doa9iengoh4to"
+base_dn = "dc=example,dc=com"
+
+# [search_basic_config]
+

@@ -4,6 +4,7 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::collections::BTreeMap;
 use std::collections::BTreeSet as Set;
+use tokio::sync::RwLock;
 use uuid::Uuid;
 
 use webauthn_rs::proto::{
@@ -19,8 +20,8 @@ pub struct KanidmAsyncClient {
     pub(crate) addr: String,
     pub(crate) origin: String,
     pub(crate) builder: KanidmClientBuilder,
-    pub(crate) bearer_token: Option<String>,
-    pub(crate) auth_session_id: Option<String>,
+    pub(crate) bearer_token: RwLock<Option<String>>,
+    pub(crate) auth_session_id: RwLock<Option<String>>,
 }
 
 impl KanidmAsyncClient {
@@ -28,13 +29,14 @@ impl KanidmAsyncClient {
         self.origin.as_str()
     }
 
-    pub fn set_token(&mut self, new_token: String) {
-        let mut new_token = Some(new_token);
-        std::mem::swap(&mut self.bearer_token, &mut new_token);
+    pub async fn set_token(&self, new_token: String) {
+        let mut tguard = self.bearer_token.write().await;
+        *tguard = Some(new_token);
     }
 
-    pub fn get_token(&self) -> Option<&str> {
-        self.bearer_token.as_deref()
+    pub async fn get_token(&self) -> Option<String> {
+        let tguard = self.bearer_token.read().await;
+        (*tguard).as_ref().cloned()
     }
 
     pub fn new_session(&self) -> Result<Self, reqwest::Error> {
@@ -43,19 +45,13 @@ impl KanidmAsyncClient {
         builder.build_async()
     }
 
-    pub fn logout(&mut self) -> Result<(), reqwest::Error> {
-        // hack - we have to replace our reqwest client because that's the only way
-        // to currently flush the cookie store. To achieve this we need to rebuild
-        // and then destructure.
-        let builder = self.builder.clone();
-        let KanidmAsyncClient { mut client, .. } = builder.build_async()?;
-
-        std::mem::swap(&mut self.client, &mut client);
-        Ok(())
+    pub async fn logout(&self) {
+        let mut tguard = self.bearer_token.write().await;
+        *tguard = None;
     }
 
     async fn perform_auth_post_request<R: Serialize, T: DeserializeOwned>(
-        &mut self,
+        &self,
         dest: &str,
         request: R,
     ) -> Result<T, ClientError> {
@@ -71,17 +67,23 @@ impl KanidmAsyncClient {
             .post(dest.as_str())
             .body(req_string)
             .header(CONTENT_TYPE, APPLICATION_JSON);
+
+        /*
         let response = if let Some(token) = &self.bearer_token {
             response.bearer_auth(token)
         } else {
             response
         };
+        */
 
         // If we have a session header, set it now.
-        let response = if let Some(sessionid) = &self.auth_session_id {
-            response.header(KSESSIONID, sessionid)
-        } else {
-            response
+        let response = {
+            let sguard = self.auth_session_id.read().await;
+            if let Some(sessionid) = &(*sguard) {
+                response.header(KSESSIONID, sessionid)
+            } else {
+                response
+            }
         };
 
         let response = response.send().await.map_err(ClientError::Transport)?;
@@ -90,10 +92,13 @@ impl KanidmAsyncClient {
 
         let headers = response.headers();
 
-        self.auth_session_id = headers
-            .get(KSESSIONID)
-            .map(|hv| hv.to_str().ok().map(|s| s.to_string()))
-            .flatten();
+        {
+            let mut sguard = self.auth_session_id.write().await;
+            *sguard = headers
+                .get(KSESSIONID)
+                .map(|hv| hv.to_str().ok().map(|s| s.to_string()))
+                .flatten();
+        }
 
         let opid = headers
             .get(KOPID)
@@ -134,10 +139,14 @@ impl KanidmAsyncClient {
             .post(dest.as_str())
             .body(req_string)
             .header(CONTENT_TYPE, APPLICATION_JSON);
-        let response = if let Some(token) = &self.bearer_token {
-            response.bearer_auth(token)
-        } else {
-            response
+
+        let response = {
+            let tguard = self.bearer_token.read().await;
+            if let Some(token) = &(*tguard) {
+                response.bearer_auth(token)
+            } else {
+                response
+            }
         };
 
         let response = response.send().await.map_err(ClientError::Transport)?;
@@ -182,10 +191,13 @@ impl KanidmAsyncClient {
             .client
             .put(dest.as_str())
             .header(CONTENT_TYPE, APPLICATION_JSON);
-        let response = if let Some(token) = &self.bearer_token {
-            response.bearer_auth(token)
-        } else {
-            response
+        let response = {
+            let tguard = self.bearer_token.read().await;
+            if let Some(token) = &(*tguard) {
+                response.bearer_auth(token)
+            } else {
+                response
+            }
         };
 
         let response = response
@@ -224,10 +236,14 @@ impl KanidmAsyncClient {
         debug!("{:?}", dest);
         // let dest = format!("{}{}", self.addr, dest);
         let response = self.client.get(dest.as_str());
-        let response = if let Some(token) = &self.bearer_token {
-            response.bearer_auth(token)
-        } else {
-            response
+
+        let response = {
+            let tguard = self.bearer_token.read().await;
+            if let Some(token) = &(*tguard) {
+                response.bearer_auth(token)
+            } else {
+                response
+            }
         };
 
         let response = response.send().await.map_err(ClientError::Transport)?;
@@ -264,10 +280,14 @@ impl KanidmAsyncClient {
             .client
             .delete(dest.as_str())
             .header(CONTENT_TYPE, APPLICATION_JSON);
-        let response = if let Some(token) = &self.bearer_token {
-            response.bearer_auth(token)
-        } else {
-            response
+
+        let response = {
+            let tguard = self.bearer_token.read().await;
+            if let Some(token) = &(*tguard) {
+                response.bearer_auth(token)
+            } else {
+                response
+            }
         };
 
         let response = response.send().await.map_err(ClientError::Transport)?;
@@ -308,10 +328,14 @@ impl KanidmAsyncClient {
             .delete(dest.as_str())
             .body(req_string)
             .header(CONTENT_TYPE, APPLICATION_JSON);
-        let response = if let Some(token) = &self.bearer_token {
-            response.bearer_auth(token)
-        } else {
-            response
+
+        let response = {
+            let tguard = self.bearer_token.read().await;
+            if let Some(token) = &(*tguard) {
+                response.bearer_auth(token)
+            } else {
+                response
+            }
         };
 
         let response = response.send().await.map_err(ClientError::Transport)?;
@@ -340,7 +364,7 @@ impl KanidmAsyncClient {
             .map_err(|e| ClientError::JSONDecode(e, opid))
     }
 
-    pub async fn auth_step_init(&mut self, ident: &str) -> Result<Set<AuthMech>, ClientError> {
+    pub async fn auth_step_init(&self, ident: &str) -> Result<Set<AuthMech>, ClientError> {
         let auth_init = AuthRequest {
             step: AuthStep::Init(ident.to_string()),
         };
@@ -359,10 +383,7 @@ impl KanidmAsyncClient {
         .map(|mechs| mechs.into_iter().collect())
     }
 
-    pub async fn auth_step_begin(
-        &mut self,
-        mech: AuthMech,
-    ) -> Result<Vec<AuthAllowed>, ClientError> {
+    pub async fn auth_step_begin(&self, mech: AuthMech) -> Result<Vec<AuthAllowed>, ClientError> {
         let auth_begin = AuthRequest {
             step: AuthStep::Begin(mech),
         };
@@ -381,54 +402,51 @@ impl KanidmAsyncClient {
         // .map(|allowed| allowed.into_iter().collect())
     }
 
-    pub async fn auth_step_anonymous(&mut self) -> Result<AuthResponse, ClientError> {
+    pub async fn auth_step_anonymous(&self) -> Result<AuthResponse, ClientError> {
         let auth_anon = AuthRequest {
             step: AuthStep::Cred(AuthCredential::Anonymous),
         };
         let r: Result<AuthResponse, _> =
             self.perform_auth_post_request("/v1/auth", auth_anon).await;
 
-        r.map(|ar| {
+        if let Ok(ar) = &r {
             if let AuthState::Success(token) = &ar.state {
-                self.bearer_token = Some(token.clone());
+                self.set_token(token.clone()).await;
             };
-            ar
-        })
+        };
+        r
     }
 
-    pub async fn auth_step_password(
-        &mut self,
-        password: &str,
-    ) -> Result<AuthResponse, ClientError> {
+    pub async fn auth_step_password(&self, password: &str) -> Result<AuthResponse, ClientError> {
         let auth_req = AuthRequest {
             step: AuthStep::Cred(AuthCredential::Password(password.to_string())),
         };
         let r: Result<AuthResponse, _> = self.perform_auth_post_request("/v1/auth", auth_req).await;
 
-        r.map(|ar| {
+        if let Ok(ar) = &r {
             if let AuthState::Success(token) = &ar.state {
-                self.bearer_token = Some(token.clone());
+                self.set_token(token.clone()).await;
             };
-            ar
-        })
+        };
+        r
     }
 
-    pub async fn auth_step_totp(&mut self, totp: u32) -> Result<AuthResponse, ClientError> {
+    pub async fn auth_step_totp(&self, totp: u32) -> Result<AuthResponse, ClientError> {
         let auth_req = AuthRequest {
             step: AuthStep::Cred(AuthCredential::Totp(totp)),
         };
         let r: Result<AuthResponse, _> = self.perform_auth_post_request("/v1/auth", auth_req).await;
 
-        r.map(|ar| {
+        if let Ok(ar) = &r {
             if let AuthState::Success(token) = &ar.state {
-                self.bearer_token = Some(token.clone());
+                self.set_token(token.clone()).await;
             };
-            ar
-        })
+        };
+        r
     }
 
     pub async fn auth_step_webauthn_complete(
-        &mut self,
+        &self,
         pkc: PublicKeyCredential,
     ) -> Result<AuthResponse, ClientError> {
         let auth_req = AuthRequest {
@@ -436,15 +454,15 @@ impl KanidmAsyncClient {
         };
         let r: Result<AuthResponse, _> = self.perform_auth_post_request("/v1/auth", auth_req).await;
 
-        r.map(|ar| {
+        if let Ok(ar) = &r {
             if let AuthState::Success(token) = &ar.state {
-                self.bearer_token = Some(token.clone());
+                self.set_token(token.clone()).await;
             };
-            ar
-        })
+        };
+        r
     }
 
-    pub async fn auth_anonymous(&mut self) -> Result<(), ClientError> {
+    pub async fn auth_anonymous(&self) -> Result<(), ClientError> {
         let mechs = match self.auth_step_init("anonymous").await {
             Ok(s) => s,
             Err(e) => return Err(e),
@@ -464,7 +482,7 @@ impl KanidmAsyncClient {
 
         match r.state {
             AuthState::Success(token) => {
-                self.bearer_token = Some(token);
+                self.set_token(token.clone()).await;
                 Ok(())
             }
             _ => Err(ClientError::AuthenticationFailed),
@@ -472,7 +490,7 @@ impl KanidmAsyncClient {
     }
 
     pub async fn auth_simple_password(
-        &mut self,
+        &self,
         ident: &str,
         password: &str,
     ) -> Result<(), ClientError> {
@@ -500,7 +518,7 @@ impl KanidmAsyncClient {
     }
 
     pub async fn auth_password_totp(
-        &mut self,
+        &self,
         ident: &str,
         password: &str,
         totp: u32,
@@ -550,7 +568,7 @@ impl KanidmAsyncClient {
     }
 
     pub async fn auth_webauthn_begin(
-        &mut self,
+        &self,
         ident: &str,
     ) -> Result<RequestChallengeResponse, ClientError> {
         let mechs = match self.auth_step_init(ident).await {
@@ -563,20 +581,20 @@ impl KanidmAsyncClient {
             return Err(ClientError::AuthenticationFailed);
         }
 
-        let mut state = match self.auth_step_begin(AuthMech::Webauthn).await {
-            Ok(s) => s,
+        let state = match self.auth_step_begin(AuthMech::Webauthn).await {
+            Ok(mut s) => s.pop(),
             Err(e) => return Err(e),
         };
 
         // State is now a set of auth continues.
-        match state.pop() {
+        match state {
             Some(AuthAllowed::Webauthn(r)) => Ok(r),
             _ => Err(ClientError::AuthenticationFailed),
         }
     }
 
     pub async fn auth_webauthn_complete(
-        &mut self,
+        &self,
         pkc: PublicKeyCredential,
     ) -> Result<(), ClientError> {
         let r = self.auth_step_webauthn_complete(pkc).await?;
@@ -592,10 +610,13 @@ impl KanidmAsyncClient {
         debug!("{:?}", whoami_dest);
         let response = self.client.get(whoami_dest.as_str());
 
-        let response = if let Some(token) = &self.bearer_token {
-            response.bearer_auth(token)
-        } else {
-            response
+        let response = {
+            let tguard = self.bearer_token.read().await;
+            if let Some(token) = &(*tguard) {
+                response.bearer_auth(token)
+            } else {
+                response
+            }
         };
 
         let response = response.send().await.map_err(ClientError::Transport)?;

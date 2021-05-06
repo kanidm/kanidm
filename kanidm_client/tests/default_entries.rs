@@ -27,7 +27,7 @@ static SELF_WRITEABLE_ATTRS: [&str; 7] = [
     "ssh_publickey",
     "unix_password",
 ];
-static DEFAULT_HP_GROUP_NAMES: [&str; 22] = [
+static DEFAULT_HP_GROUP_NAMES: [&str; 24] = [
     "idm_admins",
     "system_admins",
     "idm_people_manage_priv",
@@ -44,9 +44,11 @@ static DEFAULT_HP_GROUP_NAMES: [&str; 22] = [
     "idm_hp_account_manage_priv",
     "idm_hp_account_write_priv",
     "idm_hp_account_read_priv",
+    "idm_hp_account_unix_extend_priv",
     "idm_schema_manage_priv",
     "idm_hp_group_manage_priv",
     "idm_hp_group_write_priv",
+    "idm_hp_group_unix_extend_priv",
     "idm_acp_manage_priv",
     "domain_admins",
     "idm_high_privilege",
@@ -110,7 +112,7 @@ fn is_attr_writable(rsclient: &KanidmClient, id: &str, attr: &str) -> Option<boo
     }
 }
 
-fn add_all_attrs(mut rsclient: &mut KanidmClient, id: &str, group_name: &str) {
+fn add_all_attrs(rsclient: &KanidmClient, id: &str, group_name: &str) {
     // Extend with posix attrs to test read attr: gidnumber and loginshell
     rsclient
         .idm_group_add_members("idm_admins", &[ADMIN_TEST_USER])
@@ -131,7 +133,7 @@ fn add_all_attrs(mut rsclient: &mut KanidmClient, id: &str, group_name: &str) {
 
     // Write radius credentials
     if id != "anonymous" {
-        login_account(&mut rsclient, id);
+        login_account(&rsclient, id);
         let _ = rsclient
             .idm_account_radius_credential_regenerate(id)
             .unwrap();
@@ -142,7 +144,7 @@ fn add_all_attrs(mut rsclient: &mut KanidmClient, id: &str, group_name: &str) {
 }
 
 fn create_user_with_all_attrs(
-    mut rsclient: &mut KanidmClient,
+    rsclient: &KanidmClient,
     id: &str,
     optional_group: Option<&str>,
 ) -> () {
@@ -150,10 +152,10 @@ fn create_user_with_all_attrs(
     let group_name = optional_group.unwrap_or(&group_format);
 
     create_user(&rsclient, id, group_name);
-    add_all_attrs(&mut rsclient, id, group_name);
+    add_all_attrs(&rsclient, id, group_name);
 }
 
-fn login_account(rsclient: &mut KanidmClient, id: &str) -> () {
+fn login_account(rsclient: &KanidmClient, id: &str) -> () {
     rsclient
         .idm_group_add_members(
             "idm_people_account_password_import_priv",
@@ -226,15 +228,15 @@ fn test_modify_group(rsclient: &KanidmClient, group_names: &[&str], is_modificab
 //     name, displayname, legalname, ssh-keys, credentials etc.
 #[test]
 fn test_default_entries_rbac_users() {
-    run_test(|mut rsclient: KanidmClient| {
+    run_test(|rsclient: KanidmClient| {
         rsclient
             .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
             .unwrap();
 
-        create_user_with_all_attrs(&mut rsclient, "self_account", Some("self_group"));
-        create_user_with_all_attrs(&mut rsclient, "other_account", Some("other_group"));
+        create_user_with_all_attrs(&rsclient, "self_account", Some("self_group"));
+        create_user_with_all_attrs(&rsclient, "other_account", Some("other_group"));
 
-        login_account(&mut rsclient, "self_account");
+        login_account(&rsclient, "self_account");
 
         test_read_attrs(&rsclient, "self_account", &USER_READABLE_ATTRS, true);
         test_read_attrs(&rsclient, "other_account", &USER_READABLE_ATTRS, true);
@@ -264,15 +266,15 @@ fn test_default_entries_rbac_users() {
 // ability to lock and unlock accounts, excluding high access members.
 #[test]
 fn test_default_entries_rbac_account_managers() {
-    run_test(|mut rsclient: KanidmClient| {
+    run_test(|rsclient: KanidmClient| {
         rsclient
             .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
             .unwrap();
 
         create_user(&rsclient, "account_manager", "idm_account_manage_priv");
-        create_user_with_all_attrs(&mut rsclient, "test", Some("test_group"));
+        create_user_with_all_attrs(&rsclient, "test", Some("test_group"));
 
-        login_account(&mut rsclient, "account_manager");
+        login_account(&rsclient, "account_manager");
 
         test_read_attrs(&rsclient, "test", &USER_READABLE_ATTRS, true);
         static ACCOUNT_MANAGER_ATTRS: [&str; 5] = [
@@ -296,7 +298,7 @@ fn test_default_entries_rbac_account_managers() {
 // write group but not high access
 #[test]
 fn test_default_entries_rbac_group_managers() {
-    run_test(|mut rsclient: KanidmClient| {
+    run_test(|rsclient: KanidmClient| {
         rsclient
             .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
             .unwrap();
@@ -305,7 +307,7 @@ fn test_default_entries_rbac_group_managers() {
         // create test user without creating new groups
         create_user(&rsclient, "test", "idm_admins");
 
-        login_account(&mut rsclient, "group_manager");
+        login_account(&rsclient, "group_manager");
 
         let default_group_names: HashSet<String> =
             [&DEFAULT_HP_GROUP_NAMES[..], &DEFAULT_NOT_HP_GROUP_NAMES[..]]
@@ -337,7 +339,7 @@ fn test_default_entries_rbac_group_managers() {
 // read and write access control entries.
 #[test]
 fn test_default_entries_rbac_admins_access_control_entries() {
-    run_test(|mut rsclient: KanidmClient| {
+    run_test(|rsclient: KanidmClient| {
         rsclient
             .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
             .unwrap();
@@ -385,7 +387,7 @@ fn test_default_entries_rbac_admins_access_control_entries() {
 // TODO #252: write schema entries
 #[test]
 fn test_default_entries_rbac_admins_schema_entries() {
-    run_test(|mut rsclient: KanidmClient| {
+    run_test(|rsclient: KanidmClient| {
         rsclient
             .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
             .unwrap();
@@ -496,7 +498,7 @@ fn test_default_entries_rbac_admins_schema_entries() {
 // create new accounts (to bootstrap the system).
 #[test]
 fn test_default_entries_rbac_admins_group_entries() {
-    run_test(|mut rsclient: KanidmClient| {
+    run_test(|rsclient: KanidmClient| {
         rsclient
             .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
             .unwrap();
@@ -512,7 +514,7 @@ fn test_default_entries_rbac_admins_group_entries() {
 // modify high access accounts as an escalation for security sensitive accounts.
 #[test]
 fn test_default_entries_rbac_admins_ha_accounts() {
-    run_test(|mut rsclient: KanidmClient| {
+    run_test(|rsclient: KanidmClient| {
         rsclient
             .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
             .unwrap();
@@ -525,7 +527,7 @@ fn test_default_entries_rbac_admins_ha_accounts() {
 // recover from the recycle bin
 #[test]
 fn test_default_entries_rbac_admins_recycle_accounts() {
-    run_test(|mut rsclient: KanidmClient| {
+    run_test(|rsclient: KanidmClient| {
         rsclient
             .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
             .unwrap();
@@ -544,13 +546,13 @@ fn test_default_entries_rbac_admins_recycle_accounts() {
 // write private or sensitive data of persons, IE legalName
 #[test]
 fn test_default_entries_rbac_people_managers() {
-    run_test(|mut rsclient: KanidmClient| {
+    run_test(|rsclient: KanidmClient| {
         rsclient
             .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
             .unwrap();
 
         create_user(&rsclient, "read_people_manager", "idm_people_read_priv");
-        create_user_with_all_attrs(&mut rsclient, "test", Some("test_group"));
+        create_user_with_all_attrs(&rsclient, "test", Some("test_group"));
 
         static PEOPLE_MANAGER_ATTRS: [&str; 2] = ["legalname", "mail"];
 
@@ -558,7 +560,7 @@ fn test_default_entries_rbac_people_managers() {
             ["primary_credential", "radius_secret", "unix_password"];
         test_read_attrs(&rsclient, "test", &PEOPLE_MANAGER_ATTRS, true);
 
-        login_account(&mut rsclient, "read_people_manager");
+        login_account(&rsclient, "read_people_manager");
 
         test_read_attrs(&rsclient, "test", &PEOPLE_MANAGER_ATTRS, true);
         test_read_attrs(&rsclient, "test", &TECHNICAL_ATTRS, false);
@@ -570,7 +572,7 @@ fn test_default_entries_rbac_people_managers() {
             .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
             .unwrap();
         create_user(&rsclient, "write_people_manager", "idm_people_write_priv");
-        login_account(&mut rsclient, "write_people_manager");
+        login_account(&rsclient, "write_people_manager");
 
         test_read_attrs(&rsclient, "test", &PEOPLE_MANAGER_ATTRS, true);
         test_read_attrs(&rsclient, "test", &TECHNICAL_ATTRS, false);
@@ -583,15 +585,15 @@ fn test_default_entries_rbac_people_managers() {
 // read memberof, unix attrs, name, displayname, class
 #[test]
 fn test_default_entries_rbac_anonymous_entry() {
-    run_test(|mut rsclient: KanidmClient| {
+    run_test(|rsclient: KanidmClient| {
         rsclient
             .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
             .unwrap();
-        create_user_with_all_attrs(&mut rsclient, "test", Some("test_group"));
+        create_user_with_all_attrs(&rsclient, "test", Some("test_group"));
         rsclient
             .idm_group_add_members("test_group", &["anonymous"])
             .unwrap();
-        add_all_attrs(&mut rsclient, "anonymous", "test_group");
+        add_all_attrs(&rsclient, "anonymous", "test_group");
 
         let _ = rsclient.logout();
         rsclient.auth_anonymous().unwrap();
@@ -608,14 +610,14 @@ fn test_default_entries_rbac_anonymous_entry() {
 // Read other needed attributes to fulfil radius functions.
 #[test]
 fn test_default_entries_rbac_radius_servers() {
-    run_test(|mut rsclient: KanidmClient| {
+    run_test(|rsclient: KanidmClient| {
         rsclient
             .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
             .unwrap();
         create_user(&rsclient, "radius_server", "idm_radius_servers");
-        create_user_with_all_attrs(&mut rsclient, "test", Some("test_group"));
+        create_user_with_all_attrs(&rsclient, "test", Some("test_group"));
 
-        login_account(&mut rsclient, "radius_server");
+        login_account(&rsclient, "radius_server");
         static RADIUS_NECESSARY_ATTRS: [&str; 4] = ["name", "spn", "uuid", "radius_secret"];
 
         test_read_attrs(&rsclient, "test", &USER_READABLE_ATTRS, true);

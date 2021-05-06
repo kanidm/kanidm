@@ -501,7 +501,11 @@ pub trait AccessControlsTransaction<'a> {
             EventOrigin::User(e) => &e,
         };
         lperf_segment!(audit, "access::search_filter_entries", || {
-            ltrace!(audit, "Access check for event: {}", se.event);
+            ltrace!(
+                audit,
+                "Access check for search (filter) event: {}",
+                se.event
+            );
 
             // First get the set of acps that apply to this receiver
             let related_acp = self.search_related_acp(audit, rec_entry, se);
@@ -633,7 +637,11 @@ pub trait AccessControlsTransaction<'a> {
              * impersonate and such actually still get the whole entry back as not to break
              * modify and co.
              */
-            ltrace!(audit, "Access check and reduce for event: {}", se.event);
+            ltrace!(
+                audit,
+                "Access check for search (reduce) event: {}",
+                se.event
+            );
             let acp_resolve_filter_cache = self.get_acp_resolve_filter_cache();
 
             // Get the relevant acps for this receiver.
@@ -774,7 +782,7 @@ pub trait AccessControlsTransaction<'a> {
             EventOrigin::User(e) => &e,
         };
         lperf_segment!(audit, "access::modify_allow_operation", || {
-            ltrace!(audit, "Access check for event: {}", me.event);
+            ltrace!(audit, "Access check for modify event: {}", me.event);
 
             // Some useful references we'll use for the remainder of the operation
             let modify_state = self.get_modify();
@@ -834,11 +842,9 @@ pub trait AccessControlsTransaction<'a> {
                 })
                 .collect();
 
-            /*
             related_acp.iter().for_each(|racp| {
-                lsecurity_access!(audit, "Related acs -> {:?}", racp.acp.name);
+                ltrace!(audit, "Related acs -> {:?}", racp.0.acp.name);
             });
-            */
 
             // build two sets of "requested pres" and "requested rem"
             let requested_pres: BTreeSet<&str> = me
@@ -978,7 +984,7 @@ pub trait AccessControlsTransaction<'a> {
             EventOrigin::User(e) => &e,
         };
         lperf_segment!(audit, "access::create_allow_operation", || {
-            ltrace!(audit, "Access check for event: {}", ce.event);
+            ltrace!(audit, "Access check for create event: {}", ce.event);
 
             // Some useful references we'll use for the remainder of the operation
             let create_state = self.get_create();
@@ -1145,7 +1151,7 @@ pub trait AccessControlsTransaction<'a> {
             EventOrigin::User(e) => &e,
         };
         lperf_segment!(audit, "access::delete_allow_operation", || {
-            ltrace!(audit, "Access check for event: {}", de.event);
+            ltrace!(audit, "Access check for delete event: {}", de.event);
 
             // Some useful references we'll use for the remainder of the operation
             let delete_state = self.get_delete();

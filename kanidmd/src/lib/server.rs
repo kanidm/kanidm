@@ -2182,9 +2182,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_IDM_HP_ACCOUNT_MANAGE_PRIV_V1,
             JSON_IDM_HP_ACCOUNT_WRITE_PRIV_V1,
             JSON_IDM_HP_ACCOUNT_READ_PRIV_V1,
+            JSON_IDM_HP_ACCOUNT_UNIX_EXTEND_PRIV_V1,
             JSON_IDM_SCHEMA_MANAGE_PRIV_V1,
             JSON_IDM_HP_GROUP_MANAGE_PRIV_V1,
             JSON_IDM_HP_GROUP_WRITE_PRIV_V1,
+            JSON_IDM_HP_GROUP_UNIX_EXTEND_PRIV_V1,
             JSON_IDM_ACP_MANAGE_PRIV_V1,
             JSON_DOMAIN_ADMINS,
             JSON_IDM_HIGH_PRIVILEGE_V1,
@@ -2218,6 +2220,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1,
             JSON_IDM_ACP_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1,
             JSON_IDM_ACP_PEOPLE_EXTEND_PRIV_V1,
+            JSON_IDM_HP_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1,
+            JSON_IDM_HP_ACP_GROUP_UNIX_EXTEND_PRIV_V1,
         ];
 
         let res: Result<(), _> = idm_entries

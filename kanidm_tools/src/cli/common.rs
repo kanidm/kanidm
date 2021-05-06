@@ -47,7 +47,7 @@ impl CommonOpt {
     }
 
     pub fn to_client(&self) -> KanidmClient {
-        let mut client = self.to_unauth_client();
+        let client = self.to_unauth_client();
         // Read the token file.
         let tokens = match read_tokens() {
             Ok(t) => t,
