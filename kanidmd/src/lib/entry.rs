@@ -921,7 +921,7 @@ impl Entry<EntrySealed, EntryCommitted> {
     }
 
     #[inline]
-    fn get_uuid2rdn(&self) -> String {
+    pub(crate) fn get_uuid2rdn(&self) -> String {
         self.attrs
             .get("spn")
             .and_then(|vs| {

@@ -676,9 +676,107 @@ pub trait BackendTransaction {
         }) // end audit segment
     }
 
-    fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
-        // Vec::new()
-        self.get_idlayer().verify()
+    fn verify(&self, audit: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
+        self.get_idlayer().verify(audit)
+    }
+
+    fn verify_entry_index(
+        &self,
+        audit: &mut AuditScope,
+        e: &Entry<EntrySealed, EntryCommitted>,
+    ) -> Result<(), ConsistencyError> {
+        // First, check our references in name2uuid, uuid2spn and uuid2rdn
+        if e.mask_recycled_ts().is_some() {
+            let e_uuid = e.get_uuid();
+            // We only check these on live entries.
+            let (n2u_add, n2u_rem) = Entry::idx_name2uuid_diff(None, Some(&e));
+
+            let n2u_set = match (n2u_add, n2u_rem) {
+                (Some(set), None) => set,
+                (_, _) => {
+                    ladmin_error!(audit, "Invalid idx_name2uuid_diff state");
+                    return Err(ConsistencyError::BackendIndexSync);
+                }
+            };
+
+            // If the set.len > 1, check each item.
+            n2u_set.iter().try_for_each(|name| {
+                match self.get_idlayer().name2uuid(audit, name) {
+                    Ok(Some(idx_uuid)) => {
+                        if &idx_uuid == e_uuid {
+                            Ok(())
+                        } else {
+                            ladmin_error!(
+                                audit,
+                                "Invalid name2uuid state -> incorrect uuid association"
+                            );
+                            return Err(ConsistencyError::BackendIndexSync);
+                        }
+                    }
+                    r => {
+                        ladmin_error!(audit, "Invalid name2uuid state -> {:?}", r);
+                        return Err(ConsistencyError::BackendIndexSync);
+                    }
+                }
+            })?;
+
+            let spn = e.get_uuid2spn();
+            match self.get_idlayer().uuid2spn(audit, &e_uuid) {
+                Ok(Some(idx_spn)) => {
+                    if spn != idx_spn {
+                        ladmin_error!(audit, "Invalid uuid2spn state -> incorrect idx spn value");
+                        return Err(ConsistencyError::BackendIndexSync);
+                    }
+                }
+                r => {
+                    ladmin_error!(audit, "Invalid uuid2spn state -> {:?}", r);
+                    return Err(ConsistencyError::BackendIndexSync);
+                }
+            };
+
+            let rdn = e.get_uuid2rdn();
+            match self.get_idlayer().uuid2rdn(audit, &e_uuid) {
+                Ok(Some(idx_rdn)) => {
+                    if rdn != idx_rdn {
+                        ladmin_error!(audit, "Invalid uuid2rdn state -> incorrect idx rdn value");
+                        return Err(ConsistencyError::BackendIndexSync);
+                    }
+                }
+                r => {
+                    ladmin_error!(audit, "Invalid uuid2rdn state -> {:?}", r);
+                    return Err(ConsistencyError::BackendIndexSync);
+                }
+            };
+        }
+
+        // Check the other entry:attr indexes are valid
+        //
+        // This is acutally pretty hard to check, because we can check a value *should*
+        // exist, but not that a value should NOT be present in the index. Thought needed ...
+
+        // Got here? Ok!
+        Ok(())
+    }
+
+    fn verify_indexes(&self, audit: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
+        let idl = IDL::ALLIDS;
+        let entries = match self.get_idlayer().get_identry(audit, &idl) {
+            Ok(s) => s,
+            Err(e) => {
+                ladmin_error!(audit, "get_identry failure {:?}", e);
+                return vec![Err(ConsistencyError::Unknown)];
+            }
+        };
+
+        let r = entries
+            .iter()
+            .try_for_each(|e| self.verify_entry_index(audit, e));
+
+        if r.is_err() {
+            vec![r]
+        } else {
+            Vec::new()
+        }
     }
 
     fn backup(&self, audit: &mut AuditScope, dst_path: &str) -> Result<(), OperationError> {
@@ -1278,7 +1376,7 @@ impl<'a> BackendWriteTransaction<'a> {
         // Reindex now we are loaded.
         self.reindex(audit)?;
 
-        let vr = self.verify();
+        let vr = self.verify(audit);
         if vr.is_empty() {
             Ok(())
         } else {
