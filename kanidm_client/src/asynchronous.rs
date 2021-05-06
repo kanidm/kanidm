@@ -302,10 +302,11 @@ impl KanidmAsyncClient {
     ) -> Result<bool, ClientError> {
         let dest = format!("{}{}", self.addr, dest);
 
+        let req_string = serde_json::to_string(&request).map_err(ClientError::JSONEncode)?;
         let response = self
             .client
             .delete(dest.as_str())
-            .body(serde_json::to_string(&request).map_err(ClientError::JSONEncode)?)
+            .body(req_string)
             .header(CONTENT_TYPE, APPLICATION_JSON);
         let response = if let Some(token) = &self.bearer_token {
             response.bearer_auth(token)

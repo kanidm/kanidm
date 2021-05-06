@@ -290,7 +290,7 @@ fn test_server_rest_group_lifecycle() {
             .idm_group_remove_members("demo_group", &["demo_group"])
             .unwrap();
         let members = rsclient.idm_group_get_members("demo_group").unwrap();
-        assert!(members == Some(vec!["admin".to_string()]));
+        assert!(members == Some(vec!["admin@example.com".to_string()]));
 
         // purge members
         rsclient.idm_group_purge_members("demo_group").unwrap();

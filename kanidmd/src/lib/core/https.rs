@@ -11,7 +11,8 @@ use crate::actors::v1_write::{
     IdmAccountSetPasswordMessage, IdmAccountUnixExtendMessage, IdmAccountUnixSetCredMessage,
     IdmGroupUnixExtendMessage, InternalCredentialSetMessage, InternalDeleteMessage,
     InternalRegenerateRadiusMessage, InternalSshKeyCreateMessage, ModifyMessage,
-    PurgeAttributeMessage, RemoveAttributeValueMessage, ReviveRecycledMessage, SetAttributeMessage,
+    PurgeAttributeMessage, RemoveAttributeValuesMessage, ReviveRecycledMessage,
+    SetAttributeMessage,
 };
 use crate::config::TlsConfiguration;
 use crate::event::AuthResult;
@@ -414,33 +415,19 @@ async fn json_rest_event_delete_id_attr(
 ) -> tide::Result {
     let uat = req.get_current_uat();
     let id = req.get_url_param("id")?;
+    let (eventid, hvalue) = new_eventid!();
 
-    // TODO: #429: make this work
-    // This  was just
-    // let values: Option<Vec<String>> = match req.body_json().await?
-    // fails when an empty body is returned, not continuing to the "done converting body" bit..
+    // TODO #211: Attempt to get an option Vec<String> here?
+    // It's probably better to focus on SCIM instead, it seems richer than this.
+    let body = req.take_body();
+    let values: Vec<String> = if body.is_empty().unwrap_or(true) {
+        vec![]
+    } else {
+        // Must now be a valid list.
+        body.into_json().await?
+    };
 
-    println!("#421 😊 converting body");
-    let values: Option<Vec<String>> = req.body_json().await?;
-    // this is all very very silly code.
-    // let values: Option<Vec<String>> = match req.body_json().await? {
-    //         // Ok(Some(val)) => val,
-    //         Err(_) => {
-    //             debug!("Uhh... awkward?");
-    //             None
-    //         }
-    //         _ => { println!("uwu"); Some(Vec::new()) }
-    //         };
-    // };
-
-    println!("#421 😊 done converting body {:?}", values);
-
-    let values = values.unwrap();
     if values.len() == 0 {
-        println!("#421 😊 values is empty, can use PurgeAttributeMessage");
-        let (eventid, hvalue) = new_eventid!();
-        // TODO #211: Attempt to get an option Vec<String> here?
-        // It's probably better to focus on SCIM instead, it seems richer than this.
         let m_obj = PurgeAttributeMessage {
             uat,
             uuid_or_name: id,
@@ -456,13 +443,22 @@ async fn json_rest_event_delete_id_attr(
             .map(|()| true);
         to_tide_response(res, hvalue)
     } else {
-        println!("#421 😞 values herpaderp {:?}", &values);
-        // let s = match std::str::from_utf8(&values) {
-        //     Ok(v) => v,
-        //     Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
-        // };
-        // println!("oh no {:#?}", s);
-        panic!("oh no")
+        let obj = RemoveAttributeValuesMessage {
+            uat,
+            uuid_or_name: id,
+            attr,
+            values,
+            filter,
+            eventid,
+        };
+
+        let res = req
+            .state()
+            .qe_w_ref
+            .handle_removeattributevalues(obj)
+            .await
+            .map(|()| true);
+        to_tide_response(res, hvalue)
     }
 }
 
@@ -715,11 +711,11 @@ pub async fn account_delete_id_ssh_pubkey_tag(req: tide::Request<AppState>) -> t
     let tag = req.get_url_param("tag")?;
 
     let (eventid, hvalue) = new_eventid!();
-    let obj = RemoveAttributeValueMessage {
+    let obj = RemoveAttributeValuesMessage {
         uat,
         uuid_or_name: id,
         attr: "ssh_publickey".to_string(),
-        value: tag,
+        values: vec![tag],
         filter: filter_all!(f_eq("class", PartialValue::new_class("account"))),
         eventid,
     };
@@ -727,7 +723,7 @@ pub async fn account_delete_id_ssh_pubkey_tag(req: tide::Request<AppState>) -> t
     let res = req
         .state()
         .qe_w_ref
-        .handle_removeattributevalue(obj)
+        .handle_removeattributevalues(obj)
         .await
         .map(|()| true);
     to_tide_response(res, hvalue)

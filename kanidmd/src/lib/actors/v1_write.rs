@@ -211,12 +211,12 @@ pub struct PurgeAttributeMessage {
     pub eventid: Uuid,
 }
 
-/// Delete a single attribute-value pair from the entry.
-pub struct RemoveAttributeValueMessage {
+/// Delete a set of attribute-value pair from the entry.
+pub struct RemoveAttributeValuesMessage {
     pub uat: Option<UserAuthToken>,
     pub uuid_or_name: String,
     pub attr: String,
-    pub value: String,
+    pub values: Vec<String>,
     pub filter: Filter<FilterInvalid>,
     pub eventid: Uuid,
 }
@@ -886,33 +886,46 @@ impl QueryServerWriteV1 {
         res
     }
 
-    pub async fn handle_removeattributevalue(
+    pub async fn handle_removeattributevalues(
         &self,
-        msg: RemoveAttributeValueMessage,
+        msg: RemoveAttributeValuesMessage,
     ) -> Result<(), OperationError> {
-        let mut audit = AuditScope::new("remove_attribute_value", msg.eventid, self.log_level);
+        let RemoveAttributeValuesMessage {
+            uat,
+            uuid_or_name,
+            attr,
+            values,
+            filter,
+            eventid,
+        } = msg;
+
+        let mut audit = AuditScope::new("remove_attribute_values", eventid, self.log_level);
         let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
         let res = lperf_op_segment!(
             &mut audit,
-            "actors::v1_write::handle<RemoveAttributeValueMessage>",
+            "actors::v1_write::handle<RemoveAttributeValuesMessage>",
             || {
                 let target_uuid = idms_prox_write
                     .qs_write
-                    .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                    .name_to_uuid(&mut audit, uuid_or_name.as_str())
                     .map_err(|e| {
                         ladmin_error!(audit, "Error resolving id to target");
                         e
                     })?;
 
-                let proto_ml =
-                    ProtoModifyList::new_list(vec![ProtoModify::Removed(msg.attr, msg.value)]);
+                let proto_ml = ProtoModifyList::new_list(
+                    values
+                        .into_iter()
+                        .map(|v| ProtoModify::Removed(attr.clone(), v))
+                        .collect(),
+                );
 
                 let mdf = match ModifyEvent::from_parts(
                     &mut audit,
-                    msg.uat.as_ref(),
+                    uat.as_ref(),
                     target_uuid,
                     &proto_ml,
-                    msg.filter,
+                    filter,
                     &idms_prox_write.qs_write,
                 ) {
                     Ok(m) => m,
