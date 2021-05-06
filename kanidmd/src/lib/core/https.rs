@@ -13,7 +13,7 @@ use crate::actors::v1_write::{
     InternalRegenerateRadiusMessage, InternalSshKeyCreateMessage, ModifyMessage,
     PurgeAttributeMessage, RemoveAttributeValueMessage, ReviveRecycledMessage, SetAttributeMessage,
 };
-use crate::config::{TlsConfiguration, ServerRole};
+use crate::config::{ServerRole, TlsConfiguration};
 use crate::event::AuthResult;
 use crate::filter::{Filter, FilterInvalid};
 use crate::idm::AuthState;

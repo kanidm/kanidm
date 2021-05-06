@@ -40,7 +40,6 @@ impl FromStr for ServerRole {
     }
 }
 
-
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct Configuration {
     pub address: String,
