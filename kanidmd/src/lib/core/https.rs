@@ -11,7 +11,8 @@ use crate::actors::v1_write::{
     IdmAccountSetPasswordMessage, IdmAccountUnixExtendMessage, IdmAccountUnixSetCredMessage,
     IdmGroupUnixExtendMessage, InternalCredentialSetMessage, InternalDeleteMessage,
     InternalRegenerateRadiusMessage, InternalSshKeyCreateMessage, ModifyMessage,
-    PurgeAttributeMessage, RemoveAttributeValueMessage, ReviveRecycledMessage, SetAttributeMessage,
+    PurgeAttributeMessage, RemoveAttributeValuesMessage, ReviveRecycledMessage,
+    SetAttributeMessage,
 };
 use crate::config::TlsConfiguration;
 use crate::event::AuthResult;
@@ -360,7 +361,6 @@ async fn json_rest_event_post_id_attr(
     let id = req.get_url_param("id")?;
     let attr = req.get_url_param("attr")?;
     let values: Vec<String> = req.body_json().await?;
-
     let (eventid, hvalue) = new_eventid!();
     let m_obj = AppendAttributeMessage {
         uat,
@@ -408,31 +408,58 @@ async fn json_rest_event_put_id_attr(
 }
 
 async fn json_rest_event_delete_id_attr(
-    req: tide::Request<AppState>,
+    mut req: tide::Request<AppState>,
     filter: Filter<FilterInvalid>,
     // Seperate for account_delete_id_radius
     attr: String,
 ) -> tide::Result {
     let uat = req.get_current_uat();
     let id = req.get_url_param("id")?;
-
     let (eventid, hvalue) = new_eventid!();
+
     // TODO #211: Attempt to get an option Vec<String> here?
     // It's probably better to focus on SCIM instead, it seems richer than this.
-    let m_obj = PurgeAttributeMessage {
-        uat,
-        uuid_or_name: id,
-        attr,
-        filter,
-        eventid,
+    let body = req.take_body();
+    let values: Vec<String> = if body.is_empty().unwrap_or(true) {
+        vec![]
+    } else {
+        // Must now be a valid list.
+        body.into_json().await?
     };
-    let res = req
-        .state()
-        .qe_w_ref
-        .handle_purgeattribute(m_obj)
-        .await
-        .map(|()| true);
-    to_tide_response(res, hvalue)
+
+    if values.len() == 0 {
+        let m_obj = PurgeAttributeMessage {
+            uat,
+            uuid_or_name: id,
+            attr,
+            filter,
+            eventid,
+        };
+        let res = req
+            .state()
+            .qe_w_ref
+            .handle_purgeattribute(m_obj)
+            .await
+            .map(|()| true);
+        to_tide_response(res, hvalue)
+    } else {
+        let obj = RemoveAttributeValuesMessage {
+            uat,
+            uuid_or_name: id,
+            attr,
+            values,
+            filter,
+            eventid,
+        };
+
+        let res = req
+            .state()
+            .qe_w_ref
+            .handle_removeattributevalues(obj)
+            .await
+            .map(|()| true);
+        to_tide_response(res, hvalue)
+    }
 }
 
 async fn json_rest_event_credential_put(
@@ -684,11 +711,11 @@ pub async fn account_delete_id_ssh_pubkey_tag(req: tide::Request<AppState>) -> t
     let tag = req.get_url_param("tag")?;
 
     let (eventid, hvalue) = new_eventid!();
-    let obj = RemoveAttributeValueMessage {
+    let obj = RemoveAttributeValuesMessage {
         uat,
         uuid_or_name: id,
         attr: "ssh_publickey".to_string(),
-        value: tag,
+        values: vec![tag],
         filter: filter_all!(f_eq("class", PartialValue::new_class("account"))),
         eventid,
     };
@@ -696,7 +723,7 @@ pub async fn account_delete_id_ssh_pubkey_tag(req: tide::Request<AppState>) -> t
     let res = req
         .state()
         .qe_w_ref
-        .handle_removeattributevalue(obj)
+        .handle_removeattributevalues(obj)
         .await
         .map(|()| true);
     to_tide_response(res, hvalue)
@@ -1449,10 +1476,10 @@ pub fn create_https_server(
         .delete(group_id_delete);
     group_route
         .at("/:id/_attr/:attr")
+        .delete(group_id_delete_attr)
         .get(group_id_get_attr)
         .put(group_id_put_attr)
-        .post(group_id_post_attr)
-        .delete(group_id_delete_attr);
+        .post(group_id_post_attr);
     group_route.at("/:id/_unix").post(group_post_id_unix);
     group_route
         .at("/:id/_unix/_token")

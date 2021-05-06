@@ -457,11 +457,13 @@ impl KanidmClient {
         tokio_block_on(self.asclient.idm_group_add_members(id, members))
     }
 
-    /*
-    pub fn idm_group_remove_member(&self, id: &str, member: &str) -> Result<(), ClientError> {
-        unimplemented!();
+    pub fn idm_group_remove_members(
+        &self,
+        group: &str,
+        members: &[&str],
+    ) -> Result<bool, ClientError> {
+        tokio_block_on(self.asclient.idm_group_remove_members(group, members))
     }
-    */
 
     pub fn idm_group_purge_members(&self, id: &str) -> Result<bool, ClientError> {
         tokio_block_on(self.asclient.idm_group_purge_members(id))

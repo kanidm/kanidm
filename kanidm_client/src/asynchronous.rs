@@ -129,7 +129,6 @@ impl KanidmAsyncClient {
         // let dest = format!("{}{}", self.addr, dest);
 
         let req_string = serde_json::to_string(&request).map_err(ClientError::JSONEncode)?;
-
         let response = self
             .client
             .post(dest.as_str())
@@ -260,7 +259,55 @@ impl KanidmAsyncClient {
 
     async fn perform_delete_request(&self, dest: &str) -> Result<bool, ClientError> {
         let dest = format!("{}{}", self.addr, dest);
-        let response = self.client.delete(dest.as_str());
+
+        let response = self
+            .client
+            .delete(dest.as_str())
+            .header(CONTENT_TYPE, APPLICATION_JSON);
+        let response = if let Some(token) = &self.bearer_token {
+            response.bearer_auth(token)
+        } else {
+            response
+        };
+
+        let response = response.send().await.map_err(ClientError::Transport)?;
+
+        let opid = response
+            .headers()
+            .get(KOPID)
+            .and_then(|hv| hv.to_str().ok().map(|s| s.to_string()))
+            .unwrap_or_else(|| "missing_kopid".to_string());
+        debug!("opid -> {:?}", opid);
+
+        match response.status() {
+            reqwest::StatusCode::OK => {}
+            unexpect => {
+                return Err(ClientError::Http(
+                    unexpect,
+                    response.json().await.ok(),
+                    opid,
+                ))
+            }
+        }
+
+        response
+            .json()
+            .await
+            .map_err(|e| ClientError::JSONDecode(e, opid))
+    }
+    async fn perform_delete_request_with_body<R: Serialize>(
+        &self,
+        dest: &str,
+        request: R,
+    ) -> Result<bool, ClientError> {
+        let dest = format!("{}{}", self.addr, dest);
+
+        let req_string = serde_json::to_string(&request).map_err(ClientError::JSONEncode)?;
+        let response = self
+            .client
+            .delete(dest.as_str())
+            .body(req_string)
+            .header(CONTENT_TYPE, APPLICATION_JSON);
         let response = if let Some(token) = &self.bearer_token {
             response.bearer_auth(token)
         } else {
@@ -658,11 +705,28 @@ impl KanidmAsyncClient {
             .await
     }
 
-    /*
-    pub fn idm_group_remove_member(&self, id: &str, member: &str) -> Result<(), ClientError> {
-        unimplemented!();
+    pub async fn idm_group_remove_members(
+        &self,
+        group: &str,
+        members: &[&str],
+    ) -> Result<bool, ClientError> {
+        debug!(
+            "{}",
+            [
+                "Asked to remove members ",
+                &members.join(","),
+                " from ",
+                group
+            ]
+            .concat()
+            .to_string()
+        );
+        self.perform_delete_request_with_body(
+            ["/v1/group/", group, "/_attr/member"].concat().as_str(),
+            &members,
+        )
+        .await
     }
-    */
 
     pub async fn idm_group_purge_members(&self, id: &str) -> Result<bool, ClientError> {
         self.perform_delete_request(format!("/v1/group/{}/_attr/member", id).as_str())

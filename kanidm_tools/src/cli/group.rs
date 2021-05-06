@@ -9,6 +9,7 @@ impl GroupOpt {
             GroupOpt::Delete(gcopt) => gcopt.copt.debug,
             GroupOpt::ListMembers(gcopt) => gcopt.copt.debug,
             GroupOpt::AddMembers(gcopt) => gcopt.copt.debug,
+            GroupOpt::RemoveMembers(gcopt) => gcopt.copt.debug,
             GroupOpt::SetMembers(gcopt) => gcopt.copt.debug,
             GroupOpt::PurgeMembers(gcopt) => gcopt.copt.debug,
             GroupOpt::Posix(gpopt) => match gpopt {
@@ -74,6 +75,18 @@ impl GroupOpt {
                     eprintln!("Error -> {:?}", e);
                 }
             }
+
+            GroupOpt::RemoveMembers(gcopt) => {
+                let client = gcopt.copt.to_client();
+                let remove_members: Vec<&str> = gcopt.members.iter().map(|s| s.as_str()).collect();
+
+                if let Err(e) =
+                    client.idm_group_remove_members(gcopt.name.as_str(), &remove_members)
+                {
+                    eprintln!("Failed to remove members -> {:?}", e);
+                }
+            }
+
             GroupOpt::SetMembers(gcopt) => {
                 let client = gcopt.copt.to_client();
                 let new_members: Vec<&str> = gcopt.members.iter().map(|s| s.as_str()).collect();
