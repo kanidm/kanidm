@@ -292,10 +292,10 @@ macro_rules! verify {
             match $self.db.get_allids($audit) {
                 Ok(db_allids) => {
                     if !db_allids.is_compressed() || !(*($self).allids).is_compressed() {
-                        r.push(Err(ConsistencyError::BackendAllIDSSync))
+                        r.push(Err(ConsistencyError::BackendAllIdsSync))
                     }
                     if db_allids != (*($self).allids) {
-                        r.push(Err(ConsistencyError::BackendAllIDSSync))
+                        r.push(Err(ConsistencyError::BackendAllIdsSync))
                     }
                 }
                 Err(_) => r.push(Err(ConsistencyError::Unknown)),

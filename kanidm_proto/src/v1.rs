@@ -51,7 +51,7 @@ pub enum ConsistencyError {
     DuplicateUniqueAttribute(String),
     InvalidSpn(u64),
     SqliteIntegrityFailure,
-    BackendAllIDSSync,
+    BackendAllIdsSync,
     BackendIndexSync,
 }
 
