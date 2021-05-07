@@ -947,13 +947,54 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         pce: &PasswordChangeEvent,
     ) -> Result<(), OperationError> {
         let account = self.target_to_account(au, &pce.target)?;
+
+        // Deny the change if the account is anonymous!
+        if account.is_anonymous() {
+            return Err(OperationError::SystemProtectedObject);
+        }
+
+        // Get the modifications we *want* to perform.
+        let modlist = account
+            .gen_password_mod(pce.cleartext.as_str(), &pce.appid, self.crypto_policy)
+            .map_err(|e| {
+                ladmin_error!(au, "Failed to generate password mod {:?}", e);
+                e
+            })?;
+        ltrace!(au, "processing change {:?}", modlist);
+
+        // Check with the QS if we would be ALLOWED to do this change.
+
+        let me = self
+            .qs_write
+            .impersonate_modify_gen_event(
+                au,
+                // Filter as executed
+                &filter!(f_eq("uuid", PartialValue::new_uuidr(&pce.target))),
+                // Filter as intended (acp)
+                &filter_all!(f_eq("uuid", PartialValue::new_uuidr(&pce.target))),
+                &modlist,
+                &pce.event,
+            )
+            .map_err(|e| {
+                lrequest_error!(au, "error -> {:?}", e);
+                e
+            })?;
+
+        let mp = unsafe {
+            self.qs_write
+                .modify_pre_apply(au, &me)
+                .and_then(|opt_mp| opt_mp.ok_or(OperationError::NoMatchingEntries))
+                .map_err(|e| {
+                    lrequest_error!(au, "error -> {:?}", e);
+                    e
+                })?
+        };
+
+        // If we got here, then pre-apply succedded, and that means access control
+        // passed. Now we can do the extra checks.
+
+        // Check the password quality.
         // Ask if tis all good - this step checks pwpolicy and such
-
-        // Question: Is it a security issue to reveal pw policy checks BEFORE permission is
-        // determined over the credential modification?
-        //
-        // I don't think so - because we should only be showing how STRONG the pw is ...
-
         // Get related inputs, such as account name, email, etc.
         let mut related_inputs: Vec<&str> = vec![
             account.name.as_str(),
@@ -971,30 +1012,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 e
             })?;
 
-        // it returns a modify
-        let modlist = account
-            .gen_password_mod(pce.cleartext.as_str(), &pce.appid, self.crypto_policy)
-            .map_err(|e| {
-                ladmin_error!(au, "Failed to generate password mod {:?}", e);
-                e
-            })?;
-        ltrace!(au, "processing change {:?}", modlist);
-        // given the new credential generate a modify
-        // We use impersonate here to get the event from ae
-        self.qs_write
-            .impersonate_modify(
-                au,
-                // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::new_uuidr(&pce.target))),
-                // Filter as intended (acp)
-                &filter_all!(f_eq("uuid", PartialValue::new_uuidr(&pce.target))),
-                &modlist,
-                &pce.event,
-            )
-            .map_err(|e| {
-                lrequest_error!(au, "error -> {:?}", e);
-                e
-            })?;
+        // And actually really apply it now.
+        self.qs_write.modify_apply(au, mp).map_err(|e| {
+            lrequest_error!(au, "error -> {:?}", e);
+            e
+        })?;
 
         Ok(())
     }
@@ -1023,6 +1045,45 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             return Err(OperationError::SystemProtectedObject);
         }
 
+        let modlist = account
+            .gen_password_mod(pce.cleartext.as_str(), self.crypto_policy)
+            .map_err(|e| {
+                ladmin_error!(au, "Unable to generate password change modlist {:?}", e);
+                e
+            })?;
+        ltrace!(au, "processing change {:?}", modlist);
+
+        // Check with the QS if we would be ALLOWED to do this change.
+
+        let me = self
+            .qs_write
+            .impersonate_modify_gen_event(
+                au,
+                // Filter as executed
+                &filter!(f_eq("uuid", PartialValue::new_uuidr(&pce.target))),
+                // Filter as intended (acp)
+                &filter_all!(f_eq("uuid", PartialValue::new_uuidr(&pce.target))),
+                &modlist,
+                &pce.event,
+            )
+            .map_err(|e| {
+                lrequest_error!(au, "error -> {:?}", e);
+                e
+            })?;
+
+        let mp = unsafe {
+            self.qs_write
+                .modify_pre_apply(au, &me)
+                .and_then(|opt_mp| opt_mp.ok_or(OperationError::NoMatchingEntries))
+                .map_err(|e| {
+                    lrequest_error!(au, "error -> {:?}", e);
+                    e
+                })?
+        };
+
+        // If we got here, then pre-apply succedded, and that means access control
+        // passed. Now we can do the extra checks.
+
         // Get related inputs, such as account name, email, etc.
         let mut related_inputs: Vec<&str> = vec![
             account.name.as_str(),
@@ -1040,31 +1101,13 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 e
             })?;
 
-        // it returns a modify
-        let modlist = account
-            .gen_password_mod(pce.cleartext.as_str(), self.crypto_policy)
-            .map_err(|e| {
-                ladmin_error!(au, "Unable to generate password change modlist {:?}", e);
-                e
-            })?;
-        ltrace!(au, "processing change {:?}", modlist);
-        // given the new credential generate a modify
-        // We use impersonate here to get the event from ae
-        self.qs_write
-            .impersonate_modify(
-                au,
-                // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::new_uuidr(&pce.target))),
-                // Filter as intended (acp)
-                &filter_all!(f_eq("uuid", PartialValue::new_uuidr(&pce.target))),
-                &modlist,
-                &pce.event,
-            )
-            .map_err(|e| {
-                lrequest_error!(au, "error -> {:?}", e);
-                e
-            })
-            .map(|_| ())
+        // And actually really apply it now.
+        self.qs_write.modify_apply(au, mp).map_err(|e| {
+            lrequest_error!(au, "error -> {:?}", e);
+            e
+        })?;
+
+        Ok(())
     }
 
     pub fn recover_account(

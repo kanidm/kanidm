@@ -190,6 +190,7 @@ macro_rules! lperf_tag_segment {
             // Create a new perf event - this sets
             // us as the current active, and the parent
             // correctly.
+            #[allow(unused_unsafe)]
             let pe = unsafe { $au.new_perfevent($id) };
 
             // fun run time
@@ -200,7 +201,10 @@ macro_rules! lperf_tag_segment {
 
             // Now we are done, we put our parent back as
             // the active.
-            unsafe { $au.end_perfevent(pe, diff) };
+            #[allow(unused_unsafe)]
+            unsafe {
+                $au.end_perfevent(pe, diff)
+            };
 
             // Return the result. Hope this works!
             r
